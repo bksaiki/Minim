@@ -1,23 +1,41 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "object.h"
 
-int print_minim_object(MinimObject *obj)
+static char* minim_object_str(MinimObject* obj)
 {
+    char* ret = malloc(256 * sizeof(char));
+
     if (obj->type == MINIM_OBJ_NUM)
     {
-        printf("%i", *((int*)obj->data));
+        sprintf(ret, "%d", *((int*)obj->data));
     }
     else if (obj->type == MINIM_OBJ_SYM)
     {
-        printf("%s", ((char*)obj->data));
+        sprintf(ret, "%s", ((char*)obj->data));
     }
-    else if (obj->type == MINIM_OBJ_STR)
+    else if (obj->type == MINIM_OBJ_PAIR)
     {
-        printf("%s", ((char*)obj->data));
+        sprintf(ret, "%s", ((char*)obj->data));
     }
     else
     {
-        printf("<!error type!>");
-        return 1;
+        sprintf(ret, "<error!>");
+    }
+
+    return ret;
+}
+
+int print_minim_object(MinimObject* obj)
+{
+    if (obj->type == MINIM_OBJ_PAIR)
+    {
+        MinimObject** arr = ((MinimObject**) obj->data);
+        printf("(%s . %s)", minim_object_str(arr[0]), minim_object_str(arr[1]));
+    }
+    else
+    {
+        printf("%s", minim_object_str(obj));
     }
 
     return 0;
