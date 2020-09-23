@@ -2,7 +2,7 @@
 #define _MINIM_OBJECT_H_
 
 #include <stdio.h>
-#include "common.h"
+#include "base.h"
 
 typedef struct _MinimObject
 {
@@ -20,10 +20,17 @@ typedef enum _MinimObjectType
     MINIM_OBJ_NUM,
     MINIM_OBJ_SYM,
     MINIM_OBJ_PAIR,
+    MINIM_OBJ_ERR,
     MINIM_OBJ_LAST
 } MinimObjectType;
 
+// Constructs a single minim object based on the type.
+MinimObject *construct_minim_object(MinimObjectType type, ...);
+
+// Deletes a MinimObject
+void free_minim_object(MinimObject *obj);
+
 // Prints a minim object to stdout
-int print_minim_object(MinimObject* obj);
+int print_minim_object(MinimObject *obj);
 
 #endif
