@@ -53,31 +53,36 @@ static int get_arg_len(char* start, char* end)
     return count;
 }
 
-static MinimAstNode* parse_str_r(char* str)
+static MinimAstNode* construct_ast_node()
 {
-    MinimAstNode* node = malloc(sizeof(MinimAstNode));
-    char* end = str + strlen(str) - 1;
-
+    MinimAstNode *node = malloc(sizeof(MinimAstNode));
+    node->sym = NULL;
     node->argc = 0;
     node->children = NULL;
-    
+    return node;
+}
+
+static MinimAstNode* parse_str_r(char* str)
+{
+    MinimAstNode* node = construct_ast_node();
+    char *end = str + strlen(str) - 1;
+    char *tmp;
+    int len;
+
     if (*str == '(' && *end == ')')
     {
         char *it = str + 1, *it2, *tmp;
 
         for (it2 = it; it2 != end && !isspace(*it2); ++it2);
-        tmp = malloc((it2 - it + 1) * sizeof(char));
+        tmp = calloc(sizeof(char), it2 - it + 1);
         strncpy(tmp, it, it2 - it);
+        node->sym = tmp;
+        node->argc = get_arg_len(str + 1, end);
+
         it = it2 + 1;
         it2 = it;
 
-        node->sym = tmp;
-        node->argc = get_arg_len(str + 1, end);
-        if (node->argc == 0)
-        {
-            node->children = NULL;
-        }
-        else
+        if (node->argc != 0)
         {
             node->children = malloc(node->argc * sizeof(MinimAstNode*));
             for (int idx = 0; it < end; ++idx)
@@ -90,22 +95,19 @@ static MinimAstNode* parse_str_r(char* str)
                         if (*it2 == '(')         ++paren;
                         else if (*it2 == ')')    --paren;
                     }
-
-                    tmp = malloc((it2 - it + 1) * sizeof(char));
-                    strncpy(tmp, it, it2 - it);
-                    node->children[idx] = parse_str_r(tmp);
-                    
-                    if (isspace(*it2))  it = it2 + 1;
-                    else                it = it2;
                 }
                 else
                 {
                     for (it2 = it; it2 != end && !isspace(*it2); ++it2);
-                    tmp = malloc((it2 - it + 1) * sizeof(char));
-                    strncpy(tmp, it, it2 - it);
-                    node->children[idx] = parse_str_r(tmp);
-                    it = it2 + 1;
                 }
+
+                tmp = calloc(sizeof(char), it2 - it + 1);
+                strncpy(tmp, it, it2 - it);
+                node->children[idx] = parse_str_r(tmp);
+                free(tmp);
+
+                if (isspace(*it2))  it = it2 + 1;
+                else                it = it2;
             }
         }
 
@@ -114,14 +116,20 @@ static MinimAstNode* parse_str_r(char* str)
     }
     else if (*str != '(' && *end != ')')
     {
-        node->sym = str;
+        len = strlen(str);
+        tmp = calloc(sizeof(char), len + 1);
+        strncpy(tmp, str, len);
+
+        node->sym = tmp;
         node->state = MINIM_AST_VALID;
         node->tag = MINIM_AST_VAL;
         
     }
     else
     {
-        node->sym = "Unbalanced parenthesis";
+        tmp = malloc(50 * sizeof(char));
+        strcpy(tmp, "Unbalanced parenthesis");
+        node->sym = tmp;
         node->state = MINIM_AST_ERROR;
         node->tag = MINIM_AST_NONE;
     }
@@ -175,23 +183,17 @@ void free_ast(MinimAstNode* node)
             free_ast(node->children[i]);
     }
 
+    if (node->sym != NULL)      free(node->sym);
+    if (node->children != NULL) free(node->children);
     free(node);
 }
 
 
-int parse_str(const char* str, MinimAstWrapper* syn)
+int parse_str(char* str, MinimAstWrapper* syn)
 {
     MinimAstNode* node;
-    char *cp;
-    int len;
 
-    len = strlen(str);
-    cp = malloc((len + 1) * sizeof(char));
-    strncpy(cp, str, len);
-
-    node = parse_str_r(cp);
-    free(cp);
-
+    node = parse_str_r(str);
     if (!valid_ast(node))
     {
         print_ast_errors(node);

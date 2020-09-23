@@ -34,7 +34,7 @@ typedef struct _MinimAstWrapper
 void free_ast(MinimAstNode* node);
 
 // Parses a single expression. Returns null on failure.
-int parse_str(const char* str, MinimAstWrapper* syn);
+int parse_str(char* str, MinimAstWrapper* syn);
 
 // Prints an AST syntax tree
 void print_ast(MinimAstNode* node);

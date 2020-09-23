@@ -5,6 +5,7 @@
 
 int main(int argc, char** argv)
 {
+    MinimAstWrapper ast;
     char input[1024];
     char* str;
     int idx;
@@ -17,18 +18,26 @@ int main(int argc, char** argv)
         fgets(input, 1024, stdin);
 
         for (idx = 0; input[idx] != '\0' && input[idx] != '\n'; ++idx);
-        str = malloc((idx + 1) * sizeof(char));
+        str = calloc(sizeof(char), idx + 1);
         strncpy(str, input, idx);
 
-        MinimAstWrapper ast;
+        if (strcmp(str, "(exit)") == 0)
+        {
+            free(str);
+            break;
+        }
 
         if (!parse_str(str, &ast))
+        {
+            free(str);
             continue;
+        }
 
         print_ast(ast.node);
         printf("\n");
 
         free_ast(ast.node);
+        free(str);
     }
 
     return 0;
