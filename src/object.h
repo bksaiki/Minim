@@ -27,6 +27,9 @@ typedef enum _MinimObjectType
 // Constructs a single minim object based on the type.
 MinimObject *construct_minim_object(MinimObjectType type, ...);
 
+// Returns a copy of the given object.
+MinimObject *copy_minim_object(MinimObject* obj);
+
 // Deletes a MinimObject
 void free_minim_object(MinimObject *obj);
 

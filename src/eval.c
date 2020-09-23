@@ -20,6 +20,22 @@ static int is_num_pred(const void *thing)
     return ((*pobj)->type == MINIM_OBJ_NUM);
 }
 
+static int is_err_pred(const void *thing)
+{
+    MinimObject **pobj = (MinimObject**) thing;
+    return ((*pobj)->type == MINIM_OBJ_ERR);
+}
+
+static void free_args(int argc, MinimObject **args)
+{
+    for (int i = 0; i < argc; ++i)
+        free_minim_object(args[i]);
+}
+
+//
+//  Evaluators
+//
+
 static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
 {
     MinimObject *res;
@@ -33,10 +49,7 @@ static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
     if (strcmp(node->sym, "+") == 0)
     {
         if (argc == 0)  // arity mismatch
-        {
-            printf("Expected at least 1 argument for '+'\n");
-            return NULL;
-        }
+            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for '+'");
 
         res = construct_minim_object(MINIM_OBJ_NUM, *((int*)args[0]->data));
         for (int i = 1; i < argc; ++i)
@@ -50,8 +63,7 @@ static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
     {
         if (argc == 0)  // arity mismatch
         {
-            printf("Expected at least 1 argument for '/'\n");
-            return NULL;
+            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for '-'");
         }
         else if (argc == 1)
         {
@@ -72,10 +84,7 @@ static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
     else if (strcmp(node->sym, "*") == 0)
     {
         if (argc == 0)  // arity mismatch
-        {
-            printf("Expected at least 1 argument for '*'\n");
-            return NULL;
-        }
+            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for '*'");
 
         res = construct_minim_object(MINIM_OBJ_NUM, *((int*)args[0]->data));
         for (int i = 1; i < argc; ++i)
@@ -88,18 +97,32 @@ static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
     else // strcmp(node->sym, "/") == 0
     {
         if (argc != 2)
-        {
-            printf("Expected 2 arguments for '/'\n");
-            return NULL;
-        }
+            return construct_minim_object(MINIM_OBJ_ERR, "Expected 2 arguments for '/'");
 
         int num = *((int*) args[0]->data);
         int den = *((int*) args[1]->data);
-        res = construct_minim_object(MINIM_OBJ_NUM, num / den);
+        res = ((den == 0) ? construct_minim_object(MINIM_OBJ_ERR, "Division by zero") :
+                            construct_minim_object(MINIM_OBJ_NUM, num / den));
     }
 
     return res;
 }
+
+static MinimObject *eval_pair(MinimAstNode *node, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (strcmp(node->sym, "cons") == 0)
+    {
+        if (node->argc != 2)
+            return construct_minim_object(MINIM_OBJ_ERR, "Expected two arguments for 'cons");
+        res = construct_minim_object(MINIM_OBJ_PAIR, args[0], args[1]);
+    }
+
+    return res;
+}
+
+// Mainloop
 
 static MinimObject *ast_node_to_obj(MinimAstNode *node)
 {
@@ -109,14 +132,8 @@ static MinimObject *ast_node_to_obj(MinimAstNode *node)
     }
     else
     {
-        return construct_minim_object(MINIM_OBJ_SYM, atoi(node->sym));
+        return construct_minim_object(MINIM_OBJ_SYM, node->sym);
     }
-}
-
-static void free_args(int argc, MinimObject **args)
-{
-    for (int i = 0; i < argc; ++i)
-        free_minim_object(args[i]);
 }
 
 static MinimObject *eval_ast_node(MinimAstNode *node)
@@ -127,15 +144,30 @@ static MinimObject *eval_ast_node(MinimAstNode *node)
     if (node->tag == MINIM_AST_OP)
     {
         MinimObject** args = malloc(node->argc * sizeof(MinimObject*));
+        MinimObject** possible_err;
         MinimObject *result;
         
         for (int i = 0; i < node->argc; ++i)
             args[i] = eval_ast_node(node->children[i]);
 
-        if (strcmp(node->sym, "+") == 0 || strcmp(node->sym, "-") == 0 ||
+        possible_err = for_first(args, node->argc, sizeof(MinimObject*), is_err_pred);
+        if (possible_err)
+        {
+            result = *possible_err;
+            for (int i = 0; i < node->argc; ++i)    // Clear it so it doesn't get deleted
+            {
+                if (&args[i] == possible_err)
+                    args[i] = NULL;
+            }
+        }
+        else if (strcmp(node->sym, "+") == 0 || strcmp(node->sym, "-") == 0 ||
             strcmp(node->sym, "*") == 0 || strcmp(node->sym, "/") == 0)
         {
             result = eval_math(node, node->argc, args);
+        }
+        else if (strcmp(node->sym, "cons") == 0)
+        {
+            result = eval_pair(node, node->argc, args);
         }
         else
         {  

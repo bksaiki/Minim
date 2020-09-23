@@ -1,10 +1,10 @@
 BUILD_DIR	= build
 SRC_DIR 	= src
 
-ENTRY		= minim.c
+ENTRY		= 
 EXE			= minim
 
-SRCS 		= $(shell find $(SRC_DIR) -name *.c ! -name $(ENTRY))
+SRCS 		= $(shell find $(SRC_DIR) -name *.c)
 OBJS 		= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		= $(OBJS:.o=.d)
 
@@ -17,8 +17,7 @@ LDFLAGS 	=
 
 # Specific rules
 
-main: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(SRC_DIR)/$(ENTRY) $(LDFLAGS) -o $(EXE)
+main: $(EXE);
 
 build: $(OBJS);
 
@@ -48,5 +47,8 @@ $(BUILD_DIR)%/.:
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $< $(LDFLAGS)
 
+$(EXE): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(EXE)
+	
 -include $(DEPS)
 .PHONY: main build clean clean-deps clean-all

@@ -128,7 +128,7 @@ static MinimAstNode* parse_str_r(char* str)
     else
     {
         tmp = malloc(50 * sizeof(char));
-        strcpy(tmp, "Unbalanced parenthesis");
+        strcpy(tmp, "Unmatched parenthesis");
         node->sym = tmp;
         node->state = MINIM_AST_ERROR;
         node->tag = MINIM_AST_NONE;
