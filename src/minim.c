@@ -1,13 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "env.h"
 #include "eval.h"
 #include "parser.h"
 
 int main(int argc, char** argv)
 {
-    MinimAstWrapper ast;
-    MinimObjectWrapper objw;
+    MinimEnv *env;
+    MinimAstNode *ast;
+    MinimObject *obj;
+
     char input[1024];
     char* str;
     int idx;
@@ -35,12 +39,14 @@ int main(int argc, char** argv)
             continue;
         }
 
-        eval_ast(&ast, &objw);
-        print_minim_object(objw.obj);
+        init_env(&env);
+        eval_ast(env, ast, &obj);
+        print_minim_object(obj);
         printf("\n");
 
-        free_minim_object(objw.obj);
-        free_ast(ast.node);
+        free_minim_object(obj);
+        free_ast(ast);
+        free_env(env);
         free(str);
     }
 

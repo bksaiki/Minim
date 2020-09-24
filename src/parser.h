@@ -3,29 +3,29 @@
 
 #include "object.h"
 
-typedef enum _MinimAstState
+typedef enum MinimAstState
 {
     MINIM_AST_VALID,
     MINIM_AST_ERROR
 } MinimAstState;
 
-typedef enum _MinimAstTag
+typedef enum MinimAstTag
 {
     MINIM_AST_VAL,
     MINIM_AST_OP,
     MINIM_AST_NONE
 } MinimAstTag;
 
-typedef struct _MinimAstNode
+typedef struct MinimAstNode
 {
-    struct _MinimAstNode** children;
+    struct MinimAstNode** children;
     char* sym;
     int argc;
     MinimAstState state;
     MinimAstTag tag;
 } MinimAstNode;
 
-typedef struct _MinimAstWrapper
+typedef struct MinimAstWrapper
 {
     MinimAstNode* node;
 } MinimAstWrapper;
@@ -34,7 +34,7 @@ typedef struct _MinimAstWrapper
 void free_ast(MinimAstNode* node);
 
 // Parses a single expression. Returns null on failure.
-int parse_str(char* str, MinimAstWrapper* syn);
+int parse_str(char* str, MinimAstNode** syn);
 
 // Prints an AST syntax tree
 void print_ast(MinimAstNode* node);

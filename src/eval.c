@@ -1,7 +1,10 @@
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "eval.h"
+#include "util.h"
 
 static bool is_int(char *str)
 {
@@ -150,7 +153,7 @@ static MinimObject *eval_pair(MinimAstNode *node, int argc, MinimObject **args)
 
 // Mainloop
 
-static MinimObject *ast_node_to_obj(MinimAstNode *node)
+static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node)
 {
     if (is_int(node->sym))
     {
@@ -162,7 +165,7 @@ static MinimObject *ast_node_to_obj(MinimAstNode *node)
     }
 }
 
-static MinimObject *eval_ast_node(MinimAstNode *node)
+static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 {
     if (node == NULL)
         return NULL;
@@ -174,7 +177,7 @@ static MinimObject *eval_ast_node(MinimAstNode *node)
         MinimObject *result;
         
         for (int i = 0; i < node->argc; ++i)
-            args[i] = eval_ast_node(node->children[i]);
+            args[i] = eval_ast_node(env, node->children[i]);
 
         possible_err = for_first(args, node->argc, sizeof(MinimObject*), is_err_pred);
         if (possible_err)
@@ -207,24 +210,22 @@ static MinimObject *eval_ast_node(MinimAstNode *node)
     }
     else
     {
-        return ast_node_to_obj(node);
+        return ast_node_to_obj(env, node);
     }
 }
 
 // Visible functions
 
-int eval_ast(MinimAstWrapper *ast, MinimObjectWrapper *objw)
+int eval_ast(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
 {
-    MinimObject *result = eval_ast_node(ast->node);
-    
-    if (!result)
+    MinimObject *obj = eval_ast_node(env, ast);
+    if (!obj)
     {
         printf("Evaluation failed!\n");
+        *pobj = NULL;
         return 0;
     }
-    else
-    {
-        objw->obj = result;
-        return 1;
-    }
+
+    *pobj = obj;
+    return 1;
 }

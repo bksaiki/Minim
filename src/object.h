@@ -1,21 +1,20 @@
 #ifndef _MINIM_OBJECT_H_
 #define _MINIM_OBJECT_H_
 
-#include <stdio.h>
 #include "base.h"
 
-typedef struct _MinimObject
+typedef struct MinimObject
 {
     int type;
     void* data;
 } MinimObject;
 
-typedef struct _MinimObjectWrapper
+typedef struct MinimObjectWrapper
 {
     MinimObject* obj;
 } MinimObjectWrapper;
 
-typedef enum _MinimObjectType
+typedef enum MinimObjectType
 {
     MINIM_OBJ_NUM,
     MINIM_OBJ_SYM,

@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "parser.h"
@@ -189,23 +190,20 @@ void free_ast(MinimAstNode* node)
 }
 
 
-int parse_str(char* str, MinimAstWrapper* syn)
+int parse_str(char* str, MinimAstNode** syn)
 {
-    MinimAstNode* node;
-
-    node = parse_str_r(str);
-    if (!valid_ast(node))
+    *syn = parse_str_r(str);
+    
+    if (!valid_ast(*syn))
     {
-        print_ast_errors(node);
-        free_ast(node);
-        syn->node = NULL;
+        print_ast_errors(*syn);
+        free_ast(*syn);
+        syn = NULL;
         return 0;
     } 
     else
-    {
-        syn->node = node;
-        return 1;
-    }
+    
+    return 1;
 }
 
 void print_ast(MinimAstNode *node)
