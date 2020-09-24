@@ -102,4 +102,5 @@ void env_load_builtins(MinimEnv *env)
     env_load_builtin(env, "cons", minim_builtin_cons);
     env_load_builtin(env, "car", minim_builtin_car);
     env_load_builtin(env, "cdr", minim_builtin_cdr);
+    env_load_builtin(env, "list", minim_builtin_list);
 }

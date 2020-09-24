@@ -41,13 +41,25 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
     if (node == NULL)
         return NULL;
 
+    if (strcmp(node->sym, "quote") == 0)
+    {
+        MinimObject *quo;
+        char* str = malloc((strlen(node->children[0]->sym) + 1) * sizeof(char));
+
+        strcpy(str, "'");
+        strcat(str, node->children[0]->sym);
+        init_minim_object(&quo, MINIM_OBJ_SYM, str);
+        free(str);
+        return quo;
+    }
+
     if (node->tag == MINIM_AST_OP)
     {
         MinimObject** args = malloc(node->argc * sizeof(MinimObject*));
         MinimObject** possible_err;
         MinimObject *res, *op;
         MinimBuiltin proc;
-        
+
         for (int i = 0; i < node->argc; ++i)
             args[i] = eval_ast_node(env, node->children[i]);
 

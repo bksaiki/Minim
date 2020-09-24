@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,24 @@ static void free_minim_object_proc(const void *thing)
 {
     MinimObject **obj = ((MinimObject**) thing);
     free_minim_object(*obj);
+}
+
+static void print_list(MinimObject *obj, bool head)
+{
+    MinimObject** pair = ((MinimObject**) obj->data);
+
+    if (head)       printf("'(");
+    if (pair[0])    print_minim_object(pair[0]);
+
+    if (pair[1])
+    {
+        printf(" ");
+        print_list(pair[1], false);
+    }
+    else
+    {
+        printf(")");
+    }
 }
 
 // Visible functions
@@ -135,13 +154,20 @@ int print_minim_object(MinimObject *obj)
     }
     else if (obj->type == MINIM_OBJ_PAIR)
     {
-        MinimObject **arr = ((MinimObject**) obj->data);
-
-        printf("(");
-        print_minim_object(arr[0]);
-        printf(" . ");
-        print_minim_object(arr[1]);
-        printf(")");
+        MinimObject **pair = ((MinimObject**) obj->data);
+        if (!pair[0] || !pair[1] ||
+            pair[0]->type == MINIM_OBJ_PAIR || pair[1]->type == MINIM_OBJ_PAIR)
+        {
+            print_list(obj, true);
+        }
+        else
+        {
+            printf("(");
+            print_minim_object(pair[0]);
+            printf(" . ");
+            print_minim_object(pair[0]);
+            printf(")");
+        }
     }
     else if (obj->type == MINIM_OBJ_FUNC)
     {

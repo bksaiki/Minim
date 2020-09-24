@@ -29,6 +29,8 @@ static int get_arg_len(char* start, char* end)
 
     while (it != end)
     {
+        while (*it == '\'' || *it == ',')   ++it;  // special characters
+
         if (isspace(*it))
         {
             ++count;
@@ -70,9 +72,26 @@ static MinimAstNode* parse_str_r(char* str)
     char *tmp;
     int len;
 
-    if (*str == '(' && *end == ')')
+    if (*str == '\'')
     {
-        char *it = str + 1, *it2, *tmp;
+        node->sym = malloc(6 * sizeof(char));
+        node->children = malloc(sizeof(MinimAstNode*));
+        node->state = MINIM_AST_VALID;
+        node->tag = MINIM_AST_OP;
+        node->argc = 1;
+        strcpy(node->sym, "quote");
+
+        len = strlen(str);
+        node->children[0] = construct_ast_node();
+        node->children[0]->sym = malloc(len * sizeof(char));
+        node->state = MINIM_AST_VALID;
+        node->tag = MINIM_AST_OP;
+        node->argc = 0;
+        strncpy(node->children[0]->sym, str + 1, len - 1);
+    }
+    else if (*str == '(' && *end == ')')
+    {
+        char *it = str + 1, *it2;
 
         for (it2 = it; it2 != end && !isspace(*it2); ++it2);
         tmp = calloc(sizeof(char), it2 - it + 1);
@@ -88,6 +107,8 @@ static MinimAstNode* parse_str_r(char* str)
             node->children = malloc(node->argc * sizeof(MinimAstNode*));
             for (int idx = 0; it < end; ++idx)
             {
+                while (*it == '\'' || *it == ',')   ++it;  // special characters
+
                 if (*it == '(')
                 {
                     int paren = 1;
