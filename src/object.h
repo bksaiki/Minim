@@ -3,6 +3,9 @@
 
 #include "base.h"
 
+struct MinimEnv;
+typedef struct MinimEnv MinimEnv;
+
 typedef struct MinimObject
 {
     int type;
@@ -20,17 +23,22 @@ typedef enum MinimObjectType
     MINIM_OBJ_SYM,
     MINIM_OBJ_PAIR,
     MINIM_OBJ_ERR,
-    MINIM_OBJ_LAST
+    MINIM_OBJ_FUNC,
 } MinimObjectType;
 
+typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject *);
+
 // Constructs a single minim object based on the type.
-MinimObject *construct_minim_object(MinimObjectType type, ...);
+void init_minim_object(MinimObject **pobj, MinimObjectType type, ...);
 
 // Returns a copy of the given object.
-MinimObject *copy_minim_object(MinimObject* obj);
+void copy_minim_object(MinimObject **pobj, MinimObject *src);
 
-// Deletes a MinimObject
+// Deletes a MinimObject.
 void free_minim_object(MinimObject *obj);
+
+// Deletes an array of MinimObjects.
+void free_minim_objects(int count, MinimObject **objs);
 
 // Prints a minim object to stdout
 int print_minim_object(MinimObject *obj);

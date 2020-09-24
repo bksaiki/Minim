@@ -52,30 +52,27 @@ static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
     if (strcmp(node->sym, "+") == 0)
     {
         if (argc == 0)  // arity mismatch
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for '+'");
-
-        res = construct_minim_object(MINIM_OBJ_NUM, *((int*)args[0]->data));
-        for (int i = 1; i < argc; ++i)
         {
-            int *accum = (int*)res->data;
-            int *pval = (int*)args[i]->data;
-            *accum += *pval;
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected 1 argument for '+'");
+            return res;
         }
+
     }
     else if (strcmp(node->sym, "-") == 0)
     {
         if (argc == 0)  // arity mismatch
         {
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for '-'");
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected at least 1 argument for '-'");
+            return res;
         }
         else if (argc == 1)
         {
             int val = *((int*)args[0]->data);
-            return construct_minim_object(MINIM_OBJ_NUM, -val);
+            init_minim_object(&res, MINIM_OBJ_NUM, -val);
         }
         else
         {
-            res = construct_minim_object(MINIM_OBJ_NUM, *((int*)args[0]->data));
+            init_minim_object(&res, MINIM_OBJ_NUM, *((int*)args[0]->data));
             for (int i = 1; i < argc; ++i)
             {
                 int *accum = (int*)res->data;
@@ -87,9 +84,12 @@ static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
     else if (strcmp(node->sym, "*") == 0)
     {
         if (argc == 0)  // arity mismatch
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for '*'");
+        {
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected at least 1 argument for '*'");
+            return res;
+        }
 
-        res = construct_minim_object(MINIM_OBJ_NUM, *((int*)args[0]->data));
+        init_minim_object(&res, MINIM_OBJ_NUM, *((int*)args[0]->data));
         for (int i = 1; i < argc; ++i)
         {
             int *accum = (int*)res->data;
@@ -99,13 +99,18 @@ static MinimObject *eval_math(MinimAstNode *node, int argc, MinimObject **args)
     }
     else // strcmp(node->sym, "/") == 0
     {
-        if (argc != 2)
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected 2 arguments for '/'");
+        int num, den;
 
-        int num = *((int*) args[0]->data);
-        int den = *((int*) args[1]->data);
-        res = ((den == 0) ? construct_minim_object(MINIM_OBJ_ERR, "Division by zero") :
-                            construct_minim_object(MINIM_OBJ_NUM, num / den));
+        if (argc != 2)
+        {
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected at 2 arguments for '/'");
+            return res;
+        }
+
+        num = *((int*) args[0]->data);
+        den = *((int*) args[1]->data);
+        if (den == 0)   init_minim_object(&res, MINIM_OBJ_ERR, "Division by zero");
+        else            init_minim_object(&res, MINIM_OBJ_NUM, num / den);
     }
 
     return res;
@@ -118,34 +123,27 @@ static MinimObject *eval_pair(MinimAstNode *node, int argc, MinimObject **args)
     if (strcmp(node->sym, "cons") == 0)
     {
         if (node->argc != 2)
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected 2 arguments for 'cons");
-        res = construct_minim_object(MINIM_OBJ_PAIR, args[0], args[1]);
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected 2 arguments for 'cons");
+        else
+            init_minim_object(&res, MINIM_OBJ_PAIR, args[0], args[1]);
     }
     else if (strcmp(node->sym, "car") == 0)
     {
-        MinimObject** pair;
-
         if (node->argc != 1)
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for 'car");
-
-        if (args[0]->type != MINIM_OBJ_PAIR)
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected a pair for 'car");
-
-        pair = (MinimObject**)args[0]->data;
-        res = copy_minim_object(pair[0]);
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected 1 argument for 'car");
+        else if (args[0]->type != MINIM_OBJ_PAIR)
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected a pair for 'car");
+        else
+            copy_minim_object(&res, ((MinimObject**) args)[0]->data);
     }
     else if (strcmp(node->sym, "cdr") == 0)
     {
-        MinimObject** pair;
-
         if (node->argc != 1)
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected 1 argument for 'cdr");
-
-        if (args[0]->type != MINIM_OBJ_PAIR)
-            return construct_minim_object(MINIM_OBJ_ERR, "Expected a pair for 'cdr");
-
-        pair = (MinimObject**)args[0]->data;
-        res = copy_minim_object(pair[1]);
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected 1 argument for 'cdr");
+        else if (args[0]->type != MINIM_OBJ_PAIR)
+            init_minim_object(&res, MINIM_OBJ_ERR, "Expected a pair for 'cdr");
+        else
+            copy_minim_object(&res, ((MinimObject**) args)[1]->data);
     }
 
     return res;
@@ -155,14 +153,14 @@ static MinimObject *eval_pair(MinimAstNode *node, int argc, MinimObject **args)
 
 static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node)
 {
+    MinimObject *res;
+
     if (is_int(node->sym))
-    {
-        return construct_minim_object(MINIM_OBJ_NUM, atoi(node->sym));
-    }
+        init_minim_object(&res, MINIM_OBJ_NUM, atoi(node->sym));
     else
-    {
-        return construct_minim_object(MINIM_OBJ_SYM, node->sym);
-    }
+        init_minim_object(&res, MINIM_OBJ_SYM, node->sym);
+
+    return res;
 }
 
 static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)

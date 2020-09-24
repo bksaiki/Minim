@@ -2,11 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "object.h"
+#include "util.h"
+
+static void free_minim_object_proc(const void *thing)
+{
+    MinimObject **obj = ((MinimObject**) thing);
+    free_minim_object(*obj);
+}
 
 // Visible functions
 
-MinimObject *construct_minim_object(MinimObjectType type, ...)
+void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
 {
     MinimObject *obj = malloc(sizeof(MinimObject));
     va_list rest;
@@ -31,9 +39,13 @@ MinimObject *construct_minim_object(MinimObjectType type, ...)
     else if (type == MINIM_OBJ_PAIR)
     {
         MinimObject **pair = malloc(2 * sizeof(MinimObject**));
-        pair[0] = copy_minim_object(va_arg(rest, MinimObject*));
-        pair[1] = copy_minim_object(va_arg(rest, MinimObject*));
+        copy_minim_object(&pair[0], va_arg(rest, MinimObject*));
+        copy_minim_object(&pair[1], va_arg(rest, MinimObject*));
         obj->data = pair;
+    }
+    else if (type == MINIM_OBJ_FUNC)
+    {
+        obj->data = va_arg(rest, MinimBuiltin);
     }
     else
     {
@@ -42,45 +54,49 @@ MinimObject *construct_minim_object(MinimObjectType type, ...)
     }
 
     va_end(rest);
-    return obj;
+    *pobj = obj;
 }
 
-MinimObject *copy_minim_object(MinimObject* obj)
+void copy_minim_object(MinimObject **pobj, MinimObject *src)
 {
-    MinimObject *cp = malloc(sizeof(MinimObject));
+    MinimObject *obj = malloc(sizeof(MinimObject));
 
-    cp->type = obj->type;
-    if (obj->type == MINIM_OBJ_NUM)
+    obj->type = src->type;
+    if (src->type == MINIM_OBJ_NUM)
     {
         int *v = malloc(sizeof(int));
-        *v = *((int*) obj->data);
-        cp->data = v;
+        *v = *((int*) src->data);
+        obj->data = v;
     }
-    else if (obj->type == MINIM_OBJ_SYM || obj->type == MINIM_OBJ_ERR)
+    else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR)
     {
-        char *dest, *src = ((char*) obj->data);
-        int len = strlen(src);
+        char *dest, *str = ((char*) src->data);
+        int len = strlen(str);
 
         dest = calloc(sizeof(char), len + 1);
-        strncpy(dest, src, len);
-        cp->data = dest;
+        strncpy(dest, str, len);
+        obj->data = dest;
     }
-    else if (obj->type == MINIM_OBJ_PAIR)
+    else if (src->type == MINIM_OBJ_PAIR)
     {
-        MinimObject** src = (MinimObject**) obj->data;
+        MinimObject** cell = ((MinimObject**) src->data);
         MinimObject** dest = malloc(2 * sizeof(MinimObject*));
 
-        dest[0] = copy_minim_object(src[0]);
-        dest[1] = copy_minim_object(src[1]);
-        cp->data = dest;
+        copy_minim_object(&dest[0], cell[0]);
+        copy_minim_object(&dest[1], cell[1]);
+        obj->data = dest;
+    }
+    else if (src->type == MINIM_OBJ_FUNC)
+    {
+        obj = src->data;   // no copy
     }
     else
     {
         printf("Unknown object type\n");
-        cp = NULL;
+        obj = NULL;
     }
 
-    return cp;
+    *pobj = obj;
 }
 
 void free_minim_object(MinimObject *obj)
@@ -95,8 +111,16 @@ void free_minim_object(MinimObject *obj)
         if (pdata[1])   free_minim_object(pdata[1]);
     }
     
-    if (obj->data)   free(obj->data);
+    if (obj->data && obj->type != MINIM_OBJ_FUNC)
+        free(obj->data);
+
     free(obj);
+}
+
+void free_minim_objects(int count, MinimObject **objs)
+{
+    for_each(objs, count, sizeof(MinimObject*), free_minim_object_proc);
+    free(objs);
 }
 
 int print_minim_object(MinimObject *obj)
@@ -119,9 +143,13 @@ int print_minim_object(MinimObject *obj)
         print_minim_object(arr[1]);
         printf(")");
     }
+    else if (obj->type == MINIM_OBJ_FUNC)
+    {
+        printf("<function: %s>", ((char*)obj->data));
+    }
     else
     {
-        printf("<error!>");
+        printf("<Unknown type>");
         return 1;
     }
 

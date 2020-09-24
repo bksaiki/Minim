@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include "util.h"
 
 int all_of(void *arr, size_t num, size_t size, int (*pred)(const void*))
