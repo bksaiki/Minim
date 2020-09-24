@@ -4,8 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "env.h"
 #include "object.h"
 #include "util.h"
+
+static int print_object_port(MinimObject *obj, FILE *stream, bool quote);
 
 static void free_minim_object_proc(const void *thing)
 {
@@ -13,22 +16,67 @@ static void free_minim_object_proc(const void *thing)
     free_minim_object(*obj);
 }
 
-static void print_list(MinimObject *obj, bool head)
+static void print_list(MinimObject *obj, FILE *stream, bool head)
 {
     MinimObject** pair = ((MinimObject**) obj->data);
 
     if (head)       printf("'(");
-    if (pair[0])    print_minim_object(pair[0]);
+    if (pair[0])    print_object_port(pair[0], stream, true);
 
     if (pair[1])
     {
         printf(" ");
-        print_list(pair[1], false);
+        print_list(pair[1], stream, false);
     }
     else
     {
         printf(")");
     }
+}
+
+static int print_object_port(MinimObject *obj, FILE *stream, bool quote)
+{
+    if (obj->type == MINIM_OBJ_NUM)
+    {
+        printf("%d", *((int*)obj->data));
+    }
+    else if (obj->type == MINIM_OBJ_SYM)
+    {
+        if (quote)  printf("%s", ((char*) obj->data));
+        else        printf("'%s", ((char*) obj->data));
+    }
+    else if (obj->type == MINIM_OBJ_ERR)
+    {
+        printf("%s", ((char*)obj->data));
+    }
+    else if (obj->type == MINIM_OBJ_PAIR)
+    {
+        MinimObject **pair = ((MinimObject**) obj->data);
+        if (!pair[0] || !pair[1] ||
+            pair[0]->type == MINIM_OBJ_PAIR || pair[1]->type == MINIM_OBJ_PAIR)
+        {
+            print_list(obj, stream, true);
+        }
+        else
+        {
+            printf("(");
+            print_object_port(pair[0], stream, true);
+            printf(" . ");
+            print_object_port(pair[1], stream, true);
+            printf(")");
+        }
+    }
+    else if (obj->type == MINIM_OBJ_FUNC)
+    {
+        printf("<function: %s>", ((char*)obj->data));
+    }
+    else
+    {
+        printf("<Unknown type>");
+        return 1;
+    }
+
+    return 0;
 }
 
 // Visible functions
@@ -49,10 +97,8 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     else if (type == MINIM_OBJ_SYM || type == MINIM_OBJ_ERR)
     {
         char *dest, *src = va_arg(rest, char*);
-        int len = strlen(src);
-        
-        dest = calloc(sizeof(char), len + 1);
-        strncpy(dest, src, len);
+        dest = malloc((strlen(src) + 1) * sizeof(char));
+        strcpy(dest, src);
         obj->data = dest;
     }
     else if (type == MINIM_OBJ_PAIR)
@@ -90,10 +136,8 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR)
     {
         char *dest, *str = ((char*) src->data);
-        int len = strlen(str);
-
-        dest = calloc(sizeof(char), len + 1);
-        strncpy(dest, str, len);
+        dest = malloc((strlen(str) + 1) * sizeof(char));
+        strcpy(dest, str);      
         obj->data = dest;
     }
     else if (src->type == MINIM_OBJ_PAIR)
@@ -144,47 +188,12 @@ void free_minim_objects(int count, MinimObject **objs)
 
 int print_minim_object(MinimObject *obj)
 {
-    if (obj->type == MINIM_OBJ_NUM)
-    {
-        printf("%d", *((int*)obj->data));
-    }
-    else if (obj->type == MINIM_OBJ_SYM || obj->type == MINIM_OBJ_ERR)
-    {
-        printf("%s", ((char*)obj->data));
-    }
-    else if (obj->type == MINIM_OBJ_PAIR)
-    {
-        MinimObject **pair = ((MinimObject**) obj->data);
-        if (!pair[0] || !pair[1] ||
-            pair[0]->type == MINIM_OBJ_PAIR || pair[1]->type == MINIM_OBJ_PAIR)
-        {
-            print_list(obj, true);
-        }
-        else
-        {
-            printf("(");
-            print_minim_object(pair[0]);
-            printf(" . ");
-            print_minim_object(pair[0]);
-            printf(")");
-        }
-    }
-    else if (obj->type == MINIM_OBJ_FUNC)
-    {
-        printf("<function: %s>", ((char*)obj->data));
-    }
-    else
-    {
-        printf("<Unknown type>");
-        return 1;
-    }
-
-    return 0;
+    return print_object_port(obj, stdout, false);
 }
 
 void minim_error(MinimObject **pobj, const char* format, ...)
 {
-    MinimObject *obj = malloc(sizeof(MinimObject));
+    MinimObject *obj;
     char buffer[1024];
     va_list rest;
     

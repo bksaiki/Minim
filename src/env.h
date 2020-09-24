@@ -10,7 +10,7 @@ typedef struct MinimEnv
     MinimObject **vals;
 } MinimEnv;
 
-// Returns a new environment object.
+// Initializes a new environment object.
 void init_env(MinimEnv **penv);
 
 // Returns a copy of the object associated with the symbol. Returns NULL if
@@ -26,6 +26,9 @@ MinimObject *env_peek_sym(MinimEnv *env, const char* sym);
 
 // Deletes the given environment object
 void free_env(MinimEnv *env);
+
+// Loads a single function into the environment
+void env_load_builtin_fun(MinimEnv *env, const char* name, MinimBuiltin func);
 
 // Loads every builtin symbol in the base library.
 void env_load_builtins(MinimEnv *env);

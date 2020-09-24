@@ -2,9 +2,10 @@
 #define _MINIM_MATH_H_
 
 #include "env.h"
-#include "object.h"
 
 // Top-level mathematical functions
+
+void env_load_math(MinimEnv *env);
 
 MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args);

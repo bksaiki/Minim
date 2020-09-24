@@ -10,8 +10,11 @@ static bool is_int(char *str)
 {
     char *it = str;
 
-    if (*it == '+' || *it == '-')
-        ++it;
+    if ((*it == '+' || *it == '-') &&
+        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+    {
+        it += 2;
+    }
 
     while (*it >= '0' && *it <= '9')    ++it;
     return (*it == '\0');
@@ -29,9 +32,15 @@ static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node)
     MinimObject *res;
 
     if (is_int(node->sym))
+    {
         init_minim_object(&res, MINIM_OBJ_NUM, atoi(node->sym));
+    }
     else
-        init_minim_object(&res, MINIM_OBJ_SYM, node->sym);
+    {
+        res = env_get_sym(env, node->sym);
+        if (!res)
+            minim_error(&res, "Unrecognized symbol: %s", node->sym);    
+    }
 
     return res;
 }
@@ -44,12 +53,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
     if (strcmp(node->sym, "quote") == 0)
     {
         MinimObject *quo;
-        char* str = malloc((strlen(node->children[0]->sym) + 1) * sizeof(char));
-
-        strcpy(str, "'");
-        strcat(str, node->children[0]->sym);
-        init_minim_object(&quo, MINIM_OBJ_SYM, str);
-        free(str);
+        init_minim_object(&quo, MINIM_OBJ_SYM, node->children[0]->sym);
         return quo;
     }
 

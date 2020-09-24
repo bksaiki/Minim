@@ -6,14 +6,6 @@
 #include "list.h"
 #include "math.h"
 
-static void env_load_builtin(MinimEnv *env, const char* name, MinimBuiltin func)
-{
-    MinimObject *obj;
-
-    init_minim_object(&obj, MINIM_OBJ_FUNC, func);
-    env_intern_sym(env, name, obj);
-}
-
 //
 //  Visible functions
 //
@@ -92,19 +84,16 @@ void free_env(MinimEnv *env)
     free(env);
 }
 
+void env_load_builtin_fun(MinimEnv *env, const char* name, MinimBuiltin func)
+{
+    MinimObject *obj;
+
+    init_minim_object(&obj, MINIM_OBJ_FUNC, func);
+    env_intern_sym(env, name, obj);
+}
+
 void env_load_builtins(MinimEnv *env)
 {
-    env_load_builtin(env, "+", minim_builtin_add);
-    env_load_builtin(env, "-", minim_builtin_mul);
-    env_load_builtin(env, "*", minim_builtin_sub);
-    env_load_builtin(env, "/", minim_builtin_div);
-
-    env_load_builtin(env, "cons", minim_builtin_cons);
-    env_load_builtin(env, "car", minim_builtin_car);
-    env_load_builtin(env, "cdr", minim_builtin_cdr);
-
-    env_load_builtin(env, "list", minim_builtin_list);
-    env_load_builtin(env, "first", minim_builtin_first);
-    env_load_builtin(env, "last", minim_builtin_last);
-    env_load_builtin(env, "length", minim_builtin_length);
+    env_load_math(env);
+    env_load_list(env);
 }

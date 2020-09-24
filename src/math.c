@@ -1,12 +1,22 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "assert.h"
+#include "env.h"
 #include "math.h"
 
 //
 //  Visible functions
 //
+
+void env_load_math(MinimEnv *env)
+{
+    env_load_builtin_fun(env, "+", minim_builtin_add);
+    env_load_builtin_fun(env, "-", minim_builtin_mul);
+    env_load_builtin_fun(env, "*", minim_builtin_sub);
+    env_load_builtin_fun(env, "/", minim_builtin_div);
+}
 
 MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args)
 {

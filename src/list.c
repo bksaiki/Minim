@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "assert.h"
+#include "env.h"
 #include "list.h"
 
 static MinimObject *construct_list(int argc, MinimObject** args)
@@ -22,6 +24,18 @@ static MinimObject *construct_list(int argc, MinimObject** args)
 //
 //  Visible functions
 //
+
+void env_load_list(MinimEnv *env)
+{
+    env_load_builtin_fun(env, "cons", minim_builtin_cons);
+    env_load_builtin_fun(env, "car", minim_builtin_car);
+    env_load_builtin_fun(env, "cdr", minim_builtin_cdr);
+
+    env_load_builtin_fun(env, "list", minim_builtin_list);
+    env_load_builtin_fun(env, "head", minim_builtin_head);
+    env_load_builtin_fun(env, "tail", minim_builtin_tail);
+    env_load_builtin_fun(env, "length", minim_builtin_length);
+}
 
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
 {
@@ -114,11 +128,11 @@ MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_first(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res, **pair;
 
-    if (!assert_exact_argc(argc, args, &res, "first", 1))
+    if (!assert_exact_argc(argc, args, &res, "head", 1))
     {
         free_minim_objects(argc, args);
     }
@@ -145,11 +159,11 @@ MinimObject *minim_builtin_first(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_last(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res, *it, **pair;
 
-    if (assert_exact_argc(argc, args, &res, "first", 1))
+    if (assert_exact_argc(argc, args, &res, "tail", 1))
     {
         if (MINIM_CAR(args[0]))
         {

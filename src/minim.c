@@ -11,10 +11,7 @@ int main(int argc, char** argv)
     MinimEnv *env;
     MinimAstNode *ast;
     MinimObject *obj;
-
-    char input[1024];
-    char* str;
-    int idx;
+    char input[2048];
 
     printf("Minim v%s\n", MINIM_VERSION_STR);
     init_env(&env);
@@ -22,14 +19,22 @@ int main(int argc, char** argv)
 
     while (1)
     {
-        printf("> ");
-        fgets(input, 1024, stdin);
+        char *str;
+        int len = 0;
 
-        for (idx = 0; input[idx] != '\0' && input[idx] != '\n'; ++idx);
-        str = calloc(sizeof(char), idx + 1);
-        strncpy(str, input, idx);
+        fputs("> ", stdout);
+        fgets(input, 2047, stdin);
+        
+        for (; input[len] != '\n'; ++len);
+        str = calloc(len + 1, sizeof(char));
+        strncpy(str, input, len);
 
-        if (strcmp(str, "(exit)") == 0)
+        if (strlen(str) == 0)
+        {
+            free(str);
+            continue;
+        }
+        else if (strcmp(str, "(exit)") == 0)
         {
             free(str);
             break;
@@ -37,6 +42,7 @@ int main(int argc, char** argv)
 
         if (!parse_str(str, &ast))
         {
+            fputs("Parsing failed", stdout);
             free(str);
             continue;
         }

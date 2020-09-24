@@ -12,11 +12,6 @@ typedef struct MinimObject
     void* data;
 } MinimObject;
 
-typedef struct MinimObjectWrapper
-{
-    MinimObject* obj;
-} MinimObjectWrapper;
-
 typedef enum MinimObjectType
 {
     MINIM_OBJ_NUM,

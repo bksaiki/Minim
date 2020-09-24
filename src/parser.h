@@ -1,7 +1,7 @@
 #ifndef _MINIM_PARSER_H_
 #define _MINIM_PARSER_H_
 
-#include "object.h"
+#include "base.h"
 
 typedef enum MinimAstState
 {
@@ -24,11 +24,6 @@ typedef struct MinimAstNode
     MinimAstState state;
     MinimAstTag tag;
 } MinimAstNode;
-
-typedef struct MinimAstWrapper
-{
-    MinimAstNode* node;
-} MinimAstWrapper;
 
 // Deletes an AST
 void free_ast(MinimAstNode* node);
