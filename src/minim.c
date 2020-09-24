@@ -17,6 +17,8 @@ int main(int argc, char** argv)
     int idx;
 
     printf("Minim v%s\n", MINIM_VERSION_STR);
+    init_env(&env);
+    env_load_builtins(env);
 
     while (1)
     {
@@ -39,16 +41,16 @@ int main(int argc, char** argv)
             continue;
         }
 
-        init_env(&env);
         eval_ast(env, ast, &obj);
         print_minim_object(obj);
         printf("\n");
 
         free_minim_object(obj);
         free_ast(ast);
-        free_env(env);
         free(str);
     }
+
+    free_env(env);
 
     return 0;
 }

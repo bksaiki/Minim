@@ -26,7 +26,11 @@ typedef enum MinimObjectType
     MINIM_OBJ_FUNC,
 } MinimObjectType;
 
-typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject *);
+typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject **);
+
+//
+//  Generic functions
+//
 
 // Constructs a single minim object based on the type.
 void init_minim_object(MinimObject **pobj, MinimObjectType type, ...);
@@ -42,5 +46,12 @@ void free_minim_objects(int count, MinimObject **objs);
 
 // Prints a minim object to stdout
 int print_minim_object(MinimObject *obj);
+
+
+//
+//  Specialized constructors
+//
+
+void minim_error(MinimObject **pobj, const char* format, ...);
 
 #endif

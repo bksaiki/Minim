@@ -39,8 +39,8 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     else if (type == MINIM_OBJ_PAIR)
     {
         MinimObject **pair = malloc(2 * sizeof(MinimObject**));
-        copy_minim_object(&pair[0], va_arg(rest, MinimObject*));
-        copy_minim_object(&pair[1], va_arg(rest, MinimObject*));
+        pair[0] = va_arg(rest, MinimObject*);
+        pair[1] = va_arg(rest, MinimObject*);
         obj->data = pair;
     }
     else if (type == MINIM_OBJ_FUNC)
@@ -88,7 +88,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_FUNC)
     {
-        obj = src->data;   // no copy
+        obj->data = src->data;   // no copy
     }
     else
     {
@@ -154,4 +154,18 @@ int print_minim_object(MinimObject *obj)
     }
 
     return 0;
+}
+
+void minim_error(MinimObject **pobj, const char* format, ...)
+{
+    MinimObject *obj = malloc(sizeof(MinimObject));
+    char buffer[1024];
+    va_list rest;
+    
+    va_start(rest, format);
+    vsnprintf(buffer, 1024, format, rest);
+    init_minim_object(&obj, MINIM_OBJ_ERR, buffer);
+    va_end(rest);
+
+    *pobj = obj;
 }

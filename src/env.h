@@ -27,4 +27,7 @@ MinimObject *env_peek_sym(MinimEnv *env, const char* sym);
 // Deletes the given environment object
 void free_env(MinimEnv *env);
 
+// Loads every builtin symbol in the base library.
+void env_load_builtins(MinimEnv *env);
+
 #endif
