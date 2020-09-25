@@ -6,7 +6,7 @@
 #define MINIM_CAR(x)   (((MinimObject**) x->data)[0])
 #define MINIM_CDR(x)   (((MinimObject**) x->data)[1])
 
-void env_load_list(MinimEnv *env);
+void env_load_module_list(MinimEnv *env);
 
 int minim_list_length(MinimObject *list);
 bool minim_list_p(MinimObject* thing);

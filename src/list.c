@@ -25,7 +25,7 @@ static MinimObject *construct_list(int argc, MinimObject** args)
 //  Visible functions
 //
 
-void env_load_list(MinimEnv *env)
+void env_load_module_list(MinimEnv *env)
 {
     env_load_builtin(env, "cons", MINIM_OBJ_FUNC, minim_builtin_cons);
     env_load_builtin(env, "car", MINIM_OBJ_FUNC, minim_builtin_car);

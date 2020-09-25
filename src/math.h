@@ -5,7 +5,7 @@
 
 // Top-level mathematical functions
 
-void env_load_math(MinimEnv *env);
+void env_load_module_math(MinimEnv *env);
 
 MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args);

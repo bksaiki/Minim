@@ -15,6 +15,7 @@ typedef struct MinimObject
 typedef enum MinimObjectType
 {
     MINIM_OBJ_VOID,
+    MINIM_OBJ_BOOL,
     MINIM_OBJ_NUM,
     MINIM_OBJ_SYM,
     MINIM_OBJ_PAIR,

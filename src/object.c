@@ -40,6 +40,10 @@ static int print_object_port(MinimObject *obj, FILE *stream, bool quote)
     {
         fprintf(stream, "<void>");
     }
+    else if (obj->type == MINIM_OBJ_BOOL)
+    {
+        fprintf(stream, ((*((int*) obj->data)) ? "true" : "false"));
+    }
     else if (obj->type == MINIM_OBJ_NUM)
     {
         fprintf(stream, "%d", *((int*)obj->data));
@@ -96,7 +100,7 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = NULL;
     }
-    else if (type == MINIM_OBJ_NUM)
+    else if (type == MINIM_OBJ_BOOL || type == MINIM_OBJ_NUM)
     {
         int *v = malloc(sizeof(int));
         *v = va_arg(rest, int);
@@ -143,7 +147,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     obj = malloc(sizeof(MinimObject));
     obj->type = src->type;
 
-    if (src->type == MINIM_OBJ_NUM)
+    if (src->type == MINIM_OBJ_BOOL || src->type == MINIM_OBJ_NUM)
     {
         int *v = malloc(sizeof(int));
         *v = *((int*) src->data);
