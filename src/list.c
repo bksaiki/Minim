@@ -27,14 +27,24 @@ static MinimObject *construct_list(int argc, MinimObject** args)
 
 void env_load_list(MinimEnv *env)
 {
-    env_load_builtin_fun(env, "cons", minim_builtin_cons);
-    env_load_builtin_fun(env, "car", minim_builtin_car);
-    env_load_builtin_fun(env, "cdr", minim_builtin_cdr);
+    env_load_builtin(env, "cons", MINIM_OBJ_FUNC, minim_builtin_cons);
+    env_load_builtin(env, "car", MINIM_OBJ_FUNC, minim_builtin_car);
+    env_load_builtin(env, "cdr", MINIM_OBJ_FUNC, minim_builtin_cdr);
 
-    env_load_builtin_fun(env, "list", minim_builtin_list);
-    env_load_builtin_fun(env, "head", minim_builtin_head);
-    env_load_builtin_fun(env, "tail", minim_builtin_tail);
-    env_load_builtin_fun(env, "length", minim_builtin_length);
+    env_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
+    env_load_builtin(env, "head", MINIM_OBJ_FUNC, minim_builtin_head);
+    env_load_builtin(env, "tail", MINIM_OBJ_FUNC, minim_builtin_tail);
+    env_load_builtin(env, "length", MINIM_OBJ_FUNC, minim_builtin_length);
+}
+
+int minim_list_length(MinimObject *list)
+{
+    int len = 0;
+
+    for (MinimObject *it = list; it != NULL; it = MINIM_CDR(it))
+        if (MINIM_CAR(it))  ++len;
+    
+    return len;
 }
 
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
@@ -189,20 +199,10 @@ MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
 
 MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
 {
-    MinimObject *res, *it;
-    int len = 0;
+    MinimObject *res;
 
     if (assert_exact_argc(argc, args, &res, "length", 1))
-    {
-        it = args[0];
-        while (it != NULL)
-        {
-            if (MINIM_CAR(it))  ++len;
-            it = MINIM_CDR(it);
-        }
-
-        init_minim_object(&res, MINIM_OBJ_NUM, len);
-    }
+        init_minim_object(&res, MINIM_OBJ_NUM, minim_list_length(args[0]));
 
     free_minim_objects(argc, args);
     return res;

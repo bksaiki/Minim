@@ -25,9 +25,7 @@ static int is_err_pred(const void *thing)
     return ((*pobj)->type == MINIM_OBJ_ERR);
 }
 
-// Mainloop
-
-static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node)
+static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node, bool quote)
 {
     MinimObject *res;
 
@@ -37,35 +35,91 @@ static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node)
     }
     else
     {
-        res = env_get_sym(env, node->sym);
-        if (!res)
-            minim_error(&res, "Unrecognized symbol: %s", node->sym);    
+        if (quote)
+        {
+            init_minim_object(&res, MINIM_OBJ_SYM, node->sym);
+        }
+        else
+        {
+            res = env_get_sym(env, node->sym);
+            if (!res)
+                minim_error(&res, "Unrecognized symbol: %s", node->sym);   
+        } 
     }
 
     return res;
 }
 
-static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
+// Quote mainloop
+
+static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
 {
-    if (node == NULL)
-        return NULL;
-
-    if (strcmp(node->sym, "quote") == 0)
-    {
-        MinimObject *quo;
-        init_minim_object(&quo, MINIM_OBJ_SYM, node->children[0]->sym);
-        return quo;
-    }
-
     if (node->tag == MINIM_AST_OP)
     {
-        MinimObject** args = malloc(node->argc * sizeof(MinimObject*));
-        MinimObject** possible_err;
-        MinimObject *res, *op;
+        MinimObject **args = malloc((node->argc + 1) * sizeof(MinimObject*));
+        MinimObject *res, *op, *list;
         MinimBuiltin proc;
 
+        op = env_get_sym(env, node->sym);
+        if (!op)
+        {
+            free_minim_objects(node->argc, args);
+            minim_error(&res, "Unknown operator: %s", node->sym);
+            return res;
+        }
+
+        list = env_get_sym(env, "list");
+        proc = ((MinimBuiltin) op->data);
+
+        args[0] = op;
         for (int i = 0; i < node->argc; ++i)
-            args[i] = eval_ast_node(env, node->children[i]);
+            args[i + 1] = ast_node_to_quote(env, node->children[i]);
+
+        res = proc(env, node->argc, args);
+        free(list);
+        return res;
+    }
+    else
+    {
+        return ast_node_to_obj(env, node, true);
+    }
+}
+
+// Eval mainloop
+
+static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
+{
+    if (node->tag == MINIM_AST_OP)
+    {
+        MinimObject **args = malloc(node->argc * sizeof(MinimObject*));
+        MinimObject *res, *op, **possible_err;
+        MinimBuiltin proc;
+
+        op = env_get_sym(env, node->sym);
+        if (!op)
+        {
+            free_minim_objects(node->argc, args);
+            minim_error(&res, "Unknown operator: %s", node->sym);
+            return res;
+        }
+
+        proc = ((MinimBuiltin) op->data);
+        if (op->type == MINIM_OBJ_FUNC)
+        {
+            for (int i = 0; i < node->argc; ++i)
+                args[i] = eval_ast_node(env, node->children[i]);
+        }
+        else if (op->type == MINIM_OBJ_SYNTAX)
+        {
+            for (int i = 0; i < node->argc; ++i)
+                args[i] = ast_node_to_quote(env, node->children[i]);
+        }
+        else
+        {   
+            minim_error(&res, "'%s' is not an operator", node->sym);
+            free(args);
+            return res;
+        }
 
         possible_err = for_first(args, node->argc, sizeof(MinimObject*), is_err_pred);
         if (possible_err)
@@ -80,22 +134,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
             return *possible_err;
         }
 
-        op = env_get_sym(env, node->sym);
-        if (!op)
-        {
-            free_minim_objects(node->argc, args);
-            minim_error(&res, "Unknown operator: %s", node->sym);
-            return res;
-        }
-
-        proc = ((MinimBuiltin) op->data);
         res = proc(env, node->argc, args);
         free(op);
         return res;
     }
     else
     {
-        return ast_node_to_obj(env, node);
+        return ast_node_to_obj(env, node, false);
     }
 }
 

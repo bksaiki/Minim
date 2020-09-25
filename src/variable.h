@@ -1,0 +1,11 @@
+#ifndef _MINIM_VARIABLE_H_
+#define _MINIM_VARIABLE_H_
+
+#include "env.h"
+
+void env_load_module_variable(MinimEnv *env);
+
+MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args);
+
+#endif

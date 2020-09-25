@@ -20,34 +20,38 @@ static void print_list(MinimObject *obj, FILE *stream, bool head)
 {
     MinimObject** pair = ((MinimObject**) obj->data);
 
-    if (head)       printf("'(");
+    if (head)       fprintf(stream, "'(");
     if (pair[0])    print_object_port(pair[0], stream, true);
 
     if (pair[1])
     {
-        printf(" ");
+        fprintf(stream, " ");
         print_list(pair[1], stream, false);
     }
     else
     {
-        printf(")");
+        fprintf(stream, ")");
     }
 }
 
 static int print_object_port(MinimObject *obj, FILE *stream, bool quote)
 {
-    if (obj->type == MINIM_OBJ_NUM)
+    if (obj->type == MINIM_OBJ_VOID)
     {
-        printf("%d", *((int*)obj->data));
+        fprintf(stream, "<void>");
+    }
+    else if (obj->type == MINIM_OBJ_NUM)
+    {
+        fprintf(stream, "%d", *((int*)obj->data));
     }
     else if (obj->type == MINIM_OBJ_SYM)
     {
-        if (quote)  printf("%s", ((char*) obj->data));
-        else        printf("'%s", ((char*) obj->data));
+        if (quote)  fprintf(stream, "%s", ((char*) obj->data));
+        else        fprintf(stream, "'%s", ((char*) obj->data));
     }
     else if (obj->type == MINIM_OBJ_ERR)
     {
-        printf("%s", ((char*)obj->data));
+        fprintf(stream, "%s", ((char*)obj->data));
     }
     else if (obj->type == MINIM_OBJ_PAIR)
     {
@@ -59,20 +63,20 @@ static int print_object_port(MinimObject *obj, FILE *stream, bool quote)
         }
         else
         {
-            printf("(");
+            fprintf(stream, "(");
             print_object_port(pair[0], stream, true);
-            printf(" . ");
+            fprintf(stream, " . ");
             print_object_port(pair[1], stream, true);
-            printf(")");
+            fprintf(stream, ")");
         }
     }
     else if (obj->type == MINIM_OBJ_FUNC)
     {
-        printf("<function: %s>", ((char*)obj->data));
+        fprintf(stream, "<function: %s>", ((char*)obj->data));
     }
     else
     {
-        printf("<Unknown type>");
+        fprintf(stream, "<Unknown type>");
         return 1;
     }
 
@@ -88,7 +92,11 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
 
     va_start(rest, type);
     obj->type = type;
-    if (type == MINIM_OBJ_NUM)
+    if (type == MINIM_OBJ_VOID)
+    {
+        obj->data = NULL;
+    }
+    else if (type == MINIM_OBJ_NUM)
     {
         int *v = malloc(sizeof(int));
         *v = va_arg(rest, int);
@@ -108,7 +116,7 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
         pair[1] = va_arg(rest, MinimObject*);
         obj->data = pair;
     }
-    else if (type == MINIM_OBJ_FUNC)
+    else if (type == MINIM_OBJ_FUNC || type == MINIM_OBJ_SYNTAX)
     {
         obj->data = va_arg(rest, MinimBuiltin);
     }
@@ -149,7 +157,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         copy_minim_object(&dest[1], cell[1]);
         obj->data = dest;
     }
-    else if (src->type == MINIM_OBJ_FUNC)
+    else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC || src->type == MINIM_OBJ_SYNTAX)
     {
         obj->data = src->data;   // no copy
     }
@@ -174,7 +182,7 @@ void free_minim_object(MinimObject *obj)
         if (pdata[1])   free_minim_object(pdata[1]);
     }
     
-    if (obj->data && obj->type != MINIM_OBJ_FUNC)
+    if (obj->data && obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX)
         free(obj->data);
 
     free(obj);

@@ -28,7 +28,7 @@ MinimObject *env_peek_sym(MinimEnv *env, const char* sym);
 void free_env(MinimEnv *env);
 
 // Loads a single function into the environment
-void env_load_builtin_fun(MinimEnv *env, const char* name, MinimBuiltin func);
+void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);
 
 // Loads every builtin symbol in the base library.
 void env_load_builtins(MinimEnv *env);

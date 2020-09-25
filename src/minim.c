@@ -48,8 +48,11 @@ int main(int argc, char** argv)
         }
 
         eval_ast(env, ast, &obj);
-        print_minim_object(obj);
-        printf("\n");
+        if (obj->type != MINIM_OBJ_VOID)
+        {
+            print_minim_object(obj);
+            printf("\n");
+        }
 
         free_minim_object(obj);
         free_ast(ast);

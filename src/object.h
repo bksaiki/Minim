@@ -14,11 +14,13 @@ typedef struct MinimObject
 
 typedef enum MinimObjectType
 {
+    MINIM_OBJ_VOID,
     MINIM_OBJ_NUM,
     MINIM_OBJ_SYM,
     MINIM_OBJ_PAIR,
     MINIM_OBJ_ERR,
     MINIM_OBJ_FUNC,
+    MINIM_OBJ_SYNTAX
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject **);

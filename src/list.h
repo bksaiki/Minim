@@ -8,6 +8,8 @@
 
 void env_load_list(MinimEnv *env);
 
+int minim_list_length(MinimObject *list);
+
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args);

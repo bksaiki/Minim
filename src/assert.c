@@ -12,16 +12,7 @@ static int is_num_pred(const void *thing)
 
 // ***** Visible functions ***** //
 
-bool assert_numerical_args(int argc, MinimObject **args, MinimObject** ret, const char* op)
-{
-    if (!all_of(args, argc, sizeof(MinimObject*), is_num_pred))
-    {
-        minim_error(ret, "Expected numerical arguments for '%s'", op);
-        return false;
-    }
-
-    return true;
-}
+// Single argument type
 
 bool assert_pair_arg(MinimObject *arg, MinimObject** ret, const char* op)
 {
@@ -33,6 +24,32 @@ bool assert_pair_arg(MinimObject *arg, MinimObject** ret, const char* op)
 
     return true;
 }
+
+bool assert_sym_arg(MinimObject *arg, MinimObject **ret, const char *op)
+{
+    if (arg->type != MINIM_OBJ_SYM)
+    {
+        minim_error(ret, "Expected a symbol for '%s'", op);
+        return false;
+    }
+
+    return true;
+}
+
+//  Multi-argument type
+
+bool assert_numerical_args(int argc, MinimObject **args, MinimObject** ret, const char* op)
+{
+    if (!all_of(args, argc, sizeof(MinimObject*), is_num_pred))
+    {
+        minim_error(ret, "Expected numerical arguments for '%s'", op);
+        return false;
+    }
+
+    return true;
+}
+
+//  Arity
 
 bool assert_min_argc(int argc, MinimObject **args, MinimObject** ret, const char* op, int min)
 {
@@ -52,6 +69,17 @@ bool assert_exact_argc(int argc, MinimObject **args, MinimObject** ret, const ch
     {
         if (count == 1) minim_error(ret, "Expected 1 argument for '%s'", op);
         else            minim_error(ret, "Expected %d arguments for '%s'", count, op);
+        return false;
+    } 
+
+    return true;
+}
+
+bool assert_range_argc(int argc, MinimObject **args, MinimObject** ret, const char* op, int min, int max)
+{
+    if (argc < min || argc > max)
+    {
+        minim_error(ret, "Expected between %d and %d arguments for '%s'", min, max, op);
         return false;
     } 
 
