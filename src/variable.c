@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "assert.h"
+#include "eval.h"
 #include "variable.h"
 
 void env_load_module_variable(MinimEnv *env)
@@ -10,12 +11,13 @@ void env_load_module_variable(MinimEnv *env)
 
 MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res;
+    MinimObject *res, *val;
 
     if (assert_range_argc(argc, args, &res, "def", 2, 2) && // TODO: def-fun: 3 args
         assert_sym_arg(args[0], &res, "def"))
     {
-        env_intern_sym(env, ((char*) args[0]->data), args[1]);
+        eval_sexpr(env, args[1], &val);
+        env_intern_sym(env, ((char*) args[0]->data), val);
         init_minim_object(&res, MINIM_OBJ_VOID);
         args[1] = NULL;
     }

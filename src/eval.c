@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "eval.h"
+#include "list.h"
 #include "util.h"
 
 static bool is_int(char *str)
@@ -50,6 +51,35 @@ static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node, bool quot
     return res;
 }
 
+// Eval quot mainloop
+
+static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
+{
+    if (minim_list_p(node))
+    {
+        MinimObject **args, *op, *it, **pair;
+        MinimBuiltin proc;
+        int argc = minim_list_length(node) - 1;
+
+        args = malloc(argc * sizeof(MinimObject*));
+        pair = node->data;
+        op = pair[0];
+        for (int i = 0; i < argc; ++i)
+        {
+            it = pair[1];
+            pair = it->data;
+            args[i] = pair[0];
+            pair[0] = NULL;
+        }
+
+        proc = op->data;
+        free_minim_object(node);
+        node = proc(env, argc, args);
+    }
+
+    return node;
+}
+
 // Quote mainloop
 
 static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
@@ -69,14 +99,14 @@ static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
         }
 
         list = env_get_sym(env, "list");
-        proc = ((MinimBuiltin) op->data);
+        proc = ((MinimBuiltin) list->data);
 
         args[0] = op;
         for (int i = 0; i < node->argc; ++i)
             args[i + 1] = ast_node_to_quote(env, node->children[i]);
 
-        res = proc(env, node->argc, args);
-        free(list);
+        res = proc(env, node->argc + 1, args);
+        free_minim_object(list);
         return res;
     }
     else
@@ -98,7 +128,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
         op = env_get_sym(env, node->sym);
         if (!op)
         {
-            free_minim_objects(node->argc, args);
             minim_error(&res, "Unknown operator: %s", node->sym);
             return res;
         }
@@ -149,13 +178,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 int eval_ast(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = eval_ast_node(env, ast);
-    if (!obj)
-    {
-        printf("Evaluation failed!\n");
-        *pobj = NULL;
-        return 0;
-    }
-
     *pobj = obj;
-    return 1;
+    return (obj->type != MINIM_OBJ_ERR);
+}
+
+int eval_sexpr(MinimEnv *env, MinimObject *expr, MinimObject **pobj)
+{
+    MinimObject *obj = eval_sexpr_node(env, expr);
+    *pobj = obj;
+    return (obj->type != MINIM_OBJ_ERR);
 }

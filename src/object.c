@@ -63,7 +63,7 @@ static int print_object_port(MinimObject *obj, FILE *stream, bool quote)
         }
         else
         {
-            fprintf(stream, "(");
+            fprintf(stream, "'(");
             print_object_port(pair[0], stream, true);
             fprintf(stream, " . ");
             print_object_port(pair[1], stream, true);
@@ -132,9 +132,17 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
 
 void copy_minim_object(MinimObject **pobj, MinimObject *src)
 {
-    MinimObject *obj = malloc(sizeof(MinimObject));
+    MinimObject *obj;
+    
+    if (!src)
+    {
+        *pobj = NULL;
+        return;
+    }
 
+    obj = malloc(sizeof(MinimObject));
     obj->type = src->type;
+
     if (src->type == MINIM_OBJ_NUM)
     {
         int *v = malloc(sizeof(int));

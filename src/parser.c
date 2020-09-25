@@ -112,10 +112,14 @@ static MinimAstNode* parse_str_r(char* str)
             node->children = malloc(node->argc * sizeof(MinimAstNode*));
             for (int idx = 0; it < end; ++idx)
             {
-                if (*it == '(')
+                if (*it == '(' || (*it == '\'' && *(it + 1) == '('))
                 {
                     int paren = 1;
-                    for (it2 = it + 1; paren != 0 && it2 != end; ++it2)
+
+                    if (*it == '\'')    it2 = it + 2;
+                    else                it2 = it + 1;
+
+                    for (; paren != 0 && it2 != end; ++it2)
                     {
                         if (*it2 == '(')         ++paren;
                         else if (*it2 == ')')    --paren;

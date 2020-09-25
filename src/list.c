@@ -47,6 +47,17 @@ int minim_list_length(MinimObject *list)
     return len;
 }
 
+bool minim_list_p(MinimObject* thing)
+{
+    if (thing->type == MINIM_OBJ_PAIR)
+    {
+        MinimObject **pair = thing->data;
+        return (!pair[0]|| !pair[1] || pair[1]->type == MINIM_OBJ_PAIR);
+    }
+
+    return false;
+}
+
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
