@@ -60,6 +60,17 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     strcpy(env->syms[env->count - 1], sym);
 }
 
+const char *env_peek_key(MinimEnv *env, MinimObject *value)
+{
+    for (int i = 0; i < env->count; ++i)
+    {
+        if (value->data == env->vals[i]->data)
+            return env->syms[i];
+    }
+
+    return NULL;
+}
+
 MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
 {
     for (int i = 0; i < env->count; ++i)

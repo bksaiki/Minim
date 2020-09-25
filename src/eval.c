@@ -55,7 +55,7 @@ static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node, bool quot
 
 static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
 {
-    if (minim_list_p(node))
+    if (minim_listp(node))
     {
         MinimObject **args, *op, *it, **pair;
         MinimBuiltin proc;
@@ -156,11 +156,14 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
             for (int i = 0; i < node->argc; ++i)    // Clear it so it doesn't get deleted
             {
                 if (&args[i] == possible_err)
+                {
+                    res = *possible_err;
                     args[i] = NULL;
+                }
             }
-
+            
             free_minim_objects(node->argc, args);
-            return *possible_err;
+            return res;
         }
 
         res = proc(env, node->argc, args);

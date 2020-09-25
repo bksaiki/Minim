@@ -43,7 +43,7 @@ void free_minim_object(MinimObject *obj);
 void free_minim_objects(int count, MinimObject **objs);
 
 // Prints a minim object to stdout
-int print_minim_object(MinimObject *obj);
+int print_minim_object(MinimEnv *env, MinimObject *obj);
 
 
 //

@@ -20,6 +20,10 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym);
 // Adds 'sym' and 'obj' to the variable table.
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj);
 
+// Returns a pointer to the key associated with the values. Returns NULL
+// if the value is not in the table
+const char *env_peek_key(MinimEnv *env, MinimObject *value);
+
 // Returns a pointer to the object associated with the symbol. Returns NULL
 // if the symbol is not in the table.
 MinimObject *env_peek_sym(MinimEnv *env, const char* sym);

@@ -5,8 +5,11 @@
 
 void env_load_module_bool(MinimEnv *env);
 
+// Internal versions of builtins
+bool minim_boolp(MinimObject *thing);
 
 // Builtins for use in the language
+MinimObject *minim_builtin_boolp(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_not(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_or(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_and(MinimEnv *env, int argc, MinimObject** args);

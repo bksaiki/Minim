@@ -8,14 +8,19 @@
 
 void env_load_module_list(MinimEnv *env);
 
+// Internal versions of the builtins
+bool minim_consp(MinimObject* thing);
+bool minim_listp(MinimObject* thing);
 int minim_list_length(MinimObject *list);
-bool minim_list_p(MinimObject* thing);
 
+// Builtin functions in the language
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_consp(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args);
 
 MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_listp(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args);

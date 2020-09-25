@@ -43,6 +43,7 @@ int main(int argc, char** argv)
         if (!parse_str(str, &ast))
         {
             fputs("Parsing failed", stdout);
+            free(ast);
             free(str);
             continue;
         }
@@ -50,7 +51,7 @@ int main(int argc, char** argv)
         eval_ast(env, ast, &obj);
         if (obj->type != MINIM_OBJ_VOID)
         {
-            print_minim_object(obj);
+            print_minim_object(env, obj);
             printf("\n");
         }
 

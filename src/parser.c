@@ -56,16 +56,16 @@ static int get_arg_len(char* start, char* end)
     return count;
 }
 
-static MinimAstNode* construct_ast_node()
+static void init_ast_node(MinimAstNode** pnode)
 {
     MinimAstNode *node = malloc(sizeof(MinimAstNode));
     node->sym = NULL;
     node->argc = 0;
     node->children = NULL;
-    return node;
+    *pnode = node;
 }
 
-static MinimAstNode* parse_str_r(char* str)
+static MinimAstNode* parse_str_node(char* str)
 {
     MinimAstNode* node;
     char *end = str + strlen(str) - 1;
@@ -77,9 +77,17 @@ static MinimAstNode* parse_str_r(char* str)
         len = strlen(str);
         if (*(str + 1) == '(')
         {
-            tmp = malloc((len + 6) * sizeof(char));
-            strcpy(tmp, "(list ");
-            strcat(tmp, str + 2);
+            if (*(str + 2) == ')')
+            {
+                tmp = malloc(7 * sizeof(char));
+                strcpy(tmp, "(list)");
+            }
+            else
+            {
+                tmp = malloc((len + 6) * sizeof(char));
+                strcpy(tmp, "(list ");
+                strcat(tmp, str + 2);
+            }
         }
         else
         {
@@ -89,7 +97,7 @@ static MinimAstNode* parse_str_r(char* str)
             strcat(tmp, ")");
         }
         
-        node = parse_str_r(tmp);
+        node = parse_str_node(tmp);
         free(tmp);
     }
     else if (*str == '(' && *end == ')')
@@ -100,7 +108,7 @@ static MinimAstNode* parse_str_r(char* str)
         tmp = calloc(sizeof(char), it2 - it + 1);
         strncpy(tmp, it, it2 - it);
 
-        node = construct_ast_node();
+        init_ast_node(&node);
         node->sym = tmp;
         node->argc = get_arg_len(str + 1, end);
 
@@ -132,7 +140,7 @@ static MinimAstNode* parse_str_r(char* str)
 
                 tmp = calloc(sizeof(char), it2 - it + 1);
                 strncpy(tmp, it, it2 - it);
-                node->children[idx] = parse_str_r(tmp);
+                node->children[idx] = parse_str_node(tmp);
                 free(tmp);
 
                 if (isspace(*it2))  it = it2 + 1;
@@ -149,7 +157,7 @@ static MinimAstNode* parse_str_r(char* str)
         tmp = calloc(sizeof(char), len + 1);
         strncpy(tmp, str, len);
 
-        node = construct_ast_node();
+        init_ast_node(&node);
         node->sym = tmp;
         node->state = MINIM_AST_VALID;
         node->tag = MINIM_AST_VAL;
@@ -160,7 +168,7 @@ static MinimAstNode* parse_str_r(char* str)
         tmp = malloc(50 * sizeof(char));
         strcpy(tmp, "Unmatched parenthesis");
 
-        node = construct_ast_node();
+        init_ast_node(&node);
         node->sym = tmp;
         node->state = MINIM_AST_ERROR;
         node->tag = MINIM_AST_NONE;
@@ -223,7 +231,7 @@ void free_ast(MinimAstNode* node)
 
 int parse_str(char* str, MinimAstNode** syn)
 {
-    *syn = parse_str_r(str);
+    *syn = parse_str_node(str);
     
     if (!valid_ast(*syn))
     {

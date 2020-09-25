@@ -8,4 +8,8 @@ void env_load_module_variable(MinimEnv *env);
 MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args);
 
+// TODO: move these
+MinimObject *minim_builtin_numberp(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args);
+
 #endif

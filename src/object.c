@@ -8,7 +8,7 @@
 #include "object.h"
 #include "util.h"
 
-static int print_object_port(MinimObject *obj, FILE *stream, bool quote);
+static int print_object_port(MinimEnv *env, MinimObject *obj, FILE *stream, bool quote);
 
 static void free_minim_object_proc(const void *thing)
 {
@@ -16,17 +16,17 @@ static void free_minim_object_proc(const void *thing)
     free_minim_object(*obj);
 }
 
-static void print_list(MinimObject *obj, FILE *stream, bool head)
+static void print_list(MinimEnv *env, MinimObject *obj, FILE *stream, bool head)
 {
     MinimObject** pair = ((MinimObject**) obj->data);
 
     if (head)       fprintf(stream, "'(");
-    if (pair[0])    print_object_port(pair[0], stream, true);
+    if (pair[0])    print_object_port(env, pair[0], stream, true);
 
     if (pair[1])
     {
         fprintf(stream, " ");
-        print_list(pair[1], stream, false);
+        print_list(env, pair[1], stream, false);
     }
     else
     {
@@ -34,7 +34,7 @@ static void print_list(MinimObject *obj, FILE *stream, bool head)
     }
 }
 
-static int print_object_port(MinimObject *obj, FILE *stream, bool quote)
+static int print_object_port(MinimEnv *env, MinimObject *obj, FILE *stream, bool quote)
 {
     if (obj->type == MINIM_OBJ_VOID)
     {
@@ -63,20 +63,22 @@ static int print_object_port(MinimObject *obj, FILE *stream, bool quote)
         if (!pair[0] || !pair[1] ||
             pair[0]->type == MINIM_OBJ_PAIR || pair[1]->type == MINIM_OBJ_PAIR)
         {
-            print_list(obj, stream, true);
+            print_list(env, obj, stream, true);
         }
         else
         {
             fprintf(stream, "'(");
-            print_object_port(pair[0], stream, true);
+            print_object_port(env, pair[0], stream, true);
             fprintf(stream, " . ");
-            print_object_port(pair[1], stream, true);
+            print_object_port(env, pair[1], stream, true);
             fprintf(stream, ")");
         }
     }
     else if (obj->type == MINIM_OBJ_FUNC)
     {
-        fprintf(stream, "<function: %s>", ((char*)obj->data));
+        const char *str = env_peek_key(env, obj);
+        if (str)    fprintf(stream, "<function: %s>", str);
+        else        fprintf(stream, "<function: ?>");
     }
     else
     {
@@ -206,9 +208,9 @@ void free_minim_objects(int count, MinimObject **objs)
     free(objs);
 }
 
-int print_minim_object(MinimObject *obj)
+int print_minim_object(MinimEnv *env, MinimObject *obj)
 {
-    return print_object_port(obj, stdout, false);
+    return print_object_port(env, obj, stdout, false);
 }
 
 void minim_error(MinimObject **pobj, const char* format, ...)
