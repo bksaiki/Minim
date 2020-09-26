@@ -215,6 +215,31 @@ void print_ast_node(MinimAstNode *node)
 //  Visible functions
 // 
 
+void copy_ast(MinimAstNode **dest, MinimAstNode *src)
+{
+    MinimAstNode* node;
+
+    node = malloc(sizeof(MinimAstNode*));
+    node->argc = src->argc;
+    node->state = src->state;
+    node->tag = src->tag;
+
+    node->sym = malloc((strlen(src->sym) + 1) * sizeof(char));
+    strcpy(node->sym, src->sym);
+    *dest = node;
+
+    if (src->argc != 0)
+    {
+        node->children = malloc(sizeof(MinimAstNode*));
+        for (int i = 0; i < src->argc; ++i)
+            copy_ast(&node->children[i], src->children[i]);
+    }
+    else
+    {
+        node->children = NULL;
+    }
+}
+
 void free_ast(MinimAstNode* node)
 {
     if (node->argc != 0)

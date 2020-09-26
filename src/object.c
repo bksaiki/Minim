@@ -6,6 +6,7 @@
 
 #include "env.h"
 #include "object.h"
+#include "parser.h"
 #include "util.h"
 
 static int print_object_port(MinimEnv *env, MinimObject *obj, FILE *stream, bool quote);
@@ -126,6 +127,10 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = va_arg(rest, MinimBuiltin);
     }
+    else if (type == MINIM_OBJ_AST)
+    {
+        obj->data = va_arg(rest, MinimAstNode*);
+    }
     else
     {
         printf("Unknown object type\n");
@@ -171,9 +176,16 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         copy_minim_object(&dest[1], cell[1]);
         obj->data = dest;
     }
-    else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC || src->type == MINIM_OBJ_SYNTAX)
+    else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC ||
+             src->type == MINIM_OBJ_SYNTAX)
     {
         obj->data = src->data;   // no copy
+    }
+    else if (src->type == MINIM_OBJ_AST)
+    {
+        MinimAstNode *node;
+        copy_ast(&node, src->data);
+        obj->data = node;
     }
     else
     {
@@ -197,7 +209,10 @@ void free_minim_object(MinimObject *obj)
     }
     
     if (obj->data && obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX)
-        free(obj->data);
+    {
+        if (obj->type == MINIM_OBJ_AST)         free_ast(obj->data);
+        else                                    free(obj->data);
+    }
 
     free(obj);
 }

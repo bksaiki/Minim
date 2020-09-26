@@ -115,6 +115,39 @@ static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
     }
 }
 
+static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAstNode *node)
+{
+    if (node->tag == MINIM_AST_OP)
+    {
+        MinimObject **args = malloc((node->argc + 1) * sizeof(MinimObject*));
+        MinimObject *res, *op, *list;
+        MinimBuiltin proc;
+
+        op = env_get_sym(env, node->sym);
+        if (!op)
+        {
+            free_minim_objects(node->argc, args);
+            minim_error(&res, "Unknown operator: %s", node->sym);
+            return res;
+        }
+
+        list = env_get_sym(env, "list");
+        proc = ((MinimBuiltin) list->data);
+
+        args[0] = op;
+        for (int i = 0; i < node->argc; ++i)
+            args[i + 1] = ast_node_to_quote(env, node->children[i]);
+
+        res = proc(env, node->argc + 1, args);
+        free_minim_object(list);
+        return res;
+    }
+    else
+    {
+        return ast_node_to_obj(env, node, false);
+    }
+}
+
 // Eval mainloop
 
 static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
@@ -124,6 +157,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
         MinimObject **args = malloc(node->argc * sizeof(MinimObject*));
         MinimObject *res, *op, **possible_err;
         MinimBuiltin proc;
+        bool consumeNodes = false;
 
         op = env_get_sym(env, node->sym);
         if (!op)
@@ -140,8 +174,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
         }
         else if (op->type == MINIM_OBJ_SYNTAX)
         {
+            consumeNodes = true;
             for (int i = 0; i < node->argc; ++i)
-                args[i] = ast_node_to_quote(env, node->children[i]);
+            {
+                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
+                node->children[i] = NULL;
+            }
         }
         else
         {   
@@ -163,10 +201,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
             }
             
             free_minim_objects(node->argc, args);
+            free(op);
             return res;
         }
 
         res = proc(env, node->argc, args);
+        if (consumeNodes)   node->argc = 0;
         free(op);
         return res;
     }
@@ -181,6 +221,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 int eval_ast(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = eval_ast_node(env, ast);
+    *pobj = obj;
+    return (obj->type != MINIM_OBJ_ERR);
+}
+
+int eval_ast_as_quote(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
+{
+    MinimObject *obj = ast_node_to_quote(env, ast);
     *pobj = obj;
     return (obj->type != MINIM_OBJ_ERR);
 }

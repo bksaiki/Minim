@@ -14,15 +14,26 @@ void env_load_module_variable(MinimEnv *env)
 
 MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res, *val;
+    MinimObject *res, *sym, *val;
 
-    if (assert_range_argc(argc, args, &res, "def", 2, 2) && // TODO: def-fun: 3 args
-        assert_sym_arg(args[0], &res, "def"))
+    if (assert_range_argc(argc, args, &res, "def", 2, 2)) // TODO: def-fun: 3 args
     {
-        eval_sexpr(env, args[1], &val);
-        env_intern_sym(env, ((char*) args[0]->data), val);
-        init_minim_object(&res, MINIM_OBJ_VOID);
-        args[1] = NULL;
+        eval_ast_as_quote(env, args[0]->data, &sym);
+        if (assert_sym_arg(sym, &res, "def"))
+        {
+            eval_ast(env, args[1]->data, &val);
+            if (val->type != MINIM_OBJ_ERR)
+            {
+                env_intern_sym(env, ((char*) sym->data), val);
+                init_minim_object(&res, MINIM_OBJ_VOID);
+            }
+            else
+            {
+                res = val;
+            }
+        }
+        
+        free_minim_object(sym);
     }
 
     free_minim_objects(argc, args);
@@ -35,7 +46,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, args, &res, "quote", 1))
     {
-        res = args[0];
+        eval_ast_as_quote(env, args[0]->data, &res);
         args[0] = NULL;
     }
 

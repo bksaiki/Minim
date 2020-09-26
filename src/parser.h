@@ -25,6 +25,9 @@ typedef struct MinimAstNode
     MinimAstTag tag;
 } MinimAstNode;
 
+// Copies the ast at 'src' and saves it at 'dest'.
+void copy_ast(MinimAstNode **dest, MinimAstNode *src);
+
 // Deletes an AST
 void free_ast(MinimAstNode* node);
 
