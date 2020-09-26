@@ -3,6 +3,7 @@
 
 #include "assert.h"
 #include "eval.h"
+#include "list.h"
 #include "print.h"
 #include "variable.h"
 
@@ -46,19 +47,62 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 
 MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res, *bindings, *body;
-    MinimEnv *nenv;
+    MinimObject *res, *bindings;
+    MinimEnv *env2;
 
     if (assert_exact_argc(argc, args, &res, "let", 2))
     {
-        eval_ast_as_sexpr(env, args[0]->data, &bindings);
-        print_minim_object(args[0], env, 2048);
-        printf("\n");
+        MinimObject *it, *it2, *val;
+        char *sym;
+        int len;
         
-        init_minim_object(&res, MINIM_OBJ_VOID);
+        // Convert bindings to list
+        eval_ast_as_quote(env, args[0]->data, &bindings);
+        len = minim_list_length(bindings);
+        it = bindings;
+        
+        // Initialize child environment
+        init_env(&env2);        
+        env2->next = env;
+        
+        for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+        {
+            it2 = MINIM_CAR(it);
+            if (minim_list_length(it2) != 2)
+            {
+                minim_error(&res, "Expected a symbol and value in binding %d of \'let\'", i + 1);
+                free_minim_objects(argc, args);
+                free_minim_object(bindings);
+                pop_env(env2);
+                return res;
+            }
+            else if (MINIM_CAR(it2)->type != MINIM_OBJ_SYM)
+            {
+                minim_error(&res, "Expected a symbol in binding %d of \'let\'", i + 1);
+                free_minim_objects(argc, args);
+                free_minim_object(bindings);
+                pop_env(env2);
+                return res;
+            }
+            else if (MINIM_CADR(it2)->type == MINIM_OBJ_VOID)
+            {
+                minim_error(&res, "Expected a non-void value in the %d binding of \'let\'", i + 1);
+                free_minim_objects(argc, args);
+                free_minim_object(bindings);
+                pop_env(env2);
+                return res;
+            }
+            else
+            {
+                sym = ((char*) MINIM_CAR(it2)->data);
+                copy_minim_object(&val, MINIM_CADR(it2));
+                env_intern_sym(env2, sym, val);
+            }
+        }
 
-        print_ast(args[0]->data);
-        printf("\n");
+        eval_ast(env2, args[1]->data, &res);
+        free_minim_object(bindings);
+        pop_env(env2);
     }
 
     free_minim_objects(argc, args);

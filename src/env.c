@@ -24,6 +24,8 @@ static void free_single_env(MinimEnv *env)
         free(env->syms);
         free(env->vals);
     }
+
+    free(env);
 }
 
 //
@@ -53,7 +55,8 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
         }
     }
 
-    return NULL;
+    if (env->next)      return env_get_sym(env->next, sym);
+    else                return NULL;
 }
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)

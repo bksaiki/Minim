@@ -8,6 +8,8 @@
 #include "parser.h"
 #include "print.h"
 
+
+
 int main(int argc, char** argv)
 {
     MinimEnv *env;
@@ -48,9 +50,6 @@ int main(int argc, char** argv)
             free(str);
             continue;
         }
-
-        print_ast(ast);
-        printf("\n");
         
         eval_ast(env, ast, &obj);
         if (obj->type != MINIM_OBJ_VOID)

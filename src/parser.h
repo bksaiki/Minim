@@ -20,7 +20,7 @@ typedef struct MinimAstNode
 {
     struct MinimAstNode** children;
     char* sym;
-    int argc;
+    int count;
     MinimAstState state;
     MinimAstTag tag;
 } MinimAstNode;

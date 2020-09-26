@@ -6,7 +6,15 @@
 #define MINIM_CAR(x)   (((MinimObject**) x->data)[0])
 #define MINIM_CDR(x)   (((MinimObject**) x->data)[1])
 
+#define MINIM_CAAR(x)   MINIM_CAR(MINIM_CAR(x))
+#define MINIM_CDAR(x)   MINIM_CDR(MINIM_CAR(x))
+#define MINIM_CADR(x)   MINIM_CAR(MINIM_CDR(x))
+#define MINIM_CDDR(x)   MINIM_CDR(MINIM_CDR(x))
+
 void env_load_module_list(MinimEnv *env);
+
+// Assertions
+bool assert_list_len(MinimObject *arg, MinimObject **ret, const char *op, int len);
 
 // Internal versions of the builtins
 bool minim_consp(MinimObject* thing);
