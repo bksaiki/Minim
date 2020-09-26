@@ -17,17 +17,17 @@ static void free_minim_object_proc(const void *thing)
     free_minim_object(*obj);
 }
 
-static void print_list(MinimEnv *env, MinimObject *obj, FILE *stream, bool head)
+static void print_list(MinimEnv *env, MinimObject *obj, FILE *stream, bool quote)
 {
     MinimObject** pair = ((MinimObject**) obj->data);
 
-    if (head)       fprintf(stream, "'(");
-    if (pair[0])    print_object_port(env, pair[0], stream, true);
+    if (pair[0])
+        print_object_port(env, pair[0], stream, true);
 
     if (pair[1])
     {
         fprintf(stream, " ");
-        print_list(env, pair[1], stream, false);
+        print_list(env, pair[1], stream, true);
     }
     else
     {
@@ -64,6 +64,8 @@ static int print_object_port(MinimEnv *env, MinimObject *obj, FILE *stream, bool
         if (!pair[0] || !pair[1] ||
             pair[0]->type == MINIM_OBJ_PAIR || pair[1]->type == MINIM_OBJ_PAIR)
         {
+            if (quote)  fprintf(stream, "(");
+            else        fprintf(stream, "'(");
             print_list(env, obj, stream, true);
         }
         else

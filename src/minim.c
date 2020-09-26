@@ -47,7 +47,7 @@ int main(int argc, char** argv)
             free(str);
             continue;
         }
-
+        
         eval_ast(env, ast, &obj);
         if (obj->type != MINIM_OBJ_VOID)
         {

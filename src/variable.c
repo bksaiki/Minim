@@ -45,10 +45,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
     MinimObject *res;
 
     if (assert_exact_argc(argc, args, &res, "quote", 1))
-    {
         eval_ast_as_quote(env, args[0]->data, &res);
-        args[0] = NULL;
-    }
 
     free_minim_objects(argc, args);
     return res;

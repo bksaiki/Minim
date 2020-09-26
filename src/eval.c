@@ -115,39 +115,6 @@ static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
     }
 }
 
-static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAstNode *node)
-{
-    if (node->tag == MINIM_AST_OP)
-    {
-        MinimObject **args = malloc((node->argc + 1) * sizeof(MinimObject*));
-        MinimObject *res, *op, *list;
-        MinimBuiltin proc;
-
-        op = env_get_sym(env, node->sym);
-        if (!op)
-        {
-            free_minim_objects(node->argc, args);
-            minim_error(&res, "Unknown operator: %s", node->sym);
-            return res;
-        }
-
-        list = env_get_sym(env, "list");
-        proc = ((MinimBuiltin) list->data);
-
-        args[0] = op;
-        for (int i = 0; i < node->argc; ++i)
-            args[i + 1] = ast_node_to_quote(env, node->children[i]);
-
-        res = proc(env, node->argc + 1, args);
-        free_minim_object(list);
-        return res;
-    }
-    else
-    {
-        return ast_node_to_obj(env, node, false);
-    }
-}
-
 // Eval mainloop
 
 static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
