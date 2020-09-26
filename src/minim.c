@@ -1,10 +1,12 @@
-#include <stdio.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "env.h"
 #include "eval.h"
 #include "parser.h"
+#include "print.h"
 
 int main(int argc, char** argv)
 {
@@ -42,8 +44,7 @@ int main(int argc, char** argv)
 
         if (!parse_str(str, &ast))
         {
-            fputs("Parsing failed", stdout);
-            free(ast);
+            fputs("Parsing failed\n", stdout);
             free(str);
             continue;
         }
@@ -51,7 +52,7 @@ int main(int argc, char** argv)
         eval_ast(env, ast, &obj);
         if (obj->type != MINIM_OBJ_VOID)
         {
-            print_minim_object(env, obj);
+            print_minim_object(obj, env, INT_MAX);
             printf("\n");
         }
 

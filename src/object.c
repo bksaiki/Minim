@@ -9,87 +9,10 @@
 #include "parser.h"
 #include "util.h"
 
-static int print_object_port(MinimEnv *env, MinimObject *obj, FILE *stream, bool quote);
-
 static void free_minim_object_proc(const void *thing)
 {
     MinimObject **obj = ((MinimObject**) thing);
     free_minim_object(*obj);
-}
-
-static void print_list(MinimEnv *env, MinimObject *obj, FILE *stream, bool quote)
-{
-    MinimObject** pair = ((MinimObject**) obj->data);
-
-    if (pair[0])
-        print_object_port(env, pair[0], stream, true);
-
-    if (pair[1])
-    {
-        fprintf(stream, " ");
-        print_list(env, pair[1], stream, true);
-    }
-    else
-    {
-        fprintf(stream, ")");
-    }
-}
-
-static int print_object_port(MinimEnv *env, MinimObject *obj, FILE *stream, bool quote)
-{
-    if (obj->type == MINIM_OBJ_VOID)
-    {
-        fprintf(stream, "<void>");
-    }
-    else if (obj->type == MINIM_OBJ_BOOL)
-    {
-        fprintf(stream, ((*((int*) obj->data)) ? "true" : "false"));
-    }
-    else if (obj->type == MINIM_OBJ_NUM)
-    {
-        fprintf(stream, "%d", *((int*)obj->data));
-    }
-    else if (obj->type == MINIM_OBJ_SYM)
-    {
-        if (quote)  fprintf(stream, "%s", ((char*) obj->data));
-        else        fprintf(stream, "'%s", ((char*) obj->data));
-    }
-    else if (obj->type == MINIM_OBJ_ERR)
-    {
-        fprintf(stream, "%s", ((char*)obj->data));
-    }
-    else if (obj->type == MINIM_OBJ_PAIR)
-    {
-        MinimObject **pair = ((MinimObject**) obj->data);
-        if (!pair[0] || !pair[1] ||
-            pair[0]->type == MINIM_OBJ_PAIR || pair[1]->type == MINIM_OBJ_PAIR)
-        {
-            if (quote)  fprintf(stream, "(");
-            else        fprintf(stream, "'(");
-            print_list(env, obj, stream, true);
-        }
-        else
-        {
-            fprintf(stream, "'(");
-            print_object_port(env, pair[0], stream, true);
-            fprintf(stream, " . ");
-            print_object_port(env, pair[1], stream, true);
-            fprintf(stream, ")");
-        }
-    }
-    else if (obj->type == MINIM_OBJ_FUNC)
-    {
-        const char *str = env_peek_key(env, obj);
-        if (str)    fprintf(stream, "<function: %s>", str);
-        else        fprintf(stream, "<function: ?>");
-    }
-    else
-    {
-        fprintf(stream, "<Unknown type>");
-        return 1;
-    }
-
-    return 0;
 }
 
 // Visible functions
@@ -223,11 +146,6 @@ void free_minim_objects(int count, MinimObject **objs)
 {
     for_each(objs, count, sizeof(MinimObject*), free_minim_object_proc);
     free(objs);
-}
-
-int print_minim_object(MinimEnv *env, MinimObject *obj)
-{
-    return print_object_port(env, obj, stdout, false);
 }
 
 void minim_error(MinimObject **pobj, const char* format, ...)
