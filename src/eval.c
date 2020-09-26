@@ -80,9 +80,9 @@ static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
     return node;
 }
 
-// Quote mainloop
+// S-expression mainloop
 
-static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
+static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAstNode* node)
 {
     if (node->tag == MINIM_AST_OP)
     {
@@ -102,6 +102,33 @@ static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
         proc = ((MinimBuiltin) list->data);
 
         args[0] = op;
+        for (int i = 0; i < node->argc; ++i)
+            args[i + 1] = ast_node_to_sexpr(env, node->children[i]);
+
+        res = proc(env, node->argc + 1, args);
+        free_minim_object(list);
+        return res;
+    }
+    else
+    {
+        return ast_node_to_obj(env, node, true);
+    }
+}
+
+// Quote mainloop
+
+static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
+{
+    if (node->tag == MINIM_AST_OP)
+    {
+        MinimObject **args = malloc((node->argc + 1) * sizeof(MinimObject*));
+        MinimObject *res, *list;
+        MinimBuiltin proc;
+
+        list = env_get_sym(env, "list");
+        proc = ((MinimBuiltin) list->data);
+
+        args[0] = ast_node_to_obj(env, node, true);
         for (int i = 0; i < node->argc; ++i)
             args[i + 1] = ast_node_to_quote(env, node->children[i]);
 
@@ -195,6 +222,13 @@ int eval_ast(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
 int eval_ast_as_quote(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = ast_node_to_quote(env, ast);
+    *pobj = obj;
+    return (obj->type != MINIM_OBJ_ERR);
+}
+
+int eval_ast_as_sexpr(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
+{
+    MinimObject *obj = ast_node_to_sexpr(env, ast);
     *pobj = obj;
     return (obj->type != MINIM_OBJ_ERR);
 }

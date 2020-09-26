@@ -8,6 +8,7 @@ typedef struct MinimEnv
     int count;
     char **syms;
     MinimObject **vals;
+    struct MinimEnv *next;
 } MinimEnv;
 
 // Initializes a new environment object.
@@ -28,8 +29,11 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value);
 // if the symbol is not in the table.
 MinimObject *env_peek_sym(MinimEnv *env, const char* sym);
 
-// Deletes the given environment object
+// Recursively deletes the stack of environment objects.
 void free_env(MinimEnv *env);
+
+// Deletes the top environment object and returns the next one.
+MinimEnv *pop_env(MinimEnv *env);
 
 // Loads a single function into the environment
 void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);

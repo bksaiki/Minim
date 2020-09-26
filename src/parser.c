@@ -48,7 +48,7 @@ static int get_arg_len(char* start, char* end)
         }
 
         ++count;
-        it = it2;
+        for (it = it2; it != end && isspace(*it); ++it);
     }
 
     return count - 1;
@@ -110,7 +110,7 @@ static char *expand_quote(char *str)
 
                 strcat(exp, " '");
                 strncat(exp, it, it2 - it);
-                it = it2 + 1;
+                for (it = it2 + 1; *it && isspace(*it); ++it);
             }
 
             strcat(exp, ")");
@@ -133,7 +133,7 @@ static MinimAstNode* parse_str_node(char* str)
     char *end, *tmp;
     int len = strlen(str);
 
-    end = str + len -1;
+    end = str + len - 1;
     if (*str == '\'')
     {
         tmp = expand_quote(str);
@@ -142,54 +142,69 @@ static MinimAstNode* parse_str_node(char* str)
     }
     else if (*str == '(' && *end == ')')
     {
-        char *it = str + 1, *it2;
-
-        for (it2 = it; it2 != end && !isspace(*it2); ++it2);
-        tmp = malloc((it2 - it + 1) * sizeof(char));
-        strncpy(tmp, it, it2 - it);
-        tmp[it2 - it] = '\0';
-
-        init_ast_node(&node);
-        node->sym = tmp;
-        node->argc = get_arg_len(str + 1, end);
-        node->state = MINIM_AST_VALID;
-        node->tag = MINIM_AST_OP;
-
-        it = it2 + 1;
-        it2 = it;
-
-        if (node->argc != 0)
+        if (*(str + 1) == '(')
         {
-            node->children = malloc(node->argc * sizeof(MinimAstNode*));
-            for (int idx = 0; it < end; ++idx)
+            init_ast_node(&node);
+            node->sym = calloc(1, sizeof(char));
+            node->state = MINIM_AST_VALID;
+            node->tag = MINIM_AST_OP;
+            node->children = malloc(sizeof(MinimAstNode*));
+            node->argc = 1;
+
+            tmp = malloc((len - 1) * sizeof(char));
+            strncpy(tmp, str + 1, len - 2);
+            tmp[len - 1] = '\0';
+            node->children[0] = parse_str_node(tmp);
+        }
+        else
+        {
+            char *it = str + 1, *it2;
+
+            for (it2 = it; it2 != end && !isspace(*it2); ++it2);
+            tmp = malloc((it2 - it + 1) * sizeof(char));
+            strncpy(tmp, it, it2 - it);
+            tmp[it2 - it] = '\0';
+
+            init_ast_node(&node);
+            node->sym = tmp;
+            node->argc = get_arg_len(str + 1, end);
+            node->state = MINIM_AST_VALID;
+            node->tag = MINIM_AST_OP;
+
+            it = it2 + 1;
+            it2 = it;
+
+            if (node->argc != 0)
             {
-                if (*it == '(' || (*it == '\'' && *(it + 1) == '('))
+                node->children = malloc(node->argc * sizeof(MinimAstNode*));
+                for (int idx = 0; it < end; ++idx)
                 {
-                    int paren = 1;
-
-                    if (*it == '\'')    it2 = it + 2;
-                    else                it2 = it + 1;
-
-                    for (; paren != 0 && it2 != end; ++it2)
+                    if (*it == '(' || (*it == '\'' && *(it + 1) == '('))
                     {
-                        if (*it2 == '(')         ++paren;
-                        else if (*it2 == ')')    --paren;
+                        int paren = 1;
+
+                        if (*it == '\'')    it2 = it + 2;
+                        else                it2 = it + 1;
+
+                        for (; paren != 0 && it2 != end; ++it2)
+                        {
+                            if (*it2 == '(')         ++paren;
+                            else if (*it2 == ')')    --paren;
+                        }
                     }
+                    else
+                    {
+                        for (it2 = it; it2 != end && !isspace(*it2); ++it2);
+                    }
+
+                    tmp = malloc((it2 - it + 1) * sizeof(char));
+                    strncpy(tmp, it, it2 - it);
+                    tmp[it2 - it] = '\0';
+
+                    node->children[idx] = parse_str_node(tmp);
+                    for (it = it2; it != end && isspace(*it); ++it);
+                    free(tmp);
                 }
-                else
-                {
-                    for (it2 = it; it2 != end && !isspace(*it2); ++it2);
-                }
-
-                tmp = malloc((it2 - it + 1) * sizeof(char));
-                strncpy(tmp, it, it2 - it);
-                tmp[it2 - it] = '\0';
-
-                node->children[idx] = parse_str_node(tmp);
-                free(tmp);
-
-                if (isspace(*it2))  it = it2 + 1;
-                else                it = it2;
             }
         }
     }
@@ -241,11 +256,19 @@ void print_ast_node(MinimAstNode *node)
     }
     else
     {
-        printf("(%s", node->sym);
-        for (int i = 0; i < node->argc; ++i)
+        if (strlen(node->sym) == 0)
         {
-            printf(" ");
-            print_ast_node(node->children[i]);
+            printf("(");
+            print_ast_node(node->children[0]);
+        }
+        else
+        {
+            printf("(%s", node->sym);
+            for (int i = 0; i < node->argc; ++i)
+            {
+                printf(" ");
+                print_ast_node(node->children[i]);
+            }
         }
 
         printf(")");
@@ -313,7 +336,7 @@ int parse_str(char* str, MinimAstNode** syn)
 
 void print_ast(MinimAstNode *node)
 {
-    printf("<syntax: ");
+    printf("<syntax:");
     print_ast_node(node);
     printf(">");
 }

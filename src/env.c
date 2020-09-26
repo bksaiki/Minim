@@ -5,10 +5,26 @@
 #include "env.h"
 
 // Modules
+
 #include "bool.h"
 #include "list.h"
 #include "math.h"
 #include "variable.h"
+
+static void free_single_env(MinimEnv *env)
+{
+    if (env->count != 0)
+    {
+        for (int i = 0; i < env->count; ++i)
+        {
+            free(env->syms[i]);
+            free_minim_object(env->vals[i]);
+        }
+
+        free(env->syms);
+        free(env->vals);
+    }
+}
 
 //
 //  Visible functions
@@ -20,6 +36,7 @@ void init_env(MinimEnv **penv)
     env->count = 0;
     env->syms = NULL;
     env->vals = NULL;
+    env->next = NULL;
     *penv = env;
 }
 
@@ -68,7 +85,8 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
             return env->syms[i];
     }
 
-    return NULL;
+    if (env->next)      return env_peek_key(env->next, value);
+    else                return NULL;
 }
 
 MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
@@ -79,24 +97,26 @@ MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
             return env->vals[i];
     }
 
-    return NULL;
+    if (env->next)      return env_peek_sym(env->next, sym);
+    else                return NULL;
 }
 
 void free_env(MinimEnv *env)
 {
-    if (env->count != 0)
-    {
-        for (int i = 0; i < env->count; ++i)
-        {
-            free(env->syms[i]);
-            free_minim_object(env->vals[i]);
-        }
+    if (env->next)  free_env(env->next);
+    free_single_env(env);
+}
 
-        free(env->syms);
-        free(env->vals);
-    }
+MinimEnv *pop_env(MinimEnv *env)
+{
+    MinimEnv *next;
+
+    if (!env)
+        return NULL;
     
-    free(env);
+    next = env->next;
+    free_single_env(env);
+    return next;
 }
 
 void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...)

@@ -1,11 +1,15 @@
 #include <stddef.h>
+#include <stdio.h>
+
 #include "assert.h"
 #include "eval.h"
+#include "print.h"
 #include "variable.h"
 
 void env_load_module_variable(MinimEnv *env)
 {
     env_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
+    env_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     env_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
 
     env_load_builtin(env, "number?", MINIM_OBJ_FUNC, minim_builtin_numberp);
@@ -34,6 +38,27 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
         }
         
         free_minim_object(sym);
+    }
+
+    free_minim_objects(argc, args);
+    return res;
+}
+
+MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res, *bindings, *body;
+    MinimEnv *nenv;
+
+    if (assert_exact_argc(argc, args, &res, "let", 2))
+    {
+        eval_ast_as_sexpr(env, args[0]->data, &bindings);
+        print_minim_object(args[0], env, 2048);
+        printf("\n");
+        
+        init_minim_object(&res, MINIM_OBJ_VOID);
+
+        print_ast(args[0]->data);
+        printf("\n");
     }
 
     free_minim_objects(argc, args);

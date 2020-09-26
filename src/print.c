@@ -123,6 +123,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb)
     else if (obj->type == MINIM_OBJ_ERR)
     {
         sprintf(str, "%s", ((char*) obj->data));
+        print_to_buffer(pb, str);
     }
     else if (obj->type == MINIM_OBJ_PAIR)
     {
