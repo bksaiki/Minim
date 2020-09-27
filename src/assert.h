@@ -1,8 +1,9 @@
 #ifndef _MINIM_ASSERT_H_
 #define _MINIM_ASSERT_H_
 
-#include <stdbool.h>
 #include "object.h"
+
+typedef bool (*MinimObjectPred)(MinimObject*);
 
 // *** Argument types *** //
 

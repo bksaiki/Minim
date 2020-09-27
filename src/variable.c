@@ -5,8 +5,12 @@
 #include "assert.h"
 #include "eval.h"
 #include "list.h"
-#include "print.h"
 #include "variable.h"
+
+bool minim_symbolp(MinimObject *obj)
+{
+    return (obj->type == MINIM_OBJ_SYM);   
+}
 
 void env_load_module_variable(MinimEnv *env)
 {
@@ -60,12 +64,19 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
         
         // Convert bindings to list
         eval_ast_as_quote(env, args[0]->data, &bindings);
+        if (bindings->type == MINIM_OBJ_ERR)
+        {
+            free_minim_objects(argc, args);
+            res = bindings;
+            return res;
+        }
+    
         len = minim_list_length(bindings);
         it = bindings;
         
         // Initialize child environment
         init_env(&env2);        
-        env2->next = env;
+        env2->parent = env;
         
         for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
         {
@@ -129,7 +140,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
         
         // Initialize child environment
         init_env(&env2);        
-        env2->next = env;
+        env2->parent = env;
         
         for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
         {

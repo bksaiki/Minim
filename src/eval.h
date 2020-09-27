@@ -2,6 +2,7 @@
 #define _MINIM_EVAL_H_
 
 #include "env.h"
+#include "lambda.h"
 #include "parser.h"
 
 // Evaluates the syntax tree stored at 'ast' and stores the

@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "env.h"
+#include "lambda.h"
 #include "object.h"
 #include "parser.h"
 #include "util.h"
@@ -52,6 +53,10 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = va_arg(rest, MinimBuiltin);
     }
+    else if (type == MINIM_OBJ_CLOSURE)
+    {
+        obj->data = va_arg(rest, MinimLambda*);
+    }   
     else if (type == MINIM_OBJ_AST)
     {
         obj->data = va_arg(rest, MinimAstNode*);
@@ -106,6 +111,12 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     {
         obj->data = src->data;   // no copy
     }
+    else if (src->type == MINIM_OBJ_CLOSURE)
+    {
+        MinimLambda *lam = obj->data;
+        copy_minim_lambda(&lam, src->data);
+        obj->data = lam;
+    }
     else if (src->type == MINIM_OBJ_AST)
     {
         MinimAstNode *node;
@@ -135,8 +146,9 @@ void free_minim_object(MinimObject *obj)
     
     if (obj->data && obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX)
     {
-        if (obj->type == MINIM_OBJ_AST)         free_ast(obj->data);
-        else                                    free(obj->data);
+        if (obj->type == MINIM_OBJ_AST)             free_ast(obj->data);
+        else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->data);
+        else                                        free(obj->data);
     }
 
     free(obj);

@@ -25,18 +25,51 @@ static MinimObject *construct_list(int argc, MinimObject** args)
 //  Visible functions
 //
 
-void env_load_module_list(MinimEnv *env)
+bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg)
 {
-    env_load_builtin(env, "cons", MINIM_OBJ_FUNC, minim_builtin_cons);
-    env_load_builtin(env, "pair?", MINIM_OBJ_FUNC, minim_builtin_consp);
-    env_load_builtin(env, "car", MINIM_OBJ_FUNC, minim_builtin_car);
-    env_load_builtin(env, "cdr", MINIM_OBJ_FUNC, minim_builtin_cdr);
+    if (!minim_listp(arg))
+    {
+        minim_error(ret, "%s", msg);
+        return false;
+    }
 
-    env_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
-    env_load_builtin(env, "list?", MINIM_OBJ_FUNC, minim_builtin_listp);
-    env_load_builtin(env, "head", MINIM_OBJ_FUNC, minim_builtin_head);
-    env_load_builtin(env, "tail", MINIM_OBJ_FUNC, minim_builtin_tail);
-    env_load_builtin(env, "length", MINIM_OBJ_FUNC, minim_builtin_length);
+    return true;
+}
+
+bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *msg)
+{
+    if (!assert_list(arg, ret, "Expected a list"))
+        return false;
+
+    if (minim_list_length(arg) != len)
+    {
+        minim_error(ret, "%s", msg);
+        return false;
+    }
+
+    return true;
+}
+
+bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, const char *msg)
+{
+    MinimObject *it;
+    int len;
+
+    if (!assert_list(arg, ret, "Expected a list"))
+        return false;
+
+    len = minim_list_length(arg);
+    it = arg;
+    for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+    {
+        if (!pred(MINIM_CAR(it)))
+        {
+            minim_error(ret, "%s", msg);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool minim_consp(MinimObject* thing)
@@ -63,6 +96,20 @@ int minim_list_length(MinimObject *list)
         if (MINIM_CAR(it))  ++len;
     
     return len;
+}
+
+void env_load_module_list(MinimEnv *env)
+{
+    env_load_builtin(env, "cons", MINIM_OBJ_FUNC, minim_builtin_cons);
+    env_load_builtin(env, "pair?", MINIM_OBJ_FUNC, minim_builtin_consp);
+    env_load_builtin(env, "car", MINIM_OBJ_FUNC, minim_builtin_car);
+    env_load_builtin(env, "cdr", MINIM_OBJ_FUNC, minim_builtin_cdr);
+
+    env_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
+    env_load_builtin(env, "list?", MINIM_OBJ_FUNC, minim_builtin_listp);
+    env_load_builtin(env, "head", MINIM_OBJ_FUNC, minim_builtin_head);
+    env_load_builtin(env, "tail", MINIM_OBJ_FUNC, minim_builtin_tail);
+    env_load_builtin(env, "length", MINIM_OBJ_FUNC, minim_builtin_length);
 }
 
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)

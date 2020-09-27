@@ -2,13 +2,14 @@
 #define _MINIM_ENV_
 
 #include "object.h"
+#include "print.h" // debugging
 
 typedef struct MinimEnv
 {
     int count;
     char **syms;
     MinimObject **vals;
-    struct MinimEnv *next;
+    struct MinimEnv *parent;
 } MinimEnv;
 
 // Initializes a new environment object.

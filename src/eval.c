@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "eval.h"
+#include "lambda.h"
 #include "list.h"
 #include "util.h"
 
@@ -62,8 +63,8 @@ static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
         MinimBuiltin proc;
         int argc = minim_list_length(node) - 1;
 
-        args = malloc(argc * sizeof(MinimObject*));
         pair = node->data;
+        args = malloc(argc * sizeof(MinimObject*));
         op = env_peek_sym(env, ((char*) pair[0]->data));
         
         for (int i = 0; i < argc; ++i)
@@ -153,14 +154,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 {
     if (node->tag == MINIM_AST_OP)
     {
-        MinimObject **args;
-        MinimObject *res, *op, **possible_err;
-        MinimBuiltin proc;
+        MinimObject *res, *op, **possible_err, **args;
         int argc = node->count - 1;
         bool consumeNodes = false;
 
         args = malloc(argc * sizeof(MinimObject*));
-        op = env_get_sym(env, node->children[0]->sym);
+        op = env_peek_sym(env, node->children[0]->sym);
 
         if (!op)
         {
@@ -168,20 +167,68 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
             return res;
         }
 
-        proc = ((MinimBuiltin) op->data);
         if (op->type == MINIM_OBJ_FUNC)
         {
+            MinimBuiltin proc = ((MinimBuiltin) op->data);
+
             for (int i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]);
+                args[i] = eval_ast_node(env, node->children[i + 1]);          
+
+            possible_err = for_first(args, argc, sizeof(MinimObject*), is_err_pred);
+            if (possible_err)
+            {
+                for (int i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
+                {
+                    if (&args[i] == possible_err)
+                    {
+                        res = *possible_err;
+                        args[i] = NULL;
+                    }
+                }
+                
+                free_minim_objects(argc, args);
+                return res;
+            }
+
+            res = proc(env, argc, args);
         }
         else if (op->type == MINIM_OBJ_SYNTAX)
         {
-            consumeNodes = true;
+            MinimBuiltin proc = ((MinimBuiltin) op->data);
+
             for (int i = 0; i < argc; ++i)
             {
                 init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);
                 node->children[i + 1] = NULL;
             }
+
+            res = proc(env, argc, args);
+            consumeNodes = true;
+        }
+        else if (op->type == MINIM_OBJ_CLOSURE)
+        {
+            MinimLambda *lam = ((MinimLambda*) op->data);
+
+            for (int i = 0; i < argc; ++i)
+                args[i] = eval_ast_node(env, node->children[i + 1]);          
+
+            possible_err = for_first(args, argc, sizeof(MinimObject*), is_err_pred);
+            if (possible_err)
+            {
+                for (int i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
+                {
+                    if (&args[i] == possible_err)
+                    {
+                        res = *possible_err;
+                        args[i] = NULL;
+                    }
+                }
+                
+                free_minim_objects(argc, args);
+                return res;
+            }
+
+            res = eval_lambda(lam, env, argc, args);
         }
         else
         {   
@@ -190,26 +237,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
             return res;
         }
 
-        possible_err = for_first(args, argc, sizeof(MinimObject*), is_err_pred);
-        if (possible_err)
+        if (consumeNodes)
         {
-            for (int i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
-            {
-                if (&args[i] == possible_err)
-                {
-                    res = *possible_err;
-                    args[i] = NULL;
-                }
-            }
-            
-            free_minim_objects(argc, args);
-            free(op);
-            return res;
+            free_ast(node->children[0]);
+            node->count = 0;
         }
 
-        res = proc(env, argc, args);
-        if (consumeNodes)   argc = 0;
-        free(op);
         return res;
     }
     else

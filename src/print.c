@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "lambda.h"
 #include "print.h"
 
 typedef struct PrintBuffer
@@ -151,6 +153,14 @@ static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb)
 
         if (key)    sprintf(str, "<function:%s>", key);
         else        sprintf(str, "<function:?>");
+        print_to_buffer(pb, str);
+    }
+    else if (obj->type == MINIM_OBJ_CLOSURE)
+    {
+        MinimLambda *lam = obj->data;
+
+        if (lam->name)      sprintf(str, "<function:%s>", lam->name);
+        else                sprintf(str, "<function:?>");
         print_to_buffer(pb, str);
     }
     else

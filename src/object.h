@@ -21,6 +21,7 @@ typedef enum MinimObjectType
     MINIM_OBJ_PAIR,
     MINIM_OBJ_ERR,
     MINIM_OBJ_FUNC,
+    MINIM_OBJ_CLOSURE,
     MINIM_OBJ_SYNTAX,
     MINIM_OBJ_AST,
 } MinimObjectType;

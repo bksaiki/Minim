@@ -3,6 +3,12 @@
 
 #include "env.h"
 
+// Internals
+
+bool minim_symbolp(MinimObject *obj);
+
+// Builtins
+
 void env_load_module_variable(MinimEnv *env);
 
 MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args);

@@ -13,8 +13,8 @@
 void env_load_module_math(MinimEnv *env)
 {
     env_load_builtin(env, "+", MINIM_OBJ_FUNC, minim_builtin_add);
-    env_load_builtin(env, "-", MINIM_OBJ_FUNC, minim_builtin_mul);
-    env_load_builtin(env, "*", MINIM_OBJ_FUNC, minim_builtin_sub);
+    env_load_builtin(env, "-", MINIM_OBJ_FUNC, minim_builtin_sub);
+    env_load_builtin(env, "*", MINIM_OBJ_FUNC, minim_builtin_mul);
     env_load_builtin(env, "/", MINIM_OBJ_FUNC, minim_builtin_div);
 }
 

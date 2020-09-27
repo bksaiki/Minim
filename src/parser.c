@@ -224,8 +224,8 @@ void free_ast(MinimAstNode* node)
         }
     }
 
-    if (node->sym != NULL)      free(node->sym);
-    if (node->children != NULL) free(node->children);
+    if (node->sym != NULL)          free(node->sym);
+    if (node->children != NULL)     free(node->children);
     free(node);
 }
 
