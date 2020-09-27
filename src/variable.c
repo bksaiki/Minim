@@ -4,6 +4,7 @@
 
 #include "assert.h"
 #include "eval.h"
+#include "lambda.h"
 #include "list.h"
 #include "variable.h"
 
@@ -27,12 +28,23 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res, *sym, *val;
 
-    if (assert_range_argc(argc, args, &res, "def", 2, 2)) // TODO: def-fun: 3 args
+    if (assert_range_argc(argc, args, &res, "def", 2, 3))
     {
         eval_ast_as_quote(env, args[0]->data, &sym);
         if (assert_sym_arg(sym, &res, "def"))
         {
-            eval_ast(env, args[1]->data, &val);
+            if (argc == 2)
+            {
+                eval_ast(env, args[1]->data, &val);
+            }
+            else
+            {
+                MinimObject **lam_args = malloc(2 * sizeof(MinimObject*));
+                copy_minim_object(&lam_args[0], args[1]);
+                copy_minim_object(&lam_args[1], args[2]);
+                val = minim_builtin_lambda(env, 2, lam_args);
+            }
+
             if (val->type != MINIM_OBJ_ERR)
             {
                 env_intern_sym(env, ((char*) sym->data), val);

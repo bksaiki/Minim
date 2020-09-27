@@ -188,7 +188,7 @@ void copy_ast(MinimAstNode **dest, MinimAstNode *src)
 {
     MinimAstNode* node;
 
-    node = malloc(sizeof(MinimAstNode*));
+    node = malloc(sizeof(MinimAstNode));
     node->count = src->count;
     node->state = src->state;
     node->tag = src->tag;
@@ -198,10 +198,14 @@ void copy_ast(MinimAstNode **dest, MinimAstNode *src)
         node->sym = malloc((strlen(src->sym) + 1) * sizeof(char));
         strcpy(node->sym, src->sym);
     }
+    else
+    {
+        node->sym = NULL;
+    }
 
     if (src->count != 0)
     {
-        node->children = malloc(sizeof(MinimAstNode*));
+        node->children = malloc(src->count * sizeof(MinimAstNode*));
         for (int i = 0; i < src->count; ++i)
             copy_ast(&node->children[i], src->children[i]);
     }
