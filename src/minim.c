@@ -1,5 +1,4 @@
 #include <limits.h>
-#include <ncurses.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,7 +28,7 @@ int main(int argc, char** argv)
         while (1)
         {
             int len = 0;
-            
+
             fgets(str, 2047, stdin);
             for (; str[len] != '\n'; ++len)
             {

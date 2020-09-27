@@ -10,7 +10,7 @@ DEPS 		= $(OBJS:.o=.d)
 
 DEPFLAGS 	= -MMD -MP
 CFLAGS 		= -g -Wall -std=c11
-LDFLAGS 	= -lncurses
+LDFLAGS 	= 
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o

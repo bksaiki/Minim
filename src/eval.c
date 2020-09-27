@@ -26,26 +26,25 @@ static int is_err_pred(const void *thing)
     return ((*pobj)->type == MINIM_OBJ_ERR);
 }
 
-static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node, bool quote)
+static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 {
     MinimObject *res;
 
-    if (is_int(node->sym))
+    if (is_int(str))
     {
-        init_minim_object(&res, MINIM_OBJ_NUM, atoi(node->sym));
+        init_minim_object(&res, MINIM_OBJ_NUM, atoi(str));
     }
     else
     {
         if (quote)
         {
-            init_minim_object(&res, MINIM_OBJ_SYM, node->sym);
+            init_minim_object(&res, MINIM_OBJ_SYM, str);
         }
         else
         {
-            res = env_get_sym(env, node->sym);
-            if (!res)
-                minim_error(&res, "Unrecognized symbol: %s", node->sym);   
-        } 
+            res = env_get_sym(env, str);
+            if (!res)   minim_error(&res, "Unrecognized symbol: %s", str);
+        }
     }
 
     return res;
@@ -55,6 +54,8 @@ static MinimObject *ast_node_to_obj(MinimEnv *env, MinimAstNode *node, bool quot
 
 static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
 {
+    MinimObject *res;
+
     if (minim_listp(node))
     {
         MinimObject **args, *op, *it, **pair;
@@ -69,16 +70,27 @@ static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
         {
             it = pair[1];
             pair = it->data;
-            args[i] = pair[0];
+            args[i] = eval_sexpr_node(env, pair[0]);
             pair[0] = NULL;
         }
 
         proc = op->data;
-        free_minim_object(node);
-        node = proc(env, argc, args);
+        res = proc(env, argc, args);
+    }
+    else
+    {
+        if (node->type == MINIM_OBJ_SYM)
+        {   
+            res = env_get_sym(env, ((char*) node->data));
+            if (!res)   minim_error(&res, "Unrecognized symbol: %s", ((char*) node->data));
+        }
+        else
+        {
+            copy_minim_object(&res, node);
+        }
     }
 
-    return node;
+    return res;
 }
 
 // S-expression mainloop
@@ -104,7 +116,7 @@ static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAstNode* node)
     }
     else
     {
-        return ast_node_to_obj(env, node, false);
+        return str_to_node(node->sym, env, false);
     }
 }
 
@@ -120,19 +132,18 @@ static MinimObject *ast_node_to_quote(MinimEnv *env, MinimAstNode* node)
         int argc = node->count;
 
         args = malloc(argc * sizeof(MinimObject*));
-        list = env_get_sym(env, "list");
+        list = env_peek_sym(env, "list");
         proc = ((MinimBuiltin) list->data);
 
         for (int i = 0; i < argc; ++i)
             args[i] = ast_node_to_quote(env, node->children[i]);
 
         res = proc(env, argc, args);
-        free_minim_object(list);
         return res;
     }
     else
     {
-        return ast_node_to_obj(env, node, true);
+        return str_to_node(node->sym, env, true);
     }
 }
 
@@ -203,7 +214,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
     }
     else
     {
-        return ast_node_to_obj(env, node, false);
+        return str_to_node(node->sym, env, false);
     }
 }
 

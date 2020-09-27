@@ -114,9 +114,6 @@ MinimEnv *pop_env(MinimEnv *env)
 {
     MinimEnv *next;
 
-    if (!env)
-        return NULL;
-    
     next = env->next;
     free_single_env(env);
     return next;
