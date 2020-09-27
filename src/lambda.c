@@ -20,15 +20,21 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 {
     MinimLambda *lam = malloc(sizeof(MinimLambda));
 
-    init_minim_lambda(&lam);
     if (src->name)
     {
         lam->name = malloc((strlen(src->name) + 1) * sizeof(char));
         strcpy(lam->name, src->name);
     }
+    else
+    {
+        lam->name = NULL;
+    }
 
-    if (lam->formals)   copy_minim_object(&lam->formals, src->formals);
-    if (lam->body)      copy_minim_object(&lam->body, src->body);
+    if (src->formals)   copy_minim_object(&lam->formals, src->formals);
+    else                lam->formals = NULL;
+
+    if (src->body)      copy_minim_object(&lam->body, src->body);
+    else                lam->body = NULL;
 
     *cp = lam;
 }
@@ -53,7 +59,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
     int len;
 
     len = minim_list_length(lam->formals);
-    if (assert_exact_argc(argc, args, &res, ((lam->name) ? lam->name : "?"), len))
+    if (assert_exact_argc(argc, args, &res, ((lam->name) ? lam->name : "unnamed lambda"), len))
     {   
         MinimEnv *env2;
         MinimObject *it, *val;

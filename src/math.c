@@ -16,6 +16,8 @@ void env_load_module_math(MinimEnv *env)
     env_load_builtin(env, "-", MINIM_OBJ_FUNC, minim_builtin_sub);
     env_load_builtin(env, "*", MINIM_OBJ_FUNC, minim_builtin_mul);
     env_load_builtin(env, "/", MINIM_OBJ_FUNC, minim_builtin_div);
+
+    env_load_builtin(env, "zero?", MINIM_OBJ_FUNC, minim_builtin_zerop);
 }
 
 MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args)
@@ -99,6 +101,20 @@ MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject** args)
             init_minim_object(&res, MINIM_OBJ_ERR, "Divison by zero");
         else
             init_minim_object(&res, MINIM_OBJ_NUM, num / den);
+    }
+
+    free_minim_objects(argc, args);
+    return res;
+}
+
+MinimObject *minim_builtin_zerop(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_numerical_args(argc, args, &res, "zero?") &&
+        assert_exact_argc(argc, args, &res, "zero?", 1))
+    {
+        init_minim_object(&res, MINIM_OBJ_BOOL, *((int*) args[0]->data) == 0);
     }
 
     free_minim_objects(argc, args);

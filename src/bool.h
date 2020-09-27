@@ -3,12 +3,14 @@
 
 #include "env.h"
 
-void env_load_module_bool(MinimEnv *env);
-
-// Internal versions of builtins
+// Internals
+bool coerce_into_bool(MinimObject *obj);
 bool minim_boolp(MinimObject *thing);
 
 // Builtins for use in the language
+
+void env_load_module_bool(MinimEnv *env);
+
 MinimObject *minim_builtin_boolp(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_not(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_or(MinimEnv *env, int argc, MinimObject** args);

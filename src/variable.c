@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "assert.h"
+#include "bool.h"
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
@@ -15,6 +16,7 @@ bool minim_symbolp(MinimObject *obj)
 
 void env_load_module_variable(MinimEnv *env)
 {
+    env_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
     env_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
     env_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     env_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
@@ -22,6 +24,23 @@ void env_load_module_variable(MinimEnv *env)
 
     env_load_builtin(env, "number?", MINIM_OBJ_FUNC, minim_builtin_numberp);
     env_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
+}
+
+MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res, *cond;
+
+    if (assert_exact_argc(argc, args, &res, "if", 3))
+    {
+        eval_ast(env, args[0]->data, &cond);
+        if (coerce_into_bool(cond))     eval_ast(env, args[1]->data, &res);
+        else                            eval_ast(env, args[2]->data, &res);
+
+        free_minim_object(cond);
+    }
+
+    free_minim_objects(argc, args);
+    return res;
 }
 
 MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)

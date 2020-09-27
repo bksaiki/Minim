@@ -11,6 +11,7 @@ bool minim_symbolp(MinimObject *obj);
 
 void env_load_module_variable(MinimEnv *env);
 
+MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args);

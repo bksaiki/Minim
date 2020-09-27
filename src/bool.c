@@ -2,6 +2,15 @@
 #include "bool.h"
 #include "list.h"
 
+//
+// Visible functions
+//
+
+bool minim_boolp(MinimObject *thing)
+{
+    return (thing->type == MINIM_OBJ_BOOL);
+}
+
 bool coerce_into_bool(MinimObject *obj)
 {
     if (obj->type == MINIM_OBJ_BOOL || obj->type == MINIM_OBJ_NUM)
@@ -18,10 +27,6 @@ bool coerce_into_bool(MinimObject *obj)
     }
 }
 
-//
-// Visible functions
-//
-
 void env_load_module_bool(MinimEnv *env)
 {
     env_load_builtin(env, "true", MINIM_OBJ_BOOL, 1);
@@ -31,11 +36,6 @@ void env_load_module_bool(MinimEnv *env)
     env_load_builtin(env, "not", MINIM_OBJ_FUNC, minim_builtin_not);
     env_load_builtin(env, "or", MINIM_OBJ_FUNC, minim_builtin_or);
     env_load_builtin(env, "and", MINIM_OBJ_FUNC, minim_builtin_and);
-}
-
-bool minim_boolp(MinimObject *thing)
-{
-    return (thing->type == MINIM_OBJ_BOOL);
 }
 
 MinimObject *minim_builtin_boolp(MinimEnv *env, int argc, MinimObject** args)
