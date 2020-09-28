@@ -6,6 +6,7 @@
 
 #include "env.h"
 #include "lambda.h"
+#include "number.h"
 #include "object.h"
 #include "parser.h"
 #include "util.h"
@@ -29,11 +30,15 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = NULL;
     }
-    else if (type == MINIM_OBJ_BOOL || type == MINIM_OBJ_NUM)
+    else if (type == MINIM_OBJ_BOOL)
     {
         int *v = malloc(sizeof(int));
         *v = va_arg(rest, int);
         obj->data = v;
+    }
+    else if (type == MINIM_OBJ_NUM)
+    {
+        obj->data = va_arg(rest, MinimNumber*);
     }
     else if (type == MINIM_OBJ_SYM || type == MINIM_OBJ_ERR)
     {
@@ -84,11 +89,17 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     obj = malloc(sizeof(MinimObject));
     obj->type = src->type;
 
-    if (src->type == MINIM_OBJ_BOOL || src->type == MINIM_OBJ_NUM)
+    if (src->type == MINIM_OBJ_BOOL)
     {
         int *v = malloc(sizeof(int));
         *v = *((int*) src->data);
         obj->data = v;
+    }
+    else if (src->type == MINIM_OBJ_NUM)
+    {
+        MinimNumber *num;
+        copy_minim_number(&num, src->data);
+        obj->data = num;
     }
     else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR)
     {
@@ -148,6 +159,7 @@ void free_minim_object(MinimObject *obj)
     {
         if (obj->type == MINIM_OBJ_AST)             free_ast(obj->data);
         else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->data);
+        else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
         else                                        free(obj->data);
     }
 

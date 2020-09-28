@@ -5,6 +5,7 @@
 
 #include "lambda.h"
 #include "list.h"
+#include "number.h"
 #include "print.h"
 
 typedef struct PrintBuffer
@@ -114,8 +115,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb)
     }
     else if (obj->type == MINIM_OBJ_NUM)
     {
-        sprintf(str, "%d", *((int*)obj->data));
+        char *tmp = minim_number_to_str(obj->data);
+        sprintf(str, "%s", tmp);
         print_to_buffer(pb, str);
+        free(tmp);
     }
     else if (obj->type == MINIM_OBJ_SYM)
     {

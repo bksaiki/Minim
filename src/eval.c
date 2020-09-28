@@ -6,9 +6,10 @@
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
+#include "number.h"
 #include "util.h"
 
-static bool is_int(char *str)
+static bool is_rational(char *str)
 {
     char *it = str;
 
@@ -19,6 +20,13 @@ static bool is_int(char *str)
     }
 
     while (*it >= '0' && *it <= '9')    ++it;
+
+    if (*it == '/' && *(it + 1) >= '0' && *(it + 1) <= '9')
+    {
+        it += 2;
+        while (*it >= '0' && *it <= '9')    ++it;
+    }
+
     return (*it == '\0');
 }
 static int is_err_pred(const void *thing)
@@ -31,9 +39,12 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 {
     MinimObject *res;
 
-    if (is_int(str))
+    if (is_rational(str))
     {
-        init_minim_object(&res, MINIM_OBJ_NUM, atoi(str));
+        MinimNumber *num;
+        init_exact_number(&num);
+        set_exact_number(num, str);
+        init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
     else
     {
