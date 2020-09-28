@@ -20,6 +20,7 @@ bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, co
 // Internal versions of the builtins
 bool minim_consp(MinimObject* thing);
 bool minim_listp(MinimObject* thing);
+bool minim_nullp(MinimObject* thing);
 int minim_list_length(MinimObject *list);
 
 // Builtin functions in the language
@@ -32,8 +33,13 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args);
 
 MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_listp(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_nullp(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args);
+
+MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_reverse(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args);
 
 #endif

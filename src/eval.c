@@ -163,7 +163,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 
         if (!op)
         {
-            minim_error(&res, "Unknown operator: %s", node->sym);
+            minim_error(&res, "Unknown operator: %s", node->children[0]->sym);
             return res;
         }
 
@@ -234,7 +234,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
         }
         else
         {   
-            minim_error(&res, "'%s' is not an operator", node->sym);
+            minim_error(&res, "'%s' is not an operator", node->children[0]->sym);
             free(args);
             return res;
         }

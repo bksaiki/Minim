@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "lambda.h"
+#include "list.h"
 #include "print.h"
 
 typedef struct PrintBuffer
@@ -131,7 +132,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb)
     {
         MinimObject **pair = ((MinimObject**) obj->data);
 
-        if (!pair[0] || !pair[1] || pair[0]->type == MINIM_OBJ_PAIR || pair[1]->type == MINIM_OBJ_PAIR)
+        if (minim_listp(obj))
         {
             print_to_buffer(pb, ((pb->quote) ? "(" : "'("));
             pb->quote = true;

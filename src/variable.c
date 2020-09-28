@@ -9,6 +9,22 @@
 #include "list.h"
 #include "variable.h"
 
+bool assert_number(MinimObject *obj, MinimObject **res, const char *msg)
+{
+    if (minim_numberp(obj))
+    {
+        minim_error(res, "%s", msg);
+        return false;
+    }
+
+    return true;
+}
+
+bool minim_numberp(MinimObject *obj)
+{
+    return (obj->type == MINIM_OBJ_SYM);
+}
+
 bool minim_symbolp(MinimObject *obj)
 {
     return (obj->type == MINIM_OBJ_SYM);   

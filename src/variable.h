@@ -3,8 +3,11 @@
 
 #include "env.h"
 
+bool assert_number(MinimObject *obj, MinimObject **res, const char *msg);
+
 // Internals
 
+bool minim_numberp(MinimObject *obj);
 bool minim_symbolp(MinimObject *obj);
 
 // Builtins
