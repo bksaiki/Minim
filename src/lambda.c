@@ -48,11 +48,6 @@ void free_minim_lambda(MinimLambda *lam)
     free(lam);
 }
 
-void env_load_module_lambda(MinimEnv *env)
-{
-    env_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
-}
-
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
@@ -82,6 +77,22 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
 
     free_minim_objects(argc, args);
     return res;
+}
+
+bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg)
+{
+    if (!minim_funcp(arg))
+    {
+        minim_error(ret, "%s", msg);
+        return false;
+    }
+
+    return true;
+}
+
+void env_load_module_lambda(MinimEnv *env)
+{
+    env_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
 }
 
 MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)

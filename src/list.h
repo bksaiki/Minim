@@ -42,4 +42,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_reverse(MinimEnv *env, int argc, MinimObject** args);
 MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args);
 
+MinimObject *minim_builtin_map(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args);
+
 #endif

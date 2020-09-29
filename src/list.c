@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "assert.h"
+#include "lambda.h"
 #include "list.h"
 #include "variable.h"
 #include "util.h"
@@ -15,10 +16,7 @@ static MinimObject *construct_list(int argc, MinimObject** args)
     if (argc == 0)
         return NULL;
 
-    init_minim_object(&obj,
-                      MINIM_OBJ_PAIR,
-                      args[0],
-                      construct_list(argc - 1, args + 1));
+    init_minim_object(&obj, MINIM_OBJ_PAIR, args[0], construct_list(argc - 1, args + 1));
     return obj;   
 }
 
@@ -51,6 +49,44 @@ static MinimObject *reverse_lists(MinimObject* head, MinimObject* tail, int coun
         MINIM_CDR(head) = tail;
         return reverse_lists(cdr, head, count - 1);
     }
+}
+
+static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, MinimEnv *env, int len)
+{
+    MinimObject *node, *val, *rest;
+
+    if (len == 0)
+        return NULL;
+
+    if (map->type == MINIM_OBJ_FUNC)
+    {
+        MinimObject **args = malloc(sizeof(MinimObject*));
+        MinimBuiltin func = map->data;
+
+        copy_minim_object(&args[0], MINIM_CAR(list));
+        val = func(env, 1, args);
+    }
+    else // map->type == MINIM_OBJ_CLOSURE
+    {
+        MinimObject **args = malloc(sizeof(MinimObject*));
+        MinimLambda *lam = map->data;
+        
+        copy_minim_object(&args[0], MINIM_CAR(list));
+        val = eval_lambda(lam, env, 1, args);
+    }
+
+    if (val->type == MINIM_OBJ_ERR)
+        return val;
+
+    rest = construct_list_map(MINIM_CDR(list), map, env, len - 1);
+    if (rest && rest->type == MINIM_OBJ_ERR)
+    {  
+        free_minim_object(val);
+        return rest;
+    }
+
+    init_minim_object(&node, MINIM_OBJ_PAIR, val, rest);
+    return node;
 }
 
 //
@@ -148,6 +184,9 @@ void env_load_module_list(MinimEnv *env)
     env_load_builtin(env, "append", MINIM_OBJ_FUNC, minim_builtin_append);
     env_load_builtin(env, "reverse", MINIM_OBJ_FUNC, minim_builtin_reverse);
     env_load_builtin(env, "list-ref", MINIM_OBJ_FUNC, minim_builtin_list_ref);
+
+    env_load_builtin(env, "map", MINIM_OBJ_FUNC, minim_builtin_map);
+    env_load_builtin(env, "apply", MINIM_OBJ_FUNC, minim_builtin_apply);
 }
 
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
@@ -420,6 +459,59 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
 
         res = MINIM_CAR(it);
         MINIM_CAR(it) = NULL;
+    }
+
+    free_minim_objects(argc, args);
+    return res;
+}
+
+MinimObject *minim_builtin_map(MinimEnv *env, int argc, MinimObject** args)
+{
+    MinimObject *res;
+    int len;
+
+    if (assert_exact_argc(argc, args, &res, "map", 2) &&
+        assert_func(args[0], &res, "Expected a function in the 1st argument of 'map'") &&
+        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'map'"))
+    {
+        len = minim_list_length(args[1]);
+        if (len == 0)   init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+        else            res = construct_list_map(args[1], args[0], env, len);
+    }
+
+    free_minim_objects(argc, args);
+    return res;
+}
+
+MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args)
+{
+    MinimObject *res, *it, **vals;
+    int len;
+
+    if (assert_exact_argc(argc, args, &res, "apply", 2) &&
+        assert_func(args[0], &res, "Expected a function in the 1st argument of 'apply'") &&
+        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'apply'"))
+    {
+        len = minim_list_length(args[1]);
+        vals = malloc(len * sizeof(MinimObject*));
+
+        it = args[1];
+        for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+        {
+            vals[i] = MINIM_CAR(it);
+            MINIM_CAR(it) = NULL;
+        }
+
+        if (args[0]->type == MINIM_OBJ_FUNC)
+        {
+            MinimBuiltin func = args[0]->data;
+            res = func(env, len, vals);
+        }
+        else // MINIM_OBJ_CLOSURE
+        {
+            MinimLambda *lam = args[0]->data;
+            res = eval_lambda(lam, env, len, vals);
+        }
     }
 
     free_minim_objects(argc, args);

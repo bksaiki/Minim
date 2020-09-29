@@ -45,15 +45,17 @@ void free_minim_number(MinimNumber *num)
 
 char *minim_number_to_str(MinimNumber *num)
 {
-    char* str = malloc(2048 * sizeof(char));
+    char* str;
 
     if (num->type == MINIM_NUMBER_EXACT)
     {
-        gmp_sprintf(str, "%Qd", num->rat);
+        gmp_asprintf(&str, "%Qd", num->rat);
     }
     else
     {
-        strcpy(str, "Unimplemented: number->string");
+        char *tmp = "Unimplemented: number->string";
+        str = malloc((strlen(tmp) + 1) * sizeof(char));
+        strcpy(str, tmp);
     }
 
     return str;

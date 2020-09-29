@@ -46,7 +46,7 @@ int main(int argc, char** argv)
                 strcat(input, " ");
 
             strncat(input, str, len);
-            if (!paren) break;
+            if (paren <= 0)     break;
 
             fputs("  ", stdout);
             for (int i = 0; i < paren; ++i)

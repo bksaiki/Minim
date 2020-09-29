@@ -19,11 +19,16 @@ void free_minim_lambda(MinimLambda *lam);
 // Evaluates the given lambda expression and stores the result at 'pobj'.
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject **args);
 
-// Load builtins
+// Internals
 
-void env_load_module_lambda(MinimEnv *env);
+bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg);
+
+#define minim_lambdap(x)    (x->type == MINIM_OBJ_CLOSURE)
+#define minim_funcp(x)      (x->type == MINIM_OBJ_FUNC || minim_lambdap(x))
 
 // Builtins
+
+void env_load_module_lambda(MinimEnv *env);
 
 MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args);
 

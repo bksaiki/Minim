@@ -46,14 +46,18 @@ static void free_buffer(PrintBuffer *pb)
 
 static void resize_buffer(PrintBuffer *pb, size_t requested)
 {
+    char* buf;
+
     if (requested > pb->max)
     {
-        pb->buffer = realloc(pb->buffer, pb->max);
+        buf = realloc(pb->buffer, pb->max * sizeof(char));
+        pb->buffer = buf;
         pb->curr = pb->max;
     }
     else if (requested > pb->curr)
     {
-        pb->buffer = realloc(pb->buffer, requested);
+        buf = realloc(pb->buffer, requested * sizeof(char));
+        pb->buffer = buf;
         pb->curr = pb->max;
     }
     else
@@ -116,8 +120,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb)
     else if (obj->type == MINIM_OBJ_NUM)
     {
         char *tmp = minim_number_to_str(obj->data);
-        sprintf(str, "%s", tmp);
-        print_to_buffer(pb, str);
+        print_to_buffer(pb, tmp);
         free(tmp);
     }
     else if (obj->type == MINIM_OBJ_SYM)
