@@ -293,3 +293,31 @@ int eval_sexpr(MinimEnv *env, MinimObject *expr, MinimObject **pobj)
     *pobj = obj;
     return (obj->type != MINIM_OBJ_ERR);
 }
+
+char *eval_string(char *str, size_t len)
+{
+    MinimAstNode *ast;
+    MinimObject *obj;
+    MinimEnv *env;
+    char *out;
+
+    init_env(&env);
+    env_load_builtins(env);
+
+    if (!parse_str(str, &ast))
+    {
+        char *tmp = "Parsing failed!";
+        out = malloc((strlen(tmp) + 1) * sizeof(char));
+        strcpy(out, tmp);
+        free_env(env);
+        return out;
+    }
+
+    eval_ast(env, ast, &obj);
+    out = print_to_string(obj, env, len);
+
+    free_minim_object(obj);
+    free_ast(ast);
+    free_env(env);
+    return out;
+}

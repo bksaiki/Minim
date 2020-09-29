@@ -6,6 +6,7 @@
 #include "assert.h"
 #include "lambda.h"
 #include "list.h"
+#include "number.h"
 #include "variable.h"
 #include "util.h"
 
@@ -383,9 +384,16 @@ MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
 MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
+    MinimNumber *num;
+    int len;
 
     if (assert_exact_argc(argc, args, &res, "length", 1))
-        init_minim_object(&res, MINIM_OBJ_NUM, minim_list_length(args[0]));
+    {
+        len = minim_list_length(args[0]);
+        init_exact_number(&num);
+        mpq_set_si(num->rat, len, 1);
+        init_minim_object(&res, MINIM_OBJ_NUM, num);
+    }
 
     free_minim_objects(argc, args);
     return res;
@@ -445,7 +453,14 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
         assert_number(args[1], &res, "Expected a number for the 2nd argument of 'list-ref'"))
     {
         MinimObject *it = args[0];
-        int idx = *((int*) args[1]->data);
+        MinimNumber* num = args[1]->data;
+        mpz_t real;
+        int idx;
+
+        mpz_init(real);
+        mpq_get_num(real, num->rat);
+        idx = mpz_get_si(real);
+        mpz_clear(real);
 
         for (int i = 0; i < idx; ++i, it = MINIM_CDR(it))
             if (!it) break;

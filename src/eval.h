@@ -19,4 +19,7 @@ int eval_ast_as_sexpr(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj);
 // at 'pobj'. Returns true on success.
 int eval_sexpr(MinimEnv *env, MinimObject *expr, MinimObject **pobj);
 
+// Evaluates an expression and returns a string. The result must be freed.
+char *eval_string(char *str, size_t len);
+
 #endif
