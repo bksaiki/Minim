@@ -22,8 +22,8 @@ typedef struct MinimNumber
 
 // Initialization & setters
 
-void init_exact_number(MinimNumber **pnum);
-void set_exact_number(MinimNumber* num, const char *str);
+void init_minim_number(MinimNumber **pnum, MinimNumberType type);
+void str_to_minim_number(MinimNumber* num, const char *str);
 
 void copy_minim_number(MinimNumber **pnum, MinimNumber *src);
 void free_minim_number(MinimNumber *num);

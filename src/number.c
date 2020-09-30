@@ -5,15 +5,18 @@
 
 // Visible functions
 
-void init_exact_number(MinimNumber **pnum)
+void init_minim_number(MinimNumber **pnum, MinimNumberType type)
 {
     MinimNumber *num = malloc(sizeof(MinimNumber));
-    mpq_init(num->rat);
-    num->type = MINIM_NUMBER_EXACT;
+
+    num->type = type;
+    if (type == MINIM_NUMBER_EXACT)     mpq_init(num->rat);
+    else                                num->fl = 0.0;                          
+
     *pnum = num;
 }
 
-void set_exact_number(MinimNumber* num, const char *str)
+void str_to_minim_number(MinimNumber* num, const char *str)
 {
     if (num->type == MINIM_NUMBER_EXACT)     mpq_set_str(num->rat, str, 0);
     else                                     num->fl = strtod(str, NULL);
@@ -53,9 +56,18 @@ char *minim_number_to_str(MinimNumber *num)
     }
     else
     {
-        char *tmp = "Unimplemented: number->string";
-        str = malloc((strlen(tmp) + 1) * sizeof(char));
-        strcpy(str, tmp);
+        bool dot = false;
+
+        str = malloc(30 * sizeof(char));
+        snprintf(str, 29, "%.16g", num->fl);
+        
+        for (char *it = str; *it; ++it)
+        {
+            if (*it == '.')
+                dot = true;
+        }
+
+        if (!dot) strcat(str, ".0");
     }
 
     return str;
@@ -63,25 +75,22 @@ char *minim_number_to_str(MinimNumber *num)
 
 void minim_number_neg(MinimNumber *res, MinimNumber *a)
 {
-    if (a->type == MINIM_NUMBER_EXACT)
-    {
-        mpq_neg(res->rat, a->rat);
-    }
-    else
-    {
-        printf("Unimplemented");
-    }
+    if (a->type == MINIM_NUMBER_EXACT)  mpq_neg(res->rat, a->rat);
+    else                                res->fl = - a->fl;
 }
 
 void minim_number_add(MinimNumber *res, MinimNumber *a, MinimNumber *b)
 {
     if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
     {
-        mpq_add(res->rat, a->rat, b->rat);
+        mpq_div(res->rat, a->rat, b->rat);
+        res->type = MINIM_NUMBER_EXACT;
     }
     else
     {
-        printf("Unimplemented");
+        res->fl = (((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl) +
+                   ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl));
+        res->type = MINIM_NUMBER_INEXACT;
     }
 }
 
@@ -90,10 +99,13 @@ void minim_number_sub(MinimNumber *res, MinimNumber *a, MinimNumber *b)
     if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
     {
         mpq_sub(res->rat, a->rat, b->rat);
+        res->type = MINIM_NUMBER_EXACT;
     }
     else
     {
-        printf("Unimplemented");
+        res->fl = (((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl) -
+                   ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl));
+        res->type = MINIM_NUMBER_INEXACT;
     }
 }
 
@@ -102,10 +114,13 @@ void minim_number_mul(MinimNumber *res, MinimNumber *a, MinimNumber *b)
     if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
     {
         mpq_mul(res->rat, a->rat, b->rat);
+        res->type = MINIM_NUMBER_EXACT;
     }
     else
     {
-        printf("Unimplemented");
+        res->fl = (((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl) *
+                   ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl));
+        res->type = MINIM_NUMBER_INEXACT;
     }
 }
 
@@ -114,10 +129,13 @@ void minim_number_div(MinimNumber *res, MinimNumber *a, MinimNumber *b)
     if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
     {
         mpq_div(res->rat, a->rat, b->rat);
+        res->type = MINIM_NUMBER_EXACT;
     }
     else
     {
-        printf("Unimplemented");
+        res->fl = (((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl) /
+                   ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl));
+        res->type = MINIM_NUMBER_INEXACT;
     }
 }
 

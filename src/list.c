@@ -390,7 +390,7 @@ MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
     if (assert_exact_argc(argc, args, &res, "length", 1))
     {
         len = minim_list_length(args[0]);
-        init_exact_number(&num);
+        init_minim_number(&num, MINIM_NUMBER_EXACT);
         mpq_set_si(num->rat, len, 1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }

@@ -177,7 +177,7 @@ int main()
             "(reverse (list 1 2 3 4 5 6))",                 "'(6 5 4 3 2 1)"
         };
 
-        printf("Test list modifiers..\n");
+        printf("Testing list modifiers..\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

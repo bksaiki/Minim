@@ -46,19 +46,19 @@ MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args)
     {    
         if (argc == 1)
         {
-            MinimNumber *neg;
-            init_exact_number(&neg);
-            minim_number_neg(neg, args[0]->data);
-            init_minim_object(&res, MINIM_OBJ_NUM, neg);
+            minim_number_neg(args[0]->data, args[0]->data);
+            args[0] = NULL;
         }
         else
         {
-            copy_minim_object(&res, args[0]);
             for (int i = 1; i < argc; ++i)
-                minim_number_sub(res->data, res->data, args[i]->data);
+                minim_number_sub(args[0]->data, args[0]->data, args[i]->data);
+        
         }
     }
 
+    res = args[0];
+    args[0] = NULL;
     free_minim_objects(argc, args);
     return res;
 }

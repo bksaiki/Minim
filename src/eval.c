@@ -29,6 +29,39 @@ static bool is_rational(char *str)
 
     return (*it == '\0');
 }
+
+static bool is_float(char *str)
+{
+    char *it = str;
+
+    if ((*it == '+' || *it == '-') &&
+        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+    {
+        it += 2;
+    }
+
+    while (*it >= '0' && *it <= '9')    ++it;
+
+    if (*it != '.')
+        return false;
+
+    ++it;
+    while (*it >= '0' && *it <= '9')    ++it;
+
+    if (*it == 'e')
+    {
+        if ((*it == '+' || *it == '-') &&
+        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+        {
+            it += 2;
+        }
+
+        while (*it >= '0' && *it <= '9')    ++it;
+    }
+
+    return (*it == '\0');
+}
+
 static int is_err_pred(const void *thing)
 {
     MinimObject **pobj = (MinimObject**) thing;
@@ -42,8 +75,15 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     if (is_rational(str))
     {
         MinimNumber *num;
-        init_exact_number(&num);
-        set_exact_number(num, str);
+        init_minim_number(&num, MINIM_NUMBER_EXACT);
+        str_to_minim_number(num, str);
+        init_minim_object(&res, MINIM_OBJ_NUM, num);
+    }
+    else if (is_float(str))
+    {
+        MinimNumber *num;
+        init_minim_number(&num, MINIM_NUMBER_INEXACT);
+        str_to_minim_number(num, str);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
     else
