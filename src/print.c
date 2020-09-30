@@ -88,19 +88,21 @@ static void print_list(MinimObject* obj, MinimEnv* env, PrintBuffer *pb)
     MinimObject** pair = ((MinimObject**) obj->data);
 
     if (pair[0])
-    {
-        pb->quote = true;
         print_object(pair[0], env, pb);
-    }
 
-    if (pair[1])
+    if (!pair[1])
     {
-        pb->quote = true;
+        print_to_buffer(pb, ")");
+    }
+    else if (pair[1]->type == MINIM_OBJ_PAIR)
+    {
         print_to_buffer(pb, " ");
         print_list(pair[1], env, pb);
     }
     else
     {
+        print_to_buffer(pb, " . ");
+        print_object(pair[1], env, pb);
         print_to_buffer(pb, ")");
     }
 }
