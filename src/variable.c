@@ -9,22 +9,6 @@
 #include "list.h"
 #include "variable.h"
 
-bool assert_number(MinimObject *obj, MinimObject **res, const char *msg)
-{
-    if (minim_numberp(obj))
-    {
-        minim_error(res, "%s", msg);
-        return false;
-    }
-
-    return true;
-}
-
-bool minim_numberp(MinimObject *obj)
-{
-    return (obj->type == MINIM_OBJ_SYM);
-}
-
 bool minim_symbolp(MinimObject *obj)
 {
     return (obj->type == MINIM_OBJ_SYM);   
@@ -37,8 +21,7 @@ void env_load_module_variable(MinimEnv *env)
     env_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     env_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
     env_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
-
-    env_load_builtin(env, "number?", MINIM_OBJ_FUNC, minim_builtin_numberp);
+    
     env_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
 }
 
@@ -240,16 +223,6 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
     if (assert_exact_argc(argc, args, &res, "quote", 1))
         eval_ast_as_quote(env, args[0]->data, &res);
 
-    free_minim_objects(argc, args);
-    return res;
-}
-
-MinimObject *minim_builtin_numberp(MinimEnv *env, int argc, MinimObject **args)
-{
-    MinimObject *res;
-
-    if (assert_exact_argc(argc, args, &res, "number?", 1))
-        init_minim_object(&res, MINIM_OBJ_BOOL, args[0]->type == MINIM_OBJ_NUM);
     free_minim_objects(argc, args);
     return res;
 }

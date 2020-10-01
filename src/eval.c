@@ -42,16 +42,18 @@ static bool is_float(char *str)
 
     while (*it >= '0' && *it <= '9')    ++it;
 
-    if (*it != '.')
+    if (*it != '.' && *it != 'e')
         return false;
 
-    ++it;
+    if (*it == '.')     ++it;
+
     while (*it >= '0' && *it <= '9')    ++it;
 
     if (*it == 'e')
     {
+        ++it;
         if ((*it == '+' || *it == '-') &&
-        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+            (*(it + 1) >= '0' && *(it + 1) <= '9'))
         {
             it += 2;
         }

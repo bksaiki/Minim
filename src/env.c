@@ -9,6 +9,7 @@
 #include "bool.h"
 #include "lambda.h"
 #include "list.h"
+#include "number.h"
 #include "math.h"
 #include "variable.h"
 
@@ -156,8 +157,9 @@ void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...
 void env_load_builtins(MinimEnv *env)
 {
     env_load_module_bool(env);
-    env_load_module_math(env);
     env_load_module_lambda(env);
     env_load_module_list(env);
+    env_load_module_number(env);
+    env_load_module_math(env);
     env_load_module_variable(env);
 }

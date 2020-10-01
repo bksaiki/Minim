@@ -30,17 +30,37 @@ void free_minim_number(MinimNumber *num);
 
 char *minim_number_to_str(MinimNumber *num);
 
-// Arithmetic functions
-
-void minim_number_neg(MinimNumber *res, MinimNumber *a);
-
-void minim_number_add(MinimNumber *res, MinimNumber *a, MinimNumber *b);
-void minim_number_sub(MinimNumber *res, MinimNumber *a, MinimNumber *b);
-void minim_number_mul(MinimNumber *res, MinimNumber *a, MinimNumber *b);
-void minim_number_div(MinimNumber *res, MinimNumber *a, MinimNumber *b);
-
 // Predicates
 
 bool minim_number_zerop(MinimNumber *num);
+bool minim_number_negativep(MinimNumber *num);
+bool minim_number_positivep(MinimNumber *num);
+bool minim_number_exactp(MinimNumber *num);
+bool minim_number_inexactp(MinimNumber *num);
+
+// Arithmetic functions
+
+// Assertions
+
+bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg);
+bool assert_exact_number(MinimObject *arg, MinimObject **ret, const char *msg);
+bool assert_inexact_number(MinimObject *arg, MinimObject **ret, const char *msg);
+
+// Internals
+
+bool minim_numberp(MinimObject *thing);
+bool minim_exactp(MinimObject *thing);
+bool minim_inexactp(MinimObject *thing);
+
+// Builtins
+
+void env_load_module_number(MinimEnv *env);
+
+MinimObject *minim_builtin_numberp(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_zerop(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_negativep(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_positivep(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_exactp(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_inexactp(MinimEnv *env, int argc, MinimObject **args);
 
 #endif
