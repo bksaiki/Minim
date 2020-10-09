@@ -25,6 +25,7 @@ typedef struct MinimNumber
 void init_minim_number(MinimNumber **pnum, MinimNumberType type);
 void str_to_minim_number(MinimNumber* num, const char *str);
 
+void reinterpret_minim_number(MinimNumber *num, MinimNumberType type);
 void copy_minim_number(MinimNumber **pnum, MinimNumber *src);
 void free_minim_number(MinimNumber *num);
 

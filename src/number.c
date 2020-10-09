@@ -23,6 +23,23 @@ void str_to_minim_number(MinimNumber* num, const char *str)
     else                                     num->fl = strtod(str, NULL);
 }
 
+void reinterpret_minim_number(MinimNumber *num, MinimNumberType type)
+{
+    if (num->type != type)
+    {
+        if (num->type == MINIM_NUMBER_EXACT)
+        {
+            mpq_clear(num->rat);
+            num->type = MINIM_NUMBER_INEXACT;
+        }
+        else
+        {
+            mpq_init(num->rat);
+            num->type = MINIM_NUMBER_EXACT;
+        }
+    }
+}
+
 void copy_minim_number(MinimNumber **pnum, MinimNumber *src)
 {
     MinimNumber *num = malloc(sizeof(MinimNumber));
