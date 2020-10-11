@@ -14,5 +14,8 @@ MinimObject *minim_builtin_mul(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject **args);
 
 MinimObject *minim_builtin_sqrt(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_exp(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_log(MinimEnv *env, int argc, MinimObject** args);
+MinimObject *minim_builtin_pow(MinimEnv *env, int argc, MinimObject** args);
 
 #endif

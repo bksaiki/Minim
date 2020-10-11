@@ -67,10 +67,18 @@ void free_minim_number(MinimNumber *num)
 char *minim_number_to_str(MinimNumber *num)
 {
     char* str;
+    int len = 128;
 
     if (num->type == MINIM_NUMBER_EXACT)
     {
-        gmp_asprintf(&str, "%Qd", num->rat);
+        str = malloc(len * sizeof(char));
+        len = gmp_snprintf(str, len, "%Qd", num->rat);
+
+        if (len > 128)
+        {
+            str = malloc((len + 1) * sizeof(char));
+            gmp_snprintf(str, len, "%Qd", num->rat);
+        }
     }
     else
     {
