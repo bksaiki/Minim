@@ -50,30 +50,46 @@ void free_minim_lambda(MinimLambda *lam)
 
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res;
-    int len;
+    MinimObject *res, *val;
+    MinimEnv *env2;
+    char *sym;
 
-    len = minim_list_length(lam->formals);
-    if (assert_exact_argc(argc, args, &res, ((lam->name) ? lam->name : "unnamed lambda"), len))
-    {   
-        MinimEnv *env2;
-        MinimObject *it, *val;
-        char *sym;
+    if (minim_listp(lam->formals))
+    {
+        MinimObject *it;
+        int len = minim_list_length(lam->formals);
 
+        if (assert_exact_argc(argc, args, &res, ((lam->name) ? lam->name : "unnamed lambda"), len))
+        {   
+            init_env(&env2);
+            env2->parent = env;
+
+            it = lam->formals;
+            for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+            {
+                sym = ((char*) MINIM_CAR(it)->data);
+                env_intern_sym(env2, sym, args[i]);
+                args[i] = NULL;
+            }
+
+
+            eval_ast(env2, lam->body->data, &res);
+            pop_env(env2);
+        }
+    }
+    else
+    {
         init_env(&env2);
         env2->parent = env;
 
-        it = lam->formals;
-        for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
-        {
-            sym = ((char*) MINIM_CAR(it)->data);
-            copy_minim_object(&val, args[i]);
-            env_intern_sym(env2, sym, val);
-        }
+        val = minim_construct_list(argc, args);
+        env_intern_sym(env2, lam->formals->data, val);
+        for (int i = 0; i < argc; ++i)  args[i] = NULL;
 
         eval_ast(env2, lam->body->data, &res);
         pop_env(env2);
     }
+    
 
     free_minim_objects(argc, args);
     return res;
@@ -108,17 +124,17 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
         eval_ast_as_quote(env, args[0]->data, &bindings);
         if (bindings->type != MINIM_OBJ_ERR)
         {
-            if (assert_listof(bindings, &res, minim_symbolp, "Lambda variables must only contain symbols"))
+            if (minim_symbolp(bindings) || minim_listof(bindings, minim_symbolp))
             {
                 init_minim_lambda(&lam);
                 lam->formals = bindings;
                 lam->body = args[1];
                 args[1] = NULL;
-
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
             }
             else
             {
+                minim_error(&res, "Expected a symbol or list of symbols for lambda variables");
                 free_minim_object(bindings);
             }
         }

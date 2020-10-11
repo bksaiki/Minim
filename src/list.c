@@ -10,17 +10,6 @@
 #include "variable.h"
 #include "util.h"
 
-static MinimObject *construct_list(int argc, MinimObject** args)
-{
-    MinimObject *obj;
-    
-    if (argc == 0)
-        return NULL;
-
-    init_minim_object(&obj, MINIM_OBJ_PAIR, args[0], construct_list(argc - 1, args + 1));
-    return obj;   
-}
-
 static void append_lists(MinimObject *head, int count, MinimObject **rest)
 {
     MinimObject *it;
@@ -107,7 +96,7 @@ bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg)
 
 bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *msg)
 {
-    if (!assert_list(arg, ret, "Expected a list"))
+    if (!assert_list(arg, ret, msg))
         return false;
 
     if (minim_list_length(arg) != len)
@@ -124,7 +113,7 @@ bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, co
     MinimObject *it;
     int len;
 
-    if (!assert_list(arg, ret, "Expected a list"))
+    if (!assert_list(arg, ret, msg))
         return false;
 
     len = minim_list_length(arg);
@@ -156,6 +145,28 @@ bool minim_listp(MinimObject* thing)
 bool minim_nullp(MinimObject* thing)
 {
     return (minim_listp(thing) && !MINIM_CAR(thing) && !MINIM_CDR(thing));
+}
+
+bool minim_listof(MinimObject* list, MinimObjectPred pred)
+{
+    for (MinimObject *it = list; it; it = MINIM_CDR(it))
+    {
+        if (!pred(MINIM_CAR(it)))
+            return false;
+    }
+
+    return true;
+}
+
+MinimObject *minim_construct_list(int argc, MinimObject** args)
+{
+    MinimObject *obj;
+    
+    if (argc == 0)
+        return NULL;
+
+    init_minim_object(&obj, MINIM_OBJ_PAIR, args[0], minim_construct_list(argc - 1, args + 1));
+    return obj;   
 }
 
 int minim_list_length(MinimObject *list)
@@ -316,7 +327,7 @@ MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args)
     if (argc == 0)
         init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
     else
-        res = construct_list(argc, args);
+        res = minim_construct_list(argc, args);
 
     free(args);
     return res;

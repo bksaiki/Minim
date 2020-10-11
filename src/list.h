@@ -21,6 +21,9 @@ bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, co
 bool minim_consp(MinimObject* thing);
 bool minim_listp(MinimObject* thing);
 bool minim_nullp(MinimObject* thing);
+bool minim_listof(MinimObject* list, MinimObjectPred pred);
+
+MinimObject *minim_construct_list(int argc, MinimObject** args);
 int minim_list_length(MinimObject *list);
 
 // Builtin functions in the language
