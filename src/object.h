@@ -24,6 +24,7 @@ typedef enum MinimObjectType
     MINIM_OBJ_CLOSURE,
     MINIM_OBJ_SYNTAX,
     MINIM_OBJ_AST,
+    MINIM_OBJ_SEQ
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject **);

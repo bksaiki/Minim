@@ -21,6 +21,8 @@ void env_load_module_variable(MinimEnv *env)
     env_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     env_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
     env_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
+
+    env_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
     
     env_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
 }
@@ -222,6 +224,35 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, args, &res, "quote", 1))
         eval_ast_as_quote(env, args[0]->data, &res);
+
+    free_minim_objects(argc, args);
+    return res;
+}
+
+MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res, *sym;
+
+    if (assert_exact_argc(argc, args, &res, "set!", 2))
+    {
+        eval_ast_as_quote(env, args[0]->data, &sym);
+        if (assert_sym_arg(sym, &res, "def"))
+        {
+            MinimObject *val, *peek = env_peek_sym(env, sym->data);
+            if (peek)
+            {
+                eval_ast(env, args[1]->data, &val);
+                env_intern_sym(env, sym->data, val);
+                init_minim_object(&res, MINIM_OBJ_VOID);
+            }
+            else
+            {
+                minim_error(&res, "Variable not recognized '%s'", sym->data);
+            }
+
+            free_minim_object(sym);
+        }
+    }
 
     free_minim_objects(argc, args);
     return res;

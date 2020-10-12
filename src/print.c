@@ -172,6 +172,11 @@ static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb)
         else                sprintf(str, "<function:?>");
         print_to_buffer(pb, str);
     }
+    else if (obj->type == MINIM_OBJ_SEQ)
+    {
+        sprintf(str, "<iterator>");
+        print_to_buffer(pb, str);
+    }
     else
     {
         print_to_buffer(pb, "<Unknown type>");

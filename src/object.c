@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "env.h"
+#include "iter.h"
 #include "lambda.h"
 #include "number.h"
 #include "object.h"
@@ -65,6 +66,10 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     else if (type == MINIM_OBJ_AST)
     {
         obj->data = va_arg(rest, MinimAstNode*);
+    }
+    else if (type == MINIM_OBJ_SEQ)
+    {
+        obj->data = va_arg(rest, MinimIter*);
     }
     else
     {
@@ -134,6 +139,12 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         copy_ast(&node, src->data);
         obj->data = node;
     }
+    else if (src->type == MINIM_OBJ_SEQ)
+    {
+        MinimIter *iter;
+        copy_minim_iter(&iter, src->data);
+        obj->data = iter;
+    }
     else
     {
         printf("Unknown object type\n");
@@ -160,6 +171,7 @@ void free_minim_object(MinimObject *obj)
         if (obj->type == MINIM_OBJ_AST)             free_ast(obj->data);
         else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->data);
         else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
+        else if (obj->type == MINIM_OBJ_SEQ)        free_minim_iter(obj->data);
         else                                        free(obj->data);
     }
 
