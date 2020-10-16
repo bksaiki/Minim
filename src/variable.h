@@ -6,6 +6,7 @@
 // Internals
 
 bool minim_symbolp(MinimObject *obj);
+bool assert_symbol(MinimObject *obj, MinimObject **res, const char* msg);
 
 // Builtins
 

@@ -14,6 +14,17 @@ bool minim_symbolp(MinimObject *obj)
     return (obj->type == MINIM_OBJ_SYM);   
 }
 
+bool assert_symbol(MinimObject *obj, MinimObject **res, const char* msg)
+{
+    if (obj->type != MINIM_OBJ_SYM)
+    {
+        minim_error(res, "%s", msg);
+        return false;
+    }
+
+    return true;
+}
+
 void env_load_module_variable(MinimEnv *env)
 {
     env_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
@@ -242,7 +253,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
             if (peek)
             {
                 eval_ast(env, args[1]->data, &val);
-                env_intern_sym(env, sym->data, val);
+                env_set_sym(env, sym->data, val);
                 init_minim_object(&res, MINIM_OBJ_VOID);
             }
             else

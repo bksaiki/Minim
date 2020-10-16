@@ -7,6 +7,7 @@
 // Modules
 
 #include "bool.h"
+#include "for.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -96,6 +97,24 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     add_metadata(env->vals[env->count - 1], sym);
 }
 
+int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
+{
+    for (int i = 0; i < env->count; ++i)
+    {
+        if (strcmp(sym, env->syms[i]) == 0)
+        {
+            free_minim_object(env->vals[i]);
+            env->vals[i] = obj;
+            add_metadata(env->vals[i], sym);
+            return 1;
+        }
+    }
+
+    if (env->parent)
+        return env_set_sym(env->parent, sym, obj);
+    return 0;
+}
+
 const char *env_peek_key(MinimEnv *env, MinimObject *value)
 {
     for (int i = 0; i < env->count; ++i)
@@ -157,6 +176,7 @@ void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...
 void env_load_builtins(MinimEnv *env)
 {
     env_load_module_bool(env);
+    env_load_module_for(env);
     env_load_module_lambda(env);
     env_load_module_list(env);
     env_load_module_number(env);

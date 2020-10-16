@@ -20,8 +20,8 @@ void init_minim_iter(MinimIter **piter, MinimObject *obj)
     {
         iter = malloc(sizeof(MinimIter));
         iter->data = obj;
-        iter->end = minim_nullp(obj);
         iter->type = MINIM_ITER_LIST;
+        iter->end = minim_nullp(obj);
         *piter = iter;
     }
     else
@@ -36,27 +36,22 @@ void copy_minim_iter(MinimIter **pdest, MinimIter *src)
     MinimIter *iter = malloc(sizeof(MinimIter));
 
     iter->data = src->data;
-    iter->end = src->end;
     iter->type = src->type;
+    iter->end = src->end;
     *pdest = iter;
 }
 
-void *minim_iter_next(MinimIter *iter)
+void minim_iter_next(MinimIter *iter)
 {
     if (iter->type == MINIM_ITER_LIST)
     {
         MinimObject *obj = iter->data;
-        MinimObject *res = MINIM_CAR(obj);
 
         iter->data = MINIM_CDR(obj);
-        iter->end = minim_nullp(iter->data);
+        iter->end = !iter->data;
         MINIM_CDR(obj) = NULL;
         free_minim_object(obj);
-
-        return res;
     }
-
-    return NULL;
 }
 
 void *minim_iter_peek(MinimIter *iter)
@@ -68,4 +63,28 @@ void *minim_iter_peek(MinimIter *iter)
     }
 
     return NULL;
+}
+
+bool minim_iter_endp(MinimIter *iter)
+{
+    return iter->end;
+}
+
+
+bool minim_is_iterable(MinimObject *obj)
+{
+    if (minim_listp(obj))       return true;
+
+    return false;
+}
+
+bool assert_minim_iterable(MinimObject *obj, MinimObject **res, const char *msg)
+{
+    if (!minim_is_iterable(obj))
+    {
+        minim_error(res, "%s", msg);
+        return false;
+    }
+
+    return true;
 }
