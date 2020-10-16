@@ -125,7 +125,6 @@ static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
             it = pair[1];
             pair = it->data;
             args[i] = eval_sexpr_node(env, pair[0]);
-            pair[0] = NULL;
         }
 
         proc = op->data;
@@ -209,6 +208,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
     {
         MinimObject *res, *op, **possible_err, **args;
         int argc = node->count - 1;
+        bool consumeNodes = false;
 
         args = malloc(argc * sizeof(MinimObject*));
         op = env_peek_sym(env, node->children[0]->sym);
@@ -216,6 +216,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
         if (!op)
         {
             minim_error(&res, "Unknown operator: %s", node->children[0]->sym);
+            free(args);
             return res;
         }
 
@@ -250,12 +251,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 
             for (int i = 0; i < argc; ++i)
             {
-                init_minim_object(&args[i], MINIM_OBJ_SYNTAX, node->children[i + 1]);
-                copy_minim_object(&args[i], args[i]); // dumb workaround
+                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);
+                node->children[i + 1] = NULL;
             }
             
             res = proc(env, argc, args);
-            free_minim_objects(argc, args);
+            consumeNodes = true;
         }
         else if (op->type == MINIM_OBJ_CLOSURE)
         {
@@ -289,6 +290,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
             minim_error(&res, "'%s' is not an operator", node->children[0]->sym);
             free(args);
             return res;
+        }
+
+        if (consumeNodes)
+        {
+            free_ast(node->children[0]);
+            node->count = 0;
         }
 
         return res;

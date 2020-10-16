@@ -18,6 +18,12 @@ static bool iters_valid(int argc, MinimIter **iters)
     return true;
 }
 
+static void free_iters(int argc, MinimIter **iters)
+{
+    for (int i = 0; i < argc; ++i)
+        free_minim_iter(iters[i]);
+}
+
 // Builtins
 
 void env_load_module_for(MinimEnv *env)
@@ -32,18 +38,15 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
     if (assert_exact_argc(argc, args, &res, "for", 2))
     {
         MinimObject *it, *bindings;
-        int len;
 
         // Convert iter/iterable pairs to list
         eval_ast_as_quote(env, args[0]->data, &bindings);
-        len = minim_list_length(bindings);
-        it = bindings;
-
-        if (assert_list(bindings, &res, "Expected ((iter iterable) ...) in the 1st argument of 'let'"))
+        if (assert_list(bindings, &res, "Expected ((iter iterable) ...) in the 1st argument of 'for'"))
         {
             MinimObject *bind, *val;
             MinimIter **iters;
             char **syms;
+            int len;
             bool err = false;
             
             it = bindings;
@@ -54,9 +57,9 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
             for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
             {
                 bind = MINIM_CAR(it);
-                if (!assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'let'") ||
-                    !assert_list_len(bind, &res, 2, "A valid binding must contain a name and value") ||
-                    !assert_symbol(MINIM_CAR(bind), &res, "A binding name must be a symbol"))
+                if (!assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for'") ||
+                    !assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for'") ||
+                    !assert_symbol(MINIM_CAR(bind), &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                 {
                     err = true;
                     break;
@@ -82,6 +85,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                 while(iters_valid(len, iters))
                 {
                     MinimEnv *env2;
+                    MinimObject *ast;
 
                     init_env(&env2);
                     env2->parent = env;
@@ -93,15 +97,31 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                         minim_iter_next(iters[i]);
                     }
 
-                    eval_ast(env2, args[1]->data, &val);
-                    free_minim_object(val);
-                    pop_env(env2);
+                    copy_minim_object(&ast, args[1]);
+                    eval_ast(env2, ast->data, &val);
+
+                    if (val->type == MINIM_OBJ_ERR)
+                    {
+                        res = val;
+                        free_minim_object(ast);
+                        pop_env(env2);
+                        err = true;
+                        break;
+                    }
+                    else
+                    {
+                        free_minim_object(val);
+                        free_minim_object(ast);
+                        pop_env(env2);
+                    }
                 }   
 
-                init_minim_object(&res, MINIM_OBJ_VOID);
+                if (!err) init_minim_object(&res, MINIM_OBJ_VOID);
+                free_iters(len, iters);
             }
 
             free(iters);
+            free(syms);
         }
 
         free_minim_object(bindings);

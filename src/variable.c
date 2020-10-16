@@ -45,8 +45,20 @@ MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
     if (assert_exact_argc(argc, args, &res, "if", 3))
     {
         eval_ast(env, args[0]->data, &cond);
-        if (coerce_into_bool(cond))     eval_ast(env, args[1]->data, &res);
-        else                            eval_ast(env, args[2]->data, &res);
+
+        if (cond->type == MINIM_OBJ_ERR)
+        {
+            res = cond;
+            cond = NULL;
+        }
+        else if (coerce_into_bool(cond))
+        {
+            eval_ast(env, args[1]->data, &res);
+        }
+        else
+        {
+            eval_ast(env, args[2]->data, &res);
+        }
 
         free_minim_object(cond);
     }
