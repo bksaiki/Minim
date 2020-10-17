@@ -24,6 +24,23 @@ static void free_iters(int argc, MinimIter **iters)
         free_minim_iter(iters[i]);
 }
 
+static bool try_iter_no_copy(MinimObject *obj, MinimEnv *env, MinimIter **piter)
+{
+    MinimObject *val;
+
+    if (obj->type == MINIM_OBJ_SYM)
+    {
+        val = env_peek_sym(env, obj->data);
+        if (val && minim_is_iterable(val))
+        {
+            init_minim_iter(piter, val);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Builtins
 
 void env_load_module_for(MinimEnv *env)
@@ -45,6 +62,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
         {
             MinimObject *bind, *val;
             MinimIter **iters;
+            MinimIterObjs *iobjs;
             char **syms;
             int len;
             bool err = false;
@@ -53,6 +71,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
             len = minim_list_length(bindings);
             iters = malloc(len * sizeof(MinimIter*));
             syms = malloc(len * sizeof(char*));
+            iobjs = env_get_iobjs(env);
 
             for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
             {
@@ -66,18 +85,21 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                 }
                 else
                 {
-                    eval_sexpr(env, MINIM_CADR(bind), &val);
-                    if (!assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for'"))
-                    {
-                        free_minim_object(val);
-                        err = true;
-                        break;
-                    }
-
-                    init_minim_iter(&iters[i], val);
                     syms[i] = MINIM_CAR(bind)->data;
-                }
+                    if (!try_iter_no_copy(MINIM_CADR(bind), env, &iters[i]))
+                    {
+                        eval_sexpr(env, MINIM_CADR(bind), &val);
+                        if (!assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for'"))
+                        {
+                            free_minim_object(val);
+                            err = true;
+                            break;
+                        }
 
+                        init_minim_iter(&iters[i], val);
+                        minim_iter_objs_add(iobjs, iters[i]);
+                    }
+                }
             }
 
             if (!err)

@@ -4,12 +4,16 @@
 #include "object.h"
 #include "print.h" // debugging
 
+struct MinimIterObjs;
+typedef struct MinimIterObjs MinimIterObjs;
+
 typedef struct MinimEnv
 {
     int count;
     char **syms;
     MinimObject **vals;
     struct MinimEnv *parent;
+    MinimIterObjs *iobjs;
 } MinimEnv;
 
 // Initializes a new environment object.
@@ -32,6 +36,9 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value);
 // Returns a pointer to the object associated with the symbol. Returns NULL
 // if the symbol is not in the table.
 MinimObject *env_peek_sym(MinimEnv *env, const char* sym);
+
+// Returns a pointer to the table of cached iterable objects.
+MinimIterObjs *env_get_iobjs(MinimEnv *env);
 
 // Recursively deletes the stack of environment objects.
 void free_env(MinimEnv *env);
