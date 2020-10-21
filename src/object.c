@@ -129,7 +129,8 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_CLOSURE)
     {
-        MinimLambda *lam = obj->data;
+        MinimLambda *lam;
+
         copy_minim_lambda(&lam, src->data);
         obj->data = lam;
     }

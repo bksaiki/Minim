@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "assert.h"
+#include "bool.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -77,6 +78,51 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
 
     init_minim_object(&node, MINIM_OBJ_PAIR, val, rest);
     return node;
+}
+
+static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv *env, bool negate)
+{
+    MinimObject **args, *val, *next; 
+
+    if (!list)
+        return NULL;
+    
+    args = malloc(sizeof(MinimObject*));
+    copy_minim_object(&args[0], MINIM_CAR(list));
+    if (filter->type == MINIM_OBJ_FUNC)
+    {
+        MinimBuiltin func = filter->data;
+        val = func(env, 1, &args[0]);
+    }
+    else
+    {
+        MinimLambda *lam = filter->data;
+        val = eval_lambda(lam, env, 1, &args[0]);
+    }
+
+    if (val->type == MINIM_OBJ_ERR)
+        return val;
+
+    next = filter_list(MINIM_CDR(list), filter, env, negate);
+    if (next && next->type == MINIM_OBJ_ERR)
+    {
+        free_minim_object(val);
+        return next;
+    }
+
+    if (negate != coerce_into_bool(val))
+    {
+        MINIM_CDR(list) = next;
+        free_minim_object(val);
+        return list;
+    }
+    else
+    {
+        MINIM_CDR(list) = NULL;
+        free_minim_object(list);
+        free_minim_object(val);
+        return next;
+    }
 }
 
 //
@@ -199,6 +245,8 @@ void env_load_module_list(MinimEnv *env)
 
     env_load_builtin(env, "map", MINIM_OBJ_FUNC, minim_builtin_map);
     env_load_builtin(env, "apply", MINIM_OBJ_FUNC, minim_builtin_apply);
+    env_load_builtin(env, "filter", MINIM_OBJ_FUNC, minim_builtin_filter);
+    env_load_builtin(env, "filtern", MINIM_OBJ_FUNC, minim_builtin_filtern);
 }
 
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
@@ -538,6 +586,40 @@ MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args)
             MinimLambda *lam = args[0]->data;
             res = eval_lambda(lam, env, len, vals);
         }
+    }
+
+    free_minim_objects(argc, args);
+    return res;
+}
+
+MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, args, &res, "filter", 2) &&
+        assert_func(args[0], &res, "Expected a function in the 1st argument of 'filter'") &&
+        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filter'"))
+    {
+        res = filter_list(args[1], args[0], env, false);
+        if (res->type != MINIM_OBJ_ERR)
+            args[1] = NULL;
+    }
+
+    free_minim_objects(argc, args);
+    return res;
+}
+
+MinimObject *minim_builtin_filtern(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, args, &res, "filtern", 2) &&
+        assert_func(args[0], &res, "Expected a function in the 1st argument of 'filtern'") &&
+        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filtern'"))
+    {
+        res = filter_list(args[1], args[0], env, true);
+        if (res->type != MINIM_OBJ_ERR)
+            args[1] = NULL;
     }
 
     free_minim_objects(argc, args);
