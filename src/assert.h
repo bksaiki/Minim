@@ -3,7 +3,8 @@
 
 #include "object.h"
 
-typedef bool (*MinimObjectPred)(MinimObject*);
+typedef bool (*MinimObjectPred)(MinimObject*); // TODO: remove
+typedef bool (*MinimPred)(MinimObject*);
 
 // *** Argument types *** //
 
@@ -17,5 +18,8 @@ bool assert_numerical_args(int argc, MinimObject **args, MinimObject **ret, cons
 bool assert_min_argc(int argc, MinimObject **args, MinimObject** ret, const char *op, int min);
 bool assert_exact_argc(int argc, MinimObject **args, MinimObject** ret, const char *op, int exact);
 bool assert_range_argc(int argc, MinimObject **args, MinimObject** ret, const char *op, int min, int max);
+
+// *** Pred *** //
+bool assert_for_all(int argc, MinimObject **args, MinimObject **ret, const char *msg, MinimPred pred);
 
 #endif

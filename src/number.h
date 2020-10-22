@@ -30,6 +30,7 @@ void copy_minim_number(MinimNumber **pnum, MinimNumber *src);
 void free_minim_number(MinimNumber *num);
 
 char *minim_number_to_str(MinimNumber *num);
+int minim_number_cmp(MinimNumber *a, MinimNumber *b);
 
 // Predicates
 
@@ -63,5 +64,11 @@ MinimObject *minim_builtin_negativep(MinimEnv *env, int argc, MinimObject **args
 MinimObject *minim_builtin_positivep(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_exactp(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_inexactp(MinimEnv *env, int argc, MinimObject **args);
+
+MinimObject *minim_builtin_eq(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_gt(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_lt(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_gte(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_lte(MinimEnv *env, int argc, MinimObject **args);
 
 #endif

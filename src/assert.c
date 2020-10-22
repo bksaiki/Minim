@@ -85,3 +85,17 @@ bool assert_range_argc(int argc, MinimObject **args, MinimObject** ret, const ch
 
     return true;
 }
+
+bool assert_for_all(int argc, MinimObject **args, MinimObject **ret, const char *msg, MinimPred pred)
+{
+    for (int i = 0; i < argc; ++i)
+    {
+        if (!pred(args[i]))
+        {
+            minim_error(ret, "%s", msg);
+            return false;
+        }
+    }
+
+    return true;
+}

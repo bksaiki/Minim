@@ -195,6 +195,9 @@ bool minim_nullp(MinimObject* thing)
 
 bool minim_listof(MinimObject* list, MinimObjectPred pred)
 {
+    if (minim_nullp(list)) // nullary
+        return true;
+
     for (MinimObject *it = list; it; it = MINIM_CDR(it))
     {
         if (!pred(MINIM_CAR(it)))
