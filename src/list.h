@@ -13,6 +13,7 @@
 #define MINIM_CDDR(x)   MINIM_CDR(MINIM_CDR(x))
 
 // Assertions
+bool assert_cons(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *msg);
 bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, const char *msg);

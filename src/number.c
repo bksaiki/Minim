@@ -154,37 +154,39 @@ bool minim_number_inexactp(MinimNumber *num)
     return num->type == MINIM_NUMBER_INEXACT;
 }
 
+bool minim_number_exactintp(MinimNumber *num)
+{
+    return (num->type == MINIM_NUMBER_EXACT && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0);
+}
+
+bool minim_number_exactposintp(MinimNumber *num)
+{
+    return (num->type == MINIM_NUMBER_EXACT && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0 && mpq_sgn(num->rat));
+}
+
 bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg)
 {
-    if (arg->type != MINIM_OBJ_NUM)
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
-
-    return true;
+    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM);
 }
 
 bool assert_exact_number(MinimObject *arg, MinimObject **ret, const char *msg)
 {
-    if (!assert_number(arg, ret, msg) && !minim_number_exactp(arg->data))
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
-
-    return true;
+    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exactp(arg->data));
 }
 
 bool assert_inexact_number(MinimObject *arg, MinimObject **ret, const char *msg)
 {
-    if (!assert_number(arg, ret, msg) && !minim_number_inexactp(arg->data))
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
+    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_inexactp(arg->data));
+}
 
-    return true;
+bool assert_exact_int(MinimObject *arg, MinimObject **ret, const char *msg)
+{
+    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exactintp(arg->data));
+}
+
+bool assert_exact_pos_int(MinimObject *arg, MinimObject **ret, const char *msg)
+{
+    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exactposintp(arg->data));
 }
 
 // *** Internals *** //

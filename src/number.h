@@ -39,6 +39,8 @@ bool minim_number_negativep(MinimNumber *num);
 bool minim_number_positivep(MinimNumber *num);
 bool minim_number_exactp(MinimNumber *num);
 bool minim_number_inexactp(MinimNumber *num);
+bool minim_number_exactintp(MinimNumber *num);
+bool minim_number_exactposintp(MinimNumber *num);
 
 // Arithmetic functions
 
@@ -47,6 +49,8 @@ bool minim_number_inexactp(MinimNumber *num);
 bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_exact_number(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_inexact_number(MinimObject *arg, MinimObject **ret, const char *msg);
+bool assert_exact_int(MinimObject *arg, MinimObject **ret, const char *msg);
+bool assert_exact_pos_int(MinimObject *arg, MinimObject **ret, const char *msg);
 
 // Internals
 

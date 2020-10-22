@@ -4,50 +4,7 @@
 #include "assert.h"
 #include "util.h"
 
-static int is_num_pred(const void *thing)
-{
-    MinimObject **pobj = (MinimObject**) thing;
-    return ((*pobj)->type == MINIM_OBJ_NUM);
-}
-
 // ***** Visible functions ***** //
-
-// Single argument type
-
-bool assert_pair_arg(MinimObject *arg, MinimObject** ret, const char* op)
-{
-    if (arg->type != MINIM_OBJ_PAIR)
-    {
-        minim_error(ret, "Expected a pair for '%s'", op);
-        return false;
-    }
-
-    return true;
-}
-
-bool assert_sym_arg(MinimObject *arg, MinimObject **ret, const char *op)
-{
-    if (arg->type != MINIM_OBJ_SYM)
-    {
-        minim_error(ret, "Expected a symbol for '%s'", op);
-        return false;
-    }
-
-    return true;
-}
-
-//  Multi-argument type
-
-bool assert_numerical_args(int argc, MinimObject **args, MinimObject** ret, const char* op)
-{
-    if (!all_of(args, argc, sizeof(MinimObject*), is_num_pred))
-    {
-        minim_error(ret, "Expected numerical arguments for '%s'", op);
-        return false;
-    }
-
-    return true;
-}
 
 //  Arity
 
@@ -98,4 +55,11 @@ bool assert_for_all(int argc, MinimObject **args, MinimObject **ret, const char 
     }
 
     return true;
+}
+
+bool assert_generic(MinimObject **ret, const char *msg, bool pred)
+{
+    if (!pred)  minim_error(ret, "%s", msg);
+    
+    return pred;
 }

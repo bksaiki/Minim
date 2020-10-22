@@ -129,6 +129,17 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
 //  Visible functions
 //
 
+bool assert_pair(MinimObject *arg, MinimObject **ret, const char *msg)
+{
+    if (!minim_consp(arg))
+    {
+        minim_error(ret, "%s", msg);
+        return false;
+    }
+
+    return true;
+}
+
 bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg)
 {
     if (!minim_listp(arg))
@@ -178,19 +189,18 @@ bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, co
 
 bool minim_consp(MinimObject* thing)
 {
-    return (thing->type == MINIM_OBJ_PAIR &&
-            MINIM_CAR(thing) && MINIM_CDR(thing) &&
-            MINIM_CDR(thing)->type != MINIM_OBJ_PAIR);
+    return (thing->type == MINIM_OBJ_PAIR && MINIM_CAR(thing));
 }
 
 bool minim_listp(MinimObject* thing)
 {
-    return (thing->type == MINIM_OBJ_PAIR && !minim_consp(thing));
+    return (thing->type == MINIM_OBJ_PAIR && (!MINIM_CAR(thing) || !MINIM_CDR(thing) ||
+            MINIM_CDR(thing)->type == MINIM_OBJ_PAIR));
 }
 
 bool minim_nullp(MinimObject* thing)
 {
-    return (minim_listp(thing) && !MINIM_CAR(thing) && !MINIM_CDR(thing));
+    return (thing->type == MINIM_OBJ_PAIR && !MINIM_CAR(thing) && !MINIM_CDR(thing));
 }
 
 bool minim_listof(MinimObject* list, MinimObjectPred pred)
@@ -287,64 +297,33 @@ MinimObject *minim_builtin_consp(MinimEnv *env, int argc, MinimObject** args)
 
 MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args)
 {
-    MinimObject *res, **pair;
+    MinimObject *res;
 
-    if (!assert_exact_argc(argc, args, &res, "car", 1) ||
-        !assert_pair_arg(args[0], &res, "car"))
+    if (assert_exact_argc(argc, args, &res, "car", 1) &&
+        assert_pair(args[0], &res, "Expected a pair for 'car'") &&
+        assert_generic(&res, "Expected a non-null list for 'car'", MINIM_CAR(args[0])))
     {
-        free_minim_objects(argc, args);
-    }
-    else if (!MINIM_CAR(args[0]))
-    {
-        free_minim_objects(argc, args);
-        minim_error(&res, "Expected a pair for 'cdr'");
-    }
-    else
-    {
-        pair = ((MinimObject**) args[0]->data);
-        res = pair[0];
-        free_minim_object(pair[1]);
-
-        pair[0] = NULL;
-        pair[1] = NULL;
-        free_minim_object(args[0]);
-        free(args);
+        res = MINIM_CAR(args[0]);
+        MINIM_CAR(args[0]) = NULL;
     }
 
+    free_minim_objects(argc, args);
     return res;
 }
 
 MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args)
 {
-    MinimObject *res, **pair;
+    MinimObject *res;
 
-    if (!assert_exact_argc(argc, args, &res, "car", 1) ||
-        !assert_pair_arg(args[0], &res, "car"))
+    if (assert_exact_argc(argc, args, &res, "cdr", 1) &&
+        assert_pair(args[0], &res, "Expected a pair for 'cdr'") &&
+        assert_generic(&res, "Expected a non-null list for 'cdr'", MINIM_CAR(args[0])))
     {
-        free_minim_objects(argc, args);
-    }
-    else if (!MINIM_CAR(args[0]))
-    {
-        free_minim_objects(argc, args);
-        minim_error(&res, "Expected a pair for 'cdr'");
-    }
-    else if (!MINIM_CDR(args[0]))
-    {
-        free_minim_objects(argc, args);
-        init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-    }
-    else
-    {
-        pair = ((MinimObject**) args[0]->data);
-        free_minim_object(pair[0]);
-        res = pair[1];
-
-        pair[0] = NULL;
-        pair[1] = NULL;
-        free_minim_object(args[0]);
-        free(args);
+        res = MINIM_CDR(args[0]);
+        MINIM_CDR(args[0]) = NULL;
     }
 
+    free_minim_objects(argc, args);
     return res;
 }
 
@@ -512,17 +491,11 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
 
     if (assert_exact_argc(argc, args, &res, "list-ref", 2) &&
         assert_list(args[0], &res, "Expected a list for the 1st argument of 'list-ref") &&
-        assert_number(args[1], &res, "Expected a number for the 2nd argument of 'list-ref'"))
+        assert_exact_pos_int(args[1], &res, "Expected an exact positive integer for the 2nd argument of 'list-ref'"))
     {
         MinimObject *it = args[0];
         MinimNumber* num = args[1]->data;
-        mpz_t real;
-        int idx;
-
-        mpz_init(real);
-        mpq_get_num(real, num->rat);
-        idx = mpz_get_si(real);
-        mpz_clear(real);
+        int idx = mpz_get_si(mpq_numref(num->rat));
 
         for (int i = 0; i < idx; ++i, it = MINIM_CDR(it))
             if (!it) break;

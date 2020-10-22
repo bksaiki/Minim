@@ -101,33 +101,30 @@ static void minim_number_sqrt(MinimNumber *res, MinimNumber *a)
     }
     else if (a->type == MINIM_NUMBER_EXACT)
     {
-        mpz_t num, den;
-
-        mpz_inits(num, den, NULL);
-        mpq_get_num(num, a->rat);
-        mpq_get_den(den, a->rat);
-
-        if (mpz_cmpabs_ui(den, 1) == 0)
+        if (mpz_cmpabs_ui(mpq_denref(a->rat), 1) == 0)
         {
-            mpz_sqrtrem(num, den, num);   
-            if (mpz_cmp_ui(den, 0) == 0)
+            mpz_t sq, rem;
+
+            mpz_inits(sq, rem, NULL);
+            mpz_sqrtrem(sq, rem, mpq_numref(a->rat));   
+            if (mpz_cmp_ui(rem, 0) == 0)
             {
                 reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-                mpq_set_z(res->rat, num);
+                mpq_set_z(res->rat, sq);
             }
             else
             {
                 reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
                 res->fl = sqrt(mpq_get_d(a->rat));
             }
+
+            mpz_clears(sq, rem, NULL);
         }
         else
         {
             reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
             res->fl = sqrt(mpq_get_d(a->rat));
         }
-
-        mpz_clears(num, den, NULL);
     }
     else        
     {
@@ -222,8 +219,8 @@ MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_numerical_args(argc, args, &res, "+") &&
-        assert_min_argc(argc, args, &res, "+", 1))
+    if (assert_min_argc(argc, args, &res, "+", 1) &&
+        assert_for_all(argc, args, &res, "Expected numerical arguments for '+'", minim_numberp))
     {
         copy_minim_object(&res, args[0]);
         for (int i = 1; i < argc; ++i)
@@ -238,8 +235,8 @@ MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_numerical_args(argc, args, &res, "-") &&
-        assert_min_argc(argc, args, &res, "-", 1))
+    if (assert_min_argc(argc, args, &res, "-", 1) &&
+        assert_for_all(argc, args, &res, "Expected numerical arguments for '-'", minim_numberp))
     {    
         if (argc == 1)
         {
@@ -263,8 +260,8 @@ MinimObject *minim_builtin_mul(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_numerical_args(argc, args, &res, "*") &&
-        assert_min_argc(argc, args, &res, "*", 1))
+    if (assert_min_argc(argc, args, &res, "*", 1) &&
+        assert_for_all(argc, args, &res, "Expected numerical arguments for '*'", minim_numberp))
     {
         copy_minim_object(&res, args[0]);
         for (int i = 1; i < argc; ++i)
@@ -279,8 +276,8 @@ MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_numerical_args(argc, args, &res, "/") &&
-        assert_exact_argc(argc, args, &res, "/", 2))
+    if (assert_exact_argc(argc, args, &res, "/", 2) &&
+        assert_for_all(argc, args, &res, "Expected numerical arguments for '/'", minim_numberp))
     {
         if (minim_number_zerop(args[1]->data))
         {

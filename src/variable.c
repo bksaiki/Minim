@@ -74,7 +74,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
     if (assert_range_argc(argc, args, &res, "def", 2, 3))
     {
         eval_ast_as_quote(env, args[0]->data, &sym);
-        if (assert_sym_arg(sym, &res, "def"))
+        if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
         {
             if (argc == 2)
             {
@@ -259,7 +259,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
     if (assert_exact_argc(argc, args, &res, "set!", 2))
     {
         eval_ast_as_quote(env, args[0]->data, &sym);
-        if (assert_sym_arg(sym, &res, "def"))
+        if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'set!'"))
         {
             MinimObject *val, *peek = env_peek_sym(env, sym->data);
             if (peek)
