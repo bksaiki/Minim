@@ -8,5 +8,6 @@
 void env_load_module_for(MinimEnv *env);
 
 MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args);
 
 #endif
