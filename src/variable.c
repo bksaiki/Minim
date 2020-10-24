@@ -63,7 +63,6 @@ MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
         free_minim_object(cond);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -86,6 +85,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
                 copy_minim_object(&lam_args[0], args[1]);
                 copy_minim_object(&lam_args[1], args[2]);
                 val = minim_builtin_lambda(env, 2, lam_args);
+                free_minim_objects(2, lam_args);
             }
 
             if (val->type != MINIM_OBJ_ERR)
@@ -102,7 +102,6 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
         free_minim_object(sym);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -116,12 +115,12 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
         MinimObject *it, *it2, *val;
         char *sym;
         int len;
+        bool err = false;
         
         // Convert bindings to list
         eval_ast_as_quote(env, args[0]->data, &bindings);
         if (bindings->type == MINIM_OBJ_ERR)
         {
-            free_minim_objects(argc, args);
             res = bindings;
             return res;
         }
@@ -138,27 +137,21 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
             it2 = MINIM_CAR(it);
             if (minim_list_length(it2) != 2)
             {
-                minim_error(&res, "Expected a symbol and value in binding %d of \'let\'", i + 1);
-                free_minim_objects(argc, args);
-                free_minim_object(bindings);
-                pop_env(env2);
-                return res;
+                minim_error(&res, "Expected a symbol and value in binding %d of 'let'", i + 1);
+                err = true;
+                break;
             }
             else if (MINIM_CAR(it2)->type != MINIM_OBJ_SYM)
             {
-                minim_error(&res, "Expected a symbol in binding %d of \'let\'", i + 1);
-                free_minim_objects(argc, args);
-                free_minim_object(bindings);
-                pop_env(env2);
-                return res;
+                minim_error(&res, "Expected a symbol in binding %d of 'let'", i + 1);
+                err = true;
+                break;
             }
             else if (MINIM_CADR(it2)->type == MINIM_OBJ_VOID)
             {
-                minim_error(&res, "Expected a non-void value in the %d binding of \'let\'", i + 1);
-                free_minim_objects(argc, args);
+                minim_error(&res, "Expected a non-void value in the %d binding of 'let'", i + 1);
                 free_minim_object(bindings);
-                pop_env(env2);
-                return res;
+                break;
             }
             else
             {
@@ -168,12 +161,11 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
             }
         }
 
-        eval_ast(env2, args[1]->data, &res);
+        if (!err) eval_ast(env2, args[1]->data, &res);
         free_minim_object(bindings);
         pop_env(env2);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -187,6 +179,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
         MinimObject *it, *it2, *val;
         char *sym;
         int len;
+        bool err = false;
         
         // Convert bindings to list
         eval_ast_as_quote(env, args[0]->data, &bindings);
@@ -202,27 +195,21 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
             it2 = MINIM_CAR(it);
             if (minim_list_length(it2) != 2)
             {
-                minim_error(&res, "Expected a symbol and value in binding %d of \'let\'", i + 1);
-                free_minim_objects(argc, args);
-                free_minim_object(bindings);
-                pop_env(env2);
-                return res;
+                minim_error(&res, "Expected a symbol and value in binding %d of 'let*'", i + 1);
+                err = true;
+                break;
             }
             else if (MINIM_CAR(it2)->type != MINIM_OBJ_SYM)
             {
-                minim_error(&res, "Expected a symbol in binding %d of \'let\'", i + 1);
-                free_minim_objects(argc, args);
-                free_minim_object(bindings);
-                pop_env(env2);
-                return res;
+                minim_error(&res, "Expected a symbol in binding %d of 'let*'", i + 1);
+                err = true;
+                break;
             }
             else if (MINIM_CADR(it2)->type == MINIM_OBJ_VOID)
             {
-                minim_error(&res, "Expected a non-void value in the %d binding of \'let\'", i + 1);
-                free_minim_objects(argc, args);
+                minim_error(&res, "Expected a non-void value in the %d binding of 'let*'", i + 1);
                 free_minim_object(bindings);
-                pop_env(env2);
-                return res;
+                break;
             }
             else
             {
@@ -232,12 +219,11 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
             }
         }
 
-        eval_ast(env2, args[1]->data, &res);
+        if (!err) eval_ast(env2, args[1]->data, &res);
         free_minim_object(bindings);
         pop_env(env2);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -247,8 +233,6 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, args, &res, "quote", 1))
         eval_ast_as_quote(env, args[0]->data, &res);
-
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -277,7 +261,6 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
         }
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -287,6 +270,5 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, args, &res, "symbol?", 1))
         init_minim_object(&res, MINIM_OBJ_BOOL, args[0]->type == MINIM_OBJ_SYM);
-    free_minim_objects(argc, args);
     return res;
 }

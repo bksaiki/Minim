@@ -150,7 +150,6 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
         free_minim_object(bindings);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -158,7 +157,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, args, &res, "for", 2))
+    if (assert_exact_argc(argc, args, &res, "for-list", 2))
     {
         MinimObject *it, *bindings;
 
@@ -182,9 +181,9 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
             for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
             {
                 bind = MINIM_CAR(it);
-                if (!assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for'") ||
-                    !assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for'") ||
-                    !assert_symbol(MINIM_CAR(bind), &res, "Expected a symbol for a variable name in the bindings of 'for'"))
+                if (!assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for-list'") ||
+                    !assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for-list'") ||
+                    !assert_symbol(MINIM_CAR(bind), &res, "Expected a symbol for a variable name in the bindings of 'for-list'"))
                 {
                     err = true;
                     break;
@@ -195,7 +194,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                     if (!try_iter_no_copy(MINIM_CADR(bind), env, &iters[i]))
                     {
                         eval_sexpr(env, MINIM_CADR(bind), &val);
-                        if (!assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for'"))
+                        if (!assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for-list'"))
                         {
                             free_minim_object(val);
                             err = true;
@@ -260,6 +259,5 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
         free_minim_object(bindings);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }

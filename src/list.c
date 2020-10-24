@@ -64,6 +64,7 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
         
         copy_minim_object(&args[0], MINIM_CAR(list));
         val = eval_lambda(lam, env, 1, args);
+        free_minim_objects(1, args);
     }
 
     if (val->type == MINIM_OBJ_ERR)
@@ -491,7 +492,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
 
     if (assert_exact_argc(argc, args, &res, "list-ref", 2) &&
         assert_list(args[0], &res, "Expected a list for the 1st argument of 'list-ref") &&
-        assert_exact_pos_int(args[1], &res, "Expected an exact positive integer for the 2nd argument of 'list-ref'"))
+        assert_exact_nonneg_int(args[1], &res, "Expected an exact non-negative integer for the 2nd argument of 'list-ref'"))
     {
         MinimObject *it = args[0];
         MinimNumber* num = args[1]->data;

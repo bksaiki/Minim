@@ -159,9 +159,9 @@ bool minim_number_exactintp(MinimNumber *num)
     return (num->type == MINIM_NUMBER_EXACT && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0);
 }
 
-bool minim_number_exactposintp(MinimNumber *num)
+bool minim_number_exact_nonneg_intp(MinimNumber *num)
 {
-    return (num->type == MINIM_NUMBER_EXACT && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0 && mpq_sgn(num->rat));
+    return (num->type == MINIM_NUMBER_EXACT && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0 && mpq_sgn(num->rat) >= 0);
 }
 
 bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg)
@@ -184,9 +184,9 @@ bool assert_exact_int(MinimObject *arg, MinimObject **ret, const char *msg)
     return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exactintp(arg->data));
 }
 
-bool assert_exact_pos_int(MinimObject *arg, MinimObject **ret, const char *msg)
+bool assert_exact_nonneg_int(MinimObject *arg, MinimObject **ret, const char *msg)
 {
-    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exactposintp(arg->data));
+    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exact_nonneg_intp(arg->data));
 }
 
 // *** Internals *** //

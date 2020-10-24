@@ -90,8 +90,6 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
         pop_env(env2);
     }
     
-
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -128,8 +126,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
             {
                 init_minim_lambda(&lam);
                 lam->formals = bindings;
-                lam->body = args[1];
-                args[1] = NULL;
+                copy_minim_object(&lam->body, args[1]);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
             }
             else
@@ -144,6 +141,5 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
         }
     }
 
-    free_minim_objects(argc, args);
     return res;
 }

@@ -208,7 +208,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
     {
         MinimObject *res, *op, **possible_err, **args;
         int argc = node->count - 1;
-        bool consumeNodes = false;
 
         args = malloc(argc * sizeof(MinimObject*));
         op = env_peek_sym(env, node->children[0]->sym);
@@ -250,13 +249,11 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
             MinimBuiltin proc = ((MinimBuiltin) op->data);
 
             for (int i = 0; i < argc; ++i)
-            {
-                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);
-                node->children[i + 1] = NULL;
-            }
-            
+                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
             res = proc(env, argc, args);
-            consumeNodes = true;
+
+            for (int i = 0; i < argc; ++i) free(args[i]);
+            free(args);
         }
         else if (op->type == MINIM_OBJ_CLOSURE)
         {
@@ -284,18 +281,15 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 
             res = eval_lambda(lam, env, argc, args);
             free_minim_lambda(lam);
+
+            for (int i = 0; i < argc; ++i) free(args[i]);
+            free(args);
         }
         else
         {   
             minim_error(&res, "'%s' is not an operator", node->children[0]->sym);
             free(args);
             return res;
-        }
-
-        if (consumeNodes)
-        {
-            free_ast(node->children[0]);
-            node->count = 0;
         }
 
         return res;
