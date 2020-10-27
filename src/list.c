@@ -64,7 +64,6 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
         
         copy_minim_object(&args[0], MINIM_CAR(list));
         val = eval_lambda(lam, env, 1, args);
-        free_minim_objects(1, args);
     }
 
     if (val->type == MINIM_OBJ_ERR)

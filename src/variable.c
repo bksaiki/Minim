@@ -186,7 +186,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
                 unsyntax_ast(env, MINIM_CAR(bind)->data, &sym);
                 if (assert_symbol(sym, &res, "Variable names must be symbols in let*"))
                 {
-                    eval_ast(env, MINIM_CADR(bind)->data, &val);
+                    eval_ast(env2, MINIM_CADR(bind)->data, &val);
                     env_intern_sym(env2, sym->data, val);
                 }
 

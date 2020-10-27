@@ -10,9 +10,13 @@
 void init_minim_lambda(MinimLambda **plam)
 {
     MinimLambda *lam = malloc(sizeof(MinimLambda));
-    lam->name = NULL;
-    lam->formals = NULL;
+    
+    lam->args = NULL;
+    lam->rest = NULL;
     lam->body = NULL;
+    lam->name = NULL;
+    lam->argc = 0;
+
     *plam = lam;
 }
 
@@ -20,7 +24,32 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 {
     MinimLambda *lam = malloc(sizeof(MinimLambda));
 
-    if (src->name)
+    lam->argc = src->argc;
+    if (src->args)
+    {
+        lam->args = malloc(lam->argc * sizeof(char*));
+        for (int i = 0; i < lam->argc; ++i)
+        {
+            lam->args[i] = malloc((strlen(src->args[i]) + 1) * sizeof(char));
+            strcpy(lam->args[i], src->args[i]);
+        }
+    }   
+    else
+    {
+        src->args = NULL;
+    }
+
+    if (lam->rest)
+    {
+        lam->rest = malloc((strlen(src->rest) + 1) * sizeof(char));
+        strcpy(lam->rest, src->rest);
+    }
+    else
+    {
+        lam->rest = NULL;
+    }
+
+    if (lam->name)
     {
         lam->name = malloc((strlen(src->name) + 1) * sizeof(char));
         strcpy(lam->name, src->name);
@@ -30,20 +59,24 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->name = NULL;
     }
 
-    if (src->formals)   copy_minim_object(&lam->formals, src->formals);
-    else                lam->formals = NULL;
-
-    if (src->body)      copy_minim_object(&lam->body, src->body);
-    else                lam->body = NULL;
+    if (lam->body)  copy_ast(&lam->body, src->body);
+    else            lam->body = NULL;
 
     *cp = lam;
 }
 
 void free_minim_lambda(MinimLambda *lam)
 {
+    if (lam->args)
+    {
+        for (int i = 0; i < lam->argc; ++i)
+            free(lam->args[i]);
+        free(lam->args);
+    }
+
+    if (lam->rest)      free(lam->rest);
     if (lam->name)      free(lam->name);
-    if (lam->formals)   free_minim_object(lam->formals);
-    if (lam->body)      free_minim_object(lam->body);
+    if (lam->body)      free_ast(lam->body);
 
     free(lam);
 }
@@ -52,41 +85,22 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
 {
     MinimObject *res, *val;
     MinimEnv *env2;
-    char *sym;
 
-    if (minim_listp(lam->formals))
-    {
-        MinimObject *it;
-        int len = minim_list_length(lam->formals);
-
-        if (assert_exact_argc(argc, args, &res, ((lam->name) ? lam->name : "unnamed lambda"), len))
-        {   
-            init_env(&env2);
-            env2->parent = env;
-
-            it = lam->formals;
-            for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
-            {
-                sym = ((char*) MINIM_CAR(it)->data);
-                env_intern_sym(env2, sym, args[i]);
-                args[i] = NULL;
-            }
-
-
-            eval_ast(env2, lam->body->data, &res);
-            pop_env(env2);
-        }
-    }
-    else
-    {
+    if (lam->rest || assert_exact_argc(argc, args, &res, ((lam->name) ? lam->name : "unnamed lambda"), lam->argc))
+    {   
         init_env(&env2);
         env2->parent = env;
 
-        val = minim_construct_list(argc, args);
-        env_intern_sym(env2, lam->formals->data, val);
-        for (int i = 0; i < argc; ++i)  args[i] = NULL;
+        for (int i = 0; i < lam->argc; ++i)
+            env_intern_sym(env2, lam->args[i], args[i]);
 
-        eval_ast(env2, lam->body->data, &res);
+        if (lam->rest)
+        {
+            val = minim_construct_list(argc - lam->argc, &args[lam->argc]);
+            env_intern_sym(env2, lam->rest, val);
+        }
+
+        eval_ast(env2, lam->body, &res);
         pop_env(env2);
     }
     
@@ -104,6 +118,18 @@ bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg)
     return true;
 }
 
+bool minim_lambdap(MinimObject *thing)
+{
+    return thing->type == MINIM_OBJ_CLOSURE;
+}
+
+bool minim_funcp(MinimObject *thing)
+{
+    return thing->type == MINIM_OBJ_CLOSURE || thing->type == MINIM_OBJ_FUNC;
+}
+
+// Builtins
+
 void env_load_module_lambda(MinimEnv *env)
 {
     env_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
@@ -113,7 +139,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_range_argc(argc, args, &res, "lambda", 2, 2)) // TODO: def-fun: 3 args
+    if (assert_range_argc(argc, args, &res, "lambda", 2, 2))
     {
         MinimObject *bindings;
         MinimLambda *lam;
@@ -122,11 +148,43 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
         unsyntax_ast(env, args[0]->data, &bindings);
         if (bindings->type != MINIM_OBJ_ERR)
         {
-            if (minim_symbolp(bindings) || minim_listof(bindings, minim_symbolp))
+            if (minim_symbolp(bindings))
             {
                 init_minim_lambda(&lam);
-                lam->formals = bindings;
-                copy_minim_object(&lam->body, args[1]);
+                lam->rest = bindings->data;
+                copy_ast(&lam->body, args[1]->data);
+                init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
+
+                bindings->data = NULL;
+            }
+            else if (minim_listp(bindings))
+            {
+                MinimObject *it, *val;
+
+                init_minim_lambda(&lam);
+                lam->argc = minim_list_length(bindings);
+                lam->args = calloc(lam->argc, sizeof(char*));
+                it = bindings;
+
+                for (int i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
+                {
+                    unsyntax_ast(env, MINIM_CAR(it)->data, &val);
+                    if (assert_symbol(val, &res, "Expected a symbol for lambda variables"))
+                    {
+                        lam->args[i] = val->data;
+                        val->data = NULL;
+                        free_minim_object(val);
+                    }
+                    else
+                    {
+                        free_minim_lambda(lam);
+                        free_minim_object(val);
+                        free_minim_object(bindings);
+                        return res;
+                    }
+                }
+
+                copy_ast(&lam->body, args[1]->data);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
             }
             else

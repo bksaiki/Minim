@@ -2,12 +2,13 @@
 #define _MINIM_LAMBDA_H_
 
 #include "env.h"
+#include "parser.h"
 
 typedef struct MinimLambda
 {
-    char *name;
-    MinimObject *formals;
-    MinimObject *body;
+    MinimAstNode *body;
+    char **args, *rest, *name;
+    int argc;
 } MinimLambda;
 
 // Functions
@@ -23,8 +24,8 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
 
 bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg);
 
-#define minim_lambdap(x)    (x->type == MINIM_OBJ_CLOSURE)
-#define minim_funcp(x)      (x->type == MINIM_OBJ_FUNC || minim_lambdap(x))
+bool minim_lambdap(MinimObject *thing);
+bool minim_funcp(MinimObject *thing);
 
 // Builtins
 
