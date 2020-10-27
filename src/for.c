@@ -51,22 +51,21 @@ void env_load_module_for(MinimEnv *env)
 
 MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res;
+    MinimObject *res = NULL;
 
     if (assert_exact_argc(argc, args, &res, "for", 2))
     {
         MinimObject *it, *bindings;
 
         // Convert iter/iterable pairs to list
-        eval_ast_as_quote(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->data, &bindings);
         if (assert_list(bindings, &res, "Expected ((iter iterable) ...) in the 1st argument of 'for'"))
         {
-            MinimObject *bind, *val;
+            MinimObject *val;
             MinimIter **iters;
             MinimIterObjs *iobjs;
             char **syms;
             int len;
-            bool err = false;
             
             it = bindings;
             len = minim_list_length(bindings);
@@ -74,36 +73,41 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
             syms = malloc(len * sizeof(char*));
             iobjs = env_get_iobjs(env);
 
-            for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+            for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
             {
-                bind = MINIM_CAR(it);
-                if (!assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for'") ||
-                    !assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for'") ||
-                    !assert_symbol(MINIM_CAR(bind), &res, "Expected a symbol for a variable name in the bindings of 'for'"))
-                {
-                    err = true;
-                    break;
-                }
-                else
-                {
-                    syms[i] = MINIM_CAR(bind)->data;
-                    if (!try_iter_no_copy(MINIM_CADR(bind), env, &iters[i]))
-                    {
-                        eval_sexpr(env, MINIM_CADR(bind), &val);
-                        if (!assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for'"))
-                        {
-                            free_minim_object(val);
-                            err = true;
-                            break;
-                        }
+                MinimObject *bind, *sym;
 
-                        init_minim_iter(&iters[i], val);
-                        minim_iter_objs_add(iobjs, iters[i]);
+                unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+                if (assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for'") &&
+                    assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for'"))
+                {
+                    unsyntax_ast(env, MINIM_CAR(bind)->data, &sym);
+                    if (assert_symbol(sym, &res, "Expected a symbol for a variable name in the bindings of 'for'"))
+                    {
+                        syms[i] = sym->data;
+                        if (!try_iter_no_copy(MINIM_CADR(bind), env, &iters[i]))
+                        {
+                            eval_ast(env, MINIM_CADR(bind)->data, &val);
+                            if (assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for'"))
+                            {
+                                init_minim_iter(&iters[i], val);
+                                minim_iter_objs_add(iobjs, iters[i]);
+                            }
+                            else
+                            {
+                                free_minim_object(val);
+                            }
+                        }
                     }
+
+                    sym->data = NULL;
+                    free_minim_object(sym);
                 }
+
+                free_minim_object(bind);
             }
 
-            if (!err)
+            if (!res)
             {
                 while(iters_valid(len, iters))
                 {
@@ -128,7 +132,6 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                         res = val;
                         free_minim_object(ast);
                         pop_env(env2);
-                        err = true;
                         break;
                     }
                     else
@@ -139,7 +142,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                     }
                 }   
 
-                if (!err) init_minim_object(&res, MINIM_OBJ_VOID);
+                if (!res) init_minim_object(&res, MINIM_OBJ_VOID);
                 free_iters(len, iters);
             }
 
@@ -155,22 +158,21 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
 
 MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res;
+    MinimObject *res = NULL;
 
     if (assert_exact_argc(argc, args, &res, "for-list", 2))
     {
         MinimObject *it, *bindings;
 
         // Convert iter/iterable pairs to list
-        eval_ast_as_quote(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->data, &bindings);
         if (assert_list(bindings, &res, "Expected ((iter iterable) ...) in the 1st argument of 'for-list'"))
         {
-            MinimObject *bind, *val;
+            MinimObject *val;
             MinimIter **iters;
             MinimIterObjs *iobjs;
             char **syms;
             int len;
-            bool err = false;
             
             it = bindings;
             len = minim_list_length(bindings);
@@ -178,40 +180,46 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
             syms = malloc(len * sizeof(char*));
             iobjs = env_get_iobjs(env);
 
-            for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+            for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
             {
-                bind = MINIM_CAR(it);
-                if (!assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for-list'") ||
-                    !assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for-list'") ||
-                    !assert_symbol(MINIM_CAR(bind), &res, "Expected a symbol for a variable name in the bindings of 'for-list'"))
-                {
-                    err = true;
-                    break;
-                }
-                else
-                {
-                    syms[i] = MINIM_CAR(bind)->data;
-                    if (!try_iter_no_copy(MINIM_CADR(bind), env, &iters[i]))
-                    {
-                        eval_sexpr(env, MINIM_CADR(bind), &val);
-                        if (!assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for-list'"))
-                        {
-                            free_minim_object(val);
-                            err = true;
-                            break;
-                        }
+                MinimObject *bind, *sym;
 
-                        init_minim_iter(&iters[i], val);
-                        minim_iter_objs_add(iobjs, iters[i]);
+                unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+                if (assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for-list'") &&
+                    assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for-list'"))
+                {
+                    unsyntax_ast(env, MINIM_CAR(bind)->data, &sym);
+                    if (assert_symbol(sym, &res, "Expected a symbol for a variable name in the bindings of 'for-list'"))
+                    {
+                        syms[i] = sym->data;
+                        if (!try_iter_no_copy(MINIM_CADR(bind), env, &iters[i]))
+                        {
+                            eval_ast(env, MINIM_CADR(bind)->data, &val);
+                            if (assert_minim_iterable(val, &res, "Expected an iterable object in the value of a binding in 'for-list'"))
+                            {
+                                init_minim_iter(&iters[i], val);
+                                minim_iter_objs_add(iobjs, iters[i]);
+                            }
+                            else
+                            {
+                                free_minim_object(val);
+                            }
+                        }
                     }
+
+                    sym->data = NULL;
+                    free_minim_object(sym);
                 }
+
+                free_minim_object(bind);
             }
 
-            if (!err)
+            if (!res)
             {   
                 MinimObject *next, *prev = NULL;
+                bool err = false;
 
-                while(iters_valid(len, iters))
+                while(!err && iters_valid(len, iters))
                 {
                     MinimEnv *env2;
                     MinimObject *ast;
@@ -232,21 +240,23 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                     if (val->type == MINIM_OBJ_ERR)
                     {
                         free_minim_object(res);
-                        free_minim_object(val);
-                        err = true;
                         res = val;
+                        err = true;
+
+                        free_minim_object(ast);
+                        pop_env(env2);
+                        break;
                     }
                     else
                     {
                         init_minim_object(&next, MINIM_OBJ_PAIR, val, NULL);
                         if (prev) MINIM_CDR(prev) = next;
                         else      res = next;
-                        prev = next;
-                    }
 
-                    free_minim_object(ast);
-                    pop_env(env2);
-                    if (err) break;
+                        prev = next;
+                        free_minim_object(ast);
+                        pop_env(env2);
+                    }
                 }   
 
                 free_iters(len, iters);

@@ -119,7 +119,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
         MinimLambda *lam;
 
         // Convert bindings to list
-        eval_ast_as_quote(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->data, &bindings);
         if (bindings->type != MINIM_OBJ_ERR)
         {
             if (minim_symbolp(bindings) || minim_listof(bindings, minim_symbolp))

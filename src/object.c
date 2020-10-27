@@ -167,10 +167,11 @@ void free_minim_object(MinimObject *obj)
         if (pdata[1])   free_minim_object(pdata[1]);
     }
     
-    if (obj->data && obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX)
+    if (obj->data &&
+        obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX && // function pointer
+        obj->type != MINIM_OBJ_AST) // release ast
     {
-        if (obj->type == MINIM_OBJ_AST)             free_ast(obj->data);
-        else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->data);
+        if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->data);
         else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
         else if (obj->type == MINIM_OBJ_SEQ)        free_minim_iter(obj->data);
         else                                        free(obj->data);

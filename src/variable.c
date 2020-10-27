@@ -46,21 +46,17 @@ MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
     {
         eval_ast(env, args[0]->data, &cond);
 
-        if (cond->type == MINIM_OBJ_ERR)
+        if (cond->type != MINIM_OBJ_ERR)
         {
-            res = cond;
-            cond = NULL;
-        }
-        else if (coerce_into_bool(cond))
-        {
-            eval_ast(env, args[1]->data, &res);
+            if (coerce_into_bool(cond))     eval_ast(env, args[1]->data, &res);
+            else                            eval_ast(env, args[2]->data, &res);
+
+            free_minim_object(cond);
         }
         else
         {
-            eval_ast(env, args[2]->data, &res);
-        }
-
-        free_minim_object(cond);
+            res = cond;
+        }   
     }
 
     return res;
@@ -72,7 +68,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_range_argc(argc, args, &res, "def", 2, 3))
     {
-        eval_ast_as_quote(env, args[0]->data, &sym);
+        unsyntax_ast(env, args[0]->data, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
         {
             if (argc == 2)
@@ -107,18 +103,16 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 
 MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res, *bindings;
+    MinimObject *bindings, *res = NULL;
     MinimEnv *env2;
 
     if (assert_exact_argc(argc, args, &res, "let", 2))
     {
-        MinimObject *it, *it2, *val;
-        char *sym;
+        MinimObject *it;
         int len;
-        bool err = false;
         
         // Convert bindings to list
-        eval_ast_as_quote(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->data, &bindings);
         if (bindings->type == MINIM_OBJ_ERR)
         {
             res = bindings;
@@ -132,36 +126,28 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
         init_env(&env2);        
         env2->parent = env;
         
-        for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+        for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
         {
-            it2 = MINIM_CAR(it);
-            if (minim_list_length(it2) != 2)
+            MinimObject *bind, *sym, *val;
+
+            unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+            if (assert_list(bind, &res, "Expected ((symbol value) ...) in the bindings of 'let'") &&
+                assert_list_len(bind, &res, 2, "Expected ((symbol value) ...) in the bindings of 'let'"))
             {
-                minim_error(&res, "Expected a symbol and value in binding %d of 'let'", i + 1);
-                err = true;
-                break;
+                unsyntax_ast(env, MINIM_CAR(bind)->data, &sym);
+                if (assert_symbol(sym, &res, "Variable names must be symbols in let"))
+                {
+                    eval_ast(env, MINIM_CADR(bind)->data, &val);
+                    env_intern_sym(env2, sym->data, val);
+                }
+
+                free_minim_object(sym);
             }
-            else if (MINIM_CAR(it2)->type != MINIM_OBJ_SYM)
-            {
-                minim_error(&res, "Expected a symbol in binding %d of 'let'", i + 1);
-                err = true;
-                break;
-            }
-            else if (MINIM_CADR(it2)->type == MINIM_OBJ_VOID)
-            {
-                minim_error(&res, "Expected a non-void value in the %d binding of 'let'", i + 1);
-                free_minim_object(bindings);
-                break;
-            }
-            else
-            {
-                sym = ((char*) MINIM_CAR(it2)->data);
-                eval_sexpr(env, MINIM_CADR(it2), &val);
-                env_intern_sym(env2, sym, val);
-            }
+
+            free_minim_object(bind);
         }
 
-        if (!err) eval_ast(env2, args[1]->data, &res);
+        if (!res) eval_ast(env2, args[1]->data, &res);
         free_minim_object(bindings);
         pop_env(env2);
     }
@@ -171,18 +157,17 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
 
 MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res, *bindings;
+    MinimObject *bindings, *res = NULL;
     MinimEnv *env2;
 
-    if (assert_exact_argc(argc, args, &res, "let", 2))
+    if (assert_exact_argc(argc, args, &res, "let*", 2))
     {
-        MinimObject *it, *it2, *val;
-        char *sym;
+        MinimObject *it;
         int len;
         bool err = false;
         
         // Convert bindings to list
-        eval_ast_as_quote(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->data, &bindings);
         len = minim_list_length(bindings);
         it = bindings;
         
@@ -190,33 +175,25 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
         init_env(&env2);        
         env2->parent = env;
         
-        for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+        for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
         {
-            it2 = MINIM_CAR(it);
-            if (minim_list_length(it2) != 2)
+            MinimObject *bind, *sym, *val;
+
+            unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+            if (assert_list(bind, &res, "Expected ((symbol value) ...) in the bindings of 'let*'") &&
+                assert_list_len(bind, &res, 2, "Expected ((symbol value) ...) in the bindings of 'let*'"))
             {
-                minim_error(&res, "Expected a symbol and value in binding %d of 'let*'", i + 1);
-                err = true;
-                break;
+                unsyntax_ast(env, MINIM_CAR(bind)->data, &sym);
+                if (assert_symbol(sym, &res, "Variable names must be symbols in let*"))
+                {
+                    eval_ast(env, MINIM_CADR(bind)->data, &val);
+                    env_intern_sym(env2, sym->data, val);
+                }
+
+                free_minim_object(sym);
             }
-            else if (MINIM_CAR(it2)->type != MINIM_OBJ_SYM)
-            {
-                minim_error(&res, "Expected a symbol in binding %d of 'let*'", i + 1);
-                err = true;
-                break;
-            }
-            else if (MINIM_CADR(it2)->type == MINIM_OBJ_VOID)
-            {
-                minim_error(&res, "Expected a non-void value in the %d binding of 'let*'", i + 1);
-                free_minim_object(bindings);
-                break;
-            }
-            else
-            {
-                sym = ((char*) MINIM_CAR(it2)->data);
-                eval_sexpr(env2, MINIM_CADR(it2), &val);
-                env_intern_sym(env2, sym, val);
-            }
+
+            free_minim_object(bind);
         }
 
         if (!err) eval_ast(env2, args[1]->data, &res);
@@ -232,7 +209,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
     MinimObject *res;
 
     if (assert_exact_argc(argc, args, &res, "quote", 1))
-        eval_ast_as_quote(env, args[0]->data, &res);
+        unsyntax_ast(env, args[0]->data, &res);
     return res;
 }
 
@@ -242,7 +219,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, args, &res, "set!", 2))
     {
-        eval_ast_as_quote(env, args[0]->data, &sym);
+        unsyntax_ast(env, args[0]->data, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'set!'"))
         {
             MinimObject *val, *peek = env_peek_sym(env, sym->data);
@@ -256,9 +233,9 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
             {
                 minim_error(&res, "Variable not recognized '%s'", sym->data);
             }
-
-            free_minim_object(sym);
         }
+
+        free_minim_object(sym);
     }
 
     return res;
