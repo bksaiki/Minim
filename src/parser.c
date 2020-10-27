@@ -5,7 +5,7 @@
 #include <string.h>
 #include "parser.h"
 
-static bool valid_ast(MinimAstNode* node)
+static bool valid_ast(MinimAst* node)
 {
     if (node->state != MINIM_AST_VALID)
         return false;
@@ -54,18 +54,18 @@ static int get_arg_len(char* start, char* end)
     return count;
 }
 
-static void init_ast_node(MinimAstNode** pnode)
+static void init_ast_node(MinimAst** pnode)
 {
-    MinimAstNode *node = malloc(sizeof(MinimAstNode));
+    MinimAst *node = malloc(sizeof(MinimAst));
     node->sym = NULL;
     node->count = 0;
     node->children = NULL;
     *pnode = node;
 }
 
-static MinimAstNode* parse_str_node(char* str)
+static MinimAst* parse_str_node(char* str)
 {
-    MinimAstNode* node;
+    MinimAst* node;
     char *end, *tmp;
     int len = strlen(str);
 
@@ -90,7 +90,7 @@ static MinimAstNode* parse_str_node(char* str)
 
         if (node->count != 0)
         {
-            node->children = malloc(node->count * sizeof(MinimAstNode*));
+            node->children = malloc(node->count * sizeof(MinimAst*));
             for (int idx = 0; it < end; ++idx)
             {
                 if (*it == '(' || (*it == '\'' && *(it + 1) == '('))
@@ -146,7 +146,7 @@ static MinimAstNode* parse_str_node(char* str)
     return node;
 }
 
-static void print_ast_errors(MinimAstNode* node)
+static void print_ast_errors(MinimAst* node)
 {
     if (node->state == MINIM_AST_ERROR)
     {
@@ -160,7 +160,7 @@ static void print_ast_errors(MinimAstNode* node)
     }
 }
 
-void print_ast_node(MinimAstNode *node)
+void print_ast_node(MinimAst *node)
 {
     if (node->count == 0)
     {
@@ -184,11 +184,11 @@ void print_ast_node(MinimAstNode *node)
 //  Visible functions
 // 
 
-void copy_ast(MinimAstNode **dest, MinimAstNode *src)
+void copy_ast(MinimAst **dest, MinimAst *src)
 {
-    MinimAstNode* node;
+    MinimAst* node;
 
-    node = malloc(sizeof(MinimAstNode));
+    node = malloc(sizeof(MinimAst));
     node->count = src->count;
     node->state = src->state;
     node->tag = src->tag;
@@ -205,7 +205,7 @@ void copy_ast(MinimAstNode **dest, MinimAstNode *src)
 
     if (src->count != 0)
     {
-        node->children = malloc(src->count * sizeof(MinimAstNode*));
+        node->children = malloc(src->count * sizeof(MinimAst*));
         for (int i = 0; i < src->count; ++i)
             copy_ast(&node->children[i], src->children[i]);
     }
@@ -217,7 +217,7 @@ void copy_ast(MinimAstNode **dest, MinimAstNode *src)
     *dest = node;
 }
 
-void free_ast(MinimAstNode* node)
+void free_ast(MinimAst* node)
 {
     if (node->count != 0)
     {
@@ -234,7 +234,7 @@ void free_ast(MinimAstNode* node)
 }
 
 
-int parse_str(char* str, MinimAstNode** syn)
+int parse_str(char* str, MinimAst** syn)
 {
     *syn = parse_str_node(str);
     
@@ -250,7 +250,7 @@ int parse_str(char* str, MinimAstNode** syn)
     return 1;
 }
 
-void print_ast(MinimAstNode *node)
+void print_ast(MinimAst *node)
 {
     printf("<syntax:");
     print_ast_node(node);

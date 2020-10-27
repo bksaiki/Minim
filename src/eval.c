@@ -148,7 +148,7 @@ static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
 
 // S-expression mainloop
 
-static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAstNode* node)
+static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAst* node)
 {
     if (node->tag == MINIM_AST_OP)
     {
@@ -175,7 +175,7 @@ static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAstNode* node)
 
 // Quote mainloop
 
-static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAstNode* node)
+static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node)
 {
     if (node->tag == MINIM_AST_OP)
     {
@@ -199,7 +199,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAstNode* node)
 
 // Eval mainloop
 
-static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
+static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 {
     if (node->tag == MINIM_AST_OP)
     {
@@ -278,9 +278,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 
             res = eval_lambda(lam, env, argc, args);
             free_minim_lambda(lam);
-
-            for (int i = 0; i < argc; ++i) free(args[i]);
-            free(args);
+            free_minim_objects(argc, args);
         }
         else
         {   
@@ -299,21 +297,21 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAstNode *node)
 
 // Visible functions
 
-int eval_ast(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
+int eval_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
     MinimObject *obj = eval_ast_node(env, ast);
     *pobj = obj;
     return (obj->type != MINIM_OBJ_ERR);
 }
 
-int unsyntax_ast(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
+int unsyntax_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast);
     *pobj = obj;
     return (obj->type != MINIM_OBJ_ERR);
 }
 
-int eval_ast_as_sexpr(MinimEnv *env, MinimAstNode *ast, MinimObject **pobj)
+int eval_ast_as_sexpr(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
     MinimObject *obj = ast_node_to_sexpr(env, ast);
     *pobj = obj;
@@ -329,7 +327,7 @@ int eval_sexpr(MinimEnv *env, MinimObject *expr, MinimObject **pobj)
 
 char *eval_string(char *str, size_t len)
 {
-    MinimAstNode *ast;
+    MinimAst *ast;
     MinimObject *obj;
     MinimEnv *env;
     char *out;

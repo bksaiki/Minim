@@ -92,7 +92,10 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
         env2->parent = env;
 
         for (int i = 0; i < lam->argc; ++i)
-            env_intern_sym(env2, lam->args[i], args[i]);
+        {
+            copy_minim_object(&val, args[i]);
+            env_intern_sym(env2, lam->args[i], val);
+        }
 
         if (lam->rest)
         {
@@ -190,8 +193,9 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
             else
             {
                 minim_error(&res, "Expected a symbol or list of symbols for lambda variables");
-                free_minim_object(bindings);
             }
+
+            free_minim_object(bindings);
         }
         else
         {

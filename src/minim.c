@@ -7,7 +7,7 @@
 int main(int argc, char** argv)
 {
     MinimEnv *env;
-    MinimAstNode *ast;
+    MinimAst *ast;
     MinimObject *obj;
     char *input;
     int ilen = 2048;

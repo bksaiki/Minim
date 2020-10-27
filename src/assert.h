@@ -3,7 +3,7 @@
 
 #include "object.h"
 
-typedef bool (*MinimObjectPred)(MinimObject*); // TODO: remove
+typedef bool (*MinimPred)(MinimObject*); // TODO: remove
 typedef bool (*MinimPred)(MinimObject*);
 
 // *** Arity *** //

@@ -65,7 +65,7 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     }   
     else if (type == MINIM_OBJ_AST)
     {
-        obj->data = va_arg(rest, MinimAstNode*);
+        obj->data = va_arg(rest, MinimAst*);
     }
     else if (type == MINIM_OBJ_SEQ)
     {
@@ -136,7 +136,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_AST)
     {
-        MinimAstNode *node;
+        MinimAst *node;
         copy_ast(&node, src->data);
         obj->data = node;
     }

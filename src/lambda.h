@@ -6,7 +6,7 @@
 
 typedef struct MinimLambda
 {
-    MinimAstNode *body;
+    MinimAst *body;
     char **args, *rest, *name;
     int argc;
 } MinimLambda;

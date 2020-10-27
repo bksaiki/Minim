@@ -71,19 +71,9 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
         unsyntax_ast(env, args[0]->data, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
         {
-            if (argc == 2)
-            {
-                eval_ast(env, args[1]->data, &val);
-            }
-            else
-            {
-                MinimObject **lam_args = malloc(2 * sizeof(MinimObject*));
-                copy_minim_object(&lam_args[0], args[1]);
-                copy_minim_object(&lam_args[1], args[2]);
-                val = minim_builtin_lambda(env, 2, lam_args);
-                free_minim_objects(2, lam_args);
-            }
-
+            if (argc == 2)  eval_ast(env, args[1]->data, &val);
+            else            val = minim_builtin_lambda(env, 2, &args[1]);
+            
             if (val->type != MINIM_OBJ_ERR)
             {
                 env_intern_sym(env, ((char*) sym->data), val);

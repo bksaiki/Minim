@@ -51,19 +51,17 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
 
     if (map->type == MINIM_OBJ_FUNC)
     {
-        MinimObject **args = malloc(sizeof(MinimObject*));
+        MinimObject *arg = MINIM_CAR(list);
         MinimBuiltin func = map->data;
 
-        copy_minim_object(&args[0], MINIM_CAR(list));
-        val = func(env, 1, args);
+        val = func(env, 1, &arg);
     }
     else // map->type == MINIM_OBJ_CLOSURE
     {
-        MinimObject **args = malloc(sizeof(MinimObject*));
+        MinimObject *arg = MINIM_CAR(list);
         MinimLambda *lam = map->data;
         
-        copy_minim_object(&args[0], MINIM_CAR(list));
-        val = eval_lambda(lam, env, 1, args);
+        val = eval_lambda(lam, env, 1, &arg);
     }
 
     if (val->type == MINIM_OBJ_ERR)
@@ -165,7 +163,7 @@ bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *m
     return true;
 }
 
-bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, const char *msg)
+bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg)
 {
     MinimObject *it;
     int len;
@@ -203,7 +201,7 @@ bool minim_nullp(MinimObject* thing)
     return (thing->type == MINIM_OBJ_PAIR && !MINIM_CAR(thing) && !MINIM_CDR(thing));
 }
 
-bool minim_listof(MinimObject* list, MinimObjectPred pred)
+bool minim_listof(MinimObject* list, MinimPred pred)
 {
     if (minim_nullp(list)) // nullary
         return true;

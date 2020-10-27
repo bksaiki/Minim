@@ -16,13 +16,13 @@
 bool assert_cons(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *msg);
-bool assert_listof(MinimObject *arg, MinimObject **ret, MinimObjectPred pred, const char *msg);
+bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg);
 
 // Internal versions of the builtins
 bool minim_consp(MinimObject* thing);
 bool minim_listp(MinimObject* thing);
 bool minim_nullp(MinimObject* thing);
-bool minim_listof(MinimObject* list, MinimObjectPred pred);
+bool minim_listof(MinimObject* list, MinimPred pred);
 
 MinimObject *minim_construct_list(int argc, MinimObject **args);
 int minim_list_length(MinimObject *list);

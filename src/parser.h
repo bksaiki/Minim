@@ -16,26 +16,26 @@ typedef enum MinimAstTag
     MINIM_AST_NONE
 } MinimAstTag;
 
-typedef struct MinimAstNode
+typedef struct MinimAst
 {
-    struct MinimAstNode** children;
+    struct MinimAst** children;
     char* sym;
     int count;
     MinimAstState state;
     MinimAstTag tag;
-} MinimAstNode;
+} MinimAst;
 
 // Copies the ast at 'src' and saves it at 'dest'.
-void copy_ast(MinimAstNode **dest, MinimAstNode *src);
+void copy_ast(MinimAst **dest, MinimAst *src);
 
 // Deletes an AST
-void free_ast(MinimAstNode* node);
+void free_ast(MinimAst* node);
 
 // Parses a single expression. Returns null on failure.
-int parse_str(char* str, MinimAstNode** syn);
+int parse_str(char* str, MinimAst** syn);
 
 // Prints an AST syntax tree
-void print_ast(MinimAstNode* node);
+void print_ast(MinimAst* node);
 
 
 #endif
