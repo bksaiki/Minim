@@ -82,8 +82,8 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
 {
     MinimObject **args, *val, *next; 
 
-    if (!list)
-        return NULL;
+    if (!list)                  return NULL;
+    if (!MINIM_CAR(list))       return list;
     
     args = malloc(sizeof(MinimObject*));
     copy_minim_object(&args[0], MINIM_CAR(list));
@@ -575,8 +575,9 @@ MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filter'"))
     {
         res = filter_list(args[1], args[0], env, false);
-        if (res->type != MINIM_OBJ_ERR)
-            args[1] = NULL;
+
+        if (!res)                               init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+        if (res->type != MINIM_OBJ_ERR)         args[1] = NULL;
     }
 
     free_minim_objects(argc, args);
@@ -592,8 +593,9 @@ MinimObject *minim_builtin_filtern(MinimEnv *env, int argc, MinimObject **args)
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filtern'"))
     {
         res = filter_list(args[1], args[0], env, true);
-        if (res->type != MINIM_OBJ_ERR)
-            args[1] = NULL;
+
+        if (!res)                               init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+        if (res->type != MINIM_OBJ_ERR)         args[1] = NULL;
     }
 
     free_minim_objects(argc, args);

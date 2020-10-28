@@ -101,6 +101,8 @@ char *minim_number_to_str(MinimNumber *num)
 
 int minim_number_cmp(MinimNumber *a, MinimNumber *b)
 {
+    int v;
+
     if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
     {
         return mpq_cmp(a->rat, b->rat);
@@ -111,7 +113,10 @@ int minim_number_cmp(MinimNumber *a, MinimNumber *b)
 
         mpq_init(r);
         mpq_set_d(r, b->fl);
-        return mpq_cmp(a->rat, r);
+        v = mpq_cmp(a->rat, r);
+
+        mpq_clear(r);
+        return v;
     }
     else if (b->type == MINIM_NUMBER_EXACT)
     {
@@ -119,7 +124,10 @@ int minim_number_cmp(MinimNumber *a, MinimNumber *b)
 
         mpq_init(r);
         mpq_set_d(r, a->fl);
-        return mpq_cmp(r, b->rat);
+        v = mpq_cmp(r, b->rat);
+
+        mpq_clear(r);
+        return v;
     }
     else
     {

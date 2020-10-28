@@ -112,7 +112,6 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                 while(iters_valid(len, iters))
                 {
                     MinimEnv *env2;
-                    MinimObject *ast;
 
                     init_env(&env2);
                     env2->parent = env;
@@ -124,20 +123,16 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                         minim_iter_next(iters[i]);
                     }
 
-                    copy_minim_object(&ast, args[1]);
-                    eval_ast(env2, ast->data, &val);
-
+                    eval_ast(env2, args[1]->data, &val);
                     if (val->type == MINIM_OBJ_ERR)
                     {
                         res = val;
-                        free_minim_object(ast);
                         pop_env(env2);
                         break;
                     }
                     else
                     {
                         free_minim_object(val);
-                        free_minim_object(ast);
                         pop_env(env2);
                     }
                 }   
@@ -146,8 +141,11 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                 free_iters(len, iters);
             }
 
-            free(iters);
+            for (int i = 0; i < len; ++i)
+                free(syms[i]);
+                
             free(syms);
+            free(iters);
         }
 
         free_minim_object(bindings);
@@ -222,7 +220,6 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                 while(!err && iters_valid(len, iters))
                 {
                     MinimEnv *env2;
-                    MinimObject *ast;
 
                     init_env(&env2);
                     env2->parent = env;
@@ -234,17 +231,14 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                         minim_iter_next(iters[i]);
                     }
 
-                    copy_minim_object(&ast, args[1]);
-                    eval_ast(env2, ast->data, &val);
-
+                    eval_ast(env2, args[1]->data, &val);
                     if (val->type == MINIM_OBJ_ERR)
                     {
                         free_minim_object(res);
+                        pop_env(env2);
+
                         res = val;
                         err = true;
-
-                        free_minim_object(ast);
-                        pop_env(env2);
                         break;
                     }
                     else
@@ -254,16 +248,19 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                         else      res = next;
 
                         prev = next;
-                        free_minim_object(ast);
                         pop_env(env2);
                     }
                 }   
 
+                if (!res) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
                 free_iters(len, iters);
             }
 
-            free(iters);
+            for (int i = 0; i < len; ++i)
+                free(syms[i]);
+
             free(syms);
+            free(iters);
         }
 
         free_minim_object(bindings);

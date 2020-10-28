@@ -144,10 +144,10 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[4][256] =
+        const int COUNT = 3;
+        char strs[6][256] =
         {
-           // "(for-list ((x (list))) x)",            "'()",
+            "(for-list ((x (list))) x)",            "'()",
             "(for-list ((x (list 1))) x)",          "'(1)",
             "(for-list ((x (list 1 2 3))) x)",      "'(1 2 3)"
         };
@@ -228,11 +228,11 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 5;
+        char strs[10][256] =
         {
-           // "(filter negative? (list))",                    "'()",
-           // "(filter negative? (list 1))",                  "'()",
+            "(filter negative? (list))",                    "'()",
+            "(filter negative? (list 1))",                  "'()",
             "(filter negative? (list -1))",                 "'(-1)",
             "(filter negative? (list -1 0 1))",             "'(-1)",
             "(filter negative? (list -3 -2 -1 0))",         "'(-3 -2 -1)"
@@ -244,12 +244,12 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 5;
+        char strs[10][256] =
         {
-           // "(filtern negative? (list))",                    "'()",
+            "(filtern negative? (list))",                    "'()",
             "(filtern negative? (list 1))",                  "'(1)",
-           // "(filtern negative? (list -1))",                 "'()",
+            "(filtern negative? (list -1))",                 "'()",
             "(filtern negative? (list -1 0 1))",             "'(0 1)",
             "(filtern negative? (list -1 0 2 3))",           "'(0 2 3)"
         };

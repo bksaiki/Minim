@@ -77,7 +77,12 @@ static void minim_number_div(MinimNumber *res, MinimNumber *a, MinimNumber *b)
 {
     double fa, fb;
 
-    if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
+    if (minim_number_zerop(b))
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = NAN;
+    }
+    else if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
     {
         reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
         mpq_div(res->rat, a->rat, b->rat);
@@ -174,21 +179,56 @@ static void minim_number_log(MinimNumber *res, MinimNumber *a)
 
 static void minim_number_pow(MinimNumber *res, MinimNumber *a, MinimNumber *b)
 {
-    if (minim_number_zerop(a)) // pow(0, -x) = +inf, pow(0, x) = 0
+    if (minim_number_zerop(b))  // pow(x, 0) = 0
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = ((minim_number_negativep(b)) ? INFINITY : 0);
+        if (minim_number_exactp(a) && minim_number_exactp(b))
+        {
+            reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+            mpq_set_ui(res->rat, 1, 1);
+        }
+        else
+        {
+            reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+            res->fl = 1.0;
+        }
+    }
+    else if (minim_number_zerop(a)) // pow(0, -x) = +inf, pow(0, x) = 0
+    {
+        if (minim_number_negativep(b))
+        {
+            reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+            res->fl = INFINITY;
+        }
+        else if (minim_number_exactp(a) && minim_number_exactp(b))
+        {
+            reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+            mpq_set_ui(res->rat, 0, 1);
+        }
+        else
+        {
+            reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+            res->fl = 0.0;;
+        }
     }
     // pow(-inf, x), pow (inf, x), 
     else if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT &&
-            !minim_number_negativep(b) && mpz_cmp_ui(&b->rat->_mp_den, 1) == 0 &&
-            mpz_cmp_ui(&b->rat->_mp_num, 8192) < 0)
+            mpz_cmp_ui(&b->rat->_mp_den, 1) == 0)
     {
-        unsigned long e = mpz_get_ui(&b->rat->_mp_num);
+        unsigned long e;
 
         reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpz_pow_ui(&res->rat->_mp_num, &a->rat->_mp_num, e);
-        mpz_pow_ui(&res->rat->_mp_den, &a->rat->_mp_den, e);
+        if (minim_number_negativep(b))
+        {
+            e = - mpz_get_si(mpq_numref(b->rat));
+            mpz_pow_ui(mpq_denref(res->rat), mpq_numref(a->rat), e);
+            mpz_pow_ui(mpq_numref(res->rat), mpq_denref(a->rat), e);
+        }
+        else
+        {
+            e = mpz_get_ui(mpq_numref(b->rat));
+            mpz_pow_ui(mpq_numref(res->rat), mpq_numref(a->rat), e);
+            mpz_pow_ui(mpq_denref(res->rat), mpq_denref(a->rat), e);
+        }
     }
     else
     {
@@ -279,15 +319,8 @@ MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject** args)
     if (assert_exact_argc(argc, &res, "/", 2) &&
         assert_for_all(argc, args, &res, "Expected numerical arguments for '/'", minim_numberp))
     {
-        if (minim_number_zerop(args[1]->data))
-        {
-            minim_error(&res, "Division by zero");
-        }
-        else
-        {
-            copy_minim_object(&res, args[0]);
-            minim_number_div(res->data, res->data, args[1]->data);
-        }
+        copy_minim_object(&res, args[0]);
+        minim_number_div(res->data, res->data, args[1]->data);
     }
 
     free_minim_objects(argc, args);

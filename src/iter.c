@@ -31,7 +31,10 @@ static bool remove_iter_ref(MinimIterObjs *iobjs, MinimObject* obj)
                 free_minim_object(iobjs->objs[i]);
                 iobjs->objs[i] = iobjs->objs[iobjs->count - 1];
                 iobjs->refs[i] = iobjs->refs[iobjs->count - 1];
+                
                 --iobjs->count;
+                iobjs->objs = realloc(iobjs->objs, iobjs->count * sizeof(MinimObject*));
+                iobjs->refs = realloc(iobjs->refs, iobjs->count * sizeof(int));
             }
 
             return true;
