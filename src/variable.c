@@ -237,5 +237,6 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, &res, "symbol?", 1))
         init_minim_object(&res, MINIM_OBJ_BOOL, args[0]->type == MINIM_OBJ_SYM);
+        
     return res;
 }

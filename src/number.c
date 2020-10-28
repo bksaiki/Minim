@@ -240,7 +240,7 @@ MinimObject *minim_builtin_numberp(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, &res, "number?", 1))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_numberp(args[0]));
-    free_minim_objects(argc, args);
+
     return res;
 }
 
@@ -254,7 +254,6 @@ MinimObject *minim_builtin_zerop(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_zerop(args[0]->data));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -268,7 +267,6 @@ MinimObject *minim_builtin_negativep(MinimEnv *env, int argc, MinimObject **args
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_negativep(args[0]->data));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -282,7 +280,6 @@ MinimObject *minim_builtin_positivep(MinimEnv *env, int argc, MinimObject **args
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_positivep(args[0]->data));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -296,7 +293,6 @@ MinimObject *minim_builtin_exactp(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_exactp(args[0]->data));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -310,7 +306,6 @@ MinimObject *minim_builtin_inexactp(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_inexactp(args[0]->data));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -345,7 +340,6 @@ MinimObject *minim_builtin_eq(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 0));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -359,7 +353,6 @@ MinimObject *minim_builtin_gt(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 1));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -373,7 +366,6 @@ MinimObject *minim_builtin_lt(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 2));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -387,7 +379,6 @@ MinimObject *minim_builtin_gte(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 3));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -401,6 +392,5 @@ MinimObject *minim_builtin_lte(MinimEnv *env, int argc, MinimObject **args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 4));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }

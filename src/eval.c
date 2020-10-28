@@ -104,82 +104,13 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     return res;
 }
 
-// Eval quot mainloop
-
-static MinimObject *eval_sexpr_node(MinimEnv *env, MinimObject *node)
-{
-    MinimObject *res;
-
-    if (minim_listp(node))
-    {
-        MinimObject **args, *op, *it, **pair;
-        MinimBuiltin proc;
-        int argc = minim_list_length(node) - 1;
-
-        pair = node->data;
-        args = malloc(argc * sizeof(MinimObject*));
-        op = env_peek_sym(env, ((char*) pair[0]->data));
-        
-        for (int i = 0; i < argc; ++i)
-        {
-            it = pair[1];
-            pair = it->data;
-            args[i] = eval_sexpr_node(env, pair[0]);
-        }
-
-        proc = op->data;
-        res = proc(env, argc, args);
-    }
-    else
-    {
-        if (node->type == MINIM_OBJ_SYM)
-        {   
-            res = env_get_sym(env, ((char*) node->data));
-            if (!res)   minim_error(&res, "Unrecognized symbol: %s", ((char*) node->data));
-        }
-        else
-        {
-            copy_minim_object(&res, node);
-        }
-    }
-
-    return res;
-}
-
-// S-expression mainloop
-
-static MinimObject *ast_node_to_sexpr(MinimEnv *env, MinimAst* node)
-{
-    if (node->tag == MINIM_AST_OP)
-    {
-        MinimObject **args;
-        MinimObject *res, *list;
-        MinimBuiltin proc;
-        int argc = node->count;
-
-        list = env_peek_sym(env, "list");
-        proc = ((MinimBuiltin) list->data);
-
-        args = malloc(argc * sizeof(MinimObject*));
-        for (int i = 0; i < argc; ++i)
-            args[i] = ast_node_to_sexpr(env, node->children[i]);
-
-        res = proc(env, argc + 1, args);
-        return res;
-    }
-    else
-    {
-        return str_to_node(node->sym, env, false);
-    }
-}
-
-// Quote mainloop
+// Unsyntax
 
 static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node)
 {
     if (node->tag == MINIM_AST_OP)
     {
-        MinimObject **args;
+        MinimObject **args, *res;
         MinimBuiltin proc;
         int argc = node->count;
 
@@ -189,7 +120,10 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node)
         for (int i = 0; i < argc; ++i)
             init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
 
-        return proc(env, argc, args);
+        res = proc(env, argc, args);
+        free_minim_objects(argc, args);
+
+        return res;
     }
     else
     {
@@ -240,6 +174,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             }
 
             res = proc(env, argc, args);
+            free_minim_objects(argc, args);
         }
         else if (op->type == MINIM_OBJ_SYNTAX)
         {
@@ -307,20 +242,6 @@ int eval_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 int unsyntax_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast);
-    *pobj = obj;
-    return (obj->type != MINIM_OBJ_ERR);
-}
-
-int eval_ast_as_sexpr(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
-{
-    MinimObject *obj = ast_node_to_sexpr(env, ast);
-    *pobj = obj;
-    return (obj->type != MINIM_OBJ_ERR);
-}
-
-int eval_sexpr(MinimEnv *env, MinimObject *expr, MinimObject **pobj)
-{
-    MinimObject *obj = eval_sexpr_node(env, expr);
     *pobj = obj;
     return (obj->type != MINIM_OBJ_ERR);
 }

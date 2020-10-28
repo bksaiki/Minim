@@ -98,6 +98,8 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
         val = eval_lambda(lam, env, 1, &args[0]);
     }
 
+    free_minim_objects(1, args);
+
     if (val->type == MINIM_OBJ_ERR)
         return val;
 
@@ -279,7 +281,6 @@ MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
         }
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -289,7 +290,7 @@ MinimObject *minim_builtin_consp(MinimEnv *env, int argc, MinimObject** args)
 
     if (assert_exact_argc(argc, &res, "pair?", 1))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_consp(args[0]));
-    free_minim_objects(argc, args);
+
     return res;
 }
 
@@ -305,7 +306,6 @@ MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args)
         MINIM_CAR(args[0]) = NULL;
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -321,7 +321,6 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args)
         MINIM_CDR(args[0]) = NULL;
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -331,7 +330,7 @@ MinimObject *minim_builtin_listp(MinimEnv *env, int argc, MinimObject** args)
 
     if (assert_exact_argc(argc, &res, "list?", 1))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_listp(args[0]));
-    free_minim_objects(argc, args);
+    
     return res;
 }
 
@@ -344,7 +343,6 @@ MinimObject *minim_builtin_nullp(MinimEnv *env, int argc, MinimObject** args)
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_nullp(args[0]));
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -353,11 +351,16 @@ MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
 
     if (argc == 0)
+    {
         init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    }
     else
+    {
         res = minim_construct_list(argc, args);
+        for (int i = 0; i < argc; ++i)
+            args[i] = NULL;
+    }
 
-    free(args);
     return res;
 }
 
@@ -365,26 +368,16 @@ MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res, **pair;
 
-    if (!assert_exact_argc(argc, &res, "head", 1))
-    {
-        free_minim_objects(argc, args);
-    }
-    else
+    if (assert_exact_argc(argc, &res, "head", 1))
     {
         if (MINIM_CAR(args[0]))
         {
             pair = ((MinimObject**) args[0]->data);
             res = pair[0];
-            free_minim_object(pair[1]);
-
             pair[0] = NULL;
-            pair[1] = NULL;
-            free_minim_object(args[0]);
-            free(args);
         }
         else
         {
-            free_minim_objects(argc, args);
             minim_error(&res, "Expected a non-empty list");
         }
     }
@@ -405,10 +398,7 @@ MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
 
             pair = ((MinimObject**) it->data);
             res = pair[0];
-            free_minim_object(pair[1]);
-
             pair[0] = NULL;
-            pair[1] = NULL;
         }
         else
         {
@@ -416,7 +406,6 @@ MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
         }
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -434,7 +423,6 @@ MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -442,25 +430,21 @@ MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (!assert_min_argc(argc, &res, "append", 1))
+    if (assert_min_argc(argc, &res, "append", 1))
     {
-        free_minim_objects(argc, args);
-        return res;
-    }
-
-    for (int i = 0; i < argc; ++i)
-    {
-        if (!assert_list(args[i], &res, "Arguments must be lists for 'append'"))
+        for (int i = 0; i < argc; ++i)
         {
-            free_minim_objects(argc, args);
-            return res;
+            if (!assert_list(args[i], &res, "Arguments must be lists for 'append'"))
+                return res;
         }
+
+        append_lists(args[0], argc - 1, &args[1]);
+        res = args[0];
+
+        for (int i = 0; i < argc; ++i)
+            args[i] = NULL;
     }
 
-    append_lists(args[0], argc - 1, &args[1]);
-    res = args[0];
-
-    free(args);
     return res;
 }
 
@@ -469,17 +453,16 @@ MinimObject *minim_builtin_reverse(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
     int len;
 
-    if (!assert_exact_argc(argc, &res, "reverse", 1) &&
-        !assert_list(args[0], &res, "Expected a list for 'reverse'"))
+    if (assert_exact_argc(argc, &res, "reverse", 1) &&
+        assert_list(args[0], &res, "Expected a list for 'reverse'"))
     {
-        free_minim_objects(argc, args);
-        return res;
+        len = minim_list_length(args[0]);
+        res = reverse_lists(args[0], NULL, len);
+
+        for (int i = 0; i < argc; ++i)
+            args[i] = NULL;
     }
 
-    len = minim_list_length(args[0]);
-    res = reverse_lists(args[0], NULL, len);
-
-    free(args);
     return res;
 }
 
@@ -501,7 +484,6 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
         if (!it)
         {
             minim_error(&res, "list-ref out of bounds: length %d, index %d", minim_list_length(args[0]), idx);
-            free_minim_objects(argc, args);
             return res;
         }
 
@@ -509,7 +491,6 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
         MINIM_CAR(it) = NULL;
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -527,7 +508,6 @@ MinimObject *minim_builtin_map(MinimEnv *env, int argc, MinimObject** args)
         else            res = construct_list_map(args[1], args[0], env, len);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -560,9 +540,10 @@ MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args)
             MinimLambda *lam = args[0]->data;
             res = eval_lambda(lam, env, len, vals);
         }
+
+        free_minim_objects(len, vals);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -580,7 +561,6 @@ MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
         if (res->type != MINIM_OBJ_ERR)         args[1] = NULL;
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -598,6 +578,5 @@ MinimObject *minim_builtin_filtern(MinimEnv *env, int argc, MinimObject **args)
         if (res->type != MINIM_OBJ_ERR)         args[1] = NULL;
     }
 
-    free_minim_objects(argc, args);
     return res;
 }

@@ -14,13 +14,6 @@ int eval_ast(MinimEnv* env, MinimAst *ast, MinimObject **pobj);
 // Else a list of syntax children is the result.
 int unsyntax_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj);
 
-// Evaluates the syntax as an s-expression.
-int eval_ast_as_sexpr(MinimEnv *env, MinimAst *ast, MinimObject **pobj);
-
-// Evaluates the s-expression stored at 'expr' and stores the result
-// at 'pobj'. Returns true on success.
-int eval_sexpr(MinimEnv *env, MinimObject *expr, MinimObject **pobj);
-
 // Evaluates an expression and returns a string. The result must be freed.
 char *eval_string(char *str, size_t len);
 

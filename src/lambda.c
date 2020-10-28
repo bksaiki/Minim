@@ -39,7 +39,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         src->args = NULL;
     }
 
-    if (lam->rest)
+    if (src->rest)
     {
         lam->rest = malloc((strlen(src->rest) + 1) * sizeof(char));
         strcpy(lam->rest, src->rest);
@@ -49,7 +49,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->rest = NULL;
     }
 
-    if (lam->name)
+    if (src->name)
     {
         lam->name = malloc((strlen(src->name) + 1) * sizeof(char));
         strcpy(lam->name, src->name);
@@ -59,7 +59,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->name = NULL;
     }
 
-    if (lam->body)  copy_ast(&lam->body, src->body);
+    if (src->body)  copy_ast(&lam->body, src->body);
     else            lam->body = NULL;
 
     *cp = lam;

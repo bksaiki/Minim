@@ -267,7 +267,6 @@ MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args)
             minim_number_add(res->data, res->data, args[i]->data);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -292,7 +291,7 @@ MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args)
 
     res = args[0];
     args[0] = NULL;
-    free_minim_objects(argc, args);
+
     return res;
 }
 
@@ -308,7 +307,6 @@ MinimObject *minim_builtin_mul(MinimEnv *env, int argc, MinimObject** args)
             minim_number_mul(res->data, res->data, args[i]->data);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -323,7 +321,6 @@ MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject** args)
         minim_number_div(res->data, res->data, args[1]->data);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -340,7 +337,6 @@ MinimObject *minim_builtin_sqrt(MinimEnv *env, int argc, MinimObject** args)
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -357,7 +353,6 @@ MinimObject *minim_builtin_exp(MinimEnv *env, int argc, MinimObject** args)
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -374,7 +369,6 @@ MinimObject *minim_builtin_log(MinimEnv *env, int argc, MinimObject** args)
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
 
@@ -392,6 +386,5 @@ MinimObject *minim_builtin_pow(MinimEnv *env, int argc, MinimObject** args)
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
-    free_minim_objects(argc, args);
     return res;
 }
