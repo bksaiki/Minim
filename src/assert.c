@@ -8,7 +8,7 @@
 
 //  Arity
 
-bool assert_min_argc(int argc, MinimObject **args, MinimObject** ret, const char* op, int min)
+bool assert_min_argc(int argc, MinimObject** ret, const char* op, int min)
 {
     if (argc < min)
     {
@@ -20,7 +20,7 @@ bool assert_min_argc(int argc, MinimObject **args, MinimObject** ret, const char
     return true;
 }
 
-bool assert_exact_argc(int argc, MinimObject **args, MinimObject** ret, const char* op, int count)
+bool assert_exact_argc(int argc, MinimObject** ret, const char* op, int count)
 {
     if (argc != count)
     {
@@ -32,7 +32,7 @@ bool assert_exact_argc(int argc, MinimObject **args, MinimObject** ret, const ch
     return true;
 }
 
-bool assert_range_argc(int argc, MinimObject **args, MinimObject** ret, const char* op, int min, int max)
+bool assert_range_argc(int argc, MinimObject** ret, const char* op, int min, int max)
 {
     if (argc < min || argc > max)
     {

@@ -219,7 +219,7 @@ MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, args, &res, "+", 1) &&
+    if (assert_min_argc(argc, &res, "+", 1) &&
         assert_for_all(argc, args, &res, "Expected numerical arguments for '+'", minim_numberp))
     {
         copy_minim_object(&res, args[0]);
@@ -235,7 +235,7 @@ MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, args, &res, "-", 1) &&
+    if (assert_min_argc(argc, &res, "-", 1) &&
         assert_for_all(argc, args, &res, "Expected numerical arguments for '-'", minim_numberp))
     {    
         if (argc == 1)
@@ -260,7 +260,7 @@ MinimObject *minim_builtin_mul(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, args, &res, "*", 1) &&
+    if (assert_min_argc(argc, &res, "*", 1) &&
         assert_for_all(argc, args, &res, "Expected numerical arguments for '*'", minim_numberp))
     {
         copy_minim_object(&res, args[0]);
@@ -276,7 +276,7 @@ MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, args, &res, "/", 2) &&
+    if (assert_exact_argc(argc, &res, "/", 2) &&
         assert_for_all(argc, args, &res, "Expected numerical arguments for '/'", minim_numberp))
     {
         if (minim_number_zerop(args[1]->data))
@@ -299,7 +299,7 @@ MinimObject *minim_builtin_sqrt(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
     MinimNumber *num;
 
-    if (assert_exact_argc(argc, args, &res, "sqrt", 1) &&
+    if (assert_exact_argc(argc, &res, "sqrt", 1) &&
         assert_number(args[0], &res, "Expected a number for 'sqrt'"))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
@@ -316,7 +316,7 @@ MinimObject *minim_builtin_exp(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
     MinimNumber *num;
 
-    if (assert_exact_argc(argc, args, &res, "exp", 1) &&
+    if (assert_exact_argc(argc, &res, "exp", 1) &&
         assert_number(args[0], &res, "Expected a number for 'exp'"))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
@@ -333,7 +333,7 @@ MinimObject *minim_builtin_log(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
     MinimNumber *num;
 
-    if (assert_exact_argc(argc, args, &res, "log", 1) &&
+    if (assert_exact_argc(argc, &res, "log", 1) &&
         assert_number(args[0], &res, "Expected a number for 'log'"))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
@@ -350,7 +350,7 @@ MinimObject *minim_builtin_pow(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
     MinimNumber *num;
 
-    if (assert_exact_argc(argc, args, &res, "pow", 2) &&
+    if (assert_exact_argc(argc, &res, "pow", 2) &&
         assert_number(args[0], &res, "Expected a number in the 1st argument of 'pow'") &&
         assert_number(args[1], &res, "Expected a number in the 2nd argument of 'pow'"))
     {

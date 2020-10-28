@@ -86,7 +86,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
     MinimObject *res, *val;
     MinimEnv *env2;
 
-    if (lam->rest || assert_exact_argc(argc, args, &res, ((lam->name) ? lam->name : "unnamed lambda"), lam->argc))
+    if (lam->rest || assert_exact_argc(argc, &res, ((lam->name) ? lam->name : "unnamed lambda"), lam->argc))
     {   
         init_env(&env2);
         env2->parent = env;
@@ -142,7 +142,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_range_argc(argc, args, &res, "lambda", 2, 2))
+    if (assert_range_argc(argc, &res, "lambda", 2, 2))
     {
         MinimObject *bindings;
         MinimLambda *lam;

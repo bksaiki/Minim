@@ -53,7 +53,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res = NULL;
 
-    if (assert_exact_argc(argc, args, &res, "for", 2))
+    if (assert_exact_argc(argc, &res, "for", 2))
     {
         MinimObject *it, *bindings;
 
@@ -160,7 +160,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res = NULL;
 
-    if (assert_exact_argc(argc, args, &res, "for-list", 2))
+    if (assert_exact_argc(argc, &res, "for-list", 2))
     {
         MinimObject *it, *bindings;
 
