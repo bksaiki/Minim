@@ -22,38 +22,14 @@ int main()
     bool status = true;
 
     {
-        const int COUNT = 4;
-        char strs[8][256] =
+        const int COUNT = 2;
+        char strs[4][256] =
         {
-            "1",            "1",
-            "5/2",          "5/2",
             "'x",            "'x",
             "+",            "<function:+>"
         };
 
         printf("Testing single expressions...\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 11;
-        char strs[22][256] =
-        {
-            "(+ 1)",                 "1",
-            "(+ 1 2)",               "3",
-            "(+ 1 2 3)",             "6",
-            "(- 1)",                 "-1",
-            "(- 1 2)",               "-1",
-            "(- 1 2 3)",             "-4",
-            "(* 1)",                 "1",
-            "(* 1 2)",               "2",
-            "(* 1 2 3)",             "6",
-            "(/ 1 2)",               "1/2",
-            "(/ 1 0)",               "Division by zero"
-        };
-
-        printf("Testing basic math...\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -157,6 +133,34 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
+            "(for ((x (list))) x)",              "<void>",
+            "(for ((x (list 1))) x)",            "<void>",
+            "(for ((x (list 1 2 3))) x)",        "<void>"
+        };
+
+        printf("Testing 'for'...\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[4][256] =
+        {
+           // "(for-list ((x (list))) x)",            "'()",
+            "(for-list ((x (list 1))) x)",          "'(1)",
+            "(for-list ((x (list 1 2 3))) x)",      "'(1 2 3)"
+        };
+
+        printf("Testing 'for-list'...\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
             "(lambda () 1)",                                "<function:?>",
             "(lambda (x) (+ x 1))",                         "<function:?>",
             "(lambda (x y) (+ (* x x) (* y y)))",           "<function:?>"
@@ -168,16 +172,89 @@ int main()
     }
 
     {
-        const int COUNT = 4;
-        char strs[8][256] =
+        const int COUNT = 3;
+        char strs[6][256] =
         {
-            "(apply + (list 1 2 3 4))",                     "10",
-            "(map (lambda (x) (+ x 1)) (list 1 2 3))",      "'(2 3 4)",
-            "(append (list 1 2) (list 3 4) (list 5 6))",    "'(1 2 3 4 5 6)",
-            "(reverse (list 1 2 3 4 5 6))",                 "'(6 5 4 3 2 1)"
+            "(apply list (list))",                          "'()",
+            "(apply + (list 1))",                            "1",
+            "(apply + (list 1 2 3 4))",                     "10"
         };
 
-        printf("Testing list modifiers..\n");
+        printf("Testing 'apply'...\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(map (lambda (x) (+ x 1)) (list))",            "'()",
+            "(map (lambda (x) (+ x 1)) (list 1))",          "'(2)",
+            "(map (lambda (x) (+ x 1)) (list 1 2 3))",      "'(2 3 4)"
+        };
+
+        printf("Testing 'map'...\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(append (list))",                              "'()",
+            "(append (list 1 2) (list 3 4))",               "'(1 2 3 4)",
+            "(append (list 1 2) (list 3 4) (list 5 6))",    "'(1 2 3 4 5 6)"
+        };
+
+        printf("Testing 'append'...\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(reverse (list))",                         "'()",
+            "(reverse (list 1))",                       "'(1)",
+            "(reverse (list 1 2 3 4 5 6))",             "'(6 5 4 3 2 1)"
+        };
+
+        printf("Testing 'reverse'..\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+           // "(filter negative? (list))",                    "'()",
+           // "(filter negative? (list 1))",                  "'()",
+            "(filter negative? (list -1))",                 "'(-1)",
+            "(filter negative? (list -1 0 1))",             "'(-1)",
+            "(filter negative? (list -3 -2 -1 0))",         "'(-3 -2 -1)"
+        };
+
+        printf("Testing 'filter'...\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+           // "(filtern negative? (list))",                    "'()",
+            "(filtern negative? (list 1))",                  "'(1)",
+           // "(filtern negative? (list -1))",                 "'()",
+            "(filtern negative? (list -1 0 1))",             "'(0 1)",
+            "(filtern negative? (list -1 0 2 3))",           "'(0 2 3)"
+        };
+
+        printf("Testing 'filtern'...\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
