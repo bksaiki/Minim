@@ -9,8 +9,7 @@ int main(int argc, char** argv)
     MinimEnv *env;
     MinimAst *ast;
     MinimObject *obj;
-    char *input;
-    int ilen = 2048;
+    Buffer *bf;
 
     init_env(&env);
     env_load_builtins(env);
@@ -18,34 +17,27 @@ int main(int argc, char** argv)
     printf("Minim v%s\n", MINIM_VERSION_STR);
     while (1)
     {
-        char str[2048];
+        char *input;
         int paren = 0;
 
-        input = malloc(ilen * sizeof(char));
+        init_buffer(&bf);
         fputs("> ", stdout);
-        strcpy(input, "");
 
         while (1)
         {
-            int len = 0;
+            char str[2048];
+            int len;
 
             fgets(str, 2047, stdin);
-            for (; str[len] != '\n'; ++len)
+            for (len = 0; str[len] != '\n'; ++len)
             {
                 if (str[len] == '(')          ++paren;
                 else if (str[len] == ')')     --paren;
             }
 
-            if (strlen(input) + len >= ilen)
-            {
-                input = realloc(input, ilen * 2);
-                ilen *= 2;
-            }
+            if (bf->pos != 0)   writec_buffer(bf, ' ');
+            write_buffer(bf, str, len);
 
-            if (strlen(input) != 0)
-                strcat(input, " ");
-
-            strncat(input, str, len);
             if (paren <= 0)     break;
 
             fputs("  ", stdout);
@@ -53,6 +45,7 @@ int main(int argc, char** argv)
                 fputs("  ", stdout);
         }
 
+        input = get_buffer(bf);
         if (strlen(input) == 0)
         {
             free(input);
@@ -79,7 +72,7 @@ int main(int argc, char** argv)
 
         free_minim_object(obj);
         free_ast(ast);
-        free(input);
+        free_buffer(bf);
     }
 
     free_env(env);

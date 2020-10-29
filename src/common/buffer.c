@@ -33,7 +33,7 @@ void copy_buffer(Buffer **pbf, Buffer *src)
 
 void free_buffer(Buffer *bf)
 {
-    free(bf->data);
+    if (bf->data) free(bf->data);
     free(bf);
 }
 
@@ -180,4 +180,11 @@ void writef_buffer(Buffer *bf, const char *format, ...)
 char *get_buffer(Buffer *bf)
 {
     return bf->data;
+}
+
+char *release_buffer(Buffer *bf)
+{
+    char *str = bf->data;
+    bf->data = NULL;
+    return str;
 }

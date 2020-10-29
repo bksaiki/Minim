@@ -3,187 +3,121 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common/buffer.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
 #include "print.h"
 
-typedef struct PrintBuffer
+typedef struct PrintParams
 {
-    char *buffer;
-    size_t pos;
-    size_t max;
-    size_t curr;
-
     bool quote;
-} PrintBuffer;
-
-static void init_buffer(PrintBuffer **pb, size_t start, size_t max)
-{
-    PrintBuffer* bf;
-
-    bf = malloc(sizeof(PrintBuffer));
-    bf->buffer = malloc(start * sizeof(char));
-    bf->pos = 0;
-    bf->max = max;
-    bf->curr = start;
-    bf->quote = false;
-    bf->buffer[0] = '\0';
-
-    *pb = bf;
-}
-
-static void free_buffer(PrintBuffer *pb)
-{
-    if (pb->buffer) 
-    {
-        free(pb->buffer);
-        pb->buffer = NULL;
-    }
-
-    free(pb);
-}
-
-static void resize_buffer(PrintBuffer *pb, size_t requested)
-{
-    char* buf;
-
-    if (requested > pb->max)
-    {
-        buf = realloc(pb->buffer, pb->max * sizeof(char));
-        pb->buffer = buf;
-        pb->curr = pb->max;
-    }
-    else if (requested > pb->curr)
-    {
-        buf = realloc(pb->buffer, requested * sizeof(char));
-        pb->buffer = buf;
-        pb->curr = pb->max;
-    }
-    else
-    {
-        printf("Requested a smaller buffer!!\n");
-    }
-}
+} PrintParams;
 
 //
 //  Printing
 //
 
-static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb);
+// forward declaration
+static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp);
 
-static void print_to_buffer(PrintBuffer *pb, const char *str)
-{
-    size_t len = strlen(str);
-
-    if (pb->pos + len >= pb->curr)
-        resize_buffer(pb, pb->curr * 2);
-
-    strcat(pb->buffer, str);
-    pb->pos += len;
-}
-
-static void print_list(MinimObject* obj, MinimEnv* env, PrintBuffer *pb)
+static void print_list(MinimObject* obj, MinimEnv* env, Buffer *bf, PrintParams *pp)
 {
     MinimObject** pair = ((MinimObject**) obj->data);
 
     if (pair[0])
-        print_object(pair[0], env, pb);
+        print_object(pair[0], env, bf, pp);
 
     if (!pair[1])
     {
-        print_to_buffer(pb, ")");
+        writec_buffer(bf, ')');
     }
     else if (pair[1]->type == MINIM_OBJ_PAIR)
     {
-        print_to_buffer(pb, " ");
-        print_list(pair[1], env, pb);
+        writec_buffer(bf, ' ');
+        print_list(pair[1], env, bf, pp);
     }
     else
     {
-        print_to_buffer(pb, " . ");
-        print_object(pair[1], env, pb);
-        print_to_buffer(pb, ")");
+        writes_buffer(bf, " . ");
+        print_object(pair[1], env, bf, pp);
+        writec_buffer(bf, ')');
     }
 }
 
-static int print_object(MinimObject *obj, MinimEnv *env, PrintBuffer *pb)
+static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
-    char str[2048];
-
     if (obj->type == MINIM_OBJ_VOID)
     {
-        print_to_buffer(pb, "<void>");
+        writes_buffer(bf, "<void>");
     }
     else if (obj->type == MINIM_OBJ_BOOL)
     {
-        print_to_buffer(pb, ((*((int*) obj->data)) ? "true" : "false"));
+        int b = *((int*) obj->data);
+
+        if (b)  writes_buffer(bf, "true");
+        else    writes_buffer(bf, "false");
     }
     else if (obj->type == MINIM_OBJ_NUM)
     {
         char *tmp = minim_number_to_str(obj->data);
-        print_to_buffer(pb, tmp);
+        writes_buffer(bf, tmp);
         free(tmp);
     }
     else if (obj->type == MINIM_OBJ_SYM)
     {
-        if (pb->quote)  sprintf(str, "%s", ((char*) obj->data));
-        else            sprintf(str, "'%s", ((char*) obj->data));
-        print_to_buffer(pb, str);
+        if (pp->quote)  writef_buffer(bf, "~s", obj->data);
+        else            writef_buffer(bf, "'~s", obj->data);
     }
     else if (obj->type == MINIM_OBJ_ERR)
     {
-        sprintf(str, "%s", ((char*) obj->data));
-        print_to_buffer(pb, str);
+        writes_buffer(bf, obj->data);
     }
     else if (obj->type == MINIM_OBJ_PAIR)
     {
         MinimObject **pair = ((MinimObject**) obj->data);
 
+        if (pp->quote)  writec_buffer(bf, '(');
+        else            writes_buffer(bf, "'(");
+        pp->quote = true;
+
         if (minim_listp(obj))
         {
-            print_to_buffer(pb, ((pb->quote) ? "(" : "'("));
-            pb->quote = true;
-            print_list(obj, env, pb);
+            print_list(obj, env, bf, pp);
         }
         else
         {
-            print_to_buffer(pb, ((pb->quote) ? "(" : "'("));
-            pb->quote = true;
-            print_object(pair[0], env, pb);
-            print_to_buffer(pb, " . ");
-            print_object(pair[1], env, pb);
-            print_to_buffer(pb, ")");
+            print_object(pair[0], env, bf, pp);
+            writes_buffer(bf, " . ");
+            print_object(pair[1], env, bf, pp);
+            writec_buffer(bf, ')');
         }
     }
-    else if (obj->type == MINIM_OBJ_FUNC)
+    else if (obj->type == MINIM_OBJ_FUNC || obj->type == MINIM_OBJ_SYNTAX)
     {
         const char *key = env_peek_key(env, obj);
 
-        if (key)    sprintf(str, "<function:%s>", key);
-        else        sprintf(str, "<function:?>");
-        print_to_buffer(pb, str);
+        if (key)    writef_buffer(bf, "<function:~s>", key);
+        else        writes_buffer(bf, "<function:?>");
     }
     else if (obj->type == MINIM_OBJ_CLOSURE)
     {
         MinimLambda *lam = obj->data;
 
-        if (lam->name)      sprintf(str, "<function:%s>", lam->name);
-        else                sprintf(str, "<function:?>");
-        print_to_buffer(pb, str);
+        if (lam->name)    writef_buffer(bf, "<function:~s>", lam->name);
+        else              writes_buffer(bf, "<function:?>");
     }
     else if (obj->type == MINIM_OBJ_SEQ)
     {
-        sprintf(str, "<iterator>");
-        print_to_buffer(pb, str);
+        writes_buffer(bf, "<iterator>");
     }
     else
     {
-        print_to_buffer(pb, "<Unknown type>");
-        return 1;
+        writes_buffer(bf, "<unknown type>");
+        return 0;
     }
 
-    return 0;
+    return 1;
 }
 
 // Visible functions
@@ -196,28 +130,32 @@ int print_minim_object(MinimObject *obj, MinimEnv *env, size_t maxlen)
 // Writes a string representation of the object to stream.
 int print_to_port(MinimObject *obj, MinimEnv *env, size_t maxlen, FILE *stream)
 {
-    PrintBuffer *pb;
+    PrintParams pp;
+    Buffer *bf;
     int status;
 
-    init_buffer(&pb, 2048, maxlen);
-    status = print_object(obj, env, pb);
-    fputs(pb->buffer, stream);
-    free_buffer(pb);
+    init_buffer(&bf);
+    pp.quote = false;
+
+    status = print_object(obj, env, bf, &pp);
+    fputs(bf->data, stream);
+    free_buffer(bf);
 
     return status;
 }
 
 char *print_to_string(MinimObject *obj, MinimEnv *env, size_t maxlen)
 {
-    PrintBuffer *pb;
+    PrintParams pp;
+    Buffer *bf;
     char *str;
 
-    init_buffer(&pb, 2048, maxlen);
-    print_object(obj, env, pb);
+    init_buffer(&bf);
+    pp.quote = false;
 
-    str = malloc((pb->pos + 1) * sizeof(char));
-    strcpy(str, pb->buffer);
-    free_buffer(pb);
+    print_object(obj, env, bf, &pp);
+    str = release_buffer(bf);
+    free_buffer(bf);
 
     return str;
 }

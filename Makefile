@@ -5,7 +5,7 @@ TEST_DIR	= tests
 ENTRY		= src/minim.c
 EXE			= minim
 
-SRCS 		= $(shell find $(SRC_DIR) -name *.c ! -wholename $(ENTRY))
+SRCS 		= $(shell find $(SRC_DIR) -name *.c)
 OBJS 		= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		= $(OBJS:.o=.d)
 
@@ -58,7 +58,7 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
 $(EXE): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(EXE)
 	
 -include $(DEPS)
 .PHONY: main build clean clean-deps clean-all

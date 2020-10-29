@@ -31,6 +31,7 @@ void writeb_buffer(Buffer *bf, Buffer *src);
 void writef_buffer(Buffer *bf, const char *format, ...);
 
 char *get_buffer(Buffer *bf);
+char *release_buffer(Buffer *bf);
 
 
 #endif
