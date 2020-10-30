@@ -41,7 +41,7 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = va_arg(rest, MinimNumber*);
     }
-    else if (type == MINIM_OBJ_SYM || type == MINIM_OBJ_ERR)
+    else if (type == MINIM_OBJ_SYM || type == MINIM_OBJ_ERR || type == MINIM_OBJ_STRING)
     {
         char *dest, *src = va_arg(rest, char*);
         dest = malloc((strlen(src) + 1) * sizeof(char));
@@ -106,7 +106,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         copy_minim_number(&num, src->data);
         obj->data = num;
     }
-    else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR)
+    else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR || src->type == MINIM_OBJ_STRING)
     {
         char *dest, *str = ((char*) src->data);
         dest = malloc((strlen(str) + 1) * sizeof(char));

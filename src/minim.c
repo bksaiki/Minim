@@ -48,18 +48,18 @@ int main(int argc, char** argv)
         input = get_buffer(bf);
         if (strlen(input) == 0)
         {
-            free(input);
+            free_buffer(bf);
             continue;
         }
         else if (strcmp(input, "(exit)") == 0)
         {
-            free(input);
+            free_buffer(bf);
             break;
         }
 
         if (!parse_str(input, &ast))
         {
-            free(input);
+            free_buffer(bf);
             continue;
         }
         

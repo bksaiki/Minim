@@ -18,13 +18,14 @@ typedef enum MinimObjectType
     MINIM_OBJ_BOOL,
     MINIM_OBJ_NUM,
     MINIM_OBJ_SYM,
+    MINIM_OBJ_STRING,
     MINIM_OBJ_PAIR,
     MINIM_OBJ_ERR,
     MINIM_OBJ_FUNC,
     MINIM_OBJ_CLOSURE,
     MINIM_OBJ_SYNTAX,
     MINIM_OBJ_AST,
-    MINIM_OBJ_SEQ
+    MINIM_OBJ_SEQ,
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject **);

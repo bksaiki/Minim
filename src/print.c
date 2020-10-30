@@ -69,7 +69,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (pp->quote)  writef_buffer(bf, "~s", obj->data);
         else            writef_buffer(bf, "'~s", obj->data);
     }
-    else if (obj->type == MINIM_OBJ_ERR)
+    else if (obj->type == MINIM_OBJ_ERR || obj->type == MINIM_OBJ_STRING)
     {
         writes_buffer(bf, obj->data);
     }

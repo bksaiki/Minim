@@ -121,16 +121,69 @@ static MinimAst* parse_str_node(char* str)
             }
         }
     }
+    else if (*str == '\"' && *end == '\"')
+    {
+        bool bad = false;
+
+        for (char* it = str; it != end; ++it)
+        {
+            if (*it == '\"' && it != str && *(it - 1) != '\\')
+                bad = true;
+        }
+        
+        if (bad)
+        {
+            tmp = malloc(50 * sizeof(char));
+            strcpy(tmp, "Malformed string");
+
+            init_ast_node(&node);
+            node->sym = tmp;
+            node->state = MINIM_AST_ERROR;
+            node->tag = MINIM_AST_NONE;
+        }
+        else
+        {
+            tmp = malloc((len + 1) * sizeof(char));
+            strncpy(tmp, str, len);
+            tmp[len] = '\0';
+
+            init_ast_node(&node);
+            node->sym = tmp;
+            node->state = MINIM_AST_VALID;
+            node->tag = MINIM_AST_VAL;
+        }
+    }
     else if (*str != '(' && *end != ')')
     {
-        tmp = malloc((len + 1) * sizeof(char));
-        strncpy(tmp, str, len);
-        tmp[len] = '\0';
+        bool space = false;
 
-        init_ast_node(&node);
-        node->sym = tmp;
-        node->state = MINIM_AST_VALID;
-        node->tag = MINIM_AST_VAL;
+        for (char* it = str; it != end; ++it)
+        {
+            if (*it == ' ')
+                space = true;
+        }
+
+        if (space)
+        {
+            tmp = malloc(50 * sizeof(char));
+            strcpy(tmp, "Unexpected space encountered");
+
+            init_ast_node(&node);
+            node->sym = tmp;
+            node->state = MINIM_AST_ERROR;
+            node->tag = MINIM_AST_NONE;
+        }
+        else
+        {
+            tmp = malloc((len + 1) * sizeof(char));
+            strncpy(tmp, str, len);
+            tmp[len] = '\0';
+
+            init_ast_node(&node);
+            node->sym = tmp;
+            node->state = MINIM_AST_VALID;
+            node->tag = MINIM_AST_VAL;
+        }
     }
     else
     {

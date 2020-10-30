@@ -64,6 +64,22 @@ static bool is_float(char *str)
     return (*it == '\0');
 }
 
+static bool is_str(char *str)
+{
+    size_t len = strlen(str);
+
+    if (len < 2 || str[0] != '\"' || str[len - 1] != '\"')
+        return false;
+
+    for (size_t i = 1; i < len; ++i)
+    {
+        if (str[i] == '\"' && str[i - 1] == '\\')
+            return false;
+    }
+
+    return true;
+}
+
 static int is_err_pred(const void *thing)
 {
     MinimObject **pobj = (MinimObject**) thing;
@@ -87,6 +103,10 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
         str_to_minim_number(num, str);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
+    }
+    else if (is_str(str))
+    {
+        init_minim_object(&res, MINIM_OBJ_STRING, str);
     }
     else
     {
