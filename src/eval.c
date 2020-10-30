@@ -106,7 +106,12 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     }
     else if (is_str(str))
     {
-        init_minim_object(&res, MINIM_OBJ_STRING, str);
+        size_t len = strlen(str) - 1;
+        char *tmp = malloc(len * sizeof(char));
+
+        strncpy(tmp, &str[1], len - 1);
+        tmp[len - 1] = '\0';
+        init_minim_object(&res, MINIM_OBJ_STRING, tmp);
     }
     else
     {

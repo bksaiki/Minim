@@ -41,12 +41,16 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = va_arg(rest, MinimNumber*);
     }
-    else if (type == MINIM_OBJ_SYM || type == MINIM_OBJ_ERR || type == MINIM_OBJ_STRING)
+    else if (type == MINIM_OBJ_SYM || type == MINIM_OBJ_ERR)
     {
         char *dest, *src = va_arg(rest, char*);
         dest = malloc((strlen(src) + 1) * sizeof(char));
         strcpy(dest, src);
         obj->data = dest;
+    }
+    else if (type == MINIM_OBJ_STRING)
+    {
+        obj->data = va_arg(rest, char*);
     }
     else if (type == MINIM_OBJ_PAIR)
     {

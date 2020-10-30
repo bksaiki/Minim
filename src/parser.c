@@ -42,6 +42,17 @@ static int get_arg_len(char* start, char* end)
                 else if (*it2 == ')')   --paren;
             }
         }
+        else if (*it == '\"')
+        {
+            for (it2 = it + 1; it2 != end; ++it2)
+            {
+                if (*it2 == '\"' && *(it2 - 1) != '\\')
+                {
+                    ++it2;
+                    break;
+                }
+            }
+        }
         else
         {
             for (it2 = it; it2 != end && !isspace(*it2); ++it2);
@@ -104,6 +115,17 @@ static MinimAst* parse_str_node(char* str)
                     {
                         if (*it2 == '(')         ++paren;
                         else if (*it2 == ')')    --paren;
+                    }
+                }
+                else if (*it == '\"')
+                {
+                    for (it2 = it + 1; it2 != end; ++it2)
+                    {
+                        if (*it2 == '\"' && *(it2 - 1) != '\\')
+                        {
+                            ++it2;
+                            break;
+                        }
                     }
                 }
                 else

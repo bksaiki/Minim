@@ -14,6 +14,7 @@
 #include "number.h"
 #include "math.h"
 #include "variable.h"
+#include "string.h"
 
 static void free_single_env(MinimEnv *env)
 {
@@ -187,11 +188,14 @@ void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...
 void env_load_builtins(MinimEnv *env)
 {
     env_load_module_bool(env);
+    env_load_module_number(env);
+    env_load_module_variable(env);
+    env_load_module_string(env);
+
     env_load_module_for(env);
     env_load_module_iter(env);
     env_load_module_lambda(env);
+
     env_load_module_list(env);
-    env_load_module_number(env);
     env_load_module_math(env);
-    env_load_module_variable(env);
 }
