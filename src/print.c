@@ -66,8 +66,22 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_SYM)
     {
-        if (pp->quote)  writef_buffer(bf, "~s", obj->data);
-        else            writef_buffer(bf, "'~s", obj->data);
+        char *str = obj->data;
+        size_t len = strlen(str);
+
+        if (!pp->quote)
+            writec_buffer(bf, '\'');
+
+        for (int i = 0; i < len; ++i)
+        {
+            if (str[i] == ' ')
+            {
+                writef_buffer(bf, "|~s|", str);
+                return 0;
+            }
+        }
+
+        writes_buffer(bf, str);
     }
     else if (obj->type == MINIM_OBJ_STRING)
     {

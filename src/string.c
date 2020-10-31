@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -5,6 +6,7 @@
 #include "assert.h"
 #include "number.h"
 #include "string.h"
+#include "variable.h"
 
 bool minim_stringp(MinimObject *thing)
 {
@@ -26,6 +28,9 @@ void env_load_module_string(MinimEnv *env)
     env_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);
     env_load_builtin(env, "string-append", MINIM_OBJ_FUNC, minim_builtin_string_append);
     env_load_builtin(env, "substring", MINIM_OBJ_FUNC, minim_builtin_substring);
+    env_load_builtin(env, "string->symbol", MINIM_OBJ_FUNC, minim_builtin_string_to_symbol);
+    env_load_builtin(env, "symbol->string", MINIM_OBJ_FUNC, minim_builtin_symbol_to_string);
+    env_load_builtin(env, "format", MINIM_OBJ_FUNC, minim_builtin_format);
 }
 
 MinimObject *minim_builtin_stringp(MinimEnv *env, int argc, MinimObject **args)
@@ -95,6 +100,105 @@ MinimObject *minim_builtin_substring(MinimEnv *env, int argc, MinimObject **args
         tmp[end - start] = '\0';
 
         init_minim_object(&res, MINIM_OBJ_STRING, tmp);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, &res, "string->symbol", 1) &&
+        assert_string(args[0], &res, "Expected a string in the 1st argument of 'string->symbol'"))
+    {
+        char *dest = malloc((strlen(args[0]->data) + 1) * sizeof(char));
+        strcpy(dest, args[0]->data);
+
+        init_minim_object(&res, MINIM_OBJ_SYM, dest);
+        free(dest);     // this is dumb
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, &res, "symbol->string", 1) &&
+        assert_symbol(args[0], &res, "Expected a symbol in the 1st argument of 'symbol->string'"))
+    {
+        char *dest = malloc((strlen(args[0]->data) + 1) * sizeof(char));
+        strcpy(dest, args[0]->data);
+
+        init_minim_object(&res, MINIM_OBJ_STRING, dest);
+    }
+
+    return res;
+}
+
+static int collect_format_vars(const char *str, size_t len)
+{
+    int cnt = 0;
+
+    for (size_t i = 0; i < len; ++i)
+    {
+        if (str[i] == '~' && str[i + 1] == 'a')
+            ++cnt;
+    }
+
+    return cnt;
+}
+
+MinimObject *minim_builtin_format(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_min_argc(argc, &res, "symbol->string", 1) &&
+        assert_string(args[0], &res, "Expected a string in the 1st argument of 'format'"))
+    {
+        char *str = args[0]->data;
+        size_t len = strlen(str);
+        int vcount = collect_format_vars(str, len);
+
+        if (assert_generic(&res, "Number of format variables do not match argument count", vcount == (argc - 1)))
+        {
+            Buffer *bf;
+            size_t var = 1;
+
+            init_buffer(&bf);
+            for (size_t i = 0; i < len; ++i)
+            {
+                if (str[i] == '~')
+                {
+                    if (++i == len)
+                    {
+                        minim_error(&res, "Expected a character after '~'");
+                        free_buffer(bf);
+                        return res;
+                    }
+                    else if (str[i] == 'a')
+                    {
+                        char *t = print_to_string(args[var++], env, INT_MAX);
+                        writes_buffer(bf, t);
+                        free(t);
+                    }
+                    else
+                    {
+                        writec_buffer(bf, str[i]);
+                    }
+                }
+                else
+                {
+                    writec_buffer(bf, str[i]);
+                }
+            }
+
+            trim_buffer(bf);
+            init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
+            free_buffer(bf);
+        }
     }
 
     return res;

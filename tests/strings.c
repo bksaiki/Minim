@@ -66,5 +66,35 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(string->symbol \"hello\")",           "'hello",
+            "(string->symbol \"x y\")",             "'|x y|",
+            "(symbol->string 'hello)",              "\"hello\""
+        };
+
+        printf("Testing 'string<->symbol'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(format \"hello\")",                   "\"hello\"",
+            "(format \"num: ~a\" 1/9)",             "\"num: 1/9\"",
+            "(format \"var: ~a\" 'x)",              "\"var: 'x\"",
+            "(format \"list: ~a\" (list 1 2 3))",   "\"list: '(1 2 3)\"",
+            "(format \"~a -> ~a\" 'a 1)",           "\"'a -> 1\""
+        };
+
+        printf("Testing 'format'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     return (int)(!status);
 }
