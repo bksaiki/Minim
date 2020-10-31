@@ -13,6 +13,7 @@ bool assert_string(MinimObject *thing, MinimObject **res, const char *msg);
 void env_load_module_string(MinimEnv *env);
 
 MinimObject *minim_builtin_stringp(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_str_append(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_string_append(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_substring(MinimEnv *env, int argc, MinimObject **args);
 
 #endif
