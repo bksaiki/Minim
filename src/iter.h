@@ -12,7 +12,8 @@ typedef struct MinimIterObjs
 
 typedef enum MinimIterType
 {
-    MINIM_ITER_LIST
+    MINIM_ITER_LIST,
+    MINIM_ITER_SEQ
 } MinimIterType;
 
 typedef struct MinimIter
@@ -30,7 +31,7 @@ void copy_minim_iter(MinimIter **pdest, MinimIter *src);
 void free_minim_iter(MinimIter *iter);
 
 void minim_iter_next(MinimIter *iter);
-void *minim_iter_peek(MinimIter *iter);
+MinimObject *minim_iter_get(MinimIter *iter);
 bool minim_iter_endp(MinimIter *iter);
 
 // iter object list

@@ -76,7 +76,7 @@ char *minim_number_to_str(MinimNumber *num)
 
         if (len > 128)
         {
-            str = malloc((len + 1) * sizeof(char));
+            str = realloc(str, (len + 1) * sizeof(char));
             gmp_snprintf(str, len, "%Qd", num->rat);
         }
     }

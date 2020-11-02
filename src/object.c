@@ -10,6 +10,7 @@
 #include "number.h"
 #include "object.h"
 #include "parser.h"
+#include "sequence.h"
 #include "util.h"
 
 static void free_minim_object_proc(const void *thing)
@@ -71,9 +72,13 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = va_arg(rest, MinimAst*);
     }
-    else if (type == MINIM_OBJ_SEQ)
+    else if (type == MINIM_OBJ_ITER)
     {
         obj->data = va_arg(rest, MinimIter*);
+    }
+    else if (type == MINIM_OBJ_SEQ)
+    {
+        obj->data = va_arg(rest, MinimSeq*);
     }
     else
     {
@@ -144,11 +149,17 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         copy_ast(&node, src->data);
         obj->data = node;
     }
-    else if (src->type == MINIM_OBJ_SEQ)
+    else if (src->type == MINIM_OBJ_ITER)
     {
         MinimIter *iter;
         copy_minim_iter(&iter, src->data);
         obj->data = iter;
+    }
+    else if (src->type == MINIM_OBJ_SEQ)
+    {
+        MinimSeq *seq;
+        copy_minim_seq(&seq, src->data);
+        obj->data = seq;
     }
     else
     {
@@ -177,7 +188,8 @@ void free_minim_object(MinimObject *obj)
     {
         if (obj->type == MINIM_OBJ_CLOSURE)         free_minim_lambda(obj->data);
         else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
-        else if (obj->type == MINIM_OBJ_SEQ)        free_minim_iter(obj->data);
+        else if (obj->type == MINIM_OBJ_ITER)       free_minim_iter(obj->data);
+        else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
         else                                        free(obj->data);
     }
 

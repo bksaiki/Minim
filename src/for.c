@@ -118,7 +118,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
 
                     for (int i = 0; i < len; ++i)
                     {
-                        copy_minim_object(&val, minim_iter_peek(iters[i]));
+                        val = minim_iter_get(iters[i]);
                         env_intern_sym(env2, syms[i], val);
                         minim_iter_next(iters[i]);
                     }
@@ -226,7 +226,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
 
                     for (int i = 0; i < len; ++i)
                     {
-                        copy_minim_object(&val, minim_iter_peek(iters[i]));
+                        val = minim_iter_get(iters[i]);
                         env_intern_sym(env2, syms[i], val);
                         minim_iter_next(iters[i]);
                     }

@@ -15,6 +15,7 @@
 #include "math.h"
 #include "variable.h"
 #include "string.h"
+#include "sequence.h"
 
 static void free_single_env(MinimEnv *env)
 {
@@ -195,6 +196,7 @@ void env_load_builtins(MinimEnv *env)
     env_load_module_for(env);
     env_load_module_iter(env);
     env_load_module_lambda(env);
+    env_load_module_seq(env);
 
     env_load_module_list(env);
     env_load_module_math(env);

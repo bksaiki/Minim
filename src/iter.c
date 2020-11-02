@@ -3,6 +3,7 @@
 
 #include "iter.h"
 #include "list.h"
+#include "sequence.h"
 
 static void add_iter_ref(MinimIterObjs *iobjs, MinimObject* obj)
 {
@@ -63,6 +64,15 @@ void init_minim_iter(MinimIter **piter, MinimObject *obj)
         iter->end = minim_nullp(obj);
         *piter = iter;
     }
+    else if (obj->type == MINIM_OBJ_SEQ)
+    {
+        iter = malloc(sizeof(MinimIter));
+        iter->iobjs = NULL;
+        iter->data = obj;
+        iter->type = MINIM_ITER_SEQ;
+        iter->end = minim_seq_donep(obj->data);
+        *piter = iter;
+    }
     else
     {
         printf("Object not iterable!\n");
@@ -92,17 +102,39 @@ void minim_iter_next(MinimIter *iter)
         iter->data = MINIM_CDR(obj);
         iter->end = !iter->data;
     }
+    else if (iter->type == MINIM_ITER_SEQ)
+    {
+        MinimObject *seq = iter->data;
+        minim_seq_next(seq->data);
+        iter->end = minim_seq_donep(seq->data);
+    }
+    else
+    {
+        printf("Unknown iter type\n");
+    }
 }
 
-void *minim_iter_peek(MinimIter *iter)
+MinimObject *minim_iter_get(MinimIter *iter)
 {
+    MinimObject *res;
+
     if (iter->type == MINIM_ITER_LIST)
     {
         MinimObject *list = iter->data;
-        return MINIM_CAR(list);
+        copy_minim_object(&res, MINIM_CAR(list));
+    }
+    else if (iter->type == MINIM_ITER_SEQ)
+    {
+        MinimObject *seq = iter->data;
+        res = minim_seq_get(seq->data);
+    }
+    else
+    {
+        printf("Unknown iter type\n");
+        res = NULL;
     }
 
-    return NULL;
+    return res;
 }
 
 bool minim_iter_endp(MinimIter *iter)
@@ -143,7 +175,8 @@ void minim_iter_objs_add(MinimIterObjs *iobjs, MinimIter *iter)
 
 bool minim_is_iterable(MinimObject *obj)
 {
-    if (minim_listp(obj))       return true;
+    if (minim_listp(obj))           return true;
+    if (minim_sequencep(obj))       return true;
 
     return false;
 }
