@@ -259,5 +259,19 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 3;
+        char strs[6][256] = 
+        {
+            "(begin 1)",                            "1",
+            "(begin (def x 1) x)",                  "1",
+            "(begin (def x 1) (def y 1) (+ x y))",  "2"  
+        };
+
+        printf("Testing 'begin'...\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     return (int)(!status);
 }

@@ -28,13 +28,14 @@ bool assert_symbol(MinimObject *obj, MinimObject **res, const char* msg)
 void env_load_module_variable(MinimEnv *env)
 {
     env_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
+    env_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
+    
     env_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
     env_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     env_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
     env_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
-
     env_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
-    
+
     env_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
 }
 
@@ -226,6 +227,36 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
         }
 
         free_minim_object(sym);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_begin(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_min_argc(argc, &res, "begin", 1))
+    {
+        MinimObject *val;
+        MinimEnv *env2;
+
+        init_env(&env2);
+        env2->parent = env;
+        for (int i = 0; i < argc; ++i)
+        {
+            eval_ast(env2, args[i]->data, &val);
+            if (val->type == MINIM_OBJ_ERR)
+            {
+                res = val;
+                break;
+            }
+
+            if (i + 1 == argc)      res = val;
+            else                    free_minim_object(val);
+        }
+
+        pop_env(env2);
     }
 
     return res;

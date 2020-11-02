@@ -19,6 +19,8 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args);
 
+MinimObject *minim_builtin_begin(MinimEnv *env, int argc, MinimObject **args);
+
 // TODO: move these
 MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args);
 
