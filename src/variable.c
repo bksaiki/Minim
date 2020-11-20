@@ -271,3 +271,4 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args)
         
     return res;
 }
+

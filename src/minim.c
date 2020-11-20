@@ -10,9 +10,11 @@ int main(int argc, char** argv)
     MinimAst *ast;
     MinimObject *obj;
     Buffer *bf;
+    PrintParams pp;
 
     init_env(&env);
     env_load_builtins(env);
+    set_default_print_params(&pp);
 
     printf("Minim v%s\n", MINIM_VERSION_STR);
     while (1)
@@ -66,7 +68,7 @@ int main(int argc, char** argv)
         eval_ast(env, ast, &obj);
         if (obj->type != MINIM_OBJ_VOID)
         {
-            print_minim_object(obj, env, INT_MAX);
+            print_minim_object(obj, env, &pp);
             printf("\n");
         }
 

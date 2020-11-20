@@ -276,10 +276,12 @@ char *eval_string(char *str, size_t len)
     MinimAst *ast;
     MinimObject *obj;
     MinimEnv *env;
+    PrintParams pp;
     char *out;
 
     init_env(&env);
     env_load_builtins(env);
+    set_default_print_params(&pp);
 
     if (!parse_str(str, &ast))
     {
@@ -291,7 +293,7 @@ char *eval_string(char *str, size_t len)
     }
 
     eval_ast(env, ast, &obj);
-    out = print_to_string(obj, env, len);
+    out = print_to_string(obj, env, &pp);
 
     free_minim_object(obj);
     free_ast(ast);

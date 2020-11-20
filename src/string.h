@@ -19,4 +19,6 @@ MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, int argc, MinimObject
 MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_format(MinimEnv *env, int argc, MinimObject **args);
 
+MinimObject *minim_builtin_printf(MinimEnv *env, int argc, MinimObject **args);
+
 #endif

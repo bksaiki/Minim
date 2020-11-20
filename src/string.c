@@ -21,6 +21,30 @@ bool assert_string(MinimObject *thing, MinimObject **res, const char *msg)
     return true;
 }
 
+void replace_special_chars(char *str)
+{
+    size_t src = 0, dest = 0;
+
+    while (str[src])
+    {
+        if (str[src] == '\\')
+        {
+            ++src;
+            if (str[src] == 'n')        str[dest] = '\n';
+            else                        printf("Unknown escape character: \\%c", str[src]);
+        }
+        else if (dest != src)
+        {
+            str[dest] = str[src];
+        }
+
+        ++src;
+        ++dest;
+    }
+
+    str[dest] = '\0';
+}
+
 // *** Builtins *** //
 
 void env_load_module_string(MinimEnv *env)
@@ -31,6 +55,8 @@ void env_load_module_string(MinimEnv *env)
     env_load_builtin(env, "string->symbol", MINIM_OBJ_FUNC, minim_builtin_string_to_symbol);
     env_load_builtin(env, "symbol->string", MINIM_OBJ_FUNC, minim_builtin_symbol_to_string);
     env_load_builtin(env, "format", MINIM_OBJ_FUNC, minim_builtin_format);
+
+    env_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);
 }
 
 MinimObject *minim_builtin_stringp(MinimEnv *env, int argc, MinimObject **args)
@@ -180,7 +206,12 @@ MinimObject *minim_builtin_format(MinimEnv *env, int argc, MinimObject **args)
                     }
                     else if (str[i] == 'a')
                     {
-                        char *t = print_to_string(args[var++], env, INT_MAX);
+                        PrintParams pp;
+                        char *t;
+
+                        pp.quote = true;
+                        pp.display = true;
+                        t = print_to_string(args[var++], env, &pp);
                         writes_buffer(bf, t);
                         free(t);
                     }
@@ -199,6 +230,32 @@ MinimObject *minim_builtin_format(MinimEnv *env, int argc, MinimObject **args)
             init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
             free_buffer(bf);
         }
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_printf(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_min_argc(argc, &res, "printf", 1) &&
+        assert_string(args[0], &res, "Expected a string for the 1st argument of 'printf'"))
+    {
+        MinimObject *val = minim_builtin_format(env, argc, args);
+        if (val->type != MINIM_OBJ_ERR)
+        {
+            PrintParams pp;
+
+            pp.quote = true;
+            pp.display = true;
+            
+            replace_special_chars(val->data);
+            print_minim_object(val, env, &pp);
+            init_minim_object(&res, MINIM_OBJ_VOID);
+        }
+
+        free_minim_object(val);
     }
 
     return res;

@@ -86,9 +86,9 @@ int main()
         {
             "(format \"hello\")",                   "\"hello\"",
             "(format \"num: ~a\" 1/9)",             "\"num: 1/9\"",
-            "(format \"var: ~a\" 'x)",              "\"var: 'x\"",
-            "(format \"list: ~a\" (list 1 2 3))",   "\"list: '(1 2 3)\"",
-            "(format \"~a -> ~a\" 'a 1)",           "\"'a -> 1\""
+            "(format \"var: ~a\" 'x)",              "\"var: x\"",
+            "(format \"list: ~a\" (list 1 2 3))",   "\"list: (1 2 3)\"",
+            "(format \"~a -> ~a\" 'a 1)",           "\"a -> 1\""
         };
 
         printf("Testing 'format'\n");

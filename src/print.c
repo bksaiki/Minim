@@ -9,11 +9,6 @@
 #include "number.h"
 #include "print.h"
 
-typedef struct PrintParams
-{
-    bool quote;
-} PrintParams;
-
 //
 //  Printing
 //
@@ -85,7 +80,8 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_STRING)
     {
-        writef_buffer(bf, "\"~s\"", obj->data);
+        if (pp->display)    writes_buffer(bf, obj->data);
+        else                writef_buffer(bf, "\"~s\"", obj->data);
     }
     else if (obj->type == MINIM_OBJ_ERR)
     {
@@ -144,38 +140,38 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
 // Visible functions
 
-int print_minim_object(MinimObject *obj, MinimEnv *env, size_t maxlen)
+void set_default_print_params(PrintParams *pp)
 {
-    return print_to_port(obj, env, maxlen, stdout);
+    pp->maxlen = UINT_MAX;
+    pp->quote = false;
+    pp->display = false;
 }
 
-// Writes a string representation of the object to stream.
-int print_to_port(MinimObject *obj, MinimEnv *env, size_t maxlen, FILE *stream)
+int print_minim_object(MinimObject *obj, MinimEnv *env, PrintParams *pp)
 {
-    PrintParams pp;
+    return print_to_port(obj, env, pp, stdout);
+}
+
+int print_to_port(MinimObject *obj, MinimEnv *env, PrintParams *pp, FILE *stream)
+{
     Buffer *bf;
     int status;
-
+    
     init_buffer(&bf);
-    pp.quote = false;
-
-    status = print_object(obj, env, bf, &pp);
+    status = print_object(obj, env, bf, pp);
     fputs(bf->data, stream);
     free_buffer(bf);
 
     return status;
 }
 
-char *print_to_string(MinimObject *obj, MinimEnv *env, size_t maxlen)
+char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp)
 {
-    PrintParams pp;
-    Buffer *bf;
+    Buffer* bf;
     char *str;
 
     init_buffer(&bf);
-    pp.quote = false;
-
-    print_object(obj, env, bf, &pp);
+    print_object(obj, env, bf, pp);
     str = release_buffer(bf);
     free_buffer(bf);
 
