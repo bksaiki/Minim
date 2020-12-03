@@ -11,7 +11,7 @@ void init_minim_number(MinimNumber **pnum, MinimNumberType type)
     MinimNumber *num = malloc(sizeof(MinimNumber));
 
     num->type = type;
-    if (type == MINIM_NUMBER_EXACT)     mpq_init(num->rat);
+    if (type == MINIM_NUMBER_EXACT)     mpq_init(num->rat); 
     else                                num->fl = 0.0;                          
 
     *pnum = num;
@@ -19,8 +19,15 @@ void init_minim_number(MinimNumber **pnum, MinimNumberType type)
 
 void str_to_minim_number(MinimNumber* num, const char *str)
 {
-    if (num->type == MINIM_NUMBER_EXACT)     mpq_set_str(num->rat, str, 0);
-    else                                     num->fl = strtod(str, NULL);
+    if (num->type == MINIM_NUMBER_EXACT)     
+    {
+        mpq_set_str(num->rat, str, 0);
+        mpq_canonicalize(num->rat);
+    }
+    else
+    {
+        num->fl = strtod(str, NULL);
+    }
 }
 
 void reinterpret_minim_number(MinimNumber *num, MinimNumberType type)

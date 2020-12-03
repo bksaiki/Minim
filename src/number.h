@@ -42,8 +42,6 @@ bool minim_number_inexactp(MinimNumber *num);
 bool minim_number_exactintp(MinimNumber *num);
 bool minim_number_exactnonnegintp(MinimNumber *num);
 
-// Arithmetic functions
-
 // Assertions
 
 bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg);
