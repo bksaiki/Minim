@@ -33,37 +33,22 @@ typedef enum MinimObjectType
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject **);
 
-//
 //  Initialization / Destruction
-//
 
-// Constructs a single minim object based on the type.
 void init_minim_object(MinimObject **pobj, MinimObjectType type, ...);
-
-// Returns a copy of the given object.
 void copy_minim_object(MinimObject **pobj, MinimObject *src);
-
-// Deletes a MinimObject.
 void free_minim_object(MinimObject *obj);
-
-// Deletes an array of MinimObjects.
 void free_minim_objects(int count, MinimObject **objs);
 
-//
 //  Specialized constructors
-//
 
 void minim_error(MinimObject **pobj, const char* format, ...);
 
-//
 //  Equivalence
-//
 
 bool minim_equalp(MinimObject *a, MinimObject *b);
 
-//
 //  Miscellaneous
-//  
 
 Buffer* minim_obj_to_bytes(MinimObject *obj);
 

@@ -84,7 +84,7 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     }
     else if (type == MINIM_OBJ_HASH)
     {
-        obj->data = va_arg(rest, MinimHashTable*);
+        obj->data = va_arg(rest, MinimHash*);
     }
     else
     {
@@ -169,7 +169,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_HASH)
     {
-        MinimHashTable *ht;
+        MinimHash *ht;
         copy_minim_hash_table(&ht, src->data);
         obj->data = ht;
     }

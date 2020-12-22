@@ -4,25 +4,26 @@
 #include "env.h"
 
 #define MINIM_DEFAULT_HASH_TABLE_SIZE       10
-#define MINIM_DEFAULT_LOAD_FACTOR           0.75
+#define MINIM_DEFAULT_HASH_TABLE_FACTOR     0.75
 
-struct MinimHashTableRow
+struct MinimHashRow
 {
     MinimObject **arr;
-    size_t size;
-} typedef MinimHashTableRow;
-
-struct MinimHashTable
-{
-    MinimHashTableRow *arr;
     size_t len;
-} typedef MinimHashTable;
+} typedef MinimHashRow;
 
-void init_minim_hash_table(MinimHashTable **pht);
-void copy_minim_hash_table(MinimHashTable **pht, MinimHashTable *src);
-void free_minim_hash_table(MinimHashTable *ht);
+struct MinimHash
+{
+    MinimHashRow *arr;
+    size_t size;
+    size_t elems;
+} typedef MinimHash;
 
-void minim_hash_table_add(MinimHashTable *ht, MinimObject *k, MinimObject *v);
+void init_minim_hash_table(MinimHash **pht);
+void copy_minim_hash_table(MinimHash **pht, MinimHash *src);
+void free_minim_hash_table(MinimHash *ht);
+
+void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v);
 
 // Internals
 

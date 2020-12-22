@@ -4,6 +4,7 @@
 #include "common/buffer.h"
 #include "assert.h"
 #include "hash.h"
+#include "list.h"
 
 //
 /// Hashing (Jenkins hash function)
@@ -88,67 +89,119 @@ static int64_t hash_bytes(void *data, size_t length, uint64_t seed)
 //  Hash table
 //
 
-void init_minim_hash_table(MinimHashTable **pht)
+void init_minim_hash_table(MinimHash **pht)
 {
-    MinimHashTable *ht = malloc(sizeof(MinimHashTable));
-    ht->arr = malloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashTableRow));
-    ht->len = MINIM_DEFAULT_HASH_TABLE_SIZE;
+    MinimHash *ht = malloc(sizeof(MinimHash));
+    ht->arr = malloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashRow));
+    ht->size = MINIM_DEFAULT_HASH_TABLE_SIZE;
+    ht->elems = 0;
     *pht = ht;
     
-    for (size_t i = 0; i < ht->len; ++i)
+    for (size_t i = 0; i < ht->size; ++i)
     {
         ht->arr[i].arr = NULL;
-        ht->arr[i].size = 0;
+        ht->arr[i].len = 0;
     }
 }
 
-void copy_minim_hash_table(MinimHashTable **pht, MinimHashTable *src)
+void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
 {
-    MinimHashTable *ht = malloc(sizeof(MinimHashTable));
-    ht->arr = malloc(src->len * sizeof(MinimHashTableRow));
-    ht->len = src->len;
+    MinimHash *ht = malloc(sizeof(MinimHash));
+    ht->arr = malloc(src->size * sizeof(MinimHashRow));
+    ht->size = src->size;
+    ht->elems = src->elems;
     *pht = ht;
 
-    for (size_t i = 0; i < ht->len; ++i)
+    for (size_t i = 0; i < ht->size; ++i)
     {
-        ht->arr[i].arr = malloc(src->arr[i].size * sizeof(MinimObject*));
-        ht->arr[i].size = src->arr[i].size;
+        ht->arr[i].arr = malloc(src->arr[i].len * sizeof(MinimObject*));
+        ht->arr[i].len = src->arr[i].len;
 
-        for (size_t j = 0; j < src->arr[i].size; ++j)
+        for (size_t j = 0; j < src->arr[i].len; ++j)
             copy_minim_object(&ht->arr[i].arr[j], src->arr[i].arr[j]);
     }
 }
 
-void free_minim_hash_table(MinimHashTable *ht)
+void free_minim_hash_table(MinimHash *ht)
 {
-    for (size_t i = 0; i < ht->len; ++i)
-        free_minim_objects(ht->arr[i].size, ht->arr[i].arr);
+    for (size_t i = 0; i < ht->size; ++i)
+        free_minim_objects(ht->arr[i].len, ht->arr[i].arr);
 
     free(ht->arr);
     free(ht);
 }
 
-void minim_hash_table_add(MinimHashTable *ht, MinimObject *k, MinimObject *v)
+static void rehash_table(MinimHash *ht)
+{
+    MinimHashRow *htr;
+    Buffer *bf;
+    int64_t hash, reduc;
+    size_t newSize = 2 * ht->size;
+    
+    htr = malloc(newSize * sizeof(MinimHashRow));
+    for (size_t i = 0; i < newSize; ++i)
+    {
+        htr[i].arr = NULL;
+        htr[i].len = 0;
+    }
+
+    for (size_t i = 0; i < ht->size; ++i)
+    {
+        for (size_t j = 0; j < ht->arr[i].len; ++j)
+        {
+            bf = minim_obj_to_bytes(MINIM_CAR(ht->arr[i].arr[j]));
+            hash = hash_bytes(bf->data, bf->pos, 0);
+            reduc = hash % newSize;
+
+            if (htr[reduc].len == 0)
+            {
+                htr[reduc].arr = realloc(htr[reduc].arr, sizeof(MinimObject*));
+                htr[reduc].arr[0] = ht->arr[i].arr[j];
+                htr[reduc].len = 1;
+            }
+            else
+            {      
+                htr[reduc].arr = realloc(htr[reduc].arr, (htr[reduc].len + 1) * sizeof(MinimObject*));
+                htr[reduc].arr[htr[reduc].len] = ht->arr[i].arr[j];
+                ++htr[reduc].len;
+            }
+        }
+
+        free(ht->arr[i].arr);
+    }
+
+    free(ht->arr);
+    ht->arr = htr;
+    ht->size = newSize;
+    
+}
+
+void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 {
     MinimObject *ck, *cv;
 
     Buffer *bf = minim_obj_to_bytes(k);
     int64_t hash = hash_bytes(bf->data, bf->pos, 0);
-    int64_t reduc = hash % ht->len;
+    int64_t reduc = hash % ht->size;
 
+    ++ht->elems;
     copy_minim_object(&ck, k);
     copy_minim_object(&cv, v);
-    if (ht->arr[reduc].size == 0)
+
+    if (((double)ht->elems / (double)ht->size) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
+        rehash_table(ht); // rehash if too deep
+
+    if (ht->arr[reduc].len == 0)
     {
         ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
-        ht->arr[reduc].size = 1;
+        ht->arr[reduc].len = 1;
         init_minim_object(&ht->arr[reduc].arr[0], MINIM_OBJ_PAIR, ck, cv);
     }
     else
     {      
-        ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, (ht->arr[reduc].size + 1) * sizeof(MinimObject*));
-        init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].size], MINIM_OBJ_PAIR, ck, cv);
-        ++ht->arr[reduc].size;
+        ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
+        init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, ck, cv);
+        ++ht->arr[reduc].len;
     }
 }
 
@@ -188,7 +241,7 @@ MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args)
 
     if (assert_exact_argc(argc, &res, "Expected 0 arguments for 'hash'", 0))
     {   
-        MinimHashTable *ht;
+        MinimHash *ht;
         init_minim_hash_table(&ht);
         init_minim_object(&res, MINIM_OBJ_HASH, ht);
     }
