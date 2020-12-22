@@ -51,6 +51,8 @@ static bool is_float(char *str)
 
     if (*it == 'e')
     {
+        if (it == str)     return false;
+
         ++it;
         if ((*it == '+' || *it == '-') &&
             (*(it + 1) >= '0' && *(it + 1) <= '9'))

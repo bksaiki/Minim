@@ -218,8 +218,15 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
             if (peek)
             {
                 eval_ast(env, args[1]->data, &val);
-                env_set_sym(env, sym->data, val);
-                init_minim_object(&res, MINIM_OBJ_VOID);
+                if (val->type != MINIM_OBJ_ERR)
+                {
+                    env_set_sym(env, sym->data, val);
+                    init_minim_object(&res, MINIM_OBJ_VOID);
+                }
+                else
+                {
+                    res = val;
+                }
             }
             else
             {

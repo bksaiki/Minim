@@ -7,82 +7,69 @@
 #include "list.h"
 
 //
-/// Hashing (Jenkins hash function)
+// Hashing (Jenkins hash function)
+//
+//  Adapted from burtleburle.net/bob/hash/doobs.html
 //
 
-#define rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
+#define hashsize(n) ((uint32_t)1 << (n))
+#define hashmask(n) (hashsize(n) - 1)
 
-#define final(a,b,c) \
+#define mix(a,b,c) \
 { \
-  c ^= b; c -= rot(b,14); \
-  a ^= c; a -= rot(c,11); \
-  b ^= a; b -= rot(a,25); \
-  c ^= b; c -= rot(b,16); \
-  a ^= c; a -= rot(c,4);  \
-  b ^= a; b -= rot(a,14); \
-  c ^= b; c -= rot(b,24); \
+  a -= b; a -= c; a ^= (c>>13); \
+  b -= c; b -= a; b ^= (a<<8); \
+  c -= a; c -= b; c ^= (b>>13); \
+  a -= b; a -= c; a ^= (c>>12);  \
+  b -= c; b -= a; b ^= (a<<16); \
+  c -= a; c -= b; c ^= (b>>5); \
+  a -= b; a -= c; a ^= (c>>3);  \
+  b -= c; b -= a; b ^= (a<<10); \
+  c -= a; c -= b; c ^= (b>>15); \
 }
 
-static int64_t hash_bytes(void *data, size_t length, uint64_t seed)
+static uint32_t hash_bytes(void* data, size_t length, uint32_t seed)
 {
-    uint32_t a, b, c, offset;
-    uint32_t *k = (uint32_t*) data;
+    uint8_t* k;
+    uint32_t a, b, c, len;
 
-    a = b = c = 0xdeadbeef + length + (seed >> 32);
-    c += (seed & 0xffffffff);
+    /* Set up the internal state */
+    k = data;
+    len = length;
+    a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
+    c = seed;         /* the previous hash value */
 
-    while (length > 12)
+    /*---------------------------------------- handle most of the key */
+    while (len >= 12)
     {
-        a += k[offset + 0];
-        a += k[offset + 1] << 8;
-        a += k[offset + 2] << 16;
-        a += k[offset + 3] << 24;
-        b += k[offset + 4];
-        b += k[offset + 5] << 8;
-        b += k[offset + 6] << 16;
-        b += k[offset + 7] << 24;
-        c += k[offset + 8];
-        c += k[offset + 9] << 8;
-        c += k[offset + 10] << 16;
-        c += k[offset + 11] << 24;
-
-        final(a, b, c);
-        length -= 12;
-        offset += 12;
+        a += (k[0] +((uint32_t)k[1] << 8) +((uint32_t)k[2] << 16) +((uint32_t)k[3] << 24));
+        b += (k[4] +((uint32_t)k[5] << 8) +((uint32_t)k[6] << 16) +((uint32_t)k[7] << 24));
+        c += (k[8] +((uint32_t)k[9] << 8) +((uint32_t)k[10] << 16)+((uint32_t)k[11] << 24));
+        mix(a,b,c);
+        k += 12; len -= 12;
     }
 
-    switch (length) {
-        case 12:
-            c += k[offset + 11] << 24;
-        case 11:
-            c += k[offset + 10] << 16;
-        case 10:
-            c += k[offset + 9] << 8;
-        case 9:
-            c += k[offset + 8];
-        case 8:
-            b += k[offset + 7] << 24;
-        case 7:
-            b += k[offset + 6] << 16;
-        case 6:
-            b += k[offset + 5] << 8;
-        case 5:
-            b += k[offset + 4];
-        case 4:
-            a += k[offset + 3] << 24;
-        case 3:
-            a += k[offset + 2] << 16;
-        case 2:
-            a += k[offset + 1] << 8;
-        case 1:
-            a += k[offset + 0];
-            break;
-        case 0:
-            return ((((int64_t) c) << 32) | ((int64_t) (b & 0xFFFFFFFFL)));
+    /*------------------------------------- handle the last 11 bytes */
+    c += length;
+    switch(len)              /* all the case statements fall through */
+    {
+    case 11: c += ((uint32_t)k[10] << 24);
+    case 10: c += ((uint32_t)k[9] << 16);
+    case 9 : c += ((uint32_t)k[8] << 8);
+        /* the first byte of c is reserved for the length */
+    case 8 : b += ((uint32_t)k[7] << 24);
+    case 7 : b += ((uint32_t)k[6] << 16);
+    case 6 : b += ((uint32_t)k[5] << 8);
+    case 5 : b += k[4];
+    case 4 : a += ((uint32_t)k[3] << 24);
+    case 3 : a += ((uint32_t)k[2] << 16);
+    case 2 : a += ((uint32_t)k[1] << 8);
+    case 1 : a += k[0];
+        /* case 0: nothing left to add */
     }
-
-    final(a, b, c);
-    return ((((int64_t) c) << 32) | ((int64_t) (b & 0xFFFFFFFFL)));
+    mix(a,b,c);
+    /*-------------------------------------------- report the result */
+    return c;
 }
 
 //
@@ -135,7 +122,7 @@ static void rehash_table(MinimHash *ht)
 {
     MinimHashRow *htr;
     Buffer *bf;
-    int64_t hash, reduc;
+    uint32_t hash, reduc;
     size_t newSize = 2 * ht->size;
     
     htr = malloc(newSize * sizeof(MinimHashRow));
@@ -153,6 +140,7 @@ static void rehash_table(MinimHash *ht)
             hash = hash_bytes(bf->data, bf->pos, 0);
             reduc = hash % newSize;
 
+            free_buffer(bf);
             if (htr[reduc].len == 0)
             {
                 htr[reduc].arr = realloc(htr[reduc].arr, sizeof(MinimObject*));
@@ -181,10 +169,11 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     MinimObject *ck, *cv;
 
     Buffer *bf = minim_obj_to_bytes(k);
-    int64_t hash = hash_bytes(bf->data, bf->pos, 0);
-    int64_t reduc = hash % ht->size;
+    uint32_t hash = hash_bytes(bf->data, bf->pos, 0);
+    uint32_t reduc = hash % ht->size;
 
     ++ht->elems;
+    free_buffer(bf);
     copy_minim_object(&ck, k);
     copy_minim_object(&cv, v);
 
@@ -203,6 +192,23 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
         init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, ck, cv);
         ++ht->arr[reduc].len;
     }
+}
+
+MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
+{
+    MinimObject *cp = NULL;
+    Buffer *bf = minim_obj_to_bytes(k);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, 0);
+    uint32_t reduc = hash % ht->size;
+
+    free_buffer(bf);
+    for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+    {
+        if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
+            copy_minim_object(&cp, MINIM_CDR(ht->arr[reduc].arr[i]));
+    }
+
+    return cp;
 }
 
 //
@@ -233,6 +239,7 @@ void env_load_module_hash(MinimEnv *env)
 {
     env_load_builtin(env, "hash", MINIM_OBJ_FUNC, minim_builtin_hash);
     env_load_builtin(env, "hash-set", MINIM_OBJ_FUNC, minim_builtin_hash_set);
+    env_load_builtin(env, "hash-ref", MINIM_OBJ_FUNC, minim_builtin_hash_ref);
 }
 
 MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args)
@@ -258,6 +265,30 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args)
     {
         copy_minim_object(&res, args[0]);
         minim_hash_table_add(res->data, args[1], args[2]);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_hash_ref(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-ref'", 2) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
+    {
+        res = minim_hash_table_ref(args[0]->data, args[1]);
+        if (!res)
+        {
+            Buffer *bf;
+            PrintParams pp;
+
+            init_buffer(&bf);
+            writes_buffer(bf, "hash-ref: no value found for ");
+            print_to_buffer(bf, args[1], env, &pp);
+            minim_error(&res, bf->data);
+            free_buffer(bf);
+        }
     }
 
     return res;

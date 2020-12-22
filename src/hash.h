@@ -24,6 +24,7 @@ void copy_minim_hash_table(MinimHash **pht, MinimHash *src);
 void free_minim_hash_table(MinimHash *ht);
 
 void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v);
+MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k);
 
 // Internals
 
@@ -37,5 +38,6 @@ void env_load_module_hash(MinimEnv *env);
 
 MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args);
 MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_hash_ref(MinimEnv *env, int argc, MinimObject **args);
 
 #endif

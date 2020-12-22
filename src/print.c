@@ -175,6 +175,11 @@ int print_minim_object(MinimObject *obj, MinimEnv *env, PrintParams *pp)
     return print_to_port(obj, env, pp, stdout);
 }
 
+int print_to_buffer(Buffer *bf, MinimObject* obj, MinimEnv *env, PrintParams *pp)
+{
+    return print_object(obj, env, bf, pp);
+}
+
 int print_to_port(MinimObject *obj, MinimEnv *env, PrintParams *pp, FILE *stream)
 {
     Buffer *bf;
