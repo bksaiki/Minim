@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "common/buffer.h"
+#include "assert.h"
 #include "hash.h"
 
 //
@@ -92,14 +93,30 @@ void init_minim_hash_table(MinimHashTable **pht)
     MinimHashTable *ht = malloc(sizeof(MinimHashTable));
     ht->arr = malloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashTableRow));
     ht->len = MINIM_DEFAULT_HASH_TABLE_SIZE;
+    *pht = ht;
     
     for (size_t i = 0; i < ht->len; ++i)
     {
         ht->arr[i].arr = NULL;
         ht->arr[i].size = 0;
     }
+}
 
+void copy_minim_hash_table(MinimHashTable **pht, MinimHashTable *src)
+{
+    MinimHashTable *ht = malloc(sizeof(MinimHashTable));
+    ht->arr = malloc(src->len * sizeof(MinimHashTableRow));
+    ht->len = src->len;
     *pht = ht;
+
+    for (size_t i = 0; i < ht->len; ++i)
+    {
+        ht->arr[i].arr = malloc(src->arr[i].size * sizeof(MinimObject*));
+        ht->arr[i].size = src->arr[i].size;
+
+        for (size_t j = 0; j < src->arr[i].size; ++j)
+            copy_minim_object(&ht->arr[i].arr[j], src->arr[i].arr[j]);
+    }
 }
 
 void free_minim_hash_table(MinimHashTable *ht)
@@ -133,4 +150,62 @@ void minim_hash_table_add(MinimHashTable *ht, MinimObject *k, MinimObject *v)
         init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].size], MINIM_OBJ_PAIR, ck, cv);
         ++ht->arr[reduc].size;
     }
+}
+
+//
+//  Internals
+//
+
+bool assert_hash(MinimObject *arg, MinimObject **ret, const char *msg)
+{
+    if (!minim_hashp(arg))
+    {
+        minim_error(ret, "%s", msg);
+        return false;
+    }
+
+    return true;
+}
+
+bool minim_hashp(MinimObject *thing)
+{
+    return thing->type == MINIM_OBJ_HASH;
+}
+
+//
+//  Builtins
+//
+
+void env_load_module_hash(MinimEnv *env)
+{
+    env_load_builtin(env, "hash", MINIM_OBJ_FUNC, minim_builtin_hash);
+    env_load_builtin(env, "hash-set", MINIM_OBJ_FUNC, minim_builtin_hash_set);
+}
+
+MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, &res, "Expected 0 arguments for 'hash'", 0))
+    {   
+        MinimHashTable *ht;
+        init_minim_hash_table(&ht);
+        init_minim_object(&res, MINIM_OBJ_HASH, ht);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-set'", 3) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
+    {
+        copy_minim_object(&res, args[0]);
+        minim_hash_table_add(res->data, args[1], args[2]);
+    }
+
+    return res;
 }

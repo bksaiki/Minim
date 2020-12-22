@@ -8,6 +8,7 @@
 
 #include "bool.h"
 #include "for.h"
+#include "hash.h"
 #include "iter.h"
 #include "lambda.h"
 #include "list.h"
@@ -198,6 +199,7 @@ void env_load_builtins(MinimEnv *env)
     env_load_module_lambda(env);
     env_load_module_seq(env);
 
+    env_load_module_hash(env);
     env_load_module_list(env);
     env_load_module_math(env);
 }

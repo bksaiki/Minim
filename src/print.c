@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "common/buffer.h"
+#include "hash.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -128,6 +129,26 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     else if (obj->type == MINIM_OBJ_SEQ)
     {
         writes_buffer(bf, "<sequence>");
+    }
+    else if (obj->type == MINIM_OBJ_HASH)
+    {
+        MinimHashTable *ht = obj->data;
+        
+        pp->quote = true;
+        writes_buffer(bf, "hash(");
+        for (size_t i = 0; i < ht->len; ++i)
+        {
+            for (size_t j = 0; j < ht->arr[i].size; ++j)
+            {
+                writec_buffer(bf, '(');
+                print_object(MINIM_CAR(ht->arr[i].arr[j]), env, bf, pp);
+                writes_buffer(bf, " . ");
+                print_object(MINIM_CDR(ht->arr[i].arr[j]), env, bf, pp);
+                writec_buffer(bf, ')');
+            }
+        }
+        
+        writec_buffer(bf, ')');
     }
     else
     {

@@ -19,9 +19,22 @@ struct MinimHashTable
 } typedef MinimHashTable;
 
 void init_minim_hash_table(MinimHashTable **pht);
-
+void copy_minim_hash_table(MinimHashTable **pht, MinimHashTable *src);
 void free_minim_hash_table(MinimHashTable *ht);
 
 void minim_hash_table_add(MinimHashTable *ht, MinimObject *k, MinimObject *v);
+
+// Internals
+
+bool assert_hash(MinimObject *arg, MinimObject **ret, const char *msg);
+
+bool minim_hashp(MinimObject *thing);
+
+// Builtins
+
+void env_load_module_hash(MinimEnv *env);
+
+MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args);
+MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args);
 
 #endif
