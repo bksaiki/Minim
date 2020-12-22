@@ -7,7 +7,7 @@
 #include "list.h"
 
 //
-// Hashing (Jenkins hash function)
+//  Hash function
 //
 //  Adapted from burtleburle.net/bob/hash/doobs.html
 //
@@ -137,7 +137,7 @@ static void rehash_table(MinimHash *ht)
         for (size_t j = 0; j < ht->arr[i].len; ++j)
         {
             bf = minim_obj_to_bytes(MINIM_CAR(ht->arr[i].arr[j]));
-            hash = hash_bytes(bf->data, bf->pos, 0);
+            hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
             reduc = hash % newSize;
 
             free_buffer(bf);
@@ -169,7 +169,7 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     MinimObject *ck, *cv;
 
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, 0);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
     uint32_t reduc = hash % ht->size;
 
     ++ht->elems;
@@ -194,11 +194,27 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     }
 }
 
+bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
+{
+    Buffer *bf = minim_obj_to_bytes(k);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
+    uint32_t reduc = hash % ht->size;
+
+    free_buffer(bf);
+    for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+    {
+        if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
+            return true;
+    }
+
+    return false;
+}
+
 MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
 {
     MinimObject *cp = NULL;
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, 0);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
     uint32_t reduc = hash % ht->size;
 
     free_buffer(bf);
@@ -209,6 +225,26 @@ MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
     }
 
     return cp;
+}
+
+void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
+{
+    Buffer *bf = minim_obj_to_bytes(k);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
+    uint32_t reduc = hash % ht->size;
+
+    free_buffer(bf);
+    for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+    {
+        if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
+        {
+            free_minim_object(ht->arr[reduc].arr[i]);
+            ht->arr[reduc].arr[i] = ht->arr[reduc].arr[ht->arr[reduc].len - 1];
+            --ht->arr[reduc].len;
+            --ht->elems;
+            ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, ht->arr[reduc].len * sizeof(MinimObject*));
+        }
+    }
 }
 
 //
@@ -238,8 +274,10 @@ bool minim_hashp(MinimObject *thing)
 void env_load_module_hash(MinimEnv *env)
 {
     env_load_builtin(env, "hash", MINIM_OBJ_FUNC, minim_builtin_hash);
-    env_load_builtin(env, "hash-set", MINIM_OBJ_FUNC, minim_builtin_hash_set);
+    env_load_builtin(env, "hash-key?", MINIM_OBJ_FUNC, minim_builtin_hash_keyp);
     env_load_builtin(env, "hash-ref", MINIM_OBJ_FUNC, minim_builtin_hash_ref);
+    env_load_builtin(env, "hash-remove", MINIM_OBJ_FUNC, minim_builtin_hash_remove);
+    env_load_builtin(env, "hash-set", MINIM_OBJ_FUNC, minim_builtin_hash_set);
 }
 
 MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args)
@@ -256,15 +294,15 @@ MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_hash_keyp(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-set'", 3) &&
-        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
+    if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-key?'", 2) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-key?'"))
     {
-        copy_minim_object(&res, args[0]);
-        minim_hash_table_add(res->data, args[1], args[2]);
+        init_minim_object(&res, MINIM_OBJ_BOOL,
+                          minim_hash_table_keyp(args[0]->data, args[1]));
     }
 
     return res;
@@ -274,7 +312,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-ref'", 2) &&
+    if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-ref'", 2) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
     {
         res = minim_hash_table_ref(args[0]->data, args[1]);
@@ -289,6 +327,48 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, int argc, MinimObject **args)
             minim_error(&res, bf->data);
             free_buffer(bf);
         }
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_hash_remove(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-remove'", 2) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
+    {
+        if (minim_hash_table_keyp(args[0]->data, args[1]))
+        {
+            copy_minim_object(&res, args[0]);
+            minim_hash_table_remove(res->data, args[1]);
+        }
+        else
+        {
+            Buffer *bf;
+            PrintParams pp;
+
+            init_buffer(&bf);
+            writes_buffer(bf, "hash-ref: no value found for ");
+            print_to_buffer(bf, args[1], env, &pp);
+            minim_error(&res, bf->data);
+            free_buffer(bf);
+        }
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-set'", 3) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
+    {
+        copy_minim_object(&res, args[0]);
+        minim_hash_table_add(res->data, args[1], args[2]);
     }
 
     return res;
