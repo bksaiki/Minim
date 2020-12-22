@@ -1,8 +1,12 @@
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include "common/buffer.h"
 #include "hash.h"
 
-/// Jenkins hash function
+//
+/// Hashing (Jenkins hash function)
+//
 
 #define rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
 
@@ -79,3 +83,54 @@ static int64_t hash_bytes(void *data, size_t length, uint64_t seed)
     return ((((int64_t) c) << 32) | ((int64_t) (b & 0xFFFFFFFFL)));
 }
 
+//
+//  Hash table
+//
+
+void init_minim_hash_table(MinimHashTable **pht)
+{
+    MinimHashTable *ht = malloc(sizeof(MinimHashTable));
+    ht->arr = malloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashTableRow));
+    ht->len = MINIM_DEFAULT_HASH_TABLE_SIZE;
+    
+    for (size_t i = 0; i < ht->len; ++i)
+    {
+        ht->arr[i].arr = NULL;
+        ht->arr[i].size = 0;
+    }
+
+    *pht = ht;
+}
+
+void free_minim_hash_table(MinimHashTable *ht)
+{
+    for (size_t i = 0; i < ht->len; ++i)
+        free_minim_objects(ht->arr[i].size, ht->arr[i].arr);
+
+    free(ht->arr);
+    free(ht);
+}
+
+void minim_hash_table_add(MinimHashTable *ht, MinimObject *k, MinimObject *v)
+{
+    MinimObject *ck, *cv;
+
+    Buffer *bf = minim_obj_to_bytes(k);
+    int64_t hash = hash_bytes(bf->data, bf->pos, 0);
+    int64_t reduc = hash % ht->len;
+
+    copy_minim_object(&ck, k);
+    copy_minim_object(&cv, v);
+    if (ht->arr[reduc].size == 0)
+    {
+        ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
+        ht->arr[reduc].size = 1;
+        init_minim_object(&ht->arr[reduc].arr[0], MINIM_OBJ_PAIR, ck, cv);
+    }
+    else
+    {      
+        ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, (ht->arr[reduc].size + 1) * sizeof(MinimObject*));
+        init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].size], MINIM_OBJ_PAIR, ck, cv);
+        ++ht->arr[reduc].size;
+    }
+}

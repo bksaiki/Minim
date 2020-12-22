@@ -2,6 +2,7 @@
 #define _MINIM_OBJECT_H_
 
 #include "base.h"
+#include "common/buffer.h"
 
 struct MinimEnv;
 typedef struct MinimEnv MinimEnv;
@@ -26,13 +27,14 @@ typedef enum MinimObjectType
     MINIM_OBJ_SYNTAX,
     MINIM_OBJ_AST,
     MINIM_OBJ_ITER,
-    MINIM_OBJ_SEQ
+    MINIM_OBJ_SEQ,
+    MINIM_OBJ_HASH
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject **);
 
 //
-//  Generic functions
+//  Initialization / Destruction
 //
 
 // Constructs a single minim object based on the type.
@@ -58,5 +60,11 @@ void minim_error(MinimObject **pobj, const char* format, ...);
 //
 
 bool minim_equalp(MinimObject *a, MinimObject *b);
+
+//
+//  Miscellaneous
+//  
+
+Buffer* minim_obj_to_bytes(MinimObject *obj);
 
 #endif

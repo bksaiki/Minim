@@ -6,6 +6,7 @@
 
 #include "env.h"
 #include "iter.h"
+#include "hash.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -80,6 +81,10 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     else if (type == MINIM_OBJ_SEQ)
     {
         obj->data = va_arg(rest, MinimSeq*);
+    }
+    else if (type == MINIM_OBJ_HASH)
+    {
+        init_minim_hash_table(&obj->data);
     }
     else
     {
@@ -162,6 +167,11 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         copy_minim_seq(&seq, src->data);
         obj->data = seq;
     }
+    else if (src->type == MINIM_OBJ_HASH)
+    {
+        // TODO: fix
+        obj->data = src;
+    }
     else
     {
         printf("Unknown object type\n");
@@ -191,6 +201,7 @@ void free_minim_object(MinimObject *obj)
         else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
         else if (obj->type == MINIM_OBJ_ITER)       free_minim_iter(obj->data);
         else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
+        else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->data);
         else                                        free(obj->data);
     }
 
@@ -255,3 +266,45 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return false;
     }
  }
+
+Buffer* minim_obj_to_bytes(MinimObject *obj)
+{
+    Buffer* bf;
+    
+    init_buffer(&bf);
+    switch (obj->type)
+    {
+    case MINIM_OBJ_VOID:
+        writei_buffer(bf, 0);
+        break;
+
+    case MINIM_OBJ_BOOL:
+        writei_buffer(bf, (*((int*)obj->data) ? 1 : 2));
+        break;
+    
+    case MINIM_OBJ_FUNC:
+    case MINIM_OBJ_SYNTAX:
+        write_buffer(bf, obj->data, sizeof(void*));
+        break;
+
+    case MINIM_OBJ_SYM:
+    case MINIM_OBJ_STRING:
+    case MINIM_OBJ_ERR:
+        writes_buffer(bf, obj->data);
+        break;
+
+    /*
+    case MINIM_OBJ_NUM:
+    case MINIM_OBJ_PAIR:
+    case MINIM_OBJ_CLOSURE:
+    case MINIM_OBJ_AST:
+    case MINIM_OBJ_ITER:
+    case MINIM_OBJ_SEQ:
+    */
+    default:
+        write_buffer(bf, obj->data, sizeof(void*));
+        break;
+    }
+
+    return bf;
+}
