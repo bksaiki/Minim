@@ -37,6 +37,7 @@ void env_load_module_variable(MinimEnv *env)
     env_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
 
     env_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
+    env_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
 }
 
 MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
@@ -272,3 +273,23 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
+MinimObject *minim_builtin_equalp(MinimEnv *env, int argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (assert_min_argc(argc, &res, "equal?", 1))
+    {
+        for (int i = 1; i < argc; ++i)
+        {
+            if (!minim_equalp(args[i - 1], args[i]))
+            {
+                init_minim_object(&res, MINIM_OBJ_BOOL, 0);
+                return res;
+            }
+        }
+
+        init_minim_object(&res, MINIM_OBJ_BOOL, 1);
+    }
+
+    return res;
+}

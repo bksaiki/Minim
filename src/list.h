@@ -18,16 +18,19 @@ bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *msg);
 bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg);
 
-// Internal versions of the builtins
+// Internals
+
 bool minim_consp(MinimObject* thing);
 bool minim_listp(MinimObject* thing);
 bool minim_nullp(MinimObject* thing);
 bool minim_listof(MinimObject* list, MinimPred pred);
+bool minim_cons_eqp(MinimObject *a, MinimObject *b);
 
 MinimObject *minim_construct_list(int argc, MinimObject **args);
 int minim_list_length(MinimObject *list);
 
-// Builtin functions in the language
+// Builtins
+
 void env_load_module_list(MinimEnv *env);
 
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject **args);

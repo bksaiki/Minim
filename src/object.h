@@ -53,4 +53,10 @@ void free_minim_objects(int count, MinimObject **objs);
 
 void minim_error(MinimObject **pobj, const char* format, ...);
 
+//
+//  Equivalence
+//
+
+bool minim_equalp(MinimObject *a, MinimObject *b);
+
 #endif

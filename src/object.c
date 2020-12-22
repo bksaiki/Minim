@@ -7,6 +7,7 @@
 #include "env.h"
 #include "iter.h"
 #include "lambda.h"
+#include "list.h"
 #include "number.h"
 #include "object.h"
 #include "parser.h"
@@ -215,3 +216,42 @@ void minim_error(MinimObject **pobj, const char* format, ...)
 
     *pobj = obj;
 }
+
+bool minim_equalp(MinimObject *a, MinimObject *b)
+{
+    if (a->type != b->type)
+        return false;
+
+    switch (a->type)
+    {
+    case MINIM_OBJ_VOID:
+        return true;
+
+    case MINIM_OBJ_BOOL:
+        return (*((int*) a->data) == *((int*) b->data));
+
+    case MINIM_OBJ_SYM:
+    case MINIM_OBJ_STRING:
+    case MINIM_OBJ_ERR:
+        return strcmp(a->data, b->data) == 0;
+
+    case MINIM_OBJ_FUNC:
+    case MINIM_OBJ_SYNTAX:
+        return a->data == b->data;
+
+    case MINIM_OBJ_NUM:
+        return minim_number_cmp(a->data, b->data) == 0;
+
+    case MINIM_OBJ_PAIR:
+        return minim_cons_eqp(a, b);
+    
+    /*
+    case MINIM_OBJ_CLOSURE:
+    case MINIM_OBJ_AST:
+    case MINIM_OBJ_ITER:
+    case MINIM_OBJ_SEQ:
+    */
+    default:
+        return false;
+    }
+ }

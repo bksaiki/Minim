@@ -217,6 +217,25 @@ bool minim_listof(MinimObject* list, MinimPred pred)
     return true;
 }
 
+static bool minim_cons_eqp_h(MinimObject *a, MinimObject *b)
+{
+    if (!minim_equalp(MINIM_CAR(a), MINIM_CAR(b)))
+        return false;
+
+    if (!MINIM_CDR(a) && !MINIM_CDR(b))   return true;
+    if (MINIM_CDR(a) != MINIM_CDR(b))     return false;
+    return minim_cons_eqp(MINIM_CDR(a), MINIM_CDR(b));
+}
+
+bool minim_cons_eqp(MinimObject *a, MinimObject *b)
+{
+    bool x = minim_nullp(a), y = minim_nullp(b);
+    
+    if (x && y)     return true;
+    if (x != y)     return false;
+    return minim_cons_eqp_h(a, b);
+}
+
 MinimObject *minim_construct_list(int argc, MinimObject** args)
 {
     MinimObject *obj;
