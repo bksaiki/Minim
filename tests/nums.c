@@ -37,7 +37,7 @@ int main()
             "1e+50",        "1e+50"
         };
 
-        printf("Testing numbers...\n");
+        printf("Testing numbers\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -53,7 +53,7 @@ int main()
             "(= 1.0 2.0)",      "false"
         };
 
-        printf("Testing equality...\n");
+        printf("Testing equality\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -72,7 +72,7 @@ int main()
             "(> 10.0 -28/7)",       "true"
         };
 
-        printf("Testing '>'...\n");
+        printf("Testing '>'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -91,7 +91,7 @@ int main()
             "(< 10.0 -28/7)",       "false"
         };
 
-        printf("Testing '<'...\n");
+        printf("Testing '<'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -110,7 +110,7 @@ int main()
             "(>= 10.0 -28/7)",       "true"
         };
 
-        printf("Testing '>='...\n");
+        printf("Testing '>='\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -129,7 +129,7 @@ int main()
             "(<= 10.0 -28/7)",       "false"
         };
 
-        printf("Testing '<='...\n");
+        printf("Testing '<='\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -151,7 +151,7 @@ int main()
             "(/ 1 0)",               "nan.0"
         };
 
-        printf("Testing basic math...\n");
+        printf("Testing basic math\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -167,7 +167,7 @@ int main()
             "(sqrt -1)",            "nan.0"
         };
 
-        printf("Testing 'sqrt'...\n");
+        printf("Testing 'sqrt'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -184,7 +184,7 @@ int main()
             "(exp -100)",          "3.720075976020836e-44"
         };
 
-        printf("Testing 'exp'...\n");
+        printf("Testing 'exp'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -201,7 +201,7 @@ int main()
             "(log -1)",             "nan.0"
         };
 
-        printf("Testing 'log'...\n");
+        printf("Testing 'log'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -222,7 +222,7 @@ int main()
             "(pow 2 -5.0)",         "0.03125"
         };
 
-        printf("Testing 'pow'...\n");
+        printf("Testing 'pow'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

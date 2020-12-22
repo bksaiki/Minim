@@ -29,7 +29,7 @@ int main()
             "+",            "<function:+>"
         };
 
-        printf("Testing single expressions...\n");
+        printf("Testing single expressions\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -49,7 +49,7 @@ int main()
             "(list (list (list 1)))",   "'(((1)))",
         };
 
-        printf("Testing list construction...\n");
+        printf("Testing list construction\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -70,7 +70,7 @@ int main()
             "(list-ref (list 1 2) 1)",      "2",
         };
 
-        printf("Testing list accessors...\n");
+        printf("Testing list accessors\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -86,7 +86,7 @@ int main()
             "(cons 1 (list 1 2))",              "'(1 1 2)"
         };
 
-        printf("Testing pairs...\n");
+        printf("Testing pairs\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -103,7 +103,7 @@ int main()
             "(def hyp2 (x y) (+ (* x x) (* y y)))", "<void>",
         };
 
-        printf("Testing 'def'...\n");
+        printf("Testing 'def'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -124,7 +124,7 @@ int main()
             "(let* ((x 1) (y x)) (+ x y))",     "2"                    
         };
 
-        printf("Testing 'let/let*'...\n");
+        printf("Testing 'let/let*'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -138,7 +138,7 @@ int main()
             "(for ((x (list 1 2 3))) x)",        "<void>"
         };
 
-        printf("Testing 'for'...\n");
+        printf("Testing 'for'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -152,7 +152,7 @@ int main()
             "(for-list ((x (list 1 2 3))) x)",      "'(1 2 3)"
         };
 
-        printf("Testing 'for-list'...\n");
+        printf("Testing 'for-list'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -166,7 +166,7 @@ int main()
             "(lambda (x y) (+ (* x x) (* y y)))",           "<function:?>"
         };
 
-        printf("Testing 'lambda'...\n");
+        printf("Testing 'lambda'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -180,7 +180,7 @@ int main()
             "(apply + (list 1 2 3 4))",                     "10"
         };
 
-        printf("Testing 'apply'...\n");
+        printf("Testing 'apply'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -194,7 +194,7 @@ int main()
             "(map (lambda (x) (+ x 1)) (list 1 2 3))",      "'(2 3 4)"
         };
 
-        printf("Testing 'map'...\n");
+        printf("Testing 'map'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -208,7 +208,7 @@ int main()
             "(append (list 1 2) (list 3 4) (list 5 6))",    "'(1 2 3 4 5 6)"
         };
 
-        printf("Testing 'append'...\n");
+        printf("Testing 'append'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -238,7 +238,7 @@ int main()
             "(filter negative? (list -3 -2 -1 0))",         "'(-3 -2 -1)"
         };
 
-        printf("Testing 'filter'...\n");
+        printf("Testing 'filter'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -254,7 +254,7 @@ int main()
             "(filtern negative? (list -1 0 2 3))",           "'(0 2 3)"
         };
 
-        printf("Testing 'filtern'...\n");
+        printf("Testing 'filtern'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -268,7 +268,40 @@ int main()
             "(begin (def x 1) (def y 1) (+ x y))",  "2"  
         };
 
-        printf("Testing 'begin'...\n");
+        printf("Testing 'begin'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] = 
+        {
+            "(equal? 'x 'x)",                   "true",
+            "(equal? 'x 'y)",                   "false",
+            "(equal? 5 5)",                     "true",
+            "(equal? 5 4)",                     "false",
+            "(equal? \"x\" \"x\")",             "true",
+            "(equal? \"x\" \"y\")",             "false"
+        };
+
+        printf("Testing 'equal?' (primitive)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] = 
+        {
+            "(equal? (list 1) (list 1))",       "true",
+            "(equal? (list 1) (list 2))",       "false",
+            "(equal? '(1 2 3) '(1 2 3))",       "true",
+            "(equal? '(1 2 3) '(1 2 4))",       "false",
+            "(equal? '(1 2 3) '(1 2))",       "false"
+        };
+
+        printf("Testing 'equal?' (list)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

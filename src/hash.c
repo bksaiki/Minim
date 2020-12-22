@@ -339,22 +339,9 @@ MinimObject *minim_builtin_hash_remove(MinimEnv *env, int argc, MinimObject **ar
     if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-remove'", 2) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
     {
+        copy_minim_object(&res, args[0]);
         if (minim_hash_table_keyp(args[0]->data, args[1]))
-        {
-            copy_minim_object(&res, args[0]);
             minim_hash_table_remove(res->data, args[1]);
-        }
-        else
-        {
-            Buffer *bf;
-            PrintParams pp;
-
-            init_buffer(&bf);
-            writes_buffer(bf, "hash-ref: no value found for ");
-            print_to_buffer(bf, args[1], env, &pp);
-            minim_error(&res, bf->data);
-            free_buffer(bf);
-        }
     }
 
     return res;

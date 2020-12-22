@@ -31,7 +31,7 @@ int main()
             "\"a b c d e\"",                "\"a b c d e\""
         };
 
-        printf("Testing string construction...\n");
+        printf("Testing string construction\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
