@@ -139,6 +139,38 @@ bool minim_funcp(MinimObject *thing)
     return thing->type == MINIM_OBJ_CLOSURE || thing->type == MINIM_OBJ_FUNC;
 }
 
+bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b)
+{
+    if (a->argc != b->argc)         return false;
+    for (int i = 0; i < a->argc; ++i)
+    {
+        if (strcmp(a->args[i], b->args[i]) != 0)
+            return false;
+    }
+
+    if ((!a->name && b->name) || (a->name && !b->name) ||
+        (a->name && b->name && strcmp(a->name, b->name) != 0))
+        return false;
+
+    if ((!a->rest && b->rest) || (a->rest && !b->rest) ||
+        (a->rest && b->rest && strcmp(a->rest, b->rest) != 0))
+        return false;
+
+    return ast_equalp(a->body, b->body);
+}
+
+void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)
+{
+    write_buffer(bf, &l->argc, sizeof(int));
+    if (l->name)    writes_buffer(bf, l->name);
+    if (l->rest)    writes_buffer(bf, l->rest);
+
+    for (int i = 0; i < l->argc; ++i)
+        writes_buffer(bf, l->args[i]);
+
+    // do not dump ast into buffer
+}
+
 // Builtins
 
 void env_load_module_lambda(MinimEnv *env)

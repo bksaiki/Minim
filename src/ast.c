@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
@@ -68,16 +69,79 @@ void free_ast(MinimAst* node)
     free(node);
 }
 
-bool valid_ast(MinimAst *node)
+bool ast_validp(MinimAst *node)
 {
     if (node->tags & MINIM_AST_ERR)
         return false;
 
     for (int i = 0; i < node->argc; ++i)
     {
-        if (!valid_ast(node->children[i]))
+        if (!ast_validp(node->children[i]))
             return false;
     }
 
     return true;
+}
+
+bool ast_equalp(MinimAst *a, MinimAst *b)
+{
+    if (a->argc != b->argc || a->tags != b->tags)
+        return false;
+    
+    if ((!a->sym && b->sym) || (a->sym && !b->sym) ||
+        (a->sym && b->sym && strcmp(a->sym, b->sym) != 0))
+        return false;
+
+    for (int i = 0; i < a->argc; ++i)
+    {
+        if (!ast_equalp(a->children[i], b->children[i]))
+            return false;
+    }
+
+    return true;
+}
+
+void ast_to_buffer(MinimAst *node, Buffer *bf)
+{
+    if (node->argc != 0)
+    {
+        bool first = true;
+
+        writec_buffer(bf, '(');
+        for (int i = 0; i < node->argc; ++i)
+        {
+            if (first)  first = false;
+            else        writec_buffer(bf, ' ');
+            ast_to_buffer(node->children[i], bf);
+        }
+
+        writec_buffer(bf, ')');
+    }
+    else
+    {
+        writes_buffer(bf, node->sym);
+    }
+}
+
+void ast_dump_in_buffer(MinimAst *node, Buffer *bf)
+{
+    if (node->argc != 0)
+    {
+        for (int i = 0; i < node->argc; ++i)
+            ast_dump_in_buffer(node->children[i], bf);
+    }
+    else
+    {
+        writes_buffer(bf, node->sym);
+    }
+}
+
+void print_ast(MinimAst *node)  // debugging
+{
+    Buffer *bf;
+
+    init_buffer(&bf);
+    ast_to_buffer(node, bf);
+    fputs(bf->data, stdout);
+    free_buffer(bf);
 }

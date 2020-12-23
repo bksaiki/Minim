@@ -257,9 +257,13 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_PAIR:
         return minim_cons_eqp(a, b);
     
-    /*
     case MINIM_OBJ_CLOSURE:
+        return minim_lambda_equalp(a->data, b->data);
+    
     case MINIM_OBJ_AST:
+        return ast_equalp(a->data, b->data);
+    
+    /*
     case MINIM_OBJ_ITER:
     case MINIM_OBJ_SEQ:
     */
@@ -302,9 +306,15 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         minim_number_to_bytes(obj, bf);
         break;
 
-    /*
-    case MINIM_OBJ_CLOSURE:
     case MINIM_OBJ_AST:
+        ast_dump_in_buffer(obj->data, bf);
+        break;
+
+    case MINIM_OBJ_CLOSURE:
+        minim_lambda_to_buffer(obj->data, bf);
+        break;
+
+    /*
     case MINIM_OBJ_ITER:
     case MINIM_OBJ_SEQ:
     */

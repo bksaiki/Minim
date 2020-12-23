@@ -321,5 +321,24 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 4;
+        char strs[8][256] = 
+        {
+            "(equal? + +)",             "true",
+            "(equal? + -)",             "false",
+
+            "(begin (def ident (x) x) (equal? ident ident))",
+            "true",
+            
+            "(begin (def f (x) x) (def g (x) x) (equal? f g))",
+            "false"
+        };
+
+        printf("Testing 'equal?' (functions)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     return (int)(!status);
 }

@@ -197,14 +197,13 @@ int parse_str(char* str, MinimAst** syn)
 {
     *syn = parse_str_node(str);
     
-    if (!valid_ast(*syn))
+    if (!ast_validp(*syn))
     {
         print_ast_errors(*syn);
         free_ast(*syn);
         syn = NULL;
         return 0;
     } 
-    else
     
     return 1;
 }

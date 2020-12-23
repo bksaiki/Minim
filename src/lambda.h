@@ -1,8 +1,8 @@
 #ifndef _MINIM_LAMBDA_H_
 #define _MINIM_LAMBDA_H_
 
+#include "ast.h"
 #include "env.h"
-#include "parser.h"
 
 typedef struct MinimLambda
 {
@@ -26,6 +26,9 @@ bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg);
 
 bool minim_lambdap(MinimObject *thing);
 bool minim_funcp(MinimObject *thing);
+
+bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b);
+void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf);
 
 // Builtins
 

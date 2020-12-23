@@ -157,6 +157,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writec_buffer(bf, ')');
         pp->quote = quotep;
     }
+    else if (obj->type == MINIM_OBJ_AST)
+    {
+        writes_buffer(bf, "<syntax: ");
+        ast_to_buffer(obj->data, bf);
+        writec_buffer(bf, ')');
+    }
     else
     {
         writes_buffer(bf, "<unknown type>");
