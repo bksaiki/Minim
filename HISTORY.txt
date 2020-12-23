@@ -1,4 +1,8 @@
+Version 0.1.1
+23 December 2020
+Added strings, hash-tables, 'in-range', printing, and equivalence.
+
 Version 0.1.0
 27 October 2020
-First version release. Minimal support for lists, pairs, numbers, lambdas,
+First release. Minimal support for lists, pairs, numbers, lambdas,
 symbols. Command line only (multi-line input). Only tested on Linux.
