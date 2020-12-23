@@ -201,7 +201,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
     MinimObject *res;
 
     if (assert_exact_argc(argc, &res, "quote", 1))
-        unsyntax_ast(env, args[0]->data, &res);
+        unsyntax_ast_rec(env, args[0]->data, &res);
     return res;
 }
 

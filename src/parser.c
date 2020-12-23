@@ -84,18 +84,9 @@ static MinimAst* parse_str_node(char* str)
     if (*str == '\'')
     {
         tmp = malloc((len + 8) * sizeof(char));
-        if (*(str + 1) == '(')
-        {
-            strcpy(tmp, "(list ");
-            strcat(tmp, str + 2);
-        }
-        else
-        {
-            strcpy(tmp, "(quote ");
-            strcat(tmp, str + 1);
-            strcat(tmp, ")");
-        }
-
+        strcpy(tmp, "(quote ");
+        strcat(tmp, str + 1);
+        strcat(tmp, ")");
         node = parse_str_node(tmp);
         free(tmp);
     }

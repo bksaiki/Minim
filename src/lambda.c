@@ -36,7 +36,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
     }   
     else
     {
-        src->args = NULL;
+        lam->args = NULL;
     }
 
     if (src->rest)
@@ -99,8 +99,16 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
 
         if (lam->rest)
         {
-            val = minim_construct_list(argc - lam->argc, &args[lam->argc]);
+            MinimObject **rest;
+            int rcount = argc - lam->argc;
+
+            rest = malloc(rcount * sizeof(MinimObject*));
+            for (int i = 0; i < rcount; ++i)
+                copy_minim_object(&rest[i], args[lam->argc + i]);
+
+            val = minim_construct_list(rcount, rest);
             env_intern_sym(env2, lam->rest, val);
+            free(rest);
         }
 
         eval_ast(env2, lam->body, &res);

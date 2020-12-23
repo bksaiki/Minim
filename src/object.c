@@ -303,8 +303,6 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     /*
-    case MINIM_OBJ_NUM:
-    case MINIM_OBJ_PAIR:
     case MINIM_OBJ_CLOSURE:
     case MINIM_OBJ_AST:
     case MINIM_OBJ_ITER:

@@ -91,11 +91,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     else if (obj->type == MINIM_OBJ_PAIR)
     {
         MinimObject **pair = ((MinimObject**) obj->data);
+        bool quotep = pp->quote;
 
         if (pp->quote)  writec_buffer(bf, '(');
         else            writes_buffer(bf, "'(");
-        pp->quote = true;
 
+        pp->quote = true; // push
         if (minim_listp(obj))
         {
             print_list(obj, env, bf, pp);
@@ -107,6 +108,8 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
             print_object(pair[1], env, bf, pp);
             writec_buffer(bf, ')');
         }
+
+        pp->quote = quotep; // pop
     }
     else if (obj->type == MINIM_OBJ_FUNC || obj->type == MINIM_OBJ_SYNTAX)
     {
@@ -134,6 +137,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     {
         MinimHash *ht = obj->data;
         bool first = true;
+        bool quotep = pp->quote;
         
         pp->quote = true;
         writes_buffer(bf, "hash(");
@@ -151,6 +155,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         }
         
         writec_buffer(bf, ')');
+        pp->quote = quotep;
     }
     else
     {

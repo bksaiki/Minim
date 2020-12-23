@@ -14,6 +14,9 @@ int eval_ast(MinimEnv* env, MinimAst *ast, MinimObject **pobj);
 // Else a list of syntax children is the result.
 int unsyntax_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj);
 
+// Recursively evaluates an ast.
+int unsyntax_ast_rec(MinimEnv *env, MinimAst *ast, MinimObject **pobj);
+
 // Evaluates an expression and returns a string. The result must be freed.
 char *eval_string(char *str, size_t len);
 

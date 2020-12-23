@@ -133,22 +133,24 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
 // Unsyntax
 
-static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node)
+static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
 {
     if (node->tag == MINIM_AST_OP)
     {
         MinimObject **args, *res;
         MinimBuiltin proc;
-        int argc = node->count;
 
-        args = malloc(argc * sizeof(MinimObject*));
+        args = malloc(node->count * sizeof(MinimObject*));
         proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
 
-        for (int i = 0; i < argc; ++i)
-            init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
+        for (int i = 0; i < node->count; ++i)
+        {
+            if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
+            else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
+        }
 
-        res = proc(env, argc, args);
-        free_minim_objects(argc, args);
+        res = proc(env, node->count, args);
+        free_minim_objects(node->count, args);
 
         return res;
     }
@@ -268,7 +270,14 @@ int eval_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 
 int unsyntax_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
-    MinimObject *obj = unsyntax_ast_node(env, ast);
+    MinimObject *obj = unsyntax_ast_node(env, ast, false);
+    *pobj = obj;
+    return (obj->type != MINIM_OBJ_ERR);
+}
+
+int unsyntax_ast_rec(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
+{
+    MinimObject *obj = unsyntax_ast_node(env, ast, true);
     *pobj = obj;
     return (obj->type != MINIM_OBJ_ERR);
 }
