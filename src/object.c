@@ -280,7 +280,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_BOOL:
-        writei_buffer(bf, (*((int*)obj->data) ? 1 : 2));
+        writei_buffer(bf, (*((int*)obj->data) ? 0 : 1));
         break;
     
     case MINIM_OBJ_FUNC:
@@ -292,6 +292,14 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
     case MINIM_OBJ_STRING:
     case MINIM_OBJ_ERR:
         writes_buffer(bf, obj->data);
+        break;
+
+    case MINIM_OBJ_PAIR:
+        minim_cons_to_bytes(obj, bf);
+        break;
+
+    case MINIM_OBJ_NUM:
+        minim_number_to_bytes(obj, bf);
         break;
 
     /*

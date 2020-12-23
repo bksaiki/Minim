@@ -223,6 +223,22 @@ bool minim_inexactp(MinimObject *thing)
             ((MinimNumber*) thing->data)->type == MINIM_NUMBER_INEXACT);
 }
 
+void minim_number_to_bytes(MinimObject *obj, Buffer *bf)
+{
+    MinimNumber *num = obj->data;
+
+    if (num->type == MINIM_NUMBER_EXACT)
+    {
+        // Dump integer limbs
+        write_buffer(bf, num->rat->_mp_num._mp_d, num->rat->_mp_num._mp_size * sizeof(mp_limb_t));
+        write_buffer(bf, num->rat->_mp_den._mp_d, num->rat->_mp_den._mp_size * sizeof(mp_limb_t));
+    }
+    else
+    {
+        write_buffer(bf, &num->fl, sizeof(double));
+    }
+}
+
 // *** Builtins *** //
 
 void env_load_module_number(MinimEnv *env)

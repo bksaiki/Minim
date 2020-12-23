@@ -55,6 +55,7 @@ bool assert_exact_nonneg_int(MinimObject *arg, MinimObject **ret, const char *ms
 bool minim_numberp(MinimObject *thing);
 bool minim_exactp(MinimObject *thing);
 bool minim_inexactp(MinimObject *thing);
+void minim_number_to_bytes(MinimObject *obj, Buffer *bf);
 
 // Builtins
 

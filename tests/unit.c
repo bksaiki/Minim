@@ -55,6 +55,21 @@ int main()
     }
 
     {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "'()",                  "'()",
+            "'(1)",                 "'(1)",
+            "'(1 2)",               "'(1 2)",
+            "'(1 2 3 4)",           "'(1 2 3 4)"
+        };
+
+        printf("Testing list construction (shorthand)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 10;
         char strs[20][256] =
         {
@@ -291,14 +306,14 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[12][256] = 
+        const int COUNT = 5;
+        char strs[10][256] = 
         {
             "(equal? (list 1) (list 1))",       "true",
             "(equal? (list 1) (list 2))",       "false",
             "(equal? '(1 2 3) '(1 2 3))",       "true",
             "(equal? '(1 2 3) '(1 2 4))",       "false",
-            "(equal? '(1 2 3) '(1 2))",       "false"
+            "(equal? '(1 2 3) '(1 2))",         "false"
         };
 
         printf("Testing 'equal?' (list)\n");
