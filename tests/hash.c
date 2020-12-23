@@ -42,12 +42,13 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 4;
+        char strs[8][256] =
         {
             "(hash-set (hash) 'a 1)",           "hash((a . 1))",
             "(hash-set (hash) 1 'a)",           "hash((1 . a))",
-            "(hash-set (hash) 'a (list 1 2))",  "hash((a . (1 2)))"
+            "(hash-set (hash) 'a (list 1 2))",  "hash((a . (1 2)))",
+            "(hash-set (hash) '(1 2) 'a)",      "hash(((1 2) . a))"
         };
 
         printf("Testing 'hash-set'\n");
@@ -56,11 +57,14 @@ int main()
     }
 
     {
-        const int COUNT = 2;
-        char strs[4][256] =
+        const int COUNT = 5;
+        char strs[10][256] =
         {
-            "(hash-remove (hash-set (hash) 'a 1) 'a)",      "hash()",
-            "(hash-remove (hash-set (hash) 'a 1) 'b)",      "hash((a . 1))",
+            "(hash-remove (hash-set (hash) 'a 1) 'a)",          "hash()",
+            "(hash-remove (hash-set (hash) 'a 1) 'b)",          "hash((a . 1))",
+            "(hash-remove (hash-set (hash) '(1 2) 1) '(1 2))",  "hash()",
+            "(hash-remove (hash-set (hash) '(1 2) 1) '(2 2))",  "hash(((1 2) . 1))",
+            "(hash-remove (hash-set (hash) + 1) +)",            "hash()",
         };
 
         printf("Testing 'hash-remove'\n");
@@ -69,11 +73,15 @@ int main()
     }
 
     {
-        const int COUNT = 2;
-        char strs[4][256] =
+        const int COUNT = 6;
+        char strs[12][256] =
         {
-            "(hash-key? (hash-set (hash) 'a 1) 'a)",      "true",
-            "(hash-key? (hash-set (hash) 'a 1) 'b)",      "false",
+            "(hash-key? (hash-set (hash) 'a 1) 'a)",            "true",
+            "(hash-key? (hash-set (hash) 'a 1) 'b)",            "false",
+            "(hash-key? (hash-set (hash) '(1 2) 1) '(1 2))",    "true",
+            "(hash-key? (hash-set (hash) '(1 2) 1) '(2 2))",    "false",
+            "(hash-key? (hash-set (hash) + 1) +)",              "true",
+            "(hash-key? (hash-set (hash) + 1) -)",              "false"
         };
 
         printf("Testing 'hash-key?'\n");
