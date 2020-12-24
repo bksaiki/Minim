@@ -12,6 +12,13 @@
 #define MINIM_CADR(x)   MINIM_CAR(MINIM_CDR(x))
 #define MINIM_CDDR(x)   MINIM_CDR(MINIM_CDR(x))
 
+#define MINIM_TAIL(dest, x)         \
+{                                   \
+    dest = x;                       \
+    while (MINIM_CDR(dest))         \
+        dest = MINIM_CDR(dest);     \
+}
+
 // Assertions
 bool assert_cons(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg);
@@ -27,6 +34,7 @@ bool minim_listof(MinimObject* list, MinimPred pred);
 bool minim_cons_eqp(MinimObject *a, MinimObject *b);
 void minim_cons_to_bytes(MinimObject *obj, Buffer *bf);
 
+MinimObject *minim_list(MinimObject **args, int len);
 MinimObject *minim_construct_list(int argc, MinimObject **args);
 int minim_list_length(MinimObject *list);
 

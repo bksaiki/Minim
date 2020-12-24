@@ -55,6 +55,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b);
 
 //  Miscellaneous
 
+MinimObject *fresh_minim_object(MinimObject *src);
 Buffer* minim_obj_to_bytes(MinimObject *obj);
 
 #endif

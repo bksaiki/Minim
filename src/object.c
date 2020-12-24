@@ -122,6 +122,80 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     }
 }
 
+void copy_minim_object_h(MinimObject *dest, MinimObject *src)
+{
+    if (src->type == MINIM_OBJ_BOOL)
+    {
+        dest->si = src->si;
+    }
+    else if (src->type == MINIM_OBJ_NUM)
+    {
+        MinimNumber *num;
+        copy_minim_number(&num, src->data);
+        dest->data = num;
+    }
+    else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR || src->type == MINIM_OBJ_STRING)
+    {
+        char *str = ((char*) src->data);
+        dest->data = malloc((strlen(str) + 1) * sizeof(char));
+        strcpy(dest->data, str);
+    }
+    else if (src->type == MINIM_OBJ_PAIR)
+    {
+        MinimObject** cell = ((MinimObject**) src->data);
+        MinimObject** cp = malloc(2 * sizeof(MinimObject*));
+
+        if (cell[0]) copy_minim_object(&cp[0], cell[0]);
+        else         cp[0] = NULL;
+
+        if (cell[1]) copy_minim_object(&cp[1], cell[1]);
+        else         cp[1] = NULL;
+
+        dest->data = cp;
+    }
+    else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC ||
+                src->type == MINIM_OBJ_SYNTAX)
+    {
+        dest->data = src->data;   // no copy
+    }
+    else if (src->type == MINIM_OBJ_CLOSURE)
+    {
+        MinimLambda *lam;
+
+        copy_minim_lambda(&lam, src->data);
+        dest->data = lam;
+    }
+    else if (src->type == MINIM_OBJ_AST)
+    {
+        MinimAst *node;
+        copy_ast(&node, src->data);
+        dest->data = node;
+    }
+    else if (src->type == MINIM_OBJ_ITER)
+    {
+        MinimIter *iter;
+        copy_minim_iter(&iter, src->data);
+        dest->data = iter;
+    }
+    else if (src->type == MINIM_OBJ_SEQ)
+    {
+        MinimSeq *seq;
+        copy_minim_seq(&seq, src->data);
+        dest->data = seq;
+    }
+    else if (src->type == MINIM_OBJ_HASH)
+    {
+        MinimHash *ht;
+        copy_minim_hash_table(&ht, src->data);
+        dest->data = ht;
+    }
+    else
+    {
+        printf("Unknown object type\n");
+        dest = NULL;
+    }   
+}
+
 void copy_minim_object(MinimObject **pobj, MinimObject *src)
 {
     MinimObject *obj = malloc(sizeof(MinimObject));
@@ -129,84 +203,8 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     obj->flags = src->flags;
     *pobj = obj;
 
-    if (MINIM_OBJ_OWNERP(obj))
-    {
-        if (src->type == MINIM_OBJ_BOOL)
-        {
-            obj->si = src->si;
-        }
-        else if (src->type == MINIM_OBJ_NUM)
-        {
-            MinimNumber *num;
-            copy_minim_number(&num, src->data);
-            obj->data = num;
-        }
-        else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR || src->type == MINIM_OBJ_STRING)
-        {
-            char *dest, *str = ((char*) src->data);
-            dest = malloc((strlen(str) + 1) * sizeof(char));
-            strcpy(dest, str);      
-            obj->data = dest;
-        }
-        else if (src->type == MINIM_OBJ_PAIR)
-        {
-            MinimObject** cell = ((MinimObject**) src->data);
-            MinimObject** dest = malloc(2 * sizeof(MinimObject*));
-
-            if (cell[0]) copy_minim_object(&dest[0], cell[0]);
-            else         dest[0] = NULL;
-
-            if (cell[1]) copy_minim_object(&dest[1], cell[1]);
-            else         dest[1] = NULL;
-
-            obj->data = dest;
-        }
-        else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC ||
-                    src->type == MINIM_OBJ_SYNTAX)
-        {
-            obj->data = src->data;   // no copy
-        }
-        else if (src->type == MINIM_OBJ_CLOSURE)
-        {
-            MinimLambda *lam;
-
-            copy_minim_lambda(&lam, src->data);
-            obj->data = lam;
-        }
-        else if (src->type == MINIM_OBJ_AST)
-        {
-            MinimAst *node;
-            copy_ast(&node, src->data);
-            obj->data = node;
-        }
-        else if (src->type == MINIM_OBJ_ITER)
-        {
-            MinimIter *iter;
-            copy_minim_iter(&iter, src->data);
-            obj->data = iter;
-        }
-        else if (src->type == MINIM_OBJ_SEQ)
-        {
-            MinimSeq *seq;
-            copy_minim_seq(&seq, src->data);
-            obj->data = seq;
-        }
-        else if (src->type == MINIM_OBJ_HASH)
-        {
-            MinimHash *ht;
-            copy_minim_hash_table(&ht, src->data);
-            obj->data = ht;
-        }
-        else
-        {
-            printf("Unknown object type\n");
-            obj = NULL;
-        }
-    }
-    else
-    {
-        ref_minim_object_h(obj, src);
-    }
+    if (MINIM_OBJ_OWNERP(obj))  copy_minim_object_h(obj, src);
+    else                        ref_minim_object_h(obj, src);
 }
 
 void ref_minim_object(MinimObject **pobj, MinimObject *src)
@@ -309,7 +307,22 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     default:
         return false;
     }
- }
+}
+
+MinimObject *fresh_minim_object(MinimObject *src)
+{
+    MinimObject *cp;
+
+    if (MINIM_OBJ_OWNERP(src))
+        return src;
+
+    cp = malloc(sizeof(MinimObject));
+    cp->type = src->type;
+    cp->flags = src->flags | MINIM_OBJ_OWNER;
+    copy_minim_object_h(cp, src);
+
+    return cp;
+}
 
 Buffer* minim_obj_to_bytes(MinimObject *obj)
 {

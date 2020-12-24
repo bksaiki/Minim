@@ -11,6 +11,47 @@
 #include "variable.h"
 #include "util.h"
 
+#define OPT_MOVE(dest, src)             \
+{                                       \
+    if (MINIM_OBJ_OWNERP(src))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { copy_minim_object(&dest, src); }  \
+}
+
+#define OPT_MOVE2(dest, src, obj)       \
+{                                       \
+    if (MINIM_OBJ_OWNERP(obj))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { copy_minim_object(&dest, src); }  \
+}
+
+#define OPT_MOVE_REF(dest, src)         \
+{                                       \
+    if (MINIM_OBJ_OWNERP(src))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { ref_minim_object(&dest, src); }   \
+}
+
+#define OPT_MOVE_REF2(dest, src, obj)   \
+{                                       \
+    if (MINIM_OBJ_OWNERP(obj))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { ref_minim_object(&dest, src); }   \
+}
+
+#define RELEASE_OWNED_ARGS(args, argc)      \
+{                                           \
+    for (int i = 0; i < argc; ++i)          \
+    {                                       \
+        if (MINIM_OBJ_OWNERP(args[i]))      \
+            args[i] = NULL;                 \
+    }                                       \
+}
+
 static void append_lists(MinimObject *head, int count, MinimObject **rest)
 {
     MinimObject *it;
@@ -249,15 +290,31 @@ void minim_cons_to_bytes(MinimObject *obj, Buffer *bf)
     }
 }
 
+MinimObject *minim_list(MinimObject **args, int len)
+{
+    MinimObject *head, *it;
+    
+    if (len == 0)
+    {
+        init_minim_object(&head, MINIM_OBJ_PAIR, NULL, NULL);
+    }
+    else
+    {
+        init_minim_object(&it, MINIM_OBJ_PAIR, fresh_minim_object(args[0]), NULL);
+        head = it;
+        for (int i = 1; i < len; ++i)
+        {
+            init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, fresh_minim_object(args[i]), NULL);
+            it = MINIM_CDR(it);
+        }
+    }
+
+    return head;
+}
+
 MinimObject *minim_construct_list(int argc, MinimObject** args)
 {
-    MinimObject *obj;
-    
-    if (argc == 0)
-        return NULL;
-
-    init_minim_object(&obj, MINIM_OBJ_PAIR, args[0], minim_construct_list(argc - 1, args + 1));
-    return obj;   
+    return minim_list(args, argc);   
 }
 
 int minim_list_length(MinimObject *list)
@@ -269,6 +326,10 @@ int minim_list_length(MinimObject *list)
     
     return len;
 }
+
+//
+//  Builtins
+//
 
 void env_load_module_list(MinimEnv *env)
 {
@@ -296,20 +357,19 @@ void env_load_module_list(MinimEnv *env)
 
 MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
 {
-    MinimObject *res;
+    MinimObject *res, *car, *cdr;
 
     if (assert_exact_argc(argc, &res, "cons", 2))
     {
+        OPT_MOVE(car, args[0]);
         if (minim_nullp(args[1]))
         {
-            init_minim_object(&res, MINIM_OBJ_PAIR, args[0], NULL);
-            args[0] = NULL;
+            init_minim_object(&res, MINIM_OBJ_PAIR, car, NULL);
         }
         else
         {
-            init_minim_object(&res, MINIM_OBJ_PAIR, args[0], args[1]);   
-            args[0] = NULL;
-            args[1] = NULL;
+            OPT_MOVE(cdr, args[1]);
+            init_minim_object(&res, MINIM_OBJ_PAIR, car, cdr);
         }
     }
 
@@ -334,8 +394,7 @@ MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args)
         assert_pair(args[0], &res, "Expected a pair for 'car'") &&
         assert_generic(&res, "Expected a non-null list for 'car'", MINIM_CAR(args[0])))
     {
-        res = MINIM_CAR(args[0]);
-        MINIM_CAR(args[0]) = NULL;
+        OPT_MOVE_REF2(res, MINIM_CAR(args[0]), args[0]);
     }
 
     return res;
@@ -349,8 +408,7 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args)
         assert_pair(args[0], &res, "Expected a pair for 'cdr'") &&
         assert_generic(&res, "Expected a non-null list for 'cdr'", MINIM_CAR(args[0])))
     {
-        res = MINIM_CDR(args[0]);
-        MINIM_CDR(args[0]) = NULL;
+        OPT_MOVE_REF2(res, MINIM_CDR(args[0]), args[0]);
     }
 
     return res;
@@ -371,9 +429,7 @@ MinimObject *minim_builtin_nullp(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
 
     if (assert_exact_argc(argc, &res, "null?", 1))
-    {
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_nullp(args[0]));
-    }
 
     return res;
 }
@@ -382,31 +438,21 @@ MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (argc == 0)
-    {
-        init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-    }
-    else
-    {
-        res = minim_construct_list(argc, args);
-        for (int i = 0; i < argc; ++i)
-            args[i] = NULL;
-    }
+    res = minim_list(args, argc);
+    RELEASE_OWNED_ARGS(args, argc);
 
     return res;
 }
 
 MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args)
 {
-    MinimObject *res, **pair;
+    MinimObject *res;
 
     if (assert_exact_argc(argc, &res, "head", 1))
     {
         if (MINIM_CAR(args[0]))
         {
-            pair = ((MinimObject**) args[0]->data);
-            res = pair[0];
-            pair[0] = NULL;
+            OPT_MOVE_REF2(res, MINIM_CAR(args[0]), args[0]);
         }
         else
         {
@@ -419,7 +465,7 @@ MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args)
 
 MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
 {
-    MinimObject *res, *it, **pair;
+    MinimObject *res, *it;
 
     if (assert_exact_argc(argc, &res, "tail", 1))
     {
@@ -427,10 +473,7 @@ MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
         {
             it = args[0];
             while (MINIM_CDR(it))   it = MINIM_CDR(it);
-
-            pair = ((MinimObject**) it->data);
-            res = pair[0];
-            pair[0] = NULL;
+            OPT_MOVE_REF2(res, MINIM_CAR(it), args[0]);
         }
         else
         {
@@ -460,7 +503,7 @@ MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
 
 MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args)
 {
-    MinimObject *res;
+    MinimObject *res, *it;
 
     if (assert_min_argc(argc, &res, "append", 1))
     {
@@ -470,11 +513,15 @@ MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args)
                 return res;
         }
 
-        append_lists(args[0], argc - 1, &args[1]);
-        res = args[0];
+        res = fresh_minim_object(args[0]);
+        MINIM_TAIL(it, res);
+        for (int i = 1; i < argc; ++i)
+        {
+            MINIM_CDR(it) = fresh_minim_object(args[i]);
+            MINIM_TAIL(it, it);
+        }
 
-        for (int i = 0; i < argc; ++i)
-            args[i] = NULL;
+        RELEASE_OWNED_ARGS(args, argc);
     }
 
     return res;
@@ -511,7 +558,10 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
         int idx = mpz_get_si(mpq_numref(num->rat));
 
         for (int i = 0; i < idx; ++i, it = MINIM_CDR(it))
-            if (!it) break;
+        {
+            if (!it)
+                break;
+        }
 
         if (!it)
         {
@@ -519,8 +569,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
             return res;
         }
 
-        res = MINIM_CAR(it);
-        MINIM_CAR(it) = NULL;
+        OPT_MOVE_REF2(res, MINIM_CAR(it), args[0]);
     }
 
     return res;

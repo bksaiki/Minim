@@ -140,6 +140,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
         }
 
         if (!res) eval_ast(env2, args[1]->data, &res);
+        res = fresh_minim_object(res);
         free_minim_object(bindings);
         pop_env(env2);
     }
@@ -189,6 +190,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
         }
 
         if (!err) eval_ast(env2, args[1]->data, &res);
+        res = fresh_minim_object(res);
         free_minim_object(bindings);
         pop_env(env2);
     }

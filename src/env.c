@@ -16,7 +16,7 @@
 #include "math.h"
 #include "variable.h"
 #include "string.h"
-#include "sequence.h"
+#include "sequence.h"      
 
 static void free_single_env(MinimEnv *env)
 {
@@ -71,7 +71,7 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
     {
         if (strcmp(sym, env->syms[i]) == 0)
         {
-            copy_minim_object(&obj, env->vals[i]);
+            ref_minim_object(&obj, env->vals[i]);
             return obj;
         }
     }
@@ -82,12 +82,14 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
+    MinimObject *fresh = fresh_minim_object(obj);
+
     for (int i = 0; i < env->count; ++i)
     {
         if (strcmp(sym, env->syms[i]) == 0)
         {
             free_minim_object(env->vals[i]);
-            env->vals[i] = obj;
+            env->vals[i] = fresh;
             add_metadata(env->vals[i], sym);
             return;
         }
@@ -98,7 +100,7 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     env->vals = realloc(env->vals, env->count * sizeof(MinimObject**));
 
     env->syms[env->count - 1] = malloc(strlen(sym) + 1);
-    env->vals[env->count - 1] = obj;
+    env->vals[env->count - 1] = fresh;
     strcpy(env->syms[env->count - 1], sym);
     add_metadata(env->vals[env->count - 1], sym);
 }
