@@ -174,20 +174,35 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 
     ++ht->elems;
     free_buffer(bf);
-    copy_minim_object(&ck, k);
-    copy_minim_object(&cv, v);
 
     if (((double)ht->elems / (double)ht->size) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
         rehash_table(ht); // rehash if too deep
 
     if (ht->arr[reduc].len == 0)
     {
+        copy_minim_object(&ck, k);
+        copy_minim_object(&cv, v);
+
         ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
         ht->arr[reduc].len = 1;
         init_minim_object(&ht->arr[reduc].arr[0], MINIM_OBJ_PAIR, ck, cv);
     }
     else
     {      
+        copy_minim_object(&cv, v);
+
+        // Check if key already exists
+        for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+        {
+            if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
+            {
+                free_minim_object(MINIM_CDR(ht->arr[reduc].arr[i]));
+                MINIM_CDR(ht->arr[reduc].arr[i]) = cv;
+                return;
+            }
+        }
+
+        copy_minim_object(&ck, k);
         ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
         init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, ck, cv);
         ++ht->arr[reduc].len;
