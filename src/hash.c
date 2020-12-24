@@ -112,7 +112,7 @@ void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
 void free_minim_hash_table(MinimHash *ht)
 {
     for (size_t i = 0; i < ht->size; ++i)
-        free_minim_objects(ht->arr[i].len, ht->arr[i].arr);
+        free_minim_objects(ht->arr[i].arr, ht->arr[i].len);
 
     free(ht->arr);
     free(ht);

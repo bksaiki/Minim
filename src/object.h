@@ -4,13 +4,17 @@
 #include "base.h"
 #include "common/buffer.h"
 
+#define MINIM_OBJ_OWNER         0x1
+#define MINIM_OBJ_OWNERP(obj)   (obj->flags & MINIM_OBJ_OWNER)
+
 struct MinimEnv;
 typedef struct MinimEnv MinimEnv;
 
 typedef struct MinimObject
 {
-    int type;
-    void* data;
+    union { void* data; intmax_t si; };
+    uint16_t type;
+    uint16_t flags;
 } MinimObject;
 
 typedef enum MinimObjectType
@@ -37,8 +41,9 @@ typedef MinimObject *(*MinimBuiltin)(MinimEnv *, int, MinimObject **);
 
 void init_minim_object(MinimObject **pobj, MinimObjectType type, ...);
 void copy_minim_object(MinimObject **pobj, MinimObject *src);
+void ref_minim_object(MinimObject **pobj, MinimObject *src);
 void free_minim_object(MinimObject *obj);
-void free_minim_objects(int count, MinimObject **objs);
+void free_minim_objects(MinimObject **objs, size_t count);
 
 //  Specialized constructors
 

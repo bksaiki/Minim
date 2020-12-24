@@ -15,30 +15,26 @@
 #include "sequence.h"
 #include "util.h"
 
-static void free_minim_object_proc(const void *thing)
-{
-    MinimObject **obj = ((MinimObject**) thing);
-    free_minim_object(*obj);
-}
-
 // Visible functions
 
 void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
 {
-    MinimObject *obj = malloc(sizeof(MinimObject));
+    MinimObject *obj;
     va_list rest;
 
     va_start(rest, type);
+
+    obj = malloc(sizeof(MinimObject));
     obj->type = type;
+    obj->flags = MINIM_OBJ_OWNER;
+
     if (type == MINIM_OBJ_VOID)
     {
         obj->data = NULL;
     }
     else if (type == MINIM_OBJ_BOOL)
     {
-        int *v = malloc(sizeof(int));
-        *v = va_arg(rest, int);
-        obj->data = v;
+        obj->si = va_arg(rest, int);
     }
     else if (type == MINIM_OBJ_NUM)
     {
@@ -96,122 +92,165 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     *pobj = obj;
 }
 
+static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
+{
+    switch (src->type)
+    {
+    case MINIM_OBJ_BOOL:
+        dest->si = src->si;
+        break;
+
+    case MINIM_OBJ_NUM:
+    case MINIM_OBJ_SYM:
+    case MINIM_OBJ_ERR:
+    case MINIM_OBJ_STRING:
+    case MINIM_OBJ_PAIR:
+    case MINIM_OBJ_VOID:
+    case MINIM_OBJ_FUNC:
+    case MINIM_OBJ_SYNTAX:
+    case MINIM_OBJ_CLOSURE:
+    case MINIM_OBJ_AST:
+    case MINIM_OBJ_ITER:
+    case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_HASH:
+        dest->data = src->data;
+        break;
+    
+    default:
+        printf("Unknown object type\n");
+        break;
+    }
+}
+
 void copy_minim_object(MinimObject **pobj, MinimObject *src)
 {
-    MinimObject *obj;
-    
-    if (!src)
-    {
-        *pobj = NULL;
-        return;
-    }
-
-    obj = malloc(sizeof(MinimObject));
+    MinimObject *obj = malloc(sizeof(MinimObject));
     obj->type = src->type;
+    obj->flags = src->flags;
+    *pobj = obj;
 
-    if (src->type == MINIM_OBJ_BOOL)
+    if (MINIM_OBJ_OWNERP(obj))
     {
-        int *v = malloc(sizeof(int));
-        *v = *((int*) src->data);
-        obj->data = v;
-    }
-    else if (src->type == MINIM_OBJ_NUM)
-    {
-        MinimNumber *num;
-        copy_minim_number(&num, src->data);
-        obj->data = num;
-    }
-    else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR || src->type == MINIM_OBJ_STRING)
-    {
-        char *dest, *str = ((char*) src->data);
-        dest = malloc((strlen(str) + 1) * sizeof(char));
-        strcpy(dest, str);      
-        obj->data = dest;
-    }
-    else if (src->type == MINIM_OBJ_PAIR)
-    {
-        MinimObject** cell = ((MinimObject**) src->data);
-        MinimObject** dest = malloc(2 * sizeof(MinimObject*));
+        if (src->type == MINIM_OBJ_BOOL)
+        {
+            obj->si = src->si;
+        }
+        else if (src->type == MINIM_OBJ_NUM)
+        {
+            MinimNumber *num;
+            copy_minim_number(&num, src->data);
+            obj->data = num;
+        }
+        else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR || src->type == MINIM_OBJ_STRING)
+        {
+            char *dest, *str = ((char*) src->data);
+            dest = malloc((strlen(str) + 1) * sizeof(char));
+            strcpy(dest, str);      
+            obj->data = dest;
+        }
+        else if (src->type == MINIM_OBJ_PAIR)
+        {
+            MinimObject** cell = ((MinimObject**) src->data);
+            MinimObject** dest = malloc(2 * sizeof(MinimObject*));
 
-        copy_minim_object(&dest[0], cell[0]);
-        copy_minim_object(&dest[1], cell[1]);
-        obj->data = dest;
-    }
-    else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC ||
-             src->type == MINIM_OBJ_SYNTAX)
-    {
-        obj->data = src->data;   // no copy
-    }
-    else if (src->type == MINIM_OBJ_CLOSURE)
-    {
-        MinimLambda *lam;
+            if (cell[0]) copy_minim_object(&dest[0], cell[0]);
+            else         dest[0] = NULL;
 
-        copy_minim_lambda(&lam, src->data);
-        obj->data = lam;
-    }
-    else if (src->type == MINIM_OBJ_AST)
-    {
-        MinimAst *node;
-        copy_ast(&node, src->data);
-        obj->data = node;
-    }
-    else if (src->type == MINIM_OBJ_ITER)
-    {
-        MinimIter *iter;
-        copy_minim_iter(&iter, src->data);
-        obj->data = iter;
-    }
-    else if (src->type == MINIM_OBJ_SEQ)
-    {
-        MinimSeq *seq;
-        copy_minim_seq(&seq, src->data);
-        obj->data = seq;
-    }
-    else if (src->type == MINIM_OBJ_HASH)
-    {
-        MinimHash *ht;
-        copy_minim_hash_table(&ht, src->data);
-        obj->data = ht;
+            if (cell[1]) copy_minim_object(&dest[1], cell[1]);
+            else         dest[1] = NULL;
+
+            obj->data = dest;
+        }
+        else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC ||
+                    src->type == MINIM_OBJ_SYNTAX)
+        {
+            obj->data = src->data;   // no copy
+        }
+        else if (src->type == MINIM_OBJ_CLOSURE)
+        {
+            MinimLambda *lam;
+
+            copy_minim_lambda(&lam, src->data);
+            obj->data = lam;
+        }
+        else if (src->type == MINIM_OBJ_AST)
+        {
+            MinimAst *node;
+            copy_ast(&node, src->data);
+            obj->data = node;
+        }
+        else if (src->type == MINIM_OBJ_ITER)
+        {
+            MinimIter *iter;
+            copy_minim_iter(&iter, src->data);
+            obj->data = iter;
+        }
+        else if (src->type == MINIM_OBJ_SEQ)
+        {
+            MinimSeq *seq;
+            copy_minim_seq(&seq, src->data);
+            obj->data = seq;
+        }
+        else if (src->type == MINIM_OBJ_HASH)
+        {
+            MinimHash *ht;
+            copy_minim_hash_table(&ht, src->data);
+            obj->data = ht;
+        }
+        else
+        {
+            printf("Unknown object type\n");
+            obj = NULL;
+        }
     }
     else
     {
-        printf("Unknown object type\n");
-        obj = NULL;
+        ref_minim_object_h(obj, src);
     }
+}
 
+void ref_minim_object(MinimObject **pobj, MinimObject *src)
+{
+    MinimObject *obj = malloc(sizeof(MinimObject));
+    obj->type = src->type;
+    obj->flags = src->flags ^ MINIM_OBJ_OWNER;
     *pobj = obj;
+
+    ref_minim_object_h(obj, src);
 }
 
 void free_minim_object(MinimObject *obj)
 {
-    if (obj == NULL)
-        return;
-
-    if (obj->type == MINIM_OBJ_PAIR)
+    if (MINIM_OBJ_OWNERP(obj))
     {
-        MinimObject** pdata = (MinimObject**)obj->data;
-        if (pdata[0])   free_minim_object(pdata[0]);
-        if (pdata[1])   free_minim_object(pdata[1]);
-    }
-    
-    if (obj->data &&
-        obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX && // function pointer
-        obj->type != MINIM_OBJ_AST) // release ast
-    {
-        if (obj->type == MINIM_OBJ_CLOSURE)         free_minim_lambda(obj->data);
-        else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
-        else if (obj->type == MINIM_OBJ_ITER)       free_minim_iter(obj->data);
-        else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
-        else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->data);
-        else                                        free(obj->data);
+        if (obj->type == MINIM_OBJ_PAIR)
+        {
+            MinimObject** pdata = (MinimObject**)obj->data;
+            if (pdata[0])   free_minim_object(pdata[0]);
+            if (pdata[1])   free_minim_object(pdata[1]);
+        }
+        
+        if (obj->data &&
+            obj->type != MINIM_OBJ_BOOL &&
+            obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX && // function pointer
+            obj->type != MINIM_OBJ_AST) // release ast
+        {
+            if (obj->type == MINIM_OBJ_CLOSURE)         free_minim_lambda(obj->data);
+            else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
+            else if (obj->type == MINIM_OBJ_ITER)       free_minim_iter(obj->data);
+            else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
+            else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->data);
+            else                                        free(obj->data);
+        }
     }
 
     free(obj);
 }
 
-void free_minim_objects(int count, MinimObject **objs)
+void free_minim_objects(MinimObject **objs, size_t count)
 {
-    for_each(objs, count, sizeof(MinimObject*), free_minim_object_proc);
+    for (size_t i = 0; i < count; ++i)
+        if (objs[i]) free_minim_object(objs[i]);
     free(objs);
 }
 

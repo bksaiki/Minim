@@ -98,7 +98,7 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
         val = eval_lambda(lam, env, 1, &args[0]);
     }
 
-    free_minim_objects(1, args);
+    free_minim_objects(args, 1);
 
     if (val->type == MINIM_OBJ_ERR)
         return val;
@@ -573,7 +573,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args)
             res = eval_lambda(lam, env, len, vals);
         }
 
-        free_minim_objects(len, vals);
+        free_minim_objects(vals, len);
     }
 
     return res;

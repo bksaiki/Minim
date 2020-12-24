@@ -13,9 +13,9 @@ bool minim_boolp(MinimObject *thing)
 
 bool coerce_into_bool(MinimObject *obj)
 {
-    if (obj->type == MINIM_OBJ_BOOL || obj->type == MINIM_OBJ_NUM)
+    if (obj->type == MINIM_OBJ_BOOL)
     {
-        return *((int*) obj->data);
+        return obj->si;
     }
     else if (obj->type == MINIM_OBJ_PAIR)
     {
