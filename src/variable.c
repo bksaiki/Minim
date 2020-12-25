@@ -262,10 +262,11 @@ MinimObject *minim_builtin_begin(MinimEnv *env, int argc, MinimObject **args)
                 break;
             }
 
-            if (i + 1 == argc)      res = val;
+            if (i + 1 == argc)      res = fresh_minim_object(val);
             else                    free_minim_object(val);
         }
 
+        if (!MINIM_OBJ_OWNERP(val)) free_minim_object(val);
         pop_env(env2);
     }
 
