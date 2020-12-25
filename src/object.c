@@ -295,7 +295,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return minim_cons_eqp(a, b);
     
     case MINIM_OBJ_CLOSURE:
-        return minim_lambda_equalp(a->data, b->data);
+        return a->data == b->data;
     
     case MINIM_OBJ_AST:
         return ast_equalp(a->data, b->data);

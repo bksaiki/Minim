@@ -4,8 +4,9 @@
 #include "base.h"
 #include "common/buffer.h"
 
-#define MINIM_OBJ_OWNER         0x1
-#define MINIM_OBJ_OWNERP(obj)   (obj->flags & MINIM_OBJ_OWNER)
+#define MINIM_OBJ_OWNER             0x1
+#define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
+#define MINIM_OBJ_SET_OWNER(obj)    (obj->flags |= MINIM_OBJ_OWNER)
 
 struct MinimEnv;
 typedef struct MinimEnv MinimEnv;

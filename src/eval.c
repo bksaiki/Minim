@@ -218,9 +218,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
         }
         else if (op->type == MINIM_OBJ_CLOSURE)
         {
-            MinimLambda *lam;
+            MinimLambda *lam = op->data;
 
-            copy_minim_lambda(&lam, ((MinimLambda*) op->data));
             for (int i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
@@ -241,7 +240,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             }
 
             res = eval_lambda(lam, env, argc, args);
-            free_minim_lambda(lam);
             free_minim_objects(args, argc);
         }
         else
