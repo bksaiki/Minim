@@ -24,15 +24,9 @@ typedef struct MinimIter
     bool end;
 } MinimIter;
 
-// iter
-
 void init_minim_iter(MinimIter **piter, MinimObject *obj);
 void copy_minim_iter(MinimIter **pdest, MinimIter *src);
 void free_minim_iter(MinimIter *iter);
-
-void minim_iter_next(MinimIter *iter);
-MinimObject *minim_iter_get(MinimIter *iter);
-bool minim_iter_endp(MinimIter *iter);
 
 // iter object list
 
@@ -42,8 +36,10 @@ void minim_iter_objs_add(MinimIterObjs *iobjs, MinimIter *iter);
 
 // Internals
 
+MinimObject *minim_iter_next(MinimObject *obj);
+MinimObject *minim_iter_get(MinimObject *obj);
+bool minim_iter_endp(MinimObject *obj);
 bool minim_is_iterable(MinimObject *obj);
-bool assert_minim_iterable(MinimObject *obj, MinimObject **res, const char *msg);
 
 // Builtins
 

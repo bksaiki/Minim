@@ -94,54 +94,6 @@ void copy_minim_iter(MinimIter **pdest, MinimIter *src)
         add_iter_ref(iter->iobjs, src->data);
 }
 
-void minim_iter_next(MinimIter *iter)
-{
-    if (iter->type == MINIM_ITER_LIST)
-    {
-        MinimObject *obj = iter->data;
-        iter->data = MINIM_CDR(obj);
-        iter->end = !iter->data;
-    }
-    else if (iter->type == MINIM_ITER_SEQ)
-    {
-        MinimObject *seq = iter->data;
-        minim_seq_next(seq->data);
-        iter->end = minim_seq_donep(seq->data);
-    }
-    else
-    {
-        printf("Unknown iter type\n");
-    }
-}
-
-MinimObject *minim_iter_get(MinimIter *iter)
-{
-    MinimObject *res;
-
-    if (iter->type == MINIM_ITER_LIST)
-    {
-        MinimObject *list = iter->data;
-        copy_minim_object(&res, MINIM_CAR(list));
-    }
-    else if (iter->type == MINIM_ITER_SEQ)
-    {
-        MinimObject *seq = iter->data;
-        res = minim_seq_get(seq->data);
-    }
-    else
-    {
-        printf("Unknown iter type\n");
-        res = NULL;
-    }
-
-    return res;
-}
-
-bool minim_iter_endp(MinimIter *iter)
-{
-    return iter->end;
-}
-
 void init_minim_iter_objs(MinimIterObjs **piobjs)
 {
     MinimIterObjs *iobjs;
@@ -173,23 +125,63 @@ void minim_iter_objs_add(MinimIterObjs *iobjs, MinimIter *iter)
     add_iter_ref(iobjs, iter->data);
 }
 
+MinimObject *minim_iter_next(MinimObject *obj)
+{
+    switch (obj->type)
+    {
+    case MINIM_OBJ_PAIR:
+        if (MINIM_CDR(obj))
+        {
+            obj->data = MINIM_CDR(obj)->data;
+        }
+        else                
+        {
+            free_minim_object(obj);
+            init_minim_object(&obj, MINIM_OBJ_PAIR, NULL, NULL);
+        }
+        return obj;
+    
+    default:
+        printf("Object not iterable\n");
+        return NULL;
+    }
+}
+
+MinimObject *minim_iter_get(MinimObject *obj)
+{
+    MinimObject *ref;
+
+    switch (obj->type)
+    {
+    case MINIM_OBJ_PAIR:
+        ref_minim_object(&ref, MINIM_CAR(obj));
+        return ref;
+    
+    default:
+        printf("Object not iterable\n");
+        return NULL;
+    }
+}
+
+bool minim_iter_endp(MinimObject *obj)
+{
+    switch (obj->type)
+    {
+    case MINIM_OBJ_PAIR:
+        return minim_nullp(obj);
+    
+    default:
+        printf("Object not iterable\n");
+        return false;
+    }
+}
+
 bool minim_is_iterable(MinimObject *obj)
 {
     if (minim_listp(obj))           return true;
     if (minim_sequencep(obj))       return true;
 
     return false;
-}
-
-bool assert_minim_iterable(MinimObject *obj, MinimObject **res, const char *msg)
-{
-    if (!minim_is_iterable(obj))
-    {
-        minim_error(res, "%s", msg);
-        return false;
-    }
-
-    return true;
 }
 
 // Builtins
