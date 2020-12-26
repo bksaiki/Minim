@@ -111,8 +111,12 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
             free(rest);
         }
 
-        eval_ast(env2, lam->body, &res);
+        eval_ast(env2, lam->body, &val);
+        res = fresh_minim_object(val);
         pop_env(env2);
+
+        if (!MINIM_OBJ_OWNERP(val))
+            free_minim_object(val);
     }
     
     return res;

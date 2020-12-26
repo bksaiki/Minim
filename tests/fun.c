@@ -33,6 +33,30 @@ int main()
         const int COUNT = 1;
         char strs[1][256] =
         {
+            "(begin (def foo (lambda (x) x))) (foo 1) (foo 'a))"
+        };
+
+        printf("Testing lambdas\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 1;
+        char strs[1][256] =
+        {
+            "(begin (def ident (lambda (x) x))) (def foo ident) (foo 1) (foo 'a))"
+        };
+
+        printf("Testing copied lambdas\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 1;
+        char strs[1][256] =
+        {
             "(begin (def foo (lambda args (apply + args))) (foo 1) (foo 1 2) (foo 1 2 3))",
         };
 
