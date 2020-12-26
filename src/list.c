@@ -97,49 +97,69 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
 
 static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv *env, bool negate)
 {
-    MinimObject **args, *val, *next; 
+    MinimObject *res, *it, *it2, *val;
+    bool first = true, use = false,
+         owns = MINIM_OBJ_OWNERP(list);
 
-    if (!list)                  return NULL;
-    if (!MINIM_CAR(list))       return list;
-    
-    args = malloc(sizeof(MinimObject*));
-    copy_minim_object(&args[0], MINIM_CAR(list));
-    if (filter->type == MINIM_OBJ_FUNC)
+    if (minim_nullp(list))
+        return fresh_minim_object(list);
+
+    it = list;
+    while (it != NULL)
     {
-        MinimBuiltin func = filter->data;
-        val = func(env, 1, &args[0]);
-    }
-    else
-    {
-        MinimLambda *lam = filter->data;
-        val = eval_lambda(lam, env, 1, &args[0]);
+        if (filter->type == MINIM_OBJ_FUNC)
+        {
+            MinimBuiltin func = filter->data;
+            val = func(env, 1, &MINIM_CAR(it));
+        }
+        else
+        {
+            MinimLambda *lam = filter->data;
+            val = eval_lambda(lam, env, 1, &MINIM_CAR(it));
+        }
+
+        if (val->type == MINIM_OBJ_ERR)
+        {
+            return val;
+        }
+
+        use = negate != coerce_into_bool(val);
+        if (use)
+        {
+            free_minim_object(val);
+            init_minim_object(&val, MINIM_OBJ_PAIR, (owns ? MINIM_CAR(it) : copy2_minim_object(MINIM_CAR(it))), NULL);
+
+            if (first)
+            {
+                first = false;
+                res = val;
+            }
+            else
+            {
+                MINIM_CDR(it2) = val;
+            }
+
+            it2 = val;
+        }
+        else
+        {
+            free_minim_object(val);
+        }
+
+
+        val = it;
+        it = MINIM_CDR(it);
+
+        if (owns)
+        {
+            if (use)    MINIM_CAR(val) = NULL;
+            MINIM_CDR(val) = NULL;
+            free_minim_object(val);
+        }
     }
 
-    free_minim_objects(args, 1);
-
-    if (val->type == MINIM_OBJ_ERR)
-        return val;
-
-    next = filter_list(MINIM_CDR(list), filter, env, negate);
-    if (next && next->type == MINIM_OBJ_ERR)
-    {
-        free_minim_object(val);
-        return next;
-    }
-
-    if (negate != coerce_into_bool(val))
-    {
-        MINIM_CDR(list) = next;
-        free_minim_object(val);
-        return list;
-    }
-    else
-    {
-        MINIM_CDR(list) = NULL;
-        free_minim_object(list);
-        free_minim_object(val);
-        return next;
-    }
+    if (first) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    return res;
 }
 
 //
@@ -286,11 +306,6 @@ MinimObject *minim_list(MinimObject **args, int len)
     }
 
     return head;
-}
-
-MinimObject *minim_construct_list(int argc, MinimObject** args)
-{
-    return minim_list(args, argc);   
 }
 
 int minim_list_length(MinimObject *list)
@@ -602,17 +617,16 @@ MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args)
 
 MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res, *li;
+    MinimObject *res;
+    bool owns;
 
     if (assert_exact_argc(argc, &res, "filter", 2) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'filter'") &&
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filter'"))
     {
-        li = fresh_minim_object(args[1]);
-        res = filter_list(li, args[0], env, false);
-
-        if (!res)                       init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-        RELEASE_OWNED_ARGS(&args[1], 1);
+        owns = MINIM_OBJ_OWNERP(args[1]);
+        res = filter_list(args[1], args[0], env, false);
+        if (owns) args[1] = NULL;
     }
 
     return res;
@@ -620,17 +634,16 @@ MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
 
 MinimObject *minim_builtin_filtern(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *res, *li;
+    MinimObject *res;
+    bool owns;
 
     if (assert_exact_argc(argc, &res, "filtern", 2) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'filtern'") &&
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filtern'"))
     {
-        li = fresh_minim_object(args[1]);
-        res = filter_list(li, args[0], env, true);
-
-        if (!res)                       init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-        RELEASE_OWNED_ARGS(&args[1], 1);
+        owns = MINIM_OBJ_OWNERP(args[1]);
+        res = filter_list(args[1], args[0], env, true);
+        if (owns) args[1] = NULL;
     }
 
     return res;

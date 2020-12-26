@@ -106,7 +106,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
             for (int i = 0; i < rcount; ++i)
                 copy_minim_object(&rest[i], args[lam->argc + i]);
 
-            val = minim_construct_list(rcount, rest);
+            val = minim_list(rest, rcount);
             env_intern_sym(env2, lam->rest, val);
             free(rest);
         }

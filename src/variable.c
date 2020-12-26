@@ -95,13 +95,14 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 
 MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *bindings, *res = NULL;
+    MinimObject *bindings, *res;
     MinimEnv *env2;
 
     if (assert_exact_argc(argc, &res, "let", 2))
     {
         MinimObject *it;
         int len;
+        bool err = false;
         
         // Convert bindings to list
         unsyntax_ast(env, args[0]->data, &bindings);
@@ -118,7 +119,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
         init_env(&env2);        
         env2->parent = env;
         
-        for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
+        for (int i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
         {
             MinimObject *bind, *sym, *val;
 
@@ -131,16 +132,27 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
                 {
                     eval_ast(env, MINIM_CADR(bind)->data, &val);
                     env_intern_sym(env2, sym->data, val);
+                    RELEASE_IF_REF(val);
+                }
+                else
+                {
+                    err = true;
                 }
 
                 free_minim_object(sym);
+            }
+            else
+            {
+                err = true;
             }
 
             free_minim_object(bind);
         }
 
-        if (!res) eval_ast(env2, args[1]->data, &res);
-        res = fresh_minim_object(res);
+        if (!err) eval_ast(env2, args[1]->data, &it);
+        res = fresh_minim_object(it);
+        RELEASE_IF_REF(it);
+
         free_minim_object(bindings);
         pop_env(env2);
     }
@@ -150,7 +162,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
 
 MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
 {
-    MinimObject *bindings, *res = NULL;
+    MinimObject *bindings, *res;
     MinimEnv *env2;
 
     if (assert_exact_argc(argc, &res, "let*", 2))
@@ -168,7 +180,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
         init_env(&env2);        
         env2->parent = env;
         
-        for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
+        for (int i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
         {
             MinimObject *bind, *sym, *val;
 
@@ -181,16 +193,27 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
                 {
                     eval_ast(env2, MINIM_CADR(bind)->data, &val);
                     env_intern_sym(env2, sym->data, val);
+                    RELEASE_IF_REF(val);
+                }
+                else
+                {
+                    err = true;
                 }
 
                 free_minim_object(sym);
+            }
+            else
+            {
+                err = true;
             }
 
             free_minim_object(bind);
         }
 
-        if (!err) eval_ast(env2, args[1]->data, &res);
-        res = fresh_minim_object(res);
+        if (!err) eval_ast(env2, args[1]->data, &it);
+        res = fresh_minim_object(it);
+        RELEASE_IF_REF(it);
+
         free_minim_object(bindings);
         pop_env(env2);
     }

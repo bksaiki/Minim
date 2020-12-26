@@ -8,6 +8,12 @@
 #define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
 #define MINIM_OBJ_SET_OWNER(obj)    (obj->flags |= MINIM_OBJ_OWNER)
 
+#define RELEASE_IF_REF(obj)     \
+{                               \
+    if (!MINIM_OBJ_OWNERP(obj)) \
+        free_minim_object(obj); \
+}
+
 struct MinimEnv;
 typedef struct MinimEnv MinimEnv;
 
@@ -57,6 +63,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b);
 //  Miscellaneous
 
 MinimObject *fresh_minim_object(MinimObject *src);
+MinimObject *copy2_minim_object(MinimObject *src);
 Buffer* minim_obj_to_bytes(MinimObject *obj);
 
 #endif

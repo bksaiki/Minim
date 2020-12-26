@@ -324,6 +324,16 @@ MinimObject *fresh_minim_object(MinimObject *src)
     return cp;
 }
 
+MinimObject *copy2_minim_object(MinimObject *src)
+{
+    MinimObject *cp = malloc(sizeof(MinimObject));
+    cp->type = src->type;
+    cp->flags = src->flags | MINIM_OBJ_OWNER;
+    copy_minim_object_h(cp, src);
+
+    return cp;
+}
+
 Buffer* minim_obj_to_bytes(MinimObject *obj)
 {
     Buffer* bf;

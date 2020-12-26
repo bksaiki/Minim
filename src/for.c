@@ -7,12 +7,6 @@
 #include "list.h"
 #include "variable.h"
 
-#define RELEASE_IF_REF(obj)     \
-{                               \
-    if (!MINIM_OBJ_OWNERP(obj)) \
-        free_minim_object(obj); \
-}
-
 static bool iters_valid(MinimObject **iters, int argc)
 {
     for (int i = 0; i < argc; ++i)
@@ -55,7 +49,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
             iters = malloc(len * sizeof(MinimObject*));
             syms = malloc(len * sizeof(MinimObject*));
 
-            for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
+            for (int i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
             {
                 MinimObject *bind;
 
@@ -147,7 +141,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
             iters = malloc(len * sizeof(MinimObject*));
             syms = malloc(len * sizeof(MinimObject*));
 
-            for (int i = 0; !res && i < len; ++i, it = MINIM_CDR(it))
+            for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
             {
                 MinimObject *bind;
 
@@ -162,6 +156,12 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                         objs[i] = val;
                         ref_minim_object(&iters[i], objs[i]);
                     }
+                    else
+                    {
+                        free_minim_object(bind);
+                        free_minim_object(bindings);
+                        return res;
+                    }   
                 }
                 else
                 {
