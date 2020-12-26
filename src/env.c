@@ -9,7 +9,6 @@
 #include "bool.h"
 #include "for.h"
 #include "hash.h"
-#include "iter.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -31,8 +30,7 @@ static void free_single_env(MinimEnv *env)
         free(env->syms);
         free(env->vals);
     }
-
-    if (env->iobjs) free_minim_iter_objs(env->iobjs);
+    
     free(env);
 }
 
@@ -59,7 +57,6 @@ void init_env(MinimEnv **penv)
     env->syms = NULL;
     env->vals = NULL;
     env->parent = NULL;
-    env->iobjs = NULL;
     *penv = env;
 }
 
@@ -147,14 +144,6 @@ MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
     else                return NULL;
 }
 
-MinimIterObjs *env_get_iobjs(MinimEnv *env)
-{
-    if (env->iobjs)     return env->iobjs;
-    if (env->parent)    return env_get_iobjs(env->parent);
-    
-    return NULL;
-}
-
 void free_env(MinimEnv *env)
 {
     if (env->parent)  free_env(env->parent);
@@ -197,7 +186,6 @@ void env_load_builtins(MinimEnv *env)
     env_load_module_string(env);
 
     env_load_module_for(env);
-    env_load_module_iter(env);
     env_load_module_lambda(env);
     env_load_module_seq(env);
 

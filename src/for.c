@@ -61,30 +61,38 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
                         eval_ast(env, MINIM_CADR(bind)->data, &val);
-                        objs[i] = val;
-                        ref_minim_object(&iters[i], objs[i]);
+                        if (assert_generic(&res, "Expected an iterable object in the bindings of 'for'", minim_iterablep(val)))
+                        {
+                            objs[i] = val;
+                            ref_minim_object(&iters[i], objs[i]);
+                        }
+                        else
+                        {
+                            err = true;
+                            free_minim_object(val);
+                        }
                     }
                     else
                     {
-                        free_minim_objects(syms, i + 1);
-                        free_minim_objects(objs, i);
-                        free_minim_objects(iters, i);
-                        free_minim_object(bind);
-                        free_minim_object(bindings);
-                        return res;
-                    }   
+                        err = true;
+                    }
+
+                    if (err) free_minim_object(syms[i]);
                 }
                 else
+                {
+                    err = true;
+                }
+
+                free_minim_object(bind);
+                if (err)
                 {
                     free_minim_objects(syms, i);
                     free_minim_objects(objs, i);
                     free_minim_objects(iters, i);
-                    free_minim_object(bind);
                     free_minim_object(bindings);
                     return res;
                 }
-
-                free_minim_object(bind);
             }
 
             while(!err && iters_valid(iters, len))
@@ -165,30 +173,38 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
                         eval_ast(env, MINIM_CADR(bind)->data, &val);
-                        objs[i] = val;
-                        ref_minim_object(&iters[i], objs[i]);
+                        if (assert_generic(&res, "Expected an iterable object in the bindings of 'for-list'", minim_iterablep(val)))
+                        {
+                            objs[i] = val;
+                            ref_minim_object(&iters[i], objs[i]);
+                        }
+                        else
+                        {
+                            err = true;
+                            free_minim_object(val);
+                        }
                     }
                     else
                     {
-                        free_minim_objects(syms, i + 1);
-                        free_minim_objects(objs, i);
-                        free_minim_objects(iters, i);
-                        free_minim_object(bind);
-                        free_minim_object(bindings);
-                        return res;
-                    }   
+                        err = true;
+                    }
+
+                    if (err) free_minim_object(syms[i]);
                 }
                 else
+                {
+                    err = true;
+                }
+
+                free_minim_object(bind);
+                if (err)
                 {
                     free_minim_objects(syms, i);
                     free_minim_objects(objs, i);
                     free_minim_objects(iters, i);
-                    free_minim_object(bind);
                     free_minim_object(bindings);
                     return res;
                 }
-
-                free_minim_object(bind);
             }
 
             while(!err && iters_valid(iters, len))

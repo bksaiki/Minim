@@ -70,10 +70,6 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = va_arg(rest, MinimAst*);
     }
-    else if (type == MINIM_OBJ_ITER)
-    {
-        obj->data = va_arg(rest, MinimIter*);
-    }
     else if (type == MINIM_OBJ_SEQ)
     {
         obj->data = va_arg(rest, MinimSeq*);
@@ -110,7 +106,6 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     case MINIM_OBJ_SYNTAX:
     case MINIM_OBJ_CLOSURE:
     case MINIM_OBJ_AST:
-    case MINIM_OBJ_ITER:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_HASH:
         dest->data = src->data;
@@ -171,12 +166,6 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
         copy_ast(&node, src->data);
         dest->data = node;
     }
-    else if (src->type == MINIM_OBJ_ITER)
-    {
-        MinimIter *iter;
-        copy_minim_iter(&iter, src->data);
-        dest->data = iter;
-    }
     else if (src->type == MINIM_OBJ_SEQ)
     {
         MinimSeq *seq;
@@ -235,7 +224,6 @@ void free_minim_object(MinimObject *obj)
         {
             if (obj->type == MINIM_OBJ_CLOSURE)         free_minim_lambda(obj->data);
             else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
-            else if (obj->type == MINIM_OBJ_ITER)       free_minim_iter(obj->data);
             else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
             else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->data);
             else                                        free(obj->data);
@@ -301,7 +289,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return ast_equalp(a->data, b->data);
     
     /*
-    case MINIM_OBJ_ITER:
     case MINIM_OBJ_SEQ:
     */
     default:
@@ -377,7 +364,6 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     /*
-    case MINIM_OBJ_ITER:
     case MINIM_OBJ_SEQ:
     */
     default:
