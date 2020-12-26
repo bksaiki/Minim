@@ -140,6 +140,10 @@ MinimObject *minim_iter_next(MinimObject *obj)
             init_minim_object(&obj, MINIM_OBJ_PAIR, NULL, NULL);
         }
         return obj;
+
+    case MINIM_OBJ_SEQ:
+        minim_seq_next(obj->data);
+        return obj;
     
     default:
         printf("Object not iterable\n");
@@ -157,6 +161,9 @@ MinimObject *minim_iter_get(MinimObject *obj)
         ref_minim_object(&ref, MINIM_CAR(obj));
         return ref;
     
+    case MINIM_OBJ_SEQ:
+        return minim_seq_get(obj->data);
+    
     default:
         printf("Object not iterable\n");
         return NULL;
@@ -169,6 +176,9 @@ bool minim_iter_endp(MinimObject *obj)
     {
     case MINIM_OBJ_PAIR:
         return minim_nullp(obj);
+
+    case MINIM_OBJ_SEQ:
+        return minim_seq_donep(obj->data);
     
     default:
         printf("Object not iterable\n");

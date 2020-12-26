@@ -64,9 +64,21 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
                         objs[i] = val;
                         ref_minim_object(&iters[i], objs[i]);
                     }
+                    else
+                    {
+                        free_minim_objects(syms, i + 1);
+                        free_minim_objects(objs, i);
+                        free_minim_objects(iters, i);
+                        free_minim_object(bind);
+                        free_minim_object(bindings);
+                        return res;
+                    }   
                 }
                 else
                 {
+                    free_minim_objects(syms, i);
+                    free_minim_objects(objs, i);
+                    free_minim_objects(iters, i);
                     free_minim_object(bind);
                     free_minim_object(bindings);
                     return res;
@@ -158,6 +170,9 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                     }
                     else
                     {
+                        free_minim_objects(syms, i + 1);
+                        free_minim_objects(objs, i);
+                        free_minim_objects(iters, i);
                         free_minim_object(bind);
                         free_minim_object(bindings);
                         return res;
@@ -165,6 +180,9 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
                 }
                 else
                 {
+                    free_minim_objects(syms, i);
+                    free_minim_objects(objs, i);
+                    free_minim_objects(iters, i);
                     free_minim_object(bind);
                     free_minim_object(bindings);
                     return res;

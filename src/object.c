@@ -211,7 +211,7 @@ void ref_minim_object(MinimObject **pobj, MinimObject *src)
 {
     MinimObject *obj = malloc(sizeof(MinimObject));
     obj->type = src->type;
-    obj->flags = src->flags ^ MINIM_OBJ_OWNER;
+    obj->flags = (MINIM_OBJ_OWNERP(src) ? src->flags ^ MINIM_OBJ_OWNER : src->flags);
     *pobj = obj;
 
     ref_minim_object_h(obj, src);

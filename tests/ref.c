@@ -188,7 +188,7 @@ int main()
             status &= evaluate(strs[i]);
     }
 
-        {
+    {
         const int COUNT = 3;
         char strs[3][256] =
         {
@@ -198,6 +198,47 @@ int main()
         };
 
         printf("Testing 'filtern' (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[3][256] =
+        {
+            "(begin (def x (list)) (for ((i x)) i))",
+            "(begin (def x (list 1)) (for ((i x)) i))",
+            "(begin (def x (list 1 2 3)) (for ((i x)) i))"
+        };
+
+        printf("Testing 'for' (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[3][256] =
+        {
+            "(begin (def x (list)) (for-list ((i x)) i))",
+            "(begin (def x (list 1)) (for-list ((i x)) i))",
+            "(begin (def x (list 1 2 3)) (for-list ((i x)) i))"
+        };
+
+        printf("Testing 'for-list' (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 2;
+        char strs[2][256] =
+        {
+            "(begin (def x (in-range 3)) (for-list ((i x)) i))",
+            "(begin (def x (in-range 1 4)) (for-list ((i x)) i))"
+        };
+
+        printf("Testing 'for-list' (ref)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }
