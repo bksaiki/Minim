@@ -15,6 +15,8 @@
 #define hashsize(n) ((uint32_t)1 << (n))
 #define hashmask(n) (hashsize(n) - 1)
 
+#define hashseed   ((uint32_t)  0xdeadbeef)
+
 #define mix(a,b,c) \
 { \
   a -= b; a -= c; a ^= (c>>13); \
@@ -137,7 +139,7 @@ static void rehash_table(MinimHash *ht)
         for (size_t j = 0; j < ht->arr[i].len; ++j)
         {
             bf = minim_obj_to_bytes(MINIM_CAR(ht->arr[i].arr[j]));
-            hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
+            hash = hash_bytes(bf->data, bf->pos, hashseed);
             reduc = hash % newSize;
 
             free_buffer(bf);
@@ -169,7 +171,7 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     MinimObject *ck, *cv;
 
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
 
     ++ht->elems;
@@ -180,8 +182,8 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 
     if (ht->arr[reduc].len == 0)
     {
-        copy_minim_object(&ck, k);
-        copy_minim_object(&cv, v);
+        ck = copy2_minim_object(k);
+        cv = copy2_minim_object(v);
 
         ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
         ht->arr[reduc].len = 1;
@@ -189,7 +191,7 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     }
     else
     {      
-        copy_minim_object(&cv, v);
+        cv = copy2_minim_object(v);
 
         // Check if key already exists
         for (size_t i = 0; i < ht->arr[reduc].len; ++i)
@@ -202,7 +204,7 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
             }
         }
 
-        copy_minim_object(&ck, k);
+        ck = copy2_minim_object(k);
         ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
         init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, ck, cv);
         ++ht->arr[reduc].len;
@@ -212,7 +214,7 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
 {
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
 
     free_buffer(bf);
@@ -229,7 +231,7 @@ MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
 {
     MinimObject *cp = NULL;
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
 
     free_buffer(bf);
@@ -245,7 +247,7 @@ MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
 void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
 {
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, (uint32_t)0x12345678);
+    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
 
     free_buffer(bf);
@@ -369,7 +371,16 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args)
     if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-set'", 3) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
     {
-        copy_minim_object(&res, args[0]);
+        if (MINIM_OBJ_OWNERP(args[0]))
+        {
+            res = args[0];
+            args[0] = NULL;
+        }
+        else
+        {
+            copy_minim_object(&res, args[0]);   
+        }
+
         minim_hash_table_add(res->data, args[1], args[2]);
     }
 

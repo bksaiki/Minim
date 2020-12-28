@@ -243,5 +243,20 @@ int main()
             status &= evaluate(strs[i]);
     }
 
+    {
+        const int COUNT = 4;
+        char strs[4][256] =
+        {
+            "(begin (def x 'a) (hash-set (hash) x 1))",
+            "(begin (def x 'a) (def y 1) (hash-set (hash) x y))",
+            "(begin (def h (hash)) (hash-set h 'a 1))",
+            "(begin (def h (hash-set (hash) 'a 1)) (hash-set h 'b 2))"
+        };
+
+        printf("Testing 'hash-set' (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
     return (int)(!status);
 }

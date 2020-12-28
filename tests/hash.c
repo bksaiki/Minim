@@ -46,7 +46,7 @@ int main()
         char strs[10][256] =
         {
             "(hash-set (hash) 'a 1)",           "hash((a . 1))",
-            "(hash-set (hash) 1 'a)",           "hash((1 . a))",
+            "(hash-set (hash) -1 'a)",           "hash((-1 . a))",
             "(hash-set (hash) 'a (list 1 2))",  "hash((a . (1 2)))",
             "(hash-set (hash) '(1 2) 'a)",      "hash(((1 2) . a))",
 
