@@ -63,7 +63,7 @@ MinimObject *minim_builtin_stringp(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "string?", 1))
+    if (assert_exact_argc(&res, "string?", 1, argc))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_stringp(args[0]));
         
     return res;
@@ -73,8 +73,8 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, int argc, MinimObject **
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, &res, "string-append", 1) &&
-        assert_for_all(argc, args, &res, "Expected all string arguments for 'string-append'", minim_stringp))
+    if (assert_min_argc(&res, "string-append", 1, argc) &&
+        assert_for_all(&res, args, argc, "Expected all string arguments for 'string-append'", minim_stringp))
     {
         Buffer *bf;
 
@@ -94,7 +94,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, int argc, MinimObject **args
 {
     MinimObject *res;
 
-    if (assert_range_argc(2, &res, "substring", 2, 3) &&
+    if (assert_range_argc(&res, "substring", 2, 3, argc) &&
         assert_string(args[0], &res, "Expected a string in the 1st argument of 'substring'") &&
         assert_exact_nonneg_int(args[1], &res, "Expected a non-negative exact integer in the \
                                                 2nd argument of 'substring'"))
@@ -135,7 +135,7 @@ MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, int argc, MinimObject
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "string->symbol", 1) &&
+    if (assert_exact_argc(&res, "string->symbol", 1, argc) &&
         assert_string(args[0], &res, "Expected a string in the 1st argument of 'string->symbol'"))
     {
         char *dest = malloc((strlen(args[0]->data) + 1) * sizeof(char));
@@ -152,7 +152,7 @@ MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, int argc, MinimObject
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "symbol->string", 1) &&
+    if (assert_exact_argc(&res, "symbol->string", 1, argc) &&
         assert_symbol(args[0], &res, "Expected a symbol in the 1st argument of 'symbol->string'"))
     {
         char *dest = malloc((strlen(args[0]->data) + 1) * sizeof(char));
@@ -181,7 +181,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, &res, "symbol->string", 1) &&
+    if (assert_min_argc(&res, "symbol->string", 1, argc) &&
         assert_string(args[0], &res, "Expected a string in the 1st argument of 'format'"))
     {
         char *str = args[0]->data;
@@ -239,7 +239,7 @@ MinimObject *minim_builtin_printf(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, &res, "printf", 1) &&
+    if (assert_min_argc(&res, "printf", 1, argc) &&
         assert_string(args[0], &res, "Expected a string for the 1st argument of 'printf'"))
     {
         MinimObject *val = minim_builtin_format(env, argc, args);

@@ -7,33 +7,33 @@
 
 //  Arity
 
-bool assert_min_argc(int argc, MinimObject** ret, const char* op, int min)
+bool assert_min_argc(MinimObject** ret, const char *op, size_t expected, size_t actual)
 {
-    if (argc < min)
+    if (actual < expected)
     {
-        if (min == 1)   minim_error(ret, "Expected at least 1 argument for '%s'", op);
-        else            minim_error(ret, "Expected at least %d arguments for '%s'", min, op);
+        if (expected == 1)  minim_error(ret, "Expected at least 1 argument for '%s'", op);
+        else                minim_error(ret, "Expected at least %d arguments for '%s'", expected, op);
         return false;
     } 
 
     return true;
 }
 
-bool assert_exact_argc(int argc, MinimObject** ret, const char* op, int count)
+bool assert_exact_argc(MinimObject** ret, const char *op, size_t expected, size_t actual)
 {
-    if (argc != count)
+    if (actual != expected)
     {
-        if (count == 1) minim_error(ret, "Expected 1 argument for '%s'", op);
-        else            minim_error(ret, "Expected %d arguments for '%s'", count, op);
+        if (expected == 1)  minim_error(ret, "Expected 1 argument for '%s'", op);
+        else                minim_error(ret, "Expected %d arguments for '%s'", expected, op);
         return false;
     } 
 
     return true;
 }
 
-bool assert_range_argc(int argc, MinimObject** ret, const char* op, int min, int max)
+bool assert_range_argc(MinimObject** ret, const char *op, size_t min, size_t max, size_t actual)
 {
-    if (argc < min || argc > max)
+    if (actual < min || actual > max)
     {
         minim_error(ret, "Expected between %d and %d arguments for '%s'", min, max, op);
         return false;
@@ -42,9 +42,9 @@ bool assert_range_argc(int argc, MinimObject** ret, const char* op, int min, int
     return true;
 }
 
-bool assert_for_all(int argc, MinimObject **args, MinimObject **ret, const char *msg, MinimPred pred)
+bool assert_for_all(MinimObject **ret, MinimObject **args, size_t argc, const char *msg, MinimPred pred)
 {
-    for (int i = 0; i < argc; ++i)
+    for (size_t i = 0; i < argc; ++i)
     {
         if (!pred(args[i]))
         {

@@ -125,7 +125,7 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_range_argc(argc, &res, "in-range", 1, 2) &&
+    if (assert_range_argc(&res, "in-range", 1, 2, argc) &&
         assert_exact_nonneg_int(args[0], &res, "Expected a non-negative exact integer \
                                 in the 1st argument of 'in-range'") &&
         (argc == 1 || assert_exact_nonneg_int(args[1], &res, "Expected a non-negative \
@@ -166,7 +166,7 @@ MinimObject *minim_builtin_sequencep(MinimEnv *env, int argc, MinimObject **args
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "sequence?", 1))
+    if (assert_exact_argc(&res, "sequence?", 1, argc))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_sequencep(args[0]));
     
     return res;

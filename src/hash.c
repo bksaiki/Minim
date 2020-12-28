@@ -309,7 +309,7 @@ MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "Expected 0 arguments for 'hash'", 0))
+    if (assert_exact_argc(&res, "Expected 0 arguments for 'hash'", 0, argc))
     {   
         MinimHash *ht;
         init_minim_hash_table(&ht);
@@ -323,7 +323,7 @@ MinimObject *minim_builtin_hash_keyp(MinimEnv *env, int argc, MinimObject **args
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-key?'", 2) &&
+    if (assert_exact_argc(&res, "Expected 2 arguments for 'hash-key?'", 2, argc) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-key?'"))
     {
         init_minim_object(&res, MINIM_OBJ_BOOL,
@@ -337,7 +337,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-ref'", 2) &&
+    if (assert_exact_argc(&res, "Expected 2 arguments for 'hash-ref'", 2, argc) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
     {
         res = minim_hash_table_ref(args[0]->data, args[1]);
@@ -361,7 +361,7 @@ MinimObject *minim_builtin_hash_remove(MinimEnv *env, int argc, MinimObject **ar
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-remove'", 2) &&
+    if (assert_exact_argc(&res, "Expected 2 arguments for 'hash-remove'", 2, argc) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
     {
         OPT_MOVE(res, args[0]);
@@ -375,7 +375,7 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-set'", 3) &&
+    if (assert_exact_argc(&res, "Expected 3 arguments for 'hash-set'", 3, argc) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
     {
         OPT_MOVE(res, args[0]);

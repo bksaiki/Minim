@@ -44,7 +44,7 @@ MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res, *cond;
 
-    if (assert_exact_argc(argc, &res, "if", 3))
+    if (assert_exact_argc(&res, "if", 3, argc))
     {
         eval_ast(env, args[0]->data, &cond);
 
@@ -68,7 +68,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res, *sym, *val;
 
-    if (assert_range_argc(argc, &res, "def", 2, 3))
+    if (assert_range_argc(&res, "def", 2, 3, argc))
     {
         unsyntax_ast(env, args[0]->data, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
@@ -98,7 +98,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
     MinimObject *bindings, *res;
     MinimEnv *env2;
 
-    if (assert_exact_argc(argc, &res, "let", 2))
+    if (assert_exact_argc(&res, "let", 2, argc))
     {
         MinimObject *it;
         int len;
@@ -165,7 +165,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
     MinimObject *bindings, *res;
     MinimEnv *env2;
 
-    if (assert_exact_argc(argc, &res, "let*", 2))
+    if (assert_exact_argc(&res, "let*", 2, argc))
     {
         MinimObject *it;
         int len;
@@ -225,7 +225,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "quote", 1))
+    if (assert_exact_argc(&res, "quote", 1, argc))
         unsyntax_ast_rec(env, args[0]->data, &res);
     return res;
 }
@@ -234,7 +234,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res, *sym;
 
-    if (assert_exact_argc(argc, &res, "set!", 2))
+    if (assert_exact_argc(&res, "set!", 2, argc))
     {
         unsyntax_ast(env, args[0]->data, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'set!'"))
@@ -269,7 +269,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, &res, "begin", 1))
+    if (assert_min_argc(&res, "begin", 1, argc))
     {
         MinimObject *val;
         MinimEnv *env2;
@@ -300,7 +300,7 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "symbol?", 1))
+    if (assert_exact_argc(&res, "symbol?", 1, argc))
         init_minim_object(&res, MINIM_OBJ_BOOL, args[0]->type == MINIM_OBJ_SYM);
         
     return res;
@@ -310,7 +310,7 @@ MinimObject *minim_builtin_equalp(MinimEnv *env, int argc, MinimObject **args)
 {
     MinimObject *res;
 
-    if (assert_min_argc(argc, &res, "equal?", 1))
+    if (assert_min_argc(&res, "equal?", 1, argc))
     {
         for (int i = 1; i < argc; ++i)
         {

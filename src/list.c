@@ -349,7 +349,7 @@ MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res, *car, *cdr;
 
-    if (assert_exact_argc(argc, &res, "cons", 2))
+    if (assert_exact_argc(&res, "cons", 2, argc))
     {
         OPT_MOVE(car, args[0]);
         if (minim_nullp(args[1]))
@@ -370,7 +370,7 @@ MinimObject *minim_builtin_consp(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "pair?", 1))
+    if (assert_exact_argc(&res, "pair?", 1, argc))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_consp(args[0]));
 
     return res;
@@ -380,7 +380,7 @@ MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "car", 1) &&
+    if (assert_exact_argc(&res, "car", 1, argc) &&
         assert_pair(args[0], &res, "Expected a pair for 'car'") &&
         assert_generic(&res, "Expected a non-null list for 'car'", MINIM_CAR(args[0])))
     {
@@ -394,7 +394,7 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "cdr", 1) &&
+    if (assert_exact_argc(&res, "cdr", 1, argc) &&
         assert_pair(args[0], &res, "Expected a pair for 'cdr'") &&
         assert_generic(&res, "Expected a non-null list for 'cdr'", MINIM_CAR(args[0])))
     {
@@ -408,7 +408,7 @@ MinimObject *minim_builtin_listp(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "list?", 1))
+    if (assert_exact_argc(&res, "list?", 1, argc))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_listp(args[0]));
     
     return res;
@@ -418,7 +418,7 @@ MinimObject *minim_builtin_nullp(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "null?", 1))
+    if (assert_exact_argc(&res, "null?", 1, argc))
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_nullp(args[0]));
 
     return res;
@@ -438,7 +438,7 @@ MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "head", 1))
+    if (assert_exact_argc(&res, "head", 1, argc))
     {
         if (MINIM_CAR(args[0]))
         {
@@ -457,7 +457,7 @@ MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res, *it;
 
-    if (assert_exact_argc(argc, &res, "tail", 1))
+    if (assert_exact_argc(&res, "tail", 1, argc))
     {
         if (MINIM_CAR(args[0]))
         {
@@ -480,7 +480,7 @@ MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
     MinimNumber *num;
     int len;
 
-    if (assert_exact_argc(argc, &res, "length", 1))
+    if (assert_exact_argc(&res, "length", 1, argc))
     {
         len = minim_list_length(args[0]);
         init_minim_number(&num, MINIM_NUMBER_EXACT);
@@ -495,7 +495,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res, *it;
 
-    if (assert_min_argc(argc, &res, "append", 1))
+    if (assert_min_argc(&res, "append", 1, argc))
     {
         for (int i = 0; i < argc; ++i)
         {
@@ -522,7 +522,7 @@ MinimObject *minim_builtin_reverse(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res, *li;
     int len;
 
-    if (assert_exact_argc(argc, &res, "reverse", 1) &&
+    if (assert_exact_argc(&res, "reverse", 1, argc) &&
         assert_list(args[0], &res, "Expected a list for 'reverse'"))
     {
         li = fresh_minim_object(args[0]);
@@ -538,7 +538,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(argc, &res, "list-ref", 2) &&
+    if (assert_exact_argc(&res, "list-ref", 2, argc) &&
         assert_list(args[0], &res, "Expected a list for the 1st argument of 'list-ref") &&
         assert_exact_nonneg_int(args[1], &res, "Expected an exact non-negative integer for the 2nd argument of 'list-ref'"))
     {
@@ -566,7 +566,7 @@ MinimObject *minim_builtin_map(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res;
     int len;
 
-    if (assert_exact_argc(argc, &res, "map", 2) &&
+    if (assert_exact_argc(&res, "map", 2, argc) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'map'") &&
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'map'"))
     {
@@ -583,7 +583,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args)
     MinimObject *res, *it, **vals;
     int len;
 
-    if (assert_exact_argc(argc, &res, "apply", 2) &&
+    if (assert_exact_argc(&res, "apply", 2, argc) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'apply'") &&
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'apply'"))
     {
@@ -619,7 +619,7 @@ MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
     MinimObject *res;
     bool owns;
 
-    if (assert_exact_argc(argc, &res, "filter", 2) &&
+    if (assert_exact_argc(&res, "filter", 2, argc) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'filter'") &&
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filter'"))
     {
@@ -636,7 +636,7 @@ MinimObject *minim_builtin_filtern(MinimEnv *env, int argc, MinimObject **args)
     MinimObject *res;
     bool owns;
 
-    if (assert_exact_argc(argc, &res, "filtern", 2) &&
+    if (assert_exact_argc(&res, "filtern", 2, argc) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'filtern'") &&
         assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filtern'"))
     {
