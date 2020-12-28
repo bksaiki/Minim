@@ -258,5 +258,35 @@ int main()
             status &= evaluate(strs[i]);
     }
 
+    {
+        const int COUNT = 3;
+        char strs[3][256] =
+        {
+            "(begin (def h (hash)) (hash-remove h 'a))",
+            "(begin (def h (hash-set (hash) 'a 1)) (hash-remove h 'a))",
+            "(begin (def h (hash-set (hash) 'a 1)) (hash-remove h 'b))"
+        };
+
+        printf("Testing 'hash-remove' (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[5][256] =
+        {
+            "(begin (def f () 'x) (f))",
+            "(begin (def f () 1) (f))",
+            "(begin (def f () \"abc\") (f))",
+            "(begin (def f () (list)) (f))",
+            "(begin (def f () (hash)) (f))"
+        };
+
+        printf("Testing nullary lambdas (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
     return (int)(!status);
 }

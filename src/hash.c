@@ -6,6 +6,14 @@
 #include "hash.h"
 #include "list.h"
 
+#define OPT_MOVE(dest, src)             \
+{                                       \
+    if (MINIM_OBJ_OWNERP(src))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { dest = fresh_minim_object(src); } \
+}
+
 //
 //  Hash function
 //
@@ -356,9 +364,8 @@ MinimObject *minim_builtin_hash_remove(MinimEnv *env, int argc, MinimObject **ar
     if (assert_exact_argc(argc, &res, "Expected 2 arguments for 'hash-remove'", 2) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
     {
-        copy_minim_object(&res, args[0]);
-        if (minim_hash_table_keyp(args[0]->data, args[1]))
-            minim_hash_table_remove(res->data, args[1]);
+        OPT_MOVE(res, args[0]);
+        minim_hash_table_remove(res->data, args[1]);
     }
 
     return res;
@@ -371,16 +378,7 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args)
     if (assert_exact_argc(argc, &res, "Expected 3 arguments for 'hash-set'", 3) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
     {
-        if (MINIM_OBJ_OWNERP(args[0]))
-        {
-            res = args[0];
-            args[0] = NULL;
-        }
-        else
-        {
-            copy_minim_object(&res, args[0]);   
-        }
-
+        OPT_MOVE(res, args[0]);
         minim_hash_table_add(res->data, args[1], args[2]);
     }
 
