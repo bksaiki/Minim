@@ -27,17 +27,6 @@ bool coerce_into_bool(MinimObject *obj)
     }
 }
 
-void env_load_module_bool(MinimEnv *env)
-{
-    env_load_builtin(env, "true", MINIM_OBJ_BOOL, 1);
-    env_load_builtin(env, "false", MINIM_OBJ_BOOL, 0);
-
-    env_load_builtin(env, "bool?", MINIM_OBJ_FUNC, minim_builtin_boolp);
-    env_load_builtin(env, "not", MINIM_OBJ_FUNC, minim_builtin_not);
-    env_load_builtin(env, "or", MINIM_OBJ_FUNC, minim_builtin_or);
-    env_load_builtin(env, "and", MINIM_OBJ_FUNC, minim_builtin_and);
-}
-
 MinimObject *minim_builtin_boolp(MinimEnv *env, int argc, MinimObject** args)
 {
     MinimObject *res;

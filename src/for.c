@@ -2,7 +2,6 @@
 
 #include "assert.h"
 #include "eval.h"
-#include "for.h"
 #include "iter.h"
 #include "list.h"
 #include "variable.h"
@@ -20,13 +19,7 @@ static bool iters_valid(MinimObject **iters, int argc)
 
 // Builtins
 
-void env_load_module_for(MinimEnv *env)
-{
-    env_load_builtin(env, "for", MINIM_OBJ_SYNTAX, minim_builtin_for);
-    env_load_builtin(env, "for-list", MINIM_OBJ_SYNTAX, minim_builtin_for_list);
-}
-
-MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -138,7 +131,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_for_list(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 

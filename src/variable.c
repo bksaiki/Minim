@@ -3,9 +3,9 @@
 #include <stdlib.h>
 
 #include "assert.h"
+#include "builtin.h"
 #include "bool.h"
 #include "eval.h"
-#include "lambda.h"
 #include "list.h"
 #include "variable.h"
 
@@ -25,22 +25,7 @@ bool assert_symbol(MinimObject *obj, MinimObject **res, const char* msg)
     return true;
 }
 
-void env_load_module_variable(MinimEnv *env)
-{
-    env_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
-    env_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
-    
-    env_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
-    env_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
-    env_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
-    env_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
-    env_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
-
-    env_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
-    env_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
-}
-
-MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *cond;
 
@@ -64,7 +49,7 @@ MinimObject *minim_builtin_if(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *sym, *val;
 
@@ -74,7 +59,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
         {
             if (argc == 2)  eval_ast(env, args[1]->data, &val);
-            else            val = minim_builtin_lambda(env, 2, &args[1]);
+            else            val = minim_builtin_lambda(env, &args[1], 2);
             
             if (val->type != MINIM_OBJ_ERR)
             {
@@ -93,7 +78,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *bindings, *res;
     MinimEnv *env2;
@@ -160,7 +145,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *bindings, *res;
     MinimEnv *env2;
@@ -221,7 +206,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -230,7 +215,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *sym;
 
@@ -265,7 +250,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_begin(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -296,7 +281,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_symbolp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -306,7 +291,7 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_equalp(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_equalp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 

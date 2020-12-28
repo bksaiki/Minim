@@ -31,17 +31,6 @@ void minim_hash_table_remove(MinimHash *ht, MinimObject *k);
 // Internals
 
 bool assert_hash(MinimObject *arg, MinimObject **ret, const char *msg);
-
 bool minim_hashp(MinimObject *thing);
-
-// Builtins
-
-void env_load_module_hash(MinimEnv *env);
-
-MinimObject *minim_builtin_hash(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_hash_keyp(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_hash_ref(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_hash_remove(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_hash_set(MinimEnv *env, int argc, MinimObject **args);
 
 #endif

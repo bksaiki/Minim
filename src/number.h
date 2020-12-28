@@ -57,21 +57,4 @@ bool minim_exactp(MinimObject *thing);
 bool minim_inexactp(MinimObject *thing);
 void minim_number_to_bytes(MinimObject *obj, Buffer *bf);
 
-// Builtins
-
-void env_load_module_number(MinimEnv *env);
-
-MinimObject *minim_builtin_numberp(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_zerop(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_negativep(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_positivep(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_exactp(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_inexactp(MinimEnv *env, int argc, MinimObject **args);
-
-MinimObject *minim_builtin_eq(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_gt(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_lt(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_gte(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_lte(MinimEnv *env, int argc, MinimObject **args);
-
 #endif

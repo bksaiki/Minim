@@ -30,11 +30,4 @@ bool minim_funcp(MinimObject *thing);
 bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b);
 void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf);
 
-// Builtins
-
-void env_load_module_lambda(MinimEnv *env);
-
-MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args);
-
-
 #endif

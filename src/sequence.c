@@ -116,12 +116,7 @@ bool minim_sequencep(MinimObject *thing)
 
 /* Builtins */
 
-void env_load_module_seq(MinimEnv *env)
-{
-    env_load_builtin(env, "in-range", MINIM_OBJ_FUNC, minim_builtin_in_range);
-}
-
-MinimObject *minim_builtin_in_range(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -162,7 +157,7 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_sequencep(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 

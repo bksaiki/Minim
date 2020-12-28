@@ -37,29 +37,4 @@ void minim_cons_to_bytes(MinimObject *obj, Buffer *bf);
 MinimObject *minim_list(MinimObject **args, int len);
 int minim_list_length(MinimObject *list);
 
-// Builtins
-
-void env_load_module_list(MinimEnv *env);
-
-MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_consp(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject **args);
-
-MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_listp(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_nullp(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject **args);
-
-MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_reverse(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject **args);
-
-MinimObject *minim_builtin_map(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_filtern(MinimEnv *env, int argc, MinimObject **args);
-
 #endif

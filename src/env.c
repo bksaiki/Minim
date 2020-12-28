@@ -2,20 +2,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "env.h"
+#include "env.h"    
 
-// Modules
-
-#include "bool.h"
-#include "for.h"
-#include "hash.h"
 #include "lambda.h"
-#include "list.h"
-#include "number.h"
-#include "math.h"
-#include "variable.h"
-#include "string.h"
-#include "sequence.h"      
 
 static void free_single_env(MinimEnv *env)
 {
@@ -157,39 +146,4 @@ MinimEnv *pop_env(MinimEnv *env)
     next = env->parent;
     free_single_env(env);
     return next;
-}
-
-void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...)
-{
-    MinimObject *obj;
-    va_list rest;
-
-    va_start(rest, type);
-    if (type == MINIM_OBJ_FUNC || type == MINIM_OBJ_SYNTAX)
-    {
-        init_minim_object(&obj, type, va_arg(rest, MinimBuiltin));
-    }
-    else if (type == MINIM_OBJ_BOOL)
-    {
-        init_minim_object(&obj, type, va_arg(rest, int));
-    }
-
-    va_end(rest);
-    env_intern_sym(env, name, obj);
-}
-
-void env_load_builtins(MinimEnv *env)
-{
-    env_load_module_bool(env);
-    env_load_module_number(env);
-    env_load_module_variable(env);
-    env_load_module_string(env);
-
-    env_load_module_for(env);
-    env_load_module_lambda(env);
-    env_load_module_seq(env);
-
-    env_load_module_hash(env);
-    env_load_module_list(env);
-    env_load_module_math(env);
 }

@@ -177,12 +177,7 @@ void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)
 
 // Builtins
 
-void env_load_module_lambda(MinimEnv *env)
-{
-    env_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
-}
-
-MinimObject *minim_builtin_lambda(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 

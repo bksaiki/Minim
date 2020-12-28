@@ -28,11 +28,4 @@ bool minim_seq_donep(MinimSeq *seq);
 
 bool minim_sequencep(MinimObject *thing);
 
-/* Builtins */
-
-void env_load_module_seq(MinimEnv *env);
-
-MinimObject *minim_builtin_in_range(MinimEnv *env, int argc, MinimObject **args);
-MinimObject *minim_builtin_sequencep(MinimEnv *env, int argc, MinimObject **args);
-
 #endif

@@ -5,7 +5,6 @@
 
 #include "assert.h"
 #include "env.h"
-#include "math.h"
 #include "number.h"
 
 // Internals
@@ -242,20 +241,7 @@ static void minim_number_pow(MinimNumber *res, MinimNumber *a, MinimNumber *b)
 
 // *** Builtins *** //
 
-void env_load_module_math(MinimEnv *env)
-{
-    env_load_builtin(env, "+", MINIM_OBJ_FUNC, minim_builtin_add);
-    env_load_builtin(env, "-", MINIM_OBJ_FUNC, minim_builtin_sub);
-    env_load_builtin(env, "*", MINIM_OBJ_FUNC, minim_builtin_mul);
-    env_load_builtin(env, "/", MINIM_OBJ_FUNC, minim_builtin_div);
-
-    env_load_builtin(env, "sqrt", MINIM_OBJ_FUNC, minim_builtin_sqrt);
-    env_load_builtin(env, "exp", MINIM_OBJ_FUNC, minim_builtin_exp);
-    env_load_builtin(env, "log", MINIM_OBJ_FUNC, minim_builtin_log);
-    env_load_builtin(env, "pow", MINIM_OBJ_FUNC, minim_builtin_pow);
-}
-
-MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -272,7 +258,7 @@ MinimObject *minim_builtin_add(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_sub(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -297,7 +283,7 @@ MinimObject *minim_builtin_sub(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_mul(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -314,7 +300,7 @@ MinimObject *minim_builtin_mul(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_div(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -330,7 +316,7 @@ MinimObject *minim_builtin_div(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_sqrt(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_sqrt(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -346,7 +332,7 @@ MinimObject *minim_builtin_sqrt(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_exp(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_exp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -362,7 +348,7 @@ MinimObject *minim_builtin_exp(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_log(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_log(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -378,7 +364,7 @@ MinimObject *minim_builtin_log(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_pow(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_pow(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;

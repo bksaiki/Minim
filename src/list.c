@@ -321,31 +321,7 @@ int minim_list_length(MinimObject *list)
 //  Builtins
 //
 
-void env_load_module_list(MinimEnv *env)
-{
-    env_load_builtin(env, "cons", MINIM_OBJ_FUNC, minim_builtin_cons);
-    env_load_builtin(env, "pair?", MINIM_OBJ_FUNC, minim_builtin_consp);
-    env_load_builtin(env, "car", MINIM_OBJ_FUNC, minim_builtin_car);
-    env_load_builtin(env, "cdr", MINIM_OBJ_FUNC, minim_builtin_cdr);
-
-    env_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
-    env_load_builtin(env, "list?", MINIM_OBJ_FUNC, minim_builtin_listp);
-    env_load_builtin(env, "null?", MINIM_OBJ_FUNC, minim_builtin_nullp);
-    env_load_builtin(env, "head", MINIM_OBJ_FUNC, minim_builtin_head);
-    env_load_builtin(env, "tail", MINIM_OBJ_FUNC, minim_builtin_tail);
-    env_load_builtin(env, "length", MINIM_OBJ_FUNC, minim_builtin_length);
-
-    env_load_builtin(env, "append", MINIM_OBJ_FUNC, minim_builtin_append);
-    env_load_builtin(env, "reverse", MINIM_OBJ_FUNC, minim_builtin_reverse);
-    env_load_builtin(env, "list-ref", MINIM_OBJ_FUNC, minim_builtin_list_ref);
-
-    env_load_builtin(env, "map", MINIM_OBJ_FUNC, minim_builtin_map);
-    env_load_builtin(env, "apply", MINIM_OBJ_FUNC, minim_builtin_apply);
-    env_load_builtin(env, "filter", MINIM_OBJ_FUNC, minim_builtin_filter);
-    env_load_builtin(env, "filtern", MINIM_OBJ_FUNC, minim_builtin_filtern);
-}
-
-MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_cons(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *car, *cdr;
 
@@ -366,7 +342,7 @@ MinimObject *minim_builtin_cons(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_consp(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_consp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -376,7 +352,7 @@ MinimObject *minim_builtin_consp(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_car(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -390,7 +366,7 @@ MinimObject *minim_builtin_car(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_cdr(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -404,7 +380,7 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_listp(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_listp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -414,7 +390,7 @@ MinimObject *minim_builtin_listp(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_nullp(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_nullp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -424,7 +400,7 @@ MinimObject *minim_builtin_nullp(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_list(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -434,7 +410,7 @@ MinimObject *minim_builtin_list(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_head(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -453,7 +429,7 @@ MinimObject *minim_builtin_head(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_tail(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *it;
 
@@ -474,7 +450,7 @@ MinimObject *minim_builtin_tail(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_length(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimNumber *num;
@@ -491,7 +467,7 @@ MinimObject *minim_builtin_length(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *it;
 
@@ -517,7 +493,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_reverse(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_reverse(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *li;
     int len;
@@ -534,7 +510,7 @@ MinimObject *minim_builtin_reverse(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -561,7 +537,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_map(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_map(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     int len;
@@ -578,7 +554,7 @@ MinimObject *minim_builtin_map(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_apply(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *it, **vals;
     int len;

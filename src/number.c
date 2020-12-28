@@ -241,23 +241,7 @@ void minim_number_to_bytes(MinimObject *obj, Buffer *bf)
 
 // *** Builtins *** //
 
-void env_load_module_number(MinimEnv *env)
-{
-    env_load_builtin(env, "number?", MINIM_OBJ_FUNC, minim_builtin_numberp);
-    env_load_builtin(env, "zero?", MINIM_OBJ_FUNC, minim_builtin_zerop);
-    env_load_builtin(env, "positive?", MINIM_OBJ_FUNC, minim_builtin_positivep);
-    env_load_builtin(env, "negative?", MINIM_OBJ_FUNC, minim_builtin_negativep);
-    env_load_builtin(env, "exact?", MINIM_OBJ_FUNC, minim_builtin_exactp);
-    env_load_builtin(env, "inexact?", MINIM_OBJ_FUNC, minim_builtin_inexactp);
-
-    env_load_builtin(env, "=", MINIM_OBJ_FUNC, minim_builtin_eq);
-    env_load_builtin(env, ">", MINIM_OBJ_FUNC, minim_builtin_gt);
-    env_load_builtin(env, "<", MINIM_OBJ_FUNC, minim_builtin_lt);
-    env_load_builtin(env, ">=", MINIM_OBJ_FUNC, minim_builtin_gte);
-    env_load_builtin(env, "<=", MINIM_OBJ_FUNC, minim_builtin_lte);
-}
-
-MinimObject *minim_builtin_numberp(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_numberp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -267,7 +251,7 @@ MinimObject *minim_builtin_numberp(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_zerop(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_zerop(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -280,7 +264,7 @@ MinimObject *minim_builtin_zerop(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_negativep(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_negativep(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -293,7 +277,7 @@ MinimObject *minim_builtin_negativep(MinimEnv *env, int argc, MinimObject **args
     return res;
 }
 
-MinimObject *minim_builtin_positivep(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_positivep(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -306,7 +290,7 @@ MinimObject *minim_builtin_positivep(MinimEnv *env, int argc, MinimObject **args
     return res;
 }
 
-MinimObject *minim_builtin_exactp(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_exactp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -319,7 +303,7 @@ MinimObject *minim_builtin_exactp(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_inexactp(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_inexactp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -353,7 +337,7 @@ static bool minim_number_cmp_h(int argc, MinimObject **args, int op)
     return true;
 }
 
-MinimObject *minim_builtin_eq(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_eq(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -366,7 +350,7 @@ MinimObject *minim_builtin_eq(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_gt(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_gt(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -379,7 +363,7 @@ MinimObject *minim_builtin_gt(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_lt(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_lt(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -392,7 +376,7 @@ MinimObject *minim_builtin_lt(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_gte(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_gte(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -405,7 +389,7 @@ MinimObject *minim_builtin_gte(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_lte(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_lte(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
