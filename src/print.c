@@ -49,9 +49,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_BOOL)
     {
-        int b = *((int*) obj->data);
-
-        if (b)  writes_buffer(bf, "true");
+        if (obj->si)  writes_buffer(bf, "true");
         else    writes_buffer(bf, "false");
     }
     else if (obj->type == MINIM_OBJ_NUM)
@@ -124,10 +122,6 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
         if (lam->name)    writef_buffer(bf, "<function:~s>", lam->name);
         else              writes_buffer(bf, "<function:?>");
-    }
-    else if (obj->type == MINIM_OBJ_ITER)
-    {
-        writes_buffer(bf, "<iterator>");
     }
     else if (obj->type == MINIM_OBJ_SEQ)
     {

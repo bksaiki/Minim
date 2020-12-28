@@ -106,13 +106,17 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
             for (int i = 0; i < rcount; ++i)
                 copy_minim_object(&rest[i], args[lam->argc + i]);
 
-            val = minim_construct_list(rcount, rest);
+            val = minim_list(rest, rcount);
             env_intern_sym(env2, lam->rest, val);
             free(rest);
         }
 
-        eval_ast(env2, lam->body, &res);
+        eval_ast(env2, lam->body, &val);
+        res = fresh_minim_object(val);
         pop_env(env2);
+
+        if (!MINIM_OBJ_OWNERP(val))
+            free_minim_object(val);
     }
     
     return res;

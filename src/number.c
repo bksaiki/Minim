@@ -230,8 +230,8 @@ void minim_number_to_bytes(MinimObject *obj, Buffer *bf)
     if (num->type == MINIM_NUMBER_EXACT)
     {
         // Dump integer limbs
-        write_buffer(bf, num->rat->_mp_num._mp_d, num->rat->_mp_num._mp_size * sizeof(mp_limb_t));
-        write_buffer(bf, num->rat->_mp_den._mp_d, num->rat->_mp_den._mp_size * sizeof(mp_limb_t));
+        write_buffer(bf, num->rat->_mp_num._mp_d, abs(num->rat->_mp_num._mp_size) * sizeof(mp_limb_t));
+        write_buffer(bf, num->rat->_mp_den._mp_d, abs(num->rat->_mp_den._mp_size) * sizeof(mp_limb_t));
     }
     else
     {

@@ -9,14 +9,13 @@
 #include "bool.h"
 #include "for.h"
 #include "hash.h"
-#include "iter.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
 #include "math.h"
 #include "variable.h"
 #include "string.h"
-#include "sequence.h"
+#include "sequence.h"      
 
 static void free_single_env(MinimEnv *env)
 {
@@ -31,8 +30,7 @@ static void free_single_env(MinimEnv *env)
         free(env->syms);
         free(env->vals);
     }
-
-    if (env->iobjs) free_minim_iter_objs(env->iobjs);
+    
     free(env);
 }
 
@@ -59,7 +57,6 @@ void init_env(MinimEnv **penv)
     env->syms = NULL;
     env->vals = NULL;
     env->parent = NULL;
-    env->iobjs = NULL;
     *penv = env;
 }
 
@@ -71,7 +68,7 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
     {
         if (strcmp(sym, env->syms[i]) == 0)
         {
-            copy_minim_object(&obj, env->vals[i]);
+            ref_minim_object(&obj, env->vals[i]);
             return obj;
         }
     }
@@ -82,12 +79,14 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
+    MinimObject *fresh = fresh_minim_object(obj);
+
     for (int i = 0; i < env->count; ++i)
     {
         if (strcmp(sym, env->syms[i]) == 0)
         {
             free_minim_object(env->vals[i]);
-            env->vals[i] = obj;
+            env->vals[i] = fresh;
             add_metadata(env->vals[i], sym);
             return;
         }
@@ -98,7 +97,7 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     env->vals = realloc(env->vals, env->count * sizeof(MinimObject**));
 
     env->syms[env->count - 1] = malloc(strlen(sym) + 1);
-    env->vals[env->count - 1] = obj;
+    env->vals[env->count - 1] = fresh;
     strcpy(env->syms[env->count - 1], sym);
     add_metadata(env->vals[env->count - 1], sym);
 }
@@ -145,14 +144,6 @@ MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
     else                return NULL;
 }
 
-MinimIterObjs *env_get_iobjs(MinimEnv *env)
-{
-    if (env->iobjs)     return env->iobjs;
-    if (env->parent)    return env_get_iobjs(env->parent);
-    
-    return NULL;
-}
-
 void free_env(MinimEnv *env)
 {
     if (env->parent)  free_env(env->parent);
@@ -195,7 +186,6 @@ void env_load_builtins(MinimEnv *env)
     env_load_module_string(env);
 
     env_load_module_for(env);
-    env_load_module_iter(env);
     env_load_module_lambda(env);
     env_load_module_seq(env);
 

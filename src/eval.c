@@ -150,7 +150,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
         }
 
         res = proc(env, node->argc, args);
-        free_minim_objects(node->argc, args);
+        free_minim_objects(args, node->argc);
 
         return res;
     }
@@ -198,12 +198,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
                     }
                 }
                 
-                free_minim_objects(argc, args);
+                free_minim_objects(args, argc);
                 return res;
             }
 
             res = proc(env, argc, args);
-            free_minim_objects(argc, args);
+            free_minim_objects(args, argc);
         }
         else if (op->type == MINIM_OBJ_SYNTAX)
         {
@@ -218,9 +218,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
         }
         else if (op->type == MINIM_OBJ_CLOSURE)
         {
-            MinimLambda *lam;
+            MinimLambda *lam = op->data;
 
-            copy_minim_lambda(&lam, ((MinimLambda*) op->data));
             for (int i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
@@ -236,13 +235,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
                     }
                 }
                 
-                free_minim_objects(argc, args);
+                free_minim_objects(args, argc);
                 return res;
             }
 
             res = eval_lambda(lam, env, argc, args);
-            free_minim_lambda(lam);
-            free_minim_objects(argc, args);
+            free_minim_objects(args, argc);
         }
         else
         {   
