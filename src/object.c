@@ -13,7 +13,6 @@
 #include "object.h"
 #include "parser.h"
 #include "sequence.h"
-#include "util.h"
 
 // Visible functions
 

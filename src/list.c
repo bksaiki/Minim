@@ -9,7 +9,6 @@
 #include "list.h"
 #include "number.h"
 #include "variable.h"
-#include "util.h"
 
 #define OPT_MOVE(dest, src)             \
 {                                       \

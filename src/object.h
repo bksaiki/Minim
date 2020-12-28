@@ -1,7 +1,7 @@
 #ifndef _MINIM_OBJECT_H_
 #define _MINIM_OBJECT_H_
 
-#include "base.h"
+#include "common/common.h"
 #include "common/buffer.h"
 
 #define MINIM_OBJ_OWNER             0x1

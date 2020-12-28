@@ -7,7 +7,6 @@
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
-#include "util.h"
 
 static bool is_rational(char *str)
 {
@@ -82,12 +81,6 @@ static bool is_str(char *str)
     return true;
 }
 
-static int is_err_pred(const void *thing)
-{
-    MinimObject **pobj = (MinimObject**) thing;
-    return ((*pobj)->type == MINIM_OBJ_ERR);
-}
-
 static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 {
     MinimObject *res;
@@ -131,6 +124,17 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     return res;
 }
 
+static MinimObject *first_error(MinimObject **args, int argc)
+{
+    for (int i = 0; i < argc; ++i)
+    {
+        if (args[i]->type == MINIM_OBJ_ERR)
+            return args[i];
+    }
+
+    return NULL;
+}
+
 // Unsyntax
 
 static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
@@ -166,7 +170,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 {
     if (node->tags & MINIM_AST_OP)
     {
-        MinimObject *res, *op, **possible_err, **args;
+        MinimObject *res, *op, *possible_err, **args;
         int argc = node->argc - 1;
 
         args = malloc(argc * sizeof(MinimObject*));
@@ -186,14 +190,14 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             for (int i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
-            possible_err = for_first(args, argc, sizeof(MinimObject*), is_err_pred);
+            possible_err = first_error(args, argc);
             if (possible_err)
             {
                 for (int i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
                 {
-                    if (&args[i] == possible_err)
+                    if (args[i] == possible_err)
                     {
-                        res = *possible_err;
+                        res = possible_err;
                         args[i] = NULL;
                     }
                 }
@@ -223,14 +227,14 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             for (int i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
-            possible_err = for_first(args, argc, sizeof(MinimObject*), is_err_pred);
+            possible_err = first_error(args, argc);
             if (possible_err)
             {
                 for (int i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
                 {
-                    if (&args[i] == possible_err)
+                    if (args[i] == possible_err)
                     {
-                        res = *possible_err;
+                        res = possible_err;
                         args[i] = NULL;
                     }
                 }
