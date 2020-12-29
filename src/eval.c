@@ -125,9 +125,9 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     return res;
 }
 
-static MinimObject *first_error(MinimObject **args, int argc)
+static MinimObject *first_error(MinimObject **args, size_t argc)
 {
-    for (int i = 0; i < argc; ++i)
+    for (size_t i = 0; i < argc; ++i)
     {
         if (args[i]->type == MINIM_OBJ_ERR)
             return args[i];
@@ -148,13 +148,13 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
         args = malloc(node->argc * sizeof(MinimObject*));
         proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
 
-        for (int i = 0; i < node->argc; ++i)
+        for (size_t i = 0; i < node->argc; ++i)
         {
             if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
             else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
         }
 
-        res = proc(env, node->argc, args);
+        res = proc(env, args, node->argc);
         free_minim_objects(args, node->argc);
 
         return res;
@@ -172,7 +172,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
     if (node->tags & MINIM_AST_OP)
     {
         MinimObject *res, *op, *possible_err, **args;
-        int argc = node->argc - 1;
+        size_t argc = node->argc - 1;
 
         args = malloc(argc * sizeof(MinimObject*));
         op = env_peek_sym(env, node->children[0]->sym);
@@ -188,13 +188,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
         {
             MinimBuiltin proc = ((MinimBuiltin) op->data);
 
-            for (int i = 0; i < argc; ++i)
+            for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
             possible_err = first_error(args, argc);
             if (possible_err)
             {
-                for (int i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
+                for (size_t i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
                 {
                     if (args[i] == possible_err)
                     {
@@ -207,31 +207,31 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
                 return res;
             }
 
-            res = proc(env, argc, args);
+            res = proc(env, args, argc);
             free_minim_objects(args, argc);
         }
         else if (op->type == MINIM_OBJ_SYNTAX)
         {
             MinimBuiltin proc = ((MinimBuiltin) op->data);
 
-            for (int i = 0; i < argc; ++i)
+            for (size_t i = 0; i < argc; ++i)
                 init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
-            res = proc(env, argc, args);
+            res = proc(env, args, argc);
 
-            for (int i = 0; i < argc; ++i) free(args[i]);
+            for (size_t i = 0; i < argc; ++i) free(args[i]);
             free(args);
         }
         else if (op->type == MINIM_OBJ_CLOSURE)
         {
             MinimLambda *lam = op->data;
 
-            for (int i = 0; i < argc; ++i)
+            for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
             possible_err = first_error(args, argc);
             if (possible_err)
             {
-                for (int i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
+                for (size_t i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
                 {
                     if (args[i] == possible_err)
                     {
@@ -244,7 +244,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
                 return res;
             }
 
-            res = eval_lambda(lam, env, argc, args);
+            res = eval_lambda(lam, env, args, argc);
             free_minim_objects(args, argc);
         }
         else

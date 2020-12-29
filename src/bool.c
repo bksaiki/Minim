@@ -27,7 +27,7 @@ bool coerce_into_bool(MinimObject *obj)
     }
 }
 
-MinimObject *minim_builtin_boolp(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_boolp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -37,7 +37,7 @@ MinimObject *minim_builtin_boolp(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_not(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_not(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
@@ -47,14 +47,14 @@ MinimObject *minim_builtin_not(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_or(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_or(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     bool val = false;
 
     if (assert_min_argc(&res, "or", 1, argc))
     {
-        for (int i = 0; i < argc; ++i)
+        for (size_t i = 0; i < argc; ++i)
         {
             if (coerce_into_bool(args[i]))
             {
@@ -72,14 +72,14 @@ MinimObject *minim_builtin_or(MinimEnv *env, int argc, MinimObject** args)
     return res;
 }
 
-MinimObject *minim_builtin_and(MinimEnv *env, int argc, MinimObject** args)
+MinimObject *minim_builtin_and(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     bool val = true;
 
     if (assert_min_argc(&res, "and", 1, argc))
     {
-        for (int i = 0; i < argc; ++i)
+        for (size_t i = 0; i < argc; ++i)
         {
             if (!coerce_into_bool(args[i]))
             {

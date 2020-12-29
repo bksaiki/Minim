@@ -26,7 +26,7 @@ int main(int argc, char** argv)
         while (1)
         {
             char str[2048];
-            int len;
+            size_t len;
 
             fgets(str, 2047, stdin);
             for (len = 0; str[len] != '\n'; ++len)

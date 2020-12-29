@@ -52,7 +52,7 @@ static MinimAst* parse_str_node(char* str)
 {
     MinimAst* node;
     char *end, *tmp;
-    int len = strlen(str);
+    size_t len = strlen(str);
 
     end = str + len - 1;
     if (*str == '\'')
@@ -71,11 +71,11 @@ static MinimAst* parse_str_node(char* str)
         init_ast_op(&node, get_arg_len(str + 1, end), 0);
         if (node->argc != 0)
         {
-            for (int idx = 0; it < end; ++idx)
+            for (size_t idx = 0; it < end; ++idx)
             {
                 if (*it == '(' || (*it == '\'' && *(it + 1) == '('))
                 {
-                    int paren = 1;
+                    size_t paren = 1;
 
                     if (*it == '\'')    it2 = it + 2;
                     else                it2 = it + 1;
@@ -184,7 +184,7 @@ static void print_ast_errors(MinimAst* node)
     
     if (node->argc != 0)
     {
-        for (int i = 0; i < node->argc; ++i)
+        for (size_t i = 0; i < node->argc; ++i)
             print_ast_errors(node->children[i]);
     }
 }

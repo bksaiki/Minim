@@ -74,7 +74,7 @@ void free_minim_number(MinimNumber *num)
 char *minim_number_to_str(MinimNumber *num)
 {
     char* str;
-    int len = 128;
+    size_t len = 128;
 
     if (num->type == MINIM_NUMBER_EXACT)
     {
@@ -316,12 +316,12 @@ MinimObject *minim_builtin_inexactp(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
-static bool minim_number_cmp_h(int argc, MinimObject **args, int op)
+static bool minim_number_cmp_h(MinimObject **args, size_t argc, int op)
 {
     int cmp;
     bool b;
 
-    for (int i = 0; i < argc - 1; ++i)
+    for (size_t i = 0; i < argc - 1; ++i)
     {
         cmp = minim_number_cmp(args[i]->data, args[i + 1]->data);
         
@@ -344,7 +344,7 @@ MinimObject *minim_builtin_eq(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, "=", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '='", minim_numberp))
     {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 0));
+        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 0));
     }
 
     return res;
@@ -357,7 +357,7 @@ MinimObject *minim_builtin_gt(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, ">", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '>'", minim_numberp))
     {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 1));
+        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 1));
     }
 
     return res;
@@ -370,7 +370,7 @@ MinimObject *minim_builtin_lt(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, "<", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '<'", minim_numberp))
     {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 2));
+        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 2));
     }
 
     return res;
@@ -383,7 +383,7 @@ MinimObject *minim_builtin_gte(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, ">=", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '>='", minim_numberp))
     {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 3));
+        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 3));
     }
 
     return res;
@@ -396,7 +396,7 @@ MinimObject *minim_builtin_lte(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, "<=", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '<='", minim_numberp))
     {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(argc, args, 4));
+        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 4));
     }
 
     return res;

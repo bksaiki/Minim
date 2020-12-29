@@ -18,7 +18,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src);
 void free_minim_lambda(MinimLambda *lam);
 
 // Evaluates the given lambda expression and stores the result at 'pobj'.
-MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject **args);
+MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, size_t argc);
 
 // Internals
 

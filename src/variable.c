@@ -86,7 +86,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_exact_argc(&res, "let", 2, argc))
     {
         MinimObject *it;
-        int len;
+        size_t len;
         bool err = false;
         
         // Convert bindings to list
@@ -104,7 +104,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         init_env(&env2);        
         env2->parent = env;
         
-        for (int i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
+        for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
         {
             MinimObject *bind, *sym, *val;
 
@@ -153,7 +153,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
     if (assert_exact_argc(&res, "let*", 2, argc))
     {
         MinimObject *it;
-        int len;
+        size_t len;
         bool err = false;
         
         // Convert bindings to list
@@ -165,7 +165,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
         init_env(&env2);        
         env2->parent = env;
         
-        for (int i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
+        for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
         {
             MinimObject *bind, *sym, *val;
 
@@ -261,7 +261,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
 
         init_env(&env2);
         env2->parent = env;
-        for (int i = 0; i < argc; ++i)
+        for (size_t i = 0; i < argc; ++i)
         {
             eval_ast(env2, args[i]->data, &val);
             if (val->type == MINIM_OBJ_ERR)
@@ -297,7 +297,7 @@ MinimObject *minim_builtin_equalp(MinimEnv *env, MinimObject **args, size_t argc
 
     if (assert_min_argc(&res, "equal?", 1, argc))
     {
-        for (int i = 1; i < argc; ++i)
+        for (size_t i = 1; i < argc; ++i)
         {
             if (!minim_equalp(args[i - 1], args[i]))
             {

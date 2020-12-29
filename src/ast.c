@@ -3,7 +3,7 @@
 #include <string.h>
 #include "ast.h"
 
-void init_ast_op(MinimAst **past, int argc, int tags)
+void init_ast_op(MinimAst **past, size_t argc, uint8_t tags)
 {
     MinimAst *node = malloc(sizeof(MinimAst));
     node->children = malloc(argc * sizeof(MinimAst*));
@@ -45,7 +45,7 @@ void copy_ast(MinimAst **pdest, MinimAst *src)
     if (src->children)
     {
         node->children = malloc(src->argc * sizeof(MinimAst*));
-        for (int i = 0; i < src->argc; ++i)
+        for (size_t i = 0; i < src->argc; ++i)
             copy_ast(&node->children[i], src->children[i]);
     }
     else
@@ -60,7 +60,7 @@ void free_ast(MinimAst* node)
 
     if (node->argc != 0)
     {
-        for (int i = 0; i < node->argc; ++i)
+        for (size_t i = 0; i < node->argc; ++i)
             free_ast(node->children[i]);
     }
 
@@ -74,7 +74,7 @@ bool ast_validp(MinimAst *node)
     if (node->tags & MINIM_AST_ERR)
         return false;
 
-    for (int i = 0; i < node->argc; ++i)
+    for (size_t i = 0; i < node->argc; ++i)
     {
         if (!ast_validp(node->children[i]))
             return false;
@@ -92,7 +92,7 @@ bool ast_equalp(MinimAst *a, MinimAst *b)
         (a->sym && b->sym && strcmp(a->sym, b->sym) != 0))
         return false;
 
-    for (int i = 0; i < a->argc; ++i)
+    for (size_t i = 0; i < a->argc; ++i)
     {
         if (!ast_equalp(a->children[i], b->children[i]))
             return false;
@@ -108,7 +108,7 @@ void ast_to_buffer(MinimAst *node, Buffer *bf)
         bool first = true;
 
         writec_buffer(bf, '(');
-        for (int i = 0; i < node->argc; ++i)
+        for (size_t i = 0; i < node->argc; ++i)
         {
             if (first)  first = false;
             else        writec_buffer(bf, ' ');
@@ -127,7 +127,7 @@ void ast_dump_in_buffer(MinimAst *node, Buffer *bf)
 {
     if (node->argc != 0)
     {
-        for (int i = 0; i < node->argc; ++i)
+        for (size_t i = 0; i < node->argc; ++i)
             ast_dump_in_buffer(node->children[i], bf);
     }
     else

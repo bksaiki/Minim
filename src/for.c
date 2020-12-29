@@ -6,9 +6,9 @@
 #include "list.h"
 #include "variable.h"
 
-static bool iters_valid(MinimObject **iters, int argc)
+static bool iters_valid(MinimObject **iters, size_t argc)
 {
-    for (int i = 0; i < argc; ++i)
+    for (size_t i = 0; i < argc; ++i)
     {
         if (minim_iter_endp(iters[i]))
             return false;
@@ -33,7 +33,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
         {
             MinimObject **syms, **iters, **objs;
             MinimObject *val;
-            int len;
+            size_t len;
             bool err = false;
             
             it = bindings;
@@ -42,7 +42,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
             iters = malloc(len * sizeof(MinimObject*));
             syms = malloc(len * sizeof(MinimObject*));
 
-            for (int i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
+            for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
             {
                 MinimObject *bind;
 
@@ -95,7 +95,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
                 init_env(&env2);
                 env2->parent = env;
 
-                for (int i = 0; i < len; ++i)
+                for (size_t i = 0; i < len; ++i)
                 {
                     val = minim_iter_get(iters[i]);
                     env_intern_sym(env2, syms[i]->data, val);
@@ -114,7 +114,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
                     free_minim_object(val);
                     pop_env(env2);
 
-                    for (int i = 0; i < len; ++i)
+                    for (size_t i = 0; i < len; ++i)
                         iters[i] = minim_iter_next(iters[i]);
                 }
             }   
@@ -145,7 +145,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
         {
             MinimObject **syms, **iters, **objs;
             MinimObject *val;
-            int len;
+            size_t len;
             bool head = true, err = false;
             
             it = bindings;
@@ -154,7 +154,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
             iters = malloc(len * sizeof(MinimObject*));
             syms = malloc(len * sizeof(MinimObject*));
 
-            for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+            for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
             {
                 MinimObject *bind;
 
@@ -207,7 +207,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
                 init_env(&env2);
                 env2->parent = env;
 
-                for (int i = 0; i < len; ++i)
+                for (size_t i = 0; i < len; ++i)
                 {
                     val = minim_iter_get(iters[i]);
                     env_intern_sym(env2, syms[i]->data, val);
@@ -238,7 +238,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
                     }
 
                     pop_env(env2);
-                    for (int i = 0; i < len; ++i)
+                    for (size_t i = 0; i < len; ++i)
                         iters[i] = minim_iter_next(iters[i]);
                 }
             }   

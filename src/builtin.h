@@ -3,7 +3,7 @@
 
 #include "env.h"
 
-#define DEFINE_BUILTIN_FUN(name)    extern MinimObject *minim_builtin_ ## name(MinimEnv *env, MinimObject **args, size_t argc);
+#define DEFINE_BUILTIN_FUN(name)  MinimObject *minim_builtin_ ## name(MinimEnv *env, MinimObject **args, size_t argc);
 
 // Variable / Control
 DEFINE_BUILTIN_FUN(def)

@@ -12,11 +12,11 @@ typedef struct MinimAst
 {
     struct MinimAst** children;
     char* sym;
-    int argc;
-    int tags;
+    size_t argc;
+    uint8_t tags;
 } MinimAst;
 
-void init_ast_op(MinimAst **past, int argc, int tags);
+void init_ast_op(MinimAst **past, size_t argc, uint8_t tags);
 void init_ast_node(MinimAst **past, const char *sym, int tags);
 void copy_ast(MinimAst **pdest, MinimAst *src);
 void free_ast(MinimAst *node);

@@ -67,7 +67,7 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, MinimObject **args, size
         Buffer *bf;
 
         init_buffer(&bf);
-        for (int i = 0; i < argc; ++i)
+        for (size_t i = 0; i < argc; ++i)
             writes_buffer(bf, args[i]->data);
 
         trim_buffer(bf);
@@ -152,9 +152,9 @@ MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, MinimObject **args, s
     return res;
 }
 
-static int collect_format_vars(const char *str, size_t len)
+static size_t collect_format_vars(const char *str, size_t len)
 {
-    int cnt = 0;
+    size_t cnt = 0;
 
     for (size_t i = 0; i < len; ++i)
     {
@@ -174,7 +174,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
     {
         char *str = args[0]->data;
         size_t len = strlen(str);
-        int vcount = collect_format_vars(str, len);
+        size_t vcount = collect_format_vars(str, len);
 
         if (assert_generic(&res, "Number of format variables do not match argument count", vcount == (argc - 1)))
         {

@@ -28,7 +28,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
     if (src->args)
     {
         lam->args = malloc(lam->argc * sizeof(char*));
-        for (int i = 0; i < lam->argc; ++i)
+        for (size_t i = 0; i < lam->argc; ++i)
         {
             lam->args[i] = malloc((strlen(src->args[i]) + 1) * sizeof(char));
             strcpy(lam->args[i], src->args[i]);
@@ -69,7 +69,7 @@ void free_minim_lambda(MinimLambda *lam)
 {
     if (lam->args)
     {
-        for (int i = 0; i < lam->argc; ++i)
+        for (size_t i = 0; i < lam->argc; ++i)
             free(lam->args[i]);
         free(lam->args);
     }
@@ -81,7 +81,7 @@ void free_minim_lambda(MinimLambda *lam)
     free(lam);
 }
 
-MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject **args)
+MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *val;
     MinimEnv *env2;
@@ -91,7 +91,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
         init_env(&env2);
         env2->parent = env;
 
-        for (int i = 0; i < lam->argc; ++i)
+        for (size_t i = 0; i < lam->argc; ++i)
         {
             copy_minim_object(&val, args[i]);
             env_intern_sym(env2, lam->args[i], val);
@@ -100,10 +100,10 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, int argc, MinimObject 
         if (lam->rest)
         {
             MinimObject **rest;
-            int rcount = argc - lam->argc;
+            size_t rcount = argc - lam->argc;
 
             rest = malloc(rcount * sizeof(MinimObject*));
-            for (int i = 0; i < rcount; ++i)
+            for (size_t i = 0; i < rcount; ++i)
                 copy_minim_object(&rest[i], args[lam->argc + i]);
 
             val = minim_list(rest, rcount);
@@ -146,7 +146,7 @@ bool minim_funcp(MinimObject *thing)
 bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b)
 {
     if (a->argc != b->argc)         return false;
-    for (int i = 0; i < a->argc; ++i)
+    for (size_t i = 0; i < a->argc; ++i)
     {
         if (strcmp(a->args[i], b->args[i]) != 0)
             return false;
@@ -169,7 +169,7 @@ void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)
     if (l->name)    writes_buffer(bf, l->name);
     if (l->rest)    writes_buffer(bf, l->rest);
 
-    for (int i = 0; i < l->argc; ++i)
+    for (size_t i = 0; i < l->argc; ++i)
         writes_buffer(bf, l->args[i]);
 
     // do not dump ast into buffer
@@ -208,7 +208,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                 lam->args = calloc(lam->argc, sizeof(char*));
                 it = bindings;
 
-                for (int i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
+                for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
                 {
                     unsyntax_ast(env, MINIM_CAR(it)->data, &val);
                     if (assert_symbol(val, &res, "Expected a symbol for lambda variables"))

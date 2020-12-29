@@ -6,7 +6,7 @@
 
 typedef struct MinimEnv
 {
-    int count;
+    size_t count;
     char **syms;
     MinimObject **vals;
     struct MinimEnv *parent;

@@ -36,14 +36,14 @@
 
 #define RELEASE_OWNED_ARGS(args, argc)      \
 {                                           \
-    for (int i = 0; i < argc; ++i)          \
+    for (size_t i = 0; i < argc; ++i)          \
     {                                       \
         if (MINIM_OBJ_OWNERP((args)[i]))      \
             (args)[i] = NULL;                 \
     }                                       \
 }
 
-static MinimObject *reverse_lists(MinimObject* head, MinimObject* tail, int count)
+static MinimObject *reverse_lists(MinimObject* head, MinimObject* tail, size_t count)
 {
     if (count <= 1)
     {
@@ -58,7 +58,7 @@ static MinimObject *reverse_lists(MinimObject* head, MinimObject* tail, int coun
     }
 }
 
-static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, MinimEnv *env, int len)
+static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, MinimEnv *env, size_t len)
 {
     MinimObject *node, *val, *rest;
 
@@ -70,14 +70,14 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
         MinimObject *arg = MINIM_CAR(list);
         MinimBuiltin func = map->data;
 
-        val = func(env, 1, &arg);
+        val = func(env, &arg, 1);
     }
     else // map->type == MINIM_OBJ_CLOSURE
     {
         MinimObject *arg = MINIM_CAR(list);
         MinimLambda *lam = map->data;
         
-        val = eval_lambda(lam, env, 1, &arg);
+        val = eval_lambda(lam, env, &arg, 1);
     }
 
     if (val->type == MINIM_OBJ_ERR)
@@ -109,12 +109,12 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
         if (filter->type == MINIM_OBJ_FUNC)
         {
             MinimBuiltin func = filter->data;
-            val = func(env, 1, &MINIM_CAR(it));
+            val = func(env, &MINIM_CAR(it), 1);
         }
         else
         {
             MinimLambda *lam = filter->data;
-            val = eval_lambda(lam, env, 1, &MINIM_CAR(it));
+            val = eval_lambda(lam, env, &MINIM_CAR(it), 1);
         }
 
         if (val->type == MINIM_OBJ_ERR)
@@ -187,7 +187,7 @@ bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg)
     return true;
 }
 
-bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *msg)
+bool assert_list_len(MinimObject *arg, MinimObject **ret, size_t len, const char *msg)
 {
     if (!assert_list(arg, ret, msg))
         return false;
@@ -204,14 +204,14 @@ bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *m
 bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg)
 {
     MinimObject *it;
-    int len;
+    size_t len;
 
     if (!assert_list(arg, ret, msg))
         return false;
 
     len = minim_list_length(arg);
     it = arg;
-    for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+    for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
     {
         if (!pred(MINIM_CAR(it)))
         {
@@ -285,7 +285,7 @@ void minim_cons_to_bytes(MinimObject *obj, Buffer *bf)
     }
 }
 
-MinimObject *minim_list(MinimObject **args, int len)
+MinimObject *minim_list(MinimObject **args, size_t len)
 {
     MinimObject *head, *it;
     
@@ -297,7 +297,7 @@ MinimObject *minim_list(MinimObject **args, int len)
     {
         init_minim_object(&it, MINIM_OBJ_PAIR, fresh_minim_object(args[0]), NULL);
         head = it;
-        for (int i = 1; i < len; ++i)
+        for (size_t i = 1; i < len; ++i)
         {
             init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, fresh_minim_object(args[i]), NULL);
             it = MINIM_CDR(it);
@@ -307,9 +307,9 @@ MinimObject *minim_list(MinimObject **args, int len)
     return head;
 }
 
-int minim_list_length(MinimObject *list)
+size_t minim_list_length(MinimObject *list)
 {
-    int len = 0;
+    size_t len = 0;
 
     for (MinimObject *it = list; it != NULL; it = MINIM_CDR(it))
         if (MINIM_CAR(it))  ++len;
@@ -454,13 +454,13 @@ MinimObject *minim_builtin_length(MinimEnv *env, MinimObject **args, size_t argc
 {
     MinimObject *res;
     MinimNumber *num;
-    int len;
+    size_t len;
 
     if (assert_exact_argc(&res, "length", 1, argc))
     {
         len = minim_list_length(args[0]);
         init_minim_number(&num, MINIM_NUMBER_EXACT);
-        mpq_set_si(num->rat, len, 1);
+        mpq_set_ui(num->rat, len, 1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
@@ -473,7 +473,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
 
     if (assert_min_argc(&res, "append", 1, argc))
     {
-        for (int i = 0; i < argc; ++i)
+        for (size_t i = 0; i < argc; ++i)
         {
             if (!assert_list(args[i], &res, "Arguments must be lists for 'append'"))
                 return res;
@@ -481,7 +481,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
 
         res = fresh_minim_object(args[0]);
         MINIM_TAIL(it, res);
-        for (int i = 1; i < argc; ++i)
+        for (size_t i = 1; i < argc; ++i)
         {
             MINIM_CDR(it) = fresh_minim_object(args[i]);
             MINIM_TAIL(it, it);
@@ -496,7 +496,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
 MinimObject *minim_builtin_reverse(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *li;
-    int len;
+    size_t len;
 
     if (assert_exact_argc(&res, "reverse", 1, argc) &&
         assert_list(args[0], &res, "Expected a list for 'reverse'"))
@@ -520,9 +520,9 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t ar
     {
         MinimObject *it = args[0];
         MinimNumber* num = args[1]->data;
-        int idx = mpz_get_si(mpq_numref(num->rat));
+        size_t idx = mpz_get_ui(mpq_numref(num->rat));
 
-        for (int i = 0; it && i < idx; ++i)
+        for (size_t i = 0; it && i < idx; ++i)
             it = MINIM_CDR(it);
 
         if (!it)
@@ -540,7 +540,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t ar
 MinimObject *minim_builtin_map(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    int len;
+    size_t len;
 
     if (assert_exact_argc(&res, "map", 2, argc) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'map'") &&
@@ -557,7 +557,7 @@ MinimObject *minim_builtin_map(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *it, **vals;
-    int len;
+    size_t len;
 
     if (assert_exact_argc(&res, "apply", 2, argc) &&
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'apply'") &&
@@ -567,7 +567,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
         vals = malloc(len * sizeof(MinimObject*));
 
         it = args[1];
-        for (int i = 0; i < len; ++i, it = MINIM_CDR(it))
+        for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
         {
             vals[i] = MINIM_CAR(it);
             MINIM_CAR(it) = NULL;
@@ -576,12 +576,12 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
         if (args[0]->type == MINIM_OBJ_FUNC)
         {
             MinimBuiltin func = args[0]->data;
-            res = func(env, len, vals);
+            res = func(env, vals, len);
         }
         else // MINIM_OBJ_CLOSURE
         {
             MinimLambda *lam = args[0]->data;
-            res = eval_lambda(lam, env, len, vals);
+            res = eval_lambda(lam, env, vals, len);
         }
 
         free_minim_objects(vals, len);
@@ -590,7 +590,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_filter(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     bool owns;
@@ -607,7 +607,7 @@ MinimObject *minim_builtin_filter(MinimEnv *env, int argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_filtern(MinimEnv *env, int argc, MinimObject **args)
+MinimObject *minim_builtin_filtern(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     bool owns;

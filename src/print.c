@@ -66,7 +66,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (!pp->quote)
             writec_buffer(bf, '\'');
 
-        for (int i = 0; i < len; ++i)
+        for (size_t i = 0; i < len; ++i)
         {
             if (str[i] == ' ')
             {

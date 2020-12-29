@@ -41,7 +41,7 @@ typedef enum MinimObjectType
     MINIM_OBJ_HASH
 } MinimObjectType;
 
-typedef MinimObject *(*MinimBuiltin)(MinimEnv *, size_t, MinimObject **);
+typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
 
 //  Initialization / Destruction
 

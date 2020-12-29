@@ -10,7 +10,7 @@ static void free_single_env(MinimEnv *env)
 {
     if (env->count != 0)
     {
-        for (int i = 0; i < env->count; ++i)
+        for (size_t i = 0; i < env->count; ++i)
         {
             free(env->syms[i]);
             free_minim_object(env->vals[i]);
@@ -53,7 +53,7 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 {
     MinimObject *obj;
 
-    for (int i = 0; i < env->count; ++i)
+    for (size_t i = 0; i < env->count; ++i)
     {
         if (strcmp(sym, env->syms[i]) == 0)
         {
@@ -70,7 +70,7 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
     MinimObject *fresh = fresh_minim_object(obj);
 
-    for (int i = 0; i < env->count; ++i)
+    for (size_t i = 0; i < env->count; ++i)
     {
         if (strcmp(sym, env->syms[i]) == 0)
         {
@@ -93,7 +93,7 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 
 int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
 {
-    for (int i = 0; i < env->count; ++i)
+    for (size_t i = 0; i < env->count; ++i)
     {
         if (strcmp(sym, env->syms[i]) == 0)
         {
@@ -111,7 +111,7 @@ int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
 
 const char *env_peek_key(MinimEnv *env, MinimObject *value)
 {
-    for (int i = 0; i < env->count; ++i)
+    for (size_t i = 0; i < env->count; ++i)
     {
         if (value->data == env->vals[i]->data)
             return env->syms[i];
@@ -123,7 +123,7 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
 
 MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
 {
-    for (int i = 0; i < env->count; ++i)
+    for (size_t i = 0; i < env->count; ++i)
     {
         if (strcmp(sym, env->syms[i]) == 0)
             return env->vals[i];

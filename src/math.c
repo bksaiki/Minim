@@ -251,7 +251,7 @@ MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
     {
         copy_minim_number(&num, args[0]->data);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
-        for (int i = 1; i < argc; ++i)
+        for (size_t i = 1; i < argc; ++i)
             minim_number_add(num, num, args[i]->data);
     }
 
@@ -274,7 +274,7 @@ MinimObject *minim_builtin_sub(MinimEnv *env, MinimObject **args, size_t argc)
         }
         else
         {
-            for (int i = 1; i < argc; ++i)
+            for (size_t i = 1; i < argc; ++i)
                 minim_number_sub(num, num, args[i]->data);
         
         }
@@ -293,7 +293,7 @@ MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
     {
         copy_minim_number(&num, args[0]->data);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
-        for (int i = 1; i < argc; ++i)
+        for (size_t i = 1; i < argc; ++i)
             minim_number_mul(num, num, args[i]->data);
     }
 

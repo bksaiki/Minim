@@ -22,7 +22,7 @@
 // Assertions
 bool assert_cons(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_list_len(MinimObject *arg, MinimObject **ret, int len, const char *msg);
+bool assert_list_len(MinimObject *arg, MinimObject **ret, size_t len, const char *msg);
 bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg);
 
 // Internals
@@ -34,7 +34,7 @@ bool minim_listof(MinimObject* list, MinimPred pred);
 bool minim_cons_eqp(MinimObject *a, MinimObject *b);
 void minim_cons_to_bytes(MinimObject *obj, Buffer *bf);
 
-MinimObject *minim_list(MinimObject **args, int len);
-int minim_list_length(MinimObject *list);
+MinimObject *minim_list(MinimObject **args, size_t len);
+size_t minim_list_length(MinimObject *list);
 
 #endif
