@@ -272,6 +272,36 @@ void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
     }
 }
 
+static MinimObject *minim_hash_table_to_list(MinimHash *ht)
+{
+    MinimObject *head, *it, *cp;
+    bool first = true;
+
+    for (size_t i = 0; i < ht->size; ++i)
+    {
+        for (size_t j = 0; j < ht->arr[i].len; ++j)
+        {
+            copy_minim_object(&cp, ht->arr[i].arr[j]);
+            if (first)
+            {
+                init_minim_object(&head, MINIM_OBJ_PAIR, cp, NULL);
+                it = head;
+                first = false;
+            }
+            else
+            {
+                init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, cp, NULL);
+                it = MINIM_CDR(it);
+            }
+        }
+    }
+
+    if (first)
+        init_minim_object(&head, MINIM_OBJ_PAIR, NULL, NULL);
+
+    return head;
+}
+
 //
 //  Internals
 //
@@ -371,6 +401,49 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, MinimObject **args, size_t ar
     {
         OPT_MOVE(res, args[0]);
         minim_hash_table_add(res->data, args[1], args[2]);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_hash_setb(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "Expected 3 arguments for 'hash-set!", 3, argc) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'") &&
+        assert_generic(&res, "Expected a reference to a existing hash table", !MINIM_OBJ_OWNERP(args[0])))
+    {
+        minim_hash_table_add(args[0]->data, args[1], args[2]);
+        init_minim_object(&res, MINIM_OBJ_VOID);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_hash_removeb(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "Expected 2 arguments for 'hash-remove!", 2, argc) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'") &&
+        assert_generic(&res, "Expected a reference to a existing hash table", !MINIM_OBJ_OWNERP(args[0])))
+    {
+        minim_hash_table_remove(args[0]->data, args[1]);
+        init_minim_object(&res, MINIM_OBJ_VOID);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_hash_to_list(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "Expected 1 arguments for 'hash->list", 1, argc) &&
+        assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
+    {
+        res = minim_hash_table_to_list(args[0]->data);
     }
 
     return res;

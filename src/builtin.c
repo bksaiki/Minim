@@ -95,6 +95,9 @@ void env_load_builtins(MinimEnv *env)
     env_load_builtin(env, "hash-ref", MINIM_OBJ_FUNC, minim_builtin_hash_ref);
     env_load_builtin(env, "hash-remove", MINIM_OBJ_FUNC, minim_builtin_hash_remove);
     env_load_builtin(env, "hash-set", MINIM_OBJ_FUNC, minim_builtin_hash_set);
+    env_load_builtin(env, "hash-set!", MINIM_OBJ_FUNC, minim_builtin_hash_setb);
+    env_load_builtin(env, "hash-remove!", MINIM_OBJ_FUNC, minim_builtin_hash_removeb);
+    env_load_builtin(env, "hash->list", MINIM_OBJ_FUNC, minim_builtin_hash_to_list);
 
     // Sequence
     env_load_builtin(env, "in-range", MINIM_OBJ_FUNC, minim_builtin_in_range);

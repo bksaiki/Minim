@@ -76,6 +76,9 @@ DEFINE_BUILTIN_FUN(hash_keyp)
 DEFINE_BUILTIN_FUN(hash_ref)
 DEFINE_BUILTIN_FUN(hash_remove)
 DEFINE_BUILTIN_FUN(hash_set)
+DEFINE_BUILTIN_FUN(hash_setb)
+DEFINE_BUILTIN_FUN(hash_removeb)
+DEFINE_BUILTIN_FUN(hash_to_list)
 
 // Sequence
 DEFINE_BUILTIN_FUN(in_range)
