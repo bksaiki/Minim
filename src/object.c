@@ -13,6 +13,7 @@
 #include "object.h"
 #include "parser.h"
 #include "sequence.h"
+#include "vector.h"
 
 // Visible functions
 
@@ -76,6 +77,10 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     else if (type == MINIM_OBJ_HASH)
     {
         obj->data = va_arg(rest, MinimHash*);
+    }
+    else if (type == MINIM_OBJ_VECTOR)
+    {
+        obj->data = va_arg(rest, MinimVector*);
     }
     else
     {
@@ -177,6 +182,12 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
         copy_minim_hash_table(&ht, src->data);
         dest->data = ht;
     }
+    else if (src->type == MINIM_OBJ_VECTOR)
+    {
+        MinimVector *vec;
+        copy_minim_vector(&vec, src->data);
+        dest->data = vec;
+    }
     else
     {
         printf("Unknown object type\n");
@@ -225,6 +236,7 @@ void free_minim_object(MinimObject *obj)
             else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
             else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
             else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->data);
+            else if (obj->type == MINIM_OBJ_VECTOR)     free_minim_vector(obj->data);
             else                                        free(obj->data);
         }
     }

@@ -100,6 +100,9 @@ void env_load_builtins(MinimEnv *env)
     env_load_builtin(env, "hash-remove!", MINIM_OBJ_FUNC, minim_builtin_hash_removeb);
     env_load_builtin(env, "hash->list", MINIM_OBJ_FUNC, minim_builtin_hash_to_list);
 
+    // Vector
+    env_load_builtin(env, "make-vector", MINIM_OBJ_FUNC, minim_builtin_make_vector);
+
     // Sequence
     env_load_builtin(env, "in-range", MINIM_OBJ_FUNC, minim_builtin_in_range);
     env_load_builtin(env, "sequence?", MINIM_OBJ_FUNC, minim_builtin_sequencep);

@@ -38,7 +38,8 @@ typedef enum MinimObjectType
     MINIM_OBJ_SYNTAX,
     MINIM_OBJ_AST,
     MINIM_OBJ_SEQ,
-    MINIM_OBJ_HASH
+    MINIM_OBJ_HASH,
+    MINIM_OBJ_VECTOR
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);

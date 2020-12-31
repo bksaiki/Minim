@@ -9,6 +9,7 @@
 #include "list.h"
 #include "number.h"
 #include "print.h"
+#include "vector.h"
 
 //
 //  Printing
@@ -148,6 +149,24 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
             }
         }
         
+        writec_buffer(bf, ')');
+        pp->quote = quotep;
+    }
+    else if (obj->type == MINIM_OBJ_VECTOR)
+    {
+        MinimVector *vec = obj->data;
+        bool first = true;
+        bool quotep = pp->quote;
+
+        pp->quote = true;
+        writes_buffer(bf, "vector(");
+        for (size_t i = 0; i < vec->size; ++i)
+        {
+            writes_buffer(bf, (first ? "" : " "));
+            print_object(vec->arr[i], env, bf, pp);
+            first = false;
+        }
+
         writec_buffer(bf, ')');
         pp->quote = quotep;
     }
