@@ -112,6 +112,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     case MINIM_OBJ_AST:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_HASH:
+    case MINIM_OBJ_VECTOR:
         dest->data = src->data;
         break;
     
@@ -298,6 +299,9 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     
     case MINIM_OBJ_AST:
         return ast_equalp(a->data, b->data);
+
+    case MINIM_OBJ_VECTOR:
+        return minim_vector_equalp(a->data, b->data);
     
     /*
     case MINIM_OBJ_SEQ:
@@ -372,6 +376,10 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     case MINIM_OBJ_CLOSURE:
         minim_lambda_to_buffer(obj->data, bf);
+        break;
+
+    case MINIM_OBJ_VECTOR:
+        minim_vector_bytes(obj->data, bf);
         break;
 
     /*

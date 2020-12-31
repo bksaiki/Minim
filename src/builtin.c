@@ -101,7 +101,9 @@ void env_load_builtins(MinimEnv *env)
     env_load_builtin(env, "hash->list", MINIM_OBJ_FUNC, minim_builtin_hash_to_list);
 
     // Vector
+    env_load_builtin(env, "vector", MINIM_OBJ_FUNC, minim_builtin_vector);
     env_load_builtin(env, "make-vector", MINIM_OBJ_FUNC, minim_builtin_make_vector);
+    env_load_builtin(env, "vector-ref", MINIM_OBJ_FUNC, minim_builtin_vector_ref);
 
     // Sequence
     env_load_builtin(env, "in-range", MINIM_OBJ_FUNC, minim_builtin_in_range);

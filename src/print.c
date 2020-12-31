@@ -162,7 +162,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writes_buffer(bf, "vector(");
         for (size_t i = 0; i < vec->size; ++i)
         {
-            writes_buffer(bf, (first ? "" : " "));
+            if (!first)  writec_buffer(bf, ' ');
             print_object(vec->arr[i], env, bf, pp);
             first = false;
         }

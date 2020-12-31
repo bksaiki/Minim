@@ -16,4 +16,6 @@ void free_minim_vector(MinimVector *vec);
 bool minim_vector_equalp(MinimVector *a, MinimVector *b);
 void minim_vector_bytes(MinimVector *vec, Buffer *bf);
 
+bool minim_vectorp(MinimObject *obj);
+
 #endif

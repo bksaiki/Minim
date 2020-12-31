@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "assert.h"
 #include "builtin.h"
+#include "list.h"
 #include "number.h"
 #include "vector.h"
 
@@ -62,6 +63,11 @@ void minim_vector_bytes(MinimVector *vec, Buffer *bf)
     } 
 }
 
+bool minim_vectorp(MinimObject *obj)
+{
+    return obj->type == MINIM_OBJ_VECTOR;
+}
+
 //
 //  Builtins
 //
@@ -90,6 +96,38 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
         }
 
         init_minim_object(&res, MINIM_OBJ_VECTOR, vec);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_vector(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimVector *vec;
+
+    init_minim_vector(&vec, argc);
+    for (size_t i = 0; i < argc; ++i)
+        vec->arr[i] = copy2_minim_object(args[i]);
+
+    init_minim_object(&res, MINIM_OBJ_VECTOR, vec);
+    return res;
+}
+
+MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "vector-ref", 2, argc) &&
+        assert_generic(&res, "Expected a vector in the first argument of 'vector-ref", minim_vectorp(args[0])) &&
+        assert_exact_nonneg_int(args[1], &res, "Expected a non-negative index in the second argument of 'vector-ref'"))
+    {
+        MinimVector *vec = args[0]->data;
+        MinimNumber *num = args[1]->data;
+        size_t idx = mpz_get_ui(mpq_numref(num->rat));
+
+        if (assert_generic(&res, "Index out of bounds", idx < vec->size))
+            res = copy2_minim_object(vec->arr[idx]);
     }
 
     return res;

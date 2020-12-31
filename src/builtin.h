@@ -82,7 +82,9 @@ DEFINE_BUILTIN_FUN(hash_removeb)
 DEFINE_BUILTIN_FUN(hash_to_list)
 
 // Vector
+DEFINE_BUILTIN_FUN(vector)
 DEFINE_BUILTIN_FUN(make_vector)
+DEFINE_BUILTIN_FUN(vector_ref)
 
 // Sequence
 DEFINE_BUILTIN_FUN(in_range)
