@@ -340,6 +340,16 @@ MinimObject *minim_builtin_hash(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
+MinimObject *minim_builtin_hashp(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "hash?", 1, argc))
+        init_minim_object(&res, MINIM_OBJ_BOOL, minim_hashp(args[0]));
+    
+    return res;
+}
+
 MinimObject *minim_builtin_hash_keyp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;

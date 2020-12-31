@@ -568,10 +568,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 
         it = args[1];
         for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
-        {
-            vals[i] = MINIM_CAR(it);
-            MINIM_CAR(it) = NULL;
-        }
+            vals[i] = copy2_minim_object(MINIM_CAR(it));
 
         if (args[0]->type == MINIM_OBJ_FUNC)
         {

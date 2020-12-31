@@ -206,6 +206,20 @@ int main()
         const int COUNT = 3;
         char strs[3][256] =
         {
+            "(begin (def x (list)) (apply + x))",
+            "(begin (def x (list -1)) (apply + x))",
+            "(begin (def x (list 0 1 2)) (apply + x))"
+        };
+
+        printf("Testing 'apply' (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[3][256] =
+        {
             "(begin (def x (list)) (for ((i x)) i))",
             "(begin (def x (list 1)) (for ((i x)) i))",
             "(begin (def x (list 1 2 3)) (for ((i x)) i))"

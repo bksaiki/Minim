@@ -72,6 +72,7 @@ DEFINE_BUILTIN_FUN(filtern)
 
 // Hash table
 DEFINE_BUILTIN_FUN(hash)
+DEFINE_BUILTIN_FUN(hashp)
 DEFINE_BUILTIN_FUN(hash_keyp)
 DEFINE_BUILTIN_FUN(hash_ref)
 DEFINE_BUILTIN_FUN(hash_remove)

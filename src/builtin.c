@@ -91,6 +91,7 @@ void env_load_builtins(MinimEnv *env)
 
     // Hash table
     env_load_builtin(env, "hash", MINIM_OBJ_FUNC, minim_builtin_hash);
+    env_load_builtin(env, "hash?", MINIM_OBJ_FUNC, minim_builtin_hashp);
     env_load_builtin(env, "hash-key?", MINIM_OBJ_FUNC, minim_builtin_hash_keyp);
     env_load_builtin(env, "hash-ref", MINIM_OBJ_FUNC, minim_builtin_hash_ref);
     env_load_builtin(env, "hash-remove", MINIM_OBJ_FUNC, minim_builtin_hash_remove);
