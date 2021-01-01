@@ -98,6 +98,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     {
     case MINIM_OBJ_BOOL:
         dest->si = src->si;
+        dest->flags |= MINIM_OBJ_OWNER; // override
         break;
 
     case MINIM_OBJ_NUM:
