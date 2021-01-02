@@ -54,10 +54,15 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
                         eval_ast(env, MINIM_CADR(bind)->data, &val);
-                        if (assert_generic(&res, "Expected an iterable object in the bindings of 'for'", minim_iterablep(val)))
+                        if (val->type == MINIM_OBJ_ERR)
+                        {
+                            err = true;
+                            res = val;
+                        }
+                        else if (assert_generic(&res, "Expected an iterable object in the bindings of 'for'", minim_iterablep(val)))
                         {
                             objs[i] = val;
-                            ref_minim_object(&iters[i], objs[i]);
+                            init_minim_iter(&iters[i], objs[i]);
                         }
                         else
                         {
@@ -166,10 +171,15 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
                         eval_ast(env, MINIM_CADR(bind)->data, &val);
-                        if (assert_generic(&res, "Expected an iterable object in the bindings of 'for-list'", minim_iterablep(val)))
+                        if (val->type == MINIM_OBJ_ERR)
+                        {
+                            err = true;
+                            res = val;
+                        }
+                        else if (assert_generic(&res, "Expected an iterable object in the bindings of 'for-list'", minim_iterablep(val)))
                         {
                             objs[i] = val;
-                            ref_minim_object(&iters[i], objs[i]);
+                            init_minim_iter(&iters[i], objs[i]);
                         }
                         else
                         {
@@ -203,7 +213,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
             while(!err && iters_valid(iters, len))
             {
                 MinimEnv *env2;
-
+                
                 init_env(&env2);
                 env2->parent = env;
 

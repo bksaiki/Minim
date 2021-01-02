@@ -15,14 +15,10 @@ void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
     if (type == MINIM_SEQ_NUM_RANGE)
     {
         seq = malloc(sizeof(MinimSeq));
-        seq->state = malloc(sizeof(size_t));
-        seq->end = malloc(sizeof(size_t));
-
-        *((size_t*) seq->state) = va_arg(v, size_t);
-        *((size_t*) seq->end) = va_arg(v, size_t);
+        seq->state = va_arg(v, MinimNumber*);
+        seq->end = va_arg(v, MinimNumber*);
         seq->type = type;
-        seq->done = (*((size_t*) seq->state) == *((size_t*) seq->end));
-
+        seq->done = (minim_number_cmp(seq->state, seq->end) == 0);
         *pseq = seq;
     }
     else
@@ -40,14 +36,14 @@ void copy_minim_seq(MinimSeq **pseq, MinimSeq *src)
 
     if (src->type == MINIM_SEQ_NUM_RANGE)
     {
-        seq->state = malloc(sizeof(size_t));
-        seq->end = malloc(sizeof(size_t));
+        MinimNumber *begin, *end;
 
-        memcpy(seq->state, src->state, sizeof(size_t));
-        memcpy(seq->state, src->state, sizeof(size_t));
+        copy_minim_number(&begin, src->state);
+        copy_minim_number(&end, src->end);
+        seq->state = begin;
+        seq->end = end;
         seq->type = src->type;
         seq->done = src->done;   
-
         *pseq = seq;
     }
     else
@@ -60,8 +56,18 @@ void copy_minim_seq(MinimSeq **pseq, MinimSeq *src)
 
 void free_minim_seq(MinimSeq *seq)
 {
-    if (seq->state)     free(seq->state);
-    if (seq->end)       free(seq->end);
+    switch (seq->type)
+    {
+    case MINIM_SEQ_NUM_RANGE:
+        free_minim_number(seq->state);
+        free_minim_number(seq->end);
+        break;
+    
+    default:
+        printf("Unknown sequence type\n...");
+        break;
+    }
+
     free(seq);
 }
 
@@ -69,12 +75,10 @@ MinimObject *minim_seq_get(MinimSeq *seq)
 {
     if (seq->type == MINIM_SEQ_NUM_RANGE)
     {
-        MinimNumber *num;
         MinimObject *obj;
-        size_t *p = seq->state;
+        MinimNumber *num;
 
-        init_minim_number(&num, MINIM_NUMBER_EXACT);
-        mpq_set_ui(num->rat, *p, 1);
+        copy_minim_number(&num, seq->state);
         init_minim_object(&obj, MINIM_OBJ_NUM, num);
         return obj;
     }
@@ -89,12 +93,14 @@ void minim_seq_next(MinimSeq *seq)
 {
     if (seq->type == MINIM_SEQ_NUM_RANGE)
     {
-        size_t *pnum = seq->state;
-        size_t *pend = seq->end;
+        mpq_t one;
 
-        ++(*pnum);
-        if (*pnum == *pend)
-            seq->done = true;
+        mpq_init(one);
+        mpq_set_ui(one, 1, 1);
+        mpq_add(seq->state, seq->state, one);
+        mpq_clear(one);
+    
+        seq->done = (minim_number_cmp(seq->state, seq->end) == 0);     
     }
     else
     {
@@ -116,6 +122,16 @@ bool minim_sequencep(MinimObject *thing)
 
 /* Builtins */
 
+MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "sequence?", 1, argc))
+        init_minim_object(&res, MINIM_OBJ_BOOL, minim_sequencep(args[0]));
+    
+    return res;
+}
+
 MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
@@ -126,18 +142,14 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
         (argc == 1 || assert_exact_nonneg_int(args[1], &res, "Expected a non-negative \
                                               exact integer in the 1st argument of 'in-range'")))
     {
-        MinimNumber *val;
+        MinimNumber *begin, *end;
         MinimSeq *seq;
-        size_t begin, end;
 
         if (argc == 2)
         {
-            val = args[0]->data;
-            begin = mpz_get_ui(mpq_numref(val->rat));
-            val = args[1]->data;
-            end = mpz_get_ui(mpq_numref(val->rat));
-
-            if (end < begin)
+            copy_minim_number(&begin, args[0]->data);
+            copy_minim_number(&end, args[1]->data);
+            if (minim_number_cmp(begin, end) > 0)
             {
                 minim_error(&res, "Expected a valid range [begin, end) in 'in-range'");
                 return res;
@@ -145,24 +157,14 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
         }
         else
         {
-            begin = 0;
-            val = args[0]->data;
-            end = mpz_get_ui(mpq_numref(val->rat));
+            init_minim_number(&begin, MINIM_NUMBER_EXACT);
+            mpq_set_ui(begin->rat, 0, 1);
+            copy_minim_number(&end, args[0]->data);
         }
 
         init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
         init_minim_object(&res, MINIM_OBJ_SEQ, seq);
     }
 
-    return res;
-}
-
-MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t argc)
-{
-    MinimObject *res;
-
-    if (assert_exact_argc(&res, "sequence?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_sequencep(args[0]));
-    
     return res;
 }
