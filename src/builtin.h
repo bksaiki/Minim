@@ -92,6 +92,8 @@ DEFINE_BUILTIN_FUN(list_to_vector)
 // Sequence
 DEFINE_BUILTIN_FUN(sequencep)
 DEFINE_BUILTIN_FUN(in_range)
+DEFINE_BUILTIN_FUN(in_naturals)
+DEFINE_BUILTIN_FUN(sequence_to_list)
 
 // Math
 DEFINE_BUILTIN_FUN(add)

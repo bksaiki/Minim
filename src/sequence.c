@@ -4,6 +4,7 @@
 
 #include "assert.h"
 #include "number.h"
+#include "list.h"
 #include "sequence.h"
 
 void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
@@ -115,6 +116,17 @@ bool minim_seq_donep(MinimSeq *seq)
 
 /* Internals */
 
+bool assert_sequence(MinimObject *thing, MinimObject **err, const char *msg)
+{
+    if (thing->type != MINIM_OBJ_SEQ)
+    {
+        minim_error(err, msg);
+        return false;
+    }
+
+    return true;
+}
+
 bool minim_sequencep(MinimObject *thing)
 {
     return thing->type == MINIM_OBJ_SEQ;
@@ -140,7 +152,7 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
         assert_exact_nonneg_int(args[0], &res, "Expected a non-negative exact integer \
                                 in the 1st argument of 'in-range'") &&
         (argc == 1 || assert_exact_nonneg_int(args[1], &res, "Expected a non-negative \
-                                              exact integer in the 1st argument of 'in-range'")))
+                                              exact integer in the 2nd argument of 'in-range'")))
     {
         MinimNumber *begin, *end;
         MinimSeq *seq;
@@ -164,6 +176,75 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
 
         init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
         init_minim_object(&res, MINIM_OBJ_SEQ, seq);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_range_argc(&res, "in-naturals", 0, 1, argc) &&
+        (argc == 0 || assert_exact_nonneg_int(args[0], &res, "Expected a non-negative exact integer in the 1st argument of 'in-naturals'")))
+    {
+        MinimNumber *begin, *end;
+        MinimSeq *seq;
+
+        if (argc == 1)
+        {
+            copy_minim_number(&begin, args[0]->data);
+        }
+        else
+        {
+            init_minim_number(&begin, MINIM_NUMBER_EXACT);
+            mpq_set_ui(begin->rat, 0, 1);
+        }
+
+        init_minim_number(&end, MINIM_NUMBER_EXACT);
+        mpq_set_si(end->rat, -1, 1);
+
+        init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
+        init_minim_object(&res, MINIM_OBJ_SEQ, seq);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "sequence->list", 1, argc) &&
+        assert_sequence(args[0], &res, "Expected a sequence in the 1st argument of 'sequence->list"))
+    {
+        MinimObject *seq = fresh_minim_object(args[0]);
+        MinimObject *it, *val;
+        bool first = true;
+
+        while (!minim_seq_donep(seq->data))
+        {
+            val = minim_seq_get(seq->data);
+            if (first)
+            {
+                init_minim_object(&res, MINIM_OBJ_PAIR, val, NULL);
+                it = res;
+                first = false;
+            }
+            else
+            {   
+                init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, val, NULL);
+                it = MINIM_CDR(it);
+            }
+
+            minim_seq_next(seq->data);
+        }
+        
+        if (first)
+            init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+
+        if (!MINIM_OBJ_OWNERP(args[0]))
+            free_minim_object(seq);
     }
 
     return res;

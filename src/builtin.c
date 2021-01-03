@@ -111,6 +111,8 @@ void env_load_builtins(MinimEnv *env)
     // Sequence
     env_load_builtin(env, "sequence?", MINIM_OBJ_FUNC, minim_builtin_sequencep);
     env_load_builtin(env, "in-range", MINIM_OBJ_FUNC, minim_builtin_in_range);
+    env_load_builtin(env, "in-naturals", MINIM_OBJ_FUNC, minim_builtin_in_naturals);
+    env_load_builtin(env, "sequence->list", MINIM_OBJ_FUNC, minim_builtin_sequence_to_list);
 
     // Math
     env_load_builtin(env, "+", MINIM_OBJ_FUNC, minim_builtin_add);

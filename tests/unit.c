@@ -353,5 +353,32 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(for-list ((x '()) (i (in-naturals))) i)",             "'()",
+            "(for-list ((x '(1 2 3 4)) (i (in-naturals))) i)",      "'(0 1 2 3)",
+            "(for-list ((x '(1 2 3 4)) (i (in-naturals 2))) i)",    "'(2 3 4 5)"
+        };
+
+        printf("Testing 'in-naturals'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 2;
+        char strs[4][256] =
+        {
+            "(sequence->list (in-range 0))",    "'()",
+            "(sequence->list (in-range 5))",    "'(0 1 2 3 4)"    
+        };
+
+        printf("Testing 'sequence->list'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     return (int)(!status);
 }
