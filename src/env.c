@@ -147,3 +147,8 @@ MinimEnv *pop_env(MinimEnv *env)
     free_single_env(env);
     return next;
 }
+
+size_t env_symbol_count(MinimEnv *env)
+{
+    return (env->parent ? (env->count + env_symbol_count(env->parent)) : env->count); 
+}

@@ -38,7 +38,7 @@
   c -= a; c -= b; c ^= (b>>15); \
 }
 
-static uint32_t hash_bytes(void* data, size_t length, uint32_t seed)
+uint32_t hash_bytes(void* data, size_t length, uint32_t seed)
 {
     uint8_t* k;
     uint32_t a, b, c, len;
@@ -174,7 +174,7 @@ static void rehash_table(MinimHash *ht)
     
 }
 
-void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
+static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 {
     MinimObject *ck, *cv;
 
@@ -219,7 +219,7 @@ void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     }
 }
 
-bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
+static bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
 {
     Buffer *bf = minim_obj_to_bytes(k);
     uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
@@ -235,7 +235,7 @@ bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
     return false;
 }
 
-MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
+static MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
 {
     MinimObject *cp = NULL;
     Buffer *bf = minim_obj_to_bytes(k);
@@ -252,7 +252,7 @@ MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
     return cp;
 }
 
-void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
+static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
 {
     Buffer *bf = minim_obj_to_bytes(k);
     uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);

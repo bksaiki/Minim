@@ -39,4 +39,7 @@ void free_env(MinimEnv *env);
 // Deletes the top environment object and returns the next one.
 MinimEnv *pop_env(MinimEnv *env);
 
+// Returns the number of symbols in the environment
+size_t env_symbol_count(MinimEnv *env);
+
 #endif

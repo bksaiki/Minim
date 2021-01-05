@@ -23,10 +23,7 @@ void init_minim_hash_table(MinimHash **pht);
 void copy_minim_hash_table(MinimHash **pht, MinimHash *src);
 void free_minim_hash_table(MinimHash *ht);
 
-void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v);
-bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k);
-MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k);
-void minim_hash_table_remove(MinimHash *ht, MinimObject *k);
+uint32_t hash_bytes(void* data, size_t length, uint32_t seed);
 
 // Internals
 

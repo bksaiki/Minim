@@ -21,9 +21,8 @@ LDFLAGS 	= -lm -lgmp
 
 # Specific rules
 
-main: $(EXE);
-
-build: $(OBJS);
+main: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 tests: $(TEST_EXES)
 	$(TEST_DIR)/test.sh $(TEST_EXES)
@@ -56,9 +55,6 @@ $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 
 $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
-
-$(EXE): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 	
 -include $(DEPS)
 .PHONY: main build clean clean-deps clean-all
