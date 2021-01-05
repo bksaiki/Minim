@@ -88,9 +88,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
     if (lam->rest || assert_exact_argc(&res, ((lam->name) ? lam->name : "unnamed lambda"), lam->argc, argc))
     {   
-        init_env(&env2);
-        env2->parent = env;
-
+        init_env(&env2, env);
         for (size_t i = 0; i < lam->argc; ++i)
         {
             copy_minim_object(&val, args[i]);

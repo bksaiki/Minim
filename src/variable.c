@@ -101,9 +101,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         it = bindings;
         
         // Initialize child environment
-        init_env(&env2);        
-        env2->parent = env;
-        
+        init_env(&env2, env);
         for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
         {
             MinimObject *bind, *sym, *val;
@@ -162,9 +160,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
         it = bindings;
         
         // Initialize child environment
-        init_env(&env2);        
-        env2->parent = env;
-        
+        init_env(&env2, env);
         for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
         {
             MinimObject *bind, *sym, *val;
@@ -259,8 +255,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
         MinimObject *val;
         MinimEnv *env2;
 
-        init_env(&env2);
-        env2->parent = env;
+        init_env(&env2, env);
         for (size_t i = 0; i < argc; ++i)
         {
             eval_ast(env2, args[i]->data, &val);

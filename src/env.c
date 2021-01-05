@@ -2,26 +2,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "env.h"    
 
+#include "env.h"
 #include "lambda.h"
-
-static void free_single_env(MinimEnv *env)
-{
-    if (env->count != 0)
-    {
-        for (size_t i = 0; i < env->count; ++i)
-        {
-            free(env->syms[i]);
-            free_minim_object(env->vals[i]);
-        }
-
-        free(env->syms);
-        free(env->vals);
-    }
-    
-    free(env);
-}
 
 static void add_metadata(MinimObject *obj, const char *str)
 {
@@ -39,104 +22,83 @@ static void add_metadata(MinimObject *obj, const char *str)
 //  Visible functions
 //
 
-void init_env(MinimEnv **penv)
+void init_env(MinimEnv **penv, MinimEnv *parent)
 {
     MinimEnv *env = malloc(sizeof(MinimEnv));
-    env->count = 0;
-    env->syms = NULL;
-    env->vals = NULL;
-    env->parent = NULL;
+    env->names = NULL;
+    env->name_count = 0;
     *penv = env;
+
+    if (parent)
+    {
+        env->parent = parent;
+        env->table = parent->table;
+    }
+    else
+    {
+        MinimSymbolTable *table;
+
+        init_minim_symbol_table(&table);
+        env->parent = NULL;
+        env->table = table;
+    }
 }
 
 MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 {
-    MinimObject *obj;
-
-    for (size_t i = 0; i < env->count; ++i)
-    {
-        if (strcmp(sym, env->syms[i]) == 0)
-        {
-            ref_minim_object(&obj, env->vals[i]);
-            return obj;
-        }
-    }
-
-    if (env->parent)    return env_get_sym(env->parent, sym);
-    else                return NULL;
+    return minim_symbol_table_get(env->table, sym);
 }
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
-    MinimObject *fresh = fresh_minim_object(obj);
+    MinimObject *owned = fresh_minim_object(obj);
 
-    for (size_t i = 0; i < env->count; ++i)
+    add_metadata(owned, sym);
+    minim_symbol_table_add(env->table, sym, owned);
+
+    if (env->parent)
     {
-        if (strcmp(sym, env->syms[i]) == 0)
-        {
-            free_minim_object(env->vals[i]);
-            env->vals[i] = fresh;
-            add_metadata(env->vals[i], sym);
-            return;
-        }
+        ++env->name_count;
+        env->names = realloc(env->names, env->name_count);
+        env->names[env->name_count - 1] = malloc((strlen(sym) + 1) * sizeof(char));
+        strcpy(env->names[env->name_count - 1], sym);
     }
-
-    ++env->count;
-    env->syms = realloc(env->syms, env->count * sizeof(char*));
-    env->vals = realloc(env->vals, env->count * sizeof(MinimObject**));
-
-    env->syms[env->count - 1] = malloc(strlen(sym) + 1);
-    env->vals[env->count - 1] = fresh;
-    strcpy(env->syms[env->count - 1], sym);
-    add_metadata(env->vals[env->count - 1], sym);
 }
 
 int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
 {
-    for (size_t i = 0; i < env->count; ++i)
-    {
-        if (strcmp(sym, env->syms[i]) == 0)
-        {
-            free_minim_object(env->vals[i]);
-            env->vals[i] = obj;
-            add_metadata(env->vals[i], sym);
-            return 1;
-        }
-    }
+    MinimObject *owned = fresh_minim_object(obj);
 
-    if (env->parent)
-        return env_set_sym(env->parent, sym, obj);
+    add_metadata(owned, sym);
+    minim_symbol_table_add(env->table, sym, owned);
     return 0;
 }
 
 const char *env_peek_key(MinimEnv *env, MinimObject *value)
 {
-    for (size_t i = 0; i < env->count; ++i)
-    {
-        if (value->data == env->vals[i]->data)
-            return env->syms[i];
-    }
-
-    if (env->parent)    return env_peek_key(env->parent, value);
-    else                return NULL;
+    return NULL;
 }
 
 MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
 {
-    for (size_t i = 0; i < env->count; ++i)
-    {
-        if (strcmp(sym, env->syms[i]) == 0)
-            return env->vals[i];
-    }
-
-    if (env->parent)    return env_peek_sym(env->parent, sym);
-    else                return NULL;
+    return minim_symbol_table_peek(env->table, sym);
 }
 
 void free_env(MinimEnv *env)
 {
-    if (env->parent)  free_env(env->parent);
-    free_single_env(env);
+    if (env->parent)
+    {
+        free_env(env);
+        for (size_t i = 0; i < env->name_count; ++i)
+            free(env->names[i]);
+        free(env->names);
+    }
+    else
+    {
+        free_minim_symbol_table(env->table);
+    }
+
+    free(env);
 }
 
 MinimEnv *pop_env(MinimEnv *env)
@@ -144,11 +106,17 @@ MinimEnv *pop_env(MinimEnv *env)
     MinimEnv *next;
 
     next = env->parent;
-    free_single_env(env);
+    for (size_t i = 0; i < env->name_count; ++i)
+    {
+        minim_symbol_table_pop(env->table, env->names[i]);
+        free(env->names[i]);
+    }
+
+    free(env->names);
     return next;
 }
 
 size_t env_symbol_count(MinimEnv *env)
 {
-    return (env->parent ? (env->count + env_symbol_count(env->parent)) : env->count); 
+    return env->table->size;
 }

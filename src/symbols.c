@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include "hash.h"
 #include "symbols.h"
 
 #define hashseed   ((uint32_t)  0xdeadbeef)
@@ -73,7 +74,7 @@ void free_minim_symbol_table(MinimSymbolTable *table)
         {
             MinimSymbolEntry *val, *it, *tmp;
             
-            val = table->rows[i].vals[i];
+            val = table->rows[i].vals[j];
             it = val;
             while (it)
             {
@@ -104,6 +105,14 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
 
     size = 2 * table->alloc;
     rows = malloc(size * sizeof(MinimSymbolTableRow));
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        rows[i].names = NULL;
+        rows[i].vals = NULL;
+        rows[i].length = 0;
+    }
+
     for (size_t i = 0; i < table->alloc; ++i)
     {
         for (size_t j = 0; j < table->rows[i].length; ++j)
@@ -149,9 +158,10 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObje
         }
     }
 
+    ++table->size;
     ++table->rows[idx].length;
-    table->rows[idx].names = realloc(table->rows[idx].names, table->rows[idx].length);
-    table->rows[idx].vals = realloc(table->rows[idx].vals, table->rows[idx].length);
+    table->rows[idx].names = realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
+    table->rows[idx].vals = realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
 
     table->rows[idx].names[table->rows[idx].length - 1] = malloc((len + 1) * sizeof(char));
     strcpy(table->rows[idx].names[table->rows[idx].length - 1], name);
@@ -190,6 +200,43 @@ MinimObject *minim_symbol_table_peek(MinimSymbolTable *table, const char *name)
     {
         if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
             return table->rows[idx].vals[i]->obj;
+    }
+    
+    return NULL;
+}
+
+bool minim_symbol_table_pop(MinimSymbolTable *table, const char *name)
+{
+    size_t hash, idx;
+
+    hash = hash_bytes(name, strlen(name), hashseed);
+    idx = hash % table->alloc;
+
+    for (size_t i = 0; i < table->rows[idx].length; ++i)
+    {
+        if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
+        {
+            if (table->rows[idx].vals[i]->parent)
+            {
+                MinimSymbolEntry *tmp = table->rows[idx].vals[i]->parent;
+                free_minim_object(table->rows[idx].vals[i]->obj);
+                free(table->rows[idx].vals[i]);
+                table->rows[idx].vals[i] = tmp;
+            }
+            else
+            {
+                free_minim_object(table->rows[idx].vals[i]->obj);
+                free(table->rows[idx].vals[i]);
+
+                table->rows[idx].names[i] = table->rows[idx].names[table->rows[idx].length - 1];
+                table->rows[idx].vals[i] = table->rows[idx].vals[table->rows[idx].length - 1];
+                
+                --table->size;
+                --table->rows[idx].length;
+                table->rows[idx].names = realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
+                table->rows[idx].vals = realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
+            }
+        }
     }
     
     return NULL;

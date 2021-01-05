@@ -10,7 +10,7 @@ int main(int argc, char** argv)
     Buffer *bf;
     PrintParams pp;
 
-    init_env(&env);
+    init_env(&env, NULL);
     env_load_builtins(env);
     set_default_print_params(&pp);
 
