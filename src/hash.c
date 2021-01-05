@@ -38,13 +38,13 @@
   c -= a; c -= b; c ^= (b>>15); \
 }
 
-uint32_t hash_bytes(void* data, size_t length, uint32_t seed)
+uint32_t hash_bytes(const void* data, size_t length, uint32_t seed)
 {
     uint8_t* k;
     uint32_t a, b, c, len;
 
     /* Set up the internal state */
-    k = data;
+    k = (uint8_t*)data;
     len = length;
     a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
     c = seed;         /* the previous hash value */
