@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     env_load_builtins(env);
     set_default_print_params(&pp);
 
-    printf("Minim v%s (%ld symbols loaded)\n", MINIM_VERSION_STR, env_symbol_count(env));
+    printf("Minim v%s \n", MINIM_VERSION_STR);
 
     while (1)
     {

@@ -233,11 +233,29 @@ bool minim_symbol_table_pop(MinimSymbolTable *table, const char *name)
                 
                 --table->size;
                 --table->rows[idx].length;
+                free(table->rows[idx].names[table->rows[idx].length]);
                 table->rows[idx].names = realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
                 table->rows[idx].vals = realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
             }
         }
     }
     
+    return NULL;
+}
+
+const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj)
+{
+    for (size_t i = 0; i < table->alloc; ++i)
+    {
+        for (size_t j = 0; j < table->rows[i].length; ++j)
+        {
+            for (MinimSymbolEntry *it = table->rows[i].vals[j]; it; it = it->parent)
+            {
+                if (obj->data == it->obj->data)
+                    return table->rows[i].names[j];
+            }
+        }
+    }
+
     return NULL;
 }

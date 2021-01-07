@@ -59,7 +59,7 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     if (env->parent)
     {
         ++env->name_count;
-        env->names = realloc(env->names, env->name_count);
+        env->names = realloc(env->names, env->name_count * sizeof(char*));
         env->names[env->name_count - 1] = malloc((strlen(sym) + 1) * sizeof(char));
         strcpy(env->names[env->name_count - 1], sym);
     }
@@ -76,7 +76,7 @@ int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
 
 const char *env_peek_key(MinimEnv *env, MinimObject *value)
 {
-    return NULL;
+    return minim_symbol_table_peek_name(env->table, value);
 }
 
 MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
@@ -113,6 +113,7 @@ MinimEnv *pop_env(MinimEnv *env)
     }
 
     free(env->names);
+    free(env);
     return next;
 }
 
