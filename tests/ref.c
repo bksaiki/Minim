@@ -315,5 +315,46 @@ int main()
             status &= evaluate(strs[i]);
     }
 
+    {
+        const int COUNT = 2;
+        char strs[4][256] =
+        {
+            "(begin (def x 1) (vector x))",             "vector(1)",
+            "(begin (def x 1) (def y 2) (vector x y))",   "vector(1 2)"
+        };
+
+        printf("Testing 'vector (ref)'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(begin (def v (vector)) (vector->list v))",         "'()",
+            "(begin (def v (vector 1)) (vector->list v))",       "'(1)",
+            "(begin (def v (vector 1 2 3)) (vector->list v))",   "'(1 2 3)"
+        };
+
+        printf("Testing 'vector->list (ref)'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(begin (def x '()) (list->vector x))",         "vector()",
+            "(begin (def x '(1)) (list->vector x))",        "vector(1)",
+            "(begin (def x '(1 2 3)) (list->vector x))",    "vector(1 2 3)"
+        };
+
+        printf("Testing 'list->vector (ref)'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     return (int)(!status);
 }

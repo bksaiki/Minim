@@ -380,5 +380,89 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(vector)",             "vector()",
+            "(vector 1)",           "vector(1)",
+            "(vector 1 2 3)",       "vector(1 2 3)"
+        };
+
+        printf("Testing 'vector'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(make-vector 0)",      "vector()",
+            "(make-vector 1)",      "vector(0)",
+            "(make-vector 3)",      "vector(0 0 0)"
+        };
+
+        printf("Testing 'make-vector'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(vector-ref (vector 1) 0)",        "1",
+            "(vector-ref (vector 1 2 3) 1)",    "2",
+            "(vector-ref (vector 1 2 3) 2)",    "3"
+        };
+
+        printf("Testing 'vector-ref'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(begin (def v (vector 1)) (vector-set! v 0 2) v)",         "vector(2)",
+            "(begin (def v (vector 1 2 3)) (vector-set! v 1 1) v)",     "vector(1 1 3)",
+            "(begin (def v (vector 1 2 3)) (vector-set! v 2 1) v)",     "vector(1 2 1)"
+        };
+
+        printf("Testing 'vector-set!'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(vector->list (vector))",          "'()",
+            "(vector->list (vector 1))",        "'(1)",
+            "(vector->list (vector 1 2 3))",    "'(1 2 3)"
+        };
+
+        printf("Testing 'vector->list'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(list->vector '())",         "vector()",
+            "(list->vector '(1))",        "vector(1)",
+            "(list->vector '(1 2 3))",    "vector(1 2 3)"
+        };
+
+        printf("Testing 'list->vector'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     return (int)(!status);
 }

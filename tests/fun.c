@@ -33,7 +33,7 @@ int main()
         const int COUNT = 1;
         char strs[1][256] =
         {
-            "(begin (def foo (lambda (x) x))) (foo 1) (foo 'a))"
+            "(begin (def foo (lambda (x) x)) (foo 1) (foo 'a))"
         };
 
         printf("Testing lambdas\n");
@@ -45,7 +45,7 @@ int main()
         const int COUNT = 1;
         char strs[1][256] =
         {
-            "(begin (def ident (lambda (x) x))) (def foo ident) (foo 1) (foo 'a))"
+            "(begin (def ident (lambda (x) x)) (def foo ident) (foo 1) (foo 'a))"
         };
 
         printf("Testing copied lambdas\n");

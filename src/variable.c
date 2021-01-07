@@ -65,6 +65,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
             {
                 env_intern_sym(env, ((char*) sym->data), val);
                 init_minim_object(&res, MINIM_OBJ_VOID);
+                RELEASE_IF_REF(val);
             }
             else
             {
