@@ -83,7 +83,7 @@ static size_t intlen(long l)
 
 // *** Writing *** //
 
-void write_buffer(Buffer *bf, void *data, size_t len)
+void write_buffer(Buffer *bf, const void *data, size_t len)
 {
     resize_buffer(bf, bf->pos + len);
     memcpy(bf->data + bf->pos, data, len);
@@ -91,9 +91,10 @@ void write_buffer(Buffer *bf, void *data, size_t len)
     bf->data[bf->pos] = '\0';
 }
 
-void writes_buffer(Buffer *bf, char *str)
+void writes_buffer(Buffer *bf, const char *str)
 {
-    write_buffer(bf, str, strlen(str));
+    
+    write_buffer(bf, &str[0], strlen(str));
 }
 
 void writec_buffer(Buffer *bf, char c)
@@ -139,6 +140,14 @@ void writeb_buffer(Buffer *bf, Buffer *src)
     resize_buffer(bf, bf->pos + src->pos);
     memcpy(bf->data + bf->pos, src->data, src->pos + 1);
     bf->pos += src->pos;
+}
+
+void writesn_buffer(Buffer *bf, const char *str, size_t len)
+{
+    resize_buffer(bf, bf->pos + len);
+    strncpy(bf->data + bf->pos, str, len);
+    bf->pos += len;
+    bf->data[bf->pos] = '\0';
 }
 
 // *** Format *** //

@@ -30,40 +30,52 @@ static bool is_rational(char *str)
     return (*it == '\0');
 }
 
-static bool is_float(char *str)
+static bool is_float(const char *str)
 {
-    char *it = str;
+    size_t idx = 0;
+    bool digit = false;
 
-    if ((*it == '+' || *it == '-') &&
-        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+    if (str[idx] == '+' || str[idx] == '-')
+        ++idx;
+    
+    if (str[idx] >= '0' && str[idx] <= '9')
     {
-        it += 2;
+        ++idx;
+        digit = true;
     }
+    
+    while (str[idx] >= '0' && str[idx] <= '9')
+        ++idx;
 
-    while (*it >= '0' && *it <= '9')    ++it;
-
-    if (*it != '.' && *it != 'e')
+    if (str[idx] != '.' && str[idx] != 'e')
         return false;
 
-    if (*it == '.')     ++it;
+    if (str[idx] == '.')
+        ++idx;
 
-    while (*it >= '0' && *it <= '9')    ++it;
-
-    if (*it == 'e')
+    if (str[idx] >= '0' && str[idx] <= '9')
     {
-        if (it == str)     return false;
-
-        ++it;
-        if ((*it == '+' || *it == '-') &&
-            (*(it + 1) >= '0' && *(it + 1) <= '9'))
-        {
-            it += 2;
-        }
-
-        while (*it >= '0' && *it <= '9')    ++it;
+        ++idx;
+        digit = true;
     }
 
-    return (*it == '\0');
+    while (str[idx] >= '0' && str[idx] <= '9')
+        ++idx;
+
+    if (str[idx] == 'e')
+    {
+        ++idx;
+        if (!str[idx])  return false;
+
+        if ((str[idx] == '+' || str[idx] == '-') &&
+            str[idx + 1] >= '0' && str[idx + 1] <= '9')
+            idx += 2;
+
+        while (str[idx] >= '0' && str[idx] <= '9')
+            ++idx;
+    }
+
+    return digit && !str[idx];
 }
 
 static bool is_str(char *str)
