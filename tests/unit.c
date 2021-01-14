@@ -22,11 +22,12 @@ int main()
     bool status = true;
 
     {
-        const int COUNT = 2;
-        char strs[4][256] =
+        const int COUNT = 3;
+        char strs[6][256] =
         {
-            "'x",            "'x",
-            "+",            "<function:+>"
+            "'x",           "'x",
+            "+",            "<function:+>",
+            "1",            "1"
         };
 
         printf("Testing single expressions\n");
@@ -135,6 +136,22 @@ int main()
         };
 
         printf("Testing pairs\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "'(1 . 2)",                     "'(1 . 2)",
+            "'(1 . (2 . 3))",               "'(1 2 . 3)",
+            "'(1 . (2 . (3 . 4)))",         "'(1 2 3 . 4)",
+            "'(1 . ())",                    "'(1)",
+            "'(1 . (1 2))",                 "'(1 1 2)"
+        };
+
+        printf("Testing pairs (shorthand)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

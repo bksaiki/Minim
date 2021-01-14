@@ -158,15 +158,28 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
         MinimBuiltin proc;
 
         args = malloc(node->argc * sizeof(MinimObject*));
-        proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
-
         for (size_t i = 0; i < node->argc; ++i)
         {
             if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
             else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
         }
 
-        res = proc(env, args, node->argc);
+        if (node->argc == 3 && args[1]->type == MINIM_OBJ_SYM && strcmp(args[1]->data, ".") == 0)
+        {
+            MinimObject *tmp;
+
+            proc = ((MinimBuiltin) env_peek_sym(env, "cons")->data);
+            tmp = args[1];
+            args[1] = args[2];
+            args[2] = tmp;
+            res = proc(env, args, 2);
+        }
+        else
+        {
+            proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
+            res = proc(env, args, node->argc);
+        }
+
         free_minim_objects(args, node->argc);
 
         return res;
