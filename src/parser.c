@@ -223,6 +223,26 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
     return node;
 }
 
+static void expand_postpass(MinimAst *ast)
+{
+    for (size_t i = 0; i < ast->argc; ++i)
+        expand_postpass(ast->children[i]);
+    
+    if (ast->argc == 5 && ast->children[1]->sym && ast->children[3]->sym &&
+        strcmp(ast->children[1]->sym, ".") == 0 && strcmp(ast->children[3]->sym, ".") == 0)
+    {
+        free_ast(ast->children[1]);
+        free_ast(ast->children[3]);
+
+        ast->children[1] = ast->children[0];
+        ast->children[0] = ast->children[2];
+        ast->children[2] = ast->children[4];
+
+        ast->children = realloc(ast->children, 3 * sizeof(MinimAst));
+        ast->argc = 3;
+    }
+}
+
 static void print_ast_errors(MinimAst* node)
 {
     if (node->tags & MINIM_AST_ERR)
@@ -241,20 +261,23 @@ static void print_ast_errors(MinimAst* node)
 //  Visible functions
 // 
 
-int parse_str(const char* str, MinimAst** syn)
+int parse_str(const char* str, MinimAst** psyntax)
 {
+    MinimAst *syntax;
     Buffer *bf;
 
     init_buffer(&bf);
     expand_input(str, bf);
-    *syn = parse_str_node(bf->data, 0, strlen(bf->data));
+    syntax = parse_str_node(bf->data, 0, strlen(bf->data));
+    *psyntax = syntax;
+
     free_buffer(bf);
+    expand_postpass(syntax);
     
-    if (!ast_validp(*syn))
+    if (!ast_validp(syntax))
     {
-        print_ast_errors(*syn);
-        free_ast(*syn);
-        syn = NULL;
+        print_ast_errors(syntax);
+        free_ast(syntax);
         return 0;
     } 
     

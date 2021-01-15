@@ -5,6 +5,6 @@
 #include "ast.h"
 
 // Parses a single expression. Returns null on failure.
-int parse_str(const char* str, MinimAst** syn);
+int parse_str(const char* str, MinimAst** psyntax);
 
 #endif
