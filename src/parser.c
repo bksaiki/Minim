@@ -10,6 +10,10 @@
 #define EXPAND_STRING       ((uint8_t)0x1)
 #define EXPAND_QUOTE        ((uint8_t)0x2)
 
+
+#define open_paren(x)       (x == '(' || x == '[' || x == '{')
+#define closed_paren(x)     (x == ')' || x == ']' || x == '}')
+
 static void expand_input(const char *str, Buffer *bf)
 {
     size_t len = strlen(str), paren = 0;
@@ -79,14 +83,14 @@ static size_t get_argc(const char* str, size_t begin, size_t end)
     {
         while (isspace(str[begin])) ++idx;
 
-        if (str[idx] == '(')
+        if (open_paren(str[idx]))
         {
             size_t paren = 1;
 
             for (idx2 = idx + 1; idx2 < end && paren > 0; ++idx2)
             {
-                if (str[idx2] == '(')        ++paren;
-                else if (str[idx2] == ')')   --paren;
+                if (open_paren(str[idx2]))          ++paren;
+                else if (closed_paren(str[idx2]))   --paren;
             }
         }
         else if (str[idx] == '\"')
@@ -118,7 +122,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
     size_t last = end - 1;
     char *tmp;
 
-    if (str[begin] == '(' && str[last] == ')')
+    if (open_paren(str[begin]) && closed_paren(str[last]))
     {
         size_t i = begin + 1, j;
 
@@ -127,14 +131,14 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
         {
             for (size_t idx = 0; idx < node->argc; ++idx)
             {
-                if (str[i] == '(' || (str[i] == '\'' && str[i + 1] == '('))
+                if (open_paren(str[i]))
                 {
                     size_t paren = 1;
 
                     for (j = i + 1; paren != 0 && j < last; ++j)
                     {
-                        if (str[j] == '(')         ++paren;
-                        else if (str[j] == ')')    --paren;
+                        if (open_paren(str[j]))         ++paren;
+                        else if (closed_paren(str[j]))  --paren;
                     }
                 }
                 else if (str[i] == '\"')
@@ -185,7 +189,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
             free(tmp);
         }
     }
-    else if (str[begin] != '(' && str[last] != ')')
+    else if (!open_paren(str[begin]) && !closed_paren(str[last]))
     {
         size_t len = end - begin;
         bool space = false;
