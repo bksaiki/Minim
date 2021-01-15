@@ -71,111 +71,101 @@ static void expand_input(const char *str, Buffer *bf)
     }
 }
 
-static int get_arg_len(char* start, char* end)
+static size_t get_argc(const char* str, size_t begin, size_t end)
 {
-    char *it, *it2;
-    int paren, count = 0;
+    size_t idx = begin, idx2, count = 0;
 
-    it = start;
-    while (it != end)
+    while (idx < end)
     {
-        while (isspace(*it) || *it == '\'' || *it == ',')   // special characters
-            ++it;  
+        while (isspace(str[begin])) ++idx;
 
-        if (*it == '(')
+        if (str[idx] == '(')
         {
-            paren = 1;
-            for (it2 = it + 1; it2 != end && paren != 0; ++it2)
+            size_t paren = 1;
+
+            for (idx2 = idx + 1; idx2 < end && paren > 0; ++idx2)
             {
-                if (*it2 == '(')        ++paren;
-                else if (*it2 == ')')   --paren;
+                if (str[idx2] == '(')        ++paren;
+                else if (str[idx2] == ')')   --paren;
             }
         }
-        else if (*it == '\"')
+        else if (str[idx] == '\"')
         {
-            for (it2 = it + 1; it2 != end; ++it2)
+            for (idx2 = idx + 1; idx2 < end; ++idx2)
             {
-                if (*it2 == '\"' && *(it2 - 1) != '\\')
+                if (str[idx2] == '\"' && str[idx2 - 1] != '\\')
                 {
-                    ++it2;
+                    ++idx2;
                     break;
                 }
             }
         }
         else
         {
-            for (it2 = it; it2 != end && !isspace(*it2); ++it2);
+            for (idx2 = idx; idx2 < end && !isspace(str[idx2]); ++idx2);
         }
 
         ++count;
-        for (it = it2; it != end && isspace(*it); ++it);
+        for (idx = idx2; idx < end && isspace(str[idx]); ++idx);
     }
 
     return count;
 }
 
-static MinimAst* parse_str_node(char* str)
+static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
 {
     MinimAst* node;
-    char *end, *tmp;
-    size_t len = strlen(str);
+    size_t last = end - 1;
+    char *tmp;
 
-    end = str + len - 1;
-    if (*str == '(' && *end == ')')
+    if (str[begin] == '(' && str[last] == ')')
     {
-        char *it = str + 1, *it2;
+        size_t i = begin + 1, j;
 
-        init_ast_op(&node, get_arg_len(str + 1, end), 0);
+        init_ast_op(&node, get_argc(str, i, last), 0);
         if (node->argc != 0)
         {
-            for (size_t idx = 0; it < end; ++idx)
+            for (size_t idx = 0; idx < node->argc; ++idx)
             {
-                if (*it == '(' || (*it == '\'' && *(it + 1) == '('))
+                if (str[i] == '(' || (str[i] == '\'' && str[i + 1] == '('))
                 {
                     size_t paren = 1;
 
-                    if (*it == '\'')    it2 = it + 2;
-                    else                it2 = it + 1;
-
-                    for (; paren != 0 && it2 != end; ++it2)
+                    for (j = i + 1; paren != 0 && j < last; ++j)
                     {
-                        if (*it2 == '(')         ++paren;
-                        else if (*it2 == ')')    --paren;
+                        if (str[j] == '(')         ++paren;
+                        else if (str[j] == ')')    --paren;
                     }
                 }
-                else if (*it == '\"')
+                else if (str[i] == '\"')
                 {
-                    for (it2 = it + 1; it2 != end; ++it2)
+                    for (j = i + 1; j < last; ++j)
                     {
-                        if (*it2 == '\"' && *(it2 - 1) != '\\')
+                        if (str[j] == '\"' && str[j - 1] != '\\')
                         {
-                            ++it2;
+                            ++j;
                             break;
                         }
                     }
                 }
                 else
                 {
-                    for (it2 = it; it2 != end && !isspace(*it2); ++it2);
+                    for (j = i; j < last && !isspace(str[j]); ++j);
                 }
 
-                tmp = malloc((it2 - it + 1) * sizeof(char));
-                strncpy(tmp, it, it2 - it);
-                tmp[it2 - it] = '\0';
-
-                node->children[idx] = parse_str_node(tmp);
-                for (it = it2; it != end && isspace(*it); ++it);
-                free(tmp);
+                node->children[idx] = parse_str_node(str, i, j);
+                for (i = j; i < last && isspace(str[i]); ++i);
             }
         }
     }
-    else if (*str == '\"' && *end == '\"')
+    else if (str[begin] == '\"' && str[last] == '\"')
     {
+        size_t len = end - begin;
         bool bad = false;
 
-        for (char* it = str; it != end; ++it)
+        for (size_t i = begin + 1; i < last; ++i)
         {
-            if (*it == '\"' && it != str && *(it - 1) != '\\')
+            if (str[i] == '\"' && str[i - 1] != '\\')
                 bad = true;
         }
         
@@ -189,19 +179,20 @@ static MinimAst* parse_str_node(char* str)
         else
         {
             tmp = malloc((len + 1) * sizeof(char));
-            strncpy(tmp, str, len);
+            strncpy(tmp, &str[begin], len);
             tmp[len] = '\0';
             init_ast_node(&node, tmp, 0);
             free(tmp);
         }
     }
-    else if (*str != '(' && *end != ')')
+    else if (str[begin] != '(' && str[last] != ')')
     {
+        size_t len = end - begin;
         bool space = false;
 
-        for (char* it = str; it != end; ++it)
+        for (size_t i = begin + 1; i < end; ++i)
         {
-            if (*it == ' ')
+            if (str[i] == ' ')
                 space = true;
         }
 
@@ -215,7 +206,7 @@ static MinimAst* parse_str_node(char* str)
         else
         {
             tmp = malloc((len + 1) * sizeof(char));
-            strncpy(tmp, str, len);
+            strncpy(tmp, &str[begin], len);
             tmp[len] = '\0';
             init_ast_node(&node, tmp, 0);
             free(tmp);
@@ -256,7 +247,7 @@ int parse_str(const char* str, MinimAst** syn)
 
     init_buffer(&bf);
     expand_input(str, bf);
-    *syn = parse_str_node(bf->data);
+    *syn = parse_str_node(bf->data, 0, strlen(bf->data));
     free_buffer(bf);
     
     if (!ast_validp(*syn))
