@@ -81,7 +81,7 @@ static size_t get_argc(const char* str, size_t begin, size_t end)
 
     while (idx < end)
     {
-        while (isspace(str[begin])) ++idx;
+        while (isspace(str[idx])) ++idx;
 
         if (open_paren(str[idx]))
         {
@@ -122,7 +122,11 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
     size_t last = end - 1;
     char *tmp;
 
-    if (open_paren(str[begin]) && closed_paren(str[last]))
+    if (begin >= end)
+    {
+        init_ast_node(&node, "Unexpected end of string", MINIM_AST_ERR);
+    }
+    else if (open_paren(str[begin]) && closed_paren(str[last]))
     {
         size_t i = begin + 1, j;
 
@@ -160,6 +164,10 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
                 node->children[idx] = parse_str_node(str, i, j);
                 for (i = j; i < last && isspace(str[i]); ++i);
             }
+        }
+        else
+        {
+            init_ast_node(&node, "Missing expression", MINIM_AST_ERR);
         }
     }
     else if (str[begin] == '\"' && str[last] == '\"')
