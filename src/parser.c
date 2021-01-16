@@ -165,10 +165,6 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
                 for (i = j; i < last && isspace(str[i]); ++i);
             }
         }
-        else
-        {
-            init_ast_node(&node, "Missing expression", MINIM_AST_ERR);
-        }
     }
     else if (str[begin] == '\"' && str[last] == '\"')
     {

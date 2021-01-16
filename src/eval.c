@@ -197,8 +197,15 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
     if (node->tags & MINIM_AST_OP)
     {
         MinimObject *res, *op, *possible_err, **args;
-        size_t argc = node->argc - 1;
+        size_t argc;
 
+        if (node->argc == 0)
+        {
+            minim_error(&res, "Empty expression");
+            return res;
+        }
+
+        argc = node->argc - 1;
         args = malloc(argc * sizeof(MinimObject*));
         op = env_peek_sym(env, node->children[0]->sym);
 
