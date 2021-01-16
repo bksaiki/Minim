@@ -175,10 +175,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
         
         if (bad)
         {
-            tmp = malloc(50 * sizeof(char));
-            strcpy(tmp, "Malformed string");
-            init_ast_node(&node, tmp, MINIM_AST_ERR);
-            free(tmp);
+            init_ast_node(&node, "Malformed string", MINIM_AST_ERR);
         }
         else
         {
@@ -202,10 +199,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
 
         if (space)
         {
-            tmp = malloc(50 * sizeof(char));
-            strcpy(tmp, "Unexpected space encountered");
-            init_ast_node(&node, tmp, MINIM_AST_ERR);
-            free(tmp);
+            init_ast_node(&node, "Unexpected space encountered", MINIM_AST_ERR);
         }
         else
         {
@@ -218,10 +212,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
     }
     else
     {
-        tmp = malloc(50 * sizeof(char));
-        strcpy(tmp, "Unmatched parenthesis");
-        init_ast_node(&node, tmp, MINIM_AST_ERR);
-        free(tmp);
+        init_ast_node(&node, "Unmatched parenthesis", MINIM_AST_ERR);
     }
 
     return node;

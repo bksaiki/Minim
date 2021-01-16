@@ -175,11 +175,30 @@ void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)
 
 // Builtins
 
+static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
+{
+    if (count > 1)
+    {
+        MinimAst *ast;
+
+        init_ast_op(&ast, count + 1, 0);
+        init_ast_node(&ast->children[0], "begin", 0);
+        for (size_t i = 0; i < count; ++i)
+            copy_ast(&ast->children[i + 1], exprs[i]->data);
+        
+        lam->body = ast;
+    }
+    else
+    {
+        copy_ast(&lam->body, exprs[0]->data);
+    }
+}
+
 MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "lambda", 2, argc))
+    if (assert_min_argc(&res, "lambda", 2, argc))
     {
         MinimObject *bindings;
         MinimLambda *lam;
@@ -192,7 +211,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
             {
                 init_minim_lambda(&lam);
                 lam->rest = bindings->data;
-                copy_ast(&lam->body, args[1]->data);
+                collect_exprs(&args[1], argc - 1, lam);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
 
                 bindings->data = NULL;
@@ -224,7 +243,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                     }
                 }
 
-                copy_ast(&lam->body, args[1]->data);
+                collect_exprs(&args[1], argc - 1, lam);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
             }
             else

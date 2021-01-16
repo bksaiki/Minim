@@ -54,13 +54,27 @@ int main()
     }
 
     {
-        const int COUNT = 1;
-        char strs[1][256] =
+        const int COUNT = 2;
+        char strs[2][256] =
         {
             "(begin (def foo (lambda args (apply + args))) (foo 1) (foo 1 2) (foo 1 2 3))",
+            "(begin (def foo args (apply + args)) (foo 1) (foo 1 2) (foo 1 2 3))"
         };
 
         printf("Testing rest arguments\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
+        const int COUNT = 2;
+        char strs[2][256] =
+        {
+            "(begin (def foo (lambda (x) (set! x (- x 2)) (set! x (* 2 x)) x)) (foo 6))",
+            "(begin (def foo (x) (set! x (- x 2)) (set! x (* 2 x)) x) (foo 6))"
+        };
+
+        printf("Testing multi-line body\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }

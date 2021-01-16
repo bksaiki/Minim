@@ -329,6 +329,20 @@ int main()
 
     {
         const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(for-list ([x (list)]) x)",            "'()",
+            "(for-list ([x (list 1)]) x)",          "'(1)",
+            "(for-list ([x (list 1 2 3)]) x)",      "'(1 2 3)"
+        };
+
+        printf("Testing 'for-list' (alt-syntax)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
         char strs[6][256] = 
         {
             "(begin 1)",                            "1",

@@ -53,13 +53,13 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *sym, *val;
 
-    if (assert_range_argc(&res, "def", 2, 3, argc))
+    if (assert_min_argc(&res, "def", 2, argc))
     {
         unsyntax_ast(env, args[0]->data, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
         {
             if (argc == 2)  eval_ast(env, args[1]->data, &val);
-            else            val = minim_builtin_lambda(env, &args[1], 2);
+            else            val = minim_builtin_lambda(env, &args[1], argc - 1);
             
             if (val->type != MINIM_OBJ_ERR)
             {
