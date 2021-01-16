@@ -1,81 +1,49 @@
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include "minim.h"
+#include "common/version.h"
+#include "read.h"
+#include "repl.h"
+
+static int process_flags(int count, char **args)
+{
+    for (int i = 0; i < count; ++i)
+    {
+        if (strcmp(args[i], "-h") == 0)
+        {
+            printf("Minim v%s \n", MINIM_VERSION_STR);
+            printf("Run \"minim\" to run Minim in a REPL loop\n");
+            printf("Run \"minim <flags> ... <file>\" to run Minim on a file\n");
+            printf("Flags:\n");
+            printf(" -h\thelp\n");
+            printf(" -v\tversion\n");
+        }
+        else if (strcmp(args[i], "-v") == 0)
+        {
+            printf("Minim v%s \n", MINIM_VERSION_STR);
+        }
+        else
+        {
+            return ((count - i == 1) ? 1 : 2);
+        }
+    }
+
+    return 0;
+}
 
 int main(int argc, char** argv)
 {
-    MinimEnv *env;
-    MinimAst *ast;
-    MinimObject *obj;
-    Buffer *bf;
-    PrintParams pp;
+    int status = 0;
 
-    init_env(&env, NULL);
-    env_load_builtins(env);
-    set_default_print_params(&pp);
-
-    printf("Minim v%s \n", MINIM_VERSION_STR);
-
-    while (1)
+    if (argc == 1)
     {
-        char *input;
-        int paren = 0;
-
-        init_buffer(&bf);
-        fputs("> ", stdout);
-
-        while (1)
-        {
-            char str[2048];
-            size_t len;
-
-            fgets(str, 2047, stdin);
-            for (len = 0; str[len] != '\n'; ++len)
-            {
-                if (str[len] == '(')          ++paren;
-                else if (str[len] == ')')     --paren;
-            }
-
-            if (bf->pos != 0)   writec_buffer(bf, ' ');
-            write_buffer(bf, str, len);
-
-            if (paren <= 0)     break;
-
-            fputs("  ", stdout);
-            for (int i = 0; i < paren; ++i)
-                fputs("  ", stdout);
-        }
-
-        input = get_buffer(bf);
-        if (strlen(input) == 0)
-        {
-            free_buffer(bf);
-            continue;
-        }
-        else if (strcmp(input, "(exit)") == 0)
-        {
-            free_buffer(bf);
-            break;
-        }
-
-        if (!parse_str(input, &ast))
-        {
-            free_buffer(bf);
-            continue;
-        }
-        
-        eval_ast(env, ast, &obj);
-        if (obj->type != MINIM_OBJ_VOID)
-        {
-            print_minim_object(obj, env, &pp);
-            printf("\n");
-        }
-
-        free_minim_object(obj);
-        free_ast(ast);
-        free_buffer(bf);
+        status = minim_repl();
+    }
+    else
+    {
+        status = process_flags(argc - 1, &argv[1]);
+        if (status == 1)  // check for file argument
+            status = minim_run_file(argv[argc - 1]);
     }
 
-    free_env(env);
-    return 0;
+    return status;
 }
