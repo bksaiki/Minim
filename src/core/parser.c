@@ -16,10 +16,12 @@
 
 static void expand_input(const char *str, Buffer *bf)
 {
-    size_t len = strlen(str), paren = 0;
+    size_t len = strlen(str), paren = 0, i = 0;
     uint8_t flags = 0;
 
-    for (size_t i = 0; i < len; ++i)
+    while (isspace(str[i]) && i < len)     ++i;  // strip leading whitespace
+
+    for (; i < len; ++i)
     {
         if (flags & EXPAND_STRING)
         {
@@ -72,6 +74,12 @@ static void expand_input(const char *str, Buffer *bf)
         for (size_t i = 0; i < paren; ++i)
             writec_buffer(bf, ')');
         writec_buffer(bf, ')');
+    }
+
+    for (size_t i = bf->pos - 1; isspace(bf->data[i]) && i <= bf->pos; --i)
+    {
+        bf->data[i] = '\0';
+        --bf->pos;
     }
 }
 

@@ -27,13 +27,18 @@ int minim_run_file(const char *str)
     env_load_builtins(env);
     set_default_print_params(&pp);
 
-    while (!feof(file))
+    while (1)
     {
-        char c = fgetc(file);
+        int c = fgetc(file);
 
-        if (c == '(')           ++paren;
+        if (c == EOF)           break;
+        else if (c == '(')      ++paren;
         else if (c == ')')      --paren;
-        else if (isspace(c))    c = ' ';
+        else if (isspace(c))
+        {
+            if (paren > 0)  c = ' ';
+            else            continue;
+        }
 
         writec_buffer(bf, c);
         if (paren == 0)
