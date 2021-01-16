@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/buffer.h"
+#include "../common/buffer.h"
 #include "hash.h"
 #include "lambda.h"
 #include "list.h"

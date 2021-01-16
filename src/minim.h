@@ -1,17 +1,13 @@
-#ifndef _MINIM_MINIM_H_
-#define _MINIM_MINIM_H_
-
-// Common utility
+#ifndef _MINIM_H_
+#define _MINIM_H_
 
 #include "common/buffer.h"
 #include "common/common.h"
-
-// Top-level include
-
-#include "builtin.h"
-#include "env.h"
-#include "eval.h"
-#include "parser.h"
-#include "print.h"
+#include "core/ast.h"
+#include "core/builtin.h"
+#include "core/env.h"
+#include "core/eval.h"
+#include "core/parser.h"
+#include "core/print.h"
 
 #endif

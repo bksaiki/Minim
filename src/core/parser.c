@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/buffer.h"
+#include "../common/buffer.h"
 #include "parser.h"
 
 #define EXPAND_STRING       ((uint8_t)0x1)

@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "common/buffer.h"
+#include "../common/buffer.h"
 #include "assert.h"
 #include "hash.h"
 #include "list.h"
