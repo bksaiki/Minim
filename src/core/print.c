@@ -174,7 +174,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     {
         writes_buffer(bf, "<syntax: ");
         ast_to_buffer(obj->data, bf);
-        writec_buffer(bf, ')');
+        writec_buffer(bf, '>');
     }
     else
     {

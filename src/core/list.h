@@ -20,7 +20,7 @@
 }
 
 // Assertions
-bool assert_cons(MinimObject *arg, MinimObject **ret, const char *msg);
+bool assert_pair(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg);
 bool assert_list_len(MinimObject *arg, MinimObject **ret, size_t len, const char *msg);
 bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg);
