@@ -198,7 +198,8 @@ static size_t lambda_argc(MinimObject *bindings)
 {
     size_t argc = 0;
 
-    for (MinimObject *it = bindings; it && minim_consp(it); it = MINIM_CDR(it), ++argc);
+    for (MinimObject *it = bindings; it && minim_consp(it) && MINIM_CAR(it);
+         it = MINIM_CDR(it), ++argc);
     return argc;
 }
 
@@ -224,7 +225,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
 
                 bindings->data = NULL;
             }
-            else if (minim_consp(bindings))
+            else if (minim_listp(bindings) || minim_consp(bindings))
             {
                 MinimObject *it, *val, *val2;
 
@@ -235,7 +236,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
 
                 for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
                 {
-                    if (minim_consp(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
+                    if (minim_consp(it) && MINIM_CDR(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
                     {   
                         unsyntax_ast(env, MINIM_CAR(it)->data, &val);
                         unsyntax_ast(env, MINIM_CDR(it)->data, &val2);

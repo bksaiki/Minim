@@ -67,6 +67,24 @@ int main()
     }
 
     {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(begin (def foo (lambda (cons x . rest) (cons x rest))) (foo 1)",      "'(1)",
+            "(begin (def foo (lambda (cons x . rest) (cons x rest))) (foo 1 2)",    "'(1 2)",
+            "(begin (def foo (lambda (cons x . rest) (cons x rest))) (foo 1 2 3)",  "'(1 2 3)",
+
+            "(begin (def foo (lambda (cons x y . rest) (cons x rest))) (foo 1 2)",      "'(1 2)",
+            "(begin (def foo (lambda (cons x y . rest) (cons x rest))) (foo 1 2 3)",    "'(1 2 3)",
+            "(begin (def foo (lambda (cons x y . rest) (cons x rest))) (foo 1 2 3 4)",  "'(1 2 3 4)"
+        };
+
+        printf("Testing rest arguments\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
         const int COUNT = 2;
         char strs[2][256] =
         {

@@ -176,24 +176,34 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
             res = proc(env, args, 2);
             free_minim_objects(args, 2);
         }
+        else if (node->argc > 2 && node->children[node->argc - 2]->sym &&
+                 strcmp(node->children[node->argc - 2]->sym, ".") == 0)
+        {
+            MinimObject *rest;
+            size_t reduc = node->argc - 2;
+
+            args = malloc(reduc * sizeof(MinimObject*));
+            for (size_t i = 0; i < reduc; ++i)
+            {
+                if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
+                else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
+            }
+
+            proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
+            res = proc(env, args, reduc);
+            free_minim_objects(args, reduc);
+
+            for (rest = res; MINIM_CDR(rest); rest = MINIM_CDR(rest));
+            if (rec)    MINIM_CDR(rest) = unsyntax_ast_node(env, node->children[node->argc - 1], rec);
+            else        init_minim_object(&MINIM_CDR(rest), MINIM_OBJ_AST, node->children[node->argc - 1]);
+        }
         else
         {
             args = malloc(node->argc * sizeof(MinimObject*));
             for (size_t i = 0; i < node->argc; ++i)
             {
-                if (i + 2 == node->argc && node->children[i]->sym &&
-                    strcmp(node->children[i]->sym, ".") == 0)
-                {
-                    --node->argc;
-                    args = realloc(args, node->argc * sizeof(MinimObject*));
-                    if (rec)    args[i] = unsyntax_ast_node(env, node->children[i + 1], rec);
-                    else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);
-                }
-                else
-                {
-                    if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
-                    else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
-                }
+                if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
+                else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
             }
 
             proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
