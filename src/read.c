@@ -4,9 +4,14 @@
 #include "minim.h"
 #include "read.h"
 
-int minim_run_file(const char *str)
+#define LOAD_FILE(env, file)            \
+{                                       \
+    if (!minim_load_file(env, file))    \
+        return 2;                       \
+} 
+
+int minim_load_file(MinimEnv *env, const char *str)
 {
-    MinimEnv *env;
     PrintParams pp;
     Buffer *bf;
 
@@ -22,9 +27,6 @@ int minim_run_file(const char *str)
 
     paren = 0;
     init_buffer(&bf);
-
-    init_env(&env, NULL);
-    env_load_builtins(env);
     set_default_print_params(&pp);
 
     while (1)
@@ -82,8 +84,28 @@ int minim_run_file(const char *str)
     }
 
     free_buffer(bf);
-    free_env(env);
     fclose(file);
 
+    return 0;
+}
+
+int minim_run_file(const char *str)
+{
+    MinimEnv *env;
+    int ret;
+
+    init_env(&env, NULL);
+    minim_load_builtins(env);
+    minim_load_library(env);
+    ret = minim_load_file(env, str);
+    free_env(env);
+
+    return ret;
+}
+
+int minim_load_library(MinimEnv *env)
+{
+    LOAD_FILE(env, "src/lib/function.min");
+    
     return 0;
 }

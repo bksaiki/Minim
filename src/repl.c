@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "minim.h"
+#include "read.h"
 #include "repl.h"
 
 int minim_repl()
@@ -13,7 +14,8 @@ int minim_repl()
     PrintParams pp;
 
     init_env(&env, NULL);
-    env_load_builtins(env);
+    minim_load_builtins(env);
+    minim_load_library(env);
     set_default_print_params(&pp);
 
     printf("Minim v%s \n", MINIM_VERSION_STR);

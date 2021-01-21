@@ -355,7 +355,7 @@ char *eval_string(char *str, size_t len)
     char *out;
 
     init_env(&env, NULL);
-    env_load_builtins(env);
+    minim_load_builtins(env);
     set_default_print_params(&pp);
 
     if (!parse_str(str, &ast))
