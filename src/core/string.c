@@ -31,6 +31,7 @@ void replace_special_chars(char *str)
         {
             ++src;
             if (str[src] == 'n')        str[dest] = '\n';
+            else if (str[src] == '"')   str[dest] = '"';
             else                        printf("Unknown escape character: \\%c", str[src]);
         }
         else if (dest != src)

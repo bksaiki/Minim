@@ -87,7 +87,7 @@ static bool is_str(char *str)
 
     for (size_t i = 1; i < len; ++i)
     {
-        if (str[i] == '\"' && str[i - 1] == '\\')
+        if (str[i] == '\"' && str[i - 1] != '\\' && i + 1 != len)
             return false;
     }
 
