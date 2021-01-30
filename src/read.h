@@ -3,6 +3,13 @@
 
 #include "minim.h"
 
+struct SyntaxLoc
+{
+    char *name;
+    size_t row;
+    size_t col;
+} typedef SyntaxLoc;
+
 /* Runs a file in a Minim instance */
 int minim_load_file(MinimEnv *env, const char *str);
 

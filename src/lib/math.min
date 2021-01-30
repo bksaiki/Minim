@@ -1,0 +1,22 @@
+
+;; Factorial
+;; TODO: error on bad input
+(def factorial (n)
+  (if (negative? n)
+      "undef"
+      (begin
+        (def loop (n acc)
+          (if (zero? n)
+              acc
+              (loop (- n 1) (* n acc))))
+        (loop n 1))))
+
+;; Functional maps
+(def add1 (x)
+  (+ x 1))
+
+(def sub1 (x)
+  (- x 1))
+
+(def addn (x n)
+  (+ x n))
