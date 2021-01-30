@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include "build/config.h"
 #include "minim.h"
 #include "read.h"
 
@@ -179,7 +180,7 @@ int minim_run_file(const char *str)
 
 int minim_load_library(MinimEnv *env)
 {
-    LOAD_FILE(env, "src/lib/function.min");
+    LOAD_FILE(env, MINIM_LIB_PATH "lib/function.min");
     
     return 0;
 }
