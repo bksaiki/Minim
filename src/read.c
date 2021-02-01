@@ -17,8 +17,12 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc, uint8_t
 {
     MinimAst *ast;
     MinimObject *obj;
-    char *input = get_buffer(bf);
-
+    char *input;
+    
+    if (bf->pos == 0)
+        return 0;
+    
+    input = get_buffer(bf);
     if (strcmp(input, "(exit)") == 0)
         return 1;
     
@@ -70,16 +74,14 @@ int minim_load_file(MinimEnv *env, const char *str)
     set_default_print_params(&pp);
     set_default_read_result(&rr);
     
-    while (!(rr.flags & READ_RESULT_EOF))
+    while (!(rr.status & READ_RESULT_EOF))
     {
-        fread_expr(file, bf, loc, &rr);
+        fread_expr(file, bf, loc, &rr, EOF);
         status = run_expr(bf, env, &pp, loc, rr.flags);
         if (status > 0)
         {
-            free_buffer(bf);
-            fclose(file);
-            free(loc);
-            return ((status == 1) ? 0 : status);
+            if (status == 1)  status = 0;
+            break;
         }
         else
         {
@@ -87,12 +89,13 @@ int minim_load_file(MinimEnv *env, const char *str)
             rr.flags |= F_READ_START;
             rr.read = 0;
             rr.paren = 0;
+            rr.status &= READ_RESULT_EOF;
         }
     }
 
     free_buffer(bf);
+    free_syntax_loc(loc);
     fclose(file);
-    free(loc);
     return 0;
 }
 

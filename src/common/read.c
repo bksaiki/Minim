@@ -30,7 +30,7 @@ void set_default_read_result(ReadResult *rr)
     rr->flags = F_READ_START;
 }
 
-void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr)
+void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof)
 {
     size_t nrow = loc->row;
     size_t ncol = loc->col;
@@ -42,17 +42,13 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr)
         uint8_t nflags = flags;
         
         // Check for EOF
-        if (c == EOF)
+        if (c == eof)
         {
-            if (bf->pos != 0)
-            {
-                rr->status |= READ_RESULT_EOF;
-                rr->status |= ((rr->paren > 0) ? READ_RESULT_INCOMPLETE : READ_RESULT_SUCCESS);
-                rr->flags = flags;
-                loc->row = nrow;
-                loc->col = ncol;
-            }
-
+            rr->status |= READ_RESULT_EOF;
+            rr->status |= ((rr->paren > 0) ? READ_RESULT_INCOMPLETE : READ_RESULT_SUCCESS);
+            rr->flags = flags;
+            loc->row = nrow;
+            loc->col = ncol;
             break;
         }
 

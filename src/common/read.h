@@ -25,7 +25,7 @@ struct SyntaxLoc
 struct ReadResult
 {
     size_t read;
-    size_t paren;
+    long int paren;
     uint8_t status;
     uint8_t flags;
 } typedef ReadResult;
@@ -42,6 +42,6 @@ void set_default_read_result(ReadResult *rr);
 
 // *** Reading *** //
 
-void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr);
+void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof);
 
 #endif

@@ -1,11 +1,10 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "minim.h"
 #include "read.h"
 #include "repl.h"
-
-#define F_READ_STRING   0x1
 
 int minim_repl()
 {
@@ -14,7 +13,7 @@ int minim_repl()
     MinimObject *obj;
     Buffer *bf;
     PrintParams pp;
-    uint8_t flags;
+    char *input;
 
     init_env(&env, NULL);
     minim_load_builtins(env);
@@ -25,42 +24,24 @@ int minim_repl()
 
     while (1)
     {
-        char *input;
-        int paren = 0;
+        ReadResult rr;
+        SyntaxLoc *loc;
 
         init_buffer(&bf);
-        fputs("> ", stdout);
-
-        while (1)
+        init_syntax_loc(&loc, "REPL");
+        set_default_read_result(&rr);
+        
+        printf("> ");
+        while (!(rr.status & READ_RESULT_EOF) || rr.status & READ_RESULT_INCOMPLETE)
         {
-            char str[2048];
-            size_t len;
-
-            fgets(str, 2047, stdin);
-            for (len = 0; str[len] != '\n'; ++len)
-            {
-                if (flags & F_READ_STRING)
-                {
-                    if (len > 0 && str[len] == '"' && str[len - 1] != '\\')
-                        flags &= ~F_READ_STRING;
-                }
-                else
-                {
-                    if (str[len] == '"')         flags |= F_READ_STRING;
-                    else if (str[len] == '(')     ++paren;
-                    else if (str[len] == ')')     --paren;
-                }   
-            }
-
-            if (bf->pos != 0)   writec_buffer(bf, ' ');
-            write_buffer(bf, str, len);
-
-            if (paren <= 0)     break;
-
-            fputs("  ", stdout);
-            for (int i = 0; i < paren; ++i)
-                fputs("  ", stdout);
+            if (rr.status & READ_RESULT_INCOMPLETE)
+                writec_buffer(bf, ' ');
+                
+            rr.status = READ_RESULT_SUCCESS;
+            fread_expr(stdin, bf, loc, &rr, '\n');
         }
+
+        free_syntax_loc(loc);
 
         input = get_buffer(bf);
         if (strlen(input) == 0)
