@@ -1,14 +1,7 @@
-#ifndef _MINIM_READ_H_
-#define _MINIM_READ_H_
+#ifndef _MINIM_TOP_READ_H_
+#define _MINIM_TOP_READ_H_
 
 #include "minim.h"
-
-struct SyntaxLoc
-{
-    char *name;
-    size_t row;
-    size_t col;
-} typedef SyntaxLoc;
 
 /* Runs a file in a Minim instance */
 int minim_load_file(MinimEnv *env, const char *str);

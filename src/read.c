@@ -3,14 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "build/config.h"
+#include "common/read.h"
 #include "minim.h"
 #include "read.h"
-
-#define F_READ_START         ((uint8_t) 0x1)
-#define F_READ_STRING        ((uint8_t) 0x2)
-#define F_READ_COMMENT       ((uint8_t) 0x4)
-#define F_READ_ESCAPE        ((uint8_t) 0x8)
-#define F_READ_SPACE         ((uint8_t) 0x10)
 
 #define LOAD_FILE(env, file)            \
 {                                       \
@@ -57,12 +52,11 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc, uint8_t
 int minim_load_file(MinimEnv *env, const char *str)
 {
     PrintParams pp;
-    SyntaxLoc loc;
+    ReadResult rr;
+    SyntaxLoc *loc;
     Buffer *bf;
     FILE *file;
-    size_t nrow, ncol;
-    int paren, status;
-    uint8_t flags;
+    int status;
 
     file = fopen(str, "r");
     if (!file)
@@ -71,136 +65,35 @@ int minim_load_file(MinimEnv *env, const char *str)
         return 2;
     }
 
-    paren = 0, status = 0;
-    flags = F_READ_START;
     init_buffer(&bf);
+    init_syntax_loc(&loc, str);
     set_default_print_params(&pp);
-
-    loc.name = malloc((strlen(str) + 1) * sizeof(char));
-    strcpy(loc.name, str);
-    loc.row = 1; loc.col = 0;
-    nrow = 1; ncol = 0;
-
-    while (1)
+    set_default_read_result(&rr);
+    
+    while (!(rr.flags & READ_RESULT_EOF))
     {
-        int c = fgetc(file);
-        uint8_t nflags = flags;
-        
-        // Check for EOF
-        if (c == EOF)
+        fread_expr(file, bf, loc, &rr);
+        status = run_expr(bf, env, &pp, loc, rr.flags);
+        if (status > 0)
         {
-            if (bf->pos != 0)   run_expr(bf, env, &pp, &loc, flags);
-            break;
-        }
-
-        // Update location
-        if (c == '\n')
-        {
-            ++nrow;
-            ncol = 0;
+            free_buffer(bf);
+            fclose(file);
+            free(loc);
+            return ((status == 1) ? 0 : status);
         }
         else
         {
-            ++ncol;
+            reset_buffer(bf);
+            rr.flags |= F_READ_START;
+            rr.read = 0;
+            rr.paren = 0;
         }
-
-        // Handle character
-        if (flags & F_READ_COMMENT)
-        {
-            if (c == '\n')
-            {
-                flags &= ~F_READ_COMMENT;
-                loc.row = nrow;
-                loc.col = ncol;
-            }
-            
-            continue;
-        }
-        else if (flags & F_READ_STRING)
-        {
-            if (!(flags & F_READ_ESCAPE) && c == '"')
-                nflags &= ~F_READ_STRING;
-        }
-        else
-        {
-            if (c == '(')
-            {
-                ++paren;
-                nflags &= ~F_READ_START;
-                nflags &= ~F_READ_SPACE;
-            }
-            else if (c == ')')
-            {
-                --paren;
-                nflags &= ~F_READ_START;
-                nflags &= ~F_READ_SPACE;
-            }
-            else if (c == '"')
-            {
-                nflags |= F_READ_STRING;
-                nflags &= ~F_READ_SPACE;
-            }
-            else if (c == ';')
-            {
-                flags |= F_READ_COMMENT;
-                flags &= ~F_READ_SPACE;
-                continue;
-            }
-            else if (isspace(c))
-            {
-                if (flags & F_READ_START)
-                {
-                    continue;
-                }
-                else if (!(flags & F_READ_SPACE) && paren > 0)
-                {
-                    c = ' ';
-                    nflags |= F_READ_SPACE;
-                }
-                else
-                {
-                    flags |= F_READ_SPACE;
-                    continue;
-                }
-            }
-            else
-            {
-                nflags &= ~F_READ_SPACE;
-            }
-        }
-
-        if (c == '\\')   nflags |= F_READ_ESCAPE;
-        else             nflags &= ~F_READ_ESCAPE;
-
-        writec_buffer(bf, c);
-        if ((!(flags & F_READ_START) || (nflags & F_READ_SPACE)) && paren == 0)
-        {
-            status = run_expr(bf, env, &pp, &loc, flags);
-            nflags |= F_READ_START;
-            loc.row = nrow;
-            loc.col = ncol;
-            paren = 0;
-
-            if (status > 0)
-            {
-                free_buffer(bf);
-                if (status == 1)    status = 0;
-                break;
-            }
-            else
-            {
-                reset_buffer(bf);
-            }
-        }
-
-        flags = nflags;
     }
 
     free_buffer(bf);
     fclose(file);
-    free(loc.name);
-
-    return status;
+    free(loc);
+    return 0;
 }
 
 int minim_run_file(const char *str)

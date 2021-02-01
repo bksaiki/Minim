@@ -5,6 +5,8 @@
 #include "read.h"
 #include "repl.h"
 
+#define F_READ_STRING   0x1
+
 int minim_repl()
 {
     MinimEnv *env;
@@ -12,6 +14,7 @@ int minim_repl()
     MinimObject *obj;
     Buffer *bf;
     PrintParams pp;
+    uint8_t flags;
 
     init_env(&env, NULL);
     minim_load_builtins(env);
@@ -36,8 +39,17 @@ int minim_repl()
             fgets(str, 2047, stdin);
             for (len = 0; str[len] != '\n'; ++len)
             {
-                if (str[len] == '(')          ++paren;
-                else if (str[len] == ')')     --paren;
+                if (flags & F_READ_STRING)
+                {
+                    if (len > 0 && str[len] == '"' && str[len - 1] != '\\')
+                        flags &= ~F_READ_STRING;
+                }
+                else
+                {
+                    if (str[len] == '"')         flags |= F_READ_STRING;
+                    else if (str[len] == '(')     ++paren;
+                    else if (str[len] == ')')     --paren;
+                }   
             }
 
             if (bf->pos != 0)   writec_buffer(bf, ' ');
