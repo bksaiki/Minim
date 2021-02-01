@@ -106,9 +106,9 @@ DEFINE_BUILTIN_FUN(log)
 DEFINE_BUILTIN_FUN(pow)
 
 // Loads a single function into the environment
-void env_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);
+void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);
 
 // Loads every builtin symbol in the base library.
-void env_load_builtins(MinimEnv *env);
+void minim_load_builtins(MinimEnv *env);
 
 #endif

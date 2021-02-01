@@ -87,7 +87,7 @@ static bool is_str(char *str)
 
     for (size_t i = 1; i < len; ++i)
     {
-        if (str[i] == '\"' && str[i - 1] == '\\')
+        if (str[i] == '\"' && str[i - 1] != '\\' && i + 1 != len)
             return false;
     }
 
@@ -157,30 +157,59 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
         MinimObject **args, *res;
         MinimBuiltin proc;
 
-        args = malloc(node->argc * sizeof(MinimObject*));
-        for (size_t i = 0; i < node->argc; ++i)
+        if (node->argc == 3 && node->children[1]->sym &&
+            strcmp(node->children[1]->sym, ".") == 0)
         {
-            if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
-            else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
-        }
-
-        if (node->argc == 3 && args[1]->type == MINIM_OBJ_SYM && strcmp(args[1]->data, ".") == 0)
-        {
-            MinimObject *tmp;
+            args = malloc(2 * sizeof(MinimObject*));
+            if (rec)
+            {
+                args[0] = unsyntax_ast_node(env, node->children[0], rec);
+                args[1] = unsyntax_ast_node(env, node->children[2], rec);
+            }
+            else
+            {
+                init_minim_object(&args[0], MINIM_OBJ_AST, node->children[0]);
+                init_minim_object(&args[1], MINIM_OBJ_AST, node->children[2]);
+            }
 
             proc = ((MinimBuiltin) env_peek_sym(env, "cons")->data);
-            tmp = args[1];
-            args[1] = args[2];
-            args[2] = tmp;
             res = proc(env, args, 2);
+            free_minim_objects(args, 2);
+        }
+        else if (node->argc > 2 && node->children[node->argc - 2]->sym &&
+                 strcmp(node->children[node->argc - 2]->sym, ".") == 0)
+        {
+            MinimObject *rest;
+            size_t reduc = node->argc - 2;
+
+            args = malloc(reduc * sizeof(MinimObject*));
+            for (size_t i = 0; i < reduc; ++i)
+            {
+                if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
+                else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
+            }
+
+            proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
+            res = proc(env, args, reduc);
+            free_minim_objects(args, reduc);
+
+            for (rest = res; MINIM_CDR(rest); rest = MINIM_CDR(rest));
+            if (rec)    MINIM_CDR(rest) = unsyntax_ast_node(env, node->children[node->argc - 1], rec);
+            else        init_minim_object(&MINIM_CDR(rest), MINIM_OBJ_AST, node->children[node->argc - 1]);
         }
         else
         {
+            args = malloc(node->argc * sizeof(MinimObject*));
+            for (size_t i = 0; i < node->argc; ++i)
+            {
+                if (rec)    args[i] = unsyntax_ast_node(env, node->children[i], rec);
+                else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
+            }
+
             proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
             res = proc(env, args, node->argc);
+            free_minim_objects(args, node->argc);
         }
-
-        free_minim_objects(args, node->argc);
 
         return res;
     }
@@ -326,7 +355,7 @@ char *eval_string(char *str, size_t len)
     char *out;
 
     init_env(&env, NULL);
-    env_load_builtins(env);
+    minim_load_builtins(env);
     set_default_print_params(&pp);
 
     if (!parse_str(str, &ast))

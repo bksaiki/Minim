@@ -1,0 +1,9 @@
+(def identity (x) x)
+
+(def const (x) (lambda args x))
+
+; (def curry (f . args)
+;   (lambda args2 (apply f (append args args2))))
+
+; (def curryr (f . args)
+;   (lambda args2 (apply f (append args2 args))))

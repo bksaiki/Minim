@@ -21,8 +21,11 @@ LDFLAGS 	= -lm -lgmp
 
 # Specific rules
 
-main: $(OBJS)
+main: configure $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
+
+configure:
+	cd src && $(MAKE) config
 
 tests: $(TEST_EXES)
 	$(TEST_DIR)/test.sh $(TEST_EXES)
@@ -31,16 +34,15 @@ memcheck: $(TEST_EXES)
 	$(TEST_DIR)/memcheck.sh $(TEST_EXES)
 
 clean:
+	cd src && $(MAKE) clean
 	$(RM) $(OBJS) $(EXE)
 
 clean-deps:
 	$(RM) -r $(DEPS)
 
 clean-all:
+	cd src && $(MAKE) clean
 	rm -r -f $(BUILD_DIR) tmp $(EXE)
-
-### Specific tests
-
 
 ### General rules
 
@@ -57,4 +59,4 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 	
 -include $(DEPS)
-.PHONY: main build clean clean-deps clean-all
+.PHONY: main build clean clean-deps clean-all 

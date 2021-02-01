@@ -1,8 +1,8 @@
 #ifndef _MINIM_OBJECT_H_
 #define _MINIM_OBJECT_H_
 
-#include "common/common.h"
-#include "common/buffer.h"
+#include "../common/common.h"
+#include "../common/buffer.h"
 
 #define MINIM_OBJ_OWNER             0x1
 #define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)

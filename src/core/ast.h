@@ -1,8 +1,8 @@
 #ifndef _MINIM_AST_H_
 #define _MINIM_AST_H_
 
-#include "common/buffer.h"
-#include "common/common.h"
+#include "../common/buffer.h"
+#include "../common/common.h"
 
 #define MINIM_AST_OP    0x1
 #define MINIM_AST_VAL   0x2

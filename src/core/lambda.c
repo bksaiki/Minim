@@ -194,6 +194,15 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
     }
 }
 
+static size_t lambda_argc(MinimObject *bindings)
+{
+    size_t argc = 0;
+
+    for (MinimObject *it = bindings; it && minim_consp(it) && MINIM_CAR(it);
+         it = MINIM_CDR(it), ++argc);
+    return argc;
+}
+
 MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
@@ -216,30 +225,58 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
 
                 bindings->data = NULL;
             }
-            else if (minim_listp(bindings))
+            else if (minim_listp(bindings) || minim_consp(bindings))
             {
-                MinimObject *it, *val;
+                MinimObject *it, *val, *val2;
 
                 init_minim_lambda(&lam);
-                lam->argc = minim_list_length(bindings);
+                lam->argc = lambda_argc(bindings);
                 lam->args = calloc(lam->argc, sizeof(char*));
                 it = bindings;
 
                 for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
                 {
-                    unsyntax_ast(env, MINIM_CAR(it)->data, &val);
-                    if (assert_symbol(val, &res, "Expected a symbol for lambda variables"))
-                    {
-                        lam->args[i] = val->data;
-                        val->data = NULL;
-                        free_minim_object(val);
+                    if (minim_consp(it) && MINIM_CDR(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
+                    {   
+                        unsyntax_ast(env, MINIM_CAR(it)->data, &val);
+                        unsyntax_ast(env, MINIM_CDR(it)->data, &val2);
+
+                        if (assert_symbol(val, &res, "Expected a symbol for lambda variables") &&
+                            assert_symbol(val2, &res, "Expected a symbol for the rest variable"))
+                        {
+                            lam->args[i] = val->data;
+                            lam->rest = val2->data;
+
+                            val->data = NULL;
+                            val2->data = NULL;
+                            free_minim_object(val);
+                            free_minim_object(val2);
+                        }
+                        else
+                        {
+                            free_minim_object(val);
+                            free_minim_object(val2);
+                            free_minim_lambda(lam);
+                            free_minim_object(bindings);
+                            return res;
+                        }
                     }
                     else
                     {
-                        free_minim_lambda(lam);
-                        free_minim_object(val);
-                        free_minim_object(bindings);
-                        return res;
+                        unsyntax_ast(env, MINIM_CAR(it)->data, &val);
+                        if (assert_symbol(val, &res, "Expected a symbol for lambda variables"))
+                        {
+                            lam->args[i] = val->data;
+                            val->data = NULL;
+                            free_minim_object(val);
+                        }
+                        else
+                        {
+                            free_minim_lambda(lam);
+                            free_minim_object(val);
+                            free_minim_object(bindings);
+                            return res;
+                        }
                     }
                 }
 
