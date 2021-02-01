@@ -71,7 +71,12 @@ int minim_repl()
         }
         
         eval_ast(env, ast, &obj);
-        if (obj->type != MINIM_OBJ_VOID)
+        if (obj->type == MINIM_OBJ_ERR)
+        {    
+            print_minim_object(obj, env, &pp);
+            printf("\n  in: %s\n", "REPL");
+        }
+        else if (obj->type != MINIM_OBJ_VOID)
         {
             print_minim_object(obj, env, &pp);
             printf("\n");

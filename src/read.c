@@ -13,7 +13,7 @@
         return 2;                       \
 } 
 
-int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc, uint8_t flags)
+int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
 {
     MinimAst *ast;
     MinimObject *obj;
@@ -33,18 +33,17 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc, uint8_t
     }
     
     eval_ast(env, ast, &obj);
-    if (flags & F_READ_START)
-    {
-        print_minim_object(obj, env, pp);
-        printf("\n");
-    }
-    else if (obj->type == MINIM_OBJ_ERR)
-    {
+    if (obj->type == MINIM_OBJ_ERR)
+    {    
         print_minim_object(obj, env, pp);
         free_minim_object(obj);
-        printf("\n");
-        printf("  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
+        printf("\n  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
         return 2;
+    }
+    else if (obj->type != MINIM_OBJ_VOID)
+    {
+        print_minim_object(obj, env, pp);
+        printf("\n");
     }
 
     free_minim_object(obj);
@@ -81,7 +80,7 @@ int minim_load_file(MinimEnv *env, const char *fname)
     while (!(rr.status & READ_RESULT_EOF))
     {
         fread_expr(file, bf, loc, &rr, EOF);
-        status = run_expr(bf, env, &pp, loc, rr.flags);
+        status = run_expr(bf, env, &pp, loc);
         if (status > 0)
         {
             if (status == 1)  status = 0;

@@ -148,12 +148,12 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof
 
 void valid_path(Buffer *valid, const char *maybe)
 {
+#ifdef MINIM_WINDOWS
     size_t len = strlen(maybe);
     bool first = true;
 
     for (size_t i = 0; i < len; ++i)
     {
-#ifdef MINIM_WINDOWS
         if (maybe[i] == '/')
         {
             if (i != 0)
@@ -171,8 +171,8 @@ void valid_path(Buffer *valid, const char *maybe)
         {
             writec_buffer(valid, maybe[i]);
         }
-#else
-        writec_buffer(valid, maybe[i]);
-#endif
     }
+#else
+    writes_buffer(valid, maybe);
+#endif
 }
