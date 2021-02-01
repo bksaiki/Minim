@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,6 +6,13 @@
 #include "minim.h"
 #include "read.h"
 #include "repl.h"
+
+static void int_handler(int sig)
+{
+    printf(" !! User break\n");
+    fflush(stdout);
+    fflush(stdin);
+}
 
 int minim_repl()
 {
@@ -15,12 +23,13 @@ int minim_repl()
     PrintParams pp;
     char *input;
 
+    printf("Minim v%s \n", MINIM_VERSION_STR);
+
     init_env(&env, NULL);
     minim_load_builtins(env);
     minim_load_library(env);
     set_default_print_params(&pp);
-
-    printf("Minim v%s \n", MINIM_VERSION_STR);
+    signal(SIGINT, int_handler);
 
     while (1)
     {
@@ -42,9 +51,9 @@ int minim_repl()
         }
 
         free_syntax_loc(loc);
-
         input = get_buffer(bf);
-        if (strlen(input) == 0)
+        
+        if (strlen(input) == 0 || strcmp(input, "\377") == 0)
         {
             free_buffer(bf);
             continue;
@@ -74,5 +83,6 @@ int minim_repl()
     }
 
     free_env(env);
+    signal(SIGINT, SIG_DFL);
     return 0;
 }
