@@ -145,3 +145,34 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof
         flags = nflags;
     }
 }
+
+void valid_path(Buffer *valid, const char *maybe)
+{
+    size_t len = strlen(maybe);
+    bool first = true;
+
+    for (size_t i = 0; i < len; ++i)
+    {
+#ifdef MINIM_WINDOWS
+        if (maybe[i] == '/')
+        {
+            if (i != 0)
+            {
+                if (first) 
+                {
+                    writec_buffer(valid, ':');
+                    first = false;
+                }
+                
+                writes_buffer(valid, "\\\\");
+            }
+        }
+        else
+        {
+            writec_buffer(valid, maybe[i]);
+        }
+#else
+        writec_buffer(valid, maybe[i]);
+#endif
+    }
+}

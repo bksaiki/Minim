@@ -53,24 +53,28 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc, uint8_t
     return 0;
 }
 
-int minim_load_file(MinimEnv *env, const char *str)
+int minim_load_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
     ReadResult rr;
     SyntaxLoc *loc;
     Buffer *bf;
+    Buffer *valid_fname;
     FILE *file;
     int status;
 
-    file = fopen(str, "r");
+    init_buffer(&valid_fname);
+    valid_path(valid_fname, fname);
+    file = fopen(valid_fname->data, "r");
+
     if (!file)
     {
-        printf("Could not open file \"%s\"\n", str);
+        printf("Could not open file \"%s\"\n", valid_fname->data);
         return 2;
     }
 
     init_buffer(&bf);
-    init_syntax_loc(&loc, str);
+    init_syntax_loc(&loc, valid_fname->data);
     set_default_print_params(&pp);
     set_default_read_result(&rr);
     
@@ -94,6 +98,7 @@ int minim_load_file(MinimEnv *env, const char *str)
     }
 
     free_buffer(bf);
+    free_buffer(valid_fname);
     free_syntax_loc(loc);
     fclose(file);
     return 0;

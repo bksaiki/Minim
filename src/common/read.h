@@ -39,9 +39,9 @@ void free_syntax_loc(SyntaxLoc *loc);
 
 void set_default_read_result(ReadResult *rr);
 
-
 // *** Reading *** //
 
 void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof);
+void valid_path(Buffer *valid, const char *maybe);
 
 #endif
