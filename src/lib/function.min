@@ -2,8 +2,12 @@
 
 (def const (x) (lambda args x))
 
+;
+; TODO: lambda capture
+;
 ; (def curry (f . args)
 ;   (lambda args2 (apply f (append args args2))))
-
+;
 ; (def curryr (f . args)
 ;   (lambda args2 (apply f (append args2 args))))
+;

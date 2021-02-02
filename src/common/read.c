@@ -150,7 +150,7 @@ void valid_path(Buffer *valid, const char *maybe)
 {
 #ifdef MINIM_WINDOWS
     size_t len = strlen(maybe);
-    bool first = true;
+    bool first = (len > 0 && maybe[0] == '/');
 
     for (size_t i = 0; i < len; ++i)
     {

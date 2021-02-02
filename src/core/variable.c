@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "assert.h"
 #include "builtin.h"
@@ -45,6 +46,52 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
             res = cond;
         }   
     }
+
+    return res;
+}
+
+MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    bool eval = false;
+
+    for (size_t i = 0; !eval && i < argc; ++i)
+    {
+        MinimObject *ce_pair, *cond, *val;
+
+        unsyntax_ast(env, args[i]->data, &ce_pair);
+        if (assert_list(ce_pair, &res, "Expected [<cond> <expr>] pair") &&
+            assert_list_len(ce_pair, &res, 2, "Expected [<cond> <expr>] pair"))
+        {
+            MinimAst *cond_syn = MINIM_CAR(ce_pair)->data;
+            if (assert_generic(&res, "'else' clause must be last", i + 1 == argc || strcmp(cond_syn->sym, "else") != 0))
+            {
+                eval_ast(env, cond_syn, &cond);
+                if (coerce_into_bool(cond))
+                {
+                    eval_ast(env, MINIM_CADR(ce_pair)->data, &val);
+                    res = fresh_minim_object(val);
+                    RELEASE_IF_REF(val);
+                    eval = true;
+                }
+
+                free_minim_object(cond);
+            }
+            else
+            {
+                eval = true;
+            }
+        }
+        else
+        {
+            eval = true;
+        }
+    
+        free_minim_object(ce_pair);
+    }
+
+    if (argc == 0 || !eval)
+        init_minim_object(&res, MINIM_OBJ_VOID);
 
     return res;
 }
