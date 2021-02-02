@@ -61,18 +61,44 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
 
         unsyntax_ast(env, args[i]->data, &ce_pair);
         if (assert_list(ce_pair, &res, "Expected [<cond> <expr>] pair") &&
-            assert_list_len(ce_pair, &res, 2, "Expected [<cond> <expr>] pair"))
+            assert_generic(&res, "Expected [<cond> <expr>] pair", minim_list_length(ce_pair) >= 2))
         {
             MinimAst *cond_syn = MINIM_CAR(ce_pair)->data;
-            if (assert_generic(&res, "'else' clause must be last", i + 1 == argc || strcmp(cond_syn->sym, "else") != 0))
+            if (assert_generic(&res, "'else' clause must be last", i + 1 == argc ||
+                !cond_syn->sym || strcmp(cond_syn->sym, "else") != 0))
             {
                 eval_ast(env, cond_syn, &cond);
                 if (coerce_into_bool(cond))
                 {
-                    eval_ast(env, MINIM_CADR(ce_pair)->data, &val);
-                    res = fresh_minim_object(val);
-                    RELEASE_IF_REF(val);
-                    eval = true;
+                    if (minim_list_length(ce_pair) > 2)
+                    {
+                        MinimEnv *env2;
+
+                        init_env(&env2, env);
+                        for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
+                        {
+                            eval_ast(env2, MINIM_CAR(it)->data, &val);
+                            if (val->type == MINIM_OBJ_ERR)
+                            {
+                                res = val;
+                                break;
+                            }
+
+                            if (i + 1 == argc)      res = fresh_minim_object(val);
+                            else                    free_minim_object(val);
+                        }
+
+                        RELEASE_IF_REF(val);
+                        pop_env(env2);
+                        eval = true;
+                    }
+                    else
+                    {
+                        eval_ast(env, MINIM_CADR(ce_pair)->data, &val);
+                        res = fresh_minim_object(val);
+                        RELEASE_IF_REF(val);
+                        eval = true;
+                    }
                 }
 
                 free_minim_object(cond);

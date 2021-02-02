@@ -4,27 +4,25 @@
 
 ;; Factorial
 (def factorial (n)
-  (if (negative? n)
-      "undef"
-      (begin
-        (def loop (n acc)
-          (if (zero? n)
-              acc
-              (loop (- n 1) (* n acc))))
-        (loop n 1))))
+  (cond
+   [(negative? n) "undef"]
+   [else
+    (def loop (n acc)
+      (if (zero? n)
+          acc
+          (loop (- n 1) (* n acc))))
+    (loop n 1)]))
 
 (def fibonacci (n)
-  (if (negative? n)
-      "undef"
-      (begin
-        (if (zero? n)
-            0
-            (begin
-              (def loop (i x y)
-                (if (> i n)
-                    x
-                    (loop (+ i 1) (+ x y) x)))
-              (loop 1 1 0))))))
+  (cond 
+   [(negative? n) "undef"]
+   [(zero? n) 0]
+   [else
+    (def loop (i x y)
+      (if (> i n)
+          x
+          (loop (+ i 1) (+ x y) x)))
+    (loop 1 1 0)]))
 
 ;; Functional maps
 
