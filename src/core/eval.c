@@ -130,7 +130,11 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
         else
         {
             res = env_get_sym(env, str);
-            if (!res)   minim_error(&res, "Unrecognized symbol: %s", str);
+
+            if (!res)
+                minim_error(&res, "Unrecognized symbol: %s", str);
+            else if (res->type == MINIM_OBJ_SYNTAX)
+                minim_error(&res, "Bad syntax: %s", str);
         }
     }
 
