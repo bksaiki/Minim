@@ -39,6 +39,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
     minim_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     minim_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);
+    minim_load_builtin(env, "error", MINIM_OBJ_FUNC, minim_builtin_error);
 
     // Boolean
     minim_load_builtin(env, "true", MINIM_OBJ_BOOL, 1);

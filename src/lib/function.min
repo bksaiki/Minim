@@ -1,9 +1,11 @@
-(def identity (x) x)
+; Functions
 
-(def const (x) (lambda args x))
+(def identity (x) x)
 
 ;
 ; TODO: lambda capture
+;
+; (def const (x) (lambda args x))
 ;
 ; (def curry (f . args)
 ;   (lambda args2 (apply f (append args args2))))

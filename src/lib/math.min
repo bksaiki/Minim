@@ -5,7 +5,8 @@
 ;; Factorial
 (def factorial (n)
   (cond
-   [(negative? n) "undef"]
+   [(not (number? n)) (error 'factorial "expected a numerical argument")]
+   [(negative? n) (error 'factorial "undefined for negative numbers")]
    [else
     (def loop (n acc)
       (if (zero? n)
@@ -15,8 +16,8 @@
 
 (def fibonacci (n)
   (cond 
-   [(negative? n) "undef"]
-   [(zero? n) 0]
+   [(not (number? n)) (error 'fibonacci "expected a numerical argument")]
+   [(negative? n) (error 'fibonacci "undefined for negative numbers")]
    [else
     (def loop (i x y)
       (if (> i n)
