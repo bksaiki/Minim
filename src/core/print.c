@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "../common/buffer.h"
+#include "error.h"
 #include "hash.h"
 #include "lambda.h"
 #include "list.h"
@@ -85,7 +86,16 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_ERR)
     {
-        writes_buffer(bf, obj->data);
+        MinimError *err = obj->data;
+
+        writes_buffer(bf, err->msg);
+        if (err->top) writes_buffer(bf, "\n backtrace:");
+        for (MinimErrorTrace *trace = err->top; trace; trace = trace->next)
+        {
+            writef_buffer(bf, "\n  %s", trace->name);
+            if (trace->multiple)
+                writes_buffer(bf, "\n  ...");
+        }
     }
     else if (obj->type == MINIM_OBJ_PAIR)
     {

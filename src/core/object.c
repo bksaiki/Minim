@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "env.h"
+#include "error.h"
 #include "iter.h"
 #include "hash.h"
 #include "lambda.h"
@@ -40,12 +41,16 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     {
         obj->data = va_arg(rest, MinimNumber*);
     }
-    else if (type == MINIM_OBJ_SYM || type == MINIM_OBJ_ERR)
+    else if (type == MINIM_OBJ_SYM)
     {
         char *dest, *src = va_arg(rest, char*);
         dest = malloc((strlen(src) + 1) * sizeof(char));
         strcpy(dest, src);
         obj->data = dest;
+    }
+    else if (type == MINIM_OBJ_ERR)
+    {
+        obj->data = va_arg(rest, MinimError*);
     }
     else if (type == MINIM_OBJ_STRING)
     {
@@ -135,11 +140,18 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
         copy_minim_number(&num, src->data);
         dest->data = num;
     }
-    else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_ERR || src->type == MINIM_OBJ_STRING)
+    else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_STRING)
     {
         char *str = ((char*) src->data);
         dest->data = malloc((strlen(str) + 1) * sizeof(char));
         strcpy(dest->data, str);
+    }
+    else if (src->type == MINIM_OBJ_ERR)
+    {
+        MinimError *err;
+
+        copy_minim_error(&err, src->data);
+        dest->data = err;
     }
     else if (src->type == MINIM_OBJ_PAIR)
     {
@@ -239,6 +251,7 @@ void free_minim_object(MinimObject *obj)
             else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
             else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->data);
             else if (obj->type == MINIM_OBJ_VECTOR)     free_minim_vector(obj->data);
+            else if (obj->type == MINIM_OBJ_ERR)        free_minim_error(obj->data);
             else                                        free(obj->data);
         }
     }
@@ -256,12 +269,14 @@ void free_minim_objects(MinimObject **objs, size_t count)
 void minim_error(MinimObject **pobj, const char* format, ...)
 {
     MinimObject *obj;
+    MinimError *err;
     char buffer[1024];
     va_list rest;
     
     va_start(rest, format);
     vsnprintf(buffer, 1024, format, rest);
-    init_minim_object(&obj, MINIM_OBJ_ERR, buffer);
+    init_minim_error(&err, buffer, NULL);
+    init_minim_object(&obj, MINIM_OBJ_ERR, err);
     va_end(rest);
 
     *pobj = obj;
@@ -282,7 +297,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
 
     case MINIM_OBJ_SYM:
     case MINIM_OBJ_STRING:
-    case MINIM_OBJ_ERR:
         return strcmp(a->data, b->data) == 0;
 
     case MINIM_OBJ_FUNC:
@@ -306,6 +320,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     
     /*
     case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_ERR:
     */
     default:
         return false;
@@ -359,7 +374,6 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     case MINIM_OBJ_SYM:
     case MINIM_OBJ_STRING:
-    case MINIM_OBJ_ERR:
         writes_buffer(bf, obj->data);
         break;
 
@@ -385,6 +399,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     /*
     case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_ERR:
     */
     default:
         write_buffer(bf, obj->data, sizeof(void*));
