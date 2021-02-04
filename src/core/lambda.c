@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "assert.h"
+#include "error.h"
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
@@ -93,6 +94,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         {
             copy_minim_object(&val, args[i]);
             env_intern_sym(env2, lam->args[i], val);
+            RELEASE_IF_REF(val);
         }
 
         if (lam->rest)
@@ -111,10 +113,11 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
         eval_ast(env2, lam->body, &val);
         res = fresh_minim_object(val);
+        RELEASE_IF_REF(val);
         pop_env(env2);
 
-        if (!MINIM_OBJ_OWNERP(val))
-            free_minim_object(val);
+        if (res->type == MINIM_OBJ_ERR)
+            minim_error_add_trace(res->data, ((lam->name) ? lam->name : "???"));
     }
     
     return res;

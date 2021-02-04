@@ -33,6 +33,7 @@ struct ReadResult
 // *** SyntaxLoc *** //
 
 void init_syntax_loc(SyntaxLoc **ploc, const char *fname);
+void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src);
 void free_syntax_loc(SyntaxLoc *loc);
 
 // *** ReadResult *** //

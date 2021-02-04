@@ -9,7 +9,7 @@
 
 #define LOAD_FILE(env, file)            \
 {                                       \
-    if (minim_load_file(env, file))    \
+    if (minim_load_file(env, file))     \
         return 2;                       \
 } 
 
@@ -37,6 +37,7 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
     {    
         print_minim_object(obj, env, pp);
         free_minim_object(obj);
+        free_ast(ast);
         printf("\n  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
         return 2;
     }
@@ -56,7 +57,7 @@ int minim_load_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
     ReadResult rr;
-    SyntaxLoc *loc;
+    SyntaxLoc *loc, *tloc;
     Buffer *bf;
     Buffer *valid_fname;
     FILE *file;
@@ -74,26 +75,34 @@ int minim_load_file(MinimEnv *env, const char *fname)
 
     init_buffer(&bf);
     init_syntax_loc(&loc, valid_fname->data);
+    copy_syntax_loc(&tloc, loc);
     set_default_print_params(&pp);
     set_default_read_result(&rr);
     
     while (!(rr.status & READ_RESULT_EOF))
     {
         fread_expr(file, bf, loc, &rr, EOF);
-        status = run_expr(bf, env, &pp, loc);
-        if (status > 0)
+        if (bf->pos > 0)
         {
-            if (status == 1)  status = 0;
-            break;
+            status = run_expr(bf, env, &pp, tloc);
+            if (status > 0)
+            {
+                if (status == 1)  status = 0;
+                break;
+            }
+            else
+            {
+                reset_buffer(bf);
+                rr.flags |= F_READ_START;
+                rr.read = 0;
+                rr.paren = 0;
+                rr.status &= READ_RESULT_EOF;
+            }
         }
-        else
-        {
-            reset_buffer(bf);
-            rr.flags |= F_READ_START;
-            rr.read = 0;
-            rr.paren = 0;
-            rr.status &= READ_RESULT_EOF;
-        }
+
+        /* Update previous syntax location */
+        tloc->row = loc->row;
+        tloc->col = loc->col;
     }
 
     free_buffer(bf);

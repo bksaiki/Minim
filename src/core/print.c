@@ -94,9 +94,9 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (err->top) writes_buffer(bf, "\n  backtrace:");
         for (MinimErrorTrace *trace = err->top; trace; trace = trace->next)
         {
-            writef_buffer(bf, "\n  %s", trace->name);
+            writef_buffer(bf, "\n   ~s", trace->name);
             if (trace->multiple)
-                writes_buffer(bf, "\n  ...");
+                writes_buffer(bf, "\n   ...");
         }
     }
     else if (obj->type == MINIM_OBJ_PAIR)

@@ -16,6 +16,17 @@ void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
     strcpy(loc->name, fname);
 }
 
+void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src)
+{
+    SyntaxLoc *loc = malloc(sizeof(SyntaxLoc));
+    loc->name = malloc((strlen(src->name) + 1) * sizeof(char));
+    loc->row = src->row;
+    loc->col = src->col;
+    *ploc = loc;
+
+    strcpy(loc->name, src->name);
+}
+
 void free_syntax_loc(SyntaxLoc *loc)
 {
     if (loc->name)     free(loc->name);
@@ -57,7 +68,7 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof
         if (c == '\n')
         {
             ++nrow;
-            ncol = 0;
+            ncol = 1;
         }
         else
         {
@@ -72,6 +83,7 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof
                 flags &= ~F_READ_COMMENT;
                 loc->row = nrow;
                 loc->col = ncol;
+                writec_buffer(bf, c);
             }
             
             continue;
@@ -106,22 +118,20 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *loc, ReadResult *rr, char eof
                 flags &= ~F_READ_SPACE;
                 continue;
             }
+            else if (c == '\n')
+            {
+                if (!(flags & F_READ_START))
+                    nflags |= F_READ_SPACE;
+            }
             else if (isspace(c))
             {
                 if (flags & F_READ_START)
-                {
                     continue;
-                }
-                else if (!(flags & F_READ_SPACE) && rr->paren > 0)
-                {
+   
+                if (!(flags & F_READ_SPACE) && rr->paren > 0)
                     c = ' ';
-                    nflags |= F_READ_SPACE;
-                }
-                else
-                {
-                    flags |= F_READ_SPACE;
-                    continue;
-                }
+                
+                nflags |= F_READ_SPACE;
             }
             else
             {
