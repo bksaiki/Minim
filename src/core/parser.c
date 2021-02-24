@@ -19,7 +19,7 @@ static void expand_input(const char *str, Buffer *bf)
     size_t len = strlen(str), paren = 0, i = 0;
     uint8_t flags = 0;
 
-    while (isspace(str[i]) && i < len)     ++i;  // strip leading whitespace
+    while (isspace(str[i]) && str[i] != '\n' && i < len)     ++i;  // strip leading whitespace
 
     for (; i < len; ++i)
     {
@@ -124,15 +124,23 @@ static size_t get_argc(const char* str, size_t begin, size_t end)
     return count;
 }
 
-static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
+static MinimAst* parse_str_node(const char* str, size_t begin, size_t end, size_t row)
 {
     MinimAst* node;
     size_t last = end - 1;
     char *tmp;
 
+    while (isspace(str[begin]))
+    {
+        if (str[begin] == '\n')
+            ++row;
+        ++begin;
+    }
+
     if (begin >= end)
     {
         init_ast_node(&node, "Unexpected end of string", MINIM_AST_ERR);
+        node->argc = row;
     }
     else if (open_paren(str[begin]) && closed_paren(str[last]))
     {
@@ -169,7 +177,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
                     for (j = i; j < last && !isspace(str[j]); ++j);
                 }
 
-                node->children[idx] = parse_str_node(str, i, j);
+                node->children[idx] = parse_str_node(str, i, j, row);
                 for (i = j; i < last && isspace(str[i]); ++i);
             }
         }
@@ -188,6 +196,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
         if (bad)
         {
             init_ast_node(&node, "Malformed string", MINIM_AST_ERR);
+            node->argc = row;
         }
         else
         {
@@ -212,6 +221,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
         if (space)
         {
             init_ast_node(&node, "Unexpected space encountered", MINIM_AST_ERR);
+            node->argc = row;
         }
         else
         {
@@ -225,6 +235,7 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end)
     else
     {
         init_ast_node(&node, "Unmatched parenthesis", MINIM_AST_ERR);
+        node->argc = row;
     }
 
     return node;
@@ -250,43 +261,42 @@ static void expand_postpass(MinimAst *ast)
     }
 }
 
-static void print_ast_errors(MinimAst* node)
-{
-    if (node->tags & MINIM_AST_ERR)
-    {
-        printf("Syntax error: %s\n", node->sym);
-    }
-    
-    if (node->argc != 0)
-    {
-        for (size_t i = 0; i < node->argc; ++i)
-            print_ast_errors(node->children[i]);
-    }
-}
-
 //
 //  Visible functions
 // 
 
 int parse_str(const char* str, MinimAst** psyntax)
 {
+    SyntaxLoc *loc;
+    int status;
+
+    init_syntax_loc(&loc, "???");
+    status = parse_expr_loc(str, psyntax, loc);
+    free_syntax_loc(loc);
+
+    return status;
+}
+
+int parse_expr_loc(const char* str, MinimAst** psyntax, SyntaxLoc *loc)
+{
     MinimAst *syntax;
     Buffer *bf;
 
     init_buffer(&bf);
     expand_input(str, bf);
-    syntax = parse_str_node(bf->data, 0, strlen(bf->data));
+    syntax = parse_str_node(bf->data, 0, strlen(bf->data), loc->row);
     *psyntax = syntax;
 
     free_buffer(bf);
-    expand_postpass(syntax);
-    
     if (!ast_validp(syntax))
     {
-        print_ast_errors(syntax);
-        free_ast(syntax);
+        printf("Syntax: %s\n", syntax->sym);
+        printf("  at %s\n", str);
+        printf("  in %s:%lu\n", loc->name, syntax->argc);
+        syntax->argc = 0;
         return 0;
     } 
     
+    expand_postpass(syntax);
     return 1;
 }

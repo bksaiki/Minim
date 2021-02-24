@@ -26,7 +26,7 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
     if (strcmp(input, "(exit)") == 0)
         return 1;
     
-    if (!parse_str(input, &ast))
+    if (!parse_expr_loc(input, &ast, loc))
     {
         printf("  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
         return 2;
@@ -82,7 +82,18 @@ int minim_load_file(MinimEnv *env, const char *fname)
     while (!(rr.status & READ_RESULT_EOF))
     {
         fread_expr(file, bf, loc, &rr, EOF);
-        if (bf->pos > 0)
+        if (rr.flags & F_READ_START)
+        {
+            // inline reset
+            bf->pos = 0;
+            bf->data[0] = '\0';
+
+            rr.flags |= F_READ_START;
+            rr.read = 0;
+            rr.paren = 0;
+            rr.status &= READ_RESULT_EOF;
+        }
+        else if (bf->pos > 0)
         {
             status = run_expr(bf, env, &pp, tloc);
             if (status > 0)
@@ -92,7 +103,10 @@ int minim_load_file(MinimEnv *env, const char *fname)
             }
             else
             {
-                reset_buffer(bf);
+                // inline reset
+                bf->pos = 0;
+                bf->data[0] = '\0';
+
                 rr.flags |= F_READ_START;
                 rr.read = 0;
                 rr.paren = 0;
@@ -108,6 +122,7 @@ int minim_load_file(MinimEnv *env, const char *fname)
     free_buffer(bf);
     free_buffer(valid_fname);
     free_syntax_loc(loc);
+    free_syntax_loc(tloc);
     fclose(file);
     return 0;
 }
