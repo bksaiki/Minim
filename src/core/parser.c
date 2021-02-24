@@ -80,8 +80,12 @@ parse_str_node(const char* str, size_t begin, size_t end,
     }
     else if (str[begin] == '\'')
     {
-        init_ast_op(&node, 2, 0);
         init_ast_node(&node2, "quote", 0);
+        init_syntax_loc(&node2->loc, lname);
+        node2->loc->row = row;
+        node2->loc->col = 0;
+
+        init_ast_op(&node, 2, 0);
         node->children[0] = node2;
         node->children[1] = parse_str_node(str, begin + 1, end, lname, row, col + 1,
                               paren + 1, eflags & EXPAND_QUOTE);
@@ -95,6 +99,9 @@ parse_str_node(const char* str, size_t begin, size_t end,
         {
             init_ast_op(&node, get_argc(str, i, last) + 1, 0);
             init_ast_node(&node->children[0], "quote", 0);
+            init_syntax_loc(&node->children[0]->loc, lname);
+            node->children[0]->loc->row = row;
+            node2->children[0]->loc->col = 0;
             idx = 1;
         }
         else
@@ -159,6 +166,9 @@ parse_str_node(const char* str, size_t begin, size_t end,
             strncpy(tmp, &str[begin], len);
             tmp[len] = '\0';
             init_ast_node(&node, tmp, 0);
+            init_syntax_loc(&node->loc, lname);
+            node->loc->row = row;
+            node->loc->col = 0;
             free(tmp);
         }
     }
@@ -184,6 +194,9 @@ parse_str_node(const char* str, size_t begin, size_t end,
             strncpy(tmp, &str[begin], len);
             tmp[len] = '\0';
             init_ast_node(&node, tmp, 0);
+            init_syntax_loc(&node->loc, lname);
+            node->loc->row = row;
+            node->loc->col = 0;
             free(tmp);
         }
     }
@@ -235,14 +248,10 @@ int parse_str(const char* str, MinimAst** psyntax)
 int parse_expr_loc(const char* str, MinimAst** psyntax, SyntaxLoc *loc)
 {
     MinimAst *syntax;
-    Buffer *bf;
 
-    // init_buffer(&bf);
-    // expand_input(str, bf);
     syntax = parse_str_node(str, 0, strlen(str), loc->name, loc->row, loc->col, 0, 0);
     *psyntax = syntax;
 
-    // free_buffer(bf);
     if (!ast_validp(syntax))
     {
         printf("Syntax: %s\n", syntax->sym);

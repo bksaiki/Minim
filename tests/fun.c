@@ -70,13 +70,13 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(begin (def foo (lambda (cons x . rest) (cons x rest))) (foo 1)",      "'(1)",
-            "(begin (def foo (lambda (cons x . rest) (cons x rest))) (foo 1 2)",    "'(1 2)",
-            "(begin (def foo (lambda (cons x . rest) (cons x rest))) (foo 1 2 3)",  "'(1 2 3)",
+            "(begin (def foo (lambda (x . rest) (cons x rest))) (foo 1))",      "'(1)",
+            "(begin (def foo (lambda (x . rest) (cons x rest))) (foo 1 2))",    "'(1 2)",
+            "(begin (def foo (lambda (x . rest) (cons x rest))) (foo 1 2 3))",  "'(1 2 3)",
 
-            "(begin (def foo (lambda (cons x y . rest) (cons x rest))) (foo 1 2)",      "'(1 2)",
-            "(begin (def foo (lambda (cons x y . rest) (cons x rest))) (foo 1 2 3)",    "'(1 2 3)",
-            "(begin (def foo (lambda (cons x y . rest) (cons x rest))) (foo 1 2 3 4)",  "'(1 2 3 4)"
+            "(begin (def foo (lambda (x y . rest) (cons x rest))) (foo 1 2))",      "'(1 2)",
+            "(begin (def foo (lambda (x y . rest) (cons x rest))) (foo 1 2 3))",    "'(1 2 3)",
+            "(begin (def foo (lambda (x y . rest) (cons x rest))) (foo 1 2 3 4))",  "'(1 2 3 4)"
         };
 
         printf("Testing rest arguments\n");

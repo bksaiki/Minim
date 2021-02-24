@@ -7,6 +7,7 @@ void init_ast_op(MinimAst **past, size_t argc, uint8_t tags)
 {
     MinimAst *node = malloc(sizeof(MinimAst));
     node->children = malloc(argc * sizeof(MinimAst*));
+    node->loc = NULL;
     node->argc = argc;
     node->sym = NULL;
     node->tags = MINIM_AST_OP | tags;
@@ -17,6 +18,7 @@ void init_ast_node(MinimAst **past, const char *sym, int tags)
 {
     MinimAst *node = malloc(sizeof(MinimAst));
     node->children = NULL;
+    node->loc = NULL;
     node->argc = 0;
     node->sym = malloc((strlen(sym) + 1) * sizeof(char));
     node->tags = MINIM_AST_VAL | tags;
@@ -31,6 +33,9 @@ void copy_ast(MinimAst **pdest, MinimAst *src)
     node->argc = src->argc;
     node->tags = src->tags;
     *pdest = node;
+
+    if (src->loc)   copy_syntax_loc(&node->loc, src->loc);
+    else            node->loc = NULL;
 
     if (src->sym)
     {
@@ -64,9 +69,16 @@ void free_ast(MinimAst* node)
             free_ast(node->children[i]);
     }
 
+    if (node->loc)      free_syntax_loc(node->loc);
     if (node->sym)      free(node->sym);
     if (node->children) free(node->children);
     free(node);
+}
+
+void ast_add_syntax_loc(MinimAst *ast, SyntaxLoc *loc)
+{
+    if (ast->loc)   free_syntax_loc(ast->loc);
+    copy_syntax_loc(&ast->loc, loc);
 }
 
 bool ast_validp(MinimAst *node)
