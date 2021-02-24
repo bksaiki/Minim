@@ -7,81 +7,10 @@
 #include "../common/buffer.h"
 #include "parser.h"
 
-#define EXPAND_STRING       ((uint8_t)0x1)
-#define EXPAND_QUOTE        ((uint8_t)0x2)
-
+#define EXPAND_QUOTE        ((uint8_t)0x1)
 
 #define open_paren(x)       (x == '(' || x == '[' || x == '{')
 #define closed_paren(x)     (x == ')' || x == ']' || x == '}')
-
-static void expand_input(const char *str, Buffer *bf)
-{
-    size_t len = strlen(str), paren = 0, i = 0;
-    uint8_t flags = 0;
-
-    while (isspace(str[i]) && str[i] != '\n' && i < len)     ++i;  // strip leading whitespace
-
-    for (; i < len; ++i)
-    {
-        if (flags & EXPAND_STRING)
-        {
-            writec_buffer(bf, str[i]);
-            if (str[i] == '"' && str[i - 1] != '\\')
-                flags &= ~EXPAND_STRING;
-        }
-        else
-        {
-            if (str[i] == '"')
-            {
-                writec_buffer(bf, str[i]);
-                flags |= EXPAND_STRING;
-            }
-            else if (str[i] == '\'')
-            {
-                writes_buffer(bf, "(quote ");
-                if (flags & EXPAND_QUOTE)   ++paren;
-                else                        flags |= EXPAND_QUOTE;
-            }
-            else if (flags & EXPAND_QUOTE && str[i] == '(')
-            {
-                writec_buffer(bf, str[i]);
-                ++paren;
-            }
-            else if (flags & EXPAND_QUOTE && str[i] == ')' && paren > 0)
-            {
-                writec_buffer(bf, str[i]);
-                if (--paren == 0)
-                {
-                    writec_buffer(bf, ')');
-                    flags &= ~EXPAND_QUOTE;
-                }
-            }
-            else if (flags & EXPAND_QUOTE && isspace(str[i]) && paren == 0)
-            {
-                writec_buffer(bf, ')');
-                writec_buffer(bf, str[i]);
-                flags &= ~EXPAND_QUOTE;
-            }
-            else
-            {
-                writec_buffer(bf, str[i]);
-            }
-        }
-    }
-
-    if (flags & EXPAND_QUOTE)
-    {
-        for (size_t i = 0; i < paren; ++i)
-            writec_buffer(bf, ')');
-        writec_buffer(bf, ')');
-    }
-
-    for (size_t i = bf->pos - 1; isspace(bf->data[i]) && i <= bf->pos; --i)
-    {
-        bf->data[i] = '\0';
-        --bf->pos;
-    }
-}
 
 static size_t get_argc(const char* str, size_t begin, size_t end)
 {
@@ -91,10 +20,11 @@ static size_t get_argc(const char* str, size_t begin, size_t end)
     {
         while (isspace(str[idx])) ++idx;
 
-        if (open_paren(str[idx]))
+        if (open_paren(str[idx]) || (idx + 1 < end && str[idx] == '\'' && open_paren(str[idx + 1])))
         {
             size_t paren = 1;
 
+            if (str[idx] == '\'') ++idx;
             for (idx2 = idx + 1; idx2 < end && paren > 0; ++idx2)
             {
                 if (open_paren(str[idx2]))          ++paren;
@@ -124,16 +54,22 @@ static size_t get_argc(const char* str, size_t begin, size_t end)
     return count;
 }
 
-static MinimAst* parse_str_node(const char* str, size_t begin, size_t end, size_t row)
+static MinimAst*
+parse_str_node(const char* str, size_t begin, size_t end,
+               const char *lname, size_t row, size_t col,
+               size_t paren, uint8_t eflags)
 {
-    MinimAst* node;
+    MinimAst *node, *node2;
     size_t last = end - 1;
     char *tmp;
 
     while (isspace(str[begin]))
     {
         if (str[begin] == '\n')
+        {
             ++row;
+            col = 0;
+        }
         ++begin;
     }
 
@@ -142,44 +78,63 @@ static MinimAst* parse_str_node(const char* str, size_t begin, size_t end, size_
         init_ast_node(&node, "Unexpected end of string", MINIM_AST_ERR);
         node->argc = row;
     }
+    else if (str[begin] == '\'')
+    {
+        init_ast_op(&node, 2, 0);
+        init_ast_node(&node2, "quote", 0);
+        node->children[0] = node2;
+        node->children[1] = parse_str_node(str, begin + 1, end, lname, row, col + 1,
+                              paren + 1, eflags & EXPAND_QUOTE);
+    }
     else if (open_paren(str[begin]) && closed_paren(str[last]))
     {
-        size_t i = begin + 1, j;
+        size_t i = begin + 1;
+        size_t j, idx;
 
-        init_ast_op(&node, get_argc(str, i, last), 0);
-        if (node->argc != 0)
+        if (eflags & EXPAND_QUOTE)
         {
-            for (size_t idx = 0; idx < node->argc; ++idx)
+            init_ast_op(&node, get_argc(str, i, last) + 1, 0);
+            init_ast_node(&node->children[0], "quote", 0);
+            idx = 1;
+        }
+        else
+        {
+            init_ast_op(&node, get_argc(str, i, last), 0);
+            idx = 0;
+        }
+
+        for (; idx < node->argc; ++idx)
+        {
+            if (open_paren(str[i]) || (i + 1 < end && str[i] == '\'' && open_paren(str[i + 1])))
             {
-                if (open_paren(str[i]))
-                {
-                    size_t paren = 1;
+                size_t paren = 1;
+                if (str[i] == '\'') j = i + 2;
+                else                j = i + 1;
 
-                    for (j = i + 1; paren != 0 && j < last; ++j)
-                    {
-                        if (open_paren(str[j]))         ++paren;
-                        else if (closed_paren(str[j]))  --paren;
-                    }
-                }
-                else if (str[i] == '\"')
+                for (; paren != 0 && j < last; ++j)
                 {
-                    for (j = i + 1; j < last; ++j)
-                    {
-                        if (str[j] == '\"' && str[j - 1] != '\\')
-                        {
-                            ++j;
-                            break;
-                        }
-                    }
+                    if (open_paren(str[j]))         ++paren;
+                    else if (closed_paren(str[j]))  --paren;
                 }
-                else
-                {
-                    for (j = i; j < last && !isspace(str[j]); ++j);
-                }
-
-                node->children[idx] = parse_str_node(str, i, j, row);
-                for (i = j; i < last && isspace(str[i]); ++i);
             }
+            else if (str[i] == '\"')
+            {
+                for (j = i + 1; j < last; ++j)
+                {
+                    if (str[j] == '\"' && str[j - 1] != '\\')
+                    {
+                        ++j;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                for (j = i; j < last && !isspace(str[j]); ++j);
+            }
+
+            node->children[idx] = parse_str_node(str, i, j, lname, row, col, paren, eflags);
+            for (i = j; i < last && isspace(str[i]); ++i);
         }
     }
     else if (str[begin] == '\"' && str[last] == '\"')
@@ -282,12 +237,12 @@ int parse_expr_loc(const char* str, MinimAst** psyntax, SyntaxLoc *loc)
     MinimAst *syntax;
     Buffer *bf;
 
-    init_buffer(&bf);
-    expand_input(str, bf);
-    syntax = parse_str_node(bf->data, 0, strlen(bf->data), loc->row);
+    // init_buffer(&bf);
+    // expand_input(str, bf);
+    syntax = parse_str_node(str, 0, strlen(str), loc->name, loc->row, loc->col, 0, 0);
     *psyntax = syntax;
 
-    free_buffer(bf);
+    // free_buffer(bf);
     if (!ast_validp(syntax))
     {
         printf("Syntax: %s\n", syntax->sym);
