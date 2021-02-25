@@ -1,6 +1,7 @@
 #ifndef _MINIM_READ_H_
 #define _MINIM_READ_H_
 
+#include <stdio.h>
 #include "common.h"
 #include "buffer.h"
 

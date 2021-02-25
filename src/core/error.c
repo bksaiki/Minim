@@ -6,32 +6,36 @@
 #include "string.h"
 #include "variable.h"
 
-void init_minim_error_trace(MinimErrorTrace **ptrace, const char* name)
+void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char *name)
 {
     MinimErrorTrace *trace = malloc(sizeof(MinimErrorTrace));
-    trace->name = malloc((strlen(name) + 1) * sizeof(char));
+    copy_syntax_loc(&trace->loc, loc);
     trace->multiple = false;
     trace->next = NULL;
     *ptrace = trace;
 
+    trace->name = malloc((strlen(name) + 1) * sizeof(char));
     strcpy(trace->name, name);
 }
 
 void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src)
 {
     MinimErrorTrace *trace = malloc(sizeof(MinimErrorTrace));
-    trace->name = malloc((strlen(src->name) + 1) * sizeof(char));
+    copy_syntax_loc(&trace->loc, src->loc);
     trace->multiple = src->multiple;
     *ptrace = trace;
 
     if (src->next)      copy_minim_error_trace(&trace->next, src->next);
     else                trace->next = NULL;
+
+    trace->name = malloc((strlen(src->name) + 1) * sizeof(char));
     strcpy(trace->name, src->name);
 }
 
 void free_minim_error_trace(MinimErrorTrace *trace)
 {
     if (trace->next)    free_minim_error_trace(trace->next);
+    if (trace->loc)     free_syntax_loc(trace->loc);
     if (trace->name)    free(trace->name);
     free(trace);
 }
@@ -96,26 +100,26 @@ void free_minim_error(MinimError *err)
     free(err);
 }
 
-void minim_error_add_trace(MinimError *err, const char *name)
+void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
 {
     MinimErrorTrace *trace;
 
     if (err->bottom)
-    {
+    {   
+        /*
         if (strcmp(err->bottom->name, name) == 0)
         {
             err->bottom->multiple = true;
         }
-        else
-        {
-            init_minim_error_trace(&trace, name);
-            err->bottom->next = trace;
-            err->bottom = trace;
-        }
+
+        */
+        init_minim_error_trace(&trace, loc, name);
+        err->bottom->next = trace;
+        err->bottom = trace;
     }
     else
     {
-        init_minim_error_trace(&trace, name);
+        init_minim_error_trace(&trace, loc, name);
         err->top = trace;
         err->bottom = trace;
     }

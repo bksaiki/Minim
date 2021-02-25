@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "builtin.h"
+#include "error.h"
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
@@ -311,6 +312,11 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 
             res = eval_lambda(lam, env, args, argc);
             free_minim_objects(args, argc);
+
+            if (res->type == MINIM_OBJ_ERR)
+            {
+                minim_error_add_trace(res->data, node->children[0]->loc, node->children[0]->sym);
+            }
         }
         else
         {   

@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "assert.h"
-#include "error.h"
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
@@ -115,9 +114,6 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         res = fresh_minim_object(val);
         RELEASE_IF_REF(val);
         pop_env(env2);
-
-        if (res->type == MINIM_OBJ_ERR)
-            minim_error_add_trace(res->data, ((lam->name) ? lam->name : "???"));
     }
     
     return res;

@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "../common/buffer.h"
+#include "../common/read.h"
 #include "error.h"
 #include "hash.h"
 #include "lambda.h"
@@ -94,9 +95,14 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (err->top) writes_buffer(bf, "\n  backtrace:");
         for (MinimErrorTrace *trace = err->top; trace; trace = trace->next)
         {
-            writef_buffer(bf, "\n   ~s", trace->name);
             if (trace->multiple)
-                writes_buffer(bf, "\n   ...");
+                writef_buffer(bf, "\n   ...");
+            else if (trace->loc->name)
+                writef_buffer(bf, "\n   ~s:~i:~i ~s", trace->loc->name,
+                                trace->loc->row, trace->loc->col, trace->name);
+            else
+                writef_buffer(bf, "\n   ~s:~i:~i ~s", trace->loc->name,
+                                trace->loc->row, trace->loc->col);
         }
     }
     else if (obj->type == MINIM_OBJ_PAIR)
