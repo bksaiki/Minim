@@ -12,6 +12,7 @@ static void int_handler(int sig)
     printf(" !! User break\n");
     fflush(stdout);
     fflush(stdin);
+    signal(SIGINT, int_handler);
 }
 
 int minim_repl()
@@ -39,6 +40,9 @@ int minim_repl()
         init_buffer(&bf);
         init_syntax_loc(&loc, "REPL");
         set_default_read_result(&rr);
+
+        loc->row = 0;
+        loc->col = 0;
         
         printf("> ");
         while (!(rr.status & READ_RESULT_EOF) || rr.status & READ_RESULT_INCOMPLETE)
@@ -50,23 +54,24 @@ int minim_repl()
             fread_expr(stdin, bf, loc, &rr, '\n');
         }
 
-        free_syntax_loc(loc);
         input = get_buffer(bf);
-        
         if (strlen(input) == 0 || strcmp(input, "\377") == 0)
         {
             free_buffer(bf);
+            free_syntax_loc(loc);
             continue;
         }
         else if (strcmp(input, "(exit)") == 0)
         {
             free_buffer(bf);
+            free_syntax_loc(loc);
             break;
         }
 
-        if (!parse_str(input, &ast))
+        if (!parse_expr_loc(input, &ast, loc))
         {
             free_buffer(bf);
+            free_syntax_loc(loc);
             continue;
         }
         
@@ -82,6 +87,7 @@ int minim_repl()
             printf("\n");
         }
 
+        free_syntax_loc(loc);
         free_minim_object(obj);
         free_ast(ast);
         free_buffer(bf);
