@@ -96,12 +96,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         for (MinimErrorTrace *trace = err->top; trace; trace = trace->next)
         {
             if (trace->multiple)
-                writef_buffer(bf, "\n   ...");
+                writef_buffer(bf, "\n    ...");
             else if (trace->loc->name)
-                writef_buffer(bf, "\n   ~s:~i:~i ~s", trace->loc->name,
+                writef_buffer(bf, "\n    ~s:~i:~i ~s", trace->loc->name,
                                 trace->loc->row, trace->loc->col, trace->name);
             else
-                writef_buffer(bf, "\n   ~s:~i:~i ~s", trace->loc->name,
+                writef_buffer(bf, "\n    ~s:~i:~i ~s", trace->loc->name,
                                 trace->loc->row, trace->loc->col);
         }
     }

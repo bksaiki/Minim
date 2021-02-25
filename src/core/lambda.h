@@ -1,12 +1,14 @@
 #ifndef _MINIM_LAMBDA_H_
 #define _MINIM_LAMBDA_H_
 
+#include "../common/read.h"
 #include "ast.h"
 #include "env.h"
 
 typedef struct MinimLambda
 {
     MinimAst *body;
+    SyntaxLoc *loc;
     char **args, *rest, *name;
     int argc;
 } MinimLambda;

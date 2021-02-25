@@ -106,16 +106,16 @@ void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
 
     if (err->bottom)
     {   
-        /*
         if (strcmp(err->bottom->name, name) == 0)
         {
             err->bottom->multiple = true;
         }
-
-        */
-        init_minim_error_trace(&trace, loc, name);
-        err->bottom->next = trace;
-        err->bottom = trace;
+        else
+        {
+            init_minim_error_trace(&trace, loc, name);
+            err->bottom->next = trace;
+            err->bottom = trace;
+        }
     }
     else
     {

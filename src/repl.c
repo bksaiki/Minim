@@ -27,7 +27,7 @@ int minim_repl()
 
     init_env(&env, NULL);
     minim_load_builtins(env);
-    // minim_load_library(env);
+    minim_load_library(env);
     set_default_print_params(&pp);
     signal(SIGINT, int_handler);
 

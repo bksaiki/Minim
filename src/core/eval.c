@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../common/read.h"
 #include "builtin.h"
-#include "error.h"
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
@@ -286,6 +286,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 
             for (size_t i = 0; i < argc; ++i) free(args[i]);
             free(args);
+
+            if (res->type == MINIM_OBJ_CLOSURE)
+            {
+                MinimLambda *lam = res->data;
+                copy_syntax_loc(&lam->loc, node->children[0]->loc);
+            }
         }
         else if (op->type == MINIM_OBJ_CLOSURE)
         {
@@ -312,11 +318,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 
             res = eval_lambda(lam, env, args, argc);
             free_minim_objects(args, argc);
-
-            if (res->type == MINIM_OBJ_ERR)
-            {
-                minim_error_add_trace(res->data, node->children[0]->loc, node->children[0]->sym);
-            }
         }
         else
         {   

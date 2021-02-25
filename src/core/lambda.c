@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "assert.h"
+#include "error.h"
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
@@ -11,6 +12,7 @@ void init_minim_lambda(MinimLambda **plam)
 {
     MinimLambda *lam = malloc(sizeof(MinimLambda));
     
+    lam->loc = NULL;
     lam->args = NULL;
     lam->rest = NULL;
     lam->body = NULL;
@@ -59,6 +61,9 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->name = NULL;
     }
 
+    if (src->loc)   copy_syntax_loc(&lam->loc, src->loc);
+    else            lam->loc = NULL;
+
     if (src->body)  copy_ast(&lam->body, src->body);
     else            lam->body = NULL;
 
@@ -77,6 +82,7 @@ void free_minim_lambda(MinimLambda *lam)
     if (lam->rest)      free(lam->rest);
     if (lam->name)      free(lam->name);
     if (lam->body)      free_ast(lam->body);
+    if (lam->loc)       free_syntax_loc(lam->loc);
 
     free(lam);
 }
@@ -114,6 +120,9 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         res = fresh_minim_object(val);
         RELEASE_IF_REF(val);
         pop_env(env2);
+
+        if (res->type == MINIM_OBJ_ERR && lam->loc && lam->name)
+            minim_error_add_trace(res->data, lam->loc, lam->name);
     }
     
     return res;

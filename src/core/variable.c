@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../common/read.h"
 #include "assert.h"
+#include "ast.h"
 #include "builtin.h"
 #include "bool.h"
 #include "eval.h"
@@ -131,8 +133,20 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
         unsyntax_ast(env, args[0]->data, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
         {
-            if (argc == 2)  eval_ast(env, args[1]->data, &val);
-            else            val = minim_builtin_lambda(env, &args[1], argc - 1);
+            if (argc == 2)
+            {
+                eval_ast(env, args[1]->data, &val);
+            }
+            else
+            {
+                MinimAst *ast = args[0]->data;
+                MinimLambda *lam;
+                
+                val = minim_builtin_lambda(env, &args[1], argc - 1);
+                
+                lam = val->data;
+                copy_syntax_loc(&lam->loc, ast->loc);
+            }
             
             if (val->type != MINIM_OBJ_ERR)
             {
