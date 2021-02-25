@@ -86,8 +86,8 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                                 break;
                             }
 
-                            if (i + 1 == argc)      res = fresh_minim_object(val);
-                            else                    free_minim_object(val);
+                            if (MINIM_CDR(it))  free_minim_object(val);
+                            else                res = fresh_minim_object(val);               
                         }
 
                         RELEASE_IF_REF(val);

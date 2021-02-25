@@ -17,6 +17,14 @@ bool run_test(char *input, char *expected)
     return s;
 }
 
+bool evaluate(char *input)
+{
+    char *str = eval_string(input, INT_MAX);
+    free(str);
+
+    return true;
+}
+
 int main()
 {
     bool status = true;
@@ -513,6 +521,19 @@ int main()
         printf("Testing 'list->vector'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 2;
+        char strs[2][256] =
+        {
+            "(error \"this is an error\")",
+            "(error 'foo \"this is also an error\")"
+        };
+
+        printf("Testing 'error'");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
     }
 
     return (int)(!status);

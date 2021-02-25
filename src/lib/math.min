@@ -2,6 +2,8 @@
 ;; Math functions
 ;; TODO: error on bad input
 
+;;;;;;;;;;;;;;;;;; Special math functions ;;;;;;;;;;;;;;;;;;;
+
 ;; Factorial
 (def factorial (n)
   (cond
