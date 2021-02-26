@@ -269,6 +269,24 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(foldl + 0 (list))",                    "0",
+            "(foldl + 0 (list 1))",                  "1",
+            "(foldl + 0 (list 1 2 3))",              "6",
+            "(foldl cons (list) (list))",           "'(())",
+            "(foldl cons (list) (list 1))",         "'(1)",
+            "(foldl (cons) (list) (list 1 2 3))"    "'(3 2 1)"
+        };
+
+        printf("Testing 'foldl'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     {
         const int COUNT = 6;
         char strs[12][256] =

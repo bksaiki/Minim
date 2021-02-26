@@ -626,7 +626,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res;
 
     if (assert_exact_argc(&res, "foldr", 3, argc) &&
-        assert_func(args[0], &res, "Exepcted a function in the 1st argument of 'foldr'") &&
+        assert_func(args[0], &res, "Expected a function in the 1st argument of 'foldr'") &&
         assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
     {
         MinimObject **vals = malloc(2 * sizeof(MinimObject*));
@@ -680,15 +680,66 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
+static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject *li, MinimObject *init)
+{
+    MinimObject **vals;
+    MinimObject *res, *tmp;
+
+    PrintParams pp;
+    set_default_print_params(&pp);
+
+    if (MINIM_CDR(li))
+    {
+        tmp = minim_foldr_h(env, proc, MINIM_CDR(li), init);
+        if (tmp->type == MINIM_OBJ_ERR)
+            return tmp;
+
+        vals = malloc(2 * sizeof(MinimObject*));
+        OPT_MOVE(vals[0], MINIM_CAR(li));
+        vals[1] = tmp;
+
+        if (proc->type == MINIM_OBJ_FUNC)
+        {
+            MinimBuiltin func = proc->data;
+            res = func(env, vals, 2);
+        }
+        else
+        {
+            MinimLambda *lam = proc->data;
+            res = eval_lambda(lam, env, vals, 2);
+        }
+    }
+    else
+    {
+        vals = malloc(2 * sizeof(MinimObject*));
+        OPT_MOVE(vals[0], MINIM_CAR(li));
+        vals[1] = copy2_minim_object(init);
+
+        if (proc->type == MINIM_OBJ_FUNC)
+        {
+            MinimBuiltin func = proc->data;
+            res = func(env, vals, 2);
+        }
+        else
+        {
+            MinimLambda *lam = proc->data;
+            res = eval_lambda(lam, env, vals, 2);
+        }
+    }
+
+    free_minim_objects(vals, 2);
+    return res;
+}
+
 MinimObject *minim_builtin_foldr(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
     if (assert_exact_argc(&res, "foldr", 3, argc) &&
-        assert_func(args[0], &res, "Exepcted a function in the 1st argument of 'foldr'") &&
+        assert_func(args[0], &res, "Expected a function in the 1st argument of 'foldr'") &&
         assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
     {
-        minim_error(&res, "Not implemented");
+        res = minim_foldr_h(env, args[0], args[2], args[1]);
     }
 
     return res;
