@@ -90,6 +90,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "apply", MINIM_OBJ_FUNC, minim_builtin_apply);
     minim_load_builtin(env, "filter", MINIM_OBJ_FUNC, minim_builtin_filter);
     minim_load_builtin(env, "filtern", MINIM_OBJ_FUNC, minim_builtin_filtern);
+    minim_load_builtin(env, "foldl", MINIM_OBJ_FUNC, minim_builtin_foldl);
+    minim_load_builtin(env, "foldr", MINIM_OBJ_FUNC, minim_builtin_foldr);
 
     // Hash table
     minim_load_builtin(env, "hash", MINIM_OBJ_FUNC, minim_builtin_hash);

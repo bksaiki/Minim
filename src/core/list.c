@@ -620,3 +620,76 @@ MinimObject *minim_builtin_filtern(MinimEnv *env, MinimObject **args, size_t arg
 
     return res;
 }
+
+MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "foldr", 3, argc) &&
+        assert_func(args[0], &res, "Exepcted a function in the 1st argument of 'foldr'") &&
+        assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
+    {
+        MinimObject **vals = malloc(2 * sizeof(MinimObject*));
+        MinimObject *tmp;
+        bool first = true;
+
+        OPT_MOVE(vals[1], args[1]);
+        if (args[0]->type == MINIM_OBJ_FUNC)
+        {
+            MinimBuiltin func = args[0]->data;
+            
+            for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
+            {
+                OPT_MOVE(vals[0], MINIM_CAR(it))
+                tmp = func(env, vals, 2);
+                
+                if (tmp->type == MINIM_OBJ_ERR) break;   
+                if (first)
+                { 
+                    first = false;
+                    if (vals[1]) free_minim_object(vals[1]);
+                }
+
+                vals[1] = tmp;
+            }
+        }
+        else
+        {
+            MinimLambda *lam = args[0]->data;
+
+            for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
+            {
+                OPT_MOVE(vals[0], MINIM_CAR(it));
+                tmp = eval_lambda(lam, env, vals, 2);
+
+                if (tmp->type == MINIM_OBJ_ERR) break;   
+                if (first)
+                { 
+                    first = false;
+                    if (vals[1]) free_minim_object(vals[1]);
+                }
+
+                vals[1] = tmp;
+            }
+        }
+
+        res = tmp;
+        free(vals);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_foldr(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "foldr", 3, argc) &&
+        assert_func(args[0], &res, "Exepcted a function in the 1st argument of 'foldr'") &&
+        assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
+    {
+        minim_error(&res, "Not implemented");
+    }
+
+    return res;
+}
