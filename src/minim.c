@@ -11,7 +11,7 @@ static int process_flags(int count, char **args)
         if (strcmp(args[i], "-h") == 0)
         {
             printf("Minim v%s \n", MINIM_VERSION_STR);
-            printf("Run \"minim\" to run Minim in a REPL loop\n");
+            printf("Run \"minim\" to run Minim in a REPL\n");
             printf("Run \"minim <flags> ... <file>\" to run Minim on a file\n");
             printf("Flags:\n");
             printf(" -h\thelp\n");
