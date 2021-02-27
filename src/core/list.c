@@ -629,52 +629,52 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'foldr'") &&
         assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
     {
-        MinimObject **vals = malloc(2 * sizeof(MinimObject*));
-        MinimObject *tmp;
-        bool first = true;
-
-        OPT_MOVE(vals[1], args[1]);
-        if (args[0]->type == MINIM_OBJ_FUNC)
+        if (minim_nullp(args[2]))
         {
-            MinimBuiltin func = args[0]->data;
-            
-            for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
-            {
-                OPT_MOVE(vals[0], MINIM_CAR(it))
-                tmp = func(env, vals, 2);
-                
-                if (tmp->type == MINIM_OBJ_ERR) break;   
-                if (first)
-                { 
-                    first = false;
-                    if (vals[1]) free_minim_object(vals[1]);
-                }
-
-                vals[1] = tmp;
-            }
+            OPT_MOVE(res, args[1]);
         }
         else
         {
-            MinimLambda *lam = args[0]->data;
+            MinimObject **vals = malloc(2 * sizeof(MinimObject*));
+            MinimObject *tmp;
 
-            for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
+            OPT_MOVE(vals[1], args[1]);
+            if (args[0]->type == MINIM_OBJ_FUNC)
             {
-                OPT_MOVE(vals[0], MINIM_CAR(it));
-                tmp = eval_lambda(lam, env, vals, 2);
+                MinimBuiltin func = args[0]->data;
+                
+                for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
+                {
+                    OPT_MOVE(vals[0], MINIM_CAR(it))
+                    tmp = func(env, vals, 2);
+                    
+                    if (vals[0])    free_minim_object(vals[0]);
+                    if (vals[1])    free_minim_object(vals[1]);
 
-                if (tmp->type == MINIM_OBJ_ERR) break;   
-                if (first)
-                { 
-                    first = false;
-                    if (vals[1]) free_minim_object(vals[1]);
+                    vals[1] = tmp;
+                    if (tmp->type == MINIM_OBJ_ERR) break;
                 }
-
-                vals[1] = tmp;
             }
-        }
+            else
+            {
+                MinimLambda *lam = args[0]->data;
 
-        res = tmp;
-        free(vals);
+                for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
+                {
+                    OPT_MOVE(vals[0], MINIM_CAR(it));
+                    tmp = eval_lambda(lam, env, vals, 2);
+
+                    if (tmp->type == MINIM_OBJ_ERR) break;
+                    if (vals[0])    free_minim_object(vals[0]);
+                    if (vals[1])    free_minim_object(vals[1]);
+
+                    vals[1] = tmp;
+                }
+            }
+
+            res = vals[1];
+            free(vals);
+        }
     }
 
     return res;
@@ -739,7 +739,14 @@ MinimObject *minim_builtin_foldr(MinimEnv *env, MinimObject **args, size_t argc)
         assert_func(args[0], &res, "Expected a function in the 1st argument of 'foldr'") &&
         assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
     {
-        res = minim_foldr_h(env, args[0], args[2], args[1]);
+        if (minim_nullp(args[2]))
+        {
+            OPT_MOVE(res, args[1]);
+        }
+        else
+        {
+            res = minim_foldr_h(env, args[0], args[2], args[1]);
+        }
     }
 
     return res;

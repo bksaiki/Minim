@@ -271,18 +271,41 @@ int main()
 
 
     {
-        const int COUNT = 6;
-        char strs[12][256] =
+        const int COUNT = 8;
+        char strs[16][256] =
         {
-            "(foldl + 0 (list))",                    "0",
-            "(foldl + 0 (list 1))",                  "1",
-            "(foldl + 0 (list 1 2 3))",              "6",
-            "(foldl cons (list) (list))",           "'(())",
+            "(foldl + 0 (list))",                   "0",
+            "(foldl + 0 (list 1))",                 "1",
+            "(foldl + 0 (list 1 2 3))",             "6",
+            "(foldl cons (list) (list))",           "'()",
             "(foldl cons (list) (list 1))",         "'(1)",
-            "(foldl (cons) (list) (list 1 2 3))"    "'(3 2 1)"
+            "(foldl cons (list) (list 1 2 3))",     "'(3 2 1)",
+
+            "(begin (def foo (lambda (x y) x)) (foldl foo 0 (list 1)))",        "1",
+            "(begin (def foo (lambda (x y) x)) (foldl foo 0 (list 1 2 3)))",    "3"
         };
 
         printf("Testing 'foldl'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 8;
+        char strs[16][256] =
+        {
+            "(foldr + 0 (list))",                   "0",
+            "(foldr + 0 (list 1))",                 "1",
+            "(foldr + 0 (list 1 2 3))",             "6",
+            "(foldr cons (list) (list))",           "'()",
+            "(foldr cons (list) (list 1))",         "'(1)",
+            "(foldr cons (list) (list 1 2 3))",     "'(1 2 3)",
+
+            "(begin (def foo (lambda (x y) x)) (foldr foo 0 (list 1)))",        "1",
+            "(begin (def foo (lambda (x y) x)) (foldr foo 0 (list 1 2 3)))",    "1"
+        };
+
+        printf("Testing 'foldr'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
