@@ -86,7 +86,12 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
             {
                 int c = fread_char(file, rr, sloc, eloc, flags, eof);
 
-                if (c == eof)   break;
+                if (c == eof)
+                {
+                    if (rr->paren > 0)
+                        rr->status = READ_RESULT_INCOMPLETE;
+                    break;
+                }
 
                 writec_buffer(bf, c);
                 if (!(flags & F_READ_ESCAPE) && c == '"')
@@ -105,7 +110,13 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
             {
                 int c = fread_char(file, rr, sloc, eloc, flags, eof);
 
-                if (c == eof)   break;
+                if (c == eof)
+                {
+                    if (rr->paren > 0)
+                        rr->status = READ_RESULT_INCOMPLETE;
+                    break;
+                }
+                
                 if (c == '\n')
                 {
                     flags &= ~F_READ_COMMENT;
@@ -120,6 +131,8 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
             if (c == eof)
             {
                 rr->flags = flags;
+                if (rr->paren > 0)
+                    rr->status = READ_RESULT_INCOMPLETE;
                 break;
             }
 
