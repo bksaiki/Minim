@@ -53,12 +53,12 @@ static int fread_char(FILE *file, ReadResult *rr, SyntaxLoc *sloc, SyntaxLoc *el
     else if (c == '\n')
     {
         ++eloc->row;
-        eloc->col = 1;
+        eloc->col = 0;
         
         if (flags & F_READ_START)
         {
             ++sloc->row;
-            sloc->col = 1;
+            sloc->col = 0;
         }
     }
     else

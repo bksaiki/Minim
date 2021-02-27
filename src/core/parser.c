@@ -54,6 +54,22 @@ static size_t get_argc(const char* str, size_t begin, size_t end)
     return count;
 }
 
+static void move_row_col(const char *str, size_t begin, size_t end, size_t *r, size_t *c)
+{
+    for (size_t i = begin; i < end; ++i)
+    {
+        if (str[i] == '\n')
+        {
+            ++(*r);
+            (*c) = 1;
+        }
+        else
+        {
+            ++(*c);
+        }
+    }
+}
+
 static MinimAst*
 parse_str_node(const char* str, size_t begin, size_t end,
                const char *lname, size_t row, size_t col,
@@ -68,7 +84,7 @@ parse_str_node(const char* str, size_t begin, size_t end,
         if (str[begin] == '\n')
         {
             ++row;
-            col = 0;
+            col = 1;
         }
         ++begin;
     }
@@ -83,7 +99,7 @@ parse_str_node(const char* str, size_t begin, size_t end,
         init_ast_node(&node2, "quote", 0);
         init_syntax_loc(&node2->loc, lname);
         node2->loc->row = row;
-        node2->loc->col = 0;
+        node2->loc->col = col;
 
         init_ast_op(&node, 2, 0);
         node->children[0] = node2;
@@ -101,7 +117,7 @@ parse_str_node(const char* str, size_t begin, size_t end,
             init_ast_node(&node->children[0], "quote", 0);
             init_syntax_loc(&node->children[0]->loc, lname);
             node->children[0]->loc->row = row;
-            node2->children[0]->loc->col = 0;
+            node2->children[0]->loc->col = col;
             idx = 1;
         }
         else
@@ -115,6 +131,7 @@ parse_str_node(const char* str, size_t begin, size_t end,
             if (open_paren(str[i]) || (i + 1 < end && str[i] == '\'' && open_paren(str[i + 1])))
             {
                 size_t paren = 1;
+
                 if (str[i] == '\'') j = i + 2;
                 else                j = i + 1;
 
@@ -139,7 +156,8 @@ parse_str_node(const char* str, size_t begin, size_t end,
             {
                 for (j = i; j < last && !isspace(str[j]); ++j);
             }
-
+            
+            move_row_col(str, i, j, &row, &col);
             node->children[idx] = parse_str_node(str, i, j, lname, row, col, paren, eflags);
             for (i = j; i < last && isspace(str[i]); ++i);
         }
@@ -168,7 +186,7 @@ parse_str_node(const char* str, size_t begin, size_t end,
             init_ast_node(&node, tmp, 0);
             init_syntax_loc(&node->loc, lname);
             node->loc->row = row;
-            node->loc->col = 0;
+            node->loc->col = col;
             free(tmp);
         }
     }
@@ -196,7 +214,7 @@ parse_str_node(const char* str, size_t begin, size_t end,
             init_ast_node(&node, tmp, 0);
             init_syntax_loc(&node->loc, lname);
             node->loc->row = row;
-            node->loc->col = 0;
+            node->loc->col = col;
             free(tmp);
         }
     }
