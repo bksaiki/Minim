@@ -81,7 +81,7 @@ int minim_load_file(MinimEnv *env, const char *fname)
     
     while (!(rr.status & READ_RESULT_EOF))
     {
-        fread_expr(file, bf, loc, &rr, EOF);
+        fread_expr(file, bf, tloc, loc, &rr, EOF);
         if (rr.flags & F_READ_START)
         {
             // inline reset

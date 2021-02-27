@@ -35,10 +35,11 @@ int minim_repl()
     while (1)
     {
         ReadResult rr;
-        SyntaxLoc *loc;
+        SyntaxLoc *loc, *tloc;
 
         init_buffer(&bf);
         init_syntax_loc(&loc, "REPL");
+        init_syntax_loc(&tloc, "");
         set_default_read_result(&rr);
 
         loc->row = 0;
@@ -51,8 +52,10 @@ int minim_repl()
                 writec_buffer(bf, ' ');
                 
             rr.status = READ_RESULT_SUCCESS;
-            fread_expr(stdin, bf, loc, &rr, '\n');
+            fread_expr(stdin, bf, tloc, loc, &rr, '\n');
         }
+
+        free_syntax_loc(tloc);
 
         input = get_buffer(bf);
         if (strlen(input) == 0 || strcmp(input, "\377") == 0)

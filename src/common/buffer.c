@@ -72,15 +72,6 @@ void reset_buffer(Buffer *bf)
     bf->pos = 0;
 }
 
-// *** Utility *** //
-
-static size_t intlen(long l)
-{
-    size_t len = (l < 0) ? 1 : 0;
-    for (long a = labs(l); a > 0; a /= 10, ++len);
-    return len;
-}
-
 // *** Writing *** //
 
 void write_buffer(Buffer *bf, const void *data, size_t len)
@@ -93,7 +84,6 @@ void write_buffer(Buffer *bf, const void *data, size_t len)
 
 void writes_buffer(Buffer *bf, const char *str)
 {
-    
     write_buffer(bf, &str[0], strlen(str));
 }
 
@@ -106,9 +96,19 @@ void writec_buffer(Buffer *bf, char c)
 
 void writei_buffer(Buffer *bf, long l)
 {
-    size_t len = intlen(l);
-    resize_buffer(bf, bf->pos + len);
-    sprintf(bf->data + bf->pos, "%ld", l);
+    size_t len;
+
+    resize_buffer(bf, bf->pos + 20);
+    len = sprintf(bf->data + bf->pos, "%ld", l);
+    bf->pos += len;
+}
+
+void writeu_buffer(Buffer *bf, unsigned long ul)
+{
+    size_t len;
+
+    resize_buffer(bf, bf->pos + 21);
+    len = sprintf(bf->data + bf->pos, "%lu", ul);
     bf->pos += len;
 }
 
@@ -166,7 +166,8 @@ void writef_buffer(Buffer *bf, const char *format, ...)
             n = *(format + i + 1);
             if (n == '~')           writec_buffer(bf, '~');
             else if (n == 'c')      writec_buffer(bf, (char) va_arg(rest, int));
-            else if (n == 'i')      writei_buffer(bf, va_arg(rest, int));
+            else if (n == 'i')      writei_buffer(bf, va_arg(rest, long));
+            else if (n == 'u')      writeu_buffer(bf, va_arg(rest, unsigned long));
             else if (n == 'l')      writei_buffer(bf, va_arg(rest, long));
             else if (n == 's')      writes_buffer(bf, va_arg(rest, char*));
             else if (n == 'f')      writed_buffer(bf, va_arg(rest, double));
