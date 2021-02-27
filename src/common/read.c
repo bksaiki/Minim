@@ -5,6 +5,9 @@
 #include "buffer.h"
 #include "read.h"
 
+#define open_paren(x)       (x == '(' || x == '[' || x == '{')
+#define closed_paren(x)     (x == ')' || x == ']' || x == '}')
+
 void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
 {
     SyntaxLoc *loc = malloc(sizeof(SyntaxLoc));
@@ -86,12 +89,14 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
                 if (c == eof)   break;
 
                 writec_buffer(bf, c);
-                if (c == '\\')  flags |= F_READ_ESCAPE;
-                else if (!(flags & F_READ_ESCAPE) && c == '"')
+                if (!(flags & F_READ_ESCAPE) && c == '"')
                 {
                     flags &= ~F_READ_STRING;
                     break;
                 }
+
+                if (c == '\\')  flags |= F_READ_ESCAPE;
+                else            flags &= ~F_READ_ESCAPE;
             }
         }
         else if (flags & F_READ_COMMENT)
@@ -112,17 +117,21 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
         {
             int c = fread_char(file, rr, sloc, eloc, flags, eof);
 
-            if (c == eof) break;
-            flags &= ~F_READ_ESCAPE;
+            if (c == eof)
+            {
+                rr->flags = flags;
+                break;
+            }
 
-            if (c == '(')
+            flags &= ~F_READ_ESCAPE;
+            if (open_paren(c))
             {
                 writec_buffer(bf, c);
                 ++rr->paren;
                 flags &= ~F_READ_START;
                 flags &= ~F_READ_SPACE;
             }
-            else if (c == ')')
+            else if (closed_paren(c))
             {
                 writec_buffer(bf, c);
                 --rr->paren;
@@ -147,10 +156,11 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
                 if (c == '\n')
                 {
                     if (rr->paren > 0)
-                        writec_buffer(bf, ' ');
+                        writec_buffer(bf, c);
                 }
                 else
                 {
+                    if (rr->paren > 0)
                     writec_buffer(bf, ' ');
                 }
 
@@ -163,7 +173,7 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
                 flags &= ~F_READ_SPACE;
             }
 
-            if (((flags & F_READ_SPACE) || !(flags & F_READ_START)) && rr->paren == 0)
+            if (!(flags & F_READ_START) && (flags & F_READ_SPACE) && rr->paren == 0)
             {
                 rr->status = READ_RESULT_SUCCESS;
                 rr->flags = flags;
@@ -172,10 +182,11 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
         }
 
         // Check for EOF
-        if (rr->status & READ_RESULT_EOF || rr->status & READ_RESULT_SUCCESS)
+        if (rr->status & READ_RESULT_EOF)
         {
-            return;
-        }   
+            rr->flags = flags;
+            break;   
+        }
     }
 }
 

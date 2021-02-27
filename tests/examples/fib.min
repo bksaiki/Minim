@@ -1,0 +1,6 @@
+;
+; Prints fibonacci numbers
+;
+
+(for ([i (in-range 100)])
+  (printf "fib(~a) = ~a\n" i (fibonacci i)))
