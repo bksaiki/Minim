@@ -424,6 +424,36 @@ int main()
     {
         const int COUNT = 4;
         char strs[8][256] = 
+        {   
+            "(when true 5)",                            "5",
+            "(when (positive? 5) 'sym)",                "'sym",
+            "(when (symbol? 'sym) (def n 5) (+ n 1))",  "6",
+            "(when false 5)",                           "<void>"
+        };
+
+        printf("Testing 'when'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);        
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] = 
+        {   
+            "(unless false 5)",                           "5",
+            "(unless (negative? 5) 'sym)",                "'sym",
+            "(unless (string? 'sym) (def n 5) (+ n 1))",  "6",
+            "(unless true 5)",                            "<void>"
+        };
+
+        printf("Testing 'unless'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);        
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] = 
         {
             "(equal? + +)",             "true",
             "(equal? + -)",             "false",

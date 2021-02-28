@@ -6,26 +6,22 @@
 
 ;; Factorial
 (def factorial (n)
-  (cond
-   [(not (number? n)) (error 'factorial "expected a numerical argument")]
-   [(negative? n) (error 'factorial "undefined for negative numbers")]
-   [else
-    (def loop (n acc)
-      (if (zero? n)
-          acc
-          (loop (- n 1) (* n acc))))
-    (loop n 1)]))
+  (unless (and (number? n) (not (negative? n)))
+    (error 'factorial "expected a non-negative integer"))
+  (def loop (n acc)
+    (if (zero? n)
+        acc
+        (loop (- n 1) (* n acc))))
+  (loop n 1))
 
 (def fibonacci (n)
-  (cond 
-   [(not (number? n)) (error 'fibonacci "expected a numerical argument")]
-   [(negative? n) (error 'fibonacci "undefined for negative numbers")]
-   [else
-    (def loop (i x y)
-      (if (> i n)
-          x
-          (loop (+ i 1) (+ x y) x)))
-    (loop 1 1 0)]))
+  (unless (and (number? n) (not (negative? n)))
+    (error 'fibonacci "expected a non-negative integer"))
+  (def loop (i x y)
+    (if (> i n)
+        x
+        (loop (+ i 1) (+ x y) x)))
+  (loop 1 1 0))
 
 ;; Functional maps
 

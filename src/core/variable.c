@@ -126,32 +126,17 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
 
 MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
+    MinimObject *res, *cond;
 
     if (assert_min_argc(&res, "unless", 2, argc))
     {
-        MinimObject *cond, *val;
-
         eval_ast(env, args[0]->data, &cond);
         if (cond->type != MINIM_OBJ_ERR)
         {
             if (!coerce_into_bool(cond))
-            {
-                val = minim_builtin_begin(env, &args[1], argc - 1);
-                if (cond->type != MINIM_OBJ_ERR)
-                {
-                    free_minim_object(val);
-                    init_minim_object(&res, MINIM_OBJ_VOID);
-                }
-                else
-                {
-                    res = val;
-                }
-            }
+                res = minim_builtin_begin(env, &args[1], argc - 1);
             else
-            {
                 init_minim_object(&res, MINIM_OBJ_VOID);
-            }
 
             free_minim_object(cond);
         }
@@ -166,32 +151,17 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
 
 MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
+    MinimObject *res, *cond;
 
     if (assert_min_argc(&res, "unless", 2, argc))
     {
-        MinimObject *cond, *val;
-
         eval_ast(env, args[0]->data, &cond);
         if (cond->type != MINIM_OBJ_ERR)
         {
             if (coerce_into_bool(cond))
-            {
-                val = minim_builtin_begin(env, &args[1], argc - 1);
-                if (cond->type != MINIM_OBJ_ERR)
-                {
-                    free_minim_object(val);
-                    init_minim_object(&res, MINIM_OBJ_VOID);
-                }
-                else
-                {
-                    res = val;
-                }
-            }
+                res = minim_builtin_begin(env, &args[1], argc - 1);
             else
-            {
                 init_minim_object(&res, MINIM_OBJ_VOID);
-            }
 
             free_minim_object(cond);
         }
