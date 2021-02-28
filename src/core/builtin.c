@@ -59,6 +59,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "exact?", MINIM_OBJ_FUNC, minim_builtin_exactp);
     minim_load_builtin(env, "inexact?", MINIM_OBJ_FUNC, minim_builtin_inexactp);
     minim_load_builtin(env, "integer?", MINIM_OBJ_FUNC, minim_builtin_integerp);
+    minim_load_builtin(env, "exact-integer?", MINIM_OBJ_FUNC, minim_builtin_exact_integerp);
     
     minim_load_builtin(env, "=", MINIM_OBJ_FUNC, minim_builtin_eq);
     minim_load_builtin(env, ">", MINIM_OBJ_FUNC, minim_builtin_gt);

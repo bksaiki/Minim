@@ -320,7 +320,43 @@ MinimObject *minim_builtin_integerp(MinimEnv *env, MinimObject **args, size_t ar
 {
     MinimObject *res;
 
-    minim_error(&res, "Unimplemented");
+    if (assert_exact_argc(&res, "integer?", 1, argc))
+    {
+        if (args[0]->type == MINIM_OBJ_NUM)
+        {
+            MinimNumber *num = args[0]->data;
+
+            if (num->type == MINIM_NUMBER_EXACT)
+            {
+                init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_exactintp(args[0]->data));
+            }
+            else
+            {
+                mpq_t q;
+
+                mpq_init(q);
+                mpq_set_d(q, num->fl);
+                mpq_canonicalize(q);
+                init_minim_object(&res, MINIM_OBJ_BOOL, mpz_cmp_ui(mpq_denref(q), 1) == 0);
+                mpq_clear(q);
+            }
+        }
+        else
+        {
+            init_minim_object(&res, MINIM_OBJ_BOOL, 0);
+        }
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_exact_integerp(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "exact-integer?", 1, argc))
+        init_minim_object(&res, MINIM_OBJ_BOOL, args[0]->type == MINIM_OBJ_NUM && minim_number_exactintp(args[0]->data));
+
     return res;
 }
 

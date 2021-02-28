@@ -135,6 +135,40 @@ int main()
     }
 
     {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(integer? 1)",                         "true",
+            "(integer? 1.0)",                       "true",
+            "(integer? 'str)",                      "false",
+            "(begin (def n 1) (integer? n))",       "true",
+            "(begin (def n 1.0) (integer? n))",     "true",
+            "(begin (def n 'str) (integer? n))",    "false"
+        };
+
+        printf("Testing 'integer?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(exact-integer? 1)",                         "true",
+            "(exact-integer? 1.0)",                       "false",
+            "(exact-integer? 'str)",                      "false",
+            "(begin (def n 1) (exact-integer? n))",       "true",
+            "(begin (def n 1.0) (exact-integer? n))",     "false",
+            "(begin (def n 'str) (exact-integer? n))",    "false"
+        };
+
+        printf("Testing 'exact-integer?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 4;
         char strs[8][256] =
         {
