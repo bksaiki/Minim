@@ -8,6 +8,39 @@
 #define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
 #define MINIM_OBJ_SET_OWNER(obj)    (obj->flags |= MINIM_OBJ_OWNER)
 
+#define OPT_MOVE(dest, src)             \
+{                                       \
+    if (MINIM_OBJ_OWNERP(src))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { dest = fresh_minim_object(src); } \
+}
+
+#define OPT_MOVE_REF(dest, src)         \
+{                                       \
+    if (MINIM_OBJ_OWNERP(src))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { ref_minim_object(&dest, src); }   \
+}
+
+#define OPT_MOVE_REF2(dest, src, obj)   \
+{                                       \
+    if (MINIM_OBJ_OWNERP(obj))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { ref_minim_object(&dest, src); }   \
+}
+
+#define RELEASE_OWNED_ARGS(args, argc)      \
+{                                           \
+    for (size_t i = 0; i < argc; ++i)          \
+    {                                       \
+        if (MINIM_OBJ_OWNERP((args)[i]))      \
+            (args)[i] = NULL;                 \
+    }                                       \
+}
+
 #define RELEASE_IF_REF(obj)     \
 {                               \
     if (!MINIM_OBJ_OWNERP(obj)) \

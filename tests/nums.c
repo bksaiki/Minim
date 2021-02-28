@@ -135,6 +135,36 @@ int main()
     }
 
     {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(exact 1)",                        "1",
+            "(exact 1.0)",                      "1",
+            "(begin (def n 1) (exact n))",      "1",
+            "(begin (def n 1.0) (exact n))",    "1"
+        };
+
+        printf("Testing 'exact'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(inexact 1)",                      "1.0",
+            "(inexact 1.0)",                    "1.0",
+            "(begin (def n 1) (inexact n))",    "1.0",
+            "(begin (def n 1.0) (inexact n))",  "1.0"
+        };
+
+        printf("Testing 'inexact'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 11;
         char strs[22][256] =
         {

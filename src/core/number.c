@@ -316,6 +316,14 @@ MinimObject *minim_builtin_inexactp(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
+MinimObject *minim_builtin_integerp(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    minim_error(&res, "Unimplemented");
+    return res;
+}
+
 static bool minim_number_cmp_h(MinimObject **args, size_t argc, int op)
 {
     int cmp;
@@ -397,6 +405,58 @@ MinimObject *minim_builtin_lte(MinimEnv *env, MinimObject **args, size_t argc)
         assert_for_all(&res, args, argc, "Expected numerical arguments for '<='", minim_numberp))
     {
         init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 4));
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "exact", 1, argc) &&
+        assert_number(args[0], &res, "Expected a number in the 1st argument of 'exact'"))
+    {
+        MinimNumber *num = args[0]->data;
+
+        if (num->type == MINIM_NUMBER_EXACT)
+        {
+            OPT_MOVE(res, args[0]);
+        }
+        else
+        {
+            MinimNumber *exact;
+
+            init_minim_number(&exact, MINIM_NUMBER_EXACT);
+            init_minim_object(&res, MINIM_OBJ_NUM, exact);
+            mpq_set_d(exact->rat, num->fl);
+        }
+    }
+    
+    return res;
+}
+
+MinimObject *minim_builtin_to_inexact(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (assert_exact_argc(&res, "inexact", 1, argc) &&
+        assert_number(args[0], &res, "Expected a number in the 1st argument of 'inexact'"))
+    {
+        MinimNumber *num = args[0]->data;
+
+        if (num->type == MINIM_NUMBER_INEXACT)
+        {
+            OPT_MOVE(res, args[0]);
+        }
+        else
+        {
+            MinimNumber *inexact;
+
+            init_minim_number(&inexact, MINIM_NUMBER_INEXACT);
+            init_minim_object(&res, MINIM_OBJ_NUM, inexact);
+            inexact->fl = mpq_get_d(num->rat);
+        }
     }
 
     return res;

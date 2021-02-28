@@ -58,11 +58,16 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "negative?", MINIM_OBJ_FUNC, minim_builtin_negativep);
     minim_load_builtin(env, "exact?", MINIM_OBJ_FUNC, minim_builtin_exactp);
     minim_load_builtin(env, "inexact?", MINIM_OBJ_FUNC, minim_builtin_inexactp);
+    minim_load_builtin(env, "integer?", MINIM_OBJ_FUNC, minim_builtin_integerp);
+    
     minim_load_builtin(env, "=", MINIM_OBJ_FUNC, minim_builtin_eq);
     minim_load_builtin(env, ">", MINIM_OBJ_FUNC, minim_builtin_gt);
     minim_load_builtin(env, "<", MINIM_OBJ_FUNC, minim_builtin_lt);
     minim_load_builtin(env, ">=", MINIM_OBJ_FUNC, minim_builtin_gte);
     minim_load_builtin(env, "<=", MINIM_OBJ_FUNC, minim_builtin_lte);
+
+    minim_load_builtin(env, "exact", MINIM_OBJ_FUNC, minim_builtin_to_exact);
+    minim_load_builtin(env, "inexact", MINIM_OBJ_FUNC, minim_builtin_to_inexact);
 
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);
