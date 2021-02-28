@@ -2,11 +2,19 @@
 ;; Math functions
 ;; TODO: error on bad input
 
+;;;;;;;;;;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def exact-nonnegative-integer? (n)
+  (and (exact-integer? n) (not (negative? n))))
+
+(def exact-positive-integer? (n)
+  (and (exact-integer? n) (positive? n)))
+
 ;;;;;;;;;;;;;;;;;; Special math functions ;;;;;;;;;;;;;;;;;;;
 
 ;; Factorial
 (def factorial (n)
-  (unless (and (number? n) (not (negative? n)))
+  (unless (exact-nonnegative-integer? n)
     (error 'factorial "expected a non-negative integer"))
   (def loop (n acc)
     (if (zero? n)
@@ -15,7 +23,7 @@
   (loop n 1))
 
 (def fibonacci (n)
-  (unless (and (number? n) (not (negative? n)))
+  (unless (exact-nonnegative-integer? n)
     (error 'fibonacci "expected a non-negative integer"))
   (def loop (i x y)
     (if (> i n)
