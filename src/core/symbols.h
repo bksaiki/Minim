@@ -3,7 +3,7 @@
 
 #include "object.h"
 
-#define MINIM_DEFAULT_SYMBOL_TABLE_SIZE 128
+#define MINIM_DEFAULT_SYMBOL_TABLE_SIZE 64
 
 struct MinimSymbolEntry
 {

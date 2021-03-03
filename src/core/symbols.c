@@ -10,15 +10,8 @@ void init_minim_symbol_table(MinimSymbolTable **ptable)
     MinimSymbolTable *table = malloc(sizeof(MinimSymbolTable));
     table->alloc = MINIM_DEFAULT_SYMBOL_TABLE_SIZE;
     table->size = 0;
-    table->rows = malloc(MINIM_DEFAULT_SYMBOL_TABLE_SIZE * sizeof(MinimSymbolTableRow));
+    table->rows = calloc(MINIM_DEFAULT_SYMBOL_TABLE_SIZE, sizeof(MinimSymbolTableRow));
     *ptable = table;
-
-    for (size_t i = 0; i < table->alloc; ++i)
-    {
-        table->rows[i].names = NULL;
-        table->rows[i].vals = NULL;
-        table->rows[i].length = 0;
-    }
 }
 
 void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src)
@@ -87,7 +80,7 @@ void free_minim_symbol_table(MinimSymbolTable *table)
             free(table->rows[i].names[j]);
         }
 
-        if (table->rows[i].names)
+        if (table->rows[i].length > 0)
         {
             free(table->rows[i].names);
             free(table->rows[i].vals);
@@ -104,14 +97,7 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
     size_t size, hash, idx;
 
     size = 2 * table->alloc;
-    rows = malloc(size * sizeof(MinimSymbolTableRow));
-
-    for (size_t i = 0; i < size; ++i)
-    {
-        rows[i].names = NULL;
-        rows[i].vals = NULL;
-        rows[i].length = 0;
-    }
+    rows = calloc(size, sizeof(MinimSymbolTableRow));
 
     for (size_t i = 0; i < table->alloc; ++i)
     {
@@ -121,10 +107,16 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
             idx = hash % size;
 
             ++rows[idx].length;
-            rows[idx].names = realloc(rows[idx].names, rows[idx].length);
-            rows[idx].vals = realloc(rows[idx].vals, rows[idx].length);
+            rows[idx].names = realloc(rows[idx].names, rows[idx].length * sizeof(char*));
+            rows[idx].vals = realloc(rows[idx].vals, rows[idx].length * sizeof(MinimSymbolEntry*));
             rows[idx].names[rows[idx].length - 1] = table->rows[i].names[j];
             rows[idx].vals[rows[idx].length - 1] = table->rows[i].vals[j];
+        }
+
+        if (table->rows[i].length > 0)
+        {
+            free(table->rows[i].names);
+            free(table->rows[i].vals);
         }
     }
 
@@ -227,15 +219,28 @@ bool minim_symbol_table_pop(MinimSymbolTable *table, const char *name)
             {
                 free_minim_object(table->rows[idx].vals[i]->obj);
                 free(table->rows[idx].vals[i]);
+                free(table->rows[idx].names[i]);
 
-                table->rows[idx].names[i] = table->rows[idx].names[table->rows[idx].length - 1];
-                table->rows[idx].vals[i] = table->rows[idx].vals[table->rows[idx].length - 1];
+                if (i != table->rows[idx].length - 1)
+                {
+                    table->rows[idx].names[i] = table->rows[idx].names[table->rows[idx].length - 1];
+                    table->rows[idx].vals[i] = table->rows[idx].vals[table->rows[idx].length - 1];
+                }
                 
-                --table->size;
                 --table->rows[idx].length;
-                free(table->rows[idx].names[table->rows[idx].length]);
-                table->rows[idx].names = realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
-                table->rows[idx].vals = realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
+                if (table->rows[idx].length == 0)
+                {
+                    --table->size;
+                    free(table->rows[idx].names);
+                    free(table->rows[idx].vals);
+                    table->rows[idx].names = NULL;
+                    table->rows[idx].vals = NULL;
+                }
+                else
+                {
+                    table->rows[idx].names = realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
+                    table->rows[idx].vals = realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
+                }
             }
         }
     }
