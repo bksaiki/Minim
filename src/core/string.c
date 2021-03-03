@@ -93,7 +93,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
 
         str = args[0]->data;
         len = strlen(str);
-        start = mpz_get_ui(mpq_numref(((MinimNumber*) args[1]->data)->rat));
+        start = minim_number_to_uint(args[1]);
         if (argc == 2)
         {
             end = len;
@@ -104,7 +104,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
                                                          in the 3rd argument of 'substring'"))
                 return res;
             
-            end = mpz_get_ui(mpq_numref(((MinimNumber*) args[2]->data)->rat));
+            end = minim_number_to_uint(args[2]);
             if (!assert_generic(&res, "Expected [begin, end) where begin < end <= len in 'substring'",
                                 start < end && end <= len))
                 return res;

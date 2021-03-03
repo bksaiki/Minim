@@ -486,8 +486,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t ar
         assert_exact_nonneg_int(args[1], &res, "Expected an exact non-negative integer for the 2nd argument of 'list-ref'"))
     {
         MinimObject *it = args[0];
-        MinimNumber* num = args[1]->data;
-        size_t idx = mpz_get_ui(mpq_numref(num->rat));
+        size_t idx = minim_number_to_uint(args[1]);
 
         for (size_t i = 0; it && i < idx; ++i)
             it = MINIM_CDR(it);
@@ -598,7 +597,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
     {
         if (minim_nullp(args[2]))
         {
-            OPT_MOVE(res, args[1]);
+            OPT_MOVE_REF(res, args[1]);
         }
         else
         {
@@ -708,7 +707,7 @@ MinimObject *minim_builtin_foldr(MinimEnv *env, MinimObject **args, size_t argc)
     {
         if (minim_nullp(args[2]))
         {
-            OPT_MOVE(res, args[1]);
+            OPT_MOVE_REF(res, args[1]);
         }
         else
         {

@@ -239,6 +239,21 @@ void minim_number_to_bytes(MinimObject *obj, Buffer *bf)
     }
 }
 
+size_t minim_number_to_uint(MinimObject *obj)
+{
+    MinimNumber *num = obj->data;
+
+    if (num->type == MINIM_NUMBER_INEXACT)
+    {
+        printf("Can't convert inexact number to string\n");
+        return 0;
+    }
+    else
+    {
+        return mpz_get_ui(mpq_numref(num->rat));
+    }
+}
+
 // *** Builtins *** //
 
 MinimObject *minim_builtin_numberp(MinimEnv *env, MinimObject **args, size_t argc)
@@ -457,7 +472,7 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t ar
 
         if (num->type == MINIM_NUMBER_EXACT)
         {
-            OPT_MOVE(res, args[0]);
+            OPT_MOVE_REF(res, args[0]);
         }
         else
         {
@@ -483,7 +498,7 @@ MinimObject *minim_builtin_to_inexact(MinimEnv *env, MinimObject **args, size_t 
 
         if (num->type == MINIM_NUMBER_INEXACT)
         {
-            OPT_MOVE(res, args[0]);
+            OPT_MOVE_REF(res, args[0]);
         }
         else
         {

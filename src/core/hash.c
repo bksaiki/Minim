@@ -376,7 +376,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, MinimObject **args, size_t ar
         {
             Buffer *bf;
             PrintParams pp;
-
+            
             init_buffer(&bf);
             writes_buffer(bf, "hash-ref: no value found for ");
             print_to_buffer(bf, args[1], env, &pp);

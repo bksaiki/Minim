@@ -65,8 +65,7 @@ MinimObject *minim_builtin_or(MinimEnv *env, MinimObject **args, size_t argc)
             }
         }
 
-        if (!val)
-            init_minim_object(&res, MINIM_OBJ_BOOL, 0);
+        init_minim_object(&res, MINIM_OBJ_BOOL, ((val) ? 1 : 0));
     }
 
     return res;
@@ -88,15 +87,7 @@ MinimObject *minim_builtin_and(MinimEnv *env, MinimObject **args, size_t argc)
             }
         }
 
-        if (val)
-        {
-            res = args[argc - 1];
-            args[argc - 1] = NULL;
-        }
-        else
-        {
-            init_minim_object(&res, MINIM_OBJ_BOOL, 0);
-        }
+        init_minim_object(&res, MINIM_OBJ_BOOL, ((val) ? 1 : 0));
     }
 
     return res;
