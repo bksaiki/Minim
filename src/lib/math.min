@@ -1,7 +1,4 @@
 
-;; Math functions
-;; TODO: error on bad input
-
 ;;;;;;;;;;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def exact-nonnegative-integer? (n)
@@ -11,6 +8,10 @@
   (and (exact-integer? n) (positive? n)))
 
 ;;;;;;;;;;;;;;;;;; Special math functions ;;;;;;;;;;;;;;;;;;;
+
+;; Absolute value
+(def abs (x)
+  (if (< x 0) (- x) x))
 
 ;; Factorial
 (def factorial (n)
@@ -30,6 +31,15 @@
         x
         (loop (+ i 1) (+ x y) x)))
   (loop 1 1 0))
+
+(def gcd (a b)
+  (unless (and (integer? a) (integer? b))
+    (error 'gcd "expected integer arguments"))
+  (def loop (a b)
+    (if (= b 0)
+        a
+        (loop b (mod a b))))
+  (loop (abs a) (abs b)))
 
 ;; Functional maps
 
