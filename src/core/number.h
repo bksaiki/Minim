@@ -61,4 +61,7 @@ void minim_number_to_bytes(MinimObject *obj, Buffer *bf);
 
 size_t minim_number_to_uint(MinimObject *obj);
 
+MinimNumber *minim_number_pi();
+MinimNumber *minim_number_phi();
+
 #endif

@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include "builtin.h"
+#include "number.h"
 
 void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...)
 {
@@ -14,6 +15,10 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
     else if (type == MINIM_OBJ_BOOL)
     {
         init_minim_object(&obj, type, va_arg(rest, int));
+    }
+    else if (type == MINIM_OBJ_NUM)
+    {
+        init_minim_object(&obj, type, va_arg(rest, MinimNumber*));
     }
 
     va_end(rest);
@@ -69,6 +74,9 @@ void minim_load_builtins(MinimEnv *env)
 
     minim_load_builtin(env, "exact", MINIM_OBJ_FUNC, minim_builtin_to_exact);
     minim_load_builtin(env, "inexact", MINIM_OBJ_FUNC, minim_builtin_to_inexact);
+
+    minim_load_builtin(env, "pi", MINIM_OBJ_NUM, minim_number_pi());
+    minim_load_builtin(env, "phi", MINIM_OBJ_NUM, minim_number_phi());
 
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);

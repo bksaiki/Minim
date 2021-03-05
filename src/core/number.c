@@ -279,6 +279,26 @@ size_t minim_number_to_uint(MinimObject *obj)
     }
 }
 
+MinimNumber *minim_number_pi()
+{
+    MinimNumber *pi;
+
+    init_minim_number(&pi, MINIM_NUMBER_INEXACT);
+    pi->fl = 3.141592653589793238465;
+
+    return pi;
+}
+
+MinimNumber *minim_number_phi()
+{
+    MinimNumber *phi;
+
+    init_minim_number(&phi, MINIM_NUMBER_INEXACT);
+    phi->fl = 1.618033988749894848204;
+
+    return phi;
+}
+
 // *** Builtins *** //
 
 MinimObject *minim_builtin_numberp(MinimEnv *env, MinimObject **args, size_t argc)
