@@ -20,12 +20,15 @@
     }                                           \
 }                                               
 
-
 #define FREE_IF_INEXACT(r, num)                 \
 {                                               \
     if ((num)->type == MINIM_NUMBER_INEXACT)    \
         mpq_clear(r);                           \
 }
+
+#define GET_FLOAT(num)  (((num)->type == MINIM_NUMBER_EXACT) ?  \
+                            mpq_get_d(num->rat) :               \
+                            num->fl)
 
 // Internals
 
@@ -114,6 +117,26 @@ static void minim_number_div(MinimNumber *res, MinimNumber *a, MinimNumber *b)
         reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
         res->fl = fa / fb;
     }
+}
+
+// Assumes integer arguments
+static void minim_number_modulo(MinimNumber *res, MinimNumber *quo, MinimNumber *div)
+{
+    mpq_t q, d;
+
+    // Convert to integer
+    reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+    RATIONALIZE(q, quo);
+    RATIONALIZE(d, div);
+
+    mpq_set_ui(res->rat, 0, 1);
+    mpz_tdiv_r(mpq_numref(res->rat), mpq_numref(q), mpq_numref(d));
+
+    FREE_IF_INEXACT(q, quo);
+    FREE_IF_INEXACT(d, div);
+
+    if (quo->type == MINIM_NUMBER_INEXACT || div->type == MINIM_NUMBER_INEXACT)
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
 }
 
 static void minim_number_sqrt(MinimNumber *res, MinimNumber *a)
@@ -259,23 +282,49 @@ static void minim_number_pow(MinimNumber *res, MinimNumber *a, MinimNumber *b)
     }
 }
 
-static void minim_number_modulo(MinimNumber *res, MinimNumber *quo, MinimNumber *div)
+static void minim_number_sin(MinimNumber *res, MinimNumber *arg)
 {
-    mpq_t q, d;
-
-    // Convert to integer
-    reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-    RATIONALIZE(q, quo);
-    RATIONALIZE(d, div);
-
-    mpq_set_ui(res->rat, 0, 1);
-    mpz_tdiv_r(mpq_numref(res->rat), mpq_numref(q), mpq_numref(d));
-
-    FREE_IF_INEXACT(q, quo);
-    FREE_IF_INEXACT(d, div);
-
-    if (quo->type == MINIM_NUMBER_INEXACT || div->type == MINIM_NUMBER_INEXACT)
+    // sin(0) = 0
+    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+        mpq_set_ui(res->rat, 0, 1);
+    }
+    else
+    {
         reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = sin(GET_FLOAT(arg));
+    }
+}
+
+static void minim_number_cos(MinimNumber *res, MinimNumber *arg)
+{
+    // cos(0) = 1
+    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+        mpq_set_ui(res->rat, 1, 1);
+    }
+    else
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = cos(GET_FLOAT(arg));
+    }
+}
+
+static void minim_number_tan(MinimNumber *res, MinimNumber *arg)
+{
+    // tan(0) = 0
+    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+        mpq_set_ui(res->rat, 0, 1);
+    }
+    else
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = tan(GET_FLOAT(arg));
+    }
 }
 
 // *** Builtins *** //
@@ -433,6 +482,54 @@ MinimObject *minim_builtin_pow(MinimEnv *env, MinimObject **args, size_t argc)
         minim_number_pow(num, args[0]->data, args[1]->data);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
+
+    return res;
+}
+
+MinimObject *minim_builtin_sin(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_exact_argc(&res, "sin", 1, argc) ||
+        !assert_number(args[0], &res, "Expected a number for 'sin'"))
+        return res;
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_sin(num, args[0]->data);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
+
+    return res;
+}
+
+MinimObject *minim_builtin_cos(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_exact_argc(&res, "cos", 1, argc) ||
+        !assert_number(args[0], &res, "Expected a number for 'cos'"))
+        return res;
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_cos(num, args[0]->data);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
+
+    return res;
+}
+
+MinimObject *minim_builtin_tan(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_exact_argc(&res, "tan", 1, argc) ||
+        !assert_number(args[0], &res, "Expected a number for 'tan'"))
+        return res;
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_tan(num, args[0]->data);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
 }
