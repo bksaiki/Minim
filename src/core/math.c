@@ -7,6 +7,26 @@
 #include "env.h"
 #include "number.h"
 
+#define RATIONALIZE(r, num)                     \
+{                                               \
+    if ((num)->type == MINIM_NUMBER_INEXACT)    \
+    {                                           \
+        mpq_init(r);                            \
+        mpq_set_d(r, (num)->fl);                \
+    }                                           \
+    else                                        \
+    {                                           \
+        r[0] = (num)->rat[0];                   \
+    }                                           \
+}                                               
+
+
+#define FREE_IF_INEXACT(r, num)                 \
+{                                               \
+    if ((num)->type == MINIM_NUMBER_INEXACT)    \
+        mpq_clear(r);                           \
+}
+
 // Internals
 
 static void minim_number_neg(MinimNumber *res, MinimNumber *a)
@@ -239,6 +259,25 @@ static void minim_number_pow(MinimNumber *res, MinimNumber *a, MinimNumber *b)
     }
 }
 
+static void minim_number_modulo(MinimNumber *res, MinimNumber *quo, MinimNumber *div)
+{
+    mpq_t q, d;
+
+    // Convert to integer
+    reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+    RATIONALIZE(q, quo);
+    RATIONALIZE(d, div);
+
+    mpq_set_ui(res->rat, 0, 1);
+    mpz_tdiv_r(mpq_numref(res->rat), mpq_numref(q), mpq_numref(d));
+
+    FREE_IF_INEXACT(q, quo);
+    FREE_IF_INEXACT(d, div);
+
+    if (quo->type == MINIM_NUMBER_INEXACT || div->type == MINIM_NUMBER_INEXACT)
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+}
+
 // *** Builtins *** //
 
 MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
@@ -312,6 +351,23 @@ MinimObject *minim_builtin_div(MinimEnv *env, MinimObject **args, size_t argc)
         minim_number_div(num, args[0]->data, args[1]->data);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
+
+    return res;
+}
+
+MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *mod;
+
+    if (!assert_exact_argc(&res, "modulo", 2, argc) ||
+        !assert_integer(args[0], &res, "Expected an integer in the 1st argument of 'modulo'") ||
+        !assert_integer(args[1], &res, "Expected an integer in the 2nd argument of 'modulo'"))
+        return res;
+
+    init_minim_number(&mod, MINIM_NUMBER_EXACT);
+    minim_number_modulo(mod, args[0]->data, args[1]->data);
+    init_minim_object(&res, MINIM_OBJ_NUM, mod);
 
     return res;
 }

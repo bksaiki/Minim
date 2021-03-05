@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "assert.h"
+#include "math.h"
 #include "number.h"
 
 // Visible functions
@@ -36,13 +37,19 @@ void reinterpret_minim_number(MinimNumber *num, MinimNumberType type)
     {
         if (num->type == MINIM_NUMBER_EXACT)
         {
+            double d = mpq_get_d(num->rat);
+
             mpq_clear(num->rat);
             num->type = MINIM_NUMBER_INEXACT;
+            num->fl = d;
         }
         else
         {
-            mpq_init(num->rat);
+            double d = num->fl;
+
             num->type = MINIM_NUMBER_EXACT;
+            mpq_init(num->rat);
+            mpq_set_d(num->rat, d);
         }
     }
 }
@@ -159,6 +166,19 @@ bool minim_number_positivep(MinimNumber *num)
     return ((num->type == MINIM_NUMBER_EXACT) ? mpq_cmp_si(num->rat, 0, 1) > 0 : num->fl > 0.0);
 }
 
+bool minim_number_integerp(MinimNumber *num)
+{
+    if (num->type == MINIM_NUMBER_EXACT)
+    {
+        return mpz_cmp_ui(mpq_denref(num->rat), 1) == 0;
+    }
+    else
+    {
+        if (isinf(num->fl))     return false;
+        else                    return (ceil(num->fl) == num->fl);
+    }
+}
+
 bool minim_number_exactp(MinimNumber *num)
 {
     return num->type == MINIM_NUMBER_EXACT;
@@ -182,6 +202,11 @@ bool minim_number_exact_nonneg_intp(MinimNumber *num)
 bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg)
 {
     return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM);
+}
+
+bool assert_integer(MinimObject *arg, MinimObject **ret, const char *msg)
+{
+    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_integerp(arg->data));
 }
 
 bool assert_exact_number(MinimObject *arg, MinimObject **ret, const char *msg)
@@ -338,28 +363,9 @@ MinimObject *minim_builtin_integerp(MinimEnv *env, MinimObject **args, size_t ar
     if (assert_exact_argc(&res, "integer?", 1, argc))
     {
         if (args[0]->type == MINIM_OBJ_NUM)
-        {
-            MinimNumber *num = args[0]->data;
-
-            if (num->type == MINIM_NUMBER_EXACT)
-            {
-                init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_exactintp(args[0]->data));
-            }
-            else
-            {
-                mpq_t q;
-
-                mpq_init(q);
-                mpq_set_d(q, num->fl);
-                mpq_canonicalize(q);
-                init_minim_object(&res, MINIM_OBJ_BOOL, mpz_cmp_ui(mpq_denref(q), 1) == 0);
-                mpq_clear(q);
-            }
-        }
+            init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_integerp(args[0]->data));
         else
-        {
             init_minim_object(&res, MINIM_OBJ_BOOL, 0);
-        }
     }
 
     return res;

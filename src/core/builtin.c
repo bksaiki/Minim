@@ -131,6 +131,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "-", MINIM_OBJ_FUNC, minim_builtin_sub);
     minim_load_builtin(env, "*", MINIM_OBJ_FUNC, minim_builtin_mul);
     minim_load_builtin(env, "/", MINIM_OBJ_FUNC, minim_builtin_div);
+    minim_load_builtin(env, "mod", MINIM_OBJ_FUNC, minim_builtin_modulo);
     minim_load_builtin(env, "sqrt", MINIM_OBJ_FUNC, minim_builtin_sqrt);
     minim_load_builtin(env, "exp", MINIM_OBJ_FUNC, minim_builtin_exp);
     minim_load_builtin(env, "log", MINIM_OBJ_FUNC, minim_builtin_log);
