@@ -46,6 +46,22 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
+            "inf",              "inf",
+            "-inf",             "-inf",
+            "nan",              "nan",
+            "pi",               "3.141592653589793",
+            "phi",              "1.618033988749895"
+        };
+
+        printf("Testing constants\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
             "(= 1 1)",          "true",
             "(= 1.0 1.0)",      "true",
             "(= 1 1.0)",        "true",
@@ -212,7 +228,7 @@ int main()
             "(* 1 2)",               "2",
             "(* 1 2 3)",             "6",
             "(/ 1 2)",               "1/2",
-            "(/ 1 0)",               "nan.0"
+            "(/ 1 0)",               "nan"
         };
 
         printf("Testing basic math\n");
@@ -228,7 +244,7 @@ int main()
             "(sqrt 2.0)",           "1.414213562373095",
             "(sqrt 9)",             "3",
             "(sqrt 9.0)",           "3.0",
-            "(sqrt -1)",            "nan.0"
+            "(sqrt -1)",            "nan"
         };
 
         printf("Testing 'sqrt'\n");
@@ -262,7 +278,7 @@ int main()
             "(log 10)",             "2.302585092994046",
             "(log 10.0)",           "2.302585092994046",
             "(log 1/5)",            "-1.609437912434101",
-            "(log -1)",             "nan.0"
+            "(log -1)",             "nan"
         };
 
         printf("Testing 'log'\n");
@@ -287,6 +303,40 @@ int main()
         };
 
         printf("Testing 'pow'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(sin 0)",              "0",
+            "(sin 0.0)",            "0.0",
+            "(cos 0)",              "1",
+            "(cos 0.0)",            "1.0",
+            "(tan 0)",              "0",
+            "(tan 0.0)",            "0.0"
+        };
+
+        printf("Testing 'sin', 'cos', 'tan'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(asin 0)",             "0",
+            "(asin 0.0)",           "0.0",
+            "(acos 1)",             "0",
+            "(acos 1.0)",           "0.0",
+            "(atan 0)",             "0",
+            "(atan 0.0)",           "0.0"
+        };
+
+        printf("Testing 'asin', 'acos', 'atan'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
