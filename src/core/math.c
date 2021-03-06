@@ -32,6 +32,15 @@
 
 // Internals
 
+static void minim_number_set(MinimNumber *num, MinimNumber *src)
+{
+    reinterpret_minim_number(num, src->type);
+    if (src->type == MINIM_NUMBER_EXACT)
+        mpq_set(num->rat, src->rat);
+    else
+        num->fl = src->fl;
+}
+
 static void minim_number_neg(MinimNumber *res, MinimNumber *a)
 {
     if (a->type == MINIM_NUMBER_EXACT)  mpq_neg(res->rat, a->rat);
@@ -119,6 +128,14 @@ static void minim_number_div(MinimNumber *res, MinimNumber *a, MinimNumber *b)
     }
 }
 
+static void minim_number_abs(MinimNumber *res, MinimNumber *a)
+{
+    if (minim_number_negativep(a))
+        minim_number_neg(res, a);
+    else
+        minim_number_set(res, a);
+}
+
 // Assumes integer arguments
 static void minim_number_modulo(MinimNumber *res, MinimNumber *quo, MinimNumber *div)
 {
@@ -130,7 +147,7 @@ static void minim_number_modulo(MinimNumber *res, MinimNumber *quo, MinimNumber 
     RATIONALIZE(d, div);
 
     mpq_set_ui(res->rat, 0, 1);
-    mpz_tdiv_r(mpq_numref(res->rat), mpq_numref(q), mpq_numref(d));
+    mpz_fdiv_r(mpq_numref(res->rat), mpq_numref(q), mpq_numref(d));
 
     FREE_IF_INEXACT(q, quo);
     FREE_IF_INEXACT(d, div);
@@ -466,6 +483,78 @@ MinimObject *minim_builtin_div(MinimEnv *env, MinimObject **args, size_t argc)
         minim_number_div(num, args[0]->data, args[1]->data);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
+
+    return res;
+}
+
+MinimObject *minim_builtin_abs(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_exact_argc(&res, "abs", 1, argc) ||
+        !assert_number(args[0], &res, "Expected a number for 'abs'"))
+        return res;
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_abs(num, args[0]->data);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
+
+    return res;
+}
+
+MinimObject *minim_builtin_max(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num, *max;
+
+    if (!assert_min_argc(&res, "max", 1, argc))
+        return res;
+
+    for (size_t i = 0; i < argc; ++i)
+    {
+        if (!assert_number(args[i], &res, "Expected numerical arguments for 'max'"))
+            return res;
+    }
+
+    max = args[0]->data;
+    for (size_t i = 1; i < argc; ++i)
+    {
+        if (minim_number_cmp(args[i]->data, max) > 0)
+            max = args[i]->data;
+    }
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_set(num, max);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
+
+    return res;
+}
+
+MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num, *min;
+
+    if (!assert_min_argc(&res, "min", 1, argc))
+        return res;
+
+    for (size_t i = 0; i < argc; ++i)
+    {
+        if (!assert_number(args[i], &res, "Expected numerical arguments for 'min'"))
+            return res;
+    }
+
+    min = args[0]->data;
+    for (size_t i = 1; i < argc; ++i)
+    {
+        if (minim_number_cmp(args[i]->data, min) < 0)
+            min = args[i]->data;
+    }
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_set(num, min);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
 }

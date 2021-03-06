@@ -237,6 +237,40 @@ int main()
     }
 
     {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(max 1)",                      "1",
+            "(max 2 3 1)",                  "3",
+            "(max -5 4 6 2 1)",             "6",
+            "(min 1)",                      "1",
+            "(min 2 3 1)",                  "1",
+            "(min -5 4 6 2 1)",             "-5"
+        };
+
+        printf("Testing 'max' and 'min'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(mod 1 1)",                "0",
+            "(mod 27 6)",               "3",
+            "(mod 10 3)",               "1",
+            "(mod -10 3)",              "2",
+            "(mod -10 -3)",             "-1",
+            "(mod 10 -3)",              "-2"
+        };
+
+        printf("Testing 'mod'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 5;
         char strs[10][256] =
         {

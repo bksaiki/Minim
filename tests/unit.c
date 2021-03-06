@@ -619,7 +619,7 @@ int main()
             "(error 'foo \"this is also an error\")"
         };
 
-        printf("Testing 'error'");
+        printf("Testing 'error'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }

@@ -9,10 +9,6 @@
 
 ;;;;;;;;;;;;;;;;;; Special math functions ;;;;;;;;;;;;;;;;;;;
 
-;; Absolute value
-(def abs (x)
-  (if (< x 0) (- x) x))
-
 ;; Factorial
 (def factorial (n)
   (unless (exact-nonnegative-integer? n)
