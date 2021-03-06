@@ -18,12 +18,9 @@
 
 // Visible functions
 
-void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
+void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
 {
     MinimObject *obj;
-    va_list rest;
-
-    va_start(rest, type);
 
     obj = malloc(sizeof(MinimObject));
     obj->type = type;
@@ -35,57 +32,57 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     }
     else if (type == MINIM_OBJ_BOOL)
     {
-        obj->si = va_arg(rest, int);
+        obj->si = va_arg(vargs, int);
     }
     else if (type == MINIM_OBJ_NUM)
     {
-        obj->data = va_arg(rest, MinimNumber*);
+        obj->data = va_arg(vargs, MinimNumber*);
     }
     else if (type == MINIM_OBJ_SYM)
     {
-        char *dest, *src = va_arg(rest, char*);
+        char *dest, *src = va_arg(vargs, char*);
         dest = malloc((strlen(src) + 1) * sizeof(char));
         strcpy(dest, src);
         obj->data = dest;
     }
     else if (type == MINIM_OBJ_ERR)
     {
-        obj->data = va_arg(rest, MinimError*);
+        obj->data = va_arg(vargs, MinimError*);
     }
     else if (type == MINIM_OBJ_STRING)
     {
-        obj->data = va_arg(rest, char*);
+        obj->data = va_arg(vargs, char*);
     }
     else if (type == MINIM_OBJ_PAIR)
     {
         MinimObject **pair = malloc(2 * sizeof(MinimObject**));
-        pair[0] = va_arg(rest, MinimObject*);
-        pair[1] = va_arg(rest, MinimObject*);
+        pair[0] = va_arg(vargs, MinimObject*);
+        pair[1] = va_arg(vargs, MinimObject*);
         obj->data = pair;
     }
     else if (type == MINIM_OBJ_FUNC || type == MINIM_OBJ_SYNTAX)
     {
-        obj->data = va_arg(rest, MinimBuiltin);
+        obj->data = va_arg(vargs, MinimBuiltin);
     }
     else if (type == MINIM_OBJ_CLOSURE)
     {
-        obj->data = va_arg(rest, MinimLambda*);
+        obj->data = va_arg(vargs, MinimLambda*);
     }   
     else if (type == MINIM_OBJ_AST)
     {
-        obj->data = va_arg(rest, MinimAst*);
+        obj->data = va_arg(vargs, MinimAst*);
     }
     else if (type == MINIM_OBJ_SEQ)
     {
-        obj->data = va_arg(rest, MinimSeq*);
+        obj->data = va_arg(vargs, MinimSeq*);
     }
     else if (type == MINIM_OBJ_HASH)
     {
-        obj->data = va_arg(rest, MinimHash*);
+        obj->data = va_arg(vargs, MinimHash*);
     }
     else if (type == MINIM_OBJ_VECTOR)
     {
-        obj->data = va_arg(rest, MinimVector*);
+        obj->data = va_arg(vargs, MinimVector*);
     }
     else
     {
@@ -93,8 +90,16 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
         obj = NULL;
     }
 
-    va_end(rest);
     *pobj = obj;
+}
+
+void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
+{
+    va_list rest;
+
+    va_start(rest, type);
+    initv_minim_object(pobj, type, rest);
+    va_end(rest);
 }
 
 static void ref_minim_object_h(MinimObject *dest, MinimObject *src)

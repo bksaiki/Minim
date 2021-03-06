@@ -1,6 +1,7 @@
 #ifndef _MINIM_OBJECT_H_
 #define _MINIM_OBJECT_H_
 
+#include <stdarg.h>
 #include "../common/common.h"
 #include "../common/buffer.h"
 
@@ -93,8 +94,11 @@ typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
 //  Initialization / Destruction
 
 void init_minim_object(MinimObject **pobj, MinimObjectType type, ...);
+void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs);
+
 void copy_minim_object(MinimObject **pobj, MinimObject *src);
 void ref_minim_object(MinimObject **pobj, MinimObject *src);
+
 void free_minim_object(MinimObject *obj);
 void free_minim_objects(MinimObject **objs, size_t count);
 

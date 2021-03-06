@@ -8,21 +8,9 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
     va_list rest;
 
     va_start(rest, type);
-    if (type == MINIM_OBJ_FUNC || type == MINIM_OBJ_SYNTAX)
-    {
-        init_minim_object(&obj, type, va_arg(rest, MinimBuiltin));
-    }
-    else if (type == MINIM_OBJ_BOOL)
-    {
-        init_minim_object(&obj, type, va_arg(rest, int));
-    }
-    else if (type == MINIM_OBJ_NUM)
-    {
-        init_minim_object(&obj, type, va_arg(rest, MinimNumber*));
-    }
-
-    va_end(rest);
+    initv_minim_object(&obj, type, rest);
     env_intern_sym(env, name, obj);
+    va_end(rest);
 }
 
 void minim_load_builtins(MinimEnv *env)
@@ -47,6 +35,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     minim_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);
     minim_load_builtin(env, "error", MINIM_OBJ_FUNC, minim_builtin_error);
+    minim_load_builtin(env, "version", MINIM_OBJ_FUNC, minim_builtin_version);
+    minim_load_builtin(env, "symbol-count", MINIM_OBJ_FUNC, minim_builtin_symbol_count);
 
     // Boolean
     minim_load_builtin(env, "true", MINIM_OBJ_BOOL, 1);

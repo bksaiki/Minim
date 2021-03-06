@@ -10,6 +10,7 @@
 #include "bool.h"
 #include "eval.h"
 #include "list.h"
+#include "number.h"
 #include "variable.h"
 
 bool minim_symbolp(MinimObject *obj)
@@ -442,5 +443,35 @@ MinimObject *minim_builtin_equalp(MinimEnv *env, MinimObject **args, size_t argc
         init_minim_object(&res, MINIM_OBJ_BOOL, 1);
     }
 
+    return res;
+}
+
+MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    char *str;
+
+    if (!assert_exact_argc(&res, "version", 0, argc))
+        return res;
+
+    str = malloc((strlen(MINIM_VERSION_STR) + 1) * sizeof(char));
+    strcpy(str, MINIM_VERSION_STR);
+    init_minim_object(&res, MINIM_OBJ_STRING, str);
+
+    return res;
+}
+
+MinimObject *minim_builtin_symbol_count(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_exact_argc(&res, "symbol-count", 0, argc))
+        return res;
+
+    init_minim_number(&num, MINIM_NUMBER_EXACT);
+    mpq_set_ui(num->rat, env->table->size, 1);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    
     return res;
 }
