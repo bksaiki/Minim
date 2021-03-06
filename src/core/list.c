@@ -341,7 +341,14 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, MinimObject **args, size_t argc)
         assert_pair(args[0], &res, "Expected a pair for 'cdr'") &&
         assert_generic(&res, "Expected a non-null list for 'cdr'", MINIM_CAR(args[0])))
     {
-        OPT_MOVE_REF2(res, MINIM_CDR(args[0]), args[0]);
+        if (MINIM_CDR(args[0]))
+        {
+            OPT_MOVE_REF2(res, MINIM_CDR(args[0]), args[0]);
+        }
+        else
+        {
+            init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+        }
     }
 
     return res;

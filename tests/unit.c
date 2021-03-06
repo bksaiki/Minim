@@ -168,6 +168,23 @@ int main()
     }
 
     {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(car '(1 . 2))",                       "1",
+            "(car '(1))",                           "1",
+            "(car (list 1 2 3))",                   "1",
+            "(cdr '(1 . 2))",                       "2",
+            "(cdr '(1))",                           "'()",
+            "(cdr (list 1 2 3))",                   "'(2 3)"
+        };
+
+        printf("Testing 'car' and 'cdr'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 3;
         char strs[6][256] =
         {
