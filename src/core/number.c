@@ -107,7 +107,8 @@ char *minim_number_to_str(MinimNumber *num)
                 dot = true;
         }
 
-        if (!dot) strcat(str, ".0");
+        if (!dot && strcmp(str, "inf") != 0 && strcmp(str, "-inf") != 0 && strcmp(str, "nan") != 0)
+            strcat(str, ".0");
     }
 
     return str;
@@ -295,6 +296,36 @@ MinimNumber *minim_number_phi()
 
     init_minim_number(&phi, MINIM_NUMBER_INEXACT);
     phi->fl = 1.618033988749894848204;
+
+    return phi;
+}
+
+MinimNumber *minim_number_inf()
+{
+    MinimNumber *pi;
+
+    init_minim_number(&pi, MINIM_NUMBER_INEXACT);
+    pi->fl = INFINITY;
+
+    return pi;
+}
+
+MinimNumber *minim_number_ninf()
+{
+    MinimNumber *pi;
+
+    init_minim_number(&pi, MINIM_NUMBER_INEXACT);
+    pi->fl = -INFINITY;
+
+    return pi;
+}
+
+MinimNumber *minim_number_nan()
+{
+    MinimNumber *phi;
+
+    init_minim_number(&phi, MINIM_NUMBER_INEXACT);
+    phi->fl = NAN;
 
     return phi;
 }

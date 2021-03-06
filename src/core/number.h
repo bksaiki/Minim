@@ -63,5 +63,8 @@ size_t minim_number_to_uint(MinimObject *obj);
 
 MinimNumber *minim_number_pi();
 MinimNumber *minim_number_phi();
+MinimNumber *minim_number_inf();
+MinimNumber *minim_number_ninf();
+MinimNumber *minim_number_nan();
 
 #endif
