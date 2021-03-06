@@ -327,6 +327,72 @@ static void minim_number_tan(MinimNumber *res, MinimNumber *arg)
     }
 }
 
+static void minim_number_asin(MinimNumber *res, MinimNumber *arg)
+{
+    // asin(0) = 0
+    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+        mpq_set_ui(res->rat, 0, 1);
+    }
+    else
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = asin(GET_FLOAT(arg));
+    }
+}
+
+static void minim_number_acos(MinimNumber *res, MinimNumber *arg)
+{
+    // acos(1) = 0
+    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 1, 1) == 0)
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+        mpq_set_ui(res->rat, 0, 1);
+    }
+    else
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = acos(GET_FLOAT(arg));
+    }
+}
+
+static void minim_number_atan(MinimNumber *res, MinimNumber *arg)
+{
+    // atan(0) = 0
+    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+        mpq_set_ui(res->rat, 0, 1);
+    }
+    else
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = atan(GET_FLOAT(arg));
+    }
+}
+
+static void minim_number_atan2(MinimNumber *res, MinimNumber *y, MinimNumber *x)
+{
+    // atan(0) = 0
+    if (minim_number_zerop(y) && minim_number_zerop(x))
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = NAN;
+    }
+    else if (y->type == MINIM_NUMBER_EXACT && x->type == MINIM_NUMBER_EXACT &&
+             mpq_cmp_ui(y->rat, 0, 1) == 0)
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
+        mpq_set_ui(res->rat, 0, 1);
+    }
+    else
+    {
+        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
+        res->fl = atan2(GET_FLOAT(y), GET_FLOAT(x));
+    }
+}
+
 // *** Builtins *** //
 
 MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
@@ -531,5 +597,54 @@ MinimObject *minim_builtin_tan(MinimEnv *env, MinimObject **args, size_t argc)
     minim_number_tan(num, args[0]->data);
     init_minim_object(&res, MINIM_OBJ_NUM, num);
 
+    return res;
+}
+
+MinimObject *minim_builtin_asin(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_exact_argc(&res, "sin", 1, argc) ||
+        !assert_number(args[0], &res, "Expected a number for 'sin'"))
+        return res;
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_asin(num, args[0]->data);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
+
+    return res;
+}
+
+MinimObject *minim_builtin_acos(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_exact_argc(&res, "cos", 1, argc) ||
+        !assert_number(args[0], &res, "Expected a number for 'cos'"))
+        return res;
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    minim_number_acos(num, args[0]->data);
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
+
+    return res;
+}
+
+MinimObject *minim_builtin_atan(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    MinimNumber *num;
+
+    if (!assert_range_argc(&res, "tan", 1, 2, argc) ||
+        !assert_number(args[0], &res, "Expected a number for 'tan'"))
+        return res;
+    
+    init_minim_number(&num, MINIM_NUMBER_INEXACT);
+    if (argc == 1)  minim_number_atan(num, args[0]->data);
+    else            minim_number_atan2(num, args[0]->data, args[1]->data);
+    
+    init_minim_object(&res, MINIM_OBJ_NUM, num);
     return res;
 }

@@ -119,6 +119,9 @@ DEFINE_BUILTIN_FUN(pow)
 DEFINE_BUILTIN_FUN(sin)
 DEFINE_BUILTIN_FUN(cos)
 DEFINE_BUILTIN_FUN(tan)
+DEFINE_BUILTIN_FUN(asin)
+DEFINE_BUILTIN_FUN(acos)
+DEFINE_BUILTIN_FUN(atan)
 
 // Loads a single function into the environment
 void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);

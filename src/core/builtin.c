@@ -149,5 +149,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "sin", MINIM_OBJ_FUNC, minim_builtin_sin);
     minim_load_builtin(env, "cos", MINIM_OBJ_FUNC, minim_builtin_cos);
     minim_load_builtin(env, "tan", MINIM_OBJ_FUNC, minim_builtin_tan);
+    minim_load_builtin(env, "asin", MINIM_OBJ_FUNC, minim_builtin_asin);
+    minim_load_builtin(env, "acos", MINIM_OBJ_FUNC, minim_builtin_acos);
+    minim_load_builtin(env, "atan", MINIM_OBJ_FUNC, minim_builtin_atan);
     
 }
