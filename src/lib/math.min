@@ -9,7 +9,6 @@
 
 ;;;;;;;;;;;;;;;;;; Special math functions ;;;;;;;;;;;;;;;;;;;
 
-;; Factorial
 (def factorial (n)
   (unless (exact-nonnegative-integer? n)
     (error 'factorial "expected a non-negative integer"))
@@ -36,6 +35,33 @@
         a
         (loop b (mod a b))))
   (loop (abs a) (abs b)))
+
+(def lcm (a b)
+  (unless (and (integer? a) (integer? b))
+    (error 'lcm "expected integer arguments"))
+  (/ (* a b) (gcd a b)))
+
+(def remainder (a b)
+  (unless (and (integer? a) (integer? b))
+    (error 'remainder "expected integer arguments"))
+  (when (zero? b)
+    (error 'remainder "denominator cannot be 0"))
+  (def m (mod a b))
+  (cond
+   [(and (negative? a) (positive? b)) (- m b)]
+   [(and (positive? a) (negative? b)) (- m b)]
+   [else m]))
+
+(def sqr (x)
+  (* x x))
+
+(def sgn (x)
+  (def s
+    (cond
+     [(negative? x) -1]
+     [(positive? x) 1]
+     [else          0]))
+  (if (exact? x) s (inexact s)))
 
 ;; Functional maps
 
