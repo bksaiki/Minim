@@ -9,8 +9,7 @@ typedef struct MinimEnv
 {
     struct MinimEnv *parent;
     MinimSymbolTable *table;
-    char **names;
-    size_t name_count;
+    size_t sym_count;
 } MinimEnv;
 
 // Initializes a new environment object.
