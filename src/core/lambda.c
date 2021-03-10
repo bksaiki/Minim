@@ -13,6 +13,7 @@ void init_minim_lambda(MinimLambda **plam)
     MinimLambda *lam = malloc(sizeof(MinimLambda));
     
     lam->loc = NULL;
+    lam->syms = NULL;
     lam->args = NULL;
     lam->rest = NULL;
     lam->body = NULL;
@@ -61,6 +62,9 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->name = NULL;
     }
 
+    if (src->syms)  copy_minim_symbol_table(&lam->syms, src->syms);
+    else            lam->syms = NULL;
+
     if (src->loc)   copy_syntax_loc(&lam->loc, src->loc);
     else            lam->loc = NULL;
 
@@ -79,10 +83,11 @@ void free_minim_lambda(MinimLambda *lam)
         free(lam->args);
     }
 
-    if (lam->rest)      free(lam->rest);
-    if (lam->name)      free(lam->name);
-    if (lam->body)      free_ast(lam->body);
-    if (lam->loc)       free_syntax_loc(lam->loc);
+    if (lam->rest)  free(lam->rest);
+    if (lam->name)  free(lam->name);
+    if (lam->body)  free_ast(lam->body);
+    if (lam->loc)   free_syntax_loc(lam->loc);
+    if (lam->syms)  free_minim_symbol_table(lam->syms);
 
     free(lam);
 }
@@ -289,6 +294,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                 }
 
                 collect_exprs(&args[1], argc - 1, lam);
+                copy_minim_symbol_table(&lam->syms, env->table);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
             }
             else

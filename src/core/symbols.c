@@ -33,22 +33,25 @@ void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src)
         else
         {
             table->rows[i].names = malloc(src->rows[i].length * sizeof(char*));
-            table->rows[i].vals = malloc(src->rows[i].length * sizeof(MinimSymbolEntry));
+            table->rows[i].vals = malloc(src->rows[i].length * sizeof(MinimSymbolEntry*));
             table->rows[i].length = src->rows[i].length;
 
             for (size_t j = 0; j < src->rows[i].length; ++j)
             {
                 MinimSymbolEntry *it = src->rows[i].vals[j];
                 MinimSymbolEntry *cp = malloc(sizeof(MinimSymbolEntry));
-                MinimSymbolEntry *it2, *tmp;
+                MinimSymbolEntry *tmp;
+
+                table->rows[i].names[j] = malloc((strlen(src->rows[i].names[j]) + 1) * sizeof(char));
+                strcpy(table->rows[i].names[j], src->rows[i].names[j]);
 
                 copy_minim_object(&cp->obj, it->obj);
                 table->rows[i].vals[j] = cp;
 
-                for (it2 = it->parent; it2; it2 = it->parent)
+                for (it = it->parent; it; it = it->parent)
                 {
                     tmp = malloc(sizeof(MinimSymbolEntry));
-                    copy_minim_object(&cp->obj, it2->obj);
+                    copy_minim_object(&tmp->obj, it->obj);
                     cp->parent = tmp;
                     cp = tmp;
                 }

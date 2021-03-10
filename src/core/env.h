@@ -16,6 +16,12 @@ typedef struct MinimEnv
 // Initializes a new environment object.
 void init_env(MinimEnv **penv, MinimEnv *parent);
 
+// Recursively deletes the stack of environment objects.
+void free_env(MinimEnv *env);
+
+// Deletes the top environment object and returns the next one.
+MinimEnv *pop_env(MinimEnv *env);
+
 // Returns a copy of the object associated with the symbol. Returns NULL if
 // the symbol is not in the table. The returned value must be freed.
 MinimObject *env_get_sym(MinimEnv *env, const char *sym);
@@ -33,12 +39,6 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value);
 // Returns a pointer to the object associated with the symbol. Returns NULL
 // if the symbol is not in the table.
 MinimObject *env_peek_sym(MinimEnv *env, const char* sym);
-
-// Recursively deletes the stack of environment objects.
-void free_env(MinimEnv *env);
-
-// Deletes the top environment object and returns the next one.
-MinimEnv *pop_env(MinimEnv *env);
 
 // Returns the number of symbols in the environment
 size_t env_symbol_count(MinimEnv *env);

@@ -9,6 +9,7 @@ typedef struct MinimLambda
 {
     MinimAst *body;
     SyntaxLoc *loc;
+    MinimSymbolTable *syms;
     char **args, *rest, *name;
     int argc;
 } MinimLambda;
