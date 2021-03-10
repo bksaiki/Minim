@@ -1,4 +1,3 @@
-
 ;;;;;;;;;;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def exact-nonnegative-integer? (n)

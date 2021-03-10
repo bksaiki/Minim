@@ -102,6 +102,17 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     if (lam->rest || assert_exact_argc(&res, ((lam->name) ? lam->name : "unnamed lambda"), lam->argc, argc))
     {   
         init_env(&env2, lam->env);
+
+        if (lam->name)
+        {
+            MinimLambda *clam;
+            MinimObject *self;
+
+            copy_minim_lambda(&clam, lam);
+            init_minim_object(&self, MINIM_OBJ_CLOSURE, clam);
+            env_intern_sym(env2, lam->name, self);
+        }
+
         for (size_t i = 0; i < lam->argc; ++i)
         {
             copy_minim_object(&val, args[i]);
@@ -236,6 +247,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                 init_minim_lambda(&lam);
                 lam->rest = bindings->data;
                 collect_exprs(&args[1], argc - 1, lam);
+                rcopy_env(&lam->env, env);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
 
                 bindings->data = NULL;
@@ -296,10 +308,8 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                 }
 
                 collect_exprs(&args[1], argc - 1, lam);
-                init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
-
-                // Enclose environment
                 rcopy_env(&lam->env, env);
+                init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
             }
             else
             {
