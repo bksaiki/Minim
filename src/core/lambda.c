@@ -13,7 +13,7 @@ void init_minim_lambda(MinimLambda **plam)
     MinimLambda *lam = malloc(sizeof(MinimLambda));
     
     lam->loc = NULL;
-    lam->syms = NULL;
+    lam->env = NULL;
     lam->args = NULL;
     lam->rest = NULL;
     lam->body = NULL;
@@ -62,8 +62,8 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->name = NULL;
     }
 
-    if (src->syms)  copy_minim_symbol_table(&lam->syms, src->syms);
-    else            lam->syms = NULL;
+    if (src->env)   rcopy_env(&lam->env, src->env);
+    else            lam->env = NULL;
 
     if (src->loc)   copy_syntax_loc(&lam->loc, src->loc);
     else            lam->loc = NULL;
@@ -83,11 +83,13 @@ void free_minim_lambda(MinimLambda *lam)
         free(lam->args);
     }
 
+    if (lam->env && lam->env->copied) // avoid deleting top environment
+        free_env(lam->env);
+
     if (lam->rest)  free(lam->rest);
     if (lam->name)  free(lam->name);
     if (lam->body)  free_ast(lam->body);
     if (lam->loc)   free_syntax_loc(lam->loc);
-    if (lam->syms)  free_minim_symbol_table(lam->syms);
 
     free(lam);
 }
@@ -99,7 +101,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
     if (lam->rest || assert_exact_argc(&res, ((lam->name) ? lam->name : "unnamed lambda"), lam->argc, argc))
     {   
-        init_env(&env2, env);
+        init_env(&env2, lam->env);
         for (size_t i = 0; i < lam->argc; ++i)
         {
             copy_minim_object(&val, args[i]);
@@ -294,8 +296,10 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                 }
 
                 collect_exprs(&args[1], argc - 1, lam);
-                copy_minim_symbol_table(&lam->syms, env->table);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
+
+                // Enclose environment
+                rcopy_env(&lam->env, env);
             }
             else
             {

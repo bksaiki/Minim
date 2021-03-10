@@ -10,10 +10,15 @@ typedef struct MinimEnv
     struct MinimEnv *parent;
     MinimSymbolTable *table;
     size_t sym_count;
+    bool copied;
 } MinimEnv;
 
 // Initializes a new environment object.
 void init_env(MinimEnv **penv, MinimEnv *parent);
+
+// Recursively copies the stack of environment objects
+// Ignores the lowest environment
+void rcopy_env(MinimEnv **penv, MinimEnv *src);
 
 // Recursively deletes the stack of environment objects.
 void free_env(MinimEnv *env);

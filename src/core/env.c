@@ -25,16 +25,33 @@ static void add_metadata(MinimObject *obj, const char *str)
 void init_env(MinimEnv **penv, MinimEnv *parent)
 {
     MinimEnv *env = malloc(sizeof(MinimEnv));
-    MinimSymbolTable *table;
 
     env->parent = parent;
+    init_minim_symbol_table(&env->table);
+    env->copied = false;
     *penv = env;
-
-    init_minim_symbol_table(&table);
-    env->table = table;
 
     if (parent) env->sym_count = parent->sym_count + parent->table->size;
     else        env->sym_count = 0;
+}
+
+
+void rcopy_env(MinimEnv **penv, MinimEnv *src)
+{
+    if (src->parent)
+    {
+        MinimEnv *env = malloc(sizeof(MinimEnv));
+
+        rcopy_env(&env->parent, src->parent);
+        copy_minim_symbol_table(&env->table, src->table);
+        env->sym_count = src->sym_count;
+        env->copied = true;
+        *penv = env;
+    }
+    else
+    {
+        *penv = src;
+    }
 }
 
 MinimObject *env_get_sym(MinimEnv *env, const char *sym)
@@ -43,7 +60,7 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        val = minim_symbol_table_get(env->table, sym);
+        val = minim_symbol_table_get(it->table, sym);
         if (val)    return val;
     }
 
@@ -73,7 +90,7 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
 
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        name = minim_symbol_table_peek_name(env->table, value);
+        name = minim_symbol_table_peek_name(it->table, value);
         if (name)    return name;
     }
 
@@ -86,7 +103,7 @@ MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
 
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        val = minim_symbol_table_peek(env->table, sym);
+        val = minim_symbol_table_peek(it->table, sym);
         if (val)    return val;
     }
 
@@ -96,7 +113,8 @@ MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
 void free_env(MinimEnv *env)
 {
     free_minim_symbol_table(env->table);
-    if (env->parent) free_env(env->parent);
+    if(env->parent && (!env->copied || env->parent->copied))
+        free_env(env->parent);
     free(env);
 }
 
@@ -105,7 +123,7 @@ MinimEnv *pop_env(MinimEnv *env)
     MinimEnv *next = env->parent;
 
     free_minim_symbol_table(env->table);
-    free_env(env);
+    free(env);
 
     return next;
 }
