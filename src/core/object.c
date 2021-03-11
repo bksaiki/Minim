@@ -37,10 +37,9 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     }
     else if (type == MINIM_OBJ_SYM)
     {
-        char *dest, *src = va_arg(vargs, char*);
-        dest = malloc((strlen(src) + 1) * sizeof(char));
-        strcpy(dest, src);
-        obj->u.str.str = dest;
+        char *src = va_arg(vargs, char*);
+        obj->u.str.str = malloc((strlen(src) + 1) * sizeof(char));
+        strcpy(obj->u.str.str, src);
     }
     else if (type == MINIM_OBJ_ERR)
     {
@@ -233,7 +232,7 @@ void free_minim_object(MinimObject *obj)
         else if (obj->type == MINIM_OBJ_VECTOR)     free_minim_vector(obj->u.vec.arr);
         else if (obj->type == MINIM_OBJ_ERR)        free_minim_error(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_STRING)     free(obj->u.str.str);
-        else if (obj->type == MINIM_OBJ_STRING)     free(obj->u.str.str);
+        else if (obj->type == MINIM_OBJ_SYM)        free(obj->u.str.str);
     }
 
     free(obj);

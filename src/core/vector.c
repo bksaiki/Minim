@@ -106,7 +106,7 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
             init_minim_object(&vec->arr[i], MINIM_OBJ_NUM, zero);
         }
 
-        init_minim_object(&res, MINIM_OBJ_VECTOR, vec);
+        init_minim_object(&res, MINIM_OBJ_VECTOR, vec, size);
     }
 
     return res;
@@ -121,7 +121,7 @@ MinimObject *minim_builtin_vector(MinimEnv *env, MinimObject **args, size_t argc
     for (size_t i = 0; i < argc; ++i)
         vec->arr[i] = copy2_minim_object(args[i]);
 
-    init_minim_object(&res, MINIM_OBJ_VECTOR, vec);
+    init_minim_object(&res, MINIM_OBJ_VECTOR, vec, argc);
     return res;
 }
 
@@ -224,7 +224,7 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, MinimObject **args, siz
 
         for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
             vec->arr[i] = copy2_minim_object(MINIM_CAR(it));
-        init_minim_object(&res, MINIM_OBJ_VECTOR, vec);
+        init_minim_object(&res, MINIM_OBJ_VECTOR, vec, len);
     }
 
     return res;

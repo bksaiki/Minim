@@ -31,7 +31,7 @@ MinimObject *minim_iter_next(MinimObject *obj)
     case MINIM_OBJ_PAIR:
         if (MINIM_CDR(obj))
         {
-            obj->u.ptrs.p1 = MINIM_CDR(obj)->u.ptrs.p1;
+            obj->u = MINIM_CDR(obj)->u;
         }
         else                
         {
