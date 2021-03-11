@@ -358,7 +358,7 @@ MinimObject *minim_builtin_hash_keyp(MinimEnv *env, MinimObject **args, size_t a
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-key?'"))
     {
         init_minim_object(&res, MINIM_OBJ_BOOL,
-                          minim_hash_table_keyp(args[0]->data, args[1]));
+                          minim_hash_table_keyp(args[0]->u.ptrs.p1, args[1]));
     }
 
     return res;
@@ -371,7 +371,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, MinimObject **args, size_t ar
     if (assert_exact_argc(&res, "hash-ref", 2, argc) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
     {
-        res = minim_hash_table_ref(args[0]->data, args[1]);
+        res = minim_hash_table_ref(args[0]->u.ptrs.p1, args[1]);
         if (!res)
         {
             Buffer *bf;
@@ -396,7 +396,7 @@ MinimObject *minim_builtin_hash_remove(MinimEnv *env, MinimObject **args, size_t
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-ref'"))
     {
         OPT_MOVE(res, args[0]);
-        minim_hash_table_remove(res->data, args[1]);
+        minim_hash_table_remove(res->u.ptrs.p1, args[1]);
     }
 
     return res;
@@ -410,7 +410,7 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, MinimObject **args, size_t ar
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
     {
         OPT_MOVE(res, args[0]);
-        minim_hash_table_add(res->data, args[1], args[2]);
+        minim_hash_table_add(res->u.ptrs.p1, args[1], args[2]);
     }
 
     return res;
@@ -424,7 +424,7 @@ MinimObject *minim_builtin_hash_setb(MinimEnv *env, MinimObject **args, size_t a
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'") &&
         assert_generic(&res, "Expected a reference to a existing hash table", !MINIM_OBJ_OWNERP(args[0])))
     {
-        minim_hash_table_add(args[0]->data, args[1], args[2]);
+        minim_hash_table_add(args[0]->u.ptrs.p1, args[1], args[2]);
         init_minim_object(&res, MINIM_OBJ_VOID);
     }
 
@@ -439,7 +439,7 @@ MinimObject *minim_builtin_hash_removeb(MinimEnv *env, MinimObject **args, size_
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'") &&
         assert_generic(&res, "Expected a reference to a existing hash table", !MINIM_OBJ_OWNERP(args[0])))
     {
-        minim_hash_table_remove(args[0]->data, args[1]);
+        minim_hash_table_remove(args[0]->u.ptrs.p1, args[1]);
         init_minim_object(&res, MINIM_OBJ_VOID);
     }
 
@@ -453,7 +453,7 @@ MinimObject *minim_builtin_hash_to_list(MinimEnv *env, MinimObject **args, size_
     if (assert_exact_argc(&res, "hash->list", 1, argc) &&
         assert_hash(args[0], &res, "Expected a hash table in the first argument of 'hash-set'"))
     {
-        res = minim_hash_table_to_list(args[0]->data);
+        res = minim_hash_table_to_list(args[0]->u.ptrs.p1);
     }
 
     return res;

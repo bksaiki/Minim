@@ -35,12 +35,12 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (assert_exact_argc(&res, "if", 3, argc))
     {
-        eval_ast(env, args[0]->data, &cond);
+        eval_ast(env, args[0]->u.ptrs.p1, &cond);
 
         if (cond->type != MINIM_OBJ_ERR)
         {
-            if (coerce_into_bool(cond))     eval_ast(env, args[1]->data, &res);
-            else                            eval_ast(env, args[2]->data, &res);
+            if (coerce_into_bool(cond))     eval_ast(env, args[1]->u.ptrs.p1, &res);
+            else                            eval_ast(env, args[2]->u.ptrs.p1, &res);
 
             free_minim_object(cond);
         }
@@ -62,11 +62,11 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
     {
         MinimObject *ce_pair, *cond, *val;
 
-        unsyntax_ast(env, args[i]->data, &ce_pair);
+        unsyntax_ast(env, args[i]->u.ptrs.p1, &ce_pair);
         if (assert_list(ce_pair, &res, "Expected [<cond> <expr>] pair") &&
             assert_generic(&res, "Expected [<cond> <expr>] pair", minim_list_length(ce_pair) >= 2))
         {
-            MinimAst *cond_syn = MINIM_CAR(ce_pair)->data;
+            MinimAst *cond_syn = MINIM_CAR(ce_pair)->u.ptrs.p1;
             if (assert_generic(&res, "'else' clause must be last", i + 1 == argc ||
                 !cond_syn->sym || strcmp(cond_syn->sym, "else") != 0))
             {
@@ -80,7 +80,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                         init_env(&env2, env);
                         for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
                         {
-                            eval_ast(env2, MINIM_CAR(it)->data, &val);
+                            eval_ast(env2, MINIM_CAR(it)->u.ptrs.p1, &val);
                             if (val->type == MINIM_OBJ_ERR)
                             {
                                 res = val;
@@ -97,7 +97,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                     }
                     else
                     {
-                        eval_ast(env, MINIM_CADR(ce_pair)->data, &val);
+                        eval_ast(env, MINIM_CADR(ce_pair)->u.ptrs.p1, &val);
                         res = fresh_minim_object(val);
                         RELEASE_IF_REF(val);
                         eval = true;
@@ -131,7 +131,7 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
 
     if (assert_min_argc(&res, "unless", 2, argc))
     {
-        eval_ast(env, args[0]->data, &cond);
+        eval_ast(env, args[0]->u.ptrs.p1, &cond);
         if (cond->type != MINIM_OBJ_ERR)
         {
             if (!coerce_into_bool(cond))
@@ -156,7 +156,7 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (assert_min_argc(&res, "unless", 2, argc))
     {
-        eval_ast(env, args[0]->data, &cond);
+        eval_ast(env, args[0]->u.ptrs.p1, &cond);
         if (cond->type != MINIM_OBJ_ERR)
         {
             if (coerce_into_bool(cond))
@@ -181,27 +181,27 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (assert_min_argc(&res, "def", 2, argc))
     {
-        unsyntax_ast(env, args[0]->data, &sym);
+        unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'def'"))
         {
             if (argc == 2)
             {
-                eval_ast(env, args[1]->data, &val);
+                eval_ast(env, args[1]->u.ptrs.p1, &val);
             }
             else
             {
-                MinimAst *ast = args[0]->data;
+                MinimAst *ast = args[0]->u.ptrs.p1;
                 MinimLambda *lam;
                 
                 val = minim_builtin_lambda(env, &args[1], argc - 1);
                 
-                lam = val->data;
+                lam = val->u.ptrs.p1;
                 copy_syntax_loc(&lam->loc, ast->loc);
             }
             
             if (val->type != MINIM_OBJ_ERR)
             {
-                env_intern_sym(env, ((char*) sym->data), val);
+                env_intern_sym(env, ((char*) sym->u.str.str), val);
                 init_minim_object(&res, MINIM_OBJ_VOID);
                 RELEASE_IF_REF(val);
             }
@@ -229,7 +229,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         bool err = false;
         
         // Convert bindings to list
-        unsyntax_ast(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
         if (bindings->type == MINIM_OBJ_ERR)
         {
             res = bindings;
@@ -245,15 +245,15 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         {
             MinimObject *bind, *sym, *val;
 
-            unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+            unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
             if (assert_list(bind, &res, "Expected ((symbol value) ...) in the bindings of 'let'") &&
                 assert_list_len(bind, &res, 2, "Expected ((symbol value) ...) in the bindings of 'let'"))
             {
-                unsyntax_ast(env, MINIM_CAR(bind)->data, &sym);
+                unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &sym);
                 if (assert_symbol(sym, &res, "Variable names must be symbols in let"))
                 {
-                    eval_ast(env, MINIM_CADR(bind)->data, &val);
-                    env_intern_sym(env2, sym->data, val);
+                    eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
+                    env_intern_sym(env2, sym->u.str.str, val);
                     RELEASE_IF_REF(val);
                 }
                 else
@@ -271,7 +271,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
             free_minim_object(bind);
         }
 
-        if (!err) eval_ast(env2, args[1]->data, &it);
+        if (!err) eval_ast(env2, args[1]->u.ptrs.p1, &it);
         res = fresh_minim_object(it);
         RELEASE_IF_REF(it);
 
@@ -294,7 +294,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
         bool err = false;
         
         // Convert bindings to list
-        unsyntax_ast(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
         len = minim_list_length(bindings);
         it = bindings;
         
@@ -304,15 +304,15 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
         {
             MinimObject *bind, *sym, *val;
 
-            unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+            unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
             if (assert_list(bind, &res, "Expected ((symbol value) ...) in the bindings of 'let*'") &&
                 assert_list_len(bind, &res, 2, "Expected ((symbol value) ...) in the bindings of 'let*'"))
             {
-                unsyntax_ast(env, MINIM_CAR(bind)->data, &sym);
+                unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &sym);
                 if (assert_symbol(sym, &res, "Variable names must be symbols in let*"))
                 {
-                    eval_ast(env2, MINIM_CADR(bind)->data, &val);
-                    env_intern_sym(env2, sym->data, val);
+                    eval_ast(env2, MINIM_CADR(bind)->u.ptrs.p1, &val);
+                    env_intern_sym(env2, sym->u.str.str, val);
                     RELEASE_IF_REF(val);
                 }
                 else
@@ -330,7 +330,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
             free_minim_object(bind);
         }
 
-        if (!err) eval_ast(env2, args[1]->data, &it);
+        if (!err) eval_ast(env2, args[1]->u.ptrs.p1, &it);
         res = fresh_minim_object(it);
         RELEASE_IF_REF(it);
 
@@ -346,7 +346,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res;
 
     if (assert_exact_argc(&res, "quote", 1, argc))
-        unsyntax_ast_rec(env, args[0]->data, &res);
+        unsyntax_ast_rec(env, args[0]->u.ptrs.p1, &res);
     return res;
 }
 
@@ -356,16 +356,16 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (assert_exact_argc(&res, "set!", 2, argc))
     {
-        unsyntax_ast(env, args[0]->data, &sym);
+        unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
         if (assert_symbol(sym, &res, "Expected a symbol in the 1st argument of 'set!'"))
         {
-            MinimObject *val, *peek = env_peek_sym(env, sym->data);
+            MinimObject *val, *peek = env_peek_sym(env, sym->u.ptrs.p1);
             if (peek)
             {
-                eval_ast(env, args[1]->data, &val);
+                eval_ast(env, args[1]->u.ptrs.p1, &val);
                 if (val->type != MINIM_OBJ_ERR)
                 {
-                    env_set_sym(env, sym->data, val);
+                    env_set_sym(env, sym->u.str.str, val);
                     init_minim_object(&res, MINIM_OBJ_VOID);
                 }
                 else
@@ -375,7 +375,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
             }
             else
             {
-                minim_error(&res, "Variable not recognized '%s'", sym->data);
+                minim_error(&res, "Variable not recognized '%s'", sym->u.ptrs.p1);
             }
         }
 
@@ -397,7 +397,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
         init_env(&env2, env);
         for (size_t i = 0; i < argc; ++i)
         {
-            eval_ast(env2, args[i]->data, &val);
+            eval_ast(env2, args[i]->u.ptrs.p1, &val);
             if (val->type == MINIM_OBJ_ERR)
             {
                 res = val;

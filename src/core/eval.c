@@ -177,7 +177,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
                 init_minim_object(&args[1], MINIM_OBJ_AST, node->children[2]);
             }
 
-            proc = ((MinimBuiltin) env_peek_sym(env, "cons")->data);
+            proc = ((MinimBuiltin) env_peek_sym(env, "cons")->u.ptrs.p1);
             res = proc(env, args, 2);
             free_minim_objects(args, 2);
         }
@@ -194,7 +194,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
                 else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
             }
 
-            proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
+            proc = ((MinimBuiltin) env_peek_sym(env, "list")->u.ptrs.p1);
             res = proc(env, args, reduc);
             free_minim_objects(args, reduc);
 
@@ -211,7 +211,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
                 else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
             }
 
-            proc = ((MinimBuiltin) env_peek_sym(env, "list")->data);
+            proc = ((MinimBuiltin) env_peek_sym(env, "list")->u.ptrs.p1);
             res = proc(env, args, node->argc);
             free_minim_objects(args, node->argc);
         }
@@ -252,7 +252,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 
         if (op->type == MINIM_OBJ_FUNC)
         {
-            MinimBuiltin proc = ((MinimBuiltin) op->data);
+            MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
 
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
@@ -278,7 +278,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
         }
         else if (op->type == MINIM_OBJ_SYNTAX)
         {
-            MinimBuiltin proc = ((MinimBuiltin) op->data);
+            MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
 
             for (size_t i = 0; i < argc; ++i)
                 init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
@@ -289,13 +289,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 
             if (res->type == MINIM_OBJ_CLOSURE)
             {
-                MinimLambda *lam = res->data;
+                MinimLambda *lam = res->u.ptrs.p1;
                 copy_syntax_loc(&lam->loc, node->children[0]->loc);
             }
         }
         else if (op->type == MINIM_OBJ_CLOSURE)
         {
-            MinimLambda *lam = op->data;
+            MinimLambda *lam = op->u.ptrs.p1;
 
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          

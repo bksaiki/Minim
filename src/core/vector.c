@@ -94,7 +94,7 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
         MinimVector *vec;
         size_t size;
 
-        num = args[0]->data;
+        num = args[0]->u.ptrs.p1;
         size = mpz_get_ui(mpq_numref(num->rat));
         init_minim_vector(&vec, size);
 
@@ -133,8 +133,8 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t 
         assert_vector(args[0], &res, "Expected a vector in the first argument of 'vector-ref") &&
         assert_exact_nonneg_int(args[1], &res, "Expected a non-negative index in the second argument of 'vector-ref'"))
     {
-        MinimVector *vec = args[0]->data;
-        MinimNumber *num = args[1]->data;
+        MinimVector *vec = args[0]->u.vec.arr;
+        MinimNumber *num = args[1]->u.ptrs.p1;
         size_t idx = mpz_get_ui(mpq_numref(num->rat));
 
         if (assert_generic(&res, "Index out of bounds", idx < vec->size))
@@ -153,8 +153,8 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
         assert_generic(&res, "Expected a reference to a existing vector", !MINIM_OBJ_OWNERP(args[0])) &&
         assert_exact_nonneg_int(args[1], &res, "Expected a non-negative index in the second argument of 'vector-set!'"))
     {
-        MinimVector *vec = args[0]->data;
-        MinimNumber *num = args[1]->data;
+        MinimVector *vec = args[0]->u.vec.arr;
+        MinimNumber *num = args[1]->u.ptrs.p1;
         size_t idx = mpz_get_ui(mpq_numref(num->rat));
 
         if (assert_generic(&res, "Index out of bounds", idx < vec->size))
@@ -175,7 +175,7 @@ MinimObject *minim_builtin_vector_to_list(MinimEnv *env, MinimObject **args, siz
     if (assert_exact_argc(&res, "vector->list", 1, argc) &&
         assert_vector(args[0], &res, "Expected a vector in the first argument of 'vector->list"))
     {
-        MinimVector *vec = args[0]->data;
+        MinimVector *vec = args[0]->u.vec.arr;
 
         if (vec->size > 0)
         {

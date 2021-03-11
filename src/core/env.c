@@ -10,7 +10,7 @@ static void add_metadata(MinimObject *obj, const char *str)
 {
     if (obj->type == MINIM_OBJ_CLOSURE)
     {
-        MinimLambda *lam = obj->data;
+        MinimLambda *lam = obj->u.ptrs.p1;
 
         if (lam->name)      free(lam->name);
         lam->name = malloc((strlen(str) + 1) * sizeof(char));

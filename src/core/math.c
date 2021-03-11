@@ -420,10 +420,10 @@ MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, "+", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '+'", minim_numberp))
     {
-        copy_minim_number(&num, args[0]->data);
+        copy_minim_number(&num, args[0]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
         for (size_t i = 1; i < argc; ++i)
-            minim_number_add(num, num, args[i]->data);
+            minim_number_add(num, num, args[i]->u.ptrs.p1);
     }
 
     return res;
@@ -437,7 +437,7 @@ MinimObject *minim_builtin_sub(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, "-", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '-'", minim_numberp))
     {    
-        copy_minim_number(&num, args[0]->data);
+        copy_minim_number(&num, args[0]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
         if (argc == 1)
         {
@@ -446,7 +446,7 @@ MinimObject *minim_builtin_sub(MinimEnv *env, MinimObject **args, size_t argc)
         else
         {
             for (size_t i = 1; i < argc; ++i)
-                minim_number_sub(num, num, args[i]->data);
+                minim_number_sub(num, num, args[i]->u.ptrs.p1);
         
         }
     }
@@ -462,10 +462,10 @@ MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, "*", 1, argc) &&
         assert_for_all(&res, args, argc, "Expected numerical arguments for '*'", minim_numberp))
     {
-        copy_minim_number(&num, args[0]->data);
+        copy_minim_number(&num, args[0]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
         for (size_t i = 1; i < argc; ++i)
-            minim_number_mul(num, num, args[i]->data);
+            minim_number_mul(num, num, args[i]->u.ptrs.p1);
     }
 
     return res;
@@ -480,7 +480,7 @@ MinimObject *minim_builtin_div(MinimEnv *env, MinimObject **args, size_t argc)
         assert_for_all(&res, args, argc, "Expected numerical arguments for '/'", minim_numberp))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_div(num, args[0]->data, args[1]->data);
+        minim_number_div(num, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
@@ -497,7 +497,7 @@ MinimObject *minim_builtin_abs(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_abs(num, args[0]->data);
+    minim_number_abs(num, args[0]->u.ptrs.p1);
     init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
@@ -517,11 +517,11 @@ MinimObject *minim_builtin_max(MinimEnv *env, MinimObject **args, size_t argc)
             return res;
     }
 
-    max = args[0]->data;
+    max = args[0]->u.ptrs.p1;
     for (size_t i = 1; i < argc; ++i)
     {
-        if (minim_number_cmp(args[i]->data, max) > 0)
-            max = args[i]->data;
+        if (minim_number_cmp(args[i]->u.ptrs.p1, max) > 0)
+            max = args[i]->u.ptrs.p1;
     }
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
@@ -545,11 +545,11 @@ MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
             return res;
     }
 
-    min = args[0]->data;
+    min = args[0]->u.ptrs.p1;
     for (size_t i = 1; i < argc; ++i)
     {
-        if (minim_number_cmp(args[i]->data, min) < 0)
-            min = args[i]->data;
+        if (minim_number_cmp(args[i]->u.ptrs.p1, min) < 0)
+            min = args[i]->u.ptrs.p1;
     }
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
@@ -570,7 +570,7 @@ MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc
         return res;
 
     init_minim_number(&mod, MINIM_NUMBER_EXACT);
-    minim_number_modulo(mod, args[0]->data, args[1]->data);
+    minim_number_modulo(mod, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
     init_minim_object(&res, MINIM_OBJ_NUM, mod);
 
     return res;
@@ -585,7 +585,7 @@ MinimObject *minim_builtin_sqrt(MinimEnv *env, MinimObject **args, size_t argc)
         assert_number(args[0], &res, "Expected a number for 'sqrt'"))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_sqrt(num, args[0]->data);
+        minim_number_sqrt(num, args[0]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
@@ -601,7 +601,7 @@ MinimObject *minim_builtin_exp(MinimEnv *env, MinimObject **args, size_t argc)
         assert_number(args[0], &res, "Expected a number for 'exp'"))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_exp(num, args[0]->data);
+        minim_number_exp(num, args[0]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
@@ -617,7 +617,7 @@ MinimObject *minim_builtin_log(MinimEnv *env, MinimObject **args, size_t argc)
         assert_number(args[0], &res, "Expected a number for 'log'"))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_log(num, args[0]->data);
+        minim_number_log(num, args[0]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
@@ -634,7 +634,7 @@ MinimObject *minim_builtin_pow(MinimEnv *env, MinimObject **args, size_t argc)
         assert_number(args[1], &res, "Expected a number in the 2nd argument of 'pow'"))
     {
         init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_pow(num, args[0]->data, args[1]->data);
+        minim_number_pow(num, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
         init_minim_object(&res, MINIM_OBJ_NUM, num);
     }
 
@@ -651,7 +651,7 @@ MinimObject *minim_builtin_sin(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_sin(num, args[0]->data);
+    minim_number_sin(num, args[0]->u.ptrs.p1);
     init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
@@ -667,7 +667,7 @@ MinimObject *minim_builtin_cos(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_cos(num, args[0]->data);
+    minim_number_cos(num, args[0]->u.ptrs.p1);
     init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
@@ -683,7 +683,7 @@ MinimObject *minim_builtin_tan(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_tan(num, args[0]->data);
+    minim_number_tan(num, args[0]->u.ptrs.p1);
     init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
@@ -699,7 +699,7 @@ MinimObject *minim_builtin_asin(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_asin(num, args[0]->data);
+    minim_number_asin(num, args[0]->u.ptrs.p1);
     init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
@@ -715,7 +715,7 @@ MinimObject *minim_builtin_acos(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_acos(num, args[0]->data);
+    minim_number_acos(num, args[0]->u.ptrs.p1);
     init_minim_object(&res, MINIM_OBJ_NUM, num);
 
     return res;
@@ -731,8 +731,8 @@ MinimObject *minim_builtin_atan(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    if (argc == 1)  minim_number_atan(num, args[0]->data);
-    else            minim_number_atan2(num, args[0]->data, args[1]->data);
+    if (argc == 1)  minim_number_atan(num, args[0]->u.ptrs.p1);
+    else            minim_number_atan2(num, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
     
     init_minim_object(&res, MINIM_OBJ_NUM, num);
     return res;

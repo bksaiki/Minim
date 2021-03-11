@@ -140,7 +140,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         pop_env(env2);
 
         if (res->type == MINIM_OBJ_ERR && lam->loc && lam->name)
-            minim_error_add_trace(res->data, lam->loc, lam->name);
+            minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
     }
     
     return res;
@@ -210,13 +210,13 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
         init_ast_op(&ast, count + 1, 0);
         init_ast_node(&ast->children[0], "begin", 0);
         for (size_t i = 0; i < count; ++i)
-            copy_ast(&ast->children[i + 1], exprs[i]->data);
+            copy_ast(&ast->children[i + 1], exprs[i]->u.ptrs.p1);
         
         lam->body = ast;
     }
     else
     {
-        copy_ast(&lam->body, exprs[0]->data);
+        copy_ast(&lam->body, exprs[0]->u.ptrs.p1);
     }
 }
 
@@ -239,18 +239,18 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
         MinimLambda *lam;
 
         // Convert bindings to list
-        unsyntax_ast(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
         if (bindings->type != MINIM_OBJ_ERR)
         {
             if (minim_symbolp(bindings))
             {
                 init_minim_lambda(&lam);
-                lam->rest = bindings->data;
+                lam->rest = bindings->u.str.str;
                 collect_exprs(&args[1], argc - 1, lam);
                 rcopy_env(&lam->env, env);
                 init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
 
-                bindings->data = NULL;
+                bindings->u.ptrs.p1 = NULL;
             }
             else if (minim_listp(bindings) || minim_consp(bindings))
             {
@@ -265,17 +265,17 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                 {
                     if (minim_consp(it) && MINIM_CDR(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
                     {   
-                        unsyntax_ast(env, MINIM_CAR(it)->data, &val);
-                        unsyntax_ast(env, MINIM_CDR(it)->data, &val2);
+                        unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
+                        unsyntax_ast(env, MINIM_CDR(it)->u.ptrs.p1, &val2);
 
                         if (assert_symbol(val, &res, "Expected a symbol for lambda variables") &&
                             assert_symbol(val2, &res, "Expected a symbol for the rest variable"))
                         {
-                            lam->args[i] = val->data;
-                            lam->rest = val2->data;
+                            lam->args[i] = val->u.ptrs.p1;
+                            lam->rest = val2->u.str.str;
 
-                            val->data = NULL;
-                            val2->data = NULL;
+                            val->u.ptrs.p1 = NULL;
+                            val2->u.ptrs.p1 = NULL;
                             free_minim_object(val);
                             free_minim_object(val2);
                         }
@@ -290,11 +290,11 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                     }
                     else
                     {
-                        unsyntax_ast(env, MINIM_CAR(it)->data, &val);
+                        unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
                         if (assert_symbol(val, &res, "Expected a symbol for lambda variables"))
                         {
-                            lam->args[i] = val->data;
-                            val->data = NULL;
+                            lam->args[i] = val->u.ptrs.p1;
+                            val->u.ptrs.p1 = NULL;
                             free_minim_object(val);
                         }
                         else

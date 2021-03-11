@@ -159,8 +159,8 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
 
         if (argc == 2)
         {
-            copy_minim_number(&begin, args[0]->data);
-            copy_minim_number(&end, args[1]->data);
+            copy_minim_number(&begin, args[0]->u.ptrs.p1);
+            copy_minim_number(&end, args[1]->u.ptrs.p1);
             if (minim_number_cmp(begin, end) > 0)
             {
                 minim_error(&res, "Expected a valid range [begin, end) in 'in-range'");
@@ -171,7 +171,7 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
         {
             init_minim_number(&begin, MINIM_NUMBER_EXACT);
             mpq_set_ui(begin->rat, 0, 1);
-            copy_minim_number(&end, args[0]->data);
+            copy_minim_number(&end, args[0]->u.ptrs.p1);
         }
 
         init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
@@ -193,7 +193,7 @@ MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t
 
         if (argc == 1)
         {
-            copy_minim_number(&begin, args[0]->data);
+            copy_minim_number(&begin, args[0]->u.ptrs.p1);
         }
         else
         {
@@ -222,9 +222,9 @@ MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, MinimObject **args, s
         MinimObject *it, *val;
         bool first = true;
 
-        while (!minim_seq_donep(seq->data))
+        while (!minim_seq_donep(seq->u.ptrs.p1))
         {
-            val = minim_seq_get(seq->data);
+            val = minim_seq_get(seq->u.ptrs.p1);
             if (first)
             {
                 init_minim_object(&res, MINIM_OBJ_PAIR, val, NULL);
@@ -237,7 +237,7 @@ MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, MinimObject **args, s
                 it = MINIM_CDR(it);
             }
 
-            minim_seq_next(seq->data);
+            minim_seq_next(seq->u.ptrs.p1);
         }
         
         if (first)

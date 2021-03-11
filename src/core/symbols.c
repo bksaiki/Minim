@@ -259,7 +259,7 @@ const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *o
         {
             for (MinimSymbolEntry *it = table->rows[i].vals[j]; it; it = it->parent)
             {
-                if (obj->data == it->obj->data)
+                if (minim_equalp(obj, it->obj))
                     return table->rows[i].names[j];
             }
         }

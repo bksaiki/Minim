@@ -26,68 +26,59 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     obj->type = type;
     obj->flags = MINIM_OBJ_OWNER;
 
-    if (type == MINIM_OBJ_VOID)
+    // if (type == MINIM_OBJ_VOID)
+    if (type == MINIM_OBJ_BOOL)
     {
-        obj->data = NULL;
-    }
-    else if (type == MINIM_OBJ_BOOL)
-    {
-        obj->si = va_arg(vargs, int);
+        obj->u.ints.i1 = va_arg(vargs, int);
     }
     else if (type == MINIM_OBJ_NUM)
     {
-        obj->data = va_arg(vargs, MinimNumber*);
+        obj->u.ptrs.p1 = va_arg(vargs, MinimNumber*);
     }
     else if (type == MINIM_OBJ_SYM)
     {
         char *dest, *src = va_arg(vargs, char*);
         dest = malloc((strlen(src) + 1) * sizeof(char));
         strcpy(dest, src);
-        obj->data = dest;
+        obj->u.str.str = dest;
     }
     else if (type == MINIM_OBJ_ERR)
     {
-        obj->data = va_arg(vargs, MinimError*);
+        obj->u.ptrs.p1 = va_arg(vargs, MinimError*);
     }
     else if (type == MINIM_OBJ_STRING)
     {
-        obj->data = va_arg(vargs, char*);
+        obj->u.str.str = va_arg(vargs, char*);
     }
     else if (type == MINIM_OBJ_PAIR)
     {
-        MinimObject **pair = malloc(2 * sizeof(MinimObject**));
-        pair[0] = va_arg(vargs, MinimObject*);
-        pair[1] = va_arg(vargs, MinimObject*);
-        obj->data = pair;
+        obj->u.pair.car = va_arg(vargs, MinimObject*);
+        obj->u.pair.cdr = va_arg(vargs, MinimObject*);
     }
     else if (type == MINIM_OBJ_FUNC || type == MINIM_OBJ_SYNTAX)
     {
-        obj->data = va_arg(vargs, MinimBuiltin);
+        obj->u.ptrs.p1 = va_arg(vargs, MinimBuiltin);
     }
     else if (type == MINIM_OBJ_CLOSURE)
     {
-        obj->data = va_arg(vargs, MinimLambda*);
+        obj->u.ptrs.p1 = va_arg(vargs, MinimLambda*);
     }   
     else if (type == MINIM_OBJ_AST)
     {
-        obj->data = va_arg(vargs, MinimAst*);
+        obj->u.ptrs.p1 = va_arg(vargs, MinimAst*);
     }
     else if (type == MINIM_OBJ_SEQ)
     {
-        obj->data = va_arg(vargs, MinimSeq*);
+        obj->u.ptrs.p1 = va_arg(vargs, MinimSeq*);
     }
     else if (type == MINIM_OBJ_HASH)
     {
-        obj->data = va_arg(vargs, MinimHash*);
+        obj->u.ptrs.p1 = va_arg(vargs, MinimHash*);
     }
     else if (type == MINIM_OBJ_VECTOR)
     {
-        obj->data = va_arg(vargs, MinimVector*);
-    }
-    else
-    {
-        printf("Unknown object type\n");
-        obj = NULL;
+        obj->u.vec.arr = va_arg(vargs, MinimVector*);
+        obj->u.vec.len = va_arg(vargs, size_t);
     }
 
     *pobj = obj;
@@ -107,7 +98,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     switch (src->type)
     {
     case MINIM_OBJ_BOOL:
-        dest->si = src->si;
+        dest->u = src->u;
         dest->flags |= MINIM_OBJ_OWNER; // override
         break;
 
@@ -124,7 +115,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_HASH:
     case MINIM_OBJ_VECTOR:
-        dest->data = src->data;
+        dest->u = src->u;
         break;
     
     default:
@@ -137,81 +128,72 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
 {
     if (src->type == MINIM_OBJ_BOOL)
     {
-        dest->si = src->si;
+        dest->u.ints.i1 = dest->u.ints.i2;
     }
     else if (src->type == MINIM_OBJ_NUM)
     {
         MinimNumber *num;
-        copy_minim_number(&num, src->data);
-        dest->data = num;
+        copy_minim_number(&num, src->u.ptrs.p1);
+        dest->u.ptrs.p1 = num;
     }
     else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_STRING)
     {
-        char *str = ((char*) src->data);
-        dest->data = malloc((strlen(str) + 1) * sizeof(char));
-        strcpy(dest->data, str);
+        char *str = ((char*) src->u.str.str);
+        dest->u.str.str = malloc((strlen(str) + 1) * sizeof(char));
+        strcpy(dest->u.str.str, str);
     }
     else if (src->type == MINIM_OBJ_ERR)
     {
         MinimError *err;
 
-        copy_minim_error(&err, src->data);
-        dest->data = err;
+        copy_minim_error(&err, src->u.ptrs.p1);
+        dest->u.ptrs.p1 = err;
     }
     else if (src->type == MINIM_OBJ_PAIR)
     {
-        MinimObject** cell = ((MinimObject**) src->data);
-        MinimObject** cp = malloc(2 * sizeof(MinimObject*));
+        if (src->u.pair.car)    copy_minim_object(&dest->u.pair.car, src->u.pair.car);
+        else                    dest->u.pair.car = NULL;
 
-        if (cell[0]) copy_minim_object(&cp[0], cell[0]);
-        else         cp[0] = NULL;
-
-        if (cell[1]) copy_minim_object(&cp[1], cell[1]);
-        else         cp[1] = NULL;
-
-        dest->data = cp;
+        if (src->u.pair.cdr)    copy_minim_object(&dest->u.pair.cdr, src->u.pair.cdr);
+        else                    dest->u.pair.cdr = NULL;
     }
     else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC ||
                 src->type == MINIM_OBJ_SYNTAX)
     {
-        dest->data = src->data;   // no copy
+        dest->u.ptrs.p1 = src->u.ptrs.p1;   // no copy
     }
     else if (src->type == MINIM_OBJ_CLOSURE)
     {
         MinimLambda *lam;
 
-        copy_minim_lambda(&lam, src->data);
-        dest->data = lam;
+        copy_minim_lambda(&lam, src->u.ptrs.p1);
+        dest->u.ptrs.p1 = lam;
     }
     else if (src->type == MINIM_OBJ_AST)
     {
         MinimAst *node;
-        copy_ast(&node, src->data);
-        dest->data = node;
+        copy_ast(&node, src->u.ptrs.p1);
+        dest->u.ptrs.p1 = node;
     }
     else if (src->type == MINIM_OBJ_SEQ)
     {
         MinimSeq *seq;
-        copy_minim_seq(&seq, src->data);
-        dest->data = seq;
+        copy_minim_seq(&seq, src->u.ptrs.p1);
+        dest->u.ptrs.p1 = seq;
     }
     else if (src->type == MINIM_OBJ_HASH)
     {
         MinimHash *ht;
-        copy_minim_hash_table(&ht, src->data);
-        dest->data = ht;
+        copy_minim_hash_table(&ht, src->u.ptrs.p1);
+        dest->u.ptrs.p1 = ht;
     }
     else if (src->type == MINIM_OBJ_VECTOR)
     {
         MinimVector *vec;
-        copy_minim_vector(&vec, src->data);
-        dest->data = vec;
+        copy_minim_vector(&vec, src->u.vec.arr);
+        dest->u.vec.arr = vec;
+        dest->u.vec.len = src->u.vec.len;
     }
-    else
-    {
-        printf("Unknown object type\n");
-        dest = NULL;
-    }   
 }
 
 void copy_minim_object(MinimObject **pobj, MinimObject *src)
@@ -241,24 +223,17 @@ void free_minim_object(MinimObject *obj)
     {
         if (obj->type == MINIM_OBJ_PAIR)
         {
-            MinimObject** pdata = (MinimObject**)obj->data;
-            if (pdata[0])   free_minim_object(pdata[0]);
-            if (pdata[1])   free_minim_object(pdata[1]);
+            if (obj->u.pair.car) free_minim_object(obj->u.pair.car);
+            if (obj->u.pair.cdr) free_minim_object(obj->u.pair.cdr);
         }
-        
-        if (obj->data &&
-            obj->type != MINIM_OBJ_BOOL &&
-            obj->type != MINIM_OBJ_FUNC && obj->type != MINIM_OBJ_SYNTAX && // function pointer
-            obj->type != MINIM_OBJ_AST) // release ast
-        {
-            if (obj->type == MINIM_OBJ_CLOSURE)         free_minim_lambda(obj->data);
-            else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->data);
-            else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->data);
-            else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->data);
-            else if (obj->type == MINIM_OBJ_VECTOR)     free_minim_vector(obj->data);
-            else if (obj->type == MINIM_OBJ_ERR)        free_minim_error(obj->data);
-            else                                        free(obj->data);
-        }
+        else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->u.ptrs.p1);
+        else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->u.ptrs.p1);
+        else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->u.ptrs.p1);
+        else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->u.ptrs.p1);
+        else if (obj->type == MINIM_OBJ_VECTOR)     free_minim_vector(obj->u.vec.arr);
+        else if (obj->type == MINIM_OBJ_ERR)        free_minim_error(obj->u.ptrs.p1);
+        else if (obj->type == MINIM_OBJ_STRING)     free(obj->u.str.str);
+        else if (obj->type == MINIM_OBJ_STRING)     free(obj->u.str.str);
     }
 
     free(obj);
@@ -298,30 +273,30 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return true;
 
     case MINIM_OBJ_BOOL:
-        return (*((int*) a->data) == *((int*) b->data));
+        return (*((int*) a->u.ints.i1) == *((int*) b->u.ints.i2));
 
     case MINIM_OBJ_SYM:
     case MINIM_OBJ_STRING:
-        return strcmp(a->data, b->data) == 0;
+        return strcmp(a->u.str.str, b->u.str.str) == 0;
 
     case MINIM_OBJ_FUNC:
     case MINIM_OBJ_SYNTAX:
-        return a->data == b->data;
+        return a->u.ptrs.p1 == b->u.ptrs.p1;
 
     case MINIM_OBJ_NUM:
-        return minim_number_cmp(a->data, b->data) == 0;
+        return minim_number_cmp(a->u.ptrs.p1, b->u.ptrs.p1) == 0;
 
     case MINIM_OBJ_PAIR:
         return minim_cons_eqp(a, b);
     
     case MINIM_OBJ_CLOSURE:
-        return a->data == b->data;
+        return a->u.ptrs.p1 == b->u.ptrs.p1;
     
     case MINIM_OBJ_AST:
-        return ast_equalp(a->data, b->data);
+        return ast_equalp(a->u.ptrs.p1, b->u.ptrs.p1);
 
     case MINIM_OBJ_VECTOR:
-        return minim_vector_equalp(a->data, b->data);
+        return minim_vector_equalp(a->u.vec.arr, b->u.vec.arr);
     
     /*
     case MINIM_OBJ_SEQ:
@@ -369,17 +344,17 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_BOOL:
-        writei_buffer(bf, (*((int*)obj->data) ? 0 : 1));
+        writei_buffer(bf, (*((int*)obj->u.ints.i1) ? 0 : 1));
         break;
     
     case MINIM_OBJ_FUNC:
     case MINIM_OBJ_SYNTAX:
-        write_buffer(bf, obj->data, sizeof(void*));
+        write_buffer(bf, obj->u.ptrs.p1, sizeof(void*));
         break;
 
     case MINIM_OBJ_SYM:
     case MINIM_OBJ_STRING:
-        writes_buffer(bf, obj->data);
+        writes_buffer(bf, obj->u.ptrs.p1);
         break;
 
     case MINIM_OBJ_PAIR:
@@ -391,15 +366,15 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_AST:
-        ast_dump_in_buffer(obj->data, bf);
+        ast_dump_in_buffer(obj->u.ptrs.p1, bf);
         break;
 
     case MINIM_OBJ_CLOSURE:
-        minim_lambda_to_buffer(obj->data, bf);
+        minim_lambda_to_buffer(obj->u.ptrs.p1, bf);
         break;
 
     case MINIM_OBJ_VECTOR:
-        minim_vector_bytes(obj->data, bf);
+        minim_vector_bytes(obj->u.vec.arr, bf);
         break;
 
     /*
@@ -407,7 +382,8 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
     case MINIM_OBJ_ERR:
     */
     default:
-        write_buffer(bf, obj->data, sizeof(void*));
+        write_buffer(bf, obj->u.pair.car, sizeof(MinimObject*));
+        write_buffer(bf, obj->u.pair.cdr, sizeof(MinimObject*));
         break;
     }
 

@@ -35,14 +35,14 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
     if (map->type == MINIM_OBJ_FUNC)
     {
         MinimObject *arg = MINIM_CAR(list);
-        MinimBuiltin func = map->data;
+        MinimBuiltin func = map->u.ptrs.p1;
 
         val = func(env, &arg, 1);
     }
     else // map->type == MINIM_OBJ_CLOSURE
     {
         MinimObject *arg = MINIM_CAR(list);
-        MinimLambda *lam = map->data;
+        MinimLambda *lam = map->u.ptrs.p1;
         
         val = eval_lambda(lam, env, &arg, 1);
     }
@@ -75,12 +75,12 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
     {
         if (filter->type == MINIM_OBJ_FUNC)
         {
-            MinimBuiltin func = filter->data;
+            MinimBuiltin func = filter->u.ptrs.p1;
             val = func(env, &MINIM_CAR(it), 1);
         }
         else
         {
-            MinimLambda *lam = filter->data;
+            MinimLambda *lam = filter->u.ptrs.p1;
             val = eval_lambda(lam, env, &MINIM_CAR(it), 1);
         }
 
@@ -545,12 +545,12 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 
         if (args[0]->type == MINIM_OBJ_FUNC)
         {
-            MinimBuiltin func = args[0]->data;
+            MinimBuiltin func = args[0]->u.ptrs.p1;
             res = func(env, vals, len);
         }
         else // MINIM_OBJ_CLOSURE
         {
-            MinimLambda *lam = args[0]->data;
+            MinimLambda *lam = args[0]->u.ptrs.p1;
             res = eval_lambda(lam, env, vals, len);
         }
 
@@ -614,7 +614,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
             OPT_MOVE(vals[1], args[1]);
             if (args[0]->type == MINIM_OBJ_FUNC)
             {
-                MinimBuiltin func = args[0]->data;
+                MinimBuiltin func = args[0]->u.ptrs.p1;
                 
                 for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
                 {
@@ -630,7 +630,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
             }
             else
             {
-                MinimLambda *lam = args[0]->data;
+                MinimLambda *lam = args[0]->u.ptrs.p1;
 
                 for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
                 {
@@ -673,12 +673,12 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
 
         if (proc->type == MINIM_OBJ_FUNC)
         {
-            MinimBuiltin func = proc->data;
+            MinimBuiltin func = proc->u.ptrs.p1;
             res = func(env, vals, 2);
         }
         else
         {
-            MinimLambda *lam = proc->data;
+            MinimLambda *lam = proc->u.ptrs.p1;
             res = eval_lambda(lam, env, vals, 2);
         }
     }
@@ -690,12 +690,12 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
 
         if (proc->type == MINIM_OBJ_FUNC)
         {
-            MinimBuiltin func = proc->data;
+            MinimBuiltin func = proc->u.ptrs.p1;
             res = func(env, vals, 2);
         }
         else
         {
-            MinimLambda *lam = proc->data;
+            MinimLambda *lam = proc->u.ptrs.p1;
             res = eval_lambda(lam, env, vals, 2);
         }
     }

@@ -137,7 +137,7 @@ MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
         {
             if (argc == 1)
             {
-                init_minim_error(&err, args[0]->data, NULL);
+                init_minim_error(&err, args[0]->u.str.str, NULL);
                 init_minim_object(&res, MINIM_OBJ_ERR, err);
             }
             else
@@ -145,7 +145,7 @@ MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
                 if (assert_generic(&res, "Execpted a string in the 2nd argument of 'error'",
                                     minim_symbolp(args[1]) || minim_stringp(args[1])))
                 {
-                    init_minim_error(&err, args[1]->data, args[0]->data);
+                    init_minim_error(&err, args[1]->u.str.str, args[0]->u.str.str);
                     init_minim_object(&res, MINIM_OBJ_ERR, err);
                 }
             }
