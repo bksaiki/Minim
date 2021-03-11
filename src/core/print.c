@@ -22,24 +22,22 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
 static void print_list(MinimObject* obj, MinimEnv* env, Buffer *bf, PrintParams *pp)
 {
-    MinimObject** pair = ((MinimObject**) obj->data);
+    if (MINIM_CAR(obj))
+        print_object(MINIM_CAR(obj), env, bf, pp);
 
-    if (pair[0])
-        print_object(pair[0], env, bf, pp);
-
-    if (!pair[1])
+    if (!MINIM_CDR(obj))
     {
         writec_buffer(bf, ')');
     }
-    else if (pair[1]->type == MINIM_OBJ_PAIR)
+    else if (MINIM_CDR(obj)->type == MINIM_OBJ_PAIR)
     {
         writec_buffer(bf, ' ');
-        print_list(pair[1], env, bf, pp);
+        print_list(MINIM_CDR(obj), env, bf, pp);
     }
     else
     {
         writes_buffer(bf, " . ");
-        print_object(pair[1], env, bf, pp);
+        print_object(MINIM_CDR(obj), env, bf, pp);
         writec_buffer(bf, ')');
     }
 }
@@ -52,18 +50,18 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_BOOL)
     {
-        if (obj->si)  writes_buffer(bf, "true");
-        else    writes_buffer(bf, "false");
+        if (obj->u.ints.i1)   writes_buffer(bf, "true");
+        else                    writes_buffer(bf, "false");
     }
     else if (obj->type == MINIM_OBJ_NUM)
     {
-        char *tmp = minim_number_to_str(obj->data);
+        char *tmp = minim_number_to_str(obj->u.ptrs.p1);
         writes_buffer(bf, tmp);
         free(tmp);
     }
     else if (obj->type == MINIM_OBJ_SYM)
     {
-        char *str = obj->data;
+        char *str = obj->u.str.str;
         size_t len = strlen(str);
 
         if (!pp->quote)
@@ -82,12 +80,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_STRING)
     {
-        if (pp->display)    writes_buffer(bf, obj->data);
-        else                writef_buffer(bf, "\"~s\"", obj->data);
+        if (pp->display)    writes_buffer(bf, obj->u.str.str);
+        else                writef_buffer(bf, "\"~s\"", obj->u.str.str);
     }
     else if (obj->type == MINIM_OBJ_ERR)
     {
-        MinimError *err = obj->data;
+        MinimError *err = obj->u.ptrs.p1;
 
         if (err->where)   writef_buffer(bf, "~s: ~s", err->where, err->msg);
         else              writes_buffer(bf, err->msg);
@@ -107,7 +105,6 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_PAIR)
     {
-        MinimObject **pair = ((MinimObject**) obj->data);
         bool quotep = pp->quote;
 
         if (pp->quote)  writec_buffer(bf, '(');
@@ -120,9 +117,9 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         }
         else
         {
-            print_object(pair[0], env, bf, pp);
+            print_object(MINIM_CAR(obj), env, bf, pp);
             writes_buffer(bf, " . ");
-            print_object(pair[1], env, bf, pp);
+            print_object(MINIM_CDR(obj), env, bf, pp);
             writec_buffer(bf, ')');
         }
 
@@ -137,7 +134,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_CLOSURE)
     {
-        MinimLambda *lam = obj->data;
+        MinimLambda *lam = obj->u.ptrs.p1;
 
         if (lam->name)    writef_buffer(bf, "<function:~s>", lam->name);
         else              writes_buffer(bf, "<function:?>");
@@ -148,7 +145,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_HASH)
     {
-        MinimHash *ht = obj->data;
+        MinimHash *ht = obj->u.ptrs.p1;
         bool first = true;
         bool quotep = pp->quote;
         
@@ -172,13 +169,13 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_VECTOR)
     {
-        MinimVector *vec = obj->data;
+        MinimVector *vec = obj->u.vec.arr;
         bool first = true;
         bool quotep = pp->quote;
 
         pp->quote = true;
         writes_buffer(bf, "vector(");
-        for (size_t i = 0; i < vec->size; ++i)
+        for (size_t i = 0; i < obj->u.vec.len; ++i)
         {
             if (!first)  writec_buffer(bf, ' ');
             print_object(vec->arr[i], env, bf, pp);
@@ -191,7 +188,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     else if (obj->type == MINIM_OBJ_AST)
     {
         writes_buffer(bf, "<syntax: ");
-        ast_to_buffer(obj->data, bf);
+        ast_to_buffer(obj->u.ptrs.p1, bf);
         writec_buffer(bf, '>');
     }
     else

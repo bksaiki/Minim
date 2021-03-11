@@ -31,7 +31,7 @@ MinimObject *minim_iter_next(MinimObject *obj)
     case MINIM_OBJ_PAIR:
         if (MINIM_CDR(obj))
         {
-            obj->data = MINIM_CDR(obj)->data;
+            obj->u.ptrs.p1 = MINIM_CDR(obj)->u.ptrs.p1;
         }
         else                
         {
@@ -41,7 +41,7 @@ MinimObject *minim_iter_next(MinimObject *obj)
         return obj;
 
     case MINIM_OBJ_SEQ:
-        minim_seq_next(obj->data);
+        minim_seq_next(obj->u.ptrs.p1);
         return obj;
     
     default:
@@ -61,7 +61,7 @@ MinimObject *minim_iter_get(MinimObject *obj)
         return ref;
     
     case MINIM_OBJ_SEQ:
-        return minim_seq_get(obj->data);
+        return minim_seq_get(obj->u.ptrs.p1);
     
     default:
         printf("Object not iterable\n");
@@ -77,7 +77,7 @@ bool minim_iter_endp(MinimObject *obj)
         return minim_nullp(obj);
 
     case MINIM_OBJ_SEQ:
-        return minim_seq_donep(obj->data);
+        return minim_seq_donep(obj->u.ptrs.p1);
     
     default:
         printf("Object not iterable\n");

@@ -28,7 +28,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
         MinimObject *it, *bindings;
 
         // Convert iter/iterable pairs to list
-        unsyntax_ast(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
         if (assert_list(bindings, &res, "Expected ((iter iterable) ...) in the 1st argument of 'for'"))
         {
             MinimObject **syms, **iters, **objs;
@@ -46,14 +46,14 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
             {
                 MinimObject *bind;
 
-                unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+                unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
                 if (assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for'") &&
                     assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for'"))
                 {
-                    unsyntax_ast(env, MINIM_CAR(bind)->data, &syms[i]);
+                    unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &syms[i]);
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
-                        eval_ast(env, MINIM_CADR(bind)->data, &val);
+                        eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
                         if (val->type == MINIM_OBJ_ERR)
                         {
                             err = true;
@@ -101,11 +101,11 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
                 for (size_t i = 0; i < len; ++i)
                 {
                     val = minim_iter_get(iters[i]);
-                    env_intern_sym(env2, syms[i]->data, val);
+                    env_intern_sym(env2, syms[i]->u.str.str, val);
                     RELEASE_IF_REF(val);
                 }
 
-                eval_ast(env2, args[1]->data, &val);
+                eval_ast(env2, args[1]->u.ptrs.p1, &val);
                 if (val->type == MINIM_OBJ_ERR)
                 {
                     res = val;
@@ -143,7 +143,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
         MinimObject *it, *bindings;
 
         // Convert iter/iterable pairs to list
-        unsyntax_ast(env, args[0]->data, &bindings);
+        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
         if (assert_list(bindings, &res, "Expected ((iter iterable) ...) in the 1st argument of 'for'"))
         {
             MinimObject **syms, **iters, **objs;
@@ -161,14 +161,14 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
             {
                 MinimObject *bind;
 
-                unsyntax_ast(env, MINIM_CAR(it)->data, &bind);
+                unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
                 if (assert_list(bind, &res, "Expected a valid binding in the bindings in the 1st argument of 'for'") &&
                     assert_list_len(bind, &res, 2, "Expected a valid binding '(name value)' in the bindings of 'for'"))
                 {
-                    unsyntax_ast(env, MINIM_CAR(bind)->data, &syms[i]);
+                    unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &syms[i]);
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
-                        eval_ast(env, MINIM_CADR(bind)->data, &val);
+                        eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
                         if (val->type == MINIM_OBJ_ERR)
                         {
                             err = true;
@@ -216,11 +216,11 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
                 for (size_t i = 0; i < len; ++i)
                 {
                     val = minim_iter_get(iters[i]);
-                    env_intern_sym(env2, syms[i]->data, val);
+                    env_intern_sym(env2, syms[i]->u.str.str, val);
                     RELEASE_IF_REF(val);
                 }
 
-                eval_ast(env2, args[1]->data, &val);
+                eval_ast(env2, args[1]->u.ptrs.p1, &val);
                 if (val->type == MINIM_OBJ_ERR)
                 {
                     res = val;

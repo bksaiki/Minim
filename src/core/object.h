@@ -6,8 +6,43 @@
 #include "../common/buffer.h"
 
 #define MINIM_OBJ_OWNER             0x1
-#define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
-#define MINIM_OBJ_SET_OWNER(obj)    (obj->flags |= MINIM_OBJ_OWNER)
+
+struct MinimEnv;
+typedef struct MinimEnv MinimEnv;
+
+typedef struct MinimObject
+{
+    union
+    {
+        struct { char *str; void *none; } str;
+        struct { void *p1, *p2; } ptrs;
+        struct { long int i1, i2; } ints;
+        struct { struct MinimObject *car, *cdr; } pair;
+        struct { void *arr; size_t len; } vec;
+    } u;
+    uint8_t type;
+    uint8_t flags;
+} MinimObject;
+
+typedef enum MinimObjectType
+{
+    MINIM_OBJ_VOID,
+    MINIM_OBJ_BOOL,
+    MINIM_OBJ_NUM,
+    MINIM_OBJ_SYM,
+    MINIM_OBJ_STRING,
+    MINIM_OBJ_PAIR,
+    MINIM_OBJ_ERR,
+    MINIM_OBJ_FUNC,
+    MINIM_OBJ_CLOSURE,
+    MINIM_OBJ_SYNTAX,
+    MINIM_OBJ_AST,
+    MINIM_OBJ_SEQ,
+    MINIM_OBJ_HASH,
+    MINIM_OBJ_VECTOR
+} MinimObjectType;
+
+typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
 
 // Optimized move:
 //  makes 'dest' a owned copy of 'src'
@@ -61,35 +96,12 @@
         free_minim_object(obj); \
 }
 
-struct MinimEnv;
-typedef struct MinimEnv MinimEnv;
 
-typedef struct MinimObject
-{
-    union { void* data; intmax_t si; };
-    uint16_t type;
-    uint16_t flags;
-} MinimObject;
+#define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
+#define MINIM_OBJ_SET_OWNER(obj)    (obj->flags |= MINIM_OBJ_OWNER)
 
-typedef enum MinimObjectType
-{
-    MINIM_OBJ_VOID,
-    MINIM_OBJ_BOOL,
-    MINIM_OBJ_NUM,
-    MINIM_OBJ_SYM,
-    MINIM_OBJ_STRING,
-    MINIM_OBJ_PAIR,
-    MINIM_OBJ_ERR,
-    MINIM_OBJ_FUNC,
-    MINIM_OBJ_CLOSURE,
-    MINIM_OBJ_SYNTAX,
-    MINIM_OBJ_AST,
-    MINIM_OBJ_SEQ,
-    MINIM_OBJ_HASH,
-    MINIM_OBJ_VECTOR
-} MinimObjectType;
-
-typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
+#define MINIM_CAR(obj)      (obj->u.pair.car)
+#define MINIM_CDR(obj)      (obj->u.pair.cdr)
 
 //  Initialization / Destruction
 

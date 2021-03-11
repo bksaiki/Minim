@@ -69,7 +69,7 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, MinimObject **args, size
 
         init_buffer(&bf);
         for (size_t i = 0; i < argc; ++i)
-            writes_buffer(bf, args[i]->data);
+            writes_buffer(bf, args[i]->u.str.str);
 
         trim_buffer(bf);
         init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
@@ -91,7 +91,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
         size_t len, start, end;
         char *str, *tmp;
 
-        str = args[0]->data;
+        str = args[0]->u.str.str;
         len = strlen(str);
         start = minim_number_to_uint(args[1]);
         if (argc == 2)
@@ -127,8 +127,8 @@ MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, MinimObject **args, s
     if (assert_exact_argc(&res, "string->symbol", 1, argc) &&
         assert_string(args[0], &res, "Expected a string in the 1st argument of 'string->symbol'"))
     {
-        char *dest = malloc((strlen(args[0]->data) + 1) * sizeof(char));
-        strcpy(dest, args[0]->data);
+        char *dest = malloc((strlen(args[0]->u.str.str) + 1) * sizeof(char));
+        strcpy(dest, args[0]->u.str.str);
 
         init_minim_object(&res, MINIM_OBJ_SYM, dest);
         free(dest);     // this is dumb
@@ -144,8 +144,8 @@ MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, MinimObject **args, s
     if (assert_exact_argc(&res, "symbol->string", 1, argc) &&
         assert_symbol(args[0], &res, "Expected a symbol in the 1st argument of 'symbol->string'"))
     {
-        char *dest = malloc((strlen(args[0]->data) + 1) * sizeof(char));
-        strcpy(dest, args[0]->data);
+        char *dest = malloc((strlen(args[0]->u.str.str) + 1) * sizeof(char));
+        strcpy(dest, args[0]->u.str.str);
 
         init_minim_object(&res, MINIM_OBJ_STRING, dest);
     }
@@ -173,7 +173,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
     if (assert_min_argc(&res, "symbol->string", 1, argc) &&
         assert_string(args[0], &res, "Expected a string in the 1st argument of 'format'"))
     {
-        char *str = args[0]->data;
+        char *str = args[0]->u.str.str;
         size_t len = strlen(str);
         size_t vcount = collect_format_vars(str, len);
 
@@ -239,7 +239,7 @@ MinimObject *minim_builtin_printf(MinimEnv *env, MinimObject **args, size_t argc
             pp.quote = true;
             pp.display = true;
             
-            replace_special_chars(val->data);
+            replace_special_chars(val->u.str.str);
             print_minim_object(val, env, &pp);
             init_minim_object(&res, MINIM_OBJ_VOID);
             free_minim_object(val);
