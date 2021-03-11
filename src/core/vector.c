@@ -5,59 +5,27 @@
 #include "number.h"
 #include "vector.h"
 
-void init_minim_vector(MinimVector **pvec, size_t size)
+bool minim_vector_equalp(MinimObject *a, MinimObject *b)
 {
-    MinimVector *vec = malloc(sizeof(MinimVector));
-    vec->arr = calloc(size, sizeof(MinimObject*));
-    vec->size = size;
-    *pvec = vec;
-}
-
-void copy_minim_vector(MinimVector **pvec, MinimVector *src)
-{
-    MinimVector *vec = malloc(sizeof(MinimVector));
-    vec->arr = malloc(src->size * sizeof(MinimObject*));
-    vec->size = src->size;
-    *pvec = vec;
-
-    for (size_t i = 0; i < src->size; ++i)
-        copy_minim_object(&vec->arr[i], src->arr[i]);
-}
-
-void free_minim_vector(MinimVector *vec)
-{
-    for (size_t i = 0; i < vec->size; ++i)
-    {
-        if (vec->arr[i])
-            free_minim_object(vec->arr[i]);
-    }
-
-    free(vec->arr);
-    free(vec);
-}
-
-bool minim_vector_equalp(MinimVector *a, MinimVector *b)
-{
-    if (a->size != b->size)
+    if (a->u.vec.len != b->u.vec.len)
         return false;
 
-    for (size_t i = 0; i < a->size; ++i)
+    for (size_t i = 0; i < a->u.vec.len; ++i)
     {
-        if (!minim_equalp(a->arr[i], b->arr[i]))
+        if (!minim_equalp(a->u.vec.arr[i], b->u.vec.arr[i]))
             return false;
     }
 
     return true;
 }
 
-void minim_vector_bytes(MinimVector *vec, Buffer *bf)
+void minim_vector_bytes(MinimObject *v, Buffer *bf)
 {
     Buffer *in;
 
-    write_buffer(bf, &vec->size, sizeof(size_t));
-    for (size_t i = 0; i < vec->size; ++i)
+    for (size_t i = 0; i < v->u.vec.len; ++i)
     {
-        in = minim_obj_to_bytes(vec->arr[i]);
+        in = minim_obj_to_bytes(v->u.vec.arr[i]);
         writeb_buffer(bf, in);
         free_buffer(in);
     } 
@@ -90,23 +58,19 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
     if (assert_exact_argc(&res, "make-vector", 1, argc) &&
         assert_exact_nonneg_int(args[0], &res, "Expected a non-negative size in the first argument of 'make-vector'"))
     {
-        MinimNumber *num;
-        MinimVector *vec;
-        size_t size;
+        MinimObject **arr;
+        size_t size = minim_number_to_uint(args[0]);
 
-        num = args[0]->u.ptrs.p1;
-        size = mpz_get_ui(mpq_numref(num->rat));
-        init_minim_vector(&vec, size);
-
+        arr = malloc(size * sizeof(MinimObject*));
         for (size_t i = 0; i < size; ++i)
         {
             MinimNumber *zero;
             init_minim_number(&zero, MINIM_NUMBER_EXACT);
             str_to_minim_number(zero, "0");
-            init_minim_object(&vec->arr[i], MINIM_OBJ_NUM, zero);
+            init_minim_object(&arr[i], MINIM_OBJ_NUM, zero);
         }
 
-        init_minim_object(&res, MINIM_OBJ_VECTOR, vec, size);
+        init_minim_object(&res, MINIM_OBJ_VECTOR, arr, size);
     }
 
     return res;
@@ -115,13 +79,13 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
 MinimObject *minim_builtin_vector(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimVector *vec;
+    MinimObject **arr;
 
-    init_minim_vector(&vec, argc);
+    arr = malloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
-        vec->arr[i] = copy2_minim_object(args[i]);
+        arr[i] = copy2_minim_object(args[i]);
 
-    init_minim_object(&res, MINIM_OBJ_VECTOR, vec, argc);
+    init_minim_object(&res, MINIM_OBJ_VECTOR, arr, argc);
     return res;
 }
 
@@ -132,13 +96,11 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t 
     if (assert_exact_argc(&res, "vector-ref", 2, argc) &&
         assert_vector(args[0], &res, "Expected a vector in the first argument of 'vector-ref") &&
         assert_exact_nonneg_int(args[1], &res, "Expected a non-negative index in the second argument of 'vector-ref'"))
-    {
-        MinimVector *vec = args[0]->u.vec.arr;
-        MinimNumber *num = args[1]->u.ptrs.p1;
-        size_t idx = mpz_get_ui(mpq_numref(num->rat));
+    { 
+        size_t idx = minim_number_to_uint(args[1]);
 
-        if (assert_generic(&res, "Index out of bounds", idx < vec->size))
-            res = copy2_minim_object(vec->arr[idx]);
+        if (assert_generic(&res, "Index out of bounds", idx < args[0]->u.vec.len))
+            res = copy2_minim_object(args[0]->u.vec.arr[idx]);
     }
 
     return res;
@@ -153,14 +115,12 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
         assert_generic(&res, "Expected a reference to a existing vector", !MINIM_OBJ_OWNERP(args[0])) &&
         assert_exact_nonneg_int(args[1], &res, "Expected a non-negative index in the second argument of 'vector-set!'"))
     {
-        MinimVector *vec = args[0]->u.vec.arr;
-        MinimNumber *num = args[1]->u.ptrs.p1;
-        size_t idx = mpz_get_ui(mpq_numref(num->rat));
+        size_t idx = minim_number_to_uint(args[1]);
 
-        if (assert_generic(&res, "Index out of bounds", idx < vec->size))
+        if (assert_generic(&res, "Index out of bounds", idx < args[0]->u.vec.len))
         {   
-            free_minim_object(vec->arr[idx]);
-            vec->arr[idx] = copy2_minim_object(args[2]);
+            free_minim_object(args[0]->u.vec.arr[idx]);
+            args[0]->u.vec.arr[idx] = copy2_minim_object(args[2]);
             init_minim_object(&res, MINIM_OBJ_VOID);
         }
     }
@@ -175,16 +135,14 @@ MinimObject *minim_builtin_vector_to_list(MinimEnv *env, MinimObject **args, siz
     if (assert_exact_argc(&res, "vector->list", 1, argc) &&
         assert_vector(args[0], &res, "Expected a vector in the first argument of 'vector->list"))
     {
-        MinimVector *vec = args[0]->u.vec.arr;
-
-        if (vec->size > 0)
+        if (args[0]->u.vec.len > 0)
         {
             MinimObject *it, *cp;
             bool first = true;
 
-            for (size_t i = 0; i < vec->size; ++i)
+            for (size_t i = 0; i < args[0]->u.vec.len; ++i)
             {
-                copy_minim_object(&cp, vec->arr[i]);
+                copy_minim_object(&cp, args[0]->u.vec.arr[i]);
                 if (first)
                 {
                     init_minim_object(&res, MINIM_OBJ_PAIR, cp, NULL);
@@ -214,17 +172,17 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, MinimObject **args, siz
     if (assert_exact_argc(&res, "list->vector", 1, argc) &&
         assert_list(args[0], &res, "Expected a list in the second argument of list->vector"))
     {
+        MinimObject **arr;
         MinimObject *it;
-        MinimVector *vec;
         size_t len;
         
         len = minim_list_length(args[0]);
-        init_minim_vector(&vec, len);
+        arr = malloc(len * sizeof(MinimObject*));
         it = args[0];
 
         for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
-            vec->arr[i] = copy2_minim_object(MINIM_CAR(it));
-        init_minim_object(&res, MINIM_OBJ_VECTOR, vec, len);
+            arr[i] = copy2_minim_object(MINIM_CAR(it));
+        init_minim_object(&res, MINIM_OBJ_VECTOR, arr, len);
     }
 
     return res;

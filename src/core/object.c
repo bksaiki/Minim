@@ -76,7 +76,7 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     }
     else if (type == MINIM_OBJ_VECTOR)
     {
-        obj->u.vec.arr = va_arg(vargs, MinimVector*);
+        obj->u.vec.arr = va_arg(vargs, MinimObject**);
         obj->u.vec.len = va_arg(vargs, size_t);
     }
 
@@ -188,10 +188,10 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_VECTOR)
     {
-        MinimVector *vec;
-        copy_minim_vector(&vec, src->u.vec.arr);
-        dest->u.vec.arr = vec;
+        dest->u.vec.arr = malloc(src->u.vec.len * sizeof(MinimObject*));
         dest->u.vec.len = src->u.vec.len;
+        for (size_t i = 0; i < src->u.vec.len; ++i)
+            dest->u.vec.arr[i] = copy2_minim_object(src->u.vec.arr[i]);
     }
 }
 
@@ -225,11 +225,16 @@ void free_minim_object(MinimObject *obj)
             if (obj->u.pair.car) free_minim_object(obj->u.pair.car);
             if (obj->u.pair.cdr) free_minim_object(obj->u.pair.cdr);
         }
+        else if (obj->type == MINIM_OBJ_VECTOR)
+        {
+            for (size_t i = 0; i < obj->u.vec.len; ++i)
+                free_minim_object(obj->u.vec.arr[i]);
+            free(obj->u.vec.arr);
+        }
         else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->u.ptrs.p1);
-        else if (obj->type == MINIM_OBJ_VECTOR)     free_minim_vector(obj->u.vec.arr);
         else if (obj->type == MINIM_OBJ_ERR)        free_minim_error(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_STRING)     free(obj->u.str.str);
         else if (obj->type == MINIM_OBJ_SYM)        free(obj->u.str.str);
@@ -295,7 +300,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return ast_equalp(a->u.ptrs.p1, b->u.ptrs.p1);
 
     case MINIM_OBJ_VECTOR:
-        return minim_vector_equalp(a->u.vec.arr, b->u.vec.arr);
+        return minim_vector_equalp(a, b);
     
     /*
     case MINIM_OBJ_SEQ:
@@ -373,7 +378,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_VECTOR:
-        minim_vector_bytes(obj->u.vec.arr, bf);
+        minim_vector_bytes(obj, bf);
         break;
 
     /*

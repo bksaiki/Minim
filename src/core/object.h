@@ -18,7 +18,7 @@ typedef struct MinimObject
         struct { void *p1, *p2; } ptrs;
         struct { long int i1, i2; } ints;
         struct { struct MinimObject *car, *cdr; } pair;
-        struct { void *arr; size_t len; } vec;
+        struct { struct MinimObject **arr; size_t len; } vec;
     } u;
     uint8_t type;
     uint8_t flags;

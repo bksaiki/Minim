@@ -169,7 +169,6 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (obj->type == MINIM_OBJ_VECTOR)
     {
-        MinimVector *vec = obj->u.vec.arr;
         bool first = true;
         bool quotep = pp->quote;
 
@@ -178,7 +177,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         for (size_t i = 0; i < obj->u.vec.len; ++i)
         {
             if (!first)  writec_buffer(bf, ' ');
-            print_object(vec->arr[i], env, bf, pp);
+            print_object(obj->u.vec.arr[i], env, bf, pp);
             first = false;
         }
 
