@@ -134,7 +134,7 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
             if (!res)
                 minim_error(&res, "Unrecognized symbol: %s", str);
-            else if (res->type == MINIM_OBJ_SYNTAX)
+            else if (MINIM_OBJ_SYNTAXP(res))
                 minim_error(&res, "Bad syntax: %s", str);
         }
     }
@@ -146,7 +146,7 @@ static MinimObject *first_error(MinimObject **args, size_t argc)
 {
     for (size_t i = 0; i < argc; ++i)
     {
-        if (args[i]->type == MINIM_OBJ_ERR)
+        if (MINIM_OBJ_ERRORP(args[i]))
             return args[i];
     }
 
@@ -250,7 +250,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             return res;
         }
 
-        if (op->type == MINIM_OBJ_FUNC)
+        if (MINIM_OBJ_BUILTINP(op))
         {
             MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
 
@@ -276,7 +276,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             res = proc(env, args, argc);
             free_minim_objects(args, argc);
         }
-        else if (op->type == MINIM_OBJ_SYNTAX)
+        else if (MINIM_OBJ_SYNTAXP(op))
         {
             MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
 
@@ -287,13 +287,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             for (size_t i = 0; i < argc; ++i) free(args[i]);
             free(args);
 
-            if (res->type == MINIM_OBJ_CLOSURE)
+            if (MINIM_OBJ_CLOSUREP(res))
             {
                 MinimLambda *lam = res->u.ptrs.p1;
                 copy_syntax_loc(&lam->loc, node->children[0]->loc);
             }
         }
-        else if (op->type == MINIM_OBJ_CLOSURE)
+        else if (MINIM_OBJ_CLOSUREP(op))
         {
             MinimLambda *lam = op->u.ptrs.p1;
 
@@ -340,21 +340,21 @@ int eval_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
     MinimObject *obj = eval_ast_node(env, ast);
     *pobj = obj;
-    return !(obj->type & MINIM_OBJ_ERR);
+    return !MINIM_OBJ_ERRORP(obj);
 }
 
 int unsyntax_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast, false);
     *pobj = obj;
-    return !(obj->type & MINIM_OBJ_ERR);
+    return !MINIM_OBJ_ERRORP(obj);
 }
 
 int unsyntax_ast_rec(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast, true);
     *pobj = obj;
-    return !(obj->type & MINIM_OBJ_ERR);
+    return !MINIM_OBJ_ERRORP(obj);
 }
 
 char *eval_string(char *str, size_t len)

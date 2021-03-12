@@ -44,6 +44,43 @@ typedef enum MinimObjectType
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
 
+// Setters
+
+#define MINIM_OBJ_SET_OWNER(obj)        (obj->flags |= MINIM_OBJ_OWNER)
+#define MINIM_OBJ_SAME_TYPE(obj, t)     (obj->type == t)
+
+// Predicates 
+
+#define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
+
+#define MINIM_OBJ_VOIDP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VOID)
+#define MINIM_OBJ_BOOLP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_BOOL)
+#define MINIM_OBJ_NUMBERP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_NUM)
+#define MINIM_OBJ_SYMBOLP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SYM)
+#define MINIM_OBJ_STRINGP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_STRING)
+#define MINIM_OBJ_PAIRP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PAIR)
+#define MINIM_OBJ_ERRORP(obj)       MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_ERR)
+#define MINIM_OBJ_BUILTINP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_FUNC)
+#define MINIM_OBJ_CLOSUREP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_CLOSURE)
+#define MINIM_OBJ_SYNTAXP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SYNTAX)
+#define MINIM_OBJ_ASTP(obj)         MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_AST)
+#define MINIM_OBJ_SEQP(obj)         MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SEQ)
+#define MINIM_OBJ_HASHP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_HASH)
+#define MINIM_OBJ_VECTORP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
+
+#define MINIM_OBJ_FUNCP(obj)     (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
+
+// Accessors 
+
+#define MINIM_CAR(obj)      (obj->u.pair.car)
+#define MINIM_CDR(obj)      (obj->u.pair.cdr)
+
+#define MINIM_CAAR(obj)     MINIM_CAR(MINIM_CAR(obj))
+#define MINIM_CADR(obj)     MINIM_CAR(MINIM_CDR(obj))
+#define MINIM_CDAR(obj)     MINIM_CDR(MINIM_CAR(obj))
+#define MINIM_CDDR(obj)     MINIM_CDR(MINIM_CDR(pbj))
+
+
 // Optimized move:
 //  makes 'dest' a owned copy of 'src'
 //  moves 'src' to 'dest' if src is an owner
@@ -96,12 +133,6 @@ typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
         free_minim_object(obj); \
 }
 
-
-#define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
-#define MINIM_OBJ_SET_OWNER(obj)    (obj->flags |= MINIM_OBJ_OWNER)
-
-#define MINIM_CAR(obj)      (obj->u.pair.car)
-#define MINIM_CDR(obj)      (obj->u.pair.cdr)
 
 //  Initialization / Destruction
 

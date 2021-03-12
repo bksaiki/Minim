@@ -5,7 +5,6 @@
 
 // Internals
 
-bool minim_stringp(MinimObject *thing);
 bool assert_string(MinimObject *thing, MinimObject **res, const char *msg);
 
 #endif

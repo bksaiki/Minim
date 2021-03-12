@@ -44,22 +44,22 @@ static void print_list(MinimObject* obj, MinimEnv* env, Buffer *bf, PrintParams 
 
 static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
-    if (obj->type == MINIM_OBJ_VOID)
+    if (MINIM_OBJ_VOIDP(obj))
     {
         writes_buffer(bf, "<void>");
     }
-    else if (obj->type == MINIM_OBJ_BOOL)
+    else if (MINIM_OBJ_BOOLP(obj))
     {
         if (obj->u.ints.i1)   writes_buffer(bf, "true");
         else                    writes_buffer(bf, "false");
     }
-    else if (obj->type == MINIM_OBJ_NUM)
+    else if (MINIM_OBJ_NUMBERP(obj))
     {
         char *tmp = minim_number_to_str(obj->u.ptrs.p1);
         writes_buffer(bf, tmp);
         free(tmp);
     }
-    else if (obj->type == MINIM_OBJ_SYM)
+    else if (MINIM_OBJ_SYMBOLP(obj))
     {
         char *str = obj->u.str.str;
         size_t len = strlen(str);
@@ -78,12 +78,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
         writes_buffer(bf, str);
     }
-    else if (obj->type == MINIM_OBJ_STRING)
+    else if (MINIM_OBJ_STRINGP(obj))
     {
         if (pp->display)    writes_buffer(bf, obj->u.str.str);
         else                writef_buffer(bf, "\"~s\"", obj->u.str.str);
     }
-    else if (obj->type == MINIM_OBJ_ERR)
+    else if (MINIM_OBJ_ERRORP(obj))
     {
         MinimError *err = obj->u.ptrs.p1;
 
@@ -103,7 +103,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
                                 trace->loc->row, trace->loc->col);
         }
     }
-    else if (obj->type == MINIM_OBJ_PAIR)
+    else if (MINIM_OBJ_PAIRP(obj))
     {
         bool quotep = pp->quote;
 
@@ -125,25 +125,25 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
         pp->quote = quotep; // pop
     }
-    else if (obj->type == MINIM_OBJ_FUNC || obj->type == MINIM_OBJ_SYNTAX)
+    else if (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_SYNTAXP(obj))
     {
         const char *key = env_peek_key(env, obj);
 
         if (key)    writef_buffer(bf, "<function:~s>", key);
         else        writes_buffer(bf, "<function:?>");
     }
-    else if (obj->type == MINIM_OBJ_CLOSURE)
+    else if (MINIM_OBJ_CLOSUREP(obj))
     {
         MinimLambda *lam = obj->u.ptrs.p1;
 
         if (lam->name)    writef_buffer(bf, "<function:~s>", lam->name);
         else              writes_buffer(bf, "<function:?>");
     }
-    else if (obj->type == MINIM_OBJ_SEQ)
+    else if (MINIM_OBJ_SEQP(obj))
     {
         writes_buffer(bf, "<sequence>");
     }
-    else if (obj->type == MINIM_OBJ_HASH)
+    else if (MINIM_OBJ_HASHP(obj))
     {
         MinimHash *ht = obj->u.ptrs.p1;
         bool first = true;
@@ -167,7 +167,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writec_buffer(bf, ')');
         pp->quote = quotep;
     }
-    else if (obj->type == MINIM_OBJ_VECTOR)
+    else if (MINIM_OBJ_VECTORP(obj))
     {
         bool first = true;
         bool quotep = pp->quote;
@@ -184,16 +184,11 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writec_buffer(bf, ')');
         pp->quote = quotep;
     }
-    else if (obj->type == MINIM_OBJ_AST)
+    else if (MINIM_OBJ_ASTP(obj))
     {
         writes_buffer(bf, "<syntax: ");
         ast_to_buffer(obj->u.ptrs.p1, bf);
         writec_buffer(bf, '>');
-    }
-    else
-    {
-        writes_buffer(bf, "<unknown type>");
-        return 0;
     }
 
     return 1;

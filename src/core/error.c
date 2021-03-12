@@ -133,7 +133,7 @@ MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_range_argc(&res, "error", 1, 2, argc))
     {
         if (assert_generic(&res, "Execpted a string in the 1st argument of 'error'",
-                            minim_symbolp(args[0]) || minim_stringp(args[0])))
+                           MINIM_OBJ_SYMBOLP(args[0]) || MINIM_OBJ_STRINGP(args[0])))
         {
             if (argc == 1)
             {
@@ -143,7 +143,7 @@ MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
             else
             {
                 if (assert_generic(&res, "Execpted a string in the 2nd argument of 'error'",
-                                    minim_symbolp(args[1]) || minim_stringp(args[1])))
+                                    MINIM_OBJ_SYMBOLP(args[1]) || MINIM_OBJ_STRINGP(args[1])))
                 {
                     init_minim_error(&err, args[1]->u.str.str, args[0]->u.str.str);
                     init_minim_object(&res, MINIM_OBJ_ERR, err);

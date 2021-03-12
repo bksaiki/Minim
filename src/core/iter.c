@@ -14,8 +14,8 @@ void init_minim_iter(MinimObject **piter, MinimObject *iterable)
         break;
     
     case MINIM_OBJ_SEQ:
-        if (MINIM_OBJ_OWNERP(iterable))     ref_minim_object(piter, iterable);
-        else                                *piter = copy2_minim_object(iterable);
+        if (MINIM_OBJ_OWNERP(iterable)) ref_minim_object(piter, iterable);
+        else                            *piter = copy2_minim_object(iterable);
         break;
     
     default:
@@ -88,7 +88,7 @@ bool minim_iter_endp(MinimObject *obj)
 bool minim_iterablep(MinimObject *obj)
 {
     if (minim_listp(obj))           return true;
-    if (minim_sequencep(obj))       return true;
+    if (MINIM_OBJ_SEQP(obj))        return true;
 
     return false;
 }

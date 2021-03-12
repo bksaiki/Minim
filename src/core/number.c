@@ -232,21 +232,14 @@ bool assert_exact_nonneg_int(MinimObject *arg, MinimObject **ret, const char *ms
 
 // *** Internals *** //
 
-bool minim_numberp(MinimObject *thing)
-{
-    return thing->type == MINIM_OBJ_NUM;
-}
-
 bool minim_exactp(MinimObject *thing)
 {
-    return (thing->type == MINIM_OBJ_NUM &&
-            ((MinimNumber*) thing->u.ptrs.p1)->type == MINIM_NUMBER_EXACT);
+    return (MINIM_OBJ_NUMBERP(thing) && ((MinimNumber*) thing->u.ptrs.p1)->type == MINIM_NUMBER_EXACT);
 }
 
 bool minim_inexactp(MinimObject *thing)
 {
-    return (thing->type == MINIM_OBJ_NUM &&
-            ((MinimNumber*) thing->u.ptrs.p1)->type == MINIM_NUMBER_INEXACT);
+    return (MINIM_OBJ_NUMBERP(thing) && ((MinimNumber*) thing->u.ptrs.p1)->type == MINIM_NUMBER_INEXACT);
 }
 
 void minim_number_to_bytes(MinimObject *obj, Buffer *bf)
@@ -337,7 +330,7 @@ MinimObject *minim_builtin_numberp(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res;
 
     if (assert_exact_argc(&res, "number?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_numberp(args[0]));
+        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_NUMBERP(args[0]));
 
     return res;
 }
@@ -413,7 +406,7 @@ MinimObject *minim_builtin_integerp(MinimEnv *env, MinimObject **args, size_t ar
 
     if (assert_exact_argc(&res, "integer?", 1, argc))
     {
-        if (args[0]->type == MINIM_OBJ_NUM)
+        if (MINIM_OBJ_NUMBERP(args[0]))
             init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_integerp(args[0]->u.ptrs.p1));
         else
             init_minim_object(&res, MINIM_OBJ_BOOL, 0);
@@ -427,7 +420,7 @@ MinimObject *minim_builtin_exact_integerp(MinimEnv *env, MinimObject **args, siz
     MinimObject *res;
 
     if (assert_exact_argc(&res, "exact-integer?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, args[0]->type == MINIM_OBJ_NUM && minim_number_exactintp(args[0]->u.ptrs.p1));
+        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_NUMBERP(args[0]) && minim_number_exactintp(args[0]->u.ptrs.p1));
 
     return res;
 }
@@ -451,6 +444,11 @@ static bool minim_number_cmp_h(MinimObject **args, size_t argc, int op)
     }
 
     return true;
+}
+
+bool minim_numberp(MinimObject *thing)
+{
+    return MINIM_OBJ_NUMBERP(thing);
 }
 
 MinimObject *minim_builtin_eq(MinimEnv *env, MinimObject **args, size_t argc)

@@ -13,14 +13,9 @@
 #include "number.h"
 #include "variable.h"
 
-bool minim_symbolp(MinimObject *obj)
-{
-    return (obj->type == MINIM_OBJ_SYM);   
-}
-
 bool assert_symbol(MinimObject *obj, MinimObject **res, const char* msg)
 {
-    if (obj->type != MINIM_OBJ_SYM)
+    if (!MINIM_OBJ_SYMBOLP(obj))
     {
         minim_error(res, "%s", msg);
         return false;
@@ -37,7 +32,7 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
     {
         eval_ast(env, args[0]->u.ptrs.p1, &cond);
 
-        if (cond->type != MINIM_OBJ_ERR)
+        if (!MINIM_OBJ_ERRORP(cond))
         {
             if (coerce_into_bool(cond))     eval_ast(env, args[1]->u.ptrs.p1, &res);
             else                            eval_ast(env, args[2]->u.ptrs.p1, &res);
@@ -81,7 +76,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                         for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
                         {
                             eval_ast(env2, MINIM_CAR(it)->u.ptrs.p1, &val);
-                            if (val->type == MINIM_OBJ_ERR)
+                            if (MINIM_OBJ_ERRORP(val))
                             {
                                 res = val;
                                 break;
@@ -132,7 +127,7 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
     if (assert_min_argc(&res, "unless", 2, argc))
     {
         eval_ast(env, args[0]->u.ptrs.p1, &cond);
-        if (cond->type != MINIM_OBJ_ERR)
+        if (!MINIM_OBJ_ERRORP(cond))
         {
             if (!coerce_into_bool(cond))
                 res = minim_builtin_begin(env, &args[1], argc - 1);
@@ -157,7 +152,7 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
     if (assert_min_argc(&res, "unless", 2, argc))
     {
         eval_ast(env, args[0]->u.ptrs.p1, &cond);
-        if (cond->type != MINIM_OBJ_ERR)
+        if (!MINIM_OBJ_ERRORP(cond))
         {
             if (coerce_into_bool(cond))
                 res = minim_builtin_begin(env, &args[1], argc - 1);
@@ -199,7 +194,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
                 copy_syntax_loc(&lam->loc, ast->loc);
             }
             
-            if (val->type != MINIM_OBJ_ERR)
+            if (!MINIM_OBJ_ERRORP(val))
             {
                 env_intern_sym(env, ((char*) sym->u.str.str), val);
                 init_minim_object(&res, MINIM_OBJ_VOID);
@@ -230,7 +225,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         
         // Convert bindings to list
         unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-        if (bindings->type == MINIM_OBJ_ERR)
+        if (MINIM_OBJ_ERRORP(bindings))
         {
             res = bindings;
             return res;
@@ -363,7 +358,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
             if (peek)
             {
                 eval_ast(env, args[1]->u.ptrs.p1, &val);
-                if (val->type != MINIM_OBJ_ERR)
+                if (!MINIM_OBJ_ERRORP(val))
                 {
                     env_set_sym(env, sym->u.str.str, val);
                     init_minim_object(&res, MINIM_OBJ_VOID);
@@ -398,7 +393,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
         for (size_t i = 0; i < argc; ++i)
         {
             eval_ast(env2, args[i]->u.ptrs.p1, &val);
-            if (val->type == MINIM_OBJ_ERR)
+            if (MINIM_OBJ_ERRORP(val))
             {
                 res = val;
                 break;
@@ -420,7 +415,7 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res;
 
     if (assert_exact_argc(&res, "symbol?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, args[0]->type == MINIM_OBJ_SYM);
+        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_SYMBOLP(args[0]));
         
     return res;
 }

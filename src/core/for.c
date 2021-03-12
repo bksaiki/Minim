@@ -54,7 +54,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
                         eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
-                        if (val->type == MINIM_OBJ_ERR)
+                        if (MINIM_OBJ_ERRORP(val))
                         {
                             err = true;
                             res = val;
@@ -106,7 +106,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
                 }
 
                 eval_ast(env2, args[1]->u.ptrs.p1, &val);
-                if (val->type == MINIM_OBJ_ERR)
+                if (MINIM_OBJ_ERRORP(val))
                 {
                     res = val;
                     pop_env(env2);
@@ -169,7 +169,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
                     if (assert_symbol(syms[i], &res, "Expected a symbol for a variable name in the bindings of 'for'"))
                     {
                         eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
-                        if (val->type == MINIM_OBJ_ERR)
+                        if (MINIM_OBJ_ERRORP(val))
                         {
                             err = true;
                             res = val;
@@ -221,7 +221,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
                 }
 
                 eval_ast(env2, args[1]->u.ptrs.p1, &val);
-                if (val->type == MINIM_OBJ_ERR)
+                if (MINIM_OBJ_ERRORP(val))
                 {
                     res = val;
                     pop_env(env2);

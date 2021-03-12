@@ -308,18 +308,13 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 
 bool assert_hash(MinimObject *arg, MinimObject **ret, const char *msg)
 {
-    if (!minim_hashp(arg))
+    if (!MINIM_OBJ_HASHP(arg))
     {
         minim_error(ret, "%s", msg);
         return false;
     }
 
     return true;
-}
-
-bool minim_hashp(MinimObject *thing)
-{
-    return thing->type == MINIM_OBJ_HASH;
 }
 
 //
@@ -345,7 +340,7 @@ MinimObject *minim_builtin_hashp(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res;
 
     if (assert_exact_argc(&res, "hash?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_hashp(args[0]));
+        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_HASHP(args[0]));
     
     return res;
 }

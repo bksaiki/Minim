@@ -4,11 +4,6 @@
 #include "assert.h"
 #include "env.h"
 
-#define MINIM_CAAR(x)   MINIM_CAR(MINIM_CAR(x))
-#define MINIM_CDAR(x)   MINIM_CDR(MINIM_CAR(x))
-#define MINIM_CADR(x)   MINIM_CAR(MINIM_CDR(x))
-#define MINIM_CDDR(x)   MINIM_CDR(MINIM_CDR(x))
-
 #define MINIM_TAIL(dest, x)         \
 {                                   \
     dest = x;                       \

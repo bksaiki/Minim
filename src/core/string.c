@@ -8,14 +8,14 @@
 #include "string.h"
 #include "variable.h"
 
-bool minim_stringp(MinimObject *thing)
+static bool minim_stringp(MinimObject *thing)
 {
-    return thing->type == MINIM_OBJ_STRING;
+    return MINIM_OBJ_STRINGP(thing);
 }
 
 bool assert_string(MinimObject *thing, MinimObject **res, const char *msg)
 {
-    if (!assert_generic(res, msg, minim_stringp(thing)))
+    if (!assert_generic(res, msg, MINIM_OBJ_STRINGP(thing)))
         return false;
 
     return true;
@@ -232,7 +232,7 @@ MinimObject *minim_builtin_printf(MinimEnv *env, MinimObject **args, size_t argc
         assert_string(args[0], &res, "Expected a string for the 1st argument of 'printf'"))
     {
         MinimObject *val = minim_builtin_format(env, args, argc);
-        if (val->type != MINIM_OBJ_ERR)
+        if (!MINIM_OBJ_ERRORP(val))
         {
             PrintParams pp;
 

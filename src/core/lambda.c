@@ -139,7 +139,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         RELEASE_IF_REF(val);
         pop_env(env2);
 
-        if (res->type == MINIM_OBJ_ERR && lam->loc && lam->name)
+        if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
             minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
     }
     
@@ -148,23 +148,13 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
 bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg)
 {
-    if (!minim_funcp(arg))
+    if (!MINIM_OBJ_FUNCP(arg))
     {
         minim_error(ret, "%s", msg);
         return false;
     }
 
     return true;
-}
-
-bool minim_lambdap(MinimObject *thing)
-{
-    return thing->type == MINIM_OBJ_CLOSURE;
-}
-
-bool minim_funcp(MinimObject *thing)
-{
-    return thing->type == MINIM_OBJ_CLOSURE || thing->type == MINIM_OBJ_FUNC;
 }
 
 bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b)
@@ -240,9 +230,9 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
 
         // Convert bindings to list
         unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-        if (bindings->type != MINIM_OBJ_ERR)
+        if (!MINIM_OBJ_ERRORP(bindings))
         {
-            if (minim_symbolp(bindings))
+            if (MINIM_OBJ_SYMBOLP(bindings))
             {
                 init_minim_lambda(&lam);
                 lam->rest = bindings->u.str.str;

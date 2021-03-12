@@ -33,18 +33,13 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
 
 bool assert_vector(MinimObject *obj, MinimObject **err, const char *msg)
 {
-    if (!minim_vectorp(obj))
+    if (!MINIM_OBJ_VECTORP(obj))
     {
         minim_error(err, msg);
         return false;
     }
 
     return true;
-}
-
-bool minim_vectorp(MinimObject *obj)
-{
-    return obj->type == MINIM_OBJ_VECTOR;
 }
 
 //

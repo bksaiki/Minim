@@ -5,6 +5,5 @@
 
 // Internals
 bool coerce_into_bool(MinimObject *obj);
-bool minim_boolp(MinimObject *thing);
 
 #endif

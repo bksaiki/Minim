@@ -6,11 +6,6 @@
 // Visible functions
 //
 
-bool minim_boolp(MinimObject *thing)
-{
-    return (thing->type == MINIM_OBJ_BOOL);
-}
-
 bool coerce_into_bool(MinimObject *obj)
 {
     if (obj->type == MINIM_OBJ_BOOL)
@@ -32,7 +27,7 @@ MinimObject *minim_builtin_boolp(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res;
 
     if (assert_exact_argc(&res, "bool?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_boolp(args[0]));
+        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_BOOLP(args[0]));
     
     return res;
 }

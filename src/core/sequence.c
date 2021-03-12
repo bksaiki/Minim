@@ -118,18 +118,13 @@ bool minim_seq_donep(MinimSeq *seq)
 
 bool assert_sequence(MinimObject *thing, MinimObject **err, const char *msg)
 {
-    if (thing->type != MINIM_OBJ_SEQ)
+    if (!MINIM_OBJ_SEQP(thing))
     {
         minim_error(err, msg);
         return false;
     }
 
     return true;
-}
-
-bool minim_sequencep(MinimObject *thing)
-{
-    return thing->type == MINIM_OBJ_SEQ;
 }
 
 /* Builtins */
@@ -139,7 +134,7 @@ MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t a
     MinimObject *res;
 
     if (assert_exact_argc(&res, "sequence?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_sequencep(args[0]));
+        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_SEQP(args[0]));
     
     return res;
 }
