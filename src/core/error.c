@@ -125,31 +125,86 @@ void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
     }
 }
 
+// ************ Internals ****************
+
+static void buffer_write_ordinal(Buffer *bf, size_t ord)
+{
+    size_t ld = ord;
+
+    writeu_buffer(bf, ord);
+    if (ord == 11 || ord == 12 || ord == 13)    writes_buffer(bf, "th");
+    else if (ld == 1)                           writes_buffer(bf, "st");
+    else if (ld == 2)                           writes_buffer(bf, "nd");
+    else if (ld == 3)                           writes_buffer(bf, "rd");
+    else                                        writes_buffer(bf, "th");
+}
+
+MinimObject *minim_argument_error(const char *pred, const char *where, size_t pos, MinimObject *val)
+{
+    MinimObject *obj;
+    MinimError *err;
+    Buffer *bf;
+
+    init_buffer(&bf);
+    writef_buffer(bf, "argument error, expected: ~s, ", pred);
+
+    if (val)
+    {   
+        PrintParams pp;
+        MinimEnv *env;
+
+        init_env(&env, NULL);
+        set_default_print_params(&pp);
+        writes_buffer(bf, "given: ");
+        print_to_buffer(bf, val, env, &pp);
+        writes_buffer(bf, ", ");
+        free_env(env);
+    }
+
+    if (pos != SIZE_MAX)
+    {
+        writes_buffer(bf, "location: ");
+        buffer_write_ordinal(bf, pos + 1);
+    }
+
+    init_minim_error(&err, bf->data, where);
+    init_minim_object(&obj, MINIM_OBJ_ERR, err);
+    free_buffer(bf);
+
+    return obj;
+}
+
+// ************ Builtins ****************
+
 MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimError *err;
 
-    if (assert_range_argc(&res, "error", 1, 2, argc))
+    if (!assert_range_argc(&res, "err", 1, 2, argc))
+        return res;
+
+    if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_SYMBOLP(args[0]))
     {
-        if (assert_generic(&res, "Execpted a string in the 1st argument of 'error'",
-                           MINIM_OBJ_SYMBOLP(args[0]) || MINIM_OBJ_STRINGP(args[0])))
+        res = minim_argument_error("symbol?/string?", "error", 0, args[0]);
+        return res;
+    }
+
+    if (argc == 1)
+    {
+        init_minim_error(&err, args[0]->u.str.str, NULL);
+        init_minim_object(&res, MINIM_OBJ_ERR, err);
+    }
+    else
+    {
+        if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_SYMBOLP(args[1]))
         {
-            if (argc == 1)
-            {
-                init_minim_error(&err, args[0]->u.str.str, NULL);
-                init_minim_object(&res, MINIM_OBJ_ERR, err);
-            }
-            else
-            {
-                if (assert_generic(&res, "Execpted a string in the 2nd argument of 'error'",
-                                    MINIM_OBJ_SYMBOLP(args[1]) || MINIM_OBJ_STRINGP(args[1])))
-                {
-                    init_minim_error(&err, args[1]->u.str.str, args[0]->u.str.str);
-                    init_minim_object(&res, MINIM_OBJ_ERR, err);
-                }
-            }
+            res = minim_argument_error("symbol?/string?", "error", 1, args[1]);
+            return res;
         }
+    
+        init_minim_error(&err, args[1]->u.str.str, args[0]->u.str.str);
+        init_minim_object(&res, MINIM_OBJ_ERR, err);
     }
 
     return res;

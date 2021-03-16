@@ -258,8 +258,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                         unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
                         unsyntax_ast(env, MINIM_CDR(it)->u.ptrs.p1, &val2);
 
-                        if (assert_symbol(val, &res, "Expected a symbol for lambda variables") &&
-                            assert_symbol(val2, &res, "Expected a symbol for the rest variable"))
+                        if (MINIM_OBJ_SYMBOLP(val) && MINIM_OBJ_SYMBOLP(val2))
                         {
                             lam->args[i] = val->u.ptrs.p1;
                             lam->rest = val2->u.str.str;
@@ -271,6 +270,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                         }
                         else
                         {
+                            res = minim_argument_error("symbol for variable name", "lambda", SIZE_MAX, it);
                             free_minim_object(val);
                             free_minim_object(val2);
                             free_minim_lambda(lam);
@@ -281,7 +281,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                     else
                     {
                         unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
-                        if (assert_symbol(val, &res, "Expected a symbol for lambda variables"))
+                        if (MINIM_OBJ_SYMBOLP(val))
                         {
                             lam->args[i] = val->u.ptrs.p1;
                             val->u.ptrs.p1 = NULL;
@@ -289,6 +289,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                         }
                         else
                         {
+                            res = minim_argument_error("symbol for variable name", "lambda", SIZE_MAX, it);
                             free_minim_lambda(lam);
                             free_minim_object(val);
                             free_minim_object(bindings);
@@ -303,7 +304,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
             }
             else
             {
-                minim_error(&res, "Expected a symbol or list of symbols for lambda variables");
+                res = minim_argument_error("symbol or list of symbols", "lambda", SIZE_MAX, args[0]);
             }
 
             free_minim_object(bindings);

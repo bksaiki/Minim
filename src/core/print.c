@@ -186,7 +186,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_ASTP(obj))
     {
-        writes_buffer(bf, "<syntax: ");
+        writes_buffer(bf, "<syntax:");
         ast_to_buffer(obj->u.ptrs.p1, bf);
         writec_buffer(bf, '>');
     }
