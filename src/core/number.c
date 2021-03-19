@@ -242,6 +242,22 @@ bool minim_inexactp(MinimObject *thing)
     return (MINIM_OBJ_NUMBERP(thing) && ((MinimNumber*) thing->u.ptrs.p1)->type == MINIM_NUMBER_INEXACT);
 }
 
+bool minim_integerp(MinimObject *thing)
+{
+    return MINIM_OBJ_NUMBERP(thing) && minim_number_integerp(MINIM_NUMBER(thing));
+}
+
+bool minim_exact_nonneg_intp(MinimObject *obj)
+{
+    MinimNumber *num;
+
+    if (!MINIM_OBJ_NUMBERP(obj))
+        return false;
+        
+    num = MINIM_NUMBER(obj);
+    return MINIM_NUMBER_EXACTP(num) && mpq_sgn(num->rat) >= 0 && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0;
+}
+
 void minim_number_to_bytes(MinimObject *obj, Buffer *bf)
 {
     MinimNumber *num = obj->u.ptrs.p1;

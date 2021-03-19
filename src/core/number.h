@@ -20,6 +20,10 @@ typedef struct MinimNumber
     MinimNumberType type;
 } MinimNumber;
 
+#define MINIM_NUMBER(obj)           (obj->u.ptrs.p1)
+#define MINIM_NUMBER_EXACTP(num)    (num->type == MINIM_NUMBER_EXACT)
+#define MINIM_NUMBER_INEXACTP(num)  (num->type == MINIM_NUMBER_INEXACT)
+
 // Initialization & setters
 
 void init_minim_number(MinimNumber **pnum, MinimNumberType type);
@@ -54,9 +58,11 @@ bool assert_exact_nonneg_int(MinimObject *arg, MinimObject **ret, const char *ms
 
 // Internals
 
-bool minim_numberp(MinimObject *thing);
 bool minim_exactp(MinimObject *thing);
 bool minim_inexactp(MinimObject *thing);
+bool minim_integerp(MinimObject *thing);
+bool minim_exact_nonneg_intp(MinimObject *thing);
+
 void minim_number_to_bytes(MinimObject *obj, Buffer *bf);
 
 size_t minim_number_to_uint(MinimObject *obj);

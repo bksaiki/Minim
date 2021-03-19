@@ -5,6 +5,7 @@
 
 #include "assert.h"
 #include "bool.h"
+#include "error.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -323,13 +324,16 @@ MinimObject *minim_builtin_car(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "car", 1, argc) &&
-        assert_pair(args[0], &res, "Expected a pair for 'car'") &&
-        assert_generic(&res, "Expected a non-null list for 'car'", MINIM_CAR(args[0])))
-    {
-        OPT_MOVE_REF2(res, MINIM_CAR(args[0]), args[0]);
-    }
+    if (!assert_exact_argc(&res, "car", 1, argc))
+        return res;
+    
+    if (!minim_consp(args[0]))
+        return minim_argument_error("pair", "car", 0, args[0]);
+    
+    if (!MINIM_CAR(args[0]))
+        return minim_argument_error("non-empty list", "car", 0, args[0]);
 
+    OPT_MOVE_REF2(res, MINIM_CAR(args[0]), args[0]);
     return res;
 }
 
@@ -337,18 +341,22 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "cdr", 1, argc) &&
-        assert_pair(args[0], &res, "Expected a pair for 'cdr'") &&
-        assert_generic(&res, "Expected a non-null list for 'cdr'", MINIM_CAR(args[0])))
+    if (!assert_exact_argc(&res, "cdr", 1, argc))
+        return res;
+    
+    if (!minim_consp(args[0]))
+        return minim_argument_error("pair", "cdr", 0, args[0]);
+    
+    if (!MINIM_CAR(args[0]))
+        return minim_argument_error("non-empty list", "cdr", 0, args[0]);
+
+    if (MINIM_CDR(args[0]))
     {
-        if (MINIM_CDR(args[0]))
-        {
-            OPT_MOVE_REF2(res, MINIM_CDR(args[0]), args[0]);
-        }
-        else
-        {
-            init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-        }
+        OPT_MOVE_REF2(res, MINIM_CDR(args[0]), args[0]);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
     }
 
     return res;
@@ -472,41 +480,47 @@ MinimObject *minim_builtin_reverse(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res, *li;
     size_t len;
 
-    if (assert_exact_argc(&res, "reverse", 1, argc) &&
-        assert_list(args[0], &res, "Expected a list for 'reverse'"))
-    {
-        li = fresh_minim_object(args[0]);
-        len = minim_list_length(li);
-        res = reverse_lists(li, NULL, len);
-        RELEASE_OWNED_ARGS(args, argc);
-    }
+    if (!assert_exact_argc(&res, "reverse", 1, argc))
+        return res;
+
+    if (!minim_listp(args[0]))
+        return minim_argument_error("list", "reverse", 0, args[0]);
+
+    li = fresh_minim_object(args[0]);
+    len = minim_list_length(li);
+    res = reverse_lists(li, NULL, len);
+    RELEASE_OWNED_ARGS(args, argc);
 
     return res;
 }
 
 MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
+    MinimObject *res, *it;
+    size_t idx;
 
-    if (assert_exact_argc(&res, "list-ref", 2, argc) &&
-        assert_list(args[0], &res, "Expected a list for the 1st argument of 'list-ref") &&
-        assert_exact_nonneg_int(args[1], &res, "Expected an exact non-negative integer for the 2nd argument of 'list-ref'"))
+    if (!assert_exact_argc(&res, "list-ref", 2, argc))
+        return res;
+
+    if (!minim_listp(args[0]))
+        return minim_argument_error("list", "list-ref", 0, args[0]);
+
+    if (!minim_exact_nonneg_intp(args[1]))
+        return minim_argument_error("exact non-negative-integer", "list-ref", 1, args[1]);
+
+    it = args[0];
+    idx = minim_number_to_uint(args[1]);
+
+    for (size_t i = 0; it && i < idx; ++i)
+        it = MINIM_CDR(it);
+
+    if (!it)
     {
-        MinimObject *it = args[0];
-        size_t idx = minim_number_to_uint(args[1]);
-
-        for (size_t i = 0; it && i < idx; ++i)
-            it = MINIM_CDR(it);
-
-        if (!it)
-        {
-            minim_error(&res, "list-ref out of bounds: length %d, index %d", minim_list_length(args[0]), idx);
-            return res;
-        }
-
-        OPT_MOVE_REF2(res, MINIM_CAR(it), args[0]);
+        minim_error(&res, "list-ref out of bounds: length %d, index %d", minim_list_length(args[0]), idx);
+        return res;
     }
 
+    OPT_MOVE_REF2(res, MINIM_CAR(it), args[0]);
     return res;
 }
 
@@ -515,14 +529,18 @@ MinimObject *minim_builtin_map(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res;
     size_t len;
 
-    if (assert_exact_argc(&res, "map", 2, argc) &&
-        assert_func(args[0], &res, "Expected a function in the 1st argument of 'map'") &&
-        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'map'"))
-    {
-        len = minim_list_length(args[1]);
-        if (len == 0)   init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-        else            res = construct_list_map(args[1], args[0], env, len);
-    }
+    if (!assert_exact_argc(&res, "map", 2, argc))
+        return res;
+
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        return minim_argument_error("function", "map", 0, args[0]);
+    
+    if (!minim_listp(args[1]))
+        return minim_argument_error("list", "map", 1, args[1]);
+
+    len = minim_list_length(args[1]);
+    if (len == 0)   init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    else            res = construct_list_map(args[1], args[0], env, len);
 
     return res;
 }
@@ -532,31 +550,34 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res, *it, **vals;
     size_t len;
 
-    if (assert_exact_argc(&res, "apply", 2, argc) &&
-        assert_func(args[0], &res, "Expected a function in the 1st argument of 'apply'") &&
-        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'apply'"))
+    if (!assert_exact_argc(&res, "apply", 2, argc))
+        return res;
+
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        return minim_argument_error("function", "apply", 0, args[0]);
+    
+    if (!minim_listp(args[1]))
+        return minim_argument_error("list", "apply", 1, args[1]);
+
+    len = minim_list_length(args[1]);
+    vals = malloc(len * sizeof(MinimObject*));
+
+    it = args[1];
+    for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
+        vals[i] = copy2_minim_object(MINIM_CAR(it));
+
+    if (args[0]->type == MINIM_OBJ_FUNC)
     {
-        len = minim_list_length(args[1]);
-        vals = malloc(len * sizeof(MinimObject*));
-
-        it = args[1];
-        for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
-            vals[i] = copy2_minim_object(MINIM_CAR(it));
-
-        if (args[0]->type == MINIM_OBJ_FUNC)
-        {
-            MinimBuiltin func = args[0]->u.ptrs.p1;
-            res = func(env, vals, len);
-        }
-        else // MINIM_OBJ_CLOSURE
-        {
-            MinimLambda *lam = args[0]->u.ptrs.p1;
-            res = eval_lambda(lam, env, vals, len);
-        }
-
-        free_minim_objects(vals, len);
+        MinimBuiltin func = args[0]->u.ptrs.p1;
+        res = func(env, vals, len);
+    }
+    else // MINIM_OBJ_CLOSURE
+    {
+        MinimLambda *lam = args[0]->u.ptrs.p1;
+        res = eval_lambda(lam, env, vals, len);
     }
 
+    free_minim_objects(vals, len);
     return res;
 }
 
@@ -565,14 +586,18 @@ MinimObject *minim_builtin_filter(MinimEnv *env, MinimObject **args, size_t argc
     MinimObject *res;
     bool owns;
 
-    if (assert_exact_argc(&res, "filter", 2, argc) &&
-        assert_func(args[0], &res, "Expected a function in the 1st argument of 'filter'") &&
-        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filter'"))
-    {
-        owns = MINIM_OBJ_OWNERP(args[1]);
-        res = filter_list(args[1], args[0], env, false);
-        if (owns) args[1] = NULL;
-    }
+    if (!assert_exact_argc(&res, "filter", 2, argc))
+        return res;
+
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        return minim_argument_error("function", "filter", 0, args[0]);
+    
+    if (!minim_listp(args[1]))
+        return minim_argument_error("list", "filter", 1, args[1]);
+
+    owns = MINIM_OBJ_OWNERP(args[1]);
+    res = filter_list(args[1], args[0], env, false);
+    if (owns) args[1] = NULL;
 
     return res;
 }
@@ -582,14 +607,18 @@ MinimObject *minim_builtin_filtern(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res;
     bool owns;
 
-    if (assert_exact_argc(&res, "filtern", 2, argc) &&
-        assert_func(args[0], &res, "Expected a function in the 1st argument of 'filtern'") &&
-        assert_list(args[1], &res, "Expected a list in the 2nd argument of 'filtern'"))
-    {
-        owns = MINIM_OBJ_OWNERP(args[1]);
-        res = filter_list(args[1], args[0], env, true);
-        if (owns) args[1] = NULL;
-    }
+    if (!assert_exact_argc(&res, "filtern", 2, argc))
+        return res;
+
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        return minim_argument_error("function", "filtern", 0, args[0]);
+    
+    if (!minim_listp(args[1]))
+        return minim_argument_error("list", "filtern", 1, args[1]);
+
+    owns = MINIM_OBJ_OWNERP(args[1]);
+    res = filter_list(args[1], args[0], env, true);
+    if (owns) args[1] = NULL;
 
     return res;
 }
@@ -598,56 +627,60 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "foldr", 3, argc) &&
-        assert_func(args[0], &res, "Expected a function in the 1st argument of 'foldr'") &&
-        assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
+    if (!assert_exact_argc(&res, "foldl", 3, argc))
+        return res;
+
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        return minim_argument_error("function", "foldl", 0, args[0]);
+    
+    if (!minim_listp(args[2]))
+        return minim_argument_error("list", "foldl", 2, args[2]);
+
+    if (minim_nullp(args[2]))
     {
-        if (minim_nullp(args[2]))
+        OPT_MOVE_REF(res, args[1]);
+    }
+    else
+    {
+        MinimObject **vals = malloc(2 * sizeof(MinimObject*));
+        MinimObject *tmp;
+
+        OPT_MOVE(vals[1], args[1]);
+        if (args[0]->type == MINIM_OBJ_FUNC)
         {
-            OPT_MOVE_REF(res, args[1]);
+            MinimBuiltin func = args[0]->u.ptrs.p1;
+            
+            for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
+            {
+                OPT_MOVE(vals[0], MINIM_CAR(it))
+                tmp = func(env, vals, 2);
+                
+                if (vals[0])    free_minim_object(vals[0]);
+                if (vals[1])    free_minim_object(vals[1]);
+
+                vals[1] = tmp;
+                if (tmp->type == MINIM_OBJ_ERR) break;
+            }
         }
         else
         {
-            MinimObject **vals = malloc(2 * sizeof(MinimObject*));
-            MinimObject *tmp;
+            MinimLambda *lam = args[0]->u.ptrs.p1;
 
-            OPT_MOVE(vals[1], args[1]);
-            if (args[0]->type == MINIM_OBJ_FUNC)
+            for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
             {
-                MinimBuiltin func = args[0]->u.ptrs.p1;
-                
-                for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
-                {
-                    OPT_MOVE(vals[0], MINIM_CAR(it))
-                    tmp = func(env, vals, 2);
-                    
-                    if (vals[0])    free_minim_object(vals[0]);
-                    if (vals[1])    free_minim_object(vals[1]);
+                OPT_MOVE(vals[0], MINIM_CAR(it));
+                tmp = eval_lambda(lam, env, vals, 2);
 
-                    vals[1] = tmp;
-                    if (tmp->type == MINIM_OBJ_ERR) break;
-                }
+                if (tmp->type == MINIM_OBJ_ERR) break;
+                if (vals[0])    free_minim_object(vals[0]);
+                if (vals[1])    free_minim_object(vals[1]);
+
+                vals[1] = tmp;
             }
-            else
-            {
-                MinimLambda *lam = args[0]->u.ptrs.p1;
-
-                for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
-                {
-                    OPT_MOVE(vals[0], MINIM_CAR(it));
-                    tmp = eval_lambda(lam, env, vals, 2);
-
-                    if (tmp->type == MINIM_OBJ_ERR) break;
-                    if (vals[0])    free_minim_object(vals[0]);
-                    if (vals[1])    free_minim_object(vals[1]);
-
-                    vals[1] = tmp;
-                }
-            }
-
-            res = vals[1];
-            free(vals);
         }
+
+        res = vals[1];
+        free(vals);
     }
 
     return res;
@@ -657,9 +690,6 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
 {
     MinimObject **vals;
     MinimObject *res, *tmp;
-
-    PrintParams pp;
-    set_default_print_params(&pp);
 
     if (MINIM_CDR(li))
     {
@@ -708,18 +738,22 @@ MinimObject *minim_builtin_foldr(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "foldr", 3, argc) &&
-        assert_func(args[0], &res, "Expected a function in the 1st argument of 'foldr'") &&
-        assert_list(args[2], &res, "Expected a list in the 3rd argument of 'foldr"))
+    if (!assert_exact_argc(&res, "foldr", 3, argc))
+        return res;
+
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        return minim_argument_error("function", "foldr", 0, args[0]);
+    
+    if (!minim_listp(args[2]))
+        return minim_argument_error("list", "foldr", 2, args[2]);
+
+    if (minim_nullp(args[2]))
     {
-        if (minim_nullp(args[2]))
-        {
-            OPT_MOVE_REF(res, args[1]);
-        }
-        else
-        {
-            res = minim_foldr_h(env, args[0], args[2], args[1]);
-        }
+        OPT_MOVE_REF(res, args[1]);
+    }
+    else
+    {
+        res = minim_foldr_h(env, args[0], args[2], args[1]);
     }
 
     return res;
