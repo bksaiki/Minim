@@ -148,5 +148,181 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "asin", MINIM_OBJ_FUNC, minim_builtin_asin);
     minim_load_builtin(env, "acos", MINIM_OBJ_FUNC, minim_builtin_acos);
     minim_load_builtin(env, "atan", MINIM_OBJ_FUNC, minim_builtin_atan);
+}
+
+#define IS_OUTSIDE(x, min, max)         (x < min || x > max)
+#define FULL_BUILTIN_NAME(partial)      minim_builtin_ ## partial
+#define BUILTIN_EQUALP(fun, builtin)    (fun == FULL_BUILTIN_NAME(builtin))
+
+static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, size_t max,
+                                MinimEnv *env, MinimObject **perr)
+{
+    MinimObject *obj;
+    const char *name;
+
+    init_minim_object(&obj, MINIM_OBJ_FUNC, builtin);
+    name = env_peek_key(env, obj);
+    free_minim_object(obj);
+
+    if (min == max)              // exact
+    {
+        if (min == 1)   minim_error(perr, "Expected 1 argument for '%s'", name);
+        else            minim_error(perr, "Expected %lu arguments for '%s'", min, name);
+    }
+    else if (max == SIZE_MAX)   // min
+    {
+        if (min == 1)   minim_error(perr, "Expected at least 1 argument for '%s'", name);
+        else            minim_error(perr, "Expected at least %lu arguments for '%s'", min, name);
+    }
+    else                        // range
+    {
+        minim_error(perr, "Expected between %lu and %lu arguments for '%s'", min, max, name);
+    }
+}
+
+#define CHECK_RANGE_ARITY(fun, argc, env, perr, builtin, min, max)      \
+{                                                                       \
+    if (BUILTIN_EQUALP(fun, builtin))                                   \
+    {                                                                   \
+        if (IS_OUTSIDE(argc, min, max))                                 \
+        {                                                               \
+            builtin_arity_error(FULL_BUILTIN_NAME(builtin), argc,       \
+                                min, max, env, perr);                   \
+            return false;                                               \
+        }                                                               \
+    }                                                                   \
+}
+
+#define CHECK_EXACT_ARITY(fun, argc, env, perr, builtin, expected)  \
+    CHECK_RANGE_ARITY(fun, argc, env, perr, builtin, expected, expected)  
+
+#define CHECK_MIN_ARITY(fun, argc, env, perr, builtin, min)         \
+    CHECK_RANGE_ARITY(fun, argc, env, perr, builtin, min, SIZE_MAX)       
+
+bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr)
+{
+    // Variable / Control
+    CHECK_RANGE_ARITY(fun, argc, env, perr, def, 2, 3);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, setb, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, if, 3);
+    CHECK_MIN_ARITY(fun, argc, env, perr, unless, 2);
+    CHECK_MIN_ARITY(fun, argc, env, perr, when, 2);
+    // NO CHECK: 'cond'
+    CHECK_EXACT_ARITY(fun, argc, env, perr, let, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, letstar, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, for, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, for_list, 2);
+    CHECK_MIN_ARITY(fun, argc, env, perr, begin, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, quote, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, lambda, 2);
+
+    // Miscellaneous
+    CHECK_EXACT_ARITY(fun, argc, env, perr, equalp, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, symbolp, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, printf, 1);
+    CHECK_RANGE_ARITY(fun, argc, env, perr, error, 1, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, version, 0);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, symbol_count, 0);
     
+    // Boolean
+    CHECK_EXACT_ARITY(fun, argc, env, perr, boolp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, not, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, or, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, and, 1);
+
+    // Number
+    CHECK_EXACT_ARITY(fun, argc, env, perr, numberp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, zerop, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, positivep, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, negativep, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, exactp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, inexactp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, integerp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, exact_integerp, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, eq, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, gt, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, lt, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, gte, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, lte, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, to_exact, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, to_inexact, 1);
+
+    // String
+    CHECK_EXACT_ARITY(fun, argc, env, perr, stringp, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, string_append, 1);
+    CHECK_RANGE_ARITY(fun, argc, env, perr, substring, 2, 3);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, string_to_symbol, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, symbol_to_string, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, format, 1);
+
+    // Pair
+    CHECK_EXACT_ARITY(fun, argc, env, perr, cons, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, consp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, car, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, cdr, 1);
+
+    // List
+    // NO CHECK: list
+    CHECK_EXACT_ARITY(fun, argc, env, perr, listp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, nullp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, head, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, tail, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, length, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, append, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, reverse, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, list_ref, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, map, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, apply, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, filter, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, filtern, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, foldl, 3);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, foldr, 3);
+
+    // Hash table
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash, 0);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hashp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash_keyp, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash_ref, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash_remove, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash_set, 3);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash_setb, 3);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash_removeb, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, hash_to_list, 1);
+
+    // Vector
+    CHECK_EXACT_ARITY(fun, argc, env, perr, make_vector, 1);
+    // NO CHECK: 'vector'
+    CHECK_EXACT_ARITY(fun, argc, env, perr, vector_ref, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, vector_setb, 3);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, vector_to_list, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, list_to_vector, 1);
+
+    // Sequence
+    CHECK_EXACT_ARITY(fun, argc, env, perr, sequencep, 1);
+    CHECK_RANGE_ARITY(fun, argc, env, perr, in_range, 1, 2);
+    CHECK_RANGE_ARITY(fun, argc, env, perr, in_naturals, 0, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, sequence_to_list, 1);
+
+    // Math
+    CHECK_MIN_ARITY(fun, argc, env, perr, add, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, sub, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, mul, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, div, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, max, 1);
+    CHECK_MIN_ARITY(fun, argc, env, perr, min, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, abs, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, sqrt, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, modulo, 2);
+
+    CHECK_EXACT_ARITY(fun, argc, env, perr, exp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, log, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, pow, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, sin, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, cos, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, tan, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, asin, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, acos, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, atan, 1);
+
+    return true;
 }

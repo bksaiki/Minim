@@ -273,7 +273,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
                 return res;
             }
 
-            res = proc(env, args, argc);
+            if (minim_check_arity(proc, argc, env, &res))
+                res = proc(env, args, argc);
             free_minim_objects(args, argc);
         }
         else if (MINIM_OBJ_SYNTAXP(op))

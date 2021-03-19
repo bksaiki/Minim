@@ -135,4 +135,7 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
 // Loads every builtin symbol in the base library.
 void minim_load_builtins(MinimEnv *env);
 
+// Checks the arity of a builtin function
+bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr);
+
 #endif
