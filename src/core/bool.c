@@ -1,26 +1,5 @@
 #include "assert.h"
-#include "bool.h"
 #include "list.h"
-
-//
-// Visible functions
-//
-
-bool coerce_into_bool(MinimObject *obj)
-{
-    if (obj->type == MINIM_OBJ_BOOL)
-    {
-        return obj->u.ints.i1;
-    }
-    else if (obj->type == MINIM_OBJ_PAIR)
-    {
-        return MINIM_CAR(obj) || MINIM_CDR(obj);
-    }
-    else
-    {
-        return true;
-    }
-}
 
 MinimObject *minim_builtin_boolp(MinimEnv *env, MinimObject **args, size_t argc)
 {

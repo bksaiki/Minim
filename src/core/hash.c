@@ -305,21 +305,6 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 }
 
 //
-//  Internals
-//
-
-bool assert_hash(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    if (!MINIM_OBJ_HASHP(arg))
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
-
-    return true;
-}
-
-//
 //  Builtins
 //
 

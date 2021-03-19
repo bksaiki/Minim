@@ -6,21 +6,6 @@
 #include "assert.h"
 #include "error.h"
 #include "number.h"
-#include "string.h"
-#include "variable.h"
-
-static bool minim_stringp(MinimObject *thing)
-{
-    return MINIM_OBJ_STRINGP(thing);
-}
-
-bool assert_string(MinimObject *thing, MinimObject **res, const char *msg)
-{
-    if (!assert_generic(res, msg, MINIM_OBJ_STRINGP(thing)))
-        return false;
-
-    return true;
-}
 
 void replace_special_chars(char *str)
 {
@@ -68,7 +53,7 @@ MinimObject *minim_builtin_stringp(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res;
 
     if (assert_exact_argc(&res, "string?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_stringp(args[0]));
+        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_STRINGP(args[0]));
         
     return res;
 }

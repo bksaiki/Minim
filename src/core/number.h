@@ -47,21 +47,14 @@ bool minim_number_integerp(MinimNumber *num);
 bool minim_number_exactintp(MinimNumber *num);
 bool minim_number_exactnonnegintp(MinimNumber *num);
 
-// Assertions
-
-bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_integer(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_exact_number(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_inexact_number(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_exact_int(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_exact_nonneg_int(MinimObject *arg, MinimObject **ret, const char *msg);
-
 // Internals
 
 bool minim_exactp(MinimObject *thing);
 bool minim_inexactp(MinimObject *thing);
 bool minim_integerp(MinimObject *thing);
 bool minim_exact_nonneg_intp(MinimObject *thing);
+
+bool assert_numerical_args(MinimObject **args, size_t argc, MinimObject **res, const char *name);
 
 void minim_number_to_bytes(MinimObject *obj, Buffer *bf);
 

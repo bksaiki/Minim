@@ -11,12 +11,6 @@
         dest = MINIM_CDR(dest);     \
 }
 
-// Assertions
-bool assert_pair(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg);
-bool assert_list_len(MinimObject *arg, MinimObject **ret, size_t len, const char *msg);
-bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg);
-
 // Internals
 
 bool minim_consp(MinimObject* thing);

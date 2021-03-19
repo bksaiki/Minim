@@ -4,12 +4,10 @@
 #include <string.h>
 
 #include "assert.h"
-#include "bool.h"
 #include "error.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
-#include "variable.h"
 
 static MinimObject *reverse_lists(MinimObject* head, MinimObject* tail, size_t count)
 {
@@ -127,68 +125,6 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
 
     if (first) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
     return res;
-}
-
-//
-//  Visible functions
-//
-
-bool assert_pair(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    if (!minim_consp(arg))
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
-
-    return true;
-}
-
-bool assert_list(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    if (!minim_listp(arg))
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
-
-    return true;
-}
-
-bool assert_list_len(MinimObject *arg, MinimObject **ret, size_t len, const char *msg)
-{
-    if (!assert_list(arg, ret, msg))
-        return false;
-
-    if (minim_list_length(arg) != len)
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
-
-    return true;
-}
-
-bool assert_listof(MinimObject *arg, MinimObject **ret, MinimPred pred, const char *msg)
-{
-    MinimObject *it;
-    size_t len;
-
-    if (!assert_list(arg, ret, msg))
-        return false;
-
-    len = minim_list_length(arg);
-    it = arg;
-    for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
-    {
-        if (!pred(MINIM_CAR(it)))
-        {
-            minim_error(ret, "%s", msg);
-            return false;
-        }
-    }
-
-    return true;
 }
 
 bool minim_consp(MinimObject* thing)
@@ -453,25 +389,24 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
 {
     MinimObject *res, *it;
 
-    if (assert_min_argc(&res, "append", 1, argc))
+    if (!assert_min_argc(&res, "append", 1, argc))
+        return res;
+
+    for (size_t i = 0; i < argc; ++i)
     {
-        for (size_t i = 0; i < argc; ++i)
-        {
-            if (!assert_list(args[i], &res, "Arguments must be lists for 'append'"))
-                return res;
-        }
-
-        res = fresh_minim_object(args[0]);
-        MINIM_TAIL(it, res);
-        for (size_t i = 1; i < argc; ++i)
-        {
-            MINIM_CDR(it) = fresh_minim_object(args[i]);
-            MINIM_TAIL(it, it);
-        }
-
-        RELEASE_OWNED_ARGS(args, argc);
+        if (!minim_listp(args[i]))
+            return minim_argument_error("list", "append", i, args[i]);
     }
 
+    res = fresh_minim_object(args[0]);
+    MINIM_TAIL(it, res);
+    for (size_t i = 1; i < argc; ++i)
+    {
+        MINIM_CDR(it) = fresh_minim_object(args[i]);
+        MINIM_TAIL(it, it);
+    }
+
+    RELEASE_OWNED_ARGS(args, argc);
     return res;
 }
 

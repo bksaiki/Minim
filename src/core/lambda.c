@@ -6,7 +6,6 @@
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
-#include "variable.h"
 
 void init_minim_lambda(MinimLambda **plam)
 {
@@ -144,17 +143,6 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     }
     
     return res;
-}
-
-bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    if (!MINIM_OBJ_FUNCP(arg))
-    {
-        minim_error(ret, "%s", msg);
-        return false;
-    }
-
-    return true;
 }
 
 bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b)

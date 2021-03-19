@@ -411,20 +411,6 @@ static void minim_number_atan2(MinimNumber *res, MinimNumber *y, MinimNumber *x)
     }
 }
 
-static bool assert_numerical_args(MinimObject **args, size_t argc, MinimObject **res, const char *name)
-{
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (!MINIM_OBJ_NUMBERP(args[i]))
-        {
-            *res = minim_argument_error("number", name, i, args[i]);
-            return false;
-        }
-    }
-
-    return true;
-}
-
 // *** Builtins *** //
 
 MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
@@ -549,12 +535,6 @@ MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
     if (!assert_min_argc(&res, "min", 1, argc) ||
         !assert_numerical_args(args, argc, &res, "min"))
         return res;
-
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (!assert_number(args[i], &res, "Expected numerical arguments for 'min'"))
-            return res;
-    }
 
     min = args[0]->u.ptrs.p1;
     for (size_t i = 1; i < argc; ++i)
@@ -741,7 +721,7 @@ MinimObject *minim_builtin_atan(MinimEnv *env, MinimObject **args, size_t argc)
     MinimNumber *num;
 
     if (!assert_range_argc(&res, "atan", 1, 2, argc) ||
-        !assert_number(args[0], &res, "Expected a number for 'atan'"))
+        !assert_numerical_args(args, argc, &res, "atan"))
         return res;
     
     init_minim_number(&num, MINIM_NUMBER_INEXACT);

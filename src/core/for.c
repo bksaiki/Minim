@@ -5,7 +5,6 @@
 #include "eval.h"
 #include "iter.h"
 #include "list.h"
-#include "variable.h"
 
 static bool iters_valid(MinimObject **iters, size_t argc)
 {

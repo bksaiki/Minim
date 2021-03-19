@@ -41,24 +41,3 @@ bool assert_range_argc(MinimObject** ret, const char *op, size_t min, size_t max
 
     return true;
 }
-
-bool assert_for_all(MinimObject **ret, MinimObject **args, size_t argc, const char *msg, MinimPred pred)
-{
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (!pred(args[i]))
-        {
-            minim_error(ret, "%s", msg);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool assert_generic(MinimObject **ret, const char *msg, bool pred)
-{
-    if (!pred)  minim_error(ret, "%s", msg);
-    
-    return pred;
-}

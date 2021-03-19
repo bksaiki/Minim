@@ -4,7 +4,6 @@
 #include "assert.h"
 #include "error.h"
 #include "string.h"
-#include "variable.h"
 
 void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char *name)
 {

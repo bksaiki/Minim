@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "assert.h"
+#include "error.h"
 #include "math.h"
 #include "number.h"
 
@@ -200,36 +201,6 @@ bool minim_number_exact_nonneg_intp(MinimNumber *num)
     return (num->type == MINIM_NUMBER_EXACT && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0 && mpq_sgn(num->rat) >= 0);
 }
 
-bool assert_number(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM);
-}
-
-bool assert_integer(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_integerp(arg->u.ptrs.p1));
-}
-
-bool assert_exact_number(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exactp(arg->u.ptrs.p1));
-}
-
-bool assert_inexact_number(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_inexactp(arg->u.ptrs.p1));
-}
-
-bool assert_exact_int(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exactintp(arg->u.ptrs.p1));
-}
-
-bool assert_exact_nonneg_int(MinimObject *arg, MinimObject **ret, const char *msg)
-{
-    return assert_generic(ret, msg, arg->type == MINIM_OBJ_NUM && minim_number_exact_nonneg_intp(arg->u.ptrs.p1));
-}
-
 // *** Internals *** //
 
 bool minim_exactp(MinimObject *thing)
@@ -256,6 +227,20 @@ bool minim_exact_nonneg_intp(MinimObject *obj)
         
     num = MINIM_NUMBER(obj);
     return MINIM_NUMBER_EXACTP(num) && mpq_sgn(num->rat) >= 0 && mpz_cmp_ui(mpq_denref(num->rat), 1) == 0;
+}
+
+bool assert_numerical_args(MinimObject **args, size_t argc, MinimObject **res, const char *name)
+{
+    for (size_t i = 0; i < argc; ++i)
+    {
+        if (!MINIM_OBJ_NUMBERP(args[i]))
+        {
+            *res = minim_argument_error("number", name, i, args[i]);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void minim_number_to_bytes(MinimObject *obj, Buffer *bf)
@@ -355,12 +340,13 @@ MinimObject *minim_builtin_zerop(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "zero?", 1, argc) &&
-        assert_number(args[0], &res, "Expected a number for 'zero?'"))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_zerop(args[0]->u.ptrs.p1));
-    }
+    if (!assert_exact_argc(&res, "zero?", 1, argc))
+        return res;
 
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "zero?", 0, args[0]);
+    
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_zerop(args[0]->u.ptrs.p1));
     return res;
 }
 
@@ -368,12 +354,13 @@ MinimObject *minim_builtin_negativep(MinimEnv *env, MinimObject **args, size_t a
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "negative?", 1, argc) &&
-        assert_number(args[0], &res, "Expected a number for 'negative?'"))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_negativep(args[0]->u.ptrs.p1));
-    }
+    if (!assert_exact_argc(&res, "negative?", 1, argc))
+        return res;
 
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "negative?", 0, args[0]);
+    
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_negativep(args[0]->u.ptrs.p1));
     return res;
 }
 
@@ -381,12 +368,13 @@ MinimObject *minim_builtin_positivep(MinimEnv *env, MinimObject **args, size_t a
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "positive?", 1, argc) &&
-        assert_number(args[0], &res, "Expected a number for 'positive?'"))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_positivep(args[0]->u.ptrs.p1));
-    }
+    if (!assert_exact_argc(&res, "positive?", 1, argc))
+        return res;
 
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "positive?", 0, args[0]);
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_positivep(args[0]->u.ptrs.p1));
     return res;
 }
 
@@ -394,12 +382,13 @@ MinimObject *minim_builtin_exactp(MinimEnv *env, MinimObject **args, size_t argc
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "exact?", 1, argc) &&
-        assert_number(args[0], &res, "Expected a number for 'exact?'"))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_exactp(args[0]->u.ptrs.p1));
-    }
+    if (!assert_exact_argc(&res, "exact?", 1, argc))
+        return res;
 
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "exact?", 0, args[0]);
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_exactp(args[0]->u.ptrs.p1));
     return res;
 }
 
@@ -407,12 +396,13 @@ MinimObject *minim_builtin_inexactp(MinimEnv *env, MinimObject **args, size_t ar
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "inexact?", 1, argc) &&
-        assert_number(args[0], &res, "Expected a number for 'inexact?'"))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_inexactp(args[0]->u.ptrs.p1));
-    }
+    if (!assert_exact_argc(&res, "inexact?", 1, argc))
+        return res;
 
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "inexact?", 0, args[0]);
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_inexactp(args[0]->u.ptrs.p1));
     return res;
 }
 
@@ -471,12 +461,11 @@ MinimObject *minim_builtin_eq(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_min_argc(&res, "=", 1, argc) &&
-        assert_for_all(&res, args, argc, "Expected numerical arguments for '='", minim_numberp))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 0));
-    }
+    if (!assert_min_argc(&res, "=", 1, argc) ||
+        !assert_numerical_args(args, argc, &res, "="))
+        return res;
 
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 0));
     return res;
 }
 
@@ -484,12 +473,11 @@ MinimObject *minim_builtin_gt(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_min_argc(&res, ">", 1, argc) &&
-        assert_for_all(&res, args, argc, "Expected numerical arguments for '>'", minim_numberp))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 1));
-    }
+    if (!assert_min_argc(&res, ">", 1, argc) ||
+        !assert_numerical_args(args, argc, &res, ">"))
+        return res;
 
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 1));
     return res;
 }
 
@@ -497,12 +485,11 @@ MinimObject *minim_builtin_lt(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_min_argc(&res, "<", 1, argc) &&
-        assert_for_all(&res, args, argc, "Expected numerical arguments for '<'", minim_numberp))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 2));
-    }
+    if (!assert_min_argc(&res, "<", 1, argc) ||
+        !assert_numerical_args(args, argc, &res, "<"))
+        return res;
 
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 2));
     return res;
 }
 
@@ -510,12 +497,11 @@ MinimObject *minim_builtin_gte(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_min_argc(&res, ">=", 1, argc) &&
-        assert_for_all(&res, args, argc, "Expected numerical arguments for '>='", minim_numberp))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 3));
-    }
+    if (!assert_min_argc(&res, ">=", 1, argc) ||
+        !assert_numerical_args(args, argc, &res, ">="))
+        return res;
 
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 3));
     return res;
 }
 
@@ -523,36 +509,37 @@ MinimObject *minim_builtin_lte(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_min_argc(&res, "<=", 1, argc) &&
-        assert_for_all(&res, args, argc, "Expected numerical arguments for '<='", minim_numberp))
-    {
-        init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 4));
-    }
+    if (!assert_min_argc(&res, "<=", 1, argc) ||
+        !assert_numerical_args(args, argc, &res, "<="))
+        return res;
 
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_number_cmp_h(args, argc, 4));
     return res;
 }
 
 MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
+    MinimNumber *num;
 
-    if (assert_exact_argc(&res, "exact", 1, argc) &&
-        assert_number(args[0], &res, "Expected a number in the 1st argument of 'exact'"))
+    if (!assert_exact_argc(&res, "exact", 1, argc))
+        return res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "exact", 0, args[0]);
+
+    num = args[0]->u.ptrs.p1;
+    if (num->type == MINIM_NUMBER_EXACT)
     {
-        MinimNumber *num = args[0]->u.ptrs.p1;
+        OPT_MOVE_REF(res, args[0]);
+    }
+    else
+    {
+        MinimNumber *exact;
 
-        if (num->type == MINIM_NUMBER_EXACT)
-        {
-            OPT_MOVE_REF(res, args[0]);
-        }
-        else
-        {
-            MinimNumber *exact;
-
-            init_minim_number(&exact, MINIM_NUMBER_EXACT);
-            init_minim_object(&res, MINIM_OBJ_NUM, exact);
-            mpq_set_d(exact->rat, num->fl);
-        }
+        init_minim_number(&exact, MINIM_NUMBER_EXACT);
+        init_minim_object(&res, MINIM_OBJ_NUM, exact);
+        mpq_set_d(exact->rat, num->fl);
     }
     
     return res;
@@ -561,24 +548,26 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t ar
 MinimObject *minim_builtin_to_inexact(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
+    MinimNumber *num;
 
-    if (assert_exact_argc(&res, "inexact", 1, argc) &&
-        assert_number(args[0], &res, "Expected a number in the 1st argument of 'inexact'"))
+    if (!assert_exact_argc(&res, "inexact", 1, argc))
+        return res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "inexact", 0, args[0]);
+
+    num = args[0]->u.ptrs.p1;
+    if (num->type == MINIM_NUMBER_INEXACT)
     {
-        MinimNumber *num = args[0]->u.ptrs.p1;
+        OPT_MOVE_REF(res, args[0]);
+    }
+    else
+    {
+        MinimNumber *inexact;
 
-        if (num->type == MINIM_NUMBER_INEXACT)
-        {
-            OPT_MOVE_REF(res, args[0]);
-        }
-        else
-        {
-            MinimNumber *inexact;
-
-            init_minim_number(&inexact, MINIM_NUMBER_INEXACT);
-            init_minim_object(&res, MINIM_OBJ_NUM, inexact);
-            inexact->fl = mpq_get_d(num->rat);
-        }
+        init_minim_number(&inexact, MINIM_NUMBER_INEXACT);
+        init_minim_object(&res, MINIM_OBJ_NUM, inexact);
+        inexact->fl = mpq_get_d(num->rat);
     }
 
     return res;

@@ -23,10 +23,6 @@ void free_minim_lambda(MinimLambda *lam);
 // Evaluates the given lambda expression and stores the result at 'pobj'.
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, size_t argc);
 
-// Internals
-
-bool assert_func(MinimObject *arg, MinimObject **ret, const char *msg);
-
 bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b);
 void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf);
 

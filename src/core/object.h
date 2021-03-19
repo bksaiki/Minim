@@ -163,4 +163,6 @@ MinimObject *copy2_minim_object(MinimObject *src);
 
 Buffer* minim_obj_to_bytes(MinimObject *obj);
 
+bool coerce_into_bool(MinimObject *obj);
+
 #endif

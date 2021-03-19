@@ -24,9 +24,4 @@ MinimObject *minim_seq_get(MinimSeq *seq);
 void minim_seq_next(MinimSeq *seq);
 bool minim_seq_donep(MinimSeq *seq);
 
-/* Internals */
-
-bool assert_sequence(MinimObject *thing, MinimObject **err, const char *msg);
-bool minim_sequencep(MinimObject *thing);
-
 #endif

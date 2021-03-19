@@ -32,17 +32,6 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
     } 
 }
 
-bool assert_vector(MinimObject *obj, MinimObject **err, const char *msg)
-{
-    if (!MINIM_OBJ_VECTORP(obj))
-    {
-        minim_error(err, msg);
-        return false;
-    }
-
-    return true;
-}
-
 //
 //  Builtins
 //
@@ -101,10 +90,13 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t 
         return minim_argument_error("exact non-negative integer", "vector-ref", 1, args[1]);
 
     idx = minim_number_to_uint(args[1]);
-    if (assert_generic(&res, "Index out of bounds", idx < args[0]->u.vec.len))
-        res = copy2_minim_object(args[0]->u.vec.arr[idx]);
-
-    return res;
+    if  (idx >= args[0]->u.vec.len)
+    {
+        minim_error(&res, "Index out of bounds: %lu", idx);
+        return res;
+    }
+    
+    return copy2_minim_object(args[0]->u.vec.arr[idx]);
 }
 
 MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t argc)
@@ -125,13 +117,15 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
         return minim_argument_error("exact non-negative integer", "vector-set!", 1, args[1]);
 
     idx = minim_number_to_uint(args[1]);
-    if (assert_generic(&res, "Index out of bounds", idx < args[0]->u.vec.len))
-    {   
-        free_minim_object(args[0]->u.vec.arr[idx]);
-        args[0]->u.vec.arr[idx] = copy2_minim_object(args[2]);
-        init_minim_object(&res, MINIM_OBJ_VOID);
+    if  (idx >= args[0]->u.vec.len)
+    {
+        minim_error(&res, "Index out of bounds: %lu", idx);
+        return res;
     }
 
+    free_minim_object(args[0]->u.vec.arr[idx]);
+    args[0]->u.vec.arr[idx] = copy2_minim_object(args[2]);
+    init_minim_object(&res, MINIM_OBJ_VOID);
     return res;
 }
 

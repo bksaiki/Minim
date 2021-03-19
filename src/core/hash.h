@@ -25,9 +25,4 @@ void free_minim_hash_table(MinimHash *ht);
 
 uint32_t hash_bytes(const void* data, size_t length, uint32_t seed);
 
-// Internals
-
-bool assert_hash(MinimObject *arg, MinimObject **ret, const char *msg);
-bool minim_hashp(MinimObject *thing);
-
 #endif

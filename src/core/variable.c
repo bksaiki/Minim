@@ -7,23 +7,10 @@
 #include "assert.h"
 #include "ast.h"
 #include "builtin.h"
-#include "bool.h"
 #include "error.h"
 #include "eval.h"
 #include "list.h"
 #include "number.h"
-#include "variable.h"
-
-bool assert_symbol(MinimObject *obj, MinimObject **res, const char* msg)
-{
-    if (!MINIM_OBJ_SYMBOLP(obj))
-    {
-        minim_error(res, "%s", msg);
-        return false;
-    }
-
-    return true;
-}
 
 MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 {

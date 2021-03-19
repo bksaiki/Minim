@@ -393,3 +393,19 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     return bf;
 }
+
+bool coerce_into_bool(MinimObject *obj)
+{
+    if (obj->type == MINIM_OBJ_BOOL)
+    {
+        return obj->u.ints.i1;
+    }
+    else if (obj->type == MINIM_OBJ_PAIR)
+    {
+        return MINIM_CAR(obj) || MINIM_CDR(obj);
+    }
+    else
+    {
+        return true;
+    }
+}
