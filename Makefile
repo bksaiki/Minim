@@ -33,6 +33,9 @@ tests: $(TEST_EXES)
 memcheck: $(TEST_EXES)
 	$(TEST_DIR)/memcheck.sh $(TEST_EXES)
 
+examples:
+	sh $(TEST_DIR)/examples.sh
+
 clean:
 	cd src && $(MAKE) clean
 	$(RM) $(OBJS) $(EXE)

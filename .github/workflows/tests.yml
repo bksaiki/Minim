@@ -12,3 +12,13 @@ jobs:
       run: make
     - name: Unit tests
       run: make tests
+
+  examples:
+    runs-on: "ubuntu-latest"
+    needs: [ 'test' ]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build
+      run: make
+    - name : Unit tests
+      run: make examples
