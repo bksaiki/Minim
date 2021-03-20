@@ -98,49 +98,51 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     MinimObject *res, *val;
     MinimEnv *env2;
 
-    if (lam->rest || assert_exact_argc(&res, ((lam->name) ? lam->name : "unnamed lambda"), lam->argc, argc))
-    {   
-        init_env(&env2, lam->env);
-
-        if (lam->name)
-        {
-            MinimLambda *clam;
-            MinimObject *self;
-
-            copy_minim_lambda(&clam, lam);
-            init_minim_object(&self, MINIM_OBJ_CLOSURE, clam);
-            env_intern_sym(env2, lam->name, self);
-        }
-
-        for (size_t i = 0; i < lam->argc; ++i)
-        {
-            copy_minim_object(&val, args[i]);
-            env_intern_sym(env2, lam->args[i], val);
-            RELEASE_IF_REF(val);
-        }
-
-        if (lam->rest)
-        {
-            MinimObject **rest;
-            size_t rcount = argc - lam->argc;
-
-            rest = malloc(rcount * sizeof(MinimObject*));
-            for (size_t i = 0; i < rcount; ++i)
-                copy_minim_object(&rest[i], args[lam->argc + i]);
-
-            val = minim_list(rest, rcount);
-            env_intern_sym(env2, lam->rest, val);
-            free(rest);
-        }
-
-        eval_ast(env2, lam->body, &val);
-        res = fresh_minim_object(val);
-        RELEASE_IF_REF(val);
-        pop_env(env2);
-
-        if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
-            minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
+    if (lam->argc != argc)
+    {
+        minim_error(&res, "Arity mismatch");
+        return res;
     }
+
+    init_env(&env2, lam->env);
+    if (lam->name)
+    {
+        MinimLambda *clam;
+        MinimObject *self;
+
+        copy_minim_lambda(&clam, lam);
+        init_minim_object(&self, MINIM_OBJ_CLOSURE, clam);
+        env_intern_sym(env2, lam->name, self);
+    }
+
+    for (size_t i = 0; i < lam->argc; ++i)
+    {
+        copy_minim_object(&val, args[i]);
+        env_intern_sym(env2, lam->args[i], val);
+        RELEASE_IF_REF(val);
+    }
+
+    if (lam->rest)
+    {
+        MinimObject **rest;
+        size_t rcount = argc - lam->argc;
+
+        rest = malloc(rcount * sizeof(MinimObject*));
+        for (size_t i = 0; i < rcount; ++i)
+            copy_minim_object(&rest[i], args[lam->argc + i]);
+
+        val = minim_list(rest, rcount);
+        env_intern_sym(env2, lam->rest, val);
+        free(rest);
+    }
+
+    eval_ast(env2, lam->body, &val);
+    res = fresh_minim_object(val);
+    RELEASE_IF_REF(val);
+    pop_env(env2);
+
+    if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
+        minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
     
     return res;
 }
@@ -209,98 +211,93 @@ static size_t lambda_argc(MinimObject *bindings)
 
 MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
+    MinimObject *res, *bindings;
+    MinimLambda *lam;
 
-    if (assert_min_argc(&res, "lambda", 2, argc))
+    // Convert bindings to list
+    unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
+    if (!MINIM_OBJ_ERRORP(bindings))
     {
-        MinimObject *bindings;
-        MinimLambda *lam;
-
-        // Convert bindings to list
-        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-        if (!MINIM_OBJ_ERRORP(bindings))
+        if (MINIM_OBJ_SYMBOLP(bindings))
         {
-            if (MINIM_OBJ_SYMBOLP(bindings))
+            init_minim_lambda(&lam);
+            lam->rest = bindings->u.str.str;
+            collect_exprs(&args[1], argc - 1, lam);
+            rcopy_env(&lam->env, env);
+            init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
+
+            bindings->u.ptrs.p1 = NULL;
+        }
+        else if (minim_listp(bindings) || minim_consp(bindings))
+        {
+            MinimObject *it, *val, *val2;
+
+            init_minim_lambda(&lam);
+            lam->argc = lambda_argc(bindings);
+            lam->args = calloc(lam->argc, sizeof(char*));
+            it = bindings;
+
+            for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
             {
-                init_minim_lambda(&lam);
-                lam->rest = bindings->u.str.str;
-                collect_exprs(&args[1], argc - 1, lam);
-                rcopy_env(&lam->env, env);
-                init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
+                if (minim_consp(it) && MINIM_CDR(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
+                {   
+                    unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
+                    unsyntax_ast(env, MINIM_CDR(it)->u.ptrs.p1, &val2);
 
-                bindings->u.ptrs.p1 = NULL;
-            }
-            else if (minim_listp(bindings) || minim_consp(bindings))
-            {
-                MinimObject *it, *val, *val2;
+                    if (MINIM_OBJ_SYMBOLP(val) && MINIM_OBJ_SYMBOLP(val2))
+                    {
+                        lam->args[i] = val->u.ptrs.p1;
+                        lam->rest = val2->u.str.str;
 
-                init_minim_lambda(&lam);
-                lam->argc = lambda_argc(bindings);
-                lam->args = calloc(lam->argc, sizeof(char*));
-                it = bindings;
-
-                for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
-                {
-                    if (minim_consp(it) && MINIM_CDR(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
-                    {   
-                        unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
-                        unsyntax_ast(env, MINIM_CDR(it)->u.ptrs.p1, &val2);
-
-                        if (MINIM_OBJ_SYMBOLP(val) && MINIM_OBJ_SYMBOLP(val2))
-                        {
-                            lam->args[i] = val->u.ptrs.p1;
-                            lam->rest = val2->u.str.str;
-
-                            val->u.ptrs.p1 = NULL;
-                            val2->u.ptrs.p1 = NULL;
-                            free_minim_object(val);
-                            free_minim_object(val2);
-                        }
-                        else
-                        {
-                            res = minim_argument_error("symbol for variable name", "lambda", SIZE_MAX, it);
-                            free_minim_object(val);
-                            free_minim_object(val2);
-                            free_minim_lambda(lam);
-                            free_minim_object(bindings);
-                            return res;
-                        }
+                        val->u.ptrs.p1 = NULL;
+                        val2->u.ptrs.p1 = NULL;
+                        free_minim_object(val);
+                        free_minim_object(val2);
                     }
                     else
                     {
-                        unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
-                        if (MINIM_OBJ_SYMBOLP(val))
-                        {
-                            lam->args[i] = val->u.ptrs.p1;
-                            val->u.ptrs.p1 = NULL;
-                            free_minim_object(val);
-                        }
-                        else
-                        {
-                            res = minim_argument_error("symbol for variable name", "lambda", SIZE_MAX, it);
-                            free_minim_lambda(lam);
-                            free_minim_object(val);
-                            free_minim_object(bindings);
-                            return res;
-                        }
+                        res = minim_argument_error("symbol for variable name", "lambda", SIZE_MAX, it);
+                        free_minim_object(val);
+                        free_minim_object(val2);
+                        free_minim_lambda(lam);
+                        free_minim_object(bindings);
+                        return res;
                     }
                 }
-
-                collect_exprs(&args[1], argc - 1, lam);
-                rcopy_env(&lam->env, env);
-                init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
+                else
+                {
+                    unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
+                    if (MINIM_OBJ_SYMBOLP(val))
+                    {
+                        lam->args[i] = val->u.ptrs.p1;
+                        val->u.ptrs.p1 = NULL;
+                        free_minim_object(val);
+                    }
+                    else
+                    {
+                        res = minim_argument_error("symbol for variable name", "lambda", SIZE_MAX, it);
+                        free_minim_lambda(lam);
+                        free_minim_object(val);
+                        free_minim_object(bindings);
+                        return res;
+                    }
+                }
             }
-            else
-            {
-                res = minim_argument_error("symbol or list of symbols", "lambda", SIZE_MAX, args[0]);
-            }
 
-            free_minim_object(bindings);
+            collect_exprs(&args[1], argc - 1, lam);
+            rcopy_env(&lam->env, env);
+            init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
         }
         else
         {
-            res = bindings;
+            res = minim_argument_error("symbol or list of symbols", "lambda", SIZE_MAX, args[0]);
         }
+
+        free_minim_object(bindings);
+    }
+    else
+    {
+        res = bindings;
     }
 
     return res;

@@ -41,9 +41,6 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
     MinimObject *res;
     MinimObject **arr;
     size_t size;
-
-    if (!assert_exact_argc(&res, "make-vector", 1, argc))
-        return res;
     
     if (!minim_exact_nonneg_intp(args[0]))
         return minim_argument_error("exact non-negative integer", "make-vector", 0, args[0]);
@@ -80,9 +77,6 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t 
     MinimObject *res;
     size_t idx;
 
-    if (!assert_exact_argc(&res, "vector-ref", 2, argc))
-        return res;
-
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector-ref", 0, args[0]);
 
@@ -103,9 +97,6 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
 {
     MinimObject *res;
     size_t idx;
-
-    if (!assert_exact_argc(&res, "vector-set!", 3, argc))
-        return res;
 
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector-set!", 0, args[0]);
@@ -132,9 +123,6 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
 MinimObject *minim_builtin_vector_to_list(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-
-    if (!assert_exact_argc(&res, "vector->list", 1, argc))
-        return res;
 
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector->list", 0, args[0]);
@@ -173,9 +161,6 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, MinimObject **args, siz
     MinimObject *res, *it;
     MinimObject **arr;
     size_t len;
-
-    if (!assert_exact_argc(&res, "list->vector", 1, argc))
-        return res;
 
     if (!minim_listp(args[0]))
         return minim_argument_error("list", "list->vector", 0, args[0]);

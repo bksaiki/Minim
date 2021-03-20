@@ -52,9 +52,7 @@ MinimObject *minim_builtin_stringp(MinimEnv *env, MinimObject **args, size_t arg
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "string?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_STRINGP(args[0]));
-        
+    init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_STRINGP(args[0]));    
     return res;
 }
 
@@ -63,8 +61,7 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, MinimObject **args, size
     MinimObject *res;
     Buffer *bf;
 
-    if (!assert_min_argc(&res, "string-append", 1, argc) ||
-        !assert_string_args(argc, args, &res, "string-append"))
+    if (!assert_string_args(argc, args, &res, "string-append"))
         return res;
 
     init_buffer(&bf);
@@ -83,9 +80,6 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
     MinimObject *res;
     size_t len, start, end;
     char *str, *tmp;
-
-    if (!assert_range_argc(&res, "substring", 2, 3, argc))
-        return res;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
         return minim_argument_error("string", "substring", 0, args[0]);
@@ -126,9 +120,6 @@ MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, MinimObject **args, s
 {
     MinimObject *res;
 
-    if (!assert_exact_argc(&res, "string->symbol", 1, argc))
-        return res;
-
     if (!MINIM_OBJ_STRINGP(args[0]))
         return minim_argument_error("string", "string->symbol", 0, args[0]);
 
@@ -140,9 +131,6 @@ MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, MinimObject **args, s
 {
     MinimObject *res;
     char *dest;
-
-    if (!assert_exact_argc(&res, "symbol->string", 1, argc))
-        return res;
 
     if (!MINIM_OBJ_SYMBOLP(args[0]))
         return minim_argument_error("symbol", "symbol->string", 0, args[0]);
@@ -173,9 +161,6 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
     Buffer *bf;
     size_t len, vcount, var;
     char *str;
-
-    if (!assert_min_argc(&res, "format", 1, argc))
-        return res;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
         return minim_argument_error("string", "format", 0, args[0]);
@@ -234,9 +219,6 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
 MinimObject *minim_builtin_printf(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *val;
-
-    if (!assert_min_argc(&res, "printf", 1, argc))
-        return res;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
         return minim_argument_error("string", "printf", 0, args[0]);

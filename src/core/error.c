@@ -180,9 +180,6 @@ MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res;
     MinimError *err;
 
-    if (!assert_range_argc(&res, "err", 1, 2, argc))
-        return res;
-
     if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_SYMBOLP(args[0]))
     {
         res = minim_argument_error("symbol?/string?", "error", 0, args[0]);

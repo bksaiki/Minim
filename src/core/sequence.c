@@ -121,9 +121,7 @@ MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t a
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "sequence?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_SEQP(args[0]));
-    
+    init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_SEQP(args[0]));
     return res;
 }
 
@@ -132,9 +130,6 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
     MinimObject *res;
     MinimNumber *begin, *end;
     MinimSeq *seq;
-
-    if (!assert_range_argc(&res, "in-range", 1, 2, argc))
-        return res;
 
     if (!minim_exact_nonneg_intp(args[0]))
         return minim_argument_error("non-negative exact integer", "in-range", 0, args[0]);
@@ -171,9 +166,6 @@ MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t
     MinimNumber *begin, *end;
     MinimSeq *seq;
 
-    if (!assert_range_argc(&res, "in-naturals", 0, 1, argc))
-        return res;
-
     if (argc == 1 && !minim_exact_nonneg_intp((args[0])))
         return minim_argument_error("non-negative exact integer", "in-naturals", 1, args[0]);
 
@@ -200,9 +192,6 @@ MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, MinimObject **args, s
 {
     MinimObject *res, *seq, *val, *it;
     bool first;
-
-    if (!assert_exact_argc(&res, "sequence->list", 1, argc))
-        return res;
 
     if (!MINIM_OBJ_SEQP(args[0]))
         return minim_argument_error("sequence", "sequence->list", 0, args[0]);

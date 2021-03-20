@@ -202,7 +202,7 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
 bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr)
 {
     // Variable / Control
-    CHECK_RANGE_ARITY(fun, argc, env, perr, def, 2, 3);
+    CHECK_MIN_ARITY(fun, argc, env, perr, def, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, setb, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, if, 3);
     CHECK_MIN_ARITY(fun, argc, env, perr, unless, 2);
@@ -214,7 +214,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, for_list, 2);
     CHECK_MIN_ARITY(fun, argc, env, perr, begin, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, quote, 1);
-    CHECK_EXACT_ARITY(fun, argc, env, perr, lambda, 2);
+    CHECK_MIN_ARITY(fun, argc, env, perr, lambda, 2);
 
     // Miscellaneous
     CHECK_EXACT_ARITY(fun, argc, env, perr, equalp, 2);
@@ -304,9 +304,9 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, sequence_to_list, 1);
 
     // Math
-    CHECK_MIN_ARITY(fun, argc, env, perr, add, 1);
+    // NO CHECK: 'add'
     CHECK_MIN_ARITY(fun, argc, env, perr, sub, 1);
-    CHECK_MIN_ARITY(fun, argc, env, perr, mul, 1);
+    // NO CHECK: 'mul'
     CHECK_MIN_ARITY(fun, argc, env, perr, div, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, max, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, min, 1);

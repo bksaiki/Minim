@@ -43,6 +43,7 @@ typedef enum MinimObjectType
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
+typedef bool (*MinimPred)(MinimObject *);
 
 // Setters
 

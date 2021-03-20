@@ -21,246 +21,236 @@ static bool iters_valid(MinimObject **iters, size_t argc)
 
 MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
+    MinimObject *res, *it, *bindings, *val;
+    MinimObject **syms, **iters, **objs;
+    size_t len;
+    bool err = false;
 
-    if (assert_exact_argc(&res, "for", 2, argc))
+    // Convert iter/iterable pairs to list
+    unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
+    if (!minim_listp(bindings))
     {
-        MinimObject *it, *bindings, *val;
-        MinimObject **syms, **iters, **objs;
-        size_t len;
-        bool err = false;
+        res = minim_argument_error("((var iterable) ...)", "for", SIZE_MAX, bindings);
+        free_minim_object(bindings);
+        return res;
+    }
+    
+    it = bindings;
+    len = minim_list_length(bindings);
+    objs = malloc(len * sizeof(MinimObject*));
+    iters = malloc(len * sizeof(MinimObject*));
+    syms = malloc(len * sizeof(MinimObject*));
 
-        // Convert iter/iterable pairs to list
-        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-        if (!minim_listp(bindings))
+    for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
+    {
+        MinimObject *bind;
+
+        unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
+        if (minim_listp(bind) && minim_list_length(bind) == 2)
         {
-            res = minim_argument_error("((var iterable) ...)", "for", SIZE_MAX, bindings);
-            free_minim_object(bindings);
-            return res;
-        }
-        
-        it = bindings;
-        len = minim_list_length(bindings);
-        objs = malloc(len * sizeof(MinimObject*));
-        iters = malloc(len * sizeof(MinimObject*));
-        syms = malloc(len * sizeof(MinimObject*));
-
-        for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
-        {
-            MinimObject *bind;
-
-            unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
-            if (minim_listp(bind) && minim_list_length(bind) == 2)
+            unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &syms[i]);
+            if (MINIM_OBJ_SYMBOLP(syms[i]))
             {
-                unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &syms[i]);
-                if (MINIM_OBJ_SYMBOLP(syms[i]))
+                eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
+                if (MINIM_OBJ_ERRORP(val))
                 {
-                    eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
-                    if (MINIM_OBJ_ERRORP(val))
-                    {
-                        err = true;
-                        res = val;
-                    }
-                    else if (minim_iterablep(val))
-                    {
-                        objs[i] = val;
-                        init_minim_iter(&iters[i], objs[i]);
-                    }
-                    else
-                    {
-                        err = true;
-                        res = minim_argument_error("iterable object", "for", SIZE_MAX, val);
-                    }
+                    err = true;
+                    res = val;
+                }
+                else if (minim_iterablep(val))
+                {
+                    objs[i] = val;
+                    init_minim_iter(&iters[i], objs[i]);
                 }
                 else
                 {
                     err = true;
-                    res = minim_argument_error("symbol for a variable name", "for", SIZE_MAX, syms[i]);
+                    res = minim_argument_error("iterable object", "for", SIZE_MAX, val);
                 }
-
-                if (err) free_minim_object(syms[i]);
             }
             else
             {
-                res = minim_argument_error("valid bindings '(var iterable)", "for", SIZE_MAX, bind);
                 err = true;
+                res = minim_argument_error("symbol for a variable name", "for", SIZE_MAX, syms[i]);
             }
 
-            free_minim_object(bind);
-            if (err)
-            {
-                free_minim_objects(syms, i);
-                free_minim_objects(objs, i);
-                free_minim_objects(iters, i);
-                free_minim_object(bindings);
-                return res;
-            }
+            if (err) free_minim_object(syms[i]);
+        }
+        else
+        {
+            res = minim_argument_error("valid bindings '(var iterable)", "for", SIZE_MAX, bind);
+            err = true;
         }
 
-        while(!err && iters_valid(iters, len))
+        free_minim_object(bind);
+        if (err)
         {
-            MinimEnv *env2;
-
-            init_env(&env2, env);
-            for (size_t i = 0; i < len; ++i)
-            {
-                val = minim_iter_get(iters[i]);
-                env_intern_sym(env2, syms[i]->u.str.str, val);
-                RELEASE_IF_REF(val);
-            }
-
-            eval_ast(env2, args[1]->u.ptrs.p1, &val);
-            if (MINIM_OBJ_ERRORP(val))
-            {
-                res = val;
-                pop_env(env2);
-                err = true;
-            }
-            else
-            {
-                free_minim_object(val);
-                pop_env(env2);
-
-                for (size_t i = 0; i < len; ++i)
-                    iters[i] = minim_iter_next(iters[i]);
-            }
-        }   
-
-        if (!err) init_minim_object(&res, MINIM_OBJ_VOID);
-        free_minim_objects(iters, len);
-        free_minim_objects(objs, len);
-        free_minim_objects(syms, len);
-        free_minim_object(bindings);
+            free_minim_objects(syms, i);
+            free_minim_objects(objs, i);
+            free_minim_objects(iters, i);
+            free_minim_object(bindings);
+            return res;
+        }
     }
+
+    while(!err && iters_valid(iters, len))
+    {
+        MinimEnv *env2;
+
+        init_env(&env2, env);
+        for (size_t i = 0; i < len; ++i)
+        {
+            val = minim_iter_get(iters[i]);
+            env_intern_sym(env2, syms[i]->u.str.str, val);
+            RELEASE_IF_REF(val);
+        }
+
+        eval_ast(env2, args[1]->u.ptrs.p1, &val);
+        if (MINIM_OBJ_ERRORP(val))
+        {
+            res = val;
+            pop_env(env2);
+            err = true;
+        }
+        else
+        {
+            free_minim_object(val);
+            pop_env(env2);
+
+            for (size_t i = 0; i < len; ++i)
+                iters[i] = minim_iter_next(iters[i]);
+        }
+    }   
+
+    if (!err) init_minim_object(&res, MINIM_OBJ_VOID);
+    free_minim_objects(iters, len);
+    free_minim_objects(objs, len);
+    free_minim_objects(syms, len);
+    free_minim_object(bindings);
 
     return res;
 }
 
 MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
+    MinimObject *res, *it, *bindings, *val;
+    MinimObject **syms, **iters, **objs;
+    size_t len;
+    bool err = false, head = true;
 
-    if (assert_exact_argc(&res, "for", 2, argc))
+    // Convert iter/iterable pairs to list
+    unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
+    if (!minim_listp(bindings))
     {
-        MinimObject *it, *bindings, *val;
-        MinimObject **syms, **iters, **objs;
-        size_t len;
-        bool err = false, head = true;
+        res = minim_argument_error("((var iterable) ...)", "for", SIZE_MAX, bindings);
+        free_minim_object(bindings);
+        return res;
+    }
+    
+    it = bindings;
+    len = minim_list_length(bindings);
+    objs = malloc(len * sizeof(MinimObject*));
+    iters = malloc(len * sizeof(MinimObject*));
+    syms = malloc(len * sizeof(MinimObject*));
 
-        // Convert iter/iterable pairs to list
-        unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-        if (!minim_listp(bindings))
+    for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
+    {
+        MinimObject *bind;
+
+        unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
+        if (minim_listp(bind) && minim_list_length(bind) == 2)
         {
-            res = minim_argument_error("((var iterable) ...)", "for", SIZE_MAX, bindings);
-            free_minim_object(bindings);
-            return res;
-        }
-        
-        it = bindings;
-        len = minim_list_length(bindings);
-        objs = malloc(len * sizeof(MinimObject*));
-        iters = malloc(len * sizeof(MinimObject*));
-        syms = malloc(len * sizeof(MinimObject*));
-
-        for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
-        {
-            MinimObject *bind;
-
-            unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &bind);
-            if (minim_listp(bind) && minim_list_length(bind) == 2)
+            unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &syms[i]);
+            if (MINIM_OBJ_SYMBOLP(syms[i]))
             {
-                unsyntax_ast(env, MINIM_CAR(bind)->u.ptrs.p1, &syms[i]);
-                if (MINIM_OBJ_SYMBOLP(syms[i]))
+                eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
+                if (MINIM_OBJ_ERRORP(val))
                 {
-                    eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
-                    if (MINIM_OBJ_ERRORP(val))
-                    {
-                        err = true;
-                        res = val;
-                    }
-                    else if (minim_iterablep(val))
-                    {
-                        objs[i] = val;
-                        init_minim_iter(&iters[i], objs[i]);
-                    }
-                    else
-                    {
-                        err = true;
-                        res = minim_argument_error("iterable object", "for", SIZE_MAX, val);
-                    }
+                    err = true;
+                    res = val;
+                }
+                else if (minim_iterablep(val))
+                {
+                    objs[i] = val;
+                    init_minim_iter(&iters[i], objs[i]);
                 }
                 else
                 {
                     err = true;
-                    res = minim_argument_error("symbol for a variable name", "for", SIZE_MAX, syms[i]);
+                    res = minim_argument_error("iterable object", "for", SIZE_MAX, val);
                 }
-
-                if (err) free_minim_object(syms[i]);
             }
             else
             {
-                res = minim_argument_error("valid bindings '(var iterable)", "for", SIZE_MAX, bind);
                 err = true;
+                res = minim_argument_error("symbol for a variable name", "for", SIZE_MAX, syms[i]);
             }
 
-            free_minim_object(bind);
-            if (err)
-            {
-                free_minim_objects(syms, i);
-                free_minim_objects(objs, i);
-                free_minim_objects(iters, i);
-                free_minim_object(bindings);
-                return res;
-            }
+            if (err) free_minim_object(syms[i]);
+        }
+        else
+        {
+            res = minim_argument_error("valid bindings '(var iterable)", "for", SIZE_MAX, bind);
+            err = true;
         }
 
-        while(!err && iters_valid(iters, len))
+        free_minim_object(bind);
+        if (err)
         {
-            MinimEnv *env2;
-            
-            init_env(&env2, env);
-            for (size_t i = 0; i < len; ++i)
-            {
-                val = minim_iter_get(iters[i]);
-                env_intern_sym(env2, syms[i]->u.str.str, val);
-                RELEASE_IF_REF(val);
-            }
+            free_minim_objects(syms, i);
+            free_minim_objects(objs, i);
+            free_minim_objects(iters, i);
+            free_minim_object(bindings);
+            return res;
+        }
+    }
 
-            eval_ast(env2, args[1]->u.ptrs.p1, &val);
-            if (MINIM_OBJ_ERRORP(val))
+    while(!err && iters_valid(iters, len))
+    {
+        MinimEnv *env2;
+        
+        init_env(&env2, env);
+        for (size_t i = 0; i < len; ++i)
+        {
+            val = minim_iter_get(iters[i]);
+            env_intern_sym(env2, syms[i]->u.str.str, val);
+            RELEASE_IF_REF(val);
+        }
+
+        eval_ast(env2, args[1]->u.ptrs.p1, &val);
+        if (MINIM_OBJ_ERRORP(val))
+        {
+            res = val;
+            pop_env(env2);
+            err = true;
+        }
+        else
+        {
+            if (head)
             {
-                res = val;
-                pop_env(env2);
-                err = true;
+                init_minim_object(&res, MINIM_OBJ_PAIR, fresh_minim_object(val), NULL);
+                RELEASE_IF_REF(val);
+                it = res;
+                head = false;
             }
             else
             {
-                if (head)
-                {
-                    init_minim_object(&res, MINIM_OBJ_PAIR, fresh_minim_object(val), NULL);
-                    RELEASE_IF_REF(val);
-                    it = res;
-                    head = false;
-                }
-                else
-                {
-                    init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, fresh_minim_object(val), NULL);
-                    RELEASE_IF_REF(val);
-                    it = MINIM_CDR(it);
-                }
-
-                pop_env(env2);
-                for (size_t i = 0; i < len; ++i)
-                    iters[i] = minim_iter_next(iters[i]);
+                init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, fresh_minim_object(val), NULL);
+                RELEASE_IF_REF(val);
+                it = MINIM_CDR(it);
             }
-        }   
 
-        if (head && !err) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-        free_minim_objects(iters, len);
-        free_minim_objects(objs, len);
-        free_minim_objects(syms, len);
-        free_minim_object(bindings);
-    }
+            pop_env(env2);
+            for (size_t i = 0; i < len; ++i)
+                iters[i] = minim_iter_next(iters[i]);
+        }
+    }   
 
+    if (head && !err) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    free_minim_objects(iters, len);
+    free_minim_objects(objs, len);
+    free_minim_objects(syms, len);
+    free_minim_object(bindings);
+    
     return res;
 }

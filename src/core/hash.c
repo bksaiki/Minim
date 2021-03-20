@@ -311,14 +311,10 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 MinimObject *minim_builtin_hash(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-
-    if (assert_exact_argc(&res, "hash", 0, argc))
-    {   
-        MinimHash *ht;
-        init_minim_hash_table(&ht);
-        init_minim_object(&res, MINIM_OBJ_HASH, ht);
-    }
-
+    MinimHash *ht;
+    
+    init_minim_hash_table(&ht);
+    init_minim_object(&res, MINIM_OBJ_HASH, ht);
     return res;
 }
 
@@ -326,18 +322,13 @@ MinimObject *minim_builtin_hashp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "hash?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_HASHP(args[0]));
-    
+    init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_HASHP(args[0]));
     return res;
 }
 
 MinimObject *minim_builtin_hash_keyp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-
-    if (!assert_exact_argc(&res, "hash-key?", 2, argc))
-        return res;
 
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-key?", 0, args[0]);
@@ -351,9 +342,6 @@ MinimObject *minim_builtin_hash_keyp(MinimEnv *env, MinimObject **args, size_t a
 MinimObject *minim_builtin_hash_ref(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-
-    if (!assert_exact_argc(&res, "hash-ref", 2, argc))
-        return res;
 
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-ref", 0, args[0]);
@@ -378,9 +366,6 @@ MinimObject *minim_builtin_hash_remove(MinimEnv *env, MinimObject **args, size_t
 {
     MinimObject *res;
 
-    if (!assert_exact_argc(&res, "hash-remove", 2, argc))
-        return res;
-
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-remove", 0, args[0]);
 
@@ -393,9 +378,6 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, MinimObject **args, size_t ar
 {
     MinimObject *res;
 
-    if (!assert_exact_argc(&res, "hash-set", 3, argc))
-        return res;
-
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-set", 0, args[0]);
 
@@ -407,9 +389,6 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, MinimObject **args, size_t ar
 MinimObject *minim_builtin_hash_setb(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-
-    if (!assert_exact_argc(&res, "hash-set!", 3, argc))
-        return res;
 
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-set!", 0, args[0]);
@@ -426,9 +405,6 @@ MinimObject *minim_builtin_hash_removeb(MinimEnv *env, MinimObject **args, size_
 {
     MinimObject *res;
 
-    if (!assert_exact_argc(&res, "hash-remove!", 2, argc))
-        return res;
-
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-remove!", 0, args[0]);
 
@@ -443,10 +419,7 @@ MinimObject *minim_builtin_hash_removeb(MinimEnv *env, MinimObject **args, size_
 MinimObject *minim_builtin_hash_to_list(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-
-    if (!assert_exact_argc(&res, "hash->list", 1, argc))
-        return res;
-
+    
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash->list", 0, args[0]);
 

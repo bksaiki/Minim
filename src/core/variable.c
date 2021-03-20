@@ -16,12 +16,14 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *cond;
 
-    if (!assert_exact_argc(&res, "if", 3, argc))
-        return res;
-
     eval_ast(env, args[0]->u.ptrs.p1, &cond);
     if (!MINIM_OBJ_ERRORP(cond))
-        eval_ast(env, coerce_into_bool(cond) ? args[1]->u.ptrs.p1 : args[2]->u.ptrs.p1, &res);
+    {
+        eval_ast(env, coerce_into_bool(cond) ?
+                      args[1]->u.ptrs.p1 :
+                      args[2]->u.ptrs.p1, &res);
+        free_minim_object(cond);
+    }
     else
         res = cond;
 
@@ -100,9 +102,6 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
 {
     MinimObject *res, *cond;
 
-    if (!assert_min_argc(&res, "unless", 2, argc))
-        return res;
-
     eval_ast(env, args[0]->u.ptrs.p1, &cond);
     if (!MINIM_OBJ_ERRORP(cond))
     {
@@ -125,9 +124,6 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *cond;
 
-    if (!assert_min_argc(&res, "unless", 2, argc))
-        return res;
-
     eval_ast(env, args[0]->u.ptrs.p1, &cond);
     if (!MINIM_OBJ_ERRORP(cond))
     {
@@ -149,9 +145,6 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *sym, *val;
-
-    if (!assert_min_argc(&res, "def", 2, argc))
-        return res;
 
     unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
     if (!MINIM_OBJ_SYMBOLP(sym))
@@ -197,9 +190,6 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
     MinimEnv *env2;
     size_t len;
     bool err;
-
-    if (!assert_exact_argc(&res, "let", 2, argc))
-        return res;
         
     // Convert bindings to list
     unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
@@ -263,9 +253,6 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
     size_t len;
     bool err;
 
-    if (!assert_exact_argc(&res, "let*", 2, argc))
-        return res;
-        
     // Convert bindings to list
     unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
     if (MINIM_OBJ_ERRORP(bindings))
@@ -325,17 +312,13 @@ MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "quote", 1, argc))
-        unsyntax_ast_rec(env, args[0]->u.ptrs.p1, &res);
+    unsyntax_ast_rec(env, args[0]->u.ptrs.p1, &res);
     return res;
 }
 
 MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *sym, *val, *peek;
-
-    if (!assert_exact_argc(&res, "set!", 2, argc))
-        return res;
 
     unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
     if (!MINIM_OBJ_SYMBOLP(sym))
@@ -373,9 +356,6 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res, *val;
     MinimEnv *env2;
 
-    if (!assert_min_argc(&res, "begin", 1, argc))
-        return res;
-
     init_env(&env2, env);
     for (size_t i = 0; i < argc; ++i)
     {
@@ -400,18 +380,13 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, MinimObject **args, size_t arg
 {
     MinimObject *res;
 
-    if (assert_exact_argc(&res, "symbol?", 1, argc))
-        init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_SYMBOLP(args[0]));
-        
+    init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_SYMBOLP(args[0]));   
     return res;
 }
 
 MinimObject *minim_builtin_equalp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-
-    if (!assert_min_argc(&res, "equal?", 1, argc))
-        return res;
 
     for (size_t i = 1; i < argc; ++i)
     {
@@ -431,9 +406,6 @@ MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res;
     char *str;
 
-    if (!assert_exact_argc(&res, "version", 0, argc))
-        return res;
-
     str = malloc((strlen(MINIM_VERSION_STR) + 1) * sizeof(char));
     strcpy(str, MINIM_VERSION_STR);
     init_minim_object(&res, MINIM_OBJ_STRING, str);
@@ -445,9 +417,6 @@ MinimObject *minim_builtin_symbol_count(MinimEnv *env, MinimObject **args, size_
 {
     MinimObject *res;
     MinimNumber *num;
-
-    if (!assert_exact_argc(&res, "symbol-count", 0, argc))
-        return res;
 
     init_minim_number(&num, MINIM_NUMBER_EXACT);
     mpq_set_ui(num->rat, env->table->size, 1);
