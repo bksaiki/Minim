@@ -142,10 +142,7 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
         copy_minim_number(&begin, args[0]->u.ptrs.p1);
         copy_minim_number(&end, args[1]->u.ptrs.p1);
         if (minim_number_cmp(begin, end) > 0)
-        {
-            minim_error(&res, "Expected a valid range [begin, end) in 'in-range'");
-            return res;
-        }
+            return minim_error("expected [begin, end)", "in-range");
     }
     else
     {

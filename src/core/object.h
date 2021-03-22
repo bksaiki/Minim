@@ -146,10 +146,6 @@ void ref_minim_object(MinimObject **pobj, MinimObject *src);
 void free_minim_object(MinimObject *obj);
 void free_minim_objects(MinimObject **objs, size_t count);
 
-//  Specialized constructors
-
-void minim_error(MinimObject **pobj, const char* format, ...);
-
 //  Equivalence
 
 bool minim_equalp(MinimObject *a, MinimObject *b);

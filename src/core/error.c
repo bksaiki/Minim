@@ -173,6 +173,25 @@ MinimObject *minim_argument_error(const char *pred, const char *where, size_t po
     return obj;
 }
 
+MinimObject *minim_error(const char *msg, const char *where, ...)
+{
+    MinimObject *obj;
+    MinimError *err;
+    Buffer *bf;
+    va_list va;
+
+    va_start(va, where);
+    init_buffer(&bf);
+    vwritef_buffer(bf, msg, va);
+    va_end(va);   
+
+    init_minim_error(&err, bf->data, where);
+    init_minim_object(&obj, MINIM_OBJ_ERR, err);
+    free_buffer(bf);
+
+    return obj;
+}
+
 // ************ Builtins ****************
 
 MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)

@@ -250,22 +250,6 @@ void free_minim_objects(MinimObject **objs, size_t count)
     free(objs);
 }
 
-void minim_error(MinimObject **pobj, const char* format, ...)
-{
-    MinimObject *obj;
-    MinimError *err;
-    char buffer[1024];
-    va_list rest;
-    
-    va_start(rest, format);
-    vsnprintf(buffer, 1024, format, rest);
-    init_minim_error(&err, buffer, NULL);
-    init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    va_end(rest);
-
-    *pobj = obj;
-}
-
 bool minim_equalp(MinimObject *a, MinimObject *b)
 {
     if (a->type != b->type)

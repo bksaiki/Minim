@@ -74,7 +74,6 @@ MinimObject *minim_builtin_vector(MinimEnv *env, MinimObject **args, size_t argc
 
 MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
     size_t idx;
 
     if (!MINIM_OBJ_VECTORP(args[0]))
@@ -85,10 +84,7 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t 
 
     idx = minim_number_to_uint(args[1]);
     if  (idx >= args[0]->u.vec.len)
-    {
-        minim_error(&res, "Index out of bounds: %lu", idx);
-        return res;
-    }
+        return minim_error("index out of bounds: ~u", "vector-ref", idx);
     
     return copy2_minim_object(args[0]->u.vec.arr[idx]);
 }
@@ -109,10 +105,7 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
 
     idx = minim_number_to_uint(args[1]);
     if  (idx >= args[0]->u.vec.len)
-    {
-        minim_error(&res, "Index out of bounds: %lu", idx);
-        return res;
-    }
+        return minim_error("index out of bounds: ~u", "vector-set!", idx);
 
     free_minim_object(args[0]->u.vec.arr[idx]);
     args[0]->u.vec.arr[idx] = copy2_minim_object(args[2]);

@@ -155,34 +155,34 @@ void writesn_buffer(Buffer *bf, const char *str, size_t len)
 void writef_buffer(Buffer *bf, const char *format, ...)
 {
     va_list rest;
-    char c, n;
 
     va_start(rest, format);
-    for (size_t i = 0; *(format + i); ++i)
-    {
-        c = *(format + i);
-        if (c == '~')
-        {
-            n = *(format + i + 1);
-            if (n == '~')           writec_buffer(bf, '~');
-            else if (n == 'c')      writec_buffer(bf, (char) va_arg(rest, int));
-            else if (n == 'i')      writei_buffer(bf, va_arg(rest, long));
-            else if (n == 'u')      writeu_buffer(bf, va_arg(rest, unsigned long));
-            else if (n == 'l')      writei_buffer(bf, va_arg(rest, long));
-            else if (n == 's')      writes_buffer(bf, va_arg(rest, char*));
-            else if (n == 'f')      writed_buffer(bf, va_arg(rest, double));
-            else if (n == 'B')      writeb_buffer(bf, va_arg(rest, Buffer*));
-            else                    writes_buffer(bf, "<invalid format char>");
+    vwritef_buffer(bf, format, rest);
+    va_end(rest);
+}
 
+void vwritef_buffer(Buffer *bf, const char* str, va_list va)
+{
+    for (size_t i = 0; str[i]; ++i)
+    {
+        if (str[i] == '~')
+        {
             ++i;
+            if (str[i] == '~')          writec_buffer(bf, '~');
+            else if (str[i] == 'c')     writec_buffer(bf, (char) va_arg(va, int));
+            else if (str[i] == 'i')     writei_buffer(bf, va_arg(va, long));
+            else if (str[i] == 'u')     writeu_buffer(bf, va_arg(va, unsigned long));
+            else if (str[i] == 'l')     writei_buffer(bf, va_arg(va, long));
+            else if (str[i] == 's')     writes_buffer(bf, va_arg(va, char*));
+            else if (str[i] == 'f')     writed_buffer(bf, va_arg(va, double));
+            else if (str[i] == 'B')     writeb_buffer(bf, va_arg(va, Buffer*));
+            else                        writec_buffer(bf, str[i + 1]); 
         }
         else
         {
-            writec_buffer(bf, c);
+            writec_buffer(bf, str[i]);
         }
     }
-
-    va_end(rest);
 }
 
 // *** Getters *** //

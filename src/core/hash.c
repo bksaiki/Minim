@@ -353,9 +353,9 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, MinimObject **args, size_t ar
         PrintParams pp;
         
         init_buffer(&bf);
-        writes_buffer(bf, "hash-ref: no value found for ");
+        set_default_print_params(&pp);
         print_to_buffer(bf, args[1], env, &pp);
-        minim_error(&res, bf->data);
+        res = minim_error("no value found for ~s", "hash-ref", bf->data);
         free_buffer(bf);
     }
 
@@ -418,8 +418,6 @@ MinimObject *minim_builtin_hash_removeb(MinimEnv *env, MinimObject **args, size_
 
 MinimObject *minim_builtin_hash_to_list(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
-    
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash->list", 0, args[0]);
 

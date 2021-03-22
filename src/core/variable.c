@@ -52,8 +52,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
         if (i + 1 != argc && cond_syn->sym && strcmp(cond_syn->sym, "else") == 0)
         {   
             free_minim_object(ce_pair);
-            minim_error(&res, "else clause must be last");
-            return res;
+            return minim_error("else clause must be last", "cond");
         }
 
         eval_ast(env, cond_syn, &cond);
@@ -344,7 +343,13 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
     }
     else
     {
-        minim_error(&res, "Variable not recognized '%s'", sym->u.ptrs.p1);
+        Buffer *bf;
+        PrintParams pp;
+
+        init_buffer(&bf);
+        set_default_print_params(&pp);
+        print_to_buffer(bf, sym, env, &pp);
+        res = minim_error("not a variable", bf->data);
     }
 
     free_minim_object(sym);

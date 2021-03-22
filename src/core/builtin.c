@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include "builtin.h"
+#include "error.h"
 #include "number.h"
 
 void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...)
@@ -165,19 +166,11 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
     free_minim_object(obj);
 
     if (min == max)              // exact
-    {
-        if (min == 1)   minim_error(perr, "Expected 1 argument for '%s'", name);
-        else            minim_error(perr, "Expected %lu arguments for '%s'", min, name);
-    }
+        *perr = minim_error("arity mismatch, expected: ~u, got: ~u", name, min, argc);
     else if (max == SIZE_MAX)   // min
-    {
-        if (min == 1)   minim_error(perr, "Expected at least 1 argument for '%s'", name);
-        else            minim_error(perr, "Expected at least %lu arguments for '%s'", min, name);
-    }
+        *perr = minim_error("arity mismatch, expected: at least ~u, got: ~u", name, min, argc);
     else                        // range
-    {
-        minim_error(perr, "Expected between %lu and %lu arguments for '%s'", min, max, name);
-    }
+        *perr = minim_error("arity mismatch, expected: between ~u and ~u, got: ~u", name, min, max, argc);
 }
 
 #define CHECK_RANGE_ARITY(fun, argc, env, perr, builtin, min, max)      \

@@ -101,10 +101,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
         
         end = minim_number_to_uint(args[2]);
         if (start >= end || end > len)
-        {
-            minim_error(&res, "Expected [begin, end) in 'substring'");
-            return res;
-        }
+            return minim_error("expected [begin, end)", "substring");
     }
 
     tmp = malloc((end - start + 1) * sizeof(char));
@@ -170,10 +167,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
     vcount = collect_format_vars(str, len);
 
     if (vcount != argc - 1)
-    {
-        minim_error(&res, "Number of format variables do not match argument count");
-        return res;
-    }
+        return minim_error("number of format variables do not match argument count", "format");
 
     var = 1;
     init_buffer(&bf);
@@ -183,7 +177,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
         {
             if (++i == len)
             {
-                minim_error(&res, "Expected a character after '~'");
+                res = minim_error("expected a character after '~'", "format");
                 free_buffer(bf);
                 return res;
             }

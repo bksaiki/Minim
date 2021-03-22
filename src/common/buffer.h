@@ -2,6 +2,7 @@
 #define _MINIM_BUFFER_H_
 
 #include <stddef.h>
+#include <stdarg.h>
 
 #define MINIM_BUFFER_DEFAULT_SIZE       256
 #define MINIM_BUFFER_STEP_SIZE          256
@@ -32,6 +33,7 @@ void writeb_buffer(Buffer *bf, Buffer *src);
 void writef_buffer(Buffer *bf, const char *format, ...);
 
 void writesn_buffer(Buffer *bf, const char *str, size_t len);
+void vwritef_buffer(Buffer *bf, const char *str, va_list va);
 
 char *get_buffer(Buffer *bf);
 char *release_buffer(Buffer *bf);

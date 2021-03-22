@@ -406,10 +406,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t ar
         it = MINIM_CDR(it);
 
     if (!it)
-    {
-        minim_error(&res, "list-ref out of bounds: length %d, index %d", minim_list_length(args[0]), idx);
-        return res;
-    }
+        return minim_error("index out of bounds: ~u", "list-ref", idx);
 
     OPT_MOVE_REF2(res, MINIM_CAR(it), args[0]);
     return res;

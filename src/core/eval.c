@@ -6,6 +6,7 @@
 #include "../common/read.h"
 #include "builtin.h"
 #include "eval.h"
+#include "error.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -133,9 +134,9 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
             res = env_get_sym(env, str);
 
             if (!res)
-                minim_error(&res, "Unrecognized symbol: %s", str);
+                return minim_error("unrecognized symbol", str);
             else if (MINIM_OBJ_SYNTAXP(res))
-                minim_error(&res, "Bad syntax: %s", str);
+                return minim_error("bad syntax", str);
         }
     }
 
@@ -234,10 +235,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
         size_t argc;
 
         if (node->argc == 0)
-        {
-            minim_error(&res, "Empty expression");
-            return res;
-        }
+            return minim_error("empty expression. something bad happened", "???");
 
         argc = node->argc - 1;
         args = malloc(argc * sizeof(MinimObject*));
@@ -245,7 +243,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 
         if (!op)
         {
-            minim_error(&res, "Unknown operator: %s", node->children[0]->sym);
+            res = minim_error("unknown operator", node->children[0]->sym);
             free(args);
             return res;
         }
@@ -322,7 +320,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
         }
         else
         {   
-            minim_error(&res, "'%s' is not an operator", node->children[0]->sym);
+            res = minim_error("unknown operator", node->children[0]->sym);
             free(args);
             return res;
         }
