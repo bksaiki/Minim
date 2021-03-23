@@ -87,19 +87,25 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     {
         MinimError *err = obj->u.ptrs.p1;
 
-        if (err->where)   writef_buffer(bf, "~s: ~s", err->where, err->msg);
+        if (err->where)   writef_buffer(bf, "; ~s: ~s", err->where, err->msg);
         else              writes_buffer(bf, err->msg);
+
+        if (err->table)
+        {
+            for (size_t i = 0; i < err->table->len; ++i)
+                writef_buffer(bf, "\n;  ~s: ~s", err->table->keys[i], err->table->vals[i]);
+        }
                    
-        if (err->top) writes_buffer(bf, "\n  backtrace:");
+        if (err->top) writes_buffer(bf, "\n;  backtrace:");
         for (MinimErrorTrace *trace = err->top; trace; trace = trace->next)
         {
             if (trace->multiple)
-                writef_buffer(bf, "\n    ...");
+                writef_buffer(bf, "\n;    ...");
             else if (trace->loc->name)
-                writef_buffer(bf, "\n    ~s:~u:~u ~s", trace->loc->name,
+                writef_buffer(bf, "\n;    ~s:~u:~u ~s", trace->loc->name,
                                 trace->loc->row, trace->loc->col, trace->name);
             else
-                writef_buffer(bf, "\n    ~s:~u:~u ~s", trace->loc->name,
+                writef_buffer(bf, "\n;    ~s:~u:~u ~s", trace->loc->name,
                                 trace->loc->row, trace->loc->col);
         }
     }

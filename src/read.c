@@ -28,7 +28,7 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
     
     if (!parse_expr_loc(input, &ast, loc))
     {
-        printf("  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
+        printf(";  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
         return 2;
     }
     
@@ -38,7 +38,7 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
         print_minim_object(obj, env, pp);
         free_minim_object(obj);
         free_ast(ast);
-        printf("\n  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
+        printf("\n;  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
         return 2;
     }
     else if (obj->type != MINIM_OBJ_VOID)

@@ -39,13 +39,74 @@ void free_minim_error_trace(MinimErrorTrace *trace)
     free(trace);
 }
 
+void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len)
+{
+    MinimErrorDescTable *table = malloc(sizeof(MinimErrorDescTable));
+
+    table->keys = calloc(len, sizeof(char*));
+    table->vals = calloc(len, sizeof(char*));
+    table->len = len;
+
+    *ptable = table;
+}
+
+void copy_minim_error_desc_table(MinimErrorDescTable **ptable, MinimErrorDescTable *src)
+{
+    MinimErrorDescTable *table = malloc(sizeof(MinimErrorDescTable));
+
+    table->keys = calloc(src->len, sizeof(char*));
+    table->vals = calloc(src->len, sizeof(char*));
+    table->len = src->len;
+    *ptable = table;
+
+    for (size_t i = 0; i < src->len; ++i)
+    {
+        if (src->keys[i])
+        {
+            table->keys[i] = malloc((strlen(src->keys[i]) + 1) * sizeof(char));
+            table->vals[i] = malloc((strlen(src->vals[i]) + 1) * sizeof(char));
+            strcpy(table->keys[i], src->keys[i]);
+            strcpy(table->vals[i], src->vals[i]);
+        }
+    }
+}
+
+void free_minim_error_desc_table(MinimErrorDescTable *table)
+{
+    for (size_t i = 0; i < table->len; ++i)
+    {
+        if (table->keys[i])
+        {
+            free(table->keys[i]);
+            free(table->vals[i]);
+        }
+    }
+
+    free(table->keys);
+    free(table->vals);
+    free(table);
+}
+
+void minim_error_desc_table_set(MinimErrorDescTable *table, size_t idx, const char *key, const char *val)
+{
+    if (table->keys[idx])   free(table->keys[idx]);
+    if (table->keys[idx])   free(table->vals[idx]);
+
+    table->keys[idx] = malloc((strlen(key) + 1) * sizeof(char));
+    table->vals[idx] = malloc((strlen(val) + 1) * sizeof(char));
+    strcpy(table->keys[idx], key);
+    strcpy(table->vals[idx], val);
+}
+
 void init_minim_error(MinimError **perr, const char *msg, const char *where)
 {
     MinimError *err = malloc(sizeof(MinimError));
+
     err->msg = malloc((strlen(msg) + 1) * sizeof(char));
     strcpy(err->msg, msg);
     err->top = NULL;
     err->bottom = NULL;
+    err->table = NULL;
     *perr = err;
     
     if (where)
@@ -89,13 +150,20 @@ void copy_minim_error(MinimError **perr, MinimError *src)
     {
         err->where = NULL;
     }
+
+    if (src->table)
+        copy_minim_error_desc_table(&err->table, src->table);
+    else
+        err->table = NULL;
 }
 
 void free_minim_error(MinimError *err)
 {
-    if (err->top)   free_minim_error_trace(err->top);
-    if (err->msg)   free(err->msg);
-    if (err->where) free(err->where);
+    if (err->top)       free_minim_error_trace(err->top);
+    if (err->table)     free_minim_error_desc_table(err->table);
+    if (err->msg)       free(err->msg);
+    if (err->where)     free(err->where);
+    
     free(err);
 }
 
@@ -142,34 +210,41 @@ MinimObject *minim_argument_error(const char *pred, const char *where, size_t po
 {
     MinimObject *obj;
     MinimError *err;
-    Buffer *bf;
+    size_t idx;
 
-    init_buffer(&bf);
-    writef_buffer(bf, "argument error, expected: ~s, ", pred);
+    init_minim_error(&err, "argument error", where);
+    init_minim_error_desc_table(&err->table, 3);
+    minim_error_desc_table_set(err->table, 0, "expected", pred);
+    idx = 1;
 
     if (val)
-    {   
-        PrintParams pp;
+    {
+        Buffer *bf;
         MinimEnv *env;
+        PrintParams pp;
 
         init_env(&env, NULL);
+        init_buffer(&bf);
         set_default_print_params(&pp);
-        writes_buffer(bf, "given: ");
         print_to_buffer(bf, val, env, &pp);
-        writes_buffer(bf, ", ");
+        minim_error_desc_table_set(err->table, idx, "given", bf->data);
+
         free_env(env);
+        free_buffer(bf);
+        ++idx;
     }
 
     if (pos != SIZE_MAX)
     {
-        writes_buffer(bf, "location: ");
+        Buffer *bf;
+
+        init_buffer(&bf);
         buffer_write_ordinal(bf, pos + 1);
+        minim_error_desc_table_set(err->table, idx, "location", bf->data);
+        free_buffer(bf);
     }
 
-    init_minim_error(&err, bf->data, where);
     init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    free_buffer(bf);
-
     return obj;
 }
 
@@ -199,7 +274,7 @@ MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res;
     MinimError *err;
 
-    if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_SYMBOLP(args[0]))
+    if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_STRINGP(args[0]))
     {
         res = minim_argument_error("symbol?/string?", "error", 0, args[0]);
         return res;
@@ -212,7 +287,7 @@ MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
     }
     else
     {
-        if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_SYMBOLP(args[1]))
+        if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_STRINGP(args[1]))
         {
             res = minim_argument_error("symbol?/string?", "error", 1, args[1]);
             return res;
