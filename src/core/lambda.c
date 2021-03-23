@@ -100,9 +100,12 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
     if (lam->argc != argc)
     {
-        return minim_error("arity mismatch: expected ~u, got ~u",
-                           (lam->name ? lam->name : "???"),
-                           lam->argc, argc);
+        char *name = (lam->name ? lam->name : "???");
+        
+        if (lam->rest)
+            return minim_arity_error(name, lam->argc, SIZE_MAX, argc);
+        else
+            return minim_arity_error(name, lam->argc, lam->argc, argc);
     }
 
     init_env(&env2, lam->env);

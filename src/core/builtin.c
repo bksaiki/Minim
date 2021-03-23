@@ -164,13 +164,7 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
     init_minim_object(&obj, MINIM_OBJ_FUNC, builtin);
     name = env_peek_key(env, obj);
     free_minim_object(obj);
-
-    if (min == max)              // exact
-        *perr = minim_error("arity mismatch, expected: ~u, got: ~u", name, min, argc);
-    else if (max == SIZE_MAX)   // min
-        *perr = minim_error("arity mismatch, expected: at least ~u, got: ~u", name, min, argc);
-    else                        // range
-        *perr = minim_error("arity mismatch, expected: between ~u and ~u, got: ~u", name, min, max, argc);
+    *perr = minim_arity_error(name, min, max, argc);
 }
 
 #define CHECK_RANGE_ARITY(fun, argc, env, perr, builtin, min, max)      \

@@ -93,7 +93,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (err->table)
         {
             for (size_t i = 0; i < err->table->len; ++i)
-                writef_buffer(bf, "\n;  ~s: ~s", err->table->keys[i], err->table->vals[i]);
+            {
+                if (err->table->keys[i])
+                    writef_buffer(bf, "\n;  ~s: ~s", err->table->keys[i], err->table->vals[i]);
+            }
         }
                    
         if (err->top) writes_buffer(bf, "\n;  backtrace:");

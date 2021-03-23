@@ -248,6 +248,31 @@ MinimObject *minim_argument_error(const char *pred, const char *where, size_t po
     return obj;
 }
 
+MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t actual)
+{
+    MinimObject *obj;
+    MinimError *err;
+    Buffer *bf;
+
+    init_minim_error(&err, "arity mismatch", where);
+    init_minim_error_desc_table(&err->table, 2);
+
+    init_buffer(&bf);
+    if (min == max)             writef_buffer(bf, "~u", min);
+    else if (max == SIZE_MAX)   writef_buffer(bf, "at least ~u", min);
+    else                        writef_buffer(bf, "between ~u and ~u", min, max);  
+    minim_error_desc_table_set(err->table, 0, "expected", bf->data);
+    
+    reset_buffer(bf);
+    writef_buffer(bf, "~u", actual);
+    minim_error_desc_table_set(err->table, 1, "got", bf->data);
+
+    init_minim_object(&obj, MINIM_OBJ_ERR, err);
+    free_buffer(bf);
+
+    return obj;
+}
+
 MinimObject *minim_error(const char *msg, const char *where, ...)
 {
     MinimObject *obj;
