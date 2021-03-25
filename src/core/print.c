@@ -51,13 +51,28 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     else if (MINIM_OBJ_BOOLP(obj))
     {
         if (obj->u.ints.i1)   writes_buffer(bf, "true");
-        else                    writes_buffer(bf, "false");
+        else                  writes_buffer(bf, "false");
     }
-    else if (MINIM_OBJ_NUMBERP(obj))
+    else if (MINIM_OBJ_EXACTP(obj))
     {
-        char *tmp = minim_number_to_str(obj->u.ptrs.p1);
-        writes_buffer(bf, tmp);
-        free(tmp);
+        char *str;
+        size_t len;
+
+        str = malloc(128 * sizeof(char));
+        len = gmp_snprintf(str, 128, "%Qd", MINIM_EXACT(obj));
+
+        if (len >= 128)
+        {
+            str = malloc((len + 1) * sizeof(char));
+            len = gmp_snprintf(str, len, "%Qd", MINIM_EXACT(obj));
+        }
+
+        writes_buffer(bf, str);
+        free(str);
+    }
+    else if (MINIM_OBJ_INEXACTP(obj))
+    {
+        writed_buffer(bf, MINIM_INEXACT(obj));
     }
     else if (MINIM_OBJ_SYMBOLP(obj))
     {

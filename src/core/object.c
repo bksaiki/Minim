@@ -1,3 +1,4 @@
+#include <gmp.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -31,9 +32,13 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     {
         obj->u.ints.i1 = va_arg(vargs, int);
     }
-    else if (type == MINIM_OBJ_NUM)
+    else if (type == MINIM_OBJ_EXACT)
     {
-        obj->u.ptrs.p1 = va_arg(vargs, MinimNumber*);
+        obj->u.ptrs.p1 = va_arg(vargs, mpq_ptr);
+    }
+    else if (type == MINIM_OBJ_INEXACT)
+    {
+        obj->u.fls.f1 = va_arg(vargs, double);
     }
     else if (type == MINIM_OBJ_SYM)
     {
@@ -129,11 +134,17 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
     {
         dest->u.ints.i1 = dest->u.ints.i2;
     }
-    else if (src->type == MINIM_OBJ_NUM)
+    else if (MINIM_OBJ_EXACTP(src))
     {
-        MinimNumber *num;
-        copy_minim_number(&num, src->u.ptrs.p1);
-        dest->u.ptrs.p1 = num;
+        mpq_ptr num;
+
+        mpq_init(num);
+        mpq_set(num, MINIM_EXACT(src));
+        MINIM_EXACT(dest) = &num;
+    }
+    else if (MINIM_OBJ_INEXACTP(src))
+    {
+        MINIM_INEXACT(dest) = MINIM_INEXACT(src);
     }
     else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_STRING)
     {
@@ -231,8 +242,12 @@ void free_minim_object(MinimObject *obj)
                 free_minim_object(obj->u.vec.arr[i]);
             free(obj->u.vec.arr);
         }
+        else if (obj->type == MINIM_OBJ_EXACT)
+        {
+            mpq_clear(MINIM_EXACT(obj));
+            free(MINIM_EXACT(obj));
+        }
         else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->u.ptrs.p1);
-        else if (obj->type == MINIM_OBJ_NUM)        free_minim_number(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->u.ptrs.p1);
         else if (obj->type == MINIM_OBJ_ERR)        free_minim_error(obj->u.ptrs.p1);
@@ -252,6 +267,9 @@ void free_minim_objects(MinimObject **objs, size_t count)
 
 bool minim_equalp(MinimObject *a, MinimObject *b)
 {
+    if (MINIM_OBJ_NUMBERP(a) && MINIM_OBJ_NUMBERP(b))
+        return minim_number_cmp(a, b) == 0;
+
     if (a->type != b->type)
         return false;
 
@@ -270,9 +288,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_FUNC:
     case MINIM_OBJ_SYNTAX:
         return a->u.ptrs.p1 == b->u.ptrs.p1;
-
-    case MINIM_OBJ_NUM:
-        return minim_number_cmp(a->u.ptrs.p1, b->u.ptrs.p1) == 0;
 
     case MINIM_OBJ_PAIR:
         return minim_cons_eqp(a, b);

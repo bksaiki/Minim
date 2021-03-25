@@ -102,17 +102,16 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
     if (is_rational(str))
     {
-        MinimNumber *num;
-        init_minim_number(&num, MINIM_NUMBER_EXACT);
-        str_to_minim_number(num, str);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpq_set_str(rat, str, 0);
+        mpq_canonicalize(rat);
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }
     else if (is_float(str))
     {
-        MinimNumber *num;
-        init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        str_to_minim_number(num, str);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
+        init_minim_object(&res, MINIM_OBJ_INEXACT, strtod(str, NULL));
     }
     else if (is_str(str))
     {
