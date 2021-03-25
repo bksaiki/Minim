@@ -89,7 +89,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
 
     str = args[0]->u.str.str;
     len = strlen(str);
-    start = minim_number_to_uint(args[1]);
+    start = MINIM_NUMBER_TO_UINT(args[1]);
     if (argc == 2)
     {
         end = len;
@@ -99,7 +99,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
         if (!minim_exact_nonneg_intp(args[2]))
             return minim_argument_error("exact non-negative integer", "substring", 2, args[2]);
         
-        end = minim_number_to_uint(args[2]);
+        end = MINIM_NUMBER_TO_UINT(args[2]);
         if (start >= end || end > len)
             return minim_error("expected [begin, end)", "substring");
     }

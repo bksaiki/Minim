@@ -45,14 +45,15 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
     if (!minim_exact_nonneg_intp(args[0]))
         return minim_argument_error("exact non-negative integer", "make-vector", 0, args[0]);
     
-    size = minim_number_to_uint(args[0]);
+    size = MINIM_NUMBER_TO_UINT(args[0]);
     arr = malloc(size * sizeof(MinimObject*));
     for (size_t i = 0; i < size; ++i)
     {
-        MinimNumber *zero;
-        init_minim_number(&zero, MINIM_NUMBER_EXACT);
-        str_to_minim_number(zero, "0");
-        init_minim_object(&arr[i], MINIM_OBJ_NUM, zero);
+        mpq_ptr zero = malloc(sizeof(__mpq_struct));
+
+        mpq_init(zero);
+        mpq_set_ui(zero, 0, 1);
+        init_minim_object(&arr[i], MINIM_OBJ_EXACT, zero);
     }   
 
     init_minim_object(&res, MINIM_OBJ_VECTOR, arr, size);
@@ -82,7 +83,7 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t 
     if (!minim_exact_nonneg_intp(args[1]))
         return minim_argument_error("exact non-negative integer", "vector-ref", 1, args[1]);
 
-    idx = minim_number_to_uint(args[1]);
+    idx = MINIM_NUMBER_TO_UINT(args[1]);
     if  (idx >= args[0]->u.vec.len)
         return minim_error("index out of bounds: ~u", "vector-ref", idx);
     
@@ -103,7 +104,7 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
     if (!minim_exact_nonneg_intp(args[1]))
         return minim_argument_error("exact non-negative integer", "vector-set!", 1, args[1]);
 
-    idx = minim_number_to_uint(args[1]);
+    idx = MINIM_NUMBER_TO_UINT(args[1]);
     if  (idx >= args[0]->u.vec.len)
         return minim_error("index out of bounds: ~u", "vector-set!", idx);
 

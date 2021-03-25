@@ -4,66 +4,19 @@
 #include <gmp.h>
 #include "env.h"
 
-typedef enum MinimNumberType
-{
-    MINIM_NUMBER_EXACT,
-    MINIM_NUMBER_INEXACT
-} MinimNumberType;
-
-typedef struct MinimNumber
-{
-    union
-    {
-        mpq_t rat;
-        double fl;
-    };
-    MinimNumberType type;
-} MinimNumber;
-
-#define MINIM_NUMBER(obj)           (obj->u.ptrs.p1)
-#define MINIM_NUMBER_EXACTP(num)    (num->type == MINIM_NUMBER_EXACT)
-#define MINIM_NUMBER_INEXACTP(num)  (num->type == MINIM_NUMBER_INEXACT)
-
-// Initialization & setters
-
-void init_minim_number(MinimNumber **pnum, MinimNumberType type);
-void str_to_minim_number(MinimNumber* num, const char *str);
-
-void reinterpret_minim_number(MinimNumber *num, MinimNumberType type);
-void copy_minim_number(MinimNumber **pnum, MinimNumber *src);
-void free_minim_number(MinimNumber *num);
-
-char *minim_number_to_str(MinimNumber *num);
-int minim_number_cmp(MinimNumber *a, MinimNumber *b);
-
-// Predicates
-
-bool minim_number_zerop(MinimNumber *num);
-bool minim_number_negativep(MinimNumber *num);
-bool minim_number_positivep(MinimNumber *num);
-bool minim_number_exactp(MinimNumber *num);
-bool minim_number_inexactp(MinimNumber *num);
-bool minim_number_integerp(MinimNumber *num);
-bool minim_number_exactintp(MinimNumber *num);
-bool minim_number_exactnonnegintp(MinimNumber *num);
+#define MINIM_NUMBER_TO_UINT(obj)      mpz_get_ui(mpq_numref(MINIM_EXACT(obj)))
 
 // Internals
 
-bool minim_exactp(MinimObject *thing);
-bool minim_inexactp(MinimObject *thing);
+bool minim_zerop(MinimObject *num);
+bool minim_positivep(MinimObject *num);
+bool minim_negativep(MinimObject *num);
 bool minim_integerp(MinimObject *thing);
+bool minim_exact_integerp(MinimObject *thing);
 bool minim_exact_nonneg_intp(MinimObject *thing);
 
+int minim_number_cmp(MinimObject *a, MinimObject *b);
+
 bool assert_numerical_args(MinimObject **args, size_t argc, MinimObject **res, const char *name);
-
-void minim_number_to_bytes(MinimObject *obj, Buffer *bf);
-
-size_t minim_number_to_uint(MinimObject *obj);
-
-MinimNumber *minim_number_pi();
-MinimNumber *minim_number_phi();
-MinimNumber *minim_number_inf();
-MinimNumber *minim_number_ninf();
-MinimNumber *minim_number_nan();
 
 #endif

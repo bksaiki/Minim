@@ -1,4 +1,3 @@
-#include <gmp.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -136,11 +135,11 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
     }
     else if (MINIM_OBJ_EXACTP(src))
     {
-        mpq_ptr num;
+        mpq_ptr num = malloc(sizeof(__mpq_struct));
 
         mpq_init(num);
         mpq_set(num, MINIM_EXACT(src));
-        MINIM_EXACT(dest) = &num;
+        dest->u.ptrs.p1 = num;
     }
     else if (MINIM_OBJ_INEXACTP(src))
     {
@@ -364,8 +363,16 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         minim_cons_to_bytes(obj, bf);
         break;
 
-    case MINIM_OBJ_NUM:
-        minim_number_to_bytes(obj, bf);
+    // Dump integer limbs
+    case MINIM_OBJ_EXACT:
+        write_buffer(bf, MINIM_EXACT(obj)->_mp_num._mp_d,
+                     abs(MINIM_EXACT(obj)->_mp_num._mp_size) * sizeof(mp_limb_t));
+        write_buffer(bf, MINIM_EXACT(obj)->_mp_den._mp_d,
+                     abs(MINIM_EXACT(obj)->_mp_den._mp_size) * sizeof(mp_limb_t));
+        break;
+
+    case MINIM_OBJ_INEXACT:
+        write_buffer(bf, &MINIM_INEXACT(obj), sizeof(double));
         break;
 
     case MINIM_OBJ_AST:

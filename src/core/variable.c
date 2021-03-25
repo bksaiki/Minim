@@ -421,11 +421,11 @@ MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t arg
 MinimObject *minim_builtin_symbol_count(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+    mpq_ptr size = malloc(sizeof(__mpq_struct));
 
-    init_minim_number(&num, MINIM_NUMBER_EXACT);
-    mpq_set_ui(num->rat, env->table->size, 1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    mpq_init(size);
+    mpq_set_ui(size, env->table->size, 1);
+    init_minim_object(&res, MINIM_OBJ_EXACT, size);
     
     return res;
 }

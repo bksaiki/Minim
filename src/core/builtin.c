@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdarg.h>
 #include "builtin.h"
 #include "error.h"
@@ -66,11 +67,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "exact", MINIM_OBJ_FUNC, minim_builtin_to_exact);
     minim_load_builtin(env, "inexact", MINIM_OBJ_FUNC, minim_builtin_to_inexact);
 
-    minim_load_builtin(env, "pi", MINIM_OBJ_NUM, minim_number_pi());
-    minim_load_builtin(env, "phi", MINIM_OBJ_NUM, minim_number_phi());
-    minim_load_builtin(env, "inf", MINIM_OBJ_NUM, minim_number_inf());
-    minim_load_builtin(env, "-inf", MINIM_OBJ_NUM, minim_number_ninf());
-    minim_load_builtin(env, "nan", MINIM_OBJ_NUM, minim_number_nan());
+    minim_load_builtin(env, "pi", MINIM_OBJ_INEXACT, 3.141592653589793238465);
+    minim_load_builtin(env, "phi", MINIM_OBJ_INEXACT, 1.618033988749894848204);
+    minim_load_builtin(env, "inf", MINIM_OBJ_INEXACT, INFINITY);
+    minim_load_builtin(env, "-inf", MINIM_OBJ_INEXACT, -INFINITY);
+    minim_load_builtin(env, "nan", MINIM_OBJ_NUM, NAN);
 
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);
