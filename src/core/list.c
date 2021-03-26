@@ -1,3 +1,4 @@
+#include <gmp.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -339,13 +340,14 @@ MinimObject *minim_builtin_tail(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_length(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+    mpq_ptr rat;
     size_t len;
 
     len = minim_list_length(args[0]);
-    init_minim_number(&num, MINIM_NUMBER_EXACT);
-    mpq_set_ui(num->rat, len, 1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    rat = malloc(sizeof(__mpq_struct));
+    mpq_init(rat);
+    mpq_set_ui(rat, len, 1);
+    init_minim_object(&res, MINIM_OBJ_EXACT, rat);
 
     return res;
 }
@@ -400,7 +402,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t ar
         return minim_argument_error("exact non-negative-integer", "list-ref", 1, args[1]);
 
     it = args[0];
-    idx = minim_number_to_uint(args[1]);
+    idx = MINIM_NUMBER_TO_UINT(args[1]);
 
     for (size_t i = 0; it && i < idx; ++i)
         it = MINIM_CDR(it);
