@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "assert.h"
@@ -8,133 +9,141 @@
 #include "error.h"
 #include "number.h"
 
-#define RATIONALIZE(r, num)                     \
-{                                               \
-    if ((num)->type == MINIM_NUMBER_INEXACT)    \
-    {                                           \
-        mpq_init(r);                            \
-        mpq_set_d(r, (num)->fl);                \
-    }                                           \
-    else                                        \
-    {                                           \
-        r[0] = (num)->rat[0];                   \
-    }                                           \
-}                                               
-
-#define FREE_IF_INEXACT(r, num)                 \
-{                                               \
-    if ((num)->type == MINIM_NUMBER_INEXACT)    \
-        mpq_clear(r);                           \
-}
-
-#define GET_FLOAT(num)  (((num)->type == MINIM_NUMBER_EXACT) ?  \
-                            mpq_get_d(num->rat) :               \
-                            num->fl)
+#define GET_FLOAT(obj) (MINIM_OBJ_EXACTP(obj) ? mpq_get_d(MINIM_EXACT(obj)) : MINIM_INEXACT(obj))
 
 // Internals
 
-static void minim_number_set(MinimNumber *num, MinimNumber *src)
+static bool all_exact(size_t argc, MinimObject **args)
 {
-    reinterpret_minim_number(num, src->type);
-    if (src->type == MINIM_NUMBER_EXACT)
-        mpq_set(num->rat, src->rat);
-    else
-        num->fl = src->fl;
-}
-
-static void minim_number_neg(MinimNumber *res, MinimNumber *a)
-{
-    if (a->type == MINIM_NUMBER_EXACT)  mpq_neg(res->rat, a->rat);
-    else                                res->fl = - a->fl;
-}
-
-static void minim_number_add(MinimNumber *res, MinimNumber *a, MinimNumber *b)
-{
-    double fa, fb;
-
-    if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
+    for (size_t i = 0; i < argc; ++i)
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_add(res->rat, a->rat, b->rat);
+        if (!MINIM_OBJ_EXACTP(args[i]))
+            return false;
+    }
+
+    return true;
+}
+
+static MinimObject *minim_add(size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (all_exact(argc, args))
+    {
+        OPT_MOVE_REF(res, args[0]);
+        for (size_t i = 1; i < argc; ++i)
+            mpq_add(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(args[i]));
     }
     else
-    {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
-
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa + fb;
+    {   
+        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(args[0]));
+        for (size_t i = 1; i < argc; ++i)
+            MINIM_INEXACT(res) += MINIM_INEXACT(args[i]);
     }
+
+    return res;
 }
 
-static void minim_number_sub(MinimNumber *res, MinimNumber *a, MinimNumber *b)
+static MinimObject *minim_neg(MinimObject *x)
 {
-    double fa, fb;
+    MinimObject *res;
 
-    if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
+    if (MINIM_OBJ_EXACTP(x))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_sub(res->rat, a->rat, b->rat);
+        res = copy2_minim_object(x);
+        mpq_neg(MINIM_EXACT(res), MINIM_EXACT(res));
     }
     else
     {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
-
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa - fb;
+        init_minim_object(&res, MINIM_OBJ_INEXACT, -MINIM_INEXACT(x));
     }
+
+    return res;
 }
 
-static void minim_number_mul(MinimNumber *res, MinimNumber *a, MinimNumber *b)
+static MinimObject *minim_sub2(MinimObject *x, MinimObject *y)
 {
-    double fa, fb;
+    MinimObject *res;
 
-    if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
+    if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_mul(res->rat, a->rat, b->rat);
+        res = copy2_minim_object(x);
+        mpq_sub(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(y));
     }
     else
     {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
-
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa * fb;
+        init_minim_object(&res, MINIM_OBJ_INEXACT, MINIM_INEXACT(x) - MINIM_INEXACT(y));
     }
+
+    return res;
 }
 
-static void minim_number_div(MinimNumber *res, MinimNumber *a, MinimNumber *b)
+static MinimObject *minim_sub(MinimObject *first, size_t restc, MinimObject **rest)
 {
-    double fa, fb;
+    MinimObject *res, *psum;
 
-    if (minim_number_zerop(b))
+    psum = minim_add(restc, rest);
+    res = minim_sub2(first, psum);
+    free_minim_object(psum);
+
+    return res;
+}
+
+static MinimObject *minim_mul(size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (all_exact(argc, args))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = NAN;
+        OPT_MOVE_REF(res, args[0]);
+        for (size_t i = 1; i < argc; ++i)
+            mpq_mul(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(args[i]));
     }
-    else if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
+    else
+    {   
+        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(args[0]));
+        for (size_t i = 1; i < argc; ++i)
+            MINIM_INEXACT(res) *= MINIM_INEXACT(args[i]);
+    }
+
+    return res;
+}
+
+static MinimObject *minim_reciprocal(MinimObject *x)
+{
+    MinimObject *res;
+
+    if (MINIM_OBJ_EXACTP(x))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_div(res->rat, a->rat, b->rat);
+        res = copy2_minim_object(x);
+        mpq_inv(MINIM_EXACT(res), MINIM_EXACT(res));
     }
     else
     {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
-
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa / fb;
+        init_minim_object(&res, MINIM_OBJ_INEXACT, 1.0 / MINIM_INEXACT(x));
     }
+
+    return res;
 }
 
-static void minim_number_abs(MinimNumber *res, MinimNumber *a)
+static MinimObject *minim_div(size_t argc, MinimObject **args)
 {
-    if (minim_number_negativep(a))
-        minim_number_neg(res, a);
+    MinimObject *res;
+
+    if (all_exact(argc, args))
+    {
+        OPT_MOVE_REF(res, args[0]);
+        for (size_t i = 1; i < argc; ++i)
+            mpq_div(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(args[i]));
+    }
     else
-        minim_number_set(res, a);
+    {   
+        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(args[0]));
+        for (size_t i = 1; i < argc; ++i)
+            MINIM_INEXACT(res) /= MINIM_INEXACT(args[i]);
+    }
+
+    return res;
 }
 
 // Assumes integer arguments
@@ -416,22 +425,25 @@ static void minim_number_atan2(MinimNumber *res, MinimNumber *y, MinimNumber *x)
 MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+
+    if (!assert_numerical_args(args, argc, &res, "+"))
+        return res;
 
     if (argc == 0)
     {
-        init_minim_number(&num, MINIM_NUMBER_EXACT);
-        str_to_minim_number(num, "0");
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        return res;
-    }
+        mpq_ptr zero = malloc(sizeof(__mpq_struct));
 
-    if (assert_numerical_args(args, argc, &res, "+"))
+        mpq_init(zero);
+        mpq_set_ui(zero, 0, 1);
+        init_minim_object(&res, MINIM_OBJ_EXACT, zero);
+    }
+    else if (argc == 1)
     {
-        copy_minim_number(&num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        for (size_t i = 1; i < argc; ++i)
-            minim_number_add(num, num, args[i]->u.ptrs.p1);
+        OPT_MOVE_REF(res, args[0]);
+    }
+    else
+    {
+        res = minim_add(argc, args);
     }
 
     return res;
@@ -440,46 +452,37 @@ MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_sub(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+    
+    if (!assert_numerical_args(args, argc, &res, "-"))
+        return res;
 
-    if (assert_numerical_args(args, argc, &res, "-"))
-    {    
-        copy_minim_number(&num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        if (argc == 1)
-        {
-            minim_number_neg(num, num);
-        }
-        else
-        {
-            for (size_t i = 1; i < argc; ++i)
-                minim_number_sub(num, num, args[i]->u.ptrs.p1);
-        
-        }
-    }
-
-    return res;
+    if (argc == 1)          return minim_neg(args[0]);
+    else if (argc == 2)     return minim_sub2(args[0], args[1]);
+    else                    return minim_sub(args[0], argc - 1, &args[1]);
 }
 
 MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+
+    if (!assert_numerical_args(args, argc, &res, "*"))
+        return res;
 
     if (argc == 0)
     {
-        init_minim_number(&num, MINIM_NUMBER_EXACT);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        str_to_minim_number(num, "1");
-        return res;
-    }
+        mpq_ptr one = malloc(sizeof(__mpq_struct));
 
-    if (assert_numerical_args(args, argc, &res, "*"))
+        mpq_init(one);
+        mpq_set_ui(one, 0, 1);
+        init_minim_object(&res, MINIM_OBJ_EXACT, one);
+    }
+    else if (argc == 1)
     {
-        copy_minim_number(&num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        for (size_t i = 1; i < argc; ++i)
-            minim_number_mul(num, num, args[i]->u.ptrs.p1);
+        OPT_MOVE_REF(res, args[0]);
+    }
+    else
+    {
+        res = minim_mul(argc, args);
     }
 
     return res;
@@ -488,81 +491,71 @@ MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_div(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (assert_numerical_args(args, argc, &res, "/"))
-    {
-        init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_div(num, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-    }
+    if (!assert_numerical_args(args, argc, &res, "/"))
+        return res;
 
-    return res;
+    if (argc == 1)  return minim_reciprocal(args[0]);
+    else            return minim_div(argc, args);
 }
 
 MinimObject *minim_builtin_abs(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
     if (!assert_numerical_args(args, argc, &res, "abs"))
         return res;
     
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_abs(num, args[0]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
-
+    if (minim_negativep(args[0]))
+        return minim_neg(args[0]);
+    
+    OPT_MOVE_REF(res, args[0]);
     return res;
 }
 
 MinimObject *minim_builtin_max(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num, *max;
+    size_t max = 0;
 
     if (!assert_numerical_args(args, argc, &res, "max"))
         return res;
-
-    max = args[0]->u.ptrs.p1;
+    
+    res = args[max];
     for (size_t i = 1; i < argc; ++i)
     {
-        if (minim_number_cmp(args[i]->u.ptrs.p1, max) > 0)
-            max = args[i]->u.ptrs.p1;
+        if (minim_number_cmp(args[i], args[max]) > 0)
+            max = i;
     }
-    
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_set(num, max);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
 
+    OPT_MOVE_REF(res, args[max]);
     return res;
 }
 
 MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num, *min;
+    size_t min = 0;
 
     if (!assert_numerical_args(args, argc, &res, "min"))
         return res;
 
-    min = args[0]->u.ptrs.p1;
+    res = args[min];
     for (size_t i = 1; i < argc; ++i)
     {
-        if (minim_number_cmp(args[i]->u.ptrs.p1, min) < 0)
-            min = args[i]->u.ptrs.p1;
+        if (minim_number_cmp(args[i], args[min]) < 0)
+            min = i;
     }
-    
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_set(num, min);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
 
+    OPT_MOVE_REF(res, args[min]);
     return res;
 }
 
 MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *mod;
+    mpq_ptr r;
+    mpq_t q, d;
 
     if (!minim_integerp(args[0]))
         return minim_argument_error("integer", "mod", 0, args[0]);
@@ -570,10 +563,10 @@ MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc
     if (!minim_integerp(args[1]))
         return minim_argument_error("integer", "mod", 1, args[1]);
 
+    r = mallo
+
     init_minim_number(&mod, MINIM_NUMBER_EXACT);
     minim_number_modulo(mod, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, mod);
-
     return res;
 }
 
