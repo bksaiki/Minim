@@ -105,24 +105,8 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
         dest->flags |= MINIM_OBJ_OWNER; // override
         break;
 
-    case MINIM_OBJ_NUM:
-    case MINIM_OBJ_SYM:
-    case MINIM_OBJ_ERR:
-    case MINIM_OBJ_STRING:
-    case MINIM_OBJ_PAIR:
-    case MINIM_OBJ_VOID:
-    case MINIM_OBJ_FUNC:
-    case MINIM_OBJ_SYNTAX:
-    case MINIM_OBJ_CLOSURE:
-    case MINIM_OBJ_AST:
-    case MINIM_OBJ_SEQ:
-    case MINIM_OBJ_HASH:
-    case MINIM_OBJ_VECTOR:
-        dest->u = src->u;
-        break;
-    
     default:
-        printf("Unknown object type\n");
+        dest->u = src->u;
         break;
     }
 }

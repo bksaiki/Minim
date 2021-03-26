@@ -153,6 +153,15 @@ static MinimObject *minim_div(size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
+    for (size_t i = 1; i < argc; ++i)
+    {
+        if (minim_zerop(args[i]))
+        {
+            init_minim_object(&res, MINIM_OBJ_INEXACT, NAN);
+            return res;
+        }
+    }
+
     if (all_exact(argc, args))
     {
         OPT_MOVE_REF(res, args[0]);
@@ -391,7 +400,7 @@ MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc
     FREE_IF_INEXACT(q, args[0]);
     FREE_IF_INEXACT(d, args[1]);
 
-    if (MINIM_OBJ_EXACTP(args[0]) && MINIM_OBJ_INEXACTP(args[1]))
+    if (MINIM_OBJ_EXACTP(args[0]) && MINIM_OBJ_EXACTP(args[1]))
         init_minim_object(&res, MINIM_OBJ_EXACT, r);
     else
         init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r)); 
@@ -450,7 +459,7 @@ MinimObject *minim_builtin_log(MinimEnv *env, MinimObject **args, size_t argc)
     {
         init_minim_object(&res, MINIM_OBJ_INEXACT, NAN);
     }
-    if (MINIM_OBJ_EXACTP(args[0]) && mpq_cmp_ui(MINIM_EXACT(args[0]), 1, 1) == 0)
+    else if (MINIM_OBJ_EXACTP(args[0]) && mpq_cmp_ui(MINIM_EXACT(args[0]), 1, 1) == 0)
     {
         mpq_ptr zero = malloc(sizeof(__mpq_struct));
 

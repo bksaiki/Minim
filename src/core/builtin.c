@@ -71,7 +71,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "phi", MINIM_OBJ_INEXACT, 1.618033988749894848204);
     minim_load_builtin(env, "inf", MINIM_OBJ_INEXACT, INFINITY);
     minim_load_builtin(env, "-inf", MINIM_OBJ_INEXACT, -INFINITY);
-    minim_load_builtin(env, "nan", MINIM_OBJ_NUM, NAN);
+    minim_load_builtin(env, "nan", MINIM_OBJ_INEXACT, NAN);
 
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);

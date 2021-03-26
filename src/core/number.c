@@ -84,7 +84,7 @@ int minim_number_cmp(MinimObject *a, MinimObject *b)
 
         return v;
     }
-    else if (MINIM_OBJ_INEXACTP(b))
+    else if (MINIM_OBJ_EXACTP(b))
     {
         mpq_t r;
 
@@ -191,7 +191,7 @@ static bool minim_number_cmp_h(MinimObject **args, size_t argc, int op)
 
     for (size_t i = 0; i < argc - 1; ++i)
     {
-        cmp = minim_number_cmp(args[i]->u.ptrs.p1, args[i + 1]->u.ptrs.p1);
+        cmp = minim_number_cmp(args[i], args[i + 1]);
         
         if (op == 0)        b = (cmp == 0);
         else if (op == 1)   b = (cmp > 0);

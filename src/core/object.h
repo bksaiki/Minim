@@ -29,7 +29,6 @@ typedef enum MinimObjectType
 {
     MINIM_OBJ_VOID,
     MINIM_OBJ_BOOL,
-    MINIM_OBJ_NUM,
     MINIM_OBJ_EXACT,
     MINIM_OBJ_INEXACT,
     MINIM_OBJ_SYM,
