@@ -142,6 +142,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "modulo", MINIM_OBJ_FUNC, minim_builtin_modulo);
     minim_load_builtin(env, "remainder", MINIM_OBJ_FUNC, minim_builtin_remainder);
     minim_load_builtin(env, "quotient", MINIM_OBJ_FUNC, minim_builtin_quotient);
+    minim_load_builtin(env, "numerator", MINIM_OBJ_FUNC, minim_builtin_numerator);
+    minim_load_builtin(env, "denominator", MINIM_OBJ_FUNC, minim_builtin_denominator);
     minim_load_builtin(env, "gcd", MINIM_OBJ_FUNC, minim_builtin_gcd);
     minim_load_builtin(env, "lcm", MINIM_OBJ_FUNC, minim_builtin_lcm);
 
@@ -184,6 +186,8 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
                                 min, max, env, perr);                   \
             return false;                                               \
         }                                                               \
+                                                                        \
+        return true;                                                    \
     }                                                                   \
 }
 
@@ -310,6 +314,8 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, modulo, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, remainder, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, quotient, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, numerator, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, denominator, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, gcd, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, lcm, 2);
 

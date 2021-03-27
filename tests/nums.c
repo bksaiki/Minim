@@ -305,6 +305,34 @@ int main()
     }
 
     {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(numerator (/ 6 4))",          "3",
+            "(numerator (/ 7 4))",          "7",
+            "(numerator 3.5)",              "7.0"
+        };
+
+        printf("Testing 'numerator'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(denominator (/ 6 4))",          "2",
+            "(denominator (/ 7 4))",          "4",
+            "(denominator 3.5)",              "2.0"
+        };
+
+        printf("Testing 'denominator'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 4;
         char strs[8][256] =
         {

@@ -45,7 +45,7 @@
     }                                           \
 }
 
-#define FREE_RATIONAL(obj)                      \
+#define FREE_RATIONAL(rat)                      \
 {                                               \
     mpq_clear(rat);                             \
     free(rat);                                  \
@@ -451,6 +451,53 @@ MinimObject *minim_builtin_quotient(MinimEnv *env, MinimObject **args, size_t ar
         return minim_argument_error("integer", "quotient", 1, args[1]);
 
     return minim_int_2ary(args[0], args[1], mpz_tdiv_q);
+}
+
+MinimObject *minim_builtin_numerator(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    mpq_ptr r;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "numerator", 0, args[0]);
+
+    RATIONALIZE_COPY(r, args[0]);
+    mpz_set_ui(mpq_denref(r), 1);
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
+        FREE_RATIONAL(r);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_denominator(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    mpq_ptr r;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "denominator", 0, args[0]);
+
+    RATIONALIZE_COPY(r, args[0]);
+    mpz_set(mpq_numref(r), mpq_denref(r));
+    mpz_set_ui(mpq_denref(r), 1);
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
+        FREE_RATIONAL(r);
+    }
+
+    return res;
 }
 
 MinimObject *minim_builtin_gcd(MinimEnv *env, MinimObject **args, size_t argc)
