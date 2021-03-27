@@ -51,6 +51,25 @@ bool minim_exact_nonneg_intp(MinimObject *thing)
            mpz_cmp_ui(mpq_denref(MINIM_EXACT(thing)), 1) == 0;
 }
 
+MinimObject *int_to_minim_number(long int x)
+{
+    MinimObject *res;
+    mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+    mpq_init(rat);
+    mpq_set_si(rat, x, 1);
+    init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    return res;
+}
+
+MinimObject *float_to_minim_number(double x)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_INEXACT, x);
+    return res;
+}
+
 bool assert_numerical_args(MinimObject **args, size_t argc, MinimObject **res, const char *name)
 {
     for (size_t i = 0; i < argc; ++i)
