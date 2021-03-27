@@ -11,6 +11,8 @@
 bool minim_zerop(MinimObject *num);
 bool minim_positivep(MinimObject *num);
 bool minim_negativep(MinimObject *num);
+bool minim_evenp(MinimObject *num);
+bool minim_oddp(MinimObject *num);
 bool minim_integerp(MinimObject *thing);
 bool minim_exact_integerp(MinimObject *thing);
 bool minim_exact_nonneg_intp(MinimObject *thing);

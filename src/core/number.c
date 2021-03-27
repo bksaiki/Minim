@@ -29,6 +29,20 @@ bool minim_negativep(MinimObject *num)
            (MINIM_INEXACT(num) < 0.0);
 }
 
+bool minim_evenp(MinimObject *num)
+{
+    return MINIM_OBJ_EXACTP(num) ?
+           mpz_even_p(mpq_numref(MINIM_EXACT(num))) :
+           (fmod(MINIM_INEXACT(num), 2.0) == 0.0);
+}
+
+bool minim_oddp(MinimObject *num)
+{
+    return MINIM_OBJ_EXACTP(num) ?
+           mpz_odd_p(mpq_numref(MINIM_EXACT(num))) :
+           (fmod(MINIM_INEXACT(num), 2.0) == 1.0);
+}
+
 bool minim_integerp(MinimObject *thing)
 {
     if (!MINIM_OBJ_NUMBERP(thing))
@@ -173,6 +187,28 @@ MinimObject *minim_builtin_positivep(MinimEnv *env, MinimObject **args, size_t a
         return minim_argument_error("number", "positive?", 0, args[0]);
 
     init_minim_object(&res, MINIM_OBJ_BOOL, minim_positivep(args[0]));
+    return res;
+}
+
+MinimObject *minim_builtin_evenp(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "even?", 0, args[0]);
+    
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_evenp(args[0]));
+    return res;
+}
+
+MinimObject *minim_builtin_oddp(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "odd?", 0, args[0]);
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_oddp(args[0]));
     return res;
 }
 

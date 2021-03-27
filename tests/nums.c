@@ -257,15 +257,15 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(mod 1 1)",                "0",
-            "(mod 27 6)",               "3",
-            "(mod 10 3)",               "1",
-            "(mod -10 3)",              "2",
-            "(mod -10 -3)",             "-1",
-            "(mod 10 -3)",              "-2"
+            "(modulo 1 1)",                "0",
+            "(modulo 27 6)",               "3",
+            "(modulo 10 3)",               "1",
+            "(modulo -10 3)",              "2",
+            "(modulo -10 -3)",             "-1",
+            "(modulo 10 -3)",              "-2"
         };
 
-        printf("Testing 'mod'\n");
+        printf("Testing 'modulo'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -274,15 +274,32 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(rem 1 1)",                "0",
-            "(rem 27 6)",               "3",
-            "(rem 10 3)",               "1",
-            "(rem -10 3)",              "-1",
-            "(rem -10 -3)",             "-1",
-            "(rem 10 -3)",              "1"
+            "(remainder 1 1)",                "0",
+            "(remainder 27 6)",               "3",
+            "(remainder 10 3)",               "1",
+            "(remainder -10 3)",              "-1",
+            "(remainder -10 -3)",             "-1",
+            "(remainder 10 -3)",              "1"
         };
 
-        printf("Testing 'rem'\n");
+        printf("Testing 'remainder'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(quotient 1 1)",                "1",
+            "(quotient 27 6)",               "4",
+            "(quotient 10 3)",               "3",
+            "(quotient -10 3)",              "-3",
+            "(quotient -10 -3)",             "3",
+            "(quotient 10 -3)",              "-3"
+        };
+
+        printf("Testing 'quotient'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

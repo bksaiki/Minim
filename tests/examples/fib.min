@@ -2,5 +2,5 @@
 ; Prints fibonacci numbers
 ;
 
-(for ([i (in-range 100)])
+(for ([i (in-range 500)])
   (printf "fib(~a) = ~a\n" i (fibonacci i)))

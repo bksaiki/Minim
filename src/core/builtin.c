@@ -53,6 +53,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "zero?", MINIM_OBJ_FUNC, minim_builtin_zerop);
     minim_load_builtin(env, "positive?", MINIM_OBJ_FUNC, minim_builtin_positivep);
     minim_load_builtin(env, "negative?", MINIM_OBJ_FUNC, minim_builtin_negativep);
+    minim_load_builtin(env, "even?", MINIM_OBJ_FUNC, minim_builtin_evenp);
+    minim_load_builtin(env, "odd?", MINIM_OBJ_FUNC, minim_builtin_oddp);
     minim_load_builtin(env, "exact?", MINIM_OBJ_FUNC, minim_builtin_exactp);
     minim_load_builtin(env, "inexact?", MINIM_OBJ_FUNC, minim_builtin_inexactp);
     minim_load_builtin(env, "integer?", MINIM_OBJ_FUNC, minim_builtin_integerp);
@@ -137,8 +139,9 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "abs", MINIM_OBJ_FUNC, minim_builtin_abs);
     minim_load_builtin(env, "max", MINIM_OBJ_FUNC, minim_builtin_max);
     minim_load_builtin(env, "min", MINIM_OBJ_FUNC, minim_builtin_min);
-    minim_load_builtin(env, "mod", MINIM_OBJ_FUNC, minim_builtin_modulo);
-    minim_load_builtin(env, "rem", MINIM_OBJ_FUNC, minim_builtin_remainder);
+    minim_load_builtin(env, "modulo", MINIM_OBJ_FUNC, minim_builtin_modulo);
+    minim_load_builtin(env, "remainder", MINIM_OBJ_FUNC, minim_builtin_remainder);
+    minim_load_builtin(env, "quotient", MINIM_OBJ_FUNC, minim_builtin_quotient);
     minim_load_builtin(env, "gcd", MINIM_OBJ_FUNC, minim_builtin_gcd);
     minim_load_builtin(env, "lcm", MINIM_OBJ_FUNC, minim_builtin_lcm);
 
@@ -226,6 +229,8 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, zerop, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, positivep, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, negativep, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, evenp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, oddp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, exactp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, inexactp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, integerp, 1);
@@ -304,6 +309,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, abs, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, modulo, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, remainder, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, quotient, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, gcd, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, lcm, 2);
 

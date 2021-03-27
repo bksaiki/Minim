@@ -423,10 +423,10 @@ MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "mod", 0, args[0]);
+        return minim_argument_error("integer", "modulo", 0, args[0]);
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "mod", 1, args[1]);
+        return minim_argument_error("integer", "modulo", 1, args[1]);
 
     return minim_int_2ary(args[0], args[1], mpz_fdiv_r);
 }
@@ -434,12 +434,23 @@ MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc
 MinimObject *minim_builtin_remainder(MinimEnv *env, MinimObject **args, size_t argc)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "rem", 0, args[0]);
+        return minim_argument_error("integer", "remainder", 0, args[0]);
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "rem", 1, args[1]);
+        return minim_argument_error("integer", "remainder", 1, args[1]);
 
     return minim_int_2ary(args[0], args[1], mpz_tdiv_r);
+}
+
+MinimObject *minim_builtin_quotient(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "quotient", 0, args[0]);
+
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "quotient", 1, args[1]);
+
+    return minim_int_2ary(args[0], args[1], mpz_tdiv_q);
 }
 
 MinimObject *minim_builtin_gcd(MinimEnv *env, MinimObject **args, size_t argc)
