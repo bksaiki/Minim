@@ -26,20 +26,6 @@
         (loop (+ i 1) (+ x y) x)))
   (loop 1 1 0))
 
-(def gcd (a b)
-  (unless (and (integer? a) (integer? b))
-    (error 'gcd "expected integer arguments"))
-  (def loop (a b)
-    (if (= b 0)
-        a
-        (loop b (mod a b))))
-  (loop (abs a) (abs b)))
-
-(def lcm (a b)
-  (unless (and (integer? a) (integer? b))
-    (error 'lcm "expected integer arguments"))
-  (/ (* a b) (gcd a b)))
-
 (def sqr (x)
   (* x x))
 

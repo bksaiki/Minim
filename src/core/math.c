@@ -25,6 +25,17 @@
     }                                           \
 }
 
+#define RATIONALIZE_COPY(rat, obj)              \
+{                                               \
+    rat = malloc(sizeof(__mpq_struct));         \
+    mpq_init(rat);                              \
+                                                \
+    if (MINIM_OBJ_EXACTP(obj))                  \
+        mpq_set(rat, MINIM_EXACT(obj));         \
+    else                                        \
+        mpq_set_d(rat, MINIM_INEXACT(obj));     \
+}
+
 #define FREE_IF_INEXACT(rat, obj)               \
 {                                               \
     if (MINIM_OBJ_INEXACTP(obj))                \
@@ -32,6 +43,12 @@
         mpq_clear(rat);                         \
         free(rat);                              \
     }                                           \
+}
+
+#define FREE_RATIONAL(obj)                      \
+{                                               \
+    mpq_clear(rat);                             \
+    free(rat);                                  \
 }
 
 typedef void (*mpz_2ary)(mpz_ptr, mpz_srcptr, mpz_srcptr);
@@ -194,7 +211,7 @@ static MinimObject *minim_div(MinimObject *first, size_t restc, MinimObject **re
     return res;
 }
 
-static MinimObject *minim_div_rem(MinimObject *x, MinimObject *y, mpz_2ary fun)
+static MinimObject *minim_int_2ary(MinimObject *x, MinimObject *y, mpz_2ary fun)
 {
     MinimObject *res;
     mpq_ptr q, d, r;
@@ -411,7 +428,7 @@ MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc
     if (!minim_integerp(args[1]))
         return minim_argument_error("integer", "mod", 1, args[1]);
 
-    return minim_div_rem(args[0], args[1], mpz_fdiv_r);
+    return minim_int_2ary(args[0], args[1], mpz_fdiv_r);
 }
 
 MinimObject *minim_builtin_remainder(MinimEnv *env, MinimObject **args, size_t argc)
@@ -422,7 +439,29 @@ MinimObject *minim_builtin_remainder(MinimEnv *env, MinimObject **args, size_t a
     if (!minim_integerp(args[1]))
         return minim_argument_error("integer", "rem", 1, args[1]);
 
-    return minim_div_rem(args[0], args[1], mpz_tdiv_r);
+    return minim_int_2ary(args[0], args[1], mpz_tdiv_r);
+}
+
+MinimObject *minim_builtin_gcd(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "gcd", 0, args[0]);
+
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "gcd", 1, args[1]);
+
+    return minim_int_2ary(args[0], args[1], mpz_gcd);
+}
+
+MinimObject *minim_builtin_lcm(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "lcm", 0, args[0]);
+
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "lcm", 1, args[1]);
+
+    return minim_int_2ary(args[0], args[1], mpz_lcm);
 }
 
 MinimObject *minim_builtin_sqrt(MinimEnv *env, MinimObject **args, size_t argc)

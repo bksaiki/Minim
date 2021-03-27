@@ -288,6 +288,36 @@ int main()
     }
 
     {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(gcd 1 1)",                "1",
+            "(gcd 27 6)",               "3",
+            "(gcd 10 25)",              "5",
+            "(gcd 101 15)",             "1"
+        };
+
+        printf("Testing 'gcd'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(lcm 1 1)",                "1",
+            "(lcm 27 6)",               "54",
+            "(lcm 10 25)",              "50",
+            "(lcm 101 15)",             "1515"
+        };
+
+        printf("Testing 'lcm'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 5;
         char strs[10][256] =
         {
