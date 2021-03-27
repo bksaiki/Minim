@@ -40,17 +40,6 @@
     (error 'lcm "expected integer arguments"))
   (/ (* a b) (gcd a b)))
 
-(def remainder (a b)
-  (unless (and (integer? a) (integer? b))
-    (error 'remainder "expected integer arguments"))
-  (when (zero? b)
-    (error 'remainder "denominator cannot be 0"))
-  (def m (mod a b))
-  (cond
-   [(and (negative? a) (positive? b)) (- m b)]
-   [(and (positive? a) (negative? b)) (- m b)]
-   [else m]))
-
 (def sqr (x)
   (* x x))
 

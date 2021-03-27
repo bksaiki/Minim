@@ -271,6 +271,23 @@ int main()
     }
 
     {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(rem 1 1)",                "0",
+            "(rem 27 6)",               "3",
+            "(rem 10 3)",               "1",
+            "(rem -10 3)",              "-1",
+            "(rem -10 -3)",             "-1",
+            "(rem 10 -3)",              "1"
+        };
+
+        printf("Testing 'rem'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 5;
         char strs[10][256] =
         {

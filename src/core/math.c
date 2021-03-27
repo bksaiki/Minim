@@ -34,6 +34,8 @@
     }                                           \
 }
 
+typedef void (*mpz_2ary)(mpz_ptr, mpz_srcptr, mpz_srcptr);
+
 // Internals
 
 static bool all_exact(size_t argc, MinimObject **args)
@@ -189,6 +191,30 @@ static MinimObject *minim_div(MinimObject *first, size_t restc, MinimObject **re
     res = minim_div2(first, prod);
     free_minim_object(prod);
 
+    return res;
+}
+
+static MinimObject *minim_div_rem(MinimObject *x, MinimObject *y, mpz_2ary fun)
+{
+    MinimObject *res;
+    mpq_ptr q, d, r;
+
+    RATIONALIZE(q, x);
+    RATIONALIZE(d, y);
+
+    r = malloc(sizeof(__mpq_struct));
+    mpq_init(r);
+    mpq_set_ui(r, 0, 1);
+    fun(mpq_numref(r), mpq_numref(q), mpq_numref(d));
+
+    FREE_IF_INEXACT(q, x);
+    FREE_IF_INEXACT(d, y);
+
+    if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
+        init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
+    
     return res;
 }
 
@@ -379,32 +405,24 @@ MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
 
 MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
-    mpq_ptr q, d, r;
-
     if (!minim_integerp(args[0]))
         return minim_argument_error("integer", "mod", 0, args[0]);
 
     if (!minim_integerp(args[1]))
         return minim_argument_error("integer", "mod", 1, args[1]);
 
-    RATIONALIZE(q, args[0]);
-    RATIONALIZE(d, args[1]);
+    return minim_div_rem(args[0], args[1], mpz_fdiv_r);
+}
 
-    r = malloc(sizeof(__mpq_struct));
-    mpq_init(r);
-    mpq_set_ui(r, 0, 1);
-    mpz_fdiv_r(mpq_numref(r), mpq_numref(q), mpq_numref(d));
+MinimObject *minim_builtin_remainder(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "rem", 0, args[0]);
 
-    FREE_IF_INEXACT(q, args[0]);
-    FREE_IF_INEXACT(d, args[1]);
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "rem", 1, args[1]);
 
-    if (MINIM_OBJ_EXACTP(args[0]) && MINIM_OBJ_EXACTP(args[1]))
-        init_minim_object(&res, MINIM_OBJ_EXACT, r);
-    else
-        init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r)); 
-
-    return res;
+    return minim_div_rem(args[0], args[1], mpz_tdiv_r);
 }
 
 MinimObject *minim_builtin_sqrt(MinimEnv *env, MinimObject **args, size_t argc)
