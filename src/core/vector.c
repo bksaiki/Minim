@@ -38,7 +38,7 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
 
 MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
+    MinimObject *res, *zero;
     MinimObject **arr;
     size_t size;
     
@@ -47,15 +47,11 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
     
     size = MINIM_NUMBER_TO_UINT(args[0]);
     arr = malloc(size * sizeof(MinimObject*));
+    zero = int_to_minim_number(0);
     for (size_t i = 0; i < size; ++i)
-    {
-        mpq_ptr zero = malloc(sizeof(__mpq_struct));
-
-        mpq_init(zero);
-        mpq_set_ui(zero, 0, 1);
-        init_minim_object(&arr[i], MINIM_OBJ_EXACT, zero);
-    }   
-
+        copy_minim_object(&arr[i], zero);
+    
+    free_minim_object(zero);
     init_minim_object(&res, MINIM_OBJ_VECTOR, arr, size);
     return res;
 }

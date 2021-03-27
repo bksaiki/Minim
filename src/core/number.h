@@ -16,6 +16,7 @@ bool minim_exact_integerp(MinimObject *thing);
 bool minim_exact_nonneg_intp(MinimObject *thing);
 
 MinimObject *int_to_minim_number(long int x);
+MinimObject *uint_to_minim_number(size_t x);
 MinimObject *float_to_minim_number(double x);
 
 int minim_number_cmp(MinimObject *a, MinimObject *b);

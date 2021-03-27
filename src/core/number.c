@@ -62,6 +62,17 @@ MinimObject *int_to_minim_number(long int x)
     return res;
 }
 
+MinimObject *uint_to_minim_number(size_t x)
+{
+    MinimObject *res;
+    mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+    mpq_init(rat);
+    mpq_set_ui(rat, x, 1);
+    init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    return res;
+}
+
 MinimObject *float_to_minim_number(double x)
 {
     MinimObject *res;

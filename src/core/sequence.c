@@ -1,4 +1,3 @@
-#include <gmp.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,14 +72,13 @@ void minim_seq_next(MinimSeq *seq)
 {
     if (seq->type == MINIM_SEQ_NUM_RANGE)
     {
-        MinimObject *state = seq->state;
-        mpq_t one;
+        MinimObject *state, *one;
 
-        mpq_init(one);
-        mpq_set_ui(one, 1, 1);
-        mpq_add(MINIM_EXACT(state), MINIM_EXACT(state), one);
-        mpq_clear(one);
-    
+        state = seq->state;
+        one = int_to_minim_number(1);
+        mpq_add(MINIM_EXACT(state), MINIM_EXACT(state), MINIM_EXACT(one));
+        free_minim_object(one);
+
         seq->done = (minim_number_cmp(state, seq->end) == 0);     
     }
 }
@@ -120,11 +118,7 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
     }
     else
     {
-        mpq_ptr zero = malloc(sizeof(__mpq_struct));
-
-        mpq_init(zero);
-        mpq_set_ui(zero, 0, 1);
-        init_minim_object(&begin, MINIM_OBJ_EXACT, zero);
+        begin = int_to_minim_number(0);
         end = copy2_minim_object(args[0]);
     }
 
@@ -138,29 +132,16 @@ MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t
 {
     MinimObject *res, *begin, *end;
     MinimSeq *seq;
-    mpq_ptr neg_one;
 
     if (argc == 1 && !minim_exact_nonneg_intp((args[0])))
         return minim_argument_error("non-negative exact integer", "in-naturals", 1, args[0]);
 
     if (argc == 1)
-    {
         begin = copy2_minim_object(args[0]);
-    }
     else
-    {
-        mpq_ptr zero = malloc(sizeof(__mpq_struct));
+        begin = int_to_minim_number(0);
 
-        mpq_init(zero);
-        mpq_set_ui(zero, 0, 1);
-        init_minim_object(&begin, MINIM_OBJ_EXACT, zero);
-    }
-
-    neg_one = malloc(sizeof(__mpq_struct));
-    mpq_init(neg_one);
-    mpq_set_si(neg_one, -1, 1);
-    init_minim_object(&end, MINIM_OBJ_EXACT, neg_one);
-
+    end = int_to_minim_number(-1);
     init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
     init_minim_object(&res, MINIM_OBJ_SEQ, seq);
 
