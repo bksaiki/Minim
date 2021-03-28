@@ -1,3 +1,8 @@
+Version 0.2.1
+27 March 2020
+Added many number/math functions: trigonometric, rounding, number theory
+Added verbose arity, argument errors
+
 Version 0.2.0
 26 February 2020
 Added file reading, errors with backtracing and file locations, and a small
