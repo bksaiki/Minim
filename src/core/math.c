@@ -211,6 +211,55 @@ static MinimObject *minim_div(MinimObject *first, size_t restc, MinimObject **re
     return res;
 }
 
+static MinimObject *minim_exact_round_c11(MinimObject *x)
+{
+    MinimObject *res;
+    mpq_ptr r;
+    mpq_t a;
+
+    if (minim_zerop(x))
+    {
+        return int_to_minim_number(0);
+    }
+    
+    if (minim_integerp(x))
+    {
+        copy_minim_object(&res, x);
+        return res;
+    }
+
+    r = malloc(sizeof(__mpq_struct));
+    mpq_inits(a, r, NULL);
+    mpq_abs(a, MINIM_EXACT(x));
+
+    if (mpz_cmp_ui(mpq_denref(a), 2) == 0) // a = d / 2
+    {
+        // C11 says round ties away from 0 (abs ceiling)
+        mpz_set_ui(mpq_denref(r), 1);
+        mpz_cdiv_q(mpq_numref(r), mpq_numref(a), mpq_denref(a));
+    }
+    else
+    {
+        mpz_t q, m;
+
+        mpz_inits(q, m, NULL);
+        mpz_tdiv_qr(q, m, mpq_numref(a), mpq_denref(a));
+
+        mpz_mul_ui(m, m, 2);
+        if (mpz_cmp(m, mpq_denref(a)) > 0)
+            mpz_add_ui(q, q, 1);
+
+        mpq_set_z(r, q);
+        mpz_clears(q, m, NULL);
+    }
+
+    if (minim_negativep(x))
+        mpq_neg(r, r);
+
+    init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    return res;
+}
+
 static MinimObject *minim_int_2ary(MinimObject *x, MinimObject *y, mpz_2ary fun)
 {
     MinimObject *res;
@@ -496,6 +545,96 @@ MinimObject *minim_builtin_denominator(MinimEnv *env, MinimObject **args, size_t
         init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
         FREE_RATIONAL(r);
     }
+
+    return res;
+}
+
+MinimObject *minim_builtin_floor(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "floor", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpz_set_ui(mpq_denref(rat), 1);
+        mpz_fdiv_q(mpq_numref(rat), mpq_numref(MINIM_EXACT(args[0])),
+                                    mpq_denref(MINIM_EXACT(args[0])));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, floor(MINIM_INEXACT(args[0])));
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_ceil(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "ceil", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpz_set_ui(mpq_denref(rat), 1);
+        mpz_cdiv_q(mpq_numref(rat), mpq_numref(MINIM_EXACT(args[0])),
+                                    mpq_denref(MINIM_EXACT(args[0])));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, ceil(MINIM_INEXACT(args[0])));
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_trunc(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "trunc", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpz_set_ui(mpq_denref(rat), 1);
+        mpz_tdiv_q(mpq_numref(rat), mpq_numref(MINIM_EXACT(args[0])),
+                                    mpq_denref(MINIM_EXACT(args[0])));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, trunc(MINIM_INEXACT(args[0])));
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_round(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "round", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+        res = minim_exact_round_c11(args[0]);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, round(MINIM_INEXACT(args[0])));
 
     return res;
 }

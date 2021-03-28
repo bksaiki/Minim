@@ -336,6 +336,66 @@ int main()
         const int COUNT = 4;
         char strs[8][256] =
         {
+            "(floor -4.3)",             "-5.0",
+            "(floor 3.5)",              "3.0",
+            "(floor -5/3)",             "-2",
+            "(floor 3/2)",              "1"   
+        };
+
+        printf("Testing 'floor'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(ceil -4.3)",             "-4.0",
+            "(ceil 3.5)",              "4.0",
+            "(ceil -5/3)",             "-1",
+            "(ceil 3/2)",              "2"   
+        };
+
+        printf("Testing 'ceil'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(trunc -4.3)",             "-4.0",
+            "(trunc 3.5)",              "3.0",
+            "(trunc -5/3)",             "-1",
+            "(trunc 3/2)",              "1"   
+        };
+
+        printf("Testing 'trunc'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(round -4.3)",             "-4.0",
+            "(round 3.5)",              "4.0",
+            "(round -5/3)",             "-2",
+            "(round 3/2)",              "2"   
+        };
+
+        printf("Testing 'round'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
             "(gcd 1 1)",                "1",
             "(gcd 27 6)",               "3",
             "(gcd 10 25)",              "5",
