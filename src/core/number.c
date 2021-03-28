@@ -65,6 +65,16 @@ bool minim_exact_nonneg_intp(MinimObject *thing)
            mpz_cmp_ui(mpq_denref(MINIM_EXACT(thing)), 1) == 0;
 }
 
+bool minim_nanp(MinimObject *thing)
+{
+    return MINIM_OBJ_INEXACTP(thing) && isnan(MINIM_INEXACT(thing));
+}
+
+bool minim_infinitep(MinimObject *thing)
+{
+    return MINIM_OBJ_INEXACTP(thing) && isinf(MINIM_INEXACT(thing));
+}
+
 MinimObject *int_to_minim_number(long int x)
 {
     MinimObject *res;
@@ -247,6 +257,22 @@ MinimObject *minim_builtin_exact_integerp(MinimEnv *env, MinimObject **args, siz
     MinimObject *res;
 
     init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_EXACTP(args[0]) && minim_integerp(args[0]));
+    return res;
+}
+
+MinimObject *minim_builtin_nanp(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_nanp(args[0]));
+    return res;
+}
+
+MinimObject *minim_builtin_infinitep(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, minim_infinitep(args[0]));
     return res;
 }
 

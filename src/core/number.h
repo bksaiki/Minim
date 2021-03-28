@@ -16,6 +16,8 @@ bool minim_oddp(MinimObject *num);
 bool minim_integerp(MinimObject *thing);
 bool minim_exact_integerp(MinimObject *thing);
 bool minim_exact_nonneg_intp(MinimObject *thing);
+bool minim_nanp(MinimObject *thing);
+bool minim_infinitep(MinimObject *thing);
 
 MinimObject *int_to_minim_number(long int x);
 MinimObject *uint_to_minim_number(size_t x);

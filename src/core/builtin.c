@@ -59,6 +59,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "inexact?", MINIM_OBJ_FUNC, minim_builtin_inexactp);
     minim_load_builtin(env, "integer?", MINIM_OBJ_FUNC, minim_builtin_integerp);
     minim_load_builtin(env, "exact-integer?", MINIM_OBJ_FUNC, minim_builtin_exact_integerp);
+    minim_load_builtin(env, "nan?", MINIM_OBJ_FUNC, minim_builtin_nanp);
+    minim_load_builtin(env, "infinite?", MINIM_OBJ_FUNC, minim_builtin_infinitep);
     
     minim_load_builtin(env, "=", MINIM_OBJ_FUNC, minim_builtin_eq);
     minim_load_builtin(env, ">", MINIM_OBJ_FUNC, minim_builtin_gt);
@@ -244,6 +246,8 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, inexactp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, integerp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, exact_integerp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, nanp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, infinitep, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, eq, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, gt, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, lt, 1);
