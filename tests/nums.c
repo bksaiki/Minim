@@ -257,15 +257,167 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(mod 1 1)",                "0",
-            "(mod 27 6)",               "3",
-            "(mod 10 3)",               "1",
-            "(mod -10 3)",              "2",
-            "(mod -10 -3)",             "-1",
-            "(mod 10 -3)",              "-2"
+            "(modulo 1 1)",                "0",
+            "(modulo 27 6)",               "3",
+            "(modulo 10 3)",               "1",
+            "(modulo -10 3)",              "2",
+            "(modulo -10 -3)",             "-1",
+            "(modulo 10 -3)",              "-2"
         };
 
-        printf("Testing 'mod'\n");
+        printf("Testing 'modulo'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(remainder 1 1)",                "0",
+            "(remainder 27 6)",               "3",
+            "(remainder 10 3)",               "1",
+            "(remainder -10 3)",              "-1",
+            "(remainder -10 -3)",             "-1",
+            "(remainder 10 -3)",              "1"
+        };
+
+        printf("Testing 'remainder'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(quotient 1 1)",                "1",
+            "(quotient 27 6)",               "4",
+            "(quotient 10 3)",               "3",
+            "(quotient -10 3)",              "-3",
+            "(quotient -10 -3)",             "3",
+            "(quotient 10 -3)",              "-3"
+        };
+
+        printf("Testing 'quotient'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(numerator (/ 6 4))",          "3",
+            "(numerator (/ 7 4))",          "7",
+            "(numerator 3.5)",              "7.0"
+        };
+
+        printf("Testing 'numerator'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(denominator (/ 6 4))",          "2",
+            "(denominator (/ 7 4))",          "4",
+            "(denominator 3.5)",              "2.0"
+        };
+
+        printf("Testing 'denominator'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(floor -4.3)",             "-5.0",
+            "(floor 3.5)",              "3.0",
+            "(floor -5/3)",             "-2",
+            "(floor 3/2)",              "1"   
+        };
+
+        printf("Testing 'floor'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(ceil -4.3)",             "-4.0",
+            "(ceil 3.5)",              "4.0",
+            "(ceil -5/3)",             "-1",
+            "(ceil 3/2)",              "2"   
+        };
+
+        printf("Testing 'ceil'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(trunc -4.3)",             "-4.0",
+            "(trunc 3.5)",              "3.0",
+            "(trunc -5/3)",             "-1",
+            "(trunc 3/2)",              "1"   
+        };
+
+        printf("Testing 'trunc'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(round -4.3)",             "-4.0",
+            "(round 3.5)",              "4.0",
+            "(round -5/3)",             "-2",
+            "(round 3/2)",              "2"   
+        };
+
+        printf("Testing 'round'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(gcd 1 1)",                "1",
+            "(gcd 27 6)",               "3",
+            "(gcd 10 25)",              "5",
+            "(gcd 101 15)",             "1"
+        };
+
+        printf("Testing 'gcd'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(lcm 1 1)",                "1",
+            "(lcm 27 6)",               "54",
+            "(lcm 10 25)",              "50",
+            "(lcm 101 15)",             "1515"
+        };
+
+        printf("Testing 'lcm'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -115,21 +116,27 @@ void writeu_buffer(Buffer *bf, unsigned long ul)
 void writed_buffer(Buffer *bf, double d)
 {
     size_t len;
-    bool dot = false;
 
     resize_buffer(bf, bf->pos + 25);
-    len = sprintf(bf->data + bf->pos, "%.16g", d);
-
-    for (size_t i = 0; i < len; ++i)
+    len = sprintf(&bf->data[bf->pos], "%.16g", d);
+    if (!isinf(d) && !isnan(d))
     {
-        if (*(bf->data + bf->pos + i) == '.')
-            dot = true;
-    }
+        bool dot = false;
 
-    if (!dot)
-    {
-        sprintf(bf->data + bf->pos + len, ".0");
-        len += 2;
+        for (size_t i = bf->pos; bf->data[i]; ++i)
+        {
+            if (bf->data[i] == '.' || bf->data[i] == 'e')
+            {
+                dot = true;
+                break;
+            }
+        }
+
+        if (!dot)
+        {
+            sprintf(&bf->data[bf->pos + len], ".0");
+            len += 2;
+        }
     }
 
     bf->pos += len;

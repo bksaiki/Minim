@@ -17,6 +17,7 @@ typedef struct MinimObject
         struct { char *str; void *none; } str;
         struct { void *p1, *p2; } ptrs;
         struct { long int i1, i2; } ints;
+        struct { double f1, f2; } fls;
         struct { struct MinimObject *car, *cdr; } pair;
         struct { struct MinimObject **arr; size_t len; } vec;
     } u;
@@ -28,7 +29,8 @@ typedef enum MinimObjectType
 {
     MINIM_OBJ_VOID,
     MINIM_OBJ_BOOL,
-    MINIM_OBJ_NUM,
+    MINIM_OBJ_EXACT,
+    MINIM_OBJ_INEXACT,
     MINIM_OBJ_SYM,
     MINIM_OBJ_STRING,
     MINIM_OBJ_PAIR,
@@ -48,15 +50,16 @@ typedef bool (*MinimPred)(MinimObject *);
 // Setters
 
 #define MINIM_OBJ_SET_OWNER(obj)        (obj->flags |= MINIM_OBJ_OWNER)
-#define MINIM_OBJ_SAME_TYPE(obj, t)     (obj->type == t)
 
 // Predicates 
 
-#define MINIM_OBJ_OWNERP(obj)       (obj->flags & MINIM_OBJ_OWNER)
+#define MINIM_OBJ_OWNERP(obj)           (obj->flags & MINIM_OBJ_OWNER)
+#define MINIM_OBJ_SAME_TYPE(obj, t)     (obj->type == t)
 
 #define MINIM_OBJ_VOIDP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VOID)
 #define MINIM_OBJ_BOOLP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_BOOL)
-#define MINIM_OBJ_NUMBERP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_NUM)
+#define MINIM_OBJ_EXACTP(obj)       MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXACT)
+#define MINIM_OBJ_INEXACTP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_INEXACT)
 #define MINIM_OBJ_SYMBOLP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SYM)
 #define MINIM_OBJ_STRINGP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_STRING)
 #define MINIM_OBJ_PAIRP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PAIR)
@@ -69,7 +72,8 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_OBJ_HASHP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_HASH)
 #define MINIM_OBJ_VECTORP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
 
-#define MINIM_OBJ_FUNCP(obj)     (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
+#define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
+#define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
 
 // Accessors 
 
@@ -80,6 +84,9 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_CADR(obj)     MINIM_CAR(MINIM_CDR(obj))
 #define MINIM_CDAR(obj)     MINIM_CDR(MINIM_CAR(obj))
 #define MINIM_CDDR(obj)     MINIM_CDR(MINIM_CDR(pbj))
+
+#define MINIM_EXACT(obj)    ((mpq_ptr) obj->u.ptrs.p1)
+#define MINIM_INEXACT(obj)  (obj->u.fls.f1)
 
 
 // Optimized move:

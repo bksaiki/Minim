@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdarg.h>
 #include "builtin.h"
 #include "error.h"
@@ -52,6 +53,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "zero?", MINIM_OBJ_FUNC, minim_builtin_zerop);
     minim_load_builtin(env, "positive?", MINIM_OBJ_FUNC, minim_builtin_positivep);
     minim_load_builtin(env, "negative?", MINIM_OBJ_FUNC, minim_builtin_negativep);
+    minim_load_builtin(env, "even?", MINIM_OBJ_FUNC, minim_builtin_evenp);
+    minim_load_builtin(env, "odd?", MINIM_OBJ_FUNC, minim_builtin_oddp);
     minim_load_builtin(env, "exact?", MINIM_OBJ_FUNC, minim_builtin_exactp);
     minim_load_builtin(env, "inexact?", MINIM_OBJ_FUNC, minim_builtin_inexactp);
     minim_load_builtin(env, "integer?", MINIM_OBJ_FUNC, minim_builtin_integerp);
@@ -66,11 +69,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "exact", MINIM_OBJ_FUNC, minim_builtin_to_exact);
     minim_load_builtin(env, "inexact", MINIM_OBJ_FUNC, minim_builtin_to_inexact);
 
-    minim_load_builtin(env, "pi", MINIM_OBJ_NUM, minim_number_pi());
-    minim_load_builtin(env, "phi", MINIM_OBJ_NUM, minim_number_phi());
-    minim_load_builtin(env, "inf", MINIM_OBJ_NUM, minim_number_inf());
-    minim_load_builtin(env, "-inf", MINIM_OBJ_NUM, minim_number_ninf());
-    minim_load_builtin(env, "nan", MINIM_OBJ_NUM, minim_number_nan());
+    minim_load_builtin(env, "pi", MINIM_OBJ_INEXACT, 3.141592653589793238465);
+    minim_load_builtin(env, "phi", MINIM_OBJ_INEXACT, 1.618033988749894848204);
+    minim_load_builtin(env, "inf", MINIM_OBJ_INEXACT, INFINITY);
+    minim_load_builtin(env, "-inf", MINIM_OBJ_INEXACT, -INFINITY);
+    minim_load_builtin(env, "nan", MINIM_OBJ_INEXACT, NAN);
 
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);
@@ -136,9 +139,20 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "abs", MINIM_OBJ_FUNC, minim_builtin_abs);
     minim_load_builtin(env, "max", MINIM_OBJ_FUNC, minim_builtin_max);
     minim_load_builtin(env, "min", MINIM_OBJ_FUNC, minim_builtin_min);
-    minim_load_builtin(env, "mod", MINIM_OBJ_FUNC, minim_builtin_modulo);
-    minim_load_builtin(env, "sqrt", MINIM_OBJ_FUNC, minim_builtin_sqrt);
+    minim_load_builtin(env, "modulo", MINIM_OBJ_FUNC, minim_builtin_modulo);
+    minim_load_builtin(env, "remainder", MINIM_OBJ_FUNC, minim_builtin_remainder);
+    minim_load_builtin(env, "quotient", MINIM_OBJ_FUNC, minim_builtin_quotient);
+    minim_load_builtin(env, "numerator", MINIM_OBJ_FUNC, minim_builtin_numerator);
+    minim_load_builtin(env, "denominator", MINIM_OBJ_FUNC, minim_builtin_denominator);
+    minim_load_builtin(env, "gcd", MINIM_OBJ_FUNC, minim_builtin_gcd);
+    minim_load_builtin(env, "lcm", MINIM_OBJ_FUNC, minim_builtin_lcm);
 
+    minim_load_builtin(env, "floor", MINIM_OBJ_FUNC, minim_builtin_floor);
+    minim_load_builtin(env, "ceil", MINIM_OBJ_FUNC, minim_builtin_ceil);
+    minim_load_builtin(env, "trunc", MINIM_OBJ_FUNC, minim_builtin_trunc);
+    minim_load_builtin(env, "round", MINIM_OBJ_FUNC, minim_builtin_round);
+
+    minim_load_builtin(env, "sqrt", MINIM_OBJ_FUNC, minim_builtin_sqrt);
     minim_load_builtin(env, "exp", MINIM_OBJ_FUNC, minim_builtin_exp);
     minim_load_builtin(env, "log", MINIM_OBJ_FUNC, minim_builtin_log);
     minim_load_builtin(env, "pow", MINIM_OBJ_FUNC, minim_builtin_pow);
@@ -177,6 +191,8 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
                                 min, max, env, perr);                   \
             return false;                                               \
         }                                                               \
+                                                                        \
+        return true;                                                    \
     }                                                                   \
 }
 
@@ -222,6 +238,8 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, zerop, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, positivep, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, negativep, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, evenp, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, oddp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, exactp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, inexactp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, integerp, 1);
@@ -298,12 +316,24 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_MIN_ARITY(fun, argc, env, perr, max, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, min, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, abs, 1);
-    CHECK_EXACT_ARITY(fun, argc, env, perr, sqrt, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, modulo, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, remainder, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, quotient, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, numerator, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, denominator, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, gcd, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, lcm, 2);
 
+    CHECK_EXACT_ARITY(fun, argc, env, perr, floor, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, ceil, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, trunc, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, round, 1);
+
+    CHECK_EXACT_ARITY(fun, argc, env, perr, sqrt, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, exp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, log, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, pow, 2);
+
     CHECK_EXACT_ARITY(fun, argc, env, perr, sin, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, cos, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, tan, 1);

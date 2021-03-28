@@ -17,16 +17,11 @@ void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
     if (type == MINIM_SEQ_NUM_RANGE)
     {
         seq = malloc(sizeof(MinimSeq));
-        seq->state = va_arg(v, MinimNumber*);
-        seq->end = va_arg(v, MinimNumber*);
+        seq->state = va_arg(v, MinimObject*);
+        seq->end = va_arg(v, MinimObject*);
         seq->type = type;
         seq->done = (minim_number_cmp(seq->state, seq->end) == 0);
         *pseq = seq;
-    }
-    else
-    {
-        *pseq = NULL;
-        printf("Unknown sequence type\n...");
     }
 
     va_end(v);
@@ -38,22 +33,16 @@ void copy_minim_seq(MinimSeq **pseq, MinimSeq *src)
 
     if (src->type == MINIM_SEQ_NUM_RANGE)
     {
-        MinimNumber *begin, *end;
+        MinimObject *begin, *end;
 
-        copy_minim_number(&begin, src->state);
-        copy_minim_number(&end, src->end);
+        copy_minim_object(&begin, src->state);
+        copy_minim_object(&end, src->end);
         seq->state = begin;
         seq->end = end;
         seq->type = src->type;
         seq->done = src->done;   
         *pseq = seq;
     }
-    else
-    {
-        *pseq = NULL;
-        printf("Unknown sequence type\n...");
-    }
-
 }
 
 void free_minim_seq(MinimSeq *seq)
@@ -61,12 +50,8 @@ void free_minim_seq(MinimSeq *seq)
     switch (seq->type)
     {
     case MINIM_SEQ_NUM_RANGE:
-        free_minim_number(seq->state);
-        free_minim_number(seq->end);
-        break;
-    
-    default:
-        printf("Unknown sequence type\n...");
+        free_minim_object(seq->state);
+        free_minim_object(seq->end);
         break;
     }
 
@@ -75,38 +60,26 @@ void free_minim_seq(MinimSeq *seq)
 
 MinimObject *minim_seq_get(MinimSeq *seq)
 {
-    if (seq->type == MINIM_SEQ_NUM_RANGE)
-    {
-        MinimObject *obj;
-        MinimNumber *num;
+    MinimObject *obj;
 
-        copy_minim_number(&num, seq->state);
-        init_minim_object(&obj, MINIM_OBJ_NUM, num);
-        return obj;
-    }
-    else
-    {
-        printf("Unknown sequence type\n...");
-        return NULL;
-    }
+    if (seq->type == MINIM_SEQ_NUM_RANGE)
+        copy_minim_object(&obj, seq->state);
+
+    return obj;
 }
 
 void minim_seq_next(MinimSeq *seq)
 {
     if (seq->type == MINIM_SEQ_NUM_RANGE)
     {
-        mpq_t one;
+        MinimObject *state, *one;
 
-        mpq_init(one);
-        mpq_set_ui(one, 1, 1);
-        mpq_add(seq->state, seq->state, one);
-        mpq_clear(one);
-    
-        seq->done = (minim_number_cmp(seq->state, seq->end) == 0);     
-    }
-    else
-    {
-        printf("Unknown sequence type\n...");
+        state = seq->state;
+        one = int_to_minim_number(1);
+        mpq_add(MINIM_EXACT(state), MINIM_EXACT(state), MINIM_EXACT(one));
+        free_minim_object(one);
+
+        seq->done = (minim_number_cmp(state, seq->end) == 0);     
     }
 }
 
@@ -127,8 +100,7 @@ MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t a
 
 MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
-    MinimNumber *begin, *end;
+    MinimObject *res, *begin, *end;
     MinimSeq *seq;
 
     if (!minim_exact_nonneg_intp(args[0]))
@@ -139,16 +111,15 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
 
     if (argc == 2)
     {
-        copy_minim_number(&begin, args[0]->u.ptrs.p1);
-        copy_minim_number(&end, args[1]->u.ptrs.p1);
+        begin = copy2_minim_object(args[0]);
+        end = copy2_minim_object(args[1]);
         if (minim_number_cmp(begin, end) > 0)
             return minim_error("expected [begin, end)", "in-range");
     }
     else
     {
-        init_minim_number(&begin, MINIM_NUMBER_EXACT);
-        mpq_set_ui(begin->rat, 0, 1);
-        copy_minim_number(&end, args[0]->u.ptrs.p1);
+        begin = int_to_minim_number(0);
+        end = copy2_minim_object(args[0]);
     }
 
     init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
@@ -159,26 +130,18 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
 
 MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
-    MinimNumber *begin, *end;
+    MinimObject *res, *begin, *end;
     MinimSeq *seq;
 
     if (argc == 1 && !minim_exact_nonneg_intp((args[0])))
         return minim_argument_error("non-negative exact integer", "in-naturals", 1, args[0]);
 
     if (argc == 1)
-    {
-        copy_minim_number(&begin, args[0]->u.ptrs.p1);
-    }
+        begin = copy2_minim_object(args[0]);
     else
-    {
-        init_minim_number(&begin, MINIM_NUMBER_EXACT);
-        mpq_set_ui(begin->rat, 0, 1);
-    }
+        begin = int_to_minim_number(0);
 
-    init_minim_number(&end, MINIM_NUMBER_EXACT);
-    mpq_set_si(end->rat, -1, 1);
-
+    end = int_to_minim_number(-1);
     init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
     init_minim_object(&res, MINIM_OBJ_SEQ, seq);
 

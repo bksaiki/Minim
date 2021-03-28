@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "assert.h"
@@ -8,407 +9,332 @@
 #include "error.h"
 #include "number.h"
 
-#define RATIONALIZE(r, num)                     \
+#define GET_FLOAT(obj) (MINIM_OBJ_EXACTP(obj) ? mpq_get_d(MINIM_EXACT(obj)) : MINIM_INEXACT(obj))
+
+#define RATIONALIZE(rat, obj)                   \
 {                                               \
-    if ((num)->type == MINIM_NUMBER_INEXACT)    \
+    if (MINIM_OBJ_EXACTP(obj))                  \
     {                                           \
-        mpq_init(r);                            \
-        mpq_set_d(r, (num)->fl);                \
+        rat = MINIM_EXACT(obj);                 \
     }                                           \
     else                                        \
     {                                           \
-        r[0] = (num)->rat[0];                   \
+        rat = malloc(sizeof(__mpq_struct));     \
+        mpq_init(rat);                          \
+        mpq_set_d(rat, MINIM_INEXACT(obj));     \
     }                                           \
-}                                               
-
-#define FREE_IF_INEXACT(r, num)                 \
-{                                               \
-    if ((num)->type == MINIM_NUMBER_INEXACT)    \
-        mpq_clear(r);                           \
 }
 
-#define GET_FLOAT(num)  (((num)->type == MINIM_NUMBER_EXACT) ?  \
-                            mpq_get_d(num->rat) :               \
-                            num->fl)
+#define RATIONALIZE_COPY(rat, obj)              \
+{                                               \
+    rat = malloc(sizeof(__mpq_struct));         \
+    mpq_init(rat);                              \
+                                                \
+    if (MINIM_OBJ_EXACTP(obj))                  \
+        mpq_set(rat, MINIM_EXACT(obj));         \
+    else                                        \
+        mpq_set_d(rat, MINIM_INEXACT(obj));     \
+}
+
+#define FREE_IF_INEXACT(rat, obj)               \
+{                                               \
+    if (MINIM_OBJ_INEXACTP(obj))                \
+    {                                           \
+        mpq_clear(rat);                         \
+        free(rat);                              \
+    }                                           \
+}
+
+#define FREE_RATIONAL(rat)                      \
+{                                               \
+    mpq_clear(rat);                             \
+    free(rat);                                  \
+}
+
+typedef void (*mpz_2ary)(mpz_ptr, mpz_srcptr, mpz_srcptr);
 
 // Internals
 
-static void minim_number_set(MinimNumber *num, MinimNumber *src)
+static bool all_exact(size_t argc, MinimObject **args)
 {
-    reinterpret_minim_number(num, src->type);
-    if (src->type == MINIM_NUMBER_EXACT)
-        mpq_set(num->rat, src->rat);
-    else
-        num->fl = src->fl;
-}
-
-static void minim_number_neg(MinimNumber *res, MinimNumber *a)
-{
-    if (a->type == MINIM_NUMBER_EXACT)  mpq_neg(res->rat, a->rat);
-    else                                res->fl = - a->fl;
-}
-
-static void minim_number_add(MinimNumber *res, MinimNumber *a, MinimNumber *b)
-{
-    double fa, fb;
-
-    if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
+    for (size_t i = 0; i < argc; ++i)
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_add(res->rat, a->rat, b->rat);
+        if (!MINIM_OBJ_EXACTP(args[i]))
+            return false;
+    }
+
+    return true;
+}
+
+static MinimObject *minim_add(size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (all_exact(argc, args))
+    {
+        res = copy2_minim_object(args[0]);
+        for (size_t i = 1; i < argc; ++i)
+            mpq_add(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(args[i]));
     }
     else
-    {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
-
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa + fb;
+    {   
+        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(args[0]));
+        for (size_t i = 1; i < argc; ++i)
+            MINIM_INEXACT(res) += MINIM_INEXACT(args[i]);
     }
+
+    return res;
 }
 
-static void minim_number_sub(MinimNumber *res, MinimNumber *a, MinimNumber *b)
+static MinimObject *minim_neg(MinimObject *x)
 {
-    double fa, fb;
+    MinimObject *res;
 
-    if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
+    if (MINIM_OBJ_EXACTP(x))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_sub(res->rat, a->rat, b->rat);
-    }
-    else
-    {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
 
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa - fb;
-    }
-}
-
-static void minim_number_mul(MinimNumber *res, MinimNumber *a, MinimNumber *b)
-{
-    double fa, fb;
-
-    if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_mul(res->rat, a->rat, b->rat);
+        mpq_init(rat);
+        mpq_neg(rat, MINIM_EXACT(x));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }
     else
     {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
-
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa * fb;
+        init_minim_object(&res, MINIM_OBJ_INEXACT, -MINIM_INEXACT(x));
     }
+
+    return res;
 }
 
-static void minim_number_div(MinimNumber *res, MinimNumber *a, MinimNumber *b)
+static MinimObject *minim_sub2(MinimObject *x, MinimObject *y)
 {
-    double fa, fb;
+    MinimObject *res;
 
-    if (minim_number_zerop(b))
+    if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = NAN;
-    }
-    else if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_div(res->rat, a->rat, b->rat);
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpq_sub(rat, MINIM_EXACT(x), MINIM_EXACT(y));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }
     else
     {
-        fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
-
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = fa / fb;
+        init_minim_object(&res, MINIM_OBJ_INEXACT, MINIM_INEXACT(x) - MINIM_INEXACT(y));
     }
+
+    return res;
 }
 
-static void minim_number_abs(MinimNumber *res, MinimNumber *a)
+static MinimObject *minim_sub(MinimObject *first, size_t restc, MinimObject **rest)
 {
-    if (minim_number_negativep(a))
-        minim_number_neg(res, a);
+    MinimObject *res, *psum;
+
+    psum = minim_add(restc, rest);
+    res = minim_sub2(first, psum);
+    free_minim_object(psum);
+
+    return res;
+}
+
+static MinimObject *minim_mul(size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (all_exact(argc, args))
+    {
+        res = copy2_minim_object(args[0]);
+        for (size_t i = 1; i < argc; ++i)
+            mpq_mul(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(args[i]));
+    }
     else
-        minim_number_set(res, a);
+    {   
+        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(args[0]));
+        for (size_t i = 1; i < argc; ++i)
+            MINIM_INEXACT(res) *= MINIM_INEXACT(args[i]);
+    }
+
+    return res;
 }
 
-// Assumes integer arguments
-static void minim_number_modulo(MinimNumber *res, MinimNumber *quo, MinimNumber *div)
+static MinimObject *minim_reciprocal(MinimObject *x)
 {
-    mpq_t q, d;
+    MinimObject *res;
 
-    // Convert to integer
-    reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-    RATIONALIZE(q, quo);
-    RATIONALIZE(d, div);
-
-    mpq_set_ui(res->rat, 0, 1);
-    mpz_fdiv_r(mpq_numref(res->rat), mpq_numref(q), mpq_numref(d));
-
-    FREE_IF_INEXACT(q, quo);
-    FREE_IF_INEXACT(d, div);
-
-    if (quo->type == MINIM_NUMBER_INEXACT || div->type == MINIM_NUMBER_INEXACT)
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-}
-
-static void minim_number_sqrt(MinimNumber *res, MinimNumber *a)
-{
-    if (minim_number_negativep(a))
+    if (MINIM_OBJ_EXACTP(x))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = NAN;
-    }
-    else if (a->type == MINIM_NUMBER_EXACT)
-    {
-        if (mpz_cmpabs_ui(mpq_denref(a->rat), 1) == 0)
-        {
-            mpz_t sq, rem;
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
 
-            mpz_inits(sq, rem, NULL);
-            mpz_sqrtrem(sq, rem, mpq_numref(a->rat));   
-            if (mpz_cmp_ui(rem, 0) == 0)
-            {
-                reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-                mpq_set_z(res->rat, sq);
-            }
-            else
-            {
-                reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-                res->fl = sqrt(mpq_get_d(a->rat));
-            }
-
-            mpz_clears(sq, rem, NULL);
-        }
-        else
-        {
-            reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-            res->fl = sqrt(mpq_get_d(a->rat));
-        }
-    }
-    else        
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = sqrt(a->fl);
-    }
-}
-
-static void minim_number_exp(MinimNumber *res, MinimNumber *a)
-{
-    double f;
-
-    if (a->type == MINIM_NUMBER_EXACT && minim_number_zerop(a))
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_si(res->rat, 1, 1);
+        mpq_init(rat);
+        mpq_inv(MINIM_EXACT(res), MINIM_EXACT(res));
     }
     else
     {
-        f = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = exp(f);
+        init_minim_object(&res, MINIM_OBJ_INEXACT, 1.0 / MINIM_INEXACT(x));
     }
+
+    return res;
 }
 
-static void minim_number_log(MinimNumber *res, MinimNumber *a)
+static MinimObject *minim_div2(MinimObject *x, MinimObject *y)
 {
-    double f;
+    MinimObject *res;
 
-    if (minim_number_zerop(a) || minim_number_negativep(a))
+    if (minim_zerop(y))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = NAN;
+        init_minim_object(&res, MINIM_OBJ_INEXACT, NAN);
     }
-    else if (a->type == MINIM_NUMBER_EXACT && mpq_cmp_si(a->rat, 1, 1) == 0)
+    else if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 0, 1);
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpq_div(rat, MINIM_EXACT(x), MINIM_EXACT(y));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }
     else
     {
-        f = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = log(f);
+        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(x) / GET_FLOAT(y));
     }
+
+    return res;
 }
 
-static void minim_number_pow(MinimNumber *res, MinimNumber *a, MinimNumber *b)
+static MinimObject *minim_div(MinimObject *first, size_t restc, MinimObject **rest)
 {
-    if (minim_number_zerop(b))  // pow(x, 0) = 0
-    {
-        if (minim_number_exactp(a) && minim_number_exactp(b))
-        {
-            reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-            mpq_set_ui(res->rat, 1, 1);
-        }
-        else
-        {
-            reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-            res->fl = 1.0;
-        }
-    }
-    else if (minim_number_zerop(a)) // pow(0, -x) = +inf, pow(0, x) = 0
-    {
-        if (minim_number_negativep(b))
-        {
-            reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-            res->fl = INFINITY;
-        }
-        else if (minim_number_exactp(a) && minim_number_exactp(b))
-        {
-            reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-            mpq_set_ui(res->rat, 0, 1);
-        }
-        else
-        {
-            reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-            res->fl = 0.0;;
-        }
-    }
-    // pow(-inf, x), pow (inf, x), 
-    else if (a->type == MINIM_NUMBER_EXACT && b->type == MINIM_NUMBER_EXACT &&
-            mpz_cmp_ui(&b->rat->_mp_den, 1) == 0)
-    {
-        unsigned long e;
+    MinimObject *res, *prod;
 
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        if (minim_number_negativep(b))
-        {
-            e = - mpz_get_si(mpq_numref(b->rat));
-            mpz_pow_ui(mpq_denref(res->rat), mpq_numref(a->rat), e);
-            mpz_pow_ui(mpq_numref(res->rat), mpq_denref(a->rat), e);
-        }
-        else
-        {
-            e = mpz_get_ui(mpq_numref(b->rat));
-            mpz_pow_ui(mpq_numref(res->rat), mpq_numref(a->rat), e);
-            mpz_pow_ui(mpq_denref(res->rat), mpq_denref(a->rat), e);
-        }
+    prod = minim_mul(restc, rest);
+    res = minim_div2(first, prod);
+    free_minim_object(prod);
+
+    return res;
+}
+
+static MinimObject *minim_exact_round_c11(MinimObject *x)
+{
+    MinimObject *res;
+    mpq_ptr r;
+    mpq_t a;
+
+    if (minim_zerop(x))
+    {
+        return int_to_minim_number(0);
+    }
+    
+    if (minim_integerp(x))
+    {
+        copy_minim_object(&res, x);
+        return res;
+    }
+
+    r = malloc(sizeof(__mpq_struct));
+    mpq_inits(a, r, NULL);
+    mpq_abs(a, MINIM_EXACT(x));
+
+    if (mpz_cmp_ui(mpq_denref(a), 2) == 0) // a = d / 2
+    {
+        // C11 says round ties away from 0 (abs ceiling)
+        mpz_set_ui(mpq_denref(r), 1);
+        mpz_cdiv_q(mpq_numref(r), mpq_numref(a), mpq_denref(a));
     }
     else
     {
-        double fa = ((a->type == MINIM_NUMBER_EXACT) ? mpq_get_d(a->rat) : a->fl);
-        double fb = ((b->type == MINIM_NUMBER_EXACT) ? mpq_get_d(b->rat) : b->fl);
+        mpz_t q, m;
 
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = pow(fa, fb);
+        mpz_inits(q, m, NULL);
+        mpz_tdiv_qr(q, m, mpq_numref(a), mpq_denref(a));
+
+        mpz_mul_ui(m, m, 2);
+        if (mpz_cmp(m, mpq_denref(a)) > 0)
+            mpz_add_ui(q, q, 1);
+
+        mpq_set_z(r, q);
+        mpz_clears(q, m, NULL);
     }
+
+    if (minim_negativep(x))
+        mpq_neg(r, r);
+
+    init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    return res;
 }
 
-static void minim_number_sin(MinimNumber *res, MinimNumber *arg)
+static MinimObject *minim_int_2ary(MinimObject *x, MinimObject *y, mpz_2ary fun)
 {
-    // sin(0) = 0
-    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
+    MinimObject *res;
+    mpq_ptr q, d, r;
+
+    RATIONALIZE(q, x);
+    RATIONALIZE(d, y);
+
+    r = malloc(sizeof(__mpq_struct));
+    mpq_init(r);
+    mpq_set_ui(r, 0, 1);
+    fun(mpq_numref(r), mpq_numref(q), mpq_numref(d));
+
+    FREE_IF_INEXACT(q, x);
+    FREE_IF_INEXACT(d, y);
+
+    if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
+        init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
+    
+    return res;
+}
+
+static MinimObject *minim_exact_sqrt(MinimObject *x)
+{
+    MinimObject *res;
+
+    if (minim_integerp(x) && mpz_perfect_square_p(mpq_numref(MINIM_EXACT(x))))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 0, 1);
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpz_sqrt(mpq_numref(rat), mpq_numref(MINIM_EXACT(x)));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }
     else
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = sin(GET_FLOAT(arg));
+        init_minim_object(&res, MINIM_OBJ_INEXACT, sqrt(GET_FLOAT(x)));
     }
+
+    return res;
 }
 
-static void minim_number_cos(MinimNumber *res, MinimNumber *arg)
+static MinimObject *minim_atan(MinimObject *x)
 {
-    // cos(0) = 1
-    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 1, 1);
-    }
-    else
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = cos(GET_FLOAT(arg));
-    }
-}
+    MinimObject *res;
 
-static void minim_number_tan(MinimNumber *res, MinimNumber *arg)
-{
-    // tan(0) = 0
-    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 0, 1);
-    }
-    else
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = tan(GET_FLOAT(arg));
-    }
-}
-
-static void minim_number_asin(MinimNumber *res, MinimNumber *arg)
-{
-    // asin(0) = 0
-    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 0, 1);
-    }
-    else
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = asin(GET_FLOAT(arg));
-    }
-}
-
-static void minim_number_acos(MinimNumber *res, MinimNumber *arg)
-{
-    // acos(1) = 0
-    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 1, 1) == 0)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 0, 1);
-    }
-    else
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = acos(GET_FLOAT(arg));
-    }
-}
-
-static void minim_number_atan(MinimNumber *res, MinimNumber *arg)
-{
     // atan(0) = 0
-    if (arg->type == MINIM_NUMBER_EXACT && mpq_cmp_ui(arg->rat, 0, 1) == 0)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 0, 1);
-    }
+    if (MINIM_OBJ_EXACTP(x) && minim_zerop(x))
+        res = int_to_minim_number(0);
     else
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = atan(GET_FLOAT(arg));
-    }
+        init_minim_object(&res, MINIM_OBJ_INEXACT, tan(GET_FLOAT(x)));
+
+    return res;
 }
 
-static void minim_number_atan2(MinimNumber *res, MinimNumber *y, MinimNumber *x)
+static MinimObject *minim_atan2(MinimObject *y, MinimObject *x)
 {
-    // atan(0) = 0
-    if (minim_number_zerop(y) && minim_number_zerop(x))
+    MinimObject *res;
+
+    // atan2(0, 0) = NAN, atan2(0, x) = 0
+    if (MINIM_EXACT(x) && MINIM_EXACT(y) && minim_zerop(y))
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = NAN;
-    }
-    else if (y->type == MINIM_NUMBER_EXACT && x->type == MINIM_NUMBER_EXACT &&
-             mpq_cmp_ui(y->rat, 0, 1) == 0)
-    {
-        reinterpret_minim_number(res, MINIM_NUMBER_EXACT);
-        mpq_set_ui(res->rat, 0, 1);
+        if (minim_zerop(x))
+            init_minim_object(&res, MINIM_OBJ_INEXACT, NAN);
+        else
+            res = int_to_minim_number(0);
     }
     else
     {
-        reinterpret_minim_number(res, MINIM_NUMBER_INEXACT);
-        res->fl = atan2(GET_FLOAT(y), GET_FLOAT(x));
+        init_minim_object(&res, MINIM_OBJ_INEXACT, atan2(GET_FLOAT(y), GET_FLOAT(x)));
     }
+
+    return res;
 }
 
 // *** Builtins *** //
@@ -416,22 +342,25 @@ static void minim_number_atan2(MinimNumber *res, MinimNumber *y, MinimNumber *x)
 MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+
+    if (!assert_numerical_args(args, argc, &res, "+"))
+        return res;
 
     if (argc == 0)
     {
-        init_minim_number(&num, MINIM_NUMBER_EXACT);
-        str_to_minim_number(num, "0");
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        return res;
-    }
+        mpq_ptr zero = malloc(sizeof(__mpq_struct));
 
-    if (assert_numerical_args(args, argc, &res, "+"))
+        mpq_init(zero);
+        mpq_set_ui(zero, 0, 1);
+        init_minim_object(&res, MINIM_OBJ_EXACT, zero);
+    }
+    else if (argc == 1)
     {
-        copy_minim_number(&num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        for (size_t i = 1; i < argc; ++i)
-            minim_number_add(num, num, args[i]->u.ptrs.p1);
+        OPT_MOVE_REF(res, args[0]);
+    }
+    else
+    {
+        res = minim_add(argc, args);
     }
 
     return res;
@@ -440,46 +369,37 @@ MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_sub(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+    
+    if (!assert_numerical_args(args, argc, &res, "-"))
+        return res;
 
-    if (assert_numerical_args(args, argc, &res, "-"))
-    {    
-        copy_minim_number(&num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        if (argc == 1)
-        {
-            minim_number_neg(num, num);
-        }
-        else
-        {
-            for (size_t i = 1; i < argc; ++i)
-                minim_number_sub(num, num, args[i]->u.ptrs.p1);
-        
-        }
-    }
-
-    return res;
+    if (argc == 1)          return minim_neg(args[0]);
+    else if (argc == 2)     return minim_sub2(args[0], args[1]);
+    else                    return minim_sub(args[0], argc - 1, &args[1]);
 }
 
 MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+
+    if (!assert_numerical_args(args, argc, &res, "*"))
+        return res;
 
     if (argc == 0)
     {
-        init_minim_number(&num, MINIM_NUMBER_EXACT);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        str_to_minim_number(num, "1");
-        return res;
-    }
+        mpq_ptr one = malloc(sizeof(__mpq_struct));
 
-    if (assert_numerical_args(args, argc, &res, "*"))
+        mpq_init(one);
+        mpq_set_ui(one, 1, 1);
+        init_minim_object(&res, MINIM_OBJ_EXACT, one);
+    }
+    else if (argc == 1)
     {
-        copy_minim_number(&num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-        for (size_t i = 1; i < argc; ++i)
-            minim_number_mul(num, num, args[i]->u.ptrs.p1);
+        OPT_MOVE_REF(res, args[0]);
+    }
+    else
+    {
+        res = minim_mul(argc, args);
     }
 
     return res;
@@ -488,106 +408,272 @@ MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_div(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (assert_numerical_args(args, argc, &res, "/"))
-    {
-        init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_div(num, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-    }
+    if (!assert_numerical_args(args, argc, &res, "/"))
+        return res;
 
-    return res;
+    if (argc == 1)          return minim_reciprocal(args[0]);
+    else if (argc == 2)     return minim_div2(args[0], args[1]);
+    else                    return minim_div(args[0], argc - 1,  &args[1]);
 }
 
 MinimObject *minim_builtin_abs(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
     if (!assert_numerical_args(args, argc, &res, "abs"))
         return res;
     
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_abs(num, args[0]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
-
+    if (minim_negativep(args[0]))
+        return minim_neg(args[0]);
+    
+    OPT_MOVE_REF(res, args[0]);
     return res;
 }
 
 MinimObject *minim_builtin_max(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num, *max;
+    size_t max = 0;
 
     if (!assert_numerical_args(args, argc, &res, "max"))
         return res;
-
-    max = args[0]->u.ptrs.p1;
+    
+    res = args[max];
     for (size_t i = 1; i < argc; ++i)
     {
-        if (minim_number_cmp(args[i]->u.ptrs.p1, max) > 0)
-            max = args[i]->u.ptrs.p1;
+        if (minim_number_cmp(args[i], args[max]) > 0)
+            max = i;
     }
-    
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_set(num, max);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
 
+    OPT_MOVE_REF(res, args[max]);
     return res;
 }
 
 MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num, *min;
+    size_t min = 0;
 
     if (!assert_numerical_args(args, argc, &res, "min"))
         return res;
 
-    min = args[0]->u.ptrs.p1;
+    res = args[min];
     for (size_t i = 1; i < argc; ++i)
     {
-        if (minim_number_cmp(args[i]->u.ptrs.p1, min) < 0)
-            min = args[i]->u.ptrs.p1;
+        if (minim_number_cmp(args[i], args[min]) < 0)
+            min = i;
     }
-    
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_set(num, min);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
 
+    OPT_MOVE_REF(res, args[min]);
     return res;
 }
 
 MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
-    MinimNumber *mod;
-
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "mod", 0, args[0]);
+        return minim_argument_error("integer", "modulo", 0, args[0]);
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "mod", 1, args[1]);
+        return minim_argument_error("integer", "modulo", 1, args[1]);
 
-    init_minim_number(&mod, MINIM_NUMBER_EXACT);
-    minim_number_modulo(mod, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, mod);
+    return minim_int_2ary(args[0], args[1], mpz_fdiv_r);
+}
+
+MinimObject *minim_builtin_remainder(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "remainder", 0, args[0]);
+
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "remainder", 1, args[1]);
+
+    return minim_int_2ary(args[0], args[1], mpz_tdiv_r);
+}
+
+MinimObject *minim_builtin_quotient(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "quotient", 0, args[0]);
+
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "quotient", 1, args[1]);
+
+    return minim_int_2ary(args[0], args[1], mpz_tdiv_q);
+}
+
+MinimObject *minim_builtin_numerator(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    mpq_ptr r;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "numerator", 0, args[0]);
+
+    RATIONALIZE_COPY(r, args[0]);
+    mpz_set_ui(mpq_denref(r), 1);
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
+        FREE_RATIONAL(r);
+    }
 
     return res;
+}
+
+MinimObject *minim_builtin_denominator(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+    mpq_ptr r;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "denominator", 0, args[0]);
+
+    RATIONALIZE_COPY(r, args[0]);
+    mpz_set(mpq_numref(r), mpq_denref(r));
+    mpz_set_ui(mpq_denref(r), 1);
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        init_minim_object(&res, MINIM_OBJ_EXACT, r);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
+        FREE_RATIONAL(r);
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_floor(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "floor", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpz_set_ui(mpq_denref(rat), 1);
+        mpz_fdiv_q(mpq_numref(rat), mpq_numref(MINIM_EXACT(args[0])),
+                                    mpq_denref(MINIM_EXACT(args[0])));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, floor(MINIM_INEXACT(args[0])));
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_ceil(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "ceil", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpz_set_ui(mpq_denref(rat), 1);
+        mpz_cdiv_q(mpq_numref(rat), mpq_numref(MINIM_EXACT(args[0])),
+                                    mpq_denref(MINIM_EXACT(args[0])));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, ceil(MINIM_INEXACT(args[0])));
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_trunc(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "trunc", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+    {
+        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+
+        mpq_init(rat);
+        mpz_set_ui(mpq_denref(rat), 1);
+        mpz_tdiv_q(mpq_numref(rat), mpq_numref(MINIM_EXACT(args[0])),
+                                    mpq_denref(MINIM_EXACT(args[0])));
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, trunc(MINIM_INEXACT(args[0])));
+    }
+
+    return res;
+}
+
+MinimObject *minim_builtin_round(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "round", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]))
+        res = minim_exact_round_c11(args[0]);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, round(MINIM_INEXACT(args[0])));
+
+    return res;
+}
+
+MinimObject *minim_builtin_gcd(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "gcd", 0, args[0]);
+
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "gcd", 1, args[1]);
+
+    return minim_int_2ary(args[0], args[1], mpz_gcd);
+}
+
+MinimObject *minim_builtin_lcm(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    if (!minim_integerp(args[0]))
+        return minim_argument_error("integer", "lcm", 0, args[0]);
+
+    if (!minim_integerp(args[1]))
+        return minim_argument_error("integer", "lcm", 1, args[1]);
+
+    return minim_int_2ary(args[0], args[1], mpz_lcm);
 }
 
 MinimObject *minim_builtin_sqrt(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (assert_numerical_args(args, argc, &res, "sqrt"))
-    {
-        init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_sqrt(num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-    }
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "sqrt", 0, args[0]);
+
+    if (minim_negativep(args[0]))
+        init_minim_object(&res, MINIM_OBJ_INEXACT, NAN);
+    else if (MINIM_OBJ_EXACTP(args[0]))
+        res = minim_exact_sqrt(args[0]);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, sqrt(MINIM_INEXACT(args[0])));
 
     return res;
 }
@@ -595,14 +681,14 @@ MinimObject *minim_builtin_sqrt(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_exp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (assert_numerical_args(args, argc, &res, "exp"))
-    {
-        init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_exp(num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-    }
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "exp", 0, args[0]);
+
+    if (MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0]))
+        res = int_to_minim_number(1);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, exp(GET_FLOAT(args[0])));
 
     return res;
 }
@@ -610,14 +696,16 @@ MinimObject *minim_builtin_exp(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_log(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (assert_numerical_args(args, argc, &res, "log"))
-    {
-        init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_log(num, args[0]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
-    }
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "log", 0, args[0]);
+
+    if (!minim_positivep(args[0]))
+        init_minim_object(&res, MINIM_OBJ_INEXACT, NAN);
+    else if (MINIM_OBJ_EXACTP(args[0]) && mpq_cmp_ui(MINIM_EXACT(args[0]), 1, 1) == 0)
+        res = int_to_minim_number(0);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, log(GET_FLOAT(args[0])));
 
     return res;
 }
@@ -625,13 +713,49 @@ MinimObject *minim_builtin_log(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_pow(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
+    bool exact;
 
-    if (assert_numerical_args(args, argc, &res, "pow"))
+    if (!assert_numerical_args(args, argc, &res, "pow"))    
+        return res;
+
+    exact = all_exact(argc, args);
+    if (minim_zerop(args[1]))   // pow(x, 0) = 1
     {
-        init_minim_number(&num, MINIM_NUMBER_INEXACT);
-        minim_number_pow(num, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
-        init_minim_object(&res, MINIM_OBJ_NUM, num);
+        res = (exact) ? int_to_minim_number(1) :
+                        float_to_minim_number(1.0);
+    }
+    else if (minim_zerop(args[0]))  // pow(0, -x) = +inf, pow(0, x) = 0
+    {
+        if (minim_negativep(args[1]))
+            init_minim_object(&res, MINIM_OBJ_INEXACT, INFINITY);
+        else
+            res = (exact) ? int_to_minim_number(0) :
+                            float_to_minim_number(0.0);
+    }
+    else if (exact && minim_integerp(args[1]))
+    {
+        mpq_ptr rat;
+        long int e;
+        
+        rat = malloc(sizeof(__mpq_struct));
+        mpq_init(rat);
+        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+
+        e = abs(mpz_get_si(mpq_numref(MINIM_EXACT(args[1]))));
+        if (minim_negativep(args[1]))
+        {
+            mpz_pow_ui(mpq_denref(rat), mpq_numref(MINIM_EXACT(args[0])), e);
+            mpz_pow_ui(mpq_numref(rat), mpq_denref(MINIM_EXACT(args[0])), e);
+        }
+        else
+        {
+            mpz_pow_ui(mpq_numref(rat), mpq_numref(MINIM_EXACT(args[0])), e);
+            mpz_pow_ui(mpq_denref(rat), mpq_denref(MINIM_EXACT(args[0])), e);
+        }
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_INEXACT, pow(GET_FLOAT(args[0]), GET_FLOAT(args[1])));
     }
 
     return res;
@@ -640,14 +764,15 @@ MinimObject *minim_builtin_pow(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_sin(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (!assert_numerical_args(args, argc, &res, "sin"))
-        return res;
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "sin", 0, args[0]);
     
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_sin(num, args[0]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    // sin(0) = 0
+    if (MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0]))
+        res = int_to_minim_number(0);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, sin(GET_FLOAT(args[0])));
 
     return res;
 }
@@ -655,14 +780,15 @@ MinimObject *minim_builtin_sin(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_cos(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (!assert_numerical_args(args, argc, &res, "cos"))
-        return res;
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "cos", 0, args[0]);
     
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_cos(num, args[0]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    // cos(0) = 1
+    if (MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0]))
+        res = int_to_minim_number(1);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, cos(GET_FLOAT(args[0])));
 
     return res;
 }
@@ -670,14 +796,15 @@ MinimObject *minim_builtin_cos(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_tan(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
-
-    if (!assert_numerical_args(args, argc, &res, "tan"))
-        return res;
     
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_tan(num, args[0]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "tan", 0, args[0]);
+    
+    // tan(0) = 0
+    if (MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0]))
+        res = int_to_minim_number(0);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, tan(GET_FLOAT(args[0])));
 
     return res;
 }
@@ -685,14 +812,15 @@ MinimObject *minim_builtin_tan(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_asin(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (!assert_numerical_args(args, argc, &res, "asin"))
-        return res;
-    
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_asin(num, args[0]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "asin", 0, args[0]);
+
+    // asin(0) = 0
+    if (MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0]))
+        res = int_to_minim_number(0);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, asin(GET_FLOAT(args[0])));
 
     return res;
 }
@@ -700,14 +828,15 @@ MinimObject *minim_builtin_asin(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_acos(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
-    if (!assert_numerical_args(args, argc, &res, "asin"))
-        return res;
-    
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    minim_number_acos(num, args[0]->u.ptrs.p1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        return minim_argument_error("number", "acos", 0, args[0]);
+
+    // acos(1) = 0
+    if (MINIM_OBJ_EXACTP(args[0]) && mpq_cmp_si(MINIM_EXACT(args[0]), 1, 1) == 0)
+        res = int_to_minim_number(0);
+    else
+        init_minim_object(&res, MINIM_OBJ_INEXACT, acos(GET_FLOAT(args[0])));
 
     return res;
 }
@@ -715,15 +844,10 @@ MinimObject *minim_builtin_acos(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_atan(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
-    MinimNumber *num;
 
     if (!assert_numerical_args(args, argc, &res, "atan"))
         return res;
-    
-    init_minim_number(&num, MINIM_NUMBER_INEXACT);
-    if (argc == 1)  minim_number_atan(num, args[0]->u.ptrs.p1);
-    else            minim_number_atan2(num, args[0]->u.ptrs.p1, args[1]->u.ptrs.p1);
-    
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
-    return res;
+
+    if (argc == 1)  return minim_atan(args[0]);
+    else            return minim_atan2(args[0], args[1]);
 }

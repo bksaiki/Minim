@@ -420,12 +420,5 @@ MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t arg
 
 MinimObject *minim_builtin_symbol_count(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res;
-    MinimNumber *num;
-
-    init_minim_number(&num, MINIM_NUMBER_EXACT);
-    mpq_set_ui(num->rat, env->table->size, 1);
-    init_minim_object(&res, MINIM_OBJ_NUM, num);
-    
-    return res;
+    return int_to_minim_number(env->table->size);
 }
