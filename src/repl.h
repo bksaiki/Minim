@@ -2,6 +2,6 @@
 #define _MINIM_REPL_H_
 
 // Read, eval print loop
-int minim_repl();
+int minim_repl(uint32_t flags);
 
 #endif

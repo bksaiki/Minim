@@ -4,9 +4,11 @@
 #include "read.h"
 #include "repl.h"
 
-static int process_flags(int count, char **args)
+static int process_flags(int count, char **args, uint32_t *pflags)
 {
-    for (int i = 0; i < count; ++i)
+    int i;
+    
+    for (i = 0; i < count; ++i)
     {
         if (strcmp(args[i], "-h") == 0)
         {
@@ -21,29 +23,37 @@ static int process_flags(int count, char **args)
         {
             printf("Minim v%s \n", MINIM_VERSION_STR);
         }
+        else if (strcmp(args[i], "--no-libs") == 0)
+        {
+            *pflags |= MINIM_FLAG_LOAD_LIBS;
+        }
+        else if (args[i][0] == '-')
+        {
+            printf("Unrecognized flag: %s\n", args[i]);
+            return -1;
+        }
         else
         {
-            return ((count - i == 1) ? 1 : 2);
+            break;
         }
     }
 
-    return 0;
+    return i;
 }
 
 int main(int argc, char** argv)
 {
-    int status = 0;
+    uint32_t flags = 0;
+    int status = 0, flagc = 0;
 
-    if (argc == 1)
-    {
-        status = minim_repl();
-    }
+    flagc = process_flags(argc - 1, &argv[1], &flags);
+    if (flagc == -1)
+        return 1;
+
+    if (argc - flagc == 1)
+        status = minim_repl(flags);
     else
-    {
-        status = process_flags(argc - 1, &argv[1]);
-        if (status == 1)  // check for file argument
-            status = minim_run_file(argv[argc - 1]);
-    }
+        status = minim_run_file(argv[flagc + 1], flags);
 
     return status;
 }

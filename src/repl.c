@@ -15,7 +15,7 @@ static void int_handler(int sig)
     signal(SIGINT, int_handler);
 }
 
-int minim_repl()
+int minim_repl(uint32_t flags)
 {
     MinimEnv *env;
     MinimAst *ast;
@@ -28,9 +28,11 @@ int minim_repl()
 
     init_env(&env, NULL);
     minim_load_builtins(env);
-    minim_load_library(env);
     set_default_print_params(&pp);
     signal(SIGINT, int_handler);
+
+    if (!(flags & MINIM_FLAG_LOAD_LIBS))
+        minim_load_library(env);
 
     while (1)
     {

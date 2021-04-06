@@ -127,14 +127,16 @@ int minim_load_file(MinimEnv *env, const char *fname)
     return 0;
 }
 
-int minim_run_file(const char *str)
+int minim_run_file(const char *str, uint32_t flags)
 {
     MinimEnv *env;
     int ret;
 
     init_env(&env, NULL);
     minim_load_builtins(env);
-    minim_load_library(env);
+    if (!(flags & MINIM_FLAG_LOAD_LIBS))
+        minim_load_library(env);
+
     ret = minim_load_file(env, str);
     free_env(env);
 

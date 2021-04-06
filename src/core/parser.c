@@ -168,7 +168,8 @@ parse_str_node(const char* str, size_t begin, size_t end,
         bool bad = false;
 
         for (size_t i = begin + 1; i < last; ++i)
-        {
+        {   
+            // unbalanced string quotes or space
             if (str[i] == '\"' && str[i - 1] != '\\')
                 bad = true;
         }
