@@ -7,7 +7,8 @@
 #include "../common/buffer.h"
 #include "parser.h"
 
-#define EXPAND_QUOTE        ((uint8_t)0x1)
+#define EXPAND_QUOTE                ((uint8_t)0x1)
+#define MAX_SYNTAX_MSG_LENGTH       50
 
 #define open_paren(x)       (x == '(' || x == '[' || x == '{')
 #define closed_paren(x)     (x == ')' || x == ']' || x == '}')
@@ -273,9 +274,17 @@ int parse_expr_loc(const char* str, MinimAst** psyntax, SyntaxLoc *loc)
 
     if (!ast_validp(syntax))
     {
-        printf("Syntax: %s\n", syntax->sym);
-        printf("  at %s\n", str);
-        printf("  in %s:%lu\n", loc->name, syntax->argc);
+        size_t i;
+
+        printf("; bad syntax: %s\n", syntax->sym);
+        printf(";  at: ");
+        for (i = 0; str[i] && str[i] != '\n' && i < MAX_SYNTAX_MSG_LENGTH; ++i)
+            printf("%c", str[i]);
+        
+        if (i == MAX_SYNTAX_MSG_LENGTH || str[i] == '\n')
+            printf("...\n");
+
+        printf(";  in %s:%lu\n", loc->name, syntax->argc);
         syntax->argc = 0;
         return 0;
     } 

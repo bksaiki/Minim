@@ -110,7 +110,25 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
             for (size_t i = 0; i < err->table->len; ++i)
             {
                 if (err->table->keys[i])
-                    writef_buffer(bf, "\n;  ~s: ~s", err->table->keys[i], err->table->vals[i]);
+                {
+                    if (strcmp(err->table->keys[i], "at") == 0)
+                    {
+                        size_t idx;
+
+                        writes_buffer(bf, "\n;  at: ");
+                        for (idx = 0; err->table->vals[i][idx] && err->table->vals[i][idx] != '\n' &&
+                                      idx < MINIM_DEFAULT_ERR_LOC_LEN; ++idx)
+                            writec_buffer(bf, err->table->vals[i][idx]);
+                        
+                        if (idx == MINIM_DEFAULT_ERR_LOC_LEN)
+                            writes_buffer(bf, "...");
+                    }
+                    else
+                    {
+                        writef_buffer(bf, "\n;  ~s: ~s", err->table->keys[i],
+                                                         err->table->vals[i]);
+                    }
+                }
             }
         }
                    

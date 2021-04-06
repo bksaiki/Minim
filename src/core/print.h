@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include "env.h"
 
+#define MINIM_DEFAULT_ERR_LOC_LEN       30
+
 typedef struct PrintParams
 {
     size_t maxlen;

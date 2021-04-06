@@ -173,8 +173,8 @@ void fread_expr(FILE *file, Buffer *bf, SyntaxLoc *sloc, SyntaxLoc *eloc, ReadRe
                 }
                 else
                 {
-                    if (rr->paren > 0)
-                    writec_buffer(bf, ' ');
+                    if (rr->paren > 0 || !(flags & F_READ_START))
+                        writec_buffer(bf, ' ');
                 }
 
                 flags |= F_READ_SPACE;

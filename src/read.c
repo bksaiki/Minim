@@ -124,7 +124,7 @@ int minim_load_file(MinimEnv *env, const char *fname)
     free_syntax_loc(loc);
     free_syntax_loc(tloc);
     fclose(file);
-    return 0;
+    return status;
 }
 
 int minim_run_file(const char *str, uint32_t flags)
