@@ -90,6 +90,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "pair?", MINIM_OBJ_FUNC, minim_builtin_consp);
     minim_load_builtin(env, "car", MINIM_OBJ_FUNC, minim_builtin_car);
     minim_load_builtin(env, "cdr", MINIM_OBJ_FUNC, minim_builtin_cdr);
+    minim_load_builtin(env, "null", MINIM_OBJ_PAIR, NULL, NULL);
 
     // List
     minim_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);

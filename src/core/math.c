@@ -253,6 +253,7 @@ static MinimObject *minim_exact_round_c11(MinimObject *x)
         mpz_clears(q, m, NULL);
     }
 
+    mpq_clear(a);
     if (minim_negativep(x))
         mpq_neg(r, r);
 
