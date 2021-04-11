@@ -287,6 +287,64 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
+MinimObject *minim_builtin_caar(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!(minim_consp(args[0]) && minim_consp(MINIM_CAR(args[0]))))
+        return minim_argument_error("pair of (non empty pair . any)", "caar", 0, args[0]);
+    
+    OPT_MOVE_REF2(res, MINIM_CAAR(args[0]), args[0]);
+    return res;
+}
+
+MinimObject *minim_builtin_cadr(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!(minim_consp(args[0]) && MINIM_CDR(args[0]) && minim_consp(MINIM_CDR(args[0]))))
+        return minim_argument_error("pair of (any, non-empty pair)", "cadr", 0, args[0]);
+    
+    OPT_MOVE_REF2(res, MINIM_CADR(args[0]), args[0]);
+    return res;
+}
+
+MinimObject *minim_builtin_cdar(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!(minim_consp(args[0]) && minim_consp(MINIM_CAR(args[0]))))
+        return minim_argument_error("pair of (non-empty pair, any)", "cdar", 0, args[0]);
+    
+    if (MINIM_CDAR(args[0]))
+    {
+        OPT_MOVE_REF2(res, MINIM_CDAR(args[0]), args[0]);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    }
+    return res;
+}
+
+MinimObject *minim_builtin_cddr(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!(minim_consp(args[0]) && MINIM_CDR(args[0]) && minim_consp(MINIM_CDR(args[0]))))
+        return minim_argument_error("pair of (any, non-empty pair)", "cddr", 0, args[0]);
+
+    if (MINIM_CDDR(args[0]))
+    {
+        OPT_MOVE_REF2(res, MINIM_CDDR(args[0]), args[0]);
+    }
+    else
+    {
+        init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    }
+    return res;
+}
+
 MinimObject *minim_builtin_listp(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;

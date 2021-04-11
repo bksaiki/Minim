@@ -43,27 +43,35 @@ int main()
     }
 
     {
-        const int COUNT = 2;
-        char strs[2][256] =
+        const int COUNT = 4;
+        char strs[4][256] =
         {
             "(begin (def x (cons 1 2)) (car x))",
-            "(begin (def x (list 1 2 3 4)) (car x))"
+            "(begin (def x (list 1 2 3 4)) (car x))",
+            "(begin (def x (cons 1 2)) (cdr x))",
+            "(begin (def x (list 1 2 3 4)) (cdr x))"
         };
 
-        printf("Testing 'car' (ref)\n");
+        printf("Testing 'car', 'cdr' (ref)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }
 
     {
-        const int COUNT = 2;
-        char strs[2][256] =
+        const int COUNT = 8;
+        char strs[8][256] =
         {
-            "(begin (def x (cons 1 2)) (cdr x))",
-            "(begin (def x (list 1 2 3 4)) (cdr x))"
+            "(begin (def x '((1) . 2)) (caar x))",
+            "(begin (def x '((1 . 2) . 3)) (caar x))",
+            "(begin (def x '((1) . 2)) (cdar x))",
+            "(begin (def x '((1 . 2) . 2)) (cdar x))",
+            "(begin (def x '(1 . (2))) (cadr x))",
+            "(begin (def x '(1 . (2 . 3))) (cadr x))",
+            "(begin (def x '(1 . (2))) (cddr x))",
+            "(begin (def x '(1 . (2 . 3))) (cddr x))"
         };
 
-        printf("Testing 'cdr' (ref)\n");
+        printf("Testing 'caar', 'cdar', 'cadr', 'cddr'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }

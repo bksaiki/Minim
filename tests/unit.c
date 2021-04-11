@@ -185,6 +185,25 @@ int main()
     }
 
     {
+        const int COUNT = 8;
+        char strs[16][256] =
+        {
+            "(caar '((1) . 2))",                   "1",
+            "(caar '((1 . 2) . 3))",                "1",
+            "(cdar '((1) . 2))",                    "'()",
+            "(cdar '((1 . 2) . 3))",                "2",
+            "(cadr '(1 . (2)))",                    "2",
+            "(cadr '(1 . (2 . 3)))",                "2",
+            "(cddr '(1 . (2)))",                    "'()",
+            "(cddr '(1 . (2 . 3)))",                "3"
+        };
+
+        printf("Testing 'caar', 'cdar', 'cadr', 'cddr'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 3;
         char strs[6][256] =
         {

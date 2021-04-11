@@ -92,6 +92,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "cdr", MINIM_OBJ_FUNC, minim_builtin_cdr);
     minim_load_builtin(env, "null", MINIM_OBJ_PAIR, NULL, NULL);
 
+    minim_load_builtin(env, "caar", MINIM_OBJ_FUNC, minim_builtin_caar);
+    minim_load_builtin(env, "cadr", MINIM_OBJ_FUNC, minim_builtin_cadr);
+    minim_load_builtin(env, "cdar", MINIM_OBJ_FUNC, minim_builtin_cdar);
+    minim_load_builtin(env, "cddr", MINIM_OBJ_FUNC, minim_builtin_cddr);
+
     // List
     minim_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
     minim_load_builtin(env, "list?", MINIM_OBJ_FUNC, minim_builtin_listp);
@@ -271,6 +276,11 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, consp, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, car, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, cdr, 1);
+
+    CHECK_EXACT_ARITY(fun, argc, env, perr, caar, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, cadr, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, cdar, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, cddr, 1);
 
     // List
     // NO CHECK: list

@@ -83,7 +83,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_CAAR(obj)     MINIM_CAR(MINIM_CAR(obj))
 #define MINIM_CADR(obj)     MINIM_CAR(MINIM_CDR(obj))
 #define MINIM_CDAR(obj)     MINIM_CDR(MINIM_CAR(obj))
-#define MINIM_CDDR(obj)     MINIM_CDR(MINIM_CDR(pbj))
+#define MINIM_CDDR(obj)     MINIM_CDR(MINIM_CDR(obj))
 
 #define MINIM_EXACT(obj)    ((mpq_ptr) obj->u.ptrs.p1)
 #define MINIM_INEXACT(obj)  (obj->u.fls.f1)
