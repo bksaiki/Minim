@@ -274,10 +274,11 @@ int main()
     }
 
     {
-        const int COUNT = 5;
-        char strs[10][256] =
+        const int COUNT = 6;
+        char strs[12][256] =
         {
             "(remove 0 (list))",                        "'()",
+            "(remove 1 (list 1))",                      "'()",
             "(remove 1 (list 1 2 3))",                  "'(2 3)",
             "(remove 2 (list 1 2 3))",                  "'(1 3)",
             "(remove 4 (list 1 2 3))",                  "'(1 2 3)",
@@ -285,6 +286,21 @@ int main()
         };
 
         printf("Testing 'remove'..\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(member 0 (list))",                        "false",
+            "(member 1 (list 1))",                      "'(1)",
+            "(member 2 (list 1 2 3))",                  "'(2 3)",
+            "(member (list 1 2) (list (list 1 2) 3))",  "'((1 2) 3)"
+        };
+
+        printf("Testing 'member'..\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

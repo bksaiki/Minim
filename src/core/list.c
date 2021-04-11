@@ -456,14 +456,22 @@ MinimObject *minim_builtin_remove(MinimEnv *env, MinimObject **args, size_t argc
     if (minim_equalp(MINIM_CAR(res), args[0]))
     {
         tmp = res;
-        res = MINIM_CDR(tmp);
-        MINIM_CDR(tmp) = NULL;
+        if (MINIM_CDR(tmp))
+        {
+            res = MINIM_CDR(tmp);
+            MINIM_CDR(tmp) = NULL;
+        }
+        else
+        {
+            init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+        }
+
         free_minim_object(tmp);
         return res;
     }
 
     tmp = res;
-    for (MinimObject *it = MINIM_CDR(res); MINIM_CDR(it); it = MINIM_CDR(it))
+    for (MinimObject *it = MINIM_CDR(res); it; it = MINIM_CDR(it))
     {
         if (minim_equalp(MINIM_CAR(it), args[0]))
         {
@@ -478,6 +486,24 @@ MinimObject *minim_builtin_remove(MinimEnv *env, MinimObject **args, size_t argc
         }
     }
 
+    return res;
+}
+
+MinimObject *minim_builtin_member(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!minim_listp(args[1]))
+        return minim_argument_error("list", "member", 1, args[1]);
+
+    for (MinimObject *it = args[1]; MINIM_CAR(it); it = MINIM_CDR(it))
+    {
+        if (minim_equalp(MINIM_CAR(it), args[0]))
+            return copy2_minim_object(it);
+    }
+
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, 0);
     return res;
 }
 
