@@ -135,6 +135,19 @@ int main()
     }
 
     {
+        const int COUNT = 2;
+        char strs[2][256] =
+        {
+            "(begin (def x (list 1 2)) (remove 1 x))",
+            "(begin (def x (list 1 2 3 4)) (remove 2 x))"
+        };
+
+        printf("Testing 'remove' (ref)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
+    {
         const int COUNT = 1;
         char strs[1][256] =
         {

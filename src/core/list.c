@@ -381,6 +381,48 @@ MinimObject *minim_builtin_reverse(MinimEnv *env, MinimObject **args, size_t arg
     return res;
 }
 
+MinimObject *minim_builtin_remove(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res, *tmp;
+
+    if (!minim_listp(args[1]))
+        return minim_argument_error("list", "remove", 1, args[1]);
+
+    if (minim_nullp(args[1]))
+    {
+        OPT_MOVE_REF(res, args[1]);
+        return res;
+    }
+
+    OPT_MOVE(res, args[1]);
+    if (minim_equalp(MINIM_CAR(res), args[0]))
+    {
+        tmp = res;
+        res = MINIM_CDR(tmp);
+        MINIM_CDR(tmp) = NULL;
+        free_minim_object(tmp);
+        return res;
+    }
+
+    tmp = res;
+    for (MinimObject *it = MINIM_CDR(res); MINIM_CDR(it); it = MINIM_CDR(it))
+    {
+        if (minim_equalp(MINIM_CAR(it), args[0]))
+        {
+            MINIM_CDR(tmp) = MINIM_CDR(it);
+            MINIM_CDR(it) = NULL;
+            free_minim_object(it);
+            it = tmp;
+        }
+        else
+        {
+            tmp = it;
+        }
+    }
+
+    return res;
+}
+
 MinimObject *minim_builtin_list_ref(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *it;

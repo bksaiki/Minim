@@ -258,6 +258,22 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
+            "(remove 0 (list))",                        "'()",
+            "(remove 1 (list 1 2 3))",                  "'(2 3)",
+            "(remove 2 (list 1 2 3))",                  "'(1 3)",
+            "(remove 4 (list 1 2 3))",                  "'(1 2 3)",
+            "(remove 2 (list 1 2 3 2 1))",              "'(1 3 1)"
+        };
+
+        printf("Testing 'remove'..\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
             "(filter negative? (list))",                    "'()",
             "(filter negative? (list 1))",                  "'()",
             "(filter negative? (list -1))",                 "'(-1)",

@@ -100,6 +100,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "length", MINIM_OBJ_FUNC, minim_builtin_length);
     minim_load_builtin(env, "append", MINIM_OBJ_FUNC, minim_builtin_append);
     minim_load_builtin(env, "reverse", MINIM_OBJ_FUNC, minim_builtin_reverse);
+    minim_load_builtin(env, "remove", MINIM_OBJ_FUNC, minim_builtin_remove);
     minim_load_builtin(env, "list-ref", MINIM_OBJ_FUNC, minim_builtin_list_ref);
     minim_load_builtin(env, "map", MINIM_OBJ_FUNC, minim_builtin_map);
     minim_load_builtin(env, "apply", MINIM_OBJ_FUNC, minim_builtin_apply);
@@ -279,6 +280,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, length, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, append, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, reverse, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, remove, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, list_ref, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, map, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, apply, 2);
