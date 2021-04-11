@@ -8,14 +8,6 @@
 #include "hash.h"
 #include "list.h"
 
-#define OPT_MOVE(dest, src)             \
-{                                       \
-    if (MINIM_OBJ_OWNERP(src))          \
-    { dest = src; src = NULL; }         \
-    else                                \
-    { dest = fresh_minim_object(src); } \
-}
-
 //
 //  Hash function
 //

@@ -641,10 +641,9 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
         if (args[0]->type == MINIM_OBJ_FUNC)
         {
             MinimBuiltin func = args[0]->u.ptrs.p1;
-            
             for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
             {
-                OPT_MOVE(vals[0], MINIM_CAR(it))
+                OPT_MOVE2(vals[0], MINIM_CAR(it), args[2]);
                 tmp = func(env, vals, 2);
                 
                 if (vals[0])    free_minim_object(vals[0]);
@@ -657,22 +656,20 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
         else
         {
             MinimLambda *lam = args[0]->u.ptrs.p1;
-
             for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
             {
                 OPT_MOVE(vals[0], MINIM_CAR(it));
                 tmp = eval_lambda(lam, env, vals, 2);
 
-                if (tmp->type == MINIM_OBJ_ERR) break;
                 if (vals[0])    free_minim_object(vals[0]);
                 if (vals[1])    free_minim_object(vals[1]);
 
                 vals[1] = tmp;
+                if (tmp->type == MINIM_OBJ_ERR) break;
             }
         }
 
         res = vals[1];
-        free(vals);
     }
 
     return res;

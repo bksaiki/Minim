@@ -117,13 +117,11 @@ void ast_to_buffer(MinimAst *node, Buffer *bf)
 {
     if (node->argc != 0)
     {
-        bool first = true;
-
         writec_buffer(bf, '(');
-        for (size_t i = 0; i < node->argc; ++i)
+        ast_to_buffer(node->children[0], bf);
+        for (size_t i = 1; i < node->argc; ++i)
         {
-            if (first)  first = false;
-            else        writec_buffer(bf, ' ');
+            writec_buffer(bf, ' ');
             ast_to_buffer(node->children[i], bf);
         }
 

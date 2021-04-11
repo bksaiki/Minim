@@ -50,6 +50,7 @@ typedef bool (*MinimPred)(MinimObject *);
 // Setters
 
 #define MINIM_OBJ_SET_OWNER(obj)        (obj->flags |= MINIM_OBJ_OWNER)
+#define MINIM_OBJ_SET_REF(obj)          (obj->flags &= ~MINIM_OBJ_OWNER)
 
 // Predicates 
 
@@ -97,7 +98,18 @@ typedef bool (*MinimPred)(MinimObject *);
     if (MINIM_OBJ_OWNERP(src))          \
     { dest = src; src = NULL; }         \
     else                                \
-    { dest = fresh_minim_object(src); } \
+    { dest = copy2_minim_object(src); } \
+}
+
+// Optimized move 
+//  makes 'dest' a owned copy of 'src'
+//  moves 'src' to 'dest' if 'obj' is an owner
+#define OPT_MOVE2(dest, src, obj)       \
+{                                       \
+    if (MINIM_OBJ_OWNERP(obj))          \
+    { dest = src; src = NULL; }         \
+    else                                \
+    { dest = copy2_minim_object(src); } \
 }
 
 // Optimized move (ref variant)
@@ -114,7 +126,7 @@ typedef bool (*MinimPred)(MinimObject *);
 
 // Optimized move (ref2 variant)
 //  makes 'dest' a copy of 'src'
-//  moves 'src' to 'dest' if src is an owner
+//  moves 'src' to 'dest' if obj is an owner
 //  preserves ownership based on 'obj'
 #define OPT_MOVE_REF2(dest, src, obj)   \
 {                                       \

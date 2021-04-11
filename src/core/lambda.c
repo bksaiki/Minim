@@ -98,14 +98,17 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     MinimObject *res, *val;
     MinimEnv *env2;
 
-    if (lam->argc != argc)
+    if (lam->rest)
     {
         char *name = (lam->name ? lam->name : "???");
-        
-        if (lam->rest)
+        if (argc < lam->argc)
             return minim_arity_error(name, lam->argc, SIZE_MAX, argc);
-        else
-            return minim_arity_error(name, lam->argc, lam->argc, argc);
+
+    }
+    else if (argc != lam->argc)
+    {
+        char *name = (lam->name ? lam->name : "???");
+        return minim_arity_error(name, lam->argc, lam->argc, argc);
     }
 
     init_env(&env2, lam->env);
@@ -228,9 +231,9 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
             lam->rest = bindings->u.str.str;
             collect_exprs(&args[1], argc - 1, lam);
             rcopy_env(&lam->env, env);
-            init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
 
-            bindings->u.ptrs.p1 = NULL;
+            init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
+            bindings->u.str.str = NULL;
         }
         else if (minim_listp(bindings) || minim_consp(bindings))
         {
