@@ -296,7 +296,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, member, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, list_ref, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, map, 2);
-    CHECK_EXACT_ARITY(fun, argc, env, perr, apply, 2);
+    CHECK_MIN_ARITY(fun, argc, env, perr, apply, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, filter, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, filtern, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, foldl, 3);

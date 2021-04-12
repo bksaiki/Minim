@@ -204,12 +204,14 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 5;
+        char strs[10][256] =
         {
-            "(apply list (list))",                          "'()",
-            "(apply + (list 1))",                            "1",
-            "(apply + (list 1 2 3 4))",                     "10"
+            "(apply list (list))",                  "'()",
+            "(apply + (list 1))",                   "1",
+            "(apply + (list 1 2 3 4))",             "10",
+            "(apply + 1 2 (list 3 4))",             "10",
+            "(apply + 1 2 3 (list 4 5))",           "15"
         };
 
         printf("Testing 'apply'\n");

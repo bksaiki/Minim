@@ -10,3 +10,11 @@
 (def list* args
   (let ([rev (reverse args)])
     (foldl cons (car rev) (cdr rev))))
+
+;; TODO: check lists
+(def append* args
+  (let ([rev (reverse args)])
+    (foldl append (apply append (car rev)) (cdr rev))))
+
+(def append-map (proc . lsts)
+  (apply append (apply map proc lsts)))

@@ -552,19 +552,22 @@ MinimObject *minim_builtin_map(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *it, **vals;
-    size_t len;
+    size_t i, len;
 
     if (!MINIM_OBJ_FUNCP(args[0]))
         return minim_argument_error("function", "apply", 0, args[0]);
     
-    if (!minim_listp(args[1]))
-        return minim_argument_error("list", "apply", 1, args[1]);
+    if (!minim_listp(args[argc - 1]))
+        return minim_argument_error("list", "apply", argc - 1, args[argc - 1]);
 
-    len = minim_list_length(args[1]);
+    len = argc - 2 + minim_list_length(args[argc - 1]);
     vals = malloc(len * sizeof(MinimObject*));
 
-    it = args[1];
-    for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
+    for (i = 0; i < argc - 2; ++i)
+        OPT_MOVE(vals[i], args[i + 1]); 
+
+    it = args[argc - 1];
+    for (; i < len; ++i, it = MINIM_CDR(it))
         vals[i] = copy2_minim_object(MINIM_CAR(it));
 
     if (args[0]->type == MINIM_OBJ_FUNC)
@@ -670,6 +673,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
         }
 
         res = vals[1];
+        free(vals);
     }
 
     return res;
