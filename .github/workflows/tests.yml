@@ -4,21 +4,31 @@ on: [push]
 
 jobs:
 
-  test:
+  unit:
     runs-on: ubuntu-latest   
     steps:
     - uses: actions/checkout@v1
     - name: Build
       run: make
     - name: Unit tests
-      run: make tests
+      run: make unit-tests
 
-  examples:
+  library:
     runs-on: "ubuntu-latest"
-    needs: [ 'test' ]
+    needs: [ 'unit' ]
     steps:
     - uses: actions/checkout@v1
     - name: Build
       run: make
-    - name : Unit tests
+    - name : Library tests
+      run: make lib-tests
+
+  examples:
+    runs-on: "ubuntu-latest"
+    needs: [ 'unit' ]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build
+      run: make
+    - name : Examples
       run: make examples

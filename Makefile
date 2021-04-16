@@ -27,7 +27,7 @@ main: configure $(OBJS)
 configure:
 	cd src && $(MAKE) config
 
-tests: $(TEST_EXES)
+unit-tests: $(TEST_EXES)
 	$(TEST_DIR)/test.sh $(TEST_EXES)
 
 memcheck: $(TEST_EXES)
@@ -35,6 +35,9 @@ memcheck: $(TEST_EXES)
 
 examples:
 	sh $(TEST_DIR)/examples.sh
+
+lib-tests:
+	sh $(TEST_DIR)/lib.sh
 
 clean:
 	cd src && $(MAKE) clean

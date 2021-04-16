@@ -157,23 +157,21 @@ bool minim_listof(MinimObject* list, MinimPred pred)
     return true;
 }
 
-static bool minim_cons_eqp_h(MinimObject *a, MinimObject *b)
-{
-    if (!minim_equalp(MINIM_CAR(a), MINIM_CAR(b)))
-        return false;
-
-    if (MINIM_CDR(a) && MINIM_CDR(b))   return minim_cons_eqp(MINIM_CDR(a), MINIM_CDR(b));
-    if (!MINIM_CDR(a) && !MINIM_CDR(b)) return true;
-    return false;
-}
-
 bool minim_cons_eqp(MinimObject *a, MinimObject *b)
 {
-    bool x = minim_nullp(a), y = minim_nullp(b);
+    bool nx = minim_nullp(a);
+    bool ny = minim_nullp(b);
     
-    if (x && y)     return true;
-    if (x != y)     return false;
-    return minim_cons_eqp_h(a, b);
+    if (nx && ny)     return true;
+    if (nx != ny)     return false;
+
+    if (!minim_equalp(MINIM_CAR(a), MINIM_CAR(b)))
+        return false;
+    
+    if (MINIM_CDR(a) && MINIM_CDR(b))
+        return minim_equalp(MINIM_CDR(a), MINIM_CDR(b));
+
+    return !MINIM_CDR(a) && !MINIM_CDR(b);
 }
 
 void minim_cons_to_bytes(MinimObject *obj, Buffer *bf)

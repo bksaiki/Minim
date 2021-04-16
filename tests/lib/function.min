@@ -1,0 +1,28 @@
+;; Tests for <lib>/function.min
+
+;; identity
+(equal? 1 (identity 1))
+
+;; negate
+(def not-list (negate list?))
+(def not-integer (negate integer?))
+(not-list (vector 1 2))
+(not-integer 5/3)
+
+;; const
+(def one-fn (const 1))
+(equal? (one-fn) 1)
+(equal? (one-fn 1) 1)
+(equal? (one-fn 1 2) 1)
+
+;; curry
+(def times-2 (curry * 2))
+(def append-one-to-front (curry cons 1))
+(equal? (times-2 3) 6)
+(equal? (append-one-to-front (list 2 3)) (list 1 2 3))
+
+;; curryr
+(def times-2 (curryr * 2))
+(def append-one-to-back (curryr list 3))
+(equal? (times-2 3) 6)
+(equal? (append-one-to-back 1 2) (list 1 2 3))
