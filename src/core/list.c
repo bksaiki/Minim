@@ -411,15 +411,31 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
             return minim_argument_error("list", "append", i, args[i]);
     }
 
-    res = fresh_minim_object(args[0]);
-    MINIM_TAIL(it, res);
-    for (size_t i = 1; i < argc; ++i)
+    res = NULL;
+    for (size_t i = 0; i < argc; ++i)
     {
-        MINIM_CDR(it) = fresh_minim_object(args[i]);
-        MINIM_TAIL(it, it);
+        if (!minim_nullp(args[i]))
+        {
+            if (res == NULL)
+            {
+                res = fresh_minim_object(args[i]);
+                it = res;
+            }
+            else
+            {
+                MINIM_CDR(it) = fresh_minim_object(args[i]);
+            } 
+            MINIM_TAIL(it, it);
+        }
+        else
+        {
+            RELEASE_IF_OWNER(args[i]);
+            args[i] = NULL;
+        }
     }
 
     RELEASE_OWNED_ARGS(args, argc);
+    if (!res) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
     return res;
 }
 
@@ -552,7 +568,7 @@ MinimObject *minim_builtin_map(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *it, **vals;
-    size_t i, len;
+    size_t i, len, valc;
 
     if (!MINIM_OBJ_FUNCP(args[0]))
         return minim_argument_error("function", "apply", 0, args[0]);
@@ -560,28 +576,29 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
     if (!minim_listp(args[argc - 1]))
         return minim_argument_error("list", "apply", argc - 1, args[argc - 1]);
 
-    len = argc - 2 + minim_list_length(args[argc - 1]);
-    vals = malloc(len * sizeof(MinimObject*));
+    len = minim_list_length(args[argc - 1]);
+    valc = len + argc - 2;
+    vals = malloc(valc * sizeof(MinimObject*));
 
     for (i = 0; i < argc - 2; ++i)
         OPT_MOVE(vals[i], args[i + 1]); 
 
     it = args[argc - 1];
-    for (; i < len; ++i, it = MINIM_CDR(it))
+    for (; i < valc; ++i, it = MINIM_CDR(it))
         vals[i] = copy2_minim_object(MINIM_CAR(it));
 
     if (args[0]->type == MINIM_OBJ_FUNC)
     {
         MinimBuiltin func = args[0]->u.ptrs.p1;
-        res = func(env, vals, len);
+        res = func(env, vals, valc);
     }
     else // MINIM_OBJ_CLOSURE
     {
         MinimLambda *lam = args[0]->u.ptrs.p1;
-        res = eval_lambda(lam, env, vals, len);
+        res = eval_lambda(lam, env, vals, valc);
     }
 
-    free_minim_objects(vals, len);
+    free_minim_objects(vals, valc);
     return res;
 }
 

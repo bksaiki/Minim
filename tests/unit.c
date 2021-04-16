@@ -248,10 +248,13 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 6;
+        char strs[12][256] =
         {
             "(append (list))",                              "'()",
+            "(append (list) (list))",                       "'()",
+            "(append (list) (list 1 2))",                   "'(1 2)",
+            "(append (list 1 2) (list))",                   "'(1 2)",
             "(append (list 1 2) (list 3 4))",               "'(1 2 3 4)",
             "(append (list 1 2) (list 3 4) (list 5 6))",    "'(1 2 3 4 5 6)"
         };

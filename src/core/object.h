@@ -137,20 +137,27 @@ typedef bool (*MinimPred)(MinimObject *);
 }
 
 // Deletes all arguments that are owners
-#define RELEASE_OWNED_ARGS(args, argc)      \
-{                                           \
-    for (size_t i = 0; i < argc; ++i)          \
-    {                                       \
-        if (MINIM_OBJ_OWNERP((args)[i]))      \
-            (args)[i] = NULL;                 \
-    }                                       \
+#define RELEASE_OWNED_ARGS(args, argc)                   \
+{                                                        \
+    for (size_t i = 0; i < argc; ++i)                    \
+    {                                                    \
+        if ((args)[i] && MINIM_OBJ_OWNERP((args)[i]))    \
+            (args)[i] = NULL;                   \
+    }                                           \
+}
+
+// Deletes if object is a owner
+#define RELEASE_IF_OWNER(obj)       \
+{                                   \
+    if (MINIM_OBJ_OWNERP(obj))      \
+        free_minim_object(obj);     \
 }
 
 // Deletes if object is a reference
-#define RELEASE_IF_REF(obj)     \
-{                               \
-    if (!MINIM_OBJ_OWNERP(obj)) \
-        free_minim_object(obj); \
+#define RELEASE_IF_REF(obj)         \
+{                                   \
+    if (!MINIM_OBJ_OWNERP(obj))     \
+        free_minim_object(obj);     \
 }
 
 

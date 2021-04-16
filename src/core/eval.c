@@ -288,7 +288,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
             if (MINIM_OBJ_CLOSUREP(res))
             {
                 MinimLambda *lam = res->u.ptrs.p1;
-                copy_syntax_loc(&lam->loc, node->children[0]->loc);
+                if (node->children[0]->loc)
+                    copy_syntax_loc(&lam->loc, node->children[0]->loc);
             }
         }
         else if (MINIM_OBJ_CLOSUREP(op))
