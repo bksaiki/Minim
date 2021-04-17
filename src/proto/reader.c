@@ -50,12 +50,12 @@ static void check_char(char c, SyntaxTable *ptable)
         ptable->flags |= READ_NODE_FLAG_EOF;
 }
 
-static char advance_to_token(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+static char advance_to_token(FILE *file, SyntaxTable *ptable)
 {
     char c;
 
     c = fgetc(file);
-    while (isspace(c))
+    while (isspace(c) && c != ptable->eof)
     {
         update_table(c, ptable);
         c = fgetc(file);
@@ -73,6 +73,29 @@ static char advance_to_token(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     }
 
     return c;
+}
+
+static void finalize_read(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+{
+    char c = advance_to_token(file, ptable);
+
+    if (c == ptable->eof)
+    {
+        ptable->flags |= READ_NODE_FLAG_EOF;
+    }
+    else
+    {
+        Buffer *bf;
+
+        init_buffer(&bf);
+        writef_buffer(bf, "unexpected: '~c'", c);
+        trim_buffer(bf);
+
+        ptable->flags |= READ_NODE_FLAG_BAD;
+        init_read_node(perror, READ_NODE_DATUM);
+        (*perror)->sym = release_buffer(bf);
+        free_buffer(bf);
+    }
 }
 
 static bool expand_shorthand_syntax(ReadNode *node)
@@ -167,11 +190,32 @@ static ReadNode *read_list(FILE *file, SyntaxTable *ptable, ReadNode **perror)
             node->children[node->childc - 1] = tmp;
         }
 
-        c = fgetc(file);
+        c = advance_to_token(file, ptable);
         if (closed_paren(c))
         {
             update_table(c, ptable);
             break;
+        }
+        else if (c == ptable->eof)
+        {
+            if (!ptable->wait)
+            {
+                Buffer *bf;
+
+                init_buffer(&bf);
+                writes_buffer(bf, "unexpected end of input");
+                trim_buffer(bf);
+
+                ptable->flags |= READ_NODE_FLAG_BAD;
+                init_read_node(perror, READ_NODE_DATUM);
+                (*perror)->sym = release_buffer(bf);
+                free_buffer(bf);
+                break;
+            }
+            else
+            {
+                printf("  ");
+            }
         }
         else
         {
@@ -200,11 +244,32 @@ static ReadNode *read_vector(FILE *file, SyntaxTable *ptable, ReadNode **perror)
             node->children[node->childc - 1] = tmp;
         }
 
-        c = fgetc(file);
+        c = advance_to_token(file, ptable);
         if (closed_paren(c))
         {
             update_table(c, ptable);
             break;
+        }
+        else if (c == ptable->eof)
+        {
+            if (!ptable->wait)
+            {
+                Buffer *bf;
+
+                init_buffer(&bf);
+                writes_buffer(bf, "unexpected end of input");
+                trim_buffer(bf);
+
+                ptable->flags |= READ_NODE_FLAG_BAD;
+                init_read_node(perror, READ_NODE_DATUM);
+                (*perror)->sym = release_buffer(bf);
+                free_buffer(bf);
+                break;
+            }
+            else
+            {
+                printf("  ");
+            }
         }
         else
         {
@@ -220,11 +285,12 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     ReadNode *node;
     char c, n;
 
-    c = advance_to_token(file, ptable, perror);
+    c = advance_to_token(file, ptable);
     if (c == '\'')
     {
         update_table(c, ptable);
         node = read_quote(file, ptable, perror);
+        c = advance_to_token(file, ptable);
     }
     else if (c == '#')
     {
@@ -240,7 +306,18 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
             ungetc(n, file);
             node = read_datum(file, ptable, perror);
             if (!expand_shorthand_syntax(node))
+            {
+                Buffer *bf;
+
+                init_buffer(&bf);
+                writef_buffer(bf, "bad syntax: #~s", node->sym);
+                trim_buffer(bf);
+
                 ptable->flags |= READ_NODE_FLAG_BAD;
+                init_read_node(perror, READ_NODE_DATUM);
+                (*perror)->sym = release_buffer(bf);
+                free_buffer(bf);
+            }
         }
     }
     else if (open_paren(c))
@@ -248,21 +325,44 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
         update_table(c, ptable);
         node = read_list(file, ptable, perror);
     }
-    else if (closed_paren(c)) // possibly closing a list
+    else if (closed_paren(c) && c == ptable->eof) // nonsense 
     {
         ungetc(c, file);
         return NULL;
     }
     else if (c == ptable->eof) // empty input
     {
-        return NULL;
+        if (!ptable->wait)
+        {
+            Buffer *bf;
+
+            init_buffer(&bf);
+            writes_buffer(bf, "unexpected end of input");
+            trim_buffer(bf);
+
+            ptable->flags |= READ_NODE_FLAG_BAD;
+            init_read_node(perror, READ_NODE_DATUM);
+            (*perror)->sym = release_buffer(bf);
+            free_buffer(bf);
+            return NULL;
+        }
+        else
+        {
+            printf("  ");
+        }
     }
-    else
+    else if (normal_char(c))
     {
         ungetc(c, file);
         node = read_datum(file, ptable, perror);
     }
+    else
+    {
+        ungetc(c, file);
+        return NULL;
+    }
 
+    finalize_read(file, ptable, perror);
     return node;
 }
 
@@ -275,43 +375,49 @@ void print_syntax(ReadNode *node)
     if (node->childc > 0)
     {
         printf("(");
-        for (size_t i = 0; i < node->childc; ++i)
+        print_syntax(node->children[0]);
+        for (size_t i = 1; i < node->childc; ++i)
+        {
+            printf(" ");
             print_syntax(node->children[i]);
+        }
         printf(")");
     }
     else
     {
-        printf("%s, ", node->sym);
+        printf("%s", node->sym);
     }
 }
 
-ReadNode *minim_read_str(FILE *file, ReadNode **perror)
+ReadNode *minim_read_str(FILE *file)
 {
-    ReadNode *node;
+    ReadNode *node, *err;
     SyntaxTable table;
 
     table.idx = 0;
     table.row = 0;
     table.col = 0;
     table.eof = '\n';
+    table.wait = true;
     table.flags = 0x0;
 
-    do node = read_top(file, &table, perror);
-    while (!node);
-    
+    node = read_top(file, &table, &err);
     if (~table.flags & READ_NODE_FLAG_EOF)
     {
-        char str[256];
+        Buffer *bf;
 
-        fgets(str, 255, file);
-        printf("Unexpected characters after expression: %s", str);
+        init_buffer(&bf);
+        writef_buffer(bf, "unexpected: '~c'", fgetc(file));
+        trim_buffer(bf);
+
+        init_read_node(&node, READ_NODE_DATUM);
+        node->sym = release_buffer(bf);
+        free_buffer(bf);
     }
     else if (table.flags & READ_NODE_FLAG_BAD)
     {
-        printf("Syntax failure\n");
+        node = err;
     }
 
-    printf("Read %zu chars\n", table.idx);
-    printf("Finished at (%zu, %zu)\n", table.row, table.col);
     return node;
 }

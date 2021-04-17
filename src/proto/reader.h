@@ -28,10 +28,11 @@ struct SyntaxTable
     size_t idx, row, col;
     uint8_t flags;
     char eof;
+    char wait;
 } typedef SyntaxTable;
 
 void print_syntax(ReadNode *node);
 
-ReadNode *minim_read_str(FILE *str, ReadNode **perror);
+ReadNode *minim_read_str(FILE *file);
 
 #endif

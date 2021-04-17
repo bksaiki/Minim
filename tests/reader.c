@@ -7,7 +7,7 @@ int main(int argc, char **argv)
     ReadNode *node;
 
     printf("> ");
-    node = minim_read_str(stdin, NULL);
-    print_syntax(node);
+    node = minim_read_str(stdin);
+    if (node) print_syntax(node);
     printf("\n");
 }
