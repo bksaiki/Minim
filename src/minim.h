@@ -11,4 +11,7 @@
 #include "core/parser.h"
 #include "core/print.h"
 
+#define MINIM_FLAG_LOAD_LIBS        0x1
+#define MINIM_FLAG_NO_RUN           0x2
+
 #endif

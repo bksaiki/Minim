@@ -3,8 +3,6 @@
 
 #include "minim.h"
 
-#define MINIM_FLAG_LOAD_LIBS    0x1
-
 /* Runs a file in a Minim instance */
 int minim_load_file(MinimEnv *env, const char *str);
 

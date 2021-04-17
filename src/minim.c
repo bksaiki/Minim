@@ -15,13 +15,17 @@ static int process_flags(int count, char **args, uint32_t *pflags)
             printf("Minim v%s \n", MINIM_VERSION_STR);
             printf("Run \"minim\" to run Minim in a REPL\n");
             printf("Run \"minim <flags> ... <file>\" to run Minim on a file\n");
-            printf("Flags:\n");
-            printf(" -h\thelp\n");
-            printf(" -v\tversion\n");
+            printf("Flag:\n");
+            printf(" -h\t\t\thelp\n");
+            printf(" -v\t\t\tversion\n");
+            printf(" --no-libs\t\tdon't load library files\n");
+
+            *pflags |= MINIM_FLAG_NO_RUN;
         }
         else if (strcmp(args[i], "-v") == 0)
         {
             printf("Minim v%s \n", MINIM_VERSION_STR);
+            *pflags |= MINIM_FLAG_NO_RUN;
         }
         else if (strcmp(args[i], "--no-libs") == 0)
         {
@@ -49,6 +53,9 @@ int main(int argc, char** argv)
     flagc = process_flags(argc - 1, &argv[1], &flags);
     if (flagc == -1)
         return 1;
+
+    if (flags & MINIM_FLAG_NO_RUN)
+        return 0;
 
     if (argc - flagc == 1)
         status = minim_repl(flags);
