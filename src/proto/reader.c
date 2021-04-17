@@ -362,7 +362,6 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
         return NULL;
     }
 
-    finalize_read(file, ptable, perror);
     return node;
 }
 
@@ -402,7 +401,13 @@ ReadNode *minim_read_str(FILE *file)
     table.flags = 0x0;
 
     node = read_top(file, &table, &err);
-    if (~table.flags & READ_NODE_FLAG_EOF)
+    finalize_read(file, &table, &err);
+
+    if (table.flags & READ_NODE_FLAG_BAD)
+    {
+        node = err;
+    }
+    else if (~table.flags & READ_NODE_FLAG_EOF)
     {
         Buffer *bf;
 
@@ -414,10 +419,7 @@ ReadNode *minim_read_str(FILE *file)
         node->sym = release_buffer(bf);
         free_buffer(bf);
     }
-    else if (table.flags & READ_NODE_FLAG_BAD)
-    {
-        node = err;
-    }
 
+    fflush(file);
     return node;
 }
