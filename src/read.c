@@ -12,54 +12,14 @@
         return 2;                       \
 } 
 
-int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
+int minim_load_file(MinimEnv *env, const char *fname)
 {
     SyntaxNode *ast;
     MinimObject *obj;
-    char *input;
-    
-    if (bf->pos == 0)
-        return 0;
-    
-    input = get_buffer(bf);
-    if (strcmp(input, "(exit)") == 0)
-        return 1;
-    
-    if (!parse_expr_loc(input, &ast, loc))
-    {
-        printf(";  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
-        return 2;
-    }
-    
-    eval_ast(env, ast, &obj);
-    if (obj->type == MINIM_OBJ_ERR)
-    {    
-        print_minim_object(obj, env, pp);
-        free_minim_object(obj);
-        free_syntax_node(ast);
-        printf("\n;  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
-        return 2;
-    }
-    else if (obj->type != MINIM_OBJ_VOID)
-    {
-        print_minim_object(obj, env, pp);
-        printf("\n");
-    }
-
-    free_minim_object(obj);
-    free_syntax_node(ast);
-
-    return 0;
-}
-
-int minim_load_file(MinimEnv *env, const char *fname)
-{
     PrintParams pp;
-    SyntaxLoc *loc, *tloc;
-    Buffer *bf;
     Buffer *valid_fname;
+    ReadTable rt;
     FILE *file;
-    int status;
 
     init_buffer(&valid_fname);
     valid_path(valid_fname, fname);
@@ -71,17 +31,44 @@ int minim_load_file(MinimEnv *env, const char *fname)
         return 2;
     }
 
-    init_buffer(&bf);
-    init_syntax_loc(&loc, valid_fname->data);
-    copy_syntax_loc(&tloc, loc);
-    set_default_print_params(&pp);
+    rt.idx = 0;
+    rt.row = 0;
+    rt.col = 0;
+    rt.flags = 0x0;
+    rt.eof = EOF;
 
-    free_buffer(bf);
+    set_default_print_params(&pp);
+    while (~rt.flags & SYNTAX_NODE_FLAG_EOF)
+    {
+        minim_parse_port2(file, valid_fname->data, &ast, &rt);
+        if (!ast || rt.flags & SYNTAX_NODE_FLAG_BAD)
+        {
+            printf("Parsing failed\n");
+            printf("Parsed: %lu at (%lu, %lu)\n", rt.idx, rt.row, rt.col);
+            return 2;
+        }
+
+        eval_ast(env, ast, &obj);
+        if (obj->type == MINIM_OBJ_ERR)
+        {    
+            print_minim_object(obj, env, &pp);
+            free_minim_object(obj);
+            free_syntax_node(ast);
+            return 2;
+        }
+        else if (obj->type != MINIM_OBJ_VOID)
+        {
+            print_minim_object(obj, env, &pp);
+            printf("\n");
+        }
+
+        free_minim_object(obj);
+        free_syntax_node(ast);
+    }
+
     free_buffer(valid_fname);
-    free_syntax_loc(loc);
-    free_syntax_loc(tloc);
     fclose(file);
-    return status;
+    return 0;
 }
 
 int minim_run_file(const char *str, uint32_t flags)

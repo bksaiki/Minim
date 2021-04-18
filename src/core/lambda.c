@@ -194,6 +194,9 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
     {
         SyntaxNode *ast;
 
+        init_syntax_node(&ast, SYNTAX_NODE_LIST);
+        ast->children[0] = malloc((count + 1) * sizeof(SyntaxNode*));
+
         init_syntax_node(&ast->children[0], SYNTAX_NODE_DATUM);
         ast->children[0]->sym = malloc(6 * sizeof(char));
         for (size_t i = 0; i < count; ++i)

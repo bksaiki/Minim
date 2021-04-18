@@ -56,10 +56,16 @@ static char advance_to_token(FILE *file, ReadTable *ptable)
     {
         update_table(c, ptable);
         c = fgetc(file);
-        while (c != '\n')
+        while (c != ptable->eof && c != '\n')
         {
             update_table(c, ptable);
             c = fgetc(file);
+        }
+
+        if (c == '\n' && c != ptable->eof)
+        {
+            update_table(c, ptable);
+            c = advance_to_token(file, ptable);
         }
     }
 
@@ -132,7 +138,7 @@ static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, S
     
     init_buffer(&bf);
     c = fgetc(file);
-    while (normal_char(c))
+    while (c != ptable->eof && normal_char(c))
     {
         writec_buffer(bf, c);
         update_table(c, ptable);
@@ -417,6 +423,21 @@ int minim_parse_port(FILE *file, const char *name, SyntaxNode **psyntax, char eo
         init_syntax_node(&node, SYNTAX_NODE_DATUM);
         node->sym = release_buffer(bf);
         free_buffer(bf);
+    }
+
+    *psyntax = node;
+    return 0;
+}
+
+int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, ReadTable *table)
+{
+    SyntaxNode *node, *err;
+
+    node = read_top(file, name, table, &err);
+    if (table->flags & SYNTAX_NODE_FLAG_BAD)
+    {
+        if (node)       free_syntax_node(node);
+        else            node = err;
     }
 
     *psyntax = node;
