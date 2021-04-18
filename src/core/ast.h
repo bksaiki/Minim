@@ -3,33 +3,51 @@
 
 #include "../common/buffer.h"
 #include "../common/common.h"
-#include "../common/read.h"
 
-#define MINIM_AST_OP    0x1
-#define MINIM_AST_VAL   0x2
-#define MINIM_AST_ERR   0x80
+#define READ_NODE_FLAG_EOF      0x1 // eof encoutered
+#define READ_NODE_FLAG_BAD      0x2 // error while parsing
+#define READ_NODE_FLAG_WAIT     0x4 // behavior on eof
 
-typedef struct MinimAst
+struct SyntaxLoc
 {
-    struct MinimAst** children;
+    char *name;
+    size_t row;
+    size_t col;
+} typedef SyntaxLoc;
+
+void init_syntax_loc(SyntaxLoc **ploc, const char *fname);
+void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src);
+void free_syntax_loc(SyntaxLoc *loc);
+
+enum SyntaxNodeType
+{
+    SYNTAX_NODE_DATUM,
+    SYNTAX_NODE_LIST,
+    SYNTAX_NODE_PAIR,
+    SYNTAX_NODE_VECTOR
+} typedef SyntaxNodeType;
+
+struct SyntaxNode
+{
+    struct SyntaxNode **children;
     SyntaxLoc *loc;
-    char* sym;
-    size_t argc;
-    uint8_t tags;
-} MinimAst;
+    size_t childc;
+    char *sym;
+    SyntaxNodeType type;
+} typedef SyntaxNode;
 
-void init_ast_op(MinimAst **past, size_t argc, uint8_t tags);
-void init_ast_node(MinimAst **past, const char *sym, int tags);
-void copy_ast(MinimAst **pdest, MinimAst *src);
-void free_ast(MinimAst *node);
+void init_syntax_node(SyntaxNode **pnode, SyntaxNodeType type);
+void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src);
+void free_syntax_node(SyntaxNode *node);
+void print_syntax_node(SyntaxNode *node);
 
-void ast_add_syntax_loc(MinimAst *ast, SyntaxLoc *loc);
-bool ast_validp(MinimAst *node);
-bool ast_equalp(MinimAst *a, MinimAst *b);
+void ast_add_syntax_loc(SyntaxNode *ast, SyntaxLoc *loc);
+bool ast_validp(SyntaxNode *node);
+bool ast_equalp(SyntaxNode *a, SyntaxNode *b);
 
-void ast_to_buffer(MinimAst *node, Buffer *bf);
-void ast_dump_in_buffer(MinimAst *node, Buffer *bf);
+void ast_to_buffer(SyntaxNode *node, Buffer *bf);
+void ast_dump_in_buffer(SyntaxNode *node, Buffer *bf);
 
-void print_ast(MinimAst *node);  // debugging
+void print_ast(SyntaxNode *node);  // debugging
 
 #endif

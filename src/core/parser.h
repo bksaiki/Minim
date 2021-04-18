@@ -6,9 +6,9 @@
 #include "ast.h"
 
 // Parses a single expression
-int parse_str(const char* str, MinimAst** psyntax);
+int parse_str(const char* str, SyntaxNode** psyntax);
 
 // Parses a single expression with syntax location
-int parse_expr_loc(const char* str, MinimAst** psyntax, SyntaxLoc *loc);
+int parse_expr_loc(const char* str, SyntaxNode** psyntax, SyntaxLoc *loc);
 
 #endif

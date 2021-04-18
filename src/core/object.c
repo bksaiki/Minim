@@ -68,7 +68,7 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     }   
     else if (type == MINIM_OBJ_AST)
     {
-        obj->u.ptrs.p1 = va_arg(vargs, MinimAst*);
+        obj->u.ptrs.p1 = va_arg(vargs, SyntaxNode*);
     }
     else if (type == MINIM_OBJ_SEQ)
     {
@@ -164,7 +164,7 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_AST)
     {
-        MinimAst *node;
+        SyntaxNode *node;
         copy_ast(&node, src->u.ptrs.p1);
         dest->u.ptrs.p1 = node;
     }

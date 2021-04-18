@@ -192,7 +192,7 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 {
     if (count > 1)
     {
-        MinimAst *ast;
+        SyntaxNode *ast;
 
         init_ast_op(&ast, count + 1, 0);
         init_ast_node(&ast->children[0], "begin", 0);

@@ -38,7 +38,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
     for (size_t i = 0; !eval && i < argc; ++i)
     {
         MinimObject *ce_pair, *cond, *val;
-        MinimAst *cond_syn;
+        SyntaxNode *cond_syn;
 
         unsyntax_ast(env, args[i]->u.ptrs.p1, &ce_pair);
         if (!minim_listp(ce_pair) || minim_list_length(ce_pair) < 2)
@@ -159,7 +159,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
     }
     else
     {
-        MinimAst *ast = args[0]->u.ptrs.p1;
+        SyntaxNode *ast = args[0]->u.ptrs.p1;
         MinimLambda *lam;
         
         val = minim_builtin_lambda(env, &args[1], argc - 1);

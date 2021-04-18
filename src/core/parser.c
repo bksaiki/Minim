@@ -71,12 +71,12 @@ static void move_row_col(const char *str, size_t begin, size_t end, size_t *r, s
     }
 }
 
-static MinimAst*
+static SyntaxNode*
 parse_str_node(const char* str, size_t begin, size_t end,
                const char *lname, size_t row, size_t col,
                size_t paren, uint8_t eflags)
 {
-    MinimAst *node, *node2;
+    SyntaxNode *node, *node2;
     size_t last = end - 1;
     char *tmp;
 
@@ -229,7 +229,7 @@ parse_str_node(const char* str, size_t begin, size_t end,
     return node;
 }
 
-static void expand_postpass(MinimAst *ast)
+static void expand_postpass(SyntaxNode *ast)
 {
     for (size_t i = 0; i < ast->argc; ++i)
         expand_postpass(ast->children[i]);
@@ -244,7 +244,7 @@ static void expand_postpass(MinimAst *ast)
         ast->children[0] = ast->children[2];
         ast->children[2] = ast->children[4];
 
-        ast->children = realloc(ast->children, 3 * sizeof(MinimAst));
+        ast->children = realloc(ast->children, 3 * sizeof(SyntaxNode));
         ast->argc = 3;
     }
 }
@@ -253,7 +253,7 @@ static void expand_postpass(MinimAst *ast)
 //  Visible functions
 // 
 
-int parse_str(const char* str, MinimAst** psyntax)
+int parse_str(const char* str, SyntaxNode** psyntax)
 {
     SyntaxLoc *loc;
     int status;
@@ -265,9 +265,9 @@ int parse_str(const char* str, MinimAst** psyntax)
     return status;
 }
 
-int parse_expr_loc(const char* str, MinimAst** psyntax, SyntaxLoc *loc)
+int parse_expr_loc(const char* str, SyntaxNode** psyntax, SyntaxLoc *loc)
 {
-    MinimAst *syntax;
+    SyntaxNode *syntax;
 
     syntax = parse_str_node(str, 0, strlen(str), loc->name, loc->row, loc->col, 0, 0);
     *psyntax = syntax;

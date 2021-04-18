@@ -19,16 +19,12 @@
     }                                                       \
 }
 
-static void init_read_node(ReadNode **pnode, ReadNodeType type)
-{
-    ReadNode *node = malloc(sizeof(ReadNode));
+//
+//  Helper functions for reading
+//
 
-    node->children = NULL;
-    node->childc = 0;
-    node->sym = NULL;
-    node->type = type;
-    *pnode = node;
-}
+// Forward declaration
+static SyntaxNode *read_top(FILE *file, SyntaxTable *ptable, SyntaxNode **perror);
 
 static void update_table(char c, SyntaxTable *ptable)
 {
@@ -75,7 +71,7 @@ static char advance_to_token(FILE *file, SyntaxTable *ptable)
     return c;
 }
 
-static void finalize_read(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+static void finalize_read(FILE *file, SyntaxTable *ptable, SyntaxNode **perror)
 {
     char c = advance_to_token(file, ptable);
 
@@ -92,13 +88,13 @@ static void finalize_read(FILE *file, SyntaxTable *ptable, ReadNode **perror)
         trim_buffer(bf);
 
         ptable->flags |= READ_NODE_FLAG_BAD;
-        init_read_node(perror, READ_NODE_DATUM);
+        init_syntax_node(perror, READ_NODE_DATUM);
         (*perror)->sym = release_buffer(bf);
         free_buffer(bf);
     }
 }
 
-static bool expand_shorthand_syntax(ReadNode *node)
+static bool expand_shorthand_syntax(SyntaxNode *node)
 {
     IF_STR_EQUAL_REPLACE(node->sym, "f", "false");
     IF_STR_EQUAL_REPLACE(node->sym, "t", "true");
@@ -106,13 +102,13 @@ static bool expand_shorthand_syntax(ReadNode *node)
     return false;
 }
 
-static void expand_list(ReadNode *node)
+static void expand_list(SyntaxNode *node)
 {
     if (node->childc == 3 && node->children[1]->sym &&
         strcmp(node->children[1]->sym, ".") == 0)
     {
         node->children[1] = node->children[2];
-        node->children = realloc(node->children, 2 * sizeof(ReadNode*));
+        node->children = realloc(node->children, 2 * sizeof(SyntaxNode*));
         node->childc = 2;
         node->type = READ_NODE_PAIR;
     }
@@ -122,24 +118,21 @@ static void expand_list(ReadNode *node)
     {
         node->children[1] = node->children[2];
         node->children[2] = node->children[4];
-        node->children = realloc(node->children, 3 * sizeof(ReadNode*));
+        node->children = realloc(node->children, 3 * sizeof(SyntaxNode*));
         node->childc = 3;
         node->type = READ_NODE_LIST;
     }
 }
 
-// Forward declaration
-static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror);
-
-static ReadNode *read_datum(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+static SyntaxNode *read_datum(FILE *file, SyntaxTable *ptable, SyntaxNode **perror)
 {
-    ReadNode *node;
+    SyntaxNode *node;
     Buffer *bf;
     char c;
     
     init_buffer(&bf);
     c = fgetc(file);
-    while (!ptable->flags && normal_char(c))
+    while ((~ptable->flags & READ_NODE_FLAG_EOF) && normal_char(c))
     {
         writec_buffer(bf, c);
         update_table(c, ptable);
@@ -149,7 +142,7 @@ static ReadNode *read_datum(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     check_char(c, ptable);
     ungetc(c, file);
 
-    init_read_node(&node, READ_NODE_DATUM);
+    init_syntax_node(&node, READ_NODE_DATUM);
     trim_buffer(bf);
     node->sym = release_buffer(bf);
     free_buffer(bf);
@@ -157,15 +150,15 @@ static ReadNode *read_datum(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     return node;
 }
 
-static ReadNode *read_quote(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+static SyntaxNode *read_quote(FILE *file, SyntaxTable *ptable, SyntaxNode **perror)
 {
-    ReadNode *node;
+    SyntaxNode *node;
 
-    init_read_node(&node, READ_NODE_LIST);
-    node->children = malloc(2 * sizeof(ReadNode*));
+    init_syntax_node(&node, READ_NODE_LIST);
+    node->children = malloc(2 * sizeof(SyntaxNode*));
     node->childc = 2;
     
-    init_read_node(&node->children[0], READ_NODE_DATUM);
+    init_syntax_node(&node->children[0], READ_NODE_DATUM);
     node->children[0]->sym = malloc(6 * sizeof(char));
     strcpy(node->children[0]->sym, "quote");
 
@@ -173,12 +166,12 @@ static ReadNode *read_quote(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     return node;
 }
 
-static ReadNode *read_list(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+static SyntaxNode *read_list(FILE *file, SyntaxTable *ptable, SyntaxNode **perror)
 {
-    ReadNode *node, *tmp;
+    SyntaxNode *node, *tmp;
     char c;
 
-    init_read_node(&node, READ_NODE_LIST);
+    init_syntax_node(&node, READ_NODE_LIST);
     while (1)
     {
         tmp = read_top(file, ptable, perror);
@@ -186,7 +179,7 @@ static ReadNode *read_list(FILE *file, SyntaxTable *ptable, ReadNode **perror)
         if (tmp)
         {
             ++node->childc;
-            node->children = realloc(node->children, node->childc * sizeof(ReadNode*));
+            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
             node->children[node->childc - 1] = tmp;
         }
 
@@ -198,7 +191,11 @@ static ReadNode *read_list(FILE *file, SyntaxTable *ptable, ReadNode **perror)
         }
         else if (c == ptable->eof)
         {
-            if (!ptable->wait)
+            if (ptable->flags & READ_NODE_FLAG_WAIT)
+            {
+                printf("  ");
+            }
+            else
             {
                 Buffer *bf;
 
@@ -207,14 +204,10 @@ static ReadNode *read_list(FILE *file, SyntaxTable *ptable, ReadNode **perror)
                 trim_buffer(bf);
 
                 ptable->flags |= READ_NODE_FLAG_BAD;
-                init_read_node(perror, READ_NODE_DATUM);
+                init_syntax_node(perror, READ_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
                 free_buffer(bf);
                 break;
-            }
-            else
-            {
-                printf("  ");
             }
         }
         else
@@ -227,12 +220,12 @@ static ReadNode *read_list(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     return node;
 }
 
-static ReadNode *read_vector(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+static SyntaxNode *read_vector(FILE *file, SyntaxTable *ptable, SyntaxNode **perror)
 {
-    ReadNode *node, *tmp;
+    SyntaxNode *node, *tmp;
     char c;
 
-    init_read_node(&node, READ_NODE_VECTOR);
+    init_syntax_node(&node, READ_NODE_VECTOR);
     while (1)
     {
         tmp = read_top(file, ptable, perror);
@@ -240,7 +233,7 @@ static ReadNode *read_vector(FILE *file, SyntaxTable *ptable, ReadNode **perror)
         if (tmp)
         {
             ++node->childc;
-            node->children = realloc(node->children, node->childc * sizeof(ReadNode*));
+            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
             node->children[node->childc - 1] = tmp;
         }
 
@@ -252,7 +245,11 @@ static ReadNode *read_vector(FILE *file, SyntaxTable *ptable, ReadNode **perror)
         }
         else if (c == ptable->eof)
         {
-            if (!ptable->wait)
+            if (ptable->flags & READ_NODE_FLAG_WAIT)
+            {
+                printf("  ");
+            }
+            else
             {
                 Buffer *bf;
 
@@ -261,14 +258,10 @@ static ReadNode *read_vector(FILE *file, SyntaxTable *ptable, ReadNode **perror)
                 trim_buffer(bf);
 
                 ptable->flags |= READ_NODE_FLAG_BAD;
-                init_read_node(perror, READ_NODE_DATUM);
+                init_syntax_node(perror, READ_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
                 free_buffer(bf);
                 break;
-            }
-            else
-            {
-                printf("  ");
             }
         }
         else
@@ -280,9 +273,9 @@ static ReadNode *read_vector(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     return node;
 }
 
-static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
+static SyntaxNode *read_top(FILE *file, SyntaxTable *ptable, SyntaxNode **perror)
 {
-    ReadNode *node;
+    SyntaxNode *node;
     char c, n;
 
     c = advance_to_token(file, ptable);
@@ -314,7 +307,7 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
                 trim_buffer(bf);
 
                 ptable->flags |= READ_NODE_FLAG_BAD;
-                init_read_node(perror, READ_NODE_DATUM);
+                init_syntax_node(perror, READ_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
                 free_buffer(bf);
             }
@@ -332,7 +325,11 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
     }
     else if (c == ptable->eof) // empty input
     {
-        if (!ptable->wait)
+        if (ptable->flags & READ_NODE_FLAG_WAIT)
+        {
+            printf("  ");
+        }
+        else
         {
             Buffer *bf;
 
@@ -341,14 +338,10 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
             trim_buffer(bf);
 
             ptable->flags |= READ_NODE_FLAG_BAD;
-            init_read_node(perror, READ_NODE_DATUM);
+            init_syntax_node(perror, READ_NODE_DATUM);
             (*perror)->sym = release_buffer(bf);
             free_buffer(bf);
             return NULL;
-        }
-        else
-        {
-            printf("  ");
         }
     }
     else if (normal_char(c))
@@ -369,36 +362,16 @@ static ReadNode *read_top(FILE *file, SyntaxTable *ptable, ReadNode **perror)
 // Exported
 //
 
-void print_syntax(ReadNode *node)
+SyntaxNode *minim_read_str(FILE *file, char eof, char wait)
 {
-    if (node->childc > 0)
-    {
-        printf("(");
-        print_syntax(node->children[0]);
-        for (size_t i = 1; i < node->childc; ++i)
-        {
-            printf(" ");
-            print_syntax(node->children[i]);
-        }
-        printf(")");
-    }
-    else
-    {
-        printf("%s", node->sym);
-    }
-}
-
-ReadNode *minim_read_str(FILE *file)
-{
-    ReadNode *node, *err;
+    SyntaxNode *node, *err;
     SyntaxTable table;
 
     table.idx = 0;
     table.row = 0;
     table.col = 0;
-    table.eof = '\n';
-    table.wait = true;
-    table.flags = 0x0;
+    table.eof = eof;
+    table.flags = (wait ? READ_NODE_FLAG_WAIT : 0x0);
 
     node = read_top(file, &table, &err);
     finalize_read(file, &table, &err);
@@ -415,7 +388,7 @@ ReadNode *minim_read_str(FILE *file)
         writef_buffer(bf, "unexpected: '~c'", fgetc(file));
         trim_buffer(bf);
 
-        init_read_node(&node, READ_NODE_DATUM);
+        init_syntax_node(&node, READ_NODE_DATUM);
         node->sym = release_buffer(bf);
         free_buffer(bf);
     }

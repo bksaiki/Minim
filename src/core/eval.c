@@ -155,7 +155,7 @@ static MinimObject *first_error(MinimObject **args, size_t argc)
 
 // Unsyntax
 
-static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
+static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, bool rec)
 {
     if (node->tags & MINIM_AST_OP)
     {
@@ -226,7 +226,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimAst* node, bool rec)
 
 // Eval mainloop
 
-static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
+static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 {
     if (node->tags & MINIM_AST_OP)
     {
@@ -335,21 +335,21 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimAst *node)
 
 // Visible functions
 
-int eval_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
+int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = eval_ast_node(env, ast);
     *pobj = obj;
     return !MINIM_OBJ_ERRORP(obj);
 }
 
-int unsyntax_ast(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
+int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast, false);
     *pobj = obj;
     return !MINIM_OBJ_ERRORP(obj);
 }
 
-int unsyntax_ast_rec(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
+int unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast, true);
     *pobj = obj;
@@ -358,7 +358,7 @@ int unsyntax_ast_rec(MinimEnv *env, MinimAst *ast, MinimObject **pobj)
 
 char *eval_string(char *str, size_t len)
 {
-    MinimAst *ast;
+    SyntaxNode *ast;
     MinimObject *obj;
     MinimEnv *env;
     PrintParams pp;

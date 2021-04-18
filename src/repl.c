@@ -18,7 +18,7 @@ static void int_handler(int sig)
 int minim_repl(uint32_t flags)
 {
     MinimEnv *env;
-    MinimAst *ast;
+    SyntaxNode *ast;
     MinimObject *obj;
     Buffer *bf;
     PrintParams pp;

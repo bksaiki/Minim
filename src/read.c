@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "build/config.h"
-#include "common/read.h"
 #include "minim.h"
 #include "read.h"
 
@@ -15,7 +14,7 @@
 
 int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
 {
-    MinimAst *ast;
+    SyntaxNode *ast;
     MinimObject *obj;
     char *input;
     

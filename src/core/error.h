@@ -1,7 +1,7 @@
 #ifndef _MINIM_ERROR_H_
 #define _MINIM_ERROR_H_
 
-#include "../common/read.h"
+#include "ast.h"
 #include "env.h"
 
 struct MinimErrorTrace
