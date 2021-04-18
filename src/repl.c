@@ -19,7 +19,6 @@ int minim_repl(uint32_t flags)
     MinimEnv *env;
     SyntaxNode *ast;
     MinimObject *obj;
-    Buffer *bf;
     PrintParams pp;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
@@ -33,35 +32,9 @@ int minim_repl(uint32_t flags)
         minim_load_library(env);
 
     while (1)
-    {
-        SyntaxLoc *loc, *tloc;
-
-        init_buffer(&bf);
-        init_syntax_loc(&loc, "REPL");
-        init_syntax_loc(&tloc, "");
-
-        loc->row = 0;
-        loc->col = 0;
-        
+    {   
         printf("> ");
-        minim_parse_str(stdin, &ast, '\n', true);
-        free_syntax_loc(tloc);
-
-        /**
-        input = get_buffer(bf);
-        if (strlen(input) == 0 || strcmp(input, "\377") == 0)
-        {
-            free_buffer(bf);
-            free_syntax_loc(loc);
-            continue;
-        }
-        else if (strcmp(input, "(exit)") == 0)
-        {
-            free_buffer(bf);
-            free_syntax_loc(loc);
-            break;
-        }
-        **/
+        minim_parse_port(stdin, "repl", &ast, '\n', true);
 
        if (ast->childc == 1 && ast->children[0]->sym &&
             strcmp(ast->children[0]->sym, "exit") == 0)
@@ -79,10 +52,8 @@ int minim_repl(uint32_t flags)
             printf("\n");
         }
 
-        free_syntax_loc(loc);
         free_minim_object(obj);
         free_syntax_node(ast);
-        free_buffer(bf);
     }
 
     free_env(env);

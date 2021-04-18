@@ -12,7 +12,8 @@ struct ReadTable
     char eof;
 } typedef ReadTable;
 
-int minim_parse_str(FILE *file, SyntaxNode **psyntax, char eof, bool wait);
+int minim_parse_port(FILE *file, const char *name, SyntaxNode **psyntax,
+                     char eof, bool wait);
 
 // Parses a single expression
 int parse_str(const char* str, SyntaxNode** psyntax);

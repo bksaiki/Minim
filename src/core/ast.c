@@ -52,7 +52,15 @@ void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
     *pnode = node;
 
     if (node->childc > 0)
+    {
         node->children = malloc(node->childc * sizeof(SyntaxNode*));
+        for (size_t i = 0; i < node->childc; ++i)
+            copy_syntax_node(&node->children[i], src->children[i]);
+    }
+    else
+    {
+        node->children = NULL;
+    }
     
     if (src->sym)
     {
