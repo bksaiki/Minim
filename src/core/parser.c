@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,246 +6,398 @@
 #include "../common/buffer.h"
 #include "parser.h"
 
-#define EXPAND_QUOTE                ((uint8_t)0x1)
-#define MAX_SYNTAX_MSG_LENGTH       50
-
 #define open_paren(x)       (x == '(' || x == '[' || x == '{')
-#define closed_paren(x)     (x == ')' || x == ']' || x == '}')
+#define closed_paren(x)     (x == ')' || x == ']' || x == '{')
+#define normal_char(x)      (x && !open_paren(x) && !closed_paren(x) && !isspace(x))
 
-static size_t get_argc(const char* str, size_t begin, size_t end)
-{
-    size_t idx = begin, idx2, count = 0;
-
-    while (idx < end)
-    {
-        while (isspace(str[idx])) ++idx;
-
-        if (open_paren(str[idx]) || (idx + 1 < end && str[idx] == '\'' && open_paren(str[idx + 1])))
-        {
-            size_t paren = 1;
-
-            if (str[idx] == '\'') ++idx;
-            for (idx2 = idx + 1; idx2 < end && paren > 0; ++idx2)
-            {
-                if (open_paren(str[idx2]))          ++paren;
-                else if (closed_paren(str[idx2]))   --paren;
-            }
-        }
-        else if (str[idx] == '\"')
-        {
-            for (idx2 = idx + 1; idx2 < end; ++idx2)
-            {
-                if (str[idx2] == '\"' && str[idx2 - 1] != '\\')
-                {
-                    ++idx2;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            for (idx2 = idx; idx2 < end && !isspace(str[idx2]); ++idx2);
-        }
-
-        ++count;
-        for (idx = idx2; idx < end && isspace(str[idx]); ++idx);
-    }
-
-    return count;
+#define IF_STR_EQUAL_REPLACE(x, str, r)                     \
+{                                                           \
+    if (strcmp(x, str) == 0)                                \
+    {                                                       \
+        x = realloc(x, (strlen(r) + 1) * sizeof(char));     \
+        strcpy(x, r);                                       \
+        return true;                                        \
+    }                                                       \
 }
 
-static void move_row_col(const char *str, size_t begin, size_t end, size_t *r, size_t *c)
+//
+//  Helper functions for reading
+//
+
+// Forward declaration
+static SyntaxNode *read_top(FILE *file, ReadTable *ptable, SyntaxNode **perror);
+
+static void update_table(char c, ReadTable *ptable)
 {
-    for (size_t i = begin; i < end; ++i)
+    ++ptable->idx;
+    if (c == '\n')
     {
-        if (str[i] == '\n')
-        {
-            ++(*r);
-            (*c) = 1;
-        }
-        else
-        {
-            ++(*c);
-        }
-    }
-}
-
-static SyntaxNode*
-parse_str_node(const char* str, size_t begin, size_t end,
-               const char *lname, size_t row, size_t col,
-               size_t paren, uint8_t eflags)
-{
-    SyntaxNode *node, *node2;
-    size_t last = end - 1;
-    char *tmp;
-
-    while (isspace(str[begin]))
-    {
-        if (str[begin] == '\n')
-        {
-            ++row;
-            col = 1;
-        }
-        ++begin;
-    }
-
-    if (begin >= end)
-    {
-        init_ast_node(&node, "Unexpected end of string", MINIM_AST_ERR);
-        node->argc = row;
-    }
-    else if (str[begin] == '\'')
-    {
-        init_ast_node(&node2, "quote", 0);
-        init_syntax_loc(&node2->loc, lname);
-        node2->loc->row = row;
-        node2->loc->col = col;
-
-        init_ast_op(&node, 2, 0);
-        node->children[0] = node2;
-        node->children[1] = parse_str_node(str, begin + 1, end, lname, row, col + 1,
-                              paren + 1, eflags & EXPAND_QUOTE);
-    }
-    else if (open_paren(str[begin]) && closed_paren(str[last]))
-    {
-        size_t i = begin + 1;
-        size_t j, idx;
-
-        if (eflags & EXPAND_QUOTE)
-        {
-            init_ast_op(&node, get_argc(str, i, last) + 1, 0);
-            init_ast_node(&node->children[0], "quote", 0);
-            init_syntax_loc(&node->children[0]->loc, lname);
-            node->children[0]->loc->row = row;
-            node2->children[0]->loc->col = col;
-            idx = 1;
-        }
-        else
-        {
-            init_ast_op(&node, get_argc(str, i, last), 0);
-            idx = 0;
-        }
-
-        for (; idx < node->argc; ++idx)
-        {
-            if (open_paren(str[i]) || (i + 1 < end && str[i] == '\'' && open_paren(str[i + 1])))
-            {
-                size_t paren = 1;
-
-                if (str[i] == '\'') j = i + 2;
-                else                j = i + 1;
-
-                for (; paren != 0 && j < last; ++j)
-                {
-                    if (open_paren(str[j]))         ++paren;
-                    else if (closed_paren(str[j]))  --paren;
-                }
-            }
-            else if (str[i] == '\"')
-            {
-                for (j = i + 1; j < last; ++j)
-                {
-                    if (str[j] == '\"' && str[j - 1] != '\\')
-                    {
-                        ++j;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                for (j = i; j < last && !isspace(str[j]); ++j);
-            }
-            
-            move_row_col(str, i, j, &row, &col);
-            node->children[idx] = parse_str_node(str, i, j, lname, row, col, paren, eflags);
-            for (i = j; i < last && isspace(str[i]); ++i);
-        }
-    }
-    else if (str[begin] == '\"' && str[last] == '\"')
-    {
-        size_t len = end - begin;
-        bool bad = false;
-
-        for (size_t i = begin + 1; i < last; ++i)
-        {   
-            // unbalanced string quotes or space
-            if (str[i] == '\"' && str[i - 1] != '\\')
-                bad = true;
-        }
-        
-        if (bad)
-        {
-            init_ast_node(&node, "Malformed string", MINIM_AST_ERR);
-            node->argc = row;
-        }
-        else
-        {
-            tmp = malloc((len + 1) * sizeof(char));
-            strncpy(tmp, &str[begin], len);
-            tmp[len] = '\0';
-            init_ast_node(&node, tmp, 0);
-            init_syntax_loc(&node->loc, lname);
-            node->loc->row = row;
-            node->loc->col = col;
-            free(tmp);
-        }
-    }
-    else if (!open_paren(str[begin]) && !closed_paren(str[last]))
-    {
-        size_t len = end - begin;
-        bool space = false;
-
-        for (size_t i = begin + 1; i < end; ++i)
-        {
-            if (str[i] == ' ')
-                space = true;
-        }
-
-        if (space)
-        {
-            init_ast_node(&node, "Unexpected space encountered", MINIM_AST_ERR);
-            node->argc = row;
-        }
-        else
-        {
-            tmp = malloc((len + 1) * sizeof(char));
-            strncpy(tmp, &str[begin], len);
-            tmp[len] = '\0';
-            init_ast_node(&node, tmp, 0);
-            init_syntax_loc(&node->loc, lname);
-            node->loc->row = row;
-            node->loc->col = col;
-            free(tmp);
-        }
+        ++ptable->row;
+        ptable->col = 0;
     }
     else
     {
-        init_ast_node(&node, "Unmatched parenthesis", MINIM_AST_ERR);
-        node->argc = row;
+        ++ptable->col;
+    }
+}
+
+static void check_char(char c, ReadTable *ptable)
+{
+    if (c == ptable->eof)
+        ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+}
+
+static char advance_to_token(FILE *file, ReadTable *ptable)
+{
+    char c;
+
+    c = fgetc(file);
+    while (isspace(c) && c != ptable->eof)
+    {
+        update_table(c, ptable);
+        c = fgetc(file);
+    }
+
+    if (c == ';')
+    {
+        update_table(c, ptable);
+        c = fgetc(file);
+        while (c != '\n')
+        {
+            update_table(c, ptable);
+            c = fgetc(file);
+        }
+    }
+
+    return c;
+}
+
+static void finalize_read(FILE *file, ReadTable *ptable, SyntaxNode **perror)
+{
+    char c = advance_to_token(file, ptable);
+
+    if (c == ptable->eof)
+    {
+        ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+    }
+    else
+    {
+        Buffer *bf;
+
+        init_buffer(&bf);
+        writef_buffer(bf, "unexpected: '~c'", c);
+        trim_buffer(bf);
+
+        ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+        init_syntax_node(perror, SYNTAX_NODE_DATUM);
+        (*perror)->sym = release_buffer(bf);
+        free_buffer(bf);
+    }
+}
+
+static bool expand_shorthand_syntax(SyntaxNode *node)
+{
+    IF_STR_EQUAL_REPLACE(node->sym, "f", "false");
+    IF_STR_EQUAL_REPLACE(node->sym, "t", "true");
+
+    return false;
+}
+
+static void expand_list(SyntaxNode *node)
+{
+    if (node->childc == 3 && node->children[1]->sym &&
+        strcmp(node->children[1]->sym, ".") == 0)
+    {
+        node->children[1] = node->children[2];
+        node->children = realloc(node->children, 2 * sizeof(SyntaxNode*));
+        node->childc = 2;
+        node->type = SYNTAX_NODE_PAIR;
+    }
+    else if (node->childc == 5 && node->children[1]->sym && node->children[3]->sym &&
+             strcmp(node->children[1]->sym, ".") == 0 &&
+             strcmp(node->children[3]->sym, ".") == 0)
+    {
+        node->children[1] = node->children[2];
+        node->children[2] = node->children[4];
+        node->children = realloc(node->children, 3 * sizeof(SyntaxNode*));
+        node->childc = 3;
+        node->type = SYNTAX_NODE_LIST;
+    }
+}
+
+static SyntaxNode *read_datum(FILE *file, ReadTable *ptable, SyntaxNode **perror)
+{
+    SyntaxNode *node;
+    Buffer *bf;
+    char c;
+    
+    init_buffer(&bf);
+    c = fgetc(file);
+    while ((~ptable->flags & SYNTAX_NODE_FLAG_EOF) && normal_char(c))
+    {
+        writec_buffer(bf, c);
+        update_table(c, ptable);
+        c = fgetc(file);
+    }
+
+    check_char(c, ptable);
+    ungetc(c, file);
+
+    init_syntax_node(&node, SYNTAX_NODE_DATUM);
+    trim_buffer(bf);
+    node->sym = release_buffer(bf);
+    free_buffer(bf);
+
+    return node;
+}
+
+static SyntaxNode *read_quote(FILE *file, ReadTable *ptable, SyntaxNode **perror)
+{
+    SyntaxNode *node;
+
+    init_syntax_node(&node, SYNTAX_NODE_LIST);
+    node->children = malloc(2 * sizeof(SyntaxNode*));
+    node->childc = 2;
+    
+    init_syntax_node(&node->children[0], SYNTAX_NODE_DATUM);
+    node->children[0]->sym = malloc(6 * sizeof(char));
+    strcpy(node->children[0]->sym, "quote");
+
+    node->children[1] = read_top(file, ptable, perror);
+    return node;
+}
+
+static SyntaxNode *read_list(FILE *file, ReadTable *ptable, SyntaxNode **perror)
+{
+    SyntaxNode *node, *tmp;
+    char c;
+
+    init_syntax_node(&node, SYNTAX_NODE_LIST);
+    while (1)
+    {
+        tmp = read_top(file, ptable, perror);
+
+        if (tmp)
+        {
+            ++node->childc;
+            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
+            node->children[node->childc - 1] = tmp;
+        }
+
+        c = advance_to_token(file, ptable);
+        if (closed_paren(c))
+        {
+            update_table(c, ptable);
+            break;
+        }
+        else if (c == ptable->eof)
+        {
+            if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
+            {
+                printf("  ");
+            }
+            else
+            {
+                Buffer *bf;
+
+                init_buffer(&bf);
+                writes_buffer(bf, "unexpected end of input");
+                trim_buffer(bf);
+
+                ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+                init_syntax_node(perror, SYNTAX_NODE_DATUM);
+                (*perror)->sym = release_buffer(bf);
+                free_buffer(bf);
+                break;
+            }
+        }
+        else
+        {
+            ungetc(c, file);
+        }
+    }
+
+    expand_list(node);
+    return node;
+}
+
+static SyntaxNode *read_vector(FILE *file, ReadTable *ptable, SyntaxNode **perror)
+{
+    SyntaxNode *node, *tmp;
+    char c;
+
+    init_syntax_node(&node, SYNTAX_NODE_VECTOR);
+    while (1)
+    {
+        tmp = read_top(file, ptable, perror);
+
+        if (tmp)
+        {
+            ++node->childc;
+            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
+            node->children[node->childc - 1] = tmp;
+        }
+
+        c = advance_to_token(file, ptable);
+        if (closed_paren(c))
+        {
+            update_table(c, ptable);
+            break;
+        }
+        else if (c == ptable->eof)
+        {
+            if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
+            {
+                printf("  ");
+            }
+            else
+            {
+                Buffer *bf;
+
+                init_buffer(&bf);
+                writes_buffer(bf, "unexpected end of input");
+                trim_buffer(bf);
+
+                ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+                init_syntax_node(perror, SYNTAX_NODE_DATUM);
+                (*perror)->sym = release_buffer(bf);
+                free_buffer(bf);
+                break;
+            }
+        }
+        else
+        {
+            ungetc(c, file);
+        }
     }
 
     return node;
 }
 
-static void expand_postpass(SyntaxNode *ast)
+static SyntaxNode *read_top(FILE *file, ReadTable *ptable, SyntaxNode **perror)
 {
-    for (size_t i = 0; i < ast->argc; ++i)
-        expand_postpass(ast->children[i]);
-    
-    if (ast->argc == 5 && ast->children[1]->sym && ast->children[3]->sym &&
-        strcmp(ast->children[1]->sym, ".") == 0 && strcmp(ast->children[3]->sym, ".") == 0)
+    SyntaxNode *node;
+    char c, n;
+
+    c = advance_to_token(file, ptable);
+    if (c == '\'')
     {
-        free_ast(ast->children[1]);
-        free_ast(ast->children[3]);
-
-        ast->children[1] = ast->children[0];
-        ast->children[0] = ast->children[2];
-        ast->children[2] = ast->children[4];
-
-        ast->children = realloc(ast->children, 3 * sizeof(SyntaxNode));
-        ast->argc = 3;
+        update_table(c, ptable);
+        node = read_quote(file, ptable, perror);
+        c = advance_to_token(file, ptable);
     }
+    else if (c == '#')
+    {
+        update_table(c, ptable);
+        n = fgetc(file);
+        if (n == '(')
+        {
+            update_table(c, ptable);
+            node = read_vector(file, ptable, perror);
+        }
+        else
+        {
+            ungetc(n, file);
+            node = read_datum(file, ptable, perror);
+            if (!expand_shorthand_syntax(node))
+            {
+                Buffer *bf;
+
+                init_buffer(&bf);
+                writef_buffer(bf, "bad syntax: #~s", node->sym);
+                trim_buffer(bf);
+
+                ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+                init_syntax_node(perror, SYNTAX_NODE_DATUM);
+                (*perror)->sym = release_buffer(bf);
+                free_buffer(bf);
+            }
+        }
+    }
+    else if (open_paren(c))
+    {
+        update_table(c, ptable);
+        node = read_list(file, ptable, perror);
+    }
+    else if (closed_paren(c) && c == ptable->eof) // nonsense 
+    {
+        ungetc(c, file);
+        return NULL;
+    }
+    else if (c == ptable->eof) // empty input
+    {
+        if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
+        {
+            printf("  ");
+        }
+        else
+        {
+            Buffer *bf;
+
+            init_buffer(&bf);
+            writes_buffer(bf, "unexpected end of input");
+            trim_buffer(bf);
+
+            ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+            init_syntax_node(perror, SYNTAX_NODE_DATUM);
+            (*perror)->sym = release_buffer(bf);
+            free_buffer(bf);
+            return NULL;
+        }
+    }
+    else if (normal_char(c))
+    {
+        ungetc(c, file);
+        node = read_datum(file, ptable, perror);
+    }
+    else
+    {
+        ungetc(c, file);
+        return NULL;
+    }
+
+    return node;
+}
+
+//
+// Exported
+//
+
+int minim_parse_str(FILE *file, SyntaxNode **psyntax, char eof, bool wait)
+{
+    SyntaxNode *node, *err;
+    ReadTable table;
+
+    table.idx = 0;
+    table.row = 0;
+    table.col = 0;
+    table.eof = eof;
+    table.flags = (wait ? SYNTAX_NODE_FLAG_WAIT : 0x0);
+
+    node = read_top(file, &table, &err);
+    finalize_read(file, &table, &err);
+
+    if (table.flags & SYNTAX_NODE_FLAG_BAD)
+    {
+        node = err;
+    }
+    else if (~table.flags & SYNTAX_NODE_FLAG_EOF)
+    {
+        Buffer *bf;
+
+        init_buffer(&bf);
+        writef_buffer(bf, "unexpected: '~c'", fgetc(file));
+        trim_buffer(bf);
+
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = release_buffer(bf);
+        free_buffer(bf);
+    }
+
+    fflush(file);
+    *psyntax = node;
+    
+    return 0;
 }
 
 //
@@ -255,40 +406,10 @@ static void expand_postpass(SyntaxNode *ast)
 
 int parse_str(const char* str, SyntaxNode** psyntax)
 {
-    SyntaxLoc *loc;
-    int status;
-
-    init_syntax_loc(&loc, "???");
-    status = parse_expr_loc(str, psyntax, loc);
-    free_syntax_loc(loc);
-
-    return status;
+    return 1;
 }
 
 int parse_expr_loc(const char* str, SyntaxNode** psyntax, SyntaxLoc *loc)
 {
-    SyntaxNode *syntax;
-
-    syntax = parse_str_node(str, 0, strlen(str), loc->name, loc->row, loc->col, 0, 0);
-    *psyntax = syntax;
-
-    if (!ast_validp(syntax))
-    {
-        size_t i;
-
-        printf("; bad syntax: %s\n", syntax->sym);
-        printf(";  at: ");
-        for (i = 0; str[i] && str[i] != '\n' && i < MAX_SYNTAX_MSG_LENGTH; ++i)
-            printf("%c", str[i]);
-        
-        if (i == MAX_SYNTAX_MSG_LENGTH || str[i] == '\n')
-            printf("...\n");
-
-        printf(";  in %s:%lu\n", loc->name, syntax->argc);
-        syntax->argc = 0;
-        return 0;
-    } 
-    
-    expand_postpass(syntax);
     return 1;
 }

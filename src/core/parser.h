@@ -5,6 +5,15 @@
 #include "../common/read.h"
 #include "ast.h"
 
+struct ReadTable
+{
+    size_t idx, row, col;
+    uint8_t flags;
+    char eof;
+} typedef ReadTable;
+
+int minim_parse_str(FILE *file, SyntaxNode **psyntax, char eof, bool wait);
+
 // Parses a single expression
 int parse_str(const char* str, SyntaxNode** psyntax);
 

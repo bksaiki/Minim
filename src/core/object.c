@@ -165,7 +165,7 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
     else if (src->type == MINIM_OBJ_AST)
     {
         SyntaxNode *node;
-        copy_ast(&node, src->u.ptrs.p1);
+        copy_syntax_node(&node, src->u.ptrs.p1);
         dest->u.ptrs.p1 = node;
     }
     else if (src->type == MINIM_OBJ_SEQ)

@@ -4,9 +4,9 @@
 #include "../common/buffer.h"
 #include "../common/common.h"
 
-#define READ_NODE_FLAG_EOF      0x1 // eof encoutered
-#define READ_NODE_FLAG_BAD      0x2 // error while parsing
-#define READ_NODE_FLAG_WAIT     0x4 // behavior on eof
+#define SYNTAX_NODE_FLAG_EOF      0x1 // eof encoutered
+#define SYNTAX_NODE_FLAG_BAD      0x2 // error while parsing
+#define SYNTAX_NODE_FLAG_WAIT     0x4 // behavior on eof
 
 struct SyntaxLoc
 {

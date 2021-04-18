@@ -36,7 +36,7 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
     {    
         print_minim_object(obj, env, pp);
         free_minim_object(obj);
-        free_ast(ast);
+        free_syntax_node(ast);
         printf("\n;  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
         return 2;
     }
@@ -47,7 +47,7 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
     }
 
     free_minim_object(obj);
-    free_ast(ast);
+    free_syntax_node(ast);
 
     return 0;
 }
@@ -55,7 +55,6 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
 int minim_load_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
-    ReadResult rr;
     SyntaxLoc *loc, *tloc;
     Buffer *bf;
     Buffer *valid_fname;
@@ -76,47 +75,6 @@ int minim_load_file(MinimEnv *env, const char *fname)
     init_syntax_loc(&loc, valid_fname->data);
     copy_syntax_loc(&tloc, loc);
     set_default_print_params(&pp);
-    set_default_read_result(&rr);
-    
-    while (!(rr.status & READ_RESULT_EOF))
-    {
-        fread_expr(file, bf, tloc, loc, &rr, EOF);
-        if (rr.flags & F_READ_START)
-        {
-            // inline reset
-            bf->pos = 0;
-            bf->data[0] = '\0';
-
-            rr.flags |= F_READ_START;
-            rr.read = 0;
-            rr.paren = 0;
-            rr.status &= READ_RESULT_EOF;
-        }
-        else if (bf->pos > 0)
-        {
-            status = run_expr(bf, env, &pp, tloc);
-            if (status > 0)
-            {
-                if (status == 1)  status = 0;
-                break;
-            }
-            else
-            {
-                // inline reset
-                bf->pos = 0;
-                bf->data[0] = '\0';
-
-                rr.flags |= F_READ_START;
-                rr.read = 0;
-                rr.paren = 0;
-                rr.status &= READ_RESULT_EOF;
-            }
-        }
-
-        /* Update previous syntax location */
-        tloc->row = loc->row;
-        tloc->col = loc->col;
-    }
 
     free_buffer(bf);
     free_buffer(valid_fname);

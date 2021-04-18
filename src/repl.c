@@ -12,7 +12,6 @@ static void int_handler(int sig)
     printf(" !! User break\n");
     fflush(stdout);
     fflush(stdin);
-    signal(SIGINT, int_handler);
 }
 
 int minim_repl(uint32_t flags)
@@ -22,7 +21,6 @@ int minim_repl(uint32_t flags)
     MinimObject *obj;
     Buffer *bf;
     PrintParams pp;
-    char *input;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
 
@@ -36,29 +34,20 @@ int minim_repl(uint32_t flags)
 
     while (1)
     {
-        ReadResult rr;
         SyntaxLoc *loc, *tloc;
 
         init_buffer(&bf);
         init_syntax_loc(&loc, "REPL");
         init_syntax_loc(&tloc, "");
-        set_default_read_result(&rr);
 
         loc->row = 0;
         loc->col = 0;
         
         printf("> ");
-        while (!(rr.status & READ_RESULT_EOF) || rr.status & READ_RESULT_INCOMPLETE)
-        {
-            if (rr.status & READ_RESULT_INCOMPLETE)
-                writec_buffer(bf, ' ');
-                
-            rr.status = READ_RESULT_SUCCESS;
-            fread_expr(stdin, bf, tloc, loc, &rr, '\n');
-        }
-
+        minim_parse_str(stdin, &ast, '\n', true);
         free_syntax_loc(tloc);
 
+        /**
         input = get_buffer(bf);
         if (strlen(input) == 0 || strcmp(input, "\377") == 0)
         {
@@ -72,13 +61,11 @@ int minim_repl(uint32_t flags)
             free_syntax_loc(loc);
             break;
         }
+        **/
 
-        if (!parse_expr_loc(input, &ast, loc))
-        {
-            free_buffer(bf);
-            free_syntax_loc(loc);
-            continue;
-        }
+       if (ast->childc == 1 && ast->children[0]->sym &&
+            strcmp(ast->children[0]->sym, "exit") == 0)
+            break;
         
         eval_ast(env, ast, &obj);
         if (obj->type == MINIM_OBJ_ERR)
@@ -94,7 +81,7 @@ int minim_repl(uint32_t flags)
 
         free_syntax_loc(loc);
         free_minim_object(obj);
-        free_ast(ast);
+        free_syntax_node(ast);
         free_buffer(bf);
     }
 
