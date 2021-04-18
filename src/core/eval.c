@@ -218,6 +218,28 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, bool rec)
 
         return res;
     }
+    else if (node->type == SYNTAX_NODE_PAIR)
+    {
+        MinimObject **args;
+        MinimObject *res;
+        args = malloc(2 * sizeof(MinimObject*));
+
+        args = malloc(2 * sizeof(MinimObject*));
+        if (rec)
+        {
+            args[0] = unsyntax_ast_node(env, node->children[0], rec);
+            args[1] = unsyntax_ast_node(env, node->children[2], rec);
+        }
+        else
+        {
+            init_minim_object(&args[0], MINIM_OBJ_AST, node->children[0]);
+            init_minim_object(&args[1], MINIM_OBJ_AST, node->children[2]);
+        }
+
+        res = minim_builtin_cons(env, args, 2);
+        free_minim_objects(args, 2);
+        return res;
+    }
     else
     {
         return str_to_node(node->sym, env, true);
@@ -325,6 +347,19 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             return res;
         }
 
+        return res;
+    }
+    else if (node->type == SYNTAX_NODE_PAIR)
+    {
+        MinimObject **args;
+        MinimObject *res;
+        args = malloc(2 * sizeof(MinimObject*));
+
+        args[0] = eval_ast_node(env, node->children[0]);
+        args[1] = eval_ast_node(env, node->children[1]);
+        res = minim_builtin_cons(env, args, 2);
+
+        free_minim_objects(args, 2);
         return res;
     }
     else

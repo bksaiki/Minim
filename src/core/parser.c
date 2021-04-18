@@ -161,6 +161,65 @@ static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, S
     return node;
 }
 
+static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror)
+{
+    SyntaxNode *node;
+    SyntaxLoc *loc;
+    Buffer *bf;
+    char c;
+
+    init_buffer(&bf);
+    writec_buffer(bf, '"');
+    c = fgetc(file);
+    update_table(c, ptable);
+
+    while (c != '"')
+    {
+        if (c == ptable->eof)
+        {
+            Buffer *bf2;
+
+            init_buffer(&bf2);
+            writes_buffer(bf2, "unexpected end of input");
+            trim_buffer(bf2);
+
+            ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+            init_syntax_node(perror, SYNTAX_NODE_DATUM);
+            (*perror)->sym = release_buffer(bf2);
+            free_buffer(bf2);
+            break;
+        }
+
+        writec_buffer(bf, c);
+        if (c == '\\')
+        {
+            c = fgetc(file);
+            update_table(c, ptable);
+            if (c == ptable->eof)
+                continue;
+            writec_buffer(bf, c);
+        }
+
+        c = fgetc(file);
+        update_table(c, ptable);
+    }
+
+    if (c == '"')
+        writec_buffer(bf, c);
+
+    init_syntax_node(&node, SYNTAX_NODE_DATUM);
+    trim_buffer(bf);
+    node->sym = release_buffer(bf);
+    free_buffer(bf);
+
+    init_syntax_loc(&loc, name);
+    loc->col = ptable->col;
+    loc->row = ptable->row;
+    ast_add_syntax_loc(node, loc);
+
+    return node;
+}
+
 static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror)
 {
     SyntaxNode *node;
@@ -210,17 +269,12 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
             node->children[node->childc - 1] = tmp;
         }
 
-        c = advance_to_token(file, ptable);
-        if (closed_paren(c))
-        {
-            update_table(c, ptable);
-            break;
-        }
-        else if (c == ptable->eof)
+        if (ptable->flags & SYNTAX_NODE_FLAG_EOF)
         {
             if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
             {
                 printf("  ");
+                ptable->flags ^= SYNTAX_NODE_FLAG_EOF;
             }
             else
             {
@@ -236,6 +290,13 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
                 free_buffer(bf);
                 break;
             }
+        }
+
+        c = advance_to_token(file, ptable);
+        if (closed_paren(c))
+        {
+            update_table(c, ptable);
+            break;
         }
         else
         {
@@ -324,6 +385,10 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
         {
             update_table(c, ptable);
             node = read_vector(file, name, ptable, perror);
+
+            c = advance_to_token(file, ptable);
+            if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+            else                    ungetc(c, file);
         }
         else
         {
@@ -348,17 +413,30 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
     {
         update_table(c, ptable);
         node = read_list(file, name, ptable, perror);
+
+        c = advance_to_token(file, ptable);
+        if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+        else                    ungetc(c, file);
     }
     else if (closed_paren(c) && c == ptable->eof) // nonsense 
     {
-        ungetc(c, file);
+        printf("Should not be here!");
         return NULL;
+    }
+    else if (c == '"')      // string
+    {
+        node = read_string(file, name, ptable, perror);
+        c = advance_to_token(file, ptable);
+        if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+        else                    ungetc(c, file);
     }
     else if (c == ptable->eof) // empty input
     {
         if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
         {
             printf("  ");
+            ptable->flags ^= SYNTAX_NODE_FLAG_EOF;
+            node = read_top(file, name, ptable, perror);
         }
         else
         {
@@ -405,8 +483,6 @@ int minim_parse_port(FILE *file, const char *name, SyntaxNode **psyntax, char eo
     table.flags = (wait ? SYNTAX_NODE_FLAG_WAIT : 0x0);
 
     node = read_top(file, name, &table, &err);
-    finalize_read(file, &table, &err);
-
     if (table.flags & SYNTAX_NODE_FLAG_BAD)
     {
         if (node)       free_syntax_node(node);

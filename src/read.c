@@ -32,7 +32,7 @@ int minim_load_file(MinimEnv *env, const char *fname)
     }
 
     rt.idx = 0;
-    rt.row = 0;
+    rt.row = 1;
     rt.col = 0;
     rt.flags = 0x0;
     rt.eof = EOF;
