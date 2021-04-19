@@ -25,6 +25,7 @@ int minim_repl(uint32_t flags)
     char *input;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
+    fflush(stdout);
 
     init_env(&env, NULL);
     minim_load_builtins(env);
@@ -48,6 +49,7 @@ int minim_repl(uint32_t flags)
         loc->col = 0;
         
         printf("> ");
+	fflush(stdout);
         while (!(rr.status & READ_RESULT_EOF) || rr.status & READ_RESULT_INCOMPLETE)
         {
             if (rr.status & READ_RESULT_INCOMPLETE)
