@@ -222,18 +222,17 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, bool rec)
     {
         MinimObject **args;
         MinimObject *res;
-        args = malloc(2 * sizeof(MinimObject*));
 
         args = malloc(2 * sizeof(MinimObject*));
         if (rec)
         {
             args[0] = unsyntax_ast_node(env, node->children[0], rec);
-            args[1] = unsyntax_ast_node(env, node->children[2], rec);
+            args[1] = unsyntax_ast_node(env, node->children[1], rec);
         }
         else
         {
             init_minim_object(&args[0], MINIM_OBJ_AST, node->children[0]);
-            init_minim_object(&args[1], MINIM_OBJ_AST, node->children[2]);
+            init_minim_object(&args[1], MINIM_OBJ_AST, node->children[1]);
         }
 
         res = minim_builtin_cons(env, args, 2);
@@ -353,8 +352,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     {
         MinimObject **args;
         MinimObject *res;
-        args = malloc(2 * sizeof(MinimObject*));
 
+        args = malloc(2 * sizeof(MinimObject*));
         args[0] = eval_ast_node(env, node->children[0]);
         args[1] = eval_ast_node(env, node->children[1]);
         res = minim_builtin_cons(env, args, 2);
@@ -403,7 +402,7 @@ char *eval_string(char *str, size_t len)
     minim_load_builtins(env);
     set_default_print_params(&pp);
 
-    if (!parse_str(str, &ast))
+    if (parse_str(str, &ast))
     {
         char *tmp = "Parsing failed!";
         out = malloc((strlen(tmp) + 1) * sizeof(char));

@@ -20,7 +20,4 @@ int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, ReadTa
 // Parses a single expression
 int parse_str(const char* str, SyntaxNode** psyntax);
 
-// Parses a single expression with syntax location
-int parse_expr_loc(const char* str, SyntaxNode** psyntax, SyntaxLoc *loc);
-
 #endif

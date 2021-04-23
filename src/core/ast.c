@@ -110,7 +110,7 @@ void print_syntax(SyntaxNode *node)
 void ast_add_syntax_loc(SyntaxNode *ast, SyntaxLoc *loc)
 {
     if (ast->loc)   free_syntax_loc(ast->loc);
-    copy_syntax_loc(&ast->loc, loc);
+    ast->loc = loc;
 }
 
 bool ast_validp(SyntaxNode *node)

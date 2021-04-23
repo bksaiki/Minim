@@ -85,7 +85,9 @@ static void expand_list(SyntaxNode *node)
     if (node->childc == 3 && node->children[1]->sym &&
         strcmp(node->children[1]->sym, ".") == 0)
     {
+        free_syntax_node(node->children[1]);
         node->children[1] = node->children[2];
+
         node->children = realloc(node->children, 2 * sizeof(SyntaxNode*));
         node->childc = 2;
         node->type = SYNTAX_NODE_PAIR;
@@ -94,8 +96,12 @@ static void expand_list(SyntaxNode *node)
              strcmp(node->children[1]->sym, ".") == 0 &&
              strcmp(node->children[3]->sym, ".") == 0)
     {
-        node->children[1] = node->children[2];
+        free_syntax_node(node->children[1]);
+        free_syntax_node(node->children[3]);
+        node->children[1] = node->children[0];
+        node->children[0] = node->children[2];
         node->children[2] = node->children[4];
+        
         node->children = realloc(node->children, 3 * sizeof(SyntaxNode*));
         node->childc = 3;
         node->type = SYNTAX_NODE_LIST;
@@ -499,10 +505,14 @@ int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, ReadTa
 
 int parse_str(const char* str, SyntaxNode** psyntax)
 {
-    return 1;
-}
+    FILE *tmp;
+    int status;
 
-int parse_expr_loc(const char* str, SyntaxNode** psyntax, SyntaxLoc *loc)
-{
-    return 1;
+    tmp = tmpfile();
+    fputs(str, tmp);
+    rewind(tmp);
+    status = minim_parse_port(tmp, "test", psyntax, EOF, false);
+    fclose(tmp);
+
+    return status;
 }
