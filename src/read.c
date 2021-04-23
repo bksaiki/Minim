@@ -12,14 +12,47 @@
         return 2;                       \
 } 
 
+int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp, MinimEnv *env)
+{
+    SyntaxNode *ast, *err;
+    MinimObject *obj;
+
+    minim_parse_port2(file, fname, &ast, &err, rt);
+    if (!ast || rt->flags & SYNTAX_NODE_FLAG_BAD)
+    {
+        printf("; bad syntax: %s", err->sym);
+        printf("\n;  in: %s:%lu:%lu\n", fname, rt->row, rt->col);
+        return 1;
+    }
+
+    eval_ast(env, ast, &obj);
+    if (obj->type == MINIM_OBJ_ERR)
+    {    
+        print_minim_object(obj, env, pp);
+        printf("\n");
+
+        free_minim_object(obj);
+        free_syntax_node(ast);
+        return 2;
+    }
+    else if (obj->type != MINIM_OBJ_VOID)
+    {
+        print_minim_object(obj, env, pp);
+        printf("\n");
+    }
+
+    free_minim_object(obj);
+    free_syntax_node(ast);
+
+    return 0;
+}
+
 int minim_load_file(MinimEnv *env, const char *fname)
 {
-    SyntaxNode *ast;
-    MinimObject *obj;
     PrintParams pp;
-    Buffer *valid_fname;
     ReadTable rt;
     FILE *file;
+    Buffer *valid_fname;
 
     init_buffer(&valid_fname);
     valid_path(valid_fname, fname);
@@ -40,32 +73,8 @@ int minim_load_file(MinimEnv *env, const char *fname)
     set_default_print_params(&pp);
     while (~rt.flags & SYNTAX_NODE_FLAG_EOF)
     {
-        minim_parse_port2(file, valid_fname->data, &ast, &rt);
-        if (!ast || rt.flags & SYNTAX_NODE_FLAG_BAD)
-        {
-            printf("Parsing failed\n");
-            printf("Parsed: %lu at (%lu, %lu)\n", rt.idx, rt.row, rt.col);
-            return 2;
-        }
-
-        eval_ast(env, ast, &obj);
-        if (obj->type == MINIM_OBJ_ERR)
-        {    
-            print_minim_object(obj, env, &pp);
-            printf("\n");
-
-            free_minim_object(obj);
-            free_syntax_node(ast);
-            return 2;
-        }
-        else if (obj->type != MINIM_OBJ_VOID)
-        {
-            print_minim_object(obj, env, &pp);
-            printf("\n");
-        }
-
-        free_minim_object(obj);
-        free_syntax_node(ast);
+        if (minim_run_expr(file, valid_fname->data, &rt, &pp, env))
+            break;
     }
 
     free_buffer(valid_fname);

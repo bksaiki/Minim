@@ -348,6 +348,7 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
 static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror)
 {
     SyntaxNode *node;
+    Buffer *bf;
     char c, n;
 
     c = advance_to_token(file, ptable);
@@ -397,11 +398,6 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
         if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
         else                    ungetc(c, file);
     }
-    else if (closed_paren(c) && c == ptable->eof) // nonsense 
-    {
-        printf("Should not be here!");
-        return NULL;
-    }
     else if (c == '"')      // string
     {
         node = read_string(file, name, ptable, perror);
@@ -419,8 +415,6 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
         }
         else
         {
-            Buffer *bf;
-
             init_buffer(&bf);
             writes_buffer(bf, "unexpected end of input");
             trim_buffer(bf);
@@ -460,12 +454,15 @@ int minim_parse_port(FILE *file, const char *name, SyntaxNode **psyntax, char eo
     table.col = 0;
     table.eof = eof;
     table.flags = (wait ? SYNTAX_NODE_FLAG_WAIT : 0x0);
+    err = NULL;
 
     node = read_top(file, name, &table, &err);
     if (table.flags & SYNTAX_NODE_FLAG_BAD)
     {
-        if (node)       free_syntax_node(node);
-        else            node = err;
+        if (node) free_syntax_node(node);
+
+        *psyntax = err;
+        return 1;
     }
     else if (~table.flags & SYNTAX_NODE_FLAG_EOF)
     {
@@ -478,21 +475,44 @@ int minim_parse_port(FILE *file, const char *name, SyntaxNode **psyntax, char eo
         init_syntax_node(&node, SYNTAX_NODE_DATUM);
         node->sym = release_buffer(bf);
         free_buffer(bf);
+
+        *psyntax = node;
+        return 1;
     }
 
     *psyntax = node;
     return 0;
 }
 
-int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, ReadTable *table)
+int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, SyntaxNode **perr, ReadTable *table)
 {
     SyntaxNode *node, *err;
+    Buffer *bf;
 
+    err = NULL;
     node = read_top(file, name, table, &err);
-    if (table->flags & SYNTAX_NODE_FLAG_BAD)
+    if (!node)
     {
-        if (node)       free_syntax_node(node);
-        else            node = err;
+        init_buffer(&bf);
+        writef_buffer(bf, "unexpected: '~c;", fgetc(file));
+        trim_buffer(bf);
+
+        table->flags |= SYNTAX_NODE_FLAG_BAD;
+        init_syntax_node(perr, SYNTAX_NODE_DATUM);
+        err->sym = release_buffer(bf);
+        free_buffer(bf);
+
+        *psyntax = NULL;
+        *perr = err;
+        return 1;
+    }
+    else if (table->flags & SYNTAX_NODE_FLAG_BAD)
+    {
+        if (node)   free_syntax_node(node);
+
+        *psyntax = NULL;
+        *perr = err;
+        return 1;
     }
 
     *psyntax = node;

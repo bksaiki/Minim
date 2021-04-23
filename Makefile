@@ -21,11 +21,13 @@ LDFLAGS 	= -lm -lgmp
 
 # Specific rules
 
-main: configure $(OBJS)
+minim: configure $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 configure:
 	cd src && $(MAKE) config
+
+tests: unit-tests lib-tests;
 
 unit-tests: $(TEST_EXES)
 	$(TEST_DIR)/test.sh $(TEST_EXES)

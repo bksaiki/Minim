@@ -7,11 +7,17 @@
 #include "read.h"
 #include "repl.h"
 
+static void flush_stdin()
+{
+    char c;
+    while ((c = getc(stdin)) != '\n' && c != EOF);
+}
+
 static void int_handler(int sig)
 {
     printf(" !! User break\n");
     fflush(stdout);
-    fflush(stdin);
+    flush_stdin();
 }
 
 int minim_repl(uint32_t flags)
@@ -34,7 +40,17 @@ int minim_repl(uint32_t flags)
     while (1)
     {   
         printf("> ");
-        minim_parse_port(stdin, "repl", &ast, '\n', true);
+        if (minim_parse_port(stdin, "repl", &ast, '\n', true))
+        {
+            if (ast)
+            {
+                printf("bad syntax: %s\n", ast->sym);
+                free_syntax_node(ast);
+            }
+            
+            flush_stdin();
+            continue;
+        }
 
        if (ast->childc == 1 && ast->children[0]->sym &&
             strcmp(ast->children[0]->sym, "exit") == 0)
