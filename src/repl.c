@@ -51,16 +51,18 @@ int minim_repl(uint32_t flags)
             flush_stdin();
             continue;
         }
-
-       if (ast->childc == 1 && ast->children[0]->sym &&
-            strcmp(ast->children[0]->sym, "exit") == 0)
-            break;
         
         eval_ast(env, ast, &obj);
         if (obj->type == MINIM_OBJ_ERR)
         {    
             print_minim_object(obj, env, &pp);
             printf("\n;  in: %s\n", "REPL");
+        }
+        else if (obj->type == MINIM_OBJ_EXIT)
+        {
+            free_minim_object(obj);
+            free_syntax_node(ast);
+            break;
         }
         else if (obj->type != MINIM_OBJ_VOID)
         {

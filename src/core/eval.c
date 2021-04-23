@@ -142,11 +142,11 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     return res;
 }
 
-static MinimObject *first_error(MinimObject **args, size_t argc)
+static MinimObject *error_or_exit(MinimObject **args, size_t argc)
 {
     for (size_t i = 0; i < argc; ++i)
     {
-        if (MINIM_OBJ_ERRORP(args[i]))
+        if (MINIM_OBJ_ERRORP(args[i]) || MINIM_OBJ_EXITP(args[i]))
             return args[i];
     }
 
@@ -275,7 +275,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
-            possible_err = first_error(args, argc);
+            possible_err = error_or_exit(args, argc);
             if (possible_err)
             {
                 for (size_t i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted
@@ -320,7 +320,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]);          
 
-            possible_err = first_error(args, argc);
+            possible_err = error_or_exit(args, argc);
             if (possible_err)
             {
                 for (size_t i = 0; i < argc; ++i)    // Clear it so it doesn't get deleted

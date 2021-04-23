@@ -422,3 +422,11 @@ MinimObject *minim_builtin_symbol_count(MinimEnv *env, MinimObject **args, size_
 {
     return int_to_minim_number(env->table->size);
 }
+
+MinimObject *minim_builtin_exit(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_EXIT, 0);
+    return res;
+}

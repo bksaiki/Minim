@@ -27,7 +27,11 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     obj->flags = MINIM_OBJ_OWNER;
 
     // if (type == MINIM_OBJ_VOID)
-    if (type == MINIM_OBJ_BOOL)
+    if (type == MINIM_OBJ_EXIT)
+    {
+        obj->u.ints.i1 = va_arg(vargs, int);
+    }
+    else if (type == MINIM_OBJ_BOOL)
     {
         obj->u.ints.i1 = va_arg(vargs, int);
     }
@@ -101,6 +105,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     switch (src->type)
     {
     case MINIM_OBJ_BOOL:
+    case MINIM_OBJ_EXIT:
         dest->u = src->u;
         dest->flags |= MINIM_OBJ_OWNER; // override
         break;
@@ -113,7 +118,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
 
 void copy_minim_object_h(MinimObject *dest, MinimObject *src)
 {
-    if (src->type == MINIM_OBJ_BOOL)
+    if (src->type == MINIM_OBJ_BOOL || src->type == MINIM_OBJ_EXIT)
     {
         dest->u.ints.i1 = dest->u.ints.i2;
     }
@@ -285,6 +290,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return minim_vector_equalp(a, b);
     
     /*
+    case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_ERR:
     */
@@ -372,6 +378,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     /*
+    case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_ERR:
     */

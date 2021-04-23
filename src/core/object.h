@@ -28,6 +28,7 @@ typedef struct MinimObject
 typedef enum MinimObjectType
 {
     MINIM_OBJ_VOID,
+    MINIM_OBJ_EXIT,
     MINIM_OBJ_BOOL,
     MINIM_OBJ_EXACT,
     MINIM_OBJ_INEXACT,
@@ -58,6 +59,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_OBJ_SAME_TYPE(obj, t)     (obj->type == t)
 
 #define MINIM_OBJ_VOIDP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VOID)
+#define MINIM_OBJ_EXITP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXIT)
 #define MINIM_OBJ_BOOLP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_BOOL)
 #define MINIM_OBJ_EXACTP(obj)       MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXACT)
 #define MINIM_OBJ_INEXACTP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_INEXACT)
