@@ -52,6 +52,8 @@ int minim_load_file(MinimEnv *env, const char *fname)
         if (obj->type == MINIM_OBJ_ERR)
         {    
             print_minim_object(obj, env, &pp);
+            printf("\n");
+
             free_minim_object(obj);
             free_syntax_node(ast);
             return 2;

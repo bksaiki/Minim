@@ -196,13 +196,15 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 
         init_syntax_node(&ast, SYNTAX_NODE_LIST);
         ast->children = malloc((count + 1) * sizeof(SyntaxNode*));
+        ast->childc = count + 1;
 
         init_syntax_node(&ast->children[0], SYNTAX_NODE_DATUM);
         ast->children[0]->sym = malloc(6 * sizeof(char));
+        strcpy(ast->children[0]->sym, "begin");
+
+        lam->body = ast;
         for (size_t i = 0; i < count; ++i)
             copy_syntax_node(&ast->children[i + 1], exprs[i]->u.ptrs.p1);
-        
-        lam->body = ast;
     }
     else
     {

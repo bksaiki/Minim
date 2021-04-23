@@ -56,7 +56,7 @@ static char advance_to_token(FILE *file, ReadTable *ptable)
     {
         update_table(c, ptable);
         c = fgetc(file);
-        while (c != ptable->eof && c != '\n')
+        while (c != '\n' && c != ptable->eof)
         {
             update_table(c, ptable);
             c = fgetc(file);
@@ -70,33 +70,6 @@ static char advance_to_token(FILE *file, ReadTable *ptable)
     }
 
     return c;
-}
-
-static void finalize_read(FILE *file, ReadTable *ptable, SyntaxNode **perror)
-{
-    char c;
-
-    if (ptable->flags & SYNTAX_NODE_FLAG_EOF)
-        return;
-
-    c = advance_to_token(file, ptable);
-    if (c == ptable->eof)
-    {
-        ptable->flags |= SYNTAX_NODE_FLAG_EOF;
-    }
-    else
-    {
-        Buffer *bf;
-
-        init_buffer(&bf);
-        writef_buffer(bf, "unexpected: '~c'", c);
-        trim_buffer(bf);
-
-        ptable->flags |= SYNTAX_NODE_FLAG_BAD;
-        init_syntax_node(perror, SYNTAX_NODE_DATUM);
-        (*perror)->sym = release_buffer(bf);
-        free_buffer(bf);
-    }
 }
 
 static bool expand_shorthand_syntax(SyntaxNode *node)
