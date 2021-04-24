@@ -124,7 +124,7 @@ static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, S
         c = fgetc(file);
     }
 
-    if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+    if (c == ptable->eof)   ptable->flags |= READ_TABLE_FLAG_EOF;
     else                    ungetc(c, file);           
 
     init_syntax_node(&node, SYNTAX_NODE_DATUM);
@@ -162,7 +162,7 @@ static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, 
             writes_buffer(bf2, "unexpected end of input");
             trim_buffer(bf2);
 
-            ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+            ptable->flags |= READ_TABLE_FLAG_BAD;
             init_syntax_node(perror, SYNTAX_NODE_DATUM);
             (*perror)->sym = release_buffer(bf2);
             free_buffer(bf2);
@@ -248,12 +248,12 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
             node->children[node->childc - 1] = tmp;
         }
 
-        if (ptable->flags & SYNTAX_NODE_FLAG_EOF)
+        if (ptable->flags & READ_TABLE_FLAG_EOF)
         {
-            if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
+            if (ptable->flags & READ_TABLE_FLAG_WAIT)
             {
                 printf("  ");
-                ptable->flags ^= SYNTAX_NODE_FLAG_EOF;
+                ptable->flags ^= READ_TABLE_FLAG_EOF;
             }
             else
             {
@@ -263,7 +263,7 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
                 writes_buffer(bf, "unexpected end of input");
                 trim_buffer(bf);
 
-                ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+                ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
                 free_buffer(bf);
@@ -317,7 +317,7 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
         }
         else if (c == ptable->eof)
         {
-            if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
+            if (ptable->flags & READ_TABLE_FLAG_WAIT)
             {
                 printf("  ");
             }
@@ -329,7 +329,7 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
                 writes_buffer(bf, "unexpected end of input");
                 trim_buffer(bf);
 
-                ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+                ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
                 free_buffer(bf);
@@ -367,7 +367,7 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
             node = read_vector(file, name, ptable, perror);
 
             c = advance_to_token(file, ptable);
-            if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+            if (c == ptable->eof)   ptable->flags |= READ_TABLE_FLAG_EOF;
             else                    ungetc(c, file);
         }
         else
@@ -382,7 +382,7 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
                 writef_buffer(bf, "bad syntax: #~s", node->sym);
                 trim_buffer(bf);
 
-                ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+                ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
                 free_buffer(bf);
@@ -395,22 +395,22 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
         node = read_list(file, name, ptable, perror);
 
         c = advance_to_token(file, ptable);
-        if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+        if (c == ptable->eof)   ptable->flags |= READ_TABLE_FLAG_EOF;
         else                    ungetc(c, file);
     }
     else if (c == '"')      // string
     {
         node = read_string(file, name, ptable, perror);
         c = advance_to_token(file, ptable);
-        if (c == ptable->eof)   ptable->flags |= SYNTAX_NODE_FLAG_EOF;
+        if (c == ptable->eof)   ptable->flags |= READ_TABLE_FLAG_EOF;
         else                    ungetc(c, file);
     }
     else if (c == ptable->eof) // empty input
     {
-        if (ptable->flags & SYNTAX_NODE_FLAG_WAIT)
+        if (ptable->flags & READ_TABLE_FLAG_WAIT)
         {
             printf("  ");
-            ptable->flags ^= SYNTAX_NODE_FLAG_EOF;
+            ptable->flags ^= READ_TABLE_FLAG_EOF;
             node = read_top(file, name, ptable, perror);
         }
         else
@@ -419,7 +419,7 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
             writes_buffer(bf, "unexpected end of input");
             trim_buffer(bf);
 
-            ptable->flags |= SYNTAX_NODE_FLAG_BAD;
+            ptable->flags |= READ_TABLE_FLAG_BAD;
             init_syntax_node(perror, SYNTAX_NODE_DATUM);
             (*perror)->sym = release_buffer(bf);
             free_buffer(bf);
@@ -444,51 +444,13 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
 // Exported
 //
 
-int minim_parse_port(FILE *file, const char *name, SyntaxNode **psyntax, char eof, bool wait)
-{
-    SyntaxNode *node, *err;
-    ReadTable table;
-
-    table.idx = 0;
-    table.row = 0;
-    table.col = 0;
-    table.eof = eof;
-    table.flags = (wait ? SYNTAX_NODE_FLAG_WAIT : 0x0);
-    err = NULL;
-
-    node = read_top(file, name, &table, &err);
-    if (table.flags & SYNTAX_NODE_FLAG_BAD)
-    {
-        if (node) free_syntax_node(node);
-
-        *psyntax = err;
-        return 1;
-    }
-    else if (~table.flags & SYNTAX_NODE_FLAG_EOF)
-    {
-        Buffer *bf;
-
-        init_buffer(&bf);
-        writef_buffer(bf, "unexpected: '~c'", fgetc(file));
-        trim_buffer(bf);
-
-        init_syntax_node(&node, SYNTAX_NODE_DATUM);
-        node->sym = release_buffer(bf);
-        free_buffer(bf);
-
-        *psyntax = node;
-        return 1;
-    }
-
-    *psyntax = node;
-    return 0;
-}
-
-int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, SyntaxNode **perr, ReadTable *table)
+int minim_parse_port(FILE *file, const char *name,
+                     SyntaxNode **psyntax, SyntaxNode **perr,
+                     ReadTable *table)
 {
     SyntaxNode *node, *err;
     Buffer *bf;
-
+ 
     err = NULL;
     node = read_top(file, name, table, &err);
     if (!node)
@@ -497,8 +459,8 @@ int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, Syntax
         writef_buffer(bf, "unexpected: '~c;", fgetc(file));
         trim_buffer(bf);
 
-        table->flags |= SYNTAX_NODE_FLAG_BAD;
-        init_syntax_node(perr, SYNTAX_NODE_DATUM);
+        table->flags |= READ_TABLE_FLAG_BAD;
+        init_syntax_node(&err, SYNTAX_NODE_DATUM);
         err->sym = release_buffer(bf);
         free_buffer(bf);
 
@@ -506,7 +468,7 @@ int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, Syntax
         *perr = err;
         return 1;
     }
-    else if (table->flags & SYNTAX_NODE_FLAG_BAD)
+    else if (table->flags & READ_TABLE_FLAG_BAD)
     {
         if (node)   free_syntax_node(node);
 
@@ -516,6 +478,7 @@ int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, Syntax
     }
 
     *psyntax = node;
+    *perr = NULL;
     return 0;
 }
 
@@ -525,14 +488,28 @@ int minim_parse_port2(FILE *file, const char *name, SyntaxNode **psyntax, Syntax
 
 int parse_str(const char* str, SyntaxNode** psyntax)
 {
+    ReadTable rt;
+    SyntaxNode *err;
     FILE *tmp;
     int status;
+
+    rt.idx = 0;
+    rt.row = 1;
+    rt.col = 0;
+    rt.eof = EOF;
+    rt.flags = 0x0;
 
     tmp = tmpfile();
     fputs(str, tmp);
     rewind(tmp);
-    status = minim_parse_port(tmp, "test", psyntax, EOF, false);
-    fclose(tmp);
 
+    status = minim_parse_port(tmp, "test", psyntax, &err, &rt);
+    if (rt.flags & READ_TABLE_FLAG_BAD)
+    {
+        if (*psyntax)    free_syntax_node(*psyntax);
+        *psyntax = err;
+    }
+
+    fclose(tmp);
     return status;
 }

@@ -10,7 +10,10 @@
 static void flush_stdin()
 {
     char c;
-    while ((c = getc(stdin)) != '\n' && c != EOF);
+
+    c = getc(stdin);
+    while (c != '\n' && c != EOF)
+        c = getc(stdin);
 }
 
 static void int_handler(int sig)
@@ -23,8 +26,6 @@ static void int_handler(int sig)
 int minim_repl(uint32_t flags)
 {
     MinimEnv *env;
-    SyntaxNode *ast;
-    MinimObject *obj;
     PrintParams pp;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
@@ -39,12 +40,31 @@ int minim_repl(uint32_t flags)
 
     while (1)
     {   
+        ReadTable rt;
+        SyntaxNode *ast, *err;
+        MinimObject *obj;
+        char c;
+
+        rt.idx = 0;
+        rt.row = 1;
+        rt.col = 0;
+        rt.eof = '\n';
+        rt.flags = READ_TABLE_FLAG_WAIT;
+
+        
+
         printf("> ");
-        if (minim_parse_port(stdin, "repl", &ast, '\n', true))
+        if (minim_parse_port(stdin, "repl", &ast, &err, &rt))
         {
+            if (rt.flags & READ_TABLE_FLAG_BAD)
+            {
+                if (ast)    free_syntax_node(ast);
+                ast = err;
+            }
+
             if (ast)
             {
-                printf("bad syntax: %s\n", ast->sym);
+                printf("; bad syntax: %s\n", ast->sym);
                 free_syntax_node(ast);
             }
             

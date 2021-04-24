@@ -255,7 +255,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         size_t argc;
 
         if (node->childc == 0)
-            return minim_error("empty expression. something bad happened", "???");
+            return minim_error("missing procedure expression", NULL);
 
         argc = node->childc - 1;
         args = malloc(argc * sizeof(MinimObject*));

@@ -17,8 +17,8 @@ int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp
     SyntaxNode *ast, *err;
     MinimObject *obj;
 
-    minim_parse_port2(file, fname, &ast, &err, rt);
-    if (!ast || rt->flags & SYNTAX_NODE_FLAG_BAD)
+    minim_parse_port(file, fname, &ast, &err, rt);
+    if (!ast || rt->flags & READ_TABLE_FLAG_BAD)
     {
         printf("; bad syntax: %s", err->sym);
         printf("\n;  in: %s:%lu:%lu\n", fname, rt->row, rt->col);
@@ -71,7 +71,7 @@ int minim_load_file(MinimEnv *env, const char *fname)
     rt.eof = EOF;
 
     set_default_print_params(&pp);
-    while (~rt.flags & SYNTAX_NODE_FLAG_EOF)
+    while (~rt.flags & READ_TABLE_FLAG_EOF)
     {
         if (minim_run_expr(file, valid_fname->data, &rt, &pp, env))
             break;
