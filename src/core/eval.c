@@ -146,7 +146,7 @@ static MinimObject *error_or_exit(MinimObject **args, size_t argc)
 {
     for (size_t i = 0; i < argc; ++i)
     {
-        if (MINIM_OBJ_ERRORP(args[i]) || MINIM_OBJ_EXITP(args[i]))
+        if (MINIM_OBJ_THROWNP(args[i]))
             return args[i];
     }
 

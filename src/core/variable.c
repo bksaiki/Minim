@@ -17,7 +17,7 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res, *cond;
 
     eval_ast(env, args[0]->u.ptrs.p1, &cond);
-    if (!MINIM_OBJ_ERRORP(cond))
+    if (!MINIM_OBJ_THROWNP(cond))
     {
         eval_ast(env, coerce_into_bool(cond) ?
                       args[1]->u.ptrs.p1 :
@@ -67,7 +67,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                 for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
                 {
                     eval_ast(env2, MINIM_CAR(it)->u.ptrs.p1, &val);
-                    if (MINIM_OBJ_ERRORP(val))
+                    if (MINIM_OBJ_THROWNP(val))
                     {
                         res = val;
                         break;
@@ -102,7 +102,7 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
     MinimObject *res, *cond;
 
     eval_ast(env, args[0]->u.ptrs.p1, &cond);
-    if (!MINIM_OBJ_ERRORP(cond))
+    if (!MINIM_OBJ_THROWNP(cond))
     {
         if (!coerce_into_bool(cond))
             res = minim_builtin_begin(env, &args[1], argc - 1);
@@ -124,7 +124,7 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res, *cond;
 
     eval_ast(env, args[0]->u.ptrs.p1, &cond);
-    if (!MINIM_OBJ_ERRORP(cond))
+    if (!MINIM_OBJ_THROWNP(cond))
     {
         if (coerce_into_bool(cond))
             res = minim_builtin_begin(env, &args[1], argc - 1);
@@ -168,7 +168,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
         copy_syntax_loc(&lam->loc, ast->loc);
     }
     
-    if (!MINIM_OBJ_ERRORP(val))
+    if (!MINIM_OBJ_THROWNP(val))
     {
         env_intern_sym(env, sym->u.str.str, val);
         init_minim_object(&res, MINIM_OBJ_VOID);
@@ -192,7 +192,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         
     // Convert bindings to list
     unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-    if (MINIM_OBJ_ERRORP(bindings))
+    if (MINIM_OBJ_THROWNP(bindings))
     {
         res = bindings;
         return res;
@@ -254,7 +254,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
 
     // Convert bindings to list
     unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-    if (MINIM_OBJ_ERRORP(bindings))
+    if (MINIM_OBJ_THROWNP(bindings))
     {
         res = bindings;
         return res;
@@ -331,7 +331,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
     if (peek)
     {
         eval_ast(env, args[1]->u.ptrs.p1, &val);
-        if (!MINIM_OBJ_ERRORP(val))
+        if (!MINIM_OBJ_THROWNP(val))
         {
             env_set_sym(env, sym->u.str.str, val);
             init_minim_object(&res, MINIM_OBJ_VOID);
@@ -365,7 +365,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
     for (size_t i = 0; i < argc; ++i)
     {
         eval_ast(env2, args[i]->u.ptrs.p1, &val);
-        if (MINIM_OBJ_ERRORP(val))
+        if (MINIM_OBJ_THROWNP(val))
         {
             res = val;
             break;
