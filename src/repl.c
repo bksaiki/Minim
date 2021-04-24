@@ -7,22 +7,27 @@
 #include "read.h"
 #include "repl.h"
 
+static void flush_stdin()
+{
+    char c;
+
+    c = getc(stdin);
+    while (c != '\n' && c != EOF)
+        c = getc(stdin);
+}
+
 static void int_handler(int sig)
 {
     printf(" !! User break\n");
     fflush(stdout);
-    fflush(stdin);
-    signal(SIGINT, int_handler);
+    flush_stdin();
 }
 
 int minim_repl(uint32_t flags)
 {
-    MinimEnv *env;
-    MinimAst *ast;
-    MinimObject *obj;
-    Buffer *bf;
     PrintParams pp;
-    char *input;
+    MinimEnv *env;
+    uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
     fflush(stdout);
@@ -32,72 +37,71 @@ int minim_repl(uint32_t flags)
     set_default_print_params(&pp);
     signal(SIGINT, int_handler);
 
+    last_readf = READ_TABLE_FLAG_EOF;
     if (!(flags & MINIM_FLAG_LOAD_LIBS))
         minim_load_library(env);
 
     while (1)
-    {
-        ReadResult rr;
-        SyntaxLoc *loc, *tloc;
+    {   
+        ReadTable rt;
+        SyntaxNode *ast, *err;
+        MinimObject *obj;
 
-        init_buffer(&bf);
-        init_syntax_loc(&loc, "REPL");
-        init_syntax_loc(&tloc, "");
-        set_default_read_result(&rr);
+        rt.idx = 0;
+        rt.row = 1;
+        rt.col = 0;
+        rt.eof = '\n';
+        rt.flags = READ_TABLE_FLAG_WAIT | last_readf;
 
-        loc->row = 0;
-        loc->col = 0;
-        
-        printf("> ");
-	fflush(stdout);
-        while (!(rr.status & READ_RESULT_EOF) || rr.status & READ_RESULT_INCOMPLETE)
+        if (rt.flags & READ_TABLE_FLAG_EOF)
         {
-            if (rr.status & READ_RESULT_INCOMPLETE)
-                writec_buffer(bf, ' ');
-                
-            rr.status = READ_RESULT_SUCCESS;
-            fread_expr(stdin, bf, tloc, loc, &rr, '\n');
-        }
-
-        free_syntax_loc(tloc);
-
-        input = get_buffer(bf);
-        if (strlen(input) == 0 || strcmp(input, "\377") == 0)
-        {
-            free_buffer(bf);
-            free_syntax_loc(loc);
-            continue;
-        }
-        else if (strcmp(input, "(exit)") == 0)
-        {
-            free_buffer(bf);
-            free_syntax_loc(loc);
-            break;
-        }
-
-        if (!parse_expr_loc(input, &ast, loc))
-        {
-            free_buffer(bf);
-            free_syntax_loc(loc);
-            continue;
+            printf("> ");
+            fflush(stdout);
+            rt.flags ^= READ_TABLE_FLAG_EOF;
         }
         
+        if (minim_parse_port(stdin, "repl", &ast, &err, &rt))
+        {
+            if (rt.flags & READ_TABLE_FLAG_BAD)
+            {
+                if (ast)    free_syntax_node(ast);
+                ast = err;
+            }
+
+            if (ast)
+            {
+                printf("; bad syntax: %s\n", ast->sym);
+                fflush(stdout);
+                free_syntax_node(ast);
+            }
+            
+            last_readf = rt.flags & READ_TABLE_FLAG_EOF;
+            continue;
+        }
+
+        last_readf = rt.flags;
         eval_ast(env, ast, &obj);
         if (obj->type == MINIM_OBJ_ERR)
         {    
             print_minim_object(obj, env, &pp);
             printf("\n;  in: %s\n", "REPL");
+            fflush(stdout);
+        }
+        else if (obj->type == MINIM_OBJ_EXIT)
+        {
+            free_minim_object(obj);
+            free_syntax_node(ast);
+            break;
         }
         else if (obj->type != MINIM_OBJ_VOID)
         {
             print_minim_object(obj, env, &pp);
             printf("\n");
+            fflush(stdout);
         }
 
-        free_syntax_loc(loc);
         free_minim_object(obj);
-        free_ast(ast);
-        free_buffer(bf);
+        free_syntax_node(ast);
     }
 
     free_env(env);

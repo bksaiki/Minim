@@ -27,7 +27,11 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     obj->flags = MINIM_OBJ_OWNER;
 
     // if (type == MINIM_OBJ_VOID)
-    if (type == MINIM_OBJ_BOOL)
+    if (type == MINIM_OBJ_EXIT)
+    {
+        obj->u.ints.i1 = va_arg(vargs, int);
+    }
+    else if (type == MINIM_OBJ_BOOL)
     {
         obj->u.ints.i1 = va_arg(vargs, int);
     }
@@ -68,7 +72,7 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     }   
     else if (type == MINIM_OBJ_AST)
     {
-        obj->u.ptrs.p1 = va_arg(vargs, MinimAst*);
+        obj->u.ptrs.p1 = va_arg(vargs, SyntaxNode*);
     }
     else if (type == MINIM_OBJ_SEQ)
     {
@@ -101,6 +105,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     switch (src->type)
     {
     case MINIM_OBJ_BOOL:
+    case MINIM_OBJ_EXIT:
         dest->u = src->u;
         dest->flags |= MINIM_OBJ_OWNER; // override
         break;
@@ -113,7 +118,7 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
 
 void copy_minim_object_h(MinimObject *dest, MinimObject *src)
 {
-    if (src->type == MINIM_OBJ_BOOL)
+    if (src->type == MINIM_OBJ_BOOL || src->type == MINIM_OBJ_EXIT)
     {
         dest->u.ints.i1 = dest->u.ints.i2;
     }
@@ -164,8 +169,8 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_AST)
     {
-        MinimAst *node;
-        copy_ast(&node, src->u.ptrs.p1);
+        SyntaxNode *node;
+        copy_syntax_node(&node, src->u.ptrs.p1);
         dest->u.ptrs.p1 = node;
     }
     else if (src->type == MINIM_OBJ_SEQ)
@@ -262,7 +267,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return true;
 
     case MINIM_OBJ_BOOL:
-        return (*((int*) a->u.ints.i1) == *((int*) b->u.ints.i2));
+        return (*((long*) a->u.ints.i1) == *((long*) b->u.ints.i2));
 
     case MINIM_OBJ_SYM:
     case MINIM_OBJ_STRING:
@@ -285,6 +290,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return minim_vector_equalp(a, b);
     
     /*
+    case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_ERR:
     */
@@ -330,7 +336,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_BOOL:
-        writei_buffer(bf, (*((int*)obj->u.ints.i1) ? 0 : 1));
+        writei_buffer(bf, (*((long*) obj->u.ints.i1) ? 0 : 1));
         break;
     
     case MINIM_OBJ_FUNC:
@@ -372,6 +378,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     /*
+    case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_ERR:
     */

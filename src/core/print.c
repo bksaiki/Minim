@@ -103,7 +103,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         MinimError *err = obj->u.ptrs.p1;
 
         if (err->where)   writef_buffer(bf, "; ~s: ~s", err->where, err->msg);
-        else              writes_buffer(bf, err->msg);
+        else              writef_buffer(bf, "; ~s", err->msg);
 
         if (err->table)
         {

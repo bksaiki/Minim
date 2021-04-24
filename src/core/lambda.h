@@ -7,7 +7,7 @@
 
 typedef struct MinimLambda
 {
-    MinimAst *body;
+    SyntaxNode *body;
     SyntaxLoc *loc;
     MinimEnv *env;
     char **args, *rest, *name;

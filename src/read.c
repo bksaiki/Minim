@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "build/config.h"
-#include "common/read.h"
 #include "minim.h"
 #include "read.h"
 
@@ -13,32 +12,27 @@
         return 2;                       \
 } 
 
-int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
+int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp, MinimEnv *env)
 {
-    MinimAst *ast;
+    SyntaxNode *ast, *err;
     MinimObject *obj;
-    char *input;
-    
-    if (bf->pos == 0)
-        return 0;
-    
-    input = get_buffer(bf);
-    if (strcmp(input, "(exit)") == 0)
-        return 1;
-    
-    if (!parse_expr_loc(input, &ast, loc))
+
+    minim_parse_port(file, fname, &ast, &err, rt);
+    if (!ast || rt->flags & READ_TABLE_FLAG_BAD)
     {
-        printf(";  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
-        return 2;
+        printf("; bad syntax: %s", err->sym);
+        printf("\n;  in: %s:%lu:%lu\n", fname, rt->row, rt->col);
+        return 1;
     }
-    
+
     eval_ast(env, ast, &obj);
     if (obj->type == MINIM_OBJ_ERR)
     {    
         print_minim_object(obj, env, pp);
+        printf("\n");
+
         free_minim_object(obj);
-        free_ast(ast);
-        printf("\n;  in: %s:%lu:%lu\n", loc->name, loc->row, loc->col);
+        free_syntax_node(ast);
         return 2;
     }
     else if (obj->type != MINIM_OBJ_VOID)
@@ -48,7 +42,7 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
     }
 
     free_minim_object(obj);
-    free_ast(ast);
+    free_syntax_node(ast);
 
     return 0;
 }
@@ -56,12 +50,9 @@ int run_expr(Buffer *bf, MinimEnv *env, PrintParams *pp, SyntaxLoc *loc)
 int minim_load_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
-    ReadResult rr;
-    SyntaxLoc *loc, *tloc;
-    Buffer *bf;
-    Buffer *valid_fname;
+    ReadTable rt;
     FILE *file;
-    int status;
+    Buffer *valid_fname;
 
     init_buffer(&valid_fname);
     valid_path(valid_fname, fname);
@@ -73,58 +64,22 @@ int minim_load_file(MinimEnv *env, const char *fname)
         return 2;
     }
 
-    init_buffer(&bf);
-    init_syntax_loc(&loc, valid_fname->data);
-    copy_syntax_loc(&tloc, loc);
+    rt.idx = 0;
+    rt.row = 1;
+    rt.col = 0;
+    rt.flags = 0x0;
+    rt.eof = EOF;
+
     set_default_print_params(&pp);
-    set_default_read_result(&rr);
-    
-    while (!(rr.status & READ_RESULT_EOF))
+    while (~rt.flags & READ_TABLE_FLAG_EOF)
     {
-        fread_expr(file, bf, tloc, loc, &rr, EOF);
-        if (rr.flags & F_READ_START)
-        {
-            // inline reset
-            bf->pos = 0;
-            bf->data[0] = '\0';
-
-            rr.flags |= F_READ_START;
-            rr.read = 0;
-            rr.paren = 0;
-            rr.status &= READ_RESULT_EOF;
-        }
-        else if (bf->pos > 0)
-        {
-            status = run_expr(bf, env, &pp, tloc);
-            if (status > 0)
-            {
-                if (status == 1)  status = 0;
-                break;
-            }
-            else
-            {
-                // inline reset
-                bf->pos = 0;
-                bf->data[0] = '\0';
-
-                rr.flags |= F_READ_START;
-                rr.read = 0;
-                rr.paren = 0;
-                rr.status &= READ_RESULT_EOF;
-            }
-        }
-
-        /* Update previous syntax location */
-        tloc->row = loc->row;
-        tloc->col = loc->col;
+        if (minim_run_expr(file, valid_fname->data, &rt, &pp, env))
+            break;
     }
 
-    free_buffer(bf);
     free_buffer(valid_fname);
-    free_syntax_loc(loc);
-    free_syntax_loc(tloc);
     fclose(file);
-    return status;
+    return 0;
 }
 
 int minim_run_file(const char *str, uint32_t flags)

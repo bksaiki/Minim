@@ -67,7 +67,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
     if (src->loc)   copy_syntax_loc(&lam->loc, src->loc);
     else            lam->loc = NULL;
 
-    if (src->body)  copy_ast(&lam->body, src->body);
+    if (src->body)  copy_syntax_node(&lam->body, src->body);
     else            lam->body = NULL;
 
     *cp = lam;
@@ -87,7 +87,7 @@ void free_minim_lambda(MinimLambda *lam)
 
     if (lam->rest)  free(lam->rest);
     if (lam->name)  free(lam->name);
-    if (lam->body)  free_ast(lam->body);
+    if (lam->body)  free_syntax_node(lam->body);
     if (lam->loc)   free_syntax_loc(lam->loc);
 
     free(lam);
@@ -192,18 +192,23 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 {
     if (count > 1)
     {
-        MinimAst *ast;
+        SyntaxNode *ast;
 
-        init_ast_op(&ast, count + 1, 0);
-        init_ast_node(&ast->children[0], "begin", 0);
-        for (size_t i = 0; i < count; ++i)
-            copy_ast(&ast->children[i + 1], exprs[i]->u.ptrs.p1);
-        
+        init_syntax_node(&ast, SYNTAX_NODE_LIST);
+        ast->children = malloc((count + 1) * sizeof(SyntaxNode*));
+        ast->childc = count + 1;
+
+        init_syntax_node(&ast->children[0], SYNTAX_NODE_DATUM);
+        ast->children[0]->sym = malloc(6 * sizeof(char));
+        strcpy(ast->children[0]->sym, "begin");
+
         lam->body = ast;
+        for (size_t i = 0; i < count; ++i)
+            copy_syntax_node(&ast->children[i + 1], exprs[i]->u.ptrs.p1);
     }
     else
     {
-        copy_ast(&lam->body, exprs[0]->u.ptrs.p1);
+        copy_syntax_node(&lam->body, exprs[0]->u.ptrs.p1);
     }
 }
 
@@ -223,7 +228,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
 
     // Convert bindings to list
     unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
-    if (!MINIM_OBJ_ERRORP(bindings))
+    if (!MINIM_OBJ_THROWNP(bindings))
     {
         if (MINIM_OBJ_SYMBOLP(bindings))
         {

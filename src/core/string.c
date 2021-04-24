@@ -218,7 +218,7 @@ MinimObject *minim_builtin_printf(MinimEnv *env, MinimObject **args, size_t argc
         return minim_argument_error("string", "printf", 0, args[0]);
 
     val = minim_builtin_format(env, args, argc);
-    if (!MINIM_OBJ_ERRORP(val))
+    if (!MINIM_OBJ_THROWNP(val))
     {
         PrintParams pp;
 

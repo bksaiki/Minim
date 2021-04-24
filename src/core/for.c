@@ -52,7 +52,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
             if (MINIM_OBJ_SYMBOLP(syms[i]))
             {
                 eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
-                if (MINIM_OBJ_ERRORP(val))
+                if (MINIM_OBJ_THROWNP(val))
                 {
                     err = true;
                     res = val;
@@ -106,7 +106,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
         }
 
         eval_ast(env2, args[1]->u.ptrs.p1, &val);
-        if (MINIM_OBJ_ERRORP(val))
+        if (MINIM_OBJ_THROWNP(val))
         {
             res = val;
             pop_env(env2);
@@ -164,7 +164,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
             if (MINIM_OBJ_SYMBOLP(syms[i]))
             {
                 eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
-                if (MINIM_OBJ_ERRORP(val))
+                if (MINIM_OBJ_THROWNP(val))
                 {
                     err = true;
                     res = val;
@@ -218,7 +218,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
         }
 
         eval_ast(env2, args[1]->u.ptrs.p1, &val);
-        if (MINIM_OBJ_ERRORP(val))
+        if (MINIM_OBJ_THROWNP(val))
         {
             res = val;
             pop_env(env2);

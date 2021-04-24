@@ -31,6 +31,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
     minim_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
     minim_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
+    minim_load_builtin(env, "exit", MINIM_OBJ_SYNTAX, minim_builtin_exit);
     
     // Miscellaneous
     minim_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
@@ -228,6 +229,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_MIN_ARITY(fun, argc, env, perr, begin, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, quote, 1);
     CHECK_MIN_ARITY(fun, argc, env, perr, lambda, 2);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, exit, 0);  // for now
 
     // Miscellaneous
     CHECK_EXACT_ARITY(fun, argc, env, perr, equalp, 2);
