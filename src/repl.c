@@ -25,8 +25,9 @@ static void int_handler(int sig)
 
 int minim_repl(uint32_t flags)
 {
-    MinimEnv *env;
     PrintParams pp;
+    MinimEnv *env;
+    uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
 
@@ -35,6 +36,7 @@ int minim_repl(uint32_t flags)
     set_default_print_params(&pp);
     signal(SIGINT, int_handler);
 
+    last_readf = READ_TABLE_FLAG_EOF;
     if (!(flags & MINIM_FLAG_LOAD_LIBS))
         minim_load_library(env);
 
@@ -43,17 +45,19 @@ int minim_repl(uint32_t flags)
         ReadTable rt;
         SyntaxNode *ast, *err;
         MinimObject *obj;
-        char c;
 
         rt.idx = 0;
         rt.row = 1;
         rt.col = 0;
         rt.eof = '\n';
-        rt.flags = READ_TABLE_FLAG_WAIT;
+        rt.flags = READ_TABLE_FLAG_WAIT | last_readf;
 
+        if (rt.flags & READ_TABLE_FLAG_EOF)
+        {
+            printf("> ");
+            rt.flags ^= READ_TABLE_FLAG_EOF;
+        }
         
-
-        printf("> ");
         if (minim_parse_port(stdin, "repl", &ast, &err, &rt))
         {
             if (rt.flags & READ_TABLE_FLAG_BAD)
@@ -68,10 +72,11 @@ int minim_repl(uint32_t flags)
                 free_syntax_node(ast);
             }
             
-            flush_stdin();
+            last_readf = rt.flags & READ_TABLE_FLAG_EOF;
             continue;
         }
-        
+
+        last_readf = rt.flags;
         eval_ast(env, ast, &obj);
         if (obj->type == MINIM_OBJ_ERR)
         {    

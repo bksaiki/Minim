@@ -30,6 +30,10 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
 static void update_table(char c, ReadTable *ptable)
 {
     ++ptable->idx;
+    if (c == ptable->eof)
+    {
+        ptable->flags |= READ_TABLE_FLAG_EOF;
+    }
     if (c == '\n')
     {
         ++ptable->row;
@@ -124,7 +128,7 @@ static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, S
         c = fgetc(file);
     }
 
-    if (c == ptable->eof)   ptable->flags |= READ_TABLE_FLAG_EOF;
+    if (c == ptable->eof)   update_table(c, ptable);
     else                    ungetc(c, file);           
 
     init_syntax_node(&node, SYNTAX_NODE_DATUM);
@@ -450,19 +454,27 @@ int minim_parse_port(FILE *file, const char *name,
 {
     SyntaxNode *node, *err;
     Buffer *bf;
+    char c;
  
     err = NULL;
     node = read_top(file, name, table, &err);
     if (!node)
     {
+        c = fgetc(file);
+        update_table(c, table);
+
         init_buffer(&bf);
-        writef_buffer(bf, "unexpected: '~c;", fgetc(file));
+        writef_buffer(bf, "unexpected: '~c'", c);
         trim_buffer(bf);
 
         table->flags |= READ_TABLE_FLAG_BAD;
         init_syntax_node(&err, SYNTAX_NODE_DATUM);
         err->sym = release_buffer(bf);
         free_buffer(bf);
+
+        c = fgetc(file);
+        if (c == table->eof)    update_table(c, table);
+        else                    ungetc(c, file);
 
         *psyntax = NULL;
         *perr = err;
