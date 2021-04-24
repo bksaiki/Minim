@@ -30,6 +30,7 @@ int minim_repl(uint32_t flags)
     uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
+    fflush(stdout);
 
     init_env(&env, NULL);
     minim_load_builtins(env);
@@ -55,6 +56,7 @@ int minim_repl(uint32_t flags)
         if (rt.flags & READ_TABLE_FLAG_EOF)
         {
             printf("> ");
+            fflush(stdout);
             rt.flags ^= READ_TABLE_FLAG_EOF;
         }
         
@@ -69,6 +71,7 @@ int minim_repl(uint32_t flags)
             if (ast)
             {
                 printf("; bad syntax: %s\n", ast->sym);
+                fflush(stdout);
                 free_syntax_node(ast);
             }
             
@@ -82,6 +85,7 @@ int minim_repl(uint32_t flags)
         {    
             print_minim_object(obj, env, &pp);
             printf("\n;  in: %s\n", "REPL");
+            fflush(stdout);
         }
         else if (obj->type == MINIM_OBJ_EXIT)
         {
@@ -93,6 +97,7 @@ int minim_repl(uint32_t flags)
         {
             print_minim_object(obj, env, &pp);
             printf("\n");
+            fflush(stdout);
         }
 
         free_minim_object(obj);
