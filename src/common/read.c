@@ -1,4 +1,5 @@
 #include <string.h>
+#include "common.h"
 #include "read.h"
 
 void valid_path(Buffer *valid, const char *maybe)
@@ -18,7 +19,7 @@ void valid_path(Buffer *valid, const char *maybe)
                     writec_buffer(valid, ':');
                     first = false;
                 }
-                
+
                 writes_buffer(valid, "\\\\");
             }
         }
