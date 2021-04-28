@@ -113,6 +113,7 @@ DEFINE_BUILTIN_FUN(vector_ref)
 DEFINE_BUILTIN_FUN(vector_setb)
 DEFINE_BUILTIN_FUN(vector_to_list)
 DEFINE_BUILTIN_FUN(list_to_vector)
+DEFINE_BUILTIN_FUN(vector_fillb)
 
 // Sequence
 DEFINE_BUILTIN_FUN(sequencep)

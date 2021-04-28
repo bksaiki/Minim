@@ -136,6 +136,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "vector-set!", MINIM_OBJ_FUNC, minim_builtin_vector_setb);
     minim_load_builtin(env, "vector->list", MINIM_OBJ_FUNC, minim_builtin_vector_to_list);
     minim_load_builtin(env, "list->vector", MINIM_OBJ_FUNC, minim_builtin_list_to_vector);
+    minim_load_builtin(env, "vector-fill!", MINIM_OBJ_FUNC, minim_builtin_vector_fillb);
 
     // Sequence
     minim_load_builtin(env, "sequence?", MINIM_OBJ_FUNC, minim_builtin_sequencep);
@@ -317,13 +318,14 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, hash_to_list, 1);
 
     // Vector
-    CHECK_EXACT_ARITY(fun, argc, env, perr, make_vector, 1);
+    CHECK_RANGE_ARITY(fun, argc, env, perr, make_vector, 1, 2);
     // NO CHECK: 'vector'
     CHECK_EXACT_ARITY(fun, argc, env, perr, vector_length, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, vector_ref, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, vector_setb, 3);
     CHECK_EXACT_ARITY(fun, argc, env, perr, vector_to_list, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, list_to_vector, 1);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, vector_fillb, 2);
 
     // Sequence
     CHECK_EXACT_ARITY(fun, argc, env, perr, sequencep, 1);

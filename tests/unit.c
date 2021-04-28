@@ -598,12 +598,15 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 6;
+        char strs[12][256] =
         {
             "(make-vector 0)",      "'#()",
             "(make-vector 1)",      "'#(0)",
-            "(make-vector 3)",      "'#(0 0 0)"
+            "(make-vector 3)",      "'#(0 0 0)",
+            "(make-vector 0 1)",    "'#()",
+            "(make-vector 1 1)",    "'#(1)",
+            "(make-vector 3 1)",    "'#(1 1 1)"
         };
 
         printf("Testing 'make-vector'\n");
@@ -635,20 +638,6 @@ int main()
         };
 
         printf("Testing 'vector-ref'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 3;
-        char strs[6][256] =
-        {
-            "(begin (def v (vector 1)) (vector-set! v 0 2) v)",         "'#(2)",
-            "(begin (def v (vector 1 2 3)) (vector-set! v 1 1) v)",     "'#(1 1 3)",
-            "(begin (def v (vector 1 2 3)) (vector-set! v 2 1) v)",     "'#(1 2 1)"
-        };
-
-        printf("Testing 'vector-set!'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

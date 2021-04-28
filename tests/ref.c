@@ -366,6 +366,20 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
+            "(begin (def v (vector 1)) (vector-set! v 0 2) v)",         "'#(2)",
+            "(begin (def v (vector 1 2 3)) (vector-set! v 1 1) v)",     "'#(1 1 3)",
+            "(begin (def v (vector 1 2 3)) (vector-set! v 2 1) v)",     "'#(1 2 1)"
+        };
+
+        printf("Testing 'vector-set!'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
             "(begin (def v (vector)) (vector->list v))",         "'()",
             "(begin (def v (vector 1)) (vector->list v))",       "'(1)",
             "(begin (def v (vector 1 2 3)) (vector->list v))",   "'(1 2 3)"
@@ -386,6 +400,20 @@ int main()
         };
 
         printf("Testing 'list->vector (ref)'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(begin (def v (vector)) (vector-fill! v 'a) v)",           "'#()",
+            "(begin (def v (vector 1)) (vector-fill! v 'a) v)",         "'#(a)",
+            "(begin (def v (vector 1 2 3)) (vector-fill! v 'a) v)",     "'#(a a a)"
+        };
+
+        printf("Testing 'vector-fill!'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
