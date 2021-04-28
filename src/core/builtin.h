@@ -108,6 +108,7 @@ DEFINE_BUILTIN_FUN(hash_to_list)
 // Vector
 DEFINE_BUILTIN_FUN(vector)
 DEFINE_BUILTIN_FUN(make_vector)
+DEFINE_BUILTIN_FUN(vector_length)
 DEFINE_BUILTIN_FUN(vector_ref)
 DEFINE_BUILTIN_FUN(vector_setb)
 DEFINE_BUILTIN_FUN(vector_to_list)

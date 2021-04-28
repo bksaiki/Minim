@@ -131,6 +131,7 @@ void minim_load_builtins(MinimEnv *env)
     // Vector
     minim_load_builtin(env, "vector", MINIM_OBJ_FUNC, minim_builtin_vector);
     minim_load_builtin(env, "make-vector", MINIM_OBJ_FUNC, minim_builtin_make_vector);
+    minim_load_builtin(env, "vector-length", MINIM_OBJ_FUNC, minim_builtin_vector_length);
     minim_load_builtin(env, "vector-ref", MINIM_OBJ_FUNC, minim_builtin_vector_ref);
     minim_load_builtin(env, "vector-set!", MINIM_OBJ_FUNC, minim_builtin_vector_setb);
     minim_load_builtin(env, "vector->list", MINIM_OBJ_FUNC, minim_builtin_vector_to_list);
@@ -318,6 +319,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     // Vector
     CHECK_EXACT_ARITY(fun, argc, env, perr, make_vector, 1);
     // NO CHECK: 'vector'
+    CHECK_EXACT_ARITY(fun, argc, env, perr, vector_length, 1);
     CHECK_EXACT_ARITY(fun, argc, env, perr, vector_ref, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, vector_setb, 3);
     CHECK_EXACT_ARITY(fun, argc, env, perr, vector_to_list, 1);

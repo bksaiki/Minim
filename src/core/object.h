@@ -92,6 +92,9 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_EXACT(obj)    ((mpq_ptr) obj->u.ptrs.p1)
 #define MINIM_INEXACT(obj)  (obj->u.fls.f1)
 
+#define MINIM_VECTOR_ARR(obj)   (obj->u.vec.arr)
+#define MINIM_VECTOR_LEN(obj)   (obj->u.vec.len)
+
 
 // Optimized move:
 //  makes 'dest' a owned copy of 'src'

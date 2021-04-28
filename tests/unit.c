@@ -615,6 +615,20 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
+            "(vector-length (vector))",         "0",
+            "(vector-length (vector 1))",       "1",
+            "(vector-length (vector 1 2 3))",   "3"
+        };
+
+        printf("Testing 'vector-length'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
             "(vector-ref (vector 1) 0)",        "1",
             "(vector-ref (vector 1 2 3) 1)",    "2",
             "(vector-ref (vector 1 2 3) 2)",    "3"
