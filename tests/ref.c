@@ -353,8 +353,8 @@ int main()
         const int COUNT = 2;
         char strs[4][256] =
         {
-            "(begin (def x 1) (vector x))",             "vector(1)",
-            "(begin (def x 1) (def y 2) (vector x y))",   "vector(1 2)"
+            "(begin (def x 1) (vector x))",             "'#(1)",
+            "(begin (def x 1) (def y 2) (vector x y))",   "'#(1 2)"
         };
 
         printf("Testing 'vector (ref)'\n");
@@ -380,9 +380,9 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
-            "(begin (def x '()) (list->vector x))",         "vector()",
-            "(begin (def x '(1)) (list->vector x))",        "vector(1)",
-            "(begin (def x '(1 2 3)) (list->vector x))",    "vector(1 2 3)"
+            "(begin (def x '()) (list->vector x))",         "'#()",
+            "(begin (def x '(1)) (list->vector x))",        "'#(1)",
+            "(begin (def x '(1 2 3)) (list->vector x))",    "'#(1 2 3)"
         };
 
         printf("Testing 'list->vector (ref)'\n");

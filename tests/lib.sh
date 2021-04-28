@@ -9,10 +9,10 @@ cd $(dirname $0)
 
 for file in $(ls lib/); do
     ../minim "lib/$file" > $tmp
-     grep -v "true" $tmp > /dev/null
+     grep -v "#t" $tmp > /dev/null
     if [ $? -eq 0 ]; then
         echo "[ FAIL ] $file"
-        grep -n "false" $tmp
+        grep -n "#f" $tmp
         ret=1
     else
         echo "[ PASS ] $file"

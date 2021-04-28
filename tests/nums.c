@@ -62,11 +62,11 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
-            "(= 1 1)",          "true",
-            "(= 1.0 1.0)",      "true",
-            "(= 1 1.0)",        "true",
-            "(= 1 2)",          "false",
-            "(= 1.0 2.0)",      "false"
+            "(= 1 1)",          "#t",
+            "(= 1.0 1.0)",      "#t",
+            "(= 1 1.0)",        "#t",
+            "(= 1 2)",          "#f",
+            "(= 1.0 2.0)",      "#f"
         };
 
         printf("Testing equality\n");
@@ -78,14 +78,14 @@ int main()
         const int COUNT = 8;
         char strs[16][256] =
         {
-            "(> 1 1)",              "false",
-            "(> 1.0 1.0)",          "false",
-            "(> 3 2)",              "true",
-            "(> 3.0 2.0)",          "true",
-            "(> 2 3)",              "false",
-            "(> 2.0 3.0)",          "false",
-            "(> 28/7 -10.0)",       "true",
-            "(> 10.0 -28/7)",       "true"
+            "(> 1 1)",              "#f",
+            "(> 1.0 1.0)",          "#f",
+            "(> 3 2)",              "#t",
+            "(> 3.0 2.0)",          "#t",
+            "(> 2 3)",              "#f",
+            "(> 2.0 3.0)",          "#f",
+            "(> 28/7 -10.0)",       "#t",
+            "(> 10.0 -28/7)",       "#t"
         };
 
         printf("Testing '>'\n");
@@ -97,14 +97,14 @@ int main()
         const int COUNT = 8;
         char strs[16][256] =
         {
-            "(< 1 1)",              "false",
-            "(< 1.0 1.0)",          "false",
-            "(< 3 2)",              "false",
-            "(< 3.0 2.0)",          "false",
-            "(< 2 3)",              "true",
-            "(< 2.0 3.0)",          "true",
-            "(< 28/7 -10.0)",       "false",
-            "(< 10.0 -28/7)",       "false"
+            "(< 1 1)",              "#f",
+            "(< 1.0 1.0)",          "#f",
+            "(< 3 2)",              "#f",
+            "(< 3.0 2.0)",          "#f",
+            "(< 2 3)",              "#t",
+            "(< 2.0 3.0)",          "#t",
+            "(< 28/7 -10.0)",       "#f",
+            "(< 10.0 -28/7)",       "#f"
         };
 
         printf("Testing '<'\n");
@@ -116,14 +116,14 @@ int main()
         const int COUNT = 8;
         char strs[16][256] =
         {
-            "(>= 1 1)",              "true",
-            "(>= 1.0 1.0)",          "true",
-            "(>= 3 2)",              "true",
-            "(>= 3.0 2.0)",          "true",
-            "(>= 2 3)",              "false",
-            "(>= 2.0 3.0)",          "false",
-            "(>= 28/7 -10.0)",       "true",
-            "(>= 10.0 -28/7)",       "true"
+            "(>= 1 1)",              "#t",
+            "(>= 1.0 1.0)",          "#t",
+            "(>= 3 2)",              "#t",
+            "(>= 3.0 2.0)",          "#t",
+            "(>= 2 3)",              "#f",
+            "(>= 2.0 3.0)",          "#f",
+            "(>= 28/7 -10.0)",       "#t",
+            "(>= 10.0 -28/7)",       "#t"
         };
 
         printf("Testing '>='\n");
@@ -135,14 +135,14 @@ int main()
         const int COUNT = 8;
         char strs[16][256] =
         {
-            "(<= 1 1)",              "true",
-            "(<= 1.0 1.0)",          "true",
-            "(<= 3 2)",              "false",
-            "(<= 3.0 2.0)",          "false",
-            "(<= 2 3)",              "true",
-            "(<= 2.0 3.0)",          "true",
-            "(<= 28/7 -10.0)",       "false",
-            "(<= 10.0 -28/7)",       "false"
+            "(<= 1 1)",              "#t",
+            "(<= 1.0 1.0)",          "#t",
+            "(<= 3 2)",              "#f",
+            "(<= 3.0 2.0)",          "#f",
+            "(<= 2 3)",              "#t",
+            "(<= 2.0 3.0)",          "#t",
+            "(<= 28/7 -10.0)",       "#f",
+            "(<= 10.0 -28/7)",       "#f"
         };
 
         printf("Testing '<='\n");
@@ -154,12 +154,12 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(integer? 1)",                         "true",
-            "(integer? 1.0)",                       "true",
-            "(integer? 'str)",                      "false",
-            "(begin (def n 1) (integer? n))",       "true",
-            "(begin (def n 1.0) (integer? n))",     "true",
-            "(begin (def n 'str) (integer? n))",    "false"
+            "(integer? 1)",                         "#t",
+            "(integer? 1.0)",                       "#t",
+            "(integer? 'str)",                      "#f",
+            "(begin (def n 1) (integer? n))",       "#t",
+            "(begin (def n 1.0) (integer? n))",     "#t",
+            "(begin (def n 'str) (integer? n))",    "#f"
         };
 
         printf("Testing 'integer?'\n");
@@ -171,12 +171,12 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(exact-integer? 1)",                         "true",
-            "(exact-integer? 1.0)",                       "false",
-            "(exact-integer? 'str)",                      "false",
-            "(begin (def n 1) (exact-integer? n))",       "true",
-            "(begin (def n 1.0) (exact-integer? n))",     "false",
-            "(begin (def n 'str) (exact-integer? n))",    "false"
+            "(exact-integer? 1)",                         "#t",
+            "(exact-integer? 1.0)",                       "#f",
+            "(exact-integer? 'str)",                      "#f",
+            "(begin (def n 1) (exact-integer? n))",       "#t",
+            "(begin (def n 1.0) (exact-integer? n))",     "#f",
+            "(begin (def n 'str) (exact-integer? n))",    "#f"
         };
 
         printf("Testing 'exact-integer?'\n");

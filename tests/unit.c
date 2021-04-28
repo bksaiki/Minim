@@ -47,12 +47,12 @@ int main()
         const int COUNT = 6;
         char strs[12][256] = 
         {
-            "(equal? 'x 'x)",                   "true",
-            "(equal? 'x 'y)",                   "false",
-            "(equal? 5 5)",                     "true",
-            "(equal? 5 4)",                     "false",
-            "(equal? \"x\" \"x\")",             "true",
-            "(equal? \"x\" \"y\")",             "false"
+            "(equal? 'x 'x)",                   "#t",
+            "(equal? 'x 'y)",                   "#f",
+            "(equal? 5 5)",                     "#t",
+            "(equal? 5 4)",                     "#f",
+            "(equal? \"x\" \"x\")",             "#t",
+            "(equal? \"x\" \"y\")",             "#f"
         };
 
         printf("Testing 'equal?' (primitive)\n");
@@ -64,11 +64,11 @@ int main()
         const int COUNT = 5;
         char strs[10][256] = 
         {
-            "(equal? (list 1) (list 1))",       "true",
-            "(equal? (list 1) (list 2))",       "false",
-            "(equal? '(1 2 3) '(1 2 3))",       "true",
-            "(equal? '(1 2 3) '(1 2 4))",       "false",
-            "(equal? '(1 2 3) '(1 2))",         "false"
+            "(equal? (list 1) (list 1))",       "#t",
+            "(equal? (list 1) (list 2))",       "#f",
+            "(equal? '(1 2 3) '(1 2 3))",       "#t",
+            "(equal? '(1 2 3) '(1 2 4))",       "#f",
+            "(equal? '(1 2 3) '(1 2))",         "#f"
         };
 
         printf("Testing 'equal?' (list)\n");
@@ -299,7 +299,7 @@ int main()
         const int COUNT = 4;
         char strs[8][256] =
         {
-            "(member 0 (list))",                        "false",
+            "(member 0 (list))",                        "#f",
             "(member 1 (list 1))",                      "'(1)",
             "(member 2 (list 1 2 3))",                  "'(2 3)",
             "(member (list 1 2) (list (list 1 2) 3))",  "'((1 2) 3)"
@@ -528,14 +528,14 @@ int main()
         const int COUNT = 4;
         char strs[8][256] = 
         {
-            "(equal? + +)",             "true",
-            "(equal? + -)",             "false",
+            "(equal? + +)",             "#t",
+            "(equal? + -)",             "#f",
 
             "(begin (def ident (x) x) (equal? ident ident))",
-            "true",
+            "#t",
             
             "(begin (def f (x) x) (def g (x) x) (equal? f g))",
-            "false"
+            "#f"
         };
 
         printf("Testing 'equal?' (functions)\n");
@@ -587,9 +587,9 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
-            "(vector)",             "vector()",
-            "(vector 1)",           "vector(1)",
-            "(vector 1 2 3)",       "vector(1 2 3)"
+            "(vector)",             "'#()",
+            "(vector 1)",           "'#(1)",
+            "(vector 1 2 3)",       "'#(1 2 3)"
         };
 
         printf("Testing 'vector'\n");
@@ -601,9 +601,9 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
-            "(make-vector 0)",      "vector()",
-            "(make-vector 1)",      "vector(0)",
-            "(make-vector 3)",      "vector(0 0 0)"
+            "(make-vector 0)",      "'#()",
+            "(make-vector 1)",      "'#(0)",
+            "(make-vector 3)",      "'#(0 0 0)"
         };
 
         printf("Testing 'make-vector'\n");
@@ -629,9 +629,9 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
-            "(begin (def v (vector 1)) (vector-set! v 0 2) v)",         "vector(2)",
-            "(begin (def v (vector 1 2 3)) (vector-set! v 1 1) v)",     "vector(1 1 3)",
-            "(begin (def v (vector 1 2 3)) (vector-set! v 2 1) v)",     "vector(1 2 1)"
+            "(begin (def v (vector 1)) (vector-set! v 0 2) v)",         "'#(2)",
+            "(begin (def v (vector 1 2 3)) (vector-set! v 1 1) v)",     "'#(1 1 3)",
+            "(begin (def v (vector 1 2 3)) (vector-set! v 2 1) v)",     "'#(1 2 1)"
         };
 
         printf("Testing 'vector-set!'\n");
@@ -657,9 +657,9 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
-            "(list->vector '())",         "vector()",
-            "(list->vector '(1))",        "vector(1)",
-            "(list->vector '(1 2 3))",    "vector(1 2 3)"
+            "(list->vector '())",         "'#()",
+            "(list->vector '(1))",        "'#(1)",
+            "(list->vector '(1 2 3))",    "'#(1 2 3)"
         };
 
         printf("Testing 'list->vector'\n");

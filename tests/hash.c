@@ -33,7 +33,7 @@ int main()
         const int COUNT = 1;
         char strs[2][256] =
         {
-            "(hash)",           "hash()",
+            "(hash)",           "'#hash()",
         };
 
         printf("Testing hash construction\n");
@@ -45,12 +45,12 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
-            "(hash-set (hash) 'a 1)",           "hash((a . 1))",
-            "(hash-set (hash) -1 'a)",           "hash((-1 . a))",
-            "(hash-set (hash) 'a (list 1 2))",  "hash((a . (1 2)))",
-            "(hash-set (hash) '(1 2) 'a)",      "hash(((1 2) . a))",
+            "(hash-set (hash) 'a 1)",           "'#hash((a . 1))",
+            "(hash-set (hash) -1 'a)",           "'#hash((-1 . a))",
+            "(hash-set (hash) 'a (list 1 2))",  "'#hash((a . (1 2)))",
+            "(hash-set (hash) '(1 2) 'a)",      "'#hash(((1 2) . a))",
 
-            "(hash-set (hash-set (hash) 'a 1) 'a 2)",       "hash((a . 2))"
+            "(hash-set (hash-set (hash) 'a 1) 'a 2)",       "'#hash((a . 2))"
         };
 
         printf("Testing 'hash-set'\n");
@@ -62,11 +62,11 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
-            "(hash-remove (hash-set (hash) 'a 1) 'a)",          "hash()",
-            "(hash-remove (hash-set (hash) 'a 1) 'b)",          "hash((a . 1))",
-            "(hash-remove (hash-set (hash) '(1 2) 1) '(1 2))",  "hash()",
-            "(hash-remove (hash-set (hash) '(1 2) 1) '(2 2))",  "hash(((1 2) . 1))",
-            "(hash-remove (hash-set (hash) + 1) +)",            "hash()",
+            "(hash-remove (hash-set (hash) 'a 1) 'a)",          "'#hash()",
+            "(hash-remove (hash-set (hash) 'a 1) 'b)",          "'#hash((a . 1))",
+            "(hash-remove (hash-set (hash) '(1 2) 1) '(1 2))",  "'#hash()",
+            "(hash-remove (hash-set (hash) '(1 2) 1) '(2 2))",  "'#hash(((1 2) . 1))",
+            "(hash-remove (hash-set (hash) + 1) +)",            "'#hash()",
         };
 
         printf("Testing 'hash-remove'\n");
@@ -78,12 +78,12 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(hash-key? (hash-set (hash) 'a 1) 'a)",            "true",
-            "(hash-key? (hash-set (hash) 'a 1) 'b)",            "false",
-            "(hash-key? (hash-set (hash) '(1 2) 1) '(1 2))",    "true",
-            "(hash-key? (hash-set (hash) '(1 2) 1) '(2 2))",    "false",
-            "(hash-key? (hash-set (hash) + 1) +)",              "true",
-            "(hash-key? (hash-set (hash) + 1) -)",              "false"
+            "(hash-key? (hash-set (hash) 'a 1) 'a)",            "#t",
+            "(hash-key? (hash-set (hash) 'a 1) 'b)",            "#f",
+            "(hash-key? (hash-set (hash) '(1 2) 1) '(1 2))",    "#t",
+            "(hash-key? (hash-set (hash) '(1 2) 1) '(2 2))",    "#f",
+            "(hash-key? (hash-set (hash) + 1) +)",              "#t",
+            "(hash-key? (hash-set (hash) + 1) -)",              "#f"
         };
 
         printf("Testing 'hash-key?'\n");
@@ -107,11 +107,11 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
-            "(begin (def h (hash)) (hash-set! h 'a 1) h)",                      "hash((a . 1))",
-            "(begin (def h (hash)) (hash-set! h -1 'a) h)",                     "hash((-1 . a))",
-            "(begin (def h (hash)) (hash-set! h 'a '(1 2)) h)",                 "hash((a . (1 2)))",
-            "(begin (def h (hash)) (hash-set! h '(1 2) 'a) h)",                 "hash(((1 2) . a))",
-            "(begin (def h (hash)) (hash-set! h 'a 1) (hash-set! h 'a 2) h)",   "hash((a . 2))"
+            "(begin (def h (hash)) (hash-set! h 'a 1) h)",                      "'#hash((a . 1))",
+            "(begin (def h (hash)) (hash-set! h -1 'a) h)",                     "'#hash((-1 . a))",
+            "(begin (def h (hash)) (hash-set! h 'a '(1 2)) h)",                 "'#hash((a . (1 2)))",
+            "(begin (def h (hash)) (hash-set! h '(1 2) 'a) h)",                 "'#hash(((1 2) . a))",
+            "(begin (def h (hash)) (hash-set! h 'a 1) (hash-set! h 'a 2) h)",   "'#hash((a . 2))"
         };
 
         printf("Testing 'hash-set!'\n");
@@ -123,11 +123,11 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
-            "(begin (def h (hash-set (hash) 'a 1)) (hash-remove! h 'a) h)",             "hash()",
-            "(begin (def h (hash-set (hash) 'a 1)) (hash-remove! h 'b) h)",             "hash((a . 1))",
-            "(begin (def h (hash-set (hash) '(1 2) 1)) (hash-remove! h '(1 2)) h)",     "hash()",
-            "(begin (def h (hash-set (hash) '(1 2) 1)) (hash-remove! h '(2 2)) h)",     "hash(((1 2) . 1))",
-            "(begin (def h (hash-set (hash) + 1)) (hash-remove! h +) h)",               "hash()"
+            "(begin (def h (hash-set (hash) 'a 1)) (hash-remove! h 'a) h)",             "'#hash()",
+            "(begin (def h (hash-set (hash) 'a 1)) (hash-remove! h 'b) h)",             "'#hash((a . 1))",
+            "(begin (def h (hash-set (hash) '(1 2) 1)) (hash-remove! h '(1 2)) h)",     "'#hash()",
+            "(begin (def h (hash-set (hash) '(1 2) 1)) (hash-remove! h '(2 2)) h)",     "'#hash(((1 2) . 1))",
+            "(begin (def h (hash-set (hash) + 1)) (hash-remove! h +) h)",               "'#hash()"
         };
 
         printf("Testing 'hash-remove!'\n");

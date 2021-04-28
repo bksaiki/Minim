@@ -50,8 +50,8 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_BOOLP(obj))
     {
-        if (obj->u.ints.i1)   writes_buffer(bf, "true");
-        else                  writes_buffer(bf, "false");
+        if (obj->u.ints.i1)   writes_buffer(bf, "#t");
+        else                  writes_buffer(bf, "#f");
     }
     else if (MINIM_OBJ_EXACTP(obj))
     {
@@ -191,8 +191,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         bool first = true;
         bool quotep = pp->quote;
         
+        if (pp->quote)  writes_buffer(bf, "#hash(");
+        else            writes_buffer(bf, "'#hash(");
+        
         pp->quote = true;
-        writes_buffer(bf, "hash(");
         for (size_t i = 0; i < ht->size; ++i)
         {
             for (size_t j = 0; j < ht->arr[i].len; ++j)
@@ -214,8 +216,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         bool first = true;
         bool quotep = pp->quote;
 
+        if (pp->quote)  writes_buffer(bf, "#(");
+        else            writes_buffer(bf, "'#(");
+
         pp->quote = true;
-        writes_buffer(bf, "vector(");
         for (size_t i = 0; i < obj->u.vec.len; ++i)
         {
             if (!first)  writec_buffer(bf, ' ');
