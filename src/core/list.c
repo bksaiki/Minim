@@ -763,3 +763,23 @@ MinimObject *minim_builtin_foldr(MinimEnv *env, MinimObject **args, size_t argc)
 
     return res;
 }
+
+MinimObject *minim_builtin_assoc(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    if (!minim_listof(args[1], minim_consp))
+        return minim_argument_error("list of pairs", "assoc", 1, args[1]);
+
+    if (!minim_nullp(args[1]))
+    {
+        for (MinimObject *it = args[1]; it; it = MINIM_CDR(it))
+        {
+            if (minim_equalp(args[0], MINIM_CAAR(it)))
+                return copy2_minim_object(MINIM_CAR(it));
+        }
+    }
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, 0);
+    return res;
+}

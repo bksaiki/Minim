@@ -116,6 +116,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "filtern", MINIM_OBJ_FUNC, minim_builtin_filtern);
     minim_load_builtin(env, "foldl", MINIM_OBJ_FUNC, minim_builtin_foldl);
     minim_load_builtin(env, "foldr", MINIM_OBJ_FUNC, minim_builtin_foldr);
+    minim_load_builtin(env, "assoc", MINIM_OBJ_FUNC, minim_builtin_assoc);
 
     // Hash table
     minim_load_builtin(env, "hash", MINIM_OBJ_FUNC, minim_builtin_hash);
@@ -305,6 +306,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     CHECK_EXACT_ARITY(fun, argc, env, perr, filtern, 2);
     CHECK_EXACT_ARITY(fun, argc, env, perr, foldl, 3);
     CHECK_EXACT_ARITY(fun, argc, env, perr, foldr, 3);
+    CHECK_EXACT_ARITY(fun, argc, env, perr, assoc, 2);
 
     // Hash table
     CHECK_EXACT_ARITY(fun, argc, env, perr, hash, 0);
