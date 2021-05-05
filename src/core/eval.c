@@ -10,6 +10,7 @@
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
+#include "syntax.h"
 
 static bool is_rational(char *str)
 {
@@ -417,9 +418,11 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 
 int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
-    MinimObject *obj = eval_ast_node(env, ast);
-    *pobj = obj;
-    return !MINIM_OBJ_ERRORP(obj);
+    if (!check_syntax(env, ast, pobj))
+        return 0;
+
+    *pobj = eval_ast_node(env, ast);
+    return !MINIM_OBJ_ERRORP((*pobj));
 }
 
 int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)

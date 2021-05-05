@@ -95,6 +95,8 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_VECTOR_ARR(obj)   (obj->u.vec.arr)
 #define MINIM_VECTOR_LEN(obj)   (obj->u.vec.len)
 
+#define MINIM_STRING(obj)       (obj->u.str.str)
+
 
 // Optimized move:
 //  makes 'dest' a owned copy of 'src'
