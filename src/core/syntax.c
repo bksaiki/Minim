@@ -10,61 +10,110 @@
 
 static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr);
 
-static bool check_syntax_def(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+static bool check_syntax_set(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *sym;
 
     unsyntax_ast(env, ast->children[1], &sym);
     if (!MINIM_OBJ_SYMBOLP(sym))
     {
-        *perr = minim_error("identifier should be symbol", "def");
+        *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
+        free_minim_object(sym);
         return false;
     }
 
-    if (ast->childc == 3)
+    free_minim_object(sym);
+    return check_syntax_rec(env, ast->children[2], perr);
+}
+
+static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr, size_t name_idx)
+{
+    MinimObject *args, *sym;
+
+    unsyntax_ast(env, ast->children[name_idx], &args);
+    if (MINIM_OBJ_PAIRP(args))
     {
-        free_minim_object(sym);
-        return check_syntax_rec(env, ast->children[2], perr);
-    }
-    else
-    {
-        MinimObject *args, *tmp;
-        MinimEnv *env2;
-        MinimLambda *lam;
-
-        unsyntax_ast(env, ast->children[2], &args);
-        if (MINIM_OBJ_PAIRP(args))
+        for (MinimObject *it = args; it && !minim_nullp(it); it = MINIM_CDR(it))
         {
-            
-        }
-        else if (!MINIM_OBJ_SYMBOLP(args))
-        {
-            *perr = minim_error("expected argument names for %s", "def", MINIM_STRING(sym));
-            free_minim_object(sym);
-            return false;
-        }
-        
-
-        init_minim_lambda(&lam);
-        init_minim_object(&tmp, MINIM_OBJ_CLOSURE, lam);
-        env_intern_sym(env, MINIM_STRING(sym), tmp);
-        free_minim_object(args);
-        free_minim_object(sym);
-
-        init_env(&env2, env);
-        for (size_t i = 3; i < ast->childc; ++i)
-        {
-            if (!check_syntax_rec(env, ast->children[i], perr))
+            if (minim_listp(it))
             {
-                pop_env(env2);
-                return false;
+                unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
+                if (!MINIM_OBJ_SYMBOLP(sym))
+                {
+                    *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
+                    free_minim_object(sym);
+                    return false;
+                }
+
+                free_minim_object(sym);
+            }
+            else // ... arg_n . arg_rest)
+            {
+                unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
+                if (!MINIM_OBJ_SYMBOLP(sym))
+                {
+                    *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
+                    free_minim_object(sym);
+                    return false;
+                }
+
+                free_minim_object(sym);
+                unsyntax_ast(env, MINIM_DATA(MINIM_CDR(it)), &sym);
+                if (!MINIM_OBJ_SYMBOLP(sym))
+                {
+                    *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
+                    free_minim_object(sym);
+                    return false;
+                }
+
+                free_minim_object(sym);
+                break;
             }
         }
-
-        pop_env(env2);
+    }
+    else if (!MINIM_OBJ_SYMBOLP(args))
+    {
+        *perr = minim_error("expected argument names for ~s", ast->children[0]->sym,
+                            ((name_idx == 2) ? ast->children[1]->sym : "unnamed lambda"));
+        free_minim_object(args);
+        return false;
+    }
+    
+    for (size_t i = name_idx + 1; i < ast->childc; ++i)
+    {
+        if (!check_syntax_rec(env, ast->children[i], perr))
+        {
+            free_minim_object(args);
+            return false;
+        }
     }
 
+    free_minim_object(args);
     return true;
+}
+
+static bool check_syntax_def(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *sym;
+
+    if (ast->childc == 3)
+        return check_syntax_set(env, ast, perr);
+
+    unsyntax_ast(env, ast->children[1], &sym);
+    if (!MINIM_OBJ_SYMBOLP(sym))
+    {
+        *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
+        free_minim_object(sym);
+        return false;
+    }
+
+    free_minim_object(sym);
+    return check_syntax_func(env, ast, perr, 2);
+}
+
+static bool check_syntax_lambda(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    return check_syntax_func(env, ast, perr, 1);
 }
 
 static bool check_syntax_begin(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
@@ -119,38 +168,62 @@ static bool check_syntax_cond(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
 
 static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
-    for (size_t i = 1; i < ast->childc; ++i)
+    MinimObject *bindings;
+
+    unsyntax_ast(env, ast->children[1], &bindings);
+    if (!minim_listp(bindings))
     {
-        MinimObject *branch, *sym;
+        *perr = minim_error("expected a list of bindings", ast->children[0]->sym);
+        free_minim_object(bindings);
+        return false;
+    }
+
+    // early exit: (let () ...)
+    if (minim_nullp(bindings))
+    {
+        free_minim_object(bindings);
+        return check_syntax_rec(env, ast->children[2], perr);
+    }
+
+    for (MinimObject *it = bindings; it; it = MINIM_CDR(it))
+    {
+        MinimObject *bind, *sym;
         SyntaxNode *syn;
         bool body;
 
-        unsyntax_ast(env, ast->children[1], &branch);
-        if (!minim_listp(branch) || minim_list_length(branch) != 2)
+        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &bind);
+        if (!minim_listp(bind) || minim_list_length(bind) != 2)
         {
             *perr = minim_error("([<symbol> <value>] ...)", ast->children[0]->sym);
-            free_minim_object(branch);
+            free_minim_object(bindings);
+            free_minim_object(bind);
             return false;
         }
 
         // identifier
-        syn = MINIM_DATA(MINIM_CAR(branch));
+        syn = MINIM_DATA(MINIM_CAR(bind));
         unsyntax_ast(env, syn, &sym);
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
+            *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
+            free_minim_object(bindings);
+            free_minim_object(bind);
             free_minim_object(sym);
-            free_minim_object(branch);
-            *perr = minim_error("identifier should be symbol", "let");
             return false;
         }
 
-        syn = MINIM_DATA(MINIM_CADR(branch));
+        syn = MINIM_DATA(MINIM_CADR(bind));
         body = check_syntax_rec(env, syn, perr);
+        free_minim_object(bind);
         free_minim_object(sym);
-        free_minim_object(branch);
-        if (!body)  return false;
+        if (!body)
+        {
+            free_minim_object(bindings);
+            return false;
+        }
     }
 
+    free_minim_object(bindings);
     return check_syntax_rec(env, ast->children[2], perr);
 }
 
@@ -162,23 +235,23 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         return true;
 
     op = env_peek_sym(env, ast->children[0]->sym);
-    if (!op)
-    {
-        *perr = minim_error("unknown operator %s", ast->children[0]->sym);
-        return false;
-    }
-
-    if (MINIM_OBJ_SYNTAXP(op))
+    if (op && MINIM_OBJ_SYNTAXP(op))
     {
         void *proc = ((void*) op->u.ptrs.p1);
 
         CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
+        CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
         CHECK_REC(proc, minim_builtin_def, check_syntax_def);
         CHECK_REC(proc, minim_builtin_when, check_syntax_begin);
         CHECK_REC(proc, minim_builtin_unless, check_syntax_begin);
         CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
         CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
         CHECK_REC(proc, minim_builtin_let, check_syntax_let);
+        CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
+        CHECK_REC(proc, minim_builtin_for, check_syntax_let);
+        CHECK_REC(proc, minim_builtin_for_list, check_syntax_let);
+        CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
+        // CHECK_REC(proc, minim_builtin_quote, true);
     }
     else
     {
