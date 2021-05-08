@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "assert.h"
+#include "builtin.h"
 #include "error.h"
 #include "lambda.h"
 #include "list.h"
@@ -36,6 +37,9 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
         MinimObject *arg = MINIM_CAR(list);
         MinimBuiltin func = map->u.ptrs.p1;
 
+        if (!minim_check_arity(func, 1, env, &node))
+            return node;
+        
         val = func(env, &arg, 1);
     }
     else // map->type == MINIM_OBJ_CLOSURE
@@ -75,7 +79,8 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
         if (filter->type == MINIM_OBJ_FUNC)
         {
             MinimBuiltin func = filter->u.ptrs.p1;
-            val = func(env, &MINIM_CAR(it), 1);
+            if (minim_check_arity(func, 1, env, &val))
+                val = func(env, &MINIM_CAR(it), 1);
         }
         else
         {
@@ -83,10 +88,8 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
             val = eval_lambda(lam, env, &MINIM_CAR(it), 1);
         }
 
-        if (val->type == MINIM_OBJ_ERR)
-        {
-            return val;
-        }
+        if (MINIM_OBJ_THROWNP(val))
+             return val;
 
         use = negate != coerce_into_bool(val);
         if (use)
@@ -588,7 +591,8 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
     if (args[0]->type == MINIM_OBJ_FUNC)
     {
         MinimBuiltin func = args[0]->u.ptrs.p1;
-        res = func(env, vals, valc);
+        if (minim_check_arity(func, valc, env, &res))
+            res = func(env, vals, valc);
     }
     else // MINIM_OBJ_CLOSURE
     {
@@ -662,13 +666,14 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
             for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
             {
                 OPT_MOVE2(vals[0], MINIM_CAR(it), args[2]);
-                tmp = func(env, vals, 2);
+                if (minim_check_arity(func, 2, env, &tmp))
+                    tmp = func(env, vals, 2);
                 
                 if (vals[0])    free_minim_object(vals[0]);
                 if (vals[1])    free_minim_object(vals[1]);
 
                 vals[1] = tmp;
-                if (tmp->type == MINIM_OBJ_ERR) break;
+                if (MINIM_OBJ_THROWNP(tmp)) break;
             }
         }
         else
@@ -712,7 +717,8 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
         if (proc->type == MINIM_OBJ_FUNC)
         {
             MinimBuiltin func = proc->u.ptrs.p1;
-            res = func(env, vals, 2);
+            if (minim_check_arity(func, 2, env, &res))
+                res = func(env, vals, 2);
         }
         else
         {
@@ -729,7 +735,8 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
         if (proc->type == MINIM_OBJ_FUNC)
         {
             MinimBuiltin func = proc->u.ptrs.p1;
-            res = func(env, vals, 2);
+            if (minim_check_arity(func, 2, env, &res))
+                res = func(env, vals, 2);
         }
         else
         {
