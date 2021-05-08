@@ -3,6 +3,10 @@
 
 #include "env.h"
 
+typedef struct {
+    size_t low, high;
+} MinimArity;
+
 #define DEFINE_BUILTIN_FUN(name)  MinimObject *minim_builtin_ ## name(MinimEnv *env, MinimObject **args, size_t argc);
 
 // Variable / Control
@@ -159,6 +163,9 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
 
 // Loads every builtin symbol in the base library.
 void minim_load_builtins(MinimEnv *env);
+
+// Sets 'parity' to the arity of fun
+bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity);
 
 // Checks the arity of a builtin function
 bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr);
