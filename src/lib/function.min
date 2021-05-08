@@ -1,4 +1,4 @@
-; Functions
+;;;;;;;;;;;;;;;;;;; Functional ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def identity (x) x)
 
@@ -8,7 +8,19 @@
 (def const (x) (lambda args x))
 
 (def curry (f . args)
-  (lambda args2 (apply f (append args args2))))
+  (def arity (procedure-arity f))
+  (def min-arity (if (pair? arity) (car arity) arity))
+  (lambda args2
+    (let ([args* (append args args2)])
+      (if (< (length args*) min-arity)
+          (apply curry f args*)
+          (apply f args*)))))
 
 (def curryr (f . args)
-  (lambda args2 (apply f (append args2 args))))
+  (def arity (procedure-arity f))
+  (def min-arity (if (pair? arity) (car arity) arity))
+  (lambda args2
+    (let ([args* (append args2 args)])
+      (if (< (length args*) min-arity)
+          (apply curry f args*)
+          (apply f args*)))))
