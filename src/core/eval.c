@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "../common/read.h"
+#include "arity.h"
 #include "builtin.h"
 #include "eval.h"
 #include "error.h"

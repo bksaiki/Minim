@@ -683,5 +683,36 @@ int main()
             status &= evaluate(strs[i]);
     }
 
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(procedure? 1)",               "#f",
+            "(procedure? (list 1))",        "#f",
+            "(procedure? +)",               "#t",
+            "(procedure? (lambda (x) x))",  "#t"
+        };
+
+        printf("Testing 'procedure?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(procedure-arity exp)",                "1",
+            "(procedure-arity +)",                  "'(0 . #f)",
+            "(procedure-arity in-range)",           "'(1 . 2)",
+            "(procedure-arity (lambda (x) x))",     "1",
+            "(procedure-arity (lambda x x))",       "'(0 . #f)"
+        };
+
+        printf("Testing 'procedure-arity'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     return (int)(!status);
 }

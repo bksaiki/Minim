@@ -33,6 +33,10 @@ DEFINE_BUILTIN_FUN(error)
 DEFINE_BUILTIN_FUN(version);
 DEFINE_BUILTIN_FUN(symbol_count);
 
+// Procedure
+DEFINE_BUILTIN_FUN(procedurep)
+DEFINE_BUILTIN_FUN(procedure_arity)
+
 // Boolean
 DEFINE_BUILTIN_FUN(boolp)
 DEFINE_BUILTIN_FUN(not)
@@ -163,11 +167,5 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
 
 // Loads every builtin symbol in the base library.
 void minim_load_builtins(MinimEnv *env);
-
-// Sets 'parity' to the arity of fun
-bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity);
-
-// Checks the arity of a builtin function
-bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr);
 
 #endif

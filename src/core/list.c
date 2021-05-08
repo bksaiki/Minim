@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "arity.h"
 #include "assert.h"
 #include "builtin.h"
 #include "error.h"
