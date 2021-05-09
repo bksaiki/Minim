@@ -279,15 +279,16 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[12][256] =
+        const int COUNT = 7;
+        char strs[14][256] =
         {
             "(remove 0 (list))",                        "'()",
             "(remove 1 (list 1))",                      "'()",
             "(remove 1 (list 1 2 3))",                  "'(2 3)",
             "(remove 2 (list 1 2 3))",                  "'(1 3)",
             "(remove 4 (list 1 2 3))",                  "'(1 2 3)",
-            "(remove 2 (list 1 2 3 2 1))",              "'(1 3 1)"
+            "(remove 2 (list 1 2 3 2 1))",              "'(1 3 1)",
+            "(remove 1 (list 1 2 3 2 1))",              "'(2 3 2)"
         };
 
         printf("Testing 'remove'..\n");

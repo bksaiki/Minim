@@ -485,7 +485,6 @@ MinimObject *minim_builtin_remove(MinimEnv *env, MinimObject **args, size_t argc
         }
 
         free_minim_object(tmp);
-        return res;
     }
 
     tmp = res;
