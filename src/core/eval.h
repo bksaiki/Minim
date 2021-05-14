@@ -9,6 +9,9 @@
 // result at 'pobj'. Returns a non-zero result on success.
 int eval_ast(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj);
 
+// Same as 'eval_ast' except it does not run the syntax checker
+int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj);
+
 // Evaluates the syntax node by one layer storing the result at 'pobj' and returning
 // a non-zero result on success. If the syntax node is leaf, a single object is the result.
 // Else a list of syntax children is the result.

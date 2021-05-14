@@ -426,6 +426,12 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     return !MINIM_OBJ_ERRORP((*pobj));
 }
 
+int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj)
+{
+    *pobj = eval_ast_node(env, ast);
+    return !MINIM_OBJ_ERRORP((*pobj));
+}
+
 int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast, false);

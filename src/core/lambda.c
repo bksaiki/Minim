@@ -143,7 +143,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         free(rest);
     }
 
-    eval_ast(env2, lam->body, &val);
+    eval_ast_no_check(env2, lam->body, &val);
     res = fresh_minim_object(val);
     RELEASE_IF_REF(val);
     pop_env(env2);

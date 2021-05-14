@@ -16,10 +16,10 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *cond;
 
-    eval_ast(env, args[0]->u.ptrs.p1, &cond);
+    eval_ast_no_check(env, args[0]->u.ptrs.p1, &cond);
     if (!MINIM_OBJ_THROWNP(cond))
     {
-        eval_ast(env, coerce_into_bool(cond) ?
+        eval_ast_no_check(env, coerce_into_bool(cond) ?
                       args[1]->u.ptrs.p1 :
                       args[2]->u.ptrs.p1, &res);
         free_minim_object(cond);
@@ -40,7 +40,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
         MinimObject *ce_pair, *cond, *val;
 
         unsyntax_ast(env, args[i]->u.ptrs.p1, &ce_pair);
-        eval_ast(env, MINIM_DATA(MINIM_CAR(ce_pair)), &cond);
+        eval_ast_no_check(env, MINIM_DATA(MINIM_CAR(ce_pair)), &cond);
         if (coerce_into_bool(cond))
         {
             eval = true;
@@ -51,7 +51,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                 init_env(&env2, env);
                 for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
                 {
-                    eval_ast(env2, MINIM_CAR(it)->u.ptrs.p1, &val);
+                    eval_ast_no_check(env2, MINIM_CAR(it)->u.ptrs.p1, &val);
                     if (MINIM_OBJ_THROWNP(val))
                     {
                         res = val;
@@ -67,7 +67,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
             }
             else
             {
-                eval_ast(env, MINIM_CADR(ce_pair)->u.ptrs.p1, &val);
+                eval_ast_no_check(env, MINIM_CADR(ce_pair)->u.ptrs.p1, &val);
                 res = fresh_minim_object(val);
                 RELEASE_IF_REF(val);
             }
@@ -86,7 +86,7 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
 {
     MinimObject *res, *cond;
 
-    eval_ast(env, args[0]->u.ptrs.p1, &cond);
+    eval_ast_no_check(env, args[0]->u.ptrs.p1, &cond);
     if (!MINIM_OBJ_THROWNP(cond))
     {
         if (!coerce_into_bool(cond))
@@ -108,7 +108,7 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *cond;
 
-    eval_ast(env, args[0]->u.ptrs.p1, &cond);
+    eval_ast_no_check(env, args[0]->u.ptrs.p1, &cond);
     if (!MINIM_OBJ_THROWNP(cond))
     {
         if (coerce_into_bool(cond))
@@ -133,7 +133,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
     unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
     if (argc == 2)
     {
-        eval_ast(env, args[1]->u.ptrs.p1, &val);
+        eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);
     }
     else
     {
@@ -189,7 +189,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &bind);
         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(bind)), &sym);
         
-        eval_ast(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
+        eval_ast_no_check(env, MINIM_CADR(bind)->u.ptrs.p1, &val);
         env_intern_sym(env2, sym->u.str.str, val);
         RELEASE_IF_REF(val);
 
@@ -197,7 +197,7 @@ MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
         free_minim_object(bind);
     }
 
-    eval_ast(env2, args[1]->u.ptrs.p1, &it);
+    eval_ast_no_check(env2, args[1]->u.ptrs.p1, &it);
     res = fresh_minim_object(it);
     RELEASE_IF_REF(it);
 
@@ -235,7 +235,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &bind);
         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(bind)), &sym);
         
-        eval_ast(env2, MINIM_CADR(bind)->u.ptrs.p1, &val);
+        eval_ast_no_check(env2, MINIM_CADR(bind)->u.ptrs.p1, &val);
         env_intern_sym(env2, sym->u.str.str, val);
         RELEASE_IF_REF(val);
 
@@ -243,7 +243,7 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t arg
         free_minim_object(bind);
     }
 
-    eval_ast(env2, args[1]->u.ptrs.p1, &it);
+    eval_ast_no_check(env2, args[1]->u.ptrs.p1, &it);
     res = fresh_minim_object(it);
     RELEASE_IF_REF(it);
 
@@ -269,7 +269,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
     peek = env_peek_sym(env, sym->u.ptrs.p1);
     if (peek)
     {
-        eval_ast(env, args[1]->u.ptrs.p1, &val);
+        eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);
         if (!MINIM_OBJ_THROWNP(val))
         {
             env_set_sym(env, sym->u.str.str, val);
@@ -303,7 +303,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
     init_env(&env2, env);
     for (size_t i = 0; i < argc; ++i)
     {
-        eval_ast(env2, args[i]->u.ptrs.p1, &val);
+        eval_ast_no_check(env2, args[i]->u.ptrs.p1, &val);
         if (MINIM_OBJ_THROWNP(val))
         {
             res = val;
