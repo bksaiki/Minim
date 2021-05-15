@@ -8,6 +8,8 @@
 (def const (x) (lambda args x))
 
 (def curry (f . args)
+  (unless (procedure? f)
+    (error 'curry "expected a procedure"))
   (def arity (procedure-arity f))
   (def min-arity (if (pair? arity) (car arity) arity))
   (lambda args2
@@ -17,6 +19,8 @@
           (apply f args*)))))
 
 (def curryr (f . args)
+  (unless (procedure? f)
+    (error 'curryr "expected a procedure"))
   (def arity (procedure-arity f))
   (def min-arity (if (pair? arity) (car arity) arity))
   (lambda args2

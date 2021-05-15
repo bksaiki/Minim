@@ -11,25 +11,27 @@
 (def factorial (n)
   (unless (exact-nonnegative-integer? n)
     (error 'factorial "expected a non-negative integer"))
-  (def loop (n acc)
+  (let loop ([n n] [acc 1])
     (if (zero? n)
         acc
-        (loop (- n 1) (* n acc))))
-  (loop n 1))
+        (loop (- n 1) (* n acc)))))
 
 (def fibonacci (n)
   (unless (exact-nonnegative-integer? n)
     (error 'fibonacci "expected a non-negative integer"))
-  (def loop (i x y)
+  (let loop ([i 1] [x 1] [y 0])
     (if (> i n)
         x
-        (loop (+ i 1) (+ x y) x)))
-  (loop 1 1 0))
+        (loop (+ i 1) (+ x y) x))))
 
 (def sqr (x)
+  (unless (number? x)
+    (error 'sqr "expected number"))
   (* x x))
 
 (def sgn (x)
+  (unless (number? x)
+    (error 'sgn "expected number"))
   (def s
     (cond
      [(negative? x) -1]
@@ -40,7 +42,11 @@
 ;; Functional maps
 
 (def add1 (x)
+  (unless (number? x)
+    (error 'add1 "expected number"))
   (+ x 1))
 
 (def sub1 (x)
+  (unless (number? x)
+    (error 'sub1 "expected number"))
   (- x 1))

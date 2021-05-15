@@ -3,20 +3,38 @@
 (def remove* (vs lst)
   (unless (and (list? vs) (list? lst))
     (error 'remove* "Expected two lists"))
-  (def loop (vs lst)
+  (let loop ([vs vs] [lst lst])
     (if (or (null? vs) (null? lst))
         lst
-        (loop (cdr vs) (remove (car vs) lst))))
-  (loop vs lst))
+        (loop (cdr vs) (remove (car vs) lst)))))
 
 (def list* args
   (let ([rev (reverse args)])
     (foldl cons (car rev) (cdr rev))))
 
+(def andmap (proc lst)
+  (unless (procedure? proc)
+    (error 'andmap "Expected a procedure"))
+  (unless (list? lst)
+    (error 'remove* "Expected two lists"))
+  (let loop ([lst lst])
+    (cond
+     [(null? lst) #t]
+     [(proc (car lst)) (loop (cdr lst))]
+     [else #f])))
+
 ;; TODO: check lists
 (def append* args
-  (let ([rev (reverse args)])
-    (foldl append (apply append (car rev)) (cdr rev))))
+  (def rev (reverse args))
+  (unless (list? (car rev))
+    (error 'append* "Expected a list of lists in last argument"))
+  (unless (andmap list? (car rev))
+    (error 'append* "Expected a list of lists in last argument"))
+  (unless (andmap list? (cdr rev))
+    (error 'append* "Expected a list"))
+  (foldl append (apply append (car rev)) (cdr rev)))
 
-(def append-map (proc . lsts)
-  (apply append (apply map proc lsts)))
+(def append-map (proc . things)
+  (unless (procedure? proc)
+    (error 'append-map "Expected a procedure"))
+  (apply append (apply map proc things)))
