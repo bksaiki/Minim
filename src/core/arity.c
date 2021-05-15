@@ -40,8 +40,8 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_MIN(unless, 2);
     SET_ARITY_MIN(when, 2);
     // NO CHECK: 'cond'
-    SET_ARITY_EXACT(let, 2);
-    SET_ARITY_EXACT(letstar, 2);
+    SET_ARITY_RANGE(let, 2, 3);
+    SET_ARITY_RANGE(letstar, 2, 3);
     SET_ARITY_EXACT(for, 2);
     SET_ARITY_EXACT(for_list, 2);
     SET_ARITY_MIN(begin, 1);

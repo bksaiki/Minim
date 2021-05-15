@@ -111,7 +111,9 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         return minim_arity_error(name, lam->argc, lam->argc, argc);
     }
 
-    init_env(&env2, lam->env);
+    if (lam->env)   init_env(&env2, lam->env);
+    else            init_env(&env2, env);
+
     if (lam->name)
     {
         MinimLambda *clam;
