@@ -1,3 +1,9 @@
+Version 0.2.2
+17 March 2020
+Added more list functions: accessors, maps, etc.
+Expanded standard library
+Better parser
+
 Version 0.2.1
 27 March 2020
 Added many number/math functions: trigonometric, rounding, number theory
