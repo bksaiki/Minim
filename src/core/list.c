@@ -432,8 +432,8 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
         }
         else
         {
-            RELEASE_IF_OWNER(args[i]);
-            args[i] = NULL;
+            free_minim_object(args[i]);
+            args[i] = NULL;            
         }
     }
 

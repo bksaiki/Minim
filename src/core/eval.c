@@ -323,14 +323,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             for (size_t i = 0; i < argc; ++i)
                 init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
             res = proc(env, args, argc);
-
-            for (size_t i = 0; i < argc; ++i) free(args[i]);
-            free(args);
+            free_minim_objects(args, argc);
 
             if (MINIM_OBJ_CLOSUREP(res))
             {
                 MinimLambda *lam = res->u.ptrs.p1;
-                if (node->children[0]->loc)
+                if (!lam->loc && node->children[0]->loc)
                     copy_syntax_loc(&lam->loc, node->children[0]->loc);
             }
         }
@@ -405,7 +403,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             res = minim_builtin_cons(env, args, 2);
         }
         
-
         free_minim_objects(args, 2);
         return res;
     }

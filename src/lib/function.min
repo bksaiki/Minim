@@ -26,5 +26,5 @@
   (lambda args2
     (let ([args* (append args2 args)])
       (if (< (length args*) min-arity)
-          (apply curry f args*)
+          (apply curryr f args*)
           (apply f args*)))))

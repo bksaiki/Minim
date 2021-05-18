@@ -31,4 +31,4 @@
 (def pow2 (powc 2))
 (equal? (times-2 3) 6)
 (equal? (append-one-to-back 1 2) (list 1 2 3))
-(equal? (pow2 5) 32)
+(equal? (pow2 5) 25)
