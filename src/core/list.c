@@ -413,20 +413,21 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
             return minim_argument_error("list", "append", i, args[i]);
     }
 
-    res = NULL;
+    it = NULL;
     for (size_t i = 0; i < argc; ++i)
     {
         if (!minim_nullp(args[i]))
         {
-            if (res == NULL)
+            if (!it)
             {
-                res = fresh_minim_object(args[i]);
-                it = res;
+                it = fresh_minim_object(args[i]);
+                res = it;
             }
             else
             {
                 MINIM_CDR(it) = fresh_minim_object(args[i]);
-            } 
+            }
+
             MINIM_TAIL(it, it);
         }
         else
@@ -437,7 +438,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
     }
 
     RELEASE_OWNED_ARGS(args, argc);
-    if (!res) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    if (!it) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
     return res;
 }
 

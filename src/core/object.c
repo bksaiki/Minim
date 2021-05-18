@@ -267,7 +267,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return true;
 
     case MINIM_OBJ_BOOL:
-        return (*((long*) a->u.ints.i1) == *((long*) b->u.ints.i2));
+        return a->u.ints.i1 == b->u.ints.i1;
 
     case MINIM_OBJ_SYM:
     case MINIM_OBJ_STRING:
@@ -336,7 +336,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_BOOL:
-        writei_buffer(bf, (*((long*) obj->u.ints.i1) ? 0 : 1));
+        writei_buffer(bf, (obj->u.ints.i1 ? 0 : 1));
         break;
     
     case MINIM_OBJ_FUNC:

@@ -64,6 +64,8 @@ MinimObject *minim_seq_get(MinimSeq *seq)
 
     if (seq->type == MINIM_SEQ_NUM_RANGE)
         copy_minim_object(&obj, seq->state);
+    else
+        obj = NULL;
 
     return obj;
 }
@@ -151,22 +153,19 @@ MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t
 MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *seq, *val, *it;
-    bool first;
 
     if (!MINIM_OBJ_SEQP(args[0]))
         return minim_argument_error("sequence", "sequence->list", 0, args[0]);
 
     seq = fresh_minim_object(args[0]);
-    first = true;
-
+    it = NULL;
     while (!minim_seq_donep(seq->u.ptrs.p1))
     {
         val = minim_seq_get(seq->u.ptrs.p1);
-        if (first)
+        if (!it)
         {
             init_minim_object(&res, MINIM_OBJ_PAIR, val, NULL);
             it = res;
-            first = false;
         }
         else
         {   
@@ -177,7 +176,7 @@ MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, MinimObject **args, s
         minim_seq_next(seq->u.ptrs.p1);
     }
     
-    if (first)
+    if (!it)
         init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
 
     if (!MINIM_OBJ_OWNERP(args[0]))

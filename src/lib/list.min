@@ -16,12 +16,23 @@
   (unless (procedure? proc)
     (error 'andmap "Expected a procedure"))
   (unless (list? lst)
-    (error 'remove* "Expected two lists"))
+    (error 'andmap "Expected two lists"))
   (let loop ([lst lst])
     (cond
      [(null? lst) #t]
      [(proc (car lst)) (loop (cdr lst))]
      [else #f])))
+
+(def ormap (proc lst)
+  (unless (procedure? proc)
+    (error 'ormap "Expected a procedure"))
+  (unless (list? lst)
+    (error 'ormap "Expected two lists"))
+  (let loop ([lst lst])
+    (cond
+     [(null? lst) #f]
+     [(proc (car lst)) #t]
+     [else (loop (cdr lst))])))
 
 ;; TODO: check lists
 (def append* args
