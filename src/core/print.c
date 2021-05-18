@@ -63,7 +63,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
         if (len >= 128)
         {
-            str = malloc((len + 1) * sizeof(char));
+            str = realloc(str, (len + 1) * sizeof(char));
             len = gmp_snprintf(str, len, "%Qd", MINIM_EXACT(obj));
         }
 

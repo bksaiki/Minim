@@ -22,6 +22,7 @@ int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp
     {
         printf("; bad syntax: %s", err->sym);
         printf("\n;  in: %s:%lu:%lu\n", fname, rt->row, rt->col);
+        free_syntax_node(err);
         return 1;
     }
 

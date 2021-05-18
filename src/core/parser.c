@@ -47,9 +47,8 @@ static void update_table(char c, ReadTable *ptable)
 
 static char advance_to_token(FILE *file, ReadTable *ptable)
 {
-    char c;
+    char c = fgetc(file);
 
-    c = fgetc(file);
     while (isspace(c) && c != ptable->eof)
     {
         update_table(c, ptable);
@@ -245,6 +244,12 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
     while (1)
     {
         tmp = read_top(file, name, ptable, perror);
+        if (ptable->flags & READ_TABLE_FLAG_BAD)
+        {
+            free_syntax_node(node);
+            return NULL;
+        }
+
         if (tmp)
         {
             ++node->childc;
@@ -306,6 +311,12 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
     while (1)
     {
         tmp = read_top(file, name, ptable, perror);
+        if (ptable->flags & READ_TABLE_FLAG_BAD)
+        {
+            free_syntax_node(node);
+            return NULL;
+        }
+        
         if (tmp)
         {
             ++node->childc;
@@ -458,7 +469,15 @@ int minim_parse_port(FILE *file, const char *name,
  
     err = NULL;
     node = read_top(file, name, table, &err);
-    if (!node)
+    if (table->flags & READ_TABLE_FLAG_BAD)
+    {
+        if (node)   free_syntax_node(node);
+
+        *psyntax = NULL;
+        *perr = err;
+        return 1;
+    }
+    else if (!node)
     {
         c = fgetc(file);
         update_table(c, table);
@@ -475,14 +494,6 @@ int minim_parse_port(FILE *file, const char *name,
         c = fgetc(file);
         if (c == table->eof)    update_table(c, table);
         else                    ungetc(c, file);
-
-        *psyntax = NULL;
-        *perr = err;
-        return 1;
-    }
-    else if (table->flags & READ_TABLE_FLAG_BAD)
-    {
-        if (node)   free_syntax_node(node);
 
         *psyntax = NULL;
         *perr = err;
