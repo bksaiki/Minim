@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "assert.h"
 #include "env.h"
 #include "error.h"
@@ -19,7 +20,7 @@
     }                                           \
     else                                        \
     {                                           \
-        rat = malloc(sizeof(__mpq_struct));     \
+        rat = GC_alloc(sizeof(__mpq_struct));     \
         mpq_init(rat);                          \
         mpq_set_d(rat, MINIM_INEXACT(obj));     \
     }                                           \
@@ -27,7 +28,7 @@
 
 #define RATIONALIZE_COPY(rat, obj)              \
 {                                               \
-    rat = malloc(sizeof(__mpq_struct));         \
+    rat = GC_alloc(sizeof(__mpq_struct));         \
     mpq_init(rat);                              \
                                                 \
     if (MINIM_OBJ_EXACTP(obj))                  \
@@ -39,16 +40,12 @@
 #define FREE_IF_INEXACT(rat, obj)               \
 {                                               \
     if (MINIM_OBJ_INEXACTP(obj))                \
-    {                                           \
         mpq_clear(rat);                         \
-        free(rat);                              \
-    }                                           \
 }
 
 #define FREE_RATIONAL(rat)                      \
 {                                               \
     mpq_clear(rat);                             \
-    free(rat);                                  \
 }
 
 typedef void (*mpz_2ary)(mpz_ptr, mpz_srcptr, mpz_srcptr);
@@ -92,7 +89,7 @@ static MinimObject *minim_neg(MinimObject *x)
 
     if (MINIM_OBJ_EXACTP(x))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpq_neg(rat, MINIM_EXACT(x));
@@ -112,7 +109,7 @@ static MinimObject *minim_sub2(MinimObject *x, MinimObject *y)
 
     if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpq_sub(rat, MINIM_EXACT(x), MINIM_EXACT(y));
@@ -163,7 +160,7 @@ static MinimObject *minim_reciprocal(MinimObject *x)
 
     if (MINIM_OBJ_EXACTP(x))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpq_inv(MINIM_EXACT(res), MINIM_EXACT(res));
@@ -186,7 +183,7 @@ static MinimObject *minim_div2(MinimObject *x, MinimObject *y)
     }
     else if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpq_div(rat, MINIM_EXACT(x), MINIM_EXACT(y));
@@ -228,7 +225,7 @@ static MinimObject *minim_exact_round_c11(MinimObject *x)
         return res;
     }
 
-    r = malloc(sizeof(__mpq_struct));
+    r = GC_alloc(sizeof(__mpq_struct));
     mpq_inits(a, r, NULL);
     mpq_abs(a, MINIM_EXACT(x));
 
@@ -269,7 +266,7 @@ static MinimObject *minim_int_2ary(MinimObject *x, MinimObject *y, mpz_2ary fun)
     RATIONALIZE(q, x);
     RATIONALIZE(d, y);
 
-    r = malloc(sizeof(__mpq_struct));
+    r = GC_alloc(sizeof(__mpq_struct));
     mpq_init(r);
     mpq_set_ui(r, 0, 1);
     fun(mpq_numref(r), mpq_numref(q), mpq_numref(d));
@@ -291,7 +288,7 @@ static MinimObject *minim_exact_sqrt(MinimObject *x)
 
     if (minim_integerp(x) && mpz_perfect_square_p(mpq_numref(MINIM_EXACT(x))))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpz_sqrt(mpq_numref(rat), mpq_numref(MINIM_EXACT(x)));
@@ -349,7 +346,7 @@ MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (argc == 0)
     {
-        mpq_ptr zero = malloc(sizeof(__mpq_struct));
+        mpq_ptr zero = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(zero);
         mpq_set_ui(zero, 0, 1);
@@ -388,7 +385,7 @@ MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (argc == 0)
     {
-        mpq_ptr one = malloc(sizeof(__mpq_struct));
+        mpq_ptr one = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(one);
         mpq_set_ui(one, 1, 1);
@@ -559,7 +556,7 @@ MinimObject *minim_builtin_floor(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpz_set_ui(mpq_denref(rat), 1);
@@ -584,7 +581,7 @@ MinimObject *minim_builtin_ceil(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpz_set_ui(mpq_denref(rat), 1);
@@ -609,7 +606,7 @@ MinimObject *minim_builtin_trunc(MinimEnv *env, MinimObject **args, size_t argc)
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpz_set_ui(mpq_denref(rat), 1);
@@ -738,7 +735,7 @@ MinimObject *minim_builtin_pow(MinimEnv *env, MinimObject **args, size_t argc)
         mpq_ptr rat;
         long int e;
         
-        rat = malloc(sizeof(__mpq_struct));
+        rat = GC_alloc(sizeof(__mpq_struct));
         mpq_init(rat);
         init_minim_object(&res, MINIM_OBJ_EXACT, rat);
 

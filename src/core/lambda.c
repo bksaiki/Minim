@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
 #include "eval.h"
@@ -9,7 +10,7 @@
 
 void init_minim_lambda(MinimLambda **plam)
 {
-    MinimLambda *lam = malloc(sizeof(MinimLambda));
+    MinimLambda *lam = GC_alloc(sizeof(MinimLambda));
     
     lam->loc = NULL;
     lam->env = NULL;
@@ -24,15 +25,15 @@ void init_minim_lambda(MinimLambda **plam)
 
 void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 {
-    MinimLambda *lam = malloc(sizeof(MinimLambda));
+    MinimLambda *lam = GC_alloc(sizeof(MinimLambda));
 
     lam->argc = src->argc;
     if (src->args)
     {
-        lam->args = malloc(lam->argc * sizeof(char*));
+        lam->args = GC_alloc(lam->argc * sizeof(char*));
         for (size_t i = 0; i < lam->argc; ++i)
         {
-            lam->args[i] = malloc((strlen(src->args[i]) + 1) * sizeof(char));
+            lam->args[i] = GC_alloc((strlen(src->args[i]) + 1) * sizeof(char));
             strcpy(lam->args[i], src->args[i]);
         }
     }   
@@ -43,7 +44,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 
     if (src->rest)
     {
-        lam->rest = malloc((strlen(src->rest) + 1) * sizeof(char));
+        lam->rest = GC_alloc((strlen(src->rest) + 1) * sizeof(char));
         strcpy(lam->rest, src->rest);
     }
     else
@@ -53,7 +54,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 
     if (src->name)
     {
-        lam->name = malloc((strlen(src->name) + 1) * sizeof(char));
+        lam->name = GC_alloc((strlen(src->name) + 1) * sizeof(char));
         strcpy(lam->name, src->name);
     }
     else
@@ -75,22 +76,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 
 void free_minim_lambda(MinimLambda *lam)
 {
-    if (lam->args)
-    {
-        for (size_t i = 0; i < lam->argc; ++i)
-            free(lam->args[i]);
-        free(lam->args);
-    }
-
-    if (lam->env && lam->env->copied) // avoid deleting top environment
-        free_env(lam->env);
-
-    if (lam->rest)  free(lam->rest);
-    if (lam->name)  free(lam->name);
-    if (lam->body)  free_syntax_node(lam->body);
-    if (lam->loc)   free_syntax_loc(lam->loc);
-
-    free(lam);
+    /* Nothing */
 }
 
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, size_t argc)
@@ -136,13 +122,12 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         MinimObject **rest;
         size_t rcount = argc - lam->argc;
 
-        rest = malloc(rcount * sizeof(MinimObject*));
+        rest = GC_alloc(rcount * sizeof(MinimObject*));
         for (size_t i = 0; i < rcount; ++i)
             copy_minim_object(&rest[i], args[lam->argc + i]);
 
         val = minim_list(rest, rcount);
         env_intern_sym(env2, lam->rest, val);
-        free(rest);
     }
 
     eval_ast_no_check(env2, lam->body, &val);
@@ -197,11 +182,11 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
         SyntaxNode *ast;
 
         init_syntax_node(&ast, SYNTAX_NODE_LIST);
-        ast->children = malloc((count + 1) * sizeof(SyntaxNode*));
+        ast->children = GC_alloc((count + 1) * sizeof(SyntaxNode*));
         ast->childc = count + 1;
 
         init_syntax_node(&ast->children[0], SYNTAX_NODE_DATUM);
-        ast->children[0]->sym = malloc(6 * sizeof(char));
+        ast->children[0]->sym = GC_alloc(6 * sizeof(char));
         strcpy(ast->children[0]->sym, "begin");
 
         lam->body = ast;
@@ -248,7 +233,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
 
             init_minim_lambda(&lam);
             lam->argc = lambda_argc(bindings);
-            lam->args = calloc(lam->argc, sizeof(char*));
+            lam->args = GC_calloc(lam->argc, sizeof(char*));
             it = bindings;
 
             for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
@@ -259,18 +244,11 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
                     unsyntax_ast(env, MINIM_DATA(MINIM_CDR(it)), &val2);
                     lam->args[i] = val->u.ptrs.p1;
                     lam->rest = val2->u.str.str;
-
-                    val->u.ptrs.p1 = NULL;
-                    val2->u.ptrs.p1 = NULL;
-                    free_minim_object(val);
-                    free_minim_object(val2);
                 }
                 else
                 {
                     unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
                     lam->args[i] = val->u.ptrs.p1;
-                    val->u.ptrs.p1 = NULL;
-                    free_minim_object(val);
                 }
             }
 
@@ -278,8 +256,6 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc
             rcopy_env(&lam->env, env);
             init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
         }
-
-        free_minim_object(bindings);
     }
     else
     {

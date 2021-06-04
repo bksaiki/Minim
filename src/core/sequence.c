@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
 #include "number.h"
@@ -16,7 +17,7 @@ void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
     va_start(v, type);
     if (type == MINIM_SEQ_NUM_RANGE)
     {
-        seq = malloc(sizeof(MinimSeq));
+        seq = GC_alloc(sizeof(MinimSeq));
         seq->state = va_arg(v, MinimObject*);
         seq->end = va_arg(v, MinimObject*);
         seq->type = type;
@@ -29,7 +30,7 @@ void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
 
 void copy_minim_seq(MinimSeq **pseq, MinimSeq *src)
 {
-    MinimSeq* seq = malloc(sizeof(MinimSeq));
+    MinimSeq* seq = GC_alloc(sizeof(MinimSeq));
 
     if (src->type == MINIM_SEQ_NUM_RANGE)
     {
@@ -54,8 +55,6 @@ void free_minim_seq(MinimSeq *seq)
         free_minim_object(seq->end);
         break;
     }
-
-    free(seq);
 }
 
 MinimObject *minim_seq_get(MinimSeq *seq)

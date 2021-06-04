@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "env.h"
 #include "lambda.h"
 
@@ -12,8 +13,7 @@ static void add_metadata(MinimObject *obj, const char *str)
     {
         MinimLambda *lam = obj->u.ptrs.p1;
 
-        if (lam->name)      free(lam->name);
-        lam->name = malloc((strlen(str) + 1) * sizeof(char));
+        lam->name = GC_alloc((strlen(str) + 1) * sizeof(char));
         strcpy(lam->name, str);
     }
 }
@@ -24,7 +24,7 @@ static void add_metadata(MinimObject *obj, const char *str)
 
 void init_env(MinimEnv **penv, MinimEnv *parent)
 {
-    MinimEnv *env = malloc(sizeof(MinimEnv));
+    MinimEnv *env = GC_alloc(sizeof(MinimEnv));
 
     env->parent = parent;
     init_minim_symbol_table(&env->table);
@@ -40,7 +40,7 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
 {
     if (src->parent)
     {
-        MinimEnv *env = malloc(sizeof(MinimEnv));
+        MinimEnv *env = GC_alloc(sizeof(MinimEnv));
 
         rcopy_env(&env->parent, src->parent);
         copy_minim_symbol_table(&env->table, src->table);
@@ -112,18 +112,14 @@ MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
 
 void free_env(MinimEnv *env)
 {
-    free_minim_symbol_table(env->table);
-    if(env->parent && (!env->copied || env->parent->copied))
-        free_env(env->parent);
-    free(env);
+    /* Nothing */
 }
 
 MinimEnv *pop_env(MinimEnv *env)
 {
     MinimEnv *next = env->parent;
 
-    free_minim_symbol_table(env->table);
-    free(env);
+    /* Nothing */
 
     return next;
 }

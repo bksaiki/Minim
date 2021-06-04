@@ -1,4 +1,6 @@
 #include <stdlib.h>
+
+#include "../gc/gc.h"
 #include "assert.h"
 #include "builtin.h"
 #include "error.h"
@@ -46,7 +48,7 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
         return minim_argument_error("exact non-negative integer", "make-vector", 0, args[0]);
     
     size = MINIM_NUMBER_TO_UINT(args[0]);
-    arr = malloc(size * sizeof(MinimObject*));
+    arr = GC_alloc(size * sizeof(MinimObject*));
 
     if (argc == 2)  obj = copy2_minim_object(args[1]);
     else            obj = int_to_minim_number(0);
@@ -64,7 +66,7 @@ MinimObject *minim_builtin_vector(MinimEnv *env, MinimObject **args, size_t argc
     MinimObject *res;
     MinimObject **arr;
 
-    arr = malloc(argc * sizeof(MinimObject*));
+    arr = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
         arr[i] = copy2_minim_object(args[i]);
 
@@ -170,7 +172,7 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, MinimObject **args, siz
         return minim_argument_error("list", "list->vector", 0, args[0]);
 
     len = minim_list_length(args[0]);
-    arr = malloc(len * sizeof(MinimObject*));
+    arr = GC_alloc(len * sizeof(MinimObject*));
     it = args[0];
     for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
         arr[i] = copy2_minim_object(MINIM_CAR(it));

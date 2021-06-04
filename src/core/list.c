@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "arity.h"
 #include "assert.h"
 #include "builtin.h"
@@ -580,7 +581,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 
     len = minim_list_length(args[argc - 1]);
     valc = len + argc - 2;
-    vals = malloc(valc * sizeof(MinimObject*));
+    vals = GC_alloc(valc * sizeof(MinimObject*));
 
     for (i = 0; i < argc - 2; ++i)
         OPT_MOVE(vals[i], args[i + 1]); 
@@ -657,7 +658,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
     }
     else
     {
-        MinimObject **vals = malloc(2 * sizeof(MinimObject*));
+        MinimObject **vals = GC_alloc(2 * sizeof(MinimObject*));
         MinimObject *tmp;
 
         OPT_MOVE(vals[1], args[1]);
@@ -694,7 +695,6 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, MinimObject **args, size_t argc)
         }
 
         res = vals[1];
-        free(vals);
     }
 
     return res;
@@ -711,7 +711,7 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
         if (tmp->type == MINIM_OBJ_ERR)
             return tmp;
 
-        vals = malloc(2 * sizeof(MinimObject*));
+        vals = GC_alloc(2 * sizeof(MinimObject*));
         OPT_MOVE(vals[0], MINIM_CAR(li));
         vals[1] = tmp;
 
@@ -729,7 +729,7 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
     }
     else
     {
-        vals = malloc(2 * sizeof(MinimObject*));
+        vals = GC_alloc(2 * sizeof(MinimObject*));
         OPT_MOVE(vals[0], MINIM_CAR(li));
         vals[1] = copy2_minim_object(init);
 

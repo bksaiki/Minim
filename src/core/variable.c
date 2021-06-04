@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "../common/read.h"
+#include "../gc/gc.h"
 #include "assert.h"
 #include "ast.h"
 #include "builtin.h"
@@ -192,7 +193,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     // Initialize lambda
     init_minim_lambda(&lam);
     lam->argc = len;
-    lam->args = malloc(lam->argc * sizeof(char*));
+    lam->args = GC_alloc(lam->argc * sizeof(char*));
 
     // Bind names and values
     for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
@@ -206,7 +207,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
         env_intern_sym(env2, MINIM_STRING(sym), val);
         RELEASE_IF_REF(val);
 
-        lam->args[i] = malloc((strlen(MINIM_STRING(sym)) + 1) * sizeof(char));
+        lam->args[i] = GC_alloc((strlen(MINIM_STRING(sym)) + 1) * sizeof(char));
         strcpy(lam->args[i], MINIM_STRING(sym));
 
         free_minim_object(sym);
@@ -392,7 +393,7 @@ MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res;
     char *str;
 
-    str = malloc((strlen(MINIM_VERSION_STR) + 1) * sizeof(char));
+    str = GC_alloc((strlen(MINIM_VERSION_STR) + 1) * sizeof(char));
     strcpy(str, MINIM_VERSION_STR);
     init_minim_object(&res, MINIM_OBJ_STRING, str);
 

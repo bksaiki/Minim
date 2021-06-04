@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
 #include "math.h"
@@ -78,7 +80,7 @@ bool minim_infinitep(MinimObject *thing)
 MinimObject *int_to_minim_number(long int x)
 {
     MinimObject *res;
-    mpq_ptr rat = malloc(sizeof(__mpq_struct));
+    mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
     mpq_init(rat);
     mpq_set_si(rat, x, 1);
@@ -89,7 +91,7 @@ MinimObject *int_to_minim_number(long int x)
 MinimObject *uint_to_minim_number(size_t x)
 {
     MinimObject *res;
-    mpq_ptr rat = malloc(sizeof(__mpq_struct));
+    mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
     mpq_init(rat);
     mpq_set_ui(rat, x, 1);
@@ -365,7 +367,7 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t ar
     }
     else
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
 
         mpq_init(rat);
         mpq_set_d(rat, MINIM_INEXACT(args[0]));

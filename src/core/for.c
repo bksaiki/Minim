@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
 #include "eval.h"
@@ -29,9 +30,9 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
     // Convert iter/iterable pairs to list
     unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
     len = minim_list_length(bindings);
-    objs = malloc(len * sizeof(MinimObject*));
-    iters = malloc(len * sizeof(MinimObject*));
-    syms = malloc(len * sizeof(MinimObject*));
+    objs = GC_alloc(len * sizeof(MinimObject*));
+    iters = GC_alloc(len * sizeof(MinimObject*));
+    syms = GC_alloc(len * sizeof(MinimObject*));
 
     it = bindings;
     for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
@@ -118,9 +119,9 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
     // Convert iter/iterable pairs to list
     unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
     len = minim_list_length(bindings);
-    objs = malloc(len * sizeof(MinimObject*));
-    iters = malloc(len * sizeof(MinimObject*));
-    syms = malloc(len * sizeof(MinimObject*));
+    objs = GC_alloc(len * sizeof(MinimObject*));
+    iters = GC_alloc(len * sizeof(MinimObject*));
+    syms = GC_alloc(len * sizeof(MinimObject*));
 
     it = bindings;
     for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))

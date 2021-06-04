@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "../gc/gc.h"
 #include "../common/buffer.h"
 #include "assert.h"
 #include "error.h"
@@ -82,8 +83,8 @@ uint32_t hash_bytes(const void* data, size_t length, uint32_t seed)
 
 void init_minim_hash_table(MinimHash **pht)
 {
-    MinimHash *ht = malloc(sizeof(MinimHash));
-    ht->arr = malloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashRow));
+    MinimHash *ht = GC_alloc(sizeof(MinimHash));
+    ht->arr = GC_alloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashRow));
     ht->size = MINIM_DEFAULT_HASH_TABLE_SIZE;
     ht->elems = 0;
     *pht = ht;
@@ -97,15 +98,15 @@ void init_minim_hash_table(MinimHash **pht)
 
 void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
 {
-    MinimHash *ht = malloc(sizeof(MinimHash));
-    ht->arr = malloc(src->size * sizeof(MinimHashRow));
+    MinimHash *ht = GC_alloc(sizeof(MinimHash));
+    ht->arr = GC_alloc(src->size * sizeof(MinimHashRow));
     ht->size = src->size;
     ht->elems = src->elems;
     *pht = ht;
 
     for (size_t i = 0; i < ht->size; ++i)
     {
-        ht->arr[i].arr = malloc(src->arr[i].len * sizeof(MinimObject*));
+        ht->arr[i].arr = GC_alloc(src->arr[i].len * sizeof(MinimObject*));
         ht->arr[i].len = src->arr[i].len;
 
         for (size_t j = 0; j < src->arr[i].len; ++j)
@@ -117,9 +118,6 @@ void free_minim_hash_table(MinimHash *ht)
 {
     for (size_t i = 0; i < ht->size; ++i)
         free_minim_objects(ht->arr[i].arr, ht->arr[i].len);
-
-    free(ht->arr);
-    free(ht);
 }
 
 static void rehash_table(MinimHash *ht)
@@ -129,7 +127,7 @@ static void rehash_table(MinimHash *ht)
     uint32_t hash, reduc;
     size_t newSize = 2 * ht->size;
     
-    htr = malloc(newSize * sizeof(MinimHashRow));
+    htr = GC_alloc(newSize * sizeof(MinimHashRow));
     for (size_t i = 0; i < newSize; ++i)
     {
         htr[i].arr = NULL;
@@ -147,22 +145,19 @@ static void rehash_table(MinimHash *ht)
             free_buffer(bf);
             if (htr[reduc].len == 0)
             {
-                htr[reduc].arr = realloc(htr[reduc].arr, sizeof(MinimObject*));
+                htr[reduc].arr = GC_realloc(htr[reduc].arr, sizeof(MinimObject*));
                 htr[reduc].arr[0] = ht->arr[i].arr[j];
                 htr[reduc].len = 1;
             }
             else
             {      
-                htr[reduc].arr = realloc(htr[reduc].arr, (htr[reduc].len + 1) * sizeof(MinimObject*));
+                htr[reduc].arr = GC_realloc(htr[reduc].arr, (htr[reduc].len + 1) * sizeof(MinimObject*));
                 htr[reduc].arr[htr[reduc].len] = ht->arr[i].arr[j];
                 ++htr[reduc].len;
             }
         }
-
-        free(ht->arr[i].arr);
     }
 
-    free(ht->arr);
     ht->arr = htr;
     ht->size = newSize;
     
@@ -187,7 +182,7 @@ static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
         ck = copy2_minim_object(k);
         cv = copy2_minim_object(v);
 
-        ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
+        ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
         ht->arr[reduc].len = 1;
         init_minim_object(&ht->arr[reduc].arr[0], MINIM_OBJ_PAIR, ck, cv);
     }
@@ -207,7 +202,7 @@ static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
         }
 
         ck = copy2_minim_object(k);
-        ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
+        ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
         init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, ck, cv);
         ++ht->arr[reduc].len;
     }
@@ -261,7 +256,7 @@ static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
             ht->arr[reduc].arr[i] = ht->arr[reduc].arr[ht->arr[reduc].len - 1];
             --ht->arr[reduc].len;
             --ht->elems;
-            ht->arr[reduc].arr = realloc(ht->arr[reduc].arr, ht->arr[reduc].len * sizeof(MinimObject*));
+            ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, ht->arr[reduc].len * sizeof(MinimObject*));
         }
     }
 }

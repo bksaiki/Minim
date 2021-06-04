@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "../common/buffer.h"
 #include "parser.h"
 
@@ -14,7 +15,7 @@
 {                                                           \
     if (strcmp(x, str) == 0)                                \
     {                                                       \
-        x = realloc(x, (strlen(r) + 1) * sizeof(char));     \
+        x = GC_realloc(x, (strlen(r) + 1) * sizeof(char));     \
         strcpy(x, r);                                       \
         return true;                                        \
     }                                                       \
@@ -91,7 +92,7 @@ static void expand_list(SyntaxNode *node)
         free_syntax_node(node->children[1]);
         node->children[1] = node->children[2];
 
-        node->children = realloc(node->children, 2 * sizeof(SyntaxNode*));
+        node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
         node->childc = 2;
         node->type = SYNTAX_NODE_PAIR;
     }
@@ -105,7 +106,7 @@ static void expand_list(SyntaxNode *node)
         node->children[0] = node->children[2];
         node->children[2] = node->children[4];
         
-        node->children = realloc(node->children, 3 * sizeof(SyntaxNode*));
+        node->children = GC_realloc(node->children, 3 * sizeof(SyntaxNode*));
         node->childc = 3;
         node->type = SYNTAX_NODE_LIST;
     }
@@ -208,7 +209,7 @@ static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, S
     SyntaxLoc *loc;
 
     init_syntax_node(&node, SYNTAX_NODE_LIST);
-    node->children = malloc(2 * sizeof(SyntaxNode*));
+    node->children = GC_alloc(2 * sizeof(SyntaxNode*));
     node->childc = 2;
 
     init_syntax_loc(&loc, name);
@@ -217,7 +218,7 @@ static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, S
     ast_add_syntax_loc(node, loc);
     
     init_syntax_node(&node->children[0], SYNTAX_NODE_DATUM);
-    node->children[0]->sym = malloc(6 * sizeof(char));
+    node->children[0]->sym = GC_alloc(6 * sizeof(char));
     strcpy(node->children[0]->sym, "quote");
 
     init_syntax_loc(&loc, name);
@@ -253,7 +254,7 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
         if (tmp)
         {
             ++node->childc;
-            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
+            node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
             node->children[node->childc - 1] = tmp;
         }
 
@@ -320,7 +321,7 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
         if (tmp)
         {
             ++node->childc;
-            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
+            node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
             node->children[node->childc - 1] = tmp;
         }
 
@@ -516,6 +517,8 @@ int parse_str(const char* str, SyntaxNode** psyntax)
     FILE *tmp;
     int status;
 
+    GC_init(&rt);
+
     rt.idx = 0;
     rt.row = 1;
     rt.col = 0;
@@ -534,5 +537,7 @@ int parse_str(const char* str, SyntaxNode** psyntax)
     }
 
     fclose(tmp);
+    GC_finalize();
+    
     return status;
 }

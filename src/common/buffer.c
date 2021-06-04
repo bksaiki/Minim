@@ -4,15 +4,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "buffer.h"
+#include "../gc/gc.h"
 
 // *** Initialization / Deleting *** //
 
 void init_buffer(Buffer **pbf)
 {
-    Buffer *bf = malloc(sizeof(Buffer));
+    Buffer *bf = GC_alloc(sizeof(Buffer));
 
-    bf->data = malloc(MINIM_BUFFER_DEFAULT_SIZE * sizeof(char));
+    bf->data = GC_alloc(MINIM_BUFFER_DEFAULT_SIZE * sizeof(char));
     bf->curr = MINIM_BUFFER_DEFAULT_SIZE;
     bf->pos = 0;
     bf->data[0] = '\0';
@@ -22,9 +24,9 @@ void init_buffer(Buffer **pbf)
 
 void copy_buffer(Buffer **pbf, Buffer *src)
 {
-    Buffer *bf = malloc(sizeof(Buffer));
+    Buffer *bf = GC_alloc(sizeof(Buffer));
     
-    bf->data = malloc(src->curr * sizeof(char));
+    bf->data = GC_alloc(src->curr * sizeof(char));
     bf->curr = src->curr;
     bf->pos = src->pos;
     memcpy(bf->data, src->data, src->pos + 1);
@@ -34,8 +36,7 @@ void copy_buffer(Buffer **pbf, Buffer *src)
 
 void free_buffer(Buffer *bf)
 {
-    if (bf->data) free(bf->data);
-    free(bf);
+    /* Nothing */
 }
 
 // *** Resizing *** //
@@ -45,7 +46,7 @@ static void resize_buffer(Buffer *bf, size_t size)
     if (size >= bf->curr)
     {
         bf->curr = size + MINIM_BUFFER_STEP_SIZE;
-        bf->data = realloc(bf->data, bf->curr * sizeof(char));
+        bf->data = GC_realloc(bf->data, bf->curr * sizeof(char));
     }
 }
 
@@ -53,7 +54,7 @@ void trim_buffer(Buffer *bf)
 {
     if (bf->pos != bf->curr)
     {
-        bf->data = realloc(bf->data, bf->pos + 1);
+        bf->data = GC_realloc(bf->data, bf->pos + 1);
         bf->curr = bf->pos + 1;
     }
 }
@@ -68,7 +69,7 @@ void clear_buffer(Buffer *bf)
 
 void reset_buffer(Buffer *bf)
 {
-    bf->data = realloc(bf->data, MINIM_BUFFER_DEFAULT_SIZE * sizeof(char));
+    bf->data = GC_realloc(bf->data, MINIM_BUFFER_DEFAULT_SIZE * sizeof(char));
     bf->data[0] = '\0';
     bf->pos = 0;
 }
