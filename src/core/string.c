@@ -228,7 +228,6 @@ MinimObject *minim_builtin_printf(MinimEnv *env, MinimObject **args, size_t argc
         replace_special_chars(val->u.str.str);
         print_minim_object(val, env, &pp);
         init_minim_object(&res, MINIM_OBJ_VOID);
-        free_minim_object(val);
     }
     else
     {

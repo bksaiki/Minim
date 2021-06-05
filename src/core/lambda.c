@@ -114,7 +114,6 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     {
         copy_minim_object(&val, args[i]);
         env_intern_sym(env2, lam->args[i], val);
-        RELEASE_IF_REF(val);
     }
 
     if (lam->rest)
@@ -130,11 +129,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         env_intern_sym(env2, lam->rest, val);
     }
 
-    eval_ast_no_check(env2, lam->body, &val);
-    res = fresh_minim_object(val);
-    RELEASE_IF_REF(val);
-    pop_env(env2);
-
+    eval_ast_no_check(env2, lam->body, &res);
     if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
         minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
     

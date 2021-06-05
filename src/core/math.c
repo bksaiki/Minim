@@ -55,7 +55,7 @@ static MinimObject *minim_add(size_t argc, MinimObject **args)
 
     if (all_exact(argc, args))
     {
-        res = copy2_minim_object(args[0]);
+        copy_minim_object(&res, args[0]);
         for (size_t i = 1; i < argc; ++i)
             mpq_add(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(args[i]));
     }
@@ -109,13 +109,10 @@ static MinimObject *minim_sub2(MinimObject *x, MinimObject *y)
 
 static MinimObject *minim_sub(MinimObject *first, size_t restc, MinimObject **rest)
 {
-    MinimObject *res, *psum;
+    MinimObject *psum;
 
     psum = minim_add(restc, rest);
-    res = minim_sub2(first, psum);
-    free_minim_object(psum);
-
-    return res;
+    return minim_sub2(first, psum);
 }
 
 static MinimObject *minim_mul(size_t argc, MinimObject **args)
@@ -124,7 +121,7 @@ static MinimObject *minim_mul(size_t argc, MinimObject **args)
 
     if (all_exact(argc, args))
     {
-        res = copy2_minim_object(args[0]);
+        copy_minim_object(&res, args[0]);
         for (size_t i = 1; i < argc; ++i)
             mpq_mul(MINIM_EXACT(res), MINIM_EXACT(res), MINIM_EXACT(args[i]));
     }
@@ -181,13 +178,10 @@ static MinimObject *minim_div2(MinimObject *x, MinimObject *y)
 
 static MinimObject *minim_div(MinimObject *first, size_t restc, MinimObject **rest)
 {
-    MinimObject *res, *prod;
+    MinimObject *prod;
 
     prod = minim_mul(restc, rest);
-    res = minim_div2(first, prod);
-    free_minim_object(prod);
-
-    return res;
+    return minim_div2(first, prod);
 }
 
 static MinimObject *minim_exact_round_c11(MinimObject *x)
@@ -331,11 +325,11 @@ MinimObject *minim_builtin_add(MinimEnv *env, MinimObject **args, size_t argc)
     }
     else if (argc == 1)
     {
-        OPT_MOVE_REF(res, args[0]);
+        return args[0];
     }
     else
     {
-        res = minim_add(argc, args);
+        return minim_add(argc, args);
     }
 
     return res;
@@ -369,11 +363,11 @@ MinimObject *minim_builtin_mul(MinimEnv *env, MinimObject **args, size_t argc)
     }
     else if (argc == 1)
     {
-        OPT_MOVE_REF(res, args[0]);
+        return args[0];
     }
     else
     {
-        res = minim_mul(argc, args);
+        return minim_mul(argc, args);
     }
 
     return res;
@@ -401,8 +395,7 @@ MinimObject *minim_builtin_abs(MinimEnv *env, MinimObject **args, size_t argc)
     if (minim_negativep(args[0]))
         return minim_neg(args[0]);
     
-    OPT_MOVE_REF(res, args[0]);
-    return res;
+    return args[0];
 }
 
 MinimObject *minim_builtin_max(MinimEnv *env, MinimObject **args, size_t argc)
@@ -420,8 +413,7 @@ MinimObject *minim_builtin_max(MinimEnv *env, MinimObject **args, size_t argc)
             max = i;
     }
 
-    OPT_MOVE_REF(res, args[max]);
-    return res;
+    return args[max];
 }
 
 MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
@@ -439,8 +431,7 @@ MinimObject *minim_builtin_min(MinimEnv *env, MinimObject **args, size_t argc)
             min = i;
     }
 
-    OPT_MOVE_REF(res, args[min]);
-    return res;
+    return args[min];
 }
 
 MinimObject *minim_builtin_modulo(MinimEnv *env, MinimObject **args, size_t argc)

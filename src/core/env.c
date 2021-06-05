@@ -69,16 +69,18 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
-    MinimObject *owned = fresh_minim_object(obj);
+    MinimObject *owned;
 
+    copy_minim_object(&owned, obj);
     add_metadata(owned, sym);
     minim_symbol_table_add(env->table, sym, owned);
 }
 
 int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
 {
-    MinimObject *owned = fresh_minim_object(obj);
+    MinimObject *owned;
 
+    copy_minim_object(&owned, obj);
     add_metadata(owned, sym);
     minim_symbol_table_add(env->table, sym, owned);
     return 0;

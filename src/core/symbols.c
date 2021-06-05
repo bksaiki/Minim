@@ -138,7 +138,6 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObje
 
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name)
 {
-    MinimObject *obj;
     size_t hash, idx;
 
     hash = hash_bytes(name, strlen(name), hashseed);
@@ -147,10 +146,7 @@ MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name)
     for (size_t i = 0; i < table->rows[idx].length; ++i)
     {
         if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
-        {
-            ref_minim_object(&obj, table->rows[idx].vals[i]->obj);
-            return obj;
-        }
+            return table->rows[idx].vals[i]->obj;
     }
     
     return NULL;
@@ -186,13 +182,10 @@ bool minim_symbol_table_pop(MinimSymbolTable *table, const char *name)
             if (table->rows[idx].vals[i]->parent)
             {
                 MinimSymbolEntry *tmp = table->rows[idx].vals[i]->parent;
-                free_minim_object(table->rows[idx].vals[i]->obj);
                 table->rows[idx].vals[i] = tmp;
             }
             else
             {
-                free_minim_object(table->rows[idx].vals[i]->obj);
-
                 if (i != table->rows[idx].length - 1)
                 {
                     table->rows[idx].names[i] = table->rows[idx].names[table->rows[idx].length - 1];

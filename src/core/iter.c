@@ -10,12 +10,11 @@ void init_minim_iter(MinimObject **piter, MinimObject *iterable)
     switch (iterable->type)
     {
     case MINIM_OBJ_PAIR:
-        ref_minim_object(piter, iterable);
+        *piter = iterable;
         break;
     
     case MINIM_OBJ_SEQ:
-        if (MINIM_OBJ_OWNERP(iterable)) ref_minim_object(piter, iterable);
-        else                            *piter = copy2_minim_object(iterable);
+        *piter = iterable;;
         break;
     
     default:
@@ -30,14 +29,10 @@ MinimObject *minim_iter_next(MinimObject *obj)
     {
     case MINIM_OBJ_PAIR:
         if (MINIM_CDR(obj))
-        {
             obj->u = MINIM_CDR(obj)->u;
-        }
-        else                
-        {
-            free_minim_object(obj);
+        else
             init_minim_object(&obj, MINIM_OBJ_PAIR, NULL, NULL);
-        }
+
         return obj;
 
     case MINIM_OBJ_SEQ:
@@ -57,7 +52,7 @@ MinimObject *minim_iter_get(MinimObject *obj)
     switch (obj->type)
     {
     case MINIM_OBJ_PAIR:
-        ref_minim_object(&ref, MINIM_CAR(obj));
+        ref = MINIM_CAR(obj);
         return ref;
     
     case MINIM_OBJ_SEQ:
