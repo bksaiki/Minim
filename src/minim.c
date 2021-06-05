@@ -57,10 +57,14 @@ int main(int argc, char** argv)
     if (flags & MINIM_FLAG_NO_RUN)
         return 0;
 
+    GC_init(&flags);
+
     if (argc - flagc == 1)
         status = minim_repl(flags);
     else
         status = minim_run_file(argv[flagc + 1], flags);
+
+    GC_finalize();
 
     return status;
 }

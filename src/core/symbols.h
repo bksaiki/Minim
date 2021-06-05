@@ -21,8 +21,7 @@ struct MinimSymbolTableRow
 struct MinimSymbolTable
 {
     MinimSymbolTableRow *rows;
-    size_t size;
-    size_t alloc;
+    size_t size, alloc;
 } typedef MinimSymbolTable;
 
 void init_minim_symbol_table(MinimSymbolTable **ptable);

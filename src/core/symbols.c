@@ -7,9 +7,13 @@
 
 #define hashseed   ((uint32_t)  0xdeadbeef)
 
+static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void *ptr) {
+    mrk(gc, ((MinimSymbolTable*) ptr)->rows);
+}
+
 void init_minim_symbol_table(MinimSymbolTable **ptable)
 {
-    MinimSymbolTable *table = GC_alloc(sizeof(MinimSymbolTable));
+    MinimSymbolTable *table = GC_alloc_opt(sizeof(MinimSymbolTable), NULL, gc_mark_minim_symbol_table);
     table->alloc = MINIM_DEFAULT_SYMBOL_TABLE_SIZE;
     table->size = 0;
     table->rows = GC_calloc(MINIM_DEFAULT_SYMBOL_TABLE_SIZE, sizeof(MinimSymbolTableRow));

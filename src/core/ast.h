@@ -27,8 +27,8 @@ struct SyntaxNode
 {
     struct SyntaxNode **children;
     SyntaxLoc *loc;
-    size_t childc;
     char *sym;
+    size_t childc;
     SyntaxNodeType type;
 } typedef SyntaxNode;
 
