@@ -16,22 +16,12 @@ void GC_finalize() {
 
 void *GC_alloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
     void *ptr = malloc(size);
-    if (ptr == NULL) {
-        printf("Allocation request failed!\n");
-        return NULL;
-    }
-
     gc_add(main_gc, ptr, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
     return ptr;
 }
 
 void *GC_calloc_opt(size_t nmem, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
     void *ptr = calloc(nmem, size);
-    if (ptr == NULL) {
-        printf("Allocation request failed!\n");
-        return NULL;
-    }
-    
     gc_add(main_gc, ptr, nmem * size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
     return ptr;
 }
@@ -47,7 +37,6 @@ void *GC_realloc_opt(void *ptr, size_t size, void (*dtor)(void*), void (*mrk)(vo
     
     ptr2 = realloc(ptr, size);
     if (ptr2 == NULL) {
-        printf("Allocation request failed!\n");
         gc_remove(main_gc, ptr, 0);
         return NULL;
     }
