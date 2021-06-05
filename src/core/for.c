@@ -117,8 +117,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
         }
         else
         {
-            res = minim_argument_error("iterable object", "for-list", SIZE_MAX, val);
-            return res;
+            return minim_argument_error("iterable object", "for-list", SIZE_MAX, val);
         }
     }
 
@@ -158,6 +157,6 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
         }
     }   
 
-    init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
+    if (head) init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
     return res;
 }

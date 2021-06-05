@@ -71,7 +71,6 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, MinimObject **args, size
 
     trim_buffer(bf);
     init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
-    free_buffer(bf);
 
     return res;
 }
@@ -179,7 +178,6 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
             if (++i == len)
             {
                 res = minim_error("expected a character after '~'", "format");
-                free_buffer(bf);
                 return res;
             }
             else if (str[i] == 'a')
@@ -205,8 +203,6 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
 
     trim_buffer(bf);
     init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
-    free_buffer(bf);
-
     return res;
 }
 

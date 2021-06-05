@@ -68,11 +68,6 @@ void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src)
     }
 }
 
-void free_minim_symbol_table(MinimSymbolTable *table)
-{
-    /* Nothing */
-}
-
 static void minim_symbol_table_rehash(MinimSymbolTable *table)
 {
     MinimSymbolTableRow *rows;

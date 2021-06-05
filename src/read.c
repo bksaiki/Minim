@@ -71,7 +71,6 @@ int minim_load_file(MinimEnv *env, const char *fname)
             break;
     }
 
-    free_buffer(valid_fname);
     fclose(file);
     return 0;
 }
@@ -79,17 +78,13 @@ int minim_load_file(MinimEnv *env, const char *fname)
 int minim_run_file(const char *str, uint32_t flags)
 {
     MinimEnv *env;
-    int ret;
 
     init_env(&env, NULL);
     minim_load_builtins(env);
     if (!(flags & MINIM_FLAG_LOAD_LIBS))
         minim_load_library(env);
 
-    ret = minim_load_file(env, str);
-    free_env(env);
-
-    return ret;
+    return minim_load_file(env, str);
 }
 
 int minim_load_library(MinimEnv *env)

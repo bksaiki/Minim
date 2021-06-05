@@ -18,7 +18,6 @@ typedef struct MinimSeq
 
 void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...);
 void copy_minim_seq(MinimSeq **pseq, MinimSeq *src);
-void free_minim_seq(MinimSeq *seq);
 
 MinimObject *minim_seq_get(MinimSeq *seq);
 void minim_seq_next(MinimSeq *seq);

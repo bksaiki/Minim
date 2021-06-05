@@ -136,7 +136,6 @@ static void rehash_table(MinimHash *ht)
             hash = hash_bytes(bf->data, bf->pos, hashseed);
             reduc = hash % newSize;
 
-            free_buffer(bf);
             if (htr[reduc].len == 0)
             {
                 htr[reduc].arr = GC_realloc(htr[reduc].arr, sizeof(MinimObject*));
@@ -166,8 +165,6 @@ static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     uint32_t reduc = hash % ht->size;
 
     ++ht->elems;
-    free_buffer(bf);
-
     if (((double)ht->elems / (double)ht->size) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
         rehash_table(ht); // rehash if too deep
 
@@ -207,7 +204,6 @@ static bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
     uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
 
-    free_buffer(bf);
     for (size_t i = 0; i < ht->arr[reduc].len; ++i)
     {
         if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
@@ -224,7 +220,6 @@ static MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
     uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
 
-    free_buffer(bf);
     for (size_t i = 0; i < ht->arr[reduc].len; ++i)
     {
         if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
@@ -240,7 +235,6 @@ static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
     uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
 
-    free_buffer(bf);
     for (size_t i = 0; i < ht->arr[reduc].len; ++i)
     {
         if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
@@ -335,7 +329,6 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, MinimObject **args, size_t ar
         set_default_print_params(&pp);
         print_to_buffer(bf, args[1], env, &pp);
         res = minim_error("no value found for ~s", "hash-ref", bf->data);
-        free_buffer(bf);
     }
 
     return res;

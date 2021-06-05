@@ -17,7 +17,6 @@ typedef struct Buffer
 
 void init_buffer(Buffer **pbf);
 void copy_buffer(Buffer **pbf, Buffer *src);
-void free_buffer(Buffer *bf);
 
 void trim_buffer(Buffer *bf);
 void clear_buffer(Buffer *bf);

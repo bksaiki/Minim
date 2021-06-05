@@ -32,11 +32,6 @@ void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src)
     strcpy(trace->name, src->name);
 }
 
-void free_minim_error_trace(MinimErrorTrace *trace)
-{
-    /* Nothing */
-}
-
 void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len)
 {
     MinimErrorDescTable *table = GC_alloc(sizeof(MinimErrorDescTable));
@@ -67,11 +62,6 @@ void copy_minim_error_desc_table(MinimErrorDescTable **ptable, MinimErrorDescTab
             strcpy(table->vals[i], src->vals[i]);
         }
     }
-}
-
-void free_minim_error_desc_table(MinimErrorDescTable *table)
-{
-    /* Nothing */
 }
 
 void minim_error_desc_table_set(MinimErrorDescTable *table, size_t idx, const char *key, const char *val)
@@ -141,11 +131,6 @@ void copy_minim_error(MinimError **perr, MinimError *src)
         err->table = NULL;
 }
 
-void free_minim_error(MinimError *err)
-{
-    /* Nothing */
-}
-
 void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
 {
     MinimErrorTrace *trace;
@@ -207,9 +192,6 @@ MinimObject *minim_argument_error(const char *pred, const char *where, size_t po
         set_default_print_params(&pp);
         print_to_buffer(bf, val, env, &pp);
         minim_error_desc_table_set(err->table, idx, "given", bf->data);
-
-        free_env(env);
-        free_buffer(bf);
         ++idx;
     }
 
@@ -220,7 +202,6 @@ MinimObject *minim_argument_error(const char *pred, const char *where, size_t po
         init_buffer(&bf);
         buffer_write_ordinal(bf, pos + 1);
         minim_error_desc_table_set(err->table, idx, "location", bf->data);
-        free_buffer(bf);
     }
 
     init_minim_object(&obj, MINIM_OBJ_ERR, err);
@@ -247,8 +228,6 @@ MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t
     minim_error_desc_table_set(err->table, 1, "got", bf->data);
 
     init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    free_buffer(bf);
-
     return obj;
 }
 
@@ -266,8 +245,6 @@ MinimObject *minim_error(const char *msg, const char *where, ...)
 
     init_minim_error(&err, bf->data, where);
     init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    free_buffer(bf);
-
     return obj;
 }
 

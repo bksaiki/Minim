@@ -267,7 +267,6 @@ int print_to_port(MinimObject *obj, MinimEnv *env, PrintParams *pp, FILE *stream
     init_buffer(&bf);
     status = print_object(obj, env, bf, pp);
     fputs(bf->data, stream);
-    free_buffer(bf);
 
     return status;
 }
@@ -280,7 +279,6 @@ char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp)
     init_buffer(&bf);
     print_object(obj, env, bf, pp);
     str = release_buffer(bf);
-    free_buffer(bf);
 
     return str;
 }

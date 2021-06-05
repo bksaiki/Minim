@@ -35,6 +35,7 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
+    MinimEnv *env2;
     bool eval = false;
 
     for (size_t i = 0; !eval && i < argc; ++i)
@@ -48,8 +49,6 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
             eval = true;
             if (minim_list_length(ce_pair) > 2)
             {
-                MinimEnv *env2;
-
                 init_env(&env2, env);
                 for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
                 {
@@ -61,7 +60,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                     }
 
                     if (!MINIM_CDR(it))
-                        res = val;          
+                        res = val;     
                 }
             }
             else

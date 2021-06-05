@@ -27,11 +27,6 @@ void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src)
     strcpy(loc->name, src->name);
 }
 
-void free_syntax_loc(SyntaxLoc *loc)
-{
-    /* Nothing */
-}
-
 void init_syntax_node(SyntaxNode **pnode, SyntaxNodeType type)
 {
     SyntaxNode *node = GC_alloc(sizeof(SyntaxNode));
@@ -77,11 +72,6 @@ void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
     else            node->loc = NULL;
 }
 
-void free_syntax_node(SyntaxNode *node)
-{
-    /* Nothing */
-}
-
 void print_syntax(SyntaxNode *node)
 {
     if (node->childc > 0)
@@ -103,7 +93,6 @@ void print_syntax(SyntaxNode *node)
 
 void ast_add_syntax_loc(SyntaxNode *ast, SyntaxLoc *loc)
 {
-    if (ast->loc)   free_syntax_loc(ast->loc);
     ast->loc = loc;
 }
 
@@ -166,5 +155,4 @@ void print_ast(SyntaxNode *node)  // debugging
     init_buffer(&bf);
     ast_to_buffer(node, bf);
     fputs(bf->data, stdout);
-    free_buffer(bf);
 }

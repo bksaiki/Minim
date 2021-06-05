@@ -46,15 +46,6 @@ void copy_minim_seq(MinimSeq **pseq, MinimSeq *src)
     }
 }
 
-void free_minim_seq(MinimSeq *seq)
-{
-    switch (seq->type)
-    {
-    case MINIM_SEQ_NUM_RANGE:
-        break;
-    }
-}
-
 MinimObject *minim_seq_get(MinimSeq *seq)
 {
     MinimObject *obj;

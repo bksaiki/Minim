@@ -30,7 +30,6 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
     {
         in = minim_obj_to_bytes(v->u.vec.arr[i]);
         writeb_buffer(bf, in);
-        free_buffer(in);
     } 
 }
 
@@ -51,7 +50,7 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
     arr = GC_alloc(size * sizeof(MinimObject*));
 
     if (argc == 2)  copy_minim_object(&obj, args[1]);
-    else            int_to_minim_number(0);
+    else            obj = int_to_minim_number(0);
 
     for (size_t i = 0; i < size; ++i)
         copy_minim_object(&arr[i], obj);

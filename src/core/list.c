@@ -91,8 +91,7 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
 
         if (negate != coerce_into_bool(val))
         {
-            copy_minim_object(&val, MINIM_CAR(it));
-
+            init_minim_object(&val, MINIM_OBJ_PAIR, MINIM_CAR(it), NULL);
             if (first)
             {
                 first = false;
@@ -170,7 +169,6 @@ void minim_cons_to_bytes(MinimObject *obj, Buffer *bf)
         {
             Buffer *sbf = minim_obj_to_bytes(MINIM_CAR(it));
             writeb_buffer(bf, sbf);
-            free_buffer(sbf);
         }
     }
 }
@@ -375,9 +373,14 @@ MinimObject *minim_builtin_append(MinimEnv *env, MinimObject **args, size_t argc
         if (!minim_nullp(args[i]))
         {
             if (!it)
-                copy_minim_object(&it, args[i]);
+            {
+                it = args[i];
+                res = it;
+            }
             else
-                copy_minim_object(&MINIM_CDR(it), args[i]);
+            {
+                MINIM_CDR(it) = args[i];
+            }
 
             MINIM_TAIL(it, it);
         }

@@ -69,20 +69,14 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
-    MinimObject *owned;
-
-    copy_minim_object(&owned, obj);
-    add_metadata(owned, sym);
-    minim_symbol_table_add(env->table, sym, owned);
+    add_metadata(obj, sym);
+    minim_symbol_table_add(env->table, sym, obj);
 }
 
 int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
 {
-    MinimObject *owned;
-
-    copy_minim_object(&owned, obj);
-    add_metadata(owned, sym);
-    minim_symbol_table_add(env->table, sym, owned);
+    add_metadata(obj, sym);
+    minim_symbol_table_add(env->table, sym, obj);
     return 0;
 }
 
@@ -110,20 +104,6 @@ MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
     }
 
     return NULL;
-}
-
-void free_env(MinimEnv *env)
-{
-    /* Nothing */
-}
-
-MinimEnv *pop_env(MinimEnv *env)
-{
-    MinimEnv *next = env->parent;
-
-    /* Nothing */
-
-    return next;
 }
 
 size_t env_symbol_count(MinimEnv *env)

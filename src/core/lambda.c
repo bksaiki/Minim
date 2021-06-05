@@ -74,11 +74,6 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
     *cp = lam;
 }
 
-void free_minim_lambda(MinimLambda *lam)
-{
-    /* Nothing */
-}
-
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *val;

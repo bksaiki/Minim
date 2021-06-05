@@ -287,11 +287,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 bool check_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimEnv *env2;
-    bool res;
 
     init_env(&env2, env);
-    res = check_syntax_rec(env2, ast, perr);
-    pop_env(env2);
-    
-    return res;
+    return check_syntax_rec(env2, ast, perr);
 }

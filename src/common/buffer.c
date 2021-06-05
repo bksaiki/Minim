@@ -34,11 +34,6 @@ void copy_buffer(Buffer **pbf, Buffer *src)
     *pbf = bf;
 }
 
-void free_buffer(Buffer *bf)
-{
-    /* Nothing */
-}
-
 // *** Resizing *** //
 
 static void resize_buffer(Buffer *bf, size_t size)
