@@ -12,22 +12,21 @@ bool run_test(char *input, char *expected)
     str = eval_string(input, INT_MAX);
     s = (strcmp(str, expected) == 0);
     if (!s) printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
-    free(str);
 
     return s;
 }
 
 bool evaluate(char *input)
 {
-    char *str = eval_string(input, INT_MAX);
-    free(str);
-
+    eval_string(input, INT_MAX);
     return true;
 }
 
 int main()
 {
     bool status = true;
+
+    GC_init(&status);
 
     {
         const int COUNT = 1;
@@ -148,6 +147,8 @@ int main()
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
+
+    GC_finalize();
 
     return (int)(!status);
 }

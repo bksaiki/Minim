@@ -28,23 +28,10 @@
 #define RATIONALIZE_COPY(rat, obj)              \
 {                                               \
     rat = GC_alloc_mpq_ptr();                   \
-    mpq_init(rat);                              \
-                                                \
     if (MINIM_OBJ_EXACTP(obj))                  \
         mpq_set(rat, MINIM_EXACT(obj));         \
     else                                        \
         mpq_set_d(rat, MINIM_INEXACT(obj));     \
-}
-
-#define FREE_IF_INEXACT(rat, obj)               \
-{                                               \
-    if (MINIM_OBJ_INEXACTP(obj))                \
-        mpq_clear(rat);                         \
-}
-
-#define FREE_RATIONAL(rat)                      \
-{                                               \
-    mpq_clear(rat);                             \
 }
 
 typedef void (*mpz_2ary)(mpz_ptr, mpz_srcptr, mpz_srcptr);
@@ -265,9 +252,6 @@ static MinimObject *minim_int_2ary(MinimObject *x, MinimObject *y, mpz_2ary fun)
 
     mpq_set_ui(r, 0, 1);
     fun(mpq_numref(r), mpq_numref(q), mpq_numref(d));
-
-    FREE_IF_INEXACT(q, x);
-    FREE_IF_INEXACT(d, y);
 
     if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
         init_minim_object(&res, MINIM_OBJ_EXACT, r);
@@ -509,7 +493,6 @@ MinimObject *minim_builtin_numerator(MinimEnv *env, MinimObject **args, size_t a
     else
     {
         init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
-        FREE_RATIONAL(r);
     }
 
     return res;
@@ -533,7 +516,6 @@ MinimObject *minim_builtin_denominator(MinimEnv *env, MinimObject **args, size_t
     else
     {
         init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(r));
-        FREE_RATIONAL(r);
     }
 
     return res;
@@ -725,7 +707,6 @@ MinimObject *minim_builtin_pow(MinimEnv *env, MinimObject **args, size_t argc)
         long int e;
         
         rat = GC_alloc_mpq_ptr();
-        
         init_minim_object(&res, MINIM_OBJ_EXACT, rat);
 
         e = abs(mpz_get_si(mpq_numref(MINIM_EXACT(args[1]))));

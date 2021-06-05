@@ -12,7 +12,6 @@ bool run_test(char *input, char *expected)
     str = eval_string(input, INT_MAX);
     s = (strcmp(str, expected) == 0);
     if (!s) printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
-    free(str);
 
     return s;
 }
@@ -20,6 +19,8 @@ bool run_test(char *input, char *expected)
 int main()
 {
     bool status = true;
+
+    GC_init(&status);
 
     {
         const int COUNT = 10;
@@ -215,8 +216,8 @@ int main()
     }
 
     {
-        const int COUNT = 11;
-        char strs[22][256] =
+        const int COUNT = 12;
+        char strs[24][256] =
         {
             "(+ 1)",                 "1",
             "(+ 1 2)",               "3",
@@ -227,6 +228,7 @@ int main()
             "(* 1)",                 "1",
             "(* 1 2)",               "2",
             "(* 1 2 3)",             "6",
+            "(/ 2)",                 "1/2",
             "(/ 1 2)",               "1/2",
             "(/ 1 0)",               "nan"
         };
@@ -526,6 +528,8 @@ int main()
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
+
+    GC_finalize();
 
     return (int)(!status);
 }
