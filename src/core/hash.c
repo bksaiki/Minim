@@ -77,13 +77,18 @@ uint32_t hash_bytes(const void* data, size_t length, uint32_t seed)
     return c;
 }
 
+static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    mrk(gc, ((MinimHash*) ptr)->arr);
+}
+
 //
 //  Hash table
 //
 
 void init_minim_hash_table(MinimHash **pht)
 {
-    MinimHash *ht = GC_alloc(sizeof(MinimHash));
+    MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
     ht->arr = GC_alloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashRow));
     ht->size = MINIM_DEFAULT_HASH_TABLE_SIZE;
     ht->elems = 0;
@@ -98,7 +103,7 @@ void init_minim_hash_table(MinimHash **pht)
 
 void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
 {
-    MinimHash *ht = GC_alloc(sizeof(MinimHash));
+    MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
     ht->arr = GC_alloc(src->size * sizeof(MinimHashRow));
     ht->size = src->size;
     ht->elems = src->elems;

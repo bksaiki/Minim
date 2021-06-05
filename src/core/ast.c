@@ -5,9 +5,22 @@
 #include "../gc/gc.h"
 #include "ast.h"
 
+static void gc_syntax_loc_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    mrk(gc, ((SyntaxLoc*) ptr)->name);   
+}
+
+static void gc_syntax_node_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    SyntaxNode *node = (SyntaxNode*) ptr;
+    mrk(gc, node->children);
+    mrk(gc, node->loc);
+    mrk(gc, node->sym);
+}
+
 void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
 {
-    SyntaxLoc *loc = GC_alloc(sizeof(SyntaxLoc));
+    SyntaxLoc *loc = GC_alloc_opt(sizeof(SyntaxLoc), NULL, gc_syntax_loc_mrk);
     loc->name = GC_alloc((strlen(fname) + 1) * sizeof(char));
     loc->row = 1;
     loc->col = 1;
@@ -18,7 +31,7 @@ void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
 
 void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src)
 {
-    SyntaxLoc *loc = GC_alloc(sizeof(SyntaxLoc));
+    SyntaxLoc *loc = GC_alloc_opt(sizeof(SyntaxLoc), NULL, gc_syntax_loc_mrk);
     loc->name = GC_alloc((strlen(src->name) + 1) * sizeof(char));
     loc->row = src->row;
     loc->col = src->col;
@@ -29,7 +42,7 @@ void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src)
 
 void init_syntax_node(SyntaxNode **pnode, SyntaxNodeType type)
 {
-    SyntaxNode *node = GC_alloc(sizeof(SyntaxNode));
+    SyntaxNode *node = GC_alloc_opt(sizeof(SyntaxNode), NULL, gc_syntax_node_mrk);
 
     node->children = NULL;
     node->childc = 0;
@@ -41,7 +54,7 @@ void init_syntax_node(SyntaxNode **pnode, SyntaxNodeType type)
 
 void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
 {
-    SyntaxNode *node = GC_alloc(sizeof(SyntaxNode));
+    SyntaxNode *node = GC_alloc_opt(sizeof(SyntaxNode), NULL, gc_syntax_node_mrk);
 
     node->type = src->type;
     node->childc = src->childc;

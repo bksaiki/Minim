@@ -10,9 +10,14 @@
 
 // *** Initialization / Deleting *** //
 
+static void gc_buffer_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    mrk(gc, ((Buffer*) ptr)->data);
+}
+
 void init_buffer(Buffer **pbf)
 {
-    Buffer *bf = GC_alloc(sizeof(Buffer));
+    Buffer *bf = GC_alloc_opt(sizeof(Buffer), NULL, gc_buffer_mrk);
 
     bf->data = GC_alloc(MINIM_BUFFER_DEFAULT_SIZE * sizeof(char));
     bf->curr = MINIM_BUFFER_DEFAULT_SIZE;

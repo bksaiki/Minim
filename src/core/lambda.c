@@ -8,9 +8,20 @@
 #include "lambda.h"
 #include "list.h"
 
+static void gc_minim_lambda_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimLambda *lam = (MinimLambda *) ptr;
+    mrk(gc, lam->body);
+    mrk(gc, lam->loc);
+    mrk(gc, lam->env);
+    mrk(gc, lam->args);
+    mrk(gc, lam->rest);
+    mrk(gc, lam->name);
+}
+
 void init_minim_lambda(MinimLambda **plam)
 {
-    MinimLambda *lam = GC_alloc(sizeof(MinimLambda));
+    MinimLambda *lam = GC_alloc_opt(sizeof(MinimLambda), NULL, gc_minim_lambda_mrk);
     
     lam->loc = NULL;
     lam->env = NULL;
@@ -25,7 +36,7 @@ void init_minim_lambda(MinimLambda **plam)
 
 void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 {
-    MinimLambda *lam = GC_alloc(sizeof(MinimLambda));
+    MinimLambda *lam = GC_alloc_opt(sizeof(MinimLambda), NULL, gc_minim_lambda_mrk);
 
     lam->argc = src->argc;
     if (src->args)

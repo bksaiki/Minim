@@ -6,9 +6,24 @@
 #include "error.h"
 #include "string.h"
 
+static void gc_minim_error_trace_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimErrorTrace *trace = (MinimErrorTrace*) ptr;
+    mrk(gc, trace->next);
+    mrk(gc, trace->loc);
+    mrk(gc, trace->name);
+}
+
+static void gc_minim_error_desc_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimErrorDescTable *desc = (MinimErrorDescTable*) ptr;
+    mrk(gc, desc->keys);
+    mrk(gc, desc->vals);
+}
+
 void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char *name)
 {
-    MinimErrorTrace *trace = GC_alloc(sizeof(MinimErrorTrace));
+    MinimErrorTrace *trace = GC_alloc_opt(sizeof(MinimErrorTrace), NULL, gc_minim_error_trace_mrk);
     copy_syntax_loc(&trace->loc, loc);
     trace->multiple = false;
     trace->next = NULL;
@@ -20,7 +35,7 @@ void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char
 
 void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src)
 {
-    MinimErrorTrace *trace = GC_alloc(sizeof(MinimErrorTrace));
+    MinimErrorTrace *trace = GC_alloc_opt(sizeof(MinimErrorTrace), NULL, gc_minim_error_trace_mrk);
     copy_syntax_loc(&trace->loc, src->loc);
     trace->multiple = src->multiple;
     *ptrace = trace;
@@ -34,7 +49,9 @@ void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src)
 
 void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len)
 {
-    MinimErrorDescTable *table = GC_alloc(sizeof(MinimErrorDescTable));
+    MinimErrorDescTable *table = GC_alloc_opt(sizeof(MinimErrorDescTable),
+                                              NULL,
+                                              gc_minim_error_desc_mrk);
 
     table->keys = GC_calloc(len, sizeof(char*));
     table->vals = GC_calloc(len, sizeof(char*));
@@ -45,7 +62,9 @@ void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len)
 
 void copy_minim_error_desc_table(MinimErrorDescTable **ptable, MinimErrorDescTable *src)
 {
-    MinimErrorDescTable *table = GC_alloc(sizeof(MinimErrorDescTable));
+    MinimErrorDescTable *table = GC_alloc_opt(sizeof(MinimErrorDescTable),
+                                              NULL,
+                                              gc_minim_error_desc_mrk);
 
     table->keys = GC_calloc(src->len, sizeof(char*));
     table->vals = GC_calloc(src->len, sizeof(char*));

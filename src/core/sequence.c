@@ -9,6 +9,13 @@
 #include "list.h"
 #include "sequence.h"
 
+static void gc_minim_seq_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimSeq *seq = (MinimSeq*) ptr;
+    mrk(gc, seq->state);
+    mrk(gc, seq->end);
+}
+
 void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
 {
     MinimSeq* seq;
@@ -17,7 +24,7 @@ void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
     va_start(v, type);
     if (type == MINIM_SEQ_NUM_RANGE)
     {
-        seq = GC_alloc(sizeof(MinimSeq));
+        seq = GC_alloc_opt(sizeof(MinimSeq), NULL, gc_minim_seq_mrk);
         seq->state = va_arg(v, MinimObject*);
         seq->end = va_arg(v, MinimObject*);
         seq->type = type;
@@ -30,7 +37,7 @@ void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...)
 
 void copy_minim_seq(MinimSeq **pseq, MinimSeq *src)
 {
-    MinimSeq* seq = GC_alloc(sizeof(MinimSeq));
+    MinimSeq* seq = GC_alloc_opt(sizeof(MinimSeq), NULL, gc_minim_seq_mrk);
 
     if (src->type == MINIM_SEQ_NUM_RANGE)
     {

@@ -179,7 +179,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, bool rec)
                 init_minim_object(&args[1], MINIM_OBJ_AST, node->children[2]);
             }
 
-            proc = ((MinimBuiltin) env_peek_sym(env, "cons")->u.ptrs.p1);
+            proc = ((MinimBuiltin) env_get_sym(env, "cons")->u.ptrs.p1);
             res = proc(env, args, 2);
         }
         else if (node->childc > 2 && node->children[node->childc - 2]->sym &&
@@ -195,7 +195,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, bool rec)
                 else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
             }
 
-            proc = ((MinimBuiltin) env_peek_sym(env, "list")->u.ptrs.p1);
+            proc = ((MinimBuiltin) env_get_sym(env, "list")->u.ptrs.p1);
             res = proc(env, args, reduc);
 
             for (rest = res; MINIM_CDR(rest); rest = MINIM_CDR(rest));
@@ -211,7 +211,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, bool rec)
                 else        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
             }
 
-            proc = ((MinimBuiltin) env_peek_sym(env, "list")->u.ptrs.p1);
+            proc = ((MinimBuiltin) env_get_sym(env, "list")->u.ptrs.p1);
             res = proc(env, args, node->childc);
         }
 
@@ -272,7 +272,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 
         argc = node->childc - 1;
         args = GC_alloc(argc * sizeof(MinimObject*));
-        op = env_peek_sym(env, node->children[0]->sym);
+        op = env_get_sym(env, node->children[0]->sym);
 
         if (!op)
         {

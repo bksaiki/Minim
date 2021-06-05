@@ -93,19 +93,6 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
     return NULL;
 }
 
-MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
-{
-    MinimObject *val;
-
-    for (MinimEnv *it = env; it; it = it->parent)
-    {   
-        val = minim_symbol_table_peek(it->table, sym);
-        if (val)    return val;
-    }
-
-    return NULL;
-}
-
 size_t env_symbol_count(MinimEnv *env)
 {
     return env->sym_count + env->table->size;

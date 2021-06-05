@@ -19,11 +19,45 @@
 
 // Visible functions
 
+static void gc_minim_object_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimObject *obj = (MinimObject*) ptr;
+
+    switch (obj->type)
+    {
+    case MINIM_OBJ_SYM:
+    case MINIM_OBJ_STRING:
+        mrk(gc, MINIM_STRING(obj));
+        break;
+
+    case MINIM_OBJ_EXACT:
+    case MINIM_OBJ_ERR:
+    case MINIM_OBJ_CLOSURE:
+    case MINIM_OBJ_AST:
+    case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_HASH:
+        mrk(gc, MINIM_DATA(obj));
+        break;
+
+    case MINIM_OBJ_VECTOR:
+        mrk(gc, MINIM_VECTOR_ARR(obj));
+        break;
+
+    case MINIM_OBJ_PAIR:
+        mrk(gc, MINIM_CAR(obj));
+        mrk(gc, MINIM_CDR(obj));
+        break;
+    
+    default:
+        break;
+    }
+}
+
 void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
 {
     MinimObject *obj;
 
-    obj = GC_alloc(sizeof(MinimObject));
+    obj = GC_alloc_opt(sizeof(MinimObject), NULL, gc_minim_object_mrk);
     obj->type = type;
 
     // if (type == MINIM_OBJ_VOID)
@@ -102,7 +136,7 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
 
 void copy_minim_object(MinimObject **pobj, MinimObject *src)
 {
-    MinimObject *obj = GC_alloc(sizeof(MinimObject));
+    MinimObject *obj = GC_alloc_opt(sizeof(MinimObject), NULL, gc_minim_object_mrk);
     obj->type = src->type;
     *pobj = obj;
 

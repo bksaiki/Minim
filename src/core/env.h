@@ -34,10 +34,6 @@ int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj);
 // if the value is not in the table
 const char *env_peek_key(MinimEnv *env, MinimObject *value);
 
-// Returns a pointer to the object associated with the symbol. Returns NULL
-// if the symbol is not in the table.
-MinimObject *env_peek_sym(MinimEnv *env, const char* sym);
-
 // Returns the number of symbols in the environment
 size_t env_symbol_count(MinimEnv *env);
 

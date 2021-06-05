@@ -11,6 +11,12 @@ static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void
     mrk(gc, ((MinimSymbolTable*) ptr)->rows);
 }
 
+// static void gc_mark_minim_symbol_table_row(void (*mrk)(void*, void*), void *gc, void *ptr) {
+//     MinimSymbolTableRow *tr = (MinimSymbolTableRow*) ptr;
+//     mrk(gc, tr->names);
+//     mrk(gc, tr->vals);
+// }
+
 void init_minim_symbol_table(MinimSymbolTable **ptable)
 {
     MinimSymbolTable *table = GC_alloc_opt(sizeof(MinimSymbolTable), NULL, gc_mark_minim_symbol_table);
@@ -22,7 +28,7 @@ void init_minim_symbol_table(MinimSymbolTable **ptable)
 
 void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src)
 {
-    MinimSymbolTable *table = GC_alloc(sizeof(MinimSymbolTable));
+    MinimSymbolTable *table = GC_alloc_opt(sizeof(MinimSymbolTable), NULL, gc_mark_minim_symbol_table);
     table->alloc = src->alloc;
     table->size = src->size;
     table->rows = GC_alloc(src->alloc * sizeof(MinimSymbolTableRow));
@@ -132,22 +138,6 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObje
 }
 
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name)
-{
-    size_t hash, idx;
-
-    hash = hash_bytes(name, strlen(name), hashseed);
-    idx = hash % table->alloc;
-
-    for (size_t i = 0; i < table->rows[idx].length; ++i)
-    {
-        if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
-            return table->rows[idx].vals[i]->obj;
-    }
-    
-    return NULL;
-}
-
-MinimObject *minim_symbol_table_peek(MinimSymbolTable *table, const char *name)
 {
     size_t hash, idx;
 

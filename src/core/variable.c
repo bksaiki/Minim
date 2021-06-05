@@ -266,7 +266,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res, *sym, *val, *peek;
 
     unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
-    peek = env_peek_sym(env, sym->u.ptrs.p1);
+    peek = env_get_sym(env, sym->u.ptrs.p1);
     if (peek)
     {
         eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);

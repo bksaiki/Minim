@@ -251,7 +251,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (ast->type != SYNTAX_NODE_LIST)
         return true;
 
-    op = env_peek_sym(env, ast->children[0]->sym);
+    op = env_get_sym(env, ast->children[0]->sym);
     if (op && MINIM_OBJ_SYNTAXP(op))
     {
         void *proc = ((void*) op->u.ptrs.p1);
