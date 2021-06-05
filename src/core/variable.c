@@ -190,7 +190,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
         eval_ast_no_check((alt ? env2 : env), MINIM_DATA(MINIM_CADR(bind)), &val);
         env_intern_sym(env2, MINIM_STRING(sym), val);
 
-        lam->args[i] = GC_alloc((strlen(MINIM_STRING(sym)) + 1) * sizeof(char));
+        lam->args[i] = GC_alloc_atomic((strlen(MINIM_STRING(sym)) + 1) * sizeof(char));
         strcpy(lam->args[i], MINIM_STRING(sym));
     }
 
@@ -352,7 +352,7 @@ MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t arg
     MinimObject *res;
     char *str;
 
-    str = GC_alloc((strlen(MINIM_VERSION_STR) + 1) * sizeof(char));
+    str = GC_alloc_atomic((strlen(MINIM_VERSION_STR) + 1) * sizeof(char));
     strcpy(str, MINIM_VERSION_STR);
     init_minim_object(&res, MINIM_OBJ_STRING, str);
 

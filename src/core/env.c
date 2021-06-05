@@ -13,7 +13,7 @@ static void add_metadata(MinimObject *obj, const char *str)
     {
         MinimLambda *lam = obj->u.ptrs.p1;
 
-        lam->name = GC_alloc((strlen(str) + 1) * sizeof(char));
+        lam->name = GC_alloc_atomic((strlen(str) + 1) * sizeof(char));
         strcpy(lam->name, str);
     }
 }

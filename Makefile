@@ -27,7 +27,7 @@ minim: configure $(OBJS)
 configure:
 	cd src && $(MAKE) config
 
-tests: unit-tests lib-tests;
+tests: minim unit-tests lib-tests;
 
 unit-tests: $(TEST_EXES)
 	$(TEST_DIR)/test.sh $(TEST_EXES)

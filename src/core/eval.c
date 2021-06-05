@@ -105,7 +105,7 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
     if (is_rational(str))
     {
-        mpq_ptr rat = GC_alloc_mpq_ptr();
+        mpq_ptr rat = gc_alloc_mpq_ptr();
 
         mpq_set_str(rat, str, 0);
         mpq_canonicalize(rat);
@@ -118,7 +118,7 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     else if (is_str(str))
     {
         size_t len = strlen(str) - 1;
-        char *tmp = GC_alloc(len * sizeof(char));
+        char *tmp = GC_alloc_atomic(len * sizeof(char));
 
         strncpy(tmp, &str[1], len - 1);
         tmp[len - 1] = '\0';
@@ -406,7 +406,7 @@ char *eval_string(char *str, size_t len)
     if (parse_str(str, &ast))
     {
         char *tmp = "Parsing failed!";
-        out = GC_alloc((strlen(tmp) + 1) * sizeof(char));
+        out = GC_alloc_atomic((strlen(tmp) + 1) * sizeof(char));
         strcpy(out, tmp);
         return out;
     }

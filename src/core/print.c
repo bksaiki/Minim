@@ -59,12 +59,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         char *str;
         size_t len;
 
-        str = GC_alloc(128 * sizeof(char));
+        str = GC_alloc_atomic(128 * sizeof(char));
         len = gmp_snprintf(str, 128, "%Qd", MINIM_EXACT(obj));
 
         if (len >= 128)
         {
-            str = GC_realloc(str, (len + 1) * sizeof(char));
+            str = GC_realloc_atomic(str, (len + 1) * sizeof(char));
             len = gmp_snprintf(str, len, "%Qd", MINIM_EXACT(obj));
         }
 

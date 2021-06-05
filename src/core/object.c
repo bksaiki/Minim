@@ -80,7 +80,7 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     else if (type == MINIM_OBJ_SYM)
     {
         char *src = va_arg(vargs, char*);
-        obj->u.str.str = GC_alloc((strlen(src) + 1) * sizeof(char));
+        obj->u.str.str = GC_alloc_atomic((strlen(src) + 1) * sizeof(char));
         strcpy(obj->u.str.str, src);
     }
     else if (type == MINIM_OBJ_ERR)
@@ -146,7 +146,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     }
     else if (MINIM_OBJ_EXACTP(src))
     {
-        mpq_ptr num = GC_alloc_mpq_ptr();
+        mpq_ptr num = gc_alloc_mpq_ptr();
         
         mpq_set(num, MINIM_EXACT(src));
         obj->u.ptrs.p1 = num;
@@ -157,7 +157,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     }
     else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_STRING)
     {
-        obj->u.str.str = GC_alloc((strlen(src->u.str.str) + 1) * sizeof(char));
+        obj->u.str.str = GC_alloc_atomic((strlen(src->u.str.str) + 1) * sizeof(char));
         strcpy(obj->u.str.str, src->u.str.str);
     }
     else if (src->type == MINIM_OBJ_ERR)

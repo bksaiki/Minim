@@ -29,7 +29,7 @@ void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char
     trace->next = NULL;
     *ptrace = trace;
 
-    trace->name = GC_alloc((strlen(name) + 1) * sizeof(char));
+    trace->name = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
     strcpy(trace->name, name);
 }
 
@@ -43,7 +43,7 @@ void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src)
     if (src->next)      copy_minim_error_trace(&trace->next, src->next);
     else                trace->next = NULL;
 
-    trace->name = GC_alloc((strlen(src->name) + 1) * sizeof(char));
+    trace->name = GC_alloc_atomic((strlen(src->name) + 1) * sizeof(char));
     strcpy(trace->name, src->name);
 }
 
@@ -75,8 +75,8 @@ void copy_minim_error_desc_table(MinimErrorDescTable **ptable, MinimErrorDescTab
     {
         if (src->keys[i])
         {
-            table->keys[i] = GC_alloc((strlen(src->keys[i]) + 1) * sizeof(char));
-            table->vals[i] = GC_alloc((strlen(src->vals[i]) + 1) * sizeof(char));
+            table->keys[i] = GC_alloc_atomic((strlen(src->keys[i]) + 1) * sizeof(char));
+            table->vals[i] = GC_alloc_atomic((strlen(src->vals[i]) + 1) * sizeof(char));
             strcpy(table->keys[i], src->keys[i]);
             strcpy(table->vals[i], src->vals[i]);
         }
@@ -85,8 +85,8 @@ void copy_minim_error_desc_table(MinimErrorDescTable **ptable, MinimErrorDescTab
 
 void minim_error_desc_table_set(MinimErrorDescTable *table, size_t idx, const char *key, const char *val)
 {
-    table->keys[idx] = GC_alloc((strlen(key) + 1) * sizeof(char));
-    table->vals[idx] = GC_alloc((strlen(val) + 1) * sizeof(char));
+    table->keys[idx] = GC_alloc_atomic((strlen(key) + 1) * sizeof(char));
+    table->vals[idx] = GC_alloc_atomic((strlen(val) + 1) * sizeof(char));
     strcpy(table->keys[idx], key);
     strcpy(table->vals[idx], val);
 }
@@ -95,7 +95,7 @@ void init_minim_error(MinimError **perr, const char *msg, const char *where)
 {
     MinimError *err = GC_alloc(sizeof(MinimError));
 
-    err->msg = GC_alloc((strlen(msg) + 1) * sizeof(char));
+    err->msg = GC_alloc_atomic((strlen(msg) + 1) * sizeof(char));
     strcpy(err->msg, msg);
     err->top = NULL;
     err->bottom = NULL;
@@ -104,7 +104,7 @@ void init_minim_error(MinimError **perr, const char *msg, const char *where)
     
     if (where)
     {
-        err->where = GC_alloc((strlen(where) + 1) * sizeof(char));
+        err->where = GC_alloc_atomic((strlen(where) + 1) * sizeof(char));
         strcpy(err->where, where);
     }
     else
@@ -116,7 +116,8 @@ void init_minim_error(MinimError **perr, const char *msg, const char *where)
 void copy_minim_error(MinimError **perr, MinimError *src)
 {
     MinimError *err = GC_alloc(sizeof(MinimError));
-    err->msg = GC_alloc((strlen(src->msg) + 1) * sizeof(char)); 
+
+    err->msg = GC_alloc_atomic((strlen(src->msg) + 1) * sizeof(char)); 
     strcpy(err->msg, src->msg);
     *perr = err;
     
@@ -136,7 +137,7 @@ void copy_minim_error(MinimError **perr, MinimError *src)
     
     if (src->where)
     {
-        err->where = GC_alloc((strlen(src->where) + 1) * sizeof(char)); 
+        err->where = GC_alloc_atomic((strlen(src->where) + 1) * sizeof(char)); 
         strcpy(err->where, src->where);
     }
     else

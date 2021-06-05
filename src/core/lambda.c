@@ -44,7 +44,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->args = GC_alloc(lam->argc * sizeof(char*));
         for (size_t i = 0; i < lam->argc; ++i)
         {
-            lam->args[i] = GC_alloc((strlen(src->args[i]) + 1) * sizeof(char));
+            lam->args[i] = GC_alloc_atomic((strlen(src->args[i]) + 1) * sizeof(char));
             strcpy(lam->args[i], src->args[i]);
         }
     }   
@@ -55,7 +55,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 
     if (src->rest)
     {
-        lam->rest = GC_alloc((strlen(src->rest) + 1) * sizeof(char));
+        lam->rest = GC_alloc_atomic((strlen(src->rest) + 1) * sizeof(char));
         strcpy(lam->rest, src->rest);
     }
     else
@@ -65,7 +65,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
 
     if (src->name)
     {
-        lam->name = GC_alloc((strlen(src->name) + 1) * sizeof(char));
+        lam->name = GC_alloc_atomic((strlen(src->name) + 1) * sizeof(char));
         strcpy(lam->name, src->name);
     }
     else
@@ -187,7 +187,7 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
         ast->childc = count + 1;
 
         init_syntax_node(&ast->children[0], SYNTAX_NODE_DATUM);
-        ast->children[0]->sym = GC_alloc(6 * sizeof(char));
+        ast->children[0]->sym = GC_alloc_atomic(6 * sizeof(char));
         strcpy(ast->children[0]->sym, "begin");
 
         lam->body = ast;

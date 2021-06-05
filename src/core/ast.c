@@ -21,7 +21,7 @@ static void gc_syntax_node_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
 {
     SyntaxLoc *loc = GC_alloc_opt(sizeof(SyntaxLoc), NULL, gc_syntax_loc_mrk);
-    loc->name = GC_alloc((strlen(fname) + 1) * sizeof(char));
+    loc->name = GC_alloc_atomic((strlen(fname) + 1) * sizeof(char));
     loc->row = 1;
     loc->col = 1;
     *ploc = loc;
@@ -32,7 +32,7 @@ void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
 void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src)
 {
     SyntaxLoc *loc = GC_alloc_opt(sizeof(SyntaxLoc), NULL, gc_syntax_loc_mrk);
-    loc->name = GC_alloc((strlen(src->name) + 1) * sizeof(char));
+    loc->name = GC_alloc_atomic((strlen(src->name) + 1) * sizeof(char));
     loc->row = src->row;
     loc->col = src->col;
     *ploc = loc;
@@ -73,7 +73,7 @@ void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
     
     if (src->sym)
     {
-        node->sym = GC_alloc((strlen(src->sym) + 1) * sizeof(char));
+        node->sym = GC_alloc_atomic((strlen(src->sym) + 1) * sizeof(char));
         strcpy(node->sym, src->sym);
     }
     else

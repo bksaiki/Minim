@@ -104,7 +104,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
             return minim_error("expected [begin, end)", "substring");
     }
 
-    tmp = GC_alloc((end - start + 1) * sizeof(char));
+    tmp = GC_alloc_atomic((end - start + 1) * sizeof(char));
     strncpy(tmp, &str[start], end - start);
     tmp[end - start] = '\0';
 
@@ -132,7 +132,7 @@ MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, MinimObject **args, s
     if (!MINIM_OBJ_SYMBOLP(args[0]))
         return minim_argument_error("symbol", "symbol->string", 0, args[0]);
 
-    dest = GC_alloc((strlen(args[0]->u.str.str) + 1) * sizeof(char));
+    dest = GC_alloc_atomic((strlen(args[0]->u.str.str) + 1) * sizeof(char));
     strcpy(dest, args[0]->u.str.str);
 
     init_minim_object(&res, MINIM_OBJ_STRING, dest);

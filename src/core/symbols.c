@@ -54,7 +54,7 @@ void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src)
                 MinimSymbolEntry *cp = GC_alloc(sizeof(MinimSymbolEntry));
                 MinimSymbolEntry *tmp;
 
-                table->rows[i].names[j] = GC_alloc((strlen(src->rows[i].names[j]) + 1) * sizeof(char));
+                table->rows[i].names[j] = GC_alloc_atomic((strlen(src->rows[i].names[j]) + 1) * sizeof(char));
                 strcpy(table->rows[i].names[j], src->rows[i].names[j]);
 
                 copy_minim_object(&cp->obj, it->obj);
@@ -131,7 +131,7 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObje
     table->rows[idx].names = GC_realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
     table->rows[idx].vals = GC_realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
 
-    table->rows[idx].names[table->rows[idx].length - 1] = GC_alloc((len + 1) * sizeof(char));
+    table->rows[idx].names[table->rows[idx].length - 1] = GC_alloc_atomic((len + 1) * sizeof(char));
     strcpy(table->rows[idx].names[table->rows[idx].length - 1], name);
     table->rows[idx].vals[table->rows[idx].length - 1] = entry;
     entry->parent = NULL;

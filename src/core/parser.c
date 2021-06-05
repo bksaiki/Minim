@@ -11,14 +11,14 @@
 #define closed_paren(x)     (x == ')' || x == ']' || x == '{')
 #define normal_char(x)      (x && !open_paren(x) && !closed_paren(x) && !isspace(x))
 
-#define IF_STR_EQUAL_REPLACE(x, str, r)                     \
-{                                                           \
-    if (strcmp(x, str) == 0)                                \
-    {                                                       \
-        x = GC_realloc(x, (strlen(r) + 1) * sizeof(char));     \
-        strcpy(x, r);                                       \
-        return true;                                        \
-    }                                                       \
+#define IF_STR_EQUAL_REPLACE(x, str, r)                                 \
+{                                                                       \
+    if (strcmp(x, str) == 0)                                            \
+    {                                                                   \
+        x = GC_realloc_atomic(x, (strlen(r) + 1) * sizeof(char));       \
+        strcpy(x, r);                                                   \
+        return true;                                                    \
+    }                                                                   \
 }
 
 //
@@ -212,7 +212,7 @@ static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, S
     ast_add_syntax_loc(node, loc);
     
     init_syntax_node(&node->children[0], SYNTAX_NODE_DATUM);
-    node->children[0]->sym = GC_alloc(6 * sizeof(char));
+    node->children[0]->sym = GC_alloc_atomic(6 * sizeof(char));
     strcpy(node->children[0]->sym, "quote");
 
     init_syntax_loc(&loc, name);
