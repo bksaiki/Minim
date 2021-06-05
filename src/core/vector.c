@@ -50,13 +50,12 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, MinimObject **args, size_t
     size = MINIM_NUMBER_TO_UINT(args[0]);
     arr = GC_alloc(size * sizeof(MinimObject*));
 
-    if (argc == 2)  obj = copy2_minim_object(args[1]);
-    else            obj = int_to_minim_number(0);
+    if (argc == 2)  copy_minim_object(&obj, args[1]);
+    else            int_to_minim_number(0);
 
     for (size_t i = 0; i < size; ++i)
         copy_minim_object(&arr[i], obj);
     
-    free_minim_object(obj);
     init_minim_object(&res, MINIM_OBJ_VECTOR, arr, size);
     return res;
 }
@@ -68,7 +67,7 @@ MinimObject *minim_builtin_vector(MinimEnv *env, MinimObject **args, size_t argc
 
     arr = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
-        arr[i] = copy2_minim_object(args[i]);
+        copy_minim_object(&arr[i], args[i]);
 
     init_minim_object(&res, MINIM_OBJ_VECTOR, arr, argc);
     return res;
@@ -99,7 +98,7 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, MinimObject **args, size_t 
     if  (idx >= MINIM_VECTOR_LEN(args[0]))
         return minim_error("index out of bounds: ~u", "vector-ref", idx);
     
-    return copy2_minim_object(MINIM_VECTOR_ARR(args[0])[idx]);
+    return MINIM_VECTOR_ARR(args[0])[idx];
 }
 
 MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t argc)
@@ -110,9 +109,6 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector-set!", 0, args[0]);
 
-    if (MINIM_OBJ_OWNERP(args[0]))
-        return minim_argument_error("reference to a vector", "vector-set!", 0, args[0]);
-
     if (!minim_exact_nonneg_intp(args[1]))
         return minim_argument_error("exact non-negative integer", "vector-set!", 1, args[1]);
 
@@ -120,8 +116,7 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, MinimObject **args, size_t
     if  (idx >= args[0]->u.vec.len)
         return minim_error("index out of bounds: ~u", "vector-set!", idx);
 
-    free_minim_object(args[0]->u.vec.arr[idx]);
-    args[0]->u.vec.arr[idx] = copy2_minim_object(args[2]);
+    copy_minim_object(&args[0]->u.vec.arr[idx], args[2]);
     init_minim_object(&res, MINIM_OBJ_VOID);
     return res;
 }
@@ -175,7 +170,7 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, MinimObject **args, siz
     arr = GC_alloc(len * sizeof(MinimObject*));
     it = args[0];
     for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
-        arr[i] = copy2_minim_object(MINIM_CAR(it));
+        copy_minim_object(&arr[i], MINIM_CAR(it));
 
     init_minim_object(&res, MINIM_OBJ_VECTOR, arr, len);
     return res;
@@ -188,14 +183,8 @@ MinimObject *minim_builtin_vector_fillb(MinimEnv *env, MinimObject **args, size_
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector-fill!", 0, args[0]);
 
-    if (MINIM_OBJ_OWNERP(args[0]))
-        return minim_argument_error("reference to a vector", "vector-fill!", 0, args[0]);
-
     for (size_t i = 0; i < MINIM_VECTOR_LEN(args[0]); ++i)
-    {
-        free_minim_object(MINIM_VECTOR_ARR(args[0])[i]);
         copy_minim_object(&(MINIM_VECTOR_ARR(args[0])[i]), args[1]);
-    }
     
     init_minim_object(&res, MINIM_OBJ_VOID);
     return res;   

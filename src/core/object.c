@@ -25,7 +25,6 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
 
     obj = GC_alloc(sizeof(MinimObject));
     obj->type = type;
-    obj->flags = MINIM_OBJ_OWNER;
 
     // if (type == MINIM_OBJ_VOID)
     if (type == MINIM_OBJ_EXIT)
@@ -108,7 +107,6 @@ static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
     case MINIM_OBJ_BOOL:
     case MINIM_OBJ_EXIT:
         dest->u = src->u;
-        dest->flags |= MINIM_OBJ_OWNER; // override
         break;
 
     default:
@@ -198,31 +196,10 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
 {
     MinimObject *obj = GC_alloc(sizeof(MinimObject));
     obj->type = src->type;
-    obj->flags = src->flags;
     *pobj = obj;
 
     if (MINIM_OBJ_OWNERP(obj))  copy_minim_object_h(obj, src);
     else                        ref_minim_object_h(obj, src);
-}
-
-void ref_minim_object(MinimObject **pobj, MinimObject *src)
-{
-    MinimObject *obj = GC_alloc(sizeof(MinimObject));
-    obj->type = src->type;
-    obj->flags = (MINIM_OBJ_OWNERP(src) ? src->flags ^ MINIM_OBJ_OWNER : src->flags);
-    *pobj = obj;
-
-    ref_minim_object_h(obj, src);
-}
-
-void free_minim_object(MinimObject *obj)
-{
-    /* Nothing */
-}
-
-void free_minim_objects(MinimObject **objs, size_t count)
-{
-    /* Nothing */
 }
 
 bool minim_equalp(MinimObject *a, MinimObject *b)
@@ -269,31 +246,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     default:
         return false;
     }
-}
-
-MinimObject *fresh_minim_object(MinimObject *src)
-{
-    MinimObject *cp;
-
-    if (MINIM_OBJ_OWNERP(src))
-        return src;
-
-    cp = GC_alloc(sizeof(MinimObject));
-    cp->type = src->type;
-    cp->flags = src->flags | MINIM_OBJ_OWNER;
-    copy_minim_object_h(cp, src);
-
-    return cp;
-}
-
-MinimObject *copy2_minim_object(MinimObject *src)
-{
-    MinimObject *cp = GC_alloc(sizeof(MinimObject));
-    cp->type = src->type;
-    cp->flags = src->flags | MINIM_OBJ_OWNER;
-    copy_minim_object_h(cp, src);
-
-    return cp;
 }
 
 Buffer* minim_obj_to_bytes(MinimObject *obj)

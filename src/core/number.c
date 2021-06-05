@@ -372,12 +372,11 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t ar
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
-        OPT_MOVE_REF(res, args[0]);
+        res = args[0];
     }
     else
     {
         mpq_ptr rat = GC_alloc_mpq_ptr();
-
         mpq_set_d(rat, MINIM_INEXACT(args[0]));
         init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }
@@ -393,13 +392,9 @@ MinimObject *minim_builtin_to_inexact(MinimEnv *env, MinimObject **args, size_t 
         return minim_argument_error("number", "inexact", 0, args[0]);
 
     if (MINIM_OBJ_INEXACTP(args[0]))
-    {
-        OPT_MOVE_REF(res, args[0]);
-    }
+        res = args[0];
     else
-    {
         init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(MINIM_EXACT(args[0])));
-    }
 
     return res;
 }

@@ -22,7 +22,6 @@ int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp
     {
         printf("; bad syntax: %s", err->sym);
         printf("\n;  in: %s:%lu:%lu\n", fname, rt->row, rt->col);
-        free_syntax_node(err);
         return 1;
     }
 
@@ -31,9 +30,6 @@ int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp
     {    
         print_minim_object(obj, env, pp);
         printf("\n");
-
-        free_minim_object(obj);
-        free_syntax_node(ast);
         return 2;
     }
     else if (obj->type != MINIM_OBJ_VOID)
@@ -41,9 +37,6 @@ int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp
         print_minim_object(obj, env, pp);
         printf("\n");
     }
-
-    free_minim_object(obj);
-    free_syntax_node(ast);
 
     return 0;
 }

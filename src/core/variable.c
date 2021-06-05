@@ -23,10 +23,11 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
         eval_ast_no_check(env, coerce_into_bool(cond) ?
                       args[1]->u.ptrs.p1 :
                       args[2]->u.ptrs.p1, &res);
-        free_minim_object(cond);
     }
     else
+    {
         res = cond;
+    }
 
     return res;
 }
@@ -59,27 +60,20 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
                         break;
                     }
 
-                    if (MINIM_CDR(it))  free_minim_object(val);
-                    else                res = fresh_minim_object(val);               
+                    if (!MINIM_CDR(it))
+                        res = val;          
                 }
-
-                RELEASE_IF_REF(val);
-                pop_env(env2);
             }
             else
             {
-                eval_ast_no_check(env, MINIM_CADR(ce_pair)->u.ptrs.p1, &val);
-                res = fresh_minim_object(val);
-                RELEASE_IF_REF(val);
+                eval_ast_no_check(env, MINIM_CADR(ce_pair)->u.ptrs.p1, &res);
             }
         }
-
-        free_minim_object(cond);
-        free_minim_object(ce_pair);
     }
 
     if (argc == 0 || !eval)
         init_minim_object(&res, MINIM_OBJ_VOID);
+
     return res;
 }
 
@@ -94,8 +88,6 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
             res = minim_builtin_begin(env, &args[1], argc - 1);
         else
             init_minim_object(&res, MINIM_OBJ_VOID);
-
-        free_minim_object(cond);
     }
     else
     {
@@ -116,8 +108,6 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
             res = minim_builtin_begin(env, &args[1], argc - 1);
         else
             init_minim_object(&res, MINIM_OBJ_VOID);
-
-        free_minim_object(cond);
     }
     else
     {
@@ -151,14 +141,12 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
     {
         env_intern_sym(env, sym->u.str.str, val);
         init_minim_object(&res, MINIM_OBJ_VOID);
-        RELEASE_IF_REF(val);
     }
     else
     {
         res = val;
     }
 
-    free_minim_object(sym);
     return res;
 }
 
@@ -179,10 +167,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     // Convert bindings to list
     unsyntax_ast(env, MINIM_DATA(args[1]), &bindings);
     if (MINIM_OBJ_THROWNP(bindings))
-    {
-        free_minim_object(name);
         return bindings;
-    }
     
     // Initialize child environment
     err = false;
@@ -205,13 +190,9 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
         
         eval_ast_no_check((alt ? env2 : env), MINIM_DATA(MINIM_CADR(bind)), &val);
         env_intern_sym(env2, MINIM_STRING(sym), val);
-        RELEASE_IF_REF(val);
 
         lam->args[i] = GC_alloc((strlen(MINIM_STRING(sym)) + 1) * sizeof(char));
         strcpy(lam->args[i], MINIM_STRING(sym));
-
-        free_minim_object(sym);
-        free_minim_object(bind);
     }
 
     // Intern lambda
@@ -220,14 +201,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     env_intern_sym(env2, MINIM_STRING(name), it);
 
     // Evaluate body
-    eval_ast_no_check(env2, MINIM_DATA(args[2]), &it);
-    res = fresh_minim_object(it);
-    RELEASE_IF_REF(it);
-
-    free_minim_object(bindings);
-    free_minim_object(name);
-    pop_env(env2);
-
+    eval_ast_no_check(env2, MINIM_DATA(args[2]), &res);
     return res;
 }
 
@@ -259,20 +233,10 @@ MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bo
         
         eval_ast_no_check((alt ? env2 : env), MINIM_DATA(MINIM_CADR(bind)), &val);
         env_intern_sym(env2, MINIM_STRING(sym), val);
-        RELEASE_IF_REF(val);
-
-        free_minim_object(sym);
-        free_minim_object(bind);
     }
 
     // Evaluate body
-    eval_ast_no_check(env2, MINIM_DATA(args[1]), &it);
-    res = fresh_minim_object(it);
-    RELEASE_IF_REF(it);
-
-    free_minim_object(bindings);
-    pop_env(env2);
-
+    eval_ast_no_check(env2, MINIM_DATA(args[1]), &res);
     return res;
 }
 
@@ -328,7 +292,6 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
         res = minim_error("not a variable", bf->data);
     }
 
-    free_minim_object(sym);
     return res;
 }
 
@@ -353,12 +316,9 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
             break;
         }
 
-        if (i + 1 == argc)      res = fresh_minim_object(val);
-        else                    free_minim_object(val);
+        if (i + 1 == argc)
+            res = val;
     }
-
-    RELEASE_IF_REF(val);
-    pop_env(env2);
 
     return res;
 }
