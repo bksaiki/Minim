@@ -517,8 +517,6 @@ int parse_str(const char* str, SyntaxNode** psyntax)
     FILE *tmp;
     int status;
 
-    GC_init(&rt);
-
     rt.idx = 0;
     rt.row = 1;
     rt.col = 0;
@@ -537,7 +535,5 @@ int parse_str(const char* str, SyntaxNode** psyntax)
     }
 
     fclose(tmp);
-    GC_finalize();
-    
     return status;
 }

@@ -13,9 +13,9 @@ void GC_init(void *stack);
 void GC_finalize();
 
 /* GC equivalent of malloc(), calloc(), and realloc() */
-void *GC_alloc(size_t size);
-void *GC_calloc(size_t nmem, size_t size);
-void *GC_realloc(void *ptr, size_t size);
+#define GC_alloc(size)              GC_alloc_opt(size, NULL, NULL)
+#define GC_calloc(nmem, size)       GC_calloc_opt(nmem, size, NULL, NULL)
+#define GC_realloc(ptr, size)       GC_realloc_opt(ptr, size, NULL, NULL)
 
 /* GC equivalent of malloc(), calloc(), and realloc() except the data
    contains no pointer data. */
@@ -27,7 +27,7 @@ void *GC_realloc(void *ptr, size_t size);
    destructor and marker functions */
 void *GC_alloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*));
 void *GC_calloc_opt(size_t nmem, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*));
-void *GC_realloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*));
+void *GC_realloc_opt(void *ptr, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*));
 
 /* Manually free pointer */
 void GC_free(void *ptr);

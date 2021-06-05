@@ -257,7 +257,7 @@ static void gc_sweep(gc_t *gc) {
 
     for (size_t i = 0; i < freec; ++i) {
         if (frees[i].dtor)  frees[i].dtor(frees[i].ptr);
-        else                free(frees[i].ptr);
+        free(frees[i].ptr);
     }
 
     gc->dirty = 0;
@@ -302,7 +302,7 @@ void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk) {
     gc_mark_sweep_if_needed(gc);
 }
 
-void gc_remove(gc_t *gc, void *ptr) {
+void gc_remove(gc_t *gc, void *ptr, int destroy) {
     size_t h, j, i, nj, nh;
 
     i = gc_hash(ptr) % gc->itemc;
@@ -314,8 +314,10 @@ void gc_remove(gc_t *gc, void *ptr) {
 
         if (gc->items[i].ptr == ptr) {
             gc->allocs -= gc->items[i].size;
-            if (gc->items[i].dtor)  gc->items[i].dtor(gc->items[i].ptr);
-            else                    free(gc->items[i].ptr);
+            if (destroy) {
+                if (gc->items[i].dtor)  gc->items[i].dtor(gc->items[i].ptr);
+                free(gc->items[i].ptr);
+            }
 
             memset(&gc->items[i], 0, sizeof(gc_block_t));
             j = i;
@@ -340,30 +342,32 @@ void gc_remove(gc_t *gc, void *ptr) {
     }
 }
 
-void *gc_resize_ptr(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk) {
-    size_t h, i;
+gc_block_t *gc_get_block(gc_t *gc, void *ptr) {
+    size_t h, i, j;
 
-    gc_mark_sweep_if_needed(gc);
     i = gc_hash(ptr) % gc->itemc;
+    j = 0;
 
     while (1) {
         h = gc->items[i].hash;
-        if (!h) return NULL;
+        if (!h || j > gc_probe(gc, i, h))
+            return NULL;
 
-        if (gc->items[i].ptr == ptr) {
-            gc->allocs -= gc->items[i].size;
-            gc->items[i].ptr = realloc(gc->items[i].ptr, size);
-            gc->items[i].size = size;
-            gc->items[i].dtor = dtor;
-            gc->items[i].mrk = mrk;
-
-            gc->allocs += size;
-            gc->dirty += size;
-            return gc->items[i].ptr;
-        }
+        if (gc->items[i].ptr == ptr)
+            return &gc->items[i];
 
         i = (i + 1) % gc->itemc;
+        ++j;
     }
+}
+
+void gc_update_block(gc_t *gc, gc_block_t *block, size_t size, gc_dtor_t dtor, gc_mark_t mrk) {
+    gc->allocs -= block->size;
+    gc->allocs += size;
+
+    block->size = size;
+    block->dtor = dtor;
+    block->mrk = mrk;
 }
 
 void gc_collect(gc_t *gc) {

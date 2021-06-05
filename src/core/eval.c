@@ -105,9 +105,8 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
     if (is_rational(str))
     {
-        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc_mpq_ptr();
 
-        mpq_init(rat);
         mpq_set_str(rat, str, 0);
         mpq_canonicalize(rat);
         init_minim_object(&res, MINIM_OBJ_EXACT, rat);
@@ -450,8 +449,6 @@ char *eval_string(char *str, size_t len)
     PrintParams pp;
     char *out;
 
-    GC_init(&ast);
-
     init_env(&env, NULL);
     minim_load_builtins(env);
     set_default_print_params(&pp);
@@ -471,8 +468,6 @@ char *eval_string(char *str, size_t len)
     free_minim_object(obj);
     free_syntax_node(ast);
     free_env(env);
-
-    GC_finalize();
 
     return out;
 }

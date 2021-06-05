@@ -49,8 +49,11 @@ gc_t *gc_create(void *stack);
 void gc_destroy(gc_t* gc);
 
 void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
-void gc_remove(gc_t *gc, void *ptr);
-void *gc_resize_ptr(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
+void gc_remove(gc_t *gc, void *ptr, int destroy);
+
+gc_block_t *gc_get_block(gc_t *gc, void *ptr);
+gc_block_t *gc_remove_block(gc_t *gc, gc_block_t *block);
+void gc_update_block(gc_t *gc, gc_block_t *block, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
 
 void gc_collect(gc_t *gc);
 

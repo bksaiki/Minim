@@ -10,6 +10,17 @@
 
 // *** Internals *** //
 
+static void GC_mpq_ptr_dtor(void *ptr) {
+    mpq_clear((mpq_ptr) ptr);
+}
+
+mpq_ptr GC_alloc_mpq_ptr()
+{
+    mpq_ptr ptr = GC_alloc_opt(sizeof(__mpq_struct), GC_mpq_ptr_dtor, NULL);
+    mpq_init(ptr);
+    return ptr;
+}
+
 bool minim_zerop(MinimObject *num)
 {
     return (MINIM_OBJ_EXACTP(num)) ?
@@ -80,9 +91,8 @@ bool minim_infinitep(MinimObject *thing)
 MinimObject *int_to_minim_number(long int x)
 {
     MinimObject *res;
-    mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
+    mpq_ptr rat = GC_alloc_mpq_ptr();
 
-    mpq_init(rat);
     mpq_set_si(rat, x, 1);
     init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     return res;
@@ -91,9 +101,8 @@ MinimObject *int_to_minim_number(long int x)
 MinimObject *uint_to_minim_number(size_t x)
 {
     MinimObject *res;
-    mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
+    mpq_ptr rat = GC_alloc_mpq_ptr();
 
-    mpq_init(rat);
     mpq_set_ui(rat, x, 1);
     init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     return res;
@@ -367,9 +376,8 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t ar
     }
     else
     {
-        mpq_ptr rat = GC_alloc(sizeof(__mpq_struct));
+        mpq_ptr rat = GC_alloc_mpq_ptr();
 
-        mpq_init(rat);
         mpq_set_d(rat, MINIM_INEXACT(args[0]));
         init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }

@@ -125,9 +125,8 @@ void copy_minim_object_h(MinimObject *dest, MinimObject *src)
     }
     else if (MINIM_OBJ_EXACTP(src))
     {
-        mpq_ptr num = GC_alloc(sizeof(__mpq_struct));
-
-        mpq_init(num);
+        mpq_ptr num = GC_alloc_mpq_ptr();
+        
         mpq_set(num, MINIM_EXACT(src));
         dest->u.ptrs.p1 = num;
     }
