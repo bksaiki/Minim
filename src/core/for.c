@@ -78,6 +78,8 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
             for (size_t i = 0; i < len; ++i)
                 iters[i] = minim_iter_next(iters[i]);
         }
+
+        GC_collect_minor();
     }   
 
     init_minim_object(&res, MINIM_OBJ_VOID);

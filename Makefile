@@ -13,7 +13,7 @@ TESTS 		:= $(shell find $(TEST_DIR) -name *.c)
 TEST_EXES 	:= $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	= -MMD -MP
-CFLAGS 		= -g -O3 -Wall -std=c11
+CFLAGS 		= -g -Wall -std=c11 -fsanitize=address
 LDFLAGS 	= -lm -lgmp
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.

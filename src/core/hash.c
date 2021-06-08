@@ -79,7 +79,11 @@ uint32_t hash_bytes(const void* data, size_t length, uint32_t seed)
 
 static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
-    mrk(gc, ((MinimHash*) ptr)->arr);
+    MinimHash *hash = (MinimHash*) ptr;
+
+    for (size_t i = 0; i < hash->size; ++i)
+        mrk(gc, hash->arr[i].arr);
+    mrk(gc, hash->arr);
 }
 
 //
@@ -89,7 +93,7 @@ static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 void init_minim_hash_table(MinimHash **pht)
 {
     MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
-    ht->arr = GC_alloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashRow));
+    ht->arr = GC_alloc_atomic(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashRow));
     ht->size = MINIM_DEFAULT_HASH_TABLE_SIZE;
     ht->elems = 0;
     *pht = ht;
@@ -104,7 +108,7 @@ void init_minim_hash_table(MinimHash **pht)
 void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
 {
     MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
-    ht->arr = GC_alloc(src->size * sizeof(MinimHashRow));
+    ht->arr = GC_alloc_atomic(src->size * sizeof(MinimHashRow));
     ht->size = src->size;
     ht->elems = src->elems;
     *pht = ht;
@@ -126,7 +130,7 @@ static void rehash_table(MinimHash *ht)
     uint32_t hash, reduc;
     size_t newSize = 2 * ht->size;
     
-    htr = GC_alloc(newSize * sizeof(MinimHashRow));
+    htr = GC_alloc_atomic(newSize * sizeof(MinimHashRow));
     for (size_t i = 0; i < newSize; ++i)
     {
         htr[i].arr = NULL;

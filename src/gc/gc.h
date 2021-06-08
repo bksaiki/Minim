@@ -34,6 +34,7 @@ void GC_free(void *ptr);
 
 /* Manually run garbage collection */
 void GC_collect();
+void GC_collect_minor();
 
 /* Register destructor and marker functions for objects.  */
 void GC_register_dtor(void *ptr, void (*func)(void*));

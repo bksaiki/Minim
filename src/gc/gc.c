@@ -69,6 +69,10 @@ void GC_collect() {
     gc_collect(main_gc);
 }
 
+void GC_collect_minor() {
+    gc_collect_young(main_gc);
+}
+
 void GC_register_dtor(void *ptr, void (*func)(void*)) {
     gc_register_dtor(main_gc, ptr, func);
 }

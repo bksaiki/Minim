@@ -15,9 +15,7 @@
 /* GC Parameters */
 #define GC_MIN_AUTO_COLLECT_SIZE     (4 * 1024 * 1024)
 #define GC_TABLE_LOAD_FACTOR         0.5
-
-/* Array type forces value on stack */
-typedef void *gc_addr_t[1];
+#define GC_MINOR_PER_MAJOR           15
 
 /* Destructor signature */
 typedef void (*gc_dtor_t)(void*);
@@ -36,11 +34,12 @@ typedef struct gc_block_t {
 
 /* Main GC type */
 typedef struct gc_t {
-    gc_block_t *items;
+    gc_block_t *young, *old;
     void *stack_bottom;
-    double load_factor;
-    size_t itemc, nitems;
+    size_t youngc, nyoung;
+    size_t oldc, nold;
     size_t allocs, dirty;
+    size_t cycles;
 } gc_t;
 
 /************ gc_t interface ************/
@@ -52,10 +51,10 @@ void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
 void gc_remove(gc_t *gc, void *ptr, int destroy);
 
 gc_block_t *gc_get_block(gc_t *gc, void *ptr);
-gc_block_t *gc_remove_block(gc_t *gc, gc_block_t *block);
 void gc_update_block(gc_t *gc, gc_block_t *block, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
 
 void gc_collect(gc_t *gc);
+void gc_collect_young(gc_t *gc);
 
 void gc_register_dtor(gc_t *gc, void *ptr, gc_dtor_t dtor);
 void gc_register_mrk(gc_t *gc, void *ptr, gc_mark_t mrk);
