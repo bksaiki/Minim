@@ -453,10 +453,7 @@ MinimObject *minim_builtin_member(MinimEnv *env, MinimObject **args, size_t argc
     for (MinimObject *it = args[1]; MINIM_CAR(it); it = MINIM_CDR(it))
     {
         if (minim_equalp(MINIM_CAR(it), args[0]))
-        {
-            copy_minim_object(&res, it);
-            return res;
-        }
+            return it;
     }
 
 
@@ -525,7 +522,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, MinimObject **args, size_t argc)
 
     it = args[argc - 1];
     for (; i < valc; ++i, it = MINIM_CDR(it))
-        copy_minim_object(&vals[i], MINIM_CAR(it));
+        vals[i] = MINIM_CAR(it);
 
     if (args[0]->type == MINIM_OBJ_FUNC)
     {
@@ -645,7 +642,7 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
     {
         vals = GC_alloc(2 * sizeof(MinimObject*));
         vals[0] = MINIM_CAR(li);
-        copy_minim_object(&vals[1], init);
+        vals[1] = init;
 
         if (proc->type == MINIM_OBJ_FUNC)
         {
@@ -686,10 +683,7 @@ MinimObject *minim_builtin_assoc(MinimEnv *env, MinimObject **args, size_t argc)
         for (MinimObject *it = args[1]; it; it = MINIM_CDR(it))
         {
             if (minim_equalp(args[0], MINIM_CAAR(it)))
-            {
-                copy_minim_object(&res, MINIM_CAR(it));
-                return res;
-            }
+                return MINIM_CAR(it);
         }
     }
 

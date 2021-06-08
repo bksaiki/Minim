@@ -120,7 +120,7 @@ void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
         ht->arr[i].len = src->arr[i].len;
 
         for (size_t j = 0; j < src->arr[i].len; ++j)
-            copy_minim_object(&ht->arr[i].arr[j], src->arr[i].arr[j]);
+            ht->arr[i].arr[j] = src->arr[i].arr[j];
     }
 }
 
@@ -168,8 +168,6 @@ static void rehash_table(MinimHash *ht)
 
 static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 {
-    MinimObject *ck, *cv;
-
     Buffer *bf = minim_obj_to_bytes(k);
     uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
     uint32_t reduc = hash % ht->size;
@@ -180,30 +178,24 @@ static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 
     if (ht->arr[reduc].len == 0)
     {
-        copy_minim_object(&ck, k);
-        copy_minim_object(&cv, v);
-
         ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
         ht->arr[reduc].len = 1;
-        init_minim_object(&ht->arr[reduc].arr[0], MINIM_OBJ_PAIR, ck, cv);
+        init_minim_object(&ht->arr[reduc].arr[0], MINIM_OBJ_PAIR, k, v);
     }
     else
     {      
-        copy_minim_object(&cv, v);
-
         // Check if key already exists
         for (size_t i = 0; i < ht->arr[reduc].len; ++i)
         {
             if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
             {
-                MINIM_CDR(ht->arr[reduc].arr[i]) = cv;
+                MINIM_CDR(ht->arr[reduc].arr[i]) = v;
                 return;
             }
         }
 
-        copy_minim_object(&ck, k);
         ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
-        init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, ck, cv);
+        init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, k, v);
         ++ht->arr[reduc].len;
     }
 }
@@ -233,7 +225,7 @@ static MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
     for (size_t i = 0; i < ht->arr[reduc].len; ++i)
     {
         if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
-            copy_minim_object(&cp, MINIM_CDR(ht->arr[reduc].arr[i]));
+            cp = MINIM_CDR(ht->arr[reduc].arr[i]);
     }
 
     return cp;
@@ -259,23 +251,22 @@ static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
 
 static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 {
-    MinimObject *head, *it, *cp;
+    MinimObject *head, *it;
     bool first = true;
 
     for (size_t i = 0; i < ht->size; ++i)
     {
         for (size_t j = 0; j < ht->arr[i].len; ++j)
         {
-            copy_minim_object(&cp, ht->arr[i].arr[j]);
             if (first)
             {
-                init_minim_object(&head, MINIM_OBJ_PAIR, cp, NULL);
+                init_minim_object(&head, MINIM_OBJ_PAIR, ht->arr[i].arr[j], NULL);
                 it = head;
                 first = false;
             }
             else
             {
-                init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, cp, NULL);
+                init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, ht->arr[i].arr[j], NULL);
                 it = MINIM_CDR(it);
             }
         }

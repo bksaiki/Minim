@@ -58,13 +58,13 @@ void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src)
                 table->rows[i].names[j] = GC_alloc_atomic((strlen(src->rows[i].names[j]) + 1) * sizeof(char));
                 strcpy(table->rows[i].names[j], src->rows[i].names[j]);
 
-                copy_minim_object(&cp->obj, it->obj);
+                cp->obj = it->obj;
                 table->rows[i].vals[j] = cp;
 
                 for (it = it->parent; it; it = it->parent)
                 {
                     tmp = GC_alloc(sizeof(MinimSymbolEntry));
-                    copy_minim_object(&tmp->obj, it->obj);
+                    tmp->obj = it->obj;
                     cp->parent = tmp;
                     cp = tmp;
                 }

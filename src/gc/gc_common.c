@@ -590,13 +590,14 @@ static void gc_sweep_all(gc_t *gc) {
     }
 }
 
-static void gc_collect_if_needed(gc_t *gc) {
-    if (gc->dirty > GC_MIN_AUTO_COLLECT_SIZE) {
-        if (gc->cycles >= GC_MINOR_PER_MAJOR)
-            gc_collect(gc);
-        else
-            gc_collect_young(gc);
-    }
+#define gc_collect_if_needed(gc)                    \
+{                                                   \
+    if (gc->dirty > GC_MIN_AUTO_COLLECT_SIZE) {     \
+        if (gc->cycles >= GC_MINOR_PER_MAJOR)       \
+            gc_collect(gc);                         \
+        else                                        \
+            gc_collect_young(gc);                   \
+    }                                               \
 }
 
 /*************** Interface ******************/

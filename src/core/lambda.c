@@ -117,10 +117,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     }
 
     for (size_t i = 0; i < lam->argc; ++i)
-    {
-        copy_minim_object(&val, args[i]);
-        env_intern_sym(env2, lam->args[i], val);
-    }
+        env_intern_sym(env2, lam->args[i], args[i]);
 
     if (lam->rest)
     {
@@ -129,7 +126,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
         rest = GC_alloc(rcount * sizeof(MinimObject*));
         for (size_t i = 0; i < rcount; ++i)
-            copy_minim_object(&rest[i], args[lam->argc + i]);
+            rest[i] = args[lam->argc + i];
 
         val = minim_list(rest, rcount);
         env_intern_sym(env2, lam->rest, val);

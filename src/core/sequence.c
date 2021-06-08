@@ -43,8 +43,8 @@ void copy_minim_seq(MinimSeq **pseq, MinimSeq *src)
     {
         MinimObject *begin, *end;
 
-        copy_minim_object(&begin, src->state);
-        copy_minim_object(&end, src->end);
+        begin = src->state;
+        end = src->state;
         seq->state = begin;
         seq->end = end;
         seq->type = src->type;
@@ -58,7 +58,7 @@ MinimObject *minim_seq_get(MinimSeq *seq)
     MinimObject *obj;
 
     if (seq->type == MINIM_SEQ_NUM_RANGE)
-        copy_minim_object(&obj, seq->state);
+        obj = seq->state;
     else
         obj = NULL;
 
@@ -69,13 +69,15 @@ void minim_seq_next(MinimSeq *seq)
 {
     if (seq->type == MINIM_SEQ_NUM_RANGE)
     {
-        MinimObject *state, *one;
+        MinimObject *state, *one, *next;
 
         state = seq->state;
         one = int_to_minim_number(1);
-        mpq_add(MINIM_EXACT(state), MINIM_EXACT(state), MINIM_EXACT(one));
+        init_minim_object(&next, MINIM_OBJ_EXACT, gc_alloc_mpq_ptr());
+        mpq_add(MINIM_EXACT(next), MINIM_EXACT(state), MINIM_EXACT(one));
 
-        seq->done = (minim_number_cmp(state, seq->end) == 0);     
+        seq->done = (minim_number_cmp(next, seq->end) == 0);
+        seq->state = next;
     }
 }
 
@@ -107,15 +109,15 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
 
     if (argc == 2)
     {
-        copy_minim_object(&begin, args[0]);
-        copy_minim_object(&end, args[1]);
+        begin = args[0];
+        end = args[1];
         if (minim_number_cmp(begin, end) > 0)
             return minim_error("expected [begin, end)", "in-range");
     }
     else
     {
         begin = int_to_minim_number(0);
-        copy_minim_object(&end, args[0]);
+        end = args[0];
     }
 
     init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
@@ -132,11 +134,7 @@ MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t
     if (argc == 1 && !minim_exact_nonneg_intp((args[0])))
         return minim_argument_error("non-negative exact integer", "in-naturals", 1, args[0]);
 
-    if (argc == 1)
-        copy_minim_object(&begin, args[0]);
-    else
-        begin = int_to_minim_number(0);
-
+    begin = (argc == 1) ? args[0] : int_to_minim_number(0);
     end = int_to_minim_number(-1);
     init_minim_seq(&seq, MINIM_SEQ_NUM_RANGE, begin, end);
     init_minim_object(&res, MINIM_OBJ_SEQ, seq);
