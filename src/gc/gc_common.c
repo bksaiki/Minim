@@ -216,7 +216,6 @@ static void gc_mark_ptr_young(gc_t *gc, void *ptr) {
 
     i = gc_hash(ptr) % gc->youngc;
     j = 0;
-
     while (1) {
         h = gc->young[i].hash;
         if (!h || j > gc_probe(i, h, gc->youngc))
@@ -330,6 +329,7 @@ static void gc_mark_young(gc_t *gc) {
     if (gc->nyoung == 0)
         return;
 
+    // mark young roots
     for (size_t i = 0; i < gc->youngc; ++i) {
         if (gc->young[i].hash && gc->young[i].flags & GC_BLOCK_ROOT) {
             gc->young[i].flags |= GC_BLOCK_MARK;
@@ -338,6 +338,19 @@ static void gc_mark_young(gc_t *gc) {
                     gc_mark_ptr_young(gc, ((void**) gc->young[i].ptr)[k]);
             } else if (gc->young[i].mrk != (gc_mark_t) GC_atomic_mrk) {    // custom marker
                 gc->young[i].mrk(gc_mark_ptr_young, gc, gc->young[i].ptr);
+            }
+        }
+    }
+
+    // mark all old blocks, descent will stop if we mark old block
+    for (size_t i = 0; i < gc->oldc; ++i) {
+        if (gc->old[i].hash && !(gc->old[i].flags & GC_BLOCK_MARK)) {
+            gc->old[i].flags |= GC_BLOCK_MARK;
+            if (!gc->old[i].mrk) {                                        // default (conservative)
+                for (size_t k = 0; k < gc->old[i].size / POINTER_SIZE; ++k)
+                    gc_mark_ptr_young(gc, ((void**) gc->old[i].ptr)[k]);
+            } else if (gc->old[i].mrk != (gc_mark_t) GC_atomic_mrk) {    // custom marker
+                gc->old[i].mrk(gc_mark_ptr_young, gc, gc->old[i].ptr);
             }
         }
     }
@@ -384,6 +397,19 @@ static void gc_mark_all(gc_t *gc) {
     memset(&env, 0, sizeof(jmp_buf));
     setjmp(env);
     mark_stack(gc);
+}
+
+static void gc_unmark(gc_t *gc) {
+    // clear young generation
+    for (size_t i = 0; i < gc->youngc; ++i) {
+        if (gc->young[i].hash)
+            gc->young[i].flags &= ~GC_BLOCK_MARK;
+    }
+    // clear old generation
+    for (size_t i = 0; i < gc->oldc; ++i) {
+        if (gc->old[i].hash)
+            gc->old[i].flags &= ~GC_BLOCK_MARK;
+    }
 }
 
 static void gc_move_to_old(gc_t *gc) {
@@ -454,6 +480,12 @@ static void gc_sweep_young(gc_t *gc) {
     gc->dirty = 0;
     free(frees);
     gc_move_to_old(gc);
+
+    // clear old generation
+    for (size_t i = 0; i < gc->oldc; ++i) {
+        if (gc->old[i].hash)
+            gc->old[i].flags &= ~GC_BLOCK_MARK;
+    }
 }
 
 static void gc_sweep_all(gc_t *gc) {
@@ -551,13 +583,14 @@ static void gc_sweep_all(gc_t *gc) {
     gc_shrink_old_pool(gc);
     gc_move_to_old(gc);
 
+    // clear old generation
     for (size_t i = 0; i < gc->oldc; ++i) {
         if (gc->old[i].hash)
             gc->old[i].flags &= ~GC_BLOCK_MARK;
     }
 }
 
-static void gc_mark_sweep_if_needed(gc_t *gc) {
+static void gc_collect_if_needed(gc_t *gc) {
     if (gc->dirty > GC_MIN_AUTO_COLLECT_SIZE) {
         if (gc->cycles >= GC_MINOR_PER_MAJOR)
             gc_collect(gc);
@@ -594,7 +627,7 @@ void gc_destroy(gc_t* gc) {
 void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk) {
     gc_resize_if_needed(gc); 
     gc_add_young_pool(gc, ptr, size, dtor, mrk, 1);
-    gc_mark_sweep_if_needed(gc);
+    gc_collect_if_needed(gc);
 }
 
 void gc_remove(gc_t *gc, void *ptr, int destroy) {
@@ -721,13 +754,13 @@ void gc_update_block(gc_t *gc, gc_block_t *block, size_t size, gc_dtor_t dtor, g
 void gc_collect(gc_t *gc) {
     gc_mark_all(gc);
     gc_sweep_all(gc);
-    ++gc->cycles;
+    gc->cycles = 0;
 }
 
 void gc_collect_young(gc_t *gc) {
     gc_mark_young(gc);
     gc_sweep_young(gc);
-    gc->cycles = 0;
+    ++gc->cycles;
 }
 
 void gc_register_dtor(gc_t *gc, void *ptr, gc_dtor_t dtor) {
@@ -769,6 +802,7 @@ size_t gc_get_reachable(gc_t *gc) {
             total += gc->old[i].size;
     }
 
+    gc_unmark(gc);
     return total;
 }
 
@@ -786,6 +820,7 @@ size_t gc_get_collectable(gc_t *gc) {
             total += gc->old[i].size;
     }
 
+    gc_unmark(gc);
     return total;
 }
 

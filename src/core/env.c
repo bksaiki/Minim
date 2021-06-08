@@ -18,13 +18,20 @@ static void add_metadata(MinimObject *obj, const char *str)
     }
 }
 
+static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimEnv *env = (MinimEnv*) ptr;
+    mrk(gc, env->parent);
+    mrk(gc, env->table);
+}
+
 //
 //  Visible functions
 //
 
 void init_env(MinimEnv **penv, MinimEnv *parent)
 {
-    MinimEnv *env = GC_alloc(sizeof(MinimEnv));
+    MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
     env->parent = parent;
     init_minim_symbol_table(&env->table);
@@ -40,7 +47,7 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
 {
     if (src->parent)
     {
-        MinimEnv *env = GC_alloc(sizeof(MinimEnv));
+        MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
         rcopy_env(&env->parent, src->parent);
         copy_minim_symbol_table(&env->table, src->table);

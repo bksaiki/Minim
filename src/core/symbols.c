@@ -7,7 +7,8 @@
 
 #define hashseed   ((uint32_t)  0xdeadbeef)
 
-static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void *ptr) {
+static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
     mrk(gc, ((MinimSymbolTable*) ptr)->rows);
 }
 
