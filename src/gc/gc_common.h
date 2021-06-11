@@ -17,6 +17,13 @@
 #define GC_TABLE_LOAD_FACTOR         0.5
 #define GC_MINOR_PER_MAJOR           15
 
+/* Heap heuristic */
+#if defined (_WIN32) || defined (_WIN64)
+#define GC_HEAP_HEURISTIC   0
+#else
+#define GC_HEAP_HEURISTIC   1
+#endif
+
 /* Destructor signature */
 typedef void (*gc_dtor_t)(void*);
 

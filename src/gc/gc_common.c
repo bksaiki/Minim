@@ -210,9 +210,11 @@ static void gc_shrink_old_pool(gc_t *gc) {
 static void gc_mark_ptr_young(gc_t *gc, void *ptr) {
     size_t h, i, j;
 
+#if GC_HEAP_HEURISTIC
     // decent heuristic for possible "heap" location
     if (ptr < (void*) gc_mark_ptr_young || ptr > gc->stack_bottom)
         return;
+#endif
 
     i = gc_hash(ptr) % gc->youngc;
     j = 0;
@@ -244,9 +246,11 @@ static void gc_mark_ptr_young(gc_t *gc, void *ptr) {
 static void gc_mark_ptr_all(gc_t *gc, void *ptr) {
     size_t h, i, j;
 
+#if GC_HEAP_HEURISTIC
     // decent heuristic for possible "heap" location
     if (ptr < (void*) gc_mark_ptr_all || ptr > gc->stack_bottom)
         return;
+#endif
 
     // try younger generation first
     i = gc_hash(ptr) % gc->youngc;
