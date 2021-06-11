@@ -26,6 +26,8 @@ int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp
     }
 
     eval_ast(env, ast, &obj);
+    GC_collect();
+
     if (obj->type == MINIM_OBJ_ERR)
     {    
         print_minim_object(obj, env, pp);

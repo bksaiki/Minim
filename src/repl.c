@@ -79,6 +79,8 @@ int minim_repl(uint32_t flags)
 
         last_readf = rt.flags;
         eval_ast(env, ast, &obj);
+        GC_collect();
+
         if (obj->type == MINIM_OBJ_ERR)
         {    
             print_minim_object(obj, env, &pp);

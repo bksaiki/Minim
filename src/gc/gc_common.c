@@ -7,11 +7,11 @@
 #include <stdio.h>
 #endif
 
-#define NUM_PRIME_SIZES     25
+#define NUM_PRIME_SIZES     23
 #define POINTER_SIZE        sizeof(void*)
 
 static size_t PRIME_SIZES[NUM_PRIME_SIZES] = {
-    11,       29,       53,       97,        193,
+                        53,       97,        193,
     389,      769,      1543,     3079,      6151, 
     12289,    24593,    49157,    98137,     196613,
     393241,   786433,   1572869,  3145739,   6291469,
