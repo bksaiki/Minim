@@ -20,7 +20,7 @@ int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj);
 // Recursively evaluates an ast.
 int unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj);
 
-// Evaluates an expression and returns a string. The result must be freed.
+// Evaluates an expression and returns a string.
 char *eval_string(char *str, size_t len);
 
 #endif

@@ -1,6 +1,11 @@
+# binary
 build/
-tmp/
-*.o
 minim
 minim.exe
+
+# tmp
+tmp/
 tests/sandbox*
+
+# profile
+gmon.out

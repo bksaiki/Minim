@@ -8,6 +8,9 @@
 
 // Internals
 
+/* Allocates mpq struct that can be GC'd */
+mpq_ptr gc_alloc_mpq_ptr();
+
 bool minim_zerop(MinimObject *num);
 bool minim_positivep(MinimObject *num);
 bool minim_negativep(MinimObject *num);

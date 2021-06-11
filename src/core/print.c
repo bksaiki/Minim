@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "../common/buffer.h"
 #include "../common/read.h"
 #include "error.h"
@@ -58,17 +59,16 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         char *str;
         size_t len;
 
-        str = malloc(128 * sizeof(char));
+        str = GC_alloc_atomic(128 * sizeof(char));
         len = gmp_snprintf(str, 128, "%Qd", MINIM_EXACT(obj));
 
         if (len >= 128)
         {
-            str = realloc(str, (len + 1) * sizeof(char));
+            str = GC_realloc_atomic(str, (len + 1) * sizeof(char));
             len = gmp_snprintf(str, len, "%Qd", MINIM_EXACT(obj));
         }
 
         writes_buffer(bf, str);
-        free(str);
     }
     else if (MINIM_OBJ_INEXACTP(obj))
     {
@@ -267,7 +267,6 @@ int print_to_port(MinimObject *obj, MinimEnv *env, PrintParams *pp, FILE *stream
     init_buffer(&bf);
     status = print_object(obj, env, bf, pp);
     fputs(bf->data, stream);
-    free_buffer(bf);
 
     return status;
 }
@@ -280,7 +279,6 @@ char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp)
     init_buffer(&bf);
     print_object(obj, env, bf, pp);
     str = release_buffer(bf);
-    free_buffer(bf);
 
     return str;
 }

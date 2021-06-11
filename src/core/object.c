@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "env.h"
 #include "error.h"
 #include "iter.h"
@@ -18,22 +19,55 @@
 
 // Visible functions
 
+static void gc_minim_object_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimObject *obj = (MinimObject*) ptr;
+
+    switch (obj->type)
+    {
+    case MINIM_OBJ_SYM:
+    case MINIM_OBJ_STRING:
+        mrk(gc, MINIM_STRING(obj));
+        break;
+
+    case MINIM_OBJ_EXACT:
+    case MINIM_OBJ_ERR:
+    case MINIM_OBJ_CLOSURE:
+    case MINIM_OBJ_AST:
+    case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_HASH:
+        mrk(gc, MINIM_DATA(obj));
+        break;
+
+    case MINIM_OBJ_VECTOR:
+        mrk(gc, MINIM_VECTOR_ARR(obj));
+        break;
+
+    case MINIM_OBJ_PAIR:
+        mrk(gc, MINIM_CAR(obj));
+        mrk(gc, MINIM_CDR(obj));
+        break;
+    
+    default:
+        break;
+    }
+}
+
 void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
 {
     MinimObject *obj;
 
-    obj = malloc(sizeof(MinimObject));
+    obj = GC_alloc_opt(sizeof(MinimObject), NULL, gc_minim_object_mrk);
     obj->type = type;
-    obj->flags = MINIM_OBJ_OWNER;
 
     // if (type == MINIM_OBJ_VOID)
     if (type == MINIM_OBJ_EXIT)
     {
-        obj->u.ints.i1 = va_arg(vargs, int);
+        obj->u.ints.i1 = va_arg(vargs, long);
     }
     else if (type == MINIM_OBJ_BOOL)
     {
-        obj->u.ints.i1 = va_arg(vargs, int);
+        obj->u.ints.i1 = va_arg(vargs, long);
     }
     else if (type == MINIM_OBJ_EXACT)
     {
@@ -46,7 +80,7 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     else if (type == MINIM_OBJ_SYM)
     {
         char *src = va_arg(vargs, char*);
-        obj->u.str.str = malloc((strlen(src) + 1) * sizeof(char));
+        obj->u.str.str = GC_alloc_atomic((strlen(src) + 1) * sizeof(char));
         strcpy(obj->u.str.str, src);
     }
     else if (type == MINIM_OBJ_ERR)
@@ -100,157 +134,84 @@ void init_minim_object(MinimObject **pobj, MinimObjectType type, ...)
     va_end(rest);
 }
 
-static void ref_minim_object_h(MinimObject *dest, MinimObject *src)
+void copy_minim_object(MinimObject **pobj, MinimObject *src)
 {
-    switch (src->type)
-    {
-    case MINIM_OBJ_BOOL:
-    case MINIM_OBJ_EXIT:
-        dest->u = src->u;
-        dest->flags |= MINIM_OBJ_OWNER; // override
-        break;
+    MinimObject *obj = GC_alloc_opt(sizeof(MinimObject), NULL, gc_minim_object_mrk);
+    obj->type = src->type;
+    *pobj = obj;
 
-    default:
-        dest->u = src->u;
-        break;
-    }
-}
-
-void copy_minim_object_h(MinimObject *dest, MinimObject *src)
-{
     if (src->type == MINIM_OBJ_BOOL || src->type == MINIM_OBJ_EXIT)
     {
-        dest->u.ints.i1 = dest->u.ints.i2;
+        obj->u.ints.i1 = src->u.ints.i1;
     }
     else if (MINIM_OBJ_EXACTP(src))
     {
-        mpq_ptr num = malloc(sizeof(__mpq_struct));
-
-        mpq_init(num);
+        mpq_ptr num = gc_alloc_mpq_ptr();
+        
         mpq_set(num, MINIM_EXACT(src));
-        dest->u.ptrs.p1 = num;
+        obj->u.ptrs.p1 = num;
     }
     else if (MINIM_OBJ_INEXACTP(src))
     {
-        MINIM_INEXACT(dest) = MINIM_INEXACT(src);
+        MINIM_INEXACT(obj) = MINIM_INEXACT(src);
     }
     else if (src->type == MINIM_OBJ_SYM || src->type == MINIM_OBJ_STRING)
     {
-        char *str = ((char*) src->u.str.str);
-        dest->u.str.str = malloc((strlen(str) + 1) * sizeof(char));
-        strcpy(dest->u.str.str, str);
+        obj->u.str.str = GC_alloc_atomic((strlen(src->u.str.str) + 1) * sizeof(char));
+        strcpy(obj->u.str.str, src->u.str.str);
     }
     else if (src->type == MINIM_OBJ_ERR)
     {
         MinimError *err;
 
         copy_minim_error(&err, src->u.ptrs.p1);
-        dest->u.ptrs.p1 = err;
+        obj->u.ptrs.p1 = err;
     }
     else if (src->type == MINIM_OBJ_PAIR)
     {
-        if (src->u.pair.car)    copy_minim_object(&dest->u.pair.car, src->u.pair.car);
-        else                    dest->u.pair.car = NULL;
+        if (src->u.pair.car)    copy_minim_object(&obj->u.pair.car, src->u.pair.car);
+        else                    obj->u.pair.car = NULL;
 
-        if (src->u.pair.cdr)    copy_minim_object(&dest->u.pair.cdr, src->u.pair.cdr);
-        else                    dest->u.pair.cdr = NULL;
+        if (src->u.pair.cdr)    copy_minim_object(&obj->u.pair.cdr, src->u.pair.cdr);
+        else                    obj->u.pair.cdr = NULL;
     }
     else if (src->type == MINIM_OBJ_VOID || src->type == MINIM_OBJ_FUNC ||
                 src->type == MINIM_OBJ_SYNTAX)
     {
-        dest->u.ptrs.p1 = src->u.ptrs.p1;   // no copy
+        obj->u.ptrs.p1 = src->u.ptrs.p1;   // no copy
     }
     else if (src->type == MINIM_OBJ_CLOSURE)
     {
         MinimLambda *lam;
 
         copy_minim_lambda(&lam, src->u.ptrs.p1);
-        dest->u.ptrs.p1 = lam;
+        obj->u.ptrs.p1 = lam;
     }
     else if (src->type == MINIM_OBJ_AST)
     {
         SyntaxNode *node;
         copy_syntax_node(&node, src->u.ptrs.p1);
-        dest->u.ptrs.p1 = node;
+        obj->u.ptrs.p1 = node;
     }
     else if (src->type == MINIM_OBJ_SEQ)
     {
         MinimSeq *seq;
         copy_minim_seq(&seq, src->u.ptrs.p1);
-        dest->u.ptrs.p1 = seq;
+        obj->u.ptrs.p1 = seq;
     }
     else if (src->type == MINIM_OBJ_HASH)
     {
         MinimHash *ht;
         copy_minim_hash_table(&ht, src->u.ptrs.p1);
-        dest->u.ptrs.p1 = ht;
+        obj->u.ptrs.p1 = ht;
     }
     else if (src->type == MINIM_OBJ_VECTOR)
     {
-        dest->u.vec.arr = malloc(src->u.vec.len * sizeof(MinimObject*));
-        dest->u.vec.len = src->u.vec.len;
+        obj->u.vec.arr = GC_alloc(src->u.vec.len * sizeof(MinimObject*));
+        obj->u.vec.len = src->u.vec.len;
         for (size_t i = 0; i < src->u.vec.len; ++i)
-            dest->u.vec.arr[i] = copy2_minim_object(src->u.vec.arr[i]);
+            copy_minim_object(&obj->u.vec.arr[i], src->u.vec.arr[i]);
     }
-}
-
-void copy_minim_object(MinimObject **pobj, MinimObject *src)
-{
-    MinimObject *obj = malloc(sizeof(MinimObject));
-    obj->type = src->type;
-    obj->flags = src->flags;
-    *pobj = obj;
-
-    if (MINIM_OBJ_OWNERP(obj))  copy_minim_object_h(obj, src);
-    else                        ref_minim_object_h(obj, src);
-}
-
-void ref_minim_object(MinimObject **pobj, MinimObject *src)
-{
-    MinimObject *obj = malloc(sizeof(MinimObject));
-    obj->type = src->type;
-    obj->flags = (MINIM_OBJ_OWNERP(src) ? src->flags ^ MINIM_OBJ_OWNER : src->flags);
-    *pobj = obj;
-
-    ref_minim_object_h(obj, src);
-}
-
-void free_minim_object(MinimObject *obj)
-{
-    if (MINIM_OBJ_OWNERP(obj))
-    {
-        if (obj->type == MINIM_OBJ_PAIR)
-        {
-            if (obj->u.pair.car) free_minim_object(obj->u.pair.car);
-            if (obj->u.pair.cdr) free_minim_object(obj->u.pair.cdr);
-        }
-        else if (obj->type == MINIM_OBJ_VECTOR)
-        {
-            for (size_t i = 0; i < obj->u.vec.len; ++i)
-                free_minim_object(obj->u.vec.arr[i]);
-            free(obj->u.vec.arr);
-        }
-        else if (obj->type == MINIM_OBJ_EXACT)
-        {
-            mpq_clear(MINIM_EXACT(obj));
-            free(MINIM_EXACT(obj));
-        }
-        else if (obj->type == MINIM_OBJ_CLOSURE)    free_minim_lambda(obj->u.ptrs.p1);
-        else if (obj->type == MINIM_OBJ_SEQ)        free_minim_seq(obj->u.ptrs.p1);
-        else if (obj->type == MINIM_OBJ_HASH)       free_minim_hash_table(obj->u.ptrs.p1);
-        else if (obj->type == MINIM_OBJ_ERR)        free_minim_error(obj->u.ptrs.p1);
-        else if (obj->type == MINIM_OBJ_STRING)     free(obj->u.str.str);
-        else if (obj->type == MINIM_OBJ_SYM)        free(obj->u.str.str);
-    }
-
-    free(obj);
-}
-
-void free_minim_objects(MinimObject **objs, size_t count)
-{
-    for (size_t i = 0; i < count; ++i)
-        if (objs[i]) free_minim_object(objs[i]);
-    free(objs);
 }
 
 bool minim_equalp(MinimObject *a, MinimObject *b)
@@ -297,31 +258,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     default:
         return false;
     }
-}
-
-MinimObject *fresh_minim_object(MinimObject *src)
-{
-    MinimObject *cp;
-
-    if (MINIM_OBJ_OWNERP(src))
-        return src;
-
-    cp = malloc(sizeof(MinimObject));
-    cp->type = src->type;
-    cp->flags = src->flags | MINIM_OBJ_OWNER;
-    copy_minim_object_h(cp, src);
-
-    return cp;
-}
-
-MinimObject *copy2_minim_object(MinimObject *src)
-{
-    MinimObject *cp = malloc(sizeof(MinimObject));
-    cp->type = src->type;
-    cp->flags = src->flags | MINIM_OBJ_OWNER;
-    copy_minim_object_h(cp, src);
-
-    return cp;
 }
 
 Buffer* minim_obj_to_bytes(MinimObject *obj)

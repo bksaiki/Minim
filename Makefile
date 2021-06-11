@@ -13,7 +13,7 @@ TESTS 		:= $(shell find $(TEST_DIR) -name *.c)
 TEST_EXES 	:= $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	= -MMD -MP
-CFLAGS 		= -g -O2 -Wall -std=c11
+CFLAGS 		= -g -Wall -std=c11 -O3
 LDFLAGS 	= -lm -lgmp
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
@@ -27,7 +27,7 @@ minim: configure $(OBJS)
 configure:
 	cd src && $(MAKE) config
 
-tests: unit-tests lib-tests;
+tests: minim unit-tests lib-tests;
 
 unit-tests: $(TEST_EXES)
 	$(TEST_DIR)/test.sh $(TEST_EXES)

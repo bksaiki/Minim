@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "env.h"
 #include "lambda.h"
 
@@ -12,10 +13,16 @@ static void add_metadata(MinimObject *obj, const char *str)
     {
         MinimLambda *lam = obj->u.ptrs.p1;
 
-        if (lam->name)      free(lam->name);
-        lam->name = malloc((strlen(str) + 1) * sizeof(char));
+        lam->name = GC_alloc_atomic((strlen(str) + 1) * sizeof(char));
         strcpy(lam->name, str);
     }
+}
+
+static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    MinimEnv *env = (MinimEnv*) ptr;
+    mrk(gc, env->parent);
+    mrk(gc, env->table);
 }
 
 //
@@ -24,7 +31,7 @@ static void add_metadata(MinimObject *obj, const char *str)
 
 void init_env(MinimEnv **penv, MinimEnv *parent)
 {
-    MinimEnv *env = malloc(sizeof(MinimEnv));
+    MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
     env->parent = parent;
     init_minim_symbol_table(&env->table);
@@ -40,7 +47,7 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
 {
     if (src->parent)
     {
-        MinimEnv *env = malloc(sizeof(MinimEnv));
+        MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
         rcopy_env(&env->parent, src->parent);
         copy_minim_symbol_table(&env->table, src->table);
@@ -69,18 +76,14 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
-    MinimObject *owned = fresh_minim_object(obj);
-
-    add_metadata(owned, sym);
-    minim_symbol_table_add(env->table, sym, owned);
+    add_metadata(obj, sym);
+    minim_symbol_table_add(env->table, sym, obj);
 }
 
 int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
 {
-    MinimObject *owned = fresh_minim_object(obj);
-
-    add_metadata(owned, sym);
-    minim_symbol_table_add(env->table, sym, owned);
+    add_metadata(obj, sym);
+    minim_symbol_table_add(env->table, sym, obj);
     return 0;
 }
 
@@ -95,37 +98,6 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
     }
 
     return NULL;
-}
-
-MinimObject *env_peek_sym(MinimEnv *env, const char *sym)
-{
-    MinimObject *val;
-
-    for (MinimEnv *it = env; it; it = it->parent)
-    {   
-        val = minim_symbol_table_peek(it->table, sym);
-        if (val)    return val;
-    }
-
-    return NULL;
-}
-
-void free_env(MinimEnv *env)
-{
-    free_minim_symbol_table(env->table);
-    if(env->parent && (!env->copied || env->parent->copied))
-        free_env(env->parent);
-    free(env);
-}
-
-MinimEnv *pop_env(MinimEnv *env)
-{
-    MinimEnv *next = env->parent;
-
-    free_minim_symbol_table(env->table);
-    free(env);
-
-    return next;
 }
 
 size_t env_symbol_count(MinimEnv *env)

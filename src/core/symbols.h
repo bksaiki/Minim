@@ -21,17 +21,14 @@ struct MinimSymbolTableRow
 struct MinimSymbolTable
 {
     MinimSymbolTableRow *rows;
-    size_t size;
-    size_t alloc;
+    size_t size, alloc;
 } typedef MinimSymbolTable;
 
 void init_minim_symbol_table(MinimSymbolTable **ptable);
 void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src);
-void free_minim_symbol_table(MinimSymbolTable *table);
 
 void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObject *obj);
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name);
-MinimObject *minim_symbol_table_peek(MinimSymbolTable *table, const char *name);
 bool minim_symbol_table_pop(MinimSymbolTable *table, const char *name);
 
 const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj);

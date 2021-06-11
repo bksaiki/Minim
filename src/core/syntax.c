@@ -18,11 +18,9 @@ static bool check_syntax_set(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (!MINIM_OBJ_SYMBOLP(sym))
     {
         *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-        free_minim_object(sym);
         return false;
     }
 
-    free_minim_object(sym);
     return check_syntax_rec(env, ast->children[2], perr);
 }
 
@@ -41,11 +39,8 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
                     *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-                    free_minim_object(sym);
                     return false;
                 }
-
-                free_minim_object(sym);
             }
             else // ... arg_n . arg_rest)
             {
@@ -53,20 +48,16 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
                     *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-                    free_minim_object(sym);
                     return false;
                 }
-
-                free_minim_object(sym);
+                
                 unsyntax_ast(env, MINIM_DATA(MINIM_CDR(it)), &sym);
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
                     *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-                    free_minim_object(sym);
                     return false;
                 }
 
-                free_minim_object(sym);
                 break;
             }
         }
@@ -75,20 +66,15 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
     {
         *perr = minim_error("expected argument names for ~s", ast->children[0]->sym,
                             ((name_idx == 2) ? ast->children[1]->sym : "unnamed lambda"));
-        free_minim_object(args);
         return false;
     }
     
     for (size_t i = name_idx + 1; i < ast->childc; ++i)
     {
         if (!check_syntax_rec(env, ast->children[i], perr))
-        {
-            free_minim_object(args);
             return false;
-        }
     }
-
-    free_minim_object(args);
+    
     return true;
 }
 
@@ -103,11 +89,9 @@ static bool check_syntax_def(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (!MINIM_OBJ_SYMBOLP(sym))
     {
         *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-        free_minim_object(sym);
         return false;
     }
 
-    free_minim_object(sym);
     return check_syntax_func(env, ast, perr, 2);
 }
 
@@ -138,7 +122,6 @@ static bool check_syntax_cond(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
         if (!minim_listp(branch) || minim_list_length(branch) < 2)
         {
             *perr = minim_error("([<cond> <exprs> ...] ...)", "cond");
-            free_minim_object(branch);
             return false;
         }
 
@@ -146,21 +129,13 @@ static bool check_syntax_cond(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
         cond = MINIM_DATA(MINIM_CAR(branch));
         check_syntax_rec(env, ast->children[0], perr);
         if (i + 1 != ast->childc && cond->sym && strcmp(cond->sym, "else") == 0)
-        {   
-            free_minim_object(branch);
             return minim_error("else clause must be last", "cond");
-        }
         
         for (MinimObject *it = MINIM_CDR(branch); it; it = MINIM_CDR(it))
         {
             if (!check_syntax_rec(env, MINIM_DATA(MINIM_CAR(it)), perr))
-            {
-                free_minim_object(branch);
                 return false;
-            }
         }
-
-        free_minim_object(branch);
     }
 
     return true;
@@ -174,16 +149,12 @@ static bool check_syntax_for(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (!minim_listp(bindings))
     {
         *perr = minim_error("expected a list of bindings", ast->children[0]->sym);
-        free_minim_object(bindings);
         return false;
     }
 
     // early exit: (for () ...)
     if (minim_nullp(bindings))
-    {
-        free_minim_object(bindings);
         return check_syntax_rec(env, ast->children[2], perr);
-    }
 
     for (MinimObject *it = bindings; it; it = MINIM_CDR(it))
     {
@@ -195,8 +166,6 @@ static bool check_syntax_for(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         if (!minim_listp(bind) || minim_list_length(bind) != 2)
         {
             *perr = minim_error("([<symbol> <value>] ...)", ast->children[0]->sym);
-            free_minim_object(bindings);
-            free_minim_object(bind);
             return false;
         }
 
@@ -206,24 +175,14 @@ static bool check_syntax_for(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
             *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-            free_minim_object(bindings);
-            free_minim_object(bind);
-            free_minim_object(sym);
             return false;
         }
 
         syn = MINIM_DATA(MINIM_CADR(bind));
         body = check_syntax_rec(env, syn, perr);
-        free_minim_object(bind);
-        free_minim_object(sym);
-        if (!body)
-        {
-            free_minim_object(bindings);
-            return false;
-        }
+        if (!body)  return false;
     }
 
-    free_minim_object(bindings);
     return check_syntax_rec(env, ast->children[2], perr);
 }
 
@@ -238,11 +197,9 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
             *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-            free_minim_object(sym);
             return false;
         }
 
-        free_minim_object(sym);
         ++base;
     }
 
@@ -250,16 +207,12 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (!minim_listp(bindings))
     {
         *perr = minim_error("expected a list of bindings", ast->children[0]->sym);
-        free_minim_object(bindings);
         return false;
     }
 
     // early exit: (let () ...)
     if (minim_nullp(bindings))
-    {
-        free_minim_object(bindings);
         return check_syntax_rec(env, ast->children[base + 1], perr);
-    }
 
     for (MinimObject *it = bindings; it; it = MINIM_CDR(it))
     {
@@ -271,8 +224,6 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         if (!minim_listp(bind) || minim_list_length(bind) != 2)
         {
             *perr = minim_error("([<symbol> <value>] ...)", ast->children[0]->sym);
-            free_minim_object(bindings);
-            free_minim_object(bind);
             return false;
         }
 
@@ -282,24 +233,14 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
             *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
-            free_minim_object(bindings);
-            free_minim_object(bind);
-            free_minim_object(sym);
             return false;
         }
 
         syn = MINIM_DATA(MINIM_CADR(bind));
         body = check_syntax_rec(env, syn, perr);
-        free_minim_object(bind);
-        free_minim_object(sym);
-        if (!body)
-        {
-            free_minim_object(bindings);
-            return false;
-        }
+        if (!body)  return false;
     }
 
-    free_minim_object(bindings);
     return check_syntax_rec(env, ast->children[base + 1], perr);
 }
 
@@ -310,7 +251,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (ast->type != SYNTAX_NODE_LIST)
         return true;
 
-    op = env_peek_sym(env, ast->children[0]->sym);
+    op = env_get_sym(env, ast->children[0]->sym);
     if (op && MINIM_OBJ_SYNTAXP(op))
     {
         void *proc = ((void*) op->u.ptrs.p1);
@@ -346,11 +287,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 bool check_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimEnv *env2;
-    bool res;
 
     init_env(&env2, env);
-    res = check_syntax_rec(env2, ast, perr);
-    pop_env(env2);
-    
-    return res;
+    return check_syntax_rec(env2, ast, perr);
 }

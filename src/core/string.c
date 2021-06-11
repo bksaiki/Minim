@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "../common/buffer.h"
+#include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
 #include "number.h"
@@ -70,7 +71,6 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, MinimObject **args, size
 
     trim_buffer(bf);
     init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
-    free_buffer(bf);
 
     return res;
 }
@@ -104,7 +104,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
             return minim_error("expected [begin, end)", "substring");
     }
 
-    tmp = malloc((end - start + 1) * sizeof(char));
+    tmp = GC_alloc_atomic((end - start + 1) * sizeof(char));
     strncpy(tmp, &str[start], end - start);
     tmp[end - start] = '\0';
 
@@ -132,7 +132,7 @@ MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, MinimObject **args, s
     if (!MINIM_OBJ_SYMBOLP(args[0]))
         return minim_argument_error("symbol", "symbol->string", 0, args[0]);
 
-    dest = malloc((strlen(args[0]->u.str.str) + 1) * sizeof(char));
+    dest = GC_alloc_atomic((strlen(args[0]->u.str.str) + 1) * sizeof(char));
     strcpy(dest, args[0]->u.str.str);
 
     init_minim_object(&res, MINIM_OBJ_STRING, dest);
@@ -178,7 +178,6 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
             if (++i == len)
             {
                 res = minim_error("expected a character after '~'", "format");
-                free_buffer(bf);
                 return res;
             }
             else if (str[i] == 'a')
@@ -190,7 +189,6 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
                 pp.display = true;
                 t = print_to_string(args[var++], env, &pp);
                 writes_buffer(bf, t);
-                free(t);
             }
             else
             {
@@ -205,8 +203,6 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
 
     trim_buffer(bf);
     init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
-    free_buffer(bf);
-
     return res;
 }
 
@@ -228,7 +224,6 @@ MinimObject *minim_builtin_printf(MinimEnv *env, MinimObject **args, size_t argc
         replace_special_chars(val->u.str.str);
         print_minim_object(val, env, &pp);
         init_minim_object(&res, MINIM_OBJ_VOID);
-        free_minim_object(val);
     }
     else
     {

@@ -5,8 +5,6 @@
 #include "../common/common.h"
 #include "../common/buffer.h"
 
-#define MINIM_OBJ_OWNER             0x1
-
 struct MinimEnv;
 typedef struct MinimEnv MinimEnv;
 
@@ -22,7 +20,6 @@ typedef struct MinimObject
         struct { struct MinimObject **arr; size_t len; } vec;
     } u;
     uint8_t type;
-    uint8_t flags;
 } MinimObject;
 
 typedef enum MinimObjectType
@@ -48,14 +45,9 @@ typedef enum MinimObjectType
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
 typedef bool (*MinimPred)(MinimObject *);
 
-// Setters
-
-#define MINIM_OBJ_SET_OWNER(obj)        (obj->flags |= MINIM_OBJ_OWNER)
-#define MINIM_OBJ_SET_REF(obj)          (obj->flags &= ~MINIM_OBJ_OWNER)
 
 // Predicates 
 
-#define MINIM_OBJ_OWNERP(obj)           (obj->flags & MINIM_OBJ_OWNER)
 #define MINIM_OBJ_SAME_TYPE(obj, t)     (obj->type == t)
 
 #define MINIM_OBJ_VOIDP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VOID)
@@ -99,99 +91,17 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_DATA(obj)         (obj->u.ptrs.p1)      
 
 
-// Optimized move:
-//  makes 'dest' a owned copy of 'src'
-//  moves 'src' to 'dest' if src is an owner
-#define OPT_MOVE(dest, src)             \
-{                                       \
-    if (MINIM_OBJ_OWNERP(src))          \
-    { dest = src; src = NULL; }         \
-    else                                \
-    { dest = copy2_minim_object(src); } \
-}
-
-// Optimized move 
-//  makes 'dest' a owned copy of 'src'
-//  moves 'src' to 'dest' if 'obj' is an owner
-#define OPT_MOVE2(dest, src, obj)       \
-{                                       \
-    if (MINIM_OBJ_OWNERP(obj))          \
-    { dest = src; src = NULL; }         \
-    else                                \
-    { dest = copy2_minim_object(src); } \
-}
-
-// Optimized move (ref variant)
-//  makes 'dest' a copy of 'src'
-//  moves 'src' to 'dest' if src is an owner
-//  preserves ownership
-#define OPT_MOVE_REF(dest, src)         \
-{                                       \
-    if (MINIM_OBJ_OWNERP(src))          \
-    { dest = src; src = NULL; }         \
-    else                                \
-    { ref_minim_object(&dest, src); }   \
-}
-
-// Optimized move (ref2 variant)
-//  makes 'dest' a copy of 'src'
-//  moves 'src' to 'dest' if obj is an owner
-//  preserves ownership based on 'obj'
-#define OPT_MOVE_REF2(dest, src, obj)   \
-{                                       \
-    if (MINIM_OBJ_OWNERP(obj))          \
-    { dest = src; src = NULL; }         \
-    else                                \
-    { ref_minim_object(&dest, src); }   \
-}
-
-// Deletes all arguments that are owners
-#define RELEASE_OWNED_ARGS(args, argc)                   \
-{                                                        \
-    for (size_t i = 0; i < argc; ++i)                    \
-    {                                                    \
-        if ((args)[i] && MINIM_OBJ_OWNERP((args)[i]))    \
-            (args)[i] = NULL;                   \
-    }                                           \
-}
-
-// Deletes if object is a owner
-#define RELEASE_IF_OWNER(obj)       \
-{                                   \
-    if (MINIM_OBJ_OWNERP(obj))      \
-        free_minim_object(obj);     \
-}
-
-// Deletes if object is a reference
-#define RELEASE_IF_REF(obj)         \
-{                                   \
-    if (!MINIM_OBJ_OWNERP(obj))     \
-        free_minim_object(obj);     \
-}
-
-
-//  Initialization / Destruction
+//  Initialization
 
 void init_minim_object(MinimObject **pobj, MinimObjectType type, ...);
 void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs);
-
 void copy_minim_object(MinimObject **pobj, MinimObject *src);
-void ref_minim_object(MinimObject **pobj, MinimObject *src);
-
-void free_minim_object(MinimObject *obj);
-void free_minim_objects(MinimObject **objs, size_t count);
 
 //  Equivalence
 
 bool minim_equalp(MinimObject *a, MinimObject *b);
 
 //  Miscellaneous
-
-// Returns 'src' or an owned version of 'src'
-MinimObject *fresh_minim_object(MinimObject *src);
-
-// Returns an owned version of 'src'
-MinimObject *copy2_minim_object(MinimObject *src);
 
 Buffer* minim_obj_to_bytes(MinimObject *obj);
 

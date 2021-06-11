@@ -1,12 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../gc/gc.h"
 #include "ast.h"
+
+static void gc_syntax_loc_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    mrk(gc, ((SyntaxLoc*) ptr)->name);   
+}
+
+static void gc_syntax_node_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
+{
+    SyntaxNode *node = (SyntaxNode*) ptr;
+    mrk(gc, node->children);
+    mrk(gc, node->loc);
+    mrk(gc, node->sym);
+}
 
 void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
 {
-    SyntaxLoc *loc = malloc(sizeof(SyntaxLoc));
-    loc->name = malloc((strlen(fname) + 1) * sizeof(char));
+    SyntaxLoc *loc = GC_alloc_opt(sizeof(SyntaxLoc), NULL, gc_syntax_loc_mrk);
+    loc->name = GC_alloc_atomic((strlen(fname) + 1) * sizeof(char));
     loc->row = 1;
     loc->col = 1;
     *ploc = loc;
@@ -16,8 +31,8 @@ void init_syntax_loc(SyntaxLoc **ploc, const char *fname)
 
 void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src)
 {
-    SyntaxLoc *loc = malloc(sizeof(SyntaxLoc));
-    loc->name = malloc((strlen(src->name) + 1) * sizeof(char));
+    SyntaxLoc *loc = GC_alloc_opt(sizeof(SyntaxLoc), NULL, gc_syntax_loc_mrk);
+    loc->name = GC_alloc_atomic((strlen(src->name) + 1) * sizeof(char));
     loc->row = src->row;
     loc->col = src->col;
     *ploc = loc;
@@ -25,15 +40,9 @@ void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src)
     strcpy(loc->name, src->name);
 }
 
-void free_syntax_loc(SyntaxLoc *loc)
-{
-    if (loc->name)     free(loc->name);
-    free(loc);
-}
-
 void init_syntax_node(SyntaxNode **pnode, SyntaxNodeType type)
 {
-    SyntaxNode *node = malloc(sizeof(SyntaxNode));
+    SyntaxNode *node = GC_alloc_opt(sizeof(SyntaxNode), NULL, gc_syntax_node_mrk);
 
     node->children = NULL;
     node->childc = 0;
@@ -45,7 +54,7 @@ void init_syntax_node(SyntaxNode **pnode, SyntaxNodeType type)
 
 void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
 {
-    SyntaxNode *node = malloc(sizeof(SyntaxNode));
+    SyntaxNode *node = GC_alloc_opt(sizeof(SyntaxNode), NULL, gc_syntax_node_mrk);
 
     node->type = src->type;
     node->childc = src->childc;
@@ -53,7 +62,7 @@ void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
 
     if (node->childc > 0)
     {
-        node->children = malloc(node->childc * sizeof(SyntaxNode*));
+        node->children = GC_alloc(node->childc * sizeof(SyntaxNode*));
         for (size_t i = 0; i < node->childc; ++i)
             copy_syntax_node(&node->children[i], src->children[i]);
     }
@@ -64,7 +73,7 @@ void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
     
     if (src->sym)
     {
-        node->sym = malloc((strlen(src->sym) + 1) * sizeof(char));
+        node->sym = GC_alloc_atomic((strlen(src->sym) + 1) * sizeof(char));
         strcpy(node->sym, src->sym);
     }
     else
@@ -74,18 +83,6 @@ void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src)
 
     if (src->loc)   copy_syntax_loc(&node->loc, src->loc);
     else            node->loc = NULL;
-}
-
-void free_syntax_node(SyntaxNode *node)
-{
-    for (size_t i = 0; i < node->childc; ++i)
-        free_syntax_node(node->children[i]);
-
-    if (node->sym)      free(node->sym);
-    if (node->children) free(node->children);
-    if (node->loc)      free_syntax_loc(node->loc);
-    
-    free(node);
 }
 
 void print_syntax(SyntaxNode *node)
@@ -109,7 +106,6 @@ void print_syntax(SyntaxNode *node)
 
 void ast_add_syntax_loc(SyntaxNode *ast, SyntaxLoc *loc)
 {
-    if (ast->loc)   free_syntax_loc(ast->loc);
     ast->loc = loc;
 }
 
@@ -172,5 +168,4 @@ void print_ast(SyntaxNode *node)  // debugging
     init_buffer(&bf);
     ast_to_buffer(node, bf);
     fputs(bf->data, stdout);
-    free_buffer(bf);
 }

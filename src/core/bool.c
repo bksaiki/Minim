@@ -24,10 +24,7 @@ MinimObject *minim_builtin_or(MinimEnv *env, MinimObject **args, size_t argc)
     for (size_t i = 0; i < argc; ++i)
     {
         if (coerce_into_bool(args[i]))
-        {
-            OPT_MOVE(res, args[i]);
-            return res;
-        }
+            return args[i];
     }
 
     init_minim_object(&res, MINIM_OBJ_BOOL, 0);
@@ -47,6 +44,5 @@ MinimObject *minim_builtin_and(MinimEnv *env, MinimObject **args, size_t argc)
         }
     }
 
-    OPT_MOVE(res, args[argc - 1]);
-    return res;
+    return args[argc - 1];
 }

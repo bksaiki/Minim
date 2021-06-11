@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../gc/gc.h"
 #include "../common/buffer.h"
 #include "parser.h"
 
@@ -10,14 +11,14 @@
 #define closed_paren(x)     (x == ')' || x == ']' || x == '{')
 #define normal_char(x)      (x && !open_paren(x) && !closed_paren(x) && !isspace(x))
 
-#define IF_STR_EQUAL_REPLACE(x, str, r)                     \
-{                                                           \
-    if (strcmp(x, str) == 0)                                \
-    {                                                       \
-        x = realloc(x, (strlen(r) + 1) * sizeof(char));     \
-        strcpy(x, r);                                       \
-        return true;                                        \
-    }                                                       \
+#define IF_STR_EQUAL_REPLACE(x, str, r)                                 \
+{                                                                       \
+    if (strcmp(x, str) == 0)                                            \
+    {                                                                   \
+        x = GC_realloc_atomic(x, (strlen(r) + 1) * sizeof(char));       \
+        strcpy(x, r);                                                   \
+        return true;                                                    \
+    }                                                                   \
 }
 
 //
@@ -88,10 +89,9 @@ static void expand_list(SyntaxNode *node)
     if (node->childc == 3 && node->children[1]->sym &&
         strcmp(node->children[1]->sym, ".") == 0)
     {
-        free_syntax_node(node->children[1]);
         node->children[1] = node->children[2];
 
-        node->children = realloc(node->children, 2 * sizeof(SyntaxNode*));
+        node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
         node->childc = 2;
         node->type = SYNTAX_NODE_PAIR;
     }
@@ -99,13 +99,11 @@ static void expand_list(SyntaxNode *node)
              strcmp(node->children[1]->sym, ".") == 0 &&
              strcmp(node->children[3]->sym, ".") == 0)
     {
-        free_syntax_node(node->children[1]);
-        free_syntax_node(node->children[3]);
         node->children[1] = node->children[0];
         node->children[0] = node->children[2];
         node->children[2] = node->children[4];
         
-        node->children = realloc(node->children, 3 * sizeof(SyntaxNode*));
+        node->children = GC_realloc(node->children, 3 * sizeof(SyntaxNode*));
         node->childc = 3;
         node->type = SYNTAX_NODE_LIST;
     }
@@ -133,7 +131,6 @@ static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, S
     init_syntax_node(&node, SYNTAX_NODE_DATUM);
     trim_buffer(bf);
     node->sym = release_buffer(bf);
-    free_buffer(bf);
 
     init_syntax_loc(&loc, name);
     loc->col = ptable->col;
@@ -168,7 +165,6 @@ static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, 
             ptable->flags |= READ_TABLE_FLAG_BAD;
             init_syntax_node(perror, SYNTAX_NODE_DATUM);
             (*perror)->sym = release_buffer(bf2);
-            free_buffer(bf2);
             break;
         }
 
@@ -192,7 +188,6 @@ static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, 
     init_syntax_node(&node, SYNTAX_NODE_DATUM);
     trim_buffer(bf);
     node->sym = release_buffer(bf);
-    free_buffer(bf);
 
     init_syntax_loc(&loc, name);
     loc->col = ptable->col;
@@ -208,7 +203,7 @@ static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, S
     SyntaxLoc *loc;
 
     init_syntax_node(&node, SYNTAX_NODE_LIST);
-    node->children = malloc(2 * sizeof(SyntaxNode*));
+    node->children = GC_alloc(2 * sizeof(SyntaxNode*));
     node->childc = 2;
 
     init_syntax_loc(&loc, name);
@@ -217,7 +212,7 @@ static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, S
     ast_add_syntax_loc(node, loc);
     
     init_syntax_node(&node->children[0], SYNTAX_NODE_DATUM);
-    node->children[0]->sym = malloc(6 * sizeof(char));
+    node->children[0]->sym = GC_alloc_atomic(6 * sizeof(char));
     strcpy(node->children[0]->sym, "quote");
 
     init_syntax_loc(&loc, name);
@@ -245,15 +240,12 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
     {
         tmp = read_top(file, name, ptable, perror);
         if (ptable->flags & READ_TABLE_FLAG_BAD)
-        {
-            free_syntax_node(node);
             return NULL;
-        }
 
         if (tmp)
         {
             ++node->childc;
-            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
+            node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
             node->children[node->childc - 1] = tmp;
         }
 
@@ -275,7 +267,6 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
                 ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
-                free_buffer(bf);
                 break;
             }
         }
@@ -312,15 +303,12 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
     {
         tmp = read_top(file, name, ptable, perror);
         if (ptable->flags & READ_TABLE_FLAG_BAD)
-        {
-            free_syntax_node(node);
             return NULL;
-        }
         
         if (tmp)
         {
             ++node->childc;
-            node->children = realloc(node->children, node->childc * sizeof(SyntaxNode*));
+            node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
             node->children[node->childc - 1] = tmp;
         }
 
@@ -347,7 +335,6 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
                 ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
-                free_buffer(bf);
                 break;
             }
         }
@@ -400,7 +387,6 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
                 ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
                 (*perror)->sym = release_buffer(bf);
-                free_buffer(bf);
             }
         }
     }
@@ -437,7 +423,6 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
             ptable->flags |= READ_TABLE_FLAG_BAD;
             init_syntax_node(perror, SYNTAX_NODE_DATUM);
             (*perror)->sym = release_buffer(bf);
-            free_buffer(bf);
             return NULL;
         }
     }
@@ -471,8 +456,6 @@ int minim_parse_port(FILE *file, const char *name,
     node = read_top(file, name, table, &err);
     if (table->flags & READ_TABLE_FLAG_BAD)
     {
-        if (node)   free_syntax_node(node);
-
         *psyntax = NULL;
         *perr = err;
         return 1;
@@ -489,7 +472,6 @@ int minim_parse_port(FILE *file, const char *name,
         table->flags |= READ_TABLE_FLAG_BAD;
         init_syntax_node(&err, SYNTAX_NODE_DATUM);
         err->sym = release_buffer(bf);
-        free_buffer(bf);
 
         c = fgetc(file);
         if (c == table->eof)    update_table(c, table);
@@ -528,10 +510,7 @@ int parse_str(const char* str, SyntaxNode** psyntax)
 
     status = minim_parse_port(tmp, "test", psyntax, &err, &rt);
     if (rt.flags & READ_TABLE_FLAG_BAD)
-    {
-        if (*psyntax)    free_syntax_node(*psyntax);
         *psyntax = err;
-    }
 
     fclose(tmp);
     return status;

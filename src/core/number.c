@@ -1,12 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
 #include "math.h"
 #include "number.h"
 
 // *** Internals *** //
+
+static void gc_mpq_ptr_dtor(void *ptr) {
+    mpq_clear((mpq_ptr) ptr);
+}
+
+mpq_ptr gc_alloc_mpq_ptr()
+{
+    mpq_ptr ptr = GC_alloc_opt(sizeof(__mpq_struct), gc_mpq_ptr_dtor, NULL);
+    mpq_init(ptr);
+    return ptr;
+}
 
 bool minim_zerop(MinimObject *num)
 {
@@ -78,9 +91,8 @@ bool minim_infinitep(MinimObject *thing)
 MinimObject *int_to_minim_number(long int x)
 {
     MinimObject *res;
-    mpq_ptr rat = malloc(sizeof(__mpq_struct));
+    mpq_ptr rat = gc_alloc_mpq_ptr();
 
-    mpq_init(rat);
     mpq_set_si(rat, x, 1);
     init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     return res;
@@ -89,9 +101,8 @@ MinimObject *int_to_minim_number(long int x)
 MinimObject *uint_to_minim_number(size_t x)
 {
     MinimObject *res;
-    mpq_ptr rat = malloc(sizeof(__mpq_struct));
+    mpq_ptr rat = gc_alloc_mpq_ptr();
 
-    mpq_init(rat);
     mpq_set_ui(rat, x, 1);
     init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     return res;
@@ -361,13 +372,11 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t ar
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
-        OPT_MOVE_REF(res, args[0]);
+        res = args[0];
     }
     else
     {
-        mpq_ptr rat = malloc(sizeof(__mpq_struct));
-
-        mpq_init(rat);
+        mpq_ptr rat = gc_alloc_mpq_ptr();
         mpq_set_d(rat, MINIM_INEXACT(args[0]));
         init_minim_object(&res, MINIM_OBJ_EXACT, rat);
     }
@@ -383,13 +392,9 @@ MinimObject *minim_builtin_to_inexact(MinimEnv *env, MinimObject **args, size_t 
         return minim_argument_error("number", "inexact", 0, args[0]);
 
     if (MINIM_OBJ_INEXACTP(args[0]))
-    {
-        OPT_MOVE_REF(res, args[0]);
-    }
+        res = args[0];
     else
-    {
         init_minim_object(&res, MINIM_OBJ_INEXACT, mpq_get_d(MINIM_EXACT(args[0])));
-    }
 
     return res;
 }

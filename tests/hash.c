@@ -12,22 +12,21 @@ bool run_test(char *input, char *expected)
     str = eval_string(input, INT_MAX);
     s = (strcmp(str, expected) == 0);
     if (!s) printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
-    free(str);
 
     return s;
 }
 
 bool evaluate(char *input)
 {
-    char *str = eval_string(input, INT_MAX);
-    free(str);
-
+    eval_string(input, INT_MAX);
     return true;
 }
 
 int main()
 {
     bool status = true;
+
+    GC_init(&status);
 
     {
         const int COUNT = 1;
@@ -95,7 +94,8 @@ int main()
         const int COUNT = 1;
         char strs[1][256] =
         {
-            "(hash-set (hash-set (hash-set (hash-set (hash-set (hash-set (hash-set (hash-set (hash) 'a 1) 'b 2) 'c 3) 'd 4) 'e 5) 'f 6) 'g 7) 'h 8)",
+            "(hash-set (hash-set (hash-set (hash-set (hash-set (hash-set (hash-set \
+                (hash-set (hash) 'a 1) 'b 2) 'c 3) 'd 4) 'e 5) 'f 6) 'g 7) 'h 8)",
         };
 
         printf("Testing rehashing\n");
@@ -148,6 +148,8 @@ int main()
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
+
+    GC_finalize();
 
     return (int)(!status);
 }

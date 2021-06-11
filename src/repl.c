@@ -64,7 +64,6 @@ int minim_repl(uint32_t flags)
         {
             if (rt.flags & READ_TABLE_FLAG_BAD)
             {
-                if (ast)    free_syntax_node(ast);
                 ast = err;
             }
 
@@ -72,7 +71,6 @@ int minim_repl(uint32_t flags)
             {
                 printf("; bad syntax: %s\n", ast->sym);
                 fflush(stdout);
-                free_syntax_node(ast);
             }
             
             last_readf = rt.flags & READ_TABLE_FLAG_EOF;
@@ -81,6 +79,8 @@ int minim_repl(uint32_t flags)
 
         last_readf = rt.flags;
         eval_ast(env, ast, &obj);
+        GC_collect();
+
         if (obj->type == MINIM_OBJ_ERR)
         {    
             print_minim_object(obj, env, &pp);
@@ -89,8 +89,6 @@ int minim_repl(uint32_t flags)
         }
         else if (obj->type == MINIM_OBJ_EXIT)
         {
-            free_minim_object(obj);
-            free_syntax_node(ast);
             break;
         }
         else if (obj->type != MINIM_OBJ_VOID)
@@ -99,12 +97,8 @@ int minim_repl(uint32_t flags)
             printf("\n");
             fflush(stdout);
         }
-
-        free_minim_object(obj);
-        free_syntax_node(ast);
     }
 
-    free_env(env);
     signal(SIGINT, SIG_DFL);
     return 0;
 }

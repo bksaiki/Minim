@@ -13,7 +13,6 @@ struct SyntaxLoc
 
 void init_syntax_loc(SyntaxLoc **ploc, const char *fname);
 void copy_syntax_loc(SyntaxLoc **ploc, SyntaxLoc *src);
-void free_syntax_loc(SyntaxLoc *loc);
 
 enum SyntaxNodeType
 {
@@ -27,14 +26,13 @@ struct SyntaxNode
 {
     struct SyntaxNode **children;
     SyntaxLoc *loc;
-    size_t childc;
     char *sym;
+    size_t childc;
     SyntaxNodeType type;
 } typedef SyntaxNode;
 
 void init_syntax_node(SyntaxNode **pnode, SyntaxNodeType type);
 void copy_syntax_node(SyntaxNode **pnode, SyntaxNode *src);
-void free_syntax_node(SyntaxNode *node);
 void print_syntax(SyntaxNode *node);
 
 void ast_add_syntax_loc(SyntaxNode *ast, SyntaxLoc *loc);

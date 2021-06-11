@@ -1,0 +1,14 @@
+;
+; Summing integers 0 to n (floating-point)
+;
+
+(def compute (n)
+  (let loop ((i n) (sum 0.))
+    (if (< i 0.)
+        sum
+        (loop (- i 1.) (+ i sum)))))
+
+(def ns (list 10 100 10000 100000 1000000 10000000 100000000))
+
+(for-list ([n ns])
+  (compute n))
