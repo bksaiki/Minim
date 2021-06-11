@@ -35,7 +35,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
     env->parent = parent;
-    env->callee = NULL;
+    env->callee = callee;
     init_minim_symbol_table(&env->table);
     env->copied = false;
     *penv = env;
@@ -109,8 +109,8 @@ size_t env_symbol_count(MinimEnv *env)
 
 bool env_has_called(MinimEnv *env, MinimLambda *lam)
 {
-    if (env->callee)
-        return minim_lambda_equalp(env->callee, lam);
+    if (env->callee && minim_lambda_equalp(env->callee, lam))
+        return true;
     
     if (env->parent)
         return env_has_called(env->parent, lam);

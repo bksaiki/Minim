@@ -7,6 +7,7 @@
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
+#include "tail_call.h"
 
 static void gc_minim_lambda_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
@@ -108,12 +109,14 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
     if (lam->name)
     {
-        MinimLambda *clam;
         MinimObject *self;
 
-        copy_minim_lambda(&clam, lam);
-        init_minim_object(&self, MINIM_OBJ_CLOSURE, clam);
-        env_intern_sym(env2, lam->name, self);
+        self = env_get_sym(env, lam->name);
+        if (!self || !MINIM_OBJ_CLOSUREP(self) || !minim_lambda_equalp(MINIM_DATA(self), lam))
+        {
+            init_minim_object(&self, MINIM_OBJ_CLOSURE, lam);
+            env_intern_sym(env2, lam->name, self);
+        } 
     }
 
     for (size_t i = 0; i < lam->argc; ++i)
@@ -133,9 +136,16 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     }
 
     eval_ast_no_check(env2, lam->body, &res);
+    if (MINIM_OBJ_TAIL_CALLP(res))
+    {   
+        MinimTailCall *call = MINIM_DATA(res);
+
+        if (minim_lambda_equalp(call->lam, lam))
+            return eval_lambda(lam, env, call->args, call->argc);
+    }
+
     if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
         minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
-    
     return res;
 }
 

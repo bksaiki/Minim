@@ -12,6 +12,7 @@
 #include "eval.h"
 #include "list.h"
 #include "number.h"
+#include "tail_call.h"
 
 MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 {
@@ -149,7 +150,6 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-
 MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool alt)
 {
     MinimObject *bindings, *name, *res, *it;
@@ -167,6 +167,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     unsyntax_ast(env, MINIM_DATA(args[1]), &bindings);
     if (MINIM_OBJ_THROWNP(bindings))
         return bindings;
+
     len = minim_list_length(bindings);
     it = bindings;
 
@@ -201,6 +202,16 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
 
     // Evaluate body
     eval_ast_no_check(env2, MINIM_DATA(args[2]), &res);
+    if (MINIM_OBJ_TAIL_CALLP(res))
+    {   
+        MinimTailCall *call = MINIM_DATA(res);
+
+        if (minim_lambda_equalp(call->lam, lam))
+            return eval_lambda(lam, env, call->args, call->argc);
+    }
+
+    if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
+        minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
     return res;
 }
 

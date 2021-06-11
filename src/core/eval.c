@@ -13,6 +13,7 @@
 #include "list.h"
 #include "number.h"
 #include "syntax.h"
+#include "tail_call.h"
 
 static bool is_rational(char *str)
 {
@@ -318,10 +319,24 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             MinimLambda *lam = op->u.ptrs.p1;
 
             for (size_t i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]);          
+                args[i] = eval_ast_node(env, node->children[i + 1]); 
 
             possible_err = error_or_exit(args, argc);
-            res = (possible_err) ? possible_err : eval_lambda(lam, env, args, argc);
+            if (possible_err)
+            {
+                res = possible_err;
+            }
+            if (env_has_called(env, lam))
+            {
+                MinimTailCall *call;
+
+                init_minim_tail_call(&call, lam, argc, args);
+                init_minim_object(&res, MINIM_OBJ_TAIL_CALL, call);
+            }
+            else
+            {
+                res = eval_lambda(lam, env, args, argc);
+            }
         }
         else
         {   
