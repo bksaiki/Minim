@@ -284,9 +284,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         if (MINIM_OBJ_BUILTINP(op))
         {
             MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
+            uint8_t prev_flags = env->flags;
 
+            env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
             for (size_t i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]);          
+                args[i] = eval_ast_node(env, node->children[i + 1]);
+            env->flags = prev_flags;       
 
             possible_err = error_or_exit(args, argc);
             if (possible_err)
@@ -326,7 +329,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = possible_err;
             }
-            if (env_has_called(env, lam))
+            else if (env_has_called(env, lam))
             {
                 MinimTailCall *call;
 

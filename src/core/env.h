@@ -8,13 +8,16 @@
 // forward declaration
 typedef struct MinimLambda MinimLambda;
 
+#define MINIM_ENV_COPIED            0x1
+#define MINIM_ENV_TAIL_CALLABLE     0x2
+
 typedef struct MinimEnv
 {
     struct MinimEnv *parent;
     MinimSymbolTable *table;
     MinimLambda *callee;
     size_t sym_count;
-    bool copied;
+    uint8_t flags;
 } MinimEnv;
 
 // Initializes a new environment object.

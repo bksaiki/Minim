@@ -177,8 +177,8 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     lam->args = GC_alloc(lam->argc * sizeof(char*));
 
     // Initialize child environment
-    err = false;
     init_env(&env2, env, lam);
+    err = false;
 
     // Bind names and values
     for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))

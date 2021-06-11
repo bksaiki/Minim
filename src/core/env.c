@@ -37,7 +37,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     env->parent = parent;
     env->callee = callee;
     init_minim_symbol_table(&env->table);
-    env->copied = false;
+    env->flags = MINIM_ENV_TAIL_CALLABLE;
     *penv = env;
 
     if (parent) env->sym_count = parent->sym_count + parent->table->size;
@@ -54,7 +54,7 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
         rcopy_env(&env->parent, src->parent);
         copy_minim_symbol_table(&env->table, src->table);
         env->sym_count = src->sym_count;
-        env->copied = true;
+        env->flags = (src->flags | MINIM_ENV_COPIED);
         *penv = env;
     }
     else
@@ -109,11 +109,14 @@ size_t env_symbol_count(MinimEnv *env)
 
 bool env_has_called(MinimEnv *env, MinimLambda *lam)
 {
-    if (env->callee && minim_lambda_equalp(env->callee, lam))
-        return true;
-    
-    if (env->parent)
-        return env_has_called(env->parent, lam);
+    if (env->flags & MINIM_ENV_TAIL_CALLABLE)
+    {
+        if (env->callee)
+            return minim_lambda_equalp(env->callee, lam);
+        
+        if (env->parent)
+            return env_has_called(env->parent, lam);
+    }
 
     return false;
 }
