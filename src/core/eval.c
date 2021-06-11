@@ -399,7 +399,7 @@ char *eval_string(char *str, size_t len)
     PrintParams pp;
     char *out;
 
-    init_env(&env, NULL);
+    init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     set_default_print_params(&pp);
 

@@ -103,8 +103,8 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         return minim_arity_error(name, lam->argc, lam->argc, argc);
     }
 
-    if (lam->env)   init_env(&env2, lam->env);
-    else            init_env(&env2, env);
+    if (lam->env)   init_env(&env2, lam->env, lam);
+    else            init_env(&env2, env, lam);
 
     if (lam->name)
     {
@@ -141,6 +141,8 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
 
 bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b)
 {
+    if (a == b)     return true;
+
     if (a->argc != b->argc)         return false;
     for (size_t i = 0; i < a->argc; ++i)
     {
