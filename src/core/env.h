@@ -35,7 +35,7 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym);
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj);
 
 // Sets 'sym' to 'obj'. Returns zero if 'sym' is not found.
-int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj);
+int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj);
 
 // Returns a pointer to the key associated with the values. Returns NULL
 // if the value is not in the table

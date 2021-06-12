@@ -82,11 +82,21 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     minim_symbol_table_add(env->table, sym, obj);
 }
 
-int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
+static int env_set_sym_int(MinimEnv *env, const char *sym, MinimObject *obj)
+{
+    if (minim_symbol_table_set(env->table, sym, obj))
+        return 1;
+
+    if (env->parent)
+        return env_set_sym_int(env->parent, sym, obj);
+    
+    return 0;
+}
+
+int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
     add_metadata(obj, sym);
-    minim_symbol_table_add(env->table, sym, obj);
-    return 0;
+    return env_set_sym_int(env, sym, obj);
 }
 
 const char *env_peek_key(MinimEnv *env, MinimObject *value)

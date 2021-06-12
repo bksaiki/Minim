@@ -274,22 +274,17 @@ MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
 
 MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res, *sym, *val, *peek;
+    MinimObject *res, *sym, *val;
 
     unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
-    peek = env_get_sym(env, sym->u.ptrs.p1);
-    if (peek)
+    eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);
+    if (MINIM_OBJ_THROWNP(val))
+        return val;
+
+    if (env_set_sym(env, MINIM_STRING(sym), val))
     {
-        eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);
-        if (!MINIM_OBJ_THROWNP(val))
-        {
-            env_set_sym(env, sym->u.str.str, val);
-            init_minim_object(&res, MINIM_OBJ_VOID);
-        }
-        else
-        {
-            res = val;
-        }
+        env_set_sym(env, sym->u.str.str, val);
+        init_minim_object(&res, MINIM_OBJ_VOID);
     }
     else
     {
@@ -298,6 +293,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 
         init_buffer(&bf);
         set_default_print_params(&pp);
+        pp.quote = true;
         print_to_buffer(bf, sym, env, &pp);
         res = minim_error("not a variable", bf->data);
     }
