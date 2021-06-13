@@ -7,7 +7,6 @@ For the most recent stable release, checkout the `stable` branch.
 #### Prerequisites
  - `gcc`, `make` (not tested with `clang`)
  - GNU MP library (GMP)
- - C math library (libm)
 
 #### Install
 1. Clone this repository.

@@ -32,7 +32,7 @@ int minim_repl(uint32_t flags)
     printf("Minim v%s \n", MINIM_VERSION_STR);
     fflush(stdout);
 
-    init_env(&env, NULL);
+    init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     set_default_print_params(&pp);
     signal(SIGINT, int_handler);

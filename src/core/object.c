@@ -15,6 +15,7 @@
 #include "object.h"
 #include "parser.h"
 #include "sequence.h"
+#include "tail_call.h"
 #include "vector.h"
 
 // Visible functions
@@ -100,6 +101,10 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     {
         obj->u.ptrs.p1 = va_arg(vargs, MinimBuiltin);
     }
+    else if (MINIM_OBJ_TAIL_CALLP(obj))
+    {
+        MINIM_DATA(obj) = va_arg(vargs, MinimBuiltin);
+    }
     else if (type == MINIM_OBJ_CLOSURE)
     {
         obj->u.ptrs.p1 = va_arg(vargs, MinimLambda*);
@@ -180,6 +185,13 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     {
         obj->u.ptrs.p1 = src->u.ptrs.p1;   // no copy
     }
+    else if (MINIM_OBJ_TAIL_CALLP(src))
+    {
+        MinimTailCall *call;
+
+        copy_minim_tail_call(&call, MINIM_DATA(src));
+        MINIM_DATA(obj) = call;
+    }
     else if (src->type == MINIM_OBJ_CLOSURE)
     {
         MinimLambda *lam;
@@ -253,6 +265,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     /*
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_TAIL_CALL:
     case MINIM_OBJ_ERR:
     */
     default:
@@ -316,6 +329,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
     /*
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_TAIL_CALL:
     case MINIM_OBJ_ERR:
     */
     default:

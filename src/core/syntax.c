@@ -288,6 +288,6 @@ bool check_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimEnv *env2;
 
-    init_env(&env2, env);
+    init_env(&env2, env, NULL);
     return check_syntax_rec(env2, ast, perr);
 }

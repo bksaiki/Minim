@@ -61,7 +61,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
     {
         MinimEnv *env2;
 
-        init_env(&env2, env);
+        init_env(&env2, env, NULL);
         for (size_t i = 0; i < len; ++i)
         {
             val = minim_iter_get(iters[i]);
@@ -126,7 +126,7 @@ MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t ar
     {
         MinimEnv *env2;
         
-        init_env(&env2, env);
+        init_env(&env2, env, NULL);
         for (size_t i = 0; i < len; ++i)
         {
             val = minim_iter_get(iters[i]);

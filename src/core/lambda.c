@@ -7,6 +7,7 @@
 #include "eval.h"
 #include "lambda.h"
 #include "list.h"
+#include "tail_call.h"
 
 static void gc_minim_lambda_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
@@ -103,17 +104,19 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         return minim_arity_error(name, lam->argc, lam->argc, argc);
     }
 
-    if (lam->env)   init_env(&env2, lam->env);
-    else            init_env(&env2, env);
+    if (lam->env)   init_env(&env2, lam->env, lam);
+    else            init_env(&env2, env, lam);
 
     if (lam->name)
     {
-        MinimLambda *clam;
         MinimObject *self;
 
-        copy_minim_lambda(&clam, lam);
-        init_minim_object(&self, MINIM_OBJ_CLOSURE, clam);
-        env_intern_sym(env2, lam->name, self);
+        self = env_get_sym(env, lam->name);
+        if (!self || !MINIM_OBJ_CLOSUREP(self) || !minim_lambda_equalp(MINIM_DATA(self), lam))
+        {
+            init_minim_object(&self, MINIM_OBJ_CLOSURE, lam);
+            env_intern_sym(env2, lam->name, self);
+        } 
     }
 
     for (size_t i = 0; i < lam->argc; ++i)
@@ -133,14 +136,23 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
     }
 
     eval_ast_no_check(env2, lam->body, &res);
+    if (MINIM_OBJ_TAIL_CALLP(res))
+    {   
+        MinimTailCall *call = MINIM_DATA(res);
+
+        if (minim_lambda_equalp(call->lam, lam))
+            return eval_lambda(lam, env, call->args, call->argc);
+    }
+
     if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
         minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
-    
     return res;
 }
 
 bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b)
 {
+    if (a == b)     return true;
+
     if (a->argc != b->argc)         return false;
     for (size_t i = 0; i < a->argc; ++i)
     {

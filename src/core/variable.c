@@ -12,6 +12,7 @@
 #include "eval.h"
 #include "list.h"
 #include "number.h"
+#include "tail_call.h"
 
 MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
 {
@@ -49,7 +50,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
             eval = true;
             if (minim_list_length(ce_pair) > 2)
             {
-                init_env(&env2, env);
+                init_env(&env2, env, NULL);
                 for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
                 {
                     eval_ast_no_check(env2, MINIM_CAR(it)->u.ptrs.p1, &val);
@@ -149,7 +150,6 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-
 MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool alt)
 {
     MinimObject *bindings, *name, *res, *it;
@@ -167,10 +167,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     unsyntax_ast(env, MINIM_DATA(args[1]), &bindings);
     if (MINIM_OBJ_THROWNP(bindings))
         return bindings;
-    
-    // Initialize child environment
-    err = false;
-    init_env(&env2, env);
+
     len = minim_list_length(bindings);
     it = bindings;
 
@@ -178,6 +175,10 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     init_minim_lambda(&lam);
     lam->argc = len;
     lam->args = GC_alloc(lam->argc * sizeof(char*));
+
+    // Initialize child environment
+    init_env(&env2, env, lam);
+    err = false;
 
     // Bind names and values
     for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
@@ -201,6 +202,16 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
 
     // Evaluate body
     eval_ast_no_check(env2, MINIM_DATA(args[2]), &res);
+    if (MINIM_OBJ_TAIL_CALLP(res))
+    {   
+        MinimTailCall *call = MINIM_DATA(res);
+
+        if (minim_lambda_equalp(call->lam, lam))
+            return eval_lambda(lam, env, call->args, call->argc);
+    }
+
+    if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
+        minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
     return res;
 }
 
@@ -218,7 +229,7 @@ MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bo
     
     // Initialize child environment
     err = false;
-    init_env(&env2, env);
+    init_env(&env2, env, NULL);
     len = minim_list_length(bindings);
     it = bindings;
 
@@ -263,22 +274,17 @@ MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
 
 MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 {
-    MinimObject *res, *sym, *val, *peek;
+    MinimObject *res, *sym, *val;
 
     unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
-    peek = env_get_sym(env, sym->u.ptrs.p1);
-    if (peek)
+    eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);
+    if (MINIM_OBJ_THROWNP(val))
+        return val;
+
+    if (env_set_sym(env, MINIM_STRING(sym), val))
     {
-        eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);
-        if (!MINIM_OBJ_THROWNP(val))
-        {
-            env_set_sym(env, sym->u.str.str, val);
-            init_minim_object(&res, MINIM_OBJ_VOID);
-        }
-        else
-        {
-            res = val;
-        }
+        env_set_sym(env, sym->u.str.str, val);
+        init_minim_object(&res, MINIM_OBJ_VOID);
     }
     else
     {
@@ -287,6 +293,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 
         init_buffer(&bf);
         set_default_print_params(&pp);
+        pp.quote = true;
         print_to_buffer(bf, sym, env, &pp);
         res = minim_error("not a variable", bf->data);
     }
@@ -305,7 +312,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
         return res;
     }
 
-    init_env(&env2, env);
+    init_env(&env2, env, NULL);
     for (size_t i = 0; i < argc; ++i)
     {
         eval_ast_no_check(env2, args[i]->u.ptrs.p1, &val);

@@ -207,7 +207,7 @@ MinimObject *minim_argument_error(const char *pred, const char *where, size_t po
         MinimEnv *env;
         PrintParams pp;
 
-        init_env(&env, NULL);
+        init_env(&env, NULL, NULL);
         init_buffer(&bf);
         set_default_print_params(&pp);
         print_to_buffer(bf, val, env, &pp);

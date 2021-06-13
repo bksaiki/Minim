@@ -81,7 +81,7 @@ int minim_run_file(const char *str, uint32_t flags)
 {
     MinimEnv *env;
 
-    init_env(&env, NULL);
+    init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     if (!(flags & MINIM_FLAG_LOAD_LIBS))
         minim_load_library(env);

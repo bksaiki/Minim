@@ -13,6 +13,7 @@
 #include "list.h"
 #include "number.h"
 #include "syntax.h"
+#include "tail_call.h"
 
 static bool is_rational(char *str)
 {
@@ -283,9 +284,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         if (MINIM_OBJ_BUILTINP(op))
         {
             MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
+            uint8_t prev_flags = env->flags;
 
+            env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
             for (size_t i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]);          
+                args[i] = eval_ast_node(env, node->children[i + 1]);
+            env->flags = prev_flags;       
 
             possible_err = error_or_exit(args, argc);
             if (possible_err)
@@ -318,10 +322,24 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             MinimLambda *lam = op->u.ptrs.p1;
 
             for (size_t i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]);          
+                args[i] = eval_ast_node(env, node->children[i + 1]); 
 
             possible_err = error_or_exit(args, argc);
-            res = (possible_err) ? possible_err : eval_lambda(lam, env, args, argc);
+            if (possible_err)
+            {
+                res = possible_err;
+            }
+            else if (env_has_called(env, lam))
+            {
+                MinimTailCall *call;
+
+                init_minim_tail_call(&call, lam, argc, args);
+                init_minim_object(&res, MINIM_OBJ_TAIL_CALL, call);
+            }
+            else
+            {
+                res = eval_lambda(lam, env, args, argc);
+            }
         }
         else
         {   
@@ -399,7 +417,7 @@ char *eval_string(char *str, size_t len)
     PrintParams pp;
     char *out;
 
-    init_env(&env, NULL);
+    init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     set_default_print_params(&pp);
 

@@ -138,6 +138,34 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObje
     entry->parent = NULL;
 }
 
+int minim_symbol_table_set(MinimSymbolTable *table, const char *name, MinimObject *obj)
+{
+    MinimSymbolEntry *entry;
+    size_t hash, idx, len;
+
+    if (((double)table->size / (double)table->alloc) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
+        minim_symbol_table_rehash(table);
+
+    len = strlen(name);
+    hash = hash_bytes(name, len, hashseed);
+    idx = hash % table->alloc;
+
+    entry = GC_alloc(sizeof(MinimSymbolEntry));
+    entry->obj = obj;
+
+    for (size_t i = 0; i < table->rows[idx].length; ++i)
+    {
+        if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
+        {
+            entry->parent = table->rows[idx].vals[i];
+            table->rows[idx].vals[i] = entry;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name)
 {
     size_t hash, idx;

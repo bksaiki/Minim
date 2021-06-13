@@ -125,7 +125,10 @@ bool ast_equalp(SyntaxNode *a, SyntaxNode *b)
             return false;
     }
 
-    return strcmp(a->sym, b->sym) == 0;
+    if (a->sym && b->sym)
+        return strcmp(a->sym, b->sym) == 0;
+
+    return false;
 }
 
 void ast_to_buffer(SyntaxNode *node, Buffer *bf)

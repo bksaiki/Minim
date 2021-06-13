@@ -23,19 +23,21 @@ static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
     MinimEnv *env = (MinimEnv*) ptr;
     mrk(gc, env->parent);
     mrk(gc, env->table);
+    mrk(gc, env->callee);
 }
 
 //
 //  Visible functions
 //
 
-void init_env(MinimEnv **penv, MinimEnv *parent)
+void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
 {
     MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
     env->parent = parent;
+    env->callee = callee;
     init_minim_symbol_table(&env->table);
-    env->copied = false;
+    env->flags = MINIM_ENV_TAIL_CALLABLE;
     *penv = env;
 
     if (parent) env->sym_count = parent->sym_count + parent->table->size;
@@ -52,7 +54,7 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
         rcopy_env(&env->parent, src->parent);
         copy_minim_symbol_table(&env->table, src->table);
         env->sym_count = src->sym_count;
-        env->copied = true;
+        env->flags = (src->flags | MINIM_ENV_COPIED);
         *penv = env;
     }
     else
@@ -80,11 +82,21 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     minim_symbol_table_add(env->table, sym, obj);
 }
 
-int env_set_sym(MinimEnv *env, const char* sym, MinimObject *obj)
+static int env_set_sym_int(MinimEnv *env, const char *sym, MinimObject *obj)
+{
+    if (minim_symbol_table_set(env->table, sym, obj))
+        return 1;
+
+    if (env->parent)
+        return env_set_sym_int(env->parent, sym, obj);
+    
+    return 0;
+}
+
+int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
     add_metadata(obj, sym);
-    minim_symbol_table_add(env->table, sym, obj);
-    return 0;
+    return env_set_sym_int(env, sym, obj);
 }
 
 const char *env_peek_key(MinimEnv *env, MinimObject *value)
@@ -103,4 +115,18 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
 size_t env_symbol_count(MinimEnv *env)
 {
     return env->sym_count + env->table->size;
+}
+
+bool env_has_called(MinimEnv *env, MinimLambda *lam)
+{
+    if (env->flags & MINIM_ENV_TAIL_CALLABLE)
+    {
+        if (env->callee)
+            return minim_lambda_equalp(env->callee, lam);
+        
+        if (env->parent)
+            return env_has_called(env->parent, lam);
+    }
+
+    return false;
 }
