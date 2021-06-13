@@ -32,9 +32,8 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
     MinimEnv *env2;
-    bool eval = false;
 
-    for (size_t i = 0; !eval && i < argc; ++i)
+    for (size_t i = 0; i < argc; ++i)
     {
         MinimObject *ce_pair, *cond, *val;
 
@@ -42,33 +41,25 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
         eval_ast_no_check(env, MINIM_DATA(MINIM_CAR(ce_pair)), &cond);
         if (coerce_into_bool(cond))
         {
-            eval = true;
             if (minim_list_length(ce_pair) > 2)
             {
                 init_env(&env2, env, NULL);
                 for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
                 {
                     eval_ast_no_check(env2, MINIM_CAR(it)->u.ptrs.p1, &val);
-                    if (MINIM_OBJ_THROWNP(val))
-                    {
-                        res = val;
-                        break;
-                    }
-
-                    if (!MINIM_CDR(it))
-                        res = val;     
+                    if (MINIM_OBJ_THROWNP(val) || !MINIM_CDR(it))
+                        return val;   
                 }
             }
             else
             {
                 eval_ast_no_check(env, MINIM_CADR(ce_pair)->u.ptrs.p1, &res);
+                return res;
             }
         }
     }
 
-    if (argc == 0 || !eval)
-        init_minim_object(&res, MINIM_OBJ_VOID);
-
+    init_minim_object(&res, MINIM_OBJ_VOID);
     return res;
 }
 
@@ -251,5 +242,47 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
             res = val;
     }
 
+    return res;
+}
+
+MinimObject *minim_builtin_case(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res, *key;
+    MinimEnv *env2;
+
+    unsyntax_ast(env, MINIM_DATA(args[0]), &key);
+    for (size_t i = 1; i < argc; ++i)
+    {
+        MinimObject *ce_pair, *cs, *val;
+
+        unsyntax_ast(env, MINIM_DATA(args[i]), &ce_pair);
+        unsyntax_ast_rec(env, MINIM_DATA(MINIM_CAR(ce_pair)), &cs);
+        if (minim_nullp(cs))
+            continue;
+
+        for (MinimObject *it = cs; it; it = MINIM_CDR(it))
+        {
+            if (minim_equalp(MINIM_CAR(it), key))
+            {
+                if (minim_list_length(ce_pair) > 2)
+                {
+                    init_env(&env2, env, NULL);
+                    for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
+                    {
+                        eval_ast_no_check(env2, MINIM_DATA(MINIM_CAR(it)), &val);
+                        if (MINIM_OBJ_THROWNP(val) || !MINIM_CDR(it))
+                            return val;   
+                    }
+                }
+                else
+                {
+                    eval_ast_no_check(env, MINIM_CADR(ce_pair)->u.ptrs.p1, &res);
+                    return res;
+                }
+            }
+        }
+    }
+
+    init_minim_object(&res, MINIM_OBJ_VOID);
     return res;
 }

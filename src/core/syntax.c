@@ -113,12 +113,12 @@ static bool check_syntax_begin(MinimEnv *env, SyntaxNode *ast, MinimObject **per
 
 static bool check_syntax_cond(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
+    MinimObject *branch;
+    SyntaxNode *cond;
+
     for (size_t i = 1; i < ast->childc; ++i)
     {
-        MinimObject *branch;
-        SyntaxNode *cond;
-
-        unsyntax_ast(env, ast->children[1], &branch);
+        unsyntax_ast(env, ast->children[i], &branch);
         if (!minim_listp(branch) || minim_list_length(branch) < 2)
         {
             *perr = minim_error("([<cond> <exprs> ...] ...)", "cond");
@@ -127,10 +127,47 @@ static bool check_syntax_cond(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
 
         // condition
         cond = MINIM_DATA(MINIM_CAR(branch));
-        check_syntax_rec(env, ast->children[0], perr);
         if (i + 1 != ast->childc && cond->sym && strcmp(cond->sym, "else") == 0)
             return minim_error("else clause must be last", "cond");
         
+        for (MinimObject *it = MINIM_CDR(branch); it; it = MINIM_CDR(it))
+        {
+            if (!check_syntax_rec(env, MINIM_DATA(MINIM_CAR(it)), perr))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+static bool check_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *branch, *match;
+    SyntaxNode *datum;
+
+    for (size_t i = 2; i < ast->childc; ++i)
+    {
+        unsyntax_ast(env, ast->children[i], &branch);
+        if (!minim_listp(branch) || minim_list_length(branch) < 2)
+        {
+            *perr = minim_error("([(<datum> ...) <exprs> ...] ...)", "case");
+            return false;
+        }
+
+        // match
+        datum = MINIM_DATA(MINIM_CAR(branch));
+        if (i + 2 != ast->childc && datum->sym && strcmp(datum->sym, "else") == 0)
+            return minim_error("else clause must be last", "case");
+        
+        // datums
+        unsyntax_ast(env, datum, &match);
+        if (!minim_listp(match))
+        {
+            *perr = minim_error("([(<datum> ...) <exprs> ...] ...)", "case");
+            return false;
+        }
+
+        // vals
         for (MinimObject *it = MINIM_CDR(branch); it; it = MINIM_CDR(it))
         {
             if (!check_syntax_rec(env, MINIM_DATA(MINIM_CAR(it)), perr))
@@ -263,6 +300,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         CHECK_REC(proc, minim_builtin_unless, check_syntax_begin);
         CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
         CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
+        CHECK_REC(proc, minim_builtin_case, check_syntax_case);
         CHECK_REC(proc, minim_builtin_let, check_syntax_let);
         CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
         CHECK_REC(proc, minim_builtin_for, check_syntax_for);
