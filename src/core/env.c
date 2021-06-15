@@ -70,7 +70,7 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
     for (MinimEnv *it = env; it; it = it->parent)
     {   
         val = minim_symbol_table_get(it->table, sym);
-        if (val)    return val;
+        if (val) return val;
     }
 
     return NULL;

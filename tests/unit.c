@@ -523,7 +523,6 @@ int main()
             "(case 5 [(4) #t])",                        "<void>",
             "(case 5 [(1 3 5) 'odd] [(2 4 6) 'even])",  "'odd",
             "(case 4 [(1 3 5) 'odd] [(2 4 6) 'even])",  "'even"
-
         };
 
         printf("Testing 'case'\n");
