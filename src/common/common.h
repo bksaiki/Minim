@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "version.h"
 
 #if defined (_WIN32) || defined (_WIN64)

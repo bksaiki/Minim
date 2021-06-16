@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "iter.h"
 #include "list.h"
 #include "sequence.h"

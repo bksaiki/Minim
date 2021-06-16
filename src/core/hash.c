@@ -1,7 +1,3 @@
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-
 #include "../gc/gc.h"
 #include "../common/buffer.h"
 #include "assert.h"

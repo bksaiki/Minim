@@ -1,7 +1,6 @@
 #ifndef _MINIM_PRINT_H_
 #define _MINIM_PRINT_H_
 
-#include <stdio.h>
 #include "env.h"
 
 #define MINIM_DEFAULT_ERR_LOC_LEN       30

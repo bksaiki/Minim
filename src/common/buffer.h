@@ -1,8 +1,8 @@
 #ifndef _MINIM_BUFFER_H_
 #define _MINIM_BUFFER_H_
 
-#include <stddef.h>
 #include <stdarg.h>
+#include "common.h"
 
 #define MINIM_BUFFER_DEFAULT_SIZE       256
 #define MINIM_BUFFER_STEP_SIZE          256
