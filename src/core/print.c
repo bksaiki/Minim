@@ -246,7 +246,8 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         bool syntaxp = pp->syntax;
 
         pp->syntax = true;
-        writes_buffer(bf, "<promise:");
+        writes_buffer(bf, "<promise");
+        writec_buffer(bf, MINIM_CDR(obj) ? '!' : ':');
         print_object(MINIM_CAR(obj), env, bf, pp);
         writec_buffer(bf, '>');
         pp->syntax = syntaxp;
