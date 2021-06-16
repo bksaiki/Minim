@@ -45,8 +45,14 @@ static void gc_minim_object_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
         mrk(gc, MINIM_CAR(obj));
         mrk(gc, MINIM_CDR(obj));
         break;
+
+    case MINIM_OBJ_PROMISE:
+        mrk(gc, MINIM_CAR(obj));
+        break;
     
     default:
+        mrk(gc, MINIM_CAR(obj));
+        mrk(gc, MINIM_CDR(obj));
         break;
     }
 }
@@ -122,6 +128,11 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     {
         obj->u.vec.arr = va_arg(vargs, MinimObject**);
         obj->u.vec.len = va_arg(vargs, size_t);
+    }
+    else if (MINIM_OBJ_PROMISEP(obj))
+    {
+        MINIM_CAR(obj) = va_arg(vargs, MinimObject*);
+        MINIM_CDR(obj) = 0;
     }
 
     *pobj = obj;
@@ -221,6 +232,11 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         for (size_t i = 0; i < src->u.vec.len; ++i)
             copy_minim_object(&obj->u.vec.arr[i], src->u.vec.arr[i]);
     }
+    else if (MINIM_OBJ_PROMISEP(src))
+    {
+        copy_minim_object(&MINIM_CAR(obj), MINIM_CAR(src));
+        MINIM_CDR(obj) = MINIM_CDR(src);
+    }
 }
 
 bool minim_equalp(MinimObject *a, MinimObject *b)
@@ -258,6 +274,9 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
 
     case MINIM_OBJ_VECTOR:
         return minim_vector_equalp(a, b);
+
+    case MINIM_OBJ_PROMISE:
+        return minim_equalp(MINIM_CAR(a), MINIM_CAR(b)) && MINIM_CDR(a) == MINIM_CDR(b);
     
     /*
     case MINIM_OBJ_EXIT:
@@ -272,7 +291,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
 
 Buffer* minim_obj_to_bytes(MinimObject *obj)
 {
-    Buffer* bf;
+    Buffer *bf, *bf2;
     
     init_buffer(&bf);
     switch (obj->type)
@@ -321,6 +340,11 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     case MINIM_OBJ_VECTOR:
         minim_vector_bytes(obj, bf);
+        break;
+
+    case MINIM_OBJ_PROMISE:
+        bf2 = minim_obj_to_bytes(MINIM_CAR(obj));
+        writeb_buffer(bf, bf2);
         break;
 
     /*

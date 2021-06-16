@@ -48,6 +48,9 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(quote, 1);
     SET_ARITY_MIN(lambda, 2);
     SET_ARITY_EXACT(exit, 0);  // for now
+    SET_ARITY_EXACT(delay, 1);
+    SET_ARITY_EXACT(force, 1);
+
 
     // Miscellaneous
     SET_ARITY_EXACT(equalp, 2);

@@ -10,6 +10,7 @@ typedef struct PrintParams
     size_t maxlen;
     bool quote;
     bool display;
+    bool syntax;
 } PrintParams;
 
 void set_default_print_params(PrintParams *pp);

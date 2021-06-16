@@ -40,7 +40,8 @@ typedef enum MinimObjectType
     MINIM_OBJ_AST,
     MINIM_OBJ_SEQ,
     MINIM_OBJ_HASH,
-    MINIM_OBJ_VECTOR
+    MINIM_OBJ_VECTOR,
+    MINIM_OBJ_PROMISE
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
@@ -68,6 +69,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_OBJ_SEQP(obj)         MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SEQ)
 #define MINIM_OBJ_HASHP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_HASH)
 #define MINIM_OBJ_VECTORP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
+#define MINIM_OBJ_PROMISEP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PROMISE)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
 #define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
