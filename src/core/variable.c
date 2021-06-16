@@ -12,27 +12,29 @@
 MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *sym, *val;
+    MinimLambda *lam;
+    SyntaxNode *ast;
 
     unsyntax_ast(env, args[0]->u.ptrs.p1, &sym);
     if (argc == 2)
     {
-        eval_ast_no_check(env, args[1]->u.ptrs.p1, &val);
+        eval_ast_no_check(env, MINIM_DATA(args[1]), &val);
+        
     }
     else
     {
-        SyntaxNode *ast = args[0]->u.ptrs.p1;
-        MinimLambda *lam;
-        
+        ast = MINIM_DATA(args[0]);
         val = minim_builtin_lambda(env, &args[1], argc - 1);
-        
-        lam = val->u.ptrs.p1;
+
+        lam = MINIM_DATA(val);
         copy_syntax_loc(&lam->loc, ast->loc);
+        env_intern_sym(lam->env, MINIM_STRING(sym), val);
     }
     
     if (!MINIM_OBJ_THROWNP(val))
     {
-        env_intern_sym(env, sym->u.str.str, val);
         init_minim_object(&res, MINIM_OBJ_VOID);
+        env_intern_sym(env, MINIM_STRING(sym), val);
     }
     else
     {
