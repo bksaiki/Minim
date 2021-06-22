@@ -94,6 +94,10 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_STRING(obj)       (obj->u.str.str)
 #define MINIM_DATA(obj)         (obj->u.ptrs.p1)      
 
+#define MINIM_PROMISE_VAL(obj)          (obj->u.pair.car)
+#define MINIM_PROMISE_ENV(obj)          ((MinimEnv*) obj->u.pair.cdr)
+#define MINIM_PROMISE_FORCEDP(obj)      (obj->u.pair.cdr == NULL)
+#define MINIM_PROMISE_SET_FORCED(obj)   (obj)->u.pair.cdr = 0x0
 
 //  Initialization
 

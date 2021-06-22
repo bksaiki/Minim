@@ -16,7 +16,7 @@
 (def lazy-list args
   (let loop ([args args])
     (cond [(null? args) '()]
-          [else (lazy-cons (car args) (lazy-cons (cdr args)))])))
+          [else (cons (car args) (delay (loop (cdr args))))])))
 
 ;; lazy car is the same as car
 (def lazy-car car)

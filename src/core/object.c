@@ -48,6 +48,7 @@ static void gc_minim_object_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 
     case MINIM_OBJ_PROMISE:
         mrk(gc, MINIM_CAR(obj));
+        if (MINIM_CDR(obj)) mrk(gc, MINIM_CDR(obj));
         break;
     
     default:
@@ -132,7 +133,7 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     else if (MINIM_OBJ_PROMISEP(obj))
     {
         MINIM_CAR(obj) = va_arg(vargs, MinimObject*);
-        MINIM_CDR(obj) = 0;
+        MINIM_CDR(obj) = (MinimObject*) va_arg(vargs, MinimEnv*);
     }
 
     *pobj = obj;
@@ -235,7 +236,7 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     else if (MINIM_OBJ_PROMISEP(src))
     {
         copy_minim_object(&MINIM_CAR(obj), MINIM_CAR(src));
-        MINIM_CDR(obj) = MINIM_CDR(src);
+        rcopy_env((MinimEnv**) &MINIM_CDR(obj), (MinimEnv*) MINIM_CDR(src));
     }
 }
 
@@ -276,7 +277,8 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return minim_vector_equalp(a, b);
 
     case MINIM_OBJ_PROMISE:
-        return minim_equalp(MINIM_CAR(a), MINIM_CAR(b)) && MINIM_CDR(a) == MINIM_CDR(b);
+        return minim_equalp(MINIM_CAR(a), MINIM_CAR(b)) && 
+               MINIM_PROMISE_FORCEDP(a) == MINIM_PROMISE_FORCEDP(b);
     
     /*
     case MINIM_OBJ_EXIT:
