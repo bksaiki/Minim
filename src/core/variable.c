@@ -52,6 +52,14 @@ MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
+MinimObject *minim_builtin_quasiquote(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_VOID);
+    return res;
+}
+
 MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res, *sym, *val;

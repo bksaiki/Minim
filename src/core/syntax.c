@@ -1,4 +1,5 @@
 #include <string.h>
+#include "arity.h"
 #include "builtin.h"
 #include "error.h"
 #include "eval.h"
@@ -291,7 +292,13 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     op = env_get_sym(env, ast->children[0]->sym);
     if (op && MINIM_OBJ_SYNTAXP(op))
     {
-        void *proc = ((void*) op->u.ptrs.p1);
+        void *proc = MINIM_DATA(op);
+
+        if (!minim_check_syntax_arity(proc, ast->childc - 1, env))
+        {
+            *perr = minim_error("bad syntax", ast->children[0]->sym);
+            return false;
+        }
 
         CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
         CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
