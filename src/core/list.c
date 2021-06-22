@@ -446,13 +446,18 @@ MinimObject *minim_builtin_member(MinimEnv *env, MinimObject **args, size_t argc
 
     if (!minim_listp(args[1]))
         return minim_argument_error("list", "member", 1, args[1]);
+    
+    if (minim_nullp(args[1]))
+    {
+        init_minim_object(&res, MINIM_OBJ_BOOL, 0);
+        return res;
+    }
 
-    for (MinimObject *it = args[1]; MINIM_CAR(it); it = MINIM_CDR(it))
+    for (MinimObject *it = args[1]; it; it = MINIM_CDR(it))
     {
         if (minim_equalp(MINIM_CAR(it), args[0]))
             return it;
     }
-
 
     init_minim_object(&res, MINIM_OBJ_BOOL, 0);
     return res;

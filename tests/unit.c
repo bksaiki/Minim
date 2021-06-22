@@ -750,6 +750,21 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(delay 1)",                        "<promise:1>",
+            "(delay (list 1 2 3))",             "<promise:(list 1 2 3)>",
+            "(force (delay 1))",                "1",
+            "(force (delay (list 1 2 3)))",     "'(1 2 3)"
+        };
+
+        printf("Testing 'delay/force'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     GC_finalize();
 
     return (int)(!status);

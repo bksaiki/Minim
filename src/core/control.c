@@ -250,6 +250,13 @@ MinimObject *minim_builtin_case(MinimEnv *env, MinimObject **args, size_t argc)
     MinimObject *res, *key;
     MinimEnv *env2;
 
+    if (argc < 2)
+    {
+        init_minim_object(&res, MINIM_OBJ_VOID);
+        return res;
+    }
+        
+
     unsyntax_ast(env, MINIM_DATA(args[0]), &key);
     for (size_t i = 1; i < argc; ++i)
     {
