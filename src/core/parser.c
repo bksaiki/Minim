@@ -195,7 +195,7 @@ static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, 
     return node;
 }
 
-static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror)
+static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror, const char *op)
 {
     SyntaxNode *node;
     SyntaxLoc *loc;
@@ -210,8 +210,8 @@ static SyntaxNode *read_quote(FILE *file, const char *name, ReadTable *ptable, S
     ast_add_syntax_loc(node, loc);
     
     init_syntax_node(&node->children[0], SYNTAX_NODE_DATUM);
-    node->children[0]->sym = GC_alloc_atomic(6 * sizeof(char));
-    strcpy(node->children[0]->sym, "quote");
+    node->children[0]->sym = GC_alloc_atomic((strlen(op) + 1) * sizeof(char));
+    strcpy(node->children[0]->sym, op);
 
     init_syntax_loc(&loc, name);
     loc->col = ptable->col;
@@ -355,7 +355,17 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
     if (c == '\'')
     {
         update_table(c, ptable);
-        node = read_quote(file, name, ptable, perror);
+        node = read_quote(file, name, ptable, perror, "quote");
+    }
+    else if (c == '`')
+    {
+        update_table(c, ptable);
+        node = read_quote(file, name, ptable, perror, "quasiquote");
+    }
+    else if (c == ',')
+    {
+        update_table(c, ptable);
+        node = read_quote(file, name, ptable, perror, "unquote");
     }
     else if (c == '#')
     {

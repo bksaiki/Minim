@@ -766,6 +766,22 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "`1",                       "1",
+            "`(1 2 3)",                 "'(1 2 3)",
+            "`(1 null)",                "'(1 null)",
+            "`(1 ,null)",               "'(1 ())",
+            "`(1 2 ,(+ 1 2 3))",        "'(1 2 6)"
+        };
+
+        printf("Testing quasiquote / unquote\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     GC_finalize();
 
     return (int)(!status);
