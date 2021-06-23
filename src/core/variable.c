@@ -48,7 +48,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
 {
     MinimObject *res;
 
-    unsyntax_ast_rec(env, args[0]->u.ptrs.p1, &res);
+    unsyntax_ast_rec(env, MINIM_DATA(args[0]), &res);
     return res;
 }
 
@@ -56,7 +56,15 @@ MinimObject *minim_builtin_quasiquote(MinimEnv *env, MinimObject **args, size_t 
 {
     MinimObject *res;
 
-    init_minim_object(&res, MINIM_OBJ_VOID);
+    unsyntax_ast_rec2(env, MINIM_DATA(args[0]), &res);
+    return res;
+}
+
+MinimObject *minim_builtin_unquote(MinimEnv *env, MinimObject **args, size_t argc)
+{
+    MinimObject *res;
+
+    eval_ast(env, MINIM_DATA(args[0]), &res);
     return res;
 }
 

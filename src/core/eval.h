@@ -17,8 +17,11 @@ int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj);
 // Else a list of syntax children is the result.
 int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj);
 
-// Recursively evaluates an ast.
+// Recursively unwraps an ast.
 int unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj);
+
+// Recursively unwraps an ast, full evaluation with `unquote`
+int unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj);
 
 // Evaluates an expression and returns a string.
 char *eval_string(char *str, size_t len);
