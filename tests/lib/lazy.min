@@ -1,0 +1,26 @@
+;; Tests for <lib>/lazy.min
+
+;; lazy-list
+(def v (lazy-list 1 2 3 4 5 6))
+(def w (lazy-list 2 4 6))
+
+;; lazy-car
+(equal? 1 (lazy-car v))
+(equal? 2 (lazy-car w))
+
+;; lazy-cdr
+(equal? 2 (lazy-car (lazy-cdr v)))
+(equal? 4 (lazy-car (lazy-cdr w)))
+
+;; lazy-map
+(equal? 2 (lazy-car (lazy-map add1 v)))
+(equal? 4 (lazy-car (lazy-map (lambda (x) (* 2 x)) w)))
+
+;; lazy-filter
+(equal? 5 (lazy-car (lazy-filter (curryr > 4) v)))
+(equal? 6 (lazy-car (lazy-filter (curryr > 5) w)))
+
+;; lazy-ref
+(equal? 3 (lazy-ref v 2))
+(equal? 6 (lazy-ref v 5))
+(equal? 4 (lazy-ref w 1))

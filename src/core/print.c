@@ -1,6 +1,4 @@
 #include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "../gc/gc.h"
@@ -232,9 +230,27 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_ASTP(obj))
     {
-        writes_buffer(bf, "<syntax:");
-        ast_to_buffer(obj->u.ptrs.p1, bf);
+        if (pp->syntax)
+        {
+            ast_to_buffer(obj->u.ptrs.p1, bf);
+        }
+        else
+        {
+            writes_buffer(bf, "<syntax:");
+            ast_to_buffer(obj->u.ptrs.p1, bf);
+            writec_buffer(bf, '>');
+        }
+    }
+    else if (MINIM_OBJ_PROMISEP(obj))
+    {
+        bool syntaxp = pp->syntax;
+
+        pp->syntax = true;
+        writes_buffer(bf, "<promise");
+        writec_buffer(bf, MINIM_PROMISE_FORCEDP(obj) ? '!' : ':');
+        print_object(MINIM_PROMISE_VAL(obj), env, bf, pp);
         writec_buffer(bf, '>');
+        pp->syntax = syntaxp;
     }
 
     return 1;
@@ -247,6 +263,7 @@ void set_default_print_params(PrintParams *pp)
     pp->maxlen = UINT_MAX;
     pp->quote = false;
     pp->display = false;
+    pp->syntax = false;
 }
 
 int print_minim_object(MinimObject *obj, MinimEnv *env, PrintParams *pp)

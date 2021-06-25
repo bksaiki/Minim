@@ -28,7 +28,10 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "for", MINIM_OBJ_SYNTAX, minim_builtin_for);
     minim_load_builtin(env, "for-list", MINIM_OBJ_SYNTAX, minim_builtin_for_list);
     minim_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
+    minim_load_builtin(env, "case", MINIM_OBJ_SYNTAX, minim_builtin_case);
     minim_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
+    minim_load_builtin(env, "quasiquote", MINIM_OBJ_SYNTAX, minim_builtin_quasiquote);
+    minim_load_builtin(env, "unquote", MINIM_OBJ_SYNTAX, minim_builtin_unquote);
     minim_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
     minim_load_builtin(env, "exit", MINIM_OBJ_SYNTAX, minim_builtin_exit);
     
@@ -180,4 +183,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "asin", MINIM_OBJ_FUNC, minim_builtin_asin);
     minim_load_builtin(env, "acos", MINIM_OBJ_FUNC, minim_builtin_acos);
     minim_load_builtin(env, "atan", MINIM_OBJ_FUNC, minim_builtin_atan);
+
+    // Promises
+    minim_load_builtin(env, "delay", MINIM_OBJ_SYNTAX, minim_builtin_delay);
+    minim_load_builtin(env, "force", MINIM_OBJ_FUNC, minim_builtin_force);
 }

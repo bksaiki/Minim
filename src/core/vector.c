@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include "../gc/gc.h"
 #include "assert.h"
 #include "builtin.h"

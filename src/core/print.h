@@ -1,7 +1,6 @@
 #ifndef _MINIM_PRINT_H_
 #define _MINIM_PRINT_H_
 
-#include <stdio.h>
 #include "env.h"
 
 #define MINIM_DEFAULT_ERR_LOC_LEN       30
@@ -11,6 +10,7 @@ typedef struct PrintParams
     size_t maxlen;
     bool quote;
     bool display;
+    bool syntax;
 } PrintParams;
 
 void set_default_print_params(PrintParams *pp);

@@ -33,21 +33,6 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
 
 bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 {
-    SET_ARITY_MIN(def, 2);
-    SET_ARITY_EXACT(setb, 2);
-    SET_ARITY_EXACT(if, 3);
-    SET_ARITY_MIN(unless, 2);
-    SET_ARITY_MIN(when, 2);
-    // NO CHECK: 'cond'
-    SET_ARITY_RANGE(let, 2, 3);
-    SET_ARITY_RANGE(letstar, 2, 3);
-    SET_ARITY_EXACT(for, 2);
-    SET_ARITY_EXACT(for_list, 2);
-    SET_ARITY_MIN(begin, 1);
-    SET_ARITY_EXACT(quote, 1);
-    SET_ARITY_MIN(lambda, 2);
-    SET_ARITY_EXACT(exit, 0);  // for now
-
     // Miscellaneous
     SET_ARITY_EXACT(equalp, 2);
     SET_ARITY_EXACT(symbolp, 1);
@@ -191,6 +176,33 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     return true;
 }    
 
+bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
+{
+    SET_ARITY_MIN(def, 2);
+    SET_ARITY_EXACT(setb, 2);
+    SET_ARITY_EXACT(if, 3);
+    SET_ARITY_MIN(unless, 2);
+    SET_ARITY_MIN(when, 2);
+    // no check: 'cond'
+    // no check: 'case'
+    SET_ARITY_RANGE(let, 2, 3);
+    SET_ARITY_RANGE(letstar, 2, 3);
+    SET_ARITY_EXACT(for, 2);
+    SET_ARITY_EXACT(for_list, 2);
+    SET_ARITY_MIN(begin, 1);
+    SET_ARITY_EXACT(quote, 1);
+    SET_ARITY_EXACT(quasiquote, 1);
+    SET_ARITY_EXACT(unquote, 1);
+    SET_ARITY_MIN(lambda, 2);
+    SET_ARITY_EXACT(exit, 0);  // for now
+    SET_ARITY_EXACT(delay, 1);
+    SET_ARITY_EXACT(force, 1);
+
+    parity->low = 0;
+    parity->high = SIZE_MAX;
+    return true;
+}
+
 bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr)
 {
     MinimArity arity;
@@ -203,6 +215,19 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
         builtin_arity_error(fun, argc, arity.low, arity.high, env, perr);
         return false;
     }
+
+    return true;
+}
+
+bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env)
+{
+    MinimArity arity;
+
+    if (!minim_get_syntax_arity(fun, &arity))
+        return false;
+
+    if (IS_OUTSIDE(argc, arity.low, arity.high))
+        return false;
 
     return true;
 }

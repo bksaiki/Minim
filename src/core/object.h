@@ -40,7 +40,8 @@ typedef enum MinimObjectType
     MINIM_OBJ_AST,
     MINIM_OBJ_SEQ,
     MINIM_OBJ_HASH,
-    MINIM_OBJ_VECTOR
+    MINIM_OBJ_VECTOR,
+    MINIM_OBJ_PROMISE
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
@@ -68,6 +69,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_OBJ_SEQP(obj)         MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SEQ)
 #define MINIM_OBJ_HASHP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_HASH)
 #define MINIM_OBJ_VECTORP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
+#define MINIM_OBJ_PROMISEP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PROMISE)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
 #define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
@@ -92,6 +94,10 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_STRING(obj)       (obj->u.str.str)
 #define MINIM_DATA(obj)         (obj->u.ptrs.p1)      
 
+#define MINIM_PROMISE_VAL(obj)          (obj->u.pair.car)
+#define MINIM_PROMISE_ENV(obj)          ((MinimEnv*) obj->u.pair.cdr)
+#define MINIM_PROMISE_FORCEDP(obj)      (obj->u.pair.cdr == NULL)
+#define MINIM_PROMISE_SET_FORCED(obj)   (obj)->u.pair.cdr = 0x0
 
 //  Initialization
 

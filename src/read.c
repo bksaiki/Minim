@@ -1,6 +1,4 @@
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "build/config.h"
 #include "minim.h"
@@ -94,6 +92,7 @@ int minim_load_library(MinimEnv *env)
     LOAD_FILE(env, MINIM_LIB_PATH "lib/function.min");
     LOAD_FILE(env, MINIM_LIB_PATH "lib/math.min");
     LOAD_FILE(env, MINIM_LIB_PATH "lib/list.min");
+    LOAD_FILE(env, MINIM_LIB_PATH "lib/lazy.min");
     
     return 0;
 }
