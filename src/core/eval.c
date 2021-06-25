@@ -160,12 +160,14 @@ static MinimObject *error_or_exit(MinimObject **args, size_t argc)
 
 static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t flags)
 {
+    MinimObject *res;
+
     if (node->type == SYNTAX_NODE_LIST)
     {
-        MinimObject **args, *res, *proc;
+        MinimObject **args, *proc;
 
         if (node->childc > 2 && node->children[node->childc - 2]->sym &&
-                 strcmp(node->children[node->childc - 2]->sym, ".") == 0)
+            strcmp(node->children[node->childc - 2]->sym, ".") == 0)
         {
             MinimObject *rest;
             size_t reduc = node->childc - 2;
@@ -203,12 +205,11 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
             else                        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
         }
 
-        return minim_builtin_list(env, args, node->childc);
+        res = minim_builtin_list(env, args, node->childc);
     }
     else if (node->type == SYNTAX_NODE_VECTOR)
     {
         MinimObject **args;
-        MinimObject *res;
 
         args = GC_alloc(node->childc * sizeof(MinimObject*));
         for (size_t i = 0; i < node->childc; ++i)
@@ -218,14 +219,11 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
         }
 
         res = minim_builtin_vector(env, args, node->childc);
-        return res;
     }
     else if (node->type == SYNTAX_NODE_PAIR)
     {
-        MinimObject **args;
-        MinimObject *res;
+        MinimObject **args = GC_alloc(2 * sizeof(MinimObject*));
 
-        args = GC_alloc(2 * sizeof(MinimObject*));
         if (flags & UNSYNTAX_REC)
         {
             args[0] = unsyntax_ast_node(env, node->children[0], flags);
@@ -238,12 +236,13 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
         }
 
         res = minim_builtin_cons(env, args, 2);
-        return res;
     }
     else
     {
-        return str_to_node(node->sym, env, true);
+        res = str_to_node(node->sym, env, true);
     }
+
+    return res;
 }
 
 // Eval mainloop
@@ -293,15 +292,22 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         {
             MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
 
-            for (size_t i = 0; i < argc; ++i)
-                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
-            res = proc(env, args, argc);
-
-            if (MINIM_OBJ_CLOSUREP(res))
+            if (proc == minim_builtin_unquote)
             {
-                MinimLambda *lam = res->u.ptrs.p1;
-                if (!lam->loc && node->children[0]->loc)
-                    copy_syntax_loc(&lam->loc, node->children[0]->loc);
+                res = minim_error("not in a quasiquote", "unquote");
+            }
+            else
+            {
+                for (size_t i = 0; i < argc; ++i)
+                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
+                
+                res = proc(env, args, argc);
+                if (MINIM_OBJ_CLOSUREP(res))
+                {
+                    MinimLambda *lam = res->u.ptrs.p1;
+                    if (!lam->loc && node->children[0]->loc)
+                        copy_syntax_loc(&lam->loc, node->children[0]->loc);
+                }
             }
         }
         else if (MINIM_OBJ_CLOSUREP(op))
