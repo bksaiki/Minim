@@ -30,6 +30,11 @@ DEFINE_BUILTIN_FUN(exit)
 DEFINE_BUILTIN_FUN(delay)
 DEFINE_BUILTIN_FUN(force)
 
+// Transforms
+
+DEFINE_BUILTIN_FUN(def_syntax)
+DEFINE_BUILTIN_FUN(syntax_rules)
+
 // Miscellaneous
 DEFINE_BUILTIN_FUN(equalp)
 DEFINE_BUILTIN_FUN(symbolp)

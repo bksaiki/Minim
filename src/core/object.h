@@ -92,6 +92,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_VECTOR_LEN(obj)   (obj->u.vec.len)
 
 #define MINIM_STRING(obj)       (obj->u.str.str)
+#define MINIM_AST(obj)          ((SyntaxNode*) obj->u.ptrs.p1)
 #define MINIM_DATA(obj)         (obj->u.ptrs.p1)      
 
 #define MINIM_PROMISE_VAL(obj)          (obj->u.pair.car)
