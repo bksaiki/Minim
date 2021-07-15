@@ -7,7 +7,6 @@
 #include "syntax.h"
 
 #define CHECK_REC(proc, x, expr)        if (proc == x) return expr(env, ast, perr)
-#define UNSYNTAX()
 
 static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr);
 
@@ -282,6 +281,11 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     return check_syntax_rec(env, ast->children[base + 1], perr);
 }
 
+static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    return check_syntax_rec(env, ast->children[1], perr);
+}
+
 // (syntax-rules (reserved ...)
 //  [(_ elem _) syntax]
 //  ...)
@@ -395,6 +399,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         CHECK_REC(proc, minim_builtin_for, check_syntax_for);
         CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
         CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
+        CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
         // CHECK_REC(proc, minim_builtin_quote, true);
         // CHECK_REC(proc, minim_builtin_quasiquote, true);
         // CHECK_REC(proc, minim_builtin_unquote, true);

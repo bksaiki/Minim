@@ -64,7 +64,7 @@ MinimObject *minim_builtin_unquote(MinimEnv *env, MinimObject **args, size_t arg
 {
     MinimObject *res;
 
-    eval_ast(env, MINIM_DATA(args[0]), &res);
+    eval_ast_no_check(env, MINIM_DATA(args[0]), &res);
     return res;
 }
 

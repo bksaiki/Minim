@@ -11,6 +11,7 @@
 #include "number.h"
 #include "syntax.h"
 #include "tail_call.h"
+#include "transform.h"
 
 static bool is_rational(char *str)
 {
@@ -195,7 +196,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
             proc = env_get_sym(env, node->children[0]->sym);
             if (flags & UNSYNTAX_QUASIQUOTE && proc && MINIM_DATA(proc) == minim_builtin_unquote)
             {
-                eval_ast(env, node->children[1], &res);
+                eval_ast_no_check(env, node->children[1], &res);
                 return res;
             }
         }
@@ -378,6 +379,9 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     if (!check_syntax(env, ast, pobj))
+        return 0;
+
+    if (!transform_syntax(env, ast, pobj))
         return 0;
 
     *pobj = eval_ast_node(env, ast);

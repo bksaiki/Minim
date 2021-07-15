@@ -23,9 +23,9 @@ MinimObject *minim_builtin_force(MinimEnv *env, MinimObject **args, size_t argc)
     }
     else
     {
-        eval_ast(MINIM_PROMISE_ENV(args[0]),
-                 MINIM_DATA(MINIM_PROMISE_VAL(args[0])),
-                 &MINIM_PROMISE_VAL(args[0]));
+        eval_ast_no_check(MINIM_PROMISE_ENV(args[0]),
+                          MINIM_DATA(MINIM_PROMISE_VAL(args[0])),
+                          &MINIM_PROMISE_VAL(args[0]));
         MINIM_PROMISE_SET_FORCED(args[0]);
         return MINIM_PROMISE_VAL(args[0]);
     }
