@@ -37,6 +37,7 @@ typedef enum MinimObjectType
     MINIM_OBJ_CLOSURE,
     MINIM_OBJ_SYNTAX,
     MINIM_OBJ_TAIL_CALL,
+    MINIM_OBJ_TRANSFORM,
     MINIM_OBJ_AST,
     MINIM_OBJ_SEQ,
     MINIM_OBJ_HASH,
@@ -65,6 +66,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_OBJ_CLOSUREP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_CLOSURE)
 #define MINIM_OBJ_SYNTAXP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SYNTAX)
 #define MINIM_OBJ_TAIL_CALLP(obj)   MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_TAIL_CALL)
+#define MINIM_OBJ_TRANSFORMP(obj)   MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_TRANSFORM)
 #define MINIM_OBJ_ASTP(obj)         MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_AST)
 #define MINIM_OBJ_SEQP(obj)         MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SEQ)
 #define MINIM_OBJ_HASHP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_HASH)
@@ -93,12 +95,15 @@ typedef bool (*MinimPred)(MinimObject *);
 
 #define MINIM_STRING(obj)       (obj->u.str.str)
 #define MINIM_AST(obj)          ((SyntaxNode*) obj->u.ptrs.p1)
-#define MINIM_DATA(obj)         (obj->u.ptrs.p1)      
+#define MINIM_DATA(obj)         (obj->u.ptrs.p1)
 
 #define MINIM_PROMISE_VAL(obj)          (obj->u.pair.car)
 #define MINIM_PROMISE_ENV(obj)          ((MinimEnv*) obj->u.pair.cdr)
 #define MINIM_PROMISE_FORCEDP(obj)      (obj->u.pair.cdr == NULL)
 #define MINIM_PROMISE_SET_FORCED(obj)   (obj)->u.pair.cdr = 0x0
+
+#define MINIM_TRANSFORM_NAME(obj)       ((char*) obj->u.ptrs.p1)
+#define MINIM_TRANSFORM_AST(obj)        ((SyntaxNode*) obj->u.ptrs.p2)
 
 //  Initialization
 

@@ -109,6 +109,11 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     {
         MINIM_DATA(obj) = va_arg(vargs, MinimBuiltin);
     }
+    else if (MINIM_OBJ_TRANSFORMP(obj))
+    {
+        obj->u.ptrs.p1 = va_arg(vargs, char*);
+        obj->u.ptrs.p2 = va_arg(vargs, SyntaxNode*);
+    }
     else if (type == MINIM_OBJ_CLOSURE)
     {
         obj->u.ptrs.p1 = va_arg(vargs, MinimLambda*);
@@ -201,6 +206,14 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
         copy_minim_tail_call(&call, MINIM_DATA(src));
         MINIM_DATA(obj) = call;
     }
+    else if (MINIM_OBJ_TRANSFORMP(src))
+    {
+        SyntaxNode *node;
+
+        copy_syntax_node(&node, MINIM_TRANSFORM_AST(src));
+        obj->u.ptrs.p1 = GC_alloc_atomic((strlen(MINIM_TRANSFORM_NAME(src)) + 1) * sizeof(char));
+        obj->u.ptrs.p2 = node;
+    }
     else if (src->type == MINIM_OBJ_CLOSURE)
     {
         MinimLambda *lam;
@@ -284,6 +297,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_TAIL_CALL:
+    case MINIM_OBJ_TRANSFORM:
     case MINIM_OBJ_ERR:
     */
     default:
@@ -353,6 +367,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_TAIL_CALL:
+    case MINIM_OBJ_TRANSFORM:
     case MINIM_OBJ_ERR:
     */
     default:

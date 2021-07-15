@@ -252,6 +252,11 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writec_buffer(bf, '>');
         pp->syntax = syntaxp;
     }
+    // else
+    // {
+    // case MINIM_OBJ_TAIL_CALL:
+    // case MINIM_OBJ_TRANSFORM:
+    // }
 
     return 1;
 }

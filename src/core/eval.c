@@ -136,6 +136,8 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
                 return minim_error("unrecognized symbol", str);
             else if (MINIM_OBJ_SYNTAXP(res))
                 return minim_error("bad syntax", str);
+            else if (MINIM_OBJ_TRANSFORMP(res))
+                return minim_error("bad transform", str);
         }
     }
 
