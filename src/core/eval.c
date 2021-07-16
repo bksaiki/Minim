@@ -381,8 +381,7 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     if (!check_syntax(env, ast, pobj))
         return 0;
 
-    if (!transform_syntax(env, ast, pobj))
-        return 0;
+    transform_syntax(env, ast, pobj);
 
     *pobj = eval_ast_node(env, ast);
     return !MINIM_OBJ_ERRORP((*pobj));

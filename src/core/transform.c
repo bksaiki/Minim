@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "../gc/gc.h"
 #include "builtin.h"
 #include "error.h"
@@ -8,26 +10,78 @@
 
 // ================================ Transform ================================
 
-static bool match_transform_rec(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast)
+static bool
+match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
+                char **reserved_names, size_t reservedc, bool ignore_first)
 {
+    MinimObject *match_unbox, *ast_unbox, *it, *it2;
+    size_t len_m, len_a, idx;
 
-}
-
-static bool match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast)
-{
-    MinimObject *args;
-
-    unsyntax_ast(env, ast, &args);
-    for (MinimObject *it = MINIM_CAR(args), it2 = MINIM_CAR(ast);
-         it && MINIM_CAR(it) &&; it = MINIM_CDR(it))
+    unsyntax_ast(env, match, &match_unbox);
+    unsyntax_ast(env, ast, &ast_unbox);
+    if (minim_listp(match_unbox) && minim_listp(ast_unbox))
     {
-        if (!match_transform_rec(env, MINIM_AST(MINIM_CAR(it)), 
+        len_m = minim_list_length(match_unbox);
+        len_a = minim_list_length(ast_unbox);
+
+        if (len_m != len_a)     return false;
+        if (len_m == 0)         return true;
+
+        idx = 0;
+        it = match_unbox;
+        it2 = ast_unbox;
+        while (idx < len_m)
+        {
+            if (idx != 0 || !ignore_first)
+            {
+                if (!match_transform(env, MINIM_AST(MINIM_CAR(it)), MINIM_AST(MINIM_CAR(it2)),
+                                     reserved_names, reservedc, false))
+                    return false;
+            }
+
+            ++idx;
+            it = MINIM_CDR(it);
+            it2 = MINIM_CDR(it2);
+        }
+    }
+    else if (MINIM_OBJ_SYMBOLP(match_unbox))    // intern matching syntax
+    {
+        for (size_t i = 0; i < reservedc; ++i)  // check reserved names
+        {
+            if (strcmp(MINIM_STRING(match_unbox), reserved_names[i]) == 0)
+                return true;
+        }
+
+        init_minim_object(&it, MINIM_OBJ_SYNTAX, ast);  // wrap first
+        env_intern_sym(env, MINIM_STRING(match_unbox), it);
+    }
+    else
+    {
+        return false;
     }
 
-    return false;
+    return true;
 }
 
-static bool transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
+static SyntaxNode*
+apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    if (ast->type == SYNTAX_NODE_LIST)
+    {
+        for (size_t i = 0; i < ast->childc; ++i)
+            ast->children[i] = apply_transformation(env, ast->children[i], perr);
+    }
+    else
+    {
+        MinimObject *val = env_get_sym(env, ast->sym);
+        if (val)    return MINIM_AST(val);      // replace
+    }
+
+    return ast;
+}
+
+static SyntaxNode*
+transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *reserved_lst, *rule, *sym, *it;
     char **reserved_names;
@@ -46,43 +100,50 @@ static bool transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, Mi
 
     for (size_t i = 2; i < MINIM_TRANSFORM_AST(trans)->childc; ++i)
     {
+        SyntaxNode *match, *replace;
         MinimEnv *env2;
 
-        init_env(&env2, env, NULL);
+        init_env(&env2, NULL, NULL);  // isolated environment
         unsyntax_ast(env, MINIM_TRANSFORM_AST(trans)->children[i], &rule);
-        if (match_transform(env2, MINIM_AST(MINIM_CAR(rule)), ast))
+
+        match = MINIM_AST(MINIM_CAR(rule));
+        replace = MINIM_AST(MINIM_CADR(rule));
+        if (match_transform(env2, match, ast, reserved_names, reservedc, true))
         {
-            printf("Matched\n");
+            ast = apply_transformation(env, replace, perr);
+            return (perr) ? NULL : ast;
         }
     }
 
-    return true;
+    *perr = minim_error("no matching syntax rule", MINIM_TRANSFORM_NAME(trans));
+    return ast;
 }
 
-bool transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
+SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
 {
     MinimObject *op;
 
+    perr = NULL;        // signals success
     if (ast->type != SYNTAX_NODE_LIST)
-        return true;
+        return ast;
 
     op = env_get_sym(env, ast->children[0]->sym);
     if (op && !MINIM_OBJ_SYNTAXP(op))
     {
         for (size_t i = 0; i < ast->childc; ++i)
         {
-            if (!transform_syntax(env, ast->children[i], perr))
-                return false;
+            transform_syntax(env, ast->children[i], perr);
+            if (perr)   return ast;
         }
 
         if (MINIM_OBJ_TRANSFORMP(op))
         {
-            if (!transform_loc(env, op, ast, perr))
-                return false;
+            transform_loc(env, op, ast, perr);
+            if (perr)   return ast;
         }
     }
 
-    return true;
+    return ast;
 }
 
 // ================================ Builtins ================================

@@ -53,6 +53,8 @@ typedef bool (*MinimPred)(MinimObject *);
 
 #define MINIM_OBJ_SAME_TYPE(obj, t)     (obj->type == t)
 
+#define MINIM_OBJ_TYPE_EQVP(a, b)       (a->type == b->type)
+
 #define MINIM_OBJ_VOIDP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VOID)
 #define MINIM_OBJ_EXITP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXIT)
 #define MINIM_OBJ_BOOLP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_BOOL)

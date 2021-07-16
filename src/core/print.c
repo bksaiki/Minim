@@ -271,6 +271,16 @@ void set_default_print_params(PrintParams *pp)
     pp->syntax = false;
 }
 
+void debug_print_minim_object(MinimObject *obj, MinimEnv *env)
+{
+    PrintParams pp;
+
+    set_default_print_params(&pp);
+    print_to_port(obj, env, &pp, stdout);
+    fprintf(stdout, "\n");
+    fflush(stdout);
+}
+
 int print_minim_object(MinimObject *obj, MinimEnv *env, PrintParams *pp)
 {
     return print_to_port(obj, env, pp, stdout);

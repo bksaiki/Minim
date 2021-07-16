@@ -15,6 +15,9 @@ typedef struct PrintParams
 
 void set_default_print_params(PrintParams *pp);
 
+// For debugging
+void debug_print_minim_object(MinimObject *obj, MinimEnv *env);
+
 // Writes a string representation of the object to stdout
 int print_minim_object(MinimObject *obj, MinimEnv *env, PrintParams *pp);
 
