@@ -61,9 +61,7 @@ int minim_repl(uint32_t flags)
         if (minim_parse_port(stdin, "repl", &ast, &err, &rt))
         {
             if (rt.flags & READ_TABLE_FLAG_BAD)
-            {
                 ast = err;
-            }
 
             if (ast)
             {

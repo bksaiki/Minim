@@ -515,7 +515,7 @@ int parse_str(const char* str, SyntaxNode** psyntax)
     tmp = tmpfile();
     fputs(str, tmp);
     rewind(tmp);
-
+    
     status = minim_parse_port(tmp, "test", psyntax, &err, &rt);
     if (rt.flags & READ_TABLE_FLAG_BAD)
         *psyntax = err;

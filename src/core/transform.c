@@ -110,8 +110,8 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
         replace = MINIM_AST(MINIM_CADR(rule));
         if (match_transform(env2, match, ast, reserved_names, reservedc, true))
         {
-            ast = apply_transformation(env, replace, perr);
-            return (perr) ? NULL : ast;
+            ast = apply_transformation(env2, replace, perr);
+            return (*perr) ? NULL : ast;
         }
     }
 
@@ -119,11 +119,10 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
     return ast;
 }
 
-SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
+SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
 {
     MinimObject *op;
 
-    perr = NULL;        // signals success
     if (ast->type != SYNTAX_NODE_LIST)
         return ast;
 
@@ -132,18 +131,27 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
     {
         for (size_t i = 0; i < ast->childc; ++i)
         {
-            transform_syntax(env, ast->children[i], perr);
-            if (perr)   return ast;
+            ast->children[i] = transform_syntax_rec(env, ast->children[i], perr);
+            if (*perr)   return ast;
         }
 
         if (MINIM_OBJ_TRANSFORMP(op))
         {
-            transform_loc(env, op, ast, perr);
-            if (perr)   return ast;
+            ast = transform_loc(env, op, ast, perr);
+            if (*perr)   return ast;
         }
     }
 
     return ast;
+}
+
+SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
+{
+    MinimEnv *env2;
+
+    *perr = NULL;   // NULL signals success
+    init_env(&env2, env, NULL);
+    return transform_syntax_rec(env2, ast, perr);
 }
 
 // ================================ Builtins ================================

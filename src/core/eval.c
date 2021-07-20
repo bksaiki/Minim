@@ -381,7 +381,8 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     if (!check_syntax(env, ast, pobj))
         return 0;
 
-    transform_syntax(env, ast, pobj);
+    ast = transform_syntax(env, ast, pobj);
+    if (*pobj)  return 0;
 
     *pobj = eval_ast_node(env, ast);
     return !MINIM_OBJ_ERRORP((*pobj));
@@ -416,24 +417,44 @@ int unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 
 char *eval_string(char *str, size_t len)
 {
-    SyntaxNode *ast;
+    SyntaxNode *ast, *err;
     MinimObject *obj;
     MinimEnv *env;
     PrintParams pp;
+    ReadTable rt;
+    FILE *tmp;
     char *out;
 
     init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     set_default_print_params(&pp);
 
-    if (parse_str(str, &ast))
+    tmp = tmpfile();
+    fputs(str, tmp);
+    rewind(tmp);
+
+    rt.idx = 0;
+    rt.row = 1;
+    rt.col = 0;
+    rt.flags = 0x0;
+    rt.eof = EOF;
+
+    set_default_print_params(&pp);
+    while (~rt.flags & READ_TABLE_FLAG_EOF)
     {
-        char *tmp = "Parsing failed!";
-        out = GC_alloc_atomic((strlen(tmp) + 1) * sizeof(char));
-        strcpy(out, tmp);
-        return out;
+        minim_parse_port(tmp, "", &ast, &err, &rt);
+        if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+        {
+            char *tmp = "Parsing failed!";
+            out = GC_alloc_atomic((strlen(tmp) + 1) * sizeof(char));
+            strcpy(out, tmp);
+            return out;
+        }
+
+        eval_ast(env, ast, &obj);
+        if (obj->type == MINIM_OBJ_ERR)
+            return print_to_string(obj, env, &pp);
     }
 
-    eval_ast(env, ast, &obj);
     return print_to_string(obj, env, &pp);
 }
