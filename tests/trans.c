@@ -76,8 +76,8 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 7;
+        char strs[14][256] =
         {
             "(def-syntax foo                \
               (syntax-rules ()              \
@@ -102,6 +102,30 @@ int main()
                [(_ a) (list a)]))           \
              (foo 1)",
             "'(1)",
+
+            "(def-syntax foo              \
+              (syntax-rules ()            \
+               [(_ a b c) '(a b c)]))     \
+             (foo 1 2 3)",
+            "'(1 2 3)",
+
+            "(def-syntax foo                \
+              (syntax-rules ()              \
+               [(_ #(a b c)) '(a b c)]))    \
+             (foo #(1 2 3))",
+            "'(1 2 3)",
+
+            "(def-syntax foo                  \
+              (syntax-rules ()                \
+               [(_ (a b) c d) '(a b c d)]))   \
+             (foo (1 2) 3 4)",
+            "'(1 2 3 4)",
+
+            "(def-syntax foo              \
+              (syntax-rules ()            \
+               [(_ a b c) #(a b c)]))     \
+             (foo 1 2 3)",
+            "'#(1 2 3)"
         };
 
         printf("Apply transforms w/ variables\n");

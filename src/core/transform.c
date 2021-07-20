@@ -44,6 +44,23 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
             it2 = MINIM_CDR(it2);
         }
     }
+    else if (MINIM_OBJ_VECTORP(match_unbox) && MINIM_OBJ_VECTORP(ast_unbox))
+    {
+        len_m = MINIM_VECTOR_LEN(match_unbox);
+        len_a = MINIM_VECTOR_LEN(ast_unbox);
+
+        if (len_m != len_a)     return false;
+        if (len_m == 0)         return true;
+        
+        for (size_t i = 0; i < len_m; ++i)
+        {
+            if (!match_transform(env, MINIM_AST(MINIM_VECTOR_ARR(match_unbox)[i]),
+                                 MINIM_AST(MINIM_VECTOR_ARR(ast_unbox)[i]),
+                                 reserved_names, reservedc, false))
+                return false;
+        }
+
+    }
     else if (MINIM_OBJ_SYMBOLP(match_unbox))    // intern matching syntax
     {
         for (size_t i = 0; i < reservedc; ++i)  // check reserved names
@@ -66,7 +83,7 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
 static SyntaxNode*
 apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
-    if (ast->type == SYNTAX_NODE_LIST)
+    if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
         for (size_t i = 0; i < ast->childc; ++i)
             ast->children[i] = apply_transformation(env, ast->children[i], perr);

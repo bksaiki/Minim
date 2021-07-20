@@ -445,16 +445,22 @@ char *eval_string(char *str, size_t len)
         minim_parse_port(tmp, "", &ast, &err, &rt);
         if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
         {
-            char *tmp = "Parsing failed!";
-            out = GC_alloc_atomic((strlen(tmp) + 1) * sizeof(char));
-            strcpy(out, tmp);
+            char *s = "Parsing failed!";
+            out = GC_alloc_atomic((strlen(s) + 1) * sizeof(char));
+            strcpy(out, s);
+
+            fclose(tmp);
             return out;
         }
 
         eval_ast(env, ast, &obj);
         if (obj->type == MINIM_OBJ_ERR)
+        {
+            fclose(tmp);
             return print_to_string(obj, env, &pp);
+        }
     }
 
+    fclose(tmp);
     return print_to_string(obj, env, &pp);
 }
