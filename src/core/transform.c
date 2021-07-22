@@ -43,6 +43,9 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
     MinimObject *match_unbox, *ast_unbox, *it, *it2;
     size_t len_m, len_a, idx;
 
+    // printf("Match: "); print_ast(match); printf("\n");
+    // printf("Given: "); print_ast(ast); printf("\n");
+
     unsyntax_ast(env, match, &match_unbox);
     unsyntax_ast(env, ast, &ast_unbox);
     if (minim_listp(match_unbox) && minim_listp(ast_unbox))
@@ -62,40 +65,69 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
 
         while (it && it2)
         {
+            bool advance = true;
+
             if (idx != 0 || !ignore_first)
             {
                 if (is_match_pattern(it))
                 {
-                    MinimObject *peek, *bind, *it3;
-                    size_t ahead;
+                    MinimObject *head, *it3, *name, *val;
+                    MinimEnv *env2;
 
                     // printf("pattern in syntax rule\n");
                     // printf(" idx: %zu\n", idx);
                     // printf(" len_m: %zu\n", len_m);
                     // printf(" len_a: %zu\n", len_a);
                     
-                    if (idx + 2 > len_m)    // not enough space for pattern variable
+                    if (len_m > len_a + 2)    // not enough space for remaining
                         return false;
 
-                    if (len_a + 2 < len_m)  // not enough space in ast
-                        return false;
+                    name = MINIM_CAR(it);
+                    if (len_m == len_a + 2)
+                    {
+                        init_minim_object(&head, MINIM_OBJ_PAIR, NULL, NULL);
+                    }
+                    else
+                    {
+                        head = NULL;
+                        for (size_t j = 1; j < len_a - (len_m - idx - 2); ++j, it2 = MINIM_CDR(it2))
+                        {
+                            init_env(&env2, NULL, NULL);    // isolated
+                            match_transform(env2, MINIM_AST(name), MINIM_AST(MINIM_CAR(it2)),
+                                            reserved_names, reservedc, false);
+                            val = env_get_sym(env2, MINIM_AST(name)->sym);
+                            if (!val)   return false;
 
-                    // save (1 before) iter and bind pattern
-                    ahead = len_a + 2 - len_m;
-                    peek = minim_list_ref(it2, ahead);
+                            if (head)
+                            {
+                                init_minim_object(&MINIM_CDR(it3), MINIM_OBJ_PAIR, val, NULL);
+                                it3 = MINIM_CDR(it3);
+                            }
+                            else
+                            {
+                                init_minim_object(&head, MINIM_OBJ_PAIR, val, NULL);
+                                it3 = head;
+                            }
+                        }
+                    }
 
-                    // env_intern_sym(env, MINIM_STRING(match_unbox), it);
+                    debug_print_minim_object(head, env);
+
+                    env_intern_sym(env, MINIM_AST(name)->sym, head);
+                    it = MINIM_CDR(it);
+                    advance = false;
+                    ++idx;
                 }
-                if (!match_transform(env, MINIM_AST(MINIM_CAR(it)), MINIM_AST(MINIM_CAR(it2)),
-                                     reserved_names, reservedc, false))
+                else if (!match_transform(env, MINIM_AST(MINIM_CAR(it)), MINIM_AST(MINIM_CAR(it2)),
+                                          reserved_names, reservedc, false))
                 {
                     return false;
                 }
             }
 
-            ++idx;
             it = MINIM_CDR(it);
-            it2 = MINIM_CDR(it2);
+            if (advance) it2 = MINIM_CDR(it2);
+            ++idx;
         }
 
         if (!it2 && is_match_pattern(it))
@@ -134,7 +166,7 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
                 return true;
         }
 
-        init_minim_object(&it, MINIM_OBJ_SYNTAX, ast);  // wrap first
+        init_minim_object(&it, MINIM_OBJ_AST, ast);  // wrap first
         env_intern_sym(env, MINIM_STRING(match_unbox), it);
     }
     else
@@ -163,31 +195,56 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
                     
                     if (len == 0)   // shrink by two
                     {
-                        for (size_t j = i + 2; j < ast->childc; ++j)
-                            ast->children[i] = ast->children[j];
+                        for (size_t j = i; j + 2 < ast->childc; ++j)
+                            ast->children[j] = ast->children[j + 2];
 
                         ast->childc -= 2;
                         ast->children = GC_realloc(ast->children, ast->childc * sizeof(SyntaxNode*));
+                        ++i;
                     }
                     else if (len == 1) // shrink by one
                     {
-                        for (size_t j = i + 2; j < ast->childc; ++j)
-                            ast->children[i] = ast->children[j];
+                        for (size_t j = i; j + 1 < ast->childc; ++j)
+                            ast->children[j] = ast->children[j + 1];
 
-                        ast->childc -= 2;
+                        ast->childc -= 1;
                         ast->children = GC_realloc(ast->children, ast->childc * sizeof(SyntaxNode*));
                         ast->children[i] = MINIM_AST(MINIM_CAR(val));
+                        ++i;
                     }
                     else if (len == 2) // nothing
                     {
-
+                        ast->children[i] = MINIM_AST(MINIM_CAR(val));
+                        ast->children[i + 1] = MINIM_AST(MINIM_CADR(val));
+                        i += 2;
                     }
                     else        // expand
                     {
+                        MinimObject *it;
+                        size_t new_size, j;
 
+                        ast->children[i] = MINIM_AST(MINIM_CAR(val));
+                        ast->children[i + 1] = MINIM_AST(MINIM_CADR(val));
+
+                        it = MINIM_CDDR(val);
+                        new_size = ast->childc + len - 2;
+                        ast->children = GC_realloc(ast->children, new_size * sizeof(SyntaxNode*));
+                        for (j = i + 2; j < ast->childc; ++j)
+                        {
+                            ast->children[j + new_size] = ast->children[j];
+                            ast->children[j] = MINIM_AST(MINIM_CAR(it));
+                            it = MINIM_CDR(it);
+                        }
+
+                        for (; j < new_size; ++j)
+                        {
+                            ast->children[j] = MINIM_AST(MINIM_CAR(it));
+                            it = MINIM_CDR(it);
+                        }
+                        
+                        ast->childc = new_size;
+                        i += len;
                     }
-
-                    ++i;
                 }
                 else
                 {
@@ -238,6 +295,9 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
 
         match = MINIM_AST(MINIM_CAR(rule));
         copy_syntax_node(&replace, MINIM_AST(MINIM_CADR(rule)));
+
+        // printf("match: "); print_ast(match); printf("\n");
+        // printf("replace: "); print_ast(replace); printf("\n");
 
         if (match_transform(env2, match, ast, reserved_names, reservedc, true))
         {
