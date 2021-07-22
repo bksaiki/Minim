@@ -192,6 +192,24 @@ MinimObject *minim_list(MinimObject **args, size_t len)
     return head;
 }
 
+MinimObject *minim_list_ref(MinimObject *lst, size_t len)
+{
+    MinimObject *it = lst;
+
+    for (size_t i = 0; i < len; ++i)
+    {
+        if (!it)
+        {
+            printf("internal list ref out of bounds\n");
+            return NULL;
+        }
+
+        it = MINIM_CDR(it);
+    }
+
+    return it;
+}
+
 size_t minim_list_length(MinimObject *list)
 {
     size_t len = 0;

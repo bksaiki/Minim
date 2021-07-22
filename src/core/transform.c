@@ -10,6 +10,32 @@
 
 // ================================ Transform ================================
 
+#define list_len_at_least_two(x) \
+    ((x) && MINIM_CAR(x) && MINIM_CDR(x) && MINIM_CADR(x))
+
+
+static bool
+is_match_pattern(MinimObject *match)
+{
+    if (!list_len_at_least_two(match))
+        return false;
+
+    if (MINIM_AST(MINIM_CADR(match))->type != SYNTAX_NODE_DATUM)
+        return false;
+
+    return strcmp(MINIM_AST(MINIM_CADR(match))->sym, "...") == 0;
+}
+
+static bool
+is_replace_pattern(SyntaxNode *replace, size_t idx)
+{
+    return (replace->type == SYNTAX_NODE_LIST &&
+            idx + 1 < replace->childc &&
+            replace->children[idx]->sym &&
+            replace->children[idx + 1]->sym &&
+            strcmp(replace->children[idx + 1]->sym, "...") == 0);
+}
+
 static bool
 match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
                 char **reserved_names, size_t reservedc, bool ignore_first)
@@ -21,28 +47,67 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
     unsyntax_ast(env, ast, &ast_unbox);
     if (minim_listp(match_unbox) && minim_listp(ast_unbox))
     {
-        len_m = minim_list_length(match_unbox);
-        len_a = minim_list_length(ast_unbox);
+        // handle null cases
+        if (minim_nullp(match_unbox) && minim_nullp(ast_unbox))
+            return true;
 
-        if (len_m != len_a)     return false;
-        if (len_m == 0)         return true;
+        if (minim_nullp(match_unbox) || minim_nullp(ast_unbox))
+            return false;
 
         idx = 0;
+        len_m = minim_list_length(match_unbox);
+        len_a = minim_list_length(ast_unbox);
         it = match_unbox;
         it2 = ast_unbox;
-        while (idx < len_m)
+
+        while (it && it2)
         {
             if (idx != 0 || !ignore_first)
             {
+                if (is_match_pattern(it))
+                {
+                    MinimObject *peek, *bind, *it3;
+                    size_t ahead;
+
+                    // printf("pattern in syntax rule\n");
+                    // printf(" idx: %zu\n", idx);
+                    // printf(" len_m: %zu\n", len_m);
+                    // printf(" len_a: %zu\n", len_a);
+                    
+                    if (idx + 2 > len_m)    // not enough space for pattern variable
+                        return false;
+
+                    if (len_a + 2 < len_m)  // not enough space in ast
+                        return false;
+
+                    // save (1 before) iter and bind pattern
+                    ahead = len_a + 2 - len_m;
+                    peek = minim_list_ref(it2, ahead);
+
+                    // env_intern_sym(env, MINIM_STRING(match_unbox), it);
+                }
                 if (!match_transform(env, MINIM_AST(MINIM_CAR(it)), MINIM_AST(MINIM_CAR(it2)),
                                      reserved_names, reservedc, false))
+                {
                     return false;
+                }
             }
 
             ++idx;
             it = MINIM_CDR(it);
             it2 = MINIM_CDR(it2);
         }
+
+        if (!it2 && is_match_pattern(it))
+        {
+            MinimObject *null;
+
+            init_minim_object(&null, MINIM_OBJ_PAIR, NULL, NULL);  // wrap first
+            env_intern_sym(env, MINIM_AST(MINIM_CAR(it))->sym, null);
+            it = MINIM_CDDR(it);
+        }
+
+        return (!it && !it2);   // both reached end
     }
     else if (MINIM_OBJ_VECTORP(match_unbox) && MINIM_OBJ_VECTORP(ast_unbox))
     {
@@ -83,14 +148,62 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
 static SyntaxNode*
 apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
+    MinimObject *val;
+
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
         for (size_t i = 0; i < ast->childc; ++i)
-            ast->children[i] = apply_transformation(env, ast->children[i], perr);
+        {
+            if (is_replace_pattern(ast, i))
+            {
+                val = env_get_sym(env, ast->children[i]->sym);
+                if (val && minim_listp(val))
+                {
+                    size_t len = minim_list_length(val);
+                    
+                    if (len == 0)   // shrink by two
+                    {
+                        for (size_t j = i + 2; j < ast->childc; ++j)
+                            ast->children[i] = ast->children[j];
+
+                        ast->childc -= 2;
+                        ast->children = GC_realloc(ast->children, ast->childc * sizeof(SyntaxNode*));
+                    }
+                    else if (len == 1) // shrink by one
+                    {
+                        for (size_t j = i + 2; j < ast->childc; ++j)
+                            ast->children[i] = ast->children[j];
+
+                        ast->childc -= 2;
+                        ast->children = GC_realloc(ast->children, ast->childc * sizeof(SyntaxNode*));
+                        ast->children[i] = MINIM_AST(MINIM_CAR(val));
+                    }
+                    else if (len == 2) // nothing
+                    {
+
+                    }
+                    else        // expand
+                    {
+
+                    }
+
+                    ++i;
+                }
+                else
+                {
+                    *perr = minim_error("not a pattern variable", NULL);
+                    return NULL;
+                }
+            }
+            else
+            {
+                ast->children[i] = apply_transformation(env, ast->children[i], perr);
+            }
+        }
     }
     else
     {
-        MinimObject *val = env_get_sym(env, ast->sym);
+        val = env_get_sym(env, ast->sym);
         if (val)    return MINIM_AST(val);      // replace
     }
 
