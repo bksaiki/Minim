@@ -70,7 +70,7 @@ int main()
              "1"
         };
 
-        printf("Apply basic transforms\n");
+        printf("Basic transforms\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -128,7 +128,71 @@ int main()
             "'#(1 2 3)"
         };
 
-        printf("Apply transforms w/ variables\n");
+        printf("Transforms w/ variables\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 9;
+        char strs[18][256] =
+        {
+            "(def-syntax foo                \
+              (syntax-rules ()              \
+               [(_ a ...) (list a ...)]))   \
+             (foo)",
+            "'()",
+
+            "(def-syntax foo                \
+              (syntax-rules ()              \
+               [(_ a ...) (list a ...)]))   \
+             (foo 1)",
+            "'(1)",
+
+            "(def-syntax foo                \
+              (syntax-rules ()              \
+               [(_ a ...) (list a ...)]))   \
+             (foo 1 2)",
+            "'(1 2)",
+
+            "(def-syntax bar                           \
+              (syntax-rules ()                         \
+               [(_ a b ...) (list a (list b ...))]))   \
+             (bar 1)",
+            "'(1 ())",
+
+            "(def-syntax bar                           \
+              (syntax-rules ()                         \
+               [(_ a b ...) (list a (list b ...))]))   \
+             (bar 1 2)",
+            "'(1 (2))",
+
+            "(def-syntax bar                           \
+              (syntax-rules ()                         \
+               [(_ a b ...) (list a (list b ...))]))   \
+             (bar 1 2 3)",
+            "'(1 (2 3))",
+
+            "(def-syntax baz                                \
+              (syntax-rules ()                              \
+               [(_ a b c ...) (list a b (list c ...))]))    \
+             (baz 1 2)",
+            "'(1 2 ())",
+
+            "(def-syntax baz                                \
+              (syntax-rules ()                              \
+               [(_ a b c ...) (list a b (list c ...))]))    \
+             (baz 1 2 3)",
+            "'(1 2 (3))",
+
+            "(def-syntax baz                                \
+              (syntax-rules ()                              \
+               [(_ a b c ...) (list a b (list c ...))]))    \
+             (baz 1 2 3 4)",
+            "'(1 2 (3 4))",
+        };
+
+        printf("Transforms w/ pattern variables\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

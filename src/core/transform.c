@@ -10,20 +10,13 @@
 
 // ================================ Transform ================================
 
-#define list_len_at_least_two(x) \
-    ((x) && MINIM_CAR(x) && MINIM_CDR(x) && MINIM_CADR(x))
-
-
 static bool
 is_match_pattern(MinimObject *match)
 {
-    if (!list_len_at_least_two(match))
-        return false;
-
-    if (MINIM_AST(MINIM_CADR(match))->type != SYNTAX_NODE_DATUM)
-        return false;
-
-    return strcmp(MINIM_AST(MINIM_CADR(match))->sym, "...") == 0;
+    return (match && MINIM_CAR(match) &&
+            MINIM_CDR(match) && MINIM_CADR(match) &&
+            MINIM_AST(MINIM_CADR(match))->type == SYNTAX_NODE_DATUM &&
+            strcmp(MINIM_AST(MINIM_CADR(match))->sym, "...") == 0);
 }
 
 static bool
@@ -89,8 +82,10 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
                     }
                     else
                     {
+                        size_t lim = len_a - (len_m - idx - 2);
+
                         head = NULL;
-                        for (size_t j = 1; j < len_a - (len_m - idx - 2); ++j, it2 = MINIM_CDR(it2))
+                        for (size_t j = idx; j < len_a - (len_m - idx - 2); ++j, it2 = MINIM_CDR(it2))
                         {
                             init_env(&env2, NULL, NULL);    // isolated
                             match_transform(env2, MINIM_AST(name), MINIM_AST(MINIM_CAR(it2)),
@@ -110,8 +105,6 @@ match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast,
                             }
                         }
                     }
-
-                    debug_print_minim_object(head, env);
 
                     env_intern_sym(env, MINIM_AST(name)->sym, head);
                     it = MINIM_CDR(it);
