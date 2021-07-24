@@ -192,7 +192,71 @@ int main()
             "'(1 2 (3 4))",
         };
 
-        printf("Transforms w/ pattern variables\n");
+        printf("Transforms w/ pattern variables (list)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 9;
+        char strs[18][256] =
+        {
+            "(def-syntax foo                \
+              (syntax-rules ()              \
+               [(_ a ...) '#(a ...)]))      \
+             (foo)",
+            "'#()",
+
+            "(def-syntax foo                \
+              (syntax-rules ()              \
+               [(_ a ...) #(a ...)]))       \
+             (foo 1)",
+            "'#(1)",
+
+            "(def-syntax foo                \
+              (syntax-rules ()              \
+               [(_ a ...) #(a ...)]))       \
+             (foo 1 2)",
+            "'#(1 2)",
+
+            "(def-syntax bar                    \
+              (syntax-rules ()                  \
+               [(_ a b ...) #(a #(b ...))]))    \
+             (bar 1)",
+            "'#(1 #())",
+
+            "(def-syntax bar                    \
+              (syntax-rules ()                  \
+               [(_ a b ...) #(a #(b ...))]))    \
+             (bar 1 2)",
+            "'#(1 #(2))",
+
+            "(def-syntax bar                    \
+              (syntax-rules ()                  \
+               [(_ a b ...) #(a #(b ...))]))    \
+             (bar 1 2 3)",
+            "'#(1 #(2 3))",
+
+            "(def-syntax baz                          \
+              (syntax-rules ()                        \
+               [(_ a b c ...) #(a b #(c ...))]))      \
+             (baz 1 2)",
+            "'#(1 2 #())",
+
+            "(def-syntax baz                          \
+              (syntax-rules ()                        \
+               [(_ a b c ...) #(a b #(c ...))]))      \
+             (baz 1 2 3)",
+            "'#(1 2 #(3))",
+
+            "(def-syntax baz                          \
+              (syntax-rules ()                        \
+               [(_ a b c ...) #(a b #(c ...))]))      \
+             (baz 1 2 3 4)",
+            "'#(1 2 #(3 4))"
+        };
+
+        printf("Transforms w/ pattern variables (vector)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
