@@ -261,6 +261,40 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 2;
+        char strs[4][256] =
+        {
+            "(def-syntax foo                          \
+              (syntax-rules ()                        \
+               [(_ (a b) ...) '((a ...) (b ...))]))   \
+             (foo (1 2))",
+            "'((1) (2))",
+
+            "(def-syntax foo                          \
+              (syntax-rules ()                        \
+               [(_ (a b) ...) '((a ...) (b ...))]))   \
+             (foo (1 2) (3 4))",
+            "'((1 3) (2 4))"
+
+            // "(def-syntax foo                                          
+            //   (syntax-rules ()                                        
+            //    [(_ (a b c ...) ...) '((a ...) (b ...) (c ...) ...)])) 
+            //  (foo (1 2))",
+            // "'((1) (2) ())",
+
+            // "(def-syntax foo                                          
+            //   (syntax-rules ()                                        
+            //    [(_ (a b c ...) ...) '((a ...) (b ...) (c ...) ...)])) 
+            //  (foo (1 2) (1 2 3))",
+            // "'((1 1) (2 2) () (3))",
+        };
+
+        printf("Transforms w/ nested pattern variables\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     GC_finalize();
 
     return (int)(!status);
