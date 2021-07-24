@@ -52,13 +52,19 @@
                    (* 2 (list-ref k3 i))
                    (list-ref k4 i)))))))
 
-(def main ()
+(def main (iters)
   (def v0 (list 1.0 1.0 1.0))
   (def step 0.02)
-  (def iters 1000)
+  (printf "Running 3D rk4:\n")
+  (printf " x0: <~a, ~a, ~a>" (list-ref v0 0) (list-ref v0 1) (list-ref v0 2))
+  (printf " step: ~a\n" step)
+  (printf " iters: ~a\n" iters)
   (let loop ([v v0] [iters iters])
     (if (zero? iters)
         v
         (loop (rk4-3d v step) (- iters 1)))))
 
-(main)
+(main 10)
+(main 100)
+(main 1000)
+(main 10000)
