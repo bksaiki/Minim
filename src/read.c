@@ -1,6 +1,6 @@
 #include <ctype.h>
 #include <string.h>
-#include "build/config.h"
+#include "../build/config.h"
 #include "minim.h"
 #include "read.h"
 
