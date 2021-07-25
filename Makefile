@@ -25,7 +25,7 @@ debug:
 	$(MAKE) CFLAGS="-g $(CFLAGS)" minim
 
 release:
-	$(MAKE) CFLAGS="-O2 -march=native $(CFLAGS)" minim
+	$(MAKE) CFLAGS="-O3 -march=native $(CFLAGS)" minim
 
 minim: $(BUILD_DIR)/config.h $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)

@@ -99,6 +99,8 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_AST(obj)          ((SyntaxNode*) obj->u.ptrs.p1)
 #define MINIM_DATA(obj)         (obj->u.ptrs.p1)
 
+#define MINIM_ERROR(obj)        ((MinimError*) (obj)->u.ptrs.p1)
+
 #define MINIM_PROMISE_VAL(obj)          (obj->u.pair.car)
 #define MINIM_PROMISE_ENV(obj)          ((MinimEnv*) obj->u.pair.cdr)
 #define MINIM_PROMISE_FORCEDP(obj)      (obj->u.pair.cdr == NULL)

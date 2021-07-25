@@ -5,6 +5,7 @@
 #include "eval.h"
 #include "list.h"
 #include "syntax.h"
+#include "transform.h"
 
 #define CHECK_REC(proc, x, expr)        if (proc == x) return expr(env, ast, perr)
 
@@ -291,7 +292,7 @@ static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **per
 //  ...)
 static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
-    MinimObject *reserved, *sym, *rule, *match;
+    MinimObject *reserved, *sym;
 
     // extract reserved symbols
     unsyntax_ast(env, ast->children[1], &reserved);
@@ -314,15 +315,11 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
 
     // check each match expression
     // [(_ arg ...) anything]
-
-    PrintParams pp;
-
-    set_default_print_params(&pp);
-    
     for (size_t i = 2; i < ast->childc; ++i)
     {
-        unsyntax_ast(env, ast->children[i], &rule);
+        MinimObject *rule, *match;
 
+        unsyntax_ast(env, ast->children[i], &rule);
         if (!minim_listp(rule) || minim_list_length(rule) != 2)
         {
             *perr = minim_error("expected a rule [match replace]", ast->children[0]->sym);
@@ -333,6 +330,18 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
         if (!minim_listp(match) || minim_list_length(match) < 1)
         {
             *perr = minim_error("match expression must be (_ args ...)", ast->children[0]->sym);
+            return false;
+        }
+
+        if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(rule)), perr) ||
+            !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
+            return false;
+
+        if (!valid_transformp(env, MINIM_AST(MINIM_CAR(rule)),
+                              MINIM_AST(MINIM_CADR(rule)),
+                              reserved, perr))
+        {
+            MINIM_ERROR(*perr)->where = ast->children[0]->sym;
             return false;
         }
     }
