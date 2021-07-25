@@ -298,7 +298,7 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
     unsyntax_ast(env, ast->children[1], &reserved);
     if (!minim_listp(reserved))
     {
-        *perr = minim_error("expected a list of reserved symbols", ast->children[0]->sym);
+        *perr = minim_error("expected a list of reserved symbols", NULL);
         return false;
     }
     
@@ -308,7 +308,7 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
-            *perr = minim_error("expected a list of reserved symbols", ast->children[0]->sym);
+            *perr = minim_error("expected a list of reserved symbols", NULL);
             return false;
         }
     }
@@ -322,14 +322,14 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
         unsyntax_ast(env, ast->children[i], &rule);
         if (!minim_listp(rule) || minim_list_length(rule) != 2)
         {
-            *perr = minim_error("expected a rule [match replace]", ast->children[0]->sym);
+            *perr = minim_error("expected a rule [match replace]", NULL);
             return false;
         }
 
         unsyntax_ast(env, MINIM_AST(MINIM_CAR(rule)), &match);
         if (!minim_listp(match) || minim_list_length(match) < 1)
         {
-            *perr = minim_error("match expression must be (_ args ...)", ast->children[0]->sym);
+            *perr = minim_error("match expression must be (_ args ...)", NULL);
             return false;
         }
 
@@ -340,10 +340,7 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
         if (!valid_transformp(env, MINIM_AST(MINIM_CAR(rule)),
                               MINIM_AST(MINIM_CADR(rule)),
                               reserved, perr))
-        {
-            MINIM_ERROR(*perr)->where = ast->children[0]->sym;
             return false;
-        }
     }
 
     return true;
@@ -374,7 +371,13 @@ static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject 
         return false;
     }
 
-    return check_syntax_syntax_rules(env, ast->children[2], perr);
+    if (!check_syntax_syntax_rules(env, ast->children[2], perr))
+    {
+        MINIM_ERROR(*perr)->where = MINIM_STRING(sym);
+        return false;
+    }
+
+    return true;
 }
 
 static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)

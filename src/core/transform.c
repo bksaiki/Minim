@@ -177,6 +177,17 @@ symbol_list_contains(SymbolList *list, const char *sym)
 
 // ================================ Transform ================================
 
+static void
+minim_error_add_syntax(MinimError *err, SyntaxNode *in)
+{
+    Buffer *bf;
+
+    init_buffer(&bf);
+    ast_to_buffer(in, bf);
+    init_minim_error_desc_table(&err->table, 1);
+    minim_error_desc_table_set(err->table, 0, "in", get_buffer(bf));
+}
+
 static bool
 is_match_pattern(MinimObject *match)
 {
@@ -477,7 +488,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
             return apply_transformation(&table, replace);
     }
 
-    *perr = minim_error("no matching syntax rule", MINIM_TRANSFORM_NAME(trans));
+    *perr = minim_error("no matching syntax rule", NULL);
     return ast;
 }
 
@@ -636,9 +647,18 @@ bool valid_transformp(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace,
 
     init_match_table(&table);
     if (!valid_matchp(env, match, &table, &reserved_lst, 0, perr))
+    {
+        minim_error_add_syntax(MINIM_ERROR(*perr), match);
         return false;
+    }
 
-    return valid_replacep(env, replace, &table, 0, perr);
+    if (!valid_replacep(env, replace, &table, 0, perr))
+    {
+        minim_error_add_syntax(MINIM_ERROR(*perr), replace);
+        return false;
+    }
+
+    return true;
 }
 
 // ================================ Builtins ================================
