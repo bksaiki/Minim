@@ -295,6 +295,23 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 1;
+        char strs[1][1024] =
+        {
+            "(def-syntax foo                                \
+              (syntax-rules ()                              \
+               [(_ a b) (printf \"~a\n\" (vector a b))]))   \
+             (def-syntax foos                               \
+              (syntax-rules ()                              \
+               [(_ [a b] ...) (begin (foo a b) ...)]))"
+        };
+
+        printf("Transforms w/ nested syntax\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= evaluate(strs[i]);
+    }
+
     GC_finalize();
 
     return (int)(!status);

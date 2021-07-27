@@ -388,36 +388,39 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (ast->type != SYNTAX_NODE_LIST)
         return true;
 
-    op = env_get_sym(env, ast->children[0]->sym);
-    if (op && MINIM_OBJ_SYNTAXP(op))
+    if (ast->children[0]->sym)
     {
-        void *proc = MINIM_DATA(op);
-
-        if (!minim_check_syntax_arity(proc, ast->childc - 1, env))
+        op = env_get_sym(env, ast->children[0]->sym);
+        if (op && MINIM_OBJ_SYNTAXP(op))
         {
-            *perr = minim_error("bad syntax", ast->children[0]->sym);
-            return false;
-        }
+            void *proc = MINIM_DATA(op);
 
-        CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
-        CHECK_REC(proc, minim_builtin_def, check_syntax_def);
-        CHECK_REC(proc, minim_builtin_when, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_unless, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
-        CHECK_REC(proc, minim_builtin_case, check_syntax_case);
-        CHECK_REC(proc, minim_builtin_let, check_syntax_let);
-        CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
-        CHECK_REC(proc, minim_builtin_for, check_syntax_for);
-        CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
-        CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
-        CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
-        // CHECK_REC(proc, minim_builtin_quote, true);
-        // CHECK_REC(proc, minim_builtin_quasiquote, true);
-        // CHECK_REC(proc, minim_builtin_unquote, true);
-        CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
-        CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_syntax_rules);
+            if (!minim_check_syntax_arity(proc, ast->childc - 1, env))
+            {
+                *perr = minim_error("bad syntax", ast->children[0]->sym);
+                return false;
+            }
+
+            CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
+            CHECK_REC(proc, minim_builtin_def, check_syntax_def);
+            CHECK_REC(proc, minim_builtin_when, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_unless, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
+            CHECK_REC(proc, minim_builtin_case, check_syntax_case);
+            CHECK_REC(proc, minim_builtin_let, check_syntax_let);
+            CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
+            CHECK_REC(proc, minim_builtin_for, check_syntax_for);
+            CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
+            CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
+            CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
+            // CHECK_REC(proc, minim_builtin_quote, true);
+            // CHECK_REC(proc, minim_builtin_quasiquote, true);
+            // CHECK_REC(proc, minim_builtin_unquote, true);
+            CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
+            CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_syntax_rules);
+        }
     }
     else
     {
