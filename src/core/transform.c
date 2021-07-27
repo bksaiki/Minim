@@ -169,27 +169,18 @@ is_match_pattern(SyntaxNode *parent, size_t idx)
             strcmp(parent->children[idx + 1]->sym, "...") == 0);
 }
 
-static bool
-is_replace_pattern(SyntaxNode *replace, size_t idx)
-{
-    return ((replace->type == SYNTAX_NODE_LIST || replace->type == SYNTAX_NODE_VECTOR) &&
-            idx + 1 < replace->childc &&
-            replace->children[idx + 1]->sym &&
-            strcmp(replace->children[idx + 1]->sym, "...") == 0);
-}
-
 static void
-add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved)
+add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved, size_t pdepth)
 {
     if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
     {
         for (size_t i = 0; i < match->childc; ++i)
-            add_null_variables(match->children[i], table, reserved);
+            add_null_variables(match->children[i], table, reserved, pdepth);
     }
     else if (match->type == SYNTAX_NODE_PAIR)
     {
-        add_null_variables(match->children[0], table, reserved);
-        add_null_variables(match->children[1], table, reserved);
+        add_null_variables(match->children[0], table, reserved, pdepth);
+        add_null_variables(match->children[1], table, reserved, pdepth);
     }
     else //  match->type == SYNTAX_NODE_DATUM
     {
@@ -201,8 +192,8 @@ add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved)
             symbol_list_contains(reserved, match->sym))     // reserved
             return;
 
-        init_minim_object(&null, MINIM_OBJ_PAIR, NULL, NULL);  // wrap first
-        match_table_add(table, match->sym, 1, null);
+        init_minim_object(&null, MINIM_OBJ_PAIR, NULL, NULL);
+        match_table_add(table, match->sym, pdepth, null);
     }
 }
 
@@ -224,7 +215,7 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
             {
                 if (is_match_pattern(match, i))
                 {
-                    add_null_variables(match->children[i], table, reserved);
+                    add_null_variables(match->children[i], table, reserved, pdepth + 1);
                     return true;
                 }
                 else
@@ -322,15 +313,14 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
     {
         for (size_t i = 0; i < ast->childc; ++i)
         {
-            if (is_replace_pattern(ast, i))
+            if (is_match_pattern(ast, i))
             {
                 MatchTable table2;
                 SyntaxNode *sub;
                 size_t len;
 
-                sub = ast->children[i];
                 init_match_table(&table2);
-                len = pattern_length(table, sub);
+                len = pattern_length(table, ast->children[i]);
                 if (len == SIZE_MAX)
                 {
                     printf("apply transforms: bad things happened\n");
@@ -354,15 +344,15 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
                     ast->children = GC_realloc(ast->children, ast->childc * sizeof(SyntaxNode*));
 
                     match_table_next_depth(&table2, table, 0);
-                    ast->children[i] = apply_transformation(&table2, sub);
+                    ast->children[i] = apply_transformation(&table2, ast->children[i]);
 
                     ++i;
                 }
                 else if (len == 2) // nothing
                 {
-                    sub = ast->children[i];
+                    copy_syntax_node(&sub, ast->children[i]);
                     match_table_next_depth(&table2, table, 0);
-                    ast->children[i] = apply_transformation(&table2, sub);
+                    ast->children[i] = apply_transformation(&table2, ast->children[i]);
                     
                     clear_match_table(&table2);
                     match_table_next_depth(&table2, table, 1);
@@ -372,31 +362,35 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
                 }
                 else        // expand
                 {
+                    SyntaxNode *tmp;
                     size_t new_size, j;
 
-                    sub = ast->children[i];
+                    copy_syntax_node(&sub, ast->children[i]);
                     match_table_next_depth(&table2, table, 0);
-                    ast->children[i] = apply_transformation(&table2, sub);
+                    ast->children[i] = apply_transformation(&table2, ast->children[i]);
                     
                     clear_match_table(&table2);
+                    copy_syntax_node(&tmp, sub);
                     match_table_next_depth(&table2, table, 1);
-                    ast->children[i + 1] = apply_transformation(&table2, sub);
+                    ast->children[i + 1] = apply_transformation(&table2, tmp);
 
                     new_size = ast->childc + len - 2;
                     ast->children = GC_realloc(ast->children, new_size * sizeof(SyntaxNode*));
                     for (j = i + 2; j < ast->childc; ++j)
                     {
                         clear_match_table(&table2);
+                        copy_syntax_node(&tmp, sub);
                         match_table_next_depth(&table2, table, j - i);
                         ast->children[j + new_size] = ast->children[j];
-                        ast->children[j] = apply_transformation(&table2, sub);
+                        ast->children[j] = apply_transformation(&table2, tmp);
                     }
 
                     for (; j < new_size; ++j)
                     {
                         clear_match_table(&table2);
+                        copy_syntax_node(&tmp, sub);
                         match_table_next_depth(&table2, table, j - i);
-                        ast->children[j] = apply_transformation(&table2, sub);
+                        ast->children[j] = apply_transformation(&table2, tmp);
                     }
                     
                     ast->childc = new_size;

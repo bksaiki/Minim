@@ -262,8 +262,8 @@ int main()
     }
 
     {
-        const int COUNT = 2;
-        char strs[4][256] =
+        const int COUNT = 4;
+        char strs[8][256] =
         {
             "(def-syntax foo                          \
               (syntax-rules ()                        \
@@ -275,19 +275,19 @@ int main()
               (syntax-rules ()                        \
                [(_ (a b) ...) '((a ...) (b ...))]))   \
              (foo (1 2) (3 4))",
-            "'((1 3) (2 4))"
+            "'((1 3) (2 4))",
 
-            // "(def-syntax foo                                          
-            //   (syntax-rules ()                                        
-            //    [(_ (a b c ...) ...) '((a ...) (b ...) (c ...) ...)])) 
-            //  (foo (1 2))",
-            // "'((1) (2) ())",
+            "(def-syntax foo                                            \
+              (syntax-rules ()                                          \
+               [(_ (a b c ...) ...) '((a ...) (b ...) (c ...) ...)]))   \
+             (foo (1 2))",
+            "'((1) (2) ())",
 
-            // "(def-syntax foo                                          
-            //   (syntax-rules ()                                        
-            //    [(_ (a b c ...) ...) '((a ...) (b ...) (c ...) ...)])) 
-            //  (foo (1 2) (1 2 3))",
-            // "'((1 1) (2 2) () (3))",
+            "(def-syntax foo                                            \
+              (syntax-rules ()                                          \
+               [(_ (a b c ...) ...) '((a ...) (b ...) (c ...) ...)]))   \
+             (foo (1 2) (1 2 3))",
+            "'((1 1) (2 2) () (3))"
         };
 
         printf("Transforms w/ nested pattern variables\n");
