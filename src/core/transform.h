@@ -8,7 +8,6 @@
 SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr);
 
 // Returns if a [match replace] transform is valid
-bool valid_transformp(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace,
-                      MinimObject *reserved, MinimObject **perr);
+bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved, MinimObject **perr);
 
 #endif

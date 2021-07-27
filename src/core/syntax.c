@@ -337,9 +337,10 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
             !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
             return false;
 
-        if (!valid_transformp(env, MINIM_AST(MINIM_CAR(rule)),
+        if (!valid_transformp(MINIM_AST(MINIM_CAR(rule)),
                               MINIM_AST(MINIM_CADR(rule)),
-                              reserved, perr))
+                              reserved,
+                              perr))
             return false;
     }
 
