@@ -36,7 +36,7 @@ int main()
             "(def-syntax foo (syntax-rules (c d) [(_ a) 1] [(_ a b) 2]))"
         };
 
-        printf("Basic transforms\n");
+        printf("Define transforms\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }

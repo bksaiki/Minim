@@ -18,18 +18,6 @@ typedef struct MatchTable
     size_t size;            // number of variables
 } MatchTable;
 
-// static void
-// gc_mark_match_table(void (*mrk)(void*, void*), void *gc, void *ptr)
-// {
-//     MatchTable *table = (MatchTable*) ptr;
-
-//     mrk(gc, table->objs);
-//     mrk(gc, table->depths);
-//     mrk(gc, table->syms);
-// }
-
-// #define GC_alloc_match_table() GC_alloc_opt(sizeof(MatchTable), NULL, gc_mark_match_table)
-
 static void
 init_match_table(MatchTable *table)
 {
@@ -40,21 +28,6 @@ init_match_table(MatchTable *table)
 }
 
 #define clear_match_table(table)    init_match_table(table)
-
-// static void
-// copy_minim_table(MatchTable *dest, MatchTable *src)
-// {
-//     dest->objs = GC_alloc(src->size * sizeof(MinimObject*));
-//     dest->depths = GC_alloc(src->size * sizeof(size_t));
-//     dest->syms = GC_alloc(src->size * sizeof(char*));
-//     dest->size = src->size;
-//     for (size_t i = 0; i < src->size; ++i)
-//     {   // shallow copies are okay since we only access one copy at a time
-//         dest->objs[i] = src->objs[i];
-//         dest->depths = src->depths;
-//         dest->syms = src->syms;
-//     }
-// }
 
 static void
 match_table_add(MatchTable *table, char *sym, size_t depth, MinimObject *obj)
@@ -189,12 +162,11 @@ minim_error_add_syntax(MinimError *err, SyntaxNode *in)
 }
 
 static bool
-is_match_pattern(MinimObject *match)
+is_match_pattern(SyntaxNode *parent, size_t idx)
 {
-    return (match && MINIM_CAR(match) &&
-            MINIM_CDR(match) && MINIM_CADR(match) &&
-            MINIM_AST(MINIM_CADR(match))->type == SYNTAX_NODE_DATUM &&
-            strcmp(MINIM_AST(MINIM_CADR(match))->sym, "...") == 0);
+    return (idx + 1 < parent->childc &&
+            parent->children[idx + 1]->sym &&
+            strcmp(parent->children[idx + 1]->sym, "...") == 0);
 }
 
 static bool
@@ -206,117 +178,113 @@ is_replace_pattern(SyntaxNode *replace, size_t idx)
             strcmp(replace->children[idx + 1]->sym, "...") == 0);
 }
 
+static void
+add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved)
+{
+    if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
+    {
+        for (size_t i = 0; i < match->childc; ++i)
+            add_null_variables(match->children[i], table, reserved);
+    }
+    else if (match->type == SYNTAX_NODE_PAIR)
+    {
+        add_null_variables(match->children[0], table, reserved);
+        add_null_variables(match->children[1], table, reserved);
+    }
+    else //  match->type == SYNTAX_NODE_DATUM
+    {
+        MinimObject *null;
+
+        if (strcmp(match->sym, "_") == 0 ||                 // wildcard
+            strcmp(match->sym, ".") == 0 ||                 // dot operator
+            strcmp(match->sym, "...") == 0 ||               // ellipse
+            symbol_list_contains(reserved, match->sym))     // reserved
+            return;
+
+        init_minim_object(&null, MINIM_OBJ_PAIR, NULL, NULL);  // wrap first
+        match_table_add(table, match->sym, 1, null);
+    }
+}
+
 static bool
 match_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
-                SymbolList *reserved, size_t level, size_t pdepth)
+                SymbolList *reserved, size_t pdepth)
 {
-    MinimObject *match_unbox, *ast_unbox, *it, *it2;
-    size_t len_m, len_a, idx;
-
-    // printf("Match: "); print_ast(match); printf("\n");
-    // printf("Given: "); print_ast(ast); printf("\n");
-
-    unsyntax_ast(env, match, &match_unbox);
-    unsyntax_ast(env, ast, &ast_unbox);
-    if (minim_listp(match_unbox) && minim_listp(ast_unbox))
+    if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
     {
-        // handle null cases
-        if (minim_nullp(match_unbox) && minim_nullp(ast_unbox))
-            return true;
+        size_t i, j;
 
-        if (minim_nullp(match_unbox) || minim_nullp(ast_unbox))
-            return false;
-
-        idx = 0;
-        len_m = minim_list_length(match_unbox);
-        len_a = minim_list_length(ast_unbox);
-        it = match_unbox;
-        it2 = ast_unbox;
-
-        while (it && it2)
+        i = 0; j = 0;
+        for (; i < match->childc; ++i)
         {
-            bool advance = true;
+            if (j > ast->childc)    // match too long
+                return false;
 
-            if (idx != 0 || level != 0)
+            if (j == ast->childc)   // match possibly problematic
             {
-                if (is_match_pattern(it))
+                if (is_match_pattern(match, i))
                 {
-                    MinimObject *name;
-                    MatchTable table2;
-
-                    if (len_m > len_a + 2)    // not enough space for remaining
-                        return false;
-
-                    name = MINIM_CAR(it);
-                    init_match_table(&table2);
-                    for (size_t j = idx; j < len_a - (len_m - idx - 2); ++j, it2 = MINIM_CDR(it2))
-                    {
-                        MatchTable table3;
-
-                        init_match_table(&table3);
-                        if (!match_transform(env, MINIM_AST(name), MINIM_AST(MINIM_CAR(it2)),
-                                             &table3, reserved, level + 1, pdepth + 1))
-                            return false;
-
-                        match_table_merge_patterns(&table2, &table3);
-                    }
-
-                    match_table_merge(table, &table2);
-                    it = MINIM_CDR(it);
-                    advance = false;
-                    ++idx;
+                    add_null_variables(match->children[i], table, reserved);
+                    return true;
                 }
-                else if (!match_transform(env, MINIM_AST(MINIM_CAR(it)), MINIM_AST(MINIM_CAR(it2)),
-                                          table, reserved, level + 1, pdepth))
+                else
                 {
                     return false;
                 }
             }
 
-            it = MINIM_CDR(it);
-            if (advance) it2 = MINIM_CDR(it2);
-            ++idx;
-        }
+            if (is_match_pattern(match, i))
+            {
+                MatchTable table2;
 
-        if (!it2 && is_match_pattern(it))
-        {
-            MinimObject *null;
+                if (match->childc > ast->childc + 2)    // not enough space for on ast
+                    return false;
 
-            init_minim_object(&null, MINIM_OBJ_PAIR, NULL, NULL);  // wrap first
-            match_table_add(table, MINIM_AST(MINIM_CAR(it))->sym, 1, null);
-            it = MINIM_CDDR(it);
-        }
+                init_match_table(&table2);
+                for (; j < ast->childc - (match->childc - i - 2); ++j)
+                {
+                    MatchTable table3;
 
-        return (!it && !it2);   // both reached end
-    }
-    else if (MINIM_OBJ_VECTORP(match_unbox) && MINIM_OBJ_VECTORP(ast_unbox))
-    {
-        len_m = MINIM_VECTOR_LEN(match_unbox);
-        len_a = MINIM_VECTOR_LEN(ast_unbox);
+                    init_match_table(&table3);
+                    if (!match_transform(env, match->children[i], ast->children[j], &table3, reserved, pdepth + 1))
+                        return false;
 
-        if (len_m != len_a)     return false;
-        if (len_m == 0)         return true;
-        
-        for (size_t i = 0; i < len_m; ++i)
-        {
-            if (!match_transform(env, MINIM_AST(MINIM_VECTOR_ARR(match_unbox)[i]),
-                                 MINIM_AST(MINIM_VECTOR_ARR(ast_unbox)[i]),
-                                 table, reserved, level + 1, pdepth + 1))
+                    match_table_merge_patterns(&table2, &table3);
+                }
+
+                match_table_merge(table, &table2);
+                ++i;    // skip ellipse
+            }
+            else if (!match_transform(env, match->children[i], ast->children[j], table, reserved, pdepth))
+            {
                 return false;
+            }
+            else
+            {
+                ++j;
+            }
         }
-
     }
-    else if (MINIM_OBJ_SYMBOLP(match_unbox))    // intern matching syntax
+    else if (match->type == SYNTAX_NODE_PAIR)
     {
-        if (symbol_list_contains(reserved, MINIM_STRING(match_unbox)))
+        return match_transform(env, match->children[0], ast->children[0], table, reserved, pdepth) &&
+               match_transform(env, match->children[1], ast->children[1], table, reserved, pdepth);
+    }
+    else // match->type == SYNTAX_NODE_DATUM
+    {
+        MinimObject *val;
+
+        if (strcmp(match->sym, "_") == 0)       // wildcard
+            return true;
+
+        if (strcmp(match->sym, ".") == 0)       // dot operator
+            return strcmp(ast->sym, ".") == 0;
+
+        if (symbol_list_contains(reserved, match->sym))
             return true;    // don't add reserved names
 
-        init_minim_object(&it, MINIM_OBJ_AST, ast);  // wrap first
-        match_table_add(table, MINIM_STRING(match_unbox), pdepth, it);
-    }
-    else
-    {
-        return false;
+        init_minim_object(&val, MINIM_OBJ_AST, ast);  // wrap first
+        match_table_add(table, match->sym, pdepth, val);
     }
 
     return true;
@@ -481,10 +449,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
         match = MINIM_AST(MINIM_CAR(rule));
         copy_syntax_node(&replace, MINIM_AST(MINIM_CADR(rule)));
 
-        // printf("match: "); print_ast(match); printf("\n");
-        // printf("replace: "); print_ast(replace); printf("\n");
-
-        if (match_transform(env2, match, ast, &table, &reserved, 0, 0))
+        if (match_transform(env2, match, ast, &table, &reserved, 0))
             return apply_transformation(&table, replace);
     }
 
@@ -525,21 +490,13 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
 }
 
 static bool
-is_match_pattern_ast(SyntaxNode *parent, size_t idx)
-{
-    return (idx + 1 < parent->childc &&
-            parent->children[idx + 1]->sym &&
-            strcmp(parent->children[idx + 1]->sym, "...") == 0);
-}
-
-static bool
 valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t pdepth, MinimObject **perr)
 {
     if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
     {
         for (size_t i = 0; i < match->childc; ++i)
         {
-            if (is_match_pattern_ast(match, i))
+            if (is_match_pattern(match, i))
             {
                 if (!valid_matchp(env, match->children[i], table, reserved, pdepth + 1, perr))
                     return false;
@@ -555,8 +512,8 @@ valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *re
     }
     else if (match->type == SYNTAX_NODE_PAIR)
     {
-        printf("not implemented\n");
-        return false;
+        return valid_matchp(env, match->children[0], table, reserved, pdepth, perr) &&
+               valid_matchp(env, match->children[1], table, reserved, pdepth, perr);
     }
     else // datum
     {
@@ -581,7 +538,7 @@ valid_replacep(MinimEnv *env, SyntaxNode* replace, MatchTable *table, size_t pde
     {
         for (size_t i = 0; i < replace->childc; ++i)
         {
-            if (is_match_pattern_ast(replace, i))
+            if (is_match_pattern(replace, i))
             {
                 if (!valid_replacep(env, replace->children[i], table, pdepth + 1, perr))
                     return false;
@@ -597,8 +554,8 @@ valid_replacep(MinimEnv *env, SyntaxNode* replace, MatchTable *table, size_t pde
     }
     else if (replace->type == SYNTAX_NODE_PAIR)
     {
-        printf("not implemented\n");
-        return false;
+        return valid_replacep(env, replace->children[0], table, pdepth, perr) &&
+               valid_replacep(env, replace->children[1], table, pdepth, perr);
     }
     else // datum
     {
