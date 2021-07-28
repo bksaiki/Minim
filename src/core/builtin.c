@@ -20,8 +20,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
     minim_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
     minim_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
-    minim_load_builtin(env, "unless", MINIM_OBJ_SYNTAX, minim_builtin_unless);
-    minim_load_builtin(env, "when", MINIM_OBJ_SYNTAX, minim_builtin_when);
     minim_load_builtin(env, "cond", MINIM_OBJ_SYNTAX, minim_builtin_cond);
     minim_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     minim_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
@@ -46,6 +44,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     minim_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);
     minim_load_builtin(env, "error", MINIM_OBJ_FUNC, minim_builtin_error);
+    minim_load_builtin(env, "void", MINIM_OBJ_FUNC, minim_builtin_void);
     minim_load_builtin(env, "version", MINIM_OBJ_FUNC, minim_builtin_version);
     minim_load_builtin(env, "symbol-count", MINIM_OBJ_FUNC, minim_builtin_symbol_count);
 

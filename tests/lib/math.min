@@ -1,4 +1,4 @@
-;; Tests for <lib>/math.min
+;; Tests for <lib>/private/math.min
 
 ;; exact-nonnegative-integer?
 (exact-nonnegative-integer? 5)

@@ -1,5 +1,7 @@
 ;;;;;;;;;;;;;;;;;;; Top-level ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(%import "private/when-unless.min")
+
 (%import "private/function.min")
 (%import "private/lazy.min")
 (%import "private/list.min")

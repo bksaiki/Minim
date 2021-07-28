@@ -134,6 +134,15 @@ MinimObject *minim_builtin_version(MinimEnv *env, size_t argc, MinimObject **arg
     return res;
 }
 
+MinimObject *minim_builtin_void(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_VOID);
+    return res;
+}
+
+
 MinimObject *minim_builtin_symbol_count(MinimEnv *env, size_t argc, MinimObject **args)
 {
     return int_to_minim_number(env->table->size);

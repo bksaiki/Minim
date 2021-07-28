@@ -1,4 +1,4 @@
-;; Tests for <lib>/lazy.min
+;; Tests for <lib>/private/lazy.min
 
 ;; lazy-list
 (def v (lazy-list 1 2 3 4 5 6))

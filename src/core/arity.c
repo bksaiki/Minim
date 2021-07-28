@@ -38,6 +38,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(symbolp, 1);
     SET_ARITY_MIN(printf, 1);
     SET_ARITY_RANGE(error, 1, 2);
+    SET_ARITY_EXACT(void, 0);
     SET_ARITY_EXACT(version, 0);
     SET_ARITY_EXACT(symbol_count, 0);
 
@@ -185,8 +186,6 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_MIN(def, 2);
     SET_ARITY_EXACT(setb, 2);
     SET_ARITY_EXACT(if, 3);
-    SET_ARITY_MIN(unless, 2);
-    SET_ARITY_MIN(when, 2);
     // no check: 'cond'
     // no check: 'case'
     SET_ARITY_RANGE(let, 2, 3);

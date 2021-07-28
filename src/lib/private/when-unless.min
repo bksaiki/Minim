@@ -1,0 +1,11 @@
+;;;;;;;;;;;;;;;;;;; when syntax ;;;;;;;;;;;;;;;;;;;
+
+(def-syntax when
+  (syntax-rules ()
+   [(_ cond body ...)
+    (if cond (begin body ...) (void))]))
+
+(def-syntax unless
+  (syntax-rules ()
+   [(_ cond body ...)
+    (if cond (void) (begin body ...))]))

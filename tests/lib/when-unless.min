@@ -1,0 +1,13 @@
+;; Tests for <lib>/private/when-unless.min
+
+;; when
+(equal? (when true 5) 5)
+(equal? (when (positive? 5) 'sym) 'sym)
+(equal? (when (symbol? 'sym') (def n 5) (+ n 1)) 6)
+(equal? (when false 5) (void))
+
+;; unless
+(equal? (unless false 5) 5)
+(equal? (unless (negative? 5) 'sym) 'sym)
+(equal? (unless (string? 'sym') (def n 5) (+ n 1)) 6)
+(equal? (unless true 5) (void))

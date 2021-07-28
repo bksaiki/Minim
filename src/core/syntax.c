@@ -403,8 +403,6 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
             CHECK_REC(proc, minim_builtin_def, check_syntax_def);
-            CHECK_REC(proc, minim_builtin_when, check_syntax_begin);
-            CHECK_REC(proc, minim_builtin_unless, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);
