@@ -30,3 +30,11 @@ MinimObject *minim_builtin_force(MinimEnv *env, size_t argc, MinimObject **args)
         return MINIM_PROMISE_VAL(args[0]);
     }
 }
+
+MinimObject *minim_builtin_promisep(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *ret;
+
+    init_minim_object(&ret, MINIM_OBJ_BOOL, MINIM_OBJ_PROMISEP(args[0]));
+    return ret;
+}

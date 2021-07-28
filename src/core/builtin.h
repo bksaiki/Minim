@@ -46,6 +46,9 @@ DEFINE_BUILTIN_FUN(symbol_count);
 DEFINE_BUILTIN_FUN(procedurep)
 DEFINE_BUILTIN_FUN(procedure_arity)
 
+// Promise
+DEFINE_BUILTIN_FUN(promisep)
+
 // Boolean
 DEFINE_BUILTIN_FUN(boolp)
 DEFINE_BUILTIN_FUN(not)
@@ -126,6 +129,7 @@ DEFINE_BUILTIN_FUN(hash_to_list)
 // Vector
 DEFINE_BUILTIN_FUN(vector)
 DEFINE_BUILTIN_FUN(make_vector)
+DEFINE_BUILTIN_FUN(vectorp)
 DEFINE_BUILTIN_FUN(vector_length)
 DEFINE_BUILTIN_FUN(vector_ref)
 DEFINE_BUILTIN_FUN(vector_setb)

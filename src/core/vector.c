@@ -35,6 +35,19 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
 //  Builtins
 //
 
+MinimObject *minim_builtin_vector(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+    MinimObject **arr;
+
+    arr = GC_alloc(argc * sizeof(MinimObject*));
+    for (size_t i = 0; i < argc; ++i)
+        arr[i] = args[i];
+
+    init_minim_object(&res, MINIM_OBJ_VECTOR, arr, argc);
+    return res;
+}
+
 MinimObject *minim_builtin_make_vector(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *obj;
@@ -55,17 +68,12 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, size_t argc, MinimObject *
     return res;
 }
 
-MinimObject *minim_builtin_vector(MinimEnv *env, size_t argc, MinimObject **args)
+MinimObject *minim_builtin_vectorp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-    MinimObject **arr;
+    MinimObject *ret;
 
-    arr = GC_alloc(argc * sizeof(MinimObject*));
-    for (size_t i = 0; i < argc; ++i)
-        arr[i] = args[i];
-
-    init_minim_object(&res, MINIM_OBJ_VECTOR, arr, argc);
-    return res;
+    init_minim_object(&ret, MINIM_OBJ_BOOL, MINIM_OBJ_VECTORP(args[0]));
+    return ret;
 }
 
 MinimObject *minim_builtin_vector_length(MinimEnv *env, size_t argc, MinimObject **args)

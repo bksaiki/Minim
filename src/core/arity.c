@@ -126,6 +126,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_RANGE(make_vector, 1, 2);
     // NO CHECK: 'vector'
     SET_ARITY_EXACT(vector_length, 1);
+    SET_ARITY_EXACT(vectorp, 1);
     SET_ARITY_EXACT(vector_ref, 2);
     SET_ARITY_EXACT(vector_setb, 3);
     SET_ARITY_EXACT(vector_to_list, 1);
@@ -170,6 +171,9 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(asin, 1);
     SET_ARITY_EXACT(acos, 1);
     SET_ARITY_EXACT(atan, 1);
+
+    // Promise
+    SET_ARITY_EXACT(promisep, 1);
 
     parity->low = 0;
     parity->high = SIZE_MAX;
