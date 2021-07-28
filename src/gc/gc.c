@@ -15,13 +15,33 @@ void GC_finalize() {
 }
 
 void *GC_alloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
-    void *ptr = malloc(size);
+    void *ptr;
+    
+    ptr = malloc(size);
+    if (ptr == NULL)
+    {
+        gc_collect(main_gc);
+        ptr = malloc(size);
+        if (ptr == NULL)
+            return NULL;
+    }
+    
     gc_add(main_gc, ptr, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
     return ptr;
 }
 
 void *GC_calloc_opt(size_t nmem, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
-    void *ptr = calloc(nmem, size);
+    void *ptr;
+    
+    ptr = calloc(nmem, size);
+    if (ptr == NULL)
+    {
+        gc_collect(main_gc);
+        ptr = calloc(nmem, size);
+        if (ptr == NULL)
+            return NULL;
+    }
+
     gc_add(main_gc, ptr, nmem * size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
     return ptr;
 }
