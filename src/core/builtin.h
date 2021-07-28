@@ -7,7 +7,7 @@ typedef struct {
     size_t low, high;
 } MinimArity;
 
-#define DEFINE_BUILTIN_FUN(name)  MinimObject *minim_builtin_ ## name(MinimEnv *env, MinimObject **args, size_t argc);
+#define DEFINE_BUILTIN_FUN(name)  MinimObject *minim_builtin_ ## name(MinimEnv *env, size_t argc, MinimObject **args);
 
 // Variable / Control
 DEFINE_BUILTIN_FUN(def)
@@ -45,6 +45,9 @@ DEFINE_BUILTIN_FUN(symbol_count);
 // Procedure
 DEFINE_BUILTIN_FUN(procedurep)
 DEFINE_BUILTIN_FUN(procedure_arity)
+
+// Promise
+DEFINE_BUILTIN_FUN(promisep)
 
 // Boolean
 DEFINE_BUILTIN_FUN(boolp)
@@ -126,6 +129,7 @@ DEFINE_BUILTIN_FUN(hash_to_list)
 // Vector
 DEFINE_BUILTIN_FUN(vector)
 DEFINE_BUILTIN_FUN(make_vector)
+DEFINE_BUILTIN_FUN(vectorp)
 DEFINE_BUILTIN_FUN(vector_length)
 DEFINE_BUILTIN_FUN(vector_ref)
 DEFINE_BUILTIN_FUN(vector_setb)

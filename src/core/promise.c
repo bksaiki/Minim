@@ -2,7 +2,7 @@
 #include "error.h"
 #include "eval.h"
 
-MinimObject *minim_builtin_delay(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_delay(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     MinimEnv *env2;
@@ -12,7 +12,7 @@ MinimObject *minim_builtin_delay(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_force(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_force(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_PROMISEP(args[0]))
         return minim_argument_error("force", "promise", 0, args[0]);
@@ -29,4 +29,12 @@ MinimObject *minim_builtin_force(MinimEnv *env, MinimObject **args, size_t argc)
         MINIM_PROMISE_SET_FORCED(args[0]);
         return MINIM_PROMISE_VAL(args[0]);
     }
+}
+
+MinimObject *minim_builtin_promisep(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *ret;
+
+    init_minim_object(&ret, MINIM_OBJ_BOOL, MINIM_OBJ_PROMISEP(args[0]));
+    return ret;
 }

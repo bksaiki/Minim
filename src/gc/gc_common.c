@@ -432,7 +432,19 @@ static void gc_move_to_old(gc_t *gc) {
 }
 
 static void gc_sweep_young(gc_t *gc) {
-    size_t i, j, k, nj, nh;
+    gc_block_t *frees;
+    size_t freec, i, j, k, nj, nh;
+
+    freec = 0;
+    for (size_t i = 0; i < gc->youngc; ++i) {
+        if (!gc->young[i].hash)                     continue;
+        if (gc->young[i].flags & GC_BLOCK_MARK)     continue;
+        if (gc->young[i].flags & GC_BLOCK_ROOT)     continue;
+        ++freec;
+    }
+
+    frees = malloc(freec * sizeof(gc_block_t));
+    if (!frees) return;
 
     i = 0; k = 0;
     while (i < gc->youngc && gc->nyoung > 0) {
@@ -443,13 +455,10 @@ static void gc_sweep_young(gc_t *gc) {
             continue;
         }
 
-        // clear entry
-        if (gc->young[i].dtor) gc->young[i].dtor(gc->young[i].ptr);
-        free(gc->young[i].ptr);
-        memset(&gc->young[i], 0, sizeof(gc_block_t));
-        
-        // update
         gc->allocs -= gc->young[i].size;
+        frees[k] = gc->young[i];
+        memset(&gc->young[i], 0, sizeof(gc_block_t));
+
         --gc->nyoung;
         ++k;
         
@@ -467,7 +476,13 @@ static void gc_sweep_young(gc_t *gc) {
         } 
     }
 
+    for (size_t i = 0; i < freec; ++i) {
+        if (frees[i].dtor)  frees[i].dtor(frees[i].ptr);
+        free(frees[i].ptr);
+    }
+
     gc->dirty = 0;
+    free(frees);
     gc_move_to_old(gc);
 
     // clear old generation
@@ -478,7 +493,28 @@ static void gc_sweep_young(gc_t *gc) {
 }
 
 static void gc_sweep_all(gc_t *gc) {
-    size_t i, j, k, nj, nh;
+    gc_block_t *frees;
+    size_t freec, i, j, k, nj, nh;
+
+    // young generation
+    freec = 0;
+    for (size_t i = 0; i < gc->youngc; ++i) {
+        if (!gc->young[i].hash)                     continue;
+        if (gc->young[i].flags & GC_BLOCK_MARK)     continue;
+        if (gc->young[i].flags & GC_BLOCK_ROOT)     continue;
+        ++freec;
+    }
+
+    // old generation
+    for (size_t i = 0; i < gc->oldc; ++i) {
+        if (!gc->old[i].hash)                     continue;
+        if (gc->old[i].flags & GC_BLOCK_MARK)     continue;
+        if (gc->old[i].flags & GC_BLOCK_ROOT)     continue;
+        ++freec;
+    }
+
+    frees = malloc(freec * sizeof(gc_block_t));
+    if (!frees) return;
 
     // young generation
     i = 0; k = 0;
@@ -490,13 +526,10 @@ static void gc_sweep_all(gc_t *gc) {
             continue;
         }
 
-        // clear entry
-        if (gc->young[i].dtor) gc->young[i].dtor(gc->young[i].ptr);
-        free(gc->young[i].ptr);
-        memset(&gc->young[i], 0, sizeof(gc_block_t));
-        
-        // update
         gc->allocs -= gc->young[i].size;
+        frees[k] = gc->young[i];
+        memset(&gc->young[i], 0, sizeof(gc_block_t));
+
         --gc->nyoung;
         ++k;
         
@@ -523,13 +556,10 @@ static void gc_sweep_all(gc_t *gc) {
             continue;
         }
 
-        // clear entry
-        if (gc->old[i].dtor) gc->old[i].dtor(gc->old[i].ptr);
-        free(gc->old[i].ptr);
-        memset(&gc->old[i], 0, sizeof(gc_block_t));
-        
-        // update
         gc->allocs -= gc->old[i].size;
+        frees[k] = gc->old[i];
+        memset(&gc->old[i], 0, sizeof(gc_block_t));
+
         --gc->nold;
         ++k;
         
@@ -547,6 +577,13 @@ static void gc_sweep_all(gc_t *gc) {
         } 
     }
 
+    for (size_t i = 0; i < freec; ++i) {
+        if (frees[i].dtor)  frees[i].dtor(frees[i].ptr);
+        free(frees[i].ptr);
+    }
+
+    gc->dirty = 0;
+    free(frees);
     gc_shrink_old_pool(gc);
     gc_move_to_old(gc);
 

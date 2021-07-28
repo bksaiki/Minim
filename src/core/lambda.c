@@ -85,7 +85,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
     *cp = lam;
 }
 
-MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *val;
     MinimEnv *env2;
@@ -140,7 +140,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, MinimObject **args, si
         MinimTailCall *call = MINIM_DATA(res);
 
         if (minim_lambda_equalp(call->lam, lam))
-            return eval_lambda(lam, env, call->args, call->argc);
+            return eval_lambda(lam, env, call->argc, call->args);
     }
 
     if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
@@ -217,7 +217,7 @@ static size_t lambda_argc(MinimObject *bindings)
     return argc;
 }
 
-MinimObject *minim_builtin_lambda(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *bindings;
     MinimLambda *lam;

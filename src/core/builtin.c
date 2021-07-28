@@ -141,6 +141,7 @@ void minim_load_builtins(MinimEnv *env)
     // Vector
     minim_load_builtin(env, "vector", MINIM_OBJ_FUNC, minim_builtin_vector);
     minim_load_builtin(env, "make-vector", MINIM_OBJ_FUNC, minim_builtin_make_vector);
+    minim_load_builtin(env, "vector?", MINIM_OBJ_FUNC, minim_builtin_vectorp);
     minim_load_builtin(env, "vector-length", MINIM_OBJ_FUNC, minim_builtin_vector_length);
     minim_load_builtin(env, "vector-ref", MINIM_OBJ_FUNC, minim_builtin_vector_ref);
     minim_load_builtin(env, "vector-set!", MINIM_OBJ_FUNC, minim_builtin_vector_setb);
@@ -190,4 +191,5 @@ void minim_load_builtins(MinimEnv *env)
     // Promises
     minim_load_builtin(env, "delay", MINIM_OBJ_SYNTAX, minim_builtin_delay);
     minim_load_builtin(env, "force", MINIM_OBJ_FUNC, minim_builtin_force);
+    minim_load_builtin(env, "promise?", MINIM_OBJ_FUNC, minim_builtin_promisep);
 }

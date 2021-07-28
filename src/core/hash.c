@@ -278,7 +278,7 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 //  Builtins
 //
 
-MinimObject *minim_builtin_hash(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     MinimHash *ht;
@@ -288,7 +288,7 @@ MinimObject *minim_builtin_hash(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_hashp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hashp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -296,7 +296,7 @@ MinimObject *minim_builtin_hashp(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_hash_keyp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash_keyp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -309,7 +309,7 @@ MinimObject *minim_builtin_hash_keyp(MinimEnv *env, MinimObject **args, size_t a
     return res;
 }
 
-MinimObject *minim_builtin_hash_ref(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash_ref(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -331,7 +331,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
-MinimObject *minim_builtin_hash_remove(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash_remove(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -343,7 +343,7 @@ MinimObject *minim_builtin_hash_remove(MinimEnv *env, MinimObject **args, size_t
     return res;
 }
 
-MinimObject *minim_builtin_hash_set(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash_set(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -355,7 +355,7 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
-MinimObject *minim_builtin_hash_setb(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -367,7 +367,7 @@ MinimObject *minim_builtin_hash_setb(MinimEnv *env, MinimObject **args, size_t a
     return res;
 }
 
-MinimObject *minim_builtin_hash_removeb(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash_removeb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -379,7 +379,7 @@ MinimObject *minim_builtin_hash_removeb(MinimEnv *env, MinimObject **args, size_
     return res;
 }
 
-MinimObject *minim_builtin_hash_to_list(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_hash_to_list(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash->list", 0, args[0]);

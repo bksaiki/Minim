@@ -45,7 +45,7 @@ typedef enum MinimObjectType
     MINIM_OBJ_PROMISE
 } MinimObjectType;
 
-typedef MinimObject *(*MinimBuiltin)(MinimEnv *, MinimObject **, size_t);
+typedef MinimObject *(*MinimBuiltin)(MinimEnv *, size_t, MinimObject **);
 typedef bool (*MinimPred)(MinimObject *);
 
 

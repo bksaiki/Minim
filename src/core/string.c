@@ -48,7 +48,7 @@ static bool assert_string_args(size_t argc, MinimObject **args, MinimObject **re
 
 // *** Builtins *** //
 
-MinimObject *minim_builtin_stringp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_stringp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -56,7 +56,7 @@ MinimObject *minim_builtin_stringp(MinimEnv *env, MinimObject **args, size_t arg
     return res;
 }
 
-MinimObject *minim_builtin_string_append(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     Buffer *bf;
@@ -74,7 +74,7 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, MinimObject **args, size
     return res;
 }
 
-MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_substring(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     size_t len, start, end;
@@ -112,7 +112,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, MinimObject **args, size_t a
     return res;
 }
 
-MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -123,7 +123,7 @@ MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, MinimObject **args, s
     return res;
 }
 
-MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     char *dest;
@@ -151,7 +151,7 @@ static size_t collect_format_vars(const char *str, size_t len)
     return cnt;
 }
 
-MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_format(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     Buffer *bf;
@@ -205,14 +205,14 @@ MinimObject *minim_builtin_format(MinimEnv *env, MinimObject **args, size_t argc
     return res;
 }
 
-MinimObject *minim_builtin_printf(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_printf(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *val;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
         return minim_argument_error("string", "printf", 0, args[0]);
 
-    val = minim_builtin_format(env, args, argc);
+    val = minim_builtin_format(env, argc, args);
     if (!MINIM_OBJ_THROWNP(val))
     {
         PrintParams pp;

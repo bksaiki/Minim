@@ -18,7 +18,7 @@ static bool iters_valid(MinimObject **iters, size_t argc)
 
 // Builtins
 
-MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_for(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *it, *bindings, *val;
     MinimObject **syms, **iters, **objs;
@@ -82,7 +82,7 @@ MinimObject *minim_builtin_for(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_for_list(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_for_list(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *it, *bindings, *val;
     MinimObject **syms, **iters, **objs;

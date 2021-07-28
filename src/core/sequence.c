@@ -87,7 +87,7 @@ bool minim_seq_donep(MinimSeq *seq)
 
 /* Builtins */
 
-MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_sequencep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -95,7 +95,7 @@ MinimObject *minim_builtin_sequencep(MinimEnv *env, MinimObject **args, size_t a
     return res;
 }
 
-MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_in_range(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *begin, *end;
     MinimSeq *seq;
@@ -125,7 +125,7 @@ MinimObject *minim_builtin_in_range(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
-MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_in_naturals(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *begin, *end;
     MinimSeq *seq;
@@ -141,7 +141,7 @@ MinimObject *minim_builtin_in_naturals(MinimEnv *env, MinimObject **args, size_t
     return res;
 }
 
-MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *seq, *val, *it;
 

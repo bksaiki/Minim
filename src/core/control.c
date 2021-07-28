@@ -9,7 +9,7 @@
 #include "list.h"
 #include "tail_call.h"
 
-MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *cond;
 
@@ -28,7 +28,7 @@ MinimObject *minim_builtin_if(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_cond(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     MinimEnv *env2;
@@ -63,7 +63,7 @@ MinimObject *minim_builtin_cond(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_unless(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *cond;
 
@@ -71,7 +71,7 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
     if (!MINIM_OBJ_THROWNP(cond))
     {
         if (!coerce_into_bool(cond))
-            res = minim_builtin_begin(env, &args[1], argc - 1);
+            res = minim_builtin_begin(env, argc - 1, &args[1]);
         else
             init_minim_object(&res, MINIM_OBJ_VOID);
     }
@@ -83,7 +83,7 @@ MinimObject *minim_builtin_unless(MinimEnv *env, MinimObject **args, size_t argc
     return res;
 }
 
-MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_when(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *cond;
 
@@ -91,7 +91,7 @@ MinimObject *minim_builtin_when(MinimEnv *env, MinimObject **args, size_t argc)
     if (!MINIM_OBJ_THROWNP(cond))
     {
         if (coerce_into_bool(cond))
-            res = minim_builtin_begin(env, &args[1], argc - 1);
+            res = minim_builtin_begin(env, argc - 1, &args[1]);
         else
             init_minim_object(&res, MINIM_OBJ_VOID);
     }
@@ -160,7 +160,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
         MinimTailCall *call = MINIM_DATA(res);
 
         if (minim_lambda_equalp(call->lam, lam))
-            return eval_lambda(lam, env, call->args, call->argc);
+            return eval_lambda(lam, env, call->argc, call->args);
     }
 
     if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
@@ -203,21 +203,21 @@ MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bo
     return res;
 }
 
-MinimObject *minim_builtin_let(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_let(MinimEnv *env, size_t argc, MinimObject **args)
 {
     return (argc == 2) ?
            minim_let_assign(env, args, argc, false) :
            minim_let_func(env, args, argc, false);
 }
 
-MinimObject *minim_builtin_letstar(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_letstar(MinimEnv *env, size_t argc, MinimObject **args)
 {
     return (argc == 2) ?
            minim_let_assign(env, args, argc, true) :
            minim_let_func(env, args, argc, true);
 }
 
-MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *val;
     MinimEnv *env2;
@@ -245,7 +245,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_case(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *key;
     MinimEnv *env2;
