@@ -349,7 +349,7 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
 
 static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
-    MinimObject *sym, *rules, *syn;
+    MinimObject *sym, *rules;
 
     unsyntax_ast(env, ast->children[1], &sym);
     if (!MINIM_OBJ_SYMBOLP(sym))
@@ -365,8 +365,7 @@ static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject 
         return false;
     }
 
-    unsyntax_ast(env, MINIM_DATA(MINIM_CAR(rules)), &syn);
-    if (!MINIM_OBJ_SYMBOLP(syn) || MINIM_DATA(env_get_sym(env, MINIM_STRING(syn))) != minim_builtin_syntax_rules)
+    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "syntax-rules") != 0)
     {
         *perr = minim_error("expected a transform: (def-syntax ~s (syntax-rules ...)", NULL, MINIM_STRING(sym));
         return false;

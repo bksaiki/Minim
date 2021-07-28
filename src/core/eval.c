@@ -299,10 +299,14 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = minim_error("not in a quasiquote", "unquote");
             }
+            else if (proc == minim_builtin_def_syntax)
+            {
+                res = minim_error("only allowed at the top-level", "def-syntax");
+            }
             else
             {
                 for (size_t i = 0; i < argc; ++i)
-                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
+                    init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
                 
                 res = proc(env, args, argc);
                 if (MINIM_OBJ_CLOSUREP(res))
@@ -374,12 +378,46 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     }
 }
 
-// Visible functions
+static bool is_transform(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+
+    if (ast->type != SYNTAX_NODE_LIST || ast->childc == 0 || !ast->children[0]->sym)
+        return false;
+    
+    val = env_get_sym(env, ast->children[0]->sym);
+    if (!val || !MINIM_OBJ_SYNTAXP(val))
+        return false;
+
+    return (MinimBuiltin) MINIM_DATA(val) == minim_builtin_def_syntax;
+}
+
+static MinimObject *eval_transform(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject **args;
+    size_t argc;
+
+    // transcription from eval_ast_node
+    argc = ast->childc - 1;
+    args = GC_alloc(argc * sizeof(MinimObject*));
+    for (size_t i = 0; i < argc; ++i)
+        init_minim_object(&args[i], MINIM_OBJ_AST, ast->children[i + 1]);   // initialize ast wrappers
+    
+    return minim_builtin_def_syntax(env, args, argc);
+}
+
+// ================================ Public ================================
 
 int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     if (!check_syntax(env, ast, pobj))
         return 0;
+
+    if (is_transform(env, ast))
+    {
+        *pobj = eval_transform(env, ast);
+        return 1;
+    }
 
     ast = transform_syntax(env, ast, pobj);
     if (*pobj)  return 0;
