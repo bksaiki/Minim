@@ -1,7 +1,7 @@
 #include "assert.h"
 #include "list.h"
 
-MinimObject *minim_builtin_boolp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_boolp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -9,7 +9,7 @@ MinimObject *minim_builtin_boolp(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_not(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_not(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -17,7 +17,7 @@ MinimObject *minim_builtin_not(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_or(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_or(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -31,7 +31,7 @@ MinimObject *minim_builtin_or(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_and(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_and(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 

@@ -9,7 +9,7 @@
 #include "lambda.h"
 #include "number.h"
 
-MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_def(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *sym, *val;
     MinimLambda *lam;
@@ -24,7 +24,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
     else
     {
         ast = MINIM_DATA(args[0]);
-        val = minim_builtin_lambda(env, &args[1], argc - 1);
+        val = minim_builtin_lambda(env, argc - 1, &args[1]);
 
         lam = MINIM_DATA(val);
         copy_syntax_loc(&lam->loc, ast->loc);
@@ -44,7 +44,7 @@ MinimObject *minim_builtin_def(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_quote(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -52,7 +52,7 @@ MinimObject *minim_builtin_quote(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_quasiquote(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_quasiquote(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -60,7 +60,7 @@ MinimObject *minim_builtin_quasiquote(MinimEnv *env, MinimObject **args, size_t 
     return res;
 }
 
-MinimObject *minim_builtin_unquote(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_unquote(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -68,7 +68,7 @@ MinimObject *minim_builtin_unquote(MinimEnv *env, MinimObject **args, size_t arg
     return res;
 }
 
-MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *sym, *val;
 
@@ -97,7 +97,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_symbolp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_symbolp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -105,7 +105,7 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, MinimObject **args, size_t arg
     return res;
 }
 
-MinimObject *minim_builtin_equalp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_equalp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -122,7 +122,7 @@ MinimObject *minim_builtin_equalp(MinimEnv *env, MinimObject **args, size_t argc
     return res;
 }
 
-MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_version(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     char *str;
@@ -134,12 +134,12 @@ MinimObject *minim_builtin_version(MinimEnv *env, MinimObject **args, size_t arg
     return res;
 }
 
-MinimObject *minim_builtin_symbol_count(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_symbol_count(MinimEnv *env, size_t argc, MinimObject **args)
 {
     return int_to_minim_number(env->table->size);
 }
 
-MinimObject *minim_builtin_exit(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 

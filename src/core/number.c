@@ -168,7 +168,7 @@ int minim_number_cmp(MinimObject *a, MinimObject *b)
 
 // *** Builtins *** //
 
-MinimObject *minim_builtin_numberp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_numberp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -176,7 +176,7 @@ MinimObject *minim_builtin_numberp(MinimEnv *env, MinimObject **args, size_t arg
     return res;
 }
 
-MinimObject *minim_builtin_zerop(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_zerop(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -187,7 +187,7 @@ MinimObject *minim_builtin_zerop(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_negativep(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_negativep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -198,7 +198,7 @@ MinimObject *minim_builtin_negativep(MinimEnv *env, MinimObject **args, size_t a
     return res;
 }
 
-MinimObject *minim_builtin_positivep(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_positivep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -209,7 +209,7 @@ MinimObject *minim_builtin_positivep(MinimEnv *env, MinimObject **args, size_t a
     return res;
 }
 
-MinimObject *minim_builtin_evenp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_evenp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -220,7 +220,7 @@ MinimObject *minim_builtin_evenp(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_oddp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_oddp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -231,7 +231,7 @@ MinimObject *minim_builtin_oddp(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_exactp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_exactp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -242,7 +242,7 @@ MinimObject *minim_builtin_exactp(MinimEnv *env, MinimObject **args, size_t argc
     return res;
 }
 
-MinimObject *minim_builtin_inexactp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_inexactp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -253,7 +253,7 @@ MinimObject *minim_builtin_inexactp(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
-MinimObject *minim_builtin_integerp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_integerp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -261,7 +261,7 @@ MinimObject *minim_builtin_integerp(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
-MinimObject *minim_builtin_exact_integerp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_exact_integerp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -269,7 +269,7 @@ MinimObject *minim_builtin_exact_integerp(MinimEnv *env, MinimObject **args, siz
     return res;
 }
 
-MinimObject *minim_builtin_nanp(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_nanp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -277,7 +277,7 @@ MinimObject *minim_builtin_nanp(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_infinitep(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_infinitep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -306,7 +306,7 @@ static bool minim_number_cmp_h(MinimObject **args, size_t argc, int op)
     return true;
 }
 
-MinimObject *minim_builtin_eq(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_eq(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -317,7 +317,7 @@ MinimObject *minim_builtin_eq(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_gt(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_gt(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -328,7 +328,7 @@ MinimObject *minim_builtin_gt(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_lt(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_lt(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -339,7 +339,7 @@ MinimObject *minim_builtin_lt(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_gte(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_gte(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -350,7 +350,7 @@ MinimObject *minim_builtin_gte(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_lte(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_lte(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -361,7 +361,7 @@ MinimObject *minim_builtin_lte(MinimEnv *env, MinimObject **args, size_t argc)
     return res;
 }
 
-MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_to_exact(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 
@@ -382,7 +382,7 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, MinimObject **args, size_t ar
     return res;
 }
 
-MinimObject *minim_builtin_to_inexact(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_to_inexact(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
 

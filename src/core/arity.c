@@ -236,7 +236,7 @@ bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env)
 
 // Builtins
 
-MinimObject *minim_builtin_procedurep(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_procedurep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     
@@ -244,7 +244,7 @@ MinimObject *minim_builtin_procedurep(MinimEnv *env, MinimObject **args, size_t 
     return res;
 }
 
-MinimObject *minim_builtin_procedure_arity(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *min, *max;
     MinimArity arity;

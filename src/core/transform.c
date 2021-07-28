@@ -617,7 +617,7 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
 
 // ================================ Builtins ================================
 
-MinimObject *minim_builtin_def_syntax(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_def_syntax(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *trans, *sym;
 

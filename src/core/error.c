@@ -269,7 +269,7 @@ MinimObject *minim_error(const char *msg, const char *where, ...)
 
 // ************ Builtins ****************
 
-MinimObject *minim_builtin_error(MinimEnv *env, MinimObject **args, size_t argc)
+MinimObject *minim_builtin_error(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
     MinimError *err;

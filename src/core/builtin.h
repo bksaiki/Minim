@@ -7,7 +7,7 @@ typedef struct {
     size_t low, high;
 } MinimArity;
 
-#define DEFINE_BUILTIN_FUN(name)  MinimObject *minim_builtin_ ## name(MinimEnv *env, MinimObject **args, size_t argc);
+#define DEFINE_BUILTIN_FUN(name)  MinimObject *minim_builtin_ ## name(MinimEnv *env, size_t argc, MinimObject **args);
 
 // Variable / Control
 DEFINE_BUILTIN_FUN(def)
