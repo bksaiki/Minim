@@ -1,9 +1,12 @@
+#include <setjmp.h>
 #include <signal.h>
 #include <string.h>
 
 #include "minim.h"
 #include "read.h"
 #include "repl.h"
+
+static jmp_buf top_of_repl;
 
 static void flush_stdin()
 {
@@ -16,9 +19,10 @@ static void flush_stdin()
 
 static void int_handler(int sig)
 {
-    printf(" !! User break\n");
+    printf(" ; user break\n");
     fflush(stdout);
     flush_stdin();
+    longjmp(top_of_repl, 0);
 }
 
 int minim_repl(uint32_t flags)
@@ -33,6 +37,8 @@ int minim_repl(uint32_t flags)
     init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     set_default_print_params(&pp);
+
+    setjmp(top_of_repl);
     signal(SIGINT, int_handler);
 
     last_readf = READ_TABLE_FLAG_EOF;
