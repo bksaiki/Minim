@@ -11,6 +11,7 @@
 #include "number.h"
 #include "syntax.h"
 #include "tail_call.h"
+#include "transform.h"
 
 static bool is_rational(char *str)
 {
@@ -136,6 +137,8 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
                 return minim_error("unrecognized symbol", str);
             else if (MINIM_OBJ_SYNTAXP(res))
                 return minim_error("bad syntax", str);
+            else if (MINIM_OBJ_TRANSFORMP(res))
+                return minim_error("bad transform", str);
         }
     }
 
@@ -193,7 +196,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
             proc = env_get_sym(env, node->children[0]->sym);
             if (flags & UNSYNTAX_QUASIQUOTE && proc && MINIM_DATA(proc) == minim_builtin_unquote)
             {
-                eval_ast(env, node->children[1], &res);
+                eval_ast_no_check(env, node->children[1], &res);
                 return res;
             }
         }
@@ -296,10 +299,14 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = minim_error("not in a quasiquote", "unquote");
             }
+            else if (proc == minim_builtin_def_syntax)
+            {
+                res = minim_error("only allowed at the top-level", "def-syntax");
+            }
             else
             {
                 for (size_t i = 0; i < argc; ++i)
-                init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
+                    init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
                 
                 res = proc(env, args, argc);
                 if (MINIM_OBJ_CLOSUREP(res))
@@ -371,12 +378,49 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     }
 }
 
-// Visible functions
+static bool is_transform(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+
+    if (ast->type != SYNTAX_NODE_LIST || ast->childc == 0 || !ast->children[0]->sym)
+        return false;
+    
+    val = env_get_sym(env, ast->children[0]->sym);
+    if (!val || !MINIM_OBJ_SYNTAXP(val))
+        return false;
+
+    return (MinimBuiltin) MINIM_DATA(val) == minim_builtin_def_syntax;
+}
+
+static MinimObject *eval_transform(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject **args;
+    size_t argc;
+
+    // transcription from eval_ast_node
+    argc = ast->childc - 1;
+    args = GC_alloc(argc * sizeof(MinimObject*));
+    for (size_t i = 0; i < argc; ++i)
+        init_minim_object(&args[i], MINIM_OBJ_AST, ast->children[i + 1]);   // initialize ast wrappers
+    
+    return minim_builtin_def_syntax(env, args, argc);
+}
+
+// ================================ Public ================================
 
 int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     if (!check_syntax(env, ast, pobj))
         return 0;
+
+    if (is_transform(env, ast))
+    {
+        *pobj = eval_transform(env, ast);
+        return 1;
+    }
+
+    ast = transform_syntax(env, ast, pobj);
+    if (*pobj)  return 0;
 
     *pobj = eval_ast_node(env, ast);
     return !MINIM_OBJ_ERRORP((*pobj));
@@ -411,24 +455,50 @@ int unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 
 char *eval_string(char *str, size_t len)
 {
-    SyntaxNode *ast;
+    SyntaxNode *ast, *err;
     MinimObject *obj;
     MinimEnv *env;
     PrintParams pp;
+    ReadTable rt;
+    FILE *tmp;
     char *out;
 
     init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     set_default_print_params(&pp);
 
-    if (parse_str(str, &ast))
+    tmp = tmpfile();
+    fputs(str, tmp);
+    rewind(tmp);
+
+    rt.idx = 0;
+    rt.row = 1;
+    rt.col = 0;
+    rt.flags = 0x0;
+    rt.eof = EOF;
+
+    set_default_print_params(&pp);
+    while (~rt.flags & READ_TABLE_FLAG_EOF)
     {
-        char *tmp = "Parsing failed!";
-        out = GC_alloc_atomic((strlen(tmp) + 1) * sizeof(char));
-        strcpy(out, tmp);
-        return out;
+        minim_parse_port(tmp, "", &ast, &err, &rt);
+        if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+        {
+            char *s = "Parsing failed!";
+            out = GC_alloc_atomic((strlen(s) + 1) * sizeof(char));
+            strcpy(out, s);
+
+            fclose(tmp);
+            return out;
+        }
+
+        eval_ast(env, ast, &obj);
+        if (obj->type == MINIM_OBJ_ERR)
+        {
+            fclose(tmp);
+            return print_to_string(obj, env, &pp);
+        }
     }
 
-    eval_ast(env, ast, &obj);
+    fclose(tmp);
     return print_to_string(obj, env, &pp);
 }

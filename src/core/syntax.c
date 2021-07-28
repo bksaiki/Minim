@@ -5,9 +5,9 @@
 #include "eval.h"
 #include "list.h"
 #include "syntax.h"
+#include "transform.h"
 
 #define CHECK_REC(proc, x, expr)        if (proc == x) return expr(env, ast, perr)
-#define UNSYNTAX()
 
 static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr);
 
@@ -282,6 +282,104 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     return check_syntax_rec(env, ast->children[base + 1], perr);
 }
 
+static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    return check_syntax_rec(env, ast->children[1], perr);
+}
+
+// (syntax-rules (reserved ...)
+//  [(_ elem _) syntax]
+//  ...)
+static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *reserved, *sym;
+
+    // extract reserved symbols
+    unsyntax_ast(env, ast->children[1], &reserved);
+    if (!minim_listp(reserved))
+    {
+        *perr = minim_error("expected a list of reserved symbols", NULL);
+        return false;
+    }
+    
+    // check reserved list is all symbols
+    for (MinimObject *it = reserved; it && MINIM_CAR(it); it = MINIM_CDR(it))
+    {
+        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
+        if (!MINIM_OBJ_SYMBOLP(sym))
+        {
+            *perr = minim_error("expected a list of reserved symbols", NULL);
+            return false;
+        }
+    }
+
+    // check each match expression
+    // [(_ arg ...) anything]
+    for (size_t i = 2; i < ast->childc; ++i)
+    {
+        MinimObject *rule, *match;
+
+        unsyntax_ast(env, ast->children[i], &rule);
+        if (!minim_listp(rule) || minim_list_length(rule) != 2)
+        {
+            *perr = minim_error("expected a rule [match replace]", NULL);
+            return false;
+        }
+
+        unsyntax_ast(env, MINIM_AST(MINIM_CAR(rule)), &match);
+        if (!minim_listp(match) || minim_list_length(match) < 1)
+        {
+            *perr = minim_error("match expression must be (_ args ...)", NULL);
+            return false;
+        }
+
+        if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(rule)), perr) ||
+            !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
+            return false;
+
+        if (!valid_transformp(MINIM_AST(MINIM_CAR(rule)),
+                              MINIM_AST(MINIM_CADR(rule)),
+                              reserved,
+                              perr))
+            return false;
+    }
+
+    return true;
+}
+
+static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *sym, *rules;
+
+    unsyntax_ast(env, ast->children[1], &sym);
+    if (!MINIM_OBJ_SYMBOLP(sym))
+    {
+        *perr = minim_error("identifier should be symbol", ast->children[0]->sym);
+        return false;
+    }
+
+    unsyntax_ast(env, ast->children[2], &rules);
+    if (!minim_listp(rules) || minim_list_length(rules) == 0)
+    {
+        *perr = minim_error("expected a transform: (def-syntax ~s (syntax-rules ...)", NULL, MINIM_STRING(sym));
+        return false;
+    }
+
+    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "syntax-rules") != 0)
+    {
+        *perr = minim_error("expected a transform: (def-syntax ~s (syntax-rules ...)", NULL, MINIM_STRING(sym));
+        return false;
+    }
+
+    if (!check_syntax_syntax_rules(env, ast->children[2], perr))
+    {
+        MINIM_ERROR(*perr)->where = MINIM_STRING(sym);
+        return false;
+    }
+
+    return true;
+}
+
 static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *op;
@@ -289,31 +387,39 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     if (ast->type != SYNTAX_NODE_LIST)
         return true;
 
-    op = env_get_sym(env, ast->children[0]->sym);
-    if (op && MINIM_OBJ_SYNTAXP(op))
+    if (ast->children[0]->sym)
     {
-        void *proc = MINIM_DATA(op);
-
-        if (!minim_check_syntax_arity(proc, ast->childc - 1, env))
+        op = env_get_sym(env, ast->children[0]->sym);
+        if (op && MINIM_OBJ_SYNTAXP(op))
         {
-            *perr = minim_error("bad syntax", ast->children[0]->sym);
-            return false;
-        }
+            void *proc = MINIM_DATA(op);
 
-        CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
-        CHECK_REC(proc, minim_builtin_def, check_syntax_def);
-        CHECK_REC(proc, minim_builtin_when, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_unless, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
-        CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
-        CHECK_REC(proc, minim_builtin_case, check_syntax_case);
-        CHECK_REC(proc, minim_builtin_let, check_syntax_let);
-        CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
-        CHECK_REC(proc, minim_builtin_for, check_syntax_for);
-        CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
-        CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
-        // CHECK_REC(proc, minim_builtin_quote, true);
+            if (!minim_check_syntax_arity(proc, ast->childc - 1, env))
+            {
+                *perr = minim_error("bad syntax", ast->children[0]->sym);
+                return false;
+            }
+
+            CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
+            CHECK_REC(proc, minim_builtin_def, check_syntax_def);
+            CHECK_REC(proc, minim_builtin_when, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_unless, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
+            CHECK_REC(proc, minim_builtin_case, check_syntax_case);
+            CHECK_REC(proc, minim_builtin_let, check_syntax_let);
+            CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
+            CHECK_REC(proc, minim_builtin_for, check_syntax_for);
+            CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
+            CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
+            CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
+            // CHECK_REC(proc, minim_builtin_quote, true);
+            // CHECK_REC(proc, minim_builtin_quasiquote, true);
+            // CHECK_REC(proc, minim_builtin_unquote, true);
+            CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
+            CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_syntax_rules);
+        }
     }
     else
     {

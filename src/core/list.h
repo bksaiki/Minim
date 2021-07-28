@@ -21,6 +21,7 @@ bool minim_cons_eqp(MinimObject *a, MinimObject *b);
 void minim_cons_to_bytes(MinimObject *obj, Buffer *bf);
 
 MinimObject *minim_list(MinimObject **args, size_t len);
+MinimObject *minim_list_ref(MinimObject *lst, size_t n);
 size_t minim_list_length(MinimObject *list);
 
 #endif

@@ -82,29 +82,69 @@ static bool expand_shorthand_syntax(SyntaxNode *node)
     return false;
 }
 
-static void expand_list(SyntaxNode *node)
+static void
+list_error(ReadTable *ptable, SyntaxNode **perror)
 {
-    if (node->childc == 3 && node->children[1]->sym &&
+    Buffer *bf;
+
+    init_buffer(&bf);
+    writes_buffer(bf, "illegal use of `.`");
+    trim_buffer(bf);
+
+    ptable->flags |= READ_TABLE_FLAG_BAD;
+    init_syntax_node(perror, SYNTAX_NODE_DATUM);
+    (*perror)->sym = release_buffer(bf);
+}
+
+static bool expand_list(SyntaxNode *node, ReadTable *ptable, SyntaxNode **perror)
+{
+    bool ellipse;
+
+    if (node->childc == 3 && node->children[1]->sym &&      // cons cell
         strcmp(node->children[1]->sym, ".") == 0)
     {
         node->children[1] = node->children[2];
-
         node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
         node->childc = 2;
         node->type = SYNTAX_NODE_PAIR;
+
+        return true;
     }
-    else if (node->childc == 5 && node->children[1]->sym && node->children[3]->sym &&
-             strcmp(node->children[1]->sym, ".") == 0 &&
-             strcmp(node->children[3]->sym, ".") == 0)
+    
+    ellipse = false;
+    for (size_t i = 0; i < node->childc; ++i)       // (<elem> ... . <front> . <elem> ...)
     {
-        node->children[1] = node->children[0];
-        node->children[0] = node->children[2];
-        node->children[2] = node->children[4];
-        
-        node->children = GC_realloc(node->children, 3 * sizeof(SyntaxNode*));
-        node->childc = 3;
-        node->type = SYNTAX_NODE_LIST;
+        if (node->children[i]->sym && strcmp(node->children[i]->sym, ".") == 0)
+        {
+            if (ellipse)
+            {
+                list_error(ptable, perror);
+                return false;
+            }
+            else if (i + 2 < node->childc && node->children[i + 2]->sym &&
+            strcmp(node->children[i + 2]->sym, ".") == 0)
+            {
+                if (node->children[i + 1]->sym && strcmp(node->children[i + 1]->sym, ".") == 0)
+                {
+                    list_error(ptable, perror);
+                    return false;
+                }
+
+                for (size_t j = i; j > 0; --j)
+                    node->children[j] = node->children[j - 1];
+
+                node->children[0] = node->children[i + 1];
+                for (size_t j = i + 3; j < node->childc; ++j)
+                    node->children[j - 2] = node->children[j];
+
+                node->childc -= 2;
+                node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                ellipse = true;
+            }
+        }
     }
+
+    return true;
 }
 
 static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror)
@@ -281,7 +321,9 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
         }
     }
 
-    expand_list(node);
+    if (!expand_list(node, ptable, perror))
+        return NULL;
+
     return node;
 }
 
@@ -515,7 +557,7 @@ int parse_str(const char* str, SyntaxNode** psyntax)
     tmp = tmpfile();
     fputs(str, tmp);
     rewind(tmp);
-
+    
     status = minim_parse_port(tmp, "test", psyntax, &err, &rt);
     if (rt.flags & READ_TABLE_FLAG_BAD)
         *psyntax = err;

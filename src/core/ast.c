@@ -131,16 +131,27 @@ bool ast_equalp(SyntaxNode *a, SyntaxNode *b)
 
 void ast_to_buffer(SyntaxNode *node, Buffer *bf)
 {
-    if (node->childc != 0)
+    if (node->type == SYNTAX_NODE_LIST || node->type == SYNTAX_NODE_VECTOR)
+    {   
+        writes_buffer(bf, (node->type == SYNTAX_NODE_LIST) ? "(" : "#(");
+        if (node->childc > 0)
+        {
+            ast_to_buffer(node->children[0], bf);
+            for (size_t i = 1; i < node->childc; ++i)
+            {
+                writec_buffer(bf, ' ');
+                ast_to_buffer(node->children[i], bf);
+            }
+        }
+
+        writec_buffer(bf, ')');
+    }
+    else if (node->type == SYNTAX_NODE_PAIR)
     {
         writec_buffer(bf, '(');
         ast_to_buffer(node->children[0], bf);
-        for (size_t i = 1; i < node->childc; ++i)
-        {
-            writec_buffer(bf, ' ');
-            ast_to_buffer(node->children[i], bf);
-        }
-
+        writes_buffer(bf, " . ");
+        ast_to_buffer(node->children[1], bf);
         writec_buffer(bf, ')');
     }
     else
@@ -151,10 +162,19 @@ void ast_to_buffer(SyntaxNode *node, Buffer *bf)
 
 void ast_dump_in_buffer(SyntaxNode *node, Buffer *bf)
 {
-    if (node->childc != 0)
+    if (node->type == SYNTAX_NODE_LIST || node->type == SYNTAX_NODE_VECTOR)
+    {   
+        if (node->childc > 0)
+        {
+            ast_dump_in_buffer(node->children[0], bf);
+            for (size_t i = 1; i < node->childc; ++i)
+                ast_dump_in_buffer(node->children[i], bf);
+        }
+    }
+    else if (node->type == SYNTAX_NODE_PAIR)
     {
-        for (size_t i = 0; i < node->childc; ++i)
-            ast_dump_in_buffer(node->children[i], bf);
+        ast_dump_in_buffer(node->children[0], bf);
+        ast_dump_in_buffer(node->children[1], bf);
     }
     else
     {

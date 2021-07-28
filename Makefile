@@ -13,19 +13,22 @@ TESTS 		:= $(shell find $(TEST_DIR) -name *.c)
 TEST_EXES 	:= $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	= -MMD -MP
-CFLAGS 		= -g -Wall -std=c11
+CFLAGS 		= -Wall -std=c11
 LDFLAGS 	= -lm -lgmp
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-# Specific rules
+# Top level rules
 
-minim: configure $(OBJS)
+debug:
+	$(MAKE) CFLAGS="-g $(CFLAGS)" minim
+
+release:
+	$(MAKE) CFLAGS="-O3 -march=native $(CFLAGS)" minim
+
+minim: $(BUILD_DIR)/config.h $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
-
-configure:
-	cd src && $(MAKE) config
 
 tests: minim unit-tests lib-tests;
 
@@ -42,15 +45,16 @@ lib-tests:
 	sh $(TEST_DIR)/lib.sh
 
 clean:
-	cd src && $(MAKE) clean
 	$(RM) $(OBJS) $(EXE)
 
-clean-deps:
-	$(RM) -r $(DEPS)
-
 clean-all:
-	cd src && $(MAKE) clean
 	rm -r -f $(BUILD_DIR) tmp $(EXE)
+
+### Specific rules
+
+$(BUILD_DIR)/config.h:
+	mkdir -p $(BUILD_DIR)
+	echo "#define MINIM_LIB_PATH \"$(shell pwd)/src/\"" > build/config.h
 
 ### General rules
 
@@ -67,4 +71,5 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 	
 -include $(DEPS)
-.PHONY: main build clean clean-deps clean-all 
+.PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
+		clean clean-all

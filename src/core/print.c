@@ -252,6 +252,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writec_buffer(bf, '>');
         pp->syntax = syntaxp;
     }
+    else
+    {
+        // case MINIM_OBJ_TAIL_CALL:
+        // case MINIM_OBJ_TRANSFORM:
+        writes_buffer(bf, "invalid object");
+    }
 
     return 1;
 }
@@ -264,6 +270,16 @@ void set_default_print_params(PrintParams *pp)
     pp->quote = false;
     pp->display = false;
     pp->syntax = false;
+}
+
+void debug_print_minim_object(MinimObject *obj, MinimEnv *env)
+{
+    PrintParams pp;
+
+    set_default_print_params(&pp);
+    print_to_port(obj, env, &pp, stdout);
+    fprintf(stdout, "\n");
+    fflush(stdout);
 }
 
 int print_minim_object(MinimObject *obj, MinimEnv *env, PrintParams *pp)

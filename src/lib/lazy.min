@@ -9,14 +9,15 @@
 ;;                                     ...
 
 ;; lazy cons
-; (def lazy-cons (a b)
-;   (cons a (delay b)))
+(def-syntax lazy-cons
+  (syntax-rules ()
+   [(_ a b) (cons a (delay b))]))
 
 ;; lazy list
 (def lazy-list args
   (let loop ([args args])
     (cond [(null? args) '()]
-          [else (cons (car args) (delay (loop (cdr args))))])))
+          [else (lazy-cons (car args) (loop (cdr args)))])))
 
 ;; lazy car is the same as car
 (def lazy-car car)
@@ -29,8 +30,8 @@
 (def lazy-map (fn . lss)
   (if (member '() lss)
       '()
-      (cons (apply fn (map lazy-car lss))
-            (delay (apply lazy-map fn (map lazy-cdr lss))))))
+      (lazy-cons (apply fn (map lazy-car lss))
+                 (apply lazy-map fn (map lazy-cdr lss)))))
 
 ;; lazy filter
 (def lazy-filter (pred ls)
@@ -38,7 +39,7 @@
       '()
       (let ([this (lazy-car ls)])
         (if (pred this)
-            (cons this (delay (lazy-filter pred (lazy-cdr ls))))
+            (lazy-cons this (lazy-filter pred (lazy-cdr ls)))
             (lazy-filter pred (lazy-cdr ls))))))
 
 ;; lazy ref

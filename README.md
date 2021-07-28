@@ -10,4 +10,4 @@ For the most recent stable release, checkout the `stable` branch.
 
 #### Install
 1. Clone this repository.
-3. Run `make` in this directory.
+3. Run `make release` in this directory.

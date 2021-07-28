@@ -192,6 +192,18 @@ MinimObject *minim_list(MinimObject **args, size_t len)
     return head;
 }
 
+MinimObject *minim_list_ref(MinimObject *lst, size_t len)
+{
+    MinimObject *it;
+
+    if (len == 0)
+        return MINIM_CAR(lst);
+
+    it = MINIM_CDR(lst);
+    for (size_t i = 1; i < len; ++i, it = MINIM_CDR(it));
+    return MINIM_CAR(it);
+}
+
 size_t minim_list_length(MinimObject *list)
 {
     size_t len = 0;
