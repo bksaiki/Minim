@@ -255,6 +255,8 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
                 ++j;
             }
         }
+
+        return j == ast->childc;
     }
     else if (match->type == SYNTAX_NODE_PAIR)
     {

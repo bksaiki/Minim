@@ -19,7 +19,7 @@ int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp
     if (!ast || rt->flags & READ_TABLE_FLAG_BAD)
     {
         printf("; bad syntax: %s", err->sym);
-        printf("\n;  in: %s:%lu:%lu\n", fname, rt->row, rt->col);
+        printf("\n;  in: %s:%zu:%zu\n", fname, rt->row, rt->col);
         return 1;
     }
 
