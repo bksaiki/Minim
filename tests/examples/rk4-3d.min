@@ -56,7 +56,7 @@
   (def v0 (list 1.0 1.0 1.0))
   (def step 0.02)
   (printf "Running 3D rk4:\n")
-  (printf " x0: <~a, ~a, ~a>" (list-ref v0 0) (list-ref v0 1) (list-ref v0 2))
+  (printf " x0: <~a, ~a, ~a>\n" (list-ref v0 0) (list-ref v0 1) (list-ref v0 2))
   (printf " step: ~a\n" step)
   (printf " iters: ~a\n" iters)
   (let loop ([v v0] [iters iters])
