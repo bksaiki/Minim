@@ -35,6 +35,9 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
     minim_load_builtin(env, "exit", MINIM_OBJ_SYNTAX, minim_builtin_exit);
 
+    // Modules
+    minim_load_builtin(env, "%import", MINIM_OBJ_SYNTAX, minim_builtin_import);
+
     // Transforms
     minim_load_builtin(env, "def-syntax", MINIM_OBJ_SYNTAX, minim_builtin_def_syntax);
     

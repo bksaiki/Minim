@@ -7,4 +7,6 @@
 
 void valid_path(Buffer *valid, const char *maybe);
 
+Buffer *get_directory(const char *file);
+
 #endif

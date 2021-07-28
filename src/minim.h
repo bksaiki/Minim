@@ -14,4 +14,7 @@
 #define MINIM_FLAG_LOAD_LIBS        0x1
 #define MINIM_FLAG_NO_RUN           0x2
 
+/* Runs a file under the current environment 'env' */
+int minim_load_file(MinimEnv *env, const char *str);
+
 #endif

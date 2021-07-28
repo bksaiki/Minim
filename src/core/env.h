@@ -16,6 +16,7 @@ typedef struct MinimEnv
     struct MinimEnv *parent;
     MinimSymbolTable *table;
     MinimLambda *callee;
+    char *current_dir;
     size_t sym_count;
     uint8_t flags;
 } MinimEnv;

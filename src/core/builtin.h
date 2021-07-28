@@ -30,8 +30,10 @@ DEFINE_BUILTIN_FUN(exit)
 DEFINE_BUILTIN_FUN(delay)
 DEFINE_BUILTIN_FUN(force)
 
-// Transforms
+// Modules
+DEFINE_BUILTIN_FUN(import)
 
+// Transforms
 DEFINE_BUILTIN_FUN(def_syntax)
 
 // Miscellaneous

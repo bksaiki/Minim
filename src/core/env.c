@@ -34,6 +34,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
 
     env->parent = parent;
     env->callee = callee;
+    env->current_dir = NULL;
     init_minim_symbol_table(&env->table);
     env->flags = MINIM_ENV_TAIL_CALLABLE;
     *penv = env;

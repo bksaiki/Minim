@@ -303,6 +303,10 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = minim_error("only allowed at the top-level", "def-syntax");
             }
+            else if (proc == minim_builtin_import)
+            {
+                res = minim_error("only allowed at the top-level", "%import");
+            }
             else
             {
                 for (size_t i = 0; i < argc; ++i)
@@ -378,9 +382,10 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     }
 }
 
-static bool is_transform(MinimEnv *env, SyntaxNode *ast)
+static bool is_top_level(MinimEnv *env, SyntaxNode *ast)
 {
     MinimObject *val;
+    MinimBuiltin fn;
 
     if (ast->type != SYNTAX_NODE_LIST || ast->childc == 0 || !ast->children[0]->sym)
         return false;
@@ -389,12 +394,15 @@ static bool is_transform(MinimEnv *env, SyntaxNode *ast)
     if (!val || !MINIM_OBJ_SYNTAXP(val))
         return false;
 
-    return ((MinimBuiltin) MINIM_DATA(val) == minim_builtin_def_syntax);
+    fn = MINIM_DATA(val);
+    return (fn == minim_builtin_def_syntax ||
+            fn == minim_builtin_import);
 }
 
-static MinimObject *eval_transform(MinimEnv *env, SyntaxNode *ast)
+static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast)
 {
     MinimObject **args;
+    MinimBuiltin fn;
     size_t argc;
 
     // transcription from eval_ast_node
@@ -403,7 +411,11 @@ static MinimObject *eval_transform(MinimEnv *env, SyntaxNode *ast)
     for (size_t i = 0; i < argc; ++i)
         init_minim_object(&args[i], MINIM_OBJ_AST, ast->children[i + 1]);   // initialize ast wrappers
     
-    return minim_builtin_def_syntax(env, argc, args);
+    fn = MINIM_DATA(env_get_sym(env, ast->children[0]->sym));
+    if (fn == minim_builtin_def_syntax)
+        return minim_builtin_def_syntax(env, argc, args);
+    else // fn == minim_builtin_def_import
+        return minim_builtin_import(env, argc, args);
 }
 
 // ================================ Public ================================
@@ -413,9 +425,9 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     if (!check_syntax(env, ast, pobj))
         return 0;
 
-    if (is_transform(env, ast))
+    if (is_top_level(env, ast))
     {
-        *pobj = eval_transform(env, ast);
+        *pobj = eval_top_level(env, ast);
         return 1;
     }
 
