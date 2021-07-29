@@ -49,8 +49,6 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     // Boolean
     SET_ARITY_EXACT(boolp, 1);
     SET_ARITY_EXACT(not, 1);
-    SET_ARITY_MIN(or, 1);
-    SET_ARITY_MIN(and, 1);
 
     // Number
     SET_ARITY_EXACT(numberp, 1);
@@ -62,7 +60,6 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(exactp, 1);
     SET_ARITY_EXACT(inexactp, 1);
     SET_ARITY_EXACT(integerp, 1);
-    SET_ARITY_EXACT(exact_integerp, 1);
     SET_ARITY_EXACT(nanp, 1);
     SET_ARITY_EXACT(infinitep, 1);
     SET_ARITY_MIN(eq, 1);

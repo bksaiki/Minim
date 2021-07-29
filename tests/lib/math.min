@@ -1,5 +1,10 @@
 ;; Tests for <lib>/private/math.min
 
+;; exact-integer
+(exact-integer? 1)
+(not (exact-integer? 1.0))
+(not (exact-integer? 'str))
+
 ;; exact-nonnegative-integer?
 (exact-nonnegative-integer? 5)
 (exact-nonnegative-integer? 0)

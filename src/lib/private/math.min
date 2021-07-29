@@ -1,4 +1,12 @@
+;;;;;;;;;;;;;;;;;;;;;; Constants ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def pi 3.141592653589793238465)
+(def phi 1.618033988749894848204)
+
 ;;;;;;;;;;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def exact-integer? (n)
+  (and (number? n) (exact? n) (integer? n)))
 
 (def exact-nonnegative-integer? (n)
   (and (exact-integer? n) (not (negative? n))))

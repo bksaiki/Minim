@@ -169,23 +169,6 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[12][256] =
-        {
-            "(exact-integer? 1)",                         "#t",
-            "(exact-integer? 1.0)",                       "#f",
-            "(exact-integer? 'str)",                      "#f",
-            "(begin (def n 1) (exact-integer? n))",       "#t",
-            "(begin (def n 1.0) (exact-integer? n))",     "#f",
-            "(begin (def n 'str) (exact-integer? n))",    "#f"
-        };
-
-        printf("Testing 'exact-integer?'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
         const int COUNT = 4;
         char strs[8][256] =
         {
