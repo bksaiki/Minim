@@ -1,0 +1,9 @@
+;;;;;;;;;;;;;;;;;;; cond ;;;;;;;;;;;;;;;;;;;
+
+;; else must be last
+(def-syntax cond
+  (syntax-rules (else)
+   [(_) (void)]
+   [(_ [else body ...]) (begin body ...)]
+   [(_ [test body ...] rest ...)
+    (if test (begin body ...) (cond rest ...))]))

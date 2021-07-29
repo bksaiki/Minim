@@ -499,23 +499,6 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[12][256] = 
-        {   
-            "(cond)",                               "<void>",
-            "(cond [true 1])",                      "1",
-            "(cond [false 1] [else 2])",            "2",
-            "(cond [true 1] [else 2])",             "1",
-            "(cond [false 1] [false 2])",           "<void>",
-            "(cond [false 1] [false 2] [true 3])",  "3"
-        };
-
-        printf("Testing 'cond'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
         const int COUNT = 5;
         char strs[10][256] = 
         {   

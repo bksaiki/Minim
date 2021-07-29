@@ -1,5 +1,6 @@
 ;;;;;;;;;;;;;;;;;;; Top-level ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(%import "private/cond.min")
 (%import "private/when-unless.min")
 
 (%import "private/function.min")

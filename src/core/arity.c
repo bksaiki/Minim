@@ -186,7 +186,6 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_MIN(def, 2);
     SET_ARITY_EXACT(setb, 2);
     SET_ARITY_EXACT(if, 3);
-    // no check: 'cond'
     // no check: 'case'
     SET_ARITY_RANGE(let, 2, 3);
     SET_ARITY_RANGE(letstar, 2, 3);

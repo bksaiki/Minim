@@ -112,35 +112,6 @@ static bool check_syntax_begin(MinimEnv *env, SyntaxNode *ast, MinimObject **per
     return true;
 }
 
-static bool check_syntax_cond(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
-{
-    MinimObject *branch;
-    SyntaxNode *cond;
-
-    for (size_t i = 1; i < ast->childc; ++i)
-    {
-        unsyntax_ast(env, ast->children[i], &branch);
-        if (!minim_listp(branch) || minim_list_length(branch) < 2)
-        {
-            *perr = minim_error("([<cond> <exprs> ...] ...)", "cond");
-            return false;
-        }
-
-        // condition
-        cond = MINIM_DATA(MINIM_CAR(branch));
-        if (i + 1 != ast->childc && cond->sym && strcmp(cond->sym, "else") == 0)
-            return minim_error("else clause must be last", "cond");
-        
-        for (MinimObject *it = MINIM_CDR(branch); it; it = MINIM_CDR(it))
-        {
-            if (!check_syntax_rec(env, MINIM_DATA(MINIM_CAR(it)), perr))
-                return false;
-        }
-    }
-
-    return true;
-}
-
 static bool check_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *branch, *match;
@@ -404,7 +375,6 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
             CHECK_REC(proc, minim_builtin_def, check_syntax_def);
             CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
-            CHECK_REC(proc, minim_builtin_cond, check_syntax_cond);
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);
             CHECK_REC(proc, minim_builtin_let, check_syntax_let);
             CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);

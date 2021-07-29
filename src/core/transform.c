@@ -118,7 +118,8 @@ match_table_next_depth(MatchTable *dest, MatchTable *src, size_t idx)
         if (depth > 0)
         {
             val = match_table_get(src, src->syms[i]);
-            match_table_add(dest, src->syms[i], depth - 1, minim_list_ref(val, idx));
+            if (idx < minim_list_length(val))
+                match_table_add(dest, src->syms[i], depth - 1, minim_list_ref(val, idx));
         }
     }
 }
@@ -277,8 +278,8 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
         if (strcmp(match->sym, ".") == 0)       // dot operator
             return strcmp(ast->sym, ".") == 0;
 
-        if (symbol_list_contains(reserved, match->sym))
-            return true;    // don't add reserved names
+        if (symbol_list_contains(reserved, match->sym)) // reserved name
+            return ast_equalp(match, ast);
 
         init_minim_object(&val, MINIM_OBJ_AST, ast);  // wrap first
         match_table_add(table, match->sym, pdepth, val);
