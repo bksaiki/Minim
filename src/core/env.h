@@ -14,6 +14,7 @@ typedef struct MinimLambda MinimLambda;
 typedef struct MinimEnv
 {
     struct MinimEnv *parent;
+    struct MinimEnv *prev;
     MinimSymbolTable *table;
     MinimLambda *callee;
     char *current_dir;

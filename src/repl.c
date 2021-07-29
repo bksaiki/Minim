@@ -35,6 +35,7 @@ int minim_repl(uint32_t flags)
     fflush(stdout);
 
     init_env(&env, NULL, NULL);
+    env->current_dir = "REPL";
     minim_load_builtins(env);
     set_default_print_params(&pp);
 

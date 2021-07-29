@@ -1,5 +1,8 @@
 ;;;;;;;;;;;;;;;;;;; Specialized list ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(%import "and-or.min"
+         "cond.min")
+
 (def remove* (vs lst)
   (unless (and (list? vs) (list? lst))
     (error 'remove* "Expected two lists"))

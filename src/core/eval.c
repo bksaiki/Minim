@@ -311,6 +311,10 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = minim_error("only allowed at the top-level", "%export");
             }
+            else if (proc == minim_builtin_top_level)
+            {
+                res = minim_error("only allowed at the top-level", "%top-level");
+            }
             else
             {
                 for (size_t i = 0; i < argc; ++i)
@@ -401,7 +405,8 @@ static bool is_top_level(MinimEnv *env, SyntaxNode *ast)
     fn = MINIM_DATA(val);
     return (fn == minim_builtin_def_syntax ||
             fn == minim_builtin_import ||
-            fn == minim_builtin_export);
+            fn == minim_builtin_export ||
+            fn == minim_builtin_top_level);
 }
 
 static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast)
@@ -421,8 +426,10 @@ static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast)
         return minim_builtin_def_syntax(env, argc, args);
     else if (fn == minim_builtin_import)
         return minim_builtin_import(env, argc, args);
-    else //  fn == minim_builtin_export
+    else if (fn == minim_builtin_export)
         return minim_builtin_export(env, argc, args);
+    else // (fn == minim_builtin_top_level)
+        return minim_builtin_top_level(env, argc, args);
 }
 
 // ================================ Public ================================

@@ -30,6 +30,7 @@ DEFINE_BUILTIN_FUN(force)
 // Modules
 DEFINE_BUILTIN_FUN(export)
 DEFINE_BUILTIN_FUN(import)
+DEFINE_BUILTIN_FUN(top_level)
 
 // Transforms
 DEFINE_BUILTIN_FUN(def_syntax)

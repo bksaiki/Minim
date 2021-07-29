@@ -1,5 +1,13 @@
 #include "../minim.h"
 
+static MinimEnv *get_builtin_env(MinimEnv *env)
+{
+    if (!env->parent)
+        return env;
+    
+    return get_builtin_env(env->parent);
+}
+
 int minim_run_expr(FILE *file, const char *fname, ReadTable *rt, PrintParams *pp, MinimEnv *env)
 {
     SyntaxNode *ast, *err;
@@ -53,9 +61,10 @@ int minim_load_file(MinimEnv *env, const char *fname)
     rt.flags = 0x0;
     rt.eof = EOF;
 
-    init_env(&env2, env, NULL);
+    init_env(&env2, get_builtin_env(env), NULL);
     dir = get_directory(get_buffer(mfname));
     env2->current_dir = get_buffer(dir);
+    env2->prev = env;
 
     set_default_print_params(&pp);
     while (~rt.flags & READ_TABLE_FLAG_EOF)

@@ -2,18 +2,6 @@
 #include "error.h"
 #include "../minim.h"
 
-static bool
-check_exportable(MinimEnv *env, const char *sym)
-{
-    if (!env->parent)   // cannot export builtins
-        return false;
-
-    if (minim_symbol_table_get(env->table, sym))
-        return true;
-
-    return check_exportable(env->parent, sym);
-}
-
 MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject **syms, *ret;
@@ -27,26 +15,15 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
             ret = minim_error("export must be a symbol", "%export");
             return ret;
         }
-
-        if (!check_exportable(env, MINIM_STRING(syms[i])))
-        {
-            ret = minim_error("not exportable", MINIM_STRING(syms[i]));
-            return ret;
-        }
     }
 
-    for (MinimEnv *it = env->parent; env; env = env->parent)
+    if (env->prev)
     {
-        if (it->current_dir)
+        for (size_t i = 0; i < argc; ++i)
         {
-            for (size_t i = 0; i < argc; ++i)
-            {
-                minim_symbol_table_set(it->table,
-                                       MINIM_STRING(syms[i]),
-                                       env_get_sym(env, MINIM_STRING(syms[i])));
-            }
-
-            break;
+            env_intern_sym(env->prev,
+                           MINIM_STRING(syms[i]),
+                           env_get_sym(env, MINIM_STRING(syms[i])));
         }
     }
 
@@ -77,6 +54,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         init_buffer(&path);
         writes_buffer(path, env->current_dir);
         writes_buffer(path, MINIM_STRING(arg));
+
         if (minim_load_file(env, get_buffer(path)))
         {
             init_minim_object(&ret, MINIM_OBJ_VOID);
@@ -84,6 +62,21 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         }
     }
 
+    init_minim_object(&ret, MINIM_OBJ_VOID);
+    return ret;
+}
+
+MinimObject *minim_builtin_top_level(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *ret;
+
+    if (!env->prev)
+    {
+        ret = minim_error("cannot be used in top environment", "%top-level");
+        return ret;
+    }
+
+    minim_symbol_table_merge(env->prev->table, env->table);
     init_minim_object(&ret, MINIM_OBJ_VOID);
     return ret;
 }

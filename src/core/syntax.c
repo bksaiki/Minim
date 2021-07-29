@@ -7,7 +7,8 @@
 #include "syntax.h"
 #include "transform.h"
 
-#define CHECK_REC(proc, x, expr)        if (proc == x) return expr(env, ast, perr)
+#define CHECK_REC(proc, x, expr)        if (proc == x) return expr(env, ast, perr);
+#define MATCH_RET(proc, x, ret)         if (proc == x) return ret;
 
 static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr);
 
@@ -382,11 +383,20 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
-            // CHECK_REC(proc, minim_builtin_quote, true);
-            // CHECK_REC(proc, minim_builtin_quasiquote, true);
-            // CHECK_REC(proc, minim_builtin_unquote, true);
             CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
             CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_syntax_rules);
+
+            MATCH_RET(proc, minim_builtin_quote, true);
+            MATCH_RET(proc, minim_builtin_quasiquote, true);
+            MATCH_RET(proc, minim_builtin_unquote, true);
+            MATCH_RET(proc, minim_builtin_import, true);
+            MATCH_RET(proc, minim_builtin_export, true);
+            MATCH_RET(proc, minim_builtin_top_level, true);
+        }
+        else
+        {
+            *perr = minim_error("bad syntax", ast->children[0]->sym);
+            return false;
         }
     }
     else

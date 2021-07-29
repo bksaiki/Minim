@@ -10,3 +10,5 @@
          "private/lazy.min"
          "private/list.min"
          "private/math.min")
+
+(%top-level)
