@@ -44,14 +44,12 @@ int main()
     }
 
     {
-        const int COUNT = 5;
-        char strs[10][256] =
+        const int COUNT = 3;
+        char strs[6][256] =
         {
             "inf",              "inf",
             "-inf",             "-inf",
-            "nan",              "nan",
-            "pi",               "3.141592653589793",
-            "phi",              "1.618033988749895"
+            "nan",              "nan"
         };
 
         printf("Testing constants\n");

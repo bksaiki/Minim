@@ -1,10 +1,12 @@
 ;;;;;;;;;;;;;;;;;;; Top-level ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(%import "private/and-or.min")
-(%import "private/cond.min")
-(%import "private/when-unless.min")
+; syntax
+(%import "private/and-or.min"
+         "private/cond.min"
+         "private/when-unless.min")
 
-(%import "private/function.min")
-(%import "private/lazy.min")
-(%import "private/list.min")
-(%import "private/math.min")
+; functions
+(%import "private/function.min"
+         "private/lazy.min"
+         "private/list.min"
+         "private/math.min")

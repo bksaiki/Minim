@@ -9,3 +9,5 @@
   (syntax-rules ()
    [(_) #f]
    [(_ test rest ...) (if test #t (or rest ...))]))
+
+(%export and or)

@@ -34,8 +34,8 @@ int minim_load_file(MinimEnv *env, const char *fname)
     PrintParams pp;
     ReadTable rt;
     Buffer *mfname, *dir;
+    MinimEnv *env2;
     FILE *file;
-    char *old_dir;
 
     init_buffer(&mfname);
     valid_path(mfname, fname);
@@ -53,18 +53,17 @@ int minim_load_file(MinimEnv *env, const char *fname)
     rt.flags = 0x0;
     rt.eof = EOF;
 
-    old_dir = env->current_dir;
+    init_env(&env2, env, NULL);
     dir = get_directory(get_buffer(mfname));
-    env->current_dir = get_buffer(dir);
+    env2->current_dir = get_buffer(dir);
 
     set_default_print_params(&pp);
     while (~rt.flags & READ_TABLE_FLAG_EOF)
     {
-        if (minim_run_expr(file, mfname->data, &rt, &pp, env))
+        if (minim_run_expr(file, mfname->data, &rt, &pp, env2))
             break;
     }
 
-    env->current_dir = old_dir;
     fclose(file);
     return 0;
 }
