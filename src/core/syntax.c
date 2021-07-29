@@ -305,9 +305,9 @@ static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObjec
             return false;
         }
 
-        if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(rule)), perr) ||
-            !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
-            return false;
+        // if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(rule)), perr) ||
+        //     !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
+        //     return false;
 
         if (!valid_transformp(MINIM_AST(MINIM_CAR(rule)),
                               MINIM_AST(MINIM_CADR(rule)),
@@ -392,11 +392,6 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             MATCH_RET(proc, minim_builtin_import, true);
             MATCH_RET(proc, minim_builtin_export, true);
             MATCH_RET(proc, minim_builtin_top_level, true);
-        }
-        else
-        {
-            *perr = minim_error("bad syntax", ast->children[0]->sym);
-            return false;
         }
     }
     else

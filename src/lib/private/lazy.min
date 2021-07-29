@@ -48,3 +48,7 @@
   (if (= n 0)
       (lazy-car ls)
       (lazy-ref (lazy-cdr ls) (- n 1))))
+
+(%export lazy-cons lazy-list
+         lazy-car lazy-cdr lazy-ref
+         lazy-map lazy-filter)

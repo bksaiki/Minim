@@ -9,3 +9,5 @@
   (syntax-rules ()
    [(_ test body ...)
     (if test (void) (begin body ...))]))
+
+(%export when unless)

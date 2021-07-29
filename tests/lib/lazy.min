@@ -13,12 +13,12 @@
 (equal? 4 (lazy-car (lazy-cdr w)))
 
 ;; lazy-map
-(equal? 2 (lazy-car (lazy-map add1 v)))
+(equal? 2 (lazy-car (lazy-map (lambda (x) (+ x 1)) v)))
 (equal? 4 (lazy-car (lazy-map (lambda (x) (* 2 x)) w)))
 
 ;; lazy-filter
-(equal? 5 (lazy-car (lazy-filter (curryr > 4) v)))
-(equal? 6 (lazy-car (lazy-filter (curryr > 5) w)))
+(equal? 5 (lazy-car (lazy-filter (lambda (x) (> x 4)) v)))
+(equal? 6 (lazy-car (lazy-filter (lambda (x) (> x 5)) w)))
 
 ;; lazy-ref
 (equal? 3 (lazy-ref v 2))

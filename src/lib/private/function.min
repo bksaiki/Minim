@@ -1,5 +1,7 @@
 ;;;;;;;;;;;;;;;;;;; Functional ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(%import "when-unless.min")
+
 (def identity (x) x)
 
 (def negate (f)
@@ -28,3 +30,6 @@
       (if (< (length args*) min-arity)
           (apply curryr f args*)
           (apply f args*)))))
+
+(%export identity const
+         negate curry curryr)

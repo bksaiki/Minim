@@ -7,3 +7,5 @@
    [(_ [else body ...]) (begin body ...)]
    [(_ [test body ...] rest ...)
     (if test (begin body ...) (cond rest ...))]))
+
+(%export cond)
