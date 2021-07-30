@@ -390,29 +390,9 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     }
 }
 
-static bool is_top_level(MinimEnv *env, SyntaxNode *ast)
-{
-    MinimObject *val;
-    MinimBuiltin fn;
-
-    if (ast->type != SYNTAX_NODE_LIST || ast->childc == 0 || !ast->children[0]->sym)
-        return false;
-    
-    val = env_get_sym(env, ast->children[0]->sym);
-    if (!val || !MINIM_OBJ_SYNTAXP(val))
-        return false;
-
-    fn = MINIM_DATA(val);
-    return (fn == minim_builtin_def_syntax ||
-            fn == minim_builtin_import ||
-            fn == minim_builtin_export ||
-            fn == minim_builtin_top_level);
-}
-
-static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast)
+static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast, MinimBuiltin fn)
 {
     MinimObject **args;
-    MinimBuiltin fn;
     size_t argc;
 
     // transcription from eval_ast_node
@@ -421,15 +401,87 @@ static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast)
     for (size_t i = 0; i < argc; ++i)
         init_minim_object(&args[i], MINIM_OBJ_AST, ast->children[i + 1]);   // initialize ast wrappers
     
-    fn = MINIM_DATA(env_get_sym(env, ast->children[0]->sym));
-    if (fn == minim_builtin_def_syntax)
-        return minim_builtin_def_syntax(env, argc, args);
-    else if (fn == minim_builtin_import)
-        return minim_builtin_import(env, argc, args);
-    else if (fn == minim_builtin_export)
-        return minim_builtin_export(env, argc, args);
-    else // (fn == minim_builtin_top_level)
-        return minim_builtin_top_level(env, argc, args);
+    return fn(env, argc, args);
+}
+
+static bool expr_is_module_level(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+    MinimBuiltin builtin;
+
+    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+        return false;
+
+    val = env_get_sym(env, ast->children[0]->sym);
+    if (!val || !MINIM_OBJ_SYNTAXP(val))
+        return false;
+
+    builtin = MINIM_DATA(val);
+    return (builtin == minim_builtin_def_syntax ||
+            builtin == minim_builtin_import ||
+            builtin == minim_builtin_export ||
+            builtin == minim_builtin_top_level);
+}
+
+// static bool expr_is_define(MinimEnv *env, SyntaxNode *ast)
+// {
+//     MinimObject *val;
+//     MinimBuiltin builtin;
+
+//     if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+//         return false;
+
+//     val = env_get_sym(env, ast->children[0]->sym);
+//     if (!val || !MINIM_OBJ_SYNTAXP(val))
+//         return false;
+
+//     builtin = MINIM_DATA(val);
+//     return (builtin == minim_builtin_def ||
+//             builtin == minim_builtin_def_syntax);
+// }
+
+static bool expr_is_macro(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+
+    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+        return false;
+
+    val = env_get_sym(env, ast->children[0]->sym);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_def_syntax);
+}
+
+static bool expr_is_import(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+
+    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+        return false;
+
+    val = env_get_sym(env, ast->children[0]->sym);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_import);
+}
+
+static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+
+    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+        return false;
+
+    val = env_get_sym(env, ast->children[0]->sym);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_export);
+}
+
+static bool expr_is_top_level(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+
+    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+        return false;
+
+    val = env_get_sym(env, ast->children[0]->sym);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_top_level);
 }
 
 // ================================ Public ================================
@@ -438,12 +490,6 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     if (!check_syntax(env, ast, pobj))
         return 0;
-
-    if (is_top_level(env, ast))
-    {
-        *pobj = eval_top_level(env, ast);
-        return 1;
-    }
 
     ast = transform_syntax(env, ast, pobj);
     if (*pobj)  return 0;
@@ -456,6 +502,92 @@ int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj)
 {
     *pobj = eval_ast_node(env, ast);
     return !MINIM_OBJ_ERRORP((*pobj));
+}
+
+int eval_module(MinimEnv* env, MinimModule *module, MinimObject **pobj)
+{
+    PrintParams pp;
+
+    // importing
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_import(env, module->exprs[i]))
+        {
+            if (!check_syntax(env, module->exprs[i], pobj))
+                return 1;
+
+            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_import);
+            if (MINIM_OBJ_ERRORP(*pobj))
+                return 1;
+        }
+    }
+
+    // syntax check / define transforms
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_import(env, module->exprs[i]))
+            continue;
+
+        if (!check_syntax(env, module->exprs[i], pobj))
+            return 1;
+
+        if (expr_is_macro(env, module->exprs[i]))
+        {
+            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_def_syntax);
+            if (MINIM_OBJ_ERRORP(*pobj))
+                return 1;
+        }
+    }
+
+    // Syntax transform
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        module->exprs[i] = transform_syntax(env, module->exprs[i], pobj);
+        if (*pobj)  return 0;
+    }
+
+    // Evaluation
+    set_default_print_params(&pp);
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_module_level(env, module->exprs[i]))
+            continue;
+
+        if (eval_ast(env, module->exprs[i], pobj))
+        {    
+            return 1;
+        }
+        else if (MINIM_OBJ_EXITP(*pobj))
+        {
+            init_minim_object(pobj, MINIM_OBJ_VOID);
+            return 0;
+        }
+        else
+        {
+            print_minim_object(*pobj, env, &pp);
+            printf("\n");
+        }
+    }
+
+    // exports
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_export(env, module->exprs[i]))
+        {
+            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_export);
+            if (MINIM_OBJ_ERRORP(*pobj))
+                return 1;
+        }
+        else if (expr_is_top_level(env, module->exprs[i]))
+        {
+            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_top_level);
+            if (MINIM_OBJ_ERRORP(*pobj))
+                return 1;
+        }
+    }
+
+    init_minim_object(pobj, MINIM_OBJ_VOID);
+    return 0;
 }
 
 int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)

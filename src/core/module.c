@@ -1,6 +1,30 @@
+#include "../minim.h"   // TODO: this seems weird
+
 #include "builtin.h"
 #include "error.h"
-#include "../minim.h"
+#include "module.h"
+
+void init_minim_module(MinimModule **pmodule)
+{
+    MinimModule *module;
+
+    module = GC_alloc(sizeof(MinimModule));
+    module->exprs = NULL;
+    module->exprc = 0;
+    module->env = NULL;
+    module->flags = 0x0;
+
+    *pmodule = module;
+}
+
+void minim_module_add_expr(MinimModule *module, SyntaxNode *expr)
+{
+    ++module->exprc;
+    module->exprs = GC_realloc(module->exprs, module->exprc * sizeof(SyntaxNode*));
+    module->exprs[module->exprc - 1] = expr;
+}
+
+// ================================ Builtins ================================
 
 MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args)
 {
