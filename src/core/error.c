@@ -28,8 +28,15 @@ void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char
     trace->next = NULL;
     *ptrace = trace;
 
-    trace->name = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
-    strcpy(trace->name, name);
+    if (name)
+    {
+        trace->name = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
+        strcpy(trace->name, name);
+    }
+    else
+    {
+        trace->name = NULL;
+    }
 }
 
 void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src)
@@ -203,6 +210,8 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
         init_minim_error_desc_table(&err->table, 1);
         minim_error_desc_table_set(err->table, 0, "in", get_buffer(bf));
         init_minim_object(&obj, MINIM_OBJ_ERR, err);
+
+        minim_error_add_trace(err, expr->loc, NULL);
     }
     else if (expr && subexpr)
     {
@@ -216,6 +225,8 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
         ast_to_buffer(expr, bf);
         minim_error_desc_table_set(err->table, 1, "in", get_buffer(bf));
         init_minim_object(&obj, MINIM_OBJ_ERR, err);
+
+        minim_error_add_trace(err, subexpr->loc, NULL);
     }
 
     return obj;

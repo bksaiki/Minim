@@ -134,13 +134,18 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         for (MinimErrorTrace *trace = err->top; trace; trace = trace->next)
         {
             if (trace->multiple)
+            {
                 writef_buffer(bf, "\n;    ...");
+            }
             else if (trace->loc->name)
-                writef_buffer(bf, "\n;    ~s:~u:~u ~s", trace->loc->name,
-                                trace->loc->row, trace->loc->col, trace->name);
+            {
+                writef_buffer(bf, "\n;    ~s:~u:~u", trace->loc->name, trace->loc->row, trace->loc->col);
+                if (trace->name) writef_buffer(bf, " ~s", trace->name);
+            }
             else
-                writef_buffer(bf, "\n;    ~s:~u:~u ~s", trace->loc->name,
-                                trace->loc->row, trace->loc->col);
+            {
+                writef_buffer(bf, "\n;    :~u:~u ~s", trace->loc->row, trace->loc->col);
+            }
         }
     }
     else if (MINIM_OBJ_PAIRP(obj))
