@@ -85,11 +85,12 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         writes_buffer(path, env->current_dir);
         writes_buffer(path, MINIM_STRING(arg));
 
-        if (minim_load_file(env, get_buffer(path)))
+        if (minim_load_file(env, get_buffer(path), &ret))
         {
-            init_minim_object(&ret, MINIM_OBJ_VOID);
+            printf("bad import: %s\n", get_buffer(path));
             return ret;
         }
+        
     }
 
     init_minim_object(&ret, MINIM_OBJ_VOID);

@@ -4,26 +4,47 @@
 #include "minim.h"
 #include "read.h"
 
-#define LOAD_FILE(env, file)            \
-{                                       \
-    if (minim_load_file(env, file))     \
-        return 2;                       \
-} 
-
 int minim_run_file(const char *str, uint32_t flags)
 {
     MinimEnv *env;
+    MinimObject *err;
+    int status;
 
     init_env(&env, NULL, NULL);
     minim_load_builtins(env);
     if (!(flags & MINIM_FLAG_LOAD_LIBS))
-        minim_load_library(env);
+    {
+        if (minim_load_library(env))
+            return 1;
+    }
 
-    return minim_load_file(env, str);
+    status = minim_load_file(env, str, &err);
+    if (status > 0)
+    {
+        PrintParams pp;
+
+        set_default_print_params(&pp);
+        print_minim_object(err, env, &pp);
+        printf("\n");
+        return 2;
+    }
+
+    return status;
 }
 
 int minim_load_library(MinimEnv *env)
 {
-    LOAD_FILE(env, MINIM_LIB_PATH "lib/base.min");
+    MinimObject *err;
+
+    if (minim_load_file(env, MINIM_LIB_PATH "lib/base.min", &err))
+    {
+        PrintParams pp;
+
+        set_default_print_params(&pp);
+        print_minim_object(err, env, &pp);
+        printf("\n");
+        return 1;
+    }
+
     return 0;
 }
