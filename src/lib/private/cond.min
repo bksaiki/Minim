@@ -5,6 +5,8 @@
   (syntax-rules (else)
    [(_) (void)]
    [(_ [else body ...]) (begin body ...)]
+   [(_ [else body ...] rest ...)
+    (error 'cond "else only allowed in the last clause")]
    [(_ [test body ...] rest ...)
     (if test (begin body ...) (cond rest ...))]))
 

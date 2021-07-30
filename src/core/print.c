@@ -311,7 +311,7 @@ char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp)
 
     init_buffer(&bf);
     print_object(obj, env, bf, pp);
-    str = release_buffer(bf);
+    str = get_buffer(bf);
 
     return str;
 }

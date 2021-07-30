@@ -151,21 +151,6 @@ symbol_list_contains(SymbolList *list, const char *sym)
 
 // ================================ Transform ================================
 
-static MinimObject *
-minim_syntax_error(const char *msg, SyntaxNode *in)
-{
-    MinimObject *err;
-    Buffer *bf;
-
-    init_buffer(&bf);
-    ast_to_buffer(in, bf);
-    err = minim_error(msg, NULL);
-    init_minim_error_desc_table(&MINIM_ERROR(err)->table, 1);
-    minim_error_desc_table_set(MINIM_ERROR(err)->table, 0, "in", get_buffer(bf));
-
-    return err;
-}
-
 static bool
 is_match_pattern(SyntaxNode *parent, size_t idx)
 {
@@ -449,7 +434,10 @@ transform_loc(MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
         }
     }
 
-    *perr = minim_syntax_error("no matching syntax rule", ast);
+    *perr = minim_syntax_error("no matching syntax rule",
+                               MINIM_TRANSFORM_NAME(trans),
+                               ast,
+                               MINIM_TRANSFORM_AST(trans));
     return ast;
 }
 
@@ -516,7 +504,7 @@ valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t 
     {
         if (strcmp(match->sym, "...") == 0)
         {
-            *perr = minim_syntax_error("ellipse not allowed here", match);
+            *perr = minim_syntax_error("ellipse not allowed here", NULL, match, NULL);
             return false;
         }
 
@@ -564,13 +552,13 @@ valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, siz
             {
                 if (pdepth > depth)
                 {
-                    *perr = minim_syntax_error("missing ellipse in pattern", replace);
+                    *perr = minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL);
                     return false;
                 }
 
                 if (pdepth < depth)
                 {
-                    *perr = minim_syntax_error("too many ellipses in pattern", replace);
+                    *perr = minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL);
                     return false;
                 }
             }

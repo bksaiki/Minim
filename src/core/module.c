@@ -21,9 +21,15 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
     {
         for (size_t i = 0; i < argc; ++i)
         {
-            env_intern_sym(env->prev,
-                           MINIM_STRING(syms[i]),
-                           env_get_sym(env, MINIM_STRING(syms[i])));
+            MinimObject *val = env_get_sym(env, MINIM_STRING(syms[i]));
+
+            if (!val)
+            {
+                ret = minim_error("unknown identifier", MINIM_STRING(syms[i]));
+                return ret;
+            }
+
+            env_intern_sym(env->prev, MINIM_STRING(syms[i]), val);
         }
     }
 

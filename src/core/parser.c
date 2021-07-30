@@ -93,7 +93,7 @@ list_error(ReadTable *ptable, SyntaxNode **perror)
 
     ptable->flags |= READ_TABLE_FLAG_BAD;
     init_syntax_node(perror, SYNTAX_NODE_DATUM);
-    (*perror)->sym = release_buffer(bf);
+    (*perror)->sym = get_buffer(bf);
 }
 
 static bool expand_list(SyntaxNode *node, ReadTable *ptable, SyntaxNode **perror)
@@ -168,7 +168,7 @@ static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, S
 
     init_syntax_node(&node, SYNTAX_NODE_DATUM);
     trim_buffer(bf);
-    node->sym = release_buffer(bf);
+    node->sym = get_buffer(bf);
 
     init_syntax_loc(&loc, name);
     loc->col = ptable->col;
@@ -202,7 +202,7 @@ static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, 
 
             ptable->flags |= READ_TABLE_FLAG_BAD;
             init_syntax_node(perror, SYNTAX_NODE_DATUM);
-            (*perror)->sym = release_buffer(bf2);
+            (*perror)->sym = get_buffer(bf2);
             break;
         }
 
@@ -225,7 +225,7 @@ static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, 
 
     init_syntax_node(&node, SYNTAX_NODE_DATUM);
     trim_buffer(bf);
-    node->sym = release_buffer(bf);
+    node->sym = get_buffer(bf);
 
     init_syntax_loc(&loc, name);
     loc->col = ptable->col;
@@ -304,7 +304,7 @@ static SyntaxNode *read_list(FILE *file, const char *name, ReadTable *ptable, Sy
 
                 ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
-                (*perror)->sym = release_buffer(bf);
+                (*perror)->sym = get_buffer(bf);
                 break;
             }
         }
@@ -374,7 +374,7 @@ static SyntaxNode *read_vector(FILE *file, const char *name, ReadTable *ptable, 
 
                 ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
-                (*perror)->sym = release_buffer(bf);
+                (*perror)->sym = get_buffer(bf);
                 break;
             }
         }
@@ -436,7 +436,7 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
 
                 ptable->flags |= READ_TABLE_FLAG_BAD;
                 init_syntax_node(perror, SYNTAX_NODE_DATUM);
-                (*perror)->sym = release_buffer(bf);
+                (*perror)->sym = get_buffer(bf);
             }
         }
     }
@@ -472,7 +472,7 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
 
             ptable->flags |= READ_TABLE_FLAG_BAD;
             init_syntax_node(perror, SYNTAX_NODE_DATUM);
-            (*perror)->sym = release_buffer(bf);
+            (*perror)->sym = get_buffer(bf);
             return NULL;
         }
     }
@@ -521,7 +521,7 @@ int minim_parse_port(FILE *file, const char *name,
 
         table->flags |= READ_TABLE_FLAG_BAD;
         init_syntax_node(&err, SYNTAX_NODE_DATUM);
-        err->sym = release_buffer(bf);
+        err->sym = get_buffer(bf);
 
         c = fgetc(file);
         if (c == table->eof)    update_table(c, table);
