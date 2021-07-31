@@ -35,6 +35,12 @@ void minim_module_add_expr(MinimModule *module, SyntaxNode *expr)
 
 void minim_module_add_import(MinimModule *module, MinimModule *import)
 {
+    for (size_t i = 0; i < module->importc; ++i)
+    {
+        if (strcmp(import->name, module->imports[i]->name) == 0)
+            return;
+    }
+    
     ++module->importc;
     module->imports = GC_realloc(module->imports, module->importc * sizeof(MinimModule*));
     module->imports[module->importc - 1] = import;

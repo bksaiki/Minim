@@ -43,9 +43,6 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     init_minim_symbol_table(&env->table);
     env->flags = MINIM_ENV_TAIL_CALLABLE;
     *penv = env;
-
-    if (parent) env->sym_count = parent->sym_count + parent->table->size;
-    else        env->sym_count = 0;
 }
 
 
@@ -58,7 +55,6 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
         rcopy_env(&env->parent, src->parent);
         env->module = src->module;
         copy_minim_symbol_table(&env->table, src->table);
-        env->sym_count = src->sym_count;
         env->current_dir = src->current_dir;
         env->flags = (src->flags | MINIM_ENV_COPIED);
         *penv = env;
@@ -96,11 +92,17 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 
 static int env_set_sym_int(MinimEnv *env, const char *sym, MinimObject *obj)
 {
-    if (minim_symbol_table_set(env->table, sym, obj))
-        return 1;
+    for (MinimEnv *it = env; it; it = it->parent)
+    { 
+        if (minim_symbol_table_set(env->table, sym, obj))
+            return 1;
 
-    if (env->parent)
-        return env_set_sym_int(env->parent, sym, obj);
+        if (it->module && it->module->env == it)
+        {
+            if (env_set_sym_int(it->module->import, sym, obj))
+                return 1;
+        }
+    }
     
     return 0;
 }
@@ -118,7 +120,13 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
     for (MinimEnv *it = env; it; it = it->parent)
     {   
         name = minim_symbol_table_peek_name(it->table, value);
-        if (name)    return name;
+        if (name) return name;
+
+        if (it->module && it->module->env == it)
+        {
+            name = env_peek_key(it->module->import, value);
+            if (name) return name;
+        }
     }
 
     return NULL;
@@ -126,7 +134,16 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
 
 size_t env_symbol_count(MinimEnv *env)
 {
-    return env->sym_count + env->table->size;
+    size_t count = 0;
+
+    for (MinimEnv *it = env; it; it = it->parent)
+    {   
+        count += it->table->size;
+        if (it->module && it->module->env == it)
+            count += it->module->import->table->size;
+    }
+
+    return count;
 }
 
 bool env_has_called(MinimEnv *env, MinimLambda *lam)

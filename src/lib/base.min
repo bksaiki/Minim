@@ -1,6 +1,5 @@
 ;;;;;;;;;;;;;;;;;;; Top-level ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; syntax
 (%import "private/and-or.min"
          "private/cond.min"
          "private/when-unless.min"

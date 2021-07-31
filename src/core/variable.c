@@ -145,7 +145,7 @@ MinimObject *minim_builtin_void(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_symbol_count(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return int_to_minim_number(env->sym_count);
+    return int_to_minim_number(env_symbol_count(env));
 }
 
 MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
