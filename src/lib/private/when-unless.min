@@ -1,0 +1,13 @@
+;;;;;;;;;;;;;;;;;;; when / unless ;;;;;;;;;;;;;;;;;;;
+
+(def-syntax when
+  (syntax-rules ()
+   [(_ test body ...)
+    (if test (begin body ...) (void))]))
+
+(def-syntax unless
+  (syntax-rules ()
+   [(_ test body ...)
+    (if test (void) (begin body ...))]))
+
+(%export when unless)

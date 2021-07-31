@@ -1,10 +1,32 @@
+;
+;   Additional math definitions
+;
+
+(%import "and-or.min"
+         "cond.min"
+         "when-unless.min")
+
+;;;;;;;;;;;;;;;;;;;;;; Constants ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def pi 3.141592653589793238465)
+(def phi 1.618033988749894848204)
+
+(%export pi phi)
+
 ;;;;;;;;;;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def exact-integer? (n)
+  (and (number? n) (exact? n) (integer? n)))
 
 (def exact-nonnegative-integer? (n)
   (and (exact-integer? n) (not (negative? n))))
 
 (def exact-positive-integer? (n)
   (and (exact-integer? n) (positive? n)))
+
+(%export exact-integer?
+         exact-nonnegative-integer?
+         exact-positive-integer?)
 
 ;;;;;;;;;;;;;;;;;; Special math functions ;;;;;;;;;;;;;;;;;;;
 
@@ -39,7 +61,9 @@
      [else          0]))
   (if (exact? x) s (inexact s)))
 
-;; Functional maps
+(%export factorial fibonacci sqr sgn)
+
+;;;;;;;;;;;;;;;;;; Functional maps ;;;;;;;;;;;;;;;;;;;
 
 (def add1 (x)
   (unless (number? x)
@@ -50,3 +74,5 @@
   (unless (number? x)
     (error 'sub1 "expected number"))
   (- x 1))
+
+(%export add1 sub1)

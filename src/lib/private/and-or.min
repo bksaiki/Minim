@@ -1,0 +1,13 @@
+;;;;;;;;;;;;;;;;;;; and/or ;;;;;;;;;;;;;;;;;;;
+
+(def-syntax and
+  (syntax-rules ()
+   [(_) #t]
+   [(_ test rest ...) (if test (and rest ...) #f)]))
+
+(def-syntax or
+  (syntax-rules ()
+   [(_) #f]
+   [(_ test rest ...) (if test #t (or rest ...))]))
+
+(%export and or)

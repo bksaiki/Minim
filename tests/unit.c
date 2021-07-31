@@ -499,23 +499,6 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[12][256] = 
-        {   
-            "(cond)",                               "<void>",
-            "(cond [true 1])",                      "1",
-            "(cond [false 1] [else 2])",            "2",
-            "(cond [true 1] [else 2])",             "1",
-            "(cond [false 1] [false 2])",           "<void>",
-            "(cond [false 1] [false 2] [true 3])",  "3"
-        };
-
-        printf("Testing 'cond'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
         const int COUNT = 5;
         char strs[10][256] = 
         {   
@@ -529,36 +512,6 @@ int main()
         printf("Testing 'case'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 4;
-        char strs[8][256] = 
-        {   
-            "(when true 5)",                            "5",
-            "(when (positive? 5) 'sym)",                "'sym",
-            "(when (symbol? 'sym) (def n 5) (+ n 1))",  "6",
-            "(when false 5)",                           "<void>"
-        };
-
-        printf("Testing 'when'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);        
-    }
-
-    {
-        const int COUNT = 4;
-        char strs[8][256] = 
-        {   
-            "(unless false 5)",                           "5",
-            "(unless (negative? 5) 'sym)",                "'sym",
-            "(unless (string? 'sym) (def n 5) (+ n 1))",  "6",
-            "(unless true 5)",                            "<void>"
-        };
-
-        printf("Testing 'unless'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);        
     }
 
     {

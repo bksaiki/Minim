@@ -15,6 +15,8 @@ typedef struct Buffer
     size_t curr;
 } Buffer;
 
+#define get_buffer(bf)  ((bf)->data)
+
 void init_buffer(Buffer **pbf);
 void copy_buffer(Buffer **pbf, Buffer *src);
 
@@ -33,9 +35,6 @@ void writef_buffer(Buffer *bf, const char *format, ...);
 
 void writesn_buffer(Buffer *bf, const char *str, size_t len);
 void vwritef_buffer(Buffer *bf, const char *str, va_list va);
-
-char *get_buffer(Buffer *bf);
-char *release_buffer(Buffer *bf);
 
 
 #endif

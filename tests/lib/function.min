@@ -1,4 +1,4 @@
-;; Tests for <lib>/function.min
+;; Tests for <lib>/private/function.min
 
 ;; identity
 (equal? 1 (identity 1))

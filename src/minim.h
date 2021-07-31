@@ -7,8 +7,10 @@
 #include "core/builtin.h"
 #include "core/env.h"
 #include "core/eval.h"
+#include "core/module.h"
 #include "core/parser.h"
 #include "core/print.h"
+#include "core/read.h"
 #include "gc/gc.h"
 
 #define MINIM_FLAG_LOAD_LIBS        0x1

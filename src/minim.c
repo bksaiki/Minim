@@ -60,9 +60,9 @@ int main(int argc, char** argv)
     GC_init(&flags);
 
     if (argc - flagc == 1)
-        status = minim_repl(flags);
+        status = minim_repl(argv, flags);
     else
-        status = minim_run_file(argv[flagc + 1], flags);
+        status = minim_run(argv[flagc + 1], flags);
 
     GC_finalize();
 

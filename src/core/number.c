@@ -65,11 +65,6 @@ bool minim_integerp(MinimObject *thing)
                 (ceil(MINIM_INEXACT(thing)) == MINIM_INEXACT(thing)));
 }
 
-bool minim_exact_integerp(MinimObject *thing)
-{
-    return MINIM_OBJ_EXACTP(thing) && mpz_cmp_ui(mpq_denref(MINIM_EXACT(thing)), 1) == 0;
-}
-
 bool minim_exact_nonneg_intp(MinimObject *thing)
 {
     return MINIM_OBJ_EXACTP(thing) && mpq_sgn(MINIM_EXACT(thing)) >= 0 &&

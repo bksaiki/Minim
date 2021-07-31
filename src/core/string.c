@@ -69,7 +69,7 @@ MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject
         writes_buffer(bf, args[i]->u.str.str);
 
     trim_buffer(bf);
-    init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
+    init_minim_object(&res, MINIM_OBJ_STRING, get_buffer(bf));
 
     return res;
 }
@@ -201,7 +201,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, size_t argc, MinimObject **args
     }
 
     trim_buffer(bf);
-    init_minim_object(&res, MINIM_OBJ_STRING, release_buffer(bf));
+    init_minim_object(&res, MINIM_OBJ_STRING, get_buffer(bf));
     return res;
 }
 

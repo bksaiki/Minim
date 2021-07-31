@@ -38,6 +38,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(symbolp, 1);
     SET_ARITY_MIN(printf, 1);
     SET_ARITY_RANGE(error, 1, 2);
+    SET_ARITY_EXACT(void, 0);
     SET_ARITY_EXACT(version, 0);
     SET_ARITY_EXACT(symbol_count, 0);
 
@@ -48,8 +49,6 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     // Boolean
     SET_ARITY_EXACT(boolp, 1);
     SET_ARITY_EXACT(not, 1);
-    SET_ARITY_MIN(or, 1);
-    SET_ARITY_MIN(and, 1);
 
     // Number
     SET_ARITY_EXACT(numberp, 1);
@@ -61,7 +60,6 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(exactp, 1);
     SET_ARITY_EXACT(inexactp, 1);
     SET_ARITY_EXACT(integerp, 1);
-    SET_ARITY_EXACT(exact_integerp, 1);
     SET_ARITY_EXACT(nanp, 1);
     SET_ARITY_EXACT(infinitep, 1);
     SET_ARITY_MIN(eq, 1);
@@ -174,7 +172,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // Promise
     SET_ARITY_EXACT(promisep, 1);
-
+    
     parity->low = 0;
     parity->high = SIZE_MAX;
     return true;
@@ -185,9 +183,6 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_MIN(def, 2);
     SET_ARITY_EXACT(setb, 2);
     SET_ARITY_EXACT(if, 3);
-    SET_ARITY_MIN(unless, 2);
-    SET_ARITY_MIN(when, 2);
-    // no check: 'cond'
     // no check: 'case'
     SET_ARITY_RANGE(let, 2, 3);
     SET_ARITY_RANGE(letstar, 2, 3);

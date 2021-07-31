@@ -189,17 +189,3 @@ void vwritef_buffer(Buffer *bf, const char* str, va_list va)
         }
     }
 }
-
-// *** Getters *** //
-
-char *get_buffer(Buffer *bf)
-{
-    return bf->data;
-}
-
-char *release_buffer(Buffer *bf)
-{
-    char *str = bf->data;
-    bf->data = NULL;
-    return str;
-}

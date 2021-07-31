@@ -238,3 +238,20 @@ const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *o
 
     return NULL;
 }
+
+void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src)
+{
+    for (size_t i = 0; i < src->alloc; ++i)
+    {
+        for (size_t j = 0; j < src->rows[i].length; ++j)
+        {
+            for (MinimSymbolEntry *it = src->rows[i].vals[j]; it; it = it->parent)
+            {
+                if (minim_symbol_table_get(dest, src->rows[i].names[j]))
+                    minim_symbol_table_set(dest, src->rows[i].names[j], it->obj);
+                else
+                    minim_symbol_table_add(dest, src->rows[i].names[j], it->obj);
+            }
+        }
+    }   
+}

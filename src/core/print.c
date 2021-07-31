@@ -3,7 +3,8 @@
 
 #include "../gc/gc.h"
 #include "../common/buffer.h"
-#include "../common/read.h"
+#include "../common/path.h"
+
 #include "error.h"
 #include "hash.h"
 #include "lambda.h"
@@ -134,13 +135,18 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         for (MinimErrorTrace *trace = err->top; trace; trace = trace->next)
         {
             if (trace->multiple)
+            {
                 writef_buffer(bf, "\n;    ...");
+            }
             else if (trace->loc->name)
-                writef_buffer(bf, "\n;    ~s:~u:~u ~s", trace->loc->name,
-                                trace->loc->row, trace->loc->col, trace->name);
+            {
+                writef_buffer(bf, "\n;    ~s:~u:~u", trace->loc->name, trace->loc->row, trace->loc->col);
+                if (trace->name) writef_buffer(bf, " ~s", trace->name);
+            }
             else
-                writef_buffer(bf, "\n;    ~s:~u:~u ~s", trace->loc->name,
-                                trace->loc->row, trace->loc->col);
+            {
+                writef_buffer(bf, "\n;    :~u:~u ~s", trace->loc->row, trace->loc->col);
+            }
         }
     }
     else if (MINIM_OBJ_PAIRP(obj))
@@ -311,7 +317,7 @@ char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp)
 
     init_buffer(&bf);
     print_object(obj, env, bf, pp);
-    str = release_buffer(bf);
+    str = get_buffer(bf);
 
     return str;
 }

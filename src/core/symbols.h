@@ -3,7 +3,7 @@
 
 #include "object.h"
 
-#define MINIM_DEFAULT_SYMBOL_TABLE_SIZE 64
+#define MINIM_DEFAULT_SYMBOL_TABLE_SIZE 10
 
 struct MinimSymbolEntry
 {
@@ -34,6 +34,6 @@ bool minim_symbol_table_pop(MinimSymbolTable *table, const char *name);
 
 const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj);
 
-
+void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src);
 
 #endif

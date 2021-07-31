@@ -1,5 +1,9 @@
 ;;;;;;;;;;;;;;;;;;; Specialized list ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(%import "and-or.min"
+         "cond.min"
+         "when-unless.min")
+
 (def remove* (vs lst)
   (unless (and (list? vs) (list? lst))
     (error 'remove* "Expected two lists"))
@@ -49,3 +53,5 @@
   (unless (procedure? proc)
     (error 'append-map "Expected a procedure"))
   (apply append (apply map proc things)))
+
+(%export remove* list* ormap andmap append* append-map)

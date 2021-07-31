@@ -1,7 +1,7 @@
 #ifndef _MINIM_LAMBDA_H_
 #define _MINIM_LAMBDA_H_
 
-#include "../common/read.h"
+#include "../common/path.h"
 #include "ast.h"
 #include "env.h"
 

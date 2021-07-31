@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "../common/read.h"
+#include "../common/path.h"
 #include "../gc/gc.h"
 #include "ast.h"
 #include "builtin.h"
@@ -134,9 +134,18 @@ MinimObject *minim_builtin_version(MinimEnv *env, size_t argc, MinimObject **arg
     return res;
 }
 
+MinimObject *minim_builtin_void(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_VOID);
+    return res;
+}
+
+
 MinimObject *minim_builtin_symbol_count(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return int_to_minim_number(env->table->size);
+    return int_to_minim_number(env_symbol_count(env));
 }
 
 MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)

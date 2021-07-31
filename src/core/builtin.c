@@ -20,9 +20,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
     minim_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
     minim_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
-    minim_load_builtin(env, "unless", MINIM_OBJ_SYNTAX, minim_builtin_unless);
-    minim_load_builtin(env, "when", MINIM_OBJ_SYNTAX, minim_builtin_when);
-    minim_load_builtin(env, "cond", MINIM_OBJ_SYNTAX, minim_builtin_cond);
     minim_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     minim_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
     minim_load_builtin(env, "for", MINIM_OBJ_SYNTAX, minim_builtin_for);
@@ -35,6 +32,10 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
     minim_load_builtin(env, "exit", MINIM_OBJ_SYNTAX, minim_builtin_exit);
 
+    // Modules
+    minim_load_builtin(env, "%export", MINIM_OBJ_SYNTAX, minim_builtin_export);
+    minim_load_builtin(env, "%import", MINIM_OBJ_SYNTAX, minim_builtin_import);
+
     // Transforms
     minim_load_builtin(env, "def-syntax", MINIM_OBJ_SYNTAX, minim_builtin_def_syntax);
     
@@ -43,6 +44,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     minim_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);
     minim_load_builtin(env, "error", MINIM_OBJ_FUNC, minim_builtin_error);
+    minim_load_builtin(env, "void", MINIM_OBJ_FUNC, minim_builtin_void);
     minim_load_builtin(env, "version", MINIM_OBJ_FUNC, minim_builtin_version);
     minim_load_builtin(env, "symbol-count", MINIM_OBJ_FUNC, minim_builtin_symbol_count);
 
@@ -55,8 +57,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "false", MINIM_OBJ_BOOL, 0);
     minim_load_builtin(env, "bool?", MINIM_OBJ_FUNC, minim_builtin_boolp);
     minim_load_builtin(env, "not", MINIM_OBJ_FUNC, minim_builtin_not);
-    minim_load_builtin(env, "or", MINIM_OBJ_FUNC, minim_builtin_or);
-    minim_load_builtin(env, "and", MINIM_OBJ_FUNC, minim_builtin_and);
 
     // Numbers
     minim_load_builtin(env, "number?", MINIM_OBJ_FUNC, minim_builtin_numberp);
@@ -68,7 +68,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "exact?", MINIM_OBJ_FUNC, minim_builtin_exactp);
     minim_load_builtin(env, "inexact?", MINIM_OBJ_FUNC, minim_builtin_inexactp);
     minim_load_builtin(env, "integer?", MINIM_OBJ_FUNC, minim_builtin_integerp);
-    minim_load_builtin(env, "exact-integer?", MINIM_OBJ_FUNC, minim_builtin_exact_integerp);
     minim_load_builtin(env, "nan?", MINIM_OBJ_FUNC, minim_builtin_nanp);
     minim_load_builtin(env, "infinite?", MINIM_OBJ_FUNC, minim_builtin_infinitep);
     
@@ -80,9 +79,7 @@ void minim_load_builtins(MinimEnv *env)
 
     minim_load_builtin(env, "exact", MINIM_OBJ_FUNC, minim_builtin_to_exact);
     minim_load_builtin(env, "inexact", MINIM_OBJ_FUNC, minim_builtin_to_inexact);
-
-    minim_load_builtin(env, "pi", MINIM_OBJ_INEXACT, 3.141592653589793238465);
-    minim_load_builtin(env, "phi", MINIM_OBJ_INEXACT, 1.618033988749894848204);
+    
     minim_load_builtin(env, "inf", MINIM_OBJ_INEXACT, INFINITY);
     minim_load_builtin(env, "-inf", MINIM_OBJ_INEXACT, -INFINITY);
     minim_load_builtin(env, "nan", MINIM_OBJ_INEXACT, NAN);

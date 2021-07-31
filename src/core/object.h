@@ -51,7 +51,7 @@ typedef bool (*MinimPred)(MinimObject *);
 
 // Predicates 
 
-#define MINIM_OBJ_SAME_TYPE(obj, t)     (obj->type == t)
+#define MINIM_OBJ_SAME_TYPE(obj, t)     ((obj)->type == t)
 
 #define MINIM_OBJ_TYPE_EQVP(a, b)       (a->type == b->type)
 

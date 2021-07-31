@@ -118,7 +118,8 @@ match_table_next_depth(MatchTable *dest, MatchTable *src, size_t idx)
         if (depth > 0)
         {
             val = match_table_get(src, src->syms[i]);
-            match_table_add(dest, src->syms[i], depth - 1, minim_list_ref(val, idx));
+            if (idx < minim_list_length(val))
+                match_table_add(dest, src->syms[i], depth - 1, minim_list_ref(val, idx));
         }
     }
 }
@@ -149,21 +150,6 @@ symbol_list_contains(SymbolList *list, const char *sym)
 }
 
 // ================================ Transform ================================
-
-static MinimObject *
-minim_syntax_error(const char *msg, SyntaxNode *in)
-{
-    MinimObject *err;
-    Buffer *bf;
-
-    init_buffer(&bf);
-    ast_to_buffer(in, bf);
-    err = minim_error(msg, NULL);
-    init_minim_error_desc_table(&MINIM_ERROR(err)->table, 1);
-    minim_error_desc_table_set(MINIM_ERROR(err)->table, 0, "in", get_buffer(bf));
-
-    return err;
-}
 
 static bool
 is_match_pattern(SyntaxNode *parent, size_t idx)
@@ -277,8 +263,8 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
         if (strcmp(match->sym, ".") == 0)       // dot operator
             return strcmp(ast->sym, ".") == 0;
 
-        if (symbol_list_contains(reserved, match->sym))
-            return true;    // don't add reserved names
+        if (symbol_list_contains(reserved, match->sym)) // reserved name
+            return ast_equalp(match, ast);
 
         init_minim_object(&val, MINIM_OBJ_AST, ast);  // wrap first
         match_table_add(table, match->sym, pdepth, val);
@@ -448,7 +434,10 @@ transform_loc(MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
         }
     }
 
-    *perr = minim_syntax_error("no matching syntax rule", ast);
+    *perr = minim_syntax_error("no matching syntax rule",
+                               MINIM_TRANSFORM_NAME(trans),
+                               ast,
+                               MINIM_TRANSFORM_AST(trans));
     return ast;
 }
 
@@ -515,7 +504,7 @@ valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t 
     {
         if (strcmp(match->sym, "...") == 0)
         {
-            *perr = minim_syntax_error("ellipse not allowed here", match);
+            *perr = minim_syntax_error("ellipse not allowed here", NULL, match, NULL);
             return false;
         }
 
@@ -563,13 +552,13 @@ valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, siz
             {
                 if (pdepth > depth)
                 {
-                    *perr = minim_syntax_error("missing ellipse in pattern", replace);
+                    *perr = minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL);
                     return false;
                 }
 
                 if (pdepth < depth)
                 {
-                    *perr = minim_syntax_error("too many ellipses in pattern", replace);
+                    *perr = minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL);
                     return false;
                 }
             }

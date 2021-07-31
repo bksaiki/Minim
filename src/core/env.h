@@ -5,18 +5,20 @@
 #include "print.h" // debugging
 #include "symbols.h"
 
-// forward declaration
-typedef struct MinimLambda MinimLambda;
-
 #define MINIM_ENV_COPIED            0x1
 #define MINIM_ENV_TAIL_CALLABLE     0x2
+
+// forward declarations
+typedef struct MinimLambda MinimLambda;
+typedef struct MinimModule MinimModule;
 
 typedef struct MinimEnv
 {
     struct MinimEnv *parent;
+    struct MinimModule *module;
     MinimSymbolTable *table;
     MinimLambda *callee;
-    size_t sym_count;
+    char *current_dir;
     uint8_t flags;
 } MinimEnv;
 

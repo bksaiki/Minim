@@ -204,7 +204,7 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
     }
     else
     {
-        copy_syntax_node(&lam->body, exprs[0]->u.ptrs.p1);
+        copy_syntax_node(&lam->body, MINIM_AST(exprs[0]));
     }
 }
 
