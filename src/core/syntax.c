@@ -561,9 +561,19 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     return true;
 }
 
-// Exported
+// ================================ Public ================================
 
 bool check_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     return check_syntax_rec(env, ast, perr);
+}
+
+// ================================ Builtins ================================
+
+MinimObject *minim_builtin_syntax(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_AST, MINIM_AST(args[0]));
+    return res;
 }

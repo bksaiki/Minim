@@ -300,17 +300,11 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = minim_error("not in a quasiquote", "unquote");
             }
-            else if (proc == minim_builtin_def_syntax)
+            else if (proc == minim_builtin_def_syntax ||
+                     proc == minim_builtin_import ||
+                     proc == minim_builtin_export)
             {
-                res = minim_error("only allowed at the top-level", "def-syntax");
-            }
-            else if (proc == minim_builtin_import)
-            {
-                res = minim_error("only allowed at the top-level", "%import");
-            }
-            else if (proc == minim_builtin_export)
-            {
-                res = minim_error("only allowed at the top-level", "%export");
+                res = minim_error("only allowed at the top-level", node->children[0]->sym);
             }
             else
             {

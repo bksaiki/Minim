@@ -141,6 +141,11 @@ static bool expand_list(SyntaxNode *node, ReadTable *ptable, SyntaxNode **perror
                 node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
                 ellipse = true;
             }
+            else if (i + 2 != node->childc)
+            {
+                list_error(ptable, perror);
+                return false;
+            }
         }
     }
 
@@ -232,6 +237,33 @@ static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, 
     loc->row = ptable->row;
     ast_add_syntax_loc(node, loc);
 
+    return node;
+}
+
+static SyntaxNode *read_syntax(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror, const char *op)
+{
+    SyntaxNode *node;
+    SyntaxLoc *loc;
+
+    init_syntax_node(&node, SYNTAX_NODE_LIST);
+    node->children = GC_alloc(2 * sizeof(SyntaxNode*));
+    node->childc = 2;
+
+    init_syntax_loc(&loc, name);
+    loc->col = ptable->col;
+    loc->row = ptable->row;
+    ast_add_syntax_loc(node, loc);
+    
+    init_syntax_node(&node->children[0], SYNTAX_NODE_DATUM);
+    node->children[0]->sym = GC_alloc_atomic((strlen(op) + 1) * sizeof(char));
+    strcpy(node->children[0]->sym, op);
+
+    init_syntax_loc(&loc, name);
+    loc->col = ptable->col;
+    loc->row = ptable->row;
+    ast_add_syntax_loc(node->children[0], loc);
+
+    node->children[1] = read_top(file, name, ptable, perror);
     return node;
 }
 
@@ -415,12 +447,17 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
         n = fgetc(file);
         if (n == '(')
         {
-            update_table(c, ptable);
+            update_table(n, ptable);
             node = read_vector(file, name, ptable, perror);
 
             c = advance_to_token(file, ptable);
             if (c == ptable->eof)   ptable->flags |= READ_TABLE_FLAG_EOF;
             else                    ungetc(c, file);
+        }
+        else if (n == '\'')
+        {
+            update_table(n, ptable);
+            node = read_syntax(file, name, ptable, perror, "syntax");
         }
         else
         {

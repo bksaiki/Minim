@@ -33,6 +33,7 @@ DEFINE_BUILTIN_FUN(import)
 
 // Transforms
 DEFINE_BUILTIN_FUN(def_syntax)
+DEFINE_BUILTIN_FUN(syntax)
 
 // Miscellaneous
 DEFINE_BUILTIN_FUN(equalp)
