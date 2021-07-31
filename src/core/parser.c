@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "../gc/gc.h"
-#include "../common/buffer.h"
+#include "../common/path.h"
 #include "parser.h"
 
 #define open_paren(x)       (x == '(' || x == '[' || x == '{')

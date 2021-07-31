@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "../common/read.h"
+#include "../common/path.h"
 #include "../gc/gc.h"
 #include "ast.h"
 #include "builtin.h"

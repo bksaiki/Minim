@@ -1,5 +1,5 @@
-#ifndef _MINIM_READ_H_
-#define _MINIM_READ_H_
+#ifndef _MINIM_COMMON_PATH_H_
+#define _MINIM_COMMON_PATH_H_
 
 #include "buffer.h"
 

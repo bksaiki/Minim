@@ -3,7 +3,8 @@
 
 #include "../gc/gc.h"
 #include "../common/buffer.h"
-#include "../common/read.h"
+#include "../common/path.h"
+
 #include "error.h"
 #include "hash.h"
 #include "lambda.h"

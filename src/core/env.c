@@ -21,7 +21,7 @@ static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
     MinimEnv *env = (MinimEnv*) ptr;
 
     mrk(gc, env->parent);
-    mrk(gc, env->prev);
+    mrk(gc, env->module);
     mrk(gc, env->table);
     mrk(gc, env->callee);
     mrk(gc, env->current_dir);
@@ -36,7 +36,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
     env->parent = parent;
-    env->prev = NULL;
+    env->module = NULL;
     env->callee = callee;
     env->current_dir = NULL;
     init_minim_symbol_table(&env->table);
@@ -55,7 +55,7 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
         MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
         rcopy_env(&env->parent, src->parent);
-        env->prev = src->prev;
+        env->module = src->module;
         copy_minim_symbol_table(&env->table, src->table);
         env->sym_count = src->sym_count;
         env->current_dir = src->current_dir;

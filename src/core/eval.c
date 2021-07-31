@@ -1,7 +1,8 @@
 #include <string.h>
 
-#include "../common/read.h"
+#include "../common/path.h"
 #include "../gc/gc.h"
+
 #include "arity.h"
 #include "builtin.h"
 #include "eval.h"
@@ -498,7 +499,7 @@ int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj)
     return !MINIM_OBJ_ERRORP((*pobj));
 }
 
-int eval_module(MinimEnv* env, MinimModule *module, MinimObject **pobj)
+int eval_module(MinimModule *module, MinimObject **pobj)
 {
     PrintParams pp;
     MinimEnv *env2;
@@ -506,30 +507,30 @@ int eval_module(MinimEnv* env, MinimModule *module, MinimObject **pobj)
     // importing
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        if (expr_is_import(env, module->exprs[i]))
+        if (expr_is_import(module->env, module->exprs[i]))
         {
-            if (!check_syntax(env, module->exprs[i], pobj))
+            if (!check_syntax(module->env, module->exprs[i], pobj))
                 return 0;
 
-            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_import);
+            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_import);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }
     }
 
     // syntax check / define transforms
-    init_env(&env2, env, NULL);
+    init_env(&env2, module->env, NULL);
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        if (expr_is_import(env, module->exprs[i]))
+        if (expr_is_import(module->env, module->exprs[i]))
             continue;
 
         if (!check_syntax(env2, module->exprs[i], pobj))
             return 0;
 
-        if (expr_is_macro(env, module->exprs[i]))
+        if (expr_is_macro(module->env, module->exprs[i]))
         {
-            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_def_syntax);
+            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntax);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }
@@ -538,10 +539,10 @@ int eval_module(MinimEnv* env, MinimModule *module, MinimObject **pobj)
     // Syntax transform
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        if (expr_is_module_level(env, module->exprs[i]))
+        if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        module->exprs[i] = transform_syntax(env, module->exprs[i], pobj);
+        module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
         if (*pobj)  return 0;
     }
 
@@ -549,10 +550,10 @@ int eval_module(MinimEnv* env, MinimModule *module, MinimObject **pobj)
     set_default_print_params(&pp);
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        if (expr_is_module_level(env, module->exprs[i]))
+        if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        eval_ast(env, module->exprs[i], pobj);
+        eval_ast(module->env, module->exprs[i], pobj);
         if (MINIM_OBJ_ERRORP(*pobj))
         {    
             return 0;
@@ -564,7 +565,7 @@ int eval_module(MinimEnv* env, MinimModule *module, MinimObject **pobj)
         }
         else if (!MINIM_OBJ_VOIDP(*pobj))
         {
-            print_minim_object(*pobj, env, &pp);
+            print_minim_object(*pobj, module->env, &pp);
             printf("\n");
         }
     }
@@ -572,15 +573,15 @@ int eval_module(MinimEnv* env, MinimModule *module, MinimObject **pobj)
     // exports
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        if (expr_is_export(env, module->exprs[i]))
+        if (expr_is_export(module->env, module->exprs[i]))
         {
-            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_export);
+            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_export);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }
-        else if (expr_is_top_level(env, module->exprs[i]))
+        else if (expr_is_top_level(module->env, module->exprs[i]))
         {
-            *pobj = eval_top_level(env, module->exprs[i], minim_builtin_top_level);
+            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_top_level);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }

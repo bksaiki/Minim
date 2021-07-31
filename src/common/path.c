@@ -1,6 +1,6 @@
 #include <string.h>
 #include "common.h"
-#include "read.h"
+#include "path.h"
 
 void valid_path(Buffer *valid, const char *maybe)
 {
