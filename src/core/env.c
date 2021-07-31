@@ -4,6 +4,7 @@
 #include "../gc/gc.h"
 #include "env.h"
 #include "lambda.h"
+#include "module.h"
 
 static void add_metadata(MinimObject *obj, const char *str)
 {
@@ -76,6 +77,12 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
     {   
         val = minim_symbol_table_get(it->table, sym);
         if (val) return val;
+
+        if (it->module && it->module->env == it)
+        {
+            val = env_get_sym(it->module->import, sym);
+            if (val) return val;
+        }
     }
 
     return NULL;

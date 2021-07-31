@@ -312,10 +312,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = minim_error("only allowed at the top-level", "%export");
             }
-            else if (proc == minim_builtin_top_level)
-            {
-                res = minim_error("only allowed at the top-level", "%top-level");
-            }
             else
             {
                 for (size_t i = 0; i < argc; ++i)
@@ -420,8 +416,7 @@ static bool expr_is_module_level(MinimEnv *env, SyntaxNode *ast)
     builtin = MINIM_DATA(val);
     return (builtin == minim_builtin_def_syntax ||
             builtin == minim_builtin_import ||
-            builtin == minim_builtin_export ||
-            builtin == minim_builtin_top_level);
+            builtin == minim_builtin_export);
 }
 
 static bool expr_is_macro(MinimEnv *env, SyntaxNode *ast)
@@ -455,17 +450,6 @@ static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
 
     val = env_get_sym(env, ast->children[0]->sym);
     return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_export);
-}
-
-static bool expr_is_top_level(MinimEnv *env, SyntaxNode *ast)
-{
-    MinimObject *val;
-
-    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
-        return false;
-
-    val = env_get_sym(env, ast->children[0]->sym);
-    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_top_level);
 }
 
 // ================================ Public ================================
@@ -576,12 +560,6 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_export(module->env, module->exprs[i]))
         {
             *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_export);
-            if (MINIM_OBJ_ERRORP(*pobj))
-                return 0;
-        }
-        else if (expr_is_top_level(module->env, module->exprs[i]))
-        {
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_top_level);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }

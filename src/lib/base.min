@@ -3,10 +3,16 @@
 ; syntax
 (%import "private/and-or.min"
          "private/cond.min"
-         "private/when-unless.min")
-
-; functions
-(%import "private/function.min"
+         "private/when-unless.min"
+         "private/function.min"
          "private/lazy.min"
          "private/list.min"
          "private/math.min")
+
+(%export (all "private/and-or.min")
+         (all "private/cond.min")
+         (all "private/when-unless.min")
+         (all "private/function.min")
+         (all "private/lazy.min")
+         (all "private/list.min")
+         (all "private/math.min"))

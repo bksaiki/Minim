@@ -172,10 +172,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // Promise
     SET_ARITY_EXACT(promisep, 1);
-
-    // Modules
-    SET_ARITY_EXACT(top_level, 0);
-
+    
     parity->low = 0;
     parity->high = SIZE_MAX;
     return true;

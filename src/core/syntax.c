@@ -410,6 +410,91 @@ static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject 
     return true;
 }
 
+static bool check_syntax_import(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *sym;
+
+    for (size_t i = 0; i < ast->childc; ++i)
+    {
+        unsyntax_ast(env, ast->children[i], &sym);
+        if (!MINIM_OBJ_SYMBOLP(sym) && !MINIM_OBJ_STRINGP(sym))
+        {
+            *perr = minim_syntax_error("import must be a symbol or string",
+                                       "%import",
+                                       ast,
+                                       ast->children[i]);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool check_syntax_export(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *export;
+
+    for (size_t i = 0; i < ast->childc; ++i)
+    {
+        if (ast->children[i]->type == SYNTAX_NODE_LIST)
+        {
+            MinimObject *attrib;
+
+            if (ast->children[i]->childc != 2)
+            {
+                *perr = minim_syntax_error("not a valid export form",
+                                           "%export",
+                                           ast,
+                                           ast->children[i]);
+                return false;
+            }
+
+            unsyntax_ast(env, ast->children[i]->children[0], &attrib);
+            if (!MINIM_OBJ_SYMBOLP(attrib) ||
+                strcmp(MINIM_STRING(attrib), "all"))
+            {
+                *perr = minim_syntax_error("not a valid export form",
+                                           "%export",
+                                           ast,
+                                           ast->children[i]);
+            }
+
+            if (!MINIM_OBJ_SYMBOLP(export) && !MINIM_OBJ_STRINGP(export))
+            {
+                *perr = minim_syntax_error("export must be a symbol or string",
+                                           "%export",
+                                           ast,
+                                           ast->children[i]);
+                return false;
+            }
+
+            unsyntax_ast(env, ast->children[i]->children[1], &export);
+            if (!MINIM_OBJ_SYMBOLP(export) && !MINIM_OBJ_STRINGP(export))
+            {
+                *perr = minim_syntax_error("export must be a symbol or string",
+                                           "%export",
+                                           ast,
+                                           ast->children[i]->children[1]);
+                return false;
+            }
+        }
+        else
+        {
+            unsyntax_ast(env, ast->children[i], &export);
+            if (!MINIM_OBJ_SYMBOLP(export) && !MINIM_OBJ_STRINGP(export))
+            {
+                *perr = minim_syntax_error("export must be a symbol or string",
+                                           "%export",
+                                           ast,
+                                           ast->children[i]);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *op;
@@ -446,15 +531,14 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
+
             CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
-            CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_syntax_rules);
+            CHECK_REC(proc, minim_builtin_import, check_syntax_import);
+            CHECK_REC(proc, minim_builtin_export, check_syntax_export);
 
             MATCH_RET(proc, minim_builtin_quote, true);
             MATCH_RET(proc, minim_builtin_quasiquote, true);
             MATCH_RET(proc, minim_builtin_unquote, true);
-            MATCH_RET(proc, minim_builtin_import, true);
-            MATCH_RET(proc, minim_builtin_export, true);
-            MATCH_RET(proc, minim_builtin_top_level, true);
         }
         else if (MINIM_OBJ_FUNCP(op))
         {
