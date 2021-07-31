@@ -8,9 +8,13 @@
 // If a failure occurs, NULL is returned and `perr` will point to the error.
 MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, MinimObject **perr);
 
-// Runs a file under the current environment 'env'
-// `perr` will point to an error if `perr` is NULL when
-// called and an error occured
+// Runs a file in a new environment where `env` contains the builtin environment
+// at its lowest level. On success, a non-zero result is returned.
+// On failure, `perr` will point to the error.
 int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr);
+
+// Runs a file in the environment `env` and returns a non-zero result on success.
+// On failure, `perr` will point to the error
+int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr);
 
 #endif

@@ -56,7 +56,6 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                 return ret;
             }
 
-
             env_intern_sym(env->module->prev->env, MINIM_STRING(syms[i]), val);
         }
     }
@@ -93,6 +92,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         module2 = minim_load_file_as_module(env->module, get_buffer(path), &ret);
         if (!module2) return ret;
 
+        module2->prev = env->module;
         if (!eval_module(module2, &ret))
             return ret;
         
@@ -114,5 +114,6 @@ MinimObject *minim_builtin_top_level(MinimEnv *env, size_t argc, MinimObject **a
 
     minim_symbol_table_merge(env->module->prev->env->table, env->table);
     init_minim_object(&ret, MINIM_OBJ_VOID);
+
     return ret;
 }

@@ -4,7 +4,7 @@
 #include "minim.h"
 #include "read.h"
 
-int minim_run_file(const char *str, uint32_t flags)
+int minim_run(const char *str, uint32_t flags)
 {
     MinimEnv *env;
     MinimObject *err;
@@ -36,7 +36,7 @@ int minim_load_library(MinimEnv *env)
 {
     MinimObject *err;
 
-    if (minim_load_file(env, MINIM_LIB_PATH "lib/base.min", &err))
+    if (minim_run_file(env, MINIM_LIB_PATH "lib/base.min", &err))
     {
         PrintParams pp;
 

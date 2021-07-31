@@ -28,15 +28,17 @@ static void int_handler(int sig)
 int minim_repl(uint32_t flags)
 {
     PrintParams pp;
-    MinimEnv *env;
+    MinimEnv *top_env, *env;
     uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
     fflush(stdout);
 
-    init_env(&env, NULL, NULL);
-    env->current_dir = "REPL";
-    minim_load_builtins(env);
+    init_env(&top_env, NULL, NULL);
+    top_env->current_dir = "REPL";
+    minim_load_builtins(top_env);
+
+    init_env(&env, top_env, NULL);
     set_default_print_params(&pp);
 
     setjmp(top_of_repl);

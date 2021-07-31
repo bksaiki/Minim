@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     if (argc - flagc == 1)
         status = minim_repl(flags);
     else
-        status = minim_run_file(argv[flagc + 1], flags);
+        status = minim_run(argv[flagc + 1], flags);
 
     GC_finalize();
 
