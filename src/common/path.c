@@ -37,9 +37,6 @@ Buffer *get_directory(const char *file)
 {
     Buffer *bf;
     size_t len, newlen;
-#ifdef MINIM_WINDOWS
-    bool backslash;
-#endif
     
     len = strlen(file);
     for (size_t i = len - 1; i < len; --i)
@@ -47,19 +44,8 @@ Buffer *get_directory(const char *file)
 #ifdef MINIM_WINDOWS
         if (file[i] == '\\')
         {
-            if (backslash)
-            {
-                newlen = i + 2;
-                break;
-            }
-            else
-            {
-                backslash = true;
-            }
-        }
-        else if (backslash)
-        {
-            backslash = false;
+            newlen = i + 1;
+            break;
         }
 #else
         if (file[i] == '/')
