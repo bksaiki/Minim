@@ -111,6 +111,24 @@ int main()
     }
 
     {
+        const int COUNT = 7;
+        char strs[14][256] =
+        {
+            "(list? 2)",                "#f",
+            "(list? '())",              "#t",
+            "(list? '(1))",             "#t",
+            "(list? '(1 2))",           "#t",
+            "(list? '(1 . 2))",         "#f",
+            "(list? '(1 2 3))",         "#t",
+            "(list? '(1 2 . 3))",       "#f"
+        };
+
+        printf("Testing list?\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 10;
         char strs[20][256] =
         {
