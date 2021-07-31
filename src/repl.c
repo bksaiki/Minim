@@ -25,10 +25,12 @@ static void int_handler(int sig)
     longjmp(top_of_repl, 0);
 }
 
-int minim_repl(uint32_t flags)
+int minim_repl(char **argv, uint32_t flags)
 {
     PrintParams pp;
-    MinimEnv *top_env, *env;
+    MinimEnv *top_env;
+    MinimModule *module;
+    Buffer *path;
     uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
@@ -38,7 +40,12 @@ int minim_repl(uint32_t flags)
     top_env->current_dir = "REPL";
     minim_load_builtins(top_env);
 
-    init_env(&env, top_env, NULL);
+    path = get_directory(argv[0]);
+    init_minim_module(&module);
+    init_env(&module->env, top_env, NULL);
+    module->env->module = module;
+    module->env->current_dir = get_buffer(path);
+
     set_default_print_params(&pp);
 
     setjmp(top_of_repl);
@@ -46,7 +53,7 @@ int minim_repl(uint32_t flags)
 
     last_readf = READ_TABLE_FLAG_EOF;
     if (!(flags & MINIM_FLAG_LOAD_LIBS))
-        minim_load_library(env);
+        minim_load_library(module->env);
 
     while (1)
     {   
@@ -83,12 +90,10 @@ int minim_repl(uint32_t flags)
         }
 
         last_readf = rt.flags;
-        eval_ast(env, ast, &obj);
-        GC_collect();
-
+        eval_ast(module->env, ast, &obj);
         if (obj->type == MINIM_OBJ_ERR)
         {    
-            print_minim_object(obj, env, &pp);
+            print_minim_object(obj, module->env, &pp);
             printf("\n;  in: %s\n", "REPL");
             fflush(stdout);
         }
@@ -98,7 +103,7 @@ int minim_repl(uint32_t flags)
         }
         else if (obj->type != MINIM_OBJ_VOID)
         {
-            print_minim_object(obj, env, &pp);
+            print_minim_object(obj, module->env, &pp);
             printf("\n");
             fflush(stdout);
         }

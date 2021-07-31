@@ -209,6 +209,10 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
     fclose(file);
     status = eval_module(module, perr) ? 0 : 3;
 
+    // this is dumb
+    minim_symbol_table_merge(env->table, module->import->table);
+    env->sym_count += module->import->table->size;
+
     env->current_dir = prev_dir;
     env->module = prev;
     return status;
