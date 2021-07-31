@@ -1,6 +1,5 @@
 ;;;;;;;;;;;;;;;;;;; cond ;;;;;;;;;;;;;;;;;;;
 
-;; else must be last
 (def-syntax cond
   (syntax-rules (else)
    [(_) (void)]
@@ -10,4 +9,8 @@
    [(_ [test body ...] rest ...)
     (if test (begin body ...) (cond rest ...))]))
 
-(%export cond)
+(def-syntax else
+  (lambda (stx)
+    (syntax-error 'else "not allowed as an expression" stx)))
+
+(%export cond else)

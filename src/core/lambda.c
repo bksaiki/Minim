@@ -223,7 +223,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
     MinimLambda *lam;
 
     // Convert bindings to list
-    unsyntax_ast(env, args[0]->u.ptrs.p1, &bindings);
+    unsyntax_ast(env, MINIM_AST(args[0]), &bindings);
     if (!MINIM_OBJ_THROWNP(bindings))
     {
         if (MINIM_OBJ_SYMBOLP(bindings))

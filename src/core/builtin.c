@@ -41,6 +41,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "syntax", MINIM_OBJ_SYNTAX, minim_builtin_syntax);
     minim_load_builtin(env, "syntax?", MINIM_OBJ_SYNTAX, minim_builtin_syntaxp);
     minim_load_builtin(env, "unwrap", MINIM_OBJ_FUNC, minim_builtin_unwrap);
+    minim_load_builtin(env, "syntax-error", MINIM_OBJ_FUNC, minim_builtin_syntax_error);
     
     // Miscellaneous
     minim_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);

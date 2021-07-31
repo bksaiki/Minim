@@ -395,15 +395,31 @@ static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject 
         return false;
     }
 
-    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "syntax-rules") != 0)
+    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "syntax-rules") == 0)
+    {
+        if (!check_syntax_syntax_rules(env, ast->children[2], perr))
+        {
+            MINIM_ERROR(*perr)->where = MINIM_STRING(sym);
+            return false;
+        }
+    }
+    else if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "lambda") == 0)
+    {
+        if (MINIM_AST(MINIM_CADR(rules))->type != SYNTAX_NODE_LIST ||
+            MINIM_AST(MINIM_CADR(rules))->childc != 1)
+        {
+            *perr = minim_syntax_error("takes a procedure of 1 argument",
+                                       "def-syntax",
+                                       ast,
+                                       ast->children[2]);
+            return false;
+        }
+
+        return true;
+    }
+    else
     {
         *perr = minim_syntax_error("expected a transform", "def-syntax", ast, ast->children[2]);
-        return false;
-    }
-
-    if (!check_syntax_syntax_rules(env, ast->children[2], perr))
-    {
-        MINIM_ERROR(*perr)->where = MINIM_STRING(sym);
         return false;
     }
 
