@@ -577,3 +577,22 @@ MinimObject *minim_builtin_syntax(MinimEnv *env, size_t argc, MinimObject **args
     init_minim_object(&res, MINIM_OBJ_AST, MINIM_AST(args[0]));
     return res;
 }
+
+MinimObject *minim_builtin_syntaxp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_ASTP(args[0]));
+    return res;
+}
+
+MinimObject *minim_builtin_unwrap(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    if (!MINIM_OBJ_ASTP(args[0]))
+        return minim_argument_error("syntax?", "unwrap", 0, args[0]);
+
+    unsyntax_ast(env, MINIM_AST(args[0]), &res);
+    return res;
+}
