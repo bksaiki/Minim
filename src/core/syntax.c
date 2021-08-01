@@ -426,6 +426,46 @@ static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject 
     return true;
 }
 
+static bool check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *reserved, *sym;
+
+    // extract reserved symbols
+    unsyntax_ast(env, ast->children[2], &reserved);
+    if (!minim_listp(reserved))
+    {
+        *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[2]);
+        return false;
+    }
+    
+    // check reserved list is all symbols
+    for (MinimObject *it = reserved; it && MINIM_CAR(it); it = MINIM_CDR(it))
+    {
+        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
+        if (!MINIM_OBJ_SYMBOLP(sym))
+        {
+            *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[2]);
+            return false;
+        }
+    }
+
+    // check each match expression
+    // [(_ arg ...) anything]
+    for (size_t i = 3; i < ast->childc; ++i)
+    {
+        MinimObject *rule;
+
+        unsyntax_ast(env, ast->children[i], &rule);
+        if (!minim_listp(rule) || minim_list_length(rule) != 2)
+        {
+            *perr = minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static bool check_syntax_import(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *sym;
@@ -549,12 +589,15 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
 
             CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
+            CHECK_REC(proc, minim_builtin_syntax_case, check_syntax_syntax_case);
+
             CHECK_REC(proc, minim_builtin_import, check_syntax_import);
             CHECK_REC(proc, minim_builtin_export, check_syntax_export);
 
             MATCH_RET(proc, minim_builtin_quote, true);
             MATCH_RET(proc, minim_builtin_quasiquote, true);
             MATCH_RET(proc, minim_builtin_unquote, true);
+            MATCH_RET(proc, minim_builtin_syntax, true);
         }
         else if (MINIM_OBJ_FUNCP(op))
         {

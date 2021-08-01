@@ -409,6 +409,48 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
     return ast;
 }
 
+static SyntaxNode *
+replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table, MinimObject **perr)
+{
+    if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
+    {
+        if (ast->type == SYNTAX_NODE_LIST &&
+            ast->children[0]->sym &&
+            strcmp(ast->children[0]->sym, "syntax") == 0)
+        {
+            ast->children[1] = apply_transformation(table, ast->children[1]);
+        }
+        else
+        {
+            for (size_t i = 0; i < ast->childc; ++i)
+            {
+                ast->children[i] = replace_syntax(env, ast->children[i], table, perr);
+                if (!ast->children[i])  return NULL;
+            }
+        }
+    }
+    else if (ast->type == SYNTAX_NODE_PAIR)
+    {
+        ast->children[0] = replace_syntax(env, ast->children[0], table, perr);
+        if (!ast->children[0])  return NULL;
+
+        ast->children[1] = replace_syntax(env, ast->children[1], table, perr);
+        if (!ast->children[1])  return NULL;
+    }
+    else
+    {
+        MinimObject *obj;
+
+        obj = match_table_get(table, ast->sym);
+        if (obj)
+        {
+            *perr = minim_error("variable cannot be used outside of template", ast->sym);
+        }
+    }
+
+    return ast;
+}
+
 static SyntaxNode*
 transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
 {
@@ -655,4 +697,42 @@ MinimObject *minim_builtin_def_syntax(MinimEnv *env, size_t argc, MinimObject **
 
     init_minim_object(&res, MINIM_OBJ_VOID);
     return res;
+}
+
+MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MatchTable table;
+    SymbolList reserved;
+    MinimObject *ast0;
+
+    eval_ast_no_check(env, MINIM_AST(args[0]), &ast0);
+    if (!ast0)
+        return minim_error("unknown identifier", MINIM_AST(args[0])->sym);
+
+    if (!MINIM_OBJ_ASTP(ast0))
+        return minim_argument_error("syntax?", "syntax-case", 0, ast0);
+    
+    init_match_table(&table);
+    init_symbol_list(&reserved, MINIM_AST(args[1])->childc);
+    for (size_t i = 0; i < MINIM_AST(args[1])->childc; ++i)
+        reserved.syms[i] = MINIM_AST(args[1])->children[i]->sym;
+
+    for (size_t i = 2; i < argc; ++i)
+    {
+        SyntaxNode *rule, *replace;
+        MinimObject *res;
+
+        rule = MINIM_AST(args[i]);
+        if (match_transform(rule->children[0], MINIM_AST(ast0), &table, &reserved, 0))
+        {
+            copy_syntax_node(&replace, rule->children[1]);
+            replace = replace_syntax(env, replace, &table, &res);
+            if (!replace)   return res;
+
+            eval_ast_no_check(env, replace, &res);
+            return res;
+        }
+    }
+
+    return minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL);
 }

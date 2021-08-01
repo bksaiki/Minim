@@ -94,7 +94,7 @@ int minim_repl(char **argv, uint32_t flags)
         if (obj->type == MINIM_OBJ_ERR)
         {    
             print_minim_object(obj, module->env, &pp);
-            printf("\n;  in: %s\n", "REPL");
+            printf("\n");
             fflush(stdout);
         }
         else if (obj->type == MINIM_OBJ_EXIT)

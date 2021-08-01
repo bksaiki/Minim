@@ -28,6 +28,74 @@ int main()
     GC_init(&status);
 
     {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(syntax 1)",           "<syntax:1>",
+            "(syntax a)",           "<syntax:a>",
+            "(syntax (1 . 2))",     "<syntax:(1 . 2)>",
+            "(syntax (1 2 3))",     "<syntax:(1 2 3)>",
+            "(syntax #(1 2 3))",    "<syntax:#(1 2 3)>"
+        };
+
+        printf("Testing 'syntax'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "#'1",           "<syntax:1>",
+            "#'a",           "<syntax:a>",
+            "#'(1 . 2)",     "<syntax:(1 . 2)>",
+            "#'(1 2 3)",     "<syntax:(1 2 3)>",
+            "#'#(1 2 3)",    "<syntax:#(1 2 3)>"
+        };
+
+        printf("Testing 'syntax (shorthand)'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(syntax-case #'1 ()  \
+              [_ 1])",
+            "1",
+
+            "(syntax-case #'1 ()  \
+              [_ #'1])",
+            "<syntax:1>",
+            
+            "(syntax-case #'(1 2 3) ()   \
+              [(_ a b) #'(a b)])",
+            "<syntax:(2 3)>",
+
+            "(syntax-case #'(1 a 3) (a)   \
+              [(_ a b) #'(a b)])",
+            "<syntax:(a 3)>",
+
+            "(syntax-case #'(1 2 3) ()   \
+              [(_ a b) (cons 1 #'(a b))])",
+            "'(1 . <syntax:(2 3)>)",
+
+            "(syntax-case #'(foo x y) ()    \
+              [(_ a b) #'(let ([t a])     \
+                          (set! a b)      \
+                          (set! b t))])",
+            "<syntax:(let ((t x)) (set! x y) (set! y t))>"
+        };
+
+        printf("Testing 'syntax-case'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 3;
         char strs[3][256] =
         {
