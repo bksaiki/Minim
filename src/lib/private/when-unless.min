@@ -1,15 +1,39 @@
 ;;;;;;;;;;;;;;;;;;; when / unless ;;;;;;;;;;;;;;;;;;;
 
-(%import "stx-macro.min")
+(%import "stx.min")
 
 (def-syntax when
-  (syntax-rules ()
-   [(_ test body ...)
-    (if test (begin body ...) (void))]))
-
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'when "bad syntax" stx)
+        (let ([e (stx-cdr stx)])
+          (if (stx-null? e)
+              (syntax-error 'when "missing condition and body" stx)
+              (let ([b (stx-cdr e)])
+                (if (stx-null? b)
+                    (syntax-error 'when "missing body" stx e)
+                    (datum->syntax
+                      (list
+                        (syntax if)
+                        (stx-car e)
+                        (cons (syntax begin) b)
+                        (syntax (void)))))))))))
+                        
 (def-syntax unless
-  (syntax-rules ()
-   [(_ test body ...)
-    (if test (void) (begin body ...))]))
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'unless "bad syntax" stx)
+        (let ([e (stx-cdr stx)])
+          (if (stx-null? e)
+              (syntax-error 'unless "missing condition and body" stx)
+              (let ([b (stx-cdr e)])
+                (if (stx-null? b)
+                    (syntax-error 'unless "missing body" stx e)
+                    (datum->syntax
+                      (list
+                        (syntax if)
+                        (stx-car e)
+                        (syntax (void))
+                        (cons (syntax begin) b))))))))))
 
 (%export when unless)

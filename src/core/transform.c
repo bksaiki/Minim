@@ -492,7 +492,8 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
                 ast = transform_loc(env, op, ast, perr);
                 if (*perr)
                 {
-                    MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(op);
+                    if (!MINIM_ERROR(*perr)->where)
+                        MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(op);
                     return NULL;
                 }
             }

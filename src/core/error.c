@@ -161,7 +161,7 @@ void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
 {
     MinimErrorTrace *trace;
 
-    if (err->bottom)
+    if (err->bottom && err->bottom->name)
     {   
         if (strcmp(err->bottom->name, name) == 0)
         {

@@ -1,15 +1,41 @@
 ;;;;;;;;;;;;;;;;;;; cond ;;;;;;;;;;;;;;;;;;;
 
-(%import "stx-macro.min")
+(%import "stx.min" "and-or.min")
 
 (def-syntax cond
-  (syntax-rules (else)
-   [(_) (void)]
-   [(_ [else body ...]) (begin body ...)]
-   [(_ [else body ...] rest ...)
-    (error 'cond "else only allowed in the last clause")]
-   [(_ [test body ...] rest ...)
-    (if test (begin body ...) (cond rest ...))]))
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'cond "bad-syntax" stx)
+        (let ([e (stx-cdr stx)]
+              [serr
+                (lambda (msg at)
+                  (syntax-error 'cond msg stx at))])
+          (if (stx-null? e)
+              (syntax (void))
+              (let ([c (stx-car e)])
+                (if (and (stx-list? c)
+                         (not (null? c)))
+                    (let ([test (stx-car c)]
+                          [then (stx-cdr c)]
+                          [else?
+                            (lambda (i)
+                              (and (identifier? i)
+                                   (equal? i (syntax else))))])
+                      (if (null? then)
+                          (serr "missing body" c)
+                          (if (else? test)
+                              (if (null? (stx-cdr e))
+                                  (datum->syntax (cons (syntax begin) then))
+                                  (serr "'else' clause must be last" c))
+                              (datum->syntax
+                                (list
+                                  (syntax if)
+                                  test
+                                  (cons
+                                    (syntax begin)
+                                    then)
+                                  (cons (syntax cond) (stx-cdr e)))))))
+                    (serr "missing clause" c))))))))
 
 (def-syntax else
   (lambda (stx)
