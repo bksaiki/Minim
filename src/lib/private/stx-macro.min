@@ -2,14 +2,61 @@
 ;   'syntax-rules'
 ;
 
-(%import "stx.min")
+(%import "stx.min" "and-or.min")
 
 (def-syntax syntax-rules
   (lambda (stx)
-    (let ([top (unwrap stx)])
-      (if (identifier? stx)
-          (syntax-error 'syntax-rules "not allowed as expression" stx)
-          
-            #'1)))))
+    (if (identifier? stx)
+        (syntax-error 'syntax-rules "not allowed as an expression" stx)
+        (let ([form (stx-cdr stx)]
+              [serr
+                (lambda (msg at)
+                  (syntax-error 'syntax-rules msg stx at))])
+          (let ([ids (stx-car form)]
+                [rules (stx-cdr form)]
+                [andmap
+              (lambda (fn lst)
+                (let loop ([lst lst])
+                  (if (stx-null? lst)
+                      #t
+                      (if (fn (stx-car lst))
+                          (loop (stx-cdr lst))
+                          #f))))])
+            (if (and (stx-list? ids)
+                     (andmap identifier? ids))
+                (let ([rule?
+                  (lambda (r)
+                    (and (stx-list? r)
+                         (not (stx-null? r))
+                         (stx-list? (stx-car r))
+                         (not (null? (stx-cdr r)))))])
+                  (if (and (not (stx-null? rules))
+                           (andmap rule? rules))
+                      (datum->syntax
+                        (list
+                          (syntax lambda)
+                          (list (syntax stx))
+                          (append
+                            (list
+                              (syntax syntax-case)
+                              (syntax stx)
+                              ids)
+                            (let loop ([process '()] [rules rules])
+                              (if (stx-null? rules)
+                                  (reverse process)
+                                  (let ([rule (stx-car rules)])
+                                    (let ([match (stx-car rule)]
+                                          [replace (stx-car (stx-cdr rule))])
+                                      (loop
+                                        (cons
+                                          (list
+                                            match
+                                            (list
+                                              (syntax syntax)
+                                              replace))
+                                          process)
+                                        (stx-cdr rules)))))))))
+                      (serr "bad syntax" rules)))
+                (serr "expected a list of identifiers" ids)))))))
 
 (%export syntax-rules)

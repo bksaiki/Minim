@@ -1,5 +1,7 @@
 ;;;;;;;;;;;;;;;;;;; cond ;;;;;;;;;;;;;;;;;;;
 
+(%import "stx-macro.min")
+
 (def-syntax cond
   (syntax-rules (else)
    [(_) (void)]

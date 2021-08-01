@@ -150,6 +150,13 @@ static bool check_syntax_begin(MinimEnv *env, SyntaxNode *ast, MinimObject **per
     return true;
 }
 
+static bool check_syntax_if(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    return check_syntax_rec(env, ast->children[0], perr) &&
+           check_syntax_rec(env, ast->children[1], perr) &&
+           check_syntax_rec(env, ast->children[2], perr);
+}
+
 static bool check_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *branch, *match;
@@ -571,7 +578,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
             CHECK_REC(proc, minim_builtin_def, check_syntax_def);
-            CHECK_REC(proc, minim_builtin_if, check_syntax_begin);
+            CHECK_REC(proc, minim_builtin_if, check_syntax_if);
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);
             CHECK_REC(proc, minim_builtin_let, check_syntax_let);
             CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
@@ -619,7 +626,7 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj, MinimObject **perr)
     SyntaxNode *node;
     Buffer *bf;
 
-    if (MINIM_OBJ_SYNTAXP(obj))
+    if (MINIM_OBJ_ASTP(obj))
     {
         return MINIM_AST(obj);
     }
@@ -647,24 +654,26 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj, MinimObject **perr)
             {
                 for (MinimObject *it = obj; it; it = MINIM_CDR(it))
                 {
-                    if (!MINIM_OBJ_PAIRP(MINIM_CDR(obj)))
+                    if (MINIM_CDR(it) && !MINIM_OBJ_PAIRP(MINIM_CDR(it)))
                     {
                         node->childc += 3;
                         node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                        node->children[node->childc - 3] = datum_to_syntax(MINIM_CAR(obj), perr);
+                        node->children[node->childc - 3] = datum_to_syntax(MINIM_CAR(it), perr);
                         if (!node->children[node->childc - 3])      return NULL;
 
                         init_syntax_node(&node->children[node->childc - 2], SYNTAX_NODE_DATUM);
-                        node->sym = ".";
+                        node->children[node->childc - 2]->sym = ".";
 
-                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CDR(obj), perr);
+                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CDR(it), perr);
                         if (!node->children[node->childc - 1])      return NULL;
+
+                        break;
                     }
                     else
                     {
                         ++node->childc;
                         node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CAR(obj), perr);
+                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CAR(it), perr);
                         if (!node->children[node->childc - 1])      return NULL;
                     }
                 }

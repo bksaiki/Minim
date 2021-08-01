@@ -192,7 +192,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
             return res;
         }
 
-        if (flags & UNSYNTAX_QUASIQUOTE && node->childc > 0)
+        if (flags & UNSYNTAX_QUASIQUOTE && node->children[0]->sym)
         {
             proc = env_get_sym(env, node->children[0]->sym);
             if (flags & UNSYNTAX_QUASIQUOTE && proc && MINIM_DATA(proc) == minim_builtin_unquote)
@@ -345,7 +345,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             }
         }
         else
-        {   
+        {
+            print_ast(node); printf("\n");
             res = minim_error("unknown operator", node->children[0]->sym);
         }
 
@@ -503,15 +504,18 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_import(module->env, module->exprs[i]))
             continue;
 
-        if (!check_syntax(env2, module->exprs[i], pobj))
-            return 0;
-
         if (expr_is_macro(module->env, module->exprs[i]))
         {
+            module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
+            if (*pobj)  return 0;
+            
             *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntax);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }
+
+        if (!check_syntax(env2, module->exprs[i], pobj))
+            return 0;
     }
 
     // Syntax transform

@@ -8,6 +8,8 @@
 ;;                         (<val3> . <promise>)
 ;;                                     ...
 
+(%import "stx-macro.min")
+
 ;; lazy cons
 (def-syntax lazy-cons
   (syntax-rules ()

@@ -651,10 +651,15 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
 MinimObject *minim_builtin_def_syntax(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject **lam_args, *lam, *trans, *res;
+    SyntaxNode *body;
+
+    body = MINIM_AST(args[1])->children[2];
+    body = transform_syntax(env, body, &res);
+    if (res)    return res;
 
     lam_args = GC_alloc(2 * sizeof(MinimObject*));
     init_minim_object(&lam_args[0], MINIM_OBJ_AST, MINIM_AST(args[1])->children[1]);
-    init_minim_object(&lam_args[1], MINIM_OBJ_AST, MINIM_AST(args[1])->children[2]);
+    init_minim_object(&lam_args[1], MINIM_OBJ_AST, body);
     lam = minim_builtin_lambda(env, 2, lam_args);
 
     init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_AST(args[0])->sym, MINIM_DATA(lam));

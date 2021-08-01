@@ -738,14 +738,15 @@ int main()
     }
 
     {
-        const int COUNT = 5;
-        char strs[10][256] =
+        const int COUNT = 6;
+        char strs[12][256] =
         {
-            "`1",                       "1",
-            "`(1 2 3)",                 "'(1 2 3)",
-            "`(1 null)",                "'(1 null)",
-            "`(1 ,null)",               "'(1 ())",
-            "`(1 2 ,(+ 1 2 3))",        "'(1 2 6)"
+            "`1",                           "1",
+            "`(1 2 3)",                     "'(1 2 3)",
+            "`(1 null)",                    "'(1 null)",
+            "`(1 ,null)",                   "'(1 ())",
+            "`(1 2 ,(+ 1 2 3))",            "'(1 2 6)",
+            "(begin (def a 1) `(1 ,a))",    "'(1 1)"
         };
 
         printf("Testing quasiquote / unquote\n");

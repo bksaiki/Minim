@@ -8,19 +8,25 @@
       #f))
 
 (def stx-pair? (t)
-  (if (syntax? t)
-      (pair? (unwrap t))
-      #f))
+  (if (pair? t)
+      #t
+      (if (syntax? t)
+          (pair? (unwrap t))
+          #f)))
 
 (def stx-list? (t)
-  (if (syntax? t)
-      (list? (unwrap t))
-      #f))
+  (if (list? t)
+      #t
+      (if (syntax? t)
+          (list? (unwrap t))
+          #f)))
 
 (def stx-null? (t)
-  (if (syntax? t)
-      (null? (unwrap t))
-      #f))
+  (if (null? t)
+      #t
+      (if (syntax? t)
+          (null? (unwrap t))
+          #f)))
 
 (def stx-car (t)
   (if (pair? t)
@@ -33,9 +39,11 @@
       (cdr (unwrap t))))
 
 (def stx-vector? (t)
-  (if (syntax? t)
-      (vector? (unwrap t))
-      #f))
+  (if (vector? t)
+      #t
+      (if (syntax? t)
+          (vector? (unwrap t))
+          #f)))
 
 (%export identifier? stx-pair? stx-list? stx-null?
          stx-car stx-cdr

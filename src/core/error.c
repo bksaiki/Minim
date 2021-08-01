@@ -210,7 +210,9 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
         ast_to_buffer(expr, bf);
         init_minim_error_desc_table(&err->table, 1);
         minim_error_desc_table_set(err->table, 0, "in", get_buffer(bf));
-        minim_error_add_trace(err, expr->loc, NULL);
+
+        if (expr->loc)
+            minim_error_add_trace(err, expr->loc, NULL);
     }
     else if (expr && subexpr)
     {
@@ -223,7 +225,9 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
         init_buffer(&bf);
         ast_to_buffer(expr, bf);
         minim_error_desc_table_set(err->table, 1, "in", get_buffer(bf));
-        minim_error_add_trace(err, subexpr->loc, NULL);
+        
+        if (expr->loc)
+            minim_error_add_trace(err, expr->loc, NULL);
     }
 
     return obj;
