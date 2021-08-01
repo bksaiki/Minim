@@ -535,7 +535,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        eval_ast(module->env, module->exprs[i], pobj);
+        eval_ast_no_check(module->env, module->exprs[i], pobj);
         if (MINIM_OBJ_ERRORP(*pobj))
         {    
             return 0;
