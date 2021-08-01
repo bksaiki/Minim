@@ -1,0 +1,15 @@
+;
+;   'syntax-rules'
+;
+
+(%import "stx.min")
+
+(def-syntax syntax-rules
+  (lambda (stx)
+    (let ([top (unwrap stx)])
+      (if (identifier? stx)
+          (syntax-error 'syntax-rules "not allowed as expression" stx)
+          
+            #'1)))))
+
+(%export syntax-rules)

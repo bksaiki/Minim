@@ -454,64 +454,25 @@ replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table, MinimObject **
 static SyntaxNode*
 transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
 {
-    SyntaxNode *transform;
+    MinimObject *body, *res;
 
-    transform = MINIM_TRANSFORM_AST(trans);
-    if (strcmp(transform->children[0]->sym, "lambda") == 0)
+    init_minim_object(&body, MINIM_OBJ_AST, ast);
+    res = eval_lambda(MINIM_TRANSFORM_PROC(trans), env, 1, &body);
+    if (MINIM_OBJ_ERRORP(res))
     {
-        MinimObject **lam_args, *lam, *body, *res;
-
-        lam_args = GC_alloc(2 * sizeof(MinimObject*));
-        init_minim_object(&lam_args[0], MINIM_OBJ_AST, transform->children[1]);
-        init_minim_object(&lam_args[1], MINIM_OBJ_AST, transform->children[2]);
-        lam = minim_builtin_lambda(env, 2, lam_args);
-
-        init_minim_object(&body, MINIM_OBJ_AST, ast);
-        res = eval_lambda(MINIM_DATA(lam), env, 1, &body);
-        if (MINIM_OBJ_ERRORP(res))
-        {
-            *perr = res;
-            return ast;
-        }
-        else if (!MINIM_OBJ_ASTP(res))
-        {
-            *perr = minim_syntax_error("expected syntax",
-                                       MINIM_TRANSFORM_NAME(trans),
-                                       ast,
-                                       transform);
-            return ast;
-        }
-
-        return MINIM_AST(res);
-    }
-    else
-    {
-        MatchTable table;
-        SymbolList reserved;
-        
-        init_match_table(&table);
-        init_symbol_list(&reserved, transform->children[1]->childc);
-        for (size_t i = 0; i < transform->children[1]->childc; ++i)
-            reserved.syms[i] = transform->children[1]->children[i]->sym;
-
-        for (size_t i = 2; i < transform->childc; ++i)
-        {
-            SyntaxNode *rule, *replace;
-
-            rule = transform->children[i];
-            if (match_transform(rule->children[0], ast, &table, &reserved, 0))
-            {
-                copy_syntax_node(&replace, rule->children[1]);
-                return apply_transformation(&table, replace);
-            }
-        }
-
-        *perr = minim_syntax_error("no matching syntax rule",
-                                   MINIM_TRANSFORM_NAME(trans),
-                                   ast,
-                                   transform);
+        *perr = res;
         return ast;
     }
+    else if (!MINIM_OBJ_ASTP(res))
+    {
+        *perr = minim_syntax_error("expected syntax as a result",
+                                    MINIM_TRANSFORM_NAME(trans),
+                                    ast,
+                                    NULL);
+        return ast;
+    }
+
+    return MINIM_AST(res);
 }
 
 SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
@@ -689,11 +650,15 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
 
 MinimObject *minim_builtin_def_syntax(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *trans, *sym;
+    MinimObject **lam_args, *lam, *trans, *res;
 
-    unsyntax_ast(env, MINIM_AST(args[0]), &sym);
-    init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_STRING(sym), MINIM_AST(args[1]));
-    env_intern_sym(env, MINIM_STRING(sym), trans);
+    lam_args = GC_alloc(2 * sizeof(MinimObject*));
+    init_minim_object(&lam_args[0], MINIM_OBJ_AST, MINIM_AST(args[1])->children[1]);
+    init_minim_object(&lam_args[1], MINIM_OBJ_AST, MINIM_AST(args[1])->children[2]);
+    lam = minim_builtin_lambda(env, 2, lam_args);
+
+    init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_AST(args[0])->sym, MINIM_DATA(lam));
+    env_intern_sym(env, MINIM_AST(args[0])->sym, trans);
 
     init_minim_object(&res, MINIM_OBJ_VOID);
     return res;

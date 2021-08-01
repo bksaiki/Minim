@@ -1,6 +1,7 @@
 ;;;;;;;;;;;;;;;;;;; when / unless ;;;;;;;;;;;;;;;;;;;
 
 (def-syntax when
+  (lambda 
   (syntax-rules ()
    [(_ test body ...)
     (if test (begin body ...) (void))]))

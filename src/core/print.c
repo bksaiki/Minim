@@ -227,9 +227,13 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         }
         else
         {
+            bool syntaxp = pp->syntax;
+
+            pp->syntax = true;
             writes_buffer(bf, "<syntax:");
             ast_to_buffer(obj->u.ptrs.p1, bf);
             writec_buffer(bf, '>');
+            pp->syntax = syntaxp;
         }
     }
     else if (MINIM_OBJ_PROMISEP(obj))

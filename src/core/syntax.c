@@ -315,62 +315,62 @@ static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **per
 // (syntax-rules (reserved ...)
 //  [(_ elem _) syntax]
 //  ...)
-static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
-{
-    MinimObject *reserved, *sym;
+// static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+// {
+//     MinimObject *reserved, *sym;
 
-    // extract reserved symbols
-    unsyntax_ast(env, ast->children[1], &reserved);
-    if (!minim_listp(reserved))
-    {
-        *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[1]);
-        return false;
-    }
+//     // extract reserved symbols
+//     unsyntax_ast(env, ast->children[1], &reserved);
+//     if (!minim_listp(reserved))
+//     {
+//         *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[1]);
+//         return false;
+//     }
     
-    // check reserved list is all symbols
-    for (MinimObject *it = reserved; it && MINIM_CAR(it); it = MINIM_CDR(it))
-    {
-        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
-        if (!MINIM_OBJ_SYMBOLP(sym))
-        {
-            *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[1]);
-            return false;
-        }
-    }
+//     // check reserved list is all symbols
+//     for (MinimObject *it = reserved; it && MINIM_CAR(it); it = MINIM_CDR(it))
+//     {
+//         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
+//         if (!MINIM_OBJ_SYMBOLP(sym))
+//         {
+//             *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[1]);
+//             return false;
+//         }
+//     }
 
-    // check each match expression
-    // [(_ arg ...) anything]
-    for (size_t i = 2; i < ast->childc; ++i)
-    {
-        MinimObject *rule, *match;
+//     // check each match expression
+//     // [(_ arg ...) anything]
+//     for (size_t i = 2; i < ast->childc; ++i)
+//     {
+//         MinimObject *rule, *match;
 
-        unsyntax_ast(env, ast->children[i], &rule);
-        if (!minim_listp(rule) || minim_list_length(rule) != 2)
-        {
-            *perr = minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]);
-            return false;
-        }
+//         unsyntax_ast(env, ast->children[i], &rule);
+//         if (!minim_listp(rule) || minim_list_length(rule) != 2)
+//         {
+//             *perr = minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]);
+//             return false;
+//         }
 
-        unsyntax_ast(env, MINIM_AST(MINIM_CAR(rule)), &match);
-        if (!minim_listp(match) || minim_list_length(match) < 1)
-        {
-            *perr = minim_syntax_error("bad template", "syntax-rules", ast, ast->children[i]);
-            return false;
-        }
+//         unsyntax_ast(env, MINIM_AST(MINIM_CAR(rule)), &match);
+//         if (!minim_listp(match) || minim_list_length(match) < 1)
+//         {
+//             *perr = minim_syntax_error("bad template", "syntax-rules", ast, ast->children[i]);
+//             return false;
+//         }
 
-        // if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(rule)), perr) ||
-        //     !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
-        //     return false;
+//         // if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(rule)), perr) ||
+//         //     !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
+//         //     return false;
 
-        if (!valid_transformp(MINIM_AST(MINIM_CAR(rule)),
-                              MINIM_AST(MINIM_CADR(rule)),
-                              reserved,
-                              perr))
-            return false;
-    }
+//         if (!valid_transformp(MINIM_AST(MINIM_CAR(rule)),
+//                               MINIM_AST(MINIM_CADR(rule)),
+//                               reserved,
+//                               perr))
+//             return false;
+//     }
 
-    return true;
-}
+//     return true;
+// }
 
 static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
@@ -395,31 +395,19 @@ static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject 
         return false;
     }
 
-    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "syntax-rules") == 0)
-    {
-        if (!check_syntax_syntax_rules(env, ast->children[2], perr))
-        {
-            MINIM_ERROR(*perr)->where = MINIM_STRING(sym);
-            return false;
-        }
-    }
-    else if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "lambda") == 0)
-    {
-        if (MINIM_AST(MINIM_CADR(rules))->type != SYNTAX_NODE_LIST ||
-            MINIM_AST(MINIM_CADR(rules))->childc != 1)
-        {
-            *perr = minim_syntax_error("takes a procedure of 1 argument",
-                                       "def-syntax",
-                                       ast,
-                                       ast->children[2]);
-            return false;
-        }
-
-        return true;
-    }
-    else
+    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "lambda") != 0)
     {
         *perr = minim_syntax_error("expected a transform", "def-syntax", ast, ast->children[2]);
+        return false;
+    }
+
+    if (MINIM_AST(MINIM_CADR(rules))->type != SYNTAX_NODE_LIST ||
+        MINIM_AST(MINIM_CADR(rules))->childc != 1)
+    {
+        *perr = minim_syntax_error("takes a procedure of 1 argument",
+                                    "def-syntax",
+                                    ast,
+                                    ast->children[2]);
         return false;
     }
 

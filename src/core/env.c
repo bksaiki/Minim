@@ -42,6 +42,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     env->current_dir = NULL;
     init_minim_symbol_table(&env->table);
     env->flags = MINIM_ENV_TAIL_CALLABLE;
+
     *penv = env;
 }
 
@@ -57,6 +58,10 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
         copy_minim_symbol_table(&env->table, src->table);
         env->current_dir = src->current_dir;
         env->flags = (src->flags | MINIM_ENV_COPIED);
+
+        if (env->module->env == src)
+            minim_symbol_table_merge(env->table, env->module->import->table);
+
         *penv = env;
     }
     else
