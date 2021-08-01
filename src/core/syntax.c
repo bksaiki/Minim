@@ -1,4 +1,6 @@
 #include <string.h>
+
+#include "../gc/gc.h"
 #include "arity.h"
 #include "builtin.h"
 #include "error.h"
@@ -6,6 +8,8 @@
 #include "list.h"
 #include "syntax.h"
 #include "transform.h"
+
+// ================================ Checker ================================
 
 #define CHECK_REC(proc, x, expr)        if (proc == x) return expr(env, ast, perr);
 #define MATCH_RET(proc, x, ret)         if (proc == x) return ret;
@@ -608,6 +612,118 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     return true;
 }
 
+// ================================ Syntax Conversions ================================
+
+static SyntaxNode *datum_to_syntax(MinimObject *obj, MinimObject **perr)
+{
+    SyntaxNode *node;
+    Buffer *bf;
+
+    if (MINIM_OBJ_SYNTAXP(obj))
+    {
+        return MINIM_AST(obj);
+    }
+    else if (MINIM_OBJ_PAIRP(obj))
+    {
+        if (MINIM_CAR(obj) && MINIM_CDR(obj) && !MINIM_OBJ_PAIRP(MINIM_CDR(obj)))   // true pair
+        {
+            init_syntax_node(&node, SYNTAX_NODE_PAIR);
+            node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
+            node->childc = 2;
+
+            node->children[0] = datum_to_syntax(MINIM_CAR(obj), perr);
+            if (!node->children[0])     return NULL;
+
+            node->children[1] = datum_to_syntax(MINIM_CDR(obj), perr);
+            if (!node->children[1])     return NULL;
+        }
+        else
+        {
+            init_syntax_node(&node, SYNTAX_NODE_LIST);
+            node->children = NULL;
+            node->childc = 0;
+
+            if (MINIM_CAR(obj))
+            {
+                for (MinimObject *it = obj; it; it = MINIM_CDR(it))
+                {
+                    if (!MINIM_OBJ_PAIRP(MINIM_CDR(obj)))
+                    {
+                        node->childc += 3;
+                        node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                        node->children[node->childc - 3] = datum_to_syntax(MINIM_CAR(obj), perr);
+                        if (!node->children[node->childc - 3])      return NULL;
+
+                        init_syntax_node(&node->children[node->childc - 2], SYNTAX_NODE_DATUM);
+                        node->sym = ".";
+
+                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CDR(obj), perr);
+                        if (!node->children[node->childc - 1])      return NULL;
+                    }
+                    else
+                    {
+                        ++node->childc;
+                        node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CAR(obj), perr);
+                        if (!node->children[node->childc - 1])      return NULL;
+                    }
+                }
+            }
+        }
+    }
+    else if (MINIM_OBJ_VECTORP(obj))
+    {
+        init_syntax_node(&node, SYNTAX_NODE_VECTOR);
+        node->children = GC_alloc(MINIM_VECTOR_LEN(obj) * sizeof(SyntaxNode*));
+        node->childc = MINIM_VECTOR_LEN(obj);
+        for (size_t i = 0; i < node->childc; ++i)
+        {
+            node->children[i] = datum_to_syntax(MINIM_VECTOR_ARR(obj)[i], perr);
+            if (!node->children[i])     return NULL;
+        }
+    }
+    else if (MINIM_OBJ_STRINGP(obj))
+    {
+        init_buffer(&bf);
+        writef_buffer(bf, "\"~s\"", MINIM_STRING(obj));
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
+
+    }
+    else if (MINIM_OBJ_SYMBOLP(obj))
+    {
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = MINIM_STRING(obj);
+    }
+    else if (MINIM_OBJ_NUMBERP(obj))
+    {
+        PrintParams pp;
+
+        set_default_print_params(&pp);
+        init_buffer(&bf);
+        print_to_buffer(bf, obj, NULL, &pp);
+
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
+    }
+    else
+    {
+        PrintParams pp;
+
+        set_default_print_params(&pp);
+        init_buffer(&bf);
+        print_to_buffer(bf, obj, NULL, &pp);
+
+        *perr = minim_error("can't convert to syntax", NULL);
+        init_minim_error_desc_table(&MINIM_ERROR(*perr)->table, 1);
+        minim_error_desc_table_set(MINIM_ERROR(*perr)->table, 0, "at", get_buffer(bf));
+
+        node = NULL;
+    }
+
+    return node;
+}
+
 // ================================ Public ================================
 
 bool check_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
@@ -641,5 +757,17 @@ MinimObject *minim_builtin_unwrap(MinimEnv *env, size_t argc, MinimObject **args
         return minim_argument_error("syntax?", "unwrap", 0, args[0]);
 
     unsyntax_ast(env, MINIM_AST(args[0]), &res);
+    return res;
+}
+
+MinimObject *minim_builtin_to_syntax(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+    SyntaxNode *stx;
+
+    stx = datum_to_syntax(args[0], &res);
+    if (!stx)   return res;
+
+    init_minim_object(&res, MINIM_OBJ_AST, stx);
     return res;
 }

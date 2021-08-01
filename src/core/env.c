@@ -59,7 +59,7 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
         env->current_dir = src->current_dir;
         env->flags = (src->flags | MINIM_ENV_COPIED);
 
-        if (env->module->env == src)
+        if (env->module && env->module->env == src)
             minim_symbol_table_merge(env->table, env->module->import->table);
 
         *penv = env;

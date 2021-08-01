@@ -44,6 +44,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // Syntax
     SET_ARITY_EXACT(unwrap, 1);
+    SET_ARITY_EXACT(to_syntax, 1);
     SET_ARITY_RANGE(syntax_error, 2, 4);
 
     // Arity

@@ -63,6 +63,23 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
+            "(datum->syntax 1)",                "<syntax:1>",
+            "(datum->syntax 'a)",               "<syntax:a>",
+            "(datum->syntax '(1 . 2))",         "<syntax:(1 . 2)>",
+            "(datum->syntax '(1 2 3))",         "<syntax:(1 2 3)>",
+            "(datum->syntax '(1 2 . 3))",       "<syntax:(1 2 . 3)>",
+            "(datum->syntax #(1 2 3))",         "<syntax:#(1 2 3)>"
+        };
+
+        printf("Testing 'datum->syntax'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
+        char strs[12][256] =
+        {
             "(syntax-case #'1 ()  \
               [_ 1])",
             "1",

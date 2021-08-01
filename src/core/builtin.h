@@ -38,6 +38,7 @@ DEFINE_BUILTIN_FUN(syntaxp)
 DEFINE_BUILTIN_FUN(unwrap)
 DEFINE_BUILTIN_FUN(syntax_case)
 DEFINE_BUILTIN_FUN(syntax_error)
+DEFINE_BUILTIN_FUN(to_syntax)
 
 // Miscellaneous
 DEFINE_BUILTIN_FUN(equalp)
