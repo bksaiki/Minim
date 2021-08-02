@@ -487,14 +487,21 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
         if (ast->children[0]->sym)
         {
             op = env_get_sym(env, ast->children[0]->sym);
-            if (op && MINIM_OBJ_TRANSFORMP(op))
+            if (op)
             {
-                ast = transform_loc(env, op, ast, perr);
-                if (*perr)
+                if (MINIM_DATA(op) == minim_builtin_syntax)
                 {
-                    if (!MINIM_ERROR(*perr)->where)
-                        MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(op);
-                    return NULL;
+                    return ast;
+                }
+                else if (MINIM_OBJ_TRANSFORMP(op))
+                {
+                    ast = transform_loc(env, op, ast, perr);
+                    if (*perr)
+                    {
+                        if (!MINIM_ERROR(*perr)->where)
+                            MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(op);
+                        return NULL;
+                    }
                 }
             }
         }

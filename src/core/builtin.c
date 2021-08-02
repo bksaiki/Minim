@@ -22,8 +22,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
     minim_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     minim_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
-    minim_load_builtin(env, "for", MINIM_OBJ_SYNTAX, minim_builtin_for);
-    minim_load_builtin(env, "for-list", MINIM_OBJ_SYNTAX, minim_builtin_for_list);
     minim_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
     minim_load_builtin(env, "case", MINIM_OBJ_SYNTAX, minim_builtin_case);
     minim_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);

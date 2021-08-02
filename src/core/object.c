@@ -4,7 +4,6 @@
 #include "../gc/gc.h"
 #include "env.h"
 #include "error.h"
-#include "iter.h"
 #include "hash.h"
 #include "lambda.h"
 #include "list.h"

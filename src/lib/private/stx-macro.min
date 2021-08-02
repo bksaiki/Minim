@@ -58,7 +58,7 @@
                                               replace))
                                           process)
                                         (stx-cdr rules)))))))))
-                      (serr "bad syntax" rules)))
+                      (serr "bad syntax" (datum->syntax rules))))
                 (serr "expected a list of identifiers" ids)))))))
 
 (%export syntax-rules)

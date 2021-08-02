@@ -198,57 +198,6 @@ static bool check_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
     return true;
 }
 
-static bool check_syntax_for(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
-{
-    MinimObject *bindings;
-    MinimEnv *env2;
-
-    unsyntax_ast(env, ast->children[1], &bindings);
-    if (!minim_listp(bindings))
-    {
-        *perr = minim_syntax_error("expected a list of bindings", "for", ast, ast->children[1]);
-        return false;
-    }
-
-    // early exit: (for () ...)
-    if (minim_nullp(bindings))
-        return check_syntax_rec(env, ast->children[2], perr);
-
-    init_env(&env2, env, NULL);
-    for (MinimObject *it = bindings; it; it = MINIM_CDR(it))
-    {
-        MinimObject *bind, *sym, *tmp;
-        SyntaxNode *syn;
-        MinimEnv *env3;
-
-        unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &bind);
-        if (!minim_listp(bind) || minim_list_length(bind) != 2)
-        {
-            *perr = minim_syntax_error("bad binding", "for", ast, MINIM_AST(MINIM_CAR(it)));
-            return false;
-        }
-
-        // identifier
-        syn = MINIM_AST(MINIM_CAR(bind));
-        unsyntax_ast(env, syn, &sym);
-        if (!MINIM_OBJ_SYMBOLP(sym))
-        {
-            *perr = minim_syntax_error("not an identifier", "for", ast, MINIM_AST(MINIM_CAR(it)));
-            return false;
-        }
-
-        init_env(&env3, env, NULL);
-        syn = MINIM_AST(MINIM_CADR(bind));
-        if (!check_syntax_rec(env3, syn, perr))
-            return false;
-
-        init_minim_object(&tmp, MINIM_OBJ_VOID);
-        env_intern_sym(env2, MINIM_STRING(sym), tmp);
-    }
-
-    return check_syntax_rec(env2, ast->children[2], perr);
-}
-
 static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *bindings, *sym;
@@ -528,8 +477,6 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);
             CHECK_REC(proc, minim_builtin_let, check_syntax_let);
             CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
-            CHECK_REC(proc, minim_builtin_for, check_syntax_for);
-            CHECK_REC(proc, minim_builtin_for_list, check_syntax_for);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
 

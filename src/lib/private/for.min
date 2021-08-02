@@ -1,0 +1,61 @@
+;
+;   'for'
+;
+
+(%import "and-or.min" "cond.min" "stx.min" "when-unless.min")
+
+(def-syntax datum->seq
+  (lambda (stx)
+    (datum->syntax
+      (list
+        (syntax lambda)
+        (list (syntax x))
+        (list
+          (syntax cond)
+          (list
+            (syntax list?)
+            (list
+              (syntax in-list)
+              (syntax x)))
+          (list
+            (syntax sequence?)
+            (syntax x))
+          (list
+            (syntax else)
+            (list
+              (syntax error)
+              (syntax datum->seq)
+              (syntax "cannot be converted to a sequence"))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
+
+; for/generic 
+
+(def-syntax for
+  (lambda (stx)
+    (syntax-case stx ()
+     [(_ () body ...) #'(void)]
+     [(_ ([ids seq]))
+      (syntax-error 'for "missing body" stx)]
+     [(_ ([id seq] ...) body ...)
+      #'(let loop ([ids (datum->seq seq)] ...)
+          (let ([id (sequence-first ids) ...])
+            (if (or (sequence-empty? id) ...)
+                (void)
+                (begin
+                  body
+                  ...
+                  (loop (sequence-rest ids) ...)))))])))
+
+;;;;;;;;;;;;;;;;;;;;;;; specific sequences ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def in-list (lst)
+  (unless (list? lst)
+    (error 'in-list "expected a list"))
+  (sequence lst
+            (lambda (x) (car x))
+            (lambda (x) (cdr x))
+            (lambda (x) (null? x))))
+
+(%export for
+         in-list)
