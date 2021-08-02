@@ -142,9 +142,11 @@ DEFINE_BUILTIN_FUN(list_to_vector)
 DEFINE_BUILTIN_FUN(vector_fillb)
 
 // Sequence
+DEFINE_BUILTIN_FUN(sequence)
 DEFINE_BUILTIN_FUN(sequencep)
-DEFINE_BUILTIN_FUN(in_range)
-DEFINE_BUILTIN_FUN(in_naturals)
+DEFINE_BUILTIN_FUN(sequence_first)
+DEFINE_BUILTIN_FUN(sequence_rest)
+DEFINE_BUILTIN_FUN(sequence_donep)
 DEFINE_BUILTIN_FUN(sequence_to_list)
 
 // Math

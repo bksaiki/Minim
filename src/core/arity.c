@@ -137,9 +137,11 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(vector_fillb, 2);
 
     // Sequence
+    SET_ARITY_EXACT(sequence, 4);
     SET_ARITY_EXACT(sequencep, 1);
-    SET_ARITY_RANGE(in_range, 1, 2);
-    SET_ARITY_RANGE(in_naturals, 0, 1);
+    SET_ARITY_EXACT(sequence_first, 1);
+    SET_ARITY_EXACT(sequence_rest, 1);
+    SET_ARITY_EXACT(sequence_donep, 1);
     SET_ARITY_EXACT(sequence_to_list, 1);
 
     // Math

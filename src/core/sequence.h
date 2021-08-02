@@ -3,24 +3,14 @@
 
 #include "env.h"
 
-typedef enum MinimSeqType
-{
-    MINIM_SEQ_NUM_RANGE
-} MinimSeqType;
-
 typedef struct MinimSeq
 {
-    void *state;
-    void *end;
-    MinimSeqType type;
-    bool done;
+    MinimObject *val;
+    MinimLambda *first, *rest, *donep;
+
 } MinimSeq;
 
-void init_minim_seq(MinimSeq **pseq, MinimSeqType type, ...);
+void init_minim_seq(MinimSeq **pseq, MinimObject *init, MinimLambda *first, MinimLambda *rest, MinimLambda *donep);
 void copy_minim_seq(MinimSeq **pseq, MinimSeq *src);
-
-MinimObject *minim_seq_get(MinimSeq *seq);
-void minim_seq_next(MinimSeq *seq);
-bool minim_seq_donep(MinimSeq *seq);
 
 #endif

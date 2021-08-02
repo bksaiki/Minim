@@ -153,9 +153,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "vector-fill!", MINIM_OBJ_FUNC, minim_builtin_vector_fillb);
 
     // Sequence
+    minim_load_builtin(env, "sequence", MINIM_OBJ_FUNC, minim_builtin_sequence);
     minim_load_builtin(env, "sequence?", MINIM_OBJ_FUNC, minim_builtin_sequencep);
-    minim_load_builtin(env, "in-range", MINIM_OBJ_FUNC, minim_builtin_in_range);
-    minim_load_builtin(env, "in-naturals", MINIM_OBJ_FUNC, minim_builtin_in_naturals);
+    minim_load_builtin(env, "sequence-first", MINIM_OBJ_FUNC, minim_builtin_sequence_first);
+    minim_load_builtin(env, "sequence-rest", MINIM_OBJ_FUNC, minim_builtin_sequence_rest);
+    minim_load_builtin(env, "sequence-empty?", MINIM_OBJ_FUNC, minim_builtin_sequence_donep);
     minim_load_builtin(env, "sequence->list", MINIM_OBJ_FUNC, minim_builtin_sequence_to_list);
 
     // Math
