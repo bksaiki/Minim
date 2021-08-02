@@ -99,7 +99,7 @@ static int env_set_sym_int(MinimEnv *env, const char *sym, MinimObject *obj)
 {
     for (MinimEnv *it = env; it; it = it->parent)
     { 
-        if (minim_symbol_table_set(env->table, sym, obj))
+        if (minim_symbol_table_set(it->table, sym, obj))
             return 1;
 
         if (it->module && it->module->env == it)

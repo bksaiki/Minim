@@ -257,20 +257,14 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 
     base = 1;
     init_env(&env2, env, NULL);
-    if (ast->childc == 4)
+    unsyntax_ast(env, ast->children[base], &sym);
+    if (MINIM_OBJ_SYMBOLP(sym))
     {
         MinimObject *tmp;
 
-        unsyntax_ast(env, ast->children[1], &sym);
-        if (!MINIM_OBJ_SYMBOLP(sym))
-        {
-            *perr = minim_syntax_error("not an identifier", "let", ast, ast->children[1]);
-            return false;
-        }
-
-        ++base;
         init_minim_object(&tmp, MINIM_OBJ_VOID);
         env_intern_sym(env2, MINIM_STRING(sym), tmp);
+        ++base;
     }
 
     unsyntax_ast(env, ast->children[base], &bindings);
@@ -315,73 +309,25 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         env_intern_sym(env2, MINIM_STRING(sym), tmp);
     }
 
-    return check_syntax_rec(env2, ast->children[base + 1], perr);
+    if (base + 1 == ast->childc)
+    {
+        *perr = minim_syntax_error("missing body", "let", ast, NULL);
+        return false;
+    }
+
+    for (size_t i = base + 1; i < ast->childc; ++i)
+    {
+        if (!check_syntax_rec(env2, ast->children[base + 1], perr))
+            return false;
+    }
+    
+    return true;
 }
 
 static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     return check_syntax_rec(env, ast->children[1], perr);
 }
-
-// (syntax-rules (reserved ...)
-//  [(_ elem _) syntax]
-//  ...)
-// static bool check_syntax_syntax_rules(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
-// {
-//     MinimObject *reserved, *sym;
-
-//     // extract reserved symbols
-//     unsyntax_ast(env, ast->children[1], &reserved);
-//     if (!minim_listp(reserved))
-//     {
-//         *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[1]);
-//         return false;
-//     }
-    
-//     // check reserved list is all symbols
-//     for (MinimObject *it = reserved; it && MINIM_CAR(it); it = MINIM_CDR(it))
-//     {
-//         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &sym);
-//         if (!MINIM_OBJ_SYMBOLP(sym))
-//         {
-//             *perr = minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[1]);
-//             return false;
-//         }
-//     }
-
-//     // check each match expression
-//     // [(_ arg ...) anything]
-//     for (size_t i = 2; i < ast->childc; ++i)
-//     {
-//         MinimObject *rule, *match;
-
-//         unsyntax_ast(env, ast->children[i], &rule);
-//         if (!minim_listp(rule) || minim_list_length(rule) != 2)
-//         {
-//             *perr = minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]);
-//             return false;
-//         }
-
-//         unsyntax_ast(env, MINIM_AST(MINIM_CAR(rule)), &match);
-//         if (!minim_listp(match) || minim_list_length(match) < 1)
-//         {
-//             *perr = minim_syntax_error("bad template", "syntax-rules", ast, ast->children[i]);
-//             return false;
-//         }
-
-//         // if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(rule)), perr) ||
-//         //     !check_syntax_rec(env, MINIM_AST(MINIM_CADR(rule)), perr))
-//         //     return false;
-
-//         if (!valid_transformp(MINIM_AST(MINIM_CAR(rule)),
-//                               MINIM_AST(MINIM_CADR(rule)),
-//                               reserved,
-//                               perr))
-//             return false;
-//     }
-
-//     return true;
-// }
 
 static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {

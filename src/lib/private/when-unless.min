@@ -11,7 +11,7 @@
               (syntax-error 'when "missing condition and body" stx)
               (let ([b (stx-cdr e)])
                 (if (stx-null? b)
-                    (syntax-error 'when "missing body" stx e)
+                    (syntax-error 'when "missing body" stx)
                     (datum->syntax
                       (list
                         (syntax if)
@@ -28,7 +28,7 @@
               (syntax-error 'unless "missing condition and body" stx)
               (let ([b (stx-cdr e)])
                 (if (stx-null? b)
-                    (syntax-error 'unless "missing body" stx e)
+                    (syntax-error 'unless "missing body" stx)
                     (datum->syntax
                       (list
                         (syntax if)

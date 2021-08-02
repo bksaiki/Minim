@@ -79,7 +79,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
     env_intern_sym(env2, MINIM_STRING(name), it);
 
     // Evaluate body
-    eval_ast_no_check(env2, MINIM_DATA(args[2]), &res);
+    res = minim_builtin_begin(env2, argc - 2, &args[2]);
     if (MINIM_OBJ_TAIL_CALLP(res))
     {   
         MinimTailCall *call = MINIM_DATA(res);
@@ -95,7 +95,7 @@ MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool
 
 MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bool alt)
 {
-    MinimObject *bindings, *res, *it;
+    MinimObject *bindings, *it;
     MinimEnv *env2;
     size_t len;
     bool err;
@@ -124,22 +124,22 @@ MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bo
     }
 
     // Evaluate body
-    eval_ast_no_check(env2, MINIM_DATA(args[1]), &res);
-    return res;
+    return minim_builtin_begin(env2, argc - 1, &args[1]);
 }
 
 MinimObject *minim_builtin_let(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return (argc == 2) ?
-           minim_let_assign(env, args, argc, false) :
-           minim_let_func(env, args, argc, false);
+    return MINIM_AST(args[0])->sym ?
+           minim_let_func(env, args, argc, false):
+           minim_let_assign(env, args, argc, false);
+           
 }
 
 MinimObject *minim_builtin_letstar(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return (argc == 2) ?
-           minim_let_assign(env, args, argc, true) :
-           minim_let_func(env, args, argc, true);
+    return MINIM_AST(args[0])->sym ?
+           minim_let_func(env, args, argc, true) :
+           minim_let_assign(env, args, argc, true);
 }
 
 MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)

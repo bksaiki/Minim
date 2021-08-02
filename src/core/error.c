@@ -359,18 +359,23 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
                                   NULL,
                                   NULL);
     }
-    else if (argc == 3)
+    
+    if (!MINIM_OBJ_ASTP(args[2]))
+        return minim_argument_error("syntax?", "syntax-error", 2, args[2]);
+
+    if (argc == 3)
     {
         return minim_syntax_error(MINIM_STRING(args[1]),
                                   MINIM_STRING(args[0]),
                                   MINIM_AST(args[2]),
                                   NULL);
     }
-    else
-    {
-        return minim_syntax_error(MINIM_STRING(args[1]),
-                                  MINIM_STRING(args[0]),
-                                  MINIM_AST(args[2]),
-                                  MINIM_AST(args[3]));
-    }
+
+    if (!MINIM_OBJ_ASTP(args[3]))
+        return minim_argument_error("syntax?", "syntax-error", 3, args[3]);
+
+    return minim_syntax_error(MINIM_STRING(args[1]),
+                              MINIM_STRING(args[0]),
+                              MINIM_AST(args[2]),
+                              MINIM_AST(args[3]));
 }
