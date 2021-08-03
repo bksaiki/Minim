@@ -37,7 +37,7 @@
 (def ralston-3d (V h)
   (let* ([k1 (vec-scale (lorenz-3d V) h)]
          [k2 (vec-scale (lorenz-3d (vec-add V (vec-scale k1 2/3))) h)])
-    (for-list ([i (in-range 3)])
+    (for/list ([i (in-range 3)])
       (+ (list-ref V i) (* 1/4 (+ (list-ref k1 i) (* 3 (list-ref k2 3))))))))
 
 (def rk4-3d (V h)
@@ -45,7 +45,7 @@
          [k2 (vec-scale (lorenz-3d (vec-add V (vec-scale k1 1/2))) h)]
          [k3 (vec-scale (lorenz-3d (vec-add V (vec-scale k2 1/2))) h)]
          [k4 (vec-scale (lorenz-3d (vec-add V k3)) h)])
-    (for-list ([i (in-range 3)])
+    (for/list ([i (in-range 3)])
       (+ (list-ref V i)
          (* 1/6 (+ (list-ref k1 i)
                    (* 2 (list-ref k2 i))

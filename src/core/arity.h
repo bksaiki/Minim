@@ -9,6 +9,9 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity);
 // Sets 'parity' to the arity of the syntax
 bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity);
 
+// Sets 'parity' to the arity of the lambda
+bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity);
+
 // Checks the arity of a builtin function
 bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr);
 

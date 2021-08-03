@@ -211,6 +211,12 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     return true;
 }
 
+bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity)
+{
+    parity->low = lam->argc;
+    parity->high = (lam->rest) ? SIZE_MAX : parity->low;
+}
+
 bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr)
 {
     MinimArity arity;

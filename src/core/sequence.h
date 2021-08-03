@@ -5,12 +5,10 @@
 
 typedef struct MinimSeq
 {
-    MinimObject *val;
-    MinimLambda *first, *rest, *donep;
-
+    MinimObject *val, *first, *rest, *donep;
 } MinimSeq;
 
-void init_minim_seq(MinimSeq **pseq, MinimObject *init, MinimLambda *first, MinimLambda *rest, MinimLambda *donep);
+void init_minim_seq(MinimSeq **pseq, MinimObject *init, MinimObject *first, MinimObject *rest, MinimObject *donep);
 void copy_minim_seq(MinimSeq **pseq, MinimSeq *src);
 
 #endif

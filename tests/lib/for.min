@@ -19,6 +19,9 @@
 (equal? (for/list ([x (in-list '(1 2 3 4))] [i (in-naturals)]) i) '(0 1 2 3))
 ; (equal? (for/list ([x '(1 2 3 4)] [i (in-naturals 2)]) i) '(2 3 4 5))
 
+; in-vector
+(equal? (for/list ([x (in-vector '#(1 2 3))]) (+ x 1)) '(2 3 4))
+
 ; sequence->list
 (equal? (sequence->list (in-range 0)) '())
 (equal? (sequence->list (in-range 5)) '(0 1 2 3 4))

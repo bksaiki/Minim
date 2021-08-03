@@ -4,6 +4,15 @@
 
 (%import "and-or.min" "stx.min" "when-unless.min")
 
+; (def-syntax datum->seq
+;   (lambda (stx)
+;     (if (not (identifier? stx))
+;         (syntax-error 'datum-seq "not allowed as an expression")
+;         (let ([e (stx-cdr stx)])
+;           (if (null? e)
+;               (syntax-error 'datum-seq "expected an argument")
+;               (stx-car stx))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def-syntax for
@@ -43,10 +52,7 @@
 (def in-list (lst)
   (unless (list? lst)
     (error 'in-list "expected a list"))
-  (sequence lst
-            (lambda (x) (car x))
-            (lambda (x) (cdr x))
-            (lambda (x) (null? x))))
+  (sequence lst car cdr null?))
 
 (def in-range (n)
   (unless (and (number? n) (exact? n) (integer? n) (not (negative? n)))
@@ -62,6 +68,14 @@
             (lambda (x) (+ x 1))
             (lambda (x) #f)))
 
+(def in-vector (v)
+  (unless (vector? v)
+    (error 'in-vector "expected a vector"))
+  (sequence (cons v 0)
+            (lambda (x) (vector-ref (car x) (cdr x)))
+            (lambda (x) (cons (car x) (+ (cdr x) 1)))
+            (lambda (x) (equal? (vector-length (car x)) (cdr x)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def sequence->list (seq)
@@ -72,5 +86,5 @@
               (sequence-rest seq)))))
 
 (%export for for/list
-         in-list in-range in-naturals
+         in-list in-range in-naturals in-vector
          sequence->list)
