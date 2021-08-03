@@ -42,6 +42,11 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(version, 0);
     SET_ARITY_EXACT(symbol_count, 0);
 
+    // Syntax
+    SET_ARITY_EXACT(unwrap, 1);
+    SET_ARITY_EXACT(to_syntax, 1);
+    SET_ARITY_RANGE(syntax_error, 2, 4);
+
     // Arity
     SET_ARITY_EXACT(procedurep, 1);
     SET_ARITY_EXACT(procedure_arity, 1);
@@ -132,10 +137,11 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(vector_fillb, 2);
 
     // Sequence
+    SET_ARITY_EXACT(sequence, 4);
     SET_ARITY_EXACT(sequencep, 1);
-    SET_ARITY_RANGE(in_range, 1, 2);
-    SET_ARITY_RANGE(in_naturals, 0, 1);
-    SET_ARITY_EXACT(sequence_to_list, 1);
+    SET_ARITY_EXACT(sequence_first, 1);
+    SET_ARITY_EXACT(sequence_rest, 1);
+    SET_ARITY_EXACT(sequence_donep, 1);
 
     // Math
     // NO CHECK: 'add'
@@ -184,10 +190,8 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(setb, 2);
     SET_ARITY_EXACT(if, 3);
     // no check: 'case'
-    SET_ARITY_RANGE(let, 2, 3);
-    SET_ARITY_RANGE(letstar, 2, 3);
-    SET_ARITY_EXACT(for, 2);
-    SET_ARITY_EXACT(for_list, 2);
+    SET_ARITY_MIN(let, 2);
+    SET_ARITY_MIN(letstar, 2);
     SET_ARITY_MIN(begin, 1);
     SET_ARITY_EXACT(quote, 1);
     SET_ARITY_EXACT(quasiquote, 1);
@@ -198,10 +202,19 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(force, 1);
 
     SET_ARITY_EXACT(def_syntax, 2);
+    SET_ARITY_MIN(syntax_case, 2)
+    SET_ARITY_EXACT(syntax, 1);
+    SET_ARITY_EXACT(syntaxp, 1);
 
     parity->low = 0;
     parity->high = SIZE_MAX;
     return true;
+}
+
+bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity)
+{
+    parity->low = lam->argc;
+    parity->high = (lam->rest) ? SIZE_MAX : parity->low;
 }
 
 bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr)

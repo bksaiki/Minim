@@ -301,6 +301,13 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
 {
     MinimObject *val;
 
+    // printf("trans: "); print_ast(ast); printf("\n");
+    // for (size_t i = 0; i < table->size; ++i)
+    // {
+    //     printf("[%zu] %s: ", table->depths[i], table->syms[i]);
+    //     debug_print_minim_object(table->objs[i], NULL);
+    // }
+
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
         for (size_t i = 0; i < ast->childc; ++i)
@@ -403,42 +410,40 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
     else
     {
         val = match_table_get(table, ast->sym);
-        if (val)    return MINIM_AST(val);      // replace
+        if (val)    // replace
+        {
+            SyntaxNode *cp;
+
+            copy_syntax_node(&cp, MINIM_AST(val));
+            return cp;
+        }
     }
 
     return ast;
 }
 
 static SyntaxNode*
-transform_loc(MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
+transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
 {
-    MatchTable table;
-    SymbolList reserved;
-    SyntaxNode *transform;
+    MinimObject *body, *res;
 
-    transform = MINIM_TRANSFORM_AST(trans);
-    init_match_table(&table);
-    init_symbol_list(&reserved, transform->children[1]->childc);
-    for (size_t i = 0; i < transform->children[1]->childc; ++i)
-        reserved.syms[i] = transform->children[1]->children[i]->sym;
-
-    for (size_t i = 2; i < transform->childc; ++i)
+    init_minim_object(&body, MINIM_OBJ_AST, ast);
+    res = eval_lambda(MINIM_TRANSFORM_PROC(trans), NULL, 1, &body);
+    if (MINIM_OBJ_ERRORP(res))
     {
-        SyntaxNode *rule, *replace;
-
-        rule = transform->children[i];
-        if (match_transform(rule->children[0], ast, &table, &reserved, 0))
-        {
-            copy_syntax_node(&replace, rule->children[1]);
-            return apply_transformation(&table, replace);
-        }
+        *perr = res;
+        return ast;
+    }
+    else if (!MINIM_OBJ_ASTP(res))
+    {
+        *perr = minim_syntax_error("expected syntax as a result",
+                                    MINIM_TRANSFORM_NAME(trans),
+                                    ast,
+                                    NULL);
+        return ast;
     }
 
-    *perr = minim_syntax_error("no matching syntax rule",
-                               MINIM_TRANSFORM_NAME(trans),
-                               ast,
-                               MINIM_TRANSFORM_AST(trans));
-    return ast;
+    return MINIM_AST(res);
 }
 
 SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
@@ -453,13 +458,21 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
         if (ast->children[0]->sym)
         {
             op = env_get_sym(env, ast->children[0]->sym);
-            if (op && MINIM_OBJ_TRANSFORMP(op))
+            if (op)
             {
-                ast = transform_loc(op, ast, perr);
-                if (*perr)
+                if (MINIM_DATA(op) == minim_builtin_syntax)
                 {
-                    MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(op);
-                    return NULL;
+                    return ast;
+                }
+                else if (MINIM_OBJ_TRANSFORMP(op))
+                {
+                    ast = transform_loc(env, op, ast, perr);
+                    if (*perr)
+                    {
+                        if (!MINIM_ERROR(*perr)->where)
+                            MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(op);
+                        return NULL;
+                    }
                 }
             }
         }
@@ -468,6 +481,24 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
         {
             ast->children[i] = transform_syntax_rec(env, ast->children[i], perr);
             if (*perr)   return ast;
+        }
+    }
+    else if (ast->type == SYNTAX_NODE_DATUM)
+    {
+        MinimObject *val;
+
+        if (ast->sym)
+        {
+            val = env_get_sym(env, ast->sym);
+            if (val && MINIM_OBJ_TRANSFORMP(val))
+            {
+                ast = transform_loc(env, val, ast, perr);
+                if (*perr)
+                {
+                    MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(val);
+                    return NULL;
+                }
+            }
         }
     }
 
@@ -568,15 +599,60 @@ valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, siz
     return true;
 }
 
+static SyntaxNode *
+replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table, MinimObject **perr)
+{
+    if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
+    {
+        if (ast->type == SYNTAX_NODE_LIST &&
+            ast->children[0]->sym &&
+            strcmp(ast->children[0]->sym, "syntax") == 0)
+        {
+            *perr = NULL;
+            ast->children[1] = apply_transformation(table, ast->children[1]);
+            ast->children[1] = transform_syntax_rec(env, ast->children[1], perr);
+            if (!ast->children[1])  return NULL;
+        }
+        else
+        {
+            for (size_t i = 0; i < ast->childc; ++i)
+            {
+                ast->children[i] = replace_syntax(env, ast->children[i], table, perr);
+                if (!ast->children[i])  return NULL;
+            }
+        }
+    }
+    else if (ast->type == SYNTAX_NODE_PAIR)
+    {
+        ast->children[0] = replace_syntax(env, ast->children[0], table, perr);
+        if (!ast->children[0])  return NULL;
+
+        ast->children[1] = replace_syntax(env, ast->children[1], table, perr);
+        if (!ast->children[1])  return NULL;
+    }
+    else
+    {
+        MinimObject *obj;
+
+        obj = match_table_get(table, ast->sym);
+        if (obj)
+        {
+            *perr = minim_error("variable cannot be used outside of template", ast->sym);
+        }
+    }
+
+    return ast;
+}
+
 // ================================ Public ================================
 
 SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
 {
-    *perr = NULL;   // NULL signals success     
+    *perr = NULL;   // NULL signals success
     return transform_syntax_rec(env, ast, perr);
 }
 
-bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved,  MinimObject **perr)
+bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved, MinimObject **perr)
 {
     MatchTable table;
     SymbolList reserved_lst;
@@ -598,12 +674,59 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
 
 MinimObject *minim_builtin_def_syntax(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *trans, *sym;
+    MinimObject **lam_args, *lam, *trans, *res;
+    SyntaxNode *body;
 
-    unsyntax_ast(env, MINIM_AST(args[0]), &sym);
-    init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_STRING(sym), MINIM_AST(args[1]));
-    env_intern_sym(env, MINIM_STRING(sym), trans);
+    body = MINIM_AST(args[1])->children[2];
+    body = transform_syntax(env, body, &res);
+    if (res)    return res;
+
+    lam_args = GC_alloc(2 * sizeof(MinimObject*));
+    init_minim_object(&lam_args[0], MINIM_OBJ_AST, MINIM_AST(args[1])->children[1]);
+    init_minim_object(&lam_args[1], MINIM_OBJ_AST, body);
+    lam = minim_builtin_lambda(env, 2, lam_args);
+
+    init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_AST(args[0])->sym, MINIM_DATA(lam));
+    env_intern_sym(env, MINIM_AST(args[0])->sym, trans);
 
     init_minim_object(&res, MINIM_OBJ_VOID);
     return res;
+}
+
+MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MatchTable table;
+    SymbolList reserved;
+    MinimObject *ast0;
+
+    eval_ast_no_check(env, MINIM_AST(args[0]), &ast0);
+    if (!ast0)
+        return minim_error("unknown identifier", MINIM_AST(args[0])->sym);
+
+    if (!MINIM_OBJ_ASTP(ast0))
+        return minim_argument_error("syntax?", "syntax-case", 0, ast0);
+    
+    init_symbol_list(&reserved, MINIM_AST(args[1])->childc);
+    for (size_t i = 0; i < MINIM_AST(args[1])->childc; ++i)
+        reserved.syms[i] = MINIM_AST(args[1])->children[i]->sym;
+
+    for (size_t i = 2; i < argc; ++i)
+    {
+        SyntaxNode *rule, *replace;
+        MinimObject *res;
+
+        init_match_table(&table);
+        rule = MINIM_AST(args[i]);
+        if (match_transform(rule->children[0], MINIM_AST(ast0), &table, &reserved, 0))
+        {
+            copy_syntax_node(&replace, rule->children[1]);
+            replace = replace_syntax(env, replace, &table, &res);
+            if (!replace)   return res;
+
+            eval_ast_no_check(env, replace, &res);
+            return res;
+        }
+    }
+
+    return minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL);
 }

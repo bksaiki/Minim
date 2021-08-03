@@ -2,9 +2,7 @@
 ;   Additional math definitions
 ;
 
-(%import "and-or.min"
-         "cond.min"
-         "when-unless.min")
+(%import "pre-base.min")
 
 ;;;;;;;;;;;;;;;;;;;;;; Constants ;;;;;;;;;;;;;;;;;;;;;;;;;;
 

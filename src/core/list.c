@@ -116,10 +116,22 @@ bool minim_consp(MinimObject* thing)
     return (thing->type == MINIM_OBJ_PAIR && MINIM_CAR(thing));
 }
 
+// list |= (obj? . list?)
+//      |= (obj? . null)
 bool minim_listp(MinimObject* thing)
 {
-    return (thing->type == MINIM_OBJ_PAIR && (!MINIM_CAR(thing) || !MINIM_CDR(thing) ||
-            MINIM_CDR(thing)->type == MINIM_OBJ_PAIR));
+    if (thing->type != MINIM_OBJ_PAIR)
+        return false;
+
+    // null
+    if (!MINIM_CAR(thing) && !MINIM_CDR(thing))
+        return true;
+
+    // '(a)
+    if (!MINIM_CDR(thing))
+        return true;
+
+    return minim_listp(MINIM_CDR(thing));
 }
 
 bool minim_nullp(MinimObject* thing)

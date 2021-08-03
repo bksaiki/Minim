@@ -22,8 +22,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
     minim_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     minim_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
-    minim_load_builtin(env, "for", MINIM_OBJ_SYNTAX, minim_builtin_for);
-    minim_load_builtin(env, "for-list", MINIM_OBJ_SYNTAX, minim_builtin_for_list);
     minim_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
     minim_load_builtin(env, "case", MINIM_OBJ_SYNTAX, minim_builtin_case);
     minim_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
@@ -38,6 +36,12 @@ void minim_load_builtins(MinimEnv *env)
 
     // Transforms
     minim_load_builtin(env, "def-syntax", MINIM_OBJ_SYNTAX, minim_builtin_def_syntax);
+    minim_load_builtin(env, "syntax", MINIM_OBJ_SYNTAX, minim_builtin_syntax);
+    minim_load_builtin(env, "syntax?", MINIM_OBJ_FUNC, minim_builtin_syntaxp);
+    minim_load_builtin(env, "unwrap", MINIM_OBJ_FUNC, minim_builtin_unwrap);
+    minim_load_builtin(env, "syntax-case", MINIM_OBJ_SYNTAX, minim_builtin_syntax_case);
+    minim_load_builtin(env, "syntax-error", MINIM_OBJ_FUNC, minim_builtin_syntax_error);
+    minim_load_builtin(env, "datum->syntax", MINIM_OBJ_FUNC, minim_builtin_to_syntax);
     
     // Miscellaneous
     minim_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
@@ -147,10 +151,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "vector-fill!", MINIM_OBJ_FUNC, minim_builtin_vector_fillb);
 
     // Sequence
+    minim_load_builtin(env, "sequence", MINIM_OBJ_FUNC, minim_builtin_sequence);
     minim_load_builtin(env, "sequence?", MINIM_OBJ_FUNC, minim_builtin_sequencep);
-    minim_load_builtin(env, "in-range", MINIM_OBJ_FUNC, minim_builtin_in_range);
-    minim_load_builtin(env, "in-naturals", MINIM_OBJ_FUNC, minim_builtin_in_naturals);
-    minim_load_builtin(env, "sequence->list", MINIM_OBJ_FUNC, minim_builtin_sequence_to_list);
+    minim_load_builtin(env, "sequence-first", MINIM_OBJ_FUNC, minim_builtin_sequence_first);
+    minim_load_builtin(env, "sequence-rest", MINIM_OBJ_FUNC, minim_builtin_sequence_rest);
+    minim_load_builtin(env, "sequence-empty?", MINIM_OBJ_FUNC, minim_builtin_sequence_donep);
 
     // Math
     minim_load_builtin(env, "+", MINIM_OBJ_FUNC, minim_builtin_add);

@@ -1,0 +1,90 @@
+;
+;   'for'
+;
+
+(%import "and-or.min" "stx.min" "when-unless.min")
+
+; (def-syntax datum->seq
+;   (lambda (stx)
+;     (if (not (identifier? stx))
+;         (syntax-error 'datum-seq "not allowed as an expression")
+;         (let ([e (stx-cdr stx)])
+;           (if (null? e)
+;               (syntax-error 'datum-seq "expected an argument")
+;               (stx-car stx))))))
+
+;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-syntax for
+  (lambda (stx)
+    (syntax-case stx ()
+     [(_ () body ...) #'(void)]
+     [(_ ([id seq]))
+      (syntax-error 'for "missing body" stx)]
+     [(_ ([id seq] ...) body ...)
+      #'(let loop ([id seq] ...)
+          (if (or (sequence-empty? id) ...)
+              (void)
+              (begin
+                (let ([id (sequence-first id)] ...)
+                  body ...)
+                (loop (sequence-rest id) ...))))])))
+
+(def-syntax for/list
+  (lambda (stx)
+    (syntax-case stx ()
+     [(_ () body ...) #'(void)]
+     [(_ ([id seq]))
+      (syntax-error 'for/list "missing body" stx)]
+     [(_ ([id seq] ...) body ...)
+      #'(let loop ([accum '()] [id seq] ...)
+          (if (or (sequence-empty? id) ...)
+              (reverse accum)
+              (loop
+                (cons
+                  (let ([id (sequence-first id)] ...)
+                    body ...)
+                  accum)
+                (sequence-rest id) ...)))])))
+
+;;;;;;;;;;;;;;;;;;;;;;; specific sequences ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def in-list (lst)
+  (unless (list? lst)
+    (error 'in-list "expected a list"))
+  (sequence lst car cdr null?))
+
+(def in-range (n)
+  (unless (and (number? n) (exact? n) (integer? n) (not (negative? n)))
+    (error 'in-list "expected an exact non-negative integer"))
+  (sequence 0
+            (lambda (x) x)
+            (lambda (x) (+ x 1))
+            (lambda (x) (equal? x n))))
+
+(def in-naturals ()
+  (sequence 0
+            (lambda (x) x)
+            (lambda (x) (+ x 1))
+            (lambda (x) #f)))
+
+(def in-vector (v)
+  (unless (vector? v)
+    (error 'in-vector "expected a vector"))
+  (sequence (cons v 0)
+            (lambda (x) (vector-ref (car x) (cdr x)))
+            (lambda (x) (cons (car x) (+ (cdr x) 1)))
+            (lambda (x) (equal? (vector-length (car x)) (cdr x)))))
+
+;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def sequence->list (seq)
+  (let loop ([accum '()] [seq seq])
+    (if (sequence-empty? seq)
+        (reverse accum)
+        (loop (cons (sequence-first seq) accum)
+              (sequence-rest seq)))))
+
+(%export for for/list
+         in-list in-range in-naturals in-vector
+         sequence->list)

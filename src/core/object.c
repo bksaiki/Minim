@@ -4,7 +4,6 @@
 #include "../gc/gc.h"
 #include "env.h"
 #include "error.h"
-#include "iter.h"
 #include "hash.h"
 #include "lambda.h"
 #include "list.h"
@@ -112,7 +111,7 @@ void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs)
     else if (MINIM_OBJ_TRANSFORMP(obj))
     {
         obj->u.ptrs.p1 = va_arg(vargs, char*);
-        obj->u.ptrs.p2 = va_arg(vargs, SyntaxNode*);
+        obj->u.ptrs.p2 = va_arg(vargs, MinimLambda*);
     }
     else if (type == MINIM_OBJ_CLOSURE)
     {
@@ -208,11 +207,11 @@ void copy_minim_object(MinimObject **pobj, MinimObject *src)
     }
     else if (MINIM_OBJ_TRANSFORMP(src))
     {
-        SyntaxNode *node;
+        MinimLambda *lam;
 
-        copy_syntax_node(&node, MINIM_TRANSFORM_AST(src));
+        copy_minim_lambda(&lam, MINIM_TRANSFORM_PROC(src));
         obj->u.ptrs.p1 = GC_alloc_atomic((strlen(MINIM_TRANSFORM_NAME(src)) + 1) * sizeof(char));
-        obj->u.ptrs.p2 = node;
+        obj->u.ptrs.p2 = lam;
     }
     else if (src->type == MINIM_OBJ_CLOSURE)
     {

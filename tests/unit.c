@@ -111,6 +111,24 @@ int main()
     }
 
     {
+        const int COUNT = 7;
+        char strs[14][256] =
+        {
+            "(list? 2)",                "#f",
+            "(list? '())",              "#t",
+            "(list? '(1))",             "#t",
+            "(list? '(1 2))",           "#t",
+            "(list? '(1 . 2))",         "#f",
+            "(list? '(1 2 3))",         "#t",
+            "(list? '(1 2 . 3))",       "#f"
+        };
+
+        printf("Testing list?\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 10;
         char strs[20][256] =
         {
@@ -402,8 +420,8 @@ int main()
     }
 
     {
-        const int COUNT = 10;
-        char strs[20][256] =
+        const int COUNT = 11;
+        char strs[22][256] =
         {
             "(let () 1)",                       "1",
             "(let ((x 1)) x)",                  "1",
@@ -414,7 +432,8 @@ int main()
             "(let* ((x 1)) (+ x 1))",           "2",
             "(let* ((x 1) (y 2)) (+ x y))",     "3",  
             "(let* ((x 1) (y x)) y)",           "1",
-            "(let* ((x 1) (y x)) (+ x y))",     "2"                    
+            "(let* ((x 1) (y x)) (+ x y))",     "2",
+            "(let* () 1 2)",                    "2"                 
         };
 
         printf("Testing 'let/let*'\n");
@@ -423,8 +442,8 @@ int main()
     }
 
     {
-        const int COUNT = 7;
-        char strs[14][256] =
+        const int COUNT = 8;
+        char strs[16][256] =
         {
             "(let f () 1)",                     "1",
             "(let f ((x 2)) x)",                "2",
@@ -433,53 +452,11 @@ int main()
             "(let* f ((x 2)) x)",               "2",
             "(let* f ((x 1) (y x)) (+ x y))",   "2",
 
-            "(let fact ([n 4]) (if (zero? n) 1 (* n (fact (- n 1)))))",
-            "24"
+            "(let fact ([n 4]) (if (zero? n) 1 (* n (fact (- n 1)))))",     "24",
+            "(let foo ([n 4]) (set! n 2) n)",                               "2"
         };
 
         printf("Testing 'named let/let*'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 3;
-        char strs[6][256] =
-        {
-            "(for ((x (list))) x)",              "<void>",
-            "(for ((x (list 1))) x)",            "<void>",
-            "(for ((x (list 1 2 3))) x)",        "<void>"
-        };
-
-        printf("Testing 'for'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 3;
-        char strs[6][256] =
-        {
-            "(for-list ((x (list))) x)",            "'()",
-            "(for-list ((x (list 1))) x)",          "'(1)",
-            "(for-list ((x (list 1 2 3))) x)",      "'(1 2 3)"
-        };
-
-        printf("Testing 'for-list'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 3;
-        char strs[6][256] =
-        {
-            "(for-list ([x (list)]) x)",            "'()",
-            "(for-list ([x (list 1)]) x)",          "'(1)",
-            "(for-list ([x (list 1 2 3)]) x)",      "'(1 2 3)"
-        };
-
-        printf("Testing 'for-list' (alt-syntax)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -533,45 +510,20 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
-    {
-        const int COUNT = 2;
-        char strs[4][256] =
-        {
-            "(for-list ((x (in-range 3))) x)",      "'(0 1 2)",
-            "(for-list ((x (in-range 1 4))) x)",    "'(1 2 3)"
-        };
 
-        printf("Testing 'in-range'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
+    // {
+    //     const int COUNT = 3;
+    //     char strs[6][256] =
+    //     {
+    //         "(for-list ((x '()) (i (in-naturals))) i)",             "'()",
+    //         "(for-list ((x '(1 2 3 4)) (i (in-naturals))) i)",      "'(0 1 2 3)",
+    //         "(for-list ((x '(1 2 3 4)) (i (in-naturals 2))) i)",    "'(2 3 4 5)"
+    //     };
 
-    {
-        const int COUNT = 3;
-        char strs[6][256] =
-        {
-            "(for-list ((x '()) (i (in-naturals))) i)",             "'()",
-            "(for-list ((x '(1 2 3 4)) (i (in-naturals))) i)",      "'(0 1 2 3)",
-            "(for-list ((x '(1 2 3 4)) (i (in-naturals 2))) i)",    "'(2 3 4 5)"
-        };
-
-        printf("Testing 'in-naturals'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 2;
-        char strs[4][256] =
-        {
-            "(sequence->list (in-range 0))",    "'()",
-            "(sequence->list (in-range 5))",    "'(0 1 2 3 4)"    
-        };
-
-        printf("Testing 'sequence->list'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
+    //     printf("Testing 'in-naturals'\n");
+    //     for (int i = 0; i < COUNT; ++i)
+    //         status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    // }
 
     {
         const int COUNT = 3;
@@ -694,7 +646,7 @@ int main()
         {
             "(procedure-arity exp)",                "1",
             "(procedure-arity +)",                  "'(0 . #f)",
-            "(procedure-arity in-range)",           "'(1 . 2)",
+            "(procedure-arity error)",           "'(1 . 2)",
             "(procedure-arity (lambda (x) x))",     "1",
             "(procedure-arity (lambda x x))",       "'(0 . #f)"
         };
@@ -720,14 +672,15 @@ int main()
     }
 
     {
-        const int COUNT = 5;
-        char strs[10][256] =
+        const int COUNT = 6;
+        char strs[12][256] =
         {
-            "`1",                       "1",
-            "`(1 2 3)",                 "'(1 2 3)",
-            "`(1 null)",                "'(1 null)",
-            "`(1 ,null)",               "'(1 ())",
-            "`(1 2 ,(+ 1 2 3))",        "'(1 2 6)"
+            "`1",                           "1",
+            "`(1 2 3)",                     "'(1 2 3)",
+            "`(1 null)",                    "'(1 null)",
+            "`(1 ,null)",                   "'(1 ())",
+            "`(1 2 ,(+ 1 2 3))",            "'(1 2 6)",
+            "(begin (def a 1) `(1 ,a))",    "'(1 1)"
         };
 
         printf("Testing quasiquote / unquote\n");

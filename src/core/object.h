@@ -101,13 +101,16 @@ typedef bool (*MinimPred)(MinimObject *);
 
 #define MINIM_ERROR(obj)        ((MinimError*) (obj)->u.ptrs.p1)
 
+#define MINIM_CLOSURE(obj)      ((MinimLambda*) (obj)->u.ptrs.p1)
+#define MINIM_SEQ(obj)          ((MinimSeq*) (obj)->u.ptrs.p1)
+
 #define MINIM_PROMISE_VAL(obj)          (obj->u.pair.car)
 #define MINIM_PROMISE_ENV(obj)          ((MinimEnv*) obj->u.pair.cdr)
 #define MINIM_PROMISE_FORCEDP(obj)      (obj->u.pair.cdr == NULL)
 #define MINIM_PROMISE_SET_FORCED(obj)   (obj)->u.pair.cdr = 0x0
 
 #define MINIM_TRANSFORM_NAME(obj)       ((char*) obj->u.ptrs.p1)
-#define MINIM_TRANSFORM_AST(obj)        ((SyntaxNode*) obj->u.ptrs.p2)
+#define MINIM_TRANSFORM_PROC(obj)        ((MinimLambda*) obj->u.ptrs.p2)
 
 //  Initialization
 

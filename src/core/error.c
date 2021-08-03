@@ -161,7 +161,7 @@ void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
 {
     MinimErrorTrace *trace;
 
-    if (err->bottom)
+    if (err->bottom && err->bottom->name)
     {   
         if (strcmp(err->bottom->name, name) == 0)
         {
@@ -203,15 +203,16 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
     Buffer *bf;
 
     init_minim_error(&err, msg, where);
+    init_minim_object(&obj, MINIM_OBJ_ERR, err);
     if (expr && !subexpr)
     {
         init_buffer(&bf);
         ast_to_buffer(expr, bf);
         init_minim_error_desc_table(&err->table, 1);
         minim_error_desc_table_set(err->table, 0, "in", get_buffer(bf));
-        init_minim_object(&obj, MINIM_OBJ_ERR, err);
 
-        minim_error_add_trace(err, expr->loc, NULL);
+        if (expr->loc)
+            minim_error_add_trace(err, expr->loc, NULL);
     }
     else if (expr && subexpr)
     {
@@ -224,9 +225,9 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
         init_buffer(&bf);
         ast_to_buffer(expr, bf);
         minim_error_desc_table_set(err->table, 1, "in", get_buffer(bf));
-        init_minim_object(&obj, MINIM_OBJ_ERR, err);
-
-        minim_error_add_trace(err, subexpr->loc, NULL);
+        
+        if (expr->loc)
+            minim_error_add_trace(err, expr->loc, NULL);
     }
 
     return obj;
@@ -341,4 +342,40 @@ MinimObject *minim_builtin_error(MinimEnv *env, size_t argc, MinimObject **args)
     }
 
     return res;
+}
+
+MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("symbol?/string?", "syntax-error", 0, args[0]);
+
+    if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_STRINGP(args[1]))
+        return minim_argument_error("symbol?/string?", "syntax-error", 1, args[1]);
+
+    if (argc == 2)
+    {
+        return minim_syntax_error(MINIM_STRING(args[1]),
+                                  MINIM_STRING(args[0]),
+                                  NULL,
+                                  NULL);
+    }
+    
+    if (!MINIM_OBJ_ASTP(args[2]))
+        return minim_argument_error("syntax?", "syntax-error", 2, args[2]);
+
+    if (argc == 3)
+    {
+        return minim_syntax_error(MINIM_STRING(args[1]),
+                                  MINIM_STRING(args[0]),
+                                  MINIM_AST(args[2]),
+                                  NULL);
+    }
+
+    if (!MINIM_OBJ_ASTP(args[3]))
+        return minim_argument_error("syntax?", "syntax-error", 3, args[3]);
+
+    return minim_syntax_error(MINIM_STRING(args[1]),
+                              MINIM_STRING(args[0]),
+                              MINIM_AST(args[2]),
+                              MINIM_AST(args[3]));
 }

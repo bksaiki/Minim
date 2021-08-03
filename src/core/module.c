@@ -128,7 +128,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *ret, *arg;
-    MinimModule *module2;
+    MinimModule *tmp, *module2;
     Buffer *path;
 
     if (!env->current_dir)
@@ -136,7 +136,8 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         ret = minim_error("environment improperly configured", "%import");
         return ret;
     }
-    
+
+    init_minim_module(&tmp);
     for (size_t i = 0; i < argc; ++i)
     {
         unsyntax_ast(env, MINIM_AST(args[i]), &arg);
@@ -148,7 +149,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         module2 = minim_load_file_as_module(env->module, get_buffer(path), &ret);
         if (!module2) return ret;
 
-        module2->prev = env->module;
+        module2->prev = tmp;
         module2->name = get_buffer(path);
         if (!eval_module(module2, &ret))
             return ret;
@@ -156,6 +157,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         minim_module_add_import(env->module, module2);
     }
 
+    minim_symbol_table_merge(env->module->import->table, tmp->import->table);
     init_minim_object(&ret, MINIM_OBJ_VOID);
     return ret;
 }

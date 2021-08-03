@@ -184,8 +184,10 @@ MinimObject *minim_builtin_format(MinimEnv *env, size_t argc, MinimObject **args
                 PrintParams pp;
                 char *t;
 
+                set_default_print_params(&pp);
                 pp.quote = true;
                 pp.display = true;
+                
                 t = print_to_string(args[var++], env, &pp);
                 writes_buffer(bf, t);
             }
@@ -217,6 +219,7 @@ MinimObject *minim_builtin_printf(MinimEnv *env, size_t argc, MinimObject **args
     {
         PrintParams pp;
 
+        set_default_print_params(&pp);
         pp.quote = true;
         pp.display = true;
         

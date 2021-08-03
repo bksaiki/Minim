@@ -17,31 +17,6 @@
 //  Printing
 //
 
-// forward declaration
-static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp);
-
-static void print_list(MinimObject* obj, MinimEnv* env, Buffer *bf, PrintParams *pp)
-{
-    if (MINIM_CAR(obj))
-        print_object(MINIM_CAR(obj), env, bf, pp);
-
-    if (!MINIM_CDR(obj))
-    {
-        writec_buffer(bf, ')');
-    }
-    else if (MINIM_CDR(obj)->type == MINIM_OBJ_PAIR)
-    {
-        writec_buffer(bf, ' ');
-        print_list(MINIM_CDR(obj), env, bf, pp);
-    }
-    else
-    {
-        writes_buffer(bf, " . ");
-        print_object(MINIM_CDR(obj), env, bf, pp);
-        writec_buffer(bf, ')');
-    }
-}
-
 static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
     if (MINIM_OBJ_VOIDP(obj))
@@ -157,18 +132,28 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         else            writes_buffer(bf, "'(");
 
         pp->quote = true; // push
-        if (minim_listp(obj))
+        for (MinimObject *it = obj; it; it = MINIM_CDR(it))
         {
-            print_list(obj, env, bf, pp);
-        }
-        else
-        {
-            print_object(MINIM_CAR(obj), env, bf, pp);
-            writes_buffer(bf, " . ");
-            print_object(MINIM_CDR(obj), env, bf, pp);
-            writec_buffer(bf, ')');
+            if (minim_nullp(it))
+                break;
+
+            print_object(MINIM_CAR(it), env, bf, pp);
+            if (!MINIM_CDR(it))
+                break;
+
+            if (!MINIM_OBJ_PAIRP(MINIM_CDR(it)))
+            {
+                writes_buffer(bf, " . ");
+                print_object(MINIM_CDR(it), env, bf, pp);
+                break;
+            }
+            else
+            {
+                writec_buffer(bf, ' ');
+            }
         }
 
+        writec_buffer(bf, ')');
         pp->quote = quotep; // pop
     }
     else if (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_SYNTAXP(obj))
@@ -242,9 +227,13 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         }
         else
         {
+            bool syntaxp = pp->syntax;
+
+            pp->syntax = true;
             writes_buffer(bf, "<syntax:");
             ast_to_buffer(obj->u.ptrs.p1, bf);
             writec_buffer(bf, '>');
+            pp->syntax = syntaxp;
         }
     }
     else if (MINIM_OBJ_PROMISEP(obj))

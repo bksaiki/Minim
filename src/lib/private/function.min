@@ -1,6 +1,8 @@
-;;;;;;;;;;;;;;;;;;; Functional ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;   Functional programming constructs
+;
 
-(%import "when-unless.min")
+(%import "pre-base.min")
 
 (def identity (x) x)
 

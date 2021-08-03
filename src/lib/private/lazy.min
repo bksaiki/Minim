@@ -1,4 +1,6 @@
-;;;;;;;;;;;;;;;;;;; lazy list evaluation ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;   Lazy lists
+;
 
 ;;  A lazy list is a special type of list of the form
 ;;   ( <val1> . <promise> )
@@ -7,6 +9,8 @@
 ;;                            |
 ;;                         (<val3> . <promise>)
 ;;                                     ...
+
+(%import "pre-base.min")
 
 ;; lazy cons
 (def-syntax lazy-cons

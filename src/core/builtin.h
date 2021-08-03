@@ -15,8 +15,6 @@ DEFINE_BUILTIN_FUN(setb)
 DEFINE_BUILTIN_FUN(if)
 DEFINE_BUILTIN_FUN(let)
 DEFINE_BUILTIN_FUN(letstar)
-DEFINE_BUILTIN_FUN(for)
-DEFINE_BUILTIN_FUN(for_list)
 DEFINE_BUILTIN_FUN(begin)
 DEFINE_BUILTIN_FUN(case)
 DEFINE_BUILTIN_FUN(quote)
@@ -33,6 +31,12 @@ DEFINE_BUILTIN_FUN(import)
 
 // Transforms
 DEFINE_BUILTIN_FUN(def_syntax)
+DEFINE_BUILTIN_FUN(syntax)
+DEFINE_BUILTIN_FUN(syntaxp)
+DEFINE_BUILTIN_FUN(unwrap)
+DEFINE_BUILTIN_FUN(syntax_case)
+DEFINE_BUILTIN_FUN(syntax_error)
+DEFINE_BUILTIN_FUN(to_syntax)
 
 // Miscellaneous
 DEFINE_BUILTIN_FUN(equalp)
@@ -136,10 +140,11 @@ DEFINE_BUILTIN_FUN(list_to_vector)
 DEFINE_BUILTIN_FUN(vector_fillb)
 
 // Sequence
+DEFINE_BUILTIN_FUN(sequence)
 DEFINE_BUILTIN_FUN(sequencep)
-DEFINE_BUILTIN_FUN(in_range)
-DEFINE_BUILTIN_FUN(in_naturals)
-DEFINE_BUILTIN_FUN(sequence_to_list)
+DEFINE_BUILTIN_FUN(sequence_first)
+DEFINE_BUILTIN_FUN(sequence_rest)
+DEFINE_BUILTIN_FUN(sequence_donep)
 
 // Math
 DEFINE_BUILTIN_FUN(add)

@@ -1,8 +1,8 @@
-;;;;;;;;;;;;;;;;;;; Specialized list ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;   Additional list constructs
+;
 
-(%import "and-or.min"
-         "cond.min"
-         "when-unless.min")
+(%import "pre-base.min")
 
 (def remove* (vs lst)
   (unless (and (list? vs) (list? lst))
