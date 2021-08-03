@@ -39,6 +39,7 @@ Buffer *get_directory(const char *file)
     size_t len, newlen;
     
     len = strlen(file);
+    newlen = 0;
     for (size_t i = len - 1; i < len; --i)
     {
 #ifdef MINIM_WINDOWS

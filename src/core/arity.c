@@ -215,6 +215,8 @@ bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity)
 {
     parity->low = lam->argc;
     parity->high = (lam->rest) ? SIZE_MAX : parity->low;
+
+    return true;
 }
 
 bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr)
