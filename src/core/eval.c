@@ -508,7 +508,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         {
             module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
             if (*pobj)  return 0;
-            
+
             *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntax);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
@@ -526,6 +526,8 @@ int eval_module(MinimModule *module, MinimObject **pobj)
 
         module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
         if (*pobj)  return 0;
+
+        print_ast(module->exprs[i]); printf("\n");
     }
 
     // Evaluation

@@ -355,6 +355,14 @@ static bool check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject
             *perr = minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]);
             return false;
         }
+
+        if (!valid_transformp(MINIM_AST(MINIM_CAR(rule)),
+                             MINIM_AST(MINIM_CADR(rule)),
+                             reserved,
+                             perr))
+        {
+            return false;
+        }
     }
 
     return true;

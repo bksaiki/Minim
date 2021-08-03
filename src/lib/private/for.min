@@ -2,30 +2,7 @@
 ;   'for'
 ;
 
-(%import "and-or.min" "cond.min" "stx.min" "when-unless.min")
-
-(def-syntax datum->seq
-  (lambda (stx)
-    (datum->syntax
-      (list
-        (syntax lambda)
-        (list (syntax x))
-        (list
-          (syntax cond)
-          (list
-            (syntax list?)
-            (list
-              (syntax in-list)
-              (syntax x)))
-          (list
-            (syntax sequence?)
-            (syntax x))
-          (list
-            (syntax else)
-            (list
-              (syntax error)
-              (syntax datum->seq)
-              (syntax "cannot be converted to a sequence"))))))))
+(%import "and-or.min" "stx.min" "when-unless.min")
 
 ;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -35,17 +12,15 @@
   (lambda (stx)
     (syntax-case stx ()
      [(_ () body ...) #'(void)]
-     [(_ ([ids seq]))
+     [(_ ([id seq]))
       (syntax-error 'for "missing body" stx)]
      [(_ ([id seq] ...) body ...)
-      #'(let loop ([ids (datum->seq seq)] ...)
-          (let ([id (sequence-first ids) ...])
+      #'(let loop ([id seq] ...)
+          (let ([id (sequence-first id)] ...)
             (if (or (sequence-empty? id) ...)
                 (void)
-                (begin
-                  body
-                  ...
-                  (loop (sequence-rest ids) ...)))))])))
+                (begin body ...)))
+          (loop (sequence-rest id) ...))])))
 
 ;;;;;;;;;;;;;;;;;;;;;;; specific sequences ;;;;;;;;;;;;;;;;;;;;;;;
 

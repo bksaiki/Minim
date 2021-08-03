@@ -301,6 +301,13 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
 {
     MinimObject *val;
 
+    // printf("trans: "); print_ast(ast); printf("\n");
+    // for (size_t i = 0; i < table->size; ++i)
+    // {
+    //     printf("[%zu] %s: ", table->depths[i], table->syms[i]);
+    //     debug_print_minim_object(table->objs[i], NULL);
+    // }
+
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
         for (size_t i = 0; i < ast->childc; ++i)
@@ -403,48 +410,12 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
     else
     {
         val = match_table_get(table, ast->sym);
-        if (val)    return MINIM_AST(val);      // replace
-    }
-
-    return ast;
-}
-
-static SyntaxNode *
-replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table, MinimObject **perr)
-{
-    if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
-    {
-        if (ast->type == SYNTAX_NODE_LIST &&
-            ast->children[0]->sym &&
-            strcmp(ast->children[0]->sym, "syntax") == 0)
+        if (val)    // replace
         {
-            ast->children[1] = apply_transformation(table, ast->children[1]);
-        }
-        else
-        {
-            for (size_t i = 0; i < ast->childc; ++i)
-            {
-                ast->children[i] = replace_syntax(env, ast->children[i], table, perr);
-                if (!ast->children[i])  return NULL;
-            }
-        }
-    }
-    else if (ast->type == SYNTAX_NODE_PAIR)
-    {
-        ast->children[0] = replace_syntax(env, ast->children[0], table, perr);
-        if (!ast->children[0])  return NULL;
+            SyntaxNode *cp;
 
-        ast->children[1] = replace_syntax(env, ast->children[1], table, perr);
-        if (!ast->children[1])  return NULL;
-    }
-    else
-    {
-        MinimObject *obj;
-
-        obj = match_table_get(table, ast->sym);
-        if (obj)
-        {
-            *perr = minim_error("variable cannot be used outside of template", ast->sym);
+            copy_syntax_node(&cp, MINIM_AST(val));
+            return cp;
         }
     }
 
@@ -457,7 +428,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
     MinimObject *body, *res;
 
     init_minim_object(&body, MINIM_OBJ_AST, ast);
-    res = eval_lambda(MINIM_TRANSFORM_PROC(trans), env, 1, &body);
+    res = eval_lambda(MINIM_TRANSFORM_PROC(trans), NULL, 1, &body);
     if (MINIM_OBJ_ERRORP(res))
     {
         *perr = res;
@@ -628,6 +599,51 @@ valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, siz
     return true;
 }
 
+static SyntaxNode *
+replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table, MinimObject **perr)
+{
+    if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
+    {
+        if (ast->type == SYNTAX_NODE_LIST &&
+            ast->children[0]->sym &&
+            strcmp(ast->children[0]->sym, "syntax") == 0)
+        {
+            *perr = NULL;
+            ast->children[1] = apply_transformation(table, ast->children[1]);
+            ast->children[1] = transform_syntax_rec(env, ast->children[1], perr);
+            if (!ast->children[1])  return NULL;
+        }
+        else
+        {
+            for (size_t i = 0; i < ast->childc; ++i)
+            {
+                ast->children[i] = replace_syntax(env, ast->children[i], table, perr);
+                if (!ast->children[i])  return NULL;
+            }
+        }
+    }
+    else if (ast->type == SYNTAX_NODE_PAIR)
+    {
+        ast->children[0] = replace_syntax(env, ast->children[0], table, perr);
+        if (!ast->children[0])  return NULL;
+
+        ast->children[1] = replace_syntax(env, ast->children[1], table, perr);
+        if (!ast->children[1])  return NULL;
+    }
+    else
+    {
+        MinimObject *obj;
+
+        obj = match_table_get(table, ast->sym);
+        if (obj)
+        {
+            *perr = minim_error("variable cannot be used outside of template", ast->sym);
+        }
+    }
+
+    return ast;
+}
+
 // ================================ Public ================================
 
 SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
@@ -690,7 +706,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
     if (!MINIM_OBJ_ASTP(ast0))
         return minim_argument_error("syntax?", "syntax-case", 0, ast0);
     
-    init_match_table(&table);
     init_symbol_list(&reserved, MINIM_AST(args[1])->childc);
     for (size_t i = 0; i < MINIM_AST(args[1])->childc; ++i)
         reserved.syms[i] = MINIM_AST(args[1])->children[i]->sym;
@@ -700,6 +715,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         SyntaxNode *rule, *replace;
         MinimObject *res;
 
+        init_match_table(&table);
         rule = MINIM_AST(args[i]);
         if (match_transform(rule->children[0], MINIM_AST(ast0), &table, &reserved, 0))
         {
