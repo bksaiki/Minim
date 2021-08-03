@@ -3,12 +3,14 @@
 ;
 
 (%import "private/pre-base.min"
+         "private/for.min"
          "private/function.min"
          "private/lazy.min"
          "private/list.min"
          "private/math.min")
 
 (%export (all "private/pre-base.min")
+         (all "private/for.min")
          (all "private/function.min")
          (all "private/lazy.min")
          (all "private/list.min")

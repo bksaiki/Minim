@@ -145,7 +145,6 @@ DEFINE_BUILTIN_FUN(sequencep)
 DEFINE_BUILTIN_FUN(sequence_first)
 DEFINE_BUILTIN_FUN(sequence_rest)
 DEFINE_BUILTIN_FUN(sequence_donep)
-DEFINE_BUILTIN_FUN(sequence_to_list)
 
 // Math
 DEFINE_BUILTIN_FUN(add)

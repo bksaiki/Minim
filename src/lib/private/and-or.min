@@ -35,9 +35,15 @@
                   (stx-car e)
                   (datum->syntax
                     (list
-                      (syntax if)
-                      (stx-car e)
-                      (stx-car e)
-                      (cons (syntax or) (stx-cdr e))))))))))
+                      (syntax let)
+                      (list
+                        (list
+                          (syntax t)
+                          (stx-car e)))
+                      (list
+                        (syntax if)
+                        (syntax t)
+                        (syntax t)
+                        (cons (syntax or) (stx-cdr e)))))))))))
 
 (%export and or)

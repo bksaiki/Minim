@@ -142,7 +142,6 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(sequence_first, 1);
     SET_ARITY_EXACT(sequence_rest, 1);
     SET_ARITY_EXACT(sequence_donep, 1);
-    SET_ARITY_EXACT(sequence_to_list, 1);
 
     // Math
     // NO CHECK: 'add'

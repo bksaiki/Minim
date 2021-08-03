@@ -6,8 +6,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
 
-; for/generic 
-
 (def-syntax for
   (lambda (stx)
     (syntax-case stx ()
@@ -16,11 +14,29 @@
       (syntax-error 'for "missing body" stx)]
      [(_ ([id seq] ...) body ...)
       #'(let loop ([id seq] ...)
-          (let ([id (sequence-first id)] ...)
-            (if (or (sequence-empty? id) ...)
-                (void)
-                (begin body ...)))
-          (loop (sequence-rest id) ...))])))
+          (if (or (sequence-empty? id) ...)
+              (void)
+              (begin
+                (let ([id (sequence-first id)] ...)
+                  body ...)
+                (loop (sequence-rest id) ...))))])))
+
+(def-syntax for/list
+  (lambda (stx)
+    (syntax-case stx ()
+     [(_ () body ...) #'(void)]
+     [(_ ([id seq]))
+      (syntax-error 'for/list "missing body" stx)]
+     [(_ ([id seq] ...) body ...)
+      #'(let loop ([accum '()] [id seq] ...)
+          (if (or (sequence-empty? id) ...)
+              (reverse accum)
+              (loop
+                (cons
+                  (let ([id (sequence-first id)] ...)
+                    body ...)
+                  accum)
+                (sequence-rest id) ...)))])))
 
 ;;;;;;;;;;;;;;;;;;;;;;; specific sequences ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -32,5 +48,29 @@
             (lambda (x) (cdr x))
             (lambda (x) (null? x))))
 
-(%export for
-         in-list)
+(def in-range (n)
+  (unless (and (number? n) (exact? n) (integer? n) (not (negative? n)))
+    (error 'in-list "expected an exact non-negative integer"))
+  (sequence 0
+            (lambda (x) x)
+            (lambda (x) (+ x 1))
+            (lambda (x) (equal? x n))))
+
+(def in-naturals ()
+  (sequence 0
+            (lambda (x) x)
+            (lambda (x) (+ x 1))
+            (lambda (x) #f)))
+
+;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def sequence->list (seq)
+  (let loop ([accum '()] [seq seq])
+    (if (sequence-empty? seq)
+        (reverse accum)
+        (loop (cons (sequence-first seq) accum)
+              (sequence-rest seq)))))
+
+(%export for for/list
+         in-list in-range in-naturals
+         sequence->list)

@@ -1,0 +1,24 @@
+;; Tests for <lib>/private/for.min
+
+; for
+(equal? (for ([x (in-list (list))]) x) (void))
+(equal? (for ([x (in-list (list 1))]) x) (void))
+(equal? (for ([x (in-list (list 1 2))]) x) (void))
+
+; for/list
+(equal? (for/list ([x (in-list (list))]) x) '())
+(equal? (for/list ([x (in-list (list 1))]) x) '(1))
+(equal? (for/list ([x (in-list (list 1 2))]) x) '(1 2))
+
+; in-range
+(equal? (for/list ((x (in-range 3))) x) '(0 1 2))
+; (equal? (for-list ((x (in-range 3))) x) '(0 1 2))
+
+; in-naturals
+(equal? (for/list ([x (in-list '())] [i (in-naturals)]) i) '())
+(equal? (for/list ([x (in-list '(1 2 3 4))] [i (in-naturals)]) i) '(0 1 2 3))
+; (equal? (for/list ([x '(1 2 3 4)] [i (in-naturals 2)]) i) '(2 3 4 5))
+
+; sequence->list
+(equal? (sequence->list (in-range 0)) '())
+(equal? (sequence->list (in-range 5)) '(0 1 2 3 4))

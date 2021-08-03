@@ -138,29 +138,3 @@ MinimObject *minim_builtin_sequence_donep(MinimEnv *env, size_t argc, MinimObjec
     init_minim_object(&res, MINIM_OBJ_BOOL, minim_seq_donep(MINIM_SEQ(args[0])));
     return res;
 }
-
-MinimObject *minim_builtin_sequence_to_list(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    MinimObject *res, *head, *lst;
-    MinimSeq *it;
-
-    if (!MINIM_OBJ_SEQP(args[0]))
-        return minim_argument_error("sequence", "sequence->list", 0, args[0]);
-
-    if (minim_seq_donep(MINIM_SEQ(args[0])))
-    {
-        init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-        return res;
-    }
-
-    it = MINIM_SEQ(args[0]);
-    init_minim_object(&head, MINIM_OBJ_PAIR, minim_seq_first(it), NULL);
-    lst = head;
-    for (it = minim_seq_rest(it); minim_seq_donep(it); it = minim_seq_rest(it))
-    {
-        init_minim_object(&MINIM_CDR(lst), MINIM_OBJ_PAIR, minim_seq_first(it), NULL);
-        lst = MINIM_CDR(lst);
-    }
-
-    return head;
-}
