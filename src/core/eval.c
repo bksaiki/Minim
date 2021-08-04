@@ -453,23 +453,45 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     MinimEnv *env2;
 
-    init_env(&env2, env, NULL);
-    if (!check_syntax(env2, ast, pobj))
-        return 0;
-
-    if (expr_is_module_level(env, ast))
+    if (expr_is_export(env, ast))
     {
-        MinimObject *val = env_get_sym(env, ast->children[0]->sym);
-
-        *pobj = eval_top_level(env, ast, MINIM_DATA(val));
-        return !MINIM_OBJ_ERRORP((*pobj));
+        *pobj = minim_error("%export not allowed in REPL", NULL);
+        return 0;
     }
 
-    ast = transform_syntax(env, ast, pobj);
-    if (*pobj)  return 0;
+    init_env(&env2, env, NULL);
+    if (expr_is_import(env, ast))
+    {
+        if (!check_syntax(env2, ast, pobj))
+            return 0;
 
-    *pobj = eval_ast_node(env, ast);
-    return !MINIM_OBJ_ERRORP((*pobj));
+        *pobj = eval_top_level(env, ast, minim_builtin_import);
+        if (MINIM_OBJ_ERRORP(*pobj))
+            return 0;
+    }
+    else if (expr_is_macro(env, ast))
+    {
+        ast = transform_syntax(env, ast, pobj);
+        if (*pobj)  return 0;
+
+        *pobj = eval_top_level(env, ast, minim_builtin_def_syntax);
+        if (MINIM_OBJ_ERRORP(*pobj))
+            return 0;
+    }
+    else
+    {
+        if (!check_syntax(env2, ast, pobj))
+            return 0;
+
+        ast = transform_syntax(env, ast, pobj);
+        if (*pobj)  return 0;
+
+        *pobj = eval_ast_node(env, ast);
+        if (MINIM_OBJ_ERRORP(*pobj))
+            return 0;
+    }
+
+    return 1;
 }
 
 int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj)
