@@ -247,6 +247,18 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writec_buffer(bf, '>');
         pp->syntax = syntaxp;
     }
+    else if (MINIM_OBJ_VALUESP(obj))
+    {
+        if (MINIM_VALUES_LEN(obj) == 0)
+            return 1;
+
+        print_object(MINIM_VALUES_ARR(obj)[0], env, bf, pp);
+        for (size_t i = 1; i < MINIM_VALUES_LEN(obj); ++i)
+        {
+            writec_buffer(bf, '\n');
+            print_object(MINIM_VALUES_ARR(obj)[i], env, bf, pp);
+        }
+    }
     else
     {
         // case MINIM_OBJ_TAIL_CALL:

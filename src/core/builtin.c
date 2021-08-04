@@ -29,6 +29,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "unquote", MINIM_OBJ_SYNTAX, minim_builtin_unquote);
     minim_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
     minim_load_builtin(env, "exit", MINIM_OBJ_SYNTAX, minim_builtin_exit);
+    minim_load_builtin(env, "values", MINIM_OBJ_FUNC, minim_builtin_values);
 
     // Modules
     minim_load_builtin(env, "%export", MINIM_OBJ_SYNTAX, minim_builtin_export);

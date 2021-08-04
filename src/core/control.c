@@ -218,3 +218,11 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
     init_minim_object(&res, MINIM_OBJ_VOID);
     return res;
 }
+
+MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_VALUES, args, argc);
+    return res;
+}

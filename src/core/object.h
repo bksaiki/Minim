@@ -42,7 +42,8 @@ typedef enum MinimObjectType
     MINIM_OBJ_SEQ,
     MINIM_OBJ_HASH,
     MINIM_OBJ_VECTOR,
-    MINIM_OBJ_PROMISE
+    MINIM_OBJ_PROMISE,
+    MINIM_OBJ_VALUES
 } MinimObjectType;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, size_t, MinimObject **);
@@ -74,6 +75,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_OBJ_HASHP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_HASH)
 #define MINIM_OBJ_VECTORP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
 #define MINIM_OBJ_PROMISEP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PROMISE)
+#define MINIM_OBJ_VALUESP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VALUES)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
 #define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
@@ -110,7 +112,10 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_PROMISE_SET_FORCED(obj)   (obj)->u.pair.cdr = 0x0
 
 #define MINIM_TRANSFORM_NAME(obj)       ((char*) obj->u.ptrs.p1)
-#define MINIM_TRANSFORM_PROC(obj)        ((MinimLambda*) obj->u.ptrs.p2)
+#define MINIM_TRANSFORM_PROC(obj)       ((MinimLambda*) obj->u.ptrs.p2)
+
+#define MINIM_VALUES_ARR(obj)           (obj->u.vec.arr)
+#define MINIM_VALUES_LEN(obj)           (obj->u.vec.len)
 
 //  Initialization
 
