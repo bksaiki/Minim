@@ -134,6 +134,49 @@ static bool check_syntax_def(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     return check_syntax_func(env, ast, perr, 2);
 }
 
+static bool check_syntax_def_values(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *ids, *sym, *tmp;
+
+    unsyntax_ast(env, ast->children[1], &ids);
+    if (!minim_listp(ids))
+    {
+        *perr = minim_syntax_error("not a list of identifiers",
+                                   ast->children[0]->sym,
+                                   ast,
+                                   ast->children[1]);
+        return false;
+    }
+
+    for (size_t i = 0; i < ast->children[1]->childc; ++i)
+    {
+        unsyntax_ast(env, ast->children[1]->children[i], &sym);
+        if (!MINIM_OBJ_SYMBOLP(sym))
+        {
+            *perr = minim_syntax_error("not an identifier",
+                                       MINIM_STRING(sym),
+                                       ast,
+                                       ast->children[1]->children[i]);
+            return false;
+        }
+
+        for (size_t j = 0; j < i; ++j)
+        {
+            if (strcmp(ast->children[1]->children[j]->sym, MINIM_STRING(sym)) == 0)
+            {
+                *perr = minim_syntax_error("duplicate identifier",
+                                           MINIM_STRING(sym),
+                                           ast,
+                                           ast->children[1]->children[i]);
+            }
+        }
+    }
+
+    init_minim_object(&tmp, MINIM_OBJ_VOID);
+    env_intern_sym(env, MINIM_STRING(sym), tmp);
+    return check_syntax_rec(env, ast->children[2], perr);
+}
+
 static bool check_syntax_lambda(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     return check_syntax_func(env, ast, perr, 1);
@@ -481,6 +524,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
             CHECK_REC(proc, minim_builtin_def, check_syntax_def);
+            CHECK_REC(proc, minim_builtin_def_values, check_syntax_def_values);
             CHECK_REC(proc, minim_builtin_if, check_syntax_if);
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);
             CHECK_REC(proc, minim_builtin_let, check_syntax_let);

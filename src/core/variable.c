@@ -44,6 +44,49 @@ MinimObject *minim_builtin_def(MinimEnv *env, size_t argc, MinimObject **args)
     return res;
 }
 
+MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res, *val;
+
+    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
+    if (MINIM_OBJ_THROWNP(val))
+        return val;
+    
+    if (!MINIM_OBJ_VALUESP(val))
+    {
+        if (MINIM_AST(args[0])->childc != 1)
+        {
+            res = minim_values_arity_error("def-values", MINIM_AST(args[0])->childc,
+                                           1, MINIM_AST(args[0]));
+            return res;
+        } 
+        else
+        {
+            env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
+        }
+    }
+    else
+    {
+        if (MINIM_VALUES_LEN(val) != MINIM_AST(args[0])->childc)
+        {
+            res = minim_values_arity_error("def-values",
+                                           MINIM_AST(args[0])->childc,
+                                           MINIM_VALUES_LEN(val),
+                                           MINIM_AST(args[0]));
+            return res;
+        }
+
+        for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
+        {
+            env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym,
+                                MINIM_VALUES_ARR(val)[i]);
+        }
+    }
+
+    init_minim_object(&res, MINIM_OBJ_VOID);
+    return res;
+}
+
 MinimObject *minim_builtin_quote(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;

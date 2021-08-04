@@ -11,6 +11,7 @@ typedef struct {
 
 // Variable / Control
 DEFINE_BUILTIN_FUN(def)
+DEFINE_BUILTIN_FUN(def_values)
 DEFINE_BUILTIN_FUN(setb)
 DEFINE_BUILTIN_FUN(if)
 DEFINE_BUILTIN_FUN(let)

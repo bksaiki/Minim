@@ -44,6 +44,38 @@ int main()
 
     {
         const int COUNT = 6;
+        char strs[12][256] =
+        {
+            "(def x 1)",                            "<void>",
+            "(def y (+ 1 2))",                      "<void>",
+            "(def z (+ 1 (* 2 3)))",                "<void>",
+            "(def nullary () 1)",                   "<void>",
+            "(def add1 (x) (+ x 1))",               "<void>",
+            "(def hyp2 (x y) (+ (* x x) (* y y)))", "<void>",
+        };
+
+        printf("Testing 'def'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(def-values (x) 1)",                                       "<void>",
+            "(def-values (y) (+ 1 2))",                                 "<void>",
+            "(def-values (x y) (values 1 (* 2 3)))",                    "<void>",
+            "(def-values (f g) (values (lambda () 1) (lambda () 2)))",  "<void>"
+        };
+
+        printf("Testing 'def-values'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 6;
         char strs[12][256] = 
         {
             "(equal? 'x 'x)",                   "#t",
@@ -398,23 +430,6 @@ int main()
         };
 
         printf("Testing 'foldr'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 6;
-        char strs[12][256] =
-        {
-            "(def x 1)",                            "<void>",
-            "(def y (+ 1 2))",                      "<void>",
-            "(def z (+ 1 (* 2 3)))",                "<void>",
-            "(def nullary () 1)",                   "<void>",
-            "(def add1 (x) (+ x 1))",               "<void>",
-            "(def hyp2 (x y) (+ (* x x) (* y y)))", "<void>",
-        };
-
-        printf("Testing 'def'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
