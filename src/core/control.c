@@ -98,7 +98,6 @@ MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bo
     MinimObject *bindings, *it;
     MinimEnv *env2;
     size_t len;
-    bool err;
 
     // Convert bindings to list
     unsyntax_ast(env, MINIM_DATA(args[0]), &bindings);
@@ -106,13 +105,12 @@ MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bo
         return bindings;
     
     // Initialize child environment
-    err = false;
     init_env(&env2, env, NULL);
     len = minim_list_length(bindings);
     it = bindings;
 
     // Bind names and values
-    for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
+    for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
     {
         MinimObject *bind, *sym, *val;
 
@@ -140,6 +138,53 @@ MinimObject *minim_builtin_letstar(MinimEnv *env, size_t argc, MinimObject **arg
     return MINIM_AST(args[0])->sym ?
            minim_let_func(env, args, argc, true) :
            minim_let_assign(env, args, argc, true);
+}
+
+static MinimObject *minim_builtin_let_values_assign(MinimEnv *env, size_t argc, MinimObject **args, bool alt)
+{
+    MinimObject *val;
+    SyntaxNode *binding, *names;
+    MinimEnv *env2;
+    
+    // Bind names and values
+    init_env(&env2, env, NULL);
+    for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
+    {
+        binding = MINIM_AST(args[0])->children[i];
+        eval_ast_no_check((alt ? env2 : env), binding->children[1], &val);
+        if (MINIM_OBJ_THROWNP(val))
+            return val;
+
+        names = binding->children[0];
+        if (!MINIM_OBJ_VALUESP(val))
+        {
+            if (names->childc != 1)
+                return minim_values_arity_error("def-values", names->childc, 1, names);
+            else
+                env_intern_sym(env2, names->children[0]->sym, val);
+        }
+        else
+        {
+            if (MINIM_VALUES_LEN(val) != names->childc)
+                return minim_values_arity_error("def-values", names->childc, MINIM_VALUES_LEN(val), names);
+
+            for (size_t i = 0; i < names->childc; ++i)
+                env_intern_sym(env2, names->children[i]->sym, MINIM_VALUES_ARR(val)[i]);
+        }
+    }
+
+    // Evaluate body
+    return minim_builtin_begin(env2, argc - 1, &args[1]);
+}
+
+MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    return minim_builtin_let_values_assign(env, argc, args, false);
+}
+
+MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    return minim_builtin_let_values_assign(env, argc, args, true);
 }
 
 MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)

@@ -142,7 +142,7 @@ static bool check_syntax_def_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
     if (!minim_listp(ids))
     {
         *perr = minim_syntax_error("not a list of identifiers",
-                                   ast->children[0]->sym,
+                                   "def-values",
                                    ast,
                                    ast->children[1]);
         return false;
@@ -154,7 +154,7 @@ static bool check_syntax_def_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
             *perr = minim_syntax_error("not an identifier",
-                                       MINIM_STRING(sym),
+                                       "def-values",
                                        ast,
                                        ast->children[1]->children[i]);
             return false;
@@ -165,15 +165,16 @@ static bool check_syntax_def_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
             if (strcmp(ast->children[1]->children[j]->sym, MINIM_STRING(sym)) == 0)
             {
                 *perr = minim_syntax_error("duplicate identifier",
-                                           MINIM_STRING(sym),
+                                           "def-values",
                                            ast,
                                            ast->children[1]->children[i]);
             }
         }
+        
+        init_minim_object(&tmp, MINIM_OBJ_VOID);
+        env_intern_sym(env, MINIM_STRING(sym), tmp);
     }
 
-    init_minim_object(&tmp, MINIM_OBJ_VOID);
-    env_intern_sym(env, MINIM_STRING(sym), tmp);
     return check_syntax_rec(env, ast->children[2], perr);
 }
 
@@ -262,7 +263,7 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     unsyntax_ast(env, ast->children[base], &bindings);
     if (!minim_listp(bindings))
     {
-        *perr = minim_syntax_error("expected a list of bindings", "for", ast, ast->children[base]);
+        *perr = minim_syntax_error("expected a list of bindings", "let", ast, ast->children[base]);
         return false;
     }
 
@@ -295,6 +296,110 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         init_env(&env3, env, NULL);
         syn = MINIM_DATA(MINIM_CADR(bind));
         if (!check_syntax_rec(env3, syn, perr))
+            return false;
+
+        init_minim_object(&tmp, MINIM_OBJ_VOID);
+        env_intern_sym(env2, MINIM_STRING(sym), tmp);
+    }
+
+    if (base + 1 == ast->childc)
+    {
+        *perr = minim_syntax_error("missing body", "let", ast, NULL);
+        return false;
+    }
+
+    for (size_t i = base + 1; i < ast->childc; ++i)
+    {
+        if (!check_syntax_rec(env2, ast->children[base + 1], perr))
+            return false;
+    }
+    
+    return true;
+}
+
+static bool check_syntax_let_values(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *bindings, *sym;
+    MinimEnv *env2;
+    size_t base;
+
+    base = 1;
+    init_env(&env2, env, NULL);
+    unsyntax_ast(env, ast->children[base], &sym);
+    if (MINIM_OBJ_SYMBOLP(sym))
+    {
+        MinimObject *tmp;
+
+        init_minim_object(&tmp, MINIM_OBJ_VOID);
+        env_intern_sym(env2, MINIM_STRING(sym), tmp);
+        ++base;
+    }
+
+    unsyntax_ast(env, ast->children[base], &bindings);
+    if (!minim_listp(bindings))
+    {
+        *perr = minim_syntax_error("expected a list of bindings", "let", ast, ast->children[base]);
+        return false;
+    }
+
+    // early exit: (let () ...)
+    if (minim_nullp(bindings))
+        return check_syntax_rec(env, ast->children[base + 1], perr);
+
+    for (MinimObject *it = bindings; it; it = MINIM_CDR(it))
+    {
+        MinimObject *bind, *sym, *tmp, *ids;
+        SyntaxNode *stx;
+        MinimEnv *env3;
+
+        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &bind);
+        if (!minim_listp(bind) || minim_list_length(bind) != 2)
+        {
+            *perr = minim_syntax_error("bad binding", "let-values", ast, MINIM_AST(MINIM_CAR(it)));
+            return false;
+        }
+
+        // list of identifier
+        stx = MINIM_AST(MINIM_CAR(bind));
+        unsyntax_ast(env, stx, &ids);
+        if (!minim_listp(ids))
+        {
+            *perr = minim_syntax_error("not a list of identifiers",
+                                       "let-values",
+                                       ast,
+                                       stx);
+            return false;
+        }
+
+        for (size_t i = 0; i < stx->childc; ++i)
+        {
+            unsyntax_ast(env, stx->children[i], &sym);
+            if (!MINIM_OBJ_SYMBOLP(sym))
+            {
+                *perr = minim_syntax_error("not an identifier",
+                                           MINIM_STRING(sym),
+                                           ast,
+                                           stx->children[i]);
+                return false;
+            }
+
+            for (size_t j = 0; j < i; ++j)
+            {
+                if (strcmp(stx->children[j]->sym, MINIM_STRING(sym)) == 0)
+                {
+                    *perr = minim_syntax_error("duplicate identifier",
+                                               MINIM_STRING(sym),
+                                               ast,
+                                               stx->children[i]);
+                }
+            }
+            
+            init_minim_object(&tmp, MINIM_OBJ_VOID);
+            env_intern_sym(env, MINIM_STRING(sym), tmp);
+        }
+
+        init_env(&env3, env, NULL);
+        if (!check_syntax_rec(env3, MINIM_AST(MINIM_CADR(bind)), perr))
             return false;
 
         init_minim_object(&tmp, MINIM_OBJ_VOID);
@@ -529,6 +634,8 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);
             CHECK_REC(proc, minim_builtin_let, check_syntax_let);
             CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
+            CHECK_REC(proc, minim_builtin_let, check_syntax_let_values);
+            CHECK_REC(proc, minim_builtin_letstar, check_syntax_let_values);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
 

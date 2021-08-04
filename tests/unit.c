@@ -477,6 +477,27 @@ int main()
     }
 
     {
+        const int COUNT = 10;
+        char strs[20][256] =
+        {
+            "(let-values () 1)",                                            "1",
+            "(let-values ([(x) 1]) x)",                                     "1",
+            "(let-values ([(x) 1]) (+ x 1))",                               "2",
+            "(let-values ([(x y) (values 1 2)]) (+ x y))",                  "3",
+            "(let-values ([(x y) (values 1 2)] [(z) 3]) (+ x y z))",        "6",
+            "(let*-values () 1)",                                           "1",
+            "(let*-values ([(x) 1]) x)",                                    "1",
+            "(let*-values ([(x) 1]) (+ x 1))",                              "2",
+            "(let*-values ([(x y) (values 1 2)]) (+ x y))",                 "3",
+            "(let*-values ([(x y) (values 1 2)] [(z) x]) (+ x y z))",       "4"             
+        };
+
+        printf("Testing 'let-values/let-values*'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 3;
         char strs[6][256] = 
         {

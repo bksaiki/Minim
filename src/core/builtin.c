@@ -23,6 +23,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
     minim_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
     minim_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
+    minim_load_builtin(env, "let-values", MINIM_OBJ_SYNTAX, minim_builtin_let_values);
+    minim_load_builtin(env, "let*-values", MINIM_OBJ_SYNTAX, minim_builtin_letstar_values);
     minim_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
     minim_load_builtin(env, "case", MINIM_OBJ_SYNTAX, minim_builtin_case);
     minim_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
