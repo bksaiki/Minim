@@ -418,13 +418,14 @@ int main()
     }
 
     {
-        const int COUNT = 11;
-        char strs[22][256] =
+        const int COUNT = 12;
+        char strs[24][256] =
         {
             "(let () 1)",                       "1",
             "(let ((x 1)) x)",                  "1",
             "(let ((x 1)) (+ x 1))",            "2",
             "(let ((x 1) (y 2)) (+ x y))",      "3",
+            "(let () 1 2)",                     "2",
             "(let* () 1)",                      "1",
             "(let* ((x 1)) x)",                 "1",
             "(let* ((x 1)) (+ x 1))",           "2",
@@ -528,21 +529,6 @@ int main()
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
-
-
-    // {
-    //     const int COUNT = 3;
-    //     char strs[6][256] =
-    //     {
-    //         "(for-list ((x '()) (i (in-naturals))) i)",             "'()",
-    //         "(for-list ((x '(1 2 3 4)) (i (in-naturals))) i)",      "'(0 1 2 3)",
-    //         "(for-list ((x '(1 2 3 4)) (i (in-naturals 2))) i)",    "'(2 3 4 5)"
-    //     };
-
-    //     printf("Testing 'in-naturals'\n");
-    //     for (int i = 0; i < COUNT; ++i)
-    //         status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    // }
 
     {
         const int COUNT = 3;
