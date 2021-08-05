@@ -6,11 +6,13 @@
 (%import "and-or.min"
          "cond.min"
          "def.min"
+         "let.min"
          "stx-macro.min"
          "when-unless.min")
 
 (%export (all "and-or.min")
          (all "cond.min")
          (all "def.min")
+         (all "let.min")
          (all "stx-macro.min")
          (all "when-unless.min"))

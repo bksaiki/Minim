@@ -2,36 +2,38 @@
 ;   'syntax-rules'
 ;
 
-(%import "stx.min" "and-or.min")
+(%import "and-or.min" "stx.min")
 
 (def-syntax syntax-rules
   (lambda (stx)
     (if (identifier? stx)
         (syntax-error 'syntax-rules "not allowed as an expression" stx)
-        (let ([form (stx-cdr stx)]
-              [serr
-                (lambda (msg at)
-                  (syntax-error 'syntax-rules msg stx at))])
-          (let ([ids (stx-car form)]
-                [rules (stx-cdr form)]
-                [andmap
-              (lambda (fn lst)
-                (let loop ([lst lst])
-                  (if (stx-null? lst)
-                      #t
-                      (if (fn (stx-car lst))
-                          (loop (stx-cdr lst))
-                          #f))))])
+        (let-values ([(form) (stx-cdr stx)]
+                     [(serr)
+                      (lambda (msg at)
+                       (syntax-error 'syntax-rules msg stx at))])
+          (let-values ([(ids) (stx-car form)]
+                       [(rules) (stx-cdr form)]
+                       [(andmap)
+                        (lambda (fn lst)
+                          (let-values ([(loop)
+                              (lambda (lst)
+                                (if (stx-null? lst)
+                                    #t
+                                    (if (fn (stx-car lst))
+                                        (loop (stx-cdr lst))
+                                        #f)))])
+                            (loop lst)))])
             (if (and (stx-list? ids)
                      (andmap identifier? ids))
-                (let ([rule?
-                  (lambda (r)
-                    (and (stx-list? r)
-                         (not (stx-null? r))
-                         (stx-list? (stx-car r))
-                         (let ([t (stx-cdr r)])
-                           (and (not (null? t))
-                                (null? (stx-cdr t))))))])
+                (let-values ([(rule?)
+                              (lambda (r)
+                                (and (stx-list? r)
+                                    (not (stx-null? r))
+                                    (stx-list? (stx-car r))
+                                    (let-values ([(t) (stx-cdr r)])
+                                      (and (not (null? t))
+                                            (null? (stx-cdr t))))))])
                   (if (and (not (stx-null? rules))
                            (andmap rule? rules))
                       (datum->syntax
@@ -43,21 +45,23 @@
                               (syntax syntax-case)
                               (syntax stx)
                               ids)
-                            (let loop ([process '()] [rules rules])
-                              (if (stx-null? rules)
-                                  (reverse process)
-                                  (let ([rule (stx-car rules)])
-                                    (let ([match (stx-car rule)]
-                                          [replace (stx-car (stx-cdr rule))])
-                                      (loop
-                                        (cons
-                                          (list
-                                            match
+                            (let-values ([(loop)
+                                (lambda (process rules)
+                                  (if (stx-null? rules)
+                                      (reverse process)
+                                      (let*-values ([(rule) (stx-car rules)]
+                                                    [(match) (stx-car rule)]
+                                                    [(replace) (stx-car (stx-cdr rule))])
+                                        (loop
+                                          (cons
                                             (list
-                                              (syntax syntax)
-                                              replace))
-                                          process)
-                                        (stx-cdr rules)))))))))
+                                              match
+                                              (list
+                                                (syntax syntax)
+                                                replace))
+                                            process)
+                                          (stx-cdr rules)))))])
+                              (loop '() rules)))))
                       (serr "bad syntax" (datum->syntax rules))))
                 (serr "expected a list of identifiers" ids)))))))
 

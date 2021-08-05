@@ -8,7 +8,7 @@
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'and "bad syntax" stx)
-        (let ([e (stx-cdr stx)])
+        (let-values ([(e) (stx-cdr stx)])
           (if (stx-null? e)
               (syntax #t)
               (if (if (stx-pair? e)
@@ -26,7 +26,7 @@
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'or "bad syntax" stx)
-        (let ([e (stx-cdr stx)])
+        (let-values ([(e) (stx-cdr stx)])
           (if (stx-null? e)
               (syntax #f)
               (if (if (stx-pair? e)
@@ -35,10 +35,10 @@
                   (stx-car e)
                   (datum->syntax
                     (list
-                      (syntax let)
+                      (syntax let-values)
                       (list
                         (list
-                          (syntax t)
+                          (list (syntax t))
                           (stx-car e)))
                       (list
                         (syntax if)

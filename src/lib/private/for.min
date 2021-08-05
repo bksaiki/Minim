@@ -2,7 +2,7 @@
 ;   'for'
 ;
 
-(%import "and-or.min" "def.min" "stx.min" "when-unless.min")
+(%import "pre-base.min")
 
 ; (def-syntax datum->seq
 ;   (lambda (stx)
@@ -37,7 +37,7 @@
      [(_ ([id seq]))
       (syntax-error 'for/list "missing body" stx)]
      [(_ ([id seq] ...) body ...)
-      #'(let loop ([accum '()] [id seq] ...)
+      #'(let loop ([accum (list)] [id seq] ...)
           (if (or (sequence-empty? id) ...)
               (reverse accum)
               (loop
@@ -79,7 +79,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def sequence->list (seq)
-  (let loop ([accum '()] [seq seq])
+  (let loop ([accum (list)] [seq seq])
     (if (sequence-empty? seq)
         (reverse accum)
         (loop (cons (sequence-first seq) accum)

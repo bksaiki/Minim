@@ -8,16 +8,20 @@
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'let "bad syntax" stx)
-        (syntax-case stx ()
-         [(_)
-          (syntax-error 'let "bad syntax stx")]
-         [(_ () body ...)
-          #'(let-values () body ...)]
-         [(_ ([vars vals] ...) body ...)
-          #'(let-values ([(vars) vals] ...) body ...)]
-         [(_ id ([vars vals] ...) body ...)
-          #'(let-values ([(id) (lambda (vars ...) body ...)])
-              (id vals ...))]))))
+        (let-values ([(e) (stx-cdr stx)])
+          (if (null? e)
+              (syntax-error 'let "bad syntax" stx)
+              (let-values ([(id) (stx-car e)])
+                (if (identifier? id)
+                    (syntax-case stx ()
+                     [(_ id ([vars vals] ...) body ...)
+                      #'(let-values ([(id) (lambda (vars ...) body ...)])
+                          (id vals ...))])
+                    (syntax-case stx ()
+                     [(_ () body ...)
+                      #'(begin body ...)]
+                     [(_ ([vars vals] ...) body ...)
+                      #'(let-values ([(vars) vals] ...) body ...)]))))))))
 
 (def-syntax let*
   (lambda (stx)
