@@ -418,49 +418,6 @@ int main()
     }
 
     {
-        const int COUNT = 12;
-        char strs[24][256] =
-        {
-            "(let () 1)",                       "1",
-            "(let ((x 1)) x)",                  "1",
-            "(let ((x 1)) (+ x 1))",            "2",
-            "(let ((x 1) (y 2)) (+ x y))",      "3",
-            "(let () 1 2)",                     "2",
-            "(let* () 1)",                      "1",
-            "(let* ((x 1)) x)",                 "1",
-            "(let* ((x 1)) (+ x 1))",           "2",
-            "(let* ((x 1) (y 2)) (+ x y))",     "3",  
-            "(let* ((x 1) (y x)) y)",           "1",
-            "(let* ((x 1) (y x)) (+ x y))",     "2",
-            "(let* () 1 2)",                    "2"                 
-        };
-
-        printf("Testing 'let/let*'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 8;
-        char strs[16][256] =
-        {
-            "(let f () 1)",                     "1",
-            "(let f ((x 2)) x)",                "2",
-            "(let f ((x 1) (y 2)) (+ x y))",    "3",
-            "(let* f () 1)",                    "1",
-            "(let* f ((x 2)) x)",               "2",
-            "(let* f ((x 1) (y x)) (+ x y))",   "2",
-
-            "(let fact ([n 4]) (if (zero? n) 1 (* n (fact (- n 1)))))",     "24",
-            "(let foo ([n 4]) (set! n 2) n)",                               "2"
-        };
-
-        printf("Testing 'named let/let*'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
         const int COUNT = 10;
         char strs[20][256] =
         {
