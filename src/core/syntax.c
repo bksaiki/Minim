@@ -112,28 +112,6 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
     return true;
 }
 
-static bool check_syntax_def(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
-{
-    MinimObject *sym, *tmp;
-
-    if (ast->childc == 3)
-        return check_syntax_set(env, ast, perr);
-
-    unsyntax_ast(env, ast->children[1], &sym);
-    if (!MINIM_OBJ_SYMBOLP(sym))
-    {
-        *perr = minim_syntax_error("not an identifier",
-                                   ast->children[0]->sym,
-                                   ast,
-                                   ast->children[0]);
-        return false;
-    }
-
-    init_minim_object(&tmp, MINIM_OBJ_VOID);
-    env_intern_sym(env, MINIM_STRING(sym), tmp);
-    return check_syntax_func(env, ast, perr, 2);
-}
-
 static bool check_syntax_def_values(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *ids, *sym, *tmp;
@@ -628,7 +606,6 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 
             CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
-            CHECK_REC(proc, minim_builtin_def, check_syntax_def);
             CHECK_REC(proc, minim_builtin_def_values, check_syntax_def_values);
             CHECK_REC(proc, minim_builtin_if, check_syntax_if);
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);

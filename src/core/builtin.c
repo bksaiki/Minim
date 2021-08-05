@@ -17,7 +17,6 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
 void minim_load_builtins(MinimEnv *env)
 {
     // Variable / Control
-    minim_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
     minim_load_builtin(env, "def-values", MINIM_OBJ_SYNTAX, minim_builtin_def_values);
     minim_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
     minim_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);

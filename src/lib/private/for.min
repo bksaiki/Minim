@@ -2,7 +2,7 @@
 ;   'for'
 ;
 
-(%import "and-or.min" "stx.min" "when-unless.min")
+(%import "and-or.min" "def.min" "stx.min" "when-unless.min")
 
 ; (def-syntax datum->seq
 ;   (lambda (stx)

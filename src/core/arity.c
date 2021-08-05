@@ -187,7 +187,6 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
 bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
 {
-    SET_ARITY_MIN(def, 2);
     SET_ARITY_MIN(def_values, 2);
     SET_ARITY_EXACT(setb, 2);
     SET_ARITY_EXACT(if, 3);
