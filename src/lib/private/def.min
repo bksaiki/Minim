@@ -1,0 +1,36 @@
+;
+;   'def'
+;
+
+(%import "stx.min")
+
+(def-syntax def
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'def "bad syntax" stx)
+        (let ([e (stx-cdr stx)]
+              [serr
+                (lambda (msg at)
+                  (syntax-error 'def msg stx at))])
+          (if (stx-null? e) 
+              (syntax-error 'def "bad syntax" stx)
+              (let ([r (stx-cdr e)])
+                (if (null? stx)
+                    (syntax-error 'def "bad syntax" stx)
+                    (let ([id (stx-car e)])
+                      (if (not (identifier? id))
+                          (serr "not an identifier" id)
+                          (let ([x (stx-cdr r)])
+                            (datum->syntax
+                              (list
+                                (syntax def-values)
+                                (list id)
+                                (if (stx-null? x)     ; assignment
+                                    (stx-car r)
+                                    (append
+                                      (list
+                                        (syntax lambda)
+                                        (stx-car r))
+                                      x))))))))))))))
+
+(%export def)

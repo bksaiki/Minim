@@ -535,9 +535,6 @@ int eval_module(MinimModule *module, MinimObject **pobj)
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }
-
-        if (!check_syntax(env2, module->exprs[i], pobj))
-            return 0;
     }
 
     // Syntax transform
@@ -554,6 +551,9 @@ int eval_module(MinimModule *module, MinimObject **pobj)
     set_default_print_params(&pp);
     for (size_t i = 0; i < module->exprc; ++i)
     {
+        if (!check_syntax(env2, module->exprs[i], pobj))
+            return 0;
+
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 

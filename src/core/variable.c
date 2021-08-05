@@ -60,10 +60,10 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
                                            1, MINIM_AST(args[0]));
             return res;
         } 
-        else
-        {
-            env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
-        }
+        
+        env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
+        if (MINIM_OBJ_CLOSUREP(val))
+            env_intern_sym(MINIM_CLOSURE(val)->env, MINIM_AST(args[0])->children[0]->sym, val);
     }
     else
     {
@@ -78,8 +78,11 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
         {
-            env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym,
-                                MINIM_VALUES_ARR(val)[i]);
+            env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, MINIM_VALUES_ARR(val)[i]);
+            if (MINIM_OBJ_CLOSUREP(MINIM_VALUES_ARR(val)[i]))
+                env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_ARR(val)[i])->env,
+                               MINIM_AST(args[0])->children[i]->sym,
+                               val);
         }
     }
 
