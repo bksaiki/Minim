@@ -8,6 +8,14 @@
 #include "module.h"
 #include "read.h"
 
+static MinimEnv *get_builtin_env(MinimEnv *env)
+{
+    if (!env->parent)
+        return env;
+    
+    return get_builtin_env(env->parent);
+}
+
 void init_minim_module(MinimModule **pmodule)
 {
     MinimModule *module;
@@ -15,12 +23,34 @@ void init_minim_module(MinimModule **pmodule)
     module = GC_alloc(sizeof(MinimModule));
     module->prev = NULL;
     module->exprs = NULL;
-    module->exprc = 0;
     module->imports = NULL;
+    module->loaded = NULL;
+    module->exprc = 0;
     module->importc = 0;
+    module->loadedc = 0;
     module->env = NULL;
     init_env(&module->import, NULL, NULL);
     module->name = NULL;
+    module->flags = 0x0;
+
+    *pmodule = module;
+}
+
+void copy_minim_module(MinimModule **pmodule, MinimModule *src)
+{
+    MinimModule *module;
+
+    module = GC_alloc(sizeof(MinimModule));
+    module->prev = NULL;                    // fresh copy
+    module->exprs = src->exprs;
+    module->imports = NULL;                 // fresh copy
+    module->loaded = src->loaded;
+    module->exprc = src->exprc;
+    module->importc = 0;                    // fresh copy
+    module->loadedc = src->loadedc;
+    module->env = NULL;                     // fresh copy
+    init_env(&module->import, NULL, NULL);  // fresh copy
+    module->name = src->name;
     module->flags = 0x0;
 
     *pmodule = module;
@@ -46,6 +76,17 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     module->imports[module->importc - 1] = import;
 }
 
+void minim_module_register_loaded(MinimModule *module, MinimModule *import)
+{
+    MinimModule *it = module;
+
+    for (; it->prev; it = it->prev);
+
+    ++it->loadedc;
+    it->loaded = GC_realloc(it->loaded, it->loadedc * sizeof(MinimModule*));
+    it->loaded[it->loadedc - 1] = import;
+}
+
 MinimObject *minim_module_get_sym(MinimModule *module, const char *sym)
 {
     return minim_symbol_table_get(module->env->table, sym);
@@ -58,6 +99,24 @@ MinimModule *minim_module_get_import(MinimModule *module, const char *sym)
         if (module->imports[i]->name &&
             strcmp(module->imports[i]->name, sym) == 0)
             return module->imports[i];
+    }
+
+    return NULL;
+}
+
+MinimModule *minim_module_get_loaded(MinimModule *module, const char *sym)
+{
+    MinimModule *it = module;
+
+    for (; it->prev; it = it->prev);
+
+    for (size_t i = 0; i < it->loadedc; ++i)
+    {
+        if (strcmp(it->loaded[i]->name, sym) == 0)
+        {
+            // printf("Found module: %s\n", sym);
+            return it->loaded[i];
+        }
     }
 
     return NULL;
@@ -145,16 +204,36 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         init_buffer(&path);
         writes_buffer(path, env->current_dir);
         writes_buffer(path, MINIM_STRING(arg));
-        
-        module2 = minim_load_file_as_module(env->module, get_buffer(path), &ret);
-        if (!module2) return ret;
+
+        module2 = minim_module_get_loaded(env->module, get_buffer(path));
+        if (module2)
+        {
+            Buffer *mfname, *dir;
+
+            init_buffer(&mfname);
+            valid_path(mfname, get_buffer(path));
+            dir = get_directory(get_buffer(mfname));
+
+            copy_minim_module(&module2, module2);
+            init_env(&module2->env, get_builtin_env(env), NULL);
+            module2->env->current_dir = get_buffer(dir);
+            module2->env->module = module2;
+        }
+        else
+        {
+            module2 = minim_load_file_as_module(env->module, get_buffer(path), &ret);
+            if (!module2) return ret;
+
+            module2->name = get_buffer(path);
+            minim_module_register_loaded(env->module, module2);
+
+            // printf("Loading: %s\n", get_buffer(path));
+        }
 
         module2->prev = tmp;
-        module2->name = get_buffer(path);
+        minim_module_add_import(env->module, module2);
         if (!eval_module(module2, &ret))
             return ret;
-        
-        minim_module_add_import(env->module, module2);
     }
 
     minim_symbol_table_merge(env->module->import->table, tmp->import->table);

@@ -34,19 +34,22 @@
 typedef struct MinimModule
 {
     struct MinimModule *prev;
-    struct MinimModule **imports;
+    struct MinimModule **imports, **loaded;
     SyntaxNode **exprs;
-    size_t exprc, importc;
+    size_t exprc, importc, loadedc;
     MinimEnv *env, *import;
     char *name;
     size_t flags;
 } MinimModule;
 
 void init_minim_module(MinimModule **pmodule);
+void copy_minim_module(MinimModule **pmodule, MinimModule *src);
 void minim_module_add_expr(MinimModule *module, SyntaxNode *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
+void minim_module_register_loaded(MinimModule *module, MinimModule *import);
 
 MinimObject *minim_module_get_sym(MinimModule *module, const char *sym);
 MinimModule *minim_module_get_import(MinimModule *module, const char *sym);
+MinimModule *minim_module_get_loaded(MinimModule *module, const char *sym);
 
 #endif
