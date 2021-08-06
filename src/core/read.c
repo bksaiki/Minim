@@ -39,10 +39,11 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
 
     dir = get_directory(get_buffer(mfname));
 
-    init_minim_module(&module);
+    init_minim_module(&module, prev->cache);
     init_env(&module->env, get_builtin_env(prev->env), NULL);
     module->env->current_dir = get_buffer(dir);
     module->env->module = module;
+    module->cache = prev->cache;
 
     set_default_print_params(&pp);
     while (~rt.flags & READ_TABLE_FLAG_EOF)
@@ -104,7 +105,7 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
 
     dir = get_directory(get_buffer(mfname));
 
-    init_minim_module(&module);
+    init_minim_module(&module, (env->module ? env->module->cache : NULL));
     init_env(&module->env, get_builtin_env(env), NULL);
     module->env->current_dir = get_buffer(dir);
     module->env->module = module;
@@ -145,6 +146,7 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
     ReadTable rt;
     Buffer *mfname, *dir;
     MinimModule *module, *prev;
+    MinimModuleCache *cache;
     FILE *file;
     char *prev_dir;
     int status;
@@ -173,7 +175,8 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
     prev_dir = env->current_dir;
     prev = env->module;
 
-    init_minim_module(&module);
+    init_minim_module_cache(&cache);
+    init_minim_module(&module, cache);
     module->env = env;
     env->current_dir = get_buffer(dir);
     env->module = module;

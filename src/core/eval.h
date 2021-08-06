@@ -17,6 +17,11 @@ int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj);
 // Returns a non-zero result on success
 int eval_module(MinimModule *module, MinimObject **pobj);
 
+// Evalutes `module` and stores the result at 'pobj'.
+// Returns a non-zero result on success.
+// Most likely used if module has already been run
+int eval_module_exports_only(MinimModule *module, MinimObject **pobj);
+
 // Evaluates the syntax node by one layer storing the result at 'pobj' and returning
 // a non-zero result on success. If the syntax node is leaf, a single object is the result.
 // Else a list of syntax children is the result.

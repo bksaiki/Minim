@@ -16,7 +16,7 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
-void init_minim_module(MinimModule **pmodule)
+void init_minim_module(MinimModule **pmodule, MinimModuleCache *cache)
 {
     MinimModule *module;
 
@@ -24,10 +24,9 @@ void init_minim_module(MinimModule **pmodule)
     module->prev = NULL;
     module->exprs = NULL;
     module->imports = NULL;
-    module->loaded = NULL;
+    module->cache = cache;
     module->exprc = 0;
     module->importc = 0;
-    module->loadedc = 0;
     module->env = NULL;
     init_env(&module->import, NULL, NULL);
     module->name = NULL;
@@ -44,10 +43,9 @@ void copy_minim_module(MinimModule **pmodule, MinimModule *src)
     module->prev = NULL;                    // fresh copy
     module->exprs = src->exprs;
     module->imports = NULL;                 // fresh copy
-    module->loaded = src->loaded;
+    module->cache = src->cache;
     module->exprc = src->exprc;
     module->importc = 0;                    // fresh copy
-    module->loadedc = src->loadedc;
     module->env = NULL;                     // fresh copy
     init_env(&module->import, NULL, NULL);  // fresh copy
     module->name = src->name;
@@ -76,17 +74,6 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     module->imports[module->importc - 1] = import;
 }
 
-void minim_module_register_loaded(MinimModule *module, MinimModule *import)
-{
-    MinimModule *it = module;
-
-    for (; it->prev; it = it->prev);
-
-    ++it->loadedc;
-    it->loaded = GC_realloc(it->loaded, it->loadedc * sizeof(MinimModule*));
-    it->loaded[it->loadedc - 1] = import;
-}
-
 MinimObject *minim_module_get_sym(MinimModule *module, const char *sym)
 {
     return minim_symbol_table_get(module->env->table, sym);
@@ -104,19 +91,30 @@ MinimModule *minim_module_get_import(MinimModule *module, const char *sym)
     return NULL;
 }
 
-MinimModule *minim_module_get_loaded(MinimModule *module, const char *sym)
+void init_minim_module_cache(MinimModuleCache **pcache)
 {
-    MinimModule *it = module;
+    MinimModuleCache *cache;
 
-    for (; it->prev; it = it->prev);
+    cache = GC_alloc(sizeof(MinimModuleCache));
+    cache->modules = NULL;
+    cache->modulec = 0;
 
-    for (size_t i = 0; i < it->loadedc; ++i)
+    *pcache = cache;
+}
+
+void minim_module_cache_add(MinimModuleCache *cache, MinimModule *import)
+{
+    ++cache->modulec;
+    cache->modules = GC_realloc(cache->modules, cache->modulec * sizeof(MinimModule*));
+    cache->modules[cache->modulec - 1] = import;
+}
+
+MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *sym)
+{
+    for (size_t i = 0; i < cache->modulec; ++i)
     {
-        if (strcmp(it->loaded[i]->name, sym) == 0)
-        {
-            // printf("Found module: %s\n", sym);
-            return it->loaded[i];
-        }
+        if (strcmp(cache->modules[i]->name, sym) == 0)
+            return cache->modules[i];
     }
 
     return NULL;
@@ -196,7 +194,10 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         return ret;
     }
 
-    init_minim_module(&tmp);
+    if (!env->module->cache)
+        init_minim_module_cache(&env->module->cache);
+
+    init_minim_module(&tmp, env->module->cache);
     for (size_t i = 0; i < argc; ++i)
     {
         unsyntax_ast(env, MINIM_AST(args[i]), &arg);
@@ -205,7 +206,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         writes_buffer(path, env->current_dir);
         writes_buffer(path, MINIM_STRING(arg));
 
-        module2 = minim_module_get_loaded(env->module, get_buffer(path));
+        module2 = minim_module_cache_get(env->module->cache, get_buffer(path));
         if (module2)
         {
             Buffer *mfname, *dir;
@@ -225,9 +226,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
             if (!module2) return ret;
 
             module2->name = get_buffer(path);
-            minim_module_register_loaded(env->module, module2);
-
-            // printf("Loading: %s\n", get_buffer(path));
+            minim_module_cache_add(env->module->cache, module2);
         }
 
         module2->prev = tmp;

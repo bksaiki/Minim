@@ -30,6 +30,7 @@ int minim_repl(char **argv, uint32_t flags)
     PrintParams pp;
     MinimEnv *top_env;
     MinimModule *module;
+    MinimModuleCache *imports;
     Buffer *path;
     uint8_t last_readf;
 
@@ -41,7 +42,8 @@ int minim_repl(char **argv, uint32_t flags)
     minim_load_builtins(top_env);
 
     path = get_directory(argv[0]);
-    init_minim_module(&module);
+    init_minim_module_cache(&imports);
+    init_minim_module(&module, imports);
     init_env(&module->env, top_env, NULL);
     module->env->module = module;
     module->env->current_dir = get_buffer(path);

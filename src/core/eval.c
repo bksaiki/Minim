@@ -588,6 +588,21 @@ int eval_module(MinimModule *module, MinimObject **pobj)
     return 1;
 }
 
+int eval_module_exports_only(MinimModule *module, MinimObject **pobj)
+{
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_export(module->env, module->exprs[i]))
+        {
+            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_export);
+            if (MINIM_OBJ_ERRORP(*pobj))
+                return 0;
+        }
+    }
+
+    return 1;
+}
+
 int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 {
     MinimObject *obj = unsyntax_ast_node(env, ast, 0);
