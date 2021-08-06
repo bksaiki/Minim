@@ -4,8 +4,6 @@
 #include "hash.h"
 #include "symbols.h"
 
-#define hashseed   ((uint32_t)  0xdeadbeef)
-
 static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
     mrk(gc, ((MinimSymbolTable*) ptr)->rows);
@@ -101,18 +99,15 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
     table->alloc = size;
 }
 
-void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObject *obj)
+void minim_symbol_table_add(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj)
 {
     MinimSymbolEntry *entry;
-    size_t hash, idx, len;
+    size_t idx;
 
     if (((double)table->size / (double)table->alloc) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
         minim_symbol_table_rehash(table);
 
-    len = strlen(name);
-    hash = hash_bytes(name, len, hashseed);
     idx = hash % table->alloc;
-
     entry = GC_alloc(sizeof(MinimSymbolEntry));
     entry->obj = obj;
 
@@ -131,22 +126,20 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObje
     table->rows[idx].names = GC_realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
     table->rows[idx].vals = GC_realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
 
-    table->rows[idx].names[table->rows[idx].length - 1] = GC_alloc_atomic((len + 1) * sizeof(char));
+    table->rows[idx].names[table->rows[idx].length - 1] = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
     strcpy(table->rows[idx].names[table->rows[idx].length - 1], name);
     table->rows[idx].vals[table->rows[idx].length - 1] = entry;
     entry->parent = NULL;
 }
 
-int minim_symbol_table_set(MinimSymbolTable *table, const char *name, MinimObject *obj)
+int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj)
 {
     MinimSymbolEntry *entry;
-    size_t hash, idx, len;
+    size_t idx;
 
     if (((double)table->size / (double)table->alloc) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
         minim_symbol_table_rehash(table);
 
-    len = strlen(name);
-    hash = hash_bytes(name, len, hashseed);
     idx = hash % table->alloc;
 
     entry = GC_alloc(sizeof(MinimSymbolEntry));
@@ -165,13 +158,11 @@ int minim_symbol_table_set(MinimSymbolTable *table, const char *name, MinimObjec
     return 0;
 }
 
-MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name)
+MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name, size_t hash)
 {
-    size_t hash, idx;
+    size_t idx;
 
-    hash = hash_bytes(name, strlen(name), hashseed);
     idx = hash % table->alloc;
-
     for (size_t i = 0; i < table->rows[idx].length; ++i)
     {
         if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
@@ -247,10 +238,11 @@ void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src)
         {
             for (MinimSymbolEntry *it = src->rows[i].vals[j]; it; it = it->parent)
             {
-                if (minim_symbol_table_get(dest, src->rows[i].names[j]))
-                    minim_symbol_table_set(dest, src->rows[i].names[j], it->obj);
+                size_t hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j]), hashseed);
+                if (minim_symbol_table_get(dest, src->rows[i].names[j], hash))
+                    minim_symbol_table_set(dest, src->rows[i].names[j], hash, it->obj);
                 else
-                    minim_symbol_table_add(dest, src->rows[i].names[j], it->obj);
+                    minim_symbol_table_add(dest, src->rows[i].names[j], hash, it->obj);
             }
         }
     }   

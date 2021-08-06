@@ -6,6 +6,8 @@
 #define MINIM_DEFAULT_HASH_TABLE_SIZE       10
 #define MINIM_DEFAULT_HASH_TABLE_FACTOR     0.75
 
+#define hashseed   ((uint32_t)  0xdeadbeef)
+
 struct MinimHashRow
 {
     MinimObject **arr;

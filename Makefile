@@ -13,7 +13,7 @@ TESTS 		:= $(shell find $(TEST_DIR) -name *.c)
 TEST_EXES 	:= $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	= -MMD -MP
-CFLAGS 		= -Wall -std=c11
+CFLAGS 		= -Wall -std=c11 -pg
 LDFLAGS 	= -lm -lgmp
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
@@ -23,6 +23,9 @@ LDFLAGS 	= -lm -lgmp
 
 debug:
 	$(MAKE) CFLAGS="-g $(CFLAGS)" minim
+
+profile:
+	$(MAKE) CFLAGS="-O3 -march=native -pg $(CFLAGS)" minim
 
 release:
 	$(MAKE) CFLAGS="-O3 -march=native $(CFLAGS)" minim
