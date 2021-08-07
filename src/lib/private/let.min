@@ -4,7 +4,7 @@
 
 (%import "stx-macro.min" "stx.min")
 
-(def-syntax let
+(def-syntaxes (let)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'let "bad syntax" stx)
@@ -23,7 +23,7 @@
                      [(_ ([vars vals] ...) body ...)
                       #'(let-values ([(vars) vals] ...) body ...)]))))))))
 
-(def-syntax let*
+(def-syntaxes (let*)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'let* "bad syntax" stx)

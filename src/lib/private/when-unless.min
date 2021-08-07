@@ -4,7 +4,7 @@
 
 (%import "stx.min")
 
-(def-syntax when
+(def-syntaxes (when)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'when "bad syntax" stx)
@@ -21,7 +21,7 @@
                         (cons (syntax begin) b)
                         (syntax (void)))))))))))
                         
-(def-syntax unless
+(def-syntaxes (unless)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'unless "bad syntax" stx)

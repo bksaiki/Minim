@@ -672,30 +672,9 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
 
 // ================================ Builtins ================================
 
-MinimObject *minim_builtin_def_syntax(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    MinimObject **lam_args, *lam, *trans, *res;
-    SyntaxNode *body;
-
-    body = MINIM_AST(args[1])->children[2];
-    body = transform_syntax(env, body, &res);
-    if (res)    return res;
-
-    lam_args = GC_alloc(2 * sizeof(MinimObject*));
-    init_minim_object(&lam_args[0], MINIM_OBJ_AST, MINIM_AST(args[1])->children[1]);
-    init_minim_object(&lam_args[1], MINIM_OBJ_AST, body);
-    lam = minim_builtin_lambda(env, 2, lam_args);
-
-    init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_AST(args[0])->sym, MINIM_DATA(lam));
-    env_intern_sym(env, MINIM_AST(args[0])->sym, trans);
-
-    init_minim_object(&res, MINIM_OBJ_VOID);
-    return res;
-}
-
 MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *val;
+    MinimObject *res, *val, *trans;
 
     eval_ast_no_check(env, MINIM_AST(args[1]), &val);
     if (MINIM_OBJ_THROWNP(val))
@@ -713,7 +692,8 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
                                       MINIM_AST(args[1]),
                                       NULL);
 
-        env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
+        init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_AST(args[0])->children[0]->sym, MINIM_DATA(val));
+        env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, trans);
     }
     else
     {
@@ -731,7 +711,11 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
                                           MINIM_AST(args[1]),
                                           NULL);
 
-            env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, MINIM_VALUES_ARR(val)[i]);
+            init_minim_object(&trans, MINIM_OBJ_TRANSFORM,
+                              MINIM_AST(args[0])->children[i]->sym,
+                              MINIM_DATA(MINIM_VALUES_ARR(val)[i]));
+                    
+            env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, trans);
         }
     }
 

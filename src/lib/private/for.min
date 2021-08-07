@@ -15,7 +15,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-syntax for
+(def-syntaxes (for)
   (lambda (stx)
     (syntax-case stx ()
      [(_ () body ...) #'(void)]
@@ -30,7 +30,7 @@
                   body ...)
                 (loop (sequence-rest id) ...))))])))
 
-(def-syntax for/list
+(def-syntaxes (for/list)
   (lambda (stx)
     (syntax-case stx ()
      [(_ () body ...) #'(void)]

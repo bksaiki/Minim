@@ -329,48 +329,6 @@ static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **per
     return check_syntax_rec(env, ast->children[1], perr);
 }
 
-static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
-{
-    MinimObject *sym, *rules, *tmp;
-    MinimEnv *env2;
-
-    unsyntax_ast(env, ast->children[1], &sym);
-    if (!MINIM_OBJ_SYMBOLP(sym))
-    {
-        *perr = minim_syntax_error("not a identifier", "def-syntax", ast, ast->children[1]);
-        return false;
-    }
-
-    init_env(&env2, env, NULL);
-    init_minim_object(&tmp, MINIM_OBJ_VOID);
-    env_intern_sym(env2, MINIM_STRING(sym), tmp);
-    
-    unsyntax_ast(env, ast->children[2], &rules);
-    if (!minim_listp(rules) || minim_list_length(rules) == 0)
-    {
-        *perr = minim_syntax_error("expected a transform", "def-syntax", ast, ast->children[2]);
-        return false;
-    }
-
-    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "lambda") != 0)
-    {
-        *perr = minim_syntax_error("expected a transform", "def-syntax", ast, ast->children[2]);
-        return false;
-    }
-
-    if (MINIM_AST(MINIM_CADR(rules))->type != SYNTAX_NODE_LIST ||
-        MINIM_AST(MINIM_CADR(rules))->childc != 1)
-    {
-        *perr = minim_syntax_error("takes a procedure of 1 argument",
-                                    "def-syntax",
-                                    ast,
-                                    ast->children[2]);
-        return false;
-    }
-
-    return true;
-}
-
 bool check_syntax_def_syntaxes(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *ids, *sym, *tmp;
@@ -583,7 +541,6 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
 
-            CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
             CHECK_REC(proc, minim_builtin_def_syntaxes, check_syntax_def_syntaxes);
             CHECK_REC(proc, minim_builtin_syntax_case, check_syntax_syntax_case);
 

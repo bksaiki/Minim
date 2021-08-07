@@ -4,7 +4,7 @@
 
 (%import "and-or.min" "stx.min")
 
-(def-syntax cond
+(def-syntaxes (cond)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'cond "bad-syntax" stx)
@@ -39,7 +39,7 @@
                                   (cons (syntax cond) (stx-cdr e)))))))
                     (serr "missing clause" c))))))))
 
-(def-syntax else
+(def-syntaxes (else)
   (lambda (stx)
     (syntax-error 'else "not allowed as an expression" stx)))
 

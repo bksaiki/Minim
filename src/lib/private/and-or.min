@@ -4,7 +4,7 @@
 
 (%import "stx.min")
 
-(def-syntax and
+(def-syntaxes (and)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'and "bad syntax" stx)
@@ -22,7 +22,7 @@
                       (cons (syntax and) (stx-cdr e))
                       (syntax #f)))))))))
 
-(def-syntax or
+(def-syntaxes (or)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'or "bad syntax" stx)
