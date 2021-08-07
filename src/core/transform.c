@@ -693,6 +693,52 @@ MinimObject *minim_builtin_def_syntax(MinimEnv *env, size_t argc, MinimObject **
     return res;
 }
 
+MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res, *val;
+
+    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
+    if (MINIM_OBJ_THROWNP(val))
+        return val;
+    
+    if (!MINIM_OBJ_VALUESP(val))
+    {
+        if (MINIM_AST(args[0])->childc != 1)
+            return minim_values_arity_error("def-syntaxes", MINIM_AST(args[0])->childc,
+                                            1, MINIM_AST(args[0]));
+        
+        if (!MINIM_OBJ_CLOSUREP(val))
+            return minim_syntax_error("expected a procedure of 1 argument",
+                                      "def-syntaxes",
+                                      MINIM_AST(args[1]),
+                                      NULL);
+
+        env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
+    }
+    else
+    {
+        if (MINIM_VALUES_LEN(val) != MINIM_AST(args[0])->childc)
+            return minim_values_arity_error("def-syntaxes",
+                                            MINIM_AST(args[0])->childc,
+                                            MINIM_VALUES_LEN(val),
+                                            MINIM_AST(args[0]));
+
+        for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
+        {
+            if (!MINIM_OBJ_CLOSUREP(MINIM_VALUES_ARR(val)[i]))
+                return minim_syntax_error("expected a procedure of 1 argument",
+                                          "def-syntaxes",
+                                          MINIM_AST(args[1]),
+                                          NULL);
+
+            env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, MINIM_VALUES_ARR(val)[i]);
+        }
+    }
+
+    init_minim_object(&res, MINIM_OBJ_VOID);
+    return res;
+}
+
 MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MatchTable table;

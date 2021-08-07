@@ -32,6 +32,7 @@ DEFINE_BUILTIN_FUN(import)
 
 // Transforms
 DEFINE_BUILTIN_FUN(def_syntax)
+DEFINE_BUILTIN_FUN(def_syntaxes)
 DEFINE_BUILTIN_FUN(syntax)
 DEFINE_BUILTIN_FUN(syntaxp)
 DEFINE_BUILTIN_FUN(unwrap)

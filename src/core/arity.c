@@ -187,7 +187,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
 bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
 {
-    SET_ARITY_MIN(def_values, 2);
+    SET_ARITY_EXACT(def_values, 2);
     SET_ARITY_EXACT(setb, 2);
     SET_ARITY_EXACT(if, 3);
     // no check: 'case'
@@ -203,6 +203,7 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(force, 1);
 
     SET_ARITY_EXACT(def_syntax, 2);
+    SET_ARITY_EXACT(def_syntaxes, 2);
     SET_ARITY_MIN(syntax_case, 2)
     SET_ARITY_EXACT(syntax, 1);
     SET_ARITY_EXACT(syntaxp, 1);

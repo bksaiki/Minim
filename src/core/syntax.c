@@ -371,6 +371,50 @@ static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject 
     return true;
 }
 
+bool check_syntax_def_syntaxes(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+{
+    MinimObject *ids, *sym, *tmp;
+
+    unsyntax_ast(env, ast->children[1], &ids);
+    if (!minim_listp(ids))
+    {
+        *perr = minim_syntax_error("not a list of identifiers",
+                                   "def-syntaxes",
+                                   ast,
+                                   ast->children[1]);
+        return false;
+    }
+
+    for (size_t i = 0; i < ast->children[1]->childc; ++i)
+    {
+        unsyntax_ast(env, ast->children[1]->children[i], &sym);
+        if (!MINIM_OBJ_SYMBOLP(sym))
+        {
+            *perr = minim_syntax_error("not an identifier",
+                                       "def-syntaxes",
+                                       ast,
+                                       ast->children[1]->children[i]);
+            return false;
+        }
+
+        for (size_t j = 0; j < i; ++j)
+        {
+            if (strcmp(ast->children[1]->children[j]->sym, MINIM_STRING(sym)) == 0)
+            {
+                *perr = minim_syntax_error("duplicate identifier",
+                                           "def-syntaxes",
+                                           ast,
+                                           ast->children[1]->children[i]);
+            }
+        }
+        
+        init_minim_object(&tmp, MINIM_OBJ_VOID);
+        env_intern_sym(env, MINIM_STRING(sym), tmp);
+    }
+
+    return check_syntax_rec(env, ast->children[2], perr);
+}
+
 static bool check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *reserved, *sym;
@@ -540,6 +584,7 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
 
             CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
+            CHECK_REC(proc, minim_builtin_def_syntaxes, check_syntax_def_syntaxes);
             CHECK_REC(proc, minim_builtin_syntax_case, check_syntax_syntax_case);
 
             CHECK_REC(proc, minim_builtin_import, check_syntax_import);
