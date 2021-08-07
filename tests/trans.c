@@ -88,21 +88,21 @@ int main()
               [_ #'1])",
             "<syntax:1>",
             
-            "(syntax-case #'(1 2 3) ()   \
+            "(syntax-case #'(1 2 3) ()      \
               [(_ a b) #'(a b)])",
             "<syntax:(2 3)>",
 
-            "(syntax-case #'(1 a 3) (a)   \
+            "(syntax-case #'(1 a 3) (a)     \
               [(_ a b) #'(a b)])",
             "<syntax:(a 3)>",
 
-            "(syntax-case #'(1 2 3) ()   \
+            "(syntax-case #'(1 2 3) ()      \
               [(_ a b) (cons 1 #'(a b))])",
             "'(1 . <syntax:(2 3)>)",
 
             "(syntax-case #'(foo x y) ()    \
-              [(_ a b) #'(let ([t a])     \
-                          (set! a b)      \
+              [(_ a b) #'(let ([t a])       \
+                          (set! a b)        \
                           (set! b t))])",
             "<syntax:(let ((t x)) (set! x y) (set! y t))>"
         };
@@ -116,16 +116,16 @@ int main()
         const int COUNT = 3;
         char strs[3][256] =
         {
-            "(def-syntax foo              \
+            "(def-syntaxes (foo)          \
               (lambda (stx)               \
                (syntax-case stx ()        \
                 [(_ a) #'a])))",
-            "(def-syntax foo              \
+            "(def-syntaxes (foo)          \
               (lambda (stx)               \
                (syntax-case stx ()        \
                 [(_ a) #'1]               \
                 [(_ a b) #'2])))",
-            "(def-syntax foo              \
+            "(def-syntaxes (foo)          \
               (lambda (stx)               \
                (syntax-case stx (c d)     \
                 [(_ a) #'1]               \
@@ -141,7 +141,7 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
-            "(def-syntax foo            \
+            "(def-syntaxes (foo)        \
               (lambda (stx)             \
                (syntax-case stx ()      \
                 [(_ a b c) #'3]         \
@@ -150,7 +150,7 @@ int main()
              (foo a b c)",
             "3",
 
-            "(def-syntax foo            \
+            "(def-syntaxes (foo)        \
               (lambda (stx)             \
                (syntax-case stx ()      \
                 [(_ a b c) #'3]         \
@@ -159,7 +159,7 @@ int main()
              (foo a b)",
             "2",
 
-            "(def-syntax foo            \
+            "(def-syntaxes (foo)        \
               (lambda (stx)             \
                (syntax-case stx ()      \
                 [(_ a b c) #'3]         \
@@ -178,7 +178,7 @@ int main()
         const int COUNT = 7;
         char strs[14][512] =
         {
-            "(def-syntax foo                  \
+            "(def-syntaxes (foo)              \
               (lambda (stx)                   \
                (syntax-case stx ()            \
                 [(_ a b c) #'(list c b a)]    \
@@ -187,7 +187,7 @@ int main()
              (foo 1 2 3)",
             "'(3 2 1)",
 
-            "(def-syntax foo                  \
+            "(def-syntaxes (foo)              \
               (lambda (stx)                   \
                (syntax-case stx ()            \
                 [(_ a b c) #'(list c b a)]    \
@@ -196,7 +196,7 @@ int main()
              (foo 1 2)",
             "'(2 1)",
 
-            "(def-syntax foo                  \
+            "(def-syntaxes (foo)              \
               (lambda (stx)                   \
                (syntax-case stx ()            \
                 [(_ a b c) #'(list c b a)]    \
@@ -205,28 +205,28 @@ int main()
              (foo 1)",
             "'(1)",
 
-            "(def-syntax foo                  \
+            "(def-syntaxes (foo)              \
               (lambda (stx)                   \
                (syntax-case stx ()            \
                 [(_ a b c) #''(a b c)])))     \
              (foo 1 2 3)",
             "'(1 2 3)",
 
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
                 [(_ #(a b c)) #''(a b c)])))    \
              (foo #(1 2 3))",
             "'(1 2 3)",
 
-            "(def-syntax foo                        \
+            "(def-syntaxes (foo)                    \
               (lambda (stx)                         \
                (syntax-case stx ()                  \
                 [(_ (a b) c d) #''(a b c d)])))     \
              (foo (1 2) 3 4)",
             "'(1 2 3 4)",
 
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
                 [(_ a b c) #'#(a b c)])))       \
@@ -243,63 +243,63 @@ int main()
         const int COUNT = 9;
         char strs[18][512] =
         {
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
-                [(_ a ...) #'(list a ...)])))  \
+                [(_ a ...) #'(list a ...)])))   \
              (foo)",
             "'()",
 
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
                 [(_ a ...) #'(list a ...)])))   \
              (foo 1)",
             "'(1)",
 
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
                 [(_ a ...) #'(list a ...)])))   \
              (foo 1 2)",
             "'(1 2)",
 
-            "(def-syntax bar                              \
+            "(def-syntaxes (bar)                          \
               (lambda (stx)                               \
                (syntax-case stx ()                        \
                 [(_ a b ...) #'(list a (list b ...))])))  \
              (bar 1)",
             "'(1 ())",
 
-            "(def-syntax bar                              \
+            "(def-syntaxes (bar)                          \
               (lambda (stx)                               \
                (syntax-case stx ()                        \
                 [(_ a b ...) #'(list a (list b ...))])))  \
              (bar 1 2)",
             "'(1 (2))",
 
-            "(def-syntax bar                                \
+            "(def-syntaxes (bar)                            \
               (lambda (stx)                                 \
                (syntax-case stx ()                          \
                 [(_ a b ...) #'(list a (list b ...))])))    \
              (bar 1 2 3)",
             "'(1 (2 3))",
 
-            "(def-syntax baz                                    \
+            "(def-syntaxes (baz)                                \
               (lambda (stx)                                     \
                (syntax-case stx ()                              \
                 [(_ a b c ...) #'(list a b (list c ...))])))    \
              (baz 1 2)",
             "'(1 2 ())",
 
-            "(def-syntax baz                                    \
+            "(def-syntaxes (baz)                                \
               (lambda (stx)                                     \
                (syntax-case stx ()                              \
                 [(_ a b c ...) #'(list a b (list c ...))])))    \
              (baz 1 2 3)",
             "'(1 2 (3))",
 
-            "(def-syntax baz                                  \
+            "(def-syntaxes (baz)                              \
               (lambda (stx)                                   \
                (syntax-case stx ()                            \
                 [(_ a b c ...) #'(list a b (list c ...))])))  \
@@ -316,63 +316,63 @@ int main()
         const int COUNT = 9;
         char strs[18][512] =
         {
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
                 [(_ a ...) #'#(a ...)])))       \
              (foo)",
             "'#()",
 
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
                 [(_ a ...) #'#(a ...)])))       \
              (foo 1)",
             "'#(1)",
 
-            "(def-syntax foo                    \
+            "(def-syntaxes (foo)                \
               (lambda (stx)                     \
                (syntax-case stx ()              \
                 [(_ a ...) #'#(a ...)])))       \
              (foo 1 2)",
             "'#(1 2)",
 
-            "(def-syntax bar                        \
+            "(def-syntaxes (bar)                    \
               (lambda (stx)                         \
                (syntax-case stx ()                  \
                 [(_ a b ...) #'#(a #(b ...))])))    \
              (bar 1)",
             "'#(1 #())",
 
-            "(def-syntax bar                        \
+            "(def-syntaxes (bar)                    \
               (lambda (stx)                         \
                (syntax-case stx ()                  \
                 [(_ a b ...) #'#(a #(b ...))])))    \
              (bar 1 2)",
             "'#(1 #(2))",
 
-            "(def-syntax bar                        \
+            "(def-syntaxes (bar)                    \
               (lambda (stx)                         \
                (syntax-case stx ()                  \
                 [(_ a b ...) #'#(a #(b ...))])))    \
              (bar 1 2 3)",
             "'#(1 #(2 3))",
 
-            "(def-syntax baz                          \
+            "(def-syntaxes (baz)                        \
               (lambda (stx)                           \
                (syntax-case stx ()                    \
                 [(_ a b c ...) #'#(a b #(c ...))])))  \
              (baz 1 2)",
             "'#(1 2 #())",
 
-            "(def-syntax baz                            \
+            "(def-syntaxes (baz)                        \
               (lambda (stx)                             \
                (syntax-case stx ()                      \
                 [(_ a b c ...) #'#(a b #(c ...))])))    \
              (baz 1 2 3)",
             "'#(1 2 #(3))",
 
-            "(def-syntax baz                            \
+            "(def-syntaxes (baz)                        \
               (lambda (stx)                             \
                (syntax-case stx ()                      \
                 [(_ a b c ...) #'#(a b #(c ...))])))    \
@@ -389,21 +389,21 @@ int main()
         const int COUNT = 4;
         char strs[8][512] =
         {
-            "(def-syntax foo                                \
+            "(def-syntaxes (foo)                            \
               (lambda (stx)                                 \
                (syntax-case stx ()                          \
                 [(_ (a b) ...) #''((a ...) (b ...))])))     \
              (foo (1 2))",
             "'((1) (2))",
 
-            "(def-syntax foo                                \
+            "(def-syntaxes (foo)                            \
               (lambda (stx)                                 \
                (syntax-case stx ()                          \
                 [(_ (a b) ...) #''((a ...) (b ...))])))     \
              (foo (1 2) (3 4))",
             "'((1 3) (2 4))",
 
-            "(def-syntax foo                                \
+            "(def-syntaxes (foo)                            \
               (lambda (stx)                                 \
                (syntax-case stx ()                          \
                 [(_ (a b c ...) ...)                        \
@@ -411,7 +411,7 @@ int main()
              (foo (1 2))",
             "'((1) (2) ())",
 
-            "(def-syntax foo                                \
+            "(def-syntaxes (foo)                            \
               (lambda (stx)                                 \
                (syntax-case stx ()                          \
                 [(_ (a b c ...) ...)                        \
@@ -429,11 +429,11 @@ int main()
         const int COUNT = 1;
         char strs[1][1024] =
         {
-            "(def-syntax foo                                      \
+            "(def-syntaxes (foo)                                  \
               (lambda (stx)                                       \
                (syntax-case stx ()                                \
                 [(_ a b) #'(printf \"~a\n\" (vector a b))])))     \
-             (def-syntax foos                                     \
+             (def-syntaxes (foo)                                  \
               (lambda (stx)                                       \
                (syntax-case stx ()                                \
                 [(_ [a b] ...) (begin (foo a b) ...)])))"
