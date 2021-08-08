@@ -189,7 +189,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
 {
     MinimObject *ret, *arg;
     MinimModule *tmp, *module2;
-    Buffer *path;
+    Buffer *path, *fixed_path;
 
     if (!env->current_dir)
     {
@@ -206,17 +206,18 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         unsyntax_ast(env, MINIM_AST(args[i]), &arg);
 
         init_buffer(&path);
+        init_buffer(&fixed_path);
         writes_buffer(path, env->current_dir);
         writes_buffer(path, MINIM_STRING(arg));
+        valid_path(fixed_path, get_buffer(path));
 
-        module2 = minim_module_cache_get(env->module->cache, get_buffer(path));
+        module2 = minim_module_cache_get(env->module->cache, get_buffer(fixed_path));
         if (module2)
         {
-            Buffer *mfname, *dir;
+            Buffer *dir;
 
-            init_buffer(&mfname);
-            valid_path(mfname, get_buffer(path));
-            dir = get_directory(get_buffer(mfname));
+
+            dir = get_directory(get_buffer(fixed_path));
 
             copy_minim_module(&module2, module2);
             init_env(&module2->env, get_builtin_env(env), NULL);
@@ -226,11 +227,11 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         }
         else
         {
-            module2 = minim_load_file_as_module(env->module, get_buffer(path), &ret);
+            module2 = minim_load_file_as_module(env->module, get_buffer(fixed_path), &ret);
             if (!module2) return ret;
 
             module2->prev = tmp;
-            module2->name = get_buffer(path);
+            module2->name = get_buffer(fixed_path);
             minim_module_cache_add(env->module->cache, module2);
             minim_module_add_import(env->module, module2);
 
