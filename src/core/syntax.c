@@ -112,26 +112,48 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
     return true;
 }
 
-static bool check_syntax_def(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+static bool check_syntax_def_values(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
-    MinimObject *sym, *tmp;
+    MinimObject *ids, *sym, *tmp;
 
-    if (ast->childc == 3)
-        return check_syntax_set(env, ast, perr);
-
-    unsyntax_ast(env, ast->children[1], &sym);
-    if (!MINIM_OBJ_SYMBOLP(sym))
+    unsyntax_ast(env, ast->children[1], &ids);
+    if (!minim_listp(ids))
     {
-        *perr = minim_syntax_error("not an identifier",
-                                   ast->children[0]->sym,
+        *perr = minim_syntax_error("not a list of identifiers",
+                                   "def-values",
                                    ast,
-                                   ast->children[0]);
+                                   ast->children[1]);
         return false;
     }
 
-    init_minim_object(&tmp, MINIM_OBJ_VOID);
-    env_intern_sym(env, MINIM_STRING(sym), tmp);
-    return check_syntax_func(env, ast, perr, 2);
+    for (size_t i = 0; i < ast->children[1]->childc; ++i)
+    {
+        unsyntax_ast(env, ast->children[1]->children[i], &sym);
+        if (!MINIM_OBJ_SYMBOLP(sym))
+        {
+            *perr = minim_syntax_error("not an identifier",
+                                       "def-values",
+                                       ast,
+                                       ast->children[1]->children[i]);
+            return false;
+        }
+
+        for (size_t j = 0; j < i; ++j)
+        {
+            if (strcmp(ast->children[1]->children[j]->sym, MINIM_STRING(sym)) == 0)
+            {
+                *perr = minim_syntax_error("duplicate identifier",
+                                           "def-values",
+                                           ast,
+                                           ast->children[1]->children[i]);
+            }
+        }
+        
+        init_minim_object(&tmp, MINIM_OBJ_VOID);
+        env_intern_sym(env, MINIM_STRING(sym), tmp);
+    }
+
+    return check_syntax_rec(env, ast->children[2], perr);
 }
 
 static bool check_syntax_lambda(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
@@ -198,7 +220,7 @@ static bool check_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
     return true;
 }
 
-static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+static bool check_syntax_let_values(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     MinimObject *bindings, *sym;
     MinimEnv *env2;
@@ -219,7 +241,7 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
     unsyntax_ast(env, ast->children[base], &bindings);
     if (!minim_listp(bindings))
     {
-        *perr = minim_syntax_error("expected a list of bindings", "for", ast, ast->children[base]);
+        *perr = minim_syntax_error("expected a list of bindings", "let", ast, ast->children[base]);
         return false;
     }
 
@@ -229,29 +251,58 @@ static bool check_syntax_let(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 
     for (MinimObject *it = bindings; it; it = MINIM_CDR(it))
     {
-        MinimObject *bind, *sym, *tmp;
-        SyntaxNode *syn;
+        MinimObject *bind, *sym, *tmp, *ids;
+        SyntaxNode *stx;
         MinimEnv *env3;
 
         unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &bind);
         if (!minim_listp(bind) || minim_list_length(bind) != 2)
         {
-            *perr = minim_syntax_error("bad binding", "let", ast, MINIM_AST(MINIM_CAR(it)));
+            *perr = minim_syntax_error("bad binding", "let-values", ast, MINIM_AST(MINIM_CAR(it)));
             return false;
         }
 
-        // identifier
-        syn = MINIM_DATA(MINIM_CAR(bind));
-        unsyntax_ast(env, syn, &sym);
-        if (!MINIM_OBJ_SYMBOLP(sym))
+        // list of identifier
+        stx = MINIM_AST(MINIM_CAR(bind));
+        unsyntax_ast(env, stx, &ids);
+        if (!minim_listp(ids))
         {
-            *perr = minim_syntax_error("not an identifier", "let", ast, MINIM_AST(MINIM_CAR(it)));
+            *perr = minim_syntax_error("not a list of identifiers",
+                                       "let-values",
+                                       ast,
+                                       stx);
             return false;
+        }
+
+        for (size_t i = 0; i < stx->childc; ++i)
+        {
+            unsyntax_ast(env, stx->children[i], &sym);
+            if (!MINIM_OBJ_SYMBOLP(sym))
+            {
+                *perr = minim_syntax_error("not an identifier",
+                                           MINIM_STRING(sym),
+                                           ast,
+                                           stx->children[i]);
+                return false;
+            }
+
+            for (size_t j = 0; j < i; ++j)
+            {
+                if (strcmp(stx->children[j]->sym, MINIM_STRING(sym)) == 0)
+                {
+                    *perr = minim_syntax_error("duplicate identifier",
+                                               MINIM_STRING(sym),
+                                               ast,
+                                               stx->children[i]);
+                }
+            }
+            
+            init_minim_object(&tmp, MINIM_OBJ_VOID);
+            env_intern_sym(env, MINIM_STRING(sym), tmp);
         }
 
         init_env(&env3, env, NULL);
-        syn = MINIM_DATA(MINIM_CADR(bind));
-        if (!check_syntax_rec(env3, syn, perr))
+        if (!check_syntax_rec(env3, MINIM_AST(MINIM_CADR(bind)), perr))
             return false;
 
         init_minim_object(&tmp, MINIM_OBJ_VOID);
@@ -278,46 +329,48 @@ static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **per
     return check_syntax_rec(env, ast->children[1], perr);
 }
 
-static bool check_syntax_def_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+bool check_syntax_def_syntaxes(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
-    MinimObject *sym, *rules, *tmp;
-    MinimEnv *env2;
+    MinimObject *ids, *sym, *tmp;
 
-    unsyntax_ast(env, ast->children[1], &sym);
-    if (!MINIM_OBJ_SYMBOLP(sym))
+    unsyntax_ast(env, ast->children[1], &ids);
+    if (!minim_listp(ids))
     {
-        *perr = minim_syntax_error("not a identifier", "def-syntax", ast, ast->children[1]);
+        *perr = minim_syntax_error("not a list of identifiers",
+                                   "def-syntaxes",
+                                   ast,
+                                   ast->children[1]);
         return false;
     }
 
-    init_env(&env2, env, NULL);
-    init_minim_object(&tmp, MINIM_OBJ_VOID);
-    env_intern_sym(env2, MINIM_STRING(sym), tmp);
-    
-    unsyntax_ast(env, ast->children[2], &rules);
-    if (!minim_listp(rules) || minim_list_length(rules) == 0)
+    for (size_t i = 0; i < ast->children[1]->childc; ++i)
     {
-        *perr = minim_syntax_error("expected a transform", "def-syntax", ast, ast->children[2]);
-        return false;
+        unsyntax_ast(env, ast->children[1]->children[i], &sym);
+        if (!MINIM_OBJ_SYMBOLP(sym))
+        {
+            *perr = minim_syntax_error("not an identifier",
+                                       "def-syntaxes",
+                                       ast,
+                                       ast->children[1]->children[i]);
+            return false;
+        }
+
+        for (size_t j = 0; j < i; ++j)
+        {
+            if (strcmp(ast->children[1]->children[j]->sym, MINIM_STRING(sym)) == 0)
+            {
+                *perr = minim_syntax_error("duplicate identifier",
+                                           "def-syntaxes",
+                                           ast,
+                                           ast->children[1]->children[i]);
+            }
+        }
+        
+        init_minim_object(&tmp, MINIM_OBJ_VOID);
+        env_intern_sym(env, MINIM_STRING(sym), tmp);
     }
 
-    if (strcmp(MINIM_AST(MINIM_CAR(rules))->sym, "lambda") != 0)
-    {
-        *perr = minim_syntax_error("expected a transform", "def-syntax", ast, ast->children[2]);
-        return false;
-    }
-
-    if (MINIM_AST(MINIM_CADR(rules))->type != SYNTAX_NODE_LIST ||
-        MINIM_AST(MINIM_CADR(rules))->childc != 1)
-    {
-        *perr = minim_syntax_error("takes a procedure of 1 argument",
-                                    "def-syntax",
-                                    ast,
-                                    ast->children[2]);
-        return false;
-    }
-
-    return true;
+    return check_syntax_rec(env, ast->children[2], perr);
 }
 
 static bool check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
@@ -480,15 +533,15 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 
             CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
-            CHECK_REC(proc, minim_builtin_def, check_syntax_def);
+            CHECK_REC(proc, minim_builtin_def_values, check_syntax_def_values);
             CHECK_REC(proc, minim_builtin_if, check_syntax_if);
             CHECK_REC(proc, minim_builtin_case, check_syntax_case);
-            CHECK_REC(proc, minim_builtin_let, check_syntax_let);
-            CHECK_REC(proc, minim_builtin_letstar, check_syntax_let);
+            CHECK_REC(proc, minim_builtin_let_values, check_syntax_let_values);
+            CHECK_REC(proc, minim_builtin_letstar_values, check_syntax_let_values);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
             CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
 
-            CHECK_REC(proc, minim_builtin_def_syntax, check_syntax_def_syntax);
+            CHECK_REC(proc, minim_builtin_def_syntaxes, check_syntax_def_syntaxes);
             CHECK_REC(proc, minim_builtin_syntax_case, check_syntax_syntax_case);
 
             CHECK_REC(proc, minim_builtin_import, check_syntax_import);

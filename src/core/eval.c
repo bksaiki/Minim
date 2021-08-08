@@ -300,7 +300,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             {
                 res = minim_error("not in a quasiquote", "unquote");
             }
-            else if (proc == minim_builtin_def_syntax ||
+            else if (proc == minim_builtin_def_syntaxes ||
                      proc == minim_builtin_import ||
                      proc == minim_builtin_export)
             {
@@ -409,7 +409,7 @@ static bool expr_is_module_level(MinimEnv *env, SyntaxNode *ast)
         return false;
 
     builtin = MINIM_DATA(val);
-    return (builtin == minim_builtin_def_syntax ||
+    return (builtin == minim_builtin_def_syntaxes ||
             builtin == minim_builtin_import ||
             builtin == minim_builtin_export);
 }
@@ -422,7 +422,7 @@ static bool expr_is_macro(MinimEnv *env, SyntaxNode *ast)
         return false;
 
     val = env_get_sym(env, ast->children[0]->sym);
-    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_def_syntax);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_def_syntaxes);
 }
 
 static bool expr_is_import(MinimEnv *env, SyntaxNode *ast)
@@ -474,7 +474,7 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
         ast = transform_syntax(env, ast, pobj);
         if (*pobj)  return 0;
 
-        *pobj = eval_top_level(env, ast, minim_builtin_def_syntax);
+        *pobj = eval_top_level(env, ast, minim_builtin_def_syntaxes);
         if (MINIM_OBJ_ERRORP(*pobj))
             return 0;
     }
@@ -531,13 +531,10 @@ int eval_module(MinimModule *module, MinimObject **pobj)
             module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
             if (*pobj)  return 0;
 
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntax);
+            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
         }
-
-        if (!check_syntax(env2, module->exprs[i], pobj))
-            return 0;
     }
 
     // Syntax transform
@@ -548,12 +545,22 @@ int eval_module(MinimModule *module, MinimObject **pobj)
 
         module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
         if (*pobj)  return 0;
+
+        if (expr_is_macro(module->env, module->exprs[i]))
+        {
+            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
+            if (MINIM_OBJ_ERRORP(*pobj))
+                return 0;
+        }
     }
 
     // Evaluation
     set_default_print_params(&pp);
     for (size_t i = 0; i < module->exprc; ++i)
     {
+        if (!check_syntax(env2, module->exprs[i], pobj))
+            return 0;
+
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 

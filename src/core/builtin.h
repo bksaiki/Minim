@@ -10,11 +10,11 @@ typedef struct {
 #define DEFINE_BUILTIN_FUN(name)  MinimObject *minim_builtin_ ## name(MinimEnv *env, size_t argc, MinimObject **args);
 
 // Variable / Control
-DEFINE_BUILTIN_FUN(def)
+DEFINE_BUILTIN_FUN(def_values)
 DEFINE_BUILTIN_FUN(setb)
 DEFINE_BUILTIN_FUN(if)
-DEFINE_BUILTIN_FUN(let)
-DEFINE_BUILTIN_FUN(letstar)
+DEFINE_BUILTIN_FUN(let_values)
+DEFINE_BUILTIN_FUN(letstar_values)
 DEFINE_BUILTIN_FUN(begin)
 DEFINE_BUILTIN_FUN(case)
 DEFINE_BUILTIN_FUN(quote)
@@ -24,13 +24,14 @@ DEFINE_BUILTIN_FUN(lambda)
 DEFINE_BUILTIN_FUN(exit)
 DEFINE_BUILTIN_FUN(delay)
 DEFINE_BUILTIN_FUN(force)
+DEFINE_BUILTIN_FUN(values)
 
 // Modules
 DEFINE_BUILTIN_FUN(export)
 DEFINE_BUILTIN_FUN(import)
 
 // Transforms
-DEFINE_BUILTIN_FUN(def_syntax)
+DEFINE_BUILTIN_FUN(def_syntaxes)
 DEFINE_BUILTIN_FUN(syntax)
 DEFINE_BUILTIN_FUN(syntaxp)
 DEFINE_BUILTIN_FUN(unwrap)
@@ -46,6 +47,7 @@ DEFINE_BUILTIN_FUN(error)
 DEFINE_BUILTIN_FUN(void)
 DEFINE_BUILTIN_FUN(version);
 DEFINE_BUILTIN_FUN(symbol_count);
+DEFINE_BUILTIN_FUN(dump_symbols);
 
 // Procedure
 DEFINE_BUILTIN_FUN(procedurep)

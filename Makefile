@@ -24,6 +24,9 @@ LDFLAGS 	= -lm -lgmp
 debug:
 	$(MAKE) CFLAGS="-g $(CFLAGS)" minim
 
+profile:
+	$(MAKE) CFLAGS="-O3 -march=native -pg $(CFLAGS)" minim
+
 release:
 	$(MAKE) CFLAGS="-O3 -march=native $(CFLAGS)" minim
 

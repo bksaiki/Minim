@@ -28,118 +28,57 @@ MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_let_func(MinimEnv *env, MinimObject **args, size_t argc, bool alt)
+static MinimObject *minim_builtin_let_values_assign(MinimEnv *env, size_t argc, MinimObject **args, bool alt)
 {
-    MinimObject *bindings, *name, *res, *it;
-    MinimLambda *lam;
+    MinimObject *val;
+    SyntaxNode *binding, *names;
     MinimEnv *env2;
-    size_t len;
-    bool err;
-
-    // Get function name
-    unsyntax_ast(env, MINIM_DATA(args[0]), &name);
-    if (MINIM_OBJ_THROWNP(name))
-        return name;
-
-    // Convert bindings to list
-    unsyntax_ast(env, MINIM_DATA(args[1]), &bindings);
-    if (MINIM_OBJ_THROWNP(bindings))
-        return bindings;
-
-    len = minim_list_length(bindings);
-    it = bindings;
-
-    // Initialize lambda
-    init_minim_lambda(&lam);
-    lam->argc = len;
-    lam->args = GC_alloc(lam->argc * sizeof(char*));
-
-    // Initialize child environment
-    init_env(&env2, env, lam);
-    err = false;
-
-    // Bind names and values
-    for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
-    {
-        MinimObject *bind, *sym, *val;
-
-        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &bind);
-        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(bind)), &sym);
-        
-        eval_ast_no_check((alt ? env2 : env), MINIM_DATA(MINIM_CADR(bind)), &val);
-        env_intern_sym(env2, MINIM_STRING(sym), val);
-
-        lam->args[i] = GC_alloc_atomic((strlen(MINIM_STRING(sym)) + 1) * sizeof(char));
-        strcpy(lam->args[i], MINIM_STRING(sym));
-    }
-
-    // Intern lambda
-    copy_syntax_node(&lam->body, MINIM_DATA(args[2]));
-    init_minim_object(&it, MINIM_OBJ_CLOSURE, lam);
-    env_intern_sym(env2, MINIM_STRING(name), it);
-
-    // Evaluate body
-    res = minim_builtin_begin(env2, argc - 2, &args[2]);
-    if (MINIM_OBJ_TAIL_CALLP(res))
-    {   
-        MinimTailCall *call = MINIM_DATA(res);
-
-        if (minim_lambda_equalp(call->lam, lam))
-            return eval_lambda(lam, env, call->argc, call->args);
-    }
-
-    if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
-        minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
-    return res;
-}
-
-MinimObject *minim_let_assign(MinimEnv *env, MinimObject **args, size_t argc, bool alt)
-{
-    MinimObject *bindings, *it;
-    MinimEnv *env2;
-    size_t len;
-    bool err;
-
-    // Convert bindings to list
-    unsyntax_ast(env, MINIM_DATA(args[0]), &bindings);
-    if (MINIM_OBJ_THROWNP(bindings))
-        return bindings;
     
-    // Initialize child environment
-    err = false;
-    init_env(&env2, env, NULL);
-    len = minim_list_length(bindings);
-    it = bindings;
-
     // Bind names and values
-    for (size_t i = 0; !err && i < len; ++i, it = MINIM_CDR(it))
+    init_env(&env2, env, NULL);
+    for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
     {
-        MinimObject *bind, *sym, *val;
+        binding = MINIM_AST(args[0])->children[i];
+        eval_ast_no_check((alt ? env2 : env), binding->children[1], &val);
+        if (MINIM_OBJ_THROWNP(val))
+            return val;
 
-        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &bind);
-        unsyntax_ast(env, MINIM_DATA(MINIM_CAR(bind)), &sym);
-        
-        eval_ast_no_check((alt ? env2 : env), MINIM_DATA(MINIM_CADR(bind)), &val);
-        env_intern_sym(env2, MINIM_STRING(sym), val);
+        names = binding->children[0];
+        if (!MINIM_OBJ_VALUESP(val))
+        {
+            if (names->childc != 1)
+                return minim_values_arity_error("def-values", names->childc, 1, names);
+            
+            env_intern_sym(env2, names->children[0]->sym, val);
+            if (MINIM_OBJ_CLOSUREP(val))
+                env_intern_sym(MINIM_CLOSURE(val)->env, names->children[0]->sym, val);
+        }
+        else
+        {
+            if (MINIM_VALUES_LEN(val) != names->childc)
+                return minim_values_arity_error("def-values", names->childc, MINIM_VALUES_LEN(val), names);
+
+            for (size_t i = 0; i < names->childc; ++i)
+            {
+                env_intern_sym(env2, names->children[i]->sym, MINIM_VALUES_ARR(val)[i]);
+                if (MINIM_OBJ_CLOSUREP(MINIM_VALUES_ARR(val)[i]))
+                    env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_ARR(val)[i])->env, names->children[0]->sym, val);
+            }
+        }
     }
 
     // Evaluate body
     return minim_builtin_begin(env2, argc - 1, &args[1]);
 }
 
-MinimObject *minim_builtin_let(MinimEnv *env, size_t argc, MinimObject **args)
+MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return MINIM_AST(args[0])->sym ?
-           minim_let_func(env, args, argc, false):
-           minim_let_assign(env, args, argc, false);
-           
+    return minim_builtin_let_values_assign(env, argc, args, false);
 }
 
-MinimObject *minim_builtin_letstar(MinimEnv *env, size_t argc, MinimObject **args)
+MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return MINIM_AST(args[0])->sym ?
-           minim_let_func(env, args, argc, true) :
-           minim_let_assign(env, args, argc, true);
+    return minim_builtin_let_values_assign(env, argc, args, true);
 }
 
 MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
@@ -216,5 +155,13 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
     }
 
     init_minim_object(&res, MINIM_OBJ_VOID);
+    return res;
+}
+
+MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    init_minim_object(&res, MINIM_OBJ_VALUES, args, argc);
     return res;
 }

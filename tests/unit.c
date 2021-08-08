@@ -43,6 +43,21 @@ int main()
     }
 
     {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(def-values (x) 1)",                                       "<void>",
+            "(def-values (y) (+ 1 2))",                                 "<void>",
+            "(def-values (x y) (values 1 (* 2 3)))",                    "<void>",
+            "(def-values (f g) (values (lambda () 1) (lambda () 2)))",  "<void>"
+        };
+
+        printf("Testing 'def-values'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 6;
         char strs[12][256] = 
         {
@@ -373,8 +388,8 @@ int main()
             "(foldl cons (list) (list 1))",         "'(1)",
             "(foldl cons (list) (list 1 2 3))",     "'(3 2 1)",
 
-            "(begin (def foo (lambda (x y) x)) (foldl foo 0 (list 1)))",        "1",
-            "(begin (def foo (lambda (x y) x)) (foldl foo 0 (list 1 2 3)))",    "3"
+            "(begin (def-values (foo) (lambda (x y) x)) (foldl foo 0 (list 1)))",        "1",
+            "(begin (def-values (foo) (lambda (x y) x)) (foldl foo 0 (list 1 2 3)))",    "3"
         };
 
         printf("Testing 'foldl'\n");
@@ -393,8 +408,8 @@ int main()
             "(foldr cons (list) (list 1))",         "'(1)",
             "(foldr cons (list) (list 1 2 3))",     "'(1 2 3)",
 
-            "(begin (def foo (lambda (x y) x)) (foldr foo 0 (list 1)))",        "1",
-            "(begin (def foo (lambda (x y) x)) (foldr foo 0 (list 1 2 3)))",    "1"
+            "(begin (def-values (foo) (lambda (x y) x)) (foldr foo 0 (list 1)))",        "1",
+            "(begin (def-values (foo) (lambda (x y) x)) (foldr foo 0 (list 1 2 3)))",    "1"
         };
 
         printf("Testing 'foldr'\n");
@@ -403,60 +418,22 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[12][256] =
+        const int COUNT = 10;
+        char strs[20][256] =
         {
-            "(def x 1)",                            "<void>",
-            "(def y (+ 1 2))",                      "<void>",
-            "(def z (+ 1 (* 2 3)))",                "<void>",
-            "(def nullary () 1)",                   "<void>",
-            "(def add1 (x) (+ x 1))",               "<void>",
-            "(def hyp2 (x y) (+ (* x x) (* y y)))", "<void>",
+            "(let-values () 1)",                                            "1",
+            "(let-values ([(x) 1]) x)",                                     "1",
+            "(let-values ([(x) 1]) (+ x 1))",                               "2",
+            "(let-values ([(x y) (values 1 2)]) (+ x y))",                  "3",
+            "(let-values ([(x y) (values 1 2)] [(z) 3]) (+ x y z))",        "6",
+            "(let*-values () 1)",                                           "1",
+            "(let*-values ([(x) 1]) x)",                                    "1",
+            "(let*-values ([(x) 1]) (+ x 1))",                              "2",
+            "(let*-values ([(x y) (values 1 2)]) (+ x y))",                 "3",
+            "(let*-values ([(x y) (values 1 2)] [(z) x]) (+ x y z))",       "4"             
         };
 
-        printf("Testing 'def'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 11;
-        char strs[22][256] =
-        {
-            "(let () 1)",                       "1",
-            "(let ((x 1)) x)",                  "1",
-            "(let ((x 1)) (+ x 1))",            "2",
-            "(let ((x 1) (y 2)) (+ x y))",      "3",
-            "(let* () 1)",                      "1",
-            "(let* ((x 1)) x)",                 "1",
-            "(let* ((x 1)) (+ x 1))",           "2",
-            "(let* ((x 1) (y 2)) (+ x y))",     "3",  
-            "(let* ((x 1) (y x)) y)",           "1",
-            "(let* ((x 1) (y x)) (+ x y))",     "2",
-            "(let* () 1 2)",                    "2"                 
-        };
-
-        printf("Testing 'let/let*'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 8;
-        char strs[16][256] =
-        {
-            "(let f () 1)",                     "1",
-            "(let f ((x 2)) x)",                "2",
-            "(let f ((x 1) (y 2)) (+ x y))",    "3",
-            "(let* f () 1)",                    "1",
-            "(let* f ((x 2)) x)",               "2",
-            "(let* f ((x 1) (y x)) (+ x y))",   "2",
-
-            "(let fact ([n 4]) (if (zero? n) 1 (* n (fact (- n 1)))))",     "24",
-            "(let foo ([n 4]) (set! n 2) n)",                               "2"
-        };
-
-        printf("Testing 'named let/let*'\n");
+        printf("Testing 'let-values/let-values*'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -466,8 +443,8 @@ int main()
         char strs[6][256] = 
         {
             "(begin 1)",                            "1",
-            "(begin (def x 1) x)",                  "1",
-            "(begin (def x 1) (def y 1) (+ x y))",  "2"  
+            "(begin (def-values (x) 1) x)",                  "1",
+            "(begin (def-values (x) 1) (def-values (y) 1) (+ x y))",  "2"  
         };
 
         printf("Testing 'begin'\n");
@@ -498,10 +475,10 @@ int main()
             "(equal? + +)",             "#t",
             "(equal? + -)",             "#f",
 
-            "(begin (def ident (x) x) (equal? ident ident))",
+            "(begin (def-values (ident) (lambda (x) x)) (equal? ident ident))",
             "#t",
             
-            "(begin (def f (x) x) (def g (x) x) (equal? f g))",
+            "(begin (def-values (f g) (values (lambda (x) x) (lambda (x) x))) (equal? f g))",
             "#f"
         };
 
@@ -509,21 +486,6 @@ int main()
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
-
-
-    // {
-    //     const int COUNT = 3;
-    //     char strs[6][256] =
-    //     {
-    //         "(for-list ((x '()) (i (in-naturals))) i)",             "'()",
-    //         "(for-list ((x '(1 2 3 4)) (i (in-naturals))) i)",      "'(0 1 2 3)",
-    //         "(for-list ((x '(1 2 3 4)) (i (in-naturals 2))) i)",    "'(2 3 4 5)"
-    //     };
-
-    //     printf("Testing 'in-naturals'\n");
-    //     for (int i = 0; i < COUNT; ++i)
-    //         status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    // }
 
     {
         const int COUNT = 3;
@@ -680,7 +642,7 @@ int main()
             "`(1 null)",                    "'(1 null)",
             "`(1 ,null)",                   "'(1 ())",
             "`(1 2 ,(+ 1 2 3))",            "'(1 2 6)",
-            "(begin (def a 1) `(1 ,a))",    "'(1 1)"
+            "(begin (def-values (a) 1) `(1 ,a))",    "'(1 1)"
         };
 
         printf("Testing quasiquote / unquote\n");

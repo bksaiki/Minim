@@ -156,9 +156,9 @@ int main()
             "(integer? 1)",                         "#t",
             "(integer? 1.0)",                       "#t",
             "(integer? 'str)",                      "#f",
-            "(begin (def n 1) (integer? n))",       "#t",
-            "(begin (def n 1.0) (integer? n))",     "#t",
-            "(begin (def n 'str) (integer? n))",    "#f"
+            "(begin (def-values (n) 1) (integer? n))",       "#t",
+            "(begin (def-values (n) 1.0) (integer? n))",     "#t",
+            "(begin (def-values (n) 'str) (integer? n))",    "#f"
         };
 
         printf("Testing 'integer?'\n");
@@ -172,8 +172,8 @@ int main()
         {
             "(exact 1)",                        "1",
             "(exact 1.0)",                      "1",
-            "(begin (def n 1) (exact n))",      "1",
-            "(begin (def n 1.0) (exact n))",    "1"
+            "(begin (def-values (n) 1) (exact n))",      "1",
+            "(begin (def-values (n) 1.0) (exact n))",    "1"
         };
 
         printf("Testing 'exact'\n");
@@ -187,8 +187,8 @@ int main()
         {
             "(inexact 1)",                      "1.0",
             "(inexact 1.0)",                    "1.0",
-            "(begin (def n 1) (inexact n))",    "1.0",
-            "(begin (def n 1.0) (inexact n))",  "1.0"
+            "(begin (def-values (n) 1) (inexact n))",    "1.0",
+            "(begin (def-values (n) 1.0) (inexact n))",  "1.0"
         };
 
         printf("Testing 'inexact'\n");

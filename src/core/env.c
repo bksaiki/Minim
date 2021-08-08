@@ -3,6 +3,7 @@
 
 #include "../gc/gc.h"
 #include "env.h"
+#include "hash.h"
 #include "lambda.h"
 #include "module.h"
 
@@ -59,8 +60,6 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
         env->current_dir = src->current_dir;
         env->flags = (src->flags | MINIM_ENV_COPIED);
 
-        if (env->module && env->module->env == src)
-            minim_symbol_table_merge(env->table, env->module->import->table);
 
         *penv = env;
     }
@@ -70,43 +69,42 @@ void rcopy_env(MinimEnv **penv, MinimEnv *src)
     }
 }
 
-MinimObject *env_get_sym(MinimEnv *env, const char *sym)
+static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t hash)
 {
     MinimObject *val;
 
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        val = minim_symbol_table_get(it->table, sym);
+        val = minim_symbol_table_get(it->table, sym, hash);
         if (val) return val;
-
-        if (it->module && it->module->env == it)
-        {
-            val = env_get_sym(it->module->import, sym);
-            if (val) return val;
-        }
     }
 
     return NULL;
 }
 
-void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
+MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 {
-    add_metadata(obj, sym);
-    minim_symbol_table_add(env->table, sym, obj);
+    size_t hash;
+
+    hash = hash_bytes(sym, strlen(sym), hashseed);
+    return env_get_sym_hashed(env, sym, hash);
 }
 
-static int env_set_sym_int(MinimEnv *env, const char *sym, MinimObject *obj)
+void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
+{
+    size_t hash;
+
+    add_metadata(obj, sym);
+    hash = hash_bytes(sym, strlen(sym), hashseed);
+    minim_symbol_table_add(env->table, sym, hash, obj);
+}
+
+static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, MinimObject *obj)
 {
     for (MinimEnv *it = env; it; it = it->parent)
     { 
-        if (minim_symbol_table_set(it->table, sym, obj))
+        if (minim_symbol_table_set(it->table, sym, hash, obj))
             return 1;
-
-        if (it->module && it->module->env == it)
-        {
-            if (env_set_sym_int(it->module->import, sym, obj))
-                return 1;
-        }
     }
     
     return 0;
@@ -114,8 +112,11 @@ static int env_set_sym_int(MinimEnv *env, const char *sym, MinimObject *obj)
 
 int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
+    size_t hash;
+
     add_metadata(obj, sym);
-    return env_set_sym_int(env, sym, obj);
+    hash = hash_bytes(sym, strlen(sym), hashseed);
+    return env_set_sym_hashed(env, sym, hash, obj);
 }
 
 const char *env_peek_key(MinimEnv *env, MinimObject *value)
@@ -126,12 +127,6 @@ const char *env_peek_key(MinimEnv *env, MinimObject *value)
     {   
         name = minim_symbol_table_peek_name(it->table, value);
         if (name) return name;
-
-        if (it->module && it->module->env == it)
-        {
-            name = env_peek_key(it->module->import, value);
-            if (name) return name;
-        }
     }
 
     return NULL;
@@ -142,11 +137,7 @@ size_t env_symbol_count(MinimEnv *env)
     size_t count = 0;
 
     for (MinimEnv *it = env; it; it = it->parent)
-    {   
         count += it->table->size;
-        if (it->module && it->module->env == it)
-            count += it->module->import->table->size;
-    }
 
     return count;
 }

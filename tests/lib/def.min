@@ -1,0 +1,9 @@
+;; Tests for <lib>/private/def.min
+
+; def
+(def x 1)
+(def lst (list 1 2 3 4))
+(def foo (n) (if (zero? n) 1 0))
+
+; def-syntax
+(def-syntax bar (lambda (stx) #'1))

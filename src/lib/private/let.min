@@ -1,0 +1,43 @@
+;
+;   'let'
+;
+
+(%import "stx-macro.min" "stx.min")
+
+(def-syntaxes (let)
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'let "bad syntax" stx)
+        (let-values ([(e) (stx-cdr stx)])
+          (if (null? e)
+              (syntax-error 'let "bad syntax" stx)
+              (let-values ([(id) (stx-car e)])
+                (if (identifier? id)
+                    (syntax-case stx ()
+                     [(_ id ([vars vals] ...) body ...)
+                      #'(let-values ([(id) (lambda (vars ...) body ...)])
+                          (id vals ...))])
+                    (syntax-case stx ()
+                     [(_ () body ...)
+                      #'(begin body ...)]
+                     [(_ ([vars vals] ...) body ...)
+                      #'(let-values ([(vars) vals] ...) body ...)]))))))))
+
+(def-syntaxes (let*)
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'let* "bad syntax" stx)
+        (let-values ([(e) (stx-cdr stx)])
+          (if (null? e)
+              (syntax-error 'let* "bad syntax" stx)
+              (let-values ([(id) (stx-car e)])
+                (if (identifier? id)
+                    (syntax-case stx ()
+                     [(_ id ([vars vals] ...) body ...)
+                      #'(let*-values ([(id) (lambda (vars ...) body ...)])
+                          (id vals ...))])
+                    (syntax-case stx ()
+                     [(_ () body ...)
+                      #'(begin body ...)]
+                     [(_ ([vars vals] ...) body ...)
+                      #'(let*-values ([(vars) vals] ...) body ...)]))))))))

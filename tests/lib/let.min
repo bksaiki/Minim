@@ -1,0 +1,31 @@
+;; Tests for <lib>/private/let.min
+
+; let
+(equal? (let () 1) 1)
+(equal? (let ([x 1]) x) 1)
+(equal? (let ([x 1]) (+ x 1)) 2)
+(equal? (let ([x 1] [y 2]) (+ x y)) 3)
+(equal? (let () 1 2) 2)
+
+; named let
+(equal? (let f () 1) 1)
+(equal? (let f ((x 2)) x) 2)
+(equal? (let f ((x 1) (y 2)) (+ x y)) 3)
+(equal? (let fact ([n 4]) (if (zero? n) 1 (* n (fact (- n 1))))) 24)
+(equal? (let foo ([n 4]) (set! n 2) n) 2)
+
+; let*
+(equal? (let* () 1) 1)
+(equal? (let* ([x 1]) x) 1)
+(equal? (let* ([x 1]) (+ x 1)) 2)
+(equal? (let* ([x 1] [y 2]) (+ x y)) 3)
+(equal? (let* ((x 1) (y x)) y) 1)
+(equal? (let* ((x 1) (y x)) (+ x y)) 2)
+(equal? (let* () 1 2) 2)
+
+; named let*
+(equal? (let* f () 1) 1)
+(equal? (let* f ((x 2)) x) 2)
+(equal? (let* f ((x 1) (y 2)) (+ x y)) 3)
+(equal? (let* fact ([n 4]) (if (zero? n) 1 (* n (fact (- n 1))))) 24)
+(equal? (let* foo ([n 4]) (set! n 2) n) 2)

@@ -17,11 +17,11 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
 void minim_load_builtins(MinimEnv *env)
 {
     // Variable / Control
-    minim_load_builtin(env, "def", MINIM_OBJ_SYNTAX, minim_builtin_def);
+    minim_load_builtin(env, "def-values", MINIM_OBJ_SYNTAX, minim_builtin_def_values);
     minim_load_builtin(env, "set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
     minim_load_builtin(env, "if", MINIM_OBJ_SYNTAX, minim_builtin_if);
-    minim_load_builtin(env, "let", MINIM_OBJ_SYNTAX, minim_builtin_let);
-    minim_load_builtin(env, "let*", MINIM_OBJ_SYNTAX, minim_builtin_letstar);
+    minim_load_builtin(env, "let-values", MINIM_OBJ_SYNTAX, minim_builtin_let_values);
+    minim_load_builtin(env, "let*-values", MINIM_OBJ_SYNTAX, minim_builtin_letstar_values);
     minim_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
     minim_load_builtin(env, "case", MINIM_OBJ_SYNTAX, minim_builtin_case);
     minim_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
@@ -29,13 +29,14 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "unquote", MINIM_OBJ_SYNTAX, minim_builtin_unquote);
     minim_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
     minim_load_builtin(env, "exit", MINIM_OBJ_SYNTAX, minim_builtin_exit);
+    minim_load_builtin(env, "values", MINIM_OBJ_FUNC, minim_builtin_values);
 
     // Modules
     minim_load_builtin(env, "%export", MINIM_OBJ_SYNTAX, minim_builtin_export);
     minim_load_builtin(env, "%import", MINIM_OBJ_SYNTAX, minim_builtin_import);
 
     // Transforms
-    minim_load_builtin(env, "def-syntax", MINIM_OBJ_SYNTAX, minim_builtin_def_syntax);
+    minim_load_builtin(env, "def-syntaxes", MINIM_OBJ_SYNTAX, minim_builtin_def_syntaxes);
     minim_load_builtin(env, "syntax", MINIM_OBJ_SYNTAX, minim_builtin_syntax);
     minim_load_builtin(env, "syntax?", MINIM_OBJ_FUNC, minim_builtin_syntaxp);
     minim_load_builtin(env, "unwrap", MINIM_OBJ_FUNC, minim_builtin_unwrap);
@@ -51,6 +52,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "void", MINIM_OBJ_FUNC, minim_builtin_void);
     minim_load_builtin(env, "version", MINIM_OBJ_FUNC, minim_builtin_version);
     minim_load_builtin(env, "symbol-count", MINIM_OBJ_FUNC, minim_builtin_symbol_count);
+    minim_load_builtin(env, "dump-symbols", MINIM_OBJ_FUNC, minim_builtin_dump_symbols);
 
     // Arity
     minim_load_builtin(env, "procedure?", MINIM_OBJ_FUNC, minim_builtin_procedurep);

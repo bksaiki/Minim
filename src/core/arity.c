@@ -41,6 +41,8 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(void, 0);
     SET_ARITY_EXACT(version, 0);
     SET_ARITY_EXACT(symbol_count, 0);
+    SET_ARITY_EXACT(dump_symbols, 0);
+    // NO CHECK: values
 
     // Syntax
     SET_ARITY_EXACT(unwrap, 1);
@@ -186,12 +188,12 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
 bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
 {
-    SET_ARITY_MIN(def, 2);
+    SET_ARITY_EXACT(def_values, 2);
     SET_ARITY_EXACT(setb, 2);
     SET_ARITY_EXACT(if, 3);
     // no check: 'case'
-    SET_ARITY_MIN(let, 2);
-    SET_ARITY_MIN(letstar, 2);
+    SET_ARITY_MIN(let_values, 2);
+    SET_ARITY_MIN(letstar_values, 2);
     SET_ARITY_MIN(begin, 1);
     SET_ARITY_EXACT(quote, 1);
     SET_ARITY_EXACT(quasiquote, 1);
@@ -201,7 +203,7 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(delay, 1);
     SET_ARITY_EXACT(force, 1);
 
-    SET_ARITY_EXACT(def_syntax, 2);
+    SET_ARITY_EXACT(def_syntaxes, 2);
     SET_ARITY_MIN(syntax_case, 2)
     SET_ARITY_EXACT(syntax, 1);
     SET_ARITY_EXACT(syntaxp, 1);
