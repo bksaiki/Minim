@@ -29,7 +29,7 @@ void init_minim_module(MinimModule **pmodule, MinimModuleCache *cache)
     module->exprc = 0;
     module->importc = 0;
     module->env = NULL;
-    init_env(&module->import, NULL, NULL);
+    init_env(&module->export, NULL, NULL);
     module->name = NULL;
     module->flags = 0x0;
 
@@ -41,14 +41,14 @@ void copy_minim_module(MinimModule **pmodule, MinimModule *src)
     MinimModule *module;
 
     module = GC_alloc(sizeof(MinimModule));
-    module->prev = NULL;                    // fresh copy
+    module->prev = NULL;                    // no copy
     module->exprs = src->exprs;
-    module->imports = NULL;                 // fresh copy
+    module->imports = NULL;                 // no copy
     module->cache = src->cache;
     module->exprc = src->exprc;
-    module->importc = 0;                    // fresh copy
-    module->env = NULL;                     // fresh copy
-    init_env(&module->import, NULL, NULL);  // fresh copy
+    module->importc = 0;                    // no copy
+    module->env = NULL;                     // no copy
+    module->export = src->export;
     module->name = src->name;
     module->flags = 0x0;
 
@@ -162,13 +162,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                         return ret;
                     }
 
-                    printf("%s [%zu] -> %s [%zu] -> ", MINIM_STRING(name),
-                                                     import->env->table->size,
-                                                     env->module->prev->name,
-                                                     env->module->prev->import->table->size);
-
-                    minim_symbol_table_merge(env->module->prev->import->table, import->env->table);
-                    printf("[%zu]\n", env->module->prev->import->table->size);
+                    minim_symbol_table_merge(env->module->export->table, import->env->table);
                 }
             }
             else
@@ -182,7 +176,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                     return ret;
                 }
 
-                env_intern_sym(env->module->prev->import, MINIM_STRING(export), val);
+                env_intern_sym(env->module->export, MINIM_STRING(export), val);
             }
         }
     }
@@ -228,23 +222,25 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
             init_env(&module2->env, get_builtin_env(env), NULL);
             module2->env->current_dir = get_buffer(dir);
             module2->env->module = module2;
+            minim_module_add_import(env->module, module2);
         }
         else
         {
             module2 = minim_load_file_as_module(env->module, get_buffer(path), &ret);
             if (!module2) return ret;
 
+            module2->prev = tmp;
             module2->name = get_buffer(path);
             minim_module_cache_add(env->module->cache, module2);
+            minim_module_add_import(env->module, module2);
+
+            if (!eval_module(module2, &ret))
+                return ret;
         }
 
-        module2->prev = tmp;
-        minim_module_add_import(env->module, module2);
-        if (!eval_module(module2, &ret))
-            return ret;
+        minim_symbol_table_merge(env->table, module2->export->table);
     }
 
-    minim_symbol_table_merge(env->module->import->table, tmp->import->table);
     init_minim_object(&ret, MINIM_OBJ_VOID);
     return ret;
 }

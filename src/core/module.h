@@ -40,7 +40,7 @@ typedef struct MinimModule
     struct MinimModule **imports;
     SyntaxNode **exprs;
     size_t exprc, importc;
-    MinimEnv *env, *import;
+    MinimEnv *env, *export;
     char *name;
     size_t flags;
 } MinimModule;

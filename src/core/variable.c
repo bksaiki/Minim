@@ -212,9 +212,6 @@ static void env_dump_symbols(MinimEnv *env)
     {
         env_for_print = it;
         minim_symbol_table_for_each(it->table, print_symbol_entry);
-
-        if (it->module && it->module->env == it)
-            env_dump_symbols(it->module->import);
     }
 }
 
