@@ -13,7 +13,7 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
     MinimObject *obj;
     const char *name;
 
-    init_minim_object(&obj, MINIM_OBJ_FUNC, builtin);
+    obj = minim_builtin(builtin);
     name = env_peek_key(env, obj);
     *perr = minim_arity_error(name, min, max, argc);
 }
@@ -254,10 +254,7 @@ bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env)
 
 MinimObject *minim_builtin_procedurep(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-    
-    init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_FUNCP(args[0]));
-    return res;
+    return minim_bool(MINIM_OBJ_FUNCP(args[0]));
 }
 
 MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObject **args)
@@ -270,11 +267,11 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
 
     if (MINIM_OBJ_BUILTINP(args[0]))
     {
-        minim_get_builtin_arity(MINIM_DATA(args[0]), &arity);
+        minim_get_builtin_arity(MINIM_BUILTIN(args[0]), &arity);
     }
     else
     {
-        MinimLambda *lam = MINIM_DATA(args[0]);
+        MinimLambda *lam = MINIM_CLOSURE(args[0]);
 
         arity.low = lam->argc;
         arity.high = (lam->rest) ? SIZE_MAX : arity.low;
@@ -287,11 +284,8 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
     else
     {
         min = uint_to_minim_number(arity.low);
-        if (arity.high == SIZE_MAX)
-            init_minim_object(&max, MINIM_OBJ_BOOL, 0);
-        else
-            max = uint_to_minim_number(arity.high);
-        init_minim_object(&res, MINIM_OBJ_PAIR, min, max);
+        max = (arity.high == SIZE_MAX) ? minim_bool(0) : uint_to_minim_number(arity.high);
+        res = minim_cons(min, max);
     }
 
     return res;

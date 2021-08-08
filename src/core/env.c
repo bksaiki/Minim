@@ -11,7 +11,7 @@ static void add_metadata(MinimObject *obj, const char *str)
 {
     if (obj->type == MINIM_OBJ_CLOSURE)
     {
-        MinimLambda *lam = obj->u.ptrs.p1;
+        MinimLambda *lam = MINIM_CLOSURE(obj);
 
         lam->name = GC_alloc_atomic((strlen(str) + 1) * sizeof(char));
         strcpy(lam->name, str);

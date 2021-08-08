@@ -92,7 +92,7 @@ match_table_merge_patterns(MatchTable *parent, MatchTable *child)
     {
         for (size_t i = 0; i < child->size; ++i)
         {
-            init_minim_object(&pair, MINIM_OBJ_PAIR, child->objs[i], NULL);
+            pair = minim_cons(child->objs[i], NULL);
             match_table_add(parent, child->syms[i], child->depths[i], pair);
         }
     }
@@ -101,7 +101,7 @@ match_table_merge_patterns(MatchTable *parent, MatchTable *child)
         for (size_t i = 0; i < child->size; ++i)
         {
             MINIM_TAIL(pair, match_table_get(parent, child->syms[i]));
-            init_minim_object(&MINIM_CDR(pair), MINIM_OBJ_PAIR, child->objs[i], NULL);
+            MINIM_CDR(pair) = minim_cons(child->objs[i], NULL);
         }
     }
 }
@@ -174,16 +174,13 @@ add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved, s
     }
     else //  match->type == SYNTAX_NODE_DATUM
     {
-        MinimObject *null;
-
         if (strcmp(match->sym, "_") == 0 ||                 // wildcard
             strcmp(match->sym, ".") == 0 ||                 // dot operator
             strcmp(match->sym, "...") == 0 ||               // ellipse
             symbol_list_contains(reserved, match->sym))     // reserved
             return;
 
-        init_minim_object(&null, MINIM_OBJ_PAIR, NULL, NULL);
-        match_table_add(table, match->sym, pdepth, null);
+        match_table_add(table, match->sym, pdepth, minim_cons(NULL, NULL));
     }
 }
 
@@ -255,8 +252,6 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
     }
     else // match->type == SYNTAX_NODE_DATUM
     {
-        MinimObject *val;
-
         if (strcmp(match->sym, "_") == 0)       // wildcard
             return true;
 
@@ -266,8 +261,7 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
         if (symbol_list_contains(reserved, match->sym)) // reserved name
             return ast_equalp(match, ast);
 
-        init_minim_object(&val, MINIM_OBJ_AST, ast);  // wrap first
-        match_table_add(table, match->sym, pdepth, val);
+        match_table_add(table, match->sym, pdepth, minim_ast(ast)); // wrap first
     }
 
     return true;
@@ -427,7 +421,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
 {
     MinimObject *body, *res;
 
-    init_minim_object(&body, MINIM_OBJ_AST, ast);
+    body = minim_ast(ast);
     res = eval_lambda(MINIM_TRANSFORM_PROC(trans), NULL, 1, &body);
     if (MINIM_OBJ_ERRORP(res))
     {
@@ -460,7 +454,7 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
             op = env_get_sym(env, ast->children[0]->sym);
             if (op)
             {
-                if (MINIM_DATA(op) == minim_builtin_syntax)
+                if (MINIM_SYNTAX(op) == minim_builtin_syntax)
                 {
                     return ast;
                 }
@@ -674,7 +668,7 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
 
 MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *val, *trans;
+    MinimObject *val, *trans;
 
     eval_ast_no_check(env, MINIM_AST(args[1]), &val);
     if (MINIM_OBJ_THROWNP(val))
@@ -692,35 +686,30 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
                                       MINIM_AST(args[1]),
                                       NULL);
 
-        init_minim_object(&trans, MINIM_OBJ_TRANSFORM, MINIM_AST(args[0])->children[0]->sym, MINIM_DATA(val));
+        trans = minim_transform(MINIM_AST(args[0])->children[0]->sym, MINIM_CLOSURE(val));
         env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, trans);
     }
     else
     {
-        if (MINIM_VALUES_LEN(val) != MINIM_AST(args[0])->childc)
+        if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
             return minim_values_arity_error("def-syntaxes",
                                             MINIM_AST(args[0])->childc,
-                                            MINIM_VALUES_LEN(val),
+                                            MINIM_VALUES_SIZE(val),
                                             MINIM_AST(args[0]));
 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
         {
-            if (!MINIM_OBJ_CLOSUREP(MINIM_VALUES_ARR(val)[i]))
+            if (!MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
                 return minim_syntax_error("expected a procedure of 1 argument",
                                           "def-syntaxes",
                                           MINIM_AST(args[1]),
                                           NULL);
-
-            init_minim_object(&trans, MINIM_OBJ_TRANSFORM,
-                              MINIM_AST(args[0])->children[i]->sym,
-                              MINIM_DATA(MINIM_VALUES_ARR(val)[i]));
-                    
+            trans = minim_transform(MINIM_AST(args[0])->children[i]->sym, MINIM_CLOSURE(MINIM_VALUES_REF(val, i)));
             env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, trans);
         }
     }
 
-    init_minim_object(&res, MINIM_OBJ_VOID);
-    return res;
+    return minim_void();
 }
 
 MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject **args)

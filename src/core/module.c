@@ -181,8 +181,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
         }
     }
 
-    init_minim_object(&ret, MINIM_OBJ_VOID);
-    return ret;
+    return minim_void();
 }
 
 MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args)
@@ -242,6 +241,5 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         minim_symbol_table_merge(env->table, module2->export->table);
     }
 
-    init_minim_object(&ret, MINIM_OBJ_VOID);
-    return ret;
+    return minim_void();
 }

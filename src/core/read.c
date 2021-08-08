@@ -62,7 +62,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            init_minim_object(perr, MINIM_OBJ_ERR, e);
+            *perr = minim_err(e);
 
             fclose(file);
             return NULL;
@@ -127,7 +127,7 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            init_minim_object(perr, MINIM_OBJ_ERR, e);
+            *perr = minim_err(e);
 
             fclose(file);
             return 2;
@@ -198,7 +198,7 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            init_minim_object(perr, MINIM_OBJ_ERR, e);
+            *perr = minim_err(e);
 
             fclose(file);
             env->current_dir = prev_dir;

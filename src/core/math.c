@@ -52,13 +52,13 @@ static MinimObject *minim_add(size_t argc, MinimObject **args)
 
     if (all_exact(argc, args))
     {
-        copy_minim_object(&res, args[0]);
+        res = minim_exactnum(MINIM_EXACTNUM(args[0]));
         for (size_t i = 1; i < argc; ++i)
             mpq_add(MINIM_EXACTNUM(res), MINIM_EXACTNUM(res), MINIM_EXACTNUM(args[i]));
     }
     else
     {   
-        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(args[0]));
+        res = minim_inexactnum(MINIM_INEXACTNUM(args[0]));
         for (size_t i = 1; i < argc; ++i)
             MINIM_INEXACTNUM(res) += MINIM_INEXACTNUM(args[i]);
     }
@@ -68,40 +68,32 @@ static MinimObject *minim_add(size_t argc, MinimObject **args)
 
 static MinimObject *minim_neg(MinimObject *x)
 {
-    MinimObject *res;
-
     if (MINIM_OBJ_EXACTP(x))
     {
         mpq_ptr rat = gc_alloc_mpq_ptr();
 
         mpq_neg(rat, MINIM_EXACTNUM(x));
-        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+        return minim_exactnum(rat);
     }
     else
     {
-        init_minim_object(&res, MINIM_OBJ_INEXACT, -MINIM_INEXACTNUM(x));
+        return minim_inexactnum(-MINIM_INEXACTNUM(x));
     }
-
-    return res;
 }
 
 static MinimObject *minim_sub2(MinimObject *x, MinimObject *y)
 {
-    MinimObject *res;
-
     if (MINIM_OBJ_EXACTP(x) && MINIM_OBJ_EXACTP(y))
     {
         mpq_ptr rat = gc_alloc_mpq_ptr();
 
         mpq_sub(rat, MINIM_EXACTNUM(x), MINIM_EXACTNUM(y));
-        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+        return minim_exactnum(rat);
     }
     else
     {
-        init_minim_object(&res, MINIM_OBJ_INEXACT, MINIM_INEXACTNUM(x) - MINIM_INEXACTNUM(y));
+        return minim_inexactnum(MINIM_INEXACTNUM(x) - MINIM_INEXACTNUM(y));
     }
-
-    return res;
 }
 
 static MinimObject *minim_sub(MinimObject *first, size_t restc, MinimObject **rest)
@@ -118,13 +110,13 @@ static MinimObject *minim_mul(size_t argc, MinimObject **args)
 
     if (all_exact(argc, args))
     {
-        copy_minim_object(&res, args[0]);
+        res = minim_exactnum(MINIM_EXACTNUM(args[0]));
         for (size_t i = 1; i < argc; ++i)
             mpq_mul(MINIM_EXACTNUM(res), MINIM_EXACTNUM(res), MINIM_EXACTNUM(args[i]));
     }
     else
     {   
-        init_minim_object(&res, MINIM_OBJ_INEXACT, GET_FLOAT(args[0]));
+        res = minim_inexactnum(MINIM_INEXACTNUM(args[0]));
         for (size_t i = 1; i < argc; ++i)
             MINIM_INEXACTNUM(res) *= MINIM_INEXACTNUM(args[i]);
     }

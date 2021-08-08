@@ -109,11 +109,11 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
         mpq_set_str(rat, str, 0);
         mpq_canonicalize(rat);
-        init_minim_object(&res, MINIM_OBJ_EXACT, rat);
+        res = minim_exactnum(rat);
     }
     else if (is_float(str))
     {
-        init_minim_object(&res, MINIM_OBJ_INEXACT, strtod(str, NULL));
+        res = minim_inexactnum(strtod(str, NULL));
     }
     else if (is_str(str))
     {
@@ -122,13 +122,13 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
         strncpy(tmp, &str[1], len - 1);
         tmp[len - 1] = '\0';
-        init_minim_object(&res, MINIM_OBJ_STRING, tmp);
+        res = minim_string(tmp);
     }
     else
     {
         if (quote)
         {
-            init_minim_object(&res, MINIM_OBJ_SYM, str);
+            res = minim_symbol(str);
         }
         else
         {
@@ -178,24 +178,22 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
 
             args = GC_alloc(reduc * sizeof(MinimObject*));
             for (size_t i = 0; i < reduc; ++i)
-            {
-                if (flags & UNSYNTAX_REC)       args[i] = unsyntax_ast_node(env, node->children[i], flags);
-                else                            init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
-            }
+                args[i] = ((flags & UNSYNTAX_REC) ?
+                            unsyntax_ast_node(env, node->children[i], flags) :
+                            minim_ast(node->children[i]));
 
             res = minim_builtin_list(env, reduc, args);
             for (rest = res; MINIM_CDR(rest); rest = MINIM_CDR(rest));
-
-            if (flags & UNSYNTAX_REC)   MINIM_CDR(rest) = unsyntax_ast_node(env, node->children[node->childc - 1], flags);
-            else                        init_minim_object(&MINIM_CDR(rest), MINIM_OBJ_AST, node->children[node->childc - 1]);
-
-            return res;
+            
+            MINIM_CDR(rest) = ((flags & UNSYNTAX_REC) ?
+                                unsyntax_ast_node(env, node->children[node->childc - 1], flags) :
+                                minim_ast(node->children[node->childc - 1]));
         }
 
         if (flags & UNSYNTAX_QUASIQUOTE && node->children[0]->sym)
         {
             proc = env_get_sym(env, node->children[0]->sym);
-            if (flags & UNSYNTAX_QUASIQUOTE && proc && MINIM_DATA(proc) == minim_builtin_unquote)
+            if (flags & UNSYNTAX_QUASIQUOTE && proc && MINIM_SYNTAX(proc) == minim_builtin_unquote)
             {
                 eval_ast_no_check(env, node->children[1], &res);
                 return res;
@@ -204,10 +202,10 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
 
         args = GC_alloc(node->childc * sizeof(MinimObject*));
         for (size_t i = 0; i < node->childc; ++i)
-        {
-            if (flags & UNSYNTAX_REC)   args[i] = unsyntax_ast_node(env, node->children[i], flags);
-            else                        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
-        }
+            args[i] = ((flags & UNSYNTAX_REC) ?
+                        unsyntax_ast_node(env, node->children[i], flags) :
+                        minim_ast(node->children[i]));
+
 
         res = minim_builtin_list(env, node->childc, args);
     }
@@ -217,10 +215,10 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
 
         args = GC_alloc(node->childc * sizeof(MinimObject*));
         for (size_t i = 0; i < node->childc; ++i)
-        {
-            if (flags & UNSYNTAX_REC)   args[i] = unsyntax_ast_node(env, node->children[i], flags);
-            else                        init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i]);
-        }
+            args[i] = ((flags & UNSYNTAX_REC) ?
+                        unsyntax_ast_node(env, node->children[i], flags) :
+                        minim_ast(node->children[i]));
+
 
         res = minim_builtin_vector(env, node->childc, args);
     }
@@ -235,8 +233,8 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
         }
         else
         {
-            init_minim_object(&args[0], MINIM_OBJ_AST, node->children[0]);
-            init_minim_object(&args[1], MINIM_OBJ_AST, node->children[1]);
+            args[0] = minim_ast(node->children[0]);
+            args[1] = minim_ast(node->children[1]);
         }
 
         res = minim_builtin_cons(env, 2, args);
@@ -273,7 +271,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 
         if (MINIM_OBJ_BUILTINP(op))
         {
-            MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
+            MinimBuiltin proc = MINIM_BUILTIN(op);
             uint8_t prev_flags = env->flags;
 
             env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
@@ -294,7 +292,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
-            MinimBuiltin proc = ((MinimBuiltin) op->u.ptrs.p1);
+            MinimBuiltin proc = MINIM_BUILTIN(op);
 
             if (proc == minim_builtin_unquote)
             {
@@ -308,13 +306,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             }
             else
             {
-                for (size_t i = 0; i < argc; ++i)
-                    init_minim_object(&args[i], MINIM_OBJ_AST, node->children[i + 1]);   // initialize ast wrappers
+                for (size_t i = 0; i < argc; ++i)                   // initialize ast wrappers
+                    args[i] = minim_ast(node->children[i + 1]);
                 
                 res = proc(env, argc, args);
                 if (MINIM_OBJ_CLOSUREP(res))
                 {
-                    MinimLambda *lam = res->u.ptrs.p1;
+                    MinimLambda *lam = MINIM_CLOSURE(res);
                     if (!lam->loc && node->children[0]->loc)
                         copy_syntax_loc(&lam->loc, node->children[0]->loc);
                 }
@@ -322,7 +320,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         }
         else if (MINIM_OBJ_CLOSUREP(op))
         {
-            MinimLambda *lam = op->u.ptrs.p1;
+            MinimLambda *lam = MINIM_CLOSURE(op);
 
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]); 
@@ -337,7 +335,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
                 MinimTailCall *call;
 
                 init_minim_tail_call(&call, lam, argc, args);
-                init_minim_object(&res, MINIM_OBJ_TAIL_CALL, call);
+                res = minim_tail_call(call);
             }
             else
             {
@@ -390,8 +388,8 @@ static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast, MinimBuiltin 
     // transcription from eval_ast_node
     argc = ast->childc - 1;
     args = GC_alloc(argc * sizeof(MinimObject*));
-    for (size_t i = 0; i < argc; ++i)
-        init_minim_object(&args[i], MINIM_OBJ_AST, ast->children[i + 1]);   // initialize ast wrappers
+    for (size_t i = 0; i < argc; ++i)                   // initialize ast wrappers
+        args[i] = minim_ast(ast->children[i + 1]);
     
     return fn(env, argc, args);
 }
@@ -408,7 +406,7 @@ static bool expr_is_module_level(MinimEnv *env, SyntaxNode *ast)
     if (!val || !MINIM_OBJ_SYNTAXP(val))
         return false;
 
-    builtin = MINIM_DATA(val);
+    builtin = MINIM_BUILTIN(val);
     return (builtin == minim_builtin_def_syntaxes ||
             builtin == minim_builtin_import ||
             builtin == minim_builtin_export);
@@ -422,7 +420,7 @@ static bool expr_is_macro(MinimEnv *env, SyntaxNode *ast)
         return false;
 
     val = env_get_sym(env, ast->children[0]->sym);
-    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_def_syntaxes);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_def_syntaxes);
 }
 
 static bool expr_is_import(MinimEnv *env, SyntaxNode *ast)
@@ -433,7 +431,7 @@ static bool expr_is_import(MinimEnv *env, SyntaxNode *ast)
         return false;
 
     val = env_get_sym(env, ast->children[0]->sym);
-    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_import);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_import);
 }
 
 static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
@@ -444,7 +442,7 @@ static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
         return false;
 
     val = env_get_sym(env, ast->children[0]->sym);
-    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_DATA(val) == minim_builtin_export);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_export);
 }
 
 // ================================ Public ================================
@@ -571,7 +569,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         }
         else if (MINIM_OBJ_EXITP(*pobj))
         {
-            init_minim_object(pobj, MINIM_OBJ_VOID);
+            *pobj = minim_void();
             return 1;
         }
         else if (!MINIM_OBJ_VOIDP(*pobj))
