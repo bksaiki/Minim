@@ -5,27 +5,20 @@
 #include "../common/common.h"
 #include "../common/buffer.h"
 
-struct MinimEnv;
+#define PTR(x, offset)  (((intptr_t) (x)) + offset)
+#define VOID_PTR(x)     ((void*)((intptr_t) (x)))
+
+// Forward declaration
 typedef struct MinimEnv MinimEnv;
 
 typedef struct MinimObject
 {
-    union
-    {
-        struct { char *str; void *none; } str;
-        struct { void *p1, *p2; } ptrs;
-        struct { long int i1, i2; } ints;
-        struct { double f1, f2; } fls;
-        struct { struct MinimObject *car, *cdr; } pair;
-        struct { struct MinimObject **arr; size_t len; } vec;
-    } u;
-    uint8_t type;
+    uint8_t type;           // base object has only one member
 } MinimObject;
 
 typedef enum MinimObjectType
 {
     MINIM_OBJ_VOID,
-    MINIM_OBJ_EXIT,
     MINIM_OBJ_BOOL,
     MINIM_OBJ_EXACT,
     MINIM_OBJ_INEXACT,
@@ -43,12 +36,33 @@ typedef enum MinimObjectType
     MINIM_OBJ_HASH,
     MINIM_OBJ_VECTOR,
     MINIM_OBJ_PROMISE,
-    MINIM_OBJ_VALUES
+    MINIM_OBJ_VALUES,
+    MINIM_OBJ_EXIT
 } MinimObjectType;
+
+#define minim_void_size             0x1
+#define minim_bool_size             0x2
+#define minim_exactnum_size         0x10
+#define minim_inexactnum_size       0x10
+#define minim_symbol_size           0x10
+#define minim_string_size           0x10
+#define minim_cons_size             0x18
+#define minim_vector_size           0x18
+#define minim_hash_table_size       0x10
+#define minim_promise_size          0x18
+#define minim_builtin_size          0x10
+#define minim_syntax_size           0x10
+#define minim_closure_size          0x10
+#define minim_tail_call_size        0x10
+#define minim_transform_size        0x18
+#define minim_ast_size              0x10
+#define minim_sequence_size         0x10
+#define minim_values_size           0x18
+#define minim_error_size            0x10
+#define minim_exit_size             0x1
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, size_t, MinimObject **);
 typedef bool (*MinimPred)(MinimObject *);
-
 
 // Predicates 
 
@@ -83,49 +97,70 @@ typedef bool (*MinimPred)(MinimObject *);
 
 // Accessors 
 
-#define MINIM_CAR(obj)      (obj->u.pair.car)
-#define MINIM_CDR(obj)      (obj->u.pair.cdr)
+#define MINIM_BOOL_VAL(obj)         (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
+#define MINIM_EXACTNUM(obj)         (*((mpq_ptr*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_VEC_ARR(obj)          (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
+#define MINIM_VEC_LEN(obj)          (*((size_t*) VOID_PTR(PTR(obj, 16))))
+#define MINIM_HASH_TABLE(obj)       (*((MinimHash**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_PROMISE_VAL(obj)      (*((void**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_PROMISE_ENV(obj)      (*((MinimEnv**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_PROMISE_STATE(obj)    (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
+#define MINIM_BUILTIN(obj)          (*((MinimBuiltin*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_SYNTAX(obj)           (*((MinimBuiltin*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_CLOSURE(obj)          (*((MinimLambda**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_TAIL_CALL(obj)        (*((MinimTailCall**)  VOID_PTR(PTR(obj, 8))))
+#define MINIM_TRANSFORM_NAME(obj)   (*((char**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_TRANSFORM_PROC(obj)   (*((MinimLambda**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_AST(obj)              (*((SyntaxNode**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_SEQUENCE(obj)         (*((MinimSeq**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_VALUES(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
+#define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 16))))
+#define MINIM_ERROR(obj)         (*((long*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_EXIT_VAL(obj)         (*((long*) VOID_PTR(PTR(obj, 8))))
 
-#define MINIM_CAAR(obj)     MINIM_CAR(MINIM_CAR(obj))
-#define MINIM_CADR(obj)     MINIM_CAR(MINIM_CDR(obj))
-#define MINIM_CDAR(obj)     MINIM_CDR(MINIM_CAR(obj))
-#define MINIM_CDDR(obj)     MINIM_CDR(MINIM_CDR(obj))
+// Compound accessors
 
-#define MINIM_EXACT(obj)    ((mpq_ptr) obj->u.ptrs.p1)
-#define MINIM_INEXACT(obj)  (obj->u.fls.f1)
+#define MINIM_CAAR(obj)             MINIM_CAR(MINIM_CAR(obj))
+#define MINIM_CADR(obj)             MINIM_CAR(MINIM_CDR(obj))
+#define MINIM_CDAR(obj)             MINIM_CDR(MINIM_CAR(obj))
+#define MINIM_CDDR(obj)             MINIM_CDR(MINIM_CDR(obj))
 
-#define MINIM_VECTOR_ARR(obj)   (obj->u.vec.arr)
-#define MINIM_VECTOR_LEN(obj)   (obj->u.vec.len)
+// Setters
 
-#define MINIM_STRING(obj)       (obj->u.str.str)
-#define MINIM_AST(obj)          ((SyntaxNode*) obj->u.ptrs.p1)
-#define MINIM_DATA(obj)         (obj->u.ptrs.p1)
-
-#define MINIM_ERROR(obj)        ((MinimError*) (obj)->u.ptrs.p1)
-
-#define MINIM_CLOSURE(obj)      ((MinimLambda*) (obj)->u.ptrs.p1)
-#define MINIM_SEQ(obj)          ((MinimSeq*) (obj)->u.ptrs.p1)
-
-#define MINIM_PROMISE_VAL(obj)          (obj->u.pair.car)
-#define MINIM_PROMISE_ENV(obj)          ((MinimEnv*) obj->u.pair.cdr)
-#define MINIM_PROMISE_FORCEDP(obj)      (obj->u.pair.cdr == NULL)
-#define MINIM_PROMISE_SET_FORCED(obj)   (obj)->u.pair.cdr = 0x0
-
-#define MINIM_TRANSFORM_NAME(obj)       ((char*) obj->u.ptrs.p1)
-#define MINIM_TRANSFORM_PROC(obj)       ((MinimLambda*) obj->u.ptrs.p2)
-
-#define MINIM_VALUES_ARR(obj)           (obj->u.vec.arr)
-#define MINIM_VALUES_LEN(obj)           (obj->u.vec.len)
+#define MINIM_PROMISE_SET_STATE(obj, s)     (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 
 //  Initialization
 
-void init_minim_object(MinimObject **pobj, MinimObjectType type, ...);
-void initv_minim_object(MinimObject **pobj, MinimObjectType type, va_list vargs);
-void copy_minim_object(MinimObject **pobj, MinimObject *src);
+MinimObject *minim_void();
+MinimObject *minim_bool(int val);
+MinimObject *minim_exactnum(void *num);
+MinimObject *minim_inexactnum(double num);
+MinimObject *minim_symbol(char *sym);
+MinimObject *minim_string(char *str);
+MinimObject *minim_cons(void *car, void *cdr);
+MinimObject *minim_vector(size_t len, void *arr);
+MinimObject *minim_hash_table(void *ht);
+MinimObject *minim_promise(void *val, void *env);
+MinimObject *minim_builtin(void *func);
+MinimObject *minim_syntax(void *func);
+MinimObject *minim_closure(void *closure);
+MinimObject *minim_tail_call(void *tc);
+MinimObject *minim_transform(char *name, void *closure);
+MinimObject *minim_ast(void *ast);
+MinimObject *minim_sequence(void *seq);
+MinimObject *minim_values(size_t len, void *arr);
+MinimObject *minim_error(void *err);
+MinimObject *minim_exit(long code);
 
 //  Equivalence
 
 bool minim_equalp(MinimObject *a, MinimObject *b);
+#define minim_eqp(a, b)     ((a) == (b))
 
 //  Miscellaneous
 
