@@ -194,6 +194,39 @@ MinimObject *minim_builtin_symbol_count(MinimEnv *env, size_t argc, MinimObject 
     return int_to_minim_number(env_symbol_count(env));
 }
 
+static MinimEnv *env_for_print = NULL;
+
+static void print_symbol_entry(const char *sym, MinimObject *obj)
+{
+    PrintParams pp;
+
+    set_default_print_params(&pp);
+    printf("(%s . ", sym);
+    print_minim_object(obj, env_for_print, &pp);
+    printf(")\n");
+}
+
+static void env_dump_symbols(MinimEnv *env)
+{
+    for (MinimEnv *it = env; it; it = it->parent)
+    {
+        env_for_print = it;
+        minim_symbol_table_for_each(it->table, print_symbol_entry);
+
+        if (it->module && it->module->env == it)
+            env_dump_symbols(it->module->import);
+    }
+}
+
+MinimObject *minim_builtin_dump_symbols(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *res;
+
+    env_dump_symbols(env);
+    init_minim_object(&res, MINIM_OBJ_VOID);
+    return res;
+}
+
 MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;

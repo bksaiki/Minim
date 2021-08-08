@@ -247,3 +247,15 @@ void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src)
         }
     }   
 }
+
+void minim_symbol_table_for_each(MinimSymbolTable *table, void (*func)(const char *, MinimObject *))
+{
+    for (size_t i = 0; i < table->alloc; ++i)
+    {
+        for (size_t j = 0; j < table->rows[i].length; ++j)
+        {
+            for (MinimSymbolEntry *it = table->rows[i].vals[j]; it; it = it->parent)
+                func(table->rows[i].names[j], it->obj);
+        }
+    }
+}

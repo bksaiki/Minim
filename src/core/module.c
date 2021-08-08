@@ -162,8 +162,13 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                         return ret;
                     }
 
-                    minim_symbol_table_merge(env->module->prev->import->table,
-                                             import->env->table);
+                    printf("%s [%zu] -> %s [%zu] -> ", MINIM_STRING(name),
+                                                     import->env->table->size,
+                                                     env->module->prev->name,
+                                                     env->module->prev->import->table->size);
+
+                    minim_symbol_table_merge(env->module->prev->import->table, import->env->table);
+                    printf("[%zu]\n", env->module->prev->import->table->size);
                 }
             }
             else

@@ -41,6 +41,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(void, 0);
     SET_ARITY_EXACT(version, 0);
     SET_ARITY_EXACT(symbol_count, 0);
+    SET_ARITY_EXACT(dump_symbols, 0);
     // NO CHECK: values
 
     // Syntax

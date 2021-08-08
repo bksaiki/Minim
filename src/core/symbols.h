@@ -36,4 +36,6 @@ const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *o
 
 void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src);
 
+void minim_symbol_table_for_each(MinimSymbolTable *table, void (*func)(const char *, MinimObject *));
+
 #endif

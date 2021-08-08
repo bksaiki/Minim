@@ -52,6 +52,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "void", MINIM_OBJ_FUNC, minim_builtin_void);
     minim_load_builtin(env, "version", MINIM_OBJ_FUNC, minim_builtin_version);
     minim_load_builtin(env, "symbol-count", MINIM_OBJ_FUNC, minim_builtin_symbol_count);
+    minim_load_builtin(env, "dump-symbols", MINIM_OBJ_FUNC, minim_builtin_dump_symbols);
 
     // Arity
     minim_load_builtin(env, "procedure?", MINIM_OBJ_FUNC, minim_builtin_procedurep);
