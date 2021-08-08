@@ -34,19 +34,19 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         size_t len;
 
         str = GC_alloc_atomic(128 * sizeof(char));
-        len = gmp_snprintf(str, 128, "%Qd", MINIM_EXACT(obj));
+        len = gmp_snprintf(str, 128, "%Qd", MINIM_EXACTNUM(obj));
 
         if (len >= 128)
         {
             str = GC_realloc_atomic(str, (len + 1) * sizeof(char));
-            len = gmp_snprintf(str, len, "%Qd", MINIM_EXACT(obj));
+            len = gmp_snprintf(str, len, "%Qd", MINIM_EXACTNUM(obj));
         }
 
         writes_buffer(bf, str);
     }
     else if (MINIM_OBJ_INEXACTP(obj))
     {
-        writed_buffer(bf, MINIM_INEXACT(obj));
+        writed_buffer(bf, MINIM_INEXACTNUM(obj));
     }
     else if (MINIM_OBJ_SYMBOLP(obj))
     {

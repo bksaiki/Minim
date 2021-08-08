@@ -104,8 +104,9 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
-#define MINIM_VEC_ARR(obj)          (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
-#define MINIM_VEC_LEN(obj)          (*((size_t*) VOID_PTR(PTR(obj, 16))))
+#define MINIM_VECTOR(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
+#define MINIM_VECTOR_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, 8))))[i])
+#define MINIM_VECTOR_LEN(obj)       (*((size_t*) VOID_PTR(PTR(obj, 16))))
 #define MINIM_HASH_TABLE(obj)       (*((MinimHash**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_PROMISE_VAL(obj)      (*((void**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_PROMISE_ENV(obj)      (*((MinimEnv**) VOID_PTR(PTR(obj, 16))))
@@ -120,7 +121,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_SEQUENCE(obj)         (*((MinimSeq**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_VALUES(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
 #define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 16))))
-#define MINIM_ERROR(obj)         (*((long*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_ERROR(obj)            (*((MinimError**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_EXIT_VAL(obj)         (*((long*) VOID_PTR(PTR(obj, 8))))
 
 // Compound accessors
@@ -154,7 +155,7 @@ MinimObject *minim_transform(char *name, void *closure);
 MinimObject *minim_ast(void *ast);
 MinimObject *minim_sequence(void *seq);
 MinimObject *minim_values(size_t len, void *arr);
-MinimObject *minim_error(void *err);
+MinimObject *minim_err(void *err);
 MinimObject *minim_exit(long code);
 
 //  Equivalence
@@ -166,6 +167,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b);
 
 Buffer* minim_obj_to_bytes(MinimObject *obj);
 
-bool coerce_into_bool(MinimObject *obj);
+#define coerce_into_bool(x)     (!MINIM_OBJ_BOOLP(x) || MINIM_BOOL_VAL(x))
 
 #endif

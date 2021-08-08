@@ -76,8 +76,8 @@ MinimObject *minim_vector(size_t len, void *arr)
 {
     MinimObject *o = GC_alloc(minim_vector_size);
     o->type = MINIM_OBJ_VECTOR;
-    MINIM_VEC_ARR(o) = arr;
-    MINIM_VEC_LEN(o) = len;
+    MINIM_VECTOR(o) = arr;
+    MINIM_VECTOR_LEN(o) = len;
     return o;
 }
 
@@ -136,7 +136,7 @@ MinimObject *minim_transform(char *name, void *closure)
     MinimObject *o = GC_alloc(minim_transform_size);
     o->type = MINIM_OBJ_TRANSFORM;
     MINIM_TRANSFORM_NAME(o) = name;
-    MINIM_TRANSFORM_PROC(o) = name;
+    MINIM_TRANSFORM_PROC(o) = closure;
     return o;
 }
 
@@ -165,7 +165,7 @@ MinimObject *minim_values(size_t len, void *arr)
     return o;
 }
 
-MinimObject *minim_error(void *err)
+MinimObject *minim_err(void *err)
 {
     MinimObject *o = GC_alloc(minim_error_size);
     o->type = MINIM_OBJ_ERR;
@@ -183,72 +183,54 @@ MinimObject *minim_exit(long code)
 
 bool minim_equalp(MinimObject *a, MinimObject *b)
 {
-    if (a == b)                 return true;        // early exit, same object
-    if (a->type != b->type)     return false;       // early exit, different object
-
-    switch (a->type)
-    {
-    case MINIM_OBJ_EXACT:
-    case MINIM_OBJ_INEXACT:
-        return minim_number_cmp(a, b) == 0;
-
-    case MINIM_OBJ_BOOL:
-        return MINIM_BOOL_VAL(a) == MINIM_BOOL_VAL(b);
-    
-    case MINIM_OBJ_VOID:
-    case MINIM_OBJ_ERR:
+    if (a == b)         // early exit, same object
         return true;
-
-    /*
-    case MINIM_OBJ_EXIT:
-    case MINIM_OBJ_SEQ:
-    case MINIM_OBJ_TAIL_CALL:
-    case MINIM_OBJ_TRANSFORM:
-    case MINIM_OBJ_ERR:
-    case MINIM_OBJ_VALUES:
-    */
-    default:
-        return false;
-    }
 
     if (MINIM_OBJ_NUMBERP(a) && MINIM_OBJ_NUMBERP(b))
         return minim_number_cmp(a, b) == 0;
 
-    if (a->type != b->type)
+    if (a->type != b->type) // early exit, different object
         return false;
 
     switch (a->type)
     {
-    case MINIM_OBJ_VOID:
-        return true;
-
     case MINIM_OBJ_BOOL:
-        return a->u.ints.i1 == b->u.ints.i1;
+        return MINIM_BOOL_VAL(a) == MINIM_BOOL_VAL(b);        
 
     case MINIM_OBJ_SYM:
-    case MINIM_OBJ_STRING:
-        return strcmp(a->u.str.str, b->u.str.str) == 0;
+        return strcmp(MINIM_SYMBOL(a), MINIM_SYMBOL(b)) == 0;
 
-    case MINIM_OBJ_FUNC:
-    case MINIM_OBJ_SYNTAX:
-        return a->u.ptrs.p1 == b->u.ptrs.p1;
+    case MINIM_OBJ_STRING:
+        return strcmp(MINIM_STRING(a), MINIM_STRING(b)) == 0;
 
     case MINIM_OBJ_PAIR:
         return minim_cons_eqp(a, b);
-    
-    case MINIM_OBJ_CLOSURE:
-        return a->u.ptrs.p1 == b->u.ptrs.p1;
-    
-    case MINIM_OBJ_AST:
-        return ast_equalp(a->u.ptrs.p1, b->u.ptrs.p1);
 
     case MINIM_OBJ_VECTOR:
         return minim_vector_equalp(a, b);
 
+    case MINIM_OBJ_HASH:    // TODO: equality for hash tables
+        return false;
+
     case MINIM_OBJ_PROMISE:
-        return minim_equalp(MINIM_CAR(a), MINIM_CAR(b)) && 
-               MINIM_PROMISE_FORCEDP(a) == MINIM_PROMISE_FORCEDP(b);
+        return minim_equalp(MINIM_PROMISE_VAL(a), MINIM_PROMISE_VAL(b));
+
+    case MINIM_OBJ_FUNC:
+        return MINIM_BUILTIN(a) == MINIM_BUILTIN(b);
+
+    case MINIM_OBJ_SYNTAX:
+        return MINIM_SYNTAX(a) == MINIM_SYNTAX(b);
+
+    case MINIM_OBJ_CLOSURE:
+        return minim_lambda_equalp(MINIM_CLOSURE(a), MINIM_CLOSURE(b));
     
+    case MINIM_OBJ_AST:
+        return ast_equalp(MINIM_AST(a), MINIM_AST(b));
+    
+    case MINIM_OBJ_VOID:
+    case MINIM_OBJ_ERR:
+        return true;
+
     /*
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
@@ -274,17 +256,23 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_BOOL:
-        writei_buffer(bf, (obj->u.ints.i1 ? 0 : 1));
+        writei_buffer(bf, (MINIM_BOOL_VAL(obj) ? 1 : 0));
         break;
     
     case MINIM_OBJ_FUNC:
+        writeu_buffer(bf, (size_t) MINIM_BUILTIN(obj));
+        break;
+
     case MINIM_OBJ_SYNTAX:
-        write_buffer(bf, obj->u.ptrs.p1, sizeof(void*));
+        writeu_buffer(bf, (size_t) MINIM_SYNTAX(obj));
         break;
 
     case MINIM_OBJ_SYM:
+        writes_buffer(bf, MINIM_SYMBOL(obj));
+        break;
+
     case MINIM_OBJ_STRING:
-        writes_buffer(bf, obj->u.ptrs.p1);
+        writes_buffer(bf, MINIM_STRING(obj));
         break;
 
     case MINIM_OBJ_PAIR:
@@ -293,22 +281,22 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     // Dump integer limbs
     case MINIM_OBJ_EXACT:
-        write_buffer(bf, MINIM_EXACT(obj)->_mp_num._mp_d,
-                     abs(MINIM_EXACT(obj)->_mp_num._mp_size) * sizeof(mp_limb_t));
-        write_buffer(bf, MINIM_EXACT(obj)->_mp_den._mp_d,
-                     abs(MINIM_EXACT(obj)->_mp_den._mp_size) * sizeof(mp_limb_t));
+        write_buffer(bf, MINIM_EXACTNUM(obj)->_mp_num._mp_d,
+                     abs(MINIM_EXACTNUM(obj)->_mp_num._mp_size) * sizeof(mp_limb_t));
+        write_buffer(bf, MINIM_EXACTNUM(obj)->_mp_den._mp_d,
+                     abs(MINIM_EXACTNUM(obj)->_mp_den._mp_size) * sizeof(mp_limb_t));
         break;
 
     case MINIM_OBJ_INEXACT:
-        write_buffer(bf, &MINIM_INEXACT(obj), sizeof(double));
+        write_buffer(bf, &MINIM_INEXACTNUM(obj), sizeof(double));
         break;
 
     case MINIM_OBJ_AST:
-        ast_dump_in_buffer(obj->u.ptrs.p1, bf);
+        ast_dump_in_buffer(MINIM_AST(obj), bf);
         break;
 
     case MINIM_OBJ_CLOSURE:
-        minim_lambda_to_buffer(obj->u.ptrs.p1, bf);
+        minim_lambda_to_buffer(MINIM_CLOSURE(obj), bf);
         break;
 
     case MINIM_OBJ_VECTOR:
@@ -328,26 +316,9 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
     case MINIM_OBJ_ERR:
     */
     default:
-        write_buffer(bf, obj->u.pair.car, sizeof(MinimObject*));
-        write_buffer(bf, obj->u.pair.cdr, sizeof(MinimObject*));
+        writeu_buffer(bf, obj->type);
         break;
     }
 
     return bf;
-}
-
-bool coerce_into_bool(MinimObject *obj)
-{
-    if (obj->type == MINIM_OBJ_BOOL)
-    {
-        return obj->u.ints.i1;
-    }
-    else if (obj->type == MINIM_OBJ_PAIR)
-    {
-        return MINIM_CAR(obj) || MINIM_CDR(obj);
-    }
-    else
-    {
-        return true;
-    }
 }
