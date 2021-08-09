@@ -167,7 +167,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         MinimLambda *lam = MINIM_CLOSURE(obj);
 
         if (lam->name)    writef_buffer(bf, "<function:~s>", lam->name);
-        else              writes_buffer(bf, "<function:\?\?\?>");
+        else              writes_buffer(bf, "<function>");
     }
     else if (MINIM_OBJ_SEQP(obj))
     {

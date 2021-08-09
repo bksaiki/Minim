@@ -109,7 +109,7 @@ MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, size_t argc, MinimObj
     if (!MINIM_OBJ_STRINGP(args[0]))
         return minim_argument_error("string", "string->symbol", 0, args[0]);
 
-    return minim_string(MINIM_STRING(args[0]));
+    return minim_symbol(MINIM_STRING(args[0]));
 }
 
 MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, size_t argc, MinimObject **args)

@@ -188,6 +188,8 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
             MINIM_CDR(rest) = ((flags & UNSYNTAX_REC) ?
                                 unsyntax_ast_node(env, node->children[node->childc - 1], flags) :
                                 minim_ast(node->children[node->childc - 1]));
+
+            return res;
         }
 
         if (flags & UNSYNTAX_QUASIQUOTE && node->children[0]->sym)

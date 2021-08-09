@@ -92,14 +92,14 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
 
     if (lam->rest)
     {
-        char *name = (lam->name ? lam->name : "???");
+        char *name = (lam->name ? lam->name : "");
         if (argc < lam->argc)
             return minim_arity_error(name, lam->argc, SIZE_MAX, argc);
 
     }
     else if (argc != lam->argc)
     {
-        char *name = (lam->name ? lam->name : "???");
+        char *name = (lam->name ? lam->name : "");
         return minim_arity_error(name, lam->argc, lam->argc, argc);
     }
 

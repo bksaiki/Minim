@@ -9,35 +9,6 @@
 #include "lambda.h"
 #include "number.h"
 
-MinimObject *minim_builtin_def(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    MinimObject *sym, *val;
-    MinimLambda *lam;
-    SyntaxNode *ast;
-
-    unsyntax_ast(env, MINIM_AST(args[0]), &sym);
-    if (argc == 2)
-    {
-        eval_ast_no_check(env, MINIM_AST(args[1]), &val);
-        
-    }
-    else
-    {
-        ast = MINIM_AST(args[0]);
-        val = minim_builtin_lambda(env, argc - 1, &args[1]);
-
-        lam = MINIM_CLOSURE(val);
-        copy_syntax_loc(&lam->loc, ast->loc);
-        env_intern_sym(lam->env, MINIM_STRING(sym), val);
-    }
-    
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-
-    env_intern_sym(env, MINIM_STRING(sym), val);
-    return minim_void();
-}
-
 MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res, *val;

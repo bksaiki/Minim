@@ -21,7 +21,7 @@ MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
     return res;
 }
 
-static MinimObject *minim_builtin_let_values_assign(MinimEnv *env, size_t argc, MinimObject **args, bool alt)
+MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *val;
     SyntaxNode *binding, *names;
@@ -32,7 +32,7 @@ static MinimObject *minim_builtin_let_values_assign(MinimEnv *env, size_t argc, 
     for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
     {
         binding = MINIM_AST(args[0])->children[i];
-        eval_ast_no_check((alt ? env2 : env), binding->children[1], &val);
+        eval_ast_no_check(env, binding->children[1], &val);
         if (MINIM_OBJ_THROWNP(val))
             return val;
 
@@ -40,7 +40,7 @@ static MinimObject *minim_builtin_let_values_assign(MinimEnv *env, size_t argc, 
         if (!MINIM_OBJ_VALUESP(val))
         {
             if (names->childc != 1)
-                return minim_values_arity_error("def-values", names->childc, 1, names);
+                return minim_values_arity_error("let-values", names->childc, 1, names);
             
             env_intern_sym(env2, names->children[0]->sym, val);
             if (MINIM_OBJ_CLOSUREP(val))
@@ -49,7 +49,7 @@ static MinimObject *minim_builtin_let_values_assign(MinimEnv *env, size_t argc, 
         else
         {
             if (MINIM_VALUES_SIZE(val) != names->childc)
-                return minim_values_arity_error("def-values", names->childc, MINIM_VALUES_SIZE(val), names);
+                return minim_values_arity_error("let-values", names->childc, MINIM_VALUES_SIZE(val), names);
 
             for (size_t i = 0; i < names->childc; ++i)
             {
@@ -64,14 +64,47 @@ static MinimObject *minim_builtin_let_values_assign(MinimEnv *env, size_t argc, 
     return minim_builtin_begin(env2, argc - 1, &args[1]);
 }
 
-MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return minim_builtin_let_values_assign(env, argc, args, false);
-}
-
 MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_builtin_let_values_assign(env, argc, args, true);
+    MinimObject *val;
+    SyntaxNode *binding, *names;
+    MinimEnv *env2;
+    
+    // Bind names and values
+    init_env(&env2, env, NULL);
+    for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
+    {
+        binding = MINIM_AST(args[0])->children[i];
+        eval_ast_no_check(env2, binding->children[1], &val);
+        if (MINIM_OBJ_THROWNP(val))
+            return val;
+
+        names = binding->children[0];
+        if (!MINIM_OBJ_VALUESP(val))
+        {
+            if (names->childc != 1)
+                return minim_values_arity_error("let*-values", names->childc, 1, names);
+            
+            env_intern_sym(env2, names->children[0]->sym, val);
+            if (MINIM_OBJ_CLOSUREP(val))
+                env_intern_sym(MINIM_CLOSURE(val)->env, names->children[0]->sym, val);
+        }
+        else
+        {
+            if (MINIM_VALUES_SIZE(val) != names->childc)
+                return minim_values_arity_error("let*-values", names->childc, MINIM_VALUES_SIZE(val), names);
+
+            for (size_t i = 0; i < names->childc; ++i)
+            {
+                env_intern_sym(env2, names->children[i]->sym, MINIM_VALUES_REF(val, i));
+                if (MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
+                    env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_REF(val, i))->env, names->children[0]->sym, val);
+            }
+        }
+    }
+
+    // Evaluate body
+    return minim_builtin_begin(env2, argc - 1, &args[1]);
 }
 
 MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
