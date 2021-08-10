@@ -9,7 +9,7 @@
 
 static void add_metadata(MinimObject *obj, const char *str)
 {
-    if (obj->type == MINIM_OBJ_CLOSURE)
+    if (MINIM_OBJ_CLOSUREP(obj))
     {
         MinimLambda *lam = MINIM_CLOSURE(obj);
 

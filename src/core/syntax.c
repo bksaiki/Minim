@@ -30,7 +30,7 @@ static bool check_syntax_set(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
         return false;
     }
 
-    env_intern_sym(env, MINIM_STRING(sym), minim_void());
+    env_intern_sym(env, MINIM_STRING(sym), minim_void);
     return check_syntax_rec(env, ast->children[2], perr);
 }
 
@@ -57,7 +57,7 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
                     return false;
                 }
 
-                env_intern_sym(env2, MINIM_STRING(sym), minim_void());
+                env_intern_sym(env2, MINIM_STRING(sym), minim_void);
             }
             else // ... arg_n . arg_rest)
             {
@@ -71,7 +71,7 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
                     return false;
                 }
 
-                env_intern_sym(env2, MINIM_STRING(sym), minim_void());       
+                env_intern_sym(env2, MINIM_STRING(sym), minim_void);       
                 unsyntax_ast(env, MINIM_AST(MINIM_CDR(it)), &sym);
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
@@ -82,7 +82,7 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
                     return false;
                 }
 
-                env_intern_sym(env2, MINIM_STRING(sym), minim_void());
+                env_intern_sym(env2, MINIM_STRING(sym), minim_void);
                 break;
             }
         }
@@ -142,7 +142,7 @@ static bool check_syntax_def_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
             }
         }
         
-        env_intern_sym(env, MINIM_STRING(sym), minim_void());
+        env_intern_sym(env, MINIM_STRING(sym), minim_void);
     }
 
     return check_syntax_rec(env, ast->children[2], perr);
@@ -223,7 +223,7 @@ static bool check_syntax_let_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
     unsyntax_ast(env, ast->children[base], &sym);
     if (MINIM_OBJ_SYMBOLP(sym))
     {
-        env_intern_sym(env2, MINIM_STRING(sym), minim_void());
+        env_intern_sym(env2, MINIM_STRING(sym), minim_void);
         ++base;
     }
 
@@ -286,14 +286,14 @@ static bool check_syntax_let_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
                 }
             }
 
-            env_intern_sym(env, MINIM_STRING(sym), minim_void());
+            env_intern_sym(env, MINIM_STRING(sym), minim_void);
         }
 
         init_env(&env3, env, NULL);
         if (!check_syntax_rec(env3, MINIM_AST(MINIM_CADR(bind)), perr))
             return false;
 
-        env_intern_sym(env2, MINIM_STRING(sym), minim_void());
+        env_intern_sym(env2, MINIM_STRING(sym), minim_void);
     }
 
     if (base + 1 == ast->childc)
@@ -353,7 +353,7 @@ bool check_syntax_def_syntaxes(MinimEnv *env, SyntaxNode *ast, MinimObject **per
             }
         }
         
-        env_intern_sym(env, MINIM_STRING(sym), minim_void());
+        env_intern_sym(env, MINIM_STRING(sym), minim_void);
     }
 
     return check_syntax_rec(env, ast->children[2], perr);
@@ -684,12 +684,15 @@ bool check_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 
 MinimObject *minim_builtin_syntax(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return args[0];
+    SyntaxNode *cp;
+
+    copy_syntax_node(&cp, MINIM_AST(args[0]));
+    return minim_ast(cp);
 }
 
 MinimObject *minim_builtin_syntaxp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(MINIM_OBJ_ASTP(args[0]));
+    return to_bool(MINIM_OBJ_ASTP(args[0]));
 }
 
 MinimObject *minim_builtin_unwrap(MinimEnv *env, size_t argc, MinimObject **args)

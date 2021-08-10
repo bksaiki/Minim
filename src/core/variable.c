@@ -53,7 +53,7 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
         }
     }
 
-    return minim_void();
+    return minim_void;
 }
 
 MinimObject *minim_builtin_quote(MinimEnv *env, size_t argc, MinimObject **args)
@@ -92,7 +92,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
     if (env_set_sym(env, MINIM_STRING(sym), val))
     {
         env_set_sym(env, MINIM_STRING(sym), val);
-        return minim_void();
+        return minim_void;
     }
     else
     {
@@ -109,7 +109,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_symbolp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(MINIM_OBJ_SYMBOLP(args[0]));
+    return to_bool(MINIM_OBJ_SYMBOLP(args[0]));
 }
 
 MinimObject *minim_builtin_equalp(MinimEnv *env, size_t argc, MinimObject **args)
@@ -117,10 +117,10 @@ MinimObject *minim_builtin_equalp(MinimEnv *env, size_t argc, MinimObject **args
     for (size_t i = 1; i < argc; ++i)
     {
         if (!minim_equalp(args[i - 1], args[i]))
-            return minim_bool(0);
+            return minim_false;
     }
 
-    return minim_bool(1);
+    return minim_true;
 }
 
 MinimObject *minim_builtin_version(MinimEnv *env, size_t argc, MinimObject **args)
@@ -132,7 +132,7 @@ MinimObject *minim_builtin_version(MinimEnv *env, size_t argc, MinimObject **arg
 
 MinimObject *minim_builtin_void(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_void();
+    return minim_void;
 }
 
 
@@ -165,7 +165,7 @@ static void env_dump_symbols(MinimEnv *env)
 MinimObject *minim_builtin_dump_symbols(MinimEnv *env, size_t argc, MinimObject **args)
 {
     env_dump_symbols(env);
-    return minim_void();
+    return minim_void;
 }
 
 MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)

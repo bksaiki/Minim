@@ -67,7 +67,7 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, size_t argc, MinimObject *
 
 MinimObject *minim_builtin_vectorp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(MINIM_OBJ_VECTORP(args[0]));
+    return to_bool(MINIM_OBJ_VECTORP(args[0]));
 }
 
 MinimObject *minim_builtin_vector_length(MinimEnv *env, size_t argc, MinimObject **args)
@@ -110,7 +110,7 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, size_t argc, MinimObject *
         return minim_error("index out of bounds: ~u", "vector-set!", idx);
 
     MINIM_VECTOR_REF(args[0], idx) = args[2];
-    return minim_void();
+    return minim_void;
 }
 
 MinimObject *minim_builtin_vector_to_list(MinimEnv *env, size_t argc, MinimObject **args)
@@ -174,5 +174,5 @@ MinimObject *minim_builtin_vector_fillb(MinimEnv *env, size_t argc, MinimObject 
     for (size_t i = 0; i < MINIM_VECTOR_LEN(args[0]); ++i)
         MINIM_VECTOR_REF(args[0], i) = args[1];
     
-    return minim_void();
+    return minim_void;
 }

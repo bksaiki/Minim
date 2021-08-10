@@ -113,7 +113,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
     MinimEnv *env2;
 
     if (argc == 0)
-        return minim_void();
+        return minim_void;
 
     init_env(&env2, env, NULL);
     for (size_t i = 0; i < argc; ++i)
@@ -138,7 +138,7 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
     MinimEnv *env2;
 
     if (argc < 2)
-        return minim_void();
+        return minim_void;
         
 
     unsyntax_ast(env, MINIM_AST(args[0]), &key);
@@ -174,7 +174,7 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
         }
     }
 
-    return minim_void();
+    return minim_void;
 }
 
 MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)

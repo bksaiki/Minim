@@ -571,10 +571,10 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         }
         else if (MINIM_OBJ_EXITP(*pobj))
         {
-            *pobj = minim_void();
+            *pobj = minim_void;
             return 1;
         }
-        else if (!MINIM_OBJ_VOIDP(*pobj))
+        else if (!minim_voidp(*pobj))
         {
             print_minim_object(*pobj, module->env, &pp);
             printf("\n");
@@ -655,7 +655,7 @@ char *eval_string(char *str, size_t len)
         }
 
         eval_ast(env, ast, &obj);
-        if (obj->type == MINIM_OBJ_ERR)
+        if (MINIM_OBJ_ERRORP(obj))
         {
             fclose(tmp);
             return print_to_string(obj, env, &pp);

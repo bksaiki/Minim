@@ -254,7 +254,7 @@ bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env)
 
 MinimObject *minim_builtin_procedurep(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(MINIM_OBJ_FUNCP(args[0]));
+    return to_bool(MINIM_OBJ_FUNCP(args[0]));
 }
 
 MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObject **args)
@@ -284,7 +284,7 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
     else
     {
         min = uint_to_minim_number(arity.low);
-        max = (arity.high == SIZE_MAX) ? minim_bool(0) : uint_to_minim_number(arity.high);
+        max = (arity.high == SIZE_MAX) ? to_bool(0) : uint_to_minim_number(arity.high);
         res = minim_cons(min, max);
     }
 

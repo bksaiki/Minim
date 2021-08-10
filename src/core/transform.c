@@ -709,7 +709,7 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
         }
     }
 
-    return minim_void();
+    return minim_void;
 }
 
 MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject **args)

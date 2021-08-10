@@ -19,10 +19,6 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
         obj = minim_syntax(va_arg(rest, MinimBuiltin));
         break;
 
-    case MINIM_OBJ_BOOL:
-        obj = minim_bool(va_arg(rest, int));
-        break;
-
     case MINIM_OBJ_PAIR:
         obj = minim_cons(va_arg(rest, MinimObject*), va_arg(rest, MinimObject*));
         break;
@@ -85,8 +81,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "procedure-arity", MINIM_OBJ_FUNC, minim_builtin_procedure_arity);
 
     // Boolean
-    minim_load_builtin(env, "true", MINIM_OBJ_BOOL, 1);
-    minim_load_builtin(env, "false", MINIM_OBJ_BOOL, 0);
+    env_intern_sym(env, "true", minim_true);
+    env_intern_sym(env, "false", minim_false);
     minim_load_builtin(env, "bool?", MINIM_OBJ_FUNC, minim_builtin_boolp);
     minim_load_builtin(env, "not", MINIM_OBJ_FUNC, minim_builtin_not);
 

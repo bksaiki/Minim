@@ -16,21 +16,6 @@
 
 // Visible functions
 
-MinimObject *minim_void()
-{
-    MinimObject *o = GC_alloc(minim_void_size);
-    o->type = MINIM_OBJ_VOID;
-    return o;
-}
-
-MinimObject *minim_bool(int val)
-{
-    MinimObject *o = GC_alloc(minim_void_size);
-    o->type = MINIM_OBJ_BOOL;
-    MINIM_BOOL_VAL(o) = (val ? 1 : 0);
-    return o;
-}
-
 MinimObject *minim_exactnum(void *num)
 {
     MinimObject *o = GC_alloc(minim_exactnum_size);
@@ -186,17 +171,14 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     if (a == b)         // early exit, same object
         return true;
 
-    if (MINIM_OBJ_NUMBERP(a) && MINIM_OBJ_NUMBERP(b))
+    if (MINIM_OBJ_NUMBERP(a) && MINIM_OBJ_NUMBERP(b))   // multiple number types
         return minim_number_cmp(a, b) == 0;
 
-    if (a->type != b->type) // early exit, different object
+    if (!MINIM_OBJ_TYPE_EQP(a, b))      // early exit, different type
         return false;
 
     switch (a->type)
-    {
-    case MINIM_OBJ_BOOL:
-        return MINIM_BOOL_VAL(a) == MINIM_BOOL_VAL(b);        
-
+    {      
     case MINIM_OBJ_SYM:
         return strcmp(MINIM_SYMBOL(a), MINIM_SYMBOL(b)) == 0;
 
@@ -226,8 +208,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     
     case MINIM_OBJ_AST:
         return ast_equalp(MINIM_AST(a), MINIM_AST(b));
-    
-    case MINIM_OBJ_VOID:
+
     case MINIM_OBJ_ERR:
         return true;
 
@@ -249,16 +230,24 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
     Buffer *bf, *bf2;
     
     init_buffer(&bf);
+    if (minim_booleanp(obj))
+    {
+        writec_buffer(bf, (minim_truep(obj) ? '1' : '0'));
+        return bf;
+    }
+    else if (minim_voidp(obj))
+    {
+        writes_buffer(bf, "void");
+        return bf;
+    }
+    else if (minim_nullp(obj))
+    {
+        writes_buffer(bf, "'()");
+    }
+
+
     switch (obj->type)
     {
-    case MINIM_OBJ_VOID:
-        writei_buffer(bf, 0);
-        break;
-
-    case MINIM_OBJ_BOOL:
-        writei_buffer(bf, (MINIM_BOOL_VAL(obj) ? 1 : 0));
-        break;
-    
     case MINIM_OBJ_FUNC:
         writeu_buffer(bf, (size_t) MINIM_BUILTIN(obj));
         break;

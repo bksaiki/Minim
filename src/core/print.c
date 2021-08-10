@@ -19,13 +19,17 @@
 
 static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
-    if (MINIM_OBJ_VOIDP(obj))
+    if (minim_voidp(obj))
     {
         writes_buffer(bf, "<void>");
     }
-    else if (MINIM_OBJ_BOOLP(obj))
+    else if (minim_truep(obj))
     {
-        writes_buffer(bf, (MINIM_BOOL_VAL(obj)) ? "#t" : "#f");
+        writes_buffer(bf, "#t");
+    }
+    else if (minim_falsep(obj))
+    {
+        writes_buffer(bf, "#f");
     }
     else if (MINIM_OBJ_EXACTP(obj))
     {

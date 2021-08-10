@@ -50,7 +50,7 @@ static bool assert_string_args(size_t argc, MinimObject **args, MinimObject **re
 
 MinimObject *minim_builtin_stringp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(MINIM_OBJ_STRINGP(args[0]));
+    return to_bool(MINIM_OBJ_STRINGP(args[0]));
 }
 
 MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject **args)
@@ -207,5 +207,5 @@ MinimObject *minim_builtin_printf(MinimEnv *env, size_t argc, MinimObject **args
     
     replace_special_chars(MINIM_STRING(val));
     print_minim_object(val, env, &pp);
-    return minim_void();
+    return minim_void;
 }

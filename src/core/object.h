@@ -16,10 +16,11 @@ typedef struct MinimObject
     uint8_t type;           // base object has only one member
 } MinimObject;
 
+typedef MinimObject *(*MinimBuiltin)(MinimEnv *, size_t, MinimObject **);
+typedef bool (*MinimPred)(MinimObject *);
+
 typedef enum MinimObjectType
 {
-    MINIM_OBJ_VOID,
-    MINIM_OBJ_BOOL,
     MINIM_OBJ_EXACT,
     MINIM_OBJ_INEXACT,
     MINIM_OBJ_SYM,
@@ -40,8 +41,6 @@ typedef enum MinimObjectType
     MINIM_OBJ_EXIT
 } MinimObjectType;
 
-#define minim_void_size             0x1
-#define minim_bool_size             0x2
 #define minim_exactnum_size         0x10
 #define minim_inexactnum_size       0x10
 #define minim_symbol_size           0x10
@@ -61,18 +60,24 @@ typedef enum MinimObjectType
 #define minim_error_size            0x10
 #define minim_exit_size             0x1
 
-typedef MinimObject *(*MinimBuiltin)(MinimEnv *, size_t, MinimObject **);
-typedef bool (*MinimPred)(MinimObject *);
+// Special objects
+
+#define minim_void      ((MinimObject*) 0x8)
+#define minim_true      ((MinimObject*) 0x10)
+#define minim_false     ((MinimObject*) 0x18)
+#define minim_null      ((MinimObject*) 0x20)
 
 // Predicates 
 
-#define MINIM_OBJ_SAME_TYPE(obj, t)     ((obj)->type == t)
+#define MINIM_OBJ_SAME_TYPE(obj, t)     ((((uintptr_t) obj) & ~0xFF) && ((obj)->type == t))
+#define MINIM_OBJ_TYPE_EQP(a, b)        ((((uintptr_t) a) & ~0xFF) && (((uintptr_t) b) & ~0xFF)&& ((a)->type == (b)->type))
 
-#define MINIM_OBJ_TYPE_EQVP(a, b)       (a->type == b->type)
+#define minim_voidp(x)              ((x) == minim_void)
+#define minim_truep(x)              ((x) == minim_true)
+#define minim_falsep(x)             ((x) == minim_false)
+#define minim_booleanp(x)           (minim_truep(x) || minim_falsep(x))
+// #define minim_nullp(x)              ((x) == minim_null)
 
-#define MINIM_OBJ_VOIDP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VOID)
-#define MINIM_OBJ_EXITP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXIT)
-#define MINIM_OBJ_BOOLP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_BOOL)
 #define MINIM_OBJ_EXACTP(obj)       MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXACT)
 #define MINIM_OBJ_INEXACTP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_INEXACT)
 #define MINIM_OBJ_SYMBOLP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SYM)
@@ -90,6 +95,7 @@ typedef bool (*MinimPred)(MinimObject *);
 #define MINIM_OBJ_VECTORP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
 #define MINIM_OBJ_PROMISEP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PROMISE)
 #define MINIM_OBJ_VALUESP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VALUES)
+#define MINIM_OBJ_EXITP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXIT)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
 #define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
@@ -97,7 +103,6 @@ typedef bool (*MinimPred)(MinimObject *);
 
 // Accessors 
 
-#define MINIM_BOOL_VAL(obj)         (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_EXACTNUM(obj)         (*((mpq_ptr*) VOID_PTR(PTR(obj, 8))))
 #define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, 8))))
 #define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, 8))))
@@ -138,8 +143,6 @@ typedef bool (*MinimPred)(MinimObject *);
 
 //  Initialization
 
-MinimObject *minim_void();
-MinimObject *minim_bool(int val);
 MinimObject *minim_exactnum(void *num);
 MinimObject *minim_inexactnum(double num);
 MinimObject *minim_symbol(char *sym);
@@ -168,6 +171,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b);
 
 Buffer* minim_obj_to_bytes(MinimObject *obj);
 
-#define coerce_into_bool(x)     (!MINIM_OBJ_BOOLP(x) || MINIM_BOOL_VAL(x))
+#define coerce_into_bool(x)    ((x) != minim_false)
+#define to_bool(x)             ((x) ? minim_true : minim_false)
 
 #endif

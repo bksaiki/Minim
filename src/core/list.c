@@ -31,7 +31,7 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
     if (len == 0)
         return NULL;
 
-    if (map->type == MINIM_OBJ_FUNC)
+    if (MINIM_OBJ_BUILTINP(map))
     {
         MinimObject *arg = MINIM_CAR(list);
         MinimBuiltin func = MINIM_BUILTIN(map);
@@ -41,7 +41,7 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
         
         val = func(env, 1, &arg);
     }
-    else // map->type == MINIM_OBJ_CLOSURE
+    else // MINIM_OBJ_CLOSUREP(map)
     {
         MinimObject *arg = MINIM_CAR(list);
         MinimLambda *lam = MINIM_CLOSURE(map);
@@ -49,11 +49,11 @@ static MinimObject *construct_list_map(MinimObject* list, MinimObject* map, Mini
         val = eval_lambda(lam, env, 1, &arg);
     }
 
-    if (val->type == MINIM_OBJ_ERR)
+    if (MINIM_OBJ_ERRORP(val))
         return val;
 
     rest = construct_list_map(MINIM_CDR(list), map, env, len - 1);
-    if (rest && rest->type == MINIM_OBJ_ERR)
+    if (rest && MINIM_OBJ_ERRORP(rest))
         return rest;
 
     return minim_cons(val, rest);
@@ -70,13 +70,13 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
     it = list;
     while (it != NULL)
     {
-        if (filter->type == MINIM_OBJ_FUNC)
+        if (MINIM_OBJ_BUILTINP(filter))
         {
             MinimBuiltin func = MINIM_BUILTIN(filter);
             if (minim_check_arity(func, 1, env, &val))
                 val = func(env, 1, &MINIM_CAR(it));
         }
-        else
+        else    // MINIM_OBJ_CLOSUREP(filter)
         {
             MinimLambda *lam = MINIM_CLOSURE(filter);
             val = eval_lambda(lam, env, 1, &MINIM_CAR(it));
@@ -112,14 +112,14 @@ static MinimObject *filter_list(MinimObject *list, MinimObject *filter, MinimEnv
 
 bool minim_consp(MinimObject* thing)
 {
-    return (thing->type == MINIM_OBJ_PAIR && MINIM_CAR(thing));
+    return (MINIM_OBJ_PAIRP(thing) && MINIM_CAR(thing));
 }
 
 // list |= (obj? . list?)
 //      |= (obj? . null)
 bool minim_listp(MinimObject* thing)
 {
-    if (thing->type != MINIM_OBJ_PAIR)
+    if (!MINIM_OBJ_PAIRP(thing))
         return false;
 
     // null
@@ -135,7 +135,7 @@ bool minim_listp(MinimObject* thing)
 
 bool minim_nullp(MinimObject* thing)
 {
-    return (thing->type == MINIM_OBJ_PAIR && !MINIM_CAR(thing) && !MINIM_CDR(thing));
+    return (MINIM_OBJ_PAIRP(thing) && !MINIM_CAR(thing) && !MINIM_CDR(thing));
 }
 
 bool minim_listof(MinimObject* list, MinimPred pred)
@@ -238,7 +238,7 @@ MinimObject *minim_builtin_cons(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_consp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(minim_consp(args[0]));
+    return to_bool(minim_consp(args[0]));
 }
 
 MinimObject *minim_builtin_car(MinimEnv *env, size_t argc, MinimObject **args)
@@ -303,12 +303,12 @@ MinimObject *minim_builtin_cddr(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_listp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(minim_listp(args[0]));
+    return to_bool(minim_listp(args[0]));
 }
 
 MinimObject *minim_builtin_nullp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(minim_nullp(args[0]));
+    return to_bool(minim_nullp(args[0]));
 }
 
 MinimObject *minim_builtin_list(MinimEnv *env, size_t argc, MinimObject **args)
@@ -433,7 +433,7 @@ MinimObject *minim_builtin_member(MinimEnv *env, size_t argc, MinimObject **args
         return minim_argument_error("list", "member", 1, args[1]);
     
     if (minim_nullp(args[1]))
-        return minim_bool(0);
+        return to_bool(0);
 
     for (MinimObject *it = args[1]; it; it = MINIM_CDR(it))
     {
@@ -441,7 +441,7 @@ MinimObject *minim_builtin_member(MinimEnv *env, size_t argc, MinimObject **args
             return it;
     }
 
-    return minim_bool(0);
+    return to_bool(0);
 }
 
 MinimObject *minim_builtin_list_ref(MinimEnv *env, size_t argc, MinimObject **args)
@@ -505,13 +505,13 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
     for (; i < valc; ++i, it = MINIM_CDR(it))
         vals[i] = MINIM_CAR(it);
 
-    if (args[0]->type == MINIM_OBJ_FUNC)
+    if (MINIM_OBJ_BUILTINP(args[0]))
     {
         MinimBuiltin func = MINIM_BUILTIN(args[0]);
         if (minim_check_arity(func, valc, env, &res))
             res = func(env, valc, vals);
     }
-    else // MINIM_OBJ_CLOSURE
+    else // MINIM_OBJ_CLOSUREP(args[0])
     {
         MinimLambda *lam = MINIM_CLOSURE(args[0]);
         res = eval_lambda(lam, env, valc, vals);
@@ -561,7 +561,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, size_t argc, MinimObject **args)
         MinimObject **vals = GC_alloc(2 * sizeof(MinimObject*));
 
         vals[1] = args[1];
-        if (args[0]->type == MINIM_OBJ_FUNC)
+        if (MINIM_OBJ_BUILTINP(args[0]))
         {
             MinimBuiltin func = MINIM_BUILTIN(args[0]);
             for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
@@ -573,7 +573,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, size_t argc, MinimObject **args)
                 if (MINIM_OBJ_THROWNP(vals[1])) break;
             }
         }
-        else
+        else // MINIM_OBJ_CLOSUREP(args[0])
         {
             MinimLambda *lam = MINIM_CLOSURE(args[0]);
             for (MinimObject *it = args[2]; it; it = MINIM_CDR(it))
@@ -581,7 +581,7 @@ MinimObject *minim_builtin_foldl(MinimEnv *env, size_t argc, MinimObject **args)
                 vals[0] = MINIM_CAR(it);
                 vals[1] = eval_lambda(lam, env, 2, vals);
 
-                if (vals[1]->type == MINIM_OBJ_ERR)
+                if (MINIM_OBJ_ERRORP(vals[1]))
                     break;
             }
         }
@@ -600,20 +600,20 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
     if (MINIM_CDR(li))
     {
         tmp = minim_foldr_h(env, proc, MINIM_CDR(li), init);
-        if (tmp->type == MINIM_OBJ_ERR)
+        if (MINIM_OBJ_ERRORP(tmp))
             return tmp;
 
         vals = GC_alloc(2 * sizeof(MinimObject*));
         vals[0] = MINIM_CAR(li);
         vals[1] = tmp;
 
-        if (proc->type == MINIM_OBJ_FUNC)
+        if (MINIM_OBJ_BUILTINP(proc))
         {
             MinimBuiltin func = MINIM_BUILTIN(proc);
             if (minim_check_arity(func, 2, env, &res))
                 res = func(env, 2, vals);
         }
-        else
+        else // MINIM_OBJ_CLOSUREP(proc)
         {
             MinimLambda *lam = MINIM_CLOSURE(proc);
             res = eval_lambda(lam, env, 2, vals);
@@ -625,13 +625,13 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
         vals[0] = MINIM_CAR(li);
         vals[1] = init;
 
-        if (proc->type == MINIM_OBJ_FUNC)
+        if (MINIM_OBJ_BUILTINP(proc))
         {
             MinimBuiltin func = MINIM_BUILTIN(proc);
             if (minim_check_arity(func, 2, env, &res))
                 res = func(env, 2, vals);
         }
-        else
+        else // MINIM_OBJ_CLOSUREP(proc)
         {
             MinimLambda *lam = MINIM_CLOSURE(proc);
             res = eval_lambda(lam, env, 2, vals);
@@ -666,5 +666,5 @@ MinimObject *minim_builtin_assoc(MinimEnv *env, size_t argc, MinimObject **args)
         }
     }
 
-    return minim_bool(0);
+    return to_bool(0);
 }

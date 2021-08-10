@@ -83,7 +83,7 @@ MinimObject *minim_builtin_sequence(MinimEnv *env, size_t argc, MinimObject **ar
 
 MinimObject *minim_builtin_sequencep(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(MINIM_OBJ_SEQP(args[0]));
+    return to_bool(MINIM_OBJ_SEQP(args[0]));
 }
 
 MinimObject *minim_builtin_sequence_first(MinimEnv *env, size_t argc, MinimObject **args)
@@ -124,5 +124,5 @@ MinimObject *minim_builtin_sequence_donep(MinimEnv *env, size_t argc, MinimObjec
     if (!MINIM_OBJ_SEQP(args[0]))
         return minim_argument_error("sequence", "sequence-first", 0, args[0]);
 
-    return minim_bool(minim_seq_donep(env, MINIM_SEQUENCE(args[0])));
+    return to_bool(minim_seq_donep(env, MINIM_SEQUENCE(args[0])));
 }

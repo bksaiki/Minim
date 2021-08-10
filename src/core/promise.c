@@ -31,5 +31,5 @@ MinimObject *minim_builtin_force(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_promisep(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_bool(MINIM_OBJ_PROMISEP(args[0]));
+    return to_bool(MINIM_OBJ_PROMISEP(args[0]));
 }
