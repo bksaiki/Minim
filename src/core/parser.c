@@ -82,8 +82,7 @@ static bool expand_shorthand_syntax(SyntaxNode *node)
     return false;
 }
 
-static void
-list_error(ReadTable *ptable, SyntaxNode **perror)
+static void list_error(ReadTable *ptable, SyntaxNode **perror)
 {
     Buffer *bf;
 

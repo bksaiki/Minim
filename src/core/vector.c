@@ -115,37 +115,10 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, size_t argc, MinimObject *
 
 MinimObject *minim_builtin_vector_to_list(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector->list", 0, args[0]);
 
-    if (MINIM_VECTOR_LEN(args[0]) > 0)
-    {
-        MinimObject *it;
-        bool first = true;
-
-        for (size_t i = 0; i < MINIM_VECTOR_LEN(args[0]); ++i)
-        {
-            if (first)
-            {
-                res = minim_cons(MINIM_VECTOR_REF(args[0], i), NULL);
-                it = res;
-                first = false;
-            }
-            else
-            {
-                MINIM_CDR(it) = minim_cons(MINIM_VECTOR_REF(args[0], i), NULL);
-                it = MINIM_CDR(it);
-            }
-        }
-    }
-    else
-    {
-        res = minim_cons(NULL, NULL);
-    }
-
-    return res;
+    return minim_list(MINIM_VECTOR(args[0]), MINIM_VECTOR_LEN(args[0]));
 }
 
 MinimObject *minim_builtin_list_to_vector(MinimEnv *env, size_t argc, MinimObject **args)

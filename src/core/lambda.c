@@ -208,9 +208,7 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 static size_t lambda_argc(MinimObject *bindings)
 {
     size_t argc = 0;
-
-    for (MinimObject *it = bindings; it && minim_consp(it) && MINIM_CAR(it);
-         it = MINIM_CDR(it), ++argc);
+    for (MinimObject *it = bindings; !minim_nullp(it); it = MINIM_CDR(it)) ++argc;
     return argc;
 }
 
@@ -244,17 +242,17 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
 
             for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
             {
-                if (minim_consp(it) && MINIM_CDR(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
+                if (minim_nullp(MINIM_CDR(it)) || minim_consp(MINIM_CDR(it)))
+                {
+                    unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &val);
+                    lam->args[i] = MINIM_SYMBOL(val);
+                }
+                else    // rest args
                 {   
                     unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &val);
                     unsyntax_ast(env, MINIM_AST(MINIM_CDR(it)), &val2);
                     lam->args[i] = MINIM_SYMBOL(val);
                     lam->rest = MINIM_SYMBOL(val2);
-                }
-                else
-                {
-                    unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &val);
-                    lam->args[i] = MINIM_SYMBOL(val);
                 }
             }
 

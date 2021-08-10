@@ -31,6 +31,11 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     {
         writes_buffer(bf, "#f");
     }
+    else if (minim_nullp(obj))
+    {
+        if (!pp->quote)  writec_buffer(bf, '\'');
+        writes_buffer(bf, "()");
+    }
     else if (MINIM_OBJ_EXACTP(obj))
     {
         char *str;
@@ -135,25 +140,21 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         else            writes_buffer(bf, "'(");
 
         pp->quote = true; // push
-        for (MinimObject *it = obj; it; it = MINIM_CDR(it))
+        print_object(MINIM_CAR(obj), env, bf, pp);
+        for (MinimObject *it = MINIM_CDR(obj); !minim_nullp(it); it = MINIM_CDR(it))
         {
-            if (minim_nullp(it))
-                break;
-
-            print_object(MINIM_CAR(it), env, bf, pp);
-            if (!MINIM_CDR(it))
-                break;
-
-            if (!MINIM_OBJ_PAIRP(MINIM_CDR(it)))
+            if (!MINIM_OBJ_PAIRP(it))   // improper list
             {
                 writes_buffer(bf, " . ");
-                print_object(MINIM_CDR(it), env, bf, pp);
+                print_object(it, env, bf, pp);
                 break;
             }
             else
             {
                 writec_buffer(bf, ' ');
             }
+
+            print_object(MINIM_CAR(it), env, bf, pp); 
         }
 
         writec_buffer(bf, ')');

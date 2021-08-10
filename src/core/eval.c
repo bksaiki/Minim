@@ -183,7 +183,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
                             minim_ast(node->children[i]));
 
             res = minim_builtin_list(env, reduc, args);
-            for (rest = res; MINIM_CDR(rest); rest = MINIM_CDR(rest));
+            for (rest = res; !minim_nullp(MINIM_CDR(rest)); rest = MINIM_CDR(rest));
             
             MINIM_CDR(rest) = ((flags & UNSYNTAX_REC) ?
                                 unsyntax_ast_node(env, node->children[node->childc - 1], flags) :

@@ -87,9 +87,9 @@ static bool check_syntax_func(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
             }
         }
     }
-    else if (!MINIM_OBJ_SYMBOLP(args))
+    else if (!MINIM_OBJ_SYMBOLP(args) && !minim_nullp(args))
     {
-        *perr = minim_syntax_error("expected argument names for ~s",
+        *perr = minim_syntax_error("expected argument names",
                                     ast->children[0]->sym,
                                     ast,
                                     ast->children[name_idx]);
@@ -570,9 +570,15 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj, MinimObject **perr)
     {
         return MINIM_AST(obj);
     }
+    else if (minim_nullp(obj))
+    {
+        init_syntax_node(&node, SYNTAX_NODE_LIST);
+        node->childc = 0;
+        return node;  
+    }
     else if (MINIM_OBJ_PAIRP(obj))
     {
-        if (MINIM_CAR(obj) && MINIM_CDR(obj) && !MINIM_OBJ_PAIRP(MINIM_CDR(obj)))   // true pair
+        if (!minim_nullp(MINIM_CDR(obj)) && !MINIM_OBJ_PAIRP(MINIM_CDR(obj)))   // true pair
         {
             init_syntax_node(&node, SYNTAX_NODE_PAIR);
             node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
@@ -590,32 +596,29 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj, MinimObject **perr)
             node->children = NULL;
             node->childc = 0;
 
-            if (MINIM_CAR(obj))
+            for (MinimObject *it = obj; !minim_nullp(it); it = MINIM_CDR(it))
             {
-                for (MinimObject *it = obj; it; it = MINIM_CDR(it))
+                if (!minim_nullp(MINIM_CDR(it)) && !MINIM_OBJ_PAIRP(MINIM_CDR(it)))
                 {
-                    if (MINIM_CDR(it) && !MINIM_OBJ_PAIRP(MINIM_CDR(it)))
-                    {
-                        node->childc += 3;
-                        node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                        node->children[node->childc - 3] = datum_to_syntax(MINIM_CAR(it), perr);
-                        if (!node->children[node->childc - 3])      return NULL;
+                    node->childc += 3;
+                    node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                    node->children[node->childc - 3] = datum_to_syntax(MINIM_CAR(it), perr);
+                    if (!node->children[node->childc - 3])      return NULL;
 
-                        init_syntax_node(&node->children[node->childc - 2], SYNTAX_NODE_DATUM);
-                        node->children[node->childc - 2]->sym = ".";
+                    init_syntax_node(&node->children[node->childc - 2], SYNTAX_NODE_DATUM);
+                    node->children[node->childc - 2]->sym = ".";
 
-                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CDR(it), perr);
-                        if (!node->children[node->childc - 1])      return NULL;
+                    node->children[node->childc - 1] = datum_to_syntax(MINIM_CDR(it), perr);
+                    if (!node->children[node->childc - 1])      return NULL;
 
-                        break;
-                    }
-                    else
-                    {
-                        ++node->childc;
-                        node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                        node->children[node->childc - 1] = datum_to_syntax(MINIM_CAR(it), perr);
-                        if (!node->children[node->childc - 1])      return NULL;
-                    }
+                    break;
+                }
+                else
+                {
+                    ++node->childc;
+                    node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                    node->children[node->childc - 1] = datum_to_syntax(MINIM_CAR(it), perr);
+                    if (!node->children[node->childc - 1])      return NULL;
                 }
             }
         }

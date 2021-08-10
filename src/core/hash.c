@@ -248,17 +248,16 @@ static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
 static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 {
     MinimObject *head, *it;
-    bool first = true;
-
+    
+    head = NULL;
     for (size_t i = 0; i < ht->size; ++i)
     {
         for (size_t j = 0; j < ht->arr[i].len; ++j)
         {
-            if (first)
+            if (!head)
             {
                 head = minim_cons(ht->arr[i].arr[j], NULL);
                 it = head;
-                first = false;
             }
             else
             {
@@ -268,7 +267,11 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
         }
     }
 
-    return (first) ? minim_cons(NULL, NULL) : head;
+    if (!head)
+        return minim_null;
+
+    MINIM_CDR(it) = minim_null;
+    return head;
 }
 
 //
