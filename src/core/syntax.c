@@ -202,7 +202,7 @@ static bool check_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject **perr
         }
 
         // vals
-        for (MinimObject *it = MINIM_CDR(branch); it; it = MINIM_CDR(it))
+        for (MinimObject *it = MINIM_CDR(branch); !minim_nullp(it); it = MINIM_CDR(it))
         {
             if (!check_syntax_rec(env, MINIM_AST(MINIM_CAR(it)), perr))
                 return false;
@@ -238,7 +238,7 @@ static bool check_syntax_let_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
     if (minim_nullp(bindings))
         return check_syntax_rec(env, ast->children[base + 1], perr);
 
-    for (MinimObject *it = bindings; it; it = MINIM_CDR(it))
+    for (MinimObject *it = bindings; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *bind, *sym, *ids;
         SyntaxNode *stx;
@@ -372,7 +372,7 @@ static bool check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast, MinimObject
     }
     
     // check reserved list is all symbols
-    for (MinimObject *it = reserved; it && MINIM_CAR(it); it = MINIM_CDR(it))
+    for (MinimObject *it = reserved; !minim_nullp(it); it = MINIM_CDR(it))
     {
         unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &sym);
         if (!MINIM_OBJ_SYMBOLP(sym))

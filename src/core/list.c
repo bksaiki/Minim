@@ -37,7 +37,7 @@ static MinimObject *eval_2ary(MinimEnv *env, MinimObject *proc, MinimObject *x, 
         MinimBuiltin func = MINIM_BUILTIN(proc);
         MinimObject *err;
 
-        if (!minim_check_arity(func, 1, env, &err))
+        if (!minim_check_arity(func, 2, env, &err))
             return err;
 
         args = GC_alloc(2 * sizeof(MinimObject*));
@@ -138,7 +138,7 @@ static MinimObject *minim_list_map(MinimObject *lst, MinimObject *map, MinimEnv 
     head = NULL;
     for (MinimObject *it2 = lst; !minim_nullp(it2); it2 = MINIM_CDR(it2))
     {
-        val = eval_1ary(env, map, MINIM_CAR(lst));
+        val = eval_1ary(env, map, MINIM_CAR(it2));
         if (MINIM_OBJ_ERRORP(val))
             return val;
 
@@ -168,7 +168,7 @@ static MinimObject *minim_list_filter(MinimObject *lst, MinimObject *filter, Min
     head = NULL;
     for (MinimObject *it2 = lst; !minim_nullp(it2); it2 = MINIM_CDR(it2))
     {
-        val = eval_1ary(env, filter, MINIM_CAR(lst));
+        val = eval_1ary(env, filter, MINIM_CAR(it2));
         if (MINIM_OBJ_ERRORP(val))
             return val;
 
@@ -298,13 +298,11 @@ MinimObject *minim_list_ref(MinimObject *lst, size_t len)
     return MINIM_CAR(it);
 }
 
-size_t minim_list_length(MinimObject *list)
+size_t minim_list_length(MinimObject *lst)
 {
     size_t len = 0;
-
-    for (MinimObject *it = list; !minim_nullp(it); it = MINIM_CDR(it))
-        if (MINIM_CAR(it))  ++len;
-    
+    for (MinimObject *it = lst; !minim_nullp(it); it = MINIM_CDR(it))
+        ++len;
     return len;
 }
 

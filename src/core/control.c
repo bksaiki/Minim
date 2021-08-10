@@ -151,14 +151,14 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
         if (minim_nullp(cs))
             continue;
 
-        for (MinimObject *it = cs; it; it = MINIM_CDR(it))
+        for (MinimObject *it = cs; !minim_nullp(it); it = MINIM_CDR(it))
         {
             if (minim_equalp(MINIM_CAR(it), key))
             {
                 if (minim_list_length(ce_pair) > 2)
                 {
                     init_env(&env2, env, NULL);
-                    for (MinimObject *it = MINIM_CDR(ce_pair); it; it = MINIM_CDR(it))
+                    for (MinimObject *it = MINIM_CDR(ce_pair); !minim_nullp(it); it = MINIM_CDR(it))
                     {
                         eval_ast_no_check(env2, MINIM_AST(MINIM_CAR(it)), &val);
                         if (MINIM_OBJ_THROWNP(val) || !MINIM_CDR(it))

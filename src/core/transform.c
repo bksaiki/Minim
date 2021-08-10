@@ -92,7 +92,7 @@ match_table_merge_patterns(MatchTable *parent, MatchTable *child)
     {
         for (size_t i = 0; i < child->size; ++i)
         {
-            pair = minim_cons(child->objs[i], NULL);
+            pair = minim_cons(child->objs[i], minim_null);
             match_table_add(parent, child->syms[i], child->depths[i], pair);
         }
     }
@@ -101,7 +101,7 @@ match_table_merge_patterns(MatchTable *parent, MatchTable *child)
         for (size_t i = 0; i < child->size; ++i)
         {
             MINIM_TAIL(pair, match_table_get(parent, child->syms[i]));
-            MINIM_CDR(pair) = minim_cons(child->objs[i], NULL);
+            MINIM_CDR(pair) = minim_cons(child->objs[i], minim_null);
         }
     }
 }
@@ -180,7 +180,7 @@ add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved, s
             symbol_list_contains(reserved, match->sym))     // reserved
             return;
 
-        match_table_add(table, match->sym, pdepth, minim_cons(NULL, NULL));
+        match_table_add(table, match->sym, pdepth, minim_null);
     }
 }
 
@@ -535,7 +535,7 @@ valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t 
 
 
         if (!symbol_list_contains(reserved, match->sym) && strcmp(match->sym, "_") != 0)
-            match_table_add(table, match->sym, pdepth, NULL);
+            match_table_add(table, match->sym, pdepth, minim_null);
     }
 
     return true;

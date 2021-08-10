@@ -208,7 +208,7 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 static size_t lambda_argc(MinimObject *bindings)
 {
     size_t argc = 0;
-    for (MinimObject *it = bindings; !minim_nullp(it); it = MINIM_CDR(it)) ++argc;
+    for (MinimObject *it = bindings; minim_consp(it); it = MINIM_CDR(it)) ++argc;
     return argc;
 }
 
