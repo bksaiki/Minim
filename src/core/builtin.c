@@ -112,6 +112,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "-inf", MINIM_OBJ_INEXACT, -INFINITY);
     minim_load_builtin(env, "nan", MINIM_OBJ_INEXACT, NAN);
 
+    // Character
+    minim_load_builtin(env, "char?", MINIM_OBJ_FUNC, minim_builtin_charp);
+    minim_load_builtin(env, "integer->char", MINIM_OBJ_FUNC, minim_builtin_int_to_char);
+    minim_load_builtin(env, "char->integer", MINIM_OBJ_FUNC, minim_builtin_char_to_int);
+
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);
     minim_load_builtin(env, "string-append", MINIM_OBJ_FUNC, minim_builtin_string_append);

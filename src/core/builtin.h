@@ -80,6 +80,11 @@ DEFINE_BUILTIN_FUN(lte)
 DEFINE_BUILTIN_FUN(to_exact)
 DEFINE_BUILTIN_FUN(to_inexact)
 
+// Character
+DEFINE_BUILTIN_FUN(charp)
+DEFINE_BUILTIN_FUN(int_to_char)
+DEFINE_BUILTIN_FUN(char_to_int)
+
 // String
 DEFINE_BUILTIN_FUN(stringp)
 DEFINE_BUILTIN_FUN(string_append)

@@ -158,6 +158,14 @@ MinimObject *minim_err(void *err)
     return o;
 }
 
+MinimObject *minim_char(unsigned int ch)
+{
+    MinimObject *o = GC_alloc(minim_char_size);
+    o->type = MINIM_OBJ_CHAR;
+    MINIM_CHAR(o) = ch;
+    return o;
+}
+
 MinimObject *minim_exit(long code)
 {
     MinimObject *o = GC_alloc(minim_exit_size);
