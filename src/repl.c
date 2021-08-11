@@ -93,17 +93,17 @@ int minim_repl(char **argv, uint32_t flags)
 
         last_readf = rt.flags;
         eval_ast(module->env, ast, &obj);
-        if (obj->type == MINIM_OBJ_ERR)
+        if (MINIM_OBJ_ERRORP(obj))
         {    
             print_minim_object(obj, module->env, &pp);
             printf("\n");
             fflush(stdout);
         }
-        else if (obj->type == MINIM_OBJ_EXIT)
+        else if (MINIM_OBJ_EXITP(obj))
         {
             break;
         }
-        else if (obj->type != MINIM_OBJ_VOID)
+        else if (!minim_voidp(obj))
         {
             print_minim_object(obj, module->env, &pp);
             printf("\n");

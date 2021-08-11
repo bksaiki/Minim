@@ -9,12 +9,6 @@ static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void
     mrk(gc, ((MinimSymbolTable*) ptr)->rows);
 }
 
-// static void gc_mark_minim_symbol_table_row(void (*mrk)(void*, void*), void *gc, void *ptr) {
-//     MinimSymbolTableRow *tr = (MinimSymbolTableRow*) ptr;
-//     mrk(gc, tr->names);
-//     mrk(gc, tr->vals);
-// }
-
 void init_minim_symbol_table(MinimSymbolTable **ptable)
 {
     MinimSymbolTable *table = GC_alloc_opt(sizeof(MinimSymbolTable), NULL, gc_mark_minim_symbol_table);
@@ -43,30 +37,13 @@ void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src)
         else
         {
             table->rows[i].names = GC_alloc(src->rows[i].length * sizeof(char*));
-            table->rows[i].vals = GC_alloc(src->rows[i].length * sizeof(MinimSymbolEntry*));
+            table->rows[i].vals = GC_alloc(src->rows[i].length * sizeof(MinimObject*));
             table->rows[i].length = src->rows[i].length;
 
             for (size_t j = 0; j < src->rows[i].length; ++j)
             {
-                MinimSymbolEntry *it = src->rows[i].vals[j];
-                MinimSymbolEntry *cp = GC_alloc(sizeof(MinimSymbolEntry));
-                MinimSymbolEntry *tmp;
-
-                table->rows[i].names[j] = GC_alloc_atomic((strlen(src->rows[i].names[j]) + 1) * sizeof(char));
-                strcpy(table->rows[i].names[j], src->rows[i].names[j]);
-
-                cp->obj = it->obj;
-                table->rows[i].vals[j] = cp;
-
-                for (it = it->parent; it; it = it->parent)
-                {
-                    tmp = GC_alloc(sizeof(MinimSymbolEntry));
-                    tmp->obj = it->obj;
-                    cp->parent = tmp;
-                    cp = tmp;
-                }
-
-                cp->parent = NULL;
+                table->rows[i].names[j] = src->rows[i].names[j];
+                table->rows[i].vals[j] = src->rows[i].vals[j];
             }
         }
     }
@@ -89,7 +66,7 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
 
             ++rows[idx].length;
             rows[idx].names = GC_realloc(rows[idx].names, rows[idx].length * sizeof(char*));
-            rows[idx].vals = GC_realloc(rows[idx].vals, rows[idx].length * sizeof(MinimSymbolEntry*));
+            rows[idx].vals = GC_realloc(rows[idx].vals, rows[idx].length * sizeof(MinimObject*));
             rows[idx].names[rows[idx].length - 1] = table->rows[i].names[j];
             rows[idx].vals[rows[idx].length - 1] = table->rows[i].vals[j];
         }
@@ -101,22 +78,17 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
 
 void minim_symbol_table_add(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj)
 {
-    MinimSymbolEntry *entry;
     size_t idx;
 
     if (((double)table->size / (double)table->alloc) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
         minim_symbol_table_rehash(table);
 
     idx = hash % table->alloc;
-    entry = GC_alloc(sizeof(MinimSymbolEntry));
-    entry->obj = obj;
-
     for (size_t i = 0; i < table->rows[idx].length; ++i)
     {
         if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
         {
-            entry->parent = table->rows[idx].vals[i];
-            table->rows[idx].vals[i] = entry;
+            table->rows[idx].vals[i] = obj;
             return;
         }
     }
@@ -124,33 +96,26 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, size_t ha
     ++table->size;
     ++table->rows[idx].length;
     table->rows[idx].names = GC_realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
-    table->rows[idx].vals = GC_realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
+    table->rows[idx].vals = GC_realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimObject*));
 
     table->rows[idx].names[table->rows[idx].length - 1] = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
     strcpy(table->rows[idx].names[table->rows[idx].length - 1], name);
-    table->rows[idx].vals[table->rows[idx].length - 1] = entry;
-    entry->parent = NULL;
+    table->rows[idx].vals[table->rows[idx].length - 1] = obj;
 }
 
 int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj)
 {
-    MinimSymbolEntry *entry;
     size_t idx;
 
     if (((double)table->size / (double)table->alloc) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
         minim_symbol_table_rehash(table);
 
     idx = hash % table->alloc;
-
-    entry = GC_alloc(sizeof(MinimSymbolEntry));
-    entry->obj = obj;
-
     for (size_t i = 0; i < table->rows[idx].length; ++i)
     {
         if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
         {
-            entry->parent = table->rows[idx].vals[i];
-            table->rows[idx].vals[i] = entry;
+            table->rows[idx].vals[i] = obj;
             return 1;
         }
     }
@@ -166,48 +131,7 @@ MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name, s
     for (size_t i = 0; i < table->rows[idx].length; ++i)
     {
         if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
-            return table->rows[idx].vals[i]->obj;
-    }
-    
-    return NULL;
-}
-
-bool minim_symbol_table_pop(MinimSymbolTable *table, const char *name)
-{
-    size_t hash, idx;
-
-    hash = hash_bytes(name, strlen(name), hashseed);
-    idx = hash % table->alloc;
-
-    for (size_t i = 0; i < table->rows[idx].length; ++i)
-    {
-        if (strcmp(table->rows[idx].names[i], name) == 0) // name exists
-        {
-            if (table->rows[idx].vals[i]->parent)
-            {
-                MinimSymbolEntry *tmp = table->rows[idx].vals[i]->parent;
-                table->rows[idx].vals[i] = tmp;
-            }
-            else
-            {
-                if (i != table->rows[idx].length - 1)
-                {
-                    table->rows[idx].names[i] = table->rows[idx].names[table->rows[idx].length - 1];
-                    table->rows[idx].vals[i] = table->rows[idx].vals[table->rows[idx].length - 1];
-                }
-                
-                --table->rows[idx].length;
-                if (table->rows[idx].length == 0)
-                {
-                    --table->size;
-                }
-                else
-                {
-                    table->rows[idx].names = GC_realloc(table->rows[idx].names, table->rows[idx].length * sizeof(char*));
-                    table->rows[idx].vals = GC_realloc(table->rows[idx].vals, table->rows[idx].length * sizeof(MinimSymbolEntry*));
-                }
-            }
-        }
+            return table->rows[idx].vals[i];
     }
     
     return NULL;
@@ -219,11 +143,8 @@ const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *o
     {
         for (size_t j = 0; j < table->rows[i].length; ++j)
         {
-            for (MinimSymbolEntry *it = table->rows[i].vals[j]; it; it = it->parent)
-            {
-                if (minim_equalp(obj, it->obj))
-                    return table->rows[i].names[j];
-            }
+            if (minim_equalp(obj, table->rows[i].vals[j]))
+                return table->rows[i].names[j];
         }
     }
 
@@ -232,18 +153,17 @@ const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *o
 
 void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src)
 {
+    size_t hash;
+
     for (size_t i = 0; i < src->alloc; ++i)
     {
         for (size_t j = 0; j < src->rows[i].length; ++j)
         {
-            for (MinimSymbolEntry *it = src->rows[i].vals[j]; it; it = it->parent)
-            {
-                size_t hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j]), hashseed);
-                if (minim_symbol_table_get(dest, src->rows[i].names[j], hash))
-                    minim_symbol_table_set(dest, src->rows[i].names[j], hash, it->obj);
-                else
-                    minim_symbol_table_add(dest, src->rows[i].names[j], hash, it->obj);
-            }
+            hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j]), hashseed);      
+            if (minim_symbol_table_get(dest, src->rows[i].names[j], hash))
+                minim_symbol_table_set(dest, src->rows[i].names[j], hash, src->rows[i].vals[j]);
+            else
+                minim_symbol_table_add(dest, src->rows[i].names[j], hash, src->rows[i].vals[j]);
         }
     }   
 }
@@ -253,9 +173,6 @@ void minim_symbol_table_for_each(MinimSymbolTable *table, void (*func)(const cha
     for (size_t i = 0; i < table->alloc; ++i)
     {
         for (size_t j = 0; j < table->rows[i].length; ++j)
-        {
-            for (MinimSymbolEntry *it = table->rows[i].vals[j]; it; it = it->parent)
-                func(table->rows[i].names[j], it->obj);
-        }
+            func(table->rows[i].names[j], table->rows[i].vals[j]);
     }
 }

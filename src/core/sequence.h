@@ -9,6 +9,5 @@ typedef struct MinimSeq
 } MinimSeq;
 
 void init_minim_seq(MinimSeq **pseq, MinimObject *init, MinimObject *first, MinimObject *rest, MinimObject *donep);
-void copy_minim_seq(MinimSeq **pseq, MinimSeq *src);
 
 #endif

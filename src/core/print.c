@@ -19,14 +19,22 @@
 
 static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
-    if (MINIM_OBJ_VOIDP(obj))
+    if (minim_voidp(obj))
     {
         writes_buffer(bf, "<void>");
     }
-    else if (MINIM_OBJ_BOOLP(obj))
+    else if (minim_truep(obj))
     {
-        if (obj->u.ints.i1)   writes_buffer(bf, "#t");
-        else                  writes_buffer(bf, "#f");
+        writes_buffer(bf, "#t");
+    }
+    else if (minim_falsep(obj))
+    {
+        writes_buffer(bf, "#f");
+    }
+    else if (minim_nullp(obj))
+    {
+        if (!pp->quote)  writec_buffer(bf, '\'');
+        writes_buffer(bf, "()");
     }
     else if (MINIM_OBJ_EXACTP(obj))
     {
@@ -34,23 +42,23 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         size_t len;
 
         str = GC_alloc_atomic(128 * sizeof(char));
-        len = gmp_snprintf(str, 128, "%Qd", MINIM_EXACT(obj));
+        len = gmp_snprintf(str, 128, "%Qd", MINIM_EXACTNUM(obj));
 
         if (len >= 128)
         {
             str = GC_realloc_atomic(str, (len + 1) * sizeof(char));
-            len = gmp_snprintf(str, len, "%Qd", MINIM_EXACT(obj));
+            len = gmp_snprintf(str, len, "%Qd", MINIM_EXACTNUM(obj));
         }
 
         writes_buffer(bf, str);
     }
     else if (MINIM_OBJ_INEXACTP(obj))
     {
-        writed_buffer(bf, MINIM_INEXACT(obj));
+        writed_buffer(bf, MINIM_INEXACTNUM(obj));
     }
     else if (MINIM_OBJ_SYMBOLP(obj))
     {
-        char *str = obj->u.str.str;
+        char *str = MINIM_SYMBOL(obj);
         size_t len = strlen(str);
 
         if (!pp->quote)
@@ -69,12 +77,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_STRINGP(obj))
     {
-        if (pp->display)    writes_buffer(bf, obj->u.str.str);
-        else                writef_buffer(bf, "\"~s\"", obj->u.str.str);
+        if (pp->display)    writes_buffer(bf, MINIM_STRING(obj));
+        else                writef_buffer(bf, "\"~s\"", MINIM_STRING(obj));
     }
     else if (MINIM_OBJ_ERRORP(obj))
     {
-        MinimError *err = obj->u.ptrs.p1;
+        MinimError *err = MINIM_ERROR(obj);
 
         if (err->where)   writef_buffer(bf, "; ~s: ~s", err->where, err->msg);
         else              writef_buffer(bf, "; ~s", err->msg);
@@ -132,25 +140,21 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         else            writes_buffer(bf, "'(");
 
         pp->quote = true; // push
-        for (MinimObject *it = obj; it; it = MINIM_CDR(it))
+        print_object(MINIM_CAR(obj), env, bf, pp);
+        for (MinimObject *it = MINIM_CDR(obj); !minim_nullp(it); it = MINIM_CDR(it))
         {
-            if (minim_nullp(it))
-                break;
-
-            print_object(MINIM_CAR(it), env, bf, pp);
-            if (!MINIM_CDR(it))
-                break;
-
-            if (!MINIM_OBJ_PAIRP(MINIM_CDR(it)))
+            if (!MINIM_OBJ_PAIRP(it))   // improper list
             {
                 writes_buffer(bf, " . ");
-                print_object(MINIM_CDR(it), env, bf, pp);
+                print_object(it, env, bf, pp);
                 break;
             }
             else
             {
                 writec_buffer(bf, ' ');
             }
+
+            print_object(MINIM_CAR(it), env, bf, pp); 
         }
 
         writec_buffer(bf, ')');
@@ -165,10 +169,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_CLOSUREP(obj))
     {
-        MinimLambda *lam = obj->u.ptrs.p1;
+        MinimLambda *lam = MINIM_CLOSURE(obj);
 
         if (lam->name)    writef_buffer(bf, "<function:~s>", lam->name);
-        else              writes_buffer(bf, "<function:?>");
+        else              writes_buffer(bf, "<function>");
     }
     else if (MINIM_OBJ_SEQP(obj))
     {
@@ -176,7 +180,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_HASHP(obj))
     {
-        MinimHash *ht = obj->u.ptrs.p1;
+        MinimHash *ht = MINIM_HASH_TABLE(obj);
         bool first = true;
         bool quotep = pp->quote;
         
@@ -209,10 +213,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         else            writes_buffer(bf, "'#(");
 
         pp->quote = true;
-        for (size_t i = 0; i < obj->u.vec.len; ++i)
+        for (size_t i = 0; i < MINIM_VECTOR_LEN(obj); ++i)
         {
             if (!first)  writec_buffer(bf, ' ');
-            print_object(obj->u.vec.arr[i], env, bf, pp);
+            print_object(MINIM_VECTOR_REF(obj, i), env, bf, pp);
             first = false;
         }
 
@@ -223,7 +227,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     {
         if (pp->syntax)
         {
-            ast_to_buffer(obj->u.ptrs.p1, bf);
+            ast_to_buffer(MINIM_AST(obj), bf);
         }
         else
         {
@@ -231,7 +235,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
             pp->syntax = true;
             writes_buffer(bf, "<syntax:");
-            ast_to_buffer(obj->u.ptrs.p1, bf);
+            ast_to_buffer(MINIM_AST(obj), bf);
             writec_buffer(bf, '>');
             pp->syntax = syntaxp;
         }
@@ -242,21 +246,21 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
         pp->syntax = true;
         writes_buffer(bf, "<promise");
-        writec_buffer(bf, MINIM_PROMISE_FORCEDP(obj) ? '!' : ':');
+        writec_buffer(bf, MINIM_PROMISE_STATE(obj) ? '!' : ':');
         print_object(MINIM_PROMISE_VAL(obj), env, bf, pp);
         writec_buffer(bf, '>');
         pp->syntax = syntaxp;
     }
     else if (MINIM_OBJ_VALUESP(obj))
     {
-        if (MINIM_VALUES_LEN(obj) == 0)
+        if (MINIM_VALUES_SIZE(obj) == 0)
             return 1;
 
-        print_object(MINIM_VALUES_ARR(obj)[0], env, bf, pp);
-        for (size_t i = 1; i < MINIM_VALUES_LEN(obj); ++i)
+        print_object(MINIM_VALUES_REF(obj, 0), env, bf, pp);
+        for (size_t i = 1; i < MINIM_VALUES_SIZE(obj); ++i)
         {
             writec_buffer(bf, '\n');
-            print_object(MINIM_VALUES_ARR(obj)[i], env, bf, pp);
+            print_object(MINIM_VALUES_REF(obj, i), env, bf, pp);
         }
     }
     else

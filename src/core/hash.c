@@ -176,7 +176,7 @@ static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
     {
         ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
         ht->arr[reduc].len = 1;
-        init_minim_object(&ht->arr[reduc].arr[0], MINIM_OBJ_PAIR, k, v);
+        ht->arr[reduc].arr[0] = minim_cons(k, v);
     }
     else
     {      
@@ -191,7 +191,7 @@ static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
         }
 
         ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
-        init_minim_object(&ht->arr[reduc].arr[ht->arr[reduc].len], MINIM_OBJ_PAIR, k, v);
+        ht->arr[reduc].arr[ht->arr[reduc].len] = minim_cons(k, v);
         ++ht->arr[reduc].len;
     }
 }
@@ -248,29 +248,29 @@ static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
 static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 {
     MinimObject *head, *it;
-    bool first = true;
-
+    
+    head = NULL;
     for (size_t i = 0; i < ht->size; ++i)
     {
         for (size_t j = 0; j < ht->arr[i].len; ++j)
         {
-            if (first)
+            if (!head)
             {
-                init_minim_object(&head, MINIM_OBJ_PAIR, ht->arr[i].arr[j], NULL);
+                head = minim_cons(ht->arr[i].arr[j], NULL);
                 it = head;
-                first = false;
             }
             else
             {
-                init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, ht->arr[i].arr[j], NULL);
+                MINIM_CDR(it) = minim_cons(ht->arr[i].arr[j], NULL);
                 it = MINIM_CDR(it);
             }
         }
     }
 
-    if (first)
-        init_minim_object(&head, MINIM_OBJ_PAIR, NULL, NULL);
+    if (!head)
+        return minim_null;
 
+    MINIM_CDR(it) = minim_null;
     return head;
 }
 
@@ -280,33 +280,23 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 
 MinimObject *minim_builtin_hash(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
     MinimHash *ht;
-    
+
     init_minim_hash_table(&ht);
-    init_minim_object(&res, MINIM_OBJ_HASH, ht);
-    return res;
+    return minim_hash_table(ht);
 }
 
 MinimObject *minim_builtin_hashp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
-    init_minim_object(&res, MINIM_OBJ_BOOL, MINIM_OBJ_HASHP(args[0]));
-    return res;
+    return to_bool(MINIM_OBJ_HASHP(args[0]));
 }
 
 MinimObject *minim_builtin_hash_keyp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-key?", 0, args[0]);
     
-    init_minim_object(&res,
-                      MINIM_OBJ_BOOL,
-                      minim_hash_table_keyp(args[0]->u.ptrs.p1, args[1]));
-    return res;
+    return to_bool(minim_hash_table_keyp(MINIM_HASH_TABLE(args[0]), args[1]));
 }
 
 MinimObject *minim_builtin_hash_ref(MinimEnv *env, size_t argc, MinimObject **args)
@@ -316,7 +306,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, size_t argc, MinimObject **ar
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-ref", 0, args[0]);
 
-    res = minim_hash_table_ref(args[0]->u.ptrs.p1, args[1]);
+    res = minim_hash_table_ref(MINIM_HASH_TABLE(args[0]), args[1]);
     if (!res)
     {
         Buffer *bf;
@@ -333,50 +323,44 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, size_t argc, MinimObject **ar
 
 MinimObject *minim_builtin_hash_remove(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
+    MinimHash *ht;
 
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-remove", 0, args[0]);
 
-    copy_minim_object(&res, args[0]);
-    minim_hash_table_remove(res->u.ptrs.p1, args[1]);
-    return res;
+    copy_minim_hash_table(&ht, MINIM_HASH_TABLE(args[0]));
+    minim_hash_table_remove(ht, args[1]);
+    return minim_hash_table(ht);
 }
 
 MinimObject *minim_builtin_hash_set(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
+    MinimHash *ht;
 
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-set", 0, args[0]);
 
-    copy_minim_object(&res, args[0]);
-    minim_hash_table_add(res->u.ptrs.p1, args[1], args[2]);
-    return res;
+    copy_minim_hash_table(&ht, MINIM_HASH_TABLE(args[0]));
+    minim_hash_table_add(ht, args[1], args[2]);
+    return minim_hash_table(ht);
 }
 
 MinimObject *minim_builtin_hash_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-set!", 0, args[0]);
 
-    minim_hash_table_add(args[0]->u.ptrs.p1, args[1], args[2]);
-    init_minim_object(&res, MINIM_OBJ_VOID);
-    return res;
+    minim_hash_table_add(MINIM_HASH_TABLE(args[0]), args[1], args[2]);
+    return minim_void;
 }
 
 MinimObject *minim_builtin_hash_removeb(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash-remove!", 0, args[0]);
 
-    minim_hash_table_remove(args[0]->u.ptrs.p1, args[1]);
-    init_minim_object(&res, MINIM_OBJ_VOID);
-    return res;
+    minim_hash_table_remove(MINIM_HASH_TABLE(args[0]), args[1]);
+    return minim_void;
 }
 
 MinimObject *minim_builtin_hash_to_list(MinimEnv *env, size_t argc, MinimObject **args)
@@ -384,5 +368,5 @@ MinimObject *minim_builtin_hash_to_list(MinimEnv *env, size_t argc, MinimObject 
     if (!MINIM_OBJ_HASHP(args[0]))
         return minim_argument_error("hash table", "hash->list", 0, args[0]);
 
-    return minim_hash_table_to_list(args[0]->u.ptrs.p1);
+    return minim_hash_table_to_list(MINIM_HASH_TABLE(args[0]));
 }

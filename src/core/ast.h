@@ -42,6 +42,6 @@ bool ast_equalp(SyntaxNode *a, SyntaxNode *b);
 void ast_to_buffer(SyntaxNode *node, Buffer *bf);
 void ast_dump_in_buffer(SyntaxNode *node, Buffer *bf);
 
-void print_ast(SyntaxNode *node);  // debugging
+void print_ast(SyntaxNode *node);
 
 #endif

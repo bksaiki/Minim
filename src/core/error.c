@@ -203,7 +203,7 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
     Buffer *bf;
 
     init_minim_error(&err, msg, where);
-    init_minim_object(&obj, MINIM_OBJ_ERR, err);
+    obj = minim_err(err);
     if (expr && !subexpr)
     {
         init_buffer(&bf);
@@ -220,7 +220,7 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
         ast_to_buffer(subexpr, bf);
         init_minim_error_desc_table(&err->table, 2);
         minim_error_desc_table_set(err->table, 0, "at", get_buffer(bf));
-        init_minim_object(&obj, MINIM_OBJ_ERR, err);
+        obj = minim_err(err);
 
         init_buffer(&bf);
         ast_to_buffer(expr, bf);
@@ -235,7 +235,6 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
 
 MinimObject *minim_argument_error(const char *pred, const char *where, size_t pos, MinimObject *val)
 {
-    MinimObject *obj;
     MinimError *err;
     size_t idx;
 
@@ -267,13 +266,11 @@ MinimObject *minim_argument_error(const char *pred, const char *where, size_t po
         minim_error_desc_table_set(err->table, idx, "location", bf->data);
     }
 
-    init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    return obj;
+    return minim_err(err);
 }
 
 MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t actual)
 {
-    MinimObject *obj;
     MinimError *err;
     Buffer *bf;
 
@@ -289,14 +286,11 @@ MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t
     reset_buffer(bf);
     writef_buffer(bf, "~u", actual);
     minim_error_desc_table_set(err->table, 1, "got", bf->data);
-
-    init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    return obj;
+    return minim_err(err);
 }
 
 MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, SyntaxNode *expr)
 {
-    MinimObject *obj;
     MinimError *err;
     Buffer *bf;
 
@@ -317,14 +311,12 @@ MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t
         ast_to_buffer(expr, bf);
         minim_error_desc_table_set(err->table, 2, "in", get_buffer(bf));
     }
-
-    init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    return obj;
+    
+    return minim_err(err);
 }
 
 MinimObject *minim_error(const char *msg, const char *where, ...)
 {
-    MinimObject *obj;
     MinimError *err;
     Buffer *bf;
     va_list va;
@@ -335,41 +327,31 @@ MinimObject *minim_error(const char *msg, const char *where, ...)
     va_end(va);   
 
     init_minim_error(&err, bf->data, where);
-    init_minim_object(&obj, MINIM_OBJ_ERR, err);
-    return obj;
+    return minim_err(err);
 }
 
 // ************ Builtins ****************
 
 MinimObject *minim_builtin_error(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
     MinimError *err;
 
     if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_STRINGP(args[0]))
-    {
-        res = minim_argument_error("symbol?/string?", "error", 0, args[0]);
-        return res;
-    }
+        return minim_argument_error("symbol?/string?", "error", 0, args[0]);
 
     if (argc == 1)
     {
-        init_minim_error(&err, args[0]->u.str.str, NULL);
-        init_minim_object(&res, MINIM_OBJ_ERR, err);
+        init_minim_error(&err, MINIM_STRING(args[0]), NULL);
+        return minim_err(err);
     }
     else
     {
         if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_STRINGP(args[1]))
-        {
-            res = minim_argument_error("symbol?/string?", "error", 1, args[1]);
-            return res;
-        }
+            return minim_argument_error("symbol?/string?", "error", 1, args[1]);
     
-        init_minim_error(&err, args[1]->u.str.str, args[0]->u.str.str);
-        init_minim_object(&res, MINIM_OBJ_ERR, err);
+        init_minim_error(&err, MINIM_STRING(args[1]), MINIM_STRING(args[0]));
+        return minim_err(err);
     }
-
-    return res;
 }
 
 MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject **args)

@@ -92,14 +92,14 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
 
     if (lam->rest)
     {
-        char *name = (lam->name ? lam->name : "???");
+        char *name = (lam->name ? lam->name : "");
         if (argc < lam->argc)
             return minim_arity_error(name, lam->argc, SIZE_MAX, argc);
 
     }
     else if (argc != lam->argc)
     {
-        char *name = (lam->name ? lam->name : "???");
+        char *name = (lam->name ? lam->name : "");
         return minim_arity_error(name, lam->argc, lam->argc, argc);
     }
 
@@ -111,11 +111,8 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
         MinimObject *self;
 
         self = env_get_sym(env, lam->name);
-        if (!self || !MINIM_OBJ_CLOSUREP(self) || !minim_lambda_equalp(MINIM_DATA(self), lam))
-        {
-            init_minim_object(&self, MINIM_OBJ_CLOSURE, lam);
-            env_intern_sym(env2, lam->name, self);
-        } 
+        if (!self || !MINIM_OBJ_CLOSUREP(self) || !minim_lambda_equalp(MINIM_CLOSURE(self), lam))
+            env_intern_sym(env2, lam->name, minim_closure(lam));
     }
 
     for (size_t i = 0; i < lam->argc; ++i)
@@ -137,14 +134,14 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
     eval_ast_no_check(env2, lam->body, &res);
     if (MINIM_OBJ_TAIL_CALLP(res))
     {   
-        MinimTailCall *call = MINIM_DATA(res);
+        MinimTailCall *call = MINIM_TAIL_CALL(res);
 
         if (minim_lambda_equalp(call->lam, lam))
             return eval_lambda(lam, env, call->argc, call->args);
     }
 
     if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
-        minim_error_add_trace(res->u.ptrs.p1, lam->loc, lam->name);
+        minim_error_add_trace(MINIM_ERROR(res), lam->loc, lam->name);
     return res;
 }
 
@@ -200,7 +197,7 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 
         lam->body = ast;
         for (size_t i = 0; i < count; ++i)
-            copy_syntax_node(&ast->children[i + 1], exprs[i]->u.ptrs.p1);
+            copy_syntax_node(&ast->children[i + 1], MINIM_AST(exprs[i]));
     }
     else
     {
@@ -211,9 +208,7 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 static size_t lambda_argc(MinimObject *bindings)
 {
     size_t argc = 0;
-
-    for (MinimObject *it = bindings; it && minim_consp(it) && MINIM_CAR(it);
-         it = MINIM_CDR(it), ++argc);
+    for (MinimObject *it = bindings; minim_consp(it); it = MINIM_CDR(it)) ++argc;
     return argc;
 }
 
@@ -229,12 +224,12 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
         if (MINIM_OBJ_SYMBOLP(bindings))
         {
             init_minim_lambda(&lam);
-            lam->rest = bindings->u.str.str;
+            lam->rest = MINIM_SYMBOL(bindings);
             collect_exprs(&args[1], argc - 1, lam);
             rcopy_env(&lam->env, env);
 
-            init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
-            bindings->u.str.str = NULL;
+            res = minim_closure(lam);
+            MINIM_SYMBOL(bindings) = NULL;
         }
         else // minim_listp(bindings) || minim_consp(bindings)
         {
@@ -247,23 +242,23 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
 
             for (size_t i = 0; i < lam->argc; ++i, it = MINIM_CDR(it))
             {
-                if (minim_consp(it) && MINIM_CDR(it) && MINIM_CDR(it) && !minim_consp(MINIM_CDR(it)))
-                {   
-                    unsyntax_ast(env, MINIM_DATA(MINIM_CAR(it)), &val);
-                    unsyntax_ast(env, MINIM_DATA(MINIM_CDR(it)), &val2);
-                    lam->args[i] = val->u.ptrs.p1;
-                    lam->rest = val2->u.str.str;
-                }
-                else
+                if (minim_nullp(MINIM_CDR(it)) || minim_consp(MINIM_CDR(it)))
                 {
-                    unsyntax_ast(env, MINIM_CAR(it)->u.ptrs.p1, &val);
-                    lam->args[i] = val->u.ptrs.p1;
+                    unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &val);
+                    lam->args[i] = MINIM_SYMBOL(val);
+                }
+                else    // rest args
+                {   
+                    unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &val);
+                    unsyntax_ast(env, MINIM_AST(MINIM_CDR(it)), &val2);
+                    lam->args[i] = MINIM_SYMBOL(val);
+                    lam->rest = MINIM_SYMBOL(val2);
                 }
             }
 
             collect_exprs(&args[1], argc - 1, lam);
             rcopy_env(&lam->env, env);
-            init_minim_object(&res, MINIM_OBJ_CLOSURE, lam);
+            res = minim_closure(lam);
         }
     }
     else

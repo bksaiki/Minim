@@ -256,9 +256,9 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
-            "(lambda () 1)",                                "<function:?>",
-            "(lambda (x) (+ x 1))",                         "<function:?>",
-            "(lambda (x y) (+ (* x x) (* y y)))",           "<function:?>"
+            "(lambda () 1)",                                "<function>",
+            "(lambda (x) (+ x 1))",                         "<function>",
+            "(lambda (x y) (+ (* x x) (* y y)))",           "<function>"
         };
 
         printf("Testing 'lambda'\n");
@@ -608,7 +608,7 @@ int main()
         {
             "(procedure-arity exp)",                "1",
             "(procedure-arity +)",                  "'(0 . #f)",
-            "(procedure-arity error)",           "'(1 . 2)",
+            "(procedure-arity error)",              "'(1 . 2)",
             "(procedure-arity (lambda (x) x))",     "1",
             "(procedure-arity (lambda x x))",       "'(0 . #f)"
         };

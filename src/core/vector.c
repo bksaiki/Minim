@@ -13,7 +13,7 @@ bool minim_vector_equalp(MinimObject *a, MinimObject *b)
 
     for (size_t i = 0; i < MINIM_VECTOR_LEN(a); ++i)
     {
-        if (!minim_equalp(MINIM_VECTOR_ARR(a)[i], MINIM_VECTOR_ARR(b)[i]))
+        if (!minim_equalp(MINIM_VECTOR_REF(a, i), MINIM_VECTOR_REF(b, i)))
             return false;
     }
 
@@ -26,7 +26,7 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
 
     for (size_t i = 0; i < MINIM_VECTOR_LEN(v); ++i)
     {
-        in = minim_obj_to_bytes(MINIM_VECTOR_ARR(v)[i]);
+        in = minim_obj_to_bytes(MINIM_VECTOR_REF(v, i));
         writeb_buffer(bf, in);
     } 
 }
@@ -37,20 +37,18 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
 
 MinimObject *minim_builtin_vector(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
     MinimObject **arr;
 
     arr = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
         arr[i] = args[i];
 
-    init_minim_object(&res, MINIM_OBJ_VECTOR, arr, argc);
-    return res;
+    return minim_vector(argc, arr);
 }
 
 MinimObject *minim_builtin_make_vector(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *obj;
+    MinimObject *obj;
     MinimObject **arr;
     size_t size;
     
@@ -64,27 +62,20 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, size_t argc, MinimObject *
     for (size_t i = 0; i < size; ++i)
         arr[i] = obj;
     
-    init_minim_object(&res, MINIM_OBJ_VECTOR, arr, size);
-    return res;
+    return minim_vector(size, arr);
 }
 
 MinimObject *minim_builtin_vectorp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *ret;
-
-    init_minim_object(&ret, MINIM_OBJ_BOOL, MINIM_OBJ_VECTORP(args[0]));
-    return ret;
+    return to_bool(MINIM_OBJ_VECTORP(args[0]));
 }
 
 MinimObject *minim_builtin_vector_length(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector-length", 0, args[0]);
 
     return uint_to_minim_number(MINIM_VECTOR_LEN(args[0]));
-    return res;
 }
 
 MinimObject *minim_builtin_vector_ref(MinimEnv *env, size_t argc, MinimObject **args)
@@ -101,12 +92,11 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, size_t argc, MinimObject **
     if  (idx >= MINIM_VECTOR_LEN(args[0]))
         return minim_error("index out of bounds: ~u", "vector-ref", idx);
     
-    return MINIM_VECTOR_ARR(args[0])[idx];
+    return MINIM_VECTOR_REF(args[0], idx);
 }
 
 MinimObject *minim_builtin_vector_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
     size_t idx;
 
     if (!MINIM_OBJ_VECTORP(args[0]))
@@ -119,50 +109,21 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, size_t argc, MinimObject *
     if  (idx >= MINIM_VECTOR_LEN(args[0]))
         return minim_error("index out of bounds: ~u", "vector-set!", idx);
 
-    MINIM_VECTOR_ARR(args[0])[idx] = args[2];
-    init_minim_object(&res, MINIM_OBJ_VOID);
-    return res;
+    MINIM_VECTOR_REF(args[0], idx) = args[2];
+    return minim_void;
 }
 
 MinimObject *minim_builtin_vector_to_list(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector->list", 0, args[0]);
 
-    if (MINIM_VECTOR_LEN(args[0]) > 0)
-    {
-        MinimObject *it, *cp;
-        bool first = true;
-
-        for (size_t i = 0; i < MINIM_VECTOR_LEN(args[0]); ++i)
-        {
-            cp = MINIM_VECTOR_ARR(args[0])[i];
-            if (first)
-            {
-                init_minim_object(&res, MINIM_OBJ_PAIR, cp, NULL);
-                it = res;
-                first = false;
-            }
-            else
-            {
-                init_minim_object(&MINIM_CDR(it), MINIM_OBJ_PAIR, cp, NULL);
-                it = MINIM_CDR(it);
-            }
-        }
-    }
-    else
-    {
-        init_minim_object(&res, MINIM_OBJ_PAIR, NULL, NULL);
-    }
-
-    return res;
+    return minim_list(MINIM_VECTOR(args[0]), MINIM_VECTOR_LEN(args[0]));
 }
 
 MinimObject *minim_builtin_list_to_vector(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *it;
+    MinimObject *it;
     MinimObject **arr;
     size_t len;
 
@@ -175,20 +136,16 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, size_t argc, MinimObjec
     for (size_t i = 0; i < len; ++i, it = MINIM_CDR(it))
         arr[i] = MINIM_CAR(it);
 
-    init_minim_object(&res, MINIM_OBJ_VECTOR, arr, len);
-    return res;
+    return minim_vector(len, arr);
 }
 
 MinimObject *minim_builtin_vector_fillb(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
     if (!MINIM_OBJ_VECTORP(args[0]))
         return minim_argument_error("vector", "vector-fill!", 0, args[0]);
 
     for (size_t i = 0; i < MINIM_VECTOR_LEN(args[0]); ++i)
-        MINIM_VECTOR_ARR(args[0])[i] = args[1];
+        MINIM_VECTOR_REF(args[0], i) = args[1];
     
-    init_minim_object(&res, MINIM_OBJ_VOID);
-    return res;   
+    return minim_void;
 }
