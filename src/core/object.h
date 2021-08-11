@@ -41,24 +41,24 @@ typedef enum MinimObjectType
     MINIM_OBJ_EXIT
 } MinimObjectType;
 
-#define minim_exactnum_size         0x10
-#define minim_inexactnum_size       0x10
-#define minim_symbol_size           0x10
-#define minim_string_size           0x10
-#define minim_cons_size             0x18
-#define minim_vector_size           0x18
-#define minim_hash_table_size       0x10
-#define minim_promise_size          0x18
-#define minim_builtin_size          0x10
-#define minim_syntax_size           0x10
-#define minim_closure_size          0x10
-#define minim_tail_call_size        0x10
-#define minim_transform_size        0x18
-#define minim_ast_size              0x10
-#define minim_sequence_size         0x10
-#define minim_values_size           0x18
-#define minim_error_size            0x10
-#define minim_exit_size             0x1
+#define minim_exactnum_size         (2 * sizeof(void*))
+#define minim_inexactnum_size       (2 * sizeof(void*))
+#define minim_symbol_size           (2 * sizeof(void*))
+#define minim_string_size           (2 * sizeof(void*))
+#define minim_cons_size             (3 * sizeof(void*))
+#define minim_vector_size           (3 * sizeof(void*))
+#define minim_hash_table_size       (2 * sizeof(void*))
+#define minim_promise_size          (3 * sizeof(void*))
+#define minim_builtin_size          (2 * sizeof(void*))
+#define minim_syntax_size           (2 * sizeof(void*))
+#define minim_closure_size          (2 * sizeof(void*))
+#define minim_tail_call_size        (2 * sizeof(void*))
+#define minim_transform_size        (3 * sizeof(void*))
+#define minim_ast_size              (2 * sizeof(void*))
+#define minim_sequence_size         (2 * sizeof(void*))
+#define minim_values_size           (3 * sizeof(void*))
+#define minim_error_size            (2 * sizeof(void*))
+#define minim_exit_size             1
 
 // Special objects
 
