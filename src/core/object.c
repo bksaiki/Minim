@@ -190,6 +190,9 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_SYM:
         return strcmp(MINIM_SYMBOL(a), MINIM_SYMBOL(b)) == 0;
 
+    case MINIM_OBJ_CHAR:
+        return MINIM_CHAR(a) == MINIM_CHAR(b);
+
     case MINIM_OBJ_STRING:
         return strcmp(MINIM_STRING(a), MINIM_STRING(b)) == 0;
 
@@ -266,6 +269,10 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     case MINIM_OBJ_SYM:
         writes_buffer(bf, MINIM_SYMBOL(obj));
+        break;
+
+    case MINIM_OBJ_CHAR:
+        writec_buffer(bf, MINIM_CHAR(obj));
         break;
 
     case MINIM_OBJ_STRING:

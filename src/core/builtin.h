@@ -82,6 +82,11 @@ DEFINE_BUILTIN_FUN(to_inexact)
 
 // Character
 DEFINE_BUILTIN_FUN(charp)
+DEFINE_BUILTIN_FUN(char_eqp)
+DEFINE_BUILTIN_FUN(char_gtp)
+DEFINE_BUILTIN_FUN(char_ltp)
+DEFINE_BUILTIN_FUN(char_gtep)
+DEFINE_BUILTIN_FUN(char_ltep)
 DEFINE_BUILTIN_FUN(int_to_char)
 DEFINE_BUILTIN_FUN(char_to_int)
 
