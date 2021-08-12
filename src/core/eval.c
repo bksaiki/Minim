@@ -83,6 +83,11 @@ static bool is_float(const char *str)
     return digit && !str[idx];
 }
 
+static bool is_char(char *str)
+{
+    return (str[0] == '#' && str[1] == '\\' && str[2] != '\0');
+}
+
 static bool is_str(char *str)
 {
     size_t len = strlen(str);
@@ -114,6 +119,10 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
     else if (is_float(str))
     {
         res = minim_inexactnum(strtod(str, NULL));
+    }
+    else if (is_char(str))
+    {
+        res = minim_char(str[2]);
     }
     else if (is_str(str))
     {
