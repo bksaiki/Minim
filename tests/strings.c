@@ -23,6 +23,99 @@ int main()
     GC_init(&status);
 
     {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "#\\M",             "#\\M",
+            "#\\a",             "#\\a",
+            "#\\1",             "#\\1"
+        };
+
+        printf("Testing character construction\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(char=? #\\A #\\B)",               "#f",
+            "(char=? #\\A #\\A)",               "#t",
+            "(char=? #\\0 #\\0)",               "#t",
+            "(char=? #\\0 #\\a)",               "#f"
+        };
+
+        printf("Testing 'char=?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(char>? #\\A #\\B)",               "#f",
+            "(char>? #\\a #\\b)",               "#f",
+            "(char>? #\\A #\\0)",               "#t",
+            "(char>? #\\0 #\\a)",               "#f",
+            "(char>? #\\a #\\a)",               "#f"
+        };
+
+        printf("Testing 'char>?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(char<? #\\A #\\B)",               "#t",
+            "(char<? #\\a #\\b)",               "#t",
+            "(char<? #\\A #\\0)",               "#f",
+            "(char<? #\\0 #\\a)",               "#t",
+            "(char<? #\\a #\\a)",               "#f"
+        };
+
+        printf("Testing 'char<?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(char<=? #\\A #\\B)",               "#t",
+            "(char<=? #\\a #\\b)",               "#t",
+            "(char<=? #\\A #\\0)",               "#f",
+            "(char<=? #\\0 #\\a)",               "#t",
+            "(char<=? #\\a #\\a)",               "#t"
+        };
+
+        printf("Testing 'char<=?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(char>=? #\\A #\\B)",               "#f",
+            "(char>=? #\\a #\\b)",               "#f",
+            "(char>=? #\\A #\\0)",               "#t",
+            "(char>=? #\\0 #\\a)",               "#f",
+            "(char>=? #\\a #\\a)",               "#t"
+        };
+
+        printf("Testing 'char>=?'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 4;
         char strs[8][256] =
         {
