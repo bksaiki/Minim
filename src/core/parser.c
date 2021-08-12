@@ -608,6 +608,14 @@ int minim_parse_port(FILE *file, const char *name,
         return 1;
     }
 
+    // read forward in case of trailing whitespace
+    if (!(table->flags & READ_TABLE_FLAG_EOF))
+    {
+        c = advance_to_token(file, table);
+        if (c == table->eof)    update_table(c, table);
+        else                    ungetc(c, file);
+    }
+
     *psyntax = node;
     *perr = NULL;
     return 0;
