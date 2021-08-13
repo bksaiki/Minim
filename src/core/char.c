@@ -1,3 +1,5 @@
+#include <ctype.h>
+
 #include "builtin.h"
 #include "error.h"
 #include "number.h"
@@ -82,4 +84,20 @@ MinimObject *minim_builtin_char_to_int(MinimEnv *env, size_t argc, MinimObject *
         return minim_argument_error("character?", "char->integer", 0, args[0]);
 
     return uint_to_minim_number(MINIM_CHAR(args[0]));
+}
+
+MinimObject *minim_builtin_char_upcase(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_CHARP(args[0]))
+        return minim_argument_error("character", "char-upcase", 0, args[0]);
+
+    return minim_char(toupper(MINIM_CHAR(args[0])));
+}
+
+MinimObject *minim_builtin_char_downcase(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_CHARP(args[0]))
+        return minim_argument_error("character", "char-downcase", 0, args[0]);
+
+    return minim_char(tolower(MINIM_CHAR(args[0])));
 }

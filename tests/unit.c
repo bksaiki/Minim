@@ -29,13 +29,12 @@ int main()
     GC_init(&status);
 
     {
-        const int COUNT = 4;
-        char strs[8][256] =
+        const int COUNT = 3;
+        char strs[6][256] =
         {
             "'x",           "'x",
             "+",            "<function:+>",
-            "1",            "1",
-            "#\\a",          "#\\a"
+            "1",            "1"
         };
 
         printf("Testing single expressions\n");

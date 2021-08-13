@@ -121,6 +121,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "char<=?", MINIM_OBJ_FUNC, minim_builtin_char_ltep);
     minim_load_builtin(env, "integer->char", MINIM_OBJ_FUNC, minim_builtin_int_to_char);
     minim_load_builtin(env, "char->integer", MINIM_OBJ_FUNC, minim_builtin_char_to_int);
+    minim_load_builtin(env, "char-upcase", MINIM_OBJ_FUNC, minim_builtin_char_upcase);
+    minim_load_builtin(env, "char-downcase", MINIM_OBJ_FUNC, minim_builtin_char_downcase);
 
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);

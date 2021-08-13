@@ -86,6 +86,8 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(char_ltep, 2);
     SET_ARITY_EXACT(int_to_char, 1);
     SET_ARITY_EXACT(char_to_int, 1);
+    SET_ARITY_EXACT(char_upcase, 1);
+    SET_ARITY_EXACT(char_downcase, 1);
 
     // String
     SET_ARITY_EXACT(stringp, 1);

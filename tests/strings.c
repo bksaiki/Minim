@@ -116,6 +116,34 @@ int main()
     }
 
     {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(char-upcase #\\0)",               "#\\0",
+            "(char-upcase #\\a)",               "#\\A",
+            "(char-upcase #\\A)",               "#\\A"
+        };
+
+        printf("Testing 'char-upcase'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(char-downcase #\\0)",               "#\\0",
+            "(char-downcase #\\a)",               "#\\a",
+            "(char-downcase #\\A)",               "#\\a"
+        };
+
+        printf("Testing 'char-downcase'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 4;
         char strs[8][256] =
         {

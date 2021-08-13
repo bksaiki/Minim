@@ -89,6 +89,8 @@ DEFINE_BUILTIN_FUN(char_gtep)
 DEFINE_BUILTIN_FUN(char_ltep)
 DEFINE_BUILTIN_FUN(int_to_char)
 DEFINE_BUILTIN_FUN(char_to_int)
+DEFINE_BUILTIN_FUN(char_upcase)
+DEFINE_BUILTIN_FUN(char_downcase)
 
 // String
 DEFINE_BUILTIN_FUN(stringp)
