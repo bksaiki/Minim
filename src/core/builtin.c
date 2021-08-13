@@ -119,6 +119,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "char<?", MINIM_OBJ_FUNC, minim_builtin_char_ltp);
     minim_load_builtin(env, "char>=?", MINIM_OBJ_FUNC, minim_builtin_char_gtep);
     minim_load_builtin(env, "char<=?", MINIM_OBJ_FUNC, minim_builtin_char_ltep);
+    minim_load_builtin(env, "char-ci=?", MINIM_OBJ_FUNC, minim_builtin_char_ci_eqp);
+    minim_load_builtin(env, "char-ci>?", MINIM_OBJ_FUNC, minim_builtin_char_ci_gtp);
+    minim_load_builtin(env, "char-ci<?", MINIM_OBJ_FUNC, minim_builtin_char_ci_ltp);
+    minim_load_builtin(env, "char-ci>=?", MINIM_OBJ_FUNC, minim_builtin_char_ci_gtep);
+    minim_load_builtin(env, "char-ci<=?", MINIM_OBJ_FUNC, minim_builtin_char_ci_ltep);
     minim_load_builtin(env, "integer->char", MINIM_OBJ_FUNC, minim_builtin_int_to_char);
     minim_load_builtin(env, "char->integer", MINIM_OBJ_FUNC, minim_builtin_char_to_int);
     minim_load_builtin(env, "char-upcase", MINIM_OBJ_FUNC, minim_builtin_char_upcase);
