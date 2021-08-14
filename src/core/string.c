@@ -53,6 +53,74 @@ MinimObject *minim_builtin_stringp(MinimEnv *env, size_t argc, MinimObject **arg
     return to_bool(MINIM_OBJ_STRINGP(args[0]));
 }
 
+MinimObject *minim_builtin_make_string(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+    size_t len;
+    char fill;
+
+    if (!minim_exact_nonneg_intp(args[0]))
+        return minim_argument_error("exact non-negative integer", "make-string", 0, args[0]);
+    
+    if (argc == 1)
+    {
+        fill = '?';
+    }
+    else
+    {
+        if (!MINIM_OBJ_CHARP(args[1]))
+            return minim_argument_error("character", "make-string", 1, args[1]);
+        fill = MINIM_CHAR(args[1]);
+    }
+
+    len = MINIM_NUMBER_TO_UINT(args[0]);
+    str = GC_alloc_atomic((len + 1) * sizeof(char));
+    for (size_t i = 0; i < len; ++i)
+        str[i] = fill;
+
+    str[len] = '\0';
+    return minim_string(str);
+}
+
+MinimObject *minim_builtin_string(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+
+    for (size_t i = 0; i < argc; ++i)
+    {
+        if (!MINIM_OBJ_CHARP(args[i]))
+            return minim_argument_error("character", "string", i, args[i]);
+    }
+
+    str = GC_alloc_atomic((argc + 1) * sizeof(char));
+    for (size_t i = 0; i < argc; ++i)
+        str[i] = MINIM_CHAR(args[i]);
+    
+    str[argc] = '\0';
+    return minim_string(str);
+}
+
+MinimObject *minim_builtin_string_ref(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    size_t len, idx;
+    char *str;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-ref", 0, args[0]);
+
+    if (!minim_exact_nonneg_intp(args[1]))
+        return minim_argument_error("exact non-negative integer", "string-ref", 1, args[1]);
+
+    str = MINIM_STRING(args[0]);
+    len = strlen(str);
+    idx = MINIM_NUMBER_TO_UINT(args[1]);
+
+    if (idx >= len)
+        return minim_argument_error("out of bounds", "string-ref", 1, args[1]);
+
+    return minim_char(str[idx]);
+}
+
 MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;

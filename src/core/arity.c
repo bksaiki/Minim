@@ -96,6 +96,9 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // String
     SET_ARITY_EXACT(stringp, 1);
+    SET_ARITY_RANGE(make_string, 1, 2);
+    // NO CHECK: string
+    SET_ARITY_EXACT(string_ref, 2);
     SET_ARITY_MIN(string_append, 1);
     SET_ARITY_RANGE(substring, 2, 3);
     SET_ARITY_EXACT(string_to_symbol, 1);

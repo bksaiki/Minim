@@ -99,6 +99,9 @@ DEFINE_BUILTIN_FUN(char_downcase)
 
 // String
 DEFINE_BUILTIN_FUN(stringp)
+DEFINE_BUILTIN_FUN(make_string)
+DEFINE_BUILTIN_FUN(string)
+DEFINE_BUILTIN_FUN(string_ref)
 DEFINE_BUILTIN_FUN(string_append)
 DEFINE_BUILTIN_FUN(substring)
 DEFINE_BUILTIN_FUN(string_to_symbol)
