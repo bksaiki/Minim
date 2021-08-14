@@ -264,6 +264,19 @@ int main()
     }
 
     {
+        const int COUNT = 2;
+        char strs[4][256] =
+        {
+            "(string-length \"\")",             "0",
+            "(string-length \"abc\")",          "3"
+        };
+
+        printf("Testing 'string-length'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 3;
         char strs[6][256] =
         {

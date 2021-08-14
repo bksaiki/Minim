@@ -100,6 +100,14 @@ MinimObject *minim_builtin_string(MinimEnv *env, size_t argc, MinimObject **args
     return minim_string(str);
 }
 
+MinimObject *minim_builtin_string_length(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-length", 0, args[0]);
+
+    return uint_to_minim_number(strlen(MINIM_STRING(args[0])));
+}
+
 MinimObject *minim_builtin_string_ref(MinimEnv *env, size_t argc, MinimObject **args)
 {
     size_t len, idx;

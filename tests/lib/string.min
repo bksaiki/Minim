@@ -1,0 +1,79 @@
+;; Tests for <lib>/private/list.min
+
+; string=?
+(equal? (string=? "abc" "abc") #t)
+(equal? (string=? "cba" "abc") #f)
+(equal? (string=? "ABC" "abc") #f)
+(equal? (string=? "ab" "abc") #f)
+(equal? (string=? "abc" "ab") #f)
+
+; string>?
+(equal? (string>? "abc" "abc") #f)
+(equal? (string>? "cba" "abc") #t)
+(equal? (string>? "ABC" "abc") #f)
+(equal? (string>? "ab" "abc") #f)
+(equal? (string>? "abc" "ab") #t)
+
+; string>?
+(equal? (string<? "abc" "abc") #f)
+(equal? (string<? "cba" "abc") #f)
+(equal? (string<? "ABC" "abc") #t)
+(equal? (string<? "ab" "abc") #t)
+(equal? (string<? "abc" "ab") #f)
+
+; string>=?
+(equal? (string>=? "abc" "abc") #t)
+(equal? (string>=? "cba" "abc") #t)
+(equal? (string>=? "ABC" "abc") #f)
+(equal? (string>=? "ab" "abc") #f)
+(equal? (string>=? "abc" "ab") #t)
+
+; string<=?
+(equal? (string<=? "abc" "abc") #t)
+(equal? (string<=? "cba" "abc") #f)
+(equal? (string<=? "ABC" "abc") #t)
+(equal? (string<=? "ab" "abc") #t)
+(equal? (string<=? "abc" "ab") #f)
+
+; string-ci=?
+(equal? (string-ci=? "abc" "abc") #t)
+(equal? (string-ci=? "cba" "abc") #f)
+(equal? (string-ci=? "ABC" "abc") #t)
+(equal? (string-ci=? "ab" "abc") #f)
+(equal? (string-ci=? "abc" "ab") #f)
+
+; string-ci>?
+(equal? (string-ci>? "abc" "abc") #f)
+(equal? (string-ci>? "cba" "abc") #t)
+(equal? (string-ci>? "ABC" "abc") #f)
+(equal? (string-ci>? "ab" "abc") #f)
+(equal? (string-ci>? "abc" "ab") #t)
+
+; string-ci>?
+(equal? (string-ci<? "abc" "abc") #f)
+(equal? (string-ci<? "cba" "abc") #f)
+(equal? (string-ci<? "ABC" "abc") #f)
+(equal? (string-ci<? "ab" "abc") #t)
+(equal? (string-ci<? "abc" "ab") #f)
+
+; string-ci>=?
+(equal? (string-ci>=? "abc" "abc") #t)
+(equal? (string-ci>=? "cba" "abc") #t)
+(equal? (string-ci>=? "ABC" "abc") #t)
+(equal? (string-ci>=? "ab" "abc") #f)
+(equal? (string-ci>=? "abc" "ab") #t)
+
+; string-ci<=?
+(equal? (string-ci<=? "abc" "abc") #t)
+(equal? (string-ci<=? "cba" "abc") #f)
+(equal? (string-ci<=? "ABC" "abc") #t)
+(equal? (string-ci<=? "ab" "abc") #t)
+(equal? (string-ci<=? "abc" "ab") #f)
+
+; string->list
+(equal? (string->list "") '())
+(equal? (string->list "abc") '(#\a #\b #\c))
+
+; list->string
+(equal? '() (string->list ""))
+(equal? '(#\a #\b #\c) (string->list "abc"))

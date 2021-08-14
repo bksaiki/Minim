@@ -1,0 +1,141 @@
+;
+;   Additional string procedures
+;
+
+(%import "pre-base.min" "for.min" "list.min")
+
+(%export string->list list->string
+         string=? string>? string<? string>=? string<=?
+         string-ci=? string-ci>? string-ci<? string-ci>=? string-ci<=?)
+
+;;;;;;;;;;;;;;;;;;;;;; string comparators ;;;;;;;;;;;;;;;;;;;;;;
+
+(def string-cmp (a b)
+  (def len-a (string-length a))
+  (def len-b (string-length b))
+  (let loop ([i 0])
+    (cond
+     [(= i len-a) (if (= i len-b) 0 -1)]
+     [(= i len-b) 1]
+     [(char>? (string-ref a i) (string-ref b i)) 1]
+     [(char<? (string-ref a i) (string-ref b i)) -1]
+     [else (loop (+ i 1))])))
+
+(def string=? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string=? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(= (string-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string>? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string>? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(> (string-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string<? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string<? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(< (string-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string>=? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string>=? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(>= (string-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string<=? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string<=? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(<= (string-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string-ci-cmp (a b)
+  (def len-a (string-length a))
+  (def len-b (string-length b))
+  (let loop ([i 0])
+    (cond
+     [(= i len-a) (if (= i len-b) 0 -1)]
+     [(= i len-b) 1]
+     [(char-ci>? (string-ref a i) (string-ref b i)) 1]
+     [(char-ci<? (string-ref a i) (string-ref b i)) -1]
+     [else (loop (+ i 1))])))
+
+(def string-ci=? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string-ci=? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(= (string-ci-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string-ci>? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string-ci>? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(> (string-ci-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string-ci<? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string-ci<? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(< (string-ci-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string-ci>=? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string-ci>=? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(>= (string-ci-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+(def string-ci<=? (a . rest)
+  (unless (and (string? a) (andmap string? rest))
+    (error 'string-ci<=? "expected strings"))
+  (let loop ([x a] [ys rest])
+    (cond
+     [(null? ys) #t]
+     [(<= (string-ci-cmp x (car ys)) 0) (loop (car ys) (cdr ys))]
+     [else #f])))
+
+;;;;;;;;;;;;;;;;;;;;;; string/list conversions ;;;;;;;;;;;;;;;;;;;;;;
+
+(def string->list (s)
+  (unless (string? s)
+    (error 'string->list "expected a string"))
+  (def len (string-length s))
+  (let loop ([i 0] [acc '()])
+    (cond [(= i len) (reverse acc)]
+          [else (loop (+ i 1) (cons (string-ref s i) acc))])))
+
+(def list->string (lst)
+  (def len (length lst))
+  (def str (make-string len))
+  (for ([c (in-list lst)] [i (in-naturals)])
+    (unless (char? c) (error 'list->string "list of characters"))
+    (string-set! str i c))
+  str)
