@@ -121,6 +121,61 @@ MinimObject *minim_builtin_string_ref(MinimEnv *env, size_t argc, MinimObject **
     return minim_char(str[idx]);
 }
 
+MinimObject *minim_builtin_string_setb(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    size_t len, idx;
+    char *str;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-set!", 0, args[0]);
+
+    if (!minim_exact_nonneg_intp(args[1]))
+        return minim_argument_error("exact non-negative integer", "string-set!", 1, args[1]);
+
+    if (!MINIM_OBJ_CHARP(args[2]))
+        return minim_argument_error("character", "string-set!", 2, args[2]);
+
+    str = MINIM_STRING(args[0]);
+    len = strlen(str);
+    idx = MINIM_NUMBER_TO_UINT(args[1]);
+
+    if (idx >= len)
+        return minim_argument_error("out of bounds", "string-ref", 1, args[1]);
+
+    str[idx] = MINIM_CHAR(args[2]);
+    return minim_void;
+}
+
+MinimObject *minim_builtin_string_copy(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+    size_t len;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-copy", 0, args[0]);
+
+    len = strlen(MINIM_STRING(args[0]));
+    str = GC_alloc_atomic((len + 1) * sizeof(char));
+    strcpy(str, MINIM_STRING(args[0]));
+    return minim_string(str);
+}
+
+MinimObject *minim_builtin_string_fillb(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-fill!", 0, args[0]);
+
+    if (!MINIM_OBJ_CHARP(args[1]))
+        return minim_argument_error("character", "string-fill!", 1, args[1]);
+
+    str = MINIM_STRING(args[0]);
+    for (size_t i = 0; i < strlen(str); ++i)
+        str[i] = MINIM_CHAR(args[1]);
+    return minim_void;
+}
+
 MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *res;
