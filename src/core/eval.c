@@ -7,6 +7,7 @@
 #include "builtin.h"
 #include "eval.h"
 #include "error.h"
+#include "jmp.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -351,6 +352,22 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             else
             {
                 res = eval_lambda(lam, env, argc, args);
+            }
+        }
+        else if (MINIM_OBJ_JUMPP(op))
+        {
+            for (size_t i = 0; i < argc; ++i)
+                args[i] = eval_ast_node(env, node->children[i + 1]); 
+
+            possible_err = error_or_exit(argc, args);
+            if (possible_err)
+            {
+                res = possible_err;
+            }
+            else
+            {
+                // no return
+                minim_long_jump(op, env, argc, args);
             }
         }
         else

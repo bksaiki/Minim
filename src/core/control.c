@@ -11,18 +11,6 @@
 #include "list.h"
 #include "tail_call.h"
 
-static jmp_buf callcc_jmp;
-static MinimObject *callcc_res = NULL;
-
-static MinimObject *minim_continuation_proc(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (argc == 0)          callcc_res = minim_void;
-    else if (argc == 1)     callcc_res = args[0];
-    else                    callcc_res = minim_values(argc, args);
-    
-    longjmp(callcc_jmp, 1);
-}
-
 //
 //  Builtins
 //
@@ -208,7 +196,7 @@ MinimObject *minim_builtin_callcc(MinimEnv *env, size_t argc, MinimObject **args
 {
     MinimArity arity;
     MinimObject *proc, *cont, *val;
-    jmp_buf prev_buf;
+    jmp_buf *jmp;
 
     eval_ast_no_check(env, MINIM_AST(args[0]), &proc);
     if (!MINIM_OBJ_CLOSUREP(proc))
@@ -218,17 +206,15 @@ MinimObject *minim_builtin_callcc(MinimEnv *env, size_t argc, MinimObject **args
     if (arity.low != 1 || arity.high != 1)
         return minim_argument_error("procedure of 1 argument", "call/cc", 0, proc);
 
-    memcpy(&prev_buf, &callcc_jmp, sizeof(jmp_buf));    // push
-    if (setjmp(callcc_jmp) == 0)   // original
+    jmp = GC_alloc_atomic(sizeof(jmp_buf));
+    cont = minim_jmp(jmp, NULL);
+    if (setjmp(*jmp) == 0)   // continuation not used
     {
-        cont = minim_builtin(minim_continuation_proc);
         val = eval_lambda(MINIM_CLOSURE(proc), env, 1, &cont);
-        memcpy(&callcc_jmp, &prev_buf, sizeof(jmp_buf));    // pop
-        return val; // continuation not used
+        return val; 
     }
-    else        // continuation used
+    else                    // continuation used
     {
-        memcpy(&callcc_jmp, &prev_buf, sizeof(jmp_buf));    // pop
-        return callcc_res;
+        return MINIM_JUMP_VAL(cont);
     }
 }

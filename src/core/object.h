@@ -39,7 +39,8 @@ typedef enum MinimObjectType
     MINIM_OBJ_PROMISE,
     MINIM_OBJ_VALUES,
     MINIM_OBJ_CHAR,
-    MINIM_OBJ_EXIT
+    MINIM_OBJ_EXIT,
+    MINIM_OBJ_JUMP
 } MinimObjectType;
 
 #define minim_exactnum_size         (2 * sizeof(void*))
@@ -59,8 +60,9 @@ typedef enum MinimObjectType
 #define minim_sequence_size         (2 * sizeof(void*))
 #define minim_values_size           (3 * sizeof(void*))
 #define minim_error_size            (2 * sizeof(void*))
-#define minim_char_size             8
+#define minim_char_size             (1 + 1 * sizeof(int))
 #define minim_exit_size             1
+#define minim_jump_size             (3 * sizeof(void*))
 
 // Special objects
 
@@ -99,9 +101,10 @@ typedef enum MinimObjectType
 #define MINIM_OBJ_VALUESP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VALUES)
 #define MINIM_OBJ_CHARP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_CHAR)
 #define MINIM_OBJ_EXITP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXIT)
+#define MINIM_OBJ_JUMPP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_JUMP)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
-#define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj))
+#define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj) || MINIM_OBJ_JUMPP(obj))
 #define MINIM_OBJ_THROWNP(obj)      (MINIM_OBJ_ERRORP(obj) || MINIM_OBJ_EXITP(obj))
 
 // Accessors 
@@ -133,6 +136,8 @@ typedef enum MinimObjectType
 #define MINIM_ERROR(obj)            (*((MinimError**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_CHAR(obj)             (*((unsigned int*) VOID_PTR(PTR(obj, 4))))
 #define MINIM_EXIT_VAL(obj)         (*((long*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_JUMP_BUF(obj)         (*((jmp_buf**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_JUMP_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
 
 // Compound accessors
 
@@ -166,6 +171,7 @@ MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);
 MinimObject *minim_char(unsigned int ch);
 MinimObject *minim_exit(long code);
+MinimObject *minim_jmp(void *ptr, void *val);
 
 //  Equivalence
 
