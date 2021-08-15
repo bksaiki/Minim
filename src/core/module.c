@@ -128,8 +128,6 @@ MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *sym)
 
 MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *ret;
-
     if (env->module->prev)
     {
         for (size_t i = 0; i < argc; ++i)
@@ -154,13 +152,10 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
 
                     import = minim_module_get_import(env->module, get_buffer(path));
                     if (!import)
-                    {
-                        ret = minim_syntax_error("module not imported",
+                        THROW(minim_syntax_error("module not imported",
                                                  "%export",
                                                  MINIM_AST(args[i]),
-                                                 MINIM_AST(MINIM_CADR(export)));
-                        return ret;
-                    }
+                                                 MINIM_AST(MINIM_CADR(export))));
 
                     minim_symbol_table_merge(env->module->export->table, import->env->table);
                 }
@@ -171,10 +166,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
 
                 val = minim_module_get_sym(env->module, MINIM_STRING(export));
                 if (!val)
-                {
-                    ret = minim_error("identifier not defined in module", MINIM_STRING(export));
-                    return ret;
-                }
+                    THROW(minim_error("identifier not defined in module", MINIM_STRING(export)));
 
                 env_intern_sym(env->module->export, MINIM_STRING(export), val);
             }
@@ -192,8 +184,8 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
 
     if (!env->current_dir)
     {
-        ret = minim_error("environment improperly configured", "%import");
-        return ret;
+        printf("environment improperly configured\n");
+        return NULL; // panic
     }
 
     if (!env->module->cache)
@@ -213,10 +205,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         module2 = minim_module_cache_get(env->module->cache, get_buffer(fixed_path));
         if (module2)
         {
-            Buffer *dir;
-
-
-            dir = get_directory(get_buffer(fixed_path));
+            Buffer *dir = get_directory(get_buffer(fixed_path));
 
             copy_minim_module(&module2, module2);
             init_env(&module2->env, get_builtin_env(env), NULL);

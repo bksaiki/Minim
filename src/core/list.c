@@ -18,8 +18,7 @@ static MinimObject *eval_1ary(MinimEnv *env, MinimObject *proc, MinimObject *val
         MinimObject *err;
 
         if (!minim_check_arity(func, 1, env, &err))
-            return err;
-
+            THROW(err);
         return func(env, 1, &val);
     }
     else if (MINIM_OBJ_CLOSUREP(proc))
@@ -45,7 +44,7 @@ static MinimObject *eval_2ary(MinimEnv *env, MinimObject *proc, MinimObject *x, 
         MinimObject *err;
 
         if (!minim_check_arity(func, 2, env, &err))
-            return err;
+            THROW(err);
 
         args = GC_alloc(2 * sizeof(MinimObject*));
         args[0] = x;
@@ -340,10 +339,10 @@ MinimObject *minim_builtin_consp(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_car(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_consp(args[0]))
-        return minim_argument_error("pair", "car", 0, args[0]);
+        THROW(minim_argument_error("pair", "car", 0, args[0]));
     
     if (!MINIM_CAR(args[0]))
-        return minim_argument_error("non-empty list", "car", 0, args[0]);
+        THROW(minim_argument_error("non-empty list", "car", 0, args[0]));
 
     return MINIM_CAR(args[0]);
 }
@@ -351,10 +350,10 @@ MinimObject *minim_builtin_car(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_cdr(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_consp(args[0]))
-        return minim_argument_error("pair", "cdr", 0, args[0]);
+        THROW(minim_argument_error("pair", "cdr", 0, args[0]));
     
     if (!MINIM_CAR(args[0]))
-        return minim_argument_error("non-empty list", "cdr", 0, args[0]);
+        THROW(minim_argument_error("non-empty list", "cdr", 0, args[0]));
 
     return MINIM_CDR(args[0]);
 }
@@ -362,7 +361,7 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_caar(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!(minim_consp(args[0]) && minim_consp(MINIM_CAR(args[0]))))
-        return minim_argument_error("pair of (non empty pair . any)", "caar", 0, args[0]);
+        THROW(minim_argument_error("pair of (non empty pair . any)", "caar", 0, args[0]));
     
     return MINIM_CAAR(args[0]);
 }
@@ -370,7 +369,7 @@ MinimObject *minim_builtin_caar(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_cadr(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!(minim_consp(args[0]) && MINIM_CDR(args[0]) && minim_consp(MINIM_CDR(args[0]))))
-        return minim_argument_error("pair of (any, non-empty pair)", "cadr", 0, args[0]);
+        THROW(minim_argument_error("pair of (any, non-empty pair)", "cadr", 0, args[0]));
     
     return MINIM_CADR(args[0]);
 }
@@ -378,7 +377,7 @@ MinimObject *minim_builtin_cadr(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_cdar(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!(minim_consp(args[0]) && minim_consp(MINIM_CAR(args[0]))))
-        return minim_argument_error("pair of (non-empty pair, any)", "cdar", 0, args[0]);
+        THROW(minim_argument_error("pair of (non-empty pair, any)", "cdar", 0, args[0]));
     
     return MINIM_CDAR(args[0]);
 }
@@ -386,7 +385,7 @@ MinimObject *minim_builtin_cdar(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_cddr(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!(minim_consp(args[0]) && MINIM_CDR(args[0]) && minim_consp(MINIM_CDR(args[0]))))
-        return minim_argument_error("pair of (any, non-empty pair)", "cddr", 0, args[0]);
+        THROW(minim_argument_error("pair of (any, non-empty pair)", "cddr", 0, args[0]));
 
     return MINIM_CDDR(args[0]);
 }
@@ -409,7 +408,7 @@ MinimObject *minim_builtin_list(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_head(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_CAR(args[0]))
-        return minim_argument_error("non-empty list", "head", 0, args[0]);
+        THROW(minim_argument_error("non-empty list", "head", 0, args[0]));
         
     return MINIM_CAR(args[0]);
 }
@@ -419,7 +418,7 @@ MinimObject *minim_builtin_tail(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *it;
 
     if (!MINIM_CAR(args[0]))
-        return minim_argument_error("non-empty list", "tail", 0, args[0]);
+        THROW(minim_argument_error("non-empty list", "tail", 0, args[0]));
 
     MINIM_TAIL(it, args[0]);
     return MINIM_CAR(it);
@@ -437,7 +436,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, size_t argc, MinimObject **args
     for (size_t i = 0; i < argc; ++i)
     {
         if (!minim_listp(args[i]))
-            return minim_argument_error("list", "append", i, args[i]);
+            THROW(minim_argument_error("list", "append", i, args[i]));
     }
 
     return minim_list_append(argc, args);
@@ -446,7 +445,7 @@ MinimObject *minim_builtin_append(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_reverse(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_listp(args[0]))
-        return minim_argument_error("list", "reverse", 0, args[0]);
+        THROW(minim_argument_error("list", "reverse", 0, args[0]));
 
     return minim_list_reverse(args[0]);
 }
@@ -454,7 +453,7 @@ MinimObject *minim_builtin_reverse(MinimEnv *env, size_t argc, MinimObject **arg
 MinimObject *minim_builtin_remove(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_listp(args[1]))
-        return minim_argument_error("list", "remove", 1, args[1]);
+        THROW(minim_argument_error("list", "remove", 1, args[1]));
 
     return minim_list_remove(args[1], args[0]);
 }
@@ -462,7 +461,7 @@ MinimObject *minim_builtin_remove(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_member(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_listp(args[1]))
-        return minim_argument_error("list", "member", 1, args[1]);
+        THROW(minim_argument_error("list", "member", 1, args[1]));
     
     if (minim_nullp(args[1]))
         return to_bool(0);
@@ -482,10 +481,10 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, size_t argc, MinimObject **ar
     size_t idx;
 
     if (!minim_listp(args[0]))
-        return minim_argument_error("list", "list-ref", 0, args[0]);
+        THROW(minim_argument_error("list", "list-ref", 0, args[0]));
 
     if (!minim_exact_nonneg_intp(args[1]))
-        return minim_argument_error("exact non-negative-integer", "list-ref", 1, args[1]);
+        THROW(minim_argument_error("exact non-negative-integer", "list-ref", 1, args[1]));
 
     it = args[0];
     idx = MINIM_NUMBER_TO_UINT(args[1]);
@@ -502,10 +501,10 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, size_t argc, MinimObject **ar
 MinimObject *minim_builtin_map(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("function", "map", 0, args[0]);
+        THROW(minim_argument_error("function", "map", 0, args[0]));
     
     if (!minim_listp(args[1]))
-        return minim_argument_error("list", "map", 1, args[1]);
+        THROW(minim_argument_error("list", "map", 1, args[1]));
 
     return minim_list_map(args[1], args[0], env);   
 }
@@ -516,10 +515,10 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
     size_t i, len, valc;
 
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("function", "apply", 0, args[0]);
+        THROW(minim_argument_error("function", "apply", 0, args[0]));
     
     if (!minim_listp(args[argc - 1]))
-        return minim_argument_error("list", "apply", argc - 1, args[argc - 1]);
+        THROW(minim_argument_error("list", "apply", argc - 1, args[argc - 1]));
 
     len = minim_list_length(args[argc - 1]);
     valc = len + argc - 2;
@@ -535,7 +534,9 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
     if (MINIM_OBJ_BUILTINP(args[0]))
     {
         MinimBuiltin func = MINIM_BUILTIN(args[0]);
-        if (minim_check_arity(func, valc, env, &res))
+        if (!minim_check_arity(func, valc, env, &res))
+            THROW(res);
+        
             res = func(env, valc, vals);
     }
     else if (MINIM_OBJ_CLOSUREP(args[0]))
@@ -556,10 +557,10 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_filter(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("function", "filter", 0, args[0]);
+        THROW(minim_argument_error("function", "filter", 0, args[0]));
     
     if (!minim_listp(args[1]))
-        return minim_argument_error("list", "filter", 1, args[1]);
+        THROW(minim_argument_error("list", "filter", 1, args[1]));
 
     return minim_list_filter(args[1], args[0], env, false);
 }
@@ -567,10 +568,10 @@ MinimObject *minim_builtin_filter(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_filtern(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("function", "filtern", 0, args[0]);
+        THROW(minim_argument_error("function", "filtern", 0, args[0]));
     
     if (!minim_listp(args[1]))
-        return minim_argument_error("list", "filtern", 1, args[1]);
+        THROW(minim_argument_error("list", "filtern", 1, args[1]));
 
     return minim_list_filter(args[1], args[0], env, true);
 }
@@ -578,10 +579,10 @@ MinimObject *minim_builtin_filtern(MinimEnv *env, size_t argc, MinimObject **arg
 MinimObject *minim_builtin_foldl(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("function", "foldl", 0, args[0]);
+        THROW(minim_argument_error("function", "foldl", 0, args[0]));
     
     if (!minim_listp(args[2]))
-        return minim_argument_error("list", "foldl", 2, args[2]);
+        THROW(minim_argument_error("list", "foldl", 2, args[2]));
 
     return minim_list_foldl(args[2], args[0], args[1], env);
 }
@@ -604,7 +605,9 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
         if (MINIM_OBJ_BUILTINP(proc))
         {
             MinimBuiltin func = MINIM_BUILTIN(proc);
-            if (minim_check_arity(func, 2, env, &res))
+            if (!minim_check_arity(func, 2, env, &res))
+                THROW(res);
+            
                 res = func(env, 2, vals);
         }
         else if MINIM_OBJ_CLOSUREP(proc)
@@ -627,8 +630,10 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
         if (MINIM_OBJ_BUILTINP(proc))
         {
             MinimBuiltin func = MINIM_BUILTIN(proc);
-            if (minim_check_arity(func, 2, env, &res))
-                res = func(env, 2, vals);
+            if (!minim_check_arity(func, 2, env, &res))
+                THROW(res);
+            
+            res = func(env, 2, vals);
         }
         else if MINIM_OBJ_CLOSUREP(proc)
         {
@@ -648,10 +653,10 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
 MinimObject *minim_builtin_foldr(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("function", "foldr", 0, args[0]);
+        THROW(minim_argument_error("function", "foldr", 0, args[0]));
     
     if (!minim_listp(args[2]))
-        return minim_argument_error("list", "foldr", 2, args[2]);
+        THROW(minim_argument_error("list", "foldr", 2, args[2]));
 
     return (minim_nullp(args[2])) ? args[1] : minim_foldr_h(env, args[0], args[2], args[1]);
 }
@@ -659,7 +664,7 @@ MinimObject *minim_builtin_foldr(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_assoc(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_listof(args[1], minim_consp))
-        return minim_argument_error("list of pairs", "assoc", 1, args[1]);
+        THROW(minim_argument_error("list of pairs", "assoc", 1, args[1]));
 
     if (!minim_nullp(args[1]))
     {

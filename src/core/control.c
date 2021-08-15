@@ -41,7 +41,7 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
         if (!MINIM_OBJ_VALUESP(val))
         {
             if (names->childc != 1)
-                return minim_values_arity_error("let-values", names->childc, 1, names);
+                THROW(minim_values_arity_error("let-values", names->childc, 1, names));
             
             env_intern_sym(env2, names->children[0]->sym, val);
             if (MINIM_OBJ_CLOSUREP(val))
@@ -50,7 +50,7 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
         else
         {
             if (MINIM_VALUES_SIZE(val) != names->childc)
-                return minim_values_arity_error("let-values", names->childc, MINIM_VALUES_SIZE(val), names);
+                THROW(minim_values_arity_error("let-values", names->childc, MINIM_VALUES_SIZE(val), names));
 
             for (size_t i = 0; i < names->childc; ++i)
             {
@@ -83,7 +83,7 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
         if (!MINIM_OBJ_VALUESP(val))
         {
             if (names->childc != 1)
-                return minim_values_arity_error("let*-values", names->childc, 1, names);
+                THROW(minim_values_arity_error("let*-values", names->childc, 1, names));
             
             env_intern_sym(env2, names->children[0]->sym, val);
             if (MINIM_OBJ_CLOSUREP(val))
@@ -92,7 +92,7 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
         else
         {
             if (MINIM_VALUES_SIZE(val) != names->childc)
-                return minim_values_arity_error("let*-values", names->childc, MINIM_VALUES_SIZE(val), names);
+                THROW(minim_values_arity_error("let*-values", names->childc, MINIM_VALUES_SIZE(val), names));
 
             for (size_t i = 0; i < names->childc; ++i)
             {
@@ -186,11 +186,11 @@ MinimObject *minim_builtin_callcc(MinimEnv *env, size_t argc, MinimObject **args
 
     eval_ast_no_check(env, MINIM_AST(args[0]), &proc);
     if (!MINIM_OBJ_CLOSUREP(proc))
-        return minim_argument_error("procedure of 1 argument", "call/cc", 0, proc);
+        THROW(minim_argument_error("procedure of 1 argument", "call/cc", 0, proc));
 
     minim_get_lambda_arity(MINIM_CLOSURE(proc), &arity);
     if (arity.low != 1 || arity.high != 1)
-        return minim_argument_error("procedure of 1 argument", "call/cc", 0, proc);
+        THROW(minim_argument_error("procedure of 1 argument", "call/cc", 0, proc));
 
     jmp = GC_alloc_atomic(sizeof(jmp_buf));
     cont = minim_jmp(jmp, NULL);

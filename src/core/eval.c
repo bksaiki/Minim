@@ -254,7 +254,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 {
     if (node->type == SYNTAX_NODE_LIST)
     {
-        MinimObject *res, *op, *possible_err, **args;
+        MinimObject *res, *op, **args;
         size_t argc;
 
         if (node->childc == 0)
@@ -265,10 +265,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         op = env_get_sym(env, node->children[0]->sym);
 
         if (!op)
-        {
-            res = minim_error("unknown operator", node->children[0]->sym);
-            return res;
-        }
+            THROW(minim_error("unknown operator", node->children[0]->sym));
 
         if (MINIM_OBJ_BUILTINP(op))
         {
@@ -280,35 +277,31 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
                 args[i] = eval_ast_node(env, node->children[i + 1]);
             env->flags = prev_flags;       
 
-            if (minim_check_arity(proc, argc, env, &res))
-                res = proc(env, argc, args);
+            if (!minim_check_arity(proc, argc, env, &res))
+                THROW(res);
+            res = proc(env, argc, args);
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
             MinimBuiltin proc = MINIM_BUILTIN(op);
 
             if (proc == minim_builtin_unquote)
+                THROW(minim_error("not in a quasiquote", "unquote"));
+            
+            if (proc == minim_builtin_def_syntaxes ||
+                proc == minim_builtin_import ||
+                proc == minim_builtin_export)
+                THROW(minim_error("only allowed at the top-level", node->children[0]->sym));
+
+            for (size_t i = 0; i < argc; ++i)                   // initialize ast wrappers
+                args[i] = minim_ast(node->children[i + 1]);
+            
+            res = proc(env, argc, args);
+            if (MINIM_OBJ_CLOSUREP(res))
             {
-                res = minim_error("not in a quasiquote", "unquote");
-            }
-            else if (proc == minim_builtin_def_syntaxes ||
-                     proc == minim_builtin_import ||
-                     proc == minim_builtin_export)
-            {
-                res = minim_error("only allowed at the top-level", node->children[0]->sym);
-            }
-            else
-            {
-                for (size_t i = 0; i < argc; ++i)                   // initialize ast wrappers
-                    args[i] = minim_ast(node->children[i + 1]);
-                
-                res = proc(env, argc, args);
-                if (MINIM_OBJ_CLOSUREP(res))
-                {
-                    MinimLambda *lam = MINIM_CLOSURE(res);
-                    if (!lam->loc && node->children[0]->loc)
-                        copy_syntax_loc(&lam->loc, node->children[0]->loc);
-                }
+                MinimLambda *lam = MINIM_CLOSURE(res);
+                if (!lam->loc && node->children[0]->loc)
+                    copy_syntax_loc(&lam->loc, node->children[0]->loc);
             }
         }
         else if (MINIM_OBJ_CLOSUREP(op))
@@ -340,7 +333,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         }
         else
         {
-            res = minim_error("unknown operator", node->children[0]->sym);
+            THROW(minim_error("unknown operator", node->children[0]->sym));
         }
 
         return res;
@@ -348,7 +341,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     else if (node->type == SYNTAX_NODE_VECTOR)
     {
         MinimObject **args;
-        MinimObject *possible_err;
 
         args = GC_alloc(node->childc * sizeof(MinimObject*));
         for (size_t i = 0; i < node->childc; ++i)
@@ -359,7 +351,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     else if (node->type == SYNTAX_NODE_PAIR)
     {
         MinimObject **args;
-        MinimObject *possible_err;
 
         args = GC_alloc(2 * sizeof(MinimObject*));
         args[0] = eval_ast_node(env, node->children[0]);
@@ -445,10 +436,7 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     MinimEnv *env2;
 
     if (expr_is_export(env, ast))
-    {
-        *pobj = minim_error("%export not allowed in REPL", NULL);
-        return 0;
-    }
+        THROW(minim_error("%export not allowed in REPL", NULL));
 
     init_env(&env2, env, NULL);
     if (expr_is_import(env, ast))

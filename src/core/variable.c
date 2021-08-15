@@ -11,17 +11,14 @@
 
 MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *val;
+    MinimObject *val;
 
     eval_ast_no_check(env, MINIM_AST(args[1]), &val);
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
-        {
-            res = minim_values_arity_error("def-values", MINIM_AST(args[0])->childc,
-                                           1, MINIM_AST(args[0]));
-            return res;
-        } 
+            THROW(minim_values_arity_error("def-values", MINIM_AST(args[0])->childc,
+                                           1, MINIM_AST(args[0])));
         
         env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
         if (MINIM_OBJ_CLOSUREP(val))
@@ -33,11 +30,10 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
     {
         if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
         {
-            res = minim_values_arity_error("def-values",
+            THROW(minim_values_arity_error("def-values",
                                            MINIM_AST(args[0])->childc,
                                            MINIM_VALUES_SIZE(val),
-                                           MINIM_AST(args[0]));
-            return res;
+                                           MINIM_AST(args[0])));
         }
 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
@@ -98,6 +94,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
         pp.quote = true;
         print_to_buffer(bf, sym, env, &pp);
         THROW(minim_error("not a variable", bf->data));
+        return NULL;    // prevent compiler error
     }
 }
 

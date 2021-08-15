@@ -292,7 +292,7 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
     MinimArity arity;
     
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("procedure", "procedure-arity", 0, args[0]);
+        THROW(minim_argument_error("procedure", "procedure-arity", 0, args[0]));
 
     if (MINIM_OBJ_BUILTINP(args[0]))
     {

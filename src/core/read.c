@@ -27,7 +27,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
 
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
-        *perr = minim_error(get_buffer(bf), NULL);
+        THROW(minim_error(get_buffer(bf), NULL));
         return NULL;
     }
 
@@ -62,9 +62,9 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            *perr = minim_err(e);
-
             fclose(file);
+            
+            THROW(minim_err(e));
             return NULL;
         }
 
@@ -93,7 +93,7 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
 
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
-        *perr = minim_error(get_buffer(bf), NULL);
+        THROW(minim_error(get_buffer(bf), NULL));
         return 1;
     }
 
@@ -127,9 +127,9 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            *perr = minim_err(e);
-
             fclose(file);
+
+            THROW(minim_err(e));
             return 2;
         }
 
@@ -161,8 +161,7 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
 
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
-        *perr = minim_error(get_buffer(bf), NULL);
-        return 1;
+        THROW(minim_error(get_buffer(bf), NULL));
     }
 
     rt.idx = 0;
@@ -198,12 +197,11 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            *perr = minim_err(e);
 
             fclose(file);
             env->current_dir = prev_dir;
             env->module = prev;
-            return 2;
+            THROW(minim_err(e));
         }
 
         minim_module_add_expr(module, ast);

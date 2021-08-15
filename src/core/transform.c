@@ -629,10 +629,7 @@ replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table, MinimObject **
         MinimObject *obj;
 
         obj = match_table_get(table, ast->sym);
-        if (obj)
-        {
-            *perr = minim_error("variable cannot be used outside of template", ast->sym);
-        }
+        if (obj) THROW(minim_error("variable cannot be used outside of template", ast->sym));
     }
 
     return ast;
@@ -674,14 +671,14 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
-            return minim_values_arity_error("def-syntaxes", MINIM_AST(args[0])->childc,
-                                            1, MINIM_AST(args[0]));
+            THROW(minim_values_arity_error("def-syntaxes", MINIM_AST(args[0])->childc,
+                                            1, MINIM_AST(args[0])));
         
         if (!MINIM_OBJ_CLOSUREP(val))
-            return minim_syntax_error("expected a procedure of 1 argument",
+            THROW(minim_syntax_error("expected a procedure of 1 argument",
                                       "def-syntaxes",
                                       MINIM_AST(args[1]),
-                                      NULL);
+                                      NULL));
 
         trans = minim_transform(MINIM_AST(args[0])->children[0]->sym, MINIM_CLOSURE(val));
         env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, trans);
@@ -689,18 +686,18 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
     else
     {
         if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
-            return minim_values_arity_error("def-syntaxes",
+            THROW(minim_values_arity_error("def-syntaxes",
                                             MINIM_AST(args[0])->childc,
                                             MINIM_VALUES_SIZE(val),
-                                            MINIM_AST(args[0]));
+                                            MINIM_AST(args[0])));
 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
         {
             if (!MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
-                return minim_syntax_error("expected a procedure of 1 argument",
+                THROW(minim_syntax_error("expected a procedure of 1 argument",
                                           "def-syntaxes",
                                           MINIM_AST(args[1]),
-                                          NULL);
+                                          NULL));
             trans = minim_transform(MINIM_AST(args[0])->children[i]->sym, MINIM_CLOSURE(MINIM_VALUES_REF(val, i)));
             env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, trans);
         }
@@ -720,7 +717,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         THROW(minim_error("unknown identifier", MINIM_AST(args[0])->sym));
 
     if (!MINIM_OBJ_ASTP(ast0))
-        return minim_argument_error("syntax?", "syntax-case", 0, ast0);
+        THROW(minim_argument_error("syntax?", "syntax-case", 0, ast0));
     
     init_symbol_list(&reserved, MINIM_AST(args[1])->childc);
     for (size_t i = 0; i < MINIM_AST(args[1])->childc; ++i)
@@ -744,5 +741,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         }
     }
 
-    return minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL);
+    THROW(minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL));
+    return NULL;
 }
