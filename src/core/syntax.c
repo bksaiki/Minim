@@ -23,7 +23,7 @@ static void check_syntax_set(MinimEnv *env, SyntaxNode *ast)
     unsyntax_ast(env, ast->children[1], &sym);
     if (!MINIM_OBJ_SYMBOLP(sym))
     {
-        THROW(minim_syntax_error("not an identifier",
+        THROW(env, minim_syntax_error("not an identifier",
                                  ast->children[0]->sym,
                                  ast,
                                  ast->children[1]));
@@ -49,7 +49,7 @@ static void check_syntax_func(MinimEnv *env, SyntaxNode *ast, size_t name_idx)
                 unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &sym);
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
-                    THROW(minim_syntax_error("not an identifier",
+                    THROW(env, minim_syntax_error("not an identifier",
                                              ast->children[0]->sym,
                                              ast,
                                              MINIM_AST(MINIM_CAR(it))));
@@ -62,7 +62,7 @@ static void check_syntax_func(MinimEnv *env, SyntaxNode *ast, size_t name_idx)
                 unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &sym);
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
-                    THROW(minim_syntax_error("not an identifier",
+                    THROW(env, minim_syntax_error("not an identifier",
                                              ast->children[0]->sym,
                                              ast,
                                              MINIM_AST(MINIM_CAR(it))));
@@ -72,7 +72,7 @@ static void check_syntax_func(MinimEnv *env, SyntaxNode *ast, size_t name_idx)
                 unsyntax_ast(env, MINIM_AST(MINIM_CDR(it)), &sym);
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
-                    THROW(minim_syntax_error("not an identifier",
+                    THROW(env, minim_syntax_error("not an identifier",
                                              ast->children[0]->sym,
                                              ast,
                                              MINIM_AST(MINIM_CDR(it))));
@@ -85,7 +85,7 @@ static void check_syntax_func(MinimEnv *env, SyntaxNode *ast, size_t name_idx)
     }
     else if (!MINIM_OBJ_SYMBOLP(args) && !minim_nullp(args))
     {
-        THROW(minim_syntax_error("expected argument names",
+        THROW(env, minim_syntax_error("expected argument names",
                                  ast->children[0]->sym,
                                  ast,
                                  ast->children[name_idx]));
@@ -102,7 +102,7 @@ static void check_syntax_def_values(MinimEnv *env, SyntaxNode *ast)
     unsyntax_ast(env, ast->children[1], &ids);
     if (!minim_listp(ids))
     {
-        THROW(minim_syntax_error("not a list of identifiers",
+        THROW(env, minim_syntax_error("not a list of identifiers",
                                  "def-values",
                                  ast,
                                  ast->children[1]));
@@ -113,7 +113,7 @@ static void check_syntax_def_values(MinimEnv *env, SyntaxNode *ast)
         unsyntax_ast(env, ast->children[1]->children[i], &sym);
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
-            THROW(minim_syntax_error("not an identifier",
+            THROW(env, minim_syntax_error("not an identifier",
                                      "def-values",
                                      ast,
                                      ast->children[1]->children[i]));
@@ -123,7 +123,7 @@ static void check_syntax_def_values(MinimEnv *env, SyntaxNode *ast)
         {
             if (strcmp(ast->children[1]->children[j]->sym, MINIM_STRING(sym)) == 0)
             {
-                THROW(minim_syntax_error("duplicate identifier",
+                THROW(env, minim_syntax_error("duplicate identifier",
                                          "def-values",
                                          ast,
                                          ast->children[1]->children[i]));
@@ -163,17 +163,17 @@ static void check_syntax_case(MinimEnv *env, SyntaxNode *ast)
     {
         unsyntax_ast(env, ast->children[i], &branch);
         if (!minim_listp(branch) || minim_list_length(branch) < 2)
-            THROW(minim_syntax_error("bad clause", "case", ast, ast->children[i]));
+            THROW(env, minim_syntax_error("bad clause", "case", ast, ast->children[i]));
 
         // match
         datum = MINIM_AST(MINIM_CAR(branch));
         if (i + 1 != ast->childc && datum->sym && strcmp(datum->sym, "else") == 0)
-            THROW(minim_syntax_error("bad clause", "case", ast, ast->children[i]));
+            THROW(env, minim_syntax_error("bad clause", "case", ast, ast->children[i]));
         
         // datums
         unsyntax_ast(env, datum, &match);
         if (!minim_listp(match))
-            THROW(minim_syntax_error("bad match datum", "case", ast, ast->children[i]));
+            THROW(env, minim_syntax_error("bad match datum", "case", ast, ast->children[i]));
 
         // vals
         for (MinimObject *it = MINIM_CDR(branch); !minim_nullp(it); it = MINIM_CDR(it))
@@ -198,7 +198,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
 
     unsyntax_ast(env, ast->children[base], &bindings);
     if (!minim_listp(bindings))
-        THROW(minim_syntax_error("expected a list of bindings", "let", ast, ast->children[base]));
+        THROW(env, minim_syntax_error("expected a list of bindings", "let", ast, ast->children[base]));
 
     // early exit: (let () ...)
     if (minim_nullp(bindings))
@@ -212,14 +212,14 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
 
         unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &bind);
         if (!minim_listp(bind) || minim_list_length(bind) != 2)
-            THROW(minim_syntax_error("bad binding", "let-values", ast, MINIM_AST(MINIM_CAR(it))));
+            THROW(env, minim_syntax_error("bad binding", "let-values", ast, MINIM_AST(MINIM_CAR(it))));
 
         // list of identifier
         stx = MINIM_AST(MINIM_CAR(bind));
         unsyntax_ast(env, stx, &ids);
         if (!minim_listp(ids))
         {
-            THROW(minim_syntax_error("not a list of identifiers",
+            THROW(env, minim_syntax_error("not a list of identifiers",
                                      "let-values",
                                      ast,
                                      stx));
@@ -230,7 +230,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
             unsyntax_ast(env, stx->children[i], &sym);
             if (!MINIM_OBJ_SYMBOLP(sym))
             {
-                THROW(minim_syntax_error("not an identifier",
+                THROW(env, minim_syntax_error("not an identifier",
                                          MINIM_STRING(sym),
                                          ast,
                                          stx->children[i]));
@@ -240,7 +240,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
             {
                 if (strcmp(stx->children[j]->sym, MINIM_STRING(sym)) == 0)
                 {
-                    THROW(minim_syntax_error("duplicate identifier",
+                    THROW(env, minim_syntax_error("duplicate identifier",
                                              MINIM_STRING(sym),
                                              ast,
                                              stx->children[i]));
@@ -256,7 +256,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
     }
 
     if (base + 1 == ast->childc)
-        THROW(minim_syntax_error("missing body", "let", ast, NULL));
+        THROW(env, minim_syntax_error("missing body", "let", ast, NULL));
 
     for (size_t i = base + 1; i < ast->childc; ++i)
         check_syntax_rec(env2, ast->children[base + 1]);
@@ -274,7 +274,7 @@ static void check_syntax_def_syntaxes(MinimEnv *env, SyntaxNode *ast)
     unsyntax_ast(env, ast->children[1], &ids);
     if (!minim_listp(ids))
     {
-        THROW(minim_syntax_error("not a list of identifiers",
+        THROW(env, minim_syntax_error("not a list of identifiers",
                                  "def-syntaxes",
                                  ast,
                                  ast->children[1]));
@@ -285,7 +285,7 @@ static void check_syntax_def_syntaxes(MinimEnv *env, SyntaxNode *ast)
         unsyntax_ast(env, ast->children[1]->children[i], &sym);
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
-            THROW(minim_syntax_error("not an identifier",
+            THROW(env, minim_syntax_error("not an identifier",
                                      "def-syntaxes",
                                      ast,
                                      ast->children[1]->children[i]));
@@ -295,7 +295,7 @@ static void check_syntax_def_syntaxes(MinimEnv *env, SyntaxNode *ast)
         {
             if (strcmp(ast->children[1]->children[j]->sym, MINIM_STRING(sym)) == 0)
             {
-                THROW(minim_syntax_error("duplicate identifier",
+                THROW(env, minim_syntax_error("duplicate identifier",
                                          "def-syntaxes",
                                          ast,
                                          ast->children[1]->children[i]));
@@ -315,14 +315,14 @@ static void check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast)
     // extract reserved symbols
     unsyntax_ast(env, ast->children[2], &reserved);
     if (!minim_listp(reserved))
-        THROW(minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[2]));
+        THROW(env, minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[2]));
     
     // check reserved list is all symbols
     for (MinimObject *it = reserved; !minim_nullp(it); it = MINIM_CDR(it))
     {
         unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &sym);
         if (!MINIM_OBJ_SYMBOLP(sym))
-            THROW(minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[2]));
+            THROW(env, minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[2]));
     }
 
     // check each match expression
@@ -333,9 +333,10 @@ static void check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast)
 
         unsyntax_ast(env, ast->children[i], &rule);
         if (!minim_listp(rule) || minim_list_length(rule) != 2)
-            THROW(minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]));
+            THROW(env, minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]));
 
-        check_transform(MINIM_AST(MINIM_CAR(rule)),
+        check_transform(env,
+                        MINIM_AST(MINIM_CAR(rule)),
                         MINIM_AST(MINIM_CADR(rule)),
                         reserved);
     }
@@ -350,7 +351,7 @@ static void check_syntax_import(MinimEnv *env, SyntaxNode *ast)
         unsyntax_ast(env, ast->children[i], &sym);
         if (!MINIM_OBJ_SYMBOLP(sym) && !MINIM_OBJ_STRINGP(sym))
         {
-            THROW(minim_syntax_error("import must be a symbol or string",
+            THROW(env, minim_syntax_error("import must be a symbol or string",
                                        "%import",
                                        ast,
                                        ast->children[i]));
@@ -370,7 +371,7 @@ static void check_syntax_export(MinimEnv *env, SyntaxNode *ast)
 
             if (ast->children[i]->childc != 2)
             {
-                THROW(minim_syntax_error("not a valid export form",
+                THROW(env, minim_syntax_error("not a valid export form",
                                            "%export",
                                            ast,
                                            ast->children[i]));
@@ -380,7 +381,7 @@ static void check_syntax_export(MinimEnv *env, SyntaxNode *ast)
             if (!MINIM_OBJ_SYMBOLP(attrib) ||
                 strcmp(MINIM_STRING(attrib), "all"))
             {
-                THROW(minim_syntax_error("not a valid export form",
+                THROW(env, minim_syntax_error("not a valid export form",
                                            "%export",
                                            ast,
                                            ast->children[i]));
@@ -388,7 +389,7 @@ static void check_syntax_export(MinimEnv *env, SyntaxNode *ast)
 
             if (!MINIM_OBJ_SYMBOLP(export) && !MINIM_OBJ_STRINGP(export))
             {
-                THROW(minim_syntax_error("export must be a symbol or string",
+                THROW(env, minim_syntax_error("export must be a symbol or string",
                                            "%export",
                                            ast,
                                            ast->children[i]));
@@ -397,7 +398,7 @@ static void check_syntax_export(MinimEnv *env, SyntaxNode *ast)
             unsyntax_ast(env, ast->children[i]->children[1], &export);
             if (!MINIM_OBJ_SYMBOLP(export) && !MINIM_OBJ_STRINGP(export))
             {
-                THROW(minim_syntax_error("export must be a symbol or string",
+                THROW(env, minim_syntax_error("export must be a symbol or string",
                                            "%export",
                                            ast,
                                            ast->children[i]->children[1]));
@@ -408,7 +409,7 @@ static void check_syntax_export(MinimEnv *env, SyntaxNode *ast)
             unsyntax_ast(env, ast->children[i], &export);
             if (!MINIM_OBJ_SYMBOLP(export) && !MINIM_OBJ_STRINGP(export))
             {
-                THROW(minim_syntax_error("export must be a symbol or string",
+                THROW(env, minim_syntax_error("export must be a symbol or string",
                                            "%export",
                                            ast,
                                            ast->children[i]));
@@ -428,14 +429,14 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
     {
         op = env_get_sym(env, ast->children[0]->sym);
         if (!op)
-            THROW(minim_syntax_error("unknown identifier", ast->children[0]->sym, ast, NULL));
+            THROW(env, minim_syntax_error("unknown identifier", ast->children[0]->sym, ast, NULL));
 
         if (MINIM_OBJ_SYNTAXP(op))
         {
             void *proc = MINIM_AST(op);
 
             if (!minim_check_syntax_arity(proc, ast->childc - 1, env))
-                THROW(minim_syntax_error("bad syntax", ast->children[0]->sym, ast, NULL));
+                THROW(env, minim_syntax_error("bad syntax", ast->children[0]->sym, ast, NULL));
 
             CHECK_REC(proc, minim_builtin_begin, check_syntax_begin);
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
@@ -474,7 +475,7 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
 
 // ================================ Syntax Conversions ================================
 
-static SyntaxNode *datum_to_syntax(MinimObject *obj)
+static SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
 {
     SyntaxNode *node;
     Buffer *bf;
@@ -497,8 +498,8 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj)
             node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
             node->childc = 2;
 
-            node->children[0] = datum_to_syntax(MINIM_CAR(obj));
-            node->children[1] = datum_to_syntax(MINIM_CDR(obj));
+            node->children[0] = datum_to_syntax(env, MINIM_CAR(obj));
+            node->children[1] = datum_to_syntax(env, MINIM_CDR(obj));
         }
         else
         {
@@ -512,12 +513,12 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj)
                 {
                     node->childc += 3;
                     node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                    node->children[node->childc - 3] = datum_to_syntax(MINIM_CAR(it));
+                    node->children[node->childc - 3] = datum_to_syntax(env, MINIM_CAR(it));
 
                     init_syntax_node(&node->children[node->childc - 2], SYNTAX_NODE_DATUM);
                     node->children[node->childc - 2]->sym = ".";
 
-                    node->children[node->childc - 1] = datum_to_syntax(MINIM_CDR(it));
+                    node->children[node->childc - 1] = datum_to_syntax(env, MINIM_CDR(it));
 
                     break;
                 }
@@ -525,7 +526,7 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj)
                 {
                     ++node->childc;
                     node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                    node->children[node->childc - 1] = datum_to_syntax(MINIM_CAR(it));
+                    node->children[node->childc - 1] = datum_to_syntax(env, MINIM_CAR(it));
                 }
             }
         }
@@ -537,7 +538,7 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj)
         node->childc = MINIM_VECTOR_LEN(obj);
         for (size_t i = 0; i < node->childc; ++i)
         {
-            node->children[i] = datum_to_syntax(MINIM_VECTOR_REF(obj, i));
+            node->children[i] = datum_to_syntax(env, MINIM_VECTOR_REF(obj, i));
             if (!node->children[i])     return NULL;
         }
     }
@@ -577,7 +578,7 @@ static SyntaxNode *datum_to_syntax(MinimObject *obj)
         err = minim_error("can't convert to syntax", NULL);
         init_minim_error_desc_table(&MINIM_ERROR(err)->table, 1);
         minim_error_desc_table_set(MINIM_ERROR(err)->table, 0, "at", get_buffer(bf));
-        THROW(err);
+        THROW(env, err);
     }
 
     return node;
@@ -610,7 +611,7 @@ MinimObject *minim_builtin_unwrap(MinimEnv *env, size_t argc, MinimObject **args
     MinimObject *res;
 
     if (!MINIM_OBJ_ASTP(args[0]))
-        THROW(minim_argument_error("syntax?", "unwrap", 0, args[0]));
+        THROW(env, minim_argument_error("syntax?", "unwrap", 0, args[0]));
 
     unsyntax_ast(env, MINIM_AST(args[0]), &res);
     return res;
@@ -618,5 +619,5 @@ MinimObject *minim_builtin_unwrap(MinimEnv *env, size_t argc, MinimObject **args
 
 MinimObject *minim_builtin_to_syntax(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_ast(datum_to_syntax(args[0]));
+    return minim_ast(datum_to_syntax(env, args[0]));
 }

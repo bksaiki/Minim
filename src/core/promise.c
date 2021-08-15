@@ -14,7 +14,7 @@ MinimObject *minim_builtin_delay(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_force(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_PROMISEP(args[0]))
-        THROW(minim_argument_error("force", "promise", 0, args[0]));
+        THROW(env, minim_argument_error("force", "promise", 0, args[0]));
 
     if (MINIM_PROMISE_STATE(args[0]))     // already evaluated
     {

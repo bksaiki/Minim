@@ -27,7 +27,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
 
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
-        THROW(minim_error(get_buffer(bf), NULL));
+        THROW(prev->env, minim_error(get_buffer(bf), NULL));
         return NULL;
     }
 
@@ -64,7 +64,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
             fclose(file);
             
-            THROW(minim_err(e));
+            THROW(prev->env, minim_err(e));
             return NULL;
         }
 
@@ -93,7 +93,7 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
 
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
-        THROW(minim_error(get_buffer(bf), NULL));
+        THROW(env, minim_error(get_buffer(bf), NULL));
         return 1;
     }
 
@@ -129,7 +129,7 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
             fclose(file);
 
-            THROW(minim_err(e));
+            THROW(env, minim_err(e));
             return 2;
         }
 
@@ -161,7 +161,7 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
 
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
-        THROW(minim_error(get_buffer(bf), NULL));
+        THROW(env, minim_error(get_buffer(bf), NULL));
     }
 
     rt.idx = 0;
@@ -201,7 +201,7 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
             fclose(file);
             env->current_dir = prev_dir;
             env->module = prev;
-            THROW(minim_err(e));
+            THROW(env, minim_err(e));
         }
 
         minim_module_add_expr(module, ast);

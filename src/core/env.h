@@ -13,7 +13,7 @@ typedef struct MinimModule MinimModule;
 
 typedef struct MinimEnv
 {
-    struct MinimEnv *parent;
+    struct MinimEnv *parent, *caller;
     struct MinimModule *module;
     MinimSymbolTable *table;
     MinimLambda *callee;

@@ -94,18 +94,17 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
     {
         char *name = (lam->name ? lam->name : "");
         if (argc < lam->argc)
-            THROW(minim_arity_error(name, lam->argc, SIZE_MAX, argc));
+            THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
 
     }
     else if (argc != lam->argc)
     {
         char *name = (lam->name ? lam->name : "");
-        THROW(minim_arity_error(name, lam->argc, lam->argc, argc));
+        THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
     }
 
-    if (lam->env)   init_env(&env2, lam->env, lam);
-    else            init_env(&env2, env, lam);
-
+    init_env(&env2, lam->env, lam);
+    env2->caller = env;
     if (lam->name)
     {
         MinimObject *self;

@@ -79,13 +79,13 @@ MinimObject *minim_builtin_sequence(MinimEnv *env, size_t argc, MinimObject **ar
     MinimSeq *seq;
 
     if (!MINIM_OBJ_FUNCP(args[1]) || !func_1aryp(args[1]))
-        THROW(minim_argument_error("procedure of one argument", "sequence", 1, args[1]));
+        THROW(env, minim_argument_error("procedure of one argument", "sequence", 1, args[1]));
 
     if (!MINIM_OBJ_FUNCP(args[2]) || !func_1aryp(args[2]))
-        THROW(minim_argument_error("procedure of one argument", "sequence", 2, args[2]));
+        THROW(env, minim_argument_error("procedure of one argument", "sequence", 2, args[2]));
 
     if (!MINIM_OBJ_FUNCP(args[3]) || !func_1aryp(args[3]))
-        THROW(minim_argument_error("procedure of one argument", "sequence", 3, args[3]));
+        THROW(env, minim_argument_error("procedure of one argument", "sequence", 3, args[3]));
 
     init_minim_seq(&seq, args[0], args[1], args[2], args[3]);
     return minim_sequence(seq);
@@ -99,11 +99,11 @@ MinimObject *minim_builtin_sequencep(MinimEnv *env, size_t argc, MinimObject **a
 MinimObject *minim_builtin_sequence_first(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_SEQP(args[0]))
-        THROW(minim_argument_error("sequence", "sequence-first", 0, args[0]));
+        THROW(env, minim_argument_error("sequence", "sequence-first", 0, args[0]));
 
     if (minim_seq_donep(env, MINIM_SEQUENCE(args[0])))
     {
-        THROW(minim_argument_error("empty sequence",
+        THROW(env, minim_argument_error("empty sequence",
                                    "sequence-first",
                                    SIZE_MAX,
                                    MINIM_SEQUENCE(args[0])->val));
@@ -115,11 +115,11 @@ MinimObject *minim_builtin_sequence_first(MinimEnv *env, size_t argc, MinimObjec
 MinimObject *minim_builtin_sequence_rest(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_SEQP(args[0]))
-        THROW(minim_argument_error("sequence", "sequence-rest", 0, args[0]));
+        THROW(env, minim_argument_error("sequence", "sequence-rest", 0, args[0]));
 
     if (minim_seq_donep(env, MINIM_SEQUENCE(args[0])))
     {
-        THROW(minim_argument_error("empty sequence",
+        THROW(env, minim_argument_error("empty sequence",
                                    "sequence-rest",
                                    SIZE_MAX,
                                    MINIM_SEQUENCE(args[0])->val));
@@ -132,7 +132,7 @@ MinimObject *minim_builtin_sequence_rest(MinimEnv *env, size_t argc, MinimObject
 MinimObject *minim_builtin_sequence_donep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_SEQP(args[0]))
-        THROW(minim_argument_error("sequence", "sequence-first", 0, args[0]));
+        THROW(env, minim_argument_error("sequence", "sequence-first", 0, args[0]));
 
     return to_bool(minim_seq_donep(env, MINIM_SEQUENCE(args[0])));
 }

@@ -152,7 +152,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
 
                     import = minim_module_get_import(env->module, get_buffer(path));
                     if (!import)
-                        THROW(minim_syntax_error("module not imported",
+                        THROW(env, minim_syntax_error("module not imported",
                                                  "%export",
                                                  MINIM_AST(args[i]),
                                                  MINIM_AST(MINIM_CADR(export))));
@@ -166,7 +166,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
 
                 val = minim_module_get_sym(env->module, MINIM_STRING(export));
                 if (!val)
-                    THROW(minim_error("identifier not defined in module", MINIM_STRING(export)));
+                    THROW(env, minim_error("identifier not defined in module", MINIM_STRING(export)));
 
                 env_intern_sym(env->module->export, MINIM_STRING(export), val);
             }

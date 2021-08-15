@@ -294,7 +294,7 @@ MinimObject *minim_builtin_hashp(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_hash_keyp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_HASHP(args[0]))
-        THROW(minim_argument_error("hash table", "hash-key?", 0, args[0]));
+        THROW(env, minim_argument_error("hash table", "hash-key?", 0, args[0]));
     
     return to_bool(minim_hash_table_keyp(MINIM_HASH_TABLE(args[0]), args[1]));
 }
@@ -304,7 +304,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, size_t argc, MinimObject **ar
     MinimObject *res;
 
     if (!MINIM_OBJ_HASHP(args[0]))
-        THROW(minim_argument_error("hash table", "hash-ref", 0, args[0]));
+        THROW(env, minim_argument_error("hash table", "hash-ref", 0, args[0]));
 
     res = minim_hash_table_ref(MINIM_HASH_TABLE(args[0]), args[1]);
     if (!res)
@@ -315,7 +315,7 @@ MinimObject *minim_builtin_hash_ref(MinimEnv *env, size_t argc, MinimObject **ar
         init_buffer(&bf);
         set_default_print_params(&pp);
         print_to_buffer(bf, args[1], env, &pp);
-        THROW(minim_error("no value found for ~s", "hash-ref", bf->data));
+        THROW(env, minim_error("no value found for ~s", "hash-ref", bf->data));
     }
 
     return res;
@@ -326,7 +326,7 @@ MinimObject *minim_builtin_hash_remove(MinimEnv *env, size_t argc, MinimObject *
     MinimHash *ht;
 
     if (!MINIM_OBJ_HASHP(args[0]))
-        THROW(minim_argument_error("hash table", "hash-remove", 0, args[0]));
+        THROW(env, minim_argument_error("hash table", "hash-remove", 0, args[0]));
 
     copy_minim_hash_table(&ht, MINIM_HASH_TABLE(args[0]));
     minim_hash_table_remove(ht, args[1]);
@@ -338,7 +338,7 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, size_t argc, MinimObject **ar
     MinimHash *ht;
 
     if (!MINIM_OBJ_HASHP(args[0]))
-        THROW(minim_argument_error("hash table", "hash-set", 0, args[0]));
+        THROW(env, minim_argument_error("hash table", "hash-set", 0, args[0]));
 
     copy_minim_hash_table(&ht, MINIM_HASH_TABLE(args[0]));
     minim_hash_table_add(ht, args[1], args[2]);
@@ -348,7 +348,7 @@ MinimObject *minim_builtin_hash_set(MinimEnv *env, size_t argc, MinimObject **ar
 MinimObject *minim_builtin_hash_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_HASHP(args[0]))
-        THROW(minim_argument_error("hash table", "hash-set!", 0, args[0]));
+        THROW(env, minim_argument_error("hash table", "hash-set!", 0, args[0]));
 
     minim_hash_table_add(MINIM_HASH_TABLE(args[0]), args[1], args[2]);
     return minim_void;
@@ -357,7 +357,7 @@ MinimObject *minim_builtin_hash_setb(MinimEnv *env, size_t argc, MinimObject **a
 MinimObject *minim_builtin_hash_removeb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_HASHP(args[0]))
-        THROW(minim_argument_error("hash table", "hash-remove!", 0, args[0]));
+        THROW(env, minim_argument_error("hash table", "hash-remove!", 0, args[0]));
 
     minim_hash_table_remove(MINIM_HASH_TABLE(args[0]), args[1]);
     return minim_void;
@@ -366,7 +366,7 @@ MinimObject *minim_builtin_hash_removeb(MinimEnv *env, size_t argc, MinimObject 
 MinimObject *minim_builtin_hash_to_list(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_HASHP(args[0]))
-        THROW(minim_argument_error("hash table", "hash->list", 0, args[0]));
+        THROW(env, minim_argument_error("hash table", "hash->list", 0, args[0]));
 
     return minim_hash_table_to_list(MINIM_HASH_TABLE(args[0]));
 }

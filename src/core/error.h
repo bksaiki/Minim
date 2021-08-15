@@ -53,8 +53,8 @@ MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t
 MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, SyntaxNode *expr);
 MinimObject *minim_error(const char *msg, const char *where, ...);
 
-void throw_minim_error(MinimObject *err);
+void throw_minim_error(MinimEnv *env, MinimObject *err);
 
-#define THROW(x)    throw_minim_error(x)
+#define THROW(e, x)    throw_minim_error(e, x)
 
 #endif

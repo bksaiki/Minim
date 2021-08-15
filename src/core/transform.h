@@ -8,6 +8,6 @@
 SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast);
 
 // Returns if a [match replace] transform is valid
-void check_transform(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved);
+void check_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved);
 
 #endif

@@ -26,6 +26,7 @@ static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
     mrk(gc, env->module);
     mrk(gc, env->table);
     mrk(gc, env->callee);
+    mrk(gc, env->caller);
     mrk(gc, env->current_dir);
 }
 
@@ -40,6 +41,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     env->parent = parent;
     env->module = NULL;
     env->callee = callee;
+    env->caller = NULL;
     env->current_dir = NULL;
     init_minim_symbol_table(&env->table);
     env->flags = MINIM_ENV_TAIL_CALLABLE;
@@ -124,9 +126,12 @@ bool env_has_called(MinimEnv *env, MinimLambda *lam)
 {
     if (env->flags & MINIM_ENV_TAIL_CALLABLE)
     {
-        if (env->callee)
-            return env->callee == lam;
+        if (env->callee && env->callee == lam)
+            return true;
         
+        if (env->caller)
+            return env_has_called(env->caller, lam);
+
         if (env->parent)
             return env_has_called(env->parent, lam);
     }

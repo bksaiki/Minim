@@ -426,7 +426,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
     res = eval_lambda(MINIM_TRANSFORM_PROC(trans), NULL, 1, &body);
     if (!MINIM_OBJ_ASTP(res))
     {
-        THROW(minim_syntax_error("expected syntax as a result",
+        THROW(env, minim_syntax_error("expected syntax as a result",
                                  MINIM_TRANSFORM_NAME(trans),
                                  ast,
                                  NULL));
@@ -436,7 +436,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
 }
 
 static bool
-valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t pdepth)
+valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t pdepth)
 {
     if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
     {
@@ -444,28 +444,28 @@ valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t 
         {
             if (is_match_pattern(match, i))
             {
-                if (!valid_matchp(match->children[i], table, reserved, pdepth + 1))
+                if (!valid_matchp(env, match->children[i], table, reserved, pdepth + 1))
                     return false;
 
                 ++i; // skip ellipse
             }
             else
             {
-                if (!valid_matchp(match->children[i], table, reserved, pdepth))
+                if (!valid_matchp(env, match->children[i], table, reserved, pdepth))
                     return false;
             }
         }
     }
     else if (match->type == SYNTAX_NODE_PAIR)
     {
-        return valid_matchp(match->children[0], table, reserved, pdepth) &&
-               valid_matchp(match->children[1], table, reserved, pdepth);
+        return valid_matchp(env, match->children[0], table, reserved, pdepth) &&
+               valid_matchp(env, match->children[1], table, reserved, pdepth);
     }
     else // datum
     {
         if (strcmp(match->sym, "...") == 0)
         {
-            THROW(minim_syntax_error("ellipse not allowed here", NULL, match, NULL));
+            THROW(env, minim_syntax_error("ellipse not allowed here", NULL, match, NULL));
             return false;
         }
 
@@ -478,7 +478,7 @@ valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t 
 }
 
 static bool
-valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, size_t pdepth)
+valid_replacep(MinimEnv *env, SyntaxNode* replace, MatchTable *table, SymbolList *reserved, size_t pdepth)
 {
     if (replace->type == SYNTAX_NODE_LIST || replace->type == SYNTAX_NODE_VECTOR)
     {
@@ -486,22 +486,22 @@ valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, siz
         {
             if (is_match_pattern(replace, i))
             {
-                if (!valid_replacep(replace->children[i], table, reserved, pdepth + 1))
+                if (!valid_replacep(env, replace->children[i], table, reserved, pdepth + 1))
                     return false;
                 
                 ++i;    // skip ellipse
             }
             else
             {
-                if (!valid_replacep(replace->children[i], table, reserved, pdepth))
+                if (!valid_replacep(env, replace->children[i], table, reserved, pdepth))
                     return false;
             }
         }
     }
     else if (replace->type == SYNTAX_NODE_PAIR)
     {
-        return valid_replacep(replace->children[0], table, reserved, pdepth) &&
-               valid_replacep(replace->children[1], table, reserved, pdepth);
+        return valid_replacep(env, replace->children[0], table, reserved, pdepth) &&
+               valid_replacep(env, replace->children[1], table, reserved, pdepth);
     }
     else // datum
     {
@@ -513,13 +513,13 @@ valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, siz
             {
                 if (pdepth > depth)
                 {
-                    THROW(minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL));
+                    THROW(env, minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL));
                     return false;
                 }
 
                 if (pdepth < depth)
                 {
-                    THROW(minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL));
+                    THROW(env, minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL));
                     return false;
                 }
             }
@@ -557,7 +557,7 @@ replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table)
         MinimObject *obj;
 
         obj = match_table_get(table, ast->sym);
-        if (obj) THROW(minim_error("variable cannot be used outside of template", ast->sym));
+        if (obj) THROW(env, minim_error("variable cannot be used outside of template", ast->sym));
     }
 
     return ast;
@@ -605,7 +605,7 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
     return ast;
 }
 
-void check_transform(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved)
+void check_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved)
 {
     MatchTable table;
     SymbolList reserved_lst;
@@ -619,8 +619,8 @@ void check_transform(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserv
         reserved_lst.syms[i] = MINIM_AST(MINIM_CAR(it))->sym;
 
     init_match_table(&table);
-    valid_matchp(match, &table, &reserved_lst, 0);
-    valid_replacep(replace, &table, &reserved_lst, 0);
+    valid_matchp(env, match, &table, &reserved_lst, 0);
+    valid_replacep(env, replace, &table, &reserved_lst, 0);
 }
 
 // ================================ Builtins ================================
@@ -633,11 +633,11 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
-            THROW(minim_values_arity_error("def-syntaxes", MINIM_AST(args[0])->childc,
+            THROW(env, minim_values_arity_error("def-syntaxes", MINIM_AST(args[0])->childc,
                                             1, MINIM_AST(args[0])));
         
         if (!MINIM_OBJ_CLOSUREP(val))
-            THROW(minim_syntax_error("expected a procedure of 1 argument",
+            THROW(env, minim_syntax_error("expected a procedure of 1 argument",
                                       "def-syntaxes",
                                       MINIM_AST(args[1]),
                                       NULL));
@@ -648,7 +648,7 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
     else
     {
         if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
-            THROW(minim_values_arity_error("def-syntaxes",
+            THROW(env, minim_values_arity_error("def-syntaxes",
                                             MINIM_AST(args[0])->childc,
                                             MINIM_VALUES_SIZE(val),
                                             MINIM_AST(args[0])));
@@ -656,7 +656,7 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
         {
             if (!MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
-                THROW(minim_syntax_error("expected a procedure of 1 argument",
+                THROW(env, minim_syntax_error("expected a procedure of 1 argument",
                                           "def-syntaxes",
                                           MINIM_AST(args[1]),
                                           NULL));
@@ -677,10 +677,10 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
 
     eval_ast_no_check(env, MINIM_AST(args[0]), &ast0);
     if (!ast0)
-        THROW(minim_error("unknown identifier", MINIM_AST(args[0])->sym));
+        THROW(env, minim_error("unknown identifier", MINIM_AST(args[0])->sym));
 
     if (!MINIM_OBJ_ASTP(ast0))
-        THROW(minim_argument_error("syntax?", "syntax-case", 0, ast0));
+        THROW(env, minim_argument_error("syntax?", "syntax-case", 0, ast0));
     
     init_symbol_list(&reserved, MINIM_AST(args[1])->childc);
     for (size_t i = 0; i < MINIM_AST(args[1])->childc; ++i)
@@ -702,6 +702,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         }
     }
 
-    THROW(minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL));
+    THROW(env, minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL));
     return NULL;
 }
