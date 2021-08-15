@@ -3,7 +3,8 @@
 echo "Running library tests..."
 
 tmp="/tmp/minim-test.log"
-ret=0
+failed=0
+total=0
 
 cd $(dirname $0)
 
@@ -12,12 +13,14 @@ for file in $(ls lib/); do
      grep -v "#t" $tmp > /dev/null
     if [ $? -eq 0 ]; then
         echo "[ FAIL ] $file"
-        grep -n "#f" $tmp
-        ret=1
+        ((failed++))
     else
         echo "[ PASS ] $file"
     fi
+    ((total++))
 done
 
-echo "Done."
-exit $ret
+printf "%i/%i tests passed\n" $(expr $total - $failed) $total
+if (($failed != 0)); then
+    exit 1
+fi

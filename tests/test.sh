@@ -1,4 +1,5 @@
 #!/bin/bash
+
 failed=0
 total=0
 for file in $@
