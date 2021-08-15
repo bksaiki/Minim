@@ -4,6 +4,7 @@
 #include "arity.h"
 #include "assert.h"
 #include "builtin.h"
+#include "jmp.h"
 #include "error.h"
 #include "lambda.h"
 #include "list.h"
@@ -21,10 +22,16 @@ static MinimObject *eval_1ary(MinimEnv *env, MinimObject *proc, MinimObject *val
 
         return func(env, 1, &val);
     }
-    else    // MINIM_OBJ_CLOSUREP(filter)
+    else if (MINIM_OBJ_CLOSUREP(proc))
     {
         MinimLambda *lam = MINIM_CLOSURE(proc);
         return eval_lambda(lam, env, 1, &val);
+    }
+    else
+    {
+        // no return
+        minim_long_jump(proc, env, 1, &val);
+        return NULL;
     }
 }
 
@@ -45,7 +52,7 @@ static MinimObject *eval_2ary(MinimEnv *env, MinimObject *proc, MinimObject *x, 
         args[1] = y;
         return func(env, 2, args);
     }
-    else    // MINIM_OBJ_CLOSUREP(filter)
+    else if (MINIM_OBJ_CLOSUREP(proc))
     {
         MinimLambda *lam = MINIM_CLOSURE(proc);
 
@@ -53,6 +60,16 @@ static MinimObject *eval_2ary(MinimEnv *env, MinimObject *proc, MinimObject *x, 
         args[0] = x;
         args[1] = y;
         return eval_lambda(lam, env, 2, args);
+    }
+    else
+    {
+        args = GC_alloc(2 * sizeof(MinimObject*));
+        args[0] = x;
+        args[1] = y;
+        
+        // no return
+        minim_long_jump(proc, env, 2, args);
+        return NULL;
     }
 }
 
@@ -521,10 +538,16 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
         if (minim_check_arity(func, valc, env, &res))
             res = func(env, valc, vals);
     }
-    else // MINIM_OBJ_CLOSUREP(args[0])
+    else if (MINIM_OBJ_CLOSUREP(args[0]))
     {
         MinimLambda *lam = MINIM_CLOSURE(args[0]);
         res = eval_lambda(lam, env, valc, vals);
+    }
+    else
+    {
+        // no return
+        minim_long_jump(args[0], env, valc, vals);
+        return NULL;
     }
 
     return res;
@@ -584,10 +607,15 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
             if (minim_check_arity(func, 2, env, &res))
                 res = func(env, 2, vals);
         }
-        else // MINIM_OBJ_CLOSUREP(proc)
+        else if MINIM_OBJ_CLOSUREP(proc)
         {
             MinimLambda *lam = MINIM_CLOSURE(proc);
             res = eval_lambda(lam, env, 2, vals);
+        }
+        else
+        {
+            // no return
+            minim_long_jump(proc, env, 2, vals);
         }
     }
     else
@@ -602,10 +630,15 @@ static MinimObject *minim_foldr_h(MinimEnv *env, MinimObject *proc, MinimObject 
             if (minim_check_arity(func, 2, env, &res))
                 res = func(env, 2, vals);
         }
-        else // MINIM_OBJ_CLOSUREP(proc)
+        else if MINIM_OBJ_CLOSUREP(proc)
         {
             MinimLambda *lam = MINIM_CLOSURE(proc);
             res = eval_lambda(lam, env, 2, vals);
+        }
+        else
+        {
+            // no return
+            minim_long_jump(proc, env, 2, vals);
         }
     }
 

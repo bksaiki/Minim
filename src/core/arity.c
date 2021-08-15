@@ -298,12 +298,17 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
     {
         minim_get_builtin_arity(MINIM_BUILTIN(args[0]), &arity);
     }
-    else
+    else if (MINIM_OBJ_CLOSUREP(args[0]))
     {
         MinimLambda *lam = MINIM_CLOSURE(args[0]);
 
         arity.low = lam->argc;
         arity.high = (lam->rest) ? SIZE_MAX : arity.low;
+    }
+    else // MINIM_OBJ_JUMPP
+    {
+        arity.low = 0;
+        arity.high = SIZE_MAX;
     }
 
     if (arity.low == arity.high)
