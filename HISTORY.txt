@@ -1,3 +1,16 @@
+Version 0.3.1
+14 August 2021
+Added:
+ - files organized as modules for exporting and importing symbols
+ - multiple value expressions
+ - characters (all R4RS procedures)
+ - additional string procedures
+Internal:
+ - move many builtins to standard library
+ - move sequences to library
+Removed:
+ - iterators
+
 Version 0.3.0
 27 July 2021
 Added:

@@ -36,16 +36,16 @@ minim: $(BUILD_DIR)/config.h $(OBJS)
 tests: minim unit-tests lib-tests;
 
 unit-tests: $(TEST_EXES)
-	sh $(TEST_DIR)/test.sh $(TEST_EXES)
+	bash $(TEST_DIR)/test.sh $(TEST_EXES)
 
 memcheck: $(TEST_EXES)
-	sh $(TEST_DIR)/memcheck.sh $(TEST_EXES)
+	bash $(TEST_DIR)/memcheck.sh $(TEST_EXES)
 
 examples:
-	sh $(TEST_DIR)/examples.sh
+	bash $(TEST_DIR)/examples.sh
 
 lib-tests:
-	sh $(TEST_DIR)/lib.sh
+	bash $(TEST_DIR)/lib.sh
 
 clean:
 	$(RM) $(OBJS) $(EXE)
