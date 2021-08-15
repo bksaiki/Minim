@@ -15,6 +15,11 @@
 #include "tail_call.h"
 #include "vector.h"
 
+// Handlers
+
+MinimObject *minim_error_handler = NULL;
+MinimObject *minim_exit_handler = NULL;
+
 // Visible functions
 
 MinimObject *minim_exactnum(void *num)
@@ -167,11 +172,11 @@ MinimObject *minim_char(unsigned int ch)
     return o;
 }
 
-MinimObject *minim_exit(long code)
+MinimObject *minim_exit(void *val)
 {
     MinimObject *o = GC_alloc(minim_exit_size);
     o->type = MINIM_OBJ_EXIT;
-    MINIM_EXIT_VAL(o) = code;
+    MINIM_EXIT_VAL(o) = val;
     return o;
 }
 

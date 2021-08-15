@@ -8,6 +8,7 @@
 #include "core/env.h"
 #include "core/eval.h"
 #include "core/module.h"
+#include "core/number.h"
 #include "core/parser.h"
 #include "core/print.h"
 #include "core/read.h"

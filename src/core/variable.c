@@ -167,8 +167,3 @@ MinimObject *minim_builtin_dump_symbols(MinimEnv *env, size_t argc, MinimObject 
     env_dump_symbols(env);
     return minim_void;
 }
-
-MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return minim_exit(0);
-}

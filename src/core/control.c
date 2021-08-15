@@ -7,6 +7,7 @@
 #include "builtin.h"
 #include "error.h"
 #include "eval.h"
+#include "jmp.h"
 #include "lambda.h"
 #include "list.h"
 #include "tail_call.h"
@@ -217,4 +218,13 @@ MinimObject *minim_builtin_callcc(MinimEnv *env, size_t argc, MinimObject **args
     {
         return MINIM_JUMP_VAL(cont);
     }
+}
+
+MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (minim_exit_handler != NULL)     // no return
+        minim_long_jump(minim_exit_handler, env, argc, args);
+
+    printf("exit handler not set up");
+    return NULL;    // panic
 }

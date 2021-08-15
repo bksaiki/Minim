@@ -61,7 +61,7 @@ typedef enum MinimObjectType
 #define minim_values_size           (3 * sizeof(void*))
 #define minim_error_size            (2 * sizeof(void*))
 #define minim_char_size             (1 + 1 * sizeof(int))
-#define minim_exit_size             1
+#define minim_exit_size             (2 * sizeof(void*))
 #define minim_jump_size             (3 * sizeof(void*))
 
 // Special objects
@@ -70,6 +70,9 @@ typedef enum MinimObjectType
 #define minim_true      ((MinimObject*) 0x10)
 #define minim_false     ((MinimObject*) 0x18)
 #define minim_null      ((MinimObject*) 0x20)
+
+extern MinimObject *minim_error_handler;
+extern MinimObject *minim_exit_handler;
 
 // Predicates 
 
@@ -135,7 +138,7 @@ typedef enum MinimObjectType
 #define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 16))))
 #define MINIM_ERROR(obj)            (*((MinimError**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_CHAR(obj)             (*((unsigned int*) VOID_PTR(PTR(obj, 4))))
-#define MINIM_EXIT_VAL(obj)         (*((long*) VOID_PTR(PTR(obj, 8))))
+#define MINIM_EXIT_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_JUMP_BUF(obj)         (*((jmp_buf**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_JUMP_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
 
@@ -170,7 +173,7 @@ MinimObject *minim_sequence(void *seq);
 MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);
 MinimObject *minim_char(unsigned int ch);
-MinimObject *minim_exit(long code);
+MinimObject *minim_exit(void *val);
 MinimObject *minim_jmp(void *ptr, void *val);
 
 //  Equivalence

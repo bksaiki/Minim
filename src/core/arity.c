@@ -37,6 +37,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(equalp, 2);
     SET_ARITY_EXACT(symbolp, 1);
     SET_ARITY_MIN(printf, 1);
+    SET_ARITY_RANGE(exit, 0, 1);
     SET_ARITY_RANGE(error, 1, 2);
     SET_ARITY_EXACT(void, 0);
     SET_ARITY_EXACT(version, 0);
@@ -227,7 +228,6 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(quasiquote, 1);
     SET_ARITY_EXACT(unquote, 1);
     SET_ARITY_MIN(lambda, 2);
-    SET_ARITY_EXACT(exit, 0);  // for now
     SET_ARITY_EXACT(delay, 1);
     SET_ARITY_EXACT(force, 1);
     SET_ARITY_EXACT(callcc, 1);
