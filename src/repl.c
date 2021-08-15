@@ -42,9 +42,9 @@ int minim_repl(char **argv, uint32_t flags)
     MinimEnv *top_env;
     MinimModule *module;
     MinimModuleCache *imports;
-    MinimObject *exit_handler;
+    MinimObject *exit_handler, *err_handler;
+    jmp_buf *exit_buf, *error_buf;
     Buffer *path;
-    jmp_buf *exit_buf;
     uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
@@ -73,9 +73,7 @@ int minim_repl(char **argv, uint32_t flags)
     exit_handler = minim_jmp(exit_buf, NULL);
     if (setjmp(*exit_buf) == 0)
     {
-        minim_error_handler = exit_handler;
-        minim_exit_handler = minim_error_handler;
-
+        minim_exit_handler = exit_handler;
         while (1)
         {   
             ReadTable rt;
@@ -111,20 +109,32 @@ int minim_repl(char **argv, uint32_t flags)
             }
 
             last_readf = rt.flags;
-            eval_ast(module->env, ast, &obj);
-            if (MINIM_OBJ_ERRORP(obj))
-            {    
-                print_minim_object(obj, module->env, &pp);
-                printf("\n");
-                fflush(stdout);
-            }
-            else if (MINIM_OBJ_EXITP(obj))
+            error_buf = GC_alloc_atomic(sizeof(jmp_buf));
+            err_handler = minim_jmp(error_buf, NULL);
+            if (setjmp(*error_buf) == 0)
             {
-                break;
-            }
-            else if (!minim_voidp(obj))
+                minim_error_handler = err_handler;
+                eval_ast(module->env, ast, &obj);
+                if (MINIM_OBJ_ERRORP(obj))
+                {    
+                    print_minim_object(obj, module->env, &pp);
+                    printf("\n");
+                    fflush(stdout);
+                }
+                else if (MINIM_OBJ_EXITP(obj))
+                {
+                    break;
+                }
+                else if (!minim_voidp(obj))
+                {
+                    print_minim_object(obj, module->env, &pp);
+                    printf("\n");
+                    fflush(stdout);
+                }
+            }       // error thrown
+            else
             {
-                print_minim_object(obj, module->env, &pp);
+                print_minim_object(MINIM_JUMP_VAL(err_handler), module->env, &pp);
                 printf("\n");
                 fflush(stdout);
             }

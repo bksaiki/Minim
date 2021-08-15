@@ -225,6 +225,6 @@ MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
     if (minim_exit_handler != NULL)     // no return
         minim_long_jump(minim_exit_handler, env, argc, args);
 
-    printf("exit handler not set up");
+    printf("exit handler not set up\n");
     return NULL;    // panic
 }
