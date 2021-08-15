@@ -130,7 +130,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
         env_intern_sym(env2, lam->rest, val);
     }
 
-    eval_ast_no_check(env2, lam->body, &res);
+    res = eval_ast_no_check(env2, lam->body);
     if (MINIM_OBJ_TAIL_CALLP(res))
     {   
         MinimTailCall *call = MINIM_TAIL_CALL(res);
@@ -193,7 +193,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
     MinimLambda *lam;
 
     // Convert bindings to list
-    unsyntax_ast(env, MINIM_AST(args[0]), &bindings);
+    bindings = unsyntax_ast(env, MINIM_AST(args[0]));
     if (MINIM_OBJ_SYMBOLP(bindings))
     {
         init_minim_lambda(&lam);
@@ -217,13 +217,13 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
         {
             if (minim_nullp(MINIM_CDR(it)) || minim_consp(MINIM_CDR(it)))
             {
-                unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &val);
+                val = unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)));
                 lam->args[i] = MINIM_SYMBOL(val);
             }
             else    // rest args
             {   
-                unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)), &val);
-                unsyntax_ast(env, MINIM_AST(MINIM_CDR(it)), &val2);
+                val = unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)));
+                val2 = unsyntax_ast(env, MINIM_AST(MINIM_CDR(it)));
                 lam->args[i] = MINIM_SYMBOL(val);
                 lam->rest = MINIM_SYMBOL(val2);
             }

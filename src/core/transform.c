@@ -629,7 +629,7 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
 {
     MinimObject *val, *trans;
 
-    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
+    val = eval_ast_no_check(env, MINIM_AST(args[1]));
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
@@ -675,7 +675,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
     SymbolList reserved;
     MinimObject *ast0;
 
-    eval_ast_no_check(env, MINIM_AST(args[0]), &ast0);
+    ast0 = eval_ast_no_check(env, MINIM_AST(args[0]));
     if (!ast0)
         THROW(env, minim_error("unknown identifier", MINIM_AST(args[0])->sym));
 
@@ -689,7 +689,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
     for (size_t i = 2; i < argc; ++i)
     {
         SyntaxNode *rule, *replace;
-        MinimObject *res;
 
         init_match_table(&table);
         rule = MINIM_AST(args[i]);
@@ -697,8 +696,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         {
             copy_syntax_node(&replace, rule->children[1]);
             replace = replace_syntax(env, replace, &table);
-            eval_ast_no_check(env, replace, &res);
-            return res;
+            return eval_ast_no_check(env, replace);
         }
     }
 

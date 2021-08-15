@@ -9,7 +9,7 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
-MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, MinimObject **perr)
+MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 {
     PrintParams pp;
     ReadTable rt;
@@ -65,7 +65,6 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
             fclose(file);
             
             THROW(prev->env, minim_err(e));
-            return NULL;
         }
 
         minim_module_add_expr(module, ast);
@@ -75,7 +74,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname, Min
     return module;
 }
 
-int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
+void minim_load_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
     ReadTable rt;
@@ -94,7 +93,6 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
         THROW(env, minim_error(get_buffer(bf), NULL));
-        return 1;
     }
 
     rt.idx = 0;
@@ -130,17 +128,16 @@ int minim_load_file(MinimEnv *env, const char *fname, MinimObject **perr)
             fclose(file);
 
             THROW(env, minim_err(e));
-            return 2;
         }
 
         minim_module_add_expr(module, ast);
     }
 
     fclose(file);
-    return (eval_module(module, perr) ? 0 : 3);
+    eval_module(module);
 }
 
-int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
+void minim_run_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
     ReadTable rt;
@@ -149,7 +146,6 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
     MinimModuleCache *cache;
     FILE *file;
     char *prev_dir;
-    int status;
 
     init_buffer(&mfname);
     valid_path(mfname, fname);
@@ -208,12 +204,10 @@ int minim_run_file(MinimEnv *env, const char *fname, MinimObject **perr)
     }
 
     fclose(file);
-    status = eval_module(module, perr) ? 0 : 3;
+    eval_module(module);
 
     // this is dumb
     minim_symbol_table_merge(env->table, module->export->table);
-
     env->current_dir = prev_dir;
     env->module = prev;
-    return status;
 }

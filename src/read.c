@@ -21,9 +21,8 @@ int minim_run(const char *str, uint32_t flags)
 {
     PrintParams pp;
     MinimEnv *env;
-    MinimObject *err, *exit_handler;
+    MinimObject *exit_handler;
     jmp_buf *exit_buf;
-    int status;
 
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
@@ -35,20 +34,9 @@ int minim_run(const char *str, uint32_t flags)
         init_env(&env, NULL, NULL);
         minim_load_builtins(env);
         if (!(flags & MINIM_FLAG_LOAD_LIBS))
-        {
-            if (minim_load_library(env))
-                return 1;
-        }
+            minim_load_library(env);
 
-        status = minim_load_file(env, str, &err);
-        if (status > 0)
-        {
-            print_minim_object(err, env, &pp);
-            printf("\n");
-            return 2;
-        }
-
-        return 0;
+        minim_load_file(env, str);
     }
     else
     {
@@ -62,21 +50,11 @@ int minim_run(const char *str, uint32_t flags)
 
         return is_int8(thrown) ? MINIM_NUMBER_TO_UINT(thrown): 0;
     }
-}
-
-int minim_load_library(MinimEnv *env)
-{
-    MinimObject *err;
-
-    if (minim_run_file(env, MINIM_LIB_PATH "lib/base.min", &err))
-    {
-        PrintParams pp;
-
-        set_default_print_params(&pp);
-        print_minim_object(err, env, &pp);
-        printf("\n");
-        return 1;
-    }
 
     return 0;
+}
+
+void minim_load_library(MinimEnv *env)
+{
+    minim_run_file(env, MINIM_LIB_PATH "lib/base.min");
 }

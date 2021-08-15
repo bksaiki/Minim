@@ -134,7 +134,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
         {
             MinimObject *export;
 
-            unsyntax_ast(env, MINIM_AST(args[i]), &export);
+            export = unsyntax_ast(env, MINIM_AST(args[i]));
             if (minim_listp(export))
             {
                 MinimModule *import;
@@ -143,7 +143,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                 char *attrib;
                 
                 attrib = MINIM_AST(MINIM_CAR(export))->sym;
-                unsyntax_ast(env, MINIM_AST(MINIM_CADR(export)), &name);
+                name = unsyntax_ast(env, MINIM_AST(MINIM_CADR(export)));
                 if (strcmp(attrib, "all") == 0)
                 {
                     init_buffer(&path);
@@ -178,7 +178,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
 
 MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *ret, *arg;
+    MinimObject *arg;
     MinimModule *tmp, *module2;
     Buffer *path, *fixed_path;
 
@@ -194,7 +194,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
     init_minim_module(&tmp, env->module->cache);
     for (size_t i = 0; i < argc; ++i)
     {
-        unsyntax_ast(env, MINIM_AST(args[i]), &arg);
+        arg = unsyntax_ast(env, MINIM_AST(args[i]));
 
         init_buffer(&path);
         init_buffer(&fixed_path);
@@ -215,16 +215,13 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         }
         else
         {
-            module2 = minim_load_file_as_module(env->module, get_buffer(fixed_path), &ret);
-            if (!module2) return ret;
-
+            module2 = minim_load_file_as_module(env->module, get_buffer(fixed_path));
             module2->prev = tmp;
             module2->name = get_buffer(fixed_path);
             minim_module_cache_add(env->module->cache, module2);
             minim_module_add_import(env->module, module2);
 
-            if (!eval_module(module2, &ret))
-                return ret;
+            eval_module(module2);
         }
 
         minim_symbol_table_merge(env->table, module2->export->table);

@@ -7,6 +7,6 @@
 int minim_run(const char *str, uint32_t flags);
 
 /* Loads every file from the base library */
-int minim_load_library(MinimEnv *env);
+void minim_load_library(MinimEnv *env);
 
 #endif

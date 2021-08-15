@@ -124,7 +124,7 @@ int minim_repl(char **argv, uint32_t flags)
             if (setjmp(*error_buf) == 0)
             {
                 minim_error_handler = err_handler;
-                eval_ast(module->env, ast, &obj);
+                obj = eval_ast(module->env, ast);
                 if (MINIM_OBJ_ERRORP(obj))
                 {    
                     print_minim_object(obj, module->env, &pp);

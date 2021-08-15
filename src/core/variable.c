@@ -13,7 +13,7 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
 {
     MinimObject *val;
 
-    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
+    val = eval_ast_no_check(env, MINIM_AST(args[1]));
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
@@ -51,34 +51,25 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
 
 MinimObject *minim_builtin_quote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
-    unsyntax_ast_rec(env, MINIM_AST(args[0]), &res);
-    return res;
+    return unsyntax_ast_rec(env, MINIM_AST(args[0]));
 }
 
 MinimObject *minim_builtin_quasiquote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
-    unsyntax_ast_rec2(env, MINIM_AST(args[0]), &res);
-    return res;
+    return unsyntax_ast_rec2(env, MINIM_AST(args[0]));
 }
 
 MinimObject *minim_builtin_unquote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
-    eval_ast_no_check(env, MINIM_AST(args[0]), &res);
-    return res;
+    return eval_ast_no_check(env, MINIM_AST(args[0]));
 }
 
 MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *sym, *val;
 
-    unsyntax_ast(env, MINIM_AST(args[0]), &sym);
-    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
+    sym = unsyntax_ast(env, MINIM_AST(args[0]));
+    val = eval_ast_no_check(env, MINIM_AST(args[1]));
     if (env_set_sym(env, MINIM_STRING(sym), val))
     {
         env_set_sym(env, MINIM_STRING(sym), val);

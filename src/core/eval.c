@@ -196,10 +196,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
         {
             proc = env_get_sym(env, node->children[0]->sym);
             if (flags & UNSYNTAX_QUASIQUOTE && proc && MINIM_SYNTAX(proc) == minim_builtin_unquote)
-            {
-                eval_ast_no_check(env, node->children[1], &res);
-                return res;
-            }
+                return eval_ast_no_check(env, node->children[1]);
         }
 
         args = GC_alloc(node->childc * sizeof(MinimObject*));
@@ -432,7 +429,7 @@ static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
 
 // ================================ Public ================================
 
-int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
 {
     MinimEnv *env2;
 
@@ -443,33 +440,31 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     if (expr_is_import(env, ast))
     {
         check_syntax(env2, ast);
-        *pobj = eval_top_level(env, ast, minim_builtin_import);
+        return eval_top_level(env, ast, minim_builtin_import);
     }
     else if (expr_is_macro(env, ast))
     {
         ast = transform_syntax(env, ast);
-        *pobj = eval_top_level(env, ast, minim_builtin_def_syntaxes);
+        return eval_top_level(env, ast, minim_builtin_def_syntaxes);
     }
     else
     {
         check_syntax(env2, ast);
         ast = transform_syntax(env, ast);
-        *pobj = eval_ast_node(env, ast);
+        return eval_ast_node(env, ast);
     }
-
-    return 1;
 }
 
-int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
 {
-    *pobj = eval_ast_node(env, ast);
-    return 1;
+    return eval_ast_node(env, ast);
 }
 
-int eval_module(MinimModule *module, MinimObject **pobj)
+MinimObject *eval_module(MinimModule *module)
 {
     PrintParams pp;
     MinimEnv *env2;
+    MinimObject *res;
 
     // importing
     for (size_t i = 0; i < module->exprc; ++i)
@@ -477,7 +472,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_import(module->env, module->exprs[i]))
         {
             check_syntax(module->env, module->exprs[i]);
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_import);
+            eval_top_level(module->env, module->exprs[i], minim_builtin_import);
         }
     }
 
@@ -491,7 +486,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_macro(module->env, module->exprs[i]))
         {
             module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
+            eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
         }
     }
 
@@ -503,7 +498,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
 
         module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
         if (expr_is_macro(module->env, module->exprs[i]))
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
+            eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
     }
 
     // Evaluation
@@ -514,10 +509,10 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        eval_ast_no_check(module->env, module->exprs[i], pobj);
-        if (!minim_voidp(*pobj))
+        res = eval_ast_no_check(module->env, module->exprs[i]);
+        if (!minim_voidp(res))
         {
-            print_minim_object(*pobj, module->env, &pp);
+            print_minim_object(res, module->env, &pp);
             printf("\n");
         }
     }
@@ -526,28 +521,25 @@ int eval_module(MinimModule *module, MinimObject **pobj)
     for (size_t i = 0; i < module->exprc; ++i)
     {
         if (expr_is_export(module->env, module->exprs[i]))
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_export);
+            eval_top_level(module->env, module->exprs[i], minim_builtin_export);
     }
 
-    return 1;
+    return minim_void;
 }
 
-int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *unsyntax_ast(MinimEnv *env, SyntaxNode *ast)
 {
-    *pobj = unsyntax_ast_node(env, ast, 0);
-    return 1;
+    return unsyntax_ast_node(env, ast, 0);
 }
 
-int unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast)
 {
-    *pobj = unsyntax_ast_node(env, ast, UNSYNTAX_REC);
-    return 1;
+    return unsyntax_ast_node(env, ast, UNSYNTAX_REC);
 }
 
-int unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast)
 {
-    *pobj = unsyntax_ast_node(env, ast, UNSYNTAX_REC | UNSYNTAX_QUASIQUOTE);
-    return 1;
+    return unsyntax_ast_node(env, ast, UNSYNTAX_REC | UNSYNTAX_QUASIQUOTE);
 }
 
 char *eval_string(char *str, size_t len)
@@ -595,7 +587,7 @@ char *eval_string(char *str, size_t len)
                 return out;
             }
 
-            eval_ast(env, ast, &obj);  
+            obj = eval_ast(env, ast); 
         }
     }
     else
