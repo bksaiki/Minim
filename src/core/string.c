@@ -32,20 +32,6 @@ void replace_special_chars(char *str)
     str[dest] = '\0';
 }
 
-static bool assert_string_args(size_t argc, MinimObject **args, MinimObject **res, const char *name)
-{
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (!MINIM_OBJ_STRINGP(args[i]))
-        {
-            *res = minim_argument_error("string", name, i, args[i]);
-            return false;
-        }
-    }
-    
-    return true;
-}
-
 // *** Builtins *** //
 
 MinimObject *minim_builtin_stringp(MinimEnv *env, size_t argc, MinimObject **args)
@@ -182,22 +168,6 @@ MinimObject *minim_builtin_string_fillb(MinimEnv *env, size_t argc, MinimObject 
     for (size_t i = 0; i < strlen(str); ++i)
         str[i] = MINIM_CHAR(args[1]);
     return minim_void;
-}
-
-MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    MinimObject *res;
-    Buffer *bf;
-
-    if (!assert_string_args(argc, args, &res, "string-append"))
-        return res;
-
-    init_buffer(&bf);
-    for (size_t i = 0; i < argc; ++i)
-        writes_buffer(bf, MINIM_STRING(args[i]));
-
-    trim_buffer(bf);
-    return minim_string(get_buffer(bf));
 }
 
 MinimObject *minim_builtin_substring(MinimEnv *env, size_t argc, MinimObject **args)

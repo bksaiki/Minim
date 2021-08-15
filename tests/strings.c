@@ -330,20 +330,6 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
-        {
-            "(string-append \"a\" \"b\")",              "\"ab\"",
-            "(string-append \"hel\" \"lo\")",           "\"hello\"",
-            "(string-append \"I a\" \"m h\" \"ere\")",  "\"I am here\""
-        };
-
-        printf("Testing 'string-append'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
         const int COUNT = 5;
         char strs[10][256] =
         {

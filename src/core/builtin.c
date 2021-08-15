@@ -138,7 +138,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "string-set!", MINIM_OBJ_FUNC, minim_builtin_string_setb);
     minim_load_builtin(env, "string-copy", MINIM_OBJ_FUNC, minim_builtin_string_copy);
     minim_load_builtin(env, "string-fill!", MINIM_OBJ_FUNC, minim_builtin_string_fillb);
-    minim_load_builtin(env, "string-append", MINIM_OBJ_FUNC, minim_builtin_string_append);
     minim_load_builtin(env, "substring", MINIM_OBJ_FUNC, minim_builtin_substring);
     minim_load_builtin(env, "string->symbol", MINIM_OBJ_FUNC, minim_builtin_string_to_symbol);
     minim_load_builtin(env, "symbol->string", MINIM_OBJ_FUNC, minim_builtin_symbol_to_string);

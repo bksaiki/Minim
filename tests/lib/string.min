@@ -70,6 +70,13 @@
 (equal? (string-ci<=? "ab" "abc") #t)
 (equal? (string-ci<=? "abc" "ab") #f)
 
+; string-append
+(equal? (string-append) "")
+(equal? (string-append "a" "b") "ab")
+(equal? (string-append "hel" "lo") "hello")
+(equal? (string-append "I a" "m h" "ere") "I am here")
+(equal? (string-append "abc" "" " " "" "def") "abc def")
+
 ; string->list
 (equal? (string->list "") '())
 (equal? (string->list "abc") '(#\a #\b #\c))
