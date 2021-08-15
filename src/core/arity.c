@@ -89,6 +89,11 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(char_ci_ltp, 2);
     SET_ARITY_EXACT(char_ci_gtep, 2);
     SET_ARITY_EXACT(char_ci_ltep, 2);
+    SET_ARITY_EXACT(char_alphabeticp, 1);
+    SET_ARITY_EXACT(char_numericp, 1);
+    SET_ARITY_EXACT(char_whitespacep, 1);
+    SET_ARITY_EXACT(char_upper_casep, 1);
+    SET_ARITY_EXACT(char_lower_casep, 1);
     SET_ARITY_EXACT(int_to_char, 1);
     SET_ARITY_EXACT(char_to_int, 1);
     SET_ARITY_EXACT(char_upcase, 1);

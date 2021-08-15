@@ -119,6 +119,46 @@ MinimObject *minim_builtin_char_ci_ltep(MinimEnv *env, size_t argc, MinimObject 
     return to_bool(toupper(MINIM_CHAR(args[0])) <= toupper(MINIM_CHAR(args[1])));
 }
 
+MinimObject *minim_builtin_char_alphabeticp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_CHARP(args[0]))
+        return minim_argument_error("character", "char-alphabetic?", 0, args[0]);
+
+    return to_bool(isalpha(MINIM_CHAR(args[0])));
+}
+
+MinimObject *minim_builtin_char_numericp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_CHARP(args[0]))
+        return minim_argument_error("character", "char-numeric?", 0, args[0]);
+
+    return to_bool(isdigit(MINIM_CHAR(args[0])));
+}
+
+MinimObject *minim_builtin_char_whitespacep(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_CHARP(args[0]))
+        return minim_argument_error("character", "char-whitespace?", 0, args[0]);
+
+    return to_bool(isspace(MINIM_CHAR(args[0])));
+}
+
+MinimObject *minim_builtin_char_upper_casep(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_CHARP(args[0]))
+        return minim_argument_error("character", "char-upper-case?", 0, args[0]);
+
+    return to_bool(isupper(MINIM_CHAR(args[0])));
+}
+
+MinimObject *minim_builtin_char_lower_casep(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_CHARP(args[0]))
+        return minim_argument_error("character", "char-lower-case?", 0, args[0]);
+
+    return to_bool(islower(MINIM_CHAR(args[0])));
+}
+
 MinimObject *minim_builtin_int_to_char(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *limit;
