@@ -195,7 +195,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, size_t argc, MinimObject **a
         
         end = MINIM_NUMBER_TO_UINT(args[2]);
         if (start >= end || end > len)
-            return minim_error("expected [begin, end)", "substring");
+            THROW(minim_error("expected [begin, end)", "substring"));
     }
 
     tmp = GC_alloc_atomic((end - start + 1) * sizeof(char));
@@ -252,7 +252,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, size_t argc, MinimObject **args
     vcount = collect_format_vars(str, len);
 
     if (vcount != argc - 1)
-        return minim_error("number of format variables do not match argument count", "format");
+        THROW(minim_error("number of format variables do not match argument count", "format"));
 
     var = 1;
     init_buffer(&bf);
@@ -261,7 +261,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, size_t argc, MinimObject **args
         if (str[i] == '~')
         {
             if (++i == len)
-                return minim_error("expected a character after '~'", "format");
+                THROW(minim_error("expected a character after '~'", "format"));
 
             if (str[i] == 'a')
             {
@@ -299,9 +299,6 @@ MinimObject *minim_builtin_printf(MinimEnv *env, size_t argc, MinimObject **args
         return minim_argument_error("string", "printf", 0, args[0]);
 
     val = minim_builtin_format(env, argc, args);
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-    
     set_default_print_params(&pp);
     pp.quote = true;
     pp.display = true;

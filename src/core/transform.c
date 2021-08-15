@@ -671,9 +671,6 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
     MinimObject *val, *trans;
 
     eval_ast_no_check(env, MINIM_AST(args[1]), &val);
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-    
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
@@ -720,7 +717,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
 
     eval_ast_no_check(env, MINIM_AST(args[0]), &ast0);
     if (!ast0)
-        return minim_error("unknown identifier", MINIM_AST(args[0])->sym);
+        THROW(minim_error("unknown identifier", MINIM_AST(args[0])->sym));
 
     if (!MINIM_OBJ_ASTP(ast0))
         return minim_argument_error("syntax?", "syntax-case", 0, ast0);

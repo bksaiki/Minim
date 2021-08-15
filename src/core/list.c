@@ -493,7 +493,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, size_t argc, MinimObject **ar
     for (size_t i = 0; i < idx; ++i, it = MINIM_CDR(it))
     {
         if (minim_nullp(it))
-            return minim_error("index out of bounds: ~u", "list-ref", idx);    
+            THROW(minim_error("index out of bounds: ~u", "list-ref", idx));    
     }
 
     return MINIM_CAR(it);

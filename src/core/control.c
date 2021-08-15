@@ -21,9 +21,6 @@ MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *res, *cond;
 
     eval_ast_no_check(env, MINIM_AST(args[0]), &cond);
-    if (MINIM_OBJ_THROWNP(cond))
-        return cond;
-
     eval_ast_no_check(env, (coerce_into_bool(cond) ? MINIM_AST(args[1]) : MINIM_AST(args[2])), &res);
     return res;
 }
@@ -40,9 +37,6 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
     {
         binding = MINIM_AST(args[0])->children[i];
         eval_ast_no_check(env, binding->children[1], &val);
-        if (MINIM_OBJ_THROWNP(val))
-            return val;
-
         names = binding->children[0];
         if (!MINIM_OBJ_VALUESP(val))
         {
@@ -84,11 +78,8 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
     for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
     {
         binding = MINIM_AST(args[0])->children[i];
-        eval_ast_no_check(env2, binding->children[1], &val);
-        if (MINIM_OBJ_THROWNP(val))
-            return val;
-
         names = binding->children[0];
+        eval_ast_no_check(env2, binding->children[1], &val);
         if (!MINIM_OBJ_VALUESP(val))
         {
             if (names->childc != 1)
@@ -130,12 +121,6 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
     for (size_t i = 0; i < argc; ++i)
     {
         eval_ast_no_check(env2, MINIM_AST(args[i]), &val);
-        if (MINIM_OBJ_THROWNP(val))
-        {
-            res = val;
-            break;
-        }
-
         if (i + 1 == argc)
             res = val;
     }
@@ -172,7 +157,7 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
                     for (MinimObject *it = MINIM_CDR(ce_pair); !minim_nullp(it); it = MINIM_CDR(it))
                     {
                         eval_ast_no_check(env2, MINIM_AST(MINIM_CAR(it)), &val);
-                        if (MINIM_OBJ_THROWNP(val) || !MINIM_CDR(it))
+                        if (minim_nullp(MINIM_CDR(it)))
                             return val;   
                     }
                 }

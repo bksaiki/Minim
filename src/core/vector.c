@@ -90,7 +90,7 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, size_t argc, MinimObject **
 
     idx = MINIM_NUMBER_TO_UINT(args[1]);
     if  (idx >= MINIM_VECTOR_LEN(args[0]))
-        return minim_error("index out of bounds: ~u", "vector-ref", idx);
+        THROW(minim_error("index out of bounds: ~u", "vector-ref", idx));
     
     return MINIM_VECTOR_REF(args[0], idx);
 }
@@ -107,7 +107,7 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, size_t argc, MinimObject *
 
     idx = MINIM_NUMBER_TO_UINT(args[1]);
     if  (idx >= MINIM_VECTOR_LEN(args[0]))
-        return minim_error("index out of bounds: ~u", "vector-set!", idx);
+        THROW(minim_error("index out of bounds: ~u", "vector-set!", idx));
 
     MINIM_VECTOR_REF(args[0], idx) = args[2];
     return minim_void;

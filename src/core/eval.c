@@ -145,26 +145,15 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
             res = env_get_sym(env, str);
 
             if (!res)
-                return minim_error("unrecognized symbol", str);
+                THROW(minim_error("unrecognized symbol", str));
             else if (MINIM_OBJ_SYNTAXP(res))
-                return minim_error("bad syntax", str);
+                THROW(minim_error("bad syntax", str));
             else if (MINIM_OBJ_TRANSFORMP(res))
-                return minim_error("bad transform", str);
+                THROW(minim_error("bad transform", str));
         }
     }
 
     return res;
-}
-
-static MinimObject *error_or_exit(size_t argc, MinimObject **args)
-{
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (MINIM_OBJ_THROWNP(args[i]))
-            return args[i];
-    }
-
-    return NULL;
 }
 
 // Unsyntax
@@ -269,7 +258,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         size_t argc;
 
         if (node->childc == 0)
-            return minim_error("missing procedure expression", NULL);
+            THROW(minim_error("missing procedure expression", NULL));
 
         argc = node->childc - 1;
         args = GC_alloc(argc * sizeof(MinimObject*));
@@ -291,16 +280,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
                 args[i] = eval_ast_node(env, node->children[i + 1]);
             env->flags = prev_flags;       
 
-            possible_err = error_or_exit(argc, args);
-            if (possible_err)
-            {
-                res = possible_err;
-            }
-            else
-            {
-                if (minim_check_arity(proc, argc, env, &res))
-                    res = proc(env, argc, args);
-            }
+            if (minim_check_arity(proc, argc, env, &res))
+                res = proc(env, argc, args);
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
@@ -337,12 +318,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]); 
 
-            possible_err = error_or_exit(argc, args);
-            if (possible_err)
-            {
-                res = possible_err;
-            }
-            else if (env_has_called(env, lam))
+            if (env_has_called(env, lam))
             {
                 MinimTailCall *call;
 
@@ -359,16 +335,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]); 
 
-            possible_err = error_or_exit(argc, args);
-            if (possible_err)
-            {
-                res = possible_err;
-            }
-            else
-            {
-                // no return
-                minim_long_jump(op, env, argc, args);
-            }
+            // no return
+            minim_long_jump(op, env, argc, args);
         }
         else
         {
@@ -386,8 +354,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         for (size_t i = 0; i < node->childc; ++i)
             args[i] = eval_ast_node(env, node->children[i]);
 
-        possible_err = error_or_exit(node->childc, args);
-        return (possible_err) ? possible_err : minim_builtin_vector(env, node->childc, args);
+        return minim_builtin_vector(env, node->childc, args);
     }
     else if (node->type == SYNTAX_NODE_PAIR)
     {
@@ -398,8 +365,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         args[0] = eval_ast_node(env, node->children[0]);
         args[1] = eval_ast_node(env, node->children[1]);
 
-        possible_err = error_or_exit(node->childc, args);
-        return (possible_err) ? possible_err : minim_builtin_cons(env, 2, args);
+        return minim_builtin_cons(env, 2, args);
     }
     else
     {

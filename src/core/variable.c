@@ -14,9 +14,6 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
     MinimObject *res, *val;
 
     eval_ast_no_check(env, MINIM_AST(args[1]), &val);
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-    
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
@@ -86,9 +83,6 @@ MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
 
     unsyntax_ast(env, MINIM_AST(args[0]), &sym);
     eval_ast_no_check(env, MINIM_AST(args[1]), &val);
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-
     if (env_set_sym(env, MINIM_STRING(sym), val))
     {
         env_set_sym(env, MINIM_STRING(sym), val);
@@ -103,7 +97,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
         set_default_print_params(&pp);
         pp.quote = true;
         print_to_buffer(bf, sym, env, &pp);
-        return minim_error("not a variable", bf->data);
+        THROW(minim_error("not a variable", bf->data));
     }
 }
 
