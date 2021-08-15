@@ -31,7 +31,7 @@ int main()
         const int COUNT = 1;
         char strs[1][256] =
         {
-            "(begin (def foo (lambda (x) x)) (foo 1) (foo 'a))"
+            "(begin (def-values (foo) (lambda (x) x)) (foo 1) (foo 'a))"
         };
 
         printf("Testing lambdas\n");
@@ -43,7 +43,8 @@ int main()
         const int COUNT = 1;
         char strs[1][256] =
         {
-            "(begin (def ident (lambda (x) x)) (def foo ident) (foo 1) (foo 'a))"
+            "(begin (def-values (ident) (lambda (x) x))         \
+                    (def-values (foo) ident) (foo 1) (foo 'a))"
         };
 
         printf("Testing copied lambdas\n");
@@ -52,11 +53,10 @@ int main()
     }
 
     {
-        const int COUNT = 2;
-        char strs[2][256] =
+        const int COUNT = 1;
+        char strs[1][256] =
         {
-            "(begin (def foo (lambda args (apply + args))) (foo 1) (foo 1 2) (foo 1 2 3))",
-            "(begin (def foo args (apply + args)) (foo 1) (foo 1 2) (foo 1 2 3))"
+            "(begin (def-values (foo) (lambda args (apply + args))) (foo 1) (foo 1 2) (foo 1 2 3))"
         };
 
         printf("Testing rest arguments\n");
@@ -68,13 +68,13 @@ int main()
         const int COUNT = 6;
         char strs[12][256] =
         {
-            "(begin (def foo (lambda (x . rest) (cons x rest))) (foo 1))",      "'(1)",
-            "(begin (def foo (lambda (x . rest) (cons x rest))) (foo 1 2))",    "'(1 2)",
-            "(begin (def foo (lambda (x . rest) (cons x rest))) (foo 1 2 3))",  "'(1 2 3)",
+            "(begin (def-values (foo) (lambda (x . rest) (cons x rest))) (foo 1))",      "'(1)",
+            "(begin (def-values (foo) (lambda (x . rest) (cons x rest))) (foo 1 2))",    "'(1 2)",
+            "(begin (def-values (foo) (lambda (x . rest) (cons x rest))) (foo 1 2 3))",  "'(1 2 3)",
 
-            "(begin (def foo (lambda (x y . rest) (cons x rest))) (foo 1 2))",      "'(1 2)",
-            "(begin (def foo (lambda (x y . rest) (cons x rest))) (foo 1 2 3))",    "'(1 2 3)",
-            "(begin (def foo (lambda (x y . rest) (cons x rest))) (foo 1 2 3 4))",  "'(1 2 3 4)"
+            "(begin (def-values (foo) (lambda (x y . rest) (cons x rest))) (foo 1 2))",      "'(1 2)",
+            "(begin (def-values (foo) (lambda (x y . rest) (cons x rest))) (foo 1 2 3))",    "'(1 2 3)",
+            "(begin (def-values (foo) (lambda (x y . rest) (cons x rest))) (foo 1 2 3 4))",  "'(1 2 3 4)"
         };
 
         printf("Testing rest arguments\n");
@@ -83,11 +83,10 @@ int main()
     }
 
     {
-        const int COUNT = 2;
-        char strs[2][256] =
+        const int COUNT = 1;
+        char strs[1][256] =
         {
-            "(begin (def foo (lambda (x) (set! x (- x 2)) (set! x (* 2 x)) x)) (foo 6))",
-            "(begin (def foo (x) (set! x (- x 2)) (set! x (* 2 x)) x) (foo 6))"
+            "(begin (def-values (foo) (lambda (x) (set! x (- x 2)) (set! x (* 2 x)) x)) (foo 6))"
         };
 
         printf("Testing multi-line body\n");
