@@ -213,9 +213,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
 
     case MINIM_OBJ_SYNTAX:
         return MINIM_SYNTAX(a) == MINIM_SYNTAX(b);
-
-    case MINIM_OBJ_CLOSURE:
-        return minim_lambda_equalp(MINIM_CLOSURE(a), MINIM_CLOSURE(b));
     
     case MINIM_OBJ_AST:
         return ast_equalp(MINIM_AST(a), MINIM_AST(b));
@@ -224,6 +221,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return true;
 
     /*
+    case MINIM_OBJ_CLOSURE:
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_TAIL_CALL:

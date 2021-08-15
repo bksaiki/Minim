@@ -47,28 +47,6 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     *penv = env;
 }
 
-
-void rcopy_env(MinimEnv **penv, MinimEnv *src)
-{
-    if (src->parent)
-    {
-        MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
-
-        rcopy_env(&env->parent, src->parent);
-        env->module = src->module;
-        copy_minim_symbol_table(&env->table, src->table);
-        env->current_dir = src->current_dir;
-        env->flags = (src->flags | MINIM_ENV_COPIED);
-
-
-        *penv = env;
-    }
-    else
-    {
-        *penv = src;
-    }
-}
-
 static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t hash)
 {
     MinimObject *val;
@@ -147,7 +125,7 @@ bool env_has_called(MinimEnv *env, MinimLambda *lam)
     if (env->flags & MINIM_ENV_TAIL_CALLABLE)
     {
         if (env->callee)
-            return minim_lambda_equalp(env->callee, lam);
+            return env->callee == lam;
         
         if (env->parent)
             return env_has_called(env->parent, lam);

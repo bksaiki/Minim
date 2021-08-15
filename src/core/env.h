@@ -5,8 +5,7 @@
 #include "print.h" // debugging
 #include "symbols.h"
 
-#define MINIM_ENV_COPIED            0x1
-#define MINIM_ENV_TAIL_CALLABLE     0x2
+#define MINIM_ENV_TAIL_CALLABLE     0x1
 
 // forward declarations
 typedef struct MinimLambda MinimLambda;

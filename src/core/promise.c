@@ -5,8 +5,9 @@
 MinimObject *minim_builtin_delay(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimEnv *env2;
-    
-    rcopy_env(&env2, env);
+
+    init_env(&env2, env, NULL);
+    env2->flags &= ~MINIM_ENV_TAIL_CALLABLE; // should not tail call
     return minim_promise(args[0], env2);
 }
 

@@ -49,7 +49,7 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
             if (MINIM_OBJ_CLOSUREP(MINIM_VALUES(val)[i]))
                 env_intern_sym(MINIM_CLOSURE(MINIM_VALUES(val)[i])->env,
                                MINIM_AST(args[0])->children[i]->sym,
-                               val);
+                               MINIM_VALUES(val)[i]);
         }
     }
 
