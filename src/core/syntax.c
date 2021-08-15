@@ -311,7 +311,7 @@ static bool check_syntax_let_values(MinimEnv *env, SyntaxNode *ast, MinimObject 
     return true;
 }
 
-static bool check_syntax_delay(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
+static bool check_syntax_1arg(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
 {
     return check_syntax_rec(env, ast->children[1], perr);
 }
@@ -525,7 +525,8 @@ static bool check_syntax_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **perr)
             CHECK_REC(proc, minim_builtin_let_values, check_syntax_let_values);
             CHECK_REC(proc, minim_builtin_letstar_values, check_syntax_let_values);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
-            CHECK_REC(proc, minim_builtin_delay, check_syntax_delay);
+            CHECK_REC(proc, minim_builtin_delay, check_syntax_1arg);
+            CHECK_REC(proc, minim_builtin_callcc, check_syntax_1arg)
 
             CHECK_REC(proc, minim_builtin_def_syntaxes, check_syntax_def_syntaxes);
             CHECK_REC(proc, minim_builtin_syntax_case, check_syntax_syntax_case);

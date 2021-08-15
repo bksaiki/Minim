@@ -491,6 +491,20 @@ int main()
         const int COUNT = 3;
         char strs[6][256] =
         {
+            "(call/cc (lambda (e) 1))",         "1",
+            "(call/cc (lambda (e) (e) 1))",     "<void>",
+            "(call/cc (lambda (e) (e 2) 1))",   "2"
+        };
+
+        printf("Testing 'call/cc'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
             "(vector)",             "'#()",
             "(vector 1)",           "'#(1)",
             "(vector 1 2 3)",       "'#(1 2 3)"

@@ -230,6 +230,7 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(exit, 0);  // for now
     SET_ARITY_EXACT(delay, 1);
     SET_ARITY_EXACT(force, 1);
+    SET_ARITY_EXACT(callcc, 1);
 
     SET_ARITY_EXACT(def_syntaxes, 2);
     SET_ARITY_MIN(syntax_case, 2)
