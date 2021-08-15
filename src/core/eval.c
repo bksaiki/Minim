@@ -355,7 +355,6 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         }
         else
         {
-            print_ast(node); printf("\n");
             res = minim_error("unknown operator", node->children[0]->sym);
         }
 
