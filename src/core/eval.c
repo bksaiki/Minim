@@ -441,9 +441,7 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     init_env(&env2, env, NULL);
     if (expr_is_import(env, ast))
     {
-        if (!check_syntax(env2, ast, pobj))
-            return 0;
-
+        check_syntax(env2, ast);
         *pobj = eval_top_level(env, ast, minim_builtin_import);
         if (MINIM_OBJ_ERRORP(*pobj))
             return 0;
@@ -459,9 +457,7 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     }
     else
     {
-        if (!check_syntax(env2, ast, pobj))
-            return 0;
-
+        check_syntax(env2, ast);
         ast = transform_syntax(env, ast, pobj);
         if (*pobj)  return 0;
 
@@ -489,9 +485,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
     {
         if (expr_is_import(module->env, module->exprs[i]))
         {
-            if (!check_syntax(module->env, module->exprs[i], pobj))
-                return 0;
-
+            check_syntax(module->env, module->exprs[i]);
             *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_import);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
@@ -537,9 +531,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
     set_default_print_params(&pp);
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        if (!check_syntax(env2, module->exprs[i], pobj))
-            return 0;
-
+        check_syntax(env2, module->exprs[i]);
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 

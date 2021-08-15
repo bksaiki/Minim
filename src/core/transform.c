@@ -425,15 +425,15 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **
     res = eval_lambda(MINIM_TRANSFORM_PROC(trans), NULL, 1, &body);
     if (MINIM_OBJ_ERRORP(res))
     {
-        *perr = res;
+        THROW(res);
         return ast;
     }
     else if (!MINIM_OBJ_ASTP(res))
     {
-        *perr = minim_syntax_error("expected syntax as a result",
-                                    MINIM_TRANSFORM_NAME(trans),
-                                    ast,
-                                    NULL);
+        THROW(minim_syntax_error("expected syntax as a result",
+                                 MINIM_TRANSFORM_NAME(trans),
+                                 ast,
+                                 NULL));
         return ast;
     }
 
@@ -529,7 +529,7 @@ valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t 
     {
         if (strcmp(match->sym, "...") == 0)
         {
-            *perr = minim_syntax_error("ellipse not allowed here", NULL, match, NULL);
+            THROW(minim_syntax_error("ellipse not allowed here", NULL, match, NULL));
             return false;
         }
 
@@ -577,13 +577,13 @@ valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, siz
             {
                 if (pdepth > depth)
                 {
-                    *perr = minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL);
+                    THROW(minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL));
                     return false;
                 }
 
                 if (pdepth < depth)
                 {
-                    *perr = minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL);
+                    THROW(minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL));
                     return false;
                 }
             }
@@ -643,7 +643,7 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
     return transform_syntax_rec(env, ast, perr);
 }
 
-bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved, MinimObject **perr)
+void check_transform(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved, MinimObject **perr)
 {
     MatchTable table;
     SymbolList reserved_lst;
@@ -657,8 +657,8 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
         reserved_lst.syms[i] = MINIM_AST(MINIM_CAR(it))->sym;
 
     init_match_table(&table);
-    return (valid_matchp(match, &table, &reserved_lst, 0, perr) &&
-            valid_replacep(replace, &table, &reserved_lst, 0, perr));
+    valid_matchp(match, &table, &reserved_lst, 0, perr);
+    valid_replacep(replace, &table, &reserved_lst, 0, perr);
 }
 
 // ================================ Builtins ================================

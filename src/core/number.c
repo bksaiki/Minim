@@ -258,7 +258,7 @@ MinimObject *minim_builtin_eq(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, "="))
-        return err;
+        THROW(err);
 
     return to_bool(minim_number_cmp_h(args, argc, 0));
 }
@@ -268,7 +268,7 @@ MinimObject *minim_builtin_gt(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, ">"))
-        return err;
+        THROW(err);
 
     return to_bool(minim_number_cmp_h(args, argc, 1));
 }
@@ -278,7 +278,7 @@ MinimObject *minim_builtin_lt(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, "<"))
-        return err;
+        THROW(err);
 
     return to_bool(minim_number_cmp_h(args, argc, 2));
 }
@@ -288,7 +288,7 @@ MinimObject *minim_builtin_gte(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, ">="))
-        return err;
+        THROW(err);
 
     return to_bool(minim_number_cmp_h(args, argc, 3));
 }
@@ -298,7 +298,7 @@ MinimObject *minim_builtin_lte(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, "<="))
-        return err;
+        THROW(err);
 
     return to_bool(minim_number_cmp_h(args, argc, 4));
 }

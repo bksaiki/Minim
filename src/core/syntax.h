@@ -4,6 +4,6 @@
 #include "ast.h"
 #include "env.h"
 
-bool check_syntax(MinimEnv *env, SyntaxNode *ast, MinimObject **perr);
+void check_syntax(MinimEnv *env, SyntaxNode *ast);
 
 #endif
