@@ -140,8 +140,6 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
             return eval_lambda(lam, env, call->argc, call->args);
     }
 
-    if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
-        minim_error_add_trace(MINIM_ERROR(res), lam->loc, lam->name);
     return res;
 }
 

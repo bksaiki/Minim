@@ -62,18 +62,29 @@ int minim_repl(char **argv, uint32_t flags)
     module->env->current_dir = get_buffer(path);
 
     set_default_print_params(&pp);
-    last_readf = READ_TABLE_FLAG_EOF;
-    if (!(flags & MINIM_FLAG_LOAD_LIBS))
-        minim_load_library(module->env);
-
-    setjmp(top_of_repl);
-    signal(SIGINT, int_handler);
-
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);
     if (setjmp(*exit_buf) == 0)
     {
+        error_buf = GC_alloc_atomic(sizeof(jmp_buf));
+        err_handler = minim_jmp(error_buf, NULL);
+        if (setjmp(*error_buf) != 0)    // error on loading library
+        {
+            print_minim_object(MINIM_JUMP_VAL(err_handler), module->env, &pp);
+            printf("\n");
+            fflush(stdout);
+            return 0;
+        }
+
         minim_exit_handler = exit_handler;
+        minim_error_handler = err_handler;
+        if (!(flags & MINIM_FLAG_LOAD_LIBS))
+            minim_load_library(module->env);
+
+        setjmp(top_of_repl);
+        signal(SIGINT, int_handler);
+
+        last_readf = READ_TABLE_FLAG_EOF;
         while (1)
         {   
             ReadTable rt;
@@ -109,7 +120,6 @@ int minim_repl(char **argv, uint32_t flags)
             }
 
             last_readf = rt.flags;
-            error_buf = GC_alloc_atomic(sizeof(jmp_buf));
             err_handler = minim_jmp(error_buf, NULL);
             if (setjmp(*error_buf) == 0)
             {

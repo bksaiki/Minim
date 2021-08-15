@@ -330,7 +330,6 @@ static void check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast)
     for (size_t i = 3; i < ast->childc; ++i)
     {
         MinimObject *rule;
-        MinimObject *err;
 
         unsyntax_ast(env, ast->children[i], &rule);
         if (!minim_listp(rule) || minim_list_length(rule) != 2)
@@ -338,8 +337,7 @@ static void check_syntax_syntax_case(MinimEnv *env, SyntaxNode *ast)
 
         check_transform(MINIM_AST(MINIM_CAR(rule)),
                         MINIM_AST(MINIM_CADR(rule)),
-                        reserved,
-                        &err);
+                        reserved);
     }
 }
 

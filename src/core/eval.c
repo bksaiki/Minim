@@ -1,3 +1,4 @@
+#include <setjmp.h>
 #include <string.h>
 
 #include "../common/path.h"
@@ -448,9 +449,7 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     }
     else if (expr_is_macro(env, ast))
     {
-        ast = transform_syntax(env, ast, pobj);
-        if (*pobj)  return 0;
-
+        ast = transform_syntax(env, ast);
         *pobj = eval_top_level(env, ast, minim_builtin_def_syntaxes);
         if (MINIM_OBJ_ERRORP(*pobj))
             return 0;
@@ -458,9 +457,7 @@ int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
     else
     {
         check_syntax(env2, ast);
-        ast = transform_syntax(env, ast, pobj);
-        if (*pobj)  return 0;
-
+        ast = transform_syntax(env, ast);
         *pobj = eval_ast_node(env, ast);
         if (MINIM_OBJ_ERRORP(*pobj))
             return 0;
@@ -501,9 +498,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
 
         if (expr_is_macro(module->env, module->exprs[i]))
         {
-            module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
-            if (*pobj)  return 0;
-
+            module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
             *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
             if (MINIM_OBJ_ERRORP(*pobj))
                 return 0;
@@ -516,9 +511,7 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
-        if (*pobj)  return 0;
-
+        module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
         if (expr_is_macro(module->env, module->exprs[i]))
         {
             *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
@@ -589,11 +582,12 @@ int unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
 
 char *eval_string(char *str, size_t len)
 {
-    SyntaxNode *ast, *err;
-    MinimObject *obj;
-    MinimEnv *env;
     PrintParams pp;
     ReadTable rt;
+    SyntaxNode *ast, *err;
+    MinimObject *obj, *exit_handler;
+    MinimEnv *env;
+    jmp_buf *exit_buf;
     FILE *tmp;
     char *out;
 
@@ -612,24 +606,37 @@ char *eval_string(char *str, size_t len)
     rt.eof = EOF;
 
     set_default_print_params(&pp);
-    while (~rt.flags & READ_TABLE_FLAG_EOF)
+    exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
+    exit_handler = minim_jmp(exit_buf, NULL);
+    if (setjmp(*exit_buf) == 0)
     {
-        minim_parse_port(tmp, "", &ast, &err, &rt);
-        if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+        minim_error_handler = exit_handler;
+        minim_exit_handler = exit_handler;
+        while (~rt.flags & READ_TABLE_FLAG_EOF)
         {
-            char *s = "Parsing failed!";
-            out = GC_alloc_atomic((strlen(s) + 1) * sizeof(char));
-            strcpy(out, s);
+            minim_parse_port(tmp, "", &ast, &err, &rt);
+            if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+            {
+                char *s = "Parsing failed!";
+                out = GC_alloc_atomic((strlen(s) + 1) * sizeof(char));
+                strcpy(out, s);
 
-            fclose(tmp);
-            return out;
+                fclose(tmp);
+                return out;
+            }
+
+            eval_ast(env, ast, &obj);  
         }
-
-        eval_ast(env, ast, &obj);
+    }
+    else
+    {
+        obj = MINIM_JUMP_VAL(exit_handler);
         if (MINIM_OBJ_ERRORP(obj))
         {
             fclose(tmp);
-            return print_to_string(obj, env, &pp);
+            print_minim_object(obj, env, &pp);
+            printf("\n");
+            return NULL;
         }
     }
 
