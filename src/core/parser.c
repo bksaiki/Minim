@@ -182,6 +182,41 @@ static SyntaxNode *read_datum(FILE *file, const char *name, ReadTable *ptable, S
     return node;
 }
 
+static SyntaxNode *read_char(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror)
+{
+    SyntaxNode *node;
+    SyntaxLoc *loc;
+    Buffer *bf;
+    char c;
+
+    init_buffer(&bf);
+    writes_buffer(bf, "#\\");
+    c = fgetc(file);
+
+    writec_buffer(bf, c);
+    // if (c == 'u')            unicode scalar
+    // {
+    //     c = fgetc(file);
+    // }
+    update_table(c, ptable);
+
+    init_syntax_node(&node, SYNTAX_NODE_DATUM);
+    trim_buffer(bf);
+    node->sym = get_buffer(bf);
+
+    init_syntax_loc(&loc, name);
+    loc->col = ptable->col;
+    loc->row = ptable->row;
+    ast_add_syntax_loc(node, loc);
+
+    // check for eof
+    c = fgetc(file);
+    if (c == ptable->eof)   update_table(c, ptable);
+    else                    ungetc(c, file); 
+
+    return node;
+}
+
 static SyntaxNode *read_string(FILE *file, const char *name, ReadTable *ptable, SyntaxNode **perror)
 {
     SyntaxNode *node;
@@ -458,6 +493,11 @@ static SyntaxNode *read_top(FILE *file, const char *name, ReadTable *ptable, Syn
             update_table(n, ptable);
             node = read_syntax(file, name, ptable, perror, "syntax");
         }
+        else if (n == '\\')
+        {
+            update_table(n, ptable);
+            node = read_char(file, name, ptable, perror);
+        }
         else
         {
             ungetc(n, file);
@@ -566,6 +606,14 @@ int minim_parse_port(FILE *file, const char *name,
         *psyntax = NULL;
         *perr = err;
         return 1;
+    }
+
+    // read forward in case of trailing whitespace
+    if (!(table->flags & READ_TABLE_FLAG_EOF))
+    {
+        c = advance_to_token(file, table);
+        if (c == table->eof)    update_table(c, table);
+        else                    ungetc(c, file);
     }
 
     *psyntax = node;

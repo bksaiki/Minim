@@ -73,7 +73,7 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
         lam->name = NULL;
     }
 
-    if (src->env)   rcopy_env(&lam->env, src->env);
+    if (src->env)   init_env(&lam->env, src->env, NULL);
     else            lam->env = NULL;
 
     if (src->loc)   copy_syntax_loc(&lam->loc, src->loc);
@@ -111,8 +111,8 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
         MinimObject *self;
 
         self = env_get_sym(env, lam->name);
-        if (!self || !MINIM_OBJ_CLOSUREP(self) || !minim_lambda_equalp(MINIM_CLOSURE(self), lam))
-            env_intern_sym(env2, lam->name, minim_closure(lam));
+        if (!self || !MINIM_OBJ_CLOSUREP(self) || MINIM_CLOSURE(self) != lam)
+            env_intern_sym(env2, lam->name, self);
     }
 
     for (size_t i = 0; i < lam->argc; ++i)
@@ -136,35 +136,13 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
     {   
         MinimTailCall *call = MINIM_TAIL_CALL(res);
 
-        if (minim_lambda_equalp(call->lam, lam))
+        if (call->lam == lam)
             return eval_lambda(lam, env, call->argc, call->args);
     }
 
     if (MINIM_OBJ_ERRORP(res) && lam->loc && lam->name)
         minim_error_add_trace(MINIM_ERROR(res), lam->loc, lam->name);
     return res;
-}
-
-bool minim_lambda_equalp(MinimLambda *a, MinimLambda *b)
-{
-    if (a == b)     return true;
-
-    if (a->argc != b->argc)         return false;
-    for (size_t i = 0; i < a->argc; ++i)
-    {
-        if (strcmp(a->args[i], b->args[i]) != 0)
-            return false;
-    }
-
-    if ((!a->name && b->name) || (a->name && !b->name) ||
-        (a->name && b->name && strcmp(a->name, b->name) != 0))
-        return false;
-
-    if ((!a->rest && b->rest) || (a->rest && !b->rest) ||
-        (a->rest && b->rest && strcmp(a->rest, b->rest) != 0))
-        return false;
-
-    return ast_equalp(a->body, b->body);
 }
 
 void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)
@@ -226,7 +204,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
             init_minim_lambda(&lam);
             lam->rest = MINIM_SYMBOL(bindings);
             collect_exprs(&args[1], argc - 1, lam);
-            rcopy_env(&lam->env, env);
+            init_env(&lam->env, env, NULL);
 
             res = minim_closure(lam);
             MINIM_SYMBOL(bindings) = NULL;
@@ -257,7 +235,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
             }
 
             collect_exprs(&args[1], argc - 1, lam);
-            rcopy_env(&lam->env, env);
+            init_env(&lam->env, env, NULL);
             res = minim_closure(lam);
         }
     }

@@ -55,7 +55,9 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
             {
                 env_intern_sym(env2, names->children[i]->sym, MINIM_VALUES_REF(val, i));
                 if (MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
-                    env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_REF(val, i))->env, names->children[0]->sym, val);
+                    env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_REF(val, i))->env,
+                                   names->children[0]->sym,
+                                   MINIM_VALUES_REF(val, i));
             }
         }
     }
@@ -98,7 +100,9 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
             {
                 env_intern_sym(env2, names->children[i]->sym, MINIM_VALUES_REF(val, i));
                 if (MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
-                    env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_REF(val, i))->env, names->children[0]->sym, val);
+                    env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_REF(val, i))->env,
+                                   names->children[0]->sym,
+                                   MINIM_VALUES_REF(val, i));
             }
         }
     }

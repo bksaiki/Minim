@@ -24,3 +24,9 @@
 (equal? 3 (lazy-ref v 2))
 (equal? 6 (lazy-ref v 5))
 (equal? 4 (lazy-ref w 1))
+
+;; lazy fibonacci
+(def fib (lazy-cons 1 (lazy-cons 1 (lazy-map + fib (lazy-cdr fib)))))
+(equal? (lazy-ref fib 5) 8)
+(equal? (lazy-ref fib 10) 89)
+(equal? (lazy-ref fib 50) 20365011074)

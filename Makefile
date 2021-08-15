@@ -13,7 +13,7 @@ TESTS 		:= $(shell find $(TEST_DIR) -name *.c)
 TEST_EXES 	:= $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	= -MMD -MP
-CFLAGS 		= -Wall -Werror -std=c11
+CFLAGS 		= -Wall -std=c11
 LDFLAGS 	= -lm -lgmp
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
@@ -36,10 +36,10 @@ minim: $(BUILD_DIR)/config.h $(OBJS)
 tests: minim unit-tests lib-tests;
 
 unit-tests: $(TEST_EXES)
-	$(TEST_DIR)/test.sh $(TEST_EXES)
+	sh $(TEST_DIR)/test.sh $(TEST_EXES)
 
 memcheck: $(TEST_EXES)
-	$(TEST_DIR)/memcheck.sh $(TEST_EXES)
+	sh $(TEST_DIR)/memcheck.sh $(TEST_EXES)
 
 examples:
 	sh $(TEST_DIR)/examples.sh

@@ -32,20 +32,6 @@ void replace_special_chars(char *str)
     str[dest] = '\0';
 }
 
-static bool assert_string_args(size_t argc, MinimObject **args, MinimObject **res, const char *name)
-{
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (!MINIM_OBJ_STRINGP(args[i]))
-        {
-            *res = minim_argument_error("string", name, i, args[i]);
-            return false;
-        }
-    }
-    
-    return true;
-}
-
 // *** Builtins *** //
 
 MinimObject *minim_builtin_stringp(MinimEnv *env, size_t argc, MinimObject **args)
@@ -53,20 +39,135 @@ MinimObject *minim_builtin_stringp(MinimEnv *env, size_t argc, MinimObject **arg
     return to_bool(MINIM_OBJ_STRINGP(args[0]));
 }
 
-MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject **args)
+MinimObject *minim_builtin_make_string(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-    Buffer *bf;
+    char *str;
+    size_t len;
+    char fill;
 
-    if (!assert_string_args(argc, args, &res, "string-append"))
-        return res;
+    if (!minim_exact_nonneg_intp(args[0]))
+        return minim_argument_error("exact non-negative integer", "make-string", 0, args[0]);
+    
+    if (argc == 1)
+    {
+        fill = '?';
+    }
+    else
+    {
+        if (!MINIM_OBJ_CHARP(args[1]))
+            return minim_argument_error("character", "make-string", 1, args[1]);
+        fill = MINIM_CHAR(args[1]);
+    }
 
-    init_buffer(&bf);
+    len = MINIM_NUMBER_TO_UINT(args[0]);
+    str = GC_alloc_atomic((len + 1) * sizeof(char));
+    for (size_t i = 0; i < len; ++i)
+        str[i] = fill;
+
+    str[len] = '\0';
+    return minim_string(str);
+}
+
+MinimObject *minim_builtin_string(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+
     for (size_t i = 0; i < argc; ++i)
-        writes_buffer(bf, MINIM_STRING(args[i]));
+    {
+        if (!MINIM_OBJ_CHARP(args[i]))
+            return minim_argument_error("character", "string", i, args[i]);
+    }
 
-    trim_buffer(bf);
-    return minim_string(get_buffer(bf));
+    str = GC_alloc_atomic((argc + 1) * sizeof(char));
+    for (size_t i = 0; i < argc; ++i)
+        str[i] = MINIM_CHAR(args[i]);
+    
+    str[argc] = '\0';
+    return minim_string(str);
+}
+
+MinimObject *minim_builtin_string_length(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-length", 0, args[0]);
+
+    return uint_to_minim_number(strlen(MINIM_STRING(args[0])));
+}
+
+MinimObject *minim_builtin_string_ref(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    size_t len, idx;
+    char *str;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-ref", 0, args[0]);
+
+    if (!minim_exact_nonneg_intp(args[1]))
+        return minim_argument_error("exact non-negative integer", "string-ref", 1, args[1]);
+
+    str = MINIM_STRING(args[0]);
+    len = strlen(str);
+    idx = MINIM_NUMBER_TO_UINT(args[1]);
+
+    if (idx >= len)
+        return minim_argument_error("out of bounds", "string-ref", 1, args[1]);
+
+    return minim_char(str[idx]);
+}
+
+MinimObject *minim_builtin_string_setb(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    size_t len, idx;
+    char *str;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-set!", 0, args[0]);
+
+    if (!minim_exact_nonneg_intp(args[1]))
+        return minim_argument_error("exact non-negative integer", "string-set!", 1, args[1]);
+
+    if (!MINIM_OBJ_CHARP(args[2]))
+        return minim_argument_error("character", "string-set!", 2, args[2]);
+
+    str = MINIM_STRING(args[0]);
+    len = strlen(str);
+    idx = MINIM_NUMBER_TO_UINT(args[1]);
+
+    if (idx >= len)
+        return minim_argument_error("out of bounds", "string-ref", 1, args[1]);
+
+    str[idx] = MINIM_CHAR(args[2]);
+    return minim_void;
+}
+
+MinimObject *minim_builtin_string_copy(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+    size_t len;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-copy", 0, args[0]);
+
+    len = strlen(MINIM_STRING(args[0]));
+    str = GC_alloc_atomic((len + 1) * sizeof(char));
+    strcpy(str, MINIM_STRING(args[0]));
+    return minim_string(str);
+}
+
+MinimObject *minim_builtin_string_fillb(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        return minim_argument_error("string", "string-fill!", 0, args[0]);
+
+    if (!MINIM_OBJ_CHARP(args[1]))
+        return minim_argument_error("character", "string-fill!", 1, args[1]);
+
+    str = MINIM_STRING(args[0]);
+    for (size_t i = 0; i < strlen(str); ++i)
+        str[i] = MINIM_CHAR(args[1]);
+    return minim_void;
 }
 
 MinimObject *minim_builtin_substring(MinimEnv *env, size_t argc, MinimObject **args)

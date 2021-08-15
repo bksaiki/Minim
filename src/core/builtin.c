@@ -112,9 +112,32 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "-inf", MINIM_OBJ_INEXACT, -INFINITY);
     minim_load_builtin(env, "nan", MINIM_OBJ_INEXACT, NAN);
 
+    // Character
+    minim_load_builtin(env, "char?", MINIM_OBJ_FUNC, minim_builtin_charp);
+    minim_load_builtin(env, "char=?", MINIM_OBJ_FUNC, minim_builtin_char_eqp);
+    minim_load_builtin(env, "char>?", MINIM_OBJ_FUNC, minim_builtin_char_gtp);
+    minim_load_builtin(env, "char<?", MINIM_OBJ_FUNC, minim_builtin_char_ltp);
+    minim_load_builtin(env, "char>=?", MINIM_OBJ_FUNC, minim_builtin_char_gtep);
+    minim_load_builtin(env, "char<=?", MINIM_OBJ_FUNC, minim_builtin_char_ltep);
+    minim_load_builtin(env, "char-ci=?", MINIM_OBJ_FUNC, minim_builtin_char_ci_eqp);
+    minim_load_builtin(env, "char-ci>?", MINIM_OBJ_FUNC, minim_builtin_char_ci_gtp);
+    minim_load_builtin(env, "char-ci<?", MINIM_OBJ_FUNC, minim_builtin_char_ci_ltp);
+    minim_load_builtin(env, "char-ci>=?", MINIM_OBJ_FUNC, minim_builtin_char_ci_gtep);
+    minim_load_builtin(env, "char-ci<=?", MINIM_OBJ_FUNC, minim_builtin_char_ci_ltep);
+    minim_load_builtin(env, "integer->char", MINIM_OBJ_FUNC, minim_builtin_int_to_char);
+    minim_load_builtin(env, "char->integer", MINIM_OBJ_FUNC, minim_builtin_char_to_int);
+    minim_load_builtin(env, "char-upcase", MINIM_OBJ_FUNC, minim_builtin_char_upcase);
+    minim_load_builtin(env, "char-downcase", MINIM_OBJ_FUNC, minim_builtin_char_downcase);
+
     // String
     minim_load_builtin(env, "string?", MINIM_OBJ_FUNC, minim_builtin_stringp);
-    minim_load_builtin(env, "string-append", MINIM_OBJ_FUNC, minim_builtin_string_append);
+    minim_load_builtin(env, "make-string", MINIM_OBJ_FUNC, minim_builtin_make_string);
+    minim_load_builtin(env, "string", MINIM_OBJ_FUNC, minim_builtin_string);
+    minim_load_builtin(env, "string-length", MINIM_OBJ_FUNC, minim_builtin_string_length);
+    minim_load_builtin(env, "string-ref", MINIM_OBJ_FUNC, minim_builtin_string_ref);
+    minim_load_builtin(env, "string-set!", MINIM_OBJ_FUNC, minim_builtin_string_setb);
+    minim_load_builtin(env, "string-copy", MINIM_OBJ_FUNC, minim_builtin_string_copy);
+    minim_load_builtin(env, "string-fill!", MINIM_OBJ_FUNC, minim_builtin_string_fillb);
     minim_load_builtin(env, "substring", MINIM_OBJ_FUNC, minim_builtin_substring);
     minim_load_builtin(env, "string->symbol", MINIM_OBJ_FUNC, minim_builtin_string_to_symbol);
     minim_load_builtin(env, "symbol->string", MINIM_OBJ_FUNC, minim_builtin_symbol_to_string);

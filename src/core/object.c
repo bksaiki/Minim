@@ -158,6 +158,14 @@ MinimObject *minim_err(void *err)
     return o;
 }
 
+MinimObject *minim_char(unsigned int ch)
+{
+    MinimObject *o = GC_alloc(minim_char_size);
+    o->type = MINIM_OBJ_CHAR;
+    MINIM_CHAR(o) = ch;
+    return o;
+}
+
 MinimObject *minim_exit(long code)
 {
     MinimObject *o = GC_alloc(minim_exit_size);
@@ -182,6 +190,9 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_SYM:
         return strcmp(MINIM_SYMBOL(a), MINIM_SYMBOL(b)) == 0;
 
+    case MINIM_OBJ_CHAR:
+        return MINIM_CHAR(a) == MINIM_CHAR(b);
+
     case MINIM_OBJ_STRING:
         return strcmp(MINIM_STRING(a), MINIM_STRING(b)) == 0;
 
@@ -202,9 +213,6 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
 
     case MINIM_OBJ_SYNTAX:
         return MINIM_SYNTAX(a) == MINIM_SYNTAX(b);
-
-    case MINIM_OBJ_CLOSURE:
-        return minim_lambda_equalp(MINIM_CLOSURE(a), MINIM_CLOSURE(b));
     
     case MINIM_OBJ_AST:
         return ast_equalp(MINIM_AST(a), MINIM_AST(b));
@@ -213,6 +221,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return true;
 
     /*
+    case MINIM_OBJ_CLOSURE:
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:
     case MINIM_OBJ_TAIL_CALL:
@@ -258,6 +267,10 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     case MINIM_OBJ_SYM:
         writes_buffer(bf, MINIM_SYMBOL(obj));
+        break;
+
+    case MINIM_OBJ_CHAR:
+        writec_buffer(bf, MINIM_CHAR(obj));
         break;
 
     case MINIM_OBJ_STRING:

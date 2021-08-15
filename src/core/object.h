@@ -38,6 +38,7 @@ typedef enum MinimObjectType
     MINIM_OBJ_VECTOR,
     MINIM_OBJ_PROMISE,
     MINIM_OBJ_VALUES,
+    MINIM_OBJ_CHAR,
     MINIM_OBJ_EXIT
 } MinimObjectType;
 
@@ -58,6 +59,7 @@ typedef enum MinimObjectType
 #define minim_sequence_size         (2 * sizeof(void*))
 #define minim_values_size           (3 * sizeof(void*))
 #define minim_error_size            (2 * sizeof(void*))
+#define minim_char_size             8
 #define minim_exit_size             1
 
 // Special objects
@@ -95,6 +97,7 @@ typedef enum MinimObjectType
 #define MINIM_OBJ_VECTORP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
 #define MINIM_OBJ_PROMISEP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PROMISE)
 #define MINIM_OBJ_VALUESP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VALUES)
+#define MINIM_OBJ_CHARP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_CHAR)
 #define MINIM_OBJ_EXITP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXIT)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
@@ -128,6 +131,7 @@ typedef enum MinimObjectType
 #define MINIM_VALUES_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, 8))))[i])
 #define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 16))))
 #define MINIM_ERROR(obj)            (*((MinimError**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_CHAR(obj)             (*((unsigned int*) VOID_PTR(PTR(obj, 4))))
 #define MINIM_EXIT_VAL(obj)         (*((long*) VOID_PTR(PTR(obj, 8))))
 
 // Compound accessors
@@ -160,6 +164,7 @@ MinimObject *minim_ast(void *ast);
 MinimObject *minim_sequence(void *seq);
 MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);
+MinimObject *minim_char(unsigned int ch);
 MinimObject *minim_exit(long code);
 
 //  Equivalence
