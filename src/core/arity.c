@@ -37,6 +37,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(equalp, 2);
     SET_ARITY_EXACT(symbolp, 1);
     SET_ARITY_MIN(printf, 1);
+    SET_ARITY_RANGE(exit, 0, 1);
     SET_ARITY_RANGE(error, 1, 2);
     SET_ARITY_EXACT(void, 0);
     SET_ARITY_EXACT(version, 0);
@@ -227,9 +228,9 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(quasiquote, 1);
     SET_ARITY_EXACT(unquote, 1);
     SET_ARITY_MIN(lambda, 2);
-    SET_ARITY_EXACT(exit, 0);  // for now
     SET_ARITY_EXACT(delay, 1);
     SET_ARITY_EXACT(force, 1);
+    SET_ARITY_EXACT(callcc, 1);
 
     SET_ARITY_EXACT(def_syntaxes, 2);
     SET_ARITY_MIN(syntax_case, 2)
@@ -291,18 +292,23 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
     MinimArity arity;
     
     if (!MINIM_OBJ_FUNCP(args[0]))
-        return minim_argument_error("procedure", "procedure-arity", 0, args[0]);
+        THROW(env, minim_argument_error("procedure", "procedure-arity", 0, args[0]));
 
     if (MINIM_OBJ_BUILTINP(args[0]))
     {
         minim_get_builtin_arity(MINIM_BUILTIN(args[0]), &arity);
     }
-    else
+    else if (MINIM_OBJ_CLOSUREP(args[0]))
     {
         MinimLambda *lam = MINIM_CLOSURE(args[0]);
 
         arity.low = lam->argc;
         arity.high = (lam->rest) ? SIZE_MAX : arity.low;
+    }
+    else // MINIM_OBJ_JUMPP
+    {
+        arity.low = 0;
+        arity.high = SIZE_MAX;
     }
 
     if (arity.low == arity.high)

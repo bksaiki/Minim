@@ -11,20 +11,14 @@
 
 MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *val;
+    MinimObject *val;
 
-    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-    
+    val = eval_ast_no_check(env, MINIM_AST(args[1]));
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
-        {
-            res = minim_values_arity_error("def-values", MINIM_AST(args[0])->childc,
-                                           1, MINIM_AST(args[0]));
-            return res;
-        } 
+            THROW(env, minim_values_arity_error("def-values", MINIM_AST(args[0])->childc,
+                                           1, MINIM_AST(args[0])));
         
         env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
         if (MINIM_OBJ_CLOSUREP(val))
@@ -36,11 +30,10 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
     {
         if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
         {
-            res = minim_values_arity_error("def-values",
+            THROW(env, minim_values_arity_error("def-values",
                                            MINIM_AST(args[0])->childc,
                                            MINIM_VALUES_SIZE(val),
-                                           MINIM_AST(args[0]));
-            return res;
+                                           MINIM_AST(args[0])));
         }
 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
@@ -58,37 +51,25 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
 
 MinimObject *minim_builtin_quote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
-    unsyntax_ast_rec(env, MINIM_AST(args[0]), &res);
-    return res;
+    return unsyntax_ast_rec(env, MINIM_AST(args[0]));
 }
 
 MinimObject *minim_builtin_quasiquote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
-    unsyntax_ast_rec2(env, MINIM_AST(args[0]), &res);
-    return res;
+    return unsyntax_ast_rec2(env, MINIM_AST(args[0]));
 }
 
 MinimObject *minim_builtin_unquote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
-
-    eval_ast_no_check(env, MINIM_AST(args[0]), &res);
-    return res;
+    return eval_ast_no_check(env, MINIM_AST(args[0]));
 }
 
 MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *sym, *val;
 
-    unsyntax_ast(env, MINIM_AST(args[0]), &sym);
-    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-
+    sym = unsyntax_ast(env, MINIM_AST(args[0]));
+    val = eval_ast_no_check(env, MINIM_AST(args[1]));
     if (env_set_sym(env, MINIM_STRING(sym), val))
     {
         env_set_sym(env, MINIM_STRING(sym), val);
@@ -103,7 +84,8 @@ MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
         set_default_print_params(&pp);
         pp.quote = true;
         print_to_buffer(bf, sym, env, &pp);
-        return minim_error("not a variable", bf->data);
+        THROW(env, minim_error("not a variable", bf->data));
+        return NULL;    // prevent compiler error
     }
 }
 
@@ -166,9 +148,4 @@ MinimObject *minim_builtin_dump_symbols(MinimEnv *env, size_t argc, MinimObject 
 {
     env_dump_symbols(env);
     return minim_void;
-}
-
-MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return minim_exit(0);
 }

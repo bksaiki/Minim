@@ -1,3 +1,4 @@
+#include <setjmp.h>
 #include <string.h>
 
 #include "../common/path.h"
@@ -7,6 +8,7 @@
 #include "builtin.h"
 #include "eval.h"
 #include "error.h"
+#include "jmp.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
@@ -144,26 +146,15 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
             res = env_get_sym(env, str);
 
             if (!res)
-                return minim_error("unrecognized symbol", str);
+                THROW(env, minim_error("unrecognized symbol", str));
             else if (MINIM_OBJ_SYNTAXP(res))
-                return minim_error("bad syntax", str);
+                THROW(env, minim_error("bad syntax", str));
             else if (MINIM_OBJ_TRANSFORMP(res))
-                return minim_error("bad transform", str);
+                THROW(env, minim_error("bad transform", str));
         }
     }
 
     return res;
-}
-
-static MinimObject *error_or_exit(size_t argc, MinimObject **args)
-{
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (MINIM_OBJ_THROWNP(args[i]))
-            return args[i];
-    }
-
-    return NULL;
 }
 
 // Unsyntax
@@ -205,10 +196,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
         {
             proc = env_get_sym(env, node->children[0]->sym);
             if (flags & UNSYNTAX_QUASIQUOTE && proc && MINIM_SYNTAX(proc) == minim_builtin_unquote)
-            {
-                eval_ast_no_check(env, node->children[1], &res);
-                return res;
-            }
+                return eval_ast_no_check(env, node->children[1]);
         }
 
         args = GC_alloc(node->childc * sizeof(MinimObject*));
@@ -264,21 +252,18 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 {
     if (node->type == SYNTAX_NODE_LIST)
     {
-        MinimObject *res, *op, *possible_err, **args;
+        MinimObject *res, *op, **args;
         size_t argc;
 
         if (node->childc == 0)
-            return minim_error("missing procedure expression", NULL);
+            THROW(env, minim_error("missing procedure expression", NULL));
 
         argc = node->childc - 1;
         args = GC_alloc(argc * sizeof(MinimObject*));
         op = env_get_sym(env, node->children[0]->sym);
 
         if (!op)
-        {
-            res = minim_error("unknown operator", node->children[0]->sym);
-            return res;
-        }
+            THROW(env, minim_error("unknown operator", node->children[0]->sym));
 
         if (MINIM_OBJ_BUILTINP(op))
         {
@@ -290,58 +275,44 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
                 args[i] = eval_ast_node(env, node->children[i + 1]);
             env->flags = prev_flags;       
 
-            possible_err = error_or_exit(argc, args);
-            if (possible_err)
-            {
-                res = possible_err;
-            }
-            else
-            {
-                if (minim_check_arity(proc, argc, env, &res))
-                    res = proc(env, argc, args);
-            }
+            if (!minim_check_arity(proc, argc, env, &res))
+                THROW(env, res);
+            res = proc(env, argc, args);
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
             MinimBuiltin proc = MINIM_BUILTIN(op);
 
             if (proc == minim_builtin_unquote)
+                THROW(env, minim_error("not in a quasiquote", "unquote"));
+            
+            if (proc == minim_builtin_def_syntaxes ||
+                proc == minim_builtin_import ||
+                proc == minim_builtin_export)
+                THROW(env, minim_error("only allowed at the top-level", node->children[0]->sym));
+
+            for (size_t i = 0; i < argc; ++i)                   // initialize ast wrappers
+                args[i] = minim_ast(node->children[i + 1]);
+            
+            res = proc(env, argc, args);
+            if (MINIM_OBJ_CLOSUREP(res))
             {
-                res = minim_error("not in a quasiquote", "unquote");
-            }
-            else if (proc == minim_builtin_def_syntaxes ||
-                     proc == minim_builtin_import ||
-                     proc == minim_builtin_export)
-            {
-                res = minim_error("only allowed at the top-level", node->children[0]->sym);
-            }
-            else
-            {
-                for (size_t i = 0; i < argc; ++i)                   // initialize ast wrappers
-                    args[i] = minim_ast(node->children[i + 1]);
-                
-                res = proc(env, argc, args);
-                if (MINIM_OBJ_CLOSUREP(res))
-                {
-                    MinimLambda *lam = MINIM_CLOSURE(res);
-                    if (!lam->loc && node->children[0]->loc)
-                        copy_syntax_loc(&lam->loc, node->children[0]->loc);
-                }
+                MinimLambda *lam = MINIM_CLOSURE(res);
+                if (!lam->loc && node->children[0]->loc)
+                    copy_syntax_loc(&lam->loc, node->children[0]->loc);
             }
         }
         else if (MINIM_OBJ_CLOSUREP(op))
         {
             MinimLambda *lam = MINIM_CLOSURE(op);
-
+            uint8_t prev_flags = env->flags;
+            
+            env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]); 
+            env->flags = prev_flags;     
 
-            possible_err = error_or_exit(argc, args);
-            if (possible_err)
-            {
-                res = possible_err;
-            }
-            else if (env_has_called(env, lam))
+            if (env_has_called(env, lam))
             {
                 MinimTailCall *call;
 
@@ -353,9 +324,17 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
                 res = eval_lambda(lam, env, argc, args);
             }
         }
+        else if (MINIM_OBJ_JUMPP(op))
+        {
+            for (size_t i = 0; i < argc; ++i)
+                args[i] = eval_ast_node(env, node->children[i + 1]); 
+
+            // no return
+            minim_long_jump(op, env, argc, args);
+        }
         else
         {
-            res = minim_error("unknown operator", node->children[0]->sym);
+            THROW(env, minim_error("unknown operator", node->children[0]->sym));
         }
 
         return res;
@@ -363,26 +342,22 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     else if (node->type == SYNTAX_NODE_VECTOR)
     {
         MinimObject **args;
-        MinimObject *possible_err;
 
         args = GC_alloc(node->childc * sizeof(MinimObject*));
         for (size_t i = 0; i < node->childc; ++i)
             args[i] = eval_ast_node(env, node->children[i]);
 
-        possible_err = error_or_exit(node->childc, args);
-        return (possible_err) ? possible_err : minim_builtin_vector(env, node->childc, args);
+        return minim_builtin_vector(env, node->childc, args);
     }
     else if (node->type == SYNTAX_NODE_PAIR)
     {
         MinimObject **args;
-        MinimObject *possible_err;
 
         args = GC_alloc(2 * sizeof(MinimObject*));
         args[0] = eval_ast_node(env, node->children[0]);
         args[1] = eval_ast_node(env, node->children[1]);
 
-        possible_err = error_or_exit(node->childc, args);
-        return (possible_err) ? possible_err : minim_builtin_cons(env, 2, args);
+        return minim_builtin_cons(env, 2, args);
     }
     else
     {
@@ -457,73 +432,50 @@ static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
 
 // ================================ Public ================================
 
-int eval_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
 {
     MinimEnv *env2;
 
     if (expr_is_export(env, ast))
-    {
-        *pobj = minim_error("%export not allowed in REPL", NULL);
-        return 0;
-    }
+        THROW(env, minim_error("%export not allowed in REPL", NULL));
 
     init_env(&env2, env, NULL);
     if (expr_is_import(env, ast))
     {
-        if (!check_syntax(env2, ast, pobj))
-            return 0;
-
-        *pobj = eval_top_level(env, ast, minim_builtin_import);
-        if (MINIM_OBJ_ERRORP(*pobj))
-            return 0;
+        check_syntax(env2, ast);
+        return eval_top_level(env, ast, minim_builtin_import);
     }
     else if (expr_is_macro(env, ast))
     {
-        ast = transform_syntax(env, ast, pobj);
-        if (*pobj)  return 0;
-
-        *pobj = eval_top_level(env, ast, minim_builtin_def_syntaxes);
-        if (MINIM_OBJ_ERRORP(*pobj))
-            return 0;
+        ast = transform_syntax(env, ast);
+        return eval_top_level(env, ast, minim_builtin_def_syntaxes);
     }
     else
     {
-        if (!check_syntax(env2, ast, pobj))
-            return 0;
-
-        ast = transform_syntax(env, ast, pobj);
-        if (*pobj)  return 0;
-
-        *pobj = eval_ast_node(env, ast);
-        if (MINIM_OBJ_ERRORP(*pobj))
-            return 0;
+        check_syntax(env2, ast);
+        ast = transform_syntax(env, ast);
+        return eval_ast_node(env, ast);
     }
-
-    return 1;
 }
 
-int eval_ast_no_check(MinimEnv* env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
 {
-    *pobj = eval_ast_node(env, ast);
-    return !MINIM_OBJ_ERRORP((*pobj));
+    return eval_ast_node(env, ast);
 }
 
-int eval_module(MinimModule *module, MinimObject **pobj)
+MinimObject *eval_module(MinimModule *module)
 {
     PrintParams pp;
     MinimEnv *env2;
+    MinimObject *res;
 
     // importing
     for (size_t i = 0; i < module->exprc; ++i)
     {
         if (expr_is_import(module->env, module->exprs[i]))
         {
-            if (!check_syntax(module->env, module->exprs[i], pobj))
-                return 0;
-
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_import);
-            if (MINIM_OBJ_ERRORP(*pobj))
-                return 0;
+            check_syntax(module->env, module->exprs[i]);
+            eval_top_level(module->env, module->exprs[i], minim_builtin_import);
         }
     }
 
@@ -536,12 +488,8 @@ int eval_module(MinimModule *module, MinimObject **pobj)
 
         if (expr_is_macro(module->env, module->exprs[i]))
         {
-            module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
-            if (*pobj)  return 0;
-
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
-            if (MINIM_OBJ_ERRORP(*pobj))
-                return 0;
+            module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
+            eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
         }
     }
 
@@ -551,40 +499,23 @@ int eval_module(MinimModule *module, MinimObject **pobj)
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        module->exprs[i] = transform_syntax(module->env, module->exprs[i], pobj);
-        if (*pobj)  return 0;
-
+        module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
         if (expr_is_macro(module->env, module->exprs[i]))
-        {
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
-            if (MINIM_OBJ_ERRORP(*pobj))
-                return 0;
-        }
+            eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
     }
 
     // Evaluation
     set_default_print_params(&pp);
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        if (!check_syntax(env2, module->exprs[i], pobj))
-            return 0;
-
+        check_syntax(env2, module->exprs[i]);
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        eval_ast_no_check(module->env, module->exprs[i], pobj);
-        if (MINIM_OBJ_ERRORP(*pobj))
-        {    
-            return 0;
-        }
-        else if (MINIM_OBJ_EXITP(*pobj))
+        res = eval_ast_no_check(module->env, module->exprs[i]);
+        if (!minim_voidp(res))
         {
-            *pobj = minim_void;
-            return 1;
-        }
-        else if (!minim_voidp(*pobj))
-        {
-            print_minim_object(*pobj, module->env, &pp);
+            print_minim_object(res, module->env, &pp);
             printf("\n");
         }
     }
@@ -593,44 +524,35 @@ int eval_module(MinimModule *module, MinimObject **pobj)
     for (size_t i = 0; i < module->exprc; ++i)
     {
         if (expr_is_export(module->env, module->exprs[i]))
-        {
-            *pobj = eval_top_level(module->env, module->exprs[i], minim_builtin_export);
-            if (MINIM_OBJ_ERRORP(*pobj))
-                return 0;
-        }
+            eval_top_level(module->env, module->exprs[i], minim_builtin_export);
     }
 
-    return 1;
+    return minim_void;
 }
 
-int unsyntax_ast(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *unsyntax_ast(MinimEnv *env, SyntaxNode *ast)
 {
-    MinimObject *obj = unsyntax_ast_node(env, ast, 0);
-    *pobj = obj;
-    return !MINIM_OBJ_ERRORP(obj);
+    return unsyntax_ast_node(env, ast, 0);
 }
 
-int unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast)
 {
-    MinimObject *obj = unsyntax_ast_node(env, ast, UNSYNTAX_REC);
-    *pobj = obj;
-    return !MINIM_OBJ_ERRORP(obj);
+    return unsyntax_ast_node(env, ast, UNSYNTAX_REC);
 }
 
-int unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast, MinimObject **pobj)
+MinimObject *unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast)
 {
-    MinimObject *obj = unsyntax_ast_node(env, ast, UNSYNTAX_REC | UNSYNTAX_QUASIQUOTE);
-    *pobj = obj;
-    return !MINIM_OBJ_ERRORP(obj);
+    return unsyntax_ast_node(env, ast, UNSYNTAX_REC | UNSYNTAX_QUASIQUOTE);
 }
 
 char *eval_string(char *str, size_t len)
 {
-    SyntaxNode *ast, *err;
-    MinimObject *obj;
-    MinimEnv *env;
     PrintParams pp;
     ReadTable rt;
+    SyntaxNode *ast, *err;
+    MinimObject *obj, *exit_handler;
+    MinimEnv *env;
+    jmp_buf *exit_buf;
     FILE *tmp;
     char *out;
 
@@ -649,24 +571,37 @@ char *eval_string(char *str, size_t len)
     rt.eof = EOF;
 
     set_default_print_params(&pp);
-    while (~rt.flags & READ_TABLE_FLAG_EOF)
+    exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
+    exit_handler = minim_jmp(exit_buf, NULL);
+    if (setjmp(*exit_buf) == 0)
     {
-        minim_parse_port(tmp, "", &ast, &err, &rt);
-        if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+        minim_error_handler = exit_handler;
+        minim_exit_handler = exit_handler;
+        while (~rt.flags & READ_TABLE_FLAG_EOF)
         {
-            char *s = "Parsing failed!";
-            out = GC_alloc_atomic((strlen(s) + 1) * sizeof(char));
-            strcpy(out, s);
+            minim_parse_port(tmp, "", &ast, &err, &rt);
+            if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+            {
+                char *s = "Parsing failed!";
+                out = GC_alloc_atomic((strlen(s) + 1) * sizeof(char));
+                strcpy(out, s);
 
-            fclose(tmp);
-            return out;
+                fclose(tmp);
+                return out;
+            }
+
+            obj = eval_ast(env, ast); 
         }
-
-        eval_ast(env, ast, &obj);
+    }
+    else
+    {
+        obj = MINIM_JUMP_VAL(exit_handler);
         if (MINIM_OBJ_ERRORP(obj))
         {
             fclose(tmp);
-            return print_to_string(obj, env, &pp);
+            print_minim_object(obj, env, &pp);
+            printf("\n");
+            return NULL;
         }
     }
 

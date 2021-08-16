@@ -50,8 +50,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "quasiquote", MINIM_OBJ_SYNTAX, minim_builtin_quasiquote);
     minim_load_builtin(env, "unquote", MINIM_OBJ_SYNTAX, minim_builtin_unquote);
     minim_load_builtin(env, "lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
-    minim_load_builtin(env, "exit", MINIM_OBJ_SYNTAX, minim_builtin_exit);
-    minim_load_builtin(env, "values", MINIM_OBJ_FUNC, minim_builtin_values);
+    minim_load_builtin(env, "exit", MINIM_OBJ_FUNC, minim_builtin_exit);
+    minim_load_builtin(env, "call/cc", MINIM_OBJ_SYNTAX, minim_builtin_callcc);
 
     // Modules
     minim_load_builtin(env, "%export", MINIM_OBJ_SYNTAX, minim_builtin_export);
@@ -67,6 +67,7 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "datum->syntax", MINIM_OBJ_FUNC, minim_builtin_to_syntax);
     
     // Miscellaneous
+    minim_load_builtin(env, "values", MINIM_OBJ_FUNC, minim_builtin_values);
     minim_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
     minim_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     minim_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);

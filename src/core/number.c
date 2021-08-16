@@ -159,7 +159,7 @@ MinimObject *minim_builtin_numberp(MinimEnv *env, size_t argc, MinimObject **arg
 MinimObject *minim_builtin_zerop(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "zero?", 0, args[0]);
+        THROW(env, minim_argument_error("number", "zero?", 0, args[0]));
     
     return to_bool(minim_zerop(args[0]));
 }
@@ -167,7 +167,7 @@ MinimObject *minim_builtin_zerop(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_negativep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "negative?", 0, args[0]);
+        THROW(env, minim_argument_error("number", "negative?", 0, args[0]));
     
     return to_bool(minim_negativep(args[0]));
 }
@@ -175,7 +175,7 @@ MinimObject *minim_builtin_negativep(MinimEnv *env, size_t argc, MinimObject **a
 MinimObject *minim_builtin_positivep(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "positive?", 0, args[0]);
+        THROW(env, minim_argument_error("number", "positive?", 0, args[0]));
 
     return to_bool(minim_positivep(args[0]));
 }
@@ -183,7 +183,7 @@ MinimObject *minim_builtin_positivep(MinimEnv *env, size_t argc, MinimObject **a
 MinimObject *minim_builtin_evenp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "even?", 0, args[0]);
+        THROW(env, minim_argument_error("integer", "even?", 0, args[0]));
     
     return to_bool(minim_evenp(args[0]));
 }
@@ -191,7 +191,7 @@ MinimObject *minim_builtin_evenp(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_oddp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "odd?", 0, args[0]);
+        THROW(env, minim_argument_error("integer", "odd?", 0, args[0]));
 
     return to_bool(minim_oddp(args[0]));
 }
@@ -199,7 +199,7 @@ MinimObject *minim_builtin_oddp(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_exactp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "exact?", 0, args[0]);
+        THROW(env, minim_argument_error("number", "exact?", 0, args[0]));
 
     return to_bool(MINIM_OBJ_EXACTP(args[0]));
 }
@@ -207,7 +207,7 @@ MinimObject *minim_builtin_exactp(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_inexactp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "inexact?", 0, args[0]);
+        THROW(env, minim_argument_error("number", "inexact?", 0, args[0]));
 
     return to_bool(MINIM_OBJ_INEXACTP(args[0]));
 }
@@ -258,7 +258,7 @@ MinimObject *minim_builtin_eq(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, "="))
-        return err;
+        THROW(env, err);
 
     return to_bool(minim_number_cmp_h(args, argc, 0));
 }
@@ -268,7 +268,7 @@ MinimObject *minim_builtin_gt(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, ">"))
-        return err;
+        THROW(env, err);
 
     return to_bool(minim_number_cmp_h(args, argc, 1));
 }
@@ -278,7 +278,7 @@ MinimObject *minim_builtin_lt(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, "<"))
-        return err;
+        THROW(env, err);
 
     return to_bool(minim_number_cmp_h(args, argc, 2));
 }
@@ -288,7 +288,7 @@ MinimObject *minim_builtin_gte(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, ">="))
-        return err;
+        THROW(env, err);
 
     return to_bool(minim_number_cmp_h(args, argc, 3));
 }
@@ -298,7 +298,7 @@ MinimObject *minim_builtin_lte(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *err;
 
     if (!assert_numerical_args(args, argc, &err, "<="))
-        return err;
+        THROW(env, err);
 
     return to_bool(minim_number_cmp_h(args, argc, 4));
 }
@@ -306,7 +306,7 @@ MinimObject *minim_builtin_lte(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_to_exact(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "exact", 0, args[0]);
+        THROW(env, minim_argument_error("number", "exact", 0, args[0]));
 
     if (MINIM_OBJ_EXACTP(args[0]))      // no change
         return args[0];
@@ -319,7 +319,7 @@ MinimObject *minim_builtin_to_exact(MinimEnv *env, size_t argc, MinimObject **ar
 MinimObject *minim_builtin_to_inexact(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "inexact", 0, args[0]);
+        THROW(env, minim_argument_error("number", "inexact", 0, args[0]));
 
     if (MINIM_OBJ_INEXACTP(args[0]))    // no change
         return args[0];

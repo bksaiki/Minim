@@ -1,24 +1,27 @@
+#include <setjmp.h>
 #include <string.h>
 
 #include "../gc/gc.h"
+#include "arity.h"
 #include "ast.h"
 #include "builtin.h"
 #include "error.h"
 #include "eval.h"
+#include "jmp.h"
 #include "lambda.h"
 #include "list.h"
 #include "tail_call.h"
 
+//
+//  Builtins
+//
+
 MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *cond;
+    MinimObject *cond;
 
-    eval_ast_no_check(env, MINIM_AST(args[0]), &cond);
-    if (MINIM_OBJ_THROWNP(cond))
-        return cond;
-
-    eval_ast_no_check(env, (coerce_into_bool(cond) ? MINIM_AST(args[1]) : MINIM_AST(args[2])), &res);
-    return res;
+    cond = eval_ast_no_check(env, MINIM_AST(args[0]));
+    return eval_ast_no_check(env, (coerce_into_bool(cond) ? MINIM_AST(args[1]) : MINIM_AST(args[2])));
 }
 
 MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
@@ -32,15 +35,12 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
     for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
     {
         binding = MINIM_AST(args[0])->children[i];
-        eval_ast_no_check(env, binding->children[1], &val);
-        if (MINIM_OBJ_THROWNP(val))
-            return val;
-
+        val = eval_ast_no_check(env, binding->children[1]);
         names = binding->children[0];
         if (!MINIM_OBJ_VALUESP(val))
         {
             if (names->childc != 1)
-                return minim_values_arity_error("let-values", names->childc, 1, names);
+                THROW(env, minim_values_arity_error("let-values", names->childc, 1, names));
             
             env_intern_sym(env2, names->children[0]->sym, val);
             if (MINIM_OBJ_CLOSUREP(val))
@@ -49,7 +49,7 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
         else
         {
             if (MINIM_VALUES_SIZE(val) != names->childc)
-                return minim_values_arity_error("let-values", names->childc, MINIM_VALUES_SIZE(val), names);
+                THROW(env, minim_values_arity_error("let-values", names->childc, MINIM_VALUES_SIZE(val), names));
 
             for (size_t i = 0; i < names->childc; ++i)
             {
@@ -77,15 +77,12 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
     for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
     {
         binding = MINIM_AST(args[0])->children[i];
-        eval_ast_no_check(env2, binding->children[1], &val);
-        if (MINIM_OBJ_THROWNP(val))
-            return val;
-
         names = binding->children[0];
+        val = eval_ast_no_check(env2, binding->children[1]);
         if (!MINIM_OBJ_VALUESP(val))
         {
             if (names->childc != 1)
-                return minim_values_arity_error("let*-values", names->childc, 1, names);
+                THROW(env, minim_values_arity_error("let*-values", names->childc, 1, names));
             
             env_intern_sym(env2, names->children[0]->sym, val);
             if (MINIM_OBJ_CLOSUREP(val))
@@ -94,7 +91,7 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
         else
         {
             if (MINIM_VALUES_SIZE(val) != names->childc)
-                return minim_values_arity_error("let*-values", names->childc, MINIM_VALUES_SIZE(val), names);
+                THROW(env, minim_values_arity_error("let*-values", names->childc, MINIM_VALUES_SIZE(val), names));
 
             for (size_t i = 0; i < names->childc; ++i)
             {
@@ -122,13 +119,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
     init_env(&env2, env, NULL);
     for (size_t i = 0; i < argc; ++i)
     {
-        eval_ast_no_check(env2, MINIM_AST(args[i]), &val);
-        if (MINIM_OBJ_THROWNP(val))
-        {
-            res = val;
-            break;
-        }
-
+        val = eval_ast_no_check(env2, MINIM_AST(args[i]));
         if (i + 1 == argc)
             res = val;
     }
@@ -138,20 +129,19 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *key;
+    MinimObject *key;
     MinimEnv *env2;
 
     if (argc < 2)
         return minim_void;
-        
-
-    unsyntax_ast(env, MINIM_AST(args[0]), &key);
+    
+    key = unsyntax_ast(env, MINIM_AST(args[0]));
     for (size_t i = 1; i < argc; ++i)
     {
         MinimObject *ce_pair, *cs, *val;
 
-        unsyntax_ast(env, MINIM_AST(args[i]), &ce_pair);
-        unsyntax_ast_rec(env, MINIM_AST(MINIM_CAR(ce_pair)), &cs);
+        ce_pair = unsyntax_ast(env, MINIM_AST(args[i]));
+        cs = unsyntax_ast_rec(env, MINIM_AST(MINIM_CAR(ce_pair)));
         if (minim_nullp(cs))
             continue;
 
@@ -164,15 +154,14 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
                     init_env(&env2, env, NULL);
                     for (MinimObject *it = MINIM_CDR(ce_pair); !minim_nullp(it); it = MINIM_CDR(it))
                     {
-                        eval_ast_no_check(env2, MINIM_AST(MINIM_CAR(it)), &val);
-                        if (MINIM_OBJ_THROWNP(val) || !MINIM_CDR(it))
+                        val = eval_ast_no_check(env2, MINIM_AST(MINIM_CAR(it)));
+                        if (minim_nullp(MINIM_CDR(it)))
                             return val;   
                     }
                 }
                 else
                 {
-                    eval_ast_no_check(env, MINIM_AST(MINIM_CADR(ce_pair)), &res);
-                    return res;
+                    return eval_ast_no_check(env, MINIM_AST(MINIM_CADR(ce_pair)));
                 }
             }
         }
@@ -184,4 +173,34 @@ MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
     return minim_values(argc, args);
+}
+
+MinimObject *minim_builtin_callcc(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimArity arity;
+    MinimObject *proc, *cont;
+    jmp_buf *jmp;
+
+    proc = eval_ast_no_check(env, MINIM_AST(args[0]));
+    if (!MINIM_OBJ_CLOSUREP(proc))
+        THROW(env, minim_argument_error("procedure of 1 argument", "call/cc", 0, proc));
+
+    minim_get_lambda_arity(MINIM_CLOSURE(proc), &arity);
+    if (arity.low != 1 || arity.high != 1)
+        THROW(env, minim_argument_error("procedure of 1 argument", "call/cc", 0, proc));
+
+    jmp = GC_alloc_atomic(sizeof(jmp_buf));
+    cont = minim_jmp(jmp, NULL);
+    return (setjmp(*jmp) == 0) ?
+           eval_lambda(MINIM_CLOSURE(proc), env, 1, &cont) :
+           MINIM_JUMP_VAL(cont);
+}
+
+MinimObject *minim_builtin_exit(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (minim_exit_handler != NULL)     // no return
+        minim_long_jump(minim_exit_handler, env, argc, args);
+
+    printf("exit handler not set up\n");
+    return NULL;    // panic
 }

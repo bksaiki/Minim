@@ -6,7 +6,8 @@
 #include "eval.h"
 #include "list.h"
 
-#define CHECK_REC(proc, x, expr)        if (proc == x) return expr(env, ast, perr)
+// forward declaration
+SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast);
 
 // ================================ Match table ================================
 
@@ -417,31 +418,155 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
 }
 
 static SyntaxNode*
-transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast, MinimObject **perr)
+transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
 {
     MinimObject *body, *res;
 
     body = minim_ast(ast);
     res = eval_lambda(MINIM_TRANSFORM_PROC(trans), NULL, 1, &body);
-    if (MINIM_OBJ_ERRORP(res))
+    if (!MINIM_OBJ_ASTP(res))
     {
-        *perr = res;
-        return ast;
-    }
-    else if (!MINIM_OBJ_ASTP(res))
-    {
-        *perr = minim_syntax_error("expected syntax as a result",
-                                    MINIM_TRANSFORM_NAME(trans),
-                                    ast,
-                                    NULL);
-        return ast;
+        THROW(env, minim_syntax_error("expected syntax as a result",
+                                 MINIM_TRANSFORM_NAME(trans),
+                                 ast,
+                                 NULL));
     }
 
     return MINIM_AST(res);
 }
 
-SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
-{    
+static bool
+valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t pdepth)
+{
+    if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
+    {
+        for (size_t i = 0; i < match->childc; ++i)
+        {
+            if (is_match_pattern(match, i))
+            {
+                if (!valid_matchp(env, match->children[i], table, reserved, pdepth + 1))
+                    return false;
+
+                ++i; // skip ellipse
+            }
+            else
+            {
+                if (!valid_matchp(env, match->children[i], table, reserved, pdepth))
+                    return false;
+            }
+        }
+    }
+    else if (match->type == SYNTAX_NODE_PAIR)
+    {
+        return valid_matchp(env, match->children[0], table, reserved, pdepth) &&
+               valid_matchp(env, match->children[1], table, reserved, pdepth);
+    }
+    else // datum
+    {
+        if (strcmp(match->sym, "...") == 0)
+        {
+            THROW(env, minim_syntax_error("ellipse not allowed here", NULL, match, NULL));
+            return false;
+        }
+
+
+        if (!symbol_list_contains(reserved, match->sym) && strcmp(match->sym, "_") != 0)
+            match_table_add(table, match->sym, pdepth, minim_null);
+    }
+
+    return true;
+}
+
+static bool
+valid_replacep(MinimEnv *env, SyntaxNode* replace, MatchTable *table, SymbolList *reserved, size_t pdepth)
+{
+    if (replace->type == SYNTAX_NODE_LIST || replace->type == SYNTAX_NODE_VECTOR)
+    {
+        for (size_t i = 0; i < replace->childc; ++i)
+        {
+            if (is_match_pattern(replace, i))
+            {
+                if (!valid_replacep(env, replace->children[i], table, reserved, pdepth + 1))
+                    return false;
+                
+                ++i;    // skip ellipse
+            }
+            else
+            {
+                if (!valid_replacep(env, replace->children[i], table, reserved, pdepth))
+                    return false;
+            }
+        }
+    }
+    else if (replace->type == SYNTAX_NODE_PAIR)
+    {
+        return valid_replacep(env, replace->children[0], table, reserved, pdepth) &&
+               valid_replacep(env, replace->children[1], table, reserved, pdepth);
+    }
+    else // datum
+    {
+        if (!symbol_list_contains(reserved, replace->sym))
+        {
+            size_t depth = match_table_get_depth(table, replace->sym);
+
+            if (depth != SIZE_MAX)  // in table
+            {
+                if (pdepth > depth)
+                {
+                    THROW(env, minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL));
+                    return false;
+                }
+
+                if (pdepth < depth)
+                {
+                    THROW(env, minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL));
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+static SyntaxNode *
+replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table)
+{
+    if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
+    {
+        if (ast->type == SYNTAX_NODE_LIST &&
+            ast->children[0]->sym &&
+            strcmp(ast->children[0]->sym, "syntax") == 0)
+        {
+            ast->children[1] = apply_transformation(table, ast->children[1]);
+            ast->children[1] = transform_syntax(env, ast->children[1]);
+        }
+        else
+        {
+            for (size_t i = 0; i < ast->childc; ++i)
+                ast->children[i] = replace_syntax(env, ast->children[i], table);
+        }
+    }
+    else if (ast->type == SYNTAX_NODE_PAIR)
+    {
+        ast->children[0] = replace_syntax(env, ast->children[0], table);
+        ast->children[1] = replace_syntax(env, ast->children[1], table);
+    }
+    else
+    {
+        MinimObject *obj;
+
+        obj = match_table_get(table, ast->sym);
+        if (obj) THROW(env, minim_error("variable cannot be used outside of template", ast->sym));
+    }
+
+    return ast;
+}
+
+// ================================ Public ================================
+
+SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
+{
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
         MinimObject *op;
@@ -455,27 +580,15 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
             if (op)
             {
                 if (MINIM_SYNTAX(op) == minim_builtin_syntax)
-                {
                     return ast;
-                }
-                else if (MINIM_OBJ_TRANSFORMP(op))
-                {
-                    ast = transform_loc(env, op, ast, perr);
-                    if (*perr)
-                    {
-                        if (!MINIM_ERROR(*perr)->where)
-                            MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(op);
-                        return NULL;
-                    }
-                }
+
+                if (MINIM_OBJ_TRANSFORMP(op))
+                    ast = transform_loc(env, op, ast);
             }
         }
 
         for (size_t i = 0; i < ast->childc; ++i)
-        {
-            ast->children[i] = transform_syntax_rec(env, ast->children[i], perr);
-            if (*perr)   return ast;
-        }
+            ast->children[i] = transform_syntax(env, ast->children[i]);
     }
     else if (ast->type == SYNTAX_NODE_DATUM)
     {
@@ -485,168 +598,14 @@ SyntaxNode* transform_syntax_rec(MinimEnv *env, SyntaxNode* ast, MinimObject **p
         {
             val = env_get_sym(env, ast->sym);
             if (val && MINIM_OBJ_TRANSFORMP(val))
-            {
-                ast = transform_loc(env, val, ast, perr);
-                if (*perr)
-                {
-                    MINIM_ERROR(*perr)->where = MINIM_TRANSFORM_NAME(val);
-                    return NULL;
-                }
-            }
+                ast = transform_loc(env, val, ast);
         }
     }
 
     return ast;
 }
 
-static bool
-valid_matchp(SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t pdepth, MinimObject **perr)
-{
-    if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
-    {
-        for (size_t i = 0; i < match->childc; ++i)
-        {
-            if (is_match_pattern(match, i))
-            {
-                if (!valid_matchp(match->children[i], table, reserved, pdepth + 1, perr))
-                    return false;
-
-                ++i; // skip ellipse
-            }
-            else
-            {
-                if (!valid_matchp(match->children[i], table, reserved, pdepth, perr))
-                    return false;
-            }
-        }
-    }
-    else if (match->type == SYNTAX_NODE_PAIR)
-    {
-        return valid_matchp(match->children[0], table, reserved, pdepth, perr) &&
-               valid_matchp(match->children[1], table, reserved, pdepth, perr);
-    }
-    else // datum
-    {
-        if (strcmp(match->sym, "...") == 0)
-        {
-            *perr = minim_syntax_error("ellipse not allowed here", NULL, match, NULL);
-            return false;
-        }
-
-
-        if (!symbol_list_contains(reserved, match->sym) && strcmp(match->sym, "_") != 0)
-            match_table_add(table, match->sym, pdepth, minim_null);
-    }
-
-    return true;
-}
-
-static bool
-valid_replacep(SyntaxNode* replace, MatchTable *table, SymbolList *reserved, size_t pdepth, MinimObject **perr)
-{
-    if (replace->type == SYNTAX_NODE_LIST || replace->type == SYNTAX_NODE_VECTOR)
-    {
-        for (size_t i = 0; i < replace->childc; ++i)
-        {
-            if (is_match_pattern(replace, i))
-            {
-                if (!valid_replacep(replace->children[i], table, reserved, pdepth + 1, perr))
-                    return false;
-                
-                ++i;    // skip ellipse
-            }
-            else
-            {
-                if (!valid_replacep(replace->children[i], table, reserved, pdepth, perr))
-                    return false;
-            }
-        }
-    }
-    else if (replace->type == SYNTAX_NODE_PAIR)
-    {
-        return valid_replacep(replace->children[0], table, reserved, pdepth, perr) &&
-               valid_replacep(replace->children[1], table, reserved, pdepth, perr);
-    }
-    else // datum
-    {
-        if (!symbol_list_contains(reserved, replace->sym))
-        {
-            size_t depth = match_table_get_depth(table, replace->sym);
-
-            if (depth != SIZE_MAX)  // in table
-            {
-                if (pdepth > depth)
-                {
-                    *perr = minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL);
-                    return false;
-                }
-
-                if (pdepth < depth)
-                {
-                    *perr = minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL);
-                    return false;
-                }
-            }
-        }
-    }
-
-    return true;
-}
-
-static SyntaxNode *
-replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table, MinimObject **perr)
-{
-    if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
-    {
-        if (ast->type == SYNTAX_NODE_LIST &&
-            ast->children[0]->sym &&
-            strcmp(ast->children[0]->sym, "syntax") == 0)
-        {
-            *perr = NULL;
-            ast->children[1] = apply_transformation(table, ast->children[1]);
-            ast->children[1] = transform_syntax_rec(env, ast->children[1], perr);
-            if (!ast->children[1])  return NULL;
-        }
-        else
-        {
-            for (size_t i = 0; i < ast->childc; ++i)
-            {
-                ast->children[i] = replace_syntax(env, ast->children[i], table, perr);
-                if (!ast->children[i])  return NULL;
-            }
-        }
-    }
-    else if (ast->type == SYNTAX_NODE_PAIR)
-    {
-        ast->children[0] = replace_syntax(env, ast->children[0], table, perr);
-        if (!ast->children[0])  return NULL;
-
-        ast->children[1] = replace_syntax(env, ast->children[1], table, perr);
-        if (!ast->children[1])  return NULL;
-    }
-    else
-    {
-        MinimObject *obj;
-
-        obj = match_table_get(table, ast->sym);
-        if (obj)
-        {
-            *perr = minim_error("variable cannot be used outside of template", ast->sym);
-        }
-    }
-
-    return ast;
-}
-
-// ================================ Public ================================
-
-SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr)
-{
-    *perr = NULL;   // NULL signals success
-    return transform_syntax_rec(env, ast, perr);
-}
-
-bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved, MinimObject **perr)
+void check_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved)
 {
     MatchTable table;
     SymbolList reserved_lst;
@@ -660,8 +619,8 @@ bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reser
         reserved_lst.syms[i] = MINIM_AST(MINIM_CAR(it))->sym;
 
     init_match_table(&table);
-    return (valid_matchp(match, &table, &reserved_lst, 0, perr) &&
-            valid_replacep(replace, &table, &reserved_lst, 0, perr));
+    valid_matchp(env, match, &table, &reserved_lst, 0);
+    valid_replacep(env, replace, &table, &reserved_lst, 0);
 }
 
 // ================================ Builtins ================================
@@ -670,21 +629,18 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
 {
     MinimObject *val, *trans;
 
-    eval_ast_no_check(env, MINIM_AST(args[1]), &val);
-    if (MINIM_OBJ_THROWNP(val))
-        return val;
-    
+    val = eval_ast_no_check(env, MINIM_AST(args[1]));
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
-            return minim_values_arity_error("def-syntaxes", MINIM_AST(args[0])->childc,
-                                            1, MINIM_AST(args[0]));
+            THROW(env, minim_values_arity_error("def-syntaxes", MINIM_AST(args[0])->childc,
+                                            1, MINIM_AST(args[0])));
         
         if (!MINIM_OBJ_CLOSUREP(val))
-            return minim_syntax_error("expected a procedure of 1 argument",
+            THROW(env, minim_syntax_error("expected a procedure of 1 argument",
                                       "def-syntaxes",
                                       MINIM_AST(args[1]),
-                                      NULL);
+                                      NULL));
 
         trans = minim_transform(MINIM_AST(args[0])->children[0]->sym, MINIM_CLOSURE(val));
         env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, trans);
@@ -692,18 +648,19 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
     else
     {
         if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
-            return minim_values_arity_error("def-syntaxes",
+            THROW(env, minim_values_arity_error("def-syntaxes",
                                             MINIM_AST(args[0])->childc,
                                             MINIM_VALUES_SIZE(val),
-                                            MINIM_AST(args[0]));
+                                            MINIM_AST(args[0])));
 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
         {
             if (!MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
-                return minim_syntax_error("expected a procedure of 1 argument",
+                THROW(env, minim_syntax_error("expected a procedure of 1 argument",
                                           "def-syntaxes",
                                           MINIM_AST(args[1]),
-                                          NULL);
+                                          NULL));
+
             trans = minim_transform(MINIM_AST(args[0])->children[i]->sym, MINIM_CLOSURE(MINIM_VALUES_REF(val, i)));
             env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, trans);
         }
@@ -718,12 +675,12 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
     SymbolList reserved;
     MinimObject *ast0;
 
-    eval_ast_no_check(env, MINIM_AST(args[0]), &ast0);
+    ast0 = eval_ast_no_check(env, MINIM_AST(args[0]));
     if (!ast0)
-        return minim_error("unknown identifier", MINIM_AST(args[0])->sym);
+        THROW(env, minim_error("unknown identifier", MINIM_AST(args[0])->sym));
 
     if (!MINIM_OBJ_ASTP(ast0))
-        return minim_argument_error("syntax?", "syntax-case", 0, ast0);
+        THROW(env, minim_argument_error("syntax?", "syntax-case", 0, ast0));
     
     init_symbol_list(&reserved, MINIM_AST(args[1])->childc);
     for (size_t i = 0; i < MINIM_AST(args[1])->childc; ++i)
@@ -732,20 +689,17 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
     for (size_t i = 2; i < argc; ++i)
     {
         SyntaxNode *rule, *replace;
-        MinimObject *res;
 
         init_match_table(&table);
         rule = MINIM_AST(args[i]);
         if (match_transform(rule->children[0], MINIM_AST(ast0), &table, &reserved, 0))
         {
             copy_syntax_node(&replace, rule->children[1]);
-            replace = replace_syntax(env, replace, &table, &res);
-            if (!replace)   return res;
-
-            eval_ast_no_check(env, replace, &res);
-            return res;
+            replace = replace_syntax(env, replace, &table);
+            return eval_ast_no_check(env, replace);
         }
     }
 
-    return minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL);
+    THROW(env, minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL));
+    return NULL;
 }

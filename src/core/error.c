@@ -3,6 +3,8 @@
 #include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
+#include "lambda.h"
+#include "jmp.h"
 #include "string.h"
 
 static void gc_minim_error_trace_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
@@ -330,6 +332,30 @@ MinimObject *minim_error(const char *msg, const char *where, ...)
     return minim_err(err);
 }
 
+static void fill_trace_info(MinimError *err, MinimEnv *env)
+{
+    if (env->callee && env->callee->name)
+    {
+        if (env->callee->body->loc && env->callee->name)
+            minim_error_add_trace(err, env->callee->body->loc, env->callee->name);
+    }
+
+    if (env->caller)        fill_trace_info(err, env->caller);
+    else if (env->parent)   fill_trace_info(err, env->parent);
+}
+
+void throw_minim_error(MinimEnv *env, MinimObject *err)
+{
+    if (!MINIM_OBJ_ERRORP(err))
+        printf("Attempting to throw something that is not an error\n");
+
+    fill_trace_info(MINIM_ERROR(err), env);
+    if (minim_error_handler != NULL)        // no return
+        minim_long_jump(minim_error_handler, NULL, 1, &err);
+
+    printf("error handler not set up\n");
+}
+
 // ************ Builtins ****************
 
 MinimObject *minim_builtin_error(MinimEnv *env, size_t argc, MinimObject **args)
@@ -337,55 +363,60 @@ MinimObject *minim_builtin_error(MinimEnv *env, size_t argc, MinimObject **args)
     MinimError *err;
 
     if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_STRINGP(args[0]))
-        return minim_argument_error("symbol?/string?", "error", 0, args[0]);
+        THROW(env, minim_argument_error("symbol?/string?", "error", 0, args[0]));
 
     if (argc == 1)
     {
         init_minim_error(&err, MINIM_STRING(args[0]), NULL);
-        return minim_err(err);
+        THROW(env, minim_err(err));
     }
     else
     {
         if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_STRINGP(args[1]))
-            return minim_argument_error("symbol?/string?", "error", 1, args[1]);
+            THROW(env, minim_argument_error("symbol?/string?", "error", 1, args[1]));
     
         init_minim_error(&err, MINIM_STRING(args[1]), MINIM_STRING(args[0]));
-        return minim_err(err);
+        THROW(env, minim_err(err));
     }
+
+    return NULL; // avoid compile errors
 }
 
 MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_STRINGP(args[0]))
-        return minim_argument_error("symbol?/string?", "syntax-error", 0, args[0]);
+        THROW(env, minim_argument_error("symbol?/string?", "syntax-error", 0, args[0]));
 
     if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_STRINGP(args[1]))
-        return minim_argument_error("symbol?/string?", "syntax-error", 1, args[1]);
+        THROW(env, minim_argument_error("symbol?/string?", "syntax-error", 1, args[1]));
 
     if (argc == 2)
     {
-        return minim_syntax_error(MINIM_STRING(args[1]),
-                                  MINIM_STRING(args[0]),
-                                  NULL,
-                                  NULL);
+        THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
+                                 MINIM_STRING(args[0]),
+                                 NULL,
+                                 NULL));
     }
-    
-    if (!MINIM_OBJ_ASTP(args[2]))
-        return minim_argument_error("syntax?", "syntax-error", 2, args[2]);
-
-    if (argc == 3)
+    else if (argc == 3)
     {
-        return minim_syntax_error(MINIM_STRING(args[1]),
-                                  MINIM_STRING(args[0]),
-                                  MINIM_AST(args[2]),
-                                  NULL);
+        if (!MINIM_OBJ_ASTP(args[2]))
+            THROW(env, minim_argument_error("syntax?", "syntax-error", 2, args[2]));
+
+        THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
+                                 MINIM_STRING(args[0]),
+                                 MINIM_AST(args[2]),
+                                 NULL));
+    }
+    else
+    {
+        if (!MINIM_OBJ_ASTP(args[3]))
+            THROW(env, minim_argument_error("syntax?", "syntax-error", 3, args[3]));
+
+        THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
+                                 MINIM_STRING(args[0]),
+                                 MINIM_AST(args[2]),
+                                 MINIM_AST(args[3])));
     }
 
-    if (!MINIM_OBJ_ASTP(args[3]))
-        return minim_argument_error("syntax?", "syntax-error", 3, args[3]);
-
-    return minim_syntax_error(MINIM_STRING(args[1]),
-                              MINIM_STRING(args[0]),
-                              MINIM_AST(args[2]),
-                              MINIM_AST(args[3]));
+    return NULL; // avoid compile errors
 }

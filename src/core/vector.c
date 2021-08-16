@@ -53,7 +53,7 @@ MinimObject *minim_builtin_make_vector(MinimEnv *env, size_t argc, MinimObject *
     size_t size;
     
     if (!minim_exact_nonneg_intp(args[0]))
-        return minim_argument_error("exact non-negative integer", "make-vector", 0, args[0]);
+        THROW(env, minim_argument_error("exact non-negative integer", "make-vector", 0, args[0]));
     
     size = MINIM_NUMBER_TO_UINT(args[0]);
     arr = GC_alloc(size * sizeof(MinimObject*));
@@ -73,7 +73,7 @@ MinimObject *minim_builtin_vectorp(MinimEnv *env, size_t argc, MinimObject **arg
 MinimObject *minim_builtin_vector_length(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_VECTORP(args[0]))
-        return minim_argument_error("vector", "vector-length", 0, args[0]);
+        THROW(env, minim_argument_error("vector", "vector-length", 0, args[0]));
 
     return uint_to_minim_number(MINIM_VECTOR_LEN(args[0]));
 }
@@ -83,14 +83,14 @@ MinimObject *minim_builtin_vector_ref(MinimEnv *env, size_t argc, MinimObject **
     size_t idx;
 
     if (!MINIM_OBJ_VECTORP(args[0]))
-        return minim_argument_error("vector", "vector-ref", 0, args[0]);
+        THROW(env, minim_argument_error("vector", "vector-ref", 0, args[0]));
 
     if (!minim_exact_nonneg_intp(args[1]))
-        return minim_argument_error("exact non-negative integer", "vector-ref", 1, args[1]);
+        THROW(env, minim_argument_error("exact non-negative integer", "vector-ref", 1, args[1]));
 
     idx = MINIM_NUMBER_TO_UINT(args[1]);
     if  (idx >= MINIM_VECTOR_LEN(args[0]))
-        return minim_error("index out of bounds: ~u", "vector-ref", idx);
+        THROW(env, minim_error("index out of bounds: ~u", "vector-ref", idx));
     
     return MINIM_VECTOR_REF(args[0], idx);
 }
@@ -100,14 +100,14 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, size_t argc, MinimObject *
     size_t idx;
 
     if (!MINIM_OBJ_VECTORP(args[0]))
-        return minim_argument_error("vector", "vector-set!", 0, args[0]);
+        THROW(env, minim_argument_error("vector", "vector-set!", 0, args[0]));
 
     if (!minim_exact_nonneg_intp(args[1]))
-        return minim_argument_error("exact non-negative integer", "vector-set!", 1, args[1]);
+        THROW(env, minim_argument_error("exact non-negative integer", "vector-set!", 1, args[1]));
 
     idx = MINIM_NUMBER_TO_UINT(args[1]);
     if  (idx >= MINIM_VECTOR_LEN(args[0]))
-        return minim_error("index out of bounds: ~u", "vector-set!", idx);
+        THROW(env, minim_error("index out of bounds: ~u", "vector-set!", idx));
 
     MINIM_VECTOR_REF(args[0], idx) = args[2];
     return minim_void;
@@ -116,7 +116,7 @@ MinimObject *minim_builtin_vector_setb(MinimEnv *env, size_t argc, MinimObject *
 MinimObject *minim_builtin_vector_to_list(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_VECTORP(args[0]))
-        return minim_argument_error("vector", "vector->list", 0, args[0]);
+        THROW(env, minim_argument_error("vector", "vector->list", 0, args[0]));
 
     return minim_list(MINIM_VECTOR(args[0]), MINIM_VECTOR_LEN(args[0]));
 }
@@ -128,7 +128,7 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, size_t argc, MinimObjec
     size_t len;
 
     if (!minim_listp(args[0]))
-        return minim_argument_error("list", "list->vector", 0, args[0]);
+        THROW(env, minim_argument_error("list", "list->vector", 0, args[0]));
 
     len = minim_list_length(args[0]);
     arr = GC_alloc(len * sizeof(MinimObject*));
@@ -142,7 +142,7 @@ MinimObject *minim_builtin_list_to_vector(MinimEnv *env, size_t argc, MinimObjec
 MinimObject *minim_builtin_vector_fillb(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_VECTORP(args[0]))
-        return minim_argument_error("vector", "vector-fill!", 0, args[0]);
+        THROW(env, minim_argument_error("vector", "vector-fill!", 0, args[0]));
 
     for (size_t i = 0; i < MINIM_VECTOR_LEN(args[0]); ++i)
         MINIM_VECTOR_REF(args[0], i) = args[1];

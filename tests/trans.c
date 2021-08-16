@@ -433,7 +433,7 @@ int main()
               (lambda (stx)                                       \
                (syntax-case stx ()                                \
                 [(_ a b) #'(printf \"~a\n\" (vector a b))])))     \
-             (def-syntaxes (foo)                                  \
+             (def-syntaxes (goo)                                  \
               (lambda (stx)                                       \
                (syntax-case stx ()                                \
                 [(_ [a b] ...) (begin (foo a b) ...)])))"

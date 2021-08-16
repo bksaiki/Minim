@@ -1,3 +1,4 @@
+#include <setjmp.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -13,6 +14,11 @@
 #include "sequence.h"
 #include "tail_call.h"
 #include "vector.h"
+
+// Handlers
+
+MinimObject *minim_error_handler = NULL;
+MinimObject *minim_exit_handler = NULL;
 
 // Visible functions
 
@@ -166,11 +172,12 @@ MinimObject *minim_char(unsigned int ch)
     return o;
 }
 
-MinimObject *minim_exit(long code)
+MinimObject *minim_jmp(void *ptr, void *val)
 {
-    MinimObject *o = GC_alloc(minim_exit_size);
-    o->type = MINIM_OBJ_EXIT;
-    MINIM_EXIT_VAL(o) = code;
+    MinimObject *o = GC_alloc(minim_jump_size);
+    o->type = MINIM_OBJ_JUMP;
+    MINIM_JUMP_BUF(o) = ptr;
+    MINIM_JUMP_VAL(o) = val;
     return o;
 }
 

@@ -5,9 +5,9 @@
 #include "env.h"
 
 // Applies syntax transforms on ast
-SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast, MinimObject **perr);
+SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast);
 
 // Returns if a [match replace] transform is valid
-bool valid_transformp(SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved, MinimObject **perr);
+void check_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved);
 
 #endif

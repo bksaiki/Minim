@@ -365,10 +365,10 @@ MinimObject *minim_builtin_min(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_modulo(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "modulo", 0, args[0]);
+        THROW(env, minim_argument_error("integer", "modulo", 0, args[0]));
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "modulo", 1, args[1]);
+        THROW(env, minim_argument_error("integer", "modulo", 1, args[1]));
 
     return minim_int_2ary(args[0], args[1], mpz_fdiv_r);
 }
@@ -376,10 +376,10 @@ MinimObject *minim_builtin_modulo(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_remainder(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "remainder", 0, args[0]);
+        THROW(env, minim_argument_error("integer", "remainder", 0, args[0]));
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "remainder", 1, args[1]);
+        THROW(env, minim_argument_error("integer", "remainder", 1, args[1]));
 
     return minim_int_2ary(args[0], args[1], mpz_tdiv_r);
 }
@@ -387,10 +387,10 @@ MinimObject *minim_builtin_remainder(MinimEnv *env, size_t argc, MinimObject **a
 MinimObject *minim_builtin_quotient(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "quotient", 0, args[0]);
+        THROW(env, minim_argument_error("integer", "quotient", 0, args[0]));
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "quotient", 1, args[1]);
+        THROW(env, minim_argument_error("integer", "quotient", 1, args[1]));
 
     return minim_int_2ary(args[0], args[1], mpz_tdiv_q);
 }
@@ -400,7 +400,7 @@ MinimObject *minim_builtin_numerator(MinimEnv *env, size_t argc, MinimObject **a
     mpq_ptr r;
 
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "numerator", 0, args[0]);
+        THROW(env, minim_argument_error("number", "numerator", 0, args[0]));
 
     RATIONALIZE_COPY(r, args[0]);
     mpz_set_ui(mpq_denref(r), 1);
@@ -414,7 +414,7 @@ MinimObject *minim_builtin_denominator(MinimEnv *env, size_t argc, MinimObject *
     mpq_ptr r;
 
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "denominator", 0, args[0]);
+        THROW(env, minim_argument_error("number", "denominator", 0, args[0]));
 
     RATIONALIZE_COPY(r, args[0]);
     mpz_set(mpq_numref(r), mpq_denref(r));
@@ -427,7 +427,7 @@ MinimObject *minim_builtin_denominator(MinimEnv *env, size_t argc, MinimObject *
 MinimObject *minim_builtin_floor(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "floor", 0, args[0]);
+        THROW(env, minim_argument_error("number", "floor", 0, args[0]));
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
@@ -446,7 +446,7 @@ MinimObject *minim_builtin_floor(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_ceil(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "ceil", 0, args[0]);
+        THROW(env, minim_argument_error("number", "ceil", 0, args[0]));
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
@@ -466,7 +466,7 @@ MinimObject *minim_builtin_ceil(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_trunc(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "trunc", 0, args[0]);
+        THROW(env, minim_argument_error("number", "trunc", 0, args[0]));
 
     if (MINIM_OBJ_EXACTP(args[0]))
     {
@@ -486,7 +486,7 @@ MinimObject *minim_builtin_trunc(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_round(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "round", 0, args[0]);
+        THROW(env, minim_argument_error("number", "round", 0, args[0]));
 
     return (MINIM_OBJ_EXACTP(args[0]) ?
             minim_exact_round_c11(args[0]) :
@@ -496,10 +496,10 @@ MinimObject *minim_builtin_round(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_gcd(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "gcd", 0, args[0]);
+        THROW(env, minim_argument_error("integer", "gcd", 0, args[0]));
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "gcd", 1, args[1]);
+        THROW(env, minim_argument_error("integer", "gcd", 1, args[1]));
 
     return minim_int_2ary(args[0], args[1], mpz_gcd);
 }
@@ -507,10 +507,10 @@ MinimObject *minim_builtin_gcd(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_lcm(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_integerp(args[0]))
-        return minim_argument_error("integer", "lcm", 0, args[0]);
+        THROW(env, minim_argument_error("integer", "lcm", 0, args[0]));
 
     if (!minim_integerp(args[1]))
-        return minim_argument_error("integer", "lcm", 1, args[1]);
+        THROW(env, minim_argument_error("integer", "lcm", 1, args[1]));
 
     return minim_int_2ary(args[0], args[1], mpz_lcm);
 }
@@ -518,7 +518,7 @@ MinimObject *minim_builtin_lcm(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_sqrt(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "sqrt", 0, args[0]);
+        THROW(env, minim_argument_error("number", "sqrt", 0, args[0]));
 
     if (minim_negativep(args[0]))
         return minim_inexactnum(NAN);
@@ -531,7 +531,7 @@ MinimObject *minim_builtin_sqrt(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_exp(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "exp", 0, args[0]);
+        THROW(env, minim_argument_error("number", "exp", 0, args[0]));
 
     return ((MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0])) ?
             int_to_minim_number(1) :
@@ -541,7 +541,7 @@ MinimObject *minim_builtin_exp(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_log(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "log", 0, args[0]);
+        THROW(env, minim_argument_error("number", "log", 0, args[0]));
 
     if (!minim_positivep(args[0]))
         return minim_inexactnum(NAN);
@@ -604,7 +604,7 @@ MinimObject *minim_builtin_pow(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_sin(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "sin", 0, args[0]);
+        THROW(env, minim_argument_error("number", "sin", 0, args[0]));
     
     // sin(0) = 0
     return ((MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0])) ?
@@ -615,7 +615,7 @@ MinimObject *minim_builtin_sin(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_cos(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "cos", 0, args[0]);
+        THROW(env, minim_argument_error("number", "cos", 0, args[0]));
     
     // cos(0) = 1
     return ((MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0])) ?
@@ -626,7 +626,7 @@ MinimObject *minim_builtin_cos(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_tan(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "tan", 0, args[0]);
+        THROW(env, minim_argument_error("number", "tan", 0, args[0]));
     
     // tan(0) = 0
     return ((MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0])) ?
@@ -637,7 +637,7 @@ MinimObject *minim_builtin_tan(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_asin(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "asin", 0, args[0]);
+        THROW(env, minim_argument_error("number", "asin", 0, args[0]));
 
     // asin(0) = 0
     return ((MINIM_OBJ_EXACTP(args[0]) && minim_zerop(args[0])) ?
@@ -648,7 +648,7 @@ MinimObject *minim_builtin_asin(MinimEnv *env, size_t argc, MinimObject **args)
 MinimObject *minim_builtin_acos(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_NUMBERP(args[0]))
-        return minim_argument_error("number", "acos", 0, args[0]);
+        THROW(env, minim_argument_error("number", "acos", 0, args[0]));
 
     // acos(1) = 0
     return ((MINIM_OBJ_EXACTP(args[0]) && mpq_cmp_si(MINIM_EXACTNUM(args[0]), 1, 1) == 0) ?
