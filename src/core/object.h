@@ -39,7 +39,6 @@ typedef enum MinimObjectType
     MINIM_OBJ_PROMISE,
     MINIM_OBJ_VALUES,
     MINIM_OBJ_CHAR,
-    MINIM_OBJ_EXIT,
     MINIM_OBJ_JUMP
 } MinimObjectType;
 
@@ -103,7 +102,6 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_OBJ_PROMISEP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PROMISE)
 #define MINIM_OBJ_VALUESP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VALUES)
 #define MINIM_OBJ_CHARP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_CHAR)
-#define MINIM_OBJ_EXITP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXIT)
 #define MINIM_OBJ_JUMPP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_JUMP)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
@@ -137,7 +135,6 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 16))))
 #define MINIM_ERROR(obj)            (*((MinimError**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_CHAR(obj)             (*((unsigned int*) VOID_PTR(PTR(obj, 4))))
-#define MINIM_EXIT_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_JUMP_BUF(obj)         (*((jmp_buf**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_JUMP_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
 
@@ -172,7 +169,6 @@ MinimObject *minim_sequence(void *seq);
 MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);
 MinimObject *minim_char(unsigned int ch);
-MinimObject *minim_exit(void *val);
 MinimObject *minim_jmp(void *ptr, void *val);
 
 //  Equivalence

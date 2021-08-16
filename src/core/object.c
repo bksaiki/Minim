@@ -172,14 +172,6 @@ MinimObject *minim_char(unsigned int ch)
     return o;
 }
 
-MinimObject *minim_exit(void *val)
-{
-    MinimObject *o = GC_alloc(minim_exit_size);
-    o->type = MINIM_OBJ_EXIT;
-    MINIM_EXIT_VAL(o) = val;
-    return o;
-}
-
 MinimObject *minim_jmp(void *ptr, void *val)
 {
     MinimObject *o = GC_alloc(minim_jump_size);

@@ -305,9 +305,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
         else if (MINIM_OBJ_CLOSUREP(op))
         {
             MinimLambda *lam = MINIM_CLOSURE(op);
-
+            uint8_t prev_flags = env->flags;
+            
+            env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
             for (size_t i = 0; i < argc; ++i)
                 args[i] = eval_ast_node(env, node->children[i + 1]); 
+            env->flags = prev_flags;     
 
             if (env_has_called(env, lam))
             {

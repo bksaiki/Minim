@@ -125,17 +125,7 @@ int minim_repl(char **argv, uint32_t flags)
             {
                 minim_error_handler = err_handler;
                 obj = eval_ast(module->env, ast);
-                if (MINIM_OBJ_ERRORP(obj))
-                {    
-                    print_minim_object(obj, module->env, &pp);
-                    printf("\n");
-                    fflush(stdout);
-                }
-                else if (MINIM_OBJ_EXITP(obj))
-                {
-                    break;
-                }
-                else if (!minim_voidp(obj))
+                if (!minim_voidp(obj))
                 {
                     print_minim_object(obj, module->env, &pp);
                     printf("\n");
