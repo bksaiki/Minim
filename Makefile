@@ -1,20 +1,27 @@
-BUILD_DIR	= build
-SRC_DIR 	= src
-TEST_DIR	= tests
+BUILD_DIR	:= build
+SRC_DIR 	:= src
+TEST_DIR	:= tests
+INSTALL_DIR := /usr/bin
 
-ENTRY		= src/minim.c
-EXE			= minim
+ENTRY		:= src/minim.c
+EXE         := minim
 
-SRCS 		= $(shell find $(SRC_DIR) -name *.c ! -wholename $(ENTRY))
-OBJS 		= $(SRCS:%.c=$(BUILD_DIR)/%.o)
-DEPS 		= $(OBJS:.o=.d)
+SRCS 		:= $(shell find $(SRC_DIR) -name *.c ! -wholename $(ENTRY))
+OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
+DEPS 		:= $(OBJS:.o=.d)
 
 TESTS 		:= $(shell find $(TEST_DIR) -name *.c)
-TEST_EXES 	:= $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
+TEST_EXES   := $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
-DEPFLAGS 	= -MMD -MP
-CFLAGS 		= -Wall -std=c11
-LDFLAGS 	= -lm -lgmp
+DEPFLAGS 	:= -MMD -MP
+CFLAGS 		:= -Wall -std=c11
+LDFLAGS 	:= -lm -lgmp
+
+CP := cp
+ECHO := echo
+MKDIR_P	:= mkdir -p
+RM := rm -rf
+SH := bash
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
@@ -30,42 +37,48 @@ profile:
 release:
 	$(MAKE) CFLAGS="-O3 -march=native $(CFLAGS)" minim
 
+install:
+	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
+
 minim: $(BUILD_DIR)/config.h $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 tests: minim unit-tests lib-tests;
 
 unit-tests: $(TEST_EXES)
-	bash $(TEST_DIR)/test.sh $(TEST_EXES)
+	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)
 
 memcheck: $(TEST_EXES)
-	bash $(TEST_DIR)/memcheck.sh $(TEST_EXES)
+	$(SH) $(TEST_DIR)/memcheck.sh $(TEST_EXES)
 
 examples:
-	bash $(TEST_DIR)/examples.sh
+	$(SH) $(TEST_DIR)/examples.sh
 
 lib-tests:
-	bash $(TEST_DIR)/lib.sh
+	$(SH) $(TEST_DIR)/lib.sh
 
 clean:
 	$(RM) $(OBJS) $(EXE)
 
 clean-all:
-	rm -r -f $(BUILD_DIR) tmp $(EXE)
+	$(RM) $(BUILD_DIR) tmp $(EXE)
+
+uninstall:
+	$(RM) $(INSTALL_DIR)/$(EXE)
 
 ### Specific rules
 
 $(BUILD_DIR)/config.h:
-	mkdir -p $(BUILD_DIR)
-	echo "#define MINIM_LIB_PATH \"$(shell pwd)/src/\"" > build/config.h
+	$(MKDIR_P) $(BUILD_DIR)
+	$(ECHO) "#define MINIM_LIB_PATH \"$(shell pwd)/src/\"" > build/config.h
 
 ### General rules
 
 $(BUILD_DIR)/.:
-	mkdir -p $@
+	$(MKDIR_P) $@
 
 $(BUILD_DIR)%/.:
-	mkdir -p $@
+	$(MKDIR_P) $@
 
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
