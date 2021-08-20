@@ -349,7 +349,9 @@ void throw_minim_error(MinimEnv *env, MinimObject *err)
     if (!MINIM_OBJ_ERRORP(err))
         printf("Attempting to throw something that is not an error\n");
 
-    fill_trace_info(MINIM_ERROR(err), env);
+    if (env)
+        fill_trace_info(MINIM_ERROR(err), env);
+        
     if (minim_error_handler != NULL)        // no return
         minim_long_jump(minim_error_handler, NULL, 1, &err);
 

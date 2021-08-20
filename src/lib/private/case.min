@@ -1,0 +1,42 @@
+;
+;   'case' syntax
+;
+
+(%import "and-or.min" "def.min" "stx.min" "stx-macro.min")
+
+(%export case)
+
+(def-syntax case
+  (lambda (stx)
+    (syntax-case stx (else)
+     [(_ v)   ; empty case
+      #'(begin v (void))]
+     [(_ v [else e es ...])   ; else case
+      #'(begin v (begin e es ...))]
+     [(_ v [(k ...) e es ...] ...)  ; missing else
+      #'(case v [(k ...) e es ...] ... [else (void)])]
+     [(_ v [(k ...) e es ...] ... [else x xs ...])  ; general case
+      #'(let-values ([(tmp) v])
+        (case/else tmp [(k ...) e es ...] ... [else x xs ...]))])))
+
+(def-syntax case/else
+  (lambda (stx)
+    (syntax-case stx (else)
+     [(_ v [(k ...) es ...] rest ... [else xs ...])
+      #'(if (case/test v (k ...))
+            (begin es ...)
+            (case/else v rest ... [else xs ...]))]
+     [(_ v [(k ...) es ...] [else xs ...])
+      #'(if (case/test v (k ...))
+            (begin es ...)
+            (begin xs ...))]
+     [(_ v [else xs ...])
+      #'(begin xs ...)])))
+
+(def-syntax case/test
+  (lambda (stx)
+    (syntax-case stx ()
+     [(_ v ())         #'#f]
+     [(_ v (k))        #'(equal? v 'k)]
+     [(_ v (k ks ...)) #'(if (equal? v 'k) #t (case/test v (ks ...)))])))
+

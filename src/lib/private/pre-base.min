@@ -4,6 +4,7 @@
 ;
 
 (%import "and-or.min"
+         "case.min"
          "cond.min"
          "def.min"
          "let.min"
@@ -11,6 +12,7 @@
          "when-unless.min")
 
 (%export (all "and-or.min")
+         (all "case.min")
          (all "cond.min")
          (all "def.min")
          (all "let.min")

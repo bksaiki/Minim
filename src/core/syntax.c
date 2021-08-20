@@ -181,6 +181,7 @@ static void check_syntax_case(MinimEnv *env, SyntaxNode *ast)
     }
 }
 
+// TODO: (let-values ([x ...]) ...) still passes
 static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
 {
     MinimObject *bindings, *sym;

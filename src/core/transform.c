@@ -193,6 +193,9 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
     {
         size_t i, j;
 
+        if (ast->type == SYNTAX_NODE_DATUM)
+            return false;
+
         i = 0; j = 0;
         for (; i < match->childc; ++i)
         {
@@ -219,19 +222,27 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
                 if (match->childc > ast->childc + 2)    // not enough space for on ast
                     return false;
 
-                init_match_table(&table2);
-                for (; j < ast->childc - (match->childc - i - 2); ++j)
+                if (match->childc + j == ast->childc + i + 2)
                 {
-                    MatchTable table3;
+                    match_table_add(table, match->children[i]->sym, pdepth, minim_null);
+                }
+                else
+                {
+                    init_match_table(&table2);
+                    for (; j < ast->childc - (match->childc - i - 2); ++j)
+                    {
+                        MatchTable table3;
 
-                    init_match_table(&table3);
-                    if (!match_transform(match->children[i], ast->children[j], &table3, reserved, pdepth + 1))
-                        return false;
+                        init_match_table(&table3);
+                        if (!match_transform(match->children[i], ast->children[j], &table3, reserved, pdepth + 1))
+                            return false;
 
-                    match_table_merge_patterns(&table2, &table3);
+                        match_table_merge_patterns(&table2, &table3);
+                    }
+
+                    match_table_merge(table, &table2);
                 }
 
-                match_table_merge(table, &table2);
                 ++i;    // skip ellipse
             }
             else if (!match_transform(match->children[i], ast->children[j], table, reserved, pdepth))
@@ -248,6 +259,9 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
     }
     else if (match->type == SYNTAX_NODE_PAIR)
     {
+        if (ast->type == SYNTAX_NODE_DATUM)
+            return false;
+
         return match_transform(match->children[0], ast->children[0], table, reserved, pdepth) &&
                match_transform(match->children[1], ast->children[1], table, reserved, pdepth);
     }
@@ -318,6 +332,9 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
                 if (len == SIZE_MAX)
                 {
                     printf("apply transforms: bad things happened\n");
+                    printf(" at: "); print_ast(ast); printf("\n");
+                    printf(" in: "); print_ast(ast->children[i]); printf("\n");
+                    THROW(NULL, minim_error("PANIC!!", NULL));
                 }
 
                 if (len == 0)   // shrink by two
@@ -427,9 +444,9 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
     if (!MINIM_OBJ_ASTP(res))
     {
         THROW(env, minim_syntax_error("expected syntax as a result",
-                                 MINIM_TRANSFORM_NAME(trans),
-                                 ast,
-                                 NULL));
+                                      MINIM_TRANSFORM_NAME(trans),
+                                      ast,
+                                      NULL));
     }
 
     return MINIM_AST(res);
@@ -468,8 +485,7 @@ valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *re
             THROW(env, minim_syntax_error("ellipse not allowed here", NULL, match, NULL));
             return false;
         }
-
-
+        
         if (!symbol_list_contains(reserved, match->sym) && strcmp(match->sym, "_") != 0)
             match_table_add(table, match->sym, pdepth, minim_null);
     }
