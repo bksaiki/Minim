@@ -316,14 +316,25 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
         {
             SyntaxNode *rest;
 
-            init_syntax_node(&rest, SYNTAX_NODE_LIST);
-            rest->childc = ast->childc - 1;
-            rest->children = GC_alloc(rest->childc * sizeof(SyntaxNode*));
-            for (size_t i = 0; i < rest->childc; ++i)
-                copy_syntax_node(&rest->children[i], ast->children[i + 1]);
+            if (ast->childc == 4 && ast->children[2]->sym && strcmp(ast->children[2]->sym, ".") == 0)
+            {
+                init_syntax_node(&rest, SYNTAX_NODE_PAIR);
+                rest->childc = 2;
+                rest->children = GC_alloc(rest->childc * sizeof(SyntaxNode*));
+                rest->children[0] = ast->children[1];
+                rest->children[1] = ast->children[3];
+            }
+            else
+            {
+                init_syntax_node(&rest, SYNTAX_NODE_LIST);
+                rest->childc = ast->childc - 1;
+                rest->children = GC_alloc(rest->childc * sizeof(SyntaxNode*));
+                for (size_t i = 0; i < rest->childc; ++i)
+                    rest->children[i] = ast->children[i + 1];
+            }
             
             if (!match_transform(match->children[1], rest, table, reserved, pdepth))
-                return false;
+                    return false;
         }
 
         return true;
@@ -578,11 +589,16 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
     }
     else
     {
-        val = match_table_get(table, ast->sym);
-        if (val)    // replace
-        {
-            SyntaxNode *cp;
+        SyntaxNode *cp;
 
+        val = match_table_get(table, ast->sym);
+        if (val == minim_null)
+        {
+            init_syntax_node(&cp, SYNTAX_NODE_LIST);
+            return cp;
+        }
+        else if (val != NULL)    // replace
+        {
             copy_syntax_node(&cp, MINIM_AST(val));
             return cp;
         }

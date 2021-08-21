@@ -18,4 +18,4 @@
 (equal? (foo 'a) '#(1 (a)))
 (equal? (foo 'a 'b) '#(2 (a b)))
 (equal? (foo 'a 'b 'c) '#(3 (a b c)))
-(equal? (foo 'a 'b 'c 'd) '#(4 (a b c (d))))
+(equal? (foo 'a 'b 'c 'd) '#(? (a b c (d))))
