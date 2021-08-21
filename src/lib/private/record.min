@@ -1,0 +1,120 @@
+;
+;   'records' from SRFI 9
+;
+
+(%import "pre-base.min")
+
+(%export make-record-type
+         record-constructor
+         record-predicate
+         record-accessor
+         record-modifier
+         define-record)
+
+;;;;;;;;;;;;;;;;;;; records / vector ;;;;;;;;;;;;;;;;;;;
+
+(define record-marker (list 'record-marker))
+(define real-vector? vector?)
+
+; redefine
+(define vector? (x)
+  (and (real-vector? x)
+       (or (= (vector-length x))
+           (not (eq? (vector-ref x 0) record-marker)))))
+
+(define record? (x)
+  (and (real-vector? x)
+       (< 0 (vector-length x))
+       (equal? (vector-ref x 0) record-marker))) ; TODO: eq?
+
+(define make-record (size)
+  (let ([new (make-vector (+ size 1))])
+    (vector-set! new 0 record-marker)
+    new))
+
+(define record-ref (record idx)
+  (vector-ref record (+ idx 1)))
+
+(define record-set! (record idx val)
+  (vector-set! record (+ idx 1) val))
+
+(define record-type (record)
+  (record-ref record 0))
+
+;;;;;;;;;;;;;;;;;;; record types ;;;;;;;;;;;;;;;;;;;
+
+; base record for other types
+(define $record-type (make-record 3))
+(record-set! $record-type 0 $record-type)
+(record-set! $record-type 1 '$record-type)
+(record-set! $record-type 2 '(name field-tags))
+
+; type constructor
+(define make-record-type (name field-tags)
+  (let ([new (make-record 3)])
+    (record-set! new 0 $record-type)
+    (record-set! new 1 name)
+    (record-set! new 2 field-tags)
+    new))
+
+(define record-type-name (record-type)
+  (record-ref record-type 1))
+
+(define record-type-field-tags (record-type)
+  (record-ref record-type 2))
+
+;;;;;;;;;;;;;;;;;;; record procedures ;;;;;;;;;;;;;;;;;;;
+
+(define field-index (type tag)
+  (let loop ([i 1] [tags (record-type-field-tags type)])
+    (cond
+     [(null? tags) (error "record type has no such field")]
+     [(equal? tag (car tags)) i] ; eq?
+     [else (loop (+ i 1) (cdr tags))])))
+
+; record constructor
+(define record-constructor (type tags)
+  (let ([size (length (record-type-field-tags type))]
+        [arg-count (length tags)]
+        [idxs (map (lambda (tag) (field-index type tag) tags))])
+    (lambda args
+      (if (= (length args) arg-count)
+          (let ([new (make-record (+ size 1))])
+            (record-set! new 0 type)
+            (for ([arg (in-list args)] [i (in-list idxs)])
+              (record-set! new i arg))
+            new)
+          (error 'record-constructor "arity mismatch")))))
+
+; predicate
+(define record-predicate (type)
+  (lambda (x) (and (record? x) (eq? (record-type x) type))))
+
+; accessor
+(define record-accessor (type tag)
+  (let ([idx (field-index type tag)])
+    (lambda (x)
+      (if (and (record? x) (eq? (record-type x) type))
+          (record-ref x idx)
+          (error 'record-accessor "expected a record of type")))))
+
+(define record-modifier (type tag)
+  (let ([idx (field-index type tag)])
+    (lambda (x val)
+      (if (and (record? x) (eq? (record-type x) type))
+          (record-set! x idx val)
+          (error 'record-accessor "expected a record of type")))))
+
+;;;;;;;;;;;;;;;;;;; record ;;;;;;;;;;;;;;;;;;;
+
+(define-syntax define-record
+  (syntax-rules ()
+   [(_ type (constructor tag ...)
+            predicate
+            (field-tag accessor . more) ...)
+    (begin
+      (define type (make-record-type 'type '(field-tag ...)))
+      (define constructor (record-constructor type '(tag ...)))
+      (define predicate (record-predicate type))
+      (define-record-field type field-tag accessor . more)
+      ...)]))

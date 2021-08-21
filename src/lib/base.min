@@ -8,6 +8,7 @@
          "private/lazy.min"
          "private/list.min"
          "private/math.min"
+         "private/record.min"
          "private/string.min")
 
 (%export (all "private/pre-base.min")
@@ -16,4 +17,5 @@
          (all "private/lazy.min")
          (all "private/list.min")
          (all "private/math.min")
+         (all "private/record.min")
          (all "private/string.min"))
