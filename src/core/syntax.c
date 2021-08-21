@@ -154,33 +154,6 @@ static void check_syntax_if(MinimEnv *env, SyntaxNode *ast)
     check_syntax_rec(env, ast->children[2]);
 }
 
-static void check_syntax_case(MinimEnv *env, SyntaxNode *ast)
-{
-    MinimObject *branch, *match;
-    SyntaxNode *datum;
-
-    for (size_t i = 2; i < ast->childc; ++i)
-    {
-        branch = unsyntax_ast(env, ast->children[i]);
-        if (!minim_listp(branch) || minim_list_length(branch) < 2)
-            THROW(env, minim_syntax_error("bad clause", "case", ast, ast->children[i]));
-
-        // match
-        datum = MINIM_AST(MINIM_CAR(branch));
-        if (i + 1 != ast->childc && datum->sym && strcmp(datum->sym, "else") == 0)
-            THROW(env, minim_syntax_error("bad clause", "case", ast, ast->children[i]));
-        
-        // datums
-        match = unsyntax_ast(env, datum);
-        if (!minim_listp(match))
-            THROW(env, minim_syntax_error("bad match datum", "case", ast, ast->children[i]));
-
-        // vals
-        for (MinimObject *it = MINIM_CDR(branch); !minim_nullp(it); it = MINIM_CDR(it))
-            check_syntax_rec(env, MINIM_AST(MINIM_CAR(it)));
-    }
-}
-
 // TODO: (let-values ([x ...]) ...) still passes
 static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
 {
@@ -443,7 +416,6 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
             CHECK_REC(proc, minim_builtin_setb, check_syntax_set);
             CHECK_REC(proc, minim_builtin_def_values, check_syntax_def_values);
             CHECK_REC(proc, minim_builtin_if, check_syntax_if);
-            CHECK_REC(proc, minim_builtin_case, check_syntax_case);
             CHECK_REC(proc, minim_builtin_let_values, check_syntax_let_values);
             CHECK_REC(proc, minim_builtin_letstar_values, check_syntax_let_values);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);

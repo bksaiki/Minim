@@ -512,6 +512,8 @@ MinimObject *eval_module(MinimModule *module)
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
+        // print_ast(module->exprs[i]); printf("\n");
+
         res = eval_ast_no_check(module->env, module->exprs[i]);
         if (!minim_voidp(res))
         {

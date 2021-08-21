@@ -127,49 +127,6 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
     return res;
 }
 
-MinimObject *minim_builtin_case(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    MinimObject *key;
-    MinimEnv *env2;
-
-    if (argc < 2)
-        return minim_void;
-    
-    key = unsyntax_ast(env, MINIM_AST(args[0]));
-    for (size_t i = 1; i < argc; ++i)
-    {
-        MinimObject *ce_pair, *cs, *val;
-
-        ce_pair = unsyntax_ast(env, MINIM_AST(args[i]));
-        cs = unsyntax_ast_rec(env, MINIM_AST(MINIM_CAR(ce_pair)));
-        if (minim_nullp(cs))
-            continue;
-
-        for (MinimObject *it = cs; !minim_nullp(it); it = MINIM_CDR(it))
-        {
-            if (minim_equalp(MINIM_CAR(it), key))
-            {
-                if (minim_list_length(ce_pair) > 2)
-                {
-                    init_env(&env2, env, NULL);
-                    for (MinimObject *it = MINIM_CDR(ce_pair); !minim_nullp(it); it = MINIM_CDR(it))
-                    {
-                        val = eval_ast_no_check(env2, MINIM_AST(MINIM_CAR(it)));
-                        if (minim_nullp(MINIM_CDR(it)))
-                            return val;   
-                    }
-                }
-                else
-                {
-                    return eval_ast_no_check(env, MINIM_AST(MINIM_CADR(ce_pair)));
-                }
-            }
-        }
-    }
-
-    return minim_void;
-}
-
 MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
     return minim_values(argc, args);

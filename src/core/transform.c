@@ -219,7 +219,7 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
             {
                 MatchTable table2;
 
-                if (match->childc > ast->childc + 2)    // not enough space for on ast
+                if (match->childc + j > ast->childc + i + 2)    // not enough space for on ast
                     return false;
 
                 if (match->childc + j == ast->childc + i + 2)
@@ -319,7 +319,9 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
 
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
-        for (size_t i = 0; i < ast->childc; ++i)
+        size_t i = 0;
+
+        while (i < ast->childc)
         {
             if (is_match_pattern(ast, i))
             {
@@ -344,7 +346,6 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
 
                     ast->childc -= 2;
                     ast->children = GC_realloc(ast->children, ast->childc * sizeof(SyntaxNode*));
-                    ++i;
                 }
                 else if (len == 1) // shrink by one
                 {
@@ -356,7 +357,6 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
 
                     match_table_next_depth(&table2, table, 0);
                     ast->children[i] = apply_transformation(&table2, ast->children[i]);
-
                     ++i;
                 }
                 else if (len == 2) // nothing
@@ -368,7 +368,6 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
                     clear_match_table(&table2);
                     match_table_next_depth(&table2, table, 1);
                     ast->children[i + 1] = apply_transformation(&table2, sub);
-
                     i += 2;
                 }
                 else        // expand
@@ -411,6 +410,7 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
             else
             {
                 ast->children[i] = apply_transformation(table, ast->children[i]);
+                ++i;
             }
         }
     }
