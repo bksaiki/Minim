@@ -401,7 +401,7 @@ MinimObject *minim_builtin_list(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_head(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!MINIM_CAR(args[0]))
+    if (!minim_listp(args[0]) || !MINIM_CAR(args[0]))
         THROW(env, minim_argument_error("non-empty list", "head", 0, args[0]));
         
     return MINIM_CAR(args[0]);
@@ -411,7 +411,7 @@ MinimObject *minim_builtin_tail(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *it;
 
-    if (!MINIM_CAR(args[0]))
+    if (!minim_listp(args[0]) || !MINIM_CAR(args[0]))
         THROW(env, minim_argument_error("non-empty list", "tail", 0, args[0]));
 
     MINIM_TAIL(it, args[0]);
@@ -420,8 +420,10 @@ MinimObject *minim_builtin_tail(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_length(MinimEnv *env, size_t argc, MinimObject **args)
 {
+    if (!minim_listp(args[0]))
+        THROW(env, minim_argument_error("list", "length", 0, args[0]));
+
     size_t len = minim_list_length(args[0]);
-    
     return uint_to_minim_number(len);
 }
 

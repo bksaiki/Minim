@@ -4,18 +4,9 @@
 
 (%import "pre-base.min")
 
-; (def-syntax datum->seq
-;   (lambda (stx)
-;     (if (not (identifier? stx))
-;         (syntax-error 'datum-seq "not allowed as an expression")
-;         (let ([e (stx-cdr stx)])
-;           (if (null? e)
-;               (syntax-error 'datum-seq "expected an argument")
-;               (stx-car stx))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-syntaxes (for)
+(def-syntax for
   (lambda (stx)
     (syntax-case stx ()
      [(_ () body ...) #'(void)]
@@ -30,7 +21,7 @@
                   body ...)
                 (loop (sequence-rest id) ...))))])))
 
-(def-syntaxes (for/list)
+(def-syntax for/list
   (lambda (stx)
     (syntax-case stx ()
      [(_ () body ...) #'(void)]
@@ -75,6 +66,9 @@
             (lambda (x) (vector-ref (car x) (cdr x)))
             (lambda (x) (cons (car x) (+ (cdr x) 1)))
             (lambda (x) (equal? (vector-length (car x)) (cdr x)))))
+
+(def natural? (n)
+  (and (exact? n) (integer? n) (not (negative? n))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
 

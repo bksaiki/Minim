@@ -4,7 +4,7 @@
 
 (%import "and-or.min" "def.min" "stx.min" "stx-macro.min")
 
-(%export case)
+(%export case case-lambda)
 
 (def-syntax case
   (lambda (stx)
@@ -40,3 +40,27 @@
      [(_ v (k))        #'(equal? v 'k)]
      [(_ v (k ks ...)) #'(if (equal? v 'k) #t (case/test v (ks ...)))])))
 
+
+(def-syntax case-lambda
+  (syntax-rules ()
+   [(case-lambda) (syntax-error "missing clauses" stx)]
+   [(case-lambda (a e ...) clause ...)
+    (lambda args
+      (let-values ([(l) (length args)])
+        (case-lambda "CLAUSE" args l (a e ...) clause ...)))]
+   [(case-lambda "CLAUSE" args l ((a ...) e ...) clause ...)
+    (if (= l (length '(a ...)))
+        (apply (lambda (a ...) e ...) args)
+        (case-lambda "CLAUSE" args l clause ...))]
+   [(case-lambda "CLAUSE" args l ((a . rest) e ...) clause ...)
+    (case-lambda "IMPROPER" args l 1 (a . rest) (rest e ...) clause ...)]
+   [(case-lambda "CLAUSE" args l (a e ...) clause ...)
+    (let-values ([(a) args]) e ...)]
+   [(case-lambda "CLAUSE" args l)
+    (error "Wrong number of arguments")]
+   [(case-lambda "IMROPER" args l k al ((a . rest) e ...) clause ...)
+    (case-lambda "IMPROPER" args l (+ k 1) al (rest e ...) clause ...)]
+   [(case-lambda "IMPROPER" args l k al (rest e ...) clause ...)
+    (if (>= l k)
+        (apply (lambda al e ...) args)
+        (case-lambda "CLAUSE" args l clause ...))]))

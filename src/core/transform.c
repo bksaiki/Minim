@@ -9,6 +9,100 @@
 // forward declaration
 SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast);
 
+// ================================ string classification ================================
+
+// TODO: this is copied from src/core/eval.c
+
+static bool is_rational(char *str)
+{
+    char *it = str;
+
+    if ((*it == '+' || *it == '-') &&
+        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+    {
+        it += 2;
+    }
+
+    while (*it >= '0' && *it <= '9')    ++it;
+
+    if (*it == '/' && *(it + 1) >= '0' && *(it + 1) <= '9')
+    {
+        it += 2;
+        while (*it >= '0' && *it <= '9')    ++it;
+    }
+
+    return (*it == '\0');
+}
+
+static bool is_float(const char *str)
+{
+    size_t idx = 0;
+    bool digit = false;
+
+    if (str[idx] == '+' || str[idx] == '-')
+        ++idx;
+    
+    if (str[idx] >= '0' && str[idx] <= '9')
+    {
+        ++idx;
+        digit = true;
+    }
+    
+    while (str[idx] >= '0' && str[idx] <= '9')
+        ++idx;
+
+    if (str[idx] != '.' && str[idx] != 'e')
+        return false;
+
+    if (str[idx] == '.')
+        ++idx;
+
+    if (str[idx] >= '0' && str[idx] <= '9')
+    {
+        ++idx;
+        digit = true;
+    }
+
+    while (str[idx] >= '0' && str[idx] <= '9')
+        ++idx;
+
+    if (str[idx] == 'e')
+    {
+        ++idx;
+        if (!str[idx])  return false;
+
+        if ((str[idx] == '+' || str[idx] == '-') &&
+            str[idx + 1] >= '0' && str[idx + 1] <= '9')
+            idx += 2;
+
+        while (str[idx] >= '0' && str[idx] <= '9')
+            ++idx;
+    }
+
+    return digit && !str[idx];
+}
+
+static bool is_char(char *str)
+{
+    return (str[0] == '#' && str[1] == '\\' && str[2] != '\0');
+}
+
+static bool is_str(char *str)
+{
+    size_t len = strlen(str);
+
+    if (len < 2 || str[0] != '\"' || str[len - 1] != '\"')
+        return false;
+
+    for (size_t i = 1; i < len; ++i)
+    {
+        if (str[i] == '\"' && str[i - 1] != '\\' && i + 1 != len)
+            return false;
+    }
+
+    return true;
+}
+
 // ================================ Match table ================================
 
 typedef struct MatchTable
@@ -160,6 +254,15 @@ is_match_pattern(SyntaxNode *parent, size_t idx)
             strcmp(parent->children[idx + 1]->sym, "...") == 0);
 }
 
+static bool
+is_improper_list(SyntaxNode *ast)
+{
+    return (ast->type == SYNTAX_NODE_LIST &&
+            ast->childc > 2 &&
+            ast->children[ast->childc - 2]->sym &&
+            strcmp(ast->children[ast->childc - 2]->sym, ".") == 0);
+}
+
 static void
 add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved, size_t pdepth)
 {
@@ -189,7 +292,66 @@ static bool
 match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
                 SymbolList *reserved, size_t pdepth)
 {
-    if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
+    if (match->type == SYNTAX_NODE_PAIR)    // pairs first
+    {
+        if (ast->type == SYNTAX_NODE_PAIR)
+        {
+            return match_transform(match->children[0], ast->children[0], table, reserved, pdepth) &&
+                   match_transform(match->children[1], ast->children[1], table, reserved, pdepth);
+        }
+
+        if (ast->type != SYNTAX_NODE_LIST || ast->childc < 1)
+            return false;
+
+        // match car
+        if (!match_transform(match->children[0], ast->children[0], table, reserved, pdepth))
+            return false;
+
+        // match cdr
+        if (ast->childc == 1)
+        { 
+            match_table_add(table, match->children[1]->sym, 0, minim_null);
+        }
+        else
+        {
+            SyntaxNode *rest;
+
+            init_syntax_node(&rest, SYNTAX_NODE_LIST);
+            rest->childc = ast->childc - 1;
+            rest->children = GC_alloc(rest->childc * sizeof(SyntaxNode*));
+            for (size_t i = 0; i < rest->childc; ++i)
+                copy_syntax_node(&rest->children[i], ast->children[i + 1]);
+            
+            if (!match_transform(match->children[1], rest, table, reserved, pdepth))
+                return false;
+        }
+
+        return true;
+    }
+    else if (match->type == SYNTAX_NODE_DATUM)
+    {
+        if (strcmp(match->sym, "_") == 0)       // wildcard
+            return true;
+
+        if (strcmp(match->sym, ".") == 0)       // dot operator
+            return strcmp(ast->sym, ".") == 0;
+
+        if (symbol_list_contains(reserved, match->sym)) // reserved name
+            return ast_equalp(match, ast);
+
+        if (is_rational(match->sym) || is_float(match->sym) ||
+            is_char(match->sym) || is_str(match->sym))
+            return ast->sym && strcmp(match->sym, ast->sym) == 0;
+
+        match_table_add(table, match->sym, pdepth, minim_ast(ast)); // wrap first
+        return true;
+    }
+    else if (match->type == SYNTAX_NODE_LIST && is_improper_list(ast))
+    {
+        return false;
+    }
+    else if ((match->type == SYNTAX_NODE_LIST && ast->type == SYNTAX_NODE_LIST) ||
+             (match->type == SYNTAX_NODE_VECTOR && ast->type == SYNTAX_NODE_VECTOR))
     {
         size_t i, j;
 
@@ -257,29 +419,8 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
 
         return j == ast->childc;
     }
-    else if (match->type == SYNTAX_NODE_PAIR)
-    {
-        if (ast->type == SYNTAX_NODE_DATUM)
-            return false;
 
-        return match_transform(match->children[0], ast->children[0], table, reserved, pdepth) &&
-               match_transform(match->children[1], ast->children[1], table, reserved, pdepth);
-    }
-    else // match->type == SYNTAX_NODE_DATUM
-    {
-        if (strcmp(match->sym, "_") == 0)       // wildcard
-            return true;
-
-        if (strcmp(match->sym, ".") == 0)       // dot operator
-            return strcmp(ast->sym, ".") == 0;
-
-        if (symbol_list_contains(reserved, match->sym)) // reserved name
-            return ast_equalp(match, ast);
-
-        match_table_add(table, match->sym, pdepth, minim_ast(ast)); // wrap first
-    }
-
-    return true;
+    return false;
 }
 
 static size_t
@@ -416,8 +557,24 @@ apply_transformation(MatchTable *table, SyntaxNode *ast)
     }
     else if (ast->type == SYNTAX_NODE_PAIR)
     {
-        ast->children[0] = apply_transformation(table, ast->children[0]);
-        ast->children[1] = apply_transformation(table, ast->children[1]);
+        SyntaxNode *car, *cdr;
+        
+        car = apply_transformation(table, ast->children[0]);
+        cdr = apply_transformation(table, ast->children[1]);
+        if (cdr->type == SYNTAX_NODE_LIST)
+        {
+            ast->type = SYNTAX_NODE_LIST;
+            ast->childc = cdr->childc + 1;
+            ast->children = GC_alloc(ast->childc * sizeof(SyntaxNode*));
+            ast->children[0] = car;
+            for (size_t i = 1; i < ast->childc; ++i)
+                ast->children[i] = cdr->children[i - 1];
+        }
+        else
+        {
+            ast->children[0] = car;
+            ast->children[1] = cdr;
+        }
     }
     else
     {
@@ -716,6 +873,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         }
     }
 
-    THROW(env, minim_syntax_error("bad syntax", "?", MINIM_AST(ast0), NULL));
+    THROW(env, minim_syntax_error("bad syntax", NULL, MINIM_AST(ast0), NULL));
     return NULL;
 }
