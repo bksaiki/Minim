@@ -263,7 +263,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 
         argc = node->childc - 1;
         args = GC_alloc(argc * sizeof(MinimObject*));
-        op = env_get_sym(env, node->children[0]->sym);
+        if (node->children[0]->type == SYNTAX_NODE_LIST)
+            op = eval_ast_node(env, node->children[0]);
+        else if (node->children[0]->type == SYNTAX_NODE_DATUM)
+            op = env_get_sym(env, node->children[0]->sym);
+        else
+            THROW(env, minim_error("not a procedure", NULL));
 
         if (!op)
             THROW(env, minim_error("unknown operator", node->children[0]->sym));

@@ -39,7 +39,7 @@
    [(_ args l (a e ...) clause ...)
     (let-values ([(a) args]) e ...)]
    [(_ args l)
-    (error "arity mismatch")]))
+    (error "arity mismatch: given ~a" l)]))
 
 (def-syntax case-lambda/improper
   (syntax-rules ()

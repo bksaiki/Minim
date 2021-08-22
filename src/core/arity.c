@@ -34,7 +34,7 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
 bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 {
     // Error
-    SET_ARITY_RANGE(error, 1, 2);
+    SET_ARITY_MIN(error, 1);
     SET_ARITY_MIN(argument_error, 3);
     SET_ARITY_MIN(arity_error, 2);
     SET_ARITY_RANGE(syntax_error, 2, 4);

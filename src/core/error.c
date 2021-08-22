@@ -2,6 +2,7 @@
 
 #include "../gc/gc.h"
 #include "assert.h"
+#include "builtin.h"
 #include "error.h"
 #include "jmp.h"
 #include "lambda.h"
@@ -288,23 +289,29 @@ void throw_minim_error(MinimEnv *env, MinimObject *err)
 
 MinimObject *minim_builtin_error(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimError *err;
-
-    if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("symbol?/string?", "error", 0, args[0]));
-
     if (argc == 1)
     {
-        init_minim_error(&err, MINIM_STRING(args[0]), NULL);
-        THROW(env, minim_err(err));
+        if (!MINIM_OBJ_STRINGP(args[0]))
+            THROW(env, minim_argument_error("string?", "error", 0, args[0]));
+
+        THROW(env, minim_error(MINIM_STRING(args[0]), NULL));
     }
     else
     {
-        if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_STRINGP(args[1]))
-            THROW(env, minim_argument_error("symbol?/string?", "error", 1, args[1]));
-    
-        init_minim_error(&err, MINIM_STRING(args[1]), MINIM_STRING(args[0]));
-        THROW(env, minim_err(err));
+        if (MINIM_OBJ_SYMBOLP(args[0]))
+        {
+            MinimObject *format = minim_builtin_format(env, argc - 1, &args[1]);
+            THROW(env, minim_error(MINIM_STRING(format), MINIM_SYMBOL(args[0])));
+        }
+        else if (MINIM_OBJ_STRINGP(args[0]))
+        {
+            MinimObject *format = minim_builtin_format(env, argc, args);
+            THROW(env, minim_error(MINIM_STRING(format), NULL));
+        }
+        else
+        {
+            THROW(env, minim_argument_error("symbol?/string?", "error", 0, args[0]));
+        }
     }
 
     return NULL; // avoid compile errors
