@@ -69,6 +69,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     }
 
     fclose(file);
+    minim_module_expand(module);
     return module;
 }
 
@@ -130,6 +131,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
     }
 
     fclose(file);
+    minim_module_expand(module);
     eval_module(module);
 }
 
@@ -198,6 +200,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
     }
 
     fclose(file);
+    minim_module_expand(module);
     eval_module(module);
 
     // this is dumb

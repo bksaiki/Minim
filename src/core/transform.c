@@ -944,7 +944,7 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
         {
             val = env_get_sym(env, ast->sym);
             if (val && MINIM_OBJ_TRANSFORMP(val))
-                ast = transform_loc(env, val, ast);
+                return transform_syntax(env, transform_loc(env, val, ast));
         }
     }
 
