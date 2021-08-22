@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <string.h>
 #include "common.h"
 #include "path.h"
@@ -31,6 +32,29 @@ void valid_path(Buffer *valid, const char *maybe)
 #else
     writes_buffer(valid, maybe);
 #endif
+}
+
+Buffer *build_path(size_t pathc, ...)
+{
+    Buffer *bf;
+    va_list args;
+    char *arg;
+    
+    init_buffer(&bf);
+    va_start(args, pathc);
+    for (size_t i = 0; i < pathc; ++i)
+    {
+        arg = va_arg(args, char*);
+
+        // while (strncmp(arg, "..", 2) == 0)  // rollback 
+        // {
+        //     for (; bf->curr != SIZE_MAX && ; --bf->curr);
+        // }
+
+        writes_buffer(bf, arg);
+    }
+
+    return bf;
 }
 
 Buffer *get_directory(const char *file)

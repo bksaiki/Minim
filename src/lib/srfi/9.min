@@ -1,0 +1,37 @@
+;
+;   SRFI 9: case-lambda
+;
+
+(%import "../private/pre-base.min")
+
+(%export case-lambda)
+
+(def-syntax case-lambda
+  (syntax-rules ()
+   [(_) (syntax-error "missing clauses" stx)]
+   [(_ (a e ...) clause ...)
+    (lambda args
+      (let-values ([(l) (length args)])
+        (case-lambda/clause args l (a e ...) clause ...)))]))
+
+(def-syntax case-lambda/clause
+  (syntax-rules ()
+   [(_ args l ((a ...) e ...) clause ...)
+    (if (= l (length '(a ...)))
+        (apply (lambda (a ...) e ...) args)
+        (case-lambda/clause args l clause ...))]
+   [(_ args l ((a . rest) e ...) clause ...)
+    (case-lambda/improper args l 1 (a . rest) (rest e ...) clause ...)]
+   [(_ args l (a e ...) clause ...)
+    (let-values ([(a) args]) e ...)]
+   [(_ args l)
+    (error "arity mismatch")]))
+
+(def-syntax case-lambda/improper
+  (syntax-rules ()
+   [(_ args l k al ((a . rest) e ...) clause ...)
+    (case-lambda/improper args l (+ k 1) al (rest e ...) clause ...)]
+   [(_ args l k al (rest e ...) clause ...)
+    (if (>= l k)
+        (apply (lambda al e ...) args)
+        (case-lambda/clause args l clause ...))]))

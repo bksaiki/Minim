@@ -1,0 +1,7 @@
+;
+;   SRFI modules within the base library
+;
+
+(%import "../srfi/9.min")
+
+(%export (all "../srfi/9.min"))
