@@ -261,6 +261,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
 
         clean_path = extract_path(path);
         module2 = minim_module_cache_get(env->module->cache, clean_path);
+
         if (module2)
         {
             copy_minim_module(&module2, module2);

@@ -448,6 +448,7 @@ MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
         THROW(env, minim_error("%export not allowed in REPL", NULL));
 
     init_env(&env2, env, NULL);
+    ast = transform_syntax(env, ast);
     if (expr_is_import(env, ast))
     {
         check_syntax(env2, ast);
@@ -455,7 +456,6 @@ MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
     }
     else if (expr_is_macro(env, ast))
     {
-        ast = transform_syntax(env, ast);
         return eval_top_level(env, ast, minim_builtin_def_syntaxes);
     }
     else

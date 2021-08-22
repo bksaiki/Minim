@@ -2,7 +2,8 @@
 ;   SRFI 9 records
 ;
 
-(%import "../private/pre-base.min")
+(%import "../private/pre-base.min"
+         "../private/for.min")
 
 (%export make-record-type
          record-constructor
@@ -77,7 +78,7 @@
 (def record-constructor (type tags)
   (let ([size (length (record-type-field-tags type))]
         [arg-count (length tags)]
-        [idxs (map (lambda (tag) (field-index type tag) tags))])
+        [idxs (map (lambda (tag) (field-index type tag)) tags)])
     (lambda args
       (if (= (length args) arg-count)
           (let ([new (make-record (+ size 1))])
@@ -108,15 +109,21 @@
 
 ;;;;;;;;;;;;;;;;;;; record ;;;;;;;;;;;;;;;;;;;
 
-(def-syntax def-record (lambda (stx) #'(void)))
-; (def-syntax def-record
-;   (syntax-rules ()
-;    [(_ type (constructor tag ...)
-;             predicate
-;             (field-tag accessor . more) ...)
-;     (begin
-;       (def type (make-record-type 'type '(field-tag ...)))
-;       (def constructor (record-constructor type '(tag ...)))
-;       (def predicate (record-predicate type))
-;       (def-record-field type field-tag accessor . more)
-;       ...)]))
+(def-syntax def-record
+  (syntax-rules ()
+   [(_ type (constructor tag ...) predicate (field-tag accessor . more) ...)
+    (begin
+      (def type (make-record-type 'type '(field-tag ...)))
+      (def constructor (record-constructor type '(tag ...)))
+      (def predicate (record-predicate type))
+      (def-record-field type field-tag accessor . more)
+      ...)]))
+
+(def-syntax def-record-field
+  (syntax-rules ()
+   [(_ type field-tag accessor)
+    (def accessor (record-accessor type 'field-tag))]
+   [(_ type field-tag accessor modifier)
+    (begin
+      (def accessor (record-accessor type 'field-tag))
+      (def modifier (record-modifier type 'field-tag)))]))

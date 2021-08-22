@@ -2,7 +2,7 @@
 ;   'for'
 ;
 
-(%import "pre-base.min" "../srfi/9.min")
+(%import "pre-base.min")
 
 (%export for for/list
          in-list in-range in-naturals

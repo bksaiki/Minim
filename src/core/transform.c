@@ -881,12 +881,6 @@ valid_replacep(MinimEnv *env, SyntaxNode* replace, MatchTable *table, SymbolList
 
             if (depth != SIZE_MAX)  // in table
             {
-                if (pdepth > depth)
-                {
-                    THROW(env, minim_syntax_error("missing ellipse in pattern", NULL, replace, NULL));
-                    return false;
-                }
-
                 if (pdepth < depth)
                 {
                     THROW(env, minim_syntax_error("too many ellipses in pattern", NULL, replace, NULL));
