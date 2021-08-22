@@ -13,20 +13,20 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 {
     PrintParams pp;
     ReadTable rt;
-    Buffer *mfname, *dir;
     MinimModule *module;
+    MinimPath *path;
     FILE *file;
+    char *clean_path;
 
-    init_buffer(&mfname);
-    valid_path(mfname, fname);
-    file = fopen(mfname->data, "r");
-
+    path = build_path(1, fname);
+    clean_path = extract_path(path);
+    file = fopen(clean_path, "r");
     if (!file)
     {
         Buffer *bf;
 
         init_buffer(&bf);
-        writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
+        writef_buffer(bf, "Could not open file \"~s\"", clean_path);
         THROW(prev->env, minim_error(get_buffer(bf), NULL));
         return NULL;
     }
@@ -37,11 +37,9 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     rt.flags = 0x0;
     rt.eof = EOF;
 
-    dir = get_directory(get_buffer(mfname));
-
     init_minim_module(&module, prev->cache);
     init_env(&module->env, get_builtin_env(prev->env), NULL);
-    module->env->current_dir = get_buffer(dir);
+    module->env->current_dir = extract_directory(path);
     module->env->module = module;
     module->cache = prev->cache;
 
@@ -78,20 +76,20 @@ void minim_load_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
     ReadTable rt;
-    Buffer *mfname, *dir;
+    MinimPath *path;
     MinimModule *module;
     FILE *file;
+    char *clean_path;
 
-    init_buffer(&mfname);
-    valid_path(mfname, fname);
-    file = fopen(mfname->data, "r");
-
+    path = build_path(1, fname);
+    clean_path = extract_path(path);
+    file = fopen(clean_path, "r");
     if (!file)
     {
         Buffer *bf;
 
         init_buffer(&bf);
-        writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
+        writef_buffer(bf, "Could not open file \"~s\"", clean_path);
         THROW(env, minim_error(get_buffer(bf), NULL));
     }
 
@@ -101,11 +99,9 @@ void minim_load_file(MinimEnv *env, const char *fname)
     rt.flags = 0x0;
     rt.eof = EOF;
 
-    dir = get_directory(get_buffer(mfname));
-
     init_minim_module(&module, (env->module ? env->module->cache : NULL));
     init_env(&module->env, get_builtin_env(env), NULL);
-    module->env->current_dir = get_buffer(dir);
+    module->env->current_dir = extract_directory(path);
     module->env->module = module;
 
     set_default_print_params(&pp);
@@ -141,22 +137,21 @@ void minim_run_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
     ReadTable rt;
-    Buffer *mfname, *dir;
     MinimModule *module, *prev;
     MinimModuleCache *cache;
+    MinimPath *path;
     FILE *file;
-    char *prev_dir;
+    char *prev_dir, *clean_path;
 
-    init_buffer(&mfname);
-    valid_path(mfname, fname);
-    file = fopen(mfname->data, "r");
-
+    path = build_path(1, fname);
+    clean_path = extract_path(path);
+    file = fopen(clean_path, "r");
     if (!file)
     {
         Buffer *bf;
 
         init_buffer(&bf);
-        writef_buffer(bf, "Could not open file \"~s\"", mfname->data);
+        writef_buffer(bf, "Could not open file \"~s\"", clean_path);
         THROW(env, minim_error(get_buffer(bf), NULL));
     }
 
@@ -166,14 +161,13 @@ void minim_run_file(MinimEnv *env, const char *fname)
     rt.flags = 0x0;
     rt.eof = EOF;
 
-    dir = get_directory(get_buffer(mfname));
     prev_dir = env->current_dir;
     prev = env->module;
 
     init_minim_module_cache(&cache);
     init_minim_module(&module, cache);
     module->env = env;
-    env->current_dir = get_buffer(dir);
+    env->current_dir = extract_directory(path);
     env->module = module;
 
     set_default_print_params(&pp);

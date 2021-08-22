@@ -44,22 +44,19 @@ int minim_repl(char **argv, uint32_t flags)
     MinimModuleCache *imports;
     MinimObject *exit_handler, *err_handler;
     jmp_buf *exit_buf, *error_buf;
-    Buffer *path;
     uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
     fflush(stdout);
 
     init_env(&top_env, NULL, NULL);
-    top_env->current_dir = "REPL";
     minim_load_builtins(top_env);
 
-    path = get_directory(argv[0]);
     init_minim_module_cache(&imports);
     init_minim_module(&module, imports);
     init_env(&module->env, top_env, NULL);
     module->env->module = module;
-    module->env->current_dir = get_buffer(path);
+    module->env->current_dir = get_working_directory();
 
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
