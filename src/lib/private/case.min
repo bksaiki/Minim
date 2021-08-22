@@ -2,7 +2,7 @@
 ;   'case' syntax
 ;
 
-(%import "and-or.min" "def.min" "stx.min" "stx-macro.min")
+(%import "def.min" "stx.min" "stx-macro.min")
 
 (%export case)
 
