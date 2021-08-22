@@ -1,7 +1,0 @@
-;
-;   SRFI extras exported by base.min
-;
-
-(%import "../srfi/9.min")
-
-(%export (all "../srfi/9.min"))

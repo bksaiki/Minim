@@ -2,17 +2,31 @@
 ;   SRFI 9: case-lambda
 ;
 
-(%import "../private/pre-base.min")
+(%import "../private/def.min" "../private/let.min"
+         "../private/stx.min" "../private/stx-macro.min"
+         "../private/when-unless.min")
 
 (%export case-lambda)
 
 (def-syntax case-lambda
-  (syntax-rules ()
-   [(_) (syntax-error "missing clauses" stx)]
-   [(_ (a e ...) clause ...)
-    (lambda args
-      (let-values ([(l) (length args)])
-        (case-lambda/clause args l (a e ...) clause ...)))]))
+  (lambda (stx)
+    (syntax-case stx ()
+     [(_ (a e es ...) (a2 e2 e2s ...) ...)
+      #'(lambda args
+          (let-values ([(l) (length args)])
+            (case-lambda/clause args l (a e es ...) (a2 e2 e2s ...) ...)))]
+     [(_ cls ...)
+      (let loop ([clauses (unwrap #'(cls ...))])
+        (unless (null? clauses)
+          (let ([clause (car clauses)])
+            (syntax-case clause ()
+             [((_ ...) _ ...)
+              (loop (cdr clauses))]
+             [((_ ...) . _)
+              (syntax-error 'case-lambda "missing body after formals" stx clause)]
+             [_
+              (syntax-error 'case-lambda "ill-formed clause" stx clause)]))))]
+     [_ (syntax-error 'case-lambda "bad syntax" stx)])))
 
 (def-syntax case-lambda/clause
   (syntax-rules ()

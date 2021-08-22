@@ -127,6 +127,13 @@ init_match_table(MatchTable *table)
 static void
 match_table_add(MatchTable *table, char *sym, size_t depth, MinimObject *obj)
 {
+    // no add
+    if (strcmp(sym, "...") == 0 ||   // ellipse
+        strcmp(sym, ".") == 0 ||     // dot
+        strcmp(sym, "_") == 0)       // wildcard
+        return;
+
+
     ++table->size;
     table->objs = GC_realloc(table->objs, table->size * sizeof(MinimObject*));
     table->depths = GC_realloc(table->depths, table->size * sizeof(size_t));
@@ -278,13 +285,8 @@ add_null_variables(SyntaxNode *match, MatchTable *table, SymbolList *reserved, s
     }
     else //  match->type == SYNTAX_NODE_DATUM
     {
-        if (strcmp(match->sym, "_") == 0 ||                 // wildcard
-            strcmp(match->sym, ".") == 0 ||                 // dot operator
-            strcmp(match->sym, "...") == 0 ||               // ellipse
-            symbol_list_contains(reserved, match->sym))     // reserved
-            return;
-
-        match_table_add(table, match->sym, pdepth, minim_null);
+        if (!symbol_list_contains(reserved, match->sym))     // reserved
+            match_table_add(table, match->sym, pdepth, minim_null);     
     }
 }
 
@@ -397,7 +399,7 @@ match_transform(SyntaxNode *match, SyntaxNode *ast, MatchTable *table,
 
                 if (match->childc + j == ast->childc + i + 2)
                 {
-                    match_table_add(table, match->children[i]->sym, pdepth, minim_null);
+                    add_null_variables(match->children[i], table, reserved, pdepth);
                 }
                 else
                 {
@@ -723,6 +725,9 @@ replace_syntax(MinimEnv *env, SyntaxNode *ast, MatchTable *table)
 {
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
+        if (ast->childc == 0)   // early exit
+            return ast;
+
         if (ast->type == SYNTAX_NODE_LIST &&
             ast->children[0]->sym &&
             strcmp(ast->children[0]->sym, "syntax") == 0)
