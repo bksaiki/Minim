@@ -94,7 +94,7 @@ static MinimObject *minim_sub2(MinimObject *x, MinimObject *y)
     }
     else
     {
-        return minim_inexactnum(MINIM_INEXACTNUM(x) - MINIM_INEXACTNUM(y));
+        return minim_inexactnum(GET_FLOAT(x) - GET_FLOAT(y));
     }
 }
 
