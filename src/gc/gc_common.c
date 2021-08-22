@@ -228,12 +228,23 @@ static void gc_mark_ptr_young(gc_t *gc, void *ptr) {
                 return;
                 
             gc->young[i].flags |= GC_BLOCK_MARK;
+#if GC_USE_CUSTOM_MARKERS == 2
             if (!gc->young[i].mrk) {                                        // default (conservative)
                 for (size_t k = 0; k < gc->young[i].size / POINTER_SIZE; ++k)
                     gc_mark_ptr_young(gc, ((void**) gc->young[i].ptr)[k]);
             } else if (gc->young[i].mrk != (gc_mark_t) GC_atomic_mrk) {    // custom marker
                 gc->young[i].mrk(gc_mark_ptr_young, gc, gc->young[i].ptr);
             }
+#elif GC_USE_CUSTOM_MARKERS == 1
+            if (gc->young[i].mrk != (gc_mark_t) GC_atomic_mrk)              // default (conservative)
+            {
+                for (size_t k = 0; k < gc->young[i].size / POINTER_SIZE; ++k)
+                    gc_mark_ptr_young(gc, ((void**) gc->young[i].ptr)[k]);
+            }
+#else
+            for (size_t k = 0; k < gc->young[i].size / POINTER_SIZE; ++k)
+                    gc_mark_ptr_young(gc, ((void**) gc->young[i].ptr)[k]);
+#endif
 
             return;
         }
@@ -265,12 +276,23 @@ static void gc_mark_ptr_all(gc_t *gc, void *ptr) {
                 return;
                 
             gc->young[i].flags |= GC_BLOCK_MARK;
+#if GC_USE_CUSTOM_MARKERS == 2
             if (!gc->young[i].mrk) {                                        // default (conservative)
                 for (size_t k = 0; k < gc->young[i].size / POINTER_SIZE; ++k)
                     gc_mark_ptr_all(gc, ((void**) gc->young[i].ptr)[k]);
             } else if (gc->young[i].mrk != (gc_mark_t) GC_atomic_mrk) {    // custom marker
                 gc->young[i].mrk(gc_mark_ptr_all, gc, gc->young[i].ptr);
             }
+#elif GC_USE_CUSTOM_MARKERS == 1
+            if (gc->young[i].mrk != (gc_mark_t) GC_atomic_mrk)              // default (conservative)
+            {
+                for (size_t k = 0; k < gc->young[i].size / POINTER_SIZE; ++k)
+                    gc_mark_ptr_all(gc, ((void**) gc->young[i].ptr)[k]);
+            }
+#else // GC_USE_CUSTOM_MARKERS == 0
+            for (size_t k = 0; k < gc->young[i].size / POINTER_SIZE; ++k)
+                    gc_mark_ptr_all(gc, ((void**) gc->young[i].ptr)[k]);
+#endif
 
             return;
         }

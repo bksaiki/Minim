@@ -6,8 +6,8 @@
 
 (%export string=? string>? string<? string>=? string<=?
          string-ci=? string-ci>? string-ci<? string-ci>=? string-ci<=?
-         string-append
-         string->list list->string)
+         string->list list->string
+         string-append)
 
 ;;;;;;;;;;;;;;;;;;;;;; string comparators ;;;;;;;;;;;;;;;;;;;;;;
 
@@ -23,8 +23,9 @@
      [else (loop (+ i 1))])))
 
 (def string=? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string=? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string=? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -32,8 +33,9 @@
      [else #f])))
 
 (def string>? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string>? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string>? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -41,8 +43,9 @@
      [else #f])))
 
 (def string<? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string<? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string<? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -50,8 +53,9 @@
      [else #f])))
 
 (def string>=? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string>=? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string>=? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -59,8 +63,9 @@
      [else #f])))
 
 (def string<=? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string<=? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string<=? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -79,8 +84,9 @@
      [else (loop (+ i 1))])))
 
 (def string-ci=? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string-ci=? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string-ci=? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -88,8 +94,9 @@
      [else #f])))
 
 (def string-ci>? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string-ci>? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string-ci>? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -97,8 +104,9 @@
      [else #f])))
 
 (def string-ci<? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string-ci<? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string-ci<? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -106,8 +114,9 @@
      [else #f])))
 
 (def string-ci>=? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string-ci>=? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string-ci>=? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -115,8 +124,9 @@
      [else #f])))
 
 (def string-ci<=? (a . rest)
-  (unless (and (string? a) (andmap string? rest))
-    (error 'string-ci<=? "expected strings"))
+  (for ([arg (in-list (cons a rest))])
+    (unless (string? arg)
+      (argument-error 'string-ci<=? "string?" arg)))
   (let loop ([x a] [ys rest])
     (cond
      [(null? ys) #t]
@@ -129,8 +139,9 @@
   (cond
    [(null? strs) ""]
    [else
-    (unless (andmap string? strs)
-      (argument-error 'string-append "expected strings" strs))
+    (for ([arg (in-list strs)])
+      (unless (string? arg)
+        (argument-error 'string-append "string?" arg)))
     (def len (apply + (map string-length strs)))
     (def str (make-string len))
     (let loop ([i 0] [j 0] [len2 (string-length (car strs))] [x (car strs)] [ys (cdr strs)])

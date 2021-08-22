@@ -22,7 +22,8 @@ typedef struct MinimPath
     uint8_t type;
 } MinimPath;
 
-MinimPath *build_path(size_t count, const char* first, ...);
+MinimPath *build_path(size_t count, const char *first, ...);
+MinimPath *build_relative_path(size_t count, const char *first, ...);
 char *extract_path(MinimPath *path);
 char *extract_directory(MinimPath *path);
 

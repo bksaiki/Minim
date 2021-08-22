@@ -18,7 +18,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     FILE *file;
     char *clean_path;
 
-    path = build_path(1, fname);
+    path = build_relative_path(1, fname);
     clean_path = extract_path(path);
     file = fopen(clean_path, "r");
     if (!file)
@@ -81,7 +81,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
     FILE *file;
     char *clean_path;
 
-    path = build_path(1, fname);
+    path = build_relative_path(1, fname);
     clean_path = extract_path(path);
     file = fopen(clean_path, "r");
     if (!file)
@@ -143,7 +143,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
     FILE *file;
     char *prev_dir, *clean_path;
 
-    path = build_path(1, fname);
+    path = build_relative_path(1, fname);
     clean_path = extract_path(path);
     file = fopen(clean_path, "r");
     if (!file)

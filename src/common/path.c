@@ -29,7 +29,7 @@ static void init_path(MinimPath **ppath)
     *ppath = path;
 }
 
-static void path_append(MinimPath *path, const char *subpath)
+static void path_append(MinimPath *path, const char *subpath, bool relative)
 {
     size_t i = 0, len = strlen(subpath);
 
@@ -74,15 +74,15 @@ static void path_append(MinimPath *path, const char *subpath)
         strncpy(elem, &subpath[i], j - i);
         elem[j - i] = '\0';
 
-        if (strcmp(elem, "..") == 0)    // rollback
+        if (!relative && strcmp(elem, "..") == 0)    // rollback
         {
             --path->elemc;
         }
-        else
+        else if (relative || !strcmp(elem, ".") == 0)
         {
             ++path->elemc;
             path->elems = GC_realloc(path->elems, path->elemc * sizeof(char*));
-            path->elems[path->elemc - 1] = elem;      
+            path->elems[path->elemc - 1] = elem;    
         }
 
         i = j + 1;
@@ -129,23 +129,37 @@ char *extract_directory(MinimPath *path)
     return clean_path;
 }
 
-MinimPath *build_path(size_t count, const char* first, ...)
+static MinimPath *build_path2(size_t count, const char *first, va_list rest, bool relative)
 {
     MinimPath *path;
-    va_list va;
     char *sub;
 
     init_path(&path);
-    va_start(va, first);
-    path_append(path, first);
+    path_append(path, first, relative);
     for (size_t i = 1; i < count; ++i)
     {
-        sub = va_arg(va, char*);
-        path_append(path, sub);
+        sub = va_arg(rest, char*);
+        path_append(path, sub, relative);
     }
 
-    va_end(va);
+    va_end(rest);
     return path;
+}
+
+MinimPath *build_path(size_t count, const char* first, ...)
+{
+    va_list va;
+    
+    va_start(va, first);
+    return build_path2(count, first, va, false);
+}
+
+MinimPath *build_relative_path(size_t count, const char *first, ...)
+{
+    va_list va;
+    
+    va_start(va, first);
+    return build_path2(count, first, va, true);
 }
 
 char *get_working_directory()

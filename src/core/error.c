@@ -370,7 +370,8 @@ MinimObject *minim_builtin_argument_error(MinimEnv *env, size_t argc, MinimObjec
         minim_error_desc_table_set(err->table, 3, "other arguments", get_buffer(bf));
     }
 
-    return minim_err(err);
+    THROW(env, minim_err(err));
+    return minim_null;
 }
 
 MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject **args)
