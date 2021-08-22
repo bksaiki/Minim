@@ -67,6 +67,7 @@ void minim_load_builtins(MinimEnv *env)
     // Errors
     minim_load_builtin(env, "error", MINIM_OBJ_FUNC, minim_builtin_error);
     minim_load_builtin(env, "argument-error", MINIM_OBJ_FUNC, minim_builtin_argument_error);
+    minim_load_builtin(env, "arity-error", MINIM_OBJ_FUNC, minim_builtin_arity_error);
     minim_load_builtin(env, "syntax-error", MINIM_OBJ_FUNC, minim_builtin_syntax_error);
     
     // Miscellaneous

@@ -108,23 +108,21 @@ static bool is_str(char *str)
 
 static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 {
-    MinimObject *res;
-
     if (is_rational(str))
     {
         mpq_ptr rat = gc_alloc_mpq_ptr();
 
         mpq_set_str(rat, str, 0);
         mpq_canonicalize(rat);
-        res = minim_exactnum(rat);
+        return minim_exactnum(rat);
     }
     else if (is_float(str))
     {
-        res = minim_inexactnum(strtod(str, NULL));
+        return minim_inexactnum(strtod(str, NULL));
     }
     else if (is_char(str))
     {
-        res = minim_char(str[2]);
+        return minim_char(str[2]);
     }
     else if (is_str(str))
     {
@@ -133,13 +131,18 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
 
         strncpy(tmp, &str[1], len - 1);
         tmp[len - 1] = '\0';
-        res = minim_string(tmp);
+        return minim_string(tmp);
     }
     else
     {
+        MinimObject *res;
+
         if (quote)
         {
-            res = minim_symbol(str);
+            res = env_get_sym(env, str);
+            if (minim_truep(res))       return res;
+            else if (minim_falsep(res)) return res;
+            else                        return minim_symbol(str);
         }
         else
         {
@@ -151,10 +154,10 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
                 THROW(env, minim_error("bad syntax", str));
             else if (MINIM_OBJ_TRANSFORMP(res))
                 THROW(env, minim_error("bad transform", str));
+
+            return res;
         }
     }
-
-    return res;
 }
 
 // Unsyntax

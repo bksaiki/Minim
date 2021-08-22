@@ -363,13 +363,82 @@ MinimObject *minim_builtin_argument_error(MinimEnv *env, size_t argc, MinimObjec
             if (i - 3 != idx)
             {
                 writef_buffer(bf, "\n;    ");
-                print_to_buffer(bf, args[2], env, &pp);
+                print_to_buffer(bf, args[i], env, &pp);
             }
         }
 
         minim_error_desc_table_set(err->table, 3, "other arguments", get_buffer(bf));
     }
 
+    THROW(env, minim_err(err));
+    return minim_null;
+}
+
+MinimObject *minim_builtin_arity_error(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    PrintParams pp;
+    MinimError *err;
+    Buffer *bf;
+
+    if (!MINIM_OBJ_SYMBOLP(args[0]))
+        THROW(env, minim_argument_error("symbol?", "arity-error", 0, args[0]));
+
+    if (minim_exact_nonneg_intp(args[1]))
+    {
+        size_t exact = MINIM_NUMBER_TO_UINT(args[1]);
+
+        init_minim_error(&err, "arity error", MINIM_SYMBOL(args[0]));
+        init_minim_error_desc_table(&err->table, 3);
+
+        init_buffer(&bf);
+        writeu_buffer(bf, exact);
+        minim_error_desc_table_set(err->table, 0, "expected", get_buffer(bf));
+    }
+    else if (MINIM_OBJ_PAIRP(args[1]))
+    {
+        debug_print_minim_object(args[1], NULL);
+
+        if (!minim_exact_nonneg_intp(MINIM_CAR(args[1])))
+            THROW(env, minim_argument_error("arity?", "arity-error", 1, args[1]));
+
+        if (!minim_exact_nonneg_intp(MINIM_CDR(args[1])) && MINIM_CDR(args[1]) != minim_false)
+            THROW(env, minim_argument_error("arity?", "arity-error", 1, args[1]));
+
+        init_minim_error(&err, "arity error", MINIM_SYMBOL(args[0]));
+        init_minim_error_desc_table(&err->table, 3);
+
+        init_buffer(&bf);
+        if (MINIM_CDR(args[1]) == minim_false)      // minimum only
+        {
+            writef_buffer(bf, "at least ~u", MINIM_NUMBER_TO_UINT(MINIM_CAR(args[1])));
+        }
+        else    // range
+        {
+            writef_buffer(bf, "between ~u and ~u",
+                              MINIM_NUMBER_TO_UINT(MINIM_CAR(args[1])),
+                              MINIM_NUMBER_TO_UINT(MINIM_CDR(args[1])));
+        }
+
+        minim_error_desc_table_set(err->table, 0, "expected", get_buffer(bf));
+    }
+    else
+    {
+        THROW(env, minim_argument_error("arity?", "arity-error", 1, args[1]));
+    }
+
+    clear_buffer(bf);
+    writeu_buffer(bf, argc - 2);
+    minim_error_desc_table_set(err->table, 1, "given", get_buffer(bf));
+
+    clear_buffer(bf);
+    set_default_print_params(&pp);
+    for (size_t i = 2; i < argc; ++i)
+    {
+        writef_buffer(bf, "\n;    ");
+        print_to_buffer(bf, args[i], env, &pp);
+    }
+    
+    minim_error_desc_table_set(err->table, 2, "arguments", get_buffer(bf));
     THROW(env, minim_err(err));
     return minim_null;
 }

@@ -41,6 +41,7 @@ DEFINE_BUILTIN_FUN(to_syntax)
 // Errors
 DEFINE_BUILTIN_FUN(error)
 DEFINE_BUILTIN_FUN(argument_error)
+DEFINE_BUILTIN_FUN(arity_error)
 DEFINE_BUILTIN_FUN(syntax_error)
 
 // Miscellaneous
