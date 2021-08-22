@@ -1,5 +1,4 @@
 #include <setjmp.h>
-#include <stdarg.h>
 #include <string.h>
 
 #include "../gc/gc.h"

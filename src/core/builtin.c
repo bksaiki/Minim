@@ -45,7 +45,6 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "let-values", MINIM_OBJ_SYNTAX, minim_builtin_let_values);
     minim_load_builtin(env, "let*-values", MINIM_OBJ_SYNTAX, minim_builtin_letstar_values);
     minim_load_builtin(env, "begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
-    minim_load_builtin(env, "case", MINIM_OBJ_SYNTAX, minim_builtin_case);
     minim_load_builtin(env, "quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
     minim_load_builtin(env, "quasiquote", MINIM_OBJ_SYNTAX, minim_builtin_quasiquote);
     minim_load_builtin(env, "unquote", MINIM_OBJ_SYNTAX, minim_builtin_unquote);
@@ -63,15 +62,19 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "syntax?", MINIM_OBJ_FUNC, minim_builtin_syntaxp);
     minim_load_builtin(env, "unwrap", MINIM_OBJ_FUNC, minim_builtin_unwrap);
     minim_load_builtin(env, "syntax-case", MINIM_OBJ_SYNTAX, minim_builtin_syntax_case);
-    minim_load_builtin(env, "syntax-error", MINIM_OBJ_FUNC, minim_builtin_syntax_error);
     minim_load_builtin(env, "datum->syntax", MINIM_OBJ_FUNC, minim_builtin_to_syntax);
+
+    // Errors
+    minim_load_builtin(env, "error", MINIM_OBJ_FUNC, minim_builtin_error);
+    minim_load_builtin(env, "argument-error", MINIM_OBJ_FUNC, minim_builtin_argument_error);
+    minim_load_builtin(env, "arity-error", MINIM_OBJ_FUNC, minim_builtin_arity_error);
+    minim_load_builtin(env, "syntax-error", MINIM_OBJ_FUNC, minim_builtin_syntax_error);
     
     // Miscellaneous
     minim_load_builtin(env, "values", MINIM_OBJ_FUNC, minim_builtin_values);
     minim_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
     minim_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     minim_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);
-    minim_load_builtin(env, "error", MINIM_OBJ_FUNC, minim_builtin_error);
     minim_load_builtin(env, "void", MINIM_OBJ_FUNC, minim_builtin_void);
     minim_load_builtin(env, "version", MINIM_OBJ_FUNC, minim_builtin_version);
     minim_load_builtin(env, "symbol-count", MINIM_OBJ_FUNC, minim_builtin_symbol_count);

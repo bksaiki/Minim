@@ -45,8 +45,8 @@
 
 ;; add1
 (equal? (add1 1) 2)
-; (equal? (add1 1.0) 2.0)
+(equal? (add1 1.0) 2.0)
 
 ;; sub1
 (equal? (sub1 2) 1)
-; (equal? (sub1 2.0) 1.0)
+(equal? (sub1 2.0) 1.0)

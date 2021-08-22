@@ -33,17 +33,14 @@
                       (stx-null? (stx-cdr e))
                       #f)
                   (stx-car e)
-                  (datum->syntax
-                    (list
-                      (syntax let-values)
-                      (list
+                  (let-values ([(tmp) 'or-t])
+                    (datum->syntax
+                      (list (syntax let-values)
                         (list
-                          (list (syntax t))
-                          (stx-car e)))
-                      (list
-                        (syntax if)
-                        (syntax t)
-                        (syntax t)
-                        (cons (syntax or) (stx-cdr e)))))))))))
+                          (list (list tmp) (stx-car e)))
+                        (list (syntax if)
+                          (syntax or-t)
+                          (syntax or-t)
+                          (cons (syntax or) (stx-cdr e))))))))))))
 
 (%export and or)

@@ -4,6 +4,9 @@
 
 (%import "pre-base.min")
 
+(%export identity const
+         negate curry curryr)
+
 (def identity (x) x)
 
 (def negate (f)
@@ -13,7 +16,7 @@
 
 (def curry (f . args)
   (unless (procedure? f)
-    (error 'curry "expected a procedure"))
+    (argument-error 'curry "procedure?" f))
   (def arity (procedure-arity f))
   (def min-arity (if (pair? arity) (car arity) arity))
   (lambda args2
@@ -24,7 +27,7 @@
 
 (def curryr (f . args)
   (unless (procedure? f)
-    (error 'curryr "expected a procedure"))
+    (argument-error 'curryr "procedure?" f))
   (def arity (procedure-arity f))
   (def min-arity (if (pair? arity) (car arity) arity))
   (lambda args2
@@ -32,6 +35,3 @@
       (if (< (length args*) min-arity)
           (apply curryr f args*)
           (apply f args*)))))
-
-(%export identity const
-         negate curry curryr)

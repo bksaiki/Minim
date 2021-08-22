@@ -4,6 +4,8 @@
 
 (%import "stx-macro.min" "stx.min")
 
+(%export let let*)
+
 (def-syntaxes (let)
   (lambda (stx)
     (if (not (stx-list? stx))

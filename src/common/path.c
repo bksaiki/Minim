@@ -1,65 +1,174 @@
+#include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
+
+#include "../gc/gc.h"
 #include "common.h"
 #include "path.h"
 
-void valid_path(Buffer *valid, const char *maybe)
+#define PATH_MAX    4096
+
+#define path_separator(p) (((p)->type == MINIM_PATH_MODE_LINUX) ? '/' : '\\')
+
+static void gc_mrk_path(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
-#ifdef MINIM_WINDOWS
-    size_t len = strlen(maybe);
-    bool first = (len > 0 && maybe[0] == '/');
-
-    for (size_t i = 0; i < len; ++i)
-    {
-        if (maybe[i] == '/')
-        {
-            if (i != 0)
-            {
-                if (first) 
-                {
-                    writec_buffer(valid, ':');
-                    first = false;
-                }
-
-                writes_buffer(valid, "\\\\");
-            }
-        }
-        else
-        {
-            writec_buffer(valid, maybe[i]);
-        }
-    }
-#else
-    writes_buffer(valid, maybe);
-#endif
+    mrk(gc, ((MinimPath*) ptr)->drive);
+    mrk(gc, ((MinimPath*) ptr)->elems);
 }
 
-Buffer *get_directory(const char *file)
+static void init_path(MinimPath **ppath)
 {
-    Buffer *bf;
-    size_t len, newlen;
-    
-    len = strlen(file);
-    newlen = 0;
-    for (size_t i = len - 1; i < len; --i)
+    MinimPath *path;
+
+    path = GC_alloc_opt(sizeof(MinimPath), NULL, gc_mrk_path);
+    path->drive = NULL;
+    path->elems = NULL;
+    path->elemc = 0;
+    path->type = MINIM_DEFAULT_PATH_MODE;
+
+    *ppath = path;
+}
+
+static void path_append(MinimPath *path, const char *subpath, bool relative)
+{
+    size_t i = 0, len = strlen(subpath);
+
+    if (len == 0)
     {
-#ifdef MINIM_WINDOWS
-        if (file[i] == '\\')
-        {
-            newlen = i + 1;
-            break;
-        }
-#else
-        if (file[i] == '/')
-        {
-            newlen = i + 1;
-            break;
-        }
-#endif
+        printf("path: given an empty path\n");
+        return; // TODO: better errors
     }
 
-    init_buffer(&bf);
-    for (size_t i = 0; i < newlen; ++i)
-        writec_buffer(bf, file[i]);
+    if (path->elemc == 0)  // top
+    {
+        if (path->type == MINIM_PATH_MODE_LINUX)
+        {
+            if (subpath[0] == '/')
+            {
+                path->drive = "/";
+                ++i;
+            }
+        }
+        else // path->type == MINIM_PATH_MODE_WINDOWs
+        {
+            // TODO: windows drive
+        }
+    }
+    else
+    {
+        if (path->type == MINIM_PATH_MODE_LINUX && subpath[0] == '/')
+        {
+            printf("path: attempting to append an absolute path");
+            return;
+        }
+    }
 
-    return bf;
+    while (i < len)
+    {
+        size_t j;
+        char *elem;
+
+        for (j = i; j < len && subpath[j] != path_separator(path); ++j);
+
+        elem = GC_alloc_atomic((j - i + 1) * sizeof(char));
+        strncpy(elem, &subpath[i], j - i);
+        elem[j - i] = '\0';
+
+        if (!relative && strcmp(elem, "..") == 0)    // rollback
+        {
+            --path->elemc;
+        }
+        else if (relative || !strcmp(elem, ".") == 0)
+        {
+            ++path->elemc;
+            path->elems = GC_realloc(path->elems, path->elemc * sizeof(char*));
+            path->elems[path->elemc - 1] = elem;    
+        }
+
+        i = j + 1;
+    }
+}
+
+char *extract_path(MinimPath *path)
+{
+    Buffer *bf;
+
+    init_buffer(&bf);
+    if (path->drive) writes_buffer(bf, path->drive);
+    if (path->elemc > 0)
+    {
+        writes_buffer(bf, path->elems[0]);
+        for (size_t i = 1; i < path->elemc; ++i)
+        {
+            writec_buffer(bf, path_separator(path));
+            writes_buffer(bf, path->elems[i]);
+        }
+    }
+
+    return get_buffer(bf);
+}
+
+char *extract_directory(MinimPath *path)
+{
+    char *clean_path;
+    size_t len;
+    
+    
+    clean_path = extract_path(path);
+    len = strlen(clean_path);
+    for (size_t i = len - 1; i < len; --i)
+    {
+        if (clean_path[i] == path_separator(path))
+        {
+            clean_path[i] = '\0';
+            return clean_path;
+        }
+    }
+
+    clean_path[0] = '\0';
+    return clean_path;
+}
+
+static MinimPath *build_path2(size_t count, const char *first, va_list rest, bool relative)
+{
+    MinimPath *path;
+    char *sub;
+
+    init_path(&path);
+    path_append(path, first, relative);
+    for (size_t i = 1; i < count; ++i)
+    {
+        sub = va_arg(rest, char*);
+        path_append(path, sub, relative);
+    }
+
+    va_end(rest);
+    return path;
+}
+
+MinimPath *build_path(size_t count, const char* first, ...)
+{
+    va_list va;
+    
+    va_start(va, first);
+    return build_path2(count, first, va, false);
+}
+
+MinimPath *build_relative_path(size_t count, const char *first, ...)
+{
+    va_list va;
+    
+    va_start(va, first);
+    return build_path2(count, first, va, true);
+}
+
+char *get_working_directory()
+{
+    char *path = GC_alloc_atomic(PATH_MAX);
+#if defined(MINIM_LINUX)
+    getcwd(path, PATH_MAX);
+#else // MINIM_WINDOWS
+    _getcwd(path, PATH_MAX);
+#endif
+    return path;
 }

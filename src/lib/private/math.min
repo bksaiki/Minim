@@ -4,12 +4,15 @@
 
 (%import "pre-base.min")
 
+(%export exact-integer? exact-nonnegative-integer? exact-positive-integer?
+         factorial fibonacci sqr sgn
+         add1 sub1
+         pi phi)
+
 ;;;;;;;;;;;;;;;;;;;;;; Constants ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def pi 3.141592653589793238465)
 (def phi 1.618033988749894848204)
-
-(%export pi phi)
 
 ;;;;;;;;;;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -22,15 +25,11 @@
 (def exact-positive-integer? (n)
   (and (exact-integer? n) (positive? n)))
 
-(%export exact-integer?
-         exact-nonnegative-integer?
-         exact-positive-integer?)
-
 ;;;;;;;;;;;;;;;;;; Special math functions ;;;;;;;;;;;;;;;;;;;
 
 (def factorial (n)
   (unless (exact-nonnegative-integer? n)
-    (error 'factorial "expected a non-negative integer"))
+    (argument error 'factorial "non-negative integer" n))
   (let loop ([n n] [acc 1])
     (if (zero? n)
         acc
@@ -38,7 +37,7 @@
 
 (def fibonacci (n)
   (unless (exact-nonnegative-integer? n)
-    (error 'fibonacci "expected a non-negative integer"))
+    (argument-error 'fibonacci "non-negative integer" n))
   (let loop ([i 1] [x 1] [y 0])
     (if (> i n)
         x
@@ -46,12 +45,12 @@
 
 (def sqr (x)
   (unless (number? x)
-    (error 'sqr "expected number"))
+    (argument-error 'sqr "number?" x))
   (* x x))
 
 (def sgn (x)
   (unless (number? x)
-    (error 'sgn "expected number"))
+    (argument-error 'sgn "number?" x))
   (def s
     (cond
      [(negative? x) -1]
@@ -59,18 +58,15 @@
      [else          0]))
   (if (exact? x) s (inexact s)))
 
-(%export factorial fibonacci sqr sgn)
-
 ;;;;;;;;;;;;;;;;;; Functional maps ;;;;;;;;;;;;;;;;;;;
 
 (def add1 (x)
-  (unless (number? x)
-    (error 'add1 "expected number"))
+  (if (number? x)
+      (+ x 1)
+      (argument-error 'add1 "number?" x))
   (+ x 1))
 
 (def sub1 (x)
-  (unless (number? x)
-    (error 'sub1 "expected number"))
-  (- x 1))
-
-(%export add1 sub1)
+  (if (number? x)
+      (- x 1)
+      (argument-error 'sub1 "number?" x)))

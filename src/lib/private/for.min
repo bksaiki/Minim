@@ -2,20 +2,16 @@
 ;   'for'
 ;
 
-(%import "pre-base.min")
+(%import "pre-base.min" "../srfi/9.min")
 
-; (def-syntax datum->seq
-;   (lambda (stx)
-;     (if (not (identifier? stx))
-;         (syntax-error 'datum-seq "not allowed as an expression")
-;         (let ([e (stx-cdr stx)])
-;           (if (null? e)
-;               (syntax-error 'datum-seq "expected an argument")
-;               (stx-car stx))))))
+(%export for for/list
+         in-list in-range in-naturals
+         in-vector in-string
+         sequence->list)
 
 ;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-syntaxes (for)
+(def-syntax for
   (lambda (stx)
     (syntax-case stx ()
      [(_ () body ...) #'(void)]
@@ -30,7 +26,7 @@
                   body ...)
                 (loop (sequence-rest id) ...))))])))
 
-(def-syntaxes (for/list)
+(def-syntax for/list
   (lambda (stx)
     (syntax-case stx ()
      [(_ () body ...) #'(void)]
@@ -47,34 +43,57 @@
                   accum)
                 (sequence-rest id) ...)))])))
 
-;;;;;;;;;;;;;;;;;;;;;;; specific sequences ;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;; sequence constructors ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def in-list (lst)
   (unless (list? lst)
-    (error 'in-list "expected a list"))
+    (argument-error 'in-list "list?" lst))
   (sequence lst car cdr null?))
 
-(def in-range (n)
-  (unless (and (number? n) (exact? n) (integer? n) (not (negative? n)))
-    (error 'in-list "expected an exact non-negative integer"))
-  (sequence 0
-            (lambda (x) x)
-            (lambda (x) (+ x 1))
-            (lambda (x) (equal? x n))))
+(def in-range
+  (case-lambda
+   [(l) (in-range 0 l 1)]
+   [(f l) (in-range f l 1)]
+   [(f l s)
+    (unless (number? f)
+      (argument-error 'in-range "number?" f))
+    (unless (number? l)
+      (argument-error 'in-range "number?" l))
+    (unless (number? s)
+      (argument-error 'in-range "number?" s))
+    (sequence f
+              (lambda (x) x)
+              (lambda (x) (+ x s))
+              (lambda (x) (>= x l)))]))
 
-(def in-naturals ()
-  (sequence 0
-            (lambda (x) x)
-            (lambda (x) (+ x 1))
-            (lambda (x) #f)))
+(def in-naturals
+  (case-lambda
+   [() (in-naturals 0)]
+   [(n)
+    (unless (or (number? n) (exact? n) (not (negative? n)) (integer? n))
+      (argument-error 'in-range "number?" n))
+    (sequence n
+              (lambda (x) x)
+              (lambda (x) (+ x 1))
+              (lambda (x) #f))]))
 
 (def in-vector (v)
   (unless (vector? v)
-    (error 'in-vector "expected a vector"))
-  (sequence (cons v 0)
-            (lambda (x) (vector-ref (car x) (cdr x)))
-            (lambda (x) (cons (car x) (+ (cdr x) 1)))
-            (lambda (x) (equal? (vector-length (car x)) (cdr x)))))
+    (argument-error 'in-vector "vector?" v))
+  (def len (vector-length v))
+  (sequence 0
+            (lambda (x) (vector-ref v x))
+            (lambda (x) (+ x 1))
+            (lambda (x) (= x len))))
+
+(def in-string (s)
+  (unless (string? s)
+    (argument-error 'in-string "string?" s))
+  (def len (string-length s))
+  (sequence 0
+            (lambda (x) (string-ref s x))
+            (lambda (x) (+ x 1))
+            (lambda (x) (>= x len))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -84,7 +103,3 @@
         (reverse accum)
         (loop (cons (sequence-first seq) accum)
               (sequence-rest seq)))))
-
-(%export for for/list
-         in-list in-range in-naturals in-vector
-         sequence->list)
