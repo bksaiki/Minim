@@ -2,11 +2,15 @@
 ;   Additional list constructs
 ;
 
-(%import "pre-base.min")
+(%import "pre-base.min" "for.min")
+
+(%export remove* list* ormap andmap append* append-map)
 
 (def remove* (vs lst)
-  (unless (and (list? vs) (list? lst))
-    (error 'remove* "Expected two lists"))
+  (unless (list? vs)
+    (argument-error 'remove* "list?" vs))
+  (unless (list? lst)
+    (argument-error 'remove* "list?" lst))
   (let loop ([vs vs] [lst lst])
     (if (or (null? vs) (null? lst))
         lst
@@ -18,9 +22,9 @@
 
 (def andmap (proc lst)
   (unless (procedure? proc)
-    (error 'andmap "Expected a procedure"))
+    (argument-error 'andmap "procedure?" proc))
   (unless (list? lst)
-    (error 'andmap "Expected two lists"))
+    (argument-error 'andmap "list?" lst))
   (let loop ([lst lst])
     (cond
      [(null? lst) #t]
@@ -29,9 +33,9 @@
 
 (def ormap (proc lst)
   (unless (procedure? proc)
-    (error 'ormap "Expected a procedure"))
+    (argument-error 'andmap "procedure?" proc))
   (unless (list? lst)
-    (error 'ormap "Expected two lists"))
+    (argument-error 'andmap "list?" lst))
   (let loop ([lst lst])
     (cond
      [(null? lst) #f]
@@ -40,18 +44,12 @@
 
 ;; TODO: check lists
 (def append* args
+  (for ([arg (in-list args)])
+    (unless (list? arg) (argument-error 'append* "lists" arg)))
   (def rev (reverse args))
-  (unless (list? (car rev))
-    (error 'append* "Expected a list of lists in last argument"))
-  (unless (andmap list? (car rev))
-    (error 'append* "Expected a list of lists in last argument"))
-  (unless (andmap list? (cdr rev))
-    (error 'append* "Expected a list"))
   (foldl append (apply append (car rev)) (cdr rev)))
 
 (def append-map (proc . things)
   (unless (procedure? proc)
     (error 'append-map "Expected a procedure"))
   (apply append (apply map proc things)))
-
-(%export remove* list* ormap andmap append* append-map)

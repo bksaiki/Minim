@@ -33,12 +33,16 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
 
 bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 {
+    // Error
+    SET_ARITY_RANGE(error, 1, 2);
+    SET_ARITY_MIN(argument_error, 3);
+    SET_ARITY_RANGE(syntax_error, 2, 4);
+
     // Miscellaneous
     SET_ARITY_EXACT(equalp, 2);
     SET_ARITY_EXACT(symbolp, 1);
     SET_ARITY_MIN(printf, 1);
     SET_ARITY_RANGE(exit, 0, 1);
-    SET_ARITY_RANGE(error, 1, 2);
     SET_ARITY_EXACT(void, 0);
     SET_ARITY_EXACT(version, 0);
     SET_ARITY_EXACT(symbol_count, 0);
@@ -48,7 +52,6 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     // Syntax
     SET_ARITY_EXACT(unwrap, 1);
     SET_ARITY_EXACT(to_syntax, 1);
-    SET_ARITY_RANGE(syntax_error, 2, 4);
 
     // Arity
     SET_ARITY_EXACT(procedurep, 1);

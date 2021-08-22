@@ -3,8 +3,9 @@
 #include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
-#include "lambda.h"
 #include "jmp.h"
+#include "lambda.h"
+#include "number.h"
 #include "string.h"
 
 static void gc_minim_error_trace_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
@@ -41,20 +42,6 @@ void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char
     }
 }
 
-void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src)
-{
-    MinimErrorTrace *trace = GC_alloc_opt(sizeof(MinimErrorTrace), NULL, gc_minim_error_trace_mrk);
-    copy_syntax_loc(&trace->loc, src->loc);
-    trace->multiple = src->multiple;
-    *ptrace = trace;
-
-    if (src->next)      copy_minim_error_trace(&trace->next, src->next);
-    else                trace->next = NULL;
-
-    trace->name = GC_alloc_atomic((strlen(src->name) + 1) * sizeof(char));
-    strcpy(trace->name, src->name);
-}
-
 void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len)
 {
     MinimErrorDescTable *table = GC_alloc_opt(sizeof(MinimErrorDescTable),
@@ -66,29 +53,6 @@ void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len)
     table->len = len;
 
     *ptable = table;
-}
-
-void copy_minim_error_desc_table(MinimErrorDescTable **ptable, MinimErrorDescTable *src)
-{
-    MinimErrorDescTable *table = GC_alloc_opt(sizeof(MinimErrorDescTable),
-                                              NULL,
-                                              gc_minim_error_desc_mrk);
-
-    table->keys = GC_calloc(src->len, sizeof(char*));
-    table->vals = GC_calloc(src->len, sizeof(char*));
-    table->len = src->len;
-    *ptable = table;
-
-    for (size_t i = 0; i < src->len; ++i)
-    {
-        if (src->keys[i])
-        {
-            table->keys[i] = GC_alloc_atomic((strlen(src->keys[i]) + 1) * sizeof(char));
-            table->vals[i] = GC_alloc_atomic((strlen(src->vals[i]) + 1) * sizeof(char));
-            strcpy(table->keys[i], src->keys[i]);
-            strcpy(table->vals[i], src->vals[i]);
-        }
-    }
 }
 
 void minim_error_desc_table_set(MinimErrorDescTable *table, size_t idx, const char *key, const char *val)
@@ -119,44 +83,6 @@ void init_minim_error(MinimError **perr, const char *msg, const char *where)
     {
         err->where = NULL;
     }
-}
-
-void copy_minim_error(MinimError **perr, MinimError *src)
-{
-    MinimError *err = GC_alloc(sizeof(MinimError));
-
-    err->msg = GC_alloc_atomic((strlen(src->msg) + 1) * sizeof(char)); 
-    strcpy(err->msg, src->msg);
-    *perr = err;
-    
-    if (src->top)
-    {
-        MinimErrorTrace *it;
-
-        copy_minim_error_trace(&err->top, src->top);
-        for (it = err->top; it->next; it = it->next);
-        err->bottom = it;
-    }
-    else
-    {
-        err->top = NULL;
-        err->bottom = NULL;
-    }
-    
-    if (src->where)
-    {
-        err->where = GC_alloc_atomic((strlen(src->where) + 1) * sizeof(char)); 
-        strcpy(err->where, src->where);
-    }
-    else
-    {
-        err->where = NULL;
-    }
-
-    if (src->table)
-        copy_minim_error_desc_table(&err->table, src->table);
-    else
-        err->table = NULL;
 }
 
 void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
@@ -382,6 +308,69 @@ MinimObject *minim_builtin_error(MinimEnv *env, size_t argc, MinimObject **args)
     }
 
     return NULL; // avoid compile errors
+}
+
+MinimObject *minim_builtin_argument_error(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    PrintParams pp;
+    MinimError *err;
+    Buffer *bf;
+
+    if (!MINIM_OBJ_SYMBOLP(args[0]))
+        THROW(env, minim_argument_error("symbol?", "argument-error", 0, args[0]));
+
+    if (!MINIM_OBJ_STRINGP(args[1]))
+        THROW(env, minim_argument_error("string?", "argument-error", 1, args[1]));
+
+    if (argc == 3)
+    {
+        init_minim_error(&err, "argument error", MINIM_SYMBOL(args[0]));
+        init_minim_error_desc_table(&err->table, 2);
+        minim_error_desc_table_set(err->table, 0, "expected", MINIM_STRING(args[1]));
+
+        init_buffer(&bf);
+        set_default_print_params(&pp);
+        print_to_buffer(bf, args[2], env, &pp);
+        minim_error_desc_table_set(err->table, 1, "given", get_buffer(bf));        
+    }
+    else
+    {
+        size_t idx;
+
+        if (!minim_exact_nonneg_intp(args[2]))
+            THROW(env, minim_argument_error("exact nonnegative integer?", "argument-error", 2, args[2]));
+
+        set_default_print_params(&pp);
+        idx = MINIM_NUMBER_TO_UINT(args[2]);
+        if (argc < 4 + idx)
+            THROW(env, minim_error("not enough arguments provided", "argument-error"));
+  
+        init_minim_error(&err, "argument error", MINIM_SYMBOL(args[0]));
+        init_minim_error_desc_table(&err->table, 4);
+        minim_error_desc_table_set(err->table, 0, "expected", MINIM_STRING(args[1]));
+
+        init_buffer(&bf);
+        print_to_buffer(bf, args[3 + idx], env, &pp);
+        minim_error_desc_table_set(err->table, 1, "given", get_buffer(bf));
+
+        clear_buffer(bf);
+        print_to_buffer(bf, args[2], env, &pp);
+        minim_error_desc_table_set(err->table, 2, "position", get_buffer(bf));
+        
+        clear_buffer(bf);
+        for (size_t i = 3; i < argc; ++i)
+        {
+            if (i - 3 != idx)
+            {
+                writef_buffer(bf, "\n;    ");
+                print_to_buffer(bf, args[2], env, &pp);
+            }
+        }
+
+        minim_error_desc_table_set(err->table, 3, "other arguments", get_buffer(bf));
+    }
+
+    return minim_err(err);
 }
 
 MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject **args)

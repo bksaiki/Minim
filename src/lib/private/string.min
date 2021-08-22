@@ -130,7 +130,7 @@
    [(null? strs) ""]
    [else
     (unless (andmap string? strs)
-      (error 'string-append "expected strings"))
+      (argument-error 'string-append "expected strings" strs))
     (def len (apply + (map string-length strs)))
     (def str (make-string len))
     (let loop ([i 0] [j 0] [len2 (string-length (car strs))] [x (car strs)] [ys (cdr strs)])
@@ -148,7 +148,7 @@
 
 (def string->list (s)
   (unless (string? s)
-    (error 'string->list "expected a string"))
+    (argument-error 'string->list "expected a string" s))
   (def len (string-length s))
   (let loop ([i 0] [acc '()])
     (cond [(= i len) (reverse acc)]
@@ -158,6 +158,6 @@
   (def len (length lst))
   (def str (make-string len))
   (for ([c (in-list lst)] [i (in-naturals)])
-    (unless (char? c) (error 'list->string "list of characters"))
+    (unless (char? c) (argument-error 'list->string "list of characters" lst))
     (string-set! str i c))
   str)

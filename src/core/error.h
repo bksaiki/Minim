@@ -14,8 +14,7 @@ struct MinimErrorTrace
 
 struct MinimErrorDescTable
 {
-    char **keys;
-    char **vals;
+    char **keys, **vals;
     size_t len;
 } typedef MinimErrorDescTable;
 
@@ -31,7 +30,6 @@ struct MinimError
 // *** Minim Error Trace *** //
 
 void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc* loc, const char* name);
-void copy_minim_error_trace(MinimErrorTrace **ptrace, MinimErrorTrace *src);
 
 // *** Descriptor Table *** //
 
@@ -42,7 +40,6 @@ void minim_error_desc_table_set(MinimErrorDescTable *table, size_t idx, const ch
 // *** Minim Error *** //
 
 void init_minim_error(MinimError **perr, const char *msg, const char *where);
-void copy_minim_error(MinimError **perr, MinimError *src);
 void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char* name);
 
 // *** Errors *** //

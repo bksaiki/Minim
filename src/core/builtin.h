@@ -36,14 +36,17 @@ DEFINE_BUILTIN_FUN(syntax)
 DEFINE_BUILTIN_FUN(syntaxp)
 DEFINE_BUILTIN_FUN(unwrap)
 DEFINE_BUILTIN_FUN(syntax_case)
-DEFINE_BUILTIN_FUN(syntax_error)
 DEFINE_BUILTIN_FUN(to_syntax)
+
+// Errors
+DEFINE_BUILTIN_FUN(error)
+DEFINE_BUILTIN_FUN(argument_error)
+DEFINE_BUILTIN_FUN(syntax_error)
 
 // Miscellaneous
 DEFINE_BUILTIN_FUN(equalp)
 DEFINE_BUILTIN_FUN(symbolp)
 DEFINE_BUILTIN_FUN(printf)
-DEFINE_BUILTIN_FUN(error)
 DEFINE_BUILTIN_FUN(void)
 DEFINE_BUILTIN_FUN(version);
 DEFINE_BUILTIN_FUN(symbol_count);
