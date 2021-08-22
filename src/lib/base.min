@@ -8,8 +8,8 @@
          "private/lazy.min"
          "private/list.min"
          "private/math.min"
-         "private/record.min"
-         "private/string.min")
+         "private/string.min"
+         "srfi/9.min")
 
 (%export (all "private/pre-base.min")
          (all "private/for.min")
@@ -17,5 +17,5 @@
          (all "private/lazy.min")
          (all "private/list.min")
          (all "private/math.min")
-         (all "private/record.min")
-         (all "private/string.min"))
+         (all "private/string.min")
+         (all "srfi/9.min"))

@@ -3,9 +3,9 @@
 ;
 
 (%import "def.min" "let.min" "stx.min" "stx-macro.min" "when-unless.min"
-         "../srfi/9.min") ; => case-lambda
+         "../srfi/16.min") ; => case-lambda
 
-(%export (all "../srfi/9.min") case)
+(%export (all "../srfi/16.min") case)
 
 (def-syntax case
   (lambda (stx)
