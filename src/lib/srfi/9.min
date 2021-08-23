@@ -6,6 +6,7 @@
          "../private/for.min")
 
 (%export make-record-type
+         record?
          record-constructor
          record-predicate
          record-accessor
@@ -45,7 +46,7 @@
 
 ;;;;;;;;;;;;;;;;;;; record types ;;;;;;;;;;;;;;;;;;;
 
-; base record for other types
+; base record for user-defined records
 (def $record-type (make-record 3))
 (record-set! $record-type 0 $record-type)
 (record-set! $record-type 1 '$record-type)
