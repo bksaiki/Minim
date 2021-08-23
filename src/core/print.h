@@ -13,6 +13,10 @@ typedef struct PrintParams
     bool syntax;
 } PrintParams;
 
+// Stores custom print methods
+extern MinimObject **custom_print_methods;
+
+// Sets default params: quote off, display off, syntax offf
 void set_default_print_params(PrintParams *pp);
 
 // For debugging

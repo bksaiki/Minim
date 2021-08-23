@@ -44,6 +44,9 @@
 (def record-type (record)
   (record-ref record 0))
 
+(def-print-method record?
+  (lambda (x) "#<record>"))
+
 ;;;;;;;;;;;;;;;;;;; record types ;;;;;;;;;;;;;;;;;;;
 
 ; base record for user-defined records
@@ -117,6 +120,7 @@
       (def type (make-record-type 'type '(field-tag ...)))
       (def constructor (record-constructor type '(tag ...)))
       (def predicate (record-predicate type))
+      (def-print-method predicate (lambda (x) (format "#<~a>" 'type)))
       (def-record-field type field-tag accessor . more)
       ...)]))
 
