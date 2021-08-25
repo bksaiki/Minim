@@ -9,6 +9,7 @@
          "def.min"
          "let.min"
          "stx-macro.min"
+         "with-stx.min"
          "when-unless.min")
 
 (%export (all "and-or.min")
@@ -17,4 +18,5 @@
          (all "def.min")
          (all "let.min")
          (all "stx-macro.min")
+         (all "with-stx.min")
          (all "when-unless.min"))

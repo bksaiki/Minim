@@ -806,6 +806,15 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
     return MINIM_AST(res);
 }
 
+SyntaxNode*
+transform_syntax_case(MinimEnv *env, SyntaxNode* ast)
+{
+    for (size_t i = 3; i < ast->childc; ++i)
+        ast->children[i]->children[1] = transform_syntax(env, ast->children[i]->children[1]);
+
+    return ast;
+}
+
 static bool
 valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t pdepth)
 {
@@ -923,7 +932,14 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
                 }
 
                 if (MINIM_OBJ_TRANSFORMP(op))
-                    return transform_syntax(env, transform_loc(env, op, ast));
+                {
+                    SyntaxNode *trans;
+
+                    // printf("> "); print_ast(ast); printf("\n");
+                    trans = transform_loc(env, op, ast);
+                    // printf("< "); print_ast(trans); printf("\n");
+                    return transform_syntax(env, trans);
+                }
             }
         }
 
