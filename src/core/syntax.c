@@ -448,7 +448,7 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
 
 // ================================ Syntax Conversions ================================
 
-static SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
+SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
 {
     SyntaxNode *node;
     Buffer *bf;
