@@ -38,7 +38,9 @@ int minim_run(const char *str, uint32_t flags)
         if (!(flags & MINIM_FLAG_LOAD_LIBS))
             minim_load_library(env);
 
-        path = build_path(2, get_working_directory(), str);
+        path = (is_absolute_path(str) ?
+                build_path(1, str) :
+                build_path(2, get_working_directory(), str));
         minim_load_file(env, extract_path(path));
     }
     else
