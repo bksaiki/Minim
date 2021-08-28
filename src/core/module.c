@@ -146,7 +146,10 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                 name = unsyntax_ast(env, MINIM_AST(MINIM_CADR(export)));
                 if (strcmp(attrib, "all") == 0)
                 {
-                    path = build_path(2, env->current_dir, MINIM_STRING(name));
+                    path = (is_absolute_path(MINIM_STRING(name)) ?
+                            build_path(1, MINIM_STRING(name)) :
+                            build_path(2, env->current_dir, MINIM_STRING(name)));
+
                     import = minim_module_get_import(env->module, extract_path(path));
                     if (!import)
                         THROW(env, minim_syntax_error("module not imported",
@@ -193,7 +196,10 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
     for (size_t i = 0; i < argc; ++i)
     {
         arg = unsyntax_ast(env, MINIM_AST(args[i]));
-        path = build_path(2, env->current_dir, MINIM_STRING(arg));
+        path = (is_absolute_path(MINIM_STRING(arg)) ?
+                build_path(1, MINIM_STRING(arg)) :
+                build_path(2, env->current_dir, MINIM_STRING(arg)));
+
         clean_path = extract_path(path);
         module2 = minim_module_cache_get(env->module->cache, clean_path);
         if (module2)

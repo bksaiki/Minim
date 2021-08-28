@@ -10,6 +10,8 @@ bool run_test(char *input, char *expected)
     bool s;
 
     str = eval_string(input, INT_MAX);
+    if (!str) return false;
+
     s = (strcmp(str, expected) == 0);
     if (!s) printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
     return s;
@@ -81,8 +83,8 @@ int main()
         char strs[12][256] =
         {
             "(syntax-case #'1 ()  \
-              [_ 1])",
-            "1",
+              [_ #'1])",
+            "<syntax:1>",
 
             "(syntax-case #'1 ()  \
               [_ #'1])",
@@ -97,8 +99,8 @@ int main()
             "<syntax:(a 3)>",
 
             "(syntax-case #'(1 2 3) ()      \
-              [(_ a b) (cons 1 #'(a b))])",
-            "'(1 . <syntax:(2 3)>)",
+              [(_ a b) #'(1 a b)])",
+            "<syntax:(1 2 3)>",
 
             "(syntax-case #'(foo x y) ()    \
               [(_ a b) #'(let ([t a])       \
@@ -240,8 +242,8 @@ int main()
     }
 
     {
-        const int COUNT = 9;
-        char strs[18][512] =
+        const int COUNT = 10;
+        char strs[20][512] =
         {
             "(def-syntaxes (foo)                \
               (lambda (stx)                     \
@@ -305,6 +307,13 @@ int main()
                 [(_ a b c ...) #'(list a b (list c ...))])))  \
              (baz 1 2 3 4)",
             "'(1 2 (3 4))",
+
+            "(def-syntaxes (foo)                  \
+              (lambda (stx)                       \
+               (syntax-case stx ()                \
+                [(_ (a ...)) #'(list a ...)])))   \
+             (foo ())",
+            "'()",
         };
 
         printf("Transforms w/ pattern variables (list)\n");

@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
@@ -171,4 +172,13 @@ char *get_working_directory()
     _getcwd(path, PATH_MAX);
 #endif
     return path;
+}
+
+bool is_absolute_path(const char *sym)
+{
+#if defined(MINIM_LINUX)
+    return sym[0] && sym[0] == '/';
+#else // MINIM_WINDOWS
+    return sym[0] && isalpha(sym[0]) && sym[1] && sym[1] == ':';
+#endif
 }

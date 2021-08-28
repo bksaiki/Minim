@@ -23,7 +23,7 @@
                           (let-values ([(x) (stx-cdr r)])
                             (datum->syntax
                               (list
-                                (syntax def-syntaxes)
+                                (quote-syntax def-syntaxes)
                                 (list id)
                                 (stx-car r)))))))))))))
 
@@ -46,13 +46,13 @@
                           (let-values ([(x) (stx-cdr r)])
                             (datum->syntax
                               (list
-                                (syntax def-values)
+                                (quote-syntax def-values)
                                 (list id)
                                 (if (stx-null? x)     ; assignment
                                     (stx-car r)
                                     (append
                                       (list
-                                        (syntax lambda)
+                                        (quote-syntax lambda)
                                         (stx-car r))
                                       x))))))))))))))                       
 

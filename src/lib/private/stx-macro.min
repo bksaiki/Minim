@@ -38,12 +38,12 @@
                            (andmap rule? rules))
                       (datum->syntax
                         (list
-                          (syntax lambda)
-                          (list (syntax stx))
+                          (quote-syntax lambda)
+                          (list (quote-syntax stx))
                           (append
                             (list
-                              (syntax syntax-case)
-                              (syntax stx)
+                              (quote-syntax syntax-case)
+                              (quote-syntax stx)
                               ids)
                             (let-values ([(loop)
                                 (lambda (process rules)
@@ -57,7 +57,7 @@
                                             (list
                                               match
                                               (list
-                                                (syntax syntax)
+                                                (quote-syntax syntax)
                                                 replace))
                                             process)
                                           (stx-cdr rules)))))])

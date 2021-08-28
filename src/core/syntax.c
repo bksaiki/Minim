@@ -205,7 +205,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
             if (!MINIM_OBJ_SYMBOLP(sym))
             {
                 THROW(env, minim_syntax_error("not an identifier",
-                                         MINIM_STRING(sym),
+                                              "let-values",
                                          ast,
                                          stx->children[i]));
             }
@@ -215,7 +215,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
                 if (strcmp(stx->children[j]->sym, MINIM_STRING(sym)) == 0)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
-                                             MINIM_STRING(sym),
+                                                  "let-values",
                                              ast,
                                              stx->children[i]));
                 }
@@ -432,6 +432,7 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
             // minim_builtin_quasiquote
             // minim_builtin_unquote
             // minim_builtin_syntax
+            // minim_builtin_template
         }
         else if (MINIM_OBJ_FUNCP(op))
         {
@@ -448,7 +449,7 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
 
 // ================================ Syntax Conversions ================================
 
-static SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
+SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
 {
     SyntaxNode *node;
     Buffer *bf;

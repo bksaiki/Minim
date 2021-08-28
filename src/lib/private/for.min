@@ -71,7 +71,7 @@
    [() (in-naturals 0)]
    [(n)
     (unless (or (number? n) (exact? n) (not (negative? n)) (integer? n))
-      (argument-error 'in-range "number?" n))
+      (argument-error 'in-naturals "number?" n))
     (sequence n
               (lambda (x) x)
               (lambda (x) (+ x 1))

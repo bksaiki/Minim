@@ -468,6 +468,7 @@ MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
 
 MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
 {
+    // printf("eval: "); print_ast(ast); printf("\n");
     return eval_ast_node(env, ast);
 }
 
@@ -495,10 +496,7 @@ MinimObject *eval_module(MinimModule *module)
             continue;
 
         if (expr_is_macro(module->env, module->exprs[i]))
-        {
-            module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
             eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
-        }
     }
 
     // Syntax transform
@@ -516,12 +514,11 @@ MinimObject *eval_module(MinimModule *module)
     set_default_print_params(&pp);
     for (size_t i = 0; i < module->exprc; ++i)
     {
-        check_syntax(env2, module->exprs[i]);
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
         // print_ast(module->exprs[i]); printf("\n");
-
+        check_syntax(env2, module->exprs[i]);
         res = eval_ast_no_check(module->env, module->exprs[i]);
         if (!minim_voidp(res))
         {

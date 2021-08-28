@@ -125,9 +125,9 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_BUILTIN(obj)          (*((MinimBuiltin*) VOID_PTR(PTR(obj, 8))))
 #define MINIM_SYNTAX(obj)           (*((MinimBuiltin*) VOID_PTR(PTR(obj, 8))))
 #define MINIM_CLOSURE(obj)          (*((MinimLambda**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_TAIL_CALL(obj)        (*((MinimTailCall**)  VOID_PTR(PTR(obj, 8))))
-#define MINIM_TRANSFORM_NAME(obj)   (*((char**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_TRANSFORM_PROC(obj)   (*((MinimLambda**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_TAIL_CALL(obj)        (*((MinimTailCall**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_TRANSFORM_TYPE(obj)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
+#define MINIM_TRANSFORMER(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
 #define MINIM_AST(obj)              (*((SyntaxNode**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_SEQUENCE(obj)         (*((MinimSeq**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_VALUES(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
@@ -149,6 +149,12 @@ extern MinimObject *minim_exit_handler;
 
 #define MINIM_PROMISE_SET_STATE(obj, s)     (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 
+// Special values
+
+#define MINIM_TRANSFORM_MACRO       0
+#define MINIM_TRANSFORM_PATTERN     1
+#define MINIM_TRANSFORM_UNKNOWN     2
+
 //  Initialization
 
 MinimObject *minim_exactnum(void *num);
@@ -163,7 +169,7 @@ MinimObject *minim_builtin(void *func);
 MinimObject *minim_syntax(void *func);
 MinimObject *minim_closure(void *closure);
 MinimObject *minim_tail_call(void *tc);
-MinimObject *minim_transform(char *name, void *closure);
+MinimObject *minim_transform(void *binding, int type);
 MinimObject *minim_ast(void *ast);
 MinimObject *minim_sequence(void *seq);
 MinimObject *minim_values(size_t len, void *arr);

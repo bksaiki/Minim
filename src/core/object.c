@@ -121,12 +121,12 @@ MinimObject *minim_tail_call(void *tc)
     return o;
 }
 
-MinimObject *minim_transform(char *name, void *closure)
+MinimObject *minim_transform(void *binding, int type)
 {
     MinimObject *o = GC_alloc(minim_transform_size);
     o->type = MINIM_OBJ_TRANSFORM;
-    MINIM_TRANSFORM_NAME(o) = name;
-    MINIM_TRANSFORM_PROC(o) = closure;
+    MINIM_TRANSFORM_TYPE(o) = (uint8_t) type & 0xFF;
+    MINIM_TRANSFORMER(o) = binding;
     return o;
 }
 
