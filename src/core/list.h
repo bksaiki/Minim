@@ -11,6 +11,12 @@
         dest = MINIM_CDR(dest);                 \
 }
 
+#define MINIM_CDNR(dest, x, it, n)                              \
+{                                                               \
+    dest = x;                                                   \
+    for (size_t it = 0; it < n; ++it, dest = MINIM_CDR(dest));  \
+}
+
 // Internals
 
 bool minim_consp(MinimObject* thing);

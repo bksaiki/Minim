@@ -168,6 +168,34 @@ void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src)
     }   
 }
 
+void minim_symbol_table_merge2(MinimSymbolTable *dest,
+                               MinimSymbolTable *src,
+                               MinimObject *(*merge)(MinimObject *, MinimObject *),
+                               MinimObject *(*add)(MinimObject *))
+{
+    MinimObject *val;
+    size_t hash;
+
+    for (size_t i = 0; i < src->alloc; ++i)
+    {
+        for (size_t j = 0; j < src->rows[i].length; ++j)
+        {
+            hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j]), hashseed); 
+            val = minim_symbol_table_get(dest, src->rows[i].names[j], hash);
+            if (val)
+            {
+                minim_symbol_table_set(dest, src->rows[i].names[j], hash,
+                                       merge(val, src->rows[i].vals[j]));
+            }
+            else
+            {
+                minim_symbol_table_add(dest, src->rows[i].names[j], hash,
+                                       add(src->rows[i].vals[j]));
+            }
+        }
+    }   
+}
+
 void minim_symbol_table_for_each(MinimSymbolTable *table, void (*func)(const char *, MinimObject *))
 {
     for (size_t i = 0; i < table->alloc; ++i)

@@ -25,8 +25,16 @@ void minim_symbol_table_add(MinimSymbolTable *table, const char *name, size_t ha
 int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name, size_t hash);
 const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj);
-void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src);
 
-void minim_symbol_table_for_each(MinimSymbolTable *table, void (*func)(const char *, MinimObject *));
+void minim_symbol_table_merge(MinimSymbolTable *dest,
+                              MinimSymbolTable *src);
+
+void minim_symbol_table_merge2(MinimSymbolTable *dest,
+                               MinimSymbolTable *src,
+                               MinimObject *(*merge)(MinimObject *, MinimObject *),
+                               MinimObject *(*add)(MinimObject *));
+
+void minim_symbol_table_for_each(MinimSymbolTable *table,
+                                 void (*func)(const char *, MinimObject *));
 
 #endif
