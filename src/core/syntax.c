@@ -432,6 +432,7 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
             // minim_builtin_quasiquote
             // minim_builtin_unquote
             // minim_builtin_syntax
+            // minim_builtin_template
         }
         else if (MINIM_OBJ_FUNCP(op))
         {

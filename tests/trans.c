@@ -242,8 +242,8 @@ int main()
     }
 
     {
-        const int COUNT = 9;
-        char strs[18][512] =
+        const int COUNT = 10;
+        char strs[20][512] =
         {
             "(def-syntaxes (foo)                \
               (lambda (stx)                     \
@@ -307,6 +307,13 @@ int main()
                 [(_ a b c ...) #'(list a b (list c ...))])))  \
              (baz 1 2 3 4)",
             "'(1 2 (3 4))",
+
+            "(def-syntaxes (foo)                  \
+              (lambda (stx)                       \
+               (syntax-case stx ()                \
+                [(_ (a ...)) #'(list a ...)])))   \
+             (foo ())",
+            "'()",
         };
 
         printf("Transforms w/ pattern variables (list)\n");

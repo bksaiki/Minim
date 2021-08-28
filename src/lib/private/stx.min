@@ -52,7 +52,6 @@
             (vector? (unwrap t))
             #f))))
             
-
 (%export identifier? stx-pair? stx-list? stx-null?
          stx-car stx-cdr
          stx-vector?)

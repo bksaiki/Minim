@@ -452,8 +452,8 @@ MinimObject *minim_builtin_arity_error(MinimEnv *env, size_t argc, MinimObject *
 
 MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!MINIM_OBJ_SYMBOLP(args[0]) && !MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("symbol?/string?", "syntax-error", 0, args[0]));
+    if (!MINIM_OBJ_SYMBOLP(args[0]) && !minim_falsep(args[0]))
+        THROW(env, minim_argument_error("string? or #f", "syntax-error", 0, args[0]));
 
     if (!MINIM_OBJ_SYMBOLP(args[1]) && !MINIM_OBJ_STRINGP(args[1]))
         THROW(env, minim_argument_error("symbol?/string?", "syntax-error", 1, args[1]));
@@ -461,9 +461,9 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
     if (argc == 2)
     {
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
-                                 MINIM_STRING(args[0]),
-                                 NULL,
-                                 NULL));
+                                      (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
+                                      NULL,
+                                      NULL));
     }
     else if (argc == 3)
     {
@@ -471,9 +471,9 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
             THROW(env, minim_argument_error("syntax?", "syntax-error", 2, args[2]));
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
-                                 MINIM_STRING(args[0]),
-                                 MINIM_AST(args[2]),
-                                 NULL));
+                                      (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
+                                      MINIM_AST(args[2]),
+                                      NULL));
     }
     else
     {
@@ -481,9 +481,9 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
             THROW(env, minim_argument_error("syntax?", "syntax-error", 3, args[3]));
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
-                                 MINIM_STRING(args[0]),
-                                 MINIM_AST(args[2]),
-                                 MINIM_AST(args[3])));
+                                      (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
+                                      MINIM_AST(args[2]),
+                                      MINIM_AST(args[3])));
     }
 
     return NULL; // avoid compile errors

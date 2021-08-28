@@ -17,16 +17,17 @@
             (case-lambda/clause args l (a e es ...) (a2 e2 e2s ...) ...)))]
      [(_ cls ...)
       (let loop ([clauses (unwrap #'(cls ...))])
-        (unless (null? clauses)
-          (let ([clause (car clauses)])
-            (syntax-case clause ()
-             [((_ ...) _ ...)
-              (loop (cdr clauses))]
-             [((_ ...) . _)
-              (syntax-error 'case-lambda "missing body after formals" stx clause)]
-             [_
-              (syntax-error 'case-lambda "ill-formed clause" stx clause)]))))]
-     [_ (syntax-error 'case-lambda "bad syntax" stx)])))
+        (if (null? clauses)
+            (syntax-error #f "missing clauses" stx)
+            (let ([clause (car clauses)])
+              (syntax-case clause ()
+               [((_ ...) _ ...)
+                (loop (cdr clauses))]
+               [((_ ...) . _)
+                (syntax-error #f "missing body after formals" stx clause)]
+               [_
+                (syntax-error #f "ill-formed clause" stx clause)]))))]
+     [_ (syntax-error #f "bad syntax" stx)])))
 
 (def-syntax case-lambda/clause
   (syntax-rules ()
