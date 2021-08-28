@@ -13,7 +13,7 @@
     (syntax-case stx ()
      [(_ (a e es ...) (a2 e2 e2s ...) ...)
       #'(lambda args
-          (let-values ([(l) (length args)])
+          (let ([l (length args)])
             (case-lambda/clause args l (a e es ...) (a2 e2 e2s ...) ...)))]
      [(_ cls ...)
       (let loop ([clauses (unwrap #'(cls ...))])
@@ -37,7 +37,7 @@
    [(_ args l ((a . rest) e ...) clause ...)
     (case-lambda/improper args l 1 (a . rest) (rest e ...) clause ...)]
    [(_ args l (a e ...) clause ...)
-    (let-values ([(a) args]) e ...)]
+    (let ([a args]) e ...)]
    [(_ args l)
     (error "arity mismatch: given ~a" l)]))
 

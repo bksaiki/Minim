@@ -16,10 +16,10 @@
                     (syntax-error 'when "missing body" stx)
                     (datum->syntax
                       (list
-                        (syntax if)
+                        (quote-syntax if)
                         (stx-car e)
-                        (cons (syntax begin) b)
-                        (syntax (void)))))))))))
+                        (cons (quote-syntax begin) b)
+                        (quote-syntax (void)))))))))))
                         
 (def-syntaxes (unless)
   (lambda (stx)
@@ -33,9 +33,9 @@
                     (syntax-error 'unless "missing body" stx)
                     (datum->syntax
                       (list
-                        (syntax if)
+                        (quote-syntax if)
                         (stx-car e)
-                        (syntax (void))
-                        (cons (syntax begin) b))))))))))
+                        (quote-syntax (void))
+                        (cons (quote-syntax begin) b))))))))))
 
 (%export when unless)

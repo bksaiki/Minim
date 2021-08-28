@@ -205,7 +205,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
             if (!MINIM_OBJ_SYMBOLP(sym))
             {
                 THROW(env, minim_syntax_error("not an identifier",
-                                         MINIM_STRING(sym),
+                                              "let-values",
                                          ast,
                                          stx->children[i]));
             }
@@ -215,7 +215,7 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
                 if (strcmp(stx->children[j]->sym, MINIM_STRING(sym)) == 0)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
-                                             MINIM_STRING(sym),
+                                                  "let-values",
                                              ast,
                                              stx->children[i]));
                 }
