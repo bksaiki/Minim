@@ -166,6 +166,15 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "cdar", MINIM_OBJ_FUNC, minim_builtin_cdar);
     minim_load_builtin(env, "cddr", MINIM_OBJ_FUNC, minim_builtin_cddr);
 
+    minim_load_builtin(env, "caaar", MINIM_OBJ_FUNC, minim_builtin_caaar);
+    minim_load_builtin(env, "caadr", MINIM_OBJ_FUNC, minim_builtin_caadr);
+    minim_load_builtin(env, "cadar", MINIM_OBJ_FUNC, minim_builtin_cadar);
+    minim_load_builtin(env, "caddr", MINIM_OBJ_FUNC, minim_builtin_caddr);
+    minim_load_builtin(env, "cdaar", MINIM_OBJ_FUNC, minim_builtin_cdaar);
+    minim_load_builtin(env, "cdadr", MINIM_OBJ_FUNC, minim_builtin_cdadr);
+    minim_load_builtin(env, "cddar", MINIM_OBJ_FUNC, minim_builtin_cddar);
+    minim_load_builtin(env, "cdddr", MINIM_OBJ_FUNC, minim_builtin_cdddr);
+
     // List
     minim_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
     minim_load_builtin(env, "list?", MINIM_OBJ_FUNC, minim_builtin_listp);

@@ -131,6 +131,15 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(cdar, 1);
     SET_ARITY_EXACT(cddr, 1);
 
+    SET_ARITY_EXACT(caaar, 1);
+    SET_ARITY_EXACT(caadr, 1);
+    SET_ARITY_EXACT(cadar, 1);
+    SET_ARITY_EXACT(caddr, 1);
+    SET_ARITY_EXACT(cdaar, 1);
+    SET_ARITY_EXACT(cdadr, 1);
+    SET_ARITY_EXACT(cddar, 1);
+    SET_ARITY_EXACT(cdddr, 1);
+
     // List
     // NO CHECK: list
     SET_ARITY_EXACT(listp, 1);

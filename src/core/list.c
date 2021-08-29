@@ -289,9 +289,43 @@ static MinimObject *minim_list_foldl(MinimObject *lst, MinimObject *fold, MinimO
     return it;   
 }
 
-bool minim_consp(MinimObject* thing)
+static void assert_pair_type(MinimEnv *env, const char *name, const char *desc, MinimObject *val, size_t depth, ...)
 {
-    return (MINIM_OBJ_PAIRP(thing) && MINIM_CAR(thing));
+    MinimObject *it;
+    va_list va;
+    int direction;
+
+    it = val;
+    if (!minim_consp(it))
+        THROW(env, minim_argument_error(desc, name, 0, val));
+
+    va_start(va, depth);
+    for (size_t i = 0; i < depth; ++i)
+    {
+        direction = va_arg(va, int);
+        if (direction)
+        {
+            if (minim_consp(MINIM_CDR(it)))     it = MINIM_CDR(it);
+            else                                THROW(env, minim_argument_error(desc, name, 0, val));
+        }
+        else
+        {
+            if (minim_consp(MINIM_CAR(it)))     it = MINIM_CAR(it);
+            else                                THROW(env, minim_argument_error(desc, name, 0, val));
+        }
+    }
+
+
+    va_end(va);
+}
+
+//
+//  Internals
+//
+
+bool minim_consp(MinimObject *thing)
+{
+    return MINIM_OBJ_PAIRP(thing);
 }
 
 // list |= (obj? . list?)
@@ -400,6 +434,8 @@ MinimObject *minim_builtin_consp(MinimEnv *env, size_t argc, MinimObject **args)
     return to_bool(minim_consp(args[0]));
 }
 
+// depth 1 accessors
+
 MinimObject *minim_builtin_car(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!minim_consp(args[0]))
@@ -422,36 +458,80 @@ MinimObject *minim_builtin_cdr(MinimEnv *env, size_t argc, MinimObject **args)
     return MINIM_CDR(args[0]);
 }
 
+// depth 2 accessors
+
 MinimObject *minim_builtin_caar(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!(minim_consp(args[0]) && minim_consp(MINIM_CAR(args[0]))))
-        THROW(env, minim_argument_error("pair of (non empty pair . any)", "caar", 0, args[0]));
-    
+    assert_pair_type(env, "caar", "pair of (non empty pair . any)", args[0], 1, 0);
     return MINIM_CAAR(args[0]);
 }
 
 MinimObject *minim_builtin_cadr(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!(minim_consp(args[0]) && MINIM_CDR(args[0]) && minim_consp(MINIM_CDR(args[0]))))
-        THROW(env, minim_argument_error("pair of (any, non-empty pair)", "cadr", 0, args[0]));
-    
+    assert_pair_type(env, "cadr", "pair of (any . non-empty pair)", args[0], 1, 1);
     return MINIM_CADR(args[0]);
 }
 
 MinimObject *minim_builtin_cdar(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!(minim_consp(args[0]) && minim_consp(MINIM_CAR(args[0]))))
-        THROW(env, minim_argument_error("pair of (non-empty pair, any)", "cdar", 0, args[0]));
-    
+    assert_pair_type(env, "cdar", "pair of (non empty pair . any)", args[0], 1, 0);
     return MINIM_CDAR(args[0]);
 }
 
 MinimObject *minim_builtin_cddr(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!(minim_consp(args[0]) && MINIM_CDR(args[0]) && minim_consp(MINIM_CDR(args[0]))))
-        THROW(env, minim_argument_error("pair of (any, non-empty pair)", "cddr", 0, args[0]));
-
+    assert_pair_type(env, "cddr", "pair of (any . non-empty pair)", args[0], 1, 1);
     return MINIM_CDDR(args[0]);
+}
+
+// depth 3 accessors
+
+MinimObject *minim_builtin_caaar(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "caaar", "pair of (pair of (non empty pair . any) . any)", args[0], 2, 0, 0);
+    return MINIM_CAR(MINIM_CAAR(args[0]));
+}
+
+MinimObject *minim_builtin_caadr(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "caadr", "pair of (any . pair of (non empty pair . any))", args[0], 2, 1, 0);
+    return MINIM_CAR(MINIM_CADR(args[0]));
+}
+
+MinimObject *minim_builtin_cadar(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "cadar", "pair of (pair of (any . non-empty pair) . any)", args[0], 2, 0, 1);
+    return MINIM_CAR(MINIM_CDAR(args[0]));
+}
+
+MinimObject *minim_builtin_caddr(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "caddr", "pair of (any . pair of (any . non empty pair))", args[0], 2, 1, 1);
+    return MINIM_CAR(MINIM_CDDR(args[0]));
+}
+
+MinimObject *minim_builtin_cdaar(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "cdaar", "pair of (pair of (non empty pair . any) . any)", args[0], 2, 0, 0);
+    return MINIM_CDR(MINIM_CAAR(args[0]));
+}
+
+MinimObject *minim_builtin_cdadr(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "cdadr", "pair of (any . pair of (non empty pair . any))", args[0], 2, 1, 0);
+    return MINIM_CDR(MINIM_CADR(args[0]));
+}
+
+MinimObject *minim_builtin_cddar(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "cddar", "pair of (pair of (any . non-empty pair) . any)", args[0], 2, 0, 1);
+    return MINIM_CDR(MINIM_CDAR(args[0]));
+}
+
+MinimObject *minim_builtin_cdddr(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    assert_pair_type(env, "cdddr", "pair of (any . pair of (any . non empty pair))", args[0], 2, 1, 1);
+    return MINIM_CDR(MINIM_CDDR(args[0]));
 }
 
 MinimObject *minim_builtin_listp(MinimEnv *env, size_t argc, MinimObject **args)
