@@ -53,6 +53,7 @@ DEFINE_BUILTIN_FUN(void)
 DEFINE_BUILTIN_FUN(version);
 DEFINE_BUILTIN_FUN(symbol_count);
 DEFINE_BUILTIN_FUN(dump_symbols);
+DEFINE_BUILTIN_FUN(def_print_method)
 
 // Procedure
 DEFINE_BUILTIN_FUN(procedurep)

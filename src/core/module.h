@@ -55,6 +55,7 @@ void init_minim_module(MinimModule **pmodule, MinimModuleCache *cache);
 void copy_minim_module(MinimModule **pmodule, MinimModule *src);
 void minim_module_add_expr(MinimModule *module, SyntaxNode *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
+void minim_module_expand(MinimModule *module);
 
 MinimObject *minim_module_get_sym(MinimModule *module, const char *sym);
 MinimModule *minim_module_get_import(MinimModule *module, const char *sym);

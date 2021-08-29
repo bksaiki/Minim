@@ -3,9 +3,9 @@
 ;
 
 (%import "def.min" "let.min" "stx.min" "stx-macro.min" "when-unless.min"
-         "../srfi/9.min") ; => case-lambda
+         "../srfi/16.min") ; => case-lambda
 
-(%export (all "../srfi/9.min") case)
+(%export (all "../srfi/16.min") case)
 
 (def-syntax case
   (lambda (stx)
@@ -13,7 +13,7 @@
      [(_ v)   ; empty case
       #'(begin v (void))]
      [(_ v [else e es ...])   ; else case
-      #'(begin v (begin e es ...))]
+      #'(begin v (let-values () e es ...))]
      [(_ v [(k ...) e es ...] ...)  ; missing else
       #'(case v [(k ...) e es ...] ... [else (void)])]
      [(_ v [(k ...) e es ...] ... [else x xs ...])  ; general case
@@ -41,14 +41,14 @@
     (syntax-case stx (else)
      [(_ v [(k ...) es ...] [else xs ...])
       #'(if (case/test v (k ...))
-            (begin es ...)
-            (begin xs ...))]
+            (let-values () es ...)
+            (let-values () xs ...))]
      [(_ v [(k ...) es ...] rest ... [else xs ...])
       #'(if (case/test v (k ...))
-            (begin es ...)
+            (let-values () es ...)
             (case/else v rest ... [else xs ...]))]
      [(_ v [else xs ...])
-      #'(begin xs ...)])))
+      #'(let-values () xs ...)])))
 
 (def-syntax case/test
   (lambda (stx)

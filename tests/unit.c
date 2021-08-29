@@ -267,12 +267,13 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 4;
+        char strs[8][256] =
         {
             "(map (lambda (x) (+ x 1)) (list))",            "'()",
             "(map (lambda (x) (+ x 1)) (list 1))",          "'(2)",
-            "(map (lambda (x) (+ x 1)) (list 1 2 3))",      "'(2 3 4)"
+            "(map (lambda (x) (+ x 1)) (list 1 2 3))",      "'(2 3 4)",
+            "(map + (list 1 2 3) (list 2 4 6))",            "'(3 6 9)"
         };
 
         printf("Testing 'map'\n");

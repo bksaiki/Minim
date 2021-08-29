@@ -37,7 +37,7 @@ static MinimObject *eval_1ary(MinimEnv *env, MinimObject *proc, MinimObject *val
 static MinimObject *eval_2ary(MinimEnv *env, MinimObject *proc, MinimObject *x, MinimObject *y)
 {
     MinimObject **args;
-
+    
     if (MINIM_OBJ_BUILTINP(proc))
     {
         MinimBuiltin func = MINIM_BUILTIN(proc);
@@ -68,6 +68,44 @@ static MinimObject *eval_2ary(MinimEnv *env, MinimObject *proc, MinimObject *x, 
         
         // no return
         minim_long_jump(proc, env, 2, args);
+        return NULL;
+    }
+}
+
+static MinimObject *eval_nary(MinimEnv *env, MinimObject *proc, size_t argc, MinimObject **conss)
+{
+    MinimObject **args;
+
+    if (MINIM_OBJ_BUILTINP(proc))
+    {
+        MinimBuiltin func = MINIM_BUILTIN(proc);
+        MinimObject *err;
+
+        if (!minim_check_arity(func, argc, env, &err))
+            THROW(env, err);
+
+        args = GC_alloc(argc * sizeof(MinimObject*));
+        for (size_t i = 0; i < argc; ++i)
+            args[i] = MINIM_CAR(conss[i]);
+        return func(env, argc, args);
+    }
+    else if (MINIM_OBJ_CLOSUREP(proc))
+    {
+        MinimLambda *lam = MINIM_CLOSURE(proc);
+
+        args = GC_alloc(argc * sizeof(MinimObject*));
+        for (size_t i = 0; i < argc; ++i)
+            args[i] = MINIM_CAR(conss[i]);
+        return eval_lambda(lam, env, argc, args);
+    }
+    else
+    {
+        args = GC_alloc(argc * sizeof(MinimObject*));
+        for (size_t i = 0; i < argc; ++i)
+            args[i] = MINIM_CAR(conss[i]);
+        
+        // no return
+        minim_long_jump(proc, env, argc, args);
         return NULL;
     }
 }
@@ -144,30 +182,62 @@ static MinimObject *minim_list_remove(MinimObject *lst, MinimObject *rem)
     return head;
 }
 
-static MinimObject *minim_list_map(MinimObject *lst, MinimObject *map, MinimEnv *env)
+static bool map_iters_nullp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *head, *val, *it;
+    if (minim_nullp(args[0]))
+    {
+        for (size_t i = 1; i < argc; ++i)
+        {
+            if (!minim_nullp(args[i]))
+                THROW(env, minim_error("given lists of uneven lengths", "map"));
+        }
 
-    if (minim_nullp(lst))
-        return lst;
+        return true;
+    }
+    else
+    {
+        for (size_t i = 1; i < argc; ++i)
+        {
+            if (minim_nullp(args[i]))
+                THROW(env, minim_error("given lists of uneven lengths", "map"));
+        }
+
+        return false;
+    }
+}
+
+static MinimObject *minim_list_map(MinimEnv *env, MinimObject *map, size_t argc, MinimObject **args)
+{
+    MinimObject *head, *val, *c;
+    MinimObject **it;
+
+    if (map_iters_nullp(env, argc, args))
+        return minim_null;
+
+    it = GC_alloc(argc * sizeof(MinimObject**));
+    for (size_t i = 0; i < argc; ++i)
+        it[i] = args[i];
 
     head = NULL;
-    for (MinimObject *it2 = lst; !minim_nullp(it2); it2 = MINIM_CDR(it2))
+    while (!map_iters_nullp(env, argc, it))
     {
-        val = eval_1ary(env, map, MINIM_CAR(it2));
+        val = eval_nary(env, map, argc, it);
         if (head)
         {
-            MINIM_CDR(it) = minim_cons(val, NULL);
-            it = MINIM_CDR(it);
+            MINIM_CDR(c) = minim_cons(val, NULL);
+            c = MINIM_CDR(c);
         }
         else
         {
             head = minim_cons(val, NULL);
-            it = head;
+            c = head;
         }
-    }
 
-    MINIM_CDR(it) = minim_null;
+        for (size_t i = 0; i < argc; ++i)
+            it[i] = MINIM_CDR(it[i]);
+    }
+    
+    MINIM_CDR(c) = minim_null;
     return head;
 }
 
@@ -502,7 +572,7 @@ MinimObject *minim_builtin_map(MinimEnv *env, size_t argc, MinimObject **args)
     if (!minim_listp(args[1]))
         THROW(env, minim_argument_error("list", "map", 1, args[1]));
 
-    return minim_list_map(args[1], args[0], env);   
+    return minim_list_map(env, args[0], argc - 1, &args[1]);
 }
 
 MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)

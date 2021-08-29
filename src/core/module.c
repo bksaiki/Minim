@@ -17,6 +17,17 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
+static bool expr_is_begin(MinimEnv *env, SyntaxNode *ast)
+{
+    MinimObject *val;
+
+    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+        return false;
+
+    val = env_get_sym(env, ast->children[0]->sym);
+    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_begin);
+}
+
 void init_minim_module(MinimModule **pmodule, MinimModuleCache *cache)
 {
     MinimModule *module;
@@ -73,6 +84,54 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     ++module->importc;
     module->imports = GC_realloc(module->imports, module->importc * sizeof(MinimModule*));
     module->imports[module->importc - 1] = import;
+}
+
+static size_t expand_expr_count(MinimEnv *env, SyntaxNode *node)
+{
+    if (expr_is_begin(env, node))
+    {
+        size_t count = 0;
+        for (size_t i = 1; i < node->childc; ++i)
+            count += expand_expr_count(env, node->children[i]);
+        return count;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+static size_t expand_expr(MinimEnv *env, SyntaxNode *node, SyntaxNode **expanded, size_t idx)
+{
+    if (expr_is_begin(env, node))
+    {
+        for (size_t i = 1; i < node->childc; ++i)
+            idx = expand_expr(env, node->children[i], expanded, idx);
+    }
+    else
+    {
+        expanded[idx] = node;
+        ++idx;
+    }
+
+    return idx;
+}
+
+// expands begin
+void minim_module_expand(MinimModule *module)
+{
+    SyntaxNode **expanded;
+    size_t it = 0, count = 0;
+    
+    for (size_t i = 0; i < module->exprc; ++i)
+        count += expand_expr_count(module->env, module->exprs[i]);
+        
+    expanded = GC_alloc(count * sizeof(SyntaxNode**));
+    for (size_t i = 0; i < module->exprc; ++i)
+        it = expand_expr(module->env, module->exprs[i], expanded, it);
+    
+    module->exprs = expanded;
+    module->exprc = count;
 }
 
 MinimObject *minim_module_get_sym(MinimModule *module, const char *sym)
@@ -202,6 +261,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
 
         clean_path = extract_path(path);
         module2 = minim_module_cache_get(env->module->cache, clean_path);
+
         if (module2)
         {
             copy_minim_module(&module2, module2);

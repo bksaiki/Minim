@@ -5,13 +5,20 @@
 #include "../common/buffer.h"
 #include "../common/path.h"
 
+#include "arity.h"
 #include "error.h"
 #include "hash.h"
 #include "lambda.h"
 #include "list.h"
 #include "number.h"
+#include "object.h"
 #include "print.h"
 #include "vector.h"
+
+// Stores custom print methods
+//  => ((pred . method) ...)
+MinimObject **custom_print_methods = NULL;
+size_t custom_print_method_count = 0;
 
 //
 //  Printing
@@ -19,6 +26,19 @@
 
 static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
+    for (size_t i = custom_print_method_count - 1; i < custom_print_method_count; --i)
+    {
+        if (coerce_into_bool(eval_lambda(MINIM_CLOSURE(MINIM_CAR(custom_print_methods[i])), env, 1, &obj)))
+        {
+            MinimObject *str = eval_lambda(MINIM_CLOSURE(MINIM_CDR(custom_print_methods[i])), env, 1, &obj);
+            if (!MINIM_OBJ_STRINGP(str))
+                THROW(env, minim_error("expected a string from the custom printer", NULL));
+                
+            writes_buffer(bf, MINIM_STRING(str));
+            return 1;
+        }
+    }
+
     if (minim_voidp(obj))
     {
         writes_buffer(bf, "<void>");
@@ -330,4 +350,56 @@ char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp)
     str = get_buffer(bf);
 
     return str;
+}
+
+//
+//  Builtins
+//
+
+MinimObject *minim_builtin_def_print_method(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimArity arity;
+    MinimLambda *pred, *print;
+
+    if (!MINIM_OBJ_CLOSUREP(args[0]))
+        THROW(env, minim_argument_error("procedure of one argument", "def-print-method", 0, args[0]));
+
+    if (!MINIM_OBJ_CLOSUREP(args[1]))
+        THROW(env, minim_argument_error("procedure of one argument", "def-print-method", 1, args[1]));
+
+    pred = MINIM_CLOSURE(args[0]);
+    minim_get_lambda_arity(pred, &arity);
+    if (arity.low < 1)
+        THROW(env, minim_argument_error("procedure of one argument", "def-print-method", 0, args[0]));
+
+    print = MINIM_CLOSURE(args[1]);
+    minim_get_lambda_arity(print, &arity);
+    if (arity.low < 1)
+        THROW(env, minim_argument_error("procedure of one argument", "def-print-method", 1, args[1]));
+
+    if (custom_print_method_count == 0)
+    {
+        custom_print_methods = GC_alloc(sizeof(MinimObject*));
+        custom_print_method_count = 1;
+        custom_print_methods[0] = minim_cons(args[0], args[1]);
+        GC_register_root(custom_print_methods);
+    }
+    else
+    {
+        for (size_t i = 0; i < custom_print_method_count; ++i)
+        {
+            if (MINIM_CLOSURE(MINIM_CAR(custom_print_methods[i])) == pred)
+            {
+                MINIM_CDR(custom_print_methods[i]) = args[1];
+                return minim_void;
+            }
+        }
+
+        ++custom_print_method_count;
+        custom_print_methods = GC_realloc(custom_print_methods,
+                                          custom_print_method_count * sizeof(MinimObject*));
+        custom_print_methods[custom_print_method_count - 1] = minim_cons(args[0], args[1]);
+    }
+
+    return minim_void;
 }

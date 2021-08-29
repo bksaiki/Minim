@@ -110,21 +110,19 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
 
 MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *val;
-    MinimEnv *env2;
+    MinimObject *val;
 
     if (argc == 0)
         return minim_void;
 
-    init_env(&env2, env, NULL);
     for (size_t i = 0; i < argc; ++i)
     {
-        val = eval_ast_no_check(env2, MINIM_AST(args[i]));
+        val = eval_ast_no_check(env, MINIM_AST(args[i]));
         if (i + 1 == argc)
-            res = val;
+            return val;
     }
 
-    return res;
+    return NULL;    // avoid compiler errors
 }
 
 MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)
