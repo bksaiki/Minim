@@ -287,24 +287,24 @@ static MinimObject *add_pattern(MinimObject *a)
 //     debug_print_minim_object(MINIM_TRANSFORMER(o), NULL);
 // }
 
-static void debug_pattern_table(MinimEnv *env, MinimObject *args)
-{
-    PrintParams pp;
-    MinimObject *sym, *val, *pat;
-    size_t depth;
+// static void debug_pattern_table(MinimEnv *env, MinimObject *args)
+// {
+//     PrintParams pp;
+//     MinimObject *sym, *val, *pat;
+//     size_t depth;
 
-    set_default_print_params(&pp);
-    for (size_t i = 0; i < MINIM_VECTOR_LEN(args); ++i)
-    {
-        sym = MINIM_CAR(MINIM_VECTOR_REF(args, i));
-        pat = MINIM_TRANSFORMER(MINIM_CDR(MINIM_VECTOR_REF(args, i)));
-        val = MINIM_CAR(pat);
-        depth = (size_t) MINIM_CDR(pat);
+//     set_default_print_params(&pp);
+//     for (size_t i = 0; i < MINIM_VECTOR_LEN(args); ++i)
+//     {
+//         sym = MINIM_CAR(MINIM_VECTOR_REF(args, i));
+//         pat = MINIM_TRANSFORMER(MINIM_CDR(MINIM_VECTOR_REF(args, i)));
+//         val = MINIM_CAR(pat);
+//         depth = (size_t) MINIM_CDR(pat);
 
-        printf("%s[%zu]: ", MINIM_SYMBOL(sym), depth);
-        debug_print_minim_object(val, NULL);
-    }
-}
+//         printf("%s[%zu]: ", MINIM_SYMBOL(sym), depth);
+//         debug_print_minim_object(val, NULL);
+//     }
+// }
 
 static bool
 match_transform(MinimEnv *env, SyntaxNode *match, MinimObject *thing, SymbolList *reserved, size_t pdepth)
@@ -664,7 +664,41 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
             if (i + 2 == ast->childc && ast->children[i]->sym &&            // dot
                 strcmp(ast->children[i]->sym, ".") == 0)
             {
-                copy_syntax_node(&ret->children[r], ast->children[i]);
+                SyntaxNode *rest;
+                
+                rest = apply_transformation(env, ast->children[i + 1], patterns);
+                if (rest->type == SYNTAX_NODE_LIST)
+                {
+                    if (rest->childc == 0)
+                    {
+                        ret->childc -= 2;
+                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                    }
+                    else if (rest->childc == 1)
+                    {  
+                        ret->childc -= 1;
+                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                        ret->children[r] = rest->children[0];
+                    }
+                    else if (rest->childc == 2)
+                    {
+                        ret->children[r] = rest->children[0];
+                        ret->children[r + 1] = rest->children[1]; 
+                    }
+                    else
+                    {
+                        ret->childc += rest->childc;
+                        ret->childc -= 2;
+                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                        for (size_t i = 0; i < rest->childc; ++i)
+                            ret->children[r + i] = rest->children[i];
+                    }
+                }
+                else
+                {
+                    copy_syntax_node(&ret->children[r], ast->children[i]);
+                    ret->children[i] = rest;
+                }
             }
             else if (i + 1 < ast->childc && ast->children[i + 1]->sym &&   // ellipse
                      strcmp(ast->children[i + 1]->sym, "...") == 0)

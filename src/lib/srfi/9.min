@@ -11,7 +11,7 @@
          record-predicate
          record-accessor
          record-modifier
-         def-record
+         def-record-type
          vector?) ; re-export
 
 ;;;;;;;;;;;;;;;;;;; records / vector ;;;;;;;;;;;;;;;;;;;
@@ -113,7 +113,7 @@
 
 ;;;;;;;;;;;;;;;;;;; record ;;;;;;;;;;;;;;;;;;;
 
-(def-syntax def-record
+(def-syntax def-record-type
   (syntax-rules ()
    [(_ type (constructor tag ...) predicate (field-tag accessor . more) ...)
     (begin

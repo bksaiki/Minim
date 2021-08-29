@@ -1,0 +1,13 @@
+;; Tests for <lib>/private/record.min
+
+(def-record point (x y))
+(def p (make-point 1 2))
+
+(equal? (point-x p) 1)
+(equal? (point-y p) 2)
+
+(set-point-x! p 5)
+(set-point-y! p 10)
+
+(equal? (point-x p) 5)
+(equal? (point-y p) 10)
