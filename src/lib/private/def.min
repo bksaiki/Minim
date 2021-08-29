@@ -27,17 +27,13 @@
                               (stx-car r)))
                           (if (not (stx-list? r))
                               (serr2 "expected a list of arguments" r)
-                              (let-values ([(final) (stx-cdr rest)])
-                                (if (not (null? final))
-                                    (serr "bad syntax")
-                                    (datum->syntax
-                                      (list (quote-syntax def-syntaxes)
-                                        (list id)
-                                        (list (quote-syntax lambda)
-                                          (stx-car r)
-                                          (stx-car rest))))))))))))))))
-                                      
-                                  
+                              (datum->syntax
+                                (list (quote-syntax def-syntaxes)
+                                  (list id)
+                                  (cons
+                                    (quote-syntax lambda)
+                                    r)))))))))))))
+                                
 
 (def-syntaxes (def)
   (lambda (stx)

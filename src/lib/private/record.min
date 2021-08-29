@@ -11,47 +11,45 @@
          def-record)
          
 (def-syntax def-record (stx)
-  (if (not (stx-list? stx))
-      (syntax-error #f "bad syntax" stx)
-      (let ([e (stx-cdr stx)]
-            [serr (lambda (msg) (syntax-error #f msg stx))]
-            [serr2 (lambda (msg at) (syntax-error #f msg stx at))])
-        (if (stx-null? e)
-            (serr "bad syntax")
-            (let ([id (stx-car e)]
-                  [r (stx-cdr e)])
-              (cond
-               [(not (identifier? id)) (serr2 "expected an identifier" id)]
-               [(stx-null? r) (serr "bad syntax")]
-               [else
-                (let ([fs (unwrap (stx-car r))]
-                      [rest (stx-cdr r)])
-                  (cond
-                   [(not (list? fs)) (serr2 "expected identifiers" fs)]
-                   [(not (andmap identifier? fs)) (serr2 "expected identifiers" fs)]
-                   [(not (null? rest)) (serr "bad syntax")]
-                   [else
-                    (def make-name xs
-                      (datum->syntax
-                        (string->symbol
-                          (apply string-append
-                                  (map (lambda (p)
-                                        (if (syntax? p)
-                                            (symbol->string (unwrap p))
-                                            p))
-                                      xs)))))
-                    (def constructor (make-name "make-" id))
-                    (def predicate (make-name id "?"))
-                    (def accessors (map (lambda (f) (make-name id "-" f)) fs))
-                    (def setters (map (lambda (f) (make-name "set-" id "-" f "!")) fs))
-                    (datum->syntax
-                      (append
-                        (list
-                          (quote-syntax def-record-type)
-                          id
-                          (cons constructor fs)
-                          predicate)
-                        (map list fs accessors setters)))]))]))))))
+  (def bad (msg)
+    (syntax-error #f msg stx))
 
-    
+  (def bad2 (msg at)
+    (syntax-error #f msg stx at))
+
+  (def make-name xs
+    (datum->syntax
+      (string->symbol
+        (apply string-append
+                (map (lambda (p)
+                      (if (syntax? p)
+                          (symbol->string (unwrap p))
+                          p))
+                    xs)))))
+
+  (syntax-case stx ()
+   [(_ id (fs ...))
+    (begin
+      (def name #'id)
+      (unless (identifier? name)
+        (bad2 "identifier?" name))
+      (def fields (unwrap #'(fs ...)))
+      (unless (andmap identifier? fields)
+        (bad2 "list of identifiers?" #'(fs ...)))
       
+      (def constructor (make-name "make-" name))
+      (def predicate (make-name name "?"))
+      (def accessors (map (lambda (f) (make-name name "-" f)) fields))
+      (def setters (map (lambda (f) (make-name "set-" name "-" f "!")) fields))
+      (datum->syntax
+        (append
+          (list
+            (quote-syntax def-record-type)
+            name
+            (cons constructor fields)
+            predicate)
+          (map list fields accessors setters))))]
+
+   [(_ id e) (bad2 "expected a list fields" #'e)]
+   [(_ i) (bad "missing fields")]
+   [_ (bad "bad syntax")]))

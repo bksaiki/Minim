@@ -955,13 +955,19 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
                 if (MINIM_SYNTAX(op) == minim_builtin_template ||
                     MINIM_SYNTAX(op) == minim_builtin_syntax ||
                     MINIM_SYNTAX(op) == minim_builtin_quote ||
-                    MINIM_SYNTAX(op) == minim_builtin_quasiquote ||
-                    MINIM_SYNTAX(op) == minim_builtin_syntax_case)
+                    MINIM_SYNTAX(op) == minim_builtin_quasiquote)
                     return ast;
 
                 if (MINIM_SYNTAX(op) == minim_builtin_def_syntaxes)
                 {
                     ast->children[2] = transform_syntax(env, ast->children[2]);
+                    return ast;
+                }
+
+                if (MINIM_SYNTAX(op) == minim_builtin_syntax_case)
+                {
+                    for (size_t i = 3; i < ast->childc; ++i)
+                        ast->children[i]->children[1] = transform_syntax(env, ast->children[i]->children[1]);
                     return ast;
                 }
 
@@ -1104,7 +1110,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
             init_env(&env2, env, NULL);
             minim_symbol_table_merge(env2->table, match_env->table);
             val = eval_ast_no_check(env2, replace);
-            // debug_print_minim_object(val, NULL);
             if (!MINIM_OBJ_ASTP(val))
                 THROW(env, minim_error("expected syntax as result", "syntax-case"));
 
