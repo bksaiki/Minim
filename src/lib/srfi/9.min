@@ -97,19 +97,19 @@
   (lambda (x) (and (record? x) (equal? (record-type x) type))))
 
 ; accessor
-(def record-accessor (type tag)
+(def record-accessor (type tag name pred)
   (let ([idx (field-index type tag)])
     (lambda (x)
       (if (and (record? x) (equal? (record-type x) type))
           (record-ref x idx)
-          (error 'record-accessor "expected a record of type")))))
+          (argument-error name (symbol->string pred) x)))))
 
-(def record-modifier (type tag)
+(def record-modifier (type tag name pred)
   (let ([idx (field-index type tag)])
     (lambda (x val)
       (if (and (record? x) (equal? (record-type x) type))
           (record-set! x idx val)
-          (error 'record-accessor "expected a record of type")))))
+          (argument-error name (symbol->string pred) 0 x val)))))
 
 ;;;;;;;;;;;;;;;;;;; record ;;;;;;;;;;;;;;;;;;;
 
@@ -121,14 +121,14 @@
       (def constructor (record-constructor type '(tag ...)))
       (def predicate (record-predicate type))
       (def-print-method predicate (lambda (x) (format "#<~a>" 'type)))
-      (def-record-field type field-tag accessor . more)
+      (def-record-field type predicate field-tag accessor . more)
       ...)]))
 
 (def-syntax def-record-field
   (syntax-rules ()
-   [(_ type field-tag accessor)
+   [(_ type pred field-tag accessor)
     (def accessor (record-accessor type 'field-tag))]
-   [(_ type field-tag accessor modifier)
+   [(_ type pred field-tag accessor modifier)
     (begin
-      (def accessor (record-accessor type 'field-tag))
-      (def modifier (record-modifier type 'field-tag)))]))
+      (def accessor (record-accessor type 'field-tag 'accessor 'pred))
+      (def modifier (record-modifier type 'field-tag 'modifier 'pred)))]))

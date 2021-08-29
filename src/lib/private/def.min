@@ -9,23 +9,35 @@
     (if (not (stx-list? stx))
         (syntax-error 'def-syntax "bad syntax" stx)
         (let-values ([(e) (stx-cdr stx)]
-                     [(serr)
-                      (lambda (msg at)
-                        (syntax-error 'def-syntax msg stx at))])
+                     [(serr serr2)
+                      (values
+                        (lambda (msg) (syntax-error 'def-syntax msg stx))
+                        (lambda (msg at) (syntax-error 'def-syntax msg stx at)))])
           (if (stx-null? e) 
-              (syntax-error 'def-syntax "bad syntax" stx)
-              (let-values ([(r) (stx-cdr e)])
-                (if (null? stx)
-                    (syntax-error 'def-syntax "bad syntax" stx)
-                    (let-values ([(id) (stx-car e)])
-                      (if (not (identifier? id))
-                          (serr "not an identifier" id)
-                          (let-values ([(x) (stx-cdr r)])
-                            (datum->syntax
-                              (list
-                                (quote-syntax def-syntaxes)
-                                (list id)
-                                (stx-car r)))))))))))))
+              (serr "bad syntax")
+              (let-values ([(id) (stx-car e)]
+                           [(r) (stx-cdr e)])
+                (if (not (identifier? id))
+                    (serr2 "not an identifier" id)
+                    (let-values ([(rest) (stx-cdr r)])
+                      (if (stx-null? rest)
+                          (datum->syntax
+                            (list (quote-syntax def-syntaxes)
+                              (list id)
+                              (stx-car r)))
+                          (if (not (stx-list? r))
+                              (serr2 "expected a list of arguments" r)
+                              (let-values ([(final) (stx-cdr rest)])
+                                (if (not (null? final))
+                                    (serr "bad syntax")
+                                    (datum->syntax
+                                      (list (quote-syntax def-syntaxes)
+                                        (list id)
+                                        (list (quote-syntax lambda)
+                                          (stx-car r)
+                                          (stx-car rest))))))))))))))))
+                                      
+                                  
 
 (def-syntaxes (def)
   (lambda (stx)
