@@ -382,6 +382,7 @@ MinimObject *minim_builtin_def_print_method(MinimEnv *env, size_t argc, MinimObj
         custom_print_methods = GC_alloc(sizeof(MinimObject*));
         custom_print_method_count = 1;
         custom_print_methods[0] = minim_cons(args[0], args[1]);
+        GC_register_root(custom_print_methods);
     }
     else
     {

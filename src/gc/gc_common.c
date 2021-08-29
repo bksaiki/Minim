@@ -29,7 +29,7 @@ static size_t gc_probe(size_t i, size_t h, size_t c) {
     return (n < 0) ? c + n : n;
 }
 
-static void gc_add_young_pool(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk, int update) {
+static void gc_add_young_pool(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk, int update, int root) {
     size_t h, i, j, p;
     gc_block_t item, t;
 
@@ -41,7 +41,7 @@ static void gc_add_young_pool(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, 
     item.mrk = mrk;
     item.size = size;
     item.hash = i + 1;
-    item.flags = 0x0;
+    item.flags = (root ? GC_BLOCK_ROOT : 0);
     
     while (1) {
         h = gc->young[i].hash;
@@ -71,7 +71,7 @@ static void gc_add_young_pool(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, 
     }
 }
 
-static void gc_add_old_pool(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk, int update) {
+static void gc_add_old_pool(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk, int update, int root) {
     size_t h, i, j, p;
     gc_block_t item, t;
 
@@ -83,7 +83,7 @@ static void gc_add_old_pool(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc
     item.mrk = mrk;
     item.size = size;
     item.hash = i + 1;
-    item.flags = 0x0;
+    item.flags = (root ? GC_BLOCK_ROOT : 0);
     
     while (1) {
         h = gc->old[i].hash;
@@ -126,7 +126,8 @@ static void gc_resize_if_needed(gc_t *gc) {
         gc->youngc = PRIME_SIZES[s + 1];
         for (size_t i = 0; i < PRIME_SIZES[s]; ++i) {
             if (old[i].hash)
-                gc_add_young_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk, 0);
+                gc_add_young_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk,
+                                  0, (old[i].flags & GC_BLOCK_ROOT));
         }
 
         free(old);
@@ -148,7 +149,8 @@ static void gc_resize_if_needed(gc_t *gc) {
         gc->youngc = PRIME_SIZES[n];
         for (size_t i = 0; i < PRIME_SIZES[s]; ++i) {
             if (old[i].hash)
-                gc_add_young_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk, 0);
+                gc_add_young_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk,
+                                  0, (old[i].flags & GC_BLOCK_ROOT));
         }
 
         free(old);
@@ -171,7 +173,8 @@ static void gc_increase_old_pool(gc_t *gc, size_t incr) {
 
         for (size_t i = 0; i < n; ++i) {
             if (old[i].hash)
-                gc_add_old_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk, 0);
+                gc_add_old_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk,
+                                0, (old[i].flags & GC_BLOCK_ROOT));
         }
 
         free(old);
@@ -200,7 +203,8 @@ static void gc_shrink_old_pool(gc_t *gc) {
         gc->oldc = PRIME_SIZES[n];
         for (size_t i = 0; i < PRIME_SIZES[s]; ++i) {
             if (old[i].hash)
-                gc_add_old_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk, 0);
+                gc_add_old_pool(gc, old[i].ptr, old[i].size, old[i].dtor, old[i].mrk,
+                                0, (old[i].flags & GC_BLOCK_ROOT));
         }
 
         free(old);
@@ -224,7 +228,8 @@ static void gc_mark_ptr_young(gc_t *gc, void *ptr) {
             return;
 
         if (ptr == gc->young[i].ptr) {
-            if (gc->young[i].flags & GC_BLOCK_MARK)
+            if (gc->young[i].flags & GC_BLOCK_MARK ||
+                gc->young[i].flags & GC_BLOCK_ROOT)
                 return;
                 
             gc->young[i].flags |= GC_BLOCK_MARK;
@@ -272,7 +277,8 @@ static void gc_mark_ptr_all(gc_t *gc, void *ptr) {
             break;
 
         if (ptr == gc->young[i].ptr) {
-            if (gc->young[i].flags & GC_BLOCK_MARK)
+            if (gc->young[i].flags & GC_BLOCK_MARK ||
+                gc->young[i].flags & GC_BLOCK_ROOT)
                 return;
                 
             gc->young[i].flags |= GC_BLOCK_MARK;
@@ -310,7 +316,8 @@ static void gc_mark_ptr_all(gc_t *gc, void *ptr) {
             return;
 
         if (ptr == gc->old[i].ptr) {
-            if (gc->old[i].flags & GC_BLOCK_MARK)
+            if (gc->old[i].flags & GC_BLOCK_MARK ||
+                gc->old[i].flags & GC_BLOCK_ROOT)
                 return;
                 
             gc->old[i].flags |= GC_BLOCK_MARK;
@@ -443,7 +450,8 @@ static void gc_move_to_old(gc_t *gc) {
     for (size_t i = 0; i < gc->youngc; ++i) {
         if (gc->young[i].hash)
             gc_add_old_pool(gc, gc->young[i].ptr, gc->young[i].size,
-                            gc->young[i].dtor, gc->young[i].mrk, 1);
+                            gc->young[i].dtor, gc->young[i].mrk, 1,
+                            (gc->young[i].flags & GC_BLOCK_ROOT));
     }
 
     gc->young = realloc(gc->young, PRIME_SIZES[0] * sizeof(gc_block_t));
@@ -653,7 +661,7 @@ void gc_destroy(gc_t* gc) {
 
 void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk) {
     gc_resize_if_needed(gc); 
-    gc_add_young_pool(gc, ptr, size, dtor, mrk, 1);
+    gc_add_young_pool(gc, ptr, size, dtor, mrk, 1, 0);
     gc_collect_if_needed(gc);
 }
 
@@ -808,7 +816,7 @@ void gc_register_root(gc_t *gc, void *ptr) {
     gc_block_t *block;
 
     block = gc_get_block(gc, ptr);
-    if (block)  block->flags &= GC_BLOCK_ROOT;
+    if (block)  block->flags |= GC_BLOCK_ROOT;
 }
 
 size_t gc_get_allocated(gc_t *gc) {
