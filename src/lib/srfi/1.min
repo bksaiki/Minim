@@ -11,7 +11,10 @@
          split-at
          last last-pair
          filter filter-not
-         partition)
+         partition
+         find find-tail
+         member
+         assoc)
 
 ; The following procedures are defined as builtins:
 ;   cons, list
@@ -22,6 +25,13 @@
 
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
+
+(def assert-lists? (name pos0 before lsts)
+  (let loop ([ls lsts] [pos pos0])
+    (unless (null? ls)
+      (if (list? (car ls))
+          (loop (cdr ls) (+ 1 pos))
+          (apply argument-error name "list?" pos (append before lsts))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -162,3 +172,62 @@
 ;   (assert-lists? 'count 1 (list pred) lsts)
 ;   (let loop ([lsts lsts] [n 0])
 ;     (if (null? lsts))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; searching ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def find (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'find "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'find "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        #f
+        (if (pred (car lst))
+            (car lst)
+            (loop (cdr lst))))))
+
+(def find-tail (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'find-tail "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'find-tail "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        #f
+        (if (pred (car lst))
+            lst
+            (loop (cdr lst))))))
+
+(def member
+  (case-lambda
+   [(x lst) (member x lst equal?)]
+   [(x lst =?)
+    (unless (list? lst)
+      (argument-error 'member "list?" 1 x lst =?))
+    (unless (procedure? =?)
+      (argument-error 'member "list?" 2 x lst =?))
+    (let loop ([lst lst])
+      (if (null? lst)
+          #f
+          (if (=? (car lst) x)
+              lst
+              (loop (cdr lst)))))]))
+
+(def assoc
+  (case-lambda
+   [(key lst) (assoc key lst equal?)]
+   [(key lst =?)
+    (unless (list? lst)
+      (argument-error 'assoc "list?" 1 x lst =?))
+    (unless (procedure? =?)
+      (argument-error 'assoc "list?" 2 x lst =?))
+    (let loop ([lst lst])
+      (if (null? lst)
+          #f
+          (let ([entry (car lst)])
+            (if (pair? entry)
+                (if (=? (car entry) key)
+                    entry
+                    (loop (cdr lst)))
+                (argument-error 'assoc "list of pairs" lst)))))]))

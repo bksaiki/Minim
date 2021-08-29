@@ -77,6 +77,24 @@
 (equal? (remove 2 (list 1 2 3 2 1)) '(1 3 1))
 (equal? (remove 1 (list 1 2 3 2 1)) '(2 3 2))
 
+;; find
+(equal? (find even? '(1 2 3)) 2)
+(equal? (find even? '(1 7 3)) #f)
+
+;; find-tail
+(equal? (find-tail even? '(1 2 3)) '(2 3))
+(equal? (find-tail even? '(1 7 3)) #f)
+
+;; member
+(equal? (member 3 '(1 2 3 2 1)) '(3 2 1))
+(equal? (member 4 '(1 2 3 2 1)) #f)
+
+;; assoc
+(equal? (assoc 'a '((a 1) (b 2) (c 3))) '(a 1))
+(equal? (assoc 'c '((a 1) (b 2) (c 3))) '(c 3))
+(equal? (assoc (list 'a) '(((a)) ((b)) ((c)))) '((a)))
+(equal? (assoc 'd '((a 1) (b 2) (c 3))) #f)
+
 ;; remove*
 (equal? (remove* (list 1) (list 1 2 3)) (list 2 3))
 (equal? (remove* (list 1 3) (list 1 2 3)) (list 2))
