@@ -175,6 +175,23 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "cddar", MINIM_OBJ_FUNC, minim_builtin_cddar);
     minim_load_builtin(env, "cdddr", MINIM_OBJ_FUNC, minim_builtin_cdddr);
 
+    minim_load_builtin(env, "caaaar", MINIM_OBJ_FUNC, minim_builtin_caaaar);
+    minim_load_builtin(env, "caaadr", MINIM_OBJ_FUNC, minim_builtin_caaadr);
+    minim_load_builtin(env, "caadar", MINIM_OBJ_FUNC, minim_builtin_caadar);
+    minim_load_builtin(env, "caaddr", MINIM_OBJ_FUNC, minim_builtin_caaddr);
+    minim_load_builtin(env, "cadaar", MINIM_OBJ_FUNC, minim_builtin_cadaar);
+    minim_load_builtin(env, "cadadr", MINIM_OBJ_FUNC, minim_builtin_cadadr);
+    minim_load_builtin(env, "caddar", MINIM_OBJ_FUNC, minim_builtin_caddar);
+    minim_load_builtin(env, "cadddr", MINIM_OBJ_FUNC, minim_builtin_cadddr);
+    minim_load_builtin(env, "cdaaar", MINIM_OBJ_FUNC, minim_builtin_cdaaar);
+    minim_load_builtin(env, "cdaadr", MINIM_OBJ_FUNC, minim_builtin_cdaadr);
+    minim_load_builtin(env, "cdadar", MINIM_OBJ_FUNC, minim_builtin_cdadar);
+    minim_load_builtin(env, "cdaddr", MINIM_OBJ_FUNC, minim_builtin_cdaddr);
+    minim_load_builtin(env, "cddaar", MINIM_OBJ_FUNC, minim_builtin_cddaar);
+    minim_load_builtin(env, "cddadr", MINIM_OBJ_FUNC, minim_builtin_cddadr);
+    minim_load_builtin(env, "cdddar", MINIM_OBJ_FUNC, minim_builtin_cdddar);
+    minim_load_builtin(env, "cddddr", MINIM_OBJ_FUNC, minim_builtin_cddddr);
+
     // List
     minim_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
     minim_load_builtin(env, "list?", MINIM_OBJ_FUNC, minim_builtin_listp);
