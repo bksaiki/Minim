@@ -7,17 +7,23 @@
 
 (%export first second third fourth fifth sixth seventh eighth ninth tenth
          make-list
-         take drop split-at
-         last last-pair)
+         take drop
+         split-at
+         last last-pair
+         filter filter-not
+         partition)
 
 ; The following procedures are defined as builtins:
 ;   cons, list
 ;   car, cdr,
 ;   caar, cadr, cdar, cddr
-;   length, append, map
+;   length, append, reverse, map
+;   list-ref
 
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def make-list
   (case-lambda
@@ -29,6 +35,8 @@
       (if (zero? i)
           acc
           (loop (- i 1) (cons fill acc))))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def first (lst)
   (if (list? lst)
@@ -106,3 +114,51 @@
     (if (pair? (cdr lst))
         (loop (cdr lst))
         lst)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; filter ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def filter (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'filter "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'filter "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        '()
+        (if (pred (car lst))
+            (cons (car lst) (loop (cdr lst)))
+            (loop (cdr lst))))))
+
+(def filter-not (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'filter-not "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'filter-not "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        '()
+        (if (pred (car lst))
+            (loop (cdr lst))
+            (cons (car lst) (loop (cdr lst)))))))
+
+(def partition (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'partition "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'partition "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        (values '() '())
+        (let-values ([(in out) (loop (cdr lst))])
+          (if (pred (car lst))
+              (values (cons (car lst) in) out)
+              (values in (cons (car lst) out)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; reduce ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; (def count (pred . lsts)
+;   (unless (procedure? pred)
+;     (apply argument-error 'count "procedure?" 0 pred lsts))
+;   (assert-lists? 'count 1 (list pred) lsts)
+;   (let loop ([lsts lsts] [n 0])
+;     (if (null? lsts))

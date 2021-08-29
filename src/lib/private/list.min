@@ -5,10 +5,55 @@
 (%import "pre-base.min" "for.min" "../srfi/1.min")
 
 (%export (all "../srfi/1.min")
+         remove
+         list-set list-update
          list*
          remove*
          ormap andmap
          append* append-map)
+
+(def natural? (n)
+  (and (number? n) (exact? n) (integer? n) (not (negative? n))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; not defined in srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def list-set (lst n v)
+  (unless (list? lst)
+    (argument-error 'list-set "list?" 0 lst n v))
+  (unless (natural? n)
+    (argument-error 'list-set "natural?" 1 lst n v))
+  (let loop ([lst lst] [i n])
+    (if (null? lst)
+        (argument-error 'list-set "list of adequate length" 0 lst n v)
+        (if (zero? i)
+            (cons v (cdr lst))
+            (cons (car lst) (loop (cdr lst) (- i 1)))))))
+
+(def list-update (lst n up)
+  (unless (list? lst)
+    (argument-error 'list-set "list?" 0 lst n v))
+  (unless (natural? n)
+    (argument-error 'list-set "natural?" 1 lst n v))
+  (unless (procedure? up)
+    (argument-error 'list-set "procedure?" 2 lst n v))
+  (let loop ([lst lst] [i n])
+    (if (null? lst)
+        (argument-error 'list-set "list of adequate length" 0 lst n v)
+        (if (zero? i)
+            (cons (up (car lst)) (cdr lst))
+            (cons (car lst) (loop (cdr lst) (- i 1)))))))
+
+(def remove (v lst)
+  (unless (list? lst)
+    (argument-error 'remove "list?" 1 v lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        '()
+        (if (equal? v (car lst))
+            (loop (cdr lst))
+            (cons (car lst) (loop (cdr lst)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; compound operations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def remove* (vs lst)
   (unless (list? vs)
