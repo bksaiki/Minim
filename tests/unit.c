@@ -328,6 +328,34 @@ int main()
     }
 
     {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(andmap positive? (list 1 2 3))",      "#t",
+            "(andmap positive? (list 1 -2 3))",     "#f",
+            "(andmap positive? (list -1 -2 -3))",   "#f"
+        };
+
+        printf("Testing 'andmap'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(ormap positive? (list 1 2 3))",      "#t",
+            "(ormap positive? (list 1 -2 3))",     "#t",
+            "(ormap positive? (list -1 -2 -3))",   "#f"
+        };
+
+        printf("Testing 'ormap'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 6;
         char strs[12][256] =
         {

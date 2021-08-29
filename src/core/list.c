@@ -241,6 +241,54 @@ static MinimObject *minim_list_map(MinimEnv *env, MinimObject *map, size_t argc,
     return head;
 }
 
+static MinimObject *minim_list_andmap(MinimEnv *env, MinimObject *map, size_t argc, MinimObject **args)
+{
+    MinimObject *val;
+    MinimObject **it;
+
+    if (map_iters_nullp(env, argc, args))
+        return minim_null;
+
+    it = GC_alloc(argc * sizeof(MinimObject**));
+    for (size_t i = 0; i < argc; ++i)
+        it[i] = args[i];
+
+    while (!map_iters_nullp(env, argc, it))
+    {
+        val = eval_nary(env, map, argc, it);
+        if (minim_falsep(val))  return val;
+
+        for (size_t i = 0; i < argc; ++i)
+            it[i] = MINIM_CDR(it[i]);
+    }
+    
+    return minim_true;
+}
+
+static MinimObject *minim_list_ormap(MinimEnv *env, MinimObject *map, size_t argc, MinimObject **args)
+{
+    MinimObject *val;
+    MinimObject **it;
+
+    if (map_iters_nullp(env, argc, args))
+        return minim_null;
+
+    it = GC_alloc(argc * sizeof(MinimObject**));
+    for (size_t i = 0; i < argc; ++i)
+        it[i] = args[i];
+
+    while (!map_iters_nullp(env, argc, it))
+    {
+        val = eval_nary(env, map, argc, it);
+        if (!minim_falsep(val))  return minim_true;
+
+        for (size_t i = 0; i < argc; ++i)
+            it[i] = MINIM_CDR(it[i]);
+    }
+    
+    return minim_false;
+}
+
 static MinimObject *minim_list_filter(MinimObject *lst, MinimObject *filter, MinimEnv *env, bool negate)
 {
     MinimObject *head, *val, *it;
@@ -753,6 +801,28 @@ MinimObject *minim_builtin_map(MinimEnv *env, size_t argc, MinimObject **args)
         THROW(env, minim_argument_error("list", "map", 1, args[1]));
 
     return minim_list_map(env, args[0], argc - 1, &args[1]);
+}
+
+MinimObject *minim_builtin_andmap(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        THROW(env, minim_argument_error("function", "andmap", 0, args[0]));
+    
+    if (!minim_listp(args[1]))
+        THROW(env, minim_argument_error("list", "andmap", 1, args[1]));
+
+    return minim_list_andmap(env, args[0], argc - 1, &args[1]);
+}
+
+MinimObject *minim_builtin_ormap(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_FUNCP(args[0]))
+        THROW(env, minim_argument_error("function", "ormap", 0, args[0]));
+    
+    if (!minim_listp(args[1]))
+        THROW(env, minim_argument_error("list", "ormap", 1, args[1]));
+
+    return minim_list_ormap(env, args[0], argc - 1, &args[1]);
 }
 
 MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)

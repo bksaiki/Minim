@@ -170,6 +170,8 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(member, 2);
     SET_ARITY_EXACT(list_ref, 2);
     SET_ARITY_MIN(map, 2);
+    SET_ARITY_MIN(andmap, 2);
+    SET_ARITY_MIN(ormap, 2);
     SET_ARITY_MIN(apply, 2);
     SET_ARITY_EXACT(filter, 2);
     SET_ARITY_EXACT(filtern, 2);

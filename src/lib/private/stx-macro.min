@@ -13,19 +13,9 @@
                       (lambda (msg at)
                        (syntax-error 'syntax-rules msg stx at))])
           (let-values ([(ids) (stx-car form)]
-                       [(rules) (stx-cdr form)]
-                       [(andmap)
-                        (lambda (fn lst)
-                          (let-values ([(loop)
-                              (lambda (lst)
-                                (if (stx-null? lst)
-                                    #t
-                                    (if (fn (stx-car lst))
-                                        (loop (stx-cdr lst))
-                                        #f)))])
-                            (loop lst)))])
+                       [(rules) (stx-cdr form)])
             (if (and (stx-list? ids)
-                     (andmap identifier? ids))
+                     (andmap identifier? (unwrap ids)))
                 (let-values ([(rule?)
                               (lambda (r)
                                 (and (stx-list? r)

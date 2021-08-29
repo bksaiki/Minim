@@ -9,7 +9,6 @@
          list-set list-update
          list*
          remove*
-         ormap andmap
          append* append-map)
 
 (def natural? (n)
@@ -68,28 +67,6 @@
 (def list* args
   (let ([rev (reverse args)])
     (foldl cons (car rev) (cdr rev))))
-
-(def andmap (proc lst)
-  (unless (procedure? proc)
-    (argument-error 'andmap "procedure?" proc))
-  (unless (list? lst)
-    (argument-error 'andmap "list?" lst))
-  (let loop ([lst lst])
-    (cond
-     [(null? lst) #t]
-     [(proc (car lst)) (loop (cdr lst))]
-     [else #f])))
-
-(def ormap (proc lst)
-  (unless (procedure? proc)
-    (argument-error 'andmap "procedure?" proc))
-  (unless (list? lst)
-    (argument-error 'andmap "list?" lst))
-  (let loop ([lst lst])
-    (cond
-     [(null? lst) #f]
-     [(proc (car lst)) #t]
-     [else (loop (cdr lst))])))
 
 ;; TODO: check lists
 (def append* args

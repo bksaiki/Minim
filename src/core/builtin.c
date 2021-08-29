@@ -205,6 +205,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "member", MINIM_OBJ_FUNC, minim_builtin_member);
     minim_load_builtin(env, "list-ref", MINIM_OBJ_FUNC, minim_builtin_list_ref);
     minim_load_builtin(env, "map", MINIM_OBJ_FUNC, minim_builtin_map);
+    minim_load_builtin(env, "andmap", MINIM_OBJ_FUNC, minim_builtin_andmap);
+    minim_load_builtin(env, "ormap", MINIM_OBJ_FUNC, minim_builtin_ormap);
     minim_load_builtin(env, "apply", MINIM_OBJ_FUNC, minim_builtin_apply);
     minim_load_builtin(env, "filter", MINIM_OBJ_FUNC, minim_builtin_filter);
     minim_load_builtin(env, "filtern", MINIM_OBJ_FUNC, minim_builtin_filtern);
