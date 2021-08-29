@@ -2,9 +2,13 @@
 ;   Additional list constructs
 ;
 
-(%import "pre-base.min" "for.min")
+(%import "pre-base.min" "for.min" "../srfi/1.min")
 
-(%export remove* list* ormap andmap append* append-map)
+(%export (all "../srfi/1.min")
+         list*
+         remove*
+         ormap andmap
+         append* append-map)
 
 (def remove* (vs lst)
   (unless (list? vs)
