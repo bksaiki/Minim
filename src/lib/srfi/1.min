@@ -6,12 +6,17 @@
          "16.min")
 
 (%export first second third fourth fifth sixth seventh eighth ninth tenth
+         xcons cons*
+         list-copy
          make-list
          take drop
+         take-right drop-right
          split-at
          last last-pair
          filter filter-not
          partition
+         append-map
+         count
          find find-tail
          member
          assoc)
@@ -20,20 +25,45 @@
 ;   cons, list
 ;   car, cdr,
 ;   caar, cadr, cdar, cddr
-;   length, append, reverse, map
+;   length, append, reverse
+;   map, andmap, ormap
 ;   list-ref
 
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
 
-(def assert-lists? (name pos0 before lsts)
+(def all-lists?/assert (name pos0 before lsts)
   (let loop ([ls lsts] [pos pos0])
     (unless (null? ls)
       (if (list? (car ls))
           (loop (cdr ls) (+ 1 pos))
           (apply argument-error name "list?" pos (append before lsts))))))
 
+(def all-null?/assert (name x xs)
+  (def n? (null? x))
+  (let loop ([xs xs])
+    (if (null? xs)
+        n?
+        (let ([n*? (null? (car xs))])
+          (if (equal? n? n*?)
+              (loop (cdr xs))
+              (error name "given lists of different length"))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def xcons (a d)
+  (cons d a))
+
+(def cons* (x . xs)
+  (let loop ([x x] [xs xs])
+    (if (null? xs)
+        x
+        (cons x (loop (car xs) (cdr xs))))))
+
+(def list-copy (lst)
+  (if (null? lst)
+      '()
+      (cons (car lst) (list-copy (cdr lst)))))
 
 (def make-list
   (case-lambda
@@ -97,6 +127,32 @@
     (if (zero? i)
         lst
         (loop (cdr lst) (- i 1)))))
+
+(def take-right (x n)
+  (unless (list? x)
+    (argument-error 'take-right "list?" 0 x n))
+  (unless (natural? n)
+    (argument-error 'take-right "natural?" 1 x n))
+  (def len (length x))
+  (unless (<= n len)
+    (argument-error 'take-right "long enough list" 0 x n))
+  (let loop ([x x] [l len])
+    (if (= l n)
+        x
+        (loop (cdr x) (- l 1)))))
+
+(def drop-right (x n)
+  (unless (list? x)
+    (argument-error 'drop-right "list?" 0 x n))
+  (unless (natural? n)
+    (argument-error 'drop-right "natural?" 1 x n))
+  (def len (length x))
+  (unless (<= n len)
+    (argument-error 'drop-right "long enough list" 0 x n))
+  (let loop ([x x] [l len])
+    (if (= l n)
+        '()
+        (cons (car x) (loop (cdr x) (- l 1))))))
 
 (def split-at (x n)
   (unless (list? x)
@@ -164,14 +220,29 @@
               (values (cons (car lst) in) out)
               (values in (cons (car lst) out)))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; map ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def append-map (f . lsts)
+  (unless (procedure? f)
+    (apply argument-error 'append-map "procedure?" 0 f lsts))
+  (let loop ([lsts lsts] [done '()])
+    (if (all-null?/assert 'append-map (car lsts) (cdr lsts))
+        done
+        (let ([v (apply f (map car lsts))])
+          (unless (list? v) (error 'append-map "expected a list in the output of ~a" f))
+          (loop (map cdr lsts) (append done v))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; reduce ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; (def count (pred . lsts)
-;   (unless (procedure? pred)
-;     (apply argument-error 'count "procedure?" 0 pred lsts))
-;   (assert-lists? 'count 1 (list pred) lsts)
-;   (let loop ([lsts lsts] [n 0])
-;     (if (null? lsts))
+(def count (pred . lsts)
+  (unless (procedure? pred)
+    (apply argument-error 'count "procedure?" 0 pred lsts))
+  (all-lists?/assert 'count 1 (list pred) lsts)
+  (let loop ([lsts lsts] [n 0])
+    (if (all-null?/assert 'count (car lsts) (cdr lsts))
+        n
+        (loop (map cdr lsts)
+              (if (apply pred (map car lsts)) (+ n 1) n)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; searching ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

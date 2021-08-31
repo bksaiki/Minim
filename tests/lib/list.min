@@ -1,5 +1,19 @@
 ;; Tests for <lib>/private/list.min
 
+;; xcons
+(equal? (xcons 1 2) '(2 . 1))
+
+;; cons*
+(equal? (cons* 1) 1)
+(equal? (cons* 1 2) '(1 . 2))
+(equal? (cons* 1 2 3) '(1 2 . 3))
+(equal? (cons* 1 2 3 4) '(1 2 3 . 4))
+
+;; list-copy
+(equal? (list-copy '()) '())
+(equal? (list-copy '(1 2 3)) '(1 2 3))
+(equal? (list-copy '(1 2 3 4 5)) '(1 2 3 4 5))
+
 ;; make-list
 (equal? (make-list 3) '(0 0 0))
 (equal? (make-list 3 1) '(1 1 1))
@@ -32,6 +46,14 @@
 ;; drop
 (equal? (drop lst 0) '(1 2 3 4 5 6 7 8 9 10))
 (equal? (drop lst 4) '(5 6 7 8 9 10))
+
+;; take-right
+(equal? (take-right '(a b c d e) 0) '())
+(equal? (take-right '(a b c d e) 2) '(d e))
+
+;; drop-right
+(equal? (drop-right '(a b c d e) 0) '(a b c d e))
+(equal? (drop-right '(a b c d e) 2) '(a b c))
 
 ;; split-at
 (let ()
@@ -67,6 +89,10 @@
   (def-values (in out) (partition negative? '(-2 -1 0 1 2)))
   (equal? in '(-2 -1))
   (equal? out '(0 1 2)))
+
+;; count
+(equal? (count even? '(-2 -1 0 1 2)) 3)
+(equal? (count odd? '(-2 -1 0 1 2)) 2)
 
 ;; remove
 (equal? (remove 0 (list)) '())

@@ -9,7 +9,7 @@
          list-set list-update
          list*
          remove*
-         append* append-map)
+         append*)
 
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
@@ -74,8 +74,3 @@
     (unless (list? arg) (argument-error 'append* "lists" arg)))
   (def rev (reverse args))
   (foldl append (apply append (car rev)) (cdr rev)))
-
-(def append-map (proc . things)
-  (unless (procedure? proc)
-    (error 'append-map "Expected a procedure"))
-  (apply append (apply map proc things)))
