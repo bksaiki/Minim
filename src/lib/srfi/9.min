@@ -2,8 +2,7 @@
 ;   SRFI 9 records
 ;
 
-(%import "../private/pre-base.min"
-         "../private/for.min")
+(%import "../private/pre-base.min")
 
 (%export make-record-type
          record?

@@ -7,7 +7,9 @@
          "case.min"
          "cond.min"
          "def.min"
+         "for.min"
          "let.min"
+         "stx.min"
          "stx-macro.min"
          "with-stx.min"
          "when-unless.min")
@@ -16,7 +18,9 @@
          (all "case.min")
          (all "cond.min")
          (all "def.min")
+         (all "for.min")
          (all "let.min")
          (all "stx-macro.min")
          (all "with-stx.min")
-         (all "when-unless.min"))
+         (all "when-unless.min")
+         identifier?)

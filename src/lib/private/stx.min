@@ -2,6 +2,11 @@
 ;   Additional syntax handling
 ;
 
+(%export identifier?
+         stx-pair? stx-list? stx-null?
+         stx-vector?
+         stx-car stx-cdr)
+
 (def-values (identifier?)
   (lambda (t)
     (if (syntax? t)
@@ -51,7 +56,3 @@
         (if (syntax? t)
             (vector? (unwrap t))
             #f))))
-            
-(%export identifier? stx-pair? stx-list? stx-null?
-         stx-car stx-cdr
-         stx-vector?)

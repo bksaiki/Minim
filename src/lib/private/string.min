@@ -2,7 +2,8 @@
 ;   Additional string procedures
 ;
 
-(%import "pre-base.min" "for.min" "list.min")
+(%import "pre-base.min"
+         "list.min")
 
 (%export string=? string>? string<? string>=? string<=?
          string-ci=? string-ci>? string-ci<? string-ci>=? string-ci<=?

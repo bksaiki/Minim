@@ -2,7 +2,8 @@
 ;   Additional list constructs
 ;
 
-(%import "pre-base.min" "for.min" "../srfi/1.min")
+(%import "pre-base.min"
+         "../srfi/1.min")
 
 (%export (all "../srfi/1.min")
          remove

@@ -2,8 +2,10 @@
 ;   SRFI 16: case-lambda
 ;
 
-(%import "../private/def.min" "../private/let.min"
-         "../private/stx.min" "../private/stx-macro.min"
+(%import "../private/def.min"
+         "../private/let.min"
+         "../private/stx.min"
+         "../private/stx-macro.min"
          "../private/when-unless.min")
 
 (%export case-lambda)

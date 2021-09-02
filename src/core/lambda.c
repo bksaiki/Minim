@@ -85,26 +85,30 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
     *cp = lam;
 }
 
-MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
+static MinimEnv *lambda_env = NULL;
+
+static void intern_transform(const char *sym, MinimObject *obj)
+{
+    if (MINIM_OBJ_TRANSFORMP(obj) && MINIM_TRANSFORM_TYPE(obj) == MINIM_TRANSFORM_MACRO)
+        env_intern_sym(lambda_env, sym, obj);
+}
+
+static MinimModule *env_get_module(MinimEnv *env)
+{
+    for (MinimEnv *it = env; it; it = it->parent)
+    {
+        if (it->module)
+            return it->module;
+    }
+
+    return false;
+}
+
+MinimObject *eval_lambda_core(MinimLambda* lam, MinimEnv *env, MinimEnv *env2, size_t argc, MinimObject **args)
 {
     MinimObject *res, *val;
-    MinimEnv *env2;
 
-    if (lam->rest)
-    {
-        char *name = (lam->name ? lam->name : "");
-        if (argc < lam->argc)
-            THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
-
-    }
-    else if (argc != lam->argc)
-    {
-        char *name = (lam->name ? lam->name : "");
-        THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
-    }
-
-    init_env(&env2, lam->env, lam);
-    env2->caller = env;
+    // intern arguments
     for (size_t i = 0; i < lam->argc; ++i)
         env_intern_sym(env2, lam->args[i], args[i]);
 
@@ -131,6 +135,65 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
     }
 
     return res;
+}
+
+MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimEnv *env2;
+
+    if (lam->rest)
+    {
+        char *name = (lam->name ? lam->name : "");
+        if (argc < lam->argc)
+            THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
+
+    }
+    else if (argc != lam->argc)
+    {
+        char *name = (lam->name ? lam->name : "");
+        THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
+    }
+
+    // create internal environment
+    init_env(&env2, lam->env, lam);
+    env2->caller = env;
+
+    return eval_lambda_core(lam, env, env2, argc, args);
+}
+
+MinimObject *eval_lambda2(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimEnv *env2;
+
+    if (lam->rest)
+    {
+        char *name = (lam->name ? lam->name : "");
+        if (argc < lam->argc)
+            THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
+
+    }
+    else if (argc != lam->argc)
+    {
+        char *name = (lam->name ? lam->name : "");
+        THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
+    }
+
+    // create internal environment
+    init_env(&env2, lam->env, lam);
+    // env2->caller = env;
+
+    // merge in transforms
+    if (env)
+    {
+        MinimModule *mod = env_get_module(env);
+        if (mod)
+        {
+            lambda_env = env2;
+            minim_symbol_table_for_each(mod->env->table, intern_transform);
+        }
+    }
+
+    return eval_lambda_core(lam, env, env2, argc, args);    
 }
 
 void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)
@@ -223,7 +286,5 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
         res = minim_closure(lam);
     }
 
-    if (lam->name)
-        env_intern_sym(lam->env, lam->name, res);
     return res;
 }

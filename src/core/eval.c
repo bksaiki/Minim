@@ -488,8 +488,16 @@ MinimObject *eval_module(MinimModule *module)
         }
     }
 
-    // syntax check / define transforms
-    init_env(&env2, module->env, NULL);
+    // apply transforms from imports
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_import(module->env, module->exprs[i]))
+            continue;
+
+        module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
+    }
+
+    // define syntaxes
     for (size_t i = 0; i < module->exprc; ++i)
     {
         if (expr_is_import(module->env, module->exprs[i]))
@@ -499,19 +507,18 @@ MinimObject *eval_module(MinimModule *module)
             eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
     }
 
-    // Syntax transform
+    // apply transforms
     for (size_t i = 0; i < module->exprc; ++i)
     {
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
         module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
-        if (expr_is_macro(module->env, module->exprs[i]))
-            eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
     }
 
     // Evaluation
     set_default_print_params(&pp);
+    init_env(&env2, module->env, NULL);
     for (size_t i = 0; i < module->exprc; ++i)
     {
         if (expr_is_module_level(module->env, module->exprs[i]))

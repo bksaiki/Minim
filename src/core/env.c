@@ -12,9 +12,11 @@ static void add_metadata(MinimObject *obj, const char *str)
     if (MINIM_OBJ_CLOSUREP(obj))
     {
         MinimLambda *lam = MINIM_CLOSURE(obj);
-
-        lam->name = GC_alloc_atomic((strlen(str) + 1) * sizeof(char));
-        strcpy(lam->name, str);
+        if (!lam->name)
+        {
+            lam->name = GC_alloc_atomic((strlen(str) + 1) * sizeof(char));
+            strcpy(lam->name, str);
+        }
     }
 }
 
@@ -28,6 +30,33 @@ static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
     mrk(gc, env->callee);
     mrk(gc, env->caller);
     mrk(gc, env->current_dir);
+}
+
+static MinimEnv *env_for_print = NULL;
+
+static void print_symbol_entry(const char *sym, MinimObject *obj)
+{
+    PrintParams pp;
+
+    if (MINIM_OBJ_TAIL_CALLP(obj))
+    {
+        printf("(%s . <tail call>)\n", sym);
+    }
+    else if (MINIM_OBJ_TRANSFORMP(obj))
+    {
+        printf("(%s . <macro>)\n", sym);
+    }
+    else if (MINIM_OBJ_SYNTAXP(obj))
+    {
+        printf("(%s . <syntax>)\n", sym);
+    }
+    else
+    {
+        set_default_print_params(&pp);
+        printf("(%s . ", sym);
+        print_minim_object(obj, env_for_print, &pp);
+        printf(")\n");
+    }
 }
 
 //
@@ -137,4 +166,26 @@ bool env_has_called(MinimEnv *env, MinimLambda *lam)
     }
 
     return false;
+}
+
+void env_dump_symbols(MinimEnv *env)
+{
+    for (MinimEnv *it = env; it; it = it->parent)
+    {
+        env_for_print = it;
+        minim_symbol_table_for_each(it->table, print_symbol_entry);
+    }
+}
+
+void env_dump_exports(MinimEnv *env)
+{
+    if (env->module && env->module->export)
+    {
+        env_for_print = env->module->export;
+        minim_symbol_table_for_each(env->module->export->table, print_symbol_entry);
+    }
+    else
+    {
+        printf("()\n");
+    }
 }

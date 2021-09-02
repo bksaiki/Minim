@@ -32,14 +32,14 @@
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
 
-(def all-lists?/assert (name pos0 before lsts)
+(def all-lists?/assert (name pos0 before . lsts)
   (let loop ([ls lsts] [pos pos0])
     (unless (null? ls)
       (if (list? (car ls))
           (loop (cdr ls) (+ 1 pos))
           (apply argument-error name "list?" pos (append before lsts))))))
 
-(def all-null?/assert (name x xs)
+(def all-null?/assert (name x . xs)
   (def n? (null? x))
   (let loop ([xs xs])
     (if (null? xs)
@@ -222,11 +222,43 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; map ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def fold/1ary (f r0 x)
+  (let loop ([r 'r0] [x x])
+    (if (null? x)
+        r
+        (loop (f (car x) r) (cdr x)))))
+
+(def fold/2ary (f r0 x y)
+  (let loop ([r r0] [x x] [y y])
+    (let ([xn? (null? x)] [yn? (null? y)])
+      (if (and xn? yn?)
+          r0
+          (if (or xn? yn?)
+              (error 'fold "given lists of different lengths")
+              (loop (f (car x) (car y) r) (cdr x) (cdr y)))))))
+
+(def fold/nary (f r0 xs)
+  (let loop ([r r0] [xs xs])
+    (if (apply all-null?/assert 'fold xs)
+        r0
+        (let ([xs1 (reverse xs)])
+          (loop (apply f (reverse (cons r xs1))) (map cdr xs))))))
+
+(def fold (kons knil x . xs)
+  (unless (procedure? kons)
+    (apply argument-error 'fold "procedure?" 0 kons knil x xs))
+  (apply all-lists?/assert 'fold 2 x xs)
+  (if (null? xs)
+      (fold/1ary kons knil x)
+      (if (null? (cdr xs))
+          (fold/2ary kons knil x (car x))
+          (fold/nary kons knil (cons x xs)))))
+
 (def append-map (f . lsts)
   (unless (procedure? f)
     (apply argument-error 'append-map "procedure?" 0 f lsts))
   (let loop ([lsts lsts] [done '()])
-    (if (all-null?/assert 'append-map (car lsts) (cdr lsts))
+    (if (apply all-null?/assert 'append-map (car lsts) (cdr lsts))
         done
         (let ([v (apply f (map car lsts))])
           (unless (list? v) (error 'append-map "expected a list in the output of ~a" f))
@@ -237,9 +269,9 @@
 (def count (pred . lsts)
   (unless (procedure? pred)
     (apply argument-error 'count "procedure?" 0 pred lsts))
-  (all-lists?/assert 'count 1 (list pred) lsts)
+  (apply all-lists?/assert 'count 1 (list pred) lsts)
   (let loop ([lsts lsts] [n 0])
-    (if (all-null?/assert 'count (car lsts) (cdr lsts))
+    (if (apply all-null?/assert 'count (car lsts) (cdr lsts))
         n
         (loop (map cdr lsts)
               (if (apply pred (map car lsts)) (+ n 1) n)))))

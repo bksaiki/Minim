@@ -833,20 +833,11 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
         THROW(env, minim_syntax_error("illegal use of syntax transformer", ast->sym, ast, NULL));
 
     body = minim_ast(ast);
-    res = eval_lambda(MINIM_CLOSURE(MINIM_TRANSFORMER(trans)), NULL, 1, &body);
+    res = eval_lambda2(MINIM_CLOSURE(MINIM_TRANSFORMER(trans)), env, 1, &body);
     if (!MINIM_OBJ_ASTP(res))
         THROW(env, minim_syntax_error("expected syntax as a result", ast->sym, ast, NULL));
 
     return MINIM_AST(res);
-}
-
-SyntaxNode*
-transform_syntax_case(MinimEnv *env, SyntaxNode* ast)
-{
-    for (size_t i = 3; i < ast->childc; ++i)
-        ast->children[i]->children[1] = transform_syntax(env, ast->children[i]->children[1]);
-
-    return ast;
 }
 
 static bool
@@ -974,10 +965,9 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
                 if (MINIM_OBJ_TRANSFORMP(op))
                 {
                     SyntaxNode *trans;
-
-                    // printf("> "); print_ast(ast); printf("\n");
+                    // printf("t> "); print_ast(ast); printf("\n");
                     trans = transform_loc(env, op, ast);
-                    // printf("< "); print_ast(trans); printf("\n");
+                    // printf("t< "); print_ast(trans); printf("\n");
                     return transform_syntax(env, trans);
                 }
             }
@@ -1113,6 +1103,8 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
             if (!MINIM_OBJ_ASTP(val))
                 THROW(env, minim_error("expected syntax as result", "syntax-case"));
 
+            // printf("sc>: "); debug_print_minim_object(datum, NULL);
+            // printf("sc<: "); debug_print_minim_object(val, NULL);
             return minim_ast(transform_syntax(env, MINIM_AST(val)));
         }
     }
