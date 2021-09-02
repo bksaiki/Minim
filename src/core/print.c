@@ -288,6 +288,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
             print_object(MINIM_VALUES_REF(obj, i), env, bf, pp);
         }
     }
+    else if (MINIM_OBJ_PORTP(obj))
+    {
+        writes_buffer(bf, "<port>");
+    }
     else
     {
         // case MINIM_OBJ_TAIL_CALL:

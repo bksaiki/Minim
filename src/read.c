@@ -24,6 +24,20 @@ int minim_run(const char *str, uint32_t flags)
     MinimObject *exit_handler;
     jmp_buf *exit_buf;
 
+    // set up ports
+    minim_error_port = minim_file_port(stderr, MINIM_PORT_MODE_WRITE |
+                                               MINIM_PORT_MODE_OPEN |
+                                               MINIM_PORT_MODE_READY);
+    minim_output_port = minim_file_port(stdout, MINIM_PORT_MODE_WRITE |
+                                                MINIM_PORT_MODE_OPEN |
+                                                MINIM_PORT_MODE_READY);
+    minim_input_port = minim_file_port(stdin, MINIM_PORT_MODE_READ |
+                                              MINIM_PORT_MODE_OPEN |
+                                              MINIM_PORT_MODE_READY);
+    GC_register_root(minim_error_port);
+    GC_register_root(minim_output_port);
+    GC_register_root(minim_input_port);
+
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);

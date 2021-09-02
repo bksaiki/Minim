@@ -234,6 +234,13 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // Promise
     SET_ARITY_EXACT(promisep, 1);
+
+    // Port
+    SET_ARITY_EXACT(current_input_port, 0);
+    SET_ARITY_EXACT(current_output_port, 0);
+    SET_ARITY_EXACT(portp, 1);
+    SET_ARITY_EXACT(input_portp, 1);
+    SET_ARITY_EXACT(output_portp, 1);
     
     parity->low = 0;
     parity->high = SIZE_MAX;

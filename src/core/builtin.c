@@ -271,4 +271,11 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "delay", MINIM_OBJ_SYNTAX, minim_builtin_delay);
     minim_load_builtin(env, "force", MINIM_OBJ_FUNC, minim_builtin_force);
     minim_load_builtin(env, "promise?", MINIM_OBJ_FUNC, minim_builtin_promisep);
+
+    // Port
+    minim_load_builtin(env, "current-input-port", MINIM_OBJ_FUNC, minim_builtin_current_input_port);
+    minim_load_builtin(env, "current-output-port", MINIM_OBJ_FUNC, minim_builtin_current_output_port);
+    minim_load_builtin(env, "port?", MINIM_OBJ_FUNC, minim_builtin_portp);
+    minim_load_builtin(env, "input-port?", MINIM_OBJ_FUNC, minim_builtin_input_portp);
+    minim_load_builtin(env, "output-port?", MINIM_OBJ_FUNC, minim_builtin_output_portp);
 }

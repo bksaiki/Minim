@@ -49,14 +49,30 @@ int minim_repl(char **argv, uint32_t flags)
     printf("Minim v%s \n", MINIM_VERSION_STR);
     fflush(stdout);
 
+    // set up builtins
     init_env(&top_env, NULL, NULL);
     minim_load_builtins(top_env);
 
+    // set up cache
     init_minim_module_cache(&imports);
     init_minim_module(&module, imports);
     init_env(&module->env, top_env, NULL);
     module->env->module = module;
     module->env->current_dir = get_working_directory();
+
+    // set up ports
+    minim_error_port = minim_file_port(stderr, MINIM_PORT_MODE_WRITE |
+                                               MINIM_PORT_MODE_OPEN |
+                                               MINIM_PORT_MODE_READY);
+    minim_output_port = minim_file_port(stdout, MINIM_PORT_MODE_WRITE |
+                                                MINIM_PORT_MODE_OPEN |
+                                                MINIM_PORT_MODE_READY);
+    minim_input_port = minim_file_port(stdin, MINIM_PORT_MODE_READ |
+                                              MINIM_PORT_MODE_OPEN |
+                                              MINIM_PORT_MODE_READY);
+    GC_register_root(minim_error_port);
+    GC_register_root(minim_output_port);
+    GC_register_root(minim_input_port);
 
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));

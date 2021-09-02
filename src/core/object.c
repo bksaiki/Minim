@@ -18,6 +18,9 @@
 
 MinimObject *minim_error_handler = NULL;
 MinimObject *minim_exit_handler = NULL;
+MinimObject *minim_error_port = NULL;
+MinimObject *minim_output_port = NULL;
+MinimObject *minim_input_port = NULL;
 
 // Visible functions
 
@@ -177,6 +180,16 @@ MinimObject *minim_jmp(void *ptr, void *val)
     o->type = MINIM_OBJ_JUMP;
     MINIM_JUMP_BUF(o) = ptr;
     MINIM_JUMP_VAL(o) = val;
+    return o;
+}
+
+MinimObject *minim_file_port(FILE *f, uint8_t mode)
+{
+    MinimObject *o = GC_alloc(minim_port_size);
+    o->type = MINIM_OBJ_PORT;
+    MINIM_PORT_TYPE(o) = MINIM_PORT_TYPE_FILE;
+    MINIM_PORT_MODE(o) = mode;
+    MINIM_PORT_FILE(o) = f;
     return o;
 }
 

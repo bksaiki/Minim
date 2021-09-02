@@ -39,7 +39,8 @@ typedef enum MinimObjectType
     MINIM_OBJ_PROMISE,
     MINIM_OBJ_VALUES,
     MINIM_OBJ_CHAR,
-    MINIM_OBJ_JUMP
+    MINIM_OBJ_JUMP,
+    MINIM_OBJ_PORT
 } MinimObjectType;
 
 #define minim_exactnum_size         (2 * sizeof(void*))
@@ -62,6 +63,7 @@ typedef enum MinimObjectType
 #define minim_char_size             (1 + 1 * sizeof(int))
 #define minim_exit_size             (2 * sizeof(void*))
 #define minim_jump_size             (3 * sizeof(void*))
+#define minim_port_size             (2 * sizeof(void*))
 
 // Special objects
 
@@ -72,6 +74,9 @@ typedef enum MinimObjectType
 
 extern MinimObject *minim_error_handler;
 extern MinimObject *minim_exit_handler;
+extern MinimObject *minim_error_port;
+extern MinimObject *minim_output_port;
+extern MinimObject *minim_input_port;
 
 // Predicates 
 
@@ -103,6 +108,7 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_OBJ_VALUESP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VALUES)
 #define MINIM_OBJ_CHARP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_CHAR)
 #define MINIM_OBJ_JUMPP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_JUMP)
+#define MINIM_OBJ_PORTP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PORT)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
 #define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj) || MINIM_OBJ_JUMPP(obj))
@@ -137,6 +143,9 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_CHAR(obj)             (*((unsigned int*) VOID_PTR(PTR(obj, 4))))
 #define MINIM_JUMP_BUF(obj)         (*((jmp_buf**) VOID_PTR(PTR(obj, 8))))
 #define MINIM_JUMP_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_PORT_TYPE(obj)        (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
+#define MINIM_PORT_MODE(obj)        (*((uint8_t*) VOID_PTR(PTR(obj, 2))))
+#define MINIM_PORT_FILE(obj)        (*((FILE**) VOID_PTR(PTR(obj, 8))))
 
 // Compound accessors
 
@@ -154,6 +163,13 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_TRANSFORM_MACRO       0
 #define MINIM_TRANSFORM_PATTERN     1
 #define MINIM_TRANSFORM_UNKNOWN     2
+
+#define MINIM_PORT_TYPE_FILE        0
+
+#define MINIM_PORT_MODE_WRITE       0x1
+#define MINIM_PORT_MODE_READ        0x2
+#define MINIM_PORT_MODE_OPEN        0x4
+#define MINIM_PORT_MODE_READY       0x8
 
 //  Initialization
 
@@ -176,6 +192,7 @@ MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);
 MinimObject *minim_char(unsigned int ch);
 MinimObject *minim_jmp(void *ptr, void *val);
+MinimObject *minim_file_port(FILE *f, uint8_t mode);
 
 //  Equivalence
 
