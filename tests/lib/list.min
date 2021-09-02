@@ -1,18 +1,19 @@
 ;; Tests for <lib>/private/list.min
 
-;; xcons
-(equal? (xcons 1 2) '(2 . 1))
+;; xcons  TODO: srfi/1
+; (equal? (xcons 1 2) '(2 . 1))
 
-;; cons*
-(equal? (cons* 1) 1)
-(equal? (cons* 1 2) '(1 . 2))
-(equal? (cons* 1 2 3) '(1 2 . 3))
-(equal? (cons* 1 2 3 4) '(1 2 3 . 4))
+;; list*
+(equal? (list* 1) 1)
+(equal? (list* 1 2) '(1 . 2))
+(equal? (list* 1 2 3) '(1 2 . 3))
+(equal? (list* 1 2 3 4) '(1 2 3 . 4))
+(equal? (list* 1 2 (list 3 4)) (list 1 2 3 4))
 
-;; list-copy
-(equal? (list-copy '()) '())
-(equal? (list-copy '(1 2 3)) '(1 2 3))
-(equal? (list-copy '(1 2 3 4 5)) '(1 2 3 4 5))
+;; list-copy  TODO: srfi/1
+; (equal? (list-copy '()) '())
+; (equal? (list-copy '(1 2 3)) '(1 2 3))
+; (equal? (list-copy '(1 2 3 4 5)) '(1 2 3 4 5))
 
 ;; make-list
 (equal? (make-list 3) '(0 0 0))
@@ -126,10 +127,6 @@
 (equal? (remove* (list 1 3) (list 1 2 3)) (list 2))
 (equal? (remove* (list 1 2 3) (list 1 2 3)) (list))
 
-;; list*
-(equal? (list* 1 2 3) '(1 2 . 3))
-(equal? (list* 1 2 (list 3 4)) (list 1 2 3 4))
-
 ;; append*
 (equal? (append* (list (list 1 2) (list 3 4))) (list 1 2 3 4))
 (equal? (append* (list 1 2) (list (list 3 4) (list 5 6))) (list 1 2 3 4 5 6))
@@ -139,3 +136,13 @@
         (list 1 2))
 (equal? (append-map vector->list (list (vector 1 2) (vector 3 4)))
         (list 1 2 3 4))
+
+;; foldl
+(equal? (foldl cons '() '(1 2 3)) '(3 2 1))
+(equal? (foldl list* '() '(a b c) '(1 2 3)) '(c 3 b 2 a 1))
+(equal? (foldl list '() '(a b c) '(1 2 3) '(A B C)) '(c 3 C (b 2 B (a 1 A ()))))
+
+;; foldr
+(equal? (foldr cons '() '(1 2 3)) '(1 2 3))
+(equal? (foldr list* '() '(a b c) '(1 2 3)) '(a 1 b 2 c 3))
+(equal? (foldr list '() '(a b c) '(1 2 3) '(A B C)) '(a 1 A (b 2 B (c 3 C ()))))

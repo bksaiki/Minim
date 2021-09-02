@@ -15,6 +15,7 @@
          last last-pair
          filter filter-not
          partition
+         fold fold-right
          append-map
          count
          find find-tail
@@ -223,7 +224,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; map ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def fold/1ary (f r0 x)
-  (let loop ([r 'r0] [x x])
+  (let loop ([r r0] [x x])
     (if (null? x)
         r
         (loop (f (car x) r) (cdr x)))))
@@ -232,7 +233,7 @@
   (let loop ([r r0] [x x] [y y])
     (let ([xn? (null? x)] [yn? (null? y)])
       (if (and xn? yn?)
-          r0
+          r
           (if (or xn? yn?)
               (error 'fold "given lists of different lengths")
               (loop (f (car x) (car y) r) (cdr x) (cdr y)))))))
@@ -240,8 +241,8 @@
 (def fold/nary (f r0 xs)
   (let loop ([r r0] [xs xs])
     (if (apply all-null?/assert 'fold xs)
-        r0
-        (let ([xs1 (reverse xs)])
+        r
+        (let ([xs1 (reverse (map car xs))])
           (loop (apply f (reverse (cons r xs1))) (map cdr xs))))))
 
 (def fold (kons knil x . xs)
@@ -251,8 +252,40 @@
   (if (null? xs)
       (fold/1ary kons knil x)
       (if (null? (cdr xs))
-          (fold/2ary kons knil x (car x))
+          (fold/2ary kons knil x (car xs))
           (fold/nary kons knil (cons x xs)))))
+
+(def fold-right/1ary (f r0 x)
+  (let loop ([x x])
+    (if (null? x)
+        r0
+        (f (car x) (loop (cdr x))))))
+
+(def fold-right/2ary (f r0 x y)
+  (let loop ([x x] [y y])
+    (let ([xn? (null? x)] [yn? (null? y)])
+      (if (and xn? yn?)
+          r0
+          (if (or xn? yn?)
+              (error 'fold-right "given lists of different lengths")
+              (f (car x) (car y) (loop (cdr x) (cdr y))))))))
+
+(def fold-right/nary (f r0 xs)
+  (let loop ([xs xs])
+    (if (apply all-null?/assert 'fold-right xs)
+        r0
+        (let ([xs1 (reverse (map car xs))])
+          (apply f (reverse (cons (loop (map cdr xs)) xs1)))))))
+
+(def fold-right (kons knil x . xs)
+  (unless (procedure? kons)
+    (apply argument-error 'fold-right "procedure?" 0 kons knil x xs))
+  (apply all-lists?/assert 'fold-right 2 x xs)
+  (if (null? xs)
+      (fold-right/1ary kons knil x)
+      (if (null? (cdr xs))
+          (fold-right/2ary kons knil x (car xs))
+          (fold-right/nary kons knil (cons x xs)))))
 
 (def append-map (f . lsts)
   (unless (procedure? f)

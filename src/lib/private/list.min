@@ -5,15 +5,37 @@
 (%import "pre-base.min"
          "../srfi/1.min")
 
-(%export (all "../srfi/1.min")
-         remove
+;; from ../srfi/1.min
+(%export first second third fourth fifth sixth seventh eighth ninth tenth
+         make-list
+         take drop
+         take-right drop-right
+         split-at
+         last last-pair
+         filter filter-not
+         partition
+         append-map
+         count
+         find find-tail
+         member
+         assoc)
+
+;; from here
+(%export list*
          list-set list-update
-         list*
+         foldl foldr
+         remove*
          remove*
          append*)
 
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; renamed from srfi/i ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def list* cons*)
+(def foldl fold)
+(def foldr fold-right)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; not defined in srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -64,10 +86,6 @@
     (if (or (null? vs) (null? lst))
         lst
         (loop (cdr vs) (remove (car vs) lst)))))
-
-(def list* args
-  (let ([rev (reverse args)])
-    (foldl cons (car rev) (cdr rev))))
 
 ;; TODO: check lists
 (def append* args
