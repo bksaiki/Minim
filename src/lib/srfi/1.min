@@ -15,19 +15,52 @@
          last last-pair
          filter filter-not
          partition
+         for-each
          fold fold-right
          append-map
          count
          find find-tail
+         delete delete-duplicates
          member
          assoc)
 
+;
+; The following procedures are specified by SRFI 1 but NOT included
+;   list-tabulate, circular-list iota
+;   proper-list? circular-list? dotted-list?
+;   not-pair? null-list?
+;   list=
+;   car+cdr
+;   take! drop-right! split-at!
+;   length+ concatenate
+;   append! concatenate! reverse!
+;   append-reverse append-reverse!
+;   zip unzip1 unzip2 unzip3 unzip4 unzip5
+;   unfold pair-fold reduce
+;   unfold-right pair-fold-right reduce-right
+;   append-map!
+;   map! pair-for-each filter-map map-in-order
+;   filter! partition! remove!
+;   memq memv
+;   take-while drop-while take-while!
+;   span break span! break!
+;   delete! delete-duplicates!
+;   assq assv
+;   alist-cons alist-copy
+;   alist-delete alist-delete!
+;   lset<= lset= lset-adjoin
+;   lset-union lset-union! lset-intersection lset-intersection!
+;   lset-difference lset-difference! lset-xor lset-xor!
+;   lset-diff+intersection lset-diff+intersection!
+;   set-car! set-cdr!
+;
 ; The following procedures are defined as builtins:
 ;   cons, list
 ;   car, cdr, ..., cdddar, cddddr
 ;   length, append, reverse
 ;   map, andmap, ormap
 ;   list-ref
+;
 
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
@@ -222,6 +255,37 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; map ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def for-each/1ary (f x)
+  (let loop ([x x])
+    (if (null? x)
+        (void)
+        (begin (f (car x)) (loop (cdr x))))))
+
+(def for-each/2ary (f x y)
+  (let loop ([x x] [y y])
+    (let ([xn? (null? x)] [yn? (null? y)])
+      (if (and xn? yn?)
+          (void)
+          (if (or xn? yn?)
+              (error 'for-each/2ary "given lists of different lengths")
+              (begin (f (car x) (car y)) (loop (cdr x) (cdr y))))))))
+
+(def for-each/nary (f xs)
+  (let loop ([xs xs])
+    (if (apply all-null?/assert 'fold xs)
+        (void)
+        (begin (apply f (map car xs)) (loop (map cdr xs))))))
+
+(def for-each (proc x . xs)
+  (unless (procedure? proc)
+    (apply argument-error 'for-each "procedure?" 0 proc x xs))
+  (apply all-lists?/assert 'for-each 1 x xs)
+  (if (null? xs)
+      (for-each/1ary proc x)
+      (if (null? (cdr xs))
+          (for-each/2ary proc x (car xs))
+          (for-each/nary proc (cons x xs)))))
+
 (def fold/1ary (f r0 x)
   (let loop ([r r0] [x x])
     (if (null? x)
@@ -348,6 +412,31 @@
           (if (=? (car lst) x)
               lst
               (loop (cdr lst)))))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; deletion ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def delete (v lst)
+  (unless (list? lst)
+    (argument-error 'remove "list?" 1 v lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        '()
+        (if (equal? v (car lst))
+            (loop (cdr lst))
+            (cons (car lst) (loop (cdr lst)))))))
+
+(def delete-duplicates
+  (case-lambda
+   [(lst) (delete-duplicates lst equal?)]
+   [(lst =?)
+    (let loop ([uniq '()] [lst lst])
+      (if (null? lst)
+          (reverse uniq)
+          (if (find (lambda (x) (equal? (car lst) x)) uniq)
+              (loop uniq (cdr lst))
+              (loop (cons (car lst) uniq) (cdr lst)))))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; association ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def assoc
   (case-lambda

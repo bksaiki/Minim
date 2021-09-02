@@ -14,6 +14,7 @@
          last last-pair
          filter filter-not
          partition
+         for-each
          append-map
          count
          find find-tail
@@ -25,7 +26,7 @@
          list-set list-update
          head tail
          foldl foldr
-         remove
+         remove remove-duplicates
          remove*
          append*)
 
@@ -37,6 +38,8 @@
 (def list* cons*)
 (def foldl fold)
 (def foldr fold-right)
+(def remove delete)
+(def remove-duplicates delete-duplicates)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; alias from srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -70,16 +73,6 @@
         (if (zero? i)
             (cons (up (car lst)) (cdr lst))
             (cons (car lst) (loop (cdr lst) (- i 1)))))))
-
-(def remove (v lst)
-  (unless (list? lst)
-    (argument-error 'remove "list?" 1 v lst))
-  (let loop ([lst lst])
-    (if (null? lst)
-        '()
-        (if (equal? v (car lst))
-            (loop (cdr lst))
-            (cons (car lst) (loop (cdr lst)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; compound operations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
