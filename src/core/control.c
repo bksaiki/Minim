@@ -29,9 +29,12 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
     MinimObject *val;
     SyntaxNode *binding, *names;
     MinimEnv *env2;
+    uint8_t prev_flags;
     
     // Bind names and values
     init_env(&env2, env, NULL);
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
     {
         binding = MINIM_AST(args[0])->children[i];
@@ -63,6 +66,7 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
     }
 
     // Evaluate body
+    env->flags = prev_flags; 
     return minim_builtin_begin(env2, argc - 1, &args[1]);
 }
 

@@ -44,7 +44,7 @@ static void check_syntax_func(MinimEnv *env, SyntaxNode *ast, size_t name_idx)
     {
         for (MinimObject *it = args; it && !minim_nullp(it); it = MINIM_CDR(it))
         {
-            if (minim_listp(it))
+            if (minim_nullp(MINIM_CDR(it)) || MINIM_OBJ_PAIRP(MINIM_CDR(it)))
             {
                 sym = unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)));
                 if (!MINIM_OBJ_SYMBOLP(sym))

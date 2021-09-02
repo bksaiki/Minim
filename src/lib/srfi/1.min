@@ -1,0 +1,457 @@
+;
+;   SRFI 1: list library
+;
+
+(%import "../private/pre-base.min"
+         "16.min")
+
+(%export first second third fourth fifth sixth seventh eighth ninth tenth
+         xcons cons*
+         list-copy
+         make-list
+         take drop
+         take-right drop-right
+         split-at
+         last last-pair
+         filter filter-not
+         partition
+         for-each
+         fold fold-right
+         append-map
+         count
+         find find-tail
+         delete delete-duplicates
+         member
+         assoc)
+
+;
+; The following procedures are specified by SRFI 1 but NOT included
+;   list-tabulate, circular-list iota
+;   proper-list? circular-list? dotted-list?
+;   not-pair? null-list?
+;   list=
+;   car+cdr
+;   take! drop-right! split-at!
+;   length+ concatenate
+;   append! concatenate! reverse!
+;   append-reverse append-reverse!
+;   zip unzip1 unzip2 unzip3 unzip4 unzip5
+;   unfold pair-fold reduce
+;   unfold-right pair-fold-right reduce-right
+;   append-map!
+;   map! pair-for-each filter-map map-in-order
+;   filter! partition! remove!
+;   memq memv
+;   take-while drop-while take-while!
+;   span break span! break!
+;   delete! delete-duplicates!
+;   assq assv
+;   alist-cons alist-copy
+;   alist-delete alist-delete!
+;   lset<= lset= lset-adjoin
+;   lset-union lset-union! lset-intersection lset-intersection!
+;   lset-difference lset-difference! lset-xor lset-xor!
+;   lset-diff+intersection lset-diff+intersection!
+;   set-car! set-cdr!
+;
+; The following procedures are defined as builtins:
+;   cons, list
+;   car, cdr, ..., cdddar, cddddr
+;   length, append, reverse
+;   map, andmap, ormap
+;   list-ref
+;
+
+(def natural? (n)
+  (and (number? n) (exact? n) (integer? n) (not (negative? n))))
+
+(def all-lists?/assert (name pos0 before . lsts)
+  (let loop ([ls lsts] [pos pos0])
+    (unless (null? ls)
+      (if (list? (car ls))
+          (loop (cdr ls) (+ 1 pos))
+          (apply argument-error name "list?" pos (append before lsts))))))
+
+(def all-null?/assert (name x . xs)
+  (def n? (null? x))
+  (let loop ([xs xs])
+    (if (null? xs)
+        n?
+        (let ([n*? (null? (car xs))])
+          (if (equal? n? n*?)
+              (loop (cdr xs))
+              (error name "given lists of different length"))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def xcons (a d)
+  (cons d a))
+
+(def cons* (x . xs)
+  (let loop ([x x] [xs xs])
+    (if (null? xs)
+        x
+        (cons x (loop (car xs) (cdr xs))))))
+
+(def list-copy (lst)
+  (if (null? lst)
+      '()
+      (cons (car lst) (list-copy (cdr lst)))))
+
+(def make-list
+  (case-lambda
+   [(n) (make-list n 0)]
+   [(n fill)
+    (unless (natural? n)
+      (argument-error 'make-list "natural?" n))
+    (let loop ([i n] [acc '()])
+      (if (zero? i)
+          acc
+          (loop (- i 1) (cons fill acc))))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def first (lst)
+  (if (list? lst)
+      (car lst)
+      (argument-error 'first "list?" lst)))
+
+(def-syntax def-list-accessor
+  (syntax-rules ()
+   [(_ name npos)
+    (def name (lst)
+      (if (list? lst)
+          (let loop ([l lst] [pos npos])
+            (if (pair? l)
+                (if (= pos 1)
+                    (car l)
+                    (loop (cdr l) (- pos 1)))
+                (argument-error 'name
+                                "list contains too few elements"
+                                lst)))
+          (argument-error 'name "list?" lst)))]))
+
+(def-list-accessor second   2)
+(def-list-accessor third    3)
+(def-list-accessor fourth   4)
+(def-list-accessor fifth    5)
+(def-list-accessor sixth    6)
+(def-list-accessor seventh  7)
+(def-list-accessor eighth   8)
+(def-list-accessor ninth    9)
+(def-list-accessor tenth    10)
+
+(def take (x n)
+  (unless (list? x)
+    (argument-error 'take "list?" 0 x n))
+  (unless (natural? n)
+    (argument-error 'take "natural?" 1 x n))
+  (let loop ([lst x] [i n])
+    (if (zero? i)
+        '()
+        (cons (car lst) (loop (cdr lst) (- i 1))))))
+
+(def drop (x n)
+  (unless (list? x)
+    (argument-error 'drop "list?" 0 x n))
+  (unless (natural? n)
+    (argument-error 'drop "natural?" 1 x n))
+  (let loop ([lst x] [i n])
+    (if (zero? i)
+        lst
+        (loop (cdr lst) (- i 1)))))
+
+(def take-right (x n)
+  (unless (list? x)
+    (argument-error 'take-right "list?" 0 x n))
+  (unless (natural? n)
+    (argument-error 'take-right "natural?" 1 x n))
+  (def len (length x))
+  (unless (<= n len)
+    (argument-error 'take-right "long enough list" 0 x n))
+  (let loop ([x x] [l len])
+    (if (= l n)
+        x
+        (loop (cdr x) (- l 1)))))
+
+(def drop-right (x n)
+  (unless (list? x)
+    (argument-error 'drop-right "list?" 0 x n))
+  (unless (natural? n)
+    (argument-error 'drop-right "natural?" 1 x n))
+  (def len (length x))
+  (unless (<= n len)
+    (argument-error 'drop-right "long enough list" 0 x n))
+  (let loop ([x x] [l len])
+    (if (= l n)
+        '()
+        (cons (car x) (loop (cdr x) (- l 1))))))
+
+(def split-at (x n)
+  (unless (list? x)
+    (argument-error 'split-at "list?" 0 x n))
+  (unless (natural? n)
+    (argument-error 'split-at "natural?" 1 x n))
+  (let loop ([lst x] [i n])
+    (if (zero? i)
+        (values '() lst)
+        (let-values ([(t d) (loop (cdr lst) (- i 1))])
+          (values (cons (car lst) t) d)))))
+
+(def last (x)
+  (unless (list? x)
+    (argument-error 'last "list?" x))
+  (let loop ([lst x])
+    (if (pair? (cdr lst))
+        (loop (cdr lst))
+        (car lst))))
+
+(def last-pair (x)
+  (unless (list? x)
+    (argument-error 'last-pair "list?" x))
+  (let loop ([lst x])
+    (if (pair? (cdr lst))
+        (loop (cdr lst))
+        lst)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; filter ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def filter (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'filter "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'filter "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        '()
+        (if (pred (car lst))
+            (cons (car lst) (loop (cdr lst)))
+            (loop (cdr lst))))))
+
+(def filter-not (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'filter-not "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'filter-not "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        '()
+        (if (pred (car lst))
+            (loop (cdr lst))
+            (cons (car lst) (loop (cdr lst)))))))
+
+(def partition (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'partition "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'partition "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        (values '() '())
+        (let-values ([(in out) (loop (cdr lst))])
+          (if (pred (car lst))
+              (values (cons (car lst) in) out)
+              (values in (cons (car lst) out)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; map ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def for-each/1ary (f x)
+  (let loop ([x x])
+    (if (null? x)
+        (void)
+        (begin (f (car x)) (loop (cdr x))))))
+
+(def for-each/2ary (f x y)
+  (let loop ([x x] [y y])
+    (let ([xn? (null? x)] [yn? (null? y)])
+      (if (and xn? yn?)
+          (void)
+          (if (or xn? yn?)
+              (error 'for-each/2ary "given lists of different lengths")
+              (begin (f (car x) (car y)) (loop (cdr x) (cdr y))))))))
+
+(def for-each/nary (f xs)
+  (let loop ([xs xs])
+    (if (apply all-null?/assert 'fold xs)
+        (void)
+        (begin (apply f (map car xs)) (loop (map cdr xs))))))
+
+(def for-each (proc x . xs)
+  (unless (procedure? proc)
+    (apply argument-error 'for-each "procedure?" 0 proc x xs))
+  (apply all-lists?/assert 'for-each 1 x xs)
+  (if (null? xs)
+      (for-each/1ary proc x)
+      (if (null? (cdr xs))
+          (for-each/2ary proc x (car xs))
+          (for-each/nary proc (cons x xs)))))
+
+(def fold/1ary (f r0 x)
+  (let loop ([r r0] [x x])
+    (if (null? x)
+        r
+        (loop (f (car x) r) (cdr x)))))
+
+(def fold/2ary (f r0 x y)
+  (let loop ([r r0] [x x] [y y])
+    (let ([xn? (null? x)] [yn? (null? y)])
+      (if (and xn? yn?)
+          r
+          (if (or xn? yn?)
+              (error 'fold "given lists of different lengths")
+              (loop (f (car x) (car y) r) (cdr x) (cdr y)))))))
+
+(def fold/nary (f r0 xs)
+  (let loop ([r r0] [xs xs])
+    (if (apply all-null?/assert 'fold xs)
+        r
+        (let ([xs1 (reverse (map car xs))])
+          (loop (apply f (reverse (cons r xs1))) (map cdr xs))))))
+
+(def fold (kons knil x . xs)
+  (unless (procedure? kons)
+    (apply argument-error 'fold "procedure?" 0 kons knil x xs))
+  (apply all-lists?/assert 'fold 2 x xs)
+  (if (null? xs)
+      (fold/1ary kons knil x)
+      (if (null? (cdr xs))
+          (fold/2ary kons knil x (car xs))
+          (fold/nary kons knil (cons x xs)))))
+
+(def fold-right/1ary (f r0 x)
+  (let loop ([x x])
+    (if (null? x)
+        r0
+        (f (car x) (loop (cdr x))))))
+
+(def fold-right/2ary (f r0 x y)
+  (let loop ([x x] [y y])
+    (let ([xn? (null? x)] [yn? (null? y)])
+      (if (and xn? yn?)
+          r0
+          (if (or xn? yn?)
+              (error 'fold-right "given lists of different lengths")
+              (f (car x) (car y) (loop (cdr x) (cdr y))))))))
+
+(def fold-right/nary (f r0 xs)
+  (let loop ([xs xs])
+    (if (apply all-null?/assert 'fold-right xs)
+        r0
+        (let ([xs1 (reverse (map car xs))])
+          (apply f (reverse (cons (loop (map cdr xs)) xs1)))))))
+
+(def fold-right (kons knil x . xs)
+  (unless (procedure? kons)
+    (apply argument-error 'fold-right "procedure?" 0 kons knil x xs))
+  (apply all-lists?/assert 'fold-right 2 x xs)
+  (if (null? xs)
+      (fold-right/1ary kons knil x)
+      (if (null? (cdr xs))
+          (fold-right/2ary kons knil x (car xs))
+          (fold-right/nary kons knil (cons x xs)))))
+
+(def append-map (f . lsts)
+  (unless (procedure? f)
+    (apply argument-error 'append-map "procedure?" 0 f lsts))
+  (let loop ([lsts lsts] [done '()])
+    (if (apply all-null?/assert 'append-map (car lsts) (cdr lsts))
+        done
+        (let ([v (apply f (map car lsts))])
+          (unless (list? v) (error 'append-map "expected a list in the output of ~a" f))
+          (loop (map cdr lsts) (append done v))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; reduce ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def count (pred . lsts)
+  (unless (procedure? pred)
+    (apply argument-error 'count "procedure?" 0 pred lsts))
+  (apply all-lists?/assert 'count 1 (list pred) lsts)
+  (let loop ([lsts lsts] [n 0])
+    (if (apply all-null?/assert 'count (car lsts) (cdr lsts))
+        n
+        (loop (map cdr lsts)
+              (if (apply pred (map car lsts)) (+ n 1) n)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; searching ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def find (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'find "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'find "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        #f
+        (if (pred (car lst))
+            (car lst)
+            (loop (cdr lst))))))
+
+(def find-tail (pred lst)
+  (unless (procedure? pred)
+    (argument-error 'find-tail "procedure?" 0 pred lst))
+  (unless (list? lst)
+    (argument-error 'find-tail "list?" 1 pred lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        #f
+        (if (pred (car lst))
+            lst
+            (loop (cdr lst))))))
+
+(def member
+  (case-lambda
+   [(x lst) (member x lst equal?)]
+   [(x lst =?)
+    (unless (list? lst)
+      (argument-error 'member "list?" 1 x lst =?))
+    (unless (procedure? =?)
+      (argument-error 'member "list?" 2 x lst =?))
+    (let loop ([lst lst])
+      (if (null? lst)
+          #f
+          (if (=? (car lst) x)
+              lst
+              (loop (cdr lst)))))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; deletion ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def delete (v lst)
+  (unless (list? lst)
+    (argument-error 'remove "list?" 1 v lst))
+  (let loop ([lst lst])
+    (if (null? lst)
+        '()
+        (if (equal? v (car lst))
+            (loop (cdr lst))
+            (cons (car lst) (loop (cdr lst)))))))
+
+(def delete-duplicates
+  (case-lambda
+   [(lst) (delete-duplicates lst equal?)]
+   [(lst =?)
+    (let loop ([uniq '()] [lst lst])
+      (if (null? lst)
+          (reverse uniq)
+          (if (find (lambda (x) (equal? (car lst) x)) uniq)
+              (loop uniq (cdr lst))
+              (loop (cons (car lst) uniq) (cdr lst)))))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; association ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def assoc
+  (case-lambda
+   [(key lst) (assoc key lst equal?)]
+   [(key lst =?)
+    (unless (list? lst)
+      (argument-error 'assoc "list?" 1 x lst =?))
+    (unless (procedure? =?)
+      (argument-error 'assoc "list?" 2 x lst =?))
+    (let loop ([lst lst])
+      (if (null? lst)
+          #f
+          (let ([entry (car lst)])
+            (if (pair? entry)
+                (if (=? (car entry) key)
+                    entry
+                    (loop (cdr lst)))
+                (argument-error 'assoc "list of pairs" lst)))))]))

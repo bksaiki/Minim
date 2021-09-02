@@ -216,7 +216,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                                                  MINIM_AST(args[i]),
                                                  MINIM_AST(MINIM_CADR(export))));
 
-                    minim_symbol_table_merge(env->module->export->table, import->env->table);
+                    minim_symbol_table_merge(env->module->export->table, import->export->table);
                 }
             }
             else
@@ -261,14 +261,12 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
 
         clean_path = extract_path(path);
         module2 = minim_module_cache_get(env->module->cache, clean_path);
-
         if (module2)
         {
             copy_minim_module(&module2, module2);
             init_env(&module2->env, get_builtin_env(env), NULL);
             module2->env->current_dir = extract_directory(path);
             module2->env->module = module2;
-
             minim_module_add_import(env->module, module2);
         }
         else

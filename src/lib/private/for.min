@@ -2,7 +2,12 @@
 ;   'for'
 ;
 
-(%import "pre-base.min")
+(%import "and-or.min"
+         "def.min"
+         "let.min"
+         "stx.min"
+         "when-unless.min"
+         "../srfi/16.min")
 
 (%export for for/list
          in-list in-range in-naturals

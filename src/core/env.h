@@ -48,4 +48,10 @@ size_t env_symbol_count(MinimEnv *env);
 // Returns true if 'lam' has been called previously.
 bool env_has_called(MinimEnv *env, MinimLambda *lam);
 
+// Debugging: dumps all symbols in environment
+void env_dump_symbols(MinimEnv *env);
+
+// Debugging: dumps exportable symbols in environment
+void env_dump_exports(MinimEnv *env);
+
 #endif

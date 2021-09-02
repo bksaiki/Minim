@@ -10,7 +10,7 @@
 ;;                         (<val3> . <promise>)
 ;;                                     ...
 
-(%import "pre-base.min")
+(%import "pre-base.min" "list.min")
 
 ;; lazy cons
 (def-syntax lazy-cons

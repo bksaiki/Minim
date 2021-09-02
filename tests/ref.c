@@ -89,32 +89,6 @@ int main()
     }
 
     {
-        const int COUNT = 2;
-        char strs[2][256] =
-        {
-            "(begin (def-values (x) (list 1)) (head x))",
-            "(begin (def-values (x) (list 1 2)) (head x))"
-        };
-
-        printf("Testing 'head' (ref)\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= evaluate(strs[i]);
-    }
-
-    {
-        const int COUNT = 2;
-        char strs[2][256] =
-        {
-            "(begin (def-values (x) (list 1)) (tail x))",
-            "(begin (def-values (x) (list 1 2)) (tail x))"
-        };
-
-        printf("Testing 'tail' (ref)\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= evaluate(strs[i]);
-    }
-
-    {
         const int COUNT = 3;
         char strs[3][256] =
         {
@@ -139,32 +113,6 @@ int main()
         };
 
         printf("Testing 'reverse' (ref)\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= evaluate(strs[i]);
-    }
-
-    {
-        const int COUNT = 2;
-        char strs[2][256] =
-        {
-            "(begin (def-values (x) (list 1 2)) (remove 1 x))",
-            "(begin (def-values (x) (list 1 2 3 4)) (remove 2 x))"
-        };
-
-        printf("Testing 'remove' (ref)\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= evaluate(strs[i]);
-    }
-
-    {
-        const int COUNT = 2;
-        char strs[2][256] =
-        {
-            "(begin (def-values (x) (list 1 2)) (member 1 x))",
-            "(begin (def-values (x) (list 1 2 3 4)) (member 2 x))"
-        };
-
-        printf("Testing 'member' (ref)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }
@@ -205,34 +153,6 @@ int main()
         };
 
         printf("Testing 'apply' (ref)\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= evaluate(strs[i]);
-    }
-
-    {
-        const int COUNT = 3;
-        char strs[3][256] =
-        {
-            "(begin (def-values (x) (list)) (filter positive? x))",
-            "(begin (def-values (x) (list 1)) (filter positive? x))",
-            "(begin (def-values (x) (list 0 1 2)) (filter positive? x))"
-        };
-
-        printf("Testing 'filter' (ref)\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= evaluate(strs[i]);
-    }
-
-    {
-        const int COUNT = 3;
-        char strs[3][256] =
-        {
-            "(begin (def-values (x) (list)) (filtern positive? x))",
-            "(begin (def-values (x) (list -1)) (filtern positive? x))",
-            "(begin (def-values (x) (list 0 1 2)) (filtern positive? x))"
-        };
-
-        printf("Testing 'filtern' (ref)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= evaluate(strs[i]);
     }

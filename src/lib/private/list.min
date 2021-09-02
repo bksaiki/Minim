@@ -2,9 +2,79 @@
 ;   Additional list constructs
 ;
 
-(%import "pre-base.min" "for.min")
+(%import "pre-base.min"
+         "../srfi/1.min")
 
-(%export remove* list* ormap andmap append* append-map)
+;; from ../srfi/1.min
+(%export first second third fourth fifth sixth seventh eighth ninth tenth
+         make-list
+         take drop
+         take-right drop-right
+         split-at
+         last last-pair
+         filter filter-not
+         partition
+         for-each
+         append-map
+         count
+         find find-tail
+         member
+         assoc)
+
+;; from here
+(%export list*
+         list-set list-update
+         head tail
+         foldl foldr
+         remove remove-duplicates
+         remove*
+         append*)
+
+(def natural? (n)
+  (and (number? n) (exact? n) (integer? n) (not (negative? n))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; renamed from srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def list* cons*)
+(def foldl fold)
+(def foldr fold-right)
+(def remove delete)
+(def remove-duplicates delete-duplicates)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; alias from srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def head first)
+(def tail last)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; not defined in srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def list-set (lst n v)
+  (unless (list? lst)
+    (argument-error 'list-set "list?" 0 lst n v))
+  (unless (natural? n)
+    (argument-error 'list-set "natural?" 1 lst n v))
+  (let loop ([lst lst] [i n])
+    (if (null? lst)
+        (argument-error 'list-set "list of adequate length" 0 lst n v)
+        (if (zero? i)
+            (cons v (cdr lst))
+            (cons (car lst) (loop (cdr lst) (- i 1)))))))
+
+(def list-update (lst n up)
+  (unless (list? lst)
+    (argument-error 'list-set "list?" 0 lst n v))
+  (unless (natural? n)
+    (argument-error 'list-set "natural?" 1 lst n v))
+  (unless (procedure? up)
+    (argument-error 'list-set "procedure?" 2 lst n v))
+  (let loop ([lst lst] [i n])
+    (if (null? lst)
+        (argument-error 'list-set "list of adequate length" 0 lst n v)
+        (if (zero? i)
+            (cons (up (car lst)) (cdr lst))
+            (cons (car lst) (loop (cdr lst) (- i 1)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; compound operations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def remove* (vs lst)
   (unless (list? vs)
@@ -16,40 +86,9 @@
         lst
         (loop (cdr vs) (remove (car vs) lst)))))
 
-(def list* args
-  (let ([rev (reverse args)])
-    (foldl cons (car rev) (cdr rev))))
-
-(def andmap (proc lst)
-  (unless (procedure? proc)
-    (argument-error 'andmap "procedure?" proc))
-  (unless (list? lst)
-    (argument-error 'andmap "list?" lst))
-  (let loop ([lst lst])
-    (cond
-     [(null? lst) #t]
-     [(proc (car lst)) (loop (cdr lst))]
-     [else #f])))
-
-(def ormap (proc lst)
-  (unless (procedure? proc)
-    (argument-error 'andmap "procedure?" proc))
-  (unless (list? lst)
-    (argument-error 'andmap "list?" lst))
-  (let loop ([lst lst])
-    (cond
-     [(null? lst) #f]
-     [(proc (car lst)) #t]
-     [else (loop (cdr lst))])))
-
 ;; TODO: check lists
 (def append* args
   (for ([arg (in-list args)])
     (unless (list? arg) (argument-error 'append* "lists" arg)))
   (def rev (reverse args))
   (foldl append (apply append (car rev)) (cdr rev)))
-
-(def append-map (proc . things)
-  (unless (procedure? proc)
-    (error 'append-map "Expected a procedure"))
-  (apply append (apply map proc things)))
