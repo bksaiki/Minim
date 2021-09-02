@@ -23,19 +23,25 @@
 ;; from here
 (%export list*
          list-set list-update
+         head tail
          foldl foldr
-         remove*
+         remove
          remove*
          append*)
 
 (def natural? (n)
   (and (number? n) (exact? n) (integer? n) (not (negative? n))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;; renamed from srfi/i ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; renamed from srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def list* cons*)
 (def foldl fold)
 (def foldr fold-right)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; alias from srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def head first)
+(def tail last)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; not defined in srfi/1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -24,8 +24,7 @@
 
 ; The following procedures are defined as builtins:
 ;   cons, list
-;   car, cdr,
-;   caar, cadr, cdar, cddr
+;   car, cdr, ..., cdddar, cddddr
 ;   length, append, reverse
 ;   map, andmap, ormap
 ;   list-ref

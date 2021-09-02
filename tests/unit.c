@@ -144,13 +144,9 @@ int main()
     }
 
     {
-        const int COUNT = 10;
-        char strs[20][256] =
+        const int COUNT = 6;
+        char strs[12][256] =
         {
-            "(head (list 1))",               "1",
-            "(head (list 1 2))",            "1",
-            "(tail (list 1))",              "1",
-            "(tail (list 1 2))",            "2",
             "(length (list))",              "0",
             "(length (list 1))",            "1",
             "(length (list 1 2))",          "2",
@@ -382,112 +378,6 @@ int main()
         };
 
         printf("Testing 'reverse'..\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 7;
-        char strs[14][256] =
-        {
-            "(remove 0 (list))",                        "'()",
-            "(remove 1 (list 1))",                      "'()",
-            "(remove 1 (list 1 2 3))",                  "'(2 3)",
-            "(remove 2 (list 1 2 3))",                  "'(1 3)",
-            "(remove 4 (list 1 2 3))",                  "'(1 2 3)",
-            "(remove 2 (list 1 2 3 2 1))",              "'(1 3 1)",
-            "(remove 1 (list 1 2 3 2 1))",              "'(2 3 2)"
-        };
-
-        printf("Testing 'remove'..\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 4;
-        char strs[8][256] =
-        {
-            "(member 0 (list))",                        "#f",
-            "(member 1 (list 1))",                      "'(1)",
-            "(member 2 (list 1 2 3))",                  "'(2 3)",
-            "(member (list 1 2) (list (list 1 2) 3))",  "'((1 2) 3)"
-        };
-
-        printf("Testing 'member'..\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 5;
-        char strs[10][256] =
-        {
-            "(filter negative? (list))",                    "'()",
-            "(filter negative? (list 1))",                  "'()",
-            "(filter negative? (list -1))",                 "'(-1)",
-            "(filter negative? (list -1 0 1))",             "'(-1)",
-            "(filter negative? (list -3 -2 -1 0))",         "'(-3 -2 -1)"
-        };
-
-        printf("Testing 'filter'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 5;
-        char strs[10][256] =
-        {
-            "(filtern negative? (list))",                    "'()",
-            "(filtern negative? (list 1))",                  "'(1)",
-            "(filtern negative? (list -1))",                 "'()",
-            "(filtern negative? (list -1 0 1))",             "'(0 1)",
-            "(filtern negative? (list -1 0 2 3))",           "'(0 2 3)"
-        };
-
-        printf("Testing 'filtern'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-
-    {
-        const int COUNT = 8;
-        char strs[16][256] =
-        {
-            "(foldl + 0 (list))",                   "0",
-            "(foldl + 0 (list 1))",                 "1",
-            "(foldl + 0 (list 1 2 3))",             "6",
-            "(foldl cons (list) (list))",           "'()",
-            "(foldl cons (list) (list 1))",         "'(1)",
-            "(foldl cons (list) (list 1 2 3))",     "'(3 2 1)",
-
-            "(begin (def-values (foo) (lambda (x y) x)) (foldl foo 0 (list 1)))",        "1",
-            "(begin (def-values (foo) (lambda (x y) x)) (foldl foo 0 (list 1 2 3)))",    "3"
-        };
-
-        printf("Testing 'foldl'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 8;
-        char strs[16][256] =
-        {
-            "(foldr + 0 (list))",                   "0",
-            "(foldr + 0 (list 1))",                 "1",
-            "(foldr + 0 (list 1 2 3))",             "6",
-            "(foldr cons (list) (list))",           "'()",
-            "(foldr cons (list) (list 1))",         "'(1)",
-            "(foldr cons (list) (list 1 2 3))",     "'(1 2 3)",
-
-            "(begin (def-values (foo) (lambda (x y) x)) (foldr foo 0 (list 1)))",        "1",
-            "(begin (def-values (foo) (lambda (x y) x)) (foldr foo 0 (list 1 2 3)))",    "1"
-        };
-
-        printf("Testing 'foldr'\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

@@ -196,23 +196,14 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "list", MINIM_OBJ_FUNC, minim_builtin_list);
     minim_load_builtin(env, "list?", MINIM_OBJ_FUNC, minim_builtin_listp);
     minim_load_builtin(env, "null?", MINIM_OBJ_FUNC, minim_builtin_nullp);
-    minim_load_builtin(env, "head", MINIM_OBJ_FUNC, minim_builtin_head);
-    minim_load_builtin(env, "tail", MINIM_OBJ_FUNC, minim_builtin_tail);
     minim_load_builtin(env, "length", MINIM_OBJ_FUNC, minim_builtin_length);
     minim_load_builtin(env, "append", MINIM_OBJ_FUNC, minim_builtin_append);
     minim_load_builtin(env, "reverse", MINIM_OBJ_FUNC, minim_builtin_reverse);
-    minim_load_builtin(env, "remove", MINIM_OBJ_FUNC, minim_builtin_remove);
-    minim_load_builtin(env, "member", MINIM_OBJ_FUNC, minim_builtin_member);
     minim_load_builtin(env, "list-ref", MINIM_OBJ_FUNC, minim_builtin_list_ref);
     minim_load_builtin(env, "map", MINIM_OBJ_FUNC, minim_builtin_map);
     minim_load_builtin(env, "andmap", MINIM_OBJ_FUNC, minim_builtin_andmap);
     minim_load_builtin(env, "ormap", MINIM_OBJ_FUNC, minim_builtin_ormap);
     minim_load_builtin(env, "apply", MINIM_OBJ_FUNC, minim_builtin_apply);
-    minim_load_builtin(env, "filter", MINIM_OBJ_FUNC, minim_builtin_filter);
-    minim_load_builtin(env, "filtern", MINIM_OBJ_FUNC, minim_builtin_filtern);
-    minim_load_builtin(env, "foldl", MINIM_OBJ_FUNC, minim_builtin_foldl);
-    minim_load_builtin(env, "foldr", MINIM_OBJ_FUNC, minim_builtin_foldr);
-    minim_load_builtin(env, "assoc", MINIM_OBJ_FUNC, minim_builtin_assoc);
 
     // Hash table
     minim_load_builtin(env, "hash", MINIM_OBJ_FUNC, minim_builtin_hash);

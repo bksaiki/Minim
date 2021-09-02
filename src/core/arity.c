@@ -161,23 +161,14 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     // NO CHECK: list
     SET_ARITY_EXACT(listp, 1);
     SET_ARITY_EXACT(nullp, 1);
-    SET_ARITY_EXACT(head, 1);
-    SET_ARITY_EXACT(tail, 1);
     SET_ARITY_EXACT(length, 1);
     SET_ARITY_MIN(append, 1);
     SET_ARITY_EXACT(reverse, 1);
-    SET_ARITY_EXACT(remove, 2);
-    SET_ARITY_EXACT(member, 2);
     SET_ARITY_EXACT(list_ref, 2);
     SET_ARITY_MIN(map, 2);
     SET_ARITY_MIN(andmap, 2);
     SET_ARITY_MIN(ormap, 2);
     SET_ARITY_MIN(apply, 2);
-    SET_ARITY_EXACT(filter, 2);
-    SET_ARITY_EXACT(filtern, 2);
-    SET_ARITY_EXACT(foldl, 3);
-    SET_ARITY_EXACT(foldr, 3);
-    SET_ARITY_EXACT(assoc, 2);
 
     // Hash table
     SET_ARITY_EXACT(hash, 0);

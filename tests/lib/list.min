@@ -138,11 +138,17 @@
         (list 1 2 3 4))
 
 ;; foldl
+(equal? (foldl + 0 '()) 0)
+(equal? (foldl + 0 '(1)) 1)
+(equal? (foldl + 0 '(1 2 3)) 6)
 (equal? (foldl cons '() '(1 2 3)) '(3 2 1))
 (equal? (foldl list* '() '(a b c) '(1 2 3)) '(c 3 b 2 a 1))
 (equal? (foldl list '() '(a b c) '(1 2 3) '(A B C)) '(c 3 C (b 2 B (a 1 A ()))))
 
 ;; foldr
+(equal? (foldr + 0 '()) 0)
+(equal? (foldr + 0 '(1)) 1)
+(equal? (foldr + 0 '(1 2 3)) 6)
 (equal? (foldr cons '() '(1 2 3)) '(1 2 3))
 (equal? (foldr list* '() '(a b c) '(1 2 3)) '(a 1 b 2 c 3))
 (equal? (foldr list '() '(a b c) '(1 2 3) '(A B C)) '(a 1 A (b 2 B (c 3 C ()))))
