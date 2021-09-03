@@ -278,4 +278,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "port?", MINIM_OBJ_FUNC, minim_builtin_portp);
     minim_load_builtin(env, "input-port?", MINIM_OBJ_FUNC, minim_builtin_input_portp);
     minim_load_builtin(env, "output-port?", MINIM_OBJ_FUNC, minim_builtin_output_portp);
+
+    minim_load_builtin(env, "read", MINIM_OBJ_FUNC, minim_builtin_read);
+    minim_load_builtin(env, "write", MINIM_OBJ_FUNC, minim_builtin_write);
+    minim_load_builtin(env, "newline", MINIM_OBJ_FUNC, minim_builtin_newline);
 }

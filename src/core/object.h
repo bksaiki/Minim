@@ -78,7 +78,7 @@ extern MinimObject *minim_error_port;
 extern MinimObject *minim_output_port;
 extern MinimObject *minim_input_port;
 
-// Predicates 
+// Predicates
 
 #define MINIM_OBJ_SAME_TYPE(obj, t)     ((((uintptr_t) obj) & ~0xFF) && ((obj)->type == t))
 #define MINIM_OBJ_TYPE_EQP(a, b)        ((((uintptr_t) a) & ~0xFF) && (((uintptr_t) b) & ~0xFF)&& ((a)->type == (b)->type))
@@ -170,6 +170,11 @@ extern MinimObject *minim_input_port;
 #define MINIM_PORT_MODE_READ        0x2
 #define MINIM_PORT_MODE_OPEN        0x4
 #define MINIM_PORT_MODE_READY       0x8
+
+// Additional predicates
+
+#define MINIM_INPUT_PORTP(x)        (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_READ))
+#define MINIM_OUTPUT_PORTP(x)       (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_WRITE))
 
 //  Initialization
 

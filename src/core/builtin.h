@@ -240,6 +240,10 @@ DEFINE_BUILTIN_FUN(portp)
 DEFINE_BUILTIN_FUN(input_portp)
 DEFINE_BUILTIN_FUN(output_portp)
 
+DEFINE_BUILTIN_FUN(read)
+DEFINE_BUILTIN_FUN(write)
+DEFINE_BUILTIN_FUN(newline)
+
 // Loads a single function into the environment
 void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);
 

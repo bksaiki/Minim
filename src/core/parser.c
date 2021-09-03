@@ -623,7 +623,16 @@ int minim_parse_port(FILE *file, const char *name,
 
 //
 //  Visible functions
-// 
+//
+
+void set_default_read_table(ReadTable *table)
+{
+    table->idx = 0;
+    table->row = 1;
+    table->col = 0;
+    table->flags = 0x0;
+    table->eof = EOF;
+}
 
 int parse_str(const char* str, SyntaxNode** psyntax)
 {

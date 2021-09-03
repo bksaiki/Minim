@@ -22,6 +22,9 @@ int minim_parse_port(FILE *file,
                      SyntaxNode **perr,
                      ReadTable *table);
 
+// Set read table
+void set_default_read_table(ReadTable *table);
+
 // Parses a single expression
 int parse_str(const char* str, SyntaxNode** psyntax);
 

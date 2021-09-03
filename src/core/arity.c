@@ -241,6 +241,10 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(portp, 1);
     SET_ARITY_EXACT(input_portp, 1);
     SET_ARITY_EXACT(output_portp, 1);
+
+    SET_ARITY_RANGE(read, 0, 1);
+    SET_ARITY_RANGE(write, 1, 2);
+    SET_ARITY_RANGE(newline, 0, 1);
     
     parity->low = 0;
     parity->high = SIZE_MAX;
