@@ -63,7 +63,7 @@ typedef enum MinimObjectType
 #define minim_char_size             (1 + 1 * sizeof(int))
 #define minim_exit_size             (2 * sizeof(void*))
 #define minim_jump_size             (3 * sizeof(void*))
-#define minim_port_size             (2 * sizeof(void*))
+#define minim_port_size             (7 * sizeof(void*))
 
 // Special objects
 
@@ -146,6 +146,10 @@ extern MinimObject *minim_input_port;
 #define MINIM_PORT_TYPE(obj)        (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_PORT_MODE(obj)        (*((uint8_t*) VOID_PTR(PTR(obj, 2))))
 #define MINIM_PORT_FILE(obj)        (*((FILE**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_PORT_NAME(obj)        (*((char**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_PORT_ROW(obj)         (*((size_t*) VOID_PTR(PTR(obj, 24))))
+#define MINIM_PORT_COL(obj)         (*((size_t*) VOID_PTR(PTR(obj, 32))))
+#define MINIM_PORT_POS(obj)         (*((size_t*) VOID_PTR(PTR(obj, 40))))
 
 // Compound accessors
 
@@ -166,10 +170,11 @@ extern MinimObject *minim_input_port;
 
 #define MINIM_PORT_TYPE_FILE        0
 
-#define MINIM_PORT_MODE_WRITE       0x1
-#define MINIM_PORT_MODE_READ        0x2
-#define MINIM_PORT_MODE_OPEN        0x4
-#define MINIM_PORT_MODE_READY       0x8
+#define MINIM_PORT_MODE_WRITE       0x1         // port open for writing
+#define MINIM_PORT_MODE_READ        0x2         // port open for reading
+#define MINIM_PORT_MODE_OPEN        0x4         // port is open
+#define MINIM_PORT_MODE_READY       0x8         // port is ready
+#define MINIM_PORT_MODE_ALT_EOF     0xF0        // EOF will close program and '\n' acts as EOF
 
 // Additional predicates
 

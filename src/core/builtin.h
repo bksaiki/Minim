@@ -239,6 +239,8 @@ DEFINE_BUILTIN_FUN(current_output_port)
 DEFINE_BUILTIN_FUN(portp)
 DEFINE_BUILTIN_FUN(input_portp)
 DEFINE_BUILTIN_FUN(output_portp)
+DEFINE_BUILTIN_FUN(open_input_file)
+DEFINE_BUILTIN_FUN(open_output_file)
 
 DEFINE_BUILTIN_FUN(read)
 DEFINE_BUILTIN_FUN(write)

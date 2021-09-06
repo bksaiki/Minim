@@ -190,6 +190,10 @@ MinimObject *minim_file_port(FILE *f, uint8_t mode)
     MINIM_PORT_TYPE(o) = MINIM_PORT_TYPE_FILE;
     MINIM_PORT_MODE(o) = mode;
     MINIM_PORT_FILE(o) = f;
+    MINIM_PORT_NAME(o) = NULL;
+    MINIM_PORT_ROW(o) = 1;
+    MINIM_PORT_COL(o) = 0;
+    MINIM_PORT_POS(o) = 0;
     return o;
 }
 

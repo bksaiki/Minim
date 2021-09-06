@@ -29,6 +29,70 @@ MinimObject *minim_builtin_output_portp(MinimEnv *env, size_t argc, MinimObject 
     return to_bool(MINIM_OUTPUT_PORTP(args[0]));
 }
 
+MinimObject *minim_builtin_open_input_file(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *port;
+    MinimPath *path;
+    FILE *file;
+    char *clean_path;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        THROW(env, minim_argument_error("string?", "open-input-file", 0, args[0]));
+
+    path = (is_absolute_path(MINIM_STRING(args[0])) ?
+            build_path(1, MINIM_STRING(args[0])) :
+            build_path(2, get_working_directory(), MINIM_STRING(args[0])));
+    clean_path = extract_path(path);
+    file = fopen(clean_path, "r");
+    if (!file)
+    {
+        Buffer *bf;
+
+        init_buffer(&bf);
+        writef_buffer(bf, "Could not open file \"~s\"", clean_path);
+        THROW(env, minim_error(get_buffer(bf), NULL));
+    }
+
+    port = minim_file_port(file, MINIM_PORT_MODE_READ |
+                                 MINIM_PORT_MODE_READY |
+                                 MINIM_PORT_MODE_OPEN);
+    MINIM_PORT_NAME(port) = clean_path;
+
+    return port;
+}
+
+MinimObject *minim_builtin_open_output_file(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *port;
+    MinimPath *path;
+    FILE *file;
+    char *clean_path;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        THROW(env, minim_argument_error("string?", "open-output-file", 0, args[0]));
+
+    path = (is_absolute_path(MINIM_STRING(args[0])) ?
+            build_path(1, MINIM_STRING(args[0])) :
+            build_path(2, get_working_directory(), MINIM_STRING(args[0])));
+    clean_path = extract_path(path);
+    file = fopen(clean_path, "w");
+    if (!file)
+    {
+        Buffer *bf;
+
+        init_buffer(&bf);
+        writef_buffer(bf, "Could not open file \"~s\"", clean_path);
+        THROW(env, minim_error(get_buffer(bf), NULL));
+    }
+
+    port = minim_file_port(file, MINIM_PORT_MODE_WRITE |
+                                 MINIM_PORT_MODE_READY |
+                                 MINIM_PORT_MODE_OPEN);
+    MINIM_PORT_NAME(port) = clean_path;
+
+    return port;
+}
+
 MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
 {
     ReadTable rt;
@@ -46,8 +110,11 @@ MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
     }
 
     val = minim_values(0, NULL);
-    set_default_read_table(&rt);
-    rt.eof = '\n';
+    rt.row = MINIM_PORT_ROW(args[0]);
+    rt.col = MINIM_PORT_COL(args[0]);
+    rt.idx = MINIM_PORT_POS(args[0]);
+    rt.flags = 0x0;
+    rt.eof = (MINIM_PORT_MODE(args[0]) & MINIM_PORT_MODE_ALT_EOF) ? '\n' : EOF;
 
     if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
     {
@@ -101,7 +168,7 @@ MinimObject *minim_builtin_write(MinimEnv *env, size_t argc, MinimObject **args)
     set_default_print_params(&pp);
     if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
         print_to_port(args[0], env, &pp, MINIM_PORT_FILE(port));
-
+    
     return minim_void;
 }
 

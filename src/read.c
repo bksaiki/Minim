@@ -33,7 +33,8 @@ int minim_run(const char *str, uint32_t flags)
                                                 MINIM_PORT_MODE_READY);
     minim_input_port = minim_file_port(stdin, MINIM_PORT_MODE_READ |
                                               MINIM_PORT_MODE_OPEN |
-                                              MINIM_PORT_MODE_READY);
+                                              MINIM_PORT_MODE_READY |
+                                              MINIM_PORT_MODE_ALT_EOF);
     GC_register_root(minim_error_port);
     GC_register_root(minim_output_port);
     GC_register_root(minim_input_port);
