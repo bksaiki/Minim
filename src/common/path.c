@@ -114,7 +114,6 @@ char *extract_directory(MinimPath *path)
     char *clean_path;
     size_t len;
     
-    
     clean_path = extract_path(path);
     len = strlen(clean_path);
     for (size_t i = len - 1; i < len; --i)

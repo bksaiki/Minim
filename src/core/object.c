@@ -22,6 +22,21 @@ MinimObject *minim_error_port = NULL;
 MinimObject *minim_output_port = NULL;
 MinimObject *minim_input_port = NULL;
 
+// Destructors
+
+static void GC_minim_port_dtor(void *ptr)
+{
+    MinimObject *obj;
+    
+    obj = (MinimObject*) ptr;
+    if (MINIM_PORT_MODE(obj) & MINIM_PORT_MODE_OPEN)
+    {
+        FILE *file = MINIM_PORT_FILE(obj);
+        if (file != stdin && file != stdout && file != stderr)
+            fclose(MINIM_PORT_FILE(obj));
+    }
+}
+
 // Visible functions
 
 MinimObject *minim_exactnum(void *num)
@@ -185,7 +200,7 @@ MinimObject *minim_jmp(void *ptr, void *val)
 
 MinimObject *minim_file_port(FILE *f, uint8_t mode)
 {
-    MinimObject *o = GC_alloc(minim_port_size);
+    MinimObject *o = GC_alloc_opt(minim_port_size, GC_minim_port_dtor, NULL);
     o->type = MINIM_OBJ_PORT;
     MINIM_PORT_TYPE(o) = MINIM_PORT_TYPE_FILE;
     MINIM_PORT_MODE(o) = mode;

@@ -496,13 +496,3 @@ SyntaxNode *minim_parse_port(MinimObject *port, SyntaxNode **perr, uint8_t flags
 
     return node;
 }
-
-
-void set_default_read_table(ReadTable *table)
-{
-    table->idx = 0;
-    table->row = 1;
-    table->col = 0;
-    table->flags = 0x0;
-    table->eof = EOF;
-}

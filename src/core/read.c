@@ -1,6 +1,8 @@
 #include "../minim.h"
 #include "error.h"
 
+#define CACHE_OR_NULL(env)      ((env)->module ? (env)->module->cache : NULL)
+
 static MinimEnv *get_builtin_env(MinimEnv *env)
 {
     if (!env->parent)
@@ -9,12 +11,16 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
-MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
+static char *directory_from_port(MinimObject *port)
 {
-    PrintParams pp;
-    MinimModule *module;
-    MinimPath *path;
+    MinimPath *path = build_path(1, MINIM_PORT_NAME(port));
+    return extract_directory(path);
+}
+
+static MinimObject *open_file_port(MinimEnv *env, const char *fname)
+{
     MinimObject *port;
+    MinimPath *path;
     FILE *file;
     char *clean_path;
 
@@ -27,41 +33,48 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 
         init_buffer(&bf);
         writef_buffer(bf, "Could not open file \"~s\"", clean_path);
-        THROW(prev->env, minim_error(get_buffer(bf), NULL));
-        return NULL;
+        THROW(env, minim_error(get_buffer(bf), NULL));
     }
 
     port = minim_file_port(file, MINIM_PORT_MODE_READ |
                                  MINIM_PORT_MODE_OPEN |
                                  MINIM_PORT_MODE_READY);
     MINIM_PORT_NAME(port) = clean_path;
+    return port;
+}
 
+static MinimObject *read_error(MinimObject *port, SyntaxNode *err, const char *fname)
+{
+    MinimError *e;
+    Buffer *bf;
+
+    init_buffer(&bf);
+    writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
+
+    init_minim_error(&e, "bad syntax", err->sym);
+    init_minim_error_desc_table(&e->table, 1);
+    minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
+    return minim_err(e);
+}
+
+MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
+{
+    MinimModule *module;
+    MinimObject *port;
+
+    port = open_file_port(prev->env, fname);
     init_minim_module(&module, prev->cache);
     init_env(&module->env, get_builtin_env(prev->env), NULL);
-    module->env->current_dir = extract_directory(path);
+    module->env->current_dir = directory_from_port(port);
     module->env->module = module;
     module->cache = prev->cache;
 
-    set_default_print_params(&pp);
     while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         SyntaxNode *ast, *err;
 
         ast = minim_parse_port(port, &err, 0);
-        if (!ast)
-        {
-            MinimError *e;
-            Buffer *bf;
-
-            init_buffer(&bf);
-            writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
-
-            init_minim_error(&e, "bad syntax", err->sym);
-            init_minim_error_desc_table(&e->table, 1);
-            minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            THROW(prev->env, minim_err(e));
-        }
-
+        if (!ast) THROW(prev->env, read_error(port, err, fname));
         minim_module_add_expr(module, ast);
     }
 
@@ -71,55 +84,21 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 
 void minim_load_file(MinimEnv *env, const char *fname)
 {
-    PrintParams pp;
-    MinimPath *path;
     MinimModule *module;
     MinimObject *port;
-    FILE *file;
-    char *clean_path;
-
-    path = build_relative_path(1, fname);
-    clean_path = extract_path(path);
-    file = fopen(clean_path, "r");
-    if (!file)
-    {
-        Buffer *bf;
-
-        init_buffer(&bf);
-        writef_buffer(bf, "Could not open file \"~s\"", clean_path);
-        THROW(env, minim_error(get_buffer(bf), NULL));
-    }
-
-    port = minim_file_port(file, MINIM_PORT_MODE_READ |
-                                 MINIM_PORT_MODE_OPEN |
-                                 MINIM_PORT_MODE_READY);
-    MINIM_PORT_NAME(port) = clean_path;
-
-    init_minim_module(&module, (env->module ? env->module->cache : NULL));
+    
+    port = open_file_port(env, fname);
+    init_minim_module(&module, CACHE_OR_NULL(env));
     init_env(&module->env, get_builtin_env(env), NULL);
-    module->env->current_dir = extract_directory(path);
+    module->env->current_dir = directory_from_port(port);
     module->env->module = module;
 
-    set_default_print_params(&pp);
     while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         SyntaxNode *ast, *err;
 
         ast = minim_parse_port(port, &err, 0);
-        if (!ast)
-        {
-            MinimError *e;
-            Buffer *bf;
-
-            init_buffer(&bf);
-            writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
-
-            init_minim_error(&e, "bad syntax", err->sym);
-            init_minim_error_desc_table(&e->table, 1);
-            minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            THROW(env, minim_err(e));
-        }
-
+        if (!ast) THROW(env, read_error(port, err, fname));
         minim_module_add_expr(module, ast);
     }
 
@@ -129,41 +108,21 @@ void minim_load_file(MinimEnv *env, const char *fname)
 
 void minim_run_file(MinimEnv *env, const char *fname)
 {
-    PrintParams pp;
     MinimModule *module, *prev;
     MinimModuleCache *cache;
     MinimObject *port;
-    MinimPath *path;
-    FILE *file;
-    char *prev_dir, *clean_path;
+    char *prev_dir;
 
-    path = build_relative_path(1, fname);
-    clean_path = extract_path(path);
-    file = fopen(clean_path, "r");
-    if (!file)
-    {
-        Buffer *bf;
-
-        init_buffer(&bf);
-        writef_buffer(bf, "Could not open file \"~s\"", clean_path);
-        THROW(env, minim_error(get_buffer(bf), NULL));
-    }
-
-    port = minim_file_port(file, MINIM_PORT_MODE_READ |
-                                 MINIM_PORT_MODE_OPEN |
-                                 MINIM_PORT_MODE_READY);
-    MINIM_PORT_NAME(port) = clean_path;
-    
     prev_dir = env->current_dir;
     prev = env->module;
 
+    port = open_file_port(env, fname);
     init_minim_module_cache(&cache);
     init_minim_module(&module, cache);
     module->env = env;
-    env->current_dir = extract_directory(path);
+    env->current_dir = directory_from_port(port);
     env->module = module;
 
-    set_default_print_params(&pp);
     while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         SyntaxNode *ast, *err;
@@ -171,19 +130,9 @@ void minim_run_file(MinimEnv *env, const char *fname)
         ast = minim_parse_port(port, &err, 0);
         if (!ast)
         {
-            MinimError *e;
-            Buffer *bf;
-
-            init_buffer(&bf);
-            writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
-
-            init_minim_error(&e, "bad syntax", err->sym);
-            init_minim_error_desc_table(&e->table, 1);
-            minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-
             env->current_dir = prev_dir;
             env->module = prev;
-            THROW(env, minim_err(e));
+            THROW(env, read_error(port, err, fname));
         }
 
         minim_module_add_expr(module, ast);
