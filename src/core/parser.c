@@ -10,7 +10,7 @@
 #define closed_paren(x)     (x == ')' || x == ']' || x == '{')
 #define normal_char(x)      (x && !open_paren(x) && !closed_paren(x) && !isspace(x))
 
-#define port_eof(p)         (MINIM_PORT_MODE(p) == MINIM_PORT_MODE_ALT_EOF ? '\n' : EOF)
+#define port_eof(p)         (MINIM_PORT_MODE(p) & MINIM_PORT_MODE_ALT_EOF ? '\n' : EOF)
 #define next_ch(p)          (fgetc(MINIM_PORT_FILE(p)))
 #define put_back(p, c)      (ungetc(c, MINIM_PORT_FILE(p)))
 
@@ -197,47 +197,60 @@ static SyntaxNode *read_nested(MinimObject *port, SyntaxNode **perr, SyntaxNodeT
     init_syntax_node(&node, type);
     ADD_SYNTAX_LOC(node, port);
 
-    while (1)
+    c = next_char(port);
+    if (c == ')')
     {
-        next = read_top(port, perr, flags);
-        if (perr)   return NULL;
+        update_port(port, c);
+    }
+    else
+    {
+        put_back(port, c);
+        while (1)
+        {
+            next = read_top(port, perr, flags);
+            if (*perr)   return NULL;
 
-        if (next)
-        {
-            ++node->childc;
-            node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-            node->children[node->childc - 1] = next;
-        }
-
-        c = next_char(port);
-        if (closed_paren(c))
-        {
-            update_port(port, c);
-            break;
-        }
-        else if (c == port_eof(port))
-        {
-            if (flags & READ_FLAG_WAIT)
+            if (next)
             {
-                printf(" ");
+                ++node->childc;
+                node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                node->children[node->childc - 1] = next;
+            }
+
+            c = next_char(port);
+            if (closed_paren(c))
+            {
+                update_port(port, c);
+                break;
+            }
+            else if (c == port_eof(port))
+            {
+                if (flags & READ_FLAG_WAIT)
+                {
+                    printf(" ");
+                }
+                else
+                {
+                    *perr = end_of_input_error();
+                    break;
+                }
             }
             else
             {
-                *perr = end_of_input_error();
-                break;
+                put_back(port, c);
             }
         }
-        else
+
+        if (type == SYNTAX_NODE_LIST)
         {
-            put_back(port, c);
+            if (!expand_list(node, perr))
+                return NULL;
         }
     }
 
-    if (type == SYNTAX_NODE_LIST)
-    {
-        if (!expand_list(node, perr))
-            return NULL;
-    }
+    c = next_char(port);
+    if (c == port_eof(port))    MINIM_PORT_MODE(port) &= ~MINIM_PORT_MODE_READY;
+    else                        put_back(port, c);
 
     return node;
 }
@@ -449,37 +462,17 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
 // Exported
 //
 
-int minim_parse_port(FILE *file, const char *name,
-                     SyntaxNode **psyntax, SyntaxNode **perr,
-                     ReadTable *table)
-{
-    MinimObject *port;
-    uint8_t flags;
-
-    port = minim_file_port(file, MINIM_PORT_MODE_READ |
-                                 MINIM_PORT_MODE_READY |
-                                 MINIM_PORT_MODE_OPEN);
-
-    MINIM_PORT_ROW(port) = table->row;
-    MINIM_PORT_COL(port) = table->col;
-    MINIM_PORT_POS(port) = table->idx;
-    MINIM_PORT_MODE(port) = (table->eof == '\n' ? MINIM_PORT_MODE_ALT_EOF : 0x0);
-    MINIM_PORT_NAME(port) = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
-    strcpy(MINIM_PORT_NAME(port), name);
-
-    flags = ((table->flags & READ_TABLE_FLAG_WAIT) ? READ_FLAG_WAIT : 0x0);
-    *psyntax = minim_parse_port2(port, perr, flags);
-    if (perr)   return 1;
-    else        return 0;
-}
-
-SyntaxNode *minim_parse_port2(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+SyntaxNode *minim_parse_port(MinimObject *port, SyntaxNode **perr, uint8_t flags)
 {
     SyntaxNode *node;
 
     *perr = NULL;
     node = read_top(port, perr, flags);
-    if (!node && !perr)
+    if (*perr)
+    {
+        return NULL;
+    }
+    else if (!node)
     {
         Buffer *bf;
         char c;
@@ -512,29 +505,4 @@ void set_default_read_table(ReadTable *table)
     table->col = 0;
     table->flags = 0x0;
     table->eof = EOF;
-}
-
-int parse_str(const char* str, SyntaxNode** psyntax)
-{
-    ReadTable rt;
-    SyntaxNode *err;
-    FILE *tmp;
-    int status;
-
-    rt.idx = 0;
-    rt.row = 1;
-    rt.col = 0;
-    rt.eof = EOF;
-    rt.flags = 0x0;
-
-    tmp = tmpfile();
-    fputs(str, tmp);
-    rewind(tmp);
-    
-    status = minim_parse_port(tmp, "test", psyntax, &err, &rt);
-    if (rt.flags & READ_TABLE_FLAG_BAD)
-        *psyntax = err;
-
-    fclose(tmp);
-    return status;
 }

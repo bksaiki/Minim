@@ -95,7 +95,6 @@ MinimObject *minim_builtin_open_output_file(MinimEnv *env, size_t argc, MinimObj
 
 MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    ReadTable rt;
     MinimObject *port, *val;
 
     if (argc == 0)
@@ -110,31 +109,26 @@ MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
     }
 
     val = minim_values(0, NULL);
-    rt.row = MINIM_PORT_ROW(args[0]);
-    rt.col = MINIM_PORT_COL(args[0]);
-    rt.idx = MINIM_PORT_POS(args[0]);
-    rt.flags = 0x0;
-    rt.eof = (MINIM_PORT_MODE(args[0]) & MINIM_PORT_MODE_ALT_EOF) ? '\n' : EOF;
-
     if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
     {
-        while(~rt.flags & READ_TABLE_FLAG_EOF)
+        while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
             SyntaxNode *stx, *err;
             
-            minim_parse_port(MINIM_PORT_FILE(port), "read", &stx, &err, &rt);
-            if (!stx || rt.flags & READ_TABLE_FLAG_BAD)
+            stx = minim_parse_port(port, &err, 0);
+            if (!stx)
             {
                 MinimError *e;
                 Buffer *bf;
 
                 init_buffer(&bf);
-                writef_buffer(bf, "~s:~u:~u", "read", rt.row, rt.col);
+                writef_buffer(bf, "~s:~u:~u", MINIM_PORT_NAME(port),
+                                              MINIM_PORT_ROW(port),
+                                              MINIM_PORT_COL(port));
 
                 init_minim_error(&e, "bad syntax", err->sym);
                 init_minim_error_desc_table(&e->table, 1);
                 minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-
                 THROW(env, minim_err(e));
             }
 
@@ -144,9 +138,7 @@ MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
         }
     }
 
-    return (MINIM_VALUES_SIZE(val) == 1 ?
-            MINIM_VALUES_REF(val, 0) :
-            val);
+    return (MINIM_VALUES_SIZE(val) == 1 ? MINIM_VALUES_REF(val, 0) : val);
 }
 
 MinimObject *minim_builtin_write(MinimEnv *env, size_t argc, MinimObject **args)

@@ -44,7 +44,6 @@ int minim_repl(char **argv, uint32_t flags)
     MinimModuleCache *imports;
     MinimObject *exit_handler, *err_handler;
     jmp_buf *exit_buf, *error_buf;
-    uint8_t last_readf;
 
     printf("Minim v%s \n", MINIM_VERSION_STR);
     fflush(stdout);
@@ -71,10 +70,13 @@ int minim_repl(char **argv, uint32_t flags)
                                               MINIM_PORT_MODE_OPEN |
                                               MINIM_PORT_MODE_READY |
                                               MINIM_PORT_MODE_ALT_EOF);
+
+    MINIM_PORT_NAME(minim_input_port) = "REPL";
     GC_register_root(minim_error_port);
     GC_register_root(minim_output_port);
     GC_register_root(minim_input_port);
 
+    // Set up handlers
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);
@@ -98,42 +100,32 @@ int minim_repl(char **argv, uint32_t flags)
         setjmp(top_of_repl);
         signal(SIGINT, int_handler);
 
-        last_readf = READ_TABLE_FLAG_EOF;
+        // enter REPL
         while (1)
         {   
-            ReadTable rt;
-            SyntaxNode *ast, *err;
             MinimObject *obj;
+            SyntaxNode *ast, *err;
 
-            rt.idx = 0;
-            rt.row = 1;
-            rt.col = 0;
-            rt.eof = '\n';
-            rt.flags = READ_TABLE_FLAG_WAIT | last_readf;
-
-            if (rt.flags & READ_TABLE_FLAG_EOF)
+            // get user input
+            while (1)
             {
                 printf("> ");
                 fflush(stdout);
-                rt.flags ^= READ_TABLE_FLAG_EOF;
-            }
-            
-            if (minim_parse_port(stdin, "repl", &ast, &err, &rt))
-            {
-                if (rt.flags & READ_TABLE_FLAG_BAD)
-                    ast = err;
 
-                if (ast)
+                ast = minim_parse_port(minim_input_port, &err, READ_FLAG_WAIT);
+                if (err)
                 {
-                    printf("; bad syntax: %s\n", ast->sym);
+                    printf("; bad syntax: %s\n", err->sym);
+                    printf(";   in REPL:%zu:%zu", MINIM_PORT_ROW(minim_input_port),
+                                                  MINIM_PORT_COL(minim_input_port));
                     fflush(stdout);
+                    continue;
                 }
-                
-                last_readf = rt.flags & READ_TABLE_FLAG_EOF;
-                continue;
+
+                break;
             }
 
-            last_readf = rt.flags;
+            MINIM_PORT_MODE(minim_input_port) |= MINIM_PORT_MODE_READY;
             err_handler = minim_jmp(error_buf, NULL);
             if (setjmp(*error_buf) == 0)
             {

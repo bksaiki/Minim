@@ -170,10 +170,10 @@ extern MinimObject *minim_input_port;
 
 #define MINIM_PORT_TYPE_FILE        0
 
-#define MINIM_PORT_MODE_WRITE       0x1         // port open for writing
-#define MINIM_PORT_MODE_READ        0x2         // port open for reading
-#define MINIM_PORT_MODE_OPEN        0x4         // port is open
-#define MINIM_PORT_MODE_READY       0x8         // port is ready
+#define MINIM_PORT_MODE_WRITE       0x01        // port open for writing
+#define MINIM_PORT_MODE_READ        0x02        // port open for reading
+#define MINIM_PORT_MODE_OPEN        0x04        // port is open
+#define MINIM_PORT_MODE_READY       0x08        // port is ready
 #define MINIM_PORT_MODE_ALT_EOF     0xF0        // EOF will close program and '\n' acts as EOF
 
 // Additional predicates

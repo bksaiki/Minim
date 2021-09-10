@@ -17,18 +17,9 @@ struct ReadTable
     char eof;
 } typedef ReadTable;
 
-int minim_parse_port(FILE *file,
-                     const char *name,
-                     SyntaxNode **psyntax,
-                     SyntaxNode **perr,
-                     ReadTable *table);
-
-SyntaxNode *minim_parse_port2(MinimObject *port, SyntaxNode **perr, uint8_t flags);
+SyntaxNode *minim_parse_port(MinimObject *port, SyntaxNode **perr, uint8_t flags);
 
 // Set read table
 void set_default_read_table(ReadTable *table);
-
-// Parses a single expression
-int parse_str(const char* str, SyntaxNode** psyntax);
 
 #endif

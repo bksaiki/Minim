@@ -12,9 +12,9 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
 MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 {
     PrintParams pp;
-    ReadTable rt;
     MinimModule *module;
     MinimPath *path;
+    MinimObject *port;
     FILE *file;
     char *clean_path;
 
@@ -31,11 +31,10 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
         return NULL;
     }
 
-    rt.idx = 0;
-    rt.row = 1;
-    rt.col = 0;
-    rt.flags = 0x0;
-    rt.eof = EOF;
+    port = minim_file_port(file, MINIM_PORT_MODE_READ |
+                                 MINIM_PORT_MODE_OPEN |
+                                 MINIM_PORT_MODE_READY);
+    MINIM_PORT_NAME(port) = clean_path;
 
     init_minim_module(&module, prev->cache);
     init_env(&module->env, get_builtin_env(prev->env), NULL);
@@ -44,31 +43,28 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     module->cache = prev->cache;
 
     set_default_print_params(&pp);
-    while (~rt.flags & READ_TABLE_FLAG_EOF)
+    while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         SyntaxNode *ast, *err;
 
-        minim_parse_port(file, fname, &ast, &err, &rt);
-        if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+        ast = minim_parse_port(port, &err, 0);
+        if (!ast)
         {
             MinimError *e;
             Buffer *bf;
 
             init_buffer(&bf);
-            writef_buffer(bf, "~s:~u:~u", fname, rt.row, rt.col);
+            writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
 
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            fclose(file);
-            
             THROW(prev->env, minim_err(e));
         }
 
         minim_module_add_expr(module, ast);
     }
 
-    fclose(file);
     minim_module_expand(module);
     return module;
 }
@@ -76,9 +72,9 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 void minim_load_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
-    ReadTable rt;
     MinimPath *path;
     MinimModule *module;
+    MinimObject *port;
     FILE *file;
     char *clean_path;
 
@@ -94,11 +90,10 @@ void minim_load_file(MinimEnv *env, const char *fname)
         THROW(env, minim_error(get_buffer(bf), NULL));
     }
 
-    rt.idx = 0;
-    rt.row = 1;
-    rt.col = 0;
-    rt.flags = 0x0;
-    rt.eof = EOF;
+    port = minim_file_port(file, MINIM_PORT_MODE_READ |
+                                 MINIM_PORT_MODE_OPEN |
+                                 MINIM_PORT_MODE_READY);
+    MINIM_PORT_NAME(port) = clean_path;
 
     init_minim_module(&module, (env->module ? env->module->cache : NULL));
     init_env(&module->env, get_builtin_env(env), NULL);
@@ -106,31 +101,28 @@ void minim_load_file(MinimEnv *env, const char *fname)
     module->env->module = module;
 
     set_default_print_params(&pp);
-    while (~rt.flags & READ_TABLE_FLAG_EOF)
+    while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         SyntaxNode *ast, *err;
 
-        minim_parse_port(file, fname, &ast, &err, &rt);
-        if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+        ast = minim_parse_port(port, &err, 0);
+        if (!ast)
         {
             MinimError *e;
             Buffer *bf;
 
             init_buffer(&bf);
-            writef_buffer(bf, "~s:~u:~u", fname, rt.row, rt.col);
+            writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
 
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-            fclose(file);
-
             THROW(env, minim_err(e));
         }
 
         minim_module_add_expr(module, ast);
     }
 
-    fclose(file);
     minim_module_expand(module);
     eval_module(module);
 }
@@ -138,9 +130,9 @@ void minim_load_file(MinimEnv *env, const char *fname)
 void minim_run_file(MinimEnv *env, const char *fname)
 {
     PrintParams pp;
-    ReadTable rt;
     MinimModule *module, *prev;
     MinimModuleCache *cache;
+    MinimObject *port;
     MinimPath *path;
     FILE *file;
     char *prev_dir, *clean_path;
@@ -157,12 +149,11 @@ void minim_run_file(MinimEnv *env, const char *fname)
         THROW(env, minim_error(get_buffer(bf), NULL));
     }
 
-    rt.idx = 0;
-    rt.row = 1;
-    rt.col = 0;
-    rt.flags = 0x0;
-    rt.eof = EOF;
-
+    port = minim_file_port(file, MINIM_PORT_MODE_READ |
+                                 MINIM_PORT_MODE_OPEN |
+                                 MINIM_PORT_MODE_READY);
+    MINIM_PORT_NAME(port) = clean_path;
+    
     prev_dir = env->current_dir;
     prev = env->module;
 
@@ -173,24 +164,23 @@ void minim_run_file(MinimEnv *env, const char *fname)
     env->module = module;
 
     set_default_print_params(&pp);
-    while (~rt.flags & READ_TABLE_FLAG_EOF)
+    while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         SyntaxNode *ast, *err;
-
-        minim_parse_port(file, fname, &ast, &err, &rt);
-        if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+        
+        ast = minim_parse_port(port, &err, 0);
+        if (!ast)
         {
             MinimError *e;
             Buffer *bf;
 
             init_buffer(&bf);
-            writef_buffer(bf, "~s:~u:~u", fname, rt.row, rt.col);
+            writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
 
             init_minim_error(&e, "bad syntax", err->sym);
             init_minim_error_desc_table(&e->table, 1);
             minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
 
-            fclose(file);
             env->current_dir = prev_dir;
             env->module = prev;
             THROW(env, minim_err(e));
@@ -199,7 +189,6 @@ void minim_run_file(MinimEnv *env, const char *fname)
         minim_module_add_expr(module, ast);
     }
 
-    fclose(file);
     minim_module_expand(module);
     eval_module(module);
 
