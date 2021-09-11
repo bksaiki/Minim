@@ -19,7 +19,7 @@ static MinimObject *open_file(MinimEnv *env, const char *fname, uint8_t mode)
             build_path(1, fname) :
             build_path(2, get_working_directory(), fname));
     clean_path = extract_path(path);
-    file = fopen(clean_path, "r");
+    file = fopen(clean_path, ((mode & MINIM_PORT_MODE_READ) ? "r" : "w"));
     if (!file)
     {
         Buffer *bf;
@@ -111,6 +111,56 @@ MinimObject *minim_builtin_call_with_output_file(MinimEnv *env, size_t argc, Min
 
     port = open_file(env, MINIM_STRING(args[0]), MINIM_PORT_MODE_WRITE);
     val = eval_lambda(MINIM_CLOSURE(args[1]), NULL, 1, &port);
+    close_port(port);
+    return val;
+}
+
+MinimObject *minim_builtin_with_input_from_file(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimArity arity;
+    MinimObject *port, *val, *prev;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        THROW(env, minim_argument_error("string?", "with-input-to-file", 0, args[0]));
+
+    if (!MINIM_OBJ_CLOSUREP(args[1]))
+        THROW(env, minim_argument_error("procedure of 0 argument", "with-input-to-file", 0, args[1]));
+
+    minim_get_lambda_arity(MINIM_CLOSURE(args[1]), &arity);
+    if (arity.low != 0 || arity.high != 0)
+        THROW(env, minim_argument_error("procedure of 0 argument", "with-input-to-file", 0, args[1]));
+
+    port = open_file(env, MINIM_STRING(args[0]), MINIM_PORT_MODE_READ);
+    prev = minim_input_port;
+    minim_input_port = port;
+    val = eval_lambda(MINIM_CLOSURE(args[1]), NULL, 1, &port);
+
+    minim_input_port = prev;
+    close_port(port);
+    return val;
+}
+
+MinimObject *minim_builtin_with_output_from_file(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimArity arity;
+    MinimObject *port, *val, *prev;
+
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        THROW(env, minim_argument_error("string?", "with-output-to-file", 0, args[0]));
+
+    if (!MINIM_OBJ_CLOSUREP(args[1]))
+        THROW(env, minim_argument_error("procedure of 0 argument", "with-output-to-file", 0, args[1]));
+
+    minim_get_lambda_arity(MINIM_CLOSURE(args[1]), &arity);
+    if (arity.low != 0 || arity.high != 0)
+        THROW(env, minim_argument_error("procedure of 0 argument", "with-output-to-file", 0, args[1]));
+
+    port = open_file(env, MINIM_STRING(args[0]), MINIM_PORT_MODE_WRITE);
+    prev = minim_output_port;
+    minim_output_port = port;
+    val = eval_lambda(MINIM_CLOSURE(args[1]), NULL, 0, NULL);
+
+    minim_output_port = prev;
     close_port(port);
     return val;
 }
@@ -220,6 +270,30 @@ MinimObject *minim_builtin_write(MinimEnv *env, size_t argc, MinimObject **args)
     return minim_void;
 }
 
+MinimObject *minim_builtin_display(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    PrintParams pp;
+    MinimObject *port;
+
+    if (argc == 1)
+    {
+        port = minim_output_port;
+    }
+    else    // argc == 2
+    {
+        if (!MINIM_OUTPUT_PORTP(args[1]))
+            THROW(env, minim_argument_error("output port?", "write", 1, args[1]));       
+        port = args[1];
+    }
+
+    set_default_print_params(&pp);
+    pp.display = true;
+    if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
+        print_to_port(args[0], env, &pp, MINIM_PORT_FILE(port));
+    
+    return minim_void;
+}
+
 MinimObject *minim_builtin_newline(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *port;
@@ -237,6 +311,33 @@ MinimObject *minim_builtin_newline(MinimEnv *env, size_t argc, MinimObject **arg
 
     if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
         fprintf(MINIM_PORT_FILE(port), "\n");
+
+    return minim_void;
+}
+
+MinimObject *minim_builtin_write_char(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    PrintParams pp;
+    MinimObject *port;
+
+    if (!MINIM_OBJ_CHARP(args[0]))
+        THROW(env, minim_argument_error("char?", "write-char", 0, args[0]));
+
+    if (argc == 1)
+    {
+        port = minim_output_port;
+    }
+    else    // argc == 2
+    {
+        if (!MINIM_OUTPUT_PORTP(args[1]))
+            THROW(env, minim_argument_error("output port?", "write-char", 1, args[1]));       
+        port = args[1];
+    }
+
+    set_default_print_params(&pp);
+    pp.display = true;
+    if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
+        print_to_port(args[0], env, &pp, MINIM_PORT_FILE(port));
 
     return minim_void;
 }

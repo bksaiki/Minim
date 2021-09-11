@@ -58,7 +58,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_CHARP(obj))
     {
-        writes_buffer(bf, "#\\");
+        if (!pp->display)   writes_buffer(bf, "#\\");
         writec_buffer(bf, MINIM_CHAR(obj));
     }
     else if (MINIM_OBJ_EXACTP(obj))

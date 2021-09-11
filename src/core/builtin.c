@@ -277,6 +277,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "current-output-port", MINIM_OBJ_FUNC, minim_builtin_current_output_port);
     minim_load_builtin(env, "call-with-input-file", MINIM_OBJ_FUNC, minim_builtin_call_with_input_file);
     minim_load_builtin(env, "call-with-output-file", MINIM_OBJ_FUNC, minim_builtin_call_with_output_file);
+    minim_load_builtin(env, "with-input-from-file", MINIM_OBJ_FUNC, minim_builtin_with_input_from_file);
+    minim_load_builtin(env, "with-output-from-file", MINIM_OBJ_FUNC, minim_builtin_with_output_from_file);
     minim_load_builtin(env, "port?", MINIM_OBJ_FUNC, minim_builtin_portp);
     minim_load_builtin(env, "input-port?", MINIM_OBJ_FUNC, minim_builtin_input_portp);
     minim_load_builtin(env, "output-port?", MINIM_OBJ_FUNC, minim_builtin_output_portp);
@@ -287,5 +289,7 @@ void minim_load_builtins(MinimEnv *env)
 
     minim_load_builtin(env, "read", MINIM_OBJ_FUNC, minim_builtin_read);
     minim_load_builtin(env, "write", MINIM_OBJ_FUNC, minim_builtin_write);
+    minim_load_builtin(env, "display", MINIM_OBJ_FUNC, minim_builtin_display);
     minim_load_builtin(env, "newline", MINIM_OBJ_FUNC, minim_builtin_newline);
+    minim_load_builtin(env, "write-char", MINIM_OBJ_FUNC, minim_builtin_write_char);
 }
