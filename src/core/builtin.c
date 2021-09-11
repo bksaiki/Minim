@@ -275,11 +275,15 @@ void minim_load_builtins(MinimEnv *env)
     // Port
     minim_load_builtin(env, "current-input-port", MINIM_OBJ_FUNC, minim_builtin_current_input_port);
     minim_load_builtin(env, "current-output-port", MINIM_OBJ_FUNC, minim_builtin_current_output_port);
+    minim_load_builtin(env, "call-with-input-file", MINIM_OBJ_FUNC, minim_builtin_call_with_input_file);
+    minim_load_builtin(env, "call-with-output-file", MINIM_OBJ_FUNC, minim_builtin_call_with_output_file);
     minim_load_builtin(env, "port?", MINIM_OBJ_FUNC, minim_builtin_portp);
     minim_load_builtin(env, "input-port?", MINIM_OBJ_FUNC, minim_builtin_input_portp);
     minim_load_builtin(env, "output-port?", MINIM_OBJ_FUNC, minim_builtin_output_portp);
-    minim_load_builtin(env, "open-input-port", MINIM_OBJ_FUNC, minim_builtin_open_input_file);
-    minim_load_builtin(env, "open-output-port", MINIM_OBJ_FUNC, minim_builtin_open_output_file);
+    minim_load_builtin(env, "open-input-file", MINIM_OBJ_FUNC, minim_builtin_open_input_file);
+    minim_load_builtin(env, "open-output-file", MINIM_OBJ_FUNC, minim_builtin_open_output_file);
+    minim_load_builtin(env, "close-input-port", MINIM_OBJ_FUNC, minim_builtin_close_input_port);
+    minim_load_builtin(env, "close-output-port", MINIM_OBJ_FUNC, minim_builtin_close_output_port);
 
     minim_load_builtin(env, "read", MINIM_OBJ_FUNC, minim_builtin_read);
     minim_load_builtin(env, "write", MINIM_OBJ_FUNC, minim_builtin_write);
