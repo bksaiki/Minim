@@ -594,7 +594,6 @@ char *eval_string(char *str, size_t len)
                 const char *msg = "parsing failed";
                 char *out = GC_alloc_atomic((strlen(msg) + 1) * sizeof(char));
                 strcpy(out, msg);
-                fclose(tmp);
                 return out;
             }
 
@@ -606,13 +605,11 @@ char *eval_string(char *str, size_t len)
         obj = MINIM_JUMP_VAL(exit_handler);
         if (MINIM_OBJ_ERRORP(obj))
         {
-            fclose(tmp);
             print_minim_object(obj, env, &pp);
             printf("\n");
             return NULL;
         }
     }
 
-    fclose(tmp);
     return print_to_string(obj, env, &pp);
 }

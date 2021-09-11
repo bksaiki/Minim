@@ -29,10 +29,10 @@ static void GC_minim_port_dtor(void *ptr)
     MinimObject *obj;
     
     obj = (MinimObject*) ptr;
-    if (MINIM_PORT_MODE(obj) & MINIM_PORT_MODE_OPEN)
+    if ((MINIM_PORT_MODE(obj) & MINIM_PORT_MODE_OPEN) &&
+        !(MINIM_PORT_MODE(obj) & MINIM_PORT_MODE_NO_FREE))
     {
-        FILE *file = MINIM_PORT_FILE(obj);
-        if (file != stdin && file != stdout && file != stderr)
+        if (MINIM_PORT_TYPE(obj) == MINIM_PORT_TYPE_FILE)
             fclose(MINIM_PORT_FILE(obj));
     }
 }
