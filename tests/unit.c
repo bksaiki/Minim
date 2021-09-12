@@ -613,6 +613,22 @@ int main()
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
 
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(current-input-port)",                     "<port>",
+            "(current-output-port)",                    "<port>",
+            "(input-port? (current-input-port))",       "#t",
+            "(output-port? (current-output-port))",     "#t",
+            "(eof? eof)",                               "#t"
+        };
+
+        printf("Testing port procedures\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
     GC_finalize();
 
     return (int)(!status);
