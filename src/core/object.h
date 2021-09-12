@@ -7,6 +7,7 @@
 
 #define PTR(x, offset)  (((intptr_t) (x)) + offset)
 #define VOID_PTR(x)     ((void*)((intptr_t) (x)))
+#define PTR_SIZE        (sizeof(void*))
 
 // Forward declaration
 typedef struct MinimEnv MinimEnv;
@@ -39,7 +40,8 @@ typedef enum MinimObjectType
     MINIM_OBJ_PROMISE,
     MINIM_OBJ_VALUES,
     MINIM_OBJ_CHAR,
-    MINIM_OBJ_JUMP
+    MINIM_OBJ_JUMP,
+    MINIM_OBJ_PORT
 } MinimObjectType;
 
 #define minim_exactnum_size         (2 * sizeof(void*))
@@ -59,9 +61,10 @@ typedef enum MinimObjectType
 #define minim_sequence_size         (2 * sizeof(void*))
 #define minim_values_size           (3 * sizeof(void*))
 #define minim_error_size            (2 * sizeof(void*))
-#define minim_char_size             (1 + 1 * sizeof(int))
+#define minim_char_size             (2 * sizeof(int))
 #define minim_exit_size             (2 * sizeof(void*))
 #define minim_jump_size             (3 * sizeof(void*))
+#define minim_port_size             (7 * sizeof(void*))
 
 // Special objects
 
@@ -69,11 +72,15 @@ typedef enum MinimObjectType
 #define minim_true      ((MinimObject*) 0x10)
 #define minim_false     ((MinimObject*) 0x18)
 #define minim_null      ((MinimObject*) 0x20)
+#define minim_eof      ((MinimObject*) 0x28)
 
 extern MinimObject *minim_error_handler;
 extern MinimObject *minim_exit_handler;
+extern MinimObject *minim_error_port;
+extern MinimObject *minim_output_port;
+extern MinimObject *minim_input_port;
 
-// Predicates 
+// Predicates
 
 #define MINIM_OBJ_SAME_TYPE(obj, t)     ((((uintptr_t) obj) & ~0xFF) && ((obj)->type == t))
 #define MINIM_OBJ_TYPE_EQP(a, b)        ((((uintptr_t) a) & ~0xFF) && (((uintptr_t) b) & ~0xFF)&& ((a)->type == (b)->type))
@@ -83,6 +90,7 @@ extern MinimObject *minim_exit_handler;
 #define minim_falsep(x)             ((x) == minim_false)
 #define minim_booleanp(x)           (minim_truep(x) || minim_falsep(x))
 #define minim_nullp(x)              ((x) == minim_null)
+#define minim_eofp(x)               ((x) == minim_eof)
 
 #define MINIM_OBJ_EXACTP(obj)       MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXACT)
 #define MINIM_OBJ_INEXACTP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_INEXACT)
@@ -103,40 +111,48 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_OBJ_VALUESP(obj)      MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VALUES)
 #define MINIM_OBJ_CHARP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_CHAR)
 #define MINIM_OBJ_JUMPP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_JUMP)
+#define MINIM_OBJ_PORTP(obj)        MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PORT)
 
 #define MINIM_OBJ_NUMBERP(obj)      (MINIM_OBJ_EXACTP(obj) || MINIM_OBJ_INEXACTP(obj))
 #define MINIM_OBJ_FUNCP(obj)        (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_CLOSUREP(obj) || MINIM_OBJ_JUMPP(obj))
 
 // Accessors 
 
-#define MINIM_EXACTNUM(obj)         (*((mpq_ptr*) VOID_PTR(PTR(obj, 8))))
-#define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, 8))))
-#define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
-#define MINIM_VECTOR(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
-#define MINIM_VECTOR_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, 8))))[i])
-#define MINIM_VECTOR_LEN(obj)       (*((size_t*) VOID_PTR(PTR(obj, 16))))
-#define MINIM_HASH_TABLE(obj)       (*((MinimHash**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_PROMISE_VAL(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_PROMISE_ENV(obj)      (*((MinimEnv**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_EXACTNUM(obj)         (*((mpq_ptr*) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
+#define MINIM_VECTOR(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_VECTOR_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))[i])
+#define MINIM_VECTOR_LEN(obj)       (*((size_t*) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
+#define MINIM_HASH_TABLE(obj)       (*((MinimHash**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_PROMISE_VAL(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_PROMISE_ENV(obj)      (*((MinimEnv**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
 #define MINIM_PROMISE_STATE(obj)    (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
-#define MINIM_BUILTIN(obj)          (*((MinimBuiltin*) VOID_PTR(PTR(obj, 8))))
-#define MINIM_SYNTAX(obj)           (*((MinimBuiltin*) VOID_PTR(PTR(obj, 8))))
-#define MINIM_CLOSURE(obj)          (*((MinimLambda**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_TAIL_CALL(obj)        (*((MinimTailCall**) VOID_PTR(PTR(obj, 8))))
+#define MINIM_BUILTIN(obj)          (*((MinimBuiltin*) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_SYNTAX(obj)           (*((MinimBuiltin*) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_CLOSURE(obj)          (*((MinimLambda**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_TAIL_CALL(obj)        (*((MinimTailCall**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_TRANSFORM_TYPE(obj)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
-#define MINIM_TRANSFORMER(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
-#define MINIM_AST(obj)              (*((SyntaxNode**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_SEQUENCE(obj)         (*((MinimSeq**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_VALUES(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, 8))))
-#define MINIM_VALUES_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, 8))))[i])
-#define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 16))))
-#define MINIM_ERROR(obj)            (*((MinimError**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_CHAR(obj)             (*((unsigned int*) VOID_PTR(PTR(obj, 4))))
-#define MINIM_JUMP_BUF(obj)         (*((jmp_buf**) VOID_PTR(PTR(obj, 8))))
-#define MINIM_JUMP_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 16))))
+#define MINIM_TRANSFORMER(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
+#define MINIM_AST(obj)              (*((SyntaxNode**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_SEQUENCE(obj)         (*((MinimSeq**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_VALUES(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_VALUES_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))[i])
+#define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
+#define MINIM_ERROR(obj)            (*((MinimError**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_CHAR(obj)             (*((unsigned int*) VOID_PTR(PTR(obj, sizeof(int)))))
+#define MINIM_JUMP_BUF(obj)         (*((jmp_buf**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_JUMP_VAL(obj)         (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
+#define MINIM_PORT_TYPE(obj)        (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
+#define MINIM_PORT_MODE(obj)        (*((uint8_t*) VOID_PTR(PTR(obj, 2))))
+#define MINIM_PORT_FILE(obj)        (*((FILE**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_PORT_NAME(obj)        (*((char**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
+#define MINIM_PORT_ROW(obj)         (*((size_t*) VOID_PTR(PTR(obj, 3 * PTR_SIZE))))
+#define MINIM_PORT_COL(obj)         (*((size_t*) VOID_PTR(PTR(obj, 4 * PTR_SIZE))))
+#define MINIM_PORT_POS(obj)         (*((size_t*) VOID_PTR(PTR(obj, 5 * PTR_SIZE))))
 
 // Compound accessors
 
@@ -154,6 +170,20 @@ extern MinimObject *minim_exit_handler;
 #define MINIM_TRANSFORM_MACRO       0
 #define MINIM_TRANSFORM_PATTERN     1
 #define MINIM_TRANSFORM_UNKNOWN     2
+
+#define MINIM_PORT_TYPE_FILE        0
+
+#define MINIM_PORT_MODE_WRITE       0x01        // port open for writing
+#define MINIM_PORT_MODE_READ        0x02        // port open for reading
+#define MINIM_PORT_MODE_OPEN        0x04        // port is open
+#define MINIM_PORT_MODE_READY       0x08        // port is ready
+#define MINIM_PORT_MODE_ALT_EOF     0x10        // EOF will close program and '\n' acts as EOF
+#define MINIM_PORT_MODE_NO_FREE     0x20        // GC will not run destructor on port
+
+// Additional predicates
+
+#define MINIM_INPUT_PORTP(x)        (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_READ))
+#define MINIM_OUTPUT_PORTP(x)       (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_WRITE))
 
 //  Initialization
 
@@ -176,6 +206,7 @@ MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);
 MinimObject *minim_char(unsigned int ch);
 MinimObject *minim_jmp(void *ptr, void *val);
+MinimObject *minim_file_port(FILE *f, uint8_t mode);
 
 //  Equivalence
 

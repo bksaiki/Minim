@@ -56,9 +56,13 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (!pp->quote)  writec_buffer(bf, '\'');
         writes_buffer(bf, "()");
     }
+    else if (minim_eofp(obj))
+    {
+        writes_buffer(bf, "<eof>");
+    }
     else if (MINIM_OBJ_CHARP(obj))
     {
-        writes_buffer(bf, "#\\");
+        if (!pp->display)   writes_buffer(bf, "#\\");
         writec_buffer(bf, MINIM_CHAR(obj));
     }
     else if (MINIM_OBJ_EXACTP(obj))
@@ -287,6 +291,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
             writec_buffer(bf, '\n');
             print_object(MINIM_VALUES_REF(obj, i), env, bf, pp);
         }
+    }
+    else if (MINIM_OBJ_PORTP(obj))
+    {
+        writes_buffer(bf, "<port>");
     }
     else
     {

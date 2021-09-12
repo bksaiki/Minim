@@ -271,4 +271,32 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "delay", MINIM_OBJ_SYNTAX, minim_builtin_delay);
     minim_load_builtin(env, "force", MINIM_OBJ_FUNC, minim_builtin_force);
     minim_load_builtin(env, "promise?", MINIM_OBJ_FUNC, minim_builtin_promisep);
+
+    // Port
+    minim_load_builtin(env, "current-input-port", MINIM_OBJ_FUNC, minim_builtin_current_input_port);
+    minim_load_builtin(env, "current-output-port", MINIM_OBJ_FUNC, minim_builtin_current_output_port);
+    minim_load_builtin(env, "call-with-input-file", MINIM_OBJ_FUNC, minim_builtin_call_with_input_file);
+    minim_load_builtin(env, "call-with-output-file", MINIM_OBJ_FUNC, minim_builtin_call_with_output_file);
+    minim_load_builtin(env, "with-input-from-file", MINIM_OBJ_FUNC, minim_builtin_with_input_from_file);
+    minim_load_builtin(env, "with-output-from-file", MINIM_OBJ_FUNC, minim_builtin_with_output_from_file);
+    minim_load_builtin(env, "port?", MINIM_OBJ_FUNC, minim_builtin_portp);
+    minim_load_builtin(env, "input-port?", MINIM_OBJ_FUNC, minim_builtin_input_portp);
+    minim_load_builtin(env, "output-port?", MINIM_OBJ_FUNC, minim_builtin_output_portp);
+    minim_load_builtin(env, "open-input-file", MINIM_OBJ_FUNC, minim_builtin_open_input_file);
+    minim_load_builtin(env, "open-output-file", MINIM_OBJ_FUNC, minim_builtin_open_output_file);
+    minim_load_builtin(env, "close-input-port", MINIM_OBJ_FUNC, minim_builtin_close_input_port);
+    minim_load_builtin(env, "close-output-port", MINIM_OBJ_FUNC, minim_builtin_close_output_port);
+
+    minim_load_builtin(env, "read", MINIM_OBJ_FUNC, minim_builtin_read);
+    minim_load_builtin(env, "read-char", MINIM_OBJ_FUNC, minim_builtin_read_char);
+    minim_load_builtin(env, "peek-char", MINIM_OBJ_FUNC, minim_builtin_peek_char);
+    minim_load_builtin(env, "char-ready?", MINIM_OBJ_FUNC, minim_builtin_char_readyp);
+
+    minim_load_builtin(env, "write", MINIM_OBJ_FUNC, minim_builtin_write);
+    minim_load_builtin(env, "display", MINIM_OBJ_FUNC, minim_builtin_display);
+    minim_load_builtin(env, "newline", MINIM_OBJ_FUNC, minim_builtin_newline);
+    minim_load_builtin(env, "write-char", MINIM_OBJ_FUNC, minim_builtin_write_char);
+
+    env_intern_sym(env, "eof", minim_eof);
+    minim_load_builtin(env, "eof?", MINIM_OBJ_FUNC, minim_builtin_eofp);
 }

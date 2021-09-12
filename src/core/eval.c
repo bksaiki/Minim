@@ -562,28 +562,41 @@ MinimObject *unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast)
 char *eval_string(char *str, size_t len)
 {
     PrintParams pp;
-    ReadTable rt;
-    SyntaxNode *ast, *err;
-    MinimObject *obj, *exit_handler;
     MinimEnv *env;
+    MinimObject *obj, *exit_handler, *port;
+    SyntaxNode *ast, *err;
     jmp_buf *exit_buf;
     FILE *tmp;
-    char *out;
-
-    init_env(&env, NULL, NULL);
-    minim_load_builtins(env);
-    set_default_print_params(&pp);
 
     tmp = tmpfile();
     fputs(str, tmp);
     rewind(tmp);
 
-    rt.idx = 0;
-    rt.row = 1;
-    rt.col = 0;
-    rt.flags = 0x0;
-    rt.eof = EOF;
+    port = minim_file_port(tmp, MINIM_PORT_MODE_READ |
+                                MINIM_PORT_MODE_READY |
+                                MINIM_PORT_MODE_OPEN);
+    MINIM_PORT_NAME(port) = "string";
 
+    // set up ports
+    minim_error_port = minim_file_port(stderr, MINIM_PORT_MODE_WRITE |
+                                               MINIM_PORT_MODE_OPEN |
+                                               MINIM_PORT_MODE_READY);
+    minim_output_port = minim_file_port(stdout, MINIM_PORT_MODE_WRITE |
+                                                MINIM_PORT_MODE_OPEN |
+                                                MINIM_PORT_MODE_READY);
+    minim_input_port = minim_file_port(stdin, MINIM_PORT_MODE_READ |
+                                              MINIM_PORT_MODE_OPEN |
+                                              MINIM_PORT_MODE_READY |
+                                              MINIM_PORT_MODE_ALT_EOF);
+
+    MINIM_PORT_NAME(minim_input_port) = "test";
+    GC_register_root(minim_error_port);
+    GC_register_root(minim_output_port);
+    GC_register_root(minim_input_port);
+
+    // setup environment
+    init_env(&env, NULL, NULL);
+    minim_load_builtins(env);
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);
@@ -591,20 +604,18 @@ char *eval_string(char *str, size_t len)
     {
         minim_error_handler = exit_handler;
         minim_exit_handler = exit_handler;
-        while (~rt.flags & READ_TABLE_FLAG_EOF)
+        while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
-            minim_parse_port(tmp, "", &ast, &err, &rt);
-            if (!ast || rt.flags & READ_TABLE_FLAG_BAD)
+            ast = minim_parse_port(port, &err, 0);
+            if (err)
             {
-                char *s = "Parsing failed!";
-                out = GC_alloc_atomic((strlen(s) + 1) * sizeof(char));
-                strcpy(out, s);
-
-                fclose(tmp);
+                const char *msg = "parsing failed";
+                char *out = GC_alloc_atomic((strlen(msg) + 1) * sizeof(char));
+                strcpy(out, msg);
                 return out;
             }
 
-            obj = eval_ast(env, ast); 
+            obj = eval_ast(env, ast);
         }
     }
     else
@@ -612,13 +623,11 @@ char *eval_string(char *str, size_t len)
         obj = MINIM_JUMP_VAL(exit_handler);
         if (MINIM_OBJ_ERRORP(obj))
         {
-            fclose(tmp);
             print_minim_object(obj, env, &pp);
             printf("\n");
             return NULL;
         }
     }
 
-    fclose(tmp);
     return print_to_string(obj, env, &pp);
 }

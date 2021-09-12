@@ -233,6 +233,32 @@ DEFINE_BUILTIN_FUN(asin)
 DEFINE_BUILTIN_FUN(acos)
 DEFINE_BUILTIN_FUN(atan)
 
+// Port
+DEFINE_BUILTIN_FUN(current_input_port)
+DEFINE_BUILTIN_FUN(current_output_port)
+DEFINE_BUILTIN_FUN(call_with_input_file)
+DEFINE_BUILTIN_FUN(call_with_output_file)
+DEFINE_BUILTIN_FUN(with_input_from_file)
+DEFINE_BUILTIN_FUN(with_output_from_file)
+DEFINE_BUILTIN_FUN(portp)
+DEFINE_BUILTIN_FUN(input_portp)
+DEFINE_BUILTIN_FUN(output_portp)
+DEFINE_BUILTIN_FUN(open_input_file)
+DEFINE_BUILTIN_FUN(open_output_file)
+DEFINE_BUILTIN_FUN(close_input_port)
+DEFINE_BUILTIN_FUN(close_output_port)
+
+DEFINE_BUILTIN_FUN(read)
+DEFINE_BUILTIN_FUN(read_char)
+DEFINE_BUILTIN_FUN(peek_char)
+DEFINE_BUILTIN_FUN(char_readyp)
+DEFINE_BUILTIN_FUN(eofp)
+
+DEFINE_BUILTIN_FUN(write)
+DEFINE_BUILTIN_FUN(display)
+DEFINE_BUILTIN_FUN(newline)
+DEFINE_BUILTIN_FUN(write_char)
+
 // Loads a single function into the environment
 void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);
 

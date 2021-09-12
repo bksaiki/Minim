@@ -18,6 +18,24 @@
 
 MinimObject *minim_error_handler = NULL;
 MinimObject *minim_exit_handler = NULL;
+MinimObject *minim_error_port = NULL;
+MinimObject *minim_output_port = NULL;
+MinimObject *minim_input_port = NULL;
+
+// Destructors
+
+static void GC_minim_port_dtor(void *ptr)
+{
+    MinimObject *obj;
+    
+    obj = (MinimObject*) ptr;
+    if ((MINIM_PORT_MODE(obj) & MINIM_PORT_MODE_OPEN) &&
+        !(MINIM_PORT_MODE(obj) & MINIM_PORT_MODE_NO_FREE))
+    {
+        if (MINIM_PORT_TYPE(obj) == MINIM_PORT_TYPE_FILE)
+            fclose(MINIM_PORT_FILE(obj));
+    }
+}
 
 // Visible functions
 
@@ -177,6 +195,20 @@ MinimObject *minim_jmp(void *ptr, void *val)
     o->type = MINIM_OBJ_JUMP;
     MINIM_JUMP_BUF(o) = ptr;
     MINIM_JUMP_VAL(o) = val;
+    return o;
+}
+
+MinimObject *minim_file_port(FILE *f, uint8_t mode)
+{
+    MinimObject *o = GC_alloc_opt(minim_port_size, GC_minim_port_dtor, NULL);
+    o->type = MINIM_OBJ_PORT;
+    MINIM_PORT_TYPE(o) = MINIM_PORT_TYPE_FILE;
+    MINIM_PORT_MODE(o) = mode;
+    MINIM_PORT_FILE(o) = f;
+    MINIM_PORT_NAME(o) = NULL;
+    MINIM_PORT_ROW(o) = 1;
+    MINIM_PORT_COL(o) = 0;
+    MINIM_PORT_POS(o) = 0;
     return o;
 }
 

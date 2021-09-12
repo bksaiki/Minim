@@ -653,6 +653,18 @@ gc_t *gc_create(void *stack) {
 }
 
 void gc_destroy(gc_t* gc) {
+    // unmark young generation
+    for (size_t i = 0; i < gc->youngc; ++i) {
+        if (gc->young[i].flags & GC_BLOCK_ROOT)
+            gc->young[i].flags &= ~GC_BLOCK_ROOT;
+    }
+
+    // unmark old generation
+    for (size_t i = 0; i < gc->oldc; ++i) {
+        if (gc->old[i].flags & GC_BLOCK_ROOT)
+            gc->old[i].flags &= ~GC_BLOCK_ROOT;
+    }
+
     gc_sweep_all(gc);
     free(gc->young);
     free(gc->old);

@@ -54,7 +54,7 @@ static void print_symbol_entry(const char *sym, MinimObject *obj)
     {
         set_default_print_params(&pp);
         printf("(%s . ", sym);
-        print_minim_object(obj, env_for_print, &pp);
+        print_to_port(obj, env_for_print, &pp, MINIM_PORT_FILE(minim_output_port));
         printf(")\n");
     }
 }

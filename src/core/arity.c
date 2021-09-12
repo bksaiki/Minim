@@ -234,6 +234,33 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // Promise
     SET_ARITY_EXACT(promisep, 1);
+
+    // Port
+    SET_ARITY_EXACT(current_input_port, 0);
+    SET_ARITY_EXACT(current_output_port, 0);
+    SET_ARITY_EXACT(call_with_input_file, 2);
+    SET_ARITY_EXACT(call_with_output_file, 2);
+    SET_ARITY_EXACT(with_input_from_file, 2);
+    SET_ARITY_EXACT(with_output_from_file, 2);
+    SET_ARITY_EXACT(close_output_port, 1);
+    SET_ARITY_EXACT(portp, 1);
+    SET_ARITY_EXACT(input_portp, 1);
+    SET_ARITY_EXACT(output_portp, 1);
+    SET_ARITY_EXACT(open_input_file, 1);
+    SET_ARITY_EXACT(open_output_file, 1);
+    SET_ARITY_EXACT(close_input_port, 1);
+    SET_ARITY_EXACT(close_output_port, 1);
+
+    SET_ARITY_RANGE(read, 0, 1);
+    SET_ARITY_RANGE(read_char, 0, 1);
+    SET_ARITY_RANGE(peek_char, 0, 1);
+    SET_ARITY_RANGE(char_readyp, 0, 1);
+    SET_ARITY_EXACT(eofp, 1);
+
+    SET_ARITY_RANGE(write, 1, 2);
+    SET_ARITY_RANGE(display, 1, 2);
+    SET_ARITY_RANGE(newline, 0, 1);
+    SET_ARITY_RANGE(write, 1, 2);
     
     parity->low = 0;
     parity->high = SIZE_MAX;

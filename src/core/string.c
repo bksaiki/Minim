@@ -304,6 +304,6 @@ MinimObject *minim_builtin_printf(MinimEnv *env, size_t argc, MinimObject **args
     pp.display = true;
     
     replace_special_chars(MINIM_STRING(val));
-    print_minim_object(val, env, &pp);
+    print_to_port(val, env, &pp, MINIM_PORT_FILE(minim_output_port));
     return minim_void;
 }
