@@ -252,6 +252,11 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(close_output_port, 1);
 
     SET_ARITY_RANGE(read, 0, 1);
+    SET_ARITY_RANGE(read_char, 0, 1);
+    SET_ARITY_RANGE(peek_char, 0, 1);
+    SET_ARITY_RANGE(char_readyp, 0, 1);
+    SET_ARITY_EXACT(eofp, 1);
+
     SET_ARITY_RANGE(write, 1, 2);
     SET_ARITY_RANGE(display, 1, 2);
     SET_ARITY_RANGE(newline, 0, 1);

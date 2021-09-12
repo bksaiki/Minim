@@ -7,6 +7,7 @@
 #include "eval.h"
 #include "lambda.h"
 #include "parser.h"
+#include "port.h"
 
 static MinimObject *open_file(MinimEnv *env, const char *fname, uint8_t mode)
 {
@@ -47,6 +48,32 @@ static void close_port(MinimObject *port)
         }
     }
 }
+
+//
+//  Internals
+//
+
+void update_port(MinimObject *port, char c)
+{
+    ++MINIM_PORT_POS(port);
+    if (c == port_eof(port))
+    {
+        MINIM_PORT_MODE(port) &= ~MINIM_PORT_MODE_READY;
+    }
+    else if (c == '\n')
+    {
+        ++MINIM_PORT_ROW(port);
+        MINIM_PORT_COL(port) = 0;
+    }
+    else
+    {
+        ++MINIM_PORT_COL(port);
+    }
+}
+
+//
+//  Builtins
+//
 
 MinimObject *minim_builtin_current_input_port(MinimEnv *env, size_t argc, MinimObject **args)
 {
@@ -245,6 +272,82 @@ MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
     }
 
     return (MINIM_VALUES_SIZE(val) == 1 ? MINIM_VALUES_REF(val, 0) : val);
+}
+
+MinimObject *minim_builtin_read_char(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *port;
+    int ch;
+
+    if (argc == 0)
+    {
+        port = minim_input_port;
+    }
+    else    // argc == 2
+    {
+        if (!MINIM_INPUT_PORTP(args[0]))
+            THROW(env, minim_argument_error("input port?", "read-char", 0, args[0]));
+        port = args[0];
+    }
+
+    // not open or not ready
+    if (!(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_OPEN) ||
+        !(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY))
+        return minim_eof;
+
+    ch = next_ch(port);
+    update_port(port, ch);
+    return minim_char(ch);
+}
+
+MinimObject *minim_builtin_peek_char(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *port;
+    int ch;
+
+    if (argc == 0)
+    {
+        port = minim_input_port;
+    }
+    else    // argc == 2
+    {
+        if (!MINIM_INPUT_PORTP(args[0]))
+            THROW(env, minim_argument_error("input port?", "peek-char", 0, args[0]));
+        port = args[0];
+    }
+
+    // not open or not ready
+    if (!(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_OPEN) ||
+        !(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY))
+        return minim_eof;
+
+    ch = next_ch(port);
+    put_back(port, ch);
+    return minim_char(ch);
+}
+
+MinimObject *minim_builtin_eofp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    return to_bool(minim_eofp(args[0]));
+}
+
+MinimObject *minim_builtin_char_readyp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *port;
+
+    if (argc == 0)
+    {
+        port = minim_input_port;
+    }
+    else    // argc == 2
+    {
+        if (!MINIM_INPUT_PORTP(args[0]))
+            THROW(env, minim_argument_error("input port?", "char-ready?", 0, args[0]));
+        port = args[0];
+    }
+
+    // TODO: might need OS-level stuff to make this right
+    return to_bool(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_OPEN);
 }
 
 MinimObject *minim_builtin_write(MinimEnv *env, size_t argc, MinimObject **args)

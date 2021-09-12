@@ -5,14 +5,11 @@
 #include "../common/path.h"
 #include "error.h"
 #include "parser.h"
+#include "port.h"
 
 #define open_paren(x)       (x == '(' || x == '[' || x == '{')
 #define closed_paren(x)     (x == ')' || x == ']' || x == '{')
 #define normal_char(x)      (x && !open_paren(x) && !closed_paren(x) && !isspace(x))
-
-#define port_eof(p)         (MINIM_PORT_MODE(p) & MINIM_PORT_MODE_ALT_EOF ? '\n' : EOF)
-#define next_ch(p)          (fgetc(MINIM_PORT_FILE(p)))
-#define put_back(p, c)      (ungetc(c, MINIM_PORT_FILE(p)))
 
 #define IF_STR_EQUAL_REPLACE(x, str, r)                                 \
 {                                                                       \
@@ -37,24 +34,6 @@
 
 // Forward declaration
 static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags);
-
-static void update_port(MinimObject *port, char c)
-{
-    ++MINIM_PORT_POS(port);
-    if (c == port_eof(port))
-    {
-        MINIM_PORT_MODE(port) &= ~MINIM_PORT_MODE_READY;
-    }
-    else if (c == '\n')
-    {
-        ++MINIM_PORT_ROW(port);
-        MINIM_PORT_COL(port) = 0;
-    }
-    else
-    {
-        ++MINIM_PORT_COL(port);
-    }
-}
 
 static char next_char(MinimObject *port)
 {

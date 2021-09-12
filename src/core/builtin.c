@@ -288,8 +288,15 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "close-output-port", MINIM_OBJ_FUNC, minim_builtin_close_output_port);
 
     minim_load_builtin(env, "read", MINIM_OBJ_FUNC, minim_builtin_read);
+    minim_load_builtin(env, "read-char", MINIM_OBJ_FUNC, minim_builtin_read_char);
+    minim_load_builtin(env, "peek-char", MINIM_OBJ_FUNC, minim_builtin_peek_char);
+    minim_load_builtin(env, "char-ready?", MINIM_OBJ_FUNC, minim_builtin_char_readyp);
+
     minim_load_builtin(env, "write", MINIM_OBJ_FUNC, minim_builtin_write);
     minim_load_builtin(env, "display", MINIM_OBJ_FUNC, minim_builtin_display);
     minim_load_builtin(env, "newline", MINIM_OBJ_FUNC, minim_builtin_newline);
     minim_load_builtin(env, "write-char", MINIM_OBJ_FUNC, minim_builtin_write_char);
+
+    env_intern_sym(env, "eof", minim_eof);
+    minim_load_builtin(env, "eof?", MINIM_OBJ_FUNC, minim_builtin_eofp);
 }

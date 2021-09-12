@@ -72,6 +72,7 @@ typedef enum MinimObjectType
 #define minim_true      ((MinimObject*) 0x10)
 #define minim_false     ((MinimObject*) 0x18)
 #define minim_null      ((MinimObject*) 0x20)
+#define minim_eof      ((MinimObject*) 0x28)
 
 extern MinimObject *minim_error_handler;
 extern MinimObject *minim_exit_handler;
@@ -89,6 +90,7 @@ extern MinimObject *minim_input_port;
 #define minim_falsep(x)             ((x) == minim_false)
 #define minim_booleanp(x)           (minim_truep(x) || minim_falsep(x))
 #define minim_nullp(x)              ((x) == minim_null)
+#define minim_eofp(x)               ((x) == minim_eof)
 
 #define MINIM_OBJ_EXACTP(obj)       MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXACT)
 #define MINIM_OBJ_INEXACTP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_INEXACT)

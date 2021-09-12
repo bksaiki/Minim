@@ -56,6 +56,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (!pp->quote)  writec_buffer(bf, '\'');
         writes_buffer(bf, "()");
     }
+    else if (minim_eofp(obj))
+    {
+        writes_buffer(bf, "<eof>");
+    }
     else if (MINIM_OBJ_CHARP(obj))
     {
         if (!pp->display)   writes_buffer(bf, "#\\");
