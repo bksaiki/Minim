@@ -74,6 +74,8 @@ void minim_load_builtins(MinimEnv *env)
     // Miscellaneous
     minim_load_builtin(env, "values", MINIM_OBJ_FUNC, minim_builtin_values);
     minim_load_builtin(env, "equal?", MINIM_OBJ_FUNC, minim_builtin_equalp);
+    minim_load_builtin(env, "eqv?", MINIM_OBJ_FUNC, minim_builtin_eqvp);
+    minim_load_builtin(env, "eq?", MINIM_OBJ_FUNC, minim_builtin_eqp);
     minim_load_builtin(env, "symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     minim_load_builtin(env, "printf", MINIM_OBJ_FUNC, minim_builtin_printf);
     minim_load_builtin(env, "void", MINIM_OBJ_FUNC, minim_builtin_void);

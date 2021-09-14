@@ -212,10 +212,79 @@ MinimObject *minim_file_port(FILE *f, uint8_t mode)
     return o;
 }
 
+bool minim_eqp(MinimObject *a, MinimObject *b)
+{
+    if (a == b)                         // same object
+        return true;
+
+    if (minim_voidp(a) ||               // special objects
+        minim_truep(a) ||
+        minim_falsep(a) ||
+        minim_booleanp(a) ||
+        minim_nullp(a) ||
+        minim_eofp(a))
+        return false;
+
+    if (!MINIM_OBJ_TYPE_EQP(a, b))      // different type
+        return false;
+
+    switch(a->type)
+    {
+    case MINIM_OBJ_EXACT:
+    case MINIM_OBJ_INEXACT:
+        return minim_number_cmp(a, b) == 0;
+
+    case MINIM_OBJ_SYM:
+        return strcmp(MINIM_SYMBOL(a), MINIM_SYMBOL(b)) == 0;
+
+    case MINIM_OBJ_CHAR:
+        return MINIM_CHAR(a) == MINIM_CHAR(b);
+
+    case MINIM_OBJ_VECTOR:
+        return MINIM_VECTOR_LEN(a) == 0 &&
+               MINIM_VECTOR_LEN(b) == 0;
+
+    /*
+    case MINIM_OBJ_STRING:
+    case MINIM_OBJ_PAIR:
+    case MINIM_OBJ_VECTOR:
+    case MINIM_OBJ_HASH:
+    case MINIM_OBJ_PROMISE:
+    case MINIM_OBJ_CLOSURE:
+    case MINIM_OBJ_FUNC:
+    case MINIM_OBJ_SYNTAX:
+    case MINIM_OBJ_AST
+    case MINIM_OBJ_SEQ:
+    case MINIM_OBJ_TAIL_CALL:
+    case MINIM_OBJ_TRANSFORM:
+    case MINIM_OBJ_VALUES:
+    */
+    default:
+        return false;
+    }
+}
+
+// Currently eq? and eqv? are identical
+bool minim_eqvp(MinimObject *a, MinimObject *b)
+{
+    if (minim_eqp(a, b))
+        return true;
+
+    return false;
+}
+
 bool minim_equalp(MinimObject *a, MinimObject *b)
 {
-    if (a == b)         // early exit, same object
+    if (minim_eqvp(a, b))
         return true;
+
+    if (minim_voidp(a) ||               // special objects
+        minim_truep(a) ||
+        minim_falsep(a) ||
+        minim_booleanp(a) ||
+        minim_nullp(a) ||
+        minim_eofp(a))
+        return false;
 
     if (MINIM_OBJ_NUMBERP(a) && MINIM_OBJ_NUMBERP(b))   // multiple number types
         return minim_number_cmp(a, b) == 0;
@@ -225,40 +294,38 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
 
     switch (a->type)
     {      
-    case MINIM_OBJ_SYM:
-        return strcmp(MINIM_SYMBOL(a), MINIM_SYMBOL(b)) == 0;
-
-    case MINIM_OBJ_CHAR:
-        return MINIM_CHAR(a) == MINIM_CHAR(b);
-
     case MINIM_OBJ_STRING:
         return strcmp(MINIM_STRING(a), MINIM_STRING(b)) == 0;
 
     case MINIM_OBJ_PAIR:
-        return minim_cons_eqp(a, b);
+        return minim_equalp(MINIM_CAR(a), MINIM_CAR(b)) &&
+               minim_equalp(MINIM_CDR(a), MINIM_CDR(b));
 
-    case MINIM_OBJ_VECTOR:
-        return minim_vector_equalp(a, b);
+    case MINIM_OBJ_VECTOR: {
+        if (MINIM_VECTOR_LEN(a) != MINIM_VECTOR_LEN(b))
+            return false;
+        for (size_t i = 0; i < MINIM_VECTOR_LEN(a); ++i)
+        {
+            if (!minim_equalp(MINIM_VECTOR_REF(a, i), MINIM_VECTOR_REF(b, i)))
+                return false;
+        }
+        return true;
+    }
 
     case MINIM_OBJ_HASH:    // TODO: equality for hash tables
         return false;
 
-    case MINIM_OBJ_PROMISE:
-        return minim_equalp(MINIM_PROMISE_VAL(a), MINIM_PROMISE_VAL(b));
-
-    case MINIM_OBJ_FUNC:
-        return MINIM_BUILTIN(a) == MINIM_BUILTIN(b);
-
-    case MINIM_OBJ_SYNTAX:
-        return MINIM_SYNTAX(a) == MINIM_SYNTAX(b);
-    
     case MINIM_OBJ_AST:
         return ast_equalp(MINIM_AST(a), MINIM_AST(b));
 
-    case MINIM_OBJ_ERR:
-        return true;
-
     /*
+    case MINIM_OBJ_SYM:
+    case MINIM_OBJ_CHAR:
+
+    case MINIM_OBJ_FUNC:
+    case MINIM_OBJ_SYNTAX:
+    case MINIM_OBJ_AST:
+    case MINIM_OBJ_PROMISE:
     case MINIM_OBJ_CLOSURE:
     case MINIM_OBJ_EXIT:
     case MINIM_OBJ_SEQ:

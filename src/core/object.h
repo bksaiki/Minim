@@ -210,8 +210,9 @@ MinimObject *minim_file_port(FILE *f, uint8_t mode);
 
 //  Equivalence
 
+bool minim_eqp(MinimObject *a, MinimObject *b);
+bool minim_eqvp(MinimObject *a, MinimObject *b);
 bool minim_equalp(MinimObject *a, MinimObject *b);
-#define minim_eqp(a, b)     ((a) == (b))
 
 //  Miscellaneous
 

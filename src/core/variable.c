@@ -86,13 +86,17 @@ MinimObject *minim_builtin_symbolp(MinimEnv *env, size_t argc, MinimObject **arg
 
 MinimObject *minim_builtin_equalp(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    for (size_t i = 1; i < argc; ++i)
-    {
-        if (!minim_equalp(args[i - 1], args[i]))
-            return minim_false;
-    }
+    return to_bool(minim_equalp(args[0], args[1]));
+}
 
-    return minim_true;
+MinimObject *minim_builtin_eqvp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    return to_bool(minim_eqvp(args[0], args[1]));
+}
+
+MinimObject *minim_builtin_eqp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    return to_bool(minim_eqp(args[0], args[1]));
 }
 
 MinimObject *minim_builtin_version(MinimEnv *env, size_t argc, MinimObject **args)
