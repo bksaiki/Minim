@@ -21,11 +21,11 @@
          count
          find find-tail
          delete delete-duplicates
-         member
-         assoc)
+         member memv memq
+         assoc assv assq)
 
 ;
-; The following procedures are specified by SRFI 1 but NOT included
+; The following procedures are specified by SRFI 1 but are NOT included
 ;   list-tabulate, circular-list iota
 ;   proper-list? circular-list? dotted-list?
 ;   not-pair? null-list?
@@ -41,11 +41,9 @@
 ;   append-map!
 ;   map! pair-for-each filter-map map-in-order
 ;   filter! partition! remove!
-;   memq memv
 ;   take-while drop-while take-while!
 ;   span break span! break!
 ;   delete! delete-duplicates!
-;   assq assv
 ;   alist-cons alist-copy
 ;   alist-delete alist-delete!
 ;   lset<= lset= lset-adjoin
@@ -413,6 +411,12 @@
               lst
               (loop (cdr lst)))))]))
 
+(def memv (x lst)
+  (member x lst eqv?))
+
+(def memq (x lst)
+  (member x lst eq?))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; deletion ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def delete (v lst)
@@ -455,3 +459,9 @@
                     entry
                     (loop (cdr lst)))
                 (argument-error 'assoc "list of pairs" lst)))))]))
+
+(def assv (x lst)
+  (assoc x lst eqv?))
+
+(def assq (x lst)
+  (assoc x lst eq?))
