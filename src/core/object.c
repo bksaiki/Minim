@@ -244,6 +244,10 @@ bool minim_eqp(MinimObject *a, MinimObject *b)
         return MINIM_VECTOR_LEN(a) == 0 &&
                MINIM_VECTOR_LEN(b) == 0;
 
+    case MINIM_OBJ_HASH:
+        return MINIM_HASH_TABLE(a)->elems == 0 &&
+               MINIM_HASH_TABLE(b)->elems == 0;
+
     /*
     case MINIM_OBJ_STRING:
     case MINIM_OBJ_PAIR:
@@ -313,7 +317,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     }
 
     case MINIM_OBJ_HASH:    // TODO: equality for hash tables
-        return false;
+        return minim_hash_table_eqp(MINIM_HASH_TABLE(a), MINIM_HASH_TABLE(b));
 
     case MINIM_OBJ_AST:
         return ast_equalp(MINIM_AST(a), MINIM_AST(b));

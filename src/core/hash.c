@@ -120,6 +120,26 @@ void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
     }
 }
 
+bool minim_hash_table_eqp(MinimHash *a, MinimHash *b)
+{
+    if ((a->size != b->size) || (a->elems != b->elems))
+        return false;
+
+    for (size_t i = 0; i < a->size; ++i)
+    {
+        if (a->arr[i].len != b->arr[i].len)
+            return false;
+
+        for (size_t j = 0; j < a->arr[i].len; ++j)
+        {
+            if (!minim_equalp(a->arr[i].arr[j], b->arr[i].arr[j]))
+                return false;
+        }
+    }
+
+    return true;
+}
+
 static void rehash_table(MinimHash *ht)
 {
     MinimHashRow *htr;

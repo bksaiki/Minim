@@ -41,6 +41,32 @@ int main()
     }
 
     {
+        const int COUNT = 8;
+        char strs[16][256] =
+        {
+            "(equal? (hash) (hash))",               "#t",
+            "(equal? (hash-set (hash) 'a 1) \
+                     (hash-set (hash) 'a 1))",      "#t",
+            "(equal? (hash-set (hash-set (hash) 'a 1) 'b 2) \
+                     (hash-set (hash-set (hash) 'a 1) 'b 2))",    "#t",
+            "(equal? (hash-set (hash) 'a 1) \
+                     (hash-set (hash-set (hash) 'a 1) 'b 2))",    "#f",
+
+            "(eqv? (hash) (hash))",             "#t",
+            "(eqv? (hash-set (hash) 'a 1) \
+                   (hash-set (hash) 'a 1))",    "#f",
+
+            "(eq? (hash) (hash))",              "#t",
+            "(eq? (hash-set (hash) 'a 1) \
+                   (hash-set (hash) 'a 1))",    "#f"
+        };
+
+        printf("Testing 'equal?'/'eqv?'/'eq?' (hash)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 5;
         char strs[10][256] =
         {
