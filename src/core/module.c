@@ -1,4 +1,4 @@
-#include "string.h"
+#include <string.h>
 
 #include "../gc/gc.h"
 #include "builtin.h"

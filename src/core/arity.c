@@ -120,6 +120,8 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_RANGE(substring, 2, 3);
     SET_ARITY_EXACT(string_to_symbol, 1);
     SET_ARITY_EXACT(symbol_to_string, 1);
+    SET_ARITY_EXACT(string_to_number, 1);
+    SET_ARITY_EXACT(number_to_string, 1);
     SET_ARITY_MIN(format, 1);
 
     // Pair

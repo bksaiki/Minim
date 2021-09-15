@@ -122,6 +122,8 @@ DEFINE_BUILTIN_FUN(string_fillb)
 DEFINE_BUILTIN_FUN(substring)
 DEFINE_BUILTIN_FUN(string_to_symbol)
 DEFINE_BUILTIN_FUN(symbol_to_string)
+DEFINE_BUILTIN_FUN(string_to_number)
+DEFINE_BUILTIN_FUN(number_to_string)
 DEFINE_BUILTIN_FUN(format)
 
 // Pair

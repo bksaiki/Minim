@@ -5,106 +5,13 @@
 #include "error.h"
 #include "eval.h"
 #include "list.h"
+#include "string.h"
 #include "syntax.h"
 
 #define transform_type(x)   (MINIM_OBJ_CLOSUREP(x) ? MINIM_TRANSFORM_MACRO : MINIM_TRANSFORM_UNKNOWN)
 
 // forward declaration
 SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast);
-
-// ================================ string classification ================================
-
-// TODO: this is copied from src/core/eval.c
-
-static bool is_rational(char *str)
-{
-    char *it = str;
-
-    if ((*it == '+' || *it == '-') &&
-        (*(it + 1) >= '0' && *(it + 1) <= '9'))
-    {
-        it += 2;
-    }
-
-    while (*it >= '0' && *it <= '9')    ++it;
-
-    if (*it == '/' && *(it + 1) >= '0' && *(it + 1) <= '9')
-    {
-        it += 2;
-        while (*it >= '0' && *it <= '9')    ++it;
-    }
-
-    return (*it == '\0');
-}
-
-static bool is_float(const char *str)
-{
-    size_t idx = 0;
-    bool digit = false;
-
-    if (str[idx] == '+' || str[idx] == '-')
-        ++idx;
-    
-    if (str[idx] >= '0' && str[idx] <= '9')
-    {
-        ++idx;
-        digit = true;
-    }
-    
-    while (str[idx] >= '0' && str[idx] <= '9')
-        ++idx;
-
-    if (str[idx] != '.' && str[idx] != 'e')
-        return false;
-
-    if (str[idx] == '.')
-        ++idx;
-
-    if (str[idx] >= '0' && str[idx] <= '9')
-    {
-        ++idx;
-        digit = true;
-    }
-
-    while (str[idx] >= '0' && str[idx] <= '9')
-        ++idx;
-
-    if (str[idx] == 'e')
-    {
-        ++idx;
-        if (!str[idx])  return false;
-
-        if ((str[idx] == '+' || str[idx] == '-') &&
-            str[idx + 1] >= '0' && str[idx + 1] <= '9')
-            idx += 2;
-
-        while (str[idx] >= '0' && str[idx] <= '9')
-            ++idx;
-    }
-
-    return digit && !str[idx];
-}
-
-static bool is_char(char *str)
-{
-    return (str[0] == '#' && str[1] == '\\' && str[2] != '\0');
-}
-
-static bool is_str(char *str)
-{
-    size_t len = strlen(str);
-
-    if (len < 2 || str[0] != '\"' || str[len - 1] != '\"')
-        return false;
-
-    for (size_t i = 1; i < len; ++i)
-    {
-        if (str[i] == '\"' && str[i - 1] != '\\' && i + 1 != len)
-            return false;
-    }
-
-    return true;
-}
 
 // ================================ Match table ================================
 

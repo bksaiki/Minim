@@ -154,6 +154,8 @@ void minim_load_builtins(MinimEnv *env)
     minim_load_builtin(env, "substring", MINIM_OBJ_FUNC, minim_builtin_substring);
     minim_load_builtin(env, "string->symbol", MINIM_OBJ_FUNC, minim_builtin_string_to_symbol);
     minim_load_builtin(env, "symbol->string", MINIM_OBJ_FUNC, minim_builtin_symbol_to_string);
+    minim_load_builtin(env, "string->number", MINIM_OBJ_FUNC, minim_builtin_string_to_number);
+    minim_load_builtin(env, "number->string", MINIM_OBJ_FUNC, minim_builtin_number_to_string);
     minim_load_builtin(env, "format", MINIM_OBJ_FUNC, minim_builtin_format);
     
     // Pair
