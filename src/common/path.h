@@ -3,10 +3,17 @@
 
 #include "buffer.h"
 
+#if defined(MINIM_LINUX)
+#include <unistd.h>
+#elif defined(MINIM_WINDOWS)
+#include <direct.h>
+#endif
+
 // *** Reading *** //
 
-#define MINIM_PATH_MODE_LINUX    0
-#define MINIM_PATH_MODE_WINDOWS    1
+#define MINIM_PATH_MODE_UNKNOWN     -1
+#define MINIM_PATH_MODE_LINUX       0
+#define MINIM_PATH_MODE_WINDOWS     1
 
 #if defined(MINIM_LINUX)
 # define MINIM_DEFAULT_PATH_MODE MINIM_PATH_MODE_LINUX
