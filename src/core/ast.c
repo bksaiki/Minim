@@ -182,11 +182,11 @@ void ast_dump_in_buffer(SyntaxNode *node, Buffer *bf)
     }
 }
 
-void print_ast(SyntaxNode *node)  // debugging
+void print_ast_to_port(SyntaxNode *node, FILE *file)
 {
     Buffer *bf;
 
     init_buffer(&bf);
     ast_to_buffer(node, bf);
-    fputs(bf->data, stdout);
+    fputs(bf->data, file);
 }

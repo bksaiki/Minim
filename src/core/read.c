@@ -43,6 +43,28 @@ static MinimObject *open_file_port(MinimEnv *env, const char *fname)
     return port;
 }
 
+static void emit_processed_file(MinimObject *fport, MinimModule *module)
+{
+#if defined(MINIM_LINUX)            // only enabled for linux
+    MinimPath *fname, *cname;
+    FILE *cfile;
+    
+    fname = build_path(1, MINIM_PORT_NAME(fport));
+    cname = build_path(2, extract_directory(fname), ".cache");
+    make_directory(extract_path(fname));         // TODO: abort if failed
+
+    path_append(cname, extract_file(fname));
+    cfile = fopen(extract_path(cname), "w");
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        print_ast_to_port(module->exprs[i], cfile);
+        fputc('\n', cfile);
+    }
+    
+    fclose(cfile);
+#endif
+}
+
 static MinimObject *read_error(MinimObject *port, SyntaxNode *err, const char *fname)
 {
     MinimError *e;
@@ -79,6 +101,8 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     }
 
     minim_module_expand(module);
+    eval_module_macros(module);
+    emit_processed_file(port, module);
     return module;
 }
 
@@ -103,6 +127,8 @@ void minim_load_file(MinimEnv *env, const char *fname)
     }
 
     minim_module_expand(module);
+    eval_module_macros(module);
+    emit_processed_file(port, module);
     eval_module(module);
 }
 
@@ -139,6 +165,8 @@ void minim_run_file(MinimEnv *env, const char *fname)
     }
 
     minim_module_expand(module);
+    eval_module_macros(module);
+    emit_processed_file(port, module);
     eval_module(module);
 
     // this is dumb

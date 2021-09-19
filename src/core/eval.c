@@ -380,12 +380,8 @@ MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
     return eval_ast_node(env, ast);
 }
 
-MinimObject *eval_module(MinimModule *module)
+void eval_module_macros(MinimModule *module)
 {
-    PrintParams pp;
-    MinimEnv *env2;
-    MinimObject *res;
-
     // importing
     for (size_t i = 0; i < module->exprc; ++i)
     {
@@ -423,6 +419,13 @@ MinimObject *eval_module(MinimModule *module)
 
         module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
     }
+}
+
+MinimObject *eval_module(MinimModule *module)
+{
+    PrintParams pp;
+    MinimEnv *env2;
+    MinimObject *res;
 
     // Evaluation
     set_default_print_params(&pp);

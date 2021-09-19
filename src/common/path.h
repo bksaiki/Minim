@@ -31,12 +31,16 @@ typedef struct MinimPath
 
 MinimPath *build_path(size_t count, const char *first, ...);
 MinimPath *build_relative_path(size_t count, const char *first, ...);
+void path_append(MinimPath *path, const char *subpath);
 
 char *extract_path(MinimPath *path);
 char *extract_directory(MinimPath *path);
+char *extract_file(MinimPath *path);
 
 char *get_working_directory();
 
 bool is_absolute_path(const char *sym);
+
+bool make_directory(const char *dir);
 
 #endif
