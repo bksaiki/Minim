@@ -53,7 +53,7 @@ static int path_type(const char *path)
     else if (len > 1 && isalpha(path[0]) && path[1] == ':')
     {
         type = MINIM_PATH_MODE_WINDOWS;
-        i += 2;
+        i += 3;
     }
 
     for (; i < len; ++i)
@@ -107,7 +107,7 @@ static void path_append(MinimPath *path, const char *subpath, bool relative)
             path->drive = GC_alloc_atomic(2 * sizeof(char));
             path->drive[0] = subpath[0];
             path->drive[1] = '\0';
-            i += 2;
+            i += 3;
         }
     }
     else if (type == MINIM_PATH_MODE_LINUX && len > 2)  // unix on win (mingw?)

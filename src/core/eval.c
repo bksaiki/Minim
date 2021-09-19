@@ -1,4 +1,5 @@
 #include <setjmp.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "../common/path.h"
