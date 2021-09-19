@@ -18,8 +18,8 @@
          append-map
          count
          find find-tail
-         member
-         assoc)
+         member memv memq
+         assoc assv assq)
 
 ;; from here
 (%export list*

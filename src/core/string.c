@@ -6,8 +6,9 @@
 #include "assert.h"
 #include "error.h"
 #include "number.h"
+#include "string.h"
 
-void replace_special_chars(char *str)
+static void replace_special_chars(char *str)
 {
     size_t src = 0, dest = 0;
 
@@ -30,6 +31,114 @@ void replace_special_chars(char *str)
     }
 
     str[dest] = '\0';
+}
+
+// *** Internals *** //
+
+bool is_rational(char *str)
+{
+    char *it = str;
+
+    if ((*it == '+' || *it == '-') &&
+        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+    {
+        it += 2;
+    }
+
+    while (*it >= '0' && *it <= '9')    ++it;
+
+    if (*it == '/' && *(it + 1) >= '0' && *(it + 1) <= '9')
+    {
+        it += 2;
+        while (*it >= '0' && *it <= '9')    ++it;
+    }
+
+    return (*it == '\0');
+}
+
+bool is_float(const char *str)
+{
+    size_t idx = 0;
+    bool digit = false;
+
+    if (str[idx] == '+' || str[idx] == '-')
+        ++idx;
+    
+    if (str[idx] >= '0' && str[idx] <= '9')
+    {
+        ++idx;
+        digit = true;
+    }
+    
+    while (str[idx] >= '0' && str[idx] <= '9')
+        ++idx;
+
+    if (str[idx] != '.' && str[idx] != 'e')
+        return false;
+
+    if (str[idx] == '.')
+        ++idx;
+
+    if (str[idx] >= '0' && str[idx] <= '9')
+    {
+        ++idx;
+        digit = true;
+    }
+
+    while (str[idx] >= '0' && str[idx] <= '9')
+        ++idx;
+
+    if (str[idx] == 'e')
+    {
+        ++idx;
+        if (!str[idx])  return false;
+
+        if ((str[idx] == '+' || str[idx] == '-') &&
+            str[idx + 1] >= '0' && str[idx + 1] <= '9')
+            idx += 2;
+
+        while (str[idx] >= '0' && str[idx] <= '9')
+            ++idx;
+    }
+
+    return digit && !str[idx];
+}
+
+bool is_char(char *str)
+{
+    return (str[0] == '#' && str[1] == '\\' && str[2] != '\0');
+}
+
+bool is_str(char *str)
+{
+    size_t len = strlen(str);
+
+    if (len < 2 || str[0] != '\"' || str[len - 1] != '\"')
+        return false;
+
+    for (size_t i = 1; i < len; ++i)
+    {
+        if (str[i] == '\"' && str[i - 1] != '\\' && i + 1 != len)
+            return false;
+    }
+
+    return true;
+}
+
+MinimObject *str_to_number(const char *str, MinimObjectType type)
+{
+    if (type == MINIM_OBJ_EXACT)
+    {
+        mpq_ptr rat = gc_alloc_mpq_ptr();
+
+        mpq_set_str(rat, str, 0);
+        mpq_canonicalize(rat);
+        return minim_exactnum(rat);
+    }
+    else
+    {
+        return minim_inexactnum(strtod(str, NULL));   
+    }
 }
 
 // *** Builtins *** //
@@ -89,7 +198,7 @@ MinimObject *minim_builtin_string(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_string_length(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "string-length", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "string-length", 0, args[0]));
 
     return uint_to_minim_number(strlen(MINIM_STRING(args[0])));
 }
@@ -100,7 +209,7 @@ MinimObject *minim_builtin_string_ref(MinimEnv *env, size_t argc, MinimObject **
     char *str;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "string-ref", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "string-ref", 0, args[0]));
 
     if (!minim_exact_nonneg_intp(args[1]))
         THROW(env, minim_argument_error("exact non-negative integer", "string-ref", 1, args[1]));
@@ -121,7 +230,7 @@ MinimObject *minim_builtin_string_setb(MinimEnv *env, size_t argc, MinimObject *
     char *str;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "string-set!", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "string-set!", 0, args[0]));
 
     if (!minim_exact_nonneg_intp(args[1]))
         THROW(env, minim_argument_error("exact non-negative integer", "string-set!", 1, args[1]));
@@ -146,7 +255,7 @@ MinimObject *minim_builtin_string_copy(MinimEnv *env, size_t argc, MinimObject *
     size_t len;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "string-copy", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "string-copy", 0, args[0]));
 
     len = strlen(MINIM_STRING(args[0]));
     str = GC_alloc_atomic((len + 1) * sizeof(char));
@@ -159,7 +268,7 @@ MinimObject *minim_builtin_string_fillb(MinimEnv *env, size_t argc, MinimObject 
     char *str;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "string-fill!", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "string-fill!", 0, args[0]));
 
     if (!MINIM_OBJ_CHARP(args[1]))
         THROW(env, minim_argument_error("character", "string-fill!", 1, args[1]));
@@ -176,7 +285,7 @@ MinimObject *minim_builtin_substring(MinimEnv *env, size_t argc, MinimObject **a
     char *str, *tmp;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "substring", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "substring", 0, args[0]));
 
     if (!minim_exact_nonneg_intp(args[1]))
         THROW(env, minim_argument_error("exact non-negative integer", "substring", 1, args[1]));
@@ -208,9 +317,30 @@ MinimObject *minim_builtin_substring(MinimEnv *env, size_t argc, MinimObject **a
 MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, size_t argc, MinimObject **args)
 {
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "string->symbol", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "string->symbol", 0, args[0]));
 
     return minim_symbol(MINIM_STRING(args[0]));
+}
+
+MinimObject *minim_builtin_string_to_number(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (!MINIM_OBJ_STRINGP(args[0]))
+        THROW(env, minim_argument_error("string?", "string->number", 0, args[0]));
+
+    if (is_float(MINIM_STRING(args[0])))        return str_to_number(MINIM_STRING(args[0]), MINIM_OBJ_INEXACT);
+    if (is_rational(MINIM_STRING(args[0])))     return str_to_number(MINIM_STRING(args[0]), MINIM_OBJ_EXACT);
+    else                                        return minim_false;
+}
+
+MinimObject *minim_builtin_number_to_string(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    PrintParams pp;
+
+    if (!MINIM_OBJ_NUMBERP(args[0]))
+        THROW(env, minim_argument_error("number?", "number_to_string", 0, args[0]));
+
+    set_default_print_params(&pp);
+    return minim_string(print_to_string(args[0], env, &pp));
 }
 
 MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, size_t argc, MinimObject **args)
@@ -218,7 +348,7 @@ MinimObject *minim_builtin_symbol_to_string(MinimEnv *env, size_t argc, MinimObj
     char *dest;
 
     if (!MINIM_OBJ_SYMBOLP(args[0]))
-        THROW(env, minim_argument_error("symbol", "symbol->string", 0, args[0]));
+        THROW(env, minim_argument_error("symbol?", "symbol->string", 0, args[0]));
 
     dest = GC_alloc_atomic((strlen(MINIM_STRING(args[0])) + 1) * sizeof(char));
     strcpy(dest, MINIM_STRING(args[0]));
@@ -245,7 +375,7 @@ MinimObject *minim_builtin_format(MinimEnv *env, size_t argc, MinimObject **args
     char *str;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "format", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "format", 0, args[0]));
 
     str = MINIM_STRING(args[0]);
     len = strlen(str);
@@ -296,7 +426,7 @@ MinimObject *minim_builtin_printf(MinimEnv *env, size_t argc, MinimObject **args
     PrintParams pp;
 
     if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string", "printf", 0, args[0]));
+        THROW(env, minim_argument_error("string?", "printf", 0, args[0]));
 
     val = minim_builtin_format(env, argc, args);
     set_default_print_params(&pp);

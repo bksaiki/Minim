@@ -41,6 +41,8 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // Miscellaneous
     SET_ARITY_EXACT(equalp, 2);
+    SET_ARITY_EXACT(eqvp, 2);
+    SET_ARITY_EXACT(eqp, 2);
     SET_ARITY_EXACT(symbolp, 1);
     SET_ARITY_MIN(printf, 1);
     SET_ARITY_RANGE(exit, 0, 1);
@@ -118,6 +120,8 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_RANGE(substring, 2, 3);
     SET_ARITY_EXACT(string_to_symbol, 1);
     SET_ARITY_EXACT(symbol_to_string, 1);
+    SET_ARITY_EXACT(string_to_number, 1);
+    SET_ARITY_EXACT(number_to_string, 1);
     SET_ARITY_MIN(format, 1);
 
     // Pair

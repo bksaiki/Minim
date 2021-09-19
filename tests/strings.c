@@ -360,6 +360,35 @@ int main()
     }
 
     {
+        const int COUNT = 3;
+        char strs[6][256] =
+        {
+            "(number->string 100)",             "\"100\"",
+            "(number->string 1e30)",            "\"1e+30\"",
+            "(number->string -4.12)",            "\"-4.12\""
+        };
+
+        printf("Testing 'number->string'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+    
+    {
+        const int COUNT = 4;
+        char strs[8][256] =
+        {
+            "(string->number \"100\")",             "100",
+            "(string->number \"256\")",             "256",
+            "(string->number \"1e2\")",             "100.0",
+            "(string->number \"15m\")",             "#f"
+        };
+
+        printf("Testing 'string->number'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 5;
         char strs[10][256] =
         {

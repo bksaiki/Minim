@@ -58,18 +58,58 @@ int main()
     }
 
     {
-        const int COUNT = 6;
-        char strs[12][256] = 
+        const int COUNT = 8;
+        char strs[16][256] = 
         {
             "(equal? 'x 'x)",                   "#t",
             "(equal? 'x 'y)",                   "#f",
             "(equal? 5 5)",                     "#t",
             "(equal? 5 4)",                     "#f",
+            "(equal? 5 5.0)",                   "#t",
             "(equal? \"x\" \"x\")",             "#t",
-            "(equal? \"x\" \"y\")",             "#f"
+            "(equal? \"x\" \"y\")",             "#f",
+            "(equal? #\\a #\\a)",               "#t"
         };
 
         printf("Testing 'equal?' (primitive)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 8;
+        char strs[16][256] = 
+        {
+            "(eqv? 'x 'x)",                   "#t",
+            "(eqv? 'x 'y)",                   "#f",
+            "(eqv? 5 5)",                     "#t",
+            "(eqv? 5 4)",                     "#f",
+            "(eqv? 5 5.0)",                   "#f",
+            "(eqv? \"x\" \"x\")",             "#f",
+            "(eqv? \"x\" \"y\")",             "#f",
+            "(eqv? #\\a #\\a)",               "#t"
+        };
+
+        printf("Testing 'eqv?' (primitive)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 8;
+        char strs[16][256] = 
+        {
+            "(eq? 'x 'x)",                   "#t",
+            "(eq? 'x 'y)",                   "#f",
+            "(eq? 5 5)",                     "#t",
+            "(eq? 5 4)",                     "#f",
+            "(eq? 5 5.0)",                   "#f",
+            "(eq? \"x\" \"x\")",             "#f",
+            "(eq? \"x\" \"y\")",             "#f",
+            "(eq? #\\a #\\a)",               "#t"
+        };
+
+        printf("Testing 'eq?' (primitive)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -86,6 +126,21 @@ int main()
         };
 
         printf("Testing 'equal?' (list)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] = 
+        {
+            "(eqv? '() '())",               "#t",
+            "(eqv? '(1) '(1))",             "#f",
+            "(eq? '() '())",                "#t",
+            "(eq? '(1) '(1))",              "#f"
+        };
+
+        printf("Testing 'eqv? / eq?' (list)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -533,6 +588,37 @@ int main()
         };
 
         printf("Testing 'list->vector'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] = 
+        {
+            "(equal? (vector) (vector))",           "#t",
+            "(equal? (vector 1) (vector 2))",       "#f",
+            "(equal? #(1 2 3) #(1 2 3))",           "#t",
+            "(equal? #(1 2) #(1 2 3))",             "#f",
+            "(equal? #(1 2 3 4) #(1 2 3 5))",       "#f"
+        };
+
+        printf("Testing 'equal?' (vector)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 4;
+        char strs[8][256] = 
+        {
+            "(eqv? #() #())",               "#t",
+            "(eqv? #(1) #(1))",             "#f",
+            "(eq? #() #())",                "#t",
+            "(eq? #(1) #(1))",              "#f"
+        };
+
+        printf("Testing 'eqv? / eq?' (vector)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }

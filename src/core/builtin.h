@@ -47,6 +47,8 @@ DEFINE_BUILTIN_FUN(syntax_error)
 
 // Miscellaneous
 DEFINE_BUILTIN_FUN(equalp)
+DEFINE_BUILTIN_FUN(eqvp)
+DEFINE_BUILTIN_FUN(eqp)
 DEFINE_BUILTIN_FUN(symbolp)
 DEFINE_BUILTIN_FUN(printf)
 DEFINE_BUILTIN_FUN(void)
@@ -120,6 +122,8 @@ DEFINE_BUILTIN_FUN(string_fillb)
 DEFINE_BUILTIN_FUN(substring)
 DEFINE_BUILTIN_FUN(string_to_symbol)
 DEFINE_BUILTIN_FUN(symbol_to_string)
+DEFINE_BUILTIN_FUN(string_to_number)
+DEFINE_BUILTIN_FUN(number_to_string)
 DEFINE_BUILTIN_FUN(format)
 
 // Pair

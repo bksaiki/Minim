@@ -22,12 +22,12 @@
 (def vector? (x)
   (and (real-vector? x)
        (or (= (vector-length x) 0)
-           (not (equal? (vector-ref x 0) record-marker))))) ; TODO: eq?
+           (not (eq? (vector-ref x 0) record-marker)))))
 
 (def record? (x)
   (and (real-vector? x)
        (< 0 (vector-length x))
-       (equal? (vector-ref x 0) record-marker))) ; TODO: eq?
+       (eq? (vector-ref x 0) record-marker)))
 
 (def make-record (size)
   (let ([new (make-vector (+ size 1))])
@@ -74,7 +74,7 @@
   (let loop ([i 1] [tags (record-type-field-tags type)])
     (cond
      [(null? tags) (error "record type has no such field")]
-     [(equal? tag (car tags)) i] ; eq?
+     [(eq? tag (car tags)) i]
      [else (loop (+ i 1) (cdr tags))])))
 
 ; record constructor

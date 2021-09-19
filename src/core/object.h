@@ -118,6 +118,7 @@ extern MinimObject *minim_input_port;
 
 // Accessors 
 
+#define MINIM_OBJ_TYPE(obj)         ((obj)->type)
 #define MINIM_EXACTNUM(obj)         (*((mpq_ptr*) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
@@ -210,8 +211,9 @@ MinimObject *minim_file_port(FILE *f, uint8_t mode);
 
 //  Equivalence
 
+bool minim_eqp(MinimObject *a, MinimObject *b);
+bool minim_eqvp(MinimObject *a, MinimObject *b);
 bool minim_equalp(MinimObject *a, MinimObject *b);
-#define minim_eqp(a, b)     ((a) == (b))
 
 //  Miscellaneous
 
