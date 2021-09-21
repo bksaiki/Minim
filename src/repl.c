@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "minim.h"
-#include "read.h"
+#include "run.h"
 #include "repl.h"
 
 static jmp_buf top_of_repl;

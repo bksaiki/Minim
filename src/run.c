@@ -4,7 +4,7 @@
 
 #include "../build/config.h"
 #include "minim.h"
-#include "read.h"
+#include "run.h"
 
 static bool is_int8(MinimObject *thing)
 {

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "common/version.h"
-#include "read.h"
+#include "run.h"
 #include "repl.h"
 
 static int process_flags(int count, char **args, uint32_t *pflags)

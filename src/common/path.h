@@ -1,6 +1,7 @@
 #ifndef _MINIM_COMMON_PATH_H_
 #define _MINIM_COMMON_PATH_H_
 
+#include <time.h>
 #include "buffer.h"
 
 #if defined(MINIM_LINUX)
@@ -38,8 +39,10 @@ char *extract_directory(MinimPath *path);
 char *extract_file(MinimPath *path);
 
 char *get_working_directory();
+time_t *get_last_modified(const char *path);
 
 bool is_absolute_path(const char *sym);
+bool directory_existp(const char *dir);
 
 bool make_directory(const char *dir);
 

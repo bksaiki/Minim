@@ -380,6 +380,29 @@ MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
     return eval_ast_node(env, ast);
 }
 
+void eval_module_cached(MinimModule *module)
+{
+    // importing
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_import(module->env, module->exprs[i]))
+        {
+            check_syntax(module->env, module->exprs[i]);
+            eval_top_level(module->env, module->exprs[i], minim_builtin_import);
+        }
+    }
+
+    // define syntaxes
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_import(module->env, module->exprs[i]))
+            continue;
+
+        if (expr_is_macro(module->env, module->exprs[i]))
+            eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
+    }
+}
+
 void eval_module_macros(MinimModule *module)
 {
     // importing

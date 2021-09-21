@@ -249,6 +249,29 @@ char *get_working_directory()
     return path;
 }
 
+time_t *get_last_modified(const char *path)
+{
+#if defined(MINIM_LINUX)
+    struct stat *st = GC_alloc_atomic(sizeof(struct stat));
+    if (stat(path, st) == -1)
+        return NULL;
+    else
+        return &st->st_mtime;
+#else // MINIM_WINDOWS
+    return false;
+#endif
+}
+
+bool directory_existp(const char *dir)
+{
+#if defined(MINIM_LINUX)
+    struct stat st = {0};
+    return stat(dir, &st) != -1;
+#else // MINIM_WINDOWS
+    return false;
+#endif
+}
+
 bool is_absolute_path(const char *sym)
 {
 #if defined(MINIM_LINUX)
@@ -260,6 +283,7 @@ bool is_absolute_path(const char *sym)
 
 bool make_directory(const char *dir)
 {
+#if defined(MINIM_LINUX)
     struct stat st = {0};
     if (stat(dir, &st) == -1)
     {
@@ -270,4 +294,7 @@ bool make_directory(const char *dir)
     {
         return false;
     }
+#else // MINIM_WINDOWS
+    return false;
+#endif
 }
