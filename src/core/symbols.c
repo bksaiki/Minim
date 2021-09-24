@@ -61,7 +61,7 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
     {
         for (size_t j = 0; j < table->rows[i].length; ++j)
         {
-            hash = hash_bytes(table->rows[i].names[j], strlen(table->rows[i].names[j]), hashseed);
+            hash = hash_bytes(table->rows[i].names[j], strlen(table->rows[i].names[j]));
             idx = hash % size;
 
             ++rows[idx].length;
@@ -159,7 +159,7 @@ void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src)
     {
         for (size_t j = 0; j < src->rows[i].length; ++j)
         {
-            hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j]), hashseed);      
+            hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j]));     
             if (minim_symbol_table_get(dest, src->rows[i].names[j], hash))
                 minim_symbol_table_set(dest, src->rows[i].names[j], hash, src->rows[i].vals[j]);
             else
@@ -180,7 +180,7 @@ void minim_symbol_table_merge2(MinimSymbolTable *dest,
     {
         for (size_t j = 0; j < src->rows[i].length; ++j)
         {
-            hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j]), hashseed); 
+            hash = hash_bytes(src->rows[i].names[j], strlen(src->rows[i].names[j])); 
             val = minim_symbol_table_get(dest, src->rows[i].names[j], hash);
             if (val)
             {

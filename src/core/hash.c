@@ -5,72 +5,15 @@
 #include "hash.h"
 #include "list.h"
 
-//
-//  Hash function
-//
-//  Adapted from burtleburle.net/bob/hash/doobs.html
-//
-
-#define hashsize(n) ((uint32_t)1 << (n))
-#define hashmask(n) (hashsize(n) - 1)
-
-#define hashseed   ((uint32_t)  0xdeadbeef)
-
-#define mix(a,b,c) \
-{ \
-  a -= b; a -= c; a ^= (c>>13); \
-  b -= c; b -= a; b ^= (a<<8); \
-  c -= a; c -= b; c ^= (b>>13); \
-  a -= b; a -= c; a ^= (c>>12);  \
-  b -= c; b -= a; b ^= (a<<16); \
-  c -= a; c -= b; c ^= (b>>5); \
-  a -= b; a -= c; a ^= (c>>3);  \
-  b -= c; b -= a; b ^= (a<<10); \
-  c -= a; c -= b; c ^= (b>>15); \
-}
-
-uint32_t hash_bytes(const void* data, size_t length, uint32_t seed)
+uint32_t hash_bytes(const void* data, size_t len)
 {
-    uint8_t* k;
-    uint32_t a, b, c, len;
+    uint32_t hash = 5381;
+    const char *str = (const char*) data;
 
-    /* Set up the internal state */
-    k = (uint8_t*)data;
-    len = length;
-    a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
-    c = seed;         /* the previous hash value */
+    for (size_t i = 0; i < len; ++i)
+        hash = ((hash << 5) + hash) + str[i]; /* hash * 33 + c */
 
-    /*---------------------------------------- handle most of the key */
-    while (len >= 12)
-    {
-        a += (k[0] +((uint32_t)k[1] << 8) +((uint32_t)k[2] << 16) +((uint32_t)k[3] << 24));
-        b += (k[4] +((uint32_t)k[5] << 8) +((uint32_t)k[6] << 16) +((uint32_t)k[7] << 24));
-        c += (k[8] +((uint32_t)k[9] << 8) +((uint32_t)k[10] << 16)+((uint32_t)k[11] << 24));
-        mix(a,b,c);
-        k += 12; len -= 12;
-    }
-
-    /*------------------------------------- handle the last 11 bytes */
-    c += length;
-    switch(len)              /* all the case statements fall through */
-    {
-    case 11: c += ((uint32_t)k[10] << 24);
-    case 10: c += ((uint32_t)k[9] << 16);
-    case 9 : c += ((uint32_t)k[8] << 8);
-        /* the first byte of c is reserved for the length */
-    case 8 : b += ((uint32_t)k[7] << 24);
-    case 7 : b += ((uint32_t)k[6] << 16);
-    case 6 : b += ((uint32_t)k[5] << 8);
-    case 5 : b += k[4];
-    case 4 : a += ((uint32_t)k[3] << 24);
-    case 3 : a += ((uint32_t)k[2] << 16);
-    case 2 : a += ((uint32_t)k[1] << 8);
-    case 1 : a += k[0];
-        /* case 0: nothing left to add */
-    }
-    mix(a,b,c);
-    /*-------------------------------------------- report the result */
-    return c;
+    return hash;
 }
 
 static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
@@ -159,7 +102,7 @@ static void rehash_table(MinimHash *ht)
         for (size_t j = 0; j < ht->arr[i].len; ++j)
         {
             bf = minim_obj_to_bytes(MINIM_CAR(ht->arr[i].arr[j]));
-            hash = hash_bytes(bf->data, bf->pos, hashseed);
+            hash = hash_bytes(bf->data, bf->pos);
             reduc = hash % newSize;
 
             if (htr[reduc].len == 0)
@@ -185,7 +128,7 @@ static void rehash_table(MinimHash *ht)
 static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 {
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
+    uint32_t hash = hash_bytes(bf->data, bf->pos);
     uint32_t reduc = hash % ht->size;
 
     ++ht->elems;
@@ -219,7 +162,7 @@ static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 static bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
 {
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
+    uint32_t hash = hash_bytes(bf->data, bf->pos);
     uint32_t reduc = hash % ht->size;
 
     for (size_t i = 0; i < ht->arr[reduc].len; ++i)
@@ -235,7 +178,7 @@ static MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
 {
     MinimObject *cp = NULL;
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
+    uint32_t hash = hash_bytes(bf->data, bf->pos);
     uint32_t reduc = hash % ht->size;
 
     for (size_t i = 0; i < ht->arr[reduc].len; ++i)
@@ -250,7 +193,7 @@ static MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
 static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
 {
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos, hashseed);
+    uint32_t hash = hash_bytes(bf->data, bf->pos);
     uint32_t reduc = hash % ht->size;
 
     for (size_t i = 0; i < ht->arr[reduc].len; ++i)

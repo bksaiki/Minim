@@ -138,7 +138,7 @@ MinimObject *minim_module_get_sym(MinimModule *module, const char *sym)
 {
     size_t hash;
 
-    hash = hash_bytes(sym, strlen(sym), hashseed);
+    hash = hash_bytes(sym, strlen(sym));
     return minim_symbol_table_get(module->env->table, sym, hash);
 }
 

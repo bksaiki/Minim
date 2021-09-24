@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "version.h"
+#include "../gc/gc.h"
 
 #if defined (_WIN32) || defined (_WIN64)
   #define MINIM_WINDOWS 1

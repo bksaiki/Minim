@@ -95,7 +95,7 @@ MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 {
     size_t hash;
 
-    hash = hash_bytes(sym, strlen(sym), hashseed);
+    hash = hash_bytes(sym, strlen(sym));
     return env_get_sym_hashed(env, sym, hash);
 }
 
@@ -104,7 +104,7 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     size_t hash;
 
     add_metadata(obj, sym);
-    hash = hash_bytes(sym, strlen(sym), hashseed);
+    hash = hash_bytes(sym, strlen(sym));
     minim_symbol_table_add(env->table, sym, hash, obj);
 }
 
@@ -124,7 +124,7 @@ int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     size_t hash;
 
     add_metadata(obj, sym);
-    hash = hash_bytes(sym, strlen(sym), hashseed);
+    hash = hash_bytes(sym, strlen(sym));
     return env_set_sym_hashed(env, sym, hash, obj);
 }
 
