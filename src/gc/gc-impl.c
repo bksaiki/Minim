@@ -1,11 +1,12 @@
 #include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
-#include "gc_common.h"
 
 #if GC_DEBUG
 #include <stdio.h>
 #endif
+
+#include "gc-impl.h"
 
 #define NUM_PRIME_SIZES     23
 #define POINTER_SIZE        sizeof(void*)
@@ -624,14 +625,15 @@ static void gc_sweep_all(gc_t *gc) {
     }
 }
 
-#define gc_collect_if_needed(gc)                    \
-{                                                   \
-    if (gc->dirty > GC_MIN_AUTO_COLLECT_SIZE) {     \
-        if (gc->cycles >= GC_MINOR_PER_MAJOR)       \
-            gc_collect(gc);                         \
-        else                                        \
-            gc_collect_young(gc);                   \
-    }                                               \
+#define gc_collect_if_needed(gc)                        \
+{                                                       \
+    if (((gc)->flags & GC_COLLECT) &&                   \
+        ((gc)->dirty > GC_MIN_AUTO_COLLECT_SIZE)) {     \
+        if ((gc)->cycles >= GC_MINOR_PER_MAJOR)         \
+            gc_collect(gc);                             \
+        else                                            \
+            gc_collect_young(gc);                       \
+    }                                                   \
 }
 
 /*************** Interface ******************/
@@ -648,6 +650,7 @@ gc_t *gc_create(void *stack) {
     gc->allocs = 0;
     gc->dirty = 0;
     gc->cycles = 0;
+    gc->flags = GC_COLLECT;
 
     return gc;
 }
@@ -669,6 +672,16 @@ void gc_destroy(gc_t* gc) {
     free(gc->young);
     free(gc->old);
     free(gc);
+}
+
+void gc_pause(gc_t *gc)
+{
+    gc->flags &= ~GC_COLLECT;
+}
+
+void gc_resume(gc_t *gc)
+{
+    gc->flags |= GC_COLLECT;
 }
 
 void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk) {

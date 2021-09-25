@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "gc_common.h"
+#include "gc-impl.h"
 #include "gc.h"
 
 static gc_t *main_gc;
@@ -12,6 +12,14 @@ void GC_init(void *stack) {
 
 void GC_finalize() {
     gc_destroy(main_gc);
+}
+
+void GC_pause() {
+    gc_pause(main_gc);
+}
+
+void GC_resume() {
+    gc_resume(main_gc);
 }
 
 void *GC_alloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {

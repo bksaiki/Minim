@@ -269,4 +269,7 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
 // Loads every builtin symbol in the base library.
 void minim_load_builtins(MinimEnv *env);
 
+// Loads builtins
+void init_builtins();
+
 #endif

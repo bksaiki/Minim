@@ -12,6 +12,10 @@ void GC_init(void *stack);
 /* Shutdown GC and clean up */
 void GC_finalize();
 
+/* Pauses and resumes automated collection */
+void GC_pause();
+void GC_resume();
+
 /* GC equivalent of malloc(), calloc(), and realloc() */
 #define GC_alloc(size)              GC_alloc_opt(size, NULL, NULL)
 #define GC_calloc(nmem, size)       GC_calloc_opt(nmem, size, NULL, NULL)

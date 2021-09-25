@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+
 #include "version.h"
 #include "../gc/gc.h"
 

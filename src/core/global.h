@@ -2,6 +2,8 @@
 #define _MINIM_GLOBAL_H_
 
 #include "../common/system.h"
+#include "intern.h"
+#include "symbols.h"
 
 typedef struct MinimModuleCache MinimModuleCache;
 typedef struct MinimSymbolTable MinimSymbolTable;
@@ -19,5 +21,9 @@ extern struct MinimGlobal
 
 // initialize builtins, intern table, other info
 void init_global_state();
+
+// setters
+#define intern(s)           intern_symbol(global.symbols, s)
+#define set_builtin(n, o)   minim_symbol_table_add(global.builtins, n, o)
 
 #endif

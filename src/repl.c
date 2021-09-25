@@ -48,6 +48,10 @@ int minim_repl(char **argv, uint32_t flags)
     printf("Minim v%s \n", MINIM_VERSION_STR);
     fflush(stdout);
 
+    // set up globals
+    init_global_state();
+    init_builtins();
+
     // set up builtins
     init_env(&top_env, NULL, NULL);
     minim_load_builtins(top_env);

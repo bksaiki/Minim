@@ -105,7 +105,7 @@ void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 
     add_metadata(obj, sym);
     hash = hash_bytes(sym, strlen(sym));
-    minim_symbol_table_add(env->table, sym, hash, obj);
+    minim_symbol_table_add2(env->table, sym, hash, obj);
 }
 
 static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, MinimObject *obj)

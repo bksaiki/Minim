@@ -17,6 +17,16 @@ void GC_finalize();
 ```
 Stops the garbage collector and frees any remaining memory.
 
+```c
+void GC_pause(void *stack);
+```
+Pauses automatic garbage collection.
+
+```c
+void GC_finalize();
+```
+Resumes automatic garbage collection.
+
 ### Allocation
 ```c
 void *GC_malloc(size_t size);

@@ -89,7 +89,7 @@ InternTable *init_intern_table()
     itab->size = 0;
 
     for (size_t i = 0; i < itab->alloc; ++i)
-        itab->buckets = NULL;
+        itab->buckets[i] = NULL;
     return itab;
 }
 
