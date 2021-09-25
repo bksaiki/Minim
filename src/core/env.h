@@ -10,7 +10,9 @@
 // forward declarations
 typedef struct MinimLambda MinimLambda;
 typedef struct MinimModule MinimModule;
+typedef struct InternTable InternTable;
 
+// generic environment within scopes
 typedef struct MinimEnv
 {
     struct MinimEnv *parent, *caller;

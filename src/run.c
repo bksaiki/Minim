@@ -55,7 +55,7 @@ int minim_run(const char *str, uint32_t flags)
 
         path = (is_absolute_path(str) ?
                 build_path(1, str) :
-                build_path(2, get_working_directory(), str));
+                build_path(2, get_current_dir(), str));
         minim_load_file(env, extract_path(path));
     }
     else

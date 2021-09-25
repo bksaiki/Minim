@@ -57,7 +57,7 @@ int minim_repl(char **argv, uint32_t flags)
     init_minim_module(&module, imports);
     init_env(&module->env, top_env, NULL);
     module->env->module = module;
-    module->env->current_dir = get_working_directory();
+    module->env->current_dir = get_current_dir();
 
     // set up ports
     minim_error_port = minim_file_port(stderr, MINIM_PORT_MODE_WRITE |

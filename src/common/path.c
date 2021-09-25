@@ -14,10 +14,6 @@
 #include <direct.h>
 #endif
 
-#ifndef PATH_MAX
-#define PATH_MAX    4096
-#endif
-
 #define path_separator(t) (((t) == MINIM_PATH_MODE_LINUX) ? '/' : '\\')
 
 static void gc_mrk_path(void (*mrk)(void*, void*), void *gc, void *ptr)
@@ -236,17 +232,6 @@ MinimPath *build_relative_path(size_t count, const char *first, ...)
 void path_append(MinimPath *path, const char *subpath)
 {
     path_append2(path, subpath, true);
-}
-
-char *get_working_directory()
-{
-    char *path = GC_alloc_atomic(PATH_MAX);
-#if defined(MINIM_LINUX)
-    getcwd(path, PATH_MAX);
-#else // MINIM_WINDOWS
-    _getcwd(path, PATH_MAX);
-#endif
-    return path;
 }
 
 time_t *get_last_modified(const char *path)

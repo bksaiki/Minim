@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include "buffer.h"
+#include "system.h"
 
 #if defined(MINIM_LINUX)
 #include <unistd.h>
@@ -38,7 +39,6 @@ char *extract_path(MinimPath *path);
 char *extract_directory(MinimPath *path);
 char *extract_file(MinimPath *path);
 
-char *get_working_directory();
 time_t *get_last_modified(const char *path);
 
 bool is_absolute_path(const char *sym);
