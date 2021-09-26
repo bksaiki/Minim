@@ -432,6 +432,7 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
         trim_buffer(bf);
         init_syntax_node(perr, SYNTAX_NODE_DATUM);
         (*perr)->sym = get_buffer(bf);
+        return NULL;
     }
 
     return node;

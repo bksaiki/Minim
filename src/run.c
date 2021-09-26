@@ -24,6 +24,10 @@ int minim_run(const char *str, uint32_t flags)
     MinimObject *exit_handler;
     jmp_buf *exit_buf;
 
+    // set up globals
+    init_global_state();
+    init_builtins();
+
     // set up ports
     minim_error_port = minim_file_port(stderr, MINIM_PORT_MODE_WRITE |
                                                MINIM_PORT_MODE_OPEN |
@@ -35,6 +39,8 @@ int minim_run(const char *str, uint32_t flags)
                                               MINIM_PORT_MODE_OPEN |
                                               MINIM_PORT_MODE_READY |
                                               MINIM_PORT_MODE_ALT_EOF);
+
+    MINIM_PORT_NAME(minim_input_port) = "stdin";
     GC_register_root(minim_error_port);
     GC_register_root(minim_output_port);
     GC_register_root(minim_input_port);
@@ -49,7 +55,6 @@ int minim_run(const char *str, uint32_t flags)
         minim_exit_handler = exit_handler;
         minim_error_handler = exit_handler;
         init_env(&env, NULL, NULL);
-        minim_load_builtins(env);
         if (!(flags & MINIM_FLAG_LOAD_LIBS))
             minim_load_library(env);
 

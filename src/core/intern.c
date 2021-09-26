@@ -6,7 +6,7 @@
 #define MINIM_INTERN_TABLE_LOAD_FACTOR     0.75
 
 // copied from ChezScheme
-static size_t bucket_sizes[54] = {
+static size_t bucket_sizes[] = {
     1031,
     2053,
     4099,
@@ -99,7 +99,12 @@ static void intern_table_resize(InternTable *itab)
     size_t *new_alloc_ptr = ++itab->alloc_ptr;
     size_t new_alloc = *new_alloc_ptr;
 
+    // setup new buckets
     new_buckets = GC_alloc(new_alloc * sizeof(InternTableBucket*));
+    for (size_t i = 0; i < new_alloc; ++i)
+        new_buckets[i] = NULL;
+
+    // move entries to new buckets
     for (size_t i = 0; i < itab->alloc; ++i)
     {
         for (InternTableBucket *b = itab->buckets[i]; b; b = b->next)
@@ -114,6 +119,7 @@ static void intern_table_resize(InternTable *itab)
         }
     }
 
+    // replace
     itab->buckets = new_buckets;
     itab->alloc = new_alloc;
 }

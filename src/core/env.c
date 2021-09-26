@@ -3,6 +3,7 @@
 
 #include "../gc/gc.h"
 #include "env.h"
+#include "global.h"
 #include "hash.h"
 #include "lambda.h"
 #include "module.h"
@@ -88,7 +89,7 @@ static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t ha
         if (val) return val;
     }
 
-    return NULL;
+    return minim_symbol_table_get(global.builtins, sym, hash);
 }
 
 MinimObject *env_get_sym(MinimEnv *env, const char *sym)
@@ -116,7 +117,7 @@ static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, Minim
             return 1;
     }
     
-    return 0;
+    return minim_symbol_table_set(global.builtins, sym, hash, obj);
 }
 
 int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
@@ -128,17 +129,18 @@ int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
     return env_set_sym_hashed(env, sym, hash, obj);
 }
 
-const char *env_peek_key(MinimEnv *env, MinimObject *value)
+const char *env_peek_key(MinimEnv *env, MinimObject *obj)
 {
     const char *name;
 
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        name = minim_symbol_table_peek_name(it->table, value);
+        name = minim_symbol_table_peek_name(it->table, obj);
         if (name) return name;
     }
 
-    return NULL;
+    // check globals, last resort
+    return minim_symbol_table_peek_name(global.builtins, obj);
 }
 
 size_t env_symbol_count(MinimEnv *env)
@@ -148,7 +150,7 @@ size_t env_symbol_count(MinimEnv *env)
     for (MinimEnv *it = env; it; it = it->parent)
         count += it->table->size;
 
-    return count;
+    return count + global.builtins->size;
 }
 
 bool env_has_called(MinimEnv *env, MinimLambda *lam)
@@ -175,6 +177,8 @@ void env_dump_symbols(MinimEnv *env)
         env_for_print = it;
         minim_symbol_table_for_each(it->table, print_symbol_entry);
     }
+
+    minim_symbol_table_for_each(global.builtins, print_symbol_entry);
 }
 
 void env_dump_exports(MinimEnv *env)

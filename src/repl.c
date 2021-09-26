@@ -39,9 +39,7 @@ static bool is_int8(MinimObject *thing)
 int minim_repl(char **argv, uint32_t flags)
 {
     PrintParams pp;
-    MinimEnv *top_env;
     MinimModule *module;
-    MinimModuleCache *imports;
     MinimObject *exit_handler, *err_handler;
     jmp_buf *exit_buf, *error_buf;
 
@@ -51,17 +49,6 @@ int minim_repl(char **argv, uint32_t flags)
     // set up globals
     init_global_state();
     init_builtins();
-
-    // set up builtins
-    init_env(&top_env, NULL, NULL);
-    minim_load_builtins(top_env);
-
-    // set up cache
-    init_minim_module_cache(&imports);
-    init_minim_module(&module, imports);
-    init_env(&module->env, top_env, NULL);
-    module->env->module = module;
-    module->env->current_dir = get_current_dir();
 
     // set up ports
     minim_error_port = minim_file_port(stderr, MINIM_PORT_MODE_WRITE |
@@ -75,10 +62,14 @@ int minim_repl(char **argv, uint32_t flags)
                                               MINIM_PORT_MODE_READY |
                                               MINIM_PORT_MODE_ALT_EOF);
 
-    MINIM_PORT_NAME(minim_input_port) = "REPL";
+    MINIM_PORT_NAME(minim_input_port) = "repl";
     GC_register_root(minim_error_port);
     GC_register_root(minim_output_port);
     GC_register_root(minim_input_port);
+
+    // set up top-level environment
+    init_minim_module(&module);
+    init_env(&module->env, NULL, NULL);
 
     // Set up handlers
     set_default_print_params(&pp);

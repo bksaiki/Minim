@@ -9,8 +9,6 @@ struct MinimGlobal global;
 
 void init_global_state()
 {
-    GC_pause();     // NO GC'ing since we are working with static variables
-
     init_minim_module_cache(&global.cache);
     init_minim_symbol_table(&global.builtins);
     global.symbols = init_intern_table();
@@ -22,6 +20,4 @@ void init_global_state()
     GC_register_root(global.builtins);
     GC_register_root(global.symbols);
     GC_register_root(global.current_dir);
-
-    GC_resume();  // OK to resume
 }

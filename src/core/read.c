@@ -1,8 +1,6 @@
 #include "../minim.h"
 #include "error.h"
 
-#define CACHE_OR_NULL(env)      ((env)->module ? (env)->module->cache : NULL)
-
 static MinimEnv *get_builtin_env(MinimEnv *env)
 {
     if (!env->parent)
@@ -119,12 +117,10 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     cache = load_processed_file(port);
     if (cache)
     {
-        init_minim_module(&module, prev->cache);
+        init_minim_module(&module);
         init_env(&module->env, get_builtin_env(prev->env), NULL);
         module->env->current_dir = directory_from_port(cache);
         module->env->module = module;
-        module->cache = prev->cache;
-
         while (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
         {
             SyntaxNode *ast, *err;
@@ -139,11 +135,10 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     }
     else
     {
-        init_minim_module(&module, prev->cache);
+        init_minim_module(&module);
         init_env(&module->env, get_builtin_env(prev->env), NULL);
         module->env->current_dir = directory_from_port(port);
         module->env->module = module;
-        module->cache = prev->cache;
 
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
@@ -170,7 +165,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
     cache = load_processed_file(port);
     if (cache)
     {
-        init_minim_module(&module, CACHE_OR_NULL(env));
+        init_minim_module(&module);
         init_env(&module->env, get_builtin_env(env), NULL);
         module->env->current_dir = directory_from_port(cache);
         module->env->module = module;
@@ -188,7 +183,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
     }
     else
     {
-        init_minim_module(&module, CACHE_OR_NULL(env));
+        init_minim_module(&module);
         init_env(&module->env, get_builtin_env(env), NULL);
         module->env->current_dir = directory_from_port(port);
         module->env->module = module;
@@ -213,7 +208,6 @@ void minim_load_file(MinimEnv *env, const char *fname)
 void minim_run_file(MinimEnv *env, const char *fname)
 {
     MinimModule *module, *prev;
-    MinimModuleCache *cache;
     MinimObject *port, *cport;
     char *prev_dir;
 
@@ -223,8 +217,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
     cport = load_processed_file(port);
     if (cport)
     {
-        init_minim_module_cache(&cache);
-        init_minim_module(&module, cache);
+        init_minim_module(&module);
         module->env = env;
         env->current_dir = directory_from_port(cport);
         env->module = module;
@@ -248,8 +241,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
     }
     else
     {
-        init_minim_module_cache(&cache);
-        init_minim_module(&module, cache);
+        init_minim_module(&module);
         module->env = env;
         env->current_dir = directory_from_port(port);
         env->module = module;
