@@ -9,6 +9,7 @@
 #include "builtin.h"
 #include "eval.h"
 #include "error.h"
+#include "global.h"
 #include "jmp.h"
 #include "lambda.h"
 #include "list.h"
@@ -502,6 +503,7 @@ char *eval_string(char *str, size_t len)
     jmp_buf *exit_buf;
     FILE *tmp;
 
+    // set up string as file
     tmp = tmpfile();
     fputs(str, tmp);
     rewind(tmp);
@@ -511,26 +513,8 @@ char *eval_string(char *str, size_t len)
                                 MINIM_PORT_MODE_OPEN);
     MINIM_PORT_NAME(port) = "string";
 
-    // set up ports
-    minim_error_port = minim_file_port(stderr, MINIM_PORT_MODE_WRITE |
-                                               MINIM_PORT_MODE_OPEN |
-                                               MINIM_PORT_MODE_READY);
-    minim_output_port = minim_file_port(stdout, MINIM_PORT_MODE_WRITE |
-                                                MINIM_PORT_MODE_OPEN |
-                                                MINIM_PORT_MODE_READY);
-    minim_input_port = minim_file_port(stdin, MINIM_PORT_MODE_READ |
-                                              MINIM_PORT_MODE_OPEN |
-                                              MINIM_PORT_MODE_READY |
-                                              MINIM_PORT_MODE_ALT_EOF);
-
-    MINIM_PORT_NAME(minim_input_port) = "test";
-    GC_register_root(minim_error_port);
-    GC_register_root(minim_output_port);
-    GC_register_root(minim_input_port);
-
     // setup environment
     init_env(&env, NULL, NULL);
-    minim_load_builtins(env);
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);
