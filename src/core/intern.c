@@ -150,7 +150,7 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym)
             size_t i;
             for (i = 0; i < n; ++i)
             {
-                if (isym[i] == sym[i])
+                if (isym[i] != sym[i])
                     break;
             }
 

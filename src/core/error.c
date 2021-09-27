@@ -279,10 +279,7 @@ void throw_minim_error(MinimEnv *env, MinimObject *err)
     if (env)
         fill_trace_info(MINIM_ERROR(err), env);
         
-    if (minim_error_handler != NULL)        // no return
-        minim_long_jump(minim_error_handler, NULL, 1, &err);
-
-    printf("error handler not set up\n");
+    minim_long_jump(minim_error_handler, NULL, 1, &err);
 }
 
 // ************ Builtins ****************
