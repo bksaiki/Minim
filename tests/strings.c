@@ -335,12 +335,13 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 4;
+        char strs[8][256] =
         {
-            "(string->symbol \"hello\")",           "'hello",
-            "(string->symbol \"x y\")",             "'|x y|",
-            "(symbol->string 'hello)",              "\"hello\""
+            "(string->symbol \"hello\")",                               "'hello",
+            "(string->symbol \"x y\")",                                 "'|x y|",
+            "(symbol->string 'hello)",                                  "\"hello\"",
+            "(eq? (string->symbol \"foo\") (string->symbol \"foo\"))",   "#t"
         };
 
         printf("Testing 'string<->symbol'\n");

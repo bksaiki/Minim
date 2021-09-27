@@ -121,6 +121,7 @@ extern MinimObject *minim_input_port;
 #define MINIM_OBJ_TYPE(obj)         ((obj)->type)
 #define MINIM_EXACTNUM(obj)         (*((mpq_ptr*) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_SYMBOL_INTERN(obj)    (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
@@ -164,6 +165,7 @@ extern MinimObject *minim_input_port;
 
 // Setters
 
+#define MINIM_SYMBOL_SET_INTERNED(obj, s)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 #define MINIM_PROMISE_SET_STATE(obj, s)     (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 
 // Special values

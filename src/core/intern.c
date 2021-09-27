@@ -166,6 +166,7 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym)
     str[n] = '\0';
 
     obj = minim_symbol(str);
+    MINIM_SYMBOL_SET_INTERNED(obj, 1);
     resize_if_needed(itab);
     intern_table_insert(itab, idx, obj);
     return obj;

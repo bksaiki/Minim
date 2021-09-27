@@ -59,6 +59,7 @@ MinimObject *minim_symbol(char *sym)
 {
     MinimObject *o = GC_alloc(minim_symbol_size);
     o->type = MINIM_OBJ_SYM;
+    MINIM_SYMBOL_SET_INTERNED(o, 0);
     MINIM_SYMBOL(o) = sym;
     return o;
 }
@@ -234,9 +235,6 @@ bool minim_eqp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_INEXACT:
         return minim_number_cmp(a, b) == 0;
 
-    case MINIM_OBJ_SYM:
-        return strcmp(MINIM_SYMBOL(a), MINIM_SYMBOL(b)) == 0;
-
     case MINIM_OBJ_CHAR:
         return MINIM_CHAR(a) == MINIM_CHAR(b);
 
@@ -249,6 +247,7 @@ bool minim_eqp(MinimObject *a, MinimObject *b)
                MINIM_HASH_TABLE(b)->elems == 0;
 
     /*
+    case MINIM_OBJ_SYM:
     case MINIM_OBJ_STRING:
     case MINIM_OBJ_PAIR:
     case MINIM_OBJ_VECTOR:

@@ -5,6 +5,7 @@
 #include "../gc/gc.h"
 #include "assert.h"
 #include "error.h"
+#include "global.h"
 #include "number.h"
 #include "string.h"
 
@@ -319,7 +320,7 @@ MinimObject *minim_builtin_string_to_symbol(MinimEnv *env, size_t argc, MinimObj
     if (!MINIM_OBJ_STRINGP(args[0]))
         THROW(env, minim_argument_error("string?", "string->symbol", 0, args[0]));
 
-    return minim_symbol(MINIM_STRING(args[0]));
+    return intern(MINIM_STRING(args[0]));
 }
 
 MinimObject *minim_builtin_string_to_number(MinimEnv *env, size_t argc, MinimObject **args)
