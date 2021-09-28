@@ -468,6 +468,20 @@ SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
         node->childc = 0;
         return node;  
     }
+    else if (minim_truep(obj))
+    {
+        init_buffer(&bf);
+        writes_buffer(bf, "true");
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
+    }
+    else if (minim_falsep(obj))
+    {
+        init_buffer(&bf);
+        writes_buffer(bf, "false");
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
+    }
     else if (MINIM_OBJ_PAIRP(obj))
     {
         if (!minim_nullp(MINIM_CDR(obj)) && !MINIM_OBJ_PAIRP(MINIM_CDR(obj)))   // true pair
