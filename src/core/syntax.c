@@ -186,7 +186,12 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
 
         bind = unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)));
         if (!minim_listp(bind) || minim_list_length(bind) != 2)
-            THROW(env, minim_syntax_error("bad binding", "let-values", ast, MINIM_AST(MINIM_CAR(it))));
+        {
+            THROW(env, minim_syntax_error("bad binding",
+                                          "let-values",
+                                          ast,
+                                          MINIM_AST(MINIM_CAR(it))));
+        }
 
         // list of identifier
         stx = MINIM_AST(MINIM_CAR(bind));
@@ -194,9 +199,9 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
         if (!minim_listp(ids))
         {
             THROW(env, minim_syntax_error("not a list of identifiers",
-                                     "let-values",
-                                     ast,
-                                     stx));
+                                          "let-values",
+                                          ast,
+                                          stx));
         }
 
         for (size_t i = 0; i < stx->childc; ++i)
@@ -206,8 +211,8 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
             {
                 THROW(env, minim_syntax_error("not an identifier",
                                               "let-values",
-                                         ast,
-                                         stx->children[i]));
+                                              ast,
+                                              stx->children[i]));
             }
 
             for (size_t j = 0; j < i; ++j)
@@ -216,8 +221,8 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
                                                   "let-values",
-                                             ast,
-                                             stx->children[i]));
+                                                  ast,
+                                                  stx->children[i]));
                 }
             }
 
@@ -226,7 +231,6 @@ static void check_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
 
         init_env(&env3, env, NULL);
         check_syntax_rec(env3, MINIM_AST(MINIM_CADR(bind)));
-        env_intern_sym(env2, MINIM_STRING(sym), minim_void);
     }
 
     if (base + 1 == ast->childc)
@@ -336,7 +340,7 @@ static void check_syntax_import(MinimEnv *env, SyntaxNode *ast)
 static void check_syntax_export(MinimEnv *env, SyntaxNode *ast)
 {
     MinimObject *export;
-
+    
     for (size_t i = 0; i < ast->childc; ++i)
     {
         if (ast->children[i]->type == SYNTAX_NODE_LIST)
@@ -463,6 +467,20 @@ SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
         init_syntax_node(&node, SYNTAX_NODE_LIST);
         node->childc = 0;
         return node;  
+    }
+    else if (minim_truep(obj))
+    {
+        init_buffer(&bf);
+        writes_buffer(bf, "true");
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
+    }
+    else if (minim_falsep(obj))
+    {
+        init_buffer(&bf);
+        writes_buffer(bf, "false");
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
     }
     else if (MINIM_OBJ_PAIRP(obj))
     {

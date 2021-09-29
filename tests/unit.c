@@ -2,31 +2,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../src/minim.h"
-
-bool run_test(char *input, char *expected)
-{
-    char *str;
-    bool s;
-
-    str = eval_string(input, INT_MAX);
-    s = (strcmp(str, expected) == 0);
-    if (!s) printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
-
-    return s;
-}
-
-bool evaluate(char *input)
-{
-    eval_string(input, INT_MAX);
-    return true;
-}
+#include "../src/test/test-common.h"
 
 int main()
 {
     bool status = true;
     
     GC_init(&status);
+    setup_test_env();
 
     {
         const int COUNT = 3;
@@ -53,6 +36,22 @@ int main()
         };
 
         printf("Testing 'def-values'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(def-values (true) (list))",       "<void>",
+            "(def-values (false) (list))",      "<void>",
+            "(def-values (null) (list))",       "<void>",
+            "(def-values (eof) (list))",        "<void>",
+            "(def-values (void) (list))",       "<void>"
+        };
+
+        printf("Testing 'def-values' (edge-case names)\n");
         for (int i = 0; i < COUNT; ++i)
             status &= run_test(strs[2 * i], strs[2 * i + 1]);
     }
@@ -633,7 +632,7 @@ int main()
 
         printf("Testing 'error'\n");
         for (int i = 0; i < COUNT; ++i)
-            status &= evaluate(strs[i]);
+            evaluate(strs[i]);
     }
 
     {

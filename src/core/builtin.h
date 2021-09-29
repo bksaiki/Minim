@@ -266,7 +266,7 @@ DEFINE_BUILTIN_FUN(write_char)
 // Loads a single function into the environment
 void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);
 
-// Loads every builtin symbol in the base library.
-void minim_load_builtins(MinimEnv *env);
+// Loads builtins
+void init_builtins();
 
 #endif

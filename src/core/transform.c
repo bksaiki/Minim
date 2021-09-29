@@ -850,6 +850,9 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
             op = env_get_sym(env, ast->children[0]->sym);
             if (op)
             {
+                if (minim_specialp(op))
+                    return ast;
+
                 if (MINIM_SYNTAX(op) == minim_builtin_template ||
                     MINIM_SYNTAX(op) == minim_builtin_syntax ||
                     MINIM_SYNTAX(op) == minim_builtin_quote ||

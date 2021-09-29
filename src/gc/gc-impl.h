@@ -5,12 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Debug */
-#define GC_DEBUG        1
+#include "gc-types.h"
 
-/* Block flag */
-#define GC_BLOCK_MARK       0x1
-#define GC_BLOCK_ROOT       0x2
+/* Debug */
+#define GC_DEBUG        0
 
 /* GC Parameters */
 #define GC_MIN_AUTO_COLLECT_SIZE     (8 * 1024 * 1024)
@@ -25,35 +23,13 @@
 #define GC_HEAP_HEURISTIC   1
 #endif
 
-/* Destructor signature */
-typedef void (*gc_dtor_t)(void*);
-
-/* Marking signature */
-typedef void (*gc_mark_t)(void*,void*,void*);
-
-/* GC block type */
-typedef struct gc_block_t {
-    void *ptr;
-    gc_dtor_t dtor;
-    gc_mark_t mrk;
-    size_t size, hash;
-    uint8_t flags;
-} gc_block_t;
-
-/* Main GC type */
-typedef struct gc_t {
-    gc_block_t *young, *old;
-    void *stack_bottom;
-    size_t youngc, nyoung;
-    size_t oldc, nold;
-    size_t allocs, dirty;
-    size_t cycles;
-} gc_t;
-
 /************ gc_t interface ************/
 
 gc_t *gc_create(void *stack);
 void gc_destroy(gc_t* gc);
+
+void gc_pause(gc_t *gc);
+void gc_resume(gc_t *gc);
 
 void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
 void gc_remove(gc_t *gc, void *ptr, int destroy);

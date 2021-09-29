@@ -1,5 +1,5 @@
-#ifndef _MINIM_TOP_READ_H_
-#define _MINIM_TOP_READ_H_
+#ifndef _MINIM_TOP_RUN_H_
+#define _MINIM_TOP_RUN_H_
 
 #include "minim.h"
 

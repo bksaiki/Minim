@@ -7,6 +7,7 @@
 #include "core/builtin.h"
 #include "core/env.h"
 #include "core/eval.h"
+#include "core/global.h"
 #include "core/module.h"
 #include "core/number.h"
 #include "core/parser.h"

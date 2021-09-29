@@ -277,7 +277,6 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
         init_env(&lam->env, env, NULL);
 
         res = minim_closure(lam);
-        MINIM_SYMBOL(bindings) = NULL;
     }
     else // minim_listp(bindings) || minim_consp(bindings)
     {

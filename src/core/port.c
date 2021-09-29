@@ -18,7 +18,7 @@ static MinimObject *open_file(MinimEnv *env, const char *fname, uint8_t mode)
 
     path = (is_absolute_path(fname) ?
             build_path(1, fname) :
-            build_path(2, get_working_directory(), fname));
+            build_path(2, get_current_dir(), fname));
     clean_path = extract_path(path);
     file = fopen(clean_path, ((mode & MINIM_PORT_MODE_READ) ? "r" : "w"));
     if (!file)

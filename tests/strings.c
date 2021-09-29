@@ -2,25 +2,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../src/minim.h"
-
-bool run_test(char *input, char *expected)
-{
-    char *str;
-    bool s;
-
-    str = eval_string(input, INT_MAX);
-    s = (strcmp(str, expected) == 0);
-    if (!s) printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
-
-    return s;
-}
+#include "../src/test/test-common.h"
 
 int main()
 {
     bool status = true;
 
     GC_init(&status);
+    setup_test_env();
 
     {
         const int COUNT = 3;
@@ -346,12 +335,13 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 4;
+        char strs[8][256] =
         {
-            "(string->symbol \"hello\")",           "'hello",
-            "(string->symbol \"x y\")",             "'|x y|",
-            "(symbol->string 'hello)",              "\"hello\""
+            "(string->symbol \"hello\")",                               "'hello",
+            "(string->symbol \"x y\")",                                 "'|x y|",
+            "(symbol->string 'hello)",                                  "\"hello\"",
+            "(eq? (string->symbol \"foo\") (string->symbol \"foo\"))",   "#t"
         };
 
         printf("Testing 'string<->symbol'\n");

@@ -13,6 +13,7 @@ for file in $(ls lib/); do
      grep -v "#t" $tmp > /dev/null
     if [ $? -eq 0 ]; then
         echo "[ FAIL ] $file"
+        cat $tmp
         ((failed++))
     else
         echo "[ PASS ] $file"

@@ -3,9 +3,12 @@ build/
 minim
 minim.exe
 
-# tmp
+# temporary
 tmp/
 tests/sandbox*
 
 # profile
 gmon.out
+
+# minim
+.cache/

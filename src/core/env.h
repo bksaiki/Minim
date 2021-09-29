@@ -10,7 +10,9 @@
 // forward declarations
 typedef struct MinimLambda MinimLambda;
 typedef struct MinimModule MinimModule;
+typedef struct InternTable InternTable;
 
+// generic environment within scopes
 typedef struct MinimEnv
 {
     struct MinimEnv *parent, *caller;
@@ -40,7 +42,7 @@ int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj);
 
 // Returns a pointer to the key associated with the values. Returns NULL
 // if the value is not in the table
-const char *env_peek_key(MinimEnv *env, MinimObject *value);
+const char *env_peek_key(MinimEnv *env, MinimObject *obj);
 
 // Returns the number of symbols in the environment
 size_t env_symbol_count(MinimEnv *env);

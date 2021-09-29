@@ -1,6 +1,7 @@
 #ifndef _MINIM_AST_H_
 #define _MINIM_AST_H_
 
+#include <stdio.h>
 #include "../common/buffer.h"
 #include "../common/common.h"
 
@@ -42,6 +43,7 @@ bool ast_equalp(SyntaxNode *a, SyntaxNode *b);
 void ast_to_buffer(SyntaxNode *node, Buffer *bf);
 void ast_dump_in_buffer(SyntaxNode *node, Buffer *bf);
 
-void print_ast(SyntaxNode *node);
+void print_ast_to_port(SyntaxNode *node, FILE *file);
+#define print_ast(node, stdout)
 
 #endif

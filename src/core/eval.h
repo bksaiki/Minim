@@ -13,8 +13,13 @@ MinimObject *eval_ast(MinimEnv* env, SyntaxNode *ast);
 // Same as 'eval_ast' except it does not run the syntax checker
 MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast);
 
-// Evaluates `module` and stores the result at 'pobj'.
-// Returns a non-zero result on success
+// Evaluates `module` up to defining macros
+void eval_module_cached(MinimModule *module);
+
+// Evaluates `module` up to applying syntax macros
+void eval_module_macros(MinimModule *module);
+
+// Evaluates `module` and returns the result
 MinimObject *eval_module(MinimModule *module);
 
 // Evaluates the syntax node by one layer storing the result at 'pobj' and returning

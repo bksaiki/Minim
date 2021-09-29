@@ -8,12 +8,10 @@
 
 #if defined(MINIM_LINUX)
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #else
 #include <direct.h>
-#endif
-
-#ifndef PATH_MAX
-#define PATH_MAX    4096
 #endif
 
 #define path_separator(t) (((t) == MINIM_PATH_MODE_LINUX) ? '/' : '\\')
@@ -77,7 +75,7 @@ static int path_type(const char *path)
     return (type == MINIM_PATH_MODE_UNKNOWN) ? MINIM_DEFAULT_PATH_MODE : type;
 }
 
-static void path_append(MinimPath *path, const char *subpath, bool relative)
+static void path_append2(MinimPath *path, const char *subpath, bool relative)
 {
     size_t len, i;
     int type;
@@ -193,17 +191,22 @@ char *extract_directory(MinimPath *path)
     return clean_path;
 }
 
+char *extract_file(MinimPath *path)
+{
+    return path->elems[path->elemc - 1];    // TODO: make safe, aka path->elemc == 0
+}
+
 static MinimPath *build_path2(size_t count, const char *first, va_list rest, bool relative)
 {
     MinimPath *path;
     char *sub;
 
     init_path(&path);
-    path_append(path, first, relative);
+    path_append2(path, first, relative);
     for (size_t i = 1; i < count; ++i)
     {
         sub = va_arg(rest, char*);
-        path_append(path, sub, relative);
+        path_append2(path, sub, relative);
     }
 
     va_end(rest);
@@ -226,15 +229,32 @@ MinimPath *build_relative_path(size_t count, const char *first, ...)
     return build_path2(count, first, va, true);
 }
 
-char *get_working_directory()
+void path_append(MinimPath *path, const char *subpath)
 {
-    char *path = GC_alloc_atomic(PATH_MAX);
+    path_append2(path, subpath, true);
+}
+
+time_t *get_last_modified(const char *path)
+{
 #if defined(MINIM_LINUX)
-    getcwd(path, PATH_MAX);
+    struct stat *st = GC_alloc_atomic(sizeof(struct stat));
+    if (stat(path, st) == -1)
+        return NULL;
+    else
+        return &st->st_mtime;
 #else // MINIM_WINDOWS
-    _getcwd(path, PATH_MAX);
+    return false;
 #endif
-    return path;
+}
+
+bool directory_existp(const char *dir)
+{
+#if defined(MINIM_LINUX)
+    struct stat st = {0};
+    return stat(dir, &st) != -1;
+#else // MINIM_WINDOWS
+    return false;
+#endif
 }
 
 bool is_absolute_path(const char *sym)
@@ -243,5 +263,23 @@ bool is_absolute_path(const char *sym)
     return sym[0] && sym[0] == '/';
 #else // MINIM_WINDOWS
     return sym[0] && isalpha(sym[0]) && sym[1] && sym[1] == ':';
+#endif
+}
+
+bool make_directory(const char *dir)
+{
+#if defined(MINIM_LINUX)
+    struct stat st = {0};
+    if (stat(dir, &st) == -1)
+    {
+        mkdir(dir, 0700);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+#else // MINIM_WINDOWS
+    return false;
 #endif
 }
