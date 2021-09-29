@@ -41,6 +41,22 @@ int main()
     }
 
     {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
+            "(def-values (true) (list))",       "<void>",
+            "(def-values (false) (list))",      "<void>",
+            "(def-values (null) (list))",       "<void>",
+            "(def-values (eof) (list))",        "<void>",
+            "(def-values (void) (list))",       "<void>"
+        };
+
+        printf("Testing 'def-values' (edge-case names)\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
         const int COUNT = 8;
         char strs[16][256] = 
         {

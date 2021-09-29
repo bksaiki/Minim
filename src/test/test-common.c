@@ -30,6 +30,8 @@ bool run_test(char *input, char *expected)
     bool s;
 
     str = eval_string(input, INT_MAX);
+    if (!str)   return false;
+
     s = (strcmp(str, expected) == 0);
     if (!s) printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
 

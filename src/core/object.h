@@ -88,9 +88,14 @@ extern MinimObject *minim_input_port;
 #define minim_voidp(x)              ((x) == minim_void)
 #define minim_truep(x)              ((x) == minim_true)
 #define minim_falsep(x)             ((x) == minim_false)
-#define minim_booleanp(x)           (minim_truep(x) || minim_falsep(x))
 #define minim_nullp(x)              ((x) == minim_null)
 #define minim_eofp(x)               ((x) == minim_eof)
+
+#define minim_booleanp(x)           (minim_truep(x) || minim_falsep(x))
+#define minim_specialp(x)           (minim_voidp(x) ||      \
+                                     minim_booleanp(x) ||   \
+                                     minim_nullp(x) ||      \
+                                     minim_eofp(x))
 
 #define MINIM_OBJ_EXACTP(obj)       MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_EXACT)
 #define MINIM_OBJ_INEXACTP(obj)     MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_INEXACT)

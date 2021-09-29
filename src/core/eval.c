@@ -49,7 +49,7 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
         if (quote)
         {
             res = env_get_sym(env, str);
-            return (minim_truep(res) || minim_falsep(res)) ? res : intern(str);
+            return intern(str);
         }
         else
         {
