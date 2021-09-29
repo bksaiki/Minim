@@ -455,6 +455,41 @@ static void check_syntax_rec(MinimEnv *env, SyntaxNode *ast)
 
 #define FOLD_REC(proc, x, expr)        if (proc == x) return expr(env, ast);
 
+static MinimObject *fold_datum(MinimEnv *env, SyntaxNode *ast, MinimObject *obj)
+{
+    if (minim_nullp(obj))
+    {
+        SyntaxNode *node;
+        Buffer *bf;
+
+        init_buffer(&bf);
+        writes_buffer(bf, "null");
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
+        return minim_cons(node, obj);
+    }
+    else if (minim_voidp(obj))
+    {
+        return minim_cons(ast, obj);
+    }
+    else if (minim_specialp(obj))
+    {
+        return minim_cons(datum_to_syntax(env, obj), obj);
+    }
+    else if (MINIM_OBJ_FUNCP(obj) || MINIM_OBJ_VALUESP(obj))
+    {
+        return minim_cons(ast, NULL);
+    }
+    else if (MINIM_OBJ_SYMBOLP(obj) || minim_listp(obj))      
+    {
+        return minim_cons(ast, obj);
+    }
+    else
+    {
+        return minim_cons(datum_to_syntax(env, obj), obj);
+    }
+}
+
 static MinimObject *fold_syntax_def_values(MinimEnv *env, SyntaxNode *ast)
 {
     ast->children[2] = (SyntaxNode*) MINIM_CAR(constant_fold_rec(env, ast->children[2]));
@@ -467,7 +502,6 @@ static MinimObject *fold_syntax_let_values(MinimEnv *env, SyntaxNode *ast)
     for (size_t i = 0; i < bindings->childc; ++i)
     {
         SyntaxNode *bind = bindings->children[i];
-        print_ast(bind->children[1]); printf("\n");
         bind->children[1] = (SyntaxNode*) MINIM_CAR(constant_fold_rec(env, bind->children[1]));
     }
 
@@ -510,39 +544,15 @@ static MinimObject *fold_syntax_quote(MinimEnv *env, SyntaxNode *ast)
     MinimObject *obj;
     
     obj = unsyntax_ast_rec(env, ast->children[1]);
-    if (minim_nullp(obj))
-    {
-        SyntaxNode *node;
-        Buffer *bf;
-
-        init_buffer(&bf);
-        writes_buffer(bf, "null");
-        init_syntax_node(&node, SYNTAX_NODE_DATUM);
-        node->sym = get_buffer(bf);
-        return minim_cons(node, obj);
-    }
-    else
-    {
-        return minim_cons(datum_to_syntax(env, obj), obj);
-    }
+    return fold_datum(env, ast, obj);
 }
 
 static MinimObject *constant_fold_rec(MinimEnv *env, SyntaxNode *ast)
 {
-    printf("folding: "); print_ast(ast); printf("\n");
-
     if (ast->type != SYNTAX_NODE_LIST)
     {
         MinimObject *obj = eval_ast_terminal(env, ast);
-        
-        if (obj == NULL)
-            return minim_cons(ast, NULL);
-        else if (minim_specialp(obj))
-            return minim_cons(datum_to_syntax(env, obj), obj);
-        else if (MINIM_OBJ_FUNCP(obj))
-            return minim_cons(ast, NULL);
-        else
-            return minim_cons(datum_to_syntax(env, obj), obj);
+        return (obj == NULL) ? minim_cons(ast, NULL) : fold_datum(env, ast, obj);
     }
 
     if (ast->children[0]->sym)
@@ -609,14 +619,8 @@ static MinimObject *constant_fold_rec(MinimEnv *env, SyntaxNode *ast)
             
             if (foldp && builtin_foldablep(proc))
             {
-                printf("fold:   ");
-                print_ast(ast);
-
                 arg = proc(env, argc, args);
-                printf(" -> ");
-                debug_print_minim_object(arg, env);
-
-                return minim_cons(datum_to_syntax(env, arg), arg);
+                return fold_datum(env, ast, arg);
             }
             else
             {
@@ -649,11 +653,7 @@ SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
     SyntaxNode *node;
     Buffer *bf;
 
-    if (MINIM_OBJ_ASTP(obj))
-    {
-        return MINIM_AST(obj);
-    }
-    else if (minim_nullp(obj))
+    if (minim_nullp(obj))
     {
         init_syntax_node(&node, SYNTAX_NODE_LIST);
         node->childc = 0;
@@ -672,6 +672,17 @@ SyntaxNode *datum_to_syntax(MinimEnv *env, MinimObject *obj)
         writes_buffer(bf, "false");
         init_syntax_node(&node, SYNTAX_NODE_DATUM);
         node->sym = get_buffer(bf);
+    }
+    else if (minim_voidp(obj))
+    {
+        init_buffer(&bf);
+        writes_buffer(bf, "void");
+        init_syntax_node(&node, SYNTAX_NODE_DATUM);
+        node->sym = get_buffer(bf);
+    }
+    else if (MINIM_OBJ_ASTP(obj))
+    {
+        return MINIM_AST(obj);
     }
     else if (MINIM_OBJ_PAIRP(obj))
     {
@@ -782,7 +793,6 @@ SyntaxNode *constant_fold(MinimEnv *env, SyntaxNode *ast)
     SyntaxNode *folded;
 
     folded = ((SyntaxNode*) MINIM_CAR(constant_fold_rec(env, ast)));
-    printf("folded:  "); print_ast(folded); printf("\n");
     return folded;
 }
 

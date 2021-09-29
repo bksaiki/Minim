@@ -26,6 +26,6 @@
 
 // Configuration options
 
-#define MINIM_USE_CACHE         0
+#define MINIM_USE_CACHE         1
 
 #endif

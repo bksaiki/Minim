@@ -343,5 +343,6 @@ void init_builtins()
 
 bool builtin_foldablep(MinimBuiltin proc)
 {
-    return (proc == minim_builtin_length);
+    return (proc != minim_builtin_error &&
+            proc != minim_builtin_exit);
 }

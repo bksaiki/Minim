@@ -476,7 +476,7 @@ MinimObject *eval_module(MinimModule *module)
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        printf("eval: "); print_ast(module->exprs[i]); printf("\n");
+        // printf("eval: "); print_ast(module->exprs[i]); printf("\n");
 
         check_syntax(module->env, module->exprs[i]);
         res = eval_ast_no_check(module->env, module->exprs[i]);
