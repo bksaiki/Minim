@@ -19,7 +19,7 @@
 #include "tail_call.h"
 #include "transform.h"
 
-static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
+static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote, bool err)
 {
     if (is_rational(str))
     {
@@ -56,11 +56,18 @@ static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote)
             res = env_get_sym(env, str);
 
             if (!res)
-                THROW(env, minim_error("unrecognized symbol", str));
+            {
+                if (err)    THROW(env, minim_error("unrecognized symbol", str));
+                else        return NULL;
+            }   
             else if (MINIM_OBJ_SYNTAXP(res))
+            {
                 THROW(env, minim_error("bad syntax", str));
+            }
             else if (MINIM_OBJ_TRANSFORMP(res))
+            {
                 THROW(env, minim_error("bad transform", str));
+            }
 
             return res;
         }
@@ -150,7 +157,7 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
     }
     else
     {
-        res = str_to_node(node->sym, env, true);
+        res = str_to_node(node->sym, env, true, true);
     }
 
     return res;
@@ -276,7 +283,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     }
     else
     {
-        return str_to_node(node->sym, env, false);
+        return str_to_node(node->sym, env, false, true);
     }
 }
 
@@ -379,6 +386,11 @@ MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
     return eval_ast_node(env, ast);
 }
 
+MinimObject *eval_ast_terminal(MinimEnv *env, SyntaxNode *ast)
+{
+    return str_to_node(ast->sym, env, false, false);
+}
+
 void eval_module_cached(MinimModule *module)
 {
     // importing
@@ -441,24 +453,32 @@ void eval_module_macros(MinimModule *module)
 
         module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
     }
-}
 
-MinimObject *eval_module(MinimModule *module)
-{
-    PrintParams pp;
-    MinimEnv *env2;
-    MinimObject *res;
-
-    // Evaluation
-    set_default_print_params(&pp);
-    init_env(&env2, module->env, NULL);
+    // constant fold
     for (size_t i = 0; i < module->exprc; ++i)
     {
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        // print_ast(module->exprs[i]); printf("\n");
-        check_syntax(env2, module->exprs[i]);
+        module->exprs[i] = constant_fold(module->env, module->exprs[i]);
+    }
+}
+
+MinimObject *eval_module(MinimModule *module)
+{
+    PrintParams pp;
+    MinimObject *res;
+
+    // Evaluation
+    set_default_print_params(&pp);
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        if (expr_is_module_level(module->env, module->exprs[i]))
+            continue;
+
+        printf("eval: "); print_ast(module->exprs[i]); printf("\n");
+
+        check_syntax(module->env, module->exprs[i]);
         res = eval_ast_no_check(module->env, module->exprs[i]);
         if (!minim_voidp(res))
         {

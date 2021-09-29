@@ -43,7 +43,8 @@ static MinimObject *open_file_port(MinimEnv *env, const char *fname)
 
 static void emit_processed_file(MinimObject *fport, MinimModule *module)
 {
-#if defined(MINIM_LINUX)            // only enabled for linux
+#if MINIM_USE_CACHE == 0
+#elif defined(MINIM_LINUX)            // only enabled for linux
     MinimPath *fname, *cname;
     FILE *cfile;
     
@@ -65,7 +66,9 @@ static void emit_processed_file(MinimObject *fport, MinimModule *module)
 
 static MinimObject *load_processed_file(MinimObject *fport)
 {
-#if defined(MINIM_LINUX)            // only enabled for linux
+#if MINIM_USE_CACHE == 0
+    return NULL;
+#elif defined(MINIM_LINUX)            // only enabled for linux
     MinimPath *fname, *cname;
     time_t *flast, *clast;
     MinimObject *port;

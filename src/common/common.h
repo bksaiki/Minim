@@ -24,4 +24,8 @@
 #error "compiler not supported"
 #endif
 
+// Configuration options
+
+#define MINIM_USE_CACHE         0
+
 #endif
