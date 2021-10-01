@@ -36,25 +36,25 @@ static void replace_special_chars(char *str)
 
 // *** Internals *** //
 
-bool is_rational(char *str)
+bool is_rational(const char *str)
 {
-    char *it = str;
+    size_t i = 0;
 
-    if ((*it == '+' || *it == '-') &&
-        (*(it + 1) >= '0' && *(it + 1) <= '9'))
+    if ((str[i] == '+' || str[i] == '-') &&
+        (str[i + 1] >= '0' && str[i + 1] <= '9'))
+        i += 2;
+
+    while (str[i] >= '0' && str[i] <= '9')
+        ++i;
+
+    if (str[i] == '/' && str[i + 1] >= '0' && str[i + 1] <= '9')
     {
-        it += 2;
+        i += 2;
+        while (str[i] >= '0' && str[i] <= '9')
+            ++i;
     }
 
-    while (*it >= '0' && *it <= '9')    ++it;
-
-    if (*it == '/' && *(it + 1) >= '0' && *(it + 1) <= '9')
-    {
-        it += 2;
-        while (*it >= '0' && *it <= '9')    ++it;
-    }
-
-    return (*it == '\0');
+    return (str[i] == '\0');
 }
 
 bool is_float(const char *str)
@@ -105,12 +105,12 @@ bool is_float(const char *str)
     return digit && !str[idx];
 }
 
-bool is_char(char *str)
+bool is_char(const char *str)
 {
     return (str[0] == '#' && str[1] == '\\' && str[2] != '\0');
 }
 
-bool is_str(char *str)
+bool is_str(const char *str)
 {
     size_t len = strlen(str);
 
@@ -138,7 +138,8 @@ MinimObject *str_to_number(const char *str, MinimObjectType type)
     }
     else
     {
-        return minim_inexactnum(strtod(str, NULL));   
+        char *ptr;
+        return minim_inexactnum(strtod(str, &ptr));   
     }
 }
 

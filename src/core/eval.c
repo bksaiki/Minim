@@ -19,7 +19,7 @@
 #include "tail_call.h"
 #include "transform.h"
 
-static MinimObject *str_to_node(char *str, MinimEnv *env, bool quote, bool err)
+static MinimObject *str_to_node(const char *str, MinimEnv *env, bool quote, bool err)
 {
     if (is_rational(str))
     {

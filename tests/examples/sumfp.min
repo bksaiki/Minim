@@ -3,12 +3,14 @@
 ;
 
 (def compute (n)
-  (let loop ((i n) (sum 0.))
-    (if (< i 0.)
+  (let loop ([i n] [sum 0.0])
+    (if (< i 0)
         sum
-        (loop (- i 1.) (+ i sum)))))
+        (loop (- i 1.0) (+ i sum)))))
 
-(def ns (list 10 100 10000 100000 1000000 10000000 100000000))
 
-(for-list ([n ns])
-  (compute n))
+(compute 10)
+(compute 100)
+(compute 1000)
+(compute 10000)
+(compute 100000)

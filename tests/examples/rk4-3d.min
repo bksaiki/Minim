@@ -64,7 +64,7 @@
         v
         (loop (rk4-3d v step) (- iters 1)))))
 
-(main 10)
+; (main 10)
 (main 100)
 (main 1000)
 (main 10000)
