@@ -14,5 +14,6 @@
 
 pid_t get_current_pid();
 char* get_current_dir();
+bool environment_variable_existsp(const char *name);
 
 #endif

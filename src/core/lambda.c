@@ -4,6 +4,7 @@
 #include "assert.h"
 #include "error.h"
 #include "eval.h"
+#include "global.h"
 #include "lambda.h"
 #include "list.h"
 #include "tail_call.h"
@@ -155,6 +156,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
         if (call->lam != lam)
             break;
         
+        log_proc_called();
         args = call->args;
         argc = call->argc;
     }

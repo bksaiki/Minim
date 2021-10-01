@@ -45,6 +45,15 @@ static int process_flags(int count, char **args, uint32_t *pflags)
     return i;
 }
 
+static void log_stats()
+{
+    if (environment_variable_existsp("LOG_STATS"))
+    {
+        printf("expressions evaluated: %zu\n", global.stat_exprs);
+        printf("functions called: %zu\n", global.stat_procs);
+    }
+}
+
 int main(int argc, char** argv)
 {
     uint32_t flags = 0;
@@ -64,6 +73,8 @@ int main(int argc, char** argv)
     else
         status = minim_run(argv[flagc + 1], flags);
 
+    
+    log_stats();
     GC_finalize();
 
     return status;

@@ -17,6 +17,10 @@ DEPFLAGS 	:= -MMD -MP
 CFLAGS 		:= -Wall -std=c11
 LDFLAGS 	:= -lm -lgmp
 
+DEBUG_FLAGS		:= -g -DENABLE_STATS
+PROFILE_FLAGS	:= -O3 -march=native -pg
+RELEASE_FLAGS 	:= -O3 -march=native
+
 CP := cp
 ECHO := echo
 MKDIR_P	:= mkdir -p
@@ -30,13 +34,13 @@ FIND := find
 # Top level rules
 
 debug:
-	$(MAKE) CFLAGS="-g $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
 profile:
-	$(MAKE) CFLAGS="-O3 -march=native -pg $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
 
 release:
-	$(MAKE) CFLAGS="-O3 -march=native $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
 
 install:
 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)

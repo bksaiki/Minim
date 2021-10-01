@@ -199,6 +199,8 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 
             if (!minim_check_arity(proc, argc, env, &res))
                 THROW(env, res);
+
+            log_proc_called();
             res = proc(env, argc, args);
         }
         else if (MINIM_OBJ_SYNTAXP(op))
@@ -243,6 +245,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
             }
             else
             {
+                log_proc_called();
                 res = eval_lambda(lam, env, argc, args);
             }
         }
@@ -376,13 +379,13 @@ MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
     {
         check_syntax(env2, ast);
         ast = transform_syntax(env, ast);
-        return eval_ast_node(env, ast);
+        return eval_ast_no_check(env, ast);
     }
 }
 
 MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
 {
-    // printf("eval: "); print_ast(ast); printf("\n");
+    log_expr_evaled();
     return eval_ast_node(env, ast);
 }
 
