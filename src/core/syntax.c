@@ -480,13 +480,14 @@ static MinimObject *fold_datum(MinimEnv *env, SyntaxNode *ast, MinimObject *obj)
     {
         return minim_cons(ast, NULL);
     }
-    else if (MINIM_OBJ_SYMBOLP(obj) || minim_listp(obj))      
+    else if (MINIM_OBJ_STRINGP(obj))
     {
-        return minim_cons(ast, obj);
+        return minim_cons(datum_to_syntax(env, obj), obj);
     }
     else
     {
-        return minim_cons(datum_to_syntax(env, obj), obj);
+        return minim_cons(ast, obj);
+        
     }
 }
 
@@ -605,7 +606,7 @@ static MinimObject *constant_fold_rec(MinimEnv *env, SyntaxNode *ast)
             foldp = true;
             argc = ast->childc - 1;
             proc = MINIM_BUILTIN(op);
-            args = GC_alloc(argc * sizeof(MinimObject));
+            args = GC_alloc(argc * sizeof(MinimObject*));
             for (size_t i = 1; i < ast->childc; ++i)
             {
                 arg = constant_fold_rec(env, ast->children[i]);

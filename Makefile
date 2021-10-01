@@ -22,6 +22,7 @@ ECHO := echo
 MKDIR_P	:= mkdir -p
 RM := rm -rf
 SH := bash
+FIND := find
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
@@ -60,8 +61,11 @@ lib-tests:
 clean:
 	$(RM) $(OBJS) $(EXE)
 
-clean-all:
+clean-all: clean-cache
 	$(RM) $(BUILD_DIR) tmp $(EXE)
+
+clean-cache:
+	$(FIND) . -type d -name ".cache" | xargs $(RM)
 
 uninstall:
 	$(RM) $(INSTALL_DIR)/$(EXE)
@@ -88,4 +92,4 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	
 -include $(DEPS)
 .PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
-		clean clean-all
+		clean clean-all clean-cache install uninstall
