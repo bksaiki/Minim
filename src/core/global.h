@@ -22,6 +22,7 @@ extern struct MinimGlobal
     // statistics
     size_t stat_exprs;
     size_t stat_procs;
+    size_t stat_objs;
 } global;
 
 // initialize builtins, intern table, other info
@@ -35,9 +36,11 @@ void init_global_state();
 #if MINIM_TRACK_STATS == 1
 #define log_expr_evaled()     ++global.stat_exprs
 #define log_proc_called()     ++global.stat_procs
+#define log_obj_created()     ++global.stat_objs
 #else
 #define log_expr_evaled()
 #define log_proc_called()
+#define log_obj_created()
 #endif
 
 #endif

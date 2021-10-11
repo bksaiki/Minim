@@ -25,4 +25,5 @@ void init_global_state()
     // statisics
     global.stat_exprs = 0;
     global.stat_procs = 0;
+    global.stat_objs = 0;
 }
