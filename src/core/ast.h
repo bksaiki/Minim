@@ -44,6 +44,7 @@ void ast_to_buffer(SyntaxNode *node, Buffer *bf);
 void ast_dump_in_buffer(SyntaxNode *node, Buffer *bf);
 
 void print_ast_to_port(SyntaxNode *node, FILE *file);
-#define print_ast(node, stdout)
+
+#define print_ast(node)     print_ast_to_port(node, stdout)
 
 #endif

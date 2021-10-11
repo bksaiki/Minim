@@ -38,7 +38,9 @@
   (let* ([k1 (vec-scale (lorenz-3d V) h)]
          [k2 (vec-scale (lorenz-3d (vec-add V (vec-scale k1 2/3))) h)])
     (for/list ([i (in-range 3)])
-      (+ (list-ref V i) (* 1/4 (+ (list-ref k1 i) (* 3 (list-ref k2 3))))))))
+      (+ (list-ref V i)
+          (* 1/4 (+ (list-ref k1 i)
+                    (* 3 (list-ref k2 i))))))))
 
 (def rk4-3d (V h)
   (let* ([k1 (vec-scale (lorenz-3d V) h)]
@@ -64,7 +66,7 @@
         v
         (loop (rk4-3d v step) (- iters 1)))))
 
-(main 10)
-(main 100)
-(main 1000)
-(main 10000)
+(main 5)
+(main 25)
+(main 125)
+(main 625)

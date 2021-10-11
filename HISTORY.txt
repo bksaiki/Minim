@@ -1,3 +1,11 @@
+Version <next>
+Future
+Fixed:
+ - tail calling
+Internal:
+ - file caching
+ - constant folding
+
 Version 0.3.2
 18 September 2021
 Added:

@@ -340,3 +340,9 @@ void init_builtins()
     init_builtin("newline", MINIM_OBJ_FUNC, minim_builtin_newline);
     init_builtin("write-char", MINIM_OBJ_FUNC, minim_builtin_write_char);
 }
+
+bool builtin_foldablep(MinimBuiltin proc)
+{
+    return (proc != minim_builtin_error &&
+            proc != minim_builtin_exit);
+}

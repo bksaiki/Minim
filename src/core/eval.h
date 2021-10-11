@@ -13,6 +13,9 @@ MinimObject *eval_ast(MinimEnv* env, SyntaxNode *ast);
 // Same as 'eval_ast' except it does not run the syntax checker
 MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast);
 
+// Evaluates a syntax terminal. Returns NULL on failure.
+MinimObject *eval_ast_terminal(MinimEnv *env, SyntaxNode *ast);
+
 // Evaluates `module` up to defining macros
 void eval_module_cached(MinimModule *module);
 

@@ -5,10 +5,10 @@
 
 // String predicates
 
-bool is_rational(char *str);
+bool is_rational(const char *str);
 bool is_float(const char *str);
-bool is_char(char *str);
-bool is_str(char *str);
+bool is_char(const char *str);
+bool is_str(const char *str);
 
 // String to number
 

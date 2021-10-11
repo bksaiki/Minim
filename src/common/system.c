@@ -25,3 +25,11 @@ char* get_current_dir()
 #endif
 }
 
+bool environment_variable_existsp(const char *name)
+{
+#if defined(MINIM_LINUX)
+    return getenv(name) != NULL;
+#else // MINIM_WINDOWS
+    return false;
+#endif 
+}

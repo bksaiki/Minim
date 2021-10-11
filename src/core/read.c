@@ -41,59 +41,6 @@ static MinimObject *open_file_port(MinimEnv *env, const char *fname)
     return port;
 }
 
-static void emit_processed_file(MinimObject *fport, MinimModule *module)
-{
-#if defined(MINIM_LINUX)            // only enabled for linux
-    MinimPath *fname, *cname;
-    FILE *cfile;
-    
-    fname = build_path(1, MINIM_PORT_NAME(fport));
-    cname = build_path(2, extract_directory(fname), ".cache");
-    make_directory(extract_path(cname));         // TODO: abort if failed
-
-    path_append(cname, extract_file(fname));
-    cfile = fopen(extract_path(cname), "w");
-    for (size_t i = 0; i < module->exprc; ++i)
-    {
-        print_ast_to_port(module->exprs[i], cfile);
-        fputc('\n', cfile);
-    }
-    
-    fclose(cfile);
-#endif
-}
-
-static MinimObject *load_processed_file(MinimObject *fport)
-{
-#if defined(MINIM_LINUX)            // only enabled for linux
-    MinimPath *fname, *cname;
-    time_t *flast, *clast;
-    MinimObject *port;
-    FILE *cfile;
-    char *name;
-    
-    fname = build_path(1, MINIM_PORT_NAME(fport));
-    cname = build_path(2, extract_directory(fname), ".cache");
-    path_append(cname, extract_file(fname));
-    
-    name = extract_path(cname);
-    cfile = fopen(name, "r");
-    if (!cfile)     return NULL;
-
-    flast = get_last_modified(MINIM_PORT_NAME(fport));
-    clast = get_last_modified(name);
-    if (difftime(*flast, *clast) > 0)       // file is newer than cache
-        return NULL;
-
-    // printf("loading from cache: %s\n", MINIM_PORT_NAME(fport));
-    port = minim_file_port(cfile, MINIM_PORT_MODE_READ |
-                                  MINIM_PORT_MODE_OPEN |
-                                  MINIM_PORT_MODE_READY);
-    MINIM_PORT_NAME(port) = MINIM_PORT_NAME(fport);
-    return port;
-#endif
-}
-
 static MinimObject *read_error(MinimObject *port, SyntaxNode *err, const char *fname)
 {
     MinimError *e;
@@ -272,4 +219,60 @@ void minim_run_file(MinimEnv *env, const char *fname)
     minim_symbol_table_merge(env->table, module->export->table);
     env->current_dir = prev_dir;
     env->module = prev;
+}
+
+MinimObject *load_processed_file(MinimObject *fport)
+{
+#if MINIM_USE_CACHE == 0
+    return NULL;
+#elif defined(MINIM_LINUX)            // only enabled for linux
+    MinimPath *fname, *cname;
+    time_t *flast, *clast;
+    MinimObject *port;
+    FILE *cfile;
+    char *name;
+    
+    fname = build_path(1, MINIM_PORT_NAME(fport));
+    cname = build_path(2, extract_directory(fname), ".cache");
+    path_append(cname, extract_file(fname));
+    
+    name = extract_path(cname);
+    cfile = fopen(name, "r");
+    if (!cfile)     return NULL;
+
+    flast = get_last_modified(MINIM_PORT_NAME(fport));
+    clast = get_last_modified(name);
+    if (difftime(*flast, *clast) > 0)       // file is newer than cache
+        return NULL;
+
+    // printf("loading from cache: %s\n", MINIM_PORT_NAME(fport));
+    port = minim_file_port(cfile, MINIM_PORT_MODE_READ |
+                                  MINIM_PORT_MODE_OPEN |
+                                  MINIM_PORT_MODE_READY);
+    MINIM_PORT_NAME(port) = MINIM_PORT_NAME(fport);
+    return port;
+#endif
+}
+
+void emit_processed_file(MinimObject *fport, MinimModule *module)
+{
+#if MINIM_USE_CACHE == 0
+#elif defined(MINIM_LINUX)            // only enabled for linux
+    MinimPath *fname, *cname;
+    FILE *cfile;
+    
+    fname = build_path(1, MINIM_PORT_NAME(fport));
+    cname = build_path(2, extract_directory(fname), ".cache");
+    make_directory(extract_path(cname));         // TODO: abort if failed
+
+    path_append(cname, extract_file(fname));
+    cfile = fopen(extract_path(cname), "w");
+    for (size_t i = 0; i < module->exprc; ++i)
+    {
+        print_ast_to_port(module->exprs[i], cfile);
+        fputc('\n', cfile);
+    }
+    
+    fclose(cfile);
+#endif
 }

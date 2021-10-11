@@ -45,6 +45,16 @@ static int process_flags(int count, char **args, uint32_t *pflags)
     return i;
 }
 
+static void log_stats()
+{
+    if (environment_variable_existsp("MINIM_LOG"))
+    {
+        printf("expressions evaluated: %zu\n", global.stat_exprs);
+        printf("functions called: %zu\n", global.stat_procs);
+        printf("objects created: %zu\n", global.stat_objs);
+    }
+}
+
 int main(int argc, char** argv)
 {
     uint32_t flags = 0;
@@ -58,12 +68,10 @@ int main(int argc, char** argv)
         return 0;
 
     GC_init(&flags);
-
-    if (argc - flagc == 1)
-        status = minim_repl(argv, flags);
-    else
-        status = minim_run(argv[flagc + 1], flags);
-
+    status = (argc - flagc == 1) ?
+             minim_repl(argv, flags) :
+             minim_run(argv[flagc + 1], flags);
+    log_stats();
     GC_finalize();
 
     return status;

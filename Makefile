@@ -17,11 +17,16 @@ DEPFLAGS 	:= -MMD -MP
 CFLAGS 		:= -Wall -std=c11
 LDFLAGS 	:= -lm -lgmp
 
+DEBUG_FLAGS		:= -g -DENABLE_STATS
+PROFILE_FLAGS	:= -O3 -march=native -pg
+RELEASE_FLAGS 	:= -O3 -march=native
+
 CP := cp
 ECHO := echo
 MKDIR_P	:= mkdir -p
 RM := rm -rf
 SH := bash
+FIND := find
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
@@ -29,13 +34,13 @@ SH := bash
 # Top level rules
 
 debug:
-	$(MAKE) CFLAGS="-g $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
 profile:
-	$(MAKE) CFLAGS="-O3 -march=native -pg $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
 
 release:
-	$(MAKE) CFLAGS="-O3 -march=native $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
 
 install:
 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
@@ -60,8 +65,11 @@ lib-tests:
 clean:
 	$(RM) $(OBJS) $(EXE)
 
-clean-all:
+clean-all: clean-cache
 	$(RM) $(BUILD_DIR) tmp $(EXE)
+
+clean-cache:
+	$(FIND) . -type d -name ".cache" | xargs $(RM)
 
 uninstall:
 	$(RM) $(INSTALL_DIR)/$(EXE)
@@ -88,4 +96,4 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	
 -include $(DEPS)
 .PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
-		clean clean-all
+		clean clean-all clean-cache install uninstall

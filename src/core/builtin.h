@@ -269,4 +269,7 @@ void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, .
 // Loads builtins
 void init_builtins();
 
+// Returns true if the builtin is constant foldable
+bool builtin_foldablep(MinimBuiltin proc);
+
 #endif

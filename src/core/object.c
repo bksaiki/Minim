@@ -4,6 +4,7 @@
 #include "../gc/gc.h"
 #include "env.h"
 #include "error.h"
+#include "global.h"
 #include "hash.h"
 #include "lambda.h"
 #include "list.h"
@@ -44,6 +45,7 @@ MinimObject *minim_exactnum(void *num)
     MinimObject *o = GC_alloc(minim_exactnum_size);
     o->type = MINIM_OBJ_EXACT;
     MINIM_EXACTNUM(o) = num;
+    log_obj_created();
     return o;
 }
 
@@ -52,6 +54,7 @@ MinimObject *minim_inexactnum(double num)
     MinimObject *o = GC_alloc(minim_inexactnum_size);
     o->type = MINIM_OBJ_INEXACT;
     MINIM_INEXACTNUM(o) = num;
+    log_obj_created();
     return o;
 }
 
@@ -61,6 +64,7 @@ MinimObject *minim_symbol(char *sym)
     o->type = MINIM_OBJ_SYM;
     MINIM_SYMBOL_SET_INTERNED(o, 0);
     MINIM_SYMBOL(o) = sym;
+    log_obj_created();
     return o;
 }
 
@@ -69,6 +73,7 @@ MinimObject *minim_string(char *str)
     MinimObject *o = GC_alloc(minim_string_size);
     o->type = MINIM_OBJ_STRING;
     MINIM_STRING(o) = str;
+    log_obj_created();
     return o;
 }
 
@@ -78,6 +83,7 @@ MinimObject *minim_cons(void *car, void *cdr)
     o->type = MINIM_OBJ_PAIR;
     MINIM_CAR(o) = car;
     MINIM_CDR(o) = cdr;
+    log_obj_created();
     return o;
 }
 
@@ -87,6 +93,7 @@ MinimObject *minim_vector(size_t len, void *arr)
     o->type = MINIM_OBJ_VECTOR;
     MINIM_VECTOR(o) = arr;
     MINIM_VECTOR_LEN(o) = len;
+    log_obj_created();
     return o;
 }
 
@@ -95,6 +102,7 @@ MinimObject *minim_hash_table(void *ht)
     MinimObject *o = GC_alloc(minim_hash_table_size);
     o->type = MINIM_OBJ_HASH;
     MINIM_HASH_TABLE(o) = ht;
+    log_obj_created();
     return o;
 }
 
@@ -105,6 +113,7 @@ MinimObject *minim_promise(void *val, void *env)
     MINIM_PROMISE_VAL(o) = val;
     MINIM_PROMISE_ENV(o) = env;
     MINIM_PROMISE_SET_STATE(o, 0);
+    log_obj_created();
     return o;
 }
 
@@ -113,6 +122,7 @@ MinimObject *minim_builtin(void *func)
     MinimObject *o = GC_alloc(minim_builtin_size);
     o->type = MINIM_OBJ_FUNC;
     MINIM_BUILTIN(o) = func;
+    log_obj_created();
     return o;
 }
 
@@ -121,6 +131,7 @@ MinimObject *minim_syntax(void *func)
     MinimObject *o = GC_alloc(minim_syntax_size);
     o->type = MINIM_OBJ_SYNTAX;
     MINIM_SYNTAX(o) = func;
+    log_obj_created();
     return o;
 }
 
@@ -129,6 +140,7 @@ MinimObject *minim_closure(void *closure)
     MinimObject *o = GC_alloc(minim_closure_size);
     o->type = MINIM_OBJ_CLOSURE;
     MINIM_CLOSURE(o) = closure;
+    log_obj_created();
     return o;
 }
 
@@ -137,6 +149,7 @@ MinimObject *minim_tail_call(void *tc)
     MinimObject *o = GC_alloc(minim_tail_call_size);
     o->type = MINIM_OBJ_TAIL_CALL;
     MINIM_TAIL_CALL(o) = tc;
+    log_obj_created();
     return o;
 }
 
@@ -146,6 +159,7 @@ MinimObject *minim_transform(void *binding, int type)
     o->type = MINIM_OBJ_TRANSFORM;
     MINIM_TRANSFORM_TYPE(o) = (uint8_t) type & 0xFF;
     MINIM_TRANSFORMER(o) = binding;
+    log_obj_created();
     return o;
 }
 
@@ -154,6 +168,7 @@ MinimObject *minim_ast(void *ast)
     MinimObject *o = GC_alloc(minim_ast_size);
     o->type = MINIM_OBJ_AST;
     MINIM_AST(o) = ast;
+    log_obj_created();
     return o;
 }
 
@@ -162,6 +177,7 @@ MinimObject *minim_sequence(void *seq)
     MinimObject *o = GC_alloc(minim_sequence_size);
     o->type = MINIM_OBJ_SEQ;
     MINIM_SEQUENCE(o) = seq;
+    log_obj_created();
     return o;
 }
 
@@ -171,6 +187,7 @@ MinimObject *minim_values(size_t len, void *arr)
     o->type = MINIM_OBJ_VALUES;
     MINIM_VALUES(o) = arr;
     MINIM_VALUES_SIZE(o) = len;
+    log_obj_created();
     return o;
 }
 
@@ -179,6 +196,7 @@ MinimObject *minim_err(void *err)
     MinimObject *o = GC_alloc(minim_error_size);
     o->type = MINIM_OBJ_ERR;
     MINIM_ERROR(o) = err;
+    log_obj_created();
     return o;
 }
 
@@ -187,6 +205,7 @@ MinimObject *minim_char(unsigned int ch)
     MinimObject *o = GC_alloc(minim_char_size);
     o->type = MINIM_OBJ_CHAR;
     MINIM_CHAR(o) = ch;
+    log_obj_created();
     return o;
 }
 
@@ -196,6 +215,7 @@ MinimObject *minim_jmp(void *ptr, void *val)
     o->type = MINIM_OBJ_JUMP;
     MINIM_JUMP_BUF(o) = ptr;
     MINIM_JUMP_VAL(o) = val;
+    log_obj_created();
     return o;
 }
 
@@ -210,6 +230,7 @@ MinimObject *minim_file_port(FILE *f, uint8_t mode)
     MINIM_PORT_ROW(o) = 1;
     MINIM_PORT_COL(o) = 0;
     MINIM_PORT_POS(o) = 0;
+    log_obj_created();
     return o;
 }
 

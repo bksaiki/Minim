@@ -24,4 +24,14 @@
 #error "compiler not supported"
 #endif
 
+#if defined(ENABLE_STATS)
+#define MINIM_TRACK_STATS     1
+#else
+#define MINIM_TRACK_STATS     0
+#endif
+
+// Configuration options
+
+#define MINIM_USE_CACHE         1
+
 #endif

@@ -9,6 +9,7 @@ struct MinimGlobal global;
 
 void init_global_state()
 {
+    // state
     init_minim_module_cache(&global.cache);
     init_minim_symbol_table(&global.builtins);
     global.symbols = init_intern_table();
@@ -20,4 +21,9 @@ void init_global_state()
     GC_register_root(global.builtins);
     GC_register_root(global.symbols);
     GC_register_root(global.current_dir);
+
+    // statisics
+    global.stat_exprs = 0;
+    global.stat_procs = 0;
+    global.stat_objs = 0;
 }
