@@ -19,6 +19,11 @@
 #include "tail_call.h"
 #include "transform.h"
 
+// forward declaration
+static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node);
+
+// eval terminals
+
 static MinimObject *str_to_node(const char *str, MinimEnv *env, bool quote, bool err)
 {
     if (is_rational(str))
@@ -163,20 +168,243 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
     return res;
 }
 
+// Specialized eval functions
+
+#define CALL_BUILTIN(env, proc, argc, args, perr)   \
+{                                                   \
+    if (!minim_check_arity(proc, argc, env, perr))  \
+        THROW(env, err);                            \
+    log_proc_called();                              \
+    return proc(env, argc, args);                   \
+}
+
+// optimized version for builtins - 0ary
+MinimObject *eval_builtin_0ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    MinimObject *err;
+    CALL_BUILTIN(env, proc, 0, NULL, &err);
+}
+
+// optimized version for builtins - 1ary
+MinimObject *eval_builtin_1ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    MinimObject *arg, *err;
+
+    uint8_t prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    arg = eval_ast_node(env, node->children[1]);
+    env->flags = prev_flags;
+    CALL_BUILTIN(env, proc, 1, &arg, &err);
+}
+
+// optimized version for builtins - 2ary
+MinimObject *eval_builtin_2ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    MinimObject *args[2];
+    MinimObject *err;
+
+    uint8_t prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    args[0] = eval_ast_node(env, node->children[1]);
+    args[1] = eval_ast_node(env, node->children[2]);
+    env->flags = prev_flags;
+    CALL_BUILTIN(env, proc, 2, args, &err);
+}
+
+// optimized version for builtins - 3ary
+MinimObject *eval_builtin_3ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    MinimObject *args[3];
+    MinimObject *err;
+
+    uint8_t prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    args[0] = eval_ast_node(env, node->children[1]);
+    args[1] = eval_ast_node(env, node->children[2]);
+    args[2] = eval_ast_node(env, node->children[3]);
+    env->flags = prev_flags;
+    CALL_BUILTIN(env, proc, 3, args, &err);
+}
+
+// general version for builtins
+MinimObject *eval_builtin(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc, size_t argc)
+{
+    MinimObject **args;
+    MinimObject *err;
+    uint8_t prev_flags;
+
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    args = GC_alloc(argc * sizeof(MinimObject*));
+    for (size_t i = 0; i < argc; ++i)
+        args[i] = eval_ast_node(env, node->children[i + 1]);
+    env->flags = prev_flags;
+    CALL_BUILTIN(env, proc, argc, args, &err);
+}
+
+// optimized version for syntax - 0ary
+MinimObject *eval_syntax_0ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    return proc(env, 0, NULL);
+}
+
+// optimized version for syntax - 1ary
+MinimObject *eval_syntax_1ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    MinimObject *arg = minim_ast(node->children[1]);
+    return proc(env, 1, &arg);
+}
+
+// optimized version for syntax - 2ary
+MinimObject *eval_syntax_2ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    MinimObject *args[2];
+    args[0] = minim_ast(node->children[1]);
+    args[1] = minim_ast(node->children[2]);
+    return proc(env, 2, args);
+}
+
+// optimized version for syntax - 3ary
+MinimObject *eval_syntax_3ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+{
+    MinimObject *args[3];
+    args[0] = minim_ast(node->children[1]);
+    args[1] = minim_ast(node->children[2]);
+    args[2] = minim_ast(node->children[3]);
+    return proc(env, 3, args);
+}
+
+// general version for syntax
+MinimObject *eval_syntax(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc, size_t argc)
+{
+    MinimObject **args = GC_alloc(argc * sizeof(MinimObject*));
+    for (size_t i = 0; i < argc; ++i)
+        args[i] = minim_ast(node->children[i + 1]);
+    return proc(env, argc, args);
+}
+
+#define CALL_CLOSURE(env, lam, argc, args)              \
+{                                                       \
+    if (env_has_called(env, lam))                       \
+    {                                                   \
+        MinimTailCall *call;                            \
+        init_minim_tail_call(&call, lam, argc, args);   \
+        return minim_tail_call(call);                   \
+    }                                                   \
+    else                                                \
+    {                                                   \
+        log_proc_called();                              \
+        return eval_lambda(lam, env, argc, args);       \
+    }                                                   \
+}
+
+// optimized version for closures - 0ary
+static MinimObject *eval_closure_0ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+{
+    CALL_CLOSURE(env, lam, 0, NULL);
+}
+
+// optimized version for closures - 1ary
+static MinimObject *eval_closure_1ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+{
+    MinimObject *arg;
+    uint8_t prev_flags;
+    
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    arg = eval_ast_node(env, node->children[1]); 
+    env->flags = prev_flags;
+    CALL_CLOSURE(env, lam, 1, &arg);
+}
+
+// optimized version for closures - 2ary
+static MinimObject *eval_closure_2ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+{
+    MinimObject *args[2];
+    uint8_t prev_flags;
+    
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    args[0] = eval_ast_node(env, node->children[1]);
+    args[1] = eval_ast_node(env, node->children[2]); 
+    env->flags = prev_flags;
+
+    CALL_CLOSURE(env, lam, 2, args);
+}
+
+// optimized version for closures - 3ary
+static MinimObject *eval_closure_3ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+{
+    MinimObject *args[3];
+    uint8_t prev_flags;
+    
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    args[0] = eval_ast_node(env, node->children[1]);
+    args[1] = eval_ast_node(env, node->children[2]);
+    args[2] = eval_ast_node(env, node->children[3]); 
+    env->flags = prev_flags;
+ 
+    CALL_CLOSURE(env, lam, 3, args);
+}
+
+// general version for closures
+static MinimObject *eval_closure(MinimEnv *env, SyntaxNode *node, MinimLambda *lam, size_t argc)
+{
+    MinimObject **args;
+    uint8_t prev_flags;
+    
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    args = GC_alloc(argc * sizeof(MinimObject*));
+    for (size_t i = 0; i < argc; ++i)
+        args[i] = eval_ast_node(env, node->children[i + 1]);
+    env->flags = prev_flags;
+ 
+    CALL_CLOSURE(env, lam, argc, args);
+}
+
+static MinimObject *eval_jump(MinimEnv *env, SyntaxNode *node, size_t argc, MinimObject *jmp)
+{
+    MinimObject **args;
+
+    args = GC_alloc(node->childc * sizeof(MinimObject*));
+    for (size_t i = 0; i < argc; ++i)
+        args[i] = eval_ast_node(env, node->children[i + 1]); 
+    minim_long_jump(jmp, env, argc, args);
+}
+
+static MinimObject *eval_vector(MinimEnv *env, SyntaxNode *node)
+{
+    MinimObject **args;
+
+    args = GC_alloc(node->childc * sizeof(MinimObject*));
+    for (size_t i = 0; i < node->childc; ++i)
+        args[i] = eval_ast_node(env, node->children[i]);
+    return minim_builtin_vector(env, node->childc, args);
+}
+
+static MinimObject *eval_pair(MinimEnv *env, SyntaxNode *node)
+{
+    MinimObject *args[2];
+    args[0] = eval_ast_node(env, node->children[0]);
+    args[1] = eval_ast_node(env, node->children[1]);
+    return minim_builtin_cons(env, 2, args);
+}
+
 // Eval mainloop
 
 static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 {
     if (node->type == SYNTAX_NODE_LIST)
     {
-        MinimObject *res, *op, **args;
+        MinimObject *res, *op;
         size_t argc;
 
         if (node->childc == 0)
             THROW(env, minim_error("missing procedure expression", NULL));
 
         argc = node->childc - 1;
-        args = GC_alloc(argc * sizeof(MinimObject*));
         if (node->children[0]->type == SYNTAX_NODE_LIST)
             op = eval_ast_node(env, node->children[0]);
         else if (node->children[0]->type == SYNTAX_NODE_DATUM)
@@ -189,19 +417,11 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 
         if (MINIM_OBJ_BUILTINP(op))
         {
-            MinimBuiltin proc = MINIM_BUILTIN(op);
-            uint8_t prev_flags = env->flags;
-
-            env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-            for (size_t i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]);
-            env->flags = prev_flags;       
-
-            if (!minim_check_arity(proc, argc, env, &res))
-                THROW(env, res);
-
-            log_proc_called();
-            res = proc(env, argc, args);
+            if (argc == 0)          return eval_builtin_0ary(env, node, MINIM_BUILTIN(op));
+            else if (argc == 1)     return eval_builtin_1ary(env, node, MINIM_BUILTIN(op));
+            else if (argc == 2)     return eval_builtin_2ary(env, node, MINIM_BUILTIN(op));
+            else if (argc == 3)     return eval_builtin_3ary(env, node, MINIM_BUILTIN(op));
+            else                    return eval_builtin(env, node, MINIM_BUILTIN(op), argc);
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
@@ -215,74 +435,45 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
                 proc == minim_builtin_export)
                 THROW(env, minim_error("only allowed at the top-level", node->children[0]->sym));
 
-            for (size_t i = 0; i < argc; ++i)                   // initialize ast wrappers
-                args[i] = minim_ast(node->children[i + 1]);
-            
-            res = proc(env, argc, args);
+            if (argc == 0)          res = eval_syntax_0ary(env, node, proc);
+            else if (argc == 1)     res = eval_syntax_1ary(env, node, proc);
+            else if (argc == 2)     res = eval_syntax_2ary(env, node, proc);
+            else if (argc == 3)     res = eval_syntax_3ary(env, node, proc);
+            else                    res = eval_syntax(env, node, proc, argc);        
+
             if (MINIM_OBJ_CLOSUREP(res))
             {
                 MinimLambda *lam = MINIM_CLOSURE(res);
                 if (!lam->loc && node->children[0]->loc)
                     copy_syntax_loc(&lam->loc, node->children[0]->loc);
             }
+
+            return res;
         }
         else if (MINIM_OBJ_CLOSUREP(op))
         {
-            MinimLambda *lam = MINIM_CLOSURE(op);
-            uint8_t prev_flags = env->flags;
-            
-            env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-            for (size_t i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]); 
-            env->flags = prev_flags;     
-
-            if (env_has_called(env, lam))
-            {
-                MinimTailCall *call;
-
-                init_minim_tail_call(&call, lam, argc, args);
-                res = minim_tail_call(call);
-            }
-            else
-            {
-                log_proc_called();
-                res = eval_lambda(lam, env, argc, args);
-            }
+            if (argc == 0)          return eval_closure_0ary(env, node, MINIM_CLOSURE(op));
+            else if (argc == 1)     return eval_closure_1ary(env, node, MINIM_CLOSURE(op));
+            else if (argc == 2)     return eval_closure_2ary(env, node, MINIM_CLOSURE(op));
+            else if (argc == 3)     return eval_closure_3ary(env, node, MINIM_CLOSURE(op));
+            else                    return eval_closure(env, node, MINIM_CLOSURE(op), argc);
         }
         else if (MINIM_OBJ_JUMPP(op))
         {
-            for (size_t i = 0; i < argc; ++i)
-                args[i] = eval_ast_node(env, node->children[i + 1]); 
-
-            // no return
-            minim_long_jump(op, env, argc, args);
+            return eval_jump(env, node, argc, op);
         }
         else
         {
             THROW(env, minim_error("unknown operator", node->children[0]->sym));
         }
-
-        return res;
     }
     else if (node->type == SYNTAX_NODE_VECTOR)
     {
-        MinimObject **args;
-
-        args = GC_alloc(node->childc * sizeof(MinimObject*));
-        for (size_t i = 0; i < node->childc; ++i)
-            args[i] = eval_ast_node(env, node->children[i]);
-
-        return minim_builtin_vector(env, node->childc, args);
+        return eval_vector(env, node);
     }
     else if (node->type == SYNTAX_NODE_PAIR)
     {
-        MinimObject **args;
-
-        args = GC_alloc(2 * sizeof(MinimObject*));
-        args[0] = eval_ast_node(env, node->children[0]);
-        args[1] = eval_ast_node(env, node->children[1]);
-
-        return minim_builtin_cons(env, 2, args);
+        return eval_pair(env, node);
     }
     else
     {

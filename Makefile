@@ -18,8 +18,8 @@ CFLAGS 		:= -Wall -std=c11
 LDFLAGS 	:= -lm -lgmp
 
 DEBUG_FLAGS		:= -g -DENABLE_STATS
-PROFILE_FLAGS	:= -O3 -march=native -pg
-RELEASE_FLAGS 	:= -O3 -march=native
+PROFILE_FLAGS	:= -O2 -DNDEBUG -march=native -pg
+RELEASE_FLAGS 	:= -O3 -DNDEBUG -march=native
 
 CP := cp
 ECHO := echo
