@@ -189,8 +189,8 @@ MinimObject *eval_builtin_0ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin pro
 MinimObject *eval_builtin_1ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
 {
     MinimObject *arg, *err;
-
     uint8_t prev_flags = env->flags;
+
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     arg = eval_ast_node(env, node->children[1]);
     env->flags = prev_flags;
@@ -202,8 +202,8 @@ MinimObject *eval_builtin_2ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin pro
 {
     MinimObject *args[2];
     MinimObject *err;
-
     uint8_t prev_flags = env->flags;
+
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     args[0] = eval_ast_node(env, node->children[1]);
     args[1] = eval_ast_node(env, node->children[2]);
@@ -216,8 +216,8 @@ MinimObject *eval_builtin_3ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin pro
 {
     MinimObject *args[3];
     MinimObject *err;
-
     uint8_t prev_flags = env->flags;
+
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     args[0] = eval_ast_node(env, node->children[1]);
     args[1] = eval_ast_node(env, node->children[2]);
@@ -231,9 +231,8 @@ MinimObject *eval_builtin(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc, si
 {
     MinimObject **args;
     MinimObject *err;
-    uint8_t prev_flags;
+    uint8_t prev_flags = env->flags;
 
-    prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     args = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
@@ -381,15 +380,13 @@ static MinimObject *eval_vector(MinimEnv *env, SyntaxNode *node)
     args = GC_alloc(node->childc * sizeof(MinimObject*));
     for (size_t i = 0; i < node->childc; ++i)
         args[i] = eval_ast_node(env, node->children[i]);
-    return minim_builtin_vector(env, node->childc, args);
+    return minim_vector(node->childc, args);
 }
 
 static MinimObject *eval_pair(MinimEnv *env, SyntaxNode *node)
 {
-    MinimObject *args[2];
-    args[0] = eval_ast_node(env, node->children[0]);
-    args[1] = eval_ast_node(env, node->children[1]);
-    return minim_builtin_cons(env, 2, args);
+    return minim_cons(eval_ast_node(env, node->children[0]),
+                      eval_ast_node(env, node->children[1]));
 }
 
 // Eval mainloop
@@ -417,15 +414,22 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
 
         if (MINIM_OBJ_BUILTINP(op))
         {
-            if (argc == 0)          return eval_builtin_0ary(env, node, MINIM_BUILTIN(op));
-            else if (argc == 1)     return eval_builtin_1ary(env, node, MINIM_BUILTIN(op));
-            else if (argc == 2)     return eval_builtin_2ary(env, node, MINIM_BUILTIN(op));
-            else if (argc == 3)     return eval_builtin_3ary(env, node, MINIM_BUILTIN(op));
-            else                    return eval_builtin(env, node, MINIM_BUILTIN(op), argc);
+            MinimBuiltin proc = MINIM_BUILTIN(op);
+
+            // do not optimize: array must be allocaed
+            if (proc == minim_builtin_values ||
+                proc == minim_builtin_vector)
+                return eval_builtin(env, node, proc, argc);
+
+            if (argc == 0)          return eval_builtin_0ary(env, node, proc);
+            else if (argc == 1)     return eval_builtin_1ary(env, node, proc);
+            else if (argc == 2)     return eval_builtin_2ary(env, node, proc);
+            else if (argc == 3)     return eval_builtin_3ary(env, node, proc);
+            else                    return eval_builtin(env, node, proc, argc);
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
-            MinimBuiltin proc = MINIM_BUILTIN(op);
+            MinimBuiltin proc = MINIM_SYNTAX(op);
 
             if (proc == minim_builtin_unquote)
                 THROW(env, minim_error("not in a quasiquote", "unquote"));

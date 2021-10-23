@@ -120,13 +120,8 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
         return minim_void;
 
     for (size_t i = 0; i < argc; ++i)
-    {
         val = eval_ast_no_check(env, MINIM_AST(args[i]));
-        if (i + 1 == argc)
-            return val;
-    }
-
-    return NULL;    // avoid compiler errors
+    return val;
 }
 
 MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)

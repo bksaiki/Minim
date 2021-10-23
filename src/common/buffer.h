@@ -4,8 +4,8 @@
 #include <stdarg.h>
 #include "common.h"
 
-#define MINIM_BUFFER_DEFAULT_SIZE       256
-#define MINIM_BUFFER_STEP_SIZE          256
+#define MINIM_BUFFER_DEFAULT_SIZE       10
+#define MINIM_BUFFER_STEP_SIZE          10
 #define MINIM_BUFFER_MAX_SIZE           (1 << 31)
 
 typedef struct Buffer
