@@ -17,8 +17,10 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
     if (!MINIM_OBJ_VALUESP(val))
     {
         if (MINIM_AST(args[0])->childc != 1)
-            THROW(env, minim_values_arity_error("def-values", MINIM_AST(args[0])->childc,
-                                           1, MINIM_AST(args[0])));
+            THROW(env, minim_values_arity_error("def-values",
+                                                MINIM_AST(args[0])->childc,
+                                                1,
+                                                MINIM_AST(args[0])));
         
         env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, val);
     }
@@ -27,9 +29,9 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
         if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
         {
             THROW(env, minim_values_arity_error("def-values",
-                                           MINIM_AST(args[0])->childc,
-                                           MINIM_VALUES_SIZE(val),
-                                           MINIM_AST(args[0])));
+                                                MINIM_AST(args[0])->childc,
+                                                MINIM_VALUES_SIZE(val),
+                                                MINIM_AST(args[0])));
         }
 
         for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)

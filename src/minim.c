@@ -31,6 +31,10 @@ static int process_flags(int count, char **args, uint32_t *pflags)
         {
             *pflags |= MINIM_FLAG_LOAD_LIBS;
         }
+        else if (strcmp(args[i], "--no-compile") == 0)
+        {
+            *pflags |= MINIM_FLAG_NO_COMPILE;
+        }
         else if (args[i][0] == '-')
         {
             printf("Unrecognized flag: %s\n", args[i]);

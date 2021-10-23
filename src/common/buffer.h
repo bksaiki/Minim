@@ -16,6 +16,7 @@ typedef struct Buffer
 } Buffer;
 
 #define get_buffer(bf)  ((bf)->data)
+#define buffer_size(bf) ((bf)->pos)
 
 void init_buffer(Buffer **pbf);
 void copy_buffer(Buffer **pbf, Buffer *src);

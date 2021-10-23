@@ -47,7 +47,8 @@ int minim_repl(char **argv, uint32_t flags)
     fflush(stdout);
 
     // set up globals
-    init_global_state();
+    init_global_state((!(flags & MINIM_FLAG_NO_COMPILE) &&
+                       GLOBAL_FLAG_COMPILE));
     init_builtins();
 
     // set up ports

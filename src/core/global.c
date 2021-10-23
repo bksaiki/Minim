@@ -7,7 +7,7 @@
 
 struct MinimGlobal global;
 
-void init_global_state()
+void init_global_state(uint8_t flags)
 {
     // state
     init_minim_module_cache(&global.cache);
@@ -26,4 +26,7 @@ void init_global_state()
     global.stat_exprs = 0;
     global.stat_procs = 0;
     global.stat_objs = 0;
+
+    // flags
+    global.flags = flags;
 }

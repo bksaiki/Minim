@@ -17,5 +17,6 @@
 
 #define MINIM_FLAG_LOAD_LIBS        0x1
 #define MINIM_FLAG_NO_RUN           0x2
+#define MINIM_FLAG_NO_COMPILE       0x4
 
 #endif

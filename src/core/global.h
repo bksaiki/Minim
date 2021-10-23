@@ -5,6 +5,9 @@
 #include "intern.h"
 #include "symbols.h"
 
+#define GLOBAL_FLAG_DEFAULT     0x0
+#define GLOBAL_FLAG_COMPILE     0x1
+
 typedef struct MinimModuleCache MinimModuleCache;
 typedef struct MinimSymbolTable MinimSymbolTable;
 typedef struct MinimInternTable MinimInternTable;
@@ -23,10 +26,13 @@ extern struct MinimGlobal
     size_t stat_exprs;
     size_t stat_procs;
     size_t stat_objs;
+
+    // flags
+    uint8_t flags;
 } global;
 
 // initialize builtins, intern table, other info
-void init_global_state();
+void init_global_state(uint8_t flags);
 
 // setters
 #define intern(s)           intern_symbol(global.symbols, s)
