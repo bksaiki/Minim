@@ -73,8 +73,7 @@ static void emit_code_file(MinimObject *fport, Buffer *code)
     path_append(cname, get_buffer(bf));
 
     cfile = fopen(extract_path(cname), "w");
-    fwrite(get_buffer(code), buffer_size(code), 1, cfile);
-    fputc('\0', cfile);
+    fputs(get_buffer(code), cfile);
     fclose(cfile);
 #endif
 }
