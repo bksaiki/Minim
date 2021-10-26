@@ -445,17 +445,15 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
 SyntaxNode *minim_parse_port(MinimObject *port, SyntaxNode **perr, uint8_t flags)
 {
     SyntaxNode *node;
+    char c;
 
     *perr = NULL;
     node = read_top(port, perr, flags);
-    if (*perr)
-    {
-        return NULL;
-    }
-    else if (!node)
+    if (*perr)  return NULL;    // error occurred
+
+    if (!node)         // something bad happened
     {
         Buffer *bf;
-        char c;
         
         c = next_ch(port);
         update_port(port, c);
@@ -466,12 +464,13 @@ SyntaxNode *minim_parse_port(MinimObject *port, SyntaxNode **perr, uint8_t flags
 
         init_syntax_node(perr, SYNTAX_NODE_DATUM);
         (*perr)->sym = get_buffer(bf);
+    }
 
-        c = next_ch(port);
+    if (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
+    {
+        c = next_char(port);
         if (c == port_eof(port))    update_port(port, c);
         else                        put_back(port, c);
-
-        return NULL;
     }
 
     return node;

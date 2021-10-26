@@ -1,4 +1,5 @@
 #include "../minim.h"
+#include "../compiler/compile.h"
 #include "error.h"
 
 static MinimEnv *get_builtin_env(MinimEnv *env)
@@ -55,6 +56,30 @@ static MinimObject *read_error(MinimObject *port, SyntaxNode *err, const char *f
     return minim_err(e);
 }
 
+static void emit_code_file(MinimObject *fport, Buffer *code)
+{
+#if defined(MINIM_LINUX)            // only enabled for linux
+    MinimPath *fname, *cname;
+    Buffer *bf;
+    FILE *cfile;
+    
+    fname = build_path(1, MINIM_PORT_NAME(fport));
+    cname = build_path(2, extract_directory(fname), ".cache");
+    make_directory(extract_path(cname));         // TODO: abort if failed
+
+    init_buffer(&bf);
+    writes_buffer(bf, extract_file(fname));
+    writec_buffer(bf, 'o');
+    path_append(cname, get_buffer(bf));
+
+    cfile = fopen(extract_path(cname), "w");
+    fputs(get_buffer(code), cfile);
+    fclose(cfile);
+#endif
+}
+
+// ================================ Public ================================
+
 MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 {
     MinimModule *module;
@@ -107,6 +132,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
 {
     MinimModule *module;
     MinimObject *port, *cache;
+    Buffer *code;
     
     port = open_file_port(env, fname);
     cache = load_processed_file(port);
@@ -149,6 +175,14 @@ void minim_load_file(MinimEnv *env, const char *fname)
         emit_processed_file(port, module);
     }
 
+    // compile
+    if (global.flags & GLOBAL_FLAG_COMPILE)
+    {
+        code = compile_module(env, module);
+        emit_code_file(port, code);
+    }
+
+    // eval
     eval_module(module);
 }
 
@@ -223,56 +257,64 @@ void minim_run_file(MinimEnv *env, const char *fname)
 
 MinimObject *load_processed_file(MinimObject *fport)
 {
-#if MINIM_USE_CACHE == 0
-    return NULL;
-#elif defined(MINIM_LINUX)            // only enabled for linux
+#if defined(MINIM_LINUX)            // only enabled for linux
     MinimPath *fname, *cname;
     time_t *flast, *clast;
     MinimObject *port;
     FILE *cfile;
     char *name;
-    
-    fname = build_path(1, MINIM_PORT_NAME(fport));
-    cname = build_path(2, extract_directory(fname), ".cache");
-    path_append(cname, extract_file(fname));
-    
-    name = extract_path(cname);
-    cfile = fopen(name, "r");
-    if (!cfile)     return NULL;
 
-    flast = get_last_modified(MINIM_PORT_NAME(fport));
-    clast = get_last_modified(name);
-    if (difftime(*flast, *clast) > 0)       // file is newer than cache
+    if (global.flags & GLOBAL_FLAG_CACHE)
+    {
+        fname = build_path(1, MINIM_PORT_NAME(fport));
+        cname = build_path(2, extract_directory(fname), ".cache");
+        path_append(cname, extract_file(fname));
+        
+        name = extract_path(cname);
+        cfile = fopen(name, "r");
+        if (!cfile)     return NULL;
+
+        flast = get_last_modified(MINIM_PORT_NAME(fport));
+        clast = get_last_modified(name);
+        if (difftime(*flast, *clast) > 0)       // file is newer than cache
+            return NULL;
+
+        // printf("loading from cache: %s\n", MINIM_PORT_NAME(fport));
+        port = minim_file_port(cfile, MINIM_PORT_MODE_READ |
+                                    MINIM_PORT_MODE_OPEN |
+                                    MINIM_PORT_MODE_READY);
+        MINIM_PORT_NAME(port) = MINIM_PORT_NAME(fport);
+        return port;
+    }
+    else
+    {
         return NULL;
-
-    // printf("loading from cache: %s\n", MINIM_PORT_NAME(fport));
-    port = minim_file_port(cfile, MINIM_PORT_MODE_READ |
-                                  MINIM_PORT_MODE_OPEN |
-                                  MINIM_PORT_MODE_READY);
-    MINIM_PORT_NAME(port) = MINIM_PORT_NAME(fport);
-    return port;
+    }
 #endif
+    return NULL;
 }
 
 void emit_processed_file(MinimObject *fport, MinimModule *module)
 {
-#if MINIM_USE_CACHE == 0
-#elif defined(MINIM_LINUX)            // only enabled for linux
+#if defined(MINIM_LINUX)            // only enabled for linux
     MinimPath *fname, *cname;
     FILE *cfile;
-    
-    fname = build_path(1, MINIM_PORT_NAME(fport));
-    cname = build_path(2, extract_directory(fname), ".cache");
-    make_directory(extract_path(cname));         // TODO: abort if failed
 
-    path_append(cname, extract_file(fname));
-    cfile = fopen(extract_path(cname), "w");
-    for (size_t i = 0; i < module->exprc; ++i)
+    if (global.flags & GLOBAL_FLAG_CACHE)
     {
-        print_ast_to_port(module->exprs[i], cfile);
-        fputc('\n', cfile);
+        fname = build_path(1, MINIM_PORT_NAME(fport));
+        cname = build_path(2, extract_directory(fname), ".cache");
+        make_directory(extract_path(cname));         // TODO: abort if failed
+
+        path_append(cname, extract_file(fname));
+        cfile = fopen(extract_path(cname), "w");
+        for (size_t i = 0; i < module->exprc; ++i)
+        {
+            print_ast_to_port(module->exprs[i], cfile);
+            fputc('\n', cfile);
+        }
+        
+        fclose(cfile);
     }
-    
-    fclose(cfile);
 #endif
 }

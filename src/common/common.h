@@ -30,8 +30,4 @@
 #define MINIM_TRACK_STATS     0
 #endif
 
-// Configuration options
-
-#define MINIM_USE_CACHE         1
-
 #endif

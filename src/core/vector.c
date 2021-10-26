@@ -37,13 +37,7 @@ void minim_vector_bytes(MinimObject *v, Buffer *bf)
 
 MinimObject *minim_builtin_vector(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject **arr;
-
-    arr = GC_alloc(argc * sizeof(MinimObject*));
-    for (size_t i = 0; i < argc; ++i)
-        arr[i] = args[i];
-
-    return minim_vector(argc, arr);
+    return minim_vector(argc, args);
 }
 
 MinimObject *minim_builtin_make_vector(MinimEnv *env, size_t argc, MinimObject **args)

@@ -17,5 +17,9 @@
 
 #define MINIM_FLAG_LOAD_LIBS        0x1
 #define MINIM_FLAG_NO_RUN           0x2
+#define MINIM_FLAG_NO_CACHE         0x4
+#define MINIM_FLAG_COMPILE          0x8
+
+#define IF_FLAG_RAISED(x, fl, t, f)     ((((x) & (fl)) == 0) ? (f) : (t))
 
 #endif

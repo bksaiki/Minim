@@ -4,8 +4,8 @@
 #include <stdarg.h>
 #include "common.h"
 
-#define MINIM_BUFFER_DEFAULT_SIZE       256
-#define MINIM_BUFFER_STEP_SIZE          256
+#define MINIM_BUFFER_DEFAULT_SIZE       10
+#define MINIM_BUFFER_STEP_SIZE          10
 #define MINIM_BUFFER_MAX_SIZE           (1 << 31)
 
 typedef struct Buffer
@@ -16,6 +16,7 @@ typedef struct Buffer
 } Buffer;
 
 #define get_buffer(bf)  ((bf)->data)
+#define buffer_size(bf) ((bf)->pos)
 
 void init_buffer(Buffer **pbf);
 void copy_buffer(Buffer **pbf, Buffer *src);

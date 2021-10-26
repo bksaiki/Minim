@@ -3,7 +3,7 @@
 void setup_test_env()
 {
     // set up globals
-    init_global_state();
+    init_global_state(GLOBAL_FLAG_DEFAULT);
     init_builtins();
     
     // set up ports

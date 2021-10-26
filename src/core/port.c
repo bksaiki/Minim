@@ -49,6 +49,33 @@ static void close_port(MinimObject *port)
     }
 }
 
+static MinimObject *read_syntax(MinimEnv *env, MinimObject *port)
+{
+    SyntaxNode *stx, *err;
+
+    if (!(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY))
+        return minim_eof;
+            
+    stx = minim_parse_port(port, &err, 0);
+    if (!stx)
+    {
+        MinimError *e;
+        Buffer *bf;
+
+        init_buffer(&bf);
+        writef_buffer(bf, "~s:~u:~u", MINIM_PORT_NAME(port),
+                                        MINIM_PORT_ROW(port),
+                                        MINIM_PORT_COL(port));
+
+        init_minim_error(&e, "bad syntax", err->sym);
+        init_minim_error_desc_table(&e->table, 1);
+        minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
+        THROW(env, minim_err(e));
+    }
+
+    return unsyntax_ast_rec(env, stx);
+}
+
 //
 //  Internals
 //
@@ -228,7 +255,7 @@ MinimObject *minim_builtin_close_output_port(MinimEnv *env, size_t argc, MinimOb
 
 MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *port, *val;
+    MinimObject *port, *val, *stx;
 
     if (argc == 0)
     {
@@ -241,37 +268,23 @@ MinimObject *minim_builtin_read(MinimEnv *env, size_t argc, MinimObject **args)
         port = args[0];
     }
 
-    val = minim_values(0, NULL);
-    if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
+    if (port == minim_input_port)
     {
+        val = minim_values(0, NULL);
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
-            SyntaxNode *stx, *err;
-            
-            stx = minim_parse_port(port, &err, 0);
-            if (!stx)
-            {
-                MinimError *e;
-                Buffer *bf;
-
-                init_buffer(&bf);
-                writef_buffer(bf, "~s:~u:~u", MINIM_PORT_NAME(port),
-                                              MINIM_PORT_ROW(port),
-                                              MINIM_PORT_COL(port));
-
-                init_minim_error(&e, "bad syntax", err->sym);
-                init_minim_error_desc_table(&e->table, 1);
-                minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
-                THROW(env, minim_err(e));
-            }
-
+            stx = read_syntax(env, port);
             ++MINIM_VALUES_SIZE(val);
             MINIM_VALUES(val) = GC_realloc(MINIM_VALUES(val), MINIM_VALUES_SIZE(val) * sizeof(MinimObject*));
-            MINIM_VALUES_REF(val, MINIM_VALUES_SIZE(val) - 1) = unsyntax_ast_rec(env, stx);
+            MINIM_VALUES_REF(val, MINIM_VALUES_SIZE(val) - 1) = stx;
+            return (MINIM_VALUES_SIZE(val) == 1
+                    ? MINIM_VALUES_REF(val, 0)
+                    : val);
         }
     }
-
-    return (MINIM_VALUES_SIZE(val) == 1 ? MINIM_VALUES_REF(val, 0) : val);
+    
+    // else if (MINIM_PORT_TYPE(port) == MINIM_PORT_TYPE_FILE)
+    return read_syntax(env, port);
 }
 
 MinimObject *minim_builtin_read_char(MinimEnv *env, size_t argc, MinimObject **args)
@@ -347,7 +360,8 @@ MinimObject *minim_builtin_char_readyp(MinimEnv *env, size_t argc, MinimObject *
     }
 
     // TODO: might need OS-level stuff to make this right
-    return to_bool(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_OPEN);
+    return to_bool(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_OPEN &&
+                   MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY);
 }
 
 MinimObject *minim_builtin_write(MinimEnv *env, size_t argc, MinimObject **args)
