@@ -19,6 +19,7 @@ static int process_flags(int count, char **args, uint32_t *pflags)
             printf(" -h\t\t\thelp\n");
             printf(" -v\t\t\tversion\n");
             printf(" --no-libs\t\tdon't load library files\n");
+            printf(" --no-cache\t\tdon't cache expanded Minim code");
 
             *pflags |= MINIM_FLAG_NO_RUN;
         }
@@ -31,9 +32,13 @@ static int process_flags(int count, char **args, uint32_t *pflags)
         {
             *pflags |= MINIM_FLAG_LOAD_LIBS;
         }
-        else if (strcmp(args[i], "--no-compile") == 0)
+        else if (strcmp(args[i], "--no-cache") == 0)
         {
-            *pflags |= MINIM_FLAG_NO_COMPILE;
+            *pflags |= MINIM_FLAG_NO_CACHE;
+        }
+        else if (strcmp(args[i], "--compile") == 0)
+        {
+            *pflags |= MINIM_FLAG_COMPILE;
         }
         else if (args[i][0] == '-')
         {

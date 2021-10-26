@@ -2,6 +2,7 @@
 #define _MINIM_COMPILER_JIT_H_
 
 #include "../common/common.h"
-#include "x86_64.h"
+
+// TODO: common compilation stuff
 
 #endif

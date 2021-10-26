@@ -25,8 +25,10 @@ int minim_run(const char *str, uint32_t flags)
     jmp_buf *exit_buf;
 
     // set up globals
-    init_global_state((!(flags & MINIM_FLAG_NO_COMPILE) &&
-                       GLOBAL_FLAG_COMPILE));
+    init_global_state(
+        IF_FLAG_RAISED(flags, MINIM_FLAG_COMPILE, GLOBAL_FLAG_COMPILE, 0x0) |
+        IF_FLAG_RAISED(flags, MINIM_FLAG_NO_CACHE, 0x0, GLOBAL_FLAG_CACHE)
+    );
     init_builtins();
 
     // set up ports

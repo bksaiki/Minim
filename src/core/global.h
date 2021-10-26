@@ -7,6 +7,7 @@
 
 #define GLOBAL_FLAG_DEFAULT     0x0
 #define GLOBAL_FLAG_COMPILE     0x1
+#define GLOBAL_FLAG_CACHE       0x2
 
 typedef struct MinimModuleCache MinimModuleCache;
 typedef struct MinimSymbolTable MinimSymbolTable;
