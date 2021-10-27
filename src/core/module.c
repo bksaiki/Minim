@@ -192,7 +192,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
         {
             MinimObject *export;
 
-            export = unsyntax_ast(env, MINIM_AST_VAL(args[i]));
+            export = unsyntax_ast(env, MINIM_STX_VAL(args[i]));
             if (minim_listp(export))
             {
                 MinimModule *import;
@@ -200,8 +200,8 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                 MinimPath *path;
                 char *attrib;
                 
-                attrib = MINIM_AST_VAL(MINIM_CAR(export))->sym;
-                name = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CADR(export)));
+                attrib = MINIM_STX_VAL(MINIM_CAR(export))->sym;
+                name = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CADR(export)));
                 if (strcmp(attrib, "all") == 0)
                 {
                     path = (is_absolute_path(MINIM_STRING(name)) ?
@@ -213,8 +213,8 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                     {
                         THROW(env, minim_syntax_error("module not imported",
                                                       "%export",
-                                                      MINIM_AST_VAL(args[i]),
-                                                      MINIM_AST_VAL(MINIM_CADR(export))));
+                                                      MINIM_STX_VAL(args[i]),
+                                                      MINIM_STX_VAL(MINIM_CADR(export))));
                     }
 
                     minim_symbol_table_merge(env->module->export->table, import->export->table);
@@ -252,7 +252,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
     init_minim_module(&tmp);
     for (size_t i = 0; i < argc; ++i)
     {
-        arg = unsyntax_ast(env, MINIM_AST_VAL(args[i]));
+        arg = unsyntax_ast(env, MINIM_STX_VAL(args[i]));
         path = (is_absolute_path(MINIM_STRING(arg)) ?
                 build_path(1, MINIM_STRING(arg)) :
                 build_path(2, env->current_dir, MINIM_STRING(arg)));

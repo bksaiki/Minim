@@ -20,8 +20,8 @@ MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *cond;
 
-    cond = eval_ast_no_check(env, MINIM_AST_VAL(args[0]));
-    return eval_ast_no_check(env, (coerce_into_bool(cond) ? MINIM_AST_VAL(args[1]) : MINIM_AST_VAL(args[2])));
+    cond = eval_ast_no_check(env, MINIM_STX_VAL(args[0]));
+    return eval_ast_no_check(env, (coerce_into_bool(cond) ? MINIM_STX_VAL(args[1]) : MINIM_STX_VAL(args[2])));
 }
 
 MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
@@ -35,9 +35,9 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
     init_env(&env2, env, NULL);
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    for (size_t i = 0; i < MINIM_AST_VAL(args[0])->childc; ++i)
+    for (size_t i = 0; i < MINIM_STX_VAL(args[0])->childc; ++i)
     {
-        binding = MINIM_AST_VAL(args[0])->children[i];
+        binding = MINIM_STX_VAL(args[0])->children[i];
         val = eval_ast_no_check(env, binding->children[1]);
         names = binding->children[0];
         if (!MINIM_OBJ_VALUESP(val))
@@ -78,9 +78,9 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
     
     // Bind names and values
     init_env(&env2, env, NULL);
-    for (size_t i = 0; i < MINIM_AST_VAL(args[0])->childc; ++i)
+    for (size_t i = 0; i < MINIM_STX_VAL(args[0])->childc; ++i)
     {
-        binding = MINIM_AST_VAL(args[0])->children[i];
+        binding = MINIM_STX_VAL(args[0])->children[i];
         names = binding->children[0];
         val = eval_ast_no_check(env2, binding->children[1]);
         if (!MINIM_OBJ_VALUESP(val))
@@ -120,7 +120,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
         return minim_void;
 
     for (size_t i = 0; i < argc; ++i)
-        val = eval_ast_no_check(env, MINIM_AST_VAL(args[i]));
+        val = eval_ast_no_check(env, MINIM_STX_VAL(args[i]));
     return val;
 }
 
@@ -135,7 +135,7 @@ MinimObject *minim_builtin_callcc(MinimEnv *env, size_t argc, MinimObject **args
     MinimObject *proc, *cont;
     jmp_buf *jmp;
 
-    proc = eval_ast_no_check(env, MINIM_AST_VAL(args[0]));
+    proc = eval_ast_no_check(env, MINIM_STX_VAL(args[0]));
     if (!MINIM_OBJ_CLOSUREP(proc))
         THROW(env, minim_argument_error("procedure of 1 argument", "call/cc", 0, proc));
 

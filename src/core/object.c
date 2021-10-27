@@ -168,8 +168,8 @@ MinimObject *minim_ast(void *val, void *loc)
 {
     MinimObject *o = GC_alloc(minim_ast_size);
     o->type = MINIM_OBJ_AST;
-    MINIM_AST_VAL_VAL(o) = (MinimObject*) val;
-    MINIM_AST_VAL_LOC(loc) = (SyntaxLoc*) loc;
+    MINIM_STX_VAL_VAL(o) = (MinimObject*) val;
+    MINIM_STX_VAL_LOC(loc) = (SyntaxLoc*) loc;
     log_obj_created();
     return o;
 }
@@ -342,7 +342,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
         return minim_hash_table_eqp(MINIM_HASH_TABLE(a), MINIM_HASH_TABLE(b));
 
     case MINIM_OBJ_AST:
-        return ast_equalp(MINIM_AST_VAL(a), MINIM_AST_VAL(b));
+        return ast_equalp(MINIM_STX_VAL(a), MINIM_STX_VAL(b));
 
     /*
     case MINIM_OBJ_SYM:
@@ -425,7 +425,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
         break;
 
     case MINIM_OBJ_AST:
-        ast_dump_in_buffer(MINIM_AST_VAL(obj), bf);
+        ast_dump_in_buffer(MINIM_STX_VAL(obj), bf);
         break;
 
     case MINIM_OBJ_CLOSURE:

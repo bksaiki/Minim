@@ -256,7 +256,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     {
         if (pp->syntax)
         {
-            ast_to_buffer(MINIM_AST_VAL(obj), bf);
+            ast_to_buffer(MINIM_STX_VAL(obj), bf);
         }
         else
         {
@@ -264,7 +264,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
             pp->syntax = true;
             writes_buffer(bf, "<syntax:");
-            ast_to_buffer(MINIM_AST_VAL(obj), bf);
+            ast_to_buffer(MINIM_STX_VAL(obj), bf);
             writec_buffer(bf, '>');
             pp->syntax = syntaxp;
         }

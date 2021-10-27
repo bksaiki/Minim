@@ -26,6 +26,42 @@ SyntaxLoc *init_syntax_loc(MinimObject *src,
     return loc;
 }
 
+size_t syntax_list_len(MinimObject *stx)
+{
+    size_t len = 0;
+
+    if (MINIM_STX_PAIRP(stx))
+        stx = MINIM_STX_VAL(stx);
+
+    while (MINIM_OBJ_PAIRP(stx))
+    {
+        ++len;
+        stx = MINIM_CDR(stx);
+        if (MINIM_STX_PAIRP(stx))
+            stx = MINIM_STX_VAL(stx);
+    }
+    
+    return len;
+}
+
+size_t syntax_proper_list_len(MinimObject *stx)
+{
+    size_t len = 0;
+
+    if (MINIM_STX_PAIRP(stx))
+        stx = MINIM_STX_VAL(stx);
+
+    while (MINIM_OBJ_PAIRP(stx))
+    {
+        ++len;
+        stx = MINIM_CDR(stx);
+        if (MINIM_STX_PAIRP(stx))
+            stx = MINIM_STX_VAL(stx);
+    }
+    
+    return (minim_nullp(stx) ? len : SIZE_MAX);
+}
+
 // ================================ Checker ================================
 
 #define CHECK_REC(proc, x, expr)        if (proc == x) expr(env, ast);
@@ -63,36 +99,36 @@ static void check_syntax_func(MinimEnv *env, MinimObject *ast, size_t name_idx)
         {
             if (minim_nullp(MINIM_CDR(it)) || MINIM_OBJ_PAIRP(MINIM_CDR(it)))
             {
-                sym = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CAR(it)));
+                sym = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
                     THROW(env, minim_syntax_error("not an identifier",
                                              ast->children[0]->sym,
                                              ast,
-                                             MINIM_AST_VAL(MINIM_CAR(it))));
+                                             MINIM_STX_VAL(MINIM_CAR(it))));
                 }
 
                 env_intern_sym(env2, MINIM_STRING(sym), minim_void);
             }
             else // ... arg_n . arg_rest)
             {
-                sym = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CAR(it)));
+                sym = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
                     THROW(env, minim_syntax_error("not an identifier",
                                              ast->children[0]->sym,
                                              ast,
-                                             MINIM_AST_VAL(MINIM_CAR(it))));
+                                             MINIM_STX_VAL(MINIM_CAR(it))));
                 }
 
                 env_intern_sym(env2, MINIM_STRING(sym), minim_void);       
-                sym = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CDR(it)));
+                sym = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CDR(it)));
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
                     THROW(env, minim_syntax_error("not an identifier",
                                              ast->children[0]->sym,
                                              ast,
-                                             MINIM_AST_VAL(MINIM_CDR(it))));
+                                             MINIM_STX_VAL(MINIM_CDR(it))));
                 }
 
                 env_intern_sym(env2, MINIM_STRING(sym), minim_void);
@@ -201,17 +237,17 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *ast)
         MinimObject *stx;
         MinimEnv *env3;
 
-        bind = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CAR(it)));
+        bind = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
         if (!minim_listp(bind) || minim_list_length(bind) != 2)
         {
             THROW(env, minim_syntax_error("bad binding",
                                           "let-values",
                                           ast,
-                                          MINIM_AST_VAL(MINIM_CAR(it))));
+                                          MINIM_STX_VAL(MINIM_CAR(it))));
         }
 
         // list of identifier
-        stx = MINIM_AST_VAL(MINIM_CAR(bind));
+        stx = MINIM_STX_VAL(MINIM_CAR(bind));
         ids = unsyntax_ast(env, stx);
         if (!minim_listp(ids))
         {
@@ -247,7 +283,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *ast)
         }
 
         init_env(&env3, env, NULL);
-        check_syntax_rec(env3, MINIM_AST_VAL(MINIM_CADR(bind)));
+        check_syntax_rec(env3, MINIM_STX_VAL(MINIM_CADR(bind)));
     }
 
     if (base + 1 == ast->childc)
@@ -315,7 +351,7 @@ static void check_syntax_syntax_case(MinimEnv *env, MinimObject *ast)
     // check reserved list is all symbols
     for (MinimObject *it = reserved; !minim_nullp(it); it = MINIM_CDR(it))
     {
-        sym = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CAR(it)));
+        sym = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
         if (!MINIM_OBJ_SYMBOLP(sym))
             THROW(env, minim_syntax_error("expected a list of symbols", "syntax-rules", ast, ast->children[2]));
     }
@@ -331,8 +367,8 @@ static void check_syntax_syntax_case(MinimEnv *env, MinimObject *ast)
             THROW(env, minim_syntax_error("bad rule", "syntax-rules", ast, ast->children[i]));
 
         check_transform(env,
-                        MINIM_AST_VAL(MINIM_CAR(rule)),
-                        MINIM_AST_VAL(MINIM_CADR(rule)),
+                        MINIM_STX_VAL(MINIM_CAR(rule)),
+                        MINIM_STX_VAL(MINIM_CADR(rule)),
                         reserved);
     }
 }
@@ -700,7 +736,7 @@ MinimObject *datum_to_syntax(MinimEnv *env, MinimObject *obj)
     }
     else if (MINIM_OBJ_ASTP(obj))
     {
-        return MINIM_AST_VAL(obj);
+        return MINIM_STX_VAL(obj);
     }
     else if (MINIM_OBJ_PAIRP(obj))
     {
@@ -820,7 +856,7 @@ MinimObject *minim_builtin_syntax(MinimEnv *env, size_t argc, MinimObject **args
 {
     MinimObject *cp;
 
-    copy_syntax_node(&cp, MINIM_AST_VAL(args[0]));
+    copy_syntax_node(&cp, MINIM_STX_VAL(args[0]));
     return minim_ast(cp);
 }
 
@@ -834,7 +870,7 @@ MinimObject *minim_builtin_unwrap(MinimEnv *env, size_t argc, MinimObject **args
     if (!MINIM_OBJ_ASTP(args[0]))
         THROW(env, minim_argument_error("syntax?", "unwrap", 0, args[0]));
 
-    return unsyntax_ast(env, MINIM_AST_VAL(args[0]));
+    return unsyntax_ast(env, MINIM_STX_VAL(args[0]));
 }
 
 MinimObject *minim_builtin_to_syntax(MinimEnv *env, size_t argc, MinimObject **args)

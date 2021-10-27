@@ -21,7 +21,8 @@ SyntaxLoc *init_syntax_loc(MinimObject *src,
 // Returns the length of syntax list
 size_t syntax_list_len(MinimObject *stx);
 
-// Returns the length of syntax list
+// Returns the length of syntax list. Return SIZE_MAX
+// if the list is not proper.
 size_t syntax_proper_list_len(MinimObject *stx);
 
 // Throws an error if `ast` is ill-formatted syntax.
