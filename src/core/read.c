@@ -42,7 +42,7 @@ static MinimObject *open_file_port(MinimEnv *env, const char *fname)
     return port;
 }
 
-static MinimObject *read_error(MinimObject *port, SyntaxNode *err, const char *fname)
+static MinimObject *read_error(MinimObject *port, MinimObject *err, const char *fname)
 {
     MinimError *e;
     Buffer *bf;
@@ -95,7 +95,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
         module->env->module = module;
         while (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
         {
-            SyntaxNode *ast, *err;
+            MinimObject *ast, *err;
 
             ast = minim_parse_port(cache, &err, 0);
             if (!ast) THROW(prev->env, read_error(cache, err, fname));
@@ -114,7 +114,7 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
-            SyntaxNode *ast, *err;
+            MinimObject *ast, *err;
 
             ast = minim_parse_port(port, &err, 0);
             if (!ast) THROW(prev->env, read_error(port, err, fname));
@@ -145,7 +145,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
 
         while (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
         {
-            SyntaxNode *ast, *err;
+            MinimObject *ast, *err;
 
             ast = minim_parse_port(cache, &err, 0);
             if (!ast) THROW(env, read_error(cache, err, fname));
@@ -163,7 +163,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
 
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
-            SyntaxNode *ast, *err;
+            MinimObject *ast, *err;
 
             ast = minim_parse_port(port, &err, 0);
             if (!ast) THROW(env, read_error(port, err, fname));
@@ -205,7 +205,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
 
         while (MINIM_PORT_MODE(cport) & MINIM_PORT_MODE_READY)
         {
-            SyntaxNode *ast, *err;
+            MinimObject *ast, *err;
             
             ast = minim_parse_port(cport, &err, 0);
             if (!ast)
@@ -229,7 +229,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
 
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
-            SyntaxNode *ast, *err;
+            MinimObject *ast, *err;
             
             ast = minim_parse_port(port, &err, 0);
             if (!ast)

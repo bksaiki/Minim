@@ -11,7 +11,7 @@
 #define transform_type(x)   (MINIM_OBJ_CLOSUREP(x) ? MINIM_TRANSFORM_MACRO : MINIM_TRANSFORM_UNKNOWN)
 
 // forward declaration
-SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast);
+MinimObject* transform_syntax(MinimEnv *env, MinimObject* ast);
 
 // ================================ Match table ================================
 
@@ -94,7 +94,7 @@ symbol_list_contains(SymbolList *list, const char *sym)
 // ================================ Transform ================================
 
 static bool
-is_match_pattern(SyntaxNode *parent, size_t idx)
+is_match_pattern(MinimObject *parent, size_t idx)
 {
     return (idx + 1 < parent->childc &&
             parent->children[idx + 1]->sym &&
@@ -102,7 +102,7 @@ is_match_pattern(SyntaxNode *parent, size_t idx)
 }
 
 static size_t
-ellipse_pos(SyntaxNode *ast)
+ellipse_pos(MinimObject *ast)
 {
     for (size_t i = 0; i < ast->childc; ++i)
     {
@@ -114,7 +114,7 @@ ellipse_pos(SyntaxNode *ast)
 }
 
 static bool
-is_improper_list_end(SyntaxNode *ast, size_t i)
+is_improper_list_end(MinimObject *ast, size_t i)
 {
     return (i + 3 == ast->childc &&
             ast->children[i + 1]->sym &&
@@ -122,7 +122,7 @@ is_improper_list_end(SyntaxNode *ast, size_t i)
 }
 
 static void
-add_null_variables(MinimEnv *env, SyntaxNode *ast, SymbolList *reserved, size_t pdepth)
+add_null_variables(MinimEnv *env, MinimObject *ast, SymbolList *reserved, size_t pdepth)
 {
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
@@ -214,14 +214,14 @@ static MinimObject *add_pattern(MinimObject *a)
 // }
 
 static bool
-match_transform(MinimEnv *env, SyntaxNode *match, MinimObject *thing, SymbolList *reserved, size_t pdepth)
+match_transform(MinimEnv *env, MinimObject *match, MinimObject *thing, SymbolList *reserved, size_t pdepth)
 {
     MinimObject *datum;
 
     // printf("match: "); print_ast(match); printf("\n");
     // printf("ast:   "); debug_print_minim_object(thing, NULL);
 
-    datum = MINIM_OBJ_ASTP(thing) ? unsyntax_ast(env, MINIM_AST(thing)) : thing;
+    datum = MINIM_OBJ_ASTP(thing) ? unsyntax_ast(env, MINIM_AST_VAL(thing)) : thing;
     if (match->type == SYNTAX_NODE_PAIR)        // pairs first
     {
         if (MINIM_OBJ_PAIRP(datum))
@@ -446,7 +446,7 @@ match_transform(MinimEnv *env, SyntaxNode *match, MinimObject *thing, SymbolList
 }
 
 static void
-get_patterns(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
+get_patterns(MinimEnv *env, MinimObject *ast, MinimObject *patterns)
 {
     if (ast->childc > 0)
     {
@@ -479,7 +479,7 @@ get_patterns(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
 }
 
 static void
-next_patterns_rec(MinimEnv *env, SyntaxNode *ast, MinimObject *pats, MinimObject *npats)
+next_patterns_rec(MinimEnv *env, MinimObject *ast, MinimObject *pats, MinimObject *npats)
 {
     if (ast->childc > 0)
     {
@@ -515,7 +515,7 @@ next_patterns_rec(MinimEnv *env, SyntaxNode *ast, MinimObject *pats, MinimObject
 
 // Gathers pattern variables in the ast if they are also in `pats` 
 static MinimObject *
-next_patterns(MinimEnv *env, SyntaxNode *ast, MinimObject *pats)
+next_patterns(MinimEnv *env, MinimObject *ast, MinimObject *pats)
 {
     MinimObject *npats;
     
@@ -554,10 +554,10 @@ get_pattern(const char *sym, MinimObject *pats)
     return NULL;
 }
 
-static SyntaxNode *
-apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
+static MinimObject *
+apply_transformation(MinimEnv *env, MinimObject *ast, MinimObject *patterns)
 {
-    SyntaxNode *ret;
+    MinimObject *ret;
 
     // printf("trans: "); print_ast(ast); printf("\n");
     // debug_pattern_table(env, patterns);
@@ -565,13 +565,13 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
     {
         init_syntax_node(&ret, ast->type);
         ret->childc = ast->childc;
-        ret->children = GC_alloc(ret->childc * sizeof(SyntaxNode*));
+        ret->children = GC_alloc(ret->childc * sizeof(MinimObject*));
         for (size_t i = 0, r = 0; i < ast->childc; ++i, ++r)
         {
             if (i + 2 == ast->childc && ast->children[i]->sym &&            // dot
                 strcmp(ast->children[i]->sym, ".") == 0)
             {
-                SyntaxNode *rest;
+                MinimObject *rest;
                 
                 rest = apply_transformation(env, ast->children[i + 1], patterns);
                 if (rest->type == SYNTAX_NODE_LIST)
@@ -579,12 +579,12 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
                     if (rest->childc == 0)
                     {
                         ret->childc -= 2;
-                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(MinimObject*));
                     }
                     else if (rest->childc == 1)
                     {  
                         ret->childc -= 1;
-                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(MinimObject*));
                         ret->children[r] = rest->children[0];
                     }
                     else if (rest->childc == 2)
@@ -596,7 +596,7 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
                     {
                         ret->childc += rest->childc;
                         ret->childc -= 2;
-                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                        ret->children = GC_realloc(ret->children, ret->childc * sizeof(MinimObject*));
                         for (size_t i = 0; i < rest->childc; ++i)
                             ret->children[r + i] = rest->children[i];
                     }
@@ -619,17 +619,17 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
                 if (plen == 0)  // reduce by 2
                 {
                     ret->childc -= 2;
-                    ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                    ret->children = GC_realloc(ret->children, ret->childc * sizeof(MinimObject*));
                 }
                 else if (plen == 1)  // reduce by 1
                 {
                     ret->childc -= 1;
-                    ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                    ret->children = GC_realloc(ret->children, ret->childc * sizeof(MinimObject*));
                 }
                 else if (plen > 2)  // expand by plen - 2
                 {
                     ret->childc += (plen - 2);
-                    ret->children = GC_realloc(ret->children, ret->childc * sizeof(SyntaxNode*));
+                    ret->children = GC_realloc(ret->children, ret->childc * sizeof(MinimObject*));
                 }
 
                 if (plen == 0 && r < ret->childc)
@@ -691,7 +691,7 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
     }
     else if (ast->type == SYNTAX_NODE_PAIR)
     {
-        SyntaxNode *car, *cdr;
+        MinimObject *car, *cdr;
 
         car = apply_transformation(env, ast->children[0], patterns);
         cdr = apply_transformation(env, ast->children[1], patterns);
@@ -699,7 +699,7 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
         {
             init_syntax_node(&ret, SYNTAX_NODE_LIST);
             ret->childc = cdr->childc + 1;
-            ret->children = GC_alloc(ret->childc * sizeof(SyntaxNode*));
+            ret->children = GC_alloc(ret->childc * sizeof(MinimObject*));
             ret->children[0] = car;
 
             for (size_t i = 0; i < cdr->childc; ++i)
@@ -709,7 +709,7 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
         {
             init_syntax_node(&ret, SYNTAX_NODE_PAIR);
             ret->childc = 2;
-            ret->children = GC_alloc(ret->childc * sizeof(SyntaxNode*));
+            ret->children = GC_alloc(ret->childc * sizeof(MinimObject*));
             ret->children[0] = car;
             ret->children[1] = cdr;
         }
@@ -719,7 +719,7 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
         MinimObject *v = get_pattern(ast->sym, patterns);
         if (v)
         {
-            if (MINIM_OBJ_ASTP(v))  copy_syntax_node(&ret, MINIM_AST(v));
+            if (MINIM_OBJ_ASTP(v))  copy_syntax_node(&ret, MINIM_AST_VAL(v));
             else                    ret = datum_to_syntax(env, v);
         }
         else
@@ -731,8 +731,8 @@ apply_transformation(MinimEnv *env, SyntaxNode *ast, MinimObject *patterns)
     return ret;
 }
 
-static SyntaxNode*
-transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
+static MinimObject*
+transform_loc(MinimEnv *env, MinimObject *trans, MinimObject *ast)
 {
     MinimObject *body, *res;
 
@@ -744,11 +744,11 @@ transform_loc(MinimEnv *env, MinimObject *trans, SyntaxNode *ast)
     if (!MINIM_OBJ_ASTP(res))
         THROW(env, minim_syntax_error("expected syntax as a result", ast->sym, ast, NULL));
 
-    return MINIM_AST(res);
+    return MINIM_AST_VAL(res);
 }
 
 static bool
-valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *reserved, size_t pdepth)
+valid_matchp(MinimEnv *env, MinimObject* match, MatchTable *table, SymbolList *reserved, size_t pdepth)
 {
     if (match->type == SYNTAX_NODE_LIST || match->type == SYNTAX_NODE_VECTOR)
     {
@@ -789,7 +789,7 @@ valid_matchp(MinimEnv *env, SyntaxNode* match, MatchTable *table, SymbolList *re
 }
 
 static bool
-valid_replacep(MinimEnv *env, SyntaxNode* replace, MatchTable *table, SymbolList *reserved, size_t pdepth)
+valid_replacep(MinimEnv *env, MinimObject* replace, MatchTable *table, SymbolList *reserved, size_t pdepth)
 {
     if (replace->type == SYNTAX_NODE_LIST || replace->type == SYNTAX_NODE_VECTOR)
     {
@@ -836,7 +836,7 @@ valid_replacep(MinimEnv *env, SyntaxNode* replace, MatchTable *table, SymbolList
 
 // ================================ Public ================================
 
-SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
+MinimObject* transform_syntax(MinimEnv *env, MinimObject* ast)
 {
     if (ast->type == SYNTAX_NODE_LIST || ast->type == SYNTAX_NODE_VECTOR)
     {
@@ -874,7 +874,7 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
 
                 if (MINIM_OBJ_TRANSFORMP(op))
                 {
-                    SyntaxNode *trans;
+                    MinimObject *trans;
                     // printf("t> "); print_ast(ast); printf("\n");
                     trans = transform_loc(env, op, ast);
                     // printf("t< "); print_ast(trans); printf("\n");
@@ -901,7 +901,7 @@ SyntaxNode* transform_syntax(MinimEnv *env, SyntaxNode* ast)
     return ast;
 }
 
-void check_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace, MinimObject *reserved)
+void check_transform(MinimEnv *env, MinimObject *match, MinimObject *replace, MinimObject *reserved)
 {
     MatchTable table;
     SymbolList reserved_lst;
@@ -912,7 +912,7 @@ void check_transform(MinimEnv *env, SyntaxNode *match, SyntaxNode *replace, Mini
     init_symbol_list(&reserved_lst, reservedc);
     it = reserved;
     for (size_t i = 0; i < reservedc; ++i, it = MINIM_CDR(it))
-        reserved_lst.syms[i] = MINIM_AST(MINIM_CAR(it))->sym;
+        reserved_lst.syms[i] = MINIM_AST_VAL(MINIM_CAR(it))->sym;
 
     init_match_table(&table);
     valid_matchp(env, match, &table, &reserved_lst, 0);
@@ -925,42 +925,42 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
 {
     MinimObject *val, *trans;
 
-    val = eval_ast_no_check(env, transform_syntax(env, MINIM_AST(args[1])));
+    val = eval_ast_no_check(env, transform_syntax(env, MINIM_AST_VAL(args[1])));
     if (!MINIM_OBJ_VALUESP(val))
     {
-        if (MINIM_AST(args[0])->childc != 1)
+        if (MINIM_AST_VAL(args[0])->childc != 1)
             THROW(env, minim_values_arity_error("def-syntaxes",
-                                                MINIM_AST(args[0])->childc,
+                                                MINIM_AST_VAL(args[0])->childc,
                                                 1,
-                                                MINIM_AST(args[0])));
+                                                MINIM_AST_VAL(args[0])));
         
         if (!MINIM_OBJ_CLOSUREP(val))
             THROW(env, minim_syntax_error("expected a procedure of 1 argument",
                                           "def-syntaxes",
-                                          MINIM_AST(args[1]),
+                                          MINIM_AST_VAL(args[1]),
                                           NULL));
 
         trans = minim_transform(val, transform_type(val));
-        env_intern_sym(env, MINIM_AST(args[0])->children[0]->sym, trans);
+        env_intern_sym(env, MINIM_AST_VAL(args[0])->children[0]->sym, trans);
     }
     else
     {
-        if (MINIM_VALUES_SIZE(val) != MINIM_AST(args[0])->childc)
+        if (MINIM_VALUES_SIZE(val) != MINIM_AST_VAL(args[0])->childc)
             THROW(env, minim_values_arity_error("def-syntaxes",
-                                                MINIM_AST(args[0])->childc,
+                                                MINIM_AST_VAL(args[0])->childc,
                                                 MINIM_VALUES_SIZE(val),
-                                                MINIM_AST(args[0])));
+                                                MINIM_AST_VAL(args[0])));
 
-        for (size_t i = 0; i < MINIM_AST(args[0])->childc; ++i)
+        for (size_t i = 0; i < MINIM_AST_VAL(args[0])->childc; ++i)
         {
             if (!MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
                 THROW(env, minim_syntax_error("expected a procedure of 1 argument",
                                               "def-syntaxes",
-                                              MINIM_AST(args[1]),
+                                              MINIM_AST_VAL(args[1]),
                                               NULL));
 
             trans = minim_transform(MINIM_VALUES_REF(val, i), transform_type(MINIM_VALUES_REF(val, i)));
-            env_intern_sym(env, MINIM_AST(args[0])->children[i]->sym, trans);
+            env_intern_sym(env, MINIM_AST_VAL(args[0])->children[i]->sym, trans);
         }
     }
 
@@ -972,14 +972,14 @@ MinimObject *minim_builtin_template(MinimEnv *env, size_t argc, MinimObject **ar
     // Stores pattern data in a vector where each element
     // is a pair => (name, val)
     MinimObject *patterns;
-    SyntaxNode *final;
+    MinimObject *final;
     
     patterns = minim_vector(0, NULL);
-    get_patterns(env, MINIM_AST(args[0]), patterns);
+    get_patterns(env, MINIM_AST_VAL(args[0]), patterns);
 
-    // printf("template: "); print_ast(MINIM_AST(args[0])); printf("\n");
+    // printf("template: "); print_ast(MINIM_AST_VAL(args[0])); printf("\n");
     // debug_pattern_table(env, patterns);
-    final = apply_transformation(env, MINIM_AST(args[0]), patterns);
+    final = apply_transformation(env, MINIM_AST_VAL(args[0]), patterns);
     // printf("final:    "); print_ast(final); printf("\n");
     return minim_ast(final);
 }
@@ -989,19 +989,19 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
     SymbolList reserved;
     MinimObject *datum;
 
-    init_symbol_list(&reserved, MINIM_AST(args[1])->childc);
-    for (size_t i = 0; i < MINIM_AST(args[1])->childc; ++i)
-        reserved.syms[i] = MINIM_AST(args[1])->children[i]->sym;
+    init_symbol_list(&reserved, MINIM_AST_VAL(args[1])->childc);
+    for (size_t i = 0; i < MINIM_AST_VAL(args[1])->childc; ++i)
+        reserved.syms[i] = MINIM_AST_VAL(args[1])->children[i]->sym;
 
-    datum = eval_ast_no_check(env, MINIM_AST(args[0]));
+    datum = eval_ast_no_check(env, MINIM_AST_VAL(args[0]));
     for (size_t i = 2; i < argc; ++i)
     {
-        SyntaxNode *match, *replace;
+        MinimObject *match, *replace;
         MinimEnv *match_env;
 
         init_env(&match_env, NULL, NULL);       // empty 
-        match = MINIM_AST(args[i])->children[0];
-        replace = MINIM_AST(args[i])->children[1];
+        match = MINIM_AST_VAL(args[i])->children[0];
+        replace = MINIM_AST_VAL(args[i])->children[1];
         if (match_transform(match_env, match, datum, &reserved, 0))
         {
             MinimEnv *env2;
@@ -1015,7 +1015,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
 
             // printf("sc>: "); debug_print_minim_object(datum, NULL);
             // printf("sc<: "); debug_print_minim_object(val, NULL);
-            return minim_ast(transform_syntax(env, MINIM_AST(val)));
+            return minim_ast(transform_syntax(env, MINIM_AST_VAL(val)));
         }
     }
 

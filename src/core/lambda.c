@@ -244,10 +244,10 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 {
     if (count > 1)
     {
-        SyntaxNode *ast;
+        MinimObject *ast;
 
         init_syntax_node(&ast, SYNTAX_NODE_LIST);
-        ast->children = GC_alloc((count + 1) * sizeof(SyntaxNode*));
+        ast->children = GC_alloc((count + 1) * sizeof(MinimObject*));
         ast->childc = count + 1;
 
         init_syntax_node(&ast->children[0], SYNTAX_NODE_DATUM);
@@ -256,11 +256,11 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 
         lam->body = ast;
         for (size_t i = 0; i < count; ++i)
-            copy_syntax_node(&ast->children[i + 1], MINIM_AST(exprs[i]));
+            copy_syntax_node(&ast->children[i + 1], MINIM_AST_VAL(exprs[i]));
     }
     else
     {
-        copy_syntax_node(&lam->body, MINIM_AST(exprs[0]));
+        copy_syntax_node(&lam->body, MINIM_AST_VAL(exprs[0]));
     }
 }
 
@@ -278,7 +278,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
 
     // Convert bindings to list
     init_minim_lambda(&lam);
-    bindings = unsyntax_ast(env, MINIM_AST(args[0]));
+    bindings = unsyntax_ast(env, MINIM_AST_VAL(args[0]));
     if (MINIM_OBJ_SYMBOLP(bindings))
     {
         lam->rest = MINIM_SYMBOL(bindings);
@@ -298,13 +298,13 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
         {
             if (minim_nullp(MINIM_CDR(it)) || minim_consp(MINIM_CDR(it)))
             {
-                val = unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)));
+                val = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CAR(it)));
                 lam->args[i] = MINIM_SYMBOL(val);
             }
             else    // rest args
             {   
-                val = unsyntax_ast(env, MINIM_AST(MINIM_CAR(it)));
-                val2 = unsyntax_ast(env, MINIM_AST(MINIM_CDR(it)));
+                val = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CAR(it)));
+                val2 = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CDR(it)));
                 lam->args[i] = MINIM_SYMBOL(val);
                 lam->rest = MINIM_SYMBOL(val2);
             }

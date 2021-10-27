@@ -18,7 +18,7 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
-static bool expr_is_begin(MinimEnv *env, SyntaxNode *ast)
+static bool expr_is_begin(MinimEnv *env, MinimObject *ast)
 {
     MinimObject *val;
 
@@ -65,10 +65,10 @@ void init_minim_module(MinimModule **pmodule)
     *pmodule = module;
 }
 
-void minim_module_add_expr(MinimModule *module, SyntaxNode *expr)
+void minim_module_add_expr(MinimModule *module, MinimObject *expr)
 {
     ++module->exprc;
-    module->exprs = GC_realloc(module->exprs, module->exprc * sizeof(SyntaxNode*));
+    module->exprs = GC_realloc(module->exprs, module->exprc * sizeof(MinimObject*));
     module->exprs[module->exprc - 1] = expr;
 }
 
@@ -85,7 +85,7 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     module->imports[module->importc - 1] = import;
 }
 
-static size_t expand_expr_count(MinimEnv *env, SyntaxNode *node)
+static size_t expand_expr_count(MinimEnv *env, MinimObject *node)
 {
     if (expr_is_begin(env, node))
     {
@@ -100,7 +100,7 @@ static size_t expand_expr_count(MinimEnv *env, SyntaxNode *node)
     }
 }
 
-static size_t expand_expr(MinimEnv *env, SyntaxNode *node, SyntaxNode **expanded, size_t idx)
+static size_t expand_expr(MinimEnv *env, MinimObject *node, MinimObject **expanded, size_t idx)
 {
     if (expr_is_begin(env, node))
     {
@@ -119,13 +119,13 @@ static size_t expand_expr(MinimEnv *env, SyntaxNode *node, SyntaxNode **expanded
 // expands begin
 void minim_module_expand(MinimModule *module)
 {
-    SyntaxNode **expanded;
+    MinimObject **expanded;
     size_t it = 0, count = 0;
     
     for (size_t i = 0; i < module->exprc; ++i)
         count += expand_expr_count(module->env, module->exprs[i]);
         
-    expanded = GC_alloc(count * sizeof(SyntaxNode**));
+    expanded = GC_alloc(count * sizeof(MinimObject**));
     for (size_t i = 0; i < module->exprc; ++i)
         it = expand_expr(module->env, module->exprs[i], expanded, it);
     
@@ -192,7 +192,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
         {
             MinimObject *export;
 
-            export = unsyntax_ast(env, MINIM_AST(args[i]));
+            export = unsyntax_ast(env, MINIM_AST_VAL(args[i]));
             if (minim_listp(export))
             {
                 MinimModule *import;
@@ -200,8 +200,8 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                 MinimPath *path;
                 char *attrib;
                 
-                attrib = MINIM_AST(MINIM_CAR(export))->sym;
-                name = unsyntax_ast(env, MINIM_AST(MINIM_CADR(export)));
+                attrib = MINIM_AST_VAL(MINIM_CAR(export))->sym;
+                name = unsyntax_ast(env, MINIM_AST_VAL(MINIM_CADR(export)));
                 if (strcmp(attrib, "all") == 0)
                 {
                     path = (is_absolute_path(MINIM_STRING(name)) ?
@@ -213,8 +213,8 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                     {
                         THROW(env, minim_syntax_error("module not imported",
                                                       "%export",
-                                                      MINIM_AST(args[i]),
-                                                      MINIM_AST(MINIM_CADR(export))));
+                                                      MINIM_AST_VAL(args[i]),
+                                                      MINIM_AST_VAL(MINIM_CADR(export))));
                     }
 
                     minim_symbol_table_merge(env->module->export->table, import->export->table);
@@ -252,7 +252,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
     init_minim_module(&tmp);
     for (size_t i = 0; i < argc; ++i)
     {
-        arg = unsyntax_ast(env, MINIM_AST(args[i]));
+        arg = unsyntax_ast(env, MINIM_AST_VAL(args[i]));
         path = (is_absolute_path(MINIM_STRING(arg)) ?
                 build_path(1, MINIM_STRING(arg)) :
                 build_path(2, env->current_dir, MINIM_STRING(arg)));

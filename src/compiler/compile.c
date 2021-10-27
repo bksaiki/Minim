@@ -6,7 +6,7 @@
 #include "compilepriv.h"
 
 static void compile_datum(MinimEnv *env,
-                          SyntaxNode *stx,
+                          MinimObject *stx,
                           Buffer *bf,
                           SymbolTable *tab,
                           bool top)
@@ -35,7 +35,7 @@ static void compile_datum(MinimEnv *env,
 }
 
 static void compile_expr(MinimEnv *env,
-                         SyntaxNode *stx,
+                         MinimObject *stx,
                          Buffer *bf,
                          SymbolTable *tab)
 {
@@ -81,7 +81,7 @@ static void compile_expr(MinimEnv *env,
 }
 
 static void compile_top(MinimEnv *env,
-                        SyntaxNode *stx,
+                        MinimObject *stx,
                         Buffer *bf,
                         SymbolTable *tab)
 {

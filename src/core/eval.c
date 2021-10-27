@@ -20,7 +20,7 @@
 #include "transform.h"
 
 // forward declaration
-static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node);
+static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *node);
 
 // eval terminals
 
@@ -84,7 +84,7 @@ static MinimObject *str_to_node(const char *str, MinimEnv *env, bool quote, bool
 #define UNSYNTAX_REC            0x1
 #define UNSYNTAX_QUASIQUOTE     0x2
 
-static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t flags)
+static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimObject* node, uint8_t flags)
 {
     MinimObject *res;
 
@@ -179,14 +179,14 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, SyntaxNode* node, uint8_t f
 }
 
 // optimized version for builtins - 0ary
-MinimObject *eval_builtin_0ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_builtin_0ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     MinimObject *err;
     CALL_BUILTIN(env, proc, 0, NULL, &err);
 }
 
 // optimized version for builtins - 1ary
-MinimObject *eval_builtin_1ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_builtin_1ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     MinimObject *arg, *err;
     uint8_t prev_flags = env->flags;
@@ -198,7 +198,7 @@ MinimObject *eval_builtin_1ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin pro
 }
 
 // optimized version for builtins - 2ary
-MinimObject *eval_builtin_2ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_builtin_2ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     MinimObject *args[2];
     MinimObject *err;
@@ -212,7 +212,7 @@ MinimObject *eval_builtin_2ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin pro
 }
 
 // optimized version for builtins - 3ary
-MinimObject *eval_builtin_3ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_builtin_3ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     MinimObject *args[3];
     MinimObject *err;
@@ -227,7 +227,7 @@ MinimObject *eval_builtin_3ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin pro
 }
 
 // general version for builtins
-MinimObject *eval_builtin(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc, size_t argc)
+MinimObject *eval_builtin(MinimEnv *env, MinimObject *node, MinimBuiltin proc, size_t argc)
 {
     MinimObject **args;
     MinimObject *err;
@@ -242,20 +242,20 @@ MinimObject *eval_builtin(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc, si
 }
 
 // optimized version for syntax - 0ary
-MinimObject *eval_syntax_0ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_syntax_0ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     return proc(env, 0, NULL);
 }
 
 // optimized version for syntax - 1ary
-MinimObject *eval_syntax_1ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_syntax_1ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     MinimObject *arg = minim_ast(node->children[1]);
     return proc(env, 1, &arg);
 }
 
 // optimized version for syntax - 2ary
-MinimObject *eval_syntax_2ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_syntax_2ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     MinimObject *args[2];
     args[0] = minim_ast(node->children[1]);
@@ -264,7 +264,7 @@ MinimObject *eval_syntax_2ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc
 }
 
 // optimized version for syntax - 3ary
-MinimObject *eval_syntax_3ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc)
+MinimObject *eval_syntax_3ary(MinimEnv *env, MinimObject *node, MinimBuiltin proc)
 {
     MinimObject *args[3];
     args[0] = minim_ast(node->children[1]);
@@ -274,7 +274,7 @@ MinimObject *eval_syntax_3ary(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc
 }
 
 // general version for syntax
-MinimObject *eval_syntax(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc, size_t argc)
+MinimObject *eval_syntax(MinimEnv *env, MinimObject *node, MinimBuiltin proc, size_t argc)
 {
     MinimObject **args = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
@@ -298,13 +298,13 @@ MinimObject *eval_syntax(MinimEnv *env, SyntaxNode *node, MinimBuiltin proc, siz
 }
 
 // optimized version for closures - 0ary
-static MinimObject *eval_closure_0ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+static MinimObject *eval_closure_0ary(MinimEnv *env, MinimObject *node, MinimLambda *lam)
 {
     CALL_CLOSURE(env, lam, 0, NULL);
 }
 
 // optimized version for closures - 1ary
-static MinimObject *eval_closure_1ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+static MinimObject *eval_closure_1ary(MinimEnv *env, MinimObject *node, MinimLambda *lam)
 {
     MinimObject *arg;
     uint8_t prev_flags;
@@ -317,7 +317,7 @@ static MinimObject *eval_closure_1ary(MinimEnv *env, SyntaxNode *node, MinimLamb
 }
 
 // optimized version for closures - 2ary
-static MinimObject *eval_closure_2ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+static MinimObject *eval_closure_2ary(MinimEnv *env, MinimObject *node, MinimLambda *lam)
 {
     MinimObject *args[2];
     uint8_t prev_flags;
@@ -332,7 +332,7 @@ static MinimObject *eval_closure_2ary(MinimEnv *env, SyntaxNode *node, MinimLamb
 }
 
 // optimized version for closures - 3ary
-static MinimObject *eval_closure_3ary(MinimEnv *env, SyntaxNode *node, MinimLambda *lam)
+static MinimObject *eval_closure_3ary(MinimEnv *env, MinimObject *node, MinimLambda *lam)
 {
     MinimObject *args[3];
     uint8_t prev_flags;
@@ -348,7 +348,7 @@ static MinimObject *eval_closure_3ary(MinimEnv *env, SyntaxNode *node, MinimLamb
 }
 
 // general version for closures
-static MinimObject *eval_closure(MinimEnv *env, SyntaxNode *node, MinimLambda *lam, size_t argc)
+static MinimObject *eval_closure(MinimEnv *env, MinimObject *node, MinimLambda *lam, size_t argc)
 {
     MinimObject **args;
     uint8_t prev_flags;
@@ -363,7 +363,7 @@ static MinimObject *eval_closure(MinimEnv *env, SyntaxNode *node, MinimLambda *l
     CALL_CLOSURE(env, lam, argc, args);
 }
 
-static MinimObject *eval_jump(MinimEnv *env, SyntaxNode *node, size_t argc, MinimObject *jmp)
+static MinimObject *eval_jump(MinimEnv *env, MinimObject *node, size_t argc, MinimObject *jmp)
 {
     MinimObject **args;
 
@@ -373,7 +373,7 @@ static MinimObject *eval_jump(MinimEnv *env, SyntaxNode *node, size_t argc, Mini
     minim_long_jump(jmp, env, argc, args);
 }
 
-static MinimObject *eval_vector(MinimEnv *env, SyntaxNode *node)
+static MinimObject *eval_vector(MinimEnv *env, MinimObject *node)
 {
     MinimObject **args;
 
@@ -383,7 +383,7 @@ static MinimObject *eval_vector(MinimEnv *env, SyntaxNode *node)
     return minim_vector(node->childc, args);
 }
 
-static MinimObject *eval_pair(MinimEnv *env, SyntaxNode *node)
+static MinimObject *eval_pair(MinimEnv *env, MinimObject *node)
 {
     return minim_cons(eval_ast_node(env, node->children[0]),
                       eval_ast_node(env, node->children[1]));
@@ -391,7 +391,7 @@ static MinimObject *eval_pair(MinimEnv *env, SyntaxNode *node)
 
 // Eval mainloop
 
-static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
+static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *node)
 {
     if (node->type == SYNTAX_NODE_LIST)
     {
@@ -485,7 +485,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, SyntaxNode *node)
     }
 }
 
-static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast, MinimBuiltin fn)
+static MinimObject *eval_top_level(MinimEnv *env, MinimObject *ast, MinimBuiltin fn)
 {
     MinimObject **args;
     size_t argc;
@@ -499,7 +499,7 @@ static MinimObject *eval_top_level(MinimEnv *env, SyntaxNode *ast, MinimBuiltin 
     return fn(env, argc, args);
 }
 
-static bool expr_is_module_level(MinimEnv *env, SyntaxNode *ast)
+static bool expr_is_module_level(MinimEnv *env, MinimObject *ast)
 {
     MinimObject *val;
     MinimBuiltin builtin;
@@ -517,7 +517,7 @@ static bool expr_is_module_level(MinimEnv *env, SyntaxNode *ast)
             builtin == minim_builtin_export);
 }
 
-static bool expr_is_macro(MinimEnv *env, SyntaxNode *ast)
+static bool expr_is_macro(MinimEnv *env, MinimObject *ast)
 {
     MinimObject *val;
 
@@ -528,7 +528,7 @@ static bool expr_is_macro(MinimEnv *env, SyntaxNode *ast)
     return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_def_syntaxes);
 }
 
-static bool expr_is_import(MinimEnv *env, SyntaxNode *ast)
+static bool expr_is_import(MinimEnv *env, MinimObject *ast)
 {
     MinimObject *val;
 
@@ -539,7 +539,7 @@ static bool expr_is_import(MinimEnv *env, SyntaxNode *ast)
     return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_import);
 }
 
-static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
+static bool expr_is_export(MinimEnv *env, MinimObject *ast)
 {
     MinimObject *val;
 
@@ -552,7 +552,7 @@ static bool expr_is_export(MinimEnv *env, SyntaxNode *ast)
 
 // ================================ Public ================================
 
-MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
+MinimObject *eval_ast(MinimEnv *env, MinimObject *ast)
 {
     MinimEnv *env2;
 
@@ -578,13 +578,13 @@ MinimObject *eval_ast(MinimEnv *env, SyntaxNode *ast)
     }
 }
 
-MinimObject *eval_ast_no_check(MinimEnv* env, SyntaxNode *ast)
+MinimObject *eval_ast_no_check(MinimEnv* env, MinimObject *ast)
 {
     log_expr_evaled();
     return eval_ast_node(env, ast);
 }
 
-MinimObject *eval_ast_terminal(MinimEnv *env, SyntaxNode *ast)
+MinimObject *eval_ast_terminal(MinimEnv *env, MinimObject *ast)
 {
     return str_to_node(ast->sym, env, false, false);
 }
@@ -695,17 +695,17 @@ MinimObject *eval_module(MinimModule *module)
     return minim_void;
 }
 
-MinimObject *unsyntax_ast(MinimEnv *env, SyntaxNode *ast)
+MinimObject *unsyntax_ast(MinimEnv *env, MinimObject *ast)
 {
     return unsyntax_ast_node(env, ast, 0);
 }
 
-MinimObject *unsyntax_ast_rec(MinimEnv *env, SyntaxNode *ast)
+MinimObject *unsyntax_ast_rec(MinimEnv *env, MinimObject *ast)
 {
     return unsyntax_ast_node(env, ast, UNSYNTAX_REC);
 }
 
-MinimObject *unsyntax_ast_rec2(MinimEnv *env, SyntaxNode *ast)
+MinimObject *unsyntax_ast_rec2(MinimEnv *env, MinimObject *ast)
 {
     return unsyntax_ast_node(env, ast, UNSYNTAX_REC | UNSYNTAX_QUASIQUOTE);
 }
@@ -715,7 +715,7 @@ char *eval_string(char *str, size_t len)
     PrintParams pp;
     MinimEnv *env;
     MinimObject *obj, *exit_handler, *port;
-    SyntaxNode *ast, *err;
+    MinimObject *ast, *err;
     jmp_buf *exit_buf;
     FILE *tmp;
 

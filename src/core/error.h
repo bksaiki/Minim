@@ -1,7 +1,6 @@
 #ifndef _MINIM_ERROR_H_
 #define _MINIM_ERROR_H_
 
-#include "ast.h"
 #include "env.h"
 
 struct MinimErrorTrace
@@ -44,10 +43,10 @@ void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char* name);
 
 // *** Errors *** //
 
-MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *expr, SyntaxNode *subexpr);
+MinimObject *minim_syntax_error(const char *msg, const char *where, MinimObject *expr, MinimObject *subexpr);
 MinimObject *minim_argument_error(const char *pred, const char *where, size_t pos, MinimObject *val);
 MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t actual);
-MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, SyntaxNode *expr);
+MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, MinimObject *expr);
 MinimObject *minim_error(const char *msg, const char *where, ...);
 
 NORETURN

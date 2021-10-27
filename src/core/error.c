@@ -125,7 +125,7 @@ static void buffer_write_ordinal(Buffer *bf, size_t ord)
     else                                        writes_buffer(bf, "th");
 }
 
-MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *expr, SyntaxNode *subexpr)
+MinimObject *minim_syntax_error(const char *msg, const char *where, MinimObject *expr, MinimObject *subexpr)
 {
     MinimObject *obj;
     MinimError *err;
@@ -218,7 +218,7 @@ MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t
     return minim_err(err);
 }
 
-MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, SyntaxNode *expr)
+MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, MinimObject *expr)
 {
     MinimError *err;
     Buffer *bf;
@@ -469,7 +469,7 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      MINIM_AST(args[2]),
+                                      MINIM_AST_VAL(args[2]),
                                       NULL));
     }
     else
@@ -479,8 +479,8 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      MINIM_AST(args[2]),
-                                      MINIM_AST(args[3])));
+                                      MINIM_AST_VAL(args[2]),
+                                      MINIM_AST_VAL(args[3])));
     }
 
     return NULL; // avoid compile errors

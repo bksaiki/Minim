@@ -1,7 +1,6 @@
 #ifndef _MINIM_MODULE_H_
 #define _MINIM_MODULE_H_
 
-#include "ast.h"
 #include "env.h"
 
 #define MINIM_MODULE_LOADED     0x1
@@ -42,7 +41,7 @@ typedef struct MinimModule
 {
     struct MinimModule *prev;
     struct MinimModule **imports;
-    SyntaxNode **exprs;
+    MinimObject **exprs;
     size_t exprc, importc;
     MinimEnv *env, *export;
     char *name;
@@ -56,7 +55,7 @@ typedef struct MinimModuleCache
 } MinimModuleCache;
 
 void init_minim_module(MinimModule **pmodule);
-void minim_module_add_expr(MinimModule *module, SyntaxNode *expr);
+void minim_module_add_expr(MinimModule *module, MinimObject *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
 void minim_module_expand(MinimModule *module);
 

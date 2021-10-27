@@ -51,7 +51,7 @@ static void close_port(MinimObject *port)
 
 static MinimObject *read_syntax(MinimEnv *env, MinimObject *port)
 {
-    SyntaxNode *stx, *err;
+    MinimObject *stx, *err;
 
     if (!(MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY))
         return minim_eof;

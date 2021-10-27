@@ -2,12 +2,12 @@
 #define _MINIM_LAMBDA_H_
 
 #include "../common/path.h"
-#include "ast.h"
 #include "env.h"
+#include "syntax.h"
 
 typedef struct MinimLambda
 {
-    SyntaxNode *body;
+    MinimObject *body;
     SyntaxLoc *loc;
     MinimEnv *env;
     char **args, *rest, *name;

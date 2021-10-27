@@ -33,7 +33,7 @@
 //
 
 // Forward declaration
-static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags);
+static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flags);
 
 static char next_char(MinimObject *port)
 {
@@ -65,9 +65,9 @@ static char next_char(MinimObject *port)
     return c;
 }
 
-static SyntaxNode *list_error()
+static MinimObject *list_error()
 {
-    SyntaxNode *err;
+    MinimObject *err;
     const char *msg = "illegal use of `.`";
 
     init_syntax_node(&err, SYNTAX_NODE_DATUM);
@@ -76,9 +76,9 @@ static SyntaxNode *list_error()
     return err;
 }
 
-static SyntaxNode *end_of_input_error()
+static MinimObject *end_of_input_error()
 {
-    SyntaxNode *err;
+    MinimObject *err;
     const char *msg = "unexpected end of input";
 
     init_syntax_node(&err, SYNTAX_NODE_DATUM);
@@ -87,14 +87,14 @@ static SyntaxNode *end_of_input_error()
     return err;
 }
 
-static bool expand_syntax(SyntaxNode *node)
+static bool expand_syntax(MinimObject *node)
 {
     IF_STR_EQUAL_REPLACE(node->sym, "f", "false");
     IF_STR_EQUAL_REPLACE(node->sym, "t", "true");
     return false;
 }
 
-static bool expand_list(SyntaxNode *node, SyntaxNode **perr)
+static bool expand_list(MinimObject *node, MinimObject **perr)
 {
     bool ellipse;
 
@@ -102,7 +102,7 @@ static bool expand_list(SyntaxNode *node, SyntaxNode **perr)
         strcmp(node->children[1]->sym, ".") == 0)
     {
         node->children[1] = node->children[2];
-        node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
+        node->children = GC_realloc(node->children, 2 * sizeof(MinimObject*));
         node->childc = 2;
         node->type = SYNTAX_NODE_PAIR;
 
@@ -136,7 +136,7 @@ static bool expand_list(SyntaxNode *node, SyntaxNode **perr)
                     node->children[j - 2] = node->children[j];
 
                 node->childc -= 2;
-                node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                node->children = GC_realloc(node->children, node->childc * sizeof(MinimObject*));
                 ellipse = true;
             }
             else if (i + 2 != node->childc)
@@ -150,12 +150,12 @@ static bool expand_list(SyntaxNode *node, SyntaxNode **perr)
     return true;
 }
 
-static SyntaxNode *read_1ary(MinimObject *port, SyntaxNode **perr, const char *op, uint8_t flags)
+static MinimObject *read_1ary(MinimObject *port, MinimObject **perr, const char *op, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *node;
 
     init_syntax_node(&node, SYNTAX_NODE_LIST);
-    node->children = GC_alloc(2 * sizeof(SyntaxNode*));
+    node->children = GC_alloc(2 * sizeof(MinimObject*));
     node->childc = 2;
     ADD_SYNTAX_LOC(node, port);
 
@@ -168,9 +168,9 @@ static SyntaxNode *read_1ary(MinimObject *port, SyntaxNode **perr, const char *o
     return node;
 }
 
-static SyntaxNode *read_nested(MinimObject *port, SyntaxNode **perr, SyntaxNodeType type, uint8_t flags)
+static MinimObject *read_nested(MinimObject *port, MinimObject **perr, MinimObjectType type, uint8_t flags)
 {
-    SyntaxNode *node, *next;
+    MinimObject *node, *next;
     char c;
 
     init_syntax_node(&node, type);
@@ -192,7 +192,7 @@ static SyntaxNode *read_nested(MinimObject *port, SyntaxNode **perr, SyntaxNodeT
             if (next)
             {
                 ++node->childc;
-                node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
+                node->children = GC_realloc(node->children, node->childc * sizeof(MinimObject*));
                 node->children[node->childc - 1] = next;
             }
 
@@ -234,9 +234,9 @@ static SyntaxNode *read_nested(MinimObject *port, SyntaxNode **perr, SyntaxNodeT
     return node;
 }
 
-static SyntaxNode *read_datum(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_datum(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *node;
     Buffer *bf;
     char c;
 
@@ -260,9 +260,9 @@ static SyntaxNode *read_datum(MinimObject *port, SyntaxNode **perr, uint8_t flag
     return node;
 }
 
-static SyntaxNode *read_string(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_string(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *node;
     Buffer *bf;
     char c;
 
@@ -304,9 +304,9 @@ static SyntaxNode *read_string(MinimObject *port, SyntaxNode **perr, uint8_t fla
     return node;
 }
 
-static SyntaxNode *read_char(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_char(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *node;
     Buffer *bf;
     char c;
 
@@ -333,9 +333,9 @@ static SyntaxNode *read_char(MinimObject *port, SyntaxNode **perr, uint8_t flags
     return node;
 }
 
-static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *node;
     Buffer *bf;
     char c, n;
 
@@ -442,9 +442,9 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
 // Exported
 //
 
-SyntaxNode *minim_parse_port(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+MinimObject *minim_parse_port(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *node;
     char c;
 
     *perr = NULL;
