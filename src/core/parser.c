@@ -97,7 +97,7 @@ static MinimObject *list_error()
 
 static MinimObject *end_of_input_error()
 {
-    const char msg[ILLEGAL_DOT_MSG_LEN] = "unexpected end of input";
+    const char msg[UNEXPECTED_EOF_MSG_LEN] = "unexpected end of input";
     char *str;
 
     str = GC_alloc_atomic(ILLEGAL_DOT_MSG_LEN * sizeof(char*));
@@ -110,7 +110,7 @@ static MinimObject *bad_syntax_error(const char *syntax)
     Buffer *bf;
 
     init_buffer(&bf);
-    writef_buffer(bf, "bad syntax: #~s", syntax);
+    writef_buffer(bf, "bad syntax #~s", syntax);
     return minim_symbol(get_buffer(bf));
 }
 
@@ -119,8 +119,74 @@ static MinimObject *unexpected_char_error(char ch)
     Buffer *bf;
 
     init_buffer(&bf);
-    writef_buffer(bf, "unexpected char: ~c", ch);
+    writef_buffer(bf, "unexpected char ~c", ch);
     return minim_symbol(get_buffer(bf));
+}
+
+static bool verify_list(MinimObject *stx, MinimObject **perr)
+{
+    MinimObject *h, *t, *i;
+    size_t list_len = syntax_list_len(stx);
+    bool dot = false;
+
+    if (list_len == 0)
+        return true;
+    
+    h = MINIM_STX_CAR(stx);
+    MINIM_TAIL(t, h);
+    if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(h), ".") == 0)  // dot cannot be first element
+    {
+        *perr = list_error();
+        return false;
+    }
+
+    t = MINIM_CAR(t);
+    if (MINIM_STX_SYMBOLP(t) && strcmp(MINIM_STX_SYMBOL(t), ".") == 0)  // dot cannot be last element
+    {
+        *perr = list_error();
+        return false;
+    }
+
+    i = MINIM_STX_CDR(stx);
+    while (MINIM_OBJ_PAIRP(i))
+    {
+        h = MINIM_CAR(i);
+        if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(t), ".") == 0)  // dot found
+        {
+            if (dot)
+            {
+                *perr = list_error();
+                return false;
+            }
+            else
+            {
+                dot = true;
+                t = MINIM_CDR(i);
+                if (MINIM_OBJ_PAIRP(t))
+                {
+                    h = MINIM_CAR(t);
+                    if (!MINIM_STX_SYMBOLP(h) || strcmp(MINIM_STX_SYMBOL(t), ".") != 0)     // no dot
+                    { 
+                        t = MINIM_CDR(t);
+                        if (MINIM_OBJ_PAIRP(t))
+                        {
+                            h = MINIM_CAR(t);
+                            if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(t), ".") == 0)  // infix dot found
+                            {
+                                i = MINIM_CDR(t);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                
+            }
+        }
+
+        i = MINIM_CDR(i);
+    }
+
+    return true;
 }
 
 static bool expand_syntax(MinimObject *stx)
@@ -132,17 +198,22 @@ static bool expand_syntax(MinimObject *stx)
 
 static bool expand_list(MinimObject *stx, MinimObject **perr)
 {
-    size_t list_len = syntax_list_len(stx);
+    size_t list_len;
+
+    if (!verify_list(stx, perr))
+        return false;
+    
+    list_len = syntax_list_len(stx);
     if (list_len == 3)          // possible cons cell
     {
         MinimObject *f, *s, *t;
         
-        t = stx;
-        f = MINIM_STX_CAR(t);
-        t = MINIM_STX_CDR(t);
-        s = MINIM_STX_CAR(t);
-        t = MINIM_STX_CDR(t);
-        t = MINIM_STX_CAR(t);
+        t = MINIM_STX_VAL(stx);
+        f = MINIM_CAR(t);
+        t = MINIM_CDR(t);
+        s = MINIM_CAR(t);
+        t = MINIM_CDR(t);
+        t = MINIM_CAR(t);
 
         // definitely a cons cell
         if (MINIM_STX_SYMBOLP(s) && strcmp(MINIM_STX_SYMBOL(s), ".") == 0)
@@ -152,28 +223,28 @@ static bool expand_list(MinimObject *stx, MinimObject **perr)
     {
         MinimObject *h, *t, *i1, *i2, *i3;
 
-        h = stx;
-        i1 = MINIM_STX_CAR(h);
-        t = MINIM_STX_CDR(h);
-        i2 = MINIM_STX_CAR(t);
-        t = MINIM_STX_CDR(t);
-        i3 = MINIM_STX_CDR(t);
+        h = MINIM_STX_VAL(stx);
+        i1 = MINIM_CAR(h);
+        t = MINIM_CDR(h);
+        i2 = MINIM_CAR(t);
+        t = MINIM_CDR(t);
+        i3 = MINIM_CDR(t);
         
         while (!minim_nullp(i3))
         {
-            if ((MINIM_STX_SYMBOLP(i1) && strcmp(MINIM_STX_SYMBOL(i1), "." == 0)) &&
-                (MINIM_STX_SYMBOLP(i3) && strcmp(MINIM_STX_SYMBOL(i3), "." == 0)))
+            if ((MINIM_STX_SYMBOLP(i1) && strcmp(MINIM_STX_SYMBOL(i1), ".") == 0) &&
+                (MINIM_STX_SYMBOLP(i3) && strcmp(MINIM_STX_SYMBOL(i3), ".") == 0))
             {
                 MINIM_STX_VAL(stx) = minim_cons(i2, stx);
-                MINIM_STX_CDR(i1) = t;
+                MINIM_CDR(i1) = t;
+                break;
             }
 
-
-            h = MINIM_STX_CDR(h);
+            h = MINIM_CDR(h);
             i1 = i2;
             i2 = i3;
-            t = MINIM_STX_CDR(t);
-            i3 = MINIM_STX_CAR(t);
+            t = MINIM_CDR(t);
+            i3 = MINIM_CAR(t);
         }
     }
 
@@ -184,10 +255,8 @@ static MinimObject *read_1ary(MinimObject *port, MinimObject **perr, const char 
 {
     MinimObject *arg, *sym;
     SyntaxLoc *loc;
-    size_t len;
-
-    len = strlen(name) + 1;
-    sym = minim_symbol(intern(name));
+    
+    sym = intern(name);
     START_SYNTAX_LOC(loc, port);
     sym = minim_ast(sym, loc);
     END_SYNTAX_LOC(loc, port);
@@ -342,7 +411,7 @@ static MinimObject *read_datum(MinimObject *port, MinimObject **perr, uint8_t fl
     else if (is_str(get_buffer(bf)))
         obj = minim_string(get_buffer(bf));
     else    // symbol
-        obj = minim_symbol(intern(get_buffer(bf)));
+        obj = intern(get_buffer(bf));
 
     return minim_ast(obj, loc);
 }
@@ -423,7 +492,6 @@ static MinimObject *read_char(MinimObject *port, MinimObject **perr, uint8_t fla
 static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
     MinimObject *node;
-    Buffer *bf;
     char c, n;
 
     c = next_char(port);

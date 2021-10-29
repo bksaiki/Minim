@@ -2,6 +2,7 @@
 #define _MINIM_ERROR_H_
 
 #include "env.h"
+#include "syntax.h"
 
 struct MinimErrorTrace
 {

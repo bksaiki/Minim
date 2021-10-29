@@ -50,7 +50,7 @@ static MinimObject *read_error(MinimObject *port, MinimObject *err, const char *
     init_buffer(&bf);
     writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
 
-    init_minim_error(&e, "bad syntax", err->sym);
+    init_minim_error(&e, "bad syntax", MINIM_STX_SYMBOL(err));
     init_minim_error_desc_table(&e->table, 1);
     minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
     return minim_err(e);
@@ -98,7 +98,8 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
             MinimObject *ast, *err;
 
             ast = minim_parse_port(cache, &err, 0);
-            if (!ast) THROW(prev->env, read_error(cache, err, fname));
+            if (err != NULL)
+                THROW(prev->env, read_error(cache, err, fname));
             minim_module_add_expr(module, ast);
         }
 
@@ -117,7 +118,8 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
             MinimObject *ast, *err;
 
             ast = minim_parse_port(port, &err, 0);
-            if (!ast) THROW(prev->env, read_error(port, err, fname));
+            if (err != NULL)
+                THROW(prev->env, read_error(port, err, fname));
             minim_module_add_expr(module, ast);
         }
 
@@ -148,7 +150,8 @@ void minim_load_file(MinimEnv *env, const char *fname)
             MinimObject *ast, *err;
 
             ast = minim_parse_port(cache, &err, 0);
-            if (!ast) THROW(env, read_error(cache, err, fname));
+            if (err != NULL)
+                THROW(env, read_error(cache, err, fname));
             minim_module_add_expr(module, ast);
         }
 
@@ -166,7 +169,8 @@ void minim_load_file(MinimEnv *env, const char *fname)
             MinimObject *ast, *err;
 
             ast = minim_parse_port(port, &err, 0);
-            if (!ast) THROW(env, read_error(port, err, fname));
+            if (err != NULL)
+                THROW(env, read_error(port, err, fname));
             minim_module_add_expr(module, ast);
         }
 
@@ -208,7 +212,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
             MinimObject *ast, *err;
             
             ast = minim_parse_port(cport, &err, 0);
-            if (!ast)
+            if (err != NULL)
             {
                 env->current_dir = prev_dir;
                 env->module = prev;
@@ -232,7 +236,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
             MinimObject *ast, *err;
             
             ast = minim_parse_port(port, &err, 0);
-            if (!ast)
+            if (err != NULL)
             {
                 env->current_dir = prev_dir;
                 env->module = prev;

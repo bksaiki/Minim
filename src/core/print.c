@@ -26,16 +26,19 @@ size_t custom_print_method_count = 0;
 
 static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
-    for (size_t i = custom_print_method_count - 1; i < custom_print_method_count; --i)
+    if (env)
     {
-        if (coerce_into_bool(eval_lambda(MINIM_CLOSURE(MINIM_CAR(custom_print_methods[i])), env, 1, &obj)))
+        for (size_t i = custom_print_method_count - 1; i < custom_print_method_count; --i)
         {
-            MinimObject *str = eval_lambda(MINIM_CLOSURE(MINIM_CDR(custom_print_methods[i])), env, 1, &obj);
-            if (!MINIM_OBJ_STRINGP(str))
-                THROW(env, minim_error("expected a string from the custom printer", NULL));
-                
-            writes_buffer(bf, MINIM_STRING(str));
-            return 1;
+            if (coerce_into_bool(eval_lambda(MINIM_CLOSURE(MINIM_CAR(custom_print_methods[i])), env, 1, &obj)))
+            {
+                MinimObject *str = eval_lambda(MINIM_CLOSURE(MINIM_CDR(custom_print_methods[i])), env, 1, &obj);
+                if (!MINIM_OBJ_STRINGP(str))
+                    THROW(env, minim_error("expected a string from the custom printer", NULL));
+                    
+                writes_buffer(bf, MINIM_STRING(str));
+                return 1;
+            }
         }
     }
 
@@ -191,10 +194,18 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_SYNTAXP(obj))
     {
-        const char *key = env_peek_key(env, obj);
-
-        if (key)    writef_buffer(bf, "<function:~s>", key);
-        else        writes_buffer(bf, "<function:?>");
+        const char *key;
+        
+        if (env)
+        {
+            key = env_peek_key(env, obj);
+            if (key)    writef_buffer(bf, "<function:~s>", key);
+            else        writes_buffer(bf, "<function:?>");
+        }
+        else
+        {
+            writes_buffer(bf, "<function:?>");
+        }
     }
     else if (MINIM_OBJ_CLOSUREP(obj))
     {
@@ -308,12 +319,16 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
 // Visible functions
 
-void set_default_print_params(PrintParams *pp)
+void set_print_params(PrintParams *pp,
+                      size_t maxlen,
+                      bool quote,
+                      bool display,
+                      bool syntax)
 {
-    pp->maxlen = UINT_MAX;
-    pp->quote = false;
-    pp->display = false;
-    pp->syntax = false;
+    pp->maxlen = maxlen;
+    pp->quote = quote;
+    pp->display = display;
+    pp->syntax = syntax;
 }
 
 void debug_print_minim_object(MinimObject *obj, MinimEnv *env)
@@ -358,6 +373,26 @@ char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp)
     str = get_buffer(bf);
 
     return str;
+}
+
+int print_syntax_to_buffer(Buffer *bf, MinimObject *stx)
+{
+    PrintParams pp;
+
+    set_syntax_print_params(&pp);
+    return print_object(stx, NULL, bf, &pp);
+}
+
+int print_syntax_to_port(MinimObject *stx, FILE *f)
+{
+    Buffer *bf;
+    int status;
+
+    init_buffer(&bf);
+    status = print_syntax_to_buffer(bf, stx);
+    fputs(bf->data, f);
+
+    return status;
 }
 
 //

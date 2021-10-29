@@ -1,7 +1,6 @@
 #ifndef _MINIM_TRANSFORM_H_
 #define _MINIM_TRANSFORM_H_
 
-#include "ast.h"
 #include "env.h"
 
 // Applies syntax transforms on ast

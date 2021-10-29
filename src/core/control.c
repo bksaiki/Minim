@@ -3,7 +3,6 @@
 
 #include "../gc/gc.h"
 #include "arity.h"
-#include "ast.h"
 #include "builtin.h"
 #include "error.h"
 #include "eval.h"
@@ -26,43 +25,67 @@ MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *val;
-    MinimObject *binding, *names;
+    MinimObject *it;
     MinimEnv *env2;
+    size_t bindc;
     uint8_t prev_flags;
     
-    // Bind names and values
+    // setup up new scope
     init_env(&env2, env, NULL);
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    for (size_t i = 0; i < MINIM_STX_VAL(args[0])->childc; ++i)
-    {
-        binding = MINIM_STX_VAL(args[0])->children[i];
-        val = eval_ast_no_check(env, binding->children[1]);
-        names = binding->children[0];
+
+    bindc = syntax_list_len(args[0]);
+    it = MINIM_STX_VAL(args[0]);
+
+    // Bind names and values
+    for (size_t i = 0; i < bindc; ++i)
+    {   
+        MinimObject *binding, *names, *val;
+        size_t namec;
+
+        binding = MINIM_CAR(it);
+        names = MINIM_STX_CAR(binding);
+        val = MINIM_STX_CDR(binding);
+        val = eval_ast_no_check(env, MINIM_CAR(binding));
+        namec = syntax_list_len(names);
+
         if (!MINIM_OBJ_VALUESP(val))
         {
-            if (names->childc != 1)
-                THROW(env, minim_values_arity_error("let-values", names->childc, 1, names));
+            if (namec != 1)
+                THROW(env, minim_values_arity_error("let-values", namec, 1, names));
             
-            env_intern_sym(env2, names->children[0]->sym, val);
+            env_intern_sym(env2, MINIM_STX_SYMBOL(MINIM_STX_CAR(names)), val);
             if (MINIM_OBJ_CLOSUREP(val))
-                env_intern_sym(MINIM_CLOSURE(val)->env, names->children[0]->sym, val);
+            {
+                env_intern_sym(MINIM_CLOSURE(val)->env,
+                               MINIM_STX_SYMBOL(MINIM_STX_CAR(names)),
+                               val);
+            }
         }
         else
         {
-            if (MINIM_VALUES_SIZE(val) != names->childc)
-                THROW(env, minim_values_arity_error("let-values", names->childc, MINIM_VALUES_SIZE(val), names));
+            MinimObject *it2;
 
-            for (size_t i = 0; i < names->childc; ++i)
+            if (MINIM_VALUES_SIZE(val) != namec)
+                THROW(env, minim_values_arity_error("let-values", namec, MINIM_VALUES_SIZE(val), names));
+
+            it2 = MINIM_STX_VAL(names);
+            for (size_t i = 0; i < namec; ++i)
             {
-                env_intern_sym(env2, names->children[i]->sym, MINIM_VALUES_REF(val, i));
+                env_intern_sym(env2, MINIM_STX_SYMBOL(MINIM_CAR(it2)), MINIM_VALUES_REF(val, i));
                 if (MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
+                {
                     env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_REF(val, i))->env,
-                                   names->children[0]->sym,
+                                   MINIM_STX_SYMBOL(MINIM_CAR(it2)),
                                    MINIM_VALUES_REF(val, i));
+                }
+            
+                it2 = MINIM_CDR(it2);
             }
         }
+
+        it = MINIM_CDR(it);
     }
 
     // Evaluate body
@@ -72,43 +95,67 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
 
 MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *val;
-    MinimObject *binding, *names;
+    MinimObject *it;
     MinimEnv *env2;
+    size_t bindc;
+    uint8_t prev_flags;
     
-    // Bind names and values
+    // setup up new scope
     init_env(&env2, env, NULL);
-    for (size_t i = 0; i < MINIM_STX_VAL(args[0])->childc; ++i)
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+
+    bindc = syntax_list_len(args[0]);
+    it = MINIM_STX_VAL(args[0]);
+    
+    for (size_t i = 0; i < bindc; ++i)
     {
-        binding = MINIM_STX_VAL(args[0])->children[i];
-        names = binding->children[0];
-        val = eval_ast_no_check(env2, binding->children[1]);
+        MinimObject *binding, *names, *val;
+        size_t namec;
+
+        binding = MINIM_CAR(it);
+        names = MINIM_STX_CAR(binding);
+        val = MINIM_STX_CDR(binding);
+        val = eval_ast_no_check(env2, MINIM_CAR(binding));
+        namec = syntax_list_len(names);
+
         if (!MINIM_OBJ_VALUESP(val))
         {
-            if (names->childc != 1)
-                THROW(env, minim_values_arity_error("let*-values", names->childc, 1, names));
+            if (namec != 1)
+                THROW(env2, minim_values_arity_error("let*-values", namec, 1, names));
             
-            env_intern_sym(env2, names->children[0]->sym, val);
+            env_intern_sym(env2, MINIM_STX_SYMBOL(MINIM_STX_CAR(names)), val);
             if (MINIM_OBJ_CLOSUREP(val))
-                env_intern_sym(MINIM_CLOSURE(val)->env, names->children[0]->sym, val);
+            {
+                env_intern_sym(MINIM_CLOSURE(val)->env,
+                               MINIM_STX_SYMBOL(MINIM_STX_CAR(names)),
+                               val);
+            }
         }
         else
         {
-            if (MINIM_VALUES_SIZE(val) != names->childc)
-                THROW(env, minim_values_arity_error("let*-values", names->childc, MINIM_VALUES_SIZE(val), names));
+            MinimObject *it2;
 
-            for (size_t i = 0; i < names->childc; ++i)
+            it2 = MINIM_STX_VAL(names);
+            for (size_t i = 0; i < namec; ++i)
             {
-                env_intern_sym(env2, names->children[i]->sym, MINIM_VALUES_REF(val, i));
+                env_intern_sym(env2, MINIM_STX_SYMBOL(MINIM_CAR(it2)), MINIM_VALUES_REF(val, i));
                 if (MINIM_OBJ_CLOSUREP(MINIM_VALUES_REF(val, i)))
+                {
                     env_intern_sym(MINIM_CLOSURE(MINIM_VALUES_REF(val, i))->env,
-                                   names->children[0]->sym,
+                                   MINIM_STX_SYMBOL(MINIM_CAR(it2)),
                                    MINIM_VALUES_REF(val, i));
+                }
+            
+                it2 = MINIM_CDR(it2);
             }
         }
+
+        it = MINIM_CDR(it);
     }
 
     // Evaluate body
+    env->flags = prev_flags; 
     return minim_builtin_begin(env2, argc - 1, &args[1]);
 }
 
