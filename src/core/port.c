@@ -67,7 +67,7 @@ static MinimObject *read_syntax(MinimEnv *env, MinimObject *port)
                                         MINIM_PORT_ROW(port),
                                         MINIM_PORT_COL(port));
 
-        init_minim_error(&e, "bad syntax", err->sym);
+        init_minim_error(&e, "bad syntax", MINIM_STX_SYMBOL(err));
         init_minim_error_desc_table(&e->table, 1);
         minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
         THROW(env, minim_err(e));

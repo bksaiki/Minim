@@ -77,12 +77,8 @@ void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
     if (src->env)   init_env(&lam->env, src->env, NULL);
     else            lam->env = NULL;
 
-    if (src->loc)   copy_syntax_loc(&lam->loc, src->loc);
-    else            lam->loc = NULL;
-
-    if (src->body)  copy_syntax_node(&lam->body, src->body);
-    else            lam->body = NULL;
-
+    lam->loc = (src->loc ? src->loc : NULL);
+    lam->body = (src->body ? src->body : NULL);
     *cp = lam;
 }
 
@@ -244,23 +240,16 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 {
     if (count > 1)
     {
-        MinimObject *ast;
-
-        init_syntax_node(&ast, SYNTAX_NODE_LIST);
-        ast->children = GC_alloc((count + 1) * sizeof(MinimObject*));
-        ast->childc = count + 1;
-
-        init_syntax_node(&ast->children[0], SYNTAX_NODE_DATUM);
-        ast->children[0]->sym = GC_alloc_atomic(6 * sizeof(char));
-        strcpy(ast->children[0]->sym, "begin");
-
-        lam->body = ast;
-        for (size_t i = 0; i < count; ++i)
-            copy_syntax_node(&ast->children[i + 1], MINIM_STX_VAL(exprs[i]));
+        MinimObject *t = minim_cons(exprs[0], minim_null);
+        for (size_t i = 1; i < count; ++i)
+        {
+            MINIM_CDR(t) = minim_cons(exprs[i], minim_null);
+            t = MINIM_CDR(t);
+        }
     }
     else
     {
-        copy_syntax_node(&lam->body, MINIM_STX_VAL(exprs[0]));
+        lam->body = exprs[0];
     }
 }
 

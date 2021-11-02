@@ -184,6 +184,7 @@ extern MinimObject *minim_input_port;
 
 #define MINIM_STX_CAR(o)        (MINIM_CAR(MINIM_STX_VAL(o)))
 #define MINIM_STX_CDR(o)        (MINIM_CDR(MINIM_STX_VAL(o)))
+#define MINIM_STX_CADR(o)       (MINIM_CADR(MINIM_STX_VAL(o)))
 #define MINIM_STX_TAIL(d, o)    (MINIM_TAIL(d, MINIM_STX_VAL(o)))
 #define MINIM_STX_SYMBOL(o)     (MINIM_SYMBOL(MINIM_STX_VAL(o)))
 

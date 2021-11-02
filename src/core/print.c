@@ -153,10 +153,14 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
             {
                 writef_buffer(bf, "\n;    ...");
             }
-            else if (trace->loc->name)
+            else if (trace->loc->src && MINIM_OBJ_SYMBOLP(trace->loc->src))
             {
-                writef_buffer(bf, "\n;    ~s:~u:~u", trace->loc->name, trace->loc->row, trace->loc->col);
-                if (trace->name) writef_buffer(bf, " ~s", trace->name);
+                writef_buffer(bf, "\n;    ~s:~u:~u", MINIM_SYMBOL(trace->loc->src),
+                                                     trace->loc->row,
+                                                     trace->loc->col);
+
+                if (trace->name)
+                    writef_buffer(bf, " ~s", trace->name);
             }
             else
             {
@@ -267,7 +271,8 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     {
         if (pp->syntax)
         {
-            ast_to_buffer(MINIM_STX_VAL(obj), bf);
+            print_object(MINIM_STX_VAL(obj), env, bf, pp);
+            print_syntax_to_buffer(bf, obj);
         }
         else
         {
@@ -275,7 +280,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
             pp->syntax = true;
             writes_buffer(bf, "<syntax:");
-            ast_to_buffer(MINIM_STX_VAL(obj), bf);
+            print_object(MINIM_STX_VAL(obj), env, bf, pp);
             writec_buffer(bf, '>');
             pp->syntax = syntaxp;
         }

@@ -314,7 +314,7 @@ void emit_processed_file(MinimObject *fport, MinimModule *module)
         cfile = fopen(extract_path(cname), "w");
         for (size_t i = 0; i < module->exprc; ++i)
         {
-            print_ast_to_port(module->exprs[i], cfile);
+            print_syntax_to_port(module->exprs[i], cfile);
             fputc('\n', cfile);
         }
         
