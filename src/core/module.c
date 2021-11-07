@@ -18,14 +18,14 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
-static bool expr_is_begin(MinimEnv *env, MinimObject *ast)
+static bool expr_is_begin(MinimEnv *env, MinimObject *stx)
 {
     MinimObject *val;
 
-    if (ast->type != SYNTAX_NODE_LIST || !ast->children[0]->sym)
+    if (!MINIM_STX_PAIRP(stx) || !MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)))
         return false;
 
-    val = env_get_sym(env, ast->children[0]->sym);
+    val = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
     return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_begin);
 }
 
@@ -85,13 +85,13 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     module->imports[module->importc - 1] = import;
 }
 
-static size_t expand_expr_count(MinimEnv *env, MinimObject *node)
+static size_t expand_expr_count(MinimEnv *env, MinimObject *stx)
 {
-    if (expr_is_begin(env, node))
+    if (expr_is_begin(env, stx))
     {
         size_t count = 0;
-        for (size_t i = 1; i < node->childc; ++i)
-            count += expand_expr_count(env, node->children[i]);
+        for (MinimObject *it = MINIM_STX_CDR(stx); MINIM_STX_PAIRP(it); it = MINIM_CDR(it))
+            count += expand_expr_count(env, MINIM_CAR(it));
         return count;
     }
     else
@@ -100,16 +100,16 @@ static size_t expand_expr_count(MinimEnv *env, MinimObject *node)
     }
 }
 
-static size_t expand_expr(MinimEnv *env, MinimObject *node, MinimObject **expanded, size_t idx)
+static size_t expand_expr(MinimEnv *env, MinimObject *stx, MinimObject **expanded, size_t idx)
 {
-    if (expr_is_begin(env, node))
+    if (expr_is_begin(env, stx))
     {
-        for (size_t i = 1; i < node->childc; ++i)
-            idx = expand_expr(env, node->children[i], expanded, idx);
+        for (MinimObject *it = MINIM_STX_CDR(stx); MINIM_STX_PAIRP(it); it = MINIM_CDR(it))
+            idx = expand_expr(env, MINIM_CAR(it), expanded, idx);
     }
     else
     {
-        expanded[idx] = node;
+        expanded[idx] = stx;
         ++idx;
     }
 
@@ -200,7 +200,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                 MinimPath *path;
                 char *attrib;
                 
-                attrib = MINIM_STX_VAL(MINIM_CAR(export))->sym;
+                attrib = MINIM_STX_SYMBOL(MINIM_CAR(export));
                 name = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CADR(export)));
                 if (strcmp(attrib, "all") == 0)
                 {

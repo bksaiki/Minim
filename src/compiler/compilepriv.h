@@ -1,7 +1,6 @@
 #ifndef _MINIM_COMPILER_PRIV_H_
 #define _MINIM_COMPILER_PRIV_H_
 
-#include "../core/ast.h"
 #include "../core/module.h"
 
 // ================================ Symbol Tables ================================

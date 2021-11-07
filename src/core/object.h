@@ -220,6 +220,7 @@ extern MinimObject *minim_input_port;
 #define MINIM_STX_NULLP(x)          (MINIM_OBJ_ASTP(x) && minim_nullp(MINIM_STX_VAL(x)))
 #define MINIM_STX_PAIRP(x)          (MINIM_OBJ_ASTP(x) && MINIM_OBJ_PAIRP(MINIM_STX_VAL(x)))
 #define MINIM_STX_SYMBOLP(x)        (MINIM_OBJ_ASTP(x) && MINIM_OBJ_SYMBOLP(MINIM_STX_VAL(x)))
+#define MINIM_STX_VECTORP(x)        (MINIM_OBJ_ASTP(x) && MINIM_OBJ_VECTORP(MINIM_STX_VAL(x)))
 
 #define MINIM_INPUT_PORTP(x)        (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_READ))
 #define MINIM_OUTPUT_PORTP(x)       (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_WRITE))

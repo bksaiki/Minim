@@ -307,6 +307,14 @@ MinimObject *minim_list(MinimObject **args, size_t len)
     return head;
 }
 
+MinimObject *minim_list_append2(MinimObject *a, MinimObject *b)
+{
+    MinimObject *tail;
+    MINIM_TAIL(tail, a);
+    MINIM_CDR(tail) = b;
+    return a;
+}
+
 MinimObject *minim_list_drop(MinimObject *lst, size_t n)
 {
     MinimObject *it;
