@@ -38,7 +38,7 @@ void set_print_params(PrintParams *pp,
 // Sets print params for printing syntax
 #define set_syntax_print_params(pp)                         \
     set_print_params(pp, PRINT_PARAMS_DEFAULT_MAXLEN,       \
-                         PRINT_PARAMS_DEFAULT_QUOTE,        \
+                         true,                              \
                          PRINT_PARAMS_DEFAULT_DISPLAY,      \
                          true);
 

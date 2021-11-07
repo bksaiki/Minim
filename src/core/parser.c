@@ -132,7 +132,7 @@ static bool verify_list(MinimObject *stx, MinimObject **perr)
     if (list_len == 0)
         return true;
     
-    h = MINIM_STX_CAR(stx);
+    h = MINIM_STX_VAL(stx);
     MINIM_TAIL(t, h);
     if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(h), ".") == 0)  // dot cannot be first element
     {
@@ -212,8 +212,7 @@ static bool expand_list(MinimObject *stx, MinimObject **perr)
         f = MINIM_CAR(t);
         t = MINIM_CDR(t);
         s = MINIM_CAR(t);
-        t = MINIM_CDR(t);
-        t = MINIM_CAR(t);
+        t = MINIM_CADR(t);
 
         // definitely a cons cell
         if (MINIM_STX_SYMBOLP(s) && strcmp(MINIM_STX_SYMBOL(s), ".") == 0)
@@ -284,19 +283,27 @@ static MinimObject *read_list(MinimObject *port, MinimObject **perr, uint8_t fla
     }
 
     put_back(port, c);
-    lst = minim_cons(minim_null, minim_null);
-    it = lst;
+    lst = NULL;
     while (true)
     {
         el = read_top(port, perr, flags);
         if (*perr)      // parse error
         {
             END_SYNTAX_LOC(loc, port);
-            return minim_ast(lst, loc);
+            return minim_ast(minim_null, loc);
         }
 
-        MINIM_CDR(it) = minim_cons(el, minim_null);
-        it = MINIM_CDR(it);
+        if (lst != NULL)    // list already constructed
+        {
+            MINIM_CDR(it) = minim_cons(el, minim_null);
+            it = MINIM_CDR(it);
+        }
+        else                // list not constructed
+        {
+            lst = minim_cons(el, minim_null);
+            it = lst;
+        }
+
         c = next_char(port);
         if (closed_paren(c))        // end of list
         {

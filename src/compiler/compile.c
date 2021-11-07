@@ -1,6 +1,7 @@
 #include "../core/builtin.h"
 #include "../core/error.h"
 #include "../core/string.h"
+#include "../core/print.h"
 
 #include "compile.h"
 #include "compilepriv.h"
@@ -11,26 +12,39 @@ static void compile_datum(MinimEnv *env,
                           SymbolTable *tab,
                           bool top)
 {
-    if (is_rational(stx->sym))
+    PrintParams pp;
+    MinimObject *datum = MINIM_STX_VAL(stx);
+
+    set_default_print_params(&pp);
+    if (MINIM_OBJ_EXACTP(datum))
     {
-        writef_buffer(bf, "exactnum ~s\n", stx->sym);
+        writes_buffer(bf, "exactnum ");
+        print_to_buffer(bf, datum, env, &pp);
+        writec_buffer(bf, 'c');
     }
-    else if (is_float(stx->sym))
+    else if (MINIM_OBJ_INEXACTP(datum))
     {
-        writef_buffer(bf, "inexactnum ~s\n", stx->sym);
+        writes_buffer(bf, "inexactnum ");
+        print_to_buffer(bf, datum, env, &pp);
+        writec_buffer(bf, 'c');
     }
-    else if (is_char(stx->sym))
+    else if (MINIM_OBJ_CHARP(datum))
     {
-        writef_buffer(bf, "char ~s\n", stx->sym);
+        writef_buffer(bf, "char ~u\n", (unsigned long) MINIM_CHAR(datum));
     }
-    else if (is_str(stx->sym))
+    else if (MINIM_OBJ_STRINGP(datum))
     {
-        writef_buffer(bf, "string ~s\n", stx->sym);
+        writef_buffer(bf, "string ~s\n", MINIM_STRING(datum));
+    }
+    else if (MINIM_OBJ_SYMBOLP(datum))
+    {
+        if (top)    writef_buffer(bf, "lookup ~s\n", MINIM_SYMBOL(datum));
+        else        writef_buffer(bf, "local-lookup ~s\n", MINIM_SYMBOL(datum));
     }
     else
     {
-        if (top)    writef_buffer(bf, "lookup ~s\n", stx->sym);
-        else        writef_buffer(bf, "lookup ~s\n", stx->sym);
+        printf("compiler: datum not supported\n");
+        THROW(env, minim_error("panic", NULL));
     }
 }
 
@@ -39,12 +53,12 @@ static void compile_expr(MinimEnv *env,
                          Buffer *bf,
                          SymbolTable *tab)
 {
-    if (stx->type == SYNTAX_NODE_LIST)
+    if (MINIM_STX_PAIRP(stx))
     {
-        MinimObject *op = env_get_sym(env, stx->children[0]->sym);
+        MinimObject *op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
         if (!op)
         {
-            printf("compiler: unknown %s\n", stx->children[0]->sym);
+            printf("compiler: unknown %s\n", MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
             THROW(env, minim_error("panic", NULL));
         }
         else if (MINIM_OBJ_SYNTAXP(op))
@@ -54,13 +68,13 @@ static void compile_expr(MinimEnv *env,
         }
         else if (MINIM_OBJ_BUILTINP(op))
         {
-            for (size_t i = 1; i < stx->childc; ++i)
+            for (MinimObject *it = MINIM_STX_VAL(stx); !MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
             {
-                compile_expr(env, stx->children[i], bf, tab);
+                compile_expr(env, MINIM_CAR(it), bf, tab);
                 writes_buffer(bf, "push\n");
             }
 
-            writef_buffer(bf, "lookup ~s\n", stx->children[0]->sym);
+            writef_buffer(bf, "lookup ~s\n", MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
             writes_buffer(bf, "apply\n");
         }
         else
@@ -69,14 +83,9 @@ static void compile_expr(MinimEnv *env,
             THROW(env, minim_error("panic", NULL));
         }
     }
-    else if (stx->type == SYNTAX_NODE_DATUM)
-    {
-        compile_datum(env, stx, bf, tab, false);
-    }
     else
     {
-        printf("compiler: bad things happened!!\n");
-        THROW(env, minim_error("panic", NULL));
+        compile_datum(env, stx, bf, tab, false);
     }
 }
 
@@ -85,31 +94,28 @@ static void compile_top(MinimEnv *env,
                         Buffer *bf,
                         SymbolTable *tab)
 {
-    if (stx->type == SYNTAX_NODE_LIST &&  // syntax or builtin
-        stx->childc > 0)
+    if (MINIM_STX_PAIRP(stx))
     {
         MinimObject *op;
         
-        op = env_get_sym(env, stx->children[0]->sym);
+        op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
         if (!op)
         {
-            printf("compiler: unknown %s\n", stx->children[0]->sym);
+            printf("compiler: unknown %s\n", MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
             THROW(env, minim_error("panic", NULL));
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
             if (MINIM_SYNTAX(op) == minim_builtin_def_values)
             {
-                if (stx->children[1]->childc == 0)
+                size_t bindc = syntax_list_len(MINIM_STX_CADR(stx));
+                if (bindc == 1)
                 {
-
-                }
-                else if (stx->children[1]->childc == 1)
-                {
-                    compile_expr(env, stx->children[2], bf, tab);
-                    tab->tl.vars.vars[tab->tl.vars.set].name = stx->children[1]->children[0]->sym;
+                    char *name = MINIM_STX_SYMBOL(MINIM_STX_CAR(MINIM_STX_CADR(stx)));
+                    compile_expr(env, MINIM_CADR(MINIM_STX_CDR(stx)), bf, tab);
+                    tab->tl.vars.vars[tab->tl.vars.set].name = name;
                     ++tab->tl.vars.set;
-                    writef_buffer(bf, "bind ~s\n", stx->children[1]->children[0]->sym);
+                    writef_buffer(bf, "bind ~s\n", name);
                 }
                 else
                 {
@@ -129,15 +135,10 @@ static void compile_top(MinimEnv *env,
             writes_buffer(bf, "write\n");
         }
     }
-    else if (stx->type == SYNTAX_NODE_DATUM)
+    else
     {
         compile_datum(env, stx, bf, tab, true);
         writes_buffer(bf, "write\n");
-    }
-    else
-    {
-        printf("compiler: bad things happened!!\n");
-        THROW(env, minim_error("panic", NULL));
     }
 }
 

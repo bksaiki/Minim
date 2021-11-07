@@ -272,17 +272,19 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         if (pp->syntax)
         {
             print_object(MINIM_STX_VAL(obj), env, bf, pp);
-            print_syntax_to_buffer(bf, obj);
         }
         else
         {
             bool syntaxp = pp->syntax;
+            bool quotep = pp->quote;
 
             pp->syntax = true;
+            pp->quote = true;
             writes_buffer(bf, "<syntax:");
             print_object(MINIM_STX_VAL(obj), env, bf, pp);
             writec_buffer(bf, '>');
             pp->syntax = syntaxp;
+            pp->quote = quotep;
         }
     }
     else if (MINIM_OBJ_PROMISEP(obj))

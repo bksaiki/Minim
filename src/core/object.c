@@ -169,7 +169,7 @@ MinimObject *minim_ast(void *val, void *loc)
     MinimObject *o = GC_alloc(minim_ast_size);
     o->type = MINIM_OBJ_AST;
     MINIM_STX_VAL(o) = (MinimObject*) val;
-    MINIM_STX_LOC(loc) = (SyntaxLoc*) loc;
+    MINIM_STX_LOC(o) = (SyntaxLoc*) loc;
     log_obj_created();
     return o;
 }

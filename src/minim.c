@@ -76,6 +76,9 @@ int main(int argc, char** argv)
     if (flags & MINIM_FLAG_NO_RUN)
         return 0;
 
+    // TODO: remove this
+    flags |= (MINIM_FLAG_NO_CACHE | MINIM_FLAG_LOAD_LIBS);
+
     GC_init(&flags);
     status = (argc - flagc == 1) ?
              minim_repl(argv, flags) :

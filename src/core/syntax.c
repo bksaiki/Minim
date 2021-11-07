@@ -94,9 +94,9 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *ast)
     MinimObject *ids, *vals, *it;
     size_t idc;
 
-    ids = MINIM_STX_CDR(ast);
-    vals = MINIM_STX_CADR(ast);
-    ids = MINIM_STX_CAR(ast);
+    it = MINIM_STX_CDR(ast);
+    ids = MINIM_STX_VAL(MINIM_CAR(it));
+    vals = MINIM_CADR(it);
     if (!minim_listp(ids))
     {
         THROW(env, minim_syntax_error("not a list of identifiers",
@@ -104,7 +104,7 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *ast)
                                       ast, ids));
     }
 
-    it = MINIM_STX_VAL(ids);
+    it = ids;
     idc = syntax_list_len(ids);
     for (size_t i = 0; i < idc; ++i)
     {
