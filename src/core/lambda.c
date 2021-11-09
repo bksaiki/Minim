@@ -240,12 +240,18 @@ static void collect_exprs(MinimObject **exprs, size_t count, MinimLambda *lam)
 {
     if (count > 1)
     {
-        MinimObject *t = minim_cons(exprs[0], minim_null);
+        MinimObject *h, *t, *beg;
+        
+        h = minim_cons(exprs[0], minim_null);
+        t = h;
         for (size_t i = 1; i < count; ++i)
         {
             MINIM_CDR(t) = minim_cons(exprs[i], minim_null);
             t = MINIM_CDR(t);
         }
+
+        beg = minim_ast(intern("begin"), MINIM_STX_LOC(exprs[0]));
+        lam->body = minim_ast(minim_cons(beg, h), MINIM_STX_LOC(exprs[0]));
     }
     else
     {
@@ -267,7 +273,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
 
     // Convert bindings to list
     init_minim_lambda(&lam);
-    bindings = unsyntax_ast(env, MINIM_STX_VAL(args[0]));
+    bindings = unsyntax_ast(env, args[0]);
     if (MINIM_OBJ_SYMBOLP(bindings))
     {
         lam->rest = MINIM_SYMBOL(bindings);
@@ -278,7 +284,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
     }
     else // minim_listp(bindings) || minim_consp(bindings)
     {
-        MinimObject *it, *val, *val2;
+        MinimObject *it;
 
         lam->argc = lambda_argc(bindings);
         lam->args = GC_calloc(lam->argc, sizeof(char*));
@@ -287,15 +293,12 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
         {
             if (minim_nullp(MINIM_CDR(it)) || minim_consp(MINIM_CDR(it)))
             {
-                val = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
-                lam->args[i] = MINIM_SYMBOL(val);
+                lam->args[i] = MINIM_STX_SYMBOL(MINIM_CAR(it));
             }
             else    // rest args
             {   
-                val = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
-                val2 = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CDR(it)));
-                lam->args[i] = MINIM_SYMBOL(val);
-                lam->rest = MINIM_SYMBOL(val2);
+                lam->args[i] = MINIM_STX_SYMBOL(MINIM_CAR(it));
+                lam->rest = MINIM_STX_SYMBOL(MINIM_CDR(it));
             }
         }
 

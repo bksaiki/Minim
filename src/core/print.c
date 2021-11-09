@@ -269,7 +269,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
     }
     else if (MINIM_OBJ_ASTP(obj))
     {
-        if (pp->syntax)
+        if (pp->syntax && pp->quote)
         {
             print_object(MINIM_STX_VAL(obj), env, bf, pp);
         }

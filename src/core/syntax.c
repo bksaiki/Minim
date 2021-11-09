@@ -191,7 +191,7 @@ static void check_syntax_lambda(MinimEnv *env, MinimObject *ast)
             }
         }
     }
-    else if (!MINIM_OBJ_SYMBOLP(args) && !minim_nullp(args))
+    else if (!MINIM_STX_SYMBOLP(args) && !MINIM_STX_NULLP(args))
     {
         THROW(env, minim_syntax_error("expected argument names",
                                       MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
@@ -272,7 +272,7 @@ static void check_syntax_let__values(MinimEnv *env, MinimObject *ast, bool star)
                 }
 
                 sym = MINIM_CAR(it2);
-                if (!MINIM_OBJ_SYMBOLP(sym))
+                if (!MINIM_STX_SYMBOLP(sym))
                 {
                     THROW(env, minim_syntax_error("not an identifier",
                                                   MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),

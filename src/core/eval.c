@@ -58,7 +58,10 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimObject* stx, uint8_t f
 
             trailing = NULL;
             for (it = res; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+            {
                 MINIM_CAR(it) = unsyntax_ast_node(env, MINIM_CAR(it), flags);
+                trailing = it;
+            }
 
             if (trailing && !minim_nullp(it))   // not a list
                 MINIM_CDR(trailing) = unsyntax_ast_node(env, it, flags);
@@ -66,8 +69,11 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimObject* stx, uint8_t f
     }
     else if (MINIM_OBJ_VECTORP(res))
     {
-        for (size_t i = 0; i < MINIM_VECTOR_LEN(res); ++i)
-            MINIM_VECTOR_REF(res, i) = datum_to_syntax(env, MINIM_VECTOR_REF(res, i));
+        if (flags & UNSYNTAX_REC)
+        {
+            for (size_t i = 0; i < MINIM_VECTOR_LEN(res); ++i)
+                MINIM_VECTOR_REF(res, i) = unsyntax_ast_node(env, MINIM_VECTOR_REF(res, i), flags);
+        }
     }
     else if (MINIM_OBJ_SYMBOLP(res))
     {
@@ -140,7 +146,7 @@ static MinimObject *eval_builtin_3ary(MinimEnv *env, MinimObject *stx, MinimBuil
     args[0] = MINIM_CAR(args[2]);
     args[2] = MINIM_CDR(args[2]);
     args[1] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CADR(args[1]);
+    args[2] = MINIM_CADR(args[2]);
 
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     args[0] = eval_ast_node(env, args[0]);
@@ -157,7 +163,7 @@ static MinimObject *eval_builtin(MinimEnv *env, MinimObject *stx, MinimBuiltin p
     MinimObject *err, *it;
     uint8_t prev_flags = env->flags;
 
-    it = MINIM_STX_VAL(stx);
+    it = MINIM_STX_CDR(stx);
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     args = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
@@ -203,15 +209,16 @@ static MinimObject *eval_syntax_3ary(MinimEnv *env, MinimObject *stx, MinimBuilt
     args[0] = MINIM_CAR(args[2]);
     args[2] = MINIM_CDR(args[2]);
     args[1] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CADR(args[1]);
+    args[2] = MINIM_CADR(args[2]);
     return proc(env, 3, args);
 }
 
 // general version for syntax
-static MinimObject *eval_syntax(MinimEnv *env, MinimObject *node, MinimBuiltin proc, size_t argc)
+static MinimObject *eval_syntax(MinimEnv *env, MinimObject *stx, MinimBuiltin proc, size_t argc)
 {
     MinimObject **args, *it;
     
+    it = MINIM_STX_CDR(stx);
     args = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
     {
@@ -285,7 +292,7 @@ static MinimObject *eval_closure_3ary(MinimEnv *env, MinimObject *stx, MinimLamb
     args[0] = MINIM_CAR(args[2]);
     args[2] = MINIM_CDR(args[2]);
     args[1] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CADR(args[1]);
+    args[2] = MINIM_CADR(args[2]);
     
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
@@ -298,11 +305,12 @@ static MinimObject *eval_closure_3ary(MinimEnv *env, MinimObject *stx, MinimLamb
 }
 
 // general version for closures
-static MinimObject *eval_closure(MinimEnv *env, MinimObject *node, MinimLambda *lam, size_t argc)
+static MinimObject *eval_closure(MinimEnv *env, MinimObject *stx, MinimLambda *lam, size_t argc)
 {
     MinimObject **args, *it;
     uint8_t prev_flags;
     
+    it = MINIM_CDR(stx);
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     args = GC_alloc(argc * sizeof(MinimObject*));
@@ -320,6 +328,7 @@ static MinimObject *eval_jump(MinimEnv *env, MinimObject *stx, size_t argc, Mini
 {
     MinimObject **args, *it;
 
+    it = MINIM_CDR(stx);
     args = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
     {

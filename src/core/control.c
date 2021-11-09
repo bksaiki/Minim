@@ -19,8 +19,8 @@ MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *cond;
 
-    cond = eval_ast_no_check(env, MINIM_STX_VAL(args[0]));
-    return eval_ast_no_check(env, (coerce_into_bool(cond) ? MINIM_STX_VAL(args[1]) : MINIM_STX_VAL(args[2])));
+    cond = eval_ast_no_check(env, args[0]);
+    return eval_ast_no_check(env, (coerce_into_bool(cond) ? args[1] : args[2]));
 }
 
 MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **args)
@@ -46,9 +46,8 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
 
         binding = MINIM_CAR(it);
         names = MINIM_STX_CAR(binding);
-        val = MINIM_STX_CDR(binding);
-        val = eval_ast_no_check(env, MINIM_CAR(binding));
         namec = syntax_list_len(names);
+        val = eval_ast_no_check(env, MINIM_STX_CADR(binding));
 
         if (!MINIM_OBJ_VALUESP(val))
         {
@@ -115,9 +114,8 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
 
         binding = MINIM_CAR(it);
         names = MINIM_STX_CAR(binding);
-        val = MINIM_STX_CDR(binding);
-        val = eval_ast_no_check(env2, MINIM_CAR(binding));
         namec = syntax_list_len(names);
+        val = eval_ast_no_check(env2, MINIM_STX_CADR(binding));
 
         if (!MINIM_OBJ_VALUESP(val))
         {
@@ -167,7 +165,7 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
         return minim_void;
 
     for (size_t i = 0; i < argc; ++i)
-        val = eval_ast_no_check(env, MINIM_STX_VAL(args[i]));
+        val = eval_ast_no_check(env, args[i]);
     return val;
 }
 
@@ -182,7 +180,7 @@ MinimObject *minim_builtin_callcc(MinimEnv *env, size_t argc, MinimObject **args
     MinimObject *proc, *cont;
     jmp_buf *jmp;
 
-    proc = eval_ast_no_check(env, MINIM_STX_VAL(args[0]));
+    proc = eval_ast_no_check(env, args[0]);
     if (!MINIM_OBJ_CLOSUREP(proc))
         THROW(env, minim_argument_error("procedure of 1 argument", "call/cc", 0, proc));
 

@@ -151,7 +151,7 @@ static bool verify_list(MinimObject *stx, MinimObject **perr)
     while (MINIM_OBJ_PAIRP(i))
     {
         h = MINIM_CAR(i);
-        if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(t), ".") == 0)  // dot found
+        if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(h), ".") == 0)  // dot found
         {
             if (dot)
             {
@@ -165,13 +165,13 @@ static bool verify_list(MinimObject *stx, MinimObject **perr)
                 if (MINIM_OBJ_PAIRP(t))
                 {
                     h = MINIM_CAR(t);
-                    if (!MINIM_STX_SYMBOLP(h) || strcmp(MINIM_STX_SYMBOL(t), ".") != 0)     // no dot
+                    if (!MINIM_STX_SYMBOLP(h) || strcmp(MINIM_STX_SYMBOL(h), ".") != 0)     // no dot
                     { 
                         t = MINIM_CDR(t);
                         if (MINIM_OBJ_PAIRP(t))
                         {
                             h = MINIM_CAR(t);
-                            if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(t), ".") == 0)  // infix dot found
+                            if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(h), ".") == 0)  // infix dot found
                             {
                                 i = MINIM_CDR(t);
                                 continue;
@@ -206,45 +206,60 @@ static bool expand_list(MinimObject *stx, MinimObject **perr)
     list_len = syntax_list_len(stx);
     if (list_len == 3)          // possible cons cell
     {
-        MinimObject *f, *s, *t;
-        
-        t = MINIM_STX_VAL(stx);
-        f = MINIM_CAR(t);
-        t = MINIM_CDR(t);
-        s = MINIM_CAR(t);
-        t = MINIM_CADR(t);
+        MinimObject *h, *t, *d;
 
-        // definitely a cons cell
-        if (MINIM_STX_SYMBOLP(s) && strcmp(MINIM_STX_SYMBOL(s), ".") == 0)
-            MINIM_STX_VAL(stx) = minim_cons(MINIM_STX_VAL(f), MINIM_STX_VAL(t));
+        h = MINIM_STX_VAL(stx);
+        t = MINIM_CDR(h);
+        d = MINIM_CAR(t);
+        
+        // cons cell
+        if (MINIM_STX_SYMBOLP(d) && strcmp(MINIM_STX_SYMBOL(d), ".") == 0)
+            MINIM_CDR(h) = MINIM_CADR(t);    // remove dot
+    }
+    else if (list_len == 4)     // only can terminate in cons cell
+    {
+        MinimObject *l, *t, *d;
+
+        l = MINIM_CDR(MINIM_STX_VAL(stx));
+        t = MINIM_CDR(l);
+        d = MINIM_CAR(t);
+
+        // cons cell
+        if (MINIM_STX_SYMBOLP(d) && strcmp(MINIM_STX_SYMBOL(d), ".") == 0)
+            MINIM_CDR(l) = MINIM_CADR(t);    // remove dot
+
     }
     else if (list_len >= 5)     // possible infix
     {
         MinimObject *h, *t, *i1, *i2, *i3;
 
-        h = MINIM_STX_VAL(stx);
-        i1 = MINIM_CAR(h);
+        h = MINIM_STX_VAL(stx);     // list
         t = MINIM_CDR(h);
-        i2 = MINIM_CAR(t);
+        i1 = MINIM_CAR(t);          // cadr of list
         t = MINIM_CDR(t);
-        i3 = MINIM_CDR(t);
+        i2 = MINIM_CAR(t);          // caddr of list
+        t = MINIM_CDR(t);
         
-        while (!minim_nullp(i3))
+        while (!minim_nullp(t))
         {
+            i3 = MINIM_CAR(t);      // cadddr of list
             if ((MINIM_STX_SYMBOLP(i1) && strcmp(MINIM_STX_SYMBOL(i1), ".") == 0) &&
                 (MINIM_STX_SYMBOLP(i3) && strcmp(MINIM_STX_SYMBOL(i3), ".") == 0))
             {
-                MINIM_STX_VAL(stx) = minim_cons(i2, stx);
-                MINIM_CDR(i1) = t;
-                break;
+                MINIM_STX_VAL(stx) = minim_cons(i2, MINIM_STX_VAL(stx));
+                MINIM_CDR(h) = MINIM_CDR(t);
+
+                return true;
             }
 
             h = MINIM_CDR(h);
             i1 = i2;
             i2 = i3;
             t = MINIM_CDR(t);
-            i3 = MINIM_CAR(t);
         }
+
+        if (MINIM_STX_SYMBOLP(i1) && strcmp(MINIM_STX_SYMBOL(i1), ".") == 0)
+            MINIM_CDR(h) = i2;
     }
 
     return true;

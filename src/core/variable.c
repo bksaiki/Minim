@@ -15,17 +15,17 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
 
     bindc = syntax_list_len(args[0]);
     val = eval_ast_no_check(env, args[1]);
-    if (!MINIM_OBJ_VALUESP(val))
+    if (bindc == 1)
     {
-        MinimObject *bind;
-        
-        if (bindc != 1)
+        if (MINIM_OBJ_VALUESP(val))
         {
-            THROW(env, minim_values_arity_error("def-values", bindc,
-                                                1, args[0]));
+            THROW(env, minim_values_arity_error("def-values",
+                                                bindc,
+                                                MINIM_VALUES_SIZE(val),
+                                                args[0]));
         }
-        bind = MINIM_STX_CAR(args[0]);
-        env_intern_sym(env, MINIM_STX_SYMBOL(bind), val);
+
+        env_intern_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(args[0])), val);
     }
     else
     {
@@ -33,15 +33,17 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
 
         if (MINIM_VALUES_SIZE(val) != bindc)
         {
-            THROW(env, minim_values_arity_error("def-values", bindc,
-                                                MINIM_VALUES_SIZE(val), args[0]));
+            THROW(env, minim_values_arity_error("def-values",
+                                                bindc,
+                                                MINIM_VALUES_SIZE(val),
+                                                args[0]));
         }
 
         it = MINIM_STX_VAL(args[0]);
         for (size_t i = 0; i < bindc; ++i)
         {
-            env_intern_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(it)), MINIM_VALUES(val)[i]);
-            it = MINIM_STX_CDR(it);
+            env_intern_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(it)), MINIM_VALUES_REF(val, i));
+            it = MINIM_CDR(it);
         }
     }
 
