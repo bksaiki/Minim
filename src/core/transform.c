@@ -4,6 +4,7 @@
 #include "builtin.h"
 #include "error.h"
 #include "eval.h"
+#include "global.h"
 #include "list.h"
 #include "string.h"
 #include "syntax.h"
@@ -101,7 +102,7 @@ is_list_match_pattern(MinimObject *lst)
         return false;
 
     t = MINIM_CAR(t);
-    return MINIM_OBJ_SYMBOLP(t) && strcmp(MINIM_SYMBOL(t), "...") == 0;
+    return MINIM_STX_SYMBOLP(t) && strcmp(MINIM_STX_SYMBOL(t), "...") == 0;
 }
 
 static bool
@@ -109,15 +110,15 @@ is_vector_match_pattern(MinimObject *vec, size_t i)
 {
     MinimObject **arr = MINIM_VECTOR(vec);
     return (i + 1 < MINIM_VECTOR_LEN(vec) &&
-            MINIM_OBJ_SYMBOLP(arr[i]) &&
-            strcmp(MINIM_SYMBOL(arr[i]), "...") == 0);
+            MINIM_STX_SYMBOLP(arr[i + 1]) &&
+            strcmp(MINIM_STX_SYMBOL(arr[i + 1]), "...") == 0);
 }
 
 static size_t
 list_ellipse_pos(MinimObject *lst)
 {
     size_t i = 0;
-    for (MinimObject *it = lst; !MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+    for (MinimObject *it = lst; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
     {
         MinimObject *elem = MINIM_CAR(it);
         if (MINIM_STX_SYMBOLP(elem) && strcmp(MINIM_STX_SYMBOL(elem), "...") == 0)
@@ -214,7 +215,7 @@ static MinimObject *add_pattern(MinimObject *a)
 
     val = MINIM_CAR(MINIM_TRANSFORMER(a));
     depth = MINIM_CDR(MINIM_TRANSFORMER(a));
-    return minim_transform(minim_cons(minim_list(&val, 1), depth), MINIM_TRANSFORM_PATTERN);
+    return minim_transform(minim_cons(minim_cons(val, minim_null), depth), MINIM_TRANSFORM_PATTERN);
 }
 
 // static void debug_pattern(MinimObject *o)
@@ -249,8 +250,8 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
 {
     MinimObject *match_e, *stx_e;
 
-    // printf("match: "); print_ast(match); printf("\n");
-    // printf("ast:   "); debug_print_minim_object(thing, NULL);
+    // printf("match: "); print_syntax_to_port(match, stdout); printf("\n");
+    // printf("stx:   "); print_syntax_to_port(stx, stdout); printf("\n");
 
     match_e = MINIM_STX_VAL(match);
     stx_e = MINIM_STX_VAL(stx);
@@ -263,7 +264,7 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
         MinimObject *match_it, *stx_it;
         size_t match_len, stx_len, ell_pos;
 
-        if (!MINIM_OBJ_PAIRP(stx_e))
+        if (!MINIM_OBJ_PAIRP(stx_e) && !minim_nullp(stx_e))
             return false;
 
         match_len = minim_list_length(match_e);
@@ -277,11 +278,8 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
             before = ell_pos - 1;
             match_it = match_e;
             stx_it = stx_e;
-            while (MINIM_OBJ_PAIRP(match_it))
+            while (!minim_nullp(match_it))
             {
-                if (!MINIM_OBJ_PAIRP(stx_it))
-                    return false;
-
                 if (i == before)        // ellipse encountered
                 {
                     if (stx_len + 2 == match_len)       // null
@@ -300,7 +298,7 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                             MinimEnv *env3;
 
                             init_env(&env3, env, NULL);
-                            if (!match_transform(env3, MINIM_CDR(match_it), MINIM_CAR(stx_it),
+                            if (!match_transform(env3, MINIM_CAR(match_it), MINIM_CAR(stx_it),
                                                 reserved, pdepth + 1))
                                 return false;
 
@@ -319,8 +317,13 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                 }
 
                 match_it = MINIM_CDR(match_it);
-                stx_it = MINIM_CDR(stx_it);
                 ++i;
+
+                // ellipse is last thing
+                if (minim_nullp(stx_it))
+                    return minim_nullp(match_it);
+
+                stx_it = MINIM_CDR(stx_it);
             }
         }
         else
@@ -359,7 +362,7 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
         if (match_len == 0)
             return stx_len == 0;
 
-        ell_pos = vector_ellipse_pos(match);
+        ell_pos = vector_ellipse_pos(match_e);
         if (ell_pos != 0)     // ellipse in pattern
         {
             size_t before, after;
@@ -460,227 +463,6 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
         return minim_eqp(match_e, stx_e);
     }
 
-    // datum = MINIM_OBJ_ASTP(thing) ? unsyntax_ast(env, MINIM_STX_VAL(thing)) : thing;
-    // if (match->type == SYNTAX_NODE_PAIR)        // pairs first
-    // {
-    //     if (MINIM_OBJ_PAIRP(datum))
-    //     {
-    //         return match_transform(env, match->children[0], MINIM_CAR(datum), reserved, pdepth) &&
-    //                match_transform(env, match->children[1], MINIM_CDR(datum), reserved, pdepth);
-
-    //     }
-    //     else
-    //     {
-    //         return false;
-    //     }
-    // }
-    // else if (match->type == SYNTAX_NODE_DATUM)
-    // {
-    //     MinimObject *val, *pattern;
-
-    //     if (strcmp(match->sym, "_") == 0)       // wildcard
-    //         return true;
-
-    //     if (symbol_list_contains(reserved, match->sym) ||       // reserved name
-    //         is_rational(match->sym) || is_float(match->sym) ||  // number
-    //         is_str(match->sym) ||                               // string
-    //         is_char(match->sym))                                // character
-    //     {
-    //         val = unsyntax_ast(env, match);
-    //         return minim_equalp(val, datum);
-    //     }
-
-    //     pattern = env_get_sym(env, match->sym);
-    //     if (pattern && MINIM_OBJ_TRANSFORMP(pattern) &&
-    //         MINIM_TRANSFORM_TYPE(pattern) == MINIM_TRANSFORM_PATTERN)
-    //     {
-    //         return minim_equalp(MINIM_TRANSFORMER(pattern), datum);
-    //     }
-        
-    //     val = minim_transform(minim_cons(datum, (void*) pdepth), MINIM_TRANSFORM_PATTERN);
-    //     env_intern_sym(env, match->sym, val);
-    //     return true;
-    // }
-    // else if (match->type == SYNTAX_NODE_VECTOR)
-    // {
-    //     size_t ell_pos;
-
-    //     if (!MINIM_OBJ_VECTORP(datum))
-    //         return false;
-
-    //     if (match->childc == 0)
-    //         return MINIM_VECTOR_LEN(datum) == 0;
-
-    //     ell_pos = ellipse_pos(match);
-    //     if (ell_pos != 0)     // much more complicated to do this
-    //     {
-    //         size_t before, after, len;
-
-    //         len = MINIM_VECTOR_LEN(datum);
-    //         before = ell_pos - 1;
-    //         after = match->childc - ell_pos - 1;
-
-    //         if (len < before + after)   // not enough space
-    //             return false;
-
-    //         // try matching front
-    //         for (size_t i = 0; i < before; ++i)
-    //         {
-    //             if (!match_transform(env, match->children[i], MINIM_VECTOR_REF(datum, i), reserved, pdepth))
-    //                 return false;
-    //         }
-
-    //         if (len == before + after)
-    //         {
-    //             // Bind null
-    //             add_null_variables(env, match->children[ell_pos - 1], reserved, pdepth);
-    //             return true;
-    //         }
-    //         else
-    //         {
-    //             MinimEnv *env2;
-
-    //             init_env(&env2, env, NULL);
-    //             for (size_t i = before; i < len - after; ++i)
-    //             {
-    //                 MinimEnv *env3;
-
-    //                 init_env(&env3, env, NULL);
-    //                 if (!match_transform(env3, match->children[ell_pos - 1],
-    //                                      MINIM_VECTOR_REF(datum, i),
-    //                                      reserved, pdepth + 1))
-    //                     return false;
-
-    //                  minim_symbol_table_merge2(env2->table, env3->table, merge_pattern, add_pattern);
-    //             }
-
-    //             minim_symbol_table_merge(env->table, env2->table);
-    //         }
-
-    //         for (size_t i = ell_pos + 1, j = len - after; i < match->childc; ++i, ++j)
-    //         {
-    //             if (!match_transform(env, match->children[i], MINIM_VECTOR_REF(datum, j), reserved, pdepth))
-    //                 return false;
-    //         }
-    //     }
-    //     else
-    //     {
-    //         if (match->childc != MINIM_VECTOR_LEN(datum))
-    //             return false;
-
-    //         for (size_t i = 0; i < match->childc; ++i)
-    //         {
-    //             if (!match_transform(env, match->children[i], MINIM_VECTOR_REF(datum, i),
-    //                                   reserved, pdepth))
-    //                 return false;
-    //         }
-    //     }
-
-    //     return true;
-    // }
-    // else // match->type == SYNTAX_NODE_LIST
-    // {
-    //     size_t ell_pos;
-
-    //     if (match->childc == 0)
-    //         return minim_nullp(datum);
-
-    //     if (!MINIM_OBJ_PAIRP(datum) && !minim_nullp(datum))
-    //         return false;
-        
-    //     ell_pos = ellipse_pos(match);
-    //     if (ell_pos != 0)     // much more complicated to do this
-    //     {
-    //         MinimObject *it, *ell_it, *after_it;
-    //         size_t before, after, len, i;
-
-    //         if (!minim_listp(datum))  // only proper lists are allowed here
-    //             return false;
-
-    //         len = minim_list_length(datum);
-    //         before = ell_pos - 1;
-    //         after = match->childc - ell_pos - 1;
-
-    //         if (len < before + after)   // not enough space
-    //             return false;
-
-    //         // try matching front
-    //         it = datum;
-    //         for (i = 0; i < before; ++i, it = MINIM_CDR(it))
-    //         {
-    //             if (!match_transform(env, match->children[i], MINIM_CAR(it), reserved, pdepth))
-    //                 return false;
-    //         }
-
-    //         // try matching pattern w/ ellipse
-    //         MINIM_CDNR(ell_it, datum, j, before);
-    //         MINIM_CDNR(after_it, datum, j, len - after);
-    //         if (len == before + after)
-    //         {
-    //             // Bind null
-    //             add_null_variables(env, match->children[ell_pos - 1], reserved, pdepth);
-    //             return true;
-    //         }
-    //         else
-    //         {
-    //             MinimEnv *env2;
-
-    //             init_env(&env2, env, NULL);
-    //             for (; ell_it != after_it; ell_it = MINIM_CDR(ell_it))
-    //             {
-    //                 MinimEnv *env3;
-
-    //                 init_env(&env3, env, NULL);
-    //                 if (!match_transform(env3, match->children[ell_pos - 1], MINIM_CAR(ell_it),
-    //                                      reserved, pdepth + 1))
-    //                     return false;
-
-    //                 minim_symbol_table_merge2(env2->table, env3->table, merge_pattern, add_pattern);
-    //             }
-
-    //             minim_symbol_table_merge(env->table, env2->table);
-    //         }
-
-    //         // try matching end
-    //         for (i = ell_pos + 1; i < match->childc; ++i)
-    //         {
-    //              if (!match_transform(env, match->children[i], MINIM_CAR(after_it), reserved, pdepth))
-    //                 return false;
-
-    //             after_it = MINIM_CDR(after_it);
-    //         }
-
-    //         // didn't reach end of ast
-    //         if (!minim_nullp(after_it))
-    //             return false;
-    //     }
-    //     else
-    //     {
-    //         MinimObject *it = datum;
-
-    //         for (size_t i = 0; i < match->childc; ++i, it = MINIM_CDR(it))
-    //         {
-    //             if (minim_nullp(it) || !MINIM_OBJ_PAIRP(it))    // fell off list
-    //                 return false;
-
-    //             if (is_improper_list_end(match, i))
-    //             {
-    //                 return match_transform(env, match->children[i], MINIM_CAR(it), reserved, pdepth) &&
-    //                        match_transform(env, match->children[i + 2], MINIM_CDR(it), reserved, pdepth);
-    //             }
-
-    //             if (!match_transform(env, match->children[i], MINIM_CAR(it), reserved, pdepth))
-    //                 return false;
-    //         }
-
-    //         // didn't reach end of ast
-    //         if (!minim_nullp(it))
-    //             return false;
-    //     }
-
-    //     return true;
-    // }
-
     return false;
 }
 
@@ -727,7 +509,7 @@ get_patterns(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
             MINIM_VECTOR(patterns) = GC_realloc(MINIM_VECTOR(patterns),
                                                 MINIM_VECTOR_LEN(patterns) * sizeof(MinimObject*));
             MINIM_VECTOR_REF(patterns, MINIM_VECTOR_LEN(patterns) - 1) =
-                minim_cons(minim_symbol(MINIM_STX_SYMBOL(stx)), val);
+                minim_cons(intern(MINIM_STX_SYMBOL(stx)), val);
         }
     }
 }
@@ -824,15 +606,17 @@ get_pattern(const char *sym, MinimObject *pats)
 static MinimObject *
 apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
 {
-    // printf("trans: "); print_ast(ast); printf("\n");
+    // printf("trans: "); print_syntax_to_port(stx, stdout); printf("\n");
     // debug_pattern_table(env, patterns);
+
     if (MINIM_STX_PAIRP(stx))
     {
         MinimObject *hd, *tl, *trailing;
 
-        hd = NULL;
+        hd = minim_null;
+        tl = NULL;
         trailing = NULL;
-        for (MinimObject *it = MINIM_STX_VAL(stx); !MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+        for (MinimObject *it = MINIM_STX_VAL(stx); MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
         {
             if (is_list_match_pattern(it))
             {
@@ -842,20 +626,7 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                 fpats = next_patterns(env, MINIM_CAR(it), patterns);
                 plen = pattern_length(fpats);
                 pc = MINIM_VECTOR_LEN(fpats);
-                if (plen == 0)
-                {
-                    if (hd != NULL)
-                    {
-                        MINIM_CDR(tl) = minim_cons(minim_ast(minim_null, NULL), minim_null);
-                        tl = MINIM_CDR(tl);
-                    }
-                    else
-                    {
-                        hd = minim_cons(minim_ast(minim_null, NULL), minim_null);
-                        tl = hd;
-                    }
-                }
-                else
+                if (plen != 0)
                 {
                     for (size_t j = 0; j < plen; ++j)
                     {
@@ -901,15 +672,13 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                         }
                         else                // start of list
                         {
-                            MINIM_CAR(hd) = minim_ast(val, NULL);
+                            hd = minim_cons(val, minim_null);
                             tl = hd;
                         }
                     }
                 }
-                
+
                 it = MINIM_CDR(it);
-                MINIM_CDR(tl) = minim_cons(minim_null, minim_null);
-                tl = MINIM_CDR(tl);
             }
             else
             {
@@ -921,7 +690,7 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                 }
                 else                // start of list
                 {
-                    MINIM_CAR(hd) = minim_ast(val, NULL);
+                    hd = minim_cons(val, minim_null);
                     tl = hd;
                 }
             }
@@ -929,13 +698,14 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
             trailing = it;
         }
 
+        // check for improper lists
         if (trailing && !minim_nullp(MINIM_CDR(trailing)))
         {
             MinimObject *rest = apply_transformation(env, MINIM_CDR(trailing), patterns);
             if (hd == trailing)     // cons cell
             {
                 MINIM_CDR(hd) = rest;
-                return minim_ast(hd, NULL);
+                return stx;
             }
             else                    // trailing
             {
@@ -966,15 +736,11 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                 plen = pattern_length(fpats);
                 pc = MINIM_VECTOR_LEN(fpats);
                 if (plen == 0)          len -= 2;               // reduce by 2
-                else if (plen == 1)     len -= 2;               // reduce by 1
+                else if (plen == 1)     len -= 1;               // reduce by 1
                 else if (plen > 2)      len -= (plen - 2);      // expand by plen - 2
 
                 arr = GC_realloc(arr, len * sizeof(MinimObject*));
-                if (plen == 0)
-                {
-                    arr[r] = minim_ast(minim_null, NULL);
-                }
-                else
+                if (plen != 0)
                 {
                     for (size_t j = 0; j < plen; ++j)
                     {
@@ -1012,7 +778,7 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                             }
                         }
 
-                        arr[r + j] = apply_transformation(env, MINIM_VECTOR_REF(stx, i), npats);
+                        arr[r + j] = apply_transformation(env, MINIM_VECTOR_REF(vec, i), npats);
                     }
                 }
                 
@@ -1021,7 +787,7 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
             }
             else
             {
-                arr[r] = apply_transformation(env, MINIM_VECTOR_REF(arr, i), patterns);
+                arr[r] = apply_transformation(env, MINIM_VECTOR_REF(vec, i), patterns);
             }
         }
 
@@ -1030,13 +796,13 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
     else if (MINIM_STX_SYMBOLP(stx))
     {
         MinimObject *v = get_pattern(MINIM_STX_SYMBOL(stx), patterns);
-        if (!v)                         return stx;
-        else if (MINIM_OBJ_ASTP(v))     return minim_ast(v, NULL);
+        if (!v)                         return minim_ast(MINIM_STX_VAL(stx), MINIM_STX_LOC(stx));
+        else if (MINIM_OBJ_ASTP(v))     return minim_ast(MINIM_STX_VAL(v), MINIM_STX_LOC(v));
         else                            return datum_to_syntax(env, v);
     }
     else
     {
-        return stx;
+        return minim_ast(MINIM_STX_VAL(stx), MINIM_STX_LOC(stx));
     }
 }
 
@@ -1199,6 +965,8 @@ MinimObject* transform_syntax(MinimEnv *env, MinimObject* stx)
 {
     if (MINIM_STX_PAIRP(stx))
     {
+        MinimObject *trailing;
+
         if (MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)))
         {
             MinimObject *op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
@@ -1247,8 +1015,18 @@ MinimObject* transform_syntax(MinimEnv *env, MinimObject* stx)
             }
         }
 
-        for (MinimObject *it = MINIM_STX_VAL(stx); !minim_nullp(it); it = MINIM_CDR(it))
+        trailing = NULL;
+        for (MinimObject *it = MINIM_STX_VAL(stx); MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+        {
             MINIM_CAR(it) = transform_syntax(env, MINIM_CAR(it));
+            trailing = it;
+        }
+
+        if (trailing && !minim_nullp(MINIM_CDR(trailing)))
+        {
+            trailing = MINIM_CDR(trailing);
+            MINIM_CAR(trailing) = transform_syntax(env, MINIM_CAR(trailing));
+        }
     }
     else if (MINIM_STX_VECTORP(stx))
     {
@@ -1273,9 +1051,9 @@ void check_transform(MinimEnv *env, MinimObject *match, MinimObject *replace, Mi
     MinimObject *it;
     size_t reservedc;
 
-    it = reserved;
-    reservedc = minim_list_length(reserved);
+    reservedc = syntax_list_len(reserved);
     init_symbol_list(&reserved_lst, reservedc);
+    it = MINIM_STX_VAL(reserved);
     for (size_t i = 0; i < reservedc; ++i, it = MINIM_CDR(it))
         reserved_lst.syms[i] = MINIM_STX_SYMBOL(MINIM_CAR(it));
 
@@ -1295,8 +1073,6 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
     val = eval_ast_no_check(env, transform_syntax(env, args[1]));
     if (!MINIM_OBJ_VALUESP(val))
     {
-        MinimObject *bind;
-        
         if (bindc != 1)
         {
             THROW(env, minim_values_arity_error("def-syntaxes", bindc,
@@ -1307,15 +1083,12 @@ MinimObject *minim_builtin_def_syntaxes(MinimEnv *env, size_t argc, MinimObject 
         {
             THROW(env, minim_syntax_error("expected a procedure of 1 argument",
                                           "def-syntaxes",
-                                          MINIM_STX_VAL(args[1]),
-                                          args[1]));
+                                          args[1],
+                                          NULL));
         }
 
         trans = minim_transform(val, transform_type(val));
         env_intern_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(args[0])), trans);
-
-        bind = MINIM_STX_CAR(args[0]);
-        env_intern_sym(env, MINIM_STX_SYMBOL(bind), val);
     }
     else
     {
@@ -1348,11 +1121,11 @@ MinimObject *minim_builtin_template(MinimEnv *env, size_t argc, MinimObject **ar
     patterns = minim_vector(0, NULL);
     get_patterns(env, args[0], patterns);
 
-    // printf("template: "); print_ast(MINIM_STX_VAL(args[0])); printf("\n");
+    // printf("template: "); print_syntax_to_port(args[0], stdout); printf("\n");
     // debug_pattern_table(env, patterns);
     final = apply_transformation(env, args[0], patterns);
-    // printf("final:    "); print_ast(final); printf("\n");
-    return minim_ast(final, NULL);
+    // printf("final: "); print_syntax_to_port(final, stdout); printf("\n");
+    return final;
 }
 
 MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject **args)
@@ -1386,6 +1159,9 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
             MinimEnv *env2;
             MinimObject *val;
 
+            // printf("match:   "); print_syntax_to_port(match, stdout); printf("\n");
+            // printf("replace: "); print_syntax_to_port(replace, stdout); printf("\n");
+
             init_env(&env2, env, NULL);
             minim_symbol_table_merge(env2->table, match_env->table);
             val = eval_ast_no_check(env2, replace);
@@ -1394,7 +1170,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
 
             // printf("sc>: "); debug_print_minim_object(datum, NULL);
             // printf("sc<: "); debug_print_minim_object(val, NULL);
-            return minim_ast(transform_syntax(env, MINIM_STX_VAL(val)), loc);
+            return minim_ast(transform_syntax(env, val), loc);
         }
     }
 

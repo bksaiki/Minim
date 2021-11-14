@@ -176,14 +176,13 @@ static void check_syntax_lambda(MinimEnv *env, MinimObject *ast)
                     env_intern_sym(env2, MINIM_STRING(sym), minim_void); 
                 }
 
-                it = MINIM_CDR(it);
-                sym = MINIM_STX_VAL(MINIM_CAR(it));
+                sym = MINIM_STX_VAL(MINIM_CDR(it));
                 if (!MINIM_OBJ_SYMBOLP(sym))
                 {
                     THROW(env, minim_syntax_error("not an identifier",
                                                   MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
                                                   ast,
-                                                  MINIM_STX_VAL(MINIM_CAR(it))));
+                                                  MINIM_STX_VAL(MINIM_CDR(it))));
                 }
 
                 env_intern_sym(env2, MINIM_STRING(sym), minim_void);
@@ -319,57 +318,101 @@ static void check_syntax_1arg(MinimEnv *env, MinimObject *ast)
 
 static void check_syntax_syntax_case(MinimEnv *env, MinimObject *ast)
 {
-    MinimObject *rule, *reserved;
+    // MinimObject *rule, *reserved;
 
-    // extract reserved symbols
-    rule = MINIM_STX_CDR(ast);
-    check_syntax_rec(env, MINIM_CAR(rule));
-    rule = MINIM_CDR(rule);
-    reserved = MINIM_CAR(rule);
-    rule = MINIM_CDR(rule);
+    // // extract reserved symbols
+    // rule = MINIM_STX_CDR(ast);
+    // check_syntax_rec(env, MINIM_CAR(rule));
+    // rule = MINIM_CDR(rule);
+    // reserved = MINIM_CAR(rule);
+    // rule = MINIM_CDR(rule);
 
-    // check reserved list is all symbols
-    if (!minim_nullp(MINIM_STX_VAL(reserved)))
+    // // check reserved list is all symbols
+    // if (!minim_nullp(MINIM_STX_VAL(reserved)))
+    // {
+    //     for (MinimObject *it = MINIM_STX_VAL(reserved); !minim_nullp(it); it = MINIM_CDR(it))
+    //     {
+    //         MinimObject *id;
+
+    //         if (!MINIM_OBJ_PAIRP(it))
+    //         {
+    //             THROW(env, minim_syntax_error("expected a list of bindings",
+    //                                           MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+    //                                           ast,
+    //                                           reserved));
+    //         }
+
+    //         id = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
+    //         if (!MINIM_STX_SYMBOLP(id))
+    //         {
+    //             THROW(env, minim_syntax_error("expected a list of symbols",
+    //                                           MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+    //                                           ast, id));
+    //         }
+    //     }
+    // }
+
+    // // check each match expression
+    // // [(_ arg ...) anything]
+    // for (MinimObject *it = rule; !minim_nullp(it); it = MINIM_CDR(it))
+    // {
+    //     MinimObject *rule = MINIM_CAR(it);
+
+    //     if (syntax_proper_list_len(rule) != 2)
+    //     {
+    //         THROW(env, minim_syntax_error("bad rule",
+    //                                       MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+    //                                       ast, rule));
+    //     }
+
+    //     rule = MINIM_STX_VAL(rule);
+    //     check_transform(env, MINIM_CAR(rule), MINIM_CADR(rule), MINIM_STX_VAL(reserved));
+    // }
+
+    MinimObject *datum, *reserved, *rules, *it;
+
+    rules = MINIM_STX_CDR(ast);
+    datum = MINIM_CAR(rules);
+    rules = MINIM_CDR(rules);
+    reserved = MINIM_CAR(rules);
+    rules = MINIM_CDR(rules);
+
+    check_syntax_rec(env, datum);
+    it = MINIM_STX_VAL(reserved);
+    for (; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
     {
-        for (MinimObject *it = MINIM_STX_VAL(reserved); !minim_nullp(it); it = MINIM_CDR(it))
+        if (!MINIM_STX_SYMBOLP(MINIM_CAR(it)))
         {
-            MinimObject *id;
-
-            if (!MINIM_OBJ_PAIRP(it))
-            {
-                THROW(env, minim_syntax_error("expected a list of bindings",
-                                              MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
-                                              ast,
-                                              reserved));
-            }
-
-            id = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
-            if (!MINIM_STX_SYMBOLP(id))
-            {
-                THROW(env, minim_syntax_error("expected a list of symbols",
-                                              MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
-                                              ast, id));
-            }
+            THROW(env, minim_syntax_error("expected a list of symbols",
+                                          MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                          ast,
+                                          MINIM_CAR(it)));
         }
     }
 
-    // check each match expression
-    // [(_ arg ...) anything]
-    for (MinimObject *it = rule; !minim_nullp(it); it = MINIM_CDR(it))
+    if (!minim_nullp(it))
     {
-        MinimObject *rule = MINIM_CAR(it);
+        THROW(env, minim_syntax_error("expected a list of bindings",
+                                        MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                        ast,
+                                        reserved));
+    }
 
-        if (syntax_proper_list_len(rule) != 2)
-        {
-            THROW(env, minim_syntax_error("bad rule",
-                                          MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
-                                          ast, rule));
-        }
+    for (it = rules; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+    {
+        MinimObject *match, *replace;
+        replace = MINIM_STX_VAL(MINIM_CAR(it));
+        match = MINIM_CAR(replace);
+        replace = MINIM_CADR(replace);
+        check_transform(env, match, replace, reserved);
+    }
 
-        check_transform(env,
-                        MINIM_STX_VAL(MINIM_CAR(rule)),
-                        MINIM_STX_VAL(MINIM_CADR(rule)),
-                        MINIM_STX_VAL(reserved));
+    if (!minim_nullp(it))
+    {
+        THROW(env, minim_syntax_error("expected a transform rule",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                      ast,
+                                      NULL));       
     }
 }
 
@@ -779,5 +822,5 @@ MinimObject *minim_builtin_unwrap(MinimEnv *env, size_t argc, MinimObject **args
 
 MinimObject *minim_builtin_to_syntax(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return minim_ast(datum_to_syntax(env, args[0]), NULL);
+    return datum_to_syntax(env, args[0]);
 }

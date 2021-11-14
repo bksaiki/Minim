@@ -52,6 +52,13 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimObject* stx, uint8_t f
     MinimObject *res = MINIM_STX_VAL(stx);
     if (MINIM_OBJ_PAIRP(res))
     {
+        if ((flags & UNSYNTAX_QUASIQUOTE) && MINIM_STX_SYMBOLP(MINIM_CAR(res))) // unquote
+        {
+            MinimObject *proc = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(res)));
+            if (proc && (MINIM_SYNTAX(proc) == minim_builtin_unquote))
+                return eval_ast_no_check(env, MINIM_CADR(res));
+        }
+
         if (flags & UNSYNTAX_REC)
         {
             MinimObject *it, *trailing;
@@ -73,15 +80,6 @@ static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimObject* stx, uint8_t f
         {
             for (size_t i = 0; i < MINIM_VECTOR_LEN(res); ++i)
                 MINIM_VECTOR_REF(res, i) = unsyntax_ast_node(env, MINIM_VECTOR_REF(res, i), flags);
-        }
-    }
-    else if (MINIM_OBJ_SYMBOLP(res))
-    {
-        if ((flags & UNSYNTAX_QUASIQUOTE) && MINIM_STX_SYMBOLP(MINIM_CAR(res))) // unquote
-        {
-            MinimObject *proc = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(res)));
-            if (proc && (MINIM_SYNTAX(proc) == minim_builtin_unquote))
-                return eval_ast_no_check(env, MINIM_CADR(res));
         }
     }
     
@@ -310,7 +308,7 @@ static MinimObject *eval_closure(MinimEnv *env, MinimObject *stx, MinimLambda *l
     MinimObject **args, *it;
     uint8_t prev_flags;
     
-    it = MINIM_CDR(stx);
+    it = MINIM_STX_CDR(stx);
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     args = GC_alloc(argc * sizeof(MinimObject*));
@@ -328,7 +326,7 @@ static MinimObject *eval_jump(MinimEnv *env, MinimObject *stx, size_t argc, Mini
 {
     MinimObject **args, *it;
 
-    it = MINIM_CDR(stx);
+    it = MINIM_STX_CDR(stx);
     args = GC_alloc(argc * sizeof(MinimObject*));
     for (size_t i = 0; i < argc; ++i)
     {
@@ -637,8 +635,6 @@ MinimObject *eval_module(MinimModule *module)
         if (expr_is_module_level(module->env, module->exprs[i]))
             continue;
 
-        // printf("eval: "); print_ast(module->exprs[i]); printf("\n");
-
         check_syntax(module->env, module->exprs[i]);
         res = eval_ast_no_check(module->env, module->exprs[i]);
         if (!minim_voidp(res))
@@ -704,7 +700,6 @@ char *eval_string(char *str, size_t len)
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
             ast = minim_parse_port(port, &err, 0);
-            printf("parsed: "); debug_print_minim_object(ast, env);
             if (err)
             {
                 const char *msg = "parsing failed";

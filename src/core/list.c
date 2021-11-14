@@ -320,7 +320,7 @@ MinimObject *minim_list_drop(MinimObject *lst, size_t n)
     MinimObject *it;
 
     if (n == 0)
-        return MINIM_CAR(lst);
+        return lst;
 
     it = MINIM_CDR(lst);
     for (size_t i = 1; i < n; ++i)

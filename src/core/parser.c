@@ -355,16 +355,16 @@ static MinimObject *read_vector(MinimObject *port, MinimObject **perr, uint8_t f
     char c;
 
     START_SYNTAX_LOC(loc, port);
+    vec = minim_vector(0, NULL);
     c = next_char(port);
     if (c == ')')           // empty list
     {
         update_port(port, c);
         END_SYNTAX_LOC(loc, port);
-        return minim_ast(minim_null, loc);
+        return minim_ast(vec, loc);
     }
 
     put_back(port, c);
-    vec = minim_vector(0, NULL);
     while (true)
     {
         el = read_top(port, perr, flags);
@@ -427,29 +427,30 @@ static MinimObject *read_datum(MinimObject *port, MinimObject **perr, uint8_t fl
     trim_buffer(bf);
     END_SYNTAX_LOC(loc, port);
     if (is_rational(get_buffer(bf)))
+    {
         obj = str_to_number(get_buffer(bf), MINIM_OBJ_EXACT);
-    else if (is_float(get_buffer(bf)))  
+    }
+    else if (is_float(get_buffer(bf)))
+    {
         obj = str_to_number(get_buffer(bf), MINIM_OBJ_INEXACT);
-    else if (is_str(get_buffer(bf)))
-        obj = minim_string(get_buffer(bf));
-    else    // symbol
+    }
+    else
+    {    // symbol
         obj = intern(get_buffer(bf));
+    }
 
     return minim_ast(obj, loc);
 }
 
 static MinimObject *read_string(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    MinimObject *str;
     SyntaxLoc *loc;
     Buffer *bf;
     char c;
 
     START_SYNTAX_LOC(loc, port);
     init_buffer(&bf);
-    str = minim_string(get_buffer(bf));
 
-    writec_buffer(bf, '"');
     c = next_ch(port);
     update_port(port, c);
 
@@ -459,7 +460,7 @@ static MinimObject *read_string(MinimObject *port, MinimObject **perr, uint8_t f
         {
             *perr = end_of_input_error();
             END_SYNTAX_LOC(loc, port);
-            return minim_ast(str, loc);
+            return minim_ast(minim_string(get_buffer(bf)), loc);
         }
 
         writec_buffer(bf, c);
@@ -477,10 +478,9 @@ static MinimObject *read_string(MinimObject *port, MinimObject **perr, uint8_t f
         update_port(port, c);
     }
 
-    writec_buffer(bf, c);
     trim_buffer(bf);
     END_SYNTAX_LOC(loc, port);
-    return minim_ast(str, loc);
+    return minim_ast(minim_string(get_buffer(bf)), loc);
 }
 
 static MinimObject *read_char(MinimObject *port, MinimObject **perr, uint8_t flags)
