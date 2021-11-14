@@ -312,6 +312,9 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                 }
                 else
                 {
+                    if (minim_nullp(stx_it))
+                        return false;
+
                     if (!match_transform(env, MINIM_CAR(match_it), MINIM_CAR(stx_it), reserved, pdepth))
                         return false;
                 }
@@ -826,7 +829,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, MinimObject *stx)
                                       stx, NULL));
     }
 
-    return MINIM_STX_VAL(res);
+    return res;
 }
 
 static bool valid_matchp(MinimEnv *env, MinimObject* match, MatchTable *table,
@@ -1007,9 +1010,9 @@ MinimObject* transform_syntax(MinimEnv *env, MinimObject* stx)
                 else if (MINIM_OBJ_TRANSFORMP(op))
                 {
                     MinimObject *trans;
-                    // printf("t> "); print_ast(ast); printf("\n");
+                    printf("t> "); print_syntax_to_port(stx, stdout); printf("\n");
                     trans = transform_loc(env, op, stx);
-                    // printf("t< "); print_ast(trans); printf("\n");
+                    printf("t< "); print_syntax_to_port(trans, stdout); printf("\n");
                     return transform_syntax(env, trans);
                 }
             }
@@ -1132,7 +1135,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
 {
     SymbolList reserved;
     MinimObject *it, *datum;
-    SyntaxLoc *loc;
     size_t resc;
 
     it = MINIM_STX_VAL(args[1]);
@@ -1144,7 +1146,6 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         it = MINIM_CDR(it);
     }
 
-    loc = MINIM_STX_LOC(args[0]);
     datum = eval_ast_no_check(env, args[0]);
     for (size_t i = 2; i < argc; ++i)
     {
@@ -1157,7 +1158,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         if (match_transform(match_env, match, datum, &reserved, 0))
         {
             MinimEnv *env2;
-            MinimObject *val;
+            MinimObject *val, *trans;
 
             // printf("match:   "); print_syntax_to_port(match, stdout); printf("\n");
             // printf("replace: "); print_syntax_to_port(replace, stdout); printf("\n");
@@ -1170,7 +1171,8 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
 
             // printf("sc>: "); debug_print_minim_object(datum, NULL);
             // printf("sc<: "); debug_print_minim_object(val, NULL);
-            return minim_ast(transform_syntax(env, val), loc);
+            trans = transform_syntax(env, val);
+            return minim_ast(MINIM_STX_VAL(trans), MINIM_STX_LOC(args[0]));
         }
     }
 

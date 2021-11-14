@@ -273,7 +273,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
 
     // Convert bindings to list
     init_minim_lambda(&lam);
-    bindings = unsyntax_ast(env, args[0]);
+    bindings = MINIM_STX_VAL(args[0]);
     if (MINIM_OBJ_SYMBOLP(bindings))
     {
         lam->rest = MINIM_SYMBOL(bindings);

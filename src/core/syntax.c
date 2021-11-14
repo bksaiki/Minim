@@ -208,10 +208,100 @@ static void check_syntax_begin(MinimEnv *env, MinimObject *ast)
         check_syntax_rec(env, MINIM_CAR(it));
 }
 
-// TODO: (let-values ([x ...]) ...) still passes
-static void check_syntax_let__values(MinimEnv *env, MinimObject *ast, bool star)
+static void check_syntax_let_values(MinimEnv *env, MinimObject *ast)
 {
     MinimObject *body, *bindings;
+    MinimEnv *env2;
+    
+    init_env(&env2, env, NULL);
+    body = MINIM_STX_CDR(ast);
+    bindings = MINIM_CAR(body);
+    body = MINIM_CDR(body);
+
+    if (minim_nullp(body))
+    {
+        THROW(env, minim_syntax_error("missing body",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                      ast,
+                                      NULL));
+    }
+
+    // early exit: (let () ...)
+    if (!minim_nullp(MINIM_STX_VAL(bindings)))
+    {
+        for (MinimObject *it = MINIM_STX_VAL(bindings); !minim_nullp(it); it = MINIM_CDR(it))
+        {
+            MinimObject *bind, *ids;
+
+            if (!MINIM_OBJ_PAIRP(it))
+            {
+                THROW(env, minim_syntax_error("expected a list of bindings",
+                                              MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                              ast,
+                                              bindings));
+            }
+
+            bind = MINIM_CAR(it);
+            if (!MINIM_STX_PAIRP(bind) || syntax_list_len(bind) != 2)
+            {
+                THROW(env, minim_syntax_error("bad binding",
+                                              MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                              ast,
+                                              bind));
+            }
+
+            // list of identifier
+            bind = MINIM_STX_VAL(bind);
+            ids = MINIM_CAR(bind);
+            for (MinimObject *it2 = MINIM_STX_VAL(ids); !minim_nullp(it2); it2 = MINIM_CDR(it2))
+            {
+                MinimObject *sym;
+                size_t hash;
+                char *s;
+
+                if (!MINIM_OBJ_PAIRP(it2))
+                {
+                    THROW(env, minim_syntax_error("not a list of identifiers",
+                                                  MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                                  ast,
+                                                  ids));
+                }
+
+                sym = MINIM_CAR(it2);
+                if (!MINIM_STX_SYMBOLP(sym))
+                {
+                    THROW(env, minim_syntax_error("not an identifier",
+                                                  MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                                  ast,
+                                                  sym));
+                }
+
+                s = MINIM_STX_SYMBOL(sym);
+                hash = hash_bytes(s, strlen(s));
+                if (minim_symbol_table_get(env2->table, s, hash) != NULL)
+                {
+                    THROW(env, minim_syntax_error("duplicate identifier",
+                                                  MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
+                                                  ast,
+                                                  sym));
+                }
+
+                env_intern_sym(env2, s, minim_void);
+            }
+
+            // this is incorrect, behaves more like a letrec
+            // should take env rather than env2
+            check_syntax_rec(env2, MINIM_CADR(bind));
+        }
+    }
+
+    for (; !minim_nullp(body); body = MINIM_CDR(body))
+        check_syntax_rec(env2, MINIM_CAR(body));
+}
+
+static void check_syntax_letstar_values(MinimEnv *env, MinimObject *ast)
+{
+        MinimObject *body, *bindings;
     MinimEnv *env2;
     
     init_env(&env2, env, NULL);
@@ -281,8 +371,7 @@ static void check_syntax_let__values(MinimEnv *env, MinimObject *ast, bool star)
 
                 s = MINIM_STX_SYMBOL(sym);
                 hash = hash_bytes(s, strlen(s));
-                if ((!star && (minim_symbol_table_get(env3->table, s, hash) != NULL)) ||
-                    (minim_symbol_table_get(env2->table, s, hash) != NULL))
+                if (minim_symbol_table_get(env3->table, s, hash) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
                                                   MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
@@ -290,25 +379,18 @@ static void check_syntax_let__values(MinimEnv *env, MinimObject *ast, bool star)
                                                   sym));
                 }
 
-                env_intern_sym(env3, MINIM_STRING(sym), minim_void);
+                env_intern_sym(env3, s, minim_void);
             }
 
-            check_syntax_rec(env, MINIM_CADR(bind));
+            // this is incorrect, behaves more like a letrec
+            // should take env2 rather than env3
+            check_syntax_rec(env3, MINIM_CADR(bind));
+            minim_symbol_table_merge(env2->table, env3->table);
         }
     }
 
     for (; !minim_nullp(body); body = MINIM_CDR(body))
         check_syntax_rec(env2, MINIM_CAR(body));
-}
-
-static void check_syntax_let_values(MinimEnv *env, MinimObject *ast)
-{
-    check_syntax_let__values(env, ast, false);
-}
-
-static void check_syntax_letstar_values(MinimEnv *env, MinimObject *ast)
-{
-    check_syntax_let__values(env, ast, true);
 }
 
 static void check_syntax_1arg(MinimEnv *env, MinimObject *ast)
@@ -318,57 +400,6 @@ static void check_syntax_1arg(MinimEnv *env, MinimObject *ast)
 
 static void check_syntax_syntax_case(MinimEnv *env, MinimObject *ast)
 {
-    // MinimObject *rule, *reserved;
-
-    // // extract reserved symbols
-    // rule = MINIM_STX_CDR(ast);
-    // check_syntax_rec(env, MINIM_CAR(rule));
-    // rule = MINIM_CDR(rule);
-    // reserved = MINIM_CAR(rule);
-    // rule = MINIM_CDR(rule);
-
-    // // check reserved list is all symbols
-    // if (!minim_nullp(MINIM_STX_VAL(reserved)))
-    // {
-    //     for (MinimObject *it = MINIM_STX_VAL(reserved); !minim_nullp(it); it = MINIM_CDR(it))
-    //     {
-    //         MinimObject *id;
-
-    //         if (!MINIM_OBJ_PAIRP(it))
-    //         {
-    //             THROW(env, minim_syntax_error("expected a list of bindings",
-    //                                           MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
-    //                                           ast,
-    //                                           reserved));
-    //         }
-
-    //         id = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CAR(it)));
-    //         if (!MINIM_STX_SYMBOLP(id))
-    //         {
-    //             THROW(env, minim_syntax_error("expected a list of symbols",
-    //                                           MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
-    //                                           ast, id));
-    //         }
-    //     }
-    // }
-
-    // // check each match expression
-    // // [(_ arg ...) anything]
-    // for (MinimObject *it = rule; !minim_nullp(it); it = MINIM_CDR(it))
-    // {
-    //     MinimObject *rule = MINIM_CAR(it);
-
-    //     if (syntax_proper_list_len(rule) != 2)
-    //     {
-    //         THROW(env, minim_syntax_error("bad rule",
-    //                                       MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)),
-    //                                       ast, rule));
-    //     }
-
-    //     rule = MINIM_STX_VAL(rule);
-    //     check_transform(env, MINIM_CAR(rule), MINIM_CADR(rule), MINIM_STX_VAL(reserved));
-    // }
-
     MinimObject *datum, *reserved, *rules, *it;
 
     rules = MINIM_STX_CDR(ast);
@@ -473,9 +504,7 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *ast)
 
     if (MINIM_STX_SYMBOLP(MINIM_STX_CAR(ast)))
     {
-        MinimObject *op = 
-        
-        op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)));
+        MinimObject *op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(ast)));
         if (!op)
         {
             THROW(env, minim_syntax_error("unknown identifier",
@@ -726,7 +755,6 @@ static MinimObject *constant_fold_rec(MinimEnv *env, MinimObject *ast)
 
 MinimObject *datum_to_syntax(MinimEnv *env, MinimObject *obj)
 {
-    MinimObject *node;
     Buffer *bf;
 
     if (minim_specialp(obj))
@@ -745,16 +773,21 @@ MinimObject *datum_to_syntax(MinimEnv *env, MinimObject *obj)
     }
     else if (MINIM_OBJ_PAIRP(obj))
     {
-        MinimObject *it, *it2;
-        
-        for (it = obj, it2 = NULL;
-             !minim_nullp(it) && MINIM_OBJ_PAIRP(it);
-             it2 = it, it = MINIM_CDR(it))
+        MinimObject *it, *trailing;
+        trailing = NULL;
+        for (it = obj; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+        {
             MINIM_CAR(it) = datum_to_syntax(env, MINIM_CAR(it));
+            trailing = it;
+        }
 
-        if (!minim_nullp(it))   // not a list
-            MINIM_CDR(it2) = datum_to_syntax(env, it);
+        if (trailing && !minim_nullp(MINIM_CDR(trailing)))   // not a list
+        {
+            MinimObject *cdr = datum_to_syntax(env, MINIM_CDR(trailing));
+            MINIM_CDR(trailing) = (trailing == obj) ? MINIM_STX_VAL(cdr) : cdr;
+        }
         
+        debug_print_minim_object(obj, NULL);
         return minim_ast(obj, NULL);
     }
     else if (MINIM_OBJ_VECTORP(obj))
@@ -778,8 +811,6 @@ MinimObject *datum_to_syntax(MinimEnv *env, MinimObject *obj)
         minim_error_desc_table_set(MINIM_ERROR(err)->table, 0, "at", get_buffer(bf));
         THROW(env, err);
     }
-
-    return node;
 }
 
 // ================================ Public ================================

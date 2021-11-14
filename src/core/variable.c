@@ -67,13 +67,12 @@ MinimObject *minim_builtin_unquote(MinimEnv *env, size_t argc, MinimObject **arg
 
 MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *sym, *val;
+    MinimObject *val;
 
-    sym = unsyntax_ast(env, args[0]);
     val = eval_ast_no_check(env, args[1]);
-    if (env_get_sym(env, MINIM_STRING(sym)))
+    if (env_get_sym(env, MINIM_STX_SYMBOL(args[0])))
     {
-        env_set_sym(env, MINIM_STRING(sym), val);
+        env_set_sym(env, MINIM_STX_SYMBOL(args[0]), val);
         return minim_void;
     }
     else
@@ -84,7 +83,7 @@ MinimObject *minim_builtin_setb(MinimEnv *env, size_t argc, MinimObject **args)
         init_buffer(&bf);
         set_default_print_params(&pp);
         pp.quote = true;
-        print_to_buffer(bf, sym, env, &pp);
+        print_to_buffer(bf, MINIM_STX_VAL(args[0]), env, &pp);
         THROW(env, minim_error("not a variable", bf->data));
         return NULL;    // prevent compiler error
     }

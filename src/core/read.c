@@ -268,6 +268,9 @@ MinimObject *load_processed_file(MinimObject *fport)
     FILE *cfile;
     char *name;
 
+    // TODO: return
+    return NULL;
+
     if (global.flags & GLOBAL_FLAG_CACHE)
     {
         fname = build_path(1, MINIM_PORT_NAME(fport));

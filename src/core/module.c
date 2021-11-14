@@ -29,6 +29,37 @@ static bool expr_is_begin(MinimEnv *env, MinimObject *stx)
     return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_begin);
 }
 
+static size_t expand_expr_count(MinimEnv *env, MinimObject *stx)
+{
+    if (expr_is_begin(env, stx))
+    {
+        size_t count = 0;
+        for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
+            count += expand_expr_count(env, MINIM_CAR(it));
+        return count;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+static size_t expand_expr(MinimEnv *env, MinimObject *stx, MinimObject **expanded, size_t idx)
+{
+    if (expr_is_begin(env, stx))
+    {
+        for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
+            idx = expand_expr(env, MINIM_CAR(it), expanded, idx);
+    }
+    else
+    {
+        expanded[idx] = stx;
+        ++idx;
+    }
+
+    return idx;
+}
+
 static MinimModule *module_from_cache(MinimModule *src)
 {
     MinimModule *module;
@@ -83,37 +114,6 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     ++module->importc;
     module->imports = GC_realloc(module->imports, module->importc * sizeof(MinimModule*));
     module->imports[module->importc - 1] = import;
-}
-
-static size_t expand_expr_count(MinimEnv *env, MinimObject *stx)
-{
-    if (expr_is_begin(env, stx))
-    {
-        size_t count = 0;
-        for (MinimObject *it = MINIM_STX_CDR(stx); MINIM_STX_PAIRP(it); it = MINIM_CDR(it))
-            count += expand_expr_count(env, MINIM_CAR(it));
-        return count;
-    }
-    else
-    {
-        return 1;
-    }
-}
-
-static size_t expand_expr(MinimEnv *env, MinimObject *stx, MinimObject **expanded, size_t idx)
-{
-    if (expr_is_begin(env, stx))
-    {
-        for (MinimObject *it = MINIM_STX_CDR(stx); MINIM_STX_PAIRP(it); it = MINIM_CDR(it))
-            idx = expand_expr(env, MINIM_CAR(it), expanded, idx);
-    }
-    else
-    {
-        expanded[idx] = stx;
-        ++idx;
-    }
-
-    return idx;
 }
 
 // expands begin
@@ -192,7 +192,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
         {
             MinimObject *export;
 
-            export = unsyntax_ast(env, MINIM_STX_VAL(args[i]));
+            export = MINIM_STX_VAL(args[i]);
             if (minim_listp(export))
             {
                 MinimModule *import;
@@ -201,7 +201,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                 char *attrib;
                 
                 attrib = MINIM_STX_SYMBOL(MINIM_CAR(export));
-                name = unsyntax_ast(env, MINIM_STX_VAL(MINIM_CADR(export)));
+                name = MINIM_STX_VAL(MINIM_CADR(export));
                 if (strcmp(attrib, "all") == 0)
                 {
                     path = (is_absolute_path(MINIM_STRING(name)) ?
@@ -213,8 +213,8 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                     {
                         THROW(env, minim_syntax_error("module not imported",
                                                       "%export",
-                                                      MINIM_STX_VAL(args[i]),
-                                                      MINIM_STX_VAL(MINIM_CADR(export))));
+                                                      args[i],
+                                                      MINIM_CADR(export)));
                     }
 
                     minim_symbol_table_merge(env->module->export->table, import->export->table);
@@ -224,11 +224,14 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
             {
                 MinimObject *val;
 
-                val = minim_module_get_sym(env->module, MINIM_STRING(export));
+                val = minim_module_get_sym(env->module, MINIM_SYMBOL(export));
                 if (!val)
-                    THROW(env, minim_error("identifier not defined in module", MINIM_STRING(export)));
+                {
+                    THROW(env, minim_error("identifier not defined in module",
+                                           MINIM_SYMBOL(export)));
+                }
 
-                env_intern_sym(env->module->export, MINIM_STRING(export), val);
+                env_intern_sym(env->module->export, MINIM_SYMBOL(export), val);
             }
         }
     }
@@ -252,7 +255,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
     init_minim_module(&tmp);
     for (size_t i = 0; i < argc; ++i)
     {
-        arg = unsyntax_ast(env, MINIM_STX_VAL(args[i]));
+        arg = MINIM_STX_VAL(args[i]);
         path = (is_absolute_path(MINIM_STRING(arg)) ?
                 build_path(1, MINIM_STRING(arg)) :
                 build_path(2, env->current_dir, MINIM_STRING(arg)));
