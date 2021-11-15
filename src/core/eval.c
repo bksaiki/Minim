@@ -42,74 +42,6 @@ static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, bool err)
     return res;
 }
 
-// Unsyntax
-
-#define UNSYNTAX_REC            0x1
-#define UNSYNTAX_QUASIQUOTE     0x2
-
-static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimObject* stx, uint8_t flags)
-{
-    if (MINIM_STX_PAIRP(stx))
-    {
-        MinimObject *op;
-        
-        op = MINIM_STX_CAR(stx);
-        if ((flags & UNSYNTAX_QUASIQUOTE) && MINIM_STX_SYMBOLP(op)) // unquote
-        {
-            MinimObject *proc = env_get_sym(env, MINIM_STX_SYMBOL(op));
-            if (proc && (MINIM_SYNTAX(proc) == minim_builtin_unquote))
-                return eval_ast_no_check(env, MINIM_STX_CADR(stx));
-        }
-
-        if (flags & UNSYNTAX_REC)
-        {
-            MinimObject *res, *it, *it2, *trailing;
-
-            trailing = NULL;
-            res = minim_null;
-            for (it = MINIM_STX_VAL(stx); MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
-            {
-                MinimObject *val = unsyntax_ast_node(env, MINIM_CAR(it), flags);
-                if (minim_nullp(res))
-                {
-                    res = minim_cons(val, minim_null);
-                    it2 = res;
-                }
-                else
-                {
-                    MINIM_CDR(it2) = minim_cons(val, minim_null);
-                    it2 = MINIM_CDR(it2);
-                }
-
-                trailing = it;
-            }
-
-            if (trailing && !minim_nullp(it))   // not a list
-                MINIM_CDR(it2) = unsyntax_ast_node(env, it, flags);
-
-            return res;
-        }
-    }
-    else if (MINIM_STX_VECTORP(stx))
-    {
-        if (flags & UNSYNTAX_REC)
-        {
-            MinimObject *res, *obj;
-            size_t len;
-
-            obj = MINIM_STX_VAL(stx);
-            len = MINIM_VECTOR_LEN(obj);
-            res = minim_vector(len, GC_alloc(len * sizeof(MinimObject*)));
-            for (size_t i = 0; i < len; ++i)
-                MINIM_VECTOR_REF(res, i) = unsyntax_ast_node(env, MINIM_VECTOR_REF(obj, i), flags);
-
-            return res;
-        }
-    }
-
-    return MINIM_STX_VAL(stx);
-}
-
 // Specialized eval functions
 
 #define CALL_BUILTIN(env, proc, argc, args, perr)   \
@@ -449,7 +381,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
     }
     else if (MINIM_OBJ_VECTORP(val))
     {
-        return unsyntax_ast_rec(env, stx);
+        return syntax_unwrap_rec(env, stx);
     }
     else if (MINIM_OBJ_SYMBOLP(val))
     {
@@ -677,21 +609,6 @@ MinimObject *eval_module(MinimModule *module)
     }
 
     return minim_void;
-}
-
-MinimObject *unsyntax_ast(MinimEnv *env, MinimObject *ast)
-{
-    return unsyntax_ast_node(env, ast, 0);
-}
-
-MinimObject *unsyntax_ast_rec(MinimEnv *env, MinimObject *ast)
-{
-    return unsyntax_ast_node(env, ast, UNSYNTAX_REC);
-}
-
-MinimObject *unsyntax_ast_rec2(MinimEnv *env, MinimObject *ast)
-{
-    return unsyntax_ast_node(env, ast, UNSYNTAX_REC | UNSYNTAX_QUASIQUOTE);
 }
 
 char *eval_string(char *str, size_t len)

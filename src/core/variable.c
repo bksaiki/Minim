@@ -52,12 +52,12 @@ MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **
 
 MinimObject *minim_builtin_quote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return unsyntax_ast_rec(env, args[0]);
+    return syntax_unwrap_rec(env, args[0]);
 }
 
 MinimObject *minim_builtin_quasiquote(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return unsyntax_ast_rec2(env, args[0]);
+    return syntax_unwrap_rec2(env, args[0]);
 }
 
 MinimObject *minim_builtin_unquote(MinimEnv *env, size_t argc, MinimObject **args)

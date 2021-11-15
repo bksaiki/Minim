@@ -613,6 +613,46 @@ pattern_length(MinimObject *patterns)
 }
 
 static MinimObject *
+next_depth_patterns(MinimEnv *env, MinimObject *fpats, size_t plen, size_t pc, size_t j)
+{
+    MinimObject *npats, *sym, *trans, *val;
+    size_t depth;
+
+    npats = minim_vector(pc, GC_alloc(pc * sizeof(MinimObject*)));
+    for (size_t k = 0; k < pc; ++k)
+    {
+        sym = MINIM_CAR(MINIM_VECTOR_REF(fpats, k));
+        trans = MINIM_TRANSFORMER(MINIM_CDR(MINIM_VECTOR_REF(fpats, k)));
+        val = MINIM_CAR(trans);
+        depth = (size_t) MINIM_CDR(trans);
+        if (depth > 0)
+        {
+            PrintParams pp;
+            Buffer *bf;
+
+            if (j == 0 && minim_list_length(val) != plen)
+            {
+                init_buffer(&bf);
+                set_default_print_params(&pp);
+                writes_buffer(bf, "pattern length mismatch: ");
+                print_to_buffer(bf, val, env, &pp);
+                THROW(env, minim_error(get_buffer(bf), NULL));
+            }
+            
+            val = minim_cons(minim_list_ref(val, j), (void*)(depth - 1));
+            trans = minim_transform(val, MINIM_TRANSFORM_PATTERN);
+            MINIM_VECTOR_REF(npats, k) = minim_cons(sym, trans);
+        }
+        else
+        {
+            MINIM_VECTOR_REF(npats, k) = MINIM_VECTOR_REF(fpats, k);
+        }
+    }
+
+    return npats;
+}
+
+static MinimObject *
 get_pattern(const char *sym, MinimObject *pats)
 {
     for (size_t i = 0; i < MINIM_VECTOR_LEN(pats); ++i)
@@ -651,40 +691,9 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                 {
                     for (size_t j = 0; j < plen; ++j)
                     {
-                        MinimObject *npats, *sym, *trans, *val;
-                        size_t depth;
-
-                        npats = minim_vector(pc, GC_alloc(pc * sizeof(MinimObject*)));
-                        for (size_t k = 0; k < pc; ++k)
-                        {
-                            sym = MINIM_CAR(MINIM_VECTOR_REF(fpats, k));
-                            trans = MINIM_TRANSFORMER(MINIM_CDR(MINIM_VECTOR_REF(fpats, k)));
-                            val = MINIM_CAR(trans);
-                            depth = (size_t) MINIM_CDR(trans);
-                            if (depth > 0)
-                            {
-                                PrintParams pp;
-                                Buffer *bf;
-
-                                if (j == 0 && minim_list_length(val) != plen)
-                                {
-                                    init_buffer(&bf);
-                                    set_default_print_params(&pp);
-                                    writes_buffer(bf, "pattern length mismatch: ");
-                                    print_to_buffer(bf, val, env, &pp);
-                                    THROW(env, minim_error(get_buffer(bf), NULL));
-                                }
-                                
-                                val = minim_cons(minim_list_ref(val, j), (void*)(depth - 1));
-                                trans = minim_transform(val, MINIM_TRANSFORM_PATTERN);
-                                MINIM_VECTOR_REF(npats, k) = minim_cons(sym, trans);
-                            }
-                            else
-                            {
-                                MINIM_VECTOR_REF(npats, k) = MINIM_VECTOR_REF(fpats, k);
-                            }
-                        }
-
+                        MinimObject *npats, *val;
+                        
+                        npats = next_depth_patterns(env, fpats, plen, pc, j);
                         val = apply_transformation(env, MINIM_CAR(it), npats);
                         if (tl != NULL)     // list already started
                         {
@@ -765,40 +774,7 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                 {
                     for (size_t j = 0; j < plen; ++j)
                     {
-                        MinimObject *npats, *sym, *trans, *val;
-                        size_t depth;
-
-                        npats = minim_vector(pc, GC_alloc(pc * sizeof(MinimObject*)));
-                        for (size_t k = 0; k < pc; ++k)
-                        {
-                            sym = MINIM_CAR(MINIM_VECTOR_REF(fpats, k));
-                            trans = MINIM_TRANSFORMER(MINIM_CDR(MINIM_VECTOR_REF(fpats, k)));
-                            val = MINIM_CAR(trans);
-                            depth = (size_t) MINIM_CDR(trans);
-                            if (depth > 0)
-                            {
-                                PrintParams pp;
-                                Buffer *bf;
-
-                                if (j == 0 && minim_list_length(val) != plen)
-                                {
-                                    init_buffer(&bf);
-                                    set_default_print_params(&pp);
-                                    writes_buffer(bf, "pattern length mismatch: ");
-                                    print_to_buffer(bf, val, env, &pp);
-                                    THROW(env, minim_error(get_buffer(bf), NULL));
-                                }
-                                
-                                val = minim_cons(minim_list_ref(val, j), (void*)(depth - 1));
-                                trans = minim_transform(val, MINIM_TRANSFORM_PATTERN);
-                                MINIM_VECTOR_REF(npats, k) = minim_cons(sym, trans);
-                            }
-                            else
-                            {
-                                MINIM_VECTOR_REF(npats, k) = MINIM_VECTOR_REF(fpats, k);
-                            }
-                        }
-
+                        MinimObject *npats = next_depth_patterns(env, fpats, plen, pc, j);
                         arr[r + j] = apply_transformation(env, MINIM_VECTOR_REF(vec, i), npats);
                     }
                 }

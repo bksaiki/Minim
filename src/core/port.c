@@ -73,7 +73,7 @@ static MinimObject *read_syntax(MinimEnv *env, MinimObject *port)
         THROW(env, minim_err(e));
     }
 
-    return unsyntax_ast_rec(env, stx);
+    return syntax_unwrap_rec(env, stx);
 }
 
 //

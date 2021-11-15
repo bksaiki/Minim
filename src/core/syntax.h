@@ -34,4 +34,11 @@ MinimObject *constant_fold(MinimEnv *env, MinimObject *ast);
 // Converts an object to syntax.
 MinimObject *datum_to_syntax(MinimEnv *env, MinimObject *obj);
 
+// Recursively unwraps a syntax object.
+MinimObject *syntax_unwrap_rec(MinimEnv *env, MinimObject *stx);
+
+// Recursively unwraps a syntax object.
+// Allows evaluation for `unquote`.
+MinimObject *syntax_unwrap_rec2(MinimEnv *env, MinimObject *stx);
+
 #endif
