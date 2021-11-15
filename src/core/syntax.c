@@ -50,9 +50,7 @@ size_t syntax_proper_list_len(MinimObject *stx)
 {
     size_t len = 0;
 
-    if (MINIM_STX_PAIRP(stx))
-        stx = MINIM_STX_VAL(stx);
-
+    stx = MINIM_STX_VAL(stx);
     while (MINIM_OBJ_PAIRP(stx))
     {
         ++len;
@@ -576,7 +574,7 @@ static MinimObject *fold_datum(MinimEnv *env, MinimObject *stx, MinimObject *obj
     {
         return minim_cons(stx, NULL);
     }
-    else if (MINIM_OBJ_STRINGP(obj))
+    else if (MINIM_OBJ_STRINGP(obj) || MINIM_OBJ_NUMBERP(obj))
     {
         return minim_cons(datum_to_syntax(env, obj), obj);
     }

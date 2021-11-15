@@ -118,13 +118,11 @@ static size_t
 list_ellipse_pos(MinimObject *lst)
 {
     size_t i = 0;
-    for (MinimObject *it = lst; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+    for (MinimObject *it = lst; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it), ++i)
     {
         MinimObject *elem = MINIM_CAR(it);
         if (MINIM_STX_SYMBOLP(elem) && strcmp(MINIM_STX_SYMBOL(elem), "...") == 0)
             return i;
-
-        ++i;
     }
 
     return 0;
@@ -267,12 +265,16 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
         if (!MINIM_OBJ_PAIRP(stx_e) && !minim_nullp(stx_e))
             return false;
 
-        match_len = minim_list_length(match_e);
-        stx_len = minim_list_length(stx_e);
+        match_len = syntax_proper_list_len(match);
+        stx_len = syntax_proper_list_len(stx);
         ell_pos = list_ellipse_pos(match_e);
         if (ell_pos != 0)       // ellipse in pattern
         {
             size_t before, i;
+
+            // must be a proper list
+            if (stx_len == SIZE_MAX)
+                return false;
             
             i = 0;
             before = ell_pos - 1;
@@ -292,6 +294,9 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                         MinimObject *after_it;
 
                         init_env(&env2, env, NULL);
+                        if (stx_len + 2 < match_len)    // not long enough
+                            return false;
+
                         after_it = minim_list_drop(stx_it, stx_len + 2 - match_len);
                         for (; stx_it != after_it; stx_it = MINIM_CDR(stx_it))
                         {
@@ -309,6 +314,11 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                     }
 
                     match_it = MINIM_CDR(match_it);
+                    if (minim_nullp(match_it))
+                        return false;
+
+                    match_it = MINIM_CDR(match_it);
+                    ++i;
                 }
                 else
                 {
@@ -317,27 +327,32 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
 
                     if (!match_transform(env, MINIM_CAR(match_it), MINIM_CAR(stx_it), reserved, pdepth))
                         return false;
+
+                    match_it = MINIM_CDR(match_it);
+                    ++i;
+
+                    if (minim_nullp(stx_it))
+                        return minim_nullp(match_it);
+
+                    stx_it = MINIM_CDR(stx_it);
                 }
-
-                match_it = MINIM_CDR(match_it);
-                ++i;
-
-                // ellipse is last thing
-                if (minim_nullp(stx_it))
-                    return minim_nullp(match_it);
-
-                stx_it = MINIM_CDR(stx_it);
             }
         }
         else
         {
-            if (match_len != stx_len)
-                return false;
+            if (match_len == SIZE_MAX)
+                match_len = syntax_list_len(match);
+
+            if (stx_len == SIZE_MAX)
+                stx_len = syntax_list_len(stx);
 
             match_it = match_e;
             stx_it = stx_e;
             while (MINIM_OBJ_PAIRP(match_it))
             {
+                if (minim_nullp(stx_it))
+                    return false;
+
                 if (!match_transform(env, MINIM_CAR(match_it), MINIM_CAR(stx_it), reserved, pdepth))
                     return false;
 
@@ -346,10 +361,13 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
             }
         }
 
-        if (!minim_nullp(match_it) && !match_transform(env, match_it, stx_it, reserved, pdepth))
-            return false;
+        // proper list
+        if (minim_nullp(match_it))
+            return minim_nullp(stx_it);
 
-        return true;
+        // reform syntax
+        stx = datum_to_syntax(env, stx_it);
+        return match_transform(env, match_it, stx, reserved, pdepth);
     }
     if (MINIM_STX_VECTORP(match))
     {
@@ -1165,6 +1183,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
 
             init_env(&env2, env, NULL);
             minim_symbol_table_merge(env2->table, match_env->table);
+            env2->flags &= ~MINIM_ENV_TAIL_CALLABLE;
             val = eval_ast_no_check(env2, replace);
             if (!MINIM_OBJ_ASTP(val))
                 THROW(env, minim_error("expected syntax as result", "syntax-case"));

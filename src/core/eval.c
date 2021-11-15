@@ -49,41 +49,65 @@ static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, bool err)
 
 static MinimObject *unsyntax_ast_node(MinimEnv *env, MinimObject* stx, uint8_t flags)
 {
-    MinimObject *res = MINIM_STX_VAL(stx);
-    if (MINIM_OBJ_PAIRP(res))
+    if (MINIM_STX_PAIRP(stx))
     {
-        if ((flags & UNSYNTAX_QUASIQUOTE) && MINIM_STX_SYMBOLP(MINIM_CAR(res))) // unquote
+        MinimObject *op;
+        
+        op = MINIM_STX_CAR(stx);
+        if ((flags & UNSYNTAX_QUASIQUOTE) && MINIM_STX_SYMBOLP(op)) // unquote
         {
-            MinimObject *proc = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(res)));
+            MinimObject *proc = env_get_sym(env, MINIM_STX_SYMBOL(op));
             if (proc && (MINIM_SYNTAX(proc) == minim_builtin_unquote))
-                return eval_ast_no_check(env, MINIM_CADR(res));
+                return eval_ast_no_check(env, MINIM_STX_CADR(stx));
         }
 
         if (flags & UNSYNTAX_REC)
         {
-            MinimObject *it, *trailing;
+            MinimObject *res, *it, *it2, *trailing;
 
             trailing = NULL;
-            for (it = res; MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
+            res = minim_null;
+            for (it = MINIM_STX_VAL(stx); MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
             {
-                MINIM_CAR(it) = unsyntax_ast_node(env, MINIM_CAR(it), flags);
+                MinimObject *val = unsyntax_ast_node(env, MINIM_CAR(it), flags);
+                if (minim_nullp(res))
+                {
+                    res = minim_cons(val, minim_null);
+                    it2 = res;
+                }
+                else
+                {
+                    MINIM_CDR(it2) = minim_cons(val, minim_null);
+                    it2 = MINIM_CDR(it2);
+                }
+
                 trailing = it;
             }
 
             if (trailing && !minim_nullp(it))   // not a list
-                MINIM_CDR(trailing) = unsyntax_ast_node(env, it, flags);
+                MINIM_CDR(it2) = unsyntax_ast_node(env, it, flags);
+
+            return res;
         }
     }
-    else if (MINIM_OBJ_VECTORP(res))
+    else if (MINIM_STX_VECTORP(stx))
     {
         if (flags & UNSYNTAX_REC)
         {
-            for (size_t i = 0; i < MINIM_VECTOR_LEN(res); ++i)
-                MINIM_VECTOR_REF(res, i) = unsyntax_ast_node(env, MINIM_VECTOR_REF(res, i), flags);
+            MinimObject *res, *obj;
+            size_t len;
+
+            obj = MINIM_STX_VAL(stx);
+            len = MINIM_VECTOR_LEN(obj);
+            res = minim_vector(len, GC_alloc(len * sizeof(MinimObject*)));
+            for (size_t i = 0; i < len; ++i)
+                MINIM_VECTOR_REF(res, i) = unsyntax_ast_node(env, MINIM_VECTOR_REF(obj, i), flags);
+
+            return res;
         }
     }
-    
-    return res;
+
+    return MINIM_STX_VAL(stx);
 }
 
 // Specialized eval functions
@@ -599,8 +623,9 @@ void eval_module_macros(MinimModule *module)
         if (expr_is_import(module->env, module->exprs[i]))
             continue;
 
-        if (expr_is_macro(module->env, module->exprs[i]))
+        if (expr_is_macro(module->env, module->exprs[i])) {
             eval_top_level(module->env, module->exprs[i], minim_builtin_def_syntaxes);
+        }
     }
 
     // apply transforms
@@ -613,13 +638,13 @@ void eval_module_macros(MinimModule *module)
     }
 
     // constant fold
-    for (size_t i = 0; i < module->exprc; ++i)
-    {
-        if (expr_is_module_level(module->env, module->exprs[i]))
-            continue;
+    // for (size_t i = 0; i < module->exprc; ++i)
+    // {
+    //     if (expr_is_module_level(module->env, module->exprs[i]))
+    //         continue;
 
-        module->exprs[i] = constant_fold(module->env, module->exprs[i]);
-    }
+    //     module->exprs[i] = constant_fold(module->env, module->exprs[i]);
+    // }
 }
 
 MinimObject *eval_module(MinimModule *module)
@@ -635,6 +660,7 @@ MinimObject *eval_module(MinimModule *module)
             continue;
 
         check_syntax(module->env, module->exprs[i]);
+        // printf("eval: "); print_syntax_to_port(module->exprs[i], stdout); printf("\n");
         res = eval_ast_no_check(module->env, module->exprs[i]);
         if (!minim_voidp(res))
         {

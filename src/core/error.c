@@ -456,8 +456,7 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
     {
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      NULL,
-                                      NULL));
+                                      NULL, NULL));
     }
     else if (argc == 3)
     {
@@ -466,8 +465,7 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      MINIM_STX_VAL(args[2]),
-                                      NULL));
+                                      args[2], NULL));
     }
     else
     {
@@ -476,8 +474,8 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      MINIM_STX_VAL(args[2]),
-                                      MINIM_STX_VAL(args[3])));
+                                      args[2],
+                                      args[3]));
     }
 
     return NULL; // avoid compile errors
