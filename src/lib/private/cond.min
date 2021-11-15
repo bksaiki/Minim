@@ -22,7 +22,7 @@
                                  [(else?)
                                   (lambda (i)
                                     (and (identifier? i)
-                                      (equal? i (quote-syntax else))))])
+                                         (identifier=? i (quote-syntax else))))])
                       (if (null? then)
                           (serr "missing body" c)
                           (if (else? test)

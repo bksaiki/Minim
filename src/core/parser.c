@@ -14,14 +14,13 @@
 #define closed_paren(x)     (x == ')' || x == ']' || x == '{')
 #define normal_char(x)      (x && !open_paren(x) && !closed_paren(x) && !isspace(x))
 
-#define IF_STR_EQUAL_REPLACE(x, str, r)                                 \
-{                                                                       \
-    if (strcmp(x, str) == 0)                                            \
-    {                                                                   \
-        x = GC_realloc_atomic(x, (strlen(r) + 1) * sizeof(char));       \
-        strcpy(x, r);                                                   \
-        return true;                                                    \
-    }                                                                   \
+#define IF_STR_EQUAL_REPLACE(stx, str, r)           \
+{                                                   \
+    if (strcmp(MINIM_STX_SYMBOL(stx), str) == 0)    \
+    {                                               \
+        MINIM_STX_VAL(stx) = intern(r);             \
+        return true;                                \
+    }                                               \
 }
 
 #define START_SYNTAX_LOC(loc, p)                                \
@@ -191,8 +190,8 @@ static bool verify_list(MinimObject *stx, MinimObject **perr)
 
 static bool expand_syntax(MinimObject *stx)
 {
-    IF_STR_EQUAL_REPLACE(MINIM_STX_SYMBOL(stx), "f", "false");
-    IF_STR_EQUAL_REPLACE(MINIM_STX_SYMBOL(stx), "t", "true");
+    IF_STR_EQUAL_REPLACE(stx, "f", "false");
+    IF_STR_EQUAL_REPLACE(stx, "t", "true");
     return false;
 }
 
@@ -607,17 +606,12 @@ static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flag
 
 MinimObject *minim_parse_port(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    MinimObject *node;
+    MinimObject *stx;
     char c;
 
     *perr = NULL;
-    node = read_top(port, perr, flags);
+    stx = read_top(port, perr, flags);
     if (*perr == NULL && MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
-    {
-        c = next_char(port);
-        if (c == port_eof(port))    update_port(port, c);
-        else                        put_back(port, c);
-    }
-
-    return node;
+        CHECK_EOF(port, c);
+    return stx;
 }

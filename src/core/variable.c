@@ -129,3 +129,18 @@ MinimObject *minim_builtin_dump_symbols(MinimEnv *env, size_t argc, MinimObject 
     env_dump_symbols(env);
     return minim_void;
 }
+
+MinimObject *minim_builtin_identifier_equalp(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    MinimObject *a, *b;
+    
+    a = eval_ast_no_check(env, args[0]);
+    if (!MINIM_STX_SYMBOLP(a))
+        THROW(env, minim_argument_error("identifier?", "identifier=?", 0, args[0]));
+
+    b = eval_ast_no_check(env, args[1]);
+    if (!MINIM_STX_SYMBOLP(b))
+        THROW(env, minim_argument_error("identifier?", "identifier=?", 0, args[1]));
+
+    return to_bool(minim_eqp(MINIM_STX_VAL(a), MINIM_STX_VAL(b)));
+}

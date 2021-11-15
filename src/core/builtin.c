@@ -101,6 +101,8 @@ void init_builtins()
     init_builtin("syntax-case", MINIM_OBJ_SYNTAX, minim_builtin_syntax_case);
     init_builtin("datum->syntax", MINIM_OBJ_FUNC, minim_builtin_to_syntax);
     init_builtin("syntax", MINIM_OBJ_SYNTAX, minim_builtin_template);
+    init_builtin("identifier=?", MINIM_OBJ_SYNTAX, minim_builtin_identifier_equalp);
+    
 
     // Errors
     init_builtin("error", MINIM_OBJ_FUNC, minim_builtin_error);

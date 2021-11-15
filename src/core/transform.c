@@ -1010,9 +1010,9 @@ MinimObject* transform_syntax(MinimEnv *env, MinimObject* stx)
                 else if (MINIM_OBJ_TRANSFORMP(op))
                 {
                     MinimObject *trans;
-                    printf("t> "); print_syntax_to_port(stx, stdout); printf("\n");
+                    // printf("t> "); print_syntax_to_port(stx, stdout); printf("\n");
                     trans = transform_loc(env, op, stx);
-                    printf("t< "); print_syntax_to_port(trans, stdout); printf("\n");
+                    // printf("t< "); print_syntax_to_port(trans, stdout); printf("\n");
                     return transform_syntax(env, trans);
                 }
             }

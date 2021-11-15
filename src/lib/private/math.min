@@ -29,7 +29,7 @@
 
 (def factorial (n)
   (unless (exact-nonnegative-integer? n)
-    (argument error 'factorial "non-negative integer" n))
+    (argument-error 'factorial "non-negative integer" n))
   (let loop ([n n] [acc 1])
     (if (zero? n)
         acc
