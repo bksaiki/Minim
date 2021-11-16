@@ -19,6 +19,7 @@ LDFLAGS 	:= -lm -lgmp
 
 DEBUG_FLAGS		:= -g -DENABLE_STATS
 PROFILE_FLAGS	:= -O2 -DNDEBUG -march=native -pg
+COVERAGE_FLAGS	:= -g -march=native -fprofile-arcs -ftest-coverage
 RELEASE_FLAGS 	:= -O3 -DNDEBUG -march=native
 
 CP := cp
@@ -38,6 +39,9 @@ debug:
 
 profile:
 	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
+
+coverage:
+	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
 
 release:
 	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim

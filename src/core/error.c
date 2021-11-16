@@ -27,7 +27,7 @@ static void gc_minim_error_desc_mrk(void (*mrk)(void*, void*), void *gc, void *p
 void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char *name)
 {
     MinimErrorTrace *trace = GC_alloc_opt(sizeof(MinimErrorTrace), NULL, gc_minim_error_trace_mrk);
-    copy_syntax_loc(&trace->loc, loc);
+    trace->loc = loc;
     trace->multiple = false;
     trace->next = NULL;
     *ptrace = trace;
@@ -125,7 +125,7 @@ static void buffer_write_ordinal(Buffer *bf, size_t ord)
     else                                        writes_buffer(bf, "th");
 }
 
-MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *expr, SyntaxNode *subexpr)
+MinimObject *minim_syntax_error(const char *msg, const char *where, MinimObject *expr, MinimObject *subexpr)
 {
     MinimObject *obj;
     MinimError *err;
@@ -136,28 +136,25 @@ MinimObject *minim_syntax_error(const char *msg, const char *where, SyntaxNode *
     if (expr && !subexpr)
     {
         init_buffer(&bf);
-        ast_to_buffer(expr, bf);
+        print_syntax_to_buffer(bf, expr);
         init_minim_error_desc_table(&err->table, 1);
         minim_error_desc_table_set(err->table, 0, "in", get_buffer(bf));
-
-        if (expr->loc)
-            minim_error_add_trace(err, expr->loc, NULL);
     }
     else if (expr && subexpr)
     {
         init_buffer(&bf);
-        ast_to_buffer(subexpr, bf);
+        print_syntax_to_buffer(bf, subexpr);
         init_minim_error_desc_table(&err->table, 2);
         minim_error_desc_table_set(err->table, 0, "at", get_buffer(bf));
         obj = minim_err(err);
 
         init_buffer(&bf);
-        ast_to_buffer(expr, bf);
+        print_syntax_to_buffer(bf, expr);
         minim_error_desc_table_set(err->table, 1, "in", get_buffer(bf));
-        
-        if (expr->loc)
-            minim_error_add_trace(err, expr->loc, NULL);
     }
+
+    if (MINIM_STX_LOC(expr))
+        minim_error_add_trace(err, MINIM_STX_LOC(expr), NULL);
 
     return obj;
 }
@@ -218,7 +215,7 @@ MinimObject *minim_arity_error(const char *where, size_t min, size_t max, size_t
     return minim_err(err);
 }
 
-MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, SyntaxNode *expr)
+MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t actual, MinimObject *expr)
 {
     MinimError *err;
     Buffer *bf;
@@ -237,7 +234,7 @@ MinimObject *minim_values_arity_error(const char *where, size_t expected, size_t
     if (expr)
     {
         reset_buffer(bf);
-        ast_to_buffer(expr, bf);
+        print_syntax_to_buffer(bf, expr);
         minim_error_desc_table_set(err->table, 2, "in", get_buffer(bf));
     }
     
@@ -263,8 +260,8 @@ static void fill_trace_info(MinimError *err, MinimEnv *env)
 {
     if (env->callee && env->callee->name)
     {
-        if (env->callee->body->loc && env->callee->name)
-            minim_error_add_trace(err, env->callee->body->loc, env->callee->name);
+        if (MINIM_STX_LOC(env->callee->body) && env->callee->name)
+            minim_error_add_trace(err, MINIM_STX_LOC(env->callee->body), env->callee->name);
     }
 
     if (env->caller)        fill_trace_info(err, env->caller);
@@ -459,8 +456,7 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
     {
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      NULL,
-                                      NULL));
+                                      NULL, NULL));
     }
     else if (argc == 3)
     {
@@ -469,8 +465,7 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      MINIM_AST(args[2]),
-                                      NULL));
+                                      args[2], NULL));
     }
     else
     {
@@ -479,8 +474,8 @@ MinimObject *minim_builtin_syntax_error(MinimEnv *env, size_t argc, MinimObject 
 
         THROW(env, minim_syntax_error(MINIM_STRING(args[1]),
                                       (minim_falsep(args[0]) ? NULL : MINIM_STRING(args[0])),
-                                      MINIM_AST(args[2]),
-                                      MINIM_AST(args[3])));
+                                      args[2],
+                                      args[3]));
     }
 
     return NULL; // avoid compile errors

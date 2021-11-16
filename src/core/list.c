@@ -307,16 +307,25 @@ MinimObject *minim_list(MinimObject **args, size_t len)
     return head;
 }
 
-MinimObject *minim_list_ref(MinimObject *lst, size_t len)
+MinimObject *minim_list_append2(MinimObject *a, MinimObject *b)
+{
+    MinimObject *tail;
+    MINIM_TAIL(tail, a);
+    MINIM_CDR(tail) = b;
+    return a;
+}
+
+MinimObject *minim_list_drop(MinimObject *lst, size_t n)
 {
     MinimObject *it;
 
-    if (len == 0)
-        return MINIM_CAR(lst);
+    if (n == 0)
+        return lst;
 
     it = MINIM_CDR(lst);
-    for (size_t i = 1; i < len; ++i, it = MINIM_CDR(it));
-    return MINIM_CAR(it);
+    for (size_t i = 1; i < n; ++i)
+        it = MINIM_CDR(it);
+    return it;
 }
 
 size_t minim_list_length(MinimObject *lst)

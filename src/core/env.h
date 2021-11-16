@@ -26,10 +26,6 @@ typedef struct MinimEnv
 // Initializes a new environment object.
 void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee);
 
-// Recursively copies the stack of environment objects
-// Ignores the lowest environment
-void rcopy_env(MinimEnv **penv, MinimEnv *src);
-
 // Returns a the object associated with the symbol. Returns NULL if
 // the symbol is not in the table
 MinimObject *env_get_sym(MinimEnv *env, const char *sym);

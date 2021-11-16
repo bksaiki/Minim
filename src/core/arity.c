@@ -291,6 +291,7 @@ bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_MIN(syntax_case, 2)
     SET_ARITY_EXACT(syntax, 1);
     SET_ARITY_EXACT(template, 1);
+    SET_ARITY_EXACT(identifier_equalp, 2);
 
     parity->low = 0;
     parity->high = SIZE_MAX;

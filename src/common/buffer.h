@@ -19,7 +19,6 @@ typedef struct Buffer
 #define buffer_size(bf) ((bf)->pos)
 
 void init_buffer(Buffer **pbf);
-void copy_buffer(Buffer **pbf, Buffer *src);
 
 void trim_buffer(Buffer *bf);
 void clear_buffer(Buffer *bf);

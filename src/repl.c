@@ -102,7 +102,7 @@ int minim_repl(char **argv, uint32_t flags)
         while (1)
         {   
             MinimObject *obj;
-            SyntaxNode *ast, *err;
+            MinimObject *ast, *err;
 
             // get user input
             while (1)
@@ -113,7 +113,7 @@ int minim_repl(char **argv, uint32_t flags)
                 ast = minim_parse_port(minim_input_port, &err, READ_FLAG_WAIT);
                 if (err)
                 {
-                    printf("; bad syntax: %s\n", err->sym);
+                    // printf("; bad syntax: %s\n", err->sym);
                     printf(";   in REPL:%zu:%zu", MINIM_PORT_ROW(minim_input_port),
                                                   MINIM_PORT_COL(minim_input_port));
                     fflush(stdout);

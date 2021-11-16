@@ -2,12 +2,12 @@
 #define _MINIM_LAMBDA_H_
 
 #include "../common/path.h"
-#include "ast.h"
 #include "env.h"
+#include "syntax.h"
 
 typedef struct MinimLambda
 {
-    SyntaxNode *body;
+    MinimObject *body;
     SyntaxLoc *loc;
     MinimEnv *env;
     char **args, *rest, *name;
@@ -17,7 +17,6 @@ typedef struct MinimLambda
 // Functions
 
 void init_minim_lambda(MinimLambda **plam);
-void copy_minim_lambda(MinimLambda **cp, MinimLambda *src);
 
 // Evaluates the given lambda expression with `env` as the caller and
 // lam->env as the previous namespace.

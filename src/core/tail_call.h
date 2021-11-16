@@ -12,6 +12,5 @@ typedef struct MinimTailCall
 } MinimTailCall;
 
 void init_minim_tail_call(MinimTailCall **ptail, MinimLambda *lam, size_t argc, MinimObject **args);
-void copy_minim_tail_call(MinimTailCall **ptail, MinimTailCall *src);
 
 #endif

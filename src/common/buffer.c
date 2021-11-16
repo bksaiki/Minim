@@ -24,18 +24,6 @@ void init_buffer(Buffer **pbf)
     *pbf = bf;
 }
 
-void copy_buffer(Buffer **pbf, Buffer *src)
-{
-    Buffer *bf = GC_alloc_opt(sizeof(Buffer), NULL, gc_buffer_mrk);
-    
-    bf->data = GC_alloc_atomic(src->curr * sizeof(char));
-    bf->curr = src->curr;
-    bf->pos = src->pos;
-    memcpy(bf->data, src->data, src->pos + 1);
-
-    *pbf = bf;
-}
-
 // *** Resizing *** //
 
 static void resize_buffer(Buffer *bf, size_t size)

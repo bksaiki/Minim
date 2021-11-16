@@ -57,7 +57,7 @@ typedef enum MinimObjectType
 #define minim_closure_size          (2 * sizeof(void*))
 #define minim_tail_call_size        (2 * sizeof(void*))
 #define minim_transform_size        (3 * sizeof(void*))
-#define minim_ast_size              (2 * sizeof(void*))
+#define minim_ast_size              (3 * sizeof(void*))
 #define minim_sequence_size         (2 * sizeof(void*))
 #define minim_values_size           (3 * sizeof(void*))
 #define minim_error_size            (2 * sizeof(void*))
@@ -144,7 +144,8 @@ extern MinimObject *minim_input_port;
 #define MINIM_TAIL_CALL(obj)        (*((MinimTailCall**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_TRANSFORM_TYPE(obj)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_TRANSFORMER(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
-#define MINIM_AST(obj)              (*((SyntaxNode**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_STX_VAL(obj)          (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_STX_LOC(obj)          (*((SyntaxLoc**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
 #define MINIM_SEQUENCE(obj)         (*((MinimSeq**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_VALUES(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_VALUES_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))[i])
@@ -168,10 +169,36 @@ extern MinimObject *minim_input_port;
 #define MINIM_CDAR(obj)             MINIM_CDR(MINIM_CAR(obj))
 #define MINIM_CDDR(obj)             MINIM_CDR(MINIM_CDR(obj))
 
+#define MINIM_TAIL(dest, x)                     \
+{                                               \
+    dest = x;                                   \
+    while (!minim_nullp(MINIM_CDR(dest)))       \
+        dest = MINIM_CDR(dest);                 \
+}
+
+#define MINIM_CDNR(dest, x, it, n)                              \
+{                                                               \
+    dest = x;                                                   \
+    for (size_t it = 0; it < n; ++it, dest = MINIM_CDR(dest));  \
+}
+
+#define MINIM_STX_CAR(o)        (MINIM_CAR(MINIM_STX_VAL(o)))
+#define MINIM_STX_CDR(o)        (MINIM_CDR(MINIM_STX_VAL(o)))
+#define MINIM_STX_CADR(o)       (MINIM_CADR(MINIM_STX_VAL(o)))
+#define MINIM_STX_TAIL(d, o)    (MINIM_TAIL(d, MINIM_STX_VAL(o)))
+#define MINIM_STX_SYMBOL(o)     (MINIM_SYMBOL(MINIM_STX_VAL(o)))
+
 // Setters
 
 #define MINIM_SYMBOL_SET_INTERNED(obj, s)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 #define MINIM_PROMISE_SET_STATE(obj, s)     (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
+
+#define MINIM_VECTOR_RESIZE(v, s)                                               \
+{                                                                               \
+    MINIM_VECTOR_LEN(v) = s;                                                    \
+    MINIM_VECTOR(v) = GC_realloc(MINIM_VECTOR(v),                               \
+                                 MINIM_VECTOR_LEN(v) * sizeof(MinimObject*));   \
+}
 
 // Special values
 
@@ -190,10 +217,15 @@ extern MinimObject *minim_input_port;
 
 // Additional predicates
 
+#define MINIM_STX_NULLP(x)          (MINIM_OBJ_ASTP(x) && minim_nullp(MINIM_STX_VAL(x)))
+#define MINIM_STX_PAIRP(x)          (MINIM_OBJ_ASTP(x) && MINIM_OBJ_PAIRP(MINIM_STX_VAL(x)))
+#define MINIM_STX_SYMBOLP(x)        (MINIM_OBJ_ASTP(x) && MINIM_OBJ_SYMBOLP(MINIM_STX_VAL(x)))
+#define MINIM_STX_VECTORP(x)        (MINIM_OBJ_ASTP(x) && MINIM_OBJ_VECTORP(MINIM_STX_VAL(x)))
+
 #define MINIM_INPUT_PORTP(x)        (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_READ))
 #define MINIM_OUTPUT_PORTP(x)       (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_WRITE))
 
-//  Initialization
+//  Initialization (simple)
 
 MinimObject *minim_exactnum(void *num);
 MinimObject *minim_inexactnum(double num);
@@ -208,7 +240,7 @@ MinimObject *minim_syntax(void *func);
 MinimObject *minim_closure(void *closure);
 MinimObject *minim_tail_call(void *tc);
 MinimObject *minim_transform(void *binding, int type);
-MinimObject *minim_ast(void *ast);
+MinimObject *minim_ast(void *val, void *loc);
 MinimObject *minim_sequence(void *seq);
 MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);

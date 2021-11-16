@@ -4,28 +4,44 @@
 #include "../gc/gc.h"
 #include "../common/path.h"
 #include "error.h"
+#include "global.h"
 #include "parser.h"
 #include "port.h"
+#include "string.h"
+#include "syntax.h"
 
 #define open_paren(x)       (x == '(' || x == '[' || x == '{')
 #define closed_paren(x)     (x == ')' || x == ']' || x == '{')
 #define normal_char(x)      (x && !open_paren(x) && !closed_paren(x) && !isspace(x))
 
-#define IF_STR_EQUAL_REPLACE(x, str, r)                                 \
-{                                                                       \
-    if (strcmp(x, str) == 0)                                            \
-    {                                                                   \
-        x = GC_realloc_atomic(x, (strlen(r) + 1) * sizeof(char));       \
-        strcpy(x, r);                                                   \
-        return true;                                                    \
-    }                                                                   \
+#define IF_STR_EQUAL_REPLACE(stx, str, r)           \
+{                                                   \
+    if (strcmp(MINIM_STX_SYMBOL(stx), str) == 0)    \
+    {                                               \
+        MINIM_STX_VAL(stx) = intern(r);             \
+        return true;                                \
+    }                                               \
 }
 
-#define ADD_SYNTAX_LOC(node, p)                                 \
+#define START_SYNTAX_LOC(loc, p)                                \
 {                                                               \
-    init_syntax_loc(&(node)->loc, MINIM_PORT_NAME(port));       \
-    (node)->loc->row = MINIM_PORT_ROW(port);                    \
-    (node)->loc->col = MINIM_PORT_COL(port);                    \
+    loc = init_syntax_loc(minim_symbol(MINIM_PORT_NAME(p)),     \
+                          MINIM_PORT_ROW(p),                    \
+                          MINIM_PORT_COL(p),                    \
+                          MINIM_PORT_POS(p),                    \
+                          0);                                   \
+}
+
+#define END_SYNTAX_LOC(loc, p)                                  \
+{                                                               \
+    (loc)->span = MINIM_PORT_POS(p) - (loc)->pos;               \
+}
+
+#define CHECK_EOF(p, c)                                                         \
+{                                                                               \
+    c = next_char(p);                                                           \
+    if ((c) == port_eof(p))     MINIM_PORT_MODE(p) &= ~MINIM_PORT_MODE_READY;   \
+    else                        put_back(p, c);                                 \
 }
 
 //
@@ -33,7 +49,7 @@
 //
 
 // Forward declaration
-static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags);
+static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flags);
 
 static char next_char(MinimObject *port)
 {
@@ -65,181 +81,336 @@ static char next_char(MinimObject *port)
     return c;
 }
 
-static SyntaxNode *list_error()
-{
-    SyntaxNode *err;
-    const char *msg = "illegal use of `.`";
+#define ILLEGAL_DOT_MSG_LEN         19
+#define UNEXPECTED_EOF_MSG_LEN      24
 
-    init_syntax_node(&err, SYNTAX_NODE_DATUM);
-    err->sym = GC_alloc_atomic((strlen(msg) + 1) * sizeof(char));
-    strcpy(err->sym, msg);
-    return err;
+static MinimObject *list_error()
+{
+    const char msg[ILLEGAL_DOT_MSG_LEN] = "illegal use of `.`";
+    char *str;
+
+    str = GC_alloc_atomic(ILLEGAL_DOT_MSG_LEN * sizeof(char*));
+    strncpy(str, msg, ILLEGAL_DOT_MSG_LEN);
+    return minim_symbol(str);
 }
 
-static SyntaxNode *end_of_input_error()
+static MinimObject *end_of_input_error()
 {
-    SyntaxNode *err;
-    const char *msg = "unexpected end of input";
+    const char msg[UNEXPECTED_EOF_MSG_LEN] = "unexpected end of input";
+    char *str;
 
-    init_syntax_node(&err, SYNTAX_NODE_DATUM);
-    err->sym = GC_alloc_atomic((strlen(msg) + 1) * sizeof(char));
-    strcpy(err->sym, msg);
-    return err;
+    str = GC_alloc_atomic(ILLEGAL_DOT_MSG_LEN * sizeof(char*));
+    strncpy(str, msg, ILLEGAL_DOT_MSG_LEN);
+    return minim_symbol(str);
 }
 
-static bool expand_syntax(SyntaxNode *node)
+static MinimObject *bad_syntax_error(const char *syntax)
 {
-    IF_STR_EQUAL_REPLACE(node->sym, "f", "false");
-    IF_STR_EQUAL_REPLACE(node->sym, "t", "true");
-    return false;
+    Buffer *bf;
+
+    init_buffer(&bf);
+    writef_buffer(bf, "bad syntax #~s", syntax);
+    return minim_symbol(get_buffer(bf));
 }
 
-static bool expand_list(SyntaxNode *node, SyntaxNode **perr)
+static MinimObject *unexpected_char_error(char ch)
 {
-    bool ellipse;
+    Buffer *bf;
 
-    if (node->childc == 3 && node->children[1]->sym &&      // cons cell
-        strcmp(node->children[1]->sym, ".") == 0)
-    {
-        node->children[1] = node->children[2];
-        node->children = GC_realloc(node->children, 2 * sizeof(SyntaxNode*));
-        node->childc = 2;
-        node->type = SYNTAX_NODE_PAIR;
+    init_buffer(&bf);
+    writef_buffer(bf, "unexpected char ~c", ch);
+    return minim_symbol(get_buffer(bf));
+}
 
+static bool verify_list(MinimObject *stx, MinimObject **perr)
+{
+    MinimObject *h, *t, *i;
+    size_t list_len = syntax_list_len(stx);
+    bool dot = false;
+
+    if (list_len == 0)
         return true;
-    }
     
-    ellipse = false;
-    for (size_t i = 0; i < node->childc; ++i)       // (<elem> ... . <front> . <elem> ...)
+    h = MINIM_STX_VAL(stx);
+    MINIM_TAIL(t, h);
+    if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(h), ".") == 0)  // dot cannot be first element
     {
-        if (node->children[i]->sym && strcmp(node->children[i]->sym, ".") == 0)
+        *perr = list_error();
+        return false;
+    }
+
+    t = MINIM_CAR(t);
+    if (MINIM_STX_SYMBOLP(t) && strcmp(MINIM_STX_SYMBOL(t), ".") == 0)  // dot cannot be last element
+    {
+        *perr = list_error();
+        return false;
+    }
+
+    i = MINIM_STX_CDR(stx);
+    while (MINIM_OBJ_PAIRP(i))
+    {
+        h = MINIM_CAR(i);
+        if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(h), ".") == 0)  // dot found
         {
-            if (ellipse)
+            if (dot)
             {
                 *perr = list_error();
                 return false;
             }
-            else if (i + 2 < node->childc && node->children[i + 2]->sym &&
-            strcmp(node->children[i + 2]->sym, ".") == 0)
+            else
             {
-                if (node->children[i + 1]->sym && strcmp(node->children[i + 1]->sym, ".") == 0)
+                dot = true;
+                t = MINIM_CDR(i);
+                if (MINIM_OBJ_PAIRP(t))
                 {
-                    *perr = list_error();
-                    return false;
+                    h = MINIM_CAR(t);
+                    if (!MINIM_STX_SYMBOLP(h) || strcmp(MINIM_STX_SYMBOL(h), ".") != 0)     // no dot
+                    { 
+                        t = MINIM_CDR(t);
+                        if (MINIM_OBJ_PAIRP(t))
+                        {
+                            h = MINIM_CAR(t);
+                            if (MINIM_STX_SYMBOLP(h) && strcmp(MINIM_STX_SYMBOL(h), ".") == 0)  // infix dot found
+                            {
+                                i = MINIM_CDR(t);
+                                continue;
+                            }
+                        }
+                    }
                 }
-
-                for (size_t j = i; j > 0; --j)
-                    node->children[j] = node->children[j - 1];
-
-                node->children[0] = node->children[i + 1];
-                for (size_t j = i + 3; j < node->childc; ++j)
-                    node->children[j - 2] = node->children[j];
-
-                node->childc -= 2;
-                node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                ellipse = true;
-            }
-            else if (i + 2 != node->childc)
-            {
-                *perr = list_error();
-                return false;
+                
             }
         }
+
+        i = MINIM_CDR(i);
     }
 
     return true;
 }
 
-static SyntaxNode *read_1ary(MinimObject *port, SyntaxNode **perr, const char *op, uint8_t flags)
+static bool expand_syntax(MinimObject *stx)
 {
-    SyntaxNode *node;
-
-    init_syntax_node(&node, SYNTAX_NODE_LIST);
-    node->children = GC_alloc(2 * sizeof(SyntaxNode*));
-    node->childc = 2;
-    ADD_SYNTAX_LOC(node, port);
-
-    init_syntax_node(&node->children[0], SYNTAX_NODE_DATUM);
-    node->children[0]->sym = GC_alloc_atomic((strlen(op) + 1) * sizeof(char));
-    strcpy(node->children[0]->sym, op);
-    ADD_SYNTAX_LOC(node, port);
-
-    node->children[1] = read_top(port, perr, flags);
-    return node;
+    IF_STR_EQUAL_REPLACE(stx, "f", "false");
+    IF_STR_EQUAL_REPLACE(stx, "t", "true");
+    return false;
 }
 
-static SyntaxNode *read_nested(MinimObject *port, SyntaxNode **perr, SyntaxNodeType type, uint8_t flags)
+static bool expand_list(MinimObject *stx, MinimObject **perr)
 {
-    SyntaxNode *node, *next;
+    size_t list_len;
+
+    if (!verify_list(stx, perr))
+        return false;
+    
+    list_len = syntax_list_len(stx);
+    if (list_len == 3)          // possible cons cell
+    {
+        MinimObject *h, *t, *d;
+
+        h = MINIM_STX_VAL(stx);
+        t = MINIM_CDR(h);
+        d = MINIM_CAR(t);
+        
+        // cons cell
+        if (MINIM_STX_SYMBOLP(d) && strcmp(MINIM_STX_SYMBOL(d), ".") == 0)
+            MINIM_CDR(h) = MINIM_CADR(t);    // remove dot
+    }
+    else if (list_len == 4)     // only can terminate in cons cell
+    {
+        MinimObject *l, *t, *d;
+
+        l = MINIM_CDR(MINIM_STX_VAL(stx));
+        t = MINIM_CDR(l);
+        d = MINIM_CAR(t);
+
+        // cons cell
+        if (MINIM_STX_SYMBOLP(d) && strcmp(MINIM_STX_SYMBOL(d), ".") == 0)
+            MINIM_CDR(l) = MINIM_CADR(t);    // remove dot
+
+    }
+    else if (list_len >= 5)     // possible infix
+    {
+        MinimObject *h, *t, *i1, *i2, *i3;
+
+        h = MINIM_STX_VAL(stx);     // list
+        t = MINIM_CDR(h);
+        i1 = MINIM_CAR(t);          // cadr of list
+        t = MINIM_CDR(t);
+        i2 = MINIM_CAR(t);          // caddr of list
+        t = MINIM_CDR(t);
+        
+        while (!minim_nullp(t))
+        {
+            i3 = MINIM_CAR(t);      // cadddr of list
+            if ((MINIM_STX_SYMBOLP(i1) && strcmp(MINIM_STX_SYMBOL(i1), ".") == 0) &&
+                (MINIM_STX_SYMBOLP(i3) && strcmp(MINIM_STX_SYMBOL(i3), ".") == 0))
+            {
+                MINIM_STX_VAL(stx) = minim_cons(i2, MINIM_STX_VAL(stx));
+                MINIM_CDR(h) = MINIM_CDR(t);
+
+                return true;
+            }
+
+            h = MINIM_CDR(h);
+            i1 = i2;
+            i2 = i3;
+            t = MINIM_CDR(t);
+        }
+
+        if (MINIM_STX_SYMBOLP(i1) && strcmp(MINIM_STX_SYMBOL(i1), ".") == 0)
+            MINIM_CDR(h) = i2;
+    }
+
+    return true;
+}
+
+static MinimObject *read_1ary(MinimObject *port, MinimObject **perr, const char *name, uint8_t flags)
+{
+    MinimObject *arg, *sym;
+    SyntaxLoc *loc;
+    
+    sym = intern(name);
+    START_SYNTAX_LOC(loc, port);
+    sym = minim_ast(sym, loc);
+    END_SYNTAX_LOC(loc, port);
+
+    START_SYNTAX_LOC(loc, port);
+    arg = read_top(port, perr, flags);
+    arg = minim_ast(minim_cons(sym, minim_cons(arg, minim_null)), loc);
+    END_SYNTAX_LOC(MINIM_STX_LOC(sym), port);
+    return arg;
+}
+
+static MinimObject *read_list(MinimObject *port, MinimObject **perr, uint8_t flags)
+{
+    MinimObject *lst, *it, *el;
+    SyntaxLoc *loc;
     char c;
 
-    init_syntax_node(&node, type);
-    ADD_SYNTAX_LOC(node, port);
-
+    START_SYNTAX_LOC(loc, port);
     c = next_char(port);
-    if (c == ')')
+    if (c == ')')           // empty list
     {
         update_port(port, c);
+        END_SYNTAX_LOC(loc, port);
+        return minim_ast(minim_null, loc);
     }
-    else
+
+    put_back(port, c);
+    lst = NULL;
+    while (true)
     {
-        put_back(port, c);
-        while (1)
+        el = read_top(port, perr, flags);
+        if (*perr)      // parse error
         {
-            next = read_top(port, perr, flags);
-            if (*perr)   return NULL;
+            END_SYNTAX_LOC(loc, port);
+            return minim_ast(minim_null, loc);
+        }
 
-            if (next)
-            {
-                ++node->childc;
-                node->children = GC_realloc(node->children, node->childc * sizeof(SyntaxNode*));
-                node->children[node->childc - 1] = next;
-            }
+        if (lst != NULL)    // list already constructed
+        {
+            MINIM_CDR(it) = minim_cons(el, minim_null);
+            it = MINIM_CDR(it);
+        }
+        else                // list not constructed
+        {
+            lst = minim_cons(el, minim_null);
+            it = lst;
+        }
 
-            c = next_char(port);
-            if (closed_paren(c))
+        c = next_char(port);
+        if (closed_paren(c))        // end of list
+        {
+            update_port(port, c);
+            break;
+        }
+        else if (c == port_eof(port))
+        {
+            if (!(flags & READ_FLAG_WAIT))
             {
-                update_port(port, c);
+                *perr = end_of_input_error();
                 break;
             }
-            else if (c == port_eof(port))
-            {
-                if (flags & READ_FLAG_WAIT)
-                {
-                    printf(" ");
-                }
-                else
-                {
-                    *perr = end_of_input_error();
-                    break;
-                }
-            }
-            else
-            {
-                put_back(port, c);
-            }
-        }
 
-        if (type == SYNTAX_NODE_LIST)
+            printf(" ");
+        }
+        else
         {
-            if (!expand_list(node, perr))
-                return NULL;
+            put_back(port, c);
         }
     }
 
-    c = next_char(port);
-    if (c == port_eof(port))    MINIM_PORT_MODE(port) &= ~MINIM_PORT_MODE_READY;
-    else                        put_back(port, c);
-
-    return node;
+    END_SYNTAX_LOC(loc, port);
+    lst = minim_ast(lst, loc);
+    expand_list(lst, perr);
+    CHECK_EOF(port, c);
+    return lst;
 }
 
-static SyntaxNode *read_datum(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_vector(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *vec, *el;
+    SyntaxLoc *loc;
+    char c;
+
+    START_SYNTAX_LOC(loc, port);
+    vec = minim_vector(0, NULL);
+    c = next_char(port);
+    if (c == ')')           // empty list
+    {
+        update_port(port, c);
+        END_SYNTAX_LOC(loc, port);
+        return minim_ast(vec, loc);
+    }
+
+    put_back(port, c);
+    while (true)
+    {
+        el = read_top(port, perr, flags);
+        if (*perr)      // parse error
+        {
+            END_SYNTAX_LOC(loc, port);
+            return minim_ast(vec, loc);
+        }
+
+        MINIM_VECTOR_RESIZE(vec, MINIM_VECTOR_LEN(vec) + 1);
+        MINIM_VECTOR_REF(vec, MINIM_VECTOR_LEN(vec) - 1) = el;
+        c = next_char(port);
+        if (closed_paren(c))        // end of list
+        {
+            update_port(port, c);
+            break;
+        }
+        else if (c == port_eof(port))
+        {
+            if (!(flags & READ_FLAG_WAIT))
+            {
+                *perr = end_of_input_error();
+                break;
+            }
+
+            printf(" ");
+        }
+        else
+        {
+            put_back(port, c);
+        }
+    }
+
+    END_SYNTAX_LOC(loc, port);
+    vec = minim_ast(vec, loc);
+    CHECK_EOF(port, c);
+    return vec;
+}
+
+static MinimObject *read_datum(MinimObject *port, MinimObject **perr, uint8_t flags)
+{
+    MinimObject *obj;
+    SyntaxLoc *loc;
     Buffer *bf;
     char c;
 
+    START_SYNTAX_LOC(loc, port);
     init_buffer(&bf);
     c = next_ch(port);
     while (c != port_eof(port) && normal_char(c))
@@ -253,29 +424,42 @@ static SyntaxNode *read_datum(MinimObject *port, SyntaxNode **perr, uint8_t flag
     else                        put_back(port, c);
 
     trim_buffer(bf);
-    init_syntax_node(&node, SYNTAX_NODE_DATUM);
-    node->sym = get_buffer(bf);
-    ADD_SYNTAX_LOC(node, port);
+    END_SYNTAX_LOC(loc, port);
+    if (is_rational(get_buffer(bf)))
+    {
+        obj = str_to_number(get_buffer(bf), MINIM_OBJ_EXACT);
+    }
+    else if (is_float(get_buffer(bf)))
+    {
+        obj = str_to_number(get_buffer(bf), MINIM_OBJ_INEXACT);
+    }
+    else
+    {    // symbol
+        obj = intern(get_buffer(bf));
+    }
 
-    return node;
+    return minim_ast(obj, loc);
 }
 
-static SyntaxNode *read_string(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_string(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    SyntaxLoc *loc;
     Buffer *bf;
     char c;
 
+    START_SYNTAX_LOC(loc, port);
     init_buffer(&bf);
-    writec_buffer(bf, '"');
+
     c = next_ch(port);
     update_port(port, c);
+
     while (c != '"')
     {
         if (c == port_eof(port))
         {
             *perr = end_of_input_error();
-            return NULL;
+            END_SYNTAX_LOC(loc, port);
+            return minim_ast(minim_string(get_buffer(bf)), loc);
         }
 
         writec_buffer(bf, c);
@@ -293,50 +477,42 @@ static SyntaxNode *read_string(MinimObject *port, SyntaxNode **perr, uint8_t fla
         update_port(port, c);
     }
 
-    if (c == '"')
-        writec_buffer(bf, c);
-
     trim_buffer(bf);
-    init_syntax_node(&node, SYNTAX_NODE_DATUM);
-    node->sym = get_buffer(bf);
-    ADD_SYNTAX_LOC(node, port);
-
-    return node;
+    END_SYNTAX_LOC(loc, port);
+    return minim_ast(minim_string(get_buffer(bf)), loc);
 }
 
-static SyntaxNode *read_char(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_char(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *ch;
+    SyntaxLoc *loc;
     Buffer *bf;
     char c;
 
+    START_SYNTAX_LOC(loc, port);
     init_buffer(&bf);
     writes_buffer(bf, "#\\");
     c = next_ch(port);
     update_port(port, c);
 
-    writec_buffer(bf, c);
     // if (c == 'u')            unicode scalar
     // {
     //     c = fgetc(file);
     // }
+    // else
+    // {
+    writec_buffer(bf, c);
+    // }
 
     trim_buffer(bf);
-    init_syntax_node(&node, SYNTAX_NODE_DATUM);
-    node->sym = get_buffer(bf);
-    ADD_SYNTAX_LOC(node, port);
-
-    c = next_ch(port);
-    if (c == port_eof(port))    update_port(port, c);
-    else                        put_back(port, c);
-
-    return node;
+    END_SYNTAX_LOC(loc, port);
+    ch = minim_char(c);
+    return minim_ast(ch, loc);
 }
 
-static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
-    Buffer *bf;
+    MinimObject *node;
     char c, n;
 
     c = next_char(port);
@@ -362,7 +538,7 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
         if (n == '(')
         {
             update_port(port, n);
-            node = read_nested(port, perr, SYNTAX_NODE_VECTOR, flags);
+            node = read_vector(port, perr, flags);
 
             c = next_char(port);
             if (c == port_eof(port))    MINIM_PORT_MODE(port) &= ~MINIM_PORT_MODE_READY;
@@ -383,22 +559,13 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
             put_back(port, n);
             node = read_datum(port, perr, flags);
             if (!expand_syntax(node))
-            {
-                Buffer *bf;
-
-                init_buffer(&bf);
-                writef_buffer(bf, "bad syntax: #~s", node->sym);
-                trim_buffer(bf);
-
-                init_syntax_node(perr, SYNTAX_NODE_DATUM);
-                (*perr)->sym = get_buffer(bf);
-            }
+                *perr = bad_syntax_error(MINIM_STX_SYMBOL(node));
         }
     }
     else if (open_paren(c))
     {
         update_port(port, c);
-        node = read_nested(port, perr, SYNTAX_NODE_LIST, flags);
+        node = read_list(port, perr, flags);
     }
     else if (c == '"')
     {
@@ -417,7 +584,6 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
         else
         {
             *perr = end_of_input_error();
-            return NULL;
         }
     }
     else if (normal_char(c))
@@ -427,12 +593,8 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
     }
     else
     {
-        init_buffer(&bf);
-        writes_buffer(bf, "parsing failed");
-        trim_buffer(bf);
-        init_syntax_node(perr, SYNTAX_NODE_DATUM);
-        (*perr)->sym = get_buffer(bf);
-        return NULL;
+        update_port(port, c);
+        *perr = unexpected_char_error(c);
     }
 
     return node;
@@ -442,36 +604,14 @@ static SyntaxNode *read_top(MinimObject *port, SyntaxNode **perr, uint8_t flags)
 // Exported
 //
 
-SyntaxNode *minim_parse_port(MinimObject *port, SyntaxNode **perr, uint8_t flags)
+MinimObject *minim_parse_port(MinimObject *port, MinimObject **perr, uint8_t flags)
 {
-    SyntaxNode *node;
+    MinimObject *stx;
     char c;
 
     *perr = NULL;
-    node = read_top(port, perr, flags);
-    if (*perr)  return NULL;    // error occurred
-
-    if (!node)         // something bad happened
-    {
-        Buffer *bf;
-        
-        c = next_ch(port);
-        update_port(port, c);
-
-        init_buffer(&bf);
-        writef_buffer(bf, "unexpected: '~c'", c);
-        trim_buffer(bf);
-
-        init_syntax_node(perr, SYNTAX_NODE_DATUM);
-        (*perr)->sym = get_buffer(bf);
-    }
-
-    if (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
-    {
-        c = next_char(port);
-        if (c == port_eof(port))    update_port(port, c);
-        else                        put_back(port, c);
-    }
-
-    return node;
+    stx = read_top(port, perr, flags);
+    if (*perr == NULL && MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
+        CHECK_EOF(port, c);
+    return stx;
 }
