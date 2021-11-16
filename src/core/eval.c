@@ -568,15 +568,6 @@ void eval_module_macros(MinimModule *module)
 
         module->exprs[i] = transform_syntax(module->env, module->exprs[i]);
     }
-
-    // constant fold
-    // for (size_t i = 0; i < module->exprc; ++i)
-    // {
-    //     if (expr_is_module_level(module->env, module->exprs[i]))
-    //         continue;
-
-    //     module->exprs[i] = constant_fold(module->env, module->exprs[i]);
-    // }
 }
 
 MinimObject *eval_module(MinimModule *module)

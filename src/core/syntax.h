@@ -28,9 +28,6 @@ size_t syntax_proper_list_len(MinimObject *stx);
 // Throws an error if `ast` is ill-formatted syntax.
 void check_syntax(MinimEnv *env, MinimObject *ast);
 
-// Applies constant folding to `ast` and returns the result.
-MinimObject *constant_fold(MinimEnv *env, MinimObject *ast);
-
 // Converts an object to syntax.
 MinimObject *datum_to_syntax(MinimEnv *env, MinimObject *obj);
 

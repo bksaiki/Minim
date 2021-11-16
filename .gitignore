@@ -10,5 +10,10 @@ tests/sandbox*
 # profile
 gmon.out
 
+# coverage
+*.gcov
+*.gcda
+*.gcno
+
 # minim
 .cache/

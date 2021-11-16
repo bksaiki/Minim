@@ -17,7 +17,6 @@ typedef struct MinimLambda
 // Functions
 
 void init_minim_lambda(MinimLambda **plam);
-void copy_minim_lambda(MinimLambda **cp, MinimLambda *src);
 
 // Evaluates the given lambda expression with `env` as the caller and
 // lam->env as the previous namespace.

@@ -67,7 +67,6 @@ size_t syntax_proper_list_len(MinimObject *stx)
 #define CHECK_REC(proc, x, expr)        if (proc == x) expr(env, stx);
 
 static void check_syntax_rec(MinimEnv *env, MinimObject *stx);
-static MinimObject *constant_fold_rec(MinimEnv *env, MinimObject *stx);
 
 static void check_syntax_set(MinimEnv *env, MinimObject *stx)
 {
@@ -225,7 +224,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
     }
 
     // early exit: (let () ...)
-    if (!minim_nullp(MINIM_STX_VAL(bindings)))
+    if (!MINIM_STX_NULLP(bindings))
     {
         for (MinimObject *it = MINIM_STX_VAL(bindings); !minim_nullp(it); it = MINIM_CDR(it))
         {
@@ -316,7 +315,7 @@ static void check_syntax_letstar_values(MinimEnv *env, MinimObject *stx)
     }
 
     // early exit: (let () ...)
-    if (!minim_nullp(MINIM_STX_VAL(bindings)))
+    if (!MINIM_STX_NULLP(bindings))
     {
         for (MinimObject *it = MINIM_STX_VAL(bindings); !minim_nullp(it); it = MINIM_CDR(it))
         {
@@ -556,203 +555,6 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
     }
 }
 
-// ================================ Constant Folder ================================
-
-#define FOLD_REC(x, expr)   if (proc == x) return expr(env, stx);
-
-static MinimObject *fold_datum(MinimEnv *env, MinimObject *stx, MinimObject *obj)
-{
-    if (minim_nullp(obj) || minim_voidp(obj))
-    {
-        return minim_cons(stx, obj);
-    }
-    else if (minim_specialp(obj))
-    {
-        return minim_cons(datum_to_syntax(env, obj), obj);
-    }
-    else if (MINIM_OBJ_FUNCP(obj) || MINIM_OBJ_VALUESP(obj))
-    {
-        return minim_cons(stx, NULL);
-    }
-    else if (MINIM_OBJ_STRINGP(obj) || MINIM_OBJ_NUMBERP(obj))
-    {
-        return minim_cons(datum_to_syntax(env, obj), obj);
-    }
-    else
-    {
-        return minim_cons(stx, obj);
-    }
-}
-
-static MinimObject *fold_syntax_def_values(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *t = minim_list_drop(MINIM_STX_VAL(stx), 2);
-    MINIM_CAR(t) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(t)));
-    return minim_cons(stx, NULL);
-}
-
-static MinimObject *fold_syntax_let_values(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *bindings, *body;
-    
-    body = MINIM_STX_CDR(stx);
-    bindings = MINIM_CAR(body);
-    body = MINIM_CDR(body);
-
-    // ignore if: (let-values () ...)
-    if (!minim_nullp(MINIM_STX_VAL(bindings)))
-    {
-        for (MinimObject *it = MINIM_STX_VAL(bindings); !minim_nullp(it); it = MINIM_CDR(it))
-        {
-            MinimObject *bind = MINIM_STX_CDR(MINIM_CAR(it));
-            MINIM_CAR(bind) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(bind)));
-        }
-    }
-
-    for (; !minim_nullp(body); body = MINIM_CDR(body))
-        MINIM_CAR(body) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(body)));
-    return minim_cons(stx, NULL);
-}
-
-static MinimObject *fold_syntax_lambda(MinimEnv *env, MinimObject *stx)
-{
-    for (MinimObject *it = minim_list_drop(MINIM_STX_VAL(stx), 2); !minim_nullp(it); it = MINIM_CDR(it))
-        MINIM_CAR(it) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(it)));
-
-    return minim_cons(stx, NULL);
-}
-
-static MinimObject *fold_syntax_begin(MinimEnv *env, MinimObject *stx)
-{
-    for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
-        MINIM_CAR(it) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(it)));
-
-    return minim_cons(stx, NULL);
-}
-
-static MinimObject *fold_syntax_if(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *t = MINIM_STX_CDR(stx);
-
-    MINIM_CAR(t) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(t)));     // cond
-    t = MINIM_CDR(t);
-    MINIM_CAR(t) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(t)));     // ift
-    t = MINIM_CDR(t);
-    MINIM_CAR(t) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(t)));     // iff
-
-    return minim_cons(stx, NULL);
-}
-
-static MinimObject *fold_syntax_1arg(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *t = MINIM_STX_CDR(stx);
-    MINIM_CAR(t) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(t)));
-    return minim_cons(stx, NULL);
-}
-
-static MinimObject *fold_syntax_quote(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *obj = syntax_unwrap_rec(env, MINIM_STX_CADR(stx));
-    return fold_datum(env, stx, obj);
-}
-
-static MinimObject *constant_fold_rec(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *op;
-
-    if (!MINIM_STX_PAIRP(stx))
-    {
-        MinimObject *obj = eval_ast_terminal(env, stx);
-        return (obj == NULL) ? minim_cons(stx, NULL) : fold_datum(env, stx, obj);
-    }
-
-    op = MINIM_STX_CAR(stx);
-    if (MINIM_STX_SYMBOLP(op))
-    {
-        MinimBuiltin proc;
-        
-        op = env_get_sym(env, MINIM_STX_SYMBOL(op));
-        if (!op || MINIM_OBJ_CLOSUREP(op))
-        {
-            for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
-                MINIM_CAR(it) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(it)));
-
-            return minim_cons(stx, NULL);
-        }
-        else if (MINIM_OBJ_SYNTAXP(op))
-        {
-            proc = MINIM_SYNTAX(op);
-
-            FOLD_REC(minim_builtin_setb, fold_syntax_def_values);
-            FOLD_REC(minim_builtin_def_values, fold_syntax_def_values);
-            FOLD_REC(minim_builtin_let_values, fold_syntax_let_values);
-            FOLD_REC(minim_builtin_letstar_values, fold_syntax_let_values);
-            FOLD_REC(minim_builtin_def_syntaxes, fold_syntax_def_values);
-            FOLD_REC(minim_builtin_lambda, fold_syntax_lambda);
-            
-            FOLD_REC(minim_builtin_begin, fold_syntax_begin);
-            FOLD_REC(minim_builtin_if, fold_syntax_if);
-            FOLD_REC(minim_builtin_delay, fold_syntax_1arg);
-            FOLD_REC(minim_builtin_callcc, fold_syntax_1arg);
-            FOLD_REC(minim_builtin_quote, fold_syntax_quote);
-
-            // minim_builtin_import
-            // minim_builtin_export
-            // minim_building_syntax_case
-            // minim_builtin_quasiquote
-            // minim_builtin_unquote
-            // minim_builtin_syntax
-            // minim_builtin_template
-
-            return minim_cons(stx, NULL);
-        }
-        else if (MINIM_OBJ_BUILTINP(op))
-        {
-            MinimObject **args;
-            size_t argc, i;
-            bool foldp;
-
-            foldp = true;
-            argc = minim_list_length(MINIM_STX_CDR(stx));
-            proc = MINIM_BUILTIN(op);
-
-            i = 0;
-            args = GC_alloc(argc * sizeof(MinimObject*));
-            for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
-            {
-                MinimObject *arg;
-
-                arg = constant_fold_rec(env, MINIM_CAR(it));
-                MINIM_CAR(it) = MINIM_CAR(arg);
-
-                if (!MINIM_CDR(arg))    foldp = false;
-                else if (foldp)         args[i] = MINIM_CDR(arg);
-                ++i;
-            }
-            
-            if (foldp && builtin_foldablep(proc))
-            {
-                return fold_datum(env, stx, proc(env, argc, args));
-            }
-            else
-            {
-                return minim_cons(stx, NULL);
-            }
-        }
-        else
-        {
-            return minim_cons(stx, NULL);
-        }
-    }
-    else
-    {
-        for (MinimObject *it = MINIM_STX_VAL(stx); !minim_nullp(it); it = MINIM_CDR(it))
-            MINIM_CAR(it) = MINIM_CAR(constant_fold_rec(env, MINIM_CAR(it)));
-
-        return minim_cons(stx, NULL);
-    }
-}
-
 // ================================ Syntax Conversions ================================
 
 MinimObject *datum_to_syntax(MinimEnv *env, MinimObject *obj)
@@ -877,14 +679,6 @@ void check_syntax(MinimEnv *env, MinimObject *stx)
 
     init_env(&env2, env, NULL);
     check_syntax_rec(env2, stx);
-}
-
-MinimObject *constant_fold(MinimEnv *env, MinimObject *stx)
-{
-    // printf("> "); print_syntax_to_port(stx, stdout); printf("\n");
-    stx = ((MinimObject*) MINIM_CAR(constant_fold_rec(env, stx)));
-    // printf("< "); print_syntax_to_port(stx, stdout); printf("\n");
-    return stx;
 }
 
 MinimObject *syntax_unwrap_rec(MinimEnv *env, MinimObject *stx)

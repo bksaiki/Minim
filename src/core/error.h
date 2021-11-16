@@ -34,7 +34,6 @@ void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc* loc, const char
 // *** Descriptor Table *** //
 
 void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len);
-void copy_minim_error_desc_table(MinimErrorDescTable **ptable, MinimErrorDescTable *src);
 void minim_error_desc_table_set(MinimErrorDescTable *table, size_t idx, const char *key, const char *val);
 
 // *** Minim Error *** //

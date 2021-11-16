@@ -35,53 +35,6 @@ void init_minim_lambda(MinimLambda **plam)
     *plam = lam;
 }
 
-void copy_minim_lambda(MinimLambda **cp, MinimLambda *src)
-{
-    MinimLambda *lam = GC_alloc_opt(sizeof(MinimLambda), NULL, gc_minim_lambda_mrk);
-
-    lam->argc = src->argc;
-    if (src->args)
-    {
-        lam->args = GC_alloc(lam->argc * sizeof(char*));
-        for (size_t i = 0; i < lam->argc; ++i)
-        {
-            lam->args[i] = GC_alloc_atomic((strlen(src->args[i]) + 1) * sizeof(char));
-            strcpy(lam->args[i], src->args[i]);
-        }
-    }   
-    else
-    {
-        lam->args = NULL;
-    }
-
-    if (src->rest)
-    {
-        lam->rest = GC_alloc_atomic((strlen(src->rest) + 1) * sizeof(char));
-        strcpy(lam->rest, src->rest);
-    }
-    else
-    {
-        lam->rest = NULL;
-    }
-
-    if (src->name)
-    {
-        lam->name = GC_alloc_atomic((strlen(src->name) + 1) * sizeof(char));
-        strcpy(lam->name, src->name);
-    }
-    else
-    {
-        lam->name = NULL;
-    }
-
-    if (src->env)   init_env(&lam->env, src->env, NULL);
-    else            lam->env = NULL;
-
-    lam->loc = (src->loc ? src->loc : NULL);
-    lam->body = (src->body ? src->body : NULL);
-    *cp = lam;
-}
-
 static MinimEnv *lambda_env = NULL;
 
 static void intern_transform(const char *sym, MinimObject *obj)

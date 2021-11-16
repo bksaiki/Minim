@@ -19,15 +19,3 @@ void init_minim_tail_call(MinimTailCall **ptail, MinimLambda *lam, size_t argc, 
     for (size_t i = 0; i < argc; ++i)
         call->args[i] = args[i];
 }
-
-void copy_minim_tail_call(MinimTailCall **ptail, MinimTailCall *src)
-{
-    MinimTailCall *call = GC_alloc_opt(sizeof(MinimTailCall), NULL, gc_minim_tail_call_mrk);
-    call->lam = src->lam;
-    call->args = GC_alloc(src->argc * sizeof(MinimObject*));
-    call->argc = src->argc;
-    *ptail = call;
-
-    for (size_t i = 0; i < src->argc; ++i)
-        call->args[i] = src->args[i];
-}

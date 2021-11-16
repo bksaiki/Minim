@@ -6,20 +6,6 @@
 #include "number.h"
 #include "vector.h"
 
-bool minim_vector_equalp(MinimObject *a, MinimObject *b)
-{
-    if (MINIM_VECTOR_LEN(a) != MINIM_VECTOR_LEN(b))
-        return false;
-
-    for (size_t i = 0; i < MINIM_VECTOR_LEN(a); ++i)
-    {
-        if (!minim_equalp(MINIM_VECTOR_REF(a, i), MINIM_VECTOR_REF(b, i)))
-            return false;
-    }
-
-    return true;
-}
-
 void minim_vector_bytes(MinimObject *v, Buffer *bf)
 {
     Buffer *in;
