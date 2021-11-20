@@ -2,7 +2,7 @@
 #include <signal.h>
 #include <string.h>
 
-#include "minim.h"
+#include "core/minim.h"
 #include "run.h"
 #include "repl.h"
 
