@@ -1,10 +1,4 @@
-#include "../gc/gc.h"
-#include "assert.h"
-#include "builtin.h"
-#include "error.h"
-#include "list.h"
-#include "number.h"
-#include "vector.h"
+#include "minimpriv.h"
 
 void minim_vector_bytes(MinimObject *v, Buffer *bf)
 {

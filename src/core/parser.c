@@ -1,14 +1,6 @@
 #include <ctype.h>
-#include <string.h>
 
-#include "../gc/gc.h"
-#include "../common/path.h"
-#include "error.h"
-#include "global.h"
-#include "parser.h"
-#include "port.h"
-#include "string.h"
-#include "syntax.h"
+#include "minimpriv.h"
 
 #define open_paren(x)       (x == '(' || x == '[' || x == '{')
 #define closed_paren(x)     (x == ')' || x == ']' || x == '{')

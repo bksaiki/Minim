@@ -1,5 +1,4 @@
-#include "../core/builtin.h"
-#include "../core/syntax.h"
+#include "../core/minimpriv.h"
 #include "compilepriv.h"
 
 size_t top_level_def_count(MinimEnv *env, MinimModule *module)

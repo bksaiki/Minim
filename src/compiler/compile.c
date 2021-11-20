@@ -1,7 +1,4 @@
-#include "../core/builtin.h"
-#include "../core/error.h"
-#include "../core/string.h"
-#include "../core/print.h"
+#include "../core/minimpriv.h"
 
 #include "compile.h"
 #include "compilepriv.h"

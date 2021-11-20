@@ -1,7 +1,7 @@
 #ifndef _MINIM_COMMON_SYSTEM_H_
 #define _MINIM_COMMON_SYSTEM_H_
 
-#include "common.h"
+// need pid
 #include "types.h"
 
 // Limits

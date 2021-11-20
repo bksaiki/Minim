@@ -1,15 +1,4 @@
-#include <setjmp.h>
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "arity.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "jmp.h"
-#include "lambda.h"
-#include "list.h"
-#include "tail_call.h"
+#include "minimpriv.h"
 
 //
 //  Builtins

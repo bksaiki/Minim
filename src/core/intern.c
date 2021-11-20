@@ -1,7 +1,4 @@
-#include <string.h>
-
-#include "hash.h"
-#include "intern.h"
+#include "minimpriv.h"
 
 #define MINIM_INTERN_TABLE_LOAD_FACTOR     0.75
 

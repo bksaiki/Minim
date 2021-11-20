@@ -1,9 +1,4 @@
-#include "../gc/gc.h"
-#include "../common/buffer.h"
-#include "assert.h"
-#include "error.h"
-#include "hash.h"
-#include "list.h"
+#include "minimpriv.h"
 
 uint32_t hash_bytes(const void* data, size_t len)
 {

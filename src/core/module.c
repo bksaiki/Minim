@@ -1,14 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "global.h"
-#include "hash.h"
-#include "list.h"
-#include "module.h"
-#include "read.h"
+#include "minimpriv.h"
 
 static MinimEnv *get_builtin_env(MinimEnv *env)
 {

@@ -1,6 +1,5 @@
-#include "../minim.h"
+#include "minimpriv.h"
 #include "../compiler/compile.h"
-#include "error.h"
 
 static MinimEnv *get_builtin_env(MinimEnv *env)
 {

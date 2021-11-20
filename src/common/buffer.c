@@ -1,9 +1,11 @@
 #include <math.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 
-#include "buffer.h"
 #include "../gc/gc.h"
+#include "buffer.h"
+#include "common.h"
 
 // *** Initialization //
 

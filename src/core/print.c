@@ -1,19 +1,4 @@
-#include <limits.h>
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "../common/buffer.h"
-#include "../common/path.h"
-
-#include "arity.h"
-#include "error.h"
-#include "hash.h"
-#include "lambda.h"
-#include "list.h"
-#include "number.h"
-#include "object.h"
-#include "print.h"
-#include "vector.h"
+#include "minimpriv.h"
 
 // Stores custom print methods
 //  => ((pred . method) ...)

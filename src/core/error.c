@@ -1,13 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "assert.h"
-#include "builtin.h"
-#include "error.h"
-#include "jmp.h"
-#include "lambda.h"
-#include "number.h"
-#include "string.h"
+#include "minimpriv.h"
 
 static void gc_minim_error_trace_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {

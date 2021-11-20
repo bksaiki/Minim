@@ -1,12 +1,4 @@
-#include <stdarg.h>
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "env.h"
-#include "global.h"
-#include "hash.h"
-#include "lambda.h"
-#include "module.h"
+#include "minimpriv.h"
 
 static void add_metadata(MinimObject *obj, const char *str)
 {

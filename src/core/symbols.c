@@ -1,8 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "hash.h"
-#include "symbols.h"
+#include "minimpriv.h"
 
 static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void *ptr)
 {

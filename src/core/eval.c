@@ -1,23 +1,4 @@
-#include <setjmp.h>
-#include <stdio.h>
-#include <string.h>
-
-#include "../common/path.h"
-#include "../gc/gc.h"
-
-#include "arity.h"
-#include "builtin.h"
-#include "eval.h"
-#include "error.h"
-#include "global.h"
-#include "jmp.h"
-#include "lambda.h"
-#include "list.h"
-#include "number.h"
-#include "string.h"
-#include "syntax.h"
-#include "tail_call.h"
-#include "transform.h"
+#include "minimpriv.h"
 
 // forward declaration
 static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *node);

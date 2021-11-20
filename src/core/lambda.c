@@ -1,13 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "assert.h"
-#include "error.h"
-#include "eval.h"
-#include "global.h"
-#include "lambda.h"
-#include "list.h"
-#include "tail_call.h"
+#include "minimpriv.h"
 
 static void gc_minim_lambda_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {

@@ -1,15 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "arity.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "global.h"
-#include "list.h"
-#include "hash.h"
-#include "syntax.h"
-#include "transform.h"
+#include "minimpriv.h"
 
 // =============================== Syntax Location ==========================
 

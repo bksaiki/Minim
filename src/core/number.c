@@ -1,10 +1,6 @@
-#include <string.h>
+#include <math.h>
 
-#include "../gc/gc.h"
-#include "assert.h"
-#include "error.h"
-#include "math.h"
-#include "number.h"
+#include "minimpriv.h"
 
 // *** Internals *** //
 

@@ -1,13 +1,4 @@
-#include <setjmp.h>
-
-#include "../gc/gc.h"
-#include "arity.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "lambda.h"
-#include "parser.h"
-#include "port.h"
+#include "minimpriv.h"
 
 static MinimObject *open_file(MinimEnv *env, const char *fname, uint8_t mode)
 {

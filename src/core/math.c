@@ -1,11 +1,5 @@
 #include <math.h>
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "assert.h"
-#include "env.h"
-#include "error.h"
-#include "number.h"
+#include "minimpriv.h"
 
 #define GET_FLOAT(obj) (MINIM_OBJ_EXACTP(obj) ? mpq_get_d(MINIM_EXACTNUM(obj)) : MINIM_INEXACTNUM(obj))
 

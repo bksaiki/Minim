@@ -1,10 +1,5 @@
 #include <math.h>
-#include <stdarg.h>
-
-#include "builtin.h"
-#include "global.h"
-#include "intern.h"
-#include "number.h"
+#include "minimpriv.h"
 
 void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...)
 {

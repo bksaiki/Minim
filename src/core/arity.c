@@ -1,7 +1,4 @@
-#include "arity.h"
-#include "error.h"
-#include "lambda.h"
-#include "number.h"
+#include "minimpriv.h"
 
 #define IS_OUTSIDE(x, min, max)         (x < min || x > max)
 #define FULL_BUILTIN_NAME(partial)      minim_builtin_ ## partial

@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "../gc/gc.h"
 #include "common.h"

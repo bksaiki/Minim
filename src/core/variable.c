@@ -1,12 +1,6 @@
 #include <string.h>
 
-#include "../common/path.h"
-#include "../gc/gc.h"
-#include "builtin.h"
-#include "eval.h"
-#include "error.h"
-#include "lambda.h"
-#include "number.h"
+#include "minimpriv.h"
 
 MinimObject *minim_builtin_def_values(MinimEnv *env, size_t argc, MinimObject **args)
 {
