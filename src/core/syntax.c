@@ -107,7 +107,7 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *stx)
         }
 
         s = MINIM_SYMBOL(sym);
-        hash = hash_bytes(s, strlen(s));
+        hash = hash_symbol(s);
         if (minim_symbol_table_get(env->table, s, hash) != NULL)
         {
             THROW(env, minim_syntax_error("duplicate identifier",
@@ -263,7 +263,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
                 }
 
                 s = MINIM_STX_SYMBOL(sym);
-                hash = hash_bytes(s, strlen(s));
+                hash = hash_symbol(s);
                 if (minim_symbol_table_get(env2->table, s, hash) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
@@ -356,7 +356,7 @@ static void check_syntax_letstar_values(MinimEnv *env, MinimObject *stx)
                 }
 
                 s = MINIM_STX_SYMBOL(sym);
-                hash = hash_bytes(s, strlen(s));
+                hash = hash_symbol(s);
                 if (minim_symbol_table_get(env3->table, s, hash) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",

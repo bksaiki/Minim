@@ -502,18 +502,19 @@ get_patterns(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
     else if (MINIM_STX_SYMBOLP(stx))
     {
         MinimObject *val;
+        char *sym = MINIM_STX_SYMBOL(stx);
 
-        if (strcmp(MINIM_STX_SYMBOL(stx), "...") == 0 ||
-            strcmp(MINIM_STX_SYMBOL(stx), ".") == 0)     // early exit
+        if (strcmp(sym, "...") == 0 ||
+            strcmp(sym, ".") == 0)     // early exit
             return;
 
-        val = env_get_sym(env, MINIM_STX_SYMBOL(stx));
+        val = env_get_sym(env, sym);
         if (MINIM_OBJ_TRANSFORMP(val) && MINIM_TRANSFORM_TYPE(val) == MINIM_TRANSFORM_PATTERN)
         {
             for (size_t i = 0; i < MINIM_VECTOR_LEN(patterns); ++i)
             {
-                if (strcmp(MINIM_SYMBOL(MINIM_CAR(MINIM_VECTOR_REF(patterns, i))),
-                           MINIM_STX_SYMBOL(stx)) == 0)
+                MinimObject *key = MINIM_CAR(MINIM_VECTOR_REF(patterns, i));
+                if (strcmp(MINIM_SYMBOL(key), sym) == 0)
                     return; // already in list
             }
 

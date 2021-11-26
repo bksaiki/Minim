@@ -36,6 +36,7 @@ typedef struct InternTable
 struct MinimSymbolTableRow
 {
     char **names;
+    uintptr_t *ptrs;
     MinimObject **vals;
     size_t length;
 } typedef MinimSymbolTableRow;
@@ -188,7 +189,7 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym);
 //  Symbol table
 //
 
-#define MINIM_DEFAULT_SYMBOL_TABLE_SIZE 10
+#define MINIM_DEFAULT_SYMBOL_TABLE_SIZE     5
 
 void init_minim_symbol_table(MinimSymbolTable **ptable);
 
@@ -221,7 +222,7 @@ void minim_symbol_table_for_each(MinimSymbolTable *table,
 
 // setters
 #define intern(s)           intern_symbol(global.symbols, s)
-#define set_builtin(n, o)   minim_symbol_table_add(global.builtins, n, o)
+#define set_builtin(n, o)   minim_symbol_table_add(global.builtins, MINIM_SYMBOL(intern(n)), o)
 
 // modifiers
 #if MINIM_TRACK_STATS == 1
@@ -400,6 +401,7 @@ void copy_minim_hash_table(MinimHash **pht, MinimHash *src);
 bool minim_hash_table_eqp(MinimHash *a, MinimHash *b);
 
 uint32_t hash_bytes(const void* data, size_t len);
+#define hash_symbol(s)  hash_bytes(&s, sizeof(&s))
 
 //
 //  Sequences
@@ -722,9 +724,6 @@ DEFINE_BUILTIN_FUN(write)
 DEFINE_BUILTIN_FUN(display)
 DEFINE_BUILTIN_FUN(newline)
 DEFINE_BUILTIN_FUN(write_char)
-
-// Loads a single function into the environment
-void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...);
 
 //
 //  Printing
