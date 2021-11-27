@@ -250,8 +250,8 @@ bool minim_eqp(MinimObject *a, MinimObject *b)
                MINIM_VECTOR_LEN(b) == 0;
 
     case MINIM_OBJ_HASH:
-        return MINIM_HASH_TABLE(a)->elems == 0 &&
-               MINIM_HASH_TABLE(b)->elems == 0;
+        return MINIM_HASH_TABLE(a)->size == 0 &&
+               MINIM_HASH_TABLE(b)->size == 0;
 
     /*
     case MINIM_OBJ_SYM:

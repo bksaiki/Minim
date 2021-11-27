@@ -1,5 +1,14 @@
 #include "minimpriv.h"
 
+#define new_bucket(b, k, v, n)                      \
+{                                                   \
+    (b) = GC_alloc(sizeof(MinimHashBucket));        \
+    (b)->key = (k);                                 \
+    (b)->val = (v);                                 \
+    (b)->next = (n);                                \
+    (n) = (b);                                      \
+}
+
 uint32_t hash_bytes(const void* data, size_t len)
 {
     uint32_t hash = 5381;
@@ -13,7 +22,7 @@ uint32_t hash_bytes(const void* data, size_t len)
 
 static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
-    mrk(gc, ((MinimHash*) ptr)->arr);
+    mrk(gc, ((MinimHash*) ptr)->buckets);
 }
 
 // static void gc_mark_minim_symbol_table_row(void (*mrk)(void*, void*), void *gc, void *ptr)
@@ -28,51 +37,66 @@ static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 void init_minim_hash_table(MinimHash **pht)
 {
     MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
-    ht->arr = GC_alloc(MINIM_DEFAULT_HASH_TABLE_SIZE * sizeof(MinimHashRow));
-    ht->size = MINIM_DEFAULT_HASH_TABLE_SIZE;
-    ht->elems = 0;
+    ht->alloc_ptr = &bucket_sizes[0];
+    ht->alloc = *ht->alloc_ptr;
+    ht->size = 0;
+    ht->buckets = GC_calloc(ht->alloc, sizeof(MinimHashBucket*));
     *pht = ht;
-    
-    for (size_t i = 0; i < ht->size; ++i)
-    {
-        ht->arr[i].arr = NULL;
-        ht->arr[i].len = 0;
-    }
 }
 
 void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
 {
     MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
-    ht->arr = GC_alloc(src->size * sizeof(MinimHashRow));
+    ht->alloc_ptr = src->alloc_ptr;
+    ht->alloc = src->alloc;
     ht->size = src->size;
-    ht->elems = src->elems;
+    ht->buckets = GC_calloc(ht->alloc, sizeof(MinimHashBucket*));
     *pht = ht;
 
-    for (size_t i = 0; i < ht->size; ++i)
+    for (size_t i = 0; i < src->alloc; ++i)
     {
-        ht->arr[i].arr = GC_alloc(src->arr[i].len * sizeof(MinimObject*));
-        ht->arr[i].len = src->arr[i].len;
-
-        for (size_t j = 0; j < src->arr[i].len; ++j)
-            ht->arr[i].arr[j] = src->arr[i].arr[j];
+        MinimHashBucket *t = NULL;
+        for (MinimHashBucket *b = src->buckets[i]; b; b = b->next)
+        {
+            if (t == NULL)
+            {
+                ht->buckets[i] = GC_alloc(sizeof(MinimHashBucket));
+                t = ht->buckets[i];
+                t->key = b->key;
+                t->val = b->val;
+                t->next = NULL;
+            }
+            else
+            {
+                t->next = GC_alloc(sizeof(MinimHashBucket));
+                t = t->next;
+                t->key = b->key;
+                t->val = b->val;
+                t->next = NULL;
+            }
+        }
     }
 }
 
 bool minim_hash_table_eqp(MinimHash *a, MinimHash *b)
 {
-    if ((a->size != b->size) || (a->elems != b->elems))
+    if ((a->size != b->size) || (a->alloc != b->alloc))
         return false;
 
-    for (size_t i = 0; i < a->size; ++i)
+    for (size_t i = 0; i < a->alloc; ++i)
     {
-        if (a->arr[i].len != b->arr[i].len)
-            return false;
-
-        for (size_t j = 0; j < a->arr[i].len; ++j)
+        MinimHashBucket *ab = a->buckets[i], *bb = b->buckets[i];
+        for (; ab && bb; ab = ab->next, bb = bb->next)
         {
-            if (!minim_equalp(a->arr[i].arr[j], b->arr[i].arr[j]))
+            if (!minim_equalp(ab->key, bb->key))
+                return false;
+
+            if (!minim_equalp(ab->val, bb->val))
                 return false;
         }
+
+        if (ab || bb)
+            return false;
     }
 
     return true;
@@ -80,89 +104,56 @@ bool minim_hash_table_eqp(MinimHash *a, MinimHash *b)
 
 static void rehash_table(MinimHash *ht)
 {
-    MinimHashRow *htr;
-    Buffer *bf;
-    uint32_t hash, reduc;
-    size_t newSize = 2 * ht->size;
-    
-    htr = GC_alloc(newSize * sizeof(MinimHashRow));
-    for (size_t i = 0; i < newSize; ++i)
-    {
-        htr[i].arr = NULL;
-        htr[i].len = 0;
-    }
+    MinimHashBucket **old_buckets = ht->buckets;
+    size_t old_alloc = ht->alloc;
 
-    for (size_t i = 0; i < ht->size; ++i)
+    ++ht->alloc_ptr;
+    ht->alloc = *ht->alloc_ptr;
+    ht->buckets = GC_calloc(ht->alloc, sizeof(MinimHashBucket*));
+    for (size_t i = 0; i < old_alloc; ++i)
     {
-        for (size_t j = 0; j < ht->arr[i].len; ++j)
+        for (MinimHashBucket *b = old_buckets[i]; b; b = b->next)
         {
-            bf = minim_obj_to_bytes(MINIM_CAR(ht->arr[i].arr[j]));
-            hash = hash_bytes(bf->data, bf->pos);
-            reduc = hash % newSize;
-
-            if (htr[reduc].len == 0)
-            {
-                htr[reduc].arr = GC_realloc(htr[reduc].arr, sizeof(MinimObject*));
-                htr[reduc].arr[0] = ht->arr[i].arr[j];
-                htr[reduc].len = 1;
-            }
-            else
-            {      
-                htr[reduc].arr = GC_realloc(htr[reduc].arr, (htr[reduc].len + 1) * sizeof(MinimObject*));
-                htr[reduc].arr[htr[reduc].len] = ht->arr[i].arr[j];
-                ++htr[reduc].len;
-            }
+            MinimHashBucket *nb;
+            Buffer *bf = minim_obj_to_bytes(b->key);
+            uint32_t j = hash_bytes(bf->data, bf->pos) % ht->alloc;
+            new_bucket(nb, b->key, b->val, ht->buckets[j]);
         }
     }
-
-    ht->arr = htr;
-    ht->size = newSize;
-    
 }
 
 static void minim_hash_table_add(MinimHash *ht, MinimObject *k, MinimObject *v)
 {
-    Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos);
-    uint32_t reduc = hash % ht->size;
+    MinimHashBucket *nb;
+    Buffer *bf;
+    uint32_t i;
 
-    ++ht->elems;
-    if (((double)ht->elems / (double)ht->size) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
+    if (((double)ht->size / (double)ht->alloc) > MINIM_DEFAULT_HASH_TABLE_FACTOR)
         rehash_table(ht); // rehash if too deep
 
-    if (ht->arr[reduc].len == 0)
+    bf = minim_obj_to_bytes(k);
+    i = hash_bytes(bf->data, bf->pos) % ht->alloc;
+    for (MinimHashBucket *b = ht->buckets[i]; b; b = b->next)
     {
-        ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, sizeof(MinimObject*));
-        ht->arr[reduc].len = 1;
-        ht->arr[reduc].arr[0] = minim_cons(k, v);
-    }
-    else
-    {      
-        // Check if key already exists
-        for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+        // check if key exists first
+        if (minim_equalp(k, b->key))
         {
-            if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
-            {
-                MINIM_CDR(ht->arr[reduc].arr[i]) = v;
-                return;
-            }
+            b->val = v;
+            return;
         }
-
-        ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, (ht->arr[reduc].len + 1) * sizeof(MinimObject*));
-        ht->arr[reduc].arr[ht->arr[reduc].len] = minim_cons(k, v);
-        ++ht->arr[reduc].len;
     }
+
+    new_bucket(nb, k, v, ht->buckets[i]);
+    ++ht->size;
 }
 
 static bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
 {
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos);
-    uint32_t reduc = hash % ht->size;
-
-    for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+    uint32_t i = hash_bytes(bf->data, bf->pos) % ht->alloc;
+    for (MinimHashBucket *b = ht->buckets[i]; b; b = b->next)
     {
-        if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
+        if (minim_equalp(k, b->key))
             return true;
     }
 
@@ -171,34 +162,32 @@ static bool minim_hash_table_keyp(MinimHash *ht, MinimObject *k)
 
 static MinimObject *minim_hash_table_ref(MinimHash *ht, MinimObject *k)
 {
-    MinimObject *cp = NULL;
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos);
-    uint32_t reduc = hash % ht->size;
-
-    for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+    uint32_t i = hash_bytes(bf->data, bf->pos) % ht->alloc;
+    for (MinimHashBucket *b = ht->buckets[i]; b; b = b->next)
     {
-        if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
-            cp = MINIM_CDR(ht->arr[reduc].arr[i]);
+        if (minim_equalp(k, b->key))
+            return b->val;
     }
 
-    return cp;
+    return NULL;
 }
 
 static void minim_hash_table_remove(MinimHash *ht, MinimObject *k)
 {
+    MinimHashBucket *b, *t;
     Buffer *bf = minim_obj_to_bytes(k);
-    uint32_t hash = hash_bytes(bf->data, bf->pos);
-    uint32_t reduc = hash % ht->size;
+    uint32_t i = hash_bytes(bf->data, bf->pos) % ht->alloc;
 
-    for (size_t i = 0; i < ht->arr[reduc].len; ++i)
+    for (t = NULL, b = ht->buckets[i]; b; b = b->next)
     {
-        if (minim_equalp(k, MINIM_CAR(ht->arr[reduc].arr[i])))
+        if (minim_equalp(k, b->key))
         {
-            ht->arr[reduc].arr[i] = ht->arr[reduc].arr[ht->arr[reduc].len - 1];
-            --ht->arr[reduc].len;
-            --ht->elems;
-            ht->arr[reduc].arr = GC_realloc(ht->arr[reduc].arr, ht->arr[reduc].len * sizeof(MinimObject*));
+            if (t == NULL)  ht->buckets[i] = b->next;
+            else            t->next = b->next;
+
+            --ht->size;
+            return;
         }
     }
 }
@@ -208,28 +197,32 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
     MinimObject *head, *it;
     
     head = NULL;
-    for (size_t i = 0; i < ht->size; ++i)
+    for (size_t i = 0; i < ht->alloc; ++i)
     {
-        for (size_t j = 0; j < ht->arr[i].len; ++j)
+        for (MinimHashBucket *b = ht->buckets[i]; b; b = b->next)
         {
             if (!head)
             {
-                head = minim_cons(ht->arr[i].arr[j], NULL);
+                head = minim_cons(minim_cons(b->key, b->val), minim_null);
                 it = head;
             }
             else
             {
-                MINIM_CDR(it) = minim_cons(ht->arr[i].arr[j], NULL);
+                MINIM_CDR(it) = minim_cons(minim_cons(b->key, b->val), minim_null);
                 it = MINIM_CDR(it);
             }
         }
     }
 
-    if (!head)
+    if (head)
+    {
+        MINIM_CDR(it) = minim_null;
+        return head;
+    }
+    else
+    {
         return minim_null;
-
-    MINIM_CDR(it) = minim_null;
-    return head;
+    }
 }
 
 //

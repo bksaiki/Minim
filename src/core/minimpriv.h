@@ -74,18 +74,18 @@ typedef struct MinimTailCall
 } MinimTailCall;
 
 // hash table bucket
-typedef struct MinimHashRow
+typedef struct MinimHashBucket
 {
-    MinimObject **arr;
-    size_t len;
-} MinimHashRow;
+    MinimObject *key, *val;
+    struct MinimHashBucket *next;
+} MinimHashBucket;
 
 // hash table
 typedef struct MinimHash
 {
-    MinimHashRow *arr;
-    size_t size;
-    size_t elems;
+    MinimHashBucket **buckets;
+    size_t *alloc_ptr;
+    size_t alloc, size;
 } MinimHash;
 
 // sequence object

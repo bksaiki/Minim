@@ -217,14 +217,14 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         else            writes_buffer(bf, "'#hash(");
         
         pp->quote = true;
-        for (size_t i = 0; i < ht->size; ++i)
+        for (size_t i = 0; i < ht->alloc; ++i)
         {
-            for (size_t j = 0; j < ht->arr[i].len; ++j)
+            for (MinimHashBucket *b = ht->buckets[i]; b; b = b->next)
             {
                 writes_buffer(bf, (first ? "(" : " ("));
-                print_object(MINIM_CAR(ht->arr[i].arr[j]), env, bf, pp);
+                print_object(b->key, env, bf, pp);
                 writes_buffer(bf, " . ");
-                print_object(MINIM_CDR(ht->arr[i].arr[j]), env, bf, pp);
+                print_object(b->val, env, bf, pp);
                 writec_buffer(bf, ')');
                 first = false;
             }
