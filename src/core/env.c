@@ -22,6 +22,7 @@ static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
     mrk(gc, env->table);
     mrk(gc, env->callee);
     mrk(gc, env->caller);
+    mrk(gc, env->jmp);
     mrk(gc, env->current_dir);
 }
 
@@ -65,8 +66,13 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     env->callee = callee;
     env->caller = NULL;
     env->current_dir = NULL;
+    env->jmp = NULL;
+
+    if (callee)             env->flags = MINIM_ENV_TAIL_CALLABLE;
+    else if (env->parent)   env->flags = env->parent->flags;
+    else                    env->flags = 0x0;
+
     init_minim_symbol_table(&env->table);
-    env->flags = MINIM_ENV_TAIL_CALLABLE;
 
     *penv = env;
 }
@@ -135,6 +141,20 @@ const char *env_peek_key(MinimEnv *env, MinimObject *obj)
     return minim_symbol_table_peek_name(global.builtins, obj);
 }
 
+void unwind_tail_call(MinimEnv *env, MinimTailCall *tc)
+{
+    for (MinimEnv *it = env; it; it = it->parent)
+    {
+        if (it->jmp)
+        {
+            MINIM_JUMP_VAL(it->jmp) = (MinimObject*) tc;
+            longjmp(*MINIM_JUMP_BUF(it->jmp), 1);
+        }
+    }    
+
+    THROW(env, minim_error("error when unwinding tail call: no caller found", NULL));
+}
+
 size_t env_symbol_count(MinimEnv *env)
 {
     size_t count = 0;
@@ -185,3 +205,4 @@ void env_dump_exports(MinimEnv *env)
         printf("()\n");
     }
 }
+

@@ -300,6 +300,9 @@ int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj);
 // if the value is not in the table
 const char *env_peek_key(MinimEnv *env, MinimObject *obj);
 
+/// Make tail call
+NORETURN void unwind_tail_call(MinimEnv *env, MinimTailCall *tc);
+
 // Returns the number of symbols in the environment
 size_t env_symbol_count(MinimEnv *env);
 

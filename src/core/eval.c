@@ -166,15 +166,14 @@ static MinimObject *eval_syntax(MinimEnv *env, MinimObject *stx, MinimBuiltin pr
 
 #define CALL_CLOSURE(env, lam, argc, args)              \
 {                                                       \
-    if (env_has_called(env, lam))                       \
+    if (env->flags & MINIM_ENV_TAIL_CALLABLE)           \
     {                                                   \
-        MinimTailCall *call;                            \
-        init_minim_tail_call(&call, lam, argc, args);   \
-        return minim_tail_call(call);                   \
+        MinimTailCall *tc;                              \
+        init_minim_tail_call(&tc, lam, argc, args);     \
+        unwind_tail_call(env, tc);                      \
     }                                                   \
     else                                                \
     {                                                   \
-        log_proc_called();                              \
         return eval_lambda(lam, env, argc, args);       \
     }                                                   \
 }

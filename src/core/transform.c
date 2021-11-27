@@ -812,7 +812,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, MinimObject *stx)
     {
         THROW(env, minim_syntax_error("expected syntax as a result",
                                       MINIM_STX_SYMBOL(stx),
-                                      stx, NULL));
+                                      stx, res));
     }
 
     return res;

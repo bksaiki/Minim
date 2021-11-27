@@ -47,6 +47,7 @@ typedef struct MinimEnv
     struct MinimModule *module;
     MinimSymbolTable *table;
     MinimLambda *callee;
+    MinimObject *jmp;
     char *current_dir;
     uint8_t flags;
 } MinimEnv;
