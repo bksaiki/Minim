@@ -33,19 +33,19 @@ typedef struct InternTable
 } InternTable;
 
 // symbol table bucket
-struct MinimSymbolTableRow
+struct MinimSymbolTableBucket
 {
-    char **names;
-    uintptr_t *ptrs;
-    MinimObject **vals;
-    size_t length;
-} typedef MinimSymbolTableRow;
+    char *key;
+    MinimObject *val;
+    struct MinimSymbolTableBucket *next;
+} typedef MinimSymbolTableBucket;
 
 // symbol table
 struct MinimSymbolTable
 {
-    MinimSymbolTableRow *rows;
-    size_t size, alloc;
+    MinimSymbolTableBucket **buckets;
+    size_t *alloc_ptr;
+    size_t alloc, size;
 } typedef MinimSymbolTable;
 
 // module cache
@@ -182,6 +182,8 @@ void check_transform(MinimEnv *env,
 //  Interning
 //
 
+extern size_t bucket_sizes[];
+
 InternTable *init_intern_table();
 MinimObject *intern_symbol(InternTable *itab, const char *sym);
 
@@ -189,11 +191,7 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym);
 //  Symbol table
 //
 
-#define MINIM_DEFAULT_SYMBOL_TABLE_SIZE     5
-
 void init_minim_symbol_table(MinimSymbolTable **ptable);
-
-void copy_minim_symbol_table(MinimSymbolTable **ptable, MinimSymbolTable *src);
 
 void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObject *obj);
 
