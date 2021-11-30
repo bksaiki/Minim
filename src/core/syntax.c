@@ -619,6 +619,7 @@ static MinimObject *syntax_unwrap_node(MinimEnv *env, MinimObject* stx, bool unq
                 return eval_ast_no_check(env, MINIM_STX_CADR(stx));
         }
 
+        it2 = NULL;
         trailing = NULL;
         res = minim_null;
         for (it = MINIM_STX_VAL(stx); MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))

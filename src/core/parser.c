@@ -78,22 +78,12 @@ static char next_char(MinimObject *port)
 
 static MinimObject *list_error()
 {
-    const char msg[ILLEGAL_DOT_MSG_LEN] = "illegal use of `.`";
-    char *str;
-
-    str = GC_alloc_atomic(ILLEGAL_DOT_MSG_LEN * sizeof(char*));
-    strncpy(str, msg, ILLEGAL_DOT_MSG_LEN);
-    return minim_symbol(str);
+    return minim_symbol("illegal use of `.`");
 }
 
 static MinimObject *end_of_input_error()
 {
-    const char msg[UNEXPECTED_EOF_MSG_LEN] = "unexpected end of input";
-    char *str;
-
-    str = GC_alloc_atomic(ILLEGAL_DOT_MSG_LEN * sizeof(char*));
-    strncpy(str, msg, ILLEGAL_DOT_MSG_LEN);
-    return minim_symbol(str);
+    return minim_symbol("unexpected end of input");
 }
 
 static MinimObject *bad_syntax_error(const char *syntax)
@@ -576,6 +566,7 @@ static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flag
         else
         {
             *perr = end_of_input_error();
+            node = NULL;
         }
     }
     else if (normal_char(c))
@@ -587,6 +578,7 @@ static MinimObject *read_top(MinimObject *port, MinimObject **perr, uint8_t flag
     {
         update_port(port, c);
         *perr = unexpected_char_error(c);
+        node = NULL;
     }
 
     return node;

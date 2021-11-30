@@ -152,7 +152,6 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
 
 MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *val;
     uint8_t prev_flags;
 
     if (argc == 0)
@@ -160,13 +159,11 @@ MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
 
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (i + 1 == argc)  env->flags = prev_flags;
-        val = eval_ast_no_check(env, args[i]);
-    }
+    for (size_t i = 0; i < argc - 1; ++i)
+        eval_ast_no_check(env, args[i]);
 
-    return val;
+    env->flags = prev_flags;
+    return eval_ast_no_check(env, args[argc - 1]);
 }
 
 MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)

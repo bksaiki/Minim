@@ -196,6 +196,7 @@ static MinimObject *minim_hash_table_to_list(MinimHash *ht)
 {
     MinimObject *head, *it;
     
+    it = NULL;
     head = NULL;
     for (size_t i = 0; i < ht->alloc; ++i)
     {

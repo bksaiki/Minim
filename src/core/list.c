@@ -115,6 +115,7 @@ static MinimObject *minim_list_map(MinimEnv *env, MinimObject *map, size_t argc,
     for (size_t i = 0; i < argc; ++i)
         it[i] = args[i];
 
+    c = NULL;
     head = NULL;
     while (!map_iters_nullp(env, argc, it))
     {
