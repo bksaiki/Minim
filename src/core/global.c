@@ -1,9 +1,4 @@
-#include "../common/path.h"
-
-#include "env.h"
-#include "global.h"
-#include "intern.h"
-#include "module.h"
+#include "minimpriv.h"
 
 struct MinimGlobal global;
 

@@ -1,13 +1,4 @@
-#include <limits.h>
-#include <string.h>
-
-#include "../common/buffer.h"
-#include "../gc/gc.h"
-#include "assert.h"
-#include "error.h"
-#include "global.h"
-#include "number.h"
-#include "string.h"
+#include "minimpriv.h"
 
 static void replace_special_chars(char *str)
 {

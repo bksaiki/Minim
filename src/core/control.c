@@ -1,15 +1,4 @@
-#include <setjmp.h>
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "arity.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "jmp.h"
-#include "lambda.h"
-#include "list.h"
-#include "tail_call.h"
+#include "minimpriv.h"
 
 //
 //  Builtins
@@ -18,8 +7,12 @@
 MinimObject *minim_builtin_if(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *cond;
-
+    uint8_t prev_flags;
+    
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
     cond = eval_ast_no_check(env, args[0]);
+    env->flags = prev_flags;
     return eval_ast_no_check(env, (coerce_into_bool(cond) ? args[1] : args[2]));
 }
 
@@ -31,9 +24,9 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
     uint8_t prev_flags;
     
     // setup up new scope
-    init_env(&env2, env, NULL);
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    init_env(&env2, env, NULL);
 
     bindc = syntax_list_len(args[0]);
     it = MINIM_STX_VAL(args[0]);
@@ -100,9 +93,9 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
     uint8_t prev_flags;
     
     // setup up new scope
-    init_env(&env2, env, NULL);
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    init_env(&env2, env, NULL);
 
     bindc = syntax_list_len(args[0]);
     it = MINIM_STX_VAL(args[0]);
@@ -159,14 +152,18 @@ MinimObject *minim_builtin_letstar_values(MinimEnv *env, size_t argc, MinimObjec
 
 MinimObject *minim_builtin_begin(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *val;
+    uint8_t prev_flags;
 
     if (argc == 0)
         return minim_void;
 
-    for (size_t i = 0; i < argc; ++i)
-        val = eval_ast_no_check(env, args[i]);
-    return val;
+    prev_flags = env->flags;
+    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+    for (size_t i = 0; i < argc - 1; ++i)
+        eval_ast_no_check(env, args[i]);
+
+    env->flags = prev_flags;
+    return eval_ast_no_check(env, args[argc - 1]);
 }
 
 MinimObject *minim_builtin_values(MinimEnv *env, size_t argc, MinimObject **args)

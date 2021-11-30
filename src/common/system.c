@@ -1,3 +1,5 @@
+#include "../gc/gc.h"
+#include "common.h"
 #include "system.h"
 
 #if defined(MINIM_LINUX)

@@ -1,6 +1,5 @@
-#include "../minim.h"
+#include "minimpriv.h"
 #include "../compiler/compile.h"
-#include "error.h"
 
 static MinimEnv *get_builtin_env(MinimEnv *env)
 {
@@ -50,7 +49,7 @@ static MinimObject *read_error(MinimObject *port, MinimObject *err, const char *
     init_buffer(&bf);
     writef_buffer(bf, "~s:~u:~u", fname, MINIM_PORT_ROW(port), MINIM_PORT_COL(port));
 
-    init_minim_error(&e, "bad syntax", MINIM_STX_SYMBOL(err));
+    init_minim_error(&e, "bad syntax", MINIM_SYMBOL(err));
     init_minim_error_desc_table(&e->table, 1);
     minim_error_desc_table_set(e->table, 0, "in", get_buffer(bf));
     return minim_err(e);

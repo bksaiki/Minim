@@ -1,16 +1,17 @@
-#include <string.h>
-
-#include "hash.h"
-#include "intern.h"
-
-#define MINIM_INTERN_TABLE_LOAD_FACTOR     0.75
+#include "minimpriv.h"
 
 // copied from ChezScheme
-static size_t bucket_sizes[] = {
+size_t bucket_sizes[] = {
+    13,
+    29,
+    59,
+    113,
+    257,
+    509,
     1031,
     2053,
     4099,
-    8209,
+    8209,           // default intern table size
     16411,
     32771,
     65537,
@@ -63,6 +64,8 @@ static size_t bucket_sizes[] = {
     0
 };
 
+#define MINIM_INTERN_TABLE_LOAD_FACTOR     0.75
+#define start_size_ptr      (&bucket_sizes[9])
 #define load_factor(s, a)   ((double)(s) / (double)(a))
 
 #define resize_if_needed(i)                                                     \
@@ -83,7 +86,7 @@ static size_t bucket_sizes[] = {
 InternTable *init_intern_table()
 {
     InternTable *itab = GC_alloc(sizeof(InternTable));
-    itab->alloc_ptr = &bucket_sizes[3];
+    itab->alloc_ptr = start_size_ptr;
     itab->alloc = *itab->alloc_ptr;
     itab->buckets = GC_alloc(itab->alloc * sizeof(InternTableBucket*));
     itab->size = 0;

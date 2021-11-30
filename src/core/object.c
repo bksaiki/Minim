@@ -1,20 +1,4 @@
-#include <setjmp.h>
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "env.h"
-#include "error.h"
-#include "global.h"
-#include "hash.h"
-#include "lambda.h"
-#include "list.h"
-#include "number.h"
-#include "object.h"
-#include "parser.h"
-#include "sequence.h"
-#include "syntax.h"
-#include "tail_call.h"
-#include "vector.h"
+#include "minimpriv.h"
 
 // Handlers
 
@@ -266,8 +250,8 @@ bool minim_eqp(MinimObject *a, MinimObject *b)
                MINIM_VECTOR_LEN(b) == 0;
 
     case MINIM_OBJ_HASH:
-        return MINIM_HASH_TABLE(a)->elems == 0 &&
-               MINIM_HASH_TABLE(b)->elems == 0;
+        return MINIM_HASH_TABLE(a)->size == 0 &&
+               MINIM_HASH_TABLE(b)->size == 0;
 
     /*
     case MINIM_OBJ_SYM:

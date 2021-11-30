@@ -1,10 +1,6 @@
-#include <string.h>
+#include <math.h>
 
-#include "../gc/gc.h"
-#include "assert.h"
-#include "error.h"
-#include "math.h"
-#include "number.h"
+#include "minimpriv.h"
 
 // *** Internals *** //
 
@@ -241,13 +237,28 @@ static bool minim_number_cmp_h(MinimObject **args, size_t argc, int op)
     {
         cmp = minim_number_cmp(args[i], args[i + 1]);
         
-        if (op == 0)        b = (cmp == 0);
-        else if (op == 1)   b = (cmp > 0);
-        else if (op == 2)   b = (cmp < 0);
-        else if (op == 3)   b = (cmp >= 0);
-        else if (op == 4)   b = (cmp <= 0);
-        
-        if (!b)     return false;
+        switch (op) {
+        case 0:
+            b = (cmp == 0);
+            break;
+        case 1:
+            b = (cmp > 0);
+            break;
+        case 2:
+            b = (cmp < 0);
+            break;
+        case 3:
+            b = (cmp >= 0);
+            break;
+        case 4:
+            b = (cmp <= 0);
+            break;
+        default:
+            return false;
+        }
+
+        if (!b)
+            return false;
     }
 
     return true;

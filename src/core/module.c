@@ -1,14 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "global.h"
-#include "hash.h"
-#include "list.h"
-#include "module.h"
-#include "read.h"
+#include "minimpriv.h"
 
 static MinimEnv *get_builtin_env(MinimEnv *env)
 {
@@ -137,7 +127,7 @@ MinimObject *minim_module_get_sym(MinimModule *module, const char *sym)
 {
     size_t hash;
 
-    hash = hash_bytes(sym, strlen(sym));
+    hash = hash_symbol(sym);
     return minim_symbol_table_get(module->env->table, sym, hash);
 }
 

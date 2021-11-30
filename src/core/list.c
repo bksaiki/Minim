@@ -1,14 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "arity.h"
-#include "assert.h"
-#include "builtin.h"
-#include "jmp.h"
-#include "error.h"
-#include "lambda.h"
-#include "list.h"
-#include "number.h"
+#include "minimpriv.h"
 
 static MinimObject *eval_nary(MinimEnv *env, MinimObject *proc, size_t argc, MinimObject **conss)
 {
@@ -125,6 +115,7 @@ static MinimObject *minim_list_map(MinimEnv *env, MinimObject *map, size_t argc,
     for (size_t i = 0; i < argc; ++i)
         it[i] = args[i];
 
+    c = NULL;
     head = NULL;
     while (!map_iters_nullp(env, argc, it))
     {

@@ -1,21 +1,104 @@
-#ifndef _MINIM_OBJECT_H_
-#define _MINIM_OBJECT_H_
+#ifndef _MINIM_H_
+#define _MINIM_H_
 
+// standard library headers
+#include <limits.h>
+#include <stdio.h>
+#include <setjmp.h>
 #include <stdarg.h>
-#include "../common/common.h"
+#include <stdlib.h>
+#include <string.h>
+
+// library headers
+#include <gmp.h>
+
+// garbage collector
+#include "../gc/gc.h"
+
+// common folder
 #include "../common/buffer.h"
+#include "../common/common.h"
+#include "../common/path.h"
+
+//
+//  Forward declarations
+//
+
+typedef struct MinimLambda MinimLambda;
+typedef struct MinimModule MinimModule;
+typedef struct MinimModuleCache MinimModuleCache;
+typedef struct InternTable InternTable;
+typedef struct MinimSymbolTable MinimSymbolTable;
+
+//
+//  Structures
+//
+
+// universal object
+typedef struct MinimObject
+{
+    uint8_t type;
+} MinimObject;
+
+// generic environment within scopes
+typedef struct MinimEnv
+{
+    struct MinimEnv *parent, *caller;
+    struct MinimModule *module;
+    MinimSymbolTable *table;
+    MinimLambda *callee;
+    MinimObject *jmp;
+    char *current_dir;
+    uint8_t flags;
+} MinimEnv;
+
+// module
+typedef struct MinimModule
+{
+    struct MinimModule *prev;
+    struct MinimModule **imports;
+    MinimObject **exprs;
+    size_t exprc, importc;
+    MinimEnv *env, *export;
+    char *name;
+    size_t flags;
+} MinimModule;
+
+// global table
+typedef struct MinimGlobal
+{
+    // state
+    MinimModuleCache *cache;            // cache of loaded modules
+    MinimSymbolTable *builtins;         // primitive table
+    InternTable *symbols;               // symbol table
+    char *current_dir;                  // directory where Minim was started
+    pid_t pid;                          // primary thread id
+
+    // statistics
+    size_t stat_exprs;
+    size_t stat_procs;
+    size_t stat_objs;
+
+    // flags
+    uint8_t flags;
+} MinimGlobal;
+
+// printing parameters
+typedef struct PrintParams
+{
+    size_t maxlen;
+    bool quote;
+    bool display;
+    bool syntax;
+} PrintParams;
+
+//
+//  Objects  
+//
 
 #define PTR(x, offset)  (((intptr_t) (x)) + offset)
 #define VOID_PTR(x)     ((void*)((intptr_t) (x)))
 #define PTR_SIZE        (sizeof(void*))
-
-// Forward declaration
-typedef struct MinimEnv MinimEnv;
-
-typedef struct MinimObject
-{
-    uint8_t type;           // base object has only one member
-} MinimObject;
 
 typedef MinimObject *(*MinimBuiltin)(MinimEnv *, size_t, MinimObject **);
 typedef bool (*MinimPred)(MinimObject *);
@@ -260,5 +343,147 @@ Buffer* minim_obj_to_bytes(MinimObject *obj);
 
 #define coerce_into_bool(x)    ((x) != minim_false)
 #define to_bool(x)             ((x) ? minim_true : minim_false)
+
+//
+//  Evaluation
+//
+
+// Evaluates the syntax tree stored at 'ast' and stores the
+// result at 'pobj'. Returns a non-zero result on success.
+MinimObject *eval_ast(MinimEnv* env, MinimObject *ast);
+
+// Same as 'eval_ast' except it does not run the syntax checker
+MinimObject *eval_ast_no_check(MinimEnv* env, MinimObject *ast);
+
+// Evaluates a syntax terminal. Returns NULL on failure.
+MinimObject *eval_ast_terminal(MinimEnv *env, MinimObject *ast);
+
+// Evaluates `module` up to defining macros
+void eval_module_cached(MinimModule *module);
+
+// Evaluates `module` up to applying syntax macros
+void eval_module_macros(MinimModule *module);
+
+// Evaluates `module` and returns the result
+MinimObject *eval_module(MinimModule *module);
+
+// Evaluates an expression and returns a string.
+char *eval_string(char *str, size_t len);
+
+//
+//  Boot
+//
+
+#define MINIM_FLAG_LOAD_LIBS        0x1
+#define MINIM_FLAG_NO_RUN           0x2
+#define MINIM_FLAG_NO_CACHE         0x4
+#define MINIM_FLAG_COMPILE          0x8
+#define IF_FLAG_RAISED(x, fl, t, f)     ((((x) & (fl)) == 0) ? (f) : (t))
+
+#define GLOBAL_FLAG_DEFAULT     0x0
+#define GLOBAL_FLAG_COMPILE     0x1
+#define GLOBAL_FLAG_CACHE       0x2
+
+// Loads builtins
+void init_builtins();
+
+// initialize builtins, intern table, other info
+void init_global_state(uint8_t flags);
+
+// global object
+extern MinimGlobal global;
+
+//
+//  Module / Environment
+//
+
+// Initializes a new environment object.
+void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee);
+
+void init_minim_module(MinimModule **pmodule);
+
+//
+//  Reading / Parsing
+//
+
+#define READ_FLAG_WAIT          0x1     // behavior upon encountering end of input
+
+MinimObject *minim_parse_port(MinimObject *port, MinimObject **perr, uint8_t flags);
+
+// Reads a file given by `str` and returns a new module whose previous module is `prev`.
+MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname);
+
+// Runs a file in a new environment where `env` contains the builtin environment
+// at its lowest level.
+void minim_load_file(MinimEnv *env, const char *fname);
+
+// Runs a file in the environment `env`.
+void minim_run_file(MinimEnv *env, const char *fname);
+
+//
+//  Numbers
+//
+
+bool minim_zerop(MinimObject *num);
+bool minim_positivep(MinimObject *num);
+bool minim_negativep(MinimObject *num);
+bool minim_evenp(MinimObject *num);
+bool minim_oddp(MinimObject *num);
+bool minim_integerp(MinimObject *thing);
+bool minim_exact_integerp(MinimObject *thing);
+bool minim_exact_nonneg_intp(MinimObject *thing);
+bool minim_nanp(MinimObject *thing);
+bool minim_infinitep(MinimObject *thing);
+
+MinimObject *int_to_minim_number(long int x);
+MinimObject *uint_to_minim_number(size_t x);
+
+#define MINIM_NUMBER_TO_UINT(obj)      mpz_get_ui(mpq_numref(MINIM_EXACTNUM(obj)))
+
+int minim_number_cmp(MinimObject *a, MinimObject *b);
+
+//
+//  Printing
+//
+
+#define MINIM_DEFAULT_ERR_LOC_LEN       30
+
+#define PRINT_PARAMS_DEFAULT_MAXLEN     UINT_MAX
+#define PRINT_PARAMS_DEFAULT_QUOTE      false
+#define PRINT_PARAMS_DEFAULT_DISPLAY    false
+#define PRINT_PARAMS_DEFAULT_SYNTAX     false
+
+// Sets the print param
+void set_print_params(PrintParams *pp,
+                      size_t maxlen,
+                      bool quote,
+                      bool display,
+                      bool syntax);
+
+// Sets print params to default
+#define set_default_print_params(pp)                        \
+    set_print_params(pp, PRINT_PARAMS_DEFAULT_MAXLEN,       \
+                         PRINT_PARAMS_DEFAULT_QUOTE,        \
+                         PRINT_PARAMS_DEFAULT_DISPLAY,      \
+                         PRINT_PARAMS_DEFAULT_SYNTAX);       
+
+// Sets print params for printing syntax
+#define set_syntax_print_params(pp)                         \
+    set_print_params(pp, PRINT_PARAMS_DEFAULT_MAXLEN,       \
+                         true,                              \
+                         PRINT_PARAMS_DEFAULT_DISPLAY,      \
+                         true);
+
+// Writes a string representation of the object to stdout
+int print_minim_object(MinimObject *obj, MinimEnv *env, PrintParams *pp);
+
+// Writes a string representation of the object to the buffer
+int print_to_buffer(Buffer *bf, MinimObject* obj, MinimEnv *env, PrintParams *pp);
+
+// Writes a string representation of the object to stream.
+int print_to_port(MinimObject *obj, MinimEnv *env, PrintParams *pp, FILE *stream);
+
+// Returns a string representation of the object.
+char *print_to_string(MinimObject *obj, MinimEnv *env, PrintParams *pp);
 
 #endif

@@ -1,13 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "assert.h"
-#include "error.h"
-#include "eval.h"
-#include "global.h"
-#include "lambda.h"
-#include "list.h"
-#include "tail_call.h"
+#include "minimpriv.h"
 
 static void gc_minim_lambda_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
@@ -56,132 +47,111 @@ static MinimModule *env_get_module(MinimEnv *env)
 
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *val;
+    MinimObject *val, *jmp;
     MinimEnv *env2;
+    jmp_buf *pjmp_buf;
 
-    while (true)    // loop for tail-call
+    pjmp_buf = GC_alloc(sizeof(jmp_buf));
+    jmp = minim_jmp(pjmp_buf, NULL);
+    if (setjmp(*pjmp_buf) != 0)      // if jumped back
     {
-        MinimTailCall *call;
-
-        if (lam->rest)
-        {
-            char *name = (lam->name ? lam->name : "");
-            if (argc < lam->argc)
-                THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
-
-        }
-        else if (argc != lam->argc)
-        {
-            char *name = (lam->name ? lam->name : "");
-            THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
-        }
-
-        // create internal environment
-        init_env(&env2, lam->env, lam);
-        env2->caller = env;
-
-        // intern arguments
-        for (size_t i = 0; i < lam->argc; ++i)
-            env_intern_sym(env2, lam->args[i], args[i]);
-
-        if (lam->rest)
-        {
-            MinimObject **rest;
-            size_t rcount = argc - lam->argc;
-
-            rest = GC_alloc(rcount * sizeof(MinimObject*));
-            for (size_t i = 0; i < rcount; ++i)
-                rest[i] = args[lam->argc + i];
-
-            val = minim_list(rest, rcount);
-            env_intern_sym(env2, lam->rest, val);
-        }
-
-        res = eval_ast_no_check(env2, lam->body);
-        if (!MINIM_OBJ_TAIL_CALLP(res))
-            break;
-
-        call = MINIM_TAIL_CALL(res);
-        if (call->lam != lam)
-            break;
-        
-        log_proc_called();
-        args = call->args;
-        argc = call->argc;
+        MinimTailCall *tc = (MinimTailCall*) MINIM_JUMP_VAL(jmp);
+        lam = tc->lam;
+        argc = tc->argc;
+        args = tc->args;
     }
 
-    return res;
+    if (lam->rest)
+    {
+        char *name = (lam->name ? lam->name : "");
+        if (argc < lam->argc)
+            THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
+
+    }
+    else if (argc != lam->argc)
+    {
+        char *name = (lam->name ? lam->name : "");
+        THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
+    }
+
+    // create internal environment
+    init_env(&env2, lam->env, lam);
+    env2->caller = env;
+    env2->jmp = jmp;
+
+    // intern arguments
+    for (size_t i = 0; i < lam->argc; ++i)
+        env_intern_sym(env2, lam->args[i], args[i]);
+
+    if (lam->rest)
+    {
+        MinimObject **rest;
+        size_t rcount = argc - lam->argc;
+
+        rest = GC_alloc(rcount * sizeof(MinimObject*));
+        for (size_t i = 0; i < rcount; ++i)
+            rest[i] = args[lam->argc + i];
+
+        val = minim_list(rest, rcount);
+        env_intern_sym(env2, lam->rest, val);
+    }
+
+    log_proc_called();
+    return eval_ast_no_check(env2, lam->body);
 }
 
 MinimObject *eval_lambda2(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res;
+    MinimObject *val;
+    MinimEnv *env2;
 
-    while (true)    // loop for tail-call
+    if (lam->rest)
     {
-        MinimTailCall *call;
-        MinimObject *val;
-        MinimEnv *env2;
+        char *name = (lam->name ? lam->name : "");
+        if (argc < lam->argc)
+            THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
 
-        if (lam->rest)
-        {
-            char *name = (lam->name ? lam->name : "");
-            if (argc < lam->argc)
-                THROW(env, minim_arity_error(name, lam->argc, SIZE_MAX, argc));
-
-        }
-        else if (argc != lam->argc)
-        {
-            char *name = (lam->name ? lam->name : "");
-            THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
-        }
-
-        // create internal environment
-        init_env(&env2, lam->env, lam);
-        // env2->caller = env;
-
-        // merge in transforms
-        if (env)
-        {
-            MinimModule *mod = env_get_module(env);
-            if (mod)
-            {
-                lambda_env = env2;
-                minim_symbol_table_for_each(mod->env->table, intern_transform);
-            }
-        }
-
-        // intern arguments
-        for (size_t i = 0; i < lam->argc; ++i)
-            env_intern_sym(env2, lam->args[i], args[i]);
-
-        if (lam->rest)
-        {
-            MinimObject **rest;
-            size_t rcount = argc - lam->argc;
-
-            rest = GC_alloc(rcount * sizeof(MinimObject*));
-            for (size_t i = 0; i < rcount; ++i)
-                rest[i] = args[lam->argc + i];
-
-            val = minim_list(rest, rcount);
-            env_intern_sym(env2, lam->rest, val);
-        }
-
-        res = eval_ast_no_check(env2, lam->body);
-        if (!MINIM_OBJ_TAIL_CALLP(res))
-            break;
-
-        call = MINIM_TAIL_CALL(res);
-        if (call->lam != lam)
-            break;
-
-        log_proc_called();
-        args = call->args;
-        argc = call->argc;
+    }
+    else if (argc != lam->argc)
+    {
+        char *name = (lam->name ? lam->name : "");
+        THROW(env, minim_arity_error(name, lam->argc, lam->argc, argc));
     }
 
-    return res;
+    // create internal environment
+    init_env(&env2, lam->env, lam);
+    env2->flags = 0x0;
+
+    // merge in transforms
+    if (env)
+    {
+        MinimModule *mod = env_get_module(env);
+        if (mod)
+        {
+            lambda_env = env2;
+            minim_symbol_table_for_each(mod->env->table, intern_transform);
+        }
+    }
+
+    // intern arguments
+    for (size_t i = 0; i < lam->argc; ++i)
+        env_intern_sym(env2, lam->args[i], args[i]);
+
+    if (lam->rest)
+    {
+        MinimObject **rest;
+        size_t rcount = argc - lam->argc;
+
+        rest = GC_alloc(rcount * sizeof(MinimObject*));
+        for (size_t i = 0; i < rcount; ++i)
+            rest[i] = args[lam->argc + i];
+
+        val = minim_list(rest, rcount);
+        env_intern_sym(env2, lam->rest, val);
+    }
+
+    log_proc_called();
+    return eval_ast_no_check(env2, lam->body);
 }
 
 void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)

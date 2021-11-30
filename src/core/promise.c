@@ -1,6 +1,4 @@
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
+#include "minimpriv.h"
 
 MinimObject *minim_builtin_delay(MinimEnv *env, size_t argc, MinimObject **args)
 {

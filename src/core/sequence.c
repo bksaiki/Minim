@@ -1,15 +1,4 @@
-#include <stdarg.h>
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "arity.h"
-#include "assert.h"
-#include "error.h"
-#include "jmp.h"
-#include "number.h"
-#include "lambda.h"
-#include "list.h"
-#include "sequence.h"
+#include "minimpriv.h"
 
 void init_minim_seq(MinimSeq **pseq, MinimObject *init, MinimObject *first, MinimObject *rest, MinimObject *donep)
 {

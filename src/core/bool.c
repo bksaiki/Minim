@@ -1,5 +1,4 @@
-#include "assert.h"
-#include "list.h"
+#include "minimpriv.h"
 
 MinimObject *minim_builtin_boolp(MinimEnv *env, size_t argc, MinimObject **args)
 {

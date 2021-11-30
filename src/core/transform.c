@@ -1,13 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "global.h"
-#include "list.h"
-#include "string.h"
-#include "syntax.h"
+#include "minimpriv.h"
 
 #define transform_type(x)   (MINIM_OBJ_CLOSUREP(x) ? MINIM_TRANSFORM_MACRO : MINIM_TRANSFORM_UNKNOWN)
 
@@ -511,18 +502,19 @@ get_patterns(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
     else if (MINIM_STX_SYMBOLP(stx))
     {
         MinimObject *val;
+        char *sym = MINIM_STX_SYMBOL(stx);
 
-        if (strcmp(MINIM_STX_SYMBOL(stx), "...") == 0 ||
-            strcmp(MINIM_STX_SYMBOL(stx), ".") == 0)     // early exit
+        if (strcmp(sym, "...") == 0 ||
+            strcmp(sym, ".") == 0)     // early exit
             return;
 
-        val = env_get_sym(env, MINIM_STX_SYMBOL(stx));
+        val = env_get_sym(env, sym);
         if (MINIM_OBJ_TRANSFORMP(val) && MINIM_TRANSFORM_TYPE(val) == MINIM_TRANSFORM_PATTERN)
         {
             for (size_t i = 0; i < MINIM_VECTOR_LEN(patterns); ++i)
             {
-                if (strcmp(MINIM_SYMBOL(MINIM_CAR(MINIM_VECTOR_REF(patterns, i))),
-                           MINIM_STX_SYMBOL(stx)) == 0)
+                MinimObject *key = MINIM_CAR(MINIM_VECTOR_REF(patterns, i));
+                if (strcmp(MINIM_SYMBOL(key), sym) == 0)
                     return; // already in list
             }
 
@@ -820,7 +812,7 @@ transform_loc(MinimEnv *env, MinimObject *trans, MinimObject *stx)
     {
         THROW(env, minim_syntax_error("expected syntax as a result",
                                       MINIM_STX_SYMBOL(stx),
-                                      stx, NULL));
+                                      stx, res));
     }
 
     return res;

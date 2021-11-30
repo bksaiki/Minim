@@ -1,43 +1,5 @@
 #include <math.h>
-#include <stdarg.h>
-
-#include "builtin.h"
-#include "global.h"
-#include "intern.h"
-#include "number.h"
-
-void minim_load_builtin(MinimEnv *env, const char *name, MinimObjectType type, ...)
-{
-    MinimObject *obj;
-    va_list rest;
-
-    va_start(rest, type);
-    switch (type)
-    {
-    case MINIM_OBJ_FUNC:
-        obj = minim_builtin(va_arg(rest, MinimBuiltin));
-        break;
-
-    case MINIM_OBJ_SYNTAX:
-        obj = minim_syntax(va_arg(rest, MinimBuiltin));
-        break;
-
-    case MINIM_OBJ_PAIR:
-        obj = minim_cons(va_arg(rest, MinimObject*), va_arg(rest, MinimObject*));
-        break;
-
-    case MINIM_OBJ_INEXACT:
-        obj = minim_inexactnum(va_arg(rest, double));
-        break;
-    
-    default:
-        printf("Load builtin: unknown type for '%s'", name);
-        return;
-    }
-    va_end(rest);
-
-    env_intern_sym(env, name, obj);
-}
+#include "minimpriv.h"
 
 static void init_builtin(const char *name, MinimObjectType type, ...)
 {
@@ -68,7 +30,6 @@ static void init_builtin(const char *name, MinimObjectType type, ...)
         return;
     }
 
-    intern(name);
     set_builtin(name, obj);
     va_end(rest);
 }

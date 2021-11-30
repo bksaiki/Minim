@@ -1,23 +1,4 @@
-#include <setjmp.h>
-#include <stdio.h>
-#include <string.h>
-
-#include "../common/path.h"
-#include "../gc/gc.h"
-
-#include "arity.h"
-#include "builtin.h"
-#include "eval.h"
-#include "error.h"
-#include "global.h"
-#include "jmp.h"
-#include "lambda.h"
-#include "list.h"
-#include "number.h"
-#include "string.h"
-#include "syntax.h"
-#include "tail_call.h"
-#include "transform.h"
+#include "minimpriv.h"
 
 // forward declaration
 static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *node);
@@ -185,15 +166,14 @@ static MinimObject *eval_syntax(MinimEnv *env, MinimObject *stx, MinimBuiltin pr
 
 #define CALL_CLOSURE(env, lam, argc, args)              \
 {                                                       \
-    if (env_has_called(env, lam))                       \
+    if (env->flags & MINIM_ENV_TAIL_CALLABLE)           \
     {                                                   \
-        MinimTailCall *call;                            \
-        init_minim_tail_call(&call, lam, argc, args);   \
-        return minim_tail_call(call);                   \
+        MinimTailCall *tc;                              \
+        init_minim_tail_call(&tc, lam, argc, args);     \
+        unwind_tail_call(env, tc);                      \
     }                                                   \
     else                                                \
     {                                                   \
-        log_proc_called();                              \
         return eval_lambda(lam, env, argc, args);       \
     }                                                   \
 }

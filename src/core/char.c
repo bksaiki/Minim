@@ -1,8 +1,6 @@
 #include <ctype.h>
 
-#include "builtin.h"
-#include "error.h"
-#include "number.h"
+#include "minimpriv.h"
 
 MinimObject *minim_builtin_charp(MinimEnv *env, size_t argc, MinimObject **args)
 {

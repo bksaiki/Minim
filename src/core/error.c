@@ -1,13 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "assert.h"
-#include "builtin.h"
-#include "error.h"
-#include "jmp.h"
-#include "lambda.h"
-#include "number.h"
-#include "string.h"
+#include "minimpriv.h"
 
 static void gc_minim_error_trace_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {
@@ -90,7 +81,7 @@ void minim_error_add_trace(MinimError *err, SyntaxLoc *loc, const char *name)
 {
     MinimErrorTrace *trace;
 
-    if (err->bottom && err->bottom->name)
+    if (err->bottom && err->bottom->name && name)
     {   
         if (strcmp(err->bottom->name, name) == 0)
         {

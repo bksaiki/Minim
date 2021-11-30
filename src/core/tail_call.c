@@ -1,5 +1,4 @@
-#include "../gc/gc.h"
-#include "tail_call.h"
+#include "minimpriv.h"
 
 static void gc_minim_tail_call_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 {

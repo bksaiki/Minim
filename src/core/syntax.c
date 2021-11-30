@@ -1,15 +1,4 @@
-#include <string.h>
-
-#include "../gc/gc.h"
-#include "arity.h"
-#include "builtin.h"
-#include "error.h"
-#include "eval.h"
-#include "global.h"
-#include "list.h"
-#include "hash.h"
-#include "syntax.h"
-#include "transform.h"
+#include "minimpriv.h"
 
 // =============================== Syntax Location ==========================
 
@@ -118,7 +107,7 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *stx)
         }
 
         s = MINIM_SYMBOL(sym);
-        hash = hash_bytes(s, strlen(s));
+        hash = hash_symbol(s);
         if (minim_symbol_table_get(env->table, s, hash) != NULL)
         {
             THROW(env, minim_syntax_error("duplicate identifier",
@@ -274,7 +263,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
                 }
 
                 s = MINIM_STX_SYMBOL(sym);
-                hash = hash_bytes(s, strlen(s));
+                hash = hash_symbol(s);
                 if (minim_symbol_table_get(env2->table, s, hash) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
@@ -367,7 +356,7 @@ static void check_syntax_letstar_values(MinimEnv *env, MinimObject *stx)
                 }
 
                 s = MINIM_STX_SYMBOL(sym);
-                hash = hash_bytes(s, strlen(s));
+                hash = hash_symbol(s);
                 if (minim_symbol_table_get(env3->table, s, hash) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
@@ -630,6 +619,7 @@ static MinimObject *syntax_unwrap_node(MinimEnv *env, MinimObject* stx, bool unq
                 return eval_ast_no_check(env, MINIM_STX_CADR(stx));
         }
 
+        it2 = NULL;
         trailing = NULL;
         res = minim_null;
         for (it = MINIM_STX_VAL(stx); MINIM_OBJ_PAIRP(it); it = MINIM_CDR(it))
