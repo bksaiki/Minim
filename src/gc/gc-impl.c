@@ -68,23 +68,19 @@ void GC_atomic_mrk(void (*)(void*, void*), void*, void*);
 
 /*************** Helper functions *****************/
 
-#define gc_load(gc)     (gc_load2((gc)->size, (gc)->alloc))
-#define gc_load2(s, a)  (((double) (s)) / ((double) (a)))
-#define gc_hash(ptr)    (((size_t) ptr) >> 3)
-
 #define ptr_arr_ref(arr, n)     (((void**) (arr))[n])
 #define ptr_ref(p)              (*((void**) (p)))
 
 // Inserts an existing bucket into the record table updating `b->next`.
 static void
 insert_record(gc_t *gc,
-              gc_bucket_t *b) {
+              gc_record_t *r) {
     size_t i;
     
     // compute index and insert
-    i = b->record.hash % gc->alloc;
-    b->next = gc->buckets[i];
-    gc->buckets[i] = b;
+    i = gc_hash(r->ptr) % gc->alloc;
+    gc_record_next_set(r, gc->buckets[i]);
+    gc->buckets[i] = r;
 }
 
 // Creates a new record, adds it to the table and returns
@@ -96,40 +92,42 @@ add_record(gc_t *gc,
            gc_dtor_t dtor,
            gc_mark_t mrk,
            int root) {
-    gc_bucket_t *nb;
+    gc_record_t *r;
 
     // create record
-    nb = (gc_bucket_t *) malloc(sizeof(gc_bucket_t));
-    nb->record.ptr = ptr;
-    nb->record.dtor = dtor;
-    nb->record.mrk = mrk;
-    nb->record.size = size;
-    nb->record.hash = gc_hash(ptr);
-    nb->record.flags = (root ? GC_BLOCK_ROOT : 0x0);
+    r = (gc_record_t *) malloc(sizeof(gc_record_t));
+    r->next = NULL;
+    r->size = size;
+    r->dtor = dtor;
+    r->mrk = mrk;
+    r->ptr = ptr;
+
+    if (root)
+        gc_record_root_set(r);
 
     // insert and return record
-    insert_record(gc, nb);
-    return &nb->record;
+    insert_record(gc, r);
+    return r;
 }
 
 static void
 gc_resize(gc_t *gc,
           size_t *alloc_ptr) {
-    gc_bucket_t **old_buckets = gc->buckets;
+    gc_record_t **old_buckets = gc->buckets;
     size_t old_alloc = gc->alloc;
 
     // update size and create new buckets
     gc->alloc_ptr = alloc_ptr;
     gc->alloc = *gc->alloc_ptr;
-    gc->buckets = (gc_bucket_t **) calloc(gc->alloc, sizeof(gc_bucket_t*));
+    gc->buckets = (gc_record_t **) calloc(gc->alloc, sizeof(gc_record_t*));
 
     // rehash
     for (size_t i = 0; i < old_alloc; ++i) {
-        gc_bucket_t *b = old_buckets[i];
-        while (b) {
-            gc_bucket_t *nb = b->next;     
-            insert_record(gc, b);
-            b = nb;
+        gc_record_t *r = old_buckets[i];
+        while (r) {
+            gc_record_t *nr = gc_record_next(r);     
+            insert_record(gc, r);
+            r = nr;
         }
     }
 
@@ -166,15 +164,14 @@ gc_mark_ptr(gc_t *gc,
 #endif
 
     i = gc_hash(ptr) % gc->alloc;
-    for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
-        gc_record_t *r = &b->record;
+    for (gc_record_t *r = gc->buckets[i]; r; r = gc_record_next(r)) {
         if (ptr == r->ptr) {    // found correct record
-            if (r->flags & GC_BLOCK_MARK ||     // early exit if root or already marked
-                r->flags & GC_BLOCK_ROOT)
+            if (gc_record_markp(r) ||     // early exit if root or already marked
+                gc_record_rootp(r))
                 return;
 
             // set mark flag
-            r->flags |= GC_BLOCK_MARK;
+            gc_record_mark_set(r);
 
             // recurse into pointer block
             if (!r->mrk) {                                      // default (conservative)
@@ -211,10 +208,9 @@ gc_mark(gc_t *gc) {
 
     // mark roots
     for (size_t i = 0; i < gc->alloc; ++i) {
-        for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
-            gc_record_t *r = &b->record;
-            if (r->flags & GC_BLOCK_ROOT) {
-                r->flags |= GC_BLOCK_MARK;
+        for (gc_record_t *r = gc->buckets[i]; r; r = gc_record_next(r)) {
+            if (gc_record_rootp(r)) {
+                gc_record_mark_set(r);
                 if (!r->mrk) {                                      // default (conservative)
                     for (size_t k = 0; k < r->size / POINTER_SIZE; ++k)
                         gc_mark_ptr(gc, ptr_arr_ref(r->ptr, k));
@@ -234,19 +230,18 @@ gc_mark(gc_t *gc) {
 static void
 gc_unmark(gc_t *gc) {
     for (size_t i = 0; i < gc->alloc; ++i) {
-        for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next)
-            b->record.flags &= ~GC_BLOCK_MARK;
+        for (gc_record_t *r = gc->buckets[i]; r; r = gc_record_next(r))
+            gc_record_mark_unset(r);
     }
 }
 
 static void
 gc_sweep(gc_t *gc) {
     for (size_t i = 0; i < gc->alloc; ++i) {
-        gc_bucket_t *b = gc->buckets[i], *pb = NULL;
-        while (b) {
-            gc_record_t *r = &b->record;
-            if (!(r->flags & GC_BLOCK_MARK)) {      // unmarked
-                gc_bucket_t *nb = b->next;
+        gc_record_t *r = gc->buckets[i], *pr = NULL;
+        while (r) {
+            if (!gc_record_markp(r)) {      // unmarked
+                gc_record_t *nr = gc_record_next(r);
 
                 // update stats and remove record
                 gc->allocs -= r->size;
@@ -255,16 +250,16 @@ gc_sweep(gc_t *gc) {
                 // call dtor if needed and free record and bucket entry
                 if (r->dtor)    r->dtor(r->ptr);
                 free(r->ptr);
-                free(b);
+                free(r);
 
                 // repair bucket entries as needed
-                if (pb)     pb->next = nb;
-                else        gc->buckets[i] = nb;
+                if (pr)     gc_record_next_set(pr, nr);
+                else        gc->buckets[i] = nr;
                 
-                b = nb;
+                r = nr;
             } else {
-                pb = b;
-                b = b->next;
+                pr = r;
+                r = gc_record_next(r);
             }
         }
     }
@@ -290,7 +285,7 @@ gc_create(void *stack) {
     gc->stack_bottom = stack;
     gc->alloc_ptr = &bucket_sizes[0];
     gc->alloc = *gc->alloc_ptr;
-    gc->buckets = (gc_bucket_t **) calloc(gc->alloc, sizeof(gc_bucket_t*));
+    gc->buckets = (gc_record_t **) calloc(gc->alloc, sizeof(gc_record_t*));
     gc->size = 0;
     gc->dirty = 0;
     gc->allocs = 0;
@@ -303,9 +298,9 @@ void
 gc_destroy(gc_t* gc) {
     // remove root flags
     for (size_t i = 0; i < gc->alloc; ++i) {
-        for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
-            if (b->record.flags & GC_BLOCK_ROOT)
-                b->record.flags &= ~GC_BLOCK_ROOT;
+        for (gc_record_t *r = gc->buckets[i]; r; r = gc_record_next(r)) {
+            if (gc_record_rootp(r))
+                gc_record_root_unset(r);
         }
     }
     
@@ -348,14 +343,13 @@ void
 gc_remove(gc_t *gc,
           void *ptr,
           int destroy) {
-    gc_bucket_t *b, *pb;
+    gc_record_t *r, *pr;
     size_t i;
 
     i = gc_hash(ptr) % gc->alloc;
-    b = gc->buckets[i];
-    pb = NULL;
-    while (b) {
-        gc_record_t *r = &b->record;
+    r = gc->buckets[i];
+    pr = NULL;
+    while (r) {
         if (ptr == r->ptr) {    // found correct record
             // update stats
             gc->allocs -= r->size;
@@ -368,15 +362,15 @@ gc_remove(gc_t *gc,
             }
 
             // repair bucket entries as needed
-            if (pb)     pb->next = b->next;
-            else        gc->buckets[i] = b->next;
+            if (pr)     gc_record_next_set(pr, r->next);
+            else        gc->buckets[i] = gc_record_next(r);
 
-            free(b);
+            free(r);
             return;
         }
 
-        pb = b;
-        b = b->next;
+        pr = r;
+        r = gc_record_next(r);
     }
 }
 
@@ -384,9 +378,9 @@ gc_record_t *
 gc_get_record(gc_t *gc,
               void *ptr) {
     size_t i = gc_hash(ptr) % gc->alloc;
-    for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
-        if (ptr == b->record.ptr) {
-            return &b->record;
+    for (gc_record_t *r = gc->buckets[i]; r; r = gc_record_next(r)) {
+        if (ptr == r->ptr) {
+            return r;
         }
     }
 
@@ -433,7 +427,7 @@ void
 gc_register_root(gc_t *gc,
                  void *ptr) {
     gc_record_t *r = gc_get_record(gc, ptr);
-    if (r)  r->flags |= GC_BLOCK_ROOT;
+    if (r)  gc_record_root_set(r);
 }
 
 size_t
@@ -447,9 +441,8 @@ gc_get_reachable(gc_t *gc) {
 
     gc_mark(gc);
     for (size_t i = 0; i < gc->alloc; ++i) {
-        for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
-            gc_record_t *r = &b->record;
-            if (r->flags & GC_BLOCK_MARK)
+        for (gc_record_t *r = gc->buckets[i]; r; r = gc_record_next(r)) {
+            if (gc_record_markp(r))
                 total += r->size;
         }
     }
