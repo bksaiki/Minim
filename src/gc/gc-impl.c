@@ -71,7 +71,7 @@ void GC_atomic_mrk(void (*)(void*, void*), void*, void*);
 #define ptr_arr_ref(arr, n)     (((void**) (arr))[n])
 #define ptr_ref(p)              (*((void**) (p)))
 
-// Inserts an existing bucket into the record table updating `b->next`.
+// Inserts an existing bucket into the record table updating `r->next`.
 static void
 insert_record(gc_t *gc,
               gc_record_t *r) {
@@ -83,30 +83,19 @@ insert_record(gc_t *gc,
     gc->buckets[i] = r;
 }
 
-// Creates a new record, adds it to the table and returns
-// a pointer to it. Does not update any gc stats.
+// Creates a new record.
 static gc_record_t *
-add_record(gc_t *gc,
-           void *ptr,
-           size_t size,
-           gc_dtor_t dtor,
-           gc_mark_t mrk,
-           int root) {
-    gc_record_t *r;
-
-    // create record
-    r = (gc_record_t *) malloc(sizeof(gc_record_t));
+make_record(void *ptr,
+            size_t size,
+            gc_dtor_t dtor,
+            gc_mark_t mrk) {
+    gc_record_t *r = (gc_record_t *) malloc(sizeof(gc_record_t));
     r->next = NULL;
     r->size = size;
     r->dtor = dtor;
     r->mrk = mrk;
     r->ptr = ptr;
 
-    if (root)
-        gc_record_root_set(r);
-
-    // insert and return record
-    insert_record(gc, r);
     return r;
 }
 
@@ -270,13 +259,6 @@ gc_sweep(gc_t *gc) {
     gc_shrink_if_needed(gc);
 }
 
-#define gc_collect_if_needed(gc)                        \
-{                                                       \
-    if (((gc)->flags & GC_COLLECT) &&                   \
-        ((gc)->dirty > GC_MIN_AUTO_COLLECT_SIZE))       \
-        gc_collect(gc);                                 \
-}
-
 /*************** Interface ******************/
 
 gc_t *
@@ -326,17 +308,17 @@ gc_add(gc_t *gc,
        size_t size,
        gc_dtor_t dtor,
        gc_mark_t mrk) {
+    gc_record_t *r;
+
     // resize and add
     gc_expand_if_needed(gc);
-    add_record(gc, ptr, size, dtor, mrk, 0);
+    r = make_record(ptr, size, dtor, mrk);
+    insert_record(gc, r);
 
     // update stats
     gc->dirty += size;
     gc->allocs += size;
     ++gc->size;
-
-    // collect if needed
-    gc_collect_if_needed(gc);
 }
 
 void
@@ -375,6 +357,64 @@ gc_remove(gc_t *gc,
 }
 
 gc_record_t *
+gc_alloc_record(gc_t *gc,
+                size_t size,
+                gc_dtor_t dtor,
+                gc_mark_t mrk) {
+    void *ptr = malloc(size);
+    if (ptr == NULL)
+    {
+        gc_collect(gc);
+        ptr = malloc(size);
+        if (ptr == NULL)
+            return NULL;
+    }
+
+    return make_record(ptr, size, dtor, mrk);
+}
+
+gc_record_t *
+gc_calloc_record(gc_t *gc,
+                size_t nmem,
+                size_t size,
+                gc_dtor_t dtor,
+                gc_mark_t mrk) {
+    void *ptr = calloc(nmem, size);
+    if (ptr == NULL)
+    {
+        gc_collect(gc);
+        ptr = calloc(nmem, size);
+        if (ptr == NULL)
+            return NULL;
+    }
+
+    return make_record(ptr, nmem * size, dtor, mrk);
+}
+
+gc_record_t *
+gc_realloc_record(gc_t *gc,
+                  gc_record_t *r,
+                  size_t size,
+                  gc_dtor_t dtor,
+                  gc_mark_t mrk) {
+    gc_record_t *r2;
+    void *ptr2;
+    
+    ptr2 = realloc(r->ptr, size);
+    if (ptr2 == NULL)
+    {
+        gc_collect(gc);
+        ptr2 = realloc(r->ptr, size);
+        if (ptr2 == NULL)
+            return NULL;
+    }
+
+    r2 = make_record(ptr2, size, dtor, mrk);
+    if (gc_record_rootp(r)) gc_record_root_set(r2);
+    return r2;
+}
+
+gc_record_t *
 gc_get_record(gc_t *gc,
               void *ptr) {
     size_t i = gc_hash(ptr) % gc->alloc;
@@ -385,6 +425,19 @@ gc_get_record(gc_t *gc,
     }
 
     return NULL;
+}
+
+void
+gc_add_record(gc_t *gc,
+              gc_record_t *record) {
+    // resize and add
+    gc_expand_if_needed(gc);
+    insert_record(gc, record);
+
+    // update stats
+    gc->dirty += record->size;
+    gc->allocs += record->size;
+    ++gc->size;
 }
 
 void
