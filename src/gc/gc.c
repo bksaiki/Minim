@@ -33,7 +33,7 @@ void *GC_alloc_opt(size_t size,
     // allocate
     r = gc_alloc_record(main_gc, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
     gc_add_record(main_gc, r);
-    return r->ptr;
+    return gc_record_ptr(r);
 }
 
 void *GC_calloc_opt(size_t nmem,
@@ -48,14 +48,14 @@ void *GC_calloc_opt(size_t nmem,
     // allocate
     r = gc_calloc_record(main_gc, nmem, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
     gc_add_record(main_gc, r);
-    return r->ptr;
+    return gc_record_ptr(r);
 }
 
 void *GC_realloc_opt(void *ptr,
                      size_t size,
                      void (*dtor)(void*),
                      void (*mrk)(void (void*, void*), void*, void*)) {
-    gc_record_t *rec, *rec2;
+    gc_record_t *r;
 
     // zero size
     if (size == 0) {
@@ -67,18 +67,15 @@ void *GC_realloc_opt(void *ptr,
     if (ptr == NULL)
         return GC_alloc_opt(size, dtor, mrk);
 
-    rec = gc_get_record(main_gc, ptr);
-    if (rec) {
-        rec2 = gc_realloc_record(main_gc, rec, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-        if (rec->ptr == rec2->ptr) {
-            gc_update_record(main_gc, rec, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-            free(rec2);
-            return rec->ptr;
-        } else {
-            gc_remove(main_gc, ptr, 0);
-            gc_add_record(main_gc, rec2);
-            return rec2->ptr;
-        }
+    r = gc_get_record(main_gc, ptr);
+    if (r) {
+        gc_remove(main_gc, ptr, 0);
+        r = gc_realloc_record(main_gc, r, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
+        if (!r)
+            return NULL;
+        
+        gc_add_record(main_gc, r);
+        return gc_record_ptr(r);
     } else {
         return GC_alloc_opt(size, dtor, mrk);
     }

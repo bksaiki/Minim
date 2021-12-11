@@ -22,7 +22,6 @@ typedef struct gc_record_t {
     size_t size;
     gc_dtor_t dtor;
     gc_mark_t mrk;
-    void *ptr;
 } gc_record_t;
 
 /* Main GC type */
@@ -37,8 +36,10 @@ typedef struct gc_t {
 
 /* Accessors */
 
-#define gc_record_next(r)       ((void *) (((uintptr_t) (r)->next) & ~0x3))
-#define gc_record_flags(r)      (((uintptr_t) (r)->next) & 0x3)
+#define gc_record_ptr(r)            ((void *) (((uintptr_t) (r)) + sizeof(gc_record_t)))
+#define gc_record_next(r)           ((void *) (((uintptr_t) (r)->next) & ~0x3))
+#define gc_record_flags(r)          (((uintptr_t) (r)->next) & 0x3)
+#define gc_record_alloc_size(r)     ((r)->size + sizeof(gc_record_t))
 
 #define gc_load(gc)     (((double) (gc)->size) / ((double) (gc)->alloc))
 #define gc_hash(p)      (((size_t) (p)) >> 3)
