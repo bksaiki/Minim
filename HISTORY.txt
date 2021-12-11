@@ -1,10 +1,12 @@
-Version <next>
-Future
-Fixed:
- - tail calling
+Version 0.3.3
+29 November 2021
 Internal:
  - file caching
- - constant folding
+ - symbol tables and hash tables implemented with linked list buckets
+ - syntax objects are just wrappers on Minim objects
+ - tail calling via longjumps
+ - symbol interning
+ - symbol table lookup done by pointer comparison
 
 Version 0.3.2
 18 September 2021
