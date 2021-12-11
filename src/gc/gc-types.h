@@ -14,23 +14,28 @@ typedef void (*gc_dtor_t)(void*);
 /* Marking signature */
 typedef void (*gc_mark_t)(void*,void*,void*);
 
-/* GC block type */
-typedef struct gc_block_t {
+/* GC record type */
+typedef struct gc_record_t {
     void *ptr;
     gc_dtor_t dtor;
     gc_mark_t mrk;
     size_t size, hash;
     uint8_t flags;
-} gc_block_t;
+} gc_record_t;
+
+/* GC bucket type */
+typedef struct gc_bucket_t {
+    gc_record_t record;
+    struct gc_bucket_t *next;
+} gc_bucket_t;
 
 /* Main GC type */
 typedef struct gc_t {
-    gc_block_t *young, *old;
+    gc_bucket_t **buckets;
     void *stack_bottom;
-    size_t youngc, nyoung;
-    size_t oldc, nold;
+    size_t *alloc_ptr;
+    size_t alloc, size;
     size_t allocs, dirty;
-    size_t cycles;
     uint8_t flags;
 } gc_t;
 

@@ -22,7 +22,9 @@ void GC_resume() {
     gc_resume(main_gc);
 }
 
-void *GC_alloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
+void *GC_alloc_opt(size_t size,
+                   void (*dtor)(void*),
+                   void (*mrk)(void (void*, void*), void*, void*)) {
     void *ptr;
     
     ptr = malloc(size);
@@ -38,7 +40,10 @@ void *GC_alloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, vo
     return ptr;
 }
 
-void *GC_calloc_opt(size_t nmem, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
+void *GC_calloc_opt(size_t nmem,
+                    size_t size,
+                    void (*dtor)(void*),
+                    void (*mrk)(void (void*, void*), void*, void*)) {
     void *ptr;
     
     ptr = calloc(nmem, size);
@@ -54,8 +59,11 @@ void *GC_calloc_opt(size_t nmem, size_t size, void (*dtor)(void*), void (*mrk)(v
     return ptr;
 }
 
-void *GC_realloc_opt(void *ptr, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
-    gc_block_t *block;
+void *GC_realloc_opt(void *ptr,
+                     size_t size,
+                     void (*dtor)(void*),
+                     void (*mrk)(void (void*, void*), void*, void*)) {
+    gc_record_t *rec;
     void *ptr2;
 
     if (!size) {
@@ -74,19 +82,19 @@ void *GC_realloc_opt(void *ptr, size_t size, void (*dtor)(void*), void (*mrk)(vo
         return ptr2;
     }
 
-    block = gc_get_block(main_gc, ptr);
-    if (block && ptr == ptr2) {
-        gc_update_block(main_gc, block, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-        return ptr;
+    rec = gc_get_record(main_gc, ptr);
+    if (rec) {
+        if (ptr == ptr2) {
+            gc_update_record(main_gc, rec, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
+            return ptr;
+        } else {
+            gc_remove(main_gc, ptr, 0);
+            gc_add(main_gc, ptr2, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
+            return ptr2;
+        }
+    } else {
+        return GC_alloc_opt(size, dtor, mrk);
     }
-
-    if (block && ptr != ptr2) {
-        gc_remove(main_gc, ptr, 0);
-        gc_add(main_gc, ptr2, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-        return ptr2;
-    }
-
-    return NULL;
 }
 
 void GC_free(void *ptr) {
@@ -95,10 +103,6 @@ void GC_free(void *ptr) {
 
 void GC_collect() {
     gc_collect(main_gc);
-}
-
-void GC_collect_minor() {
-    gc_collect_young(main_gc);
 }
 
 void GC_register_dtor(void *ptr, void (*func)(void*)) {
