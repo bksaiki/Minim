@@ -12,7 +12,7 @@
 
 /* GC Parameters */
 #define GC_MIN_AUTO_COLLECT_SIZE     (8 * 1024 * 1024)
-#define GC_TABLE_LOAD_FACTOR         0.5
+#define GC_TABLE_LOAD_FACTOR         0.75
 #define GC_MINOR_PER_MAJOR           15
 
 /* Heap heuristic */

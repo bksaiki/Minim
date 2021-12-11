@@ -10,9 +10,7 @@
 
 #define POINTER_SIZE        sizeof(void*)
 
-// GC record table 
 static size_t bucket_sizes[] = {
-    4099,
     8209,
     16411,
     32771,
@@ -78,7 +76,7 @@ void GC_atomic_mrk(void (*)(void*, void*), void*, void*);
 #define ptr_ref(p)              (*((void**) (p)))
 
 // Inserts an existing bucket into the record table updating `b->next`.
-static gc_record_t *
+static void
 insert_record(gc_t *gc,
               gc_bucket_t *b) {
     size_t i;
@@ -87,7 +85,6 @@ insert_record(gc_t *gc,
     i = b->record.hash % gc->alloc;
     b->next = gc->buckets[i];
     gc->buckets[i] = b;
-    return &b->record;
 }
 
 // Creates a new record, adds it to the table and returns
@@ -111,50 +108,50 @@ add_record(gc_t *gc,
     nb->record.flags = (root ? GC_BLOCK_ROOT : 0x0);
 
     // insert and return record
-    return insert_record(gc, nb);
+    insert_record(gc, nb);
+    return &nb->record;
 }
 
 static void
-remove_record(gc_t *gc,
-              size_t i,
-              gc_bucket_t *pb,
-              gc_bucket_t *b,
-              gc_bucket_t *nb) {
-    gc_record_t *r = &b->record;
+gc_resize(gc_t *gc,
+          size_t *alloc_ptr) {
+    gc_bucket_t **old_buckets = gc->buckets;
+    size_t old_alloc = gc->alloc;
 
-    // call dtor if needed and free record and bucket entry
-    if (r->dtor)    r->dtor(r->ptr);
-    free(r->ptr);
-    free(b);
+    // update size and create new buckets
+    gc->alloc_ptr = alloc_ptr;
+    gc->alloc = *gc->alloc_ptr;
+    gc->buckets = (gc_bucket_t **) calloc(gc->alloc, sizeof(gc_bucket_t*));
 
-    // repair bucket entries as needed
-    if (pb)     pb->next = nb;
-    else        gc->buckets[i] = nb;
-}
-
-static void
-gc_resize_if_needed(gc_t *gc) {
-    if (gc_load(gc) > GC_TABLE_LOAD_FACTOR) {      // needs larger size
-        gc_bucket_t **old_buckets = gc->buckets;
-        size_t old_alloc = gc->alloc;
-
-        // update size and create new buckets
-        ++gc->alloc_ptr;
-        gc->alloc = *gc->alloc_ptr;
-        gc->buckets = (gc_bucket_t **) calloc(gc->alloc, sizeof(gc_bucket_t*));
-
-        // rehash
-        for (size_t i = 0; i < old_alloc; ++i) {
-            gc_bucket_t *b = old_buckets[i];
-            while (b) {
-                gc_bucket_t *nb = b->next;
-                insert_record(gc, b);
-                b = nb;
-            }
+    // rehash
+    for (size_t i = 0; i < old_alloc; ++i) {
+        gc_bucket_t *b = old_buckets[i];
+        while (b) {
+            gc_bucket_t *nb = b->next;     
+            insert_record(gc, b);
+            b = nb;
         }
-
-        free(old_buckets);
     }
+
+    free(old_buckets);
+}
+
+static void
+gc_expand_if_needed(gc_t *gc) {
+    if (gc_load(gc) > GC_TABLE_LOAD_FACTOR) {      // needs larger size
+        gc_resize(gc, gc->alloc_ptr + 1);
+    }
+}
+
+static void
+gc_shrink_if_needed(gc_t *gc) {
+    size_t *ideal_ptr = gc->alloc_ptr;
+    // compute ideal size
+    while ((*ideal_ptr > 4 * gc->size) && ideal_ptr != &bucket_sizes[0])
+        --ideal_ptr;
+
+    if (ideal_ptr != gc->alloc_ptr)
+        gc_resize(gc, ideal_ptr);
 }
 
 static void
@@ -162,15 +159,11 @@ gc_mark_ptr(gc_t *gc,
             void *ptr) {
     size_t i;
 
-// #if GC_HEAP_HEURISTIC
-//     // decent heuristic for possible "heap" location
-//     if (ptr < (void*) gc_mark_ptr_young || ptr > gc->stack_bottom)
-//         return;
-// #endif
-
-    // early exit: above stack start
-    if (ptr > gc->stack_bottom)
+#if GC_HEAP_HEURISTIC
+    // decent heuristic for possible "heap" location
+    if (ptr < (void*) gc_mark_ptr || ptr > gc->stack_bottom)
         return;
+#endif
 
     i = gc_hash(ptr) % gc->alloc;
     for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
@@ -221,6 +214,7 @@ gc_mark(gc_t *gc) {
         for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
             gc_record_t *r = &b->record;
             if (r->flags & GC_BLOCK_ROOT) {
+                r->flags |= GC_BLOCK_MARK;
                 if (!r->mrk) {                                      // default (conservative)
                     for (size_t k = 0; k < r->size / POINTER_SIZE; ++k)
                         gc_mark_ptr(gc, ptr_arr_ref(r->ptr, k));
@@ -257,7 +251,15 @@ gc_sweep(gc_t *gc) {
                 // update stats and remove record
                 gc->allocs -= r->size;
                 --gc->size;
-                remove_record(gc, i, pb, b, nb);
+                
+                // call dtor if needed and free record and bucket entry
+                if (r->dtor)    r->dtor(r->ptr);
+                free(r->ptr);
+                free(b);
+
+                // repair bucket entries as needed
+                if (pb)     pb->next = nb;
+                else        gc->buckets[i] = nb;
                 
                 b = nb;
             } else {
@@ -269,7 +271,8 @@ gc_sweep(gc_t *gc) {
 
     // reset dirty byte counter and unmark
     gc->dirty = 0;
-    gc_unmark(gc);    
+    gc_unmark(gc);
+    gc_shrink_if_needed(gc);
 }
 
 #define gc_collect_if_needed(gc)                        \
@@ -298,11 +301,16 @@ gc_create(void *stack) {
 
 void
 gc_destroy(gc_t* gc) {
-    // unmark and sweep
-    gc_unmark(gc);
-    gc_sweep(gc);
-
+    // remove root flags
+    for (size_t i = 0; i < gc->alloc; ++i) {
+        for (gc_bucket_t *b = gc->buckets[i]; b; b = b->next) {
+            if (b->record.flags & GC_BLOCK_ROOT)
+                b->record.flags &= ~GC_BLOCK_ROOT;
+        }
+    }
+    
     // free up gc structure
+    gc_sweep(gc);
     free(gc->buckets);
     free(gc);
 }
@@ -324,7 +332,7 @@ gc_add(gc_t *gc,
        gc_dtor_t dtor,
        gc_mark_t mrk) {
     // resize and add
-    gc_resize_if_needed(gc);
+    gc_expand_if_needed(gc);
     add_record(gc, ptr, size, dtor, mrk, 0);
 
     // update stats
@@ -353,11 +361,21 @@ gc_remove(gc_t *gc,
             gc->allocs -= r->size;
             --gc->size;
 
-            // destroy resources as needed
-            if (destroy)    remove_record(gc, i, pb, b, b->next);
+            // call dtor if needed and free record and bucket entry
+            if (destroy) {
+                if (r->dtor)    r->dtor(r->ptr);
+                free(r->ptr);
+            }
+
+            // repair bucket entries as needed
+            if (pb)     pb->next = b->next;
+            else        gc->buckets[i] = b->next;
+
+            free(b);
             return;
         }
 
+        pb = b;
         b = b->next;
     }
 }
@@ -446,6 +464,9 @@ gc_get_collectable(gc_t *gc) {
 }
 
 // Signals to mark phase not to descend
-void GC_atomic_mrk(void (*func)(void*, void*), void* gc, void* ptr) {
+void
+GC_atomic_mrk(void (*func)(void*, void*), 
+              void* gc,
+              void* ptr) {
     return;
 }
