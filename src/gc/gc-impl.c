@@ -83,21 +83,6 @@ insert_record(gc_t *gc,
     gc->buckets[i] = r;
 }
 
-// Creates a new record.
-static gc_record_t *
-make_record(void *ptr,
-            size_t size,
-            gc_dtor_t dtor,
-            gc_mark_t mrk) {
-    gc_record_t *r = (gc_record_t *) malloc(sizeof(gc_record_t));
-    r->next = NULL;
-    r->size = size;
-    r->dtor = dtor;
-    r->mrk = mrk;
-
-    return r;
-}
-
 static void
 gc_resize(gc_t *gc,
           size_t *alloc_ptr) {
@@ -301,25 +286,6 @@ gc_resume(gc_t *gc){
 }
 
 void
-gc_add(gc_t *gc,
-       void *ptr,
-       size_t size,
-       gc_dtor_t dtor,
-       gc_mark_t mrk) {
-    gc_record_t *r;
-
-    // resize and add
-    gc_expand_if_needed(gc);
-    r = make_record(ptr, size, dtor, mrk);
-    insert_record(gc, r);
-
-    // update stats
-    gc->dirty += size;
-    gc->allocs += size;
-    ++gc->size;
-}
-
-void
 gc_remove(gc_t *gc,
           void *ptr,
           int destroy) {
@@ -445,20 +411,6 @@ gc_add_record(gc_t *gc,
     gc->dirty += record->size;
     gc->allocs += record->size;
     ++gc->size;
-}
-
-void
-gc_update_record(gc_t *gc,
-                 gc_record_t *record,
-                 size_t size,
-                 gc_dtor_t dtor,
-                 gc_mark_t mrk) {
-    gc->allocs -= record->size;
-    gc->allocs += size;
-
-    record->size = size;
-    record->dtor = dtor;
-    record->mrk = mrk;
 }
 
 void

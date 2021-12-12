@@ -1,6 +1,6 @@
 # Minim-GC
 Garbage collector developed for the [Minim](https://github.com/bksaiki/Minim) project.
-The Minim-GC is a conservative, generational, thread-local, Mark&Sweep garbage collector.
+The Minim-GC is a conservative, thread-local, Mark&Sweep garbage collector.
 It only works for 64-bit programs and is less efficient since it calls the underlying `malloc`.
 Much of this work is based on the [Tiny Garbage Collector](https://github.com/orangeduck/tgc) which
   in turn, borrows from the garbage collector from [Cello](https://github.com/orangeduck/Cello).
@@ -37,9 +37,9 @@ Allocates at least `size` bytes of memory that will be collected when
 ```c
 void *GC_calloc(size_t nmem, size_t size);
 ```
-Allocates an array of `nmem` elements, each of which is `size` bytes.
-Initializes all bits to 0.
-Like `GC_malloc(size)`, this memory will be garbage collected.
+Allocates an array of `nmem` elements, each of which is `size` bytes,
+  that will be collected when no pointer references it.
+Sets all bits to 0.
   
 ```c
 void *GC_realloc(void *ptr, size_t size);
@@ -75,9 +75,8 @@ Manually frees the memory block at `ptr`. Runs the destructor by the memory bloc
 
 ```c
 void GC_collect();
-void GC_collect_minor();
 ```
-Manually runs a full and minor cycle of garbage collection.
+Manually runs a cycle of garbage collection.
 
 ### Destructors and Markers
 ```c

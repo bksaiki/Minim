@@ -30,7 +30,6 @@ void gc_destroy(gc_t* gc);
 void gc_pause(gc_t *gc);
 void gc_resume(gc_t *gc);
 
-void gc_add(gc_t *gc, void *ptr, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
 void gc_remove(gc_t *gc, void *ptr, int destroy);
 
 gc_record_t *gc_alloc_record(gc_t *gc, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
@@ -39,7 +38,6 @@ gc_record_t *gc_realloc_record(gc_t *gc, gc_record_t *r, size_t size, gc_dtor_t 
 
 gc_record_t *gc_get_record(gc_t *gc, void *ptr);
 void gc_add_record(gc_t *gc, gc_record_t *record);
-void gc_update_record(gc_t *gc, gc_record_t *record, size_t size, gc_dtor_t dtor, gc_mark_t mrk);
 
 void gc_collect(gc_t *gc);
 
