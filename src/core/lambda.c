@@ -51,7 +51,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
     MinimEnv *env2;
     jmp_buf *pjmp_buf;
 
-    pjmp_buf = GC_alloc(sizeof(jmp_buf));
+    pjmp_buf = GC_alloc_atomic(sizeof(jmp_buf));
     jmp = minim_jmp(pjmp_buf, NULL);
     if (setjmp(*pjmp_buf) != 0)      // if jumped back
     {

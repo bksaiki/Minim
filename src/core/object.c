@@ -10,7 +10,13 @@ MinimObject *minim_input_port = NULL;
 
 // Destructors
 
-static void GC_minim_port_dtor(void *ptr)
+static void GC_file_port_mrk(void (*mrk)(void*, void*), void *gc, void *ptr) {
+    MinimObject *o = (MinimObject *) ptr;
+    mrk(gc, MINIM_PORT_FILE(o));
+    mrk(gc, MINIM_PORT_NAME(o));
+}
+
+static void GC_file_port_dtor(void *ptr)
 {
     MinimObject *obj;
     
@@ -36,7 +42,7 @@ MinimObject *minim_exactnum(void *num)
 
 MinimObject *minim_inexactnum(double num)
 {
-    MinimObject *o = GC_alloc(minim_inexactnum_size);
+    MinimObject *o = GC_alloc_atomic(minim_inexactnum_size);
     o->type = MINIM_OBJ_INEXACT;
     MINIM_INEXACTNUM(o) = num;
     log_obj_created();
@@ -188,7 +194,7 @@ MinimObject *minim_err(void *err)
 
 MinimObject *minim_char(unsigned int ch)
 {
-    MinimObject *o = GC_alloc(minim_char_size);
+    MinimObject *o = GC_alloc_atomic(minim_char_size);
     o->type = MINIM_OBJ_CHAR;
     MINIM_CHAR(o) = ch;
     log_obj_created();
@@ -207,7 +213,7 @@ MinimObject *minim_jmp(void *ptr, void *val)
 
 MinimObject *minim_file_port(FILE *f, uint8_t mode)
 {
-    MinimObject *o = GC_alloc_opt(minim_port_size, GC_minim_port_dtor, NULL);
+    MinimObject *o = GC_alloc_opt(minim_port_size, GC_file_port_dtor, GC_file_port_mrk);
     o->type = MINIM_OBJ_PORT;
     MINIM_PORT_TYPE(o) = MINIM_PORT_TYPE_FILE;
     MINIM_PORT_MODE(o) = mode;
