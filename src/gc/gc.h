@@ -17,15 +17,15 @@ void GC_pause();
 void GC_resume();
 
 /* GC equivalent of malloc(), calloc(), and realloc() */
-#define GC_alloc(size)              GC_alloc_opt(size, NULL, NULL)
-#define GC_calloc(nmem, size)       GC_calloc_opt(nmem, size, NULL, NULL)
-#define GC_realloc(ptr, size)       GC_realloc_opt(ptr, size, NULL, NULL)
+void *GC_alloc(size_t size);
+void *GC_calloc(size_t nmem, size_t size);
+void *GC_realloc(void *ptr, size_t size);
 
 /* GC equivalent of malloc(), calloc(), and realloc() except the data
    contains no pointer data. */
-#define GC_alloc_atomic(size)           GC_alloc_opt(size, NULL, GC_atomic_mrk)
-#define GC_calloc_atomic(nmem, size)    GC_calloc_opt(nmem, size, NULL, GC_atomic_mrk)
-#define GC_realloc_atomic(ptr, size)    GC_realloc_opt(ptr, size, NULL, GC_atomic_mrk)
+void *GC_alloc_atomic(size_t size);
+void *GC_calloc_atomic(size_t nmem, size_t size);
+void *GC_realloc_atomic(void *ptr, size_t size);
 
 /* GC equivalent of malloc(), calloc(), and realloc() except with explicit
    destructor and marker functions */
@@ -38,7 +38,6 @@ void GC_free(void *ptr);
 
 /* Manually run garbage collection */
 void GC_collect();
-void GC_collect_minor();
 
 /* Register destructor and marker functions for objects.  */
 void GC_register_dtor(void *ptr, void (*func)(void*));

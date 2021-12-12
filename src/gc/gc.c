@@ -22,71 +22,87 @@ void GC_resume() {
     gc_resume(main_gc);
 }
 
-void *GC_alloc_opt(size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
-    void *ptr;
-    
-    ptr = malloc(size);
-    if (ptr == NULL)
-    {
-        gc_collect(main_gc);
-        ptr = malloc(size);
-        if (ptr == NULL)
-            return NULL;
-    }
-    
-    gc_add(main_gc, ptr, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-    return ptr;
+void *GC_alloc(size_t size) {
+    return GC_alloc_opt(size, NULL, NULL);
 }
 
-void *GC_calloc_opt(size_t nmem, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
-    void *ptr;
-    
-    ptr = calloc(nmem, size);
-    if (ptr == NULL)
-    {
-        gc_collect(main_gc);
-        ptr = calloc(nmem, size);
-        if (ptr == NULL)
-            return NULL;
-    }
-
-    gc_add(main_gc, ptr, nmem * size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-    return ptr;
+void *GC_calloc(size_t nmem, size_t size) {
+    return GC_calloc_opt(nmem, size, NULL, NULL);
 }
 
-void *GC_realloc_opt(void *ptr, size_t size, void (*dtor)(void*), void (*mrk)(void (void*, void*), void*, void*)) {
-    gc_block_t *block;
-    void *ptr2;
+void *GC_realloc(void *ptr, size_t size) {
+    return GC_realloc_opt(ptr, size, NULL, NULL);
+}
 
-    if (!size) {
+void *GC_alloc_atomic(size_t size) {
+    return GC_alloc_opt(size, NULL, GC_atomic_mrk);
+}
+
+void *GC_calloc_atomic(size_t nmem, size_t size) {
+    return GC_calloc_opt(nmem, size, NULL, GC_atomic_mrk);
+}
+
+void *GC_realloc_atomic(void *ptr, size_t size) {
+    return GC_realloc_opt(ptr, size, NULL, GC_atomic_mrk);
+}
+
+void *GC_alloc_opt(size_t size,
+                   void (*dtor)(void*),
+                   void (*mrk)(void (void*, void*), void*, void*)) {
+    gc_record_t *r;
+
+    // collect if needed
+    gc_collect_if_needed(main_gc);
+    
+    // allocate
+    r = gc_alloc_record(main_gc, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
+    gc_add_record(main_gc, r);
+    return gc_record_ptr(r);
+}
+
+void *GC_calloc_opt(size_t nmem,
+                    size_t size,
+                    void (*dtor)(void*),
+                    void (*mrk)(void (void*, void*), void*, void*)) {
+    gc_record_t *r;
+
+    // collect if needed
+    gc_collect_if_needed(main_gc);
+    
+    // allocate
+    r = gc_calloc_record(main_gc, nmem, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
+    gc_add_record(main_gc, r);
+    return gc_record_ptr(r);
+}
+
+void *GC_realloc_opt(void *ptr,
+                     size_t size,
+                     void (*dtor)(void*),
+                     void (*mrk)(void (void*, void*), void*, void*)) {
+    gc_record_t *r;
+
+    // zero size
+    if (size == 0) {
         gc_remove(main_gc, ptr, 1);
         return NULL;
     }
-    
-    ptr2 = realloc(ptr, size);
-    if (ptr2 == NULL) {
+
+    // no pointer
+    if (ptr == NULL)
+        return GC_alloc_opt(size, dtor, mrk);
+
+    r = gc_get_record(main_gc, ptr);
+    if (r) {
         gc_remove(main_gc, ptr, 0);
-        return NULL;
+        r = gc_realloc_record(main_gc, r, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
+        if (!r)
+            return NULL;
+        
+        gc_add_record(main_gc, r);
+        return gc_record_ptr(r);
+    } else {
+        return GC_alloc_opt(size, dtor, mrk);
     }
-
-    if (ptr == NULL) {
-        gc_add(main_gc, ptr2, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-        return ptr2;
-    }
-
-    block = gc_get_block(main_gc, ptr);
-    if (block && ptr == ptr2) {
-        gc_update_block(main_gc, block, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-        return ptr;
-    }
-
-    if (block && ptr != ptr2) {
-        gc_remove(main_gc, ptr, 0);
-        gc_add(main_gc, ptr2, size, (gc_dtor_t) dtor, (gc_mark_t) mrk);
-        return ptr2;
-    }
-
-    return NULL;
 }
 
 void GC_free(void *ptr) {
@@ -95,10 +111,6 @@ void GC_free(void *ptr) {
 
 void GC_collect() {
     gc_collect(main_gc);
-}
-
-void GC_collect_minor() {
-    gc_collect_young(main_gc);
 }
 
 void GC_register_dtor(void *ptr, void (*func)(void*)) {
