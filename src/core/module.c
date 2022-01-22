@@ -63,7 +63,6 @@ static MinimModule *module_from_cache(MinimModule *src)
     module->env = NULL;                     // no copy
     module->export = src->export;
     module->name = src->name;
-    module->flags = 0x0;
 
     return module;
 }
@@ -81,16 +80,32 @@ void init_minim_module(MinimModule **pmodule)
     module->env = NULL;
     init_env(&module->export, NULL, NULL);
     module->name = NULL;
-    module->flags = 0x0;
+
+    // Set up empty body
+    module->body = minim_ast(
+        minim_cons(minim_ast(intern("%module"), NULL),
+        minim_cons(minim_ast(minim_false, NULL),
+        minim_cons(minim_ast(minim_false, NULL),
+        minim_cons(minim_ast(
+            minim_cons(minim_ast(intern("%module-begin"), NULL),
+            minim_null), NULL),
+        minim_null)))), NULL);
 
     *pmodule = module;
 }
 
 void minim_module_add_expr(MinimModule *module, MinimObject *expr)
 {
+    // Current
     ++module->exprc;
     module->exprs = GC_realloc(module->exprs, module->exprc * sizeof(MinimObject*));
     module->exprs[module->exprc - 1] = expr;
+
+    // Experimental
+    MinimObject *t = MINIM_MODULE_BODY(module);
+    while (!minim_nullp(MINIM_CDR(t)))
+        t = MINIM_CDR(t);
+    MINIM_CDR(t) = minim_cons(expr, minim_null);
 }
 
 void minim_module_add_import(MinimModule *module, MinimModule *import)

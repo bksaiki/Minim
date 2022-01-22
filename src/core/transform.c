@@ -795,7 +795,7 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
     }
 }
 
-static MinimObject*
+MinimObject*
 transform_loc(MinimEnv *env, MinimObject *trans, MinimObject *stx)
 {
     MinimObject *res;

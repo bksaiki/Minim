@@ -373,7 +373,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
     }
 }
 
-static MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn)
+MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn)
 {
     size_t argc = syntax_proper_list_len(stx);
     if (argc == SIZE_MAX)

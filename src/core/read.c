@@ -122,6 +122,11 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
             minim_module_add_expr(module, ast);
         }
 
+        expand_minim_module(module->env, module);
+        printf("%s: ", fname);
+        print_syntax_to_port(module->body, stdout);
+        printf("\n\n");
+
         minim_module_expand(module);
         eval_module_macros(module);
         emit_processed_file(port, module);
@@ -172,6 +177,11 @@ void minim_load_file(MinimEnv *env, const char *fname)
                 THROW(env, read_error(port, err, fname));
             minim_module_add_expr(module, ast);
         }
+
+        expand_minim_module(module->env, module);
+        printf("%s: ", fname);
+        print_syntax_to_port(module->body, stdout);
+        printf("\n\n");
 
         minim_module_expand(module);
         eval_module_macros(module);
@@ -245,6 +255,11 @@ void minim_run_file(MinimEnv *env, const char *fname)
             minim_module_add_expr(module, ast);
         }
 
+        expand_minim_module(env, module);
+        printf("%s: ", fname);
+        print_syntax_to_port(module->body, stdout);
+        printf("\n\n");
+
         minim_module_expand(module);
         eval_module_macros(module);
         emit_processed_file(port, module);
@@ -311,12 +326,7 @@ void emit_processed_file(MinimObject *fport, MinimModule *module)
 
         path_append(cname, extract_file(fname));
         cfile = fopen(extract_path(cname), "w");
-        for (size_t i = 0; i < module->exprc; ++i)
-        {
-            print_syntax_to_port(module->exprs[i], cfile);
-            fputc('\n', cfile);
-        }
-        
+        print_syntax_to_port(module->body, cfile);
         fclose(cfile);
     }
 #endif

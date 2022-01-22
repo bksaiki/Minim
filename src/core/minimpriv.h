@@ -169,6 +169,11 @@ MinimObject *syntax_unwrap_rec2(MinimEnv *env, MinimObject *stx);
 //  Transform
 //
 
+// Applies a transformation on syntax
+MinimObject *transform_loc(MinimEnv *env,
+                           MinimObject *trans,
+                           MinimObject *stx);
+
 // Applies syntax transforms on ast
 MinimObject* transform_syntax(MinimEnv *env, MinimObject* ast);
 
@@ -269,6 +274,9 @@ void minim_symbol_table_for_each(MinimSymbolTable *table,
       (b) there exists a path to the environment that contains it
 */
 
+#define MINIM_MODULE_BODY(m)    \
+    MINIM_STX_VAL(MINIM_CADR(MINIM_CDDR(MINIM_STX_VAL((m)->body))))
+
 void minim_module_add_expr(MinimModule *module, MinimObject *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
 void minim_module_expand(MinimModule *module);
@@ -279,6 +287,12 @@ MinimModule *minim_module_get_import(MinimModule *module, const char *sym);
 void init_minim_module_cache(MinimModuleCache **pcache);
 void minim_module_cache_add(MinimModuleCache *cache, MinimModule *import);
 MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *sym);
+
+//
+//  Expander
+//
+
+void expand_minim_module(MinimEnv *env, MinimModule *module);
 
 //
 //  Environment
@@ -314,6 +328,13 @@ void env_dump_symbols(MinimEnv *env);
 
 // Debugging: dumps exportable symbols in environment
 void env_dump_exports(MinimEnv *env);
+
+//
+//  Evaluation
+//
+
+// Evaluates known syntax
+MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn);
 
 //
 //  Closures
