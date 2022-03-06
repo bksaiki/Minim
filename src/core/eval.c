@@ -322,7 +322,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
             if (proc == minim_builtin_def_syntaxes)
                 THROW(env, minim_error("only allowed at the top-level", "def-syntaxes"));
             if (proc == minim_builtin_def_values)
-                THROW(env, minim_error("only allowed at the top-level", "def-syntaxes"));
+                THROW(env, minim_error("only allowed at the top-level", "def-values"));
             else if (proc == minim_builtin_import)
                 THROW(env, minim_error("only allowed at the top-level", "%import"));
             else if (proc == minim_builtin_export)
@@ -383,20 +383,6 @@ MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn)
     return eval_syntax(env, stx, fn, argc - 1);
 }
 
-static bool expr_is_export(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *val;
-
-    if (!MINIM_STX_PAIRP(stx) ||
-        syntax_proper_list_len(stx) == SIZE_MAX ||
-        !MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)))
-        return false;
-
-    val = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
-    return (val && MINIM_OBJ_SYNTAXP(val) &&
-            MINIM_SYNTAX(val) == minim_builtin_export);
-}
-
 void eval_definition_level_cached(MinimEnv *env, MinimObject *stx)
 {
     MinimObject *head;
@@ -412,6 +398,7 @@ void eval_definition_level_cached(MinimEnv *env, MinimObject *stx)
     head = MINIM_STX_VAL(head);
     if (minim_eqp(head, intern("def-syntaxes")))
         eval_top_level(env, stx, minim_builtin_def_syntaxes);
+    // TODO: fix expansion of intern def-values
     else if (minim_eqp(head, intern("def-values")))
         eval_top_level(env, stx, minim_builtin_def_values);
     else if (minim_eqp(head, intern("%import")))
@@ -478,7 +465,6 @@ void eval_module_level_macros(MinimEnv *env, MinimObject *stx)
         return;
 
     head = MINIM_STX_VAL(head);
-    // export: skip
     if (minim_eqp(head, intern("%export")))
         return;
 
@@ -553,19 +539,44 @@ MinimObject *eval_module_level(MinimEnv *env, MinimObject *stx, MinimObject *exp
     }
 }
 
+MinimObject *eval_module_level_no_export(MinimEnv *env, MinimObject *stx)
+{
+    MinimObject *head, *tmp;
+
+    if (!MINIM_STX_PAIRP(stx))
+        return eval_ast_no_check(env, stx);
+
+    head = MINIM_STX_CAR(stx);
+    if (!MINIM_OBJ_ASTP(head))
+        return eval_ast_no_check(env, stx);
+
+    head = MINIM_STX_VAL(head);
+    if (minim_eqp(head, intern("%export")))
+    {
+        THROW(env, minim_error("%export not allowed in an expression context", NULL));
+    }
+    else if (minim_eqp(head, intern("begin")))
+    {
+        tmp = minim_void;
+        for (MinimObject *t = MINIM_STX_CDR(stx); !minim_nullp(t); t = MINIM_CDR(t))
+            tmp = eval_module_level_no_export(env, MINIM_CAR(t));
+
+        return tmp;
+    }
+    else
+    {
+        return eval_definition_level(env, stx);
+    }
+}
+
 // ================================ Public ================================
 
 MinimObject *eval_ast(MinimEnv *env, MinimObject *stx)
 {
-    MinimEnv *env2;
-
-    if (expr_is_export(env, stx))
-        THROW(env, minim_error("%export not allowed in REPL", NULL));
-
-    stx = expand_definition_level(env, stx);
-    init_env(&env2, env, NULL);
-    check_syntax(env2, stx);
-    return eval_definition_level(env2, stx);
+    stx = expand_module_level(env, stx);
+    eval_module_level_macros(env, stx);
+    check_syntax(env, stx);
+    return eval_module_level_no_export(env, stx);
 }
 
 MinimObject *eval_ast_no_check(MinimEnv* env, MinimObject *ast)

@@ -292,7 +292,7 @@ MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *sym);
 //
 
 void expand_minim_module(MinimEnv *env, MinimModule *module);
-MinimObject *expand_definition_level(MinimEnv *env, MinimObject *stx);
+MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx);
 
 //
 //  Environment

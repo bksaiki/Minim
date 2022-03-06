@@ -59,7 +59,7 @@ static MinimObject *expand_expr_let_values(MinimEnv *env, MinimObject *stx)
 static MinimObject *expand_expr_setb(MinimEnv *env, MinimObject *stx)
 {
     MinimObject *val = MINIM_CDR(MINIM_STX_CDR(stx));
-    MINIM_CAR(val) = expand_expr_setb(env, MINIM_CAR(val));
+    MINIM_CAR(val) = expand_expr(env, MINIM_CAR(val));
     return stx;
 }
 
