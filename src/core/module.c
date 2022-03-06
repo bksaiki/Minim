@@ -8,32 +8,17 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
-static MinimModule *module_from_cache(MinimModule *src)
-{
-    MinimModule *module;
-
-    module = GC_alloc(sizeof(MinimModule));
-    module->prev = NULL;                    // no copy
-    module->imports = NULL;                 // no copy
-    module->importc = 0;                    // no copy
-    module->env = NULL;                     // no copy
-    module->export = src->export;
-    module->name = src->name;
-
-    return module;
-}
-
 void init_minim_module(MinimModule **pmodule)
 {
     MinimModule *module;
 
     module = GC_alloc(sizeof(MinimModule));
-    module->prev = NULL;
+    module->cache = NULL;
     module->imports = NULL;
     module->importc = 0;
-    module->env = NULL;
     init_env(&module->export, NULL, NULL);
     module->name = NULL;
+    module->path = NULL;
 
     // Set up empty body
     module->body = minim_ast(
@@ -69,7 +54,19 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     module->imports[module->importc - 1] = import;
 }
 
-MinimObject *minim_module_get_sym(MinimModule *module, const char *sym)
+void init_minim_module_instance(MinimModuleInstance **pinst, MinimModule *module)
+{
+    MinimModuleInstance *inst;
+
+    inst = GC_alloc(sizeof(MinimModuleInstance));
+    inst->module = module;
+    inst->prev = NULL;
+    inst->env = NULL;
+
+    *pinst = inst;
+}
+
+MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym)
 {
     size_t hash;
 
@@ -122,12 +119,14 @@ MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *sym)
 
 MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (env->module->prev)
+    if (env->module_inst->prev)
     {
         for (size_t i = 0; i < argc; ++i)
         {
+            MinimModule *module;
             MinimObject *export;
 
+            module = env->module_inst->module;
             export = MINIM_STX_VAL(args[i]);
             if (minim_listp(export))
             {
@@ -144,7 +143,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                             build_path(1, MINIM_STRING(name)) :
                             build_path(2, env->current_dir, MINIM_STRING(name)));
 
-                    import = minim_module_get_import(env->module, extract_path(path));
+                    import = minim_module_get_import(module, extract_path(path));
                     if (!import)
                     {
                         THROW(env, minim_syntax_error("module not imported",
@@ -153,21 +152,21 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                                                       MINIM_CADR(export)));
                     }
 
-                    minim_symbol_table_merge(env->module->export->table, import->export->table);
+                    minim_symbol_table_merge(module->export->table, import->export->table);
                 }
             }
             else
             {
                 MinimObject *val;
 
-                val = minim_module_get_sym(env->module, MINIM_SYMBOL(export));
+                val = minim_module_get_sym(env->module_inst, MINIM_SYMBOL(export));
                 if (!val)
                 {
                     THROW(env, minim_error("identifier not defined in module",
                                            MINIM_SYMBOL(export)));
                 }
 
-                env_intern_sym(env->module->export, MINIM_SYMBOL(export), val);
+                env_intern_sym(module->export, MINIM_SYMBOL(export), val);
             }
         }
     }
@@ -178,7 +177,8 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
 MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args)
 {
     MinimObject *arg;
-    MinimModule *tmp, *module2;
+    MinimModule *module;
+    MinimModuleInstance *module_inst;
     MinimPath *path;
     char *clean_path;
 
@@ -188,7 +188,6 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         return NULL; // panic
     }
 
-    init_minim_module(&tmp);
     for (size_t i = 0; i < argc; ++i)
     {
         arg = MINIM_STX_VAL(args[i]);
@@ -197,27 +196,31 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
                 build_path(2, env->current_dir, MINIM_STRING(arg)));
 
         clean_path = extract_path(path);
-        module2 = minim_module_cache_get(global.cache, clean_path);
-        if (module2)
+        module = minim_module_cache_get(global.cache, clean_path);
+        if (module)
         {
-            module2 = module_from_cache(module2);
-            init_env(&module2->env, get_builtin_env(env), NULL);
-            module2->env->current_dir = extract_directory(path);
-            module2->env->module = module2;
-            minim_module_add_import(env->module, module2);
+            init_minim_module_instance(&module_inst, module);
+            init_env(&module_inst->env, get_builtin_env(env), NULL);
+            module_inst->env->current_dir = extract_directory(path);
+            module_inst->env->module_inst = module_inst;
         }
         else
         {
-            module2 = minim_load_file_as_module(env->module, clean_path);
-            module2->prev = tmp;
-            module2->name = clean_path;
+            MinimModule *empty;
+            MinimModuleInstance *empty_inst;
 
-            minim_module_cache_add(global.cache, module2);
-            minim_module_add_import(env->module, module2);
-            eval_module(module2);
+            init_minim_module(&empty);
+            init_minim_module_instance(&empty_inst, empty);
+
+            module_inst = minim_load_file_as_module(env->module_inst, clean_path);
+            module_inst->prev = empty_inst;
+            module_inst->module->name = clean_path;
+            minim_module_cache_add(global.cache, module_inst->module);
+            eval_module(module_inst);
         }
 
-        minim_symbol_table_merge(env->table, module2->export->table);
+        minim_module_add_import(env->module_inst->module, module_inst->module);
+        minim_symbol_table_merge(env->table, module_inst->module->export->table);
     }
 
     return minim_void;

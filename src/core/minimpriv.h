@@ -280,7 +280,7 @@ void minim_symbol_table_for_each(MinimSymbolTable *table,
 void minim_module_add_expr(MinimModule *module, MinimObject *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
 
-MinimObject *minim_module_get_sym(MinimModule *module, const char *sym);
+MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym);
 MinimModule *minim_module_get_import(MinimModule *module, const char *sym);
 
 void init_minim_module_cache(MinimModuleCache **pcache);

@@ -40,6 +40,8 @@ int minim_repl(char **argv, uint32_t flags)
 {
     PrintParams pp;
     MinimModule *module;
+    MinimModuleInstance *module_inst;
+    MinimEnv *env;
     MinimObject *exit_handler, *err_handler;
     jmp_buf *exit_buf, *error_buf;
 
@@ -72,7 +74,14 @@ int minim_repl(char **argv, uint32_t flags)
 
     // set up top-level environment
     init_minim_module(&module);
-    init_env(&module->env, NULL, NULL);
+    init_minim_module_instance(&module_inst, module);
+    init_env(&module_inst->env, NULL, NULL);
+    module->cache = global.cache;
+    module_inst->env = env;
+    env->module_inst = module_inst;
+
+    // set up user environment
+    init_env(&env, module_inst->env, NULL);
 
     // Set up handlers
     set_default_print_params(&pp);
@@ -84,7 +93,7 @@ int minim_repl(char **argv, uint32_t flags)
         err_handler = minim_jmp(error_buf, NULL);
         if (setjmp(*error_buf) != 0)    // error on loading library
         {
-            print_minim_object(MINIM_JUMP_VAL(err_handler), module->env, &pp);
+            print_minim_object(MINIM_JUMP_VAL(err_handler), module_inst->env, &pp);
             printf("\n");
             fflush(stdout);
             return 0;
@@ -93,7 +102,7 @@ int minim_repl(char **argv, uint32_t flags)
         minim_exit_handler = exit_handler;
         minim_error_handler = err_handler;
         if (!(flags & MINIM_FLAG_LOAD_LIBS))
-            minim_load_library(module->env);
+            minim_load_library(module_inst->env);
 
         setjmp(top_of_repl);
         signal(SIGINT, int_handler);
@@ -128,17 +137,17 @@ int minim_repl(char **argv, uint32_t flags)
             if (setjmp(*error_buf) == 0)
             {
                 minim_error_handler = err_handler;
-                obj = eval_ast(module->env, ast);
+                obj = eval_ast(env, ast);
                 if (!minim_voidp(obj))
                 {
-                    print_minim_object(obj, module->env, &pp);
+                    print_minim_object(obj, env, &pp);
                     printf("\n");
                     fflush(stdout);
                 }
             }       // error thrown
             else
             {
-                print_minim_object(MINIM_JUMP_VAL(err_handler), module->env, &pp);
+                print_minim_object(MINIM_JUMP_VAL(err_handler), env, &pp);
                 printf("\n");
                 fflush(stdout);
             }

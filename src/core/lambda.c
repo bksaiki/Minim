@@ -34,15 +34,15 @@ static void intern_transform(const char *sym, MinimObject *obj)
         env_intern_sym(lambda_env, sym, obj);
 }
 
-static MinimModule *env_get_module(MinimEnv *env)
+static MinimModuleInstance *env_get_module(MinimEnv *env)
 {
     for (MinimEnv *it = env; it; it = it->parent)
     {
-        if (it->module)
-            return it->module;
+        if (it->module_inst)
+            return it->module_inst;
     }
 
-    return false;
+    return NULL;
 }
 
 MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
@@ -125,7 +125,7 @@ MinimObject *eval_lambda2(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObj
     // merge in transforms
     if (env)
     {
-        MinimModule *mod = env_get_module(env);
+        MinimModuleInstance *mod = env_get_module(env);
         if (mod)
         {
             lambda_env = env2;

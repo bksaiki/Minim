@@ -79,21 +79,26 @@ static void emit_code_file(MinimObject *fport, Buffer *code)
 
 // ================================ Public ================================
 
-MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
+MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const char *fname)
 {
     MinimModule *module;
+    MinimModuleInstance *module_inst;
     MinimObject *port, *cache;
+    MinimEnv *builtin_env;
 
     port = open_file_port(prev->env, fname);
     cache = load_processed_file(port);
+    builtin_env = get_builtin_env(prev->env);
+
+    init_minim_module(&module);
+    init_minim_module_instance(&module_inst, module);
+    init_env(&module_inst->env, builtin_env, NULL);
+    module_inst->env->current_dir = directory_from_port(port);
+    module_inst->env->module_inst = module_inst;
+
     if (cache)
     {
         MinimObject *ast, *err;
-
-        init_minim_module(&module);
-        init_env(&module->env, get_builtin_env(prev->env), NULL);
-        module->env->current_dir = directory_from_port(cache);
-        module->env->module = module;
 
         if (!(MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY))
             THROW(prev->env, read_error(cache, minim_error("unexpected error while reading from cache", NULL), fname));
@@ -106,16 +111,10 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
             THROW(prev->env, read_error(cache, minim_error("cached modules should be a single expression", NULL), fname));
 
         module->body = ast;
-        eval_module_cached(module);
-        return module;
+        eval_module_cached(module_inst);
     }
     else
     {
-        init_minim_module(&module);
-        init_env(&module->env, get_builtin_env(prev->env), NULL);
-        module->env->current_dir = directory_from_port(port);
-        module->env->module = module;
-
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
             MinimObject *ast, *err;
@@ -126,27 +125,32 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
             minim_module_add_expr(module, ast);
         }
 
-        expand_minim_module(module->env, module);
+        expand_minim_module(module_inst->env, module);
         emit_processed_file(port, module);
-        return module;
     }
+
+    return module_inst;
 }
 
 void minim_load_file(MinimEnv *env, const char *fname)
 {
     MinimModule *module;
+    MinimModuleInstance *module_inst;
     MinimObject *port;
+    MinimEnv *env2;
     Buffer *code;
     
     // Always re-read and run
 
-    port = open_file_port(env, fname);
     init_minim_module(&module);
-    init_env(&module->env, get_builtin_env(env), NULL);
-    module->env->current_dir = directory_from_port(port);
-    module->env->module = module;
+    init_minim_module_instance(&module_inst, module);
+    init_env(&env2, get_builtin_env(env), NULL);
+    module_inst->env = env2;
+    env2->module_inst = module_inst;
 
-    // re-read
+    // read
+    port = open_file_port(env, fname);
+    env2->current_dir = directory_from_port(port);
     while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         MinimObject *ast, *err;
@@ -157,7 +161,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
         minim_module_add_expr(module, ast);
     }
 
-    expand_minim_module(module->env, module);
+    expand_minim_module(env2, module);
     emit_processed_file(port, module);
 
     // compile
@@ -168,17 +172,18 @@ void minim_load_file(MinimEnv *env, const char *fname)
     }
 
     // eval
-    eval_module(module);
+    eval_module(module_inst);
 }
 
 void minim_run_file(MinimEnv *env, const char *fname)
 {
-    MinimModule *module, *prev;
+    MinimModuleInstance *module_inst, *prev;
+    MinimModule *module;
     MinimObject *port, *cport;
     char *prev_dir;
 
     prev_dir = env->current_dir;
-    prev = env->module;
+    prev = env->module_inst;
     port = open_file_port(env, fname);
     cport = load_processed_file(port);
     if (cport)
@@ -186,9 +191,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
         MinimObject *ast, *err;
 
         init_minim_module(&module);
-        module->env = env;
         env->current_dir = directory_from_port(cport);
-        env->module = module;
 
         if (!(MINIM_PORT_MODE(cport) & MINIM_PORT_MODE_READY))
             THROW(env, read_error(cport, minim_error("unexpected error while reading from cache", NULL), fname));
@@ -197,22 +200,24 @@ void minim_run_file(MinimEnv *env, const char *fname)
         if (err != NULL)
         {
             env->current_dir = prev_dir;
-            env->module = prev;
+            env->module_inst = prev;
             THROW(env, read_error(cport, err, fname));
         }
 
         if (MINIM_PORT_MODE(cport) & MINIM_PORT_MODE_READY)
             THROW(env, read_error(cport, minim_error("cached modules should be a single expression", NULL), fname));
-
+        
+        init_minim_module_instance(&module_inst, module);
+        module_inst->env = env;
         module->body = ast;
-        eval_module_cached(module);
+        env->module_inst = module_inst;
+
+        eval_module_cached(module_inst);
     }
     else
     {
         init_minim_module(&module);
-        module->env = env;
         env->current_dir = directory_from_port(port);
-        env->module = module;
 
         while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
@@ -222,23 +227,27 @@ void minim_run_file(MinimEnv *env, const char *fname)
             if (err != NULL)
             {
                 env->current_dir = prev_dir;
-                env->module = prev;
+                env->module_inst = prev;
                 THROW(env, read_error(port, err, fname));
             }
 
             minim_module_add_expr(module, ast);
         }
 
-        expand_minim_module(module->env, module);
+        init_minim_module_instance(&module_inst, module);
+        module_inst->env = env;
+        env->module_inst = module_inst;
+        
+        expand_minim_module(env, module);
         emit_processed_file(port, module);
     }
 
-    eval_module(module);
+    eval_module(module_inst);
 
     // this is dumb
     minim_symbol_table_merge(env->table, module->export->table);
     env->current_dir = prev_dir;
-    env->module = prev;
+    env->module_inst = prev;
 }
 
 MinimObject *load_processed_file(MinimObject *fport)

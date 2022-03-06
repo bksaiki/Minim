@@ -544,23 +544,23 @@ MinimObject *eval_ast_terminal(MinimEnv *env, MinimObject *stx)
             MINIM_STX_VAL(stx));
 }
 
-void eval_module_cached(MinimModule *module)
+void eval_module_cached(MinimModuleInstance *module)
 {
     MinimObject *t;
     
-    t = MINIM_CAR(MINIM_CDDR(MINIM_STX_CDR(module->body)));
+    t = MINIM_CAR(MINIM_CDDR(MINIM_STX_CDR(module->module->body)));
     for (MinimObject *it = MINIM_STX_CDR(t); !minim_nullp(it); it = MINIM_CDR(it))
         eval_module_level_cached(module->env, MINIM_CAR(it));
 }
 
-void eval_module(MinimModule *module)
+void eval_module(MinimModuleInstance *module)
 {
     PrintParams pp;
     MinimObject *t, *exports;
     
     set_default_print_params(&pp);
     exports = minim_cons(minim_null, minim_null);
-    t = MINIM_CAR(MINIM_CDDR(MINIM_STX_CDR(module->body)));
+    t = MINIM_CAR(MINIM_CDDR(MINIM_STX_CDR(module->module->body)));
     for (MinimObject *it = MINIM_STX_CDR(t); !minim_nullp(it); it = MINIM_CDR(it))
     {
         check_syntax(module->env, MINIM_CAR(it));
