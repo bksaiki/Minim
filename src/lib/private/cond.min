@@ -4,6 +4,15 @@
 
 (%import "and-or.min" "stx.min")
 
+(def-values (then-clause)
+  (lambda (then)
+    (let-values ([(then1) (stx-cdr then)])
+      (if (stx-null? then1)
+          (stx-car then)
+          (cons
+            (quote-syntax begin)
+            then)))))
+
 (def-syntaxes (cond)
   (lambda (stx)
     (if (not (stx-list? stx))
@@ -27,15 +36,13 @@
                           (serr "missing body" c)
                           (if (else? test)
                               (if (null? (stx-cdr e))
-                                  (datum->syntax (cons (quote-syntax begin) then))
+                                  (datum->syntax (then-clause then))
                                   (serr "'else' clause must be last" c))
                               (datum->syntax
                                 (list
                                   (quote-syntax if)
                                   test
-                                  (cons
-                                    (quote-syntax begin)
-                                    then)
+                                  (then-clause then)
                                   (cons (quote-syntax cond) (stx-cdr e)))))))
                     (serr "missing clause" c))))))))
 

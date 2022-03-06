@@ -77,11 +77,11 @@ int minim_repl(char **argv, uint32_t flags)
     init_minim_module_instance(&module_inst, module);
     init_env(&module_inst->env, NULL, NULL);
     module->cache = global.cache;
-    module_inst->env = env;
-    env->module_inst = module_inst;
 
     // set up user environment
     init_env(&env, module_inst->env, NULL);
+    env->module_inst = module_inst;
+    module_inst->env = env;
 
     // Set up handlers
     set_default_print_params(&pp);
