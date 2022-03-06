@@ -17,7 +17,7 @@ void init_global_state(uint8_t flags)
     GC_register_root(global.symbols);
     GC_register_root(global.current_dir);
 
-    // statisics
+    // statistics
     global.stat_exprs = 0;
     global.stat_procs = 0;
     global.stat_objs = 0;

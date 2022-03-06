@@ -33,64 +33,6 @@ static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, bool err)
     return proc(env, argc, args);                   \
 }
 
-// optimized version for builtins - 0ary
-static MinimObject *eval_builtin_0ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    MinimObject *err;
-    CALL_BUILTIN(env, proc, 0, NULL, &err);
-}
-
-// optimized version for builtins - 1ary
-static MinimObject *eval_builtin_1ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    MinimObject *arg, *err;
-    uint8_t prev_flags = env->flags;
-
-    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    arg = eval_ast_node(env, MINIM_STX_CADR(stx));
-    env->flags = prev_flags;
-    CALL_BUILTIN(env, proc, 1, &arg, &err);
-}
-
-// optimized version for builtins - 2ary
-static MinimObject *eval_builtin_2ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    MinimObject *args[2];
-    MinimObject *err;
-    uint8_t prev_flags = env->flags;
-
-    args[1] = MINIM_STX_CDR(stx);
-    args[0] = MINIM_CAR(args[1]);
-    args[1] = MINIM_CADR(args[1]);
-
-    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    args[0] = eval_ast_node(env, args[0]);
-    args[1] = eval_ast_node(env, args[1]);
-    env->flags = prev_flags;
-    CALL_BUILTIN(env, proc, 2, args, &err);
-}
-
-// optimized version for builtins - 3ary
-static MinimObject *eval_builtin_3ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    MinimObject *args[3];
-    MinimObject *err;
-    uint8_t prev_flags = env->flags;
-
-    args[2] = MINIM_STX_CDR(stx);
-    args[0] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CDR(args[2]);
-    args[1] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CADR(args[2]);
-
-    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    args[0] = eval_ast_node(env, args[0]);
-    args[1] = eval_ast_node(env, args[1]);
-    args[2] = eval_ast_node(env, args[2]);
-    env->flags = prev_flags;
-    CALL_BUILTIN(env, proc, 3, args, &err);
-}
-
 // general version for builtins
 static MinimObject *eval_builtin(MinimEnv *env, MinimObject *stx, MinimBuiltin proc, size_t argc)
 {
@@ -109,43 +51,6 @@ static MinimObject *eval_builtin(MinimEnv *env, MinimObject *stx, MinimBuiltin p
 
     env->flags = prev_flags;
     CALL_BUILTIN(env, proc, argc, args, &err);
-}
-
-// optimized version for syntax - 0ary
-static MinimObject *eval_syntax_0ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    return proc(env, 0, NULL);
-}
-
-// optimized version for syntax - 1ary
-static MinimObject *eval_syntax_1ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    MinimObject *arg = MINIM_STX_CADR(stx);
-    return proc(env, 1, &arg);
-}
-
-// optimized version for syntax - 2ary
-static MinimObject *eval_syntax_2ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    MinimObject *args[2];
-
-    args[1] = MINIM_STX_CDR(stx);
-    args[0] = MINIM_CAR(args[1]);
-    args[1] = MINIM_CADR(args[1]);
-    return proc(env, 2, args);
-}
-
-// optimized version for syntax - 3ary
-static MinimObject *eval_syntax_3ary(MinimEnv *env, MinimObject *stx, MinimBuiltin proc)
-{
-    MinimObject *args[3];
-    
-    args[2] = MINIM_STX_CDR(stx);
-    args[0] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CDR(args[2]);
-    args[1] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CADR(args[2]);
-    return proc(env, 3, args);
 }
 
 // general version for syntax
@@ -176,66 +81,6 @@ static MinimObject *eval_syntax(MinimEnv *env, MinimObject *stx, MinimBuiltin pr
     {                                                   \
         return eval_lambda(lam, env, argc, args);       \
     }                                                   \
-}
-
-// optimized version for closures - 0ary
-static MinimObject *eval_closure_0ary(MinimEnv *env, MinimObject *stx, MinimLambda *lam)
-{
-    CALL_CLOSURE(env, lam, 0, NULL);
-}
-
-// optimized version for closures - 1ary
-static MinimObject *eval_closure_1ary(MinimEnv *env, MinimObject *stx, MinimLambda *lam)
-{
-    MinimObject *arg;
-    uint8_t prev_flags;
-    
-    prev_flags = env->flags;
-    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    arg = eval_ast_node(env, MINIM_STX_CADR(stx));
-    env->flags = prev_flags;
-    CALL_CLOSURE(env, lam, 1, &arg);
-}
-
-// optimized version for closures - 2ary
-static MinimObject *eval_closure_2ary(MinimEnv *env, MinimObject *stx, MinimLambda *lam)
-{
-    MinimObject *args[2];
-    uint8_t prev_flags;
-
-    args[1] = MINIM_STX_CDR(stx);
-    args[0] = MINIM_CAR(args[1]);
-    args[1] = MINIM_CADR(args[1]);
-    
-    prev_flags = env->flags;
-    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    args[0] = eval_ast_node(env, args[0]);
-    args[1] = eval_ast_node(env, args[1]);
-    env->flags = prev_flags;
-
-    CALL_CLOSURE(env, lam, 2, args);
-}
-
-// optimized version for closures - 3ary
-static MinimObject *eval_closure_3ary(MinimEnv *env, MinimObject *stx, MinimLambda *lam)
-{
-    MinimObject *args[3];
-    uint8_t prev_flags;
-
-    args[2] = MINIM_STX_CDR(stx);
-    args[0] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CDR(args[2]);
-    args[1] = MINIM_CAR(args[2]);
-    args[2] = MINIM_CADR(args[2]);
-    
-    prev_flags = env->flags;
-    env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    args[0] = eval_ast_node(env, args[0]);
-    args[1] = eval_ast_node(env, args[1]);
-    args[2] = eval_ast_node(env, args[2]); 
-    env->flags = prev_flags;
- 
-    CALL_CLOSURE(env, lam, 3, args);
 }
 
 // general version for closures
@@ -298,22 +143,60 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         if (MINIM_OBJ_BUILTINP(op))
         {
             MinimBuiltin proc = MINIM_BUILTIN(op);
+            MinimObject *args_head, *err;
+            uint8_t prev_flags;
 
-            // do not optimize: array must be allocaed
+            // do not optimize: array must be allocated
             if (proc == minim_builtin_values ||
                 proc == minim_builtin_vector)
                 return eval_builtin(env, stx, proc, argc);
 
-            if (argc == 0)          return eval_builtin_0ary(env, stx, proc);
-            else if (argc == 1)     return eval_builtin_1ary(env, stx, proc);
-            else if (argc == 2)     return eval_builtin_2ary(env, stx, proc);
-            else if (argc == 3)     return eval_builtin_3ary(env, stx, proc);
-            else                    return eval_builtin(env, stx, proc, argc);
+            if (argc == 0)
+                CALL_BUILTIN(env, proc, 0, NULL, &err);
+            
+            args_head = MINIM_STX_CDR(stx);
+            if (argc == 1)
+            {
+                MinimObject *arg;
+
+                prev_flags = env->flags;
+                env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+                arg = eval_ast_node(env, MINIM_CAR(args_head));
+                env->flags = prev_flags;
+                CALL_BUILTIN(env, proc, 1, &arg, &err);
+            }
+            else if (argc == 2)
+            {
+                MinimObject *args[2];
+
+                prev_flags = env->flags;
+                env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+                args[0] = eval_ast_node(env, MINIM_CAR(args_head));
+                args[1] = eval_ast_node(env, MINIM_CADR(args_head));
+                env->flags = prev_flags;
+                CALL_BUILTIN(env, proc, 2, args, &err);
+            }
+            else if (argc == 3)
+            {
+                MinimObject *args[3];
+
+                prev_flags = env->flags;
+                env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+                args[0] = eval_ast_node(env, MINIM_CAR(args_head));
+                args[1] = eval_ast_node(env, MINIM_CADR(args_head));
+                args[2] = eval_ast_node(env, MINIM_CAR(MINIM_CDDR(args_head)));
+                env->flags = prev_flags;
+                CALL_BUILTIN(env, proc, 3, args, &err);
+            }
+            else
+            {
+                return eval_builtin(env, stx, proc, argc);
+            }
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
             MinimBuiltin proc;
-            MinimObject *res;
+            MinimObject *args_head, *res;
             
             proc = MINIM_SYNTAX(op);
             if (proc == minim_builtin_unquote)
@@ -329,11 +212,39 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
             else if (proc == minim_builtin_export)
                 THROW(env, minim_error("only allowed at the top-level", "%export"));
 
-            if (argc == 0)          res = eval_syntax_0ary(env, stx, proc);
-            else if (argc == 1)     res = eval_syntax_1ary(env, stx, proc);
-            else if (argc == 2)     res = eval_syntax_2ary(env, stx, proc);
-            else if (argc == 3)     res = eval_syntax_3ary(env, stx, proc);
-            else                    res = eval_syntax(env, stx, proc, argc);        
+            args_head = MINIM_STX_CDR(stx);
+            if (argc == 0)
+            {
+                res = proc(env, 0, NULL);
+            }
+            else if (argc == 1)
+            {
+                MinimObject *arg;
+                
+                arg = MINIM_CAR(args_head);
+                res = proc(env, 1, &arg);
+            }
+            else if (argc == 2)
+            {
+                MinimObject *args[2];
+                
+                args[0] = MINIM_CAR(args_head);
+                args[1] = MINIM_CADR(args_head);
+                return proc(env, 2, args);
+            }
+            else if (argc == 3)
+            {
+                MinimObject *args[3];
+                
+                args[0] = MINIM_CAR(args_head);
+                args[1] = MINIM_CADR(args_head);
+                args[2] = MINIM_CAR(MINIM_CDDR(args_head));
+                return proc(env, 3, args);
+            }
+            else
+            {
+                res = eval_syntax(env, stx, proc, argc);       
+            } 
 
             if (MINIM_OBJ_CLOSUREP(res))
             {
@@ -346,11 +257,52 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         }
         else if (MINIM_OBJ_CLOSUREP(op))
         {
-            if (argc == 0)          return eval_closure_0ary(env, stx, MINIM_CLOSURE(op));
-            else if (argc == 1)     return eval_closure_1ary(env, stx, MINIM_CLOSURE(op));
-            else if (argc == 2)     return eval_closure_2ary(env, stx, MINIM_CLOSURE(op));
-            else if (argc == 3)     return eval_closure_3ary(env, stx, MINIM_CLOSURE(op));
-            else                    return eval_closure(env, stx, MINIM_CLOSURE(op), argc);
+            MinimObject *args_head;
+            MinimLambda *lam;
+            uint8_t prev_flags;
+
+            lam = MINIM_CLOSURE(op);
+            if (argc == 0)
+                CALL_CLOSURE(env, lam, 0, NULL);
+
+            args_head = MINIM_STX_CDR(stx);
+            if (argc == 1)
+            {
+                MinimObject *arg;
+
+                prev_flags = env->flags;
+                env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+                arg = eval_ast_node(env, MINIM_CAR(args_head));
+                env->flags = prev_flags;
+                CALL_CLOSURE(env, lam, 1, &arg);
+            }
+            else if (argc == 2)
+            {
+                MinimObject *args[2];
+
+                prev_flags = env->flags;
+                env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+                args[0] = eval_ast_node(env, MINIM_CAR(args_head));
+                args[1] = eval_ast_node(env, MINIM_CADR(args_head));
+                env->flags = prev_flags;
+                CALL_CLOSURE(env, lam, 2, args);
+            }
+            else if (argc == 3)
+            {
+                MinimObject *args[3];
+
+                prev_flags = env->flags;
+                env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
+                args[0] = eval_ast_node(env, MINIM_CAR(args_head));
+                args[1] = eval_ast_node(env, MINIM_CADR(args_head));
+                args[2] = eval_ast_node(env, MINIM_CAR(MINIM_CDDR(args_head)));
+                env->flags = prev_flags;
+                CALL_CLOSURE(env, lam, 3, args);
+            }
+            else
+            {
+                return eval_closure(env, stx, MINIM_CLOSURE(op), argc);
+            }
         }
         else if (MINIM_OBJ_JUMPP(op))
         {
