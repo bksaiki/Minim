@@ -171,6 +171,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
         }
     }
 
+    GC_REGISTER_LOCAL_ARRAY(args);
     return minim_void;
 }
 
@@ -223,5 +224,6 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         minim_symbol_table_merge(env->table, module_inst->module->export->table);
     }
 
+    GC_REGISTER_LOCAL_ARRAY(args);
     return minim_void;
 }
