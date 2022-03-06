@@ -192,6 +192,12 @@ MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx)
         car = MINIM_STX_VAL(car);
         if (minim_eqp(car, intern("%export")))
             return stx;
+
+        if (minim_eqp(car, intern("begin")))
+        {
+            for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
+                MINIM_CAR(it) = expand_module_level(env, MINIM_CAR(it));
+        }
     }
     
     return expand_definition_level(env, stx);

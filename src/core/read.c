@@ -123,11 +123,14 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        printf("%s: ", fname);
+        printf("expanded %s: ", fname);
         print_syntax_to_port(module->body, stdout);
         printf("\n\n");
 
-        minim_module_expand(module);
+        printf("evaluating %s: ", fname);
+        print_syntax_to_port(module->body, stdout);
+        printf("\n\n");
+
         eval_module_macros(module);
         emit_processed_file(port, module);
         return module;
@@ -179,11 +182,14 @@ void minim_load_file(MinimEnv *env, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        printf("%s: ", fname);
+        printf("expanded %s: ", fname);
         print_syntax_to_port(module->body, stdout);
         printf("\n\n");
 
-        minim_module_expand(module);
+        printf("evaluating %s: ", fname);
+        print_syntax_to_port(module->body, stdout);
+        printf("\n\n");
+
         eval_module_macros(module);
         emit_processed_file(port, module);
     }
@@ -255,12 +261,15 @@ void minim_run_file(MinimEnv *env, const char *fname)
             minim_module_add_expr(module, ast);
         }
 
-        expand_minim_module(env, module);
-        printf("%s: ", fname);
+        expand_minim_module(module->env, module);
+        printf("expanded %s: ", fname);
         print_syntax_to_port(module->body, stdout);
         printf("\n\n");
 
-        minim_module_expand(module);
+        printf("evaluating %s: ", fname);
+        print_syntax_to_port(module->body, stdout);
+        printf("\n\n");
+
         eval_module_macros(module);
         emit_processed_file(port, module);
     }

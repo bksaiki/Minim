@@ -365,7 +365,7 @@ void eval_module_cached(MinimModule *module);
 void eval_module_macros(MinimModule *module);
 
 // Evaluates `module` and returns the result
-MinimObject *eval_module(MinimModule *module);
+void eval_module(MinimModule *module);
 
 // Evaluates an expression and returns a string.
 char *eval_string(char *str, size_t len);

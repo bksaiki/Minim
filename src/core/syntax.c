@@ -468,13 +468,12 @@ static void check_syntax_export(MinimEnv *env, MinimObject *stx)
         {
             MinimObject *attrib;
 
-            if (syntax_proper_list_len(export) != 2)
+            if (minim_list_length(export) != 2)
                 THROW(env, invalid_export_error(stx, it));
 
             attrib = MINIM_STX_VAL(MINIM_CAR(export));
-            if (!MINIM_OBJ_SYMBOLP(attrib) || strcmp(MINIM_STRING(attrib), "all") != 0)
+            if (!MINIM_OBJ_SYMBOLP(attrib) || strcmp(MINIM_SYMBOL(attrib), "all") != 0)
                 THROW(env, invalid_export_error(stx, it));
-
             export = MINIM_STX_VAL(MINIM_CADR(export));
         }
         
