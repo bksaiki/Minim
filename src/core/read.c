@@ -111,6 +111,7 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
             THROW(prev->env, read_error(cache, minim_error("cached modules should be a single expression", NULL), fname));
 
         module->body = ast;
+        minim_module_set_path(module, fname);
         eval_module_cached(module_inst);
     }
     else
@@ -125,6 +126,7 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
             minim_module_add_expr(module, ast);
         }
 
+        minim_module_set_path(module, fname);
         expand_minim_module(module_inst->env, module);
         emit_processed_file(port, module);
     }
@@ -161,6 +163,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
         minim_module_add_expr(module, ast);
     }
 
+    minim_module_set_path(module, fname);
     expand_minim_module(env2, module);
     emit_processed_file(port, module);
 

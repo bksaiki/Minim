@@ -1,11 +1,38 @@
 #include "minimpriv.h"
 
+#define ASSERT_VALID_KEY(name, path)            \
+    if (!name && !path)                         \
+    {                                           \
+        printf("module cache key is empty");    \
+        return NULL;                            \
+    }
+
 static MinimEnv *get_builtin_env(MinimEnv *env)
 {
     if (!env->parent)
         return env;
     
     return get_builtin_env(env->parent);
+}
+
+static bool
+module_cache_key_match(MinimModule *module,
+                      const char *name,
+                      const char *path)
+{
+    if (name)
+    {
+        if (!module->name || strcmp(module->name, name) != 0)
+            return false;
+    }
+
+    if (path)
+    {
+        if (!module->path || strcmp(module->path, path) != 0)
+            return false;
+    }
+
+    return true;
 }
 
 void init_minim_module(MinimModule **pmodule)
@@ -19,23 +46,29 @@ void init_minim_module(MinimModule **pmodule)
     init_env(&module->export, NULL, NULL);
     module->name = NULL;
     module->path = NULL;
-
-    // Set up empty body
-    module->body = minim_ast(
-        minim_cons(minim_ast(intern("%module"), NULL),
-        minim_cons(minim_ast(minim_false, NULL),
-        minim_cons(minim_ast(minim_false, NULL),
-        minim_cons(minim_ast(
-            minim_cons(minim_ast(intern("%module-begin"), NULL),
-            minim_null), NULL),
-        minim_null)))), NULL);
+    module->body = NULL;
 
     *pmodule = module;
 }
 
 void minim_module_add_expr(MinimModule *module, MinimObject *expr)
 {
-    MinimObject *t = MINIM_MODULE_BODY(module);
+    MinimObject *t;
+
+    if (module->body == NULL)
+    {
+        // Set up empty body
+        module->body = minim_ast(
+            minim_cons(minim_ast(intern("%module"), NULL),
+            minim_cons(minim_ast(minim_false, NULL),
+            minim_cons(minim_ast((module->path ? minim_string(module->path) : minim_false), NULL),
+            minim_cons(minim_ast(
+                minim_cons(minim_ast(intern("%module-begin"), NULL),
+                minim_null), NULL),
+            minim_null)))), NULL);
+    }
+
+    t = MINIM_MODULE_BODY(module);
     while (!minim_nullp(MINIM_CDR(t)))
         t = MINIM_CDR(t);
     MINIM_CDR(t) = minim_cons(expr, minim_null);
@@ -45,13 +78,24 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
 {
     for (size_t i = 0; i < module->importc; ++i)
     {
-        if (strcmp(import->name, module->imports[i]->name) == 0)
+        if (module_cache_key_match(module->imports[i], import->name, import->path))
             return;
     }
     
     ++module->importc;
     module->imports = GC_realloc(module->imports, module->importc * sizeof(MinimModule*));
     module->imports[module->importc - 1] = import;
+}
+
+void minim_module_set_path(MinimModule *module, const char *name)
+{
+    module->path = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
+    strcpy(module->path, name);
+    if (module->body != NULL)
+    {
+        MinimObject *path_stx = MINIM_CDDR(MINIM_STX_VAL(module->body));
+        MINIM_CAR(path_stx) = minim_ast(minim_string(module->path), NULL);
+    }   
 }
 
 void init_minim_module_instance(MinimModuleInstance **pinst, MinimModule *module)
@@ -74,12 +118,12 @@ MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym)
     return minim_symbol_table_get(module->env->table, sym, hash);
 }
 
-MinimModule *minim_module_get_import(MinimModule *module, const char *sym)
+MinimModule *minim_module_get_import(MinimModule *module, const char *name, const char *path)
 {
+    ASSERT_VALID_KEY(name, path);
     for (size_t i = 0; i < module->importc; ++i)
     {
-        if (module->imports[i]->name &&
-            strcmp(module->imports[i]->name, sym) == 0)
+        if (module_cache_key_match(module->imports[i], name, path))
             return module->imports[i];
     }
 
@@ -104,11 +148,12 @@ void minim_module_cache_add(MinimModuleCache *cache, MinimModule *import)
     cache->modules[cache->modulec - 1] = import;
 }
 
-MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *sym)
+MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *name, const char *path)
 {
+    ASSERT_VALID_KEY(name, path);
     for (size_t i = 0; i < cache->modulec; ++i)
     {
-        if (strcmp(cache->modules[i]->name, sym) == 0)
+        if (module_cache_key_match(cache->modules[i], name, path))
             return cache->modules[i];
     }
 
@@ -143,7 +188,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                             build_path(1, MINIM_STRING(name)) :
                             build_path(2, env->current_dir, MINIM_STRING(name)));
 
-                    import = minim_module_get_import(module, extract_path(path));
+                    import = minim_module_get_import(module, NULL, extract_path(path));
                     if (!import)
                     {
                         THROW(env, minim_syntax_error("module not imported",
@@ -197,7 +242,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
                 build_path(2, env->current_dir, MINIM_STRING(arg)));
 
         clean_path = extract_path(path);
-        module = minim_module_cache_get(global.cache, clean_path);
+        module = minim_module_cache_get(global.cache, NULL, clean_path);
         if (module)
         {
             init_minim_module_instance(&module_inst, module);
@@ -215,7 +260,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
 
             module_inst = minim_load_file_as_module(env->module_inst, clean_path);
             module_inst->prev = empty_inst;
-            module_inst->module->name = clean_path;
+
             minim_module_cache_add(global.cache, module_inst->module);
             eval_module(module_inst);
         }
