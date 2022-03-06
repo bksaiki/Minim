@@ -515,7 +515,6 @@ void eval_module(MinimModuleInstance *module)
     t = MINIM_CAR(MINIM_CDDR(MINIM_STX_CDR(module->module->body)));
     for (MinimObject *it = MINIM_STX_CDR(t); !minim_nullp(it); it = MINIM_CDR(it))
     {
-        check_syntax(module->env, MINIM_CAR(it));
         t = eval_module_level(module->env, MINIM_CAR(it), exports);
         if (!minim_voidp(t))
         {

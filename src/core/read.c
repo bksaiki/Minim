@@ -128,6 +128,7 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
 
         minim_module_set_path(module, fname);
         expand_minim_module(module_inst->env, module);
+        check_syntax(module_inst->env, module->body);
         emit_processed_file(port, module);
     }
 
@@ -165,6 +166,9 @@ void minim_load_file(MinimEnv *env, const char *fname)
 
     minim_module_set_path(module, fname);
     expand_minim_module(env2, module);
+    check_syntax(module_inst->env, module->body);
+
+    // emit desugared program
     emit_processed_file(port, module);
 
     // compile
@@ -211,6 +215,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
             THROW(env, read_error(cport, minim_error("cached modules should be a single expression", NULL), fname));
         
         init_minim_module_instance(&module_inst, module);
+        minim_module_set_path(module, fname);
         module_inst->env = env;
         module->body = ast;
         env->module_inst = module_inst;
@@ -238,10 +243,12 @@ void minim_run_file(MinimEnv *env, const char *fname)
         }
 
         init_minim_module_instance(&module_inst, module);
+        minim_module_set_path(module, fname);
         module_inst->env = env;
         env->module_inst = module_inst;
         
         expand_minim_module(env, module);
+        check_syntax(module_inst->env, module->body);
         emit_processed_file(port, module);
     }
 

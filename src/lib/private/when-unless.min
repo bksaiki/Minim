@@ -18,7 +18,8 @@
                       (list
                         (quote-syntax if)
                         (stx-car e)
-                        (cons (quote-syntax begin) b)
+                        (cons (quote-syntax let-values)
+                          (cons (list) b))
                         (quote-syntax (void)))))))))))
                         
 (def-syntaxes (unless)
@@ -36,6 +37,7 @@
                         (quote-syntax if)
                         (stx-car e)
                         (quote-syntax (void))
-                        (cons (quote-syntax begin) b))))))))))
+                        (cons (quote-syntax let-values)
+                          (cons (list) b)))))))))))
 
 (%export when unless)

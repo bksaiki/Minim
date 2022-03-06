@@ -482,6 +482,88 @@ static void check_syntax_export(MinimEnv *env, MinimObject *stx)
     }
 }
 
+static void check_syntax_module(MinimEnv *env, MinimObject *stx)
+{
+    MinimObject *li, *datum;
+    
+    li = MINIM_STX_CDR(stx);
+    if (minim_nullp(li))
+    {
+        THROW(env, minim_syntax_error("not a valid module form",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      NULL));
+    }
+
+    datum = MINIM_CAR(li);
+    if (!MINIM_STX_SYMBOLP(datum) && !minim_eqvp(MINIM_STX_VAL(datum), minim_false))
+    {
+        THROW(env, minim_syntax_error("expected a symbol or #f",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      datum));
+    }
+
+    li = MINIM_CDR(li);
+    if (minim_nullp(li))
+    {
+        THROW(env, minim_syntax_error("not a valid module form",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      NULL));
+    }
+
+    datum = MINIM_CAR(li);
+    if (!MINIM_STX_SYMBOLP(datum) &&
+        !MINIM_OBJ_STRINGP(MINIM_STX_VAL(datum)) &&
+        !minim_eqvp(MINIM_STX_VAL(datum), minim_false))
+    {
+        THROW(env, minim_syntax_error("expected a string, symbol, or #f",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      datum));
+    }
+
+    li = MINIM_CDR(li);
+    if (minim_nullp(li))
+    {
+        THROW(env, minim_syntax_error("not a valid module form",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      NULL));
+    }
+
+    datum = MINIM_CAR(li);
+    if (!minim_nullp(MINIM_CDR(li)))
+    {
+        THROW(env, minim_syntax_error("not a valid module form",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      NULL));
+    }
+
+    li = datum;
+    if (minim_nullp(li))
+    {
+        THROW(env, minim_syntax_error("expected a %%module-begin form",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      li));
+    }
+
+    datum = MINIM_STX_CAR(li);
+    if (!MINIM_STX_SYMBOLP(datum) && minim_eqvp(MINIM_STX_VAL(datum), intern("%module-begin")))
+    {
+        THROW(env, minim_syntax_error("expected a %%module-begin form",
+                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
+                                      stx,
+                                      li));
+    }
+
+    for (MinimObject *it = MINIM_STX_CDR(li); !minim_nullp(it); it = MINIM_CDR(it))
+        check_syntax_rec(env, MINIM_CAR(it));
+}
+
 static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
 {
     if (!MINIM_STX_PAIRP(stx))      // early exit, no checking
@@ -489,7 +571,17 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
 
     if (MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)))
     {
-        MinimObject *op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
+        MinimObject *op;
+        
+        // special case: %module
+        op =  MINIM_STX_CAR(stx);
+        if (minim_eqvp(MINIM_STX_VAL(op), intern("%module")))
+        {
+            check_syntax_module(env, stx);
+            return;
+        }
+        
+        op = env_get_sym(env, MINIM_STX_SYMBOL(op));
         if (!op)
         {
             THROW(env, minim_syntax_error("unknown identifier",
