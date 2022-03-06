@@ -95,7 +95,6 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *stx)
     for (size_t i = 0; i < idc; ++i)
     {
         MinimObject *sym;
-        size_t hash;
         char *s;
         
         sym = MINIM_STX_VAL(MINIM_CAR(it));
@@ -107,8 +106,7 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *stx)
         }
 
         s = MINIM_SYMBOL(sym);
-        hash = hash_symbol(s);
-        if (minim_symbol_table_get(env->table, s, hash) != NULL)
+        if (minim_symbol_table_get(env->table, s) != NULL)
         {
             THROW(env, minim_syntax_error("duplicate identifier",
                                           MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
@@ -242,7 +240,6 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
             for (MinimObject *it2 = MINIM_STX_VAL(ids); !minim_nullp(it2); it2 = MINIM_CDR(it2))
             {
                 MinimObject *sym;
-                size_t hash;
                 char *s;
 
                 if (!MINIM_OBJ_PAIRP(it2))
@@ -263,8 +260,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
                 }
 
                 s = MINIM_STX_SYMBOL(sym);
-                hash = hash_symbol(s);
-                if (minim_symbol_table_get(env2->table, s, hash) != NULL)
+                if (minim_symbol_table_get(env2->table, s) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
                                                   MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
@@ -335,7 +331,6 @@ static void check_syntax_letstar_values(MinimEnv *env, MinimObject *stx)
             for (MinimObject *it2 = MINIM_STX_VAL(ids); !minim_nullp(it2); it2 = MINIM_CDR(it2))
             {
                 MinimObject *sym;
-                size_t hash;
                 char *s;
 
                 if (!MINIM_OBJ_PAIRP(it2))
@@ -356,8 +351,7 @@ static void check_syntax_letstar_values(MinimEnv *env, MinimObject *stx)
                 }
 
                 s = MINIM_STX_SYMBOL(sym);
-                hash = hash_symbol(s);
-                if (minim_symbol_table_get(env3->table, s, hash) != NULL)
+                if (minim_symbol_table_get(env3->table, s) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
                                                   MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
@@ -578,6 +572,11 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
         if (minim_eqvp(MINIM_STX_VAL(op), intern("%module")))
         {
             check_syntax_module(env, stx);
+            return;
+        }
+        else if (minim_eqvp(MINIM_STX_VAL(op), intern("%local")) ||
+                 minim_eqvp(MINIM_STX_VAL(op), intern("%top")))
+        {
             return;
         }
         

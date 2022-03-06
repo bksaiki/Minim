@@ -112,10 +112,7 @@ void init_minim_module_instance(MinimModuleInstance **pinst, MinimModule *module
 
 MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym)
 {
-    size_t hash;
-
-    hash = hash_symbol(sym);
-    return minim_symbol_table_get(module->env->table, sym, hash);
+    return minim_symbol_table_get(module->env->table, sym);
 }
 
 MinimModule *minim_module_get_import(MinimModule *module, const char *name, const char *path)

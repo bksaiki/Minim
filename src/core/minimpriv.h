@@ -204,7 +204,9 @@ void minim_symbol_table_add2(MinimSymbolTable *table, const char *name, size_t h
 
 int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
 
-MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name, size_t hash);
+MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name);
+
+MinimObject *minim_symbol_table_get2(MinimSymbolTable *table, const char *name, size_t hash);
 
 const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj);
 
@@ -291,6 +293,13 @@ MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *name, c
 //
 //  Expander
 //
+
+typedef struct LocalVariableAnalysis {
+    // previous analysis
+    struct LocalVariableAnalysis *prev;
+    // symbols
+    MinimSymbolTable *symbols;
+} LocalVariableAnalysis;
 
 void expand_minim_module(MinimEnv *env, MinimModule *module);
 MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx);

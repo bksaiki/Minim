@@ -83,11 +83,11 @@ static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t ha
 
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        val = minim_symbol_table_get(it->table, sym, hash);
+        val = minim_symbol_table_get2(it->table, sym, hash);
         if (val) return val;
     }
 
-    return minim_symbol_table_get(global.builtins, sym, hash);
+    return minim_symbol_table_get2(global.builtins, sym, hash);
 }
 
 MinimObject *env_get_sym(MinimEnv *env, const char *sym)
