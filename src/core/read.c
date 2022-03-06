@@ -112,6 +112,7 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
 
         module->body = ast;
         minim_module_set_path(module, fname);
+        check_syntax(module_inst->env, module->body);
         eval_module_cached(module_inst);
     }
     else
@@ -127,8 +128,8 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
         }
 
         minim_module_set_path(module, fname);
-        expand_minim_module(module_inst->env, module);
         check_syntax(module_inst->env, module->body);
+        expand_minim_module(module_inst->env, module);
         emit_processed_file(port, module);
     }
 
@@ -165,8 +166,8 @@ void minim_load_file(MinimEnv *env, const char *fname)
     }
 
     minim_module_set_path(module, fname);
-    expand_minim_module(env2, module);
     check_syntax(module_inst->env, module->body);
+    expand_minim_module(env2, module);
 
     // emit desugared program
     emit_processed_file(port, module);
@@ -220,6 +221,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
         module->body = ast;
         env->module_inst = module_inst;
 
+        check_syntax(module_inst->env, module->body);
         eval_module_cached(module_inst);
     }
     else
@@ -247,8 +249,8 @@ void minim_run_file(MinimEnv *env, const char *fname)
         module_inst->env = env;
         env->module_inst = module_inst;
         
-        expand_minim_module(env, module);
         check_syntax(module_inst->env, module->body);
+        expand_minim_module(env, module);
         emit_processed_file(port, module);
     }
 

@@ -134,6 +134,12 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         MinimObject *op;
         size_t argc;
 
+        if (minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")) ||
+            minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%local")))
+        {
+            return eval_symbol(env, MINIM_STX_VAL(MINIM_STX_CDR(stx)), true);
+        }
+
         argc = syntax_proper_list_len(stx);
         if (argc == SIZE_MAX)
             THROW(env, minim_syntax_error("bad syntax", NULL, stx, NULL));

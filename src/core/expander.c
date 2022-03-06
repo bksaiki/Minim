@@ -26,7 +26,9 @@ local_var_analysis_add(LocalVariableAnalysis *analysis, const char *sym)
 static bool
 local_var_analysis_contains(LocalVariableAnalysis *analysis, const char *sym)
 {
-    return minim_symbol_table_get(analysis->symbols, sym) != NULL;
+    if (minim_symbol_table_get(analysis->symbols, sym) == NULL)
+        return (analysis->prev ? local_var_analysis_contains(analysis->prev, sym) : false);
+    return true;
 }
 
 //
@@ -108,8 +110,7 @@ expand_expr_let_values(MinimEnv *env,
         local_var_analysis_add(analysis2, MINIM_STX_SYMBOL(var));
     }
 
-    body = MINIM_CDR(body);
-    for (; !minim_nullp(body); body = MINIM_CDR(body))
+    for (body = MINIM_CDR(body); !minim_nullp(body); body = MINIM_CDR(body))
         MINIM_CAR(body) = expand_expr(env, MINIM_CAR(body), analysis2);
 
     return stx;
@@ -123,7 +124,7 @@ expand_expr_def_values(MinimEnv *env,
     MinimObject *ids, *body;
 
     ids = MINIM_STX_CADR(stx);
-    body = MINIM_STX_CDR(stx);
+    body = MINIM_CDR(MINIM_STX_CDR(stx));
     for (MinimObject *it = MINIM_STX_VAL(ids); !minim_nullp(it); it = MINIM_CDR(it))
         local_var_analysis_add(analysis, MINIM_STX_SYMBOL(MINIM_CAR(it)));
 
@@ -173,12 +174,20 @@ expand_expr(MinimEnv *env,
         // (<ident> <thing> ...)
         if (MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)))
         {
+            if (minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%local")) ||
+                         minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")))
+            {
+                return stx;
+            }
+            
             MinimObject *ref = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
             if (ref)
             {
                 if (MINIM_OBJ_TRANSFORMP(ref))          // transformer
                 {
-                    return expand_expr(env, transform_loc(env, ref, stx), analysis);
+                    MinimObject *transformed = transform_loc(env, ref, stx);
+                    check_syntax(env, transformed);
+                    return expand_expr(env, transformed, analysis);
                 }
                 else if (MINIM_OBJ_SYNTAXP(ref))        // syntax
                 {
@@ -218,11 +227,13 @@ expand_expr(MinimEnv *env,
     }
     else if (MINIM_STX_SYMBOLP(stx))
     {
-        // if (local_var_analysis_contains(analysis, MINIM_STX_SYMBOL(stx)))
-        //     return minim_ast(minim_cons(intern("%local"), stx), MINIM_STX_LOC(stx));
-        // else
-        //     return minim_ast(minim_cons(intern("%top"), stx), MINIM_STX_LOC(stx));
-        return stx;
+        MinimObject *trait;
+        if (local_var_analysis_contains(analysis, MINIM_STX_SYMBOL(stx)))
+            trait = minim_ast(intern("%local"), MINIM_STX_LOC(stx));
+        else
+            trait = minim_ast(intern("%top"), MINIM_STX_LOC(stx));
+
+        return minim_ast(minim_cons(trait, stx), MINIM_STX_LOC(stx));
     }
     else
     {

@@ -577,18 +577,19 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
         else if (minim_eqvp(MINIM_STX_VAL(op), intern("%local")) ||
                  minim_eqvp(MINIM_STX_VAL(op), intern("%top")))
         {
+            if (!MINIM_STX_SYMBOLP(MINIM_STX_CDR(stx)))
+            {
+                THROW(env, minim_syntax_error("variable reference must be a symbol",
+                                              MINIM_STX_SYMBOL(op),
+                                              stx,
+                                              NULL));
+            }
+
             return;
         }
         
         op = env_get_sym(env, MINIM_STX_SYMBOL(op));
-        if (!op)
-        {
-            THROW(env, minim_syntax_error("unknown identifier",
-                                          MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
-                                          stx, NULL));
-        }
-
-        if (MINIM_OBJ_SYNTAXP(op))
+        if (op && MINIM_OBJ_SYNTAXP(op))
         {
             MinimBuiltin proc = MINIM_SYNTAX(op);
 
