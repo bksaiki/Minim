@@ -55,6 +55,8 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
 void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObject *obj)
 {
     size_t h = hash_symbol(name);
+    if (minim_symbol_table_get2(table, name, h))
+        return;
     return minim_symbol_table_add2(table, name, h, obj);
 }
 
@@ -69,6 +71,7 @@ void minim_symbol_table_add2(MinimSymbolTable *table, const char *name, size_t h
     // just make a new bucket, don't check for an existing one
     i = hash % table->alloc;
     new_bucket(nb, (char*) name, obj, table->buckets[i]);
+    ++table->size;
 }
 
 int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj)

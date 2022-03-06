@@ -158,10 +158,8 @@ void unwind_tail_call(MinimEnv *env, MinimTailCall *tc)
 size_t env_symbol_count(MinimEnv *env)
 {
     size_t count = 0;
-
     for (MinimEnv *it = env; it; it = it->parent)
         count += it->table->size;
-
     return count + global.builtins->size;
 }
 
