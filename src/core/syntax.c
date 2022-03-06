@@ -281,98 +281,6 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
         check_syntax_rec(env2, MINIM_CAR(body));
 }
 
-static void check_syntax_letstar_values(MinimEnv *env, MinimObject *stx)
-{
-        MinimObject *body, *bindings;
-    MinimEnv *env2;
-    
-    init_env(&env2, env, NULL);
-    body = MINIM_STX_CDR(stx);
-    bindings = MINIM_CAR(body);
-    body = MINIM_CDR(body);
-
-    if (minim_nullp(body))
-    {
-        THROW(env, minim_syntax_error("missing body",
-                                      MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
-                                      stx,
-                                      NULL));
-    }
-
-    // early exit: (let () ...)
-    if (!MINIM_STX_NULLP(bindings))
-    {
-        for (MinimObject *it = MINIM_STX_VAL(bindings); !minim_nullp(it); it = MINIM_CDR(it))
-        {
-            MinimObject *bind, *ids;
-            MinimEnv *env3;
-
-            if (!MINIM_OBJ_PAIRP(it))
-            {
-                THROW(env, minim_syntax_error("expected a list of bindings",
-                                              MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
-                                              stx,
-                                              bindings));
-            }
-
-            bind = MINIM_CAR(it);
-            if (!MINIM_STX_PAIRP(bind) || syntax_list_len(bind) != 2)
-            {
-                THROW(env, minim_syntax_error("bad binding",
-                                              MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
-                                              stx,
-                                              bind));
-            }
-
-            // list of identifier
-            bind = MINIM_STX_VAL(bind);
-            ids = MINIM_CAR(bind);
-            init_env(&env3, env2, NULL);
-            for (MinimObject *it2 = MINIM_STX_VAL(ids); !minim_nullp(it2); it2 = MINIM_CDR(it2))
-            {
-                MinimObject *sym;
-                char *s;
-
-                if (!MINIM_OBJ_PAIRP(it2))
-                {
-                    THROW(env, minim_syntax_error("not a list of identifiers",
-                                                  MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
-                                                  stx,
-                                                  ids));
-                }
-
-                sym = MINIM_CAR(it2);
-                if (!MINIM_STX_SYMBOLP(sym))
-                {
-                    THROW(env, minim_syntax_error("not an identifier",
-                                                  MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
-                                                  stx,
-                                                  sym));
-                }
-
-                s = MINIM_STX_SYMBOL(sym);
-                if (minim_symbol_table_get(env3->table, s) != NULL)
-                {
-                    THROW(env, minim_syntax_error("duplicate identifier",
-                                                  MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
-                                                  stx,
-                                                  sym));
-                }
-
-                env_intern_sym(env3, s, minim_void);
-            }
-
-            // this is incorrect, behaves more like a letrec
-            // should take env2 rather than env3
-            check_syntax_rec(env3, MINIM_CADR(bind));
-            minim_symbol_table_merge(env2->table, env3->table);
-        }
-    }
-
-    for (; !minim_nullp(body); body = MINIM_CDR(body))
-        check_syntax_rec(env2, MINIM_CAR(body));
-}
-
 static void check_syntax_1arg(MinimEnv *env, MinimObject *stx)
 {
     check_syntax_rec(env, MINIM_CADR(MINIM_STX_VAL(stx)));
@@ -605,7 +513,6 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
             CHECK_REC(proc, minim_builtin_def_values, check_syntax_def_values);
             CHECK_REC(proc, minim_builtin_if, check_syntax_begin);                  // same as begin
             CHECK_REC(proc, minim_builtin_let_values, check_syntax_let_values);
-            CHECK_REC(proc, minim_builtin_letstar_values, check_syntax_letstar_values);
             CHECK_REC(proc, minim_builtin_lambda, check_syntax_lambda);
             CHECK_REC(proc, minim_builtin_delay, check_syntax_1arg);
             CHECK_REC(proc, minim_builtin_callcc, check_syntax_1arg)

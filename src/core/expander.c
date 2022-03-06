@@ -197,7 +197,6 @@ expand_expr(MinimEnv *env,
                     EXPAND_REC(ref, minim_builtin_if, expand_expr_if, env, stx, analysis);
                     EXPAND_REC(ref, minim_builtin_lambda, expand_expr_lambda, env, stx, analysis);
                     EXPAND_REC(ref, minim_builtin_let_values, expand_expr_let_values, env, stx, analysis);
-                    EXPAND_REC(ref, minim_builtin_letstar_values, expand_expr_let_values, env, stx, analysis);
                     EXPAND_REC(ref, minim_builtin_setb, expand_expr_setb, env, stx, analysis);
                     EXPAND_REC(ref, minim_builtin_syntax_case, expand_expr_syntax_case, env, stx, analysis);
 

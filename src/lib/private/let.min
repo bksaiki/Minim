@@ -4,7 +4,22 @@
 
 (%import "stx-macro.min" "stx.min")
 
-(%export let let*)
+(%export let*-values let let*)
+
+(def-syntaxes (let*-values)
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'let*-values "bad syntax" stx)
+        (let-values ([(e) (stx-cdr stx)])
+          (if (null? e)
+              (syntax-error 'let*-values "bad syntax" stx)
+              (syntax-case stx ()
+               [(_ () body)
+                #'(let-values () body)]
+               [(_ ([ids expr]) body)
+                #'(let-values ([ids expr]) body)]
+               [(_ ([ids expr] rest ...) body)
+                #'(let-values ([ids expr]) (let*-values (rest ...) body))]))))))
 
 (def-syntaxes (let)
   (lambda (stx)
