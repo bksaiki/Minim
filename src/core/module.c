@@ -8,57 +8,13 @@ static MinimEnv *get_builtin_env(MinimEnv *env)
     return get_builtin_env(env->parent);
 }
 
-static bool expr_is_begin(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *val;
-
-    if (!MINIM_STX_PAIRP(stx) || !MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)))
-        return false;
-
-    val = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
-    return (val && MINIM_OBJ_SYNTAXP(val) && MINIM_SYNTAX(val) == minim_builtin_begin);
-}
-
-static size_t expand_expr_count(MinimEnv *env, MinimObject *stx)
-{
-    if (expr_is_begin(env, stx))
-    {
-        size_t count = 0;
-        for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
-            count += expand_expr_count(env, MINIM_CAR(it));
-        return count;
-    }
-    else
-    {
-        return 1;
-    }
-}
-
-static size_t expand_expr(MinimEnv *env, MinimObject *stx, MinimObject **expanded, size_t idx)
-{
-    if (expr_is_begin(env, stx))
-    {
-        for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
-            idx = expand_expr(env, MINIM_CAR(it), expanded, idx);
-    }
-    else
-    {
-        expanded[idx] = stx;
-        ++idx;
-    }
-
-    return idx;
-}
-
 static MinimModule *module_from_cache(MinimModule *src)
 {
     MinimModule *module;
 
     module = GC_alloc(sizeof(MinimModule));
     module->prev = NULL;                    // no copy
-    module->exprs = src->exprs;
     module->imports = NULL;                 // no copy
-    module->exprc = src->exprc;
     module->importc = 0;                    // no copy
     module->env = NULL;                     // no copy
     module->export = src->export;
@@ -73,9 +29,7 @@ void init_minim_module(MinimModule **pmodule)
 
     module = GC_alloc(sizeof(MinimModule));
     module->prev = NULL;
-    module->exprs = NULL;
     module->imports = NULL;
-    module->exprc = 0;
     module->importc = 0;
     module->env = NULL;
     init_env(&module->export, NULL, NULL);
@@ -96,12 +50,6 @@ void init_minim_module(MinimModule **pmodule)
 
 void minim_module_add_expr(MinimModule *module, MinimObject *expr)
 {
-    // Current
-    ++module->exprc;
-    module->exprs = GC_realloc(module->exprs, module->exprc * sizeof(MinimObject*));
-    module->exprs[module->exprc - 1] = expr;
-
-    // Experimental
     MinimObject *t = MINIM_MODULE_BODY(module);
     while (!minim_nullp(MINIM_CDR(t)))
         t = MINIM_CDR(t);
@@ -119,23 +67,6 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     ++module->importc;
     module->imports = GC_realloc(module->imports, module->importc * sizeof(MinimModule*));
     module->imports[module->importc - 1] = import;
-}
-
-// expands begin
-void minim_module_expand(MinimModule *module)
-{
-    MinimObject **expanded;
-    size_t it = 0, count = 0;
-    
-    for (size_t i = 0; i < module->exprc; ++i)
-        count += expand_expr_count(module->env, module->exprs[i]);
-        
-    expanded = GC_alloc(count * sizeof(MinimObject**));
-    for (size_t i = 0; i < module->exprc; ++i)
-        it = expand_expr(module->env, module->exprs[i], expanded, it);
-    
-    module->exprs = expanded;
-    module->exprc = count;
 }
 
 MinimObject *minim_module_get_sym(MinimModule *module, const char *sym)

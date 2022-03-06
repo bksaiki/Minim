@@ -57,11 +57,10 @@ typedef struct MinimModule
 {
     struct MinimModule *prev;
     struct MinimModule **imports;
-    MinimObject **exprs;
     MinimObject *body;
     MinimEnv *env, *export;
     char *name;
-    size_t exprc, importc;
+    size_t importc;
 } MinimModule;
 
 // global table

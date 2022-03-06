@@ -158,6 +158,12 @@ MinimObject *expand_definition_level(MinimEnv *env, MinimObject *stx)
             return stx;
         }
 
+        if (minim_eqp(MINIM_STX_VAL(car), intern("def-syntaxes")))
+        {
+            eval_top_level(env, stx, minim_builtin_def_syntaxes);
+            return stx;
+        }
+
         ref = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
         if (ref)
         {

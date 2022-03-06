@@ -88,20 +88,24 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
     cache = load_processed_file(port);
     if (cache)
     {
+        MinimObject *ast, *err;
+
         init_minim_module(&module);
         init_env(&module->env, get_builtin_env(prev->env), NULL);
         module->env->current_dir = directory_from_port(cache);
         module->env->module = module;
-        while (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
-        {
-            MinimObject *ast, *err;
 
-            ast = minim_parse_port(cache, &err, 0);
-            if (err != NULL)
-                THROW(prev->env, read_error(cache, err, fname));
-            minim_module_add_expr(module, ast);
-        }
+        if (!(MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY))
+            THROW(prev->env, read_error(cache, minim_error("unexpected error while reading from cache", NULL), fname));
 
+        ast = minim_parse_port(cache, &err, 0);
+        if (err != NULL)
+            THROW(prev->env, read_error(cache, err, fname));
+
+        if (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
+            THROW(prev->env, read_error(cache, minim_error("cached modules should be a single expression", NULL), fname));
+
+        module->body = ast;
         eval_module_cached(module);
         return module;
     }
@@ -123,14 +127,6 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        printf("expanded %s: ", fname);
-        print_syntax_to_port(module->body, stdout);
-        printf("\n\n");
-
-        printf("evaluating %s: ", fname);
-        print_syntax_to_port(module->body, stdout);
-        printf("\n\n");
-
         eval_module_macros(module);
         emit_processed_file(port, module);
         return module;
@@ -147,21 +143,24 @@ void minim_load_file(MinimEnv *env, const char *fname)
     cache = load_processed_file(port);
     if (cache)
     {
+        MinimObject *ast, *err;
+
         init_minim_module(&module);
         init_env(&module->env, get_builtin_env(env), NULL);
         module->env->current_dir = directory_from_port(cache);
         module->env->module = module;
+        
+        if (!(MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY))
+            THROW(env, read_error(cache, minim_error("unexpected error while reading from cache", NULL), fname));
 
-        while (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
-        {
-            MinimObject *ast, *err;
+        ast = minim_parse_port(cache, &err, 0);
+        if (err != NULL)
+            THROW(env, read_error(cache, err, fname));
 
-            ast = minim_parse_port(cache, &err, 0);
-            if (err != NULL)
-                THROW(env, read_error(cache, err, fname));
-            minim_module_add_expr(module, ast);
-        }
+        if (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
+            THROW(env, read_error(cache, minim_error("cached modules should be a single expression", NULL), fname));
 
+        module->body = ast;
         eval_module_cached(module);
     }
     else
@@ -182,14 +181,6 @@ void minim_load_file(MinimEnv *env, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        printf("expanded %s: ", fname);
-        print_syntax_to_port(module->body, stdout);
-        printf("\n\n");
-
-        printf("evaluating %s: ", fname);
-        print_syntax_to_port(module->body, stdout);
-        printf("\n\n");
-
         eval_module_macros(module);
         emit_processed_file(port, module);
     }
@@ -217,26 +208,28 @@ void minim_run_file(MinimEnv *env, const char *fname)
     cport = load_processed_file(port);
     if (cport)
     {
+        MinimObject *ast, *err;
+
         init_minim_module(&module);
         module->env = env;
         env->current_dir = directory_from_port(cport);
         env->module = module;
 
-        while (MINIM_PORT_MODE(cport) & MINIM_PORT_MODE_READY)
-        {
-            MinimObject *ast, *err;
-            
-            ast = minim_parse_port(cport, &err, 0);
-            if (err != NULL)
-            {
-                env->current_dir = prev_dir;
-                env->module = prev;
-                THROW(env, read_error(cport, err, fname));
-            }
+        if (!(MINIM_PORT_MODE(cport) & MINIM_PORT_MODE_READY))
+            THROW(env, read_error(cport, minim_error("unexpected error while reading from cache", NULL), fname));
 
-            minim_module_add_expr(module, ast);
+        ast = minim_parse_port(cport, &err, 0);
+        if (err != NULL)
+        {
+            env->current_dir = prev_dir;
+            env->module = prev;
+            THROW(env, read_error(cport, err, fname));
         }
 
+        if (MINIM_PORT_MODE(cport) & MINIM_PORT_MODE_READY)
+            THROW(env, read_error(cport, minim_error("cached modules should be a single expression", NULL), fname));
+
+        module->body = ast;
         eval_module_cached(module);
     }
     else
@@ -262,14 +255,6 @@ void minim_run_file(MinimEnv *env, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        printf("expanded %s: ", fname);
-        print_syntax_to_port(module->body, stdout);
-        printf("\n\n");
-
-        printf("evaluating %s: ", fname);
-        print_syntax_to_port(module->body, stdout);
-        printf("\n\n");
-
         eval_module_macros(module);
         emit_processed_file(port, module);
     }
