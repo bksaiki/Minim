@@ -135,53 +135,30 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
 void minim_load_file(MinimEnv *env, const char *fname)
 {
     MinimModule *module;
-    MinimObject *port, *cache;
+    MinimObject *port;
     Buffer *code;
     
+    // Always re-read and run
+
     port = open_file_port(env, fname);
-    cache = load_processed_file(port);
-    if (cache)
+    init_minim_module(&module);
+    init_env(&module->env, get_builtin_env(env), NULL);
+    module->env->current_dir = directory_from_port(port);
+    module->env->module = module;
+
+    // re-read
+    while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
     {
         MinimObject *ast, *err;
 
-        init_minim_module(&module);
-        init_env(&module->env, get_builtin_env(env), NULL);
-        module->env->current_dir = directory_from_port(cache);
-        module->env->module = module;
-        
-        if (!(MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY))
-            THROW(env, read_error(cache, minim_error("unexpected error while reading from cache", NULL), fname));
-
-        ast = minim_parse_port(cache, &err, 0);
+        ast = minim_parse_port(port, &err, 0);
         if (err != NULL)
-            THROW(env, read_error(cache, err, fname));
-
-        if (MINIM_PORT_MODE(cache) & MINIM_PORT_MODE_READY)
-            THROW(env, read_error(cache, minim_error("cached modules should be a single expression", NULL), fname));
-
-        module->body = ast;
-        eval_module_cached(module);
+            THROW(env, read_error(port, err, fname));
+        minim_module_add_expr(module, ast);
     }
-    else
-    {
-        init_minim_module(&module);
-        init_env(&module->env, get_builtin_env(env), NULL);
-        module->env->current_dir = directory_from_port(port);
-        module->env->module = module;
 
-        while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
-        {
-            MinimObject *ast, *err;
-
-            ast = minim_parse_port(port, &err, 0);
-            if (err != NULL)
-                THROW(env, read_error(port, err, fname));
-            minim_module_add_expr(module, ast);
-        }
-
-        expand_minim_module(module->env, module);
-        emit_processed_file(port, module);
-    }
+    expand_minim_module(module->env, module);
+    emit_processed_file(port, module);
 
     // compile
     if (global.flags & GLOBAL_FLAG_COMPILE)
