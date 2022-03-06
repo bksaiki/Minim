@@ -321,8 +321,9 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
             
             if (proc == minim_builtin_def_syntaxes)
                 THROW(env, minim_error("only allowed at the top-level", "def-syntaxes"));
-            if (proc == minim_builtin_def_values)
-                THROW(env, minim_error("only allowed at the top-level", "def-values"));
+            // TODO: fix macro expansion of def
+            // if (proc == minim_builtin_def_values)
+            //     THROW(env, minim_error("only allowed at the top-level", "def-values"));
             else if (proc == minim_builtin_import)
                 THROW(env, minim_error("only allowed at the top-level", "%import"));
             else if (proc == minim_builtin_export)
@@ -398,9 +399,6 @@ void eval_definition_level_cached(MinimEnv *env, MinimObject *stx)
     head = MINIM_STX_VAL(head);
     if (minim_eqp(head, intern("def-syntaxes")))
         eval_top_level(env, stx, minim_builtin_def_syntaxes);
-    // TODO: fix expansion of intern def-values
-    else if (minim_eqp(head, intern("def-values")))
-        eval_top_level(env, stx, minim_builtin_def_values);
     else if (minim_eqp(head, intern("%import")))
         eval_top_level(env, stx, minim_builtin_import);
 }
@@ -433,52 +431,6 @@ void eval_module_level_cached(MinimEnv *env, MinimObject *stx)
     }
 }
 
-void eval_definition_level_macros(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *head;
-
-    // Not a list
-    if (!MINIM_STX_PAIRP(stx))
-        return;
-
-    head = MINIM_STX_CAR(stx);
-    if (!MINIM_OBJ_ASTP(head))
-        return;
-
-    head = MINIM_STX_VAL(head);
-    if (minim_eqp(head, intern("def-syntaxes")))
-        eval_top_level(env, stx, minim_builtin_def_syntaxes);
-    else if (minim_eqp(head, intern("def-values")))
-        eval_top_level(env, stx, minim_builtin_def_values);
-}
-
-void eval_module_level_macros(MinimEnv *env, MinimObject *stx)
-{
-    MinimObject *head;
-
-    // Not a list
-    if (!MINIM_STX_PAIRP(stx))
-        return;
-
-    head = MINIM_STX_CAR(stx);
-    if (!MINIM_OBJ_ASTP(head))
-        return;
-
-    head = MINIM_STX_VAL(head);
-    if (minim_eqp(head, intern("%export")))
-        return;
-
-    if (minim_eqp(head, intern("begin")))
-    {
-        for (MinimObject *t = MINIM_STX_CDR(stx); !minim_nullp(t); t = MINIM_CDR(t))
-            eval_module_level_macros(env, MINIM_CAR(t));
-    }
-    else
-    {
-        eval_definition_level_macros(env, stx);
-    }
-}
-
 MinimObject *eval_definition_level(MinimEnv *env, MinimObject *stx)
 {
     MinimObject *head;
@@ -491,8 +443,9 @@ MinimObject *eval_definition_level(MinimEnv *env, MinimObject *stx)
         return eval_ast_no_check(env, stx);
 
     head = MINIM_STX_VAL(head);
-    if (minim_eqp(head, intern("def-syntaxes")) ||
-        minim_eqp(head, intern("def-values")) ||
+    if (minim_eqp(head, intern("def-values")))
+        return eval_top_level(env, stx, minim_builtin_def_values);
+    else if (minim_eqp(head, intern("def-syntaxes")) ||
         minim_eqp(head, intern("%import")))
         return minim_void;
     else
@@ -574,7 +527,6 @@ MinimObject *eval_module_level_no_export(MinimEnv *env, MinimObject *stx)
 MinimObject *eval_ast(MinimEnv *env, MinimObject *stx)
 {
     stx = expand_module_level(env, stx);
-    eval_module_level_macros(env, stx);
     check_syntax(env, stx);
     return eval_module_level_no_export(env, stx);
 }
@@ -599,16 +551,6 @@ void eval_module_cached(MinimModule *module)
     t = MINIM_CAR(MINIM_CDDR(MINIM_STX_CDR(module->body)));
     for (MinimObject *it = MINIM_STX_CDR(t); !minim_nullp(it); it = MINIM_CDR(it))
         eval_module_level_cached(module->env, MINIM_CAR(it));
-}
-
-// (%module name path (%module-begin <module-level-form> ...))
-void eval_module_macros(MinimModule *module)
-{
-    MinimObject *t;
-    
-    t = MINIM_CAR(MINIM_CDDR(MINIM_STX_CDR(module->body)));
-    for (MinimObject *it = MINIM_STX_CDR(t); !minim_nullp(it); it = MINIM_CDR(it))
-        eval_module_level_macros(module->env, MINIM_CAR(it));
 }
 
 void eval_module(MinimModule *module)

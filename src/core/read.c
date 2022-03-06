@@ -127,7 +127,6 @@ MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        eval_module_macros(module);
         emit_processed_file(port, module);
         return module;
     }
@@ -181,7 +180,6 @@ void minim_load_file(MinimEnv *env, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        eval_module_macros(module);
         emit_processed_file(port, module);
     }
 
@@ -255,7 +253,6 @@ void minim_run_file(MinimEnv *env, const char *fname)
         }
 
         expand_minim_module(module->env, module);
-        eval_module_macros(module);
         emit_processed_file(port, module);
     }
 

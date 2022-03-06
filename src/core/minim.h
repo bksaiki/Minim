@@ -360,9 +360,6 @@ MinimObject *eval_ast_terminal(MinimEnv *env, MinimObject *ast);
 // Evaluates `module` up to defining macros
 void eval_module_cached(MinimModule *module);
 
-// Evaluates `module` up to applying syntax macros
-void eval_module_macros(MinimModule *module);
-
 // Evaluates `module` and returns the result
 void eval_module(MinimModule *module);
 

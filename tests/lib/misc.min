@@ -6,5 +6,5 @@
     (def y 2)
     (def-syntax foo (lambda (stx) (syntax 1)))))
 
-(foo)
-(+ x y)
+(eq? (foo) 1)
+(eq? (+ x y) 3)
