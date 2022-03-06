@@ -161,8 +161,11 @@ Buffer *compile_module(MinimEnv *env, MinimModule *module)
 
     // compile
     writes_buffer(bf, "@main\n");
-    for (size_t i = 0; i < module->exprc; ++i)
-        compile_top(env, module->exprs[i], bf, &tab);
+
+    // this is definitely wrong
+    compile_top(env, module->body, bf, &tab);
+    // for (size_t i = 0; i < module->exprc; ++i)
+    //     compile_top(env, module->exprs[i], bf, &tab);
 
     // debugging
     writec_buffer(bf, '\n');

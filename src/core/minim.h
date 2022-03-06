@@ -57,11 +57,10 @@ typedef struct MinimModule
 {
     struct MinimModule *prev;
     struct MinimModule **imports;
-    MinimObject **exprs;
-    size_t exprc, importc;
+    MinimObject *body;
     MinimEnv *env, *export;
     char *name;
-    size_t flags;
+    size_t importc;
 } MinimModule;
 
 // global table
@@ -361,11 +360,8 @@ MinimObject *eval_ast_terminal(MinimEnv *env, MinimObject *ast);
 // Evaluates `module` up to defining macros
 void eval_module_cached(MinimModule *module);
 
-// Evaluates `module` up to applying syntax macros
-void eval_module_macros(MinimModule *module);
-
 // Evaluates `module` and returns the result
-MinimObject *eval_module(MinimModule *module);
+void eval_module(MinimModule *module);
 
 // Evaluates an expression and returns a string.
 char *eval_string(char *str, size_t len);

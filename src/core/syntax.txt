@@ -1,0 +1,23 @@
+;; start symbol for file input
+<top-level-form> ::= (%module <name> <path> (%module-begin <module-level-form> ...))
+
+<module-level-form> ::= (%export raw-export-form ...)
+                      | (begin <module-level-form> ...)
+                      | <definition-level-form>
+                      | <expr>
+
+;; start symbol for REPL input
+<definition-level-form> ::= (%import raw-import-form ...)
+                          | (def-values (id ...) <expr>)
+                          | (def-syntaxes (id ...) <expr>)
+                          | expr
+            
+<expr> ::= (lambda formals <expr> ...)
+         | (if <expr> <expr> <expr>)
+         | (begin <expr> <expr> <expr>)
+         | (let-values ([(id ...) <expr>] ...) <expr>)
+         | (set! id <expr>)
+         | (quote datum)
+         | (quote-syntax datum)
+         | (func <expr> ...)
+         | id

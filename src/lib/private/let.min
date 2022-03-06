@@ -20,8 +20,9 @@
                       #'(let-values ([(id) (lambda (vars ...) body ...)])
                           (id vals ...))])
                     (syntax-case stx ()
+                     ; TODO: maybe remove this case?
                      [(_ () body ...)
-                      #'(begin body ...)]
+                      #'(let-values () body ...)]
                      [(_ ([vars vals] ...) body ...)
                       #'(let-values ([(vars) vals] ...) body ...)]))))))))
 
