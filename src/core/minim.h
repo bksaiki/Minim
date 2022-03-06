@@ -44,7 +44,7 @@ typedef struct MinimObject
 typedef struct MinimEnv
 {
     struct MinimEnv *parent, *caller;
-    struct MinimModule *module;
+    struct MinimModuleInstance *module_inst;
     MinimSymbolTable *table;
     MinimLambda *callee;
     MinimObject *jmp;
@@ -55,13 +55,29 @@ typedef struct MinimEnv
 // module
 typedef struct MinimModule
 {
-    struct MinimModule *prev;
-    struct MinimModule **imports;
+    // ptr to underlying cache
+    MinimModuleCache *cache;
+    // this module's code
     MinimObject *body;
-    MinimEnv *env, *export;
-    char *name;
+    // this module's exported environment
+    MinimEnv *export;
+    // list of imported modules
+    struct MinimModule **imports;
     size_t importc;
+    // name and path of module
+    char *name, *path;
 } MinimModule;
+
+// module instance
+typedef struct MinimModuleInstance
+{
+    // ptr to underlying module
+    MinimModule *module;
+    // ptr to importing module instance
+    struct MinimModuleInstance *prev;
+    // this instance's environment
+    MinimEnv *env;
+} MinimModuleInstance;
 
 // global table
 typedef struct MinimGlobal
@@ -357,11 +373,11 @@ MinimObject *eval_ast_no_check(MinimEnv* env, MinimObject *ast);
 // Evaluates a syntax terminal. Returns NULL on failure.
 MinimObject *eval_ast_terminal(MinimEnv *env, MinimObject *ast);
 
-// Evaluates `module` up to defining macros
-void eval_module_cached(MinimModule *module);
-
 // Evaluates `module` and returns the result
-void eval_module(MinimModule *module);
+void eval_module(MinimModuleInstance *module);
+
+// Evaluates `module` up to defining macros
+void eval_module_cached(MinimModuleInstance *module);
 
 // Evaluates an expression and returns a string.
 char *eval_string(char *str, size_t len);
@@ -396,7 +412,11 @@ extern MinimGlobal global;
 // Initializes a new environment object.
 void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee);
 
+// Initializes a new module.
 void init_minim_module(MinimModule **pmodule);
+
+// Initializes a new module instance.
+void init_minim_module_instance(MinimModuleInstance **pinst, MinimModule *module);
 
 //
 //  Reading / Parsing
@@ -406,8 +426,9 @@ void init_minim_module(MinimModule **pmodule);
 
 MinimObject *minim_parse_port(MinimObject *port, MinimObject **perr, uint8_t flags);
 
-// Reads a file given by `str` and returns a new module whose previous module is `prev`.
-MinimModule *minim_load_file_as_module(MinimModule *prev, const char *fname);
+// Reads a file given by `str` and returns a new module instance
+// whose previous module instance is `prev`.
+MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const char *fname);
 
 // Runs a file in a new environment where `env` contains the builtin environment
 // at its lowest level.

@@ -279,13 +279,14 @@ void minim_symbol_table_for_each(MinimSymbolTable *table,
 
 void minim_module_add_expr(MinimModule *module, MinimObject *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
+void minim_module_set_path(MinimModule *module, const char *path);
 
-MinimObject *minim_module_get_sym(MinimModule *module, const char *sym);
-MinimModule *minim_module_get_import(MinimModule *module, const char *sym);
+MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym);
+MinimModule *minim_module_get_import(MinimModule *module, const char *name, const char *path);
 
 void init_minim_module_cache(MinimModuleCache **pcache);
 void minim_module_cache_add(MinimModuleCache *cache, MinimModule *import);
-MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *sym);
+MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *name, const char *path);
 
 //
 //  Expander

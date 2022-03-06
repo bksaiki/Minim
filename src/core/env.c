@@ -18,7 +18,7 @@ static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
     MinimEnv *env = (MinimEnv*) ptr;
 
     mrk(gc, env->parent);
-    mrk(gc, env->module);
+    mrk(gc, env->module_inst);
     mrk(gc, env->table);
     mrk(gc, env->callee);
     mrk(gc, env->caller);
@@ -62,7 +62,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
     env->parent = parent;
-    env->module = NULL;
+    env->module_inst = NULL;
     env->callee = callee;
     env->caller = NULL;
     env->current_dir = NULL;
@@ -195,10 +195,11 @@ void env_dump_symbols(MinimEnv *env)
 
 void env_dump_exports(MinimEnv *env)
 {
-    if (env->module && env->module->export)
+    MinimModule *module = env->module_inst->module;
+    if (env->module_inst && module->export)
     {
-        env_for_print = env->module->export;
-        minim_symbol_table_for_each(env->module->export->table, print_symbol_entry);
+        env_for_print = module->export;
+        minim_symbol_table_for_each(module->export->table, print_symbol_entry);
     }
     else
     {
