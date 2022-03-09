@@ -112,10 +112,7 @@ void init_minim_module_instance(MinimModuleInstance **pinst, MinimModule *module
 
 MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym)
 {
-    size_t hash;
-
-    hash = hash_symbol(sym);
-    return minim_symbol_table_get(module->env->table, sym, hash);
+    return env_get_local_sym(module->env, sym);
 }
 
 MinimModule *minim_module_get_import(MinimModule *module, const char *name, const char *path)
@@ -197,7 +194,7 @@ MinimObject *minim_builtin_export(MinimEnv *env, size_t argc, MinimObject **args
                                                       MINIM_CADR(export)));
                     }
 
-                    minim_symbol_table_merge(module->export->table, import->export->table);
+                    env_merge_local_symbols(module->export, import->export);
                 }
             }
             else
@@ -266,7 +263,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         }
 
         minim_module_add_import(env->module_inst->module, module_inst->module);
-        minim_symbol_table_merge(env->table, module_inst->module->export->table);
+        env_merge_local_symbols(env, module_inst->module->export);
     }
 
     GC_REGISTER_LOCAL_ARRAY(args);

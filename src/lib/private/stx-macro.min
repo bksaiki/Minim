@@ -39,18 +39,18 @@
                                 (lambda (process rules)
                                   (if (stx-null? rules)
                                       (reverse process)
-                                      (let*-values ([(rule) (stx-car rules)]
-                                                    [(match) (stx-car rule)]
-                                                    [(replace) (stx-car (stx-cdr rule))])
-                                        (loop
-                                          (cons
-                                            (list
-                                              match
+                                      (let-values ([(rule) (stx-car rules)])
+                                        (let-values ([(match) (stx-car rule)]
+                                                     [(replace) (stx-car (stx-cdr rule))])
+                                          (loop
+                                            (cons
                                               (list
-                                                (quote-syntax syntax)
-                                                replace))
-                                            process)
-                                          (stx-cdr rules)))))])
+                                                match
+                                                  (list
+                                                    (quote-syntax syntax)
+                                                    replace))
+                                              process)
+                                            (stx-cdr rules))))))])
                               (loop '() rules)))))
                       (serr "bad syntax" (datum->syntax rules))))
                 (serr "expected a list of identifiers" ids)))))))

@@ -5,22 +5,44 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *node);
 
 // eval terminals
 
-static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, bool err)
+static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx, bool err)
 {
     MinimObject *res = env_get_sym(env, MINIM_SYMBOL(sym));
     
     if (!res)   // unknown
     {
-        if (err)    THROW(env, minim_error("unrecognized identifier", MINIM_SYMBOL(sym)));
-        else        return NULL;
+        if (err)
+        {
+            THROW(env, minim_syntax_error("unknown identifier",
+                                          MINIM_SYMBOL(sym),
+                                          stx,
+                                          NULL));
+        }
+        else
+        {
+            return NULL;
+        }
     }
 
-    if (MINIM_OBJ_SYNTAXP(res))
-        THROW(env, minim_error("bad syntax", MINIM_SYMBOL(sym)));
-    if (MINIM_OBJ_TRANSFORMP(res))
-        THROW(env, minim_error("bad transform", MINIM_SYMBOL(sym)));
+    if (MINIM_OBJ_SYNTAXP(res) || MINIM_OBJ_TRANSFORMP(res))
+    {
+        THROW(env, minim_syntax_error("bad syntax",
+                                      MINIM_SYMBOL(sym),
+                                      stx,
+                                      NULL));
+    }
     
     return res;
+}
+
+// get top-level module
+static MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx)
+{
+    MinimEnv *it = env;
+    while (it->parent != NULL && it->module_inst == NULL)
+        it = it->parent;
+
+    return eval_symbol(it, sym, stx, true);
 }
 
 // Specialized eval functions
@@ -134,11 +156,13 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         MinimObject *op;
         size_t argc;
 
-        argc = syntax_proper_list_len(stx);
-        if (argc == SIZE_MAX)
+        if (minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")))
+            return eval_top_symbol(env, MINIM_STX_VAL(MINIM_STX_CDR(stx)), stx);
+
+        argc = syntax_proper_list_len(stx) - 1;
+        if (argc + 1 == SIZE_MAX)
             THROW(env, minim_syntax_error("bad syntax", NULL, stx, NULL));
 
-        --argc;
         op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(val)));
         if (MINIM_OBJ_BUILTINP(op))
         {
@@ -310,7 +334,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         }
         else
         {
-            THROW(env, minim_syntax_error("unknown operator", NULL,
+            THROW(env, minim_syntax_error("unknown identifier", NULL,
                                           stx, MINIM_STX_CAR(stx)));
         }
     }
@@ -320,7 +344,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
     }
     else if (MINIM_OBJ_SYMBOLP(val))
     {
-        return eval_symbol(env, val, true);
+        return eval_symbol(env, val, stx, true);
     }
     else
     {
@@ -478,8 +502,8 @@ MinimObject *eval_module_level_no_export(MinimEnv *env, MinimObject *stx)
 
 MinimObject *eval_ast(MinimEnv *env, MinimObject *stx)
 {
-    stx = expand_module_level(env, stx);
     check_syntax(env, stx);
+    stx = expand_module_level(env, stx);
     return eval_module_level_no_export(env, stx);
 }
 
@@ -492,7 +516,7 @@ MinimObject *eval_ast_no_check(MinimEnv* env, MinimObject *ast)
 MinimObject *eval_ast_terminal(MinimEnv *env, MinimObject *stx)
 {
     return (MINIM_STX_SYMBOLP(stx) ?
-            eval_symbol(env, MINIM_STX_VAL(stx), false) :
+            eval_symbol(env, MINIM_STX_VAL(stx), stx, false) :
             MINIM_STX_VAL(stx));
 }
 

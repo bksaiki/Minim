@@ -41,7 +41,6 @@ void init_builtins()
     init_builtin("set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
     init_builtin("if", MINIM_OBJ_SYNTAX, minim_builtin_if);
     init_builtin("let-values", MINIM_OBJ_SYNTAX, minim_builtin_let_values);
-    init_builtin("let*-values", MINIM_OBJ_SYNTAX, minim_builtin_letstar_values);
     init_builtin("begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
     init_builtin("quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
     init_builtin("quasiquote", MINIM_OBJ_SYNTAX, minim_builtin_quasiquote);

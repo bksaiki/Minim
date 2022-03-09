@@ -55,6 +55,8 @@ static void minim_symbol_table_rehash(MinimSymbolTable *table)
 void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObject *obj)
 {
     size_t h = hash_symbol(name);
+    if (minim_symbol_table_get2(table, name, h))
+        return;
     return minim_symbol_table_add2(table, name, h, obj);
 }
 
@@ -69,6 +71,7 @@ void minim_symbol_table_add2(MinimSymbolTable *table, const char *name, size_t h
     // just make a new bucket, don't check for an existing one
     i = hash % table->alloc;
     new_bucket(nb, (char*) name, obj, table->buckets[i]);
+    ++table->size;
 }
 
 int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj)
@@ -86,7 +89,13 @@ int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t has
     return 0;
 }
 
-MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name, size_t hash)
+MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name)
+{
+    size_t h = hash_symbol(name);
+    return minim_symbol_table_get2(table, name, h);
+}
+
+MinimObject *minim_symbol_table_get2(MinimSymbolTable *table, const char *name, size_t hash)
 {
     size_t i = hash % table->alloc;
     for (MinimSymbolTableBucket *b = table->buckets[i]; b; b = b->next)
@@ -119,7 +128,7 @@ void minim_symbol_table_merge(MinimSymbolTable *dest, MinimSymbolTable *src)
         for (MinimSymbolTableBucket *b = src->buckets[i]; b; b = b->next)
         {
             size_t h = hash_symbol(b->key);
-            if (minim_symbol_table_get(dest, b->key, h))
+            if (minim_symbol_table_get2(dest, b->key, h))
                 minim_symbol_table_set(dest, b->key, h, b->val);
             else
                 minim_symbol_table_add2(dest, b->key, h, b->val);
@@ -140,7 +149,7 @@ void minim_symbol_table_merge2(MinimSymbolTable *dest,
             size_t h;
 
             h = hash_symbol(b->key);
-            v = minim_symbol_table_get(dest, b->key, h);
+            v = minim_symbol_table_get2(dest, b->key, h);
             if (v)      minim_symbol_table_set(dest, b->key, h, merge(v, b->val));
             else        minim_symbol_table_add2(dest, b->key, h, add(b->val));
         }

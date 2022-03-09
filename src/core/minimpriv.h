@@ -204,7 +204,9 @@ void minim_symbol_table_add2(MinimSymbolTable *table, const char *name, size_t h
 
 int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
 
-MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name, size_t hash);
+MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name);
+
+MinimObject *minim_symbol_table_get2(MinimSymbolTable *table, const char *name, size_t hash);
 
 const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj);
 
@@ -292,6 +294,13 @@ MinimModule *minim_module_cache_get(MinimModuleCache *cache, const char *name, c
 //  Expander
 //
 
+typedef struct LocalVariableAnalysis {
+    // previous analysis
+    struct LocalVariableAnalysis *prev;
+    // symbols
+    MinimSymbolTable *symbols;
+} LocalVariableAnalysis;
+
 void expand_minim_module(MinimEnv *env, MinimModule *module);
 MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx);
 
@@ -304,6 +313,10 @@ MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx);
 // Returns a the object associated with the symbol. Returns NULL if
 // the symbol is not in the table
 MinimObject *env_get_sym(MinimEnv *env, const char *sym);
+
+// Like `env_get_sym` except it only checks the symbol
+// table of this environment.
+MinimObject *env_get_local_sym(MinimEnv *env, const char *sym);
 
 // Adds 'sym' and 'obj' to the variable table.
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj);
@@ -329,6 +342,23 @@ void env_dump_symbols(MinimEnv *env);
 
 // Debugging: dumps exportable symbols in environment
 void env_dump_exports(MinimEnv *env);
+
+// Returns the symbol table associated with this environment.
+// Creates a symbol table if it is null.
+MinimSymbolTable *env_get_table(MinimEnv *env);
+
+// Merges the local symbol table of `src` into the local symbol table of `dest`
+void env_merge_local_symbols(MinimEnv *dest, MinimEnv *src);
+
+// Like `env_merge_symbols` but with specific merge and add functionality.
+void env_merge_local_symbols2(MinimEnv *dest,
+                        MinimEnv *src,
+                        MinimObject *(*merge)(MinimObject *, MinimObject *),
+                        MinimObject *(*add)(MinimObject *));
+
+// Calls `func` on each key-value pair in the local symbol table
+void env_for_each_local_symbol(MinimEnv *table,
+                               void (*func)(const char *, MinimObject *));
 
 //
 //  Evaluation
@@ -498,7 +528,6 @@ DEFINE_BUILTIN_FUN(def_values)
 DEFINE_BUILTIN_FUN(setb)
 DEFINE_BUILTIN_FUN(if)
 DEFINE_BUILTIN_FUN(let_values)
-DEFINE_BUILTIN_FUN(letstar_values)
 DEFINE_BUILTIN_FUN(begin)
 DEFINE_BUILTIN_FUN(quote)
 DEFINE_BUILTIN_FUN(quasiquote)

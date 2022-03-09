@@ -1,5 +1,12 @@
 ;; Tests for <lib>/private/let.min
 
+; let*-values
+(equal? (let*-values () 1) 1)
+(equal? (let*-values ([(x) 1]) x) 1)
+(equal? (let*-values ([(x) 1]) (+ x 1)) 2)
+(equal? (let*-values ([(x y) (values 1 2)]) (+ x y)) 3)
+(equal? (let*-values ([(x y) (values 1 2)] [(z) x]) (+ x y z)) 4)
+
 ; let
 (equal? (let () 1) 1)
 (equal? (let ([x 1]) x) 1)

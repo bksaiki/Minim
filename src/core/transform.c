@@ -298,10 +298,10 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                                                 reserved, pdepth + 1))
                                 return false;
 
-                            minim_symbol_table_merge2(env2->table, env3->table, merge_pattern, add_pattern);
+                            env_merge_local_symbols2(env2, env3, merge_pattern, add_pattern);
                         }
 
-                        minim_symbol_table_merge(env->table, env2->table);
+                        env_merge_local_symbols(env, env2);
                     }
 
                     match_it = MINIM_CDR(match_it);
@@ -416,10 +416,10 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                                          reserved, pdepth + 1))
                         return false;
 
-                     minim_symbol_table_merge2(env2->table, env3->table, merge_pattern, add_pattern);
+                     env_merge_local_symbols2(env2, env3, merge_pattern, add_pattern);
                 }
 
-                minim_symbol_table_merge(env->table, env2->table);
+                env_merge_local_symbols(env, env2);
             }
 
             for (size_t i = ell_pos + 1, j = stx_len - after; i < match_len; ++i, ++j)
@@ -1150,7 +1150,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
             // printf("replace: "); print_syntax_to_port(replace, stdout); printf("\n");
 
             init_env(&env2, env, NULL);
-            minim_symbol_table_merge(env2->table, match_env->table);
+            env_merge_local_symbols(env2, match_env);
             env2->flags &= ~MINIM_ENV_TAIL_CALLABLE;
             val = eval_ast_no_check(env2, replace);
             if (!MINIM_OBJ_ASTP(val))
