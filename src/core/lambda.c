@@ -129,7 +129,7 @@ MinimObject *eval_lambda2(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObj
         if (mod)
         {
             lambda_env = env2;
-            minim_symbol_table_for_each(mod->env->table, intern_transform);
+            env_for_each_local_symbol(mod->env, intern_transform);
         }
     }
 

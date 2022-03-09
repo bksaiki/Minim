@@ -94,10 +94,7 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *stx)
     idc = syntax_list_len(ids);
     for (size_t i = 0; i < idc; ++i)
     {
-        MinimObject *sym;
-        char *s;
-        
-        sym = MINIM_STX_VAL(MINIM_CAR(it));
+        MinimObject *sym = MINIM_STX_VAL(MINIM_CAR(it));
         if (!MINIM_OBJ_SYMBOLP(sym))
         {
             THROW(env, minim_syntax_error("not an identifier",
@@ -105,8 +102,7 @@ static void check_syntax_def_values(MinimEnv *env, MinimObject *stx)
                                           stx, sym));
         }
 
-        s = MINIM_SYMBOL(sym);
-        if (minim_symbol_table_get(env->table, s) != NULL)
+        if (env_get_local_sym(env, MINIM_SYMBOL(sym)) != NULL)
         {
             THROW(env, minim_syntax_error("duplicate identifier",
                                           MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
@@ -240,7 +236,6 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
             for (MinimObject *it2 = MINIM_STX_VAL(ids); !minim_nullp(it2); it2 = MINIM_CDR(it2))
             {
                 MinimObject *sym;
-                char *s;
 
                 if (!MINIM_OBJ_PAIRP(it2))
                 {
@@ -259,8 +254,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
                                                   sym));
                 }
 
-                s = MINIM_STX_SYMBOL(sym);
-                if (minim_symbol_table_get(env2->table, s) != NULL)
+                if (env_get_local_sym(env2, MINIM_STX_SYMBOL(sym)) != NULL)
                 {
                     THROW(env, minim_syntax_error("duplicate identifier",
                                                   MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)),
@@ -268,7 +262,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
                                                   sym));
                 }
 
-                env_intern_sym(env2, s, minim_void);
+                env_intern_sym(env2, MINIM_STX_SYMBOL(sym), minim_void);
             }
 
             // this is incorrect, behaves more like a letrec

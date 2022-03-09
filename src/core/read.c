@@ -257,7 +257,7 @@ void minim_run_file(MinimEnv *env, const char *fname)
     eval_module(module_inst);
 
     // this is dumb
-    minim_symbol_table_merge(env->table, module->export->table);
+    env_merge_local_symbols(env, module->export);
     env->current_dir = prev_dir;
     env->module_inst = prev;
 }

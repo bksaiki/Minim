@@ -53,6 +53,12 @@ static void print_symbol_entry(const char *sym, MinimObject *obj)
     }
 }
 
+#define INIT_SYMBOL_TABLE_IF_NULL(tab) \
+    if ((tab) == NULL) { init_minim_symbol_table(&tab); }
+
+#define RETURN_IF_NULL(x, ret) \
+    if ((x) == NULL) { return (ret); }
+
 //
 //  Visible functions
 //
@@ -67,24 +73,24 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     env->caller = NULL;
     env->current_dir = NULL;
     env->jmp = NULL;
+    env->table = NULL;
 
     if (callee)             env->flags = MINIM_ENV_TAIL_CALLABLE;
     else if (env->parent)   env->flags = env->parent->flags;
     else                    env->flags = 0x0;
-
-    init_minim_symbol_table(&env->table);
 
     *penv = env;
 }
 
 static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t hash)
 {
-    MinimObject *val;
-
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        val = minim_symbol_table_get2(it->table, sym, hash);
-        if (val) return val;
+        if (it->table)
+        {
+            MinimObject *val = minim_symbol_table_get2(it->table, sym, hash);
+            if (val) return val;
+        }
     }
 
     return minim_symbol_table_get2(global.builtins, sym, hash);
@@ -92,26 +98,27 @@ static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t ha
 
 MinimObject *env_get_sym(MinimEnv *env, const char *sym)
 {
-    size_t hash;
+    return env_get_sym_hashed(env, sym, hash_symbol(sym));
+}
 
-    hash = hash_symbol(sym);
-    return env_get_sym_hashed(env, sym, hash);
+MinimObject *env_get_local_sym(MinimEnv *env, const char *sym)
+{
+    RETURN_IF_NULL(env->table, NULL);
+    return minim_symbol_table_get2(env->table, sym, hash_symbol(sym));
 }
 
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
-    size_t hash;
-
     add_metadata(obj, sym);
-    hash = hash_symbol(sym);
-    minim_symbol_table_add2(env->table, sym, hash, obj);
+    INIT_SYMBOL_TABLE_IF_NULL(env->table);
+    minim_symbol_table_add2(env->table, sym, hash_symbol(sym), obj);
 }
 
 static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, MinimObject *obj)
 {
     for (MinimEnv *it = env; it; it = it->parent)
     { 
-        if (minim_symbol_table_set(it->table, sym, hash, obj))
+        if (it->table && minim_symbol_table_set(it->table, sym, hash, obj))
             return 1;
     }
     
@@ -120,21 +127,19 @@ static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, Minim
 
 int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
 {
-    size_t hash;
-
     add_metadata(obj, sym);
-    hash = hash_symbol(sym);
-    return env_set_sym_hashed(env, sym, hash, obj);
+    return env_set_sym_hashed(env, sym, hash_symbol(sym), obj);
 }
 
 const char *env_peek_key(MinimEnv *env, MinimObject *obj)
 {
-    const char *name;
-
     for (MinimEnv *it = env; it; it = it->parent)
     {   
-        name = minim_symbol_table_peek_name(it->table, obj);
-        if (name) return name;
+        if (it->table)
+        {
+            const char *name = minim_symbol_table_peek_name(it->table, obj);
+            if (name) return name;
+        }
     }
 
     // check globals, last resort
@@ -158,8 +163,13 @@ void unwind_tail_call(MinimEnv *env, MinimTailCall *tc)
 size_t env_symbol_count(MinimEnv *env)
 {
     size_t count = 0;
+
     for (MinimEnv *it = env; it; it = it->parent)
-        count += it->table->size;
+    {
+        if (it->table)
+            count += it->table->size;
+    }
+
     return count + global.builtins->size;
 }
 
@@ -184,8 +194,11 @@ void env_dump_symbols(MinimEnv *env)
 {
     for (MinimEnv *it = env; it; it = it->parent)
     {
-        env_for_print = it;
-        minim_symbol_table_for_each(it->table, print_symbol_entry);
+        if (it->table)
+        {
+            env_for_print = it;
+            minim_symbol_table_for_each(it->table, print_symbol_entry);
+        }
     }
 
     minim_symbol_table_for_each(global.builtins, print_symbol_entry);
@@ -205,3 +218,38 @@ void env_dump_exports(MinimEnv *env)
     }
 }
 
+MinimSymbolTable *env_get_table(MinimEnv *env)
+{
+    INIT_SYMBOL_TABLE_IF_NULL(env->table);
+    return env->table;
+}
+
+void env_merge_local_symbols(MinimEnv *dest, MinimEnv *src)
+{
+    if (src->table == NULL)     // nothing to add
+        return;
+
+    INIT_SYMBOL_TABLE_IF_NULL(dest->table);
+    minim_symbol_table_merge(dest->table, src->table);
+}
+
+void env_merge_local_symbols2(MinimEnv *dest,
+                              MinimEnv *src,
+                              MinimObject *(*merge)(MinimObject *, MinimObject *),
+                              MinimObject *(*add)(MinimObject *))
+{
+    if (src->table == NULL)     // nothing to add
+        return;
+
+    INIT_SYMBOL_TABLE_IF_NULL(dest->table);
+    minim_symbol_table_merge2(dest->table, src->table, merge, add); 
+}
+
+void env_for_each_local_symbol(MinimEnv *env,
+                               void (*func)(const char *, MinimObject *))
+{
+    if (env->table == NULL)
+        return;
+
+    minim_symbol_table_for_each(env->table, func);
+}

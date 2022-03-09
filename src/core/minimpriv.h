@@ -314,6 +314,10 @@ MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx);
 // the symbol is not in the table
 MinimObject *env_get_sym(MinimEnv *env, const char *sym);
 
+// Like `env_get_sym` except it only checks the symbol
+// table of this environment.
+MinimObject *env_get_local_sym(MinimEnv *env, const char *sym);
+
 // Adds 'sym' and 'obj' to the variable table.
 void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj);
 
@@ -338,6 +342,23 @@ void env_dump_symbols(MinimEnv *env);
 
 // Debugging: dumps exportable symbols in environment
 void env_dump_exports(MinimEnv *env);
+
+// Returns the symbol table associated with this environment.
+// Creates a symbol table if it is null.
+MinimSymbolTable *env_get_table(MinimEnv *env);
+
+// Merges the local symbol table of `src` into the local symbol table of `dest`
+void env_merge_local_symbols(MinimEnv *dest, MinimEnv *src);
+
+// Like `env_merge_symbols` but with specific merge and add functionality.
+void env_merge_local_symbols2(MinimEnv *dest,
+                        MinimEnv *src,
+                        MinimObject *(*merge)(MinimObject *, MinimObject *),
+                        MinimObject *(*add)(MinimObject *));
+
+// Calls `func` on each key-value pair in the local symbol table
+void env_for_each_local_symbol(MinimEnv *table,
+                               void (*func)(const char *, MinimObject *));
 
 //
 //  Evaluation
