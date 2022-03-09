@@ -473,31 +473,34 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
 
     if (MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)))
     {
-        MinimObject *op;
+        MinimObject *head, *op;
         
         // special case: %module
-        op =  MINIM_STX_CAR(stx);
-        if (minim_eqvp(MINIM_STX_VAL(op), intern("%module")))
+        head =  MINIM_STX_CAR(stx);
+        if (minim_eqvp(MINIM_STX_VAL(head), intern("%module")))
         {
             check_syntax_module(env, stx);
             return;
         }
-        else if (minim_eqvp(MINIM_STX_VAL(op), intern("%local")) ||
-                 minim_eqvp(MINIM_STX_VAL(op), intern("%top")))
+        else if (minim_eqvp(MINIM_STX_VAL(head), intern("%top")))
         {
             if (!MINIM_STX_SYMBOLP(MINIM_STX_CDR(stx)))
             {
                 THROW(env, minim_syntax_error("variable reference must be a symbol",
-                                              MINIM_STX_SYMBOL(op),
+                                              MINIM_STX_SYMBOL(head),
                                               stx,
                                               NULL));
             }
 
             return;
         }
-        
-        op = env_get_sym(env, MINIM_STX_SYMBOL(op));
-        if (op && MINIM_OBJ_SYNTAXP(op))
+
+        op = env_get_sym(env, MINIM_STX_SYMBOL(head));
+        if (!op || MINIM_OBJ_TRANSFORMP(op))
+        {
+            return;
+        }
+        else if (MINIM_OBJ_SYNTAXP(op))
         {
             MinimBuiltin proc = MINIM_SYNTAX(op);
 
