@@ -9,9 +9,9 @@
     (let-values ([(then1) (stx-cdr then)])
       (if (stx-null? then1)
           (stx-car then)
-          (cons
-            (quote-syntax begin)
-            then)))))
+          (cons (quote-syntax let-values)
+            (cons (quote-syntax ())
+              then))))))
 
 (def-syntaxes (cond)
   (lambda (stx)
