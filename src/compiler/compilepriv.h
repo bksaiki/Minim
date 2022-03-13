@@ -40,6 +40,8 @@ typedef struct Function {
 
 typedef struct Compiler {
     Function **funcs;
+    Function *curr_func;
+    MinimSymbolTable *table;
     size_t func_count;
 } Compiler;
 

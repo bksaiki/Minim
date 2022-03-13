@@ -3,10 +3,8 @@
 #include "compile.h"
 #include "compilepriv.h"
 
-#define COMPILE_REC(ref, fn, exp, env, stx, comp, func) \
-  if (MINIM_SYNTAX(ref) == (fn)) { return exp(env, stx, comp, func); }
-
-#define CURR_FUNC(comp)     ((comp)->funcs[(comp)->func_count - 1])
+#define COMPILE_REC(ref, fn, exp, env, stx, comp) \
+  if (MINIM_SYNTAX(ref) == (fn)) { return exp(env, stx, comp); }
 
 static void
 debug_function(MinimEnv *env, Function *func)
@@ -25,14 +23,12 @@ debug_function(MinimEnv *env, Function *func)
 static MinimObject *
 compile_expr(MinimEnv *env,
              MinimObject *stx,
-             Compiler *compiler,
-             Function *func);
+             Compiler *compiler);
 
 static MinimObject *
 compile_begin(MinimEnv *env,
               MinimObject *stx,
-              Compiler *compiler,
-              Function *func)
+              Compiler *compiler)
 {
     if (minim_nullp(MINIM_STX_CDR(stx)))
     {
@@ -47,14 +43,14 @@ compile_begin(MinimEnv *env,
             NULL
         );
 
-        function_add_line(func, instr);
+        function_add_line(compiler->curr_func, instr);
         return sym;
     }
     else
     {
         MinimObject *t = minim_null;    // stop compiler warnings
         for (MinimObject *it2 = MINIM_STX_CDR(stx); !minim_nullp(it2); it2 = MINIM_CDR(it2))
-            t = compile_expr(env, MINIM_CAR(it2), compiler, func);
+            t = compile_expr(env, MINIM_CAR(it2), compiler);
         return t;
     }
 }
@@ -62,8 +58,7 @@ compile_begin(MinimEnv *env,
 static MinimObject *
 compile_if(MinimEnv *env,
            MinimObject *stx,
-           Compiler *compiler,
-           Function *func)
+           Compiler *compiler)
 {
     MinimObject *cond, *ift, *iff,
                 *label1, *label2, *sym;
@@ -79,37 +74,36 @@ compile_if(MinimEnv *env,
 
 
     // begin compilation
-    cond = compile_expr(env, MINIM_CAR(cond), compiler, func);
-    function_add_line(func, minim_ast(
-        minim_cons(minim_ast(intern("$goif"), NULL),
+    cond = compile_expr(env, MINIM_CAR(cond), compiler);
+    function_add_line(compiler->curr_func, minim_ast(
+        minim_cons(minim_ast(intern("$gofalse"), NULL),
         minim_cons(minim_ast(label1, NULL),
         minim_cons(minim_ast(cond, NULL),
-        minim_cons(minim_ast(intern("$false"), NULL),
-        minim_null)))),
+        minim_null))),
         NULL));
 
-    ift = compile_expr(env, MINIM_CAR(ift), compiler, func);
-    function_add_line(func, minim_ast(
+    ift = compile_expr(env, MINIM_CAR(ift), compiler);
+    function_add_line(compiler->curr_func, minim_ast(
         minim_cons(minim_ast(intern("$goto"), NULL),
         minim_cons(minim_ast(label2, NULL),
         minim_null)),
         NULL));
 
-    function_add_line(func, minim_ast(
+    function_add_line(compiler->curr_func, minim_ast(
         minim_cons(minim_ast(intern("$label"), NULL),
         minim_cons(minim_ast(label1, NULL),
         minim_null)),
         NULL));
 
-    iff = compile_expr(env, MINIM_CAR(iff), compiler, func);
-    function_add_line(func, minim_ast(
+    iff = compile_expr(env, MINIM_CAR(iff), compiler);
+    function_add_line(compiler->curr_func, minim_ast(
         minim_cons(minim_ast(intern("$label"), NULL),
         minim_cons(minim_ast(label2, NULL),
         minim_null)),
         NULL));
 
     sym = minim_symbol(gensym_unique("t"));
-    function_add_line(func, minim_ast(
+    function_add_line(compiler->curr_func, minim_ast(
         minim_cons(minim_ast(intern("$join"), NULL),
         minim_cons(minim_ast(sym, NULL),
         minim_cons(minim_ast(ift, NULL),
@@ -123,18 +117,17 @@ compile_if(MinimEnv *env,
 static void
 compile_def_values(MinimEnv *env,
                    MinimObject *stx,
-                   Compiler *compiler,
-                   Function *func)
+                   Compiler *compiler)
 {
-    MinimObject *body = MINIM_CADR(MINIM_STX_CDR(stx));
-    compile_expr(env, body, compiler, func);
+    MinimObject *body;
+    body = MINIM_CADR(MINIM_STX_CDR(stx));
+    compile_expr(env, body, compiler);
 }
 
 static MinimObject *
 compile_top(MinimEnv *env,
             MinimObject *stx,
-            Compiler *compiler,
-            Function *func)
+            Compiler *compiler)
 {
     MinimObject *instr, *sym;
 
@@ -151,15 +144,14 @@ compile_top(MinimEnv *env,
         NULL
     );
 
-    function_add_line(func, instr);
+    function_add_line(compiler->curr_func, instr);
     return sym;
 }
 
 static MinimObject *
 compile_load(MinimEnv *env,
              MinimObject *stx,
-             Compiler *compiler,
-             Function *func)
+             Compiler *compiler)
 {
     MinimObject *instr, *sym;
 
@@ -176,15 +168,37 @@ compile_load(MinimEnv *env,
         NULL
     );
 
-    function_add_line(func, instr);
+    function_add_line(compiler->curr_func, instr);
+    return sym;
+}
+
+static MinimObject *
+compile_interpret(MinimEnv *env,
+                  MinimObject *stx,
+                  Compiler *compiler)
+{
+    MinimObject *instr, *sym;
+
+    sym = minim_symbol(gensym_unique("t"));
+    instr = minim_ast(
+        minim_cons(minim_ast(intern("$set"), NULL),
+        minim_cons(minim_ast(sym, NULL),
+        minim_cons(minim_ast(
+            minim_cons(minim_ast(intern("$interpret"), NULL),
+            minim_cons(stx, minim_null)),
+            NULL),
+        minim_null))),
+        NULL
+    );
+
+    function_add_line(compiler->curr_func, instr);
     return sym;
 }
 
 static MinimObject *
 compile_quote(MinimEnv *env,
               MinimObject *stx,
-              Compiler *compiler,
-              Function *func)
+              Compiler *compiler)
               
 {
     MinimObject *instr, *sym;
@@ -202,49 +216,152 @@ compile_quote(MinimEnv *env,
         NULL
     );
 
-    function_add_line(func, instr);
+    function_add_line(compiler->curr_func, instr);
     return sym;
+}
+
+static MinimObject *
+compile_let_values(MinimEnv *env,
+                   MinimObject *stx,
+                   Compiler *compiler)
+{
+    MinimSymbolTable *old_table;
+    MinimObject *ids, *body, *ret;
+
+    ids = MINIM_STX_VAL(MINIM_CAR(MINIM_STX_CDR(stx)));
+    body = MINIM_CDR(MINIM_STX_CDR(stx));
+
+    // save old table
+    old_table = compiler->table;
+
+    // compile the values
+    init_minim_symbol_table(&compiler->table);
+    for (MinimObject *it = ids; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *sym, *var, *val;
+        size_t idx;
+        
+        var = MINIM_STX_CAR(MINIM_CAR(it));
+        val = MINIM_STX_CDR(MINIM_CAR(it));
+        val = compile_expr(env, MINIM_CAR(val), compiler);
+
+        var = MINIM_STX_VAL(var);
+        idx = 0;
+        while (!minim_nullp(var))
+        {
+            sym = minim_symbol(gensym_unique("t"));
+            function_add_line(compiler->curr_func, minim_ast(
+                minim_cons(minim_ast(intern("$set"), NULL),
+                minim_cons(minim_ast(sym, NULL),
+                minim_cons(minim_ast(
+                    minim_cons(minim_ast(intern("$values"), NULL),
+                    minim_cons(minim_ast(val, NULL),
+                    minim_cons(minim_ast(uint_to_minim_number(idx), NULL),
+                    minim_null))),
+                    NULL),
+                minim_null))),
+                NULL));
+
+            minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(var), sym);
+            var = MINIM_CDR(var);
+            ++idx;
+        }
+    }
+
+    // compile the body expressions
+    ret = minim_null;   // (avoid compilation errors)
+    for (MinimObject *it = body; !minim_nullp(it); it = MINIM_CDR(it))
+        ret = compile_expr(env, MINIM_CAR(it), compiler);
+
+    // restore and return
+    compiler->table = old_table;
+    return ret;
 }
 
 static MinimObject *
 compile_lambda(MinimEnv *env,
                MinimObject *stx,
-               Compiler *compiler,
-               Function *func)
+               Compiler *compiler)
 {
-    MinimObject *args, *body, *ret, *instr;
-    Function *func2;
+    MinimObject *args, *body, *ret;
+    Function *old_func, *func;
+    MinimSymbolTable *old_table;
     
     args = MINIM_STX_CADR(stx);
     body = MINIM_CADR(MINIM_STX_CDR(stx));
     
-    init_function(&func2);
-    compiler_add_function(compiler, func2);
+    init_function(&func);
+    compiler_add_function(compiler, func);
 
-    func2->name = gensym_unique("f");
-    if (!MINIM_STX_SYMBOLP(args) && syntax_proper_list_len(MINIM_STX_VAL(args)) != SIZE_MAX)
+    func->name = gensym_unique("f");
+    if (syntax_proper_list_len(args) != SIZE_MAX)
     {
-        func2->variary = false;
-        func2->argc = minim_list_length(MINIM_STX_VAL(args));
+        func->variary = false;
+        func->argc = minim_list_length(MINIM_STX_VAL(args));
     }
 
-    ret = compile_expr(env, body, compiler, func2);
-    instr = minim_ast(
+    // save old values
+    old_func = compiler->curr_func;
+    old_table = compiler->table;
+    
+    // compile the arguments
+    init_minim_symbol_table(&compiler->table);
+    if (!minim_nullp(args))
+    {
+        MinimObject *it = MINIM_STX_VAL(args);
+        size_t i = 0;
+
+        while (MINIM_OBJ_PAIRP(it) && !minim_nullp(it))
+        {
+            MinimObject *sym = minim_symbol(gensym_unique("a"));
+            function_add_line(func, minim_ast(
+                minim_cons(minim_ast(intern("$arg"), NULL),
+                minim_cons(minim_ast(sym, NULL),
+                minim_cons(minim_ast(uint_to_minim_number(i), NULL),
+                minim_null))),
+                NULL));
+
+                minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(MINIM_CAR(it)), sym);
+             it = MINIM_CDR(it);
+             ++i;
+        }
+
+        if (!minim_nullp(it)) {
+            MinimObject *sym = minim_symbol(gensym_unique("a"));
+            function_add_line(func, minim_ast(
+                minim_cons(minim_ast(intern("$arg"), NULL),
+                minim_cons(minim_ast(sym, NULL),
+                minim_cons(minim_ast(uint_to_minim_number(i), NULL),
+                minim_null))),
+                NULL));
+
+            minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(it), sym);
+        }
+
+    }
+
+    // compile the body
+    compiler->curr_func = func;
+    ret = compile_expr(env, body, compiler);
+
+    // restore and add return
+    compiler->curr_func = old_func;
+    compiler->table = old_table;
+    function_add_line(func, minim_ast(
         minim_cons(minim_ast(intern("$ret"), NULL),
         minim_cons(ret,
         minim_null)),
-        NULL);
-    function_add_line(func2, instr);
+        NULL));
 
-    debug_function(env, func2);
-    return minim_symbol(func2->name);
+
+    debug_function(env, func);
+    return minim_symbol(func->name);
 }
 
 static MinimObject *
 compile_expr(MinimEnv *env,
              MinimObject *stx,
-             Compiler *compiler,
-             Function *func)
+             Compiler *compiler)
 {
     if (MINIM_STX_PAIRP(stx))
     {
@@ -252,32 +369,28 @@ compile_expr(MinimEnv *env,
    
         // variable reference
         if (minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")))
-            return compile_top(env, stx, compiler, func);
+            return compile_top(env, stx, compiler);
 
         MinimObject *ref = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
         if (ref && MINIM_OBJ_SYNTAXP(ref))        // syntax
         {
-            COMPILE_REC(ref, minim_builtin_begin, compile_begin, env, stx, compiler, func);
+            COMPILE_REC(ref, minim_builtin_begin, compile_begin, env, stx, compiler);
             // EXPAND_REC(ref, minim_builtin_callcc, expand_expr_1arg, env, stx, analysis);
             // EXPAND_REC(ref, minim_builtin_delay, expand_expr_1arg, env, stx, analysis);
-            COMPILE_REC(ref, minim_builtin_if, compile_if, env, stx, compiler, func);
-            COMPILE_REC(ref, minim_builtin_lambda, compile_lambda, env, stx, compiler, func);
-            // EXPAND_REC(ref, minim_builtin_let_values, expand_expr_let_values, env, stx, analysis);
+            COMPILE_REC(ref, minim_builtin_if, compile_if, env, stx, compiler);
+            COMPILE_REC(ref, minim_builtin_lambda, compile_lambda, env, stx, compiler);
+            COMPILE_REC(ref, minim_builtin_let_values, compile_let_values, env, stx, compiler);
             // EXPAND_REC(ref, minim_builtin_setb, expand_expr_setb, env, stx, analysis);
             // EXPAND_REC(ref, minim_builtin_syntax_case, expand_expr_syntax_case, env, stx, analysis);
 
-            COMPILE_REC(ref, minim_builtin_quote, compile_quote, env, stx, compiler, func);
+            COMPILE_REC(ref, minim_builtin_quote, compile_quote, env, stx, compiler);
 
             // minim_builtin_quasiquote
             // minim_builtin_unquote
             // minim_builtin_syntax
             // minim_builtin_template
 
-            printf("Unsupported syntax for compilation ");
-            print_syntax_to_port(stx, stdout);
-            printf("\n");
-
-            return minim_void;
+            return compile_interpret(env, stx, compiler);
         }
         else
         {
@@ -295,18 +408,19 @@ compile_expr(MinimEnv *env,
 
             for (MinimObject *it2 = MINIM_STX_VAL(stx); !minim_nullp(it2); it2 = MINIM_CDR(it2))
             {
-                MinimObject *t = compile_expr(env, MINIM_CAR(it2), compiler, func);
+                MinimObject *t = compile_expr(env, MINIM_CAR(it2), compiler);
                 MINIM_CDR(it) = minim_cons(minim_ast(t, NULL), minim_null);
                 it = MINIM_CDR(it);
             }
 
-            function_add_line(func, instr);
+            function_add_line(compiler->curr_func, instr);
             return sym;
         }
     }
     else if (MINIM_STX_SYMBOLP(stx))
     {
-        return compile_load(env, stx, compiler, func);
+        MinimObject *ref = minim_symbol_table_get(compiler->table, MINIM_STX_SYMBOL(stx));
+        return (ref ? ref : compile_load(env, stx, compiler));
     }
     else
     {
@@ -321,14 +435,13 @@ compile_expr(MinimEnv *env,
 static void
 compile_definition_level(MinimEnv *env,
                          MinimObject *stx,
-                         Compiler *compiler,
-                         Function *func)
+                         Compiler *compiler)
 {
     MinimObject *car;
 
     if (!MINIM_STX_PAIRP(stx))
     {
-        compile_expr(env, stx, compiler, func);
+        compile_expr(env, stx, compiler);
         return;
     }
 
@@ -345,24 +458,23 @@ compile_definition_level(MinimEnv *env,
 
         if (minim_eqp(MINIM_STX_VAL(car), intern("def-values")))
         {
-            compile_def_values(env, stx, compiler, func);
+            compile_def_values(env, stx, compiler);
             return;
         }
     }
 
-    compile_expr(env, stx, compiler, func);
+    compile_expr(env, stx, compiler);
 }
 
 static void
 compile_module_level(MinimEnv *env,
                      MinimObject *stx,
-                     Compiler *compiler,
-                     Function *func)
+                     Compiler *compiler)
 {
     MinimObject *car;
 
     if (!MINIM_STX_PAIRP(stx))
-        compile_expr(env, stx, compiler, func);
+        compile_expr(env, stx, compiler);
 
     car = MINIM_STX_CAR(stx);
     if (MINIM_OBJ_ASTP(car))
@@ -374,25 +486,24 @@ compile_module_level(MinimEnv *env,
         if (minim_eqp(car, intern("begin")))
         {
             for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
-                compile_module_level(env, MINIM_CAR(it), compiler, func);
+                compile_module_level(env, MINIM_CAR(it), compiler);
             return;
         }
     }
     
-    compile_definition_level(env, stx, compiler, func);
+    compile_definition_level(env, stx, compiler);
 }
 
 static void
 compile_top_level(MinimEnv *env,
                   MinimObject *stx,
-                  Compiler *compiler,
-                  Function *func)
+                  Compiler *compiler)
 {
     MinimObject *car;
 
     if (!MINIM_STX_PAIRP(stx))
     {
-        compile_expr(env, stx, compiler, func);
+        compile_expr(env, stx, compiler);
         return;
     }
 
@@ -404,7 +515,7 @@ compile_top_level(MinimEnv *env,
         {
             MinimObject *t = MINIM_CDDR(MINIM_STX_CDR(stx));
             for (t = MINIM_STX_CDR(MINIM_CAR(t)); !minim_nullp(t); t = MINIM_CDR(t))
-                compile_module_level(env, MINIM_CAR(t), compiler, func);
+                compile_module_level(env, MINIM_CAR(t), compiler);
         }
     }
 }
@@ -422,7 +533,9 @@ void compile_module(MinimEnv *env, MinimModule *module)
     Function *func;
 
     compiler.funcs = NULL;
+    compiler.curr_func = NULL;
     compiler.func_count = 0;
+    init_minim_symbol_table(&compiler.table);
 
     if (environment_variable_existsp("MINIM_LOG"))
     {
@@ -436,13 +549,14 @@ void compile_module(MinimEnv *env, MinimModule *module)
 
     // top-level "function"
     init_function(&func);
-    func->name = gensym_unique("f");
+    func->name = gensym_unique(module->path ? module->path : module->name);
     func->variary = false;
     // this should maybe just be thrown away
     // compiler_add_function(&compiler, func);
 
     // translate program into flat pseudo-assembly
-    compile_top_level(env2, module->body, &compiler, func);
+    compiler.curr_func = func;
+    compile_top_level(env2, module->body, &compiler);
 
     // printf("  top-level (%s):\n", func->name);
     // debug_function(env, func);
