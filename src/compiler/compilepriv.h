@@ -7,6 +7,7 @@
 
 typedef struct Function {
     MinimObject *pseudo, *pseudo_it;
+    MinimObject *ret_sym;
     char *name;
     void *code;
     uint32_t argc;
@@ -28,9 +29,6 @@ void function_add_line(Function *func, MinimObject *instr);
 
 // Optimizes a function.
 void function_optimize(MinimEnv *env, Function *func);
-
-// Desugars higher-level psuedo-instructions.
-void function_desugar(MinimEnv *env, Function *func);
 
 // Applies register allocation.
 void function_register_allocation(MinimEnv *env, Function *func);

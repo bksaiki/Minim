@@ -410,8 +410,9 @@ compile_lambda(MinimEnv *env,
     // restore and add return
     compiler->curr_func = old_func;
     compiler->table = old_table;
+    func->ret_sym = ret;
     function_add_line(func, minim_ast(
-        minim_cons(minim_ast(intern("$ret"), NULL),
+        minim_cons(minim_ast(intern("$return"), NULL),
         minim_cons(minim_ast(ret, NULL),
         minim_null)),
         NULL));
@@ -646,7 +647,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
         opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
 
         // debugging
-        // debug_function(env, compiler.curr_func);
+        debug_function(env, compiler.curr_func);
     }
 
     if (environment_variable_existsp("MINIM_LOG"))
@@ -662,27 +663,20 @@ void compile_module(MinimEnv *env, MinimModule *module)
     }
 
     //
-    //  Desugaring, register allocation, and memory management
+    //  Register allocation, and memory management
     //
 
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
-        function_desugar(env, compiler.funcs[i]);
-
-        // debugging
-        // debug_function(env, compiler.curr_func);
-    }
-
-    function_register_allocation(env, func);
-    for (size_t i = 0; i < compiler.func_count; i++) {
-        compiler.curr_func = compiler.funcs[i];
-        // unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
-        // function_optimize(env, compiler.funcs[i]);
-        // opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
+        function_register_allocation(env, compiler.curr_func);
 
         // // debugging
         debug_function(env, compiler.curr_func);
     }
+
+    //
+    //  Generate machine code
+    //
 
 #endif
 }

@@ -2,35 +2,113 @@
 #include "compilepriv.h"
 
 // register strings
-#define REG_TC      "$tc"
-#define REG_RT      "$r0"
-#define REG_R0      "$r1"
-#define REG_R1      "$r2"
-#define REG_R2      "$r3"
-#define REG_T0      "$r4"
-#define REG_T1      "$r5"
-#define REG_T2      "$r6"
-#define REG_T3      "$r7"
+#define REG_TC_STR  "$tc"
+#define REG_RT_STR  "$rt"
+#define REG_R0_STR  "$r0"
+#define REG_R1_STR  "$r1"
+#define REG_R2_STR  "$r2"
+#define REG_T0_STR  "$r3"
+#define REG_T1_STR  "$r4"
+#define REG_T2_STR  "$r5"
+#define REG_T3_STR  "$r6"
 
 // register indexes
-#define REG_RT_IDX      0
-#define REG_R0_IDX      1
-#define REG_R1_IDX      2
-#define REG_R2_IDX      3
-#define REG_T0_IDX      4
-#define REG_T1_IDX      5
-#define REG_T2_IDX      6
-#define REG_T3_IDX      7
+#define REG_RT      0
+#define REG_R0      1
+#define REG_R1      2
+#define REG_R2      3
+#define REG_T0      4
+#define REG_T1      5
+#define REG_T2      6
+#define REG_T3      7
 
 // ignore REG_TC
 #define REGISTER_COUNT  8
 
-static MinimObject *fresh_register(MinimEnv *env, MinimObject *regs, MinimSymbolTable *table)
+// register replacement policy
+#define REG_REPLACE_TEMP_ONLY   0
+#define REG_REPLACE_TEMP_ARG    1
+#define REG_REPLACE_EXCEPT_TC   2
+
+static bool
+free_register_exists(MinimObject *regs,
+                     uint8_t policy)
+{
+    for (uint8_t i = REG_T0; i <= REG_T3; i++)
+    {
+        if (!minim_falsep(MINIM_VECTOR_REF(regs, i)))
+            return true;
+    }
+
+    if (policy == REG_REPLACE_TEMP_ONLY)
+        return false;
+
+    for (uint8_t i = REG_R0; i <= REG_R2; i++)
+    {
+        if (!minim_falsep(MINIM_VECTOR_REF(regs, i)))
+            return true;
+    }
+
+    if (policy == REG_REPLACE_TEMP_ARG)
+        return false;
+
+    return !minim_falsep(MINIM_VECTOR_REF(regs, REG_RT));
+}
+
+static MinimObject *
+fresh_register(MinimEnv *env,
+               MinimObject *regs,
+               MinimSymbolTable *table)
 {
     return NULL;
 }
 
-void function_desugar(MinimEnv *env, Function *func)
+static void
+reserve_register(MinimEnv *env,
+                 MinimObject *regs,
+                 MinimSymbolTable *table,
+                 uint8_t reg)
+{
+    if (!minim_falsep(MINIM_VECTOR_REF(regs, reg)))
+    {
+        printf("unimplemented!!!");
+    }
+}
+
+static MinimObject *
+call_instruction(MinimObject *target, MinimObject *next)
+{
+    return minim_cons(minim_ast(
+            minim_cons(minim_ast(intern("$call"), NULL),
+            minim_cons(target, minim_null)),
+            NULL),
+        next);
+}
+
+static MinimObject *
+move_instruction(MinimObject *dest, MinimObject *src)
+{
+    return minim_ast(
+            minim_cons(minim_ast(intern("$mov"), NULL),
+            minim_cons(dest,
+            minim_cons(src,
+            minim_null))),
+            NULL);
+}
+
+static MinimObject *
+move_instruction2(MinimObject *dest, MinimObject *src, MinimObject *next)
+{
+    return minim_cons(minim_ast(
+            minim_cons(minim_ast(intern("$mov"), NULL),
+            minim_cons(dest,
+            minim_cons(src,
+            minim_null))),
+            NULL),
+        next);
+}
+
+void function_register_allocation(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table;
     MinimObject *regs;
@@ -45,13 +123,123 @@ void function_desugar(MinimEnv *env, Function *func)
         op = MINIM_STX_VAL(MINIM_CAR(line));
         if (minim_eqp(op, intern("$push-env")))
         {
+            // =>
+            //  $tc = init_env($tc)
+            reserve_register(env, regs, table, REG_RT);
+            reserve_register(env, regs, table, REG_R0);
 
+            //  ($mov $rt ($addr <init_env>))
+            MINIM_CAR(it) = move_instruction(
+                minim_ast(intern(REG_RT_STR), NULL),
+                minim_ast(
+                    minim_cons(minim_ast(intern("$addr"), NULL),
+                    minim_cons(minim_ast(intern("init_env"), NULL),
+                    minim_null)),
+                    NULL));
+
+            //  ($mov $r0 $tc)
+            MINIM_CDR(it) = move_instruction2(
+                    minim_ast(intern(REG_R0_STR), NULL),
+                    minim_ast(intern(REG_TC_STR), NULL),
+                    MINIM_CDR(it));
+            it = MINIM_CDR(it);
+            
+            //  ($call $rt)
+            MINIM_CDR(it) = call_instruction(minim_ast(intern(REG_RT_STR), NULL), MINIM_CDR(it));
+            it = MINIM_CDR(it);
+
+            //  ($mov $tc $rt)
+            MINIM_CDR(it) = move_instruction2(
+                    minim_ast(intern(REG_TC_STR), NULL),
+                    minim_ast(intern(REG_RT_STR), NULL),
+                    MINIM_CDR(it));
+            it = MINIM_CDR(it);
+        }
+        else if (minim_eqp(op, intern("$set")))
+        {
+            // ($set <t> ($eval ...)) =>
+            //
+            // ($set <t> ($top <v>)) =>
+            //
+            // ($set <t> ($load <v>)) =>
+            //
+            // ($set <t> ($quote <v>)) =>
+            //  t = quote(v)
+            // ($set <t> <v>) =>
+            //  t = v
+            
+            MinimObject *name, *val;
+           
+            val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+            if (MINIM_OBJ_SYMBOLP(val))
+            {
+                printf("unimplemented\n");
+                continue;
+            }
+            else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$quote")))
+            {
+                MinimObject *stx;
+
+                reserve_register(env, regs, table, REG_RT);
+                reserve_register(env, regs, table, REG_R0);
+                stx = MINIM_CADR(val);
+
+                // ($mov $rt ($addr <quote>))
+                MINIM_CAR(it) = move_instruction(
+                    minim_ast(intern(REG_RT_STR), NULL),
+                    minim_ast(
+                        minim_cons(minim_ast(intern("$addr"), NULL),
+                        minim_cons(minim_ast(intern("quote"), NULL),
+                        minim_null)),
+                        NULL));
+
+                // ($mov $r0 ($syntax <quote-syntax>))
+                MINIM_CDR(it) = move_instruction2(
+                    minim_ast(intern(REG_R0_STR), NULL),
+                    minim_ast(
+                        minim_cons(minim_ast(intern("$syntax"), NULL),
+                        minim_cons(stx, minim_null)),
+                        NULL),
+                    MINIM_CDR(it));
+                it = MINIM_CDR(it);
+
+                //  ($call $rt)
+                MINIM_CDR(it) = call_instruction(minim_ast(intern(REG_RT_STR), NULL), MINIM_CDR(it));
+                it = MINIM_CDR(it);
+            }
+            else
+            {
+                printf("unimplemented\n");
+                continue;
+            }
+
+            name = MINIM_STX_VAL(MINIM_CADR(line));
+            if (minim_eqp(name, func->ret_sym))
+            {
+                minim_symbol_table_add(table, MINIM_SYMBOL(name), intern(REG_RT_STR));
+                MINIM_VECTOR_REF(regs, REG_RT) = name;
+            }
+            else
+            {
+                printf("unimplemented\n");
+                continue;
+            }
+        }
+        else if (minim_eqp(op, intern("$return")))
+        {
+            MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(line)));
+            if (minim_eqp(ref, intern(REG_RT_STR)))
+            {
+                MINIM_CAR(it) = minim_ast(
+                    minim_cons(minim_ast(intern("$ret"), NULL),
+                    minim_null),
+                    NULL);
+            }
+            else
+            {
+                printf("unimplemented\n");
+                continue;
+            }
         }
     }
-}
-
-
-void function_register_allocation(MinimEnv *env, Function *func)
-{
-    
 }
