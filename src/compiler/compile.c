@@ -234,6 +234,12 @@ compile_let_values(MinimEnv *env,
     // save old table
     old_table = compiler->table;
 
+    // push a new environment in the compiled code
+    function_add_line(compiler->curr_func, minim_ast(
+        minim_cons(minim_ast(intern("$push-env"), NULL),
+        minim_null),
+        NULL));
+
     // compile the values
     init_minim_symbol_table(&compiler->table);
     for (MinimObject *it = ids; !minim_nullp(it); it = MINIM_CDR(it))
@@ -245,26 +251,60 @@ compile_let_values(MinimEnv *env,
         val = MINIM_STX_CDR(MINIM_CAR(it));
         val = compile_expr(env, MINIM_CAR(val), compiler);
 
-        var = MINIM_STX_VAL(var);
-        idx = 0;
-        while (!minim_nullp(var))
+        if (syntax_proper_list_len(var) == 1)
         {
+            var = MINIM_STX_VAL(var);
             sym = minim_symbol(gensym_unique("t"));
+
+            // assign value to temporary
             function_add_line(compiler->curr_func, minim_ast(
                 minim_cons(minim_ast(intern("$set"), NULL),
                 minim_cons(minim_ast(sym, NULL),
-                minim_cons(minim_ast(
-                    minim_cons(minim_ast(intern("$values"), NULL),
-                    minim_cons(minim_ast(val, NULL),
-                    minim_cons(minim_ast(uint_to_minim_number(idx), NULL),
-                    minim_null))),
-                    NULL),
+                minim_cons(minim_ast(val, NULL),
                 minim_null))),
                 NULL));
 
+            // bind temporary to symbol
             minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(var), sym);
-            var = MINIM_CDR(var);
-            ++idx;
+            function_add_line(compiler->curr_func, minim_ast(
+                minim_cons(minim_ast(intern("$bind"), NULL),
+                minim_cons(MINIM_CAR(var),
+                minim_cons(minim_ast(sym, NULL),
+                minim_null))),
+                NULL));
+        }
+        else
+        {
+            var = MINIM_STX_VAL(var);
+            idx = 0;
+            while (!minim_nullp(var))
+            {
+                // assign value to temporary
+                sym = minim_symbol(gensym_unique("t"));
+                function_add_line(compiler->curr_func, minim_ast(
+                    minim_cons(minim_ast(intern("$set"), NULL),
+                    minim_cons(minim_ast(sym, NULL),
+                    minim_cons(minim_ast(
+                        minim_cons(minim_ast(intern("$values"), NULL),
+                        minim_cons(minim_ast(val, NULL),
+                        minim_cons(minim_ast(uint_to_minim_number(idx), NULL),
+                        minim_null))),
+                        NULL),
+                    minim_null))),
+                    NULL));
+
+                // bind temporary to symbol
+                minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(var), sym);
+                function_add_line(compiler->curr_func, minim_ast(
+                    minim_cons(minim_ast(intern("$bind"), NULL),
+                    minim_cons(MINIM_CAR(var),
+                    minim_cons(minim_ast(sym, NULL),
+                    minim_null))),
+                    NULL));
+
+                var = MINIM_CDR(var);
+                ++idx;
+            }
         }
     }
 
@@ -549,7 +589,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
 
     // top-level "function"
     init_function(&func);
-    func->name = gensym_unique(module->path ? module->path : module->name);
+    func->name = (module->path ? module->path : module->name);
     func->variary = false;
     // this should maybe just be thrown away
     // compiler_add_function(&compiler, func);
@@ -557,9 +597,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
     // translate program into flat pseudo-assembly
     compiler.curr_func = func;
     compile_top_level(env2, module->body, &compiler);
-
-    // printf("  top-level (%s):\n", func->name);
-    // debug_function(env, func);
+    debug_function(env, func);
 
     if (environment_variable_existsp("MINIM_LOG"))
     {
