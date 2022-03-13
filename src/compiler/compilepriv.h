@@ -41,4 +41,7 @@ void debug_function(MinimEnv *env, Function *func);
 // Adds a function to the compiler.
 void compiler_add_function(Compiler *compiler, Function *func);
 
+// Returns true if the reference is a function argument
+bool is_argument_location(MinimObject *obj);
+
 #endif

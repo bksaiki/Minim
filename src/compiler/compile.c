@@ -59,7 +59,6 @@ compile_if(MinimEnv *env,
     label1 = minim_symbol(gensym_unique("L"));
     label2 = minim_symbol(gensym_unique("L"));
 
-
     // begin compilation
     cond = compile_expr(env, MINIM_CAR(cond), compiler);
     function_add_line(compiler->curr_func, minim_ast(
@@ -70,6 +69,18 @@ compile_if(MinimEnv *env,
         NULL));
 
     ift = compile_expr(env, MINIM_CAR(ift), compiler);
+    if (is_argument_location(ift))
+    {
+        sym = minim_symbol(gensym_unique("t"));
+        function_add_line(compiler->curr_func, minim_ast(
+            minim_cons(minim_ast(intern("$set"), NULL),
+            minim_cons(minim_ast(sym, NULL),
+            minim_cons(minim_ast(ift, NULL),
+            minim_null))),
+            NULL));
+        ift = sym;
+    }
+
     function_add_line(compiler->curr_func, minim_ast(
         minim_cons(minim_ast(intern("$goto"), NULL),
         minim_cons(minim_ast(label2, NULL),
@@ -610,7 +621,10 @@ void compile_module(MinimEnv *env, MinimModule *module)
     //
 
     compile_top_level(env2, module->body, &compiler);
-    // debug_function(env, func);
+    for (size_t i = 0; i < compiler.func_count; i++) {
+        compiler.curr_func = compiler.funcs[i];
+        // debug_function(env, compiler.curr_func);
+    }
 
     if (environment_variable_existsp("MINIM_LOG"))
         printf(" Compiled %zu functions\n", compiler.func_count);
@@ -662,13 +676,13 @@ void compile_module(MinimEnv *env, MinimModule *module)
 
     function_register_allocation(env, func);
     for (size_t i = 0; i < compiler.func_count; i++) {
-        // compiler.curr_func = compiler.funcs[i];
+        compiler.curr_func = compiler.funcs[i];
         // unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
         // function_optimize(env, compiler.funcs[i]);
         // opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
 
         // // debugging
-        // debug_function(env, compiler.curr_func);
+        debug_function(env, compiler.curr_func);
     }
 
 #endif

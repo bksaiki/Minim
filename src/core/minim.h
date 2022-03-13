@@ -331,6 +331,7 @@ MinimObject *minim_symbol(char *sym);
 MinimObject *minim_string(char *str);
 MinimObject *minim_cons(void *car, void *cdr);
 MinimObject *minim_vector(size_t len, void *arr);
+MinimObject *minim_vector2(size_t len, MinimObject *init);
 MinimObject *minim_hash_table(void *ht);
 MinimObject *minim_promise(void *val, void *env);
 MinimObject *minim_builtin(void *func);

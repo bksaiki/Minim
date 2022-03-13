@@ -72,7 +72,11 @@ constant_fold(MinimEnv *env, Function *func)
                             MinimObject *res = eval_constant_expr(env, table, ref, MINIM_CDDR(value));
                             if (res)
                             {
-                                MINIM_CAR(MINIM_CDDR(line)) = minim_ast(res, MINIM_STX_LOC(value));
+                                MINIM_CAR(MINIM_CDDR(line)) = minim_ast(
+                                    minim_cons(minim_ast(intern("quote"), NULL),
+                                    minim_cons(minim_ast(res, MINIM_STX_LOC(value)),
+                                    minim_null)),
+                                    NULL);
                                 changed = true;
                             }
                         }
@@ -100,7 +104,9 @@ constant_propagation(MinimEnv *env, Function *func)
             MINIM_STX_SYMBOLP(MINIM_CADR(line)) &&
             MINIM_STX_SYMBOLP(MINIM_CAR(MINIM_CDDR(line))))
         {
-            minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), MINIM_CAR(MINIM_CDDR(line)));
+            MinimObject *val = MINIM_CAR(MINIM_CDDR(line));
+            if (!is_argument_location(MINIM_STX_VAL(val)))
+                minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), val);
         }
         else
         {
@@ -176,8 +182,12 @@ eliminate_dead_code(MinimEnv *env, Function *func)
             }
             else if (minim_eqp(op, intern("$join")))
             {
-                minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), minim_null);
-                minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CAR(MINIM_CDDR(line))), minim_null);
+                MinimObject *ift, *iff;
+                
+                ift = MINIM_CAR(MINIM_CDDR(line));
+                iff = MINIM_CADR(MINIM_CDDR(line));
+                minim_symbol_table_add(table, MINIM_STX_SYMBOL(ift), minim_null);
+                minim_symbol_table_add(table, MINIM_STX_SYMBOL(iff), minim_null);
             }
             else if (minim_eqp(op, intern("$bind")) || minim_eqp(op, intern("$gofalse")))
             {

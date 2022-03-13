@@ -47,3 +47,8 @@ void compiler_add_function(Compiler *compiler, Function *func)
     compiler->funcs = GC_realloc(compiler->funcs, compiler->func_count * sizeof(Function*));
     compiler->funcs[compiler->func_count - 1] = func;
 }
+
+bool is_argument_location(MinimObject *obj)
+{
+    return (MINIM_OBJ_SYMBOLP(obj) && MINIM_SYMBOL(obj)[0] == 'a');
+}
