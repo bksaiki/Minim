@@ -666,8 +666,8 @@ int main()
         const int COUNT = 4;
         char strs[8][256] =
         {
-            "(delay 1)",                        "<promise:(quote 1)>",
-            "(delay (list 1 2 3))",             "<promise:(list (quote 1) (quote 2) (quote 3))>",
+            "(delay 1)",                        "<promise>",
+            "(delay (list 1 2 3))",             "<promise>",
             "(force (delay 1))",                "1",
             "(force (delay (list 1 2 3)))",     "'(1 2 3)"
         };

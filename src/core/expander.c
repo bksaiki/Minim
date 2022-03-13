@@ -187,12 +187,15 @@ expand_expr_let_values(MinimEnv *env,
     for (MinimObject *it = ids; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *var, *bind;
+        LocalVariableAnalysis *analysis3;
         
         var = MINIM_STX_CAR(MINIM_CAR(it));
         bind = MINIM_STX_CDR(MINIM_CAR(it));
-        MINIM_CAR(bind) = expand_expr(env, MINIM_CAR(bind), analysis);
         for (var = MINIM_STX_VAL(var); !minim_nullp(var); var = MINIM_CDR(var))
             local_var_analysis_add(analysis2, MINIM_STX_SYMBOL(MINIM_CAR(var)));
+
+        init_local_var_analysis(&analysis3, analysis2);
+        MINIM_CAR(bind) = expand_expr(env, MINIM_CAR(bind), analysis3);
     }
 
     body = MINIM_CDR(MINIM_STX_CDR(stx));

@@ -29,6 +29,12 @@ void function_add_line(Function *func, MinimObject *instr);
 // Optimizes a function.
 void function_optimize(MinimEnv *env, Function *func);
 
+// Desugars higher-level psuedo-instructions.
+void function_desugar(MinimEnv *env, Function *func);
+
+// Applies register allocation.
+void function_register_allocation(MinimEnv *env, Function *func);
+
 // Prints out a function pseudocode
 void debug_function(MinimEnv *env, Function *func);
 

@@ -280,10 +280,12 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         pp->syntax = true;
         pp->quote = true;
     
-        writes_buffer(bf, "<promise");
-        writec_buffer(bf, MINIM_PROMISE_STATE(obj) ? '!' : ':');
-        print_object(MINIM_PROMISE_VAL(obj), env, bf, pp);
-        writec_buffer(bf, '>');
+        // writes_buffer(bf, "<promise");
+        // writec_buffer(bf, MINIM_PROMISE_STATE(obj) ? '!' : ':');
+        // print_object(MINIM_PROMISE_VAL(obj), env, bf, pp);
+        // writec_buffer(bf, '>');
+
+        writes_buffer(bf, "<promise>");
 
         pp->syntax = syntaxp;
         pp->quote = quotep;

@@ -2,6 +2,7 @@
 
 #include "compile.h"
 #include "compilepriv.h"
+#include "jit.h"
 
 #define COMPILE_REC(ref, fn, exp, env, stx, comp) \
   if (MINIM_SYNTAX(ref) == (fn)) { return exp(env, stx, comp); }
@@ -418,7 +419,7 @@ compile_expr(MinimEnv *env,
         // assuming (<ident> <thing> ...)
    
         // variable reference
-        if (minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")))
+        if (minim_eqp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")))
             return compile_top(env, stx, compiler);
 
         MinimObject *ref = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
@@ -614,6 +615,9 @@ void compile_module(MinimEnv *env, MinimModule *module)
     if (environment_variable_existsp("MINIM_LOG"))
         printf(" Compiled %zu functions\n", compiler.func_count);
 
+    if (compiler.func_count == 0)
+        return;
+
     //
     // Optimization passes
     //
@@ -645,8 +649,27 @@ void compile_module(MinimEnv *env, MinimModule *module)
     }
 
     //
-    //  Register assignment, memory management
+    //  Desugaring, register allocation, and memory management
     //
+
+    for (size_t i = 0; i < compiler.func_count; i++) {
+        compiler.curr_func = compiler.funcs[i];
+        function_desugar(env, compiler.funcs[i]);
+
+        // debugging
+        // debug_function(env, compiler.curr_func);
+    }
+
+    function_register_allocation(env, func);
+    for (size_t i = 0; i < compiler.func_count; i++) {
+        // compiler.curr_func = compiler.funcs[i];
+        // unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
+        // function_optimize(env, compiler.funcs[i]);
+        // opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
+
+        // // debugging
+        // debug_function(env, compiler.curr_func);
+    }
 
 #endif
 }

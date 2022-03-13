@@ -254,7 +254,7 @@ consolidate_labels(MinimEnv *env, Function *func)
         
         line = MINIM_STX_VAL(MINIM_CAR(it));
         op = MINIM_STX_VAL(MINIM_CAR(line));
-        if (minim_eqvp(op, intern("$label")))
+        if (minim_eqp(op, intern("$label")))
         {
             MinimObject *label = MINIM_CADR(line);
             if (curr_label)
@@ -268,7 +268,7 @@ consolidate_labels(MinimEnv *env, Function *func)
                 curr_label = label;
             }
         }
-        else if (minim_eqvp(op, intern("$goto")) || minim_eqvp(op, intern("$gofalse")))
+        else if (minim_eqp(op, intern("$goto")) || minim_eqp(op, intern("$gofalse")))
         {
             MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(line)));
             if (ref)    MINIM_CADR(line) = ref;
@@ -286,6 +286,40 @@ consolidate_labels(MinimEnv *env, Function *func)
 }
 
 static void
+eliminate_immediate_goto(MinimEnv *env, Function *func)
+{
+    MinimObject *trailing;
+
+    trailing = NULL;
+    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *line, *op;
+        
+        line = MINIM_STX_VAL(MINIM_CAR(it));
+        op = MINIM_STX_VAL(MINIM_CAR(line));
+        if (minim_eqp(op, intern("$goto")) || minim_eqp(op, intern("$gofalse")))
+        {
+            MinimObject *label, *next_line, *op2;
+            
+            label = MINIM_CADR(line);
+            next_line = MINIM_STX_VAL(MINIM_CADR(it));
+            op2 = MINIM_STX_VAL(MINIM_CAR(next_line));
+            if (minim_eqp(op2, intern("$label")))
+            {
+                MinimObject *label2 = MINIM_CADR(next_line);
+                if (MINIM_STX_SYMBOL(label) == MINIM_STX_SYMBOL(label2))
+                {
+                    MINIM_CDR(trailing) = MINIM_CDDR(it);
+                    it = trailing;
+                }
+            }
+        }
+
+        trailing = it;
+    }
+}
+
+static void
 eliminate_unwind(MinimEnv *env, Function *func)
 {
     MinimObject *reverse, *trailing;
@@ -298,7 +332,7 @@ eliminate_unwind(MinimEnv *env, Function *func)
         
         line = MINIM_STX_VAL(MINIM_CAR(it));
         op = MINIM_STX_VAL(MINIM_CAR(line));
-        if (minim_eqvp(op, intern("$pop-env")))
+        if (minim_eqp(op, intern("$pop-env")))
         {
             MINIM_CDR(trailing) = MINIM_CDR(it);
             it = trailing;
@@ -335,4 +369,5 @@ void function_optimize(MinimEnv *env, Function *func)
     eliminate_join(env, func);
     consolidate_labels(env, func);
     eliminate_unwind(env, func);
+    eliminate_immediate_goto(env, func);
 }
