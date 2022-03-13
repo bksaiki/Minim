@@ -31,7 +31,7 @@
 // size_t top_level_def_count(MinimEnv *env, MinimModule *module);
 
 typedef struct Function {
-    MinimObject *pseudo;
+    MinimObject *pseudo, *pseudo_it;
     char *name;
     void *code;
     uint32_t argc;
@@ -43,10 +43,13 @@ typedef struct Compiler {
     size_t func_count;
 } Compiler;
 
-// Initializes a function structure
+// Initializes a function structure.
 void init_function(Function **pfunc);
 
-// Adds a function ot the compiler
+// Adds a line of pseudo-assembly to the function
+void function_add_line(Function *func, MinimObject *instr);
+
+// Adds a function to the compiler.
 void compiler_add_function(Compiler *compiler, Function *func);
 
 #endif

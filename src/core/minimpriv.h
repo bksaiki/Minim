@@ -222,6 +222,12 @@ void minim_symbol_table_for_each(MinimSymbolTable *table,
                                  void (*func)(const char *, MinimObject *));
 
 //
+//  Miscellaenous symbol support
+//
+
+char *gensym_unique(const char *prefix);
+
+//
 //  Global
 //
 

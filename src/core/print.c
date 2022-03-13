@@ -334,7 +334,6 @@ void debug_print_minim_object(MinimObject *obj, MinimEnv *env)
 
     set_default_print_params(&pp);
     print_to_port(obj, env, &pp, stdout);
-    fprintf(stdout, "\n");
     fflush(stdout);
 }
 

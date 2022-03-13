@@ -317,7 +317,10 @@ expand_expr(MinimEnv *env,
     }
     else
     {
-        return stx;
+        return minim_ast(minim_cons(
+            minim_ast(intern("quote"), MINIM_STX_LOC(stx)),
+            minim_cons(stx, minim_null)),
+            MINIM_STX_LOC(stx));
     }
 }
 

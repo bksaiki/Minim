@@ -130,6 +130,8 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
         minim_module_set_path(module, fname);
         check_syntax(module_inst->env, module->body);
         expand_minim_module(module_inst->env, module);
+
+        // cache desugared program
         emit_processed_file(port, module);
 
         // compile
@@ -175,7 +177,7 @@ void minim_load_file(MinimEnv *env, const char *fname)
     check_syntax(module_inst->env, module->body);
     expand_minim_module(env2, module);
 
-    // emit desugared program
+    // cache desugared program
     emit_processed_file(port, module);
 
     // compile
@@ -257,6 +259,8 @@ void minim_run_file(MinimEnv *env, const char *fname)
         
         check_syntax(module_inst->env, module->body);
         expand_minim_module(env, module);
+
+        // cache desugared program
         emit_processed_file(port, module);
 
         // compile
