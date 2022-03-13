@@ -26,7 +26,7 @@ MinimObject *minim_builtin_let_values(MinimEnv *env, size_t argc, MinimObject **
     // setup up new scope
     prev_flags = env->flags;
     env->flags &= ~MINIM_ENV_TAIL_CALLABLE;
-    init_env(&env2, env, NULL);
+    env2 = init_env(env);
 
     bindc = syntax_list_len(args[0]);
     it = MINIM_STX_VAL(args[0]);

@@ -586,14 +586,13 @@ compile_top_level(MinimEnv *env,
 
 void compile_module(MinimEnv *env, MinimModule *module)
 {
-    MinimEnv *env2;
-    init_env(&env2, env, NULL);
-
 // only enabled for linux
 #if defined(MINIM_LINUX)
     Compiler compiler;
     Function *func;
+    MinimEnv *env2;
 
+    env2 = init_env(env);
     if (environment_variable_existsp("MINIM_LOG"))
     {
         if (module->name && module->path)

@@ -577,7 +577,7 @@ char *eval_string(char *str, size_t len)
     MINIM_PORT_NAME(port) = "string";
 
     // setup environment
-    init_env(&env, NULL, NULL);
+    env = init_env(NULL);
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);

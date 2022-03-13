@@ -3,25 +3,27 @@
 
 // register strings
 #define REG_TC      "$tc"
-#define REG_R0      "$r0"
-#define REG_R1      "$r1"
-#define REG_R2      "$r2"
-#define REG_T0      "$r3"
-#define REG_T1      "$r4"
-#define REG_T2      "$r5"
-#define REG_T3      "$r6"
+#define REG_RT      "$r0"
+#define REG_R0      "$r1"
+#define REG_R1      "$r2"
+#define REG_R2      "$r3"
+#define REG_T0      "$r4"
+#define REG_T1      "$r5"
+#define REG_T2      "$r6"
+#define REG_T3      "$r7"
 
 // register indexes
-#define REG_R0_IDX      0
-#define REG_R1_IDX      1
-#define REG_R2_IDX      2
-#define REG_T0_IDX      3
-#define REG_T1_IDX      4
-#define REG_T2_IDX      5
-#define REG_T3_IDX      6
+#define REG_RT_IDX      0
+#define REG_R0_IDX      1
+#define REG_R1_IDX      2
+#define REG_R2_IDX      3
+#define REG_T0_IDX      4
+#define REG_T1_IDX      5
+#define REG_T2_IDX      6
+#define REG_T3_IDX      7
 
 // ignore REG_TC
-#define REGISTER_COUNT  7
+#define REGISTER_COUNT  8
 
 static MinimObject *fresh_register(MinimEnv *env, MinimObject *regs, MinimSymbolTable *table)
 {

@@ -411,7 +411,8 @@ extern MinimGlobal global;
 //
 
 // Initializes a new environment object.
-void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee);
+MinimEnv *init_env(MinimEnv *parent);
+MinimEnv *init_env2(MinimEnv *parent, MinimEnv *callee);
 
 // Initializes a new module.
 void init_minim_module(MinimModule **pmodule);

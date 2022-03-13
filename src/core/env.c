@@ -63,7 +63,24 @@ static void print_symbol_entry(const char *sym, MinimObject *obj)
 //  Visible functions
 //
 
-void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
+MinimEnv *init_env(MinimEnv *parent)
+{
+    MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
+
+    env->parent = parent;
+    env->module_inst = NULL;
+    env->callee = NULL;
+    env->caller = NULL;
+    env->current_dir = NULL;
+    env->jmp = NULL;
+    env->table = NULL;
+    env->flags = (env->parent ? env->parent->flags: 0x0);
+
+    return env;
+}
+
+
+MinimEnv *init_env2(MinimEnv *parent, MinimEnv *callee)
 {
     MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
@@ -79,7 +96,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     else if (env->parent)   env->flags = env->parent->flags;
     else                    env->flags = 0x0;
 
-    *penv = env;
+    return env;
 }
 
 static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t hash)

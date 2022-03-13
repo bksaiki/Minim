@@ -55,9 +55,9 @@ int minim_run(const char *str, uint32_t flags)
     {
         MinimPath *path;
 
+        env = init_env(NULL);
         minim_exit_handler = exit_handler;
         minim_error_handler = exit_handler;
-        init_env(&env, NULL, NULL);
         if (!(flags & MINIM_FLAG_LOAD_LIBS))
             minim_load_library(env);
 

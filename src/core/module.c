@@ -43,7 +43,7 @@ void init_minim_module(MinimModule **pmodule)
     module->cache = NULL;
     module->imports = NULL;
     module->importc = 0;
-    init_env(&module->export, NULL, NULL);
+    module->export = init_env(NULL);
     module->name = NULL;
     module->path = NULL;
     module->body = NULL;
@@ -243,7 +243,7 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
         if (module)
         {
             init_minim_module_instance(&module_inst, module);
-            init_env(&module_inst->env, get_builtin_env(env), NULL);
+            module_inst->env = init_env(get_builtin_env(env));
             module_inst->env->current_dir = extract_directory(path);
             module_inst->env->module_inst = module_inst;
         }
