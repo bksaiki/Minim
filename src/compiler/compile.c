@@ -239,7 +239,7 @@ compile_let_values(MinimEnv *env,
 
         if (syntax_proper_list_len(var) == 1)
         {
-            var = MINIM_STX_VAL(var);
+            var = MINIM_CAR(MINIM_STX_VAL(var));
             sym = minim_symbol(gensym_unique("t"));
 
             // assign value to temporary
@@ -280,7 +280,7 @@ compile_let_values(MinimEnv *env,
                     NULL));
 
                 // bind temporary to symbol
-                minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(var), sym);
+                minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(MINIM_CAR(var)), sym);
                 function_add_line(compiler->curr_func, minim_ast(
                     minim_cons(minim_ast(intern("$bind"), NULL),
                     minim_cons(MINIM_CAR(var),
@@ -331,6 +331,13 @@ compile_lambda(MinimEnv *env,
         func->variary = false;
         func->argc = minim_list_length(MINIM_STX_VAL(args));
     }
+
+    // leave hint of environment capture
+    function_add_line(compiler->curr_func, minim_ast(
+        minim_cons(minim_ast(intern("$capture-env"), NULL),
+        minim_cons(minim_ast(minim_symbol(func->name), NULL),
+        minim_null)),
+        NULL));
 
     // save old values
     old_func = compiler->curr_func;
@@ -397,7 +404,7 @@ compile_lambda(MinimEnv *env,
         minim_null)),
         NULL));
 
-    debug_function(env, func);
+    // debug_function(env, func);
     return minim_symbol(func->name);
 }
 
@@ -597,14 +604,19 @@ void compile_module(MinimEnv *env, MinimModule *module)
     func->variary = false;
     compiler.curr_func = func;
 
-    // translate program into flat pseudo-assembly
+    //
+    //  Translate into flat pseudo-assembly
+    //
+
     compile_top_level(env2, module->body, &compiler);
     // debug_function(env, func);
 
     if (environment_variable_existsp("MINIM_LOG"))
         printf(" Compiled %zu functions\n", compiler.func_count);
 
+    //
     // Optimization passes
+    //
 
     if (environment_variable_existsp("MINIM_LOG"))
         printf(" Optimizing...\n");
@@ -615,10 +627,26 @@ void compile_module(MinimEnv *env, MinimModule *module)
         unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
         function_optimize(env, compiler.funcs[i]);
         opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
+
+        // debugging
+        // debug_function(env, compiler.curr_func);
     }
 
     if (environment_variable_existsp("MINIM_LOG"))
-        printf(" Shrunk %zu -> %zu\n", unopt_expr_count, opt_expr_count);
+    {
+        double ratio;
+        
+        if (unopt_expr_count > 0)
+            ratio = 100.0 * (1.0 - (((double) opt_expr_count) / ((double) unopt_expr_count)));
+        else
+            ratio = 0.0;
+
+        printf(" Shrunk %zu -> %zu (%.0f%%)\n", unopt_expr_count, opt_expr_count, ratio);
+    }
+
+    //
+    //  Register assignment, memory management
+    //
 
 #endif
 }

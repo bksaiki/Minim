@@ -59,10 +59,15 @@ constant_fold(MinimEnv *env, Function *func)
                     MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(value)));
                     if (ref && MINIM_OBJ_BUILTINP(ref))
                     {
-                        if (MINIM_BUILTIN(ref) == minim_builtin_length ||
-                            MINIM_BUILTIN(ref) == minim_builtin_add ||
-                            MINIM_BUILTIN(ref) == minim_builtin_sub ||
-                            MINIM_BUILTIN(ref) == minim_builtin_mul)
+                        if (MINIM_BUILTIN(ref) == minim_builtin_eq      ||
+                            MINIM_BUILTIN(ref) == minim_builtin_eqp     ||
+                            MINIM_BUILTIN(ref) == minim_builtin_eqvp    ||
+                            MINIM_BUILTIN(ref) == minim_builtin_length  ||
+                            MINIM_BUILTIN(ref) == minim_builtin_add     ||
+                            MINIM_BUILTIN(ref) == minim_builtin_sub     ||
+                            MINIM_BUILTIN(ref) == minim_builtin_mul     ||
+                            MINIM_BUILTIN(ref) == minim_builtin_listp   ||
+                            MINIM_BUILTIN(ref) == minim_builtin_nullp)
                         {
                             MinimObject *res = eval_constant_expr(env, table, ref, MINIM_CDDR(value));
                             if (res)
@@ -96,14 +101,17 @@ constant_propagation(MinimEnv *env, Function *func)
             MINIM_STX_SYMBOLP(MINIM_CAR(MINIM_CDDR(line))))
         {
             minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), MINIM_CAR(MINIM_CDDR(line)));
-            changed = true;
         }
         else
         {
             for (MinimObject *it2 = MINIM_CDR(line); !minim_nullp(it2); it2 = MINIM_CDR(it2))
             {
                 MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CAR(it2)));
-                if (ref)    MINIM_CAR(it2) = ref;
+                if (ref)
+                {
+                    MINIM_CAR(it2) = ref;
+                    changed = true;
+                }
             }
         }
     }
@@ -156,6 +164,16 @@ eliminate_dead_code(MinimEnv *env, Function *func)
                     }
                 }
             }
+            else if (minim_eqp(op, intern("$arg")))
+            {
+                MinimObject *name = MINIM_CADR(line);
+                if (!minim_symbol_table_get(table, MINIM_STX_SYMBOL(name)))
+                {
+                    MINIM_CDR(trailing) = MINIM_CDR(it);
+                    it = trailing;
+                    eliminated = true;
+                }   
+            }
             else if (minim_eqp(op, intern("$join")))
             {
                 minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), minim_null);
@@ -178,14 +196,6 @@ eliminate_dead_code(MinimEnv *env, Function *func)
 
     func->pseudo = minim_list_reverse(reverse);
     return iter > 1;
-}
-
-static bool
-eliminate_empty_env(MinimEnv *env, Function *func)
-{
-    
-
-    return false;
 }
 
 static void
@@ -315,12 +325,9 @@ void function_optimize(MinimEnv *env, Function *func)
     while (changed)
     {
         changed = false;
-
-        printf("   optimization iteration: %zu\n", iter);
         changed |= constant_fold(env, func);
         changed |= constant_propagation(env, func);
         changed |= eliminate_dead_code(env, func);
-        changed |= eliminate_empty_env(env, func);
         iter += 1;
     }
 
@@ -328,7 +335,4 @@ void function_optimize(MinimEnv *env, Function *func)
     eliminate_join(env, func);
     consolidate_labels(env, func);
     eliminate_unwind(env, func);
-    
-    // debugging
-    debug_function(env, func);
 }
