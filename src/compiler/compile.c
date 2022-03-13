@@ -337,7 +337,7 @@ compile_lambda(MinimEnv *env,
     old_table = compiler->table;
 
     // push a new environment in the compiled code
-    function_add_line(compiler->curr_func, minim_ast(
+    function_add_line(func, minim_ast(
         minim_cons(minim_ast(intern("$push-env"), NULL),
         minim_null),
         NULL));
@@ -393,7 +393,7 @@ compile_lambda(MinimEnv *env,
     compiler->table = old_table;
     function_add_line(func, minim_ast(
         minim_cons(minim_ast(intern("$ret"), NULL),
-        minim_cons(ret,
+        minim_cons(minim_ast(ret, NULL),
         minim_null)),
         NULL));
 
