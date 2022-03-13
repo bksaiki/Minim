@@ -131,6 +131,13 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
         check_syntax(module_inst->env, module->body);
         expand_minim_module(module_inst->env, module);
         emit_processed_file(port, module);
+
+        // compile
+        if (global.flags & GLOBAL_FLAG_COMPILE)
+        {
+            compile_module(module_inst->env, module);
+            // emit_code_file(port, code);
+        }
     }
 
     return module_inst;
@@ -142,7 +149,6 @@ void minim_load_file(MinimEnv *env, const char *fname)
     MinimModuleInstance *module_inst;
     MinimObject *port;
     MinimEnv *env2;
-    Buffer *code;
     
     // Always re-read and run
 
@@ -175,8 +181,8 @@ void minim_load_file(MinimEnv *env, const char *fname)
     // compile
     if (global.flags & GLOBAL_FLAG_COMPILE)
     {
-        code = compile_module(env, module);
-        emit_code_file(port, code);
+        compile_module(module_inst->env, module);
+        // emit_code_file(port, code);
     }
 
     // eval
@@ -252,8 +258,16 @@ void minim_run_file(MinimEnv *env, const char *fname)
         check_syntax(module_inst->env, module->body);
         expand_minim_module(env, module);
         emit_processed_file(port, module);
+
+        // compile
+        if (global.flags & GLOBAL_FLAG_COMPILE)
+        {
+            compile_module(module_inst->env, module);
+            // emit_code_file(port, code);
+        }
     }
 
+    // evaluate
     eval_module(module_inst);
 
     // this is dumb

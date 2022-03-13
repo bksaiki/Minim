@@ -4,13 +4,12 @@
 <module-level-form> ::= (%export raw-export-form ...)
                       | (begin <module-level-form> ...)
                       | <definition-level-form>
-                      | <expr>
 
 ;; start symbol for REPL input
 <definition-level-form> ::= (%import raw-import-form ...)
                           | (def-values (id ...) <expr>)
                           | (def-syntaxes (id ...) <expr>)
-                          | expr
+                          | <expr>
             
 <expr> ::= (lambda formals <expr> ...)
          | (if <expr> <expr> <expr>)
