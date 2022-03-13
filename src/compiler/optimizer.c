@@ -41,21 +41,79 @@ eliminate_join(MinimEnv *env, Function *func)
     }
 }
 
+static MinimObject *
+eval_constant_expr(MinimEnv *env,
+                   MinimSymbolTable *table,
+                   MinimObject *op,
+                   MinimObject *args)
+{
+    MinimObject **vals;
+    MinimObject *it;
+    MinimBuiltin fn;
+    size_t argc;
+    
+    argc = minim_list_length(args);
+    vals = GC_alloc(argc * sizeof(MinimObject*));
+    it = args;
+    for (size_t i = 0; !minim_nullp(it); ++i, it = MINIM_CDR(it))
+    {
+        vals[i] = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CAR(args)));
+        if (!vals[i])   return NULL;
+
+        vals[i] = MINIM_STX_VAL(vals[i]);
+    }
+
+    fn = MINIM_BUILTIN(op);
+    return fn(env, argc, vals);
+}
+
 static bool
 constant_fold(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table;
-    MinimObject *line;
     bool changed = false;
 
     init_minim_symbol_table(&table);
     for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line = MINIM_STX_VAL(MINIM_CAR(it));
-        if (!minim_eqp(MINIM_STX_VAL(MINIM_CAR(line)), intern("$set")))
+        if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(line)), intern("$set")))
         {
-            
+            MinimObject *name, *value;
 
+            name = MINIM_CADR(line);
+            value = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+            if (MINIM_OBJ_PAIRP(value))
+            {
+                if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(value)), intern("$quote")))
+                {
+                    minim_symbol_table_add(table, MINIM_STX_SYMBOL(name), MINIM_CADR(value));
+                }
+                else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(value)), intern("$top")))
+                {
+                    MinimObject *ref = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_CADR(value)));
+                    if (ref)    minim_symbol_table_add(table, MINIM_STX_SYMBOL(name), ref);
+                }
+                else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(value)), intern("$eval")))
+                {
+                    MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(value)));
+                    if (ref && MINIM_OBJ_BUILTINP(ref))
+                    {
+                        if (MINIM_BUILTIN(ref) == minim_builtin_length ||
+                            MINIM_BUILTIN(ref) == minim_builtin_add ||
+                            MINIM_BUILTIN(ref) == minim_builtin_sub ||
+                            MINIM_BUILTIN(ref) == minim_builtin_mul)
+                        {
+                            MinimObject *res = eval_constant_expr(env, table, ref, MINIM_CDDR(value));
+                            if (res)
+                            {
+                                MINIM_CAR(MINIM_CDDR(line)) = minim_ast(res, MINIM_STX_LOC(value));
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

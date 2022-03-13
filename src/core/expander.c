@@ -292,7 +292,7 @@ expand_expr(MinimEnv *env,
                 }
             }
 
-            for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
+            for (MinimObject *it = MINIM_STX_VAL(stx); !minim_nullp(it); it = MINIM_CDR(it))
                 MINIM_CAR(it) = expand_expr(env, MINIM_CAR(it), analysis);
             return stx;
         }

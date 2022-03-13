@@ -299,6 +299,12 @@ compile_let_values(MinimEnv *env,
     for (MinimObject *it = body; !minim_nullp(it); it = MINIM_CDR(it))
         ret = compile_expr(env, MINIM_CAR(it), compiler);
 
+    // restore the old environment
+    function_add_line(compiler->curr_func, minim_ast(
+        minim_cons(minim_ast(intern("$pop-env"), NULL),
+        minim_null),
+        NULL));
+
     // restore and return
     compiler->table = old_table;
     return ret;
@@ -329,6 +335,12 @@ compile_lambda(MinimEnv *env,
     // save old values
     old_func = compiler->curr_func;
     old_table = compiler->table;
+
+    // push a new environment in the compiled code
+    function_add_line(compiler->curr_func, minim_ast(
+        minim_cons(minim_ast(intern("$push-env"), NULL),
+        minim_null),
+        NULL));
     
     // compile the arguments
     init_minim_symbol_table(&compiler->table);
@@ -370,6 +382,12 @@ compile_lambda(MinimEnv *env,
     compiler->curr_func = func;
     ret = compile_expr(env, body, compiler);
 
+    // push a new environment in the compiled code
+    function_add_line(compiler->curr_func, minim_ast(
+        minim_cons(minim_ast(intern("$pop-env"), NULL),
+        minim_null),
+        NULL));
+
     // restore and add return
     compiler->curr_func = old_func;
     compiler->table = old_table;
@@ -378,7 +396,6 @@ compile_lambda(MinimEnv *env,
         minim_cons(ret,
         minim_null)),
         NULL));
-
 
     debug_function(env, func);
     return minim_symbol(func->name);

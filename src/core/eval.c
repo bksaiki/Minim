@@ -163,7 +163,10 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         if (argc + 1 == SIZE_MAX)
             THROW(env, minim_syntax_error("bad syntax", NULL, stx, NULL));
 
-        op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(val)));
+        op = (MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)) ?
+              env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx))) :
+              eval_ast_node(env, MINIM_STX_CAR(stx)));
+
         if (MINIM_OBJ_BUILTINP(op))
         {
             MinimBuiltin proc = MINIM_BUILTIN(op);
