@@ -28,6 +28,19 @@ void function_add_line(Function *func, MinimObject *instr)
     }
 }
 
+void debug_function(MinimEnv *env, Function *func)
+{
+    printf("  function %s:\n", func->name);
+    if (func->pseudo) {
+        for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+        {
+            printf("   ");
+            print_syntax_to_port(MINIM_CAR(it), stdout);
+            printf("\n");
+        }
+    }
+}
+
 void compiler_add_function(Compiler *compiler, Function *func)
 {
     ++compiler->func_count;

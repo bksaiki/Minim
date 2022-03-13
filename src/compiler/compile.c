@@ -6,20 +6,6 @@
 #define COMPILE_REC(ref, fn, exp, env, stx, comp) \
   if (MINIM_SYNTAX(ref) == (fn)) { return exp(env, stx, comp); }
 
-static void
-debug_function(MinimEnv *env, Function *func)
-{
-    printf("  function %s:\n", func->name);
-    if (func->pseudo) {
-        for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
-        {
-            printf("   ");
-            print_syntax_to_port(MINIM_CAR(it), stdout);
-            printf("\n");
-        }
-    }
-}
-
 static MinimObject *
 compile_expr(MinimEnv *env,
              MinimObject *stx,
@@ -572,11 +558,6 @@ void compile_module(MinimEnv *env, MinimModule *module)
     Compiler compiler;
     Function *func;
 
-    compiler.funcs = NULL;
-    compiler.curr_func = NULL;
-    compiler.func_count = 0;
-    init_minim_symbol_table(&compiler.table);
-
     if (environment_variable_existsp("MINIM_LOG"))
     {
         if (module->name && module->path)
@@ -587,22 +568,40 @@ void compile_module(MinimEnv *env, MinimModule *module)
             printf("Compiling <unnamed>\n");
     }
 
-    // top-level "function"
+    // intialize the compiler
+    compiler.funcs = NULL;
+    compiler.curr_func = NULL;
+    compiler.func_count = 0;
+    init_minim_symbol_table(&compiler.table);
+
+    // create a top-level "function"
     init_function(&func);
     func->name = (module->path ? module->path : module->name);
     func->variary = false;
-    // this should maybe just be thrown away
-    // compiler_add_function(&compiler, func);
+    compiler.curr_func = func;
 
     // translate program into flat pseudo-assembly
-    compiler.curr_func = func;
     compile_top_level(env2, module->body, &compiler);
-    debug_function(env, func);
+    // debug_function(env, func);
 
     if (environment_variable_existsp("MINIM_LOG"))
-    {
-        if (compiler.func_count > 1)
-            printf(" Compiled %zu functions\n", compiler.func_count - 1);
+        printf(" Compiled %zu functions\n", compiler.func_count);
+
+    // Optimization passes
+
+    if (environment_variable_existsp("MINIM_LOG"))
+        printf(" Optimizing...\n");
+
+    size_t unopt_expr_count = 0, opt_expr_count = 0;
+    for (size_t i = 0; i < compiler.func_count; i++) {
+        compiler.curr_func = compiler.funcs[i];
+        unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
+        function_optimize(env, compiler.funcs[i]);
+        opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
     }
+
+    if (environment_variable_existsp("MINIM_LOG"))
+        printf(" Shrunk %zu -> %zu\n", unopt_expr_count, opt_expr_count);
+
 #endif
 }

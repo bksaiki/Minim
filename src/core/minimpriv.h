@@ -416,6 +416,7 @@ void minim_cons_to_bytes(MinimObject *obj, Buffer *bf);
 
 MinimObject *minim_list(MinimObject **args, size_t len);
 MinimObject *minim_list_drop(MinimObject *lst, size_t n);
+MinimObject *minim_list_reverse(MinimObject *lst);
 MinimObject *minim_list_append2(MinimObject *a, MinimObject *b);
 size_t minim_list_length(MinimObject *list);
 

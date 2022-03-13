@@ -71,11 +71,8 @@ static MinimObject *minim_list_reverse2(MinimObject *lst, MinimObject *curr)
     return (minim_nullp(lst) ? curr : minim_list_reverse2(MINIM_CDR(lst), minim_cons(MINIM_CAR(lst), curr)));
 }
 
-static MinimObject *minim_list_reverse(MinimObject *lst)
+MinimObject *minim_list_reverse(MinimObject *lst)
 {
-    if (minim_nullp(lst))
-        return minim_null;
-
     return minim_list_reverse2(lst, minim_null);
 }
 
