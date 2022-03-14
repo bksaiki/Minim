@@ -148,6 +148,15 @@ MinimObject *minim_closure(void *closure)
     return o;
 }
 
+MinimObject *minim_native_closure(void *closure)
+{
+    MinimObject *o = GC_alloc(minim_native_closure_size);
+    o->type = MINIM_OBJ_NATIVE_CLOSURE;
+    MINIM_NATIVE_CLOSURE(o) = closure;
+    log_obj_created();
+    return o;
+}
+
 MinimObject *minim_tail_call(void *tc)
 {
     MinimObject *o = GC_alloc(minim_tail_call_size);

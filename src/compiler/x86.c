@@ -15,7 +15,7 @@ assemble_move_immediate(Buffer *bf,
     else
         THROW(env, minim_error("invalid instruction", "compiler"));
 
-    writeu_buffer(bf, addr);
+    write_buffer(bf, &addr, sizeof(uintptr_t));
 }
 
 static void
@@ -95,7 +95,7 @@ void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf)
         }
         else if (minim_eqp(op, intern("$ret")))
         {
-            writes_buffer(bf, "\xC3");
+            writes_buffer(bf, "\x5D\xC3");
         }
     }
 }

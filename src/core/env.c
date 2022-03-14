@@ -80,7 +80,7 @@ MinimEnv *init_env(MinimEnv *parent)
 }
 
 
-MinimEnv *init_env2(MinimEnv *parent, MinimEnv *callee)
+MinimEnv *init_env2(MinimEnv *parent, MinimLambda *callee)
 {
     MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 

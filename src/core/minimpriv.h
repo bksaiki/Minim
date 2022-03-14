@@ -65,6 +65,13 @@ typedef struct MinimLambda
     int argc;
 } MinimLambda;
 
+typedef struct MinimNativeLambda
+{
+    MinimObject *closure;
+    void *fn;
+    size_t size;
+} MinimNativeLambda;
+
 // tail call object
 typedef struct MinimTailCall
 {
