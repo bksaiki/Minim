@@ -4,6 +4,11 @@
 #define INIT_ENV_ADDR       (&init_env)
 #define QUOTE_ADDR          (&syntax_unwrap_rec)
 
+MinimObject *jit_get_sym(MinimEnv *env, MinimObject *sym)
+{
+    return env_get_sym(env, MINIM_SYMBOL(sym));
+}
+
 uintptr_t resolve_address(MinimObject *stx)
 {
     MinimObject *addr_str = MINIM_STX_VAL(MINIM_STX_CADR(stx));

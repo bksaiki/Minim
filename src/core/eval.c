@@ -35,16 +35,6 @@ static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, MinimObject *st
     return res;
 }
 
-// get top-level module
-static MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx)
-{
-    MinimEnv *it = env;
-    while (it->parent != NULL && it->module_inst == NULL)
-        it = it->parent;
-
-    return eval_symbol(it, sym, stx, true);
-}
-
 // Specialized eval functions
 
 #define CALL_BUILTIN(env, proc, argc, args, perr)   \
@@ -353,6 +343,16 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
     {
         return val;
     }
+}
+
+// get top-level module symbol
+MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx)
+{
+    MinimEnv *it = env;
+    while (it->parent != NULL && it->module_inst == NULL)
+        it = it->parent;
+
+    return eval_symbol(it, sym, stx, true);
 }
 
 MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn)

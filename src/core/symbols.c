@@ -91,8 +91,7 @@ int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t has
 
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name)
 {
-    size_t h = hash_symbol(name);
-    return minim_symbol_table_get2(table, name, h);
+    return minim_symbol_table_get2(table, name, hash_symbol(name));
 }
 
 MinimObject *minim_symbol_table_get2(MinimSymbolTable *table, const char *name, size_t hash)

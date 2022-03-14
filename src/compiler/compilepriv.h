@@ -3,6 +3,14 @@
 
 #include "../core/minimpriv.h"
 
+// Register types
+//  - TC: continuation register (usually corresponds to the first argument register)
+//  - RT: result register
+//  - BP: base register
+//  - SP: stack register
+//  - Rx: argument register
+//  - Tx: scratch register (must save to stack before use)
+
 // register strings
 #define REG_TC_STR  "$tc"
 #define REG_RT_STR  "$rt"
@@ -13,6 +21,8 @@
 #define REG_T1_STR  "$r4"
 #define REG_T2_STR  "$r5"
 #define REG_T3_STR  "$r6"
+#define REG_BP_STR  "$bp"
+#define REG_SP_STR  "$sp"
 
 // register indexes
 #define REG_RT      0
@@ -63,5 +73,8 @@ void compiler_add_function(Compiler *compiler, Function *func);
 
 // Returns true if the reference is a function argument
 bool is_argument_location(MinimObject *obj);
+
+// Returns the string associated with a register index.
+const char *get_register_string(uint8_t reg);
 
 #endif

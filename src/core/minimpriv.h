@@ -327,6 +327,9 @@ MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx);
 // the symbol is not in the table
 MinimObject *env_get_sym(MinimEnv *env, const char *sym);
 
+// Like `env_get_sym` but it begins searcher at the module-level environment.
+MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx);
+
 // Like `env_get_sym` except it only checks the symbol
 // table of this environment.
 MinimObject *env_get_local_sym(MinimEnv *env, const char *sym);

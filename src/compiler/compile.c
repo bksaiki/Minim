@@ -647,7 +647,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
         opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
 
         // debugging
-        debug_function(env, compiler.curr_func);
+        // debug_function(env, compiler.curr_func);
     }
 
     if (environment_variable_existsp("MINIM_LOG"))
@@ -678,28 +678,28 @@ void compile_module(MinimEnv *env, MinimModule *module)
     //  Generate machine code
     //
 
-    for (size_t i = 0; i < compiler.func_count; i++) {
-        MinimNativeLambda *closure;
-        Buffer *code_buf;
-        void *page;
+    // for (size_t i = 0; i < compiler.func_count; i++) {
+    //     MinimNativeLambda *closure;
+    //     Buffer *code_buf;
+    //     void *page;
 
-        init_buffer(&code_buf);
-        compiler.curr_func = compiler.funcs[i];
-        ASSEMBLE(env, compiler.curr_func, code_buf);
+    //     init_buffer(&code_buf);
+    //     compiler.curr_func = compiler.funcs[i];
+    //     ASSEMBLE(env, compiler.curr_func, code_buf);
 
-        page = alloc_page(code_buf->pos);
-        memcpy(page, get_buffer(code_buf), code_buf->pos);
-        make_page_executable(page, code_buf->pos);
-        compiler.curr_func->code = page;
+    //     page = alloc_page(code_buf->pos);
+    //     memcpy(page, get_buffer(code_buf), code_buf->pos);
+    //     make_page_executable(page, code_buf->pos);
+    //     compiler.curr_func->code = page;
 
-        closure = GC_alloc(sizeof(MinimNativeLambda));
-        closure->closure = NULL;
-        closure->fn = page;
-        closure->size = code_buf->pos;
+    //     closure = GC_alloc(sizeof(MinimNativeLambda));
+    //     closure->closure = NULL;
+    //     closure->fn = page;
+    //     closure->size = code_buf->pos;
 
-        MinimObject *(*fn)(MinimEnv*, MinimObject*) = closure->fn;
-        fn(env, uint_to_minim_number(1));
-    }
+    //     MinimObject *(*fn)(MinimEnv*, MinimObject*) = closure->fn;
+    //     fn(env, uint_to_minim_number(1));
+    // }
 
 #endif
 }
