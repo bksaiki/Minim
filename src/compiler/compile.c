@@ -678,5 +678,15 @@ void compile_module(MinimEnv *env, MinimModule *module)
     //  Generate machine code
     //
 
+    for (size_t i = 0; i < compiler.func_count; i++) {
+        Buffer *code_buf;
+
+        init_buffer(&code_buf);
+        compiler.curr_func = compiler.funcs[i];
+        ASSEMBLE(env, compiler.curr_func, code_buf);
+
+        compiler.curr_func->code = get_buffer(code_buf);
+    }
+
 #endif
 }

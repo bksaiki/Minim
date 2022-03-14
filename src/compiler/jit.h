@@ -5,8 +5,11 @@
 #include "compilepriv.h"
 
 // Assemble a function into x86.
-void function_assemble_x86(MinimEnv *env, Function *func);
+void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf);
 
-#define ASSEMBLE    function_assemble_x86
+// Resolve address
+uintptr_t resolve_address(MinimObject *stx);
+
+#define ASSEMBLE(e, f, b)    function_assemble_x86(e, f, b)
 
 #endif

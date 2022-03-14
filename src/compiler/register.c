@@ -1,30 +1,6 @@
 #include "../core/minimpriv.h"
 #include "compilepriv.h"
 
-// register strings
-#define REG_TC_STR  "$tc"
-#define REG_RT_STR  "$rt"
-#define REG_R0_STR  "$r0"
-#define REG_R1_STR  "$r1"
-#define REG_R2_STR  "$r2"
-#define REG_T0_STR  "$r3"
-#define REG_T1_STR  "$r4"
-#define REG_T2_STR  "$r5"
-#define REG_T3_STR  "$r6"
-
-// register indexes
-#define REG_RT      0
-#define REG_R0      1
-#define REG_R1      2
-#define REG_R2      3
-#define REG_T0      4
-#define REG_T1      5
-#define REG_T2      6
-#define REG_T3      7
-
-// ignore REG_TC
-#define REGISTER_COUNT  8
-
 // register replacement policy
 #define REG_REPLACE_TEMP_ONLY   0
 #define REG_REPLACE_TEMP_ARG    1
@@ -136,13 +112,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     minim_cons(minim_ast(intern("init_env"), NULL),
                     minim_null)),
                     NULL));
-
-            //  ($mov $r0 $tc)
-            MINIM_CDR(it) = move_instruction2(
-                    minim_ast(intern(REG_R0_STR), NULL),
-                    minim_ast(intern(REG_TC_STR), NULL),
-                    MINIM_CDR(it));
-            it = MINIM_CDR(it);
             
             //  ($call $rt)
             MINIM_CDR(it) = call_instruction(minim_ast(intern(REG_RT_STR), NULL), MINIM_CDR(it));

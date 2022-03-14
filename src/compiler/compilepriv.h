@@ -3,7 +3,29 @@
 
 #include "../core/minimpriv.h"
 
-// ================================ Top-level ================================
+// register strings
+#define REG_TC_STR  "$tc"
+#define REG_RT_STR  "$rt"
+#define REG_R0_STR  "$r0"
+#define REG_R1_STR  "$r1"
+#define REG_R2_STR  "$r2"
+#define REG_T0_STR  "$r3"
+#define REG_T1_STR  "$r4"
+#define REG_T2_STR  "$r5"
+#define REG_T3_STR  "$r6"
+
+// register indexes
+#define REG_RT      0
+#define REG_R0      1
+#define REG_R1      2
+#define REG_R2      3
+#define REG_T0      4
+#define REG_T1      5
+#define REG_T2      6
+#define REG_T3      7
+
+// ignore REG_TC
+#define REGISTER_COUNT  8
 
 typedef struct Function {
     MinimObject *pseudo, *pseudo_it;
