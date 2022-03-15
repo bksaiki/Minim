@@ -65,7 +65,7 @@ void function_optimize(MinimEnv *env, Function *func);
 // Applies register allocation.
 void function_register_allocation(MinimEnv *env, Function *func);
 
-// Prints out a function pseudocode
+// Prints out a function pseudocode.
 void debug_function(MinimEnv *env, Function *func);
 
 // Adds a function to the compiler.
@@ -76,5 +76,8 @@ bool is_argument_location(MinimObject *obj);
 
 // Returns the string associated with a register index.
 const char *get_register_string(uint8_t reg);
+
+// Returns the register index associated with a register string
+uint8_t get_register_index(MinimObject *reg);
 
 #endif

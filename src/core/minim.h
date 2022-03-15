@@ -235,7 +235,7 @@ extern MinimObject *minim_input_port;
 #define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
 #define MINIM_VECTOR(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))
-#define MINIM_VECTOR_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))[i])
+#define MINIM_VECTOR_REF(obj, i)    (*((*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE)))) + i))
 #define MINIM_VECTOR_LEN(obj)       (*((size_t*) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
 #define MINIM_HASH_TABLE(obj)       (*((MinimHash**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_PROMISE_VAL(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
