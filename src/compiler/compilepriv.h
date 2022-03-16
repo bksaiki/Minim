@@ -75,9 +75,9 @@ void compiler_add_function(Compiler *compiler, Function *func);
 bool is_argument_location(MinimObject *obj);
 
 // Returns the string associated with a register index.
-const char *get_register_string(uint8_t reg);
+MinimObject *get_register_symbol(size_t reg);
 
 // Returns the register index associated with a register string
-uint8_t get_register_index(MinimObject *reg);
+size_t get_register_index(MinimObject *reg);
 
 #endif

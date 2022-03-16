@@ -435,7 +435,7 @@ compile_expr(MinimEnv *env,
         // assuming (<ident> <thing> ...)
    
         // variable reference
-        if (minim_eqp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")))
+        if (minim_eqvp(MINIM_STX_VAL(MINIM_STX_CAR(stx)), intern("%top")))
             return compile_top(env, stx, compiler);
 
         MinimObject *ref = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
@@ -537,11 +537,11 @@ compile_definition_level(MinimEnv *env,
     car = MINIM_STX_CAR(stx);
     if (MINIM_STX_SYMBOLP(car))
     {
-        if (minim_eqp(MINIM_STX_VAL(car), intern("%import")) ||
-            minim_eqp(MINIM_STX_VAL(car), intern("def-syntaxes")))
+        if (minim_eqvp(MINIM_STX_VAL(car), intern("%import")) ||
+            minim_eqvp(MINIM_STX_VAL(car), intern("def-syntaxes")))
             return;
 
-        if (minim_eqp(MINIM_STX_VAL(car), intern("def-values")))
+        if (minim_eqvp(MINIM_STX_VAL(car), intern("def-values")))
         {
             compile_def_values(env, stx, compiler);
             return;
@@ -565,10 +565,10 @@ compile_module_level(MinimEnv *env,
     if (MINIM_OBJ_ASTP(car))
     {
         car = MINIM_STX_VAL(car);
-        if (minim_eqp(car, intern("%export")))
+        if (minim_eqvp(car, intern("%export")))
             return;
 
-        if (minim_eqp(car, intern("begin")))
+        if (minim_eqvp(car, intern("begin")))
         {
             for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
                 compile_module_level(env, MINIM_CAR(it), compiler);
@@ -596,7 +596,7 @@ compile_top_level(MinimEnv *env,
     if (MINIM_OBJ_ASTP(car))
     {
         car = MINIM_STX_VAL(car);
-        if (minim_eqp(car, intern("%module")))
+        if (minim_eqvp(car, intern("%module")))
         {
             MinimObject *t = MINIM_CDDR(MINIM_STX_CDR(stx));
             for (t = MINIM_STX_CDR(MINIM_CAR(t)); !minim_nullp(t); t = MINIM_CDR(t))
@@ -693,7 +693,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
         function_register_allocation(env, compiler.curr_func);
 
         // debugging
-        // debug_function(env, compiler.curr_func);
+        debug_function(env, compiler.curr_func);
     }
 
     //
