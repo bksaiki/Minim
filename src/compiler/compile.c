@@ -266,7 +266,7 @@ compile_let_values(MinimEnv *env,
             minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(var), sym);
             function_add_line(compiler->curr_func, minim_ast(
                 minim_cons(minim_ast(intern("$bind"), NULL),
-                minim_cons(MINIM_CAR(var),
+                minim_cons(minim_ast(MINIM_CAR(var), NULL),
                 minim_cons(minim_ast(sym, NULL),
                 minim_null))),
                 NULL));
@@ -384,15 +384,19 @@ compile_lambda(MinimEnv *env,
         }
 
         if (!minim_nullp(it)) {
-            MinimObject *sym = minim_symbol(gensym_unique("a"));
+            MinimObject *sym;
+            char *name;
+            
+            sym = minim_symbol(gensym_unique("a"));
             function_add_line(func, minim_ast(
                 minim_cons(minim_ast(intern("$arg"), NULL),
                 minim_cons(minim_ast(sym, NULL),
                 minim_cons(minim_ast(uint_to_minim_number(i), NULL),
                 minim_null))),
                 NULL));
-
-            minim_symbol_table_add(compiler->table, MINIM_STX_SYMBOL(it), sym);
+            
+            name = (MINIM_OBJ_ASTP(it) ? MINIM_STX_SYMBOL(it) : MINIM_SYMBOL(it));
+            minim_symbol_table_add(compiler->table, name, sym);
         }
 
     }
@@ -437,23 +441,41 @@ compile_expr(MinimEnv *env,
         MinimObject *ref = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx)));
         if (ref && MINIM_OBJ_SYNTAXP(ref))        // syntax
         {
-            COMPILE_REC(ref, minim_builtin_begin, compile_begin, env, stx, compiler);
-            // EXPAND_REC(ref, minim_builtin_callcc, expand_expr_1arg, env, stx, analysis);
-            // EXPAND_REC(ref, minim_builtin_delay, expand_expr_1arg, env, stx, analysis);
-            COMPILE_REC(ref, minim_builtin_if, compile_if, env, stx, compiler);
-            COMPILE_REC(ref, minim_builtin_lambda, compile_lambda, env, stx, compiler);
-            COMPILE_REC(ref, minim_builtin_let_values, compile_let_values, env, stx, compiler);
-            // EXPAND_REC(ref, minim_builtin_setb, expand_expr_setb, env, stx, analysis);
-            // EXPAND_REC(ref, minim_builtin_syntax_case, expand_expr_syntax_case, env, stx, analysis);
+            if (MINIM_SYNTAX(ref) == minim_builtin_lambda)
+            {
+                MinimObject *sym, *val;
 
-            COMPILE_REC(ref, minim_builtin_quote, compile_quote, env, stx, compiler);
+                sym = minim_symbol(gensym_unique("t"));
+                val = compile_lambda(env, stx, compiler);
+                function_add_line(compiler->curr_func, minim_ast(
+                    minim_cons(minim_ast(intern("$set"), NULL),
+                    minim_cons(minim_ast(sym, NULL),
+                    minim_cons(minim_ast(val, NULL),
+                    minim_null))),
+                    NULL
+                ));
 
-            // minim_builtin_quasiquote
-            // minim_builtin_unquote
-            // minim_builtin_syntax
-            // minim_builtin_template
+                return sym;
+            }
+            else
+            {
+                COMPILE_REC(ref, minim_builtin_begin, compile_begin, env, stx, compiler);
+                COMPILE_REC(ref, minim_builtin_if, compile_if, env, stx, compiler);
+                COMPILE_REC(ref, minim_builtin_let_values, compile_let_values, env, stx, compiler);
+                COMPILE_REC(ref, minim_builtin_quote, compile_quote, env, stx, compiler);
 
-            return compile_interpret(env, stx, compiler);
+                // EXPAND_REC(ref, minim_builtin_callcc, expand_expr_1arg, env, stx, analysis);
+                // EXPAND_REC(ref, minim_builtin_delay, expand_expr_1arg, env, stx, analysis);
+                // EXPAND_REC(ref, minim_builtin_setb, expand_expr_setb, env, stx, analysis);
+                // EXPAND_REC(ref, minim_builtin_syntax_case, expand_expr_syntax_case, env, stx, analysis);
+
+                // minim_builtin_quasiquote
+                // minim_builtin_unquote
+                // minim_builtin_syntax
+                // minim_builtin_template
+
+                return compile_interpret(env, stx, compiler);
+            } 
         }
         else
         {
