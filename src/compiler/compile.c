@@ -671,7 +671,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
         function_register_allocation(env, compiler.curr_func);
 
         // debugging
-        debug_function(env, compiler.curr_func);
+        // debug_function(env, compiler.curr_func);
     }
 
     //
