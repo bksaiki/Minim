@@ -206,14 +206,15 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym);
 void init_minim_symbol_table(MinimSymbolTable **ptable);
 
 void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObject *obj);
-
 void minim_symbol_table_add2(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
 
-int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
+int minim_symbol_table_set(MinimSymbolTable *table, const char *name, MinimObject *obj);
+int minim_symbol_table_set2(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
 
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name);
-
 MinimObject *minim_symbol_table_get2(MinimSymbolTable *table, const char *name, size_t hash);
+
+MinimObject *minim_symbol_table_remove(MinimSymbolTable *table, const char *name);
 
 const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj);
 

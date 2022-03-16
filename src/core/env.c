@@ -135,11 +135,11 @@ static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, Minim
 {
     for (MinimEnv *it = env; it; it = it->parent)
     { 
-        if (it->table && minim_symbol_table_set(it->table, sym, hash, obj))
+        if (it->table && minim_symbol_table_set2(it->table, sym, hash, obj))
             return 1;
     }
     
-    return minim_symbol_table_set(global.builtins, sym, hash, obj);
+    return minim_symbol_table_set2(global.builtins, sym, hash, obj);
 }
 
 int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
