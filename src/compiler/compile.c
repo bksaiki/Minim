@@ -344,13 +344,6 @@ compile_lambda(MinimEnv *env,
         func->argc = minim_list_length(MINIM_STX_VAL(args));
     }
 
-    // leave hint of environment capture
-    function_add_line(compiler->curr_func, minim_ast(
-        minim_cons(minim_ast(intern("$capture-env"), NULL),
-        minim_cons(minim_ast(minim_symbol(func->name), NULL),
-        minim_null)),
-        NULL));
-
     // save old values
     old_func = compiler->curr_func;
     old_table = compiler->table;
@@ -422,7 +415,9 @@ compile_lambda(MinimEnv *env,
         NULL));
 
     // debug_function(env, func);
-    return minim_symbol(func->name);
+    return minim_cons(minim_ast(intern("$func"), NULL),
+        minim_cons(minim_ast(minim_symbol(func->name), NULL),
+        minim_null));
 }
 
 static MinimObject *
@@ -645,7 +640,6 @@ void compile_module(MinimEnv *env, MinimModule *module)
     compile_top_level(env2, module->body, &compiler);
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
-        // debug_function(env, compiler.curr_func);
     }
 
     if (environment_variable_existsp("MINIM_LOG"))
@@ -665,11 +659,10 @@ void compile_module(MinimEnv *env, MinimModule *module)
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
         unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
-        function_optimize(env, compiler.funcs[i]);
-        opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
-
-        // debugging
         // debug_function(env, compiler.curr_func);
+        function_optimize(env, compiler.funcs[i]);
+        // debug_function(env, compiler.curr_func);
+        opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
     }
 
     if (environment_variable_existsp("MINIM_LOG"))
@@ -691,9 +684,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
         function_register_allocation(env, compiler.curr_func);
-
-        // debugging
-        debug_function(env, compiler.curr_func);
+        // debug_function(env, compiler.curr_func);
     }
 
     //

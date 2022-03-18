@@ -540,7 +540,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                         minim_ast(src, NULL));
                 }
 
-                printf("warn [move between registers]\n");
+                // printf("warn [move between registers]\n");
                 minim_symbol_table_remove(table, MINIM_SYMBOL(name));
                 minim_symbol_table_add(table, MINIM_SYMBOL(name), reg);
                 unreserve_last_uses(env, regs, memory, table, end_uses);
@@ -724,6 +724,26 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 unreserve_register(regs, get_register_index(reg));
                 unreserve_last_uses(env, regs, memory, table, end_uses);
             }
+            else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$func")))
+            {
+                MinimObject *reg, *val;
+                
+                val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+                reg = existing_or_fresh_register(env, regs, memory, table, name, REG_REPLACE_TEMP_ONLY);
+                minim_symbol_table_add(table, MINIM_SYMBOL(name), reg);
+
+                // ($mov $rt ($addr <symbol>))
+                MINIM_CAR(it) = move_instruction(
+                    minim_ast(reg, NULL),
+                    minim_ast(
+                        minim_cons(minim_ast(intern("$func-addr"), NULL),
+                        minim_cons(minim_ast(val, NULL),
+                        minim_null)),
+                        NULL));
+
+                unreserve_register(regs, get_register_index(reg));
+                unreserve_last_uses(env, regs, memory, table, end_uses);
+            }
             else
             {
                 printf("error [other forms of set]\n");
@@ -784,9 +804,9 @@ void function_register_allocation(MinimEnv *env, Function *func)
             reserve_register(env, regs, memory, table, &prev, REG_R0);
             name = MINIM_STX_VAL(MINIM_CADR(line));
 
-            // ($mov $r0 ($sym-add <sym>>
+            // ($mov $r0 ($sym-addr <sym>>
             MINIM_CAR(it) = move_instruction(
-                minim_ast(intern(REG_RT_STR), NULL),
+                minim_ast(intern(REG_R0_STR), NULL),
                 minim_ast(
                     minim_cons(minim_ast(intern("$sym-addr"), NULL),
                     minim_cons(minim_ast(name, NULL),
