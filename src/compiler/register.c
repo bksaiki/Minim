@@ -135,6 +135,26 @@ set_argument_memory(MinimObject *memory, size_t idx, MinimObject *sym)
 }
 
 static MinimObject *
+add_fresh_temp_memory(MinimObject *memory, MinimObject *sym)
+{
+    size_t len = minim_list_length(TEMP_MEM(memory));
+    if (len == 0)
+    {
+        TEMP_MEM(memory) = minim_cons(sym, minim_null);
+    }
+    else
+    {
+        MinimObject *it;  
+        MINIM_TAIL(it, TEMP_MEM(memory));
+        MINIM_CDR(it) = minim_cons(sym, minim_null);
+    }
+    
+    return minim_cons(minim_ast(intern("$mem"), NULL),
+            minim_cons(minim_ast(uint_to_minim_number(len), NULL),
+            minim_null));
+}
+
+static MinimObject *
 add_temp_memory(MinimObject *memory, MinimObject *sym)
 {
     size_t len = minim_list_length(TEMP_MEM(memory));
@@ -152,20 +172,21 @@ add_temp_memory(MinimObject *memory, MinimObject *sym)
             if (minim_falsep(MINIM_CAR(it)))
             {
                 MINIM_CAR(it) = sym;
-                return minim_cons(intern("$mem"),
-                       minim_cons(uint_to_minim_number(idx),
-                       minim_null));
+                return minim_cons(minim_ast(intern("$mem"), NULL),
+                        minim_cons(minim_ast(uint_to_minim_number(idx), NULL),
+                        minim_null));
             }
-
+            
             it = MINIM_CDR(it);
-            idx = 0;
+            ++idx;
         }
 
-        MINIM_TAIL(it, TEMP_MEM(memory));
         MINIM_CDR(it) = minim_cons(sym, minim_null);
     }
 
-    return minim_cons(intern("$mem"), minim_cons(uint_to_minim_number(len), minim_null));
+    return minim_cons(minim_ast(intern("$mem"), NULL),
+            minim_cons(minim_ast(uint_to_minim_number(len), NULL),
+            minim_null));
 }
 
 static void
@@ -174,7 +195,7 @@ unreserve_temp_memory(MinimObject *memory, size_t idx)
     MinimObject *it = TEMP_MEM(memory);
     for (size_t i = 0; i < idx; ++i)
         it = MINIM_CDR(it);
-    
+
     MINIM_CAR(it) = minim_false;
 }
 
@@ -320,10 +341,7 @@ argument_location(MinimEnv *env,
         MINIM_VECTOR_REF(regs, REG_R2) = sym;
         return intern(REG_R2_STR);
     default: 
-        printf("unimplemented [requesting location for argument %zu]\n", idx);
-        reserve_register(env, regs, memory, table, prev, REG_RT);
-        MINIM_VECTOR_REF(regs, REG_RT) = sym;
-        return intern(REG_RT_STR);
+        return add_fresh_temp_memory(memory, sym);
     }
 }
 
@@ -371,7 +389,6 @@ unreserve_last_uses(MinimEnv *env,
                 }
                 else
                 {
-
                     minim_symbol_table_remove(table, MINIM_SYMBOL(MINIM_CAR(it)));
                     if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(ref)), intern("$mem")))
                     {
@@ -438,6 +455,17 @@ void function_register_allocation(MinimEnv *env, Function *func)
 
             unreserve_register(regs, REG_RT);
         }
+        else if (minim_eqp(op, intern("$pop-env")))
+        {
+            //  ($access $rt <type> <field>)
+            MINIM_CAR(it) = minim_ast(
+                minim_cons(minim_ast(intern("$access"), NULL),
+                minim_cons(minim_ast(intern(REG_RT_STR), NULL),
+                minim_cons(minim_ast(intern("env"), NULL),
+                minim_cons(minim_ast(intern("prev"), NULL),
+                minim_null)))),
+                NULL);
+        }
         else if (minim_eqp(op, intern("$arg")))
         {
             MinimObject *name, *offset;
@@ -474,8 +502,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     minim_null)));
             }
 
-            // unreserve_last_uses(env, regs, table, end_uses);
-
+            unreserve_last_uses(env, regs, memory, table, end_uses);
             MINIM_CDR(prev) = MINIM_CDR(it);
             it = prev;
         }
@@ -520,10 +547,14 @@ void function_register_allocation(MinimEnv *env, Function *func)
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$eval")))
             {
-                MinimObject *op;
-                size_t idx = 0;
+                MinimObject *op, *it2;
+                size_t argc, idx;
+                
+                argc = minim_list_length(MINIM_CDDR(val));
+                it2 = MINIM_CDDR(val);
+                idx = 0;
 
-                for (MinimObject *it2 = MINIM_CDDR(val); !minim_nullp(it2); it2 = MINIM_CDR(it2))
+                for (; idx < ARG_REGISTER_COUNT && !minim_nullp(it2); it2 = MINIM_CDR(it2))
                 {
                     MinimObject *name, *loc, *src;
                     
@@ -541,8 +572,32 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     }
 
                     MINIM_VECTOR_REF(regs, get_register_index(src)) = minim_false;
-                    unreserve_register(regs, get_register_index(src));
+                    unreserve_register(regs, get_register_index(src));  
                     ++idx;
+                }
+                
+                if (!minim_nullp(it2))
+                {
+                    for (it2 = minim_list_reverse(it2); idx < argc; it2 = MINIM_CDR(it2))
+                    {
+                        MinimObject *name, *loc, *src;
+                    
+                        name = MINIM_STX_VAL(MINIM_CAR(it2));
+                        loc = argument_location(env, regs, memory, table, name, &prev, idx);
+                        src = minim_symbol_table_get(table, MINIM_SYMBOL(name));
+                        
+                        // ($mov <reg> <arg>)
+                        if (!minim_eqp(loc, src))
+                        {
+                            MINIM_CDR(prev) = minim_cons(
+                                move_instruction(minim_ast(loc, NULL), minim_ast(src, NULL)),
+                                MINIM_CDR(prev));
+                            prev = MINIM_CDR(prev);
+                        }
+
+                        unreserve_register(regs, get_register_index(src));  
+                        ++idx;
+                    }
                 }
 
                 op = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(val)));
@@ -671,7 +726,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
             }
             else
             {
-                printf("unimplemented [other forms of set]\n");
+                printf("error [other forms of set]\n");
                 unreserve_last_uses(env, regs, memory, table, end_uses);
             }
         }
@@ -765,7 +820,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
             MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(line)));
             if (!ref)
             {
-                printf("unimplemented [return value not found]\n");
+                printf("error [return value not found]\n");
             }
             else if (!minim_eqp(ref, intern(REG_RT_STR)))
             {

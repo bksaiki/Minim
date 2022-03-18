@@ -35,7 +35,8 @@
 #define REG_T3      7
 
 // ignore REG_TC
-#define REGISTER_COUNT  8
+#define REGISTER_COUNT          8
+#define ARG_REGISTER_COUNT      (REG_R2 - REG_RT)
 
 typedef struct Function {
     MinimObject *pseudo, *pseudo_it;
