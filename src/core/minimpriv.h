@@ -65,6 +65,13 @@ typedef struct MinimLambda
     int argc;
 } MinimLambda;
 
+typedef struct MinimNativeLambda
+{
+    MinimObject *closure;
+    void *fn;
+    size_t size;
+} MinimNativeLambda;
+
 // tail call object
 typedef struct MinimTailCall
 {
@@ -199,14 +206,15 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym);
 void init_minim_symbol_table(MinimSymbolTable **ptable);
 
 void minim_symbol_table_add(MinimSymbolTable *table, const char *name, MinimObject *obj);
-
 void minim_symbol_table_add2(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
 
-int minim_symbol_table_set(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
+int minim_symbol_table_set(MinimSymbolTable *table, const char *name, MinimObject *obj);
+int minim_symbol_table_set2(MinimSymbolTable *table, const char *name, size_t hash, MinimObject *obj);
 
 MinimObject *minim_symbol_table_get(MinimSymbolTable *table, const char *name);
-
 MinimObject *minim_symbol_table_get2(MinimSymbolTable *table, const char *name, size_t hash);
+
+MinimObject *minim_symbol_table_remove(MinimSymbolTable *table, const char *name);
 
 const char *minim_symbol_table_peek_name(MinimSymbolTable *table, MinimObject *obj);
 
@@ -220,6 +228,12 @@ void minim_symbol_table_merge2(MinimSymbolTable *dest,
 
 void minim_symbol_table_for_each(MinimSymbolTable *table,
                                  void (*func)(const char *, MinimObject *));
+
+//
+//  Miscellaenous symbol support
+//
+
+char *gensym_unique(const char *prefix);
 
 //
 //  Global
@@ -313,6 +327,9 @@ MinimObject *expand_module_level(MinimEnv *env, MinimObject *stx);
 // Returns a the object associated with the symbol. Returns NULL if
 // the symbol is not in the table
 MinimObject *env_get_sym(MinimEnv *env, const char *sym);
+
+// Like `env_get_sym` but it begins searcher at the module-level environment.
+MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx);
 
 // Like `env_get_sym` except it only checks the symbol
 // table of this environment.
@@ -410,6 +427,7 @@ void minim_cons_to_bytes(MinimObject *obj, Buffer *bf);
 
 MinimObject *minim_list(MinimObject **args, size_t len);
 MinimObject *minim_list_drop(MinimObject *lst, size_t n);
+MinimObject *minim_list_reverse(MinimObject *lst);
 MinimObject *minim_list_append2(MinimObject *a, MinimObject *b);
 size_t minim_list_length(MinimObject *list);
 

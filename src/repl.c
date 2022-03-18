@@ -75,11 +75,11 @@ int minim_repl(char **argv, uint32_t flags)
     // set up top-level environment
     init_minim_module(&module);
     init_minim_module_instance(&module_inst, module);
-    init_env(&module_inst->env, NULL, NULL);
+    module_inst->env = init_env(NULL);
     module->cache = global.cache;
 
     // set up user environment
-    init_env(&env, module_inst->env, NULL);
+    env = init_env(module_inst->env);
     env->module_inst = module_inst;
     module_inst->env = env;
 

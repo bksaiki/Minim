@@ -92,7 +92,7 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
 
     init_minim_module(&module);
     init_minim_module_instance(&module_inst, module);
-    init_env(&module_inst->env, builtin_env, NULL);
+    module_inst->env = init_env(builtin_env);
     module_inst->env->current_dir = directory_from_port(port);
     module_inst->env->module_inst = module_inst;
 
@@ -130,7 +130,16 @@ MinimModuleInstance *minim_load_file_as_module(MinimModuleInstance *prev, const 
         minim_module_set_path(module, fname);
         check_syntax(module_inst->env, module->body);
         expand_minim_module(module_inst->env, module);
+
+        // cache desugared program
         emit_processed_file(port, module);
+
+        // compile
+        if (global.flags & GLOBAL_FLAG_COMPILE)
+        {
+            compile_module(module_inst->env, module);
+            // emit_code_file(port, code);
+        }
     }
 
     return module_inst;
@@ -142,13 +151,12 @@ void minim_load_file(MinimEnv *env, const char *fname)
     MinimModuleInstance *module_inst;
     MinimObject *port;
     MinimEnv *env2;
-    Buffer *code;
     
     // Always re-read and run
 
     init_minim_module(&module);
     init_minim_module_instance(&module_inst, module);
-    init_env(&env2, get_builtin_env(env), NULL);
+    env2 = init_env(get_builtin_env(env));
     module_inst->env = env2;
     env2->module_inst = module_inst;
 
@@ -169,14 +177,14 @@ void minim_load_file(MinimEnv *env, const char *fname)
     check_syntax(module_inst->env, module->body);
     expand_minim_module(env2, module);
 
-    // emit desugared program
+    // cache desugared program
     emit_processed_file(port, module);
 
     // compile
     if (global.flags & GLOBAL_FLAG_COMPILE)
     {
-        code = compile_module(env, module);
-        emit_code_file(port, code);
+        compile_module(module_inst->env, module);
+        // emit_code_file(port, code);
     }
 
     // eval
@@ -251,9 +259,19 @@ void minim_run_file(MinimEnv *env, const char *fname)
         
         check_syntax(module_inst->env, module->body);
         expand_minim_module(env, module);
+
+        // cache desugared program
         emit_processed_file(port, module);
+
+        // compile
+        if (global.flags & GLOBAL_FLAG_COMPILE)
+        {
+            compile_module(module_inst->env, module);
+            // emit_code_file(port, code);
+        }
     }
 
+    // evaluate
     eval_module(module_inst);
 
     // this is dumb

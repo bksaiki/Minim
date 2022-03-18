@@ -58,9 +58,10 @@ static void log_stats()
 {
     if (environment_variable_existsp("MINIM_LOG"))
     {
-        printf("expressions evaluated: %zu\n", global.stat_exprs);
-        printf("functions called: %zu\n", global.stat_procs);
-        printf("objects created: %zu\n", global.stat_objs);
+        printf("Runtime statistics:\n");
+        printf(" Expressions evaluated: %zu\n", global.stat_exprs);
+        printf(" Functions called: %zu\n", global.stat_procs);
+        printf(" Objects created: %zu\n", global.stat_objs);
     }
 }
 

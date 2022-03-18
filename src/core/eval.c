@@ -35,16 +35,6 @@ static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, MinimObject *st
     return res;
 }
 
-// get top-level module
-static MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx)
-{
-    MinimEnv *it = env;
-    while (it->parent != NULL && it->module_inst == NULL)
-        it = it->parent;
-
-    return eval_symbol(it, sym, stx, true);
-}
-
 // Specialized eval functions
 
 #define CALL_BUILTIN(env, proc, argc, args, perr)   \
@@ -163,7 +153,10 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         if (argc + 1 == SIZE_MAX)
             THROW(env, minim_syntax_error("bad syntax", NULL, stx, NULL));
 
-        op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_CAR(val)));
+        op = (MINIM_STX_SYMBOLP(MINIM_STX_CAR(stx)) ?
+              env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx))) :
+              eval_ast_node(env, MINIM_STX_CAR(stx)));
+
         if (MINIM_OBJ_BUILTINP(op))
         {
             MinimBuiltin proc = MINIM_BUILTIN(op);
@@ -350,6 +343,16 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
     {
         return val;
     }
+}
+
+// get top-level module symbol
+MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx)
+{
+    MinimEnv *it = env;
+    while (it->parent != NULL && it->module_inst == NULL)
+        it = it->parent;
+
+    return eval_symbol(it, sym, stx, true);
 }
 
 MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn)
@@ -574,7 +577,7 @@ char *eval_string(char *str, size_t len)
     MINIM_PORT_NAME(port) = "string";
 
     // setup environment
-    init_env(&env, NULL, NULL);
+    env = init_env(NULL);
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);

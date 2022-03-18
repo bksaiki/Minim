@@ -88,6 +88,19 @@ MinimObject *minim_vector(size_t len, void *arr)
     return o;
 }
 
+MinimObject *minim_vector2(size_t len, MinimObject *init)
+{
+    MinimObject *o = GC_alloc(minim_vector_size);
+    o->type = MINIM_OBJ_VECTOR;
+    MINIM_VECTOR(o) = GC_alloc(len * sizeof(MinimObject*));
+    MINIM_VECTOR_LEN(o) = len;
+    log_obj_created();
+
+    for (size_t i = 0; i < len; ++i)
+        MINIM_VECTOR_REF(o, i) = init;
+    return o;
+}
+
 MinimObject *minim_hash_table(void *ht)
 {
     MinimObject *o = GC_alloc(minim_hash_table_size);
@@ -131,6 +144,15 @@ MinimObject *minim_closure(void *closure)
     MinimObject *o = GC_alloc(minim_closure_size);
     o->type = MINIM_OBJ_CLOSURE;
     MINIM_CLOSURE(o) = closure;
+    log_obj_created();
+    return o;
+}
+
+MinimObject *minim_native_closure(void *closure)
+{
+    MinimObject *o = GC_alloc(minim_native_closure_size);
+    o->type = MINIM_OBJ_NATIVE_CLOSURE;
+    MINIM_NATIVE_CLOSURE(o) = closure;
     log_obj_created();
     return o;
 }

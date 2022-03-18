@@ -63,7 +63,24 @@ static void print_symbol_entry(const char *sym, MinimObject *obj)
 //  Visible functions
 //
 
-void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
+MinimEnv *init_env(MinimEnv *parent)
+{
+    MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
+
+    env->parent = parent;
+    env->module_inst = NULL;
+    env->callee = NULL;
+    env->caller = NULL;
+    env->current_dir = NULL;
+    env->jmp = NULL;
+    env->table = NULL;
+    env->flags = (env->parent ? env->parent->flags: 0x0);
+
+    return env;
+}
+
+
+MinimEnv *init_env2(MinimEnv *parent, MinimLambda *callee)
 {
     MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
 
@@ -79,7 +96,7 @@ void init_env(MinimEnv **penv, MinimEnv *parent, MinimLambda *callee)
     else if (env->parent)   env->flags = env->parent->flags;
     else                    env->flags = 0x0;
 
-    *penv = env;
+    return env;
 }
 
 static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t hash)
@@ -118,11 +135,11 @@ static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, Minim
 {
     for (MinimEnv *it = env; it; it = it->parent)
     { 
-        if (it->table && minim_symbol_table_set(it->table, sym, hash, obj))
+        if (it->table && minim_symbol_table_set2(it->table, sym, hash, obj))
             return 1;
     }
     
-    return minim_symbol_table_set(global.builtins, sym, hash, obj);
+    return minim_symbol_table_set2(global.builtins, sym, hash, obj);
 }
 
 int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)

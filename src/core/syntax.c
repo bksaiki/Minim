@@ -121,7 +121,7 @@ static void check_syntax_lambda(MinimEnv *env, MinimObject *stx)
     MinimObject *lst, *args, *sym;
     MinimEnv *env2;
 
-    init_env(&env2, env, NULL);
+    env2 = init_env(env);
     lst = MINIM_STX_VAL(stx);
     args = MINIM_CADR(lst);
     if (MINIM_STX_PAIRP(args))
@@ -193,7 +193,7 @@ static void check_syntax_let_values(MinimEnv *env, MinimObject *stx)
     MinimObject *body, *bindings;
     MinimEnv *env2;
     
-    init_env(&env2, env, NULL);
+    env2 = init_env(env);
     body = MINIM_STX_CDR(stx);
     bindings = MINIM_CAR(body);
     body = MINIM_CDR(body);
@@ -660,10 +660,7 @@ static MinimObject *syntax_unwrap_node(MinimEnv *env, MinimObject* stx, bool unq
 
 void check_syntax(MinimEnv *env, MinimObject *stx)
 {
-    MinimEnv *env2;
-
-    init_env(&env2, env, NULL);
-    check_syntax_rec(env2, stx);
+    check_syntax_rec(init_env(env), stx);
 }
 
 MinimObject *syntax_unwrap_rec(MinimEnv *env, MinimObject *stx)

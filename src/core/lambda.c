@@ -75,7 +75,7 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
     }
 
     // create internal environment
-    init_env(&env2, lam->env, lam);
+    env2 = init_env2(lam->env, lam);
     env2->caller = env;
     env2->jmp = jmp;
 
@@ -119,7 +119,7 @@ MinimObject *eval_lambda2(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObj
     }
 
     // create internal environment
-    init_env(&env2, lam->env, lam);
+    env2 = init_env2(lam->env, lam);
     env2->flags = 0x0;
 
     // merge in transforms
@@ -200,7 +200,7 @@ static size_t lambda_argc(MinimObject *bindings)
 
 MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    MinimObject *res, *bindings;
+    MinimObject *bindings;
     MinimLambda *lam;
 
     // Convert bindings to list
@@ -210,9 +210,8 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
     {
         lam->rest = MINIM_SYMBOL(bindings);
         collect_exprs(&args[1], argc - 1, lam);
-        init_env(&lam->env, env, NULL);
-
-        res = minim_closure(lam);
+        lam->env = init_env(env);
+        return minim_closure(lam);
     }
     else // minim_listp(bindings) || minim_consp(bindings)
     {
@@ -235,9 +234,7 @@ MinimObject *minim_builtin_lambda(MinimEnv *env, size_t argc, MinimObject **args
         }
 
         collect_exprs(&args[1], argc - 1, lam);
-        init_env(&lam->env, env, NULL);
-        res = minim_closure(lam);
+        lam->env = init_env(env);
+        return minim_closure(lam);
     }
-
-    return res;
 }

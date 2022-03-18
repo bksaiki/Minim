@@ -35,7 +35,6 @@ local_var_analysis_contains(LocalVariableAnalysis *analysis, const char *sym)
 //  Expander
 //
 
-// foward declaration
 static MinimObject *
 expand_expr(MinimEnv *env,
             MinimObject *stx,
@@ -47,12 +46,73 @@ expand_definition_level(MinimEnv *env,
                         LocalVariableAnalysis *analysis);
 
 static MinimObject *
+expand_module_level_with_analysis(MinimEnv *env,
+                                  MinimObject *stx,
+                                  LocalVariableAnalysis *analysis);
+
+static MinimObject *
+expand_expr_let_values(MinimEnv *env,
+                       MinimObject *stx,
+                       LocalVariableAnalysis *analysis);
+
+void
+expand_expr_sequence(MinimEnv *env,
+                     MinimObject *stx_lst,
+                     LocalVariableAnalysis *analysis)
+{
+    for (MinimObject *it = stx_lst; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *expr = MINIM_CAR(it);
+        if (!MINIM_STX_NULLP(expr) && MINIM_STX_PAIRP(expr) && MINIM_STX_SYMBOL(MINIM_STX_CAR(expr)))
+        {
+            MinimObject *op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(expr)));
+            if (op)
+            {
+                // apply transforms
+                while (MINIM_OBJ_TRANSFORMP(op))
+                {
+                    MinimObject *transformed = transform_loc(env, op, expr);
+                    check_syntax(env, transformed);
+                    expr = expand_expr(env, transformed, analysis);
+                    op = env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(expr)));
+                }
+
+                // apply expansion of def-values
+                if (MINIM_OBJ_SYNTAXP(op) && MINIM_SYNTAX(op) == minim_builtin_def_values)
+                {
+                    MinimObject *ids, *body;
+
+                    ids = MINIM_STX_CADR(expr);
+                    body = MINIM_CADR(MINIM_STX_CDR(expr));
+                    MINIM_CAR(it) = minim_ast(minim_cons(
+                        minim_ast(intern("let-values"), MINIM_STX_LOC(expr)),
+                        minim_cons(
+                            minim_ast(minim_cons(
+                                minim_ast(minim_cons(
+                                    ids,
+                                    minim_cons(body, minim_null)),
+                                    MINIM_STX_LOC(expr)), minim_null),
+                                MINIM_STX_LOC(expr)),
+                            MINIM_CDR(it))),
+                        MINIM_STX_LOC(expr));
+                    MINIM_CDR(it) = minim_null;
+
+                    MINIM_CAR(it) = expand_expr_let_values(env, MINIM_CAR(it), analysis);
+                    return;
+                }
+            }
+        }
+
+        MINIM_CAR(it) = expand_expr(env, MINIM_CAR(it), analysis);
+    }
+}
+
+static MinimObject *
 expand_expr_begin(MinimEnv *env,
                   MinimObject *stx,
                   LocalVariableAnalysis *analysis)
 {
-    for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
-        MINIM_CAR(it) = expand_expr(env, MINIM_CAR(it), analysis);
+    expand_expr_sequence(env, MINIM_STX_CDR(stx), analysis);
     return stx;
 }
 
@@ -110,8 +170,7 @@ expand_expr_lambda(MinimEnv *env,
             local_var_analysis_add(analysis2, MINIM_STX_SYMBOL(it));
     }
 
-    for (MinimObject *it = MINIM_CDR(MINIM_STX_CDR(stx)); !minim_nullp(it); it = MINIM_CDR(it))
-        MINIM_CAR(it) = expand_expr(env, MINIM_CAR(it), analysis2);
+    expand_expr_sequence(env, MINIM_CDR(MINIM_STX_CDR(stx)), analysis2);
     return stx;
 }
 
@@ -120,25 +179,27 @@ expand_expr_let_values(MinimEnv *env,
                        MinimObject *stx,
                        LocalVariableAnalysis *analysis)
 {
-    MinimObject *body;
+    MinimObject *ids, *body;
     LocalVariableAnalysis *analysis2;
 
-    body = MINIM_STX_CDR(stx);
+    ids = MINIM_STX_VAL(MINIM_CAR(MINIM_STX_CDR(stx)));
     init_local_var_analysis(&analysis2, analysis);
-    for (MinimObject *it = MINIM_STX_VAL(MINIM_CAR(body)); !minim_nullp(it); it = MINIM_CDR(it))
+    for (MinimObject *it = ids; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *var, *bind;
+        LocalVariableAnalysis *analysis3;
         
         var = MINIM_STX_CAR(MINIM_CAR(it));
         bind = MINIM_STX_CDR(MINIM_CAR(it));
-        MINIM_CAR(bind) = expand_expr(env, MINIM_CAR(bind), analysis);
         for (var = MINIM_STX_VAL(var); !minim_nullp(var); var = MINIM_CDR(var))
             local_var_analysis_add(analysis2, MINIM_STX_SYMBOL(MINIM_CAR(var)));
+
+        init_local_var_analysis(&analysis3, analysis2);
+        MINIM_CAR(bind) = expand_expr(env, MINIM_CAR(bind), analysis3);
     }
 
-    for (body = MINIM_CDR(body); !minim_nullp(body); body = MINIM_CDR(body))
-        MINIM_CAR(body) = expand_expr(env, MINIM_CAR(body), analysis2);
-
+    body = MINIM_CDR(MINIM_STX_CDR(stx));
+    expand_expr_sequence(env, body, analysis2);
     return stx;
 }
 
@@ -151,7 +212,6 @@ expand_expr_def_values(MinimEnv *env,
 
     ids = MINIM_STX_CADR(stx);
     body = MINIM_CDR(MINIM_STX_CDR(stx));
-
     MINIM_CAR(body) = expand_expr(env, MINIM_CAR(body), analysis);
     for (MinimObject *it = MINIM_STX_VAL(ids); !minim_nullp(it); it = MINIM_CDR(it))
         local_var_analysis_add(analysis, MINIM_STX_SYMBOL(MINIM_CAR(it)));
@@ -224,7 +284,6 @@ expand_expr(MinimEnv *env,
                     EXPAND_REC(ref, minim_builtin_setb, expand_expr_setb, env, stx, analysis);
                     EXPAND_REC(ref, minim_builtin_syntax_case, expand_expr_syntax_case, env, stx, analysis);
 
-                    // TODO: remove this once macro expansion of def-values is fixed
                     EXPAND_REC(ref, minim_builtin_def_values, expand_expr_def_values, env, stx, analysis);
 
                     // minim_builtin_quote
@@ -236,7 +295,7 @@ expand_expr(MinimEnv *env,
                 }
             }
 
-            for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
+            for (MinimObject *it = MINIM_STX_VAL(stx); !minim_nullp(it); it = MINIM_CDR(it))
                 MINIM_CAR(it) = expand_expr(env, MINIM_CAR(it), analysis);
             return stx;
         }
@@ -261,7 +320,10 @@ expand_expr(MinimEnv *env,
     }
     else
     {
-        return stx;
+        return minim_ast(minim_cons(
+            minim_ast(intern("quote"), MINIM_STX_LOC(stx)),
+            minim_cons(stx, minim_null)),
+            MINIM_STX_LOC(stx));
     }
 }
 
@@ -300,7 +362,7 @@ expand_definition_level(MinimEnv *env,
             if (MINIM_OBJ_TRANSFORMP(ref))          // transformer
             {
                 MinimObject *transformed = transform_loc(env, ref, stx);
-                return expand_definition_level(env, transformed, analysis);
+                return expand_module_level_with_analysis(env, transformed, analysis);
             }
             else if (MINIM_OBJ_SYNTAXP(ref) &&
                      (MINIM_SYNTAX(ref) == minim_builtin_def_values ||
@@ -337,6 +399,7 @@ expand_module_level_with_analysis(MinimEnv *env,
         {
             for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
                 MINIM_CAR(it) = expand_module_level_with_analysis(env, MINIM_CAR(it), analysis);
+            return stx;
         }
     }
     

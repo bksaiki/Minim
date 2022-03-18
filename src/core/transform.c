@@ -284,16 +284,14 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
                         MinimEnv *env2;
                         MinimObject *after_it;
 
-                        init_env(&env2, env, NULL);
                         if (stx_len + 2 < match_len)    // not long enough
                             return false;
 
+                        env2 = init_env(env);
                         after_it = minim_list_drop(stx_it, stx_len + 2 - match_len);
                         for (; stx_it != after_it; stx_it = MINIM_CDR(stx_it))
                         {
-                            MinimEnv *env3;
-
-                            init_env(&env3, env, NULL);
+                            MinimEnv *env3 = init_env(env);
                             if (!match_transform(env3, MINIM_CAR(match_it), MINIM_CAR(stx_it),
                                                 reserved, pdepth + 1))
                                 return false;
@@ -403,14 +401,10 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
             }
             else
             {
-                MinimEnv *env2;
-
-                init_env(&env2, env, NULL);
+                MinimEnv *env2 = init_env(env);
                 for (size_t i = before; i < stx_len - after; ++i)
                 {
-                    MinimEnv *env3;
-
-                    init_env(&env3, env, NULL);
+                    MinimEnv *env3 = init_env(env);
                     if (!match_transform(env3, MINIM_VECTOR_REF(match_e, ell_pos - 1),
                                          MINIM_VECTOR_REF(stx_e, i),
                                          reserved, pdepth + 1))
@@ -1138,7 +1132,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
         MinimObject *match, *replace;
         MinimEnv *match_env;
 
-        init_env(&match_env, NULL, NULL);       // empty
+        match_env = init_env(NULL);
         match = MINIM_STX_CAR(args[i]);
         replace = MINIM_STX_CADR(args[i]);
         if (match_transform(match_env, match, datum, &reserved, 0))
@@ -1149,7 +1143,7 @@ MinimObject *minim_builtin_syntax_case(MinimEnv *env, size_t argc, MinimObject *
             // printf("match:   "); print_syntax_to_port(match, stdout); printf("\n");
             // printf("replace: "); print_syntax_to_port(replace, stdout); printf("\n");
 
-            init_env(&env2, env, NULL);
+            env2 = init_env(env);
             env_merge_local_symbols(env2, match_env);
             env2->flags &= ~MINIM_ENV_TAIL_CALLABLE;
             val = eval_ast_no_check(env2, replace);

@@ -17,3 +17,6 @@ gmon.out
 
 # minim
 .cache/
+
+# editors
+.vscode/
