@@ -411,8 +411,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
     last_use = compute_last_use(env, func);
     init_minim_symbol_table(&table);
     prev = NULL; 
-
-    // debug_function(env, func);
     
     for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
