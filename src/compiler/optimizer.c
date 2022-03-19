@@ -235,8 +235,15 @@ early_return(MinimEnv *env, Function *func)
             {
                 for (MinimObject *it2 = MINIM_CDR(line); !minim_nullp(it2); it2 = MINIM_CDR(it2))
                 {
-                    MinimObject *ref = minim_symbol_table_get(join_direct, MINIM_STX_SYMBOL(MINIM_CAR(it2)));
-                    if (ref)    MINIM_CAR(it2) = ref;
+                    MinimObject *ref;
+                    
+                    // TODO: this is gross
+                    while (1)
+                    {
+                        ref = minim_symbol_table_get(join_direct, MINIM_STX_SYMBOL(MINIM_CAR(it2)));
+                        if (!ref)   break;
+                        MINIM_CAR(it2) = ref;
+                    }  
                 }
             }
 
@@ -633,8 +640,8 @@ void function_optimize(MinimEnv *env, Function *func)
         changed |= eliminate_immediate_goto(env, func);
 
         iter += 1;
-        printf("(iter %zu)", iter);
-        debug_function(env, func);
+        // printf("(iter %zu)", iter);
+        // debug_function(env, func);
     }
 
     // do once
