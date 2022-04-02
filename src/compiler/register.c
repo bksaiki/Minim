@@ -6,6 +6,15 @@
 #define REG_REPLACE_TEMP_ARG    1
 #define REG_REPLACE_EXCEPT_TC   2
 
+#define INIT_SYMBOL_TABLE_IF_NULL(tab) \
+    if ((tab) == NULL) { init_minim_symbol_table(&tab); }
+
+#define INSERT_INSTR(prev, instr)                               \
+    {                                                           \
+        MINIM_CDR(prev) = minim_cons(instr, MINIM_CDR(prev));   \
+        prev = MINIM_CDR(prev);                                 \
+    }
+
 static void
 insert_empty_into_list(MinimObject *before)
 {
@@ -317,6 +326,22 @@ temp_register(MinimEnv *env,
     return get_register_symbol(REG_T0);
 }
 
+static bool
+in_argument_location(MinimObject *loc, size_t idx)
+{
+    switch (idx)
+    {
+    case 0:
+        return minim_eqp(loc, intern(REG_R0_STR));
+    case 1:
+        return minim_eqp(loc, intern(REG_R1_STR));
+    case 2:
+        return minim_eqp(loc, intern(REG_R2_STR));
+    default:
+        return false;
+    }
+}
+
 static MinimObject *
 argument_location(MinimEnv *env,
                   MinimObject *regs,
@@ -552,25 +577,30 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 it2 = MINIM_CDDR(val);
                 idx = 0;
 
-                for (; idx < ARG_REGISTER_COUNT && !minim_nullp(it2); it2 = MINIM_CDR(it2))
+                for (; !minim_nullp(it2) && idx < ARG_REGISTER_COUNT; it2 = MINIM_CDR(it2))
                 {
                     MinimObject *name, *loc, *src;
                     
                     name = MINIM_STX_VAL(MINIM_CAR(it2));
-                    loc = argument_location(env, regs, memory, table, name, &prev, idx);
                     src = minim_symbol_table_get(table, MINIM_SYMBOL(name));
-
-                    // ($mov <reg> <arg>)
-                    if (!minim_eqp(loc, src))
+                    if (in_argument_location(src, idx))
                     {
-                        MINIM_CDR(prev) = minim_cons(
-                            move_instruction(minim_ast(loc, NULL), minim_ast(src, NULL)),
-                            MINIM_CDR(prev));
-                        prev = MINIM_CDR(prev);
+                        // ($mov <tmp> <arg>)
+                        loc = fresh_register(env, regs, memory, table, name, REG_REPLACE_TEMP_ONLY);
+                        INSERT_INSTR(prev, move_instruction(minim_ast(loc, NULL),
+                                                            minim_ast(src, NULL)));
+                        minim_symbol_table_set(table, MINIM_SYMBOL(name), loc);
+                    }
+                    else
+                    {
+                        // ($mov <reg> <arg>)
+                        loc = argument_location(env, regs, memory, table, name, &prev, idx);
+                        INSERT_INSTR(prev, move_instruction(minim_ast(loc, NULL),
+                                                            minim_ast(src, NULL)));
                     }
 
                     MINIM_VECTOR_REF(regs, get_register_index(src)) = minim_false;
-                    unreserve_register(regs, get_register_index(src));  
+                    unreserve_register(regs, get_register_index(src));
                     ++idx;
                 }
                 
@@ -587,10 +617,8 @@ void function_register_allocation(MinimEnv *env, Function *func)
                         // ($mov <reg> <arg>)
                         if (!minim_eqp(loc, src))
                         {
-                            MINIM_CDR(prev) = minim_cons(
-                                move_instruction(minim_ast(loc, NULL), minim_ast(src, NULL)),
-                                MINIM_CDR(prev));
-                            prev = MINIM_CDR(prev);
+                            INSERT_INSTR(prev, move_instruction(minim_ast(loc, NULL),
+                                                                minim_ast(src, NULL)));
                         }
 
                         unreserve_register(regs, get_register_index(src));  
@@ -763,16 +791,17 @@ void function_register_allocation(MinimEnv *env, Function *func)
         }
         else if (minim_eqp(op, intern("$gofalse")))
         {
-            MinimObject *label, *arg;
+            MinimObject *label, *arg, *loc;
             
             label = MINIM_STX_VAL(MINIM_CADR(line));
             arg = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+            loc = minim_symbol_table_get(table, MINIM_SYMBOL(arg));
 
             // ($jmpz <label> <arg>)
             MINIM_CAR(it) = minim_ast(
                 minim_cons(minim_ast(intern("$jmpz"), NULL),
                 minim_cons(minim_ast(label, NULL),
-                minim_cons(minim_ast(arg, NULL),
+                minim_cons(minim_ast(loc, NULL),
                 minim_null))),
                 NULL);
 
