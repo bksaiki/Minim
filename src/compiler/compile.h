@@ -3,7 +3,10 @@
 
 #include "../core/minimpriv.h"
 
-// Compiles a module and writes the instructions to a buffer
+// Compiles a module.
 void compile_module(MinimEnv *env, MinimModule *module);
+
+// Compiles a single expression.
+void compile_expr(MinimEnv *env, MinimObject *stx);
 
 #endif

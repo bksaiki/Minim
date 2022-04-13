@@ -1,4 +1,6 @@
 #include "test-common.h"
+#include "../core/minimpriv.h"
+#include "../compiler/compile.h"
 
 void setup_test_env()
 {
@@ -24,12 +26,45 @@ void setup_test_env()
     GC_register_root(minim_input_port);
 }
 
+bool compile_and_run_test(char *cexpr, char *iexpr, char *expected)
+{
+    MinimObject *stx;
+    MinimEnv *env;
+    char *str;
+
+    // read and compile first expression
+    env = init_env(NULL);
+    stx = read_string_as_syntax(env, cexpr, strlen(cexpr));
+    if (stx != NULL) {
+        printf("FAILED! input: %s, error when reading\n", cexpr);
+        return false;
+    }
+
+    compile_expr(env, stx);
+
+    // evaluate second expression
+    str = eval_string(env, iexpr, INT_MAX);
+    if (!str) {
+        printf("FAILED! input: %s, error when reading\n", cexpr);
+        return false;
+    }
+
+    if (strcmp(str, expected) == 0) {
+        printf("FAILED! input: %s, expected: %s, got: %s\n", iexpr, expected, str);
+        return false;
+    }
+
+    return true;
+}
+
 bool run_test(char *input, char *expected)
 {
+    MinimEnv *env;
     char *str;
     bool s;
 
-    str = eval_string(input, INT_MAX);
+    env = init_env(NULL);
+    str = eval_string(env, input, INT_MAX);
     if (!str)   return false;
 
     s = (strcmp(str, expected) == 0);
@@ -40,5 +75,6 @@ bool run_test(char *input, char *expected)
 
 bool evaluate(char *input)
 {
-    return eval_string(input, INT_MAX);
+    MinimEnv *env = init_env(NULL);
+    return eval_string(env, input, INT_MAX);
 }

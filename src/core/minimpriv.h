@@ -516,6 +516,13 @@ NORETURN void throw_minim_error(MinimEnv *env, MinimObject *err);
 #define THROW(e, x)    throw_minim_error(e, x)
 
 //
+//  Testing
+//
+
+char *eval_string(MinimEnv *env, char *str, size_t len);
+MinimObject *read_string_as_syntax(MinimEnv *env, char *str, size_t len);
+
+//
 //  Primitives
 //
 

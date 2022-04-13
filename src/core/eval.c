@@ -557,10 +557,9 @@ void eval_module(MinimModuleInstance *module)
     }
 }
 
-char *eval_string(char *str, size_t len)
+MinimObject *read_string_as_syntax(MinimEnv *env, char *str, size_t len)
 {
     PrintParams pp;
-    MinimEnv *env;
     MinimObject *obj, *exit_handler, *port;
     MinimObject *ast, *err;
     jmp_buf *exit_buf;
@@ -577,7 +576,42 @@ char *eval_string(char *str, size_t len)
     MINIM_PORT_NAME(port) = "string";
 
     // setup environment
-    env = init_env(NULL);
+    set_default_print_params(&pp);
+    exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
+    exit_handler = minim_jmp(exit_buf, NULL);
+    if (setjmp(*exit_buf) == 0)
+    {
+        minim_error_handler = exit_handler;
+        minim_exit_handler = exit_handler;
+        if (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
+        {
+            ast = minim_parse_port(port, &err, 0);
+            return (err ?  NULL : ast);
+        }
+    }
+
+    return NULL;
+}
+
+char *eval_string(MinimEnv *env, char *str, size_t len)
+{
+    PrintParams pp;
+    MinimObject *obj, *exit_handler, *port;
+    MinimObject *ast, *err;
+    jmp_buf *exit_buf;
+    FILE *tmp;
+
+    // set up string as file
+    tmp = tmpfile();
+    fputs(str, tmp);
+    rewind(tmp);
+
+    port = minim_file_port(tmp, MINIM_PORT_MODE_READ |
+                                MINIM_PORT_MODE_READY |
+                                MINIM_PORT_MODE_OPEN);
+    MINIM_PORT_NAME(port) = "string";
+
+    // setup environment
     set_default_print_params(&pp);
     exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
     exit_handler = minim_jmp(exit_buf, NULL);
