@@ -154,6 +154,19 @@ MinimObject *eval_lambda2(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObj
     return eval_ast_no_check(env2, lam->body);
 }
 
+MinimObject *eval_native_lambda(MinimNativeLambda* lam, MinimEnv *env, size_t argc, MinimObject **args)
+{
+    if (argc == 0)
+    {
+        MinimObject *(*fn)(MinimEnv *) = lam->fn;
+        return fn(env);
+    }
+    else
+    {
+        THROW(env, minim_error("native closure with arguments not supported", "eval_native_lambda()"));
+    }
+}
+
 void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf)
 {
     write_buffer(bf, &l->argc, sizeof(int));

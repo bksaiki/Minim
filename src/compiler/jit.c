@@ -9,7 +9,7 @@ MinimObject *jit_get_sym(MinimEnv *env, MinimObject *sym)
     return env_get_sym(env, MINIM_SYMBOL(sym));
 }
 
-uintptr_t resolve_address(MinimObject *stx)
+uintptr_t resolve_address(MinimEnv *env, MinimObject *stx)
 {
     MinimObject *addr_str = MINIM_STX_VAL(MINIM_STX_CADR(stx));
     if (minim_eqp(addr_str, intern("init_env")))
@@ -22,6 +22,7 @@ uintptr_t resolve_address(MinimObject *stx)
     }
     else
     {
-        return 0;
+        THROW(env, minim_error("could not resolve address: ~s", "resolve_address()",
+                               MINIM_SYMBOL(addr_str)));
     }
 }

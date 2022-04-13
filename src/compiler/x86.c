@@ -113,11 +113,9 @@ void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf)
             {
                 if (minim_eqp(MINIM_STX_VAL(MINIM_STX_CAR(val)), intern("$addr")))
                 {
-                    uintptr_t addr = resolve_address(val);
+                    uintptr_t addr = resolve_address(env, val);
                     if (addr == 0)
-                    {
                         THROW(env, minim_error("invalid instruction", "compiler"));
-                    }
 
                     assemble_move_immediate(bf, env, target, addr);
                 }

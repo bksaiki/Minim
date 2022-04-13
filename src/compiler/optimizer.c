@@ -58,7 +58,7 @@ eval_constant_expr(MinimEnv *env,
     it = args;
     for (size_t i = 0; !minim_nullp(it); ++i, it = MINIM_CDR(it))
     {
-        vals[i] = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CAR(args)));
+        vals[i] = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CAR(it)));
         if (!vals[i])   return NULL;
 
         vals[i] = MINIM_STX_VAL(vals[i]);

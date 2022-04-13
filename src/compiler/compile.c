@@ -774,12 +774,12 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         void *page;
 
         // optimize 
-        debug_function(env, compiler.funcs[i]);
+        // debug_function(env, func);
         function_optimize(env, compiler.funcs[i]);
 
         // register allocation
         function_register_allocation(env, compiler.curr_func);
-        debug_function(env, compiler.funcs[i]);
+        // debug_function(env, func);
 
         // assemble
         init_buffer(&code_buf);

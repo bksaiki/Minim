@@ -66,7 +66,7 @@ char *compile_string(MinimEnv *env, char *str, size_t len)
 
         stx = minim_ast(minim_list_reverse(stx), NULL);
         check_syntax(env, stx);
-        expand_module_level(env, stx);
+        stx = expand_module_level(env, stx);
         compile_expr(env, stx);
 
         obj = env_get_sym(env, MINIM_SYMBOL(intern("top")));
@@ -76,6 +76,9 @@ char *compile_string(MinimEnv *env, char *str, size_t len)
             strcpy(out, msg);
             return out;
         }
+
+        obj = eval_native_lambda(MINIM_NATIVE_CLOSURE(obj), env, 0, NULL);
+        return print_to_string(obj, env, &pp);
     }
     else
     {

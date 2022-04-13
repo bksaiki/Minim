@@ -11,7 +11,7 @@ MinimObject *jit_get_sym(MinimEnv *env, MinimObject *sym);
 void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf);
 
 // Resolve address
-uintptr_t resolve_address(MinimObject *stx);
+uintptr_t resolve_address(MinimEnv *env, MinimObject *stx);
 
 #define ASSEMBLE(e, f, b)    function_assemble_x86(e, f, b)
 
