@@ -557,11 +557,10 @@ void eval_module(MinimModuleInstance *module)
     }
 }
 
-MinimObject *read_string_as_syntax(MinimEnv *env, char *str, size_t len)
+MinimObject *compile_string(MinimEnv *env, char *str, size_t len)
 {
     PrintParams pp;
-    MinimObject *obj, *exit_handler, *port;
-    MinimObject *ast, *err;
+    MinimObject *exit_handler, *port, *stx, *obj, *err;
     jmp_buf *exit_buf;
     FILE *tmp;
 
@@ -583,10 +582,29 @@ MinimObject *read_string_as_syntax(MinimEnv *env, char *str, size_t len)
     {
         minim_error_handler = exit_handler;
         minim_exit_handler = exit_handler;
-        if (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
+        stx = minim_cons(minim_ast(intern("begin"), NULL), minim_null);
+        while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
         {
-            ast = minim_parse_port(port, &err, 0);
-            return (err ?  NULL : ast);
+            stx = minim_cons(minim_parse_port(port, &err, 0), stx);
+            if (err) {
+                print_minim_object(err, env, &pp);
+                printf("\n");
+                return NULL;
+            }
+        }
+
+        stx = minim_ast(minim_list_reverse(stx), NULL);
+        check_syntax(env, stx);
+        expand_module_level(env, stx);
+        return stx;
+    }
+    else
+    {
+        obj = MINIM_JUMP_VAL(exit_handler);
+        if (MINIM_OBJ_ERRORP(obj))
+        {
+            print_minim_object(obj, env, &pp);
+            printf("\n");
         }
     }
 

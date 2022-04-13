@@ -322,6 +322,30 @@ translate_let_values(MinimEnv *env,
     return ret;
 }
 
+static void
+add_function_header(Function *func)
+{
+    function_add_line(func, minim_ast(
+        minim_cons(minim_ast(intern("$push-env"), NULL),
+        minim_null),
+        NULL));
+}
+
+static void
+add_function_footer(Function *func, MinimObject *ret_sym)
+{
+    function_add_line(func, minim_ast(
+        minim_cons(minim_ast(intern("$pop-env"), NULL),
+        minim_null),
+        NULL));
+
+    function_add_line(func, minim_ast(
+        minim_cons(minim_ast(intern("$return"), NULL),
+        minim_cons(minim_ast(ret_sym, NULL),
+        minim_null)),
+        NULL));
+}
+
 static MinimObject *
 translate_lambda(MinimEnv *env,
                  MinimObject *stx,
@@ -349,10 +373,7 @@ translate_lambda(MinimEnv *env,
     old_table = compiler->table;
 
     // push a new environment in the compiled code
-    function_add_line(func, minim_ast(
-        minim_cons(minim_ast(intern("$push-env"), NULL),
-        minim_null),
-        NULL));
+    add_function_header(func);
     
     // compile the arguments
     init_minim_symbol_table(&compiler->table);
@@ -397,22 +418,12 @@ translate_lambda(MinimEnv *env,
     // compile the body
     compiler->curr_func = func;
     ret = translate_expr(env, body, compiler);
-
-    // push a new environment in the compiled code
-    function_add_line(compiler->curr_func, minim_ast(
-        minim_cons(minim_ast(intern("$pop-env"), NULL),
-        minim_null),
-        NULL));
-
-    // restore and add return
     compiler->curr_func = old_func;
     compiler->table = old_table;
+
+    // pop environment and return
+    add_function_footer(func, ret);
     func->ret_sym = ret;
-    function_add_line(func, minim_ast(
-        minim_cons(minim_ast(intern("$return"), NULL),
-        minim_cons(minim_ast(ret, NULL),
-        minim_null)),
-        NULL));
 
     // debug_function(env, func);
     return minim_cons(minim_ast(intern("$func"), NULL),
@@ -600,6 +611,16 @@ translate_top_level(MinimEnv *env,
     }
 }
 
+static void
+repair_top_function(Function *func)
+{
+    MinimObject *ret_expr, *last_set;
+    
+    ret_expr = minim_list_reverse(func->pseudo);
+    last_set = MINIM_CAR(MINIM_CDDR(ret_expr));
+    MINIM_STX_CADR(MINIM_CAR(ret_expr)) = MINIM_STX_CADR(last_set);
+}
+
 // ================================ Public ================================
 
 void compile_module(MinimEnv *env, MinimModule *module)
@@ -723,44 +744,58 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
 // only enabled for linux
 #if defined(MINIM_LINUX)
     Compiler compiler;
+    Function *func;
     MinimEnv *env2;
 
     // set up fresh environment
     env2 = init_env(env);
 
+    // create a top-level "function"
+    init_function(&func);
+    func->name = "top";
+    func->variary = false;
+
     // intialize the compiler
     compiler.funcs = NULL;
-    compiler.curr_func = NULL;
+    compiler.curr_func = func;
     compiler.func_count = 0;
     init_minim_symbol_table(&compiler.table);
 
-    // translate / optimize
+    // translate
+    add_function_header(func);
     translate_module_level(env2, stx, &compiler);
-    for (size_t i = 0; i < compiler.func_count; i++)
-        function_optimize(env, compiler.funcs[i]);
+    add_function_footer(func, minim_null);
+    repair_top_function(func);
+    compiler_add_function(&compiler, func);
 
-    // register allocation / assemble
-    function_register_allocation(env, compiler.curr_func);
     for (size_t i = 0; i < compiler.func_count; i++) {
         MinimNativeLambda *closure;
         Buffer *code_buf;
         void *page;
 
-        init_buffer(&code_buf);
-        compiler.curr_func = compiler.funcs[i];
-        ASSEMBLE(env, compiler.curr_func, code_buf);
+        // optimize 
+        debug_function(env, compiler.funcs[i]);
+        function_optimize(env, compiler.funcs[i]);
 
-        page = alloc_page(code_buf->pos);
-        memcpy(page, get_buffer(code_buf), code_buf->pos);
-        make_page_executable(page, code_buf->pos);
-        compiler.curr_func->code = page;
+        // register allocation
+        function_register_allocation(env, compiler.curr_func);
+        debug_function(env, compiler.funcs[i]);
 
-        closure = GC_alloc(sizeof(MinimNativeLambda));
-        closure->closure = NULL;
-        closure->fn = page;
-        closure->size = code_buf->pos;
+        // // assemble
+        // init_buffer(&code_buf);
+        // compiler.curr_func = compiler.funcs[i];
+        // ASSEMBLE(env, compiler.curr_func, code_buf);
 
-        // env_intern_sym
+        // // create page table
+        // page = alloc_page(code_buf->pos);
+        // memcpy(page, get_buffer(code_buf), code_buf->pos);
+        // make_page_executable(page, code_buf->pos);
+        // compiler.curr_func->code = page;
+
+        // closure = GC_alloc(sizeof(MinimNativeLambda));
+        // closure->closure = NULL;
+        // closure->fn = page;
+        // closure->size = code_buf->pos;
     }
 #endif
 }

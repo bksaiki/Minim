@@ -432,6 +432,38 @@ unreserve_last_uses(MinimEnv *env,
         unregister_location(regs, memory, table, MINIM_CAR(it));
 }
 
+static void
+eliminate_unwind(MinimEnv *env, Function *func)
+{
+    MinimObject *reverse, *trailing;
+
+    reverse = minim_list_reverse(func->pseudo);
+    trailing = reverse;
+    for (MinimObject *it = MINIM_CDR(reverse); !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *line, *op;
+        
+        line = MINIM_STX_VAL(MINIM_CAR(it));
+        op = MINIM_STX_VAL(MINIM_CAR(line));
+        if (minim_eqp(op, intern("$mov")))
+        {
+            if (minim_eqp(MINIM_STX_VAL(MINIM_CADR(line)), intern("$tc")))
+            {
+                MINIM_CDR(trailing) = MINIM_CDR(it);
+                it = trailing;
+            }
+        }
+        else
+        {
+            break;
+        }
+
+        trailing = it;
+    }
+
+    func->pseudo = minim_list_reverse(reverse);
+}
+
 void function_register_allocation(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table;
@@ -663,26 +695,21 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 stx = MINIM_CADR(val);
 
                 // ($mov $rt ($addr <quote>))
-                MINIM_CAR(it) = move_instruction(
+                INSERT_INSTR(prev, move_instruction(
                     minim_ast(intern(REG_RT_STR), NULL),
                     minim_ast(
                         minim_cons(minim_ast(intern("$addr"), NULL),
                         minim_cons(minim_ast(intern("quote"), NULL),
                         minim_null)),
-                        NULL));
-
-                insert_empty_into_list(it);
-                it = MINIM_CDR(it);
+                        NULL)));
 
                 // ($mov $r0 ($syntax <quote-syntax>))
-                MINIM_CAR(it) = move_instruction(
+                INSERT_INSTR(prev, move_instruction(
                     minim_ast(intern(REG_R0_STR), NULL),
                     minim_ast(
                         minim_cons(minim_ast(intern("$syntax"), NULL),
                         minim_cons(stx, minim_null)),
-                        NULL));
-                insert_empty_into_list(it);
-                it = MINIM_CDR(it);
+                        NULL)));
 
                 tc_sym = intern("$tc");
                 tc_tmp = fresh_register(env, regs, memory, table, tc_sym, REG_REPLACE_EXCEPT_TC);
@@ -929,6 +956,8 @@ void function_register_allocation(MinimEnv *env, Function *func)
 
         prev = it;
     }
+
+    eliminate_unwind(env, func);
 }
 
 MinimObject *get_register_symbol(size_t reg)

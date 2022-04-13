@@ -26,31 +26,27 @@ void setup_test_env()
     GC_register_root(minim_input_port);
 }
 
-bool compile_and_run_test(char *cexpr, char *iexpr, char *expected)
+bool compile_test(char *input, char *expected)
 {
-    MinimObject *stx;
+    MinimObject *stx, *obj;
     MinimEnv *env;
     char *str;
 
     // read and compile first expression
     env = init_env(NULL);
-    stx = read_string_as_syntax(env, cexpr, strlen(cexpr));
-    if (stx != NULL) {
-        printf("FAILED! input: %s, error when reading\n", cexpr);
-        return false;
-    }
+    stx = compile_string(env, input, strlen(input));
+    if (stx == NULL)    return false;
 
     compile_expr(env, stx);
-
-    // evaluate second expression
-    str = eval_string(env, iexpr, INT_MAX);
-    if (!str) {
-        printf("FAILED! input: %s, error when reading\n", cexpr);
+    obj = env_get_sym(env, MINIM_SYMBOL(intern("top")));
+    if (obj == NULL) {
+        printf("FAILED! could not find top-level function\n");
         return false;
     }
 
+    str = "bad";
     if (strcmp(str, expected) == 0) {
-        printf("FAILED! input: %s, expected: %s, got: %s\n", iexpr, expected, str);
+        printf("FAILED! input: %s, expected: %s, got: %s\n", input, expected, str);
         return false;
     }
 
