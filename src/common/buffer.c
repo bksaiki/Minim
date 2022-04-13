@@ -65,7 +65,7 @@ void reset_buffer(Buffer *bf)
 
 void write_buffer(Buffer *bf, const void *data, size_t len)
 {
-    resize_buffer(bf, bf->pos + len);
+    resize_buffer(bf, bf->pos + len + 1);
     memcpy(bf->data + bf->pos, data, len);
     bf->pos += len;
     bf->data[bf->pos] = '\0';
@@ -76,7 +76,7 @@ void writes_buffer(Buffer *bf, const char *str)
     write_buffer(bf, &str[0], strlen(str));
 }
 
-void writec_buffer(Buffer *bf, char c)
+void writec_buffer(Buffer *bf, unsigned char c)
 {
     resize_buffer(bf, bf->pos + 1);
     bf->data[bf->pos] = c;

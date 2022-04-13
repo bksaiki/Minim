@@ -781,21 +781,24 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         function_register_allocation(env, compiler.curr_func);
         debug_function(env, compiler.funcs[i]);
 
-        // // assemble
-        // init_buffer(&code_buf);
-        // compiler.curr_func = compiler.funcs[i];
-        // ASSEMBLE(env, compiler.curr_func, code_buf);
+        // assemble
+        init_buffer(&code_buf);
+        compiler.curr_func = compiler.funcs[i];
+        ASSEMBLE(env, compiler.curr_func, code_buf);
 
-        // // create page table
-        // page = alloc_page(code_buf->pos);
-        // memcpy(page, get_buffer(code_buf), code_buf->pos);
-        // make_page_executable(page, code_buf->pos);
-        // compiler.curr_func->code = page;
+        // allocate memory page
+        page = alloc_page(code_buf->pos);
+        memcpy(page, get_buffer(code_buf), code_buf->pos);
+        make_page_executable(page, code_buf->pos);
+        compiler.curr_func->code = page;
 
-        // closure = GC_alloc(sizeof(MinimNativeLambda));
-        // closure->closure = NULL;
-        // closure->fn = page;
-        // closure->size = code_buf->pos;
+        closure = GC_alloc(sizeof(MinimNativeLambda));
+        closure->closure = NULL;
+        closure->fn = page;
+        closure->size = code_buf->pos;
+
+        if (i + 1 == compiler.func_count)
+            env_intern_sym(env, MINIM_SYMBOL(intern("top")), minim_native_closure(closure));
     }
 #endif
 }

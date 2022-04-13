@@ -520,7 +520,6 @@ NORETURN void throw_minim_error(MinimEnv *env, MinimObject *err);
 //
 
 char *eval_string(MinimEnv *env, char *str, size_t len);
-MinimObject *compile_string(MinimEnv *env, char *str, size_t len);
 
 //
 //  Primitives

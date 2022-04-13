@@ -557,60 +557,6 @@ void eval_module(MinimModuleInstance *module)
     }
 }
 
-MinimObject *compile_string(MinimEnv *env, char *str, size_t len)
-{
-    PrintParams pp;
-    MinimObject *exit_handler, *port, *stx, *obj, *err;
-    jmp_buf *exit_buf;
-    FILE *tmp;
-
-    // set up string as file
-    tmp = tmpfile();
-    fputs(str, tmp);
-    rewind(tmp);
-
-    port = minim_file_port(tmp, MINIM_PORT_MODE_READ |
-                                MINIM_PORT_MODE_READY |
-                                MINIM_PORT_MODE_OPEN);
-    MINIM_PORT_NAME(port) = "string";
-
-    // setup environment
-    set_default_print_params(&pp);
-    exit_buf = GC_alloc_atomic(sizeof(jmp_buf));
-    exit_handler = minim_jmp(exit_buf, NULL);
-    if (setjmp(*exit_buf) == 0)
-    {
-        minim_error_handler = exit_handler;
-        minim_exit_handler = exit_handler;
-        stx = minim_cons(minim_ast(intern("begin"), NULL), minim_null);
-        while (MINIM_PORT_MODE(port) & MINIM_PORT_MODE_READY)
-        {
-            stx = minim_cons(minim_parse_port(port, &err, 0), stx);
-            if (err) {
-                print_minim_object(err, env, &pp);
-                printf("\n");
-                return NULL;
-            }
-        }
-
-        stx = minim_ast(minim_list_reverse(stx), NULL);
-        check_syntax(env, stx);
-        expand_module_level(env, stx);
-        return stx;
-    }
-    else
-    {
-        obj = MINIM_JUMP_VAL(exit_handler);
-        if (MINIM_OBJ_ERRORP(obj))
-        {
-            print_minim_object(obj, env, &pp);
-            printf("\n");
-        }
-    }
-
-    return NULL;
-}
-
 char *eval_string(MinimEnv *env, char *str, size_t len)
 {
     PrintParams pp;
@@ -654,12 +600,6 @@ char *eval_string(MinimEnv *env, char *str, size_t len)
     else
     {
         obj = MINIM_JUMP_VAL(exit_handler);
-        if (MINIM_OBJ_ERRORP(obj))
-        {
-            print_minim_object(obj, env, &pp);
-            printf("\n");
-            return NULL;
-        }
     }
 
     return print_to_string(obj, env, &pp);

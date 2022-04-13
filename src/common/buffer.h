@@ -25,7 +25,7 @@ void reset_buffer(Buffer *bf);
 
 void write_buffer(Buffer *bf, const void *data, size_t len);
 void writes_buffer(Buffer *bf, const char *str);
-void writec_buffer(Buffer *bf, char c);
+void writec_buffer(Buffer *bf, unsigned char c);
 void writei_buffer(Buffer *bf, long l);
 void writeu_buffer(Buffer *bf, unsigned long ul);
 void writed_buffer(Buffer *bf, double d);
