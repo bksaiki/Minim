@@ -363,10 +363,7 @@ translate_lambda(MinimEnv *env,
 
     func->name = gensym_unique("f");
     if (syntax_proper_list_len(args) != SIZE_MAX)
-    {
-        func->variary = false;
         func->argc = minim_list_length(MINIM_STX_VAL(args));
-    }
 
     // save old values
     old_func = compiler->curr_func;
@@ -614,11 +611,19 @@ translate_top_level(MinimEnv *env,
 static void
 repair_top_function(Function *func)
 {
-    MinimObject *ret_expr, *last_set;
-    
-    ret_expr = minim_list_reverse(func->pseudo);
-    last_set = MINIM_CAR(MINIM_CDDR(ret_expr));
-    MINIM_STX_CADR(MINIM_CAR(ret_expr)) = MINIM_STX_CADR(last_set);
+    MinimObject *reverse = minim_list_reverse(func->pseudo);
+    for (MinimObject *it = MINIM_CDR(reverse); !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *line, *op;
+        
+        line = MINIM_STX_VAL(MINIM_CAR(it));
+        op = MINIM_STX_VAL(MINIM_CAR(line));
+        if (minim_eqp(op, intern("$set")))
+        {
+            MINIM_STX_CADR(MINIM_CAR(reverse)) = MINIM_CADR(line);
+            return;
+        }
+    }
 }
 
 // ================================ Public ================================
@@ -651,7 +656,6 @@ void compile_module(MinimEnv *env, MinimModule *module)
     // create a top-level "function"
     init_function(&func);
     func->name = (module->path ? module->path : module->name);
-    func->variary = false;
     compiler.curr_func = func;
 
     //
@@ -753,7 +757,6 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
     // create a top-level "function"
     init_function(&func);
     func->name = "top";
-    func->variary = false;
 
     // intialize the compiler
     compiler.funcs = NULL;
@@ -774,12 +777,12 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         void *page;
 
         // optimize 
-        // debug_function(env, func);
+        debug_function(env, func);
         function_optimize(env, compiler.funcs[i]);
 
         // register allocation
         function_register_allocation(env, compiler.curr_func);
-        // debug_function(env, func);
+        debug_function(env, func);
 
         // assemble
         init_buffer(&code_buf);

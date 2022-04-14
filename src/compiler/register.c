@@ -464,6 +464,53 @@ eliminate_unwind(MinimEnv *env, Function *func)
     func->pseudo = minim_list_reverse(reverse);
 }
 
+static void
+record_memory(MinimEnv *env, Function *func)
+{
+    MinimObject *scratch_regs = minim_vector2(SCRATCH_REGISTER_COUNT, minim_false);
+    size_t memory_count = 0;
+
+    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *line, *op;
+        
+        line = MINIM_STX_VAL(MINIM_CAR(it));
+        op = MINIM_STX_VAL(MINIM_CAR(line));
+        if (minim_eqp(op, intern("$mov")))
+        {
+            MinimObject *target = MINIM_STX_VAL(MINIM_CADR(line));
+            if (MINIM_STX_PAIRP(target))        // ($mem n)
+            {
+
+            }
+            else
+            {
+                uint8_t index = get_register_index(target);
+                if (index >= REG_T0 && index <= REG_T3)
+                    MINIM_VECTOR_REF(scratch_regs, index - REG_T0) = minim_true;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < SCRATCH_REGISTER_COUNT; ++i) {
+        if (minim_truep(MINIM_VECTOR_REF(scratch_regs, i)))
+            ++memory_count;
+    }
+
+    // round up to nearest multiple of two
+    if (memory_count % 2)   ++memory_count;
+    func->stash = minim_vector2(memory_count, minim_false);
+    for (size_t i = 0, j = 0; i < SCRATCH_REGISTER_COUNT; ++i) {
+        if (minim_truep(MINIM_VECTOR_REF(scratch_regs, i))) {
+            MINIM_VECTOR_REF(func->stash, j) = get_register_symbol(j + REG_T0);
+            ++j;
+        }
+    }
+
+    debug_print_minim_object(func->stash, env);
+    printf("\n");
+}
+
 void function_register_allocation(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table;
@@ -554,7 +601,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 break;
             
             default:
-                mem_offset = idx - 3;
+                mem_offset = idx - ARG_REGISTER_COUNT;
                 allocate_arg_memory(memory, mem_offset + 1);
                 set_argument_memory(memory, mem_offset, name);
                 minim_symbol_table_add(table, MINIM_SYMBOL(name),
@@ -958,6 +1005,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
     }
 
     eliminate_unwind(env, func);
+    record_memory(env, func);
 }
 
 MinimObject *get_register_symbol(size_t reg)

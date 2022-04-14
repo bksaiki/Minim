@@ -35,16 +35,16 @@
 #define REG_T3      7
 
 // ignore REG_TC
-#define REGISTER_COUNT          8
-#define ARG_REGISTER_COUNT      (REG_R2 - REG_RT)
+#define REGISTER_COUNT              8
+#define ARG_REGISTER_COUNT          (REG_R2 - REG_RT)
+#define SCRATCH_REGISTER_COUNT      (REG_T3 - REG_R2)
 
 typedef struct Function {
-    MinimObject *pseudo, *pseudo_it;
-    MinimObject *ret_sym;
+    MinimObject *pseudo, *pseudo_it;        // code
+    MinimObject *ret_sym, *stash;           // non-code info
     char *name;
     void *code;
     uint32_t argc;
-    bool variary;
 } Function;
 
 typedef struct Compiler {

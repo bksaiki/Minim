@@ -7,9 +7,9 @@ void init_function(Function **pfunc)
     func->pseudo = minim_null;
     func->pseudo_it = minim_null;
     func->code = NULL;
+    func->stash = NULL;
     func->name = NULL;
     func->argc = 0;
-    func->variary = true;
 
     *pfunc = func;
 }
