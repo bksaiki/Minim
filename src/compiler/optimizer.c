@@ -645,6 +645,6 @@ void function_optimize(MinimEnv *env, Function *func)
     }
 
     // do once
-    eliminate_join(env, func);
+    // eliminate_join(env, func);
     consolidate_labels(env, func);
 }

@@ -16,23 +16,61 @@
     }
 
 //
-//  Last use analysis
+//  Join canonicalization
 //
 
-static void
-add_use(MinimSymbolTable *table, MinimObject *last_use_box, MinimObject *stx, MinimObject *sym)
+static void compute_joins(MinimEnv *env, Function *func, MinimObject *joins)
 {
-    if (!minim_symbol_table_get(table, MINIM_SYMBOL(sym)))
+    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
-        MinimObject *last_use = MINIM_VECTOR_REF(last_use_box, 0);
-        if (!minim_nullp(last_use) && MINIM_CAAR(last_use) == stx)
-            MINIM_CDAR(last_use) = minim_cons(sym, MINIM_CDAR(last_use));
-        else
-            MINIM_VECTOR_REF(last_use_box, 0) = minim_cons(minim_cons(stx, minim_cons(sym, minim_null)), last_use);
-    
-        minim_symbol_table_add(table, MINIM_SYMBOL(sym), minim_null); 
+        MinimObject *line, *op;
+
+        line = MINIM_STX_VAL(MINIM_CAR(it));
+        op = MINIM_STX_VAL(MINIM_CAR(line));
+        if (minim_eqp(op, intern("$join")))
+        {
+            MinimObject *canon, *left, *right, *joins_canon, *joins_assign;
+
+            canon = MINIM_STX_VAL(MINIM_CADR(line));
+            left = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+            right = MINIM_STX_VAL(MINIM_CADR(MINIM_CDDR(line)));
+            
+            joins_canon = MINIM_VECTOR_REF(joins, 0);
+            joins_assign = MINIM_VECTOR_REF(joins, 1);
+            MINIM_VECTOR_REF(joins, 0) = minim_cons(minim_cons(left, canon),
+                minim_cons(minim_cons(right, canon),
+                joins_canon));
+            MINIM_VECTOR_REF(joins, 1) = minim_cons(minim_cons(canon, minim_false),
+                joins_assign);
+        }
     }
 }
+
+static MinimObject *join_canonicalize(MinimObject *joins, MinimObject *sym)
+{
+    for (MinimObject *it = MINIM_VECTOR_REF(joins, 0); !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        if (minim_eqp(MINIM_CAAR(it), sym))
+            return MINIM_CDAR(it);
+    }
+
+    return NULL;
+}
+
+static MinimObject *join_register(MinimObject *joins, MinimObject *sym)
+{
+    for (MinimObject *it = MINIM_VECTOR_REF(joins, 1); !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        if (minim_eqp(MINIM_CAAR(it), sym))
+            return MINIM_CDAR(it);
+    }
+
+    return NULL;
+}
+
+//
+//  Last use analysis
+//
 
 static MinimObject *get_lasts(MinimObject *last_use, MinimObject *stx)
 {
@@ -45,16 +83,36 @@ static MinimObject *get_lasts(MinimObject *last_use, MinimObject *stx)
     return minim_null;
 }
 
-// Computes the last-use locations of variables.
-static MinimObject* compute_last_use(MinimEnv *env, Function *func)
+static void
+update_last_use(MinimObject *table,
+                MinimObject *sym,
+                MinimObject *line)
 {
-    MinimSymbolTable *table;
-    MinimObject *reverse, *last_use_box;
+    MinimObject *dict = MINIM_VECTOR_REF(table, 0);
+    for (MinimObject *it = dict; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        if (minim_eqp(MINIM_CAAR(it), sym))
+        {
+            MINIM_CDAR(it) = line;
+            return;
+        }
+    }
 
-    last_use_box = minim_vector2(1, minim_null);
-    init_minim_symbol_table(&table);
-    reverse = minim_list_reverse(func->pseudo);
-    for (MinimObject *it = reverse; !minim_nullp(it); it = MINIM_CDR(it))
+    MINIM_VECTOR_REF(table, 0) = minim_cons(
+        minim_cons(sym, line),
+        dict);
+}
+
+// Computes the last-use locations of variables.
+static MinimObject*
+compute_last_use(MinimEnv *env,
+                 Function *func,
+                 MinimObject *joins)
+{
+    MinimObject *table, *last_use;
+
+    table = minim_vector2(1, minim_null);
+    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op;
         
@@ -66,34 +124,47 @@ static MinimObject* compute_last_use(MinimEnv *env, Function *func)
             if (MINIM_OBJ_PAIRP(val) && minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$eval")))
             {
                 for (MinimObject *it2 = MINIM_CDR(val); !minim_nullp(it2); it2 = MINIM_CDR(it2))
-                    add_use(table, last_use_box, MINIM_CAR(it), MINIM_STX_VAL(MINIM_CAR(it2)));
+                    update_last_use(table, MINIM_STX_VAL(MINIM_CAR(it2)), MINIM_CAR(it));
             }
-        }
-        // else if (minim_eqp(op, intern("$arg")))
-        // {
-        //     MinimObject *name = MINIM_CADR(line);
-        //     add_use(table, last_use, MINIM_CAR(it), MINIM_STX_VAL(ift));
-        // }
-        else if (minim_eqp(op, intern("$join")))
-        {
-            MinimObject *ift, *iff;
-            
-            ift = MINIM_CAR(MINIM_CDDR(line));
-            iff = MINIM_CADR(MINIM_CDDR(line));
-            add_use(table, last_use_box, MINIM_CAR(it), MINIM_STX_VAL(ift));
-            add_use(table, last_use_box, MINIM_CAR(it), MINIM_STX_VAL(iff));
+            else if (join_canonicalize(joins, MINIM_STX_VAL(MINIM_CADR(line))))
+            {
+                update_last_use(table, MINIM_STX_VAL(MINIM_CADR(line)), MINIM_CAR(it));
+            }
         }
         else if (minim_eqp(op, intern("$bind")) || minim_eqp(op, intern("$gofalse")))
         {
-            add_use(table, last_use_box, MINIM_CAR(it), MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line))));
+            update_last_use(table, MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line))), MINIM_CAR(it));
         }
         else if (minim_eqp(op, intern("$return")))
         {
-            add_use(table, last_use_box, MINIM_CAR(it), MINIM_STX_VAL(MINIM_CADR(line)));
+            update_last_use(table, MINIM_STX_VAL(MINIM_CADR(line)), MINIM_CAR(it));
         }
     }
 
-    return MINIM_VECTOR_REF(last_use_box, 0);
+    last_use = minim_vector2(1, minim_null);
+    for (MinimObject *it = MINIM_VECTOR_REF(table, 0); !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *dict = MINIM_VECTOR_REF(last_use, 0);
+        bool inserted = false;
+        for (MinimObject *it2 = dict; !minim_nullp(it2); it2 = MINIM_CDR(it2))
+        {
+            if (MINIM_CAAR(it2) == MINIM_CDAR(it))
+            {
+                MINIM_CDAR(it2) = minim_cons(MINIM_CAAR(it), MINIM_CDAR(it2));
+                inserted = true;
+                break;
+            }
+        }
+
+        if (!inserted)
+        {
+            MINIM_VECTOR_REF(last_use, 0) = minim_cons(
+                minim_cons(MINIM_CDAR(it), minim_cons(MINIM_CAAR(it), minim_null)),
+                dict);
+        }
+    }
+
+    return MINIM_VECTOR_REF(last_use, 0);
 }
 
 //
@@ -233,6 +304,25 @@ add_temp_memory(MinimObject *memory, MinimObject *sym)
     return minim_cons(minim_ast(intern("$mem"), NULL),
             minim_cons(minim_ast(uint_to_minim_number(len), NULL),
             minim_null));
+}
+
+static void
+set_temp_memory(MinimObject *memory, size_t idx, MinimObject *sym)
+{
+    MinimObject *it = TEMP_MEM(memory);
+    size_t count = 0;
+
+    while (!minim_nullp(MINIM_CDR(it)))
+    {
+        if (idx == count)
+        {
+            MINIM_CAR(it) = sym;
+            return;
+        }
+        
+        it = MINIM_CDR(it);
+        ++count;
+    }
 }
 
 static void
@@ -458,6 +548,10 @@ unregister_location(MinimObject *regs,
     }
 }
 
+//
+//  Instructions
+//
+
 static MinimObject *
 call_instruction(MinimObject *target)
 {
@@ -483,10 +577,29 @@ unreserve_last_uses(MinimEnv *env,
                     MinimObject *regs,
                     MinimObject *memory,
                     MinimSymbolTable *table,
+                    MinimObject *joins,
                     MinimObject *end_uses)
 {
     for (MinimObject *it = end_uses; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *loc, *ref;
+        
+        loc = minim_symbol_table_get(table, MINIM_SYMBOL(MINIM_CAR(it)));
+        ref = join_canonicalize(joins, MINIM_CAR(it));
+        if (ref)
+        {
+            for (MinimObject *it2 = MINIM_VECTOR_REF(joins, 1); !minim_nullp(it2); it2 = MINIM_CDR(it2))
+            {
+                if (minim_eqp(MINIM_CAAR(it2), ref))
+                {
+                    MINIM_CDAR(it2) = loc;
+                    break;
+                }
+            }
+        }
+
         unregister_location(regs, memory, table, MINIM_CAR(it));
+    }
 }
 
 static void
@@ -574,17 +687,19 @@ record_memory(MinimEnv *env, Function *func)
 void function_register_allocation(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table, *tail_syms;
-    MinimObject *regs, *memory, *prev, *last_use;
+    MinimObject *regs, *memory, *prev, *last_use, *joins;
 
     regs = minim_vector2(REGISTER_COUNT, minim_false);
     memory = minim_vector2(2, minim_null);
-    last_use = compute_last_use(env, func);
+    joins = minim_vector2(2, minim_null);
     prev = NULL;
 
     init_minim_symbol_table(&table);
     init_minim_symbol_table(&tail_syms);
+    compute_joins(env, func, joins);
     compute_tail_symbols(env, func, tail_syms);
-    
+    last_use = compute_last_use(env, func, joins);
+
     for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op, *end_uses;
@@ -599,7 +714,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
         {
             // =>
             //  $tc = init_env($tc)
-            unreserve_last_uses(env, regs, memory, table, end_uses);
             reserve_register(env, regs, memory, table, &prev, REG_RT);
             if (it == func->pseudo)
             {
@@ -685,7 +799,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     minim_null)));
             }
 
-            unreserve_last_uses(env, regs, memory, table, end_uses);
             MINIM_CDR(prev) = MINIM_CDR(it);
             it = prev;
         }
@@ -714,6 +827,13 @@ void function_register_allocation(MinimEnv *env, Function *func)
             {
                 MinimObject *reg, *src;
                 
+                reg = join_register(joins, val);
+                if (reg)
+                {
+                    // TODO: implement this
+                    THROW(env, minim_error("unimplemented", "reserve register"));
+                }
+
                 reg = existing_or_fresh_register(env, regs, memory, table, name, REG_REPLACE_TEMP_ONLY);
                 src = minim_symbol_table_get(table, MINIM_SYMBOL(val));
 
@@ -727,7 +847,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
 
                 minim_symbol_table_remove(table, MINIM_SYMBOL(name));
                 minim_symbol_table_add(table, MINIM_SYMBOL(name), reg);
-                unreserve_last_uses(env, regs, memory, table, end_uses);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$eval")))
             {
@@ -818,8 +937,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     MINIM_VECTOR_REF(regs, REG_RT) = name;
                 }
 
-                // cleanup
-                unreserve_last_uses(env, regs, memory, table, end_uses);
+
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$quote")))
             {
@@ -870,7 +988,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 }
 
                 // cleanup
-                unreserve_last_uses(env, regs, memory, table, end_uses);
                 unreserve_register(regs, REG_R0);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$interpret")))
@@ -922,7 +1039,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 }
 
                 // cleanup
-                unreserve_last_uses(env, regs, memory, table, end_uses);
                 unreserve_register(regs, REG_R0);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$top")))
@@ -941,7 +1057,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                         NULL));
 
                 minim_symbol_table_add(table, MINIM_SYMBOL(name), reg_or_mem);
-                unreserve_last_uses(env, regs, memory, table, end_uses);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$load")))
             {
@@ -991,7 +1106,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     MINIM_VECTOR_REF(regs, REG_RT) = name;
                 }
 
-                unreserve_last_uses(env, regs, memory, table, end_uses);
                 unreserve_register(regs, REG_R0);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$func")))
@@ -1012,11 +1126,10 @@ void function_register_allocation(MinimEnv *env, Function *func)
                         NULL));
 
                 unreserve_register(regs, get_register_index(reg));
-                unreserve_last_uses(env, regs, memory, table, end_uses);
             }
             else
             {
-                THROW(env, minim_error("register allocation: other form of set", "compiler"));
+                THROW(env, minim_error("other form of set", "register allocation"));
             }
         }
         else if (minim_eqp(op, intern("$goto")))
@@ -1029,8 +1142,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 minim_cons(minim_ast(label, NULL),
                 minim_null)),
                 NULL);
-
-            unreserve_last_uses(env, regs, memory, table, end_uses);
         }
         else if (minim_eqp(op, intern("$gofalse")))
         {
@@ -1047,8 +1158,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 minim_cons(minim_ast(loc, NULL),
                 minim_null))),
                 NULL);
-
-            unreserve_last_uses(env, regs, memory, table, end_uses);
         }
         else if (minim_eqp(op, intern("$bind")))
         {
@@ -1108,7 +1217,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 MINIM_CAR(it) = call_instruction(minim_ast(intern(REG_RT_STR), NULL));
             }
             
-            unreserve_last_uses(env, regs, memory, table, end_uses);
             unreserve_register(regs, REG_RT);
             unreserve_register(regs, REG_R0);
             unreserve_register(regs, REG_R1);
@@ -1118,7 +1226,9 @@ void function_register_allocation(MinimEnv *env, Function *func)
             MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(line)));
             if (!ref)
             {
-                THROW(env, minim_error("register allocation: return symbol not found", "compiler"));
+                THROW(env, minim_error("return symbol ~s not found",
+                                       "register allocation",
+                                       MINIM_STX_SYMBOL(MINIM_CADR(line))));
             }
             else if (!minim_eqp(ref, intern(REG_RT_STR)))
             {
@@ -1134,10 +1244,44 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     minim_cons(minim_ast(intern("$ret"), NULL),
                     minim_null),
                     NULL);
+        }
+        else if (minim_eqp(op, intern("$join")))
+        {
+            MinimObject *canon, *lhs, *rhs, *lhs_loc, *rhs_loc;
 
-            unreserve_last_uses(env, regs, memory, table, end_uses);
+            canon = MINIM_STX_VAL(MINIM_CADR(line));
+            lhs = MINIM_STX_VAL(MINIM_CDR(MINIM_CDDR(line)));
+            rhs = MINIM_STX_VAL(MINIM_CADR(MINIM_CDDR(line)));
+
+            lhs_loc = join_register(joins, canon);
+            rhs_loc = minim_symbol_table_get(table, MINIM_SYMBOL(rhs));
+            if (!minim_equalp(lhs_loc, rhs_loc))
+                THROW(env, minim_error("join arguments are not in the same location", "register allocation"));
+
+            unregister_location(regs, memory, table, lhs);
+            unregister_location(regs, memory, table, rhs);
+            if (MINIM_OBJ_PAIRP(lhs_loc))
+            {
+                size_t idx = MINIM_NUMBER_TO_UINT(MINIM_STX_VAL(MINIM_CADR(lhs_loc)));
+                set_temp_memory(memory, idx, canon);
+            }
+            else
+            {
+                reserve_register(env, regs, memory, table, &prev, get_register_index(lhs_loc));
+            }
+
+            minim_symbol_table_set(table, MINIM_SYMBOL(canon), lhs_loc);
+            MINIM_CDR(prev) = MINIM_CDR(it);
+            it = prev;
+        }
+        else if (!minim_eqp(op, intern("$label")))
+        {
+            THROW(env, minim_error("unknown pseudo-instruction ~s",
+                                   "register allocation",
+                                   MINIM_SYMBOL(op)));
         }
 
+        unreserve_last_uses(env, regs, memory, table, joins, end_uses);
         prev = it;
     }
 
