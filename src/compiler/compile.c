@@ -777,10 +777,11 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         void *page;
 
         // optimize 
-        debug_function(env, func);
+        // debug_function(env, func);
         function_optimize(env, compiler.funcs[i]);
 
         // register allocation
+        // debug_function(env, func);
         function_register_allocation(env, compiler.curr_func);
         debug_function(env, func);
 
@@ -788,6 +789,10 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         init_buffer(&code_buf);
         compiler.curr_func = compiler.funcs[i];
         ASSEMBLE(env, compiler.curr_func, code_buf);
+
+        for (size_t i = 0; i < code_buf->pos; ++i)
+            printf("%.2x ", code_buf->data[i] & 0xff);
+        printf("\n");
 
         // allocate memory page
         page = alloc_page(code_buf->pos);
