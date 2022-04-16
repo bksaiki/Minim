@@ -5,11 +5,6 @@
 #define GET_SYM_ADDR        (&jit_get_sym)
 #define QUOTE_ADDR          (&syntax_unwrap_rec)
 
-MinimObject *jit_get_sym(MinimEnv *env, MinimObject *sym)
-{
-    return env_get_sym(env, MINIM_SYMBOL(sym));
-}
-
 uintptr_t resolve_address(MinimEnv *env, MinimObject *stx)
 {
     MinimObject *addr_str, *obj;

@@ -6,8 +6,9 @@ void init_function(Function **pfunc)
     Function *func = GC_alloc(sizeof(Function));
     func->pseudo = minim_null;
     func->pseudo_it = minim_null;
+    func->stash = minim_null;
+    func->needed = minim_null;
     func->code = NULL;
-    func->stash = NULL;
     func->name = NULL;
     func->argc = 0;
 

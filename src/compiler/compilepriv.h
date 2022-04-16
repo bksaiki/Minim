@@ -40,8 +40,10 @@
 #define SCRATCH_REGISTER_COUNT      (REG_T3 - REG_R2)
 
 typedef struct Function {
-    MinimObject *pseudo, *pseudo_it;        // code
-    MinimObject *ret_sym, *stash;           // non-code info
+    MinimObject *pseudo, *pseudo_it,        // code
+                *ret_sym,                   // return symbol for translation/optimization pass
+                *stash,                     // scratch register / memory use
+                *needed;                    // definitions that cannot be eliminated
     char *name;
     void *code;
     uint32_t argc;

@@ -684,7 +684,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
         unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
-        // debug_function(env, compiler.curr_func);
+        debug_function(env, compiler.curr_func);
         function_optimize(env, compiler.funcs[i]);
         // debug_function(env, compiler.curr_func);
         opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
@@ -779,9 +779,9 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         // optimize 
         // debug_function(env, func);
         function_optimize(env, compiler.funcs[i]);
+        debug_function(env, func);
 
         // register allocation
-        // debug_function(env, func);
         function_register_allocation(env, compiler.curr_func);
         debug_function(env, func);
 
@@ -790,9 +790,9 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         compiler.curr_func = compiler.funcs[i];
         ASSEMBLE(env, compiler.curr_func, code_buf);
 
-        for (size_t i = 0; i < code_buf->pos; ++i)
-            printf("%.2x ", code_buf->data[i] & 0xff);
-        printf("\n");
+        // for (size_t i = 0; i < code_buf->pos; ++i)
+        //     printf("%.2x ", code_buf->data[i] & 0xff);
+        // printf("\n");
 
         // allocate memory page
         page = alloc_page(code_buf->pos);

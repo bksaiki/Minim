@@ -7,27 +7,28 @@ int main()
     GC_init(&status);
     setup_test_env();
 
-    // {
-    //     const int COUNT = 2;
-    //     char strs[4][256] =
-    //     {
-    //         "1",                    "1",
-    //         "'z",                   "'z",
-    //     };
+    {
+        const int COUNT = 2;
+        char strs[4][256] =
+        {
+            "1",                    "1",
+            "'z",                   "'z",
+        };
 
-    //     printf("Testing simple expressions\n");
-    //     for (int i = 0; i < COUNT; ++i)
-    //         status &= compile_test(strs[2 * i], strs[2 * i + 1]);
-    // }
+        printf("Testing simple expressions\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= compile_test(strs[2 * i], strs[2 * i + 1]);
+    }
 
     {
-        const int COUNT = 1;
-        char strs[2][256] =
+        const int COUNT = 2;
+        char strs[4][256] =
         {
-            "(let-values ([(x) 1]) x)",     "1",
-            // "(let-values ([(x) 1])\
-            //   (let-values ([(y) x])\
-            //    y))",                        "1"
+            "(let-values ([(x) 1]) x)",                 "1",
+            "(let-values ([(x) 1])\
+              (let-values ([(y) x])\
+               y))",                                    "1",
+            // "(let-values ([(f) (lambda () 1)]) (f))",   "1"
         };
 
         printf("Testing let bindings\n");

@@ -4,10 +4,8 @@
 #include "../core/minimpriv.h"
 #include "compilepriv.h"
 
-// JIT wrapper for `env_get_sym`.
-MinimObject *jit_get_sym(MinimEnv *env, MinimObject *sym);
-
-// JIT wrapper for `env_intern_sym`.
+// JIT wrappers / macros
+#define jit_get_sym     env_get_sym
 #define jit_set_sym     env_intern_sym
 
 // Assemble a function into x86.
