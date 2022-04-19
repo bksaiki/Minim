@@ -40,10 +40,10 @@
 #define SCRATCH_REGISTER_COUNT      (REG_T3 - REG_R2)
 
 typedef struct Function {
-    MinimObject *pseudo, *pseudo_it,        // code
-                *ret_sym,                   // return symbol for translation/optimization pass
-                *stash,                     // scratch register / memory use
-                *needed;                    // definitions that cannot be eliminated
+    MinimObject *pseudo, *pseudo_it;        // code
+    MinimObject *ret_sym;                   // return symbol for translation/optimization pass
+    MinimObject *stash;                     // scratch register / memory use
+    MinimObject *needed;                    // definitions that cannot be eliminated
     char *name;
     void *code;
     uint32_t argc;
@@ -55,6 +55,19 @@ typedef struct Compiler {
     MinimSymbolTable *table;
     size_t func_count;
 } Compiler;
+
+// Register Allocation
+typedef struct RegAllocData {
+    MinimEnv *env;                  // debugging
+    Function *func;                 // current function
+    MinimSymbolTable *table;        // map from names to locations
+    MinimSymbolTable *tail_syms;    // table of tail-position symbols
+    MinimObject *regs;              // register locations
+    MinimObject *memory;            // memory location
+    MinimObject *joins;             // join data
+    MinimObject *last_uses;         // last use data
+    MinimObject **prev;             // reference to previous instruction pointer
+} RegAllocData;
 
 // Initializes a function structure.
 void init_function(Function **pfunc);
