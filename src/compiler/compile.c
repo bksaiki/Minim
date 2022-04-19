@@ -710,7 +710,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
         compiler.curr_func = compiler.funcs[i];
         // debug_function(env, compiler.curr_func);
         function_register_allocation(env, compiler.curr_func);
-        // debug_function(env, compiler.curr_func);
+        debug_function(env, compiler.curr_func);
     }
 
     //
@@ -776,23 +776,38 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         Buffer *code_buf;
         void *page;
 
+        // alias
+        func = compiler.funcs[i];
+
         // optimize 
         // debug_function(env, func);
-        function_optimize(env, compiler.funcs[i]);
+        function_optimize(env, func);
         debug_function(env, func);
 
         // register allocation
-        function_register_allocation(env, compiler.curr_func);
+        function_register_allocation(env, func);
         debug_function(env, func);
 
         // assemble
         init_buffer(&code_buf);
-        compiler.curr_func = compiler.funcs[i];
-        ASSEMBLE(env, compiler.curr_func, code_buf);
+        ASSEMBLE(env, func, code_buf);
 
-        // for (size_t i = 0; i < code_buf->pos; ++i)
-        //     printf("%.2x ", code_buf->data[i] & 0xff);
-        // printf("\n");
+        // patch
+        for (MinimObject *it = func->calls; !minim_nullp(it); it = MINIM_CDR(it)) {
+            Function *ref;
+            size_t offset;
+            
+            offset = MINIM_NUMBER_TO_UINT(MINIM_CDAR(it));
+            ref = compiler_get_function(&compiler, MINIM_CAAR(it));
+            if (ref == NULL)
+                THROW(env, minim_error("cannot patch ~a", "compiler", MINIM_SYMBOL(MINIM_CAAR(it))));
+
+            memcpy(&code_buf->data[offset], ref->code, sizeof(uintptr_t));
+        }
+
+        for (size_t i = 0; i < code_buf->pos; ++i)
+            printf("%.2x ", code_buf->data[i] & 0xff);
+        printf("\n");
 
         // allocate memory page
         page = alloc_page(code_buf->pos);

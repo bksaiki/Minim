@@ -258,20 +258,22 @@ static bool
 constant_propagation(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table, *joins;
-    MinimObject *line;
     bool changed = false;
 
     init_minim_symbol_table(&table);
     joins = join_symbols(env, func);
     for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
-        line = MINIM_STX_VAL(MINIM_CAR(it));
-        if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(line)), intern("$set")) &&
-            MINIM_STX_SYMBOLP(MINIM_CAR(MINIM_CDDR(line))))
+        MinimObject *line = MINIM_STX_VAL(MINIM_CAR(it));
+        if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(line)), intern("$set")))
         {
-            char *name = MINIM_STX_SYMBOL(MINIM_CADR(line));
-            if (!minim_symbol_table_get(joins, name))
-                minim_symbol_table_add(table, name, MINIM_CAR(MINIM_CDDR(line)));
+            MinimObject *val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+            if (MINIM_OBJ_SYMBOLP(val))
+            {
+                char *name = MINIM_STX_SYMBOL(MINIM_CADR(line));
+                if (!minim_symbol_table_get(joins, name))
+                    minim_symbol_table_add(table, name, MINIM_CAR(MINIM_CDDR(line)));
+            }
         }
         else
         {

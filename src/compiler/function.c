@@ -7,7 +7,7 @@ void init_function(Function **pfunc)
     func->pseudo = minim_null;
     func->pseudo_it = minim_null;
     func->stash = minim_null;
-    func->needed = minim_null;
+    func->calls = minim_null;
     func->code = NULL;
     func->name = NULL;
     func->argc = 0;
@@ -47,6 +47,17 @@ void compiler_add_function(Compiler *compiler, Function *func)
     ++compiler->func_count;
     compiler->funcs = GC_realloc(compiler->funcs, compiler->func_count * sizeof(Function*));
     compiler->funcs[compiler->func_count - 1] = func;
+}
+
+Function *compiler_get_function(Compiler *compiler, MinimObject *name)
+{
+    for (size_t i = 0; i < compiler->func_count; ++i)
+    {
+        if (strcmp(compiler->funcs[i]->name, MINIM_SYMBOL(name)))
+            return compiler->funcs[i];
+    }
+
+    return NULL;
 }
 
 bool is_argument_location(MinimObject *obj)

@@ -140,7 +140,7 @@ allocate_local_vars(Buffer *bf,
                     MinimEnv *env,
                     MinimObject *stash)
 {
-    size_t bytes = MINIM_VECTOR_LEN(stash) * sizeof(void*);
+    size_t bytes = MINIM_VECTOR_LEN(stash) * PTR_SIZE;
     if (bytes >= 256)
     {
         uint32_t b32 = (uint32_t) bytes;
@@ -164,7 +164,7 @@ save_scratch_registers(Buffer *bf, MinimEnv *env, MinimObject *stash)
         elem = MINIM_VECTOR_REF(stash, i);
         if (MINIM_OBJ_SYMBOLP(elem)) {
             // TODO: offset not 32-bits?
-            offset = -(i * sizeof(void*));
+            offset = -(i * PTR_SIZE);
             assemble_move_mem_offset(bf, env, intern(REG_RBP_STR), elem, offset, false);
         }
     }
@@ -175,7 +175,7 @@ deallocate_local_vars(Buffer *bf,
                     MinimEnv *env,
                     MinimObject *stash)
 {
-    size_t bytes = MINIM_VECTOR_LEN(stash) * sizeof(void*);
+    size_t bytes = MINIM_VECTOR_LEN(stash) * PTR_SIZE;
     if (bytes >= 256)
     {
         uint32_t b32 = (uint32_t) bytes;
@@ -199,7 +199,7 @@ restore_scratch_registers(Buffer *bf, MinimEnv *env, MinimObject *stash)
         elem = MINIM_VECTOR_REF(stash, i);
         if (MINIM_OBJ_SYMBOLP(elem)) {
             // TODO: offset not 32-bits?
-            offset = -(i * sizeof(void*));
+            offset = -(i * PTR_SIZE);
             assemble_move_mem_offset(bf, env, intern(REG_RBP_STR), elem, offset, true);
         }
     }
@@ -223,27 +223,29 @@ void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf)
         if (minim_eqp(op, intern("$mov")))
         {
             MinimObject *target = MINIM_STX_VAL(MINIM_CADR(line));
-            MinimObject *val = MINIM_CAR(MINIM_CDDR(line));
+            MinimObject *val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
             
-            if (MINIM_STX_PAIRP(val))
+            if (MINIM_OBJ_PAIRP(val))
             {
-                if (minim_eqp(MINIM_STX_VAL(MINIM_STX_CAR(val)), intern("$addr")))
+                if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$addr")))
                 {
-                    uintptr_t addr = resolve_address(env, val);
-                    if (addr == 0)
-                        THROW(env, minim_error("invalid instruction", "compiler"));
-
+                    uintptr_t addr = resolve_address(env, MINIM_STX_VAL(MINIM_CADR(val)));
                     assemble_move_immediate(bf, env, target, addr);
                 }
-                else if (minim_eqp(MINIM_STX_VAL(MINIM_STX_CAR(val)), intern("$syntax")))
+                else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$syntax")))
                 {
-                    uintptr_t addr = ((uintptr_t) MINIM_STX_CADR(val));
+                    uintptr_t addr = ((uintptr_t) MINIM_CADR(val));
                     assemble_move_immediate(bf, env, target, addr);
                 }
-                else if (minim_eqp(MINIM_STX_VAL(MINIM_STX_CAR(val)), intern("$sym-addr")))
+                else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$sym-addr")))
                 {
-                    uintptr_t addr = ((uintptr_t) MINIM_STX_SYMBOL(MINIM_STX_CADR(val)));
+                    uintptr_t addr = ((uintptr_t) MINIM_STX_SYMBOL(MINIM_CADR(val)));
                     assemble_move_immediate(bf, env, target, addr);
+                }
+                else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$func-addr")))
+                {
+                    assemble_move_immediate(bf, env, target, 0);
+                    add_call_site(func, MINIM_STX_VAL(MINIM_CADR(val)), bf->pos - PTR_SIZE);
                 }
                 else
                 {
@@ -252,7 +254,7 @@ void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf)
             }
             else
             {
-                assemble_move(bf, env, target, MINIM_STX_VAL(val));
+                assemble_move(bf, env, target, val);
             }
         }
         else if (minim_eqp(op, intern("$call")))
@@ -268,7 +270,7 @@ void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf)
         }
         else
         {
-            THROW(env, minim_error("invalid instruction", "compiler"));
+            THROW(env, minim_error("invalid instruction: ~s", "compiler", MINIM_SYMBOL(op)));
         }
     }
 }

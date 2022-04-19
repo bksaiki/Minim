@@ -12,7 +12,10 @@
 void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf);
 
 // Resolve address of an builtin procedure.
-uintptr_t resolve_address(MinimEnv *env, MinimObject *stx);
+uintptr_t resolve_address(MinimEnv *env, MinimObject *addr);
+
+// Adds call site to be patched later
+void add_call_site(Function *func, MinimObject *name, uintptr_t loc);
 
 #define ASSEMBLE(e, f, b)    function_assemble_x86(e, f, b)
 

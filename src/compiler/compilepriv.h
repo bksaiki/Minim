@@ -43,7 +43,7 @@ typedef struct Function {
     MinimObject *pseudo, *pseudo_it;        // code
     MinimObject *ret_sym;                   // return symbol for translation/optimization pass
     MinimObject *stash;                     // scratch register / memory use
-    MinimObject *needed;                    // definitions that cannot be eliminated
+    MinimObject *calls;                     // list of calls
     char *name;
     void *code;
     uint32_t argc;
@@ -86,6 +86,9 @@ void debug_function(MinimEnv *env, Function *func);
 
 // Adds a function to the compiler.
 void compiler_add_function(Compiler *compiler, Function *func);
+
+// Returns a reference to a function in the compiler
+Function *compiler_get_function(Compiler *compiler, MinimObject *name);
 
 // Returns true if the reference is a function argument
 bool is_argument_location(MinimObject *obj);

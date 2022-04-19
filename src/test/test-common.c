@@ -82,7 +82,6 @@ char *compile_string(MinimEnv *env, char *str, size_t len)
     }
     else
     {
-        printf("handler invoked\n");
         obj = MINIM_JUMP_VAL(exit_handler);
         if (MINIM_OBJ_ERRORP(obj))
             return print_to_string(obj, env, &pp);

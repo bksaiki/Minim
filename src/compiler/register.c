@@ -726,13 +726,11 @@ void function_register_allocation(MinimEnv *env, Function *func)
         }
         else if (minim_eqp(op, intern("$pop-env")))
         {
-            //  ($access $rt <type> <field>)
+            //  ($mov $tc ($access $tc <type> <field>)
             MINIM_CAR(it) = minim_ast(
-                minim_cons(minim_ast(intern("$access"), NULL),
-                minim_cons(minim_ast(intern(REG_RT_STR), NULL),
-                minim_cons(minim_ast(intern("env"), NULL),
-                minim_cons(minim_ast(intern("prev"), NULL),
-                minim_null)))),
+                minim_cons(minim_ast(intern("$env-parent"), NULL),
+                minim_cons(minim_ast(intern(REG_TC_STR), NULL),
+                minim_null)),
                 NULL);
         }
         else if (minim_eqp(op, intern("$arg")))
@@ -808,6 +806,11 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     MINIM_CAR(it) = move_instruction(
                         minim_ast(reg, NULL),
                         minim_ast(src, NULL));
+                }
+                else
+                {
+                    MINIM_CDR(prev) = MINIM_CDR(it);
+                    it = prev;
                 }
 
                 minim_symbol_table_remove(data.table, MINIM_SYMBOL(name));
@@ -1074,9 +1077,9 @@ void function_register_allocation(MinimEnv *env, Function *func)
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$func")))
             {
-                MinimObject *reg, *val;
+                MinimObject *reg, *fname;
                 
-                val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+                fname = MINIM_STX_VAL(MINIM_CADR(val));
                 reg = existing_or_fresh_register(&data, name, REG_REPLACE_TEMP_ONLY);
                 minim_symbol_table_add(data.table, MINIM_SYMBOL(name), reg);
 
@@ -1085,7 +1088,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     minim_ast(reg, NULL),
                     minim_ast(
                         minim_cons(minim_ast(intern("$func-addr"), NULL),
-                        minim_cons(minim_ast(val, NULL),
+                        minim_cons(minim_ast(fname, NULL),
                         minim_null)),
                         NULL));
 
