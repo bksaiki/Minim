@@ -53,7 +53,7 @@ Function *compiler_get_function(Compiler *compiler, MinimObject *name)
 {
     for (size_t i = 0; i < compiler->func_count; ++i)
     {
-        if (strcmp(compiler->funcs[i]->name, MINIM_SYMBOL(name)))
+        if (strcmp(compiler->funcs[i]->name, MINIM_SYMBOL(name)) == 0)
             return compiler->funcs[i];
     }
 

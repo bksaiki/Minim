@@ -886,7 +886,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 {
                     // stash $tc
                     tc_sym = intern("$tc");
-                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_EXCEPT_TC);
+                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_TEMP_ONLY);
                     INSERT_INSTR(prev, move_instruction(minim_ast(tc_tmp, NULL), minim_ast(tc_sym, NULL)));
 
                     //  ($call <reg>)
@@ -936,7 +936,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 {
                     // stash $tc
                     tc_sym = intern("$tc");
-                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_EXCEPT_TC);
+                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_TEMP_ONLY);
                     INSERT_INSTR(prev, move_instruction(minim_ast(tc_tmp, NULL), minim_ast(tc_sym, NULL)));
 
                     //  ($call $rt)
@@ -987,7 +987,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 {
                     // stash $tc
                     tc_sym = intern("$tc");
-                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_EXCEPT_TC);
+                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_TEMP_ONLY);
                     INSERT_INSTR(prev, move_instruction(minim_ast(tc_tmp, NULL), minim_ast(tc_sym, NULL)));
 
                     //  ($call $rt)
@@ -1054,7 +1054,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 {
                     // stash $tc
                     tc_sym = intern("$tc");
-                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_EXCEPT_TC);
+                    tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_TEMP_ONLY);
                     INSERT_INSTR(prev, move_instruction(minim_ast(tc_tmp, NULL), minim_ast(tc_sym, NULL)));
 
                     //  ($call $rt)
@@ -1091,8 +1091,6 @@ void function_register_allocation(MinimEnv *env, Function *func)
                         minim_cons(minim_ast(fname, NULL),
                         minim_null)),
                         NULL));
-
-                unreserve_register(data.regs, get_register_index(reg));
             }
             else
             {
@@ -1169,7 +1167,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
             {
                 // stash $tc
                 tc_sym = intern("$tc");
-                tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_EXCEPT_TC);
+                tc_tmp = fresh_register(&data, tc_sym, REG_REPLACE_TEMP_ONLY);
                 INSERT_INSTR(prev, move_instruction(minim_ast(tc_tmp, NULL), minim_ast(tc_sym, NULL)));
 
                 //  ($call $rt)

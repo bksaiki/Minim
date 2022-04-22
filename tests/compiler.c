@@ -9,7 +9,7 @@ int main()
 
     // sandbox
     {
-        compile_test("(let-values ([(f) (lambda () 1)]) (f))", "1");
+        compile_test("((lambda (x) x) 1)", "1");
     }
 
 
@@ -27,17 +27,29 @@ int main()
     }
 
     {
-        const int COUNT = 3;
-        char strs[6][256] =
+        const int COUNT = 2;
+        char strs[4][256] =
         {
             "(let-values ([(x) 1]) x)",                 "1",
             "(let-values ([(x) 1])\
               (let-values ([(y) x])\
                y))",                                    "1",
-            "(let-values ([(f) (lambda () 1)]) (f))",   "1"
         };
 
         printf("Testing let bindings\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= compile_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 2;
+        char strs[4][256] =
+        {
+            "((lambda () 1))",                          "1",
+            "((lambda (x) x) 1)",                       "1",
+        };
+
+        printf("Testing functions\n");
         for (int i = 0; i < COUNT; ++i)
             status &= compile_test(strs[2 * i], strs[2 * i + 1]);
     }

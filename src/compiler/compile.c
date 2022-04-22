@@ -802,18 +802,18 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
             if (ref == NULL)
                 THROW(env, minim_error("cannot patch ~a", "compiler", MINIM_SYMBOL(MINIM_CAAR(it))));
 
-            memcpy(&code_buf->data[offset], ref, sizeof(uintptr_t));
+            memcpy(&code_buf->data[offset], &ref->code, sizeof(uintptr_t));
         }
 
-        // for (size_t i = 0; i < code_buf->pos; ++i)
-        //     printf("%.2x ", code_buf->data[i] & 0xff);
-        // printf("\n");
+        for (size_t i = 0; i < code_buf->pos; ++i)
+            printf("%.2x ", code_buf->data[i] & 0xff);
+        printf("\n");
 
         // allocate memory page
         page = alloc_page(code_buf->pos);
         memcpy(page, get_buffer(code_buf), code_buf->pos);
         make_page_executable(page, code_buf->pos);
-        compiler.curr_func->code = page;
+        func->code = page;
 
         closure = GC_alloc(sizeof(MinimNativeLambda));
         closure->closure = NULL;

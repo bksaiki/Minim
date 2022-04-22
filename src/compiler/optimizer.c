@@ -661,8 +661,8 @@ void function_optimize(MinimEnv *env, Function *func)
         changed |= eliminate_unwind(env, func);
         changed |= eliminate_immediate_goto(env, func);
 
-        printf("(iter %zu)", iter);
-        debug_function(env, func);
+        // printf("(iter %zu)", iter);
+        // debug_function(env, func);
         iter += 1;
     }
 
