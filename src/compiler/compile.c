@@ -665,6 +665,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
     translate_top_level(env2, module->body, &compiler);
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
+        debug_function(env, compiler.curr_func);
     }
 
     if (environment_variable_existsp("MINIM_LOG"))
@@ -684,7 +685,6 @@ void compile_module(MinimEnv *env, MinimModule *module)
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
         unopt_expr_count += minim_list_length(compiler.curr_func->pseudo);
-        // debug_function(env, compiler.curr_func);
         function_optimize(env, compiler.funcs[i]);
         // debug_function(env, compiler.curr_func);
         opt_expr_count += minim_list_length(compiler.curr_func->pseudo);
@@ -708,7 +708,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
 
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
-        // debug_function(env, compiler.curr_func);
+        debug_function(env, compiler.curr_func);
         function_register_allocation(env, compiler.curr_func);
         debug_function(env, compiler.curr_func);
     }
@@ -802,12 +802,12 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
             if (ref == NULL)
                 THROW(env, minim_error("cannot patch ~a", "compiler", MINIM_SYMBOL(MINIM_CAAR(it))));
 
-            memcpy(&code_buf->data[offset], ref->code, sizeof(uintptr_t));
+            memcpy(&code_buf->data[offset], ref, sizeof(uintptr_t));
         }
 
-        for (size_t i = 0; i < code_buf->pos; ++i)
-            printf("%.2x ", code_buf->data[i] & 0xff);
-        printf("\n");
+        // for (size_t i = 0; i < code_buf->pos; ++i)
+        //     printf("%.2x ", code_buf->data[i] & 0xff);
+        // printf("\n");
 
         // allocate memory page
         page = alloc_page(code_buf->pos);
