@@ -368,9 +368,6 @@ translate_lambda(MinimEnv *env,
     // save old values
     old_func = compiler->curr_func;
     old_table = compiler->table;
-
-    // push a new environment in the compiled code
-    add_function_header(func);
     
     // compile the arguments
     init_minim_symbol_table(&compiler->table);
@@ -409,8 +406,10 @@ translate_lambda(MinimEnv *env,
             name = (MINIM_OBJ_ASTP(it) ? MINIM_STX_SYMBOL(it) : MINIM_SYMBOL(it));
             minim_symbol_table_add(compiler->table, name, sym);
         }
-
     }
+
+    // push a new environment in the compiled code
+    add_function_header(func);
 
     // compile the body
     compiler->curr_func = func;

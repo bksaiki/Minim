@@ -11,33 +11,80 @@
 //  - Rx: argument register
 //  - Tx: scratch register (must save to stack before use)
 
-// register strings
-#define REG_TC_STR  "$tc"
-#define REG_RT_STR  "$rt"
-#define REG_R0_STR  "$r0"
-#define REG_R1_STR  "$r1"
-#define REG_R2_STR  "$r2"
-#define REG_T0_STR  "$r3"
-#define REG_T1_STR  "$r4"
-#define REG_T2_STR  "$r5"
-#define REG_T3_STR  "$r6"
-#define REG_BP_STR  "$bp"
-#define REG_SP_STR  "$sp"
+// number of argument registers
+//  - includes the tc register
+//  - affects compilation especially stashing
+#define USE_4_ARG_REGS      1
 
-// register indexes
-#define REG_RT      0
-#define REG_R0      1
-#define REG_R1      2
-#define REG_R2      3
-#define REG_T0      4
-#define REG_T1      5
-#define REG_T2      6
-#define REG_T3      7
+#if USE_4_ARG_REGS
+    // argument register strings
+    #define REG_R0_STR  "$r0"
+    #define REG_R1_STR  "$r1"
+    #define REG_R2_STR  "$r2"
 
-// ignore REG_TC
-#define REGISTER_COUNT              8
-#define ARG_REGISTER_COUNT          (REG_R2 - REG_RT)
-#define SCRATCH_REGISTER_COUNT      (REG_T3 - REG_R2)
+    // temporary register strings
+    #define REG_T0_STR  "$r3"
+    #define REG_T1_STR  "$r4"
+    #define REG_T2_STR  "$r5"
+    #define REG_T3_STR  "$r6"
+
+    // other register strings
+    #define REG_TC_STR  "$tc"
+    #define REG_RT_STR  "$rt"
+    #define REG_BP_STR  "$bp"
+    #define REG_SP_STR  "$sp"
+    
+    // register indexes
+    #define REG_RT      0
+    #define REG_R0      1
+    #define REG_R1      2
+    #define REG_R2      3
+    #define REG_T0      4
+    #define REG_T1      5
+    #define REG_T2      6
+    #define REG_T3      7
+
+    // ignore REG_TC
+    #define REGISTER_COUNT              8
+    #define ARG_REGISTER_COUNT          (REG_R2 - REG_RT)
+    #define SCRATCH_REGISTER_COUNT      (REG_T3 - REG_R2)
+#else
+    // argument register strings
+    #define REG_R0_STR  "$r0"
+    #define REG_R1_STR  "$r1"
+    #define REG_R2_STR  "$r2"
+    #define REG_R1_STR  "$r3"
+    #define REG_R2_STR  "$r4"
+
+    // temporary register strings
+    #define REG_T0_STR  "$r5"
+    #define REG_T1_STR  "$r6"
+    #define REG_T2_STR  "$r7"
+    #define REG_T3_STR  "$r8"
+
+    // other register strings
+    #define REG_TC_STR  "$tc"
+    #define REG_RT_STR  "$rt"
+    #define REG_BP_STR  "$bp"
+    #define REG_SP_STR  "$sp"
+    
+    // register indexes
+    #define REG_RT      0
+    #define REG_R0      1
+    #define REG_R1      2
+    #define REG_R2      3
+    #define REG_R3      4
+    #define REG_R4      5
+    #define REG_T0      6
+    #define REG_T1      7
+    #define REG_T2      8
+    #define REG_T3      9
+
+    // ignore REG_TC
+    #define REGISTER_COUNT              10
+    #define ARG_REGISTER_COUNT          (REG_R4 - REG_RT)
+    #define SCRATCH_REGISTER_COUNT      (REG_T3 - REG_R4)
+#endif
 
 typedef struct Function {
     MinimObject *pseudo, *pseudo_it;        // code

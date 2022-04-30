@@ -8,9 +8,9 @@ int main()
     setup_test_env();
 
     // sandbox
-    {
-        compile_test("((lambda (x) x) 1)", "1");
-    }
+    // {
+    //     compile_test("((lambda (x) x) 1)", "1");
+    // }
 
 
     {

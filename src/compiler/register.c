@@ -15,6 +15,9 @@
         prev = MINIM_CDR(prev);                                 \
     }
 
+#define UNRESERVE_REGISTER(regs, reg)   \
+    { MINIM_VECTOR_REF(regs, reg) = minim_false; }
+
 //
 //  Join canonicalization
 //
@@ -205,6 +208,30 @@ void compute_tail_symbols(MinimEnv *env, RegAllocData *data)
             it = MINIM_CDR(it);
         }
     }
+}
+
+//
+//  Instructions
+//
+
+static MinimObject *
+call_instruction(MinimObject *target)
+{
+    return minim_ast(
+        minim_cons(minim_ast(intern("$call"), NULL),
+        minim_cons(target, minim_null)),
+        NULL);
+}
+
+static MinimObject *
+move_instruction(MinimObject *dest, MinimObject *src)
+{
+    return minim_ast(
+        minim_cons(minim_ast(intern("$mov"), NULL),
+        minim_cons(dest,
+        minim_cons(src,
+        minim_null))),
+        NULL);
 }
 
 //
@@ -404,11 +431,6 @@ static void reserve_register(RegAllocData *data, size_t reg)
     MINIM_VECTOR_REF(data->regs, reg) = minim_true;
 }
 
-static void unreserve_register(MinimObject *regs, size_t reg)
-{
-    MINIM_VECTOR_REF(regs, reg) = minim_false;
-}
-
 static MinimObject *temp_register(RegAllocData *data, MinimObject *sym)
 {
     for (size_t i = REG_T0; i <= REG_T3; i++)
@@ -461,11 +483,37 @@ static MinimObject *argument_location(RegAllocData *data, MinimObject *sym, size
     }
 }
 
+static void prepare_call(RegAllocData *data, bool tail_pos)
+{
+    MinimObject *ref, *loc;
+    size_t idx;
+
+    for (idx = REG_R0; idx < ARG_REGISTER_COUNT; ++idx)
+    {
+        ref = MINIM_VECTOR_REF(data->regs, idx);
+        if (!minim_falsep(ref))
+        {
+            loc = fresh_register(data, ref, REG_REPLACE_TEMP_ONLY);
+            INSERT_INSTR(*data->prev, move_instruction(
+                minim_ast(loc, NULL),
+                minim_ast(get_register_symbol(idx), NULL)));
+
+            if (!tail_pos)
+            {
+                minim_symbol_table_set(data->table, MINIM_SYMBOL(ref), loc);
+                UNRESERVE_REGISTER(data->regs, idx);
+            }
+        }
+    }
+
+    reserve_register(data, REG_RT);
+}
+
 static void unreserve_location(RegAllocData *data, MinimObject *loc)
 {
     if (MINIM_OBJ_SYMBOLP(loc))
     {
-        unreserve_register(data->regs, get_register_index(loc));
+        UNRESERVE_REGISTER(data->regs, get_register_index(loc));
     }
     else
     {
@@ -505,7 +553,7 @@ static void unregister_location(RegAllocData *data, MinimObject *name)
         {
             if (!minim_eqp(ref, intern(REG_TC_STR)))
             {
-                unreserve_register(data->regs, get_register_index(ref));
+                UNRESERVE_REGISTER(data->regs, get_register_index(ref));
                 minim_symbol_table_remove(data->table, MINIM_SYMBOL(name));
             }
         }
@@ -519,30 +567,6 @@ static void unregister_location(RegAllocData *data, MinimObject *name)
             }
         }
     }
-}
-
-//
-//  Instructions
-//
-
-static MinimObject *
-call_instruction(MinimObject *target)
-{
-    return minim_ast(
-        minim_cons(minim_ast(intern("$call"), NULL),
-        minim_cons(target, minim_null)),
-        NULL);
-}
-
-static MinimObject *
-move_instruction(MinimObject *dest, MinimObject *src)
-{
-    return minim_ast(
-        minim_cons(minim_ast(intern("$mov"), NULL),
-        minim_cons(dest,
-        minim_cons(src,
-        minim_null))),
-        NULL);
 }
 
 static void unreserve_last_uses(RegAllocData *data, MinimObject *end_uses)
@@ -672,7 +696,11 @@ void function_register_allocation(MinimEnv *env, Function *func)
     data.last_uses = compute_last_use(env, &data);
     prev = NULL;
 
-    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+    // add temporary 0th instruction
+    func->pseudo = minim_cons(minim_null, func->pseudo);
+    prev = func->pseudo;
+
+    for (MinimObject *it = MINIM_CDR(func->pseudo); !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op, *end_uses;
         
@@ -680,39 +708,19 @@ void function_register_allocation(MinimEnv *env, Function *func)
         op = MINIM_STX_VAL(MINIM_CAR(line));
         end_uses = get_lasts(data.last_uses, MINIM_CAR(it));
 
-        // debug_print_minim_object(MINIM_CAR(it), env); printf("\n");
-
         if (minim_eqp(op, intern("$push-env")))
         {
             // =>
             //  $tc = init_env($tc)
-            reserve_register(&data, REG_RT);
-            if (it == func->pseudo)
-            {
-                //  ($mov $rt ($addr <init_env>))
-                it = minim_cons(move_instruction(
+
+            prepare_call(&data, false);
+            INSERT_INSTR(prev, move_instruction(
                 minim_ast(intern(REG_RT_STR), NULL),
                 minim_ast(
                     minim_cons(minim_ast(intern("$addr"), NULL),
                     minim_cons(minim_ast(intern("init_env"), NULL),
                     minim_null)),
-                    NULL)),
-                it);
-
-                func->pseudo = it;
-                prev = it;
-                it = MINIM_CDR(it);
-            }
-            else
-            {
-                INSERT_INSTR(prev, move_instruction(
-                    minim_ast(intern(REG_RT_STR), NULL),
-                    minim_ast(
-                        minim_cons(minim_ast(intern("$addr"), NULL),
-                        minim_cons(minim_ast(intern("init_env"), NULL),
-                        minim_null)),
-                        NULL)));
-            }
+                    NULL)));
             
             //  ($call $rt)
             INSERT_INSTR(prev, call_instruction(minim_ast(intern(REG_RT_STR), NULL)));
@@ -722,7 +730,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     minim_ast(intern(REG_TC_STR), NULL),
                     minim_ast(intern(REG_RT_STR), NULL));
 
-            unreserve_register(data.regs, REG_RT);
+            UNRESERVE_REGISTER(data.regs, REG_RT);
         }
         else if (minim_eqp(op, intern("$pop-env")))
         {
@@ -848,7 +856,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     }
 
                     MINIM_VECTOR_REF(data.regs, get_register_index(src)) = minim_false;
-                    unreserve_register(data.regs, get_register_index(src));
+                    UNRESERVE_REGISTER(data.regs, get_register_index(src));
                     ++idx;
                 }
                 
@@ -869,7 +877,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                                                                 minim_ast(src, NULL)));
                         }
 
-                        unreserve_register(data.regs, get_register_index(src));  
+                        UNRESERVE_REGISTER(data.regs, get_register_index(src));  
                         ++idx;
                     }
                 }
@@ -956,7 +964,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 }
 
                 // cleanup
-                unreserve_register(data.regs, REG_R0);
+                UNRESERVE_REGISTER(data.regs, REG_R0);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$interpret")))
             {
@@ -1007,7 +1015,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 }
 
                 // cleanup
-                unreserve_register(data.regs, REG_R0);
+                UNRESERVE_REGISTER(data.regs, REG_R0);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$top")))
             {
@@ -1073,7 +1081,7 @@ void function_register_allocation(MinimEnv *env, Function *func)
                     MINIM_VECTOR_REF(data.regs, REG_RT) = name;
                 }
 
-                unreserve_register(data.regs, REG_R0);
+                UNRESERVE_REGISTER(data.regs, REG_R0);
             }
             else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$func")))
             {
@@ -1182,9 +1190,9 @@ void function_register_allocation(MinimEnv *env, Function *func)
                 MINIM_CAR(it) = call_instruction(minim_ast(intern(REG_RT_STR), NULL));
             }
             
-            unreserve_register(data.regs, REG_RT);
-            unreserve_register(data.regs, REG_R0);
-            unreserve_register(data.regs, REG_R1);
+            UNRESERVE_REGISTER(data.regs, REG_RT);
+            UNRESERVE_REGISTER(data.regs, REG_R0);
+            UNRESERVE_REGISTER(data.regs, REG_R1);
         }
         else if (minim_eqp(op, intern("$return")))
         {
@@ -1269,6 +1277,10 @@ void function_register_allocation(MinimEnv *env, Function *func)
         prev = it;
     }
 
+    // remove temporary instruction
+    func->pseudo = MINIM_CDR(func->pseudo);
+
+    // optimize
     eliminate_unwind(env, func);
     record_memory(env, func);
 }
