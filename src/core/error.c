@@ -388,8 +388,6 @@ MinimObject *minim_builtin_arity_error(MinimEnv *env, size_t argc, MinimObject *
     }
     else if (MINIM_OBJ_PAIRP(args[1]))
     {
-        debug_print_minim_object(args[1], NULL);
-
         if (!minim_exact_nonneg_intp(MINIM_CAR(args[1])))
             THROW(env, minim_argument_error("arity?", "arity-error", 1, args[1]));
 

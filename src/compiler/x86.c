@@ -159,12 +159,14 @@ save_scratch_registers(Buffer *bf, MinimEnv *env, MinimObject *stash)
 {
     MinimObject *elem;
     intptr_t offset;
-    
-    for (size_t i = 0; i < SCRATCH_REGISTER_COUNT; ++i) {
+    size_t stash_size;
+
+    stash_size =  MINIM_VECTOR_LEN(stash);
+    for (size_t i = 0; i < stash_size && i < SCRATCH_REGISTER_COUNT; ++i) {
         elem = MINIM_VECTOR_REF(stash, i);
         if (MINIM_OBJ_SYMBOLP(elem)) {
             // TODO: offset not 32-bits?
-            offset = -(i * PTR_SIZE);
+            offset = -((i + 1) * PTR_SIZE);
             assemble_move_mem_offset(bf, env, intern(REG_RBP_STR), elem, offset, false);
         }
     }
@@ -194,12 +196,14 @@ restore_scratch_registers(Buffer *bf, MinimEnv *env, MinimObject *stash)
 {
     MinimObject *elem;
     intptr_t offset;
-    
-    for (size_t i = 0; i < SCRATCH_REGISTER_COUNT; ++i) {
+    size_t stash_size;
+
+    stash_size =  MINIM_VECTOR_LEN(stash);
+    for (size_t i = 0; i < stash_size && i < SCRATCH_REGISTER_COUNT; ++i) {
         elem = MINIM_VECTOR_REF(stash, i);
         if (MINIM_OBJ_SYMBOLP(elem)) {
             // TODO: offset not 32-bits?
-            offset = -(i * PTR_SIZE);
+            offset = -((i + 1) * PTR_SIZE);
             assemble_move_mem_offset(bf, env, intern(REG_RBP_STR), elem, offset, true);
         }
     }

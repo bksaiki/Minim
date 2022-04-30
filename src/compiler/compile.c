@@ -781,11 +781,11 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         // optimize 
         // debug_function(env, func);
         function_optimize(env, func);
-        debug_function(env, func);
+        // debug_function(env, func);
 
         // register allocation
         function_register_allocation(env, func);
-        debug_function(env, func);
+        // debug_function(env, func);
 
         // assemble
         ASSEMBLE(env, func, func->code_buf);
@@ -793,16 +793,11 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         // compute next code location
         func->start = code_size;
         code_size += buffer_size(func->code_buf);
-
-        for (size_t i = 0; i < buffer_size(func->code_buf); ++i)
-            printf("%.2x ", func->code_buf->data[i] & 0xff);
-        printf("\n");
     }
 
 
     // allocate memory page
     page = alloc_page(code_size);
-    printf("allocated %zu bytes at %p\n", code_size, page);
 
     // write to page
     for (size_t i = 0; i < compiler.func_count; i++) {
@@ -822,7 +817,6 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
             offset = MINIM_NUMBER_TO_UINT(MINIM_CDAR(it));
             addr = (uintptr_t) ref->code;
             memcpy(&func->code_buf->data[offset], &addr, sizeof(uintptr_t));
-            printf("patched: %s in %s with %p\n", MINIM_SYMBOL(MINIM_CAAR(it)), func->name, ref->code);
         }
 
         // copy compiled code
@@ -835,12 +829,11 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         closure->size = buffer_size(func->code_buf);
 
         // set function
-        func->code = &page[func->start];
+        func->code = closure->fn;
         func->code_buf = NULL;
 
         if (i + 1 == compiler.func_count)
             env_intern_sym(env, MINIM_SYMBOL(intern("top")), minim_native_closure(closure));
-        
     }
 
     // make page executable

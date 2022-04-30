@@ -161,6 +161,21 @@ MinimObject *eval_native_lambda(MinimNativeLambda* lam, MinimEnv *env, size_t ar
         MinimObject *(*fn)(MinimEnv *) = lam->fn;
         return fn(env);
     }
+    else if (argc == 1)
+    {
+        MinimObject *(*fn)(MinimEnv *, MinimObject *) = lam->fn;
+        return fn(env, args[0]);
+    }
+    else if (argc == 2)
+    {
+        MinimObject *(*fn)(MinimEnv *, MinimObject *, MinimObject *) = lam->fn;
+        return fn(env, args[0], args[1]);
+    }
+    else if (argc == 3)
+    {
+        MinimObject *(*fn)(MinimEnv *, MinimObject *, MinimObject *, MinimObject *) = lam->fn;
+        return fn(env, args[0], args[1], args[2]);
+    }
     else
     {
         THROW(env, minim_error("native closure with arguments not supported", "eval_native_lambda()"));
