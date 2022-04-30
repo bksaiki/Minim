@@ -208,6 +208,7 @@ restore_scratch_registers(Buffer *bf, MinimEnv *env, MinimObject *stash)
 void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf)
 {
     MinimObject *line, *op;
+    size_t aligned_size;
 
     // function header
     writec_buffer(bf, '\x55');                      //  push rbp
@@ -273,4 +274,9 @@ void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf)
             THROW(env, minim_error("invalid instruction: ~s", "compiler", MINIM_SYMBOL(op)));
         }
     }
+
+    // Fill to alignment with NOP
+    aligned_size = RU_CODE_ALIGN(buffer_size(bf));
+    for (size_t i = buffer_size(bf); i < aligned_size; ++i)
+        writec_buffer(bf, '\x90');
 }

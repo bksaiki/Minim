@@ -8,8 +8,10 @@ void init_function(Function **pfunc)
     func->pseudo_it = minim_null;
     func->stash = minim_null;
     func->calls = minim_null;
+    init_buffer(&func->code_buf);
     func->code = NULL;
     func->name = NULL;
+    func->start = 0;
     func->argc = 0;
 
     *pfunc = func;

@@ -9,7 +9,7 @@ int main()
 
     // sandbox
     // {
-    //     compile_test("((lambda (x) x) 1)", "1");
+    //     compile_test("(let-values ([(x) 1])", "1");
     // }
 
 

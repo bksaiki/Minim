@@ -86,14 +86,20 @@
     #define SCRATCH_REGISTER_COUNT      (REG_T3 - REG_R4)
 #endif
 
-typedef struct Function {
+// code alignment
+#define CODE_ALIGN                  16
+#define RU_CODE_ALIGN(v)            (((v) + CODE_ALIGN - 1) & ~(CODE_ALIGN - 1))
+
+typedef struct Function {                       
     MinimObject *pseudo, *pseudo_it;        // code
     MinimObject *ret_sym;                   // return symbol for translation/optimization pass
     MinimObject *stash;                     // scratch register / memory use
     MinimObject *calls;                     // list of calls
-    char *name;
-    void *code;
-    uint32_t argc;
+    Buffer *code_buf;                       // temporary buffer for compiled code
+    char *name;                             // name
+    void *code;                             // pointer to first instruction
+    size_t start;                           // index to start of code in executable page
+    uint32_t argc;                          // number of arguments
 } Function;
 
 typedef struct Compiler {

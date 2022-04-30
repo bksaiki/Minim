@@ -749,6 +749,8 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
     Compiler compiler;
     Function *func;
     MinimEnv *env2;
+    uint8_t *page;
+    size_t code_size;
 
     // set up fresh environment
     env2 = init_env(env);
@@ -770,11 +772,9 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
     repair_top_function(func);
     compiler_add_function(&compiler, func);
 
+    // assemble
+    code_size = 0;
     for (size_t i = 0; i < compiler.func_count; i++) {
-        MinimNativeLambda *closure;
-        Buffer *code_buf;
-        void *page;
-
         // alias
         func = compiler.funcs[i];
 
@@ -788,39 +788,62 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         debug_function(env, func);
 
         // assemble
-        init_buffer(&code_buf);
-        ASSEMBLE(env, func, code_buf);
+        ASSEMBLE(env, func, func->code_buf);
 
-        // patch
+        // compute next code location
+        func->start = code_size;
+        code_size += buffer_size(func->code_buf);
+
+        for (size_t i = 0; i < buffer_size(func->code_buf); ++i)
+            printf("%.2x ", func->code_buf->data[i] & 0xff);
+        printf("\n");
+    }
+
+
+    // allocate memory page
+    page = alloc_page(code_size);
+    printf("allocated %zu bytes at %p\n", code_size, page);
+
+    // write to page
+    for (size_t i = 0; i < compiler.func_count; i++) {
+        MinimNativeLambda *closure;
+
+        // patch calls
+        func = compiler.funcs[i];
         for (MinimObject *it = func->calls; !minim_nullp(it); it = MINIM_CDR(it)) {
             Function *ref;
+            uintptr_t addr;
             size_t offset;
-            
-            offset = MINIM_NUMBER_TO_UINT(MINIM_CDAR(it));
+
             ref = compiler_get_function(&compiler, MINIM_CAAR(it));
             if (ref == NULL)
                 THROW(env, minim_error("cannot patch ~a", "compiler", MINIM_SYMBOL(MINIM_CAAR(it))));
 
-            memcpy(&code_buf->data[offset], &ref->code, sizeof(uintptr_t));
+            offset = MINIM_NUMBER_TO_UINT(MINIM_CDAR(it));
+            addr = (uintptr_t) ref->code;
+            memcpy(&func->code_buf->data[offset], &addr, sizeof(uintptr_t));
+            printf("patched: %s in %s with %p\n", MINIM_SYMBOL(MINIM_CAAR(it)), func->name, ref->code);
         }
 
-        for (size_t i = 0; i < code_buf->pos; ++i)
-            printf("%.2x ", code_buf->data[i] & 0xff);
-        printf("\n");
+        // copy compiled code
+        memcpy(&page[func->start], get_buffer(func->code_buf), buffer_size(func->code_buf));
 
-        // allocate memory page
-        page = alloc_page(code_buf->pos);
-        memcpy(page, get_buffer(code_buf), code_buf->pos);
-        make_page_executable(page, code_buf->pos);
-        func->code = page;
-
+        // set native closure
         closure = GC_alloc(sizeof(MinimNativeLambda));
         closure->closure = NULL;
-        closure->fn = page;
-        closure->size = code_buf->pos;
+        closure->fn = &page[func->start];
+        closure->size = buffer_size(func->code_buf);
+
+        // set function
+        func->code = &page[func->start];
+        func->code_buf = NULL;
 
         if (i + 1 == compiler.func_count)
             env_intern_sym(env, MINIM_SYMBOL(intern("top")), minim_native_closure(closure));
+        
     }
+
+    // make page executable
+    make_page_executable(page, code_size);
 #endif
 }
