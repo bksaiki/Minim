@@ -388,9 +388,6 @@ void eval_module(MinimModuleInstance *module);
 // Evaluates `module` up to defining macros
 void eval_module_cached(MinimModuleInstance *module);
 
-// Evaluates an expression and returns a string.
-char *eval_string(char *str, size_t len);
-
 //
 //  Boot
 //

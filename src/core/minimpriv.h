@@ -397,6 +397,9 @@ MinimObject *eval_lambda(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObje
 // Like `eval_lambda` but transforms from the module of `env` are referencable.
 MinimObject *eval_lambda2(MinimLambda* lam, MinimEnv *env, size_t argc, MinimObject **args);
 
+// Like `eval_lambda` except for native lambdas
+MinimObject *eval_native_lambda(MinimNativeLambda* lam, MinimEnv *env, size_t argc, MinimObject **args);
+
 void minim_lambda_to_buffer(MinimLambda *l, Buffer *bf);
 
 //
@@ -514,6 +517,12 @@ MinimObject *minim_error(const char *msg, const char *where, ...);
 
 NORETURN void throw_minim_error(MinimEnv *env, MinimObject *err);
 #define THROW(e, x)    throw_minim_error(e, x)
+
+//
+//  Testing
+//
+
+char *eval_string(MinimEnv *env, char *str, size_t len);
 
 //
 //  Primitives

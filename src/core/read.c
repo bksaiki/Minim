@@ -55,27 +55,27 @@ static MinimObject *read_error(MinimObject *port, MinimObject *err, const char *
     return minim_err(e);
 }
 
-static void emit_code_file(MinimObject *fport, Buffer *code)
-{
-#if defined(MINIM_LINUX)            // only enabled for linux
-    MinimPath *fname, *cname;
-    Buffer *bf;
-    FILE *cfile;
+// static void emit_code_file(MinimObject *fport, Buffer *code)
+// {
+// #if defined(MINIM_LINUX)            // only enabled for linux
+//     MinimPath *fname, *cname;
+//     Buffer *bf;
+//     FILE *cfile;
     
-    fname = build_path(1, MINIM_PORT_NAME(fport));
-    cname = build_path(2, extract_directory(fname), ".cache");
-    make_directory(extract_path(cname));         // TODO: abort if failed
+//     fname = build_path(1, MINIM_PORT_NAME(fport));
+//     cname = build_path(2, extract_directory(fname), ".cache");
+//     make_directory(extract_path(cname));         // TODO: abort if failed
 
-    init_buffer(&bf);
-    writes_buffer(bf, extract_file(fname));
-    writec_buffer(bf, 'o');
-    path_append(cname, get_buffer(bf));
+//     init_buffer(&bf);
+//     writes_buffer(bf, extract_file(fname));
+//     writec_buffer(bf, 'o');
+//     path_append(cname, get_buffer(bf));
 
-    cfile = fopen(extract_path(cname), "w");
-    fputs(get_buffer(code), cfile);
-    fclose(cfile);
-#endif
-}
+//     cfile = fopen(extract_path(cname), "w");
+//     fputs(get_buffer(code), cfile);
+//     fclose(cfile);
+// #endif
+// }
 
 // ================================ Public ================================
 

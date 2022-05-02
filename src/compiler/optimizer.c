@@ -1,6 +1,48 @@
 #include "../core/minimpriv.h"
 #include "compilepriv.h"
 
+static MinimSymbolTable *
+join_symbols(MinimEnv *env, Function *func)
+{
+    MinimSymbolTable *table;
+
+    init_minim_symbol_table(&table);
+    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *line, *op;
+
+        line = MINIM_STX_VAL(MINIM_CAR(it));
+        op = MINIM_STX_VAL(MINIM_CAR(line));
+        if (minim_eqp(op, intern("$join")))
+        {
+            minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), minim_null);
+            minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CAR(MINIM_CDDR(line))), minim_null);
+        }
+    }
+
+    return table;
+}
+
+static MinimSymbolTable *
+return_symbols(MinimEnv *env, Function *func)
+{
+    MinimSymbolTable *table;
+
+    init_minim_symbol_table(&table);
+    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        MinimObject *line, *op;
+
+        line = MINIM_STX_VAL(MINIM_CAR(it));
+        op = MINIM_STX_VAL(MINIM_CAR(line));
+        if (minim_eqp(op, intern("$return"))) {
+            minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), minim_null);
+        }
+    }
+
+    return table;
+}
+
 static MinimObject *
 eval_constant_expr(MinimEnv *env,
                    MinimSymbolTable *table,
@@ -17,7 +59,7 @@ eval_constant_expr(MinimEnv *env,
     it = args;
     for (size_t i = 0; !minim_nullp(it); ++i, it = MINIM_CDR(it))
     {
-        vals[i] = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CAR(args)));
+        vals[i] = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CAR(it)));
         if (!vals[i])   return NULL;
 
         vals[i] = MINIM_STX_VAL(vals[i]);
@@ -89,46 +131,186 @@ constant_fold(MinimEnv *env, Function *func)
     return changed;
 }
 
-static MinimSymbolTable *
-join_symbols(MinimEnv *env, Function *func)
+// TODO: what about $set, $bind, $goto
+static bool
+early_return(MinimEnv *env, Function *func)
 {
-    MinimSymbolTable *table;
+    MinimSymbolTable *ret_syms, *join_syms, *exit_labels, *modified_syms;
+    MinimObject *reverse;
+    bool changed;
 
-    init_minim_symbol_table(&table);
-    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+    ret_syms = return_symbols(env, func);
+    init_minim_symbol_table(&join_syms);
+    init_minim_symbol_table(&exit_labels);
+    init_minim_symbol_table(&modified_syms);
+    reverse = minim_list_reverse(func->pseudo);
+    changed = false;
+
+    // insert early returns
+    for (MinimObject *it = MINIM_CDR(reverse); !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op;
-
+            
         line = MINIM_STX_VAL(MINIM_CAR(it));
         op = MINIM_STX_VAL(MINIM_CAR(line));
         if (minim_eqp(op, intern("$join")))
         {
-            minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CADR(line)), minim_null);
-            minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CAR(MINIM_CDDR(line))), minim_null);
+            MinimObject *join = MINIM_CADR(line);
+            if (minim_symbol_table_get(ret_syms, MINIM_STX_SYMBOL(join)) ||
+                minim_symbol_table_get(join_syms, MINIM_STX_SYMBOL(join)))
+            {
+                MinimObject *ift, *iff;
+
+                ift = MINIM_CAR(MINIM_CDDR(line));
+                iff = MINIM_CADR(MINIM_CDDR(line));
+                minim_symbol_table_add(join_syms, MINIM_STX_SYMBOL(ift), minim_null);
+                minim_symbol_table_add(join_syms, MINIM_STX_SYMBOL(iff), minim_null);
+            }
+        }
+        else if (minim_eqp(op, intern("$label")) || minim_eqp(op, intern("$goto")))
+        {
+            MinimObject *it2, *next_line, *next_op;
+
+            it2 = it;
+            next_line = MINIM_STX_VAL(MINIM_CADR(it2));
+            next_op = MINIM_STX_VAL(MINIM_CAR(next_line));
+            while (minim_eqp(next_op, intern("$pop-env")))
+            {
+                it2 = MINIM_CDR(it2);
+                next_line = MINIM_STX_VAL(MINIM_CADR(it2));
+                next_op = MINIM_STX_VAL(MINIM_CAR(next_line));
+            }
+
+            if (minim_eqp(next_op, intern("$set")))
+            {
+                MinimObject *ref;
+                char *name;
+
+                name = MINIM_STX_SYMBOL(MINIM_CADR(next_line));
+                ref = minim_symbol_table_get(join_syms, name);
+                if (ref)
+                {
+                    MINIM_CDR(it2) = minim_cons(minim_ast(
+                        minim_cons(minim_ast(intern("$return"), NULL),
+                        minim_cons(MINIM_CADR(next_line),
+                        minim_null)),
+                        NULL),
+                        MINIM_CDR(it2)
+                    );
+
+                    minim_symbol_table_add(modified_syms, name, minim_null);
+                    changed = true;
+                }
+
+                it = it2;
+            }
         }
     }
 
-    return table;
+    func->pseudo = minim_list_reverse(reverse);
+    if (modified_syms->size > 0)
+    {
+        MinimSymbolTable *join_direct;
+        MinimObject *trailing;
+
+        trailing = NULL;
+        init_minim_symbol_table(&join_direct);
+        for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
+        {
+            MinimObject *line, *op;
+                
+            line = MINIM_STX_VAL(MINIM_CAR(it));
+            op = MINIM_STX_VAL(MINIM_CAR(line));
+            if (minim_eqp(op, intern("$join")))
+            {
+                MinimObject *join, *ift, *iff;
+
+                join = MINIM_CADR(line);
+                ift = MINIM_CAR(MINIM_CDDR(line));
+                iff = MINIM_CADR(MINIM_CDDR(line));
+                if (minim_symbol_table_get(ret_syms, MINIM_STX_SYMBOL(join)) ||
+                    minim_symbol_table_get(join_syms, MINIM_STX_SYMBOL(join)))
+                {
+                    if (minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(ift)) &&
+                        minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(iff)))
+                    {
+                        minim_symbol_table_add(modified_syms, MINIM_STX_SYMBOL(join), minim_null);
+                        minim_symbol_table_add(join_direct, MINIM_STX_SYMBOL(join), ift);
+                        MINIM_CDR(trailing) = MINIM_CDR(it);
+                        it = trailing;
+                    }
+                    else if (minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(ift)))
+                    {
+                        MINIM_CDR(trailing) = minim_cons(minim_ast(
+                            minim_cons(minim_ast(intern("$set"), NULL),
+                            minim_cons(join,
+                            minim_cons(iff,
+                            minim_null))),
+                            NULL),
+                            MINIM_CDR(it));
+                        it = MINIM_CDR(trailing);
+                    }
+                    else if (minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(iff)))
+                    {
+                        MINIM_CDR(trailing) = minim_cons(minim_ast(
+                            minim_cons(minim_ast(intern("$set"), NULL),
+                            minim_cons(join,
+                            minim_cons(ift,
+                            minim_null))),
+                            NULL),
+                            MINIM_CDR(it));
+                        it = MINIM_CDR(trailing);
+                    }
+                    else
+                    {
+                        THROW(env, minim_error("not all join symbols registered: ~s ~s",
+                                            "optimization [early return]",
+                                                MINIM_STX_SYMBOL(ift),
+                                                MINIM_STX_SYMBOL(iff)));
+                    }
+                }
+            }
+            else
+            {
+                for (MinimObject *it2 = MINIM_CDR(line); !minim_nullp(it2); it2 = MINIM_CDR(it2))
+                {   
+                    // TODO: this is gross
+                    while (1)
+                    {
+                        MinimObject *ref = minim_symbol_table_get(join_direct, MINIM_STX_SYMBOL(MINIM_CAR(it2)));
+                        if (!ref)   break;
+                        MINIM_CAR(it2) = ref;
+                    }  
+                }
+            }
+
+            trailing = it;
+        }
+    }
+
+    return changed;
 }
 
 static bool
 constant_propagation(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table, *joins;
-    MinimObject *line;
     bool changed = false;
 
     init_minim_symbol_table(&table);
     joins = join_symbols(env, func);
     for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
-        line = MINIM_STX_VAL(MINIM_CAR(it));
-        if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(line)), intern("$set")) &&
-            MINIM_STX_SYMBOLP(MINIM_CAR(MINIM_CDDR(line))))
+        MinimObject *line = MINIM_STX_VAL(MINIM_CAR(it));
+        if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(line)), intern("$set")))
         {
-            char *name = MINIM_STX_SYMBOL(MINIM_CADR(line));
-            if (!minim_symbol_table_get(joins, name))
-                minim_symbol_table_add(table, name, MINIM_CAR(MINIM_CDDR(line)));
+            MinimObject *val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+            if (MINIM_OBJ_SYMBOLP(val))
+            {
+                char *name = MINIM_STX_SYMBOL(MINIM_CADR(line));
+                if (!minim_symbol_table_get(joins, name))
+                    minim_symbol_table_add(table, name, MINIM_CAR(MINIM_CDDR(line)));
+            }
         }
         else
         {
@@ -150,16 +332,17 @@ constant_propagation(MinimEnv *env, Function *func)
 static bool
 eliminate_dead_code(MinimEnv *env, Function *func)
 {
-    MinimObject *reverse;
-    MinimSymbolTable *table;
+    MinimSymbolTable *labels, *unreachable_jmp;
+    MinimObject *reverse, *trailing;
     size_t iter;
-    bool eliminated;
+    bool changed, eliminated;
     
     reverse = minim_list_reverse(func->pseudo);
     iter = 0;
 
+    // iteratively scan back to front for unused variables
     do {
-        MinimObject *trailing;
+        MinimSymbolTable *table;
         
         eliminated = false;
         trailing = NULL;
@@ -191,6 +374,8 @@ eliminate_dead_code(MinimEnv *env, Function *func)
                     }
                     else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$eval")))
                     {
+                        // always add result
+                        minim_symbol_table_add(table, MINIM_SYMBOL(name), minim_null);
                         for (MinimObject *it2 = MINIM_CDR(val); !minim_nullp(it2); it2 = MINIM_CDR(it2))
                             minim_symbol_table_add(table, MINIM_STX_SYMBOL(MINIM_CAR(it2)), minim_null);
                     }
@@ -231,105 +416,157 @@ eliminate_dead_code(MinimEnv *env, Function *func)
     } while (eliminated);
 
     func->pseudo = minim_list_reverse(reverse);
-    return iter > 1;
-}
-
-static void
-eliminate_join(MinimEnv *env, Function *func)
-{
-    MinimSymbolTable *table;
-    MinimObject *reverse, *trailing;
-
+    init_minim_symbol_table(&labels);
+    init_minim_symbol_table(&unreachable_jmp);
+    changed = iter > 1;
     trailing = NULL;
-    reverse = minim_list_reverse(func->pseudo);
-    init_minim_symbol_table(&table);
-    for (MinimObject *it = reverse; !minim_nullp(it); it = MINIM_CDR(it))
+
+    // scan once forward to remove old labels
+    for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op;
-        
+            
         line = MINIM_STX_VAL(MINIM_CAR(it));
         op = MINIM_STX_VAL(MINIM_CAR(line));
-        if (minim_eqp(op, intern("$join")))
+
+        if (minim_eqp(op, intern("$goto")) || minim_eqp(op, intern("$gofalse")))
         {
-            MinimObject *replace, *ref;
-            
-            replace = MINIM_CADR(line);
-            ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(replace));
-            while (ref)
-            {
-                replace = ref;
-                ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(replace));
-            }
-
-            minim_symbol_table_add(table,
-                                   MINIM_STX_SYMBOL(MINIM_CAR(MINIM_CDDR(line))),
-                                   replace);
-
-            minim_symbol_table_add(table,
-                                   MINIM_STX_SYMBOL(MINIM_CADR(MINIM_CDDR(line))),
-                                   replace);
-
-            MINIM_CDR(trailing) = MINIM_CDR(it);
-            it = trailing;
+            minim_symbol_table_add(labels, MINIM_STX_SYMBOL(MINIM_CADR(line)), minim_null);
         }
-        else if (minim_eqp(op, intern("$set")))
+        else if (minim_eqp(op, intern("$label")))
         {
-            MinimObject *name, *val, *ref;
-            
-            name = MINIM_CADR(line);
-            ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
-            if (ref)
+            if (!minim_symbol_table_get(labels, MINIM_STX_SYMBOL(MINIM_CADR(line))))
             {
-                MINIM_CADR(line) = ref;
-            }
-            else
-            {
-                val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
-                if (MINIM_OBJ_PAIRP(val) && minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$eval")))
-                {
-                    for (MinimObject *it2 = MINIM_CDR(val); !minim_nullp(it2); it2 = MINIM_CDR(it2))
-                    {
-                        name = MINIM_CAR(it2);
-                        ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
-                        if (ref)    MINIM_CAR(it2) = ref;
-                    }
-                }
+                MINIM_CDR(trailing) = MINIM_CDR(it);
+                it = trailing;
+                changed = true;
             }
         }
-        else if (minim_eqp(op, intern("$arg")))
+        else if (minim_eqp(op, intern("$return")) && !minim_nullp(MINIM_CDR(it)))
         {
-            MinimObject *ref, *name;
+            MinimObject *next_line, *next_op;
 
-            name = MINIM_CADR(line);
-            ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
-            if (ref)    MINIM_CADR(line) = ref;
-        }
-        else if (minim_eqp(op, intern("$bind")) || minim_eqp(op, intern("$gofalse")))
-        {
-            MinimObject *ref, *name;
+            next_line = MINIM_STX_VAL(MINIM_CADR(it));
+            next_op = MINIM_STX_VAL(MINIM_CAR(next_line));
+            while (!minim_eqp(next_op, intern("$label")))
+            {
+                if (minim_eqp(next_op, intern("$goto")))
+                    minim_symbol_table_add(unreachable_jmp, MINIM_STX_SYMBOL(MINIM_CADR(next_line)), minim_null);
 
-            name = MINIM_CAR(MINIM_CDDR(line));
-            ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
-            if (ref)    MINIM_CAR(MINIM_CDDR(line)) = ref;
+                MINIM_CDR(it) = MINIM_CDDR(it);
+                changed = true;
+
+                if (minim_nullp(MINIM_CDR(it)))
+                    break;
+
+                next_line = MINIM_STX_VAL(MINIM_CADR(it));
+                next_op = MINIM_STX_VAL(MINIM_CAR(next_line));
+            }
         }
 
         trailing = it;
     }
 
-
-    func->pseudo = minim_list_reverse(reverse);
+    return changed;
 }
 
-static void
+// static void
+// eliminate_join(MinimEnv *env, Function *func)
+// {
+//     MinimSymbolTable *table;
+//     MinimObject *reverse, *trailing;
+
+//     trailing = NULL;
+//     reverse = minim_list_reverse(func->pseudo);
+//     init_minim_symbol_table(&table);
+//     for (MinimObject *it = reverse; !minim_nullp(it); it = MINIM_CDR(it))
+//     {
+//         MinimObject *line, *op;
+        
+//         line = MINIM_STX_VAL(MINIM_CAR(it));
+//         op = MINIM_STX_VAL(MINIM_CAR(line));
+//         if (minim_eqp(op, intern("$join")))
+//         {
+//             MinimObject *replace, *ref;
+            
+//             replace = MINIM_CADR(line);
+//             ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(replace));
+//             while (ref)
+//             {
+//                 replace = ref;
+//                 ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(replace));
+//             }
+
+//             minim_symbol_table_add(table,
+//                                    MINIM_STX_SYMBOL(MINIM_CAR(MINIM_CDDR(line))),
+//                                    replace);
+
+//             minim_symbol_table_add(table,
+//                                    MINIM_STX_SYMBOL(MINIM_CADR(MINIM_CDDR(line))),
+//                                    replace);
+
+//             MINIM_CDR(trailing) = MINIM_CDR(it);
+//             it = trailing;
+//         }
+//         else if (minim_eqp(op, intern("$set")))
+//         {
+//             MinimObject *name, *val, *ref;
+            
+//             name = MINIM_CADR(line);
+//             ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
+//             if (ref)
+//             {
+//                 MINIM_CADR(line) = ref;
+//             }
+//             else
+//             {
+//                 val = MINIM_STX_VAL(MINIM_CAR(MINIM_CDDR(line)));
+//                 if (MINIM_OBJ_PAIRP(val) && minim_eqp(MINIM_STX_VAL(MINIM_CAR(val)), intern("$eval")))
+//                 {
+//                     for (MinimObject *it2 = MINIM_CDR(val); !minim_nullp(it2); it2 = MINIM_CDR(it2))
+//                     {
+//                         name = MINIM_CAR(it2);
+//                         ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
+//                         if (ref)    MINIM_CAR(it2) = ref;
+//                     }
+//                 }
+//             }
+//         }
+//         else if (minim_eqp(op, intern("$arg")))
+//         {
+//             MinimObject *ref, *name;
+
+//             name = MINIM_CADR(line);
+//             ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
+//             if (ref)    MINIM_CADR(line) = ref;
+//         }
+//         else if (minim_eqp(op, intern("$bind")) || minim_eqp(op, intern("$gofalse")))
+//         {
+//             MinimObject *ref, *name;
+
+//             name = MINIM_CAR(MINIM_CDDR(line));
+//             ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(name));
+//             if (ref)    MINIM_CAR(MINIM_CDDR(line)) = ref;
+//         }
+
+//         trailing = it;
+//     }
+
+//     func->pseudo = minim_list_reverse(reverse);
+// }
+
+static bool
 consolidate_labels(MinimEnv *env, Function *func)
 {
     MinimSymbolTable *table;
     MinimObject *reverse, *trailing, *curr_label;
+    bool changed;
 
-    trailing = NULL;
-    curr_label = NULL;
     reverse = minim_list_reverse(func->pseudo);
     init_minim_symbol_table(&table);
+    trailing = NULL, curr_label = NULL;
+    changed = false;
+
     for (MinimObject *it = reverse; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op;
@@ -344,6 +581,7 @@ consolidate_labels(MinimEnv *env, Function *func)
                 minim_symbol_table_add(table, MINIM_STX_SYMBOL(label), curr_label);
                 MINIM_CDR(trailing) = MINIM_CDR(it);
                 it = trailing;
+                changed = true;
             }
             else
             {
@@ -353,7 +591,12 @@ consolidate_labels(MinimEnv *env, Function *func)
         else if (minim_eqp(op, intern("$goto")) || minim_eqp(op, intern("$gofalse")))
         {
             MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(line)));
-            if (ref)    MINIM_CADR(line) = ref;
+            if (ref)
+            {
+                MINIM_CADR(line) = ref;
+                changed = true;
+            }
+
             curr_label = NULL;
         }
         else
@@ -365,14 +608,15 @@ consolidate_labels(MinimEnv *env, Function *func)
     }
 
     func->pseudo = minim_list_reverse(reverse);
+    return changed;
 }
 
-static void
+static bool
 eliminate_immediate_goto(MinimEnv *env, Function *func)
 {
-    MinimObject *trailing;
+    MinimObject *trailing = NULL;
+    bool changed = false;
 
-    trailing = NULL;
     for (MinimObject *it = func->pseudo; !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op;
@@ -393,21 +637,27 @@ eliminate_immediate_goto(MinimEnv *env, Function *func)
                 {
                     MINIM_CDR(trailing) = MINIM_CDDR(it);
                     it = trailing;
+                    changed = true;
                 }
             }
         }
 
         trailing = it;
     }
+
+    return changed;
 }
 
-static void
+static bool
 eliminate_unwind(MinimEnv *env, Function *func)
 {
     MinimObject *reverse, *trailing;
+    bool changed;
 
     reverse = minim_list_reverse(func->pseudo);
     trailing = reverse;
+    changed = false;
+
     for (MinimObject *it = MINIM_CDR(reverse); !minim_nullp(it); it = MINIM_CDR(it))
     {
         MinimObject *line, *op;
@@ -418,6 +668,7 @@ eliminate_unwind(MinimEnv *env, Function *func)
         {
             MINIM_CDR(trailing) = MINIM_CDR(it);
             it = trailing;
+            changed = true;
         }
         else
         {
@@ -428,6 +679,7 @@ eliminate_unwind(MinimEnv *env, Function *func)
     }
 
     func->pseudo = minim_list_reverse(reverse);
+    return changed;
 }
 
 void function_optimize(MinimEnv *env, Function *func)
@@ -443,13 +695,17 @@ void function_optimize(MinimEnv *env, Function *func)
         changed = false;
         changed |= constant_fold(env, func);
         changed |= constant_propagation(env, func);
+        changed |= early_return(env, func);
         changed |= eliminate_dead_code(env, func);
+
+        changed |= eliminate_unwind(env, func);
+        changed |= eliminate_immediate_goto(env, func);
+
+        // printf("(iter %zu)", iter);
+        // debug_function(env, func);
         iter += 1;
     }
 
     // do once
-    eliminate_join(env, func);
     consolidate_labels(env, func);
-    eliminate_unwind(env, func);
-    eliminate_immediate_goto(env, func);
 }

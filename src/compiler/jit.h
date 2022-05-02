@@ -4,14 +4,18 @@
 #include "../core/minimpriv.h"
 #include "compilepriv.h"
 
-// JIT wrapper for `env_get_sym`
-MinimObject *jit_get_sym(MinimEnv *env, MinimObject *sym);
+// JIT wrappers / macros
+#define jit_get_sym     env_get_sym
+#define jit_set_sym     env_intern_sym
 
 // Assemble a function into x86.
 void function_assemble_x86(MinimEnv *env, Function *func, Buffer *bf);
 
-// Resolve address
-uintptr_t resolve_address(MinimObject *stx);
+// Resolve address of an builtin procedure.
+uintptr_t resolve_address(MinimEnv *env, MinimObject *addr);
+
+// Adds call site to be patched later
+void add_call_site(Function *func, MinimObject *name, uintptr_t loc);
 
 #define ASSEMBLE(e, f, b)    function_assemble_x86(e, f, b)
 
