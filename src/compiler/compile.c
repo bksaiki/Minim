@@ -664,7 +664,7 @@ void compile_module(MinimEnv *env, MinimModule *module)
     translate_top_level(env2, module->body, &compiler);
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
-        debug_function(env, compiler.curr_func);
+        // debug_function(env, compiler.curr_func);
     }
 
     if (environment_variable_existsp("MINIM_LOG"))
@@ -707,9 +707,9 @@ void compile_module(MinimEnv *env, MinimModule *module)
 
     for (size_t i = 0; i < compiler.func_count; i++) {
         compiler.curr_func = compiler.funcs[i];
-        debug_function(env, compiler.curr_func);
+        // debug_function(env, compiler.curr_func);
         function_register_allocation(env, compiler.curr_func);
-        debug_function(env, compiler.curr_func);
+        // debug_function(env, compiler.curr_func);
     }
 
     //
@@ -781,11 +781,11 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         // optimize 
         // debug_function(env, func);
         function_optimize(env, func);
-        // debug_function(env, func);
+        debug_function(env, func);
 
         // register allocation
         function_register_allocation(env, func);
-        // debug_function(env, func);
+        debug_function(env, func);
 
         // assemble
         ASSEMBLE(env, func, func->code_buf);

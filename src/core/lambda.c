@@ -178,7 +178,7 @@ MinimObject *eval_native_lambda(MinimNativeLambda* lam, MinimEnv *env, size_t ar
     }
     else
     {
-        THROW(env, minim_error("native closure with arguments not supported", "eval_native_lambda()"));
+        THROW(env, minim_error("native closure with more than 3 arguments not supported", "eval_native_lambda()"));
     }
 }
 

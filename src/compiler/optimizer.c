@@ -169,10 +169,18 @@ early_return(MinimEnv *env, Function *func)
         }
         else if (minim_eqp(op, intern("$label")) || minim_eqp(op, intern("$goto")))
         {
-            MinimObject *next_line, *next_op;
+            MinimObject *it2, *next_line, *next_op;
 
-            next_line = MINIM_STX_VAL(MINIM_CADR(it));
+            it2 = it;
+            next_line = MINIM_STX_VAL(MINIM_CADR(it2));
             next_op = MINIM_STX_VAL(MINIM_CAR(next_line));
+            while (minim_eqp(next_op, intern("$pop-env")))
+            {
+                it2 = MINIM_CDR(it2);
+                next_line = MINIM_STX_VAL(MINIM_CADR(it2));
+                next_op = MINIM_STX_VAL(MINIM_CAR(next_line));
+            }
+
             if (minim_eqp(next_op, intern("$set")))
             {
                 MinimObject *ref;
@@ -182,16 +190,19 @@ early_return(MinimEnv *env, Function *func)
                 ref = minim_symbol_table_get(join_syms, name);
                 if (ref)
                 {
-                    MINIM_CAR(it) = minim_ast(
+                    MINIM_CDR(it2) = minim_cons(minim_ast(
                         minim_cons(minim_ast(intern("$return"), NULL),
                         minim_cons(MINIM_CADR(next_line),
                         minim_null)),
-                        NULL
+                        NULL),
+                        MINIM_CDR(it2)
                     );
 
                     minim_symbol_table_add(modified_syms, name, minim_null);
                     changed = true;
                 }
+
+                it = it2;
             }
         }
     }
@@ -217,17 +228,46 @@ early_return(MinimEnv *env, Function *func)
                 join = MINIM_CADR(line);
                 ift = MINIM_CAR(MINIM_CDDR(line));
                 iff = MINIM_CADR(MINIM_CDDR(line));
-                if (minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(ift)) &&
-                    minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(iff)))
+                if (minim_symbol_table_get(ret_syms, MINIM_STX_SYMBOL(join)) ||
+                    minim_symbol_table_get(join_syms, MINIM_STX_SYMBOL(join)))
                 {
-                    minim_symbol_table_add(modified_syms, MINIM_STX_SYMBOL(join), minim_null);
-                    minim_symbol_table_add(join_direct, MINIM_STX_SYMBOL(join), ift);
-                    MINIM_CDR(trailing) = MINIM_CDR(it);
-                    it = trailing;
-                }
-                else
-                {
-                    printf("bad: %s %s\n", MINIM_STX_SYMBOL(ift), MINIM_STX_SYMBOL(iff));
+                    if (minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(ift)) &&
+                        minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(iff)))
+                    {
+                        minim_symbol_table_add(modified_syms, MINIM_STX_SYMBOL(join), minim_null);
+                        minim_symbol_table_add(join_direct, MINIM_STX_SYMBOL(join), ift);
+                        MINIM_CDR(trailing) = MINIM_CDR(it);
+                        it = trailing;
+                    }
+                    else if (minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(ift)))
+                    {
+                        MINIM_CDR(trailing) = minim_cons(minim_ast(
+                            minim_cons(minim_ast(intern("$set"), NULL),
+                            minim_cons(join,
+                            minim_cons(iff,
+                            minim_null))),
+                            NULL),
+                            MINIM_CDR(it));
+                        it = MINIM_CDR(trailing);
+                    }
+                    else if (minim_symbol_table_get(modified_syms, MINIM_STX_SYMBOL(iff)))
+                    {
+                        MINIM_CDR(trailing) = minim_cons(minim_ast(
+                            minim_cons(minim_ast(intern("$set"), NULL),
+                            minim_cons(join,
+                            minim_cons(ift,
+                            minim_null))),
+                            NULL),
+                            MINIM_CDR(it));
+                        it = MINIM_CDR(trailing);
+                    }
+                    else
+                    {
+                        THROW(env, minim_error("not all join symbols registered: ~s ~s",
+                                            "optimization [early return]",
+                                                MINIM_STX_SYMBOL(ift),
+                                                MINIM_STX_SYMBOL(iff)));
+                    }
                 }
             }
             else
@@ -667,6 +707,5 @@ void function_optimize(MinimEnv *env, Function *func)
     }
 
     // do once
-    // eliminate_join(env, func);
     consolidate_labels(env, func);
 }

@@ -45,7 +45,7 @@ int main()
         char strs[4][256] =
         {
             "((lambda () 1))",                          "1",
-            "((lambda (x) x) 1)",                       "1",
+            "((lambda (x) x) 1)",                       "1"
         };
 
         printf("Testing functions\n");
