@@ -37,7 +37,7 @@ typedef struct gc_t {
 /* Accessors */
 
 #define gc_record_ptr(r)            ((void *) (((uintptr_t) (r)) + sizeof(gc_record_t)))
-#define gc_record_next(r)           ((void *) (((uintptr_t) (r)->next) & ~0x3))
+#define gc_record_next(r)           ((gc_record_t *) (((uintptr_t) (r)->next) & ~0x3))
 #define gc_record_flags(r)          (((uintptr_t) (r)->next) & 0x3)
 #define gc_record_alloc_size(r)     ((r)->size + sizeof(gc_record_t))
 
@@ -51,11 +51,11 @@ typedef struct gc_t {
 
 /* Setters */
 
-#define gc_record_mark_set(r)       (*((uintptr_t*) &((r)->next)) |= GC_RECORD_MARK)
-#define gc_record_mark_unset(r)     (*((uintptr_t*) &((r)->next)) &= ~GC_RECORD_MARK)
+#define gc_record_mark_set(r)       (r)->next = ((gc_record_t *) (((uintptr_t) (r)->next) | GC_RECORD_MARK));
+#define gc_record_mark_unset(r)     (r)->next = ((gc_record_t *) (((uintptr_t) (r)->next) & ~GC_RECORD_MARK));
 
-#define gc_record_root_set(r)       (*((uintptr_t*) &((r)->next)) |= GC_RECORD_ROOT)
-#define gc_record_root_unset(r)     (*((uintptr_t*) &((r)->next)) &= ~GC_RECORD_ROOT)
+#define gc_record_root_set(r)       (r)->next = ((gc_record_t *) (((uintptr_t) (r)->next) | GC_RECORD_ROOT));
+#define gc_record_root_unset(r)     (r)->next = ((gc_record_t *) (((uintptr_t) (r)->next) & ~GC_RECORD_ROOT));
 
 #define gc_record_next_set(r, n)    \
     ((r)->next = (void *) (((uintptr_t) (n)) | ((uintptr_t) gc_record_flags(r))))

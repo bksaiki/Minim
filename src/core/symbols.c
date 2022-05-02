@@ -197,16 +197,10 @@ static size_t gensym_counter = 1;
 char *gensym_unique(const char *prefix)
 {
     char *sym;
-    size_t prefix_len, len;
+    size_t len;
 
-    prefix_len = ((prefix) ? strlen(prefix) : 1);
-    len = prefix_len + snprintf(NULL, 0, "%zu", gensym_counter) + 1;
+    len = strlen(prefix) + (gensym_counter / 10) + 1;
     sym = GC_alloc_atomic(len * sizeof(char));
-
-    if (prefix)     strncpy(sym, prefix, prefix_len);
-    else            sym[0] = 't';
-    snprintf(&sym[prefix_len], len, "%zu", gensym_counter);
-
-    gensym_counter++;
+    snprintf(sym, len, "%s%zu", prefix, gensym_counter++);
     return sym;
 }

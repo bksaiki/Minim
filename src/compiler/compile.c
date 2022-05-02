@@ -781,11 +781,11 @@ void compile_expr(MinimEnv *env, MinimObject *stx)
         // optimize 
         // debug_function(env, func);
         function_optimize(env, func);
-        debug_function(env, func);
+        // debug_function(env, func);
 
         // register allocation
         function_register_allocation(env, func);
-        debug_function(env, func);
+        // debug_function(env, func);
 
         // assemble
         ASSEMBLE(env, func, func->code_buf);
