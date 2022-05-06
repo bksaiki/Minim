@@ -186,15 +186,6 @@ MinimObject *minim_ast(void *val, void *loc)
     return o;
 }
 
-MinimObject *minim_sequence(void *seq)
-{
-    MinimObject *o = GC_alloc(minim_sequence_size);
-    o->type = MINIM_OBJ_SEQ;
-    MINIM_SEQUENCE(o) = seq;
-    log_obj_created();
-    return o;
-}
-
 MinimObject *minim_values(size_t len, void *arr)
 {
     MinimObject *o = GC_alloc(minim_values_size);

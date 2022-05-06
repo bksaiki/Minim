@@ -1,0 +1,15 @@
+;; Tests for <lib>/private/sequence.min
+
+(def s (make-sequence '(1 2 3) car cdr null?))
+(equal? (sequence-first s) 1)
+
+(set! s (sequence-rest s))
+(sequence? s)
+(equal? (sequence-first s) 2)
+
+(set! s (sequence-rest s))
+(sequence? s)
+(equal? (sequence-first s) 3)
+
+(set! s (sequence-rest s))
+(sequence-empty? s)
