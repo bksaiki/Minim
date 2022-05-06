@@ -746,7 +746,8 @@ DEFINE_BUILTIN_FUN(recordp)
 DEFINE_BUILTIN_FUN(record_length)
 DEFINE_BUILTIN_FUN(record_type)
 DEFINE_BUILTIN_FUN(record_ref)
-DEFINE_BUILTIN_FUN(record_setp)
+DEFINE_BUILTIN_FUN(record_setb)
+DEFINE_BUILTIN_FUN(record_set_typeb)
 
 // Sequence
 DEFINE_BUILTIN_FUN(sequence)

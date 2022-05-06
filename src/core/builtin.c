@@ -276,7 +276,14 @@ void init_builtins()
     init_builtin("promise?", MINIM_OBJ_FUNC, minim_builtin_promisep);
 
     // Records
+    init_builtin("make-record", MINIM_OBJ_FUNC, minim_builtin_make_record);
     init_builtin("record", MINIM_OBJ_FUNC, minim_builtin_record);
+    init_builtin("record?", MINIM_OBJ_FUNC, minim_builtin_recordp);
+    init_builtin("record-length", MINIM_OBJ_FUNC, minim_builtin_record_length);
+    init_builtin("record-type", MINIM_OBJ_FUNC, minim_builtin_record_type);
+    init_builtin("record-ref", MINIM_OBJ_FUNC, minim_builtin_record_ref);
+    init_builtin("record-set!", MINIM_OBJ_FUNC, minim_builtin_record_setb);
+    init_builtin("record-set-type!", MINIM_OBJ_FUNC, minim_builtin_record_set_typeb);
 
     // Port
     init_builtin("current-input-port", MINIM_OBJ_FUNC, minim_builtin_current_input_port);

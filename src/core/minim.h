@@ -182,7 +182,7 @@ typedef enum MinimObjectType
 #define minim_jump_size             (3 * PTR_SIZE)
 #define minim_port_size             (7 * PTR_SIZE)
 
-#define minim_record_size(n)        ((3 + n)  * PTR_SIZE)
+#define minim_record_size(n)        (MINIM_RECORD_FIELD_OFFSET(n) * PTR_SIZE)
 
 // Special objects
 
