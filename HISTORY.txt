@@ -1,3 +1,24 @@
+Version 0.3.4
+5 May 2022
+Added:
+ - primitive record procedures
+    - records are now primitive types
+    - most record manipulation done through macros
+ - additional sequence manipulation
+    - sequences are no longer primitives
+    - implemented using records
+Internals:
+ - simpler garbage collector
+ - separate expander pass
+ - module vs. module instantiation
+    - one module per file during runtime
+    - module instance every time a file is imported
+ - compiler to pseudoassembly
+    - translation to flat syntax
+    - optimization passes
+    - register allocation
+ - partial support for native function calling (more to come!!!)
+
 Version 0.3.3
 29 November 2021
 Internal:
