@@ -28,7 +28,11 @@
          sequence-append
          sequence-map
          sequence-andmap
-         sequence-ormap)
+         sequence-ormap
+         sequence-for-each
+         sequence-fold
+         sequence-count
+         sequence-filter)
 
 ; function helpers
 (def incr (lambda (x) (+ x 1)))
@@ -189,10 +193,14 @@
   (unless (sequence? seq)
     (argument-error 'sequence-andmap "sequence?" seq))
   (let loop ([seq seq])
-    (cond
-     [(sequence-empty? seq) #t]
-     [(not (proc (sequence-first seq))) #f]
-     [else (loop (sequence-rest seq))])))
+    (if (sequence-empty? seq)
+        #t
+        (let ([elem (sequence-first seq)])
+          (if (if (list? elem)
+                  (apply proc elem)
+                  (proc elem))
+              (loop (sequence-rest seq))
+              #f)))))
 
 (def sequence-ormap (proc seq)
   (unless (procedure? proc)
@@ -200,7 +208,76 @@
   (unless (sequence? seq)
     (argument-error 'sequence-ormap "sequence?" seq))
   (let loop ([seq seq])
-    (cond
-     [(sequence-empty? seq) #f]
-     [(proc (sequence-first seq)) #t]
-     [else (loop (sequence-rest seq))])))
+    (if (sequence-empty? seq)
+        #f
+        (let ([elem (sequence-first seq)])
+          (if (if (list? elem)
+                  (apply proc elem)
+                  (proc elem))
+              #t
+              (loop (sequence-rest seq)))))))
+
+(def sequence-for-each (proc seq)
+  (unless (procedure? proc)
+    (argument-error 'sequence-for-each "procedure?" proc))
+  (unless (sequence? seq)
+    (argument-error 'sequence-for-each "sequence?" seq))
+  (let loop ([seq seq])
+    (unless (sequence-empty? seq)
+      (let ([elem (sequence-first seq)])
+        (if (list? elem)
+            (apply proc elem)
+            (proc elem))
+        (loop (sequence-rest seq))))))
+
+(def sequence-fold (proc init seq)
+  (unless (procedure? proc)
+    (argument-error 'sequence-fold "procedure?" proc))
+  (unless (sequence? seq)
+    (argument-error 'sequence-fold "sequence?" seq))
+  (let loop ([accum init] [seq seq])
+    (if (sequence-empty? seq)
+        accum
+        (let ([elem (sequence-first seq)])
+          (loop 
+            (if (list? elem)
+                (apply proc accum elem)
+                (proc accum elem))
+            (sequence-rest seq))))))
+
+(def sequence-count (proc seq)
+  (unless (procedure? proc)
+    (argument-error 'sequence-count "procedure?" proc))
+  (unless (sequence? seq)
+    (argument-error 'sequence-count "sequence?" seq))
+  (let loop ([seq seq] [count 0])
+    (if (sequence-empty? seq)
+        count
+        (let ([elem (sequence-first seq)])
+          (loop
+            (sequence-rest seq)
+            (if (if (list? elem)
+                    (apply proc elem)
+                    (proc elem))
+                (+ count 1)
+                count))))))
+
+(def sequence-filter (proc seq)
+  (unless (procedure? proc)
+    (argument-error 'sequence-filter "procedure?" proc))
+  (unless (sequence? seq)
+    (argument-error 'sequence-filter "sequence?" seq))
+  (let ([next (lambda (x)
+                (let loop ([x (sequence-rest x)])
+                  (if (sequence-empty? x)
+                      x
+                      (let ([elem (sequence-first x)])
+                        (if (if (list? elem)
+                                (apply proc elem)
+                                (proc elem))
+                            x
+                            (loop (sequence-rest x)))))))])
+    (make-sequence (next seq)
+                   (lambda (x) (sequence-first x))
+                   next
+                   (lambda (x) (sequence-empty? x)))))

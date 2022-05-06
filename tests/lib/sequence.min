@@ -144,3 +144,49 @@
   (def mixed-s (in-list '(2 3 6)))
   (equal? (sequence-ormap even? mixed-s) #t)
 )
+
+(begin
+  (def s1 (in-list '(1 2 3)))
+  (def t1 0)
+  (sequence-for-each (lambda (x) (set! t1 x)) s1)
+  (equal? t1 3)
+
+  (def s2 (in-list '((1 2) (3 4) (5 6))))
+  (def t2 0)
+  (def t3 0)
+  (sequence-for-each (lambda (x y) (set! x t2) (set! t3 y)) s2)
+  (equal? t2 5)
+  (equal? t3 6)
+)
+
+(begin
+  (def s1 (in-list '(1 2 3)))
+  (equal? (sequence-fold + 0 s1) 6)
+
+  (def s2 (in-list '((2 1) (2 2) (2 3))))
+  (equal? (sequence-fold (lambda (a b c) (+ a (* b c))) 0 s2) 12)
+)
+
+(begin
+  (def even-s (in-list '(2 4 6)))
+  (equal? (sequence-count even? even-s) 3)
+
+  (def odd-s (in-list '(1 3 5)))
+  (equal? (sequence-count even? odd-s) 0)
+
+  (def mixed-s (in-list '(2 3 6)))
+  (equal? (sequence-count even? mixed-s) 2)
+)
+
+(begin
+  (def s (in-list '(1 2 3 4 5 6)))
+  (def even-s (sequence-filter even? s))
+
+  (equal? (sequence-first even-s) 2)
+  (set! even-s (sequence-rest even-s))
+  (equal? (sequence-first even-s) 4)
+  (set! even-s (sequence-rest even-s))
+  (equal? (sequence-first even-s) 6)
+  (set! even-s (sequence-rest even-s))
+  (sequence-empty? even-s)
+)
