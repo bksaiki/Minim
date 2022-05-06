@@ -150,6 +150,7 @@ void init_builtins()
     init_builtin("string-set!", MINIM_OBJ_FUNC, minim_builtin_string_setb);
     init_builtin("string-copy", MINIM_OBJ_FUNC, minim_builtin_string_copy);
     init_builtin("string-fill!", MINIM_OBJ_FUNC, minim_builtin_string_fillb);
+    init_builtin("string-append", MINIM_OBJ_FUNC, minim_builtin_string_append);
     init_builtin("substring", MINIM_OBJ_FUNC, minim_builtin_substring);
     init_builtin("string->symbol", MINIM_OBJ_FUNC, minim_builtin_string_to_symbol);
     init_builtin("symbol->string", MINIM_OBJ_FUNC, minim_builtin_symbol_to_string);

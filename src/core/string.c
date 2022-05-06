@@ -272,6 +272,40 @@ MinimObject *minim_builtin_string_fillb(MinimEnv *env, size_t argc, MinimObject 
     return minim_void;
 }
 
+MinimObject *minim_builtin_string_append(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    char *str;
+    size_t len, idx;
+
+    if (argc == 0)
+    {
+        str = GC_alloc_atomic(sizeof(char));
+        str[0] = '\0';
+        return minim_string(str);
+    }
+
+    for (size_t i = 0; i < argc; ++i)
+    {
+        if (!MINIM_OBJ_STRINGP(args[i]))
+            THROW(env, minim_argument_error("string?", "string-append", i, args[i]));
+    }
+
+    idx = 0;
+    for (size_t i = 0; i < argc; ++i)
+        idx += strlen(MINIM_STRING(args[i]));
+
+    str = GC_alloc_atomic((idx + 1) * sizeof(char));
+    idx = 0;
+    for (size_t i = 0; i < argc; ++i) {
+        len = strlen(MINIM_STRING(args[i]));
+        memcpy(&str[idx], MINIM_STRING(args[i]), len);
+        idx += len;
+    }
+
+    str[idx] = '\0';
+    return minim_string(str);
+}
+
 MinimObject *minim_builtin_substring(MinimEnv *env, size_t argc, MinimObject **args)
 {
     size_t len, start, end;

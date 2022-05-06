@@ -114,6 +114,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(string_setb, 3);
     SET_ARITY_EXACT(string_copy, 1);
     SET_ARITY_EXACT(string_fillb, 2);
+    // NO CHECK: string_append
     SET_ARITY_RANGE(substring, 2, 3);
     SET_ARITY_EXACT(string_to_symbol, 1);
     SET_ARITY_EXACT(symbol_to_string, 1);

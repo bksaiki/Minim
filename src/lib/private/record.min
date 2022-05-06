@@ -3,7 +3,6 @@
 ;
 
 (%import "pre-base.min"
-         "string.min"       ; string-append
          "../srfi/9.min")   ; def-record-type
 
 (%export (all "../srfi/9.min")
