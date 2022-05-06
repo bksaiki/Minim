@@ -3,6 +3,7 @@
 ;
 
 (%import "and-or.min"
+         "cond.min"
          "def.min"
          "let.min"
          "when-unless.min"
@@ -21,7 +22,13 @@
          in-vector
          in-string
          sequence->list
-         sequence-length)
+         sequence-length
+         sequence-ref
+         sequence-tail
+         sequence-append
+         sequence-map
+         sequence-andmap
+         sequence-ormap)
 
 ; function helpers
 (def incr (lambda (x) (+ x 1)))
@@ -120,9 +127,80 @@
 ;;;;;;;;;;;;;;;;;;;;;;; sequence manipulation ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def sequence-length (seq)
-  (unless (sequence? seq) (argument-error 'sequence-empty? "sequence?" seq))
+  (unless (sequence? seq) (argument-error 'sequence-length "sequence?" seq))
   (let loop ([seq seq] [i 0])
     (if (sequence-empty? seq)
         i
         (loop (sequence-rest seq) (+ i 1)))))
 
+(def sequence-ref (seq n)
+  (unless (sequence? seq)
+    (argument-error 'sequence-ref "sequence?" seq))
+  (unless (exact-nonnegative-integer? n)
+    (argument-error 'sequence-ref "non-negative integer" n))
+  (let loop ([seq seq] [i 0])
+    (cond
+     [(sequence-empty? seq) (error 'sequence-ref "index too large ~a" n)]
+     [(= i n) (sequence-first seq)]
+     [else (loop (sequence-rest seq) (+ i 1))])))
+  
+(def sequence-tail (seq n)
+  (unless (sequence? seq)
+    (argument-error 'sequence-tail "sequence?" seq))
+  (unless (exact-nonnegative-integer? n)
+    (argument-error 'sequence-tail "non-negative integer" n))
+  (let loop ([seq seq] [i 0])
+    (cond
+     [(sequence-empty? seq) (error 'sequence-tail "index too large ~a" n)]
+     [(= i n) seq]
+     [else (loop (sequence-rest seq) (+ i 1))])))
+
+(def sequence-append seqs
+  (let loop ([seqs seqs] [i 0])
+    (unless (null? seqs)
+      (unless (sequence? (car seqs))
+        (argument-error 'sequence-append "sequence?" (car seqs)))
+      (loop (cdr seqs) (+ i 1))))
+  (cond
+   [(null? seqs) empty-sequence]
+   [(= (length seqs) 1) (car seqs)]
+   [else
+    (let ([first (lambda (x) (sequence-first (car x)))]
+          [rest (lambda (x)
+                  (let ([next0 (sequence-rest (car x))])
+                    (if (sequence-empty? next0)
+                        (cdr x)
+                        (cons next0 (cdr x)))))])
+      (make-sequence seqs first rest null?))]))
+
+(def sequence-map (proc seq)
+  (unless (procedure? proc)
+    (argument-error 'sequence-map "procedure?" proc))
+  (unless (sequence? seq)
+    (argument-error 'sequence-map "sequence?" seq))
+  (make-sequence (cons proc seq)
+                 (lambda (s) ((car s) (sequence-first (cdr s))))
+                 (lambda (s) (cons (car s) (sequence-rest (cdr s))))
+                 (lambda (s) (sequence-empty? (cdr s)))))
+
+(def sequence-andmap (proc seq)
+  (unless (procedure? proc)
+    (argument-error 'sequence-andmap "procedure?" proc))
+  (unless (sequence? seq)
+    (argument-error 'sequence-andmap "sequence?" seq))
+  (let loop ([seq seq])
+    (cond
+     [(sequence-empty? seq) #t]
+     [(not (proc (sequence-first seq))) #f]
+     [else (loop (sequence-rest seq))])))
+
+(def sequence-ormap (proc seq)
+  (unless (procedure? proc)
+    (argument-error 'sequence-ormap "procedure?" proc))
+  (unless (sequence? seq)
+    (argument-error 'sequence-ormap "sequence?" seq))
+  (let loop ([seq seq])
+    (cond
+     [(sequence-empty? seq) #f]
+     [(proc (sequence-first seq)) #t]
+     [else (loop (sequence-rest seq))])))

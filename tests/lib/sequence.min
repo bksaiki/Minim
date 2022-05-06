@@ -81,3 +81,66 @@
 ;; sequence manipulation
 
 (equal? (sequence-length (in-list '(1 2 3))) 3)
+(equal? (sequence-ref (in-list '(1 2 3)) 2) 3)
+(equal? (sequence-first (sequence-tail (in-list '(1 2 3)) 2)) 3)
+
+(begin
+  (def s1 (in-list '(1 2)))
+  (def s2 (in-list '(3 4)))
+  (def s3 (in-list '(5 6)))
+
+  (def as0 (sequence-append))
+  (sequence-empty? as0)
+
+  (def as1 (sequence-append s1))
+  (equal? (sequence-first as1) 1)
+  (set! as1 (sequence-rest as1))
+  (equal? (sequence-first as1) 2)
+  (set! as1 (sequence-rest as1))
+  (sequence-empty? as1)
+
+  (def as2 (sequence-append s1 s2))
+  (equal? (sequence-first as2) 1)
+  (set! as2 (sequence-rest (sequence-rest as2)))
+  (equal? (sequence-first as2) 3)
+  (set! as2 (sequence-rest (sequence-rest as2)))
+  (sequence-empty? as2)
+
+  (def as3 (sequence-append s1 s2 s3))
+  (equal? (sequence-first as3) 1)
+  (set! as3 (sequence-rest (sequence-rest (sequence-rest as3))))
+  (equal? (sequence-first as3) 4)
+  (set! as3 (sequence-rest (sequence-rest (sequence-rest as3))))
+  (sequence-empty? as3)
+)
+
+(begin
+  (def s (sequence-map (lambda (x) (* 2 x)) (in-list '(1 2 3))))
+  (equal? (sequence-first s) 2)
+  (set! s (sequence-rest s))
+  (equal? (sequence-first s) 4)
+  (set! s (sequence-rest s))
+  (equal? (sequence-first s) 6)
+)
+
+(begin
+  (def even-s (in-list '(2 4 6)))
+  (equal? (sequence-andmap even? even-s) #t)
+
+  (def odd-s (in-list '(1 3 5)))
+  (equal? (sequence-andmap even? odd-s) #f)
+
+  (def mixed-s (in-list '(2 3 6)))
+  (equal? (sequence-andmap even? mixed-s) #f)
+)
+
+(begin
+  (def even-s (in-list '(2 4 6)))
+  (equal? (sequence-ormap even? even-s) #t)
+
+  (def odd-s (in-list '(1 3 5)))
+  (equal? (sequence-ormap even? odd-s) #f)
+
+  (def mixed-s (in-list '(2 3 6)))
+  (equal? (sequence-ormap even? mixed-s) #t)
+)
