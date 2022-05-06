@@ -275,6 +275,9 @@ void init_builtins()
     init_builtin("force", MINIM_OBJ_FUNC, minim_builtin_force);
     init_builtin("promise?", MINIM_OBJ_FUNC, minim_builtin_promisep);
 
+    // Records
+    init_builtin("record", MINIM_OBJ_FUNC, minim_builtin_record);
+
     // Port
     init_builtin("current-input-port", MINIM_OBJ_FUNC, minim_builtin_current_input_port);
     init_builtin("current-output-port", MINIM_OBJ_FUNC, minim_builtin_current_output_port);

@@ -92,6 +92,10 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
 
         writes_buffer(bf, str);
     }
+    else if (MINIM_OBJ_RECORDP(obj))
+    {
+        writes_buffer(bf, "#<record>");
+    }
     else if (MINIM_OBJ_STRINGP(obj))
     {
         if (pp->display)    writes_buffer(bf, MINIM_STRING(obj));

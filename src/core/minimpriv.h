@@ -739,6 +739,15 @@ DEFINE_BUILTIN_FUN(vector_to_list)
 DEFINE_BUILTIN_FUN(list_to_vector)
 DEFINE_BUILTIN_FUN(vector_fillb)
 
+// Record
+DEFINE_BUILTIN_FUN(make_record)
+DEFINE_BUILTIN_FUN(record)
+DEFINE_BUILTIN_FUN(recordp)
+DEFINE_BUILTIN_FUN(record_length)
+DEFINE_BUILTIN_FUN(record_type)
+DEFINE_BUILTIN_FUN(record_ref)
+DEFINE_BUILTIN_FUN(record_setp)
+
 // Sequence
 DEFINE_BUILTIN_FUN(sequence)
 DEFINE_BUILTIN_FUN(sequencep)

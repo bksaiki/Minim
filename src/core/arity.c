@@ -236,6 +236,9 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     // Promise
     SET_ARITY_EXACT(promisep, 1);
 
+    // Records
+    // NO CHECK: 'record'
+
     // Port
     SET_ARITY_EXACT(current_input_port, 0);
     SET_ARITY_EXACT(current_output_port, 0);
