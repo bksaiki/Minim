@@ -11,7 +11,7 @@ size_t custom_print_method_count = 0;
 
 static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams *pp)
 {
-    if (env)
+    if (env && custom_print_method_count > 0)
     {
         for (size_t i = custom_print_method_count - 1; i < custom_print_method_count; --i)
         {
@@ -91,6 +91,15 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         }
 
         writes_buffer(bf, str);
+    }
+    else if (MINIM_OBJ_RECORDP(obj))
+    {
+        if (MINIM_RECORD_TYPE(obj) == obj)
+            writef_buffer(bf, "#<record-type:~s>", MINIM_SYMBOL(MINIM_RECORD_REF(obj, 0)));
+        else if (MINIM_OBJ_RECORDP(MINIM_RECORD_TYPE(obj)))
+            writef_buffer(bf, "#<~s>", MINIM_SYMBOL(MINIM_RECORD_REF(MINIM_RECORD_TYPE(obj), 0)));
+        else
+            writef_buffer(bf, "#<record>");
     }
     else if (MINIM_OBJ_STRINGP(obj))
     {

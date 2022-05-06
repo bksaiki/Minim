@@ -322,6 +322,22 @@ int main()
         const int COUNT = 5;
         char strs[10][256] =
         {
+            "(string-append)",                                      "\"\"",
+            "(string-append \"a\" \"b\")",                          "\"ab\"",
+            "(string-append \"hel\" \"lo\")",                       "\"hello\"",
+            "(string-append \"I a\" \"m h\" \"ere\")",              "\"I am here\"",
+            "(string-append \"abc\" \"\" \" \" \"\" \"def\")",      "\"abc def\""
+        };
+
+        printf("Testing 'string-append'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 5;
+        char strs[10][256] =
+        {
             "(substring \"hello\" 0)",                  "\"hello\"",
             "(substring \"hello\" 1)",                  "\"ello\"",
             "(substring \"hello\" 0 5)",                "\"hello\"",

@@ -114,6 +114,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_EXACT(string_setb, 3);
     SET_ARITY_EXACT(string_copy, 1);
     SET_ARITY_EXACT(string_fillb, 2);
+    // NO CHECK: string_append
     SET_ARITY_RANGE(substring, 2, 3);
     SET_ARITY_EXACT(string_to_symbol, 1);
     SET_ARITY_EXACT(symbol_to_string, 1);
@@ -235,6 +236,16 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
 
     // Promise
     SET_ARITY_EXACT(promisep, 1);
+
+    // Records
+    SET_ARITY_RANGE(make_record, 1, 2);
+    SET_ARITY_MIN(record, 1);
+    SET_ARITY_EXACT(recordp, 1);
+    SET_ARITY_EXACT(record_length, 1);
+    SET_ARITY_EXACT(record_type, 1);
+    SET_ARITY_EXACT(record_ref, 2);
+    SET_ARITY_EXACT(record_setb, 3);
+    SET_ARITY_EXACT(record_set_typeb, 2);
 
     // Port
     SET_ARITY_EXACT(current_input_port, 0);

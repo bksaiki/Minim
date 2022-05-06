@@ -248,6 +248,22 @@ MinimObject *minim_file_port(FILE *f, uint8_t mode)
     return o;
 }
 
+MinimObject *minim_record(size_t len, MinimObject *init)
+{
+    MinimObject *o = GC_alloc(minim_record_size(len));
+    o->type = MINIM_OBJ_RECORD;
+    MINIM_RECORD_NFIELDS(o) = len;
+    if (init != NULL)       // lazy initialization
+    {
+        MINIM_RECORD_TYPE(o) = init;
+        for (size_t i = 0; i < len; ++i)
+            MINIM_RECORD_REF(o, i) = init;
+    }
+
+    log_obj_created();
+    return o;
+}
+
 bool minim_eqp(MinimObject *a, MinimObject *b)
 {
     if (a == b)                         // same object
