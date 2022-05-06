@@ -2,18 +2,31 @@
 ;   'sequences'
 ;
 
-(%import "def.min"
+(%import "and-or.min"
+         "def.min"
          "let.min"
          "when-unless.min"
-         "record.min")
+         "record.min"
+         "../srfi/16.min")
 
 (%export make-sequence
          sequence?
          sequence-first
          sequence-rest
          sequence-empty?
-         sequence->list)
+         empty-sequence
+         in-list
+         in-range
+         in-naturals
+         in-vector
+         in-string
+         sequence->list
+         sequence-length)
 
+; function helpers
+(def incr (lambda (x) (+ x 1)))
+(def identity (lambda (x) x))
+(def never (lambda x #f))
 
 ; the sequence record
 ;  'state' - maintains the current location in the sequence
@@ -33,19 +46,83 @@
   (unless (sequence-end? seq) (argument-error 'sequence-next "empty sequence" seq))
   (let ([first (sequence-accessor seq)]
         [rest (sequence-update seq)]
-        [end (sequence-end? seq)])
-    (make-sequence (rest (sequence-state seq)) first rest end)))
+        [end? (sequence-end? seq)])
+    (make-sequence (rest (sequence-state seq)) first rest end?)))
 
 (def sequence-empty? (seq)
   (unless (sequence? seq) (argument-error 'sequence-empty? "sequence?" seq))
-  (let ([end (sequence-end? seq)])
-    (end (sequence-state seq))))
+  (let ([end? (sequence-end? seq)])
+    (end? (sequence-state seq))))
+
+;;;;;;;;;;;;;;;;;;;;;;; special sequences ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def empty-sequence (make-sequence #f identity identity (lambda (x) #t)))
+
+;;;;;;;;;;;;;;;;;;;;;;; sequence constructors ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def in-list (lst)
+  (unless (list? lst)
+    (argument-error 'in-list "list?" lst))
+  (make-sequence lst car cdr null?))
+
+(def in-range
+  (case-lambda
+   [(l) (in-range 0 l 1)]
+   [(f l) (in-range f l 1)]
+   [(f l s)
+    (unless (number? f)
+      (argument-error 'in-range "number?" f))
+    (unless (number? l)
+      (argument-error 'in-range "number?" l))
+    (unless (number? s)
+      (argument-error 'in-range "number?" s))
+    (make-sequence f
+                   identity
+                   (lambda (x) (+ x s))
+                   (lambda (x) (>= x l)))]))
+
+(def in-naturals
+  (case-lambda
+   [() (in-naturals 0)]
+   [(n)
+    (unless (or (number? n) (exact? n) (not (negative? n)) (integer? n))
+      (argument-error 'in-naturals "number?" n))
+    (make-sequence n identity incr never)]))
+
+(def in-vector (v)
+  (unless (vector? v)
+    (argument-error 'in-vector "vector?" v))
+  (def len (vector-length v))
+  (make-sequence 0
+                 (lambda (x) (vector-ref v x))
+                 incr
+                 (lambda (x) (= x len))))
+
+(def in-string (s)
+  (unless (string? s)
+    (argument-error 'in-string "string?" s))
+  (def len (string-length s))
+  (make-sequence 0
+                 (lambda (x) (string-ref s x))
+                 incr
+                 (lambda (x) (>= x len))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def sequence->list (seq)
+  (unless (sequence? seq) (argument-error 'sequence-empty? "sequence?" seq))
   (let loop ([accum (list)] [seq seq])
     (if (sequence-empty? seq)
         (reverse accum)
         (loop (cons (sequence-first seq) accum)
               (sequence-rest seq)))))
+
+;;;;;;;;;;;;;;;;;;;;;;; sequence manipulation ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def sequence-length (seq)
+  (unless (sequence? seq) (argument-error 'sequence-empty? "sequence?" seq))
+  (let loop ([seq seq] [i 0])
+    (if (sequence-empty? seq)
+        i
+        (loop (sequence-rest seq) (+ i 1)))))
+

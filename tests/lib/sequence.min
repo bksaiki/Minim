@@ -1,5 +1,9 @@
 ;; Tests for <lib>/private/sequence.min
 
+;; general sequences
+
+(begin
+
 (def s (make-sequence '(1 2 3) car cdr null?))
 (equal? (sequence-first s) 1)
 
@@ -13,3 +17,67 @@
 
 (set! s (sequence-rest s))
 (sequence-empty? s)
+
+)
+
+;; special sequences
+
+(sequence-empty? empty-sequence)
+
+;; sequence constructors
+
+(begin
+  (def s (in-list '(1 2 3)))
+  (equal? (sequence-first s) 1)
+  (equal? (sequence-first (sequence-rest s)) 2)
+)
+
+(begin
+  (def s (in-range 5))
+  (equal? (sequence-first s) 0)
+  (equal? (sequence-first (sequence-rest s)) 1)
+)
+
+(begin
+  (def s (in-range 1 5))
+  (equal? (sequence-first s) 1)
+  (equal? (sequence-first (sequence-rest s)) 2)
+)
+
+(begin
+  (def s (in-range 1 5 2))
+  (equal? (sequence-first s) 1)
+  (equal? (sequence-first (sequence-rest s)) 3)
+)
+
+(begin
+  (def s (in-naturals))
+  (equal? (sequence-first s) 0)
+  (equal? (sequence-first (sequence-rest s)) 1)
+)
+
+(begin
+  (def s (in-naturals 3))
+  (equal? (sequence-first s) 3)
+  (equal? (sequence-first (sequence-rest s)) 4)
+)
+
+(begin
+  (def s (in-vector #(1 2 3)))
+  (equal? (sequence-first s) 1)
+  (equal? (sequence-first (sequence-rest s)) 2)
+)
+
+(begin
+  (def s (in-string "abcdef"))
+  (equal? (sequence-first s) #\a)
+  (equal? (sequence-first (sequence-rest s)) #\b)
+)
+
+;; sequence conversion
+
+(equal? (sequence->list (in-list '(1 2 3))) '(1 2 3))
+
+;; sequence manipulation
+
+(equal? (sequence-length (in-list '(1 2 3))) 3)
