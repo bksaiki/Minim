@@ -231,13 +231,6 @@ void init_builtins()
     init_builtin("list->vector", MINIM_OBJ_FUNC, minim_builtin_list_to_vector);
     init_builtin("vector-fill!", MINIM_OBJ_FUNC, minim_builtin_vector_fillb);
 
-    // Sequence
-    init_builtin("sequence", MINIM_OBJ_FUNC, minim_builtin_sequence);
-    init_builtin("sequence?", MINIM_OBJ_FUNC, minim_builtin_sequencep);
-    init_builtin("sequence-first", MINIM_OBJ_FUNC, minim_builtin_sequence_first);
-    init_builtin("sequence-rest", MINIM_OBJ_FUNC, minim_builtin_sequence_rest);
-    init_builtin("sequence-empty?", MINIM_OBJ_FUNC, minim_builtin_sequence_donep);
-
     // Math
     init_builtin("+", MINIM_OBJ_FUNC, minim_builtin_add);
     init_builtin("-", MINIM_OBJ_FUNC, minim_builtin_sub);

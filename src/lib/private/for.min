@@ -5,14 +5,11 @@
 (%import "and-or.min"
          "def.min"
          "let.min"
+         "sequence.min"
          "stx.min"
-         "when-unless.min"
-         "../srfi/16.min")
+         "when-unless.min")
 
-(%export for for/list
-         in-list in-range in-naturals
-         in-vector in-string
-         sequence->list)
+(%export for for/list)
 
 ;;;;;;;;;;;;;;;;;;;;;;; for loop ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -47,64 +44,3 @@
                     body ...)
                   accum)
                 (sequence-rest id) ...)))])))
-
-;;;;;;;;;;;;;;;;;;;;;;; sequence constructors ;;;;;;;;;;;;;;;;;;;;;;;
-
-(def in-list (lst)
-  (unless (list? lst)
-    (argument-error 'in-list "list?" lst))
-  (sequence lst car cdr null?))
-
-(def in-range
-  (case-lambda
-   [(l) (in-range 0 l 1)]
-   [(f l) (in-range f l 1)]
-   [(f l s)
-    (unless (number? f)
-      (argument-error 'in-range "number?" f))
-    (unless (number? l)
-      (argument-error 'in-range "number?" l))
-    (unless (number? s)
-      (argument-error 'in-range "number?" s))
-    (sequence f
-              (lambda (x) x)
-              (lambda (x) (+ x s))
-              (lambda (x) (>= x l)))]))
-
-(def in-naturals
-  (case-lambda
-   [() (in-naturals 0)]
-   [(n)
-    (unless (or (number? n) (exact? n) (not (negative? n)) (integer? n))
-      (argument-error 'in-naturals "number?" n))
-    (sequence n
-              (lambda (x) x)
-              (lambda (x) (+ x 1))
-              (lambda (x) #f))]))
-
-(def in-vector (v)
-  (unless (vector? v)
-    (argument-error 'in-vector "vector?" v))
-  (def len (vector-length v))
-  (sequence 0
-            (lambda (x) (vector-ref v x))
-            (lambda (x) (+ x 1))
-            (lambda (x) (= x len))))
-
-(def in-string (s)
-  (unless (string? s)
-    (argument-error 'in-string "string?" s))
-  (def len (string-length s))
-  (sequence 0
-            (lambda (x) (string-ref s x))
-            (lambda (x) (+ x 1))
-            (lambda (x) (>= x len))))
-
-;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
-
-(def sequence->list (seq)
-  (let loop ([accum (list)] [seq seq])
-    (if (sequence-empty? seq)
-        (reverse accum)
-        (loop (cons (sequence-first seq) accum)
-              (sequence-rest seq)))))

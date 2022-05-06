@@ -10,6 +10,7 @@
          "for.min"
          "let.min"
          "record.min"
+         "sequence.min"
          "stx.min"
          "stx-macro.min"
          "with-stx.min"
@@ -22,6 +23,7 @@
          (all "for.min")
          (all "let.min")
          (all "record.min")
+         (all "sequence.min")
          (all "stx-macro.min")
          (all "with-stx.min")
          (all "when-unless.min")

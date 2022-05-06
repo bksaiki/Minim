@@ -144,7 +144,6 @@ typedef enum MinimObjectType
     MINIM_OBJ_JUMP,
 
     // compound / complex
-    MINIM_OBJ_SEQ,
     MINIM_OBJ_HASH,
     MINIM_OBJ_PORT,
 
@@ -174,7 +173,6 @@ typedef enum MinimObjectType
 #define minim_tail_call_size        (2 * PTR_SIZE)
 #define minim_transform_size        (3 * PTR_SIZE)
 #define minim_ast_size              (3 * PTR_SIZE)
-#define minim_sequence_size         (2 * PTR_SIZE)
 #define minim_values_size           (3 * PTR_SIZE)
 #define minim_error_size            (2 * PTR_SIZE)
 #define minim_char_size             (2 * sizeof(int))
@@ -227,7 +225,6 @@ extern MinimObject *minim_input_port;
 #define MINIM_OBJ_TAIL_CALLP(obj)           MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_TAIL_CALL)
 #define MINIM_OBJ_TRANSFORMP(obj)           MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_TRANSFORM)
 #define MINIM_OBJ_ASTP(obj)                 MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_AST)
-#define MINIM_OBJ_SEQP(obj)                 MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_SEQ)
 #define MINIM_OBJ_HASHP(obj)                MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_HASH)
 #define MINIM_OBJ_VECTORP(obj)              MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_VECTOR)
 #define MINIM_OBJ_PROMISEP(obj)             MINIM_OBJ_SAME_TYPE(obj, MINIM_OBJ_PROMISE)
@@ -268,7 +265,6 @@ extern MinimObject *minim_input_port;
 #define MINIM_TRANSFORMER(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
 #define MINIM_STX_VAL(obj)          (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_STX_LOC(obj)          (*((SyntaxLoc**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
-#define MINIM_SEQUENCE(obj)         (*((MinimSeq**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_VALUES(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_VALUES_REF(obj, i)    ((*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))[i])
 #define MINIM_VALUES_SIZE(obj)      (*((size_t*) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
@@ -370,7 +366,6 @@ MinimObject *minim_native_closure(void *closure);
 MinimObject *minim_tail_call(void *tc);
 MinimObject *minim_transform(void *binding, int type);
 MinimObject *minim_ast(void *val, void *loc);
-MinimObject *minim_sequence(void *seq);
 MinimObject *minim_values(size_t len, void *arr);
 MinimObject *minim_err(void *err);
 MinimObject *minim_char(unsigned int ch);

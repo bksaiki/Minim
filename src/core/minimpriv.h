@@ -95,15 +95,6 @@ typedef struct MinimHash
     size_t alloc, size;
 } MinimHash;
 
-// sequence object
-typedef struct MinimSeq
-{
-    MinimObject *val;       // current iterator
-    MinimObject *first;     // closure or primitive that returns the current object
-    MinimObject *rest;      // closure or primitive that updates the sequence
-    MinimObject *donep;     // closure or primitive to query if the sequence has terminated
-} MinimSeq;
-
 // error stack trace
 typedef struct MinimErrorTrace
 {
@@ -478,16 +469,6 @@ uint32_t hash_bytes(const void* data, size_t len);
 #define hash_symbol(s)  hash_bytes(&s, sizeof(&s))
 
 //
-//  Sequences
-//
-
-void init_minim_seq(MinimSeq **pseq,
-                    MinimObject *init,
-                    MinimObject *first,
-                    MinimObject *rest,
-                    MinimObject *donep);
-
-//
 //  Ports
 //
 
@@ -749,13 +730,6 @@ DEFINE_BUILTIN_FUN(record_type)
 DEFINE_BUILTIN_FUN(record_ref)
 DEFINE_BUILTIN_FUN(record_setb)
 DEFINE_BUILTIN_FUN(record_set_typeb)
-
-// Sequence
-DEFINE_BUILTIN_FUN(sequence)
-DEFINE_BUILTIN_FUN(sequencep)
-DEFINE_BUILTIN_FUN(sequence_first)
-DEFINE_BUILTIN_FUN(sequence_rest)
-DEFINE_BUILTIN_FUN(sequence_donep)
 
 // Math
 DEFINE_BUILTIN_FUN(add)
