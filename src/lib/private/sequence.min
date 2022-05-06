@@ -1,0 +1,51 @@
+;
+;   'sequences'
+;
+
+(%import "def.min"
+         "let.min"
+         "when-unless.min"
+         "record.min")
+
+(%export make-sequence
+         sequence?
+         sequence-first
+         sequence-rest
+         sequence-empty?
+         sequence->list)
+
+
+; the sequence record
+;  'state' - maintains the current location in the sequence
+;  'accessor' - operates on state to return the first element
+;  'update' - produces a new sequence object with an updated state
+;  'end?' - checks the state to see if the sequence if finished
+(def-record sequence (state accessor update end?))
+
+(def sequence-first (seq)
+  (unless (sequence? seq) (argument-error 'sequence-first "sequence?" seq))
+  (unless (sequence-end? seq) (argument-error 'sequence-next "empty sequence" seq))
+  (let ([first (sequence-accessor seq)])
+    (first (sequence-state seq))))
+
+(def sequence-rest (seq)
+  (unless (sequence? seq) (argument 'sequence-next "sequence?" seq))
+  (unless (sequence-end? seq) (argument-error 'sequence-next "empty sequence" seq))
+  (let ([first (sequence-accessor seq)]
+        [rest (sequence-update seq)]
+        [end (sequence-end? seq)])
+    (make-sequence (rest (sequence-state seq)) first rest end)))
+
+(def sequence-empty? (seq)
+  (unless (sequence? seq) (argument-error 'sequence-empty? "sequence?" seq))
+  (let ([end (sequence-end? seq)])
+    (end (sequence-state seq))))
+
+;;;;;;;;;;;;;;;;;;;;;;; sequence conversions ;;;;;;;;;;;;;;;;;;;;;;;
+
+(def sequence->list (seq)
+  (let loop ([accum (list)] [seq seq])
+    (if (sequence-empty? seq)
+        (reverse accum)
+        (loop (cons (sequence-first seq) accum)
+              (sequence-rest seq)))))
