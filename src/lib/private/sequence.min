@@ -182,10 +182,14 @@
     (argument-error 'sequence-map "procedure?" proc))
   (unless (sequence? seq)
     (argument-error 'sequence-map "sequence?" seq))
-  (make-sequence (cons proc seq)
-                 (lambda (s) ((car s) (sequence-first (cdr s))))
-                 (lambda (s) (cons (car s) (sequence-rest (cdr s))))
-                 (lambda (s) (sequence-empty? (cdr s)))))
+  (make-sequence (sequence-state seq)
+                 (lambda (x)
+                  (let ([elem ((sequence-accessor seq) x)])
+                    (if (list? elem)
+                        (apply proc elem)
+                        (proc elem))))
+                 (sequence-update seq)
+                 (sequence-end? seq)))
 
 (def sequence-andmap (proc seq)
   (unless (procedure? proc)
@@ -267,17 +271,20 @@
     (argument-error 'sequence-filter "procedure?" proc))
   (unless (sequence? seq)
     (argument-error 'sequence-filter "sequence?" seq))
-  (let ([next (lambda (x)
-                (let loop ([x (sequence-rest x)])
-                  (if (sequence-empty? x)
-                      x
-                      (let ([elem (sequence-first x)])
-                        (if (if (list? elem)
-                                (apply proc elem)
-                                (proc elem))
-                            x
-                            (loop (sequence-rest x)))))))])
-    (make-sequence (next seq)
-                   (lambda (x) (sequence-first x))
-                   next
-                   (lambda (x) (sequence-empty? x)))))
+  (let ([access (sequence-accessor seq)]
+        [update (sequence-update seq)]
+        [empty? (sequence-end? seq)])
+    (let ([next (lambda (x)
+                  (let loop ([x x])
+                    (if (empty? x)
+                        x
+                        (let ([elem (access x)])
+                          (if (if (list? elem)
+                                  (apply proc elem)
+                                  (proc elem))
+                              x
+                              (loop (update x)))))))])
+    (make-sequence (next (sequence-state seq))
+                   access
+                   (lambda (x) (next (update x)))
+                   empty?))))
