@@ -6,9 +6,7 @@
          "../private/cond.min"
          "../private/def.min"
          "../private/let.min"
-         "../private/stx.min"
          "../private/stx-macro.min"
-         "../private/with-stx.min"
          "../private/when-unless.min")
 
 (%export make-record-type

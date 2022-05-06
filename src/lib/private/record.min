@@ -2,8 +2,12 @@
 ;   'struct'
 ;
 
-(%import "pre-base.min"
-         "../srfi/9.min")   ; def-record-type
+(%import "def.min"
+         "let.min"
+         "stx.min"
+         "stx-macro.min"
+         "when-unless.min"
+         "../srfi/9.min")
 
 (%export (all "../srfi/9.min")
          def-record)

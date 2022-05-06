@@ -9,6 +9,7 @@
          "def.min"
          "for.min"
          "let.min"
+         "record.min"
          "stx.min"
          "stx-macro.min"
          "with-stx.min"
@@ -20,6 +21,7 @@
          (all "def.min")
          (all "for.min")
          (all "let.min")
+         (all "record.min")
          (all "stx-macro.min")
          (all "with-stx.min")
          (all "when-unless.min")
