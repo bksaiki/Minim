@@ -87,6 +87,7 @@ typedef struct MinimGlobal
     MinimModuleCache *cache;            // cache of loaded modules
     MinimSymbolTable *builtins;         // primitive table
     InternTable *symbols;               // symbol table
+    InternTable *strings;               // string table
     char *current_dir;                  // directory where Minim was started
     pid_t pid;                          // primary thread id
 
@@ -246,6 +247,7 @@ extern MinimObject *minim_input_port;
 #define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_SYMBOL_INTERN(obj)    (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_STRING_INTERN(obj)    (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
@@ -314,6 +316,7 @@ extern MinimObject *minim_input_port;
 // Setters
 
 #define MINIM_SYMBOL_SET_INTERNED(obj, s)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
+#define MINIM_STRING_SET_INTERNED(obj, s)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 #define MINIM_PROMISE_SET_STATE(obj, s)     (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 
 #define MINIM_VECTOR_RESIZE(v, s)                                               \

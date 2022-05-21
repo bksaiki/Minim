@@ -164,12 +164,54 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym)
         b = b->next;
     }
 
+    // intern symbol
     str = GC_alloc_atomic((n + 1) * sizeof(char));
-    for (size_t i = 0; i < n; ++i) str[i] = sym[i];
-    str[n] = '\0';
-
+    strcpy(str, sym);
     obj = minim_symbol(str);
     MINIM_SYMBOL_SET_INTERNED(obj, 1);
+
+    // update table
+    resize_if_needed(itab);
+    intern_table_insert(itab, idx, obj);
+    return obj;
+}
+
+MinimObject *intern_string(InternTable *itab, const char *str)
+{
+    InternTableBucket *b;
+    MinimObject *obj;
+    size_t n = strlen(str);
+    size_t h = hash_bytes(str, n);
+    size_t idx = h % itab->alloc;
+    char *istr, *cstr;
+
+    b = itab->buckets[idx];
+    while (b != NULL)
+    {
+        istr = MINIM_STRING(b->sym);
+        if (strlen(istr) == n)
+        {
+            size_t i;
+            for (i = 0; i < n; ++i)
+            {
+                if (istr[i] != str[i])
+                    break;
+            }
+
+            if (i == n)
+                return b->sym;
+        }
+
+        b = b->next;
+    }
+
+    // intern string
+    cstr = GC_alloc_atomic((n + 1) * sizeof(char));
+    strcpy(cstr, str);
+    obj = minim_string(cstr);
+    MINIM_STRING_SET_INTERNED(obj, 1);
+
+    // update table
     resize_if_needed(itab);
     intern_table_insert(itab, idx, obj);
     return obj;

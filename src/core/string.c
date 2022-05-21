@@ -1,4 +1,4 @@
-#include "minimpriv.h"
+ #include "minimpriv.h"
 
 static void replace_special_chars(char *str)
 {

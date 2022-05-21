@@ -461,7 +461,7 @@ static MinimObject *read_string(MinimObject *port, MinimObject **perr, uint8_t f
 
     trim_buffer(bf);
     END_SYNTAX_LOC(loc, port);
-    return minim_ast(minim_string(get_buffer(bf)), loc);
+    return minim_ast(intern_string(global.strings, get_buffer(bf)), loc);
 }
 
 static MinimObject *read_char(MinimObject *port, MinimObject **perr, uint8_t flags)

@@ -190,6 +190,7 @@ extern size_t bucket_sizes[];
 
 InternTable *init_intern_table();
 MinimObject *intern_symbol(InternTable *itab, const char *sym);
+MinimObject *intern_string(InternTable *itab, const char *str);
 
 //
 //  Symbol table
