@@ -51,7 +51,8 @@ struct MinimSymbolTable
 // module cache
 typedef struct MinimModuleCache
 {
-    struct MinimModule** modules;
+    MinimModule **modules;
+    MinimObject *queued;
     size_t modulec;
 } MinimModuleCache;
 
@@ -286,6 +287,7 @@ char *gensym_unique(const char *prefix);
 
 void minim_module_add_expr(MinimModule *module, MinimObject *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
+void minim_module_set_name(MinimModule *module, const char *name);
 void minim_module_set_path(MinimModule *module, const char *path);
 
 MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym);

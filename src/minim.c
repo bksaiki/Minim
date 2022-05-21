@@ -71,6 +71,7 @@ int main(int argc, char** argv)
     int status = 0, flagc = 0;
 
     flagc = process_flags(argc - 1, &argv[1], &flags);
+    flags |= MINIM_FLAG_NO_CACHE;
     if (flagc == -1)
         return 1;
 
