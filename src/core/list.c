@@ -4,9 +4,9 @@ static MinimObject *eval_nary(MinimEnv *env, MinimObject *proc, size_t argc, Min
 {
     MinimObject **args;
 
-    if (MINIM_OBJ_BUILTINP(proc))
+    if (MINIM_OBJ_PRIM_CLOSUREP(proc))
     {
-        MinimPrimClosureFn func = MINIM_BUILTIN(proc);
+        MinimPrimClosureFn func = MINIM_PRIM_CLOSURE(proc);
         MinimObject *err;
 
         if (!minim_check_arity(func, argc, env, &err))
@@ -606,7 +606,7 @@ MinimObject *minim_builtin_list_ref(MinimEnv *env, size_t argc, MinimObject **ar
 
 MinimObject *minim_builtin_map(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!MINIM_OBJ_PRIM_CLOSUREP(args[0]))
+    if (!MINIM_OBJ_FUNCP(args[0]))
         THROW(env, minim_argument_error("function", "map", 0, args[0]));
     
     if (!minim_listp(args[1]))
@@ -617,7 +617,7 @@ MinimObject *minim_builtin_map(MinimEnv *env, size_t argc, MinimObject **args)
 
 MinimObject *minim_builtin_andmap(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!MINIM_OBJ_PRIM_CLOSUREP(args[0]))
+    if (!MINIM_OBJ_FUNCP(args[0]))
         THROW(env, minim_argument_error("function", "andmap", 0, args[0]));
     
     if (!minim_listp(args[1]))
@@ -628,7 +628,7 @@ MinimObject *minim_builtin_andmap(MinimEnv *env, size_t argc, MinimObject **args
 
 MinimObject *minim_builtin_ormap(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    if (!MINIM_OBJ_PRIM_CLOSUREP(args[0]))
+    if (!MINIM_OBJ_FUNCP(args[0]))
         THROW(env, minim_argument_error("function", "ormap", 0, args[0]));
     
     if (!minim_listp(args[1]))
@@ -642,7 +642,7 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
     MinimObject *res, *it, **vals;
     size_t i, len, valc;
 
-    if (!MINIM_OBJ_PRIM_CLOSUREP(args[0]))
+    if (!MINIM_OBJ_FUNCP(args[0]))
         THROW(env, minim_argument_error("function", "apply", 0, args[0]));
     
     if (!minim_listp(args[argc - 1]))
@@ -659,9 +659,9 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
     for (; i < valc; ++i, it = MINIM_CDR(it))
         vals[i] = MINIM_CAR(it);
 
-    if (MINIM_OBJ_BUILTINP(args[0]))
+    if (MINIM_OBJ_PRIM_CLOSUREP(args[0]))
     {
-        MinimPrimClosureFn func = MINIM_BUILTIN(args[0]);
+        MinimPrimClosureFn func = MINIM_PRIM_CLOSURE(args[0]);
         if (!minim_check_arity(func, valc, env, &res))
             THROW(env, res);
         

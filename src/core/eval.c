@@ -157,9 +157,9 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
               env_get_sym(env, MINIM_STX_SYMBOL(MINIM_STX_CAR(stx))) :
               eval_ast_node(env, MINIM_STX_CAR(stx)));
 
-        if (MINIM_OBJ_BUILTINP(op))
+        if (MINIM_OBJ_PRIM_CLOSUREP(op))
         {
-            MinimPrimClosureFn proc = MINIM_BUILTIN(op);
+            MinimPrimClosureFn proc = MINIM_PRIM_CLOSURE(op);
             MinimObject *args_head, *err;
             uint8_t prev_flags;
 

@@ -10,7 +10,7 @@ static void init_builtin(const char *name, MinimObjectType type, ...)
     switch (type)
     {
     case MINIM_OBJ_PRIM_CLOSURE:
-        obj = minim_builtin(va_arg(rest, MinimPrimClosureFn));
+        obj = minim_prim_closure(va_arg(rest, MinimPrimClosureFn), "???", 0, 0);
         break;
 
     case MINIM_OBJ_SYNTAX:

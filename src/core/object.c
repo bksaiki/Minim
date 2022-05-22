@@ -122,11 +122,14 @@ MinimObject *minim_promise(void *val, void *env)
     return o;
 }
 
-MinimObject *minim_builtin(void *func)
+MinimObject *minim_prim_closure(void *func, char *name, size_t min_argc, size_t max_argc)
 {
-    MinimObject *o = GC_alloc(minim_builtin_size);
+    MinimObject *o = GC_alloc(minim_prim_closure_size);
     o->type = MINIM_OBJ_PRIM_CLOSURE;
-    MINIM_BUILTIN(o) = func;
+    MINIM_PRIM_CLOSURE(o) = func;
+    MINIM_PRIM_CLOSURE_NAME(o) = name;
+    MINIM_PRIM_CLOSURE_MIN_ARGC(o) = min_argc;
+    MINIM_PRIM_CLOSURE_MAX_ARGC(o) = max_argc;
     log_obj_created();
     return o;
 }
@@ -406,7 +409,7 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
     switch (obj->type)
     {
     case MINIM_OBJ_PRIM_CLOSURE:
-        writeu_buffer(bf, (size_t) MINIM_BUILTIN(obj));
+        writeu_buffer(bf, (size_t) MINIM_PRIM_CLOSURE(obj));
         break;
 
     case MINIM_OBJ_SYNTAX:

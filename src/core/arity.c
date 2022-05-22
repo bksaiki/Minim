@@ -10,7 +10,7 @@ static void builtin_arity_error(MinimPrimClosureFn builtin, size_t argc, size_t 
     MinimObject *obj;
     const char *name;
 
-    obj = minim_builtin(builtin);
+    obj = minim_prim_closure(builtin, "??", 0, 0);
     name = env_peek_key(env, obj);
     *perr = minim_arity_error(name, min, max, argc);
 }
@@ -340,7 +340,7 @@ bool minim_check_syntax_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env
 
 MinimObject *minim_builtin_procedurep(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return to_bool(MINIM_OBJ_PRIM_CLOSUREP(args[0]));
+    return to_bool(MINIM_OBJ_FUNCP(args[0]));
 }
 
 MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObject **args)
@@ -348,12 +348,12 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
     MinimObject *res, *min, *max;
     MinimArity arity;
     
-    if (!MINIM_OBJ_PRIM_CLOSUREP(args[0]))
+    if (!MINIM_OBJ_FUNCP(args[0]))
         THROW(env, minim_argument_error("procedure", "procedure-arity", 0, args[0]));
 
-    if (MINIM_OBJ_BUILTINP(args[0]))
+    if (MINIM_OBJ_PRIM_CLOSUREP(args[0]))
     {
-        minim_get_builtin_arity(MINIM_BUILTIN(args[0]), &arity);
+        minim_get_builtin_arity(MINIM_PRIM_CLOSURE(args[0]), &arity);
     }
     else if (MINIM_OBJ_CLOSUREP(args[0]))
     {

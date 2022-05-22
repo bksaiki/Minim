@@ -65,7 +65,7 @@ eval_constant_expr(MinimEnv *env,
         vals[i] = MINIM_STX_VAL(vals[i]);
     }
 
-    fn = MINIM_BUILTIN(op);
+    fn = MINIM_PRIM_CLOSURE(op);
     return fn(env, argc, vals);
 }
 
@@ -99,17 +99,18 @@ constant_fold(MinimEnv *env, Function *func)
                 else if (minim_eqp(MINIM_STX_VAL(MINIM_CAR(value)), intern("$eval")))
                 {
                     MinimObject *ref = minim_symbol_table_get(table, MINIM_STX_SYMBOL(MINIM_CADR(value)));
-                    if (ref && MINIM_OBJ_BUILTINP(ref))
+                    if (ref && MINIM_OBJ_PRIM_CLOSUREP(ref))
                     {
-                        if (MINIM_BUILTIN(ref) == minim_builtin_eq      ||
-                            MINIM_BUILTIN(ref) == minim_builtin_eqp     ||
-                            MINIM_BUILTIN(ref) == minim_builtin_eqvp    ||
-                            MINIM_BUILTIN(ref) == minim_builtin_length  ||
-                            MINIM_BUILTIN(ref) == minim_builtin_add     ||
-                            MINIM_BUILTIN(ref) == minim_builtin_sub     ||
-                            MINIM_BUILTIN(ref) == minim_builtin_mul     ||
-                            MINIM_BUILTIN(ref) == minim_builtin_listp   ||
-                            MINIM_BUILTIN(ref) == minim_builtin_nullp)
+                        MinimPrimClosureFn fn = MINIM_PRIM_CLOSURE(ref);
+                        if (fn == minim_builtin_eq      ||
+                            fn == minim_builtin_eqp     ||
+                            fn == minim_builtin_eqvp    ||
+                            fn == minim_builtin_length  ||
+                            fn == minim_builtin_add     ||
+                            fn == minim_builtin_sub     ||
+                            fn == minim_builtin_mul     ||
+                            fn == minim_builtin_listp   ||
+                            fn == minim_builtin_nullp)
                         {
                             MinimObject *res = eval_constant_expr(env, table, ref, MINIM_CDDR(value));
                             if (res)
