@@ -4,7 +4,7 @@
 #define FULL_BUILTIN_NAME(partial)      minim_builtin_ ## partial
 #define BUILTIN_EQUALP(fun, builtin)    (fun == FULL_BUILTIN_NAME(builtin))
 
-static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, size_t max,
+static void builtin_arity_error(MinimPrimClosureFn builtin, size_t argc, size_t min, size_t max,
                                 MinimEnv *env, MinimObject **perr)
 {
     MinimObject *obj;
@@ -28,7 +28,7 @@ static void builtin_arity_error(MinimBuiltin builtin, size_t argc, size_t min, s
 #define SET_ARITY_EXACT(builtin, exact)     SET_ARITY_RANGE(builtin, exact, exact)
 #define SET_ARITY_MIN(builtin, min)         SET_ARITY_RANGE(builtin, min, SIZE_MAX)
 
-bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
+bool minim_get_builtin_arity(MinimPrimClosureFn fun, MinimArity *parity)
 {
     // Error
     SET_ARITY_MIN(error, 1);
@@ -273,7 +273,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     return true;
 }    
 
-bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity)
+bool minim_get_syntax_arity(MinimPrimClosureFn fun, MinimArity *parity)
 {
     SET_ARITY_EXACT(def_values, 2);
     SET_ARITY_EXACT(setb, 2);
@@ -307,7 +307,7 @@ bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity)
     return true;
 }
 
-bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr)
+bool minim_check_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env, MinimObject **perr)
 {
     MinimArity arity;
 
@@ -323,7 +323,7 @@ bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject
     return true;
 }
 
-bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env)
+bool minim_check_syntax_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env)
 {
     MinimArity arity;
 
@@ -340,7 +340,7 @@ bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env)
 
 MinimObject *minim_builtin_procedurep(MinimEnv *env, size_t argc, MinimObject **args)
 {
-    return to_bool(MINIM_OBJ_FUNCP(args[0]));
+    return to_bool(MINIM_OBJ_PRIM_CLOSUREP(args[0]));
 }
 
 MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObject **args)
@@ -348,7 +348,7 @@ MinimObject *minim_builtin_procedure_arity(MinimEnv *env, size_t argc, MinimObje
     MinimObject *res, *min, *max;
     MinimArity arity;
     
-    if (!MINIM_OBJ_FUNCP(args[0]))
+    if (!MINIM_OBJ_PRIM_CLOSUREP(args[0]))
         THROW(env, minim_argument_error("procedure", "procedure-arity", 0, args[0]));
 
     if (MINIM_OBJ_BUILTINP(args[0]))

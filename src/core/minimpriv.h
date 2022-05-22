@@ -376,7 +376,7 @@ void env_for_each_local_symbol(MinimEnv *table,
 //
 
 // Evaluates known syntax
-MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn);
+MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimPrimClosureFn fn);
 
 //
 //  Closures
@@ -517,19 +517,19 @@ typedef struct MinimArity {
 } MinimArity;
 
 // Sets 'parity' to the arity of fun
-bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity);
+bool minim_get_builtin_arity(MinimPrimClosureFn fun, MinimArity *parity);
 
 // Sets 'parity' to the arity of the syntax
-bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity);
+bool minim_get_syntax_arity(MinimPrimClosureFn fun, MinimArity *parity);
 
 // Sets 'parity' to the arity of the lambda
 bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity);
 
 // Checks the arity of a builtin function
-bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr);
+bool minim_check_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env, MinimObject **perr);
 
 // Checks the arity of syntax
-bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env);
+bool minim_check_syntax_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env);
 
 #define DEFINE_BUILTIN_FUN(name)  \
     MinimObject *minim_builtin_ ## name(MinimEnv *env, size_t argc, MinimObject **args);

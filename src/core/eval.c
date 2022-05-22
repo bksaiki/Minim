@@ -46,7 +46,7 @@ static MinimObject *eval_symbol(MinimEnv *env, MinimObject *sym, MinimObject *st
 }
 
 // general version for builtins
-static MinimObject *eval_builtin(MinimEnv *env, MinimObject *stx, MinimBuiltin proc, size_t argc)
+static MinimObject *eval_builtin(MinimEnv *env, MinimObject *stx, MinimPrimClosureFn proc, size_t argc)
 {
     MinimObject **args;
     MinimObject *err, *it;
@@ -66,7 +66,7 @@ static MinimObject *eval_builtin(MinimEnv *env, MinimObject *stx, MinimBuiltin p
 }
 
 // general version for syntax
-static MinimObject *eval_syntax(MinimEnv *env, MinimObject *stx, MinimBuiltin proc, size_t argc)
+static MinimObject *eval_syntax(MinimEnv *env, MinimObject *stx, MinimPrimClosureFn proc, size_t argc)
 {
     MinimObject **args, *it;
     
@@ -159,7 +159,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
 
         if (MINIM_OBJ_BUILTINP(op))
         {
-            MinimBuiltin proc = MINIM_BUILTIN(op);
+            MinimPrimClosureFn proc = MINIM_BUILTIN(op);
             MinimObject *args_head, *err;
             uint8_t prev_flags;
 
@@ -212,7 +212,7 @@ static MinimObject *eval_ast_node(MinimEnv *env, MinimObject *stx)
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
-            MinimBuiltin proc;
+            MinimPrimClosureFn proc;
             MinimObject *args_head, *res;
             
             proc = MINIM_SYNTAX(op);
@@ -355,7 +355,7 @@ MinimObject *eval_top_symbol(MinimEnv *env, MinimObject *sym, MinimObject *stx)
     return eval_symbol(it, sym, stx, true);
 }
 
-MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn)
+MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimPrimClosureFn fn)
 {
     size_t argc = syntax_proper_list_len(stx);
     if (argc == SIZE_MAX)

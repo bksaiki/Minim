@@ -496,7 +496,7 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
         }
         else if (MINIM_OBJ_SYNTAXP(op))
         {
-            MinimBuiltin proc = MINIM_SYNTAX(op);
+            MinimPrimClosureFn proc = MINIM_SYNTAX(op);
 
             if (!minim_check_syntax_arity(proc, minim_list_length(MINIM_STX_CDR(stx)), env))
             {
@@ -526,7 +526,7 @@ static void check_syntax_rec(MinimEnv *env, MinimObject *stx)
             // minim_builtin_syntax
             // minim_builtin_template
         }
-        else if (MINIM_OBJ_FUNCP(op))
+        else if (MINIM_OBJ_PRIM_CLOSUREP(op))
         {
             for (MinimObject *it = MINIM_STX_CDR(stx); !minim_nullp(it); it = MINIM_CDR(it))
                 check_syntax_rec(env, MINIM_CAR(it));

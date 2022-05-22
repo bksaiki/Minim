@@ -51,7 +51,7 @@ eval_constant_expr(MinimEnv *env,
 {
     MinimObject **vals;
     MinimObject *it;
-    MinimBuiltin fn;
+    MinimPrimClosureFn fn;
     size_t argc;
     
     argc = minim_list_length(args);
