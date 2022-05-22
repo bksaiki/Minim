@@ -63,6 +63,7 @@ MinimObject *minim_string(char *str)
 {
     MinimObject *o = GC_alloc(minim_string_size);
     o->type = MINIM_OBJ_STRING;
+    MINIM_STRING_MUT(o) = 1;
     MINIM_STRING(o) = str;
     log_obj_created();
     return o;

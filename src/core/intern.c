@@ -209,7 +209,7 @@ MinimObject *intern_string(InternTable *itab, const char *str)
     cstr = GC_alloc_atomic((n + 1) * sizeof(char));
     strcpy(cstr, str);
     obj = minim_string(cstr);
-    MINIM_STRING_SET_INTERNED(obj, 1);
+    MINIM_STRING_SET_MUT(obj, 0);
 
     // update table
     resize_if_needed(itab);

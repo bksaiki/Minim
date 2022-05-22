@@ -78,6 +78,7 @@ void init_builtins()
     init_builtin("symbol?", MINIM_OBJ_FUNC, minim_builtin_symbolp);
     init_builtin("printf", MINIM_OBJ_FUNC, minim_builtin_printf);
     init_builtin("void", MINIM_OBJ_FUNC, minim_builtin_void);
+    init_builtin("immutable?", MINIM_OBJ_FUNC, minim_builtin_immutablep);
     init_builtin("version", MINIM_OBJ_FUNC, minim_builtin_version);
     init_builtin("symbol-count", MINIM_OBJ_FUNC, minim_builtin_symbol_count);
     init_builtin("dump-symbols", MINIM_OBJ_FUNC, minim_builtin_dump_symbols);

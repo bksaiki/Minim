@@ -16,9 +16,7 @@
 #include "../gc/gc.h"
 
 // common folder
-#include "../common/buffer.h"
 #include "../common/common.h"
-#include "../common/path.h"
 
 //
 //  Forward declarations
@@ -199,8 +197,10 @@ extern MinimObject *minim_input_port;
 
 // Predicates
 
-#define MINIM_OBJ_SAME_TYPE(obj, t)     ((((uintptr_t) obj) & ~0xFF) && ((obj)->type == t))
-#define MINIM_OBJ_TYPE_EQP(a, b)        ((((uintptr_t) a) & ~0xFF) && (((uintptr_t) b) & ~0xFF)&& ((a)->type == (b)->type))
+#define MINIM_OBJ_SAME_TYPE(obj, t)     (((((uintptr_t) (obj)) & ~0xFF) && ((obj)->type == t)))
+#define MINIM_OBJ_TYPE_EQP(a, b)        ((((uintptr_t) (a)) & ~0xFF) && \
+                                         (((uintptr_t) (b)) & ~0xFF) && \
+                                         ((a)->type == (b)->type))
 
 #define minim_voidp(x)              ((x) == minim_void)
 #define minim_truep(x)              ((x) == minim_true)
@@ -247,7 +247,7 @@ extern MinimObject *minim_input_port;
 #define MINIM_INEXACTNUM(obj)       (*((double*) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_SYMBOL_INTERN(obj)    (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_SYMBOL(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
-#define MINIM_STRING_INTERN(obj)    (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
+#define MINIM_STRING_MUT(obj)       (*((uint8_t*) VOID_PTR(PTR(obj, 1))))
 #define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
@@ -316,7 +316,7 @@ extern MinimObject *minim_input_port;
 // Setters
 
 #define MINIM_SYMBOL_SET_INTERNED(obj, s)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
-#define MINIM_STRING_SET_INTERNED(obj, s)   (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
+#define MINIM_STRING_SET_MUT(obj, s)      (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 #define MINIM_PROMISE_SET_STATE(obj, s)     (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 
 #define MINIM_VECTOR_RESIZE(v, s)                                               \
@@ -343,6 +343,8 @@ extern MinimObject *minim_input_port;
 
 // Additional predicates
 
+#define MINIM_STRING_MUTP(x)        (MINIM_OBJ_STRINGP(x) && (MINIM_STRING_MUT(x) != 0))
+
 #define MINIM_STX_NULLP(x)          (MINIM_OBJ_ASTP(x) && minim_nullp(MINIM_STX_VAL(x)))
 #define MINIM_STX_PAIRP(x)          (MINIM_OBJ_ASTP(x) && MINIM_OBJ_PAIRP(MINIM_STX_VAL(x)))
 #define MINIM_STX_SYMBOLP(x)        (MINIM_OBJ_ASTP(x) && MINIM_OBJ_SYMBOLP(MINIM_STX_VAL(x)))
@@ -350,6 +352,8 @@ extern MinimObject *minim_input_port;
 
 #define MINIM_INPUT_PORTP(x)        (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_READ))
 #define MINIM_OUTPUT_PORTP(x)       (MINIM_OBJ_PORTP(x) && (MINIM_PORT_MODE(x) & MINIM_PORT_MODE_WRITE))
+
+#define MINIM_IMMUTABLEP(x)         ((MINIM_OBJ_STRINGP(x) && !MINIM_STRING_MUT(x)))
 
 //  Initialization (simple)
 

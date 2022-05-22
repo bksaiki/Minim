@@ -44,6 +44,7 @@ bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity)
     SET_ARITY_MIN(printf, 1);
     SET_ARITY_RANGE(exit, 0, 1);
     SET_ARITY_EXACT(void, 0);
+    SET_ARITY_EXACT(immutablep, 1);
     SET_ARITY_EXACT(version, 0);
     SET_ARITY_EXACT(symbol_count, 0);
     SET_ARITY_EXACT(dump_symbols, 0);

@@ -222,8 +222,8 @@ MinimObject *minim_builtin_string_setb(MinimEnv *env, size_t argc, MinimObject *
     size_t len, idx;
     char *str;
 
-    if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string?", "string-set!", 0, args[0]));
+    if (!MINIM_STRING_MUTP(args[0]))
+        THROW(env, minim_argument_error("mutable string?", "string-set!", 0, args[0]));
 
     if (!minim_exact_nonneg_intp(args[1]))
         THROW(env, minim_argument_error("exact non-negative integer", "string-set!", 1, args[1]));
@@ -260,8 +260,8 @@ MinimObject *minim_builtin_string_fillb(MinimEnv *env, size_t argc, MinimObject 
 {
     char *str;
 
-    if (!MINIM_OBJ_STRINGP(args[0]))
-        THROW(env, minim_argument_error("string?", "string-fill!", 0, args[0]));
+    if (!MINIM_STRING_MUTP(args[0]))
+        THROW(env, minim_argument_error("mutable string?", "string-fill!", 0, args[0]));
 
     if (!MINIM_OBJ_CHARP(args[1]))
         THROW(env, minim_argument_error("character", "string-fill!", 1, args[1]));
