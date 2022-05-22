@@ -525,8 +525,8 @@ bool minim_get_syntax_arity(MinimPrimClosureFn fun, MinimArity *parity);
 // Sets 'parity' to the arity of the lambda
 bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity);
 
-// Checks the arity of a builtin function
-bool minim_check_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env, MinimObject **perr);
+// Checks the arity of a primitive closure
+bool minim_check_prim_closure_arity(MinimObject *prim, size_t argc, MinimObject **perr);
 
 // Checks the arity of syntax
 bool minim_check_syntax_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env);

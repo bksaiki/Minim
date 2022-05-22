@@ -1,7 +1,7 @@
 #include <math.h>
 #include "minimpriv.h"
 
-#define MAX_ARGC        32768
+#define MAX_ARGC        SIZE_MAX
 
 #define init_prim_closure_variary(n, fn, mina, maxa)    \
     init_builtin(n, MINIM_OBJ_PRIM_CLOSURE, minim_builtin_ ## fn, (size_t) mina, (size_t) maxa)
@@ -190,7 +190,7 @@ void init_builtins()
     init_prim_closure_min("format", format, 1);
     
     // Pair
-    init_prim_closure_exact("cons", cons, 1);
+    init_prim_closure_exact("cons", cons, 2);
     init_prim_closure_exact("pair?", consp, 1);
     init_prim_closure_exact("car", car, 1);
     init_prim_closure_exact("cdr", cdr, 1);

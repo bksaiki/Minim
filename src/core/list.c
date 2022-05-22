@@ -6,16 +6,15 @@ static MinimObject *eval_nary(MinimEnv *env, MinimObject *proc, size_t argc, Min
 
     if (MINIM_OBJ_PRIM_CLOSUREP(proc))
     {
-        MinimPrimClosureFn func = MINIM_PRIM_CLOSURE(proc);
         MinimObject *err;
 
-        if (!minim_check_arity(func, argc, env, &err))
+        if (!minim_check_prim_closure_arity(proc, argc, &err))
             THROW(env, err);
 
         args = GC_alloc(argc * sizeof(MinimObject*));
         for (size_t i = 0; i < argc; ++i)
             args[i] = MINIM_CAR(conss[i]);
-        return func(env, argc, args);
+        return (MINIM_PRIM_CLOSURE(proc))(env, argc, args);
     }
     else if (MINIM_OBJ_CLOSUREP(proc))
     {
@@ -661,11 +660,10 @@ MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
 
     if (MINIM_OBJ_PRIM_CLOSUREP(args[0]))
     {
-        MinimPrimClosureFn func = MINIM_PRIM_CLOSURE(args[0]);
-        if (!minim_check_arity(func, valc, env, &res))
+        if (!minim_check_prim_closure_arity(args[0], valc, &res))
             THROW(env, res);
-        
-            res = func(env, valc, vals);
+
+        res = (MINIM_PRIM_CLOSURE(args[0]))(env, valc, vals);
     }
     else if (MINIM_OBJ_CLOSUREP(args[0]))
     {

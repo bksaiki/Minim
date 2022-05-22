@@ -60,15 +60,6 @@ typedef struct MinimEnv
     uint8_t flags;
 } MinimEnv;
 
-// primitive closure
-typedef struct MinimPrimClosure
-{
-    MinimPrimClosureFn func;
-    char *name;
-    size_t min_argc;
-    size_t max_argc;
-} MinimPrimClosure;
-
 // module
 typedef struct MinimModule
 {
