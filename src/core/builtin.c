@@ -1,16 +1,34 @@
 #include <math.h>
 #include "minimpriv.h"
 
+#define MAX_ARGC        32768
+
+#define init_prim_closure_variary(n, fn, mina, maxa)    \
+    init_builtin(n, MINIM_OBJ_PRIM_CLOSURE, minim_builtin_ ## fn, (size_t) mina, (size_t) maxa)
+
+#define init_syntax_form(n, fn)     \
+    init_builtin(n, MINIM_OBJ_SYNTAX, minim_builtin_ ## fn)
+
+#define init_prim_closure_exact(n, fn, a)       init_prim_closure_variary(n, fn, a, a)
+#define init_prim_closure_min(n, fn, a)         init_prim_closure_variary(n, fn, a, MAX_ARGC)
+#define init_prim_closure_no_check(n, fn)       init_prim_closure_variary(n, fn, 0, MAX_ARGC)
+
 static void init_builtin(const char *name, MinimObjectType type, ...)
 {
-    MinimObject *obj;
+    MinimObject *obj, *isym;
+    MinimPrimClosureFn fn;
+    size_t min_argc, max_argc;
     va_list rest;
 
+    isym = intern(name);
     va_start(rest, type);
     switch (type)
     {
     case MINIM_OBJ_PRIM_CLOSURE:
-        obj = minim_prim_closure(va_arg(rest, MinimPrimClosureFn), "???", 0, 0);
+        fn = va_arg(rest, MinimPrimClosureFn);
+        min_argc = va_arg(rest, size_t);
+        max_argc = va_arg(rest, size_t);
+        obj = minim_prim_closure(fn, MINIM_SYMBOL(isym), min_argc, max_argc);
         break;
 
     case MINIM_OBJ_SYNTAX:
@@ -30,286 +48,291 @@ static void init_builtin(const char *name, MinimObjectType type, ...)
         return;
     }
 
-    set_builtin(name, obj);
+    set_builtin(MINIM_SYMBOL(isym), obj);
     va_end(rest);
+}
+
+static void init_syntax_forms()
+{
+    // Variable / Control
+    init_syntax_form("def-values", def_values);
+    init_syntax_form("set!", setb);
+    init_syntax_form("if", if);
+    init_syntax_form("let-values", let_values);
+    init_syntax_form("begin", begin);
+    init_syntax_form("quote", quote);
+    init_syntax_form("quasiquote", quasiquote);
+    init_syntax_form("unquote", unquote);
+    init_syntax_form("lambda", lambda);
+    init_syntax_form("call/cc", callcc);
+
+    // Modules
+    init_syntax_form("%export", export);
+    init_syntax_form("%import", import);
+
+    // Transform
+    init_syntax_form("def-syntaxes", def_syntaxes);
+    init_syntax_form("quote-syntax", syntax);
+    init_syntax_form("syntax-case", syntax_case);
+    init_syntax_form("syntax", template);
+    init_syntax_form("identifier=?", identifier_equalp);        // TODO: is this really syntax?
+
+    // Promise
+    init_syntax_form("delay", delay);
 }
 
 void init_builtins()
 {
-    // Variable / Control
-    init_builtin("def-values", MINIM_OBJ_SYNTAX, minim_builtin_def_values);
-    init_builtin("set!", MINIM_OBJ_SYNTAX, minim_builtin_setb);
-    init_builtin("if", MINIM_OBJ_SYNTAX, minim_builtin_if);
-    init_builtin("let-values", MINIM_OBJ_SYNTAX, minim_builtin_let_values);
-    init_builtin("begin", MINIM_OBJ_SYNTAX, minim_builtin_begin);
-    init_builtin("quote", MINIM_OBJ_SYNTAX, minim_builtin_quote);
-    init_builtin("quasiquote", MINIM_OBJ_SYNTAX, minim_builtin_quasiquote);
-    init_builtin("unquote", MINIM_OBJ_SYNTAX, minim_builtin_unquote);
-    init_builtin("lambda", MINIM_OBJ_SYNTAX, minim_builtin_lambda);
-    init_builtin("exit", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_exit);
-    init_builtin("call/cc", MINIM_OBJ_SYNTAX, minim_builtin_callcc);
+    // Syntax
+    init_syntax_forms();
 
-    // Modules
-    init_builtin("%export", MINIM_OBJ_SYNTAX, minim_builtin_export);
-    init_builtin("%import", MINIM_OBJ_SYNTAX, minim_builtin_import);
+    // Variable / Control
+    init_prim_closure_variary("exit", exit, 0, 1);
 
     // Transforms
-    init_builtin("def-syntaxes", MINIM_OBJ_SYNTAX, minim_builtin_def_syntaxes);
-    init_builtin("quote-syntax", MINIM_OBJ_SYNTAX, minim_builtin_syntax);
-    init_builtin("syntax?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_syntaxp);
-    init_builtin("unwrap", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_unwrap);
-    init_builtin("syntax-case", MINIM_OBJ_SYNTAX, minim_builtin_syntax_case);
-    init_builtin("datum->syntax", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_to_syntax);
-    init_builtin("syntax", MINIM_OBJ_SYNTAX, minim_builtin_template);
-    init_builtin("identifier=?", MINIM_OBJ_SYNTAX, minim_builtin_identifier_equalp);
+    init_prim_closure_exact("syntax?", syntaxp, 1);
+    init_prim_closure_exact("datum->syntax", to_syntax, 1);
+    init_prim_closure_exact("unwrap", unwrap, 1);
     
-
     // Errors
-    init_builtin("error", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_error);
-    init_builtin("argument-error", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_argument_error);
-    init_builtin("arity-error", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_arity_error);
-    init_builtin("syntax-error", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_syntax_error);
+    init_prim_closure_min("error", error, 1);
+    init_prim_closure_min("argument-error", argument_error, 3);
+    init_prim_closure_min("arity-error", arity_error, 2);
+    init_prim_closure_variary("syntax-error", syntax_error, 2, 4);
     
     // Miscellaneous
-    init_builtin("values", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_values);
-    init_builtin("equal?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_equalp);
-    init_builtin("eqv?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_eqvp);
-    init_builtin("eq?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_eqp);
-    init_builtin("symbol?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_symbolp);
-    init_builtin("printf", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_printf);
-    init_builtin("void", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_void);
-    init_builtin("immutable?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_immutablep);
-    init_builtin("version", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_version);
-    init_builtin("symbol-count", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_symbol_count);
-    init_builtin("dump-symbols", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_dump_symbols);
-    init_builtin("def-print-method", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_def_print_method);
+    init_prim_closure_no_check("values", values);
+    init_prim_closure_exact("equal?", equalp, 2);
+    init_prim_closure_exact("eqv?", eqvp, 2);
+    init_prim_closure_exact("eq?", eqp, 2);
+    init_prim_closure_exact("symbol?", symbolp, 1);
+    init_prim_closure_min("printf", printf, 1);
+    init_prim_closure_exact("void", void, 0);
+    init_prim_closure_exact("immutable?", immutablep, 1);
+    init_prim_closure_exact("version", version, 0);
+    init_prim_closure_exact("symbol-count", symbol_count, 0);
+    init_prim_closure_exact("dump-symbols", dump_symbols, 0);
+    init_prim_closure_exact("def-print-method", def_print_method, 2);
 
     // Arity
-    init_builtin("procedure?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_procedurep);
-    init_builtin("procedure-arity", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_procedure_arity);
+    init_prim_closure_exact("procedure?", procedurep, 1);
+    init_prim_closure_exact("procedure-arity", procedure_arity, 1);
 
     // Boolean
     set_builtin("true", minim_true);
     set_builtin("false", minim_false);
-    init_builtin("bool?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_boolp);
-    init_builtin("not", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_not);
+    init_prim_closure_exact("bool?", boolp, 1);
+    init_prim_closure_exact("not", not, 1);
 
     // Numbers
-    init_builtin("number?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_numberp);
-    init_builtin("zero?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_zerop);
-    init_builtin("positive?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_positivep);
-    init_builtin("negative?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_negativep);
-    init_builtin("even?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_evenp);
-    init_builtin("odd?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_oddp);
-    init_builtin("exact?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_exactp);
-    init_builtin("inexact?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_inexactp);
-    init_builtin("integer?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_integerp);
-    init_builtin("nan?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_nanp);
-    init_builtin("infinite?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_infinitep);
+    init_prim_closure_exact("number?", numberp, 1);
+    init_prim_closure_exact("zero?", zerop, 1);
+    init_prim_closure_exact("positive?", positivep, 1);
+    init_prim_closure_exact("negative?", negativep, 1);
+    init_prim_closure_exact("even?", evenp, 1);
+    init_prim_closure_exact("odd?", oddp, 1);
+    init_prim_closure_exact("exact?", exactp, 1);
+    init_prim_closure_exact("inexact?", inexactp, 1);
+    init_prim_closure_exact("integer?", integerp, 1);
+    init_prim_closure_exact("nan?", nanp, 1);
+    init_prim_closure_exact("infinite?", infinitep, 1);
     
-    init_builtin("=", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_eq);
-    init_builtin(">", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_gt);
-    init_builtin("<", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_lt);
-    init_builtin(">=", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_gte);
-    init_builtin("<=", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_lte);
+    init_prim_closure_min("=", eq, 1);
+    init_prim_closure_min(">", gt, 1);
+    init_prim_closure_min("<", lt, 1);
+    init_prim_closure_min(">=", gte, 1);
+    init_prim_closure_min("<=", lte, 1);
 
-    init_builtin("exact", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_to_exact);
-    init_builtin("inexact", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_to_inexact);
+    init_prim_closure_exact("exact", to_exact, 1);
+    init_prim_closure_exact("inexact", to_inexact, 1);
     
     init_builtin("inf", MINIM_OBJ_INEXACT, INFINITY);
     init_builtin("-inf", MINIM_OBJ_INEXACT, -INFINITY);
     init_builtin("nan", MINIM_OBJ_INEXACT, NAN);
 
     // Character
-    init_builtin("char?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_charp);
-    init_builtin("char=?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_eqp);
-    init_builtin("char>?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_gtp);
-    init_builtin("char<?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_ltp);
-    init_builtin("char>=?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_gtep);
-    init_builtin("char<=?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_ltep);
-    init_builtin("char-ci=?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_ci_eqp);
-    init_builtin("char-ci>?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_ci_gtp);
-    init_builtin("char-ci<?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_ci_ltp);
-    init_builtin("char-ci>=?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_ci_gtep);
-    init_builtin("char-ci<=?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_ci_ltep);
-    init_builtin("char-alphabetic?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_alphabeticp);
-    init_builtin("char-numeric?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_numericp);
-    init_builtin("char-whitespace?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_whitespacep);
-    init_builtin("char-upper-case?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_upper_casep);
-    init_builtin("char-lower-case?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_lower_casep);
-    init_builtin("integer->char", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_int_to_char);
-    init_builtin("char->integer", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_to_int);
-    init_builtin("char-upcase", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_upcase);
-    init_builtin("char-downcase", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_downcase);
+    init_prim_closure_exact("char?", charp, 1);
+    init_prim_closure_exact("char=?", char_eqp, 2);
+    init_prim_closure_exact("char>?", char_gtp, 2);
+    init_prim_closure_exact("char<?", char_ltp, 2);
+    init_prim_closure_exact("char>=?", char_gtep, 2);
+    init_prim_closure_exact("char<=?", char_ltep, 2);
+    init_prim_closure_exact("char-ci=?", char_ci_eqp, 2);
+    init_prim_closure_exact("char-ci>?", char_ci_gtp, 2);
+    init_prim_closure_exact("char-ci<?", char_ci_ltp, 2);
+    init_prim_closure_exact("char-ci>=?", char_ci_gtep, 2);
+    init_prim_closure_exact("char-ci<=?", char_ci_ltep, 2);
+    init_prim_closure_exact("char-alphabetic?", char_alphabeticp, 1);
+    init_prim_closure_exact("char-numeric?", char_numericp, 1);
+    init_prim_closure_exact("char-whitespace?", char_whitespacep, 1);
+    init_prim_closure_exact("char-upper-case?", char_upper_casep, 1);
+    init_prim_closure_exact("char-lower-case?", char_lower_casep, 1);
+    init_prim_closure_exact("integer->char", int_to_char, 1);
+    init_prim_closure_exact("char->integer", char_to_int, 1);
+    init_prim_closure_exact("char-upcase", char_upcase, 1);
+    init_prim_closure_exact("char-downcase", char_downcase, 1);
 
     // String
-    init_builtin("string?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_stringp);
-    init_builtin("make-string", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_make_string);
-    init_builtin("string", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string);
-    init_builtin("string-length", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_length);
-    init_builtin("string-ref", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_ref);
-    init_builtin("string-set!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_setb);
-    init_builtin("string-copy", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_copy);
-    init_builtin("string-fill!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_fillb);
-    init_builtin("string-append", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_append);
-    init_builtin("substring", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_substring);
-    init_builtin("string->symbol", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_to_symbol);
-    init_builtin("symbol->string", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_symbol_to_string);
-    init_builtin("string->number", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_string_to_number);
-    init_builtin("number->string", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_number_to_string);
-    init_builtin("format", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_format);
+    init_prim_closure_exact("string?", stringp, 1);
+    init_prim_closure_variary("make-string", make_string, 1, 2);
+    init_prim_closure_no_check("string", string);
+    init_prim_closure_exact("string-length", string_length, 1);
+    init_prim_closure_exact("string-ref", string_ref, 2);
+    init_prim_closure_exact("string-set!", string_setb, 3);
+    init_prim_closure_exact("string-copy", string_copy, 1);
+    init_prim_closure_exact("string-fill!", string_fillb, 2);
+    init_prim_closure_no_check("string-append", string_append);
+    init_prim_closure_variary("substring", substring, 2, 3);
+    init_prim_closure_exact("string->symbol", string_to_symbol, 1);
+    init_prim_closure_exact("symbol->string", symbol_to_string, 1);
+    init_prim_closure_exact("string->number", string_to_number, 1);
+    init_prim_closure_exact("number->string", number_to_string, 1);
+    init_prim_closure_min("format", format, 1);
     
     // Pair
-    init_builtin("cons", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cons);
-    init_builtin("pair?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_consp);
-    init_builtin("car", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_car);
-    init_builtin("cdr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdr);
+    init_prim_closure_exact("cons", cons, 1);
+    init_prim_closure_exact("pair?", consp, 1);
+    init_prim_closure_exact("car", car, 1);
+    init_prim_closure_exact("cdr", cdr, 1);
     set_builtin("null", minim_null);
 
-    init_builtin("caar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caar);
-    init_builtin("cadr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cadr);
-    init_builtin("cdar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdar);
-    init_builtin("cddr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cddr);
+    init_prim_closure_exact("caar", caar, 1);
+    init_prim_closure_exact("cadr", cadr, 1);
+    init_prim_closure_exact("cdar", cdar, 1);
+    init_prim_closure_exact("cddr", cddr, 1);
 
-    init_builtin("caaar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caaar);
-    init_builtin("caadr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caadr);
-    init_builtin("cadar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cadar);
-    init_builtin("caddr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caddr);
-    init_builtin("cdaar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdaar);
-    init_builtin("cdadr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdadr);
-    init_builtin("cddar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cddar);
-    init_builtin("cdddr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdddr);
+    init_prim_closure_exact("caaar", caaar, 1);
+    init_prim_closure_exact("caadr", caadr, 1);
+    init_prim_closure_exact("cadar", cadar, 1);
+    init_prim_closure_exact("caddr", caddr, 1);
+    init_prim_closure_exact("cdaar", cdaar, 1);
+    init_prim_closure_exact("cdadr", cdadr, 1);
+    init_prim_closure_exact("cddar", cddar, 1);
+    init_prim_closure_exact("cdddr", cdddr, 1);
 
-    init_builtin("caaaar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caaaar);
-    init_builtin("caaadr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caaadr);
-    init_builtin("caadar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caadar);
-    init_builtin("caaddr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caaddr);
-    init_builtin("cadaar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cadaar);
-    init_builtin("cadadr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cadadr);
-    init_builtin("caddar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_caddar);
-    init_builtin("cadddr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cadddr);
-    init_builtin("cdaaar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdaaar);
-    init_builtin("cdaadr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdaadr);
-    init_builtin("cdadar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdadar);
-    init_builtin("cdaddr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdaddr);
-    init_builtin("cddaar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cddaar);
-    init_builtin("cddadr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cddadr);
-    init_builtin("cdddar", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cdddar);
-    init_builtin("cddddr", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cddddr);
+    init_prim_closure_exact("caaaar", caaaar, 1);
+    init_prim_closure_exact("caaadr", caaadr, 1);
+    init_prim_closure_exact("caadar", caadar, 1);
+    init_prim_closure_exact("caaddr", caaddr, 1);
+    init_prim_closure_exact("cadaar", cadaar, 1);
+    init_prim_closure_exact("cadadr", cadadr, 1);
+    init_prim_closure_exact("caddar", caddar, 1);
+    init_prim_closure_exact("cadddr", cadddr, 1);
+    init_prim_closure_exact("cdaaar", cdaaar, 1);
+    init_prim_closure_exact("cdaadr", cdaadr, 1);
+    init_prim_closure_exact("cdadar", cdadar, 1);
+    init_prim_closure_exact("cdaddr", cdaddr, 1);
+    init_prim_closure_exact("cddaar", cddaar, 1);
+    init_prim_closure_exact("cddadr", cddadr, 1);
+    init_prim_closure_exact("cdddar", cdddar, 1);
+    init_prim_closure_exact("cddddr", cddddr, 1);
 
     // List
-    init_builtin("list", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_list);
-    init_builtin("list?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_listp);
-    init_builtin("null?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_nullp);
-    init_builtin("length", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_length);
-    init_builtin("append", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_append);
-    init_builtin("reverse", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_reverse);
-    init_builtin("list-ref", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_list_ref);
-    init_builtin("map", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_map);
-    init_builtin("andmap", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_andmap);
-    init_builtin("ormap", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_ormap);
-    init_builtin("apply", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_apply);
+    init_prim_closure_no_check("list", list);
+    init_prim_closure_exact("list?", listp, 1);
+    init_prim_closure_exact("null?", nullp, 1);
+    init_prim_closure_exact("length", length, 1);
+    init_prim_closure_min("append", append, 1);
+    init_prim_closure_exact("reverse", reverse, 1);
+    init_prim_closure_exact("list-ref", list_ref, 2);
+    init_prim_closure_min("map", map, 2);
+    init_prim_closure_min("andmap", andmap, 2);
+    init_prim_closure_min("ormap", ormap, 2);
+    init_prim_closure_min("apply", apply, 2);
 
     // Hash table
-    init_builtin("hash", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash);
-    init_builtin("hash?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hashp);
-    init_builtin("hash-key?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash_keyp);
-    init_builtin("hash-ref", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash_ref);
-    init_builtin("hash-remove", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash_remove);
-    init_builtin("hash-set", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash_set);
-    init_builtin("hash-set!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash_setb);
-    init_builtin("hash-remove!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash_removeb);
-    init_builtin("hash->list", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_hash_to_list);
+    init_prim_closure_exact("hash", hash, 0);
+    init_prim_closure_exact("hash?", hashp, 1);
+    init_prim_closure_exact("hash-key?", hash_keyp, 2);
+    init_prim_closure_exact("hash-ref", hash_ref, 2);
+    init_prim_closure_exact("hash-remove", hash_remove, 2);
+    init_prim_closure_exact("hash-set", hash_set, 3);
+    init_prim_closure_exact("hash-set!", hash_setb, 3);
+    init_prim_closure_exact("hash-remove!", hash_removeb, 2);
+    init_prim_closure_exact("hash->list", hash_to_list, 1);
 
     // Vector
-    init_builtin("vector", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_vector);
-    init_builtin("make-vector", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_make_vector);
-    init_builtin("vector?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_vectorp);
-    init_builtin("vector-length", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_vector_length);
-    init_builtin("vector-ref", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_vector_ref);
-    init_builtin("vector-set!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_vector_setb);
-    init_builtin("vector->list", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_vector_to_list);
-    init_builtin("list->vector", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_list_to_vector);
-    init_builtin("vector-fill!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_vector_fillb);
+    init_prim_closure_no_check("vector", vector);
+    init_prim_closure_variary("make-vector", make_vector, 1, 2);
+    init_prim_closure_exact("vector?", vectorp, 1);
+    init_prim_closure_exact("vector-length", vector_length, 1);
+    init_prim_closure_exact("vector-ref", vector_ref, 2);
+    init_prim_closure_exact("vector-set!", vector_setb, 3);
+    init_prim_closure_exact("vector->list", vector_to_list, 1);
+    init_prim_closure_exact("list->vector", list_to_vector, 1);
+    init_prim_closure_exact("vector-fill!", vector_fillb, 2);
 
     // Math
-    init_builtin("+", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_add);
-    init_builtin("-", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_sub);
-    init_builtin("*", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_mul);
-    init_builtin("/", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_div);
-    init_builtin("abs", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_abs);
-    init_builtin("max", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_max);
-    init_builtin("min", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_min);
-    init_builtin("modulo", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_modulo);
-    init_builtin("remainder", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_remainder);
-    init_builtin("quotient", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_quotient);
-    init_builtin("numerator", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_numerator);
-    init_builtin("denominator", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_denominator);
-    init_builtin("gcd", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_gcd);
-    init_builtin("lcm", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_lcm);
+    init_prim_closure_no_check("+", add);
+    init_prim_closure_min("-", sub, 1);
+    init_prim_closure_no_check("*", mul);
+    init_prim_closure_min("/", div, 1);
+    init_prim_closure_min("max", max, 1);
+    init_prim_closure_min("min", min, 1);
+    init_prim_closure_exact("abs", abs, 1);
+    init_prim_closure_exact("modulo", modulo, 2);
+    init_prim_closure_exact("remainder", remainder, 2);
+    init_prim_closure_exact("quotient", quotient, 2);
+    init_prim_closure_exact("numerator", numerator, 1);
+    init_prim_closure_exact("denominator", denominator, 1);
+    init_prim_closure_exact("gcd", gcd, 2);
+    init_prim_closure_exact("lcm", lcm, 2);
 
-    init_builtin("floor", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_floor);
-    init_builtin("ceil", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_ceil);
-    init_builtin("trunc", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_trunc);
-    init_builtin("round", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_round);
+    init_prim_closure_exact("floor", floor, 1);
+    init_prim_closure_exact("ceil", ceil, 1);
+    init_prim_closure_exact("trunc", trunc, 1);
+    init_prim_closure_exact("round", round, 1);
 
-    init_builtin("sqrt", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_sqrt);
-    init_builtin("exp", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_exp);
-    init_builtin("log", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_log);
-    init_builtin("pow", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_pow);
+    init_prim_closure_exact("sqrt", sqrt, 1);
+    init_prim_closure_exact("exp", exp, 1);
+    init_prim_closure_exact("log", log, 1);
+    init_prim_closure_exact("pow", pow, 2);
 
-    init_builtin("sin", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_sin);
-    init_builtin("cos", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_cos);
-    init_builtin("tan", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_tan);
-    init_builtin("asin", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_asin);
-    init_builtin("acos", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_acos);
-    init_builtin("atan", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_atan);
+    init_prim_closure_exact("sin", sin, 1);
+    init_prim_closure_exact("cos", cos, 1);
+    init_prim_closure_exact("tan", tan, 1);
+    init_prim_closure_exact("asin", asin, 1);
+    init_prim_closure_exact("acos", acos, 1);
+    init_prim_closure_exact("atan", atan, 1);
 
     // Promises
-    init_builtin("delay", MINIM_OBJ_SYNTAX, minim_builtin_delay);
-    init_builtin("force", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_force);
-    init_builtin("promise?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_promisep);
+    init_prim_closure_exact("force", force, 1);
+    init_prim_closure_exact("promise?", promisep, 1);
 
     // Records
-    init_builtin("make-record", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_make_record);
-    init_builtin("record", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_record);
-    init_builtin("record?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_recordp);
-    init_builtin("record-length", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_record_length);
-    init_builtin("record-type", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_record_type);
-    init_builtin("record-ref", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_record_ref);
-    init_builtin("record-set!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_record_setb);
-    init_builtin("record-set-type!", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_record_set_typeb);
+    init_prim_closure_variary("make-record", make_record, 1, 2);
+    init_prim_closure_min("record", record, 1);
+    init_prim_closure_exact("record?", recordp, 1);
+    init_prim_closure_exact("record-length", record_length, 1);
+    init_prim_closure_exact("record-type", record_type, 1);
+    init_prim_closure_exact("record-ref", record_ref, 2);
+    init_prim_closure_exact("record-set!", record_setb, 3);
+    init_prim_closure_exact("record-set-type!", record_set_typeb, 2);
 
     // Port
-    init_builtin("current-input-port", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_current_input_port);
-    init_builtin("current-output-port", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_current_output_port);
-    init_builtin("call-with-input-file", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_call_with_input_file);
-    init_builtin("call-with-output-file", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_call_with_output_file);
-    init_builtin("with-input-from-file", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_with_input_from_file);
-    init_builtin("with-output-from-file", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_with_output_from_file);
-    init_builtin("port?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_portp);
-    init_builtin("input-port?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_input_portp);
-    init_builtin("output-port?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_output_portp);
-    init_builtin("open-input-file", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_open_input_file);
-    init_builtin("open-output-file", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_open_output_file);
-    init_builtin("close-input-port", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_close_input_port);
-    init_builtin("close-output-port", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_close_output_port);
+    init_prim_closure_exact("current-input-port", current_input_port, 0);
+    init_prim_closure_exact("current-output-port", current_output_port, 0);
+    init_prim_closure_exact("call-with-input-file", call_with_input_file, 2);
+    init_prim_closure_exact("call-with-output-file", call_with_output_file, 2);
+    init_prim_closure_exact("with-input-from-file", with_input_from_file, 2);
+    init_prim_closure_exact("with-output-from-file", with_output_from_file, 2);
+    init_prim_closure_exact("port?", portp, 1);
+    init_prim_closure_exact("input-port?", input_portp, 1);
+    init_prim_closure_exact("output-port?", output_portp, 1);
+    init_prim_closure_exact("open-input-file", open_input_file, 1);
+    init_prim_closure_exact("open-output-file", open_output_file, 1);
+    init_prim_closure_exact("close-input-port", close_input_port, 1);
+    init_prim_closure_exact("close-output-port", close_output_port, 1);
 
     set_builtin("eof", minim_eof);
-    init_builtin("eof?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_eofp);
-    init_builtin("read", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_read);
-    init_builtin("read-char", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_read_char);
-    init_builtin("peek-char", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_peek_char);
-    init_builtin("char-ready?", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_char_readyp);
+    init_prim_closure_exact("eof?", eofp, 1);
+    init_prim_closure_variary("read", read, 0, 1);
+    init_prim_closure_variary("read-char", read_char, 0, 1);
+    init_prim_closure_variary("peek-char", peek_char, 0, 1);
+    init_prim_closure_variary("char-ready?", char_readyp, 0, 1);
 
-    init_builtin("write", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_write);
-    init_builtin("display", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_display);
-    init_builtin("newline", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_newline);
-    init_builtin("write-char", MINIM_OBJ_PRIM_CLOSURE, minim_builtin_write_char);
-}
-
-bool builtin_foldablep(MinimPrimClosureFn proc)
-{
-    return (proc != minim_builtin_error &&
-            proc != minim_builtin_exit);
+    init_prim_closure_variary("write", write, 1, 2);
+    init_prim_closure_variary("display", display, 1, 2);
+    init_prim_closure_variary("newline", newline, 0, 1);
+    init_prim_closure_variary("write-char", write_char, 1, 2);
 }

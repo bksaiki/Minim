@@ -148,6 +148,9 @@ MinimObject *intern_symbol(InternTable *itab, const char *sym)
     while (b != NULL)
     {
         isym = MINIM_SYMBOL(b->sym);
+        if (isym == sym)
+            return b->sym;
+
         if (strlen(isym) == n)
         {
             size_t i;
