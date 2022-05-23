@@ -51,7 +51,8 @@ struct MinimSymbolTable
 // module cache
 typedef struct MinimModuleCache
 {
-    struct MinimModule** modules;
+    MinimModule **modules;
+    MinimObject *queued;
     size_t modulec;
 } MinimModuleCache;
 
@@ -189,6 +190,7 @@ extern size_t bucket_sizes[];
 
 InternTable *init_intern_table();
 MinimObject *intern_symbol(InternTable *itab, const char *sym);
+MinimObject *intern_string(InternTable *itab, const char *str);
 
 //
 //  Symbol table
@@ -286,6 +288,7 @@ char *gensym_unique(const char *prefix);
 
 void minim_module_add_expr(MinimModule *module, MinimObject *expr);
 void minim_module_add_import(MinimModule *module, MinimModule *import);
+void minim_module_set_name(MinimModule *module, const char *name);
 void minim_module_set_path(MinimModule *module, const char *path);
 
 MinimObject *minim_module_get_sym(MinimModuleInstance *module, const char *sym);
@@ -373,7 +376,7 @@ void env_for_each_local_symbol(MinimEnv *table,
 //
 
 // Evaluates known syntax
-MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimBuiltin fn);
+MinimObject *eval_top_level(MinimEnv *env, MinimObject *stx, MinimPrimClosureFn fn);
 
 //
 //  Closures
@@ -514,19 +517,19 @@ typedef struct MinimArity {
 } MinimArity;
 
 // Sets 'parity' to the arity of fun
-bool minim_get_builtin_arity(MinimBuiltin fun, MinimArity *parity);
+bool minim_get_builtin_arity(MinimPrimClosureFn fun, MinimArity *parity);
 
 // Sets 'parity' to the arity of the syntax
-bool minim_get_syntax_arity(MinimBuiltin fun, MinimArity *parity);
+bool minim_get_syntax_arity(MinimPrimClosureFn fun, MinimArity *parity);
 
 // Sets 'parity' to the arity of the lambda
 bool minim_get_lambda_arity(MinimLambda *lam, MinimArity *parity);
 
-// Checks the arity of a builtin function
-bool minim_check_arity(MinimBuiltin fun, size_t argc, MinimEnv *env, MinimObject **perr);
+// Checks the arity of a primitive closure
+bool minim_check_prim_closure_arity(MinimObject *prim, size_t argc, MinimObject **perr);
 
 // Checks the arity of syntax
-bool minim_check_syntax_arity(MinimBuiltin fun, size_t argc, MinimEnv *env);
+bool minim_check_syntax_arity(MinimPrimClosureFn fun, size_t argc, MinimEnv *env);
 
 #define DEFINE_BUILTIN_FUN(name)  \
     MinimObject *minim_builtin_ ## name(MinimEnv *env, size_t argc, MinimObject **args);
@@ -574,6 +577,7 @@ DEFINE_BUILTIN_FUN(eqp)
 DEFINE_BUILTIN_FUN(symbolp)
 DEFINE_BUILTIN_FUN(printf)
 DEFINE_BUILTIN_FUN(void)
+DEFINE_BUILTIN_FUN(immutablep)
 DEFINE_BUILTIN_FUN(version);
 DEFINE_BUILTIN_FUN(symbol_count);
 DEFINE_BUILTIN_FUN(dump_symbols);

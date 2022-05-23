@@ -35,6 +35,57 @@ module_cache_key_match(MinimModule *module,
     return true;
 }
 
+static void
+module_cache_enqueue(MinimModuleCache *cache, char *path, char *name, MinimEnv *env)
+{
+    MinimObject *key = minim_string(path);
+    for (MinimObject *it = cache->queued; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        if (minim_equalp(MINIM_CAR(it), key))
+        {
+            MinimEnv *it = env;
+            while (it->parent != NULL && it->module_inst == NULL)
+                it = it->parent;
+            
+            if (it->module_inst->module->name)
+            {
+                THROW(env, minim_error("cycle detected loading ~s",
+                                        it->module_inst->module->name,
+                                        name));
+            }
+            else
+            {
+                THROW(env, minim_error("cycle detected loading ~s",
+                                        it->module_inst->module->path,
+                                        name));
+            }
+        }
+    }
+
+    cache->queued = minim_cons(key, cache->queued);
+}
+
+static void
+module_cache_dequeue(MinimModuleCache *cache, char *path)
+{
+    MinimObject *key, *trailing;
+    
+    key = minim_string(path);
+    trailing = NULL;
+    for (MinimObject *it = cache->queued; !minim_nullp(it); it = MINIM_CDR(it))
+    {
+        if (minim_equalp(MINIM_CAR(it), key))
+        {
+            if (trailing)   MINIM_CDR(trailing) = MINIM_CDR(it);
+            else            cache->queued = MINIM_CDR(it);
+                
+            return;
+        }
+
+        trailing = MINIM_CDR(it);
+    }
+}
+
 void init_minim_module(MinimModule **pmodule)
 {
     MinimModule *module;
@@ -87,6 +138,12 @@ void minim_module_add_import(MinimModule *module, MinimModule *import)
     module->imports[module->importc - 1] = import;
 }
 
+void minim_module_set_name(MinimModule *module, const char *name)
+{
+    module->name = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
+    strcpy(module->name, name);
+}
+
 void minim_module_set_path(MinimModule *module, const char *name)
 {
     module->path = GC_alloc_atomic((strlen(name) + 1) * sizeof(char));
@@ -133,6 +190,7 @@ void init_minim_module_cache(MinimModuleCache **pcache)
 
     cache = GC_alloc(sizeof(MinimModuleCache));
     cache->modules = NULL;
+    cache->queued = minim_null;
     cache->modulec = 0;
 
     *pcache = cache;
@@ -255,11 +313,13 @@ MinimObject *minim_builtin_import(MinimEnv *env, size_t argc, MinimObject **args
             init_minim_module(&empty);
             init_minim_module_instance(&empty_inst, empty);
 
+            module_cache_enqueue(global.cache, clean_path, MINIM_STRING(arg), env);
             module_inst = minim_load_file_as_module(env->module_inst, clean_path);
             module_inst->prev = empty_inst;
 
             minim_module_cache_add(global.cache, module_inst->module);
             eval_module(module_inst);
+            module_cache_dequeue(global.cache, clean_path);
         }
 
         minim_module_add_import(env->module_inst->module, module_inst->module);

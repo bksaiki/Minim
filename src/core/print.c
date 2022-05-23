@@ -190,7 +190,7 @@ static int print_object(MinimObject *obj, MinimEnv *env, Buffer *bf, PrintParams
         writec_buffer(bf, ')');
         pp->quote = quotep; // pop
     }
-    else if (MINIM_OBJ_BUILTINP(obj) || MINIM_OBJ_SYNTAXP(obj))
+    else if (MINIM_OBJ_PRIM_CLOSUREP(obj) || MINIM_OBJ_SYNTAXP(obj))
     {
         const char *key;
         

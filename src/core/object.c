@@ -63,6 +63,7 @@ MinimObject *minim_string(char *str)
 {
     MinimObject *o = GC_alloc(minim_string_size);
     o->type = MINIM_OBJ_STRING;
+    MINIM_STRING_MUT(o) = 1;
     MINIM_STRING(o) = str;
     log_obj_created();
     return o;
@@ -78,11 +79,11 @@ MinimObject *minim_cons(void *car, void *cdr)
     return o;
 }
 
-MinimObject *minim_vector(size_t len, void *arr)
+// unsafe: array elements are uninitialized
+MinimObject *minim_vector(size_t len)
 {
-    MinimObject *o = GC_alloc(minim_vector_size);
+    MinimObject *o = GC_alloc(minim_vector_size(len));
     o->type = MINIM_OBJ_VECTOR;
-    MINIM_VECTOR(o) = arr;
     MINIM_VECTOR_LEN(o) = len;
     log_obj_created();
     return o;
@@ -90,14 +91,12 @@ MinimObject *minim_vector(size_t len, void *arr)
 
 MinimObject *minim_vector2(size_t len, MinimObject *init)
 {
-    MinimObject *o = GC_alloc(minim_vector_size);
+    MinimObject *o = GC_alloc(minim_vector_size(len));
     o->type = MINIM_OBJ_VECTOR;
-    MINIM_VECTOR(o) = GC_alloc(len * sizeof(MinimObject*));
     MINIM_VECTOR_LEN(o) = len;
-    log_obj_created();
-
     for (size_t i = 0; i < len; ++i)
         MINIM_VECTOR_REF(o, i) = init;
+    log_obj_created();
     return o;
 }
 
@@ -121,11 +120,14 @@ MinimObject *minim_promise(void *val, void *env)
     return o;
 }
 
-MinimObject *minim_builtin(void *func)
+MinimObject *minim_prim_closure(void *func, char *name, size_t min_argc, size_t max_argc)
 {
-    MinimObject *o = GC_alloc(minim_builtin_size);
-    o->type = MINIM_OBJ_FUNC;
-    MINIM_BUILTIN(o) = func;
+    MinimObject *o = GC_alloc(minim_prim_closure_size);
+    o->type = MINIM_OBJ_PRIM_CLOSURE;
+    MINIM_PRIM_CLOSURE(o) = func;
+    MINIM_PRIM_CLOSURE_NAME(o) = name;
+    MINIM_PRIM_CLOSURE_MIN_ARGC(o) = min_argc;
+    MINIM_PRIM_CLOSURE_MAX_ARGC(o) = max_argc;
     log_obj_created();
     return o;
 }
@@ -296,7 +298,7 @@ bool minim_eqp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_HASH:
     case MINIM_OBJ_PROMISE:
     case MINIM_OBJ_CLOSURE:
-    case MINIM_OBJ_FUNC:
+    case MINIM_OBJ_PRIM_CLOSURE:
     case MINIM_OBJ_SYNTAX:
     case MINIM_OBJ_AST
     case MINIM_OBJ_SEQ:
@@ -364,7 +366,7 @@ bool minim_equalp(MinimObject *a, MinimObject *b)
     case MINIM_OBJ_SYM:
     case MINIM_OBJ_CHAR:
 
-    case MINIM_OBJ_FUNC:
+    case MINIM_OBJ_PRIM_CLOSURE:
     case MINIM_OBJ_SYNTAX:
     case MINIM_OBJ_AST:
     case MINIM_OBJ_PROMISE:
@@ -404,8 +406,8 @@ Buffer* minim_obj_to_bytes(MinimObject *obj)
 
     switch (obj->type)
     {
-    case MINIM_OBJ_FUNC:
-        writeu_buffer(bf, (size_t) MINIM_BUILTIN(obj));
+    case MINIM_OBJ_PRIM_CLOSURE:
+        writeu_buffer(bf, (size_t) MINIM_PRIM_CLOSURE(obj));
         break;
 
     case MINIM_OBJ_SYNTAX:

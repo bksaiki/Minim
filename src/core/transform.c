@@ -99,10 +99,9 @@ is_list_match_pattern(MinimObject *lst)
 static bool
 is_vector_match_pattern(MinimObject *vec, size_t i)
 {
-    MinimObject **arr = MINIM_VECTOR(vec);
     return (i + 1 < MINIM_VECTOR_LEN(vec) &&
-            MINIM_STX_SYMBOLP(arr[i + 1]) &&
-            strcmp(MINIM_STX_SYMBOL(arr[i + 1]), "...") == 0);
+            MINIM_STX_SYMBOLP(MINIM_VECTOR_REF(vec, i + 1)) &&
+            strcmp(MINIM_STX_SYMBOL(MINIM_VECTOR_REF(vec, i + 1)), "...") == 0);
 }
 
 static size_t
@@ -473,7 +472,7 @@ match_transform(MinimEnv *env, MinimObject *match, MinimObject *stx, SymbolList 
 }
 
 static void
-get_patterns(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
+get_patterns(MinimEnv *env, MinimObject *stx, MinimObject **patterns)
 {
     if (MINIM_STX_PAIRP(stx))
     {
@@ -505,24 +504,24 @@ get_patterns(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
         val = env_get_sym(env, sym);
         if (MINIM_OBJ_TRANSFORMP(val) && MINIM_TRANSFORM_TYPE(val) == MINIM_TRANSFORM_PATTERN)
         {
-            for (size_t i = 0; i < MINIM_VECTOR_LEN(patterns); ++i)
+            size_t old_size;
+
+            for (size_t i = 0; i < MINIM_VECTOR_LEN(*patterns); ++i)
             {
-                MinimObject *key = MINIM_CAR(MINIM_VECTOR_REF(patterns, i));
+                MinimObject *key = MINIM_CAR(MINIM_VECTOR_REF(*patterns, i));
                 if (strcmp(MINIM_SYMBOL(key), sym) == 0)
                     return; // already in list
             }
 
-            ++MINIM_VECTOR_LEN(patterns);
-            MINIM_VECTOR(patterns) = GC_realloc(MINIM_VECTOR(patterns),
-                                                MINIM_VECTOR_LEN(patterns) * sizeof(MinimObject*));
-            MINIM_VECTOR_REF(patterns, MINIM_VECTOR_LEN(patterns) - 1) =
-                minim_cons(intern(MINIM_STX_SYMBOL(stx)), val);
+            old_size = MINIM_VECTOR_LEN(*patterns);
+            MINIM_VECTOR_RESIZE(*patterns, old_size + 1);
+            MINIM_VECTOR_REF(*patterns, old_size) = minim_cons(intern(MINIM_STX_SYMBOL(stx)), val);
         }
     }
 }
 
 static void
-next_patterns_rec(MinimEnv *env, MinimObject *stx, MinimObject *pats, MinimObject *npats)
+next_patterns_rec(MinimEnv *env, MinimObject *stx, MinimObject *pats, MinimObject **npats)
 {
     if (MINIM_STX_PAIRP(stx))
     {
@@ -555,15 +554,18 @@ next_patterns_rec(MinimEnv *env, MinimObject *stx, MinimObject *pats, MinimObjec
             name = MINIM_SYMBOL(MINIM_CAR(MINIM_VECTOR_REF(pats, i)));
             if (strcmp(MINIM_STX_SYMBOL(stx), name) == 0)  // in pats
             {
-                for (size_t j = 0; j < MINIM_VECTOR_LEN(npats); ++j)
+                size_t old_size;
+
+                for (size_t j = 0; j < MINIM_VECTOR_LEN(*npats); ++j)
                 {
-                    name = MINIM_SYMBOL(MINIM_CAR(MINIM_VECTOR_REF(npats, j)));
+                    name = MINIM_SYMBOL(MINIM_CAR(MINIM_VECTOR_REF(*npats, j)));
                     if (strcmp(MINIM_STX_SYMBOL(stx), name) == 0)    // in npats
                         return;
                 }
 
-                MINIM_VECTOR_RESIZE(npats, MINIM_VECTOR_LEN(npats) + 1);
-                MINIM_VECTOR_REF(npats, MINIM_VECTOR_LEN(npats) - 1) = MINIM_VECTOR_REF(pats, i);
+                old_size = MINIM_VECTOR_LEN(*npats);
+                MINIM_VECTOR_RESIZE(*npats, old_size + 1);
+                MINIM_VECTOR_REF(*npats, old_size) = MINIM_VECTOR_REF(pats, i);
             }
         }
     }
@@ -575,8 +577,8 @@ next_patterns(MinimEnv *env, MinimObject *stx, MinimObject *pats)
 {
     MinimObject *npats;
     
-    npats = minim_vector(0, NULL);
-    next_patterns_rec(env, stx, pats, npats);
+    npats = minim_vector(0);
+    next_patterns_rec(env, stx, pats, &npats);
     return npats;
 }
 
@@ -604,7 +606,7 @@ next_depth_patterns(MinimEnv *env, MinimObject *fpats, size_t plen, size_t pc, s
     MinimObject *npats, *sym, *trans, *val;
     size_t depth;
 
-    npats = minim_vector(pc, GC_alloc(pc * sizeof(MinimObject*)));
+    npats = minim_vector(pc);
     for (size_t k = 0; k < pc; ++k)
     {
         sym = MINIM_CAR(MINIM_VECTOR_REF(fpats, k));
@@ -735,12 +737,12 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
     }
     else if (MINIM_STX_VECTORP(stx))
     {
-        MinimObject **arr, *vec;
+        MinimObject *vec, *res;
         size_t len;
 
         vec = MINIM_STX_VAL(stx);
         len = MINIM_VECTOR_LEN(vec);
-        arr = GC_alloc(len * sizeof(MinimObject*));
+        res = minim_vector(len);
         for (size_t i = 0, r = 0; i < len; ++i, ++r)
         {
             if (is_vector_match_pattern(vec, i))
@@ -755,13 +757,13 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
                 else if (plen == 1)     len -= 1;               // reduce by 1
                 else if (plen > 2)      len -= (plen - 2);      // expand by plen - 2
 
-                arr = GC_realloc(arr, len * sizeof(MinimObject*));
+                MINIM_VECTOR_RESIZE(res, len);
                 if (plen != 0)
                 {
                     for (size_t j = 0; j < plen; ++j)
                     {
                         MinimObject *npats = next_depth_patterns(env, fpats, plen, pc, j);
-                        arr[r + j] = apply_transformation(env, MINIM_VECTOR_REF(vec, i), npats);
+                        MINIM_VECTOR_REF(res, r + j) = apply_transformation(env, MINIM_VECTOR_REF(vec, i), npats);
                     }
                 }
                 
@@ -770,11 +772,11 @@ apply_transformation(MinimEnv *env, MinimObject *stx, MinimObject *patterns)
             }
             else
             {
-                arr[r] = apply_transformation(env, MINIM_VECTOR_REF(vec, i), patterns);
+                MINIM_VECTOR_REF(res, r) = apply_transformation(env, MINIM_VECTOR_REF(vec, i), patterns);
             }
         }
 
-        return minim_ast(minim_vector(len, arr), NULL);
+        return minim_ast(res, NULL);
     }
     else if (MINIM_STX_SYMBOLP(stx))
     {
@@ -1101,8 +1103,8 @@ MinimObject *minim_builtin_template(MinimEnv *env, size_t argc, MinimObject **ar
     MinimObject *patterns;
     MinimObject *final;
     
-    patterns = minim_vector(0, NULL);
-    get_patterns(env, args[0], patterns);
+    patterns = minim_vector(0);
+    get_patterns(env, args[0], &patterns);
 
     // printf("template: "); print_syntax_to_port(args[0], stdout); printf("\n");
     // debug_pattern_table(env, patterns);

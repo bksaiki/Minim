@@ -138,3 +138,8 @@ MinimObject *minim_builtin_identifier_equalp(MinimEnv *env, size_t argc, MinimOb
 
     return to_bool(minim_eqp(MINIM_STX_VAL(a), MINIM_STX_VAL(b)));
 }
+
+MinimObject *minim_builtin_immutablep(MinimEnv *env, size_t argc, MinimObject **args)
+{
+    return to_bool(MINIM_IMMUTABLEP(args[0]));
+}

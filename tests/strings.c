@@ -283,19 +283,6 @@ int main()
         const int COUNT = 2;
         char strs[4][256] =
         {
-            "(def-values (s) \"abcdef\") (string-set! s 0 #\\0) s",      "\"0bcdef\"",
-            "(def-values (s) \"abcdef\") (string-set! s 4 #\\1) s",      "\"abcd1f\""
-        };
-
-        printf("Testing 'string-set!'\n");
-        for (int i = 0; i < COUNT; ++i)
-            status &= run_test(strs[2 * i], strs[2 * i + 1]);
-    }
-
-    {
-        const int COUNT = 2;
-        char strs[4][256] =
-        {
             "(def-values (s) \"\") (string-copy s)",            "\"\"",
             "(def-values (s) \"abcdef\") (string-copy s)",      "\"abcdef\""
         };
@@ -309,8 +296,21 @@ int main()
         const int COUNT = 2;
         char strs[4][256] =
         {
-            "(def-values (s) \"\") (string-fill! s #\\0) s",            "\"\"",
-            "(def-values (s) \"abcdef\") (string-fill! s #\\0) s",      "\"000000\""
+            "(def-values (s) (string-copy \"abcdef\")) (string-set! s 0 #\\0) s",      "\"0bcdef\"",
+            "(def-values (s) (string-copy \"abcdef\")) (string-set! s 4 #\\1) s",      "\"abcd1f\""
+        };
+
+        printf("Testing 'string-set!'\n");
+        for (int i = 0; i < COUNT; ++i)
+            status &= run_test(strs[2 * i], strs[2 * i + 1]);
+    }
+
+    {
+        const int COUNT = 2;
+        char strs[4][256] =
+        {
+            "(def-values (s) (string-copy \"\")) (string-fill! s #\\0) s",            "\"\"",
+            "(def-values (s) (string-copy \"abcdef\")) (string-fill! s #\\0) s",      "\"000000\""
         };
 
         printf("Testing 'string-fill!'\n");

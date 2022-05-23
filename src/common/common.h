@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "version.h"
-
 #if defined (_WIN32) || defined (_WIN64)
 #define MINIM_WINDOWS 1
 #else
@@ -25,5 +23,11 @@
 #else
 #define MINIM_TRACK_STATS     0
 #endif
+
+#include "buffer.h"
+#include "path.h"
+#include "system.h"
+#include "types.h"
+#include "version.h"
 
 #endif
