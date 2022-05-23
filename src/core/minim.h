@@ -158,6 +158,8 @@ typedef enum MinimObjectType
 
 // Object constants
 
+#define MINIM_VECTOR_ELEM_OFFSET(n)     (2 + n)
+
 #define MINIM_RECORD_TYPE_OFFSET        2
 #define MINIM_RECORD_FIELD_OFFSET(n)    (3 + n)
 
@@ -168,7 +170,6 @@ typedef enum MinimObjectType
 #define minim_symbol_size           (2 * PTR_SIZE)
 #define minim_string_size           (2 * PTR_SIZE)
 #define minim_cons_size             (3 * PTR_SIZE)
-#define minim_vector_size           (3 * PTR_SIZE)
 #define minim_hash_table_size       (2 * PTR_SIZE)
 #define minim_promise_size          (3 * PTR_SIZE)
 #define minim_prim_closure_size     (5 * PTR_SIZE)
@@ -185,6 +186,7 @@ typedef enum MinimObjectType
 #define minim_jump_size             (3 * PTR_SIZE)
 #define minim_port_size             (7 * PTR_SIZE)
 
+#define minim_vector_size(n)        (MINIM_VECTOR_ELEM_OFFSET(n) * PTR_SIZE)
 #define minim_record_size(n)        (MINIM_RECORD_FIELD_OFFSET(n) * PTR_SIZE)
 
 // Special objects
@@ -259,9 +261,9 @@ extern MinimObject *minim_input_port;
 #define MINIM_STRING(obj)           (*((char**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CAR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_CDR(obj)              (*((MinimObject**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
-#define MINIM_VECTOR(obj)           (*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE))))
-#define MINIM_VECTOR_REF(obj, i)    (*((*((MinimObject***) VOID_PTR(PTR(obj, PTR_SIZE)))) + i))
-#define MINIM_VECTOR_LEN(obj)       (*((size_t*) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
+#define MINIM_VECTOR_LEN(obj)       (*((size_t*) VOID_PTR(PTR(obj, PTR_SIZE))))
+#define MINIM_VECTOR_ARR(obj)       ((MinimObject **) VOID_PTR(PTR(obj, PTR_SIZE * MINIM_VECTOR_ELEM_OFFSET(0))))
+#define MINIM_VECTOR_REF(obj, i)    (*((MinimObject **) VOID_PTR(PTR(obj, PTR_SIZE * MINIM_VECTOR_ELEM_OFFSET(i)))))
 #define MINIM_HASH_TABLE(obj)       (*((MinimHash**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_PROMISE_VAL(obj)      (*((MinimObject**) VOID_PTR(PTR(obj, PTR_SIZE))))
 #define MINIM_PROMISE_ENV(obj)      (*((MinimEnv**) VOID_PTR(PTR(obj, 2 * PTR_SIZE))))
@@ -330,11 +332,11 @@ extern MinimObject *minim_input_port;
 #define MINIM_STRING_SET_MUT(obj, s)      (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 #define MINIM_PROMISE_SET_STATE(obj, s)     (*((uint8_t*) VOID_PTR(PTR(obj, 1))) = (s))
 
-#define MINIM_VECTOR_RESIZE(v, s)                                               \
-{                                                                               \
-    MINIM_VECTOR_LEN(v) = s;                                                    \
-    MINIM_VECTOR(v) = GC_realloc(MINIM_VECTOR(v),                               \
-                                 MINIM_VECTOR_LEN(v) * sizeof(MinimObject*));   \
+// does not validate size `s`
+#define MINIM_VECTOR_RESIZE(v, s)                   \
+{                                                   \
+    (v) = GC_realloc(v, minim_vector_size(s));      \
+    MINIM_VECTOR_LEN(v) = (s);                      \
 }
 
 // Special values
@@ -373,7 +375,7 @@ MinimObject *minim_inexactnum(double num);
 MinimObject *minim_symbol(char *sym);
 MinimObject *minim_string(char *str);
 MinimObject *minim_cons(void *car, void *cdr);
-MinimObject *minim_vector(size_t len, void *arr);
+MinimObject *minim_vector(size_t len);
 MinimObject *minim_vector2(size_t len, MinimObject *init);
 MinimObject *minim_hash_table(void *ht);
 MinimObject *minim_promise(void *val, void *env);

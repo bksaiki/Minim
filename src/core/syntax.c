@@ -646,10 +646,9 @@ static MinimObject *syntax_unwrap_node(MinimEnv *env, MinimObject* stx, bool unq
 
         obj = MINIM_STX_VAL(stx);
         len = MINIM_VECTOR_LEN(obj);
-        res = minim_vector(len, GC_alloc(len * sizeof(MinimObject*)));
+        res = minim_vector(len);
         for (size_t i = 0; i < len; ++i)
             MINIM_VECTOR_REF(res, i) = syntax_unwrap_node(env, MINIM_VECTOR_REF(obj, i), unquote);
-
         return res;
     }
 

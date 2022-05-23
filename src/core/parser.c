@@ -336,7 +336,7 @@ static MinimObject *read_vector(MinimObject *port, MinimObject **perr, uint8_t f
     char c;
 
     START_SYNTAX_LOC(loc, port);
-    vec = minim_vector(0, NULL);
+    vec = minim_vector(0);
     c = next_char(port);
     if (c == ')')           // empty list
     {

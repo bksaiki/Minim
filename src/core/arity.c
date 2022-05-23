@@ -1,6 +1,5 @@
 #include "minimpriv.h"
 
-#define MAX_ARGC        32768
 #define IS_OUTSIDE(x, min, max)         (x < min || x > max)
 #define FULL_BUILTIN_NAME(partial)      minim_builtin_ ## partial
 #define BUILTIN_EQUALP(fun, builtin)    (fun == FULL_BUILTIN_NAME(builtin))
