@@ -1,3 +1,7 @@
+#
+#	Top-level Makefile
+#
+
 BUILD_DIR	:= build
 SRC_DIR 	:= src
 TEST_DIR	:= tests
@@ -34,49 +38,59 @@ FIND := find
 
 # Top level rules
 
-debug:
-	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
-
-profile:
-	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
-
-coverage:
-	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
-
-release:
-	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
-
-install:
-	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
-
-minim: $(BUILD_DIR)/config.h $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
-
-tests: minim unit-tests lib-tests;
-
-unit-tests: $(TEST_EXES)
-	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)
-
-memcheck: $(TEST_EXES)
-	$(SH) $(TEST_DIR)/memcheck.sh $(TEST_EXES)
-
-examples:
-	$(SH) $(TEST_DIR)/examples.sh
-
-lib-tests:
-	$(SH) $(TEST_DIR)/lib.sh
+boot: gc
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot
 
 clean:
-	$(RM) $(OBJS) $(EXE)
+	$(MAKE) -C src/gc clean
+	$(MAKE) -C src/boot clean
 
-clean-all: clean-cache
-	$(RM) $(BUILD_DIR) tmp $(EXE)
+gc:
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/gc
 
-clean-cache:
-	$(FIND) . -type d -name ".cache" | xargs $(RM)
+# debug:
+# 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
-uninstall:
-	$(RM) $(INSTALL_DIR)/$(EXE)
+# profile:
+# 	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
+
+# coverage:
+# 	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
+
+# release:
+# 	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
+
+# install:
+# 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
+
+# minim: $(BUILD_DIR)/config.h $(OBJS)
+# 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
+
+# tests: minim unit-tests lib-tests;
+
+# unit-tests: $(TEST_EXES)
+# 	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)
+
+# memcheck: $(TEST_EXES)
+# 	$(SH) $(TEST_DIR)/memcheck.sh $(TEST_EXES)
+
+# examples:
+# 	$(SH) $(TEST_DIR)/examples.sh
+
+# lib-tests:
+# 	$(SH) $(TEST_DIR)/lib.sh
+
+# clean:
+# 	$(RM) $(OBJS) $(EXE)
+
+# clean-all: clean-cache
+# 	$(RM) $(BUILD_DIR) tmp $(EXE)
+
+# clean-cache:
+# 	$(FIND) . -type d -name ".cache" | xargs $(RM)
+
+# uninstall:
+# 	$(RM) $(INSTALL_DIR)/$(EXE)
 
 ### Specific rules
 
@@ -95,9 +109,11 @@ $(BUILD_DIR)%/.:
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
-	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
+# $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
+# 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 	
 -include $(DEPS)
-.PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
-		clean clean-all clean-cache install uninstall
+
+
+# .PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
+# 		clean clean-all clean-cache install uninstall
