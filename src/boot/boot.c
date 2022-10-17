@@ -28,8 +28,12 @@ minim_object *let_symbol;
 minim_object *and_symbol;
 minim_object *or_symbol;
 
+minim_object *empty_env;
+minim_object *global_env;
+
+
 //
-//  Object initialization
+//  Constructors
 //
 
 minim_object *make_char(int c) {
@@ -75,11 +79,46 @@ minim_object *make_pair(minim_object *car, minim_object *cdr) {
 }
 
 //
+//  Extra constructors
+//
+
+minim_object *make_assoc(minim_object *xs, minim_object *ys) {
+    minim_object *assoc, *assoc_it;
+
+    if (minim_is_null(xs) && minim_is_null(ys))
+        return minim_null;
+    
+    if (minim_is_null(xs) != minim_is_null(ys)) {
+        fprintf(stderr, "association lists require even lists\n");
+        exit(1);
+    }
+
+    assoc = make_pair(make_pair(minim_car(xs), minim_car(ys)), minim_null);
+    assoc_it = assoc;
+    // while (!minim_is_null(xs = minim_cdr(xs))) {
+    //     if (minim_is_null(ys))
+    // }
+
+
+    return assoc;
+}
+
+//
 //  Forward declarations
 //
 
 minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
+
+//
+//  Standard library
+//
+
+
+
+// minim_object *is_null_proc(minim_object **arguments) {
+//     return 
+// }
 
 //
 //  Parsing
@@ -321,6 +360,80 @@ minim_object *read_object(FILE *in) {
 }
 
 //
+//  Environments
+//
+//  environments are a list of frames
+//  frames are list of bindings associating names to values
+//
+
+minim_object *make_env_frame(minim_object *vars, minim_object *vals) {
+    return make_assoc(vars, vals);
+}
+
+minim_object *extend_env(minim_object *vars,
+                         minim_object *vals,
+                         minim_object *base_env) {
+    return make_pair(make_env_frame(vars, vals), base_env);
+}
+
+minim_object *setup_env() {
+    return extend_env(minim_null, minim_null, empty_env);
+}
+
+void populate_env(minim_object *env) {
+    
+}
+
+minim_object *make_env() {
+    minim_object *env;
+
+    env = setup_env();
+    populate_env(env);
+    return env;
+}
+
+//
+//  Evaluation
+//
+
+int is_pair_starting_with(minim_object *maybe, minim_object *key) {
+    return minim_is_pair(maybe) && minim_is_symbol(minim_car(maybe)) && minim_car(maybe) == key;
+}
+
+int is_quoted(minim_object *expr) {
+    return is_pair_starting_with(expr, quote_symbol);
+}
+
+minim_object *unpack_quote(minim_object *quote) {
+    return minim_cadr(quote);
+}
+
+minim_object *eval_expr(minim_object *expr, minim_object *env) {
+    minim_object *procedure;
+    minim_object *arguments;
+    minim_object *result;
+
+loop:
+
+    if (minim_is_true(expr) || minim_is_false(expr) ||
+        minim_is_fixnum(expr) ||
+        minim_is_char(expr) ||
+        minim_is_string(expr)) {
+        // self-evaluating
+        return expr;
+    } else if (minim_is_symbol(expr)) {
+        // variable
+        fprintf(stderr, "Unimplemented\n");
+        exit(1);
+    } else if (is_quoted(expr)) {
+        return unpack_quote(expr);
+    }
+
+    fprintf(stderr, "Unimplemented\n");
+    exit(1);
+}
+
+//
 //  Printing
 //
 
@@ -445,6 +558,9 @@ void minim_boot_init() {
     let_symbol = make_symbol("let");
     and_symbol = make_symbol("and");
     or_symbol = make_symbol("or");
+
+    empty_env = minim_null;
+    global_env = make_env();
 }
 
 //
@@ -465,7 +581,7 @@ int main(int argv, char **argc) {
         expr = read_object(stdin);
         if (expr == NULL) break;
 
-        write_object(stdout, expr);
+        write_object(stdout, eval_expr(expr, global_env));
         printf("\n");
     }
 

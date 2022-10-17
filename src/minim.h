@@ -96,5 +96,31 @@ extern minim_object *minim_false;
 extern minim_object *minim_eof;
 extern minim_object *minim_void;
 
-// Constants
+// Predicates
 
+#define minim_same_type(o, t)   ((o)->type == (t))
+
+#define minim_is_symbol(x)          (minim_same_type(x, MINIM_SYMBOL_TYPE))
+#define minim_is_fixnum(x)          (minim_same_type(x, MINIM_FIXNUM_TYPE))
+#define minim_is_string(x)          (minim_same_type(x, MINIM_STRING_TYPE))
+#define minim_is_char(x)            (minim_same_type(x, MINIM_CHAR_TYPE))
+#define minim_is_pair(x)            (minim_same_type(x, MINIM_PAIR_TYPE))
+#define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
+#define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
+#define minim_is_input_port(x)      (minim_same_type(x, MINIM_INPUT_PORT_TYPE))
+#define minim_is_output_port(x)     (minim_same_type(x, MINIM_OUTPUT_PORT_TYPE))
+
+#define minim_is_null(x)  ((x) == minim_false)
+#define minim_is_true(x)  ((x) == minim_true)
+#define minim_is_false(x) ((x) == minim_false)
+#define minim_is_eof(x)   ((x) == minim_eof)
+#define minim_is_void(x)  ((x) == minim_void)
+
+// Accessors
+
+#define minim_car(x)        (((minim_pair_object *) (x))->car)
+#define minim_cdr(x)        (((minim_pair_object *) (x))->cdr)
+#define minim_caar(x)       (minim_car(minim_car(x)))
+#define minim_cadr(x)       (minim_car(minim_cdr(x)))
+#define minim_cdar(x)       (minim_cdr(minim_car(x)))
+#define minim_cddr(x)       (minim_cdr(minim_cdr(x)))
