@@ -21,10 +21,12 @@ DEPFLAGS 	:= -MMD -MP
 CFLAGS 		:= -Wall -std=c11
 LDFLAGS 	:= -lm -lgmp
 
-DEBUG_FLAGS		:= -Og -g -DENABLE_STATS
-PROFILE_FLAGS	:= -O2 -DNDEBUG -march=native -pg
-COVERAGE_FLAGS	:= -Og -g -march=native -fprofile-arcs -ftest-coverage
-RELEASE_FLAGS 	:= -O3 -DNDEBUG -march=native
+DEBUG_FLAGS := -Og -g
+
+# DEBUG_FLAGS		:= -Og -g -DENABLE_STATS
+# PROFILE_FLAGS	:= -O2 -DNDEBUG -march=native -pg
+# COVERAGE_FLAGS	:= -Og -g -march=native -fprofile-arcs -ftest-coverage
+# RELEASE_FLAGS 	:= -O3 -DNDEBUG -march=native
 
 CP := cp
 ECHO := echo

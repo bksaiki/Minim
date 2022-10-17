@@ -16,6 +16,18 @@ minim_object *minim_false;
 minim_object *minim_eof;
 minim_object *minim_void;
 
+minim_object *quote_symbol;
+minim_object *define_symbol;
+minim_object *setb_symbol;
+minim_object *if_symbol;
+minim_object *lambda_symbol;
+minim_object *begin_symbol;
+minim_object *cond_symbol;
+minim_object *else_symbol;
+minim_object *let_symbol;
+minim_object *and_symbol;
+minim_object *or_symbol;
+
 //
 //  Object initialization
 //
@@ -24,6 +36,41 @@ minim_object *make_char(int c) {
     minim_char_object *o = GC_alloc(sizeof(minim_char_object));
     o->type = MINIM_CHAR_TYPE;
     o->value = c;
+    return ((minim_object *) o);
+}
+
+minim_object *make_fixnum(long v) {
+    minim_fixnum_object *o = GC_alloc(sizeof(minim_fixnum_object));
+    o->type = MINIM_FIXNUM_TYPE;
+    o->value = v;
+    return ((minim_object *) o);
+}
+
+minim_object *make_symbol(const char *s) {
+    minim_symbol_object *o = GC_alloc(sizeof(minim_symbol_object));
+    int len = strlen(s);
+    
+    o->type = MINIM_SYMBOL_TYPE;
+    o->value = GC_alloc((len + 1) * sizeof(char));
+    strncpy(o->value, s, len + 1);
+    return ((minim_object *) o);
+}
+
+minim_object *make_string(const char *s) {
+    minim_string_object *o = GC_alloc(sizeof(minim_string_object));
+    int len = strlen(s);
+    
+    o->type = MINIM_STRING_TYPE;
+    o->value = GC_alloc((len + 1) * sizeof(char));
+    strncpy(o->value, s, len + 1);
+    return ((minim_object *) o);
+}
+
+minim_object *make_pair(minim_object *car, minim_object *cdr) {
+    minim_pair_object *o = GC_alloc(sizeof(minim_pair_object));
+    o->type = MINIM_PAIR_TYPE;
+    o->car = car;
+    o->cdr = cdr;
     return ((minim_object *) o);
 }
 
@@ -40,6 +87,11 @@ void write_object(FILE *out, minim_object *o);
 
 int is_delimeter(int c) {
     return isspace(c) || c == EOF || c == '(' || c == ')' || c == '"' || c == ';';
+}
+
+int is_symbol_char(int c) {
+    return isalpha(c) || c == '*' || c == '/' ||
+           c == '<' || c == '>' || c == '=' || c == '?' || c == '!';
 }
 
 int peek_char(FILE *in) {
@@ -59,7 +111,7 @@ void read_expected_string(FILE *in, const char *s) {
     int c;
 
     while (*s != '\0') {
-        c = fgetc(in);
+        c = getc(in);
         if (c != *s) {
             fprintf(stderr, "unexpected character: '%c'\n", c);
             exit(1);
@@ -71,12 +123,12 @@ void read_expected_string(FILE *in, const char *s) {
 void skip_whitespace(FILE *in) {
     int c;
 
-    while ((c = fgetc(in)) != EOF) {
+    while ((c = getc(in)) != EOF) {
         if (isspace(c))
             continue;
         else if (c == ';') {
             // comment: ignore until newline
-            while (((c = fgetc(in)) != EOF) && (c != '\n'));
+            while (((c = getc(in)) != EOF) && (c != '\n'));
         }
         
         // too far
@@ -88,7 +140,7 @@ void skip_whitespace(FILE *in) {
 minim_object *read_char(FILE *in) {
     int c;
 
-    c = fgetc(in);
+    c = getc(in);
     switch (c) {
     case EOF:
         fprintf(stderr, "incomplete character literal\n");
@@ -115,15 +167,56 @@ minim_object *read_char(FILE *in) {
     return make_char(c);
 }
 
+minim_object *read_pair(FILE *in) {
+    minim_object *car, *cdr;
+    int c;
+
+    skip_whitespace(in);
+    c = getc(in);
+    if (c == ')') {
+        // empty list
+        return minim_null;
+    }
+
+    ungetc(c, in);
+    car = read_object(in);
+
+    skip_whitespace(in);
+    c = fgetc(in);
+    if (c == '.') {
+        // improper list
+        peek_expected_delimeter(in);
+        cdr = read_object(in);
+        skip_whitespace(in);
+
+        c = getc(in);
+        if (c != ')') {
+            fprintf(stderr, "missing ')' to terminate pair");
+            exit(1);
+        }
+
+        return make_pair(car, cdr);
+    } else {
+        // list
+        ungetc(c, in);
+        cdr = read_pair(in);
+        return make_pair(car, cdr);
+    }
+}
+
 minim_object *read_object(FILE *in) {
+    char buffer[SYMBOL_MAX_LEN];
+    long num;
+    int i;
+    short sign;
     char c;
     
     skip_whitespace(in);
-    c = fgetc(in);
+    c = getc(in);
 
     if (c == '#') {
         // special value
-        c = fgetc(in);
+        c = getc(in);
         switch (c) {
         case 't':
             return minim_true;
@@ -132,10 +225,99 @@ minim_object *read_object(FILE *in) {
         case '\\':
             return read_char(in);
         }
+    } else if (isdigit(c) || ((c == '-' || c == '+') && isdigit(peek_char(in)))) {
+        // number
+        num = 0;
+        sign = 1;
+
+        // optional sign
+        if (c == '-') {
+            sign = -1;
+        } else if (c != '+') {
+            ungetc(c, in);
+        }
+
+        // magnitude
+        while (isdigit(c = getc(in))) {
+            num = (num * 10) + (c - '0');
+        }
+
+        // compose and check for delimeter
+        num *= sign;
+        if (!is_delimeter(c)) {
+            fprintf(stderr, "expected a delimeter\n");
+            exit(1);
+        }
+
+        ungetc(c, in);
+        return make_fixnum(num);
+    } else if (is_symbol_char(c) || ((c == '+' || c == '-') && is_delimeter(peek_char(in)))) {
+        // symbol
+        i = 0;
+
+        while (is_symbol_char(c) || isdigit(c) || c == '+' || c == '-') {
+            if (i < SYMBOL_MAX_LEN - 1) {
+                buffer[i++] = c;
+            } else {
+                fprintf(stderr, "symbol is too long, max allowed %d characters", SYMBOL_MAX_LEN);
+                exit(1);
+            }
+            c = getc(in);
+        }
+
+        if (!is_delimeter(c)) {
+            fprintf(stderr, "expected a delimeter\n");
+            exit(1);
+        }
+
+        ungetc(c, in);
+        return make_symbol(buffer);
+    } else if (c == '"') {
+        // string
+        i = 0;
+        while ((c = getc(in)) != '"') {
+            if (c == '\\') {
+                c = getc(in);
+                if (c == 'n') {
+                    c = '\n';
+                } else if (c == 't') {
+                    c = '\t';
+                } else if (c == '\\') {
+                    c = '\\';
+                } else {
+                    fprintf(stderr, "unknown escape character: %c\n", c);
+                    exit(1);
+                }
+            } else if (c == EOF) {
+                fprintf(stderr, "non-terminated string literal\n");
+                exit(1);
+            }
+
+            if (i < SYMBOL_MAX_LEN - 1) {
+                buffer[i++] = c;
+            } else {
+                fprintf(stderr, "string is too long, max allowed %d characters", SYMBOL_MAX_LEN);
+                exit(1);
+            }
+        }
+
+        buffer[i] = '\0';
+        return make_string(buffer);
+    } else if (c == '(') {
+        // empty list or pair
+        return read_pair(in);
+    } else if (c == '\'') {
+        // quoted expression
+        return make_pair(quote_symbol, make_pair(read_object(in), minim_null));
+    } else if (c == EOF) {
+        return NULL;
+    } else {
+        fprintf(stderr, "unexpected input: %c\n", c);
+        exit(1);
     }
 
-
-    return minim_null;   
+    fprintf(stderr, "unreachable");
+    exit(1);
 }
 
 //
@@ -180,16 +362,18 @@ void write_object(FILE *out, minim_object *o) {
         fprintf(out, "%ld", ((minim_fixnum_object *) o)->value);
         break;
     case MINIM_CHAR_TYPE:
-        switch (((minim_char_object *) o)->value) {
+        int c = ((minim_char_object *) o)->value;
+        switch (c) {
         case '\n':
-            fprintf(out, "newline");
+            fprintf(out, "#\\newline");
             break;
         case ' ':
-            fprintf(out, "space");
+            fprintf(out, "#\\space");
             break;
         default:
-            fprintf(out, "\\%c", ((minim_char_object *) o)->value);
+            fprintf(out, "#\\%c", c);
         }
+        break;
     case MINIM_STRING_TYPE:
         char *str = ((minim_string_object *) o)->value;
         fputc('"', out);
@@ -250,6 +434,17 @@ void minim_boot_init() {
     minim_false->type = MINIM_FALSE_TYPE;
     minim_eof->type = MINIM_EOF_TYPE;
     minim_void->type = MINIM_VOID_TYPE;
+
+    quote_symbol = make_symbol("quote");
+    define_symbol = make_symbol("define");
+    setb_symbol = make_symbol("set!");
+    if_symbol = make_symbol("if");
+    lambda_symbol = make_symbol("lambda");
+    begin_symbol = make_symbol("cond");
+    else_symbol = make_symbol("else");
+    let_symbol = make_symbol("let");
+    and_symbol = make_symbol("and");
+    or_symbol = make_symbol("or");
 }
 
 //
@@ -260,7 +455,7 @@ int main(int argv, char **argc) {
     volatile int stack_top;
     minim_object *expr;
 
-    printf("Minim bootstrap interpreter (v%s)\n", MINIM_BOOT_VERSION);
+    printf("Minim Bootstrap Interpreter v%s\n", MINIM_BOOT_VERSION);
 
     GC_init(((void*) &stack_top));
     minim_boot_init();

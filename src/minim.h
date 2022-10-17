@@ -95,3 +95,6 @@ extern minim_object *minim_true;
 extern minim_object *minim_false;
 extern minim_object *minim_eof;
 extern minim_object *minim_void;
+
+// Constants
+
