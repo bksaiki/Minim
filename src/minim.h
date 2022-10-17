@@ -7,19 +7,31 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "gc/gc.h"
+
 // Object types
 
 typedef enum {
-    MINIM_BOOL,
-    MINIM_SYMBOL,
-    MINIM_FIXNUM,
-    MINIM_CHAR,
-    MINIM_STRING,
-    MINIM_PAIR,
-    MINIM_PRIM_PROC,
-    MINIM_CLOSURE_PROC,
-    MINIM_INPUT_PORT,
-    MINIM_OUTPUT_PORT,
+    /* Special types */
+    MINIM_NULL_TYPE,
+    MINIM_TRUE_TYPE,
+    MINIM_FALSE_TYPE,
+    MINIM_EOF_TYPE,
+    MINIM_VOID_TYPE,
+
+    /* Primitve types */
+    MINIM_SYMBOL_TYPE,
+    MINIM_FIXNUM_TYPE,
+    MINIM_CHAR_TYPE,
+    MINIM_STRING_TYPE,
+    MINIM_PAIR_TYPE,
+    MINIM_PRIM_PROC_TYPE,
+    MINIM_CLOSURE_PROC_TYPE,
+    MINIM_INPUT_PORT_TYPE,
+    MINIM_OUTPUT_PORT_TYPE,
+
+    /* Footer */
+    MINIM_LAST_TYPE
 } minim_object_type;
 
 // Object structs
@@ -27,11 +39,6 @@ typedef enum {
 typedef struct {
     minim_object_type type;
 } minim_object;
-
-typedef struct {
-    minim_object_type type;
-    int value;
-} minim_bool_object;
 
 typedef struct {
     minim_object_type type;
@@ -45,7 +52,7 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
-    int value;
+    char *value;
 } minim_string_object;
 
 typedef struct {
@@ -59,6 +66,32 @@ typedef struct {
     minim_object *cdr;
 } minim_pair_object;
 
+typedef struct {
+    minim_object_type type;
+    minim_object *(*fn)(minim_object *args);
+} minim_prim_proc_object;
+
+typedef struct {
+    minim_object_type type;
+    minim_object *params;
+    minim_object *body;
+    minim_object *env;
+} minim_closure_proc_object;
+
+typedef struct {
+    minim_object_type type;
+    FILE *stream;
+} minim_input_port_object;
+
+typedef struct {
+    minim_object_type type;
+    FILE *stream;
+} minim_output_port_object;
+
 // Special objects
 
-
+extern minim_object *minim_null;
+extern minim_object *minim_true;
+extern minim_object *minim_false;
+extern minim_object *minim_eof;
+extern minim_object *minim_void;

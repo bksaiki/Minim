@@ -9,6 +9,8 @@ SRCS 		:= gc.c gc-impl.c
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
+DEPFLAGS 	:= -MMD -MP
+
 MKDIR_P	:= mkdir -p
 RM := rm -rf
 
