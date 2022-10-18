@@ -125,29 +125,7 @@ minim_object *make_assoc(minim_object *xs, minim_object *ys) {
 minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
 minim_object *eval_expr(minim_object *expr, minim_object *env);
-
-//
-//  Standard library
-//
-
-minim_object *is_null_proc(minim_object *arguments) {
-    return minim_is_null(minim_car(arguments)) ? minim_true : minim_false;
-}
-
-minim_object *is_bool_proc(minim_object *arguments) {
-    minim_object *o = minim_car(arguments);
-    return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
-}
-
-minim_object *eval_proc(minim_object *arguments) {
-    fprintf(stderr, "eval: should not be called directly");
-    exit(1);
-}
-
-minim_object *apply_proc(minim_object *arguments) {
-    fprintf(stderr, "eval: should not be called directly");
-    exit(1);
-}
+minim_object *make_env();
 
 //
 //  Parsing
@@ -465,23 +443,91 @@ minim_object *setup_env() {
     return extend_env(minim_null, minim_null, empty_env);
 }   
 
-#define add_procedure(name, c_name)         \
-    env_define_var(env, intern_symbol(symbols, name), make_prim_proc(c_name))
+//
+//  Primitive library
+//
 
-void populate_env(minim_object *env) {
-    add_procedure("null?", is_null_proc);
-    add_procedure("boolean?", is_bool_proc);
-
-    add_procedure("eval", eval_proc);
-    add_procedure("apply", apply_proc);
+minim_object *is_null_proc(minim_object *args) {
+    return minim_is_null(minim_car(args)) ? minim_true : minim_false;
 }
 
-minim_object *make_env() {
-    minim_object *env;
+minim_object *is_bool_proc(minim_object *args) {
+    minim_object *o = minim_car(args);
+    return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
+}
 
-    env = setup_env();
-    populate_env(env);
-    return env;
+minim_object *is_symbol_proc(minim_object *args) {
+    return minim_is_symbol(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *is_fixnum_proc(minim_object *args) {
+    return minim_is_fixnum(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *is_char_proc(minim_object *args) {
+    return minim_is_char(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *is_string_proc(minim_object *args) {
+    return minim_is_char(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *is_pair_proc(minim_object *args) {
+    return minim_is_pair(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *is_procedure_proc(minim_object *args) {
+    minim_object *o = minim_car(args);
+    return (minim_is_prim_proc(o) || minim_is_closure_proc(o)) ? minim_true : minim_false;
+}
+
+minim_object *char_to_integer_proc(minim_object *args) {
+    return make_fixnum(minim_char(minim_car(args)));
+}
+
+minim_object *integer_to_char_proc(minim_object *args) {
+    return make_char(minim_fixnum(minim_car(args)));
+}
+
+minim_object *number_to_string_proc(minim_object *args) {
+    char buffer[30];
+    sprintf(buffer, "%ld", minim_fixnum(minim_car(args)));
+    return make_string(buffer);
+}
+
+minim_object *string_to_number_proc(minim_object *args) {
+    // TODO: unchecked conversion
+    return make_fixnum(atoi(minim_string(minim_car(args))));
+}
+
+minim_object *symbol_to_string_proc(minim_object *args) {
+    return make_string(minim_symbol(minim_car(args)));
+}
+
+minim_object *string_to_symbol_proc(minim_object *args) {
+    return intern_symbol(symbols, minim_string(minim_car(args)));
+}
+
+minim_object *eval_proc(minim_object *args) {
+    fprintf(stderr, "eval: should not be called directly");
+    exit(1);
+}
+
+minim_object *apply_proc(minim_object *args) {
+    fprintf(stderr, "eval: should not be called directly");
+    exit(1);
+}
+
+minim_object *interaction_environment_proc(minim_object *args) {
+    return global_env;
+}
+
+minim_object *empty_environment_proc(minim_object *args) {
+    return setup_env();
+}
+
+minim_object *environment_proc(minim_object *args) {
+    return make_env();
 }
 
 //
@@ -510,6 +556,10 @@ static int is_let(minim_object *expr) {
 
 static int is_if(minim_object *expr) {
     return is_pair_starting_with(expr, if_symbol);
+}
+
+static int is_cond(minim_object *expr) {
+    return is_pair_starting_with(expr, cond_symbol);
 }
 
 static int is_lambda(minim_object *expr) {
@@ -550,8 +600,8 @@ static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
-    minim_object *procedure;
-    minim_object *arguments;
+    minim_object *proc;
+    minim_object *args;
     minim_object *result;
 
 loop:
@@ -584,6 +634,16 @@ loop:
             expr = minim_cadr(minim_cddr(expr));
 
         goto loop;
+    } else if (is_cond(expr)) {
+        expr = minim_cdr(expr);
+        while (!minim_is_null(expr)) {
+            if (minim_is_true(eval_expr(minim_caar(expr), env))) {
+                expr = make_pair(begin_symbol, minim_cdar(expr));
+                goto loop;
+            }
+            expr = minim_cdr(expr);
+        }
+        return minim_void;
     } else if (is_lambda(expr)) {
         return make_closure_proc(minim_cadr(expr), minim_car(minim_cddr(expr)), env);
     } else if (is_begin(expr)) {
@@ -624,32 +684,32 @@ loop:
         expr = minim_car(expr);
         goto loop;
     } else if (minim_is_pair(expr)) {
-        procedure = eval_expr(minim_car(expr), env);
-        arguments = eval_exprs(minim_cdr(expr), env);
+        proc = eval_expr(minim_car(expr), env);
+        args = eval_exprs(minim_cdr(expr), env);
 
 application:
 
-        if (minim_is_prim_proc(procedure)) {
+        if (minim_is_prim_proc(proc)) {
             // special case for `eval`
-            if (minim_prim_proc(procedure) == eval_proc) {
-                expr = minim_car(arguments);
-                env = minim_cadr(arguments);
+            if (minim_prim_proc(proc) == eval_proc) {
+                expr = minim_car(args);
+                env = minim_cadr(args);
                 goto loop;
             }
 
             // special case for `apply`
-            if (minim_prim_proc(procedure) == apply_proc) {
-                procedure = minim_car(arguments);
-                arguments = minim_cdr(arguments);
+            if (minim_prim_proc(proc) == apply_proc) {
+                proc = minim_car(args);
+                args = minim_cdr(args);
                 goto application;
             }
 
-            return minim_prim_proc(procedure)(arguments);
-        } else if (minim_is_closure_proc(procedure)) {
-            env = extend_env(minim_closure_args(procedure),
-                       arguments,
-                       minim_closure_env(procedure));
-            expr = minim_closure_body(procedure);
+            return minim_prim_proc(proc)(args);
+        } else if (minim_is_closure_proc(proc)) {
+            env = extend_env(minim_closure_args(proc),
+                       args,
+                       minim_closure_env(proc));
+            expr = make_pair(begin_symbol, minim_closure_body(proc));
             goto loop;
         } else {
             fprintf(stderr, "not a procedure\n");
@@ -765,6 +825,41 @@ void write_object(FILE *out, minim_object *o) {
 //
 //  Interpreter initialization
 //
+
+#define add_procedure(name, c_name)         \
+    env_define_var(env, intern_symbol(symbols, name), make_prim_proc(c_name))
+
+void populate_env(minim_object *env) {
+    add_procedure("null?", is_null_proc);
+    add_procedure("boolean?", is_bool_proc);
+    add_procedure("symbol?", is_bool_proc);
+    add_procedure("integer?", is_fixnum_proc);
+    add_procedure("char?", is_char_proc);
+    add_procedure("string?", is_string_proc);
+    add_procedure("procedure?", is_procedure_proc);
+
+    add_procedure("char->integer", char_to_integer_proc);
+    add_procedure("integer->char", integer_to_char_proc);
+    add_procedure("number->string", number_to_string_proc);
+    add_procedure("string->number", string_to_number_proc);
+    add_procedure("symbol->string", symbol_to_string_proc);
+    add_procedure("string->symbol", string_to_symbol_proc);
+
+    add_procedure("interaction-environment", interaction_environment_proc);
+    add_procedure("null-environment", empty_environment_proc);
+    add_procedure("environment", environment_proc);
+
+    add_procedure("eval", eval_proc);
+    add_procedure("apply", apply_proc);
+}
+
+minim_object *make_env() {
+    minim_object *env;
+
+    env = setup_env();
+    populate_env(env);
+    return env;
+}
 
 void minim_boot_init() {
     symbols = make_intern_table();

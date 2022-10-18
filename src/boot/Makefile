@@ -5,7 +5,7 @@
 GC_DIR		:= ../gc
 BUILD_DIR	:= build
 
-SRCS 		:= intern.o
+SRCS 		:= boot.c intern.c
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
@@ -18,10 +18,8 @@ RM := rm -rf
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-all: boot boot-info;
-
-boot: build/boot.o $(OBJS)
-	$(CC) $(CFLAGS) build/boot.o $(OBJS) $(LDFLAGS) -o boot
+boot: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o boot
 
 clean:
 	$(RM) build
