@@ -5,7 +5,7 @@
 GC_DIR		:= ../gc
 BUILD_DIR	:= build
 
-SRCS 		:= boot.c intern.c
+SRCS 		:= boot.c intern.c io.c
 ENTRY		:= minim.c
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
