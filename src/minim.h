@@ -2,6 +2,9 @@
     Public header file for Minim
 */
 
+#ifndef _MINIM_H_
+#define _MINIM_H_
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -68,7 +71,7 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
-    minim_object *(*fn)(minim_object **args);
+    minim_object *(*fn)(minim_object *args);
 } minim_prim_proc_object;
 
 typedef struct {
@@ -136,4 +139,15 @@ extern minim_object *minim_void;
 
 // Typedefs
 
-typedef minim_object *(*minim_prim_proc)(minim_object **);
+typedef minim_object *(*minim_prim_proc_t)(minim_object *);
+
+// Constructors
+
+minim_object *make_char(int c);
+minim_object *make_fixnum(long v);
+minim_object *make_symbol(const char *s);
+minim_object *make_string(const char *s);
+minim_object *make_pair(minim_object *car, minim_object *cdr);
+minim_object *make_prim_proc(minim_prim_proc_t proc);
+
+#endif  // _MINIM_H_

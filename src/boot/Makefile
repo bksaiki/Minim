@@ -5,8 +5,9 @@
 GC_DIR		:= ../gc
 BUILD_DIR	:= build
 
-SRCS 		:= $(shell find . -name "*.c")
-OBJS 		:= $(shell find $(GC_DIR) -name "*.c")
+SRCS 		:= intern.o
+OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
+DEPS 		:= $(OBJS:.o=.d)
 
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -lminimgc
@@ -19,11 +20,8 @@ RM := rm -rf
 
 all: boot boot-info;
 
-boot: build/boot.o
-	$(CC) $(CFLAGS) build/boot.o $(LDFLAGS) -o boot
-
-boot-info: build/boot-info.o
-	$(CC) $(CFLAGS) build/boot-info.o $(LDFLAGS) -o boot-info
+boot: build/boot.o $(OBJS)
+	$(CC) $(CFLAGS) build/boot.o $(OBJS) $(LDFLAGS) -o boot
 
 clean:
 	$(RM) build

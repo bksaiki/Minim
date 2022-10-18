@@ -5,6 +5,7 @@
 
 #include "../minim.h"
 #include "boot.h"
+#include "intern.h"
 
 //
 //  Special objects
@@ -30,7 +31,7 @@ minim_object *or_symbol;
 
 minim_object *empty_env;
 minim_object *global_env;
-
+intern_table *symbols;
 
 //
 //  Constructors
@@ -78,9 +79,19 @@ minim_object *make_pair(minim_object *car, minim_object *cdr) {
     return ((minim_object *) o);
 }
 
-minim_object *make_prim_proc(minim_prim_proc proc) {
+minim_object *make_prim_proc(minim_prim_proc_t proc) {
     minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
+    o->type = MINIM_PRIM_PROC_TYPE;
     o->fn = proc;
+    return ((minim_object *) o);
+}
+
+minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env) {
+    minim_closure_proc_object *o = GC_alloc(sizeof(minim_closure_proc_object));
+    o->type = MINIM_CLOSURE_PROC_TYPE;
+    o->args = args;
+    o->body = body;
+    o->env = env;
     return ((minim_object *) o);
 }
 
@@ -113,16 +124,17 @@ minim_object *make_assoc(minim_object *xs, minim_object *ys) {
 
 minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
+minim_object *eval_expr(minim_object *expr, minim_object *env);
 
 //
 //  Standard library
 //
 
-minim_object *is_null_proc(minim_object **arguments) {
+minim_object *is_null_proc(minim_object *arguments) {
     return minim_is_null(minim_car(arguments)) ? minim_true : minim_false;
 }
 
-minim_object *is_bool_proc(minim_object **arguments) {
+minim_object *is_bool_proc(minim_object *arguments) {
     minim_object *o = minim_car(arguments);
     return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
 }
@@ -317,7 +329,8 @@ minim_object *read_object(FILE *in) {
         }
 
         ungetc(c, in);
-        return make_symbol(buffer);
+        buffer[i] = '\0';
+        return intern_symbol(symbols, buffer);
     } else if (c == '"') {
         // string
         i = 0;
@@ -392,6 +405,27 @@ minim_object *env_define_var(minim_object *env, minim_object *var, minim_object 
     return NULL;
 }
 
+minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *val) {
+    while (!minim_is_null(env)) {
+        minim_object *frame = minim_car(env);
+        while (!minim_is_null(frame)) {
+            minim_object *frame_var = minim_caar(frame);
+            minim_object *frame_val = minim_cdar(frame);
+            if (var == frame_var) {
+                minim_cdar(frame) = val;
+                return frame_val;
+            }
+
+            frame = minim_cdr(frame);
+        }
+
+        env = minim_cdr(env);
+    }
+
+    fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
+    exit(1);
+}
+
 minim_object *env_lookup_var(minim_object *env, minim_object *var) {
     while (!minim_is_null(env)) {
         minim_object *frame = minim_car(env);
@@ -422,11 +456,11 @@ minim_object *setup_env() {
 }   
 
 #define add_procedure(name, c_name)         \
-    env_define_var(env, make_symbol(name), make_prim_proc(c_name))
+    env_define_var(env, intern_symbol(symbols, name), make_prim_proc(c_name))
 
 void populate_env(minim_object *env) {
     add_procedure("null?", is_null_proc);
-    add_procedure("boolean?", is_null_proc);
+    add_procedure("boolean?", is_bool_proc);
 }
 
 minim_object *make_env() {
@@ -441,16 +475,37 @@ minim_object *make_env() {
 //  Evaluation
 //
 
-int is_pair_starting_with(minim_object *maybe, minim_object *key) {
+static int is_pair_starting_with(minim_object *maybe, minim_object *key) {
     return minim_is_pair(maybe) && minim_is_symbol(minim_car(maybe)) && minim_car(maybe) == key;
 }
 
-int is_quoted(minim_object *expr) {
+static int is_quoted(minim_object *expr) {
     return is_pair_starting_with(expr, quote_symbol);
 }
 
-minim_object *unpack_quote(minim_object *quote) {
-    return minim_cadr(quote);
+static int is_assignment(minim_object *expr) {
+    return is_pair_starting_with(expr, setb_symbol);
+}
+
+static int is_definition(minim_object *expr) {
+    return is_pair_starting_with(expr, define_symbol);
+}
+
+static int is_if(minim_object *expr) {
+    return is_pair_starting_with(expr, if_symbol);
+}
+
+static int is_lambda(minim_object *expr) {
+    return is_pair_starting_with(expr, lambda_symbol);
+}
+
+minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
+    if (minim_is_null(exprs)) {
+        return minim_null;
+    } else {
+        return make_pair(eval_expr(minim_car(exprs), env),
+                         eval_exprs(minim_cdr(exprs), env));
+    }
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
@@ -470,10 +525,47 @@ loop:
         // variable
         return env_lookup_var(env, expr);
     } else if (is_quoted(expr)) {
-        return unpack_quote(expr);
+        return minim_cadr(expr);
+    } else if (is_assignment(expr)) {
+        env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+        return minim_void;
+    } else if (is_definition(expr)) {
+        env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+        return minim_void;
+    } else if (is_if(expr)) {
+        if (minim_is_true(eval_expr(minim_cadr(expr), env)))
+            expr = minim_car(minim_cddr(expr));
+        else
+            expr = minim_cadr(minim_cddr(expr));
+
+        goto loop;
+    } else if (is_lambda(expr)) {
+        return make_closure_proc(minim_cadr(expr), minim_car(minim_cddr(expr)), env);
+    } else if (minim_is_pair(expr)) {
+        procedure = eval_expr(minim_car(expr), env);
+        arguments = eval_exprs(minim_cdr(expr), env);
+
+        // special case for `apply`
+        // if (minim_is_prim_proc(procedure) && minim_prim_proc(procedure) == )
+
+        if (minim_is_prim_proc(procedure)) {
+            return minim_prim_proc(procedure)(arguments);
+        } else if (minim_is_closure_proc(procedure)) {
+            extend_env(minim_closure_args(procedure),
+                       arguments,
+                       minim_closure_env(procedure));
+            expr = minim_closure_body(procedure);
+            goto loop;
+        } else {
+            fprintf(stderr, "not a procedure\n");
+            exit(1);
+        }
+    } else {
+        fprintf(stderr, "cannot evaluate expresion\n");
+        exit(1);
     }
 
-    fprintf(stderr, "Unimplemented\n");
+    fprintf(stderr, "unreachable\n");
     exit(1);
 }
 
@@ -580,6 +672,8 @@ void write_object(FILE *out, minim_object *o) {
 //
 
 void minim_boot_init() {
+    symbols = make_intern_table();
+
     minim_null = GC_alloc(sizeof(minim_object));
     minim_true = GC_alloc(sizeof(minim_object));
     minim_false = GC_alloc(sizeof(minim_object));
@@ -592,16 +686,16 @@ void minim_boot_init() {
     minim_eof->type = MINIM_EOF_TYPE;
     minim_void->type = MINIM_VOID_TYPE;
 
-    quote_symbol = make_symbol("quote");
-    define_symbol = make_symbol("define");
-    setb_symbol = make_symbol("set!");
-    if_symbol = make_symbol("if");
-    lambda_symbol = make_symbol("lambda");
-    begin_symbol = make_symbol("cond");
-    else_symbol = make_symbol("else");
-    let_symbol = make_symbol("let");
-    and_symbol = make_symbol("and");
-    or_symbol = make_symbol("or");
+    quote_symbol = intern_symbol(symbols, "quote");
+    define_symbol = intern_symbol(symbols, "define");
+    setb_symbol = intern_symbol(symbols, "set!");
+    if_symbol = intern_symbol(symbols, "if");
+    lambda_symbol = intern_symbol(symbols, "lambda");
+    begin_symbol = intern_symbol(symbols, "cond");
+    else_symbol = intern_symbol(symbols, "else");
+    let_symbol = intern_symbol(symbols, "let");
+    and_symbol = intern_symbol(symbols, "and");
+    or_symbol = intern_symbol(symbols, "or");
 
     empty_env = minim_null;
     global_env = make_env();
@@ -613,7 +707,7 @@ void minim_boot_init() {
 
 int main(int argv, char **argc) {
     volatile int stack_top;
-    minim_object *expr;
+    minim_object *expr, *evaled;
 
     printf("Minim Bootstrap Interpreter v%s\n", MINIM_BOOT_VERSION);
 
@@ -625,8 +719,11 @@ int main(int argv, char **argc) {
         expr = read_object(stdin);
         if (expr == NULL) break;
 
-        write_object(stdout, eval_expr(expr, global_env));
-        printf("\n");
+        evaled = eval_expr(expr, global_env);
+        if (!minim_is_void(evaled)) {
+            write_object(stdout, evaled);
+            printf("\n");
+        }
     }
 
     return 0;

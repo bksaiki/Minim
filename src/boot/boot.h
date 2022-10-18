@@ -3,6 +3,9 @@
     Should not be referenced outside this directory
 */
 
+#ifndef _BOOT_H_
+#define _BOOT_H_
+
 #define MINIM_BOOT_VERSION      "0.1.0"
 
 // Limits
@@ -14,3 +17,5 @@
 void minim_boot_init();
 minim_object *eval_expr(minim_object *expr, minim_object *env);
 minim_object *make_env();
+
+#endif  // _BOOT_H_
