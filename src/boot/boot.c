@@ -139,6 +139,16 @@ minim_object *is_bool_proc(minim_object *arguments) {
     return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
 }
 
+minim_object *eval_proc(minim_object *arguments) {
+    fprintf(stderr, "eval: should not be called directly");
+    exit(1);
+}
+
+minim_object *apply_proc(minim_object *arguments) {
+    fprintf(stderr, "eval: should not be called directly");
+    exit(1);
+}
+
 //
 //  Parsing
 //
@@ -461,6 +471,9 @@ minim_object *setup_env() {
 void populate_env(minim_object *env) {
     add_procedure("null?", is_null_proc);
     add_procedure("boolean?", is_bool_proc);
+
+    add_procedure("eval", eval_proc);
+    add_procedure("apply", apply_proc);
 }
 
 minim_object *make_env() {
@@ -491,6 +504,10 @@ static int is_definition(minim_object *expr) {
     return is_pair_starting_with(expr, define_symbol);
 }
 
+static int is_let(minim_object *expr) {
+    return is_pair_starting_with(expr, let_symbol);
+}
+
 static int is_if(minim_object *expr) {
     return is_pair_starting_with(expr, if_symbol);
 }
@@ -499,7 +516,31 @@ static int is_lambda(minim_object *expr) {
     return is_pair_starting_with(expr, lambda_symbol);
 }
 
-minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
+static int is_begin(minim_object *expr) {
+    return is_pair_starting_with(expr, begin_symbol);
+}
+
+static int is_and(minim_object *expr) {
+    return is_pair_starting_with(expr, and_symbol);
+}
+
+static int is_or(minim_object *expr) {
+    return is_pair_starting_with(expr, or_symbol);
+}
+
+static minim_object *let_vars(minim_object *bindings) {
+    return (minim_is_null(bindings) ?
+            minim_null :
+            make_pair(minim_caar(bindings), let_vars(minim_cdr(bindings))));
+}
+
+static minim_object *let_vals(minim_object *bindings) {
+    return (minim_is_null(bindings) ?
+            minim_null :
+            make_pair(minim_car(minim_cdar(bindings)), let_vals(minim_cdr(bindings))));
+}
+
+static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
     if (minim_is_null(exprs)) {
         return minim_null;
     } else {
@@ -532,6 +573,10 @@ loop:
     } else if (is_definition(expr)) {
         env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
         return minim_void;
+    } else if (is_let(expr)) {
+        env = extend_env(let_vars(minim_cadr(expr)), let_vals(minim_cadr(expr)), env);
+        expr = minim_car(minim_cddr(expr));
+        goto loop;
     } else if (is_if(expr)) {
         if (minim_is_true(eval_expr(minim_cadr(expr), env)))
             expr = minim_car(minim_cddr(expr));
@@ -541,17 +586,67 @@ loop:
         goto loop;
     } else if (is_lambda(expr)) {
         return make_closure_proc(minim_cadr(expr), minim_car(minim_cddr(expr)), env);
+    } else if (is_begin(expr)) {
+        expr = minim_cdr(expr);
+        while (!minim_is_null(minim_cdr(expr))) {
+            eval_expr(minim_car(expr), env);
+            expr = minim_cdr(expr);
+        }
+
+        expr = minim_car(expr);
+        goto loop;
+    } else if (is_and(expr)) {
+        expr = minim_cdr(expr);
+        if (minim_is_null(expr))
+            return minim_true;
+
+        while (!minim_is_null(minim_cdr(expr))) {
+            result = eval_expr(minim_car(expr), env);
+            if (minim_is_false(result))
+                return result;
+            expr = minim_cdr(expr);
+        }
+        
+        expr = minim_car(expr);
+        goto loop;
+    } else if (is_or(expr)) {
+        expr = minim_cdr(expr);
+        if (minim_is_null(expr))
+            return minim_false;
+
+        while (!minim_is_null(minim_cdr(expr))) {
+            result = eval_expr(minim_car(expr), env);
+            if (minim_is_true(result))
+                return result;
+            expr = minim_cdr(expr);
+        }
+        
+        expr = minim_car(expr);
+        goto loop;
     } else if (minim_is_pair(expr)) {
         procedure = eval_expr(minim_car(expr), env);
         arguments = eval_exprs(minim_cdr(expr), env);
 
-        // special case for `apply`
-        // if (minim_is_prim_proc(procedure) && minim_prim_proc(procedure) == )
+application:
 
         if (minim_is_prim_proc(procedure)) {
+            // special case for `eval`
+            if (minim_prim_proc(procedure) == eval_proc) {
+                expr = minim_car(arguments);
+                env = minim_cadr(arguments);
+                goto loop;
+            }
+
+            // special case for `apply`
+            if (minim_prim_proc(procedure) == apply_proc) {
+                procedure = minim_car(arguments);
+                arguments = minim_cdr(arguments);
+                goto application;
+            }
+
             return minim_prim_proc(procedure)(arguments);
         } else if (minim_is_closure_proc(procedure)) {
-            extend_env(minim_closure_args(procedure),
+            env = extend_env(minim_closure_args(procedure),
                        arguments,
                        minim_closure_env(procedure));
             expr = minim_closure_body(procedure);
@@ -691,7 +786,8 @@ void minim_boot_init() {
     setb_symbol = intern_symbol(symbols, "set!");
     if_symbol = intern_symbol(symbols, "if");
     lambda_symbol = intern_symbol(symbols, "lambda");
-    begin_symbol = intern_symbol(symbols, "cond");
+    begin_symbol = intern_symbol(symbols, "begin");
+    cond_symbol = intern_symbol(symbols, "cond");
     else_symbol = intern_symbol(symbols, "else");
     let_symbol = intern_symbol(symbols, "let");
     and_symbol = intern_symbol(symbols, "and");
