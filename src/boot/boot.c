@@ -78,27 +78,31 @@ minim_object *make_pair(minim_object *car, minim_object *cdr) {
     return ((minim_object *) o);
 }
 
+minim_object *make_prim_proc(minim_prim_proc proc) {
+    minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
+    o->fn = proc;
+    return ((minim_object *) o);
+}
+
 //
 //  Extra constructors
 //
 
+// Makes an association list.
+// Unsafe: only iterates on `xs`.
 minim_object *make_assoc(minim_object *xs, minim_object *ys) {
-    minim_object *assoc, *assoc_it;
+    minim_object *assoc, *it;
 
-    if (minim_is_null(xs) && minim_is_null(ys))
+    if (minim_is_null(xs))
         return minim_null;
-    
-    if (minim_is_null(xs) != minim_is_null(ys)) {
-        fprintf(stderr, "association lists require even lists\n");
-        exit(1);
-    }
 
     assoc = make_pair(make_pair(minim_car(xs), minim_car(ys)), minim_null);
-    assoc_it = assoc;
-    // while (!minim_is_null(xs = minim_cdr(xs))) {
-    //     if (minim_is_null(ys))
-    // }
-
+    it = assoc;
+    while (!minim_is_null(xs = minim_cdr(xs))) {
+        ys = minim_cdr(ys);
+        minim_cdr(it) = make_pair(make_pair(minim_car(xs), minim_car(ys)), minim_null);
+        it = minim_cdr(it);
+    }
 
     return assoc;
 }
@@ -114,11 +118,14 @@ void write_object(FILE *out, minim_object *o);
 //  Standard library
 //
 
+minim_object *is_null_proc(minim_object **arguments) {
+    return minim_is_null(minim_car(arguments)) ? minim_true : minim_false;
+}
 
-
-// minim_object *is_null_proc(minim_object **arguments) {
-//     return 
-// }
+minim_object *is_bool_proc(minim_object **arguments) {
+    minim_object *o = minim_car(arguments);
+    return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
+}
 
 //
 //  Parsing
@@ -362,26 +369,64 @@ minim_object *read_object(FILE *in) {
 //
 //  Environments
 //
-//  environments are a list of frames
-//  frames are list of bindings associating names to values
+//  environments ::= (<frame0> <frame1> ...)
+//  frames       ::= ((<var0> . <val1>) (<var1> . <val1>) ...)
 //
 
-minim_object *make_env_frame(minim_object *vars, minim_object *vals) {
+minim_object *make_frame(minim_object *vars, minim_object *vals) {
     return make_assoc(vars, vals);
+}
+
+minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val) {
+    minim_object *frame = minim_car(env);
+    for (minim_object *it = frame; !minim_is_null(it); it = minim_cdr(it)) {
+        minim_object *frame_var = minim_caar(frame);
+        minim_object *frame_val = minim_cdar(frame);
+        if (var == frame_var) {
+            minim_cdar(frame) = val;
+            return frame_val;
+        }
+    }
+
+    minim_car(env) = make_pair(make_pair(var, val), frame);
+    return NULL;
+}
+
+minim_object *env_lookup_var(minim_object *env, minim_object *var) {
+    while (!minim_is_null(env)) {
+        minim_object *frame = minim_car(env);
+        while (!minim_is_null(frame)) {
+            minim_object *frame_var = minim_caar(frame);
+            minim_object *frame_val = minim_cdar(frame);
+            if (var == frame_var)
+                return frame_val;
+
+            frame = minim_cdr(frame);
+        }
+
+        env = minim_cdr(env);
+    }
+
+    fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
+    exit(1);
 }
 
 minim_object *extend_env(minim_object *vars,
                          minim_object *vals,
                          minim_object *base_env) {
-    return make_pair(make_env_frame(vars, vals), base_env);
+    return make_pair(make_frame(vars, vals), base_env);
 }
 
 minim_object *setup_env() {
     return extend_env(minim_null, minim_null, empty_env);
-}
+}   
+
+#define add_procedure(name, c_name)         \
+    env_define_var(env, make_symbol(name), make_prim_proc(c_name))
 
 void populate_env(minim_object *env) {
-    
+    add_procedure("null?", is_null_proc);
+    add_procedure("boolean?", is_null_proc);
 }
 
 minim_object *make_env() {
@@ -423,8 +468,7 @@ loop:
         return expr;
     } else if (minim_is_symbol(expr)) {
         // variable
-        fprintf(stderr, "Unimplemented\n");
-        exit(1);
+        return env_lookup_var(env, expr);
     } else if (is_quoted(expr)) {
         return unpack_quote(expr);
     }
@@ -438,15 +482,15 @@ loop:
 //
 
 void write_pair(FILE *out, minim_pair_object *p) {
-    write_object(out, p->car);
-    if (p->cdr->type == MINIM_PAIR_TYPE) {
+    write_object(out, minim_car(p));
+    if (minim_is_pair(minim_cdr(p))) {
         fputc(' ', out);
-        write_pair(out, ((minim_pair_object *) p->cdr));
-    } else if (p->cdr->type == MINIM_NULL_TYPE) {
+        write_pair(out, ((minim_pair_object *) minim_cdr(p)));
+    } else if (minim_is_null(minim_cdr(p))) {
         return;
     } else {
         fprintf(out, " . ");
-        write_object(out, p->cdr);
+        write_object(out, minim_cdr(p));
     }
 }
 
@@ -469,13 +513,13 @@ void write_object(FILE *out, minim_object *o) {
         break;
 
     case MINIM_SYMBOL_TYPE:
-        fprintf(out, "%s", ((minim_symbol_object *) o)->value);
+        fprintf(out, "%s", minim_symbol(o));
         break;
     case MINIM_FIXNUM_TYPE:
-        fprintf(out, "%ld", ((minim_fixnum_object *) o)->value);
+        fprintf(out, "%ld", minim_fixnum(o));
         break;
     case MINIM_CHAR_TYPE:
-        int c = ((minim_char_object *) o)->value;
+        int c = minim_char(o);
         switch (c) {
         case '\n':
             fprintf(out, "#\\newline");
@@ -488,7 +532,7 @@ void write_object(FILE *out, minim_object *o) {
         }
         break;
     case MINIM_STRING_TYPE:
-        char *str = ((minim_string_object *) o)->value;
+        char *str = minim_string(o);
         fputc('"', out);
         while (*str != '\0') {
             switch (*str) {

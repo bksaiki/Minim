@@ -68,12 +68,12 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
-    minim_object *(*fn)(minim_object *args);
+    minim_object *(*fn)(minim_object **args);
 } minim_prim_proc_object;
 
 typedef struct {
     minim_object_type type;
-    minim_object *params;
+    minim_object *args;
     minim_object *body;
     minim_object *env;
 } minim_closure_proc_object;
@@ -110,7 +110,7 @@ extern minim_object *minim_void;
 #define minim_is_input_port(x)      (minim_same_type(x, MINIM_INPUT_PORT_TYPE))
 #define minim_is_output_port(x)     (minim_same_type(x, MINIM_OUTPUT_PORT_TYPE))
 
-#define minim_is_null(x)  ((x) == minim_false)
+#define minim_is_null(x)  ((x) == minim_null)
 #define minim_is_true(x)  ((x) == minim_true)
 #define minim_is_false(x) ((x) == minim_false)
 #define minim_is_eof(x)   ((x) == minim_eof)
@@ -124,3 +124,16 @@ extern minim_object *minim_void;
 #define minim_cadr(x)       (minim_car(minim_cdr(x)))
 #define minim_cdar(x)       (minim_cdr(minim_car(x)))
 #define minim_cddr(x)       (minim_cdr(minim_cdr(x)))
+
+#define minim_symbol(x)         (((minim_symbol_object *) (x))->value)
+#define minim_fixnum(x)         (((minim_fixnum_object *) (x))->value)
+#define minim_string(x)         (((minim_string_object *) (x))->value)
+#define minim_char(x)           (((minim_char_object *) (x))->value)
+#define minim_prim_proc(x)      (((minim_prim_proc_object *) (x))->fn)
+#define minim_closure_args(x)   (((minim_closure_proc_object *) (x))->args)
+#define minim_closure_body(x)   (((minim_closure_proc_object *) (x))->body)
+#define minim_closure_env(x)    (((minim_closure_proc_object *) (x))->env)
+
+// Typedefs
+
+typedef minim_object *(*minim_prim_proc)(minim_object **);
