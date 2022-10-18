@@ -6,6 +6,7 @@ GC_DIR		:= ../gc
 BUILD_DIR	:= build
 
 SRCS 		:= boot.c intern.c
+ENTRY		:= minim.c
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
@@ -19,7 +20,10 @@ RM := rm -rf
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
 boot: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o boot
+	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o minim
+
+test: $(BUILD_DIR)/test-prims;
+	$(BUILD_DIR)/test-prims
 
 clean:
 	$(RM) build
@@ -32,5 +36,8 @@ $(BUILD_DIR)%/.:
 
 $(BUILD_DIR)/%.o: %.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/test-prims: test-prims.c $(OBJS)
+	$(CC) $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
 .PHONY: build clean

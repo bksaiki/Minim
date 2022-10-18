@@ -3,7 +3,6 @@
     Supports the most basic operations
 */
 
-#include "../minim.h"
 #include "boot.h"
 #include "intern.h"
 
@@ -122,10 +121,6 @@ minim_object *make_assoc(minim_object *xs, minim_object *ys) {
 //  Forward declarations
 //
 
-minim_object *read_object(FILE *in);
-void write_object(FILE *out, minim_object *o);
-minim_object *eval_expr(minim_object *expr, minim_object *env);
-minim_object *make_env();
 
 //
 //  Parsing
@@ -469,7 +464,7 @@ minim_object *is_char_proc(minim_object *args) {
 }
 
 minim_object *is_string_proc(minim_object *args) {
-    return minim_is_char(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_string(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_pair_proc(minim_object *args) {
@@ -832,7 +827,7 @@ void write_object(FILE *out, minim_object *o) {
 void populate_env(minim_object *env) {
     add_procedure("null?", is_null_proc);
     add_procedure("boolean?", is_bool_proc);
-    add_procedure("symbol?", is_bool_proc);
+    add_procedure("symbol?", is_symbol_proc);
     add_procedure("integer?", is_fixnum_proc);
     add_procedure("char?", is_char_proc);
     add_procedure("string?", is_string_proc);
@@ -890,32 +885,4 @@ void minim_boot_init() {
 
     empty_env = minim_null;
     global_env = make_env();
-}
-
-//
-//  REPL
-//
-
-int main(int argv, char **argc) {
-    volatile int stack_top;
-    minim_object *expr, *evaled;
-
-    printf("Minim Bootstrap Interpreter v%s\n", MINIM_BOOT_VERSION);
-
-    GC_init(((void*) &stack_top));
-    minim_boot_init();
-    
-    while (1) {
-        printf("> ");
-        expr = read_object(stdin);
-        if (expr == NULL) break;
-
-        evaled = eval_expr(expr, global_env);
-        if (!minim_is_void(evaled)) {
-            write_object(stdout, evaled);
-            printf("\n");
-        }
-    }
-
-    return 0;
 }

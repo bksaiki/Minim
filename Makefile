@@ -50,6 +50,9 @@ clean:
 gc:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/gc
 
+test:
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot test
+
 # debug:
 # 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
