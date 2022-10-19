@@ -236,6 +236,9 @@ int test_lists() {
     check_equal("(car '(1))", "1");
     check_equal("(cdr '(1))", "'()");
 
+    check_equal("(begin (define p '(1 . 2)) (set-car! p 2) p)", "'(2 . 2)");
+    check_equal("(begin (define p '(1 . 2)) (set-cdr! p 3) p)", "'(1 . 3)");
+
     check_equal("(list)", "'()");
     check_equal("(list 1)", "'(1)");
     check_equal("(list 1 2)", "'(1 2)");
@@ -264,6 +267,35 @@ int test_integers() {
     check_equal("(/ 1 1)", "1");
     check_equal("(/ 6 3)", "2");
     check_equal("(/ 7 3)", "2");
+
+    check_equal("(remainder 3 2)",    "1");
+    check_equal("(remainder -3 2)",  "-1");
+    check_equal("(remainder 3 -2)",   "1");
+    check_equal("(remainder -3 -2)", "-1");
+
+    check_equal("(modulo 3 2)",    "1");
+    check_equal("(modulo -3 2)",   "1");
+    check_equal("(modulo 3 -2)",  "-1");
+    check_equal("(modulo -3 -2)", "-1");
+
+    check_true ("(= 1 1)");
+    check_false("(= 1 2)");
+
+    check_true ("(>= 2 1)");
+    check_true ("(>= 1 1)");
+    check_false("(>= 0 1)");
+
+    check_false("(<= 2 1)");
+    check_true ("(<= 1 1)");
+    check_true ("(<= 0 1)");
+
+    check_true ("(> 2 1)");
+    check_false("(> 1 1)");
+    check_false("(> 0 1)");
+
+    check_false("(< 2 1)");
+    check_false("(< 1 1)");
+    check_true ("(< 0 1)");
 
     return passed;
 }

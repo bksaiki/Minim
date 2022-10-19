@@ -323,6 +323,16 @@ minim_object *cdr_proc(minim_object *args) {
     return minim_cdar(args);
 }
 
+minim_object *set_car_proc(minim_object *args) {
+    minim_caar(args) = minim_cadr(args);
+    return minim_void;
+}
+
+minim_object *set_cdr_proc(minim_object *args) {
+    minim_cdar(args) = minim_cadr(args);
+    return minim_void;
+}
+
 minim_object *list_proc(minim_object *args) {
     return args;
 }
@@ -371,6 +381,48 @@ minim_object *div_proc(minim_object *args) {
                        minim_fixnum(minim_cadr(args)));
 }
 
+minim_object *remainder_proc(minim_object *args) {
+    return make_fixnum(minim_fixnum(minim_car(args)) %
+                       minim_fixnum(minim_cadr(args)));
+}
+
+minim_object *modulo_proc(minim_object *args) {
+    long result = minim_fixnum(minim_car(args)) % minim_fixnum(minim_cadr(args));
+    if ((minim_fixnum(minim_car(args)) < 0) != (minim_fixnum(minim_cadr(args)) < 0))
+        result += minim_fixnum(minim_cadr(args));
+    return make_fixnum(result);
+}
+
+minim_object *number_eq_proc(minim_object *args) { 
+    return (minim_fixnum(minim_car(args)) == minim_fixnum(minim_cadr(args))) ?
+           minim_true :
+           minim_false;
+}
+
+minim_object *number_ge_proc(minim_object *args) { 
+    return (minim_fixnum(minim_car(args)) >= minim_fixnum(minim_cadr(args))) ?
+           minim_true :
+           minim_false;
+}
+
+minim_object *number_le_proc(minim_object *args) { 
+    return (minim_fixnum(minim_car(args)) <= minim_fixnum(minim_cadr(args))) ?
+           minim_true :
+           minim_false;
+}
+
+minim_object *number_gt_proc(minim_object *args) { 
+    return (minim_fixnum(minim_car(args)) > minim_fixnum(minim_cadr(args))) ?
+           minim_true :
+           minim_false;
+}
+
+minim_object *number_lt_proc(minim_object *args) { 
+    return (minim_fixnum(minim_car(args)) < minim_fixnum(minim_cadr(args))) ?
+           minim_true :
+           minim_false;
+}
+
 minim_object *eval_proc(minim_object *args) {
     fprintf(stderr, "eval: should not be called directly");
     exit(1);
@@ -391,6 +443,17 @@ minim_object *empty_environment_proc(minim_object *args) {
 
 minim_object *environment_proc(minim_object *args) {
     return make_env();
+}
+
+minim_object *error_proc(minim_object *args) {
+    while (!minim_is_null(args)) {
+        write_object(stderr, minim_car(args));
+        fprintf(stderr, " ");
+        args = minim_cdr(args);
+    }
+
+    printf("\n");
+    exit(1);
 }
 
 //
@@ -628,12 +691,22 @@ void populate_env(minim_object *env) {
     add_procedure("cons", cons_proc);
     add_procedure("car", car_proc);
     add_procedure("cdr", cdr_proc);
+    add_procedure("set-car!", set_car_proc);
+    add_procedure("set-cdr!", set_cdr_proc);
     add_procedure("list", list_proc);
 
     add_procedure("+", add_proc);
     add_procedure("-", sub_proc);
     add_procedure("*", mul_proc);
     add_procedure("/", div_proc);
+    add_procedure("remainder", remainder_proc);
+    add_procedure("modulo", modulo_proc);
+
+    add_procedure("=", number_eq_proc);
+    add_procedure(">=", number_ge_proc);
+    add_procedure("<=", number_le_proc);
+    add_procedure(">", number_gt_proc);
+    add_procedure("<", number_lt_proc);
 
     add_procedure("interaction-environment", interaction_environment_proc);
     add_procedure("null-environment", empty_environment_proc);
@@ -641,6 +714,8 @@ void populate_env(minim_object *env) {
 
     add_procedure("eval", eval_proc);
     add_procedure("apply", apply_proc);
+
+    add_procedure("error", error_proc);
 }
 
 minim_object *make_env() {
