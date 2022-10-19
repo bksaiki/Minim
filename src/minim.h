@@ -22,7 +22,7 @@ typedef enum {
     MINIM_EOF_TYPE,
     MINIM_VOID_TYPE,
 
-    /* Primitve types */
+    /* Primitive types */
     MINIM_SYMBOL_TYPE,
     MINIM_FIXNUM_TYPE,
     MINIM_CHAR_TYPE,
@@ -149,5 +149,10 @@ minim_object *make_symbol(const char *s);
 minim_object *make_string(const char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_prim_proc(minim_prim_proc_t proc);
+
+// Primitives
+
+int minim_is_eq(minim_object *a, minim_object *b);
+int minim_is_equal(minim_object *a, minim_object *b);
 
 #endif  // _MINIM_H_

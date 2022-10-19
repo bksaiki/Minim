@@ -311,6 +311,22 @@ minim_object *equal_proc(minim_object *args) {
     return minim_is_equal(a, b) ? minim_true : minim_false;
 }
 
+minim_object *cons_proc(minim_object *args) {
+    return make_pair(minim_car(args), minim_cadr(args));
+}
+
+minim_object *car_proc(minim_object *args) {
+    return minim_caar(args);
+}
+
+minim_object *cdr_proc(minim_object *args) {
+    return minim_cdar(args);
+}
+
+minim_object *list_proc(minim_object *args) {
+    return args;
+}
+
 minim_object *eval_proc(minim_object *args) {
     fprintf(stderr, "eval: should not be called directly");
     exit(1);
@@ -437,8 +453,9 @@ loop:
         env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
         return minim_void;
     } else if (is_let(expr)) {
-        env = extend_env(let_vars(minim_cadr(expr)), let_vals(minim_cadr(expr)), env);
-        expr = make_pair(begin_symbol, minim_car(minim_cddr(expr)));
+        args = eval_exprs(let_vals(minim_cadr(expr)), env);
+        env = extend_env(let_vars(minim_cadr(expr)), args, env);
+        expr = make_pair(begin_symbol, (minim_cddr(expr)));
         goto loop;
     } else if (is_if(expr)) {
         if (minim_is_true(eval_expr(minim_cadr(expr), env)))
@@ -458,7 +475,9 @@ loop:
         }
         return minim_void;
     } else if (is_lambda(expr)) {
-        return make_closure_proc(minim_cadr(expr), minim_car(minim_cddr(expr)), env);
+        return make_closure_proc(minim_cadr(expr),
+                                 make_pair(begin_symbol, minim_cddr(expr)),
+                                 env);
     } else if (is_begin(expr)) {
         expr = minim_cdr(expr);
         while (!minim_is_null(minim_cdr(expr))) {
@@ -522,7 +541,7 @@ application:
             env = extend_env(minim_closure_args(proc),
                        args,
                        minim_closure_env(proc));
-            expr = make_pair(begin_symbol, minim_closure_body(proc));
+            expr = minim_closure_body(proc);
             goto loop;
         } else {
             fprintf(stderr, "not a procedure\n");
@@ -562,6 +581,11 @@ void populate_env(minim_object *env) {
 
     add_procedure("eq?", eq_proc);
     add_procedure("equal?", equal_proc);
+
+    add_procedure("cons", cons_proc);
+    add_procedure("car", car_proc);
+    add_procedure("cdr", cdr_proc);
+    add_procedure("list", list_proc);
 
     add_procedure("interaction-environment", interaction_environment_proc);
     add_procedure("null-environment", empty_environment_proc);

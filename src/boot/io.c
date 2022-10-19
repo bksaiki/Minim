@@ -267,7 +267,7 @@ static void write_pair(FILE *out, minim_pair_object *p) {
 void write_object(FILE *out, minim_object *o) {
     switch (o->type) {
     case MINIM_NULL_TYPE:
-        fprintf(out, "()");
+        fprintf(out, "'()");
         break;
     case MINIM_TRUE_TYPE:
         fprintf(out, "#t");
@@ -283,7 +283,7 @@ void write_object(FILE *out, minim_object *o) {
         break;
 
     case MINIM_SYMBOL_TYPE:
-        fprintf(out, "%s", minim_symbol(o));
+        fprintf(out, "'%s", minim_symbol(o));
         break;
     case MINIM_FIXNUM_TYPE:
         fprintf(out, "%ld", minim_fixnum(o));
@@ -324,7 +324,7 @@ void write_object(FILE *out, minim_object *o) {
         fputc('"', out);
         break;
     case MINIM_PAIR_TYPE:
-        fputc('(', out);
+        fputs("'(", out);
         write_pair(out, ((minim_pair_object *) o));
         fputc(')', out);
         break;
