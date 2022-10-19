@@ -244,6 +244,30 @@ int test_lists() {
     return passed;
 }
 
+int test_integers() {
+    passed = 1;
+
+    check_equal("(+)", "0");
+    check_equal("(+ 1)", "1");
+    check_equal("(+ 1 2)", "3");
+    check_equal("(+ 1 2 3)", "6");
+
+    check_equal("(- 1)", "-1");
+    check_equal("(- 1 2)", "-1");
+    check_equal("(- 1 2 3)", "-4");
+
+    check_equal("(*)", "1");
+    check_equal("(* 1)", "1");
+    check_equal("(* 1 2)", "2");
+    check_equal("(* 1 2 3)", "6");
+
+    check_equal("(/ 1 1)", "1");
+    check_equal("(/ 6 3)", "2");
+    check_equal("(/ 7 3)", "2");
+
+    return passed;
+}
+
 void run_tests() {
     log_test("simple eval", test_simple_eval);
     log_test("type predicates", test_type_predicates);
@@ -251,6 +275,7 @@ void run_tests() {
     log_test("equal?", test_equal);
     log_test("type conversions", test_type_conversions);
     log_test("lists", test_lists);
+    log_test("integers", test_integers);
 }
 
 int main(int argc, char **argv) {

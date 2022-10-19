@@ -55,6 +55,7 @@ static void skip_whitespace(FILE *in) {
         else if (c == ';') {
             // comment: ignore until newline
             while (((c = getc(in)) != EOF) && (c != '\n'));
+            continue;
         }
         
         // too far
@@ -251,20 +252,22 @@ minim_object *read_object(FILE *in) {
 //  Writing
 //
 
-static void write_pair(FILE *out, minim_pair_object *p) {
-    write_object(out, minim_car(p));
+static void write_object2(FILE *out, minim_object *o, int quote);
+
+static void write_pair(FILE *out, minim_pair_object *p, int quote) {
+    write_object2(out, minim_car(p), quote);
     if (minim_is_pair(minim_cdr(p))) {
         fputc(' ', out);
-        write_pair(out, ((minim_pair_object *) minim_cdr(p)));
+        write_pair(out, ((minim_pair_object *) minim_cdr(p)), quote);
     } else if (minim_is_null(minim_cdr(p))) {
         return;
     } else {
         fprintf(out, " . ");
-        write_object(out, minim_cdr(p));
+        write_object2(out, minim_cdr(p), quote);
     }
 }
 
-void write_object(FILE *out, minim_object *o) {
+static void write_object2(FILE *out, minim_object *o, int quote) {
     switch (o->type) {
     case MINIM_NULL_TYPE:
         fprintf(out, "'()");
@@ -283,7 +286,8 @@ void write_object(FILE *out, minim_object *o) {
         break;
 
     case MINIM_SYMBOL_TYPE:
-        fprintf(out, "'%s", minim_symbol(o));
+        if (!quote) fputc('\'', out);
+        fprintf(out, "%s", minim_symbol(o));
         break;
     case MINIM_FIXNUM_TYPE:
         fprintf(out, "%ld", minim_fixnum(o));
@@ -324,8 +328,9 @@ void write_object(FILE *out, minim_object *o) {
         fputc('"', out);
         break;
     case MINIM_PAIR_TYPE:
-        fputs("'(", out);
-        write_pair(out, ((minim_pair_object *) o));
+        if (!quote) fputc('\'', out);
+        fputc('(', out);
+        write_pair(out, ((minim_pair_object *) o), 1);
         fputc(')', out);
         break;
     case MINIM_PRIM_PROC_TYPE:
@@ -343,4 +348,8 @@ void write_object(FILE *out, minim_object *o) {
         fprintf(stderr, "cannot write unknown object");
         exit(1);
     }
+}
+
+void write_object(FILE *out, minim_object *o) {
+    write_object2(out, o, 0);
 }

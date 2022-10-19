@@ -5,28 +5,35 @@
 GC_DIR		:= ../gc
 BUILD_DIR	:= build
 
-SRCS 		:= boot.c intern.c io.c
 ENTRY		:= minim.c
+CONFIG		:= $(BUILD_DIR)/config.h
+
+SRCS 		:= boot.c intern.c io.c
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -lminimgc
 
-MKDIR_P	:= mkdir -p
-RM := rm -rf
+MKDIR_P		:= mkdir -p
+RM 			:= rm -rf
+READLINK	:= readlink -f
 
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-boot: $(OBJS)
+boot: $(CONFIG) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o minim
 
-test: $(BUILD_DIR)/test-prims;
+test: $(CONFIG) $(BUILD_DIR)/test-prims;
 	$(BUILD_DIR)/test-prims
 
 clean:
 	$(RM) build
+
+$(CONFIG):
+	$(MKDIR_P) $(BUILD_DIR)
+	echo "#define BOOT_PRELUDE \"$(shell $(READLINK) prelude.min)\"" >> $@
 
 $(BUILD_DIR)/.:
 	$(MKDIR_P) $@

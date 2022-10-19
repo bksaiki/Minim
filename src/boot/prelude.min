@@ -1,0 +1,13 @@
+;
+;   Standard library written for bootstrap interpreter
+;   Written in a subset of Minim
+;
+
+(define length
+  (lambda (lst)
+    (define loop
+      (lambda (lst accum)
+        (if (null? lst)
+            accum
+            (loop (cdr lst) (+ accum 1)))))
+    (loop lst 0)))

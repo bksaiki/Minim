@@ -327,6 +327,50 @@ minim_object *list_proc(minim_object *args) {
     return args;
 }
 
+minim_object *add_proc(minim_object *args) {
+    long result = 0;
+
+    while (!minim_is_null(args)) {
+        result += minim_fixnum(minim_car(args));
+        args = minim_cdr(args);
+    }
+
+    return make_fixnum(result);
+}
+
+minim_object *sub_proc(minim_object *args) {
+    long result;
+    
+    if (minim_is_null(minim_cdr(args))) {
+        result = -(minim_fixnum(minim_car(args)));
+    } else {
+        result = minim_fixnum(minim_car(args));
+        args = minim_cdr(args);
+        while (!minim_is_null(args)) {
+            result -= minim_fixnum(minim_car(args));
+            args = minim_cdr(args);
+        }
+    }
+
+    return make_fixnum(result);
+}
+
+minim_object *mul_proc(minim_object *args) {
+    long result = 1;
+
+    while (!minim_is_null(args)) {
+        result *= minim_fixnum(minim_car(args));
+        args = minim_cdr(args);
+    }
+
+    return make_fixnum(result);
+}
+
+minim_object *div_proc(minim_object *args) {
+    return make_fixnum(minim_fixnum(minim_car(args)) /
+                       minim_fixnum(minim_cadr(args)));
+}
+
 minim_object *eval_proc(minim_object *args) {
     fprintf(stderr, "eval: should not be called directly");
     exit(1);
@@ -484,7 +528,6 @@ loop:
             eval_expr(minim_car(expr), env);
             expr = minim_cdr(expr);
         }
-
         expr = minim_car(expr);
         goto loop;
     } else if (is_and(expr)) {
@@ -586,6 +629,11 @@ void populate_env(minim_object *env) {
     add_procedure("car", car_proc);
     add_procedure("cdr", cdr_proc);
     add_procedure("list", list_proc);
+
+    add_procedure("+", add_proc);
+    add_procedure("-", sub_proc);
+    add_procedure("*", mul_proc);
+    add_procedure("/", div_proc);
 
     add_procedure("interaction-environment", interaction_environment_proc);
     add_procedure("null-environment", empty_environment_proc);

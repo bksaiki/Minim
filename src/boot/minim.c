@@ -5,13 +5,50 @@
     Entry point of the REPL
 */
 
+#include "build/config.h"
 #include "boot.h"
 
 //
 //  REPL
 //
 
-int main(int argv, char **argc) {
+static int opt_load_library;
+
+static void handle_flags(int argc, char **argv) {
+    int i = 1;
+
+    while (i < argc) {
+        if (strcmp(argv[i], "--no-libs") == 0) {
+            // Ignores library definitions
+            opt_load_library = 0;
+            ++i;
+        } else {
+            fprintf(stderr, "unknown flag: %s\n", argv[i]);
+            exit(1);
+        }
+    }
+}
+
+static void load_library() {
+    FILE *prelude;
+    minim_object *o;
+
+    prelude = fopen(BOOT_PRELUDE, "r");
+    while (!feof(prelude) || !ferror(prelude)) {
+        o = read_object(prelude);
+        if (o == NULL) break;
+
+        o = eval_expr(o, global_env);
+        if (!minim_is_void(o)) {
+            write_object(stdout, o);
+            printf("\n");
+        }
+    }
+
+    fclose(prelude);
+}
+
+int main(int argc, char **argv) {
     volatile int stack_top;
     minim_object *expr, *evaled;
 
@@ -19,6 +56,12 @@ int main(int argv, char **argc) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
+
+    opt_load_library = 1;
+    handle_flags(argc, argv);
+
+    if (opt_load_library)
+        load_library();
     
     while (1) {
         printf("> ");
