@@ -4,11 +4,12 @@
 
 GC_DIR		:= ../gc
 BUILD_DIR	:= build
+BOOT_DIR	:= $(shell pwd)/s
 
 ENTRY		:= minim.c
 CONFIG		:= $(BUILD_DIR)/config.h
 
-SRCS 		:= boot.c intern.c io.c
+SRCS 		:= boot.c intern.c io.c system.c
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
@@ -33,7 +34,7 @@ clean:
 
 $(CONFIG):
 	$(MKDIR_P) $(BUILD_DIR)
-	echo "#define BOOT_PRELUDE \"$(shell $(READLINK) prelude.min)\"" >> $@
+	echo "#define BOOT_DIR \"$(BOOT_DIR)/\"" >> $@
 
 $(BUILD_DIR)/.:
 	$(MKDIR_P) $@

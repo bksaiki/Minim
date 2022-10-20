@@ -11,13 +11,19 @@
 //  Reading
 //
 
+static void assert_not_eof(char c) {
+    if (c == EOF) {
+        fprintf(stderr, "unexpected end of input\n");
+        exit(1);
+    }
+}
+
 static int is_delimeter(int c) {
     return isspace(c) || c == EOF || c == '(' || c == ')' || c == '"' || c == ';';
 }
 
 static int is_symbol_char(int c) {
-    return isalpha(c) || c == '*' || c == '/' ||
-           c == '<' || c == '>' || c == '=' || c == '?' || c == '!';
+    return c != '#' && !is_delimeter(c);
 }
 
 static int peek_char(FILE *in) {
@@ -55,6 +61,7 @@ static void skip_whitespace(FILE *in) {
         else if (c == ';') {
             // comment: ignore until newline
             while (((c = getc(in)) != EOF) && (c != '\n'));
+            ungetc(c, in);
             continue;
         }
         
@@ -100,6 +107,8 @@ static minim_object *read_pair(FILE *in) {
 
     skip_whitespace(in);
     c = getc(in);
+    assert_not_eof(c);
+
     if (c == ')') {
         // empty list
         return minim_null;
@@ -110,13 +119,17 @@ static minim_object *read_pair(FILE *in) {
 
     skip_whitespace(in);
     c = fgetc(in);
+    assert_not_eof(c);
+
     if (c == '.') {
         // improper list
         peek_expected_delimeter(in);
         cdr = read_object(in);
-        skip_whitespace(in);
 
+        skip_whitespace(in);
         c = getc(in);
+        assert_not_eof(c);
+
         if (c != ')') {
             fprintf(stderr, "missing ')' to terminate pair");
             exit(1);
@@ -140,6 +153,8 @@ minim_object *read_object(FILE *in) {
     
     skip_whitespace(in);
     c = getc(in);
+    // no assertion: may actually be at end
+    // assert_not_eof(c);
 
     if (c == '#') {
         // special value
@@ -337,13 +352,13 @@ static void write_object2(FILE *out, minim_object *o, int quote) {
     case MINIM_CLOSURE_PROC_TYPE:
         fprintf(out, "#<procedure>");
         break;
-    case MINIM_OUTPUT_PORT_TYPE:
-        fprintf(out, "#<output-port>");
+    case MINIM_PORT_TYPE:
+        if (minim_port_is_ro(o))
+            fprintf(out, "#<input-port>");
+        else
+            fprintf(out, "#<output-port>");
         break;
-    case MINIM_INPUT_PORT_TYPE:
-        fprintf(out, "#<input-port>");
-        break;
-    
+
     default:
         fprintf(stderr, "cannot write unknown object");
         exit(1);

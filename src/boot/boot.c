@@ -348,6 +348,10 @@ minim_object *equal_proc(minim_object *args) {
     return minim_is_equal(a, b) ? minim_true : minim_false;
 }
 
+minim_object *void_proc(minim_object *args) {
+    return minim_void;
+}
+
 minim_object *cons_proc(minim_object *args) {
     return make_pair(minim_car(args), minim_cadr(args));
 }
@@ -482,17 +486,6 @@ minim_object *environment_proc(minim_object *args) {
     return make_env();
 }
 
-minim_object *error_proc(minim_object *args) {
-    while (!minim_is_null(args)) {
-        write_object(stderr, minim_car(args));
-        fprintf(stderr, " ");
-        args = minim_cdr(args);
-    }
-
-    printf("\n");
-    exit(1);
-}
-
 minim_object *current_input_port_proc(minim_object *args) {
     return input_port;
 }
@@ -578,6 +571,37 @@ minim_object *write_char_proc(minim_object *args) {
 
     putc(minim_char(ch), out_p);
     return minim_void;
+}
+
+minim_object *load_proc(minim_object *args) {
+    FILE *stream;
+    minim_object *expr, *result;
+    char *fname;
+    
+    fname = minim_string(minim_car(args));
+    stream = fopen(fname, "r");
+    if (stream == NULL) {
+        fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
+        exit(1);
+    }
+
+    result = minim_void;
+    while ((expr = read_object(stream)) != NULL)
+        result = eval_expr(expr, global_env);
+
+    fclose(stream);
+    return result;
+}
+
+minim_object *error_proc(minim_object *args) {
+    while (!minim_is_null(args)) {
+        write_object(stderr, minim_car(args));
+        fprintf(stderr, " ");
+        args = minim_cdr(args);
+    }
+
+    printf("\n");
+    exit(1);
 }
 
 //
@@ -768,9 +792,18 @@ application:
 
             return minim_prim_proc(proc)(args);
         } else if (minim_is_closure_proc(proc)) {
-            env = extend_env(minim_closure_args(proc),
-                       args,
-                       minim_closure_env(proc));
+            if (minim_is_symbol(minim_closure_args(proc))) {
+                // variary call: (lambda xs body)
+                env = extend_env(make_pair(minim_closure_args(proc), minim_null),
+                                 make_pair(args, minim_null),
+                                 minim_closure_env(proc));
+            } else {
+                // standard call: (lambda (x1 x2 xs ...) body)
+                env = extend_env(minim_closure_args(proc),
+                                 args,
+                                 minim_closure_env(proc));
+            }
+
             expr = minim_closure_body(proc);
             goto loop;
         } else {
@@ -815,6 +848,8 @@ void populate_env(minim_object *env) {
     add_procedure("eq?", eq_proc);
     add_procedure("equal?", equal_proc);
 
+    add_procedure("void", void_proc);
+
     add_procedure("cons", cons_proc);
     add_procedure("car", car_proc);
     add_procedure("cdr", cdr_proc);
@@ -841,7 +876,6 @@ void populate_env(minim_object *env) {
 
     add_procedure("eval", eval_proc);
     add_procedure("apply", apply_proc);
-    add_procedure("error", error_proc);
 
     add_procedure("current-input-port", current_input_port_proc);
     add_procedure("current-output-port", current_output_port_proc);
@@ -855,6 +889,9 @@ void populate_env(minim_object *env) {
     add_procedure("char-ready?", char_is_ready_proc);
     add_procedure("write", write_proc);
     add_procedure("write-char", write_char_proc);
+    
+    add_procedure("load", load_proc);
+    add_procedure("error", error_proc);
 }
 
 minim_object *make_env() {

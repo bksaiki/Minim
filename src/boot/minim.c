@@ -32,8 +32,17 @@ static void handle_flags(int argc, char **argv) {
 static void load_library() {
     FILE *prelude;
     minim_object *o;
+    char *old_cwd;
 
-    prelude = fopen(BOOT_PRELUDE, "r");
+    old_cwd = get_current_dir();
+    prelude = fopen(BOOT_DIR "boot.min", "r");
+    set_current_dir(BOOT_DIR);
+
+    if (prelude == NULL) {
+        fprintf(stderr, "entry file does not exists\n");
+        exit(1);
+    }
+    
     while (!feof(prelude) || !ferror(prelude)) {
         o = read_object(prelude);
         if (o == NULL) break;
@@ -46,6 +55,7 @@ static void load_library() {
     }
 
     fclose(prelude);
+    set_current_dir(old_cwd);
 }
 
 int main(int argc, char **argv) {

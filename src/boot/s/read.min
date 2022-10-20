@@ -1,0 +1,13 @@
+;;;
+;;;   Minim boot library for the bootstrap interpreter
+;;;   Brett Saiki
+;;;
+
+;;;
+;;;   Redefines read functions
+;;;   Overwrites primitive functions
+;;;
+
+;; Save the old read function
+(define $read read)
+

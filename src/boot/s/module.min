@@ -1,0 +1,13 @@
+;;;
+;;;   Minim boot library for the bootstrap interpreter
+;;;   Brett Saiki
+;;;
+
+;;;
+;;;   File reader for importing Minim files
+;;;   Defined functions are more careful than load
+;;;
+
+; (define $load
+;   (lambda (name)
+;     (let ((p )

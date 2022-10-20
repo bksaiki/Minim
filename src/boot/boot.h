@@ -15,6 +15,15 @@
 
 #define SYMBOL_MAX_LEN      4096
 
+#ifndef PATH_MAX
+#define PATH_MAX    4096
+#endif
+
+// System
+
+char* get_current_dir();
+int set_current_dir(const char *path);
+
 // Interface
 
 void minim_boot_init();
