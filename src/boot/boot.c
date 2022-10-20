@@ -29,7 +29,12 @@ minim_object *or_symbol;
 
 minim_object *empty_env;
 minim_object *global_env;
+
+minim_object *input_port;
+minim_object *output_port;
+
 intern_table *symbols;
+
 
 //
 //  Constructors
@@ -54,7 +59,7 @@ minim_object *make_symbol(const char *s) {
     int len = strlen(s);
     
     o->type = MINIM_SYMBOL_TYPE;
-    o->value = GC_alloc((len + 1) * sizeof(char));
+    o->value = GC_alloc_atomic((len + 1) * sizeof(char));
     strncpy(o->value, s, len + 1);
     return ((minim_object *) o);
 }
@@ -64,7 +69,7 @@ minim_object *make_string(const char *s) {
     int len = strlen(s);
     
     o->type = MINIM_STRING_TYPE;
-    o->value = GC_alloc((len + 1) * sizeof(char));
+    o->value = GC_alloc_atomic((len + 1) * sizeof(char));
     strncpy(o->value, s, len + 1);
     return ((minim_object *) o);
 }
@@ -90,6 +95,26 @@ minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_ob
     o->args = args;
     o->body = body;
     o->env = env;
+    return ((minim_object *) o);
+}
+
+static void gc_port_dtor(void *ptr) {
+    fclose(minim_port(ptr));
+}
+
+minim_object *make_input_port(FILE *stream) {
+    minim_port_object *o = GC_alloc_opt(sizeof(minim_port_object), gc_port_dtor, NULL);
+    o->type = MINIM_PORT_TYPE;
+    o->read_only = 1;
+    o->stream = stream;
+    return ((minim_object *) o);
+}
+
+minim_object *make_output_port(FILE *stream) {
+    minim_port_object *o = GC_alloc_opt(sizeof(minim_port_object), gc_port_dtor, NULL);
+    o->type = MINIM_PORT_TYPE;
+    o->read_only = 0;
+    o->stream = stream;
     return ((minim_object *) o);
 }
 
@@ -242,6 +267,10 @@ minim_object *is_null_proc(minim_object *args) {
     return minim_is_null(minim_car(args)) ? minim_true : minim_false;
 }
 
+minim_object *is_eof_proc(minim_object *args) {
+    return minim_is_eof(minim_car(args)) ? minim_true : minim_false;
+}
+
 minim_object *is_bool_proc(minim_object *args) {
     minim_object *o = minim_car(args);
     return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
@@ -270,6 +299,14 @@ minim_object *is_pair_proc(minim_object *args) {
 minim_object *is_procedure_proc(minim_object *args) {
     minim_object *o = minim_car(args);
     return (minim_is_prim_proc(o) || minim_is_closure_proc(o)) ? minim_true : minim_false;
+}
+
+minim_object *is_input_port_proc(minim_object *args) {
+    return minim_is_input_port(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *is_output_port_proc(minim_object *args) {
+    return minim_is_output_port(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *char_to_integer_proc(minim_object *args) {
@@ -454,6 +491,93 @@ minim_object *error_proc(minim_object *args) {
 
     printf("\n");
     exit(1);
+}
+
+minim_object *current_input_port_proc(minim_object *args) {
+    return input_port;
+}
+
+minim_object *current_output_port_proc(minim_object *args) {
+    return output_port;
+}
+
+minim_object *open_input_port_proc(minim_object *args) {
+    FILE *stream = fopen(minim_string(minim_car(args)), "r");
+    if (stream == NULL) {
+        fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
+        exit(1);
+    }
+
+    return make_input_port(stream);
+}
+
+minim_object *open_output_port_proc(minim_object *args) {
+    FILE *stream = fopen(minim_string(minim_car(args)), "w");
+    if (stream == NULL) {
+        fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
+        exit(1);
+    }
+
+    return make_input_port(stream);
+}
+
+minim_object *close_input_port_proc(minim_object *args) {
+    fclose(minim_port(minim_car(args)));
+    return minim_void;
+}
+
+minim_object *close_output_port_proc(minim_object *args) {
+    fclose(minim_port(minim_car(args)));
+    return minim_void;
+}
+
+minim_object *read_proc(minim_object *args) {
+    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    minim_object *o = read_object(in_p);
+    return (o == NULL) ? minim_eof : o;
+}
+
+minim_object *read_char_proc(minim_object *args) {
+    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    return make_char(getc(in_p));
+}
+
+minim_object *peek_char_proc(minim_object *args) {
+    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    int ch = getc(in_p);
+    ungetc(ch, in_p);
+    return make_char(ch);
+}
+
+minim_object *char_is_ready_proc(minim_object *args) {
+    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    int ch = getc(in_p);
+    ungetc(ch, in_p);
+    return (ch == EOF) ? minim_true : minim_false;
+}
+
+minim_object *write_proc(minim_object *args) {
+    FILE *out_p;
+    minim_object *o;
+
+    o = minim_car(args);
+    args = minim_cdr(args);
+    out_p = minim_port(minim_is_null(args) ? output_port : minim_car(args));
+
+    write_object(out_p, o);
+    return minim_void;
+}
+
+minim_object *write_char_proc(minim_object *args) {
+    FILE *out_p;
+    minim_object *ch;
+
+    ch = minim_car(args);
+    args = minim_cdr(args);
+    out_p = minim_port(minim_is_null(args) ? output_port : minim_car(args));
+
+    putc(minim_char(ch), out_p);
+    return minim_void;
 }
 
 //
@@ -671,12 +795,15 @@ application:
 
 void populate_env(minim_object *env) {
     add_procedure("null?", is_null_proc);
+    add_procedure("eof?", is_eof_proc);
     add_procedure("boolean?", is_bool_proc);
     add_procedure("symbol?", is_symbol_proc);
     add_procedure("integer?", is_fixnum_proc);
     add_procedure("char?", is_char_proc);
     add_procedure("string?", is_string_proc);
     add_procedure("procedure?", is_procedure_proc);
+    add_procedure("input-port?", is_input_port_proc);
+    add_procedure("output-port?", is_output_port_proc);
 
     add_procedure("char->integer", char_to_integer_proc);
     add_procedure("integer->char", integer_to_char_proc);
@@ -714,8 +841,20 @@ void populate_env(minim_object *env) {
 
     add_procedure("eval", eval_proc);
     add_procedure("apply", apply_proc);
-
     add_procedure("error", error_proc);
+
+    add_procedure("current-input-port", current_input_port_proc);
+    add_procedure("current-output-port", current_output_port_proc);
+    add_procedure("open-input-port", open_input_port_proc);
+    add_procedure("open-output-port", open_output_port_proc);
+    add_procedure("close-input-port", close_input_port_proc);
+    add_procedure("close-output-port", close_output_port_proc);
+    add_procedure("read", read_proc);
+    add_procedure("read-char", read_char_proc);
+    add_procedure("peek-char", peek_char_proc);
+    add_procedure("char-ready?", char_is_ready_proc);
+    add_procedure("write", write_proc);
+    add_procedure("write-char", write_char_proc);
 }
 
 minim_object *make_env() {
@@ -755,4 +894,6 @@ void minim_boot_init() {
 
     empty_env = minim_null;
     global_env = make_env();
+    input_port = make_input_port(stdin);
+    output_port = make_output_port(stdout);
 }

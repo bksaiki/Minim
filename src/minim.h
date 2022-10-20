@@ -30,8 +30,7 @@ typedef enum {
     MINIM_PAIR_TYPE,
     MINIM_PRIM_PROC_TYPE,
     MINIM_CLOSURE_PROC_TYPE,
-    MINIM_INPUT_PORT_TYPE,
-    MINIM_OUTPUT_PORT_TYPE,
+    MINIM_PORT_TYPE,
 
     /* Footer */
     MINIM_LAST_TYPE
@@ -84,12 +83,8 @@ typedef struct {
 typedef struct {
     minim_object_type type;
     FILE *stream;
-} minim_input_port_object;
-
-typedef struct {
-    minim_object_type type;
-    FILE *stream;
-} minim_output_port_object;
+    int read_only;
+} minim_port_object;
 
 // Special objects
 
@@ -99,7 +94,7 @@ extern minim_object *minim_false;
 extern minim_object *minim_eof;
 extern minim_object *minim_void;
 
-// Predicates
+// Simple Predicates
 
 #define minim_same_type(o, t)   ((o)->type == (t))
 
@@ -110,8 +105,7 @@ extern minim_object *minim_void;
 #define minim_is_pair(x)            (minim_same_type(x, MINIM_PAIR_TYPE))
 #define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
 #define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
-#define minim_is_input_port(x)      (minim_same_type(x, MINIM_INPUT_PORT_TYPE))
-#define minim_is_output_port(x)     (minim_same_type(x, MINIM_OUTPUT_PORT_TYPE))
+#define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
 
 #define minim_is_null(x)  ((x) == minim_null)
 #define minim_is_true(x)  ((x) == minim_true)
@@ -136,6 +130,14 @@ extern minim_object *minim_void;
 #define minim_closure_args(x)   (((minim_closure_proc_object *) (x))->args)
 #define minim_closure_body(x)   (((minim_closure_proc_object *) (x))->body)
 #define minim_closure_env(x)    (((minim_closure_proc_object *) (x))->env)
+
+#define minim_port_is_ro(x)     (((minim_port_object *) (x))->read_only != 0)
+#define minim_port(x)           (((minim_port_object *) (x))->stream)
+
+// Complex predicates
+
+#define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
+#define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
 
 // Typedefs
 

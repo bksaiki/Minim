@@ -18,6 +18,7 @@
 // Interface
 
 void minim_boot_init();
+
 minim_object *make_env();
 minim_object *eval_expr(minim_object *expr, minim_object *env);
 
