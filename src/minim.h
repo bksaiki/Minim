@@ -83,7 +83,7 @@ typedef struct {
 typedef struct {
     minim_object_type type;
     FILE *stream;
-    int read_only;
+    int flags;
 } minim_port_object;
 
 // Special objects
@@ -113,6 +113,11 @@ extern minim_object *minim_void;
 #define minim_is_eof(x)   ((x) == minim_eof)
 #define minim_is_void(x)  ((x) == minim_void)
 
+// Flags
+
+#define MINIM_PORT_READ_ONLY        0x1
+#define MINIM_PORT_OPEN             0x2
+
 // Accessors
 
 #define minim_car(x)        (((minim_pair_object *) (x))->car)
@@ -131,8 +136,14 @@ extern minim_object *minim_void;
 #define minim_closure_body(x)   (((minim_closure_proc_object *) (x))->body)
 #define minim_closure_env(x)    (((minim_closure_proc_object *) (x))->env)
 
-#define minim_port_is_ro(x)     (((minim_port_object *) (x))->read_only != 0)
+#define minim_port_is_ro(x)     (((minim_port_object *) (x))->flags & MINIM_PORT_READ_ONLY)
+#define minim_port_is_open(x)   (((minim_port_object *) (x))->flags & MINIM_PORT_OPEN)
 #define minim_port(x)           (((minim_port_object *) (x))->stream)
+
+// Setters
+
+#define minim_port_set(x, f)        (((minim_port_object *) (x))->flags |= (f))
+#define minim_port_unset(x, f)      (((minim_port_object *) (x))->flags &= ~(f))
 
 // Complex predicates
 

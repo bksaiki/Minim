@@ -8,6 +8,23 @@
 ;;;   Defined functions are more careful than load
 ;;;
 
-; (define $load
-;   (lambda (name)
-;     (let ((p )
+
+(define $load-module
+  (lambda (name)
+
+    (define $read
+      (lambda ()
+        (define p (open-input-port name))
+        (define loop
+          (lambda (exprs)
+            (define datum (read p))
+            (if (eof-object? datum)
+                (begin
+                  (close-input-port p)
+                  (reverse exprs))
+                (loop (cons datum exprs)))))
+        (loop '())))
+
+    ($read)
+    
+  ))

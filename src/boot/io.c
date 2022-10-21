@@ -18,8 +18,21 @@ static void assert_not_eof(char c) {
     }
 }
 
+static void assert_matching_paren(char open, char closed) {
+    if (!(open == '(' && closed == ')') && 
+        !(open == '[' && closed == ']') &&
+        !(open == '{' && closed == '}')) {
+        fprintf(stderr, "parenthesis mismatch: %c closed off %c\n", closed, open);
+        exit(1);
+    }
+}
+
 static int is_delimeter(int c) {
-    return isspace(c) || c == EOF || c == '(' || c == ')' || c == '"' || c == ';';
+    return isspace(c) || c == EOF || 
+           c == '(' || c == ')' ||
+           c == '[' || c == ']' ||
+           c == '{' || c == '}' ||
+           c == '"' || c == ';';
 }
 
 static int is_symbol_char(int c) {
@@ -101,7 +114,7 @@ static minim_object *read_char(FILE *in) {
     return make_char(c);
 }
 
-static minim_object *read_pair(FILE *in) {
+static minim_object *read_pair(FILE *in, char open_paren) {
     minim_object *car, *cdr;
     int c;
 
@@ -109,8 +122,9 @@ static minim_object *read_pair(FILE *in) {
     c = getc(in);
     assert_not_eof(c);
 
-    if (c == ')') {
+    if (c == ')' || c == ']' || c == '}') {
         // empty list
+        assert_matching_paren(open_paren, c);
         return minim_null;
     }
 
@@ -130,16 +144,18 @@ static minim_object *read_pair(FILE *in) {
         c = getc(in);
         assert_not_eof(c);
 
-        if (c != ')') {
-            fprintf(stderr, "missing ')' to terminate pair");
-            exit(1);
+       if (c == ')' || c == ']' || c == '}') {
+            // list read
+            assert_matching_paren(open_paren, c);
+            return make_pair(car, cdr);
         }
 
-        return make_pair(car, cdr);
+        fprintf(stderr, "missing ')' to terminate pair");
+        exit(1);        
     } else {
         // list
         ungetc(c, in);
-        cdr = read_pair(in);
+        cdr = read_pair(in, open_paren);
         return make_pair(car, cdr);
     }
 }
@@ -193,28 +209,6 @@ minim_object *read_object(FILE *in) {
 
         ungetc(c, in);
         return make_fixnum(num);
-    } else if (is_symbol_char(c) || ((c == '+' || c == '-') && is_delimeter(peek_char(in)))) {
-        // symbol
-        i = 0;
-
-        while (is_symbol_char(c) || isdigit(c) || c == '+' || c == '-') {
-            if (i < SYMBOL_MAX_LEN - 1) {
-                buffer[i++] = c;
-            } else {
-                fprintf(stderr, "symbol is too long, max allowed %d characters", SYMBOL_MAX_LEN);
-                exit(1);
-            }
-            c = getc(in);
-        }
-
-        if (!is_delimeter(c)) {
-            fprintf(stderr, "expected a delimeter\n");
-            exit(1);
-        }
-
-        ungetc(c, in);
-        buffer[i] = '\0';
-        return intern_symbol(symbols, buffer);
     } else if (c == '"') {
         // string
         i = 0;
@@ -246,12 +240,34 @@ minim_object *read_object(FILE *in) {
 
         buffer[i] = '\0';
         return make_string(buffer);
-    } else if (c == '(') {
+    } else if (c == '(' || c == '[' || c == '{') {
         // empty list or pair
-        return read_pair(in);
+        return read_pair(in, c);
     } else if (c == '\'') {
         // quoted expression
         return make_pair(intern_symbol(symbols, "quote"), make_pair(read_object(in), minim_null));
+    } else if (is_symbol_char(c) || ((c == '+' || c == '-') && is_delimeter(peek_char(in)))) {
+        // symbol
+        i = 0;
+
+        while (is_symbol_char(c) || isdigit(c) || c == '+' || c == '-') {
+            if (i < SYMBOL_MAX_LEN - 1) {
+                buffer[i++] = c;
+            } else {
+                fprintf(stderr, "symbol is too long, max allowed %d characters", SYMBOL_MAX_LEN);
+                exit(1);
+            }
+            c = getc(in);
+        }
+
+        if (!is_delimeter(c)) {
+            fprintf(stderr, "expected a delimeter\n");
+            exit(1);
+        }
+
+        ungetc(c, in);
+        buffer[i] = '\0';
+        return intern_symbol(symbols, buffer);
     } else if (c == EOF) {
         return NULL;
     } else {

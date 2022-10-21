@@ -11,3 +11,4 @@
 ;; Save the old read function
 (define $read read)
 
+'(loaded "read.min")
