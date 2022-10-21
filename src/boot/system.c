@@ -27,7 +27,14 @@ char* get_current_dir() {
 }
 
 int set_current_dir(const char *path) {
-    #if defined(MINIM_LINUX)
+#if defined(MINIM_LINUX)
     return chdir(path);
+#endif
+}
+
+char *get_file_path(const char *rel_path) {
+#if defined(MINIM_LINUX)
+    char *path = GC_alloc_atomic(PATH_MAX + 1);
+    return realpath(rel_path, path);
 #endif
 }

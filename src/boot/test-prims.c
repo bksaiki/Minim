@@ -300,6 +300,33 @@ int test_integers() {
     return passed;
 }
 
+int test_if() {
+    passed = 1;
+
+    check_equal("(if #t 1 0)", "1");
+    check_equal("(if 1 1 0)", "1");
+    check_equal("(if '() 1 0)", "1");
+    check_equal("(if #f 1 0)", "0");
+
+    return passed;
+}
+
+int test_cond() {
+    passed = 1;
+
+    check_equal("(cond)", "#<void>");
+    check_equal("(cond [#t 1])", "1");
+    check_equal("(cond [1 1])", "1");
+    check_equal("(cond [#t 1] [#f 0])", "1");
+    check_equal("(cond [#f 1] [#t 0])", "0");
+    check_equal("(cond [#f 1] [#f 0])", "#<void>");
+    check_equal("(cond [#f 1] [#f 2] [#t 3])", "3");
+    check_equal("(cond [#f 1] [else 2])", "2");
+    check_equal("(cond [#f 1] [#f 2] [else 3])", "3");
+
+    return passed;
+}
+
 void run_tests() {
     log_test("simple eval", test_simple_eval);
     log_test("type predicates", test_type_predicates);
@@ -308,6 +335,8 @@ void run_tests() {
     log_test("type conversions", test_type_conversions);
     log_test("lists", test_lists);
     log_test("integers", test_integers);
+    log_test("if", test_if);
+    log_test("cond", test_cond);
 }
 
 int main(int argc, char **argv) {

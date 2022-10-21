@@ -8,15 +8,14 @@
 ;;;   Need to start somewhere ...
 ;;;
 
-; (define import
-;   (lambda args
-;     (if (null? args)
-;         (void)
-;         (if (string? (car args))
-;             (begin
-;               (load (car args))
-;               (apply import (cdr args)))
-;             (error "import: not a file name " (car args))))))
-
 (load "base.min")
+(load "expand.min")
 (load "module.min")
+
+(define env (expander-env))
+(define syntax-rules (cdaar env))
+(define match?
+  (syntax-rules '() 
+   '((cond test clause)
+     (if test clause (void)))))
+(define result (match? '(cond #t 1)))

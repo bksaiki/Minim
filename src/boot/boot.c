@@ -354,6 +354,10 @@ minim_object *void_proc(minim_object *args) {
     return minim_void;
 }
 
+minim_object *not_proc(minim_object *args) {
+    return minim_is_false(minim_car(args)) ? minim_true : minim_false;   
+}
+
 minim_object *cons_proc(minim_object *args) {
     return make_pair(minim_car(args), minim_cadr(args));
 }
@@ -590,7 +594,7 @@ minim_object *write_char_proc(minim_object *args) {
 minim_object *load_proc(minim_object *args) {
     FILE *stream;
     minim_object *expr, *result;
-    char *fname;
+    char *fname, *old_cwd;
     
     fname = minim_string(minim_car(args));
     stream = fopen(fname, "r");
@@ -599,9 +603,14 @@ minim_object *load_proc(minim_object *args) {
         exit(1);
     }
 
+    old_cwd = get_current_dir();
+    set_current_dir(get_file_path(fname));
+
     result = minim_void;
     while ((expr = read_object(stream)) != NULL)
         result = eval_expr(expr, global_env);
+
+    set_current_dir(old_cwd);
 
     fclose(stream);
     return result;
@@ -727,7 +736,7 @@ loop:
         expr = make_pair(begin_symbol, (minim_cddr(expr)));
         goto loop;
     } else if (is_if(expr)) {
-        if (minim_is_true(eval_expr(minim_cadr(expr), env)))
+        if (!minim_is_false(eval_expr(minim_cadr(expr), env)))
             expr = minim_car(minim_cddr(expr));
         else
             expr = minim_cadr(minim_cddr(expr));
@@ -736,12 +745,20 @@ loop:
     } else if (is_cond(expr)) {
         expr = minim_cdr(expr);
         while (!minim_is_null(expr)) {
-            if (minim_is_true(eval_expr(minim_caar(expr), env))) {
+            if (minim_caar(expr) == else_symbol) {
+                if (!minim_is_null(minim_cdr(expr))) {
+                    fprintf(stderr, "else clause must be last");
+                    exit(1);
+                }
+                expr = make_pair(begin_symbol, minim_cdar(expr));
+                goto loop;
+            } else if (!minim_is_false(eval_expr(minim_caar(expr), env))) {
                 expr = make_pair(begin_symbol, minim_cdar(expr));
                 goto loop;
             }
             expr = minim_cdr(expr);
         }
+
         return minim_void;
     } else if (is_lambda(expr)) {
         return make_closure_proc(minim_cadr(expr),
@@ -863,7 +880,7 @@ void populate_env(minim_object *env) {
     add_procedure("eq?", eq_proc);
     add_procedure("equal?", equal_proc);
 
-    add_procedure("void", void_proc);
+    add_procedure("not", not_proc);
 
     add_procedure("cons", cons_proc);
     add_procedure("car", car_proc);
@@ -891,6 +908,7 @@ void populate_env(minim_object *env) {
 
     add_procedure("eval", eval_proc);
     add_procedure("apply", apply_proc);
+    add_procedure("void", void_proc);
 
     add_procedure("current-input-port", current_input_port_proc);
     add_procedure("current-output-port", current_output_port_proc);

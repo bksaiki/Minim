@@ -23,6 +23,7 @@
 
 char* get_current_dir();
 int set_current_dir(const char *path);
+char *get_file_path(const char *rel_path);
 
 // Interface
 

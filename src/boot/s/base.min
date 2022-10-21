@@ -10,6 +10,38 @@
 
 (define number? integer?)
 
+(define caar (lambda (xs) (car (car xs))))
+(define cdar (lambda (xs) (cdr (car xs))))
+(define cadr (lambda (xs) (car (cdr xs))))
+(define cddr (lambda (xs) (cdr (cdr xs))))
+
+(define caaar (lambda (xs) (car (car (car xs)))))
+(define cdaar (lambda (xs) (cdr (car (car xs)))))
+(define cadar (lambda (xs) (car (cdr (car xs)))))
+(define cddar (lambda (xs) (cdr (cdr (car xs)))))
+(define caadr (lambda (xs) (car (car (cdr xs)))))
+(define cdadr (lambda (xs) (cdr (car (cdr xs)))))
+(define caddr (lambda (xs) (car (cdr (cdr xs)))))
+(define cdddr (lambda (xs) (cdr (cdr (cdr xs)))))
+
+(define caaaar (lambda (xs) (car (car (car (car xs))))))
+(define cdaaar (lambda (xs) (cdr (car (car (car xs))))))
+(define cadaar (lambda (xs) (car (cdr (car (car xs))))))
+(define cddaar (lambda (xs) (cdr (cdr (car (car xs))))))
+(define caadar (lambda (xs) (car (car (cdr (car xs))))))
+(define cdadar (lambda (xs) (cdr (car (cdr (car xs))))))
+(define caddar (lambda (xs) (car (cdr (cdr (car xs))))))
+(define cdddar (lambda (xs) (cdr (cdr (cdr (car xs))))))
+(define caaadr (lambda (xs) (car (car (car (cdr xs))))))
+(define cdaadr (lambda (xs) (cdr (car (car (cdr xs))))))
+(define cadadr (lambda (xs) (car (cdr (car (cdr xs))))))
+(define cddadr (lambda (xs) (cdr (cdr (car (cdr xs))))))
+(define caaddr (lambda (xs) (car (car (cdr (cdr xs))))))
+(define cdaddr (lambda (xs) (cdr (car (cdr (cdr xs))))))
+(define cadddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
+(define cddddr (lambda (xs) (cdr (cdr (cdr (cdr xs))))))
+
+
 (define length
   (lambda (lst)
     (define loop

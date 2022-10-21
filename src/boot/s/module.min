@@ -8,7 +8,6 @@
 ;;;   Defined functions are more careful than load
 ;;;
 
-
 (define $load-module
   (lambda (name)
 
@@ -18,13 +17,15 @@
         (define loop
           (lambda (exprs)
             (define datum (read p))
-            (if (eof-object? datum)
-                (begin
-                  (close-input-port p)
-                  (reverse exprs))
-                (loop (cons datum exprs)))))
+            (cond
+              [(eof-object? datum)
+               (close-input-port p)
+               (reverse exprs)]
+              [else
+               (loop (cons datum exprs))])))
         (loop '())))
 
-    ($read)
+    ; (define exprs ($read))
+    ; (define env   (expander-env))
     
   ))
