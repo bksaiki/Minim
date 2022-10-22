@@ -2,19 +2,25 @@
 #	Makefile for the bootstrap interpreter
 #
 
-GC_DIR		:= ../gc
+GC_DIR		:= $(shell pwd)/../gc
+SRC_DIR		:= c
 BUILD_DIR	:= build
+TEST_DIR	:= test
 BOOT_DIR	:= $(shell pwd)/s
 
-ENTRY		:= minim.c
+ENTRY		:= $(SRC_DIR)/minim.c
 CONFIG		:= $(BUILD_DIR)/config.h
 
-SRCS 		:= boot.c intern.c io.c system.c
+SRCS 		:= $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY))
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
+TESTS		:= $(shell find $(TEST_DIR) -name "*.c")
+TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
+
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -lminimgc
+CFLAGS		= -I$(GC_DIR) $(CFLAGS)
 
 MKDIR_P		:= mkdir -p
 RM 			:= rm -rf
@@ -42,10 +48,10 @@ $(BUILD_DIR)/.:
 $(BUILD_DIR)%/.:
 	$(MKDIR_P) $@
 
-$(BUILD_DIR)/%.o: %.c | $$(@D)/.
+$(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/test-prims: test-prims.c $(OBJS)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
+$(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
+	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
 .PHONY: build clean

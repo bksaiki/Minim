@@ -10,7 +10,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "gc/gc.h"
+#include "../gc/gc.h"
 
 // Object types
 

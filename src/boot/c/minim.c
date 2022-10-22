@@ -5,7 +5,7 @@
     Entry point of the REPL
 */
 
-#include "build/config.h"
+#include "../build/config.h"
 #include "boot.h"
 
 //

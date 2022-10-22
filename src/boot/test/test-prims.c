@@ -5,7 +5,7 @@
     Tests for the primitive library
 */
 
-#include "boot.h"
+#include "../c/boot.h"
 
 FILE *stream;
 int return_code, passed;
@@ -222,7 +222,7 @@ int test_type_conversions() {
     return passed;
 }
 
-int test_lists() {
+int test_list() {
     passed = 1;
 
     check_equal("(cons 1 2)", "'(1 . 2)");
@@ -247,7 +247,7 @@ int test_lists() {
     return passed;
 }
 
-int test_integers() {
+int test_integer() {
     passed = 1;
 
     check_equal("(+)", "0");
@@ -300,6 +300,27 @@ int test_integers() {
     return passed;
 }
 
+int test_string() {
+    passed = 1;
+
+    check_equal("(string)", "\"\"");
+    check_equal("(string #\\a)", "\"a\"");
+    check_equal("(string #\\a #\\b)", "\"ab\"");
+    check_equal("(string #\\a #\\b #\\c)", "\"abc\"");
+
+    return passed;
+}
+
+int test_syntax() {
+    passed = 1;
+
+    check_equal("(syntax a)", "#<syntax a>");
+    check_equal("(syntax 1)", "#<syntax 1>");
+    check_equal("(syntax (a b c))", "#<syntax (a b c)>");
+
+    return passed;
+}
+
 int test_if() {
     passed = 1;
 
@@ -333,8 +354,10 @@ void run_tests() {
     log_test("eq?", test_eq);
     log_test("equal?", test_equal);
     log_test("type conversions", test_type_conversions);
-    log_test("lists", test_lists);
-    log_test("integers", test_integers);
+    log_test("list", test_list);
+    log_test("integer", test_integer);
+    log_test("string", test_string);
+    log_test("syntax", test_syntax);
     log_test("if", test_if);
     log_test("cond", test_cond);
 }

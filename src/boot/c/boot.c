@@ -154,6 +154,23 @@ minim_object *make_assoc(minim_object *xs, minim_object *ys) {
     return assoc;
 }
 
+long list_length(minim_object *xs) {
+    minim_object *it = xs;
+    long length = 0;
+
+    while (!minim_is_null(it)) {
+        if (!minim_is_pair(it)) {
+            fprintf(stderr, "list_length: not a list");
+            exit(1);
+        }
+
+        it = minim_cdr(it);
+        ++length;
+    }
+
+    return length;
+}
+
 int minim_is_eq(minim_object *a, minim_object *b) {
     if (a == b)
         return 1;
@@ -483,6 +500,24 @@ minim_object *number_lt_proc(minim_object *args) {
     return (minim_fixnum(minim_car(args)) < minim_fixnum(minim_cadr(args))) ?
            minim_true :
            minim_false;
+}
+
+minim_object *string_proc(minim_object *args) {
+    minim_string_object *o;
+    long len, i;
+    char *str;
+
+    len = list_length(args);
+    str = GC_alloc_atomic((len + 1) * sizeof(char));
+    for (i = 0; i < len; ++i) {
+        str[i] = minim_char(minim_car(args));
+        args = minim_cdr(args);
+    }
+
+    o = GC_alloc(sizeof(minim_string_object));
+    o->type = MINIM_STRING_TYPE;
+    o->value = str;
+    return ((minim_object *) o);
 }
 
 minim_object *syntax_e_proc(minim_object *args) {
@@ -944,6 +979,8 @@ void populate_env(minim_object *env) {
     add_procedure("<=", number_le_proc);
     add_procedure(">", number_gt_proc);
     add_procedure("<", number_lt_proc);
+
+    add_procedure("string", string_proc);
     
     add_procedure("syntax-e", syntax_e_proc);
     add_procedure("syntax-loc", syntax_loc_proc);
@@ -958,8 +995,8 @@ void populate_env(minim_object *env) {
 
     add_procedure("current-input-port", current_input_port_proc);
     add_procedure("current-output-port", current_output_port_proc);
-    add_procedure("open-input-port", open_input_port_proc);
-    add_procedure("open-output-port", open_output_port_proc);
+    add_procedure("open-input-file", open_input_port_proc);
+    add_procedure("open-output-file", open_output_port_proc);
     add_procedure("close-input-port", close_input_port_proc);
     add_procedure("close-output-port", close_output_port_proc);
     add_procedure("read", read_proc);

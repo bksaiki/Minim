@@ -417,7 +417,7 @@ static void write_object2(FILE *out, minim_object *o, int quote) {
             fprintf(out, "#<output-port>");
         break;
     case MINIM_SYNTAX_TYPE:
-        fprintf(out, "#<syntax: ");
+        fprintf(out, "#<syntax ");
         write_object2(out, minim_syntax_e(o), 1);
         fputc('>', out);
         break;
