@@ -711,6 +711,9 @@ minim_object *eval_expr(minim_object *expr, minim_object *env) {
     minim_object *args;
     minim_object *result;
 
+    // write_object(stdout, expr);
+    // printf("\n");
+
 loop:
 
     if (minim_is_true(expr) || minim_is_false(expr) ||
@@ -810,7 +813,8 @@ application:
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
                 expr = minim_car(args);
-                env = minim_cadr(args);
+                if (!minim_is_null(minim_cdr(args)))
+                    env = minim_cadr(args);
                 goto loop;
             }
 

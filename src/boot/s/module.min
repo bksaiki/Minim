@@ -35,6 +35,6 @@
         (loop exprs '())))
 
     (define exprs ($read))
-    ($expand exprs)
+    ($expand exprs xforms)
     
   ))

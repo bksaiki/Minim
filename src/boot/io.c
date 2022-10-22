@@ -301,7 +301,8 @@ static void write_pair(FILE *out, minim_pair_object *p, int quote) {
 static void write_object2(FILE *out, minim_object *o, int quote) {
     switch (o->type) {
     case MINIM_NULL_TYPE:
-        fprintf(out, "'()");
+        if (!quote) fputc('\'', out);
+        fprintf(out, "()");
         break;
     case MINIM_TRUE_TYPE:
         fprintf(out, "#t");

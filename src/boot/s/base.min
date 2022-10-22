@@ -71,6 +71,15 @@
         '()
         (loop (car lsts)))))
 
+(define map
+  (lambda (f lst)
+    (define loop
+      (lambda (lst accum)
+        (if (null? lst)
+            (reverse lst)
+            (loop (cdr lst) (cons (f (car lst)) accum)))))
+    (loop lst)))
+
 (define foldl
   (lambda (f acc xs)
     (define loop

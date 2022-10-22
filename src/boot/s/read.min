@@ -9,6 +9,6 @@
 ;;;
 
 ;; Save the old read function
-(define-syntax foo
-  (syntax-rules ()
-   [(_ 1) #t]))
+; (define-syntax foo
+;   (syntax-rules ()
+;    [(_ 1) #t]))
