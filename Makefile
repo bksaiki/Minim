@@ -22,12 +22,10 @@ DEPFLAGS 	:= -MMD -MP
 CFLAGS 		:= -Wall -std=c11
 LDFLAGS 	:= -lm -lgmp
 
-DEBUG_FLAGS := -Og -g
-
-# DEBUG_FLAGS		:= -Og -g -DENABLE_STATS
-# PROFILE_FLAGS	:= -O2 -DNDEBUG -march=native -pg
-# COVERAGE_FLAGS	:= -Og -g -march=native -fprofile-arcs -ftest-coverage
-# RELEASE_FLAGS 	:= -O3 -DNDEBUG -march=native
+DEBUG_FLAGS		:= -Og -g -DENABLE_STATS
+PROFILE_FLAGS	:= -O2 -DNDEBUG -march=native -pg
+COVERAGE_FLAGS	:= -Og -g -march=native -fprofile-arcs -ftest-coverage
+RELEASE_FLAGS 	:= -O3 -DNDEBUG -march=native
 
 CP := cp
 ECHO := echo
@@ -41,16 +39,16 @@ FIND := find
 
 # Top level rules
 
-debug:
+debug: boot
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
-profile:
+profile: boot
 	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
 
-coverage:
+coverage: boot
 	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
 
-release:
+release: boot
 	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
 
 install:
@@ -62,7 +60,7 @@ boot: gc
 gc:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/gc
 
-minim: boot $(BUILD_DIR)/config.h $(OBJS)
+minim: $(BUILD_DIR)/config.h $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 test: minim

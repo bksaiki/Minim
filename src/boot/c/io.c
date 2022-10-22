@@ -162,8 +162,7 @@ static minim_object *read_pair(FILE *in, char open_paren) {
 
 minim_object *read_object(FILE *in) {
     char buffer[SYMBOL_MAX_LEN];
-    long num;
-    int i;
+    long num, i, block_level;
     short sign;
     char c;
 
@@ -189,8 +188,8 @@ loop:
             return read_char(in);
         case '\'':
             // quote
-            minim_object *e = make_pair(read_object(in), minim_null);
-            return make_pair(intern_symbol(symbols, "quote-syntax"), e);
+            return make_pair(intern_symbol(symbols, "quote-syntax"),
+                             make_pair(read_object(in), minim_null));
         case ';':
             // datum comment
             skip_whitespace(in);
@@ -199,7 +198,7 @@ loop:
             goto loop;
         case '|':
             // block comment
-            int block_level = 1;
+            block_level = 1;
             while (block_level > 0) {
                 c = fgetc(in);
                 assert_not_eof(c);
@@ -340,6 +339,8 @@ static void write_pair(FILE *out, minim_pair_object *p, int quote) {
 }
 
 static void write_object2(FILE *out, minim_object *o, int quote) {
+    char *str;
+
     switch (o->type) {
     case MINIM_NULL_TYPE:
         if (!quote) fputc('\'', out);
@@ -366,8 +367,7 @@ static void write_object2(FILE *out, minim_object *o, int quote) {
         fprintf(out, "%ld", minim_fixnum(o));
         break;
     case MINIM_CHAR_TYPE:
-        int c = minim_char(o);
-        switch (c) {
+        switch (minim_char(o)) {
         case '\n':
             fprintf(out, "#\\newline");
             break;
@@ -375,11 +375,11 @@ static void write_object2(FILE *out, minim_object *o, int quote) {
             fprintf(out, "#\\space");
             break;
         default:
-            fprintf(out, "#\\%c", c);
+            fprintf(out, "#\\%c", minim_char(o));
         }
         break;
     case MINIM_STRING_TYPE:
-        char *str = minim_string(o);
+        str = minim_string(o);
         fputc('"', out);
         while (*str != '\0') {
             switch (*str) {

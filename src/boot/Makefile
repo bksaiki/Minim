@@ -20,7 +20,6 @@ TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -lminimgc
-CFLAGS		= -I$(GC_DIR) $(CFLAGS)
 
 MKDIR_P		:= mkdir -p
 RM 			:= rm -rf
