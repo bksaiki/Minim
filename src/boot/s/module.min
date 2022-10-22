@@ -25,7 +25,16 @@
                (loop (cons datum exprs))])))
         (loop '())))
 
-    ; (define exprs ($read))
-    ; (define env   (expander-env))
+    (define $expand
+      (lambda (exprs)
+        (define loop
+          (lambda (exprs accum)
+            (if (null? exprs)
+                (reverse accum)
+                (loop (cdr exprs) (cons (expand (car exprs) xforms) accum)))))
+        (loop exprs '())))
+
+    (define exprs ($read))
+    ($expand exprs)
     
   ))

@@ -12,10 +12,10 @@
 (load "expand.min")
 (load "module.min")
 
-(define env (expander-env))
-(define syntax-rules (cdaar env))
-(define match?
-  (syntax-rules '() 
-   '((cond test clause)
-     (if test clause (void)))))
-(define result (match? '(cond #t 1)))
+; (define env (expander-env))
+; (define syntax-rules (cdaar env))
+; (define match?
+;   (syntax-rules '() 
+;    '((cond test clause)
+;      (if test clause (void)))))
+; (define result (match? '(cond #t 1)))
