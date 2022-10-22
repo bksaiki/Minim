@@ -3,6 +3,7 @@
 #
 
 BUILD_DIR	:= build
+BOOT_DIR	:= src/boot
 SRC_DIR 	:= src
 TEST_DIR	:= tests
 INSTALL_DIR := /usr/bin
@@ -10,11 +11,11 @@ INSTALL_DIR := /usr/bin
 ENTRY		:= src/minim.c
 EXE         := minim
 
-SRCS 		:= $(shell find $(SRC_DIR) -name *.c ! -wholename $(ENTRY))
+SRCS 		:= $(shell find $(SRC_DIR) -name "*.c" ! -path "src/boot/*" ! -wholename $(ENTRY))
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
-TESTS 		:= $(shell find $(TEST_DIR) -name *.c)
+TESTS 		:= $(shell find $(TEST_DIR) -name "*.c")
 TEST_EXES   := $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	:= -MMD -MP
@@ -40,62 +41,60 @@ FIND := find
 
 # Top level rules
 
+debug:
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
+
+profile:
+	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
+
+coverage:
+	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
+
+release:
+	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
+
+install:
+	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
+
 boot: gc
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot
-
-clean:
-	$(MAKE) -C src/gc clean
-	$(MAKE) -C src/boot clean
 
 gc:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/gc
 
-test:
+minim: boot $(BUILD_DIR)/config.h $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
+
+test: minim
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot test
+	$(MAKE) unit-tests
+	$(MAKE) lib-tests
 
-# debug:
-# 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
+unit-tests: $(TEST_EXES)
+	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)
 
-# profile:
-# 	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
+memcheck: $(TEST_EXES)
+	$(SH) $(TEST_DIR)/memcheck.sh $(TEST_EXES)
 
-# coverage:
-# 	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
+examples:
+	$(SH) $(TEST_DIR)/examples.sh
 
-# release:
-# 	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
+lib-tests:
+	$(SH) $(TEST_DIR)/lib.sh
 
-# install:
-# 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
+clean:
+	$(MAKE) -C src/gc clean
+	$(MAKE) -C src/boot clean
+	$(RM) $(OBJS) $(EXE)
 
-# minim: $(BUILD_DIR)/config.h $(OBJS)
-# 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
+clean-all: clean-cache
+	$(RM) $(BUILD_DIR) tmp $(EXE)
 
-# tests: minim unit-tests lib-tests;
+clean-cache:
+	$(FIND) . -type d -name ".cache" | xargs $(RM)
 
-# unit-tests: $(TEST_EXES)
-# 	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)
-
-# memcheck: $(TEST_EXES)
-# 	$(SH) $(TEST_DIR)/memcheck.sh $(TEST_EXES)
-
-# examples:
-# 	$(SH) $(TEST_DIR)/examples.sh
-
-# lib-tests:
-# 	$(SH) $(TEST_DIR)/lib.sh
-
-# clean:
-# 	$(RM) $(OBJS) $(EXE)
-
-# clean-all: clean-cache
-# 	$(RM) $(BUILD_DIR) tmp $(EXE)
-
-# clean-cache:
-# 	$(FIND) . -type d -name ".cache" | xargs $(RM)
-
-# uninstall:
-# 	$(RM) $(INSTALL_DIR)/$(EXE)
+uninstall:
+	$(RM) $(INSTALL_DIR)/$(EXE)
 
 ### Specific rules
 
@@ -114,11 +113,10 @@ $(BUILD_DIR)%/.:
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
-# $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
-# 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
+$(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
+	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 	
 -include $(DEPS)
 
-
-# .PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
-# 		clean clean-all clean-cache install uninstall
+.PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
+		clean clean-all clean-cache install uninstall
