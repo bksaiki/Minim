@@ -1,0 +1,20 @@
+;;;
+;;;   Minim boot library for the bootstrap interpreter
+;;;   Brett Saiki
+;;;
+
+;;;
+;;;   First file loaded by the interpreter
+;;;   Need to start somewhere ...
+;;;
+
+;; Using old reader
+(load "base.min")
+(load "read.min")
+
+;; Using new reader
+; (load "expand.min")
+; (load "module.min")
+
+; (define p (open-input-file "test.min"))
+; (read p)

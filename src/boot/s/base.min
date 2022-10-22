@@ -1,0 +1,99 @@
+;;;
+;;;   Minim boot library for the bootstrap interpreter
+;;;   Brett Saiki
+;;;
+
+;;;
+;;;   Some bare essentials to load
+;;;   Minature standard library
+;;;
+
+(define number? integer?)
+
+(define caar (lambda (xs) (car (car xs))))
+(define cdar (lambda (xs) (cdr (car xs))))
+(define cadr (lambda (xs) (car (cdr xs))))
+(define cddr (lambda (xs) (cdr (cdr xs))))
+
+(define caaar (lambda (xs) (car (car (car xs)))))
+(define cdaar (lambda (xs) (cdr (car (car xs)))))
+(define cadar (lambda (xs) (car (cdr (car xs)))))
+(define cddar (lambda (xs) (cdr (cdr (car xs)))))
+(define caadr (lambda (xs) (car (car (cdr xs)))))
+(define cdadr (lambda (xs) (cdr (car (cdr xs)))))
+(define caddr (lambda (xs) (car (cdr (cdr xs)))))
+(define cdddr (lambda (xs) (cdr (cdr (cdr xs)))))
+
+(define caaaar (lambda (xs) (car (car (car (car xs))))))
+(define cdaaar (lambda (xs) (cdr (car (car (car xs))))))
+(define cadaar (lambda (xs) (car (cdr (car (car xs))))))
+(define cddaar (lambda (xs) (cdr (cdr (car (car xs))))))
+(define caadar (lambda (xs) (car (car (cdr (car xs))))))
+(define cdadar (lambda (xs) (cdr (car (cdr (car xs))))))
+(define caddar (lambda (xs) (car (cdr (cdr (car xs))))))
+(define cdddar (lambda (xs) (cdr (cdr (cdr (car xs))))))
+(define caaadr (lambda (xs) (car (car (car (cdr xs))))))
+(define cdaadr (lambda (xs) (cdr (car (car (cdr xs))))))
+(define cadadr (lambda (xs) (car (cdr (car (cdr xs))))))
+(define cddadr (lambda (xs) (cdr (cdr (car (cdr xs))))))
+(define caaddr (lambda (xs) (car (car (cdr (cdr xs))))))
+(define cdaddr (lambda (xs) (cdr (car (cdr (cdr xs))))))
+(define cadddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
+(define cddddr (lambda (xs) (cdr (cdr (cdr (cdr xs))))))
+
+
+(define length
+  (lambda (lst)
+    (define loop
+      (lambda (lst accum)
+        (if (null? lst)
+            accum
+            (loop (cdr lst) (+ accum 1)))))
+    (loop lst 0)))
+
+(define reverse
+  (lambda (lst)
+    (define loop
+      (lambda (lst acc)
+        (if (null? lst)
+            acc
+            (loop (cdr lst) (cons (car lst) acc)))))
+    (loop lst '())))
+
+(define append
+  (lambda lsts
+    (define loop
+      (lambda (lst)
+        (if (null? lst)
+            (apply append (cdr lsts))
+            (cons (car lst) (loop (cdr lst))))))
+    (if (null? lsts)
+        '()
+        (loop (car lsts)))))
+
+(define map
+  (lambda (f lst)
+    (define loop
+      (lambda (lst accum)
+        (if (null? lst)
+            (reverse lst)
+            (loop (cdr lst) (cons (f (car lst)) accum)))))
+    (loop lst)))
+
+(define foldl
+  (lambda (f acc xs)
+    (define loop
+      (lambda (acc xs)
+        (if (null? xs)
+            acc
+            (loop (f acc (car xs)) (cdr xs)))))
+    (loop acc xs)))
+
+(define foldr
+  (lambda (f acc xs)
+    (define loop
+      (lambda (acc xs)
+        (if (null? xs)
+            acc
+            (f (loop acc (cdr xs)) (car xs)))))
+    (loop acc xs)))

@@ -1,0 +1,119 @@
+;;;
+;;;   Minim boot library for the bootstrap interpreter
+;;;   Brett Saiki
+;;;
+
+;;;
+;;;   Redefines read functions
+;;;   Overwrites primitive functions
+;;;
+
+;; Rebind primitives
+(define $read read)
+(define $load load)
+
+(define read
+  (lambda (p)
+
+    ;; Character
+
+    (define delimeter?
+      (lambda (c)
+        (or (eq? c (integer->char 40))  ; #\(
+            (eq? c (integer->char 41))  ; #\)
+            (eq? c (integer->char 91))  ; #\[
+            (eq? c (integer->char 93))  ; #\]
+            (eq? c (integer->char 123)) ; #\{
+            (eq? c (integer->char 125)) ; #\}
+            (eq? c #\")
+            (eq? c #\;))))
+
+    (define symbol-char?
+      (lambda (c)
+        (not (or (eq? c #\#)
+             (delimeter? c)))))
+
+    (define space?
+      (lambda (c)
+        (or (eq? c #\space)
+            (eq? c #\newline))))
+
+    (define digit?
+      (lambda (c)
+        (and (<= (char->integer #\0) (char->integer c))
+             (<= (char->integer c) (char->integer #\9)))))
+
+    (define digit-prefix?
+      (lambda (c)
+        (or (digit? c)
+            (and (or (eq? c #\-) (eq? c #\+))
+                 (digit? (peek-char c))))))
+
+    ;; Errors
+
+    (define assert-not-eof!
+      (lambda (c)
+        (if (eof-object? c)
+            (error "read: unexpected end of input"))))
+
+    (define assert-matching-parens!
+      (lambda (open close)
+        (and
+          (cond
+            [(eq? open (integer->char 40))     ; ()
+             (eq? close (integer->char 41))]
+            [(eq? open (integer->char 91))     ; []
+             (eq? close (integer->char 93))]
+            [(eq? open (integer->char 123))    ; {}
+             (eq? close (integer->char 125))])
+          (error "read: parenthesis mismatch " open " " close))))
+
+    ;; Whitespace reading
+    
+    (define skip-comment!
+      (lambda ()
+        (define c (peek-char p))
+        (cond
+          [(eof-object? c)   (void)]
+          [(eq? c #\newline) (void)]
+          [else
+           (read-char p)
+           (skip-comment!)])))
+
+    (define skip-until-token!
+      (lambda ()
+        (define c (peek-char p))
+        (cond
+          [(space? c)
+           (read-char p)
+           (skip-until-token!)]
+          [(eq? c #\;)
+           (read-char p)
+           (skip-comment!)
+           (skip-until-token!)]
+          [else
+           (void)])))
+
+    ;; Main loop
+
+    (define loop
+      (lambda ()
+        (skip-until-token!)
+        (define c (read-char p))
+        (cond
+          [(eof-object? c)
+            c]
+          [(eq? c #\#)
+            ; special values
+            (define c (peek-char p))
+            (error "read: unimplemented")]
+          [(digit-prefix? c)
+            ; number
+            (define num 0)
+            (define sign 1)
+
+            (error "read: unimplemented")]
+          [else
+            (error "read: unimplemented")])))
+
+    (loop)))

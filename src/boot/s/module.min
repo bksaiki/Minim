@@ -1,0 +1,40 @@
+;;;
+;;;   Minim boot library for the bootstrap interpreter
+;;;   Brett Saiki
+;;;
+
+;;;
+;;;   File reader for importing Minim files
+;;;   Defined functions are more careful than load
+;;;
+
+(define $load-module
+  (lambda (name)
+
+    (define $read
+      (lambda ()
+        (define p (open-input-port name))
+        (define loop
+          (lambda (exprs)
+            (define datum (read p))
+            (cond
+              [(eof-object? datum)
+               (close-input-port p)
+               (reverse exprs)]
+              [else
+               (loop (cons datum exprs))])))
+        (loop '())))
+
+    (define $expand
+      (lambda (exprs)
+        (define loop
+          (lambda (exprs accum)
+            (if (null? exprs)
+                (reverse accum)
+                (loop (cdr exprs) (cons (expand (car exprs) xforms) accum)))))
+        (loop exprs '())))
+
+    (define exprs ($read))
+    ($expand exprs xforms)
+    
+  ))
