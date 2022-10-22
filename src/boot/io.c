@@ -166,7 +166,9 @@ minim_object *read_object(FILE *in) {
     int i;
     short sign;
     char c;
-    
+
+loop:
+
     skip_whitespace(in);
     c = getc(in);
     // no assertion: may actually be at end
@@ -177,11 +179,50 @@ minim_object *read_object(FILE *in) {
         c = getc(in);
         switch (c) {
         case 't':
+            // true
             return minim_true;
         case 'f':
+            // false
             return minim_false;
         case '\\':
+            // character
             return read_char(in);
+        case '\'':
+            // quote
+            minim_object *e = make_pair(read_object(in), minim_null);
+            return make_pair(intern_symbol(symbols, "quote-syntax"), e);
+        case ';':
+            // datum comment
+            skip_whitespace(in);
+            assert_not_eof(c);
+            read_object(in);        // throw away
+            goto loop;
+        case '|':
+            // block comment
+            int block_level = 1;
+            while (block_level > 0) {
+                c = fgetc(in);
+                assert_not_eof(c);
+                switch (c)
+                {
+                case '#':
+                    c = fgetc(in);
+                    assert_not_eof(c);
+                    if (c == '|') ++block_level;
+                    break;
+                
+                case '|':
+                    c = fgetc(in);
+                    assert_not_eof(c);
+                    if (c == '#') --block_level;
+                    break;
+                }
+            }
+
+            goto loop;
+        default:
+            fprintf(stderr, "unknown special constant");
+            exit(1);
         }
     } else if (isdigit(c) || ((c == '-' || c == '+') && isdigit(peek_char(in)))) {
         // number
@@ -374,6 +415,11 @@ static void write_object2(FILE *out, minim_object *o, int quote) {
             fprintf(out, "#<input-port>");
         else
             fprintf(out, "#<output-port>");
+        break;
+    case MINIM_SYNTAX_TYPE:
+        fprintf(out, "#<syntax: ");
+        write_object2(out, minim_syntax_e(o), 1);
+        fputc('>', out);
         break;
 
     default:

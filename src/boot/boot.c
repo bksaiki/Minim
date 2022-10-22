@@ -26,6 +26,9 @@ minim_object *else_symbol;
 minim_object *let_symbol;
 minim_object *and_symbol;
 minim_object *or_symbol;
+minim_object *syntax_symbol;
+minim_object *syntax_loc_symbol;
+minim_object *quote_syntax_symbol;
 
 minim_object *empty_env;
 minim_object *global_env;
@@ -117,6 +120,14 @@ minim_object *make_output_port(FILE *stream) {
     o->type = MINIM_PORT_TYPE;
     o->flags = 0x0;
     o->stream = stream;
+    return ((minim_object *) o);
+}
+
+minim_object *make_syntax(minim_object *e, minim_object *loc) {
+    minim_syntax_object *o = GC_alloc(sizeof(minim_syntax_object));
+    o->type = MINIM_SYNTAX_TYPE;
+    o->e = e;
+    o->loc = loc;
     return ((minim_object *) o);
 }
 
@@ -311,6 +322,10 @@ minim_object *is_output_port_proc(minim_object *args) {
     return minim_is_output_port(minim_car(args)) ? minim_true : minim_false;
 }
 
+minim_object *is_syntax_proc(minim_object *args) {
+    return minim_is_syntax(minim_car(args)) ? minim_true : minim_false;
+}
+
 minim_object *char_to_integer_proc(minim_object *args) {
     return make_fixnum(minim_char(minim_car(args)));
 }
@@ -468,6 +483,14 @@ minim_object *number_lt_proc(minim_object *args) {
     return (minim_fixnum(minim_car(args)) < minim_fixnum(minim_cadr(args))) ?
            minim_true :
            minim_false;
+}
+
+minim_object *syntax_e_proc(minim_object *args) {
+    return minim_syntax_e(minim_car(args));
+}
+
+minim_object *syntax_loc_proc(minim_object *args) {
+    return minim_syntax_loc(minim_car(args));
 }
 
 minim_object *eval_proc(minim_object *args) {
@@ -639,6 +662,18 @@ static int is_quoted(minim_object *expr) {
     return is_pair_starting_with(expr, quote_symbol);
 }
 
+static int is_syntax(minim_object *expr) {
+    return is_pair_starting_with(expr, syntax_symbol);
+}
+
+static int is_syntax_loc(minim_object *expr) {
+    return is_pair_starting_with(expr, syntax_loc_symbol);
+}
+
+static int is_quoted_syntax(minim_object *expr) {
+    return is_pair_starting_with(expr, quote_syntax_symbol);
+}
+
 static int is_assignment(minim_object *expr) {
     return is_pair_starting_with(expr, setb_symbol);
 }
@@ -727,6 +762,10 @@ loop:
         return env_lookup_var(env, expr);
     } else if (is_quoted(expr)) {
         return minim_cadr(expr);
+    } else if (is_syntax(expr) || is_quoted_syntax(expr)) {
+        return make_syntax(minim_cadr(expr), minim_false);
+    } else if (is_syntax_loc(expr)) {
+        return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
     } else if (is_assignment(expr)) {
         env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
         return minim_void;
@@ -905,6 +944,9 @@ void populate_env(minim_object *env) {
     add_procedure("<=", number_le_proc);
     add_procedure(">", number_gt_proc);
     add_procedure("<", number_lt_proc);
+    
+    add_procedure("syntax-e", syntax_e_proc);
+    add_procedure("syntax-loc", syntax_loc_proc);
 
     add_procedure("interaction-environment", interaction_environment_proc);
     add_procedure("null-environment", empty_environment_proc);
@@ -965,6 +1007,9 @@ void minim_boot_init() {
     let_symbol = intern_symbol(symbols, "let");
     and_symbol = intern_symbol(symbols, "and");
     or_symbol = intern_symbol(symbols, "or");
+    syntax_symbol = intern_symbol(symbols, "syntax");
+    syntax_loc_symbol = intern_symbol(symbols, "syntax/loc");
+    quote_syntax_symbol = intern_symbol(symbols, "quote-syntax");
 
     empty_env = minim_null;
     global_env = make_env();

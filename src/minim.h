@@ -31,6 +31,7 @@ typedef enum {
     MINIM_PRIM_PROC_TYPE,
     MINIM_CLOSURE_PROC_TYPE,
     MINIM_PORT_TYPE,
+    MINIM_SYNTAX_TYPE,
 
     /* Footer */
     MINIM_LAST_TYPE
@@ -86,6 +87,12 @@ typedef struct {
     int flags;
 } minim_port_object;
 
+typedef struct {
+    minim_object_type type;
+    minim_object *e;
+    minim_object *loc;
+} minim_syntax_object;
+
 // Special objects
 
 extern minim_object *minim_null;
@@ -106,6 +113,7 @@ extern minim_object *minim_void;
 #define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
 #define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
+#define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
 
 #define minim_is_null(x)  ((x) == minim_null)
 #define minim_is_true(x)  ((x) == minim_true)
@@ -140,6 +148,9 @@ extern minim_object *minim_void;
 #define minim_port_is_open(x)   (((minim_port_object *) (x))->flags & MINIM_PORT_OPEN)
 #define minim_port(x)           (((minim_port_object *) (x))->stream)
 
+#define minim_syntax_e(x)       (((minim_syntax_object *) (x))->e)
+#define minim_syntax_loc(x)     (((minim_syntax_object *) (x))->loc)
+
 // Setters
 
 #define minim_port_set(x, f)        (((minim_port_object *) (x))->flags |= (f))
@@ -162,6 +173,10 @@ minim_object *make_symbol(const char *s);
 minim_object *make_string(const char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_prim_proc(minim_prim_proc_t proc);
+minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env);
+minim_object *make_input_port(FILE *stream);
+minim_object *make_output_port(FILE *stream);
+minim_object *make_syntax(minim_object *e, minim_object *loc);
 
 // Primitives
 
