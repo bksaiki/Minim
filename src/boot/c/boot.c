@@ -85,35 +85,44 @@ minim_object *make_pair(minim_object *car, minim_object *cdr) {
     return ((minim_object *) o);
 }
 
-minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity) {
-    minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
-    o->type = MINIM_PRIM_PROC_TYPE;
-    o->fn = proc;
-    o->name = name;
-
+static void set_arity(proc_arity *arity, short min_arity, short max_arity) {
     if (min_arity > ARG_MAX || max_arity > ARG_MAX) {
         fprintf(stderr, "primitive procedure intialized with too large an arity: [%d, %d]", min_arity, max_arity);
         exit(1);
     } else {
-        o->arity.arity_min = min_arity;
-        o->arity.arity_max = max_arity;
+        arity->arity_min = min_arity;
+        arity->arity_max = max_arity;
         if (min_arity == max_arity)
-            o->arity.type = PROC_ARITY_FIXED;
+            arity->type = PROC_ARITY_FIXED;
         else if (max_arity == ARG_MAX)
-            o->arity.type = PROC_ARITY_UNBOUNDED;
+            arity->type = PROC_ARITY_UNBOUNDED;
         else
-            o->arity.type = PROC_ARITY_RANGE;
+            arity->type = PROC_ARITY_RANGE;
     }
+}
 
+minim_object *make_prim_proc(minim_prim_proc_t proc,
+                             char *name,
+                             short min_arity, short max_arity) {
+    minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
+    o->type = MINIM_PRIM_PROC_TYPE;
+    o->fn = proc;
+    o->name = name;
+    set_arity(&o->arity, min_arity, max_arity);
     return ((minim_object *) o);
 }
 
-minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env) {
+minim_object *make_closure_proc(minim_object *args,
+                                minim_object *body,
+                                minim_object *env,
+                                short min_arity, short max_arity) {
     minim_closure_proc_object *o = GC_alloc(sizeof(minim_closure_proc_object));
     o->type = MINIM_CLOSURE_PROC_TYPE;
     o->args = args;
     o->body = body;
     o->env = env;
+    o->name = NULL;
+    set_arity(&o->arity, min_arity, max_arity);
     return ((minim_object *) o);
 }
 
@@ -235,6 +244,13 @@ int minim_is_equal(minim_object *a, minim_object *b) {
 //  frames       ::= ((<var0> . <val1>) (<var1> . <val1>) ...)
 //
 
+#define SET_NAME_IF_CLOSURE(name, val) {                    \
+    if (minim_is_closure_proc(val) &&                       \
+       minim_closure_name(val) == NULL) {                   \
+        minim_closure_name(val) = minim_symbol(name);       \
+    }                                                       \
+}
+
 minim_object *make_frame(minim_object *vars, minim_object *vals) {
     return make_assoc(vars, vals);
 }
@@ -246,11 +262,13 @@ minim_object *env_define_var(minim_object *env, minim_object *var, minim_object 
         minim_object *frame_val = minim_cdar(frame);
         if (var == frame_var) {
             minim_cdar(frame) = val;
+            SET_NAME_IF_CLOSURE(var, val);
             return frame_val;
         }
     }
 
     minim_car(env) = make_pair(make_pair(var, val), frame);
+    SET_NAME_IF_CLOSURE(var, val);
     return NULL;
 }
 
@@ -262,6 +280,7 @@ minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *va
             minim_object *frame_val = minim_cdar(frame);
             if (var == frame_var) {
                 minim_cdar(frame) = val;
+                SET_NAME_IF_CLOSURE(var, val);
                 return frame_val;
             }
 
@@ -704,10 +723,10 @@ minim_object *error_proc(minim_object *args) {
 //  Runtime Error / Assertions
 //
 
-void arity_mismatch_exn(minim_object *prim, short actual) {
-    fprintf(stderr, "%s: arity mistmatch\n", prim_proc_name(prim));
-    if (proc_arity_is_fixed(&minim_prim_arity(prim))) {
-        switch (proc_arity_min(&minim_prim_arity(prim))) {
+void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
+    fprintf(stderr, "%s: arity mistmatch\n", name);
+    if (proc_arity_is_fixed(arity)) {
+        switch (proc_arity_min(arity)) {
         case 0:
             fprintf(stderr, " expected 0 arguments, received %d\n", actual);
             break;
@@ -718,11 +737,10 @@ void arity_mismatch_exn(minim_object *prim, short actual) {
 
         default:
             fprintf(stderr, " expected %d arguments, received %d\n",
-                            proc_arity_min(&minim_prim_arity(prim)),
-                            actual);
+                            proc_arity_min(arity), actual);
         }
-    } else if (proc_arity_is_unbounded(&minim_prim_arity(prim))) {
-        switch (proc_arity_min(&minim_prim_arity(prim))) {
+    } else if (proc_arity_is_unbounded(arity)) {
+        switch (proc_arity_min(arity)) {
         case 0:
             fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
             break;
@@ -733,20 +751,41 @@ void arity_mismatch_exn(minim_object *prim, short actual) {
 
         default:
             fprintf(stderr, " expected at least %d arguments, received %d\n",
-                            proc_arity_min(&minim_prim_arity(prim)),
-                            actual);
+                            proc_arity_min(arity), actual);
         }
     } else {
         fprintf(stderr, " expected between %d and %d arguments, received %d\n",
-                        proc_arity_min(&minim_prim_arity(prim)),
-                        proc_arity_max(&minim_prim_arity(prim)),
-                        actual);
+                        proc_arity_min(arity), proc_arity_max(arity), actual);
     }
 
     exit(1);
 }
 
 void check_prim_proc_arity(minim_object *prim, minim_object *args) {
+    proc_arity *arity;
+    int min_arity, max_arity, argc;
+
+    arity = &minim_prim_arity(prim);
+    min_arity = proc_arity_min(arity);
+    max_arity = proc_arity_max(arity);
+    argc = 0;
+
+    while (!minim_is_null(args)) {
+        if (argc >= max_arity) {
+            arity_mismatch_exn(minim_prim_proc_name(prim), arity,
+                               max_arity + list_length(args));
+        }
+    
+        args = minim_cdr(args);
+        ++argc;
+    }
+
+    if (argc < min_arity)
+        arity_mismatch_exn(minim_prim_proc_name(prim), arity, argc);
+}
+
+void check_closure_proc_arity(minim_object *closure, minim_object *args) {
+    proc_arity *arity;
     int min_arity, max_arity, argc;
 
     min_arity = proc_arity_min(&minim_prim_arity(prim));
@@ -754,14 +793,54 @@ void check_prim_proc_arity(minim_object *prim, minim_object *args) {
     argc = 0;
 
     while (!minim_is_null(args)) {
-        if (argc >= max_arity)
-            arity_mismatch_exn(prim, max_arity + list_length(args));
+        if (argc >= max_arity) {
+            arity_mismatch_exn(minim_prim_proc_name(prim),
+                           &minim_prim_arity(prim),
+                           max_arity + list_length(args));
+        }
+    
         args = minim_cdr(args);
         ++argc;
     }
 
     if (argc < min_arity)
-        arity_mismatch_exn(prim, argc);
+        arity_mismatch_exn(minim_prim_proc_name(prim),
+                           &minim_prim_arity(prim),
+                           argc);
+}
+
+//
+//  Syntax check
+//
+
+void check_lambda(minim_object *expr, short *min_arity, short *max_arity) {
+    minim_object *args = minim_cadr(expr);
+    int argc = 0;
+
+    while (minim_is_pair(args)) {
+        if (!minim_is_symbol(minim_car(args))) {
+            fprintf(stderr, "expected a identifier for an argument:\n ");
+            write_object(stderr, expr);
+            fputc('\n', stderr);
+            exit(1);
+        }
+
+        args = minim_cdr(args);
+        ++argc;
+    }
+
+    if (minim_is_null(args)) {
+        *min_arity = argc;
+        *max_arity = argc;
+    } else if (minim_is_symbol(args)) {
+        *min_arity = argc;
+        *max_arity = ARG_MAX;
+    } else {
+        fprintf(stderr, "expected an identifier for the rest argument:\n ");
+        write_object(stderr, expr);
+        fputc('\n', stderr);
+        exit(1);
+    }
 }
 
 //
@@ -856,9 +935,8 @@ static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
-    minim_object *proc;
-    minim_object *args;
-    minim_object *result;
+    minim_object *proc, *args, *result;
+    short min_arity, max_arity;
 
     // write_object(stdout, expr);
     // printf("\n");
@@ -917,9 +995,12 @@ loop:
 
         return minim_void;
     } else if (is_lambda(expr)) {
+        check_lambda(expr, &min_arity, &max_arity);
         return make_closure_proc(minim_cadr(expr),
                                  make_pair(begin_symbol, minim_cddr(expr)),
-                                 env);
+                                 env,
+                                 min_arity,
+                                 max_arity);
     } else if (is_begin(expr)) {
         expr = minim_cdr(expr);
         while (!minim_is_null(minim_cdr(expr))) {

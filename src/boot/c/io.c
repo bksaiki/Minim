@@ -407,8 +407,13 @@ static void write_object2(FILE *out, minim_object *o, int quote) {
         fputc(')', out);
         break;
     case MINIM_PRIM_PROC_TYPE:
+        fprintf(out, "#<procedure:%s>", minim_prim_proc_name(o));
+        break;
     case MINIM_CLOSURE_PROC_TYPE:
-        fprintf(out, "#<procedure>");
+        if (minim_closure_name(o) != NULL)
+            fprintf(out, "#<procedure:%s>", minim_closure_name(o));
+        else
+            fprintf(out, "#<procedure>");
         break;
     case MINIM_PORT_TYPE:
         if (minim_port_is_ro(o))

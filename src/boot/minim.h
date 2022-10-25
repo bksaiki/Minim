@@ -95,15 +95,17 @@ typedef struct {
 typedef struct {
     minim_object_type type;
     struct proc_arity arity;
-    char *name;
     minim_object *(*fn)(minim_object *args);
+    char *name;
 } minim_prim_proc_object;
 
 typedef struct {
     minim_object_type type;
+    struct proc_arity arity;
     minim_object *args;
     minim_object *body;
     minim_object *env;
+    char *name;
 } minim_closure_proc_object;
 
 typedef struct {
@@ -165,13 +167,15 @@ extern minim_object *minim_void;
 #define minim_string(x)         (((minim_string_object *) (x))->value)
 #define minim_char(x)           (((minim_char_object *) (x))->value)
 
-#define prim_proc_name(x)       (((minim_prim_proc_object *) (x))->name)
+#define minim_prim_proc_name(x) (((minim_prim_proc_object *) (x))->name)
 #define minim_prim_arity(x)     (((minim_prim_proc_object *) (x))->arity)
 #define minim_prim_proc(x)      (((minim_prim_proc_object *) (x))->fn)
 
 #define minim_closure_args(x)   (((minim_closure_proc_object *) (x))->args)
 #define minim_closure_body(x)   (((minim_closure_proc_object *) (x))->body)
 #define minim_closure_env(x)    (((minim_closure_proc_object *) (x))->env)
+#define minim_closure_name(x)   (((minim_closure_proc_object *) (x))->name)
+#define minim_closure_arity(x)  (((minim_closure_proc_object *) (x))->arity)
 
 #define minim_port_is_ro(x)     (((minim_port_object *) (x))->flags & MINIM_PORT_READ_ONLY)
 #define minim_port_is_open(x)   (((minim_port_object *) (x))->flags & MINIM_PORT_OPEN)
@@ -202,7 +206,7 @@ minim_object *make_symbol(const char *s);
 minim_object *make_string(const char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
-minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env);
+minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
 minim_object *make_output_port(FILE *stream);
 minim_object *make_syntax(minim_object *e, minim_object *loc);
