@@ -64,9 +64,12 @@ minim: $(BUILD_DIR)/config.h $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 test: minim
-	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot test
+	$(MAKE) boot-tests
 	$(MAKE) unit-tests
 	$(MAKE) lib-tests
+
+boot-tests:
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot test
 
 unit-tests: $(TEST_EXES)
 	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)

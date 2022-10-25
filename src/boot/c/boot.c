@@ -178,8 +178,7 @@ int minim_is_eq(minim_object *a, minim_object *b) {
     if (a->type != b->type)
         return 0;
 
-    switch (a->type)
-    {
+    switch (a->type) {
     case MINIM_FIXNUM_TYPE:
         return minim_fixnum(a) == minim_fixnum(b);
 

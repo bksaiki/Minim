@@ -15,18 +15,21 @@
 (define read
   (lambda (p)
 
+
     ;; Character
+
+    (define oparen (integer->char 40))
+    (define cparen (integer->char 41))
+    (define obrack (integer->char 91))
+    (define cbrack (integer->char 93))
+    (define obrace (integer->char 123))
+    (define cbrace (integer->char 125))
 
     (define delimeter?
       (lambda (c)
-        (or (eq? c (integer->char 40))  ; #\(
-            (eq? c (integer->char 41))  ; #\)
-            (eq? c (integer->char 91))  ; #\[
-            (eq? c (integer->char 93))  ; #\]
-            (eq? c (integer->char 123)) ; #\{
-            (eq? c (integer->char 125)) ; #\}
-            (eq? c #\")
-            (eq? c #\;))))
+        (or (eq? c oparen) (eq? c obrack) (eq? c obrace)
+            (eq? c cparen) (eq? c cbrack) (eq? c cbrace)
+            (eq? c #\") (eq? c #\;))))
 
     (define symbol-char?
       (lambda (c)
@@ -60,12 +63,12 @@
       (lambda (open close)
         (and
           (cond
-            [(eq? open (integer->char 40))     ; ()
-             (eq? close (integer->char 41))]
-            [(eq? open (integer->char 91))     ; []
-             (eq? close (integer->char 93))]
-            [(eq? open (integer->char 123))    ; {}
-             (eq? close (integer->char 125))])
+            [(eq? open  oparen)     ; ()
+             (eq? close cparen)]
+            [(eq? open  oparen)     ; []
+             (eq? close cparen)]
+            [(eq? open  oparen)    ; {}
+             (eq? close cparen)])
           (error "read: parenthesis mismatch " open " " close))))
 
     ;; Whitespace reading
