@@ -85,10 +85,26 @@ minim_object *make_pair(minim_object *car, minim_object *cdr) {
     return ((minim_object *) o);
 }
 
-minim_object *make_prim_proc(minim_prim_proc_t proc) {
+minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity) {
     minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
     o->type = MINIM_PRIM_PROC_TYPE;
     o->fn = proc;
+    o->name = name;
+
+    if (min_arity > ARG_MAX || max_arity > ARG_MAX) {
+        fprintf(stderr, "primitive procedure intialized with too large an arity: [%d, %d]", min_arity, max_arity);
+        exit(1);
+    } else {
+        o->arity.arity_min = min_arity;
+        o->arity.arity_max = max_arity;
+        if (min_arity == max_arity)
+            o->arity.type = PROC_ARITY_FIXED;
+        else if (max_arity == ARG_MAX)
+            o->arity.type = PROC_ARITY_UNBOUNDED;
+        else
+            o->arity.type = PROC_ARITY_RANGE;
+    }
+
     return ((minim_object *) o);
 }
 
@@ -685,6 +701,70 @@ minim_object *error_proc(minim_object *args) {
 }
 
 //
+//  Runtime Error / Assertions
+//
+
+void arity_mismatch_exn(minim_object *prim, short actual) {
+    fprintf(stderr, "%s: arity mistmatch\n", prim_proc_name(prim));
+    if (proc_arity_is_fixed(&minim_prim_arity(prim))) {
+        switch (proc_arity_min(&minim_prim_arity(prim))) {
+        case 0:
+            fprintf(stderr, " expected 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected %d arguments, received %d\n",
+                            proc_arity_min(&minim_prim_arity(prim)),
+                            actual);
+        }
+    } else if (proc_arity_is_unbounded(&minim_prim_arity(prim))) {
+        switch (proc_arity_min(&minim_prim_arity(prim))) {
+        case 0:
+            fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected at least 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected at least %d arguments, received %d\n",
+                            proc_arity_min(&minim_prim_arity(prim)),
+                            actual);
+        }
+    } else {
+        fprintf(stderr, " expected between %d and %d arguments, received %d\n",
+                        proc_arity_min(&minim_prim_arity(prim)),
+                        proc_arity_max(&minim_prim_arity(prim)),
+                        actual);
+    }
+
+    exit(1);
+}
+
+void check_prim_proc_arity(minim_object *prim, minim_object *args) {
+    int min_arity, max_arity, argc;
+
+    min_arity = proc_arity_min(&minim_prim_arity(prim));
+    max_arity = proc_arity_max(&minim_prim_arity(prim));
+    argc = 0;
+
+    while (!minim_is_null(args)) {
+        if (argc >= max_arity)
+            arity_mismatch_exn(prim, max_arity + list_length(args));
+        args = minim_cdr(args);
+        ++argc;
+    }
+
+    if (argc < min_arity)
+        arity_mismatch_exn(prim, argc);
+}
+
+//
 //  Evaluation
 //
 
@@ -883,6 +963,8 @@ loop:
 application:
 
         if (minim_is_prim_proc(proc)) {
+            check_prim_proc_arity(proc, args);
+
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
                 expr = minim_car(args);
@@ -931,82 +1013,85 @@ application:
 //  Interpreter initialization
 //
 
-#define add_procedure(name, c_name)         \
-    env_define_var(env, intern_symbol(symbols, name), make_prim_proc(c_name))
+#define add_procedure(name, c_fn, min_arity, max_arity) {               \
+    minim_object *sym = intern_symbol(symbols, name);                   \
+    env_define_var(env, sym, make_prim_proc(c_fn, minim_symbol(sym),    \
+                                            min_arity, max_arity));     \
+}
 
 void populate_env(minim_object *env) {
-    add_procedure("null?", is_null_proc);
-    add_procedure("eof-object?", is_eof_proc);
-    add_procedure("boolean?", is_bool_proc);
-    add_procedure("symbol?", is_symbol_proc);
-    add_procedure("integer?", is_fixnum_proc);
-    add_procedure("char?", is_char_proc);
-    add_procedure("string?", is_string_proc);
-    add_procedure("pair?", is_pair_proc);
-    add_procedure("procedure?", is_procedure_proc);
-    add_procedure("input-port?", is_input_port_proc);
-    add_procedure("output-port?", is_output_port_proc);
+    add_procedure("null?", is_null_proc, 1, 1);
+    add_procedure("eof-object?", is_eof_proc, 1, 1);
+    add_procedure("boolean?", is_bool_proc, 1, 1);
+    add_procedure("symbol?", is_symbol_proc, 1, 1);
+    add_procedure("integer?", is_fixnum_proc, 1, 1);
+    add_procedure("char?", is_char_proc, 1, 1);
+    add_procedure("string?", is_string_proc, 1, 1);
+    add_procedure("pair?", is_pair_proc, 1, 1);
+    add_procedure("procedure?", is_procedure_proc, 1, 1);
+    add_procedure("input-port?", is_input_port_proc, 1, 1);
+    add_procedure("output-port?", is_output_port_proc, 1, 1);
 
-    add_procedure("char->integer", char_to_integer_proc);
-    add_procedure("integer->char", integer_to_char_proc);
-    add_procedure("number->string", number_to_string_proc);
-    add_procedure("string->number", string_to_number_proc);
-    add_procedure("symbol->string", symbol_to_string_proc);
-    add_procedure("string->symbol", string_to_symbol_proc);
+    add_procedure("char->integer", char_to_integer_proc, 1, 1);
+    add_procedure("integer->char", integer_to_char_proc, 1, 1);
+    add_procedure("number->string", number_to_string_proc, 1, 1);
+    add_procedure("string->number", string_to_number_proc, 1, 1);
+    add_procedure("symbol->string", symbol_to_string_proc, 1, 1);
+    add_procedure("string->symbol", string_to_symbol_proc, 1, 1);
 
-    add_procedure("eq?", eq_proc);
-    add_procedure("equal?", equal_proc);
+    add_procedure("eq?", eq_proc, 2, 2);
+    add_procedure("equal?", equal_proc, 2, 2);
 
-    add_procedure("not", not_proc);
+    add_procedure("not", not_proc, 1, 1);
 
-    add_procedure("cons", cons_proc);
-    add_procedure("car", car_proc);
-    add_procedure("cdr", cdr_proc);
-    add_procedure("set-car!", set_car_proc);
-    add_procedure("set-cdr!", set_cdr_proc);
-    add_procedure("list", list_proc);
+    add_procedure("cons", cons_proc, 2, 2);
+    add_procedure("car", car_proc, 1, 1);
+    add_procedure("cdr", cdr_proc, 1, 1);
+    add_procedure("set-car!", set_car_proc, 2, 2);
+    add_procedure("set-cdr!", set_cdr_proc, 2, 2);
+    add_procedure("list", list_proc, 0, ARG_MAX);
 
-    add_procedure("+", add_proc);
-    add_procedure("-", sub_proc);
-    add_procedure("*", mul_proc);
-    add_procedure("/", div_proc);
-    add_procedure("remainder", remainder_proc);
-    add_procedure("modulo", modulo_proc);
+    add_procedure("+", add_proc, 0, ARG_MAX);
+    add_procedure("-", sub_proc, 1, ARG_MAX);
+    add_procedure("*", mul_proc, 0, ARG_MAX);
+    add_procedure("/", div_proc, 1, ARG_MAX);
+    add_procedure("remainder", remainder_proc, 2, 2);
+    add_procedure("modulo", modulo_proc, 2, 2);
 
-    add_procedure("=", number_eq_proc);
-    add_procedure(">=", number_ge_proc);
-    add_procedure("<=", number_le_proc);
-    add_procedure(">", number_gt_proc);
-    add_procedure("<", number_lt_proc);
+    add_procedure("=", number_eq_proc, 2, 2);
+    add_procedure(">=", number_ge_proc, 2, 2);
+    add_procedure("<=", number_le_proc, 2, 2);
+    add_procedure(">", number_gt_proc, 2, 2);
+    add_procedure("<", number_lt_proc, 2, 2);
 
-    add_procedure("string", string_proc);
+    add_procedure("string", string_proc, 0, ARG_MAX);
     
-    add_procedure("syntax-e", syntax_e_proc);
-    add_procedure("syntax-loc", syntax_loc_proc);
+    add_procedure("syntax-e", syntax_e_proc, 1, 1);
+    add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
 
-    add_procedure("interaction-environment", interaction_environment_proc);
-    add_procedure("null-environment", empty_environment_proc);
-    add_procedure("environment", environment_proc);
+    add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
+    add_procedure("null-environment", empty_environment_proc, 0, 0);
+    add_procedure("environment", environment_proc, 0, 0);
 
-    add_procedure("eval", eval_proc);
-    add_procedure("apply", apply_proc);
-    add_procedure("void", void_proc);
+    add_procedure("eval", eval_proc, 1, 2);
+    add_procedure("apply", apply_proc, 1, ARG_MAX);
+    add_procedure("void", void_proc, 0, 0);
 
-    add_procedure("current-input-port", current_input_port_proc);
-    add_procedure("current-output-port", current_output_port_proc);
-    add_procedure("open-input-file", open_input_port_proc);
-    add_procedure("open-output-file", open_output_port_proc);
-    add_procedure("close-input-port", close_input_port_proc);
-    add_procedure("close-output-port", close_output_port_proc);
-    add_procedure("read", read_proc);
-    add_procedure("read-char", read_char_proc);
-    add_procedure("peek-char", peek_char_proc);
-    add_procedure("char-ready?", char_is_ready_proc);
-    add_procedure("write", write_proc);
-    add_procedure("write-char", write_char_proc);
+    add_procedure("current-input-port", current_input_port_proc, 0, 0);
+    add_procedure("current-output-port", current_output_port_proc, 0, 0);
+    add_procedure("open-input-file", open_input_port_proc, 1, 1);
+    add_procedure("open-output-file", open_output_port_proc, 1, 1);
+    add_procedure("close-input-port", close_input_port_proc, 1, 1);
+    add_procedure("close-output-port", close_output_port_proc, 1, 1);
+    add_procedure("read", read_proc, 1, 2);
+    add_procedure("read-char", read_char_proc, 0, 1);
+    add_procedure("peek-char", peek_char_proc, 0, 1);
+    add_procedure("char-ready?", char_is_ready_proc, 0, 1);
+    add_procedure("write", write_proc, 1, 2);
+    add_procedure("write-char", write_char_proc, 1, 2);
     
-    add_procedure("load", load_proc);
-    add_procedure("error", error_proc);
+    add_procedure("load", load_proc, 1, 1);
+    add_procedure("error", error_proc, 1, ARG_MAX);
 }
 
 minim_object *make_env() {
