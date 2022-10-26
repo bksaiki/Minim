@@ -837,7 +837,27 @@ static void check_1ary_syntax(minim_object *expr) {
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum>)
 static void check_2ary_syntax(minim_object *expr) {
-    minim_object *rest = minim_cdr(expr);
+    minim_object *rest;
+    
+    rest = minim_cdr(expr);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> <datum> <datum>)
+static void check_3ary_syntax(minim_object *expr) {
+    minim_object *rest;
+    
+    rest = minim_cdr(expr);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
     if (!minim_is_pair(rest))
         bad_syntax_exn(expr);
 
@@ -857,6 +877,38 @@ static void check_define(minim_object *expr) {
 
     rest = minim_cdr(rest);
     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(cond . <???>)`
+// Check: `expr` must be `(cond [<test> <clause> ...] ...)`
+// Does not check if each `<clause>` is an expression.
+// Does not check if each `<clause> ...` forms a list.
+// Checks that only `else` appears in the tail position
+static void check_cond(minim_object *expr) {
+    minim_object *rest, *datum;
+
+    rest = minim_cdr(expr);
+    while (minim_is_pair(rest)) {
+        datum = minim_car(rest);
+        if (!minim_is_pair(datum) || !minim_is_pair(minim_cdr(datum)))
+            bad_syntax_exn(expr);
+
+        datum = minim_car(datum);
+        if (minim_is_symbol(datum) &&
+            minim_car(datum) == else_symbol &&
+            !minim_is_null(minim_cdr(rest))) {
+            fprintf(stderr, "cond: else clause must be last");
+            fprintf(stderr, " at: ");
+            write_object2(stderr, expr, 1);
+            fputc('\n', stderr);
+            exit(1);
+        }
+
+        rest = minim_cdr(rest);
+    }
+
+    if (!minim_is_null(rest))
         bad_syntax_exn(expr);
 }
 
@@ -885,6 +937,18 @@ static void check_let(minim_object *expr) {
     }
 
     if (!minim_is_null(bindings))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> ...)`
+static void check_begin(minim_object *expr) {
+    minim_object *rest = minim_cdr(expr);
+
+    while (minim_is_pair(rest))
+        rest = minim_cdr(rest);
+
+    if (!minim_is_null(rest))
         bad_syntax_exn(expr);
 }
 
@@ -1051,6 +1115,7 @@ loop:
         expr = make_pair(begin_symbol, (minim_cddr(expr)));
         goto loop;
     } else if (is_if(expr)) {
+        check_3ary_syntax(expr);
         if (!minim_is_false(eval_expr(minim_cadr(expr), env)))
             expr = minim_car(minim_cddr(expr));
         else
@@ -1058,6 +1123,7 @@ loop:
 
         goto loop;
     } else if (is_cond(expr)) {
+        check_cond(expr);
         expr = minim_cdr(expr);
         while (!minim_is_null(expr)) {
             if (minim_caar(expr) == else_symbol) {
@@ -1083,22 +1149,20 @@ loop:
                                  min_arity,
                                  max_arity);
     } else if (is_begin(expr)) {
-        minim_object *old_expr = expr;
+        check_begin(expr);
         expr = minim_cdr(expr);
         if (minim_is_null(expr))
             return minim_void;
 
-        while (minim_is_pair(expr) && !minim_is_null(minim_cdr(expr))) {
+        while (!minim_is_null(minim_cdr(expr))) {
             eval_expr(minim_car(expr), env);
             expr = minim_cdr(expr);
         }
 
-        if (!minim_is_pair(expr) || !minim_is_null(minim_cdr(expr)))
-            bad_syntax_exn(old_expr);
-
         expr = minim_car(expr);
         goto loop;
     } else if (is_and(expr)) {
+        check_begin(expr);
         expr = minim_cdr(expr);
         if (minim_is_null(expr))
             return minim_true;
@@ -1109,21 +1173,22 @@ loop:
                 return result;
             expr = minim_cdr(expr);
         }
-        
+
         expr = minim_car(expr);
         goto loop;
     } else if (is_or(expr)) {
+        check_begin(expr);
         expr = minim_cdr(expr);
         if (minim_is_null(expr))
             return minim_false;
 
         while (!minim_is_null(minim_cdr(expr))) {
             result = eval_expr(minim_car(expr), env);
-            if (minim_is_true(result))
+            if (!minim_is_false(result))
                 return result;
             expr = minim_cdr(expr);
         }
-        
+
         expr = minim_car(expr);
         goto loop;
     } else if (minim_is_pair(expr)) {
