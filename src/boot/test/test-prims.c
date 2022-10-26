@@ -332,6 +332,17 @@ int test_if() {
     return passed;
 }
 
+int test_begin() {
+    passed = 1;
+
+    check_equal("(begin)", "#<void>");
+    check_equal("(begin 1)", "1");
+    check_equal("(begin 1 2)", "2");
+    check_equal("(begin 1 2 3)", "3");
+
+    return passed;
+}
+
 int test_cond() {
     passed = 1;
 
@@ -348,6 +359,19 @@ int test_cond() {
     return passed;
 }
 
+int test_let() {
+    passed = 1;
+
+    check_equal("(let () 1)", "1");
+    check_equal("(let ([x 1]) x)", "1");
+    check_equal("(let ([x 1] [y 2]) x)", "1");
+    check_equal("(let ([x 1] [y 2]) y)", "2");
+    check_equal("(let ([x 1] [y 2]) y x)", "1");
+    check_equal("(let ([x 1]) (let ([y x]) y))", "1");
+
+    return passed;
+}
+
 void run_tests() {
     log_test("simple eval", test_simple_eval);
     log_test("type predicates", test_type_predicates);
@@ -359,7 +383,9 @@ void run_tests() {
     log_test("string", test_string);
     log_test("syntax", test_syntax);
     log_test("if", test_if);
+    log_test("begin", test_begin);
     log_test("cond", test_cond);
+    log_test("let", test_let);
 }
 
 int main(int argc, char **argv) {

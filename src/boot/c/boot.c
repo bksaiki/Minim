@@ -179,6 +179,26 @@ minim_object *make_assoc(minim_object *xs, minim_object *ys) {
     return assoc;
 }
 
+// Copies a list.
+// Unsafe: does not check if `xs` is a list.
+minim_object *copy_list(minim_object *xs) {
+    minim_object *head, *tail, *it;
+
+    if (minim_is_null(xs))
+        return minim_null;
+
+    head = make_pair(minim_car(xs), minim_null);
+    tail = head;
+    it = xs;
+
+    while (!minim_is_null(it = minim_cdr(it))) {
+        minim_cdr(tail) = make_pair(minim_car(it), minim_null);
+        tail = minim_cdr(tail);
+    }
+    
+    return head;
+}
+
 long list_length(minim_object *xs) {
     minim_object *it = xs;
     long length = 0;
@@ -253,6 +273,12 @@ int minim_is_equal(minim_object *a, minim_object *b) {
 
 minim_object *make_frame(minim_object *vars, minim_object *vals) {
     return make_assoc(vars, vals);
+}
+
+void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val) {
+    minim_object *frame = minim_car(env);
+    minim_car(env) = make_pair(make_pair(var, val), frame);
+    SET_NAME_IF_CLOSURE(var, val);
 }
 
 minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val) {
@@ -723,8 +749,11 @@ minim_object *error_proc(minim_object *args) {
 //  Runtime Error / Assertions
 //
 
-void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
-    fprintf(stderr, "%s: arity mistmatch\n", name);
+static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
+    if (name != NULL)
+        fprintf(stderr, "%s: ", name);
+    fprintf(stderr, "arity mismatch\n");
+
     if (proc_arity_is_fixed(arity)) {
         switch (proc_arity_min(arity)) {
         case 0:
@@ -761,59 +790,105 @@ void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
     exit(1);
 }
 
-void check_prim_proc_arity(minim_object *prim, minim_object *args) {
-    proc_arity *arity;
+static void check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
     int min_arity, max_arity, argc;
 
-    arity = &minim_prim_arity(prim);
     min_arity = proc_arity_min(arity);
     max_arity = proc_arity_max(arity);
     argc = 0;
 
     while (!minim_is_null(args)) {
-        if (argc >= max_arity) {
-            arity_mismatch_exn(minim_prim_proc_name(prim), arity,
-                               max_arity + list_length(args));
-        }
-    
+        if (argc >= max_arity)
+            arity_mismatch_exn(name, arity, max_arity + list_length(args));
         args = minim_cdr(args);
         ++argc;
     }
 
     if (argc < min_arity)
-        arity_mismatch_exn(minim_prim_proc_name(prim), arity, argc);
+        arity_mismatch_exn(name, arity, argc);
 }
 
-void check_closure_proc_arity(minim_object *closure, minim_object *args) {
-    proc_arity *arity;
-    int min_arity, max_arity, argc;
+#define check_prim_proc_arity(prim, args)   \
+    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
 
-    min_arity = proc_arity_min(&minim_prim_arity(prim));
-    max_arity = proc_arity_max(&minim_prim_arity(prim));
-    argc = 0;
-
-    while (!minim_is_null(args)) {
-        if (argc >= max_arity) {
-            arity_mismatch_exn(minim_prim_proc_name(prim),
-                           &minim_prim_arity(prim),
-                           max_arity + list_length(args));
-        }
-    
-        args = minim_cdr(args);
-        ++argc;
-    }
-
-    if (argc < min_arity)
-        arity_mismatch_exn(minim_prim_proc_name(prim),
-                           &minim_prim_arity(prim),
-                           argc);
-}
+#define check_closure_proc_arity(prim, args)    \
+    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
 
 //
 //  Syntax check
 //
 
-void check_lambda(minim_object *expr, short *min_arity, short *max_arity) {
+static void bad_syntax_exn(minim_object *expr) {
+    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
+    fprintf(stderr, " at: ");
+    write_object2(stderr, expr, 1);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum>)
+static void check_1ary_syntax(minim_object *expr) {
+    minim_object *rest = minim_cdr(expr);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> <datum>)
+static void check_2ary_syntax(minim_object *expr) {
+    minim_object *rest = minim_cdr(expr);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <symbol> <datum>)
+static void check_define(minim_object *expr) {
+    minim_object *rest;
+    
+    rest = minim_cdr(expr);
+    if (!minim_is_pair(rest) || !minim_is_symbol(minim_car(rest)))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(let . <???>)`
+// Check: `expr` must be `(let ([<var> <val>] ...) <body> ...)`
+// Does not check if each `<body>` is an expression.
+// Does not check if `<body> ...` forms a list.
+static void check_let(minim_object *expr) {
+    minim_object *bindings, *bind;
+    
+    bindings = minim_cdr(expr);
+    if (!minim_is_pair(bindings) || !minim_is_pair(minim_cdr(bindings)))
+        bad_syntax_exn(expr);
+    
+    bindings = minim_car(bindings);
+    while (minim_is_pair(bindings)) {
+        bind = minim_car(bindings);
+        if (!minim_is_pair(bind) || !minim_is_symbol(minim_car(bind)))
+            bad_syntax_exn(expr);
+
+        bind = minim_cdr(bind);
+        if (!minim_is_pair(bind) || !minim_is_null(minim_cdr(bind)))
+            bad_syntax_exn(expr);
+
+        bindings = minim_cdr(bindings);
+    }
+
+    if (!minim_is_null(bindings))
+        bad_syntax_exn(expr);
+}
+
+static void check_lambda(minim_object *expr, short *min_arity, short *max_arity) {
     minim_object *args = minim_cadr(expr);
     int argc = 0;
 
@@ -953,18 +1028,24 @@ loop:
         // variable
         return env_lookup_var(env, expr);
     } else if (is_quoted(expr)) {
+        check_1ary_syntax(expr);
         return minim_cadr(expr);
     } else if (is_syntax(expr) || is_quoted_syntax(expr)) {
+        check_1ary_syntax(expr);
         return make_syntax(minim_cadr(expr), minim_false);
     } else if (is_syntax_loc(expr)) {
+        check_2ary_syntax(expr);
         return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
     } else if (is_assignment(expr)) {
+        check_define(expr);
         env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
         return minim_void;
     } else if (is_definition(expr)) {
+        check_define(expr);
         env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
         return minim_void;
     } else if (is_let(expr)) {
+        check_let(expr);
         args = eval_exprs(let_vals(minim_cadr(expr)), env);
         env = extend_env(let_vars(minim_cadr(expr)), args, env);
         expr = make_pair(begin_symbol, (minim_cddr(expr)));
@@ -1002,11 +1083,19 @@ loop:
                                  min_arity,
                                  max_arity);
     } else if (is_begin(expr)) {
+        minim_object *old_expr = expr;
         expr = minim_cdr(expr);
-        while (!minim_is_null(minim_cdr(expr))) {
+        if (minim_is_null(expr))
+            return minim_void;
+
+        while (minim_is_pair(expr) && !minim_is_null(minim_cdr(expr))) {
             eval_expr(minim_car(expr), env);
             expr = minim_cdr(expr);
         }
+
+        if (!minim_is_pair(expr) || !minim_is_null(minim_cdr(expr)))
+            bad_syntax_exn(old_expr);
+
         expr = minim_car(expr);
         goto loop;
     } else if (is_and(expr)) {
@@ -1063,18 +1152,25 @@ application:
 
             return minim_prim_proc(proc)(args);
         } else if (minim_is_closure_proc(proc)) {
-            if (minim_is_symbol(minim_closure_args(proc))) {
-                // variary call: (lambda xs body)
-                env = extend_env(make_pair(minim_closure_args(proc), minim_null),
-                                 make_pair(args, minim_null),
-                                 minim_closure_env(proc));
-            } else {
-                // standard call: (lambda (x1 x2 xs ...) body)
-                env = extend_env(minim_closure_args(proc),
-                                 args,
-                                 minim_closure_env(proc));
+            minim_object *vars;
+
+            // check arity and extend environment
+            check_closure_proc_arity(proc, args);
+            env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+
+            // process args
+            vars = minim_closure_args(proc);
+            while (minim_is_pair(vars)) {
+                env_define_var_no_check(env, minim_car(vars), minim_car(args));
+                vars = minim_cdr(vars);
+                args = minim_cdr(vars);
             }
 
+            // optionally process rest argument
+            if (minim_is_symbol(vars))
+                env_define_var(env, vars, copy_list(args));
+
+            // tail call
             expr = minim_closure_body(proc);
             goto loop;
         } else {

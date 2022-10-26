@@ -323,8 +323,6 @@ loop:
 //  Writing
 //
 
-static void write_object2(FILE *out, minim_object *o, int quote);
-
 static void write_pair(FILE *out, minim_pair_object *p, int quote) {
     write_object2(out, minim_car(p), quote);
     if (minim_is_pair(minim_cdr(p))) {
@@ -338,7 +336,7 @@ static void write_pair(FILE *out, minim_pair_object *p, int quote) {
     }
 }
 
-static void write_object2(FILE *out, minim_object *o, int quote) {
+void write_object2(FILE *out, minim_object *o, int quote) {
     char *str;
 
     switch (o->type) {
