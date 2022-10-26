@@ -240,15 +240,14 @@ loop:
             num = (num * 10) + (c - '0');
         }
 
-        // compose and check for delimeter
-        num *= sign;
+        // check for delimeter
         if (!is_delimeter(c)) {
             fprintf(stderr, "expected a delimeter\n");
             exit(1);
         }
 
         ungetc(c, in);
-        return make_fixnum(num);
+        return make_fixnum(num * sign);
     } else if (c == '"') {
         // string
         i = 0;
@@ -323,20 +322,20 @@ loop:
 //  Writing
 //
 
-static void write_pair(FILE *out, minim_pair_object *p, int quote) {
-    write_object2(out, minim_car(p), quote);
+static void write_pair(FILE *out, minim_pair_object *p, int quote, int display) {
+    write_object2(out, minim_car(p), quote, display);
     if (minim_is_pair(minim_cdr(p))) {
         fputc(' ', out);
-        write_pair(out, ((minim_pair_object *) minim_cdr(p)), quote);
+        write_pair(out, ((minim_pair_object *) minim_cdr(p)), quote, display);
     } else if (minim_is_null(minim_cdr(p))) {
         return;
     } else {
         fprintf(out, " . ");
-        write_object2(out, minim_cdr(p), quote);
+        write_object2(out, minim_cdr(p), quote, display);
     }
 }
 
-void write_object2(FILE *out, minim_object *o, int quote) {
+void write_object2(FILE *out, minim_object *o, int quote, int display) {
     char *str;
 
     switch (o->type) {
@@ -365,43 +364,51 @@ void write_object2(FILE *out, minim_object *o, int quote) {
         fprintf(out, "%ld", minim_fixnum(o));
         break;
     case MINIM_CHAR_TYPE:
-        switch (minim_char(o)) {
-        case '\n':
-            fprintf(out, "#\\newline");
-            break;
-        case ' ':
-            fprintf(out, "#\\space");
-            break;
-        default:
-            fprintf(out, "#\\%c", minim_char(o));
+        if (display) {
+            fputc(minim_char(o), out);
+        } else {
+            switch (minim_char(o)) {
+            case '\n':
+                fprintf(out, "#\\newline");
+                break;
+            case ' ':
+                fprintf(out, "#\\space");
+                break;
+            default:
+                fprintf(out, "#\\%c", minim_char(o));
+            }
         }
         break;
     case MINIM_STRING_TYPE:
         str = minim_string(o);
-        fputc('"', out);
-        while (*str != '\0') {
-            switch (*str) {
-            case '\n':
-                fprintf(out, "\\n");
-                break;
-            case '\t':
-                fprintf(out, "\\t");
-                break;
-            case '\\':
-                fprintf(out, "\\\\");
-                break;
-            default:
-                fputc(*str, out);
-                break;
+        if (display) {
+            fprintf(out, "%s", str);
+        } else {
+            fputc('"', out);
+            while (*str != '\0') {
+                switch (*str) {
+                case '\n':
+                    fprintf(out, "\\n");
+                    break;
+                case '\t':
+                    fprintf(out, "\\t");
+                    break;
+                case '\\':
+                    fprintf(out, "\\\\");
+                    break;
+                default:
+                    fputc(*str, out);
+                    break;
+                }
+                ++str;
             }
-            ++str;
+            fputc('"', out);
         }
-        fputc('"', out);
         break;
     case MINIM_PAIR_TYPE:
         if (!quote) fputc('\'', out);
         fputc('(', out);
-        write_pair(out, ((minim_pair_object *) o), 1);
+        write_pair(out, ((minim_pair_object *) o), 1, display);
         fputc(')', out);
         break;
     case MINIM_PRIM_PROC_TYPE:
@@ -421,7 +428,7 @@ void write_object2(FILE *out, minim_object *o, int quote) {
         break;
     case MINIM_SYNTAX_TYPE:
         fprintf(out, "#<syntax ");
-        write_object2(out, minim_syntax_e(o), 1);
+        write_object2(out, minim_syntax_e(o), 1, display);
         fputc('>', out);
         break;
 
@@ -432,5 +439,5 @@ void write_object2(FILE *out, minim_object *o, int quote) {
 }
 
 void write_object(FILE *out, minim_object *o) {
-    write_object2(out, o, 0);
+    write_object2(out, o, 0, 0);
 }

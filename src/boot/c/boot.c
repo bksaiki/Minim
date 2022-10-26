@@ -109,6 +109,7 @@ minim_object *make_prim_proc(minim_prim_proc_t proc,
     o->fn = proc;
     o->name = name;
     set_arity(&o->arity, min_arity, max_arity);
+
     return ((minim_object *) o);
 }
 
@@ -736,7 +737,7 @@ minim_object *load_proc(minim_object *args) {
 
 minim_object *error_proc(minim_object *args) {
     while (!minim_is_null(args)) {
-        write_object(stderr, minim_car(args));
+        write_object2(stderr, minim_car(args), 1, 1);
         fprintf(stderr, " ");
         args = minim_cdr(args);
     }
@@ -821,7 +822,7 @@ static void check_proc_arity(proc_arity *arity, minim_object *args, const char *
 static void bad_syntax_exn(minim_object *expr) {
     fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
     fprintf(stderr, " at: ");
-    write_object2(stderr, expr, 1);
+    write_object2(stderr, expr, 1, 0);
     fputc('\n', stderr);
     exit(1);
 }
@@ -900,7 +901,7 @@ static void check_cond(minim_object *expr) {
             !minim_is_null(minim_cdr(rest))) {
             fprintf(stderr, "cond: else clause must be last");
             fprintf(stderr, " at: ");
-            write_object2(stderr, expr, 1);
+            write_object2(stderr, expr, 1, 0);
             fputc('\n', stderr);
             exit(1);
         }
@@ -1065,12 +1066,21 @@ static minim_object *apply_args(minim_object *args) {
 }
 
 static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
-    if (minim_is_null(exprs)) {
+    minim_object *head, *tail, *it;
+
+    if (minim_is_null(exprs))
         return minim_null;
-    } else {
-        return make_pair(eval_expr(minim_car(exprs), env),
-                         eval_exprs(minim_cdr(exprs), env));
+
+    head = make_pair(eval_expr(minim_car(exprs), env), minim_null);
+    tail = head;
+    it = exprs;
+
+    while (!minim_is_null(it = minim_cdr(it))) {
+        minim_cdr(tail) = make_pair(eval_expr(minim_car(it), env), minim_null);
+        tail = minim_cdr(tail);
     }
+    
+    return head;
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
@@ -1228,12 +1238,12 @@ application:
             while (minim_is_pair(vars)) {
                 env_define_var_no_check(env, minim_car(vars), minim_car(args));
                 vars = minim_cdr(vars);
-                args = minim_cdr(vars);
+                args = minim_cdr(args);
             }
 
             // optionally process rest argument
             if (minim_is_symbol(vars))
-                env_define_var(env, vars, copy_list(args));
+                env_define_var_no_check(env, vars, copy_list(args));
 
             // tail call
             expr = minim_closure_body(proc);
@@ -1325,7 +1335,7 @@ void populate_env(minim_object *env) {
     add_procedure("open-output-file", open_output_port_proc, 1, 1);
     add_procedure("close-input-port", close_input_port_proc, 1, 1);
     add_procedure("close-output-port", close_output_port_proc, 1, 1);
-    add_procedure("read", read_proc, 1, 2);
+    add_procedure("read", read_proc, 0, 1);
     add_procedure("read-char", read_char_proc, 0, 1);
     add_procedure("peek-char", peek_char_proc, 0, 1);
     add_procedure("char-ready?", char_is_ready_proc, 0, 1);

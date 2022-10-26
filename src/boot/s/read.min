@@ -13,8 +13,21 @@
 (define $load load)
 
 (define read
-  (lambda (p)
+  (lambda args
 
+    ;; Argument selection
+  
+    (define p
+      (cond
+        [(null? args)       (current-input-port)]
+        [(null? (cdr args)) (car args)]
+        [else
+          (error "read: arity mismatch\n expected 0 or 1 arguments,"
+                 "received" (length args))]))
+
+    (if (not (input-port? p))
+        (error "read: expected an input port, received " p)
+        (void))
 
     ;; Character
 
@@ -25,9 +38,15 @@
     (define obrace (integer->char 123))
     (define cbrace (integer->char 125))
 
+    (define space?
+      (lambda (c)
+        (or (eq? c #\space)
+            (eq? c #\newline))))
+
     (define delimeter?
       (lambda (c)
-        (or (eq? c oparen) (eq? c obrack) (eq? c obrace)
+        (or (eof-object? c) (space? c)
+            (eq? c oparen) (eq? c obrack) (eq? c obrace)
             (eq? c cparen) (eq? c cbrack) (eq? c cbrace)
             (eq? c #\") (eq? c #\;))))
 
@@ -35,11 +54,6 @@
       (lambda (c)
         (not (or (eq? c #\#)
              (delimeter? c)))))
-
-    (define space?
-      (lambda (c)
-        (or (eq? c #\space)
-            (eq? c #\newline))))
 
     (define digit?
       (lambda (c)
@@ -57,19 +71,29 @@
     (define assert-not-eof!
       (lambda (c)
         (if (eof-object? c)
-            (error "read: unexpected end of input"))))
+            (error "read: unexpected end of input")
+            (void))))
 
     (define assert-matching-parens!
       (lambda (open close)
-        (and
-          (cond
-            [(eq? open  oparen)     ; ()
-             (eq? close cparen)]
-            [(eq? open  oparen)     ; []
-             (eq? close cparen)]
-            [(eq? open  oparen)    ; {}
-             (eq? close cparen)])
-          (error "read: parenthesis mismatch " open " " close))))
+        (cond
+          [(and (eq? open oparen)       ; ()
+                (eq? close cparen))
+            (void)]
+          [(and (eq? open obrack)       ; []
+                (eq? close cbrack))
+            (void)]
+          [(and (eq? open obrace)       ; {}
+                (eq? close cbrace))
+            (void)]
+          [else
+            (error "read: parenthesis mismatch " open " " close)])))
+
+    (define assert-delimeter!
+      (lambda (c)
+        (if (not (delimeter? c))
+            (error "read: expected a delimeter")
+            (void))))
 
     ;; Whitespace reading
     
@@ -99,24 +123,100 @@
 
     ;; Main loop
 
-    (define loop
+    (define read-loop
       (lambda ()
+
+        (define read-pair
+          (lambda (open)
+            (skip-until-token!)
+            (define c (peek-char p))
+            (assert-not-eof! c)
+
+            (cond
+              [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
+                (assert-matching-parens! open c)
+                (read-char p)
+                '()]
+              [else
+                (define car (read-loop))
+                (skip-until-token!)
+                (define c (peek-char p))
+                (assert-not-eof! c)
+
+                (cond
+                  [(eq? c #\.)
+                    ; improper list
+                    (read-char p)
+                    (assert-delimeter! (peek-char p))
+                    (define cdr (read-loop))
+
+                    (skip-until-token!)
+                    (define c (peek-char p))
+                    (assert-not-eof! c)
+
+                    (cond
+                      [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
+                        (assert-matching-parens! open c)
+                        (read-char p)
+                        (cons car cdr)]
+                      [else
+                        (error "read: missing closing parenthesis")])]
+                  [else
+                    (define cdr (read-pair open))
+                    (cons car cdr)])])))
+
+        ; check next character
         (skip-until-token!)
-        (define c (read-char p))
+        (define c (peek-char p))
+
+        ; branch by class
         (cond
           [(eof-object? c)
+            (read-char p)
             c]
           [(eq? c #\#)
+            (read-char p)
             ; special values
             (define c (peek-char p))
             (error "read: unimplemented")]
           [(digit-prefix? c)
             ; number
+
+            ; optional sign
             (define num 0)
-            (define sign 1)
+            (define sign
+              (cond
+                [(eq? c #\-)
+                  (read-char p)
+                  -1]
+                [(eq? c #\+)
+                  (read-char p)
+                  1]
+                [else
+                  1]))
 
-            (error "read: unimplemented")]
+            ; magnitude
+            (define read-digit!
+              (lambda ()
+                (define c (peek-char p))
+                (cond
+                  [(digit? c)
+                    (read-char p)
+                    (set! num (+ (* 10 num) (- (char->integer c) (char->integer #\0))))
+                    (read-digit!)]
+                  [else
+                    (void)])))
+            (read-digit!)
+
+            (assert-delimeter! (peek-char p))
+            (* num sign)]
+          [(or (eq? c oparen) (eq? c obrack) (eq? c obrace))
+            (read-char p)
+            (read-pair c)]
+          [(= (char->integer c) 39)
+            (read-char p)
+            (list 'quote (read-loop))]
           [else
-            (error "read: unimplemented")])))
+            (error "read: unexpected input:" c)])))
 
-    (loop)))
+    (read-loop)))
