@@ -107,6 +107,39 @@
            (read-char p)
            (skip-comment!)])))
 
+    (define skip-block-comment!
+      (lambda ()
+
+        (define loop
+          (lambda (block-level)
+            (cond
+              [(= block-level 0) (void)]
+              [else
+                (define c (read-char p))
+                (cond
+                  [(eq? c #\#)
+                    (define c (peek-char p))
+                    (assert-not-eof! c)
+                    (cond
+                      [(eq? c #\|)
+                        (read-char p)
+                        (loop (+ block-level 1))]
+                      [else
+                        (loop block-level)])]
+                  [(eq? c #\|)
+                    (define c (peek-char p))
+                    (assert-not-eof! c)
+                    (cond
+                      [(eq? c #\#)
+                        (read-char p)
+                        (loop (- block-level 1))]
+                      [else
+                        (loop block-level)])]
+                  [else
+                    (loop block-level)])])))
+
+        (loop 1)))
+
     (define skip-until-token!
       (lambda ()
         (define c (peek-char p))
@@ -121,55 +154,139 @@
           [else
            (void)])))
 
-    ;; Main loop
+    (define check-expected-string!
+      (lambda (s)
+        (define len (string-length s))
 
-    (define read-loop
-      (lambda ()
+        (define loop
+          (lambda (i)
+            (if (= i len)
+                (void)
+                (let ([c (read-char p)])
+                  (cond
+                    [(eof-object? c)
+                      (error "read: unexpected end of input")]
+                    [(eq? c (string-ref s i))
+                      (loop (+ i 1))]
+                    [else
+                      (error "read: unexpected character" c)])))))
 
-        (define read-pair
-          (lambda (open)
+        (loop 0)))
+
+    ; pair reader
+    (define read-pair
+      (lambda (open)
+        (skip-until-token!)
+        (define c (peek-char p))
+        (assert-not-eof! c)
+
+        (cond
+          [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
+            (assert-matching-parens! open c)
+            (read-char p)
+            '()]
+          [else
+            (define car (read-loop))
             (skip-until-token!)
             (define c (peek-char p))
             (assert-not-eof! c)
 
             (cond
-              [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
-                (assert-matching-parens! open c)
+              [(eq? c #\.)
+                ; improper list
                 (read-char p)
-                '()]
-              [else
-                (define car (read-loop))
+                (assert-delimeter! (peek-char p))
+                (define cdr (read-loop))
+
                 (skip-until-token!)
                 (define c (peek-char p))
                 (assert-not-eof! c)
 
                 (cond
-                  [(eq? c #\.)
-                    ; improper list
+                  [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
+                    (assert-matching-parens! open c)
                     (read-char p)
-                    (assert-delimeter! (peek-char p))
-                    (define cdr (read-loop))
-
-                    (skip-until-token!)
-                    (define c (peek-char p))
-                    (assert-not-eof! c)
-
-                    (cond
-                      [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
-                        (assert-matching-parens! open c)
-                        (read-char p)
-                        (cons car cdr)]
-                      [else
-                        (error "read: missing closing parenthesis")])]
+                    (cons car cdr)]
                   [else
-                    (define cdr (read-pair open))
-                    (cons car cdr)])])))
+                    (error "read: missing closing parenthesis")])]
+              [else
+                (define cdr (read-pair open))
+                (cons car cdr)])])))
 
-        ; check next character
+    ; character reader
+    (define read-character
+      (lambda ()
+        (define c (read-char p))
+        
+        (if (eof-object? c)
+            (error "read: incomplete character literal")
+            (void))
+        
+        ; check for special values
+        (cond
+          [(eq? c #\s)
+            (define cn (peek-char p))
+            (cond
+              [(eq? cn #\p)
+                (check-expected-string! "pace")
+                #\space]
+              [else
+                (assert-delimeter! (peek-char p))
+                c])]
+          [(eq? c #\n)
+            (define cn (peek-char p))
+            (cond
+              [(eq? cn #\e)
+                (check-expected-string! "ewline")
+                #\newline]
+              [else
+                (assert-delimeter! (peek-char p))
+                c])]
+          [else
+            (assert-delimeter! (peek-char p))
+            c])))
+
+    ; number reader
+    (define read-number
+      (lambda (c)
+        ; optional sign
+        (define num 0)
+        (define sign
+          (cond
+            [(eq? c #\-)
+              (read-char p)
+              -1]
+            [(eq? c #\+)
+              (read-char p)
+              1]
+            [else
+              1]))
+
+        ; magnitude
+        (define read-digit!
+          (lambda ()
+            (define c (peek-char p))
+            (cond
+              [(digit? c)
+                (read-char p)
+                (set! num (+ (* 10 num) (- (char->integer c) (char->integer #\0))))
+                (read-digit!)]
+              [else
+                (void)])))
+
+        (read-digit!)
+        (assert-delimeter! (peek-char p))
+        (* num sign)))
+
+    ;; Main loop
+
+    (define read-loop
+      (lambda ()
+
+        ; read and branch
+
         (skip-until-token!)
         (define c (peek-char p))
-
-        ; branch by class
         (cond
           [(eof-object? c)
             (read-char p)
@@ -178,44 +295,65 @@
             (read-char p)
             ; special values
             (define c (peek-char p))
-            (error "read: unimplemented")]
+            (cond
+              [(eq? c #\t)
+                ; true
+                (read-char p)
+                #t]
+              [(eq? c #\f)
+                ; false
+                (read-char p)
+                #f]
+              [(eq? c #\\)
+                ; character
+                (read-char p)
+                (read-character)]
+              [(eq? c #\')
+                ; quoted syntax
+                (read-char p)
+                (list 'quote-syntax (read-loop))]
+              [(eq? c #\;)
+                ; datum comment
+                (read-char p)
+                (skip-until-token!)
+                (define c (peek-char p))
+                (assert-not-eof! c)
+                
+                ; read and ignore, then actually read
+                (read-loop)
+                (read-loop)]
+              [(eq? c #\|)
+                ; block comment
+                (read-char p)         
+                (skip-block-comment!)
+                (read-loop)]
+              [else
+                ; unknown
+                (error "read: unknown special character" c)])]
           [(digit-prefix? c)
             ; number
-
-            ; optional sign
-            (define num 0)
-            (define sign
-              (cond
-                [(eq? c #\-)
-                  (read-char p)
-                  -1]
-                [(eq? c #\+)
-                  (read-char p)
-                  1]
-                [else
-                  1]))
-
-            ; magnitude
-            (define read-digit!
-              (lambda ()
-                (define c (peek-char p))
-                (cond
-                  [(digit? c)
-                    (read-char p)
-                    (set! num (+ (* 10 num) (- (char->integer c) (char->integer #\0))))
-                    (read-digit!)]
-                  [else
-                    (void)])))
-            (read-digit!)
-
-            (assert-delimeter! (peek-char p))
-            (* num sign)]
+            (read-number c)]
           [(or (eq? c oparen) (eq? c obrack) (eq? c obrace))
+            ; pair
             (read-char p)
             (read-pair c)]
-          [(= (char->integer c) 39)
+          [(eq? c #\')
+            ; quoted form
             (read-char p)
             (list 'quote (read-loop))]
+          [(symbol-char? c)
+            ; symbol
+
+            (define read-symbol
+              (lambda (acc)
+                (define c (peek-char p))
+                (if (symbol-char? c)
+                    (read-symbol (cons (read-char p) acc))
+                    (reverse acc))))
+
+            (define sym-chars (read-symbol '()))
+            (assert-delimeter! (peek-char p))
+            (string->symbol (apply string sym-chars))]
           [else
             (error "read: unexpected input:" c)])))
 

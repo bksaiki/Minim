@@ -574,11 +574,34 @@ minim_object *string_proc(minim_object *args) {
         str[i] = minim_char(minim_car(args));
         args = minim_cdr(args);
     }
-
+    str[i] = '\0';
+    
     o = GC_alloc(sizeof(minim_string_object));
     o->type = MINIM_STRING_TYPE;
     o->value = str;
     return ((minim_object *) o);
+}
+
+minim_object *string_length_proc(minim_object *args) {
+    char *str = minim_string(minim_car(args));
+    return make_fixnum(strlen(str));
+}
+
+minim_object *string_ref_proc(minim_object *args) {
+    char *str;
+    long len, idx;
+
+    str = minim_string(minim_car(args));
+    idx = minim_fixnum(minim_cadr(args));
+    len = strlen(str);
+
+    if (idx >= len) {
+        fprintf(stderr, "string-ref: index out of bounds\n");
+        fprintf(stderr, " string: %s, length: %ld, index %ld\n", str, len, idx);
+        exit(1);
+    }
+
+    return make_char((int) str[idx]);
 }
 
 minim_object *syntax_e_proc(minim_object *args) {
@@ -1317,6 +1340,8 @@ void populate_env(minim_object *env) {
     add_procedure("<", number_lt_proc, 2, 2);
 
     add_procedure("string", string_proc, 0, ARG_MAX);
+    add_procedure("string-length", string_length_proc, 1, 1);
+    add_procedure("string-ref", string_ref_proc, 2, 2);
     
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
