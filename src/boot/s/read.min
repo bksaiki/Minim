@@ -278,6 +278,39 @@
         (assert-delimeter! (peek-char p))
         (* num sign)))
 
+    ; number reader
+    (define read-string
+      (lambda ()
+        (define loop
+          (lambda (acc)
+            (define c (peek-char p))
+
+            (cond
+              [(eof-object? c)
+                (error "read: non-terminated string literal")
+                (void)]
+              [(eq? c #\\)
+                ; escape character
+                (read-char p)
+                (define c (peek-char p))
+                (cond
+                  [(eq? c #\n)
+                    (read-char p)
+                    (loop (cons #\newline acc))]
+                  [(eq? c #\\)
+                    (read-char p)
+                    (loop (cons #\\ acc))]
+                  [else
+                    (error "read: unknown escape character" c)])]
+              [(eq? c #\")
+                (read-char p)
+                (reverse acc)]
+              [else
+                (read-char p)
+                (loop (cons c acc))])))
+
+        (loop '())))
+
     ;; Main loop
 
     (define read-loop
@@ -333,6 +366,12 @@
           [(digit-prefix? c)
             ; number
             (read-number c)]
+          [(eq? c #\")
+            ; string
+            (read-char p)
+            (define str-chars (read-string))
+            (assert-delimeter! (peek-char p))
+            (apply string str-chars)]
           [(or (eq? c oparen) (eq? c obrack) (eq? c obrace))
             ; pair
             (read-char p)
