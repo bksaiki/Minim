@@ -32,6 +32,9 @@ void minim_boot_init();
 minim_object *make_env();
 minim_object *eval_expr(minim_object *expr, minim_object *env);
 
+minim_object *to_syntax(minim_object *o);
+minim_object *strip_syntax(minim_object *o);
+
 minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
 void write_object2(FILE *out, minim_object *o, int quote, int display);

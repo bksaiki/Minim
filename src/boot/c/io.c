@@ -428,7 +428,7 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         break;
     case MINIM_SYNTAX_TYPE:
         fprintf(out, "#<syntax ");
-        write_object2(out, minim_syntax_e(o), 1, display);
+        write_object2(out, strip_syntax(o), 1, display);
         fputc('>', out);
         break;
 

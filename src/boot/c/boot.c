@@ -200,6 +200,41 @@ minim_object *copy_list(minim_object *xs) {
     return head;
 }
 
+// Recursively converts an object to syntax
+minim_object *to_syntax(minim_object *o) {
+    switch (o->type) {
+    case MINIM_SYNTAX_TYPE:
+        return o;
+    case MINIM_NULL_TYPE:
+    case MINIM_TRUE_TYPE:
+    case MINIM_FALSE_TYPE:
+    case MINIM_EOF_TYPE:
+    case MINIM_VOID_TYPE:
+    case MINIM_SYMBOL_TYPE:
+    case MINIM_FIXNUM_TYPE:
+    case MINIM_CHAR_TYPE:
+    case MINIM_STRING_TYPE:
+        return make_syntax(o, minim_false);
+    case MINIM_PAIR_TYPE:
+        return make_syntax(make_pair(to_syntax(minim_car(o)), to_syntax(minim_cdr(o))), minim_false);
+
+    default:
+        fprintf(stderr, "datum->syntax: cannot convert to syntax");
+        exit(1);
+    }
+}
+
+minim_object *strip_syntax(minim_object *o) {
+    switch (o->type) {
+    case MINIM_SYNTAX_TYPE:
+        return strip_syntax(minim_syntax_e(o));
+    case MINIM_PAIR_TYPE:
+        return make_pair(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
+    default:
+        return o;
+    }
+}
+
 long list_length(minim_object *xs) {
     minim_object *it = xs;
     long length = 0;
@@ -610,6 +645,10 @@ minim_object *syntax_e_proc(minim_object *args) {
 
 minim_object *syntax_loc_proc(minim_object *args) {
     return minim_syntax_loc(minim_car(args));
+}
+
+minim_object *to_syntax_proc(minim_object *args) {
+    return to_syntax(minim_car(args));
 }
 
 minim_object *eval_proc(minim_object *args) {
@@ -1345,6 +1384,7 @@ void populate_env(minim_object *env) {
     
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
+    add_procedure("datum->syntax", to_syntax_proc, 1, 1);
 
     add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
     add_procedure("null-environment", empty_environment_proc, 0, 0);
