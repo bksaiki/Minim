@@ -89,14 +89,9 @@
 ;           (loop rules))]))      
 ; ) ;; syntax-rules
 
-(define xforms '())
-
 (define expand
   (lambda (expr xforms)
     
-    (write expr)
-    (write-char #\newline)
-
     (define lookup-or-false
       (lambda (key)
         (define loop
@@ -133,7 +128,7 @@
              (define rib (cdr expr))
              (cond
                [(and (pair? rib) (symbol? (car rib)))
-                 (define xform-name (car expr))
+                (define xform-name (car rib))
                 (define rib (cdr rib))
                 (cond
                  [(and (pair? rib) (null? (cdr rib)))
@@ -148,4 +143,4 @@
           [else
            expr])))
 
-   (expand-top expr)))
+   (list (expand-top expr) xforms)))

@@ -10,10 +10,10 @@
 
 ;; Using old reader
 (load "base.min")
+(load "expand.min")
 (load "read.min")
 
 ;; Using new reader
-; (load "expand.min")
 ; (load "module.min")
 
 ; (define p (open-input-file "test.min"))

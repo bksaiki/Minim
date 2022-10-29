@@ -394,3 +394,27 @@
             (error "read: unexpected input:" c)])))
 
     (read-loop)))
+
+(define syntax->datum
+  (lambda (stx)
+    (define e (syntax-e stx))
+    (if (pair? e)
+        (cons (syntax->datum (car e))
+              (syntax->datum (cdr e)))
+        e)))
+
+(define load
+  (lambda (name)
+    (define p (open-input-file name))
+    
+    (define loop
+      (lambda ()
+        (define stx (read p))
+        (cond
+         [(eof-object? stx) (void)]
+         [else
+          (eval (syntax->datum stx))
+          (loop)])))
+
+    (loop)
+    (close-input-port p)))

@@ -730,15 +730,22 @@ minim_object *read_proc(minim_object *args) {
 }
 
 minim_object *read_char_proc(minim_object *args) {
-    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    return make_char(getc(in_p));
+    FILE *in_p;
+    char ch;
+    
+    in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    ch = getc(in_p);
+    return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *peek_char_proc(minim_object *args) {
-    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    int ch = getc(in_p);
+    FILE *in_p;
+    char ch;
+    
+    in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    ch = getc(in_p);
     ungetc(ch, in_p);
-    return make_char(ch);
+    return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *char_is_ready_proc(minim_object *args) {
