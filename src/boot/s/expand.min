@@ -6,7 +6,6 @@
 ;;;
 ;;;   Expander for syntax macros
 ;;;   
-;;; 
 
 ;; transformer generated as described in 
 ;; the appendix of the R4RS standard

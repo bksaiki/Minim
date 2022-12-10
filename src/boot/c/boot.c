@@ -161,6 +161,12 @@ minim_object *make_syntax(minim_object *e, minim_object *loc) {
 //  Extra functions
 //
 
+// Returns true if the object is a list
+int is_list(minim_object *x) {
+    while (minim_is_pair(x)) x = minim_cdr(x);
+    return minim_is_null(x);
+}
+
 // Makes an association list.
 // Unsafe: only iterates on `xs`.
 minim_object *make_assoc(minim_object *xs, minim_object *ys) {
@@ -816,7 +822,7 @@ minim_object *error_proc(minim_object *args) {
 }
 
 //
-//  Runtime Error / Assertions
+//  Exceptions
 //
 
 static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
@@ -860,6 +866,27 @@ static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual
     exit(1);
 }
 
+static void bad_syntax_exn(minim_object *expr) {
+    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
+    fprintf(stderr, " at: ");
+    write_object2(stderr, expr, 1, 0);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+static void bad_type_exn(const char *type, minim_object *x) {
+    fprintf(stderr, "apply: type violation\n");
+    fprintf(stderr, " expected: %s\n", type);
+    fprintf(stderr, " received: ");
+    write_object(stderr, x);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+//
+//  Runtime Error
+//
+
 static void check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
     int min_arity, max_arity, argc;
 
@@ -887,14 +914,6 @@ static void check_proc_arity(proc_arity *arity, minim_object *args, const char *
 //
 //  Syntax check
 //
-
-static void bad_syntax_exn(minim_object *expr) {
-    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
-    fprintf(stderr, " at: ");
-    write_object2(stderr, expr, 1, 0);
-    fputc('\n', stderr);
-    exit(1);
-}
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum>)
@@ -1125,13 +1144,29 @@ static minim_object *let_vals(minim_object *bindings) {
 }
 
 static minim_object *apply_args(minim_object *args) {
-    if (minim_is_null(args)) {
-        return minim_null;
-    } else if (minim_is_null(minim_cdr(args))) {
+    minim_object *head, *tail, *it;
+
+    if (minim_is_null(minim_cdr(args))) {
+        if (!is_list(minim_car(args)))
+            bad_type_exn("list?", minim_car(args));
+
         return minim_car(args);
-    } else {
-        return make_pair(minim_car(args), apply_args(minim_cdr(args)));
     }
+
+    head = make_pair(minim_car(args), minim_null);
+    tail = head;
+    it = args;
+
+    while (!minim_is_null(minim_cdr(it = minim_cdr(it)))) {
+        minim_cdr(tail) = make_pair(minim_car(it), minim_null);
+        tail = minim_cdr(tail);
+    }
+
+    if (!is_list(minim_car(it)))
+        bad_type_exn("list?", minim_car(it));
+
+    minim_cdr(tail) = minim_car(it);
+    return head;
 }
 
 static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
@@ -1398,7 +1433,7 @@ void populate_env(minim_object *env) {
     add_procedure("environment", environment_proc, 0, 0);
 
     add_procedure("eval", eval_proc, 1, 2);
-    add_procedure("apply", apply_proc, 1, ARG_MAX);
+    add_procedure("apply", apply_proc, 2, ARG_MAX);
     add_procedure("void", void_proc, 0, 0);
 
     add_procedure("current-input-port", current_input_port_proc, 0, 0);
