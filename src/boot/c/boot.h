@@ -9,7 +9,7 @@
 #include "../minim.h"
 #include "intern.h"
 
-#define MINIM_BOOT_VERSION      "0.1.0"
+#define MINIM_BOOT_VERSION      "0.4.0"
 
 // Limits
 
