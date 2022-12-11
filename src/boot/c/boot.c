@@ -185,7 +185,7 @@ char *get_file_dir(const char *realpath) {
 
     for (i = strlen(realpath) - 1; i >= 0 && realpath[i] != '/'; --i);
     if (i < 0) {
-        fprintf(stderr, "coult not resolve directory of path %s\n", realpath);
+        fprintf(stderr, "could not resolve directory of path %s\n", realpath);
         exit(1);
     }
 
@@ -482,8 +482,8 @@ static void bad_syntax_exn(minim_object *expr) {
     exit(1);
 }
 
-static void bad_type_exn(const char *type, minim_object *x) {
-    fprintf(stderr, "apply: type violation\n");
+static void bad_type_exn(const char *name, const char *type, minim_object *x) {
+    fprintf(stderr, "%s: type violation\n", name);
     fprintf(stderr, " expected: %s\n", type);
     fprintf(stderr, " received: ");
     write_object(stderr, x);
@@ -843,6 +843,10 @@ minim_object *environment_proc(minim_object *args) {
     return make_env();
 }
 
+minim_object *extend_environment_proc(minim_object *args) {
+    return make_pair(minim_null, global_env);
+}
+
 minim_object *current_input_port_proc(minim_object *args) {
     return input_port;
 }
@@ -995,7 +999,7 @@ minim_object *current_directory_proc(minim_object *args) {
         // setter
         path = minim_car(args);
         if (!minim_is_string(path))
-            bad_type_exn("string?", path);
+            bad_type_exn("current-directory", "string?", path);
 
         set_current_dir(minim_string(path));
         return minim_void;
@@ -1299,7 +1303,7 @@ static minim_object *apply_args(minim_object *args) {
 
     if (minim_is_null(minim_cdr(args))) {
         if (!is_list(minim_car(args)))
-            bad_type_exn("list?", minim_car(args));
+            bad_type_exn("apply", "list?", minim_car(args));
 
         return minim_car(args);
     }
@@ -1314,7 +1318,7 @@ static minim_object *apply_args(minim_object *args) {
     }
 
     if (!is_list(minim_car(it)))
-        bad_type_exn("list?", minim_car(it));
+        bad_type_exn("apply", "list?", minim_car(it));
 
     minim_cdr(tail) = minim_car(it);
     return head;
@@ -1598,6 +1602,7 @@ void populate_env(minim_object *env) {
     add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
     add_procedure("null-environment", empty_environment_proc, 0, 0);
     add_procedure("environment", environment_proc, 0, 0);
+    add_procedure("extend-environment", extend_environment_proc, 1, 1);
 
     add_procedure("eval", eval_proc, 1, 2);
     add_procedure("apply", apply_proc, 2, ARG_MAX);

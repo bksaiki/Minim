@@ -14,16 +14,18 @@
 
 ;; Module loader
 (define (load name)
-
-  (write name)
-  (write (current-directory))
-  (write-char #\newline)
+  ;; current working directory
+  (define cwd (current-directory))
 
   ;; resolve path
   (define path
     (if (is-absolute-path? name)
         name
-        (string-append (current-directory) "/" name)))
+        (build-path cwd name)))
+  (define new-cwd (car (split-path path)))
+
+  ;; exports
+  (define exported '())
 
   ;; read phase
   (define ($read)
@@ -39,25 +41,48 @@
 
   ;; import phase
   (define ($import exprs)
-    (let loop ([exprs exprs] [non-imports '()])
+    (let loop ([exprs exprs] [evalable '()])
       (cond
         [(null? exprs)
-         (reverse non-imports)]
+         (reverse evalable)]
         [else
          (define expr (syntax-e (car exprs)))
          (cond
            [(and (pair? expr) (eq? (syntax-e (car expr)) 'import))
             (let loop2 ([imports (cdr expr)])
+              (define imports* (syntax-e imports))
               (cond
-                [(null? imports)
-                 (loop (cdr exprs))]
+                [(null? imports*)
+                 (loop (cdr exprs) evalable)]
+                [(pair? imports*)
+                 (define maybe-import (syntax-e (car imports*)))
+                 (cond
+                   [(string? maybe-import)
+                    (define path (build-path new-cwd maybe-import))
+                    (load path)
+                    (loop2 (cdr imports*))]
+                   [else
+                    (error 'import "bad syntax")])]
                 [else
-                 (define imports* (syntax-e imports))
-                 (define path (string-append (current-directory) "/" (syntax-e (car imports*))))
-                 (load path)
-                 (loop2 (cdr imports*))]))]
+                 (error 'import "bad syntax")]))]
+           [(and (pair? expr) (eq? (syntax-e (car expr)) 'export))
+            (let loop2 ([exports (cdr expr)])
+              (define exports* (syntax-e exports))
+              (cond
+                [(null? exports*)
+                 (loop (cdr exprs) evalable)]
+                [(pair? exports*)
+                 (define maybe-export (syntax-e (car exports*)))
+                 (cond
+                   [(symbol? maybe-export)
+                    (set! exported (cons maybe-export exported))
+                    (loop2 (cdr exports*))]
+                   [else
+                    (error 'export "bad syntax")])]
+                [else
+                 (error 'import "bad syntax")]))]
            [else
-            (loop (cdr exprs) (cons (car exprs) non-imports))])])))
+            (loop (cdr exprs) (cons (car exprs) evalable))])])))
 
   ;; expand phase
   (define ($expand exprs)
@@ -72,10 +97,11 @@
 
   ;; eval phase
   (define ($eval exprs)
+    (define env (extend-environment (interaction-environment)))
     (let loop ([exprs exprs])
       (if (null? exprs)
-          (void)
-          (let ([result (eval (syntax->datum (car exprs)))])
+          env
+          (let ([result (eval (syntax->datum (car exprs)) env)])
             (cond
               [(void? result)
                (loop (cdr exprs))]
@@ -84,13 +110,23 @@
                (write-char #\newline)
                (loop (cdr exprs))])))))
 
-  ;; apply phases
+  ;; apply non-eval phases
   (define raw-exprs ($read))
   (define non-import-exprs ($import raw-exprs))
   (define expanded-exprs ($expand non-import-exprs))
-  ($eval expanded-exprs)
+
+  ;; evaluate
+  (current-directory new-cwd)
+  (define env ($eval expanded-exprs))
+  (current-directory cwd)
 
   ;; update module table
+  ; (let ([exported exported])
+  ;   (cond
+  ;     [(null? exported) (void)]
+  ;     [else
+  ;      (define export (car exported))
+  ;      (
 
   ;; and done
   (void))

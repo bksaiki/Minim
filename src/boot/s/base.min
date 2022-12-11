@@ -91,6 +91,11 @@
 
 ;; strings
 
+(define (string-empty? str)
+  (if (string? str)
+      (= (string-length str) 0)
+      (error 'string "expected string?" str)))
+
 (define (string-append . strs)
   (define len (apply + (map string-length strs)))
   (define s (make-string len))
@@ -107,6 +112,79 @@
             (string-set! s i (string-ref str n))
             (loop2 (+ i 1) (+ n 1))]))])))
  
+(define (substring str start end)
+  (define len (string-length str))
+  (cond
+    [(not (string? str)) (error 'substring "expected string? for" str)]
+    [(not (number? start)) (error 'substring "expected number? for" start)]
+    [(not (number? end)) (error 'substring "expected number? for" end)]
+    [(> end len) (error 'substring "index out of bounds" end)]
+    [(> start end) (error 'substring "invalid bounds" start end)]
+    [(= start end) ""]
+    [else
+     (define sstr (make-string (- end start)))
+     (let loop ([i 0] [n start])
+       (cond
+         [(= n end) sstr]
+         [else
+          (string-set! sstr i (string-ref str n))
+          (loop (+ i 1) (+ n 1))]))]))
+
+;; paths
+
 (define (is-absolute-path? path)
   (and (> (string-length path) 0)
-       (eq? (string-ref path 0) "/")))
+       (eq? (string-ref path 0) #\/)))
+
+;; paths are unverified
+(define (build-path base . subpaths)
+  (define (string-terminates-with-/? str)
+    (define len (string-length str))
+    (eq? (string-ref str (- len 1)) #\/))
+  (define paths
+    (let loop ([paths subpaths] [accum (list base)])
+      (cond
+        [(null? paths) (reverse accum)]
+        [(string-empty? (car paths)) (loop (cdr paths) accum)]
+        [(string-terminates-with-/? (car accum)) (loop (cdr paths) (cons (car paths) accum))]
+        [else (loop (cdr paths) (cons (car paths) (cons "/" accum)))])))
+  (apply string-append paths))
+
+(define (path->list path)
+  (if (string? path)
+      (void)
+      (error 'path->list "expected string?" path))
+  (let loop ([path path] [accum '()])
+    (cond
+      [(string-empty? path)
+       (reverse accum)]
+      [else
+       (define len (string-length path))
+       (let loop2 ([i 0])
+         (cond
+           [(= i len)
+            (loop "" (cons path accum))]
+           [(eq? (string-ref path i) #\/)
+            (cond
+              [(= i 0)
+               ; corner case for unix paths
+               (loop (substring path 1 len) (cons "/" accum))]
+              [else
+               (define elem (substring path 0 i))
+               (define rest (substring path (+ i 1) len))
+               (loop rest (cons elem accum))])]
+           [else
+            (loop2 (+ i 1))]))])))
+
+(define (split-path path)
+  (if (string? path)
+      (void)
+      (error 'split-path "expected string?" path))
+  (define path-elems (reverse (path->list path)))
+  (cond
+    [(pair? (cdr path-elems))
+     (define end (car path-elems))
+     (define rest (cdr path-elems))
+     (cons (apply build-path (reverse rest)) end)]
+    [else
+     (cons #f (car path-elems))]))
