@@ -12,6 +12,29 @@
 
 #include "../gc/gc.h"
 
+// Arity
+
+#define ARG_MAX     32767
+
+typedef enum {
+    PROC_ARITY_FIXED,
+    PROC_ARITY_UNBOUNDED,
+    PROC_ARITY_RANGE
+} proc_arity_type;
+
+typedef struct proc_arity {
+    proc_arity_type type;
+    short arity_min, arity_max;
+} proc_arity;
+
+#define proc_arity_same_type(p, t)      ((p)->type == (t))
+#define proc_arity_is_fixed(p)          (proc_arity_same_type(p, PROC_ARITY_FIXED))
+#define proc_arity_is_unbounded(p)      (proc_arity_same_type(p, PROC_ARITY_UNBOUNDED))
+#define proc_arity_is_range(p)          (proc_arity_same_type(p, PROC_ARITY_RANGE))
+
+#define proc_arity_min(p)               ((p)->arity_min)
+#define proc_arity_max(p)               ((p)->arity_max)
+
 // Object types
 
 typedef enum {
@@ -71,14 +94,18 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
+    struct proc_arity arity;
     minim_object *(*fn)(minim_object *args);
+    char *name;
 } minim_prim_proc_object;
 
 typedef struct {
     minim_object_type type;
+    struct proc_arity arity;
     minim_object *args;
     minim_object *body;
     minim_object *env;
+    char *name;
 } minim_closure_proc_object;
 
 typedef struct {
@@ -139,10 +166,16 @@ extern minim_object *minim_void;
 #define minim_fixnum(x)         (((minim_fixnum_object *) (x))->value)
 #define minim_string(x)         (((minim_string_object *) (x))->value)
 #define minim_char(x)           (((minim_char_object *) (x))->value)
+
+#define minim_prim_proc_name(x) (((minim_prim_proc_object *) (x))->name)
+#define minim_prim_arity(x)     (((minim_prim_proc_object *) (x))->arity)
 #define minim_prim_proc(x)      (((minim_prim_proc_object *) (x))->fn)
+
 #define minim_closure_args(x)   (((minim_closure_proc_object *) (x))->args)
 #define minim_closure_body(x)   (((minim_closure_proc_object *) (x))->body)
 #define minim_closure_env(x)    (((minim_closure_proc_object *) (x))->env)
+#define minim_closure_name(x)   (((minim_closure_proc_object *) (x))->name)
+#define minim_closure_arity(x)  (((minim_closure_proc_object *) (x))->arity)
 
 #define minim_port_is_ro(x)     (((minim_port_object *) (x))->flags & MINIM_PORT_READ_ONLY)
 #define minim_port_is_open(x)   (((minim_port_object *) (x))->flags & MINIM_PORT_OPEN)
@@ -172,8 +205,8 @@ minim_object *make_fixnum(long v);
 minim_object *make_symbol(const char *s);
 minim_object *make_string(const char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
-minim_object *make_prim_proc(minim_prim_proc_t proc);
-minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env);
+minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
+minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
 minim_object *make_output_port(FILE *stream);
 minim_object *make_syntax(minim_object *e, minim_object *loc);

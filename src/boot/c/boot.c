@@ -85,19 +85,45 @@ minim_object *make_pair(minim_object *car, minim_object *cdr) {
     return ((minim_object *) o);
 }
 
-minim_object *make_prim_proc(minim_prim_proc_t proc) {
+static void set_arity(proc_arity *arity, short min_arity, short max_arity) {
+    if (min_arity > ARG_MAX || max_arity > ARG_MAX) {
+        fprintf(stderr, "primitive procedure intialized with too large an arity: [%d, %d]", min_arity, max_arity);
+        exit(1);
+    } else {
+        arity->arity_min = min_arity;
+        arity->arity_max = max_arity;
+        if (min_arity == max_arity)
+            arity->type = PROC_ARITY_FIXED;
+        else if (max_arity == ARG_MAX)
+            arity->type = PROC_ARITY_UNBOUNDED;
+        else
+            arity->type = PROC_ARITY_RANGE;
+    }
+}
+
+minim_object *make_prim_proc(minim_prim_proc_t proc,
+                             char *name,
+                             short min_arity, short max_arity) {
     minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
     o->type = MINIM_PRIM_PROC_TYPE;
     o->fn = proc;
+    o->name = name;
+    set_arity(&o->arity, min_arity, max_arity);
+
     return ((minim_object *) o);
 }
 
-minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env) {
+minim_object *make_closure_proc(minim_object *args,
+                                minim_object *body,
+                                minim_object *env,
+                                short min_arity, short max_arity) {
     minim_closure_proc_object *o = GC_alloc(sizeof(minim_closure_proc_object));
     o->type = MINIM_CLOSURE_PROC_TYPE;
     o->args = args;
     o->body = body;
     o->env = env;
+    o->name = NULL;
+    set_arity(&o->arity, min_arity, max_arity);
     return ((minim_object *) o);
 }
 
@@ -135,6 +161,12 @@ minim_object *make_syntax(minim_object *e, minim_object *loc) {
 //  Extra functions
 //
 
+// Returns true if the object is a list
+int is_list(minim_object *x) {
+    while (minim_is_pair(x)) x = minim_cdr(x);
+    return minim_is_null(x);
+}
+
 // Makes an association list.
 // Unsafe: only iterates on `xs`.
 minim_object *make_assoc(minim_object *xs, minim_object *ys) {
@@ -152,6 +184,61 @@ minim_object *make_assoc(minim_object *xs, minim_object *ys) {
     }
 
     return assoc;
+}
+
+// Copies a list.
+// Unsafe: does not check if `xs` is a list.
+minim_object *copy_list(minim_object *xs) {
+    minim_object *head, *tail, *it;
+
+    if (minim_is_null(xs))
+        return minim_null;
+
+    head = make_pair(minim_car(xs), minim_null);
+    tail = head;
+    it = xs;
+
+    while (!minim_is_null(it = minim_cdr(it))) {
+        minim_cdr(tail) = make_pair(minim_car(it), minim_null);
+        tail = minim_cdr(tail);
+    }
+    
+    return head;
+}
+
+// Recursively converts an object to syntax
+minim_object *to_syntax(minim_object *o) {
+    switch (o->type) {
+    case MINIM_SYNTAX_TYPE:
+        return o;
+    case MINIM_NULL_TYPE:
+    case MINIM_TRUE_TYPE:
+    case MINIM_FALSE_TYPE:
+    case MINIM_EOF_TYPE:
+    case MINIM_VOID_TYPE:
+    case MINIM_SYMBOL_TYPE:
+    case MINIM_FIXNUM_TYPE:
+    case MINIM_CHAR_TYPE:
+    case MINIM_STRING_TYPE:
+        return make_syntax(o, minim_false);
+    case MINIM_PAIR_TYPE:
+        return make_syntax(make_pair(to_syntax(minim_car(o)), to_syntax(minim_cdr(o))), minim_false);
+
+    default:
+        fprintf(stderr, "datum->syntax: cannot convert to syntax");
+        exit(1);
+    }
+}
+
+minim_object *strip_syntax(minim_object *o) {
+    switch (o->type) {
+    case MINIM_SYNTAX_TYPE:
+        return strip_syntax(minim_syntax_e(o));
+    case MINIM_PAIR_TYPE:
+        return make_pair(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
+    default:
+        return o;
+    }
 }
 
 long list_length(minim_object *xs) {
@@ -178,8 +265,7 @@ int minim_is_eq(minim_object *a, minim_object *b) {
     if (a->type != b->type)
         return 0;
 
-    switch (a->type)
-    {
+    switch (a->type) {
     case MINIM_FIXNUM_TYPE:
         return minim_fixnum(a) == minim_fixnum(b);
 
@@ -220,8 +306,21 @@ int minim_is_equal(minim_object *a, minim_object *b) {
 //  frames       ::= ((<var0> . <val1>) (<var1> . <val1>) ...)
 //
 
+#define SET_NAME_IF_CLOSURE(name, val) {                    \
+    if (minim_is_closure_proc(val) &&                       \
+       minim_closure_name(val) == NULL) {                   \
+        minim_closure_name(val) = minim_symbol(name);       \
+    }                                                       \
+}
+
 minim_object *make_frame(minim_object *vars, minim_object *vals) {
     return make_assoc(vars, vals);
+}
+
+void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val) {
+    minim_object *frame = minim_car(env);
+    minim_car(env) = make_pair(make_pair(var, val), frame);
+    SET_NAME_IF_CLOSURE(var, val);
 }
 
 minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val) {
@@ -231,11 +330,13 @@ minim_object *env_define_var(minim_object *env, minim_object *var, minim_object 
         minim_object *frame_val = minim_cdar(frame);
         if (var == frame_var) {
             minim_cdar(frame) = val;
+            SET_NAME_IF_CLOSURE(var, val);
             return frame_val;
         }
     }
 
     minim_car(env) = make_pair(make_pair(var, val), frame);
+    SET_NAME_IF_CLOSURE(var, val);
     return NULL;
 }
 
@@ -247,6 +348,7 @@ minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *va
             minim_object *frame_val = minim_cdar(frame);
             if (var == frame_var) {
                 minim_cdar(frame) = val;
+                SET_NAME_IF_CLOSURE(var, val);
                 return frame_val;
             }
 
@@ -513,11 +615,34 @@ minim_object *string_proc(minim_object *args) {
         str[i] = minim_char(minim_car(args));
         args = minim_cdr(args);
     }
-
+    str[i] = '\0';
+    
     o = GC_alloc(sizeof(minim_string_object));
     o->type = MINIM_STRING_TYPE;
     o->value = str;
     return ((minim_object *) o);
+}
+
+minim_object *string_length_proc(minim_object *args) {
+    char *str = minim_string(minim_car(args));
+    return make_fixnum(strlen(str));
+}
+
+minim_object *string_ref_proc(minim_object *args) {
+    char *str;
+    long len, idx;
+
+    str = minim_string(minim_car(args));
+    idx = minim_fixnum(minim_cadr(args));
+    len = strlen(str);
+
+    if (idx >= len) {
+        fprintf(stderr, "string-ref: index out of bounds\n");
+        fprintf(stderr, " string: %s, length: %ld, index %ld\n", str, len, idx);
+        exit(1);
+    }
+
+    return make_char((int) str[idx]);
 }
 
 minim_object *syntax_e_proc(minim_object *args) {
@@ -526,6 +651,10 @@ minim_object *syntax_e_proc(minim_object *args) {
 
 minim_object *syntax_loc_proc(minim_object *args) {
     return minim_syntax_loc(minim_car(args));
+}
+
+minim_object *to_syntax_proc(minim_object *args) {
+    return to_syntax(minim_car(args));
 }
 
 minim_object *eval_proc(minim_object *args) {
@@ -607,15 +736,22 @@ minim_object *read_proc(minim_object *args) {
 }
 
 minim_object *read_char_proc(minim_object *args) {
-    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    return make_char(getc(in_p));
+    FILE *in_p;
+    char ch;
+    
+    in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    ch = getc(in_p);
+    return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *peek_char_proc(minim_object *args) {
-    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    int ch = getc(in_p);
+    FILE *in_p;
+    char ch;
+    
+    in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
+    ch = getc(in_p);
     ungetc(ch, in_p);
-    return make_char(ch);
+    return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *char_is_ready_proc(minim_object *args) {
@@ -676,13 +812,273 @@ minim_object *load_proc(minim_object *args) {
 
 minim_object *error_proc(minim_object *args) {
     while (!minim_is_null(args)) {
-        write_object(stderr, minim_car(args));
+        write_object2(stderr, minim_car(args), 1, 1);
         fprintf(stderr, " ");
         args = minim_cdr(args);
     }
 
     printf("\n");
     exit(1);
+}
+
+//
+//  Exceptions
+//
+
+static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
+    if (name != NULL)
+        fprintf(stderr, "%s: ", name);
+    fprintf(stderr, "arity mismatch\n");
+
+    if (proc_arity_is_fixed(arity)) {
+        switch (proc_arity_min(arity)) {
+        case 0:
+            fprintf(stderr, " expected 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected %d arguments, received %d\n",
+                            proc_arity_min(arity), actual);
+        }
+    } else if (proc_arity_is_unbounded(arity)) {
+        switch (proc_arity_min(arity)) {
+        case 0:
+            fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected at least 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected at least %d arguments, received %d\n",
+                            proc_arity_min(arity), actual);
+        }
+    } else {
+        fprintf(stderr, " expected between %d and %d arguments, received %d\n",
+                        proc_arity_min(arity), proc_arity_max(arity), actual);
+    }
+
+    exit(1);
+}
+
+static void bad_syntax_exn(minim_object *expr) {
+    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
+    fprintf(stderr, " at: ");
+    write_object2(stderr, expr, 1, 0);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+static void bad_type_exn(const char *type, minim_object *x) {
+    fprintf(stderr, "apply: type violation\n");
+    fprintf(stderr, " expected: %s\n", type);
+    fprintf(stderr, " received: ");
+    write_object(stderr, x);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+//
+//  Runtime Error
+//
+
+static void check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
+    int min_arity, max_arity, argc;
+
+    min_arity = proc_arity_min(arity);
+    max_arity = proc_arity_max(arity);
+    argc = 0;
+
+    while (!minim_is_null(args)) {
+        if (argc >= max_arity)
+            arity_mismatch_exn(name, arity, max_arity + list_length(args));
+        args = minim_cdr(args);
+        ++argc;
+    }
+
+    if (argc < min_arity)
+        arity_mismatch_exn(name, arity, argc);
+}
+
+#define check_prim_proc_arity(prim, args)   \
+    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
+
+#define check_closure_proc_arity(prim, args)    \
+    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
+
+//
+//  Syntax check
+//
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum>)
+static void check_1ary_syntax(minim_object *expr) {
+    minim_object *rest = minim_cdr(expr);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> <datum>)
+static void check_2ary_syntax(minim_object *expr) {
+    minim_object *rest;
+    
+    rest = minim_cdr(expr);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> <datum> <datum>)
+static void check_3ary_syntax(minim_object *expr) {
+    minim_object *rest;
+    
+    rest = minim_cdr(expr);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <symbol> <datum>)
+static void check_define(minim_object *expr) {
+    minim_object *rest;
+    
+    rest = minim_cdr(expr);
+    if (!minim_is_pair(rest) || !minim_is_symbol(minim_car(rest)))
+        bad_syntax_exn(expr);
+
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(cond . <???>)`
+// Check: `expr` must be `(cond [<test> <clause> ...] ...)`
+// Does not check if each `<clause>` is an expression.
+// Does not check if each `<clause> ...` forms a list.
+// Checks that only `else` appears in the tail position
+static void check_cond(minim_object *expr) {
+    minim_object *rest, *datum;
+
+    rest = minim_cdr(expr);
+    while (minim_is_pair(rest)) {
+        datum = minim_car(rest);
+        if (!minim_is_pair(datum) || !minim_is_pair(minim_cdr(datum)))
+            bad_syntax_exn(expr);
+
+        datum = minim_car(datum);
+        if (minim_is_symbol(datum) &&
+            minim_car(datum) == else_symbol &&
+            !minim_is_null(minim_cdr(rest))) {
+            fprintf(stderr, "cond: else clause must be last");
+            fprintf(stderr, " at: ");
+            write_object2(stderr, expr, 1, 0);
+            fputc('\n', stderr);
+            exit(1);
+        }
+
+        rest = minim_cdr(rest);
+    }
+
+    if (!minim_is_null(rest))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(let . <???>)`
+// Check: `expr` must be `(let ([<var> <val>] ...) <body> ...)`
+// Does not check if each `<body>` is an expression.
+// Does not check if `<body> ...` forms a list.
+static void check_let(minim_object *expr) {
+    minim_object *bindings, *bind;
+    
+    bindings = minim_cdr(expr);
+    if (!minim_is_pair(bindings) || !minim_is_pair(minim_cdr(bindings)))
+        bad_syntax_exn(expr);
+    
+    bindings = minim_car(bindings);
+    while (minim_is_pair(bindings)) {
+        bind = minim_car(bindings);
+        if (!minim_is_pair(bind) || !minim_is_symbol(minim_car(bind)))
+            bad_syntax_exn(expr);
+
+        bind = minim_cdr(bind);
+        if (!minim_is_pair(bind) || !minim_is_null(minim_cdr(bind)))
+            bad_syntax_exn(expr);
+
+        bindings = minim_cdr(bindings);
+    }
+
+    if (!minim_is_null(bindings))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(let . <???>)`
+// Check: `expr` must be `(let <name> ([<var> <val>] ...) <body> ...)`
+// Just check that <name> is a symbol and then call
+// `check_loop` starting at (<name> ...)
+static void check_let_loop(minim_object *expr) {
+    if (!minim_is_pair(minim_cdr(expr)) && !minim_is_symbol(minim_cadr(expr)))
+        bad_syntax_exn(expr);
+    check_let(minim_cdr(expr));
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> ...)`
+static void check_begin(minim_object *expr) {
+    minim_object *rest = minim_cdr(expr);
+
+    while (minim_is_pair(rest))
+        rest = minim_cdr(rest);
+
+    if (!minim_is_null(rest))
+        bad_syntax_exn(expr);
+}
+
+static void check_lambda(minim_object *expr, short *min_arity, short *max_arity) {
+    minim_object *args = minim_cadr(expr);
+    int argc = 0;
+
+    while (minim_is_pair(args)) {
+        if (!minim_is_symbol(minim_car(args))) {
+            fprintf(stderr, "expected a identifier for an argument:\n ");
+            write_object(stderr, expr);
+            fputc('\n', stderr);
+            exit(1);
+        }
+
+        args = minim_cdr(args);
+        ++argc;
+    }
+
+    if (minim_is_null(args)) {
+        *min_arity = argc;
+        *max_arity = argc;
+    } else if (minim_is_symbol(args)) {
+        *min_arity = argc;
+        *max_arity = ARG_MAX;
+    } else {
+        fprintf(stderr, "expected an identifier for the rest argument:\n ");
+        write_object(stderr, expr);
+        fputc('\n', stderr);
+        exit(1);
+    }
 }
 
 //
@@ -757,29 +1153,103 @@ static minim_object *let_vals(minim_object *bindings) {
             make_pair(minim_car(minim_cdar(bindings)), let_vals(minim_cdr(bindings))));
 }
 
+// (define (<name> . <formals>) . <body>)
+// =>
+// (define <name> (lambda <formals> . <body>))
+static minim_object *expand_define(minim_object *define) {
+    minim_object *name, *formals, *body;
+
+    name = minim_car(minim_cadr(define));
+    formals = minim_cdr(minim_cadr(define));
+    body = minim_cddr(define);
+
+    return make_pair(define_symbol,
+           make_pair(name,
+           make_pair(
+                make_pair(lambda_symbol,
+                make_pair(formals,
+                body)),
+           minim_null)));
+}
+
+// Hacky expansion: ideally we want a letrec
+//
+// (let <name> ((<var> <val>) ...) . <body>)
+// =>
+// (let ()
+//   (define <name> (lambda (<var> ...) . <body>))
+//   (<name> <val> ...))
+static minim_object *expand_let_loop(minim_object *let) {
+    minim_object *name, *formals, *vals, *body;
+
+    name = minim_cadr(let);
+    formals = let_vars(minim_car(minim_cddr(let)));
+    vals = let_vals(minim_car(minim_cddr(let)));
+    body = minim_cdr(minim_cddr(let));
+
+    return make_pair(let_symbol,
+           make_pair(minim_null,
+           make_pair(
+                make_pair(define_symbol,
+                make_pair(name,
+                make_pair(
+                        make_pair(lambda_symbol,
+                        make_pair(formals,
+                        body)),
+                minim_null))),
+           make_pair(
+                make_pair(name,
+                vals),
+           minim_null))));
+}
+
 static minim_object *apply_args(minim_object *args) {
-    if (minim_is_null(args)) {
-        return minim_null;
-    } else if (minim_is_null(minim_cdr(args))) {
+    minim_object *head, *tail, *it;
+
+    if (minim_is_null(minim_cdr(args))) {
+        if (!is_list(minim_car(args)))
+            bad_type_exn("list?", minim_car(args));
+
         return minim_car(args);
-    } else {
-        return make_pair(minim_car(args), apply_args(minim_cdr(args)));
     }
+
+    head = make_pair(minim_car(args), minim_null);
+    tail = head;
+    it = args;
+
+    while (!minim_is_null(minim_cdr(it = minim_cdr(it)))) {
+        minim_cdr(tail) = make_pair(minim_car(it), minim_null);
+        tail = minim_cdr(tail);
+    }
+
+    if (!is_list(minim_car(it)))
+        bad_type_exn("list?", minim_car(it));
+
+    minim_cdr(tail) = minim_car(it);
+    return head;
 }
 
 static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
-    if (minim_is_null(exprs)) {
+    minim_object *head, *tail, *it;
+
+    if (minim_is_null(exprs))
         return minim_null;
-    } else {
-        return make_pair(eval_expr(minim_car(exprs), env),
-                         eval_exprs(minim_cdr(exprs), env));
+
+    head = make_pair(eval_expr(minim_car(exprs), env), minim_null);
+    tail = head;
+    it = exprs;
+
+    while (!minim_is_null(it = minim_cdr(it))) {
+        minim_cdr(tail) = make_pair(eval_expr(minim_car(it), env), minim_null);
+        tail = minim_cdr(tail);
     }
+    
+    return head;
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
-    minim_object *proc;
-    minim_object *args;
-    minim_object *result;
+    minim_object *proc, *args, *result;
+    short min_arity, max_arity;
 
     // write_object(stdout, expr);
     // printf("\n");
@@ -796,23 +1266,43 @@ loop:
         // variable
         return env_lookup_var(env, expr);
     } else if (is_quoted(expr)) {
+        check_1ary_syntax(expr);
         return minim_cadr(expr);
     } else if (is_syntax(expr) || is_quoted_syntax(expr)) {
+        check_1ary_syntax(expr);
         return make_syntax(minim_cadr(expr), minim_false);
     } else if (is_syntax_loc(expr)) {
+        check_2ary_syntax(expr);
         return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
     } else if (is_assignment(expr)) {
+        check_define(expr);
         env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
         return minim_void;
     } else if (is_definition(expr)) {
-        env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+        if (minim_is_pair(minim_cdr(expr)) && minim_is_pair(minim_cadr(expr))) {
+            // define procedure form
+            expr = expand_define(expr);
+            goto loop;
+        } else {
+            check_define(expr);
+            env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+        }
         return minim_void;
     } else if (is_let(expr)) {
-        args = eval_exprs(let_vals(minim_cadr(expr)), env);
-        env = extend_env(let_vars(minim_cadr(expr)), args, env);
-        expr = make_pair(begin_symbol, (minim_cddr(expr)));
-        goto loop;
+        if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
+            // let loop form
+            check_let_loop(expr);
+            expr = expand_let_loop(expr);
+            goto loop;
+        } else {
+            check_let(expr);
+            args = eval_exprs(let_vals(minim_cadr(expr)), env);
+            env = extend_env(let_vars(minim_cadr(expr)), args, env);
+            expr = make_pair(begin_symbol, (minim_cddr(expr)));
+            goto loop;
+        }
     } else if (is_if(expr)) {
+        check_3ary_syntax(expr);
         if (!minim_is_false(eval_expr(minim_cadr(expr), env)))
             expr = minim_car(minim_cddr(expr));
         else
@@ -820,6 +1310,7 @@ loop:
 
         goto loop;
     } else if (is_cond(expr)) {
+        check_cond(expr);
         expr = minim_cdr(expr);
         while (!minim_is_null(expr)) {
             if (minim_caar(expr) == else_symbol) {
@@ -838,18 +1329,27 @@ loop:
 
         return minim_void;
     } else if (is_lambda(expr)) {
+        check_lambda(expr, &min_arity, &max_arity);
         return make_closure_proc(minim_cadr(expr),
                                  make_pair(begin_symbol, minim_cddr(expr)),
-                                 env);
+                                 env,
+                                 min_arity,
+                                 max_arity);
     } else if (is_begin(expr)) {
+        check_begin(expr);
         expr = minim_cdr(expr);
+        if (minim_is_null(expr))
+            return minim_void;
+
         while (!minim_is_null(minim_cdr(expr))) {
             eval_expr(minim_car(expr), env);
             expr = minim_cdr(expr);
         }
+
         expr = minim_car(expr);
         goto loop;
     } else if (is_and(expr)) {
+        check_begin(expr);
         expr = minim_cdr(expr);
         if (minim_is_null(expr))
             return minim_true;
@@ -860,21 +1360,22 @@ loop:
                 return result;
             expr = minim_cdr(expr);
         }
-        
+
         expr = minim_car(expr);
         goto loop;
     } else if (is_or(expr)) {
+        check_begin(expr);
         expr = minim_cdr(expr);
         if (minim_is_null(expr))
             return minim_false;
 
         while (!minim_is_null(minim_cdr(expr))) {
             result = eval_expr(minim_car(expr), env);
-            if (minim_is_true(result))
+            if (!minim_is_false(result))
                 return result;
             expr = minim_cdr(expr);
         }
-        
+
         expr = minim_car(expr);
         goto loop;
     } else if (minim_is_pair(expr)) {
@@ -884,6 +1385,8 @@ loop:
 application:
 
         if (minim_is_prim_proc(proc)) {
+            check_prim_proc_arity(proc, args);
+
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
                 expr = minim_car(args);
@@ -901,18 +1404,25 @@ application:
 
             return minim_prim_proc(proc)(args);
         } else if (minim_is_closure_proc(proc)) {
-            if (minim_is_symbol(minim_closure_args(proc))) {
-                // variary call: (lambda xs body)
-                env = extend_env(make_pair(minim_closure_args(proc), minim_null),
-                                 make_pair(args, minim_null),
-                                 minim_closure_env(proc));
-            } else {
-                // standard call: (lambda (x1 x2 xs ...) body)
-                env = extend_env(minim_closure_args(proc),
-                                 args,
-                                 minim_closure_env(proc));
+            minim_object *vars;
+
+            // check arity and extend environment
+            check_closure_proc_arity(proc, args);
+            env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+
+            // process args
+            vars = minim_closure_args(proc);
+            while (minim_is_pair(vars)) {
+                env_define_var_no_check(env, minim_car(vars), minim_car(args));
+                vars = minim_cdr(vars);
+                args = minim_cdr(args);
             }
 
+            // optionally process rest argument
+            if (minim_is_symbol(vars))
+                env_define_var_no_check(env, vars, copy_list(args));
+
+            // tail call
             expr = minim_closure_body(proc);
             goto loop;
         } else {
@@ -920,7 +1430,7 @@ application:
             exit(1);
         }
     } else {
-        fprintf(stderr, "cannot evaluate expresion\n");
+        fprintf(stderr, "bad syntax\n");
         exit(1);
     }
 
@@ -932,82 +1442,88 @@ application:
 //  Interpreter initialization
 //
 
-#define add_procedure(name, c_name)         \
-    env_define_var(env, intern_symbol(symbols, name), make_prim_proc(c_name))
+#define add_procedure(name, c_fn, min_arity, max_arity) {               \
+    minim_object *sym = intern_symbol(symbols, name);                   \
+    env_define_var(env, sym, make_prim_proc(c_fn, minim_symbol(sym),    \
+                                            min_arity, max_arity));     \
+}
 
 void populate_env(minim_object *env) {
-    add_procedure("null?", is_null_proc);
-    add_procedure("eof-object?", is_eof_proc);
-    add_procedure("boolean?", is_bool_proc);
-    add_procedure("symbol?", is_symbol_proc);
-    add_procedure("integer?", is_fixnum_proc);
-    add_procedure("char?", is_char_proc);
-    add_procedure("string?", is_string_proc);
-    add_procedure("pair?", is_pair_proc);
-    add_procedure("procedure?", is_procedure_proc);
-    add_procedure("input-port?", is_input_port_proc);
-    add_procedure("output-port?", is_output_port_proc);
+    add_procedure("null?", is_null_proc, 1, 1);
+    add_procedure("eof-object?", is_eof_proc, 1, 1);
+    add_procedure("boolean?", is_bool_proc, 1, 1);
+    add_procedure("symbol?", is_symbol_proc, 1, 1);
+    add_procedure("integer?", is_fixnum_proc, 1, 1);
+    add_procedure("char?", is_char_proc, 1, 1);
+    add_procedure("string?", is_string_proc, 1, 1);
+    add_procedure("pair?", is_pair_proc, 1, 1);
+    add_procedure("procedure?", is_procedure_proc, 1, 1);
+    add_procedure("input-port?", is_input_port_proc, 1, 1);
+    add_procedure("output-port?", is_output_port_proc, 1, 1);
 
-    add_procedure("char->integer", char_to_integer_proc);
-    add_procedure("integer->char", integer_to_char_proc);
-    add_procedure("number->string", number_to_string_proc);
-    add_procedure("string->number", string_to_number_proc);
-    add_procedure("symbol->string", symbol_to_string_proc);
-    add_procedure("string->symbol", string_to_symbol_proc);
+    add_procedure("char->integer", char_to_integer_proc, 1, 1);
+    add_procedure("integer->char", integer_to_char_proc, 1, 1);
+    add_procedure("number->string", number_to_string_proc, 1, 1);
+    add_procedure("string->number", string_to_number_proc, 1, 1);
+    add_procedure("symbol->string", symbol_to_string_proc, 1, 1);
+    add_procedure("string->symbol", string_to_symbol_proc, 1, 1);
 
-    add_procedure("eq?", eq_proc);
-    add_procedure("equal?", equal_proc);
+    add_procedure("eq?", eq_proc, 2, 2);
+    add_procedure("equal?", equal_proc, 2, 2);
 
-    add_procedure("not", not_proc);
+    add_procedure("not", not_proc, 1, 1);
 
-    add_procedure("cons", cons_proc);
-    add_procedure("car", car_proc);
-    add_procedure("cdr", cdr_proc);
-    add_procedure("set-car!", set_car_proc);
-    add_procedure("set-cdr!", set_cdr_proc);
-    add_procedure("list", list_proc);
+    add_procedure("cons", cons_proc, 2, 2);
+    add_procedure("car", car_proc, 1, 1);
+    add_procedure("cdr", cdr_proc, 1, 1);
+    add_procedure("set-car!", set_car_proc, 2, 2);
+    add_procedure("set-cdr!", set_cdr_proc, 2, 2);
+    add_procedure("list", list_proc, 0, ARG_MAX);
 
-    add_procedure("+", add_proc);
-    add_procedure("-", sub_proc);
-    add_procedure("*", mul_proc);
-    add_procedure("/", div_proc);
-    add_procedure("remainder", remainder_proc);
-    add_procedure("modulo", modulo_proc);
+    add_procedure("+", add_proc, 0, ARG_MAX);
+    add_procedure("-", sub_proc, 1, ARG_MAX);
+    add_procedure("*", mul_proc, 0, ARG_MAX);
+    add_procedure("/", div_proc, 1, ARG_MAX);
+    add_procedure("remainder", remainder_proc, 2, 2);
+    add_procedure("modulo", modulo_proc, 2, 2);
 
-    add_procedure("=", number_eq_proc);
-    add_procedure(">=", number_ge_proc);
-    add_procedure("<=", number_le_proc);
-    add_procedure(">", number_gt_proc);
-    add_procedure("<", number_lt_proc);
+    add_procedure("=", number_eq_proc, 2, 2);
+    add_procedure(">=", number_ge_proc, 2, 2);
+    add_procedure("<=", number_le_proc, 2, 2);
+    add_procedure(">", number_gt_proc, 2, 2);
+    add_procedure("<", number_lt_proc, 2, 2);
 
-    add_procedure("string", string_proc);
+    add_procedure("string", string_proc, 0, ARG_MAX);
+    add_procedure("string-length", string_length_proc, 1, 1);
+    add_procedure("string-ref", string_ref_proc, 2, 2);
     
-    add_procedure("syntax-e", syntax_e_proc);
-    add_procedure("syntax-loc", syntax_loc_proc);
+    add_procedure("syntax-e", syntax_e_proc, 1, 1);
+    add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
+    add_procedure("datum->syntax", to_syntax_proc, 1, 1);
 
-    add_procedure("interaction-environment", interaction_environment_proc);
-    add_procedure("null-environment", empty_environment_proc);
-    add_procedure("environment", environment_proc);
+    add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
+    add_procedure("null-environment", empty_environment_proc, 0, 0);
+    add_procedure("environment", environment_proc, 0, 0);
 
-    add_procedure("eval", eval_proc);
-    add_procedure("apply", apply_proc);
-    add_procedure("void", void_proc);
+    add_procedure("eval", eval_proc, 1, 2);
+    add_procedure("apply", apply_proc, 2, ARG_MAX);
+    add_procedure("void", void_proc, 0, 0);
 
-    add_procedure("current-input-port", current_input_port_proc);
-    add_procedure("current-output-port", current_output_port_proc);
-    add_procedure("open-input-file", open_input_port_proc);
-    add_procedure("open-output-file", open_output_port_proc);
-    add_procedure("close-input-port", close_input_port_proc);
-    add_procedure("close-output-port", close_output_port_proc);
-    add_procedure("read", read_proc);
-    add_procedure("read-char", read_char_proc);
-    add_procedure("peek-char", peek_char_proc);
-    add_procedure("char-ready?", char_is_ready_proc);
-    add_procedure("write", write_proc);
-    add_procedure("write-char", write_char_proc);
+    add_procedure("current-input-port", current_input_port_proc, 0, 0);
+    add_procedure("current-output-port", current_output_port_proc, 0, 0);
+    add_procedure("open-input-file", open_input_port_proc, 1, 1);
+    add_procedure("open-output-file", open_output_port_proc, 1, 1);
+    add_procedure("close-input-port", close_input_port_proc, 1, 1);
+    add_procedure("close-output-port", close_output_port_proc, 1, 1);
+    add_procedure("read", read_proc, 0, 1);
+    add_procedure("read-char", read_char_proc, 0, 1);
+    add_procedure("peek-char", peek_char_proc, 0, 1);
+    add_procedure("char-ready?", char_is_ready_proc, 0, 1);
+    add_procedure("write", write_proc, 1, 2);
+    add_procedure("write-char", write_char_proc, 1, 2);
     
-    add_procedure("load", load_proc);
-    add_procedure("error", error_proc);
+    add_procedure("load", load_proc, 1, 1);
+    add_procedure("error", error_proc, 1, ARG_MAX);
 }
 
 minim_object *make_env() {
