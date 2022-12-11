@@ -56,7 +56,7 @@
     (define (digit-prefix? c)
       (or (digit? c)
           (and (or (eq? c #\-) (eq? c #\+))
-               (digit? (peek-char c)))))
+               (digit? (peek-char p)))))
 
     ;; Errors
 
@@ -231,7 +231,7 @@
            1]))
 
       ; magnitude
-      (define (read-digit!)
+      (let read-digit! ()
         (define c (peek-char p))
         (cond
           [(digit? c)
@@ -239,13 +239,10 @@
            (set! num (+ (* 10 num) (- (char->integer c) (char->integer #\0))))
            (read-digit!)]
           [else
-           (void)]))
+           (assert-delimeter! (peek-char p))
+           (* num sign)])))
 
-      (read-digit!)
-      (assert-delimeter! (peek-char p))
-      (* num sign))
-
-    ; number reader
+    ; string reader
     (define (read-string)
       (let loop ([acc '()])
         (define c (peek-char p))
@@ -353,7 +350,7 @@
         [else
          (error "read: unexpected input:" c)]))
 
-    (read-loop))
+  (read-loop))
 
 (define (syntax->datum stx)
   (define e (syntax-e stx))

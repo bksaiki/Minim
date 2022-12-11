@@ -1251,6 +1251,9 @@ minim_object *eval_expr(minim_object *expr, minim_object *env) {
     minim_object *proc, *args, *result;
     short min_arity, max_arity;
 
+    // write_object(stdout, expr);
+    // printf("\n");
+
 loop:
 
     if (minim_is_true(expr) || minim_is_false(expr) ||
