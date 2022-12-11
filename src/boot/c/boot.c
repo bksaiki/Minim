@@ -1029,6 +1029,16 @@ static void check_let(minim_object *expr) {
         bad_syntax_exn(expr);
 }
 
+// Already assumes `expr` is `(let . <???>)`
+// Check: `expr` must be `(let <name> ([<var> <val>] ...) <body> ...)`
+// Just check that <name> is a symbol and then call
+// `check_loop` starting at (<name> ...)
+static void check_let_loop(minim_object *expr) {
+    if (!minim_is_pair(minim_cdr(expr)) && !minim_is_symbol(minim_cadr(expr)))
+        bad_syntax_exn(expr);
+    check_let(minim_cdr(expr));
+}
+
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> ...)`
 static void check_begin(minim_object *expr) {
@@ -1143,6 +1153,56 @@ static minim_object *let_vals(minim_object *bindings) {
             make_pair(minim_car(minim_cdar(bindings)), let_vals(minim_cdr(bindings))));
 }
 
+// (define (<name> . <formals>) . <body>)
+// =>
+// (define <name> (lambda <formals> . <body>))
+static minim_object *expand_define(minim_object *define) {
+    minim_object *name, *formals, *body;
+
+    name = minim_car(minim_cadr(define));
+    formals = minim_cdr(minim_cadr(define));
+    body = minim_car(minim_cddr(define));
+
+    return make_pair(define_symbol,
+           make_pair(name,
+           make_pair(
+                make_pair(lambda_symbol,
+                make_pair(formals,
+                body)),
+           minim_null)));
+}
+
+// Hacky expansion: ideally we want a letrec
+//
+// (let <name> ((<var> <val>) ...) . <body>)
+// =>
+// (let ()
+//   (define <name> (lambda (<var> ...) . <body>))
+//   (<name> <val> ...))
+static minim_object *expand_let_loop(minim_object *let) {
+    minim_object *name, *formals, *vals, *body;
+
+    name = minim_cadr(let);
+    formals = let_vars(minim_car(minim_cddr(let)));
+    vals = let_vals(minim_car(minim_cddr(let)));
+    body = minim_cdr(minim_cddr(let));
+
+    return make_pair(let_symbol,
+           make_pair(minim_null,
+           make_pair(
+                make_pair(define_symbol,
+                make_pair(name,
+                make_pair(
+                        make_pair(lambda_symbol,
+                        make_pair(formals,
+                        body)),
+                minim_null))),
+           make_pair(
+                make_pair(name,
+                vals),
+           minim_null))));
+}
+
 static minim_object *apply_args(minim_object *args) {
     minim_object *head, *tail, *it;
 
@@ -1219,15 +1279,29 @@ loop:
         env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
         return minim_void;
     } else if (is_definition(expr)) {
-        check_define(expr);
-        env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+        if (minim_is_pair(minim_cdr(expr)) && minim_is_pair(minim_cadr(expr))) {
+            // define procedure form
+            expr = expand_define(expr);
+            goto loop;
+        } else {
+            check_define(expr);
+            env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+        }
         return minim_void;
     } else if (is_let(expr)) {
-        check_let(expr);
-        args = eval_exprs(let_vals(minim_cadr(expr)), env);
-        env = extend_env(let_vars(minim_cadr(expr)), args, env);
-        expr = make_pair(begin_symbol, (minim_cddr(expr)));
-        goto loop;
+        if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
+            // let loop form
+            check_let_loop(expr);
+            expr = expand_let_loop(expr);
+            write_object(stdout, expr); printf("\n");
+            goto loop;
+        } else {
+            check_let(expr);
+            args = eval_exprs(let_vals(minim_cadr(expr)), env);
+            env = extend_env(let_vars(minim_cadr(expr)), args, env);
+            expr = make_pair(begin_symbol, (minim_cddr(expr)));
+            goto loop;
+        }
     } else if (is_if(expr)) {
         check_3ary_syntax(expr);
         if (!minim_is_false(eval_expr(minim_cadr(expr), env)))
@@ -1357,7 +1431,7 @@ application:
             exit(1);
         }
     } else {
-        fprintf(stderr, "cannot evaluate expresion\n");
+        fprintf(stderr, "bad syntax\n");
         exit(1);
     }
 
