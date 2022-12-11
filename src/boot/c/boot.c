@@ -78,6 +78,14 @@ minim_object *make_string(const char *s) {
     return ((minim_object *) o);
 }
 
+minim_object *make_string2(char *s) {
+    minim_string_object *o = GC_alloc(sizeof(minim_string_object));
+    
+    o->type = MINIM_STRING_TYPE;
+    o->value = s;
+    return ((minim_object *) o);
+}
+
 minim_object *make_pair(minim_object *car, minim_object *cdr) {
     minim_pair_object *o = GC_alloc(sizeof(minim_pair_object));
     o->type = MINIM_PAIR_TYPE;
@@ -699,8 +707,23 @@ minim_object *number_lt_proc(minim_object *args) {
            minim_false;
 }
 
+minim_object *make_string_proc(minim_object *args) {
+    char *str;
+    long len, i;
+    char c;
+
+    len = minim_fixnum(minim_car(args));
+    c = minim_is_null(minim_cdr(args)) ? 'a' : minim_char(minim_cadr(args));
+
+    str = GC_alloc_atomic((len + 1) * sizeof(char));    
+    for (i = 0; i < len; ++i)
+        str[i] = c;
+    str[i] = '\0';
+
+    return make_string2(str);
+}
+
 minim_object *string_proc(minim_object *args) {
-    minim_string_object *o;
     long len, i;
     char *str;
 
@@ -711,11 +734,8 @@ minim_object *string_proc(minim_object *args) {
         args = minim_cdr(args);
     }
     str[i] = '\0';
-    
-    o = GC_alloc(sizeof(minim_string_object));
-    o->type = MINIM_STRING_TYPE;
-    o->value = str;
-    return ((minim_object *) o);
+
+    return make_string2(str);
 }
 
 minim_object *string_length_proc(minim_object *args) {
@@ -738,6 +758,26 @@ minim_object *string_ref_proc(minim_object *args) {
     }
 
     return make_char((int) str[idx]);
+}
+
+minim_object *string_set_proc(minim_object *args) {
+    char *str;
+    long len, idx;
+    char c;
+
+    str = minim_string(minim_car(args));
+    len = strlen(str);
+    idx = minim_fixnum(minim_cadr(args));
+    c = minim_char(minim_car(minim_cddr(args)));
+
+    if (idx >= len) {
+        fprintf(stderr, "string-set!: index out of bounds\n");
+        fprintf(stderr, " string: %s, length: %ld, index %ld\n", str, len, idx);
+        exit(1);
+    }
+
+    str[idx] = c;
+    return minim_void;
 }
 
 minim_object *syntax_e_proc(minim_object *args) {
@@ -1522,9 +1562,11 @@ void populate_env(minim_object *env) {
     add_procedure(">", number_gt_proc, 2, 2);
     add_procedure("<", number_lt_proc, 2, 2);
 
+    add_procedure("make-string", make_string_proc, 1, 2);
     add_procedure("string", string_proc, 0, ARG_MAX);
     add_procedure("string-length", string_length_proc, 1, 1);
     add_procedure("string-ref", string_ref_proc, 2, 2);
+    add_procedure("string-set!", string_set_proc, 3, 3);
     
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
@@ -1598,5 +1640,5 @@ void minim_boot_init() {
     global_env = make_env();
     input_port = make_input_port(stdin);
     output_port = make_output_port(stdout);
-    current_directory = make_string(get_current_dir());
+    current_directory = make_string2(get_current_dir());
 }

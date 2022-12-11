@@ -303,10 +303,28 @@ int test_integer() {
 int test_string() {
     passed = 1;
 
+    check_equal("(make-string 0)", "\"\"");
+    check_equal("(make-string 1)", "\"a\"");
+    check_equal("(make-string 3)", "\"aaa\"");
+    check_equal("(make-string 1 #\\b)", "\"b\"");
+    check_equal("(make-string 3 #\\b)", "\"bbb\"");
+
     check_equal("(string)", "\"\"");
     check_equal("(string #\\a)", "\"a\"");
     check_equal("(string #\\a #\\b)", "\"ab\"");
     check_equal("(string #\\a #\\b #\\c)", "\"abc\"");
+
+    check_equal("(string-length \"\")", "0");
+    check_equal("(string-length \"a\")", "1");
+    check_equal("(string-length \"abc\")", "3");
+
+    check_equal("(string-ref \"a\" 0)", "#\\a");
+    check_equal("(string-ref \"ab\" 1)", "#\\b");
+    check_equal("(string-ref \"abc\" 2)", "#\\c");
+
+    check_equal("(begin (define s \"a\") (string-set! s 0 #\\b) s)", "\"b\"");
+    check_equal("(begin (define s \"ab\") (string-set! s 1 #\\c) s)", "\"ac\"");
+    check_equal("(begin (define s \"abc\") (string-set! s 2 #\\d) s)", "\"abd\"");
 
     return passed;
 }
@@ -374,18 +392,20 @@ int test_let() {
 
 void run_tests() {
     log_test("simple eval", test_simple_eval);
-    log_test("type predicates", test_type_predicates);
-    log_test("eq?", test_eq);
-    log_test("equal?", test_equal);
-    log_test("type conversions", test_type_conversions);
-    log_test("list", test_list);
-    log_test("integer", test_integer);
-    log_test("string", test_string);
     log_test("syntax", test_syntax);
     log_test("if", test_if);
     log_test("begin", test_begin);
     log_test("cond", test_cond);
     log_test("let", test_let);
+
+    log_test("type predicates", test_type_predicates);
+    log_test("eq?", test_eq);
+    log_test("equal?", test_equal);
+    log_test("type conversions", test_type_conversions);
+    
+    log_test("string", test_string);
+    log_test("list", test_list);
+    log_test("integer", test_integer);
 }
 
 int main(int argc, char **argv) {

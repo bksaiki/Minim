@@ -204,6 +204,7 @@ minim_object *make_char(int c);
 minim_object *make_fixnum(long v);
 minim_object *make_symbol(const char *s);
 minim_object *make_string(const char *s);
+minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
 minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);

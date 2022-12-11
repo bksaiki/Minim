@@ -19,7 +19,7 @@
   (define path
     (if (is-absolute-path? name)
         name
-        (string-append (current-directory) name)))
+        (string-append (current-directory) "/" name)))
 
   ;; read phase
   (define ($read)
