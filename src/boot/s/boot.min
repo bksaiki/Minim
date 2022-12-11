@@ -14,4 +14,7 @@
 (load "read.min")
 
 ;; Using new reader
-; (load "module.min")
+(load "module.min")
+
+(define p (open-input-file "test.min"))
+(read p)

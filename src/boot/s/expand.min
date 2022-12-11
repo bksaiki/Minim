@@ -7,139 +7,56 @@
 ;;;   Expander for syntax macros
 ;;;   
 
-;; transformer generated as described in 
-;; the appendix of the R4RS standard
-; (define syntax-rules
-;   (lambda exprs
-;     (cond
-;       [(not (null? (car exprs)))
-;         (error "syntax-rules: expected a list of literals")]
-;       [else
-;         (lambda (stx)
-;           (define literals (car exprs))
-;           (define rules (cdr exprs))
+(define (expand expr xforms)
+  ;; looks up a transform returning #f if none is found
+  (define (lookup-or-false key)
+    (let loop ([xforms xforms])
+      (cond [(null? xforms) #f]
+            [(eq? (caar xforms) key) (cdar xforms)]
+            [else (loop (cdr xforms))])))
 
-;           (define literal?
-;             (lambda (stx)
-;               (define loop
-;                 (lambda (ls)
-;                   (cond 
-;                     [(null? ls) #f]
-;                     [(eq? (car ls) stx) #t]
-;                   [else (loop (cdr ls))])))
-;               (loo  p literals)))
+  ;; expression-level expander
+  (define (expand-expr expr)
+    (cond
+      [(pair? expr)
+       (define first (car expr))
+       (define maybe-args (cdr expr))
+       (cond
+         [(symbol? first)
+          (define maybe-xform (lookup-or-false first))
+          (if maybe-xform
+              (expand-expr (apply maybe-xform maybe-args))
+              (cons first (map expand-expr maybe-args)))]
+         [else
+          (map expand-expr expr)])]
+      [else
+       expr]))
 
-;           (define loop
-;             (lambda (rules)
-;               (cond
-;                 [(null? rules) (error "transformer: bad syntax")]
-;                 [else
-;                   (define rule (car rules))
-;                   (define pattern (car rule))
-;                   (define template (car (cdr rule)))
-;                   (cond
-;                     [(and (pair? rule) (pair? stx))
-;                       (define bindings '())
+  (define (panic!) (error "bad define-syntax form"))
 
-;                       (define lookup
-;                         (lambda (key)
-;                           (define loop
-;                             (lambda (bindings)
-;                               (cond
-;                                 [(null? bindings) key]
-;                                 [(eq? (car (car bindings)) key) (cdr (car bindings))]
-;                                 [else (loop (cdr bindings))])))
-;                           (loop bindings)))
-                    
-;                       (define match
-;                         (lambda (rule stx)
-;                           ;  (write rule) (write-char #\space)
-;                           ;  (write stx) (write-char #\space)
-;                           ;  (write bindings) (write-char #\newline)
-;                           (cond
-;                             [(and (null? rule) (null? stx)) #t]
-;                             [(and (pair? rule) (pair? stx))
-;                               (and (match (car rule) (car stx))
-;                                    (match (cdr rule) (cdr stx)))]
-;                             [(or (eq? '_ rule) (literal? rule)) #t]
-;                             [(symbol? rule)
-;                               (set! bindings (cons (cons rule stx) bindings))
-;                               #t]
-;                             [else #f])))
-
-;                       (define replace
-;                         (lambda (tpl)
-;                           (cond
-;                             [(null? tpl) '()]
-;                             [(pair? tpl) (cons (replace (car tpl)) (replace (cdr tpl)))]
-;                             [(literal? tpl) tpl]
-;                             [(symbol? tpl) (lookup tpl)]
-;                             [else tpl])))
-
-;                       (cond
-;                         [(match pattern stx)
-;                           (replace template)]
-;                         [else
-;                           (set! bindings '())
-;                           (loop (cdr rules))])]
-                    
-;                     [else (loop (cdr rules))])])))
-
-;           (loop rules))]))      
-; ) ;; syntax-rules
-
-(define expand
-  (lambda (expr xforms)
-    
-    (define lookup-or-false
-      (lambda (key)
-        (define loop
-          (lambda (xforms)
-            (cond
-             [(null? xforms) #f]
-             [(eq? (car (car xforms)) key) (cdr (car xforms))]
-             [else (loop (cdr xforms))])))
-        (loop xforms)))
-        
-    (define expand-expr
-      (lambda (expr)
-        (cond
-          [(pair? expr)
-           (define first (car expr))
-           (define maybe-args (cdr expr))
-           (define maybe-xform (lookup-or-false first))
-           (if (procedure? maybe-xform)
-               (expand-expr (apply maybe-xform maybe-args))
-               expr)]
-          [else expr])))
-
-    (define expand-top
-      (lambda (expr)
-        (cond
-          [(pair? expr)
-           (define first (car expr))
-           (cond
-            [(eq? first 'define-syntax)
-             (define panic!
-               (lambda ()
-                 (error "bad define-syntax form")))
-             
-             (define rib (cdr expr))
+  ;; top-level expander
+  (define (expand-top expr)
+    (cond
+      [(pair? expr)
+       (define first (car expr))
+       (cond
+         [(eq? first 'define-syntax)
+          (define rib (cdr expr))
+          (cond
+            [(and (pair? rib) (symbol? (car rib)))
+             (define xform-name (car rib))
+             (define rib (cdr rib))
              (cond
-               [(and (pair? rib) (symbol? (car rib)))
-                (define xform-name (car rib))
-                (define rib (cdr rib))
-                (cond
-                 [(and (pair? rib) (null? (cdr rib)))
-                  (define xform (eval (expand-expr (car rib))))
-                  (set! xforms (cons (cons xform-name xform) xforms))
-                  '(void)]
-                 [else
-                  (panic!)])]
+               [(and (pair? rib) (null? (cdr rib)))
+                (define xform (eval (expand-expr (car rib))))
+                (set! xforms (cons (cons xform-name xform) xforms))
+                '(void)]
                [else
                 (panic!)])]
-            [else expr])]
-          [else
-           expr])))
+            [else
+             (panic!)])]
+         [else expr])]
+      [else
+       expr]))
 
-   (list (expand-top expr) xforms)))
+  (list (expand-top expr) xforms))

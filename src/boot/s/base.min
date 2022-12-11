@@ -10,90 +10,77 @@
 
 (define number? integer?)
 
-(define caar (lambda (xs) (car (car xs))))
-(define cdar (lambda (xs) (cdr (car xs))))
-(define cadr (lambda (xs) (car (cdr xs))))
-(define cddr (lambda (xs) (cdr (cdr xs))))
+(define (list? xs)
+  (cond [(null? xs) #t]
+        [(pair? xs) (list? (cdr xs))]
+        [else #f]))
 
-(define caaar (lambda (xs) (car (car (car xs)))))
-(define cdaar (lambda (xs) (cdr (car (car xs)))))
-(define cadar (lambda (xs) (car (cdr (car xs)))))
-(define cddar (lambda (xs) (cdr (cdr (car xs)))))
-(define caadr (lambda (xs) (car (car (cdr xs)))))
-(define cdadr (lambda (xs) (cdr (car (cdr xs)))))
-(define caddr (lambda (xs) (car (cdr (cdr xs)))))
-(define cdddr (lambda (xs) (cdr (cdr (cdr xs)))))
+(define (caar xs) (car (car xs)))
+(define (cdar xs) (cdr (car xs)))
+(define (cadr xs) (car (cdr xs)))
+(define (cddr xs) (cdr (cdr xs)))
 
-(define caaaar (lambda (xs) (car (car (car (car xs))))))
-(define cdaaar (lambda (xs) (cdr (car (car (car xs))))))
-(define cadaar (lambda (xs) (car (cdr (car (car xs))))))
-(define cddaar (lambda (xs) (cdr (cdr (car (car xs))))))
-(define caadar (lambda (xs) (car (car (cdr (car xs))))))
-(define cdadar (lambda (xs) (cdr (car (cdr (car xs))))))
-(define caddar (lambda (xs) (car (cdr (cdr (car xs))))))
-(define cdddar (lambda (xs) (cdr (cdr (cdr (car xs))))))
-(define caaadr (lambda (xs) (car (car (car (cdr xs))))))
-(define cdaadr (lambda (xs) (cdr (car (car (cdr xs))))))
-(define cadadr (lambda (xs) (car (cdr (car (cdr xs))))))
-(define cddadr (lambda (xs) (cdr (cdr (car (cdr xs))))))
-(define caaddr (lambda (xs) (car (car (cdr (cdr xs))))))
-(define cdaddr (lambda (xs) (cdr (car (cdr (cdr xs))))))
-(define cadddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
-(define cddddr (lambda (xs) (cdr (cdr (cdr (cdr xs))))))
+(define (caaar xs) (car (car (car xs))))
+(define (cadar xs) (car (cdr (car xs))))
+(define (caadr xs) (car (car (cdr xs))))
+(define (caddr xs) (car (cdr (cdr xs))))
+(define (cdaar xs) (cdr (car (car xs))))
+(define (cddar xs) (cdr (cdr (car xs))))
+(define (cdadr xs) (cdr (car (cdr xs))))
+(define (cdddr xs) (cdr (cdr (cdr xs))))
 
+(define (caaaar xs) (car (car (car (car xs)))))
+(define (caadar xs) (car (car (cdr (car xs)))))
+(define (caaadr xs) (car (car (car (cdr xs)))))
+(define (caaddr xs) (car (car (cdr (cdr xs)))))
+(define (cadaar xs) (car (cdr (car (car xs)))))
+(define (caddar xs) (car (cdr (cdr (car xs)))))
+(define (cadadr xs) (car (cdr (car (cdr xs)))))
+(define (cadddr xs) (car (cdr (cdr (cdr xs)))))
+(define (cdaaar xs) (cdr (car (car (car xs)))))
+(define (cdadar xs) (cdr (car (cdr (car xs)))))
+(define (cdaadr xs) (cdr (car (car (cdr xs)))))
+(define (cdaddr xs) (cdr (car (cdr (cdr xs)))))
+(define (cddaar xs) (cdr (cdr (car (car xs)))))
+(define (cdddar xs) (cdr (cdr (cdr (car xs)))))
+(define (cddadr xs) (cdr (cdr (car (cdr xs)))))
+(define (cddddr xs) (cdr (cdr (cdr (cdr xs)))))
 
-(define length
-  (lambda (lst)
-    (define loop
-      (lambda (lst accum)
-        (if (null? lst)
-            accum
-            (loop (cdr lst) (+ accum 1)))))
-    (loop lst 0)))
+(define (length lst)
+  (let loop ([xs lst] [acc 0])
+    (cond [(null? xs) acc]
+          [(pair? xs) (loop (cdr xs) (+ acc 1))]
+          [else       (error 'length "expected a list" lst)])))
 
-(define reverse
-  (lambda (lst)
-    (define loop
-      (lambda (lst acc)
-        (if (null? lst)
-            acc
-            (loop (cdr lst) (cons (car lst) acc)))))
-    (loop lst '())))
+(define (reverse lst)
+  (let loop ([xs lst] [acc '()])
+        (cond [(null? xs) acc]
+              [(pair? xs) (loop (cdr xs) (cons (car xs) acc))]
+              [else       (error 'reverse "expected a list" lst)])))
 
-(define append
-  (lambda lsts
-    (define loop
-      (lambda (lst)
-        (if (null? lst)
-            (apply append (cdr lsts))
-            (cons (car lst) (loop (cdr lst))))))
+(define (append . lsts)
+  (let loop ([lsts lsts])
     (if (null? lsts)
         '()
-        (loop (car lsts)))))
+        (let loop2 ([lst (car lsts)])
+          (if (null? lst)
+              (loop (cdr lsts))
+              (cons (car lst) (loop2 (cdr lst))))))))
 
-(define map
-  (lambda (f lst)
-    (define loop
-      (lambda (lst accum)
-        (if (null? lst)
-            (reverse lst)
-            (loop (cdr lst) (cons (f (car lst)) accum)))))
-    (loop lst)))
+(define (map f lst)
+  (let loop ([xs lst] [acc '()])
+    (cond [(null? xs) (reverse acc)]
+          [(pair? xs) (loop (cdr xs) (cons (f (car xs)) acc))]
+          [else       (error 'map "expected a list" lst)])))
 
-(define foldl
-  (lambda (f acc xs)
-    (define loop
-      (lambda (acc xs)
-        (if (null? xs)
-            acc
-            (loop (f acc (car xs)) (cdr xs)))))
-    (loop acc xs)))
+(define (foldl f acc lst)
+  (let loop ([xs lst] [acc acc])
+    (cond [(null? xs) acc]
+          [(pair? xs) (loop (cdr xs) (f acc (car xs)))]
+          [else       (error 'foldl "expected a list" lst)])))
 
-(define foldr
-  (lambda (f acc xs)
-    (define loop
-      (lambda (acc xs)
-        (if (null? xs)
-            acc
-            (f (loop acc (cdr xs)) (car xs)))))
-    (loop acc xs)))
+(define (foldr f acc lst)
+  (let loop ([xs lst])
+    (cond [(null? xs) acc]
+          [(pair? xs) (f (loop (cdr xs)) (car xs))]
+          [else       (error 'foldr "expected a list" lst)])))

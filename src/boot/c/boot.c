@@ -1161,7 +1161,7 @@ static minim_object *expand_define(minim_object *define) {
 
     name = minim_car(minim_cadr(define));
     formals = minim_cdr(minim_cadr(define));
-    body = minim_car(minim_cddr(define));
+    body = minim_cddr(define);
 
     return make_pair(define_symbol,
            make_pair(name,
@@ -1251,9 +1251,6 @@ minim_object *eval_expr(minim_object *expr, minim_object *env) {
     minim_object *proc, *args, *result;
     short min_arity, max_arity;
 
-    // write_object(stdout, expr);
-    // printf("\n");
-
 loop:
 
     if (minim_is_true(expr) || minim_is_false(expr) ||
@@ -1293,7 +1290,6 @@ loop:
             // let loop form
             check_let_loop(expr);
             expr = expand_let_loop(expr);
-            write_object(stdout, expr); printf("\n");
             goto loop;
         } else {
             check_let(expr);
