@@ -17,4 +17,4 @@
 (load "module.min")
 
 ;; Tests
-; (load "expand.min")
+(load "expand.min")

@@ -21,9 +21,13 @@
 
 // System
 
-char* get_current_dir();
-int set_current_dir(const char *path);
-char *get_file_path(const char *rel_path);
+char* _get_current_dir();
+int _set_current_dir(const char *path);
+char *_get_file_path(const char *rel_path);
+
+void set_current_dir(const char *str);
+#define get_current_dir() _get_current_dir()
+char *get_file_dir(const char *realpath);
 
 // Interface
 

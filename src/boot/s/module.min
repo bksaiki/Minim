@@ -15,6 +15,10 @@
 ;; Module loader
 (define (load name)
 
+  (write name)
+  (write (current-directory))
+  (write-char #\newline)
+
   ;; resolve path
   (define path
     (if (is-absolute-path? name)
@@ -49,7 +53,8 @@
                  (loop (cdr exprs))]
                 [else
                  (define imports* (syntax-e imports))
-                 (load (syntax-e (car imports*)))
+                 (define path (string-append (current-directory) "/" (syntax-e (car imports*))))
+                 (load path)
                  (loop2 (cdr imports*))]))]
            [else
             (loop (cdr exprs) (cons (car exprs) non-imports))])])))

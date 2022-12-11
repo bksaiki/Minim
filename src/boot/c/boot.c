@@ -167,6 +167,35 @@ minim_object *make_syntax(minim_object *e, minim_object *loc) {
 }
 
 //
+//  System
+//
+
+void set_current_dir(const char *str) {
+    if (_set_current_dir(str) != 0) {
+        fprintf(stderr, "could not set current directory: %s\n", str);
+        exit(1);
+    }
+
+    current_directory = make_string(str);
+}
+
+char *get_file_dir(const char *realpath) {
+    char *dirpath;
+    long i;
+
+    for (i = strlen(realpath) - 1; i >= 0 && realpath[i] != '/'; --i);
+    if (i < 0) {
+        fprintf(stderr, "coult not resolve directory of path %s\n", realpath);
+        exit(1);
+    }
+
+    dirpath = GC_alloc_atomic((i + 2) * sizeof(char));
+    strncpy(dirpath, realpath, i + 1);
+    dirpath[i + 1] = '\0';
+    return dirpath;
+}
+
+//
 //  Extra functions
 //
 
@@ -923,7 +952,7 @@ minim_object *write_char_proc(minim_object *args) {
 minim_object *load_proc(minim_object *args) {
     FILE *stream;
     minim_object *expr, *result;
-    char *fname, *old_cwd;
+    char *fname, *old_cwd, *cwd;
     
     fname = minim_string(minim_car(args));
     stream = fopen(fname, "r");
@@ -932,15 +961,15 @@ minim_object *load_proc(minim_object *args) {
         exit(1);
     }
 
-    old_cwd = get_current_dir();
-    set_current_dir(get_file_path(fname));
+    old_cwd = _get_current_dir();
+    cwd = get_file_dir(_get_file_path(fname));
+    set_current_dir(cwd);
 
     result = minim_void;
     while ((expr = read_object(stream)) != NULL)
         result = eval_expr(expr, global_env);
 
     set_current_dir(old_cwd);
-
     fclose(stream);
     return result;
 }
@@ -968,13 +997,7 @@ minim_object *current_directory_proc(minim_object *args) {
         if (!minim_is_string(path))
             bad_type_exn("string?", path);
 
-        if (set_current_dir(minim_string(current_directory)) < 0) {
-            fprintf(stderr, "could not set current directory to %s\n",
-                            minim_string(current_directory));
-            exit(1);
-        }
-
-        current_directory = path;
+        set_current_dir(minim_string(path));
         return minim_void;
     }
 }
