@@ -8,7 +8,11 @@
 ;;;   Minature standard library
 ;;;
 
+;; type predicates
+
 (define number? integer?)
+
+;; lists
 
 (define (list? xs)
   (cond [(null? xs) #t]
@@ -84,3 +88,13 @@
     (cond [(null? xs) acc]
           [(pair? xs) (f (loop (cdr xs)) (car xs))]
           [else       (error 'foldr "expected a list" lst)])))
+
+;; strings
+
+; (define (string-append . strs)
+;   (define len (apply + (map string-length strs)))
+;   (define s (string)
+
+(define (is-absolute-path? path)
+  (and (> (string-length path) 0)
+       (eq? (string-ref path 0) "/")))

@@ -35,6 +35,7 @@ minim_object *global_env;
 
 minim_object *input_port;
 minim_object *output_port;
+minim_object *current_directory;
 
 intern_table *symbols;
 
@@ -389,7 +390,97 @@ minim_object *extend_env(minim_object *vars,
 
 minim_object *setup_env() {
     return extend_env(minim_null, minim_null, empty_env);
-}   
+}
+
+//
+//  Exceptions
+//
+
+static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
+    if (name != NULL)
+        fprintf(stderr, "%s: ", name);
+    fprintf(stderr, "arity mismatch\n");
+
+    if (proc_arity_is_fixed(arity)) {
+        switch (proc_arity_min(arity)) {
+        case 0:
+            fprintf(stderr, " expected 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected %d arguments, received %d\n",
+                            proc_arity_min(arity), actual);
+        }
+    } else if (proc_arity_is_unbounded(arity)) {
+        switch (proc_arity_min(arity)) {
+        case 0:
+            fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected at least 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected at least %d arguments, received %d\n",
+                            proc_arity_min(arity), actual);
+        }
+    } else {
+        fprintf(stderr, " expected between %d and %d arguments, received %d\n",
+                        proc_arity_min(arity), proc_arity_max(arity), actual);
+    }
+
+    exit(1);
+}
+
+static void bad_syntax_exn(minim_object *expr) {
+    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
+    fprintf(stderr, " at: ");
+    write_object2(stderr, expr, 1, 0);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+static void bad_type_exn(const char *type, minim_object *x) {
+    fprintf(stderr, "apply: type violation\n");
+    fprintf(stderr, " expected: %s\n", type);
+    fprintf(stderr, " received: ");
+    write_object(stderr, x);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+//
+//  Runtime Error
+//
+
+static void check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
+    int min_arity, max_arity, argc;
+
+    min_arity = proc_arity_min(arity);
+    max_arity = proc_arity_max(arity);
+    argc = 0;
+
+    while (!minim_is_null(args)) {
+        if (argc >= max_arity)
+            arity_mismatch_exn(name, arity, max_arity + list_length(args));
+        args = minim_cdr(args);
+        ++argc;
+    }
+
+    if (argc < min_arity)
+        arity_mismatch_exn(name, arity, argc);
+}
+
+#define check_prim_proc_arity(prim, args)   \
+    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
+
+#define check_closure_proc_arity(prim, args)    \
+    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
 
 //
 //  Primitive library
@@ -397,6 +488,10 @@ minim_object *setup_env() {
 
 minim_object *is_null_proc(minim_object *args) {
     return minim_is_null(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *is_void_proc(minim_object *args) {
+    return minim_is_void(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_eof_proc(minim_object *args) {
@@ -821,95 +916,28 @@ minim_object *error_proc(minim_object *args) {
     exit(1);
 }
 
-//
-//  Exceptions
-//
+minim_object *current_directory_proc(minim_object *args) {
+    minim_object *path;
 
-static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
-    if (name != NULL)
-        fprintf(stderr, "%s: ", name);
-    fprintf(stderr, "arity mismatch\n");
-
-    if (proc_arity_is_fixed(arity)) {
-        switch (proc_arity_min(arity)) {
-        case 0:
-            fprintf(stderr, " expected 0 arguments, received %d\n", actual);
-            break;
-        
-        case 1:
-            fprintf(stderr, " expected 1 argument, received %d\n", actual);
-            break;
-
-        default:
-            fprintf(stderr, " expected %d arguments, received %d\n",
-                            proc_arity_min(arity), actual);
-        }
-    } else if (proc_arity_is_unbounded(arity)) {
-        switch (proc_arity_min(arity)) {
-        case 0:
-            fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
-            break;
-        
-        case 1:
-            fprintf(stderr, " expected at least 1 argument, received %d\n", actual);
-            break;
-
-        default:
-            fprintf(stderr, " expected at least %d arguments, received %d\n",
-                            proc_arity_min(arity), actual);
-        }
+    if (minim_is_null(args)) {
+        // getter
+        return current_directory;
     } else {
-        fprintf(stderr, " expected between %d and %d arguments, received %d\n",
-                        proc_arity_min(arity), proc_arity_max(arity), actual);
+        // setter
+        path = minim_car(args);
+        if (!minim_is_string(path))
+            bad_type_exn("string?", path);
+
+        if (set_current_dir(minim_string(current_directory)) < 0) {
+            fprintf(stderr, "could not set current directory to %s\n",
+                            minim_string(current_directory));
+            exit(1);
+        }
+
+        current_directory = path;
+        return minim_void;
     }
-
-    exit(1);
 }
-
-static void bad_syntax_exn(minim_object *expr) {
-    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
-    fprintf(stderr, " at: ");
-    write_object2(stderr, expr, 1, 0);
-    fputc('\n', stderr);
-    exit(1);
-}
-
-static void bad_type_exn(const char *type, minim_object *x) {
-    fprintf(stderr, "apply: type violation\n");
-    fprintf(stderr, " expected: %s\n", type);
-    fprintf(stderr, " received: ");
-    write_object(stderr, x);
-    fputc('\n', stderr);
-    exit(1);
-}
-
-//
-//  Runtime Error
-//
-
-static void check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
-    int min_arity, max_arity, argc;
-
-    min_arity = proc_arity_min(arity);
-    max_arity = proc_arity_max(arity);
-    argc = 0;
-
-    while (!minim_is_null(args)) {
-        if (argc >= max_arity)
-            arity_mismatch_exn(name, arity, max_arity + list_length(args));
-        args = minim_cdr(args);
-        ++argc;
-    }
-
-    if (argc < min_arity)
-        arity_mismatch_exn(name, arity, argc);
-}
-
-#define check_prim_proc_arity(prim, args)   \
-    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
-
-#define check_closure_proc_arity(prim, args)    \
-    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
 
 //
 //  Syntax check
@@ -1450,6 +1478,7 @@ application:
 
 void populate_env(minim_object *env) {
     add_procedure("null?", is_null_proc, 1, 1);
+    add_procedure("void?", is_void_proc, 1, 1);
     add_procedure("eof-object?", is_eof_proc, 1, 1);
     add_procedure("boolean?", is_bool_proc, 1, 1);
     add_procedure("symbol?", is_symbol_proc, 1, 1);
@@ -1524,6 +1553,7 @@ void populate_env(minim_object *env) {
     
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 1, ARG_MAX);
+    add_procedure("current-directory", current_directory_proc, 0, 1);
 }
 
 minim_object *make_env() {
@@ -1568,4 +1598,5 @@ void minim_boot_init() {
     global_env = make_env();
     input_port = make_input_port(stdin);
     output_port = make_output_port(stdout);
+    current_directory = make_string(get_current_dir());
 }

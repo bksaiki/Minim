@@ -16,4 +16,5 @@
 ;; Using new reader
 (load "module.min")
 
-;; Jump to entry
+;; Tests
+(load "expand.min")

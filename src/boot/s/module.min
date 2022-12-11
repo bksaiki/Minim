@@ -8,33 +8,84 @@
 ;;;   Defined functions are more careful than load
 ;;;
 
-(define $load-module
-  (lambda (name)
+;; Module cache
+;;  name -> (xforms, exports)
+(define module-table '())
 
-    (define $read
-      (lambda ()
-        (define p (open-input-port name))
-        (define loop
-          (lambda (exprs)
-            (define datum (read p))
+;; Module loader
+(define (load name)
+
+  ;; resolve path
+  (define path
+    (if (is-absolute-path? name)
+        name
+        (string-append (current-directory) name)))
+
+  ;; read phase
+  (define ($read)
+    (define p (open-input-file path))
+    (let loop ([exprs '()])
+      (define datum (read p))
+      (cond
+        [(eof-object? datum)
+         (close-input-port p)
+         (reverse exprs)]
+        [else
+         (loop (cons datum exprs))])))
+
+  ;; import phase
+  (define ($import exprs)
+    (let loop ([exprs exprs] [non-imports '()])
+      (cond
+        [(null? exprs)
+         (reverse non-imports)]
+        [else
+         (define expr (syntax-e (car exprs)))
+         (cond
+           [(and (pair? expr) (eq? (syntax-e (car expr)) 'import))
+            (let loop2 ([imports (cdr expr)])
+              (cond
+                [(null? imports)
+                 (loop (cdr exprs))]
+                [else
+                 (define imports* (syntax-e imports))
+                 (load (syntax-e (car imports*)))
+                 (loop2 (cdr imports*))]))]
+           [else
+            (loop (cdr exprs) (cons (car exprs) non-imports))])])))
+
+  ;; expand phase
+  (define ($expand exprs)
+    (let loop ([exprs exprs] [acc '()])
+      (cond
+        [(null? exprs)
+         (reverse acc)]
+        [else
+         (define expanded-and-xforms (expand (car exprs) xforms))
+         (set! xforms (cdr expanded-and-xforms))
+         (loop (cdr exprs) (cons (car expanded-and-xforms) acc))])))
+
+  ;; eval phase
+  (define ($eval exprs)
+    (let loop ([exprs exprs])
+      (if (null? exprs)
+          (void)
+          (let ([result (eval (syntax->datum (car exprs)))])
             (cond
-              [(eof-object? datum)
-               (close-input-port p)
-               (reverse exprs)]
+              [(void? result)
+               (loop (cdr exprs))]
               [else
-               (loop (cons datum exprs))])))
-        (loop '())))
+               (write result)
+               (write-char #\newline)
+               (loop (cdr exprs))])))))
 
-    (define $expand
-      (lambda (exprs)
-        (define loop
-          (lambda (exprs accum)
-            (if (null? exprs)
-                (reverse accum)
-                (loop (cdr exprs) (cons (expand (car exprs) xforms) accum)))))
-        (loop exprs '())))
+  ;; apply phases
+  (define raw-exprs ($read))
+  (define non-import-exprs ($import raw-exprs))
+  (define expanded-exprs ($expand non-import-exprs))
+  ($eval expanded-exprs)
 
-    (define exprs ($read))
-    ($expand exprs xforms)
-    
-  ))
+  ;; update module table
+
+  ;; and done
+  (void))

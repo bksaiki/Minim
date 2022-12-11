@@ -7,6 +7,8 @@
 ;;;   Expander for syntax macros
 ;;;   
 
+(define xforms '())
+
 (define (expand expr xforms)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)
@@ -59,4 +61,11 @@
       [else
        expr]))
 
-  (list (expand-top expr) xforms))
+  (cons (expand-top expr) xforms))
+
+(define (syntax->datum stx)
+  (define e (syntax-e stx))
+  (if (pair? e)
+      (cons (syntax->datum (car e))
+            (syntax->datum (cdr e)))
+      e))

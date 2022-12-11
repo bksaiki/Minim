@@ -47,28 +47,13 @@ static int handle_flags(int argc, char **argv) {
     return i;
 }
 
+// Hacky dynamic dispatch since `load`
+// is whatever is in the environment
 static void load_file(const char *path) {
-    FILE *f;
-    minim_object *o;
-
-    f = fopen(path, "r");
-    if (f == NULL) {
-        fprintf(stderr, "could not open %s\n", path);
-        exit(1);
-    }
-    
-    while (!feof(f) || !ferror(f)) {
-        o = read_object(f);
-        if (o == NULL) break;
-
-        o = eval_expr(o, global_env);
-        if (!minim_is_void(o)) {
-            write_object(stdout, o);
-            printf("\n");
-        }
-    }
-
-    fclose(f);
+    eval_expr(make_pair(intern_symbol(symbols, "load"),
+              make_pair(make_string(path), 
+              minim_null)),
+              global_env);
 }
 
 static void load_library() {
@@ -88,12 +73,13 @@ int main(int argc, char **argv) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
-
     if (opt_load_library)
         load_library();
-    for (; argi < argc; ++argi)
+
+    if (argi < argc) {
         load_file(argv[argi]);
-    
+    }
+        
     if (argc == 1 || interactive) {
         while (1) {
             printf("> ");
