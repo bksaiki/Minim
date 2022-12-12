@@ -10,11 +10,12 @@
 
 ;; Module cache
 ;;  name -> (xforms, exports)
-(define module-table '())
+(define $module-table '())
 
 ;; Module loader
 (define (load name)
-  ;; current working directory
+  ;; current parameters
+  (define top-env (interaction-environment))
   (define cwd (current-directory))
 
   ;; resolve path
@@ -97,7 +98,7 @@
 
   ;; eval phase
   (define ($eval exprs)
-    (define env (extend-environment (interaction-environment)))
+    (define env (extend-environment top-env))
     (let loop ([exprs exprs])
       (if (null? exprs)
           env
@@ -117,16 +118,37 @@
 
   ;; evaluate
   (current-directory new-cwd)
-  (define env ($eval expanded-exprs))
+  (define module-env ($eval expanded-exprs))
   (current-directory cwd)
 
+  ;; handle exports
+  (define export-map
+    (let loop ([exported exported] [accum '()])
+      (cond
+        [(null? exported) (reverse accum)]
+        [else
+         (define export (car exported))
+         (define value
+           (environment-variable-value
+             module-env
+             export
+             (lambda () (error 'export "undefined export" export))))
+         (loop (cdr exported) (cons (cons export value) accum))])))
+
+  ;; update current environment
+  (let loop ([export-map export-map])
+    (cond
+      [(null? export-map) (void)]
+      [else
+       (define name (caar export-map))
+       (define value (cdar export-map))
+       (environment-set-variable-value! top-env name value)
+       (loop (cdr export-map))]))
+
   ;; update module table
-  ; (let ([exported exported])
-  ;   (cond
-  ;     [(null? exported) (void)]
-  ;     [else
-  ;      (define export (car exported))
-  ;      (
+  (set! $module-table
+        (cons (cons path (cons '() export-map))
+              $module-table))
 
   ;; and done
   (void))

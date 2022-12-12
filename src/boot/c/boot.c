@@ -400,6 +400,21 @@ minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *va
     exit(1);
 }
 
+int env_var_is_defined(minim_object *env, minim_object *var, int recursive) {
+    minim_object *frame, *frame_var;
+
+    if (minim_is_null(env))
+        return 0;
+
+    for (frame = minim_car(env); !minim_is_null(frame); frame = minim_cdr(frame)) {
+        frame_var = minim_caar(frame);
+        if (var == frame_var)
+            return 1; 
+    }
+
+    return recursive && env_var_is_defined(minim_cdr(env), var, 1);
+}
+
 minim_object *env_lookup_var(minim_object *env, minim_object *var) {
     while (!minim_is_null(env)) {
         minim_object *frame = minim_car(env);
@@ -495,7 +510,7 @@ static void bad_type_exn(const char *name, const char *type, minim_object *x) {
 //  Runtime Error
 //
 
-static void check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
+static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
     int min_arity, max_arity, argc;
 
     min_arity = proc_arity_min(arity);
@@ -511,6 +526,8 @@ static void check_proc_arity(proc_arity *arity, minim_object *args, const char *
 
     if (argc < min_arity)
         arity_mismatch_exn(name, arity, argc);
+
+    return argc;
 }
 
 #define check_prim_proc_arity(prim, args)   \
@@ -845,6 +862,65 @@ minim_object *environment_proc(minim_object *args) {
 
 minim_object *extend_environment_proc(minim_object *args) {
     return make_pair(minim_null, global_env);
+}
+
+minim_object *environment_variable_value_proc(minim_object *args) {
+    minim_object *env, *name;
+
+    env = minim_car(args);
+    name = minim_cadr(args);
+
+    if (!minim_is_symbol(name)) {
+        bad_type_exn("environment-variable-value", "symbol?", name);
+    } else if (env_var_is_defined(env, name, 0)) {
+        // variable found
+        return env_lookup_var(env, name);
+    } else {
+        // variable not found
+        if (minim_is_null(minim_cddr(args))) {
+            // default exception
+            fprintf(stderr, "environment-variable-value: variable not bound");
+            fprintf(stderr, " name: %s", minim_symbol(name));
+        } else {
+            // custom exception
+            minim_object *exn, *env, *expr;
+
+            exn = minim_car(minim_cddr(args));
+            if (minim_is_prim_proc(exn)) {
+                check_prim_proc_arity(exn, minim_null);
+                return (minim_prim_proc(exn))(minim_null);
+            } else if (minim_is_closure_proc(exn)) {
+                check_closure_proc_arity(exn, minim_null);
+                env = extend_env(minim_null, minim_null, minim_closure_env(exn));
+                expr = minim_closure_body(exn);
+                return eval_expr(expr, env);
+            } else {
+                bad_type_exn("environment-variable-value", "procedure?", exn);
+            }
+        }
+    }
+
+    fprintf(stderr, "unreachable");
+    return minim_void;
+}
+
+minim_object *environment_set_variable_value_proc(minim_object *args) {
+    minim_object *env, *name, *val;
+
+    env = minim_car(args);
+    name = minim_cadr(args);
+    val = minim_car(minim_cddr(args));
+
+    if (!minim_is_symbol(name))
+        bad_type_exn("environment-variable-value", "symbol?", name);
+
+    env_define_var(env, name, val);
+    return minim_void;
+}
+
+minim_object *current_environment_proc(minim_object *args) {
+    fprintf(stderr, "current-environment: should not be called directly");
+    exit(1);
 }
 
 minim_object *current_input_port_proc(minim_object *args) {
@@ -1497,6 +1573,11 @@ application:
                 goto application;
             }
 
+            // special case for `current-environment`
+            if (minim_prim_proc(proc) == current_environment_proc) {
+                return env;
+            }
+
             return minim_prim_proc(proc)(args);
         } else if (minim_is_closure_proc(proc)) {
             minim_object *vars;
@@ -1602,7 +1683,11 @@ void populate_env(minim_object *env) {
     add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
     add_procedure("null-environment", empty_environment_proc, 0, 0);
     add_procedure("environment", environment_proc, 0, 0);
+    add_procedure("current-environment", current_environment_proc, 0, 0);
+
     add_procedure("extend-environment", extend_environment_proc, 1, 1);
+    add_procedure("environment-variable-value", environment_variable_value_proc, 2, 3);
+    add_procedure("environment-set-variable-value!", environment_set_variable_value_proc, 3, 3);
 
     add_procedure("eval", eval_proc, 1, 2);
     add_procedure("apply", apply_proc, 2, ARG_MAX);
