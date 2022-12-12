@@ -1582,9 +1582,6 @@ loop:
 
 application:
 
-        // write_object(stdout, expr);
-        // printf("\n");
-
         if (minim_is_prim_proc(proc)) {
             check_prim_proc_arity(proc, args);
 
@@ -1754,6 +1751,10 @@ minim_object *make_env() {
 }
 
 void minim_boot_init() {
+    GC_pause();
+
+    // initialize globals
+
     symbols = make_intern_table();
 
     minim_null = GC_alloc(sizeof(minim_object));
@@ -1788,4 +1789,18 @@ void minim_boot_init() {
     input_port = make_input_port(stdin);
     output_port = make_output_port(stdout);
     current_directory = make_string2(get_current_dir());
+
+    // GC nonsense
+
+    GC_register_root(minim_null);
+    GC_register_root(minim_true);
+    GC_register_root(minim_false);
+    GC_register_root(minim_eof);
+    GC_register_root(minim_void);
+    GC_register_root(global_env);
+    GC_register_root(input_port);
+    GC_register_root(output_port);
+    GC_register_root(current_directory);
+
+    GC_resume();
 }
