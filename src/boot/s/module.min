@@ -5,8 +5,10 @@
 
 ;;;
 ;;;   File reader for importing Minim files
-;;;   Defined functions are more careful than load
 ;;;
+
+;; Base environment when loading modules
+(define $base-env (environment))
 
 ;; Module cache
 ;;  name -> (xforms, exports)
@@ -14,7 +16,6 @@
 
 (define ($load-module name)
   ;; current parameters
-  (define top-env (environment))
   (define cwd (current-directory))
 
   ;; resolve path
@@ -106,8 +107,7 @@
 
   ;; eval phase
   (define ($eval exprs)
-    (define env (extend-environment top-env))
-    (set! module-env env)
+    (define env (extend-environment $base-env))
     (let loop ([imported imported])
       (cond
         [(null? imported) (void)]
@@ -117,7 +117,7 @@
          (environment-set-variable-value! env name value)
          (loop (cdr imported))]))
          
-    ;; evaluate
+    (set! module-env env)
     (let loop ([exprs exprs] [result (void)])
       (if (null? exprs)
           result

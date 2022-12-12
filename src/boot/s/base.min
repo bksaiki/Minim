@@ -14,11 +14,6 @@
 
 ;; lists
 
-(define (list? xs)
-  (cond [(null? xs) #t]
-        [(pair? xs) (list? (cdr xs))]
-        [else #f]))
-
 (define (caar xs) (car (car xs)))
 (define (cdar xs) (cdr (car xs)))
 (define (cadr xs) (car (cdr xs)))

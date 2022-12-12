@@ -601,6 +601,12 @@ minim_object *is_pair_proc(minim_object *args) {
     return minim_is_pair(minim_car(args)) ? minim_true : minim_false;
 }
 
+minim_object *is_list_proc(minim_object *args) {
+    minim_object *thing;
+    for (thing = minim_car(args); minim_is_pair(thing); thing = minim_cdr(thing));
+    return minim_is_null(thing) ? minim_true : minim_false;
+}
+
 minim_object *is_procedure_proc(minim_object *args) {
     minim_object *o = minim_car(args);
     return (minim_is_prim_proc(o) || minim_is_closure_proc(o)) ? minim_true : minim_false;
@@ -885,7 +891,7 @@ minim_object *environment_proc(minim_object *args) {
 }
 
 minim_object *extend_environment_proc(minim_object *args) {
-    return make_pair(minim_null, global_env);
+    return make_pair(minim_null, minim_car(args));
 }
 
 minim_object *environment_variable_value_proc(minim_object *args) {
@@ -1638,6 +1644,7 @@ void populate_env(minim_object *env) {
     add_procedure("char?", is_char_proc, 1, 1);
     add_procedure("string?", is_string_proc, 1, 1);
     add_procedure("pair?", is_pair_proc, 1, 1);
+    add_procedure("list?", is_list_proc, 1, 1);
     add_procedure("procedure?", is_procedure_proc, 1, 1);
     add_procedure("input-port?", is_input_port_proc, 1, 1);
     add_procedure("output-port?", is_output_port_proc, 1, 1);
