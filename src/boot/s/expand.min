@@ -7,65 +7,42 @@
 ;;;   Expander for syntax macros
 ;;;   
 
-(define xforms '())
+(define $xforms '())
 
-(define (expand expr xforms)
+(define (syntax->datum stx)
+  (if (syntax? stx)
+      (let ([datum (syntax-e stx)])
+        (let loop ([datum datum])
+          (cond
+            [(syntax? datum) (syntax->datum datum)]
+            [(pair? datum) (cons (loop (car datum)) (loop (cdr datum)))]
+            [else datum])))
+      (error 'syntax->datum "expected syntax?" stx)))
+
+(define (expand expr)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)
-    (let loop ([xforms xforms])
+    (let loop ([xforms $xforms])
       (cond [(null? xforms) #f]
             [(eq? (caar xforms) key) (cdar xforms)]
             [else (loop (cdr xforms))])))
 
   ;; expression-level expander
   (define (expand-expr expr)
+    (define expr* (syntax-e expr))
     (cond
-      [(pair? expr)
-       (define first (car expr))
-       (define maybe-args (cdr expr))
+      [(pair? expr*)
+       (define first (syntax-e (car expr*)))
+       (define maybe-args (cdr expr*))
        (cond
          [(symbol? first)
           (define maybe-xform (lookup-or-false first))
           (if maybe-xform
-              (expand-expr (apply maybe-xform maybe-args))
-              (cons first (map expand-expr maybe-args)))]
+              (datum->syntax (expand-expr (maybe-xform expr)))
+              (datum->syntax (cons (datum->syntax first) (map expand-expr maybe-args))))]
          [else
-          (map expand-expr expr)])]
+          (datum->syntax (map expand-expr expr*))])]
       [else
        expr]))
 
-  (define (panic!) (error "bad define-syntax form"))
-
-  ;; top-level expander
-  (define (expand-top expr)
-    (cond
-      [(pair? expr)
-       (define first (car expr))
-       (cond
-         [(eq? first 'define-syntax)
-          (define rib (cdr expr))
-          (cond
-            [(and (pair? rib) (symbol? (car rib)))
-             (define xform-name (car rib))
-             (define rib (cdr rib))
-             (cond
-               [(and (pair? rib) (null? (cdr rib)))
-                (define xform (eval (expand-expr (car rib))))
-                (set! xforms (cons (cons xform-name xform) xforms))
-                '(void)]
-               [else
-                (panic!)])]
-            [else
-             (panic!)])]
-         [else expr])]
-      [else
-       expr]))
-
-  (cons (expand-top expr) xforms))
-
-(define (syntax->datum stx)
-  (define e (syntax-e stx))
-  (if (pair? e)
-      (cons (syntax->datum (car e))
-            (syntax->datum (cdr e)))
-      e))
+  (expand-expr expr))

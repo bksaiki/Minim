@@ -2,8 +2,21 @@
 ;;; Top-level import for base library
 ;;;
 
-(import "private/stx.min")
+(import "private/stx.min"
+        "private/when-unless.min")
 
+; (when #t
+;   (write "hi-1")
+;   (write-char #\newline))
 
-; (write "loaded library")
-; (write-char #\newline)
+; (when #f
+;   (write "bye-1")
+;   (write-char #\newline))
+
+; (unless #t
+;   (write "hi-2")
+;   (write-char #\newline))
+
+; (unless #f
+;   (write "bye-2")
+;   (write-char #\newline))

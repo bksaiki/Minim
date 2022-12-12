@@ -28,7 +28,9 @@
   ;; module information
   (define exported '())
   (define imported '())
+  (define imported-xforms '())
   (define module-env #f)
+  (define module-xforms '())
 
   ;; read phase
   (define ($read)
@@ -53,76 +55,106 @@
          (cond
            [(and (pair? expr) (eq? (syntax-e (car expr)) 'import))
             (let loop2 ([imports (cdr expr)])
-              (define imports* (syntax-e imports))
               (cond
-                [(null? imports*)
+                [(null? imports)
                  (loop (cdr exprs) evalable)]
-                [(pair? imports*)
-                 (define maybe-import (syntax-e (car imports*)))
+                [(pair? imports)
+                 (define maybe-import (syntax-e (car imports)))
                  (cond
                    [(string? maybe-import)
                     (define path (build-path new-cwd maybe-import))
                     (define maybe-cached (assoc path $module-table))
                     (define from-module
                       (if maybe-cached
-                          (cdr maybe-cached)
+                          maybe-cached
                           (begin
                             ($load-module path)
-                            (cdr (assoc path $module-table)))))
-                    (set! imported (append from-module imported))
-                    (loop2 (cdr imports*))]
+                            (assoc path $module-table))))
+                    (set! imported-xforms (append (car from-module) imported-xforms))
+                    (set! imported (append (cdr from-module) imported))
+                    (loop2 (cdr imports))]
                    [else
                     (error 'import "bad syntax")])]
                 [else
                  (error 'import "bad syntax")]))]
            [(and (pair? expr) (eq? (syntax-e (car expr)) 'export))
             (let loop2 ([exports (cdr expr)])
-              (define exports* (syntax-e exports))
               (cond
-                [(null? exports*)
+                [(null? exports)
                  (loop (cdr exprs) evalable)]
-                [(pair? exports*)
-                 (define maybe-export (syntax-e (car exports*)))
+                [(pair? exports)
+                 (define maybe-export (syntax-e (car exports)))
                  (cond
                    [(symbol? maybe-export)
                     (set! exported (cons maybe-export exported))
-                    (loop2 (cdr exports*))]
+                    (loop2 (cdr exports))]
                    [else
                     (error 'export "bad syntax")])]
                 [else
-                 (error 'import "bad syntax")]))]
+                 (error 'export "bad syntax")]))]
            [else
             (loop (cdr exprs) (cons (car exprs) evalable))])])))
 
   ;; expand phase
   (define ($expand exprs)
-    (let loop ([exprs exprs] [acc '()])
-      (cond
-        [(null? exprs)
-         (reverse acc)]
-        [else
-         (define expanded-and-xforms (expand (car exprs) xforms))
-         (set! xforms (cdr expanded-and-xforms))
-         (loop (cdr exprs) (cons (car expanded-and-xforms) acc))])))
-
-  ;; eval phase
-  (define ($eval exprs)
-    (define env (extend-environment $base-env))
+    ;; setup environment
+    (define module-stx-env (extend-environment $base-env))
     (let loop ([imported imported])
       (cond
         [(null? imported) (void)]
         [else
          (define name (caar imported))
          (define value (cdar imported))
-         (environment-set-variable-value! env name value)
+         (environment-set-variable-value! module-stx-env name value)
          (loop (cdr imported))]))
-         
-    (set! module-env env)
+
+    ;; apply transformers
+    (define old-xforms $xforms)
+    (set! $xforms imported-xforms)
+    (let loop ([exprs exprs] [acc '()])
+      (cond
+        [(null? exprs)
+         (set! $xforms old-xforms)
+         (reverse acc)]
+        [else
+         (define expanded (expand (car exprs)))
+         (define expanded* (syntax-e expanded))
+         (cond
+           [(and (pair? expanded*) (eq? (syntax-e (car expanded*)) 'define-syntax))
+            (define (panic!) (error "bad define-syntax form"))
+            (define rib (cdr expanded*))
+            (cond
+              [(and (pair? rib) (symbol? (syntax-e (car rib))))
+               (define xform-name (syntax-e (car rib)))
+               (define rib (cdr rib))
+               (cond
+                 [(and (pair? rib) (null? (cdr rib)))
+                  (define xform (eval (syntax->datum (car rib)) module-stx-env))
+                  (set! module-xforms (cons (cons xform-name xform) module-xforms))]
+                 [else
+                  (panic!)])]
+               [else
+                (panic!)])
+            (loop (cdr exprs) acc)]
+           [else
+            (loop (cdr exprs) (cons expanded acc))])])))
+
+  ;; eval phase
+  (define ($eval exprs)
+    (set! module-env (extend-environment $base-env))
+    (let loop ([imported imported])
+      (cond
+        [(null? imported) (void)]
+        [else
+         (define name (caar imported))
+         (define value (cdar imported))
+         (environment-set-variable-value! module-env name value)
+         (loop (cdr imported))]))
     (let loop ([exprs exprs] [result (void)])
       (if (null? exprs)
           result
           (loop (cdr exprs)
-                (eval (syntax->datum (car exprs)) env)))))
+                (eval (syntax->datum (car exprs)) module-env)))))
 
   ;; apply non-eval phases
   (define raw-exprs ($read))
@@ -135,22 +167,29 @@
   (current-directory cwd)
 
   ;; handle exports
-  (define export-map
-    (let loop ([exported exported] [accum '()])
-      (cond
-        [(null? exported) (reverse accum)]
-        [else
-         (define export (car exported))
-         (define value
-           (environment-variable-value
-             module-env
-             export
-             (lambda () (error 'export "undefined export" export))))
-         (loop (cdr exported) (cons (cons export value) accum))])))
+  (define export-values '())
+  (define export-xforms '())
+  (let loop ([exported exported])
+    (cond
+      [(null? exported) (void)]
+      [else
+       (define export (car exported))
+       (define maybe-xform (assoc export module-xforms))
+       (cond
+         [maybe-xform
+          (set! export-xforms (cons (cons export maybe-xform) export-xforms))]
+         [else
+          (define value
+            (environment-variable-value
+              module-env
+              export
+              (lambda () (error 'export "undefined export" export))))
+          (set! export-values (cons (cons export value) export-values))])
+       (loop (cdr exported))]))
 
   ;; update module table
   (set! $module-table
-        (cons (cons path (cons '() export-map))
+        (cons (cons path (cons export-xforms export-values))
               $module-table))
 
   ;; and done

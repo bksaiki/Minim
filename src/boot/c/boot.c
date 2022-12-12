@@ -282,9 +282,8 @@ minim_object *to_syntax(minim_object *o) {
     case MINIM_FIXNUM_TYPE:
     case MINIM_CHAR_TYPE:
     case MINIM_STRING_TYPE:
-        return make_syntax(o, minim_false);
     case MINIM_PAIR_TYPE:
-        return make_syntax(make_pair(to_syntax(minim_car(o)), to_syntax(minim_cdr(o))), minim_false);
+        return make_syntax(o, minim_false);
 
     default:
         fprintf(stderr, "datum->syntax: cannot convert to syntax");
@@ -1074,6 +1073,25 @@ minim_object *error_proc(minim_object *args) {
     exit(1);
 }
 
+minim_object *syntax_error_proc(minim_object *args) {
+    minim_object *where, *why, *what;
+
+    where = minim_car(args);
+    why = minim_cadr(args);
+    what = minim_car(minim_cddr(args));
+
+    if (!minim_is_symbol(where))
+        bad_type_exn("syntax-error", "symbol?", where);
+    if (!minim_is_string(why))
+        bad_type_exn("syntax-error", "string?", why);
+
+    fprintf(stderr, "%s: %s\n", minim_symbol(where), minim_string(why));
+    fputs("  at: ", stderr);
+    write_object2(stderr, what, 1, 1);
+    fprintf(stderr, "\n");
+    exit(1);
+}
+
 minim_object *current_directory_proc(minim_object *args) {
     minim_object *path;
 
@@ -1564,6 +1582,9 @@ loop:
 
 application:
 
+        // write_object(stdout, expr);
+        // printf("\n");
+
         if (minim_is_prim_proc(proc)) {
             check_prim_proc_arity(proc, args);
 
@@ -1687,6 +1708,7 @@ void populate_env(minim_object *env) {
     add_procedure("string-ref", string_ref_proc, 2, 2);
     add_procedure("string-set!", string_set_proc, 3, 3);
     
+    add_procedure("syntax?", is_syntax_proc, 1, 1);
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
     add_procedure("datum->syntax", to_syntax_proc, 1, 1);
@@ -1719,6 +1741,7 @@ void populate_env(minim_object *env) {
     
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 1, ARG_MAX);
+    add_procedure("syntax-error", syntax_error_proc, 3, 3);
     add_procedure("current-directory", current_directory_proc, 0, 1);
 }
 

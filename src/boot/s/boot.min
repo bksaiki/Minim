@@ -10,8 +10,8 @@
 
 ;; Using old reader
 (load "base.min")
-(load "expand.min")
 (load "read.min")
+(load "expand.min")
 
 ;; Using new reader
 (load "module.min")

@@ -8,43 +8,43 @@
 
 (define (identifier? t)
   (if (syntax? t)
-      (symbol? (unwrap t))
+      (symbol? (syntax-e t))
       #f))
 
 (define (stx-null? t)
-  (if (list? t)
+  (if (null? t)
       #t
       (if (syntax? t)
-          (null? (unwrap t))
+          (null? (syntax-e t))
           #f)))
 
 (define (stx-pair? t)
   (if (pair? t)
       #t
       (if (syntax? t)
-          (pair? (unwrap t))
+          (pair? (syntax-e t))
           #f)))
 
 (define (stx-car t)
   (if (pair? t)
       (car t)
-      (car (unwrap t))))
+      (car (syntax-e t))))
 
 (define (stx-cdr t)
   (if (pair? t)
       (cdr t)
-      (cdr (unwrap t))))
+      (cdr (syntax-e t))))
 
 (define (stx-list? t)
   (if (list? t)
       #t
       (if (syntax? t)
-          (list? (unwrap t))
+          (list? (syntax-e t))
           #f)))
 
 ; (define (stx-vector? t)
 ;   (if (vector? t)
 ;       #t
 ;       (if (syntax? t)
-;           (vector? (unwrap t))
+;           (vector? (syntax-e t))
 ;           #f)))

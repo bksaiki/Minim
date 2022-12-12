@@ -1,0 +1,42 @@
+;;;   
+;;; 'when', 'unless'
+;;;
+
+(import "stx.min")
+(export when unless)
+
+(define-syntax when
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'when "bad syntax" stx)
+        (let ([e (stx-cdr stx)])
+          (if (stx-null? e)
+              (syntax-error 'when "missing condition and body" stx)
+              (let ([b (stx-cdr e)])
+                (if (stx-null? b)
+                    (syntax-error 'when "missing body" stx)
+                    (datum->syntax
+                      (list
+                        (quote-syntax if)
+                        (stx-car e)
+                        (cons (quote-syntax let)
+                          (cons (list) b))
+                        (quote-syntax (void)))))))))))
+
+(define-syntax unless
+  (lambda (stx)
+    (if (not (stx-list? stx))
+        (syntax-error 'unless "bad syntax" stx)
+        (let ([e (stx-cdr stx)])
+          (if (stx-null? e)
+              (syntax-error 'unless "missing condition and body" stx)
+              (let ([b (stx-cdr e)])
+                (if (stx-null? b)
+                    (syntax-error 'unless "missing body" stx)
+                    (datum->syntax
+                      (list
+                        (quote-syntax if)
+                        (stx-car e)
+                        (quote-syntax (void))
+                        (cons (quote-syntax let)
+                          (cons (list) b)))))))))))
