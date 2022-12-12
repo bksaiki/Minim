@@ -64,12 +64,14 @@
 
 (define (append . lsts)
   (let loop ([lsts lsts])
-    (if (null? lsts)
-        '()
-        (let loop2 ([lst (car lsts)])
-          (if (null? lst)
-              (loop (cdr lsts))
-              (cons (car lst) (loop2 (cdr lst))))))))
+    (cond
+      [(null? lsts) '()]
+      [(null? (cdr lsts)) (car lsts)]
+      [else
+       (let loop2 ([lst (car lsts)])
+         (if (null? lst)
+             (loop (cdr lsts))
+             (cons (car lst) (loop2 (cdr lst)))))])))
 
 (define (map f lst)
   (let loop ([xs lst] [acc '()])
@@ -88,6 +90,15 @@
     (cond [(null? xs) acc]
           [(pair? xs) (f (loop (cdr xs)) (car xs))]
           [else       (error 'foldr "expected a list" lst)])))
+
+(define (assoc k lst)
+  (cond
+    [(null? lst) #f]
+    [(and (pair? lst) (pair? (car lst)))
+     (if (equal? k (caar lst))
+         (cdar lst)
+         (assoc k (cdr lst)))]
+    [else (error 'assoc "expected a list of pairs" lst)]))
 
 ;; strings
 

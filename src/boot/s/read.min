@@ -8,10 +8,6 @@
 ;;;   Overwrites primitive functions
 ;;;
 
-;; Rebind primitives
-(define $read read)
-(define $load load)
-
 ;; Reader
 (define (read . args)
   ;; argument selection

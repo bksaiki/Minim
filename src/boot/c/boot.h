@@ -32,6 +32,7 @@ char *get_file_dir(const char *realpath);
 // Interface
 
 void minim_boot_init();
+minim_object *load_file(const char *fname);
 
 minim_object *make_env();
 minim_object *eval_expr(minim_object *expr, minim_object *env);

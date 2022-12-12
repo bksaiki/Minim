@@ -47,15 +47,6 @@ static int handle_flags(int argc, char **argv) {
     return i;
 }
 
-// Hacky dynamic dispatch since `load`
-// is whatever is in the environment
-static void load_file(const char *path) {
-    eval_expr(make_pair(intern_symbol(symbols, "load"),
-              make_pair(make_string(path), 
-              minim_null)),
-              global_env);
-}
-
 static void load_library() {
     char *old_cwd = get_current_dir();
     set_current_dir(BOOT_DIR);
@@ -77,7 +68,10 @@ int main(int argc, char **argv) {
         load_library();
 
     if (argi < argc) {
-        load_file(argv[argi]);
+        eval_expr(make_pair(intern_symbol(symbols, "load"),
+                  make_pair(make_string(argv[argi]), 
+                  minim_null)),
+                  global_env);
     }
         
     if (argc == 1 || interactive) {

@@ -12,10 +12,9 @@
 ;;  name -> (xforms, exports)
 (define $module-table '())
 
-;; Module loader
-(define (load name)
+(define ($load-module name)
   ;; current parameters
-  (define top-env (interaction-environment))
+  (define top-env (environment))
   (define cwd (current-directory))
 
   ;; resolve path
@@ -25,8 +24,10 @@
         (build-path cwd name)))
   (define new-cwd (car (split-path path)))
 
-  ;; exports
+  ;; module information
   (define exported '())
+  (define imported '())
+  (define module-env #f)
 
   ;; read phase
   (define ($read)
@@ -60,7 +61,14 @@
                  (cond
                    [(string? maybe-import)
                     (define path (build-path new-cwd maybe-import))
-                    (load path)
+                    (define maybe-cached (assoc path $module-table))
+                    (define from-module
+                      (if maybe-cached
+                          (cdr maybe-cached)
+                          (begin
+                            ($load-module path)
+                            (cdr (assoc path $module-table)))))
+                    (set! imported (append from-module imported))
                     (loop2 (cdr imports*))]
                    [else
                     (error 'import "bad syntax")])]
@@ -99,17 +107,22 @@
   ;; eval phase
   (define ($eval exprs)
     (define env (extend-environment top-env))
-    (let loop ([exprs exprs])
+    (set! module-env env)
+    (let loop ([imported imported])
+      (cond
+        [(null? imported) (void)]
+        [else
+         (define name (caar imported))
+         (define value (cdar imported))
+         (environment-set-variable-value! env name value)
+         (loop (cdr imported))]))
+         
+    ;; evaluate
+    (let loop ([exprs exprs] [result (void)])
       (if (null? exprs)
-          env
-          (let ([result (eval (syntax->datum (car exprs)) env)])
-            (cond
-              [(void? result)
-               (loop (cdr exprs))]
-              [else
-               (write result)
-               (write-char #\newline)
-               (loop (cdr exprs))])))))
+          result
+          (loop (cdr exprs)
+                (eval (syntax->datum (car exprs)) env)))))
 
   ;; apply non-eval phases
   (define raw-exprs ($read))
@@ -118,7 +131,7 @@
 
   ;; evaluate
   (current-directory new-cwd)
-  (define module-env ($eval expanded-exprs))
+  (define last ($eval expanded-exprs))
   (current-directory cwd)
 
   ;; handle exports
@@ -135,20 +148,13 @@
              (lambda () (error 'export "undefined export" export))))
          (loop (cdr exported) (cons (cons export value) accum))])))
 
-  ;; update current environment
-  (let loop ([export-map export-map])
-    (cond
-      [(null? export-map) (void)]
-      [else
-       (define name (caar export-map))
-       (define value (cdar export-map))
-       (environment-set-variable-value! top-env name value)
-       (loop (cdr export-map))]))
-
   ;; update module table
   (set! $module-table
         (cons (cons path (cons '() export-map))
               $module-table))
 
   ;; and done
-  (void))
+  last)
+
+(define (load name)
+  ($load-module name))

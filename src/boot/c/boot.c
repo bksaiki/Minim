@@ -195,6 +195,30 @@ char *get_file_dir(const char *realpath) {
     return dirpath;
 }
 
+minim_object *load_file(const char *fname) {
+    FILE *f;
+    minim_object *result, *expr;
+    char *old_cwd, *cwd;
+
+    f = fopen(fname, "r");
+    if (f == NULL) {
+        fprintf(stderr, "could not open file \"%s\"\n", fname);
+        exit(1);
+    }
+
+    old_cwd = _get_current_dir();
+    cwd = get_file_dir(_get_file_path(fname));
+    set_current_dir(cwd);
+
+    result = minim_void;
+    while ((expr = read_object(f)) != NULL)
+        result = eval_expr(expr, global_env);
+
+    set_current_dir(old_cwd);
+    fclose(f);
+    return result;
+}
+
 //
 //  Extra functions
 //
@@ -1030,28 +1054,7 @@ minim_object *write_char_proc(minim_object *args) {
 }
 
 minim_object *load_proc(minim_object *args) {
-    FILE *stream;
-    minim_object *expr, *result;
-    char *fname, *old_cwd, *cwd;
-    
-    fname = minim_string(minim_car(args));
-    stream = fopen(fname, "r");
-    if (stream == NULL) {
-        fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
-        exit(1);
-    }
-
-    old_cwd = _get_current_dir();
-    cwd = get_file_dir(_get_file_path(fname));
-    set_current_dir(cwd);
-
-    result = minim_void;
-    while ((expr = read_object(stream)) != NULL)
-        result = eval_expr(expr, global_env);
-
-    set_current_dir(old_cwd);
-    fclose(stream);
-    return result;
+    return load_file(minim_string(minim_car(args)));
 }
 
 minim_object *error_proc(minim_object *args) {
@@ -1618,10 +1621,11 @@ application:
 //  Interpreter initialization
 //
 
-#define add_procedure(name, c_fn, min_arity, max_arity) {               \
-    minim_object *sym = intern_symbol(symbols, name);                   \
-    env_define_var(env, sym, make_prim_proc(c_fn, minim_symbol(sym),    \
-                                            min_arity, max_arity));     \
+#define add_procedure(name, c_fn, min_arity, max_arity) {   \
+    minim_object *sym = intern_symbol(symbols, name);       \
+    env_define_var(env, sym,                                \
+                   make_prim_proc(c_fn, minim_symbol(sym),  \
+                                  min_arity, max_arity));   \
 }
 
 void populate_env(minim_object *env) {
