@@ -194,3 +194,19 @@
      (cons (apply build-path (reverse rest)) end)]
     [else
      (cons #f (car path-elems))]))
+
+;; printing
+
+(define (writeln obj . args)
+  (define p
+    (cond
+      [(null? args) (current-output-port)]
+      [(null? (cdr args))
+       (if (output-port? (cadr args))
+           (cadr args)
+           (error 'writeln "expected output-port?" (cadr args)))]
+      [else
+       (error 'writeln "arity mismatch, expected 1 or 2 arguments, received"
+              (+ (length args) 1))]))
+  (write obj p)
+  (newline p))

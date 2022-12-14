@@ -13,7 +13,10 @@
 ;; Module cache
 ;;  name -> (xforms, exports)
 (define $module-table '())
+;;  name -> env
+(define $module-envs '())
 
+;; Loads a module with path `name`
 (define ($load-module name)
   ;; current parameters
   (define cwd (current-directory))
@@ -29,7 +32,8 @@
   (define exported '())
   (define imported '())
   (define imported-xforms '())
-  (define module-env #f)
+  (define module-env (extend-environment $base-env))
+  (define module-stx-env (extend-environment $base-env))
   (define module-xforms '())
 
   ;; read phase
@@ -98,7 +102,6 @@
   ;; expand phase
   (define ($expand exprs)
     ;; setup environment
-    (define module-stx-env (extend-environment $base-env))
     (let loop ([imported imported])
       (cond
         [(null? imported) (void)]
@@ -141,7 +144,7 @@
 
   ;; eval phase
   (define ($eval exprs)
-    (set! module-env (extend-environment $base-env))
+    ;; set up environment
     (let loop ([imported imported])
       (cond
         [(null? imported) (void)]
@@ -150,11 +153,12 @@
          (define value (cdar imported))
          (environment-set-variable-value! module-env name value)
          (loop (cdr imported))]))
+
+    ;; evaluate
     (let loop ([exprs exprs] [result (void)])
-      (if (null? exprs)
-          result
-          (loop (cdr exprs)
-                (eval (syntax->datum (car exprs)) module-env)))))
+      (cond
+        [(null? exprs) result]
+        [else (loop (cdr exprs) (eval (syntax->datum (car exprs)) module-env))])))
 
   ;; apply non-eval phases
   (define raw-exprs ($read))
@@ -187,13 +191,40 @@
           (set! export-values (cons (cons export value) export-values))])
        (loop (cdr exported))]))
 
-  ;; update module table
-  (set! $module-table
-        (cons (cons path (cons export-xforms export-values))
-              $module-table))
+  ;; update module tables
+  (define entry (cons path (cons export-xforms export-values)))
+  (set! $module-table (cons entry $module-table))
+  (set! $module-envs (cons (cons path module-env) $module-envs))
 
   ;; and done
   last)
 
 (define (load name)
   ($load-module name))
+
+(define (enter! name)
+  ;; resolve path
+  (define path
+    (if (is-absolute-path? name)
+        name
+        (build-path (current-directory) name)))
+  (define maybe-env (assoc path $module-envs))
+  (cond [(not maybe-env)
+         (error 'enter! "unknown module" name)])
+  ;; set up environment
+  (set! $xforms (car (assoc path $module-table)))
+  (define env (extend-environment maybe-env))
+
+  ;; REPL
+  (let loop ()
+    ;; read
+    (display "> ")
+    (define stx (read))
+    (cond [(eof-object? stx) (exit)])
+    ;; expand
+    (define stx* (expand stx))
+    ;; evaluate
+    (define result (eval (syntax->datum stx*) env))
+    ;; display
+    (cond [(not (void? result)) (writeln result)])
+    (loop)))

@@ -1034,14 +1034,22 @@ minim_object *char_is_ready_proc(minim_object *args) {
     return (ch == EOF) ? minim_false : minim_true;
 }
 
+minim_object *display_proc(minim_object *args) {
+    FILE *out_p;
+    minim_object *o;
+
+    o = minim_car(args);
+    out_p = minim_port(minim_is_null(minim_cdr(args)) ? output_port : minim_cadr(args));
+    write_object2(out_p, o, 0, 1);
+    return minim_void;
+}
+
 minim_object *write_proc(minim_object *args) {
     FILE *out_p;
     minim_object *o;
 
     o = minim_car(args);
-    args = minim_cdr(args);
-    out_p = minim_port(minim_is_null(args) ? output_port : minim_car(args));
-
+    out_p = minim_port(minim_is_null(minim_cdr(args)) ? output_port : minim_cadr(args));
     write_object(out_p, o);
     return minim_void;
 }
@@ -1058,6 +1066,14 @@ minim_object *write_char_proc(minim_object *args) {
     return minim_void;
 }
 
+minim_object *newline_proc(minim_object *args) {
+    FILE *out_p;
+
+    out_p = minim_port(minim_is_null(minim_cdr(args)) ? output_port : minim_cadr(args));
+    putc('\n', out_p);
+    return minim_void;
+}
+
 minim_object *load_proc(minim_object *args) {
     return load_file(minim_string(minim_car(args)));
 }
@@ -1071,6 +1087,10 @@ minim_object *error_proc(minim_object *args) {
 
     printf("\n");
     exit(1);
+}
+
+minim_object *exit_proc(minim_object *args) {
+    exit(0);
 }
 
 minim_object *syntax_error_proc(minim_object *args) {
@@ -1733,11 +1753,14 @@ void populate_env(minim_object *env) {
     add_procedure("read-char", read_char_proc, 0, 1);
     add_procedure("peek-char", peek_char_proc, 0, 1);
     add_procedure("char-ready?", char_is_ready_proc, 0, 1);
+    add_procedure("display", display_proc, 1, 2);
     add_procedure("write", write_proc, 1, 2);
     add_procedure("write-char", write_char_proc, 1, 2);
+    add_procedure("newline", newline_proc, 0, 1);
     
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 1, ARG_MAX);
+    add_procedure("exit", exit_proc, 0, 0);
     add_procedure("syntax-error", syntax_error_proc, 3, 3);
     add_procedure("current-directory", current_directory_proc, 0, 1);
 }
@@ -1798,6 +1821,7 @@ void minim_boot_init() {
     GC_register_root(minim_eof);
     GC_register_root(minim_void);
     GC_register_root(global_env);
+    GC_register_root(symbols);
     GC_register_root(input_port);
     GC_register_root(output_port);
     GC_register_root(current_directory);
