@@ -210,3 +210,16 @@
               (+ (length args) 1))]))
   (write obj p)
   (newline p))
+
+;; syntax
+
+(define (syntax->datum stx)
+  (if (syntax? stx)
+      (let loop ([stx stx])
+        (let ([datum (syntax-e stx)])
+          (let loop2 ([datum datum])
+            (cond
+              [(syntax? datum) (loop datum)]
+              [(pair? datum) (cons (loop2 (car datum)) (loop2 (cdr datum)))]
+              [else datum]))))
+      (error 'syntax->datum "expected syntax?" stx)))

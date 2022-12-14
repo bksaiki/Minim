@@ -9,16 +9,6 @@
 
 (define $xforms '())
 
-(define (syntax->datum stx)
-  (if (syntax? stx)
-      (let ([datum (syntax-e stx)])
-        (let loop ([datum datum])
-          (cond
-            [(syntax? datum) (syntax->datum datum)]
-            [(pair? datum) (cons (loop (car datum)) (loop (cdr datum)))]
-            [else datum])))
-      (error 'syntax->datum "expected syntax?" stx)))
-
 (define (expand expr)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)

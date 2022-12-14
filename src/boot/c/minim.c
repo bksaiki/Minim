@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
         load_library();
 
     if (argi < argc) {
-        eval_expr(make_pair(intern_symbol(symbols, "load"),
+        eval_expr(make_pair(intern_symbol(symbols, (interactive ? "load" : "import")),
                   make_pair(make_string(argv[argi]), 
                   minim_null)),
                   global_env);

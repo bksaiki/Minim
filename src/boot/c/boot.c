@@ -1094,21 +1094,31 @@ minim_object *exit_proc(minim_object *args) {
 }
 
 minim_object *syntax_error_proc(minim_object *args) {
-    minim_object *where, *why, *what;
+    minim_object *what, *why, *where, *sub;
 
-    where = minim_car(args);
+    what = minim_car(args);
     why = minim_cadr(args);
-    what = minim_car(minim_cddr(args));
 
-    if (!minim_is_symbol(where))
-        bad_type_exn("syntax-error", "symbol?", where);
+    if (!minim_is_symbol(what))
+        bad_type_exn("syntax-error", "symbol?", what);
     if (!minim_is_string(why))
         bad_type_exn("syntax-error", "string?", why);
 
-    fprintf(stderr, "%s: %s\n", minim_symbol(where), minim_string(why));
-    fputs("  at: ", stderr);
-    write_object2(stderr, what, 1, 1);
-    fprintf(stderr, "\n");
+    fprintf(stderr, "%s: %s\n", minim_symbol(what), minim_string(why));
+    if (!minim_is_null(minim_cddr(args))) {
+        where = minim_car(minim_cddr(args));
+        if (!minim_is_null(minim_cdr(minim_cddr(args)))) {
+            sub = minim_cadr(minim_cddr(args));
+            fputs("  at: ", stderr);
+            write_object2(stderr, sub, 1, 1);
+            fprintf(stderr, "\n");
+        }
+
+        fputs("  in: ", stderr);
+        write_object2(stderr, where, 1, 1);
+        fprintf(stderr, "\n");
+    }
+
     exit(1);
 }
 
@@ -1761,7 +1771,7 @@ void populate_env(minim_object *env) {
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 1, ARG_MAX);
     add_procedure("exit", exit_proc, 0, 0);
-    add_procedure("syntax-error", syntax_error_proc, 3, 3);
+    add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
 }
 
