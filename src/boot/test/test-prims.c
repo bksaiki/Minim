@@ -244,6 +244,20 @@ int test_list() {
     check_equal("(list 1 2)", "'(1 2)");
     check_equal("(list 1 2 3)", "'(1 2 3)");
 
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '())", "#t");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(a))", "#t");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(b))", "#f");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(a a a))", "#t");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(a b a))", "#f");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(b b b))", "#f");
+
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '())", "#f");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(a))", "#t");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(b))", "#f");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(a a a))", "#t");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(a b a))", "#t");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(b b b))", "#f");
+
     return passed;
 }
 

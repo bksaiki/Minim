@@ -39,6 +39,12 @@ minim_object *current_directory;
 
 intern_table *symbols;
 
+//
+//  forward declarations
+//
+
+long list_length(minim_object *xs);
+static minim_object *call_with_args(minim_object *proc, minim_object *args, minim_object *env);
 
 //
 //  Constructors
@@ -167,6 +173,94 @@ minim_object *make_syntax(minim_object *e, minim_object *loc) {
 }
 
 //
+//  Exceptions
+//
+
+static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
+    if (name != NULL)
+        fprintf(stderr, "%s: ", name);
+    fprintf(stderr, "arity mismatch\n");
+
+    if (proc_arity_is_fixed(arity)) {
+        switch (proc_arity_min(arity)) {
+        case 0:
+            fprintf(stderr, " expected 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected %d arguments, received %d\n",
+                            proc_arity_min(arity), actual);
+        }
+    } else if (proc_arity_is_unbounded(arity)) {
+        switch (proc_arity_min(arity)) {
+        case 0:
+            fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
+            break;
+        
+        case 1:
+            fprintf(stderr, " expected at least 1 argument, received %d\n", actual);
+            break;
+
+        default:
+            fprintf(stderr, " expected at least %d arguments, received %d\n",
+                            proc_arity_min(arity), actual);
+        }
+    } else {
+        fprintf(stderr, " expected between %d and %d arguments, received %d\n",
+                        proc_arity_min(arity), proc_arity_max(arity), actual);
+    }
+
+    exit(1);
+}
+
+static void bad_syntax_exn(minim_object *expr) {
+    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
+    fprintf(stderr, " at: ");
+    write_object2(stderr, expr, 1, 0);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+static void bad_type_exn(const char *name, const char *type, minim_object *x) {
+    fprintf(stderr, "%s: type violation\n", name);
+    fprintf(stderr, " expected: %s\n", type);
+    fprintf(stderr, " received: ");
+    write_object(stderr, x);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
+    int min_arity, max_arity, argc;
+
+    min_arity = proc_arity_min(arity);
+    max_arity = proc_arity_max(arity);
+    argc = 0;
+
+    while (!minim_is_null(args)) {
+        if (argc >= max_arity)
+            arity_mismatch_exn(name, arity, max_arity + list_length(args));
+        args = minim_cdr(args);
+        ++argc;
+    }
+
+    if (argc < min_arity)
+        arity_mismatch_exn(name, arity, argc);
+
+    return argc;
+}
+
+#define check_prim_proc_arity(prim, args)   \
+    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
+
+#define check_closure_proc_arity(prim, args)    \
+    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
+
+//
 //  System
 //
 
@@ -224,14 +318,14 @@ minim_object *load_file(const char *fname) {
 //
 
 // Returns true if the object is a list
-int is_list(minim_object *x) {
+static int is_list(minim_object *x) {
     while (minim_is_pair(x)) x = minim_cdr(x);
     return minim_is_null(x);
 }
 
 // Makes an association list.
 // Unsafe: only iterates on `xs`.
-minim_object *make_assoc(minim_object *xs, minim_object *ys) {
+static minim_object *make_assoc(minim_object *xs, minim_object *ys) {
     minim_object *assoc, *it;
 
     if (minim_is_null(xs))
@@ -250,7 +344,7 @@ minim_object *make_assoc(minim_object *xs, minim_object *ys) {
 
 // Copies a list.
 // Unsafe: does not check if `xs` is a list.
-minim_object *copy_list(minim_object *xs) {
+static minim_object *copy_list(minim_object *xs) {
     minim_object *head, *tail, *it;
 
     if (minim_is_null(xs))
@@ -266,6 +360,36 @@ minim_object *copy_list(minim_object *xs) {
     }
     
     return head;
+}
+
+static minim_object *andmap(minim_object *proc, minim_object *lst, minim_object *env) {
+    if (!minim_is_proc(proc))
+        bad_type_exn("andmap", "procedure?", proc);
+
+    while (!minim_is_null(lst)) {
+        if (!minim_is_pair(lst))
+            bad_type_exn("andmap", "list?", lst);
+        if (minim_is_false(call_with_args(proc, make_pair(minim_car(lst), minim_null), env)))
+            return minim_false;
+        lst = minim_cdr(lst);
+    }
+
+    return minim_true;
+}
+
+static minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *env) {
+    if (!minim_is_proc(proc))
+        bad_type_exn("ormap", "procedure?", proc);
+
+    while (!minim_is_null(lst)) {
+        if (!minim_is_pair(lst))
+            bad_type_exn("ormap", "list?", lst);
+        if (!minim_is_false(call_with_args(proc, make_pair(minim_car(lst), minim_null), env)))
+            return minim_true;
+        lst = minim_cdr(lst);
+    }
+
+    return minim_false;
 }
 
 // Recursively converts an object to syntax
@@ -468,98 +592,6 @@ minim_object *setup_env() {
 }
 
 //
-//  Exceptions
-//
-
-static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
-    if (name != NULL)
-        fprintf(stderr, "%s: ", name);
-    fprintf(stderr, "arity mismatch\n");
-
-    if (proc_arity_is_fixed(arity)) {
-        switch (proc_arity_min(arity)) {
-        case 0:
-            fprintf(stderr, " expected 0 arguments, received %d\n", actual);
-            break;
-        
-        case 1:
-            fprintf(stderr, " expected 1 argument, received %d\n", actual);
-            break;
-
-        default:
-            fprintf(stderr, " expected %d arguments, received %d\n",
-                            proc_arity_min(arity), actual);
-        }
-    } else if (proc_arity_is_unbounded(arity)) {
-        switch (proc_arity_min(arity)) {
-        case 0:
-            fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
-            break;
-        
-        case 1:
-            fprintf(stderr, " expected at least 1 argument, received %d\n", actual);
-            break;
-
-        default:
-            fprintf(stderr, " expected at least %d arguments, received %d\n",
-                            proc_arity_min(arity), actual);
-        }
-    } else {
-        fprintf(stderr, " expected between %d and %d arguments, received %d\n",
-                        proc_arity_min(arity), proc_arity_max(arity), actual);
-    }
-
-    exit(1);
-}
-
-static void bad_syntax_exn(minim_object *expr) {
-    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
-    fprintf(stderr, " at: ");
-    write_object2(stderr, expr, 1, 0);
-    fputc('\n', stderr);
-    exit(1);
-}
-
-static void bad_type_exn(const char *name, const char *type, minim_object *x) {
-    fprintf(stderr, "%s: type violation\n", name);
-    fprintf(stderr, " expected: %s\n", type);
-    fprintf(stderr, " received: ");
-    write_object(stderr, x);
-    fputc('\n', stderr);
-    exit(1);
-}
-
-//
-//  Runtime Error
-//
-
-static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
-    int min_arity, max_arity, argc;
-
-    min_arity = proc_arity_min(arity);
-    max_arity = proc_arity_max(arity);
-    argc = 0;
-
-    while (!minim_is_null(args)) {
-        if (argc >= max_arity)
-            arity_mismatch_exn(name, arity, max_arity + list_length(args));
-        args = minim_cdr(args);
-        ++argc;
-    }
-
-    if (argc < min_arity)
-        arity_mismatch_exn(name, arity, argc);
-
-    return argc;
-}
-
-#define check_prim_proc_arity(prim, args)   \
-    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
-
-#define check_closure_proc_arity(prim, args)    \
-    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
-
-//
 //  Primitive library
 //
 
@@ -694,6 +726,16 @@ minim_object *set_cdr_proc(minim_object *args) {
 
 minim_object *list_proc(minim_object *args) {
     return args;
+}
+
+minim_object *andmap_proc(minim_object *args) {
+    fprintf(stderr, "andmap: should not be called directly");
+    exit(1);
+}
+
+minim_object *ormap_proc(minim_object *args) {
+    fprintf(stderr, "ormap: should not be called directly");
+    exit(1);
 }
 
 minim_object *add_proc(minim_object *args) {
@@ -1475,6 +1517,73 @@ static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
     return head;
 }
 
+static minim_object *call_with_args(minim_object *proc, minim_object *args, minim_object *env) {
+    minim_object *expr;
+
+application:
+
+    if (minim_is_prim_proc(proc)) {
+        check_prim_proc_arity(proc, args);
+
+        // special case for `eval`
+        if (minim_prim_proc(proc) == eval_proc) {
+            expr = minim_car(args);
+            if (!minim_is_null(minim_cdr(args)))
+                env = minim_cadr(args);
+            return eval_expr(expr, env);
+        }
+
+        // special case for `apply`
+        if (minim_prim_proc(proc) == apply_proc) {
+            proc = minim_car(args);
+            args = apply_args(minim_cdr(args));
+            goto application;
+        }
+
+        // special case for `current-environment`
+        if (minim_prim_proc(proc) == current_environment_proc) {
+            return env;
+        }
+
+        // special case for `andmap`
+        if (minim_prim_proc(proc) == andmap_proc) {
+            return andmap(minim_car(args), minim_cadr(args), env);
+        }
+
+        // special case for `ormap`
+        if (minim_prim_proc(proc) == ormap_proc) {
+            return ormap(minim_car(args), minim_cadr(args), env);
+        }
+
+        return minim_prim_proc(proc)(args);
+    } else if (minim_is_closure_proc(proc)) {
+        minim_object *vars;
+
+        // check arity and extend environment
+        check_closure_proc_arity(proc, args);
+        env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+
+        // process args
+        vars = minim_closure_args(proc);
+        while (minim_is_pair(vars)) {
+            env_define_var_no_check(env, minim_car(vars), minim_car(args));
+            vars = minim_cdr(vars);
+            args = minim_cdr(args);
+        }
+
+        // optionally process rest argument
+        if (minim_is_symbol(vars))
+            env_define_var_no_check(env, vars, copy_list(args));
+
+        // tail call (not really)
+        expr = minim_closure_body(proc);
+        return eval_expr(expr, env);
+    } else {
+        fprintf(stderr, "not a procedure\n");
+        exit(1);
+    }
+}
+
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
     minim_object *proc, *args, *result;
     short min_arity, max_arity;
@@ -1635,6 +1744,16 @@ application:
                 return env;
             }
 
+            // special case for `andmap`
+            if (minim_prim_proc(proc) == andmap_proc) {
+                return andmap(minim_car(args), minim_cadr(args), env);
+            }
+
+            // special case for `ormap`
+            if (minim_prim_proc(proc) == ormap_proc) {
+                return ormap(minim_car(args), minim_cadr(args), env);
+            }
+
             return minim_prim_proc(proc)(args);
         } else if (minim_is_closure_proc(proc)) {
             minim_object *vars;
@@ -1714,7 +1833,10 @@ void populate_env(minim_object *env) {
     add_procedure("cdr", cdr_proc, 1, 1);
     add_procedure("set-car!", set_car_proc, 2, 2);
     add_procedure("set-cdr!", set_cdr_proc, 2, 2);
+
     add_procedure("list", list_proc, 0, ARG_MAX);
+    add_procedure("andmap", andmap_proc, 2, 2);
+    add_procedure("ormap", ormap_proc, 2, 2);
 
     add_procedure("+", add_proc, 0, ARG_MAX);
     add_procedure("-", sub_proc, 1, ARG_MAX);

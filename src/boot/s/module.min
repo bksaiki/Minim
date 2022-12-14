@@ -11,9 +11,9 @@
 (define $base-env (environment))
 
 ;; Module cache
-;;  name -> (xforms, exports)
+;;  name -> (exporting xforms, exporting values)
 (define $module-table '())
-;;  name -> env
+;;  name -> (current xforms, current env)
 (define $module-envs '())
 
 ;; Like `$load-module`, but does not check the cache
@@ -101,7 +101,7 @@
 
     ;; apply transformers
     (define old-xforms $xforms)
-    (set! $xforms imported-xforms)
+    (set! module-xforms imported-xforms)
     (let loop ([exprs exprs] [acc '()])
       (cond
         [(null? exprs)
@@ -120,6 +120,7 @@
                (define rib (cdr rib))
                (cond
                  [(and (pair? rib) (null? (cdr rib)))
+                  (set! $xforms (map cdr module-xforms))
                   (define xform (eval (syntax->datum (car rib)) stx-env))
                   (set! module-xforms (cons (cons xform-name xform) module-xforms))]
                  [else
@@ -134,7 +135,7 @@
   (define raw-exprs ($read))
   (define non-import-exprs ($import raw-exprs))
   (define expanded-exprs ($expand non-import-exprs))
-
+ 
   ;; return result
   (list expanded-exprs module-xforms imported exported))
 
@@ -197,15 +198,15 @@
        (loop (cdr exports))]))
 
   ;; update module tables
-  (define entry (cons path (cons export-xforms export-values)))
-  (set! $module-table (cons entry $module-table))
-  (set! $module-envs (cons (cons path env) $module-envs))
+  (set! $module-table (cons (cons path (cons export-xforms export-values)) $module-table))
+  (set! $module-envs (cons (cons path (cons module-xforms env)) $module-envs))
 
   ;; and done
-  (cond [result-handler (result-handler last env)]))
+  (cond [result-handler (result-handler last)]))
 
 ;; REPL with env
-(define ($repl env)
+(define ($repl xforms env)
+  (set! $xforms xforms)
   (let loop ()
     ;; read
     (display "> ")
@@ -235,12 +236,9 @@
 
 ;; loads a file
 (define (load name)
-  (define env
-    ($load-or-import name #f
-                    (lambda (o env)
-                      (cond [(not (void? o)) (writeln o)])
-                      env)))
-  ($repl (extend-environment env)))
+  (define result ($load-or-import name #f (lambda (o) o)))
+  (cond [(not (void? result)) (writeln result)])
+  (enter! name))
 
 (define (enter! name)
   ;; resolve path
@@ -252,6 +250,5 @@
   (define maybe-env (assoc path $module-envs))
   (cond [(not maybe-env)
          (error 'enter! "unknown module" name)])
-  (set! $xforms (car (assoc path $module-table)))
   ;; REPL
-  ($repl (extend-environment maybe-env)))
+  ($repl (car maybe-env) (extend-environment (cdr maybe-env))))

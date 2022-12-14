@@ -35,6 +35,9 @@ typedef struct proc_arity {
 #define proc_arity_min(p)               ((p)->arity_min)
 #define proc_arity_max(p)               ((p)->arity_max)
 
+#define proc_arity_is_between(p, min, max)      \
+    (((min) <= (p)->arity_min) && ((p)->arity_max <= (max)))
+
 // Object types
 
 typedef enum {
@@ -191,6 +194,7 @@ extern minim_object *minim_void;
 
 // Complex predicates
 
+#define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure_proc(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
 
