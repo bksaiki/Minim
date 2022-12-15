@@ -12,9 +12,12 @@
 
 #include "../gc/gc.h"
 
-// Arity
+// Limits
 
 #define ARG_MAX     32767
+#define VALUES_MAX  32767
+
+// Arity
 
 typedef enum {
     PROC_ARITY_FIXED,
@@ -58,6 +61,9 @@ typedef enum {
     MINIM_CLOSURE_PROC_TYPE,
     MINIM_PORT_TYPE,
     MINIM_SYNTAX_TYPE,
+
+    /* Composite types */
+    MINIM_VALUES_TYPE,
 
     /* Footer */
     MINIM_LAST_TYPE
@@ -130,6 +136,13 @@ extern minim_object *minim_true;
 extern minim_object *minim_false;
 extern minim_object *minim_eof;
 extern minim_object *minim_void;
+extern minim_object *minim_values;
+
+extern minim_object **values_buffer;
+extern int values_buffer_size;
+extern int values_buffer_count;
+
+#define values_buffer_ref(idx)    (values_buffer[idx])
 
 // Simple Predicates
 
@@ -144,12 +157,13 @@ extern minim_object *minim_void;
 #define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
+#define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
 
-#define minim_is_null(x)  ((x) == minim_null)
-#define minim_is_true(x)  ((x) == minim_true)
-#define minim_is_false(x) ((x) == minim_false)
-#define minim_is_eof(x)   ((x) == minim_eof)
-#define minim_is_void(x)  ((x) == minim_void)
+#define minim_is_null(x)    ((x) == minim_null)
+#define minim_is_true(x)    ((x) == minim_true)
+#define minim_is_false(x)   ((x) == minim_false)
+#define minim_is_eof(x)     ((x) == minim_eof)
+#define minim_is_void(x)    ((x) == minim_void)
 
 // Flags
 

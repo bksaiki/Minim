@@ -68,10 +68,17 @@ int main(int argc, char **argv) {
         load_library();
 
     if (argi < argc) {
-        eval_expr(make_pair(intern_symbol(symbols, (interactive ? "load" : "import")),
+        if (!interactive && opt_load_library) {
+            eval_expr(make_pair(intern_symbol(symbols, "import"),
                   make_pair(make_string(argv[argi]), 
                   minim_null)),
                   global_env);
+        } else {
+            eval_expr(make_pair(intern_symbol(symbols, "load"),
+                  make_pair(make_string(argv[argi]), 
+                  minim_null)),
+                  global_env);
+        }
     }
         
     if (argc == 1 || interactive) {
@@ -82,8 +89,15 @@ int main(int argc, char **argv) {
 
             evaled = eval_expr(expr, global_env);
             if (!minim_is_void(evaled)) {
-                write_object(stdout, evaled);
-                printf("\n");
+                if (minim_is_values(evaled)) {
+                    for (int i = 0; i < values_buffer_count; ++i) {
+                        write_object(stdout, values_buffer_ref(i));
+                        printf("\n");
+                    }
+                } else {
+                    write_object(stdout, evaled);
+                    printf("\n");
+                }
             }
         }
     }

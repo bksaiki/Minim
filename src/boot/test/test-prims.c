@@ -375,6 +375,18 @@ int test_begin() {
     return passed;
 }
 
+int test_values() {
+    passed = 1;
+
+    check_equal("(call-with-values (lambda () (values)) +)", "0");
+    check_equal("(call-with-values (lambda () (values 1)) +)", "1");
+    check_equal("(call-with-values (lambda () (values 1 2)) +)", "3");
+    check_equal("(call-with-values (lambda () (values 1 2 3)) +)", "6");
+    check_equal("(call-with-values (lambda () (values 1 2 3 4)) +)", "10");
+
+    return passed;
+}
+
 int test_cond() {
     passed = 1;
 
@@ -409,6 +421,7 @@ void run_tests() {
     log_test("syntax", test_syntax);
     log_test("if", test_if);
     log_test("begin", test_begin);
+    log_test("values", test_values);
     log_test("cond", test_cond);
     log_test("let", test_let);
 

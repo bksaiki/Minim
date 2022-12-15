@@ -14,6 +14,7 @@ minim_object *minim_true;
 minim_object *minim_false;
 minim_object *minim_eof;
 minim_object *minim_void;
+minim_object *minim_values;
 
 minim_object *quote_symbol;
 minim_object *define_symbol;
@@ -38,6 +39,10 @@ minim_object *output_port;
 minim_object *current_directory;
 
 intern_table *symbols;
+
+minim_object **values_buffer;
+int values_buffer_size;
+int values_buffer_count;
 
 //
 //  forward declarations
@@ -316,6 +321,14 @@ minim_object *load_file(const char *fname) {
 //
 //  Extra functions
 //
+
+// Resizes the value buffer if need be
+static void resize_values_buffer(int size) {
+    values_buffer = GC_alloc(size * sizeof(minim_object*));
+    values_buffer_size = size;
+
+    GC_register_root(values_buffer);
+}
 
 // Returns true if the object is a list
 static int is_list(minim_object *x) {
@@ -696,6 +709,27 @@ minim_object *equal_proc(minim_object *args) {
 
 minim_object *void_proc(minim_object *args) {
     return minim_void;
+}
+
+minim_object *call_with_values_proc(minim_object *args) {
+    fprintf(stderr, "andmap: should not be called directly");
+    exit(1);
+}
+
+minim_object *values_proc(minim_object *args) {
+    long i, len;
+
+    len = list_length(args);
+    if (len > values_buffer_size)
+        resize_values_buffer(len);
+    
+    values_buffer_count = len;
+    for (i = 0; i < len; ++i) {
+        values_buffer[i] = minim_car(args);
+        args = minim_cdr(args);
+    }
+    
+    return minim_values;
 }
 
 minim_object *not_proc(minim_object *args) {
@@ -1500,21 +1534,61 @@ static minim_object *apply_args(minim_object *args) {
 }
 
 static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
-    minim_object *head, *tail, *it;
+    minim_object *head, *tail, *it, *result;
 
     if (minim_is_null(exprs))
         return minim_null;
 
-    head = make_pair(eval_expr(minim_car(exprs), env), minim_null);
-    tail = head;
-    it = exprs;
+    head = NULL; tail = NULL;
+    for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
+        result = eval_expr(minim_car(it), env);
+        if (minim_is_values(result)) {
+            fprintf(stderr, "result arity mismatch\n");
+            fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count);
+            exit(1);
+        }
 
-    while (!minim_is_null(it = minim_cdr(it))) {
-        minim_cdr(tail) = make_pair(eval_expr(minim_car(it), env), minim_null);
-        tail = minim_cdr(tail);
+        if (head == NULL) {
+            head = make_pair(result, minim_null);
+            tail = head;
+        } else {
+            minim_cdr(tail) = make_pair(result, minim_null);   
+            tail = minim_cdr(tail);
+        }
     }
-    
+
     return head;
+}
+
+static minim_object *call_with_values(minim_object *producer,
+                                      minim_object *consumer,
+                                      minim_object *env) {
+    minim_object *produced, *args, *tail;
+
+    produced = call_with_args(producer, minim_null, env);
+    if (minim_is_values(produced)) {
+        // need to unpack
+        if (values_buffer_count == 0) {
+            args = minim_null;
+        } else if (values_buffer_count == 1) {
+            args = make_pair(values_buffer_ref(0), minim_null);
+        } else if (values_buffer_count == 2) {
+            args = make_pair(values_buffer_ref(0),
+                   make_pair(values_buffer_ref(1), minim_null));
+        } else {
+            // slow path
+            args = make_pair(values_buffer_ref(0), minim_null);
+            tail = args;
+            for (int i = 1; i < values_buffer_count; ++i) {
+                minim_cdr(tail) = make_pair(values_buffer_ref(i), minim_null);
+                tail = minim_cdr(tail);
+            }
+        }
+    } else {
+        args = make_pair(produced, minim_null);
+    }
+
+    return call_with_args(consumer, args, env);
 }
 
 static minim_object *call_with_args(minim_object *proc, minim_object *args, minim_object *env) {
@@ -1754,6 +1828,11 @@ application:
                 return ormap(minim_car(args), minim_cadr(args), env);
             }
 
+            // special case for `call-with-values`
+            if (minim_prim_proc(proc) == call_with_values_proc) {
+                return call_with_values(minim_car(args), minim_cadr(args), env);
+            }
+
             return minim_prim_proc(proc)(args);
         } else if (minim_is_closure_proc(proc)) {
             minim_object *vars;
@@ -1878,6 +1957,9 @@ void populate_env(minim_object *env) {
     add_procedure("apply", apply_proc, 2, ARG_MAX);
     add_procedure("void", void_proc, 0, 0);
 
+    add_procedure("call-with-values", call_with_values_proc, 2, 2);
+    add_procedure("values", values_proc, 0, ARG_MAX);
+
     add_procedure("current-input-port", current_input_port_proc, 0, 0);
     add_procedure("current-output-port", current_output_port_proc, 0, 0);
     add_procedure("open-input-file", open_input_port_proc, 1, 1);
@@ -1920,12 +2002,14 @@ void minim_boot_init() {
     minim_false = GC_alloc(sizeof(minim_object));
     minim_eof = GC_alloc(sizeof(minim_object));
     minim_void = GC_alloc(sizeof(minim_object));
+    minim_values = GC_alloc(sizeof(minim_object));
 
     minim_null->type = MINIM_NULL_TYPE;
     minim_true->type = MINIM_TRUE_TYPE;
     minim_false->type = MINIM_FALSE_TYPE;
     minim_eof->type = MINIM_EOF_TYPE;
     minim_void->type = MINIM_VOID_TYPE;
+    minim_values->type = MINIM_VALUES_TYPE;
 
     quote_symbol = intern_symbol(symbols, "quote");
     define_symbol = intern_symbol(symbols, "define");
@@ -1948,6 +2032,9 @@ void minim_boot_init() {
     output_port = make_output_port(stdout);
     current_directory = make_string2(get_current_dir());
 
+    values_buffer = GC_alloc(10 * sizeof(minim_object*));
+    values_buffer_size = 10;
+
     // GC nonsense
 
     GC_register_root(minim_null);
@@ -1955,11 +2042,14 @@ void minim_boot_init() {
     GC_register_root(minim_false);
     GC_register_root(minim_eof);
     GC_register_root(minim_void);
+    GC_register_root(minim_values);
+
     GC_register_root(global_env);
     GC_register_root(symbols);
     GC_register_root(input_port);
     GC_register_root(output_port);
     GC_register_root(current_directory);
+    GC_register_root(values_buffer);
 
     GC_resume();
 }
