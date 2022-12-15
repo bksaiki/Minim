@@ -210,10 +210,18 @@
     (cond [(eof-object? stx) (exit)])
     ;; expand
     (define stx* (expand stx xforms))
-    ;; evaluate
-    (define result (eval (syntax->datum stx*) env))
-    ;; display
-    (cond [(not (void? result)) (writeln result)])
+    ;; evaluate and display
+    (call-with-values
+      (lambda () (eval (syntax->datum stx*) env))
+      (lambda results
+        (let loop ([results results])
+          (cond
+            [(null? results) (void)]
+            [(void? (car results)) (loop (cdr results))]
+            [else
+             (writeln (car results))
+             (loop (cdr results))]))))
+    ;; loop
     (loop)))
 
 (define ($load-or-import name print-handler result-handler)

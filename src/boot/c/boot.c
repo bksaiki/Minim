@@ -31,18 +31,25 @@ minim_object *syntax_symbol;
 minim_object *syntax_loc_symbol;
 minim_object *quote_syntax_symbol;
 
-minim_object *empty_env;
-minim_object *global_env;
+//
+//  Runtime state
+//
 
 minim_object *input_port;
 minim_object *output_port;
 minim_object *current_directory;
 
+minim_object *empty_env;
+minim_object *global_env;
 intern_table *symbols;
 
 minim_object **values_buffer;
 int values_buffer_size;
 int values_buffer_count;
+
+minim_object **call_buffer;
+int call_buffer_size;
+int call_buffer_count;
 
 //
 //  forward declarations
@@ -1389,72 +1396,18 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
 //  Evaluation
 //
 
-static int is_pair_starting_with(minim_object *maybe, minim_object *key) {
-    return minim_is_pair(maybe) && minim_is_symbol(minim_car(maybe)) && minim_car(maybe) == key;
-}
-
-static int is_quoted(minim_object *expr) {
-    return is_pair_starting_with(expr, quote_symbol);
-}
-
-static int is_syntax(minim_object *expr) {
-    return is_pair_starting_with(expr, syntax_symbol);
-}
-
-static int is_syntax_loc(minim_object *expr) {
-    return is_pair_starting_with(expr, syntax_loc_symbol);
-}
-
-static int is_quoted_syntax(minim_object *expr) {
-    return is_pair_starting_with(expr, quote_syntax_symbol);
-}
-
-static int is_assignment(minim_object *expr) {
-    return is_pair_starting_with(expr, setb_symbol);
-}
-
-static int is_definition(minim_object *expr) {
-    return is_pair_starting_with(expr, define_symbol);
-}
-
-static int is_let(minim_object *expr) {
-    return is_pair_starting_with(expr, let_symbol);
-}
-
-static int is_if(minim_object *expr) {
-    return is_pair_starting_with(expr, if_symbol);
-}
-
-static int is_cond(minim_object *expr) {
-    return is_pair_starting_with(expr, cond_symbol);
-}
-
-static int is_lambda(minim_object *expr) {
-    return is_pair_starting_with(expr, lambda_symbol);
-}
-
-static int is_begin(minim_object *expr) {
-    return is_pair_starting_with(expr, begin_symbol);
-}
-
-static int is_and(minim_object *expr) {
-    return is_pair_starting_with(expr, and_symbol);
-}
-
-static int is_or(minim_object *expr) {
-    return is_pair_starting_with(expr, or_symbol);
-}
-
 static minim_object *let_vars(minim_object *bindings) {
     return (minim_is_null(bindings) ?
             minim_null :
-            make_pair(minim_caar(bindings), let_vars(minim_cdr(bindings))));
+            make_pair(minim_caar(bindings),
+                      let_vars(minim_cdr(bindings))));
 }
 
 static minim_object *let_vals(minim_object *bindings) {
     return (minim_is_null(bindings) ?
             minim_null :
-            make_pair(minim_car(minim_cdar(bindings)), let_vals(minim_cdr(bindings))));
+            make_pair(minim_car(minim_cdar(bindings)),
+                      let_vals(minim_cdr(bindings))));
 }
 
 // (define (<name> . <formals>) . <body>)
@@ -1659,7 +1612,6 @@ application:
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
-    minim_object *proc, *args, *result;
     short min_arity, max_arity;
 
     // write_object(stdout, expr);
@@ -1676,121 +1628,134 @@ loop:
     } else if (minim_is_symbol(expr)) {
         // variable
         return env_lookup_var(env, expr);
-    } else if (is_quoted(expr)) {
-        check_1ary_syntax(expr);
-        return minim_cadr(expr);
-    } else if (is_syntax(expr) || is_quoted_syntax(expr)) {
-        check_1ary_syntax(expr);
-        return make_syntax(minim_cadr(expr), minim_false);
-    } else if (is_syntax_loc(expr)) {
-        check_2ary_syntax(expr);
-        return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
-    } else if (is_assignment(expr)) {
-        check_define(expr);
-        env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
-        return minim_void;
-    } else if (is_definition(expr)) {
-        if (minim_is_pair(minim_cdr(expr)) && minim_is_pair(minim_cadr(expr))) {
-            // define procedure form
-            expr = expand_define(expr);
-            goto loop;
-        } else {
-            check_define(expr);
-            env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
-        }
-        return minim_void;
-    } else if (is_let(expr)) {
-        if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
-            // let loop form
-            check_let_loop(expr);
-            expr = expand_let_loop(expr);
-            goto loop;
-        } else {
-            check_let(expr);
-            args = eval_exprs(let_vals(minim_cadr(expr)), env);
-            env = extend_env(let_vars(minim_cadr(expr)), args, env);
-            expr = make_pair(begin_symbol, (minim_cddr(expr)));
-            goto loop;
-        }
-    } else if (is_if(expr)) {
-        check_3ary_syntax(expr);
-        if (!minim_is_false(eval_expr(minim_cadr(expr), env)))
-            expr = minim_car(minim_cddr(expr));
-        else
-            expr = minim_cadr(minim_cddr(expr));
+    } else if (minim_is_null(expr)) {
+        fprintf(stderr, "missing procedure expression\n");
+        fprintf(stderr, "  in: ");
+        write_object2(stderr, expr, 0, 0);
+        exit(1);
+    } else if (minim_is_pair(expr)) {
+        minim_object *proc, *head, *args, *result;
 
-        goto loop;
-    } else if (is_cond(expr)) {
-        check_cond(expr);
-        expr = minim_cdr(expr);
-        while (!minim_is_null(expr)) {
-            if (minim_caar(expr) == else_symbol) {
-                if (!minim_is_null(minim_cdr(expr))) {
-                    fprintf(stderr, "else clause must be last");
-                    exit(1);
+        // special forms
+        head = minim_car(expr);
+        if (minim_is_symbol(head)) {
+            if (head == quote_symbol) {
+                check_1ary_syntax(expr);
+                return minim_cadr(expr);
+            } else if (head == syntax_symbol || head == quote_syntax_symbol) {
+                check_1ary_syntax(expr);
+                return make_syntax(minim_cadr(expr), minim_false);
+            } else if (head == syntax_loc_symbol) {
+                check_2ary_syntax(expr);
+                return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
+            } else if (head == setb_symbol) {
+                check_define(expr);
+                env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+                return minim_void;
+            } else if (head == define_symbol) {
+                if (minim_is_pair(minim_cdr(expr)) && minim_is_pair(minim_cadr(expr))) {
+                    // define procedure form
+                    expr = expand_define(expr);
+                    goto loop;
+                } else {
+                    check_define(expr);
+                    env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
                 }
-                expr = make_pair(begin_symbol, minim_cdar(expr));
+                return minim_void;
+            } else if (head == let_symbol) {
+                if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
+                    // let loop form
+                    check_let_loop(expr);
+                    expr = expand_let_loop(expr);
+                    goto loop;
+                } else {
+                    check_let(expr);
+                    args = eval_exprs(let_vals(minim_cadr(expr)), env);
+                    env = extend_env(let_vars(minim_cadr(expr)), args, env);
+                    expr = make_pair(begin_symbol, (minim_cddr(expr)));
+                    goto loop;
+                }
+            } else if (head == if_symbol) {
+                check_3ary_syntax(expr);
+                if (!minim_is_false(eval_expr(minim_cadr(expr), env)))
+                    expr = minim_car(minim_cddr(expr));
+                else
+                    expr = minim_cadr(minim_cddr(expr));
+
                 goto loop;
-            } else if (!minim_is_false(eval_expr(minim_caar(expr), env))) {
-                expr = make_pair(begin_symbol, minim_cdar(expr));
+            } else if (head == cond_symbol) {
+                check_cond(expr);
+                expr = minim_cdr(expr);
+                while (!minim_is_null(expr)) {
+                    if (minim_caar(expr) == else_symbol) {
+                        if (!minim_is_null(minim_cdr(expr))) {
+                            fprintf(stderr, "else clause must be last");
+                            exit(1);
+                        }
+                        expr = make_pair(begin_symbol, minim_cdar(expr));
+                        goto loop;
+                    } else if (!minim_is_false(eval_expr(minim_caar(expr), env))) {
+                        expr = make_pair(begin_symbol, minim_cdar(expr));
+                        goto loop;
+                    }
+                    expr = minim_cdr(expr);
+                }
+
+                return minim_void;
+            } else if (head == lambda_symbol) {
+                check_lambda(expr, &min_arity, &max_arity);
+                return make_closure_proc(minim_cadr(expr),
+                                        make_pair(begin_symbol, minim_cddr(expr)),
+                                        env,
+                                        min_arity,
+                                        max_arity);
+            } else if (head == begin_symbol) {
+                check_begin(expr);
+                expr = minim_cdr(expr);
+                if (minim_is_null(expr))
+                    return minim_void;
+
+                while (!minim_is_null(minim_cdr(expr))) {
+                    eval_expr(minim_car(expr), env);
+                    expr = minim_cdr(expr);
+                }
+
+                expr = minim_car(expr);
+                goto loop;
+            } else if (head == and_symbol) {
+                check_begin(expr);
+                expr = minim_cdr(expr);
+                if (minim_is_null(expr))
+                    return minim_true;
+
+                while (!minim_is_null(minim_cdr(expr))) {
+                    result = eval_expr(minim_car(expr), env);
+                    if (minim_is_false(result))
+                        return result;
+                    expr = minim_cdr(expr);
+                }
+
+                expr = minim_car(expr);
+                goto loop;
+            } else if (head == or_symbol) {
+                check_begin(expr);
+                expr = minim_cdr(expr);
+                if (minim_is_null(expr))
+                    return minim_false;
+
+                while (!minim_is_null(minim_cdr(expr))) {
+                    result = eval_expr(minim_car(expr), env);
+                    if (!minim_is_false(result))
+                        return result;
+                    expr = minim_cdr(expr);
+                }
+
+                expr = minim_car(expr);
                 goto loop;
             }
-            expr = minim_cdr(expr);
         }
-
-        return minim_void;
-    } else if (is_lambda(expr)) {
-        check_lambda(expr, &min_arity, &max_arity);
-        return make_closure_proc(minim_cadr(expr),
-                                 make_pair(begin_symbol, minim_cddr(expr)),
-                                 env,
-                                 min_arity,
-                                 max_arity);
-    } else if (is_begin(expr)) {
-        check_begin(expr);
-        expr = minim_cdr(expr);
-        if (minim_is_null(expr))
-            return minim_void;
-
-        while (!minim_is_null(minim_cdr(expr))) {
-            eval_expr(minim_car(expr), env);
-            expr = minim_cdr(expr);
-        }
-
-        expr = minim_car(expr);
-        goto loop;
-    } else if (is_and(expr)) {
-        check_begin(expr);
-        expr = minim_cdr(expr);
-        if (minim_is_null(expr))
-            return minim_true;
-
-        while (!minim_is_null(minim_cdr(expr))) {
-            result = eval_expr(minim_car(expr), env);
-            if (minim_is_false(result))
-                return result;
-            expr = minim_cdr(expr);
-        }
-
-        expr = minim_car(expr);
-        goto loop;
-    } else if (is_or(expr)) {
-        check_begin(expr);
-        expr = minim_cdr(expr);
-        if (minim_is_null(expr))
-            return minim_false;
-
-        while (!minim_is_null(minim_cdr(expr))) {
-            result = eval_expr(minim_car(expr), env);
-            if (!minim_is_false(result))
-                return result;
-            expr = minim_cdr(expr);
-        }
-
-        expr = minim_car(expr);
-        goto loop;
-    } else if (minim_is_pair(expr)) {
-        proc = eval_expr(minim_car(expr), env);
+        
+        proc = eval_expr(head, env);
         args = eval_exprs(minim_cdr(expr), env);
 
 application:
@@ -1836,9 +1801,6 @@ application:
             return minim_prim_proc(proc)(args);
         } else if (minim_is_closure_proc(proc)) {
             minim_object *vars;
-
-            // write_object(stdout, expr);
-            // printf("\n");
 
             // check arity and extend environment
             check_closure_proc_arity(proc, args);
