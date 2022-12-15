@@ -18,6 +18,7 @@ minim_object *minim_values;
 
 minim_object *quote_symbol;
 minim_object *define_symbol;
+minim_object *define_values_symbol;
 minim_object *setb_symbol;
 minim_object *if_symbol;
 minim_object *lambda_symbol;
@@ -1267,12 +1268,42 @@ static void check_3ary_syntax(minim_object *expr) {
 }
 
 // Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be `(<name> <symbol> <datum>)
+// Check: `expr` must be either
+//  (ii) `(<name> (<symbol> ...) <datum> ...)
+//  (i)  `(<name> <symbol> <datum>)`
 static void check_define(minim_object *expr) {
-    minim_object *rest;
+    minim_object *rest, *id;
     
     rest = minim_cdr(expr);
-    if (!minim_is_pair(rest) || !minim_is_symbol(minim_car(rest)))
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    id = minim_car(rest);
+    rest = minim_cdr(rest);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    if (minim_is_symbol(id) && !minim_is_null(minim_cdr(rest)))
+        bad_syntax_exn(expr);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> (<symbol> ...) <datum>)
+static void check_define_values(minim_object *expr) {
+    minim_object *rest, *ids;
+    
+    rest = minim_cdr(expr);
+    if (!minim_is_pair(rest))
+        bad_syntax_exn(expr);
+
+    ids = minim_car(rest);
+    while (minim_is_pair(ids)) {
+        if (!minim_is_symbol(minim_car(ids)))
+            bad_syntax_exn(expr);
+        ids = minim_cdr(ids);
+    } 
+
+    if (!minim_is_null(ids))
         bad_syntax_exn(expr);
 
     rest = minim_cdr(rest);
@@ -1411,22 +1442,36 @@ static minim_object *let_vals(minim_object *bindings) {
 }
 
 // (define (<name> . <formals>) . <body>)
-// =>
-// (define <name> (lambda <formals> . <body>))
+// => (define <name> (lambda <formals> . <body>))
+// (define <name> <body>)
+// => (define-values (<name>) <body>)
 static minim_object *expand_define(minim_object *define) {
-    minim_object *name, *formals, *body;
+    minim_object *id, *rest;
 
-    name = minim_car(minim_cadr(define));
-    formals = minim_cdr(minim_cadr(define));
-    body = minim_cddr(define);
+    id = minim_cadr(define);
+    rest = minim_cddr(define);
+    if (minim_is_symbol(id)) {
+        // value
+        return make_pair(define_values_symbol,
+               make_pair(make_pair(id, minim_null),
+               rest));
+    } else {
+        minim_object *name, *formals, *body;
 
-    return make_pair(define_symbol,
-           make_pair(name,
-           make_pair(
-                make_pair(lambda_symbol,
-                make_pair(formals,
-                body)),
-           minim_null)));
+        // procedure
+        name = minim_car(minim_cadr(define));
+        formals = minim_cdr(minim_cadr(define));
+        body = minim_cddr(define);
+
+        return expand_define(
+                make_pair(define_symbol,
+                    make_pair(name,
+                    make_pair(
+                            make_pair(lambda_symbol,
+                            make_pair(formals,
+                            body)),
+                    minim_null))));
+    }
 }
 
 // Hacky expansion: ideally we want a letrec
@@ -1653,14 +1698,40 @@ loop:
                 env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
                 return minim_void;
             } else if (head == define_symbol) {
-                if (minim_is_pair(minim_cdr(expr)) && minim_is_pair(minim_cadr(expr))) {
-                    // define procedure form
-                    expr = expand_define(expr);
-                    goto loop;
+                check_define(expr);
+                expr = expand_define(expr);
+                goto loop;
+            } else if (head == define_values_symbol) {
+                long var_count;
+
+                check_define_values(expr);
+                var_count = list_length(minim_cadr(expr));
+                result = eval_expr(minim_car(minim_cddr(expr)), env);
+                if (minim_is_values(result)) {
+                    minim_object *it;
+                    long idx;
+
+                    // multi-valued
+                    if (var_count != values_buffer_count) {
+                        fprintf(stderr, "result arity mismatch\n");
+                        fprintf(stderr, "  expected: %ld, received: %d\n", var_count, values_buffer_count);
+                        exit(1);
+                    }
+
+                    idx = 0;
+                    for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx)
+                        env_define_var(env, minim_car(it), values_buffer_ref(idx));
                 } else {
-                    check_define(expr);
-                    env_define_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+                    // single-valued
+                    if (var_count != 1) {
+                        fprintf(stderr, "result arity mismatch\n");
+                        fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
+                        exit(1);
+                    }
+                    
+                    env_define_var(env, minim_car(minim_cadr(expr)), result);
                 }
+
                 return minim_void;
             } else if (head == let_symbol) {
                 if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
@@ -1975,6 +2046,7 @@ void minim_boot_init() {
 
     quote_symbol = intern_symbol(symbols, "quote");
     define_symbol = intern_symbol(symbols, "define");
+    define_values_symbol = intern_symbol(symbols, "define-values");
     setb_symbol = intern_symbol(symbols, "set!");
     if_symbol = intern_symbol(symbols, "if");
     lambda_symbol = intern_symbol(symbols, "lambda");

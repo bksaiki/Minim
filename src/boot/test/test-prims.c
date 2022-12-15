@@ -364,6 +364,23 @@ int test_if() {
     return passed;
 }
 
+int test_define() {
+    passed = 1;
+
+    check_equal("(define-values () (values))", "#<void>");
+    check_equal("(define-values (x) 1)", "#<void>");
+    check_equal("(define-values (x) (values 1))", "#<void>");
+    check_equal("(define-values (x y) (values 1 2))", "#<void>");
+    check_equal("(define-values (x y z) (values 1 2 3))", "#<void>");
+
+    check_equal("(define x 1)", "#<void>");
+    check_equal("(define (foo) 1)", "#<void>");
+    check_equal("(define (foo x) 1)", "#<void>");
+    check_equal("(define (foo x y) 1)", "#<void>");
+
+    return passed;
+}
+
 int test_begin() {
     passed = 1;
 
@@ -420,6 +437,7 @@ void run_tests() {
     log_test("simple eval", test_simple_eval);
     log_test("syntax", test_syntax);
     log_test("if", test_if);
+    log_test("define", test_define);
     log_test("begin", test_begin);
     log_test("values", test_values);
     log_test("cond", test_cond);
