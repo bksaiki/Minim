@@ -7,12 +7,10 @@
 ;;;   Expander for syntax macros
 ;;;   
 
-(define $xforms '())
-
-(define (expand expr)
+(define (expand expr xforms)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)
-    (let loop ([xforms $xforms])
+    (let loop ([xforms xforms])
       (cond [(null? xforms) #f]
             [(eq? (caar xforms) key) (cdar xforms)]
             [else (loop (cdr xforms))])))
@@ -23,15 +21,22 @@
     (cond
       [(pair? expr*)
        (define first (syntax-e (car expr*)))
-       (define maybe-args (cdr expr*))
        (cond
          [(symbol? first)
           (define maybe-xform (lookup-or-false first))
-          (if maybe-xform
-              (datum->syntax (expand-expr (maybe-xform expr)))
-              (datum->syntax (cons (datum->syntax first) (map expand-expr maybe-args))))]
+          (define maybe-args (cdr expr*))
+          (datum->syntax
+            (if maybe-xform
+                (expand-expr (maybe-xform expr))
+                (cons (datum->syntax first) (map expand-expr maybe-args))))]
          [else
-          (datum->syntax (map expand-expr expr*))])]
+          expr])]
+      [(symbol? expr*)
+       (define maybe-xform (lookup-or-false expr*))
+       (datum->syntax
+         (if maybe-xform
+             (expand-expr (maybe-xform expr))
+             expr))]
       [else
        expr]))
 

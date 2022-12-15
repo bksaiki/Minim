@@ -100,15 +100,13 @@
          (loop (cdr imported))]))
 
     ;; apply transformers
-    (define old-xforms $xforms)
     (set! module-xforms imported-xforms)
     (let loop ([exprs exprs] [acc '()])
       (cond
         [(null? exprs)
-         (set! $xforms old-xforms)
          (reverse acc)]
         [else
-         (define expanded (expand (car exprs)))
+         (define expanded (expand (car exprs) module-xforms))
          (define expanded* (syntax-e expanded))
          (cond
            [(and (pair? expanded*) (eq? (syntax-e (car expanded*)) 'define-syntax))
@@ -120,7 +118,6 @@
                (define rib (cdr rib))
                (cond
                  [(and (pair? rib) (null? (cdr rib)))
-                  (set! $xforms (map cdr module-xforms))
                   (define xform (eval (syntax->datum (car rib)) stx-env))
                   (set! module-xforms (cons (cons xform-name xform) module-xforms))]
                  [else
@@ -206,14 +203,13 @@
 
 ;; REPL with env
 (define ($repl xforms env)
-  (set! $xforms xforms)
   (let loop ()
     ;; read
     (display "> ")
     (define stx (read))
     (cond [(eof-object? stx) (exit)])
     ;; expand
-    (define stx* (expand stx))
+    (define stx* (expand stx xforms))
     ;; evaluate
     (define result (eval (syntax->datum stx*) env))
     ;; display

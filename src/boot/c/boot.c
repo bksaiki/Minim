@@ -1758,6 +1758,9 @@ application:
         } else if (minim_is_closure_proc(proc)) {
             minim_object *vars;
 
+            // write_object(stdout, expr);
+            // printf("\n");
+
             // check arity and extend environment
             check_closure_proc_arity(proc, args);
             env = extend_env(minim_null, minim_null, minim_closure_env(proc));
