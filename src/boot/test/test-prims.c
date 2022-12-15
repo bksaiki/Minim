@@ -423,6 +423,23 @@ int test_cond() {
 int test_let() {
     passed = 1;
 
+    check_equal("(letrec-values () 1)", "1");
+    check_equal("(letrec-values ([() (values)]) 1)", "1");
+    check_equal("(letrec-values ([(x) 1]) x)", "1");
+    check_equal("(letrec-values ([(x y) (values 1 2)]) (list x y))", "'(1 2)");
+    check_equal("(letrec-values ([(x y z) (values 1 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(letrec-values ([(x) 1] [(y) 2]) (list x y))", "'(1 2)");
+    check_equal("(letrec-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(letrec-values ([(f g) (values (lambda () (g 1)) (lambda (x) 1))]) (f))", "1");
+
+    check_equal("(letrec () 1)", "1");
+    check_equal("(letrec ([x 1]) x)", "1");
+    check_equal("(letrec ([x 1] [y 2]) x)", "1");
+    check_equal("(letrec ([x 1] [y 2]) y)", "2");
+    check_equal("(letrec ([x 1] [y 2]) y x)", "1");
+    check_equal("(letrec ([x 1]) (let ([y x]) y))", "1");
+    check_equal("(letrec ([f (lambda () 1)]) (f))", "1");
+
     check_equal("(let-values () 1)", "1");
     check_equal("(let-values ([() (values)]) 1)", "1");
     check_equal("(let-values ([(x) 1]) x)", "1");
