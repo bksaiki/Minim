@@ -423,6 +423,14 @@ int test_cond() {
 int test_let() {
     passed = 1;
 
+    check_equal("(let-values () 1)", "1");
+    check_equal("(let-values ([() (values)]) 1)", "1");
+    check_equal("(let-values ([(x) 1]) x)", "1");
+    check_equal("(let-values ([(x y) (values 1 2)]) (list x y))", "'(1 2)");
+    check_equal("(let-values ([(x y z) (values 1 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(let-values ([(x) 1] [(y) 2]) (list x y))", "'(1 2)");
+    check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
+
     check_equal("(let () 1)", "1");
     check_equal("(let ([x 1]) x)", "1");
     check_equal("(let ([x 1] [y 2]) x)", "1");
