@@ -6,41 +6,47 @@
         stx-null? stx-pair? stx-list?
         stx-car stx-cdr)
 
-(define (identifier? t)
-  (if (syntax? t)
-      (symbol? (syntax-e t))
-      #f))
+(define-values (identifier?)
+  (lambda (t)
+    (if (syntax? t)
+        (symbol? (syntax-e t))
+        #f)))
 
-(define (stx-null? t)
-  (if (null? t)
-      #t
-      (if (syntax? t)
-          (null? (syntax-e t))
-          #f)))
+(define-values (stx-null?)
+  (lambda (t)
+    (if (null? t)
+        #t
+        (if (syntax? t)
+            (null? (syntax-e t))
+            #f))))
 
-(define (stx-pair? t)
-  (if (pair? t)
-      #t
-      (if (syntax? t)
-          (pair? (syntax-e t))
-          #f)))
+(define-values (stx-pair?)
+  (lambda (t)
+    (if (pair? t)
+        #t
+        (if (syntax? t)
+            (pair? (syntax-e t))
+            #f))))
 
-(define (stx-car t)
-  (if (pair? t)
-      (car t)
-      (car (syntax-e t))))
+(define-values (stx-car)
+  (lambda (t)
+    (if (pair? t)
+        (car t)
+        (car (syntax-e t)))))
 
-(define (stx-cdr t)
-  (if (pair? t)
-      (cdr t)
-      (cdr (syntax-e t))))
+(define-values (stx-cdr)
+  (lambda (t)
+    (if (pair? t)
+        (cdr t)
+        (cdr (syntax-e t)))))
 
-(define (stx-list? t)
-  (if (list? t)
-      #t
-      (if (syntax? t)
-          (list? (syntax-e t))
-          #f)))
+(define-values (stx-list?)
+  (lambda (t)
+    (if (list? t)
+        #t
+        (if (syntax? t)
+            (list? (syntax-e t))
+            #f))))
 
 ; (define (stx-vector? t)
 ;   (if (vector? t)

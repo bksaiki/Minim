@@ -208,6 +208,7 @@ extern int values_buffer_count;
 
 // Complex predicates
 
+#define minim_is_bool(x)            (minim_is_true(x) || minim_is_false(x))
 #define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure_proc(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))

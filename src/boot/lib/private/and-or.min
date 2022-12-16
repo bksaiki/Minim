@@ -5,11 +5,11 @@
 (import "stx.min")
 (export and or)
 
-(define-syntax and
+(define-syntaxes (and)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'and "bad syntax" stx)
-        (let ([e (stx-cdr stx)])
+        (let-values ([(e) (stx-cdr stx)])
           (if (stx-null? e)
               (quote-syntax #t)
               (if (if (stx-pair? e)
@@ -23,20 +23,20 @@
                       (cons (quote-syntax and) (stx-cdr e))
                       (quote-syntax #f)))))))))
 
-(define-syntax or
+(define-syntaxes (or)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'or "bad syntax" stx)
-        (let ([e (stx-cdr stx)])
+        (let-values ([(e) (stx-cdr stx)])
           (if (stx-null? e)
               (quote-syntax #f)
               (if (if (stx-pair? e)
                       (stx-null? (stx-cdr e))
                       #f)
                   (stx-car e)
-                  (let ([tmp 'or-t])
+                  (let-values ([(tmp) 'or-t])
                     (datum->syntax
-                      (list (quote-syntax let)
+                      (list (quote-syntax let-values)
                         (list
                           (list (list tmp) (stx-car e)))
                         (list (quote-syntax if)

@@ -42,6 +42,7 @@ minim_object *quote_syntax_symbol;
 minim_object *input_port;
 minim_object *output_port;
 minim_object *current_directory;
+minim_object *boot_expander;
 
 minim_object *empty_env;
 minim_object *global_env;
@@ -50,10 +51,6 @@ intern_table *symbols;
 minim_object **values_buffer;
 int values_buffer_size;
 int values_buffer_count;
-
-minim_object **call_buffer;
-int call_buffer_size;
-int call_buffer_count;
 
 //
 //  forward declarations
@@ -1226,6 +1223,23 @@ minim_object *current_directory_proc(minim_object *args) {
     }
 }
 
+minim_object *boot_expander_proc(minim_object *args) {
+    minim_object *val;
+
+    if (minim_is_null(args)) {
+        // getter
+        return boot_expander;
+    } else {
+        // setter
+        val = minim_car(args);
+        if (!minim_is_bool(val))
+            bad_type_exn("boot-expander?", "boolean?", val);
+
+        boot_expander = val;
+        return minim_void;
+    }
+}
+
 //
 //  Syntax check
 //
@@ -1761,29 +1775,7 @@ loop:
         // special forms
         head = minim_car(expr);
         if (minim_is_symbol(head)) {
-            if (head == quote_symbol) {
-                // quote form
-                check_1ary_syntax(expr);
-                return minim_cadr(expr);
-            } else if (head == syntax_symbol || head == quote_syntax_symbol) {
-                // quote-syntax form
-                check_1ary_syntax(expr);
-                return make_syntax(minim_cadr(expr), minim_false);
-            } else if (head == syntax_loc_symbol) {
-                // syntax/loc form
-                check_2ary_syntax(expr);
-                return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
-            } else if (head == setb_symbol) {
-                // set! form
-                check_assign(expr);
-                env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
-                return minim_void;
-            } else if (head == define_symbol) {
-                // define form
-                check_define(expr);
-                expr = expand_define(expr);
-                goto loop;
-            } else if (head == define_values_symbol) {
+            if (head == define_values_symbol) {
                 // define-values form
                 check_define_values(expr);
                 var_count = list_length(minim_cadr(expr));
@@ -1811,18 +1803,6 @@ loop:
                 }
 
                 return minim_void;
-            } else if (head == let_symbol) {
-                if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
-                    // let loop form
-                    check_let_loop(expr);
-                    expr = expand_let_loop(expr);
-                    goto loop;
-                } else {
-                    // let form
-                    check_let(expr);
-                    expr = expand_let(let_values_symbol, expr);
-                    goto loop;
-                }
             } else if (head == let_values_symbol) {
                 // let-values form
                 check_let_values(expr);
@@ -1856,11 +1836,6 @@ loop:
                 
                 expr = make_pair(begin_symbol, (minim_cddr(expr)));
                 env = env2;
-                goto loop;
-            } else if (head == letrec_symbol) {
-                // letrec form
-                check_let(expr);
-                expr = expand_let(letrec_values_symbol, expr);
                 goto loop;
             } else if (head == letrec_values_symbol) {
                 // letrec-values
@@ -1901,6 +1876,23 @@ loop:
 
                 expr = make_pair(begin_symbol, (minim_cddr(expr)));
                 goto loop;
+            } else if (head == quote_symbol) {
+                // quote form
+                check_1ary_syntax(expr);
+                return minim_cadr(expr);
+            } else if (head == syntax_symbol || head == quote_syntax_symbol) {
+                // quote-syntax form
+                check_1ary_syntax(expr);
+                return make_syntax(minim_cadr(expr), minim_false);
+            } else if (head == syntax_loc_symbol) {
+                // syntax/loc form
+                check_2ary_syntax(expr);
+                return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
+            } else if (head == setb_symbol) {
+                // set! form
+                check_assign(expr);
+                env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+                return minim_void;
             } else if (head == if_symbol) {
                 // if form
                 check_3ary_syntax(expr);
@@ -1908,26 +1900,6 @@ loop:
                        minim_cadr(minim_cddr(expr)) :
                        minim_car(minim_cddr(expr)));
                 goto loop;
-            } else if (head == cond_symbol) {
-                // cond form
-                check_cond(expr);
-                expr = minim_cdr(expr);
-                while (!minim_is_null(expr)) {
-                    if (minim_caar(expr) == else_symbol) {
-                        if (!minim_is_null(minim_cdr(expr))) {
-                            fprintf(stderr, "else clause must be last");
-                            exit(1);
-                        }
-                        expr = make_pair(begin_symbol, minim_cdar(expr));
-                        goto loop;
-                    } else if (!minim_is_false(eval_expr(minim_caar(expr), env))) {
-                        expr = make_pair(begin_symbol, minim_cdar(expr));
-                        goto loop;
-                    }
-                    expr = minim_cdr(expr);
-                }
-
-                return minim_void;
             } else if (head == lambda_symbol) {
                 // lambda form
                 check_lambda(expr, &min_arity, &max_arity);
@@ -1950,39 +1922,84 @@ loop:
 
                 expr = minim_car(expr);
                 goto loop;
-            } else if (head == and_symbol) {
-                // and form
-                check_begin(expr);
-                expr = minim_cdr(expr);
-                if (minim_is_null(expr))
-                    return minim_true;
-
-                while (!minim_is_null(minim_cdr(expr))) {
-                    result = eval_expr(minim_car(expr), env);
-                    if (minim_is_false(result))
-                        return result;
+            } else if (minim_is_true(boot_expander)) {
+                // expanded forms
+                if (head == define_symbol) {
+                    // define form
+                    check_define(expr);
+                    expr = expand_define(expr);
+                    goto loop;
+                } else if (head == let_symbol) {
+                    if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
+                        // let loop form
+                        check_let_loop(expr);
+                        expr = expand_let_loop(expr);
+                        goto loop;
+                    } else {
+                        // let form
+                        check_let(expr);
+                        expr = expand_let(let_values_symbol, expr);
+                        goto loop;
+                    }
+                } else if (head == letrec_symbol) {
+                    // letrec form
+                    check_let(expr);
+                    expr = expand_let(letrec_values_symbol, expr);
+                    goto loop;
+                } else if (head == cond_symbol) {
+                    // cond form
+                    check_cond(expr);
                     expr = minim_cdr(expr);
-                }
+                    while (!minim_is_null(expr)) {
+                        if (minim_caar(expr) == else_symbol) {
+                            if (!minim_is_null(minim_cdr(expr))) {
+                                fprintf(stderr, "else clause must be last");
+                                exit(1);
+                            }
+                            expr = make_pair(begin_symbol, minim_cdar(expr));
+                            goto loop;
+                        } else if (!minim_is_false(eval_expr(minim_caar(expr), env))) {
+                            expr = make_pair(begin_symbol, minim_cdar(expr));
+                            goto loop;
+                        }
+                        expr = minim_cdr(expr);
+                    }
 
-                expr = minim_car(expr);
-                goto loop;
-            } else if (head == or_symbol) {
-                // or form
-                check_begin(expr);
-                expr = minim_cdr(expr);
-                if (minim_is_null(expr))
-                    return minim_false;
-
-                while (!minim_is_null(minim_cdr(expr))) {
-                    result = eval_expr(minim_car(expr), env);
-                    if (!minim_is_false(result))
-                        return result;
+                    return minim_void;
+                } else if (head == and_symbol) {
+                    // and form
+                    check_begin(expr);
                     expr = minim_cdr(expr);
-                }
+                    if (minim_is_null(expr))
+                        return minim_true;
 
-                expr = minim_car(expr);
-                goto loop;
-            }
+                    while (!minim_is_null(minim_cdr(expr))) {
+                        result = eval_expr(minim_car(expr), env);
+                        if (minim_is_false(result))
+                            return result;
+                        expr = minim_cdr(expr);
+                    }
+
+                    expr = minim_car(expr);
+                    goto loop;
+                } else if (head == or_symbol) {
+                    // or form
+                    check_begin(expr);
+                    expr = minim_cdr(expr);
+                    if (minim_is_null(expr))
+                        return minim_false;
+
+                    while (!minim_is_null(minim_cdr(expr))) {
+                        result = eval_expr(minim_car(expr), env);
+                        if (!minim_is_false(result))
+                            return result;
+                        expr = minim_cdr(expr);
+                    }
+
+                    expr = minim_car(expr);
+                    goto loop;
+                }
+            } 
         }
         
         proc = eval_expr(head, env);
@@ -2172,6 +2189,7 @@ void populate_env(minim_object *env) {
     add_procedure("exit", exit_proc, 0, 0);
     add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
+    add_procedure("boot-expander?", boot_expander_proc, 0, 1);
 }
 
 minim_object *make_env() {
@@ -2227,6 +2245,7 @@ void minim_boot_init() {
     input_port = make_input_port(stdin);
     output_port = make_output_port(stdout);
     current_directory = make_string2(get_current_dir());
+    boot_expander = minim_true;
 
     values_buffer = GC_alloc(10 * sizeof(minim_object*));
     values_buffer_size = 10;
@@ -2245,6 +2264,7 @@ void minim_boot_init() {
     GC_register_root(input_port);
     GC_register_root(output_port);
     GC_register_root(current_directory);
+    GC_register_root(boot_expander);
     GC_register_root(values_buffer);
 
     GC_resume();

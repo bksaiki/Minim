@@ -7,6 +7,9 @@
 ;;;   Expander for syntax macros
 ;;;   
 
+;; Should the expander use the boot expander for evaluation?
+(define $expander-boot-expander? #f)
+
 (define (expand expr xforms)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)
@@ -26,9 +29,22 @@
           (define maybe-xform (lookup-or-false first))
           (define maybe-args (cdr expr*))
           (datum->syntax
-            (if maybe-xform
-                (expand-expr (maybe-xform expr))
-                (cons (datum->syntax first) (map expand-expr maybe-args))))]
+            (cond
+              [maybe-xform
+               (define old-expander? (boot-expander?))
+               (define expanded
+                 (call-with-values
+                   (lambda ()
+                     (boot-expander? $expander-boot-expander?)
+                     (maybe-xform expr))
+                   (lambda results
+                     (boot-expander? old-expander?)
+                     (if (and (= (length results) 1) (syntax? (car results)))
+                         (car results)
+                         (error "transformer produced something other than syntax" (car results))))))
+               (expand-expr expanded)]
+              [else
+               (cons (datum->syntax first) (map expand-expr maybe-args))]))]
          [else
           expr])]
       [(symbol? expr*)

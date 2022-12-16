@@ -7,13 +7,16 @@
 ;;;   File reader for importing Minim files
 ;;;
 
+;; Should modules use the boot expander?
+(define $module-boot-expander? #f)
+
 ;; Base environment when loading modules
 (define $base-env (environment))
 
-;; Module cache
+;; Module caches
 ;;  name -> (exporting xforms, exporting values)
-(define $module-table '())
 ;;  name -> (current xforms, current env)
+(define $module-table '())
 (define $module-envs '())
 
 ;; Like `$load-module`, but does not check the cache
@@ -109,17 +112,40 @@
          (define expanded (expand (car exprs) module-xforms))
          (define expanded* (syntax-e expanded))
          (cond
-           [(and (pair? expanded*) (eq? (syntax-e (car expanded*)) 'define-syntax))
-            (define (panic!) (syntax-error 'define-syntax "bad syntax" expanded))
+           [(and (pair? expanded*) (eq? (syntax-e (car expanded*)) 'define-syntaxes))
+            (define (panic!) (syntax-error 'define-syntaxes "bad syntax" expanded))
             (define rib (cdr expanded*))
             (cond
-              [(and (pair? rib) (symbol? (syntax-e (car rib))))
-               (define xform-name (syntax-e (car rib)))
+              [(and (pair? rib) (list? (syntax-e (car rib))))
+               (define xform-names
+                 (let loop ([names (syntax-e (car rib))] [acc '()])
+                   (if (null? names)
+                       (reverse acc)
+                       (loop (cdr names) (cons (syntax-e (car names)) acc)))))
                (define rib (cdr rib))
                (cond
                  [(and (pair? rib) (null? (cdr rib)))
-                  (define xform (eval (syntax->datum (car rib)) stx-env))
-                  (set! module-xforms (cons (cons xform-name xform) module-xforms))]
+                  (define expr (syntax->datum (car rib)))
+                  (define old-expander? (boot-expander?))
+                  (call-with-values
+                     (lambda ()
+                       (boot-expander? $module-boot-expander?)
+                       (eval expr stx-env))
+                     (lambda results
+                       (boot-expander? old-expander?)
+                       (if (not (= (length xform-names) (length results)))
+                           (error 'define-syntaxes "result arity mismatch" "expected"
+                                  (length xform-names) "received" (length results))
+                           (let loop ([xform-names xform-names] [results results])
+                             (if (null? xform-names)
+                                 (void)
+                                 (let ([xform-name (car xform-names)]
+                                       [xform (car results)])
+                                   (cond
+                                     [(procedure? xform)
+                                      (define binding (cons xform-name xform))
+                                      (set! module-xforms (cons binding module-xforms))
+                                      (loop (cdr xform-names) (cdr results))])))))))]
                  [else
                   (panic!)])]
                [else
@@ -155,10 +181,21 @@
     (cond
       [(null? exprs) result]
       [else
-       (define result (eval (syntax->datum (car exprs)) env))
-       (cond [(and print-handler (not (void? result)))
-              (print-handler result)])
-       (loop (cdr exprs) result)])))
+       (define expr (syntax->datum (car exprs)))
+       (define old-expander? (boot-expander?))
+       (call-with-values
+         (lambda ()
+           (boot-expander? $module-boot-expander?)
+           (eval expr env))
+         (lambda results
+           (boot-expander? old-expander?)
+           (let loop2 ([results results] [prev (void)])
+             (cond
+               [(null? results)
+                (loop (cdr exprs) prev)]
+               [else
+                (cond [(not (void? (car results))) (writeln (car results))])
+                (loop2 (cdr results) (car results))]))))])))
 
 (define ($load-or-import-no-check path print-handler result-handler)
   ;; paths
@@ -210,10 +247,15 @@
     (cond [(eof-object? stx) (exit)])
     ;; expand
     (define stx* (expand stx xforms))
+    (define old-expander? (boot-expander?))
     ;; evaluate and display
     (call-with-values
-      (lambda () (eval (syntax->datum stx*) env))
+      (lambda ()
+        (let ([expr (syntax->datum stx*)])
+          (boot-expander? $module-boot-expander?)
+          (eval expr env)))
       (lambda results
+        (boot-expander? old-expander?)
         (let loop ([results results])
           (cond
             [(null? results) (void)]

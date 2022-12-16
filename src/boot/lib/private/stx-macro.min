@@ -5,7 +5,7 @@
 (import "and-or.min" "stx.min")
 (export syntax-rules)
 
-(define-syntax syntax-rules
+(define-syntaxes (syntax-rules)
   (lambda (stx)
     (if (identifier? stx)
         (syntax-error 'syntax-rules "not allowed as an expression" stx)
