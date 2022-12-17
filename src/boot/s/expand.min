@@ -22,7 +22,9 @@
   (define (expand-expr expr)
     (define expr* (syntax-e expr))
     (cond
-      [(pair? expr*)
+      [(null? expr*)
+        expr]
+      [(list? expr*)
        (define first (syntax-e (car expr*)))
        (cond
          [(symbol? first)
@@ -46,7 +48,9 @@
               [else
                (cons (datum->syntax first) (map expand-expr maybe-args))]))]
          [else
-          expr])]
+          (map expand-expr expr*)])]
+      [(pair? expr*)
+       (datum->syntax (cons (expand-expr (car expr*)) (expand-expr (cdr expr*))))]
       [(symbol? expr*)
        (define maybe-xform (lookup-or-false expr*))
        (datum->syntax

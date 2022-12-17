@@ -5,32 +5,30 @@
 (import "and-or.min" "stx.min")
 (export cond else)
 
-
 (define-syntaxes (cond)
   (lambda (stx)
     (if (not (stx-list? stx))
         (syntax-error 'cond "bad-syntax" stx)
-        (let ([e (stx-cdr stx)]
-              [serr (lambda (msg at) (syntax-error 'cond msg stx at))])
+        (let-values ([(e) (stx-cdr stx)]
+                     [(serr) (lambda (msg at) (syntax-error 'cond msg stx at))])
           (if (stx-null? e)
               (quote-syntax (void))
-              (let ([c (stx-car e)])
-                (if (and (stx-list? c)
-                         (not (null? c)))
-                    (let ([test (stx-car c)]
-                          [then (stx-cdr c)]
-                          [then-clause
-                           (lambda (then)
-                             (let ([then1 (stx-cdr then)])
-                               (if (stx-null? then1)
-                                   (stx-car then)
-                                   (cons (quote-syntax let)
-                                     (cons (quote-syntax ())
-                                       then)))))]
-                          [else?
-                           (lambda (i)
-                             (and (identifier? i)
-                                  (identifier=? i (quote-syntax else))))])
+              (let-values ([(c) (stx-car e)])
+                (if (and (stx-list? c) (not (null? c)))
+                    (let-values ([(test) (stx-car c)]
+                                 [(then) (stx-cdr c)]
+                                 [(then-clause)
+                                  (lambda (then)
+                                    (let-values ([(then1) (stx-cdr then)])
+                                      (if (stx-null? then1)
+                                          (stx-car then)
+                                          (cons (quote-syntax let)
+                                            (cons (quote-syntax ())
+                                            then)))))]
+                                 [(else?)
+                                  (lambda (i)
+                                    (and (identifier? i)
+                                         (free-identifier=? i (quote-syntax else))))])
                       (if (null? then)
                           (serr "missing body" c)
                           (if (else? test)

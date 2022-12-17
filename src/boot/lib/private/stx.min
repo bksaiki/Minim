@@ -2,7 +2,7 @@
 ;;; Additional syntax handling
 ;;;
 
-(export identifier?
+(export identifier? free-identifier=?
         stx-null? stx-pair? stx-list?
         stx-car stx-cdr)
 
@@ -11,6 +11,15 @@
     (if (syntax? t)
         (symbol? (syntax-e t))
         #f)))
+
+;; TODO: this clearly should not be here
+(define-values (free-identifier=?)
+  (lambda (a b)
+    (if (not (identifier? a))
+        (error 'free-identifier=? "expected identifier?" a)
+        (if (not (identifier? b))
+            (error 'free-identifier=? "expected identifier?" b)
+            (eq? (syntax-e a) (syntax-e b))))))
 
 (define-values (stx-null?)
   (lambda (t)

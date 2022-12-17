@@ -415,6 +415,8 @@ static minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *
 
 // Recursively converts an object to syntax
 minim_object *to_syntax(minim_object *o) {
+    minim_object *it;
+
     switch (o->type) {
     case MINIM_SYNTAX_TYPE:
         return o;
@@ -427,9 +429,19 @@ minim_object *to_syntax(minim_object *o) {
     case MINIM_FIXNUM_TYPE:
     case MINIM_CHAR_TYPE:
     case MINIM_STRING_TYPE:
-    case MINIM_PAIR_TYPE:
         return make_syntax(o, minim_false);
-
+    
+    case MINIM_PAIR_TYPE:
+        it = o;
+        do {
+            minim_car(it) = to_syntax(minim_car(it));
+            if (!minim_is_pair(minim_cdr(it))) {
+                if (!minim_is_null(minim_cdr(it)))
+                    minim_cdr(it) = to_syntax(minim_cdr(it));
+                return make_syntax(o, minim_false);
+            }
+            it = minim_cdr(it);
+        } while (1);
     default:
         fprintf(stderr, "datum->syntax: cannot convert to syntax");
         exit(1);
@@ -1631,9 +1643,13 @@ static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
     for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
         result = eval_expr(minim_car(it), env);
         if (minim_is_values(result)) {
-            fprintf(stderr, "result arity mismatch\n");
-            fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count);
-            exit(1);
+            if (values_buffer_count != 1) {
+                fprintf(stderr, "result arity mismatch\n");
+                fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count);
+                exit(1);
+            } else {
+                result = values_buffer_ref(0);
+            }
         }
 
         if (head == NULL) {
@@ -1747,10 +1763,6 @@ application:
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
-    short min_arity, max_arity;
-
-    // write_object(stdout, expr);
-    // printf("\n");
 
 loop:
 
@@ -1883,7 +1895,10 @@ loop:
             } else if (head == syntax_symbol || head == quote_syntax_symbol) {
                 // quote-syntax form
                 check_1ary_syntax(expr);
-                return make_syntax(minim_cadr(expr), minim_false);
+                if (minim_is_syntax(minim_cadr(expr)))
+                    return minim_cadr(expr);
+                else
+                    return make_syntax(minim_cadr(expr), minim_false);
             } else if (head == syntax_loc_symbol) {
                 // syntax/loc form
                 check_2ary_syntax(expr);
@@ -1901,6 +1916,8 @@ loop:
                        minim_car(minim_cddr(expr)));
                 goto loop;
             } else if (head == lambda_symbol) {
+                short min_arity, max_arity;
+
                 // lambda form
                 check_lambda(expr, &min_arity, &max_arity);
                 return make_closure_proc(minim_cadr(expr),
