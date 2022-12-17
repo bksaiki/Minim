@@ -17,7 +17,7 @@ typedef struct intern_table_bucket {
 } intern_table_bucket;
 
 // intern table
-typedef struct {
+typedef struct intern_table {
     intern_table_bucket **buckets;
     size_t *alloc_ptr;
     size_t alloc, size;

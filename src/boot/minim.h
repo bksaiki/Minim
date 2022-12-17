@@ -12,9 +12,12 @@
 
 #include "../gc/gc.h"
 
-// Arity
+// Limits
 
 #define ARG_MAX     32767
+#define VALUES_MAX  32767
+
+// Arity
 
 typedef enum {
     PROC_ARITY_FIXED,
@@ -34,6 +37,9 @@ typedef struct proc_arity {
 
 #define proc_arity_min(p)               ((p)->arity_min)
 #define proc_arity_max(p)               ((p)->arity_max)
+
+#define proc_arity_is_between(p, min, max)      \
+    (((min) <= (p)->arity_min) && ((p)->arity_max <= (max)))
 
 // Object types
 
@@ -55,6 +61,9 @@ typedef enum {
     MINIM_CLOSURE_PROC_TYPE,
     MINIM_PORT_TYPE,
     MINIM_SYNTAX_TYPE,
+
+    /* Composite types */
+    MINIM_VALUES_TYPE,
 
     /* Footer */
     MINIM_LAST_TYPE
@@ -127,6 +136,7 @@ extern minim_object *minim_true;
 extern minim_object *minim_false;
 extern minim_object *minim_eof;
 extern minim_object *minim_void;
+extern minim_object *minim_values;
 
 // Simple Predicates
 
@@ -141,12 +151,13 @@ extern minim_object *minim_void;
 #define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
+#define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
 
-#define minim_is_null(x)  ((x) == minim_null)
-#define minim_is_true(x)  ((x) == minim_true)
-#define minim_is_false(x) ((x) == minim_false)
-#define minim_is_eof(x)   ((x) == minim_eof)
-#define minim_is_void(x)  ((x) == minim_void)
+#define minim_is_null(x)    ((x) == minim_null)
+#define minim_is_true(x)    ((x) == minim_true)
+#define minim_is_false(x)   ((x) == minim_false)
+#define minim_is_eof(x)     ((x) == minim_eof)
+#define minim_is_void(x)    ((x) == minim_void)
 
 // Flags
 
@@ -191,6 +202,8 @@ extern minim_object *minim_void;
 
 // Complex predicates
 
+#define minim_is_bool(x)            (minim_is_true(x) || minim_is_false(x))
+#define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure_proc(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
 
@@ -204,6 +217,7 @@ minim_object *make_char(int c);
 minim_object *make_fixnum(long v);
 minim_object *make_symbol(const char *s);
 minim_object *make_string(const char *s);
+minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
 minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
@@ -215,5 +229,33 @@ minim_object *make_syntax(minim_object *e, minim_object *loc);
 
 int minim_is_eq(minim_object *a, minim_object *b);
 int minim_is_equal(minim_object *a, minim_object *b);
+
+// Threads
+
+typedef struct minim_thread {
+    minim_object *env;
+
+    minim_object *input_port;
+    minim_object *output_port;
+    minim_object *current_directory;
+    minim_object *boot_expander;
+
+    minim_object **values_buffer;
+    int values_buffer_size;
+    int values_buffer_count;
+
+    int pid;
+} minim_thread;
+
+#define global_env(th)                  ((th)->env)
+#define input_port(th)                  ((th)->input_port)
+#define output_port(th)                 ((th)->output_port)
+#define current_directory(th)           ((th)->current_directory)
+#define boot_expander(th)               ((th)->boot_expander)
+
+#define values_buffer(th)               ((th)->values_buffer)
+#define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
+#define values_buffer_size(th)          ((th)->values_buffer_size)
+#define values_buffer_count(th)         ((th)->values_buffer_count)
 
 #endif  // _MINIM_H_

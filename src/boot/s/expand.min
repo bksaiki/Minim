@@ -7,6 +7,9 @@
 ;;;   Expander for syntax macros
 ;;;   
 
+;; Should the expander use the boot expander for evaluation?
+(define $expander-boot-expander? #f)
+
 (define (expand expr xforms)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)
@@ -17,46 +20,44 @@
 
   ;; expression-level expander
   (define (expand-expr expr)
+    (define expr* (syntax-e expr))
     (cond
-      [(pair? expr)
-       (define first (car expr))
-       (define maybe-args (cdr expr))
+      [(null? expr*)
+        expr]
+      [(list? expr*)
+       (define first (syntax-e (car expr*)))
        (cond
          [(symbol? first)
           (define maybe-xform (lookup-or-false first))
-          (if maybe-xform
-              (expand-expr (apply maybe-xform maybe-args))
-              (cons first (map expand-expr maybe-args)))]
+          (define maybe-args (cdr expr*))
+          (datum->syntax
+            (cond
+              [maybe-xform
+               (define old-expander? (boot-expander?))
+               (define expanded
+                 (call-with-values
+                   (lambda ()
+                     (boot-expander? $expander-boot-expander?)
+                     (maybe-xform expr))
+                   (lambda results
+                     (boot-expander? old-expander?)
+                     (if (and (= (length results) 1) (syntax? (car results)))
+                         (car results)
+                         (error "transformer produced something other than syntax" (car results))))))
+               (expand-expr expanded)]
+              [else
+               (cons (datum->syntax first) (map expand-expr maybe-args))]))]
          [else
-          (map expand-expr expr)])]
+          (datum->syntax (map expand-expr expr*))])]
+      [(pair? expr*)
+       (datum->syntax (cons (expand-expr (car expr*)) (expand-expr (cdr expr*))))]
+      [(symbol? expr*)
+       (define maybe-xform (lookup-or-false expr*))
+       (datum->syntax
+         (if maybe-xform
+             (expand-expr (maybe-xform expr))
+             expr))]
       [else
        expr]))
 
-  (define (panic!) (error "bad define-syntax form"))
-
-  ;; top-level expander
-  (define (expand-top expr)
-    (cond
-      [(pair? expr)
-       (define first (car expr))
-       (cond
-         [(eq? first 'define-syntax)
-          (define rib (cdr expr))
-          (cond
-            [(and (pair? rib) (symbol? (car rib)))
-             (define xform-name (car rib))
-             (define rib (cdr rib))
-             (cond
-               [(and (pair? rib) (null? (cdr rib)))
-                (define xform (eval (expand-expr (car rib))))
-                (set! xforms (cons (cons xform-name xform) xforms))
-                '(void)]
-               [else
-                (panic!)])]
-            [else
-             (panic!)])]
-         [else expr])]
-      [else
-       expr]))
-
-  (list (expand-top expr) xforms))
+  (expand-expr expr))

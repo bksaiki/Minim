@@ -72,6 +72,7 @@ boot-tests:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot test
 
 unit-tests: $(TEST_EXES)
+	$(MAKE) -C src/boot test
 	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)
 
 memcheck: $(TEST_EXES)

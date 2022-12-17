@@ -8,11 +8,12 @@
 #include "../c/boot.h"
 
 FILE *stream;
+minim_object *env;
 int return_code, passed;
 
 #define reset() {               \
     rewind(stream);             \
-    global_env = make_env();    \
+    env = make_env();    \
 }
 
 #define load(s) {       \
@@ -20,7 +21,7 @@ int return_code, passed;
     rewind(stream);     \
 }
 
-#define eval(s)     eval_expr(read_object(stream), global_env)
+#define eval(s)     eval_expr(read_object(stream), env)
 
 char *write(minim_object *o) {
     char *str;
@@ -244,6 +245,33 @@ int test_list() {
     check_equal("(list 1 2)", "'(1 2)");
     check_equal("(list 1 2 3)", "'(1 2 3)");
 
+    check_equal("(reverse '())", "'()");
+    check_equal("(reverse '(1))", "'(1)");
+    check_equal("(reverse '(1 2))", "'(2 1)");
+    check_equal("(reverse '(1 2 3))", "'(3 2 1)");
+
+    check_equal("(append)", "'()");
+    check_equal("(append '())", "'()");
+    check_equal("(append '() '() '())", "'()");
+    check_equal("(append '(a))", "'(a)");
+    check_equal("(append '(a b c))", "'(a b c)");
+    check_equal("(append '(a b c) '(d))", "'(a b c d)");
+    check_equal("(append '(a b c) '(d e f))", "'(a b c d e f)");
+
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '())", "#t");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(a))", "#t");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(b))", "#f");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(a a a))", "#t");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(a b a))", "#f");
+    check_equal("(andmap (lambda (x) (eq? x 'a)) '(b b b))", "#f");
+
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '())", "#f");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(a))", "#t");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(b))", "#f");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(a a a))", "#t");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(a b a))", "#t");
+    check_equal("(ormap (lambda (x) (eq? x 'a)) '(b b b))", "#f");
+
     return passed;
 }
 
@@ -303,10 +331,28 @@ int test_integer() {
 int test_string() {
     passed = 1;
 
+    check_equal("(make-string 0)", "\"\"");
+    check_equal("(make-string 1)", "\"a\"");
+    check_equal("(make-string 3)", "\"aaa\"");
+    check_equal("(make-string 1 #\\b)", "\"b\"");
+    check_equal("(make-string 3 #\\b)", "\"bbb\"");
+
     check_equal("(string)", "\"\"");
     check_equal("(string #\\a)", "\"a\"");
     check_equal("(string #\\a #\\b)", "\"ab\"");
     check_equal("(string #\\a #\\b #\\c)", "\"abc\"");
+
+    check_equal("(string-length \"\")", "0");
+    check_equal("(string-length \"a\")", "1");
+    check_equal("(string-length \"abc\")", "3");
+
+    check_equal("(string-ref \"a\" 0)", "#\\a");
+    check_equal("(string-ref \"ab\" 1)", "#\\b");
+    check_equal("(string-ref \"abc\" 2)", "#\\c");
+
+    check_equal("(begin (define s \"a\") (string-set! s 0 #\\b) s)", "\"b\"");
+    check_equal("(begin (define s \"ab\") (string-set! s 1 #\\c) s)", "\"ac\"");
+    check_equal("(begin (define s \"abc\") (string-set! s 2 #\\d) s)", "\"abd\"");
 
     return passed;
 }
@@ -332,6 +378,23 @@ int test_if() {
     return passed;
 }
 
+int test_define() {
+    passed = 1;
+
+    check_equal("(define-values () (values))", "#<void>");
+    check_equal("(define-values (x) 1)", "#<void>");
+    check_equal("(define-values (x) (values 1))", "#<void>");
+    check_equal("(define-values (x y) (values 1 2))", "#<void>");
+    check_equal("(define-values (x y z) (values 1 2 3))", "#<void>");
+
+    check_equal("(define x 1)", "#<void>");
+    check_equal("(define (foo) 1)", "#<void>");
+    check_equal("(define (foo x) 1)", "#<void>");
+    check_equal("(define (foo x y) 1)", "#<void>");
+
+    return passed;
+}
+
 int test_begin() {
     passed = 1;
 
@@ -339,6 +402,18 @@ int test_begin() {
     check_equal("(begin 1)", "1");
     check_equal("(begin 1 2)", "2");
     check_equal("(begin 1 2 3)", "3");
+
+    return passed;
+}
+
+int test_values() {
+    passed = 1;
+
+    check_equal("(call-with-values (lambda () (values)) +)", "0");
+    check_equal("(call-with-values (lambda () (values 1)) +)", "1");
+    check_equal("(call-with-values (lambda () (values 1 2)) +)", "3");
+    check_equal("(call-with-values (lambda () (values 1 2 3)) +)", "6");
+    check_equal("(call-with-values (lambda () (values 1 2 3 4)) +)", "10");
 
     return passed;
 }
@@ -362,6 +437,31 @@ int test_cond() {
 int test_let() {
     passed = 1;
 
+    check_equal("(letrec-values () 1)", "1");
+    check_equal("(letrec-values ([() (values)]) 1)", "1");
+    check_equal("(letrec-values ([(x) 1]) x)", "1");
+    check_equal("(letrec-values ([(x y) (values 1 2)]) (list x y))", "'(1 2)");
+    check_equal("(letrec-values ([(x y z) (values 1 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(letrec-values ([(x) 1] [(y) 2]) (list x y))", "'(1 2)");
+    check_equal("(letrec-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(letrec-values ([(f g) (values (lambda () (g 1)) (lambda (x) 1))]) (f))", "1");
+
+    check_equal("(letrec () 1)", "1");
+    check_equal("(letrec ([x 1]) x)", "1");
+    check_equal("(letrec ([x 1] [y 2]) x)", "1");
+    check_equal("(letrec ([x 1] [y 2]) y)", "2");
+    check_equal("(letrec ([x 1] [y 2]) y x)", "1");
+    check_equal("(letrec ([x 1]) (let ([y x]) y))", "1");
+    check_equal("(letrec ([f (lambda () 1)]) (f))", "1");
+
+    check_equal("(let-values () 1)", "1");
+    check_equal("(let-values ([() (values)]) 1)", "1");
+    check_equal("(let-values ([(x) 1]) x)", "1");
+    check_equal("(let-values ([(x y) (values 1 2)]) (list x y))", "'(1 2)");
+    check_equal("(let-values ([(x y z) (values 1 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(let-values ([(x) 1] [(y) 2]) (list x y))", "'(1 2)");
+    check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
+
     check_equal("(let () 1)", "1");
     check_equal("(let ([x 1]) x)", "1");
     check_equal("(let ([x 1] [y 2]) x)", "1");
@@ -374,18 +474,22 @@ int test_let() {
 
 void run_tests() {
     log_test("simple eval", test_simple_eval);
+    log_test("syntax", test_syntax);
+    log_test("if", test_if);
+    log_test("define", test_define);
+    log_test("begin", test_begin);
+    log_test("values", test_values);
+    log_test("cond", test_cond);
+    log_test("let", test_let);
+
     log_test("type predicates", test_type_predicates);
     log_test("eq?", test_eq);
     log_test("equal?", test_equal);
     log_test("type conversions", test_type_conversions);
+    
+    log_test("string", test_string);
     log_test("list", test_list);
     log_test("integer", test_integer);
-    log_test("string", test_string);
-    log_test("syntax", test_syntax);
-    log_test("if", test_if);
-    log_test("begin", test_begin);
-    log_test("cond", test_cond);
-    log_test("let", test_let);
 }
 
 int main(int argc, char **argv) {

@@ -8,12 +8,11 @@
 ;;;   Minature standard library
 ;;;
 
+;; type predicates
+
 (define number? integer?)
 
-(define (list? xs)
-  (cond [(null? xs) #t]
-        [(pair? xs) (list? (cdr xs))]
-        [else #f]))
+;; lists
 
 (define (caar xs) (car (car xs)))
 (define (cdar xs) (cdr (car xs)))
@@ -52,21 +51,6 @@
           [(pair? xs) (loop (cdr xs) (+ acc 1))]
           [else       (error 'length "expected a list" lst)])))
 
-(define (reverse lst)
-  (let loop ([xs lst] [acc '()])
-        (cond [(null? xs) acc]
-              [(pair? xs) (loop (cdr xs) (cons (car xs) acc))]
-              [else       (error 'reverse "expected a list" lst)])))
-
-(define (append . lsts)
-  (let loop ([lsts lsts])
-    (if (null? lsts)
-        '()
-        (let loop2 ([lst (car lsts)])
-          (if (null? lst)
-              (loop (cdr lsts))
-              (cons (car lst) (loop2 (cdr lst))))))))
-
 (define (map f lst)
   (let loop ([xs lst] [acc '()])
     (cond [(null? xs) (reverse acc)]
@@ -84,3 +68,141 @@
     (cond [(null? xs) acc]
           [(pair? xs) (f (loop (cdr xs)) (car xs))]
           [else       (error 'foldr "expected a list" lst)])))
+
+(define (assoc k lst)
+  (cond
+    [(null? lst) #f]
+    [(and (pair? lst) (pair? (car lst)))
+     (if (equal? k (caar lst))
+         (cdar lst)
+         (assoc k (cdr lst)))]
+    [else (error 'assoc "expected a list of pairs" lst)]))
+
+;; strings
+
+(define (string-empty? str)
+  (if (string? str)
+      (= (string-length str) 0)
+      (error 'string "expected string?" str)))
+
+(define (string-append . strs)
+  (define len (apply + (map string-length strs)))
+  (define s (make-string len))
+  (let loop ([strs strs] [i 0])
+    (cond
+      [(null? strs) s]
+      [else
+       (define str (car strs))
+       (define len (string-length str))
+       (let loop2 ([i i] [n 0])
+         (cond
+           [(= n len) (loop (cdr strs) i)]
+           [else
+            (string-set! s i (string-ref str n))
+            (loop2 (+ i 1) (+ n 1))]))])))
+ 
+(define (substring str start end)
+  (define len (string-length str))
+  (cond
+    [(not (string? str)) (error 'substring "expected string? for" str)]
+    [(not (number? start)) (error 'substring "expected number? for" start)]
+    [(not (number? end)) (error 'substring "expected number? for" end)]
+    [(> end len) (error 'substring "index out of bounds" end)]
+    [(> start end) (error 'substring "invalid bounds" start end)]
+    [(= start end) ""]
+    [else
+     (define sstr (make-string (- end start)))
+     (let loop ([i 0] [n start])
+       (cond
+         [(= n end) sstr]
+         [else
+          (string-set! sstr i (string-ref str n))
+          (loop (+ i 1) (+ n 1))]))]))
+
+;; paths
+
+(define (is-absolute-path? path)
+  (and (> (string-length path) 0)
+       (eq? (string-ref path 0) #\/)))
+
+;; paths are unverified
+(define (build-path base . subpaths)
+  (define (string-terminates-with-/? str)
+    (define len (string-length str))
+    (eq? (string-ref str (- len 1)) #\/))
+  (define paths
+    (let loop ([paths subpaths] [accum (list base)])
+      (cond
+        [(null? paths) (reverse accum)]
+        [(string-empty? (car paths)) (loop (cdr paths) accum)]
+        [(string-terminates-with-/? (car accum)) (loop (cdr paths) (cons (car paths) accum))]
+        [else (loop (cdr paths) (cons (car paths) (cons "/" accum)))])))
+  (apply string-append paths))
+
+(define (path->list path)
+  (if (string? path)
+      (void)
+      (error 'path->list "expected string?" path))
+  (let loop ([path path] [accum '()])
+    (cond
+      [(string-empty? path)
+       (reverse accum)]
+      [else
+       (define len (string-length path))
+       (let loop2 ([i 0])
+         (cond
+           [(= i len)
+            (loop "" (cons path accum))]
+           [(eq? (string-ref path i) #\/)
+            (cond
+              [(= i 0)
+               ; corner case for unix paths
+               (loop (substring path 1 len) (cons "/" accum))]
+              [else
+               (define elem (substring path 0 i))
+               (define rest (substring path (+ i 1) len))
+               (loop rest (cons elem accum))])]
+           [else
+            (loop2 (+ i 1))]))])))
+
+(define (split-path path)
+  (if (string? path)
+      (void)
+      (error 'split-path "expected string?" path))
+  (define path-elems (reverse (path->list path)))
+  (cond
+    [(pair? (cdr path-elems))
+     (define end (car path-elems))
+     (define rest (cdr path-elems))
+     (cons (apply build-path (reverse rest)) end)]
+    [else
+     (cons #f (car path-elems))]))
+
+;; printing
+
+(define (writeln obj . args)
+  (define p
+    (cond
+      [(null? args) (current-output-port)]
+      [(null? (cdr args))
+       (if (output-port? (cadr args))
+           (cadr args)
+           (error 'writeln "expected output-port?" (cadr args)))]
+      [else
+       (error 'writeln "arity mismatch, expected 1 or 2 arguments, received"
+              (+ (length args) 1))]))
+  (write obj p)
+  (newline p))
+
+;; syntax
+
+(define (syntax->datum stx)
+  (if (syntax? stx)
+      (let loop ([stx stx])
+        (let ([datum (syntax-e stx)])
+          (let loop2 ([datum datum])
+            (cond
+              [(syntax? datum) (loop datum)]
+              [(pair? datum) (cons (loop2 (car datum)) (loop2 (cdr datum)))]
+              [else datum]))))
+      (error 'syntax->datum "expected syntax?" stx)))
