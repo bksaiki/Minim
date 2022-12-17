@@ -57,6 +57,7 @@ static void load_library() {
 int main(int argc, char **argv) {
     volatile int stack_top;
     minim_object *expr, *evaled;
+    minim_thread *th;
     int argi;
 
     argi = handle_flags(argc, argv);
@@ -64,20 +65,24 @@ int main(int argc, char **argv) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
+    th = current_thread();
+
     if (opt_load_library)
         load_library();
 
     if (argi < argc) {
         if (!interactive && opt_load_library) {
-            eval_expr(make_pair(intern_symbol(symbols, "import"),
-                  make_pair(make_string(argv[argi]), 
-                  minim_null)),
-                  global_env);
+            eval_expr(
+                make_pair(intern("import"),
+                    make_pair(make_string(argv[argi]), 
+                    minim_null)),
+                global_env(th));
         } else {
-            eval_expr(make_pair(intern_symbol(symbols, "load"),
-                  make_pair(make_string(argv[argi]), 
-                  minim_null)),
-                  global_env);
+            eval_expr(
+                make_pair(intern("load"),
+                    make_pair(make_string(argv[argi]), 
+                    minim_null)),
+                global_env(th));
         }
     }
         
@@ -87,11 +92,11 @@ int main(int argc, char **argv) {
             expr = read_object(stdin);
             if (expr == NULL) break;
 
-            evaled = eval_expr(expr, global_env);
+            evaled = eval_expr(expr, global_env(th));
             if (!minim_is_void(evaled)) {
                 if (minim_is_values(evaled)) {
-                    for (int i = 0; i < values_buffer_count; ++i) {
-                        write_object(stdout, values_buffer_ref(i));
+                    for (int i = 0; i < values_buffer_count(th); ++i) {
+                        write_object(stdout, values_buffer_ref(th, i));
                         printf("\n");
                     }
                 } else {

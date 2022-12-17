@@ -188,8 +188,7 @@ loop:
             return read_char(in);
         case '\'':
             // quote
-            return make_pair(intern_symbol(symbols, "quote-syntax"),
-                             make_pair(read_object(in), minim_null));
+            return make_pair(intern("quote-syntax"), make_pair(read_object(in), minim_null));
         case ';':
             // datum comment
             skip_whitespace(in);
@@ -284,7 +283,7 @@ loop:
         return read_pair(in, c);
     } else if (c == '\'') {
         // quoted expression
-        return make_pair(intern_symbol(symbols, "quote"), make_pair(read_object(in), minim_null));
+        return make_pair(intern("quote"), make_pair(read_object(in), minim_null));
     } else if (is_symbol_char(c) || ((c == '+' || c == '-') && is_delimeter(peek_char(in)))) {
         // symbol
         i = 0;
@@ -306,7 +305,7 @@ loop:
 
         ungetc(c, in);
         buffer[i] = '\0';
-        return intern_symbol(symbols, buffer);
+        return intern(buffer);
     } else if (c == EOF) {
         return NULL;
     } else {

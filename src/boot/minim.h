@@ -138,12 +138,6 @@ extern minim_object *minim_eof;
 extern minim_object *minim_void;
 extern minim_object *minim_values;
 
-extern minim_object **values_buffer;
-extern int values_buffer_size;
-extern int values_buffer_count;
-
-#define values_buffer_ref(idx)    (values_buffer[idx])
-
 // Simple Predicates
 
 #define minim_same_type(o, t)   ((o)->type == (t))
@@ -235,5 +229,33 @@ minim_object *make_syntax(minim_object *e, minim_object *loc);
 
 int minim_is_eq(minim_object *a, minim_object *b);
 int minim_is_equal(minim_object *a, minim_object *b);
+
+// Threads
+
+typedef struct minim_thread {
+    minim_object *env;
+
+    minim_object *input_port;
+    minim_object *output_port;
+    minim_object *current_directory;
+    minim_object *boot_expander;
+
+    minim_object **values_buffer;
+    int values_buffer_size;
+    int values_buffer_count;
+
+    int pid;
+} minim_thread;
+
+#define global_env(th)                  ((th)->env)
+#define input_port(th)                  ((th)->input_port)
+#define output_port(th)                 ((th)->output_port)
+#define current_directory(th)           ((th)->current_directory)
+#define boot_expander(th)               ((th)->boot_expander)
+
+#define values_buffer(th)               ((th)->values_buffer)
+#define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
+#define values_buffer_size(th)          ((th)->values_buffer_size)
+#define values_buffer_count(th)         ((th)->values_buffer_count)
 
 #endif  // _MINIM_H_

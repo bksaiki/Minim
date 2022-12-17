@@ -35,22 +35,8 @@ minim_object *syntax_symbol;
 minim_object *syntax_loc_symbol;
 minim_object *quote_syntax_symbol;
 
-//
-//  Runtime state
-//
-
-minim_object *input_port;
-minim_object *output_port;
-minim_object *current_directory;
-minim_object *boot_expander;
-
+minim_globals *globals;
 minim_object *empty_env;
-minim_object *global_env;
-intern_table *symbols;
-
-minim_object **values_buffer;
-int values_buffer_size;
-int values_buffer_count;
 
 //
 //  forward declarations
@@ -283,7 +269,7 @@ void set_current_dir(const char *str) {
         exit(1);
     }
 
-    current_directory = make_string(str);
+    current_directory(current_thread()) = make_string(str);
 }
 
 char *get_file_dir(const char *realpath) {
@@ -319,7 +305,7 @@ minim_object *load_file(const char *fname) {
 
     result = minim_void;
     while ((expr = read_object(f)) != NULL)
-        result = eval_expr(expr, global_env);
+        result = eval_expr(expr, global_env(current_thread()));
 
     set_current_dir(old_cwd);
     fclose(f);
@@ -332,10 +318,9 @@ minim_object *load_file(const char *fname) {
 
 // Resizes the value buffer if need be
 static void resize_values_buffer(int size) {
-    values_buffer = GC_alloc(size * sizeof(minim_object*));
-    values_buffer_size = size;
-
-    GC_register_root(values_buffer);
+    minim_thread *th = current_thread();
+    values_buffer(th) = GC_alloc(size * sizeof(minim_object*));
+    values_buffer_size(th) = size;
 }
 
 // Returns true if the object is a list
@@ -712,7 +697,7 @@ minim_object *symbol_to_string_proc(minim_object *args) {
 }
 
 minim_object *string_to_symbol_proc(minim_object *args) {
-    return intern_symbol(symbols, minim_string(minim_car(args)));
+    return intern(minim_string(minim_car(args)));
 }
 
 minim_object *eq_proc(minim_object *args) {
@@ -737,15 +722,17 @@ minim_object *call_with_values_proc(minim_object *args) {
 }
 
 minim_object *values_proc(minim_object *args) {
+    minim_thread *th;
     long i, len;
 
+    th = current_thread();
     len = list_length(args);
-    if (len > values_buffer_size)
+    if (len > values_buffer_size(th))
         resize_values_buffer(len);
     
-    values_buffer_count = len;
+    values_buffer_count(th) = len;
     for (i = 0; i < len; ++i) {
-        values_buffer[i] = minim_car(args);
+        values_buffer_ref(th, i) = minim_car(args);
         args = minim_cdr(args);
     }
     
@@ -974,7 +961,7 @@ minim_object *apply_proc(minim_object *args) {
 }
 
 minim_object *interaction_environment_proc(minim_object *args) {
-    return global_env;
+    return global_env(current_thread());
 }
 
 minim_object *empty_environment_proc(minim_object *args) {
@@ -1049,11 +1036,11 @@ minim_object *current_environment_proc(minim_object *args) {
 }
 
 minim_object *current_input_port_proc(minim_object *args) {
-    return input_port;
+    return input_port(current_thread());
 }
 
 minim_object *current_output_port_proc(minim_object *args) {
-    return output_port;
+    return output_port(current_thread());
 }
 
 minim_object *open_input_port_proc(minim_object *args) {
@@ -1099,74 +1086,72 @@ minim_object *close_output_port_proc(minim_object *args) {
 }
 
 minim_object *read_proc(minim_object *args) {
-    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    minim_object *o = read_object(in_p);
+    minim_object *in_p, *o;
+
+    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    o = read_object(minim_port(in_p));
     return (o == NULL) ? minim_eof : o;
 }
 
 minim_object *read_char_proc(minim_object *args) {
-    FILE *in_p;
-    char ch;
+    minim_object *in_p;
+    int ch;
     
-    in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    ch = getc(in_p);
+    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    ch = getc(minim_port(in_p));
     return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *peek_char_proc(minim_object *args) {
-    FILE *in_p;
-    char ch;
+    minim_object *in_p;
+    int ch;
     
-    in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    ch = getc(in_p);
-    ungetc(ch, in_p);
+    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    ch = getc(minim_port(in_p));
+    ungetc(ch, minim_port(in_p));
     return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *char_is_ready_proc(minim_object *args) {
-    FILE *in_p = minim_port(minim_is_null(args) ? input_port : minim_car(args));
-    int ch = getc(in_p);
-    ungetc(ch, in_p);
+    minim_object *in_p;
+    int ch;
+
+    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    ch = getc(minim_port(in_p));
+    ungetc(ch, minim_port(in_p));
     return (ch == EOF) ? minim_false : minim_true;
 }
 
 minim_object *display_proc(minim_object *args) {
-    FILE *out_p;
-    minim_object *o;
+    minim_object *out_p, *o;
 
     o = minim_car(args);
-    out_p = minim_port(minim_is_null(minim_cdr(args)) ? output_port : minim_cadr(args));
-    write_object2(out_p, o, 0, 1);
+    out_p = minim_is_null(minim_cdr(args)) ? output_port(current_thread()) : minim_cadr(args);
+    write_object2(minim_port(out_p), o, 0, 1);
     return minim_void;
 }
 
 minim_object *write_proc(minim_object *args) {
-    FILE *out_p;
-    minim_object *o;
+    minim_object *out_p, *o;
 
     o = minim_car(args);
-    out_p = minim_port(minim_is_null(minim_cdr(args)) ? output_port : minim_cadr(args));
-    write_object(out_p, o);
+    out_p = minim_is_null(minim_cdr(args)) ? output_port(current_thread()) : minim_cadr(args);
+    write_object(minim_port(out_p), o);
     return minim_void;
 }
 
 minim_object *write_char_proc(minim_object *args) {
-    FILE *out_p;
-    minim_object *ch;
+    minim_object *out_p, *ch;
 
     ch = minim_car(args);
-    args = minim_cdr(args);
-    out_p = minim_port(minim_is_null(args) ? output_port : minim_car(args));
-
-    putc(minim_char(ch), out_p);
+    out_p = minim_is_null(minim_cdr(args)) ? output_port(current_thread()) : minim_cadr(args);
+    putc(minim_char(ch), minim_port(out_p));
     return minim_void;
 }
 
 minim_object *newline_proc(minim_object *args) {
-    FILE *out_p;
-
-    out_p = minim_port(minim_is_null(minim_cdr(args)) ? output_port : minim_cadr(args));
-    putc('\n', out_p);
+    minim_object *out_p = minim_is_null(args) ? output_port(current_thread()) : minim_car(args);
+    putc('\n', minim_port(out_p));
     return minim_void;
 }
 
@@ -1223,13 +1208,13 @@ minim_object *current_directory_proc(minim_object *args) {
 
     if (minim_is_null(args)) {
         // getter
-        return current_directory;
+        return current_directory(current_thread());
     } else {
         // setter
         path = minim_car(args);
         if (!minim_is_string(path))
             bad_type_exn("current-directory", "string?", path);
-
+        
         set_current_dir(minim_string(path));
         return minim_void;
     }
@@ -1237,17 +1222,18 @@ minim_object *current_directory_proc(minim_object *args) {
 
 minim_object *boot_expander_proc(minim_object *args) {
     minim_object *val;
+    minim_thread *th;
 
+    th = current_thread();
     if (minim_is_null(args)) {
         // getter
-        return boot_expander;
+        return boot_expander(th);
     } else {
         // setter
         val = minim_car(args);
         if (!minim_is_bool(val))
             bad_type_exn("boot-expander?", "boolean?", val);
-
-        boot_expander = val;
+        boot_expander(th) = val;
         return minim_void;
     }
 }
@@ -1635,6 +1621,7 @@ static minim_object *apply_args(minim_object *args) {
 
 static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
     minim_object *head, *tail, *it, *result;
+    minim_thread *th;
 
     if (minim_is_null(exprs))
         return minim_null;
@@ -1643,12 +1630,13 @@ static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
     for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
         result = eval_expr(minim_car(it), env);
         if (minim_is_values(result)) {
-            if (values_buffer_count != 1) {
+            th = current_thread();
+            if (values_buffer_count(th) != 1) {
                 fprintf(stderr, "result arity mismatch\n");
-                fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count);
+                fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count(th));
                 exit(1);
             } else {
-                result = values_buffer_ref(0);
+                result = values_buffer_ref(th, 0);
             }
         }
 
@@ -1668,23 +1656,25 @@ static minim_object *call_with_values(minim_object *producer,
                                       minim_object *consumer,
                                       minim_object *env) {
     minim_object *produced, *args, *tail;
+    minim_thread *th;
 
     produced = call_with_args(producer, minim_null, env);
     if (minim_is_values(produced)) {
         // need to unpack
-        if (values_buffer_count == 0) {
+        th = current_thread();
+        if (values_buffer_count(th) == 0) {
             args = minim_null;
-        } else if (values_buffer_count == 1) {
-            args = make_pair(values_buffer_ref(0), minim_null);
-        } else if (values_buffer_count == 2) {
-            args = make_pair(values_buffer_ref(0),
-                   make_pair(values_buffer_ref(1), minim_null));
+        } else if (values_buffer_count(th) == 1) {
+            args = make_pair(values_buffer_ref(th, 0), minim_null);
+        } else if (values_buffer_count(th) == 2) {
+            args = make_pair(values_buffer_ref(th, 0),
+                   make_pair(values_buffer_ref(th, 1), minim_null));
         } else {
             // slow path
-            args = make_pair(values_buffer_ref(0), minim_null);
+            args = make_pair(values_buffer_ref(th, 0), minim_null);
             tail = args;
-            for (int i = 1; i < values_buffer_count; ++i) {
-                minim_cdr(tail) = make_pair(values_buffer_ref(i), minim_null);
+            for (int i = 1; i < values_buffer_count(th); ++i) {
+                minim_cdr(tail) = make_pair(values_buffer_ref(th, i), minim_null);
                 tail = minim_cdr(tail);
             }
         }
@@ -1782,6 +1772,7 @@ loop:
         exit(1);
     } else if (minim_is_pair(expr)) {
         minim_object *proc, *head, *args, *result, *it, *bindings, *bind, *env2;
+        minim_thread *th;
         long var_count, idx;
 
         // special forms
@@ -1794,15 +1785,17 @@ loop:
                 result = eval_expr(minim_car(minim_cddr(expr)), env);
                 if (minim_is_values(result)) {;
                     // multi-valued
-                    if (var_count != values_buffer_count) {
+                    th = current_thread();
+                    if (var_count != values_buffer_count(th)) {
                         fprintf(stderr, "result arity mismatch\n");
-                        fprintf(stderr, "  expected: %ld, received: %d\n", var_count, values_buffer_count);
+                        fprintf(stderr, "  expected: %ld, received: %d\n",
+                                        var_count, values_buffer_count(th));
                         exit(1);
                     }
 
                     idx = 0;
                     for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx)
-                        env_define_var(env, minim_car(it), values_buffer_ref(idx));
+                        env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
                 } else {
                     // single-valued
                     if (var_count != 1) {
@@ -1814,6 +1807,7 @@ loop:
                     env_define_var(env, minim_car(minim_cadr(expr)), result);
                 }
 
+                GC_REGISTER_LOCAL_ARRAY(expr);
                 return minim_void;
             } else if (head == let_values_symbol) {
                 // let-values form
@@ -1825,15 +1819,17 @@ loop:
                     result = eval_expr(minim_cadr(bind), env);
                     if (minim_is_values(result)) {
                         // multi-valued
-                        if (var_count != values_buffer_count) {
+                        th = current_thread();
+                        if (var_count != values_buffer_count(th)) {
                             fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: %d\n", var_count, values_buffer_count);
+                            fprintf(stderr, "  expected: %ld, received: %d\n",
+                                            var_count, values_buffer_count(th));
                             exit(1);
                         }
 
                         idx = 0;
                         for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx)
-                            env_define_var(env2, minim_car(it), values_buffer_ref(idx));
+                            env_define_var(env2, minim_car(it), values_buffer_ref(th, idx));
                     } else {
                         // single-valued
                         if (var_count != 1) {
@@ -1862,15 +1858,17 @@ loop:
                     result = eval_expr(minim_cadr(bind), env);
                     if (minim_is_values(result)) {
                         // multi-valued
-                        if (var_count != values_buffer_count) {
+                        th = current_thread();
+                        if (var_count != values_buffer_count(th)) {
                             fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: %d\n", var_count, values_buffer_count);
+                            fprintf(stderr, "  expected: %ld, received: %d\n",
+                                            var_count, values_buffer_count(th));
                             exit(1);
                         }
 
                         idx = 0;
                         for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx)
-                            to_bind = make_pair(make_pair(minim_car(it), values_buffer_ref(idx)), to_bind);
+                            to_bind = make_pair(make_pair(minim_car(it), values_buffer_ref(th, idx)), to_bind);
                     } else {
                         // single-valued
                         if (var_count != 1) {
@@ -1939,7 +1937,7 @@ loop:
 
                 expr = minim_car(expr);
                 goto loop;
-            } else if (minim_is_true(boot_expander)) {
+            } else if (minim_is_true(boot_expander(current_thread()))) {
                 // expanded forms
                 if (head == define_symbol) {
                     // define form
@@ -2103,7 +2101,7 @@ application:
 //
 
 #define add_procedure(name, c_fn, min_arity, max_arity) {   \
-    minim_object *sym = intern_symbol(symbols, name);       \
+    minim_object *sym = intern(name);                       \
     env_define_var(env, sym,                                \
                    make_prim_proc(c_fn, minim_symbol(sym),  \
                                   min_arity, max_arity));   \
@@ -2218,11 +2216,14 @@ minim_object *make_env() {
 }
 
 void minim_boot_init() {
+    minim_thread *th;
+
     GC_pause();
 
     // initialize globals
-
-    symbols = make_intern_table();
+    globals = GC_alloc(sizeof(minim_globals));
+    globals->symbols = make_intern_table();
+    globals->current_thread = GC_alloc(sizeof(minim_thread));
 
     minim_null = GC_alloc(sizeof(minim_object));
     minim_true = GC_alloc(sizeof(minim_object));
@@ -2238,36 +2239,41 @@ void minim_boot_init() {
     minim_void->type = MINIM_VOID_TYPE;
     minim_values->type = MINIM_VALUES_TYPE;
 
-    quote_symbol = intern_symbol(symbols, "quote");
-    define_symbol = intern_symbol(symbols, "define");
-    define_values_symbol = intern_symbol(symbols, "define-values");
-    let_symbol = intern_symbol(symbols, "let");
-    let_values_symbol = intern_symbol(symbols, "let-values");
-    letrec_symbol = intern_symbol(symbols, "letrec");
-    letrec_values_symbol = intern_symbol(symbols, "letrec-values");
-    setb_symbol = intern_symbol(symbols, "set!");
-    if_symbol = intern_symbol(symbols, "if");
-    lambda_symbol = intern_symbol(symbols, "lambda");
-    begin_symbol = intern_symbol(symbols, "begin");
-    cond_symbol = intern_symbol(symbols, "cond");
-    else_symbol = intern_symbol(symbols, "else");
-    and_symbol = intern_symbol(symbols, "and");
-    or_symbol = intern_symbol(symbols, "or");
-    syntax_symbol = intern_symbol(symbols, "syntax");
-    syntax_loc_symbol = intern_symbol(symbols, "syntax/loc");
-    quote_syntax_symbol = intern_symbol(symbols, "quote-syntax");
+    quote_symbol = intern("quote");
+    define_symbol = intern("define");
+    define_values_symbol = intern("define-values");
+    let_symbol = intern("let");
+    let_values_symbol = intern("let-values");
+    letrec_symbol = intern("letrec");
+    letrec_values_symbol = intern("letrec-values");
+    setb_symbol = intern("set!");
+    if_symbol = intern("if");
+    lambda_symbol = intern("lambda");
+    begin_symbol = intern("begin");
+    cond_symbol = intern("cond");
+    else_symbol = intern("else");
+    and_symbol = intern("and");
+    or_symbol = intern("or");
+    syntax_symbol = intern("syntax");
+    syntax_loc_symbol = intern("syntax/loc");
+    quote_syntax_symbol = intern("quote-syntax");
 
     empty_env = minim_null;
-    global_env = make_env();
-    input_port = make_input_port(stdin);
-    output_port = make_output_port(stdout);
-    current_directory = make_string2(get_current_dir());
-    boot_expander = minim_true;
 
-    values_buffer = GC_alloc(10 * sizeof(minim_object*));
-    values_buffer_size = 10;
+    // initialize thread
 
-    // GC nonsense
+    th = current_thread();
+    global_env(th) = make_env();
+    input_port(th) = make_input_port(stdin);
+    output_port(th) = make_output_port(stdout);
+    current_directory(th) = make_string2(get_current_dir());
+    boot_expander(th) = minim_true;
+    values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(minim_object*));
+    values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;
+    values_buffer_count(th) = 0;
+    th->pid = 0;    // TODO
+
+    // GC roots
 
     GC_register_root(minim_null);
     GC_register_root(minim_true);
@@ -2276,13 +2282,7 @@ void minim_boot_init() {
     GC_register_root(minim_void);
     GC_register_root(minim_values);
 
-    GC_register_root(global_env);
-    GC_register_root(symbols);
-    GC_register_root(input_port);
-    GC_register_root(output_port);
-    GC_register_root(current_directory);
-    GC_register_root(boot_expander);
-    GC_register_root(values_buffer);
+    GC_register_root(globals);
 
     GC_resume();
 }

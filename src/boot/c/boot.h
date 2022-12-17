@@ -13,11 +13,27 @@
 
 // Limits
 
-#define SYMBOL_MAX_LEN      4096
+#define SYMBOL_MAX_LEN              4096
+
+#define INIT_VALUES_BUFFER_LEN      10
 
 #ifndef PATH_MAX
 #define PATH_MAX    4096
 #endif
+
+// Globals
+
+typedef struct intern_table intern_table;
+
+typedef struct minim_globals {
+    minim_thread *current_thread;
+    intern_table *symbols;
+} minim_globals;
+
+extern minim_globals *globals;
+
+#define current_thread()    (globals->current_thread)
+#define intern(s)           (intern_symbol(globals->symbols, s))
 
 // System
 
@@ -43,8 +59,5 @@ minim_object *strip_syntax(minim_object *o);
 minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
 void write_object2(FILE *out, minim_object *o, int quote, int display);
-
-extern minim_object *global_env;
-extern intern_table *symbols;
 
 #endif  // _BOOT_H_

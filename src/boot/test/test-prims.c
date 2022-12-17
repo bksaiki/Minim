@@ -8,11 +8,12 @@
 #include "../c/boot.h"
 
 FILE *stream;
+minim_object *env;
 int return_code, passed;
 
 #define reset() {               \
     rewind(stream);             \
-    global_env = make_env();    \
+    env = make_env();    \
 }
 
 #define load(s) {       \
@@ -20,7 +21,7 @@ int return_code, passed;
     rewind(stream);     \
 }
 
-#define eval(s)     eval_expr(read_object(stream), global_env)
+#define eval(s)     eval_expr(read_object(stream), env)
 
 char *write(minim_object *o) {
     char *str;
@@ -484,6 +485,9 @@ int main(int argc, char **argv) {
     GC_init(((void*) &stack_top));
     minim_boot_init();
     stream = tmpfile();
+
+    write_object(stdout, boot_expander(current_thread()));
+    printf("\n");
 
     return_code = 0;
     run_tests();
