@@ -1,46 +1,48 @@
 ;;;   
-;;; 'define-syntax'
+;;; 'define' and 'define-syntax'
 ;;;
 
 (import "cond.min" "stx.min")
-(export define)
+(export define define-syntax)
 
-(define-syntaxes (define)
-  (lambda (stx)
-    (if (not (stx-list? stx))
-        (syntax-error 'define "bad syntax" stx)
-        (let-values ([(e) (stx-cdr stx)]
-                     [(serr)
-                      (lambda (msg at)
-                        (syntax-error 'define msg stx at))])
-          (if (stx-null? e)
-              (syntax-error 'define "bad syntax" stx)
-              (let-values ([(id) (stx-car e)]
-                           [(e) (stx-cdr e)])
-                (if (null? e)
-                    (syntax-error 'define "bad syntax" stx)
-                    (cond
-                      [(identifier? id)
-                       ; define value form
-                       (let-values ([(v) (stx-car e)]
-                                    [(n) (stx-cdr e)])
-                         (if (null? n)
-                             (datum->syntax
-                               (list
-                                 (quote-syntax define-values)
-                                 (list id)
-                                 v))
-                             (syntax-error 'define "multiple expressions after identifier" stx)))]
-                      [(stx-pair? id)
-                       ; define procedure form
-                       (let-values ([(head) (stx-car id)]
-                                    [(rest) (stx-cdr id)])
-                         (datum->syntax
-                           (list
-                             (quote-syntax define)
-                             head
-                             (cons (quote-syntax lambda)
-                               (cons rest
-                                 e)))))]
-                      [else
-                       (syntax-error 'define "bad syntax stx")]))))))))
+(define-syntaxes (define define-syntax)
+  (let-values ([(go)
+    (lambda (name define-stx values-stx)
+      (lambda (stx)
+        (if (not (stx-list? stx))
+            (syntax-error name "bad syntax" stx)
+            (let-values ([(e) (stx-cdr stx)]
+                         [(serr)
+                          (lambda (msg at)
+                            (syntax-error name msg stx at))])
+              (if (stx-null? e)
+                  (syntax-error name "bad syntax" stx)
+                  (let-values ([(id) (stx-car e)]
+                               [(e) (stx-cdr e)])
+                    (if (null? e)
+                        (syntax-error name "bad syntax" stx)
+                        (cond
+                          [(identifier? id)
+                           ; value form
+                           (let-values ([(v) (stx-car e)]
+                                        [(n) (stx-cdr e)])
+                           (if (null? n)
+                               (datum->syntax (list values-stx (list id) v))
+                               (syntax-error name "multiple expressions after identifier" stx)))]
+                          [(stx-pair? id)
+                           ; define procedure form
+                           (let-values ([(head) (stx-car id)]
+                                        [(rest) (stx-cdr id)])
+                           (datum->syntax
+                             (list
+                               define-stx
+                               head
+                               (cons (quote-syntax lambda)
+                                 (cons rest
+                                   e)))))]
+                          [else
+                           (syntax-error name "bad syntax stx")]))))))))])
+
+    (values
+      (go 'define (quote-syntax define) (quote-syntax define-values))
+      (go 'define-values (quote-syntax define-syntax) (quote-syntax define-values)))))
