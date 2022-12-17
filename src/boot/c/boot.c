@@ -510,9 +510,9 @@ int minim_is_equal(minim_object *a, minim_object *b) {
 //
 
 #define SET_NAME_IF_CLOSURE(name, val) {                    \
-    if (minim_is_closure_proc(val) &&                       \
-       minim_closure_name(val) == NULL) {                   \
-        minim_closure_name(val) = minim_symbol(name);       \
+    if (minim_is_closure_proc(val)) {                       \
+        if (minim_closure_name(val) == NULL)                \
+            minim_closure_name(val) = minim_symbol(name);   \
     }                                                       \
 }
 
@@ -523,7 +523,6 @@ minim_object *make_frame(minim_object *vars, minim_object *vals) {
 void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val) {
     minim_object *frame = minim_car(env);
     minim_car(env) = make_pair(make_pair(var, val), frame);
-    SET_NAME_IF_CLOSURE(var, val);
 }
 
 minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val) {
@@ -533,13 +532,11 @@ minim_object *env_define_var(minim_object *env, minim_object *var, minim_object 
         minim_object *frame_val = minim_cdar(frame);
         if (var == frame_var) {
             minim_cdar(frame) = val;
-            SET_NAME_IF_CLOSURE(var, val);
             return frame_val;
         }
     }
 
     minim_car(env) = make_pair(make_pair(var, val), frame);
-    SET_NAME_IF_CLOSURE(var, val);
     return NULL;
 }
 
@@ -551,7 +548,6 @@ minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *va
             minim_object *frame_val = minim_cdar(frame);
             if (var == frame_var) {
                 minim_cdar(frame) = val;
-                SET_NAME_IF_CLOSURE(var, val);
                 return frame_val;
             }
 
@@ -1794,8 +1790,10 @@ loop:
                     }
 
                     idx = 0;
-                    for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx)
+                    for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                        SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
                         env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
+                    }
                 } else {
                     // single-valued
                     if (var_count != 1) {
@@ -1804,6 +1802,7 @@ loop:
                         exit(1);
                     }
                     
+                    SET_NAME_IF_CLOSURE(minim_car(minim_cadr(expr)), result);
                     env_define_var(env, minim_car(minim_cadr(expr)), result);
                 }
 
@@ -1828,8 +1827,10 @@ loop:
                         }
 
                         idx = 0;
-                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx)
+                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                            SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
                             env_define_var(env2, minim_car(it), values_buffer_ref(th, idx));
+                        }
                     } else {
                         // single-valued
                         if (var_count != 1) {
@@ -1838,6 +1839,7 @@ loop:
                             exit(1);
                         }
                         
+                        SET_NAME_IF_CLOSURE(minim_caar(bind), result);
                         env_define_var(env2, minim_caar(bind), result);
                     }
                 }
@@ -1881,8 +1883,10 @@ loop:
                     }
                 }
 
-                for (it = to_bind; !minim_is_null(it); it = minim_cdr(it))
+                for (it = to_bind; !minim_is_null(it); it = minim_cdr(it)) {
+                    SET_NAME_IF_CLOSURE(minim_caar(it), minim_cdar(it));
                     env_define_var(env, minim_caar(it), minim_cdar(it));
+                }
 
                 expr = make_pair(begin_symbol, (minim_cddr(expr)));
                 goto loop;

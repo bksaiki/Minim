@@ -48,7 +48,7 @@
               [else
                (cons (datum->syntax first) (map expand-expr maybe-args))]))]
          [else
-          (map expand-expr expr*)])]
+          (datum->syntax (map expand-expr expr*))])]
       [(pair? expr*)
        (datum->syntax (cons (expand-expr (car expr*)) (expand-expr (cdr expr*))))]
       [(symbol? expr*)
