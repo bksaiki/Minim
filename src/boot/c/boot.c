@@ -765,6 +765,42 @@ minim_object *list_proc(minim_object *args) {
     return args;
 }
 
+minim_object *reverse_proc(minim_object *args) {
+    minim_object *head, *it;
+    
+    head = minim_null;
+    for (it = minim_car(args); minim_is_pair(it); it = minim_cdr(it))
+        head = make_pair(minim_car(it), head);
+
+    if (!minim_is_null(it))
+        bad_type_exn("reverse", "expected list?", minim_car(args));
+    return head;
+}
+
+minim_object *append_proc(minim_object *args) {
+    minim_object *head, *lst_it, *it, *it2;
+
+    head = NULL;
+    for (it = args; !minim_is_null(it); it = minim_cdr(it)) {
+        if (!minim_is_null(minim_car(it))) {
+            for (it2 = minim_car(it); minim_is_pair(it2); it2 = minim_cdr(it2)) {
+                if (head) {
+                    minim_cdr(lst_it) = make_pair(minim_car(it2), minim_null);
+                    lst_it = minim_cdr(lst_it);
+                } else {
+                    head = make_pair(minim_car(it2), minim_null);
+                    lst_it = head;
+                }
+            }
+
+            if (!minim_is_null(it2))
+                bad_type_exn("append", "expected list?", minim_car(it));
+        }
+    }
+
+    return head ? head : minim_null;
+}
+
 minim_object *andmap_proc(minim_object *args) {
     fprintf(stderr, "andmap: should not be called directly");
     exit(1);
@@ -2145,6 +2181,8 @@ void populate_env(minim_object *env) {
     add_procedure("set-cdr!", set_cdr_proc, 2, 2);
 
     add_procedure("list", list_proc, 0, ARG_MAX);
+    add_procedure("reverse", reverse_proc, 1, 1);
+    add_procedure("append", append_proc, 0, ARG_MAX);
     add_procedure("andmap", andmap_proc, 2, 2);
     add_procedure("ormap", ormap_proc, 2, 2);
 

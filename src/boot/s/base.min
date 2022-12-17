@@ -51,23 +51,6 @@
           [(pair? xs) (loop (cdr xs) (+ acc 1))]
           [else       (error 'length "expected a list" lst)])))
 
-(define (reverse lst)
-  (let loop ([xs lst] [acc '()])
-        (cond [(null? xs) acc]
-              [(pair? xs) (loop (cdr xs) (cons (car xs) acc))]
-              [else       (error 'reverse "expected a list" lst)])))
-
-(define (append . lsts)
-  (let loop ([lsts lsts])
-    (cond
-      [(null? lsts) '()]
-      [(null? (cdr lsts)) (car lsts)]
-      [else
-       (let loop2 ([lst (car lsts)])
-         (if (null? lst)
-             (loop (cdr lsts))
-             (cons (car lst) (loop2 (cdr lst)))))])))
-
 (define (map f lst)
   (let loop ([xs lst] [acc '()])
     (cond [(null? xs) (reverse acc)]

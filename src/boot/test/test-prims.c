@@ -245,6 +245,19 @@ int test_list() {
     check_equal("(list 1 2)", "'(1 2)");
     check_equal("(list 1 2 3)", "'(1 2 3)");
 
+    check_equal("(reverse '())", "'()");
+    check_equal("(reverse '(1))", "'(1)");
+    check_equal("(reverse '(1 2))", "'(2 1)");
+    check_equal("(reverse '(1 2 3))", "'(3 2 1)");
+
+    check_equal("(append)", "'()");
+    check_equal("(append '())", "'()");
+    check_equal("(append '() '() '())", "'()");
+    check_equal("(append '(a))", "'(a)");
+    check_equal("(append '(a b c))", "'(a b c)");
+    check_equal("(append '(a b c) '(d))", "'(a b c d)");
+    check_equal("(append '(a b c) '(d e f))", "'(a b c d e f)");
+
     check_equal("(andmap (lambda (x) (eq? x 'a)) '())", "#t");
     check_equal("(andmap (lambda (x) (eq? x 'a)) '(a))", "#t");
     check_equal("(andmap (lambda (x) (eq? x 'a)) '(b))", "#f");
@@ -485,9 +498,6 @@ int main(int argc, char **argv) {
     GC_init(((void*) &stack_top));
     minim_boot_init();
     stream = tmpfile();
-
-    write_object(stdout, boot_expander(current_thread()));
-    printf("\n");
 
     return_code = 0;
     run_tests();

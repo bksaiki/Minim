@@ -9,21 +9,21 @@
   (lambda (stx)
     (if (identifier? stx)
         (syntax-error 'syntax-rules "not allowed as an expression" stx)
-        (let ([form (stx-cdr stx)]
-              [serr (lambda (msg at)
+        (let-values ([(form) (stx-cdr stx)]
+                     [(serr) (lambda (msg at)
                       (syntax-error 'syntax-rules msg stx at))])
-          (let ([ids (stx-car form)]
-                [rules (stx-cdr form)])
+          (let-values ([(ids) (stx-car form)]
+                       [(rules) (stx-cdr form)])
             (if (and (stx-list? ids)
-                     (andmap identifier? (unwrap ids)))
-                (let ([rule?
-                       (lambda (r)
-                         (and (stx-list? r)
-                              (not (stx-null? r))
-                              (stx-list? (stx-car r))
-                              (let ([t (stx-cdr r)])
-                                (and (not (null? t))
-                                     (null? (stx-cdr t))))))])
+                     (andmap identifier? (syntax-e ids)))
+                (let-values ([(rule?)
+                    (lambda (r)
+                      (and (stx-list? r)
+                           (not (stx-null? r))
+                           (stx-list? (stx-car r))
+                           (let-values ([(t) (stx-cdr r)])
+                             (and (not (null? t))
+                               (null? (stx-cdr t))))))])
                   (if (and (not (stx-null? rules))
                            (andmap rule? rules))
                       (datum->syntax
@@ -35,13 +35,13 @@
                               (quote-syntax syntax-case)
                               (quote-syntax stx)
                               ids)
-                            (let ([loop
+                            (letrec-values ([(loop)
                                 (lambda (process rules)
                                   (if (stx-null? rules)
                                       (reverse process)
-                                      (let ([rule (stx-car rules)])
-                                        (let ([match (stx-car rule)]
-                                              [replace (stx-car (stx-cdr rule))])
+                                      (let-values ([(rule) (stx-car rules)])
+                                        (let-values ([(match) (stx-car rule)]
+                                                     [(replace) (stx-car (stx-cdr rule))])
                                           (loop
                                             (cons
                                               (list
