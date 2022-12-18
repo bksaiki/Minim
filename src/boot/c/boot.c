@@ -610,105 +610,143 @@ minim_object *setup_env() {
 //
 
 minim_object *is_null_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_null(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_void_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_void(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_eof_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_eof(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_bool_proc(minim_object *args) {
+    // (-> any boolean)
     minim_object *o = minim_car(args);
     return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
 }
 
 minim_object *is_symbol_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_symbol(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_fixnum_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_fixnum(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_char_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_char(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_string_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_string(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_pair_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_pair(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_list_proc(minim_object *args) {
+    // (-> any boolean)
     minim_object *thing;
     for (thing = minim_car(args); minim_is_pair(thing); thing = minim_cdr(thing));
     return minim_is_null(thing) ? minim_true : minim_false;
 }
 
 minim_object *is_procedure_proc(minim_object *args) {
+    // (-> any boolean)
     minim_object *o = minim_car(args);
     return (minim_is_prim_proc(o) || minim_is_closure_proc(o)) ? minim_true : minim_false;
 }
 
 minim_object *is_input_port_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_input_port(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_output_port_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_output_port(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *is_syntax_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_syntax(minim_car(args)) ? minim_true : minim_false;
 }
 
 minim_object *char_to_integer_proc(minim_object *args) {
-    return make_fixnum(minim_char(minim_car(args)));
+    // (-> char integer)
+    minim_object *o = minim_car(args);
+    if (!minim_is_char(o))
+        bad_type_exn("char->integer", "char?", o);
+    return make_fixnum(minim_char(o));
 }
 
 minim_object *integer_to_char_proc(minim_object *args) {
+    // (-> integer char)
+    minim_object *o = minim_car(args);
+    if (!minim_is_fixnum(o))
+        bad_type_exn("integer->char", "integer?", o);
     return make_char(minim_fixnum(minim_car(args)));
 }
 
 minim_object *number_to_string_proc(minim_object *args) {
+    // (-> number string)
+    minim_object *o;
     char buffer[30];
-    sprintf(buffer, "%ld", minim_fixnum(minim_car(args)));
+
+    o = minim_car(args);
+    if (!minim_is_fixnum(o))
+        bad_type_exn("number->string", "number?", o);
+    sprintf(buffer, "%ld", minim_fixnum(o));
     return make_string(buffer);
 }
 
 minim_object *string_to_number_proc(minim_object *args) {
-    // TODO: unchecked conversion
-    return make_fixnum(atoi(minim_string(minim_car(args))));
+    // (-> string number)
+    minim_object *o = minim_car(args);
+    if (!minim_is_string(o))
+        bad_type_exn("string->number", "string?", o);
+    return make_fixnum(atoi(minim_string(o)));
 }
 
 minim_object *symbol_to_string_proc(minim_object *args) {
-    return make_string(minim_symbol(minim_car(args)));
+    // (-> symbol string)
+    minim_object *o = minim_car(args);
+    if (!minim_is_symbol(o))
+        bad_type_exn("symbol->string", "symbol?", o);
+    return make_string(minim_symbol(o));
 }
 
 minim_object *string_to_symbol_proc(minim_object *args) {
-    return intern(minim_string(minim_car(args)));
+    // (-> string symbol)
+    minim_object *o = minim_car(args);
+    if (!minim_is_string(o))
+        bad_type_exn("string->symbol", "string?", o);
+    return intern(minim_string(o));
 }
 
 minim_object *eq_proc(minim_object *args) {
-    minim_object *a = minim_car(args);
-    minim_object *b = minim_cadr(args);
-    return minim_is_eq(a, b) ? minim_true : minim_false;
+    // (-> any any boolean)
+    return minim_is_eq(minim_car(args), minim_cadr(args)) ? minim_true : minim_false;
 }
 
 minim_object *equal_proc(minim_object *args) {
-    minim_object *a = minim_car(args);
-    minim_object *b = minim_cadr(args);
-    return minim_is_equal(a, b) ? minim_true : minim_false;
+    // (-> any any boolean)
+    return minim_is_equal(minim_car(args), minim_cadr(args)) ? minim_true : minim_false;
 }
 
 minim_object *void_proc(minim_object *args) {
+    // (-> void)
     return minim_void;
 }
 
@@ -736,36 +774,56 @@ minim_object *values_proc(minim_object *args) {
 }
 
 minim_object *not_proc(minim_object *args) {
+    // (-> any boolean)
     return minim_is_false(minim_car(args)) ? minim_true : minim_false;   
 }
 
 minim_object *cons_proc(minim_object *args) {
+    // (-> any any pair)
     return make_pair(minim_car(args), minim_cadr(args));
 }
 
 minim_object *car_proc(minim_object *args) {
-    return minim_caar(args);
+    // (-> pair any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o))
+        bad_type_exn("car", "pair?", o);
+    return minim_car(o);
 }
 
 minim_object *cdr_proc(minim_object *args) {
-    return minim_cdar(args);
+    // (-> pair any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o))
+        bad_type_exn("cdr", "pair?", o);
+    return minim_cdr(o);
 }
 
 minim_object *set_car_proc(minim_object *args) {
-    minim_caar(args) = minim_cadr(args);
+    // (-> pair any void)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o))
+        bad_type_exn("set-car!", "pair?", o);
+    minim_car(o) = minim_cadr(args);
     return minim_void;
 }
 
 minim_object *set_cdr_proc(minim_object *args) {
-    minim_cdar(args) = minim_cadr(args);
+    // (-> pair any void)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o))
+        bad_type_exn("set-cdr!", "pair?", o);
+    minim_cdr(o) = minim_cadr(args);
     return minim_void;
 }
 
 minim_object *list_proc(minim_object *args) {
+    // (-> any ... list)
     return args;
 }
 
 minim_object *reverse_proc(minim_object *args) {
+    // (-> list list)
     minim_object *head, *it;
     
     head = minim_null;
@@ -778,6 +836,7 @@ minim_object *reverse_proc(minim_object *args) {
 }
 
 minim_object *append_proc(minim_object *args) {
+    // (-> list ... list)
     minim_object *head, *lst_it, *it, *it2;
 
     head = NULL;
@@ -812,9 +871,12 @@ minim_object *ormap_proc(minim_object *args) {
 }
 
 minim_object *add_proc(minim_object *args) {
+    // (-> integer ... integer)
     long result = 0;
-
+ 
     while (!minim_is_null(args)) {
+        if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("+", "integer?", minim_car(args));
         result += minim_fixnum(minim_car(args));
         args = minim_cdr(args);
     }
@@ -823,7 +885,11 @@ minim_object *add_proc(minim_object *args) {
 }
 
 minim_object *sub_proc(minim_object *args) {
+    // (-> integer integer ... integer)
     long result;
+
+    if (!minim_is_fixnum(minim_car(args)))
+        bad_type_exn("-", "integer?", minim_car(args));
     
     if (minim_is_null(minim_cdr(args))) {
         result = -(minim_fixnum(minim_car(args)));
@@ -831,6 +897,8 @@ minim_object *sub_proc(minim_object *args) {
         result = minim_fixnum(minim_car(args));
         args = minim_cdr(args);
         while (!minim_is_null(args)) {
+            if (!minim_is_fixnum(minim_car(args)))
+                bad_type_exn("-", "integer?", minim_car(args));
             result -= minim_fixnum(minim_car(args));
             args = minim_cdr(args);
         }
@@ -840,9 +908,12 @@ minim_object *sub_proc(minim_object *args) {
 }
 
 minim_object *mul_proc(minim_object *args) {
+    // (-> integer ... integer)
     long result = 1;
 
     while (!minim_is_null(args)) {
+        if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("*", "integer?", minim_car(args));
         result *= minim_fixnum(minim_car(args));
         args = minim_cdr(args);
     }
@@ -851,59 +922,132 @@ minim_object *mul_proc(minim_object *args) {
 }
 
 minim_object *div_proc(minim_object *args) {
+    // (-> integer integer integer)
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("/", "integer?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn("/", "integer?", minim_cadr(args));
+
     return make_fixnum(minim_fixnum(minim_car(args)) /
                        minim_fixnum(minim_cadr(args)));
 }
 
 minim_object *remainder_proc(minim_object *args) {
+    // (-> integer integer integer)
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("remainder", "integer?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn("remainder", "integer?", minim_cadr(args));
+
     return make_fixnum(minim_fixnum(minim_car(args)) %
                        minim_fixnum(minim_cadr(args)));
 }
 
 minim_object *modulo_proc(minim_object *args) {
-    long result = minim_fixnum(minim_car(args)) % minim_fixnum(minim_cadr(args));
+    // (-> integer integer integer)
+    long result;
+
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("modulo", "integer?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn("modulo", "integer?", minim_cadr(args));
+
+    result = minim_fixnum(minim_car(args)) % minim_fixnum(minim_cadr(args));
     if ((minim_fixnum(minim_car(args)) < 0) != (minim_fixnum(minim_cadr(args)) < 0))
         result += minim_fixnum(minim_cadr(args));
     return make_fixnum(result);
 }
 
-minim_object *number_eq_proc(minim_object *args) { 
-    return (minim_fixnum(minim_car(args)) == minim_fixnum(minim_cadr(args))) ?
-           minim_true :
-           minim_false;
+minim_object *number_eq_proc(minim_object *args) {
+    // (-> number number boolean)
+    long a, b;
+
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("=", "number?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn("=", "number?", minim_cadr(args));
+
+    a = minim_fixnum(minim_car(args));
+    b = minim_fixnum(minim_cadr(args));
+    return a == b ? minim_true : minim_false;
 }
 
 minim_object *number_ge_proc(minim_object *args) { 
-    return (minim_fixnum(minim_car(args)) >= minim_fixnum(minim_cadr(args))) ?
-           minim_true :
-           minim_false;
+    // (-> number number boolean)
+    long a, b;
+
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn(">=", "number?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn(">=", "number?", minim_cadr(args));
+
+    a = minim_fixnum(minim_car(args));
+    b = minim_fixnum(minim_cadr(args));
+    return a >= b ? minim_true : minim_false;
 }
 
 minim_object *number_le_proc(minim_object *args) { 
-    return (minim_fixnum(minim_car(args)) <= minim_fixnum(minim_cadr(args))) ?
-           minim_true :
-           minim_false;
+    // (-> number number boolean)
+    long a, b;
+
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("<=", "number?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn("<=", "number?", minim_cadr(args));
+
+    a = minim_fixnum(minim_car(args));
+    b = minim_fixnum(minim_cadr(args));
+    return a <= b ? minim_true : minim_false;
 }
 
 minim_object *number_gt_proc(minim_object *args) { 
-    return (minim_fixnum(minim_car(args)) > minim_fixnum(minim_cadr(args))) ?
-           minim_true :
-           minim_false;
+    // (-> number number boolean)
+    long a, b;
+
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn(">", "number?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn(">", "number?", minim_cadr(args));
+
+    a = minim_fixnum(minim_car(args));
+    b = minim_fixnum(minim_cadr(args));
+    return a > b ? minim_true : minim_false;
 }
 
 minim_object *number_lt_proc(minim_object *args) { 
-    return (minim_fixnum(minim_car(args)) < minim_fixnum(minim_cadr(args))) ?
-           minim_true :
-           minim_false;
+    // (-> number number boolean)
+    long a, b;
+
+    if (!minim_is_fixnum(minim_car(args)))
+            bad_type_exn("<", "number?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)))
+            bad_type_exn("<", "number?", minim_cadr(args));
+
+    a = minim_fixnum(minim_car(args));
+    b = minim_fixnum(minim_cadr(args));
+    return a < b ? minim_true : minim_false;
 }
 
 minim_object *make_string_proc(minim_object *args) {
+    // (-> non-negative-integer string)
+    // (-> non-negative-integer char string)
     char *str;
     long len, i;
-    char c;
+    int c;
 
+    if (!minim_is_fixnum(minim_car(args)) || minim_fixnum(minim_car(args)) < 0)
+        bad_type_exn("make-string", "non-negative-integer?", minim_car(args));
     len = minim_fixnum(minim_car(args));
-    c = minim_is_null(minim_cdr(args)) ? 'a' : minim_char(minim_cadr(args));
+
+    if (minim_is_null(minim_cdr(args))) {
+        // 1st case
+        c = 'a';
+    } else {
+        // 2nd case
+        if (!minim_is_char(minim_cadr(args)))
+            bad_type_exn("make-string", "char?", minim_cadr(args));
+        c = minim_char(minim_cadr(args));
+    }
 
     str = GC_alloc_atomic((len + 1) * sizeof(char));    
     for (i = 0; i < len; ++i)
@@ -914,12 +1058,15 @@ minim_object *make_string_proc(minim_object *args) {
 }
 
 minim_object *string_proc(minim_object *args) {
+    // (-> char ... string)
     long len, i;
     char *str;
 
     len = list_length(args);
     str = GC_alloc_atomic((len + 1) * sizeof(char));
     for (i = 0; i < len; ++i) {
+        if (!minim_is_char(minim_car(args)))
+            bad_type_exn("make-string", "char?", minim_car(args));
         str[i] = minim_char(minim_car(args));
         args = minim_cdr(args);
     }
@@ -929,13 +1076,22 @@ minim_object *string_proc(minim_object *args) {
 }
 
 minim_object *string_length_proc(minim_object *args) {
-    char *str = minim_string(minim_car(args));
-    return make_fixnum(strlen(str));
+    // (-> string integer)
+    minim_object *o = minim_car(args);
+    if (!minim_is_string(o))
+        bad_type_exn("string-length", "string?", o);
+    return make_fixnum(strlen(minim_string(o)));
 }
 
 minim_object *string_ref_proc(minim_object *args) {
+    // (-> string non-negative-integer char)
     char *str;
     long len, idx;
+
+    if (!minim_is_string(minim_car(args)))
+        bad_type_exn("string-ref", "string?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)) || minim_fixnum(minim_cadr(args)) < 0)
+        bad_type_exn("string-ref", "non-negative-integer?", minim_cdar(args));
 
     str = minim_string(minim_car(args));
     idx = minim_fixnum(minim_cadr(args));
@@ -951,14 +1107,22 @@ minim_object *string_ref_proc(minim_object *args) {
 }
 
 minim_object *string_set_proc(minim_object *args) {
+    // (-> string non-negative-integer char void)
     char *str;
     long len, idx;
     char c;
 
+    if (!minim_is_string(minim_car(args)))
+        bad_type_exn("string-set!", "string?", minim_car(args));
+    if (!minim_is_fixnum(minim_cadr(args)) || minim_fixnum(minim_cadr(args)) < 0)
+        bad_type_exn("string-set!", "non-negative-integer?", minim_cdar(args));
+    if (!minim_is_char(minim_car(minim_cddr(args))))
+        bad_type_exn("string-set!", "char?", minim_car(minim_cddr(args)));
+
     str = minim_string(minim_car(args));
-    len = strlen(str);
     idx = minim_fixnum(minim_cadr(args));
     c = minim_char(minim_car(minim_cddr(args)));
+    len = strlen(str);
 
     if (idx >= len) {
         fprintf(stderr, "string-set!: index out of bounds\n");
@@ -971,14 +1135,21 @@ minim_object *string_set_proc(minim_object *args) {
 }
 
 minim_object *syntax_e_proc(minim_object *args) {
+    // (-> syntax any)
+    if (!minim_is_syntax(minim_car(args)))
+        bad_type_exn("syntax-e", "syntax?", minim_car(args));
     return minim_syntax_e(minim_car(args));
 }
 
 minim_object *syntax_loc_proc(minim_object *args) {
+    // (-> syntax any)
+    if (!minim_is_syntax(minim_car(args)))
+        bad_type_exn("syntax-loc", "syntax?", minim_car(args));
     return minim_syntax_loc(minim_car(args));
 }
 
 minim_object *to_syntax_proc(minim_object *args) {
+    // (-> any syntax)
     return to_syntax(minim_car(args));
 }
 
@@ -993,27 +1164,31 @@ minim_object *apply_proc(minim_object *args) {
 }
 
 minim_object *interaction_environment_proc(minim_object *args) {
+    // (-> environment)
     return global_env(current_thread());
 }
 
 minim_object *empty_environment_proc(minim_object *args) {
+    // (-> environment)
     return setup_env();
 }
 
 minim_object *environment_proc(minim_object *args) {
+    // (-> environment)
     return make_env();
 }
 
 minim_object *extend_environment_proc(minim_object *args) {
+    // (-> environment environment)
     return make_pair(minim_null, minim_car(args));
 }
 
 minim_object *environment_variable_value_proc(minim_object *args) {
+    // (-> environment symbol -> any)
     minim_object *env, *name;
 
     env = minim_car(args);
     name = minim_cadr(args);
-
     if (!minim_is_symbol(name)) {
         bad_type_exn("environment-variable-value", "symbol?", name);
     } else if (env_var_is_defined(env, name, 0)) {
@@ -1049,6 +1224,7 @@ minim_object *environment_variable_value_proc(minim_object *args) {
 }
 
 minim_object *environment_set_variable_value_proc(minim_object *args) {
+    // (-> environment symbol any void)
     minim_object *env, *name, *val;
 
     env = minim_car(args);
@@ -1068,16 +1244,22 @@ minim_object *current_environment_proc(minim_object *args) {
 }
 
 minim_object *current_input_port_proc(minim_object *args) {
+    // (-> input-port)
     return input_port(current_thread());
 }
 
 minim_object *current_output_port_proc(minim_object *args) {
+    // (-> output-port)
     return output_port(current_thread());
 }
 
 minim_object *open_input_port_proc(minim_object *args) {
-    FILE *stream;
+    // (-> string input-port)
     minim_object *port;
+    FILE *stream;
+
+    if (!minim_is_string(minim_car(args)))
+        bad_type_exn("open-input-port", "string?", minim_car(args));
 
     stream = fopen(minim_string(minim_car(args)), "r");
     if (stream == NULL) {
@@ -1091,8 +1273,12 @@ minim_object *open_input_port_proc(minim_object *args) {
 }
 
 minim_object *open_output_port_proc(minim_object *args) {
-    FILE *stream;
+    // (-> string output-port)
     minim_object *port;
+    FILE *stream;
+
+    if (!minim_is_string(minim_car(args)))
+        bad_type_exn("open-output-port", "string?", minim_car(args));
     
     stream = fopen(minim_string(minim_car(args)), "w");
     if (stream == NULL) {
@@ -1100,113 +1286,229 @@ minim_object *open_output_port_proc(minim_object *args) {
         exit(1);
     }
 
-    port = make_input_port(stream);
+    port = make_output_port(stream);
     minim_port_set(port, MINIM_PORT_OPEN);
     return port;
 }
 
 minim_object *close_input_port_proc(minim_object *args) {
+    // (-> input-port)
+    if (!minim_is_input_port(minim_car(args)))
+        bad_type_exn("close-input-port", "input-port?", minim_car(args));
+
     fclose(minim_port(minim_car(args)));
     minim_port_unset(minim_car(args), MINIM_PORT_OPEN);
     return minim_void;
 }
 
 minim_object *close_output_port_proc(minim_object *args) {
+    // (-> output-port)
+    if (!minim_is_output_port(minim_car(args)))
+        bad_type_exn("close-output-port", "output-port?", minim_car(args));
+
     fclose(minim_port(minim_car(args)));
     minim_port_unset(minim_car(args), MINIM_PORT_OPEN);
     return minim_void;
 }
 
 minim_object *read_proc(minim_object *args) {
+    // (-> any)
+    // (-> input-port any)
     minim_object *in_p, *o;
 
-    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    if (minim_is_null(args)) {
+        in_p = input_port(current_thread());
+    } else {
+        in_p = minim_car(args);
+        if (!minim_is_input_port(in_p))
+            bad_type_exn("read", "input-port?", in_p);
+    }
+
     o = read_object(minim_port(in_p));
     return (o == NULL) ? minim_eof : o;
 }
 
 minim_object *read_char_proc(minim_object *args) {
+    // (-> char)
+    // (-> input-port char)
     minim_object *in_p;
     int ch;
     
-    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    if (minim_is_null(args)) {
+        in_p = input_port(current_thread());
+    } else {
+        in_p = minim_car(args);
+        if (!minim_is_input_port(in_p))
+            bad_type_exn("read-char", "input-port?", in_p);
+    }
+
     ch = getc(minim_port(in_p));
     return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *peek_char_proc(minim_object *args) {
+    // (-> char)
+    // (-> input-port char)
     minim_object *in_p;
     int ch;
     
-    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    if (minim_is_null(args)) {
+        in_p = input_port(current_thread());
+    } else {
+        in_p = minim_car(args);
+        if (!minim_is_input_port(in_p))
+            bad_type_exn("peek-char", "input-port?", in_p);
+    }
+
     ch = getc(minim_port(in_p));
     ungetc(ch, minim_port(in_p));
     return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
 minim_object *char_is_ready_proc(minim_object *args) {
+    // (-> boolean)
+    // (-> input-port boolean)
     minim_object *in_p;
     int ch;
 
-    in_p = minim_is_null(args) ? input_port(current_thread()) : minim_car(args);
+    if (minim_is_null(args)) {
+        in_p = input_port(current_thread());
+    } else {
+        in_p = minim_car(args);
+        if (!minim_is_input_port(in_p))
+            bad_type_exn("peek-char", "input-port?", in_p);
+    }
+
     ch = getc(minim_port(in_p));
     ungetc(ch, minim_port(in_p));
     return (ch == EOF) ? minim_false : minim_true;
 }
 
 minim_object *display_proc(minim_object *args) {
+    // (-> any void)
+    // (-> any output-port void)
     minim_object *out_p, *o;
 
     o = minim_car(args);
-    out_p = minim_is_null(minim_cdr(args)) ? output_port(current_thread()) : minim_cadr(args);
+    if (minim_is_null(minim_cdr(args))) {
+        out_p = output_port(current_thread());
+    } else {
+        out_p = minim_cadr(args);
+        if (!minim_is_output_port(out_p))
+            bad_type_exn("display", "output-port?", out_p);
+    }
+
     write_object2(minim_port(out_p), o, 0, 1);
     return minim_void;
 }
 
 minim_object *write_proc(minim_object *args) {
+    // (-> any void)
+    // (-> any output-port void)
     minim_object *out_p, *o;
 
     o = minim_car(args);
-    out_p = minim_is_null(minim_cdr(args)) ? output_port(current_thread()) : minim_cadr(args);
+    if (minim_is_null(minim_cdr(args))) {
+        out_p = output_port(current_thread());
+    } else {
+        out_p = minim_cadr(args);
+        if (!minim_is_output_port(out_p))
+            bad_type_exn("display", "output-port?", out_p);
+    }
+
     write_object(minim_port(out_p), o);
     return minim_void;
 }
 
 minim_object *write_char_proc(minim_object *args) {
+    // (-> char void)
+    // (-> char output-port void)
     minim_object *out_p, *ch;
 
     ch = minim_car(args);
-    out_p = minim_is_null(minim_cdr(args)) ? output_port(current_thread()) : minim_cadr(args);
+    if (!minim_is_char(ch))
+        bad_type_exn("write-char", "char?", ch);
+
+    if (minim_is_null(minim_cdr(args))) {
+        out_p = output_port(current_thread());
+    } else {
+        out_p = minim_cadr(args);
+        if (!minim_is_output_port(out_p))
+            bad_type_exn("display", "output-port?", out_p);
+    }
+
     putc(minim_char(ch), minim_port(out_p));
     return minim_void;
 }
 
 minim_object *newline_proc(minim_object *args) {
-    minim_object *out_p = minim_is_null(args) ? output_port(current_thread()) : minim_car(args);
+    // (-> void)
+    // (-> output-port void)
+    minim_object *out_p;
+
+    if (minim_is_null(args)) {
+        out_p = output_port(current_thread());
+    } else {
+        out_p = minim_car(args);
+        if (!minim_is_output_port(out_p))
+            bad_type_exn("display", "output-port?", out_p);
+    }
+
     putc('\n', minim_port(out_p));
     return minim_void;
 }
 
 minim_object *load_proc(minim_object *args) {
+    // (-> string any)
+    if (!minim_is_string(minim_car(args)))
+        bad_type_exn("load", "string?", minim_car(args));
     return load_file(minim_string(minim_car(args)));
 }
 
 minim_object *error_proc(minim_object *args) {
-    while (!minim_is_null(args)) {
-        write_object2(stderr, minim_car(args), 1, 1);
+    // (-> (or #f string symbol)
+    //     string?
+    //     any ...
+    //     any
+    minim_object *who, *message, *reasons;
+
+    who = minim_car(args);
+    if (!minim_is_false(who) && !minim_is_symbol(who) && !minim_is_string(who))
+        bad_type_exn("error", "(or #f string? symbol?)", who);
+
+    message = minim_cadr(args);
+    if (!minim_is_string(message))
+        bad_type_exn("error", "string?", message);
+    
+    if (minim_is_false(who))
+        printf("error");
+    else
+        write_object2(stderr, who, 1, 1);
+
+    fprintf(stderr, ": ");
+    write_object2(stderr, message, 1, 1);
+    fprintf(stderr, "\n");
+
+    reasons = minim_cddr(args);
+    while (!minim_is_null(reasons)) {
         fprintf(stderr, " ");
-        args = minim_cdr(args);
+        write_object2(stderr, minim_car(reasons), 1, 1);
+        fprintf(stderr, "\n");
+        reasons = minim_cdr(reasons);
     }
 
-    printf("\n");
     exit(1);
 }
 
 minim_object *exit_proc(minim_object *args) {
+    // (-> any)
     exit(0);
 }
 
 minim_object *syntax_error_proc(minim_object *args) {
+    // (-> symbol string any)
+    // (-> symbol string syntax any)
+    // (-> symbol string syntax syntaxs any)
     minim_object *what, *why, *where, *sub;
 
     what = minim_car(args);
@@ -1220,8 +1522,14 @@ minim_object *syntax_error_proc(minim_object *args) {
     fprintf(stderr, "%s: %s\n", minim_symbol(what), minim_string(why));
     if (!minim_is_null(minim_cddr(args))) {
         where = minim_car(minim_cddr(args));
+        if (!minim_is_syntax(where))
+            bad_type_exn("syntax-error", "syntax?", where);
+
         if (!minim_is_null(minim_cdr(minim_cddr(args)))) {
             sub = minim_cadr(minim_cddr(args));
+            if (!minim_is_syntax(sub))
+                bad_type_exn("syntax-error", "syntax?", sub);
+
             fputs("  at: ", stderr);
             write_object2(stderr, sub, 1, 1);
             fprintf(stderr, "\n");
@@ -1236,6 +1544,8 @@ minim_object *syntax_error_proc(minim_object *args) {
 }
 
 minim_object *current_directory_proc(minim_object *args) {
+    // (-> string)
+    // (-> string void)
     minim_object *path;
 
     if (minim_is_null(args)) {
@@ -1253,6 +1563,8 @@ minim_object *current_directory_proc(minim_object *args) {
 }
 
 minim_object *boot_expander_proc(minim_object *args) {
+    // (-> boolean)
+    // (-> boolean void)
     minim_object *val;
     minim_thread *th;
 
@@ -2242,7 +2554,7 @@ void populate_env(minim_object *env) {
     add_procedure("newline", newline_proc, 0, 1);
     
     add_procedure("load", load_proc, 1, 1);
-    add_procedure("error", error_proc, 1, ARG_MAX);
+    add_procedure("error", error_proc, 2, ARG_MAX);
     add_procedure("exit", exit_proc, 0, 0);
     add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
