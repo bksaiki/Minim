@@ -245,6 +245,11 @@ int test_list() {
     check_equal("(list 1 2)", "'(1 2)");
     check_equal("(list 1 2 3)", "'(1 2 3)");
 
+    check_equal("(length '())", "0");
+    check_equal("(length '(1))", "1");
+    check_equal("(length '(1 2))", "2");
+    check_equal("(length '(1 2 3))", "3");
+
     check_equal("(reverse '())", "'()");
     check_equal("(reverse '(1))", "'(1)");
     check_equal("(reverse '(1 2))", "'(2 1)");

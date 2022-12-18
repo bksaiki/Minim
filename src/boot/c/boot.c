@@ -822,6 +822,20 @@ minim_object *list_proc(minim_object *args) {
     return args;
 }
 
+minim_object *length_proc(minim_object *args) {
+    // (-> list non-negative-integer?)
+    minim_object *it;
+    long length;
+
+    length = 0;
+    for (it = minim_car(args); minim_is_pair(it); it = minim_cdr(it))
+        length += 1;
+
+    if (!minim_is_null(it))
+        bad_type_exn("length", "list?", minim_car(args));
+    return make_fixnum(length);
+}
+
 minim_object *reverse_proc(minim_object *args) {
     // (-> list list)
     minim_object *head, *it;
@@ -2493,6 +2507,7 @@ void populate_env(minim_object *env) {
     add_procedure("set-cdr!", set_cdr_proc, 2, 2);
 
     add_procedure("list", list_proc, 0, ARG_MAX);
+    add_procedure("length", length_proc, 1, 1);
     add_procedure("reverse", reverse_proc, 1, 1);
     add_procedure("append", append_proc, 0, ARG_MAX);
     add_procedure("andmap", andmap_proc, 2, 2);
@@ -2562,9 +2577,7 @@ void populate_env(minim_object *env) {
 }
 
 minim_object *make_env() {
-    minim_object *env;
-
-    env = setup_env();
+    minim_object *env = setup_env();
     populate_env(env);
     return env;
 }
