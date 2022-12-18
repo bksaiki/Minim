@@ -12,10 +12,16 @@
 
 #include "../gc/gc.h"
 
-// Limits
+// Constants
 
-#define ARG_MAX     32767
-#define VALUES_MAX  32767
+#define MINIM_VERSION      "0.4.0"
+
+#define ARG_MAX                     32767
+#define VALUES_MAX                  32767
+#define SYMBOL_MAX_LEN              4096
+
+#define INIT_VALUES_BUFFER_LEN      10
+
 
 // Arity
 
@@ -138,7 +144,26 @@ extern minim_object *minim_eof;
 extern minim_object *minim_void;
 extern minim_object *minim_values;
 
-// Simple Predicates
+extern minim_object *quote_symbol;
+extern minim_object *define_symbol;
+extern minim_object *define_values_symbol;
+extern minim_object *let_symbol;
+extern minim_object *let_values_symbol;
+extern minim_object *letrec_symbol;
+extern minim_object *letrec_values_symbol;
+extern minim_object *setb_symbol;
+extern minim_object *if_symbol;
+extern minim_object *lambda_symbol;
+extern minim_object *begin_symbol;
+extern minim_object *cond_symbol;
+extern minim_object *else_symbol;
+extern minim_object *and_symbol;
+extern minim_object *or_symbol;
+extern minim_object *syntax_symbol;
+extern minim_object *syntax_loc_symbol;
+extern minim_object *quote_syntax_symbol;
+
+// Simple predicates
 
 #define minim_same_type(o, t)   ((o)->type == (t))
 
@@ -225,10 +250,68 @@ minim_object *make_input_port(FILE *stream);
 minim_object *make_output_port(FILE *stream);
 minim_object *make_syntax(minim_object *e, minim_object *loc);
 
-// Primitives
+// Object operations
 
 int minim_is_eq(minim_object *a, minim_object *b);
 int minim_is_equal(minim_object *a, minim_object *b);
+
+minim_object *call_with_args(minim_object *proc,
+                             minim_object *args,
+                             minim_object *env);
+
+minim_object *call_with_values(minim_object *producer,
+                               minim_object *consumer,
+                               minim_object *env);
+
+int is_list(minim_object *x);
+long list_length(minim_object *xs);
+minim_object *make_assoc(minim_object *xs, minim_object *ys);
+minim_object *copy_list(minim_object *xs);
+minim_object *andmap(minim_object *proc, minim_object *lst, minim_object *env);
+minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *env);
+
+minim_object *strip_syntax(minim_object *o);
+minim_object *to_syntax(minim_object *o);
+
+minim_object *read_object(FILE *in);
+void write_object(FILE *out, minim_object *o);
+void write_object2(FILE *out, minim_object *o, int quote, int display);
+
+// Interpreter
+
+minim_object *eval_expr(minim_object *expr, minim_object *env);
+
+// Environments
+
+minim_object *setup_env();
+minim_object *make_env();
+minim_object *extend_env(minim_object *vars,
+                         minim_object *vals,
+                         minim_object *base_env);
+
+void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val);
+minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val);
+minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *val);
+minim_object *env_lookup_var(minim_object *env, minim_object *var);
+int env_var_is_defined(minim_object *env, minim_object *var, int recursive);
+
+extern minim_object *empty_env;
+
+// Symbols
+
+typedef struct intern_table_bucket {
+    minim_object *sym;
+    struct intern_table_bucket *next;
+} intern_table_bucket;
+
+typedef struct intern_table {
+    intern_table_bucket **buckets;
+    size_t *alloc_ptr;
+    size_t alloc, size;
+} intern_table;
+
+intern_table *make_intern_table();
+minim_object *intern_symbol(intern_table *itab, const char *sym);
 
 // Threads
 
@@ -257,5 +340,135 @@ typedef struct minim_thread {
 #define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
 #define values_buffer_size(th)          ((th)->values_buffer_size)
 #define values_buffer_count(th)         ((th)->values_buffer_count)
+
+void resize_values_buffer(minim_thread *th, int size);
+
+// Globals
+
+typedef struct minim_globals {
+    minim_thread *current_thread;
+    intern_table *symbols;
+} minim_globals;
+
+extern minim_globals *globals;
+
+#define current_thread()    (globals->current_thread)
+#define intern(s)           (intern_symbol(globals->symbols, s))
+
+// System
+
+char *get_file_dir(const char *realpath);
+char* get_current_dir();
+void set_current_dir(const char *str);
+
+minim_object *load_file(const char *fname);
+
+// Exceptions
+
+void bad_syntax_exn(minim_object *expr);
+void bad_type_exn(const char *name, const char *type, minim_object *x);
+
+// Primitives
+
+#define DEFINE_PRIM_PROC(name) \
+    minim_object *name ## _proc(minim_object *);
+
+// special objects
+DEFINE_PRIM_PROC(is_null);
+DEFINE_PRIM_PROC(is_void);
+DEFINE_PRIM_PROC(is_eof);
+DEFINE_PRIM_PROC(is_bool);
+DEFINE_PRIM_PROC(not);
+DEFINE_PRIM_PROC(void);
+// equality
+DEFINE_PRIM_PROC(eq);
+DEFINE_PRIM_PROC(equal);
+// procedures
+DEFINE_PRIM_PROC(is_procedure);
+DEFINE_PRIM_PROC(call_with_values);
+DEFINE_PRIM_PROC(values);
+DEFINE_PRIM_PROC(apply)
+DEFINE_PRIM_PROC(eval);
+// pairs
+DEFINE_PRIM_PROC(is_pair);
+DEFINE_PRIM_PROC(cons);
+DEFINE_PRIM_PROC(car);
+DEFINE_PRIM_PROC(cdr);
+DEFINE_PRIM_PROC(set_car);
+DEFINE_PRIM_PROC(set_cdr);
+// lists
+DEFINE_PRIM_PROC(is_list);
+DEFINE_PRIM_PROC(list);
+DEFINE_PRIM_PROC(length);
+DEFINE_PRIM_PROC(reverse);
+DEFINE_PRIM_PROC(append);
+DEFINE_PRIM_PROC(andmap);
+DEFINE_PRIM_PROC(ormap);
+// numbers
+DEFINE_PRIM_PROC(is_fixnum);
+DEFINE_PRIM_PROC(add);
+DEFINE_PRIM_PROC(sub);
+DEFINE_PRIM_PROC(mul);
+DEFINE_PRIM_PROC(div);
+DEFINE_PRIM_PROC(remainder);
+DEFINE_PRIM_PROC(modulo);
+DEFINE_PRIM_PROC(number_eq);
+DEFINE_PRIM_PROC(number_ge);
+DEFINE_PRIM_PROC(number_le);
+DEFINE_PRIM_PROC(number_gt);
+DEFINE_PRIM_PROC(number_lt);
+// symbol
+DEFINE_PRIM_PROC(is_symbol);
+// characters
+DEFINE_PRIM_PROC(is_char);
+DEFINE_PRIM_PROC(char_to_integer);
+DEFINE_PRIM_PROC(integer_to_char);
+// strings
+DEFINE_PRIM_PROC(is_string);
+DEFINE_PRIM_PROC(make_string);
+DEFINE_PRIM_PROC(string);
+DEFINE_PRIM_PROC(string_length);
+DEFINE_PRIM_PROC(string_ref);
+DEFINE_PRIM_PROC(string_set);
+DEFINE_PRIM_PROC(number_to_string);
+DEFINE_PRIM_PROC(string_to_number);
+DEFINE_PRIM_PROC(symbol_to_string);
+DEFINE_PRIM_PROC(string_to_symbol);
+// environment
+DEFINE_PRIM_PROC(empty_environment);
+DEFINE_PRIM_PROC(extend_environment);
+DEFINE_PRIM_PROC(environment_variable_value);
+DEFINE_PRIM_PROC(environment_set_variable_value);
+DEFINE_PRIM_PROC(environment);
+DEFINE_PRIM_PROC(current_environment);
+DEFINE_PRIM_PROC(interaction_environment);
+// syntax
+DEFINE_PRIM_PROC(is_syntax);
+DEFINE_PRIM_PROC(syntax_e);
+DEFINE_PRIM_PROC(syntax_loc);
+DEFINE_PRIM_PROC(to_syntax);
+DEFINE_PRIM_PROC(syntax_error);
+// I/O
+DEFINE_PRIM_PROC(is_input_port);
+DEFINE_PRIM_PROC(is_output_port);
+DEFINE_PRIM_PROC(current_input_port);
+DEFINE_PRIM_PROC(current_output_port);
+DEFINE_PRIM_PROC(open_input_port);
+DEFINE_PRIM_PROC(open_output_port);
+DEFINE_PRIM_PROC(close_input_port);
+DEFINE_PRIM_PROC(close_output_port);
+DEFINE_PRIM_PROC(read);
+DEFINE_PRIM_PROC(read_char);
+DEFINE_PRIM_PROC(peek_char);
+DEFINE_PRIM_PROC(char_is_ready);
+DEFINE_PRIM_PROC(display);
+DEFINE_PRIM_PROC(write);
+DEFINE_PRIM_PROC(write_char);
+DEFINE_PRIM_PROC(newline);
+// System
+DEFINE_PRIM_PROC(load);
+DEFINE_PRIM_PROC(error);
+DEFINE_PRIM_PROC(current_directory);
+DEFINE_PRIM_PROC(exit);
 
 #endif  // _MINIM_H_

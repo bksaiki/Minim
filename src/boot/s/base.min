@@ -45,12 +45,6 @@
 (define (cddadr xs) (cdr (cdr (car (cdr xs)))))
 (define (cddddr xs) (cdr (cdr (cdr (cdr xs)))))
 
-(define (length lst)
-  (let loop ([xs lst] [acc 0])
-    (cond [(null? xs) acc]
-          [(pair? xs) (loop (cdr xs) (+ acc 1))]
-          [else       (error 'length "expected a list" lst)])))
-
 (define (map f lst)
   (let loop ([xs lst] [acc '()])
     (cond [(null? xs) (reverse acc)]

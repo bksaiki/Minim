@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     int argi;
 
     argi = handle_flags(argc, argv);
-    printf("Minim v%s\n", MINIM_BOOT_VERSION);
+    printf("Minim v%s\n", MINIM_VERSION);
 
     GC_init(((void*) &stack_top));
     minim_boot_init();

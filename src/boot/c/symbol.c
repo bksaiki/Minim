@@ -7,10 +7,10 @@
 
 #include <stdint.h>
 
-#include "intern.h"
+#include "../minim.h"
 
 // copied from ChezScheme
-size_t bucket_sizes[] = {
+static size_t bucket_sizes[] = {
     13,
     29,
     59,
@@ -155,7 +155,7 @@ minim_object *intern_symbol(intern_table *itab, const char *sym)
     size_t n = strlen(sym);
     size_t h = hash_bytes(sym, n);
     size_t idx = h % itab->alloc;
-    char *isym, *str;
+    char *isym;
 
     b = itab->buckets[idx];
     while (b != NULL)
@@ -181,12 +181,29 @@ minim_object *intern_symbol(intern_table *itab, const char *sym)
     }
 
     // intern symbol
-    str = GC_alloc_atomic((n + 1) * sizeof(char));
-    strcpy(str, sym);
-    obj = make_symbol(str);
+    obj = make_symbol(sym);
 
     // update table
     resize_if_needed(itab);
     intern_table_insert(itab, idx, obj);
     return obj;
+}
+
+minim_object *make_symbol(const char *s) {
+    minim_symbol_object *o = GC_alloc(sizeof(minim_symbol_object));
+    int len = strlen(s);
+    
+    o->type = MINIM_SYMBOL_TYPE;
+    o->value = GC_alloc_atomic((len + 1) * sizeof(char));
+    strncpy(o->value, s, len + 1);
+    return ((minim_object *) o);
+}
+
+//
+//  Primitives
+//
+
+minim_object *is_symbol_proc(minim_object *args) {
+    // (-> any boolean)
+    return minim_is_symbol(minim_car(args)) ? minim_true : minim_false;
 }
