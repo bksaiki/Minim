@@ -12,10 +12,16 @@
 
 #include "../gc/gc.h"
 
-// Limits
+// Constants
 
-#define ARG_MAX     32767
-#define VALUES_MAX  32767
+#define MINIM_VERSION      "0.4.0"
+
+#define ARG_MAX                     32767
+#define VALUES_MAX                  32767
+#define SYMBOL_MAX_LEN              4096
+
+#define INIT_VALUES_BUFFER_LEN      10
+
 
 // Arity
 
@@ -157,7 +163,7 @@ extern minim_object *syntax_symbol;
 extern minim_object *syntax_loc_symbol;
 extern minim_object *quote_syntax_symbol;
 
-// Simple Predicates
+// Simple predicates
 
 #define minim_same_type(o, t)   ((o)->type == (t))
 
@@ -275,14 +281,6 @@ void write_object2(FILE *out, minim_object *o, int quote, int display);
 
 minim_object *eval_expr(minim_object *expr, minim_object *env);
 
-int check_proc_arity(proc_arity *arity, minim_object *args, const char *name);
-
-#define check_prim_proc_arity(prim, args)   \
-    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
-
-#define check_closure_proc_arity(prim, args)    \
-    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
-
 // Environments
 
 minim_object *setup_env();
@@ -298,6 +296,22 @@ minim_object *env_lookup_var(minim_object *env, minim_object *var);
 int env_var_is_defined(minim_object *env, minim_object *var, int recursive);
 
 extern minim_object *empty_env;
+
+// Symbols
+
+typedef struct intern_table_bucket {
+    minim_object *sym;
+    struct intern_table_bucket *next;
+} intern_table_bucket;
+
+typedef struct intern_table {
+    intern_table_bucket **buckets;
+    size_t *alloc_ptr;
+    size_t alloc, size;
+} intern_table;
+
+intern_table *make_intern_table();
+minim_object *intern_symbol(intern_table *itab, const char *sym);
 
 // Threads
 
@@ -331,8 +345,6 @@ void resize_values_buffer(minim_thread *th, int size);
 
 // Globals
 
-typedef struct intern_table intern_table;
-
 typedef struct minim_globals {
     minim_thread *current_thread;
     intern_table *symbols;
@@ -342,6 +354,14 @@ extern minim_globals *globals;
 
 #define current_thread()    (globals->current_thread)
 #define intern(s)           (intern_symbol(globals->symbols, s))
+
+// System
+
+char *get_file_dir(const char *realpath);
+char* get_current_dir();
+void set_current_dir(const char *str);
+
+minim_object *load_file(const char *fname);
 
 // Exceptions
 
@@ -397,6 +417,12 @@ DEFINE_PRIM_PROC(number_ge);
 DEFINE_PRIM_PROC(number_le);
 DEFINE_PRIM_PROC(number_gt);
 DEFINE_PRIM_PROC(number_lt);
+// symbol
+DEFINE_PRIM_PROC(is_symbol);
+// characters
+DEFINE_PRIM_PROC(is_char);
+DEFINE_PRIM_PROC(char_to_integer);
+DEFINE_PRIM_PROC(integer_to_char);
 // strings
 DEFINE_PRIM_PROC(is_string);
 DEFINE_PRIM_PROC(make_string);
@@ -416,5 +442,33 @@ DEFINE_PRIM_PROC(environment_set_variable_value);
 DEFINE_PRIM_PROC(environment);
 DEFINE_PRIM_PROC(current_environment);
 DEFINE_PRIM_PROC(interaction_environment);
+// syntax
+DEFINE_PRIM_PROC(is_syntax);
+DEFINE_PRIM_PROC(syntax_e);
+DEFINE_PRIM_PROC(syntax_loc);
+DEFINE_PRIM_PROC(to_syntax);
+DEFINE_PRIM_PROC(syntax_error);
+// I/O
+DEFINE_PRIM_PROC(is_input_port);
+DEFINE_PRIM_PROC(is_output_port);
+DEFINE_PRIM_PROC(current_input_port);
+DEFINE_PRIM_PROC(current_output_port);
+DEFINE_PRIM_PROC(open_input_port);
+DEFINE_PRIM_PROC(open_output_port);
+DEFINE_PRIM_PROC(close_input_port);
+DEFINE_PRIM_PROC(close_output_port);
+DEFINE_PRIM_PROC(read);
+DEFINE_PRIM_PROC(read_char);
+DEFINE_PRIM_PROC(peek_char);
+DEFINE_PRIM_PROC(char_is_ready);
+DEFINE_PRIM_PROC(display);
+DEFINE_PRIM_PROC(write);
+DEFINE_PRIM_PROC(write_char);
+DEFINE_PRIM_PROC(newline);
+// System
+DEFINE_PRIM_PROC(load);
+DEFINE_PRIM_PROC(error);
+DEFINE_PRIM_PROC(current_directory);
+DEFINE_PRIM_PROC(exit);
 
 #endif  // _MINIM_H_

@@ -73,7 +73,7 @@ static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual
     exit(1);
 }
 
-int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
+static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
     int min_arity, max_arity, argc;
 
     min_arity = proc_arity_min(arity);
@@ -92,6 +92,12 @@ int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
 
     return argc;
 }
+
+#define check_prim_proc_arity(prim, args)   \
+    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
+
+#define check_closure_proc_arity(prim, args)    \
+    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
 
 //
 //  Syntax check

@@ -129,7 +129,7 @@ minim_object *extend_environment_proc(minim_object *args) {
 
 minim_object *environment_variable_value_proc(minim_object *args) {
     // (-> environment symbol -> any)
-    minim_object *env, *name;
+    minim_object *env, *name, *exn;
 
     env = minim_car(args);
     name = minim_cadr(args);
@@ -146,20 +146,10 @@ minim_object *environment_variable_value_proc(minim_object *args) {
             fprintf(stderr, " name: %s", minim_symbol(name));
         } else {
             // custom exception
-            minim_object *exn, *env, *expr;
-
             exn = minim_car(minim_cddr(args));
-            if (minim_is_prim_proc(exn)) {
-                check_prim_proc_arity(exn, minim_null);
-                return (minim_prim_proc(exn))(minim_null);
-            } else if (minim_is_closure_proc(exn)) {
-                check_closure_proc_arity(exn, minim_null);
-                env = extend_env(minim_null, minim_null, minim_closure_env(exn));
-                expr = minim_closure_body(exn);
-                return eval_expr(expr, env);
-            } else {
+            if (!minim_is_proc(exn))
                 bad_type_exn("environment-variable-value", "procedure?", exn);
-            }
+            return call_with_args(exn, minim_null, env);
         }
     }
 
