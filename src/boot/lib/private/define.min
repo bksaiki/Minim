@@ -12,15 +12,13 @@
         (if (not (stx-list? stx))
             (syntax-error name "bad syntax" stx)
             (let-values ([(e) (stx-cdr stx)]
-                         [(serr)
-                          (lambda (msg at)
-                            (syntax-error name msg stx at))])
+                         [(serr) (lambda (msg at) (syntax-error name msg stx at))])
               (if (stx-null? e)
-                  (syntax-error name "bad syntax" stx)
+                  (serr "bad syntax" stx)
                   (let-values ([(id) (stx-car e)]
                                [(e) (stx-cdr e)])
                     (if (null? e)
-                        (syntax-error name "bad syntax" stx)
+                        (serr "bad syntax" stx)
                         (cond
                           [(identifier? id)
                            ; value form
@@ -28,7 +26,7 @@
                                         [(n) (stx-cdr e)])
                            (if (null? n)
                                (datum->syntax (list values-stx (list id) v))
-                               (syntax-error name "multiple expressions after identifier" stx)))]
+                               (serr "multiple expressions after identifier" stx)))]
                           [(stx-pair? id)
                            ; define procedure form
                            (let-values ([(head) (stx-car id)]
@@ -41,8 +39,8 @@
                                  (cons rest
                                    e)))))]
                           [else
-                           (syntax-error name "bad syntax stx")]))))))))])
+                           (serr "bad syntax" stx)]))))))))])
 
     (values
       (go 'define (quote-syntax define) (quote-syntax define-values))
-      (go 'define-values (quote-syntax define-syntax) (quote-syntax define-values)))))
+      (go 'define-syntax (quote-syntax define-syntax) (quote-syntax define-syntaxes)))))

@@ -765,7 +765,7 @@ loop:
                 if (minim_is_syntax(minim_cadr(expr)))
                     return minim_cadr(expr);
                 else
-                    return make_syntax(minim_cadr(expr), minim_false);
+                    return to_syntax(minim_cadr(expr));
             } else if (head == syntax_loc_symbol) {
                 // syntax/loc form
                 check_2ary_syntax(expr);

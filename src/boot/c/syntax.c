@@ -41,6 +41,7 @@ minim_object *to_syntax(minim_object *o) {
             }
             it = minim_cdr(it);
         } while (1);
+
     default:
         fprintf(stderr, "datum->syntax: cannot convert to syntax");
         exit(1);

@@ -365,9 +365,15 @@ int test_string() {
 int test_syntax() {
     passed = 1;
 
-    check_equal("(syntax a)", "#<syntax a>");
-    check_equal("(syntax 1)", "#<syntax 1>");
-    check_equal("(syntax (a b c))", "#<syntax (a b c)>");
+    check_equal("(quote-syntax a)", "#<syntax a>");
+    check_equal("(quote-syntax 1)", "#<syntax 1>");
+    check_equal("(quote-syntax (a b c))", "#<syntax (a b c)>");
+
+    check_equal("(syntax-e (quote-syntax a))", "'a");
+    check_equal("(syntax-e (quote-syntax 1))", "1");
+    check_equal("(syntax-e (quote-syntax (a b c)))",
+                "'(#<syntax a> #<syntax b> #<syntax c>)");
+
 
     return passed;
 }

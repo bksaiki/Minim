@@ -1,0 +1,78 @@
+;;;
+;;; 'let', 'letrec', 'let*'
+;;;
+
+(import "and-or.min" "cond.min" "define.min" "stx.min")
+(export let)
+
+(define-syntax (let stx)
+  (if (not (stx-list? stx))
+      (syntax-error name "bad syntax" stx)
+      (let-values ([(e) (stx-cdr stx)]
+                   [(serr)
+                    (lambda (msg at)
+                      (syntax-error 'let msg stx at))])
+        (if (stx-null? e)
+            (syntax-error 'let "bad syntax" stx)
+            (let-values ([(bindings) (stx-car e)]
+                         [(e) (stx-cdr e)])
+              (if (stx-null? e)
+                  (serr "bad syntax" stx)
+                  (letrec-values ([(splice-bindings)
+                    (lambda (bindings vars vals)
+                            (if (null? bindings)
+                                (values (reverse vars) (reverse vals))
+                                (let-values ([(binding) (stx-car bindings)]
+                                             [(bindings) (stx-cdr bindings)])
+                                  (if (not (stx-pair? binding))
+                                      (serr "not a sequence of bindings" stx)
+                                      (let-values ([(var) (stx-car binding)]
+                                                   [(rib) (stx-cdr binding)])
+                                        (if (not (and (stx-pair? rib) (identifier? var)))
+                                            (serr "not a sequence of bindings" stx)
+                                            (let-values ([(val) (stx-car rib)]
+                                                         [(rib) (stx-cdr rib)])
+                                              (if (stx-null? rib)
+                                                  (let-values ([(vars) (cons var vars)]
+                                                               [(vals) (cons val vals)])
+                                                    (splice-bindings bindings vars vals))
+                                                  (serr "not a sequence of bindings" stx)))))))))])
+                    (cond
+                      [(identifier? bindings)
+                       ; let loop form
+                       (let-values ([(id) bindings]
+                                    [(bindings) (stx-car e)]
+                                    [(e) (stx-cdr e)])
+                         (if (not (stx-list? stx))
+                             (serr "not a sequence of bindings" stx)
+                             (let-values ([(vars vals)
+                                           (splice-bindings (syntax-e bindings) '() '())])
+                               (let-values ([(fn-stx)
+                                             (datum->syntax
+                                               (cons (quote-syntax lambda)
+                                                 (cons vars e)))])
+                                 (datum->syntax
+                                   (list
+                                     (quote-syntax letrec-values)
+                                     (list (list (list id) fn-stx))
+                                     (cons id vals)))))))]
+                      [else
+                       ; let form
+                       (if (not (stx-list? stx))
+                           (serr "not a sequence of bindings" stx)
+                           (let-values ([(vars vals)
+                                         (splice-bindings (syntax-e bindings) '() '())])
+                             (datum->syntax
+                               (append
+                                 (list
+                                   (quote-syntax let-values)
+                                   (letrec-values ([(loop)
+                                     (lambda (vars vals bindings)
+                                       (if (null? vars)
+                                           (reverse bindings)
+                                           (loop (cdr vars) (cdr vals)
+                                                 (let-values ([(var) (list (car vars))]
+                                                              [(val) (car vals)])
+                                                   (cons (list var val) bindings)))))])
+                                     (loop vars vals '())))
+                                 e))))]))))))))
