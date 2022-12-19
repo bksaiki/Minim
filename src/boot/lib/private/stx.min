@@ -56,10 +56,3 @@
         (if (syntax? t)
             (list? (syntax-e t))
             #f))))
-
-; (define (stx-vector? t)
-;   (if (vector? t)
-;       #t
-;       (if (syntax? t)
-;           (vector? (syntax-e t))
-;           #f)))

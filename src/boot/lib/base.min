@@ -7,5 +7,6 @@
         "private/define.min"
         "private/let.min"
         "private/stx.min"
-        ; "private/stx-macro.min"
+        "private/stx-case.min"
+        "private/stx-macro.min"
         "private/when-unless.min")

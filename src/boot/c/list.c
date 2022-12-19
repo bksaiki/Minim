@@ -141,6 +141,246 @@ minim_object *cdr_proc(minim_object *args) {
     return minim_cdr(o);
 }
 
+minim_object *caar_proc(minim_object *args) {
+    // (-> (pairof pair any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)))
+        bad_type_exn("caar", "(pairof pair? any)", o);
+    return minim_caar(o);
+}
+
+minim_object *cadr_proc(minim_object *args) {
+    // (-> (pairof any pair) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)))
+        bad_type_exn("cadr", "(pairof any pair)", o);
+    return minim_cadr(o);
+}
+
+minim_object *cdar_proc(minim_object *args) {
+    // (-> (pairof pair any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)))
+        bad_type_exn("cdar", "(pairof pair? any)", o);
+    return minim_cdar(o);
+}
+
+minim_object *cddr_proc(minim_object *args) {
+    // (-> (pairof any pair) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)))
+        bad_type_exn("cddr", "(pairof any pair)", o);
+    return minim_cddr(o);
+}
+
+minim_object *caaar_proc(minim_object *args) {
+    // (-> (pairof (pairof pair any) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_caar(o)))
+        bad_type_exn("caaar", "(pairof (pairof pair? any) any)", o);
+    return minim_car(minim_caar(o));
+}
+
+minim_object *caadr_proc(minim_object *args) {
+    // (-> (pairof any (pairof pair any)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cadr(o)))
+        bad_type_exn("caadr", "(pairof any (pairof pair? any))", o);
+    return minim_car(minim_cadr(o));
+}
+
+minim_object *cadar_proc(minim_object *args) {
+    // (-> (pairof (pairof any pair) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_cdar(o)))
+        bad_type_exn("cadar", "(pairof (pairof any pair?) any)", o);
+    return minim_car(minim_cdar(o));
+}
+
+minim_object *caddr_proc(minim_object *args) {
+    // (-> (pairof any (pairof any pair)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cddr(o)))
+        bad_type_exn("caddr", "(pairof any (pairof any pair))", o);
+    return minim_car(minim_cddr(o));
+}
+
+minim_object *cdaar_proc(minim_object *args) {
+    // (-> (pairof (pairof pair any) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_caar(o)))
+        bad_type_exn("cdaar", "(pairof (pairof pair? any) any)", o);
+    return minim_cdr(minim_caar(o));
+}
+
+minim_object *cdadr_proc(minim_object *args) {
+    // (-> (pairof any (pairof pair any)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cadr(o)))
+        bad_type_exn("cdadr", "(pairof any (pairof pair? any))", o);
+    return minim_cdr(minim_cadr(o));
+}
+
+minim_object *cddar_proc(minim_object *args) {
+    // (-> (pairof (pairof any pair) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_cdar(o)))
+        bad_type_exn("cddar", "(pairof (pairof any pair?) any)", o);
+    return minim_cdr(minim_cdar(o));
+}
+
+minim_object *cdddr_proc(minim_object *args) {
+    // (-> (pairof any (pairof any pair)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cddr(o)))
+        bad_type_exn("cdddr", "(pairof any (pairof any pair?))", o);
+    return minim_cdr(minim_cddr(o));
+}
+
+minim_object *caaaar_proc(minim_object *args) {
+    // (-> (pairof (pairof (pairof pair any) any) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_car(minim_caar(o))))
+        bad_type_exn("caaaar", "(pairof (pairof (pairof pair? any) any) any)", o);
+    return minim_caar(minim_caar(o));
+}
+
+minim_object *caaadr_proc(minim_object *args) {
+    // (-> (pairof any (pairof (pairof pair any) any)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_car(minim_cadr(o))))
+        bad_type_exn("caaadr", "(pairof any (pairof (pairof pair? any) any))", o);
+    return minim_caar(minim_cadr(o));
+}
+
+minim_object *caadar_proc(minim_object *args) {
+    // (-> (pairof (pairof any (pairof pair any)) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_car(minim_cdar(o))))
+        bad_type_exn("caadar", "(pairof (pairof any (pairof pair? any)) any)", o);
+    return minim_caar(minim_cdar(o));
+}
+
+minim_object *caaddr_proc(minim_object *args) {
+    // (-> (pairof any (pairof any (pairof pair any))) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) ||  !minim_is_pair(minim_car(minim_cddr(o))))
+        bad_type_exn("caaddr", "(pairof any (pairof any (pairof pair? any)))", o);
+    return minim_caar(minim_cddr(o));
+}
+
+minim_object *cadaar_proc(minim_object *args) {
+    // (-> (pairof (pairof (pairof any pair) any) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_cdr(minim_caar(o))))
+        bad_type_exn("cadaar", "(pairof (pairof (pairof any pair?) any) any)", o);
+    return minim_cadr(minim_caar(o));
+}
+
+minim_object *cadadr_proc(minim_object *args) {
+    // (-> (pairof any (pairof (pairof any pair) any)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_cdr(minim_cadr(o))))
+        bad_type_exn("cadadr", "(pairof any (pairof (pairof any pair?) any))", o);
+    return minim_cadr(minim_cadr(o));
+}
+
+minim_object *caddar_proc(minim_object *args) {
+    // (-> (pairof (pairof any (pairof any pair)) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_cdr(minim_cdar(o))))
+        bad_type_exn("caddar", "(pairof (pairof any (pairof any pair?) any)", o);
+    return minim_cadr(minim_cdar(o));
+}
+
+minim_object *cadddr_proc(minim_object *args) {
+    // (-> (pairof any (pairof any (pairof any pair))) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) || !minim_is_pair(minim_cdr(minim_cddr(o))))
+        bad_type_exn("cadddr", "(pairof any (pairof any (pairof any pair?)))", o);
+    return minim_cadr(minim_cddr(o));
+}
+
+minim_object *cdaaar_proc(minim_object *args) {
+    // (-> (pairof (pairof (pairof pair any) any) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_car(minim_caar(o))))
+        bad_type_exn("cdaaar", "(pairof (pairof (pairof pair? any) any) any)", o);
+    return minim_cdar(minim_caar(o));
+}
+
+minim_object *cdaadr_proc(minim_object *args) {
+    // (-> (pairof any (pairof (pairof pair any) any)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_car(minim_cadr(o))))
+        bad_type_exn("cdaadr", "(pairof any (pairof (pairof pair? any) any))", o);
+    return minim_cdar(minim_cadr(o));
+}
+
+minim_object *cdadar_proc(minim_object *args) {
+    // (-> (pairof (pairof any (pairof pair any)) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_car(minim_cdar(o))))
+        bad_type_exn("cdadar", "(pairof (pairof any (pairof pair? any)) any)", o);
+    return minim_cdar(minim_cdar(o));
+}
+
+minim_object *cdaddr_proc(minim_object *args) {
+    // (-> (pairof any (pairof any (pairof pair any))) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) ||  !minim_is_pair(minim_car(minim_cddr(o))))
+        bad_type_exn("cdaddr", "(pairof any (pairof any (pairof pair? any)))", o);
+    return minim_cdar(minim_cddr(o));
+}
+
+minim_object *cddaar_proc(minim_object *args) {
+    // (-> (pairof (pairof (pairof any pair) any) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_cdr(minim_caar(o))))
+        bad_type_exn("cddaar", "(pairof (pairof (pairof any pair?) any) any)", o);
+    return minim_cddr(minim_caar(o));
+}
+
+minim_object *cddadr_proc(minim_object *args) {
+    // (-> (pairof any (pairof (pairof any pair) any)) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_cdr(minim_cadr(o))))
+        bad_type_exn("cddadr", "(pairof any (pairof (pairof any pair?) any))", o);
+    return minim_cddr(minim_cadr(o));
+}
+
+minim_object *cdddar_proc(minim_object *args) {
+    // (-> (pairof (pairof any (pairof any pair)) any) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_cdr(minim_cdar(o))))
+        bad_type_exn("cdddar", "(pairof (pairof any (pairof any pair?) any)", o);
+    return minim_cddr(minim_cdar(o));
+}
+
+minim_object *cddddr_proc(minim_object *args) {
+    // (-> (pairof any (pairof any (pairof any pair))) any)
+    minim_object *o = minim_car(args);
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) || !minim_is_pair(minim_cdr(minim_cddr(o))))
+        bad_type_exn("cddddr", "(pairof any (pairof any (pairof any pair?)))", o);
+    return minim_cddr(minim_cddr(o));
+}
+
 minim_object *set_car_proc(minim_object *args) {
     // (-> pair any void)
     minim_object *o = minim_car(args);
