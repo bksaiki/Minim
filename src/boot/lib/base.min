@@ -12,6 +12,6 @@
         "private/when-unless.min")
 
 
-(define-syntax (foo stx)
-  (syntax-case stx ()
-    [(_ a ) #'a]))
+; (define-syntax (foo stx)
+;   (syntax-case stx ()
+;     [(_ a ...) #'a]))

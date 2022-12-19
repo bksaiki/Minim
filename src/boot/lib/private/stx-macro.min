@@ -51,6 +51,6 @@
                                                     replace))
                                               process)
                                             (stx-cdr rules))))))])
-                              (loop '() rules)))))
+                              (loop null rules)))))
                       (serr "bad syntax" (datum->syntax rules))))
                 (serr "expected a list of identifiers" ids)))))))

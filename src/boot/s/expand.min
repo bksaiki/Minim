@@ -41,11 +41,14 @@
                      (maybe-xform expr))
                    (lambda results
                      (boot-expander? old-expander?)
-                     (write expr) (write-char #\space) (writeln (car results))
                      (if (and (= (length results) 1) (syntax? (car results)))
                          (car results)
-                         (error "transformer produced something other than syntax" (car results))))))
-               (expand-expr expanded)]
+                         (error 'expander
+                                "transformer produced something other than syntax"
+                                (car results))))))
+               (define expanded* (expand-expr expanded))
+               (write expr) (write-char #\space) (writeln expanded*)
+               expanded*]
               [(eq? first 'quote-syntax)
                expr*]
               [else

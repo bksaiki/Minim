@@ -69,20 +69,23 @@ minim_object *is_syntax_proc(minim_object *args) {
 }
 
 minim_object *syntax_error_proc(minim_object *args) {
-    // (-> symbol string any)
-    // (-> symbol string syntax any)
-    // (-> symbol string syntax syntaxs any)
+    // (-> (or #f symbol) string any)
+    // (-> (or #f symbol) string syntax any)
+    // (-> (or #f symbol) string syntax syntaxs any)
     minim_object *what, *why, *where, *sub;
 
     what = minim_car(args);
     why = minim_cadr(args);
-
-    if (!minim_is_symbol(what))
+    if (!minim_is_false(what) && !minim_is_symbol(what))
         bad_type_exn("syntax-error", "symbol?", what);
     if (!minim_is_string(why))
         bad_type_exn("syntax-error", "string?", why);
 
-    fprintf(stderr, "%s: %s\n", minim_symbol(what), minim_string(why));
+    if (minim_is_false(what))
+        fprintf(stderr, "error: %s\n", minim_string(why));
+    else
+        fprintf(stderr, "%s: %s\n", minim_symbol(what), minim_string(why));
+
     if (!minim_is_null(minim_cddr(args))) {
         where = minim_car(minim_cddr(args));
         if (!minim_is_syntax(where))
@@ -94,12 +97,12 @@ minim_object *syntax_error_proc(minim_object *args) {
                 bad_type_exn("syntax-error", "syntax?", sub);
 
             fputs("  at: ", stderr);
-            write_object2(stderr, sub, 1, 1);
+            write_object2(stderr, strip_syntax(sub), 1, 1);
             fprintf(stderr, "\n");
         }
 
         fputs("  in: ", stderr);
-        write_object2(stderr, where, 1, 1);
+        write_object2(stderr, strip_syntax(where), 1, 1);
         fprintf(stderr, "\n");
     }
 

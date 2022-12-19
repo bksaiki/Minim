@@ -33,6 +33,9 @@ static minim_object *boot_expander_proc(minim_object *args) {
 //  Initialization
 //
 
+#define add_value(name, c_val)                  \
+    env_define_var(env, intern(name), c_val);
+
 #define add_procedure(name, c_fn, min_arity, max_arity) {   \
     minim_object *sym = intern(name);                       \
     env_define_var(env, sym,                                \
@@ -41,6 +44,11 @@ static minim_object *boot_expander_proc(minim_object *args) {
 }
 
 void populate_env(minim_object *env) {
+    add_value("null", minim_null);
+    add_value("true", minim_true);
+    add_value("false", minim_false);
+    add_value("eof", minim_eof);
+
     add_procedure("null?", is_null_proc, 1, 1);
     add_procedure("void?", is_void_proc, 1, 1);
     add_procedure("eof-object?", is_eof_proc, 1, 1);

@@ -46,7 +46,7 @@
                          (if (not (stx-list? stx))
                              (serr "not a sequence of bindings" stx)
                              (let-values ([(vars vals)
-                                           (splice-bindings (syntax-e bindings) '() '())])
+                                           (splice-bindings (syntax-e bindings) null null)])
                                (let-values ([(fn-stx)
                                              (datum->syntax
                                                (cons (quote-syntax lambda)
@@ -61,7 +61,7 @@
                        (if (not (stx-list? stx))
                            (serr "not a sequence of bindings" stx)
                            (let-values ([(vars vals)
-                                         (splice-bindings (syntax-e bindings) '() '())])
+                                         (splice-bindings (syntax-e bindings) null null)])
                              (datum->syntax
                                (append
                                  (list
@@ -74,7 +74,7 @@
                                                  (let-values ([(var) (list (car vars))]
                                                               [(val) (car vals)])
                                                    (cons (list var val) bindings)))))])
-                                     (loop vars vals '())))
+                                     (loop vars vals null)))
                                  e))))]))))))))
 
 (define-syntax (let* stx)
@@ -112,7 +112,7 @@
                       (if (not (stx-list? stx))
                           (serr "not a sequence of bindings" stx)
                           (let-values ([(vars vals)
-                                        (splice-bindings (syntax-e bindings) '() '())])
+                                        (splice-bindings (syntax-e bindings) null null)])
                             (letrec-values ([(loop)
                                 (lambda (vars vals)
                                   (let-values ([(binding) (list (list (list (car vars)) (car vals)))]
@@ -168,7 +168,7 @@
                       (if (not (stx-list? stx))
                           (serr "not a sequence of bindings" stx)
                           (let-values ([(vars vals)
-                                        (splice-bindings (syntax-e bindings) '() '())])
+                                        (splice-bindings (syntax-e bindings) null null)])
                             (datum->syntax
                               (append
                                 (list
@@ -181,5 +181,5 @@
                                                 (let-values ([(var) (list (car vars))]
                                                             [(val) (car vals)])
                                                   (cons (list var val) bindings)))))])
-                                    (loop vars vals '())))
+                                    (loop vars vals null)))
                                 e)))))))))))

@@ -43,7 +43,7 @@
           (eq? c #\") (eq? c #\;)))
 
     (define (symbol-char? c)
-      (not (or (eq? c #\#) (delimeter? c))))
+      (not (delimeter? c)))
 
     (define (digit? c)
       (and (<= (char->integer #\0) (char->integer c))

@@ -1,0 +1,160 @@
+;;;   
+;;; 'syntax-case'
+;;;
+
+(import "and-or.min" "cond.min" "define.min" "let.min" "stx.min" "when-unless.min")
+(export syntax-case)
+
+(define-syntax (syntax-case stx)
+  (define l (and (stx-list? stx) (syntax-e stx)))
+  (unless (and (stx-list? stx) (> (length l) 3))
+    (syntax-error 'syntax-case "bad syntax" stx))
+  (let ([arg (quote-syntax arg)]
+        [expr (cadr l)]
+        [lits (caddr l)]
+        [clauses (cdddr l)])
+    (for-each
+      (lambda (x)
+        (unless (identifier? x)
+          (syntax-error
+            'syntax-case
+            "literal is not an identifier"
+            stx
+            (syntax-e x))))
+      (syntax-e lits))
+    (for-each
+      (lambda (cl)
+        (unless (and (stx-list? stx) (<= 2 (length (syntax-e cl)) 3))
+          (syntax-error
+            'syntax-case
+            "expected a clause with a pattern, optional guard expression, and expression"
+            stx
+            x)))
+      clauses)
+    (let ([patterns
+      (map
+        (lambda (cl)
+          (let ([cl* (syntax-e cl)])
+            (car cl*)))
+            clauses)]
+          [fenders
+      (map
+        (lambda (cl)
+          (let ([cl* (syntax-e cl)])
+            (if (= (length cl*) 2)
+                #f
+                (cadr cl*))))
+            clauses)]
+          [results
+      (map
+        (lambda (cl)
+          (let ([cl* (syntax-e cl)])
+            (if (= (length cl*) 2)
+                (cadr cl*)
+                (caddr cl*))))
+            clauses)]
+          [gen-matcher
+      (lambda (pattern0)
+        (let loop ([pattern pattern0] [datum arg])
+          (display "match: ") (write pattern) (newline)
+          (cond
+            [(stx-null? pattern)
+             ; empty list
+             (datum->syntax
+               (list
+                 (list
+                   (quote-syntax lambda)
+                   (list (quote-syntax e))
+                   (list
+                     (quote-syntax stx-null/#f)
+                     (quote-syntax e)))
+                 datum))]
+            [(stx-pair? pattern)
+             ;; match list
+             (datum->syntax
+               (list
+                 (list
+                   (quote-syntax lambda)
+                   (list (quote-syntax e))
+                   (list
+                     (quote-syntax if)
+                     (list
+                       (quote-syntax stx-pair?)
+                       (quote-syntax e))
+                     (let* ([p        (syntax-e pattern)]
+                            [head-pat (car p)]
+                            [tail-pat (if (syntax? (cdr p))
+                                          (cdr p)
+                                          (datum->syntax (cdr p)))])
+                       (cond
+                         [(and (identifier? head-pat)
+                               (free-identifier=? head-pat (quote-syntax _)))
+                          ; wildcard
+                          (loop tail-pat (list (quote-syntax stx-cdr) (quote-syntax e)))]
+                         [(identifier? head-pat)
+                          ; variable
+                          (list
+                            (quote-syntax cons/#f)
+                            (list
+                              (quote-syntax stx-car)
+                              (quote-syntax e))
+                            (loop tail-pat (list (quote-syntax stx-cdr) (quote-syntax e))))]
+                         [(stx-pair? head-pat)
+                          ; subpattern
+                          (list
+                            (quote-syntax append/#f)
+                            (loop head-pat (list (quote-syntax stx-car) (quote-syntax e)))
+                            (loop tail-pat (list (quote-syntax stx-cdr) (quote-syntax e))))]
+                         [else
+                          ;; datum
+                          (list
+                            (quote-syntax equal?)
+                            (syntax-e head-pat)
+                            (list
+                              (quote-syntax syntax-e)
+                              (quote-syntax e)))]))
+                     #f))
+                 datum))]
+            [else
+             (error 'syntax-case "improper pattern" stx pattern0)])))])
+      
+      (datum->syntax
+        (list
+          (quote-syntax let)
+          (list (list arg expr))
+          (let loop ([patterns patterns]
+                     [fenders fenders]
+                     [results results])
+            (if (null? patterns)
+                (list
+                  (quote-syntax syntax-error)
+                  #f
+                  "bad syntax"
+                  arg)
+              (let* ([pattern (car patterns)]
+                     [fender (car fenders)]
+                     [result (car results)]
+                     [matcher (gen-matcher pattern)]
+                     [result-stx (quote-syntax rslt)])
+                (display "matcher: ") (write matcher) (newline)
+                (list
+                  (quote-syntax let)
+                  (list (list result-stx matcher))
+                  (list
+                    (quote-syntax if)
+                    result-stx
+                    (list
+                      (quote-syntax begin)
+                      (list
+                        (quote-syntax write)
+                        (list
+                          (quote-syntax datum->syntax)
+                          result-stx))
+                      (list
+                        (quote-syntax newline))
+                      (list
+                        (quote-syntax quote-syntax)
+                        (list (quote-syntax void))))
+                    (loop (cdr patterns)
+                          (cdr fenders)
+                          (cdr results))))))))))))

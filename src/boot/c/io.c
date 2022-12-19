@@ -33,7 +33,7 @@ static int is_delimeter(int c) {
 }
 
 static int is_symbol_char(int c) {
-    return c != '#' && !is_delimeter(c);
+    return !is_delimeter(c);
 }
 
 static int peek_char(FILE *in) {
