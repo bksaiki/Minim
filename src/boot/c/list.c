@@ -75,9 +75,8 @@ minim_object *copy_list(minim_object *xs) {
 }
 
 minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env) {
-    minim_object *head, *tail, *it, *result, *args;
+    minim_object *it, *args;
     minim_object **lst_arr, **arg_its;
-    minim_thread *th;
     long argc, i, len0, len;
 
     if (!minim_is_proc(proc))
@@ -98,6 +97,55 @@ minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env
             len = list_length(lst_arr[i]);
             if (len != len0) {
                 fprintf(stderr, "for-each: lists of different lengths\n");
+                fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
+                exit(1);
+            }
+        }
+
+        arg_its[i] = lst_arr[i];
+        ++i;
+    }
+
+    while (!minim_is_null(arg_its[0])) {
+        args = make_pair(minim_car(arg_its[0]), minim_null);
+        it = args;
+        for (i = 1; i < argc; ++i) {
+            minim_cdr(it) = make_pair(minim_car(arg_its[i]), minim_null);
+            it = minim_cdr(it);
+        }
+
+        call_with_args(proc, args, env);
+        for (i = 0; i < argc; ++i)
+            arg_its[i] = minim_cdr(arg_its[i]);
+    }
+
+    return minim_void;
+}
+
+minim_object *map_list(minim_object *proc, minim_object *lsts, minim_object *env) {
+    minim_object *head, *tail, *it, *result, *args;
+    minim_object **lst_arr, **arg_its;
+    minim_thread *th;
+    long argc, i, len0, len;
+
+    if (!minim_is_proc(proc))
+        bad_type_exn("map", "procedure?", proc);
+
+    i = 0;
+    argc = list_length(lsts);
+    lst_arr = GC_alloc(argc * sizeof(minim_object *));
+    arg_its = GC_alloc(argc * sizeof(minim_object *));
+    for (it = lsts; !minim_is_null(it); it = minim_cdr(it)) {
+        lst_arr[i] = minim_car(it);
+        if (!is_list(lst_arr[i]))
+            bad_type_exn("map", "list?", lst_arr[i]);
+
+        if (i == 0) {
+            len0 = list_length(lst_arr[i]);
+        } else {
+            len = list_length(lst_arr[i]);
+            if (len != len0) {
+                fprintf(stderr, "map: lists of different lengths\n");
                 fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
                 exit(1);
             }
@@ -527,6 +575,11 @@ minim_object *append_proc(minim_object *args) {
 
 minim_object *for_each_proc(minim_object *args) {
     // (-> proc list list ... list)
+    fprintf(stderr, "andmap: should not be called directly");
+    exit(1);
+}
+
+minim_object *map_proc(minim_object *args) {
     fprintf(stderr, "andmap: should not be called directly");
     exit(1);
 }

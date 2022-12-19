@@ -10,3 +10,8 @@
         "private/stx-case.min"
         "private/stx-macro.min"
         "private/when-unless.min")
+
+
+(define-syntax (foo stx)
+  (syntax-case stx ()
+    [(_ a ) #'a]))

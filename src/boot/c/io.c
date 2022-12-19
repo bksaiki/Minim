@@ -185,7 +185,7 @@ loop:
             return read_char(in);
         case '\'':
             // quote
-            return make_pair(intern("quote-syntax"), make_pair(read_object(in), minim_null));
+            return make_pair(intern("syntax"), make_pair(read_object(in), minim_null));
         case ';':
             // datum comment
             skip_whitespace(in);

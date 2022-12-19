@@ -106,6 +106,7 @@ void populate_env(minim_object *env) {
     add_procedure("reverse", reverse_proc, 1, 1);
     add_procedure("append", append_proc, 0, ARG_MAX);
     add_procedure("for-each", for_each_proc, 2, ARG_MAX);
+    add_procedure("map", map_proc, 2, ARG_MAX);
     add_procedure("andmap", andmap_proc, 2, 2);
     add_procedure("ormap", ormap_proc, 2, 2);
 
@@ -116,11 +117,11 @@ void populate_env(minim_object *env) {
     add_procedure("remainder", remainder_proc, 2, 2);
     add_procedure("modulo", modulo_proc, 2, 2);
 
-    add_procedure("=", number_eq_proc, 2, 2);
-    add_procedure(">=", number_ge_proc, 2, 2);
-    add_procedure("<=", number_le_proc, 2, 2);
-    add_procedure(">", number_gt_proc, 2, 2);
-    add_procedure("<", number_lt_proc, 2, 2);
+    add_procedure("=", number_eq_proc, 2, ARG_MAX);
+    add_procedure(">=", number_ge_proc, 2, ARG_MAX);
+    add_procedure("<=", number_le_proc, 2, ARG_MAX);
+    add_procedure(">", number_gt_proc, 2, ARG_MAX);
+    add_procedure("<", number_lt_proc, 2, ARG_MAX);
 
     add_procedure("make-string", make_string_proc, 1, 2);
     add_procedure("string", string_proc, 0, ARG_MAX);

@@ -296,7 +296,7 @@
            [(eq? c #\')
             ; quoted syntax
             (read-char p)
-            (datum->syntax (list 'quote-syntax (read-loop)))]
+            (datum->syntax (list 'syntax (read-loop)))]
            [(eq? c #\;)
             ; datum comment
             (read-char p)

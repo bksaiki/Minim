@@ -579,6 +579,11 @@ application:
             return for_each(minim_car(args), minim_cdr(args), env);
         }
 
+        // special case for `map`
+        if (minim_prim_proc(proc) == map_proc) {
+            return map_list(minim_car(args), minim_cdr(args), env);
+        }
+
         // special case for `andmap`
         if (minim_prim_proc(proc) == andmap_proc) {
             return andmap(minim_car(args), minim_cadr(args), env);
@@ -922,6 +927,11 @@ application:
             // special case for `for-each`
             if (minim_prim_proc(proc) == for_each_proc) {
                 return for_each(minim_car(args), minim_cdr(args), env);
+            }
+
+            // special case for `map`
+            if (minim_prim_proc(proc) == map_proc) {
+                return map_list(minim_car(args), minim_cdr(args), env);
             }
 
             // special case for `andmap`

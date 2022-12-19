@@ -109,71 +109,101 @@ minim_object *modulo_proc(minim_object *args) {
 }
 
 minim_object *number_eq_proc(minim_object *args) {
-    // (-> number number boolean)
-    long a, b;
+    // (-> number number number ... boolean)
+    minim_object *it;
+    long x0;
 
     if (!minim_is_fixnum(minim_car(args)))
             bad_type_exn("=", "number?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn("=", "number?", minim_cadr(args));
+    x0 = minim_fixnum(minim_car(args));
 
-    a = minim_fixnum(minim_car(args));
-    b = minim_fixnum(minim_cadr(args));
-    return a == b ? minim_true : minim_false;
+    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
+        if (!minim_is_fixnum(minim_car(it)))
+            bad_type_exn("=", "number?", minim_car(it));
+        
+        if (x0 != minim_fixnum(minim_car(it)))
+            return minim_false;
+    }
+
+    return minim_true;
 }
 
 minim_object *number_ge_proc(minim_object *args) { 
-    // (-> number number boolean)
-    long a, b;
+    // (-> number number number ... boolean)
+    minim_object *it;
+    long x0;
 
     if (!minim_is_fixnum(minim_car(args)))
             bad_type_exn(">=", "number?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn(">=", "number?", minim_cadr(args));
+    x0 = minim_fixnum(minim_car(args));
 
-    a = minim_fixnum(minim_car(args));
-    b = minim_fixnum(minim_cadr(args));
-    return a >= b ? minim_true : minim_false;
+    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
+        if (!minim_is_fixnum(minim_car(it)))
+            bad_type_exn(">=", "number?", minim_car(it));
+        
+        if (x0 < minim_fixnum(minim_car(it)))
+            return minim_false;
+    }
+
+    return minim_true;
 }
 
 minim_object *number_le_proc(minim_object *args) { 
-    // (-> number number boolean)
-    long a, b;
+    // (-> number number number ... boolean)
+    minim_object *it;
+    long x0;
 
     if (!minim_is_fixnum(minim_car(args)))
             bad_type_exn("<=", "number?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn("<=", "number?", minim_cadr(args));
+    x0 = minim_fixnum(minim_car(args));
 
-    a = minim_fixnum(minim_car(args));
-    b = minim_fixnum(minim_cadr(args));
-    return a <= b ? minim_true : minim_false;
+    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
+        if (!minim_is_fixnum(minim_car(it)))
+            bad_type_exn("<=", "number?", minim_car(it));
+        
+        if (x0 > minim_fixnum(minim_car(it)))
+            return minim_false;
+    }
+
+    return minim_true;
 }
 
 minim_object *number_gt_proc(minim_object *args) { 
-    // (-> number number boolean)
-    long a, b;
+    // (-> number number number ... boolean)
+    minim_object *it;
+    long x0;
 
     if (!minim_is_fixnum(minim_car(args)))
             bad_type_exn(">", "number?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn(">", "number?", minim_cadr(args));
+    x0 = minim_fixnum(minim_car(args));
 
-    a = minim_fixnum(minim_car(args));
-    b = minim_fixnum(minim_cadr(args));
-    return a > b ? minim_true : minim_false;
+    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
+        if (!minim_is_fixnum(minim_car(it)))
+            bad_type_exn(">", "number?", minim_car(it));
+        
+        if (x0 <= minim_fixnum(minim_car(it)))
+            return minim_false;
+    }
+
+    return minim_true;
 }
 
 minim_object *number_lt_proc(minim_object *args) { 
-    // (-> number number boolean)
-    long a, b;
+    // (-> number number number ... boolean)
+    minim_object *it;
+    long x0;
 
     if (!minim_is_fixnum(minim_car(args)))
             bad_type_exn("<", "number?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn("<", "number?", minim_cadr(args));
+    x0 = minim_fixnum(minim_car(args));
 
-    a = minim_fixnum(minim_car(args));
-    b = minim_fixnum(minim_cadr(args));
-    return a < b ? minim_true : minim_false;
+    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
+        if (!minim_is_fixnum(minim_car(it)))
+            bad_type_exn("<", "number?", minim_car(it));
+        
+        if (x0 >= minim_fixnum(minim_car(it)))
+            return minim_false;
+    }
+
+    return minim_true;
 }
