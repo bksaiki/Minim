@@ -24,7 +24,7 @@
     (cond
       [(null? expr*)
         expr]
-      [(list? expr*)
+      [(pair? expr*)
        (define first (syntax-e (car expr*)))
        (cond
          [(symbol? first)
@@ -52,11 +52,20 @@
               [(eq? first 'quote-syntax)
                expr*]
               [else
-               (cons (car expr*) (map expand-expr maybe-args))]))]
+               (cons
+                 (car expr*)
+                 (let loop ([args maybe-args])
+                   (cond
+                     [(null? args) '()]
+                     [(pair? args) (cons (expand-expr (car args)) (loop (cdr args)))]
+                     [else (expand-expr args)])))]))]
          [else
-          (datum->syntax (map expand-expr expr*))])]
-      [(pair? expr*)
-       (datum->syntax (cons (expand-expr (car expr*)) (expand-expr (cdr expr*))))]
+          (datum->syntax
+            (let loop ([args expr*])
+              (cond
+                [(null? args) '()]
+                [(pair? args) (cons (expand-expr (car args)) (loop (cdr args)))]
+                [else (expand-expr args)])))])]
       [(symbol? expr*)
        (define maybe-xform (lookup-or-false expr*))
        (datum->syntax

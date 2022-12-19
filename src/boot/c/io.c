@@ -62,6 +62,15 @@ static void read_expected_string(FILE *in, const char *s) {
     }
 }
 
+static int is_cons_dot(FILE *in, int c) {
+    if (c != '.')
+        return 0;
+
+    // need to make sure it's actually a dot
+    c = peek_char(in);
+    return isspace(c);
+}
+
 static void skip_whitespace(FILE *in) {
     int c;
 
@@ -132,7 +141,7 @@ static minim_object *read_pair(FILE *in, char open_paren) {
     c = fgetc(in);
     assert_not_eof(c);
 
-    if (c == '.') {
+    if (is_cons_dot(in, c)) {
         // improper list
         peek_expected_delimeter(in);
         cdr = read_object(in);

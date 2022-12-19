@@ -70,7 +70,7 @@
                      (quote-syntax e)))
                  datum))]
             [(stx-pair? pattern)
-             ;; match list
+             ;; pair / list
              (datum->syntax
                (list
                  (list
@@ -85,12 +85,16 @@
                             [head-pat (car p)]
                             [tail-pat (if (syntax? (cdr p))
                                           (cdr p)
-                                          (datum->syntax (cdr p)))])
+                                          (datum->syntax (cdr p)))]
+                            [improper-tail? (pair? (cdr p))])
                        (cond
                          [(and (identifier? head-pat)
                                (free-identifier=? head-pat (quote-syntax _)))
                           ; wildcard
-                          (loop tail-pat (list (quote-syntax stx-cdr) (quote-syntax e)))]
+                          (loop tail-pat
+                                (list
+                                  (quote-syntax stx-cdr)
+                                  (quote-syntax e)))]
                          [(identifier? head-pat)
                           ; variable
                           (list
@@ -98,13 +102,22 @@
                             (list
                               (quote-syntax stx-car)
                               (quote-syntax e))
-                            (loop tail-pat (list (quote-syntax stx-cdr) (quote-syntax e))))]
+                            (loop tail-pat
+                                  (list
+                                    (quote-syntax stx-cdr)
+                                    (quote-syntax e))))]
                          [(stx-pair? head-pat)
                           ; subpattern
                           (list
                             (quote-syntax append/#f)
-                            (loop head-pat (list (quote-syntax stx-car) (quote-syntax e)))
-                            (loop tail-pat (list (quote-syntax stx-cdr) (quote-syntax e))))]
+                            (loop head-pat
+                                  (list
+                                    (quote-syntax stx-car)
+                                    (quote-syntax e)))
+                            (loop tail-pat
+                                  (list
+                                    (quote-syntax stx-cdr)
+                                    (quote-syntax e))))]
                          [else
                           ;; datum
                           (list
@@ -114,6 +127,41 @@
                               (quote-syntax syntax-e)
                               (quote-syntax e)))]))
                      #f))
+                 datum))]
+            [(and (identifier? pattern)
+                  (free-identifier=? pattern (quote-syntax _)))
+             ; wildcard
+             (datum->syntax
+               (list
+                 (list
+                   (quote-syntax lambda)
+                   (list (quote-syntax e))
+                   (list (quote-syntax null)))
+                 datum))]
+            [(identifier? pattern)
+             ; variable
+             (datum->syntax
+               (list
+                 (list
+                   (quote-syntax lambda)
+                   (list (quote-syntax e))
+                   (list
+                     (quote-syntax list)
+                     (quote-syntax e)))
+                 datum))]
+            [(not (syntax? (syntax-e pattern)))
+             ;; datum
+             (datum->syntax
+               (list
+                 (list
+                   (quote-syntax lambda)
+                   (list (quote-syntax e))
+                   (list
+                     (quote-syntax equal?)
+                     (syntax-e head-pat)
+                     (list
+                       (quote-syntax syntax-e)
+                       (quote-syntax e))))
                  datum))]
             [else
              (error 'syntax-case "improper pattern" stx pattern0)])))])

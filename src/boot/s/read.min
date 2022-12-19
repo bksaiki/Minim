@@ -160,22 +160,30 @@
 
          (cond
            [(eq? c #\.)
-            ; improper list
+            ; maybe an improper list
             (read-char p)
-            (assert-delimeter! (peek-char p))
-            (define cdr (read-loop))
-
-            (skip-until-token!)
             (define c (peek-char p))
-            (assert-not-eof! c)
-
             (cond
-              [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
-               (assert-matching-parens! open c)
-               (read-char p)
-               (cons car cdr)]
+              [(space? c)
+               ; improper list
+               (assert-delimeter! c)
+               (define cdr (read-loop))
+
+               (skip-until-token!)
+               (define c (peek-char p))
+               (assert-not-eof! c)
+
+               (cond
+                 [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
+                  (assert-matching-parens! open c)
+                  (read-char p)
+                  (cons car cdr)]
+                 [else
+                  (error 'read "missing closing parenthesis")])]
               [else
-               (error 'read "missing closing parenthesis")])]
+               ; oops, just kidding
+               (define cdr (read-pair open))
+               (cons car cdr)])]
            [else
             (define cdr (read-pair open))
             (cons car cdr)])]))
