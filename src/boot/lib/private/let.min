@@ -7,7 +7,7 @@
 
 (define-syntax (let stx)
   (if (not (stx-list? stx))
-      (syntax-error name "bad syntax" stx)
+      (syntax-error 'let "bad syntax" stx)
       (let-values ([(e) (stx-cdr stx)]
                    [(serr)
                     (lambda (msg at)
@@ -79,7 +79,7 @@
 
 (define-syntax (let* stx)
   (if (not (stx-list? stx))
-      (syntax-error name "bad syntax" stx)
+      (syntax-error 'let* "bad syntax" stx)
       (let-values ([(e) (stx-cdr stx)]
                    [(serr)
                     (lambda (msg at)
@@ -135,7 +135,7 @@
 
 (define-syntax (letrec stx)
   (if (not (stx-list? stx))
-      (syntax-error name "bad syntax" stx)
+      (syntax-error 'letrec "bad syntax" stx)
       (let-values ([(e) (stx-cdr stx)]
                    [(serr)
                     (lambda (msg at)

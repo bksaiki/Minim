@@ -267,6 +267,8 @@ int is_list(minim_object *x);
 long list_length(minim_object *xs);
 minim_object *make_assoc(minim_object *xs, minim_object *ys);
 minim_object *copy_list(minim_object *xs);
+
+minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env);
 minim_object *andmap(minim_object *proc, minim_object *lst, minim_object *env);
 minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *env);
 
@@ -430,6 +432,7 @@ DEFINE_PRIM_PROC(list);
 DEFINE_PRIM_PROC(length);
 DEFINE_PRIM_PROC(reverse);
 DEFINE_PRIM_PROC(append);
+DEFINE_PRIM_PROC(for_each);
 DEFINE_PRIM_PROC(andmap);
 DEFINE_PRIM_PROC(ormap);
 // numbers

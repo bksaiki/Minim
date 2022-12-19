@@ -105,6 +105,7 @@ void populate_env(minim_object *env) {
     add_procedure("length", length_proc, 1, 1);
     add_procedure("reverse", reverse_proc, 1, 1);
     add_procedure("append", append_proc, 0, ARG_MAX);
+    add_procedure("for-each", for_each_proc, 2, ARG_MAX);
     add_procedure("andmap", andmap_proc, 2, 2);
     add_procedure("ormap", ormap_proc, 2, 2);
 

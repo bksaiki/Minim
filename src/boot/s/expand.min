@@ -46,8 +46,10 @@
                          (car results)
                          (error "transformer produced something other than syntax" (car results))))))
                (expand-expr expanded)]
+              [(eq? first 'quote-syntax)
+               expr*]
               [else
-               (cons (datum->syntax first) (map expand-expr maybe-args))]))]
+               (cons (car expr*) (map expand-expr maybe-args))]))]
          [else
           (datum->syntax (map expand-expr expr*))])]
       [(pair? expr*)
