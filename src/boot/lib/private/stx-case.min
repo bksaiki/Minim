@@ -53,10 +53,49 @@
                 (cadr cl*)
                 (caddr cl*))))
             clauses)]
+          [get-pattern-vars
+      (lambda (pattern0)
+        (let loop ([pattern pattern0]
+                   [depth 0]
+                   [vars null])
+          (cond
+            [(stx-null? pattern)
+             ; empty list
+             vars]
+            [(stx-pair? pattern)
+             ; pair / list
+             (let* ([p (syntax-e pattern)]
+                    [head-pat (car p)]
+                    [tail-pat (if (syntax? (cdr p))
+                                  (cdr p)
+                                  (datum->syntax (cdr p)))]
+                    [ellipse-next? (and (stx-pair? tail-pat)
+                                        (identifier? (stx-car tail-pat))
+                                        (free-identifier=? (stx-car tail-pat)
+                                                           (quote-syntax ...)))])
+               (if ellipse-next?
+                   (let ([vars (loop head-pat (+ depth 1) vars)]
+                         [tail-pat (datum->syntax (stx-cdr tail-pat))])
+                     (loop tail-pat depth vars))
+                   (let ([vars (loop head-pat depth vars)])
+                     (loop tail-pat depth vars))))]
+            [(and (identifier? pattern)
+                  (free-identifier=? pattern (quote-syntax _)))
+             ; wildcard
+             vars]
+            [(identifier? pattern)
+             ; variable
+             (cons (cons (syntax-e pattern) depth) vars)]
+            [(not (syntax? (syntax-e pattern)))
+             ;; datum
+             vars]
+            [else
+             (error 'syntax-case "improper pattern" stx pattern0)])))]
+
           [gen-matcher
       (lambda (pattern0)
-        (let loop ([pattern pattern0] [datum arg])
-          ; (display "match: ") (write pattern) (newline)
+        (let loop ([pattern pattern0]
+                   [datum arg])
           (cond
             [(stx-null? pattern)
              ; empty list
@@ -85,8 +124,6 @@
                  (list
                    (quote-syntax lambda)
                    (list (quote-syntax e))
-                  ;  (list (quote-syntax write) (quote-syntax e))
-                  ;  (list (quote-syntax newline))
                    (cond
                      [ellipse-next?
                       ; nested subpattern
@@ -241,27 +278,37 @@
               (let* ([pattern (car patterns)]
                      [fender (car fenders)]
                      [result (car results)]
+                     [pat-vars (get-pattern-vars pattern)]
                      [matcher (gen-matcher pattern)]
                      [result-stx (quote-syntax rslt)])
-                (display "matcher: ") (write matcher) (newline)
+                (write pat-vars) (newline)
                 (list
                   (quote-syntax let)
                   (list (list result-stx matcher))
                   (list
                     (quote-syntax if)
                     result-stx
-                    (list
-                      (quote-syntax begin)
-                      (list
-                        (quote-syntax write)
-                        (list
-                          (quote-syntax datum->syntax)
-                          result-stx))
-                      (list
-                        (quote-syntax newline))
-                      (list
-                        (quote-syntax quote-syntax)
-                        (list (quote-syntax void))))
+                    (if fender
+                        (error #f "unsupported")
+                        (let loop ([pat-vars pat-vars])
+                          (if (null? pat-vars)
+                              (list
+                                (quote-syntax let-values)
+                                (quote-syntax ())
+                                result)
+                              (let ([pat-var (car pat-vars)])
+                                (list
+                                  (quote-syntax let-syntaxes)
+                                  (list
+                                    (list
+                                      (list (car pat-var))
+                                      (list
+                                        (quote-syntax make-pattern-var)
+                                        (list
+                                          (quote-syntax quote-syntax)
+                                          (car pat-var))
+                                        (cdr pat-var))))
+                                  (loop (cdr pat-vars)))))))
                     (loop (cdr patterns)
                           (cdr fenders)
                           (cdr results))))))))))))

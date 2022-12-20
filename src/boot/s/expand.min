@@ -10,7 +10,7 @@
 ;; Should the expander use the boot expander for evaluation?
 (define $expander-boot-expander? #f)
 
-(define (expand expr xforms)
+(define (expand expr xforms env)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)
     (let loop ([xforms xforms])
@@ -19,7 +19,7 @@
             [else (loop (cdr xforms))])))
 
   ;; expression-level expander
-  (define (expand-expr expr)
+  (define (expand-expr expr env)
     (define expr* (syntax-e expr))
     (cond
       [(null? expr*)
@@ -46,9 +46,68 @@
                          (error 'expander
                                 "transformer produced something other than syntax"
                                 (car results))))))
-               (define expanded* (expand-expr expanded))
+               (define expanded* (expand-expr expanded env))
               ;  (write expr) (write-char #\space) (writeln expanded*)
                expanded*]
+              [(eq? first 'let-syntaxes)
+               (define (panic!) (syntax-error 'let-syntaxes "bad syntax" expr))
+               (define rib maybe-args)
+               (define maybe-bindings (syntax-e (car rib)))
+               (cond
+                 [(list? maybe-bindings)
+                  (let loop ([bindings maybe-bindings])
+                    (cond
+                      [(null? bindings)
+                       (define exprs (cdr rib))
+                       (if (list? exprs)
+                           (map (lambda (e) (expand-expr e env)) exprs)
+                           (syntax-error 'let-syntaxes "bad syntax" expr))]
+                      [else
+                       (define maybe-binding (syntax-e (car bindings)))
+                       (cond
+                         [(and (list? maybe-binding) (= (length maybe-binding) 2))
+                          (define ids (syntax-e (car maybe-binding)))
+                          (define val (cadr maybe-binding))
+                          (cond
+                            [(list? ids)
+                             (define xform-names
+                               (let loop ([names ids] [acc '()])
+                               (if (null? names)
+                                   (reverse acc)
+                                   (loop (cdr names)
+                                         (cons (syntax-e (car names)) acc)))))
+                             (define expr (syntax->datum val))
+                             (define old-expander? (boot-expander?))
+                             (call-with-values
+                               (lambda ()
+                                 (boot-expander? $module-boot-expander?)
+                                 (eval expr env))
+                               (lambda results
+                                 (boot-expander? old-expander?)
+                                 (if (not (= (length xform-names) (length results)))
+                                     (error 'let-syntaxes "result arity mismatch" "expected"
+                                            (length xform-names) "received" (length results))
+                                     (let loop ([xform-names xform-names] [results results])
+                                       (cond
+                                         [(null? xform-names)
+                                          (void)]
+                                         [else
+                                          (let ([xform-name (car xform-names)]
+                                                [xform (car results)])
+                                            (cond
+                                              [(procedure? xform)
+                                               (define binding (cons xform-name xform))
+                                               (set! xforms (cons binding module-xforms))
+                                               (loop (cdr xform-names) (cdr results))]
+                                              [else
+                                               (error 'let-syntaxes
+                                                      "expected a procedure? received"
+                                                      xform)]))])))))
+                             (loop (cdr bindings))]
+                            [else
+                             (panic!)])]
+                         [else (panic!)])]))]
+                 [else (panic!)])]
               [(eq? first 'quote-syntax)
                expr*]
               [else
@@ -57,22 +116,22 @@
                  (let loop ([args maybe-args])
                    (cond
                      [(null? args) '()]
-                     [(pair? args) (cons (expand-expr (car args)) (loop (cdr args)))]
-                     [else (expand-expr args)])))]))]
+                     [(pair? args) (cons (expand-expr (car args) env) (loop (cdr args)))]
+                     [else (expand-expr args env)])))]))]
          [else
           (datum->syntax
             (let loop ([args expr*])
               (cond
                 [(null? args) '()]
-                [(pair? args) (cons (expand-expr (car args)) (loop (cdr args)))]
-                [else (expand-expr args)])))])]
+                [(pair? args) (cons (expand-expr (car args) env) (loop (cdr args)))]
+                [else (expand-expr args env)])))])]
       [(symbol? expr*)
        (define maybe-xform (lookup-or-false expr*))
        (datum->syntax
          (if maybe-xform
-             (expand-expr (maybe-xform expr))
+             (expand-expr (maybe-xform expr) env)
              expr))]
       [else
        expr]))
 
-  (expand-expr expr))
+  (expand-expr expr env))
