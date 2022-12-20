@@ -11,9 +11,11 @@
         "private/stx-macro.min"
         "private/when-unless.min")
 
-
-(define-syntax (foo stx)
+(define-syntax (mylet stx)
   (syntax-case stx ()
-    [(_ a . b) #'a]))
+    [(_ ([var val] ...) body ...) (list #'(var ...))]))
 
-(foo 1 . 2)
+; (mylet () 1)
+; (mylet ([1 2]) 1)
+; (mylet ([1 2] [3 4]) 1)
+; (mylet ([1 2] [3 4]) 1 2)

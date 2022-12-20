@@ -47,7 +47,7 @@
                                 "transformer produced something other than syntax"
                                 (car results))))))
                (define expanded* (expand-expr expanded))
-               (write expr) (write-char #\space) (writeln expanded*)
+              ;  (write expr) (write-char #\space) (writeln expanded*)
                expanded*]
               [(eq? first 'quote-syntax)
                expr*]

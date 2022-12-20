@@ -5,8 +5,9 @@
 (export identifier? free-identifier=?
         stx-null? stx-pair? stx-list?
         stx-car stx-cdr
-        stx-null/#f
-        cons/#f append/#f)
+        stx-null/#f cons/#f
+        append/#f map/#f
+        stx->list)
 
 (define-values (identifier?)
   (lambda (t)
@@ -84,3 +85,22 @@
                 (append l1 l2))
             #f)
         #f)))
+
+(define-values (map/#f)
+  (lambda (fn x . xs)
+    (let-values ([(lsts) (cons x xs)])
+      (if (andmap (lambda (x) x) lsts)
+          (apply map fn lsts)
+          #f))))
+
+(define-values (stx->list)
+  (lambda (t)
+    (if (syntax? t)
+        (if (stx-list? t)
+            (syntax-e t)
+            #f)
+        (if (list? t)
+            (if (andmap (lambda (x) (syntax? x)) t)
+                t
+                #f)
+            #f))))

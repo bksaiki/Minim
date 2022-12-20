@@ -618,7 +618,10 @@ application:
         expr = minim_closure_body(proc);
         return eval_expr(expr, env);
     } else {
-        fprintf(stderr, "not a procedure\n");
+        fprintf(stderr, "error: not a procedure\n");
+        fprintf(stderr, " received:");
+        write_object(stderr, proc);
+        fprintf(stderr, "\n");
         exit(1);
     }
 }
@@ -973,7 +976,10 @@ application:
             expr = minim_closure_body(proc);
             goto loop;
         } else {
-            fprintf(stderr, "not a procedure\n");
+            fprintf(stderr, "error: not a procedure\n");
+            fprintf(stderr, " received:");
+            write_object(stderr, proc);
+            fprintf(stderr, "\n");
             exit(1);
         }
     } else {

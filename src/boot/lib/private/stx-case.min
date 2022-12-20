@@ -56,7 +56,7 @@
           [gen-matcher
       (lambda (pattern0)
         (let loop ([pattern pattern0] [datum arg])
-          (display "match: ") (write pattern) (newline)
+          ; (display "match: ") (write pattern) (newline)
           (cond
             [(stx-null? pattern)
              ; empty list
@@ -71,63 +71,122 @@
                  datum))]
             [(stx-pair? pattern)
              ;; pair / list
+             (let* ([p (syntax-e pattern)]
+                    [head-pat (car p)]
+                    [tail-pat (if (syntax? (cdr p))
+                                  (cdr p)
+                                  (datum->syntax (cdr p)))]
+                    [ellipse-next? (and (stx-pair? tail-pat)
+                                        (identifier? (stx-car tail-pat))
+                                        (free-identifier=? (stx-car tail-pat)
+                                                           (quote-syntax ...)))])
              (datum->syntax
                (list
                  (list
                    (quote-syntax lambda)
                    (list (quote-syntax e))
-                   (list
-                     (quote-syntax if)
-                     (list
-                       (quote-syntax stx-pair?)
-                       (quote-syntax e))
-                     (let* ([p        (syntax-e pattern)]
-                            [head-pat (car p)]
-                            [tail-pat (if (syntax? (cdr p))
-                                          (cdr p)
-                                          (datum->syntax (cdr p)))]
-                            [improper-tail? (pair? (cdr p))])
-                       (cond
-                         [(and (identifier? head-pat)
-                               (free-identifier=? head-pat (quote-syntax _)))
-                          ; wildcard
-                          (loop tail-pat
-                                (list
-                                  (quote-syntax stx-cdr)
-                                  (quote-syntax e)))]
-                         [(identifier? head-pat)
-                          ; variable
-                          (list
-                            (quote-syntax cons/#f)
-                            (list
-                              (quote-syntax stx-car)
-                              (quote-syntax e))
-                            (loop tail-pat
-                                  (list
-                                    (quote-syntax stx-cdr)
-                                    (quote-syntax e))))]
-                         [(stx-pair? head-pat)
-                          ; subpattern
-                          (list
-                            (quote-syntax append/#f)
-                            (loop head-pat
-                                  (list
-                                    (quote-syntax stx-car)
-                                    (quote-syntax e)))
-                            (loop tail-pat
-                                  (list
-                                    (quote-syntax stx-cdr)
-                                    (quote-syntax e))))]
-                         [else
-                          ;; datum
-                          (list
-                            (quote-syntax equal?)
-                            (syntax-e head-pat)
-                            (list
-                              (quote-syntax syntax-e)
-                              (quote-syntax e)))]))
-                     #f))
-                 datum))]
+                  ;  (list (quote-syntax write) (quote-syntax e))
+                  ;  (list (quote-syntax newline))
+                   (cond
+                     [ellipse-next?
+                      ; nested subpattern
+                      (cond
+                        [(and (identifier? head-pat)
+                              (stx-null? (stx-cdr tail-pat)))
+                         ; easy case: single variable matches on the remaining parts of the list
+                         (list
+                           (quote-syntax if)
+                           (list
+                             (quote-syntax stx-list?)
+                             (quote-syntax e))
+                           (list
+                             (quote-syntax list)
+                             (quote-syntax e))
+                           #f)]
+                        [(stx-null? (stx-cdr tail-pat))
+                         ; harder case: need to match on the subpattern
+                         (list
+                           (quote-syntax if)
+                           (list
+                             (quote-syntax stx-list?)
+                             (quote-syntax e))
+                           (list
+                             (quote-syntax let)
+                             (list
+                               (list
+                                 (quote-syntax tmp)
+                                 (list
+                                   (quote-syntax map/#f)
+                                   (list
+                                     (quote-syntax lambda)
+                                     (list (quote-syntax e))
+                                     (loop head-pat (quote-syntax e)))
+                                   (list
+                                     (quote-syntax stx->list)
+                                     (quote-syntax e)))))
+                             (list
+                               (quote-syntax if)
+                               (quote-syntax tmp)
+                               (list
+                                 (quote-syntax if)
+                                 (list (quote-syntax null?) (quote-syntax tmp))
+                                 (quote-syntax tmp)
+                                 (list
+                                   (quote-syntax apply)
+                                   (quote-syntax map)
+                                   (quote-syntax list)
+                                   (quote-syntax tmp)))
+                               #f))
+                           #f)]
+                        [else
+                         (error #f "unimplemented")])]
+                     [else
+                      (list
+                        (quote-syntax if)
+                        (list
+                          (quote-syntax stx-pair?)
+                          (quote-syntax e))
+                        (cond                          
+                          [(and (identifier? head-pat)
+                                (free-identifier=? head-pat (quote-syntax _)))
+                           ; wildcard
+                           (loop tail-pat
+                                 (list
+                                   (quote-syntax stx-cdr)
+                                   (quote-syntax e)))]
+                          [(identifier? head-pat)
+                           ; variable
+                           (list
+                             (quote-syntax cons/#f)
+                             (list
+                               (quote-syntax stx-car)
+                               (quote-syntax e))
+                             (loop tail-pat
+                                   (list
+                                     (quote-syntax stx-cdr)
+                                     (quote-syntax e))))]
+                          [(stx-pair? head-pat)
+                           ; subpattern
+                           (list
+                             (quote-syntax append/#f)
+                             (loop head-pat
+                                   (list
+                                     (quote-syntax stx-car)
+                                     (quote-syntax e)))
+                             (loop tail-pat
+                                   (list
+                                     (quote-syntax stx-cdr)
+                                     (quote-syntax e))))]
+                          [else
+                           ;; datum
+                           (list
+                             (quote-syntax equal?)
+                             (syntax-e head-pat)
+                             (list
+                               (quote-syntax syntax-e)
+                               (quote-syntax e)))])
+                        #f)]))
+                 datum)))]
             [(and (identifier? pattern)
                   (free-identifier=? pattern (quote-syntax _)))
              ; wildcard

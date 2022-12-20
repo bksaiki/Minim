@@ -154,39 +154,37 @@
          '()]
         [else
          (define car (read-loop))
-         (skip-until-token!)
-         (define c (peek-char p))
-         (assert-not-eof! c)
+         ;; possibly a dot
+         (let loop ([car car])
+           (skip-until-token!)
+           (define c (peek-char p))
+           (assert-not-eof! c)
+           (cond
+             [(eq? c #\.)
+              ; maybe a pair
+              (define maybe-dot (read-loop))
+              (cond
+                [(eq? (syntax-e maybe-dot) '.)
+                 ; pair
+                 (define cdr (read-loop))
 
-         (cond
-           [(eq? c #\.)
-            ; maybe an improper list
-            (read-char p)
-            (define c (peek-char p))
-            (cond
-              [(space? c)
-               ; improper list
-               (assert-delimeter! c)
-               (define cdr (read-loop))
+                 (skip-until-token!)
+                 (define c (peek-char p))
+                 (assert-not-eof! c)
 
-               (skip-until-token!)
-               (define c (peek-char p))
-               (assert-not-eof! c)
-
-               (cond
-                 [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
-                  (assert-matching-parens! open c)
-                  (read-char p)
-                  (cons car cdr)]
-                 [else
-                  (error 'read "missing closing parenthesis")])]
-              [else
-               ; oops, just kidding
-               (define cdr (read-pair open))
-               (cons car cdr)])]
-           [else
-            (define cdr (read-pair open))
-            (cons car cdr)])]))
+                 (cond
+                   [(or (eq? c cparen) (eq? c cbrack) (eq? c cbrace))
+                    (assert-matching-parens! open c)
+                    (read-char p)
+                    (cons car cdr)]
+                   [else
+                    (error 'read "missing closing parenthesis")])]
+                [else
+                 ; oops, just kidding
+                 (cons car (loop maybe-dot))])]
+             [else
+              (define cdr (read-pair open))
+              (cons car cdr)]))]))
 
     ; character reader
     (define (read-character)
