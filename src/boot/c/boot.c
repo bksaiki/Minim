@@ -142,6 +142,11 @@ void populate_env(minim_object *env) {
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
     add_procedure("datum->syntax", to_syntax_proc, 1, 1);
 
+    add_procedure("pattern-variable?", is_pattern_var_proc, 1, 1);
+    add_procedure("make-pattern-variable", make_pattern_var_proc, 3, 3);
+    add_procedure("pattern-variable-value", pattern_var_value_proc, 1, 1);
+    add_procedure("pattern-variable-depth", pattern_var_depth_proc, 1, 1);
+
     add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
     add_procedure("null-environment", empty_environment_proc, 0, 0);
     add_procedure("environment", environment_proc, 0, 0);

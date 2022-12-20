@@ -2,7 +2,7 @@
 ;;; 'syntax-case'
 ;;;
 
-(import "and-or.min" "cond.min" "define.min" "let.min" "stx.min" "when-unless.min")
+(import "and-or.min" "cond.min" "define.min" "gen-temp.min" "let.min" "stx.min" "when-unless.min")
 (export syntax-case)
 
 (define-syntax (syntax-case stx)
@@ -280,8 +280,10 @@
                      [result (car results)]
                      [pat-vars (get-pattern-vars pattern)]
                      [matcher (gen-matcher pattern)]
-                     [result-stx (quote-syntax rslt)])
-                (write pat-vars) (newline)
+                     [result-stx (quote-syntax rslt)]
+                     [temp-vars (map (lambda (t)
+                                       (gen-temp-id "sc"))
+                                     pat-vars)])
                 (list
                   (quote-syntax let)
                   (list (list result-stx matcher))
@@ -290,7 +292,8 @@
                     result-stx
                     (if fender
                         (error #f "unsupported")
-                        (let loop ([pat-vars pat-vars])
+                        (let loop ([pat-vars pat-vars]
+                                   [result-stx result-stx])
                           (if (null? pat-vars)
                               (list
                                 (quote-syntax let-values)
@@ -303,12 +306,19 @@
                                     (list
                                       (list (car pat-var))
                                       (list
-                                        (quote-syntax make-pattern-var)
+                                        (quote-syntax make-pattern-variable)
                                         (list
-                                          (quote-syntax quote-syntax)
+                                          (quote-syntax quote)
                                           (car pat-var))
+                                        (list
+                                          (quote-syntax car)
+                                          result-stx)
                                         (cdr pat-var))))
-                                  (loop (cdr pat-vars)))))))
+                                  (loop (cdr pat-vars)
+                                        (datum->syntax
+                                          (list
+                                            (list (quote-syntax cdr))
+                                            result-stx))))))))
                     (loop (cdr patterns)
                           (cdr fenders)
                           (cdr results))))))))))))

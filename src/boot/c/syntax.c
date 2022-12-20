@@ -12,6 +12,14 @@ minim_object *make_syntax(minim_object *e, minim_object *loc) {
     return ((minim_object *) o);
 }
 
+minim_object *make_pattern_var(minim_object *value, minim_object *depth) {
+    minim_pattern_var_object *o = GC_alloc(sizeof(minim_pattern_var_object));
+    o->type = MINIM_PATTERN_VAR_TYPE;
+    o->value = value;
+    o->depth = depth;
+    return ((minim_object *) o);
+}
+
 // Recursively converts an object to syntax
 minim_object *to_syntax(minim_object *o) {
     minim_object *it;
@@ -126,4 +134,35 @@ minim_object *syntax_loc_proc(minim_object *args) {
 minim_object *to_syntax_proc(minim_object *args) {
     // (-> any syntax)
     return to_syntax(minim_car(args));
+}
+
+minim_object *is_pattern_var_proc(minim_object *args) {
+    return minim_is_pattern_var(minim_car(args)) ? minim_true : minim_false;
+}
+
+minim_object *make_pattern_var_proc(minim_object *args) {
+    // (-> any non-negative-integer? pattern-var?)
+    minim_object *value, *depth;
+    
+    value = minim_car(args);
+    depth = minim_cadr(args);
+    if (!minim_is_fixnum(depth) || minim_fixnum(depth) < 0)
+        bad_type_exn("make-pattern-var", "non-negative-integer?", depth);
+    return make_pattern_var(value, depth);
+}
+
+minim_object *pattern_var_value_proc(minim_object *args) {
+    // (-> pattern-var? any)
+    minim_object *var = minim_car(args);
+    if (!minim_is_pattern_var(var))
+        bad_type_exn("pattern-variable-value", "pattern-variable?", var);
+    return minim_pattern_var_value(var);   
+}
+
+minim_object *pattern_var_depth_proc(minim_object *args) {
+    // (-> pattern-var? any)
+    minim_object *var = minim_car(args);
+    if (!minim_is_pattern_var(var))
+        bad_type_exn("pattern-variable-depth", "pattern-variable?", var);
+    return minim_pattern_var_depth(var);   
 }
