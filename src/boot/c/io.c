@@ -436,9 +436,15 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         write_object2(out, strip_syntax(o), 1, display);
         fputc('>', out);
         break;
+    case MINIM_PATTERN_VAR_TYPE:
+        fprintf(out, "#<pattern>");
+        break;
+    case MINIM_VALUES_TYPE:
+        fprintf(stderr, "cannot write multiple values\n");
+        exit(1);
 
     default:
-        fprintf(stderr, "cannot write unknown object");
+        fprintf(stderr, "cannot write unknown object\n");
         exit(1);
     }
 }

@@ -32,7 +32,7 @@
           (define maybe-args (cdr expr*))
           (datum->syntax
             (cond
-              [maybe-xform
+              [(and maybe-xform (procedure? maybe-xform))
                (define old-expander? (boot-expander?))
                (define expanded
                  (call-with-values
@@ -60,7 +60,9 @@
                       [(null? bindings)
                        (define exprs (cdr rib))
                        (if (list? exprs)
-                           (map (lambda (e) (expand-expr e xforms)) exprs)
+                           (cons (quote-syntax let-values)
+                             (cons (quote-syntax ())
+                               (map (lambda (e) (expand-expr e xforms)) exprs)))
                            (syntax-error 'let-syntaxes "bad syntax" expr))]
                       [else
                        (define maybe-binding (syntax-e (car bindings)))
@@ -95,13 +97,13 @@
                                           (let ([xform-name (car xform-names)]
                                                 [xform (car results)])
                                             (cond
-                                              [(procedure? xform)
+                                              [(or (procedure? xform) (pattern-variable? xform))
                                                (define binding (cons xform-name xform))
-                                               (set! xforms (cons binding module-xforms))
+                                               (set! xforms (cons binding xforms))
                                                (loop (cdr xform-names) (cdr results))]
                                               [else
                                                (error 'let-syntaxes
-                                                      "expected a procedure? received"
+                                                      "expected a procedure, received"
                                                       xform)]))])))))
                              (loop (cdr bindings))]
                             [else
