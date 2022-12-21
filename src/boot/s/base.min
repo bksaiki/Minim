@@ -47,22 +47,6 @@
   (if (string? str)
       (= (string-length str) 0)
       (error 'string "expected string?" str)))
-
-(define (string-append . strs)
-  (define len (apply + (map string-length strs)))
-  (define s (make-string len))
-  (let loop ([strs strs] [i 0])
-    (cond
-      [(null? strs) s]
-      [else
-       (define str (car strs))
-       (define len (string-length str))
-       (let loop2 ([i i] [n 0])
-         (cond
-           [(= n len) (loop (cdr strs) i)]
-           [else
-            (string-set! s i (string-ref str n))
-            (loop2 (+ i 1) (+ n 1))]))])))
  
 (define (substring str start end)
   (define len (string-length str))

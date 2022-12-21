@@ -137,6 +137,29 @@ minim_object *string_set_proc(minim_object *args) {
     return minim_void;
 }
 
+minim_object *string_append_proc(minim_object *args) {
+    minim_object *it;
+    char *str;
+    long len, i, j;
+
+    len = 0; i = 0;
+    for (it = args; !minim_is_null(it); it = minim_cdr(it)) {
+        if (!minim_is_string(minim_car(it)))
+            bad_type_exn("string-append", "string?", minim_car(it));
+        len += strlen(minim_string(minim_car(it)));
+    }
+
+    str = GC_alloc_atomic((len + 1) * sizeof(char));
+    for (it = args; !minim_is_null(it); it = minim_cdr(it)) {
+        j = strlen(minim_string(minim_car(it)));
+        strcpy(&str[i], minim_string(minim_car(it)));
+        i += j;
+    }
+
+    str[len] = '\0';    
+    return make_string2(str);
+}
+
 minim_object *number_to_string_proc(minim_object *args) {
     // (-> number string)
     minim_object *o;

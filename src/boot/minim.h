@@ -477,6 +477,7 @@ DEFINE_PRIM_PROC(string);
 DEFINE_PRIM_PROC(string_length);
 DEFINE_PRIM_PROC(string_ref);
 DEFINE_PRIM_PROC(string_set);
+DEFINE_PRIM_PROC(string_append);
 DEFINE_PRIM_PROC(number_to_string);
 DEFINE_PRIM_PROC(string_to_number);
 DEFINE_PRIM_PROC(symbol_to_string);

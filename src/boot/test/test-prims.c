@@ -399,6 +399,11 @@ int test_string() {
     check_equal("(begin (define s \"ab\") (string-set! s 1 #\\c) s)", "\"ac\"");
     check_equal("(begin (define s \"abc\") (string-set! s 2 #\\d) s)", "\"abd\"");
 
+    check_equal("(string-append)", "\"\"");
+    check_equal("(string-append \"foo\")", "\"foo\"");
+    check_equal("(string-append \"foo\" \"bar\")", "\"foobar\"");
+    check_equal("(string-append \"foo\" \"bar\" \"baz\")", "\"foobarbaz\"");
+
     return passed;
 }
 
