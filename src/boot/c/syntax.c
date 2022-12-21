@@ -136,6 +136,36 @@ minim_object *to_syntax_proc(minim_object *args) {
     return to_syntax(minim_car(args));
 }
 
+static minim_object *syntax_to_list(minim_object *head, minim_object *it) {
+    if (minim_is_null(minim_cdr(it))) {
+        return head;
+    } else if (minim_is_pair(minim_cdr(it))) {
+        return syntax_to_list(head, minim_cdr(it));
+    } else if (minim_is_syntax(minim_cdr(it))) {
+        minim_cdr(it) = minim_syntax_e(minim_cdr(it));
+        return syntax_to_list(head, it);
+    } else {
+        return minim_false;
+    }
+}
+
+minim_object *syntax_to_list_proc(minim_object *args) {
+    // (-> syntax (or #f list))
+    minim_object *stx, *lst;
+    
+    stx = minim_car(args);
+    if (!minim_is_syntax(stx))
+        bad_type_exn("syntax->list", "syntax?", stx);
+
+    lst = minim_syntax_e(stx);
+    if (minim_is_null(lst))
+        return minim_null;
+    else if (!minim_is_pair(lst))
+        return minim_false;
+    else 
+        return syntax_to_list(lst, lst);
+}
+
 minim_object *is_pattern_var_proc(minim_object *args) {
     return minim_is_pattern_var(minim_car(args)) ? minim_true : minim_false;
 }

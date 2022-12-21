@@ -7,8 +7,8 @@
 (export syntax-case)
 
 (define-syntax (syntax-case stx)
-  (define l (and (stx-list? stx) (syntax-e stx)))
-  (unless (and (stx-list? stx) (> (length l) 3))
+  (define l (syntax->list stx))
+  (unless (and (list? l) (> (length l) 3))
     (syntax-error 'syntax-case "bad syntax" stx))
   (let ([arg (quote-syntax arg)]
         [expr (cadr l)]
@@ -25,7 +25,7 @@
       (syntax-e lits))
     (for-each
       (lambda (cl)
-        (unless (and (stx-list? stx) (<= 2 (length (syntax-e cl)) 3))
+        (unless (and (stx-list? cl) (<= 2 (length (syntax->list cl)) 3))
           (syntax-error
             'syntax-case
             "expected a clause with a pattern, optional guard expression, and expression"

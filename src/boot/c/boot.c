@@ -142,6 +142,7 @@ void populate_env(minim_object *env) {
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
     add_procedure("datum->syntax", to_syntax_proc, 1, 1);
+    add_procedure("syntax->list", syntax_to_list_proc, 1, 1);
 
     add_procedure("pattern-variable?", is_pattern_var_proc, 1, 1);
     add_procedure("make-pattern-variable", make_pattern_var_proc, 2, 2);
@@ -232,8 +233,6 @@ void minim_boot_init() {
     else_symbol = intern("else");
     and_symbol = intern("and");
     or_symbol = intern("or");
-    syntax_symbol = intern("syntax");
-    syntax_loc_symbol = intern("syntax/loc");
     quote_syntax_symbol = intern("quote-syntax");
 
     empty_env = minim_null;

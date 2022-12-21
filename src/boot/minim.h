@@ -496,6 +496,7 @@ DEFINE_PRIM_PROC(syntax_e);
 DEFINE_PRIM_PROC(syntax_loc);
 DEFINE_PRIM_PROC(to_syntax);
 DEFINE_PRIM_PROC(syntax_error);
+DEFINE_PRIM_PROC(syntax_to_list);
 // pattern variables
 DEFINE_PRIM_PROC(is_pattern_var);
 DEFINE_PRIM_PROC(make_pattern_var);

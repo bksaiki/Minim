@@ -419,6 +419,12 @@ int test_syntax() {
     check_equal("(syntax-e (quote-syntax (a b c)))",
                 "'(#<syntax a> #<syntax b> #<syntax c>)");
 
+    check_equal("(syntax->list (quote-syntax ()))", "'()");
+    check_equal("(syntax->list (quote-syntax (1)))", "'(#<syntax 1>)");
+    check_equal("(syntax->list (quote-syntax (1 2)))", "'(#<syntax 1> #<syntax 2>)");
+    check_equal("(syntax->list (quote-syntax (1 2 3)))", "'(#<syntax 1> #<syntax 2> #<syntax 3>)");
+    check_equal("(syntax->list (quote-syntax (1 2 . 3)))", "#f");
+    check_equal("(syntax->list (quote-syntax 1))", "#f");
 
     return passed;
 }

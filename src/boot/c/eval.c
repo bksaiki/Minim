@@ -113,17 +113,17 @@ static void check_1ary_syntax(minim_object *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum>)
-static void check_2ary_syntax(minim_object *expr) {
-    minim_object *rest;
+// static void check_2ary_syntax(minim_object *expr) {
+//     minim_object *rest;
     
-    rest = minim_cdr(expr);
-    if (!minim_is_pair(rest))
-        bad_syntax_exn(expr);
+//     rest = minim_cdr(expr);
+//     if (!minim_is_pair(rest))
+//         bad_syntax_exn(expr);
 
-    rest = minim_cdr(rest);
-    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
+//     rest = minim_cdr(rest);
+//     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+//         bad_syntax_exn(expr);
+// }
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum> <datum>)
@@ -772,17 +772,13 @@ loop:
                 // quote form
                 check_1ary_syntax(expr);
                 return minim_cadr(expr);
-            } else if (head == syntax_symbol || head == quote_syntax_symbol) {
+            } else if (head == quote_syntax_symbol) {
                 // quote-syntax form
                 check_1ary_syntax(expr);
                 if (minim_is_syntax(minim_cadr(expr)))
                     return minim_cadr(expr);
                 else
                     return to_syntax(minim_cadr(expr));
-            } else if (head == syntax_loc_symbol) {
-                // syntax/loc form
-                check_2ary_syntax(expr);
-                return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
             } else if (head == setb_symbol) {
                 // set! form
                 check_assign(expr);
