@@ -50,8 +50,8 @@
                                 "transformer produced something other than syntax"
                                 (car results))))))
                (define expanded* (expand-expr expanded xforms))
-              ;  (display "> ") (writeln expr)
-              ;  (display "< ") (writeln expanded*)
+              ;  (display "< ") (writeln expr)
+              ;  (display "> ") (writeln expanded*)
                expanded*]
               [(eq? first 'let-syntaxes)
                (define (panic!) (syntax-error 'let-syntaxes "bad syntax" expr))
@@ -114,7 +114,8 @@
                              (panic!)])]
                          [else (panic!)])]))]
                  [else (panic!)])]
-              [(or (eq? first 'quote-syntax) (eq? first 'quote))
+              [(or (eq? first 'quote-syntax)
+                   (eq? first 'quote))
                expr*]
               [else
                (cons

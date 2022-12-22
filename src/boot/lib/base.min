@@ -7,8 +7,8 @@
         "private/define.min"
         "private/let.min"
         "private/stx.min"
-        "private/stx-case.min"
-        "private/stx-macro.min"
+        "private/stxcase.min"
+        "private/stxcase-extra.min"
         "private/template.min"
         "private/when-unless.min")
 
@@ -17,7 +17,7 @@
         (all "private/define.min")
         (all "private/let.min")
         (all "private/stx.min")
-        (all "private/stx-case.min")
-        (all "private/stx-macro.min")
+        (all "private/stxcase.min")
+        (all "private/stxcase-extra.min")
         (all "private/template.min")
         (all "private/when-unless.min"))

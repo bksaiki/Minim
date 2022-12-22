@@ -1,0 +1,22 @@
+;;;   
+;;; Derived forms of 'syntax-case':
+;;;  'syntax-rules', 'with-syntax'
+;;;
+
+(import "define.min" "stxcase.min" "template.min")
+(export syntax-rules with-syntax)
+
+(define-syntax (syntax-rules stx)
+  (syntax-case stx ()
+    [(_ (lit ...) [(k . p) t] ...)
+     ;; TODO: fender should assert that each `lit`
+     ;; as well as `k` are identifiers
+     #'(lambda (stx)
+         (syntax-case stx (lit ...)
+           [(_ . p) #'t] ...))]))
+
+(define-syntax (with-syntax stx)
+  (syntax-case stx ()
+    [(_ ((p e0) ...) e1 e2 ...)
+     #'(syntax-case (list e0 ...) ()
+         [(p ...) (let () e1 e2 ...)])]))
