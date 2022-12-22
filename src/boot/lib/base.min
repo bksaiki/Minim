@@ -14,9 +14,15 @@
 
 (define-syntax (foo stx)
   (syntax-case stx ()
-    [(_ a) #'a]))
+    [(_ a) #'a]
+    [(_ 1 a) #'(+ 1 a)]
+    [(_ a b c ...) #'(quote (+ (* a b c) ...))]))
+
 
 (foo 1)
+(foo 1 a)
+(foo 1 2 3 4)
+
 
 ; (define-syntax (mylet stx)
 ;   (syntax-case stx ()

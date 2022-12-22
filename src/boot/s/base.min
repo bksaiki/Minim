@@ -20,6 +20,14 @@
           [(pair? xs) (loop (cdr xs) (cons (f (car xs)) acc))]
           [else       (error 'map "expected a list" lst)])))
 
+(define (filter f lst)
+  (let loop ([xs lst] [acc '()])
+    (cond [(null? xs) (reverse acc)]
+          [(pair? xs) (if (f (car xs))
+                          (loop (cdr xs) (cons (car xs) acc))
+                          (loop (cdr xs) acc))]
+          [else       (error 'map "expected a list" lst)])))
+
 (define (foldl f acc lst)
   (let loop ([xs lst] [acc acc])
     (cond [(null? xs) acc]

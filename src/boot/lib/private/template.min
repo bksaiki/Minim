@@ -6,10 +6,11 @@
         "let.min" "stx.min" "when-unless.min"
         "template-utils.min")
 
-(export syntax)
+(export syntax template-subst)
 
 (define-syntax (syntax stx)
   (define l (syntax->list stx))
+  (define get-pattern get-pattern-variable)     ; TODO: leaky; hooks into expander
   (if (and (list? l) (= (length l) 2))
-      (do-template stx (cadr l))
+      (do-template stx (cadr l) get-pattern)
       (syntax-error #f "bad syntax" stx)))

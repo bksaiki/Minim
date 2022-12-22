@@ -5,10 +5,205 @@
 (import "and-or.min" "cond.min" "define.min"
         "let.min" "stx.min" "when-unless.min")
 
-(export do-template)
+(export do-template template-subst)
 
-(define (do-template stx tstx)
+(define (...? stx)
+  (and (identifier? stx)
+       (free-identifier=? stx (quote-syntax ...))))
+
+(define (_? stx)
+  (and (identifier? stx)
+       (free-identifier=? stx (quote-syntax _))))
+
+(define (template-is-literal? stx)
+  (not
+    (or (identifier? stx)
+        (stx-pair? stx))))
+
+(define (assoc-has-key? xs k)
+  (let loop ([xs xs])
+    (cond [(null? xs) #f]
+          [(eq? (caar xs) k) #t]
+          [else (loop (cdr xs))])))
+
+(define (assoc xs k)
+  (let loop ([xs xs])
+    (cond [(null? xs) #f]
+          [(eq? (caar xs) k) (cdar xs)]
+          [else (loop (cdr xs))])))
+
+(define (merge-template-vars a b)
+  (let loop ([a a] [merged b])
+    (cond [(null? a) merged]
+          [(assoc-has-key? merged (caar a)) (loop (cdr a) merged)]
+          [else (loop (cdr a) (cons (car a) merged))])))
+
+(define (bad-template-var-depth? vars depth)
+  (not
+    (ormap (lambda (v)
+             (let ([pdepth (pattern-variable-depth (cdr v))])
+               (= depth pdepth)))
+           vars)))
+
+(define (get-template-vars stx tstx get-pattern)
+  (let loop ([tstx tstx] [depth 0] [vars null])
+    (cond
+      [(stx-null? tstx)
+       vars]
+      [(stx-pair? tstx)
+       (define t (syntax-e tstx))
+       (define head-tstx (car t))
+       (define tail-tstx (if (syntax? (cdr t))
+                             (cdr t)
+                             (datum->syntax (cdr t))))
+       (if (and (stx-pair? tail-tstx)
+                (...? (stx-car tail-tstx)))
+           (let ([head-vars (loop head-tstx (+ depth 1) vars)]
+                 [tail-tstx (datum->syntax (stx-cdr tail-tstx))])
+             (cond
+               [(null? head-vars)
+                (error 'syntax
+                       "no pattern variables before ellipsis in template"
+                       stx tstx)]
+               [(bad-template-var-depth? head-vars (+ depth 1))
+                (error 'syntax "too many ellipses in template" stx (quote-syntax ...))]
+               [else
+                (let ([tail-vars (loop tail-tstx depth vars)])
+                   (merge-template-vars head-vars tail-vars))]))
+           (let ([head-vars (loop head-tstx depth vars)]
+                 [tail-vars (loop tail-tstx depth vars)])
+             (merge-template-vars head-vars tail-vars)))]
+      [(identifier? tstx)
+       (define pattern (get-pattern (syntax-e tstx)))
+       (cond
+         [pattern
+          (define pat-depth (pattern-variable-depth pattern))
+          (if (> pat-depth depth)
+              (error 'syntax "missing ellipsis in template" stx tstx)
+              (cons (cons (syntax-e tstx) pattern) vars))]
+         [else
+          vars])]
+      [(not (syntax? (syntax-e tstx)))
+       vars]
+      [else
+       (error 'syntax "cannot parse template" stx)])))
+      
+(define (parse-template stx tstx get-pattern)
+  (define vars (get-template-vars stx tstx get-pattern))
+  (define instr-map
+    (reverse
+      (let loop ([tstx tstx] [loc '()] [idx 0] [locs null])
+        (cond
+          [(stx-null? tstx)
+           locs]
+          [(stx-pair? tstx)
+           (define t (syntax-e tstx))
+           (define head-tstx (car t))
+           (define tail-tstx (if (syntax? (cdr t))
+                                 (cdr t)
+                                 (datum->syntax (cdr t))))
+           (if (and (stx-pair? tail-tstx)
+                    (...? (stx-car tail-tstx)))
+               (let ([locs (loop head-tstx (cons (list 'append idx) loc) 0 locs)]
+                     [tail-tstx (datum->syntax (stx-cdr tail-tstx))])
+                 (loop tail-tstx loc (+ idx 1) locs))
+               (let ([locs (loop head-tstx (cons idx loc) 0 locs)])
+                 (loop tail-tstx loc (+ idx 1) locs)))]
+          [(identifier? tstx)
+           (if (assoc-has-key? vars (syntax-e tstx))
+               (let ([pat-loc (reverse (if (= idx 0) loc (cons (list 'tail idx) loc)))])
+                 (cons (cons (syntax-e tstx) pat-loc) locs))
+               locs)]
+          [else
+           locs]))))
+  (define outline-stx
+    (let loop ([tstx tstx])
+      (cond
+        [(stx-pair? tstx)
+         (define t (syntax-e tstx))
+         (define head-tstx (car t))
+         (define tail-tstx (if (syntax? (cdr t))
+                               (cdr t)
+                               (datum->syntax (cdr t))))
+         (datum->syntax
+           (if (and (stx-pair? tail-tstx)
+                    (...? (stx-car tail-tstx)))
+               (cons (loop head-tstx)
+                 (cons (quote-syntax ...)
+                   (loop (datum->syntax (stx-cdr tail-tstx)))))
+               (cons
+                 (loop head-tstx)
+                 (loop tail-tstx))))]
+        [(identifier? tstx)
+         (if (assoc-has-key? vars (syntax-e tstx))
+             (quote-syntax _)
+             tstx)]
+        [else
+         tstx])))
+  (values vars instr-map outline-stx))
+
+(define (compile-substitution instrs)
+  (let loop ([instrs instrs] [compiled '()])
+    (if (null? instrs)
+        (reverse compiled)
+        (let ([heads (map car instrs)]
+              [tails (map cdr instrs)])
+          (loop
+            (let loop ([tails tails])
+              (cond [(null? tails) null]
+                    [else (if (null? (car tails))
+                              (loop (cdr tails))
+                              (cons (car tails) (loop (cdr tails))))]))
+            (cons heads compiled))))))
+
+
+(define (make-quote-syntax stx)
   (datum->syntax
     (list
       (quote-syntax quote-syntax)
-      (quote-syntax 1))))
+      stx)))
+
+(define (make-template-subst stx tstx vars instr-map outline)
+  (define inputs
+    (map (lambda (i)
+           (let ([var (car i)])
+             (pattern-variable-value (assoc vars var))))
+         instr-map))
+  (define instrs
+    (map (lambda (i)
+           (cdr i))
+         instr-map))
+  (datum->syntax
+    (append
+      (list
+        (quote-syntax template-subst)
+        (list
+          (quote-syntax quote-syntax)
+          outline)
+        (list
+          (quote-syntax quote)
+          (compile-substitution instrs)))
+      inputs)))
+
+;; Public
+
+(define (do-template stx tstx get-pattern)
+  (cond
+    [(identifier? tstx)
+     (define pattern (get-pattern (syntax-e tstx)))
+     (if pattern
+         (datum->syntax (pattern-variable-value pattern))
+         (make-quote-syntax tstx))]
+    [(template-is-literal? tstx)
+     (make-quote-syntax tstx)]
+    [else
+     (define-values (vars instr-map outline) (parse-template stx tstx get-pattern))
+     (if (null? vars)
+         (make-quote-syntax tstx)
+         (make-template-subst stx tstx vars instr-map outline))]))
+
+(define (template-subst tstx instrs . args)
+  (write tstx) (newline)
+  (write instrs) (newline)
+  (write args) (newline)
+  (quote-syntax (void)))

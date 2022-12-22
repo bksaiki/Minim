@@ -218,11 +218,20 @@
                           [else
                            ;; datum
                            (list
-                             (quote-syntax equal?)
-                             (syntax-e head-pat)
+                             (quote-syntax if)
                              (list
-                               (quote-syntax syntax-e)
-                               (quote-syntax e)))])
+                               (quote-syntax equal?)
+                               (syntax-e head-pat)
+                               (list
+                                 (quote-syntax syntax-e)
+                                 (list
+                                   (quote-syntax stx-car)
+                                   (quote-syntax e))))
+                             (loop tail-pat
+                                   (list
+                                     (quote-syntax stx-cdr)
+                                     (quote-syntax e)))
+                             #f)])
                         #f)]))
                  datum)))]
             [(and (identifier? pattern)
@@ -254,11 +263,15 @@
                    (quote-syntax lambda)
                    (list (quote-syntax e))
                    (list
-                     (quote-syntax equal?)
-                     (syntax-e head-pat)
+                     (quote-syntax if)
                      (list
-                       (quote-syntax syntax-e)
-                       (quote-syntax e))))
+                       (quote-syntax equal?)
+                       (syntax-e head-pat)
+                       (list
+                         (quote-syntax syntax-e)
+                         (quote-syntax e))
+                       (quote-syntax null)
+                       #f)))
                  datum))]
             [else
              (error 'syntax-case "improper pattern" stx pattern0)])))])
@@ -279,7 +292,7 @@
               (let* ([pattern (car patterns)]
                      [fender (car fenders)]
                      [result (car results)]
-                     [pat-vars (get-pattern-vars pattern)]
+                     [pat-vars (reverse (get-pattern-vars pattern))]
                      [matcher (gen-matcher pattern)]
                      [result-stx (quote-syntax rslt)]
                      [temp-vars (map (lambda (t)
@@ -303,42 +316,41 @@
                                                 [result-stx result-stx]
                                                 [bindings null])
                                        (if (null? pat-vars)
-                                           (reverse pat-vars)
+                                           (reverse bindings)
                                            (loop (cdr pat-vars)
                                                  (cdr temp-vars)
                                                  (datum->syntax
                                                    (list
-                                                     (list (quote-syntax cdr))
+                                                     (quote-syntax cdr)
                                                      result-stx))
                                                  (cons
-                                                   (list (car pat-vars) (car temp-vars))
+                                                   (list (car temp-vars)
+                                                         (list
+                                                           (quote-syntax car)
+                                                           result-stx))
                                                    bindings))))
                                      e)))]
                               
                               [gen-syntaxes
                                (lambda ()
-                                 (let loop ([pat-vars pat-vars]
-                                            [temp-vars temp-vars])
-                                   (if (null? pat-vars)
-                                       (list
-                                         (quote-syntax let-values)
-                                         (quote-syntax ())
-                                         result)
-                                       (list
-                                         (quote-syntax let-syntaxes)
-                                         (list
-                                           (list
-                                             (list (caar pat-vars))
-                                             (list
-                                               (quote-syntax make-pattern-variable)
-                                               (list
-                                                 (quote-syntax quote-syntax)
-                                                 (car temp-vars))
-                                               (list
-                                                 (quote-syntax quote)
-                                                 (cdar pat-vars)))))
-                                         (loop (cdr pat-vars)
-                                               (cdr temp-vars))))))])
+                                 (list
+                                   (quote-syntax let-syntaxes)
+                                   (map (lambda (pat-var temp-var)
+                                          (list
+                                            (list (car pat-var))
+                                            (list
+                                              (quote-syntax make-pattern-variable)
+                                              (list
+                                                (quote-syntax quote-syntax)
+                                                temp-var)
+                                              (list
+                                                (quote-syntax quote)
+                                                (cdr pat-var)))))
+                                      pat-vars temp-vars)
+                                   (list
+                                     (quote-syntax let-values)
+                                     (quote-syntax ())
+                                     result)))])
 
                         (bind-vars (gen-syntaxes))))
                     (loop (cdr patterns)

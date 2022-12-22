@@ -9,6 +9,7 @@
 
 ;; Should the expander use the boot expander for evaluation?
 (define $expander-boot-expander? #f)
+(define $expander-pattern-vars null)
 
 (define (expand expr xforms env)
   ;; looks up a transform returning #f if none is found
@@ -21,6 +22,8 @@
   ;; expression-level expander
   (define (expand-expr expr xforms)
     (define expr* (syntax-e expr))
+    (set! $expander-pattern-vars
+          (filter (lambda (e) (pattern-variable? (cdr e))) xforms))
     (cond
       [(null? expr*)
         expr]
@@ -47,7 +50,8 @@
                                 "transformer produced something other than syntax"
                                 (car results))))))
                (define expanded* (expand-expr expanded env))
-              ;  (write expr) (write-char #\space) (writeln expanded*)
+              ;  (display "> ") (writeln expr)
+              ;  (display "< ") (writeln expanded*)
                expanded*]
               [(eq? first 'let-syntaxes)
                (define (panic!) (syntax-error 'let-syntaxes "bad syntax" expr))
@@ -136,4 +140,6 @@
       [else
        expr]))
 
-  (expand-expr expr xforms))
+  (define expanded (expand-expr expr xforms))
+  (set! $expander-pattern-vars null)
+  expanded) 

@@ -13,6 +13,27 @@
 ;; Base environment when loading modules
 (define $base-env (environment))
 
+;; Base environment when expanding modules
+(define $base-stx-env
+  (let ([env (extend-environment $base-env)])
+    (environment-set-variable-value!
+      env
+      'get-pattern-variable
+      (lambda (k)
+        (if (symbol? k)
+            (letrec-values ([(loop)
+                             (lambda (assoc)
+                               (if (null? assoc)
+                                   #f
+                                   (if (eq? (caar assoc) k)
+                                       (cdar assoc)
+                                       (loop (cdr assoc)))))])
+              (loop $expander-pattern-vars))
+            (error 'get-pattern-variable
+                   "expected symbol?" k))))
+    env))
+
+
 ;; Module caches
 ;;  name -> (exporting xforms, exporting values)
 ;;  name -> (current xforms, current env)
@@ -28,7 +49,7 @@
   (define exported '())
   (define imported '())
   (define imported-xforms '())
-  (define stx-env (extend-environment $base-env))
+  (define stx-env (extend-environment $base-stx-env))
   (define module-xforms '())
 
   ;; read phase
