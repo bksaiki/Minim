@@ -86,7 +86,7 @@
                              (define old-expander? (boot-expander?))
                              (call-with-values
                                (lambda ()
-                                 (boot-expander? $module-boot-expander?)
+                                 (boot-expander? $expander-boot-expander?)
                                  (eval expr env))
                                (lambda results
                                  (boot-expander? old-expander?)

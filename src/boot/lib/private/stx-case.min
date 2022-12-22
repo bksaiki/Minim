@@ -32,7 +32,7 @@
             stx
             cl)))
       clauses)
-    (let ([patterns
+    (let* ([patterns
       (map
         (lambda (cl)
           (let ([cl* (syntax-e cl)])
@@ -149,34 +149,46 @@
                              (quote-syntax stx-list?)
                              (quote-syntax e))
                            (list
-                             (quote-syntax let)
+                             (quote-syntax if)
                              (list
+                               (quote-syntax stx-null?)
+                               (quote-syntax e))
+                             (let ([n (length (get-pattern-vars head-pat))])
+                               (cons
+                                 (quote-syntax list)
+                                 (let loop ([i 0] [acc null])
+                                   (cond [(>= i n) acc]
+                                         [else (loop (+ i 1) (cons 'null acc))]))))
+                             (list
+                               (quote-syntax let)
                                (list
-                                 (quote-syntax tmp)
                                  (list
-                                   (quote-syntax map/#f)
+                                   (quote-syntax tmp)
                                    (list
-                                     (quote-syntax lambda)
-                                     (list (quote-syntax e))
-                                     (loop head-pat (quote-syntax e)))
-                                   (list
-                                     (quote-syntax stx->list)
-                                     (quote-syntax e)))))
-                             (list
-                               (quote-syntax if)
-                               (quote-syntax tmp)
+                                     (quote-syntax map/#f)
+                                     (list
+                                       (quote-syntax lambda)
+                                       (list (quote-syntax e))
+                                       (loop head-pat (quote-syntax e)))
+                                     (list
+                                       (quote-syntax stx->list)
+                                       (quote-syntax e)))))
                                (list
                                  (quote-syntax if)
-                                 (list (quote-syntax null?) (quote-syntax tmp))
                                  (quote-syntax tmp)
                                  (list
-                                   (quote-syntax apply)
-                                   (quote-syntax map)
-                                   (quote-syntax list)
-                                   (quote-syntax tmp)))
-                               #f))
+                                   (quote-syntax if)
+                                   (list (quote-syntax null?) (quote-syntax tmp))
+                                   (quote-syntax tmp)
+                                   (list
+                                     (quote-syntax apply)
+                                     (quote-syntax map)
+                                     (quote-syntax list)
+                                     (quote-syntax tmp)))
+                                 #f)))
                            #f)]
                         [else
+                        ; hardest: patterns after the ellipse
                          (error #f "unimplemented")])]
                      [else
                       (list

@@ -317,4 +317,5 @@
                 (cdr instrs)
                 (cdr args))]))
   
-  (datum->syntax (run guide instrs args)))
+  (datum->syntax
+    (run guide (reverse instrs) (reverse args))))
