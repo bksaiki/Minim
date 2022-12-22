@@ -12,18 +12,21 @@
         "private/template.min"
         "private/when-unless.min")
 
-(define-syntax (foo stx)
-  (syntax-case stx ()
-    [(_ a b ...) #'(+ a)]))
+(export (all "private/and-or.min")
+        (all "private/cond.min")
+        (all "private/define.min")
+        (all "private/let.min")
+        (all "private/stx.min")
+        (all "private/stx-case.min")
+        (all "private/template.min")
+        (all "private/when-unless.min"))
+
+; (define-syntax (foo stx)
+;   (syntax-case stx ()
+;     [(_ a b ...) #'(+ a)]))
     ; [(_ a b c d ...) #'(list '(+ (* 5 2) '(+ b (* c d . 1) ...) . 'a))]))
     ; [(_ c (a b ...) ...) #'(quote (+ 1 (* (+ a b ... c) ...)))]))
 
-(foo 1 2 3 4 5)
-
-; (define-syntax (mylet stx)
-;   (syntax-case stx ()
-;     [(_ ([var val] ...) body ...)
-;      (list #'(var ...) #'(val ...) #'(body ...))]))
 
 ; (define-syntax mywhen
 ;   (syntax-rules ()

@@ -49,7 +49,7 @@
                          (error 'expander
                                 "transformer produced something other than syntax"
                                 (car results))))))
-               (define expanded* (expand-expr expanded env))
+               (define expanded* (expand-expr expanded xforms))
               ;  (display "> ") (writeln expr)
               ;  (display "< ") (writeln expanded*)
                expanded*]

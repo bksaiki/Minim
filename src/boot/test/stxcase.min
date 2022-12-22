@@ -1,0 +1,58 @@
+;;;
+;;; Tests for 'syntax-case'
+;;;
+
+(import "../lib/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d0)
+    (display ", received ")
+    (write d1)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define-syntax (macro-1 stx)
+  (syntax-case stx ()
+    [(_ a) #'1]))
+
+(define-syntax (macro-2 stx)
+  (syntax-case stx ()
+    [(_ a) #'a]))
+
+(define-syntax (macro-3 stx)
+  (syntax-case stx ()
+    [(_ a b) #'(list a b)]))
+
+(define-syntax (macro-4 stx)
+  (syntax-case stx ()
+    [(_ a) #'(list a)]
+    [(_ a b) #'(list a b)]))
+
+(define-syntax (macro-5 stx)
+  (syntax-case stx ()
+    [(_ a . b) #'(cons a b)]))
+
+(check-equal? (macro-1 2) 1)
+(check-equal? (macro-2 1) 1)
+(check-equal? (macro-3 1 2) '(1 2))
+
+(check-equal? (macro-4 1) '(1))
+(check-equal? (macro-4 1 2) '(1 2))
+
+(check-equal? (macro-5 1 . 2) '(1 . 2))
+
+(define-syntax (mylet stx)
+  (syntax-case stx ()
+    [(_ ([var val] ...) body ...)
+     #'(let-values ([(var) val] ...) body ...)]))
+
+; (check-equal? (mylet () 1) 1)
+; (check-equal? (mylet ([x 1]) x) 1)
+; (check-equal? (mylet ([x 1] [y 2]) y) 2)
+
+(when (> num-failed 0)
+  (error #f "test failed"))

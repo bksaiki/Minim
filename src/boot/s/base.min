@@ -14,6 +14,12 @@
 
 ;; lists
 
+(define (member k xs)
+  (let loop ([xs xs])
+    (cond [(null? xs) #f]
+          [(pair? xs) (if (equal? (car xs) k) (car xs) (loop (cdr xs)))]
+          [else (error 'member "expected a list" xs)])))
+
 (define (map f lst)
   (let loop ([xs lst] [acc '()])
     (cond [(null? xs) (reverse acc)]
