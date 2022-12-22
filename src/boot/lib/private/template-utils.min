@@ -2,7 +2,7 @@
 ;;; template engine for `syntax`
 ;;;
 
-(import "and-or.min" "cond.min" "define.min"
+(import "and-or.min" "cond.min" "define.min" "gen-temp.min"
         "let.min" "stx.min" "when-unless.min")
 
 (export do-template template-subst)
@@ -15,195 +15,306 @@
   (and (identifier? stx)
        (free-identifier=? stx (quote-syntax _))))
 
-(define (template-is-literal? stx)
-  (not
-    (or (identifier? stx)
-        (stx-pair? stx))))
-
-(define (assoc-has-key? xs k)
-  (let loop ([xs xs])
-    (cond [(null? xs) #f]
-          [(eq? (caar xs) k) #t]
-          [else (loop (cdr xs))])))
-
 (define (assoc xs k)
   (let loop ([xs xs])
     (cond [(null? xs) #f]
           [(eq? (caar xs) k) (cdar xs)]
           [else (loop (cdr xs))])))
 
-(define (merge-template-vars a b)
-  (let loop ([a a] [merged b])
-    (cond [(null? a) merged]
-          [(assoc-has-key? merged (caar a)) (loop (cdr a) merged)]
-          [else (loop (cdr a) (cons (car a) merged))])))
+(define (make-wildcard-list len tail?)
+  (let loop ([i 0] [acc (if tail? '_ null)])
+    (cond [(>= i len) acc]
+          [else (loop (+ i 1) (cons '_ acc))])))
 
-(define (bad-template-var-depth? vars depth)
-  (not
-    (ormap (lambda (v)
-             (let ([pdepth (pattern-variable-depth (cdr v))])
-               (= depth pdepth)))
-           vars)))
+(define (make-range-list len tail?)
+  (let loop ([i (- len 1)] [acc (if tail? (list (list 'tail len)) null)])
+    (cond [(< i 0) acc]
+          [else (loop (- i 1) (cons i acc))])))
 
-(define (get-template-vars stx tstx get-pattern)
-  (let loop ([tstx tstx] [depth 0] [vars null])
+(define (instr-eq? instr k)
+  (eq? (car instr) k))
+
+;; Replaces all `_` in a (improper) list with plugs
+(define (replace-slots form plugs)
+  (let loop ([form form] [plugs plugs])
     (cond
-      [(stx-null? tstx)
-       vars]
-      [(stx-pair? tstx)
-       (define t (syntax-e tstx))
-       (define head-tstx (car t))
-       (define tail-tstx (if (syntax? (cdr t))
-                             (cdr t)
-                             (datum->syntax (cdr t))))
-       (if (and (stx-pair? tail-tstx)
-                (...? (stx-car tail-tstx)))
-           (let ([head-vars (loop head-tstx (+ depth 1) vars)]
-                 [tail-tstx (datum->syntax (stx-cdr tail-tstx))])
+      [(null? form)
+        (if (null? plugs)
+            null
+            (error 'replace-slots "too many plugs for slot replacement"))]
+      [(pair? form)
+       (if (eq? (car form) '_)
+           (if (null? plugs)
+               (error 'replace-slots "not enough plugs for slot replacement")
+               (cons (car plugs) (loop (cdr form) (cdr plugs))))
+           (cons (car form) (loop (cdr form) (cdr plugs))))]
+      [else
+       (if (eq? form '_)
+           (cond
+             [(null? plugs) (error 'replace-slots "not enough plugs for slot replacement")]
+             [(> (length plugs) 1) (error 'replace-slots "too many plugs for slot replacement")]
+             [else (car plugs)])
+           form)])))
+
+;;
+;; Template instructions
+;;
+;;  <instr> ::= ('subst <stx> <form> <ops> <instr> ...)
+;;          ::= ('append <stx> <mapped-vars> <const-vars> <instr>)
+;;          ::= ('const <stx> <datum>)
+;;          ::= ('var <stx> <name> <depth> <value>)
+;;
+;;  <ops> ::= <idx>
+;;        ::= ('recur <idx>)
+;;        ::= ('tail <idx>)
+;;
+
+(define (compute-vars-for-append stx instr)
+  (define-values (form vars)
+    (let loop ([instr instr] [depth 0])
+      (let ([tstx (cadr instr)] [args (cddr instr)])
+        (cond
+          [(instr-eq? instr 'subst)
+           ; substitution
+           (let loop2 ([instrs (cddr args)] [inners null] [vars null])
              (cond
-               [(null? head-vars)
-                (error 'syntax
-                       "no pattern variables before ellipsis in template"
-                       stx tstx)]
-               [(bad-template-var-depth? head-vars (+ depth 1))
-                (error 'syntax "too many ellipses in template" stx (quote-syntax ...))]
+               [(null? instrs)
+                (values (append (list 'subst tstx (car args) (cadr args)) (reverse inners))
+                        (reverse vars))]
                [else
-                (let ([tail-vars (loop tail-tstx depth vars)])
-                   (merge-template-vars head-vars tail-vars))]))
-           (let ([head-vars (loop head-tstx depth vars)]
-                 [tail-vars (loop tail-tstx depth vars)])
-             (merge-template-vars head-vars tail-vars)))]
+                (define-values (inner inner-vars) (loop (car instrs) depth))
+                (loop2 (cdr instrs) 
+                       (cons inner inners)
+                       (append (reverse inner-vars) vars))]))]
+          [(instr-eq? instr 'append)
+           ; append
+           (define-values (inner inner-vars) (loop (caddr args) (+ depth 1)))
+           (cond
+             [(null? inner-vars)
+              (error 'syntax "no pattern variables before ellipsis in template" stx tstx)]
+             [(ormap (lambda (v)
+                       (let ([pdepth (cadr v)])
+                         (>= pdepth depth)))
+                     inner-vars)
+              (define-values (mapped-vars const-vars)
+                (let loop ([vars inner-vars] [mapped null] [const null])
+                  (if (null? vars)
+                      (values (reverse mapped) (reverse const) )
+                      (let ([pdepth (cadar vars)])
+                        (if (> pdepth depth)
+                            (loop (cdr vars) (cons (car vars) mapped) const)
+                            (loop (cdr vars) mapped (cons (car vars) const)))))))
+              (values (list 'append tstx mapped-vars const-vars inner) inner-vars)]
+             [else
+              (error 'syntax "too many ellipses in template" stx (quote-syntax ...))])]
+          [(instr-eq? instr 'const)
+           ; const
+           (values instr (list))]
+          [(instr-eq? instr 'var)
+           ; variable
+           (values instr (list (cons (car args) (cdr args))))]
+          [else
+           ; runtime error
+           (error #f "unknown template instruction" instr)]))))
+  form)
+
+(define (optimize-template instr)
+  (let loop ([instr instr])
+    (let ([tstx (cadr instr)] [args (cddr instr)])
+      (cond
+        [(instr-eq? instr 'subst)
+         ; substitution
+         (define-values (form ops inputs) (values (car args) (cadr args) (map loop (cddr args))))
+         (let rec ([form form] [ops ops] [inputs inputs])
+           (cond
+             [(andmap (lambda (i) (instr-eq? i 'const)) inputs)
+              ; Subst of (List of Const) => Const of List
+              (list 'const #f (replace-slots form (map caddr inputs)))]
+             [(ormap (lambda (i) (instr-eq? i 'const)) inputs)
+              ; fold Const children into form
+              (define-values (inputs* ops* plugs)
+                (let loop ([inputs inputs] [ops ops] [inputs* null] [ops* null] [plugs null])
+                  (cond
+                    [(null? inputs)
+                     (values (reverse inputs*) (reverse ops*) (reverse plugs))]
+                    [(instr-eq? (car inputs) 'const)
+                     (loop (cdr inputs) (cdr ops)
+                           inputs*
+                           ops*
+                           (cons (caddr (car inputs)) plugs))]
+                    [else
+                     (loop (cdr inputs) (cdr ops)
+                           (cons (car inputs) inputs*)
+                           (cons (car ops) ops*)
+                           (cons '_ plugs))])))
+              (rec (replace-slots form plugs) ops* inputs*)]
+             [else
+              (define ops*
+                (let loop ([inputs inputs] [ops ops])
+                  (cond
+                    [(null? inputs) null]
+                    [(instr-eq? (car inputs) 'append)
+                     (cons (list 'append (car ops)) (loop (cdr inputs) (cdr ops)))]
+                    [else
+                     (cons (car ops) (loop (cdr inputs) (cdr ops)))])))
+              (append (list 'subst #f form ops*) inputs)]))]
+        [(instr-eq? instr 'append)
+         ; append
+         (list 'append #f (car args) (cadr args) (loop (caddr args)))]
+        [(instr-eq? instr 'const)
+         ; const
+         (cons 'const (cons #f args))]
+        [(instr-eq? instr 'var)
+         ; variable
+         (cons 'var (cons #f args))]
+        [else
+         ; runtime error
+         (error #f "unknown template instruction" instr)]))))
+
+(define (parse-template stx tstx get-pattern)
+  (define (parse-template/pair tstx depth)
+    (define-values (lst tail)
+      (let loop ([tstx tstx])
+        (cond [(null? tstx)
+               (values null #f)]
+              [(stx-pair? tstx)
+               (let-values ([(l tail?) (loop (stx-cdr tstx))])
+                 (values (cons (stx-car tstx) l) tail?))]
+              [else
+               (values null tstx)])))
+    (define-values (lst-parsed lst-len)
+      (let loop ([lst lst] [next (cdr lst)] [i 0] [acc null])
+        (cond
+          [(null? lst) (values (reverse acc) i)]
+          [(null? next) (loop (cdr lst) #f (+ i 1) (cons (parse (car lst) depth) acc))]
+          [(...? (car next))
+           (define recur (list 'append tstx #f #f (parse (car lst) (+ depth 1))))
+           (if (null? (cdr next))
+               (loop null #f (+ i 1) (cons recur acc))
+               (loop (cdr next) (cddr next) (+ i 1) (cons recur acc)))]
+          [else
+           (loop (cdr lst) (cdr next) (+ i 1) (cons (parse (car lst) depth) acc))])))
+    (if tail
+        (append
+          (list
+            'subst
+            tstx
+            (make-wildcard-list lst-len #t)
+            (make-range-list lst-len #t))
+          lst-parsed
+          (list (parse tail depth)))
+        (append
+          (list
+            'subst
+            tstx
+            (make-wildcard-list lst-len #f)
+            (make-range-list lst-len #f))
+          lst-parsed)))
+
+  (define (parse-template/nonpair tstx depth)
+    (cond
       [(identifier? tstx)
        (define pattern (get-pattern (syntax-e tstx)))
        (cond
          [pattern
-          (define pat-depth (pattern-variable-depth pattern))
-          (if (> pat-depth depth)
-              (error 'syntax "missing ellipsis in template" stx tstx)
-              (cons (cons (syntax-e tstx) pattern) vars))]
+          (define pdepth (pattern-variable-depth pattern))
+          (when (> pdepth depth)
+            (error 'syntax "missing ellipses" stx tstx))
+          (list 'var tstx (syntax-e tstx) pdepth (pattern-variable-value pattern))]
          [else
-          vars])]
-      [(not (syntax? (syntax-e tstx)))
-       vars]
+          (list 'const tstx (syntax-e tstx))])]
       [else
-       (error 'syntax "cannot parse template" stx)])))
-      
-(define (parse-template stx tstx get-pattern)
-  (define vars (get-template-vars stx tstx get-pattern))
-  (define instr-map
-    (reverse
-      (let loop ([tstx tstx] [loc '()] [idx 0] [locs null])
+       (list 'const tstx (syntax-e tstx))]))
+
+  (define (parse tstx depth)
+    (cond
+      [(stx-pair? tstx) (parse-template/pair tstx depth)]
+      [else (parse-template/nonpair tstx depth)]))
+
+  (define parsed-prog (parse tstx 0))
+  (define full-prog (compute-vars-for-append stx parsed-prog))
+  (optimize-template full-prog))
+
+(define (make-template-builder prog)
+  (datum->syntax
+    (let loop ([instr prog] [var-map null])
+      (let ([args (cddr instr)])
         (cond
-          [(stx-null? tstx)
-           locs]
-          [(stx-pair? tstx)
-           (define t (syntax-e tstx))
-           (define head-tstx (car t))
-           (define tail-tstx (if (syntax? (cdr t))
-                                 (cdr t)
-                                 (datum->syntax (cdr t))))
-           (if (and (stx-pair? tail-tstx)
-                    (...? (stx-car tail-tstx)))
-               (let ([locs (loop head-tstx (cons (list 'append idx) loc) 0 locs)]
-                     [tail-tstx (datum->syntax (stx-cdr tail-tstx))])
-                 (loop tail-tstx loc (+ idx 1) locs))
-               (let ([locs (loop head-tstx (cons idx loc) 0 locs)])
-                 (loop tail-tstx loc (+ idx 1) locs)))]
-          [(identifier? tstx)
-           (if (assoc-has-key? vars (syntax-e tstx))
-               (let ([pat-loc (reverse (if (= idx 0) loc (cons (list 'tail idx) loc)))])
-                 (cons (cons (syntax-e tstx) pat-loc) locs))
-               locs)]
+          [(instr-eq? instr 'subst)
+           ; substitution
+           (define-values (form ops inputs) (values (car args) (cadr args) (cddr args)))
+           (append
+             (list
+               (quote-syntax template-subst)
+               (list
+                 (quote-syntax quote)
+                 form)
+               (list
+                 (quote-syntax quote)
+                 ops))
+             (map (lambda (i) (loop i var-map)) inputs))]
+          [(instr-eq? instr 'append)
+           ; append
+           (define-values (mapped-vars const-vars instr) (values (car args) (cadr args) (caddr args)))
+           (define temp-vars (map (lambda (t) (gen-temp-id "pv")) mapped-vars))
+           (append
+             (list
+               (quote-syntax map)
+               (list
+                 (quote-syntax lambda)
+                 temp-vars
+                 (loop
+                   instr
+                   (let loop ([var-map var-map]
+                              [mapped-vars mapped-vars]
+                              [temp-vars temp-vars])
+                     (cond [(null? mapped-vars) var-map]
+                           [else (loop (cons (cons (caar mapped-vars) (car temp-vars)) var-map)
+                                       (cdr mapped-vars)
+                                       (cdr temp-vars))])))))
+             (map (lambda (vdata)
+                    (let ([maybe-rename (assoc var-map (car vdata))])
+                      (if maybe-rename maybe-rename (caddr vdata))))
+                  mapped-vars))]
+          [(instr-eq? instr 'const)
+           ; const
+           (list
+             (quote-syntax quote-syntax)
+             (car args))]
+          [(instr-eq? instr 'var)
+           ; variable
+           (define-values (name depth value) (values (car args) (cadr args) (caddr args)))
+           (define maybe-rename (assoc var-map name))
+           (if maybe-rename maybe-rename value)]
           [else
-           locs]))))
-  (define outline-stx
-    (let loop ([tstx tstx])
-      (cond
-        [(stx-pair? tstx)
-         (define t (syntax-e tstx))
-         (define head-tstx (car t))
-         (define tail-tstx (if (syntax? (cdr t))
-                               (cdr t)
-                               (datum->syntax (cdr t))))
-         (datum->syntax
-           (if (and (stx-pair? tail-tstx)
-                    (...? (stx-car tail-tstx)))
-               (cons (loop head-tstx)
-                 (cons (quote-syntax ...)
-                   (loop (datum->syntax (stx-cdr tail-tstx)))))
-               (cons
-                 (loop head-tstx)
-                 (loop tail-tstx))))]
-        [(identifier? tstx)
-         (if (assoc-has-key? vars (syntax-e tstx))
-             (quote-syntax _)
-             tstx)]
-        [else
-         tstx])))
-  (values vars instr-map outline-stx))
-
-(define (compile-substitution instrs)
-  (let loop ([instrs instrs] [compiled '()])
-    (if (null? instrs)
-        (reverse compiled)
-        (let ([heads (map car instrs)]
-              [tails (map cdr instrs)])
-          (loop
-            (let loop ([tails tails])
-              (cond [(null? tails) null]
-                    [else (if (null? (car tails))
-                              (loop (cdr tails))
-                              (cons (car tails) (loop (cdr tails))))]))
-            (cons heads compiled))))))
-
-
-(define (make-quote-syntax stx)
-  (datum->syntax
-    (list
-      (quote-syntax quote-syntax)
-      stx)))
-
-(define (make-template-subst stx tstx vars instr-map outline)
-  (define inputs
-    (map (lambda (i)
-           (let ([var (car i)])
-             (pattern-variable-value (assoc vars var))))
-         instr-map))
-  (define instrs
-    (map (lambda (i)
-           (cdr i))
-         instr-map))
-  (datum->syntax
-    (append
-      (list
-        (quote-syntax template-subst)
-        (list
-          (quote-syntax quote-syntax)
-          outline)
-        (list
-          (quote-syntax quote)
-          (compile-substitution instrs)))
-      inputs)))
+           ; runtime error
+           (error #f "unknown template instruction" instr)])))))
 
 ;; Public
 
 (define (do-template stx tstx get-pattern)
-  (cond
-    [(identifier? tstx)
-     (define pattern (get-pattern (syntax-e tstx)))
-     (if pattern
-         (datum->syntax (pattern-variable-value pattern))
-         (make-quote-syntax tstx))]
-    [(template-is-literal? tstx)
-     (make-quote-syntax tstx)]
-    [else
-     (define-values (vars instr-map outline) (parse-template stx tstx get-pattern))
-     (if (null? vars)
-         (make-quote-syntax tstx)
-         (make-template-subst stx tstx vars instr-map outline))]))
+  (define prog (parse-template stx tstx get-pattern))
+  (make-template-builder prog))
 
-(define (template-subst tstx instrs . args)
-  (write tstx) (newline)
-  (write instrs) (newline)
-  (write args) (newline)
-  (quote-syntax (void)))
+(define (template-subst guide instrs . args)
+  (define (run/mode mode n idx guide arg)
+    (let loop ([idx idx] [guide guide])
+      (cond
+        [(< idx n) (cons (car guide) (loop (+ idx 1) (cdr guide)))]
+        [(not mode) (cons arg (cdr guide))]
+        [(eq? mode 'append) (append arg (cdr guide))]
+        [(eq? mode 'tail) arg]
+        [else (error #f "unknown substitution operator" mode)])))
+    
+  (define (run guide instrs args)
+    (cond [(null? instrs) guide]
+          [(pair? (car instrs))
+           (run (run/mode (caar instrs) (cadar instrs) 0 guide (car args))
+                (cdr instrs)
+                (cdr args))]
+          [else
+           (run (run/mode #f (car instrs) 0 guide (car args))
+                (cdr instrs)
+                (cdr args))]))
+  
+  (datum->syntax (run guide instrs args)))
