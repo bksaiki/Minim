@@ -30,7 +30,7 @@
             'syntax-case
             "expected a clause with a pattern, optional guard expression, and expression"
             stx
-            x)))
+            cl)))
       clauses)
     (let ([patterns
       (map
@@ -221,7 +221,9 @@
                              (quote-syntax if)
                              (list
                                (quote-syntax equal?)
-                               (syntax-e head-pat)
+                               (list
+                                 (quote-syntax quote)
+                                 (syntax-e head-pat))
                                (list
                                  (quote-syntax syntax-e)
                                  (list

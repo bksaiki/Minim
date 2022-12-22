@@ -114,7 +114,7 @@
                              (panic!)])]
                          [else (panic!)])]))]
                  [else (panic!)])]
-              [(eq? first 'quote-syntax)
+              [(or (eq? first 'quote-syntax) (eq? first 'quote))
                expr*]
               [else
                (cons

@@ -18,54 +18,6 @@
         (all "private/let.min")
         (all "private/stx.min")
         (all "private/stx-case.min")
+        (all "private/stx-macro.min")
         (all "private/template.min")
         (all "private/when-unless.min"))
-
-; (define-syntax (foo stx)
-;   (syntax-case stx ()
-;     [(_ a b ...) #'(+ a)]))
-    ; [(_ a b c d ...) #'(list '(+ (* 5 2) '(+ b (* c d . 1) ...) . 'a))]))
-    ; [(_ c (a b ...) ...) #'(quote (+ 1 (* (+ a b ... c) ...)))]))
-
-
-; (define-syntax mywhen
-;   (syntax-rules ()
-;     ((_ test e1 e2 ...) (if test (begin e1 e2 ...)))))
-
-; (define-syntax myunless
-;   (syntax-rules ()
-;     ((_ test e1 e2 ...) (when (not test) (begin e1 e2 ...)))))
-
-; (define-syntax with-syntax
-;   (lambda (x)
-;     (syntax-case x ()
-;         ((_ () e1 e2 ...)
-;         (syntax (begin e1 e2 ...)))
-;         ((_ ((out in)) e1 e2 ...)
-;         (syntax (syntax-case in () (out (begin e1 e2 ...)))))
-;         ((_ ((out in) ...) e1 e2 ...)
-;         (syntax (syntax-case (list in ...) ()
-;                     ((out ...) (begin e1 e2 ...))))))))
-
-; (define-syntax do
-;    (lambda (orig-x)
-;       (syntax-case orig-x ()
-;          ((_ ((var init . step) ...) (e0 e1 ...) c ...)
-;           (with-syntax (((step ...)
-;                          (map (lambda (v s)
-;                                  (syntax-case s ()
-;                                     (() v)
-;                                     ((e) (syntax e))
-;                                     (_ (syntax-error orig-x))))
-;                               (syntax (var ...))
-;                               (syntax (step ...)))))
-;              (syntax-case (syntax (e1 ...)) ()
-;                 (() (syntax (let do ((var init) ...)
-;                                (if (not e0)
-;                                    (begin c ... (do step ...))))))
-;                 ((e1 e2 ...)
-;                  (syntax (let do ((var init) ...)
-;                             (if e0
-;                                 (begin e1 e2 ...)
-;                                 (begin c ... (do step ...))))))))))))
-

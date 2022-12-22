@@ -14,8 +14,8 @@
 (define $base-env (environment))
 
 ;; Base environment when expanding modules
-(define $base-stx-env
-  (let ([env (extend-environment $base-env)])
+(define ($base-stx-env env)
+  (let ([env (extend-environment env)])
     (environment-set-variable-value!
       env
       'get-pattern-variable
@@ -50,7 +50,7 @@
   (define imported '())
   (define imported-xforms '())
   (define imported-modules '())
-  (define stx-env (extend-environment $base-stx-env))
+  (define stx-env #f)
   (define module-xforms '())
 
   ;; read phase
@@ -131,15 +131,7 @@
   ;; expand phase
   (define ($expand exprs)
     ;; setup environment
-    (let loop ([imported imported])
-      (cond
-        [(null? imported) (void)]
-        [else
-         (define name (caar imported))
-         (define value (cdar imported))
-         (environment-set-variable-value! stx-env name value)
-         (loop (cdr imported))]))
-
+    (set! stx-env ($base-stx-env ($eval-environment $base-env imported)))
     ;; apply transformers
     (set! module-xforms imported-xforms)
     (let loop ([exprs exprs] [acc '()])

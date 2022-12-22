@@ -22,6 +22,7 @@ CFLAGS		:= -Wall -std=c11 -O0 -g
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -lminimgc
 
+MINIM       := ./minim
 MKDIR_P		:= mkdir -p
 RM 			:= rm -rf
 READLINK	:= readlink -f
@@ -34,6 +35,7 @@ boot: $(CONFIG) $(OBJS)
 
 test: $(CONFIG) $(BUILD_DIR)/test-prims;
 	$(BUILD_DIR)/test-prims
+	$(MINIM) $(TEST_DIR)/stxcase.min
 
 clean:
 	$(RM) build
