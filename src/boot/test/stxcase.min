@@ -36,8 +36,12 @@
 
 (define-syntax (macro-5 stx)
   (syntax-case stx ()
-    [(_ a . b) #'(cons a b)]
-    [_ 'bad]))
+    [(_ a . b) #'(cons a b)]))
+
+(define-syntax (macro-6 stx)
+  (syntax-case stx (foo)
+    [(_ foo) #'(quote good)]
+    [_ #'(quote bad)]))
 
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
@@ -47,6 +51,9 @@
 (check-equal? (macro-4 1 2) '(1 2))
 
 (check-equal? (macro-5 1 . 2) '(1 . 2))
+
+(check-equal? (macro-6 foo) 'good)
+(check-equal? (macro-6 +) 'bad)
 
 ;; actual Scheme macros
 
@@ -63,39 +70,39 @@
   (syntax-rules ()
     ((_ test e1 e2 ...) (mywhen (not test) (begin e1 e2 ...)))))
 
-(define-syntax with-syntax
-  (lambda (x)
-    (syntax-case x ()
-      ((_ () e1 e2 ...)
-       (syntax (begin e1 e2 ...)))
-      ((_ ((out in)) e1 e2 ...)
-       (syntax (syntax-case in () (out (begin e1 e2 ...)))))
-      ((_ ((out in) ...) e1 e2 ...)
-       (syntax (syntax-case (list in ...) () ((out ...) (begin e1 e2 ...))))))))
+; (define-syntax with-syntax
+;   (lambda (x)
+;     (syntax-case x ()
+;       ((_ () e1 e2 ...)
+;        (syntax (begin e1 e2 ...)))
+;       ((_ ((out in)) e1 e2 ...)
+;        (syntax (syntax-case in () (out (begin e1 e2 ...)))))
+;       ((_ ((out in) ...) e1 e2 ...)
+;        (syntax (syntax-case (list in ...) () ((out ...) (begin e1 e2 ...))))))))
 
-(define-syntax do
-  (lambda (orig-x)
-    (syntax-case orig-x ()
-      ((_ ((var init . step) ...) (e0 e1 ...) c ...)
-       (with-syntax (((step ...)
-                      (map (lambda (v s)
-                             (syntax-case s ()
-                               (() v)
-                               ((e) (syntax e))
-                               (_ (syntax-error orig-x))))
-                         (syntax (var ...))
-                         (syntax (step ...)))))
-         (syntax-case (syntax (e1 ...)) ()
-           (()
-            (syntax (let do ((var init) ...)
-                       (if (not e0)
-                           (void)
-                           (begin c ... (do step ...))))))
-           ((e1 e2 ...)
-            (syntax (let do ((var init) ...)
-                       (if e0
-                                (begin e1 e2 ...)
-                                (begin c ... (do step ...))))))))))))
+; (define-syntax do
+;   (lambda (orig-x)
+;     (syntax-case orig-x ()
+;       ((_ ((var init . step) ...) (e0 e1 ...) c ...)
+;        (with-syntax (((step ...)
+;                       (map (lambda (v s)
+;                              (syntax-case s ()
+;                                (() v)
+;                                ((e) (syntax e))
+;                                (_ (syntax-error orig-x))))
+;                          (syntax (var ...))
+;                          (syntax (step ...)))))
+;          (syntax-case (syntax (e1 ...)) ()
+;            (()
+;             (syntax (let do ((var init) ...)
+;                        (if (not e0)
+;                            (void)
+;                            (begin c ... (do step ...))))))
+;            ((e1 e2 ...)
+;             (syntax (let do ((var init) ...)
+;                        (if e0
+;                                 (begin e1 e2 ...)
+;                                 (begin c ... (do step ...))))))))))))
 
 (check-equal? (mylet () 1) 1)
 (check-equal? (mylet ([x 1]) x) 1)

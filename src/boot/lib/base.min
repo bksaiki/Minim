@@ -21,3 +21,8 @@
         (all "private/stxcase-extra.min")
         (all "private/template.min")
         (all "private/when-unless.min"))
+
+(define-syntax (macro-6 stx)
+  (syntax-case stx (foo)
+    [(_ foo) #'(quote good)]
+    [_ #'(quote bad)]))

@@ -54,6 +54,15 @@
                 (cadr cl*)
                 (caddr cl*))))
             clauses)]
+          
+          [variable?
+      (lambda (s)
+        (and (identifier? s)
+             (let loop ([lits (syntax->list lits)])
+               (cond [(null? lits) #t]
+                     [(eq? (syntax-e s) (syntax-e (car lits))) #f]
+                     [else (loop (cdr lits))]))))]
+             
           [get-pattern-vars
       (lambda (pattern0)
         (let loop ([pattern pattern0]
@@ -84,7 +93,7 @@
                   (free-identifier=? pattern (quote-syntax _)))
              ; wildcard
              vars]
-            [(identifier? pattern)
+            [(variable? pattern)
              ; variable
              (cons (cons (syntax-e pattern) depth) vars)]
             [(not (syntax? (syntax-e pattern)))
@@ -129,20 +138,8 @@
                      [ellipse-next?
                       ; nested subpattern
                       (cond
-                        [(and (identifier? head-pat)
-                              (stx-null? (stx-cdr tail-pat)))
-                         ; easy case: single variable matches on the remaining parts of the list
-                         (list
-                           (quote-syntax if)
-                           (list
-                             (quote-syntax stx-list?)
-                             (quote-syntax e))
-                           (list
-                             (quote-syntax list)
-                             (quote-syntax e))
-                           #f)]
                         [(stx-null? (stx-cdr tail-pat))
-                         ; harder case: need to match on the subpattern
+                         ; easy case: need to match on the subpattern
                          (list
                            (quote-syntax if)
                            (list
@@ -204,7 +201,7 @@
                                  (list
                                    (quote-syntax stx-cdr)
                                    (quote-syntax e)))]
-                          [(identifier? head-pat)
+                          [(variable? head-pat)
                            ; variable
                            (list
                              (quote-syntax cons/#f)
@@ -256,9 +253,9 @@
                  (list
                    (quote-syntax lambda)
                    (list (quote-syntax e))
-                   (list (quote-syntax null)))
+                   (quote-syntax null))
                  datum))]
-            [(identifier? pattern)
+            [(variable? pattern)
              ; variable
              (datum->syntax
                (list

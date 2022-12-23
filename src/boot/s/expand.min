@@ -40,6 +40,7 @@
                (define expanded
                  (call-with-values
                    (lambda ()
+                    ;  (display " < ") (writeln expr)
                      (boot-expander? $expander-boot-expander?)
                      (maybe-xform expr))
                    (lambda results
@@ -49,8 +50,8 @@
                          (error 'expander
                                 "transformer produced something other than syntax"
                                 (car results))))))
+              ;  (display "> ") (writeln expanded)
                (define expanded* (expand-expr expanded xforms))
-              ;  (display "< ") (writeln expr)
               ;  (display "> ") (writeln expanded*)
                expanded*]
               [(eq? first 'let-syntaxes)
