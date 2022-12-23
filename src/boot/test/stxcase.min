@@ -43,6 +43,11 @@
     [(_ foo) #'(quote good)]
     [_ #'(quote bad)]))
 
+(define-syntax (macro-7 stx)
+  (syntax-case stx ()
+    [(_ x) (identifier? #'x)  #'(quote good)]
+    [_ #'(quote bad)]))
+
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
 (check-equal? (macro-3 1 2) '(1 2))
@@ -54,6 +59,9 @@
 
 (check-equal? (macro-6 foo) 'good)
 (check-equal? (macro-6 +) 'bad)
+
+(check-equal? (macro-7 foo) 'good)
+(check-equal? (macro-7 (+ 1 2)) 'bad)
 
 ;; actual Scheme macros
 
@@ -70,17 +78,7 @@
   (syntax-rules ()
     ((_ test e1 e2 ...) (mywhen (not test) (begin e1 e2 ...)))))
 
-; (define-syntax with-syntax
-;   (lambda (x)
-;     (syntax-case x ()
-;       ((_ () e1 e2 ...)
-;        (syntax (begin e1 e2 ...)))
-;       ((_ ((out in)) e1 e2 ...)
-;        (syntax (syntax-case in () (out (begin e1 e2 ...)))))
-;       ((_ ((out in) ...) e1 e2 ...)
-;        (syntax (syntax-case (list in ...) () ((out ...) (begin e1 e2 ...))))))))
-
-; (define-syntax do
+; (define-syntax mydo
 ;   (lambda (orig-x)
 ;     (syntax-case orig-x ()
 ;       ((_ ((var init . step) ...) (e0 e1 ...) c ...)
@@ -94,15 +92,15 @@
 ;                          (syntax (step ...)))))
 ;          (syntax-case (syntax (e1 ...)) ()
 ;            (()
-;             (syntax (let do ((var init) ...)
+;             (syntax (let loop ((var init) ...)
 ;                        (if (not e0)
 ;                            (void)
-;                            (begin c ... (do step ...))))))
+;                            (begin c ... (loop step ...))))))
 ;            ((e1 e2 ...)
-;             (syntax (let do ((var init) ...)
+;             (syntax (let loop ((var init) ...)
 ;                        (if e0
-;                                 (begin e1 e2 ...)
-;                                 (begin c ... (do step ...))))))))))))
+;                            (begin e1 e2 ...)
+;                            (begin c ... (loop step ...))))))))))))
 
 (check-equal? (mylet () 1) 1)
 (check-equal? (mylet ([x 1]) x) 1)
@@ -116,6 +114,12 @@
 (check-equal? (myunless #f 1) 1)
 (check-equal? (myunless #f 1 2 3) 3)
 (check-equal? (myunless #t 1 2 3) (void))
+
+; (check-equal?
+;   (mydo ((i 0 (+ i 1)))
+;     ((= i 5) i)
+;     i)
+;   5)
 
 (when (> num-failed 0)
   (error #f "test failed"))

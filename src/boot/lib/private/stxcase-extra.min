@@ -3,14 +3,14 @@
 ;;;  'syntax-rules', 'with-syntax'
 ;;;
 
-(import "define.min" "let.min" "stx.min" "stxcase.min" "template.min")
+(import "and-or.min" "define.min" "let.min"
+        "stx.min" "stxcase.min" "template.min")
 (export syntax-rules with-syntax)
 
 (define-syntax (syntax-rules stx)
   (syntax-case stx ()
     [(_ (lit ...) [(k . p) t] ...)
-     ;; TODO: fender should assert that each `lit`
-     ;; and each `k` are identifiers
+     (andmap identifier? (syntax->list #'(lit ... k ...)))
      #'(lambda (stx)
          (syntax-case stx (lit ...)
            [(_ . p) #'t] ...))]))

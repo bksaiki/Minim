@@ -309,61 +309,74 @@
                      [temp-vars (map (lambda (t)
                                        (gen-temp-id "sc"))
                                      pat-vars)])
-                (list
-                  (quote-syntax let)
-                  (list (list result-stx matcher))
-                  (list
-                    (quote-syntax if)
-                    result-stx
-                    (if fender
-                        (error #f "unsupported")
-                        (let ([bind-vars
-                               (lambda (e)
-                                 (datum->syntax
-                                   (list
-                                     (quote-syntax let)
-                                     (let loop ([pat-vars pat-vars]
-                                                [temp-vars temp-vars]
-                                                [result-stx result-stx]
-                                                [bindings null])
-                                       (if (null? pat-vars)
-                                           (reverse bindings)
-                                           (loop (cdr pat-vars)
-                                                 (cdr temp-vars)
-                                                 (datum->syntax
-                                                   (list
-                                                     (quote-syntax cdr)
-                                                     result-stx))
-                                                 (cons
-                                                   (list (car temp-vars)
-                                                         (list
-                                                           (quote-syntax car)
-                                                           result-stx))
-                                                   bindings))))
-                                     e)))]
-                              
-                              [gen-syntaxes
-                               (lambda ()
-                                 (list
-                                   (quote-syntax let-syntaxes)
-                                   (map (lambda (pat-var temp-var)
-                                          (list
-                                            (list (car pat-var))
-                                            (list
-                                              (quote-syntax make-pattern-variable)
-                                              (list
-                                                (quote-syntax quote-syntax)
-                                                temp-var)
-                                              (list
-                                                (quote-syntax quote)
-                                                (cdr pat-var)))))
-                                      pat-vars temp-vars)
-                                   (list
-                                     (quote-syntax let-values)
-                                     (quote-syntax ())
-                                     result)))])
 
-                        (bind-vars (gen-syntaxes))))
-                    (loop (cdr patterns)
-                          (cdr fenders)
-                          (cdr results))))))))))))
+                (let ([bind-vars
+                       (lambda (e)
+                         (datum->syntax
+                           (list
+                             (quote-syntax let)
+                             (let loop ([pat-vars pat-vars]
+                                        [temp-vars temp-vars]
+                                        [result-stx result-stx]
+                                        [bindings null])
+                               (if (null? pat-vars)
+                                   (reverse bindings)
+                                   (loop (cdr pat-vars)
+                                         (cdr temp-vars)
+                                         (datum->syntax
+                                           (list
+                                             (quote-syntax cdr)
+                                             result-stx))
+                                         (cons
+                                           (list (car temp-vars)
+                                                 (list
+                                                   (quote-syntax car)
+                                                   result-stx))
+                                           bindings))))
+                             e)))]
+                    
+                      [gen-syntaxes
+                       (lambda (e)
+                         (list
+                           (quote-syntax let-syntaxes)
+                           (map (lambda (pat-var temp-var)
+                                  (list
+                                    (list (car pat-var))
+                                    (list
+                                      (quote-syntax make-pattern-variable)
+                                      (list
+                                        (quote-syntax quote-syntax)
+                                        temp-var)
+                                      (list
+                                        (quote-syntax quote)
+                                        (cdr pat-var)))))
+                                pat-vars temp-vars)
+                           e))])
+
+                  (list
+                    (quote-syntax let)
+                    (list (list result-stx matcher))
+                    (list
+                      (quote-syntax if)
+                      (if fender
+                          (list
+                            (quote-syntax and)
+                            result-stx
+                            (bind-vars
+                              (gen-syntaxes
+                                (list
+                                  (list
+                                    (quote-syntax lambda)
+                                    (list)
+                                    fender)))))
+                          result-stx)
+                      (bind-vars
+                        (gen-syntaxes
+                          (list
+                            (quote-syntax let-values)
+                            (quote-syntax ())
+                            result)))
+
+                      (loop (cdr patterns)
+                            (cdr fenders)
+                            (cdr results)))))))))))))
