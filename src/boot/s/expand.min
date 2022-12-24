@@ -7,10 +7,21 @@
 ;;;   Expander for syntax macros
 ;;;   
 
+;; Transforms "xforms" are procedures of one argument that
+;; take a syntax object as input and returns a syntax object.
+;; Transforms are introduced into scope via `define-syntaxes`
+;; in a top-level context and `let-syntaxes` in an
+;; expression-level context.
+;;
+;; This expander stores xforms as an association list mapping
+;;  <name> -> (<proc>, <xforms-in-scope>, <eval-env>)
+;;
+
 ;; Should the expander use the boot expander for evaluation?
 (define $expander-boot-expander? #f)
 (define $expander-pattern-vars null)
 
+;; Expand top-level form
 (define (expand expr xforms env)
   ;; looks up a transform returning #f if none is found
   (define (lookup-or-false key)
@@ -145,3 +156,127 @@
   (define expanded (expand-expr expr xforms))
   (set! $expander-pattern-vars null)
   expanded) 
+
+(define (expand/module exprs xforms env)
+  ; checks if an expression is a syntactic form:
+  ;  <expr> = (<name> . <rest>)
+  (define ((_-form? form-name) expr)
+    (and (stx-pair? expr)
+         (let ([head (stx-car expr)])
+           (and (identifier? head)
+                (eq? (syntax-e head) form-name)))))
+
+  (define define-values-form? (_-form? 'define-values))
+  (define define-syntaxes-form? (_-form? 'define-syntaxes))
+  (define let-syntaxes-form? (_-form? 'let-syntaxes))
+  (define begin-form? (_-form? 'begin))
+
+  ; returns an symbol if it is a duplicate, else false
+  (define (duplicate-identifier ids new-ids)
+    (let loop ([ids ids] [new-ids new-ids])
+      (cond [(null? new-ids) #f]
+            [else
+             (define dup (member (car new-ids) ids))
+             (if dup
+                 dup
+                 (loop (cons (car new-ids) ids) (cdr new-ids)))])))
+
+  ; checks is a `define-syntaxes` / `define-values` form is valid
+  ; assumes form is `(<name> . <rest>)
+  (define (check-define-syntaxes/values-form! name form)
+    (define rib (stx-cdr form))
+    (let ([ids (syntax->list (stx-car rib))]
+          [rib (stx-cdr rib)])
+      (if (and (list? ids) (andmap identifier? ids))
+          (if (stx-null? rib)
+              (syntax-error name "expected an expression after identifiers" form)
+              (let ([rib (stx-cdr rib)])
+                (if (stx-null? rib)
+                    (void)
+                    (syntax-error name "too many expressions" form))))
+          (syntax-error name "not identifiers" form ids))))
+
+  ; checks for a duplicate identifier, raising an exception if one is encountered
+  (define (check-duplicate-identifier! form name ids new-ids)
+    (define dup (duplicate-identifier ids new-ids))
+    (if dup
+        (syntax-error name "duplicate identifier" form dup)
+        (void)))
+
+  ; returns the identifiers of a `define-syntaxes` / `define-values` form
+  ; assumes the form is valid
+  (define (define-syntaxes/values-identifiers form)
+    (map syntax-e (syntax->list (stx-car (stx-cdr form)))))
+
+  (define (define-syntaxes/values-expr form)
+    (stx-car (stx-cdr (stx-cdr form))))
+
+  ; expression context
+  ; Expr, List of Xform -> Expr
+  (define (expand/expr expr xforms)
+    (expand expr xforms env))
+
+  ; top-level context
+  ; Expr, List of Xform -> Expr
+  (define (expand/top expr xforms)
+    (cond
+      [else (expand/expr expr xforms)]))
+    ; (cond
+    ;   [(define-values-form? expr)
+    ;    ; define-values form
+    ;    (values expr xforms)]
+    ;   [(define-syntaxes-form? expr)
+    ;    ; define-syntaxes form
+    ;    (values expr xforms)]
+    ;   [else
+    ;    ; expression form
+    ;    (values (expand/expr expr xforms) xforms)]))
+
+  ; module context
+  ; `define-values` => defers expansion until all expressions have been processed
+  ; `define-syntaxes` => expands and evaluates RHS and updates `xforms`
+  ; `begin` => splices sequence of expressions
+  ; <expr> => invokes top-level expander
+  ; List of Expr, List of Xform, List of Symbols -> List of Expr, List of Xforms
+  (define (expand/module exprs xforms)
+    (let loop ([exprs exprs] [exprs* null] [xforms xforms] [new-xforms null] [defines null])
+      (cond
+        [(null? exprs)
+         (values exprs* xforms)]
+        [(define-syntaxes-form? (car exprs))
+         (define-values (ids rhs)
+           (let ([expr (car exprs)])
+             (check-define-syntaxes/values-form! 'define-syntaxes expr)
+             (define ids (define-syntaxes/values-identifiers expr))
+             (check-duplicate-identifier! expr 'define-syntaxes new-xforms ids)
+             (values ids (syntax->datum (define-syntaxes/values-expr expr)))))
+          (define old-expander? (boot-expander?))
+          (call-with-values
+            (lambda ()
+              (boot-expander? $module-boot-expander?)
+              (eval rhs env))
+            (lambda results
+              (boot-expander? old-expander?)
+              (if (= (length ids) (length results))
+                  (let loop2 ([ids ids] [results results] [xforms xforms] [new-xforms new-xforms])
+                    (cond
+                      [(null? ids) (loop (cdr exprs) exprs* xforms new-xforms defines)]
+                      [else
+                       (define-values (id xform) (values (car ids) (car results)))
+                       (cond
+                         [(procedure? xform)
+                          (define binding (cons ids xform))
+                          (loop2 (cdr ids) (cdr results) (cons binding xforms) (cons id new-xforms))]
+                         [else
+                          (error 'define-syntaxes "expected a procedure? received" xform)])]))
+                  (error 'define-syntaxes "result arity mismatch" "expected"
+                          (length ids) "received" (length results)))))]
+        [(define-values-form? (car exprs))
+         (check-define-syntaxes/values-form! 'define-values (car exprs))
+         (loop (cdr exprs) (cons (car exprs) exprs*) xforms new-xforms (cons (car exprs) defines))]
+        [else
+         (loop (cdr exprs) (cons (expand/top (car exprs) xforms) exprs*) new-xforms xforms defines)])))
+
+
+  ; invoke the module-level expander
+  (expand/module exprs xforms))

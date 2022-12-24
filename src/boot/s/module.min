@@ -130,6 +130,11 @@
 
   ;; expand phase
   (define ($expand exprs)
+    ;; testing
+    (define-values (test-exprs test-xforms)
+            (expand/module exprs imported-xforms
+                           ($base-stx-env ($eval-environment $base-env imported))))
+    ; (writeln (list path test-exprs test-xforms))
     ;; setup environment
     (set! stx-env ($base-stx-env ($eval-environment $base-env imported)))
     ;; apply transformers
