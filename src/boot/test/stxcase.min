@@ -48,6 +48,10 @@
     [(_ x) (identifier? #'x)  #'(quote good)]
     [_ #'(quote bad)]))
 
+; (define-syntax (macro-8 stx)
+;   (syntax-case stx ()
+;     [(_ a ... b) #''(a ... b)]))
+
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
 (check-equal? (macro-3 1 2) '(1 2))

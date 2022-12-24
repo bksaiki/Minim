@@ -33,6 +33,9 @@ READLINK	:= readlink -f
 boot: $(CONFIG) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o minim
 
+profile:
+	$(MAKE) CFLAGS="$(CFLAGS) -pg" boot
+
 test: $(CONFIG) $(BUILD_DIR)/test-prims;
 	$(BUILD_DIR)/test-prims
 	$(MINIM) $(TEST_DIR)/stxcase.min

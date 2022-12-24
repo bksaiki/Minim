@@ -40,7 +40,7 @@
                (define expanded
                  (call-with-values
                    (lambda ()
-                    ;  (display " < ") (writeln expr)
+                    ;  (display "< ") (writeln expr)
                      (boot-expander? $expander-boot-expander?)
                      (maybe-xform expr))
                    (lambda results
