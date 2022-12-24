@@ -13,6 +13,27 @@
 ;; Base environment when loading modules
 (define $base-env (environment))
 
+;; Base environment when expanding modules
+(define ($base-stx-env env)
+  (let ([env (extend-environment env)])
+    (environment-set-variable-value!
+      env
+      'get-pattern-variable
+      (lambda (k)
+        (if (symbol? k)
+            (letrec-values ([(loop)
+                             (lambda (assoc)
+                               (if (null? assoc)
+                                   #f
+                                   (if (eq? (caar assoc) k)
+                                       (cdar assoc)
+                                       (loop (cdr assoc)))))])
+              (loop $expander-pattern-vars))
+            (error 'get-pattern-variable
+                   "expected symbol?" k))))
+    env))
+
+
 ;; Module caches
 ;;  name -> (exporting xforms, exporting values)
 ;;  name -> (current xforms, current env)
@@ -28,7 +49,8 @@
   (define exported '())
   (define imported '())
   (define imported-xforms '())
-  (define module-env (extend-environment $base-env))
+  (define imported-modules '())
+  (define stx-env #f)
   (define module-xforms '())
 
   ;; read phase
@@ -64,6 +86,7 @@
                     (define path (build-path new-cwd maybe-import))
                     (import path)
                     (define from-module (assoc path $module-table))
+                    (set! imported-modules (cons path imported-modules))
                     (set! imported-xforms (append (car from-module) imported-xforms))
                     (set! imported (append (cdr from-module) imported))
                     (loop2 (cdr imports))]
@@ -82,6 +105,22 @@
                    [(symbol? maybe-export)
                     (set! exported (cons maybe-export exported))
                     (loop2 (cdr exports))]
+                   [(pair? maybe-export)
+                    (cond
+                      [(eq? (syntax-e (car maybe-export)) 'all)
+                       (define module-name (syntax-e (cadr maybe-export)))
+                       (define path (build-path new-cwd module-name))
+                       (cond
+                         [(and (string? module-name)
+                               (null? (cddr maybe-export))
+                               (member path imported-modules))
+                          (define from-module (assoc path $module-table))
+                          (set! exported (append (map car (car from-module))
+                                                 (map car (cdr from-module))
+                                                 exported))
+                          (loop2 (cdr exports))]
+                         [else (error 'export "bad syntax")])]
+                      [else (error 'export "bad syntax")])]
                    [else
                     (error 'export "bad syntax")])]
                 [else
@@ -91,17 +130,8 @@
 
   ;; expand phase
   (define ($expand exprs)
-    (define stx-env (extend-environment $base-env))
     ;; setup environment
-    (let loop ([imported imported])
-      (cond
-        [(null? imported) (void)]
-        [else
-         (define name (caar imported))
-         (define value (cdar imported))
-         (environment-set-variable-value! stx-env name value)
-         (loop (cdr imported))]))
-
+    (set! stx-env ($base-stx-env ($eval-environment $base-env imported)))
     ;; apply transformers
     (set! module-xforms imported-xforms)
     (let loop ([exprs exprs] [acc '()])
@@ -109,7 +139,7 @@
         [(null? exprs)
          (reverse acc)]
         [else
-         (define expanded (expand (car exprs) module-xforms))
+         (define expanded (expand (car exprs) module-xforms stx-env))
          (define expanded* (syntax-e expanded))
          (cond
            [(and (pair? expanded*) (eq? (syntax-e (car expanded*)) 'define-syntaxes))
@@ -145,7 +175,9 @@
                                      [(procedure? xform)
                                       (define binding (cons xform-name xform))
                                       (set! module-xforms (cons binding module-xforms))
-                                      (loop (cdr xform-names) (cdr results))])))))))]
+                                      (loop (cdr xform-names) (cdr results))]
+                                     [else
+                                      (error 'define-syntaxes "expected a procedure? received" xform)])))))))]
                  [else
                   (panic!)])]
                [else
@@ -160,7 +192,7 @@
   (define expanded-exprs ($expand non-import-exprs))
  
   ;; return result
-  (list expanded-exprs module-xforms imported exported))
+  (values expanded-exprs module-xforms imported exported stx-env))
 
 ;; prepares the evaluation environment given
 ;; an association list of additional values
@@ -202,11 +234,8 @@
   (define cwd (current-directory))
   (define new-cwd (car (split-path path)))
   ;; load expressions
-  (define module-info ($load-module path))
-  (define exprs (car module-info))
-  (define module-xforms (cadr module-info))
-  (define imports (caddr module-info))
-  (define exports (cadddr module-info))
+  (define-values (exprs module-xforms imports exports stx-env)
+    ($load-module path))
   ;; evaluate
   (current-directory new-cwd)
   (define env ($eval-environment $base-env imports))
@@ -233,20 +262,20 @@
 
   ;; update module tables
   (set! $module-table (cons (cons path (cons export-xforms export-values)) $module-table))
-  (set! $module-envs (cons (cons path (cons module-xforms env)) $module-envs))
+  (set! $module-envs (cons (cons path (cons module-xforms (cons stx-env env))) $module-envs))
 
   ;; and done
   (cond [result-handler (result-handler last)]))
 
 ;; REPL with env
-(define ($repl xforms env)
+(define ($repl xforms stx-env env)
   (let loop ()
     ;; read
     (display "> ")
     (define stx (read))
     (cond [(eof-object? stx) (exit)])
     ;; expand
-    (define stx* (expand stx xforms))
+    (define stx* (expand stx xforms stx-env))
     (define old-expander? (boot-expander?))
     ;; evaluate and display
     (call-with-values
@@ -297,4 +326,6 @@
   (cond [(not maybe-env)
          (error 'enter! "unknown module" name)])
   ;; REPL
-  ($repl (car maybe-env) (extend-environment (cdr maybe-env))))
+  ($repl (car maybe-env)
+         (extend-environment (cadr maybe-env))
+         (extend-environment (cddr maybe-env))))

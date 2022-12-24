@@ -1,0 +1,22 @@
+;;;   
+;;; Derived forms of 'syntax-case':
+;;;  'syntax-rules', 'with-syntax'
+;;;
+
+(import "and-or.min" "define.min" "let.min"
+        "stx.min" "stxcase.min" "template.min")
+(export syntax-rules with-syntax)
+
+(define-syntax (syntax-rules stx)
+  (syntax-case stx ()
+    [(_ (lit ...) [(k . p) t] ...)
+     (andmap identifier? (syntax->list #'(lit ... k ...)))
+     #'(lambda (stx)
+         (syntax-case stx (lit ...)
+           [(_ . p) #'t] ...))]))
+
+(define-syntax (with-syntax stx)
+  (syntax-case stx ()
+    [(_ ((p e0) ...) e1 e2 ...)
+     #'(syntax-case (list e0 ...) ()
+         [(p ...) (let-values () e1 e2 ...)])]))

@@ -14,41 +14,24 @@
 
 ;; lists
 
-(define (caar xs) (car (car xs)))
-(define (cdar xs) (cdr (car xs)))
-(define (cadr xs) (car (cdr xs)))
-(define (cddr xs) (cdr (cdr xs)))
-
-(define (caaar xs) (car (car (car xs))))
-(define (cadar xs) (car (cdr (car xs))))
-(define (caadr xs) (car (car (cdr xs))))
-(define (caddr xs) (car (cdr (cdr xs))))
-(define (cdaar xs) (cdr (car (car xs))))
-(define (cddar xs) (cdr (cdr (car xs))))
-(define (cdadr xs) (cdr (car (cdr xs))))
-(define (cdddr xs) (cdr (cdr (cdr xs))))
-
-(define (caaaar xs) (car (car (car (car xs)))))
-(define (caadar xs) (car (car (cdr (car xs)))))
-(define (caaadr xs) (car (car (car (cdr xs)))))
-(define (caaddr xs) (car (car (cdr (cdr xs)))))
-(define (cadaar xs) (car (cdr (car (car xs)))))
-(define (caddar xs) (car (cdr (cdr (car xs)))))
-(define (cadadr xs) (car (cdr (car (cdr xs)))))
-(define (cadddr xs) (car (cdr (cdr (cdr xs)))))
-(define (cdaaar xs) (cdr (car (car (car xs)))))
-(define (cdadar xs) (cdr (car (cdr (car xs)))))
-(define (cdaadr xs) (cdr (car (car (cdr xs)))))
-(define (cdaddr xs) (cdr (car (cdr (cdr xs)))))
-(define (cddaar xs) (cdr (cdr (car (car xs)))))
-(define (cdddar xs) (cdr (cdr (cdr (car xs)))))
-(define (cddadr xs) (cdr (cdr (car (cdr xs)))))
-(define (cddddr xs) (cdr (cdr (cdr (cdr xs)))))
+(define (member k xs)
+  (let loop ([xs xs])
+    (cond [(null? xs) #f]
+          [(pair? xs) (if (equal? (car xs) k) (car xs) (loop (cdr xs)))]
+          [else (error 'member "expected a list" xs)])))
 
 (define (map f lst)
   (let loop ([xs lst] [acc '()])
     (cond [(null? xs) (reverse acc)]
           [(pair? xs) (loop (cdr xs) (cons (f (car xs)) acc))]
+          [else       (error 'map "expected a list" lst)])))
+
+(define (filter f lst)
+  (let loop ([xs lst] [acc '()])
+    (cond [(null? xs) (reverse acc)]
+          [(pair? xs) (if (f (car xs))
+                          (loop (cdr xs) (cons (car xs) acc))
+                          (loop (cdr xs) acc))]
           [else       (error 'map "expected a list" lst)])))
 
 (define (foldl f acc lst)
@@ -78,22 +61,6 @@
   (if (string? str)
       (= (string-length str) 0)
       (error 'string "expected string?" str)))
-
-(define (string-append . strs)
-  (define len (apply + (map string-length strs)))
-  (define s (make-string len))
-  (let loop ([strs strs] [i 0])
-    (cond
-      [(null? strs) s]
-      [else
-       (define str (car strs))
-       (define len (string-length str))
-       (let loop2 ([i i] [n 0])
-         (cond
-           [(= n len) (loop (cdr strs) i)]
-           [else
-            (string-set! s i (string-ref str n))
-            (loop2 (+ i 1) (+ n 1))]))])))
  
 (define (substring str start end)
   (define len (string-length str))

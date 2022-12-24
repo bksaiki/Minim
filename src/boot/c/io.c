@@ -33,7 +33,7 @@ static int is_delimeter(int c) {
 }
 
 static int is_symbol_char(int c) {
-    return c != '#' && !is_delimeter(c);
+    return !is_delimeter(c);
 }
 
 static int peek_char(FILE *in) {
@@ -60,6 +60,15 @@ static void read_expected_string(FILE *in, const char *s) {
         }
         ++s;
     }
+}
+
+static int is_cons_dot(FILE *in, int c) {
+    if (c != '.')
+        return 0;
+
+    // need to make sure it's actually a dot
+    c = peek_char(in);
+    return isspace(c);
 }
 
 static void skip_whitespace(FILE *in) {
@@ -132,7 +141,7 @@ static minim_object *read_pair(FILE *in, char open_paren) {
     c = fgetc(in);
     assert_not_eof(c);
 
-    if (c == '.') {
+    if (is_cons_dot(in, c)) {
         // improper list
         peek_expected_delimeter(in);
         cdr = read_object(in);
@@ -427,9 +436,15 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         write_object2(out, strip_syntax(o), 1, display);
         fputc('>', out);
         break;
+    case MINIM_PATTERN_VAR_TYPE:
+        fprintf(out, "#<pattern>");
+        break;
+    case MINIM_VALUES_TYPE:
+        fprintf(stderr, "cannot write multiple values\n");
+        exit(1);
 
     default:
-        fprintf(stderr, "cannot write unknown object");
+        fprintf(stderr, "cannot write unknown object\n");
         exit(1);
     }
 }

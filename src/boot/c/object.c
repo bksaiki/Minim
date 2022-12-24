@@ -26,8 +26,6 @@ minim_object *cond_symbol;
 minim_object *else_symbol;
 minim_object *and_symbol;
 minim_object *or_symbol;
-minim_object *syntax_symbol;
-minim_object *syntax_loc_symbol;
 minim_object *quote_syntax_symbol;
 
 int minim_is_eq(minim_object *a, minim_object *b) {

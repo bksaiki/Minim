@@ -33,6 +33,9 @@ static minim_object *boot_expander_proc(minim_object *args) {
 //  Initialization
 //
 
+#define add_value(name, c_val)                  \
+    env_define_var(env, intern(name), c_val);
+
 #define add_procedure(name, c_fn, min_arity, max_arity) {   \
     minim_object *sym = intern(name);                       \
     env_define_var(env, sym,                                \
@@ -41,6 +44,11 @@ static minim_object *boot_expander_proc(minim_object *args) {
 }
 
 void populate_env(minim_object *env) {
+    add_value("null", minim_null);
+    add_value("true", minim_true);
+    add_value("false", minim_false);
+    add_value("eof", minim_eof);
+
     add_procedure("null?", is_null_proc, 1, 1);
     add_procedure("void?", is_void_proc, 1, 1);
     add_procedure("eof-object?", is_eof_proc, 1, 1);
@@ -70,6 +78,34 @@ void populate_env(minim_object *env) {
     add_procedure("cons", cons_proc, 2, 2);
     add_procedure("car", car_proc, 1, 1);
     add_procedure("cdr", cdr_proc, 1, 1);
+    add_procedure("caar", caar_proc, 1, 1);
+    add_procedure("cadr", cadr_proc, 1, 1);
+    add_procedure("cdar", cdar_proc, 1, 1);
+    add_procedure("cddr", cddr_proc, 1, 1);
+    add_procedure("caaar", caaar_proc, 1, 1);
+    add_procedure("caadr", caadr_proc, 1, 1);
+    add_procedure("cadar", cadar_proc, 1, 1);
+    add_procedure("caddr", caddr_proc, 1, 1);
+    add_procedure("cdaar", cdaar_proc, 1, 1);
+    add_procedure("cdadr", cdadr_proc, 1, 1);
+    add_procedure("cddar", cddar_proc, 1, 1);
+    add_procedure("cdddr", cdddr_proc, 1, 1);
+    add_procedure("caaaar", caaaar_proc, 1, 1);
+    add_procedure("caaadr", caaadr_proc, 1, 1);
+    add_procedure("caadar", caadar_proc, 1, 1);
+    add_procedure("caaddr", caaddr_proc, 1, 1);
+    add_procedure("cadaar", cadaar_proc, 1, 1);
+    add_procedure("cadadr", cadadr_proc, 1, 1);
+    add_procedure("caddar", caddar_proc, 1, 1);
+    add_procedure("cadddr", cadddr_proc, 1, 1);
+    add_procedure("cdaaar", cdaaar_proc, 1, 1);
+    add_procedure("cdaadr", cdaadr_proc, 1, 1);
+    add_procedure("cdadar", cdadar_proc, 1, 1);
+    add_procedure("cdaddr", cdaddr_proc, 1, 1);
+    add_procedure("cddaar", cddaar_proc, 1, 1);
+    add_procedure("cddadr", cddadr_proc, 1, 1);
+    add_procedure("cdddar", cdddar_proc, 1, 1);
+    add_procedure("cddddr", cddddr_proc, 1, 1);
     add_procedure("set-car!", set_car_proc, 2, 2);
     add_procedure("set-cdr!", set_cdr_proc, 2, 2);
 
@@ -77,6 +113,8 @@ void populate_env(minim_object *env) {
     add_procedure("length", length_proc, 1, 1);
     add_procedure("reverse", reverse_proc, 1, 1);
     add_procedure("append", append_proc, 0, ARG_MAX);
+    add_procedure("for-each", for_each_proc, 2, ARG_MAX);
+    add_procedure("map", map_proc, 2, ARG_MAX);
     add_procedure("andmap", andmap_proc, 2, 2);
     add_procedure("ormap", ormap_proc, 2, 2);
 
@@ -87,22 +125,29 @@ void populate_env(minim_object *env) {
     add_procedure("remainder", remainder_proc, 2, 2);
     add_procedure("modulo", modulo_proc, 2, 2);
 
-    add_procedure("=", number_eq_proc, 2, 2);
-    add_procedure(">=", number_ge_proc, 2, 2);
-    add_procedure("<=", number_le_proc, 2, 2);
-    add_procedure(">", number_gt_proc, 2, 2);
-    add_procedure("<", number_lt_proc, 2, 2);
+    add_procedure("=", number_eq_proc, 2, ARG_MAX);
+    add_procedure(">=", number_ge_proc, 2, ARG_MAX);
+    add_procedure("<=", number_le_proc, 2, ARG_MAX);
+    add_procedure(">", number_gt_proc, 2, ARG_MAX);
+    add_procedure("<", number_lt_proc, 2, ARG_MAX);
 
     add_procedure("make-string", make_string_proc, 1, 2);
     add_procedure("string", string_proc, 0, ARG_MAX);
     add_procedure("string-length", string_length_proc, 1, 1);
     add_procedure("string-ref", string_ref_proc, 2, 2);
     add_procedure("string-set!", string_set_proc, 3, 3);
+    add_procedure("string-append", string_append_proc, 0, ARG_MAX);
     
     add_procedure("syntax?", is_syntax_proc, 1, 1);
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
     add_procedure("datum->syntax", to_syntax_proc, 1, 1);
+    add_procedure("syntax->list", syntax_to_list_proc, 1, 1);
+
+    add_procedure("pattern-variable?", is_pattern_var_proc, 1, 1);
+    add_procedure("make-pattern-variable", make_pattern_var_proc, 2, 2);
+    add_procedure("pattern-variable-value", pattern_var_value_proc, 1, 1);
+    add_procedure("pattern-variable-depth", pattern_var_depth_proc, 1, 1);
 
     add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
     add_procedure("null-environment", empty_environment_proc, 0, 0);
@@ -188,8 +233,6 @@ void minim_boot_init() {
     else_symbol = intern("else");
     and_symbol = intern("and");
     or_symbol = intern("or");
-    syntax_symbol = intern("syntax");
-    syntax_loc_symbol = intern("syntax/loc");
     quote_syntax_symbol = intern("quote-syntax");
 
     empty_env = minim_null;

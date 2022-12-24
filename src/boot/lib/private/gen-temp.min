@@ -1,0 +1,13 @@
+;;;   
+;;; Internal gensym for syntax
+;;;
+
+(export gen-temp-id)
+
+(define-values (counter) 0)
+(define-values (gen-temp-id)
+  (lambda (name)
+    (set! counter (+ counter 1))
+    (datum->syntax
+      (string->symbol
+        (string-append name (number->string counter))))))

@@ -113,17 +113,17 @@ static void check_1ary_syntax(minim_object *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum>)
-static void check_2ary_syntax(minim_object *expr) {
-    minim_object *rest;
+// static void check_2ary_syntax(minim_object *expr) {
+//     minim_object *rest;
     
-    rest = minim_cdr(expr);
-    if (!minim_is_pair(rest))
-        bad_syntax_exn(expr);
+//     rest = minim_cdr(expr);
+//     if (!minim_is_pair(rest))
+//         bad_syntax_exn(expr);
 
-    rest = minim_cdr(rest);
-    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
+//     rest = minim_cdr(rest);
+//     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+//         bad_syntax_exn(expr);
+// }
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum> <datum>)
@@ -574,6 +574,16 @@ application:
             return env;
         }
 
+        // special case for `for-each`
+        if (minim_prim_proc(proc) == for_each_proc) {
+            return for_each(minim_car(args), minim_cdr(args), env);
+        }
+
+        // special case for `map`
+        if (minim_prim_proc(proc) == map_proc) {
+            return map_list(minim_car(args), minim_cdr(args), env);
+        }
+
         // special case for `andmap`
         if (minim_prim_proc(proc) == andmap_proc) {
             return andmap(minim_car(args), minim_cadr(args), env);
@@ -608,7 +618,10 @@ application:
         expr = minim_closure_body(proc);
         return eval_expr(expr, env);
     } else {
-        fprintf(stderr, "not a procedure\n");
+        fprintf(stderr, "error: not a procedure\n");
+        fprintf(stderr, " received:");
+        write_object(stderr, proc);
+        fprintf(stderr, "\n");
         exit(1);
     }
 }
@@ -759,17 +772,13 @@ loop:
                 // quote form
                 check_1ary_syntax(expr);
                 return minim_cadr(expr);
-            } else if (head == syntax_symbol || head == quote_syntax_symbol) {
+            } else if (head == quote_syntax_symbol) {
                 // quote-syntax form
                 check_1ary_syntax(expr);
                 if (minim_is_syntax(minim_cadr(expr)))
                     return minim_cadr(expr);
                 else
-                    return make_syntax(minim_cadr(expr), minim_false);
-            } else if (head == syntax_loc_symbol) {
-                // syntax/loc form
-                check_2ary_syntax(expr);
-                return make_syntax(minim_car(minim_cddr(expr)), minim_cadr(expr));
+                    return to_syntax(minim_cadr(expr));
             } else if (head == setb_symbol) {
                 // set! form
                 check_assign(expr);
@@ -914,6 +923,16 @@ application:
                 return env;
             }
 
+            // special case for `for-each`
+            if (minim_prim_proc(proc) == for_each_proc) {
+                return for_each(minim_car(args), minim_cdr(args), env);
+            }
+
+            // special case for `map`
+            if (minim_prim_proc(proc) == map_proc) {
+                return map_list(minim_car(args), minim_cdr(args), env);
+            }
+
             // special case for `andmap`
             if (minim_prim_proc(proc) == andmap_proc) {
                 return andmap(minim_car(args), minim_cadr(args), env);
@@ -953,7 +972,10 @@ application:
             expr = minim_closure_body(proc);
             goto loop;
         } else {
-            fprintf(stderr, "not a procedure\n");
+            fprintf(stderr, "error: not a procedure\n");
+            fprintf(stderr, " received:");
+            write_object(stderr, proc);
+            fprintf(stderr, "\n");
             exit(1);
         }
     } else {

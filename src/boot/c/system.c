@@ -119,7 +119,7 @@ minim_object *error_proc(minim_object *args) {
         bad_type_exn("error", "string?", message);
     
     if (minim_is_false(who))
-        printf("error");
+        fprintf(stderr, "error");
     else
         write_object2(stderr, who, 1, 1);
 

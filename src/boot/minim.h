@@ -71,6 +71,9 @@ typedef enum {
     /* Composite types */
     MINIM_VALUES_TYPE,
 
+    /* Transform types */
+    MINIM_PATTERN_VAR_TYPE,
+
     /* Footer */
     MINIM_LAST_TYPE
 } minim_object_type;
@@ -135,6 +138,12 @@ typedef struct {
     minim_object *loc;
 } minim_syntax_object;
 
+typedef struct {
+    minim_object_type type;
+    minim_object *value;
+    minim_object *depth;
+} minim_pattern_var_object;
+
 // Special objects
 
 extern minim_object *minim_null;
@@ -176,6 +185,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
+#define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
 #define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
 
 #define minim_is_null(x)    ((x) == minim_null)
@@ -220,6 +230,9 @@ extern minim_object *quote_syntax_symbol;
 #define minim_syntax_e(x)       (((minim_syntax_object *) (x))->e)
 #define minim_syntax_loc(x)     (((minim_syntax_object *) (x))->loc)
 
+#define minim_pattern_var_value(x)      (((minim_pattern_var_object *) (x))->value)
+#define minim_pattern_var_depth(x)      (((minim_pattern_var_object *) (x))->depth)
+
 // Setters
 
 #define minim_port_set(x, f)        (((minim_port_object *) (x))->flags |= (f))
@@ -248,6 +261,7 @@ minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity
 minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
 minim_object *make_output_port(FILE *stream);
+minim_object *make_pattern_var(minim_object *value, minim_object *depth);
 minim_object *make_syntax(minim_object *e, minim_object *loc);
 
 // Object operations
@@ -267,6 +281,9 @@ int is_list(minim_object *x);
 long list_length(minim_object *xs);
 minim_object *make_assoc(minim_object *xs, minim_object *ys);
 minim_object *copy_list(minim_object *xs);
+
+minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env);
+minim_object *map_list(minim_object *proc, minim_object *lst, minim_object *env);
 minim_object *andmap(minim_object *proc, minim_object *lst, minim_object *env);
 minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *env);
 
@@ -394,6 +411,34 @@ DEFINE_PRIM_PROC(is_pair);
 DEFINE_PRIM_PROC(cons);
 DEFINE_PRIM_PROC(car);
 DEFINE_PRIM_PROC(cdr);
+DEFINE_PRIM_PROC(caar);
+DEFINE_PRIM_PROC(cadr);
+DEFINE_PRIM_PROC(cdar);
+DEFINE_PRIM_PROC(cddr);
+DEFINE_PRIM_PROC(caaar);
+DEFINE_PRIM_PROC(caadr);
+DEFINE_PRIM_PROC(cadar);
+DEFINE_PRIM_PROC(caddr);
+DEFINE_PRIM_PROC(cdaar);
+DEFINE_PRIM_PROC(cdadr);
+DEFINE_PRIM_PROC(cddar);
+DEFINE_PRIM_PROC(cdddr);
+DEFINE_PRIM_PROC(caaaar);
+DEFINE_PRIM_PROC(caaadr);
+DEFINE_PRIM_PROC(caadar);
+DEFINE_PRIM_PROC(caaddr);
+DEFINE_PRIM_PROC(cadaar);
+DEFINE_PRIM_PROC(cadadr);
+DEFINE_PRIM_PROC(caddar);
+DEFINE_PRIM_PROC(cadddr);
+DEFINE_PRIM_PROC(cdaaar);
+DEFINE_PRIM_PROC(cdaadr);
+DEFINE_PRIM_PROC(cdadar);
+DEFINE_PRIM_PROC(cdaddr);
+DEFINE_PRIM_PROC(cddaar);
+DEFINE_PRIM_PROC(cddadr);
+DEFINE_PRIM_PROC(cdddar);
+DEFINE_PRIM_PROC(cddddr);
 DEFINE_PRIM_PROC(set_car);
 DEFINE_PRIM_PROC(set_cdr);
 // lists
@@ -402,6 +447,8 @@ DEFINE_PRIM_PROC(list);
 DEFINE_PRIM_PROC(length);
 DEFINE_PRIM_PROC(reverse);
 DEFINE_PRIM_PROC(append);
+DEFINE_PRIM_PROC(for_each);
+DEFINE_PRIM_PROC(map);
 DEFINE_PRIM_PROC(andmap);
 DEFINE_PRIM_PROC(ormap);
 // numbers
@@ -430,6 +477,7 @@ DEFINE_PRIM_PROC(string);
 DEFINE_PRIM_PROC(string_length);
 DEFINE_PRIM_PROC(string_ref);
 DEFINE_PRIM_PROC(string_set);
+DEFINE_PRIM_PROC(string_append);
 DEFINE_PRIM_PROC(number_to_string);
 DEFINE_PRIM_PROC(string_to_number);
 DEFINE_PRIM_PROC(symbol_to_string);
@@ -448,6 +496,12 @@ DEFINE_PRIM_PROC(syntax_e);
 DEFINE_PRIM_PROC(syntax_loc);
 DEFINE_PRIM_PROC(to_syntax);
 DEFINE_PRIM_PROC(syntax_error);
+DEFINE_PRIM_PROC(syntax_to_list);
+// pattern variables
+DEFINE_PRIM_PROC(is_pattern_var);
+DEFINE_PRIM_PROC(make_pattern_var);
+DEFINE_PRIM_PROC(pattern_var_value);
+DEFINE_PRIM_PROC(pattern_var_depth);
 // I/O
 DEFINE_PRIM_PROC(is_input_port);
 DEFINE_PRIM_PROC(is_output_port);

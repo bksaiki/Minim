@@ -4,7 +4,10 @@
 
 (export identifier? free-identifier=?
         stx-null? stx-pair? stx-list?
-        stx-car stx-cdr)
+        stx-car stx-cdr
+        stx-null/#f cons/#f
+        append/#f map/#f
+        stx->list split-stx-list)
 
 (define-values (identifier?)
   (lambda (t)
@@ -57,9 +60,65 @@
             (list? (syntax-e t))
             #f))))
 
-; (define (stx-vector? t)
-;   (if (vector? t)
-;       #t
-;       (if (syntax? t)
-;           (vector? (syntax-e t))
-;           #f)))
+(define-values (stx-null/#f)
+  (lambda (t)
+    (if (null? t)
+        null
+        (if (syntax? t)
+            (if (null? (syntax-e t))
+                null
+                #f)
+            #f))))
+
+(define-values (cons/#f)
+  (lambda (x1 x2)
+    (if x2
+        (cons x1 x2)
+        #f)))
+
+(define-values (append/#f)
+  (lambda (l1 l2)
+    (if l1
+        (if l2
+            (if (null? l2)
+                l1
+                (append l1 l2))
+            #f)
+        #f)))
+
+(define-values (map/#f)
+  (lambda (fn x . xs)
+    (let-values ([(lsts) (cons x xs)])
+      (if (andmap (lambda (x) x) lsts)
+          (apply map fn lsts)
+          #f))))
+
+(define-values (stx->list)
+  (lambda (t)
+    (if (syntax? t)
+        (if (stx-list? t)
+            (syntax-e t)
+            #f)
+        (if (list? t)
+            (if (andmap (lambda (x) (syntax? x)) t)
+                t
+                #f)
+            #f))))
+
+(define-values (split-stx-list)
+  (lambda (s n prop?)
+    (let-values ([(pre post m)
+                  (letrec-values ([(loop)
+                                   (lambda (s)
+                                     (if (stx-pair? s)
+                                         (let-values ([(pre post m) (loop (stx-cdr s))])
+                                           (if (< m n)
+                                               (values null s (+ m 1))
+                                               (values (cons (stx-car s) pre) post m)))
+                                         (values null s (if prop?
+                                                            (if (stx-null? s)
+                                                                0
+                                                                -inf.0)
+                                                            1))))])
+                    (loop s))])
+    (values pre post (= m n)))))
