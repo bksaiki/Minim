@@ -7,7 +7,7 @@
         stx-car stx-cdr
         stx-null/#f cons/#f
         append/#f map/#f
-        stx->list)
+        stx->list split-stx-list)
 
 (define-values (identifier?)
   (lambda (t)
@@ -104,3 +104,21 @@
                 t
                 #f)
             #f))))
+
+(define-values (split-stx-list)
+  (lambda (s n prop?)
+    (let-values ([(pre post m)
+                  (letrec-values ([(loop)
+                                   (lambda (s)
+                                     (if (stx-pair? s)
+                                         (let-values ([(pre post m) (loop (stx-cdr s))])
+                                           (if (< m n)
+                                               (values null s (+ m 1))
+                                               (values (cons (stx-car s) pre) post m)))
+                                         (values null s (if prop?
+                                                            (if (stx-null? s)
+                                                                0
+                                                                -inf.0)
+                                                            1))))])
+                    (loop s))])
+    (values pre post (= m n)))))

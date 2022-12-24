@@ -65,30 +65,36 @@
              
           [get-pattern-vars
       (lambda (pattern0)
-        (let loop ([pattern pattern0]
-                   [depth 0]
-                   [vars null])
+        (let loop ([pattern pattern0] [depth 0] [vars null])
           (cond
             [(stx-null? pattern)
              ; empty list
              vars]
             [(stx-pair? pattern)
              ; pair / list
-             (let* ([p (syntax-e pattern)]
-                    [head-pat (car p)]
-                    [tail-pat (if (syntax? (cdr p))
-                                  (cdr p)
-                                  (datum->syntax (cdr p)))]
-                    [ellipsis-next? (and (stx-pair? tail-pat)
-                                        (identifier? (stx-car tail-pat))
-                                        (free-identifier=? (stx-car tail-pat)
-                                                           (quote-syntax ...)))])
-               (if ellipsis-next?
-                   (let ([vars (loop head-pat (+ depth 1) vars)]
-                         [tail-pat (datum->syntax (stx-cdr tail-pat))])
-                     (loop tail-pat depth vars))
-                   (let ([vars (loop head-pat depth vars)])
-                     (loop tail-pat depth vars))))]
+             (define head-pat (stx-car pattern))
+             (define tail-pat
+                     (let ([tail (stx-cdr pattern)])
+                       (if (syntax? tail)
+                           tail
+                           (datum->syntax tail))))
+             (define ellipsis-next?
+                     (and (stx-pair? tail-pat)
+                          (let ([next (stx-car tail-pat)])
+                             (and (identifier? next)
+                                  (eq? (syntax-e next) '...)))))
+             (cond
+               [ellipsis-next?
+                (define vars (loop head-pat (+ depth 1) vars))
+                (define after-ellipsis
+                        (let ([tail (stx-cdr tail-pat)])
+                          (if (syntax? tail)
+                              tail
+                              (datum->syntax tail))))
+                (loop after-ellipsis depth vars)]
+               [else
+                (define vars (loop head-pat depth vars))
+                (loop tail-pat depth vars)])]
             [(and (identifier? pattern)
                   (free-identifier=? pattern (quote-syntax _)))
              ; wildcard
@@ -116,11 +122,11 @@
           (cond
             [(stx-pair? pattern)
              ; (non-empty) list / improper list
-             (define-values (before-ellipsis after-ellipsis ellipsis? tail?)
+             (define-values (before-ellipsis after-ellipsis ellipsis? prop?)
                (let loop ([pat pattern] [idx-be 0] [idx-ae 0] [ellipsis? #f])
                  (cond
                   [(stx-null? pat)
-                   (values idx-be idx-ae ellipsis? #f)]
+                   (values idx-be idx-ae ellipsis? #t)]
                   [(stx-pair? pat)
                    (cond
                      [(stx-...? (stx-car pat))
@@ -138,7 +144,9 @@
                      [else
                       (loop (stx-cdr pat) (+ idx-be 1) idx-ae ellipsis?)])]
                   [else
-                   (values idx-be idx-ae ellipsis? #t)])))
+                   (if ellipsis?
+                       (values idx-be (+ idx-ae 1) ellipsis? #f)
+                       (values (+ idx-be 1) idx-ae ellipsis? #f))])))
 
              ; case split based on existence and placement of the ellipsis
              (cond
@@ -146,12 +154,12 @@
                 ; no ellipsis / ellipsis at the end
                 (let loop ([pat pattern] [idx 0] [arg arg])
                   (cond
-                    [(= idx before-ellipsis)
+                    [(if prop?
+                         (= idx before-ellipsis)
+                         (= (+ idx 1) before-ellipsis))
                      ; end (tail) of list => 
                      ;  match on empty list (tail)
-                     (if tail?
-                         (gen-match/datum pat arg)
-                         (gen-match/datum (quote-syntax ()) arg))]
+                     (gen-match/datum (if prop? (quote-syntax ()) pat) arg)]
                     [else
                      (define head-pat (stx-car pat))
                      (define tail-pat
@@ -273,7 +281,33 @@
                          arg))]))]
                [else
                 ; ellipsis are not at the end
-                (error #f "unimplemented")])]
+                ;  just split into two lists:
+                ;    (i)  list terminating with ellipsis
+                ;    (ii) list after the ellipsis
+                (define-values (pre post _) (split-stx-list pattern after-ellipsis prop?))
+                (list
+                  (quote-syntax let-values)
+                  (list
+                    (list
+                      (list
+                        (quote-syntax pre)
+                        (quote-syntax post)
+                        (quote-syntax ok?))
+                      (list
+                        (quote-syntax split-stx-list)
+                        arg
+                        after-ellipsis
+                        prop?)))
+                  (list
+                    (quote-syntax if)
+                    (quote-syntax ok?)
+                    (list
+                      (quote-syntax append/#f)
+                      (gen-match/expr (datum->syntax pre)
+                                      (quote-syntax pre))
+                      (gen-match/expr (datum->syntax post)
+                                      (quote-syntax post)))
+                    #f))])]
             [else
              (gen-match/datum pattern arg)]))
 

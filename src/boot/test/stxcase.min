@@ -9,9 +9,9 @@
 (define (check-equal? d0 d1)
   (unless (equal? d0 d1)
     (display "[FAIL] expected ")
-    (write d0)
-    (display ", received ")
     (write d1)
+    (display ", received ")
+    (write d0)
     (newline)
     (set! num-failed (+ num-failed 1))))
 
@@ -48,10 +48,22 @@
     [(_ x) (identifier? #'x)  #'(quote good)]
     [_ #'(quote bad)]))
 
-; (define-syntax (macro-8 stx)
-;   (syntax-case stx ()
-;     [(_ a ... b) #''(a ... b)]))
+(define-syntax (macro-8 stx)
+  (syntax-case stx ()
+    [(_ a ... b) #''(b (a ...))]
+    [_ #''bad]))
 
+(define-syntax (macro-9 stx)
+  (syntax-case stx ()
+    [(_ a ... . b) #''(b (a ...))]
+    [_ #''bad]))
+
+(define-syntax (macro-10 stx)
+  (syntax-case stx ()
+    [(_ a ... b c . d) #''(b c (a ...) d)]
+    [_ #''bad]))
+
+(check-equal? (macro-1 2) 1)
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
 (check-equal? (macro-3 1 2) '(1 2))
@@ -66,6 +78,24 @@
 
 (check-equal? (macro-7 foo) 'good)
 (check-equal? (macro-7 (+ 1 2)) 'bad)
+
+(check-equal? (macro-8) 'bad)
+(check-equal? (macro-8 1) '(1 ()))
+(check-equal? (macro-8 1 2) '(2 (1)))
+(check-equal? (macro-8 1 2 3) '(3 (1 2)))
+
+(check-equal? (macro-9) '(() ()))
+(check-equal? (macro-9 . 1) '(1 ()))
+(check-equal? (macro-9 1) '(() (1)))
+(check-equal? (macro-9 1 2) '(() (1 2)))
+(check-equal? (macro-9 1 2 . 3) '(3 (1 2)))
+(check-equal? (macro-9 1 2 . (3 4)) '(() (1 2 3 4)))
+
+(check-equal? (macro-10 1) 'bad)
+(check-equal? (macro-10 1 2) '(1 2 () ()))
+(check-equal? (macro-10 1 2 3) '(2 3 (1) ()))
+(check-equal? (macro-10 1 2 3 4) '(3 4 (1 2) ()))
+(check-equal? (macro-10 1 2 3 4 . 5) '(3 4 (1 2) 5))
 
 ;; actual Scheme macros
 
