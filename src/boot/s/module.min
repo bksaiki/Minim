@@ -221,31 +221,31 @@
 
 ;; REPL with env
 (define ($repl xforms stx-env env)
-  (let loop ()
+  (let loop ([xforms xforms])
     ;; read
     (display "> ")
-    (define stx (read))
-    (cond [(eof-object? stx) (exit)])
+    (define expr (read))
+    (cond [(eof-object? expr) (exit)])
     ;; expand
-    (define stx* (expand stx xforms stx-env))
-    (define old-expander? (boot-expander?))
-    ;; evaluate and display
-    (call-with-values
-      (lambda ()
-        (let ([expr (syntax->datum stx*)])
-          (boot-expander? $module-boot-expander?)
-          (eval expr env)))
-      (lambda results
-        (boot-expander? old-expander?)
-        (let loop ([results results])
-          (cond
-            [(null? results) (void)]
-            [(void? (car results)) (loop (cdr results))]
-            [else
-             (writeln (car results))
-             (loop (cdr results))]))))
-    ;; loop
-    (loop)))
+    (let-values ([(expr* xforms*) (expand expr xforms stx-env)])
+      (define old-expander? (boot-expander?))
+      ;; evaluate and display
+      (call-with-values
+        (lambda ()
+          (let ([expr (syntax->datum expr*)])
+            (boot-expander? $module-boot-expander?)
+            (eval expr env)))
+        (lambda results
+          (boot-expander? old-expander?)
+          (let loop ([results results])
+            (cond
+              [(null? results) (void)]
+              [(void? (car results)) (loop (cdr results))]
+              [else
+              (writeln (car results))
+              (loop (cdr results))]))))
+      ;; loop
+      (loop xforms*))))
 
 (define ($load-or-import name print-handler result-handler)
   ;; resolve path

@@ -21,142 +21,7 @@
 (define $expander-boot-expander? #f)
 (define $expander-pattern-vars null)
 
-;; Expand top-level form
-(define (expand expr xforms env)
-  ;; looks up a transform returning #f if none is found
-  (define (lookup-or-false key)
-    (let loop ([xforms xforms])
-      (cond [(null? xforms) #f]
-            [(eq? (caar xforms) key) (cdar xforms)]
-            [else (loop (cdr xforms))])))
-
-  ;; expression-level expander
-  (define (expand-expr expr xforms)
-    (define expr* (syntax-e expr))
-    (set! $expander-pattern-vars
-          (filter (lambda (e) (pattern-variable? (cdr e))) xforms))
-    (cond
-      [(null? expr*)
-        expr]
-      [(pair? expr*)
-       (define first (syntax-e (car expr*)))
-       (cond
-         [(symbol? first)
-          (define maybe-xform (lookup-or-false first))
-          (define maybe-args (cdr expr*))
-          (datum->syntax
-            (cond
-              [(and maybe-xform (procedure? maybe-xform))
-               (define old-expander? (boot-expander?))
-               (define expanded
-                 (call-with-values
-                   (lambda ()
-                    ;  (display "< ") (writeln expr)
-                     (boot-expander? $expander-boot-expander?)
-                     (maybe-xform expr))
-                   (lambda results
-                     (boot-expander? old-expander?)
-                     (if (and (= (length results) 1) (syntax? (car results)))
-                         (car results)
-                         (error 'expander
-                                "transformer produced something other than syntax"
-                                (car results))))))
-              ;  (display "> ") (writeln expanded)
-               (define expanded* (expand-expr expanded xforms))
-              ;  (display "> ") (writeln expanded*)
-               expanded*]
-              [(eq? first 'let-syntaxes)
-               (define (panic!) (syntax-error 'let-syntaxes "bad syntax" expr))
-               (define rib maybe-args)
-               (define maybe-bindings (syntax-e (car rib)))
-               (cond
-                 [(list? maybe-bindings)
-                  (let loop ([bindings maybe-bindings])
-                    (cond
-                      [(null? bindings)
-                       (define exprs (cdr rib))
-                       (if (list? exprs)
-                           (cons (quote-syntax let-values)
-                             (cons (quote-syntax ())
-                               (map (lambda (e) (expand-expr e xforms)) exprs)))
-                           (syntax-error 'let-syntaxes "bad syntax" expr))]
-                      [else
-                       (define maybe-binding (syntax-e (car bindings)))
-                       (cond
-                         [(and (list? maybe-binding) (= (length maybe-binding) 2))
-                          (define ids (syntax-e (car maybe-binding)))
-                          (define val (cadr maybe-binding))
-                          (cond
-                            [(list? ids)
-                             (define xform-names
-                               (let loop ([names ids] [acc '()])
-                               (if (null? names)
-                                   (reverse acc)
-                                   (loop (cdr names)
-                                         (cons (syntax-e (car names)) acc)))))
-                             (define expr (syntax->datum val))
-                             (define old-expander? (boot-expander?))
-                             (call-with-values
-                               (lambda ()
-                                 (boot-expander? $expander-boot-expander?)
-                                 (eval expr env))
-                               (lambda results
-                                 (boot-expander? old-expander?)
-                                 (if (not (= (length xform-names) (length results)))
-                                     (error 'let-syntaxes "result arity mismatch" "expected"
-                                            (length xform-names) "received" (length results))
-                                     (let loop ([xform-names xform-names] [results results])
-                                       (cond
-                                         [(null? xform-names)
-                                          (void)]
-                                         [else
-                                          (let ([xform-name (car xform-names)]
-                                                [xform (car results)])
-                                            (cond
-                                              [(or (procedure? xform) (pattern-variable? xform))
-                                               (define binding (cons xform-name xform))
-                                               (set! xforms (cons binding xforms))
-                                               (loop (cdr xform-names) (cdr results))]
-                                              [else
-                                               (error 'let-syntaxes
-                                                      "expected a procedure, received"
-                                                      xform)]))])))))
-                             (loop (cdr bindings))]
-                            [else
-                             (panic!)])]
-                         [else (panic!)])]))]
-                 [else (panic!)])]
-              [(or (eq? first 'quote-syntax)
-                   (eq? first 'quote))
-               expr*]
-              [else
-               (cons
-                 (car expr*)
-                 (let loop ([args maybe-args])
-                   (cond
-                     [(null? args) '()]
-                     [(pair? args) (cons (expand-expr (car args) xforms) (loop (cdr args)))]
-                     [else (expand-expr args xforms)])))]))]
-         [else
-          (datum->syntax
-            (let loop ([args expr*])
-              (cond
-                [(null? args) '()]
-                [(pair? args) (cons (expand-expr (car args) xforms) (loop (cdr args)))]
-                [else (expand-expr args xforms)])))])]
-      [(symbol? expr*)
-       (define maybe-xform (lookup-or-false expr*))
-       (datum->syntax
-         (if maybe-xform
-             (expand-expr (maybe-xform expr) xforms)
-             expr))]
-      [else
-       expr]))
-
-  (define expanded (expand-expr expr xforms))
-  (set! $expander-pattern-vars null)
-  expanded) 
-
+;; Expands a module (List of Expr, List of Xform, Env)
 (define (expand/module exprs xforms env)
   ; checks if an expression is a syntactic form:
   ;  <expr> = (<name> . <rest>)
@@ -531,3 +396,9 @@
 
   ; invoke the module-level expander
   (expand/module exprs xforms))
+
+;; Expands a single expression
+(define (expand expr xforms env)
+  (define-values (exprs* xforms*) (expand/module (list expr) xforms env))
+  (cond [(null? exprs*) (values (quote-syntax (void)) xforms*)]
+        [else (values (car exprs*) xforms*)]))
