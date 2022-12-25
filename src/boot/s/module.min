@@ -130,66 +130,13 @@
 
   ;; expand phase
   (define ($expand exprs)
-    ;; testing
-    (define-values (test-exprs test-xforms)
-            (expand/module exprs imported-xforms
-                           ($base-stx-env ($eval-environment $base-env imported))))
-    ; (writeln (list path test-exprs test-xforms))
-    ;; setup environment
+    ; setup environment
     (set! stx-env ($base-stx-env ($eval-environment $base-env imported)))
-    ;; apply transformers
-    (set! module-xforms imported-xforms)
-    (let loop ([exprs exprs] [acc '()])
-      (cond
-        [(null? exprs)
-         (reverse acc)]
-        [else
-         (define expanded (expand (car exprs) module-xforms stx-env))
-         (define expanded* (syntax-e expanded))
-         (cond
-           [(and (pair? expanded*) (eq? (syntax-e (car expanded*)) 'define-syntaxes))
-            (define (panic!) (syntax-error 'define-syntaxes "bad syntax" expanded))
-            (define rib (cdr expanded*))
-            (cond
-              [(and (pair? rib) (list? (syntax-e (car rib))))
-               (define xform-names
-                 (let loop ([names (syntax-e (car rib))] [acc '()])
-                   (if (null? names)
-                       (reverse acc)
-                       (loop (cdr names) (cons (syntax-e (car names)) acc)))))
-               (define rib (cdr rib))
-               (cond
-                 [(and (pair? rib) (null? (cdr rib)))
-                  (define expr (syntax->datum (car rib)))
-                  (define old-expander? (boot-expander?))
-                  (call-with-values
-                     (lambda ()
-                       (boot-expander? $module-boot-expander?)
-                       (eval expr stx-env))
-                     (lambda results
-                       (boot-expander? old-expander?)
-                       (if (not (= (length xform-names) (length results)))
-                           (error 'define-syntaxes "result arity mismatch" "expected"
-                                  (length xform-names) "received" (length results))
-                           (let loop ([xform-names xform-names] [results results])
-                             (if (null? xform-names)
-                                 (void)
-                                 (let ([xform-name (car xform-names)]
-                                       [xform (car results)])
-                                   (cond
-                                     [(procedure? xform)
-                                      (define binding (cons xform-name xform))
-                                      (set! module-xforms (cons binding module-xforms))
-                                      (loop (cdr xform-names) (cdr results))]
-                                     [else
-                                      (error 'define-syntaxes "expected a procedure? received" xform)])))))))]
-                 [else
-                  (panic!)])]
-               [else
-                (panic!)])
-            (loop (cdr exprs) acc)]
-           [else
-            (loop (cdr exprs) (cons expanded acc))])])))
+    ; testing
+    (define-values (exprs* xforms*) (expand/module exprs imported-xforms stx-env))
+    ; update
+    (set! module-xforms xforms*)
+    exprs*)
 
   ;; apply non-eval phases
   (define raw-exprs ($read))

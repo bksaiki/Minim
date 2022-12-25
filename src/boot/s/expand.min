@@ -195,16 +195,43 @@
   ; assumes form is `(<name> . <rest>)
   (define (check-define-syntaxes/values-form! name form)
     (define rib (stx-cdr form))
-    (let ([ids (syntax->list (stx-car rib))]
-          [rib (stx-cdr rib)])
-      (if (and (list? ids) (andmap identifier? ids))
-          (if (stx-null? rib)
-              (syntax-error name "expected an expression after identifiers" form)
-              (let ([rib (stx-cdr rib)])
-                (if (stx-null? rib)
-                    (void)
-                    (syntax-error name "too many expressions" form))))
-          (syntax-error name "not identifiers" form ids))))
+    (if (stx-null? rib)
+        (syntax-error name "bad syntax" form)
+        (let ([ids (syntax->list (stx-car rib))]
+              [rib (stx-cdr rib)])
+          (if (and (list? ids) (andmap identifier? ids))
+              (if (stx-null? rib)
+                  (syntax-error name "expected an expression after identifiers" form)
+                  (let ([rib (stx-cdr rib)])
+                    (if (stx-null? rib)
+                        (void)
+                        (syntax-error name "too many expressions" form))))
+              (syntax-error name "not identifiers" form ids)))))
+
+  ; checks if a `let-syntaxes` / `let-values` form is valid
+  ; assumes form is `(<name> . <rest>)
+  (define (check-let-syntaxes/values-form! name form)
+    (define rib (stx-cdr form))
+    (if (stx-null? rib)
+        (syntax-error name "bad syntax" form)
+        (let ([bindings (syntax->list (stx-car rib))]
+              [rib (stx-cdr rib)])
+          (if (null? rib)
+              (syntax-error name "missing body" form)
+              (if (or (list? rib) (and (syntax? rib) (list? (syntax->list rib))))
+                  (if (list? bindings)
+                      (let loop ([bindings bindings])
+                        (cond [(null? bindings) (void)]
+                              [else
+                              (let ([bind (syntax->list (car bindings))])
+                                (if (not (and (list? bind) (= (length bind) 2)))
+                                    (syntax-error name "not identifiers and expression" form bind)
+                                    (let ([ids (syntax->list (car bind))])
+                                      (if (and (list? ids) (andmap identifier? ids))
+                                          (loop (cdr bindings))
+                                          (syntax-error name "not identifiers" form ids)))))]))
+                      (syntax-error #f "expected a sequence of expressions after the bindings" form))
+                  (syntax-error name "not a sequence of bindings" form bindings))))))
 
   ; checks if a `lambda` form is valid
   ; assues form is `(lambda . <rest>)`
@@ -256,10 +283,10 @@
 
   ; checks for a duplicate identifier, raising an exception if one is encountered
   (define (check-duplicate-identifier! form name ids new-ids)
-    (define dup (duplicate-identifier ids new-ids))
-    (if dup
-        (syntax-error name "duplicate identifier" form dup)
-        (void)))
+    (let ([dup (duplicate-identifier ids new-ids)])
+      (if dup
+          (syntax-error name "duplicate identifier" form dup)
+          (void))))
 
   ; returns the identifiers of a `define-syntaxes` / `define-values` form
   (define (define-syntaxes/values-identifiers form)
@@ -302,6 +329,7 @@
   ; expression context
   ; Expr, List of Xform -> Expr
   (define (expand/expr expr xforms)
+    (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cdr e))) xforms))
     (let loop ([expr expr])
       (cond
         [(define-values-form? expr)
@@ -314,6 +342,59 @@
                  (car form)
                  (cadr form)
                  (loop (caddr form))))))]
+        [(let-syntaxes-form? expr)
+         (check-let-syntaxes/values-form! 'let-syntaxes expr)
+         (define form (syntax->list expr))
+         (let rec ([bindings (syntax->list (cadr form))] [let-ids null] [xforms xforms])
+           (cond
+             [(null? bindings)
+              (expand/expr  
+                (datum->syntax
+                  (cons (quote-syntax let-values)
+                    (cons (list)
+                      (cddr form))))
+                xforms)]
+             [else
+              (define binding (syntax->list (car bindings)))
+              (define binding-ids (syntax->datum (car binding)))
+              (check-duplicate-identifier! expr 'let-syntaxes let-ids binding-ids)
+              (define results
+                (let ([rhs (loop (cadr binding))])
+                  (eval/values (syntax->datum rhs) env $module-boot-expander?)))
+              (if (= (length binding-ids) (length results))
+                  (let bind-xforms ([ids binding-ids] [results results] [xforms xforms])
+                    (cond
+                      [(null? ids)
+                       (rec (cdr bindings) (append binding-ids let-ids) xforms)]
+                      [else
+                       (define id (car ids))
+                       (define xform (car results))
+                       (cond
+                         [(or (procedure? xform) (pattern-variable? xform))
+                          (define binding (cons id xform))
+                          (bind-xforms (cdr ids) (cdr results) (cons binding xforms))]
+                         [else
+                          (error 'let-syntaxes "expected a procedure? received" xform)])]))
+                  (error 'let-syntaxes "result arity mismatch"
+                         "expected" (length ids)
+                         "received" (length results)))]))]
+        [(or (let-values-form? expr) (letrec-values-form? expr))
+         (define name (if (let-values-form? expr) 'let-values 'letrec-values))
+         (check-let-syntaxes/values-form! name expr)
+         (define form (syntax->list expr))
+         (datum->syntax
+           (cons (car form)
+             (cons
+               (let rec ([bindings (syntax->list (cadr form))] [let-ids null])
+                 (cond
+                   [(null? bindings) null]
+                   [else
+                    (define binding (syntax->list (car bindings)))
+                    (define ids (syntax->datum (car binding)))
+                    (check-duplicate-identifier! expr name let-ids ids)
+                    (cons (list (car binding) (loop (cadr binding)))
+                          (rec (cdr bindings) (append ids let-ids)))]))
+               (map loop (cddr form)))))]
         [(lambda-form? expr)
          (check-lambda-form! expr)
          (define head (stx-car expr))
@@ -346,27 +427,21 @@
         [(stx-pair? expr)
          (define head (stx-car expr))
          (define maybe-xform (lookup-xform head xforms))
-         (cond
-           [maybe-xform
-            (loop (eval/xform maybe-xform expr (syntax-e head) $expander-boot-expander?))]
-           [else
-            (datum->syntax
-              (cons head
-                    (let rec ([tail (stx-cdr expr)])
-                      (cond [(null? tail) null]
-                            [(pair? tail) (cons (loop (car tail)) (rec (cdr tail)))]
-                            [else (loop tail)]))))])]
+         (if maybe-xform
+            (loop (eval/xform maybe-xform expr (syntax-e head) $module-boot-expander?))
+            (datum->syntax (map loop (syntax->list expr))))]
         [(identifier? expr)
-         expr]
+         (define maybe-xform (lookup-xform expr xforms))
+         (if maybe-xform
+             (loop (eval/xform maybe-xform expr (syntax-e head) $module-boot-expander?))
+             expr)]
         [(let ([datum (syntax-e expr)])
            (or (boolean? datum)
                (number? datum)
                (string? datum)))
          expr]
         [else
-          (writeln expr)
-        ;  (syntax-error #f "bad syntax" expr)
-         (expand expr xforms env)])))
+         (syntax-error #f "bad syntax" expr)])))
 
   ; module context
   ;  `define-values` => defers expansion until all expressions have been processed
@@ -387,18 +462,21 @@
                (check-define-syntaxes/values-form! 'define-syntaxes expr)
                (let ([ids (define-syntaxes/values-identifiers expr)])
                  (check-duplicate-identifier! expr 'define-syntaxes xform-ids ids)
-                 (values ids (syntax->datum (define-syntaxes/values-expr expr))))))
-           (define results (eval/values rhs env $module-boot-expander?))
+                 (values ids (define-syntaxes/values-expr expr)))))
+           (define results
+             (let ([rhs* (expand/expr rhs xforms)])
+               (eval/values (syntax->datum rhs*) env $module-boot-expander?)))
            (if (= (length ids) (length results))
                (let bind-xforms ([ids ids] [results results] [xforms xforms] [xform-ids xform-ids])
                  (cond
                    [(null? ids)
-                    (loop (cdr exprs) (cdr xforms) value-ids xform-ids)]
+                    (loop (cdr exprs) xforms value-ids xform-ids)]
                    [else
-                    (define-values (id xform) (values (car ids) (car results)))
+                    (define id (car ids))
+                    (define xform (car results))
                     (cond
                       [(procedure? xform)
-                       (define binding (cons ids xform))
+                       (define binding (cons id xform))
                        (bind-xforms (cdr ids) (cdr results) (cons binding xforms) (cons id xform-ids))]
                       [else
                        (error 'define-syntaxes "expected a procedure? received" xform)])]))
@@ -414,7 +492,7 @@
           [(begin-form? (car exprs))
            (check-begin-form! (car exprs))
            (loop (append (cdr (syntax->list (car exprs))) (cdr exprs)) xforms value-ids xform-ids)]
-          [(stx-pair? (car exprs))
+          [(and (stx-pair? (car exprs)) (identifier? (stx-car (car exprs))))
            (define head (stx-car (car exprs)))
            (define maybe-xform (lookup-xform head xforms))
            (cond
@@ -422,11 +500,13 @@
               (define result (eval/xform maybe-xform (car exprs) (syntax-e head) $expander-boot-expander?))
               (loop (cons result (cdr exprs)) xforms value-ids xform-ids)]
              [else
+              (define expr* (expand/expr (car exprs) xforms))
               (define-values (exprs* xforms*) (loop (cdr exprs) xforms value-ids xform-ids))
-              (values (cons (expand/expr (car exprs) xforms) exprs*) xforms*)])]
+              (values (cons expr* exprs*) xforms*)])]
           [else
+           (define expr* (expand/expr (car exprs) xforms))
            (define-values (exprs* xforms*) (loop (cdr exprs) xforms value-ids xform-ids))
-           (values (cons (expand/expr (car exprs) xforms) exprs*) xforms*)])))
+           (values (cons expr* exprs*) xforms*)])))
     
     ; Any `define-values` form is deferred
     ; List of Expr, List of Xform -> List of Expr
