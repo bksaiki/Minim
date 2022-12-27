@@ -3,6 +3,7 @@
 ;;;
 
 (import "private/and-or.min"
+        "private/case.min"
         "private/cond.min"
         "private/define.min"
         "private/let.min"

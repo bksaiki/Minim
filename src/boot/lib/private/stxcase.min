@@ -215,7 +215,7 @@
                                         (quote-syntax tmp)
                                         (list
                                           (quote-syntax apply)
-                                          (quote-syntax map)
+                                          (quote-syntax map/#f)
                                           (quote-syntax list)
                                           (quote-syntax tmp)))
                                       #f)))

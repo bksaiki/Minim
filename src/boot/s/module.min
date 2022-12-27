@@ -26,13 +26,12 @@
                                (if (null? assoc)
                                    #f
                                    (if (eq? (caar assoc) k)
-                                       (cdar assoc)
+                                       (cadar assoc)
                                        (loop (cdr assoc)))))])
               (loop $expander-pattern-vars))
             (error 'get-pattern-variable
                    "expected symbol?" k))))
     env))
-
 
 ;; Module caches
 ;;  name -> (exporting xforms, exporting values)
@@ -87,8 +86,8 @@
                     (import path)
                     (define from-module (assoc path $module-table))
                     (set! imported-modules (cons path imported-modules))
-                    (set! imported-xforms (append (car from-module) imported-xforms))
-                    (set! imported (append (cdr from-module) imported))
+                    (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
+                    (set! imported (append (cdr from-module) imported)) ; TODO: dedup
                     (loop2 (cdr imports))]
                    [else
                     (error 'import "bad syntax")])]
