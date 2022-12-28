@@ -238,45 +238,63 @@
                               ; variable =>
                               ;  bind one variable
                               (list
-                                (quote-syntax cons/#f)
-                                  (list
-                                    (quote-syntax stx-car)
-                                    (quote-syntax e))
-                                  (loop tail-pat (+ idx 1)
-                                        (datum->syntax
-                                          (list
-                                            (quote-syntax stx-cdr)
-                                            (quote-syntax e)))))]
+                                (quote-syntax if)
+                                (list
+                                  (quote-syntax stx-pair?)
+                                  (quote-syntax e))
+                                (list
+                                  (quote-syntax cons/#f)
+                                    (list
+                                      (quote-syntax stx-car)
+                                      (quote-syntax e))
+                                    (loop tail-pat (+ idx 1)
+                                          (datum->syntax
+                                            (list
+                                              (quote-syntax stx-cdr)
+                                              (quote-syntax e)))))
+                                #f)]
                              [(stx-pair? head-pat)
                               ; subpattern =>
                               ;  recurse and append
                               (list
-                                (quote-syntax append/#f)
-                                (gen-match/expr head-pat
-                                                (datum->syntax
-                                                  (list
-                                                    (quote-syntax stx-car)
-                                                    (quote-syntax e))))
-                                (loop tail-pat (+ idx 1)
-                                      (datum->syntax
-                                        (list
-                                          (quote-syntax stx-cdr)
-                                          (quote-syntax e)))))]
+                                (quote-syntax if)
+                                (list
+                                  (quote-syntax stx-pair?)
+                                  (quote-syntax e))
+                                (list
+                                  (quote-syntax append/#f)
+                                  (gen-match/expr head-pat
+                                                  (datum->syntax
+                                                    (list
+                                                      (quote-syntax stx-car)
+                                                      (quote-syntax e))))
+                                  (loop tail-pat (+ idx 1)
+                                        (datum->syntax
+                                          (list
+                                            (quote-syntax stx-cdr)
+                                            (quote-syntax e)))))
+                                #f)]
                              [else
                               ; datum =>
                               ;  just check if it matches
                               (list
                                 (quote-syntax if)
-                                (gen-match/expr head-pat
-                                                (datum->syntax
-                                                  (list
-                                                    (quote-syntax stx-car)
-                                                    (quote-syntax e))))
-                                (loop tail-pat (+ idx 1)
-                                      (datum->syntax
-                                        (list
-                                          (quote-syntax stx-cdr)
-                                          (quote-syntax e))))
+                                (list
+                                  (quote-syntax stx-pair?)
+                                  (quote-syntax e))
+                                (list
+                                  (quote-syntax if)
+                                  (gen-match/expr head-pat
+                                                  (datum->syntax
+                                                    (list
+                                                      (quote-syntax stx-car)
+                                                      (quote-syntax e))))
+                                  (loop tail-pat (+ idx 1)
+                                        (datum->syntax
+                                          (list
+                                            (quote-syntax stx-cdr)
+                                            (quote-syntax e))))
+                                  #f)
                                 #f)]))
                          arg))]))]
                [else
