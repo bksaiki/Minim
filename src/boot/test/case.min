@@ -25,7 +25,7 @@
 
 ; equal datum
 (check-equal? (case 1 [(1) #t] [else #f]) #t)
-; (check-equal? (case null [(null) #t] [else #f]) #t)
+(check-equal? (case null [(()) #t] [else #f]) #t)
 
 ; no keys
 (check-equal? (case 1 [() 1] [else #t]) #t)
