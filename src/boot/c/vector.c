@@ -112,15 +112,31 @@ minim_object *vector_set_proc(minim_object *args) {
     
     v = minim_car(args);
     if (!minim_is_vector(v))
-        bad_type_exn("vector-ref", "vector?", v);
+        bad_type_exn("vector-set!", "vector?", v);
 
     idx = minim_cadr(args);
     if (!minim_is_fixnum(idx) || minim_fixnum(idx) < 0)
-        bad_type_exn("vector-ref", "non-negative-integer?", idx);
+        bad_type_exn("vector-set!", "non-negative-integer?", idx);
     if (minim_fixnum(idx) >= minim_vector_len(v))
-        vector_out_of_bounds_exn("vector-ref", v, minim_fixnum(idx));
+        vector_out_of_bounds_exn("vector-set!", v, minim_fixnum(idx));
 
     minim_vector_ref(v, minim_fixnum(idx)) = minim_car(minim_cddr(args));
+    return minim_void;
+}
+
+minim_object *vector_fill_proc(minim_object *args) {
+    // (-> vector any void)
+    minim_object *v, *o;
+    long i;
+
+    v = minim_car(args);
+    if (!minim_is_vector(v))
+        bad_type_exn("vector-fill!", "vector?", v);
+
+    o = minim_cadr(args);
+    for (i = 0; i < minim_vector_len(v); ++i)
+        minim_vector_ref(v, i) = o;
+
     return minim_void;
 }
 

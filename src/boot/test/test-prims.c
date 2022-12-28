@@ -363,6 +363,10 @@ int test_vector() {
     check_equal("(begin (define v #(1 2 3)) (vector-set! v 1 0) v)", "'#(1 0 3)");
     check_equal("(begin (define v #(1 2 3)) (vector-set! v 2 0) v)", "'#(1 2 0)");
 
+    check_equal("(begin (define v #()) (vector-fill! v 0) v)", "'#()");
+    check_equal("(begin (define v #(1)) (vector-fill! v 0) v)", "'#(0)");
+    check_equal("(begin (define v #(1 2 3)) (vector-fill! v 0) v)", "'#(0 0 0)");
+
     return passed;
 }
 

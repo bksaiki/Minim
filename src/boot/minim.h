@@ -473,6 +473,7 @@ DEFINE_PRIM_PROC(vector);
 DEFINE_PRIM_PROC(vector_length);
 DEFINE_PRIM_PROC(vector_ref);
 DEFINE_PRIM_PROC(vector_set);
+DEFINE_PRIM_PROC(vector_fill);
 DEFINE_PRIM_PROC(vector_to_list);
 DEFINE_PRIM_PROC(list_to_vector);
 // numbers
