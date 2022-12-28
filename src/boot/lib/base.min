@@ -23,9 +23,3 @@
         (all "private/stxcase-extra.min")
         (all "private/template.min")
         (all "private/when-unless.min"))
-
-
-(begin
-  (define x 1)
-  (define y 2)
-  (+ x y))
