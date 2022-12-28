@@ -5,6 +5,7 @@
 #include "../minim.h"
 
 minim_object *minim_null;
+minim_object *minim_empty_vec;
 minim_object *minim_true;
 minim_object *minim_false;
 minim_object *minim_eof;

@@ -420,6 +420,20 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         write_pair(out, ((minim_pair_object *) o), 1, display);
         fputc(')', out);
         break;
+    case MINIM_VECTOR_TYPE:
+        if (!quote) fputc('\'', out);
+        if (minim_vector_len(o) == 0) {
+            fputs("#()", out);
+        } else {
+            fputs("#(", out);
+            write_object2(out, minim_vector_ref(o, 0), 1, display);
+            for (long i = 1; i < minim_vector_len(o); ++i) {
+                fputc(' ', out);
+                write_object2(out, minim_vector_ref(o, i), 1, display);
+            }
+            fputc(')', out);
+        }
+        break;
     case MINIM_PRIM_PROC_TYPE:
         fprintf(out, "#<procedure:%s>", minim_prim_proc_name(o));
         break;

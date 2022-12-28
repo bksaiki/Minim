@@ -63,12 +63,13 @@ typedef enum {
     MINIM_CHAR_TYPE,
     MINIM_STRING_TYPE,
     MINIM_PAIR_TYPE,
+    MINIM_VECTOR_TYPE,
     MINIM_PRIM_PROC_TYPE,
     MINIM_CLOSURE_PROC_TYPE,
     MINIM_PORT_TYPE,
-    MINIM_SYNTAX_TYPE,
 
     /* Composite types */
+    MINIM_SYNTAX_TYPE,
     MINIM_VALUES_TYPE,
 
     /* Transform types */
@@ -112,6 +113,12 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
+    minim_object **arr;
+    long len;
+} minim_vector_object;
+
+typedef struct {
+    minim_object_type type;
     struct proc_arity arity;
     minim_object *(*fn)(minim_object *args);
     char *name;
@@ -147,6 +154,7 @@ typedef struct {
 // Special objects
 
 extern minim_object *minim_null;
+extern minim_object *minim_empty_vec;
 extern minim_object *minim_true;
 extern minim_object *minim_false;
 extern minim_object *minim_eof;
@@ -181,6 +189,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_string(x)          (minim_same_type(x, MINIM_STRING_TYPE))
 #define minim_is_char(x)            (minim_same_type(x, MINIM_CHAR_TYPE))
 #define minim_is_pair(x)            (minim_same_type(x, MINIM_PAIR_TYPE))
+#define minim_is_vector(x)          (minim_same_type(x, MINIM_VECTOR_TYPE))
 #define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
 #define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
@@ -188,11 +197,12 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
 #define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
 
-#define minim_is_null(x)    ((x) == minim_null)
-#define minim_is_true(x)    ((x) == minim_true)
-#define minim_is_false(x)   ((x) == minim_false)
-#define minim_is_eof(x)     ((x) == minim_eof)
-#define minim_is_void(x)    ((x) == minim_void)
+#define minim_is_null(x)        ((x) == minim_null)
+#define minim_is_empty_vec(x)   ((x) == minim_empty_vec)
+#define minim_is_true(x)        ((x) == minim_true)
+#define minim_is_false(x)       ((x) == minim_false)
+#define minim_is_eof(x)         ((x) == minim_eof)
+#define minim_is_void(x)        ((x) == minim_void)
 
 // Flags
 
@@ -207,6 +217,9 @@ extern minim_object *quote_syntax_symbol;
 #define minim_cadr(x)       (minim_car(minim_cdr(x)))
 #define minim_cdar(x)       (minim_cdr(minim_car(x)))
 #define minim_cddr(x)       (minim_cdr(minim_cdr(x)))
+
+#define minim_vector_len(x)     (((minim_vector_object *) (x))->len)
+#define minim_vector_ref(x, i)  (((minim_vector_object *) (x))->arr[i])
 
 #define minim_symbol(x)         (((minim_symbol_object *) (x))->value)
 #define minim_fixnum(x)         (((minim_fixnum_object *) (x))->value)
@@ -257,6 +270,7 @@ minim_object *make_symbol(const char *s);
 minim_object *make_string(const char *s);
 minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
+minim_object *make_vector(long len, minim_object *init);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
 minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
@@ -451,6 +465,10 @@ DEFINE_PRIM_PROC(for_each);
 DEFINE_PRIM_PROC(map);
 DEFINE_PRIM_PROC(andmap);
 DEFINE_PRIM_PROC(ormap);
+// vectors
+DEFINE_PRIM_PROC(is_vector);
+DEFINE_PRIM_PROC(make_vector);
+DEFINE_PRIM_PROC(vector);
 // numbers
 DEFINE_PRIM_PROC(is_fixnum);
 DEFINE_PRIM_PROC(add);

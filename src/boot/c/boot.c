@@ -118,6 +118,10 @@ void populate_env(minim_object *env) {
     add_procedure("andmap", andmap_proc, 2, 2);
     add_procedure("ormap", ormap_proc, 2, 2);
 
+    add_procedure("vector?", is_vector_proc, 1, 1);
+    add_procedure("make-vector", make_vector_proc, 1, 2);
+    add_procedure("vector", vector_proc, 0, ARG_MAX);
+
     add_procedure("+", add_proc, 0, ARG_MAX);
     add_procedure("-", sub_proc, 1, ARG_MAX);
     add_procedure("*", mul_proc, 0, ARG_MAX);
@@ -205,6 +209,7 @@ void minim_boot_init() {
     globals->current_thread = GC_alloc(sizeof(minim_thread));
 
     minim_null = GC_alloc(sizeof(minim_object));
+    minim_empty_vec = make_vector(0, NULL);
     minim_true = GC_alloc(sizeof(minim_object));
     minim_false = GC_alloc(sizeof(minim_object));
     minim_eof = GC_alloc(sizeof(minim_object));
