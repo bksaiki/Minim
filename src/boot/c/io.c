@@ -166,6 +166,33 @@ static minim_object *read_pair(FILE *in, char open_paren) {
     }
 }
 
+static minim_object *read_vector(FILE *in) {
+    minim_object *v, *vn, *e;
+    int c;
+
+    v = minim_empty_vec;
+    while (1) {
+        skip_whitespace(in);
+        c = peek_char(in);
+        if (c == ')') {
+            read_char(in);
+            break;
+        }
+
+        e = read_object(in);
+        if (v == minim_empty_vec) {
+            v = make_vector(1, e);
+        } else {
+            vn = make_vector(minim_vector_len(v) + 1, NULL);
+            memcpy(minim_vector_arr(vn), minim_vector_arr(v), minim_vector_len(v) * sizeof(minim_vector_object*));
+            minim_vector_ref(vn, minim_vector_len(v)) = e;
+            v = vn;
+        }
+    }
+
+    return v;
+}
+
 minim_object *read_object(FILE *in) {
     char buffer[SYMBOL_MAX_LEN];
     long num, i, block_level;
@@ -195,9 +222,13 @@ loop:
         case '\'':
             // quote
             return make_pair(intern("quote-syntax"), make_pair(read_object(in), minim_null));
+        case '(':
+            // vector
+            return read_vector(in);
         case ';':
             // datum comment
             skip_whitespace(in);
+            c = peek_char(in);
             assert_not_eof(c);
             read_object(in);        // throw away
             goto loop;

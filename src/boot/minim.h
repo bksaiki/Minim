@@ -219,6 +219,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_cddr(x)       (minim_cdr(minim_cdr(x)))
 
 #define minim_vector_len(x)     (((minim_vector_object *) (x))->len)
+#define minim_vector_arr(x)     (((minim_vector_object *) (x))->arr)
 #define minim_vector_ref(x, i)  (((minim_vector_object *) (x))->arr[i])
 
 #define minim_symbol(x)         (((minim_symbol_object *) (x))->value)

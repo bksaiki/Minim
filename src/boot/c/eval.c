@@ -630,10 +630,12 @@ minim_object *eval_expr(minim_object *expr, minim_object *env) {
 
 loop:
 
-    if (minim_is_true(expr) || minim_is_false(expr) ||
+    if (minim_is_true(expr) ||
+        minim_is_false(expr) ||
         minim_is_fixnum(expr) ||
         minim_is_char(expr) ||
-        minim_is_string(expr)) {
+        minim_is_string(expr) ||
+        minim_is_vector(expr)) {
         // self-evaluating
         return expr;
     } else if (minim_is_symbol(expr)) {
