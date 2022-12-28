@@ -121,6 +121,9 @@ void populate_env(minim_object *env) {
     add_procedure("vector?", is_vector_proc, 1, 1);
     add_procedure("make-vector", make_vector_proc, 1, 2);
     add_procedure("vector", vector_proc, 0, ARG_MAX);
+    add_procedure("vector-length", vector_length_proc, 1, 1);
+    add_procedure("vector-ref", vector_ref_proc, 2, 2);
+    add_procedure("vector-set!", vector_set_proc, 3, 3);
 
     add_procedure("+", add_proc, 0, ARG_MAX);
     add_procedure("-", sub_proc, 1, ARG_MAX);

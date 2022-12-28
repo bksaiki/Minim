@@ -470,6 +470,9 @@ DEFINE_PRIM_PROC(ormap);
 DEFINE_PRIM_PROC(is_vector);
 DEFINE_PRIM_PROC(make_vector);
 DEFINE_PRIM_PROC(vector);
+DEFINE_PRIM_PROC(vector_length);
+DEFINE_PRIM_PROC(vector_ref);
+DEFINE_PRIM_PROC(vector_set);
 // numbers
 DEFINE_PRIM_PROC(is_fixnum);
 DEFINE_PRIM_PROC(add);

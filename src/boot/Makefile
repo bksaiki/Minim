@@ -36,8 +36,10 @@ boot: $(CONFIG) $(OBJS)
 profile:
 	$(MAKE) CFLAGS="$(CFLAGS) -pg" boot
 
-test: $(CONFIG) $(BUILD_DIR)/test-prims;
+unit: $(CONFIG) $(BUILD_DIR)/test-prims
 	$(BUILD_DIR)/test-prims
+
+test: unit
 	$(MINIM) $(TEST_DIR)/case-lambda.min
 	$(MINIM) $(TEST_DIR)/case.min
 	$(MINIM) $(TEST_DIR)/stxcase.min

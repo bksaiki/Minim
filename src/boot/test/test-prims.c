@@ -105,6 +105,9 @@ int test_simple_eval() {
     no_check("1");
     no_check("'a");
     no_check("#\\a");
+    no_check("#()");
+    no_check("#(1)");
+    no_check("#(1 2 3)");
     no_check("\"foo\"");
     no_check("'()");
     no_check("'(1 . 2)");
@@ -129,6 +132,9 @@ int test_type_predicates() {
 
     check_true ("(char? #\\a)");
     check_false("(char? 1)");
+
+    check_true ("(vector? #(1))");
+    check_false("(vector? 1)");
 
     check_true ("(string? \"foo\")");
     check_false("(string? 1)");
@@ -159,6 +165,9 @@ int test_eq() {
     check_true ("(eq? '() '())");
     check_false("(eq? '(1) '(1))");
     check_false("(eq? '(1 . 2) '(1 . 2))");
+
+    check_true ("(eq? #() #())");
+    check_false("(eq? #(1) #(1))");
 
     check_true ("(eq? car car)");
     check_false("(eq? car cdr)");
@@ -316,6 +325,36 @@ int test_list() {
     check_equal("(ormap (lambda (x) (eq? x 'a)) '(a a a))", "#t");
     check_equal("(ormap (lambda (x) (eq? x 'a)) '(a b a))", "#t");
     check_equal("(ormap (lambda (x) (eq? x 'a)) '(b b b))", "#f");
+
+    return passed;
+}
+
+int test_vector() {
+    passed = 1;
+
+    check_equal("(make-vector 0)", "'#()");
+    check_equal("(make-vector 1)", "'#(0)");
+    check_equal("(make-vector 3)", "'#(0 0 0)");
+
+    check_equal("(make-vector 0 1)", "'#()");
+    check_equal("(make-vector 1 1)", "'#(1)");
+    check_equal("(make-vector 3 1)", "'#(1 1 1)");
+
+    check_equal("(vector)", "'#()");
+    check_equal("(vector 1)", "'#(1)");
+    check_equal("(vector 1 2 3)", "'#(1 2 3)");
+
+    check_equal("(vector-length #())", "0");
+    check_equal("(vector-length #(1))", "1");
+    check_equal("(vector-length #(1 2 3))", "3");
+
+    check_equal("(vector-ref #(1 2 3) 0)", "1");
+    check_equal("(vector-ref #(1 2 3) 1)", "2");
+    check_equal("(vector-ref #(1 2 3) 2)", "3");
+
+    check_equal("(begin (define v #(1 2 3)) (vector-set! v 0 0) v)", "'#(0 2 3)");
+    check_equal("(begin (define v #(1 2 3)) (vector-set! v 1 0) v)", "'#(1 0 3)");
+    check_equal("(begin (define v #(1 2 3)) (vector-set! v 2 0) v)", "'#(1 2 0)");
 
     return passed;
 }
@@ -551,6 +590,7 @@ void run_tests() {
     
     log_test("string", test_string);
     log_test("list", test_list);
+    log_test("vector", test_vector);
     log_test("integer", test_integer);
 }
 

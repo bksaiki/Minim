@@ -21,6 +21,13 @@ minim_object *make_vector(long len, minim_object *init) {
     return ((minim_object *) o);
 }
 
+static void vector_out_of_bounds_exn(const char *name, minim_object *v, long idx) {
+    fprintf(stderr, "%s, index out of bounds\n", name);
+    fprintf(stderr, " length: %ld\n", minim_vector_len(v));
+    fprintf(stderr, " index:  %ld\n", idx);
+    exit(1);
+}
+
 //
 //  Primitives
 //
@@ -70,4 +77,49 @@ minim_object *vector_proc(minim_object *args) {
             minim_vector_ref(v, i) = minim_car(it);
         return v;
     }
+}
+
+minim_object *vector_length_proc(minim_object *args) {
+    // (-> vector non-negative-integer?)
+    minim_object *v;
+    
+    v = minim_car(args);
+    if (!minim_is_vector(v))
+        bad_type_exn("vector-length", "vector?", v);
+    return make_fixnum(minim_vector_len(v));
+}
+
+minim_object *vector_ref_proc(minim_object *args) {
+    // (-> vector non-negative-integer? any)
+    minim_object *v, *idx;
+    
+    v = minim_car(args);
+    if (!minim_is_vector(v))
+        bad_type_exn("vector-ref", "vector?", v);
+
+    idx = minim_cadr(args);
+    if (!minim_is_fixnum(idx) || minim_fixnum(idx) < 0)
+        bad_type_exn("vector-ref", "non-negative-integer?", idx);
+    if (minim_fixnum(idx) >= minim_vector_len(v))
+        vector_out_of_bounds_exn("vector-ref", v, minim_fixnum(idx));
+
+    return minim_vector_ref(v, minim_fixnum(idx));
+}
+
+minim_object *vector_set_proc(minim_object *args) {
+    // (-> vector non-negative-integer? any void)
+    minim_object *v, *idx;
+    
+    v = minim_car(args);
+    if (!minim_is_vector(v))
+        bad_type_exn("vector-ref", "vector?", v);
+
+    idx = minim_cadr(args);
+    if (!minim_is_fixnum(idx) || minim_fixnum(idx) < 0)
+        bad_type_exn("vector-ref", "non-negative-integer?", idx);
+    if (minim_fixnum(idx) >= minim_vector_len(v))
+        vector_out_of_bounds_exn("vector-ref", v, minim_fixnum(idx));
+
+    minim_vector_ref(v, minim_fixnum(idx)) = minim_car(minim_cddr(args));
+    return minim_void;
 }
