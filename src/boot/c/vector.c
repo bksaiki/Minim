@@ -123,3 +123,39 @@ minim_object *vector_set_proc(minim_object *args) {
     minim_vector_ref(v, minim_fixnum(idx)) = minim_car(minim_cddr(args));
     return minim_void;
 }
+
+minim_object *vector_to_list_proc(minim_object *args) {
+    // (-> vector list)
+    minim_object *v, *lst;
+    long i;
+    
+    v = minim_car(args);
+    if (!minim_is_vector(v))
+        bad_type_exn("vector->list", "vector?", v);
+
+    lst = minim_null;
+    for (i = minim_vector_len(v) - 1; i >= 0; --i)
+        lst = make_pair(minim_vector_ref(v, i), lst);
+
+    return lst;
+}
+
+minim_object *list_to_vector_proc(minim_object *args) {
+    // (-> list vector)
+    minim_object *v, *lst, *it;
+    long i;
+    
+    lst = minim_car(args);
+    if (!is_list(lst))
+        bad_type_exn("list->vector", "list?", lst);
+
+    v = make_vector(list_length(lst), NULL);
+    it = lst;
+
+    for (i = 0; i < minim_vector_len(v); ++i) {
+        minim_vector_ref(v, i) = minim_car(it);
+        it = minim_cdr(it);
+    }
+
+    return v;
+}

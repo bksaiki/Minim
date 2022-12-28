@@ -229,6 +229,13 @@ int test_type_conversions() {
     check_equal("(string->symbol \"a\")", "'a");
     check_equal("(string->symbol \"foo\")", "'foo");
 
+    check_equal("(vector->list #())", "'()");
+    check_equal("(vector->list #(1))", "'(1)");
+    check_equal("(vector->list #(1 2 3))", "'(1 2 3)");
+    check_equal("(list->vector '())", "'#()");
+    check_equal("(list->vector '(1))", "'#(1)");
+    check_equal("(list->vector '(1 2 3))", "'#(1 2 3)");
+
     return passed;
 }
 
