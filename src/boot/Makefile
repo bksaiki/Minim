@@ -38,6 +38,8 @@ profile:
 
 test: $(CONFIG) $(BUILD_DIR)/test-prims;
 	$(BUILD_DIR)/test-prims
+	$(MINIM) $(TEST_DIR)/case-lambda.min
+	$(MINIM) $(TEST_DIR)/case.min
 	$(MINIM) $(TEST_DIR)/stxcase.min
 
 clean:
