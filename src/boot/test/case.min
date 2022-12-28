@@ -1,0 +1,39 @@
+;;;
+;;; Tests for 'case'
+;;;
+
+(import "../lib/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+; empty case
+(check-equal? (case 1) (void))
+(check-equal? (case '()) (void))
+
+; only-else case
+(check-equal? (case 1 [else #t]) #t)
+(check-equal? (case '() [else #f]) #f)
+
+; equal datum
+(check-equal? (case 1 [(1) #t] [else #f]) #t)
+(check-equal? (case null [(()) #t] [else #f]) #t)
+
+; no keys
+(check-equal? (case 1 [() 1] [else #t]) #t)
+(check-equal? (case 1 [() 1] [() 2] [else #t]) #t)
+
+; fall through
+(check-equal? (case 1 [(2) 2] [(3) 3]) (void))
+(check-equal? (case 1 [(2) 2] [(3) 3] [(4) 4]) (void))
+
+(when (> num-failed 0)
+  (error #f "test failed"))

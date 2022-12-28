@@ -1,0 +1,41 @@
+;;;
+;;; Tests for 'case-lambda'
+;;;
+
+(import "../lib/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+; degenerate case
+(check-equal? ((case-lambda [() 1])) 1)
+(check-equal? ((case-lambda [(a) a]) 1) 1)
+(check-equal? ((case-lambda [(a b) (+ a b)]) 1 2) 3)
+(check-equal? ((case-lambda [(a b c) (+ a b c)]) 1 2 3) 6)
+
+; degenerate case (rest argument)
+(check-equal? ((case-lambda [a a])) '())
+(check-equal? ((case-lambda [a a]) 1) '(1))
+(check-equal? ((case-lambda [a a]) 1 2 3) '(1 2 3))
+(check-equal? ((case-lambda [(a . b) (list a b)]) 1) '(1 ()))
+(check-equal? ((case-lambda [(a . b) (list a b)]) 1 2) '(1 (2)))
+(check-equal? ((case-lambda [(a . b) (list a b)]) 1 2 3) '(1 (2 3)))
+(check-equal? ((case-lambda [(a b . c) (list a b c)]) 1 2) '(1 2 ()))
+(check-equal? ((case-lambda [(a b . c) (list a b c)]) 1 2 3) '(1 2 (3)))
+(check-equal? ((case-lambda [(a b . c) (list a b c)]) 1 2 3 4) '(1 2 (3 4)))
+
+; multi-case simple
+(check-equal? ((case-lambda [() 0] [(a) 1] [(a b) 2])) 0)
+(check-equal? ((case-lambda [() 0] [(a) 1] [(a b) 2]) 1) 1)
+(check-equal? ((case-lambda [() 0] [(a) 1] [(a b) 2]) 1 2) 2)
+
+(when (> num-failed 0)
+  (error #f "test failed"))

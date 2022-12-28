@@ -167,3 +167,30 @@
               [(pair? datum) (cons (loop2 (car datum)) (loop2 (cdr datum)))]
               [else datum]))))
       (error 'syntax->datum "expected syntax?" stx)))
+
+(define (stx-pair? stx)
+  (if (pair? stx)
+      #t
+      (if (syntax? stx)
+          (pair? (syntax-e stx))
+          #f)))
+
+(define (stx-null? stx)
+  (if (null? stx)
+      #t
+      (if (syntax? stx)
+          (null? (syntax-e stx))
+          #f)))
+
+(define (stx-car stx)
+  (if (syntax? stx)
+      (car (syntax-e stx))
+      (car stx)))
+
+(define (stx-cdr stx)
+  (if (syntax? stx)
+      (cdr (syntax-e stx))
+      (cdr stx)))
+
+(define (identifier? stx)
+  (and (syntax? stx) (symbol? (syntax-e stx))))

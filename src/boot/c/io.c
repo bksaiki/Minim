@@ -265,6 +265,10 @@ loop:
                     c = '\t';
                 } else if (c == '\\') {
                     c = '\\';
+                } else if (c == '\'') {
+                    c = '\'';
+                } else if (c == '\"') {
+                    c = '\"';
                 } else {
                     fprintf(stderr, "unknown escape character: %c\n", c);
                     exit(1);

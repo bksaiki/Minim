@@ -263,14 +263,17 @@
              [(eq? c #\\)
               (read-char p)
               (loop (cons #\\ acc))]
-             [else
-              (error 'read "unknown escape character" c)])]
              [(eq? c #\")
               (read-char p)
-              (reverse acc)]
+              (loop (cons #\" acc))]
              [else
-              (read-char p)
-              (loop (cons c acc))])))
+              (error 'read "unknown escape character" c)])]
+          [(eq? c #\")
+           (read-char p)
+           (reverse acc)]
+          [else
+           (read-char p)
+           (loop (cons c acc))])))
 
     ;; Main loop
 

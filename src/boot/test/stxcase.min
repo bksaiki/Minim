@@ -63,6 +63,12 @@
     [(_ a ... b c . d) #''(b c (a ...) d)]
     [_ #''bad]))
 
+(define-syntax (macro-11 stx)
+  (syntax-case stx ()
+    [(_ a b c d e ...) #'(+ a b c)]
+    [(_ a b) #'(+ a b c)]
+    [_ #''bad]))
+
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
@@ -96,6 +102,10 @@
 (check-equal? (macro-10 1 2 3) '(2 3 (1) ()))
 (check-equal? (macro-10 1 2 3 4) '(3 4 (1 2) ()))
 (check-equal? (macro-10 1 2 3 4 . 5) '(3 4 (1 2) 5))
+
+(check-equal? (macro-11) 'bad)
+(check-equal? (macro-11 1) 'bad)
+(check-equal? (macro-11 1 2 3) 'bad)
 
 ;; actual Scheme macros
 
