@@ -264,6 +264,7 @@ void minim_boot_init() {
     // GC roots
 
     GC_register_root(minim_null);
+    GC_register_root(minim_empty_vec);
     GC_register_root(minim_true);
     GC_register_root(minim_false);
     GC_register_root(minim_eof);

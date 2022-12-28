@@ -982,6 +982,8 @@ application:
         }
     } else {
         fprintf(stderr, "bad syntax\n");
+        write_object(stderr, expr);
+        fprintf(stderr, "\n");
         exit(1);
     }
 

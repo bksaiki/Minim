@@ -309,7 +309,8 @@
         [(let ([datum (syntax-e expr)])
            (or (boolean? datum)
                (number? datum)
-               (string? datum)))
+               (string? datum)
+               (vector? datum)))
          expr]
         [else
          (syntax-error #f "bad syntax" expr)])))
