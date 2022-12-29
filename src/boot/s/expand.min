@@ -201,6 +201,7 @@
   (define (expand/expr expr xforms)
     (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (let loop ([expr expr])
+      ; (writeln expr)
       (cond
         [(define-values-form? expr)
          (check-define-syntaxes/values-form! 'define-values expr)

@@ -349,62 +349,160 @@
                  (cond
                   [(>= i len)
                    (values idx-be idx-ae ellipsis?)]
-                  [(and (< (+ i 1) len)
-                        (let ([next (vector-ref v (+ i 1))])
-                          (and (identifier? next) (eq? (syntax-e next) '...))))
+                  [(let ([next (vector-ref v i)])
+                     (and (identifier? next) (eq? (syntax-e next) '...)))
                    (cond
                      [ellipsis?
                       (syntax-error 'syntax-case "ellipsis in pattern follows other ellipsis"
-                                    pattern (stx-car pat))]
+                                    pattern (vector-ref v i))]
                      [(= idx-be 0)
                       (syntax-error 'syntax-case "ellipsis in pattern not preceded by a subpattern"
-                                    pattern (stx-car pat))]
+                                    pattern (vector-ref v i))]
                      [else
-                      (loop (+ i 2) idx-be idx-ae #t)])]
+                      (loop (+ i 1) idx-be idx-ae #t)])]
                   [ellipsis?
                    (loop (+ i 1) idx-be (+ idx-ae 1) ellipsis?)]
                   [else
                    (loop (+ i 1) (+ idx-be 1) idx-ae ellipsis?)])))
-             (cond
-               [ellipsis?
-                (error #f "unimplemented")]
-               [else
-                (datum->syntax
+      
+            (datum->syntax
+              (list
+                (list
+                  (quote-syntax lambda)
+                  (list (quote-syntax e))
                   (list
+                    (quote-syntax if)
                     (list
-                      (quote-syntax lambda)
-                      (list (quote-syntax e))
-                      (list
-                        (quote-syntax if)
-                        (list
-                          (quote-syntax and)
-                          (list
-                            (quote-syntax stx-vector?)
-                            (quote-syntax e))
-                          (list
-                            (quote-syntax =)
-                            (list
-                              (quote-syntax vector-length)
+                      (quote-syntax stx-vector?)
+                      (quote-syntax e))
+                    (cond
+                      [ellipsis?
+                       (list
+                         (quote-syntax if)
+                         (list
+                           (quote-syntax >=)
+                           (list
+                             (quote-syntax vector-length)
+                             (list
+                               (quote-syntax syntax-e)
+                               (quote-syntax e)))
+                           (- (+ before-ellipsis after-ellipsis) 1))
+                         (let loop ([i 0])
+                           (cond
+                             [(= i (- before-ellipsis 1))
                               (list
-                                (quote-syntax syntax-e)
-                                (quote-syntax e)))
-                            len))
-                        (cons
-                          (quote-syntax append)
-                          (let loop ([i 0])
-                            (cond
-                              [(= i len) '()]
-                              [else
-                               (cons
-                                 (gen-match/expr (vector-ref v i)
-                                                 (datum->syntax
-                                                   (list
-                                                     (quote-syntax stx-vector-ref)
-                                                     (quote-syntax e)
-                                                     i)))
-                                 (loop (+ i 1)))])))
-                        #f))
-                    arg))])]
+                                (quote-syntax let)
+                                (list
+                                  (list
+                                    (quote-syntax repeat)
+                                    (list
+                                      (quote-syntax -)
+                                      (list
+                                        (quote-syntax vector-length)
+                                        (list
+                                          (quote-syntax syntax-e)
+                                          (quote-syntax e)))
+                                      (- (+ before-ellipsis after-ellipsis) 1))))
+                                (list
+                                  (quote-syntax if)
+                                  (list
+                                    (quote-syntax =)
+                                    (quote-syntax repeat)
+                                    0)
+                                  (let ([n (length (get-pattern-vars (vector-ref v i)))])
+                                    (cons
+                                      (quote-syntax list)
+                                      (let loop ([i 0] [acc null])
+                                        (cond [(>= i n) acc]
+                                              [else (loop (+ i 1) (cons 'null acc))]))))
+                                  (list
+                                    (quote-syntax let)
+                                    (list
+                                      (list
+                                        (quote-syntax tmp)
+                                        (list
+                                          (quote-syntax map/#f)
+                                          (list
+                                            (quote-syntax lambda)
+                                            (list (quote-syntax e))
+                                            (gen-match/expr (vector-ref v i) (quote-syntax e)))
+                                          (list
+                                            (quote-syntax let)
+                                            (quote-syntax loop)
+                                            (list
+                                              (list (quote-syntax t) 0))
+                                            (list
+                                              (quote-syntax if)
+                                              (list
+                                                (quote-syntax =)
+                                                (quote-syntax t)
+                                                (quote-syntax repeat))
+                                              (quote-syntax '())
+                                              (list
+                                                (quote-syntax cons)
+                                                (list
+                                                  (quote-syntax stx-vector-ref)
+                                                  (quote-syntax e)
+                                                  (quote-syntax t))
+                                                (list
+                                                  (quote-syntax loop)
+                                                  (list
+                                                    (quote-syntax +)
+                                                    (quote-syntax t)
+                                                    1))))))))
+                                    (list
+                                      (quote-syntax if)
+                                      (quote-syntax tmp)
+                                      (list
+                                        (quote-syntax if)
+                                        (list
+                                          (quote-syntax null?)
+                                          (quote-syntax tmp))
+                                        (quote-syntax tmp)
+                                        (list
+                                          (quote-syntax apply)
+                                          (quote-syntax map/#f)
+                                          (quote-syntax list)
+                                          (quote-syntax tmp)))
+                                      #f))))]
+                             [else
+                              (list
+                                (quote-syntax append/#f)
+                                (gen-match/expr (vector-ref v i)
+                                                (datum->syntax
+                                                  (list
+                                                    (quote-syntax stx-vector-ref)
+                                                    (quote-syntax e)
+                                                    i)))
+                                (loop (+ i 1)))]))
+                         #f)]
+                      [else
+                       (list
+                         (quote-syntax if)
+                         (list
+                           (quote-syntax =)
+                           (list
+                             (quote-syntax vector-length)
+                             (list
+                               (quote-syntax syntax-e)
+                               (quote-syntax e)))
+                           len)
+                         (let loop ([i 0])
+                           (cond
+                             [(= i len) (quote-syntax '())]
+                             [else
+                              (list
+                                (quote-syntax append/#f)
+                                (gen-match/expr (vector-ref v i)
+                                                (datum->syntax
+                                                  (list
+                                                    (quote-syntax stx-vector-ref)
+                                                    (quote-syntax e)
+                                                    i)))
+                                (loop (+ i 1)))]))
+                         #f)])
+                    #f))
+                arg))]
             [else
              (gen-match/datum pattern arg)]))
 
