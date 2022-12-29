@@ -79,6 +79,18 @@
   (syntax-case stx ()
     [(_ #(a ...)) #''(a ...)]))
 
+(define-syntax (macro-14 stx)
+  (syntax-case stx ()
+    [(_ #(a ... b)) #''(b a ...)]))
+
+(define-syntax (macro-15 stx)
+  (syntax-case stx ()
+    [(_ #(a b c ... d e)) #''((a b d e) c ...)]))
+
+(define-syntax (macro-16 stx)
+  (syntax-case stx ()
+    [(_ #(a (b ...) c)) #''(a c b ...)]))
+
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
@@ -124,6 +136,18 @@
 (check-equal? (macro-13 #()) '())
 (check-equal? (macro-13 #(1)) '(1))
 (check-equal? (macro-13 #(1 2 3)) '(1 2 3))
+
+(check-equal? (macro-14 #(1)) '(1))
+(check-equal? (macro-14 #(1 2)) '(2 1))
+(check-equal? (macro-14 #(1 2 3)) '(3 1 2))
+
+(check-equal? (macro-15 #(1 2 3 4)) '((1 2 3 4)))
+(check-equal? (macro-15 #(1 2 3 4 5)) '((1 2 4 5) 3))
+(check-equal? (macro-15 #(1 2 3 4 5 6)) '((1 2 5 6) 3 4))
+
+(check-equal? (macro-16 #(1 () 2)) '(1 2))
+(check-equal? (macro-16 #(1 (2) 3)) '(1 3 2))
+(check-equal? (macro-16 #(1 (2 3) 4)) '(1 4 2 3))
 
 ;; actual Scheme macros
 
