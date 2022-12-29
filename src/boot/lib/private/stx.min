@@ -3,8 +3,8 @@
 ;;;
 
 (export identifier? free-identifier=?
-        stx-null? stx-pair? stx-list?
-        stx-car stx-cdr
+        stx-null? stx-pair? stx-list? stx-vector?
+        stx-car stx-cdr stx-vector-ref
         stx-null/#f cons/#f
         append/#f map/#f
         stx->list split-stx-list)
@@ -40,6 +40,22 @@
             (pair? (syntax-e t))
             #f))))
 
+(define-values (stx-list?)
+  (lambda (t)
+    (if (list? t)
+        #t
+        (if (syntax? t)
+            (list? (syntax-e t))
+            #f))))
+
+(define-values (stx-vector?)
+  (lambda (t)
+    (if (vector? t)
+        #t
+        (if (syntax? t)
+            (vector? (syntax-e t))
+            #f))))
+
 (define-values (stx-car)
   (lambda (t)
     (if (pair? t)
@@ -52,13 +68,9 @@
         (cdr t)
         (cdr (syntax-e t)))))
 
-(define-values (stx-list?)
-  (lambda (t)
-    (if (list? t)
-        #t
-        (if (syntax? t)
-            (list? (syntax-e t))
-            #f))))
+(define-values (stx-vector-ref)
+  (lambda (s i)
+    (vector-ref (syntax-e s) i)))
 
 (define-values (stx-null/#f)
   (lambda (t)

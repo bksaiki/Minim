@@ -69,6 +69,12 @@
     [(_ a b) #'(+ a b c)]
     [_ #''bad]))
 
+(define-syntax (macro-12 stx)
+  (syntax-case stx ()
+    [(_ #()) #''empty-vec]
+    [(_ #(a)) #''vec-len-1]
+    [(_ #(a b c)) #''vec-len-3]))
+
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
@@ -106,6 +112,10 @@
 (check-equal? (macro-11) 'bad)
 (check-equal? (macro-11 1) 'bad)
 (check-equal? (macro-11 1 2 3) 'bad)
+
+(check-equal? (macro-12 #()) 'empty-vec)
+(check-equal? (macro-12 #(1)) 'vec-len-1)
+(check-equal? (macro-12 #(1 2 3)) 'vec-len-3)
 
 ;; actual Scheme macros
 

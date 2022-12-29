@@ -95,6 +95,21 @@
                [else
                 (define vars (loop head-pat depth vars))
                 (loop tail-pat depth vars)])]
+            [(stx-vector? pattern)
+             (define v (syntax-e pattern))
+             (define len (vector-length v))
+             (let rec ([i 0] [vars vars])
+               (cond
+                 [(= i len) vars]
+                 [else
+                  (define ellipsis-next?
+                          (and (< (+ i 1) len)
+                               (let ([next (vector-ref v (+ i 1))])
+                                 (and (identifier? next)
+                                      (eq? (syntax-e next) '...)))))
+                  (if ellipsis-next?
+                      (rec (+ i 2) (loop (vector-ref v i) (+ depth 1) vars))
+                      (rec (+ i 1) (loop (vector-ref v i) depth vars)))]))]
             [(and (identifier? pattern)
                   (free-identifier=? pattern (quote-syntax _)))
              ; wildcard
@@ -253,7 +268,7 @@
                                               (quote-syntax stx-cdr)
                                               (quote-syntax e)))))
                                 #f)]
-                             [(stx-pair? head-pat)
+                             [(or (stx-pair? head-pat) (stx-vector? head-pat))
                               ; subpattern =>
                               ;  recurse and append
                               (list
@@ -326,6 +341,70 @@
                       (gen-match/expr (datum->syntax post)
                                       (quote-syntax post)))
                     #f))])]
+            [(stx-vector? pattern)
+             (define v (syntax-e pattern))
+             (define len (vector-length v))
+             (define-values (before-ellipsis after-ellipsis ellipsis?)
+               (let loop ([i 0] [idx-be 0] [idx-ae 0] [ellipsis? #f])
+                 (cond
+                  [(>= i len)
+                   (values idx-be idx-ae ellipsis?)]
+                  [(and (< (+ i 1) len)
+                        (let ([next (vector-ref v (+ i 1))])
+                          (and (identifier? next) (eq? (syntax-e next) '...))))
+                   (cond
+                     [ellipsis?
+                      (syntax-error 'syntax-case "ellipsis in pattern follows other ellipsis"
+                                    pattern (stx-car pat))]
+                     [(= idx-be 0)
+                      (syntax-error 'syntax-case "ellipsis in pattern not preceded by a subpattern"
+                                    pattern (stx-car pat))]
+                     [else
+                      (loop (+ i 2) idx-be idx-ae #t)])]
+                  [ellipsis?
+                   (loop (+ i 1) idx-be (+ idx-ae 1) ellipsis?)]
+                  [else
+                   (loop (+ i 1) (+ idx-be 1) idx-ae ellipsis?)])))
+             (cond
+               [ellipsis?
+                (error #f "unimplemented")]
+               [else
+                (datum->syntax
+                  (list
+                    (list
+                      (quote-syntax lambda)
+                      (list (quote-syntax e))
+                      (list
+                        (quote-syntax if)
+                        (list
+                          (quote-syntax and)
+                          (list
+                            (quote-syntax stx-vector?)
+                            (quote-syntax e))
+                          (list
+                            (quote-syntax =)
+                            (list
+                              (quote-syntax vector-length)
+                              (list
+                                (quote-syntax syntax-e)
+                                (quote-syntax e)))
+                            len))
+                        (cons
+                          (quote-syntax append)
+                          (let loop ([i 0])
+                            (cond
+                              [(= i len) '()]
+                              [else
+                               (cons
+                                 (gen-match/expr (vector-ref v i)
+                                                 (datum->syntax
+                                                   (list
+                                                     (quote-syntax stx-vector-ref)
+                                                     (quote-syntax e)
+                                                     i)))
+                                 (loop (+ i 1)))])))
+                        #f))
+                    arg))])]
             [else
              (gen-match/datum pattern arg)]))
 
@@ -391,6 +470,16 @@
         (list
           (quote-syntax let)
           (list (list arg expr))
+          (list
+            (quote-syntax unless)
+            (list
+              (quote-syntax syntax?)
+              arg)
+            (list
+              (quote-syntax error)
+              (quote-syntax 'syntax-case)
+              (quote-syntax "expected syntax")
+              arg))
           (let loop ([patterns patterns]
                      [fenders fenders]
                      [results results])
@@ -400,15 +489,14 @@
                   #f
                   "bad syntax"
                   arg)
+        
               (let* ([pattern (car patterns)]
                      [fender (car fenders)]
                      [result (car results)]
                      [pat-vars (reverse (get-pattern-vars pattern))]
                      [matcher (gen-matcher pattern)]
                      [result-stx (quote-syntax rslt)]
-                     [temp-vars (map (lambda (t)
-                                       (gen-temp-id "sc"))
-                                     pat-vars)])
+                     [temp-vars (map (lambda (t) (gen-temp-id "sc")) pat-vars)])
 
                 (let ([bind-vars
                        (lambda (e)
