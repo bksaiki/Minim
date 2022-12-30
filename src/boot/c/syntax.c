@@ -23,6 +23,7 @@ minim_object *make_pattern_var(minim_object *value, minim_object *depth) {
 // Recursively converts an object to syntax
 minim_object *to_syntax(minim_object *o) {
     minim_object *it;
+    long i;
 
     switch (o->type) {
     case MINIM_SYNTAX_TYPE:
@@ -50,6 +51,13 @@ minim_object *to_syntax(minim_object *o) {
             it = minim_cdr(it);
         } while (1);
 
+    case MINIM_VECTOR_TYPE:
+        it = make_vector(minim_vector_len(o), NULL);
+        for (i = 0; i < minim_vector_len(o); ++i)
+            minim_vector_ref(it, i) = to_syntax(minim_vector_ref(o, i));
+        return make_syntax(it, minim_false);
+
+
     default:
         fprintf(stderr, "datum->syntax: cannot convert to syntax");
         exit(1);
@@ -57,13 +65,34 @@ minim_object *to_syntax(minim_object *o) {
 }
 
 minim_object *strip_syntax(minim_object *o) {
+    minim_object *t;
+    long i;
+
     switch (o->type) {
     case MINIM_SYNTAX_TYPE:
         return strip_syntax(minim_syntax_e(o));
     case MINIM_PAIR_TYPE:
         return make_pair(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
+    case MINIM_VECTOR_TYPE:
+        t = make_vector(minim_vector_len(o), NULL);
+        for (i = 0; i < minim_vector_len(o); ++i)
+            minim_vector_ref(t, i) = strip_syntax(minim_vector_ref(o, i));
+        return t;
     default:
         return o;
+    }
+}
+
+static minim_object *syntax_to_list(minim_object *head, minim_object *it) {
+    if (minim_is_null(minim_cdr(it))) {
+        return head;
+    } else if (minim_is_pair(minim_cdr(it))) {
+        return syntax_to_list(head, minim_cdr(it));
+    } else if (minim_is_syntax(minim_cdr(it))) {
+        minim_cdr(it) = minim_syntax_e(minim_cdr(it));
+        return syntax_to_list(head, it);
+    } else {
+        return minim_false;
     }
 }
 
@@ -134,19 +163,6 @@ minim_object *syntax_loc_proc(minim_object *args) {
 minim_object *to_syntax_proc(minim_object *args) {
     // (-> any syntax)
     return to_syntax(minim_car(args));
-}
-
-static minim_object *syntax_to_list(minim_object *head, minim_object *it) {
-    if (minim_is_null(minim_cdr(it))) {
-        return head;
-    } else if (minim_is_pair(minim_cdr(it))) {
-        return syntax_to_list(head, minim_cdr(it));
-    } else if (minim_is_syntax(minim_cdr(it))) {
-        minim_cdr(it) = minim_syntax_e(minim_cdr(it));
-        return syntax_to_list(head, it);
-    } else {
-        return minim_false;
-    }
 }
 
 minim_object *syntax_to_list_proc(minim_object *args) {

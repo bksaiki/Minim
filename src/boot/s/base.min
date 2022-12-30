@@ -20,12 +20,6 @@
           [(pair? xs) (if (equal? (car xs) k) (car xs) (loop (cdr xs)))]
           [else (error 'member "expected a list" xs)])))
 
-(define (map f lst)
-  (let loop ([xs lst] [acc '()])
-    (cond [(null? xs) (reverse acc)]
-          [(pair? xs) (loop (cdr xs) (cons (f (car xs)) acc))]
-          [else       (error 'map "expected a list" lst)])))
-
 (define (filter f lst)
   (let loop ([xs lst] [acc '()])
     (cond [(null? xs) (reverse acc)]
@@ -54,6 +48,21 @@
          (cdar lst)
          (assoc k (cdr lst)))]
     [else (error 'assoc "expected a list of pairs" lst)]))
+
+;; vectors
+
+(define (vector-map proc v)
+  (cond
+    [(not (procedure? proc)) (error 'vector-map "expected a procedure" proc)]
+    [(not (vector? v)) (error 'vector-map "expected a vector" v)]
+    [else
+     (define len (vector-length v))
+     (define r (make-vector len))
+     (let loop ([i 0])
+       (cond [(>= i len) r]
+             [else
+              (vector-set! r i (proc (vector-ref v i)))
+              (loop (+ i 1))]))]))
 
 ;; strings
 
@@ -165,6 +174,7 @@
             (cond
               [(syntax? datum) (loop datum)]
               [(pair? datum) (cons (loop2 (car datum)) (loop2 (cdr datum)))]
+              [(vector? datum) (vector-map loop2 datum)]
               [else datum]))))
       (error 'syntax->datum "expected syntax?" stx)))
 

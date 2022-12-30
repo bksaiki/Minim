@@ -69,6 +69,34 @@
     [(_ a b) #'(+ a b c)]
     [_ #''bad]))
 
+(define-syntax (macro-12 stx)
+  (syntax-case stx ()
+    [(_ #()) #''empty-vec]
+    [(_ #(a)) #''vec-len-1]
+    [(_ #(a b c)) #''vec-len-3]))
+
+(define-syntax (macro-13 stx)
+  (syntax-case stx ()
+    [(_ #(a ...)) #''(a ...)]))
+
+(define-syntax (macro-14 stx)
+  (syntax-case stx ()
+    [(_ #(a ... b)) #''(b a ...)]))
+
+(define-syntax (macro-15 stx)
+  (syntax-case stx ()
+    [(_ #(a b c ... d e)) #''((a b d e) c ...)]))
+
+(define-syntax (macro-16 stx)
+  (syntax-case stx ()
+    [(_ #(a (b ...) c)) #''(a c b ...)]))
+
+(define-syntax (macro-17 stx)
+  (syntax-case stx ()
+    [(_ a b c ...) (syntax #(a b c ...))]
+    [(_ a) (syntax #(a))]
+    [(_) (syntax #())]))
+
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-1 2) 1)
 (check-equal? (macro-2 1) 1)
@@ -106,6 +134,30 @@
 (check-equal? (macro-11) 'bad)
 (check-equal? (macro-11 1) 'bad)
 (check-equal? (macro-11 1 2 3) 'bad)
+
+(check-equal? (macro-12 #()) 'empty-vec)
+(check-equal? (macro-12 #(1)) 'vec-len-1)
+(check-equal? (macro-12 #(1 2 3)) 'vec-len-3)
+
+(check-equal? (macro-13 #()) '())
+(check-equal? (macro-13 #(1)) '(1))
+(check-equal? (macro-13 #(1 2 3)) '(1 2 3))
+
+(check-equal? (macro-14 #(1)) '(1))
+(check-equal? (macro-14 #(1 2)) '(2 1))
+(check-equal? (macro-14 #(1 2 3)) '(3 1 2))
+
+(check-equal? (macro-15 #(1 2 3 4)) '((1 2 3 4)))
+(check-equal? (macro-15 #(1 2 3 4 5)) '((1 2 4 5) 3))
+(check-equal? (macro-15 #(1 2 3 4 5 6)) '((1 2 5 6) 3 4))
+
+(check-equal? (macro-16 #(1 () 2)) '(1 2))
+(check-equal? (macro-16 #(1 (2) 3)) '(1 3 2))
+(check-equal? (macro-16 #(1 (2 3) 4)) '(1 4 2 3))
+
+(check-equal? (macro-17) #())
+(check-equal? (macro-17 1) #(1))
+(check-equal? (macro-17 1 2) #(1 2))
 
 ;; actual Scheme macros
 

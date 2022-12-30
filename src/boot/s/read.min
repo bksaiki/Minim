@@ -185,6 +185,18 @@
              [else
               (define cdr (read-pair open))
               (cons car cdr)]))]))
+    
+    ; vector reader
+    (define (read-vector)
+      (let loop ([elems '()])
+        (skip-until-token!)
+        (define c (peek-char p))
+        (cond
+          [(eq? c cparen)
+           (read-char p)
+           (list->vector (reverse elems))]
+          [else
+           (loop (cons (read-loop) elems))])))
 
     ; character reader
     (define (read-character)
@@ -306,13 +318,16 @@
             ; quoted syntax
             (read-char p)
             (datum->syntax (list 'syntax (read-loop)))]
+           [(eq? c oparen)
+            ; vector
+            (read-char p)
+            (datum->syntax (read-vector))]
            [(eq? c #\;)
             ; datum comment
             (read-char p)
             (skip-until-token!)
             (define c (peek-char p))
             (assert-not-eof! c)
-                
             ; read and ignore, then actually read
             (read-loop)
             (read-loop)]
