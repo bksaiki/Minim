@@ -152,6 +152,7 @@ void populate_env(minim_object *env) {
     add_procedure("make-eq-hashtable", make_eq_hashtable_proc, 0, 0);   // TODO: allow size hint?
     add_procedure("hashtable-size", hashtable_size_proc, 1, 1);
     add_procedure("hashtable-set!", hashtable_set_proc, 3, 3);
+    add_procedure("hashtable-ref", hashtable_ref_proc, 2, 2);
 
     add_procedure("eq-hash", eq_hash_proc, 1, 1);
     add_procedure("equal-hash", equal_hash_proc, 1, 1);

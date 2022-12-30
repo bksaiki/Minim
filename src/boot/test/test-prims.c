@@ -614,7 +614,6 @@ int test_hashtable() {
                    "(hashtable-set! h 'c 3)"
                    "(hashtable-size h))",
                 "3");
-
     check_equal("(begin "
                    "(define h (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
@@ -631,6 +630,27 @@ int test_hashtable() {
                    "(hashtable-set! h 'l 12) "
                    "(hashtable-size h))",
                 "12");
+
+    check_equal("(begin "
+                   "(define h (make-eq-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-ref h 'a))",
+                "1");
+    
+    check_equal("(begin "
+                   "(define h (make-eq-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-set! h 'b 2) "
+                   "(hashtable-ref h 'b))",
+                "2");
+    
+    check_equal("(begin "
+                   "(define h (make-eq-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-set! h 'b 2) "
+                   "(hashtable-set! h 'c 3) "
+                   "(hashtable-ref h 'c))",
+                "3");
 
     return passed;
 }

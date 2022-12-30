@@ -532,6 +532,7 @@ DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);
 DEFINE_PRIM_PROC(hashtable_size);
 DEFINE_PRIM_PROC(hashtable_set);
+DEFINE_PRIM_PROC(hashtable_ref);
 // hash functions
 DEFINE_PRIM_PROC(eq_hash);
 DEFINE_PRIM_PROC(equal_hash);

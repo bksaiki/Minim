@@ -166,6 +166,22 @@ static void hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
     ++minim_hashtable_size(ht);
 }
 
+static minim_object *hashtable_find(minim_object *ht, minim_object *k) {
+    minim_object *b;
+    uint64_t i;
+
+    i = hash_key(ht, k) % minim_hashtable_alloc(ht);
+    b = minim_hashtable_bucket(ht, i);
+    if (b) {
+        for (; !minim_is_null(b); b = minim_cdr(b)) {
+            if (key_equiv(ht, minim_caar(b), k))
+                return minim_car(b);
+        }
+    }
+
+    return minim_null;
+}
+
 //
 //  Primitives
 //
@@ -203,6 +219,26 @@ minim_object *hashtable_set_proc(minim_object *args) {
     v = minim_car(minim_cddr(args));
     hashtable_set(ht, k, v);
     return minim_void;
+}
+
+minim_object *hashtable_ref_proc(minim_object *args) {
+    // (-> hashtable any any)
+    minim_object *ht, *k, *b;
+
+    ht = minim_car(args);
+    if (!minim_is_hashtable(ht))
+        bad_type_exn("hashtable-ref", "hashtable?", ht);
+
+    k = minim_cadr(args);
+    b = hashtable_find(ht, k);
+    if (minim_is_null(b)) {
+        fprintf(stderr, "hashtable-ref: could not find key ");
+        write_object(stderr, k);
+        fprintf(stderr, "\n");
+        exit(1);
+    }
+
+    return minim_cdr(b);
 }
 
 minim_object *eq_hash_proc(minim_object *args) {
