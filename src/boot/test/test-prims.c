@@ -143,6 +143,9 @@ int test_type_predicates() {
     check_true ("(procedure? (lambda () 1))");
     check_false("(procedure? 1)");
 
+    check_true("(hashtable? (make-eq-hashtable))");
+    check_false("(hashtable? 1)");
+
     return passed;
 }
 
