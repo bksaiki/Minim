@@ -471,12 +471,12 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         if (minim_hashtable_size(o) == 0) {
             fprintf(out, "#<hashtable>");
         } else {
-            fprintf(out, "#<hashtable ");
+            fprintf(out, "#<hashtable");
             for (i = 0; i < minim_hashtable_alloc(o); ++i) {
-                it = minim_hashtable_buckets(o)[i];
+                it = minim_hashtable_bucket(o, i);
                 if (it) {
                     for (; !minim_is_null(it); it = minim_cdr(it)) {
-                        fputc('(', out);
+                        fputs(" (", out);
                         write_object2(out, minim_caar(it), 1, display);
                         fputs(" . ", out);
                         write_object2(out, minim_cdar(it), 1, display);

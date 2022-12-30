@@ -23,7 +23,6 @@
 
 #define INIT_VALUES_BUFFER_LEN      10
 
-
 // Arity
 
 typedef enum {
@@ -122,7 +121,7 @@ typedef struct {
 typedef struct {
     minim_object_type type;
     struct proc_arity arity;
-    minim_object *(*fn)(minim_object *args);
+    minim_object *(*fn)(minim_object *);
     char *name;
 } minim_prim_proc_object;
 
@@ -149,10 +148,10 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
+    minim_object *hash, *equiv;
     minim_object **buckets;
     size_t *alloc_ptr;
     size_t alloc, size;
-    void *hash_fn;
 } minim_hashtable_object;
 
 typedef struct {
@@ -256,8 +255,12 @@ extern minim_object *quote_syntax_symbol;
 #define minim_syntax_loc(x)     (((minim_syntax_object *) (x))->loc)
 
 #define minim_hashtable_buckets(x)      (((minim_hashtable_object *) (x))->buckets)
+#define minim_hashtable_bucket(x, i)    ((((minim_hashtable_object *) (x))->buckets)[i])
+#define minim_hashtable_alloc_ptr(x)    (((minim_hashtable_object *) (x))->alloc_ptr)
 #define minim_hashtable_alloc(x)        (((minim_hashtable_object *) (x))->alloc)
 #define minim_hashtable_size(x)         (((minim_hashtable_object *) (x))->size)
+#define minim_hashtable_hash(x)         (((minim_hashtable_object *) (x))->hash)
+#define minim_hashtable_equiv(x)        (((minim_hashtable_object *) (x))->equiv)
 
 #define minim_pattern_var_value(x)      (((minim_pattern_var_object *) (x))->value)
 #define minim_pattern_var_depth(x)      (((minim_pattern_var_object *) (x))->depth)
@@ -287,7 +290,7 @@ minim_object *make_string(const char *s);
 minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_vector(long len, minim_object *init);
-minim_object *make_hashtable(void *hash_fn);
+minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
 minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
@@ -360,11 +363,6 @@ typedef struct intern_table {
 
 intern_table *make_intern_table();
 minim_object *intern_symbol(intern_table *itab, const char *sym);
-
-// Hashing
-
-uint32_t eq_hash(minim_object*);
-uint32_t equal_hash(minim_object*);
 
 // Threads
 
@@ -532,6 +530,11 @@ DEFINE_PRIM_PROC(string_to_symbol);
 // hashtable
 DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);
+DEFINE_PRIM_PROC(hashtable_size);
+DEFINE_PRIM_PROC(hashtable_set);
+// hash functions
+DEFINE_PRIM_PROC(eq_hash);
+DEFINE_PRIM_PROC(equal_hash);
 // environment
 DEFINE_PRIM_PROC(empty_environment);
 DEFINE_PRIM_PROC(extend_environment);

@@ -30,7 +30,9 @@ READLINK	:= readlink -f
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-boot: $(CONFIG) $(OBJS)
+all: minim
+
+minim: $(CONFIG) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o minim
 
 profile:

@@ -140,6 +140,7 @@ minim_object *error_proc(minim_object *args) {
 
 minim_object *exit_proc(minim_object *args) {
     // (-> any)
+    GC_finalize();
     exit(0);
 }
 
