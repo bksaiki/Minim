@@ -5,7 +5,8 @@
 (import "and-or.min" "cond.min" "define.min" "gen-temp.min"
         "let.min" "stx.min" "when-unless.min")
 
-(export do-template template-subst)
+(export do-template
+        template-subst template-vector)
 
 (define (...? stx)
   (and (identifier? stx)
@@ -60,6 +61,7 @@
 ;; Template instructions
 ;;
 ;;  <instr> ::= ('subst <stx> <form> <ops> <instr> ...)
+;;          ::= ('vector <stx> <instr>)
 ;;          ::= ('append <stx> <mapped-vars> <const-vars> <instr>)
 ;;          ::= ('const <stx> <datum>)
 ;;          ::= ('var <stx> <name> <depth> <value>)
@@ -107,6 +109,10 @@
               (values (list 'append tstx mapped-vars const-vars inner) inner-vars)]
              [else
               (error 'syntax "too many ellipses in template" stx (quote-syntax ...))])]
+          [(instr-eq? instr 'vector)
+           ; vector
+           (define-values (inner vars) (loop (car args) depth))
+           (values (list 'vector tstx inner) vars)]
           [(instr-eq? instr 'const)
            ; const
            (values instr (list))]
@@ -161,6 +167,9 @@
         [(instr-eq? instr 'append)
          ; append
          (list 'append #f (car args) (cadr args) (loop (caddr args)))]
+        [(instr-eq? instr 'vector)
+         ; vector
+         (list 'vector #f (loop (car args)))]
         [(instr-eq? instr 'const)
          ; const
          (cons 'const (cons #f args))]
@@ -213,6 +222,9 @@
 
   (define (parse-template/nonpair tstx depth)
     (cond
+      [(stx-vector? tstx)
+       (define v (syntax-e tstx))
+       (list 'vector tstx (parse (datum->syntax (vector->list v)) depth))]
       [(identifier? tstx)
        (define pattern (get-pattern (syntax-e tstx)))
        (cond
@@ -276,6 +288,10 @@
                     (let ([maybe-rename (assoc var-map (car vdata))])
                       (if maybe-rename maybe-rename (caddr vdata))))
                   mapped-vars))]
+          [(instr-eq? instr 'vector)
+           (list
+             (quote-syntax template-vector)
+             (loop (car args) var-map))]
           [(instr-eq? instr 'const)
            ; const
            (list
@@ -319,3 +335,6 @@
   
   (datum->syntax
     (run guide (reverse instrs) (reverse args))))
+
+(define (template-vector lst)
+  (datum->syntax (list->vector (syntax-e lst))))

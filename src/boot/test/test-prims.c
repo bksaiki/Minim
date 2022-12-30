@@ -205,6 +205,12 @@ int test_equal() {
     check_true ("(equal? car car)");
     check_false("(equal? car cdr)");
 
+    check_true("(equal? #() #())");
+    check_true("(equal? #(1) #(1))");
+    check_false("(equal? #(0) #(1))");
+    check_true("(equal? #(1 2 3) #(1 2 3))");
+    check_false("(equal? #(1 2) #(1 2 3))");
+
     check_true ("(let ((x '(a))) (equal? x x))");
     check_true ("(let ((f (lambda (x) x))) (equal? f f))");
 

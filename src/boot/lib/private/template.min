@@ -6,7 +6,9 @@
         "let.min" "stx.min" "when-unless.min"
         "template-utils.min")
 
-(export syntax template-subst)
+(export syntax
+        template-subst
+        template-vector)
 
 (define-syntax (syntax stx)
   (define l (syntax->list stx))

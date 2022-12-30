@@ -42,13 +42,15 @@ int minim_is_eq(minim_object *a, minim_object *b) {
 
     case MINIM_CHAR_TYPE:
         return minim_char(a) == minim_char(b);
-    
+
     default:
         return 0;
     }
 }
 
 int minim_is_equal(minim_object *a, minim_object *b) {
+    long i;
+
     if (minim_is_eq(a, b))
         return 1;
 
@@ -63,7 +65,18 @@ int minim_is_equal(minim_object *a, minim_object *b) {
     case MINIM_PAIR_TYPE:
         return minim_is_equal(minim_car(a), minim_car(b)) &&
                minim_is_equal(minim_cdr(a), minim_cdr(b));
-    
+
+    case MINIM_VECTOR_TYPE:
+        if (minim_vector_len(a) != minim_vector_len(b))
+            return 0;
+
+        for (i = 0; i < minim_vector_len(a); ++i) {
+            if (!minim_is_equal(minim_vector_ref(a, i), minim_vector_ref(b, i)))
+                return 0;
+        }
+
+        return 1;
+
     default:
         return 0;
     }
