@@ -57,10 +57,15 @@ install:
 boot: gc
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot
 
-gc: minim-gc boehm-gc
+gc: boehm-gc minim-gc
+	cp boehm-gc/.libs/libgc.a src/gc/
+	cp src/gc/minim-gc/libminimgc.a src/gc/
 
-boehm-gc:
+boehm-gc: boehm-gc/Makefile
 	$(MAKE) -C boehm-gc
+
+boehm-gc/Makefile:
+	cd boehm-gc && ./autogen.sh && ./configure --enable-static=yes --enable-shared=no
 
 minim-gc:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/gc
@@ -90,14 +95,14 @@ lib-tests:
 	$(SH) $(TEST_DIR)/lib.sh
 
 clean:
+	$(MAKE) -C boehm-gc clean
 	$(MAKE) -C src/gc clean
 	$(MAKE) -C src/boot clean
 	$(RM) $(OBJS) $(EXE)
 
-clean-all: clean-cache
-	$(MAKE) -C src/gc clean
-	$(MAKE) -C src/boot clean
-	$(RM) $(BUILD_DIR) tmp $(EXE)
+clean-all: clean clean-cache
+	$(RM) boehm-gc/Makefile
+	$(RM) $(BUILD_DIR) tmp
 
 clean-cache:
 	$(FIND) . -type d -name ".cache" | xargs $(RM)

@@ -3,7 +3,7 @@
 
 #ifdef USE_MINIM_GC
 
-#include "minimgc/gc.h"
+#include "minim-gc/gc.h"
 
 #else
 

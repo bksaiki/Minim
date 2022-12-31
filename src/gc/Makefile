@@ -2,16 +2,12 @@
 #	Makefile for the garbage collectors
 #
 
-all: minimgc boehmgc
+all: minim-gc
 
-minimgc:
-	$(MAKE) -C minimgc/
-	cp minimgc/libminimgc.a .
-
-boehmgc:
-	cp ../../boehm-gc/.libs/libgc.a .
+minim-gc:
+	$(MAKE) -C minim-gc/
 
 clean:
-	$(MAKE) -C minimgc/ clean
+	$(MAKE) -C minim-gc/ clean
 
-.PHONY: all clean minimgc
+.PHONY: all clean minim-gc
