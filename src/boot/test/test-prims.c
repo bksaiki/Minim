@@ -761,10 +761,29 @@ int test_hashtable() {
 
     check_equal("(begin "
                    "(define h (make-hashtable)) "
+                   "(hashtable-ref h 'a 0))",
+                "0");
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
+                   "(hashtable-ref h 'a (lambda () 0)))",
+                "0");
+
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-update! h 'a (lambda (x) (* 2 x))) "
                    "(hashtable-ref h 'a))",
                 "2");
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
+                   "(hashtable-update! h 'a (lambda (x) (* 2 x)) 2) "
+                   "(hashtable-ref h 'a))",
+                "4");
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
+                   "(hashtable-update! h 'a (lambda (x) (* 2 x)) (lambda () 2)) "
+                   "(hashtable-ref h 'a))",
+                "4");
 
     return passed;
 }

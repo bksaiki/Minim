@@ -302,6 +302,7 @@ minim_object *hashtable_delete_proc(minim_object *args) {
 
 minim_object *hashtable_update_proc(minim_object *args) {
     // (-> hashtable any (-> any any) void)
+    // (-> hashtable any (-> any any) any void)
     minim_object *ht, *k, *proc, *b, *env;
 
     ht = minim_car(args);
@@ -309,25 +310,44 @@ minim_object *hashtable_update_proc(minim_object *args) {
         bad_type_exn("hashtable-update!", "hashtable?", ht);
 
     k = minim_cadr(args);
-    b = hashtable_find(ht, k);
-    if (minim_is_null(b)) {
-        fprintf(stderr, "hashtable-update!: could not find key ");
-        write_object(stderr, k);
-        fprintf(stderr, "\n");
-        exit(1);
-    }
-
     proc = minim_car(minim_cddr(args));
     if (!minim_is_proc(proc))
         bad_type_exn("hashtable-update!", "procedure?", proc);
 
-    env = global_env(current_thread());   // TODO: this seems problematic
-    minim_cdr(b) = call_with_args(proc, make_pair(minim_cdr(b), minim_null), env);
+    b = hashtable_find(ht, k);
+    if (minim_is_null(b)) {
+        if (minim_is_null(minim_cdr(minim_cddr(args)))) {
+            // no failure result provided
+            fprintf(stderr, "hashtable-update!: could not find key ");
+            write_object(stderr, k);
+            fprintf(stderr, "\n");
+            exit(1);
+        } else {
+            // user-provided failure
+            minim_object *fail, *v;
+
+            fail = minim_cadr(minim_cddr(args));
+            env = global_env(current_thread());     // TODO: this seems problematic
+            if (!minim_is_proc(fail)) {
+                b = fail;
+            } else {
+                b = call_with_args(fail, minim_null, env);
+            }
+
+            v = call_with_args(proc, make_pair(b, minim_null), env);
+            hashtable_set(ht, k, v);
+        }
+    } else {
+        env = global_env(current_thread());     // TODO: this seems problematic
+        minim_cdr(b) = call_with_args(proc, make_pair(minim_cdr(b), minim_null), env);
+    }
+
     return minim_void;
 }
 
 minim_object *hashtable_ref_proc(minim_object *args) {
     // (-> hashtable any any)
+    // (-> hashtable any any any)
     minim_object *ht, *k, *b;
 
     ht = minim_car(args);
@@ -337,10 +357,23 @@ minim_object *hashtable_ref_proc(minim_object *args) {
     k = minim_cadr(args);
     b = hashtable_find(ht, k);
     if (minim_is_null(b)) {
-        fprintf(stderr, "hashtable-ref: could not find key ");
-        write_object(stderr, k);
-        fprintf(stderr, "\n");
-        exit(1);
+        if (minim_is_null(minim_cddr(args))) {
+            // no failure result provided
+            fprintf(stderr, "hashtable-ref: could not find key ");
+            write_object(stderr, k);
+            fprintf(stderr, "\n");
+            exit(1);
+        } else {
+            // user-provided failure
+            minim_object *fail, *env;
+
+            fail = minim_car(minim_cddr(args));
+            if (!minim_is_proc(fail))
+                return fail;
+            
+            env = global_env(current_thread());   // TODO: this seems problematic
+            return call_with_args(fail, minim_null, env);
+        }
     }
 
     return minim_cdr(b);
