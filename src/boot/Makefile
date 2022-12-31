@@ -2,7 +2,7 @@
 #	Makefile for the bootstrap interpreter
 #
 
-GC_DIR		:= $(shell pwd)/../gc
+GC_DIR		:= $(shell pwd)/../../boehm-gc/
 SRC_DIR		:= c
 BUILD_DIR	:= build
 TEST_DIR	:= test
@@ -18,9 +18,9 @@ DEPS 		:= $(OBJS:.o=.d)
 TESTS		:= $(shell find $(TEST_DIR) -name "*.c")
 TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
 
-CFLAGS		:= -Wall -std=c11 -O2 -g
+CFLAGS		:= -Wall -std=c11 -O2 -g -DUSE_BOEHM_GC
 DEPFLAGS 	:= -MMD -MP
-LDFLAGS 	:= -L$(GC_DIR) -lminimgc
+LDFLAGS 	:= -L$(GC_DIR) -lgc
 
 MINIM       := ./minim
 MKDIR_P		:= mkdir -p
