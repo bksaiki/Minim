@@ -154,26 +154,40 @@ static uint64_t equal_hash(minim_object *o) {
 }
 
 static uint64_t hash_key(minim_object *ht, minim_object *k) {
-    minim_object *i, *env;
+    minim_object *i, *proc, *env;
 
-    env = global_env(current_thread());   // TODO: this seems problematic
-    i = call_with_args(minim_hashtable_hash(ht), make_pair(k, minim_null), env);
-    if (!minim_is_fixnum(i)) {
-        fprintf(stderr, "hash function associated with hash table ");
-        write_object(stderr, ht);
-        fprintf(stderr, " did not return a fixnum");
-        exit(1);
+    proc = minim_hashtable_hash(ht);
+    if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_hash_proc) {
+        return eq_hash(k);
+    } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_hash_proc) {
+        return equal_hash(k);
+    } else {
+        env = global_env(current_thread());   // TODO: this seems problematic
+        i = call_with_args(minim_hashtable_hash(ht), make_pair(k, minim_null), env);
+        if (!minim_is_fixnum(i)) {
+            fprintf(stderr, "hash function associated with hash table ");
+            write_object(stderr, ht);
+            fprintf(stderr, " did not return a fixnum");
+            exit(1);
+        }
+
+        return minim_fixnum(i);
     }
-
-    return minim_fixnum(i);
 }
 
 static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
-    minim_object *eq, *env;
+    minim_object *eq, *env, *proc;
 
-    env = global_env(current_thread());   // TODO: this seems problematic
-    eq = call_with_args(minim_hashtable_equiv(ht), make_pair(k1, make_pair(k2, minim_null)), env);
-    return !minim_is_false(eq);
+    proc = minim_hashtable_equiv(ht);
+    if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_proc) {
+        return minim_is_eq(k1, k2);
+    } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_proc) {
+        return minim_is_equal(k1, k2);
+    } else {
+        env = global_env(current_thread());   // TODO: this seems problematic
+        eq = call_with_args(minim_hashtable_equiv(ht), make_pair(k1, make_pair(k2, minim_null)), env);
+        return !minim_is_false(eq);
+    }
 }
 
 static void hashtable_opt_resize(minim_object *ht) {
