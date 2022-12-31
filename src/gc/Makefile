@@ -1,35 +1,14 @@
 #
-#	Makefile for the garbage collector
+#	Makefile for the garbage collectors
 #
 
-BUILD_DIR	:= build
-LIBNAME		:= libminimgc.a
+all: minimgc
 
-SRCS 		:= gc.c gc-impl.c
-OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
-DEPS 		:= $(OBJS:.o=.d)
-
-DEPFLAGS 	:= -MMD -MP
-
-MKDIR_P	:= mkdir -p
-RM := rm -rf
-
-.PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
-.SECONDEXPANSION: $(BUILD_DIR)/%.o
-
-all: $(OBJS)
-	ar -rc $(LIBNAME) $(OBJS)
+minimgc:
+	$(MAKE) -C minimgc/
+	cp minimgc/libminimgc.a .
 
 clean:
-	$(RM) build $(LIBNAME)
+	$(MAKE) -C minimgc/ clean
 
-$(BUILD_DIR)/.:
-	$(MKDIR_P) $@
-
-$(BUILD_DIR)%/.:
-	$(MKDIR_P) $@
-
-$(BUILD_DIR)/%.o: %.c | $$(@D)/.
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
-
-.PHONY: build clean
+.PHONY: all clean minimgc
