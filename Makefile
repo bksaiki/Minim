@@ -5,13 +5,14 @@
 BUILD_DIR	:= build
 BOOT_DIR	:= src/boot
 SRC_DIR 	:= src
+GC_DIR		:= src/gc
 TEST_DIR	:= tests
 INSTALL_DIR := /usr/bin
 
 ENTRY		:= src/minim.c
 EXE         := minim
 
-SRCS 		:= $(shell find $(SRC_DIR) -name "*.c" ! -path "src/boot/*" ! -wholename $(ENTRY))
+SRCS 		:= $(shell find $(SRC_DIR) -name "*.c" ! -path "src/boot/*" ! -path "src/gc/*" ! -wholename $(ENTRY))
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
@@ -19,8 +20,8 @@ TESTS 		:= $(shell find $(TEST_DIR) -name "*.c")
 TEST_EXES   := $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	:= -MMD -MP
-CFLAGS 		:= -Wall -std=c11 -DUSE_MINIM_GC
-LDFLAGS 	:= -lm -lgmp
+CFLAGS 		:= -Wall -std=c11
+LDFLAGS 	:= -lm -lgmp -L$(GC_DIR) -lgc
 
 DEBUG_FLAGS		:= -O2 -g -DENABLE_STATS
 PROFILE_FLAGS	:= -O2 -DNDEBUG -march=native -pg

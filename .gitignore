@@ -1,7 +1,8 @@
 # binary
 build/
 minim
-minim.exe
+minim.
+*.a
 
 # temporary
 tmp/
