@@ -799,6 +799,39 @@ int test_hashtable() {
                    "(hashtable-ref (hashtable-copy h) 'b))",
                 "2");
 
+    check_equal("(begin "
+                   "(define h (make-eq-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-set! h 'b 2) "
+                   "(hashtable-set! h 'c 3) "
+                   "(hashtable-set! h 'd 4) "
+                   "(hashtable-set! h 'e 5) "
+                   "(hashtable-set! h 'f 6) "
+                   "(hashtable-set! h 'g 7) "
+                   "(hashtable-set! h 'h 8) "
+                   "(hashtable-set! h 'i 9) "
+                   "(hashtable-set! h 'j 10) "
+                   "(hashtable-set! h 'k 11) "
+                   "(hashtable-set! h 'l 12) "
+                   "(hashtable-ref h 'a))",
+                "1");
+    check_equal("(begin "
+                   "(define h (make-eq-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-set! h 'b 2) "
+                   "(hashtable-set! h 'c 3) "
+                   "(hashtable-set! h 'd 4) "
+                   "(hashtable-set! h 'e 5) "
+                   "(hashtable-set! h 'f 6) "
+                   "(hashtable-set! h 'g 7) "
+                   "(hashtable-set! h 'h 8) "
+                   "(hashtable-set! h 'i 9) "
+                   "(hashtable-set! h 'j 10) "
+                   "(hashtable-set! h 'k 11) "
+                   "(hashtable-set! h 'l 12) "
+                   "(hashtable-ref h 'k))",
+                "11");
+
     return passed;
 }
 

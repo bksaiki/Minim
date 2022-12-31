@@ -25,6 +25,24 @@ minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn) {
     return ((minim_object *) o);
 }
 
+minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint) {
+    minim_hashtable_object *o;
+    size_t *alloc_ptr;
+
+    for (alloc_ptr = start_size_ptr; *alloc_ptr < size_hint; ++alloc_ptr);
+
+    o = GC_alloc(sizeof(minim_hashtable_object));
+    o->type = MINIM_HASHTABLE_TYPE;
+    o->alloc_ptr =  alloc_ptr;
+    o->alloc = *o->alloc_ptr;
+    o->size = 0;
+    o->buckets = GC_calloc(o->alloc, sizeof(minim_object*));
+    o->hash = hash_fn;
+    o->equiv = equiv_fn;
+
+    return ((minim_object *) o);
+}
+
 minim_object *copy_hashtable(minim_object *src) {
     minim_hashtable_object *o, *ht;
     minim_object *b, *it, *t;
@@ -136,26 +154,40 @@ static uint64_t equal_hash(minim_object *o) {
 }
 
 static uint64_t hash_key(minim_object *ht, minim_object *k) {
-    minim_object *i, *env;
+    minim_object *i, *proc, *env;
 
-    env = global_env(current_thread());   // TODO: this seems problematic
-    i = call_with_args(minim_hashtable_hash(ht), make_pair(k, minim_null), env);
-    if (!minim_is_fixnum(i)) {
-        fprintf(stderr, "hash function associated with hash table ");
-        write_object(stderr, ht);
-        fprintf(stderr, " did not return a fixnum");
-        exit(1);
+    proc = minim_hashtable_hash(ht);
+    if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_hash_proc) {
+        return eq_hash(k);
+    } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_hash_proc) {
+        return equal_hash(k);
+    } else {
+        env = global_env(current_thread());   // TODO: this seems problematic
+        i = call_with_args(minim_hashtable_hash(ht), make_pair(k, minim_null), env);
+        if (!minim_is_fixnum(i)) {
+            fprintf(stderr, "hash function associated with hash table ");
+            write_object(stderr, ht);
+            fprintf(stderr, " did not return a fixnum");
+            exit(1);
+        }
+
+        return minim_fixnum(i);
     }
-
-    return minim_fixnum(i);
 }
 
 static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
-    minim_object *eq, *env;
+    minim_object *eq, *env, *proc;
 
-    env = global_env(current_thread());   // TODO: this seems problematic
-    eq = call_with_args(minim_hashtable_equiv(ht), make_pair(k1, make_pair(k2, minim_null)), env);
-    return !minim_is_false(eq);
+    proc = minim_hashtable_equiv(ht);
+    if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_proc) {
+        return minim_is_eq(k1, k2);
+    } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_proc) {
+        return minim_is_equal(k1, k2);
+    } else {
+        env = global_env(current_thread());   // TODO: this seems problematic
+        eq = call_with_args(minim_hashtable_equiv(ht), make_pair(k1, make_pair(k2, minim_null)), env);
+        return !minim_is_false(eq);
+    }
 }
 
 static void hashtable_opt_resize(minim_object *ht) {
@@ -175,8 +207,7 @@ static void hashtable_opt_resize(minim_object *ht) {
             if (it) {
                 for (; !minim_is_null(it); it = minim_cdr(it)) {
                     idx = hash_key(ht, minim_caar(it)) % *alloc_ptr;
-                    buckets[idx] = make_pair(make_pair(minim_caar(it), minim_cdar(it)),
-                                             buckets[idx] ? buckets[idx] : minim_null);
+                    buckets[idx] = make_pair(minim_car(it), (buckets[idx] ? buckets[idx] : minim_null));
                 }
             }
         }
@@ -187,10 +218,11 @@ static void hashtable_opt_resize(minim_object *ht) {
     }
 }
 
-static int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
+int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
     minim_object *b, *bi;
     uint64_t i;
 
+    hashtable_opt_resize(ht);
     i = hash_key(ht, k) % minim_hashtable_alloc(ht);
     b = minim_hashtable_bucket(ht, i);
     if (b) {
@@ -204,7 +236,6 @@ static int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
         b = minim_null;
     }
 
-    hashtable_opt_resize(ht);
     minim_hashtable_bucket(ht, i) = make_pair(make_pair(k, v), b);
     ++minim_hashtable_size(ht);
     return 0;
@@ -235,7 +266,7 @@ static int hashtable_delete(minim_object *ht, minim_object *k) {
     return 0;
 }
 
-static minim_object *hashtable_find(minim_object *ht, minim_object *k) {
+minim_object *hashtable_find(minim_object *ht, minim_object *k) {
     minim_object *b;
     uint64_t i;
 
@@ -251,7 +282,7 @@ static minim_object *hashtable_find(minim_object *ht, minim_object *k) {
     return minim_null;
 }
 
-static minim_object *hashtable_keys(minim_object *ht) {
+minim_object *hashtable_keys(minim_object *ht) {
     minim_object *b, *ks;
     uint64_t i;
 

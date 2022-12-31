@@ -36,7 +36,7 @@ minim: $(CONFIG) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o minim
 
 profile:
-	$(MAKE) CFLAGS="$(CFLAGS) -pg" boot
+	$(MAKE) CFLAGS="$(CFLAGS) -pg" all
 
 unit: $(CONFIG) $(BUILD_DIR)/test-prims
 	$(BUILD_DIR)/test-prims

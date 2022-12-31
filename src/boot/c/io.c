@@ -510,6 +510,9 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
     case MINIM_PATTERN_VAR_TYPE:
         fprintf(out, "#<pattern>");
         break;
+    case MINIM_ENVIRONMENT_TYPE:
+        fprintf(out, "#<environment>");
+        break;
     case MINIM_VALUES_TYPE:
         fprintf(stderr, "cannot write multiple values\n");
         exit(1);
