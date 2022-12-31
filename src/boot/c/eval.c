@@ -557,8 +557,12 @@ application:
         // special case for `eval`
         if (minim_prim_proc(proc) == eval_proc) {
             expr = minim_car(args);
-            if (!minim_is_null(minim_cdr(args)))
+            if (!minim_is_null(minim_cdr(args))) {
                 env = minim_cadr(args);
+                if (!minim_is_env(env))
+                    bad_type_exn("eval", "environment?", env);
+            }
+
             return eval_expr(expr, env);
         }
 
@@ -908,8 +912,11 @@ application:
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
                 expr = minim_car(args);
-                if (!minim_is_null(minim_cdr(args)))
+                if (!minim_is_null(minim_cdr(args))) {
                     env = minim_cadr(args);
+                    if (!minim_is_env(env))
+                        bad_type_exn("eval", "environment?", env);
+                }
                 goto loop;
             }
 

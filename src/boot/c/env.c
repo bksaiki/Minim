@@ -261,6 +261,8 @@ minim_object *environment_proc(minim_object *args) {
 
 minim_object *extend_environment_proc(minim_object *args) {
     // (-> environment environment)
+    if (!minim_is_env(minim_car(args)))
+        bad_type_exn("extend-environment", "environment?", minim_car(args));
     return make_environment(minim_car(args));
 }
 
@@ -269,6 +271,9 @@ minim_object *environment_variable_value_proc(minim_object *args) {
     minim_object *env, *name, *exn;
 
     env = minim_car(args);
+    if (!minim_is_env(env))
+        bad_type_exn("environment-variable-value", "environment?", env);
+
     name = minim_cadr(args);
     if (!minim_is_symbol(name)) {
         bad_type_exn("environment-variable-value", "symbol?", name);
@@ -299,11 +304,14 @@ minim_object *environment_set_variable_value_proc(minim_object *args) {
     minim_object *env, *name, *val;
 
     env = minim_car(args);
+    if (!minim_is_env(env))
+        bad_type_exn("environment-set-variable-value!", "environment?", env);
+
     name = minim_cadr(args);
     val = minim_car(minim_cddr(args));
 
     if (!minim_is_symbol(name))
-        bad_type_exn("environment-variable-value", "symbol?", name);
+        bad_type_exn("environment-set-variable-value!", "symbol?", name);
 
     env_define_var(env, name, val);
     return minim_void;
