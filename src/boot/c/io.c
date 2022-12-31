@@ -531,25 +531,33 @@ void write_object(FILE *out, minim_object *o) {
 //  Objects
 //
 
-static void gc_port_dtor(void *ptr) {
+static void gc_port_dtor(void *ptr, void *data) {
     minim_port_object *o = ((minim_port_object *) ptr);
     if (minim_port_is_open(o))
         fclose(minim_port(o));
 }
 
 minim_object *make_input_port(FILE *stream) {
-    minim_port_object *o = GC_alloc_opt(sizeof(minim_port_object), gc_port_dtor, NULL);
+    minim_port_object *o;
+    
+    o = GC_alloc(sizeof(minim_port_object));
     o->type = MINIM_PORT_TYPE;
     o->flags = MINIM_PORT_READ_ONLY;
     o->stream = stream;
+    GC_register_dtor(o, gc_port_dtor);
+
     return ((minim_object *) o);
 }
 
 minim_object *make_output_port(FILE *stream) {
-    minim_port_object *o = GC_alloc_opt(sizeof(minim_port_object), gc_port_dtor, NULL);
+    minim_port_object *o; // = GC_alloc_opt(sizeof(minim_port_object), gc_port_dtor, NULL);
+
+    o = GC_alloc(sizeof(minim_port_object));
     o->type = MINIM_PORT_TYPE;
     o->flags = 0x0;
     o->stream = stream;
+    GC_register_dtor(o, gc_port_dtor);
+
     return ((minim_object *) o);
 }
 

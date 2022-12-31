@@ -40,16 +40,16 @@ FIND := find
 # Top level rules
 
 debug: boot
-	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
 
 profile: boot
-	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
 
 coverage: boot
-	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
 
 release: boot
-	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
+	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
 
 install:
 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
@@ -95,6 +95,8 @@ clean:
 	$(RM) $(OBJS) $(EXE)
 
 clean-all: clean-cache
+	$(MAKE) -C src/gc clean
+	$(MAKE) -C src/boot clean
 	$(RM) $(BUILD_DIR) tmp $(EXE)
 
 clean-cache:
