@@ -25,6 +25,24 @@ minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn) {
     return ((minim_object *) o);
 }
 
+minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint) {
+    minim_hashtable_object *o;
+    size_t *alloc_ptr;
+
+    for (alloc_ptr = start_size_ptr; *alloc_ptr < size_hint; ++alloc_ptr);
+
+    o = GC_alloc(sizeof(minim_hashtable_object));
+    o->type = MINIM_HASHTABLE_TYPE;
+    o->alloc_ptr =  alloc_ptr;
+    o->alloc = *o->alloc_ptr;
+    o->size = 0;
+    o->buckets = GC_calloc(o->alloc, sizeof(minim_object*));
+    o->hash = hash_fn;
+    o->equiv = equiv_fn;
+
+    return ((minim_object *) o);
+}
+
 minim_object *copy_hashtable(minim_object *src) {
     minim_hashtable_object *o, *ht;
     minim_object *b, *it, *t;
@@ -187,7 +205,7 @@ static void hashtable_opt_resize(minim_object *ht) {
     }
 }
 
-static int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
+int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
     minim_object *b, *bi;
     uint64_t i;
 
@@ -235,7 +253,7 @@ static int hashtable_delete(minim_object *ht, minim_object *k) {
     return 0;
 }
 
-static minim_object *hashtable_find(minim_object *ht, minim_object *k) {
+minim_object *hashtable_find(minim_object *ht, minim_object *k) {
     minim_object *b;
     uint64_t i;
 
@@ -251,7 +269,7 @@ static minim_object *hashtable_find(minim_object *ht, minim_object *k) {
     return minim_null;
 }
 
-static minim_object *hashtable_keys(minim_object *ht) {
+minim_object *hashtable_keys(minim_object *ht) {
     minim_object *b, *ks;
     uint64_t i;
 

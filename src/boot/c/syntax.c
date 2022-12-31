@@ -57,7 +57,6 @@ minim_object *to_syntax(minim_object *o) {
             minim_vector_ref(it, i) = to_syntax(minim_vector_ref(o, i));
         return make_syntax(it, minim_false);
 
-
     default:
         fprintf(stderr, "datum->syntax: cannot convert to syntax");
         exit(1);

@@ -22,6 +22,7 @@
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
+#define ENVIRONMENT_VECTOR_MAX      10
 
 // Arity
 
@@ -71,10 +72,13 @@ typedef enum {
     /* Composite types */
     MINIM_HASHTABLE_TYPE,
     MINIM_SYNTAX_TYPE,
-    MINIM_VALUES_TYPE,
 
     /* Transform types */
     MINIM_PATTERN_VAR_TYPE,
+
+    /* Runtime types */
+    MINIM_ENVIRONMENT_TYPE,
+    MINIM_VALUES_TYPE,
 
     /* Footer */
     MINIM_LAST_TYPE
@@ -160,6 +164,12 @@ typedef struct {
     minim_object *depth;
 } minim_pattern_var_object;
 
+typedef struct minim_env {
+    minim_object_type type;
+    minim_object *prev;
+    minim_object *bindings;
+} minim_env;
+
 // Special objects
 
 extern minim_object *minim_null;
@@ -205,6 +215,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
 #define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
+#define minim_is_env(x)             (minim_same_type(x, MINIM_ENVIRONMENT_TYPE))
 #define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
 
 #define minim_is_null(x)        ((x) == minim_null)
@@ -265,6 +276,9 @@ extern minim_object *quote_syntax_symbol;
 #define minim_pattern_var_value(x)      (((minim_pattern_var_object *) (x))->value)
 #define minim_pattern_var_depth(x)      (((minim_pattern_var_object *) (x))->depth)
 
+#define minim_env_bindings(x)           (((minim_env *) (x))->bindings)
+#define minim_env_prev(x)               (((minim_env *) (x))->prev)
+
 // Setters
 
 #define minim_port_set(x, f)        (((minim_port_object *) (x))->flags |= (f))
@@ -291,6 +305,7 @@ minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_vector(long len, minim_object *init);
 minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
+minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
 minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
@@ -334,6 +349,8 @@ minim_object *eval_expr(minim_object *expr, minim_object *env);
 
 // Environments
 
+minim_object *make_environment(minim_object *prev);
+
 minim_object *setup_env();
 minim_object *make_env();
 minim_object *extend_env(minim_object *vars,
@@ -363,6 +380,12 @@ typedef struct intern_table {
 
 intern_table *make_intern_table();
 minim_object *intern_symbol(intern_table *itab, const char *sym);
+
+// Hashtables
+
+int hashtable_set(minim_object *ht, minim_object *k, minim_object *v);
+minim_object *hashtable_find(minim_object *ht, minim_object *k);
+minim_object *hashtable_keys(minim_object *ht);
 
 // Threads
 

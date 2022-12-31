@@ -36,11 +36,11 @@ static minim_object *boot_expander_proc(minim_object *args) {
 #define add_value(name, c_val)                  \
     env_define_var(env, intern(name), c_val);
 
-#define add_procedure(name, c_fn, min_arity, max_arity) {   \
-    minim_object *sym = intern(name);                       \
-    env_define_var(env, sym,                                \
-                   make_prim_proc(c_fn, minim_symbol(sym),  \
-                                  min_arity, max_arity));   \
+#define add_procedure(name, c_fn, min_arity, max_arity) {           \
+    minim_object *sym = intern(name);                               \
+    env_define_var(env, sym,                               \
+                   make_prim_proc(c_fn, minim_symbol(sym), \
+                                  min_arity, max_arity));  \
 }
 
 void populate_env(minim_object *env) {
