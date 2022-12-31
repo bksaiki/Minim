@@ -79,10 +79,9 @@ test: minim
 	$(MAKE) lib-tests
 
 boot-tests:
-	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot test
+	$(MAKE) -C src/boot test
 
 unit-tests: $(TEST_EXES)
-	$(MAKE) -C src/boot test
 	$(SH) $(TEST_DIR)/test.sh $(TEST_EXES)
 
 memcheck: $(TEST_EXES)
@@ -95,12 +94,12 @@ lib-tests:
 	$(SH) $(TEST_DIR)/lib.sh
 
 clean:
-	$(MAKE) -C boehm-gc clean
 	$(MAKE) -C src/gc clean
 	$(MAKE) -C src/boot clean
 	$(RM) $(OBJS) $(EXE)
 
 clean-all: clean clean-cache
+	$(MAKE) -C boehm-gc clean
 	$(RM) boehm-gc/Makefile
 	$(RM) $(BUILD_DIR) tmp
 

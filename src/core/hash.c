@@ -20,11 +20,6 @@ uint32_t hash_bytes(const void* data, size_t len)
     return hash;
 }
 
-static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    mrk(gc, ((MinimHash*) ptr)->buckets);
-}
-
 // static void gc_mark_minim_symbol_table_row(void (*mrk)(void*, void*), void *gc, void *ptr)
 // {
 //     mrk(gc, ((MinimHashRow*) ptr)->arr);
@@ -36,7 +31,7 @@ static void gc_minim_hash_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
 
 void init_minim_hash_table(MinimHash **pht)
 {
-    MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
+    MinimHash *ht = GC_alloc(sizeof(MinimHash));
     ht->alloc_ptr = &bucket_sizes[0];
     ht->alloc = *ht->alloc_ptr;
     ht->size = 0;
@@ -46,7 +41,7 @@ void init_minim_hash_table(MinimHash **pht)
 
 void copy_minim_hash_table(MinimHash **pht, MinimHash *src)
 {
-    MinimHash *ht = GC_alloc_opt(sizeof(MinimHash), NULL, gc_minim_hash_mrk);
+    MinimHash *ht = GC_alloc(sizeof(MinimHash));
     ht->alloc_ptr = src->alloc_ptr;
     ht->alloc = src->alloc;
     ht->size = src->size;

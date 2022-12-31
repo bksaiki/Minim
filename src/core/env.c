@@ -13,19 +13,6 @@ static void add_metadata(MinimObject *obj, const char *str)
     }
 }
 
-static void gc_minim_env_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    MinimEnv *env = (MinimEnv*) ptr;
-
-    mrk(gc, env->parent);
-    mrk(gc, env->module_inst);
-    mrk(gc, env->table);
-    mrk(gc, env->callee);
-    mrk(gc, env->caller);
-    mrk(gc, env->jmp);
-    mrk(gc, env->current_dir);
-}
-
 static MinimEnv *env_for_print = NULL;
 
 static void print_symbol_entry(const char *sym, MinimObject *obj)
@@ -65,7 +52,7 @@ static void print_symbol_entry(const char *sym, MinimObject *obj)
 
 MinimEnv *init_env(MinimEnv *parent)
 {
-    MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
+    MinimEnv *env = GC_alloc(sizeof(MinimEnv));
 
     env->parent = parent;
     env->module_inst = NULL;
@@ -82,7 +69,7 @@ MinimEnv *init_env(MinimEnv *parent)
 
 MinimEnv *init_env2(MinimEnv *parent, MinimLambda *callee)
 {
-    MinimEnv *env = GC_alloc_opt(sizeof(MinimEnv), NULL, gc_minim_env_mrk);
+    MinimEnv *env = GC_alloc(sizeof(MinimEnv));
 
     env->parent = parent;
     env->module_inst = NULL;

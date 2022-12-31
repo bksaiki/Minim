@@ -4,14 +4,15 @@
 
 // *** Internals *** //
 
-static void gc_mpq_ptr_dtor(void *ptr) {
+static void gc_mpq_ptr_dtor(void *ptr, void *data) {
     mpq_clear((mpq_ptr) ptr);
 }
 
 mpq_ptr gc_alloc_mpq_ptr()
 {
-    mpq_ptr ptr = GC_alloc_opt(sizeof(__mpq_struct), gc_mpq_ptr_dtor, NULL);
+    mpq_ptr ptr = GC_alloc(sizeof(__mpq_struct));
     mpq_init(ptr);
+    GC_register_dtor(ptr, gc_mpq_ptr_dtor);
     return ptr;
 }
 

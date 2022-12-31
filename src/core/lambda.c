@@ -1,19 +1,8 @@
 #include "minimpriv.h"
 
-static void gc_minim_lambda_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    MinimLambda *lam = (MinimLambda *) ptr;
-    mrk(gc, lam->body);
-    mrk(gc, lam->loc);
-    mrk(gc, lam->env);
-    mrk(gc, lam->args);
-    mrk(gc, lam->rest);
-    mrk(gc, lam->name);
-}
-
 void init_minim_lambda(MinimLambda **plam)
 {
-    MinimLambda *lam = GC_alloc_opt(sizeof(MinimLambda), NULL, gc_minim_lambda_mrk);
+    MinimLambda *lam = GC_alloc(sizeof(MinimLambda));
     
     lam->loc = NULL;
     lam->env = NULL;

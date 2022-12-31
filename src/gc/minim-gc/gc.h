@@ -40,7 +40,7 @@ void GC_free(void *ptr);
 void GC_collect();
 
 /* Register destructor and marker functions for objects.  */
-void GC_register_dtor(void *ptr, void (*func)(void*));
+void GC_register_dtor(void *ptr, void (*func)(void*, void*));
 void GC_register_mrk(void *ptr, void (*func)(void (void*,void*),void*,void*));
 
 /* Register object as a root (never garbage collected) */

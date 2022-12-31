@@ -17,17 +17,11 @@
 
 #define path_separator(t) (((t) == MINIM_PATH_MODE_LINUX) ? '/' : '\\')
 
-static void gc_mrk_path(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    mrk(gc, ((MinimPath*) ptr)->drive);
-    mrk(gc, ((MinimPath*) ptr)->elems);
-}
-
 static void init_path(MinimPath **ppath)
 {
     MinimPath *path;
 
-    path = GC_alloc_opt(sizeof(MinimPath), NULL, gc_mrk_path);
+    path = GC_alloc(sizeof(MinimPath));
     path->drive = NULL;
     path->elems = NULL;
     path->elemc = 0;
