@@ -19,7 +19,7 @@ TESTS 		:= $(shell find $(TEST_DIR) -name "*.c")
 TEST_EXES   := $(TESTS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%)
 
 DEPFLAGS 	:= -MMD -MP
-CFLAGS 		:= -Wall -std=c11
+CFLAGS 		:= -Wall -std=c11 -DUSE_MINIM_GC
 LDFLAGS 	:= -lm -lgmp
 
 DEBUG_FLAGS		:= -O2 -g -DENABLE_STATS
@@ -40,22 +40,22 @@ FIND := find
 # Top level rules
 
 debug: boot
-	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
+	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
 profile: boot
-	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
+	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
 
 coverage: boot
-	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
+	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
 
 release: boot
-	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS) -DUSE_MINIM_GC" minim
+	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
 
 install:
 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
 
 boot: gc
-	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot
+	$(MAKE) -C src/boot
 
 gc: boehm-gc minim-gc
 	cp boehm-gc/.libs/libgc.a src/gc/
@@ -128,7 +128,7 @@ $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
 $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
-	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
+	$(CC) -g $(CFLAGS) -DUSE_MINIM_GC $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 	
 -include $(DEPS)
 
