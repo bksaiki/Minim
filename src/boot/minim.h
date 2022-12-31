@@ -538,6 +538,8 @@ DEFINE_PRIM_PROC(hashtable_delete);
 DEFINE_PRIM_PROC(hashtable_update);
 DEFINE_PRIM_PROC(hashtable_ref);
 DEFINE_PRIM_PROC(hashtable_keys);
+DEFINE_PRIM_PROC(hashtable_copy);
+DEFINE_PRIM_PROC(hashtable_clear);
 // hash functions
 DEFINE_PRIM_PROC(eq_hash);
 DEFINE_PRIM_PROC(equal_hash);

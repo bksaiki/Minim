@@ -785,6 +785,20 @@ int test_hashtable() {
                    "(hashtable-ref h 'a))",
                 "4");
 
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-ref (hashtable-copy h) 'a))",
+                "1");
+
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-set! h 'b 2) "
+                   "(hashtable-set! h 'c 3) "
+                   "(hashtable-ref (hashtable-copy h) 'b))",
+                "2");
+
     return passed;
 }
 

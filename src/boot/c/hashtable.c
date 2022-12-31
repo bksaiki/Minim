@@ -25,6 +25,49 @@ minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn) {
     return ((minim_object *) o);
 }
 
+minim_object *copy_hashtable(minim_object *src) {
+    minim_hashtable_object *o, *ht;
+    minim_object *b, *it, *t;
+    uint64_t i;
+
+    ht = ((minim_hashtable_object *) src);
+    
+    o = GC_alloc(sizeof(minim_hashtable_object));
+    o->type = MINIM_HASHTABLE_TYPE;
+    o->alloc_ptr = ht->alloc_ptr;
+    o->alloc = ht->alloc;
+    o->size = ht->size;
+    o->buckets = GC_alloc(o->alloc * sizeof(minim_object*));
+    o->hash = ht->hash;
+    o->equiv = ht->equiv;
+
+    for (i = 0; i < ht->alloc; ++i) {
+        b = minim_hashtable_bucket(ht, i);
+        if (b) {
+            t = make_pair(make_pair(minim_caar(b), minim_cdar(b)), minim_null);
+            minim_hashtable_bucket(o, i) = t;
+            for (it = minim_cdr(b); !minim_is_null(it); it = minim_cdr(it)) {
+                minim_cdr(t) = make_pair(make_pair(minim_caar(it), minim_cdar(it)), minim_null);
+                t = minim_cdr(t);
+            }
+        } else {
+            minim_hashtable_bucket(o, i) = NULL;
+        }
+    }
+
+    return ((minim_object *) o);
+}
+
+void hashtable_clear(minim_object *o) {
+    minim_hashtable_object *ht;
+
+    ht = ((minim_hashtable_object *) o);
+    ht->alloc_ptr = start_size_ptr;
+    ht->alloc = *ht->alloc_ptr;
+    ht->size = 0;
+    ht->buckets = GC_calloc(ht->alloc, sizeof(minim_object *));
+}
+
 static uint64_t hash_bytes(const void *data, size_t len, uint64_t hash0) {
     const char *str;
     uint64_t hash;
@@ -387,6 +430,27 @@ minim_object *hashtable_keys_proc(minim_object *args) {
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-keys", "hashtable?", ht);
     return hashtable_keys(ht);
+}
+
+minim_object *hashtable_copy_proc(minim_object *args) {
+    // (-> hashtable void)
+    minim_object *ht;
+
+    ht = minim_car(args);
+    if (!minim_is_hashtable(ht))
+        bad_type_exn("hashtable-copy", "hashtable?", ht);
+    return copy_hashtable(ht);
+}
+
+minim_object *hashtable_clear_proc(minim_object *args) {
+    // (-> hashtable void)
+    minim_object *ht;
+
+    ht = minim_car(args);
+    if (!minim_is_hashtable(ht))
+        bad_type_exn("hashtable-clear!", "hashtable?", ht);
+    hashtable_clear(ht);
+    return minim_void;
 }
 
 minim_object *eq_hash_proc(minim_object *args) {
