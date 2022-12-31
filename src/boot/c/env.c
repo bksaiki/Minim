@@ -54,6 +54,7 @@ void env_define_var_no_check(minim_object *env, minim_object *var, minim_object 
             hashtable_set(new_frame, minim_car(bind), minim_cdr(bind));
         }
 
+        hashtable_set(new_frame, var, val);
         minim_env_bindings(env) = new_frame;
     } else if (minim_is_hashtable(frame)) {
         // large namespace

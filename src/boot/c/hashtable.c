@@ -193,8 +193,7 @@ static void hashtable_opt_resize(minim_object *ht) {
             if (it) {
                 for (; !minim_is_null(it); it = minim_cdr(it)) {
                     idx = hash_key(ht, minim_caar(it)) % *alloc_ptr;
-                    buckets[idx] = make_pair(make_pair(minim_caar(it), minim_cdar(it)),
-                                             buckets[idx] ? buckets[idx] : minim_null);
+                    buckets[idx] = make_pair(minim_car(it), (buckets[idx] ? buckets[idx] : minim_null));
                 }
             }
         }
@@ -209,6 +208,7 @@ int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
     minim_object *b, *bi;
     uint64_t i;
 
+    hashtable_opt_resize(ht);
     i = hash_key(ht, k) % minim_hashtable_alloc(ht);
     b = minim_hashtable_bucket(ht, i);
     if (b) {
@@ -222,7 +222,6 @@ int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
         b = minim_null;
     }
 
-    hashtable_opt_resize(ht);
     minim_hashtable_bucket(ht, i) = make_pair(make_pair(k, v), b);
     ++minim_hashtable_size(ht);
     return 0;
