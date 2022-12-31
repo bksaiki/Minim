@@ -166,6 +166,31 @@ static void hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
     ++minim_hashtable_size(ht);
 }
 
+static int hashtable_delete(minim_object *ht, minim_object *k) {
+    minim_object *b, *bi;
+    uint64_t i;
+
+    i = hash_key(ht, k) % minim_hashtable_alloc(ht);
+    b = minim_hashtable_bucket(ht, i);
+    if (b) {
+        for (bi = b; !minim_is_null(bi); bi = minim_cdr(bi)) {
+            if (key_equiv(ht, minim_caar(bi), k)) {
+                if (bi == b) {
+                    minim_hashtable_bucket(ht, i) = NULL;
+                } else {
+                    for (; minim_cdr(b) != b; b = minim_cdr(b));
+                    minim_cdr(b) = minim_cdr(bi);
+                }
+                
+                --minim_hashtable_size(ht);
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
 static minim_object *hashtable_find(minim_object *ht, minim_object *k) {
     minim_object *b;
     uint64_t i;
@@ -197,6 +222,12 @@ minim_object *make_eq_hashtable_proc(minim_object *args) {
                           make_prim_proc(eq_proc, "eq?", 2, 2));
 }
 
+minim_object *make_hashtable_proc(minim_object *args) {
+    // (-> hashtable)
+    return make_hashtable(make_prim_proc(equal_hash_proc, "equal-hash", 1, 1),
+                          make_prim_proc(equal_proc, "equal?", 2, 2));
+}
+
 minim_object *hashtable_size_proc(minim_object *args) {
     // (-> hashtable any any void)
     minim_object *ht;
@@ -205,6 +236,18 @@ minim_object *hashtable_size_proc(minim_object *args) {
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-set!", "hashtable?", ht);
     return make_fixnum(minim_hashtable_size(ht));
+}
+
+minim_object *hashtable_contains_proc(minim_object *args) {
+    // (-> hashtable any boolean)
+    minim_object *ht, *k;
+
+    ht = minim_car(args);
+    if (!minim_is_hashtable(ht))
+        bad_type_exn("hashtable-contains?", "hashtable?", ht);
+
+    k = minim_cadr(args);
+    return (minim_is_null(hashtable_find(ht, k)) ? minim_false : minim_true);
 }
 
 minim_object *hashtable_set_proc(minim_object *args) {
@@ -218,6 +261,25 @@ minim_object *hashtable_set_proc(minim_object *args) {
     k = minim_cadr(args);
     v = minim_car(minim_cddr(args));
     hashtable_set(ht, k, v);
+    return minim_void;
+}
+
+minim_object *hashtable_delete_proc(minim_object *args) {
+    // (-> hashtable any void)
+    minim_object *ht, *k;
+
+    ht = minim_car(args);
+    if (!minim_is_hashtable(ht))
+        bad_type_exn("hashtable-delete!", "hashtable?", ht);
+
+    k = minim_cadr(args);
+    if (!hashtable_delete(ht, k)) {
+        fprintf(stderr, "hashtable-delete!: could not find key ");
+        write_object(stderr, k);
+        fprintf(stderr, "\n");
+        exit(1);
+    }
+
     return minim_void;
 }
 

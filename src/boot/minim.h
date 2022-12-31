@@ -530,8 +530,11 @@ DEFINE_PRIM_PROC(string_to_symbol);
 // hashtable
 DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);
+DEFINE_PRIM_PROC(make_hashtable);
 DEFINE_PRIM_PROC(hashtable_size);
+DEFINE_PRIM_PROC(hashtable_contains);
 DEFINE_PRIM_PROC(hashtable_set);
+DEFINE_PRIM_PROC(hashtable_delete);
 DEFINE_PRIM_PROC(hashtable_ref);
 // hash functions
 DEFINE_PRIM_PROC(eq_hash);

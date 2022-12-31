@@ -150,8 +150,11 @@ void populate_env(minim_object *env) {
 
     add_procedure("hashtable?", is_hashtable_proc, 1, 1);
     add_procedure("make-eq-hashtable", make_eq_hashtable_proc, 0, 0);   // TODO: allow size hint?
+    add_procedure("make-hashtable", make_hashtable_proc, 0, 0);         // TODO: allow size hint?
     add_procedure("hashtable-size", hashtable_size_proc, 1, 1);
+    add_procedure("hashtable-contains?", hashtable_contains_proc, 2, 2);
     add_procedure("hashtable-set!", hashtable_set_proc, 3, 3);
+    add_procedure("hashtable-delete!", hashtable_delete_proc, 2, 2);
     add_procedure("hashtable-ref", hashtable_ref_proc, 2, 2);
 
     add_procedure("eq-hash", eq_hash_proc, 1, 1);
