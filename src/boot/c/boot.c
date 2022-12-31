@@ -147,6 +147,22 @@ void populate_env(minim_object *env) {
     add_procedure("string-ref", string_ref_proc, 2, 2);
     add_procedure("string-set!", string_set_proc, 3, 3);
     add_procedure("string-append", string_append_proc, 0, ARG_MAX);
+
+    add_procedure("hashtable?", is_hashtable_proc, 1, 1);
+    add_procedure("make-eq-hashtable", make_eq_hashtable_proc, 0, 0);   // TODO: allow size hint?
+    add_procedure("make-hashtable", make_hashtable_proc, 0, 0);         // TODO: allow size hint?
+    add_procedure("hashtable-size", hashtable_size_proc, 1, 1);
+    add_procedure("hashtable-contains?", hashtable_contains_proc, 2, 2);
+    add_procedure("hashtable-set!", hashtable_set_proc, 3, 3);
+    add_procedure("hashtable-delete!", hashtable_delete_proc, 2, 2);
+    add_procedure("hashtable-update!", hashtable_update_proc, 3, 4);
+    add_procedure("hashtable-ref", hashtable_ref_proc, 2, 3);
+    add_procedure("hashtable-keys", hashtable_keys_proc, 1, 1);
+    add_procedure("hashtable-copy", hashtable_copy_proc, 1, 1);     // TODO: set mutability
+    add_procedure("hashtable-clear!", hashtable_clear_proc, 1, 1);
+
+    add_procedure("eq-hash", eq_hash_proc, 1, 1);
+    add_procedure("equal-hash", equal_hash_proc, 1, 1);
     
     add_procedure("syntax?", is_syntax_proc, 1, 1);
     add_procedure("syntax-e", syntax_e_proc, 1, 1);

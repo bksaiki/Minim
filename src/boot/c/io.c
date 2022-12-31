@@ -376,7 +376,9 @@ static void write_pair(FILE *out, minim_pair_object *p, int quote, int display) 
 }
 
 void write_object2(FILE *out, minim_object *o, int quote, int display) {
+    minim_object *it;
     char *str;
+    long i;
 
     switch (o->type) {
     case MINIM_NULL_TYPE:
@@ -463,6 +465,26 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
                 write_object2(out, minim_vector_ref(o, i), 1, display);
             }
             fputc(')', out);
+        }
+        break;
+    case MINIM_HASHTABLE_TYPE:
+        if (minim_hashtable_size(o) == 0) {
+            fprintf(out, "#<hashtable>");
+        } else {
+            fprintf(out, "#<hashtable");
+            for (i = 0; i < minim_hashtable_alloc(o); ++i) {
+                it = minim_hashtable_bucket(o, i);
+                if (it) {
+                    for (; !minim_is_null(it); it = minim_cdr(it)) {
+                        fputs(" (", out);
+                        write_object2(out, minim_caar(it), 1, display);
+                        fputs(" . ", out);
+                        write_object2(out, minim_cdar(it), 1, display);
+                        fputc(')', out);
+                    }
+                }
+            }
+            fputc('>', out);
         }
         break;
     case MINIM_PRIM_PROC_TYPE:

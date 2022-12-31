@@ -77,6 +77,12 @@ int minim_is_equal(minim_object *a, minim_object *b) {
 
         return 1;
 
+    case MINIM_HASHTABLE_TYPE:
+        if (minim_hashtable_size(a) != minim_hashtable_size(b))
+            return 0;
+
+        return 0;
+
     default:
         return 0;
     }

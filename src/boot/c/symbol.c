@@ -5,12 +5,10 @@
     Symbol/string interner
 */
 
-#include <stdint.h>
-
 #include "../minim.h"
 
 // copied from ChezScheme
-static size_t bucket_sizes[] = {
+size_t bucket_sizes[] = {
     13,
     29,
     59,
@@ -81,7 +79,6 @@ static size_t bucket_sizes[] = {
     if (load_factor((i)->size, (i)->alloc) > MINIM_INTERN_TABLE_LOAD_FACTOR)    \
         intern_table_resize(i);                                                 \
 }
-
 
 #define new_bucket(b, s, n) {                       \
     (b) = GC_alloc(sizeof(intern_table_bucket));    \

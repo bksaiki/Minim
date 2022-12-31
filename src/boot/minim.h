@@ -6,6 +6,7 @@
 #define _MINIM_H_
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -21,7 +22,6 @@
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
-
 
 // Arity
 
@@ -69,6 +69,7 @@ typedef enum {
     MINIM_PORT_TYPE,
 
     /* Composite types */
+    MINIM_HASHTABLE_TYPE,
     MINIM_SYNTAX_TYPE,
     MINIM_VALUES_TYPE,
 
@@ -120,7 +121,7 @@ typedef struct {
 typedef struct {
     minim_object_type type;
     struct proc_arity arity;
-    minim_object *(*fn)(minim_object *args);
+    minim_object *(*fn)(minim_object *);
     char *name;
 } minim_prim_proc_object;
 
@@ -144,6 +145,14 @@ typedef struct {
     minim_object *e;
     minim_object *loc;
 } minim_syntax_object;
+
+typedef struct {
+    minim_object_type type;
+    minim_object *hash, *equiv;
+    minim_object **buckets;
+    size_t *alloc_ptr;
+    size_t alloc, size;
+} minim_hashtable_object;
 
 typedef struct {
     minim_object_type type;
@@ -193,6 +202,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
 #define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
+#define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
 #define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
 #define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
@@ -244,6 +254,14 @@ extern minim_object *quote_syntax_symbol;
 #define minim_syntax_e(x)       (((minim_syntax_object *) (x))->e)
 #define minim_syntax_loc(x)     (((minim_syntax_object *) (x))->loc)
 
+#define minim_hashtable_buckets(x)      (((minim_hashtable_object *) (x))->buckets)
+#define minim_hashtable_bucket(x, i)    ((((minim_hashtable_object *) (x))->buckets)[i])
+#define minim_hashtable_alloc_ptr(x)    (((minim_hashtable_object *) (x))->alloc_ptr)
+#define minim_hashtable_alloc(x)        (((minim_hashtable_object *) (x))->alloc)
+#define minim_hashtable_size(x)         (((minim_hashtable_object *) (x))->size)
+#define minim_hashtable_hash(x)         (((minim_hashtable_object *) (x))->hash)
+#define minim_hashtable_equiv(x)        (((minim_hashtable_object *) (x))->equiv)
+
 #define minim_pattern_var_value(x)      (((minim_pattern_var_object *) (x))->value)
 #define minim_pattern_var_depth(x)      (((minim_pattern_var_object *) (x))->depth)
 
@@ -272,6 +290,7 @@ minim_object *make_string(const char *s);
 minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_vector(long len, minim_object *init);
+minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
 minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
@@ -383,6 +402,7 @@ typedef struct minim_globals {
 } minim_globals;
 
 extern minim_globals *globals;
+extern size_t bucket_sizes[];
 
 #define current_thread()    (globals->current_thread)
 #define intern(s)           (intern_symbol(globals->symbols, s))
@@ -507,6 +527,22 @@ DEFINE_PRIM_PROC(number_to_string);
 DEFINE_PRIM_PROC(string_to_number);
 DEFINE_PRIM_PROC(symbol_to_string);
 DEFINE_PRIM_PROC(string_to_symbol);
+// hashtable
+DEFINE_PRIM_PROC(is_hashtable);
+DEFINE_PRIM_PROC(make_eq_hashtable);
+DEFINE_PRIM_PROC(make_hashtable);
+DEFINE_PRIM_PROC(hashtable_size);
+DEFINE_PRIM_PROC(hashtable_contains);
+DEFINE_PRIM_PROC(hashtable_set);
+DEFINE_PRIM_PROC(hashtable_delete);
+DEFINE_PRIM_PROC(hashtable_update);
+DEFINE_PRIM_PROC(hashtable_ref);
+DEFINE_PRIM_PROC(hashtable_keys);
+DEFINE_PRIM_PROC(hashtable_copy);
+DEFINE_PRIM_PROC(hashtable_clear);
+// hash functions
+DEFINE_PRIM_PROC(eq_hash);
+DEFINE_PRIM_PROC(equal_hash);
 // environment
 DEFINE_PRIM_PROC(empty_environment);
 DEFINE_PRIM_PROC(extend_environment);
