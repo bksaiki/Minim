@@ -57,7 +57,12 @@ install:
 boot: gc
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/boot
 
-gc:
+gc: minim-gc boehm-gc
+
+boehm-gc:
+	$(MAKE) -C boehm-gc
+
+minim-gc:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/gc
 
 minim: $(BUILD_DIR)/config.h $(OBJS)
@@ -121,4 +126,4 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 -include $(DEPS)
 
 .PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
-		clean clean-all clean-cache install uninstall
+		clean clean-all clean-cache install uninstall minim-gc boehm-gc
