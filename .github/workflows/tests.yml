@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest   
     steps:
     - uses: actions/checkout@v2
-      with: recursive
+      with:
+        submodules: recursive
     - name: Build
       run: make
     - name: Unit tests
@@ -19,7 +20,8 @@ jobs:
     needs: [ 'unit' ]
     steps:
     - uses: actions/checkout@v2
-      with: recursive
+      with:
+        submodules: recursive
     - name: Build
       run: make
     - name : Library tests
@@ -30,7 +32,8 @@ jobs:
     needs: [ 'unit' ]
     steps:
     - uses: actions/checkout@v2
-      with: recursive
+      with:
+        submodules: recursive
     - name: Build
       run: make
     - name : Examples
