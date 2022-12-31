@@ -156,6 +156,7 @@ void populate_env(minim_object *env) {
     add_procedure("hashtable-set!", hashtable_set_proc, 3, 3);
     add_procedure("hashtable-delete!", hashtable_delete_proc, 2, 2);
     add_procedure("hashtable-ref", hashtable_ref_proc, 2, 2);
+    add_procedure("hashtable-keys", hashtable_keys_proc, 1, 1);
 
     add_procedure("eq-hash", eq_hash_proc, 1, 1);
     add_procedure("equal-hash", equal_hash_proc, 1, 1);

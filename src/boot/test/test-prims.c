@@ -748,6 +748,17 @@ int test_hashtable() {
                    "(hashtable-contains? h 'a))",
                 "#f");
 
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
+                   "(let loop ([i 0]) "
+                     "(if (= i 10000) "
+                         "(void) "
+                         "(begin "
+                           "(hashtable-set! h i (+ i 1)) "
+                           "(loop (+ i 1))))) "
+                   "(hashtable-size h))",
+                "10000");
+
     return passed;
 }
 

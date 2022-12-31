@@ -207,6 +207,22 @@ static minim_object *hashtable_find(minim_object *ht, minim_object *k) {
     return minim_null;
 }
 
+static minim_object *hashtable_keys(minim_object *ht) {
+    minim_object *b, *ks;
+    uint64_t i;
+
+    ks = minim_null;
+    for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
+        b = minim_hashtable_bucket(ht, i);
+        if (b) {
+            for (; !minim_is_null(b); b = minim_cdr(b))
+                ks = make_pair(minim_caar(b), ks);
+        }
+    }
+
+    return ks;
+}
+
 //
 //  Primitives
 //
@@ -301,6 +317,16 @@ minim_object *hashtable_ref_proc(minim_object *args) {
     }
 
     return minim_cdr(b);
+}
+
+minim_object *hashtable_keys_proc(minim_object *args) {
+    // (-> hashtable (listof any))
+    minim_object *ht;
+
+    ht = minim_car(args);
+    if (!minim_is_hashtable(ht))
+        bad_type_exn("hashtable-keys", "hashtable?", ht);
+    return hashtable_keys(ht);
 }
 
 minim_object *eq_hash_proc(minim_object *args) {
