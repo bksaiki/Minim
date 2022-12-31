@@ -759,6 +759,13 @@ int test_hashtable() {
                    "(hashtable-size h))",
                 "10000");
 
+    check_equal("(begin "
+                   "(define h (make-hashtable)) "
+                   "(hashtable-set! h 'a 1) "
+                   "(hashtable-update! h 'a (lambda (x) (* 2 x))) "
+                   "(hashtable-ref h 'a))",
+                "2");
+
     return passed;
 }
 

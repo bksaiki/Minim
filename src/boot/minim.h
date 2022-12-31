@@ -535,6 +535,7 @@ DEFINE_PRIM_PROC(hashtable_size);
 DEFINE_PRIM_PROC(hashtable_contains);
 DEFINE_PRIM_PROC(hashtable_set);
 DEFINE_PRIM_PROC(hashtable_delete);
+DEFINE_PRIM_PROC(hashtable_update);
 DEFINE_PRIM_PROC(hashtable_ref);
 DEFINE_PRIM_PROC(hashtable_keys);
 // hash functions

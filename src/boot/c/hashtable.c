@@ -144,7 +144,7 @@ static void hashtable_opt_resize(minim_object *ht) {
     }
 }
 
-static void hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
+static int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
     minim_object *b, *bi;
     uint64_t i;
 
@@ -154,7 +154,7 @@ static void hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
         for (bi = b; !minim_is_null(bi); bi = minim_cdr(bi)) {
             if (key_equiv(ht, minim_caar(bi), k)) {
                 minim_cdar(bi) = v;
-                return;
+                return 1;
             }
         }
     } else {
@@ -164,6 +164,7 @@ static void hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
     hashtable_opt_resize(ht);
     minim_hashtable_bucket(ht, i) = make_pair(make_pair(k, v), b);
     ++minim_hashtable_size(ht);
+    return 0;
 }
 
 static int hashtable_delete(minim_object *ht, minim_object *k) {
@@ -296,6 +297,32 @@ minim_object *hashtable_delete_proc(minim_object *args) {
         exit(1);
     }
 
+    return minim_void;
+}
+
+minim_object *hashtable_update_proc(minim_object *args) {
+    // (-> hashtable any (-> any any) void)
+    minim_object *ht, *k, *proc, *b, *env;
+
+    ht = minim_car(args);
+    if (!minim_is_hashtable(ht))
+        bad_type_exn("hashtable-update!", "hashtable?", ht);
+
+    k = minim_cadr(args);
+    b = hashtable_find(ht, k);
+    if (minim_is_null(b)) {
+        fprintf(stderr, "hashtable-update!: could not find key ");
+        write_object(stderr, k);
+        fprintf(stderr, "\n");
+        exit(1);
+    }
+
+    proc = minim_car(minim_cddr(args));
+    if (!minim_is_proc(proc))
+        bad_type_exn("hashtable-update!", "procedure?", proc);
+
+    env = global_env(current_thread());   // TODO: this seems problematic
+    minim_cdr(b) = call_with_args(proc, make_pair(minim_cdr(b), minim_null), env);
     return minim_void;
 }
 
