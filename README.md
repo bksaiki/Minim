@@ -6,8 +6,10 @@ For the most recent stable release, checkout the `stable` branch.
 
 #### Prerequisites
  - `gcc`, `make` (not tested with `clang`)
+ - `autoconf`, `libtool` (if building with Boehm's garbage collector)
  - GNU MP library (GMP)
 
 #### Install
-1. Clone this repository.
+1. Clone this repository (clone recusive if building Boehm's garbage collector)
+2. Run either `make boehm-gc` or `make minim-gc`
 3. Run `make release` in this directory.
