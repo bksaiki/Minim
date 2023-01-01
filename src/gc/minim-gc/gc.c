@@ -22,30 +22,6 @@ void GC_resume() {
     gc_resume(main_gc);
 }
 
-void *GC_alloc(size_t size) {
-    return GC_alloc_opt(size, NULL, NULL);
-}
-
-void *GC_calloc(size_t nmem, size_t size) {
-    return GC_calloc_opt(nmem, size, NULL, NULL);
-}
-
-void *GC_realloc(void *ptr, size_t size) {
-    return GC_realloc_opt(ptr, size, NULL, NULL);
-}
-
-void *GC_alloc_atomic(size_t size) {
-    return GC_alloc_opt(size, NULL, GC_atomic_mrk);
-}
-
-void *GC_calloc_atomic(size_t nmem, size_t size) {
-    return GC_calloc_opt(nmem, size, NULL, GC_atomic_mrk);
-}
-
-void *GC_realloc_atomic(void *ptr, size_t size) {
-    return GC_realloc_opt(ptr, size, NULL, GC_atomic_mrk);
-}
-
 void *GC_alloc_opt(size_t size,
                    void (*dtor)(void*),
                    void (*mrk)(void (void*, void*), void*, void*)) {
@@ -105,6 +81,30 @@ void *GC_realloc_opt(void *ptr,
     }
 }
 
+void *GC_alloc(size_t size) {
+    return GC_alloc_opt(size, NULL, NULL);
+}
+
+void *GC_calloc(size_t nmem, size_t size) {
+    return GC_calloc_opt(nmem, size, NULL, NULL);
+}
+
+void *GC_realloc(void *ptr, size_t size) {
+    return GC_realloc_opt(ptr, size, NULL, NULL);
+}
+
+void *GC_alloc_atomic(size_t size) {
+    return GC_alloc_opt(size, NULL, GC_atomic_mrk);
+}
+
+void *GC_calloc_atomic(size_t nmem, size_t size) {
+    return GC_calloc_opt(nmem, size, NULL, GC_atomic_mrk);
+}
+
+void *GC_realloc_atomic(void *ptr, size_t size) {
+    return GC_realloc_opt(ptr, size, NULL, GC_atomic_mrk);
+}
+
 void GC_free(void *ptr) {
     gc_remove(main_gc, ptr, 1);
 }
@@ -113,7 +113,7 @@ void GC_collect() {
     gc_collect(main_gc);
 }
 
-void GC_register_dtor(void *ptr, void (*func)(void*)) {
+void GC_register_dtor(void *ptr, void (*func)(void*, void*)) {
     gc_register_dtor(main_gc, ptr, func);
 }
 

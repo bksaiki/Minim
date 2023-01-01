@@ -221,7 +221,7 @@ gc_sweep(gc_t *gc) {
                 --gc->size;
                 
                 // call dtor if needed and free record and bucket entry
-                if (r->dtor)    r->dtor(gc_record_ptr(r));
+                if (r->dtor)    r->dtor(gc_record_ptr(r), NULL);
                 free(r);
 
                 // repair bucket entries as needed

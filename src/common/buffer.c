@@ -9,14 +9,9 @@
 
 // *** Initialization //
 
-static void gc_buffer_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    mrk(gc, ((Buffer*) ptr)->data);
-}
-
 void init_buffer(Buffer **pbf)
 {
-    Buffer *bf = GC_alloc_opt(sizeof(Buffer), NULL, gc_buffer_mrk);
+    Buffer *bf = GC_alloc(sizeof(Buffer));
 
     bf->data = GC_alloc_atomic(MINIM_BUFFER_DEFAULT_SIZE * sizeof(char));
     bf->curr = MINIM_BUFFER_DEFAULT_SIZE;

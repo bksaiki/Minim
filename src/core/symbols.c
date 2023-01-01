@@ -12,14 +12,9 @@
     (n) = (b);                                          \
 }
 
-static void gc_mark_minim_symbol_table(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    mrk(gc, ((MinimSymbolTable*) ptr)->buckets);
-}
-
 void init_minim_symbol_table(MinimSymbolTable **ptable)
 {
-    MinimSymbolTable *table = GC_alloc_opt(sizeof(MinimSymbolTable), NULL, gc_mark_minim_symbol_table);
+    MinimSymbolTable *table = GC_alloc(sizeof(MinimSymbolTable));
     table->alloc_ptr = start_size_ptr;
     table->alloc = *table->alloc_ptr;
     table->size = 0;

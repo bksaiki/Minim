@@ -1,23 +1,9 @@
 #include "minimpriv.h"
 
-static void gc_minim_error_trace_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    MinimErrorTrace *trace = (MinimErrorTrace*) ptr;
-    mrk(gc, trace->next);
-    mrk(gc, trace->loc);
-    mrk(gc, trace->name);
-}
-
-static void gc_minim_error_desc_mrk(void (*mrk)(void*, void*), void *gc, void *ptr)
-{
-    MinimErrorDescTable *desc = (MinimErrorDescTable*) ptr;
-    mrk(gc, desc->keys);
-    mrk(gc, desc->vals);
-}
 
 void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char *name)
 {
-    MinimErrorTrace *trace = GC_alloc_opt(sizeof(MinimErrorTrace), NULL, gc_minim_error_trace_mrk);
+    MinimErrorTrace *trace = GC_alloc(sizeof(MinimErrorTrace));
     trace->loc = loc;
     trace->multiple = false;
     trace->next = NULL;
@@ -36,9 +22,7 @@ void init_minim_error_trace(MinimErrorTrace **ptrace, SyntaxLoc *loc, const char
 
 void init_minim_error_desc_table(MinimErrorDescTable **ptable, size_t len)
 {
-    MinimErrorDescTable *table = GC_alloc_opt(sizeof(MinimErrorDescTable),
-                                              NULL,
-                                              gc_minim_error_desc_mrk);
+    MinimErrorDescTable *table = GC_alloc(sizeof(MinimErrorDescTable));
 
     table->keys = GC_calloc(len, sizeof(char*));
     table->vals = GC_calloc(len, sizeof(char*));

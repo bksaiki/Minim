@@ -11,7 +11,7 @@
 #define GC_COLLECT          0x1
 
 /* Destructor signature */
-typedef void (*gc_dtor_t)(void*);
+typedef void (*gc_dtor_t)(void*, void*);
 
 /* Marking signature */
 typedef void (*gc_mark_t)(void*,void*,void*);

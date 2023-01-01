@@ -60,7 +60,8 @@ int main(int argc, char **argv) {
     minim_thread *th;
     int argi;
 
-    argi = handle_flags(argc, argv);
+    stack_top = 0;
+    argi = handle_flags(argc, argv);    
     printf("Minim v%s\n", MINIM_VERSION);
 
     GC_init(((void*) &stack_top));
@@ -108,5 +109,5 @@ int main(int argc, char **argv) {
     }
 
     GC_finalize();
-    return 0;
+    return stack_top;
 }

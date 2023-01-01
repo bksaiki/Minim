@@ -1,35 +1,31 @@
 #
-#	Makefile for the garbage collector
+#	Builds either Boehm's GC or Minim's GC
 #
 
-BUILD_DIR	:= build
-LIBNAME		:= libminimgc.a
-
-SRCS 		:= gc.c gc-impl.c
-OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
-DEPS 		:= $(OBJS:.o=.d)
-
-DEPFLAGS 	:= -MMD -MP
-
-MKDIR_P	:= mkdir -p
 RM := rm -rf
+ECHO := echo
+MKDIR_P	:= mkdir -p
 
-.PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
-.SECONDEXPANSION: $(BUILD_DIR)/%.o
+default: boehm-gc
 
-all: $(OBJS)
-	ar -rc $(LIBNAME) $(OBJS)
+boehm-gc: boehm-gc/Makefile
+	$(MAKE) -C boehm-gc
+	cp boehm-gc/.libs/libgc.a libgc.a
+	$(MKDIR_P) build
+	$(ECHO) "" > build/config.h
+
+boehm-gc/Makefile:
+	cd boehm-gc && ./autogen.sh && ./configure --enable-static=yes --enable-shared=no
+
+minim-gc:
+	$(MAKE) CFLAGS="$(CFLAGS)" -C minim-gc
+	cp minim-gc/libminimgc.a libgc.a
+	$(MKDIR_P) build
+	$(ECHO) "#define USE_MINIM_GC 1" > build/config.h
 
 clean:
-	$(RM) build $(LIBNAME)
+	($(MAKE) -C minim-gc clean)
+	($(MAKE) -C boehm-gc clean)
+	$(RM) build/ boehm-gc/Makefile src/gc/*.a
 
-$(BUILD_DIR)/.:
-	$(MKDIR_P) $@
-
-$(BUILD_DIR)%/.:
-	$(MKDIR_P) $@
-
-$(BUILD_DIR)/%.o: %.c | $$(@D)/.
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
-
-.PHONY: build clean
+.PHONY: boehm-gc minim-gc clean
