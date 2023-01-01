@@ -20,13 +20,10 @@
 #define GC_register_root(o)         GC_add_roots(o, (((void *) o) + sizeof(*o)))
 #define GC_register_dtor(o, p)      GC_register_finalizer(o, p, 0, 0, 0)
 
-#define GC_init(x)          GC_init()
+#define GC_init(x)          GC_init(); 
 #define GC_finalize()       GC_deinit();
 #define GC_pause()          GC_disable()
 #define GC_resume()         GC_enable()
-
-// remap without finalizer and marker
-#define GC_alloc_opt(n, dtor, mrk)      GC_alloc(n)
 
 // ignore
 #define GC_REGISTER_LOCAL_ARRAY(x)
