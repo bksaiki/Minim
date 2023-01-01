@@ -19,6 +19,13 @@ minim_object *empty_env;
 //    - otherwise we allocate a hashtable
 //
 
+static void not_environment_exn(const char *name, minim_object *frame) {
+    fprintf(stderr, "%s: not an environment frame: ", name);
+    write_object(stderr, frame);
+    fprintf(stderr, "\n");
+    minim_shutdown(1);
+}
+
 minim_object *make_environment(minim_object *prev) {
     minim_env *env = GC_alloc(sizeof(minim_env));
     env->type = MINIM_ENVIRONMENT_TYPE;
@@ -60,10 +67,7 @@ void env_define_var_no_check(minim_object *env, minim_object *var, minim_object 
         // large namespace
         hashtable_set(frame, var, val);
     } else {
-        fprintf(stderr, "env_define_var_no_check(): not an environment frame: ");
-        write_object(stderr, frame);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
+        not_environment_exn("env_define_var_no_check()", frame);
     }
 }
 
@@ -95,10 +99,7 @@ minim_object *env_define_var(minim_object *env, minim_object *var, minim_object 
             return old;
         }
     } else {
-        fprintf(stderr, "env_define_var(): not an environment frame: ");
-        write_object(stderr, frame);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
+        not_environment_exn("env_define_var()", frame);
     }
 
     // else just add
@@ -134,10 +135,7 @@ minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *va
                 return old;
             }
         } else {
-            fprintf(stderr, "env_lookup_var(): not an environment frame: ");
-            write_object(stderr, frame);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
+            not_environment_exn("env_set_var()", frame);
         }
 
         env = minim_env_prev(env);
@@ -169,10 +167,7 @@ int env_var_is_defined(minim_object *env, minim_object *var, int recursive) {
             if (!minim_is_null(bind))
                 return 1;
         } else {
-            fprintf(stderr, "env_var_is_defined(): not an environment frame: ");
-            write_object(stderr, frame);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
+            not_environment_exn("env_var_is_defined()", frame);
         }
 
         if (!recursive)
@@ -206,10 +201,7 @@ minim_object *env_lookup_var(minim_object *env, minim_object *var) {
             if (!minim_is_null(bind))
                 return minim_cdr(bind);
         } else {
-            fprintf(stderr, "env_lookup_var(): not an environment frame: ");
-            write_object(stderr, frame);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
+            not_environment_exn("env_lookup_var()", frame);
         }
 
         env = minim_env_prev(env);

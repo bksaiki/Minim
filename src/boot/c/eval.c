@@ -73,6 +73,17 @@ static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual
     minim_shutdown(1);
 }
 
+void result_arity_exn(short expected, short actual) {
+    fprintf(stderr, "result arity mismatch\n");
+    fprintf(stderr, "  expected: %d, received: %d\n", expected, actual);
+    minim_shutdown(1);
+}
+
+void uncallable_prim_exn(const char *name) {
+    fprintf(stderr, "%s: should not be called directly", name);
+    minim_shutdown(1);
+}
+
 static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
     int min_arity, max_arity, argc;
 
@@ -110,20 +121,6 @@ static void check_1ary_syntax(minim_object *expr) {
     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
-
-// Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be `(<name> <datum> <datum>)
-// static void check_2ary_syntax(minim_object *expr) {
-//     minim_object *rest;
-    
-//     rest = minim_cdr(expr);
-//     if (!minim_is_pair(rest))
-//         bad_syntax_exn(expr);
-
-//     rest = minim_cdr(rest);
-//     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
-//         bad_syntax_exn(expr);
-// }
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum> <datum>)
@@ -492,13 +489,9 @@ static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
         result = eval_expr(minim_car(it), env);
         if (minim_is_values(result)) {
             th = current_thread();
-            if (values_buffer_count(th) != 1) {
-                fprintf(stderr, "result arity mismatch\n");
-                fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count(th));
-                minim_shutdown(1);
-            } else {
-                result = values_buffer_ref(th, 0);
-            }
+            if (values_buffer_count(th) != 1)
+                result_arity_exn(1, values_buffer_count(th));
+            result = values_buffer_ref(th, 0);
         }
 
         if (head == NULL) {
@@ -666,12 +659,8 @@ loop:
                 if (minim_is_values(result)) {;
                     // multi-valued
                     th = current_thread();
-                    if (var_count != values_buffer_count(th)) {
-                        fprintf(stderr, "result arity mismatch\n");
-                        fprintf(stderr, "  expected: %ld, received: %d\n",
-                                        var_count, values_buffer_count(th));
-                        minim_shutdown(1);
-                    }
+                    if (var_count != values_buffer_count(th))
+                        result_arity_exn(var_count, values_buffer_count(th));
 
                     idx = 0;
                     for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx) {
@@ -680,12 +669,8 @@ loop:
                     }
                 } else {
                     // single-valued
-                    if (var_count != 1) {
-                        fprintf(stderr, "result arity mismatch\n");
-                        fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                        minim_shutdown(1);
-                    }
-                    
+                    if (var_count != 1)
+                        result_arity_exn(var_count, 1);
                     SET_NAME_IF_CLOSURE(minim_car(minim_cadr(expr)), result);
                     env_define_var(env, minim_car(minim_cadr(expr)), result);
                 }
@@ -703,12 +688,8 @@ loop:
                     if (minim_is_values(result)) {
                         // multi-valued
                         th = current_thread();
-                        if (var_count != values_buffer_count(th)) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: %d\n",
-                                            var_count, values_buffer_count(th));
-                            minim_shutdown(1);
-                        }
+                        if (var_count != values_buffer_count(th))
+                            result_arity_exn(var_count, values_buffer_count(th));
 
                         idx = 0;
                         for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
@@ -717,12 +698,8 @@ loop:
                         }
                     } else {
                         // single-valued
-                        if (var_count != 1) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                            minim_shutdown(1);
-                        }
-                        
+                        if (var_count != 1)
+                            result_arity_exn(var_count, 1);
                         SET_NAME_IF_CLOSURE(minim_caar(bind), result);
                         env_define_var(env2, minim_caar(bind), result);
                     }
@@ -745,24 +722,16 @@ loop:
                     if (minim_is_values(result)) {
                         // multi-valued
                         th = current_thread();
-                        if (var_count != values_buffer_count(th)) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: %d\n",
-                                            var_count, values_buffer_count(th));
-                            minim_shutdown(1);
-                        }
+                        if (var_count != values_buffer_count(th))
+                            result_arity_exn(var_count, values_buffer_count(th));
 
                         idx = 0;
                         for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx)
                             to_bind = make_pair(make_pair(minim_car(it), values_buffer_ref(th, idx)), to_bind);
                     } else {
                         // single-valued
-                        if (var_count != 1) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                            minim_shutdown(1);
-                        }
-                        
+                        if (var_count != 1)
+                            result_arity_exn(var_count, 1);
                         to_bind = make_pair(make_pair(minim_caar(bind), result), to_bind);
                     }
                 }

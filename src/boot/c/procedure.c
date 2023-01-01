@@ -67,8 +67,7 @@ minim_object *is_procedure_proc(minim_object *args) {
 }
 
 minim_object *call_with_values_proc(minim_object *args) {
-    fprintf(stderr, "andmap: should not be called directly");
-    minim_shutdown(1);
+    uncallable_prim_exn("call-with-values");
 }
 
 minim_object *values_proc(minim_object *args) {
@@ -90,11 +89,9 @@ minim_object *values_proc(minim_object *args) {
 }
 
 minim_object *eval_proc(minim_object *args) {
-    fprintf(stderr, "eval: should not be called directly");
-    minim_shutdown(1);
+    uncallable_prim_exn("eval");
 }
 
 minim_object *apply_proc(minim_object *args) {
-    fprintf(stderr, "eval: should not be called directly");
-    minim_shutdown(1);
+    uncallable_prim_exn("apply");
 }

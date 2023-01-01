@@ -451,8 +451,10 @@ NORETURN void minim_shutdown(int code);
 
 // Exceptions
 
-void bad_syntax_exn(minim_object *expr);
-void bad_type_exn(const char *name, const char *type, minim_object *x);
+NORETURN void bad_syntax_exn(minim_object *expr);
+NORETURN void bad_type_exn(const char *name, const char *type, minim_object *x);
+NORETURN void result_arity_exn(short expected, short actual);
+NORETURN void uncallable_prim_exn(const char *name);
 
 // Primitives
 

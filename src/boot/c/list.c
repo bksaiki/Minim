@@ -575,21 +575,17 @@ minim_object *append_proc(minim_object *args) {
 
 minim_object *for_each_proc(minim_object *args) {
     // (-> proc list list ... list)
-    fprintf(stderr, "andmap: should not be called directly");
-    minim_shutdown(1);
+    uncallable_prim_exn("for-each");
 }
 
 minim_object *map_proc(minim_object *args) {
-    fprintf(stderr, "andmap: should not be called directly");
-    minim_shutdown(1);
+    uncallable_prim_exn("map");
 }
 
 minim_object *andmap_proc(minim_object *args) {
-    fprintf(stderr, "andmap: should not be called directly");
-    minim_shutdown(1);
+    uncallable_prim_exn("andmap");
 }
 
 minim_object *ormap_proc(minim_object *args) {
-    fprintf(stderr, "ormap: should not be called directly");
-    minim_shutdown(1);
+    uncallable_prim_exn("ormap");
 }
