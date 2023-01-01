@@ -4,6 +4,14 @@
 
 #include "../minim.h"
 
+static void string_out_of_bounds_exn(const char *name, const char *str, long idx) {
+    fprintf(stderr, "%s, index out of bounds\n", name);
+    fprintf(stderr, " string: %s\n", str);
+    fprintf(stderr, " length: %ld\n", strlen(str));
+    fprintf(stderr, " index:  %ld\n", idx);
+    minim_shutdown(1);
+}
+
 //
 //  Primitives
 //
@@ -100,11 +108,8 @@ minim_object *string_ref_proc(minim_object *args) {
     idx = minim_fixnum(minim_cadr(args));
     len = strlen(str);
 
-    if (idx >= len) {
-        fprintf(stderr, "string-ref: index out of bounds\n");
-        fprintf(stderr, " string: %s, length: %ld, index %ld\n", str, len, idx);
-        minim_shutdown(1);
-    }
+    if (idx >= len)
+        string_out_of_bounds_exn("string-ref", str, idx);
 
     return make_char((int) str[idx]);
 }
@@ -127,11 +132,8 @@ minim_object *string_set_proc(minim_object *args) {
     c = minim_char(minim_car(minim_cddr(args)));
     len = strlen(str);
 
-    if (idx >= len) {
-        fprintf(stderr, "string-set!: index out of bounds\n");
-        fprintf(stderr, " string: %s, length: %ld, index %ld\n", str, len, idx);
-        minim_shutdown(1);
-    }
+    if (idx >= len)
+        string_out_of_bounds_exn("string-set!", str, idx);
 
     str[idx] = c;
     return minim_void;
