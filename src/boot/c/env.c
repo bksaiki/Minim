@@ -63,7 +63,7 @@ void env_define_var_no_check(minim_object *env, minim_object *var, minim_object 
         fprintf(stderr, "env_define_var_no_check(): not an environment frame: ");
         write_object(stderr, frame);
         fprintf(stderr, "\n");
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -98,7 +98,7 @@ minim_object *env_define_var(minim_object *env, minim_object *var, minim_object 
         fprintf(stderr, "env_define_var(): not an environment frame: ");
         write_object(stderr, frame);
         fprintf(stderr, "\n");
-        exit(1);
+        minim_shutdown(1);
     }
 
     // else just add
@@ -137,14 +137,14 @@ minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *va
             fprintf(stderr, "env_lookup_var(): not an environment frame: ");
             write_object(stderr, frame);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         }
 
         env = minim_env_prev(env);
     }
 
     fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
-    exit(1);
+    minim_shutdown(1);
 }
 
 int env_var_is_defined(minim_object *env, minim_object *var, int recursive) {
@@ -172,7 +172,7 @@ int env_var_is_defined(minim_object *env, minim_object *var, int recursive) {
             fprintf(stderr, "env_var_is_defined(): not an environment frame: ");
             write_object(stderr, frame);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         }
 
         if (!recursive)
@@ -209,14 +209,14 @@ minim_object *env_lookup_var(minim_object *env, minim_object *var) {
             fprintf(stderr, "env_lookup_var(): not an environment frame: ");
             write_object(stderr, frame);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         }
 
         env = minim_env_prev(env);
     }
 
     fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *extend_env(minim_object *vars,
@@ -319,5 +319,5 @@ minim_object *environment_set_variable_value_proc(minim_object *args) {
 
 minim_object *current_environment_proc(minim_object *args) {
     fprintf(stderr, "current-environment: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }

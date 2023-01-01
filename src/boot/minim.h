@@ -13,6 +13,15 @@
 
 #include "../gc/gc.h"
 
+// Config
+
+#if defined (__GNUC__)
+#define MINIM_GCC     1
+#define NORETURN    __attribute__ ((noreturn))
+#else
+#error "compiler not supported"
+#endif
+
 // Constants
 
 #define MINIM_VERSION      "0.4.0"
@@ -437,6 +446,8 @@ char* get_current_dir();
 void set_current_dir(const char *str);
 
 minim_object *load_file(const char *fname);
+
+NORETURN void minim_shutdown(int code);
 
 // Exceptions
 

@@ -25,7 +25,7 @@ long list_length(minim_object *xs) {
     while (!minim_is_null(it)) {
         if (!minim_is_pair(it)) {
             fprintf(stderr, "list_length: not a list");
-            exit(1);
+            minim_shutdown(1);
         }
 
         it = minim_cdr(it);
@@ -98,7 +98,7 @@ minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env
             if (len != len0) {
                 fprintf(stderr, "for-each: lists of different lengths\n");
                 fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
-                exit(1);
+                minim_shutdown(1);
             }
         }
 
@@ -147,7 +147,7 @@ minim_object *map_list(minim_object *proc, minim_object *lsts, minim_object *env
             if (len != len0) {
                 fprintf(stderr, "map: lists of different lengths\n");
                 fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
-                exit(1);
+                minim_shutdown(1);
             }
         }
 
@@ -170,7 +170,7 @@ minim_object *map_list(minim_object *proc, minim_object *lsts, minim_object *env
             if (values_buffer_count(th) != 1) {
                 fprintf(stderr, "result arity mismatch\n");
                 fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count(th));
-                exit(1);
+                minim_shutdown(1);
             } else {
                 result = values_buffer_ref(th, 0);
             }
@@ -576,20 +576,20 @@ minim_object *append_proc(minim_object *args) {
 minim_object *for_each_proc(minim_object *args) {
     // (-> proc list list ... list)
     fprintf(stderr, "andmap: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *map_proc(minim_object *args) {
     fprintf(stderr, "andmap: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *andmap_proc(minim_object *args) {
     fprintf(stderr, "andmap: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *ormap_proc(minim_object *args) {
     fprintf(stderr, "ormap: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }

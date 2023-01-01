@@ -11,7 +11,7 @@
 static void assert_not_eof(char c) {
     if (c == EOF) {
         fprintf(stderr, "unexpected end of input\n");
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -20,7 +20,7 @@ static void assert_matching_paren(char open, char closed) {
         !(open == '[' && closed == ']') &&
         !(open == '{' && closed == '}')) {
         fprintf(stderr, "parenthesis mismatch: %c closed off %c\n", closed, open);
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -45,7 +45,7 @@ static int peek_char(FILE *in) {
 static void peek_expected_delimeter(FILE *in) {
     if (!is_delimeter(peek_char(in))) {
         fprintf(stderr, "expected a delimeter\n");
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -56,7 +56,7 @@ static void read_expected_string(FILE *in, const char *s) {
         c = getc(in);
         if (c != *s) {
             fprintf(stderr, "unexpected character: '%c'\n", c);
-            exit(1);
+            minim_shutdown(1);
         }
         ++s;
     }
@@ -157,7 +157,7 @@ static minim_object *read_pair(FILE *in, char open_paren) {
         }
 
         fprintf(stderr, "missing ')' to terminate pair");
-        exit(1);        
+        minim_shutdown(1);        
     } else {
         // list
         ungetc(c, in);
@@ -257,7 +257,7 @@ loop:
             goto loop;
         default:
             fprintf(stderr, "unknown special constant");
-            exit(1);
+            minim_shutdown(1);
         }
     } else if (isdigit(c) || ((c == '-' || c == '+') && isdigit(peek_char(in)))) {
         // number
@@ -279,7 +279,7 @@ loop:
         // check for delimeter
         if (!is_delimeter(c)) {
             fprintf(stderr, "expected a delimeter\n");
-            exit(1);
+            minim_shutdown(1);
         }
 
         ungetc(c, in);
@@ -302,18 +302,18 @@ loop:
                     c = '\"';
                 } else {
                     fprintf(stderr, "unknown escape character: %c\n", c);
-                    exit(1);
+                    minim_shutdown(1);
                 }
             } else if (c == EOF) {
                 fprintf(stderr, "non-terminated string literal\n");
-                exit(1);
+                minim_shutdown(1);
             }
 
             if (i < SYMBOL_MAX_LEN - 1) {
                 buffer[i++] = c;
             } else {
                 fprintf(stderr, "string is too long, max allowed %d characters", SYMBOL_MAX_LEN);
-                exit(1);
+                minim_shutdown(1);
             }
         }
 
@@ -334,14 +334,14 @@ loop:
                 buffer[i++] = c;
             } else {
                 fprintf(stderr, "symbol is too long, max allowed %d characters", SYMBOL_MAX_LEN);
-                exit(1);
+                minim_shutdown(1);
             }
             c = getc(in);
         }
 
         if (!is_delimeter(c)) {
             fprintf(stderr, "expected a delimeter\n");
-            exit(1);
+            minim_shutdown(1);
         }
 
         ungetc(c, in);
@@ -351,11 +351,11 @@ loop:
         return NULL;
     } else {
         fprintf(stderr, "unexpected input: %c\n", c);
-        exit(1);
+        minim_shutdown(1);
     }
 
     fprintf(stderr, "unreachable");
-    exit(1);
+    minim_shutdown(1);
 }
 
 //
@@ -515,11 +515,11 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         break;
     case MINIM_VALUES_TYPE:
         fprintf(stderr, "cannot write multiple values\n");
-        exit(1);
+        minim_shutdown(1);
 
     default:
         fprintf(stderr, "cannot write unknown object\n");
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -596,7 +596,7 @@ minim_object *open_input_port_proc(minim_object *args) {
     stream = fopen(minim_string(minim_car(args)), "r");
     if (stream == NULL) {
         fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
-        exit(1);
+        minim_shutdown(1);
     }
 
     port = make_input_port(stream);
@@ -615,7 +615,7 @@ minim_object *open_output_port_proc(minim_object *args) {
     stream = fopen(minim_string(minim_car(args)), "w");
     if (stream == NULL) {
         fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
-        exit(1);
+        minim_shutdown(1);
     }
 
     port = make_output_port(stream);

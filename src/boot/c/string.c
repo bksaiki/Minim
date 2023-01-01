@@ -103,7 +103,7 @@ minim_object *string_ref_proc(minim_object *args) {
     if (idx >= len) {
         fprintf(stderr, "string-ref: index out of bounds\n");
         fprintf(stderr, " string: %s, length: %ld, index %ld\n", str, len, idx);
-        exit(1);
+        minim_shutdown(1);
     }
 
     return make_char((int) str[idx]);
@@ -130,7 +130,7 @@ minim_object *string_set_proc(minim_object *args) {
     if (idx >= len) {
         fprintf(stderr, "string-set!: index out of bounds\n");
         fprintf(stderr, " string: %s, length: %ld, index %ld\n", str, len, idx);
-        exit(1);
+        minim_shutdown(1);
     }
 
     str[idx] = c;

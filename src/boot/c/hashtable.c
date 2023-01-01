@@ -168,7 +168,7 @@ static uint64_t hash_key(minim_object *ht, minim_object *k) {
             fprintf(stderr, "hash function associated with hash table ");
             write_object(stderr, ht);
             fprintf(stderr, " did not return a fixnum");
-            exit(1);
+            minim_shutdown(1);
         }
 
         return minim_fixnum(i);
@@ -368,7 +368,7 @@ minim_object *hashtable_delete_proc(minim_object *args) {
         fprintf(stderr, "hashtable-delete!: could not find key ");
         write_object(stderr, k);
         fprintf(stderr, "\n");
-        exit(1);
+        minim_shutdown(1);
     }
 
     return minim_void;
@@ -395,7 +395,7 @@ minim_object *hashtable_update_proc(minim_object *args) {
             fprintf(stderr, "hashtable-update!: could not find key ");
             write_object(stderr, k);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         } else {
             // user-provided failure
             minim_object *fail, *v;
@@ -436,7 +436,7 @@ minim_object *hashtable_ref_proc(minim_object *args) {
             fprintf(stderr, "hashtable-ref: could not find key ");
             write_object(stderr, k);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         } else {
             // user-provided failure
             minim_object *fail, *env;

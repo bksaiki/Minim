@@ -11,7 +11,7 @@
 static void set_arity(proc_arity *arity, short min_arity, short max_arity) {
     if (min_arity > ARG_MAX || max_arity > ARG_MAX) {
         fprintf(stderr, "primitive procedure intialized with too large an arity: [%d, %d]", min_arity, max_arity);
-        exit(1);
+        minim_shutdown(1);
     } else {
         arity->arity_min = min_arity;
         arity->arity_max = max_arity;
@@ -68,7 +68,7 @@ minim_object *is_procedure_proc(minim_object *args) {
 
 minim_object *call_with_values_proc(minim_object *args) {
     fprintf(stderr, "andmap: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *values_proc(minim_object *args) {
@@ -91,10 +91,10 @@ minim_object *values_proc(minim_object *args) {
 
 minim_object *eval_proc(minim_object *args) {
     fprintf(stderr, "eval: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *apply_proc(minim_object *args) {
     fprintf(stderr, "eval: should not be called directly");
-    exit(1);
+    minim_shutdown(1);
 }

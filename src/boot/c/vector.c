@@ -25,7 +25,7 @@ static void vector_out_of_bounds_exn(const char *name, minim_object *v, long idx
     fprintf(stderr, "%s, index out of bounds\n", name);
     fprintf(stderr, " length: %ld\n", minim_vector_len(v));
     fprintf(stderr, " index:  %ld\n", idx);
-    exit(1);
+    minim_shutdown(1);
 }
 
 //

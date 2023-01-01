@@ -42,7 +42,7 @@ static char *_get_file_path(const char *rel_path) {
 void set_current_dir(const char *str) {
     if (_set_current_dir(str) != 0) {
         fprintf(stderr, "could not set current directory: %s\n", str);
-        exit(1);
+        minim_shutdown(1);
     }
 
     current_directory(current_thread()) = make_string(str);
@@ -59,7 +59,7 @@ char *get_file_dir(const char *realpath) {
     for (i = strlen(realpath) - 1; i >= 0 && realpath[i] != '/'; --i);
     if (i < 0) {
         fprintf(stderr, "could not resolve directory of path %s\n", realpath);
-        exit(1);
+        minim_shutdown(1);
     }
 
     dirpath = GC_alloc_atomic((i + 2) * sizeof(char));
@@ -76,7 +76,7 @@ minim_object *load_file(const char *fname) {
     f = fopen(fname, "r");
     if (f == NULL) {
         fprintf(stderr, "could not open file \"%s\"\n", fname);
-        exit(1);
+        minim_shutdown(1);
     }
 
     old_cwd = _get_current_dir();
@@ -90,6 +90,11 @@ minim_object *load_file(const char *fname) {
     set_current_dir(old_cwd);
     fclose(f);
     return result;
+}
+
+void minim_shutdown(int code) {
+    GC_finalize();
+    exit(code);
 }
 
 //
@@ -135,13 +140,12 @@ minim_object *error_proc(minim_object *args) {
         reasons = minim_cdr(reasons);
     }
 
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *exit_proc(minim_object *args) {
     // (-> any)
-    GC_finalize();
-    exit(0);
+    minim_shutdown(0);
 }
 
 minim_object *current_directory_proc(minim_object *args) {

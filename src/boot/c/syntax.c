@@ -59,7 +59,7 @@ minim_object *to_syntax(minim_object *o) {
 
     default:
         fprintf(stderr, "datum->syntax: cannot convert to syntax");
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -142,7 +142,7 @@ minim_object *syntax_error_proc(minim_object *args) {
         fprintf(stderr, "\n");
     }
 
-    exit(1);
+    minim_shutdown(1);
 }
 
 minim_object *syntax_e_proc(minim_object *args) {

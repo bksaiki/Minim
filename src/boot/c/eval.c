@@ -20,7 +20,7 @@ void bad_syntax_exn(minim_object *expr) {
     fprintf(stderr, " at: ");
     write_object2(stderr, expr, 1, 0);
     fputc('\n', stderr);
-    exit(1);
+    minim_shutdown(1);
 }
 
 void bad_type_exn(const char *name, const char *type, minim_object *x) {
@@ -29,7 +29,7 @@ void bad_type_exn(const char *name, const char *type, minim_object *x) {
     fprintf(stderr, " received: ");
     write_object(stderr, x);
     fputc('\n', stderr);
-    exit(1);
+    minim_shutdown(1);
 }
 
 static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
@@ -70,7 +70,7 @@ static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual
                         proc_arity_min(arity), proc_arity_max(arity), actual);
     }
 
-    exit(1);
+    minim_shutdown(1);
 }
 
 static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
@@ -226,7 +226,7 @@ static void check_cond(minim_object *expr) {
             fprintf(stderr, " at: ");
             write_object2(stderr, expr, 1, 0);
             fputc('\n', stderr);
-            exit(1);
+            minim_shutdown(1);
         }
 
         rest = minim_cdr(rest);
@@ -333,7 +333,7 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
             fprintf(stderr, "expected a identifier for an argument:\n ");
             write_object(stderr, expr);
             fputc('\n', stderr);
-            exit(1);
+            minim_shutdown(1);
         }
 
         args = minim_cdr(args);
@@ -350,7 +350,7 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
         fprintf(stderr, "expected an identifier for the rest argument:\n ");
         write_object(stderr, expr);
         fputc('\n', stderr);
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -495,7 +495,7 @@ static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
             if (values_buffer_count(th) != 1) {
                 fprintf(stderr, "result arity mismatch\n");
                 fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count(th));
-                exit(1);
+                minim_shutdown(1);
             } else {
                 result = values_buffer_ref(th, 0);
             }
@@ -626,7 +626,7 @@ application:
         fprintf(stderr, " received:");
         write_object(stderr, proc);
         fprintf(stderr, "\n");
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -649,7 +649,7 @@ loop:
         fprintf(stderr, "missing procedure expression\n");
         fprintf(stderr, "  in: ");
         write_object2(stderr, expr, 0, 0);
-        exit(1);
+        minim_shutdown(1);
     } else if (minim_is_pair(expr)) {
         minim_object *proc, *head, *args, *result, *it, *bindings, *bind, *env2;
         minim_thread *th;
@@ -670,7 +670,7 @@ loop:
                         fprintf(stderr, "result arity mismatch\n");
                         fprintf(stderr, "  expected: %ld, received: %d\n",
                                         var_count, values_buffer_count(th));
-                        exit(1);
+                        minim_shutdown(1);
                     }
 
                     idx = 0;
@@ -683,7 +683,7 @@ loop:
                     if (var_count != 1) {
                         fprintf(stderr, "result arity mismatch\n");
                         fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                        exit(1);
+                        minim_shutdown(1);
                     }
                     
                     SET_NAME_IF_CLOSURE(minim_car(minim_cadr(expr)), result);
@@ -707,7 +707,7 @@ loop:
                             fprintf(stderr, "result arity mismatch\n");
                             fprintf(stderr, "  expected: %ld, received: %d\n",
                                             var_count, values_buffer_count(th));
-                            exit(1);
+                            minim_shutdown(1);
                         }
 
                         idx = 0;
@@ -720,7 +720,7 @@ loop:
                         if (var_count != 1) {
                             fprintf(stderr, "result arity mismatch\n");
                             fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                            exit(1);
+                            minim_shutdown(1);
                         }
                         
                         SET_NAME_IF_CLOSURE(minim_caar(bind), result);
@@ -749,7 +749,7 @@ loop:
                             fprintf(stderr, "result arity mismatch\n");
                             fprintf(stderr, "  expected: %ld, received: %d\n",
                                             var_count, values_buffer_count(th));
-                            exit(1);
+                            minim_shutdown(1);
                         }
 
                         idx = 0;
@@ -760,7 +760,7 @@ loop:
                         if (var_count != 1) {
                             fprintf(stderr, "result arity mismatch\n");
                             fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                            exit(1);
+                            minim_shutdown(1);
                         }
                         
                         to_bind = make_pair(make_pair(minim_caar(bind), result), to_bind);
@@ -853,7 +853,7 @@ loop:
                         if (minim_caar(expr) == else_symbol) {
                             if (!minim_is_null(minim_cdr(expr))) {
                                 fprintf(stderr, "else clause must be last");
-                                exit(1);
+                                minim_shutdown(1);
                             }
                             expr = make_pair(begin_symbol, minim_cdar(expr));
                             goto loop;
@@ -985,15 +985,15 @@ application:
             fprintf(stderr, " received:");
             write_object(stderr, proc);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         }
     } else {
         fprintf(stderr, "bad syntax\n");
         write_object(stderr, expr);
         fprintf(stderr, "\n");
-        exit(1);
+        minim_shutdown(1);
     }
 
     fprintf(stderr, "unreachable\n");
-    exit(1);
+    minim_shutdown(1);
 }
