@@ -100,7 +100,6 @@ static uint64_t hash_bytes(const void *data, size_t len, uint64_t hash0) {
     return hash >> 2;
 }
 
-
 uint64_t eq_hash2(minim_object *o, uint64_t hash) {
     switch (o->type)
     {
@@ -298,6 +297,13 @@ minim_object *hashtable_keys(minim_object *ht) {
     return ks;
 }
 
+static void key_not_found_exn(const char *name, minim_object *k) {
+    fprintf(stderr, "%s!: could not find key ", name);
+    write_object(stderr, k);
+    fprintf(stderr, "\n");
+    minim_shutdown(1);
+}
+
 //
 //  Primitives
 //
@@ -364,12 +370,8 @@ minim_object *hashtable_delete_proc(minim_object *args) {
         bad_type_exn("hashtable-delete!", "hashtable?", ht);
 
     k = minim_cadr(args);
-    if (!hashtable_delete(ht, k)) {
-        fprintf(stderr, "hashtable-delete!: could not find key ");
-        write_object(stderr, k);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
-    }
+    if (!hashtable_delete(ht, k))
+        key_not_found_exn("hashtable-delete!", k);
 
     return minim_void;
 }
@@ -392,10 +394,7 @@ minim_object *hashtable_update_proc(minim_object *args) {
     if (minim_is_null(b)) {
         if (minim_is_null(minim_cdr(minim_cddr(args)))) {
             // no failure result provided
-            fprintf(stderr, "hashtable-update!: could not find key ");
-            write_object(stderr, k);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
+            key_not_found_exn("hashtable-update!", k);
         } else {
             // user-provided failure
             minim_object *fail, *v;
@@ -433,7 +432,7 @@ minim_object *hashtable_ref_proc(minim_object *args) {
     if (minim_is_null(b)) {
         if (minim_is_null(minim_cddr(args))) {
             // no failure result provided
-            fprintf(stderr, "hashtable-ref: could not find key ");
+            key_not_found_exn("hashtable-ref", k);
             write_object(stderr, k);
             fprintf(stderr, "\n");
             minim_shutdown(1);
