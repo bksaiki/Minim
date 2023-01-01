@@ -10,18 +10,18 @@ default: boehm-gc
 
 boehm-gc: boehm-gc/Makefile
 	$(MAKE) -C boehm-gc
+	cp boehm-gc/.libs/libgc.a libgc.a
 	$(MKDIR_P) build
 	$(ECHO) "" > build/config.h
-	cp boehm-gc/.libs/libgc.a libgc.a
 
 boehm-gc/Makefile:
 	cd boehm-gc && ./autogen.sh && ./configure --enable-static=yes --enable-shared=no
 
 minim-gc:
 	$(MAKE) CFLAGS="$(CFLAGS)" -C minim-gc
+	cp minim-gc/libminimgc.a libgc.a
 	$(MKDIR_P) build
 	$(ECHO) "#define USE_MINIM_GC 1" > build/config.h
-	cp minim-gc/libminimgc.a libgc.a
 
 clean:
 	($(MAKE) -C minim-gc clean)

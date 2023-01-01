@@ -40,20 +40,17 @@ FIND := find
 
 # Top level rules
 
-debug: gc boot
+debug:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
-profile: gc boot
+profile:
 	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
 
-coverage: gc boot
+coverage:
 	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
 
-release: gc boot
+release:
 	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
-
-minim: $(BUILD_DIR)/config.h $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 install:
 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
@@ -69,6 +66,9 @@ boehm-gc:
 
 minim-gc:
 	$(MAKE) -C src/gc minim-gc
+
+minim: $(BUILD_DIR)/config.h $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 test: minim
 	$(MAKE) boot-tests
@@ -127,4 +127,5 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 -include $(DEPS)
 
 .PHONY: release debug minim tests unit-tests memcheck examples lib-tests \
-		clean clean-all clean-cache install uninstall minim-gc boehm-gc
+		clean clean-all clean-cache install uninstall minim-gc boehm-gc \
+		boot gc 
