@@ -864,7 +864,8 @@ int main(int argc, char **argv) {
     minim_boot_init();
     stream = tmpfile();
 
-    return_code = 0;
+    stack_top = 0;
+    return_code = stack_top;
     run_tests();
 
     fclose(stream);
