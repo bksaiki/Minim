@@ -40,39 +40,41 @@ FIND := find
 
 # Top level rules
 
-debug: boot
+debug:
 	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" minim
 
-profile: boot
+profile:
 	$(MAKE) CFLAGS="$(PROFILE_FLAGS) $(CFLAGS)" minim
 
-coverage: boot
+coverage:
 	$(MAKE) CFLAGS="$(COVERAGE_FLAGS) $(CFLAGS)" minim
 
-release: boot
+release:
 	$(MAKE) CFLAGS="$(RELEASE_FLAGS) $(CFLAGS)" minim
+
+minim: boot $(BUILD_DIR)/config.h $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
 
 install:
 	$(CP) $(EXE) $(INSTALL_DIR)/$(EXE)
 
-boot: gc
+boot: boehm-gc
 	$(MAKE) -C src/boot
 
-gc: boehm-gc minim-gc
-	cp boehm-gc/.libs/libgc.a src/gc/
-	cp src/gc/minim-gc/libminimgc.a src/gc/
+boehm-gc: src/gc/boehm-gc/Makefile
+	$(MAKE) -C src/gc/boehm-gc
+	$(MKDIR_P) src/gc/build
+	$(ECHO) "" > src/gc/build/config.h
+	cp src/gc/boehm-gc/.libs/libgc.a src/gc/libgc.a
 
-boehm-gc: boehm-gc/Makefile
-	$(MAKE) -C boehm-gc
-
-boehm-gc/Makefile:
-	cd boehm-gc && ./autogen.sh && ./configure --enable-static=yes --enable-shared=no
+src/gc/boehm-gc/Makefile:
+	cd src/gc/boehm-gc && ./autogen.sh && ./configure --enable-static=yes --enable-shared=no
 
 minim-gc:
-	$(MAKE) CFLAGS="$(DEBUG_FLAGS) $(CFLAGS)" -C src/gc
-
-minim: $(BUILD_DIR)/config.h $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXE)
+	$(MAKE) CFLAGS="$(CFLAGS)" -C src/gc/minim-gc
+	$(MKDIR_P) src/gc/build
+	$(ECHO) "#define USE_MINIM_GC 1" > src/gc/build/config.h
+	cp src/gc/minim-gc/libminimgc.a src/gc/libgc.a
 
 test: minim
 	$(MAKE) boot-tests
@@ -95,12 +97,15 @@ lib-tests:
 	$(SH) $(TEST_DIR)/lib.sh
 
 clean:
-	$(MAKE) -C src/gc clean
 	$(MAKE) -C src/boot clean
+	$(RM) src/gc/*.a
 	$(RM) $(OBJS) $(EXE)
 
-clean-all: clean clean-cache
-	$(MAKE) -C boehm-gc clean
+clean-gc:
+	$(MAKE) -C src/gc/boehm-gc clean
+	$(MAKE) -C src/gc/minim-gc clean
+
+clean-all: clean-gc clean clean-cache
 	$(RM) boehm-gc/Makefile
 	$(RM) $(BUILD_DIR) tmp
 

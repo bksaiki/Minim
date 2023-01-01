@@ -1,13 +1,15 @@
 #ifndef _MINIM_GC_SHIM_H_
 #define _MINIM_GC_SHIM_H_
 
+#include "build/config.h"
+
 #ifdef USE_MINIM_GC
 
 #include "minim-gc/gc.h"
 
 #else
 
-#include "../../boehm-gc/include/gc.h"
+#include "boehm-gc/include/gc.h"
 
 #define GC_alloc(n)                 GC_malloc(n)
 #define GC_calloc(s, n)             GC_malloc((s) * (n))
