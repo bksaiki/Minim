@@ -286,8 +286,16 @@ void minim_boot_init() {
     GC_register_root(minim_eof);
     GC_register_root(minim_void);
     GC_register_root(minim_values);
-
     GC_register_root(globals);
+
+    // Interpreter runtime
+
+    irt_call_args = GC_alloc(CALL_ARGS_DEFAULT * sizeof(minim_object*));
+    irt_saved_args = GC_alloc(SAVED_ARGS_DEFAULT * sizeof(minim_object*));
+    irt_call_args_count = 0;
+    irt_saved_args_count = 0;
+    irt_call_args_size = CALL_ARGS_DEFAULT;
+    irt_saved_args_size = SAVED_ARGS_DEFAULT;
 
     GC_resume();
 }

@@ -354,7 +354,16 @@ void write_object2(FILE *out, minim_object *o, int quote, int display);
 
 // Interpreter
 
+#define CALL_ARGS_DEFAULT       10
+#define SAVED_ARGS_DEFAULT      10
+
 minim_object *eval_expr(minim_object *expr, minim_object *env);
+
+typedef struct {
+    minim_object **call_args, **saved_args;
+    long call_args_count, saved_args_count;
+    long call_args_size, saved_args_size;
+} interp_rt;
 
 // Environments
 
@@ -429,6 +438,7 @@ void resize_values_buffer(minim_thread *th, int size);
 // Globals
 
 typedef struct minim_globals {
+    interp_rt irt;
     minim_thread *current_thread;
     intern_table *symbols;
 } minim_globals;
@@ -438,6 +448,13 @@ extern size_t bucket_sizes[];
 
 #define current_thread()    (globals->current_thread)
 #define intern(s)           (intern_symbol(globals->symbols, s))
+
+#define irt_call_args               (globals->irt.call_args)
+#define irt_saved_args              (globals->irt.saved_args)
+#define irt_call_args_count         (globals->irt.call_args_count)
+#define irt_saved_args_count        (globals->irt.saved_args_count)
+#define irt_call_args_size          (globals->irt.call_args_size)
+#define irt_saved_args_size         (globals->irt.saved_args_size)
 
 // System
 

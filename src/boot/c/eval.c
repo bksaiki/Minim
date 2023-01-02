@@ -12,6 +12,64 @@
 }
 
 //
+//  Interpreter argument stack
+//
+
+static void resize_call_args(short req) {
+    while (irt_call_args_size < req)  irt_call_args_size *= 2;
+    irt_call_args = GC_realloc(irt_call_args, irt_call_args_size * sizeof(minim_object*));
+}
+
+static void resize_saved_args(short req) {
+    while (irt_saved_args_size < req)  irt_saved_args_size *= 2;
+    irt_saved_args = GC_realloc(irt_saved_args, irt_saved_args_size * sizeof(minim_object*));
+}
+
+// static void push_call_arg(minim_object *arg) {
+//     if (irt_call_args_count >= irt_call_args_size)
+//         resize_call_args(irt_call_args_count + 1);
+//     irt_call_args[irt_call_args_count++] = arg;
+// }
+
+static void push_saved_arg(minim_object *arg) {
+    if (irt_saved_args_count >= irt_saved_args_size)
+        resize_saved_args(irt_saved_args_count + 2);
+    irt_saved_args[irt_saved_args_count++] = arg;
+    irt_saved_args[irt_saved_args_count] = NULL;
+}
+
+static void stash_call_args() {
+    // if (irt_call_args_count > 0) {
+    //     fprintf(stderr, "stash_call_args(): args not used %ld\n", irt_call_args_count);
+    //     exit(1);
+    // }
+
+    irt_call_args[0] = NULL;
+    irt_call_args_count = 0;
+}
+
+static void clear_call_args() {
+    irt_call_args[0] = NULL;
+    irt_call_args_count = 0;
+}
+
+static void prepare_call_args(long count) {
+    if (count > irt_saved_args_count) {
+        fprintf(stderr, "prepare_call_args(): trying to restore %ld values, only found %ld\n",
+                        count, irt_saved_args_count);
+        minim_shutdown(1);
+    }
+
+    if (count < irt_call_args_size)
+        resize_call_args(count + 1);
+    
+    memcpy(irt_call_args, &irt_saved_args[irt_saved_args_count - count], count * sizeof(minim_object*));
+    irt_call_args[count] = NULL;
+    irt_call_args_count = count;
+    irt_saved_args_count -= count;
+}
+
+//
 //  Runtime check
 //
 
@@ -477,33 +535,32 @@ static minim_object *apply_args(minim_object *args) {
     return head;
 }
 
-static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
-    minim_object *head, *tail, *it, *result;
+static long eval_exprs(minim_object *exprs, minim_object *env) {
+    minim_object *it, *result;
     minim_thread *th;
+    long argc;
 
-    if (minim_is_null(exprs))
-        return minim_null;
+    stash_call_args();
+    if (minim_is_null(exprs)) {
+        return 0;
+    } else {
+        argc = 0;
+        for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
+            result = eval_expr(minim_car(it), env);
+            if (minim_is_values(result)) {
+                th = current_thread();
+                if (values_buffer_count(th) != 1)
+                    result_arity_exn(1, values_buffer_count(th));
+                result = values_buffer_ref(th, 0);
+            }
 
-    head = NULL; tail = NULL;
-    for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
-        result = eval_expr(minim_car(it), env);
-        if (minim_is_values(result)) {
-            th = current_thread();
-            if (values_buffer_count(th) != 1)
-                result_arity_exn(1, values_buffer_count(th));
-            result = values_buffer_ref(th, 0);
+            push_saved_arg(result);
+            ++argc;
         }
 
-        if (head == NULL) {
-            head = make_pair(result, minim_null);
-            tail = head;
-        } else {
-            minim_cdr(tail) = make_pair(result, minim_null);   
-            tail = minim_cdr(tail);
-        }
+        prepare_call_args(argc);
+        return argc;
     }
-
-    return head;
 }
 
 minim_object *call_with_values(minim_object *producer,
@@ -624,6 +681,7 @@ application:
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
+    long argc;
 
 loop:
 
@@ -871,12 +929,17 @@ loop:
         }
         
         proc = eval_expr(head, env);
-        args = eval_exprs(minim_cdr(expr), env);
+        argc = eval_exprs(minim_cdr(expr), env);
+
+        args = minim_null;
+        for (long i = argc - 1; i >= 0; --i)
+            args = make_pair(irt_call_args[i], args);
 
 application:
 
         if (minim_is_prim_proc(proc)) {
             check_prim_proc_arity(proc, args);
+            clear_call_args();
 
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
