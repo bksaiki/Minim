@@ -75,8 +75,7 @@ minim_object *copy_list(minim_object *xs) {
 }
 
 minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env) {
-    minim_object *it, *args;
-    minim_object **lst_arr, **arg_its;
+    minim_object *it, **lst_arr, **arg_its;
     long argc, i, len0, len;
 
     if (!minim_is_proc(proc))
@@ -106,24 +105,21 @@ minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env
         ++i;
     }
 
+    assert_no_call_args();
     while (!minim_is_null(arg_its[0])) {
-        args = make_pair(minim_car(arg_its[0]), minim_null);
-        it = args;
-        for (i = 1; i < argc; ++i) {
-            minim_cdr(it) = make_pair(minim_car(arg_its[i]), minim_null);
-            it = minim_cdr(it);
+        for (i = 0; i < argc; ++i) {
+            push_call_arg(minim_car(arg_its[i]));
+            arg_its[i] = minim_cdr(arg_its[i]);
         }
 
-        call_with_args(proc, args, env);
-        for (i = 0; i < argc; ++i)
-            arg_its[i] = minim_cdr(arg_its[i]);
+        call_with_args(proc, env);            
     }
 
     return minim_void;
 }
 
 minim_object *map_list(minim_object *proc, minim_object *lsts, minim_object *env) {
-    minim_object *head, *tail, *it, *result, *args;
+    minim_object *head, *tail, *it, *result;
     minim_object **lst_arr, **arg_its;
     minim_thread *th;
     long argc, i, len0, len;
@@ -156,15 +152,14 @@ minim_object *map_list(minim_object *proc, minim_object *lsts, minim_object *env
     }
 
     head = NULL;
+    assert_no_call_args();
     while (!minim_is_null(arg_its[0])) {
-        args = make_pair(minim_car(arg_its[0]), minim_null);
-        it = args;
-        for (i = 1; i < argc; ++i) {
-            minim_cdr(it) = make_pair(minim_car(arg_its[i]), minim_null);
-            it = minim_cdr(it);
+        for (i = 0; i < argc; ++i) {
+            push_call_arg(minim_car(arg_its[i]));
+            arg_its[i] = minim_cdr(arg_its[i]);
         }
 
-        result = call_with_args(proc, args, env);
+        result = call_with_args(proc, env);
         if (minim_is_values(result)) {
             th = current_thread();
             if (values_buffer_count(th) != 1) {
@@ -183,9 +178,6 @@ minim_object *map_list(minim_object *proc, minim_object *lsts, minim_object *env
             head = make_pair(result, minim_null);
             tail = head;
         }
-
-        for (i = 0; i < argc; ++i)
-            arg_its[i] = minim_cdr(arg_its[i]);
     }
 
     return (head ? head : minim_null);
@@ -198,8 +190,12 @@ minim_object *andmap(minim_object *proc, minim_object *lst, minim_object *env) {
     while (!minim_is_null(lst)) {
         if (!minim_is_pair(lst))
             bad_type_exn("andmap", "list?", lst);
-        if (minim_is_false(call_with_args(proc, make_pair(minim_car(lst), minim_null), env)))
+
+        assert_no_call_args();
+        push_call_arg(minim_car(lst));
+        if (minim_is_false(call_with_args(proc, env)))
             return minim_false;
+
         lst = minim_cdr(lst);
     }
 
@@ -213,8 +209,12 @@ minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *env) {
     while (!minim_is_null(lst)) {
         if (!minim_is_pair(lst))
             bad_type_exn("ormap", "list?", lst);
-        if (!minim_is_false(call_with_args(proc, make_pair(minim_car(lst), minim_null), env)))
+
+        assert_no_call_args();
+        push_call_arg(minim_car(lst));
+        if (!minim_is_false(call_with_args(proc, env)))
             return minim_true;
+
         lst = minim_cdr(lst);
     }
 

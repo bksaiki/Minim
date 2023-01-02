@@ -327,13 +327,8 @@ minim_object *make_syntax(minim_object *e, minim_object *loc);
 int minim_is_eq(minim_object *a, minim_object *b);
 int minim_is_equal(minim_object *a, minim_object *b);
 
-minim_object *call_with_args(minim_object *proc,
-                             minim_object *args,
-                             minim_object *env);
-
-minim_object *call_with_values(minim_object *producer,
-                               minim_object *consumer,
-                               minim_object *env);
+minim_object *call_with_args(minim_object *proc, minim_object *env);
+minim_object *call_with_values(minim_object *producer, minim_object *consumer, minim_object *env);
 
 int is_list(minim_object *x);
 long list_length(minim_object *xs);
@@ -364,6 +359,13 @@ typedef struct {
     long call_args_count, saved_args_count;
     long call_args_size, saved_args_size;
 } interp_rt;
+
+void push_saved_arg(minim_object *arg);
+void push_call_arg(minim_object *arg);
+void prepare_call_args(long count);
+void clear_call_args();
+
+void assert_no_call_args();
 
 // Environments
 

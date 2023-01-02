@@ -283,7 +283,9 @@ minim_object *environment_variable_value_proc(minim_object *args) {
             exn = minim_car(minim_cddr(args));
             if (!minim_is_proc(exn))
                 bad_type_exn("environment-variable-value", "procedure?", exn);
-            return call_with_args(exn, minim_null, env);
+
+            assert_no_call_args();
+            return call_with_args(exn, env);
         }
     }
 

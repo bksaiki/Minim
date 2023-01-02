@@ -161,8 +161,9 @@ static uint64_t hash_key(minim_object *ht, minim_object *k) {
     } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_hash_proc) {
         return equal_hash(k);
     } else {
+        assert_no_call_args();
         env = global_env(current_thread());   // TODO: this seems problematic
-        i = call_with_args(minim_hashtable_hash(ht), make_pair(k, minim_null), env);
+        i = call_with_args(minim_hashtable_hash(ht), env);
         if (!minim_is_fixnum(i)) {
             fprintf(stderr, "hash function associated with hash table ");
             write_object(stderr, ht);
@@ -175,7 +176,7 @@ static uint64_t hash_key(minim_object *ht, minim_object *k) {
 }
 
 static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
-    minim_object *eq, *env, *proc;
+    minim_object *env, *proc;
 
     proc = minim_hashtable_equiv(ht);
     if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_proc) {
@@ -183,9 +184,12 @@ static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
     } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_proc) {
         return minim_is_equal(k1, k2);
     } else {
+        assert_no_call_args();
+        push_call_arg(k1);
+        push_call_arg(k2);
+
         env = global_env(current_thread());   // TODO: this seems problematic
-        eq = call_with_args(minim_hashtable_equiv(ht), make_pair(k1, make_pair(k2, minim_null)), env);
-        return !minim_is_false(eq);
+        return !minim_is_false(call_with_args(minim_hashtable_equiv(ht), env));
     }
 }
 
@@ -404,15 +408,20 @@ minim_object *hashtable_update_proc(minim_object *args) {
             if (!minim_is_proc(fail)) {
                 b = fail;
             } else {
-                b = call_with_args(fail, minim_null, env);
+                assert_no_call_args();
+                b = call_with_args(fail, env);
             }
 
-            v = call_with_args(proc, make_pair(b, minim_null), env);
+            assert_no_call_args();
+            push_call_arg(b);
+            v = call_with_args(proc, env);
             hashtable_set(ht, k, v);
         }
     } else {
+        assert_no_call_args();
+        push_call_arg(minim_cdr(b));
         env = global_env(current_thread());     // TODO: this seems problematic
-        minim_cdr(b) = call_with_args(proc, make_pair(minim_cdr(b), minim_null), env);
+        minim_cdr(b) = call_with_args(proc, env);
     }
 
     return minim_void;
@@ -444,8 +453,9 @@ minim_object *hashtable_ref_proc(minim_object *args) {
             if (!minim_is_proc(fail))
                 return fail;
             
+            assert_no_call_args();
             env = global_env(current_thread());   // TODO: this seems problematic
-            return call_with_args(fail, minim_null, env);
+            return call_with_args(fail, env);
         }
     }
 
