@@ -507,42 +507,51 @@ static minim_object *expand_let_loop(minim_object *let) {
 }
 
 static void apply_args() {
+    minim_object *lst;
+
     // check if last argument is a list
     // safe since call_args >= 2
-    if (!is_list(irt_call_args[irt_call_args_count - 1]))
-        bad_type_exn("apply", "list?", irt_call_args[irt_call_args_count - 1]);
+    lst = irt_call_args[irt_call_args_count - 1];
+    if (!is_list(lst))
+        bad_type_exn("apply", "list?", lst);
 
-    // shift every arg by 1
-    memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 1) * sizeof(minim_object *));
-    irt_call_args[irt_call_args_count - 1] = NULL;
+    // for every arg except the last arg: shift down by 1
+    // remove the last argument from the stack
+    memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 2) * sizeof(minim_object *));
+    irt_call_args_count -= 2;
+
+    // for the last argument: push every element of the list
+    // onto the call stack
+    while (!minim_is_null(lst)) {
+        push_call_arg(minim_car(lst));
+        lst = minim_cdr(lst);
+    }
+
+    // just for safety
+    // irt_call_args[irt_call_args_count] = NULL;
 }
 
-static long eval_exprs(minim_object *exprs, minim_object *env) {
+static void eval_exprs(minim_object *exprs, minim_object *env) {
     minim_object *it, *result;
     minim_thread *th;
     long argc;
 
+    argc = 0;
     assert_no_call_args();
-    if (minim_is_null(exprs)) {
-        return 0;
-    } else {
-        argc = 0;
-        for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
-            result = eval_expr(minim_car(it), env);
-            if (minim_is_values(result)) {
-                th = current_thread();
-                if (values_buffer_count(th) != 1)
-                    result_arity_exn(1, values_buffer_count(th));
-                result = values_buffer_ref(th, 0);
-            }
-
-            push_saved_arg(result);
-            ++argc;
+    for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
+        result = eval_expr(minim_car(it), env);
+        if (minim_is_values(result)) {
+            th = current_thread();
+            if (values_buffer_count(th) != 1)
+                result_arity_exn(1, values_buffer_count(th));
+            result = values_buffer_ref(th, 0);
         }
 
-        prepare_call_args(argc);
-        return argc;
+        push_saved_arg(result);
+        ++argc;
     }
+
+    prepare_call_args(argc);
 }
 
 minim_object *call_with_values(minim_object *producer,
@@ -577,6 +586,15 @@ application:
 
     if (minim_is_prim_proc(proc)) {
         check_prim_proc_arity(proc, args);
+
+        // special case for `apply`
+        if (minim_prim_proc(proc) == apply_proc) {
+            proc = minim_car(args);
+            apply_args();
+            goto application;
+        }
+
+        // now it's safe to clear
         clear_call_args();
 
         // special case for `eval`
@@ -589,13 +607,6 @@ application:
             }
 
             return eval_expr(expr, env);
-        }
-
-        // special case for `apply`
-        if (minim_prim_proc(proc) == apply_proc) {
-            proc = minim_car(args);
-            apply_args();
-            goto application;
         }
 
         // special case for `current-environment`
@@ -657,7 +668,6 @@ application:
 }
 
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
-    long argc;
 
 loop:
 
@@ -904,17 +914,26 @@ loop:
             } 
         }
 
+        proc = eval_expr(head, env);
+        eval_exprs(minim_cdr(expr), env);
+
 application:
 
-        proc = eval_expr(head, env);
-        argc = eval_exprs(minim_cdr(expr), env);
-
         args = minim_null;
-        for (long i = argc - 1; i >= 0; --i)
+        for (long i = irt_call_args_count - 1; i >= 0; --i)
             args = make_pair(irt_call_args[i], args);
 
         if (minim_is_prim_proc(proc)) {
             check_prim_proc_arity(proc, args);
+            
+            // special case for `apply`
+            if (minim_prim_proc(proc) == apply_proc) {
+                proc = minim_car(args);
+                apply_args();
+                goto application;
+            }
+
+            // now it's safe to clear
             clear_call_args();
 
             // special case for `eval`
@@ -926,13 +945,6 @@ application:
                         bad_type_exn("eval", "environment?", env);
                 }
                 goto loop;
-            }
-
-            // special case for `apply`
-            if (minim_prim_proc(proc) == apply_proc) {
-                proc = minim_car(args);
-                apply_args();
-                goto application;
             }
 
             // special case for `current-environment`

@@ -488,6 +488,21 @@ int test_syntax() {
     return passed;
 }
 
+int test_apply() {
+    passed = 1;
+
+    check_equal("(apply + '())", "0");
+    check_equal("(apply + 1 '())", "1");
+    check_equal("(apply + 1 2 3 '())", "6");
+    check_equal("(apply + 1 '(2 3))", "6");
+    check_equal("(apply + '(1 2 3))", "6");
+
+    check_equal("(apply apply + '(()))", "0");
+    check_equal("(apply apply + '(1 2 (3 4)))", "10");
+    
+    return passed;
+}
+
 int test_if() {
     passed = 1;
 
@@ -855,6 +870,8 @@ void run_tests() {
     log_test("vector", test_vector);
     log_test("integer", test_integer);
     log_test("hashtable", test_hashtable);
+
+    log_test("apply", test_apply);
 }
 
 int main(int argc, char **argv) {
