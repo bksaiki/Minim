@@ -113,7 +113,7 @@ minim_object *vector_set_proc(int argc, minim_object **args) {
     if (minim_fixnum(idx) >= minim_vector_len(v))
         vector_out_of_bounds_exn("vector-set!", v, minim_fixnum(idx));
 
-    minim_vector_ref(v, minim_fixnum(idx)) = minim_car(minim_cddr(args));
+    minim_vector_ref(v, minim_fixnum(idx)) = args[2];
     return minim_void;
 }
 

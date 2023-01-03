@@ -396,7 +396,7 @@ minim_object *hashtable_update_proc(int argc, minim_object **args) {
 
     b = hashtable_find(ht, k);
     if (minim_is_null(b)) {
-        if (minim_is_null(minim_cdr(minim_cddr(args)))) {
+        if (argc == 3) {
             // no failure result provided
             key_not_found_exn("hashtable-update!", k);
         } else {
@@ -439,7 +439,7 @@ minim_object *hashtable_ref_proc(int argc, minim_object **args) {
     k = args[1];
     b = hashtable_find(ht, k);
     if (minim_is_null(b)) {
-        if (minim_is_null(minim_cddr(args))) {
+        if (argc == 2) {
             // no failure result provided
             key_not_found_exn("hashtable-ref", k);
             write_object(stderr, k);

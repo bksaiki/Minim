@@ -43,7 +43,7 @@ minim_object *sub_proc(int argc, minim_object **args) {
     if (!minim_is_fixnum(args[0]))
         bad_type_exn("-", "integer?", args[0]);
     
-    if (minim_is_null(minim_cdr(args))) {
+    if (argc == 1) {
         result = -(minim_fixnum(args[0]));
     } else {
         result = minim_fixnum(args[0]);

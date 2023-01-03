@@ -612,22 +612,22 @@ application:
 
         // special case for `for-each`
         if (minim_prim_proc(proc) == for_each_proc) {
-            return for_each(args[0], &args[1], env);
+            return for_each(args[0], argc - 1, &args[1], env);
         }
 
         // special case for `map`
         if (minim_prim_proc(proc) == map_proc) {
-            return map_list(args[0], args[1], env);
+            return map_list(args[0], argc - 1, &args[1], env);
         }
 
         // special case for `andmap`
         if (minim_prim_proc(proc) == andmap_proc) {
-            return andmap(args[0], args[1], env);
+            return andmap(args[0], argc - 1, &args[1], env);
         }
 
         // special case for `ormap`
         if (minim_prim_proc(proc) == ormap_proc) {
-            return ormap(args[0], args[1], env);
+            return ormap(args[0], argc - 1, &args[1], env);
         }
 
         // special case for `call-with-values`
@@ -960,22 +960,22 @@ application:
 
             // special case for `for-each`
             if (minim_prim_proc(proc) == for_each_proc) {
-                return for_each(args[0], args[1], env);
+                return for_each(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `map`
             if (minim_prim_proc(proc) == map_proc) {
-                return map_list(args[0], args[1], env);
+                return map_list(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `andmap`
             if (minim_prim_proc(proc) == andmap_proc) {
-                return andmap(args[0], args[1], env);
+                return andmap(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `ormap`
             if (minim_prim_proc(proc) == ormap_proc) {
-                return ormap(args[0], args[1], env);
+                return ormap(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `call-with-values`

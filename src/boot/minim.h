@@ -335,10 +335,10 @@ long list_length(minim_object *xs);
 minim_object *make_assoc(minim_object *xs, minim_object *ys);
 minim_object *copy_list(minim_object *xs);
 
-minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env);
-minim_object *map_list(minim_object *proc, minim_object *lst, minim_object *env);
-minim_object *andmap(minim_object *proc, minim_object *lst, minim_object *env);
-minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *env);
+minim_object *for_each(minim_object *proc, int argc, minim_object **args, minim_object *env);
+minim_object *map_list(minim_object *proc, int argc, minim_object **args, minim_object *env);
+minim_object *andmap(minim_object *proc, int argc, minim_object **args, minim_object *env);
+minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_object *env);
 
 minim_object *strip_syntax(minim_object *o);
 minim_object *to_syntax(minim_object *o);
