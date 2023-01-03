@@ -101,25 +101,26 @@ void minim_shutdown(int code) {
 //  Primitives
 //
 
-minim_object *load_proc(minim_object *args) {
+minim_object *load_proc(int argc, minim_object **args) {
     // (-> string any)
-    if (!minim_is_string(minim_car(args)))
-        bad_type_exn("load", "string?", minim_car(args));
-    return load_file(minim_string(minim_car(args)));
+    if (!minim_is_string(args[0]))
+        bad_type_exn("load", "string?", args[0]);
+    return load_file(minim_string(args[0]));
 }
 
-minim_object *error_proc(minim_object *args) {
+minim_object *error_proc(int argc, minim_object **args) {
     // (-> (or #f string symbol)
     //     string?
     //     any ...
     //     any)
-    minim_object *who, *message, *reasons;
+    minim_object *who, *message;
+    int i;
 
-    who = minim_car(args);
+    who = args[0];
     if (!minim_is_false(who) && !minim_is_symbol(who) && !minim_is_string(who))
         bad_type_exn("error", "(or #f string? symbol?)", who);
 
-    message = minim_cadr(args);
+    message = args[1];
     if (!minim_is_string(message))
         bad_type_exn("error", "string?", message);
     
@@ -132,33 +133,31 @@ minim_object *error_proc(minim_object *args) {
     write_object2(stderr, message, 1, 1);
     fprintf(stderr, "\n");
 
-    reasons = minim_cddr(args);
-    while (!minim_is_null(reasons)) {
+    for (i = 2; i < argc; ++i) {
         fprintf(stderr, " ");
-        write_object2(stderr, minim_car(reasons), 1, 1);
+        write_object2(stderr, args[i], 1, 1);
         fprintf(stderr, "\n");
-        reasons = minim_cdr(reasons);
     }
 
     minim_shutdown(1);
 }
 
-minim_object *exit_proc(minim_object *args) {
+minim_object *exit_proc(int argc, minim_object **args) {
     // (-> any)
     minim_shutdown(0);
 }
 
-minim_object *current_directory_proc(minim_object *args) {
+minim_object *current_directory_proc(int argc, minim_object **args) {
     // (-> string)
     // (-> string void)
     minim_object *path;
 
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         // getter
         return current_directory(current_thread());
     } else {
         // setter
-        path = minim_car(args);
+        path = args[0];
         if (!minim_is_string(path))
             bad_type_exn("current-directory", "string?", path);
         

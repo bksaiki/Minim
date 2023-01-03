@@ -74,7 +74,7 @@ minim_object *copy_list(minim_object *xs) {
     return head;
 }
 
-minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env) {
+minim_object *for_each(minim_object *proc, minim_object **lsts, minim_object *env) {
     minim_object *it, **lst_arr, **arg_its;
     long argc, i, len0, len;
 

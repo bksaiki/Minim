@@ -46,7 +46,6 @@ void push_saved_arg(minim_object *arg) {
 }
 
 void clear_call_args() {
-    irt_call_args[0] = NULL;
     irt_call_args_count = 0;
 }
 
@@ -145,7 +144,7 @@ static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
     min_arity = proc_arity_min(arity);
     max_arity = proc_arity_max(arity);
 
-    if (argc >= max_arity)
+    if (argc > max_arity)
         arity_mismatch_exn(name, arity, argc);
 
     if (argc < min_arity)
@@ -613,7 +612,7 @@ application:
 
         // special case for `for-each`
         if (minim_prim_proc(proc) == for_each_proc) {
-            return for_each(args[0], args[1], env);
+            return for_each(args[0], &args[1], env);
         }
 
         // special case for `map`
@@ -647,6 +646,7 @@ application:
         args = irt_call_args;
 
         // process args
+        i = 0;
         vars = minim_closure_args(proc);
         while (minim_is_pair(vars)) {
             env_define_var_no_check(env, minim_car(vars), args[i]);
@@ -994,6 +994,7 @@ application:
             args = irt_call_args;
 
             // process args
+            i = 0;
             vars = minim_closure_args(proc);
             while (minim_is_pair(vars)) {
                 env_define_var_no_check(env, minim_car(vars), args[i]);

@@ -9,19 +9,19 @@
 //  Primitives
 //
 
-static minim_object *boot_expander_proc(minim_object *args) {
+static minim_object *boot_expander_proc(int argc, minim_object **args) {
     // (-> boolean)
     // (-> boolean void)
     minim_object *val;
     minim_thread *th;
 
     th = current_thread();
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         // getter
         return boot_expander(th);
     } else {
         // setter
-        val = minim_car(args);
+        val = args[0];
         if (!minim_is_bool(val))
             bad_type_exn("boot-expander?", "boolean?", val);
         boot_expander(th) = val;

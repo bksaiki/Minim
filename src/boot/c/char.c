@@ -33,5 +33,5 @@ minim_object *integer_to_char_proc(int argc, minim_object **args) {
     minim_object *o = args[0];
     if (!minim_is_fixnum(o))
         bad_type_exn("integer->char", "integer?", o);
-    return make_char(minim_fixnum(minim_car(args)));
+    return make_char(minim_fixnum(args[0]));
 }

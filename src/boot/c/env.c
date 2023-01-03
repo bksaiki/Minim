@@ -236,37 +236,37 @@ minim_object *setup_env() {
 //  Primitives
 //
 
-minim_object *interaction_environment_proc(minim_object *args) {
+minim_object *interaction_environment_proc(int argc, minim_object **args) {
     // (-> environment)
     return global_env(current_thread());
 }
 
-minim_object *empty_environment_proc(minim_object *args) {
+minim_object *empty_environment_proc(int argc, minim_object **args) {
     // (-> environment)
     return setup_env();
 }
 
-minim_object *environment_proc(minim_object *args) {
+minim_object *environment_proc(int argc, minim_object **args) {
     // (-> environment)
     return make_env();
 }
 
-minim_object *extend_environment_proc(minim_object *args) {
+minim_object *extend_environment_proc(int argc, minim_object **args) {
     // (-> environment environment)
-    if (!minim_is_env(minim_car(args)))
-        bad_type_exn("extend-environment", "environment?", minim_car(args));
-    return make_environment(minim_car(args));
+    if (!minim_is_env(args[0]))
+        bad_type_exn("extend-environment", "environment?", args[0]);
+    return make_environment(args[0]);
 }
 
-minim_object *environment_variable_value_proc(minim_object *args) {
+minim_object *environment_variable_value_proc(int argc, minim_object **args) {
     // (-> environment symbol -> any)
     minim_object *env, *name, *exn;
 
-    env = minim_car(args);
+    env = args[0];
     if (!minim_is_env(env))
         bad_type_exn("environment-variable-value", "environment?", env);
 
-    name = minim_cadr(args);
+    name = args[1];
     if (!minim_is_symbol(name)) {
         bad_type_exn("environment-variable-value", "symbol?", name);
     } else if (env_var_is_defined(env, name, 0)) {
@@ -274,13 +274,13 @@ minim_object *environment_variable_value_proc(minim_object *args) {
         return env_lookup_var(env, name);
     } else {
         // variable not found
-        if (minim_is_null(minim_cddr(args))) {
+        if (argc == 2) {
             // default exception
             fprintf(stderr, "environment-variable-value: variable not bound");
             fprintf(stderr, " name: %s", minim_symbol(name));
         } else {
             // custom exception
-            exn = minim_car(minim_cddr(args));
+            exn = args[2];
             if (!minim_is_proc(exn))
                 bad_type_exn("environment-variable-value", "procedure?", exn);
 
@@ -293,25 +293,24 @@ minim_object *environment_variable_value_proc(minim_object *args) {
     return minim_void;
 }
 
-minim_object *environment_set_variable_value_proc(minim_object *args) {
+minim_object *environment_set_variable_value_proc(int argc, minim_object **args) {
     // (-> environment symbol any void)
     minim_object *env, *name, *val;
 
-    env = minim_car(args);
+    env = args[0];
     if (!minim_is_env(env))
         bad_type_exn("environment-set-variable-value!", "environment?", env);
 
-    name = minim_cadr(args);
-    val = minim_car(minim_cddr(args));
-
+    name = args[1];
     if (!minim_is_symbol(name))
         bad_type_exn("environment-set-variable-value!", "symbol?", name);
 
+    val = args[2];
     env_define_var(env, name, val);
     return minim_void;
 }
 
-minim_object *current_environment_proc(minim_object *args) {
+minim_object *current_environment_proc(int argc, minim_object **args) {
     fprintf(stderr, "current-environment: should not be called directly");
     minim_shutdown(1);
 }
