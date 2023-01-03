@@ -139,19 +139,14 @@ void uncallable_prim_exn(const char *name) {
     minim_shutdown(1);
 }
 
-static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
-    int min_arity, max_arity, argc;
+static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
+    int min_arity, max_arity;
 
     min_arity = proc_arity_min(arity);
     max_arity = proc_arity_max(arity);
-    argc = 0;
 
-    while (!minim_is_null(args)) {
-        if (argc >= max_arity)
-            arity_mismatch_exn(name, arity, max_arity + list_length(args));
-        args = minim_cdr(args);
-        ++argc;
-    }
+    if (argc >= max_arity)
+        arity_mismatch_exn(name, arity, argc);
 
     if (argc < min_arity)
         arity_mismatch_exn(name, arity, argc);
@@ -159,11 +154,11 @@ static int check_proc_arity(proc_arity *arity, minim_object *args, const char *n
     return argc;
 }
 
-#define check_prim_proc_arity(prim, args)   \
-    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
+#define check_prim_proc_arity(prim, argc)   \
+    check_proc_arity(&minim_prim_arity(prim), argc, minim_prim_proc_name(prim))
 
-#define check_closure_proc_arity(prim, args)    \
-    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
+#define check_closure_proc_arity(prim, argc)    \
+    check_proc_arity(&minim_closure_arity(prim), argc, minim_closure_name(prim))
 
 //
 //  Syntax check
@@ -506,7 +501,7 @@ static minim_object *expand_let_loop(minim_object *let) {
            minim_null)));
 }
 
-static void apply_args() {
+static long apply_args() {
     minim_object *lst;
 
     // check if last argument is a list
@@ -528,10 +523,11 @@ static void apply_args() {
     }
 
     // just for safety
-    // irt_call_args[irt_call_args_count] = NULL;
+    irt_call_args[irt_call_args_count] = NULL;
+    return irt_call_args_count;
 }
 
-static void eval_exprs(minim_object *exprs, minim_object *env) {
+static long eval_exprs(minim_object *exprs, minim_object *env) {
     minim_object *it, *result;
     minim_thread *th;
     long argc;
@@ -552,6 +548,7 @@ static void eval_exprs(minim_object *exprs, minim_object *env) {
     }
 
     prepare_call_args(argc);
+    return argc;
 }
 
 minim_object *call_with_values(minim_object *producer,
@@ -576,21 +573,21 @@ minim_object *call_with_values(minim_object *producer,
 }
 
 minim_object *call_with_args(minim_object *proc, minim_object *env) {
-    minim_object *expr, *args;
+    minim_object *expr, **args;
+    int argc;
+
+    args = irt_call_args;
+    argc = irt_call_args_count;
 
 application:
 
-    args = minim_null;
-    for (long i = irt_call_args_count - 1; i >= 0; --i)
-        args = make_pair(irt_call_args[i], args);
-
     if (minim_is_prim_proc(proc)) {
-        check_prim_proc_arity(proc, args);
+        check_prim_proc_arity(proc, argc);
 
         // special case for `apply`
         if (minim_prim_proc(proc) == apply_proc) {
-            proc = minim_car(args);
-            apply_args();
+            proc = args[0];
+            argc = apply_args();
             goto application;
         }
 
@@ -599,13 +596,13 @@ application:
 
         // special case for `eval`
         if (minim_prim_proc(proc) == eval_proc) {
-            expr = minim_car(args);
-            if (!minim_is_null(minim_cdr(args))) {
-                env = minim_cadr(args);
+            expr = args[0];
+            if (argc == 2) {
+                env = args[1];
                 if (!minim_is_env(env))
                     bad_type_exn("eval", "environment?", env);
             }
-
+            
             return eval_expr(expr, env);
         }
 
@@ -616,43 +613,54 @@ application:
 
         // special case for `for-each`
         if (minim_prim_proc(proc) == for_each_proc) {
-            return for_each(minim_car(args), minim_cdr(args), env);
+            return for_each(args[0], args[1], env);
         }
 
         // special case for `map`
         if (minim_prim_proc(proc) == map_proc) {
-            return map_list(minim_car(args), minim_cdr(args), env);
+            return map_list(args[0], args[1], env);
         }
 
         // special case for `andmap`
         if (minim_prim_proc(proc) == andmap_proc) {
-            return andmap(minim_car(args), minim_cadr(args), env);
+            return andmap(args[0], args[1], env);
         }
 
         // special case for `ormap`
         if (minim_prim_proc(proc) == ormap_proc) {
-            return ormap(minim_car(args), minim_cadr(args), env);
+            return ormap(args[0], args[1], env);
         }
 
-        return minim_prim_proc(proc)(args);
+        // special case for `call-with-values`
+        if (minim_prim_proc(proc) == call_with_values_proc) {
+            return call_with_values(args[0], args[1], env);
+        }
+
+        return minim_prim_proc(proc)(argc, args);
     } else if (minim_is_closure_proc(proc)) {
-        minim_object *vars;
+        minim_object *vars, *rest;
+        int i, j;
 
         // check arity and extend environment
-        check_closure_proc_arity(proc, args);
+        check_closure_proc_arity(proc, argc);
         env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+        args = irt_call_args;
 
         // process args
         vars = minim_closure_args(proc);
         while (minim_is_pair(vars)) {
-            env_define_var_no_check(env, minim_car(vars), minim_car(args));
+            env_define_var_no_check(env, minim_car(vars), args[i]);
             vars = minim_cdr(vars);
-            args = minim_cdr(args);
+            ++i;
         }
 
         // optionally process rest argument
-        if (minim_is_symbol(vars))
-            env_define_var_no_check(env, vars, copy_list(args));
+        if (minim_is_symbol(vars)) {
+            rest = minim_null;
+            for (j = argc - 1; j >= i; --j)
+                rest = make_pair(args[j], rest);
+            env_define_var_no_check(env, vars, rest);
+        }
 
         // tail call (not really)
         expr = minim_closure_body(proc);
@@ -688,9 +696,10 @@ loop:
         write_object2(stderr, expr, 0, 0);
         minim_shutdown(1);
     } else if (minim_is_pair(expr)) {
-        minim_object *proc, *head, *args, *result, *it, *bindings, *bind, *env2;
+        minim_object *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
         minim_thread *th;
         long var_count, idx;
+        int argc;
 
         // special forms
         head = minim_car(expr);
@@ -915,21 +924,18 @@ loop:
         }
 
         proc = eval_expr(head, env);
-        eval_exprs(minim_cdr(expr), env);
+        argc = eval_exprs(minim_cdr(expr), env);
 
 application:
 
-        args = minim_null;
-        for (long i = irt_call_args_count - 1; i >= 0; --i)
-            args = make_pair(irt_call_args[i], args);
-
         if (minim_is_prim_proc(proc)) {
-            check_prim_proc_arity(proc, args);
+            check_prim_proc_arity(proc, argc);
+            args = irt_call_args;
             
             // special case for `apply`
             if (minim_prim_proc(proc) == apply_proc) {
-                proc = minim_car(args);
-                apply_args();
+                proc = args[0];
+                argc = apply_args();
                 goto application;
             }
 
@@ -938,9 +944,9 @@ application:
 
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
-                expr = minim_car(args);
-                if (!minim_is_null(minim_cdr(args))) {
-                    env = minim_cadr(args);
+                expr = args[0];
+                if (argc == 2) {
+                    env = args[1];
                     if (!minim_is_env(env))
                         bad_type_exn("eval", "environment?", env);
                 }
@@ -954,48 +960,54 @@ application:
 
             // special case for `for-each`
             if (minim_prim_proc(proc) == for_each_proc) {
-                return for_each(minim_car(args), minim_cdr(args), env);
+                return for_each(args[0], args[1], env);
             }
 
             // special case for `map`
             if (minim_prim_proc(proc) == map_proc) {
-                return map_list(minim_car(args), minim_cdr(args), env);
+                return map_list(args[0], args[1], env);
             }
 
             // special case for `andmap`
             if (minim_prim_proc(proc) == andmap_proc) {
-                return andmap(minim_car(args), minim_cadr(args), env);
+                return andmap(args[0], args[1], env);
             }
 
             // special case for `ormap`
             if (minim_prim_proc(proc) == ormap_proc) {
-                return ormap(minim_car(args), minim_cadr(args), env);
+                return ormap(args[0], args[1], env);
             }
 
             // special case for `call-with-values`
             if (minim_prim_proc(proc) == call_with_values_proc) {
-                return call_with_values(minim_car(args), minim_cadr(args), env);
+                return call_with_values(args[0], args[1], env);
             }
 
-            return minim_prim_proc(proc)(args);
+            return minim_prim_proc(proc)(argc, args);
         } else if (minim_is_closure_proc(proc)) {
-            minim_object *vars;
+            minim_object *vars, *rest;
+            int i, j;
 
             // check arity and extend environment
-            check_closure_proc_arity(proc, args);
+            check_closure_proc_arity(proc, argc);
             env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+            args = irt_call_args;
 
             // process args
             vars = minim_closure_args(proc);
             while (minim_is_pair(vars)) {
-                env_define_var_no_check(env, minim_car(vars), minim_car(args));
+                env_define_var_no_check(env, minim_car(vars), args[i]);
                 vars = minim_cdr(vars);
-                args = minim_cdr(args);
+                ++i;
             }
 
             // optionally process rest argument
-            if (minim_is_symbol(vars))
-                env_define_var_no_check(env, vars, copy_list(args));
+            if (minim_is_symbol(vars)) {
+                rest = minim_null;
+                for (j = argc - 1; j >= i; --j)
+                    rest = make_pair(args[j], rest);
+                env_define_var_no_check(env, vars, rest);
+            }
 
             // tail call
             expr = minim_closure_body(proc);

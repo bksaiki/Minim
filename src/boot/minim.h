@@ -134,7 +134,7 @@ typedef struct {
 typedef struct {
     minim_object_type type;
     struct proc_arity arity;
-    minim_object *(*fn)(minim_object *);
+    minim_object *(*fn)(int, minim_object **);
     char *name;
 } minim_prim_proc_object;
 
@@ -302,7 +302,7 @@ extern minim_object *quote_syntax_symbol;
 
 // Typedefs
 
-typedef minim_object *(*minim_prim_proc_t)(minim_object *);
+typedef minim_object *(*minim_prim_proc_t)(int argc, minim_object **);
 
 // Constructors
 
@@ -478,7 +478,7 @@ NORETURN void uncallable_prim_exn(const char *name);
 // Primitives
 
 #define DEFINE_PRIM_PROC(name) \
-    minim_object *name ## _proc(minim_object *);
+    minim_object *name ## _proc(int, minim_object **);
 
 // special objects
 DEFINE_PRIM_PROC(is_null);

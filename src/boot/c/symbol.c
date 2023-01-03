@@ -200,7 +200,7 @@ minim_object *make_symbol(const char *s) {
 //  Primitives
 //
 
-minim_object *is_symbol_proc(minim_object *args) {
+minim_object *is_symbol_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_symbol(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_symbol(args[0]) ? minim_true : minim_false;
 }

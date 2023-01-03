@@ -565,37 +565,37 @@ minim_object *make_output_port(FILE *stream) {
 //  Primitives
 //
 
-minim_object *is_input_port_proc(minim_object *args) {
+minim_object *is_input_port_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_input_port(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_input_port(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_output_port_proc(minim_object *args) {
+minim_object *is_output_port_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_output_port(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_output_port(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *current_input_port_proc(minim_object *args) {
+minim_object *current_input_port_proc(int argc, minim_object **args) {
     // (-> input-port)
     return input_port(current_thread());
 }
 
-minim_object *current_output_port_proc(minim_object *args) {
+minim_object *current_output_port_proc(int argc, minim_object **args) {
     // (-> output-port)
     return output_port(current_thread());
 }
 
-minim_object *open_input_port_proc(minim_object *args) {
+minim_object *open_input_port_proc(int argc, minim_object **args) {
     // (-> string input-port)
     minim_object *port;
     FILE *stream;
 
-    if (!minim_is_string(minim_car(args)))
-        bad_type_exn("open-input-port", "string?", minim_car(args));
+    if (!minim_is_string(args[0]))
+        bad_type_exn("open-input-port", "string?", args[0]);
 
-    stream = fopen(minim_string(minim_car(args)), "r");
+    stream = fopen(minim_string(args[0]), "r");
     if (stream == NULL) {
-        fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
+        fprintf(stderr, "could not open file \"%s\"\n", minim_string(args[0]));
         minim_shutdown(1);
     }
 
@@ -604,17 +604,17 @@ minim_object *open_input_port_proc(minim_object *args) {
     return port;
 }
 
-minim_object *open_output_port_proc(minim_object *args) {
+minim_object *open_output_port_proc(int argc, minim_object **args) {
     // (-> string output-port)
     minim_object *port;
     FILE *stream;
 
-    if (!minim_is_string(minim_car(args)))
-        bad_type_exn("open-output-port", "string?", minim_car(args));
+    if (!minim_is_string(args[0]))
+        bad_type_exn("open-output-port", "string?", args[0]);
     
-    stream = fopen(minim_string(minim_car(args)), "w");
+    stream = fopen(minim_string(args[0]), "w");
     if (stream == NULL) {
-        fprintf(stderr, "could not open file \"%s\"\n", minim_string(minim_car(args)));
+        fprintf(stderr, "could not open file \"%s\"\n", minim_string(args[0]));
         minim_shutdown(1);
     }
 
@@ -623,35 +623,35 @@ minim_object *open_output_port_proc(minim_object *args) {
     return port;
 }
 
-minim_object *close_input_port_proc(minim_object *args) {
+minim_object *close_input_port_proc(int argc, minim_object **args) {
     // (-> input-port)
-    if (!minim_is_input_port(minim_car(args)))
-        bad_type_exn("close-input-port", "input-port?", minim_car(args));
+    if (!minim_is_input_port(args[0]))
+        bad_type_exn("close-input-port", "input-port?", args[0]);
 
-    fclose(minim_port(minim_car(args)));
-    minim_port_unset(minim_car(args), MINIM_PORT_OPEN);
+    fclose(minim_port(args[0]));
+    minim_port_unset(args[0], MINIM_PORT_OPEN);
     return minim_void;
 }
 
-minim_object *close_output_port_proc(minim_object *args) {
+minim_object *close_output_port_proc(int argc, minim_object **args) {
     // (-> output-port)
-    if (!minim_is_output_port(minim_car(args)))
-        bad_type_exn("close-output-port", "output-port?", minim_car(args));
+    if (!minim_is_output_port(args[0]))
+        bad_type_exn("close-output-port", "output-port?", args[0]);
 
-    fclose(minim_port(minim_car(args)));
-    minim_port_unset(minim_car(args), MINIM_PORT_OPEN);
+    fclose(minim_port(args[0]));
+    minim_port_unset(args[0], MINIM_PORT_OPEN);
     return minim_void;
 }
 
-minim_object *read_proc(minim_object *args) {
+minim_object *read_proc(int argc, minim_object **args) {
     // (-> any)
     // (-> input-port any)
     minim_object *in_p, *o;
 
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         in_p = input_port(current_thread());
     } else {
-        in_p = minim_car(args);
+        in_p = args[0];
         if (!minim_is_input_port(in_p))
             bad_type_exn("read", "input-port?", in_p);
     }
@@ -660,16 +660,16 @@ minim_object *read_proc(minim_object *args) {
     return (o == NULL) ? minim_eof : o;
 }
 
-minim_object *read_char_proc(minim_object *args) {
+minim_object *read_char_proc(int argc, minim_object **args) {
     // (-> char)
     // (-> input-port char)
     minim_object *in_p;
     int ch;
     
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         in_p = input_port(current_thread());
     } else {
-        in_p = minim_car(args);
+        in_p = args[0];
         if (!minim_is_input_port(in_p))
             bad_type_exn("read-char", "input-port?", in_p);
     }
@@ -678,16 +678,16 @@ minim_object *read_char_proc(minim_object *args) {
     return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
-minim_object *peek_char_proc(minim_object *args) {
+minim_object *peek_char_proc(int argc, minim_object **args) {
     // (-> char)
     // (-> input-port char)
     minim_object *in_p;
     int ch;
     
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         in_p = input_port(current_thread());
     } else {
-        in_p = minim_car(args);
+        in_p = args[0];
         if (!minim_is_input_port(in_p))
             bad_type_exn("peek-char", "input-port?", in_p);
     }
@@ -697,16 +697,16 @@ minim_object *peek_char_proc(minim_object *args) {
     return (ch == EOF) ? minim_eof : make_char(ch);
 }
 
-minim_object *char_is_ready_proc(minim_object *args) {
+minim_object *char_is_ready_proc(int argc, minim_object **args) {
     // (-> boolean)
     // (-> input-port boolean)
     minim_object *in_p;
     int ch;
 
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         in_p = input_port(current_thread());
     } else {
-        in_p = minim_car(args);
+        in_p = args[0];
         if (!minim_is_input_port(in_p))
             bad_type_exn("peek-char", "input-port?", in_p);
     }
@@ -716,16 +716,16 @@ minim_object *char_is_ready_proc(minim_object *args) {
     return (ch == EOF) ? minim_false : minim_true;
 }
 
-minim_object *display_proc(minim_object *args) {
+minim_object *display_proc(int argc, minim_object **args) {
     // (-> any void)
     // (-> any output-port void)
     minim_object *out_p, *o;
 
-    o = minim_car(args);
-    if (minim_is_null(minim_cdr(args))) {
+    o = args[0];
+    if (argc == 1) {
         out_p = output_port(current_thread());
     } else {
-        out_p = minim_cadr(args);
+        out_p = args[1];
         if (!minim_is_output_port(out_p))
             bad_type_exn("display", "output-port?", out_p);
     }
@@ -734,16 +734,16 @@ minim_object *display_proc(minim_object *args) {
     return minim_void;
 }
 
-minim_object *write_proc(minim_object *args) {
+minim_object *write_proc(int argc, minim_object **args) {
     // (-> any void)
     // (-> any output-port void)
     minim_object *out_p, *o;
 
-    o = minim_car(args);
-    if (minim_is_null(minim_cdr(args))) {
+    o = args[0];
+    if (argc == 1) {
         out_p = output_port(current_thread());
     } else {
-        out_p = minim_cadr(args);
+        out_p = args[1];
         if (!minim_is_output_port(out_p))
             bad_type_exn("display", "output-port?", out_p);
     }
@@ -752,19 +752,19 @@ minim_object *write_proc(minim_object *args) {
     return minim_void;
 }
 
-minim_object *write_char_proc(minim_object *args) {
+minim_object *write_char_proc(int argc, minim_object **args) {
     // (-> char void)
     // (-> char output-port void)
     minim_object *out_p, *ch;
 
-    ch = minim_car(args);
+    ch = args[0];
     if (!minim_is_char(ch))
         bad_type_exn("write-char", "char?", ch);
 
-    if (minim_is_null(minim_cdr(args))) {
+    if (argc == 1) {
         out_p = output_port(current_thread());
     } else {
-        out_p = minim_cadr(args);
+        out_p = args[1];
         if (!minim_is_output_port(out_p))
             bad_type_exn("display", "output-port?", out_p);
     }
@@ -773,15 +773,15 @@ minim_object *write_char_proc(minim_object *args) {
     return minim_void;
 }
 
-minim_object *newline_proc(minim_object *args) {
+minim_object *newline_proc(int argc, minim_object **args) {
     // (-> void)
     // (-> output-port void)
     minim_object *out_p;
 
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         out_p = output_port(current_thread());
     } else {
-        out_p = minim_car(args);
+        out_p = args[0];
         if (!minim_is_output_port(out_p))
             bad_type_exn("display", "output-port?", out_p);
     }

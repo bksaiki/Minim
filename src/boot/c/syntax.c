@@ -99,19 +99,19 @@ static minim_object *syntax_to_list(minim_object *head, minim_object *it) {
 //  Primitives
 //
 
-minim_object *is_syntax_proc(minim_object *args) {
+minim_object *is_syntax_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_syntax(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_syntax(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *syntax_error_proc(minim_object *args) {
+minim_object *syntax_error_proc(int argc, minim_object **args) {
     // (-> (or #f symbol) string any)
     // (-> (or #f symbol) string syntax any)
     // (-> (or #f symbol) string syntax syntaxs any)
     minim_object *what, *why, *where, *sub;
 
-    what = minim_car(args);
-    why = minim_cadr(args);
+    what = args[0];
+    why = args[1];
     if (!minim_is_false(what) && !minim_is_symbol(what))
         bad_type_exn("syntax-error", "symbol?", what);
     if (!minim_is_string(why))
@@ -123,12 +123,12 @@ minim_object *syntax_error_proc(minim_object *args) {
         fprintf(stderr, "%s: %s\n", minim_symbol(what), minim_string(why));
 
     if (!minim_is_null(minim_cddr(args))) {
-        where = minim_car(minim_cddr(args));
+        where = args[2];
         if (!minim_is_syntax(where))
             bad_type_exn("syntax-error", "syntax?", where);
 
         if (!minim_is_null(minim_cdr(minim_cddr(args)))) {
-            sub = minim_cadr(minim_cddr(args));
+            sub = args[3];
             if (!minim_is_syntax(sub))
                 bad_type_exn("syntax-error", "syntax?", sub);
 
@@ -145,30 +145,30 @@ minim_object *syntax_error_proc(minim_object *args) {
     minim_shutdown(1);
 }
 
-minim_object *syntax_e_proc(minim_object *args) {
+minim_object *syntax_e_proc(int argc, minim_object **args) {
     // (-> syntax any)
-    if (!minim_is_syntax(minim_car(args)))
-        bad_type_exn("syntax-e", "syntax?", minim_car(args));
-    return minim_syntax_e(minim_car(args));
+    if (!minim_is_syntax(args[0]))
+        bad_type_exn("syntax-e", "syntax?", args[0]);
+    return minim_syntax_e(args[0]);
 }
 
-minim_object *syntax_loc_proc(minim_object *args) {
+minim_object *syntax_loc_proc(int argc, minim_object **args) {
     // (-> syntax any)
-    if (!minim_is_syntax(minim_car(args)))
-        bad_type_exn("syntax-loc", "syntax?", minim_car(args));
-    return minim_syntax_loc(minim_car(args));
+    if (!minim_is_syntax(args[0]))
+        bad_type_exn("syntax-loc", "syntax?", args[0]);
+    return minim_syntax_loc(args[0]);
 }
 
-minim_object *to_syntax_proc(minim_object *args) {
+minim_object *to_syntax_proc(int argc, minim_object **args) {
     // (-> any syntax)
-    return to_syntax(minim_car(args));
+    return to_syntax(args[0]);
 }
 
-minim_object *syntax_to_list_proc(minim_object *args) {
+minim_object *syntax_to_list_proc(int argc, minim_object **args) {
     // (-> syntax (or #f list))
     minim_object *stx, *lst;
     
-    stx = minim_car(args);
+    stx = args[0];
     if (!minim_is_syntax(stx))
         bad_type_exn("syntax->list", "syntax?", stx);
 
@@ -181,32 +181,32 @@ minim_object *syntax_to_list_proc(minim_object *args) {
         return syntax_to_list(lst, lst);
 }
 
-minim_object *is_pattern_var_proc(minim_object *args) {
-    return minim_is_pattern_var(minim_car(args)) ? minim_true : minim_false;
+minim_object *is_pattern_var_proc(int argc, minim_object **args) {
+    return minim_is_pattern_var(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *make_pattern_var_proc(minim_object *args) {
+minim_object *make_pattern_var_proc(int argc, minim_object **args) {
     // (-> any non-negative-integer? pattern-var?)
     minim_object *value, *depth;
     
-    value = minim_car(args);
-    depth = minim_cadr(args);
+    value = args[0];
+    depth = args[1];
     if (!minim_is_fixnum(depth) || minim_fixnum(depth) < 0)
         bad_type_exn("make-pattern-var", "non-negative-integer?", depth);
     return make_pattern_var(value, depth);
 }
 
-minim_object *pattern_var_value_proc(minim_object *args) {
+minim_object *pattern_var_value_proc(int argc, minim_object **args) {
     // (-> pattern-var? any)
-    minim_object *var = minim_car(args);
+    minim_object *var = args[0];
     if (!minim_is_pattern_var(var))
         bad_type_exn("pattern-variable-value", "pattern-variable?", var);
     return minim_pattern_var_value(var);   
 }
 
-minim_object *pattern_var_depth_proc(minim_object *args) {
+minim_object *pattern_var_depth_proc(int argc, minim_object **args) {
     // (-> pattern-var? any)
-    minim_object *var = minim_car(args);
+    minim_object *var = args[0];
     if (!minim_is_pattern_var(var))
         bad_type_exn("pattern-variable-depth", "pattern-variable?", var);
     return minim_pattern_var_depth(var);   

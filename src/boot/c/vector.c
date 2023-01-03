@@ -32,72 +32,65 @@ static void vector_out_of_bounds_exn(const char *name, minim_object *v, long idx
 //  Primitives
 //
 
-minim_object *is_vector_proc(minim_object *args) {
+minim_object *is_vector_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return (minim_is_vector(minim_car(args)) ? minim_true : minim_false);
+    return (minim_is_vector(args[0]) ? minim_true : minim_false);
 }
 
-minim_object *make_vector_proc(minim_object *args) {
+minim_object *make_vector_proc(int argc, minim_object **args) {
     // (-> non-negative-integer vector)
     // (-> non-negative-integer any vector)
     minim_object *init;
     long len;
 
-    if (!minim_is_fixnum(minim_car(args)) || minim_fixnum(minim_car(args)) < 0)
-        bad_type_exn("make-vector", "non-negative-integer?", minim_car(args));
-    len = minim_fixnum(minim_car(args));
+    if (!minim_is_fixnum(args[0]) || minim_fixnum(args[0]) < 0)
+        bad_type_exn("make-vector", "non-negative-integer?", args[0]);
+    len = minim_fixnum(args[0]);
 
     if (len == 0) {
         // special case:
         return minim_empty_vec;
     }
 
-    if (minim_is_null(minim_cdr(args))) {
+    if (argc == 1) {
         // 1st case
         init = make_fixnum(0);
     } else {
         // 2nd case
-        init = minim_cadr(args);
+        init = args[1];
     }
 
     return make_vector(len, init);
 }
 
-minim_object *vector_proc(minim_object *args) {
+minim_object *vector_proc(int argc, minim_object **args) {
     // (-> any ... vector)
-    minim_object *v, *it;
-    long len, i;
+    minim_object *v;
     
-    len = list_length(args);
-    if (len == 0) {
-        return minim_empty_vec;
-    } else {
-        v = make_vector(len, NULL);
-        for (i = 0, it = args; i < len; ++i, it = minim_cdr(it))
-            minim_vector_ref(v, i) = minim_car(it);
-        return v;
-    }
+    v = make_vector(argc, NULL);
+    memcpy(minim_vector_arr(v), args, argc * sizeof(minim_object*));
+    return v;
 }
 
-minim_object *vector_length_proc(minim_object *args) {
+minim_object *vector_length_proc(int argc, minim_object **args) {
     // (-> vector non-negative-integer?)
     minim_object *v;
     
-    v = minim_car(args);
+    v = args[0];
     if (!minim_is_vector(v))
         bad_type_exn("vector-length", "vector?", v);
     return make_fixnum(minim_vector_len(v));
 }
 
-minim_object *vector_ref_proc(minim_object *args) {
+minim_object *vector_ref_proc(int argc, minim_object **args) {
     // (-> vector non-negative-integer? any)
     minim_object *v, *idx;
     
-    v = minim_car(args);
+    v = args[0];
     if (!minim_is_vector(v))
         bad_type_exn("vector-ref", "vector?", v);
 
-    idx = minim_cadr(args);
+    idx = args[1];
     if (!minim_is_fixnum(idx) || minim_fixnum(idx) < 0)
         bad_type_exn("vector-ref", "non-negative-integer?", idx);
     if (minim_fixnum(idx) >= minim_vector_len(v))
@@ -106,15 +99,15 @@ minim_object *vector_ref_proc(minim_object *args) {
     return minim_vector_ref(v, minim_fixnum(idx));
 }
 
-minim_object *vector_set_proc(minim_object *args) {
+minim_object *vector_set_proc(int argc, minim_object **args) {
     // (-> vector non-negative-integer? any void)
     minim_object *v, *idx;
     
-    v = minim_car(args);
+    v = args[0];
     if (!minim_is_vector(v))
         bad_type_exn("vector-set!", "vector?", v);
 
-    idx = minim_cadr(args);
+    idx = args[1];
     if (!minim_is_fixnum(idx) || minim_fixnum(idx) < 0)
         bad_type_exn("vector-set!", "non-negative-integer?", idx);
     if (minim_fixnum(idx) >= minim_vector_len(v))
@@ -124,28 +117,28 @@ minim_object *vector_set_proc(minim_object *args) {
     return minim_void;
 }
 
-minim_object *vector_fill_proc(minim_object *args) {
+minim_object *vector_fill_proc(int argc, minim_object **args) {
     // (-> vector any void)
     minim_object *v, *o;
     long i;
 
-    v = minim_car(args);
+    v = args[0];
     if (!minim_is_vector(v))
         bad_type_exn("vector-fill!", "vector?", v);
 
-    o = minim_cadr(args);
+    o = args[1];
     for (i = 0; i < minim_vector_len(v); ++i)
         minim_vector_ref(v, i) = o;
 
     return minim_void;
 }
 
-minim_object *vector_to_list_proc(minim_object *args) {
+minim_object *vector_to_list_proc(int argc, minim_object **args) {
     // (-> vector list)
     minim_object *v, *lst;
     long i;
     
-    v = minim_car(args);
+    v = args[0];
     if (!minim_is_vector(v))
         bad_type_exn("vector->list", "vector?", v);
 
@@ -156,12 +149,12 @@ minim_object *vector_to_list_proc(minim_object *args) {
     return lst;
 }
 
-minim_object *list_to_vector_proc(minim_object *args) {
+minim_object *list_to_vector_proc(int argc, minim_object **args) {
     // (-> list vector)
     minim_object *v, *lst, *it;
     long i;
     
-    lst = minim_car(args);
+    lst = args[0];
     if (!is_list(lst))
         bad_type_exn("list->vector", "list?", lst);
 

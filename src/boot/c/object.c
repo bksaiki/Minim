@@ -92,43 +92,43 @@ int minim_is_equal(minim_object *a, minim_object *b) {
 //  Primitives
 //
 
-minim_object *is_null_proc(minim_object *args) {
+minim_object *is_null_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_null(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_null(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_void_proc(minim_object *args) {
+minim_object *is_void_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_void(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_void(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_eof_proc(minim_object *args) {
+minim_object *is_eof_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_eof(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_eof(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_bool_proc(minim_object *args) {
+minim_object *is_bool_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    minim_object *o = minim_car(args);
+    minim_object *o = args[0];
     return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
 }
 
-minim_object *not_proc(minim_object *args) {
+minim_object *not_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_false(minim_car(args)) ? minim_true : minim_false;   
+    return minim_is_false(args[0]) ? minim_true : minim_false;   
 }
 
-minim_object *eq_proc(minim_object *args) {
+minim_object *eq_proc(int argc, minim_object **args) {
     // (-> any any boolean)
-    return minim_is_eq(minim_car(args), minim_cadr(args)) ? minim_true : minim_false;
+    return minim_is_eq(args[0], args[1]) ? minim_true : minim_false;
 }
 
-minim_object *equal_proc(minim_object *args) {
+minim_object *equal_proc(int argc, minim_object **args) {
     // (-> any any boolean)
-    return minim_is_equal(minim_car(args), minim_cadr(args)) ? minim_true : minim_false;
+    return minim_is_equal(args[0], args[1]) ? minim_true : minim_false;
 }
 
-minim_object *void_proc(minim_object *args) {
+minim_object *void_proc(int argc, minim_object **args) {
     // (-> void)
     return minim_void;
 }

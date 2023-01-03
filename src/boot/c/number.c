@@ -15,193 +15,187 @@ minim_object *make_fixnum(long v) {
 //  Primitives
 //
 
-minim_object *is_fixnum_proc(minim_object *args) {
+minim_object *is_fixnum_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_fixnum(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_fixnum(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *add_proc(minim_object *args) {
+minim_object *add_proc(int argc, minim_object **args) {
     // (-> integer ... integer)
-    long result = 0;
- 
-    while (!minim_is_null(args)) {
-        if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("+", "integer?", minim_car(args));
-        result += minim_fixnum(minim_car(args));
-        args = minim_cdr(args);
+    long result;
+    int i;
+    
+    result = 0;
+    for (i = 0; i < argc; ++i) {
+        if (!minim_is_fixnum(args[i]))
+            bad_type_exn("+", "integer?", args[i]);
+        result += minim_fixnum(args[i]);
     }
 
     return make_fixnum(result);
 }
 
-minim_object *sub_proc(minim_object *args) {
+minim_object *sub_proc(int argc, minim_object **args) {
     // (-> integer integer ... integer)
     long result;
+    int i;
 
-    if (!minim_is_fixnum(minim_car(args)))
-        bad_type_exn("-", "integer?", minim_car(args));
+    if (!minim_is_fixnum(args[0]))
+        bad_type_exn("-", "integer?", args[0]);
     
     if (minim_is_null(minim_cdr(args))) {
-        result = -(minim_fixnum(minim_car(args)));
+        result = -(minim_fixnum(args[0]));
     } else {
-        result = minim_fixnum(minim_car(args));
-        args = minim_cdr(args);
-        while (!minim_is_null(args)) {
-            if (!minim_is_fixnum(minim_car(args)))
-                bad_type_exn("-", "integer?", minim_car(args));
-            result -= minim_fixnum(minim_car(args));
-            args = minim_cdr(args);
+        result = minim_fixnum(args[0]);
+        for (i = 1; i < argc; ++i) {
+            if (!minim_is_fixnum(args[i]))
+                bad_type_exn("-", "integer?", args[i]);
+            result -= minim_fixnum(args[i]);
         }
     }
 
     return make_fixnum(result);
 }
 
-minim_object *mul_proc(minim_object *args) {
+minim_object *mul_proc(int argc, minim_object **args) {
     // (-> integer ... integer)
-    long result = 1;
-
-    while (!minim_is_null(args)) {
-        if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("*", "integer?", minim_car(args));
-        result *= minim_fixnum(minim_car(args));
-        args = minim_cdr(args);
+    long result;
+    int i;
+    
+    result = 1;
+    for (i = 0; i < argc; ++i) {
+        if (!minim_is_fixnum(args[i]))
+            bad_type_exn("*", "integer?", args[i]);
+        result *= minim_fixnum(args[i]);
     }
 
     return make_fixnum(result);
 }
 
-minim_object *div_proc(minim_object *args) {
+minim_object *div_proc(int argc, minim_object **args) {
     // (-> integer integer integer)
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("/", "integer?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn("/", "integer?", minim_cadr(args));
+    if (!minim_is_fixnum(args[0]))
+            bad_type_exn("/", "integer?", args[0]);
+    if (!minim_is_fixnum(args[1]))
+            bad_type_exn("/", "integer?", args[1]);
 
-    return make_fixnum(minim_fixnum(minim_car(args)) /
-                       minim_fixnum(minim_cadr(args)));
+    return make_fixnum(minim_fixnum(args[0]) / minim_fixnum(args[1]));
 }
 
-minim_object *remainder_proc(minim_object *args) {
+minim_object *remainder_proc(int argc, minim_object **args) {
     // (-> integer integer integer)
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("remainder", "integer?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn("remainder", "integer?", minim_cadr(args));
+    if (!minim_is_fixnum(args[0]))
+            bad_type_exn("remainder", "integer?", args[0]);
+    if (!minim_is_fixnum(args[1]))
+            bad_type_exn("remainder", "integer?", args[1]);
 
-    return make_fixnum(minim_fixnum(minim_car(args)) %
-                       minim_fixnum(minim_cadr(args)));
+    return make_fixnum(minim_fixnum(args[0]) % minim_fixnum(args[1]));
 }
 
-minim_object *modulo_proc(minim_object *args) {
+minim_object *modulo_proc(int argc, minim_object **args) {
     // (-> integer integer integer)
     long result;
 
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("modulo", "integer?", minim_car(args));
-    if (!minim_is_fixnum(minim_cadr(args)))
-            bad_type_exn("modulo", "integer?", minim_cadr(args));
+    if (!minim_is_fixnum(args[0]))
+            bad_type_exn("modulo", "integer?", args[0]);
+    if (!minim_is_fixnum(args[1]))
+            bad_type_exn("modulo", "integer?", args[1]);
 
-    result = minim_fixnum(minim_car(args)) % minim_fixnum(minim_cadr(args));
-    if ((minim_fixnum(minim_car(args)) < 0) != (minim_fixnum(minim_cadr(args)) < 0))
-        result += minim_fixnum(minim_cadr(args));
+    result = minim_fixnum(args[0]) % minim_fixnum(args[1]);
+    if ((minim_fixnum(args[0]) < 0) != (minim_fixnum(args[1]) < 0))
+        result += minim_fixnum(args[1]);
     return make_fixnum(result);
 }
 
-minim_object *number_eq_proc(minim_object *args) {
+minim_object *number_eq_proc(int argc, minim_object **args) {
     // (-> number number number ... boolean)
-    minim_object *it;
     long x0;
+    int i;
 
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("=", "number?", minim_car(args));
-    x0 = minim_fixnum(minim_car(args));
+    if (!minim_is_fixnum(args[0]))
+        bad_type_exn("=", "number?", args[0]);
+    x0 = minim_fixnum(args[0]);
 
-    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
-        if (!minim_is_fixnum(minim_car(it)))
-            bad_type_exn("=", "number?", minim_car(it));
-        
-        if (x0 != minim_fixnum(minim_car(it)))
+    for (i = 1; i < argc; ++i) {
+        if (!minim_is_fixnum(args[i]))
+            bad_type_exn("=", "number?", args[i]);
+        if (x0 != minim_fixnum(args[i]))
             return minim_false;
     }
 
     return minim_true;
 }
 
-minim_object *number_ge_proc(minim_object *args) { 
+minim_object *number_ge_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    minim_object *it;
     long x0;
+    int i;
 
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn(">=", "number?", minim_car(args));
-    x0 = minim_fixnum(minim_car(args));
+    if (!minim_is_fixnum(args[0]))
+        bad_type_exn(">=", "number?", args[0]);
+    x0 = minim_fixnum(args[0]);
 
-    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
-        if (!minim_is_fixnum(minim_car(it)))
-            bad_type_exn(">=", "number?", minim_car(it));
-        
-        if (x0 < minim_fixnum(minim_car(it)))
+    for (i = 1; i < argc; ++i) {
+        if (!minim_is_fixnum(args[i]))
+            bad_type_exn(">=", "number?", args[i]);
+        if (x0 < minim_fixnum(args[i]))
             return minim_false;
     }
 
     return minim_true;
 }
 
-minim_object *number_le_proc(minim_object *args) { 
+minim_object *number_le_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    minim_object *it;
     long x0;
+    int i;
 
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("<=", "number?", minim_car(args));
-    x0 = minim_fixnum(minim_car(args));
+    if (!minim_is_fixnum(args[0]))
+        bad_type_exn("<=", "number?", args[0]);
+    x0 = minim_fixnum(args[0]);
 
-    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
-        if (!minim_is_fixnum(minim_car(it)))
-            bad_type_exn("<=", "number?", minim_car(it));
-        
-        if (x0 > minim_fixnum(minim_car(it)))
+    for (i = 1; i < argc; ++i) {
+        if (!minim_is_fixnum(args[i]))
+            bad_type_exn("<=", "number?", args[i]);
+        if (x0 > minim_fixnum(args[i]))
             return minim_false;
     }
 
     return minim_true;
 }
 
-minim_object *number_gt_proc(minim_object *args) { 
+minim_object *number_gt_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    minim_object *it;
     long x0;
+    int i;
 
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn(">", "number?", minim_car(args));
-    x0 = minim_fixnum(minim_car(args));
+    if (!minim_is_fixnum(args[0]))
+        bad_type_exn(">", "number?", args[0]);
+    x0 = minim_fixnum(args[0]);
 
-    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
-        if (!minim_is_fixnum(minim_car(it)))
-            bad_type_exn(">", "number?", minim_car(it));
-        
-        if (x0 <= minim_fixnum(minim_car(it)))
+    for (i = 1; i < argc; ++i) {
+        if (!minim_is_fixnum(args[i]))
+            bad_type_exn(">", "number?", args[i]);
+        if (x0 <= minim_fixnum(args[i]))
             return minim_false;
     }
 
     return minim_true;
 }
 
-minim_object *number_lt_proc(minim_object *args) { 
+minim_object *number_lt_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    minim_object *it;
     long x0;
+    int i;
 
-    if (!minim_is_fixnum(minim_car(args)))
-            bad_type_exn("<", "number?", minim_car(args));
-    x0 = minim_fixnum(minim_car(args));
+    if (!minim_is_fixnum(args[0]))
+        bad_type_exn("<", "number?", args[0]);
+    x0 = minim_fixnum(args[0]);
 
-    for (it = minim_cdr(args); !minim_is_null(it); it = minim_cdr(it)) {
-        if (!minim_is_fixnum(minim_car(it)))
-            bad_type_exn("<", "number?", minim_car(it));
-        
-        if (x0 >= minim_fixnum(minim_car(it)))
+    for (i = 1; i < argc; ++i) {
+        if (!minim_is_fixnum(args[i]))
+            bad_type_exn("<", "number?", args[i]);
+        if (x0 >= minim_fixnum(args[i]))
             return minim_false;
     }
 
