@@ -42,7 +42,7 @@ static char *_get_file_path(const char *rel_path) {
 void set_current_dir(const char *str) {
     if (_set_current_dir(str) != 0) {
         fprintf(stderr, "could not set current directory: %s\n", str);
-        exit(1);
+        minim_shutdown(1);
     }
 
     current_directory(current_thread()) = make_string(str);
@@ -59,7 +59,7 @@ char *get_file_dir(const char *realpath) {
     for (i = strlen(realpath) - 1; i >= 0 && realpath[i] != '/'; --i);
     if (i < 0) {
         fprintf(stderr, "could not resolve directory of path %s\n", realpath);
-        exit(1);
+        minim_shutdown(1);
     }
 
     dirpath = GC_alloc_atomic((i + 2) * sizeof(char));
@@ -76,7 +76,7 @@ minim_object *load_file(const char *fname) {
     f = fopen(fname, "r");
     if (f == NULL) {
         fprintf(stderr, "could not open file \"%s\"\n", fname);
-        exit(1);
+        minim_shutdown(1);
     }
 
     old_cwd = _get_current_dir();
@@ -92,29 +92,35 @@ minim_object *load_file(const char *fname) {
     return result;
 }
 
+void minim_shutdown(int code) {
+    GC_finalize();
+    exit(code);
+}
+
 //
 //  Primitives
 //
 
-minim_object *load_proc(minim_object *args) {
+minim_object *load_proc(int argc, minim_object **args) {
     // (-> string any)
-    if (!minim_is_string(minim_car(args)))
-        bad_type_exn("load", "string?", minim_car(args));
-    return load_file(minim_string(minim_car(args)));
+    if (!minim_is_string(args[0]))
+        bad_type_exn("load", "string?", args[0]);
+    return load_file(minim_string(args[0]));
 }
 
-minim_object *error_proc(minim_object *args) {
+minim_object *error_proc(int argc, minim_object **args) {
     // (-> (or #f string symbol)
     //     string?
     //     any ...
     //     any)
-    minim_object *who, *message, *reasons;
+    minim_object *who, *message;
+    int i;
 
-    who = minim_car(args);
+    who = args[0];
     if (!minim_is_false(who) && !minim_is_symbol(who) && !minim_is_string(who))
         bad_type_exn("error", "(or #f string? symbol?)", who);
 
-    message = minim_cadr(args);
+    message = args[1];
     if (!minim_is_string(message))
         bad_type_exn("error", "string?", message);
     
@@ -127,34 +133,31 @@ minim_object *error_proc(minim_object *args) {
     write_object2(stderr, message, 1, 1);
     fprintf(stderr, "\n");
 
-    reasons = minim_cddr(args);
-    while (!minim_is_null(reasons)) {
+    for (i = 2; i < argc; ++i) {
         fprintf(stderr, " ");
-        write_object2(stderr, minim_car(reasons), 1, 1);
+        write_object2(stderr, args[i], 1, 1);
         fprintf(stderr, "\n");
-        reasons = minim_cdr(reasons);
     }
 
-    exit(1);
+    minim_shutdown(1);
 }
 
-minim_object *exit_proc(minim_object *args) {
+minim_object *exit_proc(int argc, minim_object **args) {
     // (-> any)
-    GC_finalize();
-    exit(0);
+    minim_shutdown(0);
 }
 
-minim_object *current_directory_proc(minim_object *args) {
+minim_object *current_directory_proc(int argc, minim_object **args) {
     // (-> string)
     // (-> string void)
     minim_object *path;
 
-    if (minim_is_null(args)) {
+    if (argc == 0) {
         // getter
         return current_directory(current_thread());
     } else {
         // setter
-        path = minim_car(args);
+        path = args[0];
         if (!minim_is_string(path))
             bad_type_exn("current-directory", "string?", path);
         

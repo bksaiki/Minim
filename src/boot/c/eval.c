@@ -12,6 +12,60 @@
 }
 
 //
+//  Interpreter argument stack
+//
+
+static void resize_call_args(short req) {
+    while (irt_call_args_size < req)  irt_call_args_size *= 2;
+    irt_call_args = GC_realloc(irt_call_args, irt_call_args_size * sizeof(minim_object*));
+}
+
+static void resize_saved_args(short req) {
+    while (irt_saved_args_size < req)  irt_saved_args_size *= 2;
+    irt_saved_args = GC_realloc(irt_saved_args, irt_saved_args_size * sizeof(minim_object*));
+}
+
+void assert_no_call_args() {
+    if (irt_call_args_count > 0) {
+        fprintf(stderr, "[assert failed] assert_no_call_args(): args on stack %ld\n", irt_call_args_count);
+        exit(1);
+    }
+}
+
+void push_call_arg(minim_object *arg) {
+    if (irt_call_args_count >= irt_call_args_size)
+        resize_call_args(irt_call_args_count + 1);
+    irt_call_args[irt_call_args_count++] = arg;
+    irt_call_args[irt_call_args_count] = NULL;
+}
+
+void push_saved_arg(minim_object *arg) {
+    if (irt_saved_args_count >= irt_saved_args_size)
+        resize_saved_args(irt_saved_args_count + 2);
+    irt_saved_args[irt_saved_args_count++] = arg;
+}
+
+void clear_call_args() {
+    irt_call_args_count = 0;
+}
+
+void prepare_call_args(long count) {
+    if (count > irt_saved_args_count) {
+        fprintf(stderr, "prepare_call_args(): trying to restore %ld values, only found %ld\n",
+                        count, irt_saved_args_count);
+        minim_shutdown(1);
+    }
+
+    if (count < irt_call_args_size)
+        resize_call_args(count + 1);
+    
+    memcpy(irt_call_args, &irt_saved_args[irt_saved_args_count - count], count * sizeof(minim_object*));
+    irt_call_args[count] = NULL;
+    irt_call_args_count = count;
+    irt_saved_args_count -= count;
+}
+
+//
 //  Runtime check
 //
 
@@ -20,7 +74,7 @@ void bad_syntax_exn(minim_object *expr) {
     fprintf(stderr, " at: ");
     write_object2(stderr, expr, 1, 0);
     fputc('\n', stderr);
-    exit(1);
+    minim_shutdown(1);
 }
 
 void bad_type_exn(const char *name, const char *type, minim_object *x) {
@@ -29,7 +83,7 @@ void bad_type_exn(const char *name, const char *type, minim_object *x) {
     fprintf(stderr, " received: ");
     write_object(stderr, x);
     fputc('\n', stderr);
-    exit(1);
+    minim_shutdown(1);
 }
 
 static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
@@ -70,22 +124,28 @@ static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual
                         proc_arity_min(arity), proc_arity_max(arity), actual);
     }
 
-    exit(1);
+    minim_shutdown(1);
 }
 
-static int check_proc_arity(proc_arity *arity, minim_object *args, const char *name) {
-    int min_arity, max_arity, argc;
+void result_arity_exn(short expected, short actual) {
+    fprintf(stderr, "result arity mismatch\n");
+    fprintf(stderr, "  expected: %d, received: %d\n", expected, actual);
+    minim_shutdown(1);
+}
+
+void uncallable_prim_exn(const char *name) {
+    fprintf(stderr, "%s: should not be called directly", name);
+    minim_shutdown(1);
+}
+
+static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
+    int min_arity, max_arity;
 
     min_arity = proc_arity_min(arity);
     max_arity = proc_arity_max(arity);
-    argc = 0;
 
-    while (!minim_is_null(args)) {
-        if (argc >= max_arity)
-            arity_mismatch_exn(name, arity, max_arity + list_length(args));
-        args = minim_cdr(args);
-        ++argc;
-    }
+    if (argc > max_arity)
+        arity_mismatch_exn(name, arity, argc);
 
     if (argc < min_arity)
         arity_mismatch_exn(name, arity, argc);
@@ -93,11 +153,11 @@ static int check_proc_arity(proc_arity *arity, minim_object *args, const char *n
     return argc;
 }
 
-#define check_prim_proc_arity(prim, args)   \
-    check_proc_arity(&minim_prim_arity(prim), args, minim_prim_proc_name(prim))
+#define check_prim_proc_arity(prim, argc)   \
+    check_proc_arity(&minim_prim_arity(prim), argc, minim_prim_proc_name(prim))
 
-#define check_closure_proc_arity(prim, args)    \
-    check_proc_arity(&minim_closure_arity(prim), args, minim_closure_name(prim))
+#define check_closure_proc_arity(prim, argc)    \
+    check_proc_arity(&minim_closure_arity(prim), argc, minim_closure_name(prim))
 
 //
 //  Syntax check
@@ -110,20 +170,6 @@ static void check_1ary_syntax(minim_object *expr) {
     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
-
-// Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be `(<name> <datum> <datum>)
-// static void check_2ary_syntax(minim_object *expr) {
-//     minim_object *rest;
-    
-//     rest = minim_cdr(expr);
-//     if (!minim_is_pair(rest))
-//         bad_syntax_exn(expr);
-
-//     rest = minim_cdr(rest);
-//     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
-//         bad_syntax_exn(expr);
-// }
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum> <datum>)
@@ -226,7 +272,7 @@ static void check_cond(minim_object *expr) {
             fprintf(stderr, " at: ");
             write_object2(stderr, expr, 1, 0);
             fputc('\n', stderr);
-            exit(1);
+            minim_shutdown(1);
         }
 
         rest = minim_cdr(rest);
@@ -333,7 +379,7 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
             fprintf(stderr, "expected a identifier for an argument:\n ");
             write_object(stderr, expr);
             fputc('\n', stderr);
-            exit(1);
+            minim_shutdown(1);
         }
 
         args = minim_cdr(args);
@@ -350,7 +396,7 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
         fprintf(stderr, "expected an identifier for the rest argument:\n ");
         write_object(stderr, expr);
         fputc('\n', stderr);
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -454,123 +500,109 @@ static minim_object *expand_let_loop(minim_object *let) {
            minim_null)));
 }
 
-static minim_object *apply_args(minim_object *args) {
-    minim_object *head, *tail, *it;
+static long apply_args() {
+    minim_object *lst;
 
-    if (minim_is_null(minim_cdr(args))) {
-        if (!is_list(minim_car(args)))
-            bad_type_exn("apply", "list?", minim_car(args));
+    // check if last argument is a list
+    // safe since call_args >= 2
+    lst = irt_call_args[irt_call_args_count - 1];
+    if (!is_list(lst))
+        bad_type_exn("apply", "list?", lst);
 
-        return minim_car(args);
+    // for every arg except the last arg: shift down by 1
+    // remove the last argument from the stack
+    memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 2) * sizeof(minim_object *));
+    irt_call_args_count -= 2;
+
+    // for the last argument: push every element of the list
+    // onto the call stack
+    while (!minim_is_null(lst)) {
+        push_call_arg(minim_car(lst));
+        lst = minim_cdr(lst);
     }
 
-    head = make_pair(minim_car(args), minim_null);
-    tail = head;
-    it = args;
-
-    while (!minim_is_null(minim_cdr(it = minim_cdr(it)))) {
-        minim_cdr(tail) = make_pair(minim_car(it), minim_null);
-        tail = minim_cdr(tail);
-    }
-
-    if (!is_list(minim_car(it)))
-        bad_type_exn("apply", "list?", minim_car(it));
-
-    minim_cdr(tail) = minim_car(it);
-    return head;
+    // just for safety
+    irt_call_args[irt_call_args_count] = NULL;
+    return irt_call_args_count;
 }
 
-static minim_object *eval_exprs(minim_object *exprs, minim_object *env) {
-    minim_object *head, *tail, *it, *result;
+static long eval_exprs(minim_object *exprs, minim_object *env) {
+    minim_object *it, *result;
     minim_thread *th;
+    long argc;
 
-    if (minim_is_null(exprs))
-        return minim_null;
-
-    head = NULL; tail = NULL;
+    argc = 0;
+    assert_no_call_args();
     for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
         result = eval_expr(minim_car(it), env);
         if (minim_is_values(result)) {
             th = current_thread();
-            if (values_buffer_count(th) != 1) {
-                fprintf(stderr, "result arity mismatch\n");
-                fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count(th));
-                exit(1);
-            } else {
-                result = values_buffer_ref(th, 0);
-            }
+            if (values_buffer_count(th) != 1)
+                result_arity_exn(1, values_buffer_count(th));
+            result = values_buffer_ref(th, 0);
         }
 
-        if (head == NULL) {
-            head = make_pair(result, minim_null);
-            tail = head;
-        } else {
-            minim_cdr(tail) = make_pair(result, minim_null);   
-            tail = minim_cdr(tail);
-        }
+        push_saved_arg(result);
+        ++argc;
     }
 
-    return head;
+    prepare_call_args(argc);
+    return argc;
 }
 
 minim_object *call_with_values(minim_object *producer,
                                minim_object *consumer,
                                minim_object *env) {
-    minim_object *produced, *args, *tail;
+    minim_object *produced;
     minim_thread *th;
+    long i;
 
-    produced = call_with_args(producer, minim_null, env);
+    assert_no_call_args();
+    produced = call_with_args(producer, env);
     if (minim_is_values(produced)) {
         // need to unpack
         th = current_thread();
-        if (values_buffer_count(th) == 0) {
-            args = minim_null;
-        } else if (values_buffer_count(th) == 1) {
-            args = make_pair(values_buffer_ref(th, 0), minim_null);
-        } else if (values_buffer_count(th) == 2) {
-            args = make_pair(values_buffer_ref(th, 0),
-                   make_pair(values_buffer_ref(th, 1), minim_null));
-        } else {
-            // slow path
-            args = make_pair(values_buffer_ref(th, 0), minim_null);
-            tail = args;
-            for (int i = 1; i < values_buffer_count(th); ++i) {
-                minim_cdr(tail) = make_pair(values_buffer_ref(th, i), minim_null);
-                tail = minim_cdr(tail);
-            }
-        }
+        for (i = 0; i < values_buffer_count(th); ++i)
+            push_call_arg(values_buffer_ref(th, i));
     } else {
-        args = make_pair(produced, minim_null);
+        push_call_arg(produced);
     }
 
-    return call_with_args(consumer, args, env);
+    return call_with_args(consumer, env);
 }
 
-minim_object *call_with_args(minim_object *proc, minim_object *args, minim_object *env) {
-    minim_object *expr;
+minim_object *call_with_args(minim_object *proc, minim_object *env) {
+    minim_object *expr, **args;
+    int argc;
+
+    args = irt_call_args;
+    argc = irt_call_args_count;
 
 application:
 
     if (minim_is_prim_proc(proc)) {
-        check_prim_proc_arity(proc, args);
-
-        // special case for `eval`
-        if (minim_prim_proc(proc) == eval_proc) {
-            expr = minim_car(args);
-            if (!minim_is_null(minim_cdr(args))) {
-                env = minim_cadr(args);
-                if (!minim_is_env(env))
-                    bad_type_exn("eval", "environment?", env);
-            }
-
-            return eval_expr(expr, env);
-        }
+        check_prim_proc_arity(proc, argc);
 
         // special case for `apply`
         if (minim_prim_proc(proc) == apply_proc) {
-            proc = minim_car(args);
-            args = apply_args(minim_cdr(args));
+            proc = args[0];
+            argc = apply_args();
             goto application;
+        }
+
+        // now it's safe to clear
+        clear_call_args();
+
+        // special case for `eval`
+        if (minim_prim_proc(proc) == eval_proc) {
+            expr = args[0];
+            if (argc == 2) {
+                env = args[1];
+                if (!minim_is_env(env))
+                    bad_type_exn("eval", "environment?", env);
+            }
+            
+            return eval_expr(expr, env);
         }
 
         // special case for `current-environment`
@@ -580,53 +612,66 @@ application:
 
         // special case for `for-each`
         if (minim_prim_proc(proc) == for_each_proc) {
-            return for_each(minim_car(args), minim_cdr(args), env);
+            return for_each(args[0], argc - 1, &args[1], env);
         }
 
         // special case for `map`
         if (minim_prim_proc(proc) == map_proc) {
-            return map_list(minim_car(args), minim_cdr(args), env);
+            return map_list(args[0], argc - 1, &args[1], env);
         }
 
         // special case for `andmap`
         if (minim_prim_proc(proc) == andmap_proc) {
-            return andmap(minim_car(args), minim_cadr(args), env);
+            return andmap(args[0], argc - 1, &args[1], env);
         }
 
         // special case for `ormap`
         if (minim_prim_proc(proc) == ormap_proc) {
-            return ormap(minim_car(args), minim_cadr(args), env);
+            return ormap(args[0], argc - 1, &args[1], env);
         }
 
-        return minim_prim_proc(proc)(args);
+        // special case for `call-with-values`
+        if (minim_prim_proc(proc) == call_with_values_proc) {
+            return call_with_values(args[0], args[1], env);
+        }
+
+        return minim_prim_proc(proc)(argc, args);
     } else if (minim_is_closure_proc(proc)) {
-        minim_object *vars;
+        minim_object *vars, *rest;
+        int i, j;
 
         // check arity and extend environment
-        check_closure_proc_arity(proc, args);
+        check_closure_proc_arity(proc, argc);
         env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+        args = irt_call_args;
 
         // process args
+        i = 0;
         vars = minim_closure_args(proc);
         while (minim_is_pair(vars)) {
-            env_define_var_no_check(env, minim_car(vars), minim_car(args));
+            env_define_var_no_check(env, minim_car(vars), args[i]);
             vars = minim_cdr(vars);
-            args = minim_cdr(args);
+            ++i;
         }
 
         // optionally process rest argument
-        if (minim_is_symbol(vars))
-            env_define_var_no_check(env, vars, copy_list(args));
+        if (minim_is_symbol(vars)) {
+            rest = minim_null;
+            for (j = argc - 1; j >= i; --j)
+                rest = make_pair(args[j], rest);
+            env_define_var_no_check(env, vars, rest);
+        }
 
         // tail call (not really)
         expr = minim_closure_body(proc);
+        clear_call_args();
         return eval_expr(expr, env);
     } else {
         fprintf(stderr, "error: not a procedure\n");
         fprintf(stderr, " received:");
         write_object(stderr, proc);
         fprintf(stderr, "\n");
-        exit(1);
+        minim_shutdown(1);
     }
 }
 
@@ -649,11 +694,12 @@ loop:
         fprintf(stderr, "missing procedure expression\n");
         fprintf(stderr, "  in: ");
         write_object2(stderr, expr, 0, 0);
-        exit(1);
+        minim_shutdown(1);
     } else if (minim_is_pair(expr)) {
-        minim_object *proc, *head, *args, *result, *it, *bindings, *bind, *env2;
+        minim_object *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
         minim_thread *th;
         long var_count, idx;
+        int argc;
 
         // special forms
         head = minim_car(expr);
@@ -666,12 +712,8 @@ loop:
                 if (minim_is_values(result)) {;
                     // multi-valued
                     th = current_thread();
-                    if (var_count != values_buffer_count(th)) {
-                        fprintf(stderr, "result arity mismatch\n");
-                        fprintf(stderr, "  expected: %ld, received: %d\n",
-                                        var_count, values_buffer_count(th));
-                        exit(1);
-                    }
+                    if (var_count != values_buffer_count(th))
+                        result_arity_exn(var_count, values_buffer_count(th));
 
                     idx = 0;
                     for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx) {
@@ -680,12 +722,8 @@ loop:
                     }
                 } else {
                     // single-valued
-                    if (var_count != 1) {
-                        fprintf(stderr, "result arity mismatch\n");
-                        fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                        exit(1);
-                    }
-                    
+                    if (var_count != 1)
+                        result_arity_exn(var_count, 1);
                     SET_NAME_IF_CLOSURE(minim_car(minim_cadr(expr)), result);
                     env_define_var(env, minim_car(minim_cadr(expr)), result);
                 }
@@ -703,12 +741,8 @@ loop:
                     if (minim_is_values(result)) {
                         // multi-valued
                         th = current_thread();
-                        if (var_count != values_buffer_count(th)) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: %d\n",
-                                            var_count, values_buffer_count(th));
-                            exit(1);
-                        }
+                        if (var_count != values_buffer_count(th))
+                            result_arity_exn(var_count, values_buffer_count(th));
 
                         idx = 0;
                         for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
@@ -717,12 +751,8 @@ loop:
                         }
                     } else {
                         // single-valued
-                        if (var_count != 1) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                            exit(1);
-                        }
-                        
+                        if (var_count != 1)
+                            result_arity_exn(var_count, 1);
                         SET_NAME_IF_CLOSURE(minim_caar(bind), result);
                         env_define_var(env2, minim_caar(bind), result);
                     }
@@ -745,24 +775,16 @@ loop:
                     if (minim_is_values(result)) {
                         // multi-valued
                         th = current_thread();
-                        if (var_count != values_buffer_count(th)) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: %d\n",
-                                            var_count, values_buffer_count(th));
-                            exit(1);
-                        }
+                        if (var_count != values_buffer_count(th))
+                            result_arity_exn(var_count, values_buffer_count(th));
 
                         idx = 0;
                         for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx)
                             to_bind = make_pair(make_pair(minim_car(it), values_buffer_ref(th, idx)), to_bind);
                     } else {
                         // single-valued
-                        if (var_count != 1) {
-                            fprintf(stderr, "result arity mismatch\n");
-                            fprintf(stderr, "  expected: %ld, received: 1\n", var_count);
-                            exit(1);
-                        }
-                        
+                        if (var_count != 1)
+                            result_arity_exn(var_count, 1);
                         to_bind = make_pair(make_pair(minim_caar(bind), result), to_bind);
                     }
                 }
@@ -853,7 +875,7 @@ loop:
                         if (minim_caar(expr) == else_symbol) {
                             if (!minim_is_null(minim_cdr(expr))) {
                                 fprintf(stderr, "else clause must be last");
-                                exit(1);
+                                minim_shutdown(1);
                             }
                             expr = make_pair(begin_symbol, minim_cdar(expr));
                             goto loop;
@@ -900,31 +922,35 @@ loop:
                 }
             } 
         }
-        
+
         proc = eval_expr(head, env);
-        args = eval_exprs(minim_cdr(expr), env);
+        argc = eval_exprs(minim_cdr(expr), env);
 
 application:
 
         if (minim_is_prim_proc(proc)) {
-            check_prim_proc_arity(proc, args);
+            check_prim_proc_arity(proc, argc);
+            args = irt_call_args;
+            
+            // special case for `apply`
+            if (minim_prim_proc(proc) == apply_proc) {
+                proc = args[0];
+                argc = apply_args();
+                goto application;
+            }
+
+            // now it's safe to clear
+            clear_call_args();
 
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
-                expr = minim_car(args);
-                if (!minim_is_null(minim_cdr(args))) {
-                    env = minim_cadr(args);
+                expr = args[0];
+                if (argc == 2) {
+                    env = args[1];
                     if (!minim_is_env(env))
                         bad_type_exn("eval", "environment?", env);
                 }
                 goto loop;
-            }
-
-            // special case for `apply`
-            if (minim_prim_proc(proc) == apply_proc) {
-                proc = minim_car(args);
-                args = apply_args(minim_cdr(args));
-                goto application;
             }
 
             // special case for `current-environment`
@@ -934,66 +960,74 @@ application:
 
             // special case for `for-each`
             if (minim_prim_proc(proc) == for_each_proc) {
-                return for_each(minim_car(args), minim_cdr(args), env);
+                return for_each(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `map`
             if (minim_prim_proc(proc) == map_proc) {
-                return map_list(minim_car(args), minim_cdr(args), env);
+                return map_list(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `andmap`
             if (minim_prim_proc(proc) == andmap_proc) {
-                return andmap(minim_car(args), minim_cadr(args), env);
+                return andmap(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `ormap`
             if (minim_prim_proc(proc) == ormap_proc) {
-                return ormap(minim_car(args), minim_cadr(args), env);
+                return ormap(args[0], argc - 1, &args[1], env);
             }
 
             // special case for `call-with-values`
             if (minim_prim_proc(proc) == call_with_values_proc) {
-                return call_with_values(minim_car(args), minim_cadr(args), env);
+                return call_with_values(args[0], args[1], env);
             }
 
-            return minim_prim_proc(proc)(args);
+            return minim_prim_proc(proc)(argc, args);
         } else if (minim_is_closure_proc(proc)) {
-            minim_object *vars;
+            minim_object *vars, *rest;
+            int i, j;
 
             // check arity and extend environment
-            check_closure_proc_arity(proc, args);
+            check_closure_proc_arity(proc, argc);
             env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+            args = irt_call_args;
 
             // process args
+            i = 0;
             vars = minim_closure_args(proc);
             while (minim_is_pair(vars)) {
-                env_define_var_no_check(env, minim_car(vars), minim_car(args));
+                env_define_var_no_check(env, minim_car(vars), args[i]);
                 vars = minim_cdr(vars);
-                args = minim_cdr(args);
+                ++i;
             }
 
             // optionally process rest argument
-            if (minim_is_symbol(vars))
-                env_define_var_no_check(env, vars, copy_list(args));
+            if (minim_is_symbol(vars)) {
+                rest = minim_null;
+                for (j = argc - 1; j >= i; --j)
+                    rest = make_pair(args[j], rest);
+                env_define_var_no_check(env, vars, rest);
+            }
 
             // tail call
             expr = minim_closure_body(proc);
+            clear_call_args();
             goto loop;
         } else {
             fprintf(stderr, "error: not a procedure\n");
             fprintf(stderr, " received:");
             write_object(stderr, proc);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         }
     } else {
         fprintf(stderr, "bad syntax\n");
         write_object(stderr, expr);
         fprintf(stderr, "\n");
-        exit(1);
+        minim_shutdown(1);
     }
 
     fprintf(stderr, "unreachable\n");
-    exit(1);
+    minim_shutdown(1);
 }

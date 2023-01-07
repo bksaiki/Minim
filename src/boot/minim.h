@@ -13,6 +13,15 @@
 
 #include "../gc/gc.h"
 
+// Config
+
+#if defined (__GNUC__)
+#define MINIM_GCC     1
+#define NORETURN    __attribute__ ((noreturn))
+#else
+#error "compiler not supported"
+#endif
+
 // Constants
 
 #define MINIM_VERSION      "0.4.0"
@@ -125,7 +134,7 @@ typedef struct {
 typedef struct {
     minim_object_type type;
     struct proc_arity arity;
-    minim_object *(*fn)(minim_object *);
+    minim_object *(*fn)(int, minim_object **);
     char *name;
 } minim_prim_proc_object;
 
@@ -293,7 +302,7 @@ extern minim_object *quote_syntax_symbol;
 
 // Typedefs
 
-typedef minim_object *(*minim_prim_proc_t)(minim_object *);
+typedef minim_object *(*minim_prim_proc_t)(int argc, minim_object **);
 
 // Constructors
 
@@ -318,23 +327,18 @@ minim_object *make_syntax(minim_object *e, minim_object *loc);
 int minim_is_eq(minim_object *a, minim_object *b);
 int minim_is_equal(minim_object *a, minim_object *b);
 
-minim_object *call_with_args(minim_object *proc,
-                             minim_object *args,
-                             minim_object *env);
-
-minim_object *call_with_values(minim_object *producer,
-                               minim_object *consumer,
-                               minim_object *env);
+minim_object *call_with_args(minim_object *proc, minim_object *env);
+minim_object *call_with_values(minim_object *producer, minim_object *consumer, minim_object *env);
 
 int is_list(minim_object *x);
 long list_length(minim_object *xs);
 minim_object *make_assoc(minim_object *xs, minim_object *ys);
 minim_object *copy_list(minim_object *xs);
 
-minim_object *for_each(minim_object *proc, minim_object *lsts, minim_object *env);
-minim_object *map_list(minim_object *proc, minim_object *lst, minim_object *env);
-minim_object *andmap(minim_object *proc, minim_object *lst, minim_object *env);
-minim_object *ormap(minim_object *proc, minim_object *lst, minim_object *env);
+minim_object *for_each(minim_object *proc, int argc, minim_object **args, minim_object *env);
+minim_object *map_list(minim_object *proc, int argc, minim_object **args, minim_object *env);
+minim_object *andmap(minim_object *proc, int argc, minim_object **args, minim_object *env);
+minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_object *env);
 
 minim_object *strip_syntax(minim_object *o);
 minim_object *to_syntax(minim_object *o);
@@ -345,7 +349,23 @@ void write_object2(FILE *out, minim_object *o, int quote, int display);
 
 // Interpreter
 
+#define CALL_ARGS_DEFAULT       10
+#define SAVED_ARGS_DEFAULT      10
+
 minim_object *eval_expr(minim_object *expr, minim_object *env);
+
+typedef struct {
+    minim_object **call_args, **saved_args;
+    long call_args_count, saved_args_count;
+    long call_args_size, saved_args_size;
+} interp_rt;
+
+void push_saved_arg(minim_object *arg);
+void push_call_arg(minim_object *arg);
+void prepare_call_args(long count);
+void clear_call_args();
+
+void assert_no_call_args();
 
 // Environments
 
@@ -420,6 +440,7 @@ void resize_values_buffer(minim_thread *th, int size);
 // Globals
 
 typedef struct minim_globals {
+    interp_rt irt;
     minim_thread *current_thread;
     intern_table *symbols;
 } minim_globals;
@@ -430,6 +451,13 @@ extern size_t bucket_sizes[];
 #define current_thread()    (globals->current_thread)
 #define intern(s)           (intern_symbol(globals->symbols, s))
 
+#define irt_call_args               (globals->irt.call_args)
+#define irt_saved_args              (globals->irt.saved_args)
+#define irt_call_args_count         (globals->irt.call_args_count)
+#define irt_saved_args_count        (globals->irt.saved_args_count)
+#define irt_call_args_size          (globals->irt.call_args_size)
+#define irt_saved_args_size         (globals->irt.saved_args_size)
+
 // System
 
 char *get_file_dir(const char *realpath);
@@ -438,15 +466,19 @@ void set_current_dir(const char *str);
 
 minim_object *load_file(const char *fname);
 
+NORETURN void minim_shutdown(int code);
+
 // Exceptions
 
-void bad_syntax_exn(minim_object *expr);
-void bad_type_exn(const char *name, const char *type, minim_object *x);
+NORETURN void bad_syntax_exn(minim_object *expr);
+NORETURN void bad_type_exn(const char *name, const char *type, minim_object *x);
+NORETURN void result_arity_exn(short expected, short actual);
+NORETURN void uncallable_prim_exn(const char *name);
 
 // Primitives
 
 #define DEFINE_PRIM_PROC(name) \
-    minim_object *name ## _proc(minim_object *);
+    minim_object *name ## _proc(int, minim_object **);
 
 // special objects
 DEFINE_PRIM_PROC(is_null);

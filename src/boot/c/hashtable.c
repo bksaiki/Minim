@@ -100,7 +100,6 @@ static uint64_t hash_bytes(const void *data, size_t len, uint64_t hash0) {
     return hash >> 2;
 }
 
-
 uint64_t eq_hash2(minim_object *o, uint64_t hash) {
     switch (o->type)
     {
@@ -162,13 +161,14 @@ static uint64_t hash_key(minim_object *ht, minim_object *k) {
     } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_hash_proc) {
         return equal_hash(k);
     } else {
+        assert_no_call_args();
         env = global_env(current_thread());   // TODO: this seems problematic
-        i = call_with_args(minim_hashtable_hash(ht), make_pair(k, minim_null), env);
+        i = call_with_args(minim_hashtable_hash(ht), env);
         if (!minim_is_fixnum(i)) {
             fprintf(stderr, "hash function associated with hash table ");
             write_object(stderr, ht);
             fprintf(stderr, " did not return a fixnum");
-            exit(1);
+            minim_shutdown(1);
         }
 
         return minim_fixnum(i);
@@ -176,7 +176,7 @@ static uint64_t hash_key(minim_object *ht, minim_object *k) {
 }
 
 static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
-    minim_object *eq, *env, *proc;
+    minim_object *env, *proc;
 
     proc = minim_hashtable_equiv(ht);
     if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_proc) {
@@ -184,9 +184,12 @@ static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
     } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_proc) {
         return minim_is_equal(k1, k2);
     } else {
+        assert_no_call_args();
+        push_call_arg(k1);
+        push_call_arg(k2);
+
         env = global_env(current_thread());   // TODO: this seems problematic
-        eq = call_with_args(minim_hashtable_equiv(ht), make_pair(k1, make_pair(k2, minim_null)), env);
-        return !minim_is_false(eq);
+        return !minim_is_false(call_with_args(minim_hashtable_equiv(ht), env));
     }
 }
 
@@ -298,196 +301,202 @@ minim_object *hashtable_keys(minim_object *ht) {
     return ks;
 }
 
+static void key_not_found_exn(const char *name, minim_object *k) {
+    fprintf(stderr, "%s!: could not find key ", name);
+    write_object(stderr, k);
+    fprintf(stderr, "\n");
+    minim_shutdown(1);
+}
+
 //
 //  Primitives
 //
 
-minim_object *is_hashtable_proc(minim_object *args) {
+minim_object *is_hashtable_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return (minim_is_hashtable(minim_car(args)) ? minim_true : minim_false);
+    return (minim_is_hashtable(args[0]) ? minim_true : minim_false);
 }
 
-minim_object *make_eq_hashtable_proc(minim_object *args) {
+minim_object *make_eq_hashtable_proc(int argc, minim_object **args) {
     // (-> hashtable)
     return make_hashtable(make_prim_proc(eq_hash_proc, "eq-hash", 1, 1),
                           make_prim_proc(eq_proc, "eq?", 2, 2));
 }
 
-minim_object *make_hashtable_proc(minim_object *args) {
+minim_object *make_hashtable_proc(int argc, minim_object **args) {
     // (-> hashtable)
     return make_hashtable(make_prim_proc(equal_hash_proc, "equal-hash", 1, 1),
                           make_prim_proc(equal_proc, "equal?", 2, 2));
 }
 
-minim_object *hashtable_size_proc(minim_object *args) {
+minim_object *hashtable_size_proc(int argc, minim_object **args) {
     // (-> hashtable any any void)
     minim_object *ht;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-set!", "hashtable?", ht);
     return make_fixnum(minim_hashtable_size(ht));
 }
 
-minim_object *hashtable_contains_proc(minim_object *args) {
+minim_object *hashtable_contains_proc(int argc, minim_object **args) {
     // (-> hashtable any boolean)
     minim_object *ht, *k;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-contains?", "hashtable?", ht);
 
-    k = minim_cadr(args);
+    k = args[1];
     return (minim_is_null(hashtable_find(ht, k)) ? minim_false : minim_true);
 }
 
-minim_object *hashtable_set_proc(minim_object *args) {
+minim_object *hashtable_set_proc(int argc, minim_object **args) {
     // (-> hashtable any any void)
     minim_object *ht, *k, *v;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-set!", "hashtable?", ht);
 
-    k = minim_cadr(args);
-    v = minim_car(minim_cddr(args));
+    k = args[1];
+    v = args[2];
     hashtable_set(ht, k, v);
     return minim_void;
 }
 
-minim_object *hashtable_delete_proc(minim_object *args) {
+minim_object *hashtable_delete_proc(int argc, minim_object **args) {
     // (-> hashtable any void)
     minim_object *ht, *k;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-delete!", "hashtable?", ht);
 
-    k = minim_cadr(args);
-    if (!hashtable_delete(ht, k)) {
-        fprintf(stderr, "hashtable-delete!: could not find key ");
-        write_object(stderr, k);
-        fprintf(stderr, "\n");
-        exit(1);
-    }
+    k = args[1];
+    if (!hashtable_delete(ht, k))
+        key_not_found_exn("hashtable-delete!", k);
 
     return minim_void;
 }
 
-minim_object *hashtable_update_proc(minim_object *args) {
+minim_object *hashtable_update_proc(int argc, minim_object **args) {
     // (-> hashtable any (-> any any) void)
     // (-> hashtable any (-> any any) any void)
     minim_object *ht, *k, *proc, *b, *env;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-update!", "hashtable?", ht);
 
-    k = minim_cadr(args);
-    proc = minim_car(minim_cddr(args));
+    k = args[1];
+    proc = args[2];
     if (!minim_is_proc(proc))
         bad_type_exn("hashtable-update!", "procedure?", proc);
 
     b = hashtable_find(ht, k);
     if (minim_is_null(b)) {
-        if (minim_is_null(minim_cdr(minim_cddr(args)))) {
+        if (argc == 3) {
             // no failure result provided
-            fprintf(stderr, "hashtable-update!: could not find key ");
-            write_object(stderr, k);
-            fprintf(stderr, "\n");
-            exit(1);
+            key_not_found_exn("hashtable-update!", k);
         } else {
             // user-provided failure
             minim_object *fail, *v;
 
-            fail = minim_cadr(minim_cddr(args));
+            fail = args[3];
             env = global_env(current_thread());     // TODO: this seems problematic
             if (!minim_is_proc(fail)) {
                 b = fail;
             } else {
-                b = call_with_args(fail, minim_null, env);
+                assert_no_call_args();
+                b = call_with_args(fail, env);
             }
 
-            v = call_with_args(proc, make_pair(b, minim_null), env);
+            assert_no_call_args();
+            push_call_arg(b);
+            v = call_with_args(proc, env);
             hashtable_set(ht, k, v);
         }
     } else {
+        assert_no_call_args();
+        push_call_arg(minim_cdr(b));
         env = global_env(current_thread());     // TODO: this seems problematic
-        minim_cdr(b) = call_with_args(proc, make_pair(minim_cdr(b), minim_null), env);
+        minim_cdr(b) = call_with_args(proc, env);
     }
 
     return minim_void;
 }
 
-minim_object *hashtable_ref_proc(minim_object *args) {
+minim_object *hashtable_ref_proc(int argc, minim_object **args) {
     // (-> hashtable any any)
     // (-> hashtable any any any)
     minim_object *ht, *k, *b;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-ref", "hashtable?", ht);
 
-    k = minim_cadr(args);
+    k = args[1];
     b = hashtable_find(ht, k);
     if (minim_is_null(b)) {
-        if (minim_is_null(minim_cddr(args))) {
+        if (argc == 2) {
             // no failure result provided
-            fprintf(stderr, "hashtable-ref: could not find key ");
+            key_not_found_exn("hashtable-ref", k);
             write_object(stderr, k);
             fprintf(stderr, "\n");
-            exit(1);
+            minim_shutdown(1);
         } else {
             // user-provided failure
             minim_object *fail, *env;
 
-            fail = minim_car(minim_cddr(args));
+            fail = args[2];
             if (!minim_is_proc(fail))
                 return fail;
             
+            assert_no_call_args();
             env = global_env(current_thread());   // TODO: this seems problematic
-            return call_with_args(fail, minim_null, env);
+            return call_with_args(fail, env);
         }
     }
 
     return minim_cdr(b);
 }
 
-minim_object *hashtable_keys_proc(minim_object *args) {
+minim_object *hashtable_keys_proc(int argc, minim_object **args) {
     // (-> hashtable (listof any))
     minim_object *ht;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-keys", "hashtable?", ht);
     return hashtable_keys(ht);
 }
 
-minim_object *hashtable_copy_proc(minim_object *args) {
+minim_object *hashtable_copy_proc(int argc, minim_object **args) {
     // (-> hashtable void)
     minim_object *ht;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-copy", "hashtable?", ht);
     return copy_hashtable(ht);
 }
 
-minim_object *hashtable_clear_proc(minim_object *args) {
+minim_object *hashtable_clear_proc(int argc, minim_object **args) {
     // (-> hashtable void)
     minim_object *ht;
 
-    ht = minim_car(args);
+    ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-clear!", "hashtable?", ht);
     hashtable_clear(ht);
     return minim_void;
 }
 
-minim_object *eq_hash_proc(minim_object *args) {
-    return make_fixnum(eq_hash(minim_car(args)));
+minim_object *eq_hash_proc(int argc, minim_object **args) {
+    return make_fixnum(eq_hash(args[0]));
 }
 
-minim_object *equal_hash_proc(minim_object *args) {
-    return make_fixnum(equal_hash(minim_car(args)));
+minim_object *equal_hash_proc(int argc, minim_object **args) {
+    return make_fixnum(equal_hash(args[0]));
 }

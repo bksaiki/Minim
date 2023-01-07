@@ -11,7 +11,7 @@
 static void set_arity(proc_arity *arity, short min_arity, short max_arity) {
     if (min_arity > ARG_MAX || max_arity > ARG_MAX) {
         fprintf(stderr, "primitive procedure intialized with too large an arity: [%d, %d]", min_arity, max_arity);
-        exit(1);
+        minim_shutdown(1);
     } else {
         arity->arity_min = min_arity;
         arity->arity_max = max_arity;
@@ -60,41 +60,33 @@ void resize_values_buffer(minim_thread *th, int size) {
 //  Procedure
 //
 
-minim_object *is_procedure_proc(minim_object *args) {
+minim_object *is_procedure_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    minim_object *o = minim_car(args);
+    minim_object *o = args[0];
     return (minim_is_prim_proc(o) || minim_is_closure_proc(o)) ? minim_true : minim_false;
 }
 
-minim_object *call_with_values_proc(minim_object *args) {
-    fprintf(stderr, "andmap: should not be called directly");
-    exit(1);
+minim_object *call_with_values_proc(int argc, minim_object **args) {
+    uncallable_prim_exn("call-with-values");
 }
 
-minim_object *values_proc(minim_object *args) {
+minim_object *values_proc(int argc, minim_object **args) {
+    // (-> any ... (values any ...))
     minim_thread *th;
-    long i, len;
 
     th = current_thread();
-    len = list_length(args);
-    if (len > values_buffer_size(th))
-        resize_values_buffer(th, len);
+    if (argc > values_buffer_size(th))
+        resize_values_buffer(th, argc);
     
-    values_buffer_count(th) = len;
-    for (i = 0; i < len; ++i) {
-        values_buffer_ref(th, i) = minim_car(args);
-        args = minim_cdr(args);
-    }
-    
+    values_buffer_count(th) = argc;
+    memcpy(values_buffer(th), args, argc * sizeof(minim_object *));    
     return minim_values;
 }
 
-minim_object *eval_proc(minim_object *args) {
-    fprintf(stderr, "eval: should not be called directly");
-    exit(1);
+minim_object *eval_proc(int argc, minim_object **args) {
+    uncallable_prim_exn("eval");
 }
 
-minim_object *apply_proc(minim_object *args) {
-    fprintf(stderr, "eval: should not be called directly");
-    exit(1);
+minim_object *apply_proc(int argc, minim_object **args) {
+    uncallable_prim_exn("apply");
 }

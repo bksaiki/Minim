@@ -97,8 +97,7 @@ static uint32_t hash_bytes(const void* data, size_t len) {
     return hash;
 }
 
-static void intern_table_resize(intern_table *itab)
-{
+static void intern_table_resize(intern_table *itab) {
     intern_table_bucket **new_buckets;
     size_t *new_alloc_ptr = ++itab->alloc_ptr;
     size_t new_alloc = *new_alloc_ptr;
@@ -109,10 +108,8 @@ static void intern_table_resize(intern_table *itab)
         new_buckets[i] = NULL;
 
     // move entries to new buckets
-    for (size_t i = 0; i < itab->alloc; ++i)
-    {
-        for (intern_table_bucket *b = itab->buckets[i]; b; b = b->next)
-        {
+    for (size_t i = 0; i < itab->alloc; ++i) {
+        for (intern_table_bucket *b = itab->buckets[i]; b; b = b->next) {
             intern_table_bucket *nb;
             size_t n, h, idx;
 
@@ -128,10 +125,8 @@ static void intern_table_resize(intern_table *itab)
     itab->alloc = new_alloc;
 }
 
-static void intern_table_insert(intern_table *itab, size_t idx, minim_object *sym)
-{
+static void intern_table_insert(intern_table *itab, size_t idx, minim_object *sym) {
     intern_table_bucket *b;
-    
     new_bucket(b, sym, itab->buckets[idx]);
     ++itab->size;
 }
@@ -145,8 +140,7 @@ intern_table *make_intern_table() {
     return itab;
 }
 
-minim_object *intern_symbol(intern_table *itab, const char *sym)
-{
+minim_object *intern_symbol(intern_table *itab, const char *sym) {
     intern_table_bucket *b;
     minim_object *obj;
     size_t n = strlen(sym);
@@ -155,17 +149,14 @@ minim_object *intern_symbol(intern_table *itab, const char *sym)
     char *isym;
 
     b = itab->buckets[idx];
-    while (b != NULL)
-    {
+    while (b != NULL) {
         isym = minim_symbol(b->sym);
         if (isym == sym)
             return b->sym;
 
-        if (strlen(isym) == n)
-        {
+        if (strlen(isym) == n) {
             size_t i;
-            for (i = 0; i < n; ++i)
-            {
+            for (i = 0; i < n; ++i) {
                 if (isym[i] != sym[i])
                     break;
             }
@@ -200,7 +191,7 @@ minim_object *make_symbol(const char *s) {
 //  Primitives
 //
 
-minim_object *is_symbol_proc(minim_object *args) {
+minim_object *is_symbol_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_symbol(minim_car(args)) ? minim_true : minim_false;
+    return minim_is_symbol(args[0]) ? minim_true : minim_false;
 }

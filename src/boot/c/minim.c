@@ -108,6 +108,5 @@ int main(int argc, char **argv) {
         }
     }
 
-    GC_finalize();
-    return stack_top;
+    minim_shutdown(stack_top);
 }
