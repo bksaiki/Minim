@@ -36,13 +36,13 @@ void push_call_arg(minim_object *arg) {
     if (irt_call_args_count >= irt_call_args_size)
         resize_call_args(irt_call_args_count + 1);
     irt_call_args[irt_call_args_count++] = arg;
+    irt_call_args[irt_call_args_count] = NULL;
 }
 
 void push_saved_arg(minim_object *arg) {
     if (irt_saved_args_count >= irt_saved_args_size)
         resize_saved_args(irt_saved_args_count + 2);
     irt_saved_args[irt_saved_args_count++] = arg;
-    irt_saved_args[irt_saved_args_count] = NULL;
 }
 
 void clear_call_args() {
