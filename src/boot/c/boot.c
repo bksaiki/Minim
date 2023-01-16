@@ -211,6 +211,7 @@ void populate_env(minim_object *env) {
     add_procedure("exit", exit_proc, 0, 0);
     add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
+    add_procedure("command-line", command_line_proc, 0, 0);
     add_procedure("boot-expander?", boot_expander_proc, 0, 1);
 }
 
@@ -271,6 +272,8 @@ void minim_boot_init() {
     input_port(th) = make_input_port(stdin);
     output_port(th) = make_output_port(stdout);
     current_directory(th) = make_string2(get_current_dir());
+    command_line(th) = minim_null;
+
     boot_expander(th) = minim_true;
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(minim_object*));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;

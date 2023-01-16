@@ -165,3 +165,7 @@ minim_object *current_directory_proc(int argc, minim_object **args) {
         return minim_void;
     }
 }
+
+ minim_object *command_line_proc(int argc, minim_object **args) {
+    return command_line(current_thread());
+ }

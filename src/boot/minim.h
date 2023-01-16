@@ -416,6 +416,7 @@ typedef struct minim_thread {
     minim_object *output_port;
     minim_object *current_directory;
     minim_object *boot_expander;
+    minim_object *command_line;
 
     minim_object **values_buffer;
     int values_buffer_size;
@@ -429,6 +430,7 @@ typedef struct minim_thread {
 #define output_port(th)                 ((th)->output_port)
 #define current_directory(th)           ((th)->current_directory)
 #define boot_expander(th)               ((th)->boot_expander)
+#define command_line(th)                ((th)->command_line)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
@@ -640,5 +642,6 @@ DEFINE_PRIM_PROC(load);
 DEFINE_PRIM_PROC(error);
 DEFINE_PRIM_PROC(current_directory);
 DEFINE_PRIM_PROC(exit);
+DEFINE_PRIM_PROC(command_line);
 
 #endif  // _MINIM_H_

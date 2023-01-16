@@ -32,7 +32,7 @@ READLINK	:= readlink -f
 
 all: minim
 
-minim: $(CONFIG) $(OBJS)
+minim: $(CONFIG) $(OBJS) $(ENTRY)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o minim
 
 profile:
