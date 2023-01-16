@@ -4,19 +4,118 @@
 
 (import "base.min" "module.min")
 
+(define (stx-pair? stx)
+  (if (pair? stx)
+      #t
+      (if (syntax? stx)
+          (pair? (syntax-e stx))
+          #f)))
 
-(define (compile/file fname)
-  (define-values (expanded-exprs module-xforms imported exported _) (read/module fname))
+(define (stx-null? stx)
+  (if (null? stx)
+      #t
+      (if (syntax? stx)
+          (null? (syntax-e stx))
+          #f)))
+
+(define (stx-car stx)
+  (if (syntax? stx)
+      (car (syntax-e stx))
+      (car stx)))
+
+(define (stx-cdr stx)
+  (if (syntax? stx)
+      (cdr (syntax-e stx))
+      (cdr stx)))
+
+(define (identifier? stx)
+  (and (syntax? stx) (symbol? (syntax-e stx))))
+
+(define ((_-form? form-name) expr)
+    (and (stx-pair? expr)
+         (let ([head (stx-car expr)])
+           (and (identifier? head)
+                (eq? (syntax-e head) form-name)))))
+
+(define define-values-form? (_-form? 'define-values))
+(define define-syntaxes-form? (_-form? 'define-syntaxes))
+(define let-values-form? (_-form? 'let-values))
+(define letrec-values-form? (_-form? 'letrec-values))
+(define let-syntaxes-form? (_-form? 'let-syntaxes))
+(define quote-form? (_-form? 'quote))
+(define quote-syntax-form? (_-form? 'quote-syntax))
+(define lambda-form? (_-form? 'lambda))
+(define begin-form? (_-form? 'begin))
+(define if-form? (_-form? 'if))
+
+; registers
+(define cc-reg     'RCC)
+(define env-reg    'RENV)
+(define i-reg      'RIP)
+(define sp-reg     'RSP)
+(define res-reg    'RRET)
+(define tmp0-reg   'R0)
+(define tmp1-reg   'R1)
+
+
+(define (make-compiled-closure formals instrs)
+  (cond
+    [(null? formals)
+     
+    [else
+     (error 'make-compiled-closure "unimplemented" formals instrs)]))
+
+
+
+(define (compile/expr expr)
+  (cond
+    [(lambda-form? expr)
+     (define formals (stx-car (stx-cdr expr)))
+     (define body (stx-cdr (stx-cdr expr)))
+     (define instrs
+       (let loop ([body body])
+         (cond
+           [(null? body) '()]
+           [else (append (compile/expr (car body))
+                         (loop (cdr body)))])))
+     (make-compiled-closure (syntax->datum formals) instrs)]
+    [(number? (syntax-e expr))
+     (list (list 'number (syntax-e expr)))]
+    [else
+     (error 'compile/expr "unimplemented" expr)]))
+
+(define (compile/top-level expr)
+  (display " top-level: ") (write expr) (newline)
+  (cond
+    [(define-values-form? expr)
+     (define names (stx-car (stx-cdr expr)))
+     (define e (stx-car (stx-cdr (stx-cdr expr))))
+     (define form (compile/expr e))
+
+     (void)]
+    [else (compile/expr expr)]))
+
+(define (compile/file path)
+  (define-values (exprs xforms imports exports _) (read/module path))
+  (let loop ([exprs exprs])
+    (unless (null? exprs)
+      (compile/top-level (car exprs))
+      (loop (cdr exprs))))
   (void))
 
 ; entry point
 (define (main args)
   ; currently no flag handling
   (define fnames (cdr args))
-  (let ([fnames fnames])
+  (let loop ([fnames fnames])
     (unless (null? fnames)
-      (define fname (car fnames))
-      (display "compiling ") (write fname) (newline)
-      (compile/file fname))))
+      (define name (car fnames))
+      (define path
+        (if (is-absolute-path? name)
+            name
+            (build-path (current-directory) name)))
+      (display "<compiling ") (write name) (display ">") (newline)
+      (compile/file name)
+      (loop (cdr fnames)))))
 
 (main (command-line))

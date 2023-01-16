@@ -5,9 +5,6 @@
 (import "pre-base.min")
 (export substring)
 
-; TODO: not a primitive
-(define number? integer?)
-
 (define (substring str start end)
   (define len (string-length str))
   (cond

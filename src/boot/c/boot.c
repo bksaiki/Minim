@@ -55,6 +55,7 @@ void populate_env(minim_object *env) {
     add_procedure("boolean?", is_bool_proc, 1, 1);
     add_procedure("symbol?", is_symbol_proc, 1, 1);
     add_procedure("integer?", is_fixnum_proc, 1, 1);
+    add_procedure("number?", is_fixnum_proc, 1, 1);
     add_procedure("char?", is_char_proc, 1, 1);
     add_procedure("string?", is_string_proc, 1, 1);
     add_procedure("pair?", is_pair_proc, 1, 1);
@@ -168,6 +169,7 @@ void populate_env(minim_object *env) {
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
     add_procedure("datum->syntax", to_syntax_proc, 1, 1);
+    add_procedure("syntax->datum", to_datum_proc, 1, 1);
     add_procedure("syntax->list", syntax_to_list_proc, 1, 1);
 
     add_procedure("pattern-variable?", is_pattern_var_proc, 1, 1);

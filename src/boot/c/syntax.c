@@ -164,6 +164,13 @@ minim_object *to_syntax_proc(int argc, minim_object **args) {
     return to_syntax(args[0]);
 }
 
+minim_object *to_datum_proc(int argc, minim_object **args) {
+    // (-> syntax any)
+    if (!minim_is_syntax(args[0]))
+        bad_type_exn("syntax->datum", "syntax?", args[0]);
+    return strip_syntax(args[0]);
+}
+
 minim_object *syntax_to_list_proc(int argc, minim_object **args) {
     // (-> syntax (or #f list))
     minim_object *stx, *lst;

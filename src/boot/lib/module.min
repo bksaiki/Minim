@@ -62,6 +62,7 @@
          (define expr (syntax-e (car exprs)))
          (cond
            [(and (pair? expr) (eq? (syntax-e (car expr)) 'import))
+            (write (cdr exprs)) (newline)
             (let loop2 ([imports (cdr expr)])
               (cond
                 [(null? imports)

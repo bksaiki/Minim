@@ -315,7 +315,8 @@
            (or (boolean? datum)
                (number? datum)
                (string? datum)
-               (vector? datum)))
+               (vector? datum)
+               (char? datum)))
          expr]
         [else
          (syntax-error #f "bad syntax" expr)])))
