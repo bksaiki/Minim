@@ -90,9 +90,9 @@
                     (set! imported (append (cdr from-module) imported)) ; TODO: dedup
                     (loop2 (cdr imports))]
                    [else
-                    (error 'import "bad syntax")])]
+                    (error 'import "bad import syntax")])]
                 [else
-                 (error 'import "bad syntax")]))]
+                 (error 'import "bad import syntax")]))]
            [(and (pair? expr) (eq? (syntax-e (car expr)) 'export))
             (let loop2 ([exports (cdr expr)])
               (cond

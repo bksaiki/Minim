@@ -1,0 +1,22 @@
+;;;
+;;;  Compiler entry point
+;;;   
+
+(import "base.min" "module.min")
+
+
+(define (compile/file fname)
+  (define-values (expanded-exprs module-xforms imported exported _) (read/module fname))
+  (void))
+
+; entry point
+(define (main args)
+  ; currently no flag handling
+  (define fnames (cdr args))
+  (let ([fnames fnames])
+    (unless (null? fnames)
+      (define fname (car fnames))
+      (display "compiling ") (write fname) (newline)
+      (compile/file fname))))
+
+(main (command-line))

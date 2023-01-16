@@ -5,6 +5,8 @@
 
 (import "base.min")
 
+(export read)
+
 ;; Reader
 (define (read . args)
   ;; argument selection
@@ -197,7 +199,7 @@
 
     ; character reader
     (define (read-character)
-      (define c (read-char p))  
+      (define c (read-char p))
       (if (eof-object? c)
           (error 'read "incomplete character literal")
           (void))

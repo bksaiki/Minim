@@ -311,10 +311,11 @@
            (or (boolean? datum)
                (number? datum)
                (string? datum)
-               (vector? datum)))
+               (vector? datum)
+               (char? datum)))
          expr]
         [else
-         (syntax-error #f "bad syntax" expr)])))
+         (syntax-error 'expand/expr "bad syntax" expr)])))
 
   ; module context
   ;  `define-values` => defers expansion until all definitions have been processed

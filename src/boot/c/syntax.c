@@ -122,12 +122,12 @@ minim_object *syntax_error_proc(int argc, minim_object **args) {
     else
         fprintf(stderr, "%s: %s\n", minim_symbol(what), minim_string(why));
 
-    if (!minim_is_null(minim_cddr(args))) {
+    if (argc >= 3) {
         where = args[2];
         if (!minim_is_syntax(where))
             bad_type_exn("syntax-error", "syntax?", where);
 
-        if (!minim_is_null(minim_cdr(minim_cddr(args)))) {
+        if (argc == 4) {
             sub = args[3];
             if (!minim_is_syntax(sub))
                 bad_type_exn("syntax-error", "syntax?", sub);
