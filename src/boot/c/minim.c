@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     volatile int stack_top;
     minim_object *expr, *evaled;
     minim_thread *th;
-    int argi;
+    int argi, i;
 
     stack_top = 0;
     argi = handle_flags(argc, argv);    
@@ -70,6 +70,9 @@ int main(int argc, char **argv) {
 
     if (opt_load_library)
         load_library();
+
+    for (i = argc - 1; i >= argi; --i)
+        command_line(th) = make_pair(make_string(argv[i]), command_line(th));
 
     if (argi < argc) {
         if (!interactive && opt_load_library) {
