@@ -2,7 +2,7 @@
 ;;; Tests for 'case'
 ;;;
 
-(import "../lib/base.min")
+(import "../../library/base.min")
 
 (define num-failed 0)
 

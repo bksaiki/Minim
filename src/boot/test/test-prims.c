@@ -5,7 +5,7 @@
     Tests for the primitive library
 */
 
-#include "../c/boot.h"
+#include "../boot.h"
 
 FILE *stream;
 minim_object *env;
