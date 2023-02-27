@@ -24,7 +24,7 @@
 
 // Constants
 
-#define MINIM_VERSION      "0.4.0"
+#define MINIM_VERSION      "0.3.5"
 
 #define ARG_MAX                     32767
 #define VALUES_MAX                  32767
