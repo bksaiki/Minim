@@ -69,6 +69,15 @@
   (define begin-form? (_-form? 'begin))
   (define if-form? (_-form? 'if))
 
+  ; syntax would parse into a self-evaluating expression
+  (define (stx-self-evaluating? stx)
+    (define datum (syntax-e stx))
+    (or (boolean? datum)
+        (number? datum)
+        (string? datum)
+        (vector? datum)
+        (char? datum)))
+
   ; returns an symbol if it is a duplicate, else false
   (define (duplicate-identifier ids new-ids)
     (let loop ([ids ids] [new-ids new-ids])
@@ -311,12 +320,7 @@
          (if maybe-xform
              (loop (eval/xform maybe-xform expr (syntax-e head)))
              expr)]
-        [(let ([datum (syntax-e expr)])
-           (or (boolean? datum)
-               (number? datum)
-               (string? datum)
-               (vector? datum)
-               (char? datum)))
+        [(stx-self-evaluating? expr)
          expr]
         [else
          (syntax-error #f "bad syntax" expr)])))

@@ -4,6 +4,7 @@
 
 (import "base.min" "module.min")
 
+; syntax
 (define (stx-pair? stx)
   (if (pair? stx)
       #t
@@ -48,6 +49,15 @@
 (define begin-form? (_-form? 'begin))
 (define if-form? (_-form? 'if))
 
+; syntax would parse into a self-evaluating expression
+(define (stx-self-evaluating? stx)
+  (define datum (syntax-e stx))
+  (or (boolean? datum)
+      (number? datum)
+      (string? datum)
+      (vector? datum)
+      (char? datum)))
+
 ; registers
 (define cc-reg     'RCC)
 (define env-reg    'RENV)
@@ -57,50 +67,109 @@
 (define tmp0-reg   'R0)
 (define tmp1-reg   'R1)
 
-
 (define (make-compiled-closure formals instrs)
   (cond
     [(null? formals)
-
+     (list 'fun
+       (list 'args '())
+       (list 'instrs instrs))]
     [else
      (error 'make-compiled-closure "unimplemented" formals instrs)]))
 
-
-
-(define (compile/expr expr)
-  (cond
-    [(lambda-form? expr)
-     (define formals (stx-car (stx-cdr expr)))
-     (define body (stx-cdr (stx-cdr expr)))
-     (define instrs
-       (let loop ([body body])
+(define (compile/expr expr procedure! literal!)
+  (let rec ([expr expr])
+    (cond
+      [(lambda-form? expr)
+       (define formals (stx-car (stx-cdr expr)))
+       (define body (stx-cdr (stx-cdr expr)))
+       (define instrs
+         (let loop ([body body])
+           (cond
+             [(null? body) '()]
+             [else (append (rec (car body)) (loop (cdr body)))])))
+       (define pcode (make-compiled-closure (syntax->datum formals) instrs))
+       (define idx (procedure! pcode))
+       (list (list 'closure idx))]
+      [(stx-list? expr)
+       (define op (stx-car expr))
+       (define args (stx-cdr expr))
+       (let loop ([args args])
          (cond
-           [(null? body) '()]
-           [else (append (compile/expr (car body))
-                         (loop (cdr body)))])))
-     (make-compiled-closure (syntax->datum formals) instrs)]
-    [(number? (syntax-e expr))
-     (list (list 'number (syntax-e expr)))]
-    [else
-     (error 'compile/expr "unimplemented" expr)]))
+           [(null? args) '()]
+           [else
+            (append
+              (rec (car args))
+              (list (list 'push))
+              (loop (cdr args)))]))]
+      [(stx-self-evaluating? expr)
+       (define idx (literal! (syntax-e expr)))
+       (list (list 'literal idx))]
+      [else
+       (error 'compile/expr "unimplemented" expr)])))
 
-(define (compile/top-level expr)
-  (display " top-level: ") (write expr) (newline)
+(define (compile/top-level expr top-level! procedure! literal!)
+  (display " <top-level: ") (write expr) (display ">") (newline)
   (cond
     [(define-values-form? expr)
+     ; decompose
      (define names (stx-car (stx-cdr expr)))
      (define e (stx-car (stx-cdr (stx-cdr expr))))
-     (define form (compile/expr e))
-
-     (void)]
+     ; process identifiers
+     (define ids (map syntax-e (syntax-e names)))
+     (define idxs (map top-level! ids))
+     ; process expression
+     (compile/expr e procedure! literal!)
+     (cons
+       (list 'bind-check (length ids))
+       (map (lambda (i) (list 'bind i)) ids))]
     [else (compile/expr expr)]))
 
 (define (compile/file path)
+  (define top-levels '())
+  (define procedures '())
+  (define literals '())
+
+  (define (register-top-level! name)
+    (define count (length top-levels))
+    (set! top-levels (cons name top-levels))
+    count)
+
+  (define (register-procedure! pcode)
+    (define count (length procedures))
+    (set! procedures (cons pcode procedures))
+    count)
+
+  (define (register-literals! lit)
+    (define count (length literals))
+    (set! literals (cons lit literals))
+    count)
+
   (define-values (exprs xforms imports exports _) (read/module path))
-  (let loop ([exprs exprs])
-    (unless (null? exprs)
-      (compile/top-level (car exprs))
-      (loop (cdr exprs))))
+  (define module-body
+    (let loop ([exprs exprs])
+      (cond
+        [(null? exprs) '()]
+        [else
+         (append
+           (compile/top-level (car exprs)
+                              register-top-level!
+                              register-procedure!
+                              register-literals!)
+           (loop (cdr exprs)))])))
+  
+  ; lists are in reverse order
+  (set! top-levels (reverse top-levels))
+  (set! procedures (reverse procedures))
+  (set! literals (reverse literals))
+
+  ; debug print report
+  (display "<report") (newline)
+  (display " top-levels: ") (write top-levels) (newline)
+  (display " procedures: ") (write procedures) (newline)
+  (display " literals  : ") (write literals) (newline)
+  (display " body      : ") (write module-body) (newline)
+  (display ">") (newline)
+
   (void))
 
 ; entry point
@@ -115,7 +184,7 @@
             name
             (build-path (current-directory) name)))
       (display "<compiling ") (write name) (display ">") (newline)
-      (compile/file name)
+      (compile/file path)
       (loop (cdr fnames)))))
 
 (main (command-line))
