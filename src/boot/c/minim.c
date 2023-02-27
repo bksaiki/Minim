@@ -6,7 +6,7 @@
 */
 
 #include "../build/config.h"
-#include "boot.h"
+#include "../boot.h"
 
 //
 //  REPL

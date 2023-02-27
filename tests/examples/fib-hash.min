@@ -1,8 +1,0 @@
-;
-; Stores fibonacci numbers in a hash table
-;
-
-(def h (hash))
-(for ([i (in-range 500)])
-  (hash-set! h i (fibonacci i)))
-(printf "~a" h)

@@ -1,19 +1,17 @@
 #
-#	Makefile for the bootstrap interpreter
+#	Makefile for the core Minim library
 #
 
+GC_DIR		:= $(shell pwd)/../gc
 SRC_DIR		:= c
 BUILD_DIR	:= build
 TEST_DIR	:= test
 BOOT_DIR	:= $(shell pwd)/s
 
-GC_DIR		:= $(shell pwd)/../gc
-CORE_DIR	:= $(shell pwd)/../core
-
-ENTRY		:= $(SRC_DIR)/minim.c
 CONFIG		:= $(BUILD_DIR)/config.h
+LIBNAME		:= libminim.a
 
-SRCS 		:= $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY))
+SRCS 		:= $(shell find $(SRC_DIR) -name "*.c")
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
@@ -22,9 +20,8 @@ TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
 
 CFLAGS		:= -Wall -std=c11 -O2 -g
 DEPFLAGS 	:= -MMD -MP
-LDFLAGS 	:= -L$(GC_DIR) -L$(CORE_DIR) -lgc -lminim
+LDFLAGS 	:= -L$(GC_DIR) -lgc
 
-EXENAME     := minim
 MKDIR_P		:= mkdir -p
 RM 			:= rm -rf
 READLINK	:= readlink -f
@@ -32,21 +29,10 @@ READLINK	:= readlink -f
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-all: $(EXENAME)
+all: $(LIBNAME)
 
-$(EXENAME): $(CONFIG) $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXENAME)
-
-profile:
-	$(MAKE) CFLAGS="$(CFLAGS) -pg" all
-
-unit: $(CONFIG) $(BUILD_DIR)/test-prims
-	$(BUILD_DIR)/test-prims
-
-test: unit
-	./$(EXENAME) $(TEST_DIR)/case-lambda.min
-	./$(EXENAME) $(TEST_DIR)/case.min
-	./$(EXENAME) $(TEST_DIR)/stxcase.min
+$(LIBNAME): $(CONFIG) $(OBJS)
+	ar -rc $(LIBNAME) $(OBJS)
 
 clean:
 	$(RM) build
@@ -67,4 +53,4 @@ $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
-.PHONY: build clean
+.PHONY: all build clean

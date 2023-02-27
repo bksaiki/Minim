@@ -1,6 +1,0 @@
-;
-; Prints factorial numbers
-;
-
-(for ([i (in-range 500)])
-  (printf "fact(~a) = ~a\n" i (factorial i)))
