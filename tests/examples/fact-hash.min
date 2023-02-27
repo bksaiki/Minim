@@ -1,8 +1,0 @@
-;
-; Stores factorial numbers in a hash table
-;
-
-(def h (hash))
-(for ([i (in-range 500)])
-  (hash-set! h i (factorial i)))
-(printf "~a" h)

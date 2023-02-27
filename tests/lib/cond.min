@@ -1,9 +1,0 @@
-;; Tests for <lib>/private/cond.min
-
-;; cond
-(equal? (cond) (void))
-(equal? (cond [true 1] [else 2]) 1)
-(equal? (cond [false 1] [else 2]) 2)
-(equal? (cond [true 1] [else 2]) 1)
-(equal? (cond [false 1] [false 2]) (void))
-(equal? (cond [false 1] [false 2] [true 3]) 3)

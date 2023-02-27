@@ -1,3 +1,13 @@
+Version 0.3.5
+26 Feburary 2022
+Added:
+ - default build uses Boehm GC
+ - cleanup
+Internals:
+ - new bootstrap interpreter
+   - minimal Scheme interpreter in C
+   - small standard library
+
 Version 0.3.4
 5 May 2022
 Added:
