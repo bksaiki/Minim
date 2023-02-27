@@ -6,7 +6,7 @@
 #ifndef _BOOT_H_
 #define _BOOT_H_
 
-#include "../minim.h"
+#include "../core/minim.h"
 
 void minim_boot_init();
 

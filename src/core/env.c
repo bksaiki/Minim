@@ -1,259 +1,316 @@
-#include "minimpriv.h"
+/*
+    Environments
+*/
 
-static void add_metadata(MinimObject *obj, const char *str)
-{
-    if (MINIM_OBJ_CLOSUREP(obj))
-    {
-        MinimLambda *lam = MINIM_CLOSURE(obj);
-        if (!lam->name)
-        {
-            lam->name = GC_alloc_atomic((strlen(str) + 1) * sizeof(char));
-            strcpy(lam->name, str);
-        }
-    }
-}
+#include "../minim.h"
 
-static MinimEnv *env_for_print = NULL;
-
-static void print_symbol_entry(const char *sym, MinimObject *obj)
-{
-    PrintParams pp;
-
-    if (MINIM_OBJ_TAIL_CALLP(obj))
-    {
-        printf("(%s . <tail call>)\n", sym);
-    }
-    else if (MINIM_OBJ_TRANSFORMP(obj))
-    {
-        printf("(%s . <macro>)\n", sym);
-    }
-    else if (MINIM_OBJ_SYNTAXP(obj))
-    {
-        printf("(%s . <syntax>)\n", sym);
-    }
-    else
-    {
-        set_default_print_params(&pp);
-        printf("(%s . ", sym);
-        print_to_port(obj, env_for_print, &pp, MINIM_PORT_FILE(minim_output_port));
-        printf(")\n");
-    }
-}
-
-#define INIT_SYMBOL_TABLE_IF_NULL(tab) \
-    if ((tab) == NULL) { init_minim_symbol_table(&tab); }
-
-#define RETURN_IF_NULL(x, ret) \
-    if ((x) == NULL) { return (ret); }
+minim_globals *globals;
+minim_object *empty_env;
 
 //
-//  Visible functions
+//  Environments
+//
+//  Ideally:
+//    environments ::= (<frame0> <frame1> ...)
+//    frames       ::= ((<var0> . <val1>) (<var1> . <val1>) ...)
+//
+//  Actually:
+//    - each frame is a vector if # of <var>s is less than 10
+//    - otherwise we allocate a hashtable
 //
 
-MinimEnv *init_env(MinimEnv *parent)
-{
-    MinimEnv *env = GC_alloc(sizeof(MinimEnv));
-
-    env->parent = parent;
-    env->module_inst = NULL;
-    env->callee = NULL;
-    env->caller = NULL;
-    env->current_dir = NULL;
-    env->jmp = NULL;
-    env->table = NULL;
-    env->flags = (env->parent ? env->parent->flags: 0x0);
-
-    return env;
+static void not_environment_exn(const char *name, minim_object *frame) {
+    fprintf(stderr, "%s: not an environment frame: ", name);
+    write_object(stderr, frame);
+    fprintf(stderr, "\n");
+    minim_shutdown(1);
 }
 
+minim_object *make_environment(minim_object *prev) {
+    minim_env *env = GC_alloc(sizeof(minim_env));
+    env->type = MINIM_ENVIRONMENT_TYPE;
+    env->bindings = make_vector(ENVIRONMENT_VECTOR_MAX, minim_false);
+    env->prev = prev;
 
-MinimEnv *init_env2(MinimEnv *parent, MinimLambda *callee)
-{
-    MinimEnv *env = GC_alloc(sizeof(MinimEnv));
-
-    env->parent = parent;
-    env->module_inst = NULL;
-    env->callee = callee;
-    env->caller = NULL;
-    env->current_dir = NULL;
-    env->jmp = NULL;
-    env->table = NULL;
-
-    if (callee)             env->flags = MINIM_ENV_TAIL_CALLABLE;
-    else if (env->parent)   env->flags = env->parent->flags;
-    else                    env->flags = 0x0;
-
-    return env;
-}
-
-static MinimObject *env_get_sym_hashed(MinimEnv *env, const char *sym, size_t hash)
-{
-    for (MinimEnv *it = env; it; it = it->parent)
-    {   
-        if (it->table)
-        {
-            MinimObject *val = minim_symbol_table_get2(it->table, sym, hash);
-            if (val) return val;
-        }
-    }
-
-    return minim_symbol_table_get2(global.builtins, sym, hash);
-}
-
-MinimObject *env_get_sym(MinimEnv *env, const char *sym)
-{
-    return env_get_sym_hashed(env, sym, hash_symbol(sym));
-}
-
-MinimObject *env_get_local_sym(MinimEnv *env, const char *sym)
-{
-    RETURN_IF_NULL(env->table, NULL);
-    return minim_symbol_table_get2(env->table, sym, hash_symbol(sym));
-}
-
-void env_intern_sym(MinimEnv *env, const char *sym, MinimObject *obj)
-{
-    add_metadata(obj, sym);
-    INIT_SYMBOL_TABLE_IF_NULL(env->table);
-    minim_symbol_table_add2(env->table, sym, hash_symbol(sym), obj);
-}
-
-static int env_set_sym_hashed(MinimEnv *env, const char *sym, size_t hash, MinimObject *obj)
-{
-    for (MinimEnv *it = env; it; it = it->parent)
-    { 
-        if (it->table && minim_symbol_table_set2(it->table, sym, hash, obj))
-            return 1;
-    }
     
-    return minim_symbol_table_set2(global.builtins, sym, hash, obj);
+    return ((minim_object *) env);
 }
 
-int env_set_sym(MinimEnv *env, const char *sym, MinimObject *obj)
-{
-    add_metadata(obj, sym);
-    return env_set_sym_hashed(env, sym, hash_symbol(sym), obj);
+void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val) {
+    minim_object *frame;
+    long i;
+
+    frame = minim_env_bindings(env);
+    if (minim_is_vector(frame)) {
+        minim_object *new_frame, *bind, *hash, *eq;
+
+        // small namespace
+        for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+            if (minim_is_false(minim_vector_ref(frame, i))) {
+                minim_vector_ref(frame, i) = make_pair(var, val);
+                return;
+            }
+        }
+
+        // too small: convert to a large namespace
+        hash = make_prim_proc(eq_hash_proc, "eq-hash", 1, 1);
+        eq = make_prim_proc(eq_proc, "eq?", 2, 2);
+        new_frame = make_hashtable2(hash, eq, ENVIRONMENT_VECTOR_MAX + 1);
+        for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+            bind = minim_vector_ref(frame, i);
+            hashtable_set(new_frame, minim_car(bind), minim_cdr(bind));
+        }
+
+        hashtable_set(new_frame, var, val);
+        minim_env_bindings(env) = new_frame;
+    } else if (minim_is_hashtable(frame)) {
+        // large namespace
+        hashtable_set(frame, var, val);
+    } else {
+        not_environment_exn("env_define_var_no_check()", frame);
+    }
 }
 
-const char *env_peek_key(MinimEnv *env, MinimObject *obj)
-{
-    for (MinimEnv *it = env; it; it = it->parent)
-    {   
-        if (it->table)
-        {
-            const char *name = minim_symbol_table_peek_name(it->table, obj);
-            if (name) return name;
+minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val) {
+    minim_object *frame, *bind, *old;
+    long i;
+
+    // check if it is defined, and overwrite the current value
+    frame = minim_env_bindings(env);
+    if (minim_is_vector(frame)) {
+        // small namespace
+        for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+            bind = minim_vector_ref(frame, i);
+            if (minim_is_false(bind))
+                break;
+            
+            if (minim_car(bind) == var) {
+                old = minim_cdr(bind);
+                minim_cdr(bind) = val;
+                return old;
+            }
+        }
+    } else if (minim_is_hashtable(frame)) {
+        // large namespace
+        bind = hashtable_find(frame, var);
+        if (!minim_is_null(bind)) {
+            old = minim_cdr(bind);
+            minim_cdr(bind) = val;
+            return old;
+        }
+    } else {
+        not_environment_exn("env_define_var()", frame);
+    }
+
+    // else just add
+    env_define_var_no_check(env, var, val);
+    return NULL;
+}
+
+minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *val) {
+    minim_object *frame, *bind, *old;
+    long i;
+
+    while (minim_is_env(env)) {
+        frame = minim_env_bindings(env);
+        if (minim_is_vector(frame)) {
+            // small namespace
+            for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+                bind = minim_vector_ref(frame, i);
+                if (minim_is_false(bind))
+                    break;
+                
+                if (minim_car(bind) == var) {
+                    old = minim_cdr(bind);
+                    minim_cdr(bind) = val;
+                    return old;
+                }
+            }
+        } else if (minim_is_hashtable(frame)) {
+            // large namespace
+            bind = hashtable_find(frame, var);
+            if (!minim_is_null(bind)) {
+                old = minim_cdr(bind);
+                minim_cdr(bind) = val;
+                return old;
+            }
+        } else {
+            not_environment_exn("env_set_var()", frame);
+        }
+
+        env = minim_env_prev(env);
+    }
+
+    fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
+    minim_shutdown(1);
+}
+
+int env_var_is_defined(minim_object *env, minim_object *var, int recursive) {
+    minim_object *frame, *bind;
+    long i;
+
+    if (minim_is_env(env)) {
+        frame = minim_env_bindings(env);
+        if (minim_is_vector(frame)) {
+            // small namespace
+            for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+                bind = minim_vector_ref(frame, i);
+                if (minim_is_false(bind))
+                    break;
+                
+                if (minim_car(bind) == var)
+                    return 1;
+            }
+        } else if (minim_is_hashtable(frame)) {
+            // large namespace
+            bind = hashtable_find(frame, var);
+            if (!minim_is_null(bind))
+                return 1;
+        } else {
+            not_environment_exn("env_var_is_defined()", frame);
+        }
+
+        if (!recursive)
+            return 0;
+
+        env = minim_env_prev(env);
+    }
+
+    return 0;
+}
+
+minim_object *env_lookup_var(minim_object *env, minim_object *var) {
+    minim_object *frame, *bind;
+    long i;
+
+    while (minim_is_env(env)) {
+        frame = minim_env_bindings(env);
+        if (minim_is_vector(frame)) {
+            // small namespace
+            for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+                bind = minim_vector_ref(frame, i);
+                if (minim_is_false(bind))
+                    break;
+                
+                if (minim_car(bind) == var)
+                    return minim_cdr(bind);
+            }
+        } else if (minim_is_hashtable(frame)) {
+            // large namespace
+            bind = hashtable_find(frame, var);
+            if (!minim_is_null(bind))
+                return minim_cdr(bind);
+        } else {
+            not_environment_exn("env_lookup_var()", frame);
+        }
+
+        env = minim_env_prev(env);
+    }
+
+    fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
+    minim_shutdown(1);
+}
+
+minim_object *extend_env(minim_object *vars,
+                         minim_object *vals,
+                         minim_object *base_env) {
+    minim_object *env, *var_it, *val_it;
+
+    // TODO: optimize
+    env = make_environment(base_env);
+    var_it = vars; val_it = vals;
+    while (!minim_is_null(var_it)) {
+        env_define_var_no_check(env, minim_car(var_it), minim_car(val_it));
+        var_it = minim_cdr(var_it);
+        val_it = minim_cdr(val_it);   
+    }
+
+    return env;
+}
+
+minim_object *setup_env() {
+    return make_environment(empty_env);
+}
+
+//
+//  Primitives
+//
+
+minim_object *interaction_environment_proc(int argc, minim_object **args) {
+    // (-> environment)
+    return global_env(current_thread());
+}
+
+minim_object *empty_environment_proc(int argc, minim_object **args) {
+    // (-> environment)
+    return setup_env();
+}
+
+minim_object *environment_proc(int argc, minim_object **args) {
+    // (-> environment)
+    return make_env();
+}
+
+minim_object *extend_environment_proc(int argc, minim_object **args) {
+    // (-> environment environment)
+    if (!minim_is_env(args[0]))
+        bad_type_exn("extend-environment", "environment?", args[0]);
+    return make_environment(args[0]);
+}
+
+minim_object *environment_variable_value_proc(int argc, minim_object **args) {
+    // (-> environment symbol -> any)
+    minim_object *env, *name, *exn;
+
+    env = args[0];
+    if (!minim_is_env(env))
+        bad_type_exn("environment-variable-value", "environment?", env);
+
+    name = args[1];
+    if (!minim_is_symbol(name)) {
+        bad_type_exn("environment-variable-value", "symbol?", name);
+    } else if (env_var_is_defined(env, name, 0)) {
+        // variable found
+        return env_lookup_var(env, name);
+    } else {
+        // variable not found
+        if (argc == 2) {
+            // default exception
+            fprintf(stderr, "environment-variable-value: variable not bound");
+            fprintf(stderr, " name: %s", minim_symbol(name));
+        } else {
+            // custom exception
+            exn = args[2];
+            if (!minim_is_proc(exn))
+                bad_type_exn("environment-variable-value", "procedure?", exn);
+
+            assert_no_call_args();
+            return call_with_args(exn, env);
         }
     }
 
-    // check globals, last resort
-    return minim_symbol_table_peek_name(global.builtins, obj);
+    fprintf(stderr, "unreachable");
+    return minim_void;
 }
 
-void unwind_tail_call(MinimEnv *env, MinimTailCall *tc)
-{
-    for (MinimEnv *it = env; it; it = it->parent)
-    {
-        if (it->jmp)
-        {
-            MINIM_JUMP_VAL(it->jmp) = (MinimObject*) tc;
-            longjmp(*MINIM_JUMP_BUF(it->jmp), 1);
-        }
-    }    
+minim_object *environment_set_variable_value_proc(int argc, minim_object **args) {
+    // (-> environment symbol any void)
+    minim_object *env, *name, *val;
 
-    THROW(env, minim_error("error when unwinding tail call: no caller found", NULL));
+    env = args[0];
+    if (!minim_is_env(env))
+        bad_type_exn("environment-set-variable-value!", "environment?", env);
+
+    name = args[1];
+    if (!minim_is_symbol(name))
+        bad_type_exn("environment-set-variable-value!", "symbol?", name);
+
+    val = args[2];
+    env_define_var(env, name, val);
+    return minim_void;
 }
 
-size_t env_symbol_count(MinimEnv *env)
-{
-    size_t count = 0;
-
-    for (MinimEnv *it = env; it; it = it->parent)
-    {
-        if (it->table)
-            count += it->table->size;
-    }
-
-    return count + global.builtins->size;
-}
-
-bool env_has_called(MinimEnv *env, MinimLambda *lam)
-{
-    if (env->flags & MINIM_ENV_TAIL_CALLABLE)
-    {
-        if (env->callee && env->callee == lam)
-            return true;
-        
-        if (env->caller)
-            return env_has_called(env->caller, lam);
-
-        if (env->parent)
-            return env_has_called(env->parent, lam);
-    }
-
-    return false;
-}
-
-void env_dump_symbols(MinimEnv *env)
-{
-    for (MinimEnv *it = env; it; it = it->parent)
-    {
-        if (it->table)
-        {
-            env_for_print = it;
-            minim_symbol_table_for_each(it->table, print_symbol_entry);
-        }
-    }
-
-    minim_symbol_table_for_each(global.builtins, print_symbol_entry);
-}
-
-void env_dump_exports(MinimEnv *env)
-{
-    MinimModule *module = env->module_inst->module;
-    if (env->module_inst && module->export)
-    {
-        env_for_print = module->export;
-        minim_symbol_table_for_each(module->export->table, print_symbol_entry);
-    }
-    else
-    {
-        printf("()\n");
-    }
-}
-
-MinimSymbolTable *env_get_table(MinimEnv *env)
-{
-    INIT_SYMBOL_TABLE_IF_NULL(env->table);
-    return env->table;
-}
-
-void env_merge_local_symbols(MinimEnv *dest, MinimEnv *src)
-{
-    if (src->table == NULL)     // nothing to add
-        return;
-
-    INIT_SYMBOL_TABLE_IF_NULL(dest->table);
-    minim_symbol_table_merge(dest->table, src->table);
-}
-
-void env_merge_local_symbols2(MinimEnv *dest,
-                              MinimEnv *src,
-                              MinimObject *(*merge)(MinimObject *, MinimObject *),
-                              MinimObject *(*add)(MinimObject *))
-{
-    if (src->table == NULL)     // nothing to add
-        return;
-
-    INIT_SYMBOL_TABLE_IF_NULL(dest->table);
-    minim_symbol_table_merge2(dest->table, src->table, merge, add); 
-}
-
-void env_for_each_local_symbol(MinimEnv *env,
-                               void (*func)(const char *, MinimObject *))
-{
-    if (env->table == NULL)
-        return;
-
-    minim_symbol_table_for_each(env->table, func);
+minim_object *current_environment_proc(int argc, minim_object **args) {
+    fprintf(stderr, "current-environment: should not be called directly");
+    minim_shutdown(1);
 }

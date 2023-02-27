@@ -1,681 +1,646 @@
-#include "minimpriv.h"
+/*
+    Pairs, lists
+*/
 
-static MinimObject *eval_nary(MinimEnv *env, MinimObject *proc, size_t argc, MinimObject **conss)
-{
-    MinimObject **args;
+#include "../minim.h"
 
-    if (MINIM_OBJ_PRIM_CLOSUREP(proc))
-    {
-        MinimObject *err;
-
-        if (!minim_check_prim_closure_arity(proc, argc, &err))
-            THROW(env, err);
-
-        args = GC_alloc(argc * sizeof(MinimObject*));
-        for (size_t i = 0; i < argc; ++i)
-            args[i] = MINIM_CAR(conss[i]);
-        return (MINIM_PRIM_CLOSURE(proc))(env, argc, args);
-    }
-    else if (MINIM_OBJ_CLOSUREP(proc))
-    {
-        MinimLambda *lam = MINIM_CLOSURE(proc);
-
-        args = GC_alloc(argc * sizeof(MinimObject*));
-        for (size_t i = 0; i < argc; ++i)
-            args[i] = MINIM_CAR(conss[i]);
-        return eval_lambda(lam, env, argc, args);
-    }
-    else
-    {
-        args = GC_alloc(argc * sizeof(MinimObject*));
-        for (size_t i = 0; i < argc; ++i)
-            args[i] = MINIM_CAR(conss[i]);
-        
-        // no return
-        minim_long_jump(proc, env, argc, args);
-        return NULL;
-    }
+minim_object *make_pair(minim_object *car, minim_object *cdr) {
+    minim_pair_object *o = GC_alloc(sizeof(minim_pair_object));
+    o->type = MINIM_PAIR_TYPE;
+    o->car = car;
+    o->cdr = cdr;
+    return ((minim_object *) o);
 }
 
-static MinimObject *minim_list_append(size_t count, MinimObject **lsts)
-{
-    MinimObject *head, *it;
+// Returns true if the object is a list
+int is_list(minim_object *x) {
+    while (minim_is_pair(x)) x = minim_cdr(x);
+    return minim_is_null(x);
+}
 
-    head = NULL;
-    for (size_t i = 0; i < count; ++i)
-    {
-        if (head)
-        {
-            if (!minim_nullp(lsts[i]))
-            {
-                MINIM_CDR(it) = lsts[i];
-                MINIM_TAIL(it, it);
+long list_length(minim_object *xs) {
+    minim_object *it = xs;
+    long length = 0;
+
+    while (!minim_is_null(it)) {
+        if (!minim_is_pair(it)) {
+            fprintf(stderr, "list_length: not a list");
+            minim_shutdown(1);
+        }
+
+        it = minim_cdr(it);
+        ++length;
+    }
+
+    return length;
+}
+
+// Makes an association list.
+// Unsafe: only iterates on `xs`.
+minim_object *make_assoc(minim_object *xs, minim_object *ys) {
+    minim_object *assoc, *it;
+
+    if (minim_is_null(xs))
+        return minim_null;
+
+    assoc = make_pair(make_pair(minim_car(xs), minim_car(ys)), minim_null);
+    it = assoc;
+    while (!minim_is_null(xs = minim_cdr(xs))) {
+        ys = minim_cdr(ys);
+        minim_cdr(it) = make_pair(make_pair(minim_car(xs), minim_car(ys)), minim_null);
+        it = minim_cdr(it);
+    }
+
+    return assoc;
+}
+
+// Copies a list.
+// Unsafe: does not check if `xs` is a list.
+minim_object *copy_list(minim_object *xs) {
+    minim_object *head, *tail, *it;
+
+    if (minim_is_null(xs))
+        return minim_null;
+
+    head = make_pair(minim_car(xs), minim_null);
+    tail = head;
+    it = xs;
+
+    while (!minim_is_null(it = minim_cdr(it))) {
+        minim_cdr(tail) = make_pair(minim_car(it), minim_null);
+        tail = minim_cdr(tail);
+    }
+    
+    return head;
+}
+
+minim_object *for_each(minim_object *proc, int argc, minim_object **args, minim_object *env) {
+    minim_object **lsts;
+    long len0, len;
+    int i;
+
+    if (!minim_is_proc(proc))
+        bad_type_exn("for-each", "procedure?", proc);
+
+    for (i = 0; i < argc; ++i) {
+        if (!is_list(args[i]))
+            bad_type_exn("for-each", "list?", args[i]);
+        
+        if (i == 0) {
+            len0 = list_length(args[i]);
+        } else {
+            len = list_length(args[i]);
+            if (len != len0) {
+                fprintf(stderr, "for-each: lists of different lengths\n");
+                fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
+                minim_shutdown(1);
             }
         }
-        else
-        {
-            if (!minim_nullp(lsts[i]))
-            {
-                head = lsts[i];
-                MINIM_TAIL(it, head);
+    }
+
+    // stash lists since we call the procedure
+    // TODO: potential for GC to lose track of the head of each list
+    lsts = GC_alloc(argc * sizeof(minim_object *));
+    memcpy(lsts, args, argc * sizeof(minim_object *));
+
+    assert_no_call_args();
+    while (!minim_is_null(lsts[0])) {
+        for (i = 0; i < argc; ++i) {
+            push_call_arg(minim_car(lsts[i]));
+            lsts[i] = minim_cdr(lsts[i]);
+        }
+
+        // ignore the result (side-effect only)
+        call_with_args(proc, env);
+    }
+
+    return minim_void;
+}
+
+minim_object *map_list(minim_object *proc, int argc, minim_object **args, minim_object *env) {
+    minim_object **lsts, *res, *head, *tail;
+    minim_thread *th;
+    long len0, len;
+    int i;
+
+    if (!minim_is_proc(proc))
+        bad_type_exn("map", "procedure?", proc);
+
+    for (i = 0; i < argc; ++i) {
+        if (!is_list(args[i]))
+            bad_type_exn("map", "list?", args[i]);
+        
+        if (i == 0) {
+            len0 = list_length(args[i]);
+        } else {
+            len = list_length(args[i]);
+            if (len != len0) {
+                fprintf(stderr, "map: lists of different lengths\n");
+                fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
+                minim_shutdown(1);
             }
+        }
+    }
+
+    // stash lists since we call the procedure
+    // TODO: potential for GC to lose track of the head of each list
+    lsts = GC_alloc(argc * sizeof(minim_object *));
+    memcpy(lsts, args, argc * sizeof(minim_object *));
+
+    head = NULL;
+    assert_no_call_args();
+    while (!minim_is_null(lsts[0])) {
+        for (i = 0; i < argc; ++i) {
+            push_call_arg(minim_car(lsts[i]));
+            lsts[i] = minim_cdr(lsts[i]);
+        }
+
+        res = call_with_args(proc, env);
+        if (minim_is_values(res)) {
+            th = current_thread();
+            if (values_buffer_count(th) != 1) {
+                fprintf(stderr, "result arity mismatch\n");
+                fprintf(stderr, "  expected: 1, received: %d\n", values_buffer_count(th));
+                minim_shutdown(1);
+            } else {
+                res = values_buffer_ref(th, 0);
+            }
+        }
+
+        if (head) {
+            minim_cdr(tail) = make_pair(res, minim_null);
+            tail = minim_cdr(tail);
+        } else {
+            head = make_pair(res, minim_null);
+            tail = head;
         }
     }
 
     return (head ? head : minim_null);
 }
 
-static MinimObject *minim_list_reverse2(MinimObject *lst, MinimObject *curr)
-{
-    return (minim_nullp(lst) ? curr : minim_list_reverse2(MINIM_CDR(lst), minim_cons(MINIM_CAR(lst), curr)));
-}
+minim_object *andmap(minim_object *proc, int argc, minim_object **args, minim_object *env) {
+    minim_object **lsts;
+    long len0, len;
+    int i;
 
-MinimObject *minim_list_reverse(MinimObject *lst)
-{
-    return minim_list_reverse2(lst, minim_null);
-}
+    if (!minim_is_proc(proc))
+        bad_type_exn("andmap", "procedure?", proc);
 
-static bool map_iters_nullp(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (minim_nullp(args[0]))
-    {
-        for (size_t i = 1; i < argc; ++i)
-        {
-            if (!minim_nullp(args[i]))
-                THROW(env, minim_error("given lists of uneven lengths", "map"));
+    for (i = 0; i < argc; ++i) {
+        if (!is_list(args[i]))
+            bad_type_exn("andmap", "list?", args[i]);
+        
+        if (i == 0) {
+            len0 = list_length(args[i]);
+        } else {
+            len = list_length(args[i]);
+            if (len != len0) {
+                fprintf(stderr, "andmap: lists of different lengths\n");
+                fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
+                minim_shutdown(1);
+            }
+        }
+    }
+
+    // stash lists since we call the procedure
+    // TODO: potential for GC to lose track of the head of each list
+    lsts = GC_alloc(argc * sizeof(minim_object *));
+    memcpy(lsts, args, argc * sizeof(minim_object *));
+
+    assert_no_call_args();
+    while (!minim_is_null(lsts[0])) {
+        for (i = 0; i < argc; ++i) {
+            push_call_arg(minim_car(lsts[i]));
+            lsts[i] = minim_cdr(lsts[i]);
         }
 
-        return true;
+        // only check for false (early exit)
+        if (minim_is_false(call_with_args(proc, env)))
+            return minim_false;
     }
-    else
-    {
-        for (size_t i = 1; i < argc; ++i)
-        {
-            if (minim_nullp(args[i]))
-                THROW(env, minim_error("given lists of uneven lengths", "map"));
-        }
 
-        return false;
-    }
-}
-
-static MinimObject *minim_list_map(MinimEnv *env, MinimObject *map, size_t argc, MinimObject **args)
-{
-    MinimObject *head, *val, *c;
-    MinimObject **it;
-
-    if (map_iters_nullp(env, argc, args))
-        return minim_null;
-
-    it = GC_alloc(argc * sizeof(MinimObject**));
-    for (size_t i = 0; i < argc; ++i)
-        it[i] = args[i];
-
-    c = NULL;
-    head = NULL;
-    while (!map_iters_nullp(env, argc, it))
-    {
-        val = eval_nary(env, map, argc, it);
-        if (head)
-        {
-            MINIM_CDR(c) = minim_cons(val, NULL);
-            c = MINIM_CDR(c);
-        }
-        else
-        {
-            head = minim_cons(val, NULL);
-            c = head;
-        }
-
-        for (size_t i = 0; i < argc; ++i)
-            it[i] = MINIM_CDR(it[i]);
-    }
-    
-    MINIM_CDR(c) = minim_null;
-    return head;
-}
-
-static MinimObject *minim_list_andmap(MinimEnv *env, MinimObject *map, size_t argc, MinimObject **args)
-{
-    MinimObject *val;
-    MinimObject **it;
-
-    if (map_iters_nullp(env, argc, args))
-        return minim_null;
-
-    it = GC_alloc(argc * sizeof(MinimObject**));
-    for (size_t i = 0; i < argc; ++i)
-        it[i] = args[i];
-
-    while (!map_iters_nullp(env, argc, it))
-    {
-        val = eval_nary(env, map, argc, it);
-        if (minim_falsep(val))  return val;
-
-        for (size_t i = 0; i < argc; ++i)
-            it[i] = MINIM_CDR(it[i]);
-    }
-    
     return minim_true;
 }
 
-static MinimObject *minim_list_ormap(MinimEnv *env, MinimObject *map, size_t argc, MinimObject **args)
-{
-    MinimObject *val;
-    MinimObject **it;
+minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_object *env) {
+    minim_object **lsts;
+    long len0, len;
+    int i;
 
-    if (map_iters_nullp(env, argc, args))
-        return minim_null;
+    if (!minim_is_proc(proc))
+        bad_type_exn("ormap", "procedure?", proc);
 
-    it = GC_alloc(argc * sizeof(MinimObject**));
-    for (size_t i = 0; i < argc; ++i)
-        it[i] = args[i];
-
-    while (!map_iters_nullp(env, argc, it))
-    {
-        val = eval_nary(env, map, argc, it);
-        if (!minim_falsep(val))  return minim_true;
-
-        for (size_t i = 0; i < argc; ++i)
-            it[i] = MINIM_CDR(it[i]);
+    for (i = 0; i < argc; ++i) {
+        if (!is_list(args[i]))
+            bad_type_exn("ormap", "list?", args[i]);
+        
+        if (i == 0) {
+            len0 = list_length(args[i]);
+        } else {
+            len = list_length(args[i]);
+            if (len != len0) {
+                fprintf(stderr, "ormap: lists of different lengths\n");
+                fprintf(stderr, "  one list: %ld, second list: %ld\n", len0, len);
+                minim_shutdown(1);
+            }
+        }
     }
-    
+
+    // stash lists since we call the procedure
+    // TODO: potential for GC to lose track of the head of each list
+    lsts = GC_alloc(argc * sizeof(minim_object *));
+    memcpy(lsts, args, argc * sizeof(minim_object *));
+
+    assert_no_call_args();
+    while (!minim_is_null(lsts[0])) {
+        for (i = 0; i < argc; ++i) {
+            push_call_arg(minim_car(lsts[i]));
+            lsts[i] = minim_cdr(lsts[i]);
+        }
+
+        // only check for false (early exit)
+        if (!minim_is_false(call_with_args(proc, env)))
+            return minim_true;
+    }
+
     return minim_false;
 }
 
-static void assert_pair_type(MinimEnv *env, const char *name, const char *desc, MinimObject *val, size_t depth, ...)
-{
-    MinimObject *it;
-    va_list va;
-    int direction;
-
-    it = val;
-    if (!minim_consp(it))
-        THROW(env, minim_argument_error(desc, name, 0, val));
-
-    va_start(va, depth);
-    for (size_t i = 0; i < depth; ++i)
-    {
-        direction = va_arg(va, int);
-        if (direction)
-        {
-            if (minim_consp(MINIM_CDR(it)))     it = MINIM_CDR(it);
-            else                                THROW(env, minim_argument_error(desc, name, 0, val));
-        }
-        else
-        {
-            if (minim_consp(MINIM_CAR(it)))     it = MINIM_CAR(it);
-            else                                THROW(env, minim_argument_error(desc, name, 0, val));
-        }
-    }
-
-
-    va_end(va);
-}
-
 //
-//  Internals
+//  Primitives
 //
 
-bool minim_consp(MinimObject *thing)
-{
-    return MINIM_OBJ_PAIRP(thing);
+minim_object *is_pair_proc(int argc, minim_object **args) {
+    // (-> any boolean)
+    return minim_is_pair(args[0]) ? minim_true : minim_false;
 }
 
-// list |= (obj? . list?)
-//      |= (obj? . null)
-bool minim_listp(MinimObject* thing)
-{
-    if (minim_nullp(thing))          return true;
-    if (MINIM_OBJ_PAIRP(thing))     return minim_listp(MINIM_CDR(thing));
+minim_object *is_list_proc(int argc, minim_object **args) {
+    // (-> any boolean)
+    minim_object *thing;
+    for (thing = args[0]; minim_is_pair(thing); thing = minim_cdr(thing));
+    return minim_is_null(thing) ? minim_true : minim_false;
+}
+
+minim_object *cons_proc(int argc, minim_object **args) {
+    // (-> any any pair)
+    return make_pair(args[0], args[1]);
+}
+
+minim_object *car_proc(int argc, minim_object **args) {
+    // (-> pair any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o))
+        bad_type_exn("car", "pair?", o);
+    return minim_car(o);
+}
+
+minim_object *cdr_proc(int argc, minim_object **args) {
+    // (-> pair any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o))
+        bad_type_exn("cdr", "pair?", o);
+    return minim_cdr(o);
+}
+
+minim_object *caar_proc(int argc, minim_object **args) {
+    // (-> (pairof pair any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)))
+        bad_type_exn("caar", "(pairof pair? any)", o);
+    return minim_caar(o);
+}
+
+minim_object *cadr_proc(int argc, minim_object **args) {
+    // (-> (pairof any pair) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)))
+        bad_type_exn("cadr", "(pairof any pair)", o);
+    return minim_cadr(o);
+}
+
+minim_object *cdar_proc(int argc, minim_object **args) {
+    // (-> (pairof pair any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)))
+        bad_type_exn("cdar", "(pairof pair? any)", o);
+    return minim_cdar(o);
+}
+
+minim_object *cddr_proc(int argc, minim_object **args) {
+    // (-> (pairof any pair) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)))
+        bad_type_exn("cddr", "(pairof any pair)", o);
+    return minim_cddr(o);
+}
+
+minim_object *caaar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof pair any) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_caar(o)))
+        bad_type_exn("caaar", "(pairof (pairof pair? any) any)", o);
+    return minim_car(minim_caar(o));
+}
+
+minim_object *caadr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof pair any)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cadr(o)))
+        bad_type_exn("caadr", "(pairof any (pairof pair? any))", o);
+    return minim_car(minim_cadr(o));
+}
+
+minim_object *cadar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof any pair) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_cdar(o)))
+        bad_type_exn("cadar", "(pairof (pairof any pair?) any)", o);
+    return minim_car(minim_cdar(o));
+}
+
+minim_object *caddr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof any pair)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cddr(o)))
+        bad_type_exn("caddr", "(pairof any (pairof any pair))", o);
+    return minim_car(minim_cddr(o));
+}
+
+minim_object *cdaar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof pair any) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_caar(o)))
+        bad_type_exn("cdaar", "(pairof (pairof pair? any) any)", o);
+    return minim_cdr(minim_caar(o));
+}
+
+minim_object *cdadr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof pair any)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cadr(o)))
+        bad_type_exn("cdadr", "(pairof any (pairof pair? any))", o);
+    return minim_cdr(minim_cadr(o));
+}
+
+minim_object *cddar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof any pair) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_cdar(o)))
+        bad_type_exn("cddar", "(pairof (pairof any pair?) any)", o);
+    return minim_cdr(minim_cdar(o));
+}
+
+minim_object *cdddr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof any pair)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cddr(o)))
+        bad_type_exn("cdddr", "(pairof any (pairof any pair?))", o);
+    return minim_cdr(minim_cddr(o));
+}
+
+minim_object *caaaar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof (pairof pair any) any) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_car(minim_caar(o))))
+        bad_type_exn("caaaar", "(pairof (pairof (pairof pair? any) any) any)", o);
+    return minim_caar(minim_caar(o));
+}
+
+minim_object *caaadr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof (pairof pair any) any)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_car(minim_cadr(o))))
+        bad_type_exn("caaadr", "(pairof any (pairof (pairof pair? any) any))", o);
+    return minim_caar(minim_cadr(o));
+}
+
+minim_object *caadar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof any (pairof pair any)) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_car(minim_cdar(o))))
+        bad_type_exn("caadar", "(pairof (pairof any (pairof pair? any)) any)", o);
+    return minim_caar(minim_cdar(o));
+}
+
+minim_object *caaddr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof any (pairof pair any))) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) ||  !minim_is_pair(minim_car(minim_cddr(o))))
+        bad_type_exn("caaddr", "(pairof any (pairof any (pairof pair? any)))", o);
+    return minim_caar(minim_cddr(o));
+}
+
+minim_object *cadaar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof (pairof any pair) any) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_cdr(minim_caar(o))))
+        bad_type_exn("cadaar", "(pairof (pairof (pairof any pair?) any) any)", o);
+    return minim_cadr(minim_caar(o));
+}
+
+minim_object *cadadr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof (pairof any pair) any)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_cdr(minim_cadr(o))))
+        bad_type_exn("cadadr", "(pairof any (pairof (pairof any pair?) any))", o);
+    return minim_cadr(minim_cadr(o));
+}
+
+minim_object *caddar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof any (pairof any pair)) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_cdr(minim_cdar(o))))
+        bad_type_exn("caddar", "(pairof (pairof any (pairof any pair?) any)", o);
+    return minim_cadr(minim_cdar(o));
+}
+
+minim_object *cadddr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof any (pairof any pair))) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) || !minim_is_pair(minim_cdr(minim_cddr(o))))
+        bad_type_exn("cadddr", "(pairof any (pairof any (pairof any pair?)))", o);
+    return minim_cadr(minim_cddr(o));
+}
+
+minim_object *cdaaar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof (pairof pair any) any) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_car(minim_caar(o))))
+        bad_type_exn("cdaaar", "(pairof (pairof (pairof pair? any) any) any)", o);
+    return minim_cdar(minim_caar(o));
+}
+
+minim_object *cdaadr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof (pairof pair any) any)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_car(minim_cadr(o))))
+        bad_type_exn("cdaadr", "(pairof any (pairof (pairof pair? any) any))", o);
+    return minim_cdar(minim_cadr(o));
+}
+
+minim_object *cdadar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof any (pairof pair any)) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_car(minim_cdar(o))))
+        bad_type_exn("cdadar", "(pairof (pairof any (pairof pair? any)) any)", o);
+    return minim_cdar(minim_cdar(o));
+}
+
+minim_object *cdaddr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof any (pairof pair any))) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) ||  !minim_is_pair(minim_car(minim_cddr(o))))
+        bad_type_exn("cdaddr", "(pairof any (pairof any (pairof pair? any)))", o);
+    return minim_cdar(minim_cddr(o));
+}
+
+minim_object *cddaar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof (pairof any pair) any) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_cdr(minim_caar(o))))
+        bad_type_exn("cddaar", "(pairof (pairof (pairof any pair?) any) any)", o);
+    return minim_cddr(minim_caar(o));
+}
+
+minim_object *cddadr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof (pairof any pair) any)) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_cdr(minim_cadr(o))))
+        bad_type_exn("cddadr", "(pairof any (pairof (pairof any pair?) any))", o);
+    return minim_cddr(minim_cadr(o));
+}
+
+minim_object *cdddar_proc(int argc, minim_object **args) {
+    // (-> (pairof (pairof any (pairof any pair)) any) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
+        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_cdr(minim_cdar(o))))
+        bad_type_exn("cdddar", "(pairof (pairof any (pairof any pair?) any)", o);
+    return minim_cddr(minim_cdar(o));
+}
+
+minim_object *cddddr_proc(int argc, minim_object **args) {
+    // (-> (pairof any (pairof any (pairof any pair))) any)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
+        !minim_is_pair(minim_cddr(o)) || !minim_is_pair(minim_cdr(minim_cddr(o))))
+        bad_type_exn("cddddr", "(pairof any (pairof any (pairof any pair?)))", o);
+    return minim_cddr(minim_cddr(o));
+}
+
+minim_object *set_car_proc(int argc, minim_object **args) {
+    // (-> pair any void)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o))
+        bad_type_exn("set-car!", "pair?", o);
+    minim_car(o) = args[1];
+    return minim_void;
+}
+
+minim_object *set_cdr_proc(int argc, minim_object **args) {
+    // (-> pair any void)
+    minim_object *o = args[0];
+    if (!minim_is_pair(o))
+        bad_type_exn("set-cdr!", "pair?", o);
+    minim_cdr(o) = args[1];
+    return minim_void;
+}
+
+minim_object *list_proc(int argc, minim_object **args) {
+    // (-> any ... list)
+    minim_object *lst;
+    int i;
+
+    lst = minim_null;
+    for (i = argc - 1; i >= 0; --i)
+        lst = make_pair(args[i], lst);
+
+    return lst;
+}
+
+minim_object *length_proc(int argc, minim_object **args) {
+    // (-> list non-negative-integer?)
+    minim_object *it;
+    long length;
+
+    length = 0;
+    for (it = args[0]; minim_is_pair(it); it = minim_cdr(it))
+        length += 1;
+
+    if (!minim_is_null(it))
+        bad_type_exn("length", "list?", args[0]);
+
+    return make_fixnum(length);
+}
+
+minim_object *reverse_proc(int argc, minim_object **args) {
+    // (-> list list)
+    minim_object *head, *it;
     
-    return false;
-}
+    head = minim_null;
+    for (it = args[0]; minim_is_pair(it); it = minim_cdr(it))
+        head = make_pair(minim_car(it), head);
 
-bool minim_listof(MinimObject* list, MinimPred pred)
-{
-    if (minim_nullp(list)) // nullary
-        return true;
-
-    for (MinimObject *it = list; !minim_nullp(it); it = MINIM_CDR(it))
-    {
-        if (!pred(MINIM_CAR(it)))
-            return false;
-    }
-
-    return true;
-}
-
-bool minim_cons_eqp(MinimObject *a, MinimObject *b)
-{
-    bool nx = minim_nullp(a);
-    bool ny = minim_nullp(b);
-    
-    if (nx && ny)     return true;
-    if (nx != ny)     return false;
-
-    if (!minim_equalp(MINIM_CAR(a), MINIM_CAR(b)))
-        return false;
-    
-    if (MINIM_CDR(a) && MINIM_CDR(b))
-        return minim_equalp(MINIM_CDR(a), MINIM_CDR(b));
-
-    return !MINIM_CDR(a) && !MINIM_CDR(b);
-}
-
-void minim_cons_to_bytes(MinimObject *obj, Buffer *bf)
-{
-    for (MinimObject *it = obj; !minim_nullp(it); it = MINIM_CDR(it))
-    {
-        if (MINIM_CAR(it))
-        {
-            Buffer *sbf = minim_obj_to_bytes(MINIM_CAR(it));
-            writeb_buffer(bf, sbf);
-        }
-    }
-}
-
-MinimObject *minim_list(MinimObject **args, size_t len)
-{
-    MinimObject *head, *it;
-
-    if (len == 0)
-        return minim_null;
-
-    head = minim_cons(args[0], NULL);
-    it = head;
-    for (size_t i = 1; i < len; ++i)
-    {
-        MINIM_CDR(it) = minim_cons(args[i], NULL);
-        it = MINIM_CDR(it);
-    }
-
-    MINIM_CDR(it) = minim_null;
+    if (!minim_is_null(it))
+        bad_type_exn("reverse", "expected list?", args[0]);
     return head;
 }
 
-MinimObject *minim_list_append2(MinimObject *a, MinimObject *b)
-{
-    MinimObject *tail;
-    MINIM_TAIL(tail, a);
-    MINIM_CDR(tail) = b;
-    return a;
-}
+minim_object *append_proc(int argc, minim_object **args) {
+    // (-> list ... list)
+    minim_object *head, *lst_it, *it;
+    int i;
 
-MinimObject *minim_list_drop(MinimObject *lst, size_t n)
-{
-    MinimObject *it;
+    head = NULL;
+    for (i = 0; i < argc; ++i) {
+        if (!minim_is_null(args[i])) {
+            for (it = args[i]; minim_is_pair(it); it = minim_cdr(it)) {
+                if (head) {
+                    minim_cdr(lst_it) = make_pair(minim_car(it), minim_null);
+                    lst_it = minim_cdr(lst_it);
+                } else {
+                    head = make_pair(minim_car(it), minim_null);
+                    lst_it = head;
+                }
+            }
 
-    if (n == 0)
-        return lst;
-
-    it = MINIM_CDR(lst);
-    for (size_t i = 1; i < n; ++i)
-        it = MINIM_CDR(it);
-    return it;
-}
-
-size_t minim_list_length(MinimObject *lst)
-{
-    size_t len = 0;
-    for (MinimObject *it = lst; !minim_nullp(it); it = MINIM_CDR(it))
-        ++len;
-    return len;
-}
-
-//
-//  Builtins
-//
-
-MinimObject *minim_builtin_cons(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return minim_cons(args[0], args[1]);
-}
-
-MinimObject *minim_builtin_consp(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return to_bool(minim_consp(args[0]));
-}
-
-// depth 1 accessors
-
-MinimObject *minim_builtin_car(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (!minim_consp(args[0]))
-        THROW(env, minim_argument_error("pair", "car", 0, args[0]));
-    
-    if (!MINIM_CAR(args[0]))
-        THROW(env, minim_argument_error("non-empty list", "car", 0, args[0]));
-
-    return MINIM_CAR(args[0]);
-}
-
-MinimObject *minim_builtin_cdr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (!minim_consp(args[0]))
-        THROW(env, minim_argument_error("pair", "cdr", 0, args[0]));
-    
-    if (!MINIM_CAR(args[0]))
-        THROW(env, minim_argument_error("non-empty list", "cdr", 0, args[0]));
-
-    return MINIM_CDR(args[0]);
-}
-
-// depth 2 accessors
-
-MinimObject *minim_builtin_caar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caar", "pair of (non empty pair . any)", args[0], 1, 0);
-    return MINIM_CAAR(args[0]);
-}
-
-MinimObject *minim_builtin_cadr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cadr", "pair of (any . non-empty pair)", args[0], 1, 1);
-    return MINIM_CADR(args[0]);
-}
-
-MinimObject *minim_builtin_cdar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdar", "pair of (non empty pair . any)", args[0], 1, 0);
-    return MINIM_CDAR(args[0]);
-}
-
-MinimObject *minim_builtin_cddr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cddr", "pair of (any . non-empty pair)", args[0], 1, 1);
-    return MINIM_CDDR(args[0]);
-}
-
-// depth 3 accessors
-
-MinimObject *minim_builtin_caaar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caaar", "pair of (pair of (non empty pair . any) . any)", args[0], 2, 0, 0);
-    return MINIM_CAR(MINIM_CAAR(args[0]));
-}
-
-MinimObject *minim_builtin_caadr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caadr", "pair of (any . pair of (non empty pair . any))", args[0], 2, 1, 0);
-    return MINIM_CAR(MINIM_CADR(args[0]));
-}
-
-MinimObject *minim_builtin_cadar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cadar", "pair of (pair of (any . non-empty pair) . any)", args[0], 2, 0, 1);
-    return MINIM_CAR(MINIM_CDAR(args[0]));
-}
-
-MinimObject *minim_builtin_caddr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caddr", "pair of (any . pair of (any . non empty pair))", args[0], 2, 1, 1);
-    return MINIM_CAR(MINIM_CDDR(args[0]));
-}
-
-MinimObject *minim_builtin_cdaar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdaar", "pair of (pair of (non empty pair . any) . any)", args[0], 2, 0, 0);
-    return MINIM_CDR(MINIM_CAAR(args[0]));
-}
-
-MinimObject *minim_builtin_cdadr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdadr", "pair of (any . pair of (non empty pair . any))", args[0], 2, 1, 0);
-    return MINIM_CDR(MINIM_CADR(args[0]));
-}
-
-MinimObject *minim_builtin_cddar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cddar", "pair of (pair of (any . non-empty pair) . any)", args[0], 2, 0, 1);
-    return MINIM_CDR(MINIM_CDAR(args[0]));
-}
-
-MinimObject *minim_builtin_cdddr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdddr", "pair of (any . pair of (any . non empty pair))", args[0], 2, 1, 1);
-    return MINIM_CDR(MINIM_CDDR(args[0]));
-}
-
-// depth 4 accessors
-
-MinimObject *minim_builtin_caaaar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caaaar", "pair of (pair of (pair of (non empty pair . any) . any) . any)", args[0], 3, 0, 0, 0);
-    return MINIM_CAAR(MINIM_CAAR(args[0]));
-}
-
-MinimObject *minim_builtin_caaadr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caaadr", "pair of (any . pair of (pair of (non empty pair . any) . any))", args[0], 3, 1, 0, 0);
-    return MINIM_CAAR(MINIM_CADR(args[0]));
-}
-
-MinimObject *minim_builtin_caadar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caadar", "pair of (pair of (any . pair of (non empty pair . any)) . any)", args[0], 3, 0, 1, 0);
-    return MINIM_CAAR(MINIM_CDAR(args[0]));
-}
-
-MinimObject *minim_builtin_caaddr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caaddr", "pair of (any . pair of (any . pair of (non empty pair . any)))", args[0], 3, 1, 1, 0);
-    return MINIM_CAAR(MINIM_CDDR(args[0]));
-}
-
-MinimObject *minim_builtin_cadaar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cadaar", "pair of (pair of (pair of (any . non empty pair) . any) . any)", args[0], 3, 0, 0, 0);
-    return MINIM_CADR(MINIM_CAAR(args[0]));
-}
-
-MinimObject *minim_builtin_cadadr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cadadr", "pair of (any . pair of (pair of (any . non empty pair) . any))", args[0], 3, 1, 0, 0);
-    return MINIM_CADR(MINIM_CADR(args[0]));
-}
-
-MinimObject *minim_builtin_caddar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "caddar", "pair of (pair of (any . pair of (any . non empty pair)) . any)", args[0], 3, 0, 1, 0);
-    return MINIM_CADR(MINIM_CDAR(args[0]));
-}
-
-MinimObject *minim_builtin_cadddr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cadddr", "pair of (any . pair of (any . pair of (any . non empty pair)))", args[0], 3, 1, 1, 0);
-    return MINIM_CADR(MINIM_CDDR(args[0]));
-}
-
-MinimObject *minim_builtin_cdaaar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdaaar", "pair of (pair of (pair of (non empty pair . any) . any) . any)", args[0], 3, 0, 0, 1);
-    return MINIM_CDAR(MINIM_CAAR(args[0]));
-}
-
-MinimObject *minim_builtin_cdaadr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdaadr", "pair of (any . pair of (pair of (non empty pair . any) . any))", args[0], 3, 1, 0, 1);
-    return MINIM_CDAR(MINIM_CADR(args[0]));
-}
-
-MinimObject *minim_builtin_cdadar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdadar", "pair of (pair of (any . pair of (non empty pair . any)) . any)", args[0], 3, 0, 1, 1);
-    return MINIM_CDAR(MINIM_CDAR(args[0]));
-}
-
-MinimObject *minim_builtin_cdaddr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdaddr", "pair of (any . pair of (any . pair of (non empty pair . any)))", args[0], 3, 1, 1, 1);
-    return MINIM_CDAR(MINIM_CDDR(args[0]));
-}
-
-MinimObject *minim_builtin_cddaar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cddaar", "pair of (pair of (pair of (any . non empty pair) . any) . any)", args[0], 3, 0, 0, 1);
-    return MINIM_CDDR(MINIM_CAAR(args[0]));
-}
-
-MinimObject *minim_builtin_cddadr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cddadr", "pair of (any . pair of (pair of (any . non empty pair) . any))", args[0], 3, 1, 0, 1);
-    return MINIM_CDDR(MINIM_CADR(args[0]));
-}
-
-MinimObject *minim_builtin_cdddar(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cdddar", "pair of (pair of (any . pair of (any . non empty pair)) . any)", args[0], 3, 0, 1, 1);
-    return MINIM_CDDR(MINIM_CDAR(args[0]));
-}
-
-MinimObject *minim_builtin_cddddr(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    assert_pair_type(env, "cddddr", "pair of (any . pair of (any . pair of (any . non empty pair)))", args[0], 3, 1, 1, 1);
-    return MINIM_CDDR(MINIM_CDDR(args[0]));
-}
-
-// lists
-
-MinimObject *minim_builtin_listp(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return to_bool(minim_listp(args[0]));
-}
-
-MinimObject *minim_builtin_nullp(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return to_bool(minim_nullp(args[0]));
-}
-
-MinimObject *minim_builtin_list(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    return minim_list(args, argc);
-}
-
-MinimObject *minim_builtin_length(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (!minim_listp(args[0]))
-        THROW(env, minim_argument_error("list", "length", 0, args[0]));
-
-    size_t len = minim_list_length(args[0]);
-    return uint_to_minim_number(len);
-}
-
-MinimObject *minim_builtin_append(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    for (size_t i = 0; i < argc; ++i)
-    {
-        if (!minim_listp(args[i]))
-            THROW(env, minim_argument_error("list", "append", i, args[i]));
+            if (!minim_is_null(it))
+                bad_type_exn("append", "expected list?", args[i]);
+        }
     }
 
-    return minim_list_append(argc, args);
+    return head ? head : minim_null;
 }
 
-MinimObject *minim_builtin_reverse(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (!minim_listp(args[0]))
-        THROW(env, minim_argument_error("list", "reverse", 0, args[0]));
-
-    return minim_list_reverse(args[0]);
+minim_object *for_each_proc(int argc, minim_object **args) {
+    // (-> proc list list ... list)
+    uncallable_prim_exn("for-each");
 }
 
-MinimObject *minim_builtin_list_ref(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    MinimObject *it;
-    size_t idx;
-
-    if (!minim_listp(args[0]))
-        THROW(env, minim_argument_error("list", "list-ref", 0, args[0]));
-
-    if (!minim_exact_nonneg_intp(args[1]))
-        THROW(env, minim_argument_error("exact non-negative-integer", "list-ref", 1, args[1]));
-
-    it = args[0];
-    idx = MINIM_NUMBER_TO_UINT(args[1]);
-
-    for (size_t i = 0; i < idx; ++i, it = MINIM_CDR(it))
-    {
-        if (minim_nullp(it))
-            THROW(env, minim_error("index out of bounds: ~u", "list-ref", idx));    
-    }
-
-    return MINIM_CAR(it);
+minim_object *map_proc(int argc, minim_object **args) {
+    uncallable_prim_exn("map");
 }
 
-MinimObject *minim_builtin_map(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (!MINIM_OBJ_FUNCP(args[0]))
-        THROW(env, minim_argument_error("function", "map", 0, args[0]));
-    
-    if (!minim_listp(args[1]))
-        THROW(env, minim_argument_error("list", "map", 1, args[1]));
-
-    return minim_list_map(env, args[0], argc - 1, &args[1]);
+minim_object *andmap_proc(int argc, minim_object **args) {
+    uncallable_prim_exn("andmap");
 }
 
-MinimObject *minim_builtin_andmap(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (!MINIM_OBJ_FUNCP(args[0]))
-        THROW(env, minim_argument_error("function", "andmap", 0, args[0]));
-    
-    if (!minim_listp(args[1]))
-        THROW(env, minim_argument_error("list", "andmap", 1, args[1]));
-
-    return minim_list_andmap(env, args[0], argc - 1, &args[1]);
-}
-
-MinimObject *minim_builtin_ormap(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    if (!MINIM_OBJ_FUNCP(args[0]))
-        THROW(env, minim_argument_error("function", "ormap", 0, args[0]));
-    
-    if (!minim_listp(args[1]))
-        THROW(env, minim_argument_error("list", "ormap", 1, args[1]));
-
-    return minim_list_ormap(env, args[0], argc - 1, &args[1]);
-}
-
-MinimObject *minim_builtin_apply(MinimEnv *env, size_t argc, MinimObject **args)
-{
-    MinimObject *res, *it, **vals;
-    size_t i, len, valc;
-
-    if (!MINIM_OBJ_FUNCP(args[0]))
-        THROW(env, minim_argument_error("function", "apply", 0, args[0]));
-    
-    if (!minim_listp(args[argc - 1]))
-        THROW(env, minim_argument_error("list", "apply", argc - 1, args[argc - 1]));
-
-    len = minim_list_length(args[argc - 1]);
-    valc = len + argc - 2;
-    vals = GC_alloc(valc * sizeof(MinimObject*));
-
-    for (i = 0; i < argc - 2; ++i)
-        vals[i] = args[i + 1];
-
-    it = args[argc - 1];
-    for (; i < valc; ++i, it = MINIM_CDR(it))
-        vals[i] = MINIM_CAR(it);
-
-    if (MINIM_OBJ_PRIM_CLOSUREP(args[0]))
-    {
-        if (!minim_check_prim_closure_arity(args[0], valc, &res))
-            THROW(env, res);
-
-        res = (MINIM_PRIM_CLOSURE(args[0]))(env, valc, vals);
-    }
-    else if (MINIM_OBJ_CLOSUREP(args[0]))
-    {
-        MinimLambda *lam = MINIM_CLOSURE(args[0]);
-        res = eval_lambda(lam, env, valc, vals);
-    }
-    else
-    {
-        // no return
-        minim_long_jump(args[0], env, valc, vals);
-        return NULL;
-    }
-
-    return res;
+minim_object *ormap_proc(int argc, minim_object **args) {
+    uncallable_prim_exn("ormap");
 }
