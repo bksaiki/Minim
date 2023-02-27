@@ -1,0 +1,25 @@
+;;;   
+;;; Imports core syntactic forms
+;;;
+
+(import "and-or.min"
+        "case.min"
+        "cond.min"
+        "define.min"
+        "let.min"
+        "stx.min"
+        "stxcase.min"
+        "stxcase-extra.min"
+        "template.min"
+        "when-unless.min")
+
+(export (all "and-or.min")
+        (all "case.min")
+        (all "cond.min")
+        (all "define.min")
+        (all "let.min")
+        (all "stx.min")
+        (all "stxcase.min")
+        (all "stxcase-extra.min")
+        (all "template.min")
+        (all "when-unless.min"))

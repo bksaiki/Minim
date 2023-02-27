@@ -2,24 +2,12 @@
 ;;; Top-level import for base library
 ;;;
 
-(import "private/and-or.min"
-        "private/case.min"
-        "private/cond.min"
-        "private/define.min"
-        "private/let.min"
-        "private/stx.min"
-        "private/stxcase.min"
-        "private/stxcase-extra.min"
-        "private/template.min"
-        "private/when-unless.min")
+(import "private/list.min"
+        "private/path.min"
+        "private/pre-base.min"
+        "private/string.min")
 
-(export (all "private/and-or.min")
-        (all "private/case.min")
-        (all "private/cond.min")
-        (all "private/define.min")
-        (all "private/let.min")
-        (all "private/stx.min")
-        (all "private/stxcase.min")
-        (all "private/stxcase-extra.min")
-        (all "private/template.min")
-        (all "private/when-unless.min"))
+(export (all "private/list.min")
+        (all "private/path.min")
+        (all "private/pre-base.min")
+        (all "private/string.min"))

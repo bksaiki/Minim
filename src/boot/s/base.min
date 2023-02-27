@@ -8,10 +8,6 @@
 ;;;   Minature standard library
 ;;;
 
-;; type predicates
-
-(define number? integer?)
-
 ;; lists
 
 (define (member k xs)
@@ -165,18 +161,6 @@
   (newline p))
 
 ;; syntax
-
-(define (syntax->datum stx)
-  (if (syntax? stx)
-      (let loop ([stx stx])
-        (let ([datum (syntax-e stx)])
-          (let loop2 ([datum datum])
-            (cond
-              [(syntax? datum) (loop datum)]
-              [(pair? datum) (cons (loop2 (car datum)) (loop2 (cdr datum)))]
-              [(vector? datum) (vector-map loop2 datum)]
-              [else datum]))))
-      (error 'syntax->datum "expected syntax?" stx)))
 
 (define (stx-pair? stx)
   (if (pair? stx)

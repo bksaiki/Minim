@@ -1,9 +1,4 @@
 ;;;
-;;;   Minim boot library for the bootstrap interpreter
-;;;   Brett Saiki
-;;;
-
-;;;
 ;;;   Expander for syntax macros
 ;;;   
 
@@ -17,9 +12,31 @@
 ;;  <name> -> (<proc>, <xforms-in-scope>, <eval-env>)
 ;;
 
+(import "base.min")
+(export expand expand/module $base-stx-env)
+
 ;; Should the expander use the boot expander for evaluation?
-(define $expander-boot-expander? #f)
 (define $expander-pattern-vars null)
+
+;; Base environment when expanding modules
+(define ($base-stx-env env)
+  (let ([env (extend-environment env)])
+    (environment-set-variable-value!
+      env
+      'get-pattern-variable
+      (lambda (k)
+        (if (symbol? k)
+            (letrec-values ([(loop)
+                             (lambda (assoc)
+                               (if (null? assoc)
+                                   #f
+                                   (if (eq? (caar assoc) k)
+                                       (cadar assoc)
+                                       (loop (cdr assoc)))))])
+              (loop $expander-pattern-vars))
+            (error 'get-pattern-variable
+                   "expected symbol?" k))))
+    env))
 
 (define (lookup-xform maybe-id xforms)
   (and (identifier? maybe-id)
@@ -165,29 +182,16 @@
   (define (define-syntaxes/values-expr form)
     (stx-car (stx-cdr (stx-cdr form))))
 
-  ; evaluates an expression in a given environment returning potentially
-  ; multiple values the `boot-expander?` parameter is set with `expander?`
-  (define (eval/values expr env expander?)
-    (define old-expander? (boot-expander?))
-    (call-with-values
-      (lambda ()
-        (boot-expander? expander?)
-        (eval expr env))
-      (lambda results
-        (boot-expander? old-expander?)
-        results)))
-  
-  ; evaluates an expression in a given environment returning potentially
-  ; multiple values the `boot-expander?` parameter is set with `expander?`
-  (define (eval/xform xform expr name expander?)
+  ; evaluates an expression in a given environment returning potentially multiple values
+  (define (eval/values expr env)
+    (eval expr env))
+
+  ; evaluates an expression in a given environment returning potentially multiple values
+  (define (eval/xform xform expr name)
     (define fn (car xform))
-    (define old-expander? (boot-expander?))
     (call-with-values
-      (lambda ()
-        (boot-expander? expander?)
-        (fn expr))
+      (lambda () (fn expr))
       (lambda results
-        (boot-expander? old-expander?)
         (cond
           [(not (= (length results) 1)) 
            (error #f "result arity mismatch" "expected 1" "received" 2)]
@@ -201,7 +205,6 @@
   (define (expand/expr expr xforms)
     (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (let loop ([expr expr])
-      ; (writeln expr)
       (cond
         [(define-values-form? expr)
          (check-define-syntaxes/values-form! 'define-values expr)
@@ -231,7 +234,7 @@
               (check-duplicate-identifier! expr 'let-syntaxes let-ids binding-ids)
               (define results
                 (let ([rhs (loop (cadr binding))])
-                  (eval/values (syntax->datum rhs) env $module-boot-expander?)))
+                  (eval/values (syntax->datum rhs) env)))
               (if (= (length binding-ids) (length results))
                   (let bind-xforms ([ids binding-ids] [results results] [xforms xforms])
                     (cond
@@ -299,13 +302,14 @@
          (define head (stx-car expr))
          (define maybe-xform (lookup-xform head xforms))
          (if maybe-xform
-            (expand/expr (eval/xform maybe-xform expr (syntax-e head) $module-boot-expander?)
-                         (merge-xforms (cadr maybe-xform) xforms))
+            (expand/expr
+              (eval/xform maybe-xform expr (syntax-e head))
+              (merge-xforms (cadr maybe-xform) xforms))
             (datum->syntax (map loop (syntax->list expr))))]
         [(identifier? expr)
          (define maybe-xform (lookup-xform expr xforms))
          (if maybe-xform
-             (loop (eval/xform maybe-xform expr (syntax-e head) $module-boot-expander?))
+             (loop (eval/xform maybe-xform expr (syntax-e head)))
              expr)]
         [(let ([datum (syntax-e expr)])
            (or (boolean? datum)
@@ -315,7 +319,7 @@
                (char? datum)))
          expr]
         [else
-         (syntax-error 'expand/expr "bad syntax" expr)])))
+         (syntax-error #f "bad syntax" expr)])))
 
   ; module context
   ;  `define-values` => defers expansion until all definitions have been processed
@@ -336,7 +340,7 @@
          (cond
            [maybe-xform
             (expand/top-level
-              (eval/xform maybe-xform expr (syntax-e head) $expander-boot-expander?)
+              (eval/xform maybe-xform expr (syntax-e head))
               (merge-xforms (cadr maybe-xform) xforms))]
            [else
             (values expr xforms)])]
@@ -365,7 +369,7 @@
                       (values ids (define-syntaxes/values-expr expr))))
                   (define results
                     (let ([rhs* (expand/expr rhs in-scope)])
-                      (eval/values (syntax->datum rhs*) env $module-boot-expander?)))
+                      (eval/values (syntax->datum rhs*) env)))
                   (if (= (length ids) (length results))
                       (let rec ([ids ids] [results results])
                         (cond
@@ -409,7 +413,7 @@
                   (cons (expand/expr expr in-scope) (loop (cdr exprs)))]))])))
       ; done
       (values exprs* xforms))
-    
+
     ; Any `define-values` form is deferred
     ; List of Expr, List of Xform -> List of Expr
     (define (expand/define-values exprs xforms)

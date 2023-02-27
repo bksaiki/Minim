@@ -1,0 +1,41 @@
+;;
+;;  Lists
+;;
+
+(import "pre-base.min")
+(export member filter foldl foldr assoc)
+
+(define (member k xs)
+  (let loop ([xs xs])
+    (cond [(null? xs) #f]
+          [(pair? xs) (if (equal? (car xs) k) (car xs) (loop (cdr xs)))]
+          [else (error 'member "expected a list" xs)])))
+
+(define (filter f lst)
+  (let loop ([xs lst] [acc '()])
+    (cond [(null? xs) (reverse acc)]
+          [(pair? xs) (if (f (car xs))
+                          (loop (cdr xs) (cons (car xs) acc))
+                          (loop (cdr xs) acc))]
+          [else       (error 'map "expected a list" lst)])))
+
+(define (foldl f acc lst)
+  (let loop ([xs lst] [acc acc])
+    (cond [(null? xs) acc]
+          [(pair? xs) (loop (cdr xs) (f acc (car xs)))]
+          [else       (error 'foldl "expected a list" lst)])))
+
+(define (foldr f acc lst)
+  (let loop ([xs lst])
+    (cond [(null? xs) acc]
+          [(pair? xs) (f (loop (cdr xs)) (car xs))]
+          [else       (error 'foldr "expected a list" lst)])))
+
+(define (assoc k lst)
+  (cond
+    [(null? lst) #f]
+    [(and (pair? lst) (pair? (car lst)))
+     (if (equal? k (caar lst))
+         (cdar lst)
+         (assoc k (cdr lst)))]
+    [else (error 'assoc "expected a list of pairs" lst)]))

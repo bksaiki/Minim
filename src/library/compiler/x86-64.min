@@ -1,0 +1,16 @@
+;;;
+;;; x86-64 specific definitions
+;;;
+
+(import "base.min")
+
+(define (translate-register reg)
+  (case reg
+    ['RCC   'rdi]
+    ['RENV  'rsi]
+    ['RIP   'rip]
+    ['RSP   'rsp]
+    ['RRET  'rax]
+    ['R0    'r10]
+    ['R1    'r11]
+    [else (error 'translate-register "unknown register" reg)]))
