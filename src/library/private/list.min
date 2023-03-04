@@ -3,7 +3,43 @@
 ;;
 
 (import "pre-base.min")
-(export member filter foldl foldr assoc)
+(export first second third fourth fifth sixth seventh eighth ninth tenth
+        member
+        filter
+        foldl foldr
+        assoc)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (first xs)
+  (if (list? xs)
+      (car xs)
+      (error 'name "list?" xs)))
+
+(define-syntax define-list-accessor
+  (syntax-rules ()
+    [(_ name npos)
+     (define (name xs)
+       (if (list? xs)
+           (let loop ([xs xs] [pos npos])
+             (if (pair? xs)
+                 (if (= pos 1)
+                     (car xs)
+                     (loop (cdr xs) (- pos 1)))
+                 (error 'name "list contains too few elements" xs)))
+           (error 'name "list?" xs)))]))
+
+(define-list-accessor second  2)
+(define-list-accessor third   3)
+(define-list-accessor fourth  4)
+(define-list-accessor fifth   5)
+(define-list-accessor sixth   6)
+(define-list-accessor seventh 7)
+(define-list-accessor eighth  8)
+(define-list-accessor ninth   9)
+(define-list-accessor tenth   10)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; list operations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (member k xs)
   (let loop ([xs xs])

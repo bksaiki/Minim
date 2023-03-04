@@ -51,32 +51,79 @@
 
 ; syntax would parse into a self-evaluating expression
 (define (stx-self-evaluating? stx)
-  (define datum (syntax-e stx))
-  (or (boolean? datum)
-      (number? datum)
-      (string? datum)
-      (vector? datum)
-      (char? datum)))
+  (let ([datum (syntax-e stx)])
+    (or (boolean? datum)
+        (number? datum)
+        (string? datum)
+        (vector? datum)
+        (char? datum))))
 
 ; registers
-(define cc-reg     'RCC)
-(define env-reg    'RENV)
-(define i-reg      'RIP)
-(define sp-reg     'RSP)
-(define res-reg    'RRET)
-(define tmp0-reg   'R0)
-(define tmp1-reg   'R1)
+(define cc-reg      'RCC)
+(define env-reg     'RENV)
+(define i-reg       'RIP)
+(define data-reg    'RDATA)
+(define sp-reg      'RSP)
+(define res-reg     'RRET)
+(define tmp0-reg    'R0)
+(define tmp1-reg    'R1)
 
-(define (make-compiled-closure formals instrs)
+; offsets
+(define pointer-offset 8)
+
+;
+; Assembler
+;
+
+(define (assemble/procedure proc)
+  (display " <assembling: ") (write proc) (display ">") (newline)
+  (define args (second (second proc)))
+  (define arg-instrs
+    (if (null? args)
+        '()
+        (error 'assemble/procedure "unimplemented" args)))
+
+  (define instrs (second (third proc)))
+  (define instrs*
+    (let loop ([instrs instrs])
+      (cond
+        [(null? instrs) (list (list 'return))]
+        [(not (list? (car instrs))) (error 'assemble/procedure "expected a list: " (car instrs))]
+        [else
+         (define instr (first instrs))
+         (define seq
+           (cond
+            [(eq? (first instr) 'literal)
+             ; `(literal <n>)` =>
+             ; offset from `const-reg`
+             (list (list 'load data-reg (second instr)))]
+            [(eq? (first instr) 'push)
+             ; `(push)` =>
+             ; load `res-reg` onto the call stack
+             (list (list 'push "todo"))]
+            [(eq? (first instr) 'apply)
+             ; `(apply)` =>
+             ; ???
+             (list (list 'apply "todo"))]))
+
+         (append seq (loop (cdr instrs)))])))
+  
+  (append arg-instrs instrs*))
+
+;
+; Flatten
+;
+
+(define (make-flat-closure formals instrs)
   (cond
     [(null? formals)
      (list 'fun
        (list 'args '())
        (list 'instrs instrs))]
     [else
-     (error 'make-compiled-closure "unimplemented" formals instrs)]))
+     (error 'make-flat-closure "unimplemented" formals instrs)]))
 
-(define (compile/expr expr procedure! literal!)
+(define (flatten/expr expr procedure! literal!)
   (let rec ([expr expr])
     (cond
       [(lambda-form? expr)
@@ -87,7 +134,7 @@
            (cond
              [(null? body) '()]
              [else (append (rec (car body)) (loop (cdr body)))])))
-       (define pcode (make-compiled-closure (syntax->datum formals) instrs))
+       (define pcode (make-flat-closure (syntax->datum formals) instrs))
        (define idx (procedure! pcode))
        (list (list 'closure idx))]
       [(stx-list? expr)
@@ -95,19 +142,25 @@
        (define args (stx-cdr expr))
        (let loop ([args args])
          (cond
-           [(null? args) '()]
+           [(null? args)
+            ; apply operation
+            (list (list 'apply))]
            [else
+            ; process next argument
             (append
               (rec (car args))
-              (list (list 'push))
-              (loop (cdr args)))]))]
+              (cons
+                (list 'push)
+                (loop (cdr args))))]))]
       [(stx-self-evaluating? expr)
        (define idx (literal! (syntax-e expr)))
        (list (list 'literal idx))]
+      [(identifier? expr)
+       (list (list 'lookup expr))]
       [else
-       (error 'compile/expr "unimplemented" expr)])))
+       (error 'flatten/expr "unimplemented" expr)])))
 
-(define (compile/top-level expr top-level! procedure! literal!)
+(define (flatten/top-level expr top-level! procedure! literal!)
   (display " <top-level: ") (write expr) (display ">") (newline)
   (cond
     [(define-values-form? expr)
@@ -118,11 +171,11 @@
      (define ids (map syntax-e (syntax-e names)))
      (define idxs (map top-level! ids))
      ; process expression
-     (compile/expr e procedure! literal!)
+     (flatten/expr e procedure! literal!)
      (cons
        (list 'bind-check (length ids))
        (map (lambda (i) (list 'bind i)) ids))]
-    [else (compile/expr expr)]))
+    [else (flatten/expr expr)]))
 
 (define (compile/file path)
   (define top-levels '())
@@ -141,8 +194,15 @@
 
   (define (register-literals! lit)
     (define count (length literals))
-    (set! literals (cons lit literals))
-    count)
+    (let loop ([lits literals] [i count])
+      (cond
+        [(= i 0)
+         (set! literals (cons lit literals))
+         count]
+        [(equal? (car lits) lit)
+         (- count 1)]
+        [else
+         (loop (cdr lits) (- i 1))])))
 
   (define-values (exprs xforms imports exports _) (read/module path))
   (define module-body
@@ -151,7 +211,7 @@
         [(null? exprs) '()]
         [else
          (append
-           (compile/top-level (car exprs)
+           (flatten/top-level (car exprs)
                               register-top-level!
                               register-procedure!
                               register-literals!)
@@ -163,12 +223,17 @@
   (set! literals (reverse literals))
 
   ; debug print report
-  (display "<report") (newline)
+  (display "<intermediate-report") (newline)
   (display " top-levels: ") (write top-levels) (newline)
   (display " procedures: ") (write procedures) (newline)
   (display " literals  : ") (write literals) (newline)
   (display " body      : ") (write module-body) (newline)
   (display ">") (newline)
+
+  ; assemble procedures
+  (define assembled (map assemble/procedure procedures))
+  (for-each (lambda (is) (write is) (newline)) assembled)
+
 
   (void))
 
