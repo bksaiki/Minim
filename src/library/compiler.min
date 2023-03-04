@@ -58,24 +58,46 @@
         (vector? datum)
         (char? datum))))
 
-; registers
+; Stack segment:
+;  - pointer to previous stack segment (0 if base)
+;  - size of segment
+;  - continuation frames
+;  (way to detect overflow)
+;  (way to detect underflow)
+;  
+
+; Continuation frame:
+; (stored in a stack segment) 
+; - pointer to previous frame (0 if base)
+; - previous instruction register
+; - arguments
+;
+
+; Registers
 (define cc-reg      'RCC)
 (define env-reg     'RENV)
 (define i-reg       'RIP)
 (define data-reg    'RDATA)
 (define sp-reg      'RSP)
+(define ss-reg      'RSS)
 (define res-reg     'RRET)
-(define tmp0-reg    'R0)
-(define tmp1-reg    'R1)
+(define t0-reg      'R0)
+(define t1-reg      'R1)
 
 ; offsets
-(define pointer-offset 8)
+(define word-size                 8)
+(define stack-segment-size        1024)
+(define cont-frame-args-offset    word-size)
+
+(define closure-arity-offset      word-size)
+(define closure-env-offset        (* 2 word-size))
+(define closure-code-offset       (* 3 word-size))
 
 ;
 ; Assembler
 ;
 
-(define (assemble/procedure proc)
+(define (assemble/procedure proc make-label!)
   (display " <assembling: ") (write proc) (display ">") (newline)
   (define args (second (second proc)))
   (define arg-instrs
@@ -95,17 +117,60 @@
            (cond
             [(eq? (first instr) 'literal)
              ; `(literal <n>)` =>
-             ; offset from `const-reg`
-             (list (list 'load data-reg (second instr)))]
+             ; Load <n>th literal into `RRES`
+             (list (list 'load res-reg data-reg (second instr)))]
+            [(eq? (first instr) 'save-continuation)
+             ; `(save-continuation <label>)` =>
+             ; TODO
+             '()]
             [(eq? (first instr) 'push)
              ; `(push)` =>
-             ; load `res-reg` onto the call stack
-             (list (list 'push "todo"))]
+             ; load `RRES` at `RSP`
+             ; decrement `RSP` by word
+             (list
+               (list 'sub sp-reg sp-reg word-size)
+               (list 'store res-reg sp-reg (- word-size)))]
             [(eq? (first instr) 'apply)
+             (define jmp-label (make-label!))
+             (define exit-label (make-label!))
              ; `(apply)` =>
-             ; ???
-             (list (list 'apply "todo"))]))
-
+             ; if PRIMITIVE:
+             ;   Set arg array pointer to `arg1`
+             ;   Set arg count to `arg0`
+             ;   Extract pointer to `RRES`
+             ;   Call using `RRES`
+             ; elif CLOSURE:
+             ;   (Save the continuation??)
+             ;   Save the environment register
+             ;   Load the closure environment
+             ;   Jump to the start of the code
+             (list
+               (list 'branch 'closure res-reg jmp-label)
+               ;; PRIMITIVE
+               (list 'sub t0-reg cc-reg cont-frame-args-offset)
+               (list 'sub t1-reg t0-reg sp-reg)
+               (list 'c-call res-reg t0-reg t1-reg)
+               (list 'branch 'always exit-label)
+               ;; CLOSURE
+               (list 'label jmp-label)
+               (list 'sub sp-reg sp-reg word-size)
+               (list 'store env-reg sp-reg (- word-size))
+               (list 'load env-reg res-reg closure-env-offset)
+               (list 'load res-reg res-reg closure-code-offset)
+               (list 'call)
+               (list 'load env-reg sp-reg (- word-size))
+               (list 'add sp-reg sp-reg word-size)
+               (list 'label exit-label))]
+            [(eq? (first instr) 'lookup)
+             ; `(lookup <name>)`
+             ; Load <n>th literal into `ARG1` and perform a lookup
+             (list
+               (list 'load t0-reg data-reg (second instr))
+               (list 'c-call "env_lookup_var" env-reg t0-reg))]
+            [(eq? (first instr) 'label)
+             ; `(label <label>)` =>
+             ; nothing to do
+             (list instr)]))
          (append seq (loop (cdr instrs)))])))
   
   (append arg-instrs instrs*))
@@ -123,7 +188,7 @@
     [else
      (error 'make-flat-closure "unimplemented" formals instrs)]))
 
-(define (flatten/expr expr procedure! literal!)
+(define (flatten/expr expr procedure! literal! label!)
   (let rec ([expr expr])
     (cond
       [(lambda-form? expr)
@@ -140,27 +205,35 @@
       [(stx-list? expr)
        (define op (stx-car expr))
        (define args (stx-cdr expr))
-       (let loop ([args args])
-         (cond
-           [(null? args)
-            ; apply operation
-            (list (list 'apply))]
-           [else
-            ; process next argument
-            (append
-              (rec (car args))
-              (cons
-                (list 'push)
-                (loop (cdr args))))]))]
+       (define label (label!))
+       (cons
+         (list 'save-continuation label)
+         (let loop ([args args])
+           (cond
+             [(null? args)
+              ; apply operation
+              (append
+                (rec op)
+                (list
+                  (list 'apply)
+                  (list 'label label)))]
+              [else
+               ; process next argument
+               (append
+                 (rec (car args))
+                 (cons
+                   (list 'push)
+                   (loop (cdr args))))])))]
       [(stx-self-evaluating? expr)
        (define idx (literal! (syntax-e expr)))
        (list (list 'literal idx))]
       [(identifier? expr)
-       (list (list 'lookup expr))]
+       (define idx (literal! (syntax-e expr)))
+       (list (list 'lookup idx))]
       [else
        (error 'flatten/expr "unimplemented" expr)])))
 
-(define (flatten/top-level expr top-level! procedure! literal!)
+(define (flatten/top-level expr top-level! procedure! literal! label!)
   (display " <top-level: ") (write expr) (display ">") (newline)
   (cond
     [(define-values-form? expr)
@@ -171,7 +244,7 @@
      (define ids (map syntax-e (syntax-e names)))
      (define idxs (map top-level! ids))
      ; process expression
-     (flatten/expr e procedure! literal!)
+     (flatten/expr e procedure! literal! label!)
      (cons
        (list 'bind-check (length ids))
        (map (lambda (i) (list 'bind i)) ids))]
@@ -181,6 +254,7 @@
   (define top-levels '())
   (define procedures '())
   (define literals '())
+  (define label-counter 0)
 
   (define (register-top-level! name)
     (define count (length top-levels))
@@ -204,6 +278,11 @@
         [else
          (loop (cdr lits) (- i 1))])))
 
+  (define (register-label!)
+    (define count label-counter)
+    (set! label-counter (+ count 1))
+    (string-append "L" (number->string count)))
+
   (define-values (exprs xforms imports exports _) (read/module path))
   (define module-body
     (let loop ([exprs exprs])
@@ -214,7 +293,8 @@
            (flatten/top-level (car exprs)
                               register-top-level!
                               register-procedure!
-                              register-literals!)
+                              register-literals!
+                              register-label!)
            (loop (cdr exprs)))])))
   
   ; lists are in reverse order
@@ -231,7 +311,7 @@
   (display ">") (newline)
 
   ; assemble procedures
-  (define assembled (map assemble/procedure procedures))
+  (define assembled (map (lambda (p) (assemble/procedure p register-label!)) procedures))
   (for-each (lambda (is) (write is) (newline)) assembled)
 
 

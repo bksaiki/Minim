@@ -370,12 +370,8 @@ void assert_no_call_args();
 // Environments
 
 minim_object *make_environment(minim_object *prev);
-
 minim_object *setup_env();
 minim_object *make_env();
-minim_object *extend_env(minim_object *vars,
-                         minim_object *vals,
-                         minim_object *base_env);
 
 void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val);
 minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val);

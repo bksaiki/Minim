@@ -642,7 +642,7 @@ application:
 
         // check arity and extend environment
         check_closure_proc_arity(proc, argc);
-        env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+        env = make_environment(minim_closure_env(proc));
         args = irt_call_args;
 
         // process args
@@ -733,7 +733,7 @@ loop:
             } else if (head == let_values_symbol) {
                 // let-values form
                 check_let_values(expr);
-                env2 = extend_env(minim_null, minim_null, env);
+                env2 = make_environment(env);
                 for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
@@ -767,7 +767,7 @@ loop:
 
                 check_let_values(expr);
                 to_bind = minim_null;
-                env = extend_env(minim_null, minim_null, env);
+                env = make_environment(env);
                 for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
@@ -990,7 +990,7 @@ application:
 
             // check arity and extend environment
             check_closure_proc_arity(proc, argc);
-            env = extend_env(minim_null, minim_null, minim_closure_env(proc));
+            env = make_environment(minim_closure_env(proc));
             args = irt_call_args;
 
             // process args
