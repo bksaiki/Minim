@@ -2,7 +2,9 @@
 ;;;  Compiler entry point
 ;;;   
 
-(import "base.min" "module.min")
+(import "base.min" "module.min"
+        "compiler/common.min"
+        "compiler/x86-64.min")
 
 ; syntax
 (define (stx-pair? stx)
@@ -58,41 +60,6 @@
         (vector? datum)
         (char? datum))))
 
-; Stack segment:
-;  - pointer to previous stack segment (0 if base)
-;  - size of segment
-;  - continuation frames
-;  (way to detect overflow)
-;  (way to detect underflow)
-;  
-
-; Continuation frame:
-; (stored in a stack segment) 
-; - pointer to previous frame (0 if base)
-; - previous instruction register
-; - arguments
-;
-
-; Registers
-(define cc-reg      'RCC)
-(define env-reg     'RENV)
-(define i-reg       'RIP)
-(define data-reg    'RDATA)
-(define sp-reg      'RSP)
-(define ss-reg      'RSS)
-(define res-reg     'RRET)
-(define t0-reg      'R0)
-(define t1-reg      'R1)
-
-; offsets
-(define word-size                 8)
-(define stack-segment-size        1024)
-(define cont-frame-args-offset    word-size)
-
-(define closure-arity-offset      word-size)
-(define closure-env-offset        (* 2 word-size))
-(define closure-code-offset       (* 3 word-size))
-
 ;
 ; Assembler
 ;
@@ -118,7 +85,7 @@
             [(eq? (first instr) 'literal)
              ; `(literal <n>)` =>
              ; Load <n>th literal into `RRES`
-             (list (list 'load res-reg data-reg (second instr)))]
+             (list (list 'load-literal RES-REG (second instr)))]
             [(eq? (first instr) 'save-continuation)
              ; `(save-continuation <label>)` =>
              ; TODO
@@ -128,8 +95,8 @@
              ; load `RRES` at `RSP`
              ; decrement `RSP` by word
              (list
-               (list 'sub sp-reg sp-reg word-size)
-               (list 'store res-reg sp-reg (- word-size)))]
+               (list 'sub SP-REG SP-REG WORD-SIZE)
+               (list 'store RES-REG SP-REG (- WORD-SIZE)))]
             [(eq? (first instr) 'apply)
              (define jmp-label (make-label!))
              (define exit-label (make-label!))
@@ -144,36 +111,43 @@
              ;   Save the environment register
              ;   Load the closure environment
              ;   Jump to the start of the code
+            ;  (list
+            ;    (list 'branch 'closure RES-REG jmp-label)
+            ;    ;; PRIMITIVE
+            ;    (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
+            ;    (list 'sub T1-REG T0-REG SP-REG)
+            ;    (list 'c-call RES-REG T0-REG T1-REG)
+            ;    (list 'branch 'always exit-label)
+            ;    ;; CLOSURE
+            ;    (list 'label jmp-label)
+            ;    (list 'sub SP-REG SP-REG WORD-SIZE)
+            ;    (list 'store ENV-REG SP-REG (- WORD-SIZE))
+            ;    (list 'load ENV-REG RES-REG CLOSURE-ENV-OFFSET)
+            ;    (list 'load RES-REG RES-REG CLOSURE-CODE-OFFSET)
+            ;    (list 'call)
+            ;    (list 'load ENV-REG SP-REG (- WORD-SIZE))
+            ;    (list 'add SP-REG SP-REG WORD-SIZE)
+            ;    (list 'label exit-label))]
+
              (list
-               (list 'branch 'closure res-reg jmp-label)
-               ;; PRIMITIVE
-               (list 'sub t0-reg cc-reg cont-frame-args-offset)
-               (list 'sub t1-reg t0-reg sp-reg)
-               (list 'c-call res-reg t0-reg t1-reg)
-               (list 'branch 'always exit-label)
-               ;; CLOSURE
-               (list 'label jmp-label)
-               (list 'sub sp-reg sp-reg word-size)
-               (list 'store env-reg sp-reg (- word-size))
-               (list 'load env-reg res-reg closure-env-offset)
-               (list 'load res-reg res-reg closure-code-offset)
-               (list 'call)
-               (list 'load env-reg sp-reg (- word-size))
-               (list 'add sp-reg sp-reg word-size)
-               (list 'label exit-label))]
+               (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
+               (list 'sub T1-REG T0-REG SP-REG)
+               (list 'c-call RES-REG T0-REG T1-REG)
+               (list 'branch 'always exit-label))]
+
             [(eq? (first instr) 'lookup)
              ; `(lookup <name>)`
              ; Load <n>th literal into `ARG1` and perform a lookup
              (list
-               (list 'load t0-reg data-reg (second instr))
-               (list 'c-call "env_lookup_var" env-reg t0-reg))]
+               (list 'load-literal T0-REG (second instr))
+               (list 'c-call "env_lookup_var" ENV-REG T0-REG))]
             [(eq? (first instr) 'label)
              ; `(label <label>)` =>
              ; nothing to do
              (list instr)]))
          (append seq (loop (cdr instrs)))])))
   
-  (append arg-instrs instrs*))
+  (assemble/x86-64 (append arg-instrs instrs*)))
 
 ;
 ; Flatten
@@ -311,9 +285,13 @@
   (display ">") (newline)
 
   ; assemble procedures
-  (define assembled (map (lambda (p) (assemble/procedure p register-label!)) procedures))
-  (for-each (lambda (is) (write is) (newline)) assembled)
-
+  (define assembled
+    (map
+      (lambda (p)
+        (define as (assemble/procedure p register-label!))
+        (write as) (newline)
+        as)
+      procedures))
 
   (void))
 

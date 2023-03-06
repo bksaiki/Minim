@@ -1,0 +1,51 @@
+;;;
+;;; common compiler utilities
+;;;
+
+(import "../base.min")
+(export CC-REG
+        ENV-REG
+        SP-REG
+        SS-REG
+        RES-REG
+        T0-REG
+        T1-REG
+
+        WORD-SIZE
+        STACK-SEGMENT-SIZE
+        CONT-FRAME-ARGS-OFFSET
+
+        CLOSURE-ARITY-OFFSET
+        CLOSURE-ENV-OFFSET
+        CLOSURE-CODE-OFFSET)
+
+; Stack segment:
+;  - pointer to previous stack segment (0 if base)
+;  - size of segment
+;  - continuation frames
+;  (way to detect overflow)
+;  (way to detect underflow)  
+
+; Continuation frame:
+; (stored in a stack segment) 
+; - pointer to previous frame (0 if base)
+; - previous instruction register
+; - arguments
+
+; Registers
+(define CC-REG      'RCC)
+(define SP-REG      'RSP)
+(define ENV-REG     'RENV)
+(define SS-REG      'RSS)
+(define RES-REG     'RRET)
+(define T0-REG      'R0)
+(define T1-REG      'R1)
+
+; offsets
+(define WORD-SIZE                 8)
+(define STACK-SEGMENT-SIZE        1024)
+(define CONT-FRAME-ARGS-OFFSET    WORD-SIZE)
+
+(define CLOSURE-ARITY-OFFSET      WORD-SIZE)
+(define CLOSURE-ENV-OFFSET        (* 2 WORD-SIZE))
+(define CLOSURE-CODE-OFFSET       (* 3 WORD-SIZE))
