@@ -128,18 +128,19 @@ minim_object *number_eq_proc(int argc, minim_object **args) {
 
 minim_object *number_ge_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    long x0;
+    long xi;
     int i;
 
     if (!minim_is_fixnum(args[0]))
         bad_type_exn(">=", "number?", args[0]);
-    x0 = minim_fixnum(args[0]);
+    xi = minim_fixnum(args[0]);
 
     for (i = 1; i < argc; ++i) {
         if (!minim_is_fixnum(args[i]))
             bad_type_exn(">=", "number?", args[i]);
-        if (x0 < minim_fixnum(args[i]))
+        if (xi < minim_fixnum(args[i]))
             return minim_false;
+        xi = minim_fixnum(args[i]);
     }
 
     return minim_true;
@@ -147,18 +148,19 @@ minim_object *number_ge_proc(int argc, minim_object **args) {
 
 minim_object *number_le_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    long x0;
+    long xi;
     int i;
 
     if (!minim_is_fixnum(args[0]))
         bad_type_exn("<=", "number?", args[0]);
-    x0 = minim_fixnum(args[0]);
+    xi = minim_fixnum(args[0]);
 
     for (i = 1; i < argc; ++i) {
         if (!minim_is_fixnum(args[i]))
             bad_type_exn("<=", "number?", args[i]);
-        if (x0 > minim_fixnum(args[i]))
+        if (xi > minim_fixnum(args[i]))
             return minim_false;
+        xi = minim_fixnum(args[i]);
     }
 
     return minim_true;
@@ -166,18 +168,19 @@ minim_object *number_le_proc(int argc, minim_object **args) {
 
 minim_object *number_gt_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    long x0;
+    long xi;
     int i;
 
     if (!minim_is_fixnum(args[0]))
         bad_type_exn(">", "number?", args[0]);
-    x0 = minim_fixnum(args[0]);
+    xi = minim_fixnum(args[0]);
 
     for (i = 1; i < argc; ++i) {
         if (!minim_is_fixnum(args[i]))
             bad_type_exn(">", "number?", args[i]);
-        if (x0 <= minim_fixnum(args[i]))
+        if (xi <= minim_fixnum(args[i]))
             return minim_false;
+        xi = minim_fixnum(args[i]);
     }
 
     return minim_true;
@@ -185,18 +188,19 @@ minim_object *number_gt_proc(int argc, minim_object **args) {
 
 minim_object *number_lt_proc(int argc, minim_object **args) { 
     // (-> number number number ... boolean)
-    long x0;
+    long xi;
     int i;
 
     if (!minim_is_fixnum(args[0]))
         bad_type_exn("<", "number?", args[0]);
-    x0 = minim_fixnum(args[0]);
+    xi = minim_fixnum(args[0]);
 
     for (i = 1; i < argc; ++i) {
         if (!minim_is_fixnum(args[i]))
             bad_type_exn("<", "number?", args[i]);
-        if (x0 >= minim_fixnum(args[i]))
+        if (xi >= minim_fixnum(args[i]))
             return minim_false;
+        xi = minim_fixnum(args[i]);
     }
 
     return minim_true;

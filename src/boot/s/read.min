@@ -46,8 +46,10 @@
       (not (delimeter? c)))
 
     (define (digit? c)
-      (and (<= (char->integer #\0) (char->integer c))
-           (<= (char->integer c) (char->integer #\9))))
+      (define 0-char (char->integer #\0))
+      (define 9-char (char->integer #\9))
+      (define i (char->integer c))
+      (<= 0-char i 9-char))
 
     (define (digit-prefix? c)
       (or (digit? c)
