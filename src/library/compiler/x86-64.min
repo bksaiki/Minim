@@ -80,6 +80,13 @@
   (define rex (rex-prefix #t #f #f b))
   (cons rex (cons (encode/io #xb8 reg) imm-bits)))
 
+; mov <dst> <sec>
+(define (instr/load dst src)
+  (define-values (r reg) (register/code dst))
+  (define-values (b r/m) (register/code src))
+  (define rex (rex-prefix #t r #f b))
+  (list rex #x89 (encode/modrm 3 reg r/m)))
+
 ; push <src>
 (define (instr/push src)
   (define-values (b reg) (register/code src))
@@ -87,11 +94,11 @@
   (define io (encode/io #x50 reg))
   (if b (list rex io) (list io)))
 
-; mov <dst> <imm8>
-; (define (instr/sub-imm8 dst imm)
-;   (define-values (b reg) (register/code dst))
-;   (define rex (rex-prefix #t #f #f b))
-;   (list rex #x83 (encode/io #xe8 reg) imm))
+; sub <dst> <imm8>
+(define (instr/sub-imm8 dst imm)
+  (define-values (b reg) (register/code dst))
+  (define rex (rex-prefix #t #f #f b))
+  (list rex #x83 (encode/io #xe8 reg) imm))
 
 (define (assemble/x86-64 instrs)
   (define links '())
@@ -115,6 +122,32 @@
               (list
                 (instr/load-imm64 RES-REG 0)
                 (instr/deref RES-REG RES-REG))]
+             [(eq? (first instr) 'sub)
+              (cond
+                [(<= 0 (fourth instr) 255)
+                 (cond
+                   [(eq? (second instr) (third instr))
+                    ; x64-style
+                    (list (instr/sub-imm8 (second instr) (fourth instr)))]
+                   [else
+                    ; ARM-style
+                    ;  mov <dst> to <src>
+                    ;  perform x64-style on <dst>
+                    (list
+                      (instr/load (second instr) (third instr))
+                      (instr/sub-imm8 (second instr) (fourth instr)))])]
+                [else
+                 (error 'assemble/x86-64 "sub: operand size unimplemented" (fourth instr))])]
+             [(eq? (first instr) 'c-call)
+              ; function call
+              (cond
+                [(string? (second instr))
+                 ; link required:
+                 ;  call rax
+                 (list (list #xff #xd0))]
+                [else
+                 ; pointer provided (RES-REG)
+                 (void)])]
              [(eq? (first instr) 'push)
               ; push <src>
               (list (instr/push (second instr)))]
