@@ -45,8 +45,16 @@
       (not (delimeter? c)))
 
     (define (digit? c)
-      (and (<= (char->integer #\0) (char->integer c))
-           (<= (char->integer c) (char->integer #\9))))
+      (define 0-char (char->integer #\0))
+      (define 9-char (char->integer #\9))
+      (define i (char->integer c))
+      (<= 0-char i 9-char))
+
+    (define (hex-digit? c)
+      (define i (char->integer c))
+      (or (<= (char->integer #\0) i (char->integer #\9))
+          (<= (char->integer #\a) i (char->integer #\f))
+          (<= (char->integer #\A) i (char->integer #\F))))
 
     (define (digit-prefix? c)
       (or (digit? c)
@@ -199,11 +207,11 @@
 
     ; character reader
     (define (read-character)
-      (define c (read-char p))
+      (define c (read-char p))  
       (if (eof-object? c)
           (error 'read "incomplete character literal")
           (void))
-
+  
       ; check for special values
       (cond
         [(eq? c #\s)
@@ -228,29 +236,89 @@
          (assert-delimeter! (peek-char p))
          c]))
 
-    ; number reader
+    ; decimal number reader
     (define (read-number c)
+      ; if we encounter a non-digit, the token is a symbol
+      ; so we need to track characters that we read
+      (define chars '())
+
       ; optional sign
-      (define num 0)
       (define sign
         (cond
           [(eq? c #\-)
            (read-char p)
+           (set! chars (cons c chars))
            -1]
           [(eq? c #\+)
            (read-char p)
+           (set! chars (cons c chars))
            1]
           [else
            1]))
 
+      (define 0-char (char->integer #\0))
+
       ; magnitude
+      (define num 0)
       (let read-digit! ()
         (define c (peek-char p))
+        (set! chars (cons c chars))
         (cond
           [(digit? c)
            (read-char p)
-           (set! num (+ (* 10 num) (- (char->integer c) (char->integer #\0))))
+           (set! num (+ (* 10 num) (- (char->integer c) 0-char)))
            (read-digit!)]
+          [(symbol-char? c)
+           (read-char p)
+           (read-symbol chars)]
+          [else
+           (assert-delimeter! (peek-char p))
+           (* num sign)])))
+
+    ; hexidecimal number reader
+    (define (read-hex-number c)
+      ; if we encounter a non-digit, the token is a symbol
+      ; so we need to track characters that we read
+      (define chars '())
+
+      ; optional sign
+      (define sign
+        (cond
+          [(eq? c #\-)
+           (read-char p)
+           (set! chars (cons c chars))
+           -1]
+          [(eq? c #\+)
+           (read-char p)
+           (set! chars (cons c chars))
+           1]
+          [else
+           1]))
+
+      (define 0-char (char->integer #\0))
+      (define a-char (char->integer #\a))
+      (define A-char (char->integer #\A))
+
+      ; magnitude
+      (define num 0)
+      (let read-digit! ()
+        (define c (peek-char p))
+        (set! chars (cons c chars))
+        (cond
+          [(hex-digit? c)
+           (read-char p)
+           (define i (char->integer c))
+           (cond
+             [(digit? c)
+              (set! num (+ (* 16 num) (- i 0-char)))]
+             [(>= i a-char)
+              (set! num (+ (* 16 num) (- i a-char)))]
+             [else
+              (set! num (+ (* 16 num) (- i A-char)))])
+           (read-digit!)]
+          [(symbol-char? c)
+           (read-char p)
+           (read-symbol chars)]
           [else
            (assert-delimeter! (peek-char p))
            (* num sign)])))
@@ -285,6 +353,17 @@
           [else
            (read-char p)
            (loop (cons c acc))])))
+
+    ;; symbol reader
+    (define (read-symbol acc)
+      (let loop ([acc acc])
+        (define c (peek-char p))
+        (cond
+          [(symbol-char? c)
+           (loop (cons (read-char p) acc))]
+          [else
+           (assert-delimeter! (peek-char p))
+           (string->symbol (apply string (reverse acc)))])))
 
     ;; Main loop
 
@@ -321,6 +400,10 @@
             ; vector
             (read-char p)
             (datum->syntax (read-vector))]
+           [(eq? c #\x)
+            ; hex number
+            (read-char p)
+            (datum->syntax (read-hex-number (peek-char p)))]
            [(eq? c #\;)
             ; datum comment
             (read-char p)
@@ -357,15 +440,7 @@
          (datum->syntax (list 'quote (read-loop)))]
         [(symbol-char? c)
          ; symbol
-         (define (read-symbol acc)
-           (define c (peek-char p))
-           (if (symbol-char? c)
-               (read-symbol (cons (read-char p) acc))
-               (reverse acc)))
-
-         (define sym-chars (read-symbol '()))
-         (assert-delimeter! (peek-char p))
-         (datum->syntax (string->symbol (apply string sym-chars)))]
+         (datum->syntax (read-symbol '()))]
         [else
          (error 'read "unexpected input:" c)]))
 
