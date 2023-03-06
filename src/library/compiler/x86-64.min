@@ -135,6 +135,8 @@
            [(procedure)
             (define addr (assoc 'procedure info))
             (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
+           [(runtime)
+            (decompose/imm64 (runtime-address (second type)))]
            [else
             (error 'link/x86-64 "unknown link type" type)])]
         [else

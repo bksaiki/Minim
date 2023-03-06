@@ -107,3 +107,20 @@ minim_object *reinstall_proc_bundle_proc(int argc, minim_object **args) {
 
     return minim_void;
 }
+
+minim_object *runtime_address_proc(int argc, minim_object **args) {
+    char *str;
+
+    if (!minim_is_string(args[0]))
+        bad_type_exn("runtime-address", "expected a string", args[0]);
+
+    str = minim_string(args[0]);
+    if (strcmp(str, "env_set_var") == 0)
+        return make_fixnum((long) env_set_var);
+    else if (strcmp(str, "env_lookup_var") == 0)
+        return make_fixnum((long) env_lookup_var);
+    
+    fprintf(stderr, "runtime-address: unknown runtime name\n");
+    fprintf(stderr, " name: \"%s\"\n", str);
+    exit(1);
+}
