@@ -39,6 +39,27 @@ static char *_get_file_path(const char *rel_path) {
 #endif
 }
 
+void *alloc_page(size_t size)
+{
+    void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == ((void*) -1)) {
+        perror("mmap() failed to allocate a page of memory");
+        return NULL;
+    }
+
+    return ptr;
+}
+
+int make_page_executable(void* page, size_t size)
+{
+    if (mprotect(page, size, PROT_READ | PROT_EXEC) == -1) {
+        perror("mprotect() failed to set page to executable");
+        return -1;
+    }
+
+    return 0;
+}
+
 void set_current_dir(const char *str) {
     if (_set_current_dir(str) != 0) {
         fprintf(stderr, "could not set current directory: %s\n", str);

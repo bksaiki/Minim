@@ -462,6 +462,9 @@ char *get_file_dir(const char *realpath);
 char* get_current_dir();
 void set_current_dir(const char *str);
 
+void *alloc_page(size_t size);
+int make_page_executable(void *page, size_t size);
+
 minim_object *load_file(const char *fname);
 
 NORETURN void minim_shutdown(int code);
