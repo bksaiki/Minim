@@ -81,21 +81,21 @@
         [else
          (define instr (first instrs))
          (define seq
-           (cond
-            [(eq? (first instr) 'literal)
+           (case (first instr)
+            [(literal)
              ; `(literal <n>)` =>
              ; Load <n>th literal into `RRES`
              (list (list 'load-literal RES-REG (second instr)))]
-            [(eq? (first instr) 'save-continuation)
+            [(save-continuation)
              ; `(save-continuation <label>)` =>
              ; TODO
              '()]
-            [(eq? (first instr) 'push)
+            [(push)
              ; `(push)` =>
              ; load `RRES` at `RSP`
              ; decrement `RSP` by word
              (list  (list 'push RES-REG))]
-            [(eq? (first instr) 'apply)
+            [(apply)
              ; `(apply)` =>
              ; if PRIMITIVE:
              ;   Set arg array pointer to `arg1`
@@ -135,25 +135,25 @@
                (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
                (list 'sub T1-REG T0-REG SP-REG)
                (list 'pop T1-REG))]
-            [(eq? (first instr) 'lookup)
+            [(lookup)
              ; `(lookup <name>)` =>
              ; Load <n>th literal into `ARG1` and perform a lookup
              (list
                (list 'load-literal T0-REG (second instr))
                (list 'c-call "env_lookup_var" ENV-REG T0-REG))]
-            [(eq? (first instr) 'closure)
+            [(closure)
              ; `(closure <idx>)` =>
              ; create a closure using the current environment
              (list
                (list 'load-procedure T0-REG (second instr))
                (list 'c-call "env_make_closure" ENV-REG T0-REG))]
-            [(eq? (first instr) 'bind)
+            [(bind)
              ; `(bind <n>`) =>
              ; binds <n>th literal (symbol) to `RREG` in the current environment
              (list
                (list 'load-literal T0-REG (second instr))
                (list 'c-call "env_set_var" ENV-REG T0-REG RES-REG))]
-            [(eq? (first instr) 'bind-check)
+            [(bind-check)
              ; `(bind-check <n>)` =>
              ; checks that the result has the right number of values
              ; and panic if the check fails:
@@ -166,7 +166,7 @@
 
              ; TODO: currently unchecked
              (list)]
-            [(eq? (first instr) 'label)
+            [(label)
              ; `(label <label>)` =>
              ; nothing to do
              (list instr)]
@@ -345,7 +345,17 @@
   (reinstall-procedure-bundle! template-address code)
   (display " reinstalled procedures at ") (write template-address) (newline)
 
-  (void))
+  ; report
+  (define report
+    (list
+      (cons 'arch 'x86-64)
+      (cons 'os 'linux-unknown)
+      (cons 'top-level top-levels)
+      (cons 'literals literals)
+      (cons 'assembled assembled)
+      (cons 'links links)))
+
+  report)
 
 ; entry point
 (define (main args)
