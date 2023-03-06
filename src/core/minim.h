@@ -532,6 +532,7 @@ DEFINE_PRIM_PROC(set_cdr);
 // lists
 DEFINE_PRIM_PROC(is_list);
 DEFINE_PRIM_PROC(list);
+DEFINE_PRIM_PROC(make_list);
 DEFINE_PRIM_PROC(length);
 DEFINE_PRIM_PROC(reverse);
 DEFINE_PRIM_PROC(append);

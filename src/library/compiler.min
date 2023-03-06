@@ -300,11 +300,11 @@
   ; link
   (define link-info (list (cons 'literal literal-address)))
   (define linked (map (lambda (p l) (link/x86-64 p l link-info)) procedures links))
-  (display linked) (newline)
+  (define code (map (lambda (ss) (apply append ss)) linked))
 
   ; install
-  (display " installed literals at ") (write literal-address) (newline)
-  (define literal-address (install-procedure-bundle! linked))
+  (define template-address (install-procedure-bundle! code))
+  (display " installed literals at ") (write template-address) (newline)
 
   (void))
 

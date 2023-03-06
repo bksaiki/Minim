@@ -5,6 +5,16 @@
 (import "../base.min" "common.min")
 (export assemble/x86-64 link/x86-64)
 
+;
+; Constants
+;
+
+(define ALIGNMENT 16)
+
+;
+; Utilities
+;
+
 ; Creates a positive integer with the corresponding bits
 (define (bits . xs)
   (let loop ([xs xs] [r 0])
@@ -63,6 +73,10 @@
     [(r13)   (values #t 5)]
     [(r14)   (values #t 6)]
     [(r15)   (values #t 7)]))
+
+;
+; Instruction encoding
+;
 
 ; mov <dst> [<src>]
 (define (instr/deref dst src)
@@ -130,13 +144,22 @@
 ; Assembler
 ;
 
+(define (padding-length instrs)
+  (let loop ([instrs instrs] [len 0])
+    (cond
+      [(null? instrs)
+       (define r16 (remainder len 16))
+       (if (= r16 0) 0 (- 16 r16))]
+      [else (loop (cdr instrs) (+ len (length (car instrs))))])))
+
 (define (assemble/x86-64 instrs)
   (define links '())
   (define bytes
     (let loop ([instrs instrs] [sequences '()])
       (cond
         [(null? instrs)
-         (reverse sequences)]
+         (define padding (make-list (padding-length sequences) #x90))
+         (reverse (cons padding sequences))]
         [(eq? (first (first instrs)) 'label)
          ; TODO
          (loop (cdr instrs) sequences)]
