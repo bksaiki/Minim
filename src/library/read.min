@@ -312,9 +312,9 @@
              [(digit? c)
               (set! num (+ (* 16 num) (- i 0-char)))]
              [(>= i a-char)
-              (set! num (+ (* 16 num) (- i a-char)))]
+              (set! num (+ (* 16 num) (+ 10 (- i a-char))))]
              [else
-              (set! num (+ (* 16 num) (- i A-char)))])
+              (set! num (+ (* 16 num) (+ 10 (- i A-char))))])
            (read-digit!)]
           [(symbol-char? c)
            (read-char p)

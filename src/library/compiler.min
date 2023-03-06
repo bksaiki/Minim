@@ -94,12 +94,8 @@
              ; `(push)` =>
              ; load `RRES` at `RSP`
              ; decrement `RSP` by word
-             (list
-               (list 'sub SP-REG SP-REG WORD-SIZE)
-               (list 'store RES-REG SP-REG (- WORD-SIZE)))]
+             (list  (list 'push RES-REG))]
             [(eq? (first instr) 'apply)
-             (define jmp-label (make-label!))
-             (define exit-label (make-label!))
              ; `(apply)` =>
              ; if PRIMITIVE:
              ;   Set arg array pointer to `arg1`
@@ -111,6 +107,9 @@
              ;   Save the environment register
              ;   Load the closure environment
              ;   Jump to the start of the code
+
+            ;  (define jmp-label (make-label!))
+            ;  (define exit-label (make-label!))
             ;  (list
             ;    (list 'branch 'closure RES-REG jmp-label)
             ;    ;; PRIMITIVE
@@ -133,8 +132,9 @@
                (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
                (list 'sub T1-REG T0-REG SP-REG)
                (list 'c-call RES-REG T0-REG T1-REG)
-               (list 'branch 'always exit-label))]
-
+               (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
+               (list 'sub T1-REG T0-REG SP-REG)
+               (list 'pop T1-REG))]
             [(eq? (first instr) 'lookup)
              ; `(lookup <name>)`
              ; Load <n>th literal into `ARG1` and perform a lookup
@@ -288,7 +288,7 @@
   (define assembled
     (map
       (lambda (p)
-        (define as (assemble/procedure p register-label!))
+        (define-values (as _) (assemble/procedure p register-label!))
         (write as) (newline)
         as)
       procedures))

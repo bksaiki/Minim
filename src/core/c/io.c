@@ -317,8 +317,8 @@ read_hex:
         // magnitude
         while (isxdigit(c = getc(in))) {
             buffer[i++] = c;
-            if ('A' <= c && c <= 'F')       num = (num * 16) + (c - 'A');
-            else if ('a' <= c && c <= 'f')  num = (num * 16) + (c - 'a');
+            if ('A' <= c && c <= 'F')       num = (num * 16) + (10 + (c - 'A'));
+            else if ('a' <= c && c <= 'f')  num = (num * 16) + (10 + (c - 'a'));
             else                            num = (num * 16) + (c - '0');
         }
 

@@ -5,33 +5,123 @@
 (import "../base.min" "common.min")
 (export assemble/x86-64)
 
-(define (translate-register reg)
-  (case reg
-    [(CC-REG)   'rbp]
-    [(SP-REG)   'rsp]
-    [(ENV-REG)  'rdi]
-    [(SS-REG)   'r12]
-    [(RES-REG)  'rax]
-    [(T0-REG)   'r10]
-    [(T1-REG)   'r11]
-    [else       (error 'translate-register "unknown register" reg)]))
+; Creates a positive integer with the corresponding bits
+(define (bits . xs)
+  (let loop ([xs xs] [r 0])
+    (cond [(null? xs) r]
+          [else (loop (cdr xs) (+ (* 2 r) (if (car xs) 1 0)))])))
+
+(define (decompose/imm64 i)
+  (let loop ([i i] [k 0] [bits '()])
+    (cond
+      [(= k 8)
+       (reverse bits)]
+      [else
+       (define bit (remainder i 256))
+       ; TODO: (loop (floor (/ i 256)) (+ k 1) (cons bit bits))
+       (loop (/ i 256) (+ k 1) (cons bit bits))])))
+
+; Creates the REX prefix of an instruction
+(define (rex-prefix w r x b)
+  (+ 64 (bits w r x b)))
+
+; Creates a MODR/M byte of an instruction
+(define (encode/modrm mod reg r/m)
+  (+ (* 32 mod) (* 8 reg) r/m))
+
+(define (encode/io op reg)
+  (+ op reg))
+
+(define (register/translate reg)
+  (cond
+    [(eq? reg CC-REG)   'rbp]
+    [(eq? reg SP-REG)   'rsp]
+    [(eq? reg ENV-REG)  'rdi]
+    [(eq? reg SS-REG)   'r12]
+    [(eq? reg RES-REG)  'rax]
+    [(eq? reg T0-REG)   'r10]
+    [(eq? reg T1-REG)   'r11]
+    [else       (error 'register/translate "unknown register" reg)]))
+
+; Register -> X.RRR
+(define (register/code reg)
+  (case (register/translate reg)
+    [(rax)   (values #f 0)]
+    [(rcx)   (values #f 1)]
+    [(rdx)   (values #f 2)]
+    [(rbx)   (values #f 3)]
+    [(rsp)   (values #f 4)]
+    [(rbp)   (values #f 5)]
+    [(rsi)   (values #f 6)]
+    [(rdi)   (values #f 7)]
+
+    [(r8)    (values #t 0)]
+    [(r9)    (values #t 1)]
+    [(r10)   (values #t 2)]
+    [(r11)   (values #t 3)]
+    [(r12)   (values #t 4)]
+    [(r13)   (values #t 5)]
+    [(r14)   (values #t 6)]
+    [(r15)   (values #t 7)]))
+
+; mov <dst> [<src>]
+(define (instr/deref dst src)
+  (define-values (r reg) (register/code dst))
+  (define-values (b r/m) (register/code src))
+  (define rex (rex-prefix #t r #f b))
+  (if (or r b)
+      (list rex #x8b (encode/modrm 0 reg r/m) #x24)
+      (list rex #x8b (encode/modrm 0 reg r/m))))
+
+; mov <dst> <imm64>
+(define (instr/load-imm64 dst imm)
+  (define-values (b reg) (register/code dst))
+  (define imm-bits (decompose/imm64 imm))
+  (define rex (rex-prefix #t #f #f b))
+  (cons rex (cons (encode/io #xb8 reg) imm-bits)))
+
+; push <src>
+(define (instr/push src)
+  (define-values (b reg) (register/code src))
+  (define rex (rex-prefix #f #f #f b))
+  (define io (encode/io #x50 reg))
+  (if b (list rex io) (list io)))
+
+; mov <dst> <imm8>
+; (define (instr/sub-imm8 dst imm)
+;   (define-values (b reg) (register/code dst))
+;   (define rex (rex-prefix #t #f #f b))
+;   (list rex #x83 (encode/io #xe8 reg) imm))
 
 (define (assemble/x86-64 instrs)
-  (let loop ([instrs instrs] [sequences '()])
-    (cond
-      [(null? instrs)
-       (reverse sequences)]
-      [(eq? (first (first instrs)) 'label)
-       ; TODO
-       (loop (cdr instrs) sequences)]
-      [else
-       (define instr (first instrs))
-       (define seq
-         (cond
-           [(eq? (first instr) 'load-literal)
-            (void)]
-           [(eq? (first instr) 'return)
-            ; 198
-            (void)]
-           [else (error 'assemble/x86-64 "unimplemented" instr)]))
-       (loop (cdr instrs) (cons seq sequences))])))
+  (define links '())
+  (define bytes
+    (let loop ([instrs instrs] [sequences '()])
+      (cond
+        [(null? instrs)
+         (reverse sequences)]
+        [(eq? (first (first instrs)) 'label)
+         ; TODO
+         (loop (cdr instrs) sequences)]
+        [else
+         (define instr (first instrs))
+         (define seqs
+           (cond
+             [(eq? (first instr) 'load-literal)
+              ; mov rax, [literal address] => 48 b8 [xx]^8
+              ; mov rax [rax] => 48 8b 00
+              (define entry (cons (list 'literal (second instr)) (list (length sequences) 2)))
+              (set! links (cons entry links))
+              (list
+                (instr/load-imm64 RES-REG 0)
+                (instr/deref RES-REG RES-REG))]
+             [(eq? (first instr) 'push)
+              ; push <src>
+              (list (instr/push (second instr)))]
+             [(eq? (first instr) 'return)
+              ; ret => c3
+              '((#xc3))]
+             [else (error 'assemble/x86-64 "unimplemented" instr)]))
+         (loop (cdr instrs) (append seqs sequences))])))
+
+  (values bytes links))
