@@ -640,5 +640,8 @@ DEFINE_PRIM_PROC(error);
 DEFINE_PRIM_PROC(current_directory);
 DEFINE_PRIM_PROC(exit);
 DEFINE_PRIM_PROC(command_line);
+// Memory
+DEFINE_PRIM_PROC(install_literal_bundle);
+DEFINE_PRIM_PROC(install_proc_bundle);
 
 #endif  // _MINIM_H_

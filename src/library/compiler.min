@@ -277,21 +277,34 @@
   (set! literals (reverse literals))
 
   ; debug print report
-  (display "<intermediate-report") (newline)
   (display " top-levels: ") (write top-levels) (newline)
   (display " procedures: ") (write procedures) (newline)
   (display " literals  : ") (write literals) (newline)
   (display " body      : ") (write module-body) (newline)
-  (display ">") (newline)
 
   ; assemble procedures
-  (define assembled
+  (define assembly-info
     (map
       (lambda (p)
-        (define-values (as _) (assemble/procedure p register-label!))
-        (write as) (newline)
-        as)
+        (define-values (as link) (assemble/procedure p register-label!))
+        (cons as link))
       procedures))
+
+  (define procedures (map car assembly-info))
+  (define links (map cdr assembly-info))
+
+  ; install literals
+  (define literal-address (install-literal-bundle! literals))
+  (display " installed literals at ") (write literal-address) (newline)
+
+  ; link
+  (define link-info (list (cons 'literal literal-address)))
+  (define linked (map (lambda (p l) (link/x86-64 p l link-info)) procedures links))
+  (display linked) (newline)
+
+  ; install
+  (display " installed literals at ") (write literal-address) (newline)
+  (define literal-address (install-procedure-bundle! linked))
 
   (void))
 

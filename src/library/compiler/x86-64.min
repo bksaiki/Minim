@@ -3,7 +3,7 @@
 ;;;
 
 (import "../base.min" "common.min")
-(export assemble/x86-64)
+(export assemble/x86-64 link/x86-64)
 
 ; Creates a positive integer with the corresponding bits
 (define (bits . xs)
@@ -100,6 +100,36 @@
   (define rex (rex-prefix #t #f #f b))
   (list rex #x83 (encode/io #xe8 reg) imm))
 
+;
+; Link
+;
+
+(define (link/x86-64 proc links info)
+  (define (replace proc link)
+    (define type (car link))
+    (define location (cdr link))
+    (let loop ([proc proc] [idx (car location)] [next (cdr location)])
+      (cond
+        [(> idx 0)
+         (cons (car proc) (loop (cdr proc) (- idx 1) next))]
+        [(null? next)
+         (cond
+           [(eq? (first type) 'literal)
+            (define addr (assoc 'literal info))
+            (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
+           [else
+            (error 'link/procedure "unknown link type" type)])]
+        [else
+         (cons (loop (car proc) (car next) (cdr next)) (cdr proc))])))
+
+  (let loop ([proc proc] [links links])
+    (cond [(null? links) proc]
+          [else (loop (replace proc (car links)) (cdr links))])))
+
+;
+; Assembler
+;
+
 (define (assemble/x86-64 instrs)
   (define links '())
   (define bytes
@@ -117,11 +147,12 @@
              [(eq? (first instr) 'load-literal)
               ; mov rax, [literal address] => 48 b8 [xx]^8
               ; mov rax [rax] => 48 8b 00
-              (define entry (cons (list 'literal (second instr)) (list (length sequences) 2)))
+              (define dst (second instr))
+              (define entry (cons (list 'literal (third instr)) (list (length sequences) 2)))
               (set! links (cons entry links))
               (list
-                (instr/load-imm64 RES-REG 0)
-                (instr/deref RES-REG RES-REG))]
+                (instr/load-imm64 dst 0)
+                (instr/deref dst dst))]
              [(eq? (first instr) 'sub)
               (cond
                 [(<= 0 (fourth instr) 255)
@@ -155,6 +186,6 @@
               ; ret => c3
               '((#xc3))]
              [else (error 'assemble/x86-64 "unimplemented" instr)]))
-         (loop (cdr instrs) (append seqs sequences))])))
+         (loop (cdr instrs) (append (reverse seqs) sequences))])))
 
   (values bytes links))
