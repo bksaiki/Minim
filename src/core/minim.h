@@ -464,6 +464,7 @@ void set_current_dir(const char *str);
 
 void *alloc_page(size_t size);
 int make_page_executable(void *page, size_t size);
+int make_page_write_only(void *page, size_t size);
 
 minim_object *load_file(const char *fname);
 
@@ -647,5 +648,6 @@ DEFINE_PRIM_PROC(command_line);
 // Memory
 DEFINE_PRIM_PROC(install_literal_bundle);
 DEFINE_PRIM_PROC(install_proc_bundle);
+DEFINE_PRIM_PROC(reinstall_proc_bundle);
 
 #endif  // _MINIM_H_

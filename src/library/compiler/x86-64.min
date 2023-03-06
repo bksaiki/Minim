@@ -37,8 +37,9 @@
 
 ; Creates a MODR/M byte of an instruction
 (define (encode/modrm mod reg r/m)
-  (+ (* 32 mod) (* 8 reg) r/m))
+  (+ (* 64 mod) (* 8 reg) r/m))
 
+; Creates a IO byte of an instruction
 (define (encode/io op reg)
   (+ op reg))
 
@@ -131,8 +132,11 @@
            [(eq? (first type) 'literal)
             (define addr (assoc 'literal info))
             (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
+           [(eq? (first type) 'procedure)
+            (define addr (assoc 'procedure info))
+            (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
            [else
-            (error 'link/procedure "unknown link type" type)])]
+            (error 'link/x86-64 "unknown link type" type)])]
         [else
          (cons (loop (car proc) (car next) (cdr next)) (cdr proc))])))
 
@@ -158,8 +162,8 @@
     (let loop ([instrs instrs] [sequences '()])
       (cond
         [(null? instrs)
-         (define padding (make-list (padding-length sequences) #x90))
-         (reverse (cons padding sequences))]
+         (define padding (make-list (padding-length sequences) (list #x90)))
+         (reverse (append padding sequences))]
         [(eq? (first (first instrs)) 'label)
          ; TODO
          (loop (cdr instrs) sequences)]
@@ -168,10 +172,19 @@
          (define seqs
            (cond
              [(eq? (first instr) 'load-literal)
-              ; mov rax, [literal address] => 48 b8 [xx]^8
-              ; mov rax [rax] => 48 8b 00
+              ; mov rax, <literal address> => 48 b8 [xx]^8
+              ; mov rax, [rax] => 48 8b 00
               (define dst (second instr))
               (define entry (cons (list 'literal (third instr)) (list (length sequences) 2)))
+              (set! links (cons entry links))
+              (list
+                (instr/load-imm64 dst 0)
+                (instr/deref dst dst))]
+             [(eq? (first instr) 'load-procedure)
+              ; mov rax, <procedure address> => 48 b8 [xx]^8
+              ; mov rax, [rax] => 48 8b 00
+              (define dst (second instr))
+              (define entry (cons (list 'procedure (third instr)) (list (length sequences) 2)))
               (set! links (cons entry links))
               (list
                 (instr/load-imm64 dst 0)
@@ -201,7 +214,7 @@
                  (list (list #xff #xd0))]
                 [else
                  ; pointer provided (RES-REG)
-                 (void)])]
+                 (list (list #xff #xd0))])]
              [(eq? (first instr) 'push)
               ; push <src>
               (list (instr/push (second instr)))]

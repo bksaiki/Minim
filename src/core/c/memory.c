@@ -65,3 +65,45 @@ minim_object *install_proc_bundle_proc(int argc, minim_object **args) {
 
     return make_fixnum((long) code);
 }
+
+minim_object *reinstall_proc_bundle_proc(int argc, minim_object **args) {
+    minim_object *it, *it2;
+    char *code;
+    long size, offset;
+
+    if (!minim_is_fixnum(args[0]))
+        bad_type_exn("reinstall-procedure-bundle!", "address", args[0]);
+
+    if (!is_list(args[1]))
+        bad_type_exn("reinstall-procedure-bundle!", "list of lists of integers", args[1]);
+
+    // compute size
+    for (size = 0, it = args[1]; !minim_is_null(it); it = minim_cdr(it)) {
+        if (!is_list(minim_car(it)))
+            bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
+
+        for (it2 = minim_car(it); !minim_is_null(it2); it2 = minim_cdr(it2)) {
+            if (!minim_is_fixnum(minim_car(it2)))
+                bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
+        }
+
+        size += list_length(minim_car(it));
+    }
+
+    // mark bundle as write only
+    code = ((char *) minim_fixnum(args[0]));
+    make_page_write_only(code, size);
+
+    // overwrite bundle
+    for (offset = 0, it = args[1]; !minim_is_null(it); it = minim_cdr(it)) {
+        for (it2 = minim_car(it); !minim_is_null(it2); it2 = minim_cdr(it2)) {
+            // TODO: unsafe, need byte strings
+            code[offset++] = ((char) minim_fixnum(minim_car(it2)));
+        }
+    }
+    
+    // mark bundle as executable
+    make_page_executable(code, size);
+
+    return minim_void;
+}

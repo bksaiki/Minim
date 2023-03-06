@@ -60,6 +60,16 @@ int make_page_executable(void* page, size_t size)
     return 0;
 }
 
+int make_page_write_only(void* page, size_t size)
+{
+    if (mprotect(page, size, PROT_WRITE) == -1) {
+        perror("mprotect() failed to set page to executable");
+        return -1;
+    }
+
+    return 0;
+}
+
 void set_current_dir(const char *str) {
     if (_set_current_dir(str) != 0) {
         fprintf(stderr, "could not set current directory: %s\n", str);

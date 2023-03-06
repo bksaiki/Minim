@@ -17,8 +17,8 @@ SRCS 		:= $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY))
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
-# TESTS		:= $(shell find $(TEST_DIR) -name "*.c")
-# TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
+TESTS		:= $(shell find $(TEST_DIR) -name "*.c")
+TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
 
 CFLAGS		:= -Wall -std=c11 -O2 -g
 DEPFLAGS 	:= -MMD -MP
@@ -62,7 +62,7 @@ $(BUILD_DIR)%/.:
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
-# $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
-# 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
+$(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
+	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
 .PHONY: build clean core test

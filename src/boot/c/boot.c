@@ -219,6 +219,7 @@ void populate_env(minim_object *env) {
 
     add_procedure("install-literal-bundle!", install_literal_bundle_proc, 1, 1);
     add_procedure("install-procedure-bundle!", install_proc_bundle_proc, 1, 1);
+    add_procedure("reinstall-procedure-bundle!", reinstall_proc_bundle_proc, 2, 2);
 }
 
 minim_object *make_env() {
