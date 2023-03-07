@@ -174,8 +174,8 @@
               ; TODO:
               (list)]
              [(load-literal)
-              ; mov rax, <literal address> => 48 b8 [xx]^8
-              ; mov rax, [rax] => 48 8b 00
+              ; mov <dst>, <literal address> => 48 b8 [xx]^8
+              ; mov <dst>, [<dst>] => 48 8b 00
               (define dst (second instr))
               (define entry (cons (list 'literal (third instr)) (list (length sequences) 2)))
               (set! links (cons entry links))
@@ -183,14 +183,11 @@
                 (instr/load-imm64 dst 0)
                 (instr/deref dst dst))]
              [(load-procedure)
-              ; mov rax, <procedure address> => 48 b8 [xx]^8
-              ; mov rax, [rax] => 48 8b 00
+              ; mov <dst>, <procedure address> => 48 b8 [xx]^8
               (define dst (second instr))
               (define entry (cons (list 'procedure (third instr)) (list (length sequences) 2)))
               (set! links (cons entry links))
-              (list
-                (instr/load-imm64 dst 0)
-                (instr/deref dst dst))]
+              (list (instr/load-imm64 dst 0))]
              [(sub)
               (cond
                 [(<= 0 (fourth instr) 255)

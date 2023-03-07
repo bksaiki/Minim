@@ -221,6 +221,7 @@ void populate_env(minim_object *env) {
     add_procedure("install-procedure-bundle!", install_proc_bundle_proc, 1, 1);
     add_procedure("reinstall-procedure-bundle!", reinstall_proc_bundle_proc, 2, 2);
     add_procedure("runtime-address", runtime_address_proc, 1, 1);
+    add_procedure("enter-compiled!", enter_compiled_proc, 1, 1);
 }
 
 minim_object *make_env() {

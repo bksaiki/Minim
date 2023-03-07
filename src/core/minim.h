@@ -346,6 +346,7 @@ int minim_is_equal(minim_object *a, minim_object *b);
 
 minim_object *call_with_args(minim_object *proc, minim_object *env);
 minim_object *call_with_values(minim_object *producer, minim_object *consumer, minim_object *env);
+minim_object *call_compiled(minim_object *env, minim_object *addr);
 
 int is_list(minim_object *x);
 long list_length(minim_object *xs);
@@ -667,5 +668,6 @@ DEFINE_PRIM_PROC(install_literal_bundle);
 DEFINE_PRIM_PROC(install_proc_bundle);
 DEFINE_PRIM_PROC(reinstall_proc_bundle);
 DEFINE_PRIM_PROC(runtime_address);
+DEFINE_PRIM_PROC(enter_compiled);
 
 #endif  // _MINIM_H_

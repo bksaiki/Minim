@@ -630,6 +630,11 @@ application:
             return ormap(args[0], argc - 1, &args[1], env);
         }
 
+        // special case for `enter-compiled!
+        if (minim_prim_proc(proc) == enter_compiled_proc) {
+            return call_compiled(env, args[0]);
+        }
+
         // special case for `call-with-values`
         if (minim_prim_proc(proc) == call_with_values_proc) {
             return call_with_values(args[0], args[1], env);
@@ -976,6 +981,11 @@ application:
             // special case for `ormap`
             if (minim_prim_proc(proc) == ormap_proc) {
                 return ormap(args[0], argc - 1, &args[1], env);
+            }
+
+            // special case for `enter-compiled!
+            if (minim_prim_proc(proc) == enter_compiled_proc) {
+                return call_compiled(env, args[0]);
             }
 
             // special case for `call-with-values`

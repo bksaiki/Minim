@@ -4,6 +4,37 @@
 
 #include "../minim.h"
 
+typedef minim_object *(*entry_proc)(minim_object *env);
+
+struct _address_map_t {
+    char *name;
+    void *fn;
+};
+
+struct _address_map_t address_map[] = {
+    { "env_set_var", env_set_var },
+    { "env_lookup_var", env_lookup_var },
+    { "make_closure", make_native_closure },
+    { "", NULL }
+};
+
+//
+//  Runtime
+//
+
+minim_object *call_compiled(minim_object *env, minim_object *addr) {
+    entry_proc fn;
+
+    if (!minim_is_fixnum(addr))
+        bad_type_exn("enter-compiled!", "fixnum?", addr);
+
+    // TODO: set up stack segment
+
+    // very unsafe code is to follow
+    fn = ((entry_proc) minim_fixnum(addr));
+    return fn(env);
+}
+
 //
 //  Primitives
 //
@@ -110,19 +141,22 @@ minim_object *reinstall_proc_bundle_proc(int argc, minim_object **args) {
 
 minim_object *runtime_address_proc(int argc, minim_object **args) {
     char *str;
+    int i;
 
     if (!minim_is_string(args[0]))
         bad_type_exn("runtime-address", "expected a string", args[0]);
 
     str = minim_string(args[0]);
-    if (strcmp(str, "env_set_var") == 0)
-        return make_fixnum((long) env_set_var);
-    else if (strcmp(str, "env_lookup_var") == 0)
-        return make_fixnum((long) env_lookup_var);
-    else if (strcmp(str, "make_closure") == 0)
-        return make_fixnum((long) make_native_closure);
+    for (i = 0; address_map[i].fn != NULL; ++i) {
+        if (strcmp(str, address_map[i].name) == 0)
+            return make_fixnum((long) address_map[i].fn);
+    }
     
     fprintf(stderr, "runtime-address: unknown runtime name\n");
     fprintf(stderr, " name: \"%s\"\n", str);
     exit(1);
+}
+
+minim_object *enter_compiled_proc(int argc, minim_object **args) {
+    uncallable_prim_exn("enter-compiled!");
 }

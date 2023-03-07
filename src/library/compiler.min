@@ -253,7 +253,7 @@
          (map (lambda (i) (list 'bind i)) idxs)))]
     [else (flatten/expr expr)]))
 
-(define (compile/file path)
+(define (compile/file path enter?)
   (define top-levels '())
   (define procedures '())
   (define literals '())
@@ -265,7 +265,8 @@
     count)
 
   (define (register-procedure! pcode)
-    (define count (length procedures))
+    ;; offset for the module body
+    (define count (+ (length procedures) 1))
     (set! procedures (cons pcode procedures))
     count)
 
@@ -300,9 +301,13 @@
                               register-label!)
            (loop (cdr exprs)))])))
   
+  ; module body is a nullary function
+  (define module-body-fn
+    (make-flat-closure '() module-body))
+
   ; lists are in reverse order
   (set! top-levels (reverse top-levels))
-  (set! procedures (reverse procedures))
+  (set! procedures (cons module-body-fn (reverse procedures)))
   (set! literals (reverse literals))
 
   ; debug print report
@@ -311,10 +316,6 @@
   (display " literals  : ") (write literals) (newline)
   (display " body      : ") (write module-body) (newline)
 
-  ; module body is a nullary function
-  (define module-body-fn
-    (make-flat-closure '() module-body))
-
   ; assemble procedures
   (define assembly-info
     (map
@@ -322,7 +323,7 @@
         (define-values (as link) (assemble/procedure p register-label!))
         (display as) (newline)
         (cons as link))
-      (cons module-body-fn procedures)))
+      procedures))
 
   (define procedures (map car assembly-info))
   (define links (map cdr assembly-info))
@@ -355,6 +356,9 @@
       (cons 'assembled procedures)
       (cons 'links links)))
 
+  (when enter?
+    (enter-compiled! template-address))
+
   report)
 
 ; entry point
@@ -369,7 +373,7 @@
             name
             (build-path (current-directory) name)))
       (display "<compiling ") (write name) (display ">") (newline)
-      (compile/file path)
+      (compile/file path #t)
       (loop (cdr fnames)))))
 
 (main (command-line))
