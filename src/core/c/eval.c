@@ -5,7 +5,7 @@
 #include "../minim.h"
 
 #define SET_NAME_IF_CLOSURE(name, val) {                    \
-    if (minim_is_closure_proc(val)) {                       \
+    if (minim_is_closure(val)) {                       \
         if (minim_closure_name(val) == NULL)                \
             minim_closure_name(val) = minim_symbol(name);   \
     }                                                       \
@@ -156,7 +156,7 @@ static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
 #define check_prim_proc_arity(prim, argc)   \
     check_proc_arity(&minim_prim_arity(prim), argc, minim_prim_proc_name(prim))
 
-#define check_closure_proc_arity(prim, argc)    \
+#define check_closure_arity(prim, argc)    \
     check_proc_arity(&minim_closure_arity(prim), argc, minim_closure_name(prim))
 
 //
@@ -636,12 +636,12 @@ application:
         }
 
         return minim_prim_proc(proc)(argc, args);
-    } else if (minim_is_closure_proc(proc)) {
+    } else if (minim_is_closure(proc)) {
         minim_object *vars, *rest;
         int i, j;
 
         // check arity and extend environment
-        check_closure_proc_arity(proc, argc);
+        check_closure_arity(proc, argc);
         env = make_environment(minim_closure_env(proc));
         args = irt_call_args;
 
@@ -824,7 +824,7 @@ loop:
 
                 // lambda form
                 check_lambda(expr, &min_arity, &max_arity);
-                return make_closure_proc(minim_cadr(expr),
+                return make_closure(minim_cadr(expr),
                                         make_pair(begin_symbol, minim_cddr(expr)),
                                         env,
                                         min_arity,
@@ -984,12 +984,12 @@ application:
             }
 
             return minim_prim_proc(proc)(argc, args);
-        } else if (minim_is_closure_proc(proc)) {
+        } else if (minim_is_closure(proc)) {
             minim_object *vars, *rest;
             int i, j;
 
             // check arity and extend environment
-            check_closure_proc_arity(proc, argc);
+            check_closure_arity(proc, argc);
             env = make_environment(minim_closure_env(proc));
             args = irt_call_args;
 

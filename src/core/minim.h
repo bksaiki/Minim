@@ -89,6 +89,9 @@ typedef enum {
     MINIM_ENVIRONMENT_TYPE,
     MINIM_VALUES_TYPE,
 
+    /* Compiled types */
+    MINIM_NATIVE_CLOSURE_TYPE,
+
     /* Footer */
     MINIM_LAST_TYPE
 } minim_object_type;
@@ -145,7 +148,14 @@ typedef struct {
     minim_object *body;
     minim_object *env;
     char *name;
-} minim_closure_proc_object;
+} minim_closure_object;
+
+typedef struct {
+    minim_object_type type;
+    minim_object *env;
+    void *fn;
+    char *name;
+} minim_native_closure_object;
 
 typedef struct {
     minim_object_type type;
@@ -173,7 +183,7 @@ typedef struct {
     minim_object *depth;
 } minim_pattern_var_object;
 
-typedef struct minim_env {
+typedef struct {
     minim_object_type type;
     minim_object *prev;
     minim_object *bindings;
@@ -219,13 +229,14 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_pair(x)            (minim_same_type(x, MINIM_PAIR_TYPE))
 #define minim_is_vector(x)          (minim_same_type(x, MINIM_VECTOR_TYPE))
 #define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
-#define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
+#define minim_is_closure(x)         (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
 #define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
 #define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
 #define minim_is_env(x)             (minim_same_type(x, MINIM_ENVIRONMENT_TYPE))
 #define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
+#define minim_is_native_closure(x)  (minim_same_type(x, MINIM_NATIVE_CLOSURE_TYPE))
 
 #define minim_is_null(x)        ((x) == minim_null)
 #define minim_is_empty_vec(x)   ((x) == minim_empty_vec)
@@ -261,11 +272,11 @@ extern minim_object *quote_syntax_symbol;
 #define minim_prim_arity(x)     (((minim_prim_proc_object *) (x))->arity)
 #define minim_prim_proc(x)      (((minim_prim_proc_object *) (x))->fn)
 
-#define minim_closure_args(x)   (((minim_closure_proc_object *) (x))->args)
-#define minim_closure_body(x)   (((minim_closure_proc_object *) (x))->body)
-#define minim_closure_env(x)    (((minim_closure_proc_object *) (x))->env)
-#define minim_closure_name(x)   (((minim_closure_proc_object *) (x))->name)
-#define minim_closure_arity(x)  (((minim_closure_proc_object *) (x))->arity)
+#define minim_closure_args(x)   (((minim_closure_object *) (x))->args)
+#define minim_closure_body(x)   (((minim_closure_object *) (x))->body)
+#define minim_closure_env(x)    (((minim_closure_object *) (x))->env)
+#define minim_closure_name(x)   (((minim_closure_object *) (x))->name)
+#define minim_closure_arity(x)  (((minim_closure_object *) (x))->arity)
 
 #define minim_port_is_ro(x)     (((minim_port_object *) (x))->flags & MINIM_PORT_READ_ONLY)
 #define minim_port_is_open(x)   (((minim_port_object *) (x))->flags & MINIM_PORT_OPEN)
@@ -288,6 +299,11 @@ extern minim_object *quote_syntax_symbol;
 #define minim_env_bindings(x)           (((minim_env *) (x))->bindings)
 #define minim_env_prev(x)               (((minim_env *) (x))->prev)
 
+#define minim_native_closure_arity(x)   (((minim_native_closure_object *) (x))->arity)
+#define minim_native_closure_name(x)    (((minim_native_closure_object *) (x))->name)
+#define minim_native_closure_code(x)    (((minim_native_closure_object *) (x))->code)
+#define minim_native_closure_env(x)     (((minim_native_closure_object *) (x))->env)
+
 // Setters
 
 #define minim_port_set(x, f)        (((minim_port_object *) (x))->flags |= (f))
@@ -296,7 +312,7 @@ extern minim_object *quote_syntax_symbol;
 // Complex predicates
 
 #define minim_is_bool(x)            (minim_is_true(x) || minim_is_false(x))
-#define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure_proc(x))
+#define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
 
@@ -316,7 +332,8 @@ minim_object *make_vector(long len, minim_object *init);
 minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
 minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
-minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
+minim_object *make_closure(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
+minim_object *make_native_closure(minim_object *env, void *fn);
 minim_object *make_input_port(FILE *stream);
 minim_object *make_output_port(FILE *stream);
 minim_object *make_pattern_var(minim_object *value, minim_object *depth);

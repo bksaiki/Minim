@@ -146,7 +146,7 @@
              ; create a closure using the current environment
              (list
                (list 'load-procedure T0-REG (second instr))
-               (list 'c-call "env_make_closure" ENV-REG T0-REG))]
+               (list 'c-call "make_closure" ENV-REG T0-REG))]
             [(bind)
              ; `(bind <n>`) =>
              ; binds <n>th literal (symbol) to `RREG` in the current environment
@@ -352,7 +352,7 @@
       (cons 'os 'linux-unknown)
       (cons 'top-level top-levels)
       (cons 'literals literals)
-      (cons 'assembled assembled)
+      (cons 'assembled procedures)
       (cons 'links links)))
 
   report)

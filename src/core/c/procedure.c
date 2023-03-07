@@ -36,17 +36,27 @@ minim_object *make_prim_proc(minim_prim_proc_t proc,
     return ((minim_object *) o);
 }
 
-minim_object *make_closure_proc(minim_object *args,
-                                minim_object *body,
-                                minim_object *env,
-                                short min_arity, short max_arity) {
-    minim_closure_proc_object *o = GC_alloc(sizeof(minim_closure_proc_object));
+minim_object *make_closure(minim_object *args,
+                           minim_object *body,
+                           minim_object *env,
+                           short min_arity,
+                           short max_arity) {
+    minim_closure_object *o = GC_alloc(sizeof(minim_closure_object));
     o->type = MINIM_CLOSURE_PROC_TYPE;
     o->args = args;
     o->body = body;
     o->env = env;
     o->name = NULL;
     set_arity(&o->arity, min_arity, max_arity);
+    return ((minim_object *) o);
+}
+
+minim_object *make_native_closure(minim_object *env, void *fn) {
+    minim_native_closure_object *o = GC_alloc(sizeof(minim_native_closure_object));
+    o->type = MINIM_CLOSURE_PROC_TYPE;
+    o->env = env;
+    o->fn = fn;
+    o->name = NULL;
     return ((minim_object *) o);
 }
 
@@ -63,7 +73,7 @@ void resize_values_buffer(minim_thread *th, int size) {
 minim_object *is_procedure_proc(int argc, minim_object **args) {
     // (-> any boolean)
     minim_object *o = args[0];
-    return (minim_is_prim_proc(o) || minim_is_closure_proc(o)) ? minim_true : minim_false;
+    return (minim_is_prim_proc(o) || minim_is_closure(o)) ? minim_true : minim_false;
 }
 
 minim_object *call_with_values_proc(int argc, minim_object **args) {

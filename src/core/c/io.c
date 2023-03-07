@@ -548,6 +548,12 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         else
             fprintf(out, "#<procedure>");
         break;
+    case MINIM_NATIVE_CLOSURE_TYPE:
+        if (minim_native_closure_name(o) != NULL)
+            fprintf(out, "#<procedure:%s>", minim_native_closure_name(o));
+        else
+            fprintf(out, "#<procedure>");
+        break;
     case MINIM_PORT_TYPE:
         if (minim_port_is_ro(o))
             fprintf(out, "#<input-port>");

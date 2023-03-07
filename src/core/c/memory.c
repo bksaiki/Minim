@@ -119,6 +119,8 @@ minim_object *runtime_address_proc(int argc, minim_object **args) {
         return make_fixnum((long) env_set_var);
     else if (strcmp(str, "env_lookup_var") == 0)
         return make_fixnum((long) env_lookup_var);
+    else if (strcmp(str, "make_closure") == 0)
+        return make_fixnum((long) make_native_closure);
     
     fprintf(stderr, "runtime-address: unknown runtime name\n");
     fprintf(stderr, " name: \"%s\"\n", str);
