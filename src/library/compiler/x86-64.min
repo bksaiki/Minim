@@ -43,7 +43,7 @@
 (define (encode/io op reg)
   (+ op reg))
 
-(define (register/translate reg)
+(define (register/from-generic reg)
   (cond
     [(eq? reg CC-REG)   'rbp]
     [(eq? reg SP-REG)   'rsp]
@@ -56,7 +56,7 @@
 
 ; Register -> X.RRR
 (define (register/code reg)
-  (case (register/translate reg)
+  (case reg
     [(rax)   (values #f 0)]
     [(rcx)   (values #f 1)]
     [(rdx)   (values #f 2)]
@@ -75,6 +75,16 @@
     [(r14)   (values #t 6)]
     [(r15)   (values #t 7)]))
 
+(define (argument/register i)
+  (case i
+    [(0)    'rdi]
+    [(1)    'rsi]
+    [(2)    'rdx]
+    [(3)    'rcx]
+    [(4)    'r8]
+    [(5)    'r9]
+    [else   (- i 6)]))
+
 ;
 ; Instruction encoding
 ;
@@ -84,9 +94,11 @@
   (define-values (r reg) (register/code dst))
   (define-values (b r/m) (register/code src))
   (define rex (rex-prefix #t r #f b))
-  (if (or r b)
-      (list rex #x8b (encode/modrm 0 reg r/m) #x24)
-      (list rex #x8b (encode/modrm 0 reg r/m))))
+  (list rex #x8b (encode/modrm 0 reg r/m)))
+
+  ; (if (or r b)
+  ;     (list rex #x8b (encode/modrm 0 reg r/m) #x24)
+  ;     (list rex #x8b (encode/modrm 0 reg r/m))))
 
 ; mov <dst> <imm64>
 (define (instr/load-imm64 dst imm)
@@ -97,8 +109,8 @@
 
 ; mov <dst> <sec>
 (define (instr/load dst src)
-  (define-values (r reg) (register/code dst))
-  (define-values (b r/m) (register/code src))
+  (define-values (b r/m) (register/code dst))
+  (define-values (r reg) (register/code src))
   (define rex (rex-prefix #t r #f b))
   (list rex #x89 (encode/modrm 3 reg r/m)))
 
@@ -107,6 +119,13 @@
   (define-values (b reg) (register/code src))
   (define rex (rex-prefix #f #f #f b))
   (define io (encode/io #x50 reg))
+  (if b (list rex io) (list io)))
+
+; pop <src>
+(define (instr/pop src)
+  (define-values (b reg) (register/code src))
+  (define rex (rex-prefix #f #f #f b))
+  (define io (encode/io #x58 reg))
   (if b (list rex io) (list io)))
 
 ; sub <dst> <imm8>
@@ -133,8 +152,8 @@
             (define addr (assoc 'literal info))
             (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
            [(procedure)
-            (define addr (assoc 'procedure info))
-            (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
+            (define addr (assoc type info))
+            (decompose/imm64 addr)]
            [(runtime)
             (decompose/imm64 (runtime-address (second type)))]
            [else
@@ -159,6 +178,8 @@
       [else (loop (cdr instrs) (+ len (length (car instrs))))])))
 
 (define (assemble/x86-64 instrs)
+  (display instrs) (newline)
+
   (define links '())
   (define bytes
     (let loop ([instrs instrs] [sequences '()])
@@ -176,7 +197,7 @@
              [(load-literal)
               ; mov <dst>, <literal address> => 48 b8 [xx]^8
               ; mov <dst>, [<dst>] => 48 8b 00
-              (define dst (second instr))
+              (define dst (register/from-generic (second instr)))
               (define entry (cons (list 'literal (third instr)) (list (length sequences) 2)))
               (set! links (cons entry links))
               (list
@@ -184,7 +205,7 @@
                 (instr/deref dst dst))]
              [(load-procedure)
               ; mov <dst>, <procedure address> => 48 b8 [xx]^8
-              (define dst (second instr))
+              (define dst (register/from-generic (second instr)))
               (define entry (cons (list 'procedure (third instr)) (list (length sequences) 2)))
               (set! links (cons entry links))
               (list (instr/load-imm64 dst 0))]
@@ -194,36 +215,84 @@
                  (cond
                    [(eq? (second instr) (third instr))
                     ; x64-style
-                    (list (instr/sub-imm8 (second instr) (fourth instr)))]
+                    (list
+                      (instr/sub-imm8 (register/from-generic (second instr))
+                                      (register/from-generic (fourth instr))))]
                    [else
                     ; ARM-style
                     ;  mov <dst> to <src>
                     ;  perform x64-style on <dst>
                     (list
-                      (instr/load (second instr) (third instr))
-                      (instr/sub-imm8 (second instr) (fourth instr)))])]
+                      (instr/load (register/from-generic (second instr))
+                                  (register/from-generic (third instr)))
+                      (instr/sub-imm8 (register/from-generic (second instr))
+                                      (register/from-generic (fourth instr))))])]
                 [else
                  (error 'assemble/x86-64 "sub: operand size unimplemented" (fourth instr))])]
              [(c-call)
               ; function call
+              ; handle arguments
               (define args (cddr instr))
+              ; compute prefix
+              (define prefix
+                (let loop ([args args] [instrs '()] [i 0])
+                  (cond
+                    [(null? args)
+                     (reverse instrs)]
+                    [(number? (car args))
+                     (define push (instr/push (argument/register i)))
+                     (define ld (instr/load-imm64 (car args)))
+                     (loop (cdr args) (cons ld (cons push instrs)) (+ i 1))]
+                    [else
+                     (define i-reg (argument/register i))
+                     (define src (register/from-generic (car args)))
+                     (define push (instr/push i-reg))
+                     (cond
+                       [(eq? i-reg src)
+                        (loop (cdr args) (cons push instrs) (+ i 1))]
+                       [else
+                        (define ld (instr/load i-reg src))
+                        (loop (cdr args) (cons ld (cons push instrs)) (+ i 1))])])))
+              ; compute suffix
+              (define suffix
+                (let loop ([args args] [instrs '()] [i 0])
+                  (cond
+                    [(null? args)
+                     ; stack, so order must be inverted
+                     instrs]
+                    [(number? (car args))
+                     (define pop (instr/pop (argument/register i)))
+                     (loop (cdr args) (cons pop instrs) (+ i 1))]
+                    [else
+                     (define i-reg (argument/register i))
+                     (define src (register/from-generic (car args)))
+                     (define pop (instr/pop i-reg))
+                     (loop (cdr args) (cons pop instrs) (+ i 1))])))
+              ; the actual call
               (cond
                 [(string? (second instr))
                  ; link required:
                  ;  mov rax, <literal address> => 48 b8 [xx]^8
                  ;  call rax => ff d0
-                 (define entry (cons (list 'runtime (second instr)) (list (length sequences) 2)))
+                 (define link-idx (+ (length sequences) (length prefix)))
+                 (define entry (cons (list 'runtime (second instr)) (list link-idx 2)))
                  (set! links (cons entry links))
-                 (list
-                   (instr/load-imm64 RES-REG 0)
-                   (list #xff #xd0))]
+                 (append
+                   prefix
+                   (list
+                     (instr/load-imm64 'rax 0)
+                     (list #xff #xd0))
+                   suffix)]
                 [else
                  ; pointer provided [at rax]
                  ;  call rax => ff d0
-                 (list (list #xff #xd0))])]
+                 (append
+                   prefix
+                   (list (list #xff #xd0))
+                   suffix)])]
              [(push)
               ; push <src>
-              (list (instr/push (second instr)))]
+              (list (instr/push (register/from-generic (second instr))))]
              [(return)
               ; ret => c3
               '((#xc3))]

@@ -6,12 +6,13 @@
 
 typedef minim_object *(*entry_proc)(minim_object *env);
 
-struct _address_map_t {
+struct address_map_t {
     char *name;
     void *fn;
 };
 
-struct _address_map_t address_map[] = {
+struct address_map_t address_map[] = {
+    { "env_define_var", env_define_var },
     { "env_set_var", env_set_var },
     { "env_lookup_var", env_lookup_var },
     { "make_closure", make_native_closure },

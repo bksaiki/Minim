@@ -152,7 +152,7 @@
              ; binds <n>th literal (symbol) to `RREG` in the current environment
              (list
                (list 'load-literal T0-REG (second instr))
-               (list 'c-call "env_set_var" ENV-REG T0-REG RES-REG))]
+               (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
             [(bind-check)
              ; `(bind-check <n>)` =>
              ; checks that the result has the right number of values
@@ -251,7 +251,7 @@
        (cons
          (list 'bind-check (length ids))
          (map (lambda (i) (list 'bind i)) idxs)))]
-    [else (flatten/expr expr)]))
+    [else (flatten/expr expr procedure! literal! label!)]))
 
 (define (compile/file path enter?)
   (define top-levels '())
@@ -338,7 +338,15 @@
   (display " installed procedures at ") (write template-address) (newline)
 
   ; link
-  (define link-info (list (cons 'literal literal-address) (cons 'procedure template-address)))
+
+  (define link-info
+    (cons
+      (cons 'literal literal-address)
+      (let loop ([code unlinked-code] [i 0] [offset 0])
+        (cond [(null? code) '()]
+              [else (cons (cons (list 'procedure i) (+ template-address offset))
+                          (loop (cdr code) (+ i 1) (+ offset (length (car code)))))]))))
+
   (define linked (map (lambda (p l) (link/x86-64 p l link-info)) procedures links))
   (define code (map (lambda (ss) (apply append ss)) linked))
 
