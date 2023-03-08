@@ -177,6 +177,32 @@
        (if (= r16 0) 0 (- 16 r16))]
       [else (loop (cdr instrs) (+ len (length (car instrs))))])))
 
+; TODO: maybe smarter to decrement `rsp` to make scratch space
+(define (c-call-prefix+suffix args)
+  (let loop ([args args] [i 0] [prefix '()] [suffix '()])
+    (cond
+      [(null? args)
+       ; no arguments left to stash
+       (values (reverse prefix) suffix)]
+      [else
+       (define i-reg (argument/register i))
+       (define push (instr/push i-reg))
+       (define pop (instr/pop i-reg))
+       (cond
+         [(number? (car args))
+          ; immediate as argument
+          (define ld (instr/load-imm64 (car args)))
+          (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))]
+         [else
+          ; register as argument
+          (define src (register/from-generic (car args)))
+          (cond
+            [(eq? i-reg src)
+             (loop (cdr args) (+ i 1) (cons push prefix) (cons pop suffix))]
+            [else
+             (define ld (instr/load i-reg src))
+             (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
+
 (define (assemble/x86-64 instrs)
   (display instrs) (newline)
 
@@ -231,43 +257,9 @@
                  (error 'assemble/x86-64 "sub: operand size unimplemented" (fourth instr))])]
              [(c-call)
               ; function call
-              ; handle arguments
-              (define args (cddr instr))
+              ; make prefix and suffix code to stash registers
+              (define-values (prefix suffix) (c-call-prefix+suffix (cddr instr)))
               ; compute prefix
-              (define prefix
-                (let loop ([args args] [instrs '()] [i 0])
-                  (cond
-                    [(null? args)
-                     (reverse instrs)]
-                    [(number? (car args))
-                     (define push (instr/push (argument/register i)))
-                     (define ld (instr/load-imm64 (car args)))
-                     (loop (cdr args) (cons ld (cons push instrs)) (+ i 1))]
-                    [else
-                     (define i-reg (argument/register i))
-                     (define src (register/from-generic (car args)))
-                     (define push (instr/push i-reg))
-                     (cond
-                       [(eq? i-reg src)
-                        (loop (cdr args) (cons push instrs) (+ i 1))]
-                       [else
-                        (define ld (instr/load i-reg src))
-                        (loop (cdr args) (cons ld (cons push instrs)) (+ i 1))])])))
-              ; compute suffix
-              (define suffix
-                (let loop ([args args] [instrs '()] [i 0])
-                  (cond
-                    [(null? args)
-                     ; stack, so order must be inverted
-                     instrs]
-                    [(number? (car args))
-                     (define pop (instr/pop (argument/register i)))
-                     (loop (cdr args) (cons pop instrs) (+ i 1))]
-                    [else
-                     (define i-reg (argument/register i))
-                     (define src (register/from-generic (car args)))
-                     (define pop (instr/pop i-reg))
-                     (loop (cdr args) (cons pop instrs) (+ i 1))])))
               ; the actual call
               (cond
                 [(string? (second instr))

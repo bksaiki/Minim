@@ -94,7 +94,7 @@
              ; `(push)` =>
              ; load `RRES` at `RSP`
              ; decrement `RSP` by word
-             (list  (list 'push RES-REG))]
+             (list (list 'push RES-REG))]
             [(apply)
              ; `(apply)` =>
              ; if PRIMITIVE:
