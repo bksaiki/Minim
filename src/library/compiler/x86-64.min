@@ -89,26 +89,52 @@
 ; Instruction encoding
 ;
 
-; mov <dst> [<src>]
+; mov <dst>, [<src>]
 (define (instr/deref dst src)
   (define-values (r reg) (register/code dst))
   (define-values (b r/m) (register/code src))
   (define rex (rex-prefix #t r #f b))
   (list rex #x8b (encode/modrm 0 reg r/m)))
 
-; mov <dst> <imm64>
+; mov <dst>, <imm64>
 (define (instr/load-imm64 dst imm)
   (define-values (b reg) (register/code dst))
   (define imm-bits (decompose/imm64 imm))
   (define rex (rex-prefix #t #f #f b))
   (cons rex (cons (encode/io #xb8 reg) imm-bits)))
 
-; mov <dst> <sec>
+; mov <dst>, <sec>
 (define (instr/load dst src)
   (define-values (b r/m) (register/code dst))
   (define-values (r reg) (register/code src))
   (define rex (rex-prefix #t r #f b))
   (list rex #x89 (encode/modrm 3 reg r/m)))
+
+; mov [<dst>+imm], <sec>
+(define (instr/load-at-offset dst src offset)
+  (define-values (b r/m) (register/code dst))
+  (define-values (r reg) (register/code src))
+  (define rex (rex-prefix #t r #f b))
+  (cond
+    [(= offset 0)
+     (list rex #x89 (encode/modrm 1 reg r/m) #x00)]
+    [(and (<= (- 128) offset) (< offset 0))
+     (list rex #x89 (encode/modrm 1 reg r/m) (+ 256 offset))]
+    [else
+     (error 'instr/load-at-offset "unimplemented offset" offset)]))
+
+; mov <dst>, [<src>+imm]
+(define (instr/load-from-offset dst src offset)
+  (define-values (b r/m) (register/code src))
+  (define-values (r reg) (register/code dst))
+  (define rex (rex-prefix #t r #f b))
+  (cond
+    [(= offset 0)
+     (list rex #x8b (encode/modrm 1 reg r/m) #x00)]
+    [(and (<= (- 128) offset) (< offset 0))
+     (list rex #x8b (encode/modrm 1 reg r/m) (+ 256 offset))]
+    [else
+     (error 'instr/load-at-offset "unimplemented offset" offset)]))
 
 ; push <src>
 (define (instr/push src)
@@ -124,11 +150,15 @@
   (define io (encode/io #x58 reg))
   (if b (list rex io) (list io)))
 
-; sub <dst> <imm8>
-(define (instr/sub-imm8 dst imm)
+; sub <dst> <imm>
+(define (instr/sub-imm dst imm)
   (define-values (b reg) (register/code dst))
   (define rex (rex-prefix #t #f #f b))
-  (list rex #x83 (encode/io #xe8 reg) imm))
+  (cond
+    [(<= 0 imm 255)
+     (list rex #x83 (encode/io #xe8 reg) imm)]
+    [else
+     (error 'instr/sub-imm "unimplemented" imm)]))
 
 ; sub <dst> <sub>
 (define (instr/sub dst src)
@@ -136,6 +166,14 @@
   (define-values (r reg) (register/code src))
   (define rex (rex-prefix #t r #f b))
   (list rex #x29 (encode/modrm 3 reg r/m)))
+
+; ret
+(define (instr/ret)
+  (list #xc3))
+
+; leave
+(define (instr/leave)
+  (list #xc9))
 
 ;
 ; Link
@@ -181,16 +219,18 @@
       [else (loop (cdr instrs) (+ len (length (car instrs))))])))
 
 ; TODO: maybe smarter to decrement `rsp` to make scratch space
-(define (c-call-prefix+suffix args)
+(define (c-call-prefix+suffix args incr-frame! decr-frame!)
   (let loop ([args args] [i 0] [prefix '()] [suffix '()])
     (cond
       [(null? args)
        ; no arguments left to stash
+       (for-each (lambda _ (decr-frame!)) (make-list i #f))
        (values (reverse prefix) suffix)]
       [else
+       (define size (incr-frame!))
        (define i-reg (argument/register i))
-       (define push (instr/push i-reg))
-       (define pop (instr/pop i-reg))
+       (define push (instr/load-at-offset 'rbp i-reg (- (* size WORD-SIZE))))
+       (define pop (instr/load-from-offset i-reg 'rbp (- (* size WORD-SIZE))))
        (cond
          [(number? (car args))
           ; immediate as argument
@@ -207,7 +247,7 @@
              (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
 
 
-(define (assemble/instr instr link! seqs)
+(define (assemble/instr instr seqs link! incr-frame! decr-frame!)
   (case (first instr)
     [(label)
      ; TODO:
@@ -242,12 +282,12 @@
            (define src0 (register/from-generic (third instr)))
            (define src (register/from-generic (fourth instr)))
            (list (instr/load dst src0) (instr/sub dst src))])]
-       [(<= 0 (fourth instr) 255)
+       [else
         (cond
           [(eq? (second instr) (third instr))
            ; x64-style
            (define dst (register/from-generic (second instr)))
-           (list (instr/sub-imm8 dst (fourth instr)))]
+           (list (instr/sub-imm dst (fourth instr)))]
           [else
            ; ARM-style
            ;  mov <dst> to <src>
@@ -256,13 +296,11 @@
            (define src (register/from-generic (third instr)))
            (list
              (instr/load dst src)
-             (instr/sub-imm8 dst (fourth instr)))])]
-       [else
-        (error 'assemble/x86-64 "sub: operand size unimplemented" (fourth instr))])]
+             (instr/sub-imm dst (fourth instr)))])])]
     [(c-call)
      ; function call
      ; make prefix and suffix code to stash registers
-     (define-values (prefix suffix) (c-call-prefix+suffix (cddr instr)))
+      (define-values (prefix suffix) (c-call-prefix+suffix (cddr instr) incr-frame! decr-frame!))
      ; compute prefix
      ; the actual call
      (cond
@@ -287,29 +325,84 @@
           suffix)])]
     [(push)
      ; push <src>
+     (incr-frame!)
      (list (instr/push (register/from-generic (second instr))))]
-    [(return)
-     ; ret => c3
-     '((#xc3))]
-    [else (error 'assemble/x86-64 "unimplemented" instr)]))
+    [(pop)
+     ; pop <dst>
+     (decr-frame!)
+     (list (instr/pop (register/from-generic (second instr))))]
+    [else
+     (error 'assemble/x86-64 "unimplemented" instr)]))
 
 
 (define (assemble/x86-64 instrs)
   (display instrs) (newline)
 
   (define links '())
+  (define frame-size 0)
+  (define max-frame-size 0)
+
   (define (make-link! key loc)
     (set! links (cons (cons key loc) links)))
 
+  (define (increment-frame!)
+    (set! frame-size (+ frame-size 1))
+    (when (> frame-size max-frame-size)
+      (set! max-frame-size frame-size))
+    frame-size)
+
+  (define (decrement-frame!)
+    (set! frame-size (- frame-size 1))
+    (when (< frame-size 0)
+      (error 'assemble/x86-64 "frame size is negative"))
+    frame-size)
+
+  (define prefix (list (instr/push 'rbp) (instr/load 'rbp 'rsp)))
+  (define suffix (list (instr/leave) (instr/ret)))
+  (define suffix0 (list (instr/pop 'rbp) (instr/ret)))
+
   (define seqs
-    (let loop ([instrs instrs] [seqs '()])
+    (let loop ([instrs instrs] [seqs (reverse prefix)])
       (cond
         [(null? instrs)
-         (define padding (make-list (padding-length seqs) (list #x90)))
-         (reverse (append padding seqs))]
+         ; insert stack frame (if necessary)
+         (define with-frame
+           (cond
+             [(= max-frame-size 0)
+              seqs]
+             [else
+              (set! links
+                (let loop ([links links] [links* '()])
+                  (cond [(null? links)
+                         (reverse links*)]
+                        [(>= (cadar links) (length prefix))
+                         (define loc* (cons (+ (cadar links) 1) (cddar links)))
+                         (loop (cdr links) (cons (cons (caar links) loc*) links*))]
+                        [else
+                         (loop (cdr links) (cons (car links) links*))])))
+              (define aligned-frame-size
+                (if (= (remainder max-frame-size 2) 0)
+                    max-frame-size
+                    (+ max-frame-size 1)))
+              (reverse
+                (let loop ([prefix prefix] [seqs (reverse seqs)])
+                  (if (null? prefix)
+                      (cons (instr/sub-imm 'rsp (* WORD-SIZE aligned-frame-size)) seqs)
+                      (cons (car seqs) (loop (cdr prefix) (cdr seqs))))))]))
+
+         ; apply suffix
+         (define with-suffix
+           (if (= max-frame-size 0)
+               (append (reverse suffix0) with-frame)
+               (append (reverse suffix) with-frame)))
+
+         ; apply padding
+         (define padding (make-list (padding-length with-suffix) (list #x90)))
+         (define with-padding (append padding with-suffix))
+         (reverse with-padding)]
         [else
          (define instr (car instrs))
-         (define next-seqs (assemble/instr instr make-link! seqs))
+         (define next-seqs (assemble/instr instr seqs make-link! increment-frame! decrement-frame!))
          (loop (cdr instrs) (append (reverse next-seqs) seqs))])))
 
   (values seqs links))

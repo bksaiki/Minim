@@ -76,7 +76,7 @@
   (define instrs*
     (let loop ([instrs instrs])
       (cond
-        [(null? instrs) (list (list 'return))]
+        [(null? instrs) (list)]
         [(not (list? (car instrs))) (error 'assemble/procedure "expected a list: " (car instrs))]
         [else
          (define instr (first instrs))
