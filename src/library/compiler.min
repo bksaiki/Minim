@@ -131,10 +131,7 @@
              (list
                (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
                (list 'sub T1-REG T0-REG SP-REG)
-               (list 'c-call RES-REG T0-REG T1-REG)
-               (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
-               (list 'sub T1-REG T0-REG SP-REG)
-               (list 'pop T1-REG))]
+               (list 'c-call RES-REG T0-REG T1-REG))]
             [(lookup)
              ; `(lookup <name>)` =>
              ; Load <n>th literal into `ARG1` and perform a lookup
@@ -271,16 +268,16 @@
     count)
 
   (define (register-literals! lit)
-    (define count (length literals))
-    (let loop ([lits literals] [i count])
+    (let loop ([lits (reverse literals)] [i 0])
       (cond
-        [(= i 0)
+        [(eq? lits '())
+         (define count (length literals))
          (set! literals (cons lit literals))
          count]
         [(equal? (car lits) lit)
-         (- count 1)]
+         i]
         [else
-         (loop (cdr lits) (- i 1))])))
+         (loop (cdr lits) (+ i 1 ))])))
 
   (define (register-label!)
     (define count label-counter)

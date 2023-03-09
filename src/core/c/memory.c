@@ -24,6 +24,7 @@ struct address_map_t address_map[] = {
 //
 
 minim_object *call_compiled(minim_object *env, minim_object *addr) {
+    minim_object *res;
     entry_proc fn;
 
     if (!minim_is_fixnum(addr))

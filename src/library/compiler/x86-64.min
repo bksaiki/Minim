@@ -83,7 +83,7 @@
     [(3)    'rcx]
     [(4)    'r8]
     [(5)    'r9]
-    [else   (- i 6)]))
+    [else   (error 'argument/register "unimplemeneted")]))
 
 ;
 ; Instruction encoding
@@ -95,10 +95,6 @@
   (define-values (b r/m) (register/code src))
   (define rex (rex-prefix #t r #f b))
   (list rex #x8b (encode/modrm 0 reg r/m)))
-
-  ; (if (or r b)
-  ;     (list rex #x8b (encode/modrm 0 reg r/m) #x24)
-  ;     (list rex #x8b (encode/modrm 0 reg r/m))))
 
 ; mov <dst> <imm64>
 (define (instr/load-imm64 dst imm)
@@ -133,6 +129,13 @@
   (define-values (b reg) (register/code dst))
   (define rex (rex-prefix #t #f #f b))
   (list rex #x83 (encode/io #xe8 reg) imm))
+
+; sub <dst> <sub>
+(define (instr/sub dst src)
+  (define-values (b r/m) (register/code dst))
+  (define-values (r reg) (register/code src))
+  (define rex (rex-prefix #t r #f b))
+  (list rex #x29 (encode/modrm 3 reg r/m)))
 
 ;
 ; Link
@@ -203,92 +206,110 @@
              (define ld (instr/load i-reg src))
              (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
 
+
+(define (assemble/instr instr link! seqs)
+  (case (first instr)
+    [(label)
+     ; TODO:
+     (list)]
+    [(load-literal)
+     ; mov <dst>, <literal address> => 48 b8 [xx]^8
+     ; mov <dst>, [<dst>] => 48 8b 00
+     (define dst (register/from-generic (second instr)))
+     (link! (list 'literal (third instr)) (list (length seqs) 2))
+     (list
+       (instr/load-imm64 dst 0)
+       (instr/deref dst dst))]
+    [(load-procedure)
+     ; mov <dst>, <procedure address> => 48 b8 [xx]^8
+     (define dst (register/from-generic (second instr)))
+     (link! (list 'procedure (third instr)) (list (length seqs) 2))
+     (list (instr/load-imm64 dst 0))]
+    [(sub)
+     (cond
+       [(symbol? (fourth instr))
+        (cond
+          [(eq? (second instr) (third instr))
+           ; x64-style
+           (define dst (register/from-generic (second instr)))
+           (define src (register/from-generic (fourth instr)))
+           (list (instr/sub dst src))]
+          [else
+           ; ARM-style
+           ;  mov <dst> to <src>
+           ;  perform x64-style on <dst>
+           (define dst (register/from-generic (second instr)))
+           (define src0 (register/from-generic (third instr)))
+           (define src (register/from-generic (fourth instr)))
+           (list (instr/load dst src0) (instr/sub dst src))])]
+       [(<= 0 (fourth instr) 255)
+        (cond
+          [(eq? (second instr) (third instr))
+           ; x64-style
+           (define dst (register/from-generic (second instr)))
+           (list (instr/sub-imm8 dst (fourth instr)))]
+          [else
+           ; ARM-style
+           ;  mov <dst> to <src>
+           ;  perform x64-style on <dst>
+           (define dst (register/from-generic (second instr)))
+           (define src (register/from-generic (third instr)))
+           (list
+             (instr/load dst src)
+             (instr/sub-imm8 dst (fourth instr)))])]
+       [else
+        (error 'assemble/x86-64 "sub: operand size unimplemented" (fourth instr))])]
+    [(c-call)
+     ; function call
+     ; make prefix and suffix code to stash registers
+     (define-values (prefix suffix) (c-call-prefix+suffix (cddr instr)))
+     ; compute prefix
+     ; the actual call
+     (cond
+       [(string? (second instr))
+        ; link required:
+        ;  mov rax, <literal address> => 48 b8 [xx]^8
+        ;  call rax => ff d0
+        (define link-idx (+ (length seqs) (length prefix)))
+        (link! (list 'runtime (second instr)) (list link-idx 2))
+        (append
+          prefix
+          (list
+            (instr/load-imm64 'rax 0)
+            (list #xff #xd0))
+          suffix)]
+       [else
+        ; pointer provided [at rax]
+        ;  call rax => ff d0
+        (append
+          prefix
+          (list (list #xff #xd0))
+          suffix)])]
+    [(push)
+     ; push <src>
+     (list (instr/push (register/from-generic (second instr))))]
+    [(return)
+     ; ret => c3
+     '((#xc3))]
+    [else (error 'assemble/x86-64 "unimplemented" instr)]))
+
+
 (define (assemble/x86-64 instrs)
   (display instrs) (newline)
 
   (define links '())
-  (define bytes
-    (let loop ([instrs instrs] [sequences '()])
+  (define (make-link! key loc)
+    (set! links (cons (cons key loc) links)))
+
+  (define seqs
+    (let loop ([instrs instrs] [seqs '()])
       (cond
         [(null? instrs)
-         (define padding (make-list (padding-length sequences) (list #x90)))
-         (reverse (append padding sequences))]
+         (define padding (make-list (padding-length seqs) (list #x90)))
+         (reverse (append padding seqs))]
         [else
-         (define instr (first instrs))
-         (define seqs
-           (case (first instr)
-             [(label)
-              ; TODO:
-              (list)]
-             [(load-literal)
-              ; mov <dst>, <literal address> => 48 b8 [xx]^8
-              ; mov <dst>, [<dst>] => 48 8b 00
-              (define dst (register/from-generic (second instr)))
-              (define entry (cons (list 'literal (third instr)) (list (length sequences) 2)))
-              (set! links (cons entry links))
-              (list
-                (instr/load-imm64 dst 0)
-                (instr/deref dst dst))]
-             [(load-procedure)
-              ; mov <dst>, <procedure address> => 48 b8 [xx]^8
-              (define dst (register/from-generic (second instr)))
-              (define entry (cons (list 'procedure (third instr)) (list (length sequences) 2)))
-              (set! links (cons entry links))
-              (list (instr/load-imm64 dst 0))]
-             [(sub)
-              (cond
-                [(<= 0 (fourth instr) 255)
-                 (cond
-                   [(eq? (second instr) (third instr))
-                    ; x64-style
-                    (list
-                      (instr/sub-imm8 (register/from-generic (second instr))
-                                      (register/from-generic (fourth instr))))]
-                   [else
-                    ; ARM-style
-                    ;  mov <dst> to <src>
-                    ;  perform x64-style on <dst>
-                    (list
-                      (instr/load (register/from-generic (second instr))
-                                  (register/from-generic (third instr)))
-                      (instr/sub-imm8 (register/from-generic (second instr))
-                                      (register/from-generic (fourth instr))))])]
-                [else
-                 (error 'assemble/x86-64 "sub: operand size unimplemented" (fourth instr))])]
-             [(c-call)
-              ; function call
-              ; make prefix and suffix code to stash registers
-              (define-values (prefix suffix) (c-call-prefix+suffix (cddr instr)))
-              ; compute prefix
-              ; the actual call
-              (cond
-                [(string? (second instr))
-                 ; link required:
-                 ;  mov rax, <literal address> => 48 b8 [xx]^8
-                 ;  call rax => ff d0
-                 (define link-idx (+ (length sequences) (length prefix)))
-                 (define entry (cons (list 'runtime (second instr)) (list link-idx 2)))
-                 (set! links (cons entry links))
-                 (append
-                   prefix
-                   (list
-                     (instr/load-imm64 'rax 0)
-                     (list #xff #xd0))
-                   suffix)]
-                [else
-                 ; pointer provided [at rax]
-                 ;  call rax => ff d0
-                 (append
-                   prefix
-                   (list (list #xff #xd0))
-                   suffix)])]
-             [(push)
-              ; push <src>
-              (list (instr/push (register/from-generic (second instr))))]
-             [(return)
-              ; ret => c3
-              '((#xc3))]
-             [else (error 'assemble/x86-64 "unimplemented" instr)]))
-         (loop (cdr instrs) (append (reverse seqs) sequences))])))
+         (define instr (car instrs))
+         (define next-seqs (assemble/instr instr make-link! seqs))
+         (loop (cdr instrs) (append (reverse next-seqs) seqs))])))
 
-  (values bytes links))
+  (values seqs links))
