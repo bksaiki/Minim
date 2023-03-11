@@ -127,11 +127,10 @@
             ;    (list 'load ENV-REG SP-REG (- WORD-SIZE))
             ;    (list 'add SP-REG SP-REG WORD-SIZE)
             ;    (list 'label exit-label))]
-
-             (list
-               (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
-               (list 'sub T1-REG T0-REG SP-REG)
-               (list 'c-call RES-REG T0-REG T1-REG))]
+            (list
+              (list 'sub T1-REG CC-REG CONT-FRAME-ARGS-OFFSET)
+              (list 'load-offset RES-REG RES-REG PRIM-FN-OFFSET)
+              (list 'c-call RES-REG T0-REG T1-REG))]
             [(lookup)
              ; `(lookup <name>)` =>
              ; Load <n>th literal into `ARG1` and perform a lookup

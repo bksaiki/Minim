@@ -89,13 +89,6 @@
 ; Instruction encoding
 ;
 
-; mov <dst>, [<src>]
-(define (instr/deref dst src)
-  (define-values (r reg) (register/code dst))
-  (define-values (b r/m) (register/code src))
-  (define rex (rex-prefix #t r #f b))
-  (list rex #x8b (encode/modrm 0 reg r/m)))
-
 ; mov <dst>, <imm64>
 (define (instr/load-imm64 dst imm)
   (define-values (b reg) (register/code dst))
@@ -129,8 +122,10 @@
   (define-values (r reg) (register/code dst))
   (define rex (rex-prefix #t r #f b))
   (cond
+    [(and (< 0 offset) (< offset 128))
+     (list rex #x8b (encode/modrm 1 reg r/m) offset)]
     [(= offset 0)
-     (list rex #x8b (encode/modrm 1 reg r/m) #x00)]
+     (list rex #x8b (encode/modrm 0 reg r/m))]
     [(and (<= (- 128) offset) (< offset 0))
      (list rex #x8b (encode/modrm 1 reg r/m) (+ 256 offset))]
     [else
@@ -149,6 +144,23 @@
   (define rex (rex-prefix #f #f #f b))
   (define io (encode/io #x58 reg))
   (if b (list rex io) (list io)))
+
+; add <dst> <imm>
+(define (instr/add-imm dst imm)
+  (define-values (b reg) (register/code dst))
+  (define rex (rex-prefix #t #f #f b))
+  (cond
+    [(<= 0 imm 255)
+     (list rex #x83 (encode/io #xc0 reg) imm)]
+    [else
+     (error 'instr/add-imm "unimplemented" imm)]))
+
+; add <dst> <sub>
+(define (instr/add dst src)
+  (define-values (b r/m) (register/code dst))
+  (define-values (r reg) (register/code src))
+  (define rex (rex-prefix #t r #f b))
+  (list rex #x01 (encode/modrm 3 reg r/m)))
 
 ; sub <dst> <imm>
 (define (instr/sub-imm dst imm)
@@ -261,9 +273,24 @@
 
 (define (assemble/instr instr seqs link! incr-frame! decr-frame!)
   (case (first instr)
-    [(label)
-     ; TODO:
-     (list)]
+    [(load)
+     ; mov <dst>, <src>
+     (cond
+       [(number? (third instr))
+        (define dst (register/from-generic (second instr)))
+        (list (instr/load-imm64 dst 0))]
+       [else
+        (error 'assemble/instr "unimplemented" instr)])]
+    [(load-offset)
+     ; mov <dst> [<src>+<offset>]
+     (cond
+       [(eq? (second instr) (third instr))
+        ; x64-style
+        (define dst (register/from-generic (second instr)))
+        (define src (register/from-generic (third instr)))
+        (list (instr/load-from-offset dst src (fourth instr)))]
+       [else
+        (error 'assemble/instr "unimplemented" instr)])]
     [(load-literal)
      ; mov <dst>, <literal address> => 48 b8 [xx]^8
      ; mov <dst>, [<dst>] => 48 8b 00
@@ -271,12 +298,44 @@
      (link! (list 'literal (third instr)) (list (length seqs) 2))
      (list
        (instr/load-imm64 dst 0)
-       (instr/deref dst dst))]
+       (instr/load-from-offset dst dst 0))]
     [(load-procedure)
      ; mov <dst>, <procedure address> => 48 b8 [xx]^8
      (define dst (register/from-generic (second instr)))
      (link! (list 'procedure (third instr)) (list (length seqs) 2))
      (list (instr/load-imm64 dst 0))]
+    [(add)
+     (cond
+       [(symbol? (fourth instr))
+        (cond
+          [(eq? (second instr) (third instr))
+           ; x64-style
+           (define dst (register/from-generic (second instr)))
+           (define src (register/from-generic (fourth instr)))
+           (list (instr/add dst src))]
+          [else
+           ; ARM-style
+           ;  mov <dst> to <src>
+           ;  perform x64-style on <dst>
+           (define dst (register/from-generic (second instr)))
+           (define src0 (register/from-generic (third instr)))
+           (define src (register/from-generic (fourth instr)))
+           (list (instr/load dst src0) (instr/add dst src))])]
+       [else
+        (cond
+          [(eq? (second instr) (third instr))
+           ; x64-style
+           (define dst (register/from-generic (second instr)))
+           (list (instr/add-imm dst (fourth instr)))]
+          [else
+           ; ARM-style
+           ;  mov <dst> to <src>
+           ;  perform x64-style on <dst>
+           (define dst (register/from-generic (second instr)))
+           (define src (register/from-generic (third instr)))
+           (list
+             (instr/load dst src)
+             (instr/add-imm dst (fourth instr)))])])]
     [(sub)
      (cond
        [(symbol? (fourth instr))
@@ -337,12 +396,15 @@
           suffix)])]
     [(push)
      ; push <src>
-     (incr-frame!)
-     (list (instr/push (register/from-generic (second instr))))]
+     (define size (incr-frame!))
+     (list (instr/load-at-offset 'rbp 'rax (- (* size WORD-SIZE))))]
     [(pop)
      ; pop <dst>
      (decr-frame!)
-     (list (instr/pop (register/from-generic (second instr))))]
+     (list)]
+    [(label)
+     ; TODO:
+     (list)]
     [else
      (error 'assemble/x86-64 "unimplemented" instr)]))
 
