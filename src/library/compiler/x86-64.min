@@ -167,6 +167,14 @@
   (define rex (rex-prefix #t r #f b))
   (list rex #x29 (encode/modrm 3 reg r/m)))
 
+; call <reg>
+(define (instr/call src)
+  (define-values (b r/m) (register/code src))
+  (define rex (rex-prefix #f #f #f b))
+  (if b
+      (list rex #xff (encode/modrm 3 2 r/m))
+      (list #xff (encode/modrm 3 2 r/m))))
+
 ; ret
 (define (instr/ret)
   (list #xc3))
@@ -174,6 +182,10 @@
 ; leave
 (define (instr/leave)
   (list #xc9))
+
+; endbr64
+(define (instr/endbr)
+  (list #xf3 #x0f #x1e #xfa))
 
 ;
 ; Link
@@ -314,14 +326,14 @@
           prefix
           (list
             (instr/load-imm64 'rax 0)
-            (list #xff #xd0))
+            (instr/call 'rax))
           suffix)]
        [else
         ; pointer provided [at rax]
         ;  call rax => ff d0
         (append
           prefix
-          (list (list #xff #xd0))
+          (list (instr/call 'rax))
           suffix)])]
     [(push)
      ; push <src>
@@ -357,7 +369,7 @@
       (error 'assemble/x86-64 "frame size is negative"))
     frame-size)
 
-  (define prefix (list (instr/push 'rbp) (instr/load 'rbp 'rsp)))
+  (define prefix (list (instr/endbr) (instr/push 'rbp) (instr/load 'rbp 'rsp)))
   (define suffix (list (instr/leave) (instr/ret)))
   (define suffix0 (list (instr/pop 'rbp) (instr/ret)))
 
