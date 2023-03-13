@@ -72,7 +72,9 @@
     [(r12)   (values #t 4)]
     [(r13)   (values #t 5)]
     [(r14)   (values #t 6)]
-    [(r15)   (values #t 7)]))
+    [(r15)   (values #t 7)]
+
+    [else    (error 'register/code "unknown register" reg)]))
 
 (define (argument/register i)
   (case i
@@ -103,7 +105,7 @@
   (list rex #x89 (encode/modrm 3 reg r/m)))
 
 ; mov [<dst>+imm], <sec>
-(define (instr/load-at-offset dst src offset)
+(define (instr/store-at-offset dst src offset)
   (define-values (b r/m) (register/code dst))
   (define-values (r reg) (register/code src))
   (define rex (rex-prefix #t r #f b))
@@ -113,7 +115,7 @@
     [(and (<= (- 128) offset) (< offset 0))
      (list rex #x89 (encode/modrm 1 reg r/m) (+ 256 offset))]
     [else
-     (error 'instr/load-at-offset "unimplemented offset" offset)]))
+     (error 'instr/store-at-offset "unimplemented offset" offset)]))
 
 ; mov <dst>, [<src>+imm]
 (define (instr/load-from-offset dst src offset)
@@ -128,7 +130,7 @@
     [(and (<= (- 128) offset) (< offset 0))
      (list rex #x8b (encode/modrm 1 reg r/m) (+ 256 offset))]
     [else
-     (error 'instr/load-at-offset "unimplemented offset" offset)]))
+     (error 'instr/load-from-offset "unimplemented offset" offset)]))
 
 ; push <src>
 (define (instr/push src)
@@ -253,10 +255,12 @@
        (values (reverse prefix) suffix)]
       [else
        (push!)
+       (define frame (get-frame))
+       (define offset (* WORD-SIZE (+ (first frame) (third frame))))
        (define size (third (get-frame)))
        (define i-reg (argument/register i))
-       (define push (instr/load-at-offset 'rbp i-reg (- (* size WORD-SIZE))))
-       (define pop (instr/load-from-offset i-reg 'rbp (- (* size WORD-SIZE))))
+       (define push (instr/store-at-offset 'rbp i-reg (- offset)))
+       (define pop (instr/load-from-offset i-reg 'rbp (- offset)))
        (cond
          [(number? (car args))
           ; immediate as argument
@@ -273,7 +277,8 @@
              (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
 
 
-(define (assemble/instr instr seqs
+(define (assemble/instr instr
+                        get-assembled
                         link!
                         push-frame! pop-frame! get-frame
                         reserve-args! push-local! pop-local!)
@@ -283,7 +288,7 @@
      (cond
        [(number? (third instr))
         (define dst (register/from-generic (second instr)))
-        (list (instr/load-imm64 dst 0))]
+        (list (instr/load-imm64 dst (third instr)))]
        [else
         (error 'assemble/instr "unimplemented" instr)])]
     [(load-offset)
@@ -300,15 +305,23 @@
      ; mov <dst>, <literal address> => 48 b8 [xx]^8
      ; mov <dst>, [<dst>] => 48 8b 00
      (define dst (register/from-generic (second instr)))
-     (link! (list 'literal (third instr)) (list (length seqs) 2))
+     (link! (list 'literal (third instr)) (list (length (get-assembled)) 2))
      (list
        (instr/load-imm64 dst 0)
        (instr/load-from-offset dst dst 0))]
     [(load-procedure)
      ; mov <dst>, <procedure address> => 48 b8 [xx]^8
      (define dst (register/from-generic (second instr)))
-     (link! (list 'procedure (third instr)) (list (length seqs) 2))
+     (link! (list 'procedure (third instr)) (list (length (get-assembled)) 2))
      (list (instr/load-imm64 dst 0))]
+    [(store-argument)
+     ; Stores result at ith argument position
+     ; The area directly above `rbp` is the argument stack
+     ; Note that the argument stack is reverse so 0 is last
+     ; mov [rbp-<offset>], <src>
+     (define src (register/from-generic (second instr)))
+     (define offset (* (+ 1 (third instr)) WORD-SIZE))
+     (list (instr/store-at-offset 'rbp src (- offset)))]
     [(add)
      (cond
        [(symbol? (fourth instr))
@@ -373,6 +386,30 @@
            (list
              (instr/load dst src)
              (instr/sub-imm dst (fourth instr)))])])]
+    [(push-frame)
+     ; make new continuation frame
+     ; similar to calling convention
+     ;  - push label address and BP (do manually to ensure alignment)
+     ;  - move BP to SP
+     (define label (second instr)) ; TODO handle label
+     (push-frame! (+ (length (get-assembled)) 4))
+     (list
+       (instr/load-imm64 'rax 0)
+       (instr/push 'rax)
+       (instr/push 'rbp)
+       (instr/load 'rbp 'rsp)
+       (instr/sub-imm 'rsp 0))]
+    [(prepare-args)
+     ; hint for the frame size
+     (reserve-args! (second instr))
+     (list)]
+    [(pop-frame)
+     ; remove continuation frame
+     ; just the reverse of `push_frame`
+     (pop-frame!)
+     (list
+       (instr/leave)
+       (instr/add-imm 'rsp 8))]
     [(c-call)
      ; function call
      ; make prefix and suffix code to stash registers
@@ -385,7 +422,7 @@
         ; link required:
         ;  mov rax, <literal address> => 48 b8 [xx]^8
         ;  call rax => ff d0
-        (define link-idx (+ (length seqs) (length prefix)))
+        (define link-idx (+ (length (get-assembled)) (length prefix)))
         (link! (list 'runtime (second instr)) (list link-idx 2))
         (append
           prefix
@@ -409,7 +446,7 @@
 
 (define (assemble/x86-64 instrs)
   (define asm-instrs '())
-  (define frames '((0 0 0)))
+  (define frames '())
   (define framei '())
   (define links '())
 
@@ -448,25 +485,23 @@
                     instr-idx asm-intsrs)]
             [(= i instr-idx)
              (define instr-len (length (car instrs)))
-             (display "adjusting ") (write (car instrs)) (display " ") (write aligned-size) (newline)
              (cond
                [(= aligned-size 0)
-                (adjust-links! i (- instr-len))
+                (adjust-links! i (- 1))
                 (append (reverse instrs*) (cdr instrs))]
                [else
                 (define reserve (instr/sub-imm 'rsp (* WORD-SIZE aligned-size)))
-                (unless (= (length (car instrs)) (length reserve))
-                  (adjust-links! i (- (length reserve) instr-len)))
                 (append (reverse instrs*) (cons reserve (cdr instrs)))])]
             [else
              (loop (cdr instrs) (+ i 1) (cons (car instrs) instrs*))])))))
 
   (define (push-frame! idx)
     (set! framei (cons idx framei))
-    (set! frames '((list 0 0 0) frames)))
+    (set! frames (cons (list 0 0 0) frames)))
 
   (define (pop-frame!)
     (adjust-frame!)
+    (set! framei (cdr framei))
     (set! frames (cdr frames)))
   
   (define (get-frame)
@@ -503,43 +538,19 @@
   
   (display instrs) (newline)
 
-  (set! framei (cons (length prefix) framei))
+  (push-frame! 3)
   (set! asm-instrs (cons (instr/sub-imm 'rsp 0) (reverse prefix)))
 
   (let loop ([instrs instrs])
     (unless (null? instrs)
       (define next
-        (assemble/instr (car instrs) asm-instrs
+        (assemble/instr (car instrs)
+                        (lambda _ asm-instrs)
                         make-link!
                         push-frame! pop-frame! get-frame
                         reserve-args! push-local! pop-local!))
       (set! asm-instrs (append (reverse next) asm-instrs))
       (loop (cdr instrs))))
-
-  ; insert stack frame (if necessary)
-  ; (define with-frame
-  ;   (cond
-  ;     [(= max-frame-size 0)
-  ;      asm-instrs]
-  ;     [else
-  ;     (set! links
-  ;       (let loop ([links links] [links* '()])
-  ;         (cond [(null? links)
-  ;                 (reverse links*)]
-  ;               [(>= (cadar links) (length prefix))
-  ;                 (define loc* (cons (+ (cadar links) 1) (cddar links)))
-  ;                 (loop (cdr links) (cons (cons (caar links) loc*) links*))]
-  ;               [else
-  ;                 (loop (cdr links) (cons (car links) links*))])))
-  ;     (define aligned-frame-size
-  ;       (if (= (remainder max-frame-size 2) 0)
-  ;           max-frame-size
-  ;           (+ max-frame-size 1)))
-  ;     (reverse
-  ;       (let loop ([prefix prefix] [instrs (reverse asm-instrs)])
-  ;         (if (null? prefix)
-  ;             (cons (instr/sub-imm 'rsp (* WORD-SIZE aligned-frame-size)) instrs)
-  ;             (cons (car instrs) (loop (cdr prefix) (cdr instrs))))))]))
 
   (pop-frame!)
 

@@ -90,7 +90,7 @@
             [(push-continuation)
              ; `(push-continuation <label> )` =>
              ; TODO
-             (list (list 'push-frame))]
+             (list (list 'push-frame (second instr)))]
             [(pop-continuation)
              ; `(pop-continuation <label> )` =>
              ; TODO
@@ -104,7 +104,7 @@
              ; load `RRES` at `RSP`
              ; decrement `RSP` by word
              (define idx (second instr))
-             (list (list 'load-argument RES-REG idx))]
+             (list (list 'store-argument RES-REG idx))]
             [(apply)
              ; `(apply)` =>
              ; if PRIMITIVE:
@@ -113,13 +113,13 @@
              ;   Extract pointer to `RRES`
              ;   Call using `RRES`
              ; elif CLOSURE:
-             ;   (Save the continuation??)
              ;   Save the environment register
              ;   Load the closure environment
              ;   Jump to the start of the code
+            (define argc (second instr))
             (list
-              (list 'load T0-REG 0)
-              (list 'load T1-REG 0)
+              (list 'load T0-REG argc)
+              (list 'sub T1-REG CC-REG (* argc WORD-SIZE))
               (list 'load-offset RES-REG RES-REG PRIM-FN-OFFSET)
               (list 'c-call RES-REG T0-REG T1-REG))]
             [(lookup)
@@ -192,19 +192,20 @@
       [(stx-list? expr)
        (define op (stx-car expr))
        (define args (stx-cdr expr))
+       (define argc (length args))
        (define label (label!))
        (append
          (list
            (list 'push-continuation label)
-           (list 'prepare-args (length args)))
-         (let loop ([args args] [i (- (length args) 1)])
+           (list 'prepare-args argc))
+         (let loop ([args args] [i (- argc 1)])
            (cond
              [(null? args)
               ; apply operation
               (append
                 (rec op)
                 (list
-                  (list 'apply)
+                  (list 'apply argc)
                   (list 'pop-continuation)
                   (list 'label label)))]
               [else

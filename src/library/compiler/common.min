@@ -13,7 +13,6 @@
 
         WORD-SIZE
         STACK-SEGMENT-SIZE
-        CONT-FRAME-ARGS-OFFSET
 
         PRIM-ARITY-OFFSET
         PRIM-FN-OFFSET
@@ -55,7 +54,6 @@
 ; offsets
 (define WORD-SIZE                 8)
 (define STACK-SEGMENT-SIZE        1024)
-(define CONT-FRAME-ARGS-OFFSET    WORD-SIZE)
 
 (define PRIM-ARITY-OFFSET         WORD-SIZE)
 (define PRIM-FN-OFFSET            (* 2 WORD-SIZE))
