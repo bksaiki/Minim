@@ -17,9 +17,10 @@
         PRIM-ARITY-OFFSET
         PRIM-FN-OFFSET
 
-        CLOSURE-ARITY-OFFSET
         CLOSURE-ENV-OFFSET
-        CLOSURE-CODE-OFFSET)
+        CLOSURE-CODE-OFFSET
+
+        type-tag->integer)
 
 ; Stack segment:
 ;  - pointer to previous stack segment (0 if base)
@@ -58,6 +59,11 @@
 (define PRIM-ARITY-OFFSET         WORD-SIZE)
 (define PRIM-FN-OFFSET            (* 2 WORD-SIZE))
 
-(define CLOSURE-ARITY-OFFSET      WORD-SIZE)
-(define CLOSURE-ENV-OFFSET        (* 2 WORD-SIZE))
-(define CLOSURE-CODE-OFFSET       (* 3 WORD-SIZE))
+(define CLOSURE-ENV-OFFSET        WORD-SIZE)
+(define CLOSURE-CODE-OFFSET       (* 2 WORD-SIZE))
+
+; Type tag => integer
+(define (type-tag->integer type)
+  (case type
+    [(closure) 19]
+    [else (error 'type-tag->integer "unknown type" type)]))

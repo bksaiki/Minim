@@ -21,15 +21,20 @@
     (cond [(null? xs) r]
           [else (loop (cdr xs) (+ (* 2 r) (if (car xs) 1 0)))])))
 
-(define (decompose/imm64 i)
-  (let loop ([i i] [k 0] [bits '()])
-    (cond
-      [(= k 8)
-       (reverse bits)]
-      [else
-       (define bit (remainder i 256))
-       ; TODO: (loop (floor (/ i 256)) (+ k 1) (cons bit bits))
-       (loop (/ i 256) (+ k 1) (cons bit bits))])))
+(define-values (decompose/imm64 decompose/imm32 decompose/imm16)
+  (begin
+    (define (decompose/immN n)
+      (lambda (i)
+        (let loop ([i i] [k 0] [bits '()])
+          (cond
+            [(= k n)
+             (reverse bits)]
+            [else
+             (define bit (remainder i 256))
+             ; TODO: (loop (floor (/ i 256)) (+ k 1) (cons bit bits))
+             (loop (/ i 256) (+ k 1) (cons bit bits))]))))
+
+    (values (decompose/immN 8) (decompose/immN 4) (decompose/immN 2))))
 
 ; Creates the REX prefix of an instruction
 (define (rex-prefix w r x b)
@@ -180,6 +185,17 @@
   (define rex (rex-prefix #t r #f b))
   (list rex #x29 (encode/modrm 3 reg r/m)))
 
+; cmp <src:32> <imm>
+(define (instr/cmp32-imm src imm)
+  (define-values (b r/m) (register/code src))
+  (cond
+    [b
+     (error 'instr/cmp32-imm "x64 register not supported" src)]
+    [(<= 0 imm 255)
+     (list #x83 (encode/modrm 3 #x7 r/m) imm)]
+    [else
+     (error 'instr/cmp32-imm "unimplemented" imm)]))
+
 ; call <reg>
 (define (instr/call src)
   (define-values (b r/m) (register/code src))
@@ -187,6 +203,20 @@
   (if b
       (list rex #xff (encode/modrm 3 2 r/m))
       (list #xff (encode/modrm 3 2 r/m))))
+
+; jmp <imm> (near, relative, 32-bit displacement)
+(define (instr/jmp-imm32 imm)
+  (define imm-bits (decompose/imm32 imm))
+  (cond
+    [(>= imm 0) (cons #xe9 imm-bits)]
+    [else       (error 'instr/jmp "negative displacement not supported" imm)]))
+
+; je <imm> (near, relative, 32-bit displacement)
+(define (instr/je-imm32 imm)
+  (define imm-bits (decompose/imm32 imm))
+  (cond
+    [(>= imm 0) (cons #x0f (cons #x84 imm-bits))]
+    [else       (error 'instr/jmp "negative displacement not supported" imm)]))
 
 ; ret
 (define (instr/ret)
@@ -204,32 +234,67 @@
 ; Link
 ;
 
+(define (link/labels proc0 links)
+  (let loop ([links links] [dict '()])
+    (cond
+      [(null? links) dict]
+      [(eq? (caaar links) 'label)
+       (define name (cadaar links))
+       (define loc (cadar links))
+       (define offset
+         (let loop ([proc proc0] [i 0] [offset 0])
+           (cond
+             [(null? proc) (error 'link/labels "bad location" proc0 loc)]
+             [(= i loc) offset]
+             [else (loop (cdr proc) (+ i 1) (+ offset (length (car proc))))])))
+       (loop (cdr links) (cons (cons name offset) dict))]
+      [else
+       (loop (cdr links) dict)])))
+
 (define (link/x86-64 proc links info)
-  (define (replace proc link)
+  (define label-locs (link/labels proc links))
+  (write label-locs) (newline)
+
+  (define (replace/top proc0 link)
     (define type (car link))
     (define location (cdr link))
-    (let loop ([proc proc] [idx (car location)] [next (cdr location)])
+    (let loop ([proc proc0] [offset 0] [idx (car location)])
       (cond
         [(> idx 0)
-         (cons (car proc) (loop (cdr proc) (- idx 1) next))]
-        [(null? next)
-         (case (first type)
-           [(literal)
-            (define addr (assoc 'literal info))
-            (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
-           [(procedure)
-            (define addr (assoc type info))
-            (decompose/imm64 addr)]
-           [(runtime)
-            (decompose/imm64 (runtime-address (second type)))]
-           [else
-            (error 'link/x86-64 "unknown link type" type)])]
+         (cons (car proc) (loop (cdr proc) (+ offset (length (car proc))) (- idx 1)))]
         [else
-         (cons (loop (car proc) (car next) (cdr next)) (cdr proc))])))
+         (define rest (cdr location))
+         (cons (replace/recur (car proc) type offset (car rest) (cdr rest)) (cdr proc))])))
+
+  (define (replace/recur proc0 type offset idx rest)
+    (let loop ([proc proc0] [idx idx] [rest rest])
+      (cond
+        [(> idx 0)
+          (cons (car proc) (loop (cdr proc) (- idx 1) rest))]
+        [(null? rest)
+          (case (first type)
+            [(literal)
+             (define addr (assoc 'literal info))
+             (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
+            [(procedure)
+             (define addr (assoc type info))
+             (decompose/imm64 addr)]
+            [(runtime)
+             (decompose/imm64 (runtime-address (second type)))]
+            [(jump)
+             (define label-offset (assoc (second type) label-locs))
+             (define offset (- label-offset offset (length proc0)))
+             (decompose/imm32 offset)]
+            [else
+             (error 'link/x86-64 "unknown link type" type)])]
+        [else
+          (cons (loop (car proc) (car rest) (cdr rest)) (cdr proc))])))
 
   (let loop ([proc proc] [links links])
-    (cond [(null? links) proc]
-          [else (loop (replace proc (car links)) (cdr links))])))
+    (cond
+      [(null? links) proc]
+      [(eq? (caaar links) 'label) (loop proc (cdr links))]
+      [else (loop (replace/top proc (car links)) (cdr links))])))
 
 ;
 ; Assembler
@@ -290,7 +355,9 @@
         (define dst (register/from-generic (second instr)))
         (list (instr/load-imm64 dst (third instr)))]
        [else
-        (error 'assemble/instr "unimplemented" instr)])]
+        (define dst (register/from-generic (second instr)))
+        (define src (register/from-generic (third instr)))
+        (list (instr/load dst src))])]
     [(load-offset)
      ; mov <dst> [<src>+<offset>]
      (cond
@@ -437,8 +504,28 @@
           prefix
           (list (instr/call 'rax))
           suffix)])]
+    [(branch)
+     ; branching (oh boy ...)
+     (define label (second instr))
+     (define mode (third instr))
+     (case mode
+       [(equal)
+        (link! (list 'jump label) (list (length (get-assembled)) 2))
+        (list (instr/je-imm32 0))]
+       [(always)
+        (link! (list 'jump label) (list (length (get-assembled)) 1))
+        (list (instr/jmp-imm32 0))]
+       [else
+        (error 'assemble/x86-64 "branch mode unimplemented" instr)])]
+    [(cmp-tag)
+     ; comparing object tag for type information
+     ; cmp <src:32>, <tag>
+     (define src (register/from-generic (second instr)))
+     (define tag (type-tag->integer (third instr)))
+     (list (instr/cmp32-imm src tag))]
     [(label)
-     ; TODO:
+     ; label => just register name and location
+     (link! (list 'label (second instr)) (list (length (get-assembled))))
      (list)]
     [else
      (error 'assemble/x86-64 "unimplemented" instr)]))

@@ -116,12 +116,26 @@
              ;   Save the environment register
              ;   Load the closure environment
              ;   Jump to the start of the code
-            (define argc (second instr))
-            (list
-              (list 'load T0-REG argc)
-              (list 'sub T1-REG CC-REG (* argc WORD-SIZE))
-              (list 'load-offset RES-REG RES-REG PRIM-FN-OFFSET)
-              (list 'c-call RES-REG T0-REG T1-REG))]
+             (define argc (second instr))
+             (define jmp-label (make-label!))
+             (define exit-label (make-label!))
+             (list
+               ; Check argument is closure
+               (list 'cmp-tag RES-REG 'closure)
+               (list 'branch jmp-label 'equal)
+               ; Primitive
+               (list 'load T0-REG argc)
+               (list 'sub T1-REG CC-REG (* argc WORD-SIZE))
+               (list 'load-offset RES-REG RES-REG PRIM-FN-OFFSET)
+               (list 'c-call RES-REG T0-REG T1-REG)
+               (list 'branch exit-label 'always)
+               ; Closure
+               (list 'label jmp-label)
+               ; TODO environment
+               (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
+               (list 'c-call RES-REG T0-REG T1-REG)
+               ; End
+               (list 'label exit-label))]
             [(lookup)
              ; `(lookup <name>)` =>
              ; Load <n>th literal into `ARG1` and perform a lookup
@@ -189,6 +203,10 @@
        (define pcode (make-flat-closure (syntax->datum formals) instrs))
        (define idx (procedure! pcode))
        (list (list 'closure idx))]
+      [(quote-form? expr)
+       (define form (syntax-e expr))
+       (define idx (literal! (syntax->datum (cadr form))))
+       (list (list 'literal idx))]
       [(stx-list? expr)
        (define op (stx-car expr))
        (define args (stx-cdr expr))
@@ -206,8 +224,8 @@
                 (rec op)
                 (list
                   (list 'apply argc)
-                  (list 'pop-continuation)
-                  (list 'label label)))]
+                  (list 'label label)
+                  (list 'pop-continuation)))]
               [else
                ; process next argument
                (append
