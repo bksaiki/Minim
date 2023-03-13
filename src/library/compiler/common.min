@@ -3,10 +3,10 @@
 ;;;
 
 (import "../base.min")
+
 (export CC-REG
         ENV-REG
         SP-REG
-        SS-REG
         RES-REG
         T0-REG
         T1-REG
@@ -27,7 +27,16 @@
 ;  - size of segment
 ;  - continuation frames
 ;  (way to detect overflow)
-;  (way to detect underflow)  
+;  (way to detect underflow)
+
+; =======================
+; = Prev IP
+; = Prev FP
+; ==
+; = Arg 0
+; = ...
+; = Arg n
+; =======================
 
 ; Continuation frame:
 ; (stored in a stack segment) 
@@ -39,7 +48,6 @@
 (define CC-REG      'RCC)
 (define SP-REG      'RSP)
 (define ENV-REG     'RENV)
-(define SS-REG      'RSS)
 (define RES-REG     'RRET)
 (define T0-REG      'R0)
 (define T1-REG      'R1)

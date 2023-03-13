@@ -48,7 +48,6 @@
     [(eq? reg CC-REG)   'rbp]
     [(eq? reg SP-REG)   'rsp]
     [(eq? reg ENV-REG)  'rdi]
-    [(eq? reg SS-REG)   'r12]
     [(eq? reg RES-REG)  'rax]
     [(eq? reg T0-REG)   'r10]
     [(eq? reg T1-REG)   'r11]
@@ -234,6 +233,9 @@
 ; Assembler
 ;
 
+(define prefix (list (instr/endbr) (instr/push 'rbp) (instr/load 'rbp 'rsp)))
+(define suffix (list (instr/leave) (instr/ret)))
+
 (define (padding-length instrs)
   (let loop ([instrs instrs] [len 0])
     (cond
@@ -242,7 +244,6 @@
        (if (= r16 0) 0 (- 16 r16))]
       [else (loop (cdr instrs) (+ len (length (car instrs))))])))
 
-; TODO: maybe smarter to decrement `rsp` to make scratch space
 (define (c-call-prefix+suffix args incr-frame! decr-frame!)
   (let loop ([args args] [i 0] [prefix '()] [suffix '()])
     (cond
@@ -408,16 +409,28 @@
     [else
      (error 'assemble/x86-64 "unimplemented" instr)]))
 
-
 (define (assemble/x86-64 instrs)
-  (display instrs) (newline)
-
-  (define links '())
-  (define frame-size 0)
-  (define max-frame-size 0)
+  ; List of (Integer, Integer)
+  ;          Arguments, Locals
+  (define frames '())
 
   (define (make-link! key loc)
     (set! links (cons (cons key loc) links)))
+
+  (define (push-frame!)
+    (set! frames '((list 0 0) frames)))
+
+  (define (pop-frame!)
+    (set! frames (cdr frames)))
+  
+  (define (get-frame)
+    (car frames))
+
+  (define (reserve-in-frame! count)
+    (define frame (car frames))
+    (define argc (first frame))
+    (define localc (second frame))
+    (set! frames (cons (list (+ argc count) localc) 
 
   (define (increment-frame!)
     (set! frame-size (+ frame-size 1))
@@ -430,10 +443,8 @@
     (when (< frame-size 0)
       (error 'assemble/x86-64 "frame size is negative"))
     frame-size)
-
-  (define prefix (list (instr/endbr) (instr/push 'rbp) (instr/load 'rbp 'rsp)))
-  (define suffix (list (instr/leave) (instr/ret)))
-  (define suffix0 (list (instr/pop 'rbp) (instr/ret)))
+  
+  (display instrs) (newline)
 
   (define seqs
     (let loop ([instrs instrs] [seqs (reverse prefix)])
@@ -465,10 +476,7 @@
                       (cons (car seqs) (loop (cdr prefix) (cdr seqs))))))]))
 
          ; apply suffix
-         (define with-suffix
-           (if (= max-frame-size 0)
-               (append (reverse suffix0) with-frame)
-               (append (reverse suffix) with-frame)))
+         (define with-suffix (append (reverse suffix)))
 
          ; apply padding
          (define padding (make-list (padding-length with-suffix) (list #x90)))

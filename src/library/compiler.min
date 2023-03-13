@@ -85,16 +85,26 @@
             [(literal)
              ; `(literal <n>)` =>
              ; Load <n>th literal into `RRES`
-             (list (list 'load-literal RES-REG (second instr)))]
-            [(save-continuation)
-             ; `(save-continuation <label>)` =>
+             (define idx (second instr))
+             (list (list 'load-literal RES-REG idx))]
+            [(push-continuation)
+             ; `(push-continuation <label> )` =>
              ; TODO
-             '()]
-            [(push)
-             ; `(push)` =>
+             (list (list 'push-frame))]
+            [(pop-continuation)
+             ; `(pop-continuation <label> )` =>
+             ; TODO
+             (list (list 'pop-frame))]
+            [(prepare-args)
+             ; `(prepare-args <n>)` =>
+             ; Hint to the assembler
+             (list instr)]
+            [(argument)
+             ; `(argument <n>)` =>
              ; load `RRES` at `RSP`
              ; decrement `RSP` by word
-             (list (list 'push RES-REG))]
+             (define idx (second instr))
+             (list (list 'load-argument RES-REG idx))]
             [(apply)
              ; `(apply)` =>
              ; if PRIMITIVE:
@@ -107,28 +117,9 @@
              ;   Save the environment register
              ;   Load the closure environment
              ;   Jump to the start of the code
-
-            ;  (define jmp-label (make-label!))
-            ;  (define exit-label (make-label!))
-            ;  (list
-            ;    (list 'branch 'closure RES-REG jmp-label)
-            ;    ;; PRIMITIVE
-            ;    (list 'sub T0-REG CC-REG CONT-FRAME-ARGS-OFFSET)
-            ;    (list 'sub T1-REG T0-REG SP-REG)
-            ;    (list 'c-call RES-REG T0-REG T1-REG)
-            ;    (list 'branch 'always exit-label)
-            ;    ;; CLOSURE
-            ;    (list 'label jmp-label)
-            ;    (list 'sub SP-REG SP-REG WORD-SIZE)
-            ;    (list 'store ENV-REG SP-REG (- WORD-SIZE))
-            ;    (list 'load ENV-REG RES-REG CLOSURE-ENV-OFFSET)
-            ;    (list 'load RES-REG RES-REG CLOSURE-CODE-OFFSET)
-            ;    (list 'call)
-            ;    (list 'load ENV-REG SP-REG (- WORD-SIZE))
-            ;    (list 'add SP-REG SP-REG WORD-SIZE)
-            ;    (list 'label exit-label))]
             (list
-              (list 'sub T1-REG CC-REG CONT-FRAME-ARGS-OFFSET)
+              (list 'load T0-REG 0)
+              (list 'load T1-REG 0)
               (list 'load-offset RES-REG RES-REG PRIM-FN-OFFSET)
               (list 'c-call RES-REG T0-REG T1-REG))]
             [(lookup)
@@ -159,7 +150,6 @@
              ; else:
              ;   check that `<n> == 1`
              ;
-
              ; TODO: currently unchecked
              (list)]
             [(label)
@@ -203,9 +193,11 @@
        (define op (stx-car expr))
        (define args (stx-cdr expr))
        (define label (label!))
-       (cons
-         (list 'save-continuation label)
-         (let loop ([args args])
+       (append
+         (list
+           (list 'push-continuation label)
+           (list 'prepare-args (length args)))
+         (let loop ([args args] [i (- (length args) 1)])
            (cond
              [(null? args)
               ; apply operation
@@ -213,14 +205,15 @@
                 (rec op)
                 (list
                   (list 'apply)
+                  (list 'pop-continuation)
                   (list 'label label)))]
               [else
                ; process next argument
                (append
                  (rec (car args))
                  (cons
-                   (list 'push)
-                   (loop (cdr args))))])))]
+                   (list 'argument i)
+                   (loop (cdr args) (- i 1))))])))]
       [(stx-self-evaluating? expr)
        (define idx (literal! (syntax-e expr)))
        (list (list 'literal idx))]
@@ -361,7 +354,13 @@
       (cons 'links links)))
 
   (when enter?
-    (enter-compiled! template-address))
+    (call-with-values
+      (lambda () (enter-compiled! template-address))
+      (lambda result
+        (let loop ([result result])
+          (unless (null? result)
+            (write (car result)) (newline)
+            (loop (cdr result)))))))
 
   report)
 
