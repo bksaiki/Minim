@@ -244,15 +244,16 @@
        (if (= r16 0) 0 (- 16 r16))]
       [else (loop (cdr instrs) (+ len (length (car instrs))))])))
 
-(define (c-call-prefix+suffix args incr-frame! decr-frame!)
+(define (c-call-prefix+suffix args push! pop! get-frame)
   (let loop ([args args] [i 0] [prefix '()] [suffix '()])
     (cond
       [(null? args)
        ; no arguments left to stash
-       (for-each (lambda _ (decr-frame!)) (make-list i #f))
+       (for-each (lambda _ (pop!)) (make-list i #f))
        (values (reverse prefix) suffix)]
       [else
-       (define size (incr-frame!))
+       (push!)
+       (define size (third (get-frame)))
        (define i-reg (argument/register i))
        (define push (instr/load-at-offset 'rbp i-reg (- (* size WORD-SIZE))))
        (define pop (instr/load-from-offset i-reg 'rbp (- (* size WORD-SIZE))))
@@ -272,7 +273,10 @@
              (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
 
 
-(define (assemble/instr instr seqs link! incr-frame! decr-frame!)
+(define (assemble/instr instr seqs
+                        link!
+                        push-frame! pop-frame! get-frame
+                        reserve-args! push-local! pop-local!)
   (case (first instr)
     [(load)
      ; mov <dst>, <src>
@@ -372,7 +376,8 @@
     [(c-call)
      ; function call
      ; make prefix and suffix code to stash registers
-      (define-values (prefix suffix) (c-call-prefix+suffix (cddr instr) incr-frame! decr-frame!))
+     (define-values (prefix suffix)
+       (c-call-prefix+suffix (cddr instr) push-local! pop-local! get-frame))
      ; compute prefix
      ; the actual call
      (cond
@@ -395,96 +400,155 @@
           prefix
           (list (instr/call 'rax))
           suffix)])]
-    [(push)
-     ; push <src>
-     (define size (incr-frame!))
-     (list (instr/load-at-offset 'rbp 'rax (- (* size WORD-SIZE))))]
-    [(pop)
-     ; pop <dst>
-     (decr-frame!)
-     (list)]
     [(label)
      ; TODO:
      (list)]
     [else
      (error 'assemble/x86-64 "unimplemented" instr)]))
 
+
 (define (assemble/x86-64 instrs)
-  ; List of (Integer, Integer)
-  ;          Arguments, Locals
-  (define frames '())
+  (define asm-instrs '())
+  (define frames '((0 0 0)))
+  (define framei '())
+  (define links '())
 
   (define (make-link! key loc)
     (set! links (cons (cons key loc) links)))
 
-  (define (push-frame!)
-    (set! frames '((list 0 0) frames)))
+  (define (adjust-links! start by)
+    (set! links
+      (let loop ([links links] [links* '()])
+        (cond
+          [(null? links)
+           (reverse links*)]
+          [(>= (cadar links) start)
+           (define loc* (cons (+ (cadar links) by) (cddar links)))
+           (loop (cdr links) (cons (cons (caar links) loc*) links*))]
+          [else
+           (loop (cdr links) (cons (car links) links*))]))))
+
+  (define (adjust-frame!)
+    (define instr-idx (car framei))
+    (define frame (car frames))
+
+    (define frame-size (+ (first frame) (second frame)))
+    (define aligned-size
+      (if (= (remainder frame-size 2) 0)
+          frame-size
+          (+ frame-size 1)))
+
+    (set! asm-instrs
+      (reverse 
+        (let loop ([instrs (reverse asm-instrs)] [i 0] [instrs* '()])
+          (cond
+            [(null? instrs)
+             (error 'adjust-frame!
+                    "instruction sequence not long enough"
+                    instr-idx asm-intsrs)]
+            [(= i instr-idx)
+             (define instr-len (length (car instrs)))
+             (display "adjusting ") (write (car instrs)) (display " ") (write aligned-size) (newline)
+             (cond
+               [(= aligned-size 0)
+                (adjust-links! i (- instr-len))
+                (append (reverse instrs*) (cdr instrs))]
+               [else
+                (define reserve (instr/sub-imm 'rsp (* WORD-SIZE aligned-size)))
+                (unless (= (length (car instrs)) (length reserve))
+                  (adjust-links! i (- (length reserve) instr-len)))
+                (append (reverse instrs*) (cons reserve (cdr instrs)))])]
+            [else
+             (loop (cdr instrs) (+ i 1) (cons (car instrs) instrs*))])))))
+
+  (define (push-frame! idx)
+    (set! framei (cons idx framei))
+    (set! frames '((list 0 0 0) frames)))
 
   (define (pop-frame!)
+    (adjust-frame!)
     (set! frames (cdr frames)))
   
   (define (get-frame)
     (car frames))
 
-  (define (reserve-in-frame! count)
+  (define (reserve-args! count)
     (define frame (car frames))
     (define argc (first frame))
     (define localc (second frame))
-    (set! frames (cons (list (+ argc count) localc) 
+    (define locali (third frame))
+    (define frame* (list (+ argc count) localc locali))
+    (set! frames (cons frame* (cdr frames))))
 
-  (define (increment-frame!)
-    (set! frame-size (+ frame-size 1))
-    (when (> frame-size max-frame-size)
-      (set! max-frame-size frame-size))
-    frame-size)
-
-  (define (decrement-frame!)
-    (set! frame-size (- frame-size 1))
-    (when (< frame-size 0)
-      (error 'assemble/x86-64 "frame size is negative"))
-    frame-size)
+  (define (push-local!)
+    (define frame (car frames))
+    (define argc (first frame))
+    (define localc (second frame))
+    (define locali (third frame))
+    (define frame*
+      (if (= locali localc)
+          (list argc (+ localc 1) (+ locali 1))
+          (list argc localc (+ locali 1))))
+    (set! frames (cons frame* (cdr frames))))
+    
+  (define (pop-local!)
+    (define frame (car frames))
+    (define argc (first frame))
+    (define localc (second frame))
+    (define locali (third frame))
+    (define frame* (list argc localc (- locali 1)))
+    (if (= locali 0)
+        (error 'assemble/x86-64 "pop-local: frame size will be negative" frames)
+        (set! frames (cons frame* (cdr frames)))))
   
   (display instrs) (newline)
 
-  (define seqs
-    (let loop ([instrs instrs] [seqs (reverse prefix)])
-      (cond
-        [(null? instrs)
-         ; insert stack frame (if necessary)
-         (define with-frame
-           (cond
-             [(= max-frame-size 0)
-              seqs]
-             [else
-              (set! links
-                (let loop ([links links] [links* '()])
-                  (cond [(null? links)
-                         (reverse links*)]
-                        [(>= (cadar links) (length prefix))
-                         (define loc* (cons (+ (cadar links) 1) (cddar links)))
-                         (loop (cdr links) (cons (cons (caar links) loc*) links*))]
-                        [else
-                         (loop (cdr links) (cons (car links) links*))])))
-              (define aligned-frame-size
-                (if (= (remainder max-frame-size 2) 0)
-                    max-frame-size
-                    (+ max-frame-size 1)))
-              (reverse
-                (let loop ([prefix prefix] [seqs (reverse seqs)])
-                  (if (null? prefix)
-                      (cons (instr/sub-imm 'rsp (* WORD-SIZE aligned-frame-size)) seqs)
-                      (cons (car seqs) (loop (cdr prefix) (cdr seqs))))))]))
+  (set! framei (cons (length prefix) framei))
+  (set! asm-instrs (cons (instr/sub-imm 'rsp 0) (reverse prefix)))
 
-         ; apply suffix
-         (define with-suffix (append (reverse suffix)))
+  (let loop ([instrs instrs])
+    (unless (null? instrs)
+      (define next
+        (assemble/instr (car instrs) asm-instrs
+                        make-link!
+                        push-frame! pop-frame! get-frame
+                        reserve-args! push-local! pop-local!))
+      (set! asm-instrs (append (reverse next) asm-instrs))
+      (loop (cdr instrs))))
 
-         ; apply padding
-         (define padding (make-list (padding-length with-suffix) (list #x90)))
-         (define with-padding (append padding with-suffix))
-         (reverse with-padding)]
-        [else
-         (define instr (car instrs))
-         (define next-seqs (assemble/instr instr seqs make-link! increment-frame! decrement-frame!))
-         (loop (cdr instrs) (append (reverse next-seqs) seqs))])))
+  ; insert stack frame (if necessary)
+  ; (define with-frame
+  ;   (cond
+  ;     [(= max-frame-size 0)
+  ;      asm-instrs]
+  ;     [else
+  ;     (set! links
+  ;       (let loop ([links links] [links* '()])
+  ;         (cond [(null? links)
+  ;                 (reverse links*)]
+  ;               [(>= (cadar links) (length prefix))
+  ;                 (define loc* (cons (+ (cadar links) 1) (cddar links)))
+  ;                 (loop (cdr links) (cons (cons (caar links) loc*) links*))]
+  ;               [else
+  ;                 (loop (cdr links) (cons (car links) links*))])))
+  ;     (define aligned-frame-size
+  ;       (if (= (remainder max-frame-size 2) 0)
+  ;           max-frame-size
+  ;           (+ max-frame-size 1)))
+  ;     (reverse
+  ;       (let loop ([prefix prefix] [instrs (reverse asm-instrs)])
+  ;         (if (null? prefix)
+  ;             (cons (instr/sub-imm 'rsp (* WORD-SIZE aligned-frame-size)) instrs)
+  ;             (cons (car instrs) (loop (cdr prefix) (cdr instrs))))))]))
 
-  (values seqs links))
+  (pop-frame!)
+
+  ; apply prefix and suffix
+  (define with-suffix (append (reverse suffix) asm-instrs))
+
+  ; apply padding
+  (define padding (make-list (padding-length with-suffix) (list #x90)))
+  (define with-padding (append padding with-suffix))
+  (define final-instrs (reverse with-padding))
+
+  (values final-instrs links))
