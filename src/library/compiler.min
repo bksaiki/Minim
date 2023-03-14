@@ -121,7 +121,9 @@
              (define exit-label (make-label!))
              (list
                ; Check argument is closure
-               (list 'cmp-tag RES-REG 'closure)
+               ; Extract the tag and compare
+               (list 'load-offset T0-REG RES-REG 0)
+               (list 'cmp-tag T0-REG 'closure)
                (list 'branch jmp-label 'equal)
                ; Primitive
                (list 'load T0-REG argc)
@@ -132,8 +134,11 @@
                ; Closure
                (list 'label jmp-label)
                ; TODO environment
+              ;  (list 'push ENV-REG)
+               (list 'load-offset ENV-REG RES-REG CLOSURE-ENV-OFFSET)
                (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
-               (list 'c-call RES-REG T0-REG T1-REG)
+               (list 'c-call RES-REG ENV-REG)
+              ;  (list 'pop ENV-REG)
                ; End
                (list 'label exit-label))]
             [(lookup)

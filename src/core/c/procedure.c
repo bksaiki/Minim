@@ -53,7 +53,7 @@ minim_object *make_closure(minim_object *args,
 
 minim_object *make_native_closure(minim_object *env, void *fn) {
     minim_native_closure_object *o = GC_alloc(sizeof(minim_native_closure_object));
-    o->type = MINIM_CLOSURE_PROC_TYPE;
+    o->type = MINIM_NATIVE_CLOSURE_TYPE;
     o->env = env;
     o->fn = fn;
     o->name = NULL;
