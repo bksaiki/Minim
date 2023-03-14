@@ -128,10 +128,8 @@
   (define-values (r reg) (register/code dst))
   (define rex (rex-prefix #t r #f b))
   (cond
-    [(and (< 0 offset) (< offset 128))
+    [(and (<= 0 offset) (< offset 128))
      (list rex #x8b (encode/modrm 1 reg r/m) offset)]
-    [(= offset 0)
-     (list rex #x8b (encode/modrm 0 reg r/m))]
     [(and (<= (- 128) offset) (< offset 0))
      (list rex #x8b (encode/modrm 1 reg r/m) (+ 256 offset))]
     [else

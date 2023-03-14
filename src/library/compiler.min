@@ -67,11 +67,6 @@
 (define (assemble/procedure proc make-label!)
   (display " <assembling: ") (write proc) (display ">") (newline)
   (define args (second (second proc)))
-  (define arg-instrs
-    (if (null? args)
-        '()
-        (error 'assemble/procedure "unimplemented" args)))
-
   (define instrs (second (third proc)))
   (define instrs*
     (let loop ([instrs instrs])
@@ -133,12 +128,10 @@
                (list 'branch exit-label 'always)
                ; Closure
                (list 'label jmp-label)
-               ; TODO environment
-              ;  (list 'push ENV-REG)
+               (list 'load T0-REG argc)
                (list 'load-offset ENV-REG RES-REG CLOSURE-ENV-OFFSET)
                (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
-               (list 'c-call RES-REG ENV-REG)
-              ;  (list 'pop ENV-REG)
+               (list 'c-call RES-REG ENV-REG T0-REG)
                ; End
                (list 'label exit-label))]
             [(lookup)
@@ -159,6 +152,24 @@
              (list
                (list 'load-literal T0-REG (second instr))
                (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
+            [(bind-argument)
+             ; `(bind-argument <n>`) =>
+             ; binds the <n>th argument to in the current enviroment
+             ;  - extract the previous FP (stored at [CC-REG])
+             ;  - the <i>th argument is at [CC-REG-8*i]
+             (define idx (second instr))
+             (define lit-idx (third instr))
+             (list
+               (list 'load-literal T0-REG lit-idx)
+               (list 'load-offset T1-REG CC-REG 0)
+               (list 'load-offset T1-REG T1-REG (- (* (+ idx 1) WORD-SIZE)))
+               (list 'c-call "env_define_var" ENV-REG T0-REG T1-REG))]
+            [(arity-check)
+             ; `(arity-check <n>)` =>
+             ; checks that the correct number of arguments was provided
+             ; to the closure and panics if not.
+             ; TODO: currently unchecked
+             (list)]
             [(bind-check)
              ; `(bind-check <n>)` =>
              ; checks that the result has the right number of values
@@ -179,20 +190,30 @@
              (error 'assemble/procedure "unimplemented" instr)]))
          (append seq (loop (cdr instrs)))])))
   
-  (assemble/x86-64 (append arg-instrs instrs*)))
+  (assemble/x86-64 instrs*))
 
 ;
 ; Flatten
 ;
 
-(define (make-flat-closure formals instrs)
-  (cond
-    [(null? formals)
-     (list 'fun
-       (list 'args '())
-       (list 'instrs instrs))]
-    [else
-     (error 'make-flat-closure "unimplemented" formals instrs)]))
+(define (make-flat-closure formals instrs literal!)
+  (define argc (length formals))
+  (list 'fun
+    (list 'args formals)
+    (list 'instrs
+          (append
+            (cons
+              (list 'arity-check argc)
+              (let loop ([args formals] [i 0])
+                (cond
+                  [(null? args)
+                   '()]
+                  [(pair? args)
+                   (define idx (literal! (car args)))
+                   (cons (list 'bind-argument (- argc i 1) idx) (loop (cdr args) (+ i 1)))]
+                  [else
+                   (list (list 'bind-rest i))])))
+            instrs))))
 
 (define (flatten/expr expr procedure! literal! label!)
   (let rec ([expr expr])
@@ -205,7 +226,7 @@
            (cond
              [(null? body) '()]
              [else (append (rec (car body)) (loop (cdr body)))])))
-       (define pcode (make-flat-closure (syntax->datum formals) instrs))
+       (define pcode (make-flat-closure (syntax->datum formals) instrs literal!))
        (define idx (procedure! pcode))
        (list (list 'closure idx))]
       [(quote-form? expr)
@@ -316,7 +337,7 @@
   
   ; module body is a nullary function
   (define module-body-fn
-    (make-flat-closure '() module-body))
+    (make-flat-closure '() module-body register-literals!))
 
   ; lists are in reverse order
   (set! top-levels (reverse top-levels))
