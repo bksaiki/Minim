@@ -302,7 +302,7 @@ minim_object *hashtable_keys(minim_object *ht) {
 }
 
 static void key_not_found_exn(const char *name, minim_object *k) {
-    fprintf(stderr, "%s!: could not find key ", name);
+    fprintf(stderr, "%s: could not find key ", name);
     write_object(stderr, k);
     fprintf(stderr, "\n");
     minim_shutdown(1);

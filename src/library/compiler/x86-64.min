@@ -237,21 +237,42 @@
 ;
 
 (define (link/labels proc0 links)
-  (let loop ([links links] [dict '()])
+  (define loc->label (make-hashtable))
+  (for-each
+    (lambda (l)
+      (when (eq? (caar l) 'label)
+        (define name (cadar l))
+        (define loc (cadr l))
+        (hashtable-update! loc->label loc
+                           (lambda (names)
+                             (if (member name names)
+                                 names
+                                 (cons name names)))
+                           (list name))))
+    links)
+
+  (define idx->offset (make-hashtable))
+  (let loop ([proc proc0] [i 0] [offset 0])
+    (unless (null? proc)
+      (hashtable-set! idx->offset i offset)
+      (loop (cdr proc) (+ i 1) (+ offset (length (car proc))))))
+
+  (define loc->offset (make-hashtable))
+  (for-each
+    (lambda (k) (hashtable-set! loc->offset k (hashtable-ref idx->offset k)))
+    (hashtable-keys loc->label))
+
+  (let loop ([dict '()] [keys (hashtable-keys loc->label)])
     (cond
-      [(null? links) dict]
-      [(eq? (caaar links) 'label)
-       (define name (cadaar links))
-       (define loc (cadar links))
-       (define offset
-         (let loop ([proc proc0] [i 0] [offset 0])
-           (cond
-             [(null? proc) (error 'link/labels "bad location" proc0 loc)]
-             [(= i loc) offset]
-             [else (loop (cdr proc) (+ i 1) (+ offset (length (car proc))))])))
-       (loop (cdr links) (cons (cons name offset) dict))]
+      [(null? keys) dict]
       [else
-       (loop (cdr links) dict)])))
+       (define names (hashtable-ref loc->label (car keys)))
+       (define offset (hashtable-ref loc->offset (car keys)))
+       (let loop2 ([dict dict] [names names])
+         (cond
+           [(null? names) (loop dict (cdr keys))]
+           [else (loop2 (cons (cons (car names) offset) dict) (cdr names))]))])))
+
 
 (define (link/x86-64 proc links info)
   (define label-locs (link/labels proc links))
