@@ -13,9 +13,8 @@
 ;;
 
 (import "base.min")
-(export expand expand/module $base-stx-env)
+(export expand expand/module $base-stx-env merge-xforms)
 
-;; Should the expander use the boot expander for evaluation?
 (define $expander-pattern-vars null)
 
 ;; Base environment when expanding modules
@@ -191,11 +190,15 @@
   (define (define-syntaxes/values-expr form)
     (stx-car (stx-cdr (stx-cdr form))))
 
-  ; evaluates an expression in a given environment returning potentially multiple values
+  ; evaluates an expression in a given environment
+  ; returning potentially multiple values.
   (define (eval/values expr env)
-    (eval expr env))
-
-  ; evaluates an expression in a given environment returning potentially multiple values
+    (call-with-values
+      (lambda () (eval expr env))
+      (lambda results results)))
+  
+  ; evaluates an expression in a given environment
+  ; returning potentially multiple values.
   (define (eval/xform xform expr name)
     (define fn (car xform))
     (call-with-values
@@ -311,9 +314,8 @@
          (define head (stx-car expr))
          (define maybe-xform (lookup-xform head xforms))
          (if maybe-xform
-            (expand/expr
-              (eval/xform maybe-xform expr (syntax-e head))
-              (merge-xforms (cadr maybe-xform) xforms))
+            (expand/expr (eval/xform maybe-xform expr (syntax-e head))
+                         (merge-xforms (cadr maybe-xform) xforms))
             (datum->syntax (map loop (syntax->list expr))))]
         [(identifier? expr)
          (define maybe-xform (lookup-xform expr xforms))
@@ -323,7 +325,7 @@
         [(stx-self-evaluating? expr)
          expr]
         [else
-         (syntax-error #f "bad syntax" expr)])))
+         (syntax-error 'expand/expr "bad syntax" expr)])))
 
   ; module context
   ;  `define-values` => defers expansion until all definitions have been processed
@@ -417,7 +419,7 @@
                   (cons (expand/expr expr in-scope) (loop (cdr exprs)))]))])))
       ; done
       (values exprs* xforms))
-
+    
     ; Any `define-values` form is deferred
     ; List of Expr, List of Xform -> List of Expr
     (define (expand/define-values exprs xforms)

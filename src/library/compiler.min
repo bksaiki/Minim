@@ -65,7 +65,7 @@
 ;
 
 (define (assemble/procedure proc make-label!)
-  (display " <assembling: ") (write proc) (display ">") (newline)
+  ; (display " <assembling: ") (write proc) (display ">") (newline)
   (define args (second (second proc)))
   (define instrs (second (third proc)))
   (define instrs*
@@ -300,6 +300,12 @@
        (define form (syntax-e expr))
        (define idx (literal! (syntax->datum (cadr form))))
        (list (list 'literal idx))]
+      [(begin-form? expr)
+       (define body (stx-cdr expr))
+       (let loop ([body body])
+         (cond
+           [(null? body) '()]
+           [else (append (rec (car body)) (loop (cdr body)))]))]
       [(stx-list? expr)
        (define op (stx-car expr))
        (define args (stx-cdr expr))
@@ -421,7 +427,7 @@
     (map
       (lambda (p)
         (define-values (as link) (assemble/procedure p register-label!))
-        (display as) (newline)
+        ; (display as) (newline)
         (cons as link))
       procedures))
 

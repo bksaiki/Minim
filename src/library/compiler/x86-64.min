@@ -684,7 +684,7 @@
         (set! frames (cons frame* (cdr frames))))
     (+ (first frame) (third frame)))
   
-  (display instrs) (newline)
+  ; (display instrs) (newline)
 
   (push-frame! 3)
   (set! asm-instrs (cons (instr/sub-imm 'rsp 0) (reverse prefix)))

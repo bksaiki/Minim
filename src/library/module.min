@@ -5,6 +5,10 @@
 (import "base.min" "expander.min" "read.min")
 (export read/module)
 
+(define (writeln o)
+  (write o)
+  (newline))
+
 ;; Base environment when loading modules
 (define $base-env (environment))
 
@@ -13,22 +17,10 @@
 ;;  name -> (current xforms, current env)
 (define $module-table '())
 (define $module-envs '())
-
-;; prepares the evaluation environment given
-;; an association list of additional values
-(define ($eval-environment env imports)
-  (define env* (extend-environment env))
-  (let loop ([imports imports])
-    (cond
-      [(null? imports) env*]
-      [else
-       (define name (caar imports))
-       (define value (cdar imports))
-       (environment-set-variable-value! env* name value)
-       (loop (cdr imports))])))
+(define $module-internals '())
 
 ;; Like `$load-module`, but does not check the cache
-(define (read/module path)
+(define ($load-module path)
   ;; paths
   (define new-cwd (car (split-path path)))
 
@@ -62,7 +54,6 @@
          (define expr (syntax-e (car exprs)))
          (cond
            [(and (pair? expr) (eq? (syntax-e (car expr)) 'import))
-            (write (cdr exprs)) (newline)
             (let loop2 ([imports (cdr expr)])
               (cond
                 [(null? imports)
@@ -72,7 +63,7 @@
                  (cond
                    [(string? maybe-import)
                     (define path (build-path new-cwd maybe-import))
-                    (import path)
+                    (read/module path)
                     (define from-module (assoc path $module-table))
                     (set! imported-modules (cons path imported-modules))
                     (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
@@ -107,12 +98,12 @@
                                                  (map car (cdr from-module))
                                                  exported))
                           (loop2 (cdr exports))]
-                         [else (error 'export "bad syntax")])]
-                      [else (error 'export "bad syntax")])]
+                         [else (error 'export "bad export syntax")])]
+                      [else (error 'export "bad export syntax")])]
                    [else
-                    (error 'export "bad syntax")])]
+                    (error 'export "bad export syntax")])]
                 [else
-                 (error 'export "bad syntax")]))]
+                 (error 'export "bad export syntax")]))]
            [else
             (loop (cdr exprs) (cons (car exprs) evalable))])])))
 
@@ -130,6 +121,119 @@
   (define raw-exprs ($read))
   (define non-import-exprs ($import raw-exprs))
   (define expanded-exprs ($expand non-import-exprs))
-
+ 
   ;; return result
   (values expanded-exprs module-xforms imported exported stx-env))
+
+;; prepares the evaluation environment given
+;; an association list of additional values
+(define ($eval-environment env imports)
+  (define env* (extend-environment env))
+  (let loop ([imports imports])
+    (cond
+      [(null? imports) env*]
+      [else
+       (define name (caar imports))
+       (define value (cdar imports))
+       (environment-set-variable-value! env* name value)
+       (loop (cdr imports))])))
+
+;; evaluates a set of expressions under a given environment
+(define ($eval-exprs exprs env print-handler)
+  (let loop ([exprs exprs] [result (void)])
+    (cond
+      [(null? exprs) result]
+      [else
+       (define expr (syntax->datum (car exprs)))
+       (call-with-values
+         (lambda () (eval expr env))
+         (lambda results
+           (let loop2 ([results results] [prev (void)])
+             (cond
+               [(null? results)
+                (loop (cdr exprs) prev)]
+               [else
+                (cond [(not (void? (car results))) (writeln (car results))])
+                (loop2 (cdr results) (car results))]))))])))
+
+(define ($load-or-import-no-check path print-handler result-handler)
+  ;; paths
+  (define cwd (current-directory))
+  (define new-cwd (car (split-path path)))
+  ;; load expressions
+  (define-values (exprs module-xforms imports exports stx-env)
+    ($load-module path))
+  ;; evaluate
+  (current-directory new-cwd)
+  (define env ($eval-environment $base-env imports))
+  (define last ($eval-exprs exprs env print-handler))
+  (current-directory cwd)
+  ;; handle exports
+  (define export-values '())
+  (define export-xforms '())
+  (let loop ([exports exports])
+    (cond
+      [(null? exports) (void)]
+      [else
+       (define export (car exports))
+       (define maybe-xform (assoc export module-xforms))
+       (cond
+         [maybe-xform
+          (set! export-xforms (cons (cons export maybe-xform) export-xforms))]
+         [else
+          (define value
+            (environment-variable-value env export
+              (lambda () (error 'export "undefined export" export))))
+          (set! export-values (cons (cons export value) export-values))])
+       (loop (cdr exports))]))
+
+  ;; update module tables
+  (set! $module-table (cons (cons path (cons export-xforms export-values)) $module-table))
+  (set! $module-envs (cons (cons path (cons module-xforms (cons stx-env env))) $module-envs))
+  (set! $module-internals (cons (cons path (list exprs module-xforms imports exports stx-env)) $module-internals))
+
+  ;; and done
+  (cond [result-handler (result-handler last)]))
+
+;; REPL with env
+(define ($repl xforms stx-env env)
+  (let loop ([xforms xforms])
+    ;; read
+    (display "> ")
+    (define expr (read))
+    (cond [(eof-object? expr) (exit)])
+    ;; expand
+    (let-values ([(expr* xforms*) (expand expr xforms stx-env)])
+      ;; evaluate and display
+      (call-with-values
+        (lambda () (eval expr env))
+        (lambda results
+          (let loop ([results results])
+            (cond
+              [(null? results) (void)]
+              [(void? (car results)) (loop (cdr results))]
+              [else
+              (writeln (car results))
+              (loop (cdr results))]))))
+      ;; loop
+      (loop xforms*))))
+
+(define ($load-or-import name print-handler result-handler)
+  ;; resolve path
+  (define path
+    (if (is-absolute-path? name)
+        name
+        (build-path (current-directory) name)))
+  ;; check cache first
+  (cond [(not (assoc path $module-table))
+         ($load-or-import-no-check path print-handler result-handler)]))
+
+(define (read/module name)
+  ;; resolve path
+  (define path
+    (if (is-absolute-path? name)
+        name
+        (build-path (current-directory) name)))
+  ($load-or-import path #f #f)
+  (define manifest (assoc path $module-internals))
+  (values (first manifest) (second manifest) (third manifest) (fourth manifest) (fifth manifest)))
