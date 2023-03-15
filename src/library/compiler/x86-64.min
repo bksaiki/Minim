@@ -209,6 +209,12 @@
     [else
      (error 'instr/cmp32-imm "unimplemented" imm)]))
 
+; cmp <src1:64> <src2:64>
+(define (instr/cmp64 src1 src2)
+  (define-values (b r/m) (register/code src1))
+  (define-values (r reg) (register/code src2))
+  (list (rex-prefix #t r #f b) #x39 (encode/modrm 3 reg r/m)))
+
 ; call <reg>
 (define (instr/call src)
   (define-values (b r/m) (register/code src))
@@ -570,6 +576,12 @@
      (define src (register/from-generic (second instr)))
      (define tag (type-tag->integer (third instr)))
      (list (instr/cmp32-imm src tag))]
+    [(cmp-ptr)
+     ; comparing register-to-register
+     ; cmp <src1:64>, <src2:64>
+     (define src1 (register/from-generic (second instr)))
+     (define src2 (register/from-generic (third instr)))
+     (list (instr/cmp64 src1 src2))]
     [(push)
      ; really just a move
      (define offset (push-local!))

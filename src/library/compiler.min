@@ -163,6 +163,21 @@
                (list 'load T0-REG arity-low)
                (list 'load T1-REG arity-high)
                (list 'c-call "make_closure" ENV-REG RES-REG T0-REG T1-REG))]
+            [(branch)
+             ; `(branch label mode ...)` =>
+             ; branch
+             (define label (second instr))
+             (define mode (third instr))
+             (case mode
+               [(lit-eq?)
+                (list
+                  (list 'load-literal T0-REG (fourth instr))
+                  (list 'cmp-ptr RES-REG T0-REG)
+                  (list 'branch label 'equal))]
+               [(always)
+                (list (list 'branch label 'always))]
+               [else
+                (error 'assemble/procedure "unimplemented branch mode" mode)])]
             [(bind)
              ; `(bind <n>`) =>
              ; binds <n>th literal (symbol) to `RREG` in the current environment
@@ -296,6 +311,24 @@
        (define arity (closure-arity (syntax->datum formals)))
        (define idx (procedure! pcode))
        (list (list 'closure idx arity))]
+      [(if-form? expr)
+       (define cond-expr (car (stx-cdr expr)))
+       (define ift-expr (cadr (stx-cdr expr)))
+       (define iff-expr (caddr (stx-cdr expr)))
+       (define iff-label (label!))
+       (define end-label (label!))
+       (define false-idx (literal! #f))
+       (append
+         (rec cond-expr)
+         (list
+           (list 'branch iff-label 'lit-eq? false-idx))
+         (rec ift-expr)
+         (list
+          (list 'branch end-label 'always)
+          (list 'label iff-label))
+         (rec iff-expr)
+         (list
+           (list 'label end-label)))]
       [(quote-form? expr)
        (define form (syntax-e expr))
        (define idx (literal! (syntax->datum (cadr form))))
