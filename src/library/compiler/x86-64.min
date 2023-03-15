@@ -54,6 +54,9 @@
     [(eq? reg SP-REG)   'rsp]
     [(eq? reg ENV-REG)  'rdi]
     [(eq? reg RES-REG)  'rax]
+    [(eq? reg R0-REG)   (argument/register 0)]
+    [(eq? reg R1-REG)   (argument/register 1)]
+    [(eq? reg R2-REG)   (argument/register 2)]
     [(eq? reg T0-REG)   'r10]
     [(eq? reg T1-REG)   'r11]
     [else       (error 'register/translate "unknown register" reg)]))

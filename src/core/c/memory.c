@@ -16,12 +16,29 @@ struct address_map_t address_map[] = {
     { "env_set_var", env_set_var },
     { "env_lookup_var", env_lookup_var },
     { "make_closure", make_native_closure },
+    { "check_arity", check_native_closure_arity },
     { "", NULL }
 };
 
 //
 //  Runtime
 //
+
+void check_native_closure_arity(minim_object *fn, short argc) {
+    struct proc_arity *arity;
+    int min_arity, max_arity;
+
+    arity = &minim_native_closure_arity(fn);
+    min_arity = proc_arity_min(arity);
+    max_arity = proc_arity_max(arity);
+
+    // TODO: better arity error
+    if (argc > max_arity)
+        arity_mismatch_exn(minim_native_closure_name(fn), arity, argc);
+
+    if (argc < min_arity)
+        arity_mismatch_exn(minim_native_closure_name(fn), arity, argc);
+}
 
 minim_object *call_compiled(minim_object *env, minim_object *addr) {
     entry_proc fn;

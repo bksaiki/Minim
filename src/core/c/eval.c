@@ -86,7 +86,7 @@ void bad_type_exn(const char *name, const char *type, minim_object *x) {
     minim_shutdown(1);
 }
 
-static void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
+void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
     if (name != NULL)
         fprintf(stderr, "%s: ", name);
     fprintf(stderr, "arity mismatch\n");

@@ -111,6 +111,11 @@
              ;   Save the environment register
              ;   Load the closure environment
              ;   Jump to the start of the code
+             ;   Calling convention:
+             ;     R0: environment register
+             ;     R1: closure object
+             ;     R2: argument count
+             ;     <stack>: arguments
              (define argc (second instr))
              (define jmp-label (make-label!))
              (define exit-label (make-label!))
@@ -128,10 +133,12 @@
                (list 'branch exit-label 'always)
                ; Closure
                (list 'label jmp-label)
-               (list 'load T0-REG argc)
+               (list 'push RES-REG)     ; save closure for GC
+               (list 'load T0-REG RES-REG)
+               (list 'load T1-REG argc)
                (list 'load-offset ENV-REG RES-REG CLOSURE-ENV-OFFSET)
                (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
-               (list 'c-call RES-REG ENV-REG T0-REG)
+               (list 'c-call RES-REG ENV-REG T0-REG T1-REG)
                ; End
                (list 'label exit-label))]
             [(lookup)
@@ -143,9 +150,19 @@
             [(closure)
              ; `(closure <idx>)` =>
              ; create a closure using the current environment
+             (define idx (second instr))
+             (define arity (third instr))
+             (define-values (arity-low arity-high)
+               (if (pair? arity)
+                   (if (number? (cdr arity))
+                       (values (car arity) (cdr arity))
+                       (values (car arity) ARGC-MAX))
+                   (values arity arity)))
              (list
-               (list 'load-procedure T0-REG (second instr))
-               (list 'c-call "make_closure" ENV-REG T0-REG))]
+               (list 'load-procedure RES-REG idx)
+               (list 'load T0-REG arity-low)
+               (list 'load T1-REG arity-high)
+               (list 'c-call "make_closure" ENV-REG RES-REG T0-REG T1-REG))]
             [(bind)
              ; `(bind <n>`) =>
              ; binds <n>th literal (symbol) to `RREG` in the current environment
@@ -168,8 +185,7 @@
              ; `(arity-check <n>)` =>
              ; checks that the correct number of arguments was provided
              ; to the closure and panics if not.
-             ; TODO: currently unchecked
-             (list)]
+             (list (list 'c-call "check_arity" R1-REG R2-REG))]
             [(bind-check)
              ; `(bind-check <n>)` =>
              ; checks that the result has the right number of values
@@ -196,6 +212,17 @@
 ; Flatten
 ;
 
+(define (closure-arity formals)
+  (let loop ([formals formals] [i 0])
+    (cond [(null? formals) i]
+          [(pair? formals) (loop (cdr formals) (+ i 1))]
+          [else (cons i #f)])))
+
+(define (make-module-body-closure instrs)
+  (list 'fun
+    (list 'args (list))
+    (list 'instrs instrs)))
+
 (define (make-flat-closure formals instrs literal!)
   (define argc (length formals))
   (list 'fun
@@ -203,7 +230,7 @@
     (list 'instrs
           (append
             (cons
-              (list 'arity-check argc)
+              (list 'arity-check)
               (let loop ([args formals] [i 0])
                 (cond
                   [(null? args)
@@ -227,8 +254,9 @@
              [(null? body) '()]
              [else (append (rec (car body)) (loop (cdr body)))])))
        (define pcode (make-flat-closure (syntax->datum formals) instrs literal!))
+       (define arity (closure-arity (syntax->datum formals)))
        (define idx (procedure! pcode))
-       (list (list 'closure idx))]
+       (list (list 'closure idx arity))]
       [(quote-form? expr)
        (define form (syntax-e expr))
        (define idx (literal! (syntax->datum (cadr form))))
@@ -336,8 +364,7 @@
            (loop (cdr exprs)))])))
   
   ; module body is a nullary function
-  (define module-body-fn
-    (make-flat-closure '() module-body register-literals!))
+  (define module-body-fn (make-module-body-closure module-body))
 
   ; lists are in reverse order
   (set! top-levels (reverse top-levels))

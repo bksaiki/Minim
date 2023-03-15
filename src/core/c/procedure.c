@@ -51,12 +51,13 @@ minim_object *make_closure(minim_object *args,
     return ((minim_object *) o);
 }
 
-minim_object *make_native_closure(minim_object *env, void *fn) {
+minim_object *make_native_closure(minim_object *env, void *fn, short min_arity, short max_arity) {
     minim_native_closure_object *o = GC_alloc(sizeof(minim_native_closure_object));
     o->type = MINIM_NATIVE_CLOSURE_TYPE;
     o->env = env;
     o->fn = fn;
     o->name = NULL;
+    set_arity(&o->arity, min_arity, max_arity);
     return ((minim_object *) o);
 }
 

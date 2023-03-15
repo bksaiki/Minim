@@ -8,6 +8,9 @@
         ENV-REG
         SP-REG
         RES-REG
+        R0-REG
+        R1-REG
+        R2-REG
         T0-REG
         T1-REG
 
@@ -19,6 +22,9 @@
 
         CLOSURE-ENV-OFFSET
         CLOSURE-CODE-OFFSET
+
+        ARGC-MAX
+        VALUES-MAX
 
         type-tag->integer)
 
@@ -49,8 +55,11 @@
 (define SP-REG      'RSP)
 (define ENV-REG     'RENV)
 (define RES-REG     'RRET)
-(define T0-REG      'R0)
-(define T1-REG      'R1)
+(define R0-REG      'R0)
+(define R1-REG      'R1)
+(define R2-REG      'R2)
+(define T0-REG      'T0)
+(define T1-REG      'T1)
 
 ; offsets
 (define WORD-SIZE                 8)
@@ -59,8 +68,13 @@
 (define PRIM-ARITY-OFFSET         WORD-SIZE)
 (define PRIM-FN-OFFSET            (* 2 WORD-SIZE))
 
-(define CLOSURE-ENV-OFFSET        WORD-SIZE)
-(define CLOSURE-CODE-OFFSET       (* 2 WORD-SIZE))
+(define CLOSURE-ARITY-OFFSET      WORD-SIZE)
+(define CLOSURE-ENV-OFFSET        (* 2 WORD-SIZE))
+(define CLOSURE-CODE-OFFSET       (* 3 WORD-SIZE))
+
+; limits
+(define ARGC-MAX          32767)
+(define VALUES-MAX        32767)
 
 ; Type tag => integer
 (define (type-tag->integer type)

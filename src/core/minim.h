@@ -152,6 +152,7 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
+    struct proc_arity arity;
     minim_object *env;
     void *fn;
     char *name;
@@ -333,7 +334,7 @@ minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
 minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
 minim_object *make_closure(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
-minim_object *make_native_closure(minim_object *env, void *fn);
+minim_object *make_native_closure(minim_object *env, void *fn, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
 minim_object *make_output_port(FILE *stream);
 minim_object *make_pattern_var(minim_object *value, minim_object *depth);
@@ -346,7 +347,6 @@ int minim_is_equal(minim_object *a, minim_object *b);
 
 minim_object *call_with_args(minim_object *proc, minim_object *env);
 minim_object *call_with_values(minim_object *producer, minim_object *consumer, minim_object *env);
-minim_object *call_compiled(minim_object *env, minim_object *addr);
 
 int is_list(minim_object *x);
 long list_length(minim_object *xs);
@@ -398,6 +398,11 @@ minim_object *env_lookup_var(minim_object *env, minim_object *var);
 int env_var_is_defined(minim_object *env, minim_object *var, int recursive);
 
 extern minim_object *empty_env;
+
+// Memory
+
+void check_native_closure_arity(minim_object *fn, short argc);
+minim_object *call_compiled(minim_object *env, minim_object *addr);
 
 // Symbols
 
@@ -490,6 +495,7 @@ NORETURN void minim_shutdown(int code);
 
 // Exceptions
 
+NORETURN void arity_mismatch_exn(const char *name, proc_arity *arity, short actual);
 NORETURN void bad_syntax_exn(minim_object *expr);
 NORETURN void bad_type_exn(const char *name, const char *type, minim_object *x);
 NORETURN void result_arity_exn(short expected, short actual);
