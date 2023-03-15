@@ -17,12 +17,23 @@ struct address_map_t address_map[] = {
     { "env_lookup_var", env_lookup_var },
     { "make_closure", make_native_closure },
     { "check_arity", check_native_closure_arity },
+    { "make_rest_argument", make_rest_argument },
     { "", NULL }
 };
 
 //
 //  Runtime
 //
+
+minim_object *make_rest_argument(minim_object *args[], short argc) {
+    minim_object *lst;
+    
+    lst = minim_null;
+    for (short i = argc - 1; i >= 0; --i)
+        lst = make_pair(args[i], lst);
+
+    return lst;
+}
 
 void check_native_closure_arity(minim_object *fn, short argc) {
     struct proc_arity *arity;

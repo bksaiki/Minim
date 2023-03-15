@@ -186,6 +186,16 @@
   (define rex (rex-prefix #t r #f b))
   (list rex #x29 (encode/modrm 3 reg r/m)))
 
+; shl <dst> <imm>
+(define (instr/shl-imm dst imm)
+  (define-values (b reg) (register/code dst))
+  (define rex (rex-prefix #t #f #f b))
+  (cond
+    [(<= 0 imm 64)
+     (list rex #xc1 (encode/io #xe0 reg) imm)]
+    [else
+     (error 'instr/shl-imm "invalid shift amount" imm)]))
+
 ; cmp <src:32> <imm>
 (define (instr/cmp32-imm src imm)
   (define-values (b r/m) (register/code src))
@@ -470,6 +480,25 @@
            (list
              (instr/load dst src)
              (instr/sub-imm dst (fourth instr)))])])]
+    [(shl)
+     (cond
+       [(symbol? (fourth instr))
+        (error 'assemble/x86-64 "unimplemented" instr)]
+       [else
+        (cond
+          [(eq? (second instr) (third instr))
+           ; x64-style
+           (define dst (register/from-generic (second instr)))
+           (list (instr/shl-imm dst (fourth instr)))]
+          [else
+           ; ARM-style
+           ;  mov <dst> to <src>
+           ;  perform x64-style on <dst>
+           (define dst (register/from-generic (second instr)))
+           (define src (register/from-generic (third instr)))
+           (list
+             (instr/load dst src)
+             (instr/shl-imm dst (fourth instr)))])])]
     [(push-frame)
      ; make new continuation frame
      ; similar to calling convention

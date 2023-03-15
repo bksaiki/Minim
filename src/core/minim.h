@@ -403,6 +403,7 @@ extern minim_object *empty_env;
 
 void check_native_closure_arity(minim_object *fn, short argc);
 minim_object *call_compiled(minim_object *env, minim_object *addr);
+minim_object *make_rest_argument(minim_object *args[], short argc);
 
 // Symbols
 
