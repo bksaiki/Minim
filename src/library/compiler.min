@@ -140,7 +140,6 @@
                (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
                (list 'c-call RES-REG ENV-REG T0-REG T1-REG)
                ; End
-               (list 'pop RES-REG)
                (list 'label exit-label))]
             [(lookup)
              ; `(lookup <name>)` =>
@@ -302,19 +301,21 @@
     (list 'args formals)
     (list 'instrs
           (append
-            (cons
+            (list
               (list 'arity-check)
-              (let loop ([args formals] [i 0])
-                (cond
-                  [(null? args)
-                   '()]
-                  [(pair? args)
-                   (define idx (literal! (car args)))
-                   (cons (list 'bind-argument i idx) (loop (cdr args) (+ i 1)))]
-                  [else
-                   (define idx (literal! args))
-                   (list (list 'bind-rest i idx))])))
-            instrs))))
+              (list 'push-environment))
+            (let loop ([args formals] [i 0])
+              (cond
+                [(null? args)
+                 '()]
+                [(pair? args)
+                 (define idx (literal! (car args)))
+                 (cons (list 'bind-argument i idx) (loop (cdr args) (+ i 1)))]
+                [else
+                 (define idx (literal! args))
+                 (list (list 'bind-rest i idx))]))
+            instrs
+            (list (list 'pop-environment))))))
 
 (define (flatten/expr expr procedure! literal! label!)
   (let rec ([expr expr])
@@ -346,6 +347,7 @@
       [(let-values-form? expr)
        (define bindings (car (stx-cdr expr)))
        (define body (cdr (stx-cdr expr)))
+       (define prefix (list (list 'push-environment)))
        (define val-instrs
          (let loop ([bindings (syntax->list bindings)] [instrs '()])
            (cond
@@ -356,7 +358,7 @@
               (define val-instrs (rec val-expr))
               (loop (cdr bindings) (cons (list 'push) (append (reverse val-instrs) instrs)))])))
        (define bind-instrs
-         (let loop ([bindings (reverse (syntax->list bindings))] [instrs (list (list 'push-environment))])
+         (let loop ([bindings (reverse (syntax->list bindings))] [instrs prefix])
            (cond
              [(null? bindings) (reverse instrs)]
              [else

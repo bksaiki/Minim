@@ -20,7 +20,7 @@
 (define $module-internals '())
 
 ;; Like `$load-module`, but does not check the cache
-(define ($load-module path)
+(define ($load-module path print-handler result-handler)
   ;; paths
   (define new-cwd (car (split-path path)))
 
@@ -63,7 +63,7 @@
                  (cond
                    [(string? maybe-import)
                     (define path (build-path new-cwd maybe-import))
-                    (read/module path)
+                    ($load-or-import path print-handler result-handler)
                     (define from-module (assoc path $module-table))
                     (set! imported-modules (cons path imported-modules))
                     (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
@@ -162,7 +162,7 @@
   (define new-cwd (car (split-path path)))
   ;; load expressions
   (define-values (exprs module-xforms imports exports stx-env)
-    ($load-module path))
+    ($load-module path print-handler result-handler))
   ;; evaluate
   (current-directory new-cwd)
   (define env ($eval-environment $base-env imports))
@@ -234,6 +234,4 @@
     (if (is-absolute-path? name)
         name
         (build-path (current-directory) name)))
-  ($load-or-import path #f #f)
-  (define manifest (assoc path $module-internals))
-  (values (first manifest) (second manifest) (third manifest) (fourth manifest) (fifth manifest)))
+  ($load-module path #f #f))

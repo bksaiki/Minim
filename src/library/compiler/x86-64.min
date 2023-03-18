@@ -86,13 +86,13 @@
 
 (define (argument/register i)
   (case i
-    [(0)    'rdi]
-    [(1)    'rsi]
-    [(2)    'rdx]
-    [(3)    'rcx]
-    [(4)    'r8]
-    [(5)    'r9]
-    [else   (error 'argument/register "unimplemeneted")]))
+    [(0)  'rdi]
+    [(1)  'rsi]
+    [(2)  'rdx]
+    [(3)  'rcx]
+    [(4)  'r8]
+    [(5)  'r9]
+    [else (error 'argument/register "unimplemeneted")]))
 
 ;
 ; Instruction encoding
