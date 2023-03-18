@@ -41,10 +41,10 @@
                 (eq? (syntax-e head) form-name)))))
 
 (define define-values-form? (_-form? 'define-values))
-(define define-syntaxes-form? (_-form? 'define-syntaxes))
+; (define define-syntaxes-form? (_-form? 'define-syntaxes))
 (define let-values-form? (_-form? 'let-values))
 (define letrec-values-form? (_-form? 'letrec-values))
-(define let-syntaxes-form? (_-form? 'let-syntaxes))
+; (define let-syntaxes-form? (_-form? 'let-syntaxes))
 (define quote-form? (_-form? 'quote))
 (define quote-syntax-form? (_-form? 'quote-syntax))
 (define lambda-form? (_-form? 'lambda))
@@ -299,6 +299,48 @@
 (define (flatten/expr expr procedure! literal! label!)
   (let rec ([expr expr])
     (cond
+      [(letrec-values-form? expr)
+       (define bindings (car (stx-cdr expr)))
+       (define body (cdr (stx-cdr expr)))
+       (let loop ([bindings (syntax->list bindings)] [instrs '()])
+         (cond
+           [(null? bindings)
+            (let loop ([body body] [instrs instrs])
+              (cond
+                [(null? body) (reverse instrs)]
+                [else (loop (cdr body) (append (reverse (rec (car body))) instrs))]))]
+           [else
+            (define binding (stx-car bindings))
+            (define ids (syntax->datum (stx-car binding)))
+            (define val-expr (car (stx-cdr binding)))
+            (define binding-instrs
+              (append
+                (rec val-expr)
+                (list
+                  (list 'bind-check (length ids))
+                  (cons 'bind (map literal! ids)))))
+            (loop (cdr bindings) (append (reverse binding-instrs) instrs))]))]
+      [(let-values-form? expr)
+       (define bindings (car (stx-cdr expr)))
+       (define body (cdr (stx-cdr expr)))
+       (let loop ([bindings (syntax->list bindings)] [instrs '()])
+         (cond
+           [(null? bindings)
+            (let loop ([body body] [instrs instrs])
+              (cond
+                [(null? body) (reverse instrs)]
+                [else (loop (cdr body) (append (reverse (rec (car body))) instrs))]))]
+           [else
+            (define binding (stx-car bindings))
+            (define ids (syntax->datum (stx-car binding)))
+            (define val-expr (car (stx-cdr binding)))
+            (define binding-instrs
+              (append
+                (rec val-expr)
+                (list
+                  (list 'bind-check (length ids))
+                  (cons 'bind (map literal! ids)))))
+            (loop (cdr bindings) (append (reverse binding-instrs) instrs))]))]
       [(lambda-form? expr)
        (define formals (stx-car (stx-cdr expr)))
        (define body (stx-cdr (stx-cdr expr)))
