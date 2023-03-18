@@ -18,6 +18,7 @@ struct address_map_t address_map[] = {
     { "make_closure", make_native_closure },
     { "check_arity", check_native_closure_arity },
     { "make_rest_argument", make_rest_argument },
+    { "make_environment", make_environment },
     { "", NULL }
 };
 

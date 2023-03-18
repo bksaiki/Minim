@@ -593,7 +593,7 @@
      (define offset (pop-local!))
      (define byte-offset (- (* WORD-SIZE offset)))
      (define dst (register/from-generic (second instr)))
-     (list (instr/load-from-offset 'rbp dst byte-offset))]
+     (list (instr/load-from-offset dst 'rbp byte-offset))]
     [(label)
      ; label => just register name and location
      (link! (list 'label (second instr)) (list (length (get-assembled))))

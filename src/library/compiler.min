@@ -140,6 +140,7 @@
                (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
                (list 'c-call RES-REG ENV-REG T0-REG T1-REG)
                ; End
+               (list 'pop RES-REG)
                (list 'label exit-label))]
             [(lookup)
              ; `(lookup <name>)` =>
@@ -147,6 +148,17 @@
              (list
                (list 'load-literal T0-REG (second instr))
                (list 'c-call "env_lookup_var" ENV-REG T0-REG))]
+            [(push-environment)
+             ; `(push-environment)` =>
+             ; extend environment; requires call to C-runtime
+             (list
+               (list 'c-call "make_environment" ENV-REG)
+               (list 'load ENV-REG RES-REG))]
+            [(pop-environment)
+             ; `(pop-environment)` =>
+             ; load the previous environment
+             (list
+               (list 'load-offset ENV-REG ENV-REG ENV-PREV-OFFSET))]
             [(closure)
              ; `(closure <idx>)` =>
              ; create a closure using the current environment
@@ -230,6 +242,14 @@
                ; load name and bind
                (list 'load-literal T0-REG lit-idx)
                (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
+            [(push)
+             ; `(push)` =>
+             ; push RES-REG
+             (list (list 'push RES-REG))]
+            [(pop)
+             ; `(pop)` =>
+             ; pop RES-REG
+             (list (list 'pop RES-REG))]
             [(arity-check)
              ; `(arity-check <n>)` =>
              ; checks that the correct number of arguments was provided
@@ -302,13 +322,16 @@
       [(letrec-values-form? expr)
        (define bindings (car (stx-cdr expr)))
        (define body (cdr (stx-cdr expr)))
-       (let loop ([bindings (syntax->list bindings)] [instrs '()])
+       (define prefix (list (list 'push-environment)))
+       (let loop ([bindings (syntax->list bindings)] [instrs prefix])
          (cond
            [(null? bindings)
             (let loop ([body body] [instrs instrs])
               (cond
-                [(null? body) (reverse instrs)]
-                [else (loop (cdr body) (append (reverse (rec (car body))) instrs))]))]
+                [(null? body)
+                 (reverse (cons (list 'pop-environment) instrs))]
+                [else
+                 (loop (cdr body) (append (reverse (rec (car body))) instrs))]))]
            [else
             (define binding (stx-car bindings))
             (define ids (syntax->datum (stx-car binding)))
@@ -323,24 +346,36 @@
       [(let-values-form? expr)
        (define bindings (car (stx-cdr expr)))
        (define body (cdr (stx-cdr expr)))
-       (let loop ([bindings (syntax->list bindings)] [instrs '()])
-         (cond
-           [(null? bindings)
-            (let loop ([body body] [instrs instrs])
-              (cond
-                [(null? body) (reverse instrs)]
-                [else (loop (cdr body) (append (reverse (rec (car body))) instrs))]))]
-           [else
-            (define binding (stx-car bindings))
-            (define ids (syntax->datum (stx-car binding)))
-            (define val-expr (car (stx-cdr binding)))
-            (define binding-instrs
-              (append
-                (rec val-expr)
+       (define val-instrs
+         (let loop ([bindings (syntax->list bindings)] [instrs '()])
+           (cond
+             [(null? bindings) (reverse instrs)]
+             [else
+              (define binding (stx-car bindings))
+              (define val-expr (car (stx-cdr binding)))
+              (define val-instrs (rec val-expr))
+              (loop (cdr bindings) (cons (list 'push) (append (reverse val-instrs) instrs)))])))
+       (define bind-instrs
+         (let loop ([bindings (reverse (syntax->list bindings))] [instrs (list (list 'push-environment))])
+           (cond
+             [(null? bindings) (reverse instrs)]
+             [else
+              (define binding (stx-car bindings))
+              (define ids (syntax->datum (stx-car binding)))
+              (define bind-instrs
                 (list
+                  (list 'pop)
                   (list 'bind-check (length ids))
-                  (cons 'bind (map literal! ids)))))
-            (loop (cdr bindings) (append (reverse binding-instrs) instrs))]))]
+                  (cons 'bind (map literal! ids))))
+              (loop (cdr bindings) (append (reverse bind-instrs) instrs))])))
+        (define body-instrs
+          (let loop ([body body] [instrs '()])
+            (cond
+              [(null? body)
+               (reverse (cons (list 'pop-environment) instrs))]
+              [else
+               (loop (cdr body) (append (reverse (rec (car body))) instrs))])))
+        (append val-instrs bind-instrs body-instrs)]
       [(lambda-form? expr)
        (define formals (stx-car (stx-cdr expr)))
        (define body (stx-cdr (stx-cdr expr)))

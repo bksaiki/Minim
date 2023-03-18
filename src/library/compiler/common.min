@@ -23,6 +23,8 @@
         CLOSURE-ENV-OFFSET
         CLOSURE-CODE-OFFSET
 
+        ENV-PREV-OFFSET
+
         ARGC-MAX
         VALUES-MAX
 
@@ -71,6 +73,8 @@
 (define CLOSURE-ARITY-OFFSET      WORD-SIZE)
 (define CLOSURE-ENV-OFFSET        (* 2 WORD-SIZE))
 (define CLOSURE-CODE-OFFSET       (* 3 WORD-SIZE))
+
+(define ENV-PREV-OFFSET           WORD-SIZE)
 
 ; limits
 (define ARGC-MAX          32767)
