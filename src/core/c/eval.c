@@ -768,10 +768,7 @@ loop:
                 goto loop;
             } else if (head == letrec_values_symbol) {
                 // letrec-values
-                minim_object *to_bind;
-
                 check_let_values(expr);
-                to_bind = minim_null;
                 env = make_environment(env);
                 for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
@@ -784,19 +781,18 @@ loop:
                             result_arity_exn(var_count, values_buffer_count(th));
 
                         idx = 0;
-                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx)
-                            to_bind = make_pair(make_pair(minim_car(it), values_buffer_ref(th, idx)), to_bind);
+                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                            SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
+                            env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
+                        }
                     } else {
                         // single-valued
                         if (var_count != 1)
                             result_arity_exn(var_count, 1);
-                        to_bind = make_pair(make_pair(minim_caar(bind), result), to_bind);
-                    }
-                }
 
-                for (it = to_bind; !minim_is_null(it); it = minim_cdr(it)) {
-                    SET_NAME_IF_CLOSURE(minim_caar(it), minim_cdar(it));
-                    env_define_var(env, minim_caar(it), minim_cdar(it));
+                        SET_NAME_IF_CLOSURE(minim_caar(bind), result);
+                        env_define_var(env, minim_caar(bind), result);
+                    }
                 }
 
                 expr = make_pair(begin_symbol, (minim_cddr(expr)));

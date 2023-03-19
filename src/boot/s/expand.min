@@ -205,12 +205,38 @@
           [else
            (error name "transformer produced something other than syntax" (car results))]))))
 
+  ; body context (sequence of expressions)
+  ; List of Expr, List of Xform -> List of Expr
+  (define (expand/body exprs xforms)
+    (let loop ([exprs exprs] [exprs* '()] [defines '()])
+      (cond
+        [(null? exprs)
+         (if (null? defines)
+             (reverse exprs*)
+             (error 'begin "last form is not an expression" (car exprs*)))]
+        [else
+         (define expr* (expand/expr (car exprs) xforms))
+         (cond
+           [(define-values-form? expr*)
+            (define form (syntax->list expr*))
+            (define ids (cadr form))
+            (define value (caddr form))
+            (loop (cdr exprs) exprs* (cons (list ids value) defines))]
+           [(null? defines)
+            (loop (cdr exprs) (cons expr* exprs*) '())]
+           [else
+            (define let-expr
+              (datum->syntax
+                (cons (quote-syntax letrec-values)
+                  (cons (reverse defines)
+                    (expand/body exprs xforms)))))
+            (reverse (cons let-expr exprs*))])])))
+
   ; expression context
   ; Expr, List of Xform -> Expr
   (define (expand/expr expr xforms)
     (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (let loop ([expr expr])
-      ; (writeln expr)
       (cond
         [(define-values-form? expr)
          (check-define-syntaxes/values-form! 'define-values expr)
@@ -262,6 +288,7 @@
          (define name (if (let-values-form? expr) 'let-values 'letrec-values))
          (check-let-syntaxes/values-form! name expr)
          (define form (syntax->list expr))
+         (define body (cddr form))
          (datum->syntax
            (cons (car form)
              (cons
@@ -274,7 +301,7 @@
                     (check-duplicate-identifier! expr name let-ids ids)
                     (cons (list (car binding) (loop (cadr binding)))
                           (rec (cdr bindings) (append ids let-ids)))]))
-               (map loop (cddr form)))))]
+               (expand/body body xforms))))]
         [(lambda-form? expr)
          (check-lambda-form! expr)
          (define head (stx-car expr))
@@ -283,7 +310,7 @@
          (datum->syntax
            (cons head
              (cons formals
-               (map loop body))))]
+               (expand/body body xforms))))]
         [(if-form? expr)
          (check-if-form! expr)
          (define form (syntax->list expr))
@@ -295,9 +322,11 @@
             (loop (cadddr form))))]
         [(begin-form? expr)
          (check-begin-form! expr)
+         (define body (stx-cdr expr))
          (datum->syntax
-           (cons (stx-car expr)
-                 (map loop (cdr (syntax->list expr)))))]
+           (cons
+             (stx-car expr)
+             (expand/body body xforms)))]
         [(quote-form? expr)
          (check-1ary-form! 'quote expr)
          expr]
