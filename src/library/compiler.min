@@ -595,17 +595,38 @@
 
 ; entry point
 (define (main args)
-  ; currently no flag handling
-  (define fnames (cdr args))
+  ; flags
+  (define enter? #f)
+  ; flag handling
+  (define (handle-flag! flag)
+    (cond
+      [(equal? flag "-e")
+       (set! enter? #t)
+       #t]
+      [(equal? flag "--")
+       #f]
+      [else
+       #f]))
+
+  (define fnames
+    (let loop ([args (cdr args)])
+      (cond
+        [(null? args)
+         (void)]
+        [(handle-flag! (car args))
+         (loop (cdr args))]
+        [else
+         args])))
+  
   (let loop ([fnames fnames])
     (unless (null? fnames)
       (define name (car fnames))
       (define path
-        (if (is-absolute-path? name)
-            name
-            (build-path (current-directory) name)))
+        (cond
+          [(is-absolute-path? name)  name]
+          [else (build-path (current-directory) name)]))
       (display "<compiling ") (write name) (display ">") (newline)
-      (compile/file path #t)
+      (compile/file path enter?)
       (loop (cdr fnames)))))
 
 (main (command-line))
