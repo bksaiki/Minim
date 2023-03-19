@@ -42,9 +42,9 @@ unit: $(CONFIG) $(BUILD_DIR)/test-prims
 	$(BUILD_DIR)/test-prims
 
 test: unit
-	./$(EXENAME) $(TEST_DIR)/case-lambda.min
-	./$(EXENAME) $(TEST_DIR)/case.min
-	./$(EXENAME) $(TEST_DIR)/stxcase.min
+	./$(EXENAME) -q $(TEST_DIR)/case-lambda.min
+	./$(EXENAME) -q $(TEST_DIR)/case.min
+	./$(EXENAME) -q $(TEST_DIR)/stxcase.min
 
 clean:
 	$(RM) build

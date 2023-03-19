@@ -14,6 +14,7 @@
 
 static int opt_load_library = 1;    // load bootstrap library
 static int interactive = 0;         // REPL
+static int quiet = 0;               // No header
 
 static void unknown_flag_exn(const char *flag) {
     fprintf(stderr, "unknown flag: %s\n", flag);
@@ -34,11 +35,15 @@ static int handle_flags(int argc, char **argv) {
                 interactive = 1;
             } else if (strcmp(argv[i], "--no-libs") == 0) {
                 opt_load_library = 0;
+            } else if (strcmp(argv[i], "--quiet") == 0) {
+                quiet = 1;
             } else {
                 unknown_flag_exn(argv[i]);
             }
         } else if (argv[i][1] == 'i') {
             interactive = 1;
+        } else if (argv[i][1] == 'q') {
+            quiet = 1;
         } else {
             unknown_flag_exn(argv[i]);
         }
@@ -61,8 +66,8 @@ int main(int argc, char **argv) {
     int argi, i;
 
     stack_top = 0;
-    argi = handle_flags(argc, argv);    
-    printf("Minim v%s\n", MINIM_VERSION);
+    argi = handle_flags(argc, argv);
+    if (!quiet) printf("Minim v%s\n", MINIM_VERSION);
 
     GC_init(((void*) &stack_top));
     minim_boot_init();

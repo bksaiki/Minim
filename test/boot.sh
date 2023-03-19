@@ -18,8 +18,11 @@ SRCS=$(find $CORE_SRC -type f -name "*.min")
 failed=0
 total=0
 
+echo "Running interpreter on core library..."
+
 for file in $SRCS; do
-  $MINIM -q $MINIM_SRC/compiler.min $file
+  echo "] $file"
+  $MINIM -q $file
   if [ $? -ne 0 ]; then
     echo "[ FAIL ] $file"
     ((failed++))

@@ -40,6 +40,7 @@ minim-gc:
 test: boot-tests
 
 boot-tests:
+	$(MAKE) -C $(TEST_DIR) boot
 	$(MAKE) -C $(BOOT_DIR) test
 
 compile-tests: boot
