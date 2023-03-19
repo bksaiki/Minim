@@ -1,5 +1,9 @@
 #!/bin/bash
 
+RED="\e[31m"
+GREEN="\e[32m"
+ENDCOLOR="\e[0m"
+
 # determine physical directory of this script
 src="${BASH_SOURCE[0]}"
 while [ -L "$src" ]; do
@@ -21,11 +25,12 @@ total=0
 echo "Running interpreter on core library..."
 
 for file in $SRCS; do
-  echo "] $file"
   $MINIM -q $file
   if [ $? -ne 0 ]; then
-    echo "[ FAIL ] $file"
+    echo -e "[ ${RED}FAIL${ENDCOLOR} ] $file"
     ((failed++))
+  else
+    echo -e "[ ${GREEN}PASS${ENDCOLOR} ] $file"
   fi
   ((total++))
 done

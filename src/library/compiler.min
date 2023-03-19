@@ -454,7 +454,7 @@
        (error 'flatten/expr "unimplemented" expr)])))
 
 (define (flatten/top-level expr top-level! procedure! literal! label!)
-  (display " <top-level: ") (write expr) (display ">") (newline)
+  ; (display " <top-level: ") (write expr) (display ">") (newline)
   (cond
     [(define-values-form? expr)
      ; decompose
@@ -529,10 +529,10 @@
   (set! literals (reverse literals))
 
   ; debug print report
-  (display " top-levels: ") (write top-levels) (newline)
-  (display " procedures: ") (write procedures) (newline)
-  (display " literals  : ") (write literals) (newline)
-  (display " body      : ") (write module-body) (newline)
+  ; (display " top-levels: ") (write top-levels) (newline)
+  ; (display " procedures: ") (write procedures) (newline)
+  ; (display " literals  : ") (write literals) (newline)
+  ; (display " body      : ") (write module-body) (newline)
 
   ; assemble procedures
   (define assembly-info
@@ -548,12 +548,10 @@
 
   ; install literals
   (define literal-address (install-literal-bundle! literals))
-  (display " installed literals at ") (write literal-address) (newline)
 
   ; install procedures (with missing addresses)
   (define unlinked-code (map (lambda (ss) (apply append ss)) procedures))
   (define template-address (install-procedure-bundle! unlinked-code))
-  (display " installed procedures at ") (write template-address) (newline)
 
   ; link
 
@@ -570,7 +568,6 @@
 
   ; reinstall
   (reinstall-procedure-bundle! template-address code)
-  (display " reinstalled procedures at ") (write template-address) (newline)
 
   ; report
   (define report
