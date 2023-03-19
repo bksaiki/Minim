@@ -208,29 +208,38 @@
   ; body context (sequence of expressions)
   ; List of Expr, List of Xform -> List of Expr
   (define (expand/body exprs xforms)
-    (let loop ([exprs exprs] [exprs* '()] [defines '()])
-      (cond
-        [(null? exprs)
-         (if (null? defines)
-             (reverse exprs*)
-             (error 'begin "last form is not an expression" (car exprs*)))]
-        [else
-         (define expr* (expand/expr (car exprs) xforms))
-         (cond
-           [(define-values-form? expr*)
-            (define form (syntax->list expr*))
-            (define ids (cadr form))
-            (define value (caddr form))
-            (loop (cdr exprs) exprs* (cons (list ids value) defines))]
-           [(null? defines)
-            (loop (cdr exprs) (cons expr* exprs*) '())]
-           [else
-            (define let-expr
-              (datum->syntax
-                (cons (quote-syntax letrec-values)
-                  (cons (reverse defines)
-                    (expand/body exprs xforms)))))
-            (reverse (cons let-expr exprs*))])])))
+    (if (null? exprs)
+        (list)
+        (let loop ([exprs exprs] [defines '()])
+          (define expr* (expand/expr (car exprs) xforms))
+          (cond
+            [(null? (cdr exprs))
+             (cond
+               [(define-values-form? expr*)
+                (error 'begin "last form is not an expression" (car exprs))]
+               [(null? defines)
+                (list expr*)]
+               [else
+                (list
+                  (datum->syntax
+                    (list
+                      (quote-syntax letrec-values)
+                      (reverse defines)
+                      expr*)))])]
+            [(define-values-form? expr*)
+             (define form (syntax->list expr*))
+             (define ids (cadr form))
+             (define value (caddr form))
+             (loop (cdr exprs) (cons (list ids value) defines))]
+            [else
+             (define value
+               (datum->syntax
+                 (list
+                   (quote-syntax let-values)
+                   '()
+                   expr*
+                   (list (quote-syntax values)))))
+             (loop (cdr exprs) (cons (list '() value) defines))]))))
 
   ; expression context
   ; Expr, List of Xform -> Expr
