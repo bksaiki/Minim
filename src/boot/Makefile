@@ -65,4 +65,4 @@ $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
-.PHONY: build clean core test
+.PHONY: clean core profile test unit

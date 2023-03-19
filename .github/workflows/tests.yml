@@ -4,8 +4,20 @@ on: [push]
 
 jobs:
 
-  unit:
+  build:
     runs-on: ubuntu-latest   
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Build GC
+      run: make boehm-gc
+    - name: Build
+      run: make boot && make
+
+  unit:
+    runs-on: ubuntu-latest  
+    needs: [ 'build' ] 
     steps:
     - uses: actions/checkout@v2
       with:
