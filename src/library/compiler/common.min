@@ -25,6 +25,9 @@
 
         ENV-PREV-OFFSET
 
+        THREAD-VALUES-OFFSET
+        THREAD-VALUES-SIZE-OFFSET
+
         ARGC-MAX
         VALUES-MAX
 
@@ -63,10 +66,12 @@
 (define T0-REG      'T0)
 (define T1-REG      'T1)
 
-; offsets
+; limits
+(define INT-SIZE                  4)
 (define WORD-SIZE                 8)
 (define STACK-SEGMENT-SIZE        1024)
 
+; offsets
 (define PRIM-ARITY-OFFSET         WORD-SIZE)
 (define PRIM-FN-OFFSET            (* 2 WORD-SIZE))
 
@@ -75,6 +80,9 @@
 (define CLOSURE-CODE-OFFSET       (* 3 WORD-SIZE))
 
 (define ENV-PREV-OFFSET           WORD-SIZE)
+
+(define THREAD-VALUES-OFFSET        (* 6 WORD-SIZE))
+(define THREAD-VALUES-SIZE-OFFSET   (+ (* 7 WORD-SIZE) INT-SIZE))
 
 ; limits
 (define ARGC-MAX          32767)

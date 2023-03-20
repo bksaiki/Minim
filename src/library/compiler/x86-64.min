@@ -105,21 +105,34 @@
   (define rex (rex-prefix #t #f #f b))
   (cons rex (cons (encode/io #xb8 reg) imm-bits)))
 
-; mov <dst>, <sec>
+; mov <dst>, <src>
 (define (instr/load dst src)
   (define-values (b r/m) (register/code dst))
   (define-values (r reg) (register/code src))
   (define rex (rex-prefix #t r #f b))
   (list rex #x89 (encode/modrm 3 reg r/m)))
 
-; mov [<dst>+imm], <sec>
+; mov [<dst>+imm], <src>
+(define (instr/store-at-offset32 dst src offset)
+  (define-values (b r/m) (register/code dst))
+  (define-values (r reg) (register/code src))
+  (define rex (rex-prefix #f r #f b))
+  (cond
+    [(and (<= 0 offset) (< offset 128))
+     (list rex #x89 (encode/modrm 1 reg r/m) offset)]
+    [(and (<= (- 128) offset) (< offset 0))
+     (list rex #x89 (encode/modrm 1 reg r/m) (+ 256 offset))]
+    [else
+     (error 'instr/store-at-offset "unimplemented offset" offset)]))
+
+; mov [<dst>+imm], <src>
 (define (instr/store-at-offset dst src offset)
   (define-values (b r/m) (register/code dst))
   (define-values (r reg) (register/code src))
   (define rex (rex-prefix #t r #f b))
   (cond
-    [(= offset 0)
-     (list rex #x89 (encode/modrm 1 reg r/m) #x00)]
+    [(and (<= 0 offset) (< offset 128))
+     (list rex #x89 (encode/modrm 1 reg r/m) offset)]
     [(and (<= (- 128) offset) (< offset 0))
      (list rex #x89 (encode/modrm 1 reg r/m) (+ 256 offset))]
     [else
@@ -401,6 +414,16 @@
      (define dst (register/from-generic (second instr)))
      (define src (register/from-generic (third instr)))
      (list (instr/load-from-offset dst src (fourth instr)))]
+    [(store-offset)
+     ; mov <dst> [<src>+<offset>]
+     (define src (register/from-generic (second instr)))
+     (define dst (register/from-generic (third instr)))
+     (list (instr/store-at-offset dst src (fourth instr)))]
+    [(store-offset32)
+     ; mov <dst> [<src>+<offset>]
+     (define src (register/from-generic (second instr)))
+     (define dst (register/from-generic (third instr)))
+     (list (instr/store-at-offset32 dst src (fourth instr)))]
     [(load-literal)
      ; mov <dst>, <literal address> => 48 b8 [xx]^8
      ; mov <dst>, [<dst>] => 48 8b 00
@@ -413,6 +436,11 @@
      ; mov <dst>, <procedure address> => 48 b8 [xx]^8
      (define dst (register/from-generic (second instr)))
      (link! (list 'procedure (third instr)) (list (length (get-assembled)) 2))
+     (list (instr/load-imm64 dst 0))]
+    [(load-address)
+     ; mov <dst>, <address> => 48 b8 [xx]^8
+     (define dst (register/from-generic (second instr)))
+     (link! (list 'runtime (third instr)) (list (length (get-assembled)) 2))
      (list (instr/load-imm64 dst 0))]
     [(store-argument)
      ; Stores result at ith argument position

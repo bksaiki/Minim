@@ -175,11 +175,19 @@ minim_object *runtime_address_proc(int argc, minim_object **args) {
 
     if (!minim_is_string(args[0]))
         bad_type_exn("runtime-address", "expected a string", args[0]);
-
     str = minim_string(args[0]);
+
+    // search constant addresses
     for (i = 0; address_map[i].fn != NULL; ++i) {
         if (strcmp(str, address_map[i].name) == 0)
             return make_fixnum((long) address_map[i].fn);
+    }
+
+    // search dynamic addresses
+    if (strcmp(str, "minim_values") == 0) {
+        return make_fixnum((long) minim_values);
+    } else if (strcmp(str, "current_thread") == 0) {
+        return make_fixnum((long) current_thread());
     }
     
     fprintf(stderr, "runtime-address: unknown runtime name\n");

@@ -35,10 +35,10 @@
   (and (syntax? stx) (symbol? (syntax-e stx))))
 
 (define ((_-form? form-name) expr)
-    (and (stx-pair? expr)
-         (let ([head (stx-car expr)])
-           (and (identifier? head)
-                (eq? (syntax-e head) form-name)))))
+  (and (stx-pair? expr)
+        (let ([head (stx-car expr)])
+          (and (identifier? head)
+              (eq? (syntax-e head) form-name)))))
 
 (define define-values-form? (_-form? 'define-values))
 ; (define define-syntaxes-form? (_-form? 'define-syntaxes))
@@ -48,6 +48,7 @@
 (define quote-form? (_-form? 'quote))
 (define quote-syntax-form? (_-form? 'quote-syntax))
 (define lambda-form? (_-form? 'lambda))
+(define values-form? (_-form? 'values))
 (define begin-form? (_-form? 'begin))
 (define if-form? (_-form? 'if))
 
@@ -84,11 +85,9 @@
              (list (list 'load-literal RES-REG idx))]
             [(push-continuation)
              ; `(push-continuation <label> )` =>
-             ; TODO
              (list (list 'push-frame (second instr)))]
             [(pop-continuation)
              ; `(pop-continuation <label> )` =>
-             ; TODO
              (list (list 'pop-frame))]
             [(prepare-args)
              ; `(prepare-args <n>)` =>
@@ -159,7 +158,7 @@
              (list
                (list 'load-offset ENV-REG ENV-REG ENV-PREV-OFFSET))]
             [(closure)
-             ; `(closure <idx>)` =>
+             ; `(closure <idx> <arity>)` =>
              ; create a closure using the current environment
              (define idx (second instr))
              (define arity (third instr))
@@ -190,11 +189,31 @@
                [else
                 (error 'assemble/procedure "unimplemented branch mode" mode)])]
             [(bind)
-             ; `(bind <n>`) =>
-             ; binds <n>th literal (symbol) to `RREG` in the current environment
-             (list
-               (list 'load-literal T0-REG (second instr))
-               (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
+             ; `(bind <n>s ...`) =>
+             ; binds <n>th literal (symbol) to `RES-REG` in the current environment
+             (define idxs (cdr instr))
+             (case (length idxs)
+               [(0)
+                ; do nothing (nothing to bind)
+                (list)]
+               [(1)
+                ; bind RES-REG to first index
+                (list
+                  (list 'load-literal T0-REG (second instr))
+                  (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
+               [else
+                ; bind from values buffer
+                ; RES-REG is guaranteed to be the "multiple values" object
+                (cons (list 'load-address T0-REG "current_thread")
+                  (cons (list 'load-offset T0-REG T0-REG THREAD-VALUES-OFFSET)
+                    (let loop ([idxs idxs] [i 0])
+                      (cond
+                        [(null? idxs) '()]
+                        [else
+                         (cons (list 'load-offset RES-REG T0-REG (* 8 i))
+                           (cons (list 'load-literal T1-REG (car idxs))
+                             (cons (list 'c-call "env_define_var" ENV-REG T1-REG RES-REG)
+                               (loop (cdr idxs) (+ i 1)))))]))))])]
             [(bind-argument)
              ; `(bind-argument <n> <name>)` =>
              ; binds the <n>th argument to in the current enviroment
@@ -249,6 +268,22 @@
              ; `(pop)` =>
              ; pop RES-REG
              (list (list 'pop RES-REG))]
+            [(load-value)
+             ; `(load-value <n>)` =>
+             ; TODO: verify size of values_buffer
+             ; get address of threads `value buffer` and load `RES-REG` into the <n>th slot
+             ; set the size of the buffer
+             (define idx (second instr))
+             (list
+               (list 'load-address T0-REG "current_thread")
+               (list 'load-offset T1-REG T0-REG THREAD-VALUES-OFFSET)
+               (list 'store-offset RES-REG T1-REG (* 8 idx))
+               (list 'load T1-REG (+ idx 1))
+               (list 'store-offset32 T1-REG T0-REG THREAD-VALUES-SIZE-OFFSET))]
+            [(make-values)
+             ; `(make-values)` =>
+             ; get address of "multiple values" object
+             (list (list 'load-address RES-REG "minim_values"))]
             [(arity-check)
              ; `(arity-check <n>)` =>
              ; checks that the correct number of arguments was provided
@@ -390,6 +425,26 @@
        (define arity (closure-arity (syntax->datum formals)))
        (define idx (procedure! pcode))
        (list (list 'closure idx arity))]
+      [(values-form? expr)
+       (define vs (stx-cdr expr))
+       (cond
+         [(null? vs)
+          ; 0 values => just return the "multiple-values" object
+          (list (list 'make-values))]
+         [(null? (cdr vs))
+          ; 1 values => just return the result
+          (rec (car vs))]
+         [else
+          ; multi-values
+          (let loop ([vs vs] [i 0] [seqs '()])
+            (cond
+              [(null? vs)
+               (define seq (apply append (reverse seqs)))
+               (reverse (cons (list 'make-values) (reverse seq)))]
+              [else
+               (define seq (rec (car vs)))
+               (define seq* (reverse (cons (list 'load-value i) (reverse seq))))
+               (loop (cdr vs) (+ i 1) (cons seq* seqs))]))])]
       [(if-form? expr)
        (define cond-expr (car (stx-cdr expr)))
        (define ift-expr (cadr (stx-cdr expr)))
@@ -548,13 +603,13 @@
 
   ; install literals
   (define literal-address (install-literal-bundle! literals))
+  ; (display "installed literals") (newline)
 
   ; install procedures (with missing addresses)
   (define unlinked-code (map (lambda (ss) (apply append ss)) procedures))
   (define template-address (install-procedure-bundle! unlinked-code))
 
   ; link
-
   (define link-info
     (cons
       (cons 'literal literal-address)
@@ -565,9 +620,11 @@
 
   (define linked (map (lambda (p l) (link/x86-64 p l link-info)) procedures links))
   (define code (map (lambda (ss) (apply append ss)) linked))
+  ; (display "linked symbols") (newline)
 
   ; reinstall
   (reinstall-procedure-bundle! template-address code)
+  ; (display "installed procedures") (newline)
 
   ; report
   (define report
