@@ -280,6 +280,10 @@
                (list 'store-offset RES-REG T1-REG (* 8 idx))
                (list 'load T1-REG (+ idx 1))
                (list 'store-offset32 T1-REG T0-REG THREAD-VALUES-SIZE-OFFSET))]
+            [(make-void)
+             ; `(make-void)` =>
+             ; get address of "void" object
+             (list (list 'load-address RES-REG "minim_void"))]
             [(make-values)
              ; `(make-values)` =>
              ; get address of "multiple values" object
@@ -524,7 +528,8 @@
        (flatten/expr e procedure! literal! label!)
        (cons
          (list 'bind-check (length ids))
-         (map (lambda (i) (list 'bind i)) idxs)))]
+         (map (lambda (i) (list 'bind i)) idxs))
+       (list (list 'make-void)))]
     [else (flatten/expr expr procedure! literal! label!)]))
 
 (define (compile/file path enter?)

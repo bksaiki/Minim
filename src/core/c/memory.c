@@ -186,6 +186,8 @@ minim_object *runtime_address_proc(int argc, minim_object **args) {
     // search dynamic addresses
     if (strcmp(str, "minim_values") == 0) {
         return make_fixnum((long) minim_values);
+    } else if (strcmp(str, "minim_void") == 0) {
+        return make_fixnum((long) minim_void);
     } else if (strcmp(str, "current_thread") == 0) {
         return make_fixnum((long) current_thread());
     }
