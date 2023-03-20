@@ -586,6 +586,79 @@ void write_object(FILE *out, minim_object *o) {
 }
 
 //
+//  fprintf
+//
+
+static void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name) {
+    long i;
+    int vi, fi;
+
+    // verify arity
+    fi = 0;
+    for (i = 0; form[i]; ++i) {
+        if (form[i] == '~') {
+            ++i;
+            if (!form[i]) {
+                fprintf(stderr, "%s: ill-formed formatting escape\n", prim_name);
+                fprintf(stderr, " at: '%s'\n", form);
+                exit(1);
+            }
+
+            switch (form[i])
+            {
+            case 'a':
+                // display
+                fi++;
+                break;
+            case 's':
+                // write
+                fi++;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    if (fi != v_count) {
+        fprintf(stderr, "%s: format string requires %d arguments, given %d\n", prim_name, fi, v_count);
+        fprintf(stderr, " at: '%s'\n", form);
+        exit(1);
+    }
+
+    // try printing
+    vi = 0;
+    for (i = 0; form[i]; ++i) {
+        if (form[i] == '~') {
+            // escape character expected
+            switch (form[i])
+            {
+            case '~':
+                // tilde
+                putc('~', o);
+                break;
+            case 'a':
+                // display
+                write_object2(o, vs[vi++], 0, 1);
+                break;
+            case 's':
+                // write
+                write_object2(o, vs[vi++], 0, 0);
+                break;
+            default:
+                fprintf(stderr, "%s: unknown formatting escape\n", prim_name);
+                fprintf(stderr, " at: %s\n", form);
+                exit(1);
+                break;
+            }
+
+        } else {
+            putc(form[i], o);
+        }
+    }
+}
+
+//
 //  Objects
 //
 
@@ -803,7 +876,7 @@ minim_object *write_proc(int argc, minim_object **args) {
     } else {
         out_p = args[1];
         if (!minim_is_output_port(out_p))
-            bad_type_exn("display", "output-port?", out_p);
+            bad_type_exn("write", "output-port?", out_p);
     }
 
     write_object(minim_port(out_p), o);
@@ -824,7 +897,7 @@ minim_object *write_char_proc(int argc, minim_object **args) {
     } else {
         out_p = args[1];
         if (!minim_is_output_port(out_p))
-            bad_type_exn("display", "output-port?", out_p);
+            bad_type_exn("write-char", "output-port?", out_p);
     }
 
     putc(minim_char(ch), minim_port(out_p));
@@ -841,9 +914,31 @@ minim_object *newline_proc(int argc, minim_object **args) {
     } else {
         out_p = args[0];
         if (!minim_is_output_port(out_p))
-            bad_type_exn("display", "output-port?", out_p);
+            bad_type_exn("newline", "output-port?", out_p);
     }
 
     putc('\n', minim_port(out_p));
+    return minim_void;
+}
+
+minim_object *fprintf_proc(int argc, minim_object **args) {
+    if (!minim_is_output_port(args[0]))
+        bad_type_exn("fprintf", "output-port?", args[0]);
+    
+    if (!minim_is_string(args[1]))
+        bad_type_exn("fprintf", "string?", args[1]);
+    
+    minim_fprintf(minim_port(args[0]), minim_string(args[1]), argc - 2, &args[2], "fprintf");
+    return minim_void;
+}
+
+minim_object *printf_proc(int argc, minim_object **args) {
+    minim_thread *th;
+
+    if (!minim_is_string(args[0]))
+        bad_type_exn("printf", "string?", args[0]);
+
+    th = current_thread();
+    minim_fprintf(minim_port(output_port(th)), minim_string(args[0]), argc - 1, &args[1], "printf");
     return minim_void;
 }

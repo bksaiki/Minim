@@ -664,6 +664,8 @@ DEFINE_PRIM_PROC(display);
 DEFINE_PRIM_PROC(write);
 DEFINE_PRIM_PROC(write_char);
 DEFINE_PRIM_PROC(newline);
+DEFINE_PRIM_PROC(fprintf);
+DEFINE_PRIM_PROC(printf);
 // System
 DEFINE_PRIM_PROC(load);
 DEFINE_PRIM_PROC(error);
