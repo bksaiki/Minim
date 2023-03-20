@@ -1,0 +1,13 @@
+;
+; Test for core features
+; if
+;
+
+(if #t (void) (exit 1))
+(if #f (exit 2) (void))
+(if #t (if #t (void) (exit 3)) (exit 4))
+(if #t (if #f (exit 5) (void)) (exit 6))
+(if #f (exit 7) (if #t (void) (exit 8)))
+(if #f (exit 9) (if #f (exit 10) (void)))
+
+(exit 0)

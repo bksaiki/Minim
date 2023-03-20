@@ -40,3 +40,5 @@
 (if (equal? (factorial 10) 3628800)
     (void)
     (exit 7))
+
+(exit 0)

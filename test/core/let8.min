@@ -1,0 +1,22 @@
+;
+; Test for core features
+; comparing letrec-values vs let-values
+;
+
+(if (equal?
+      (let-values ([(x) 1])
+        (let-values ([(x) 2] [(y) x])
+          x))
+      1)
+    (void)
+    (exit 1))
+
+(if (equal?
+      (letrec-values ([(x) 1])
+        (letrec-values ([(x) 2] [(y) x])
+          x))
+      2)
+    (void)
+    (exit 2))
+
+(exit 0)

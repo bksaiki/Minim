@@ -1,0 +1,8 @@
+;
+; Test for core features
+; let-values: bind 0
+;
+
+(if (equal? (let-values () 1) 1)
+    (exit 0)
+    (exit 1))
