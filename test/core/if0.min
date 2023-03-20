@@ -1,6 +1,6 @@
 ;
 ; Test for core features
-; if
+; if statements
 ;
 
 (if #t (void) (exit 1))
