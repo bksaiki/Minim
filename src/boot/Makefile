@@ -38,13 +38,8 @@ all: $(CONFIG) $(OBJS)
 profile:
 	$(MAKE) CFLAGS="$(CFLAGS) -pg" all
 
-unit: $(CONFIG) $(BUILD_DIR)/test-prims
+test: $(CONFIG) $(BUILD_DIR)/test-prims
 	$(BUILD_DIR)/test-prims
-
-test: unit
-	./$(EXENAME) -q $(TEST_DIR)/case-lambda.min
-	./$(EXENAME) -q $(TEST_DIR)/case.min
-	./$(EXENAME) -q $(TEST_DIR)/stxcase.min
 
 clean:
 	$(RM) build
@@ -65,4 +60,4 @@ $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
-.PHONY: clean core profile test unit
+.PHONY: clean core profile test
