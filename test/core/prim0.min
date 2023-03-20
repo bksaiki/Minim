@@ -1,0 +1,8 @@
+;
+; Test for core features
+; Nullary primitive
+;
+
+(if (equal? (list) '())
+    (exit 0)
+    (exit 1))

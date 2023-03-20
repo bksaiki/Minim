@@ -174,8 +174,12 @@ minim_object *error_proc(int argc, minim_object **args) {
 }
 
 minim_object *exit_proc(int argc, minim_object **args) {
-    // (-> any)
-    minim_shutdown(0);
+    // (-> number any)
+
+    if (argc == 1 && 0 <= minim_fixnum(args[0]) && minim_fixnum(args[0]) <= 255)
+        minim_shutdown(minim_fixnum(args[0]));
+    else
+        minim_shutdown(0);
 }
 
 minim_object *current_directory_proc(int argc, minim_object **args) {

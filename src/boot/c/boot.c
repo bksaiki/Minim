@@ -211,7 +211,7 @@ void populate_env(minim_object *env) {
     
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 2, ARG_MAX);
-    add_procedure("exit", exit_proc, 0, 0);
+    add_procedure("exit", exit_proc, 0, 1);
     add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
     add_procedure("command-line", command_line_proc, 0, 0);
