@@ -20,7 +20,7 @@ DEPS 		:= $(OBJS:.o=.d)
 TESTS		:= $(shell find $(TEST_DIR) -name "*.c")
 TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
 
-CFLAGS		:= -Wall -std=c11 -O2 -g
+CFLAGS		:= -Wall -std=c11 -O3 -g
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -L$(CORE_DIR) -lgc -lminim
 
@@ -32,21 +32,14 @@ READLINK	:= readlink -f
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-all: $(EXENAME)
-
-$(EXENAME): $(CONFIG) $(OBJS)
+all: $(CONFIG) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(EXENAME)
 
 profile:
 	$(MAKE) CFLAGS="$(CFLAGS) -pg" all
 
-unit: $(CONFIG) $(BUILD_DIR)/test-prims
+test: $(CONFIG) $(BUILD_DIR)/test-prims
 	$(BUILD_DIR)/test-prims
-
-test: unit
-	./$(EXENAME) $(TEST_DIR)/case-lambda.min
-	./$(EXENAME) $(TEST_DIR)/case.min
-	./$(EXENAME) $(TEST_DIR)/stxcase.min
 
 clean:
 	$(RM) build
@@ -67,4 +60,4 @@ $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 $(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
-.PHONY: build clean
+.PHONY: clean core profile test

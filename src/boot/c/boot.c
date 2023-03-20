@@ -55,6 +55,7 @@ void populate_env(minim_object *env) {
     add_procedure("boolean?", is_bool_proc, 1, 1);
     add_procedure("symbol?", is_symbol_proc, 1, 1);
     add_procedure("integer?", is_fixnum_proc, 1, 1);
+    add_procedure("number?", is_fixnum_proc, 1, 1);
     add_procedure("char?", is_char_proc, 1, 1);
     add_procedure("string?", is_string_proc, 1, 1);
     add_procedure("pair?", is_pair_proc, 1, 1);
@@ -110,6 +111,7 @@ void populate_env(minim_object *env) {
     add_procedure("set-cdr!", set_cdr_proc, 2, 2);
 
     add_procedure("list", list_proc, 0, ARG_MAX);
+    add_procedure("make-list", make_list_proc, 2, 2);
     add_procedure("length", length_proc, 1, 1);
     add_procedure("reverse", reverse_proc, 1, 1);
     add_procedure("append", append_proc, 0, ARG_MAX);
@@ -168,6 +170,7 @@ void populate_env(minim_object *env) {
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
     add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
     add_procedure("datum->syntax", to_syntax_proc, 1, 1);
+    add_procedure("syntax->datum", to_datum_proc, 1, 1);
     add_procedure("syntax->list", syntax_to_list_proc, 1, 1);
 
     add_procedure("pattern-variable?", is_pattern_var_proc, 1, 1);
@@ -208,10 +211,17 @@ void populate_env(minim_object *env) {
     
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 2, ARG_MAX);
-    add_procedure("exit", exit_proc, 0, 0);
+    add_procedure("exit", exit_proc, 0, 1);
     add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
+    add_procedure("command-line", command_line_proc, 0, 0);
     add_procedure("boot-expander?", boot_expander_proc, 0, 1);
+
+    add_procedure("install-literal-bundle!", install_literal_bundle_proc, 1, 1);
+    add_procedure("install-procedure-bundle!", install_proc_bundle_proc, 1, 1);
+    add_procedure("reinstall-procedure-bundle!", reinstall_proc_bundle_proc, 2, 2);
+    add_procedure("runtime-address", runtime_address_proc, 1, 1);
+    add_procedure("enter-compiled!", enter_compiled_proc, 1, 1);
 }
 
 minim_object *make_env() {
@@ -271,6 +281,7 @@ void minim_boot_init() {
     input_port(th) = make_input_port(stdin);
     output_port(th) = make_output_port(stdout);
     current_directory(th) = make_string2(get_current_dir());
+    command_line(th) = minim_null;
     boot_expander(th) = minim_true;
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(minim_object*));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;

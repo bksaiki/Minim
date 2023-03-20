@@ -1,0 +1,691 @@
+;;;
+;;;  Compiler entry point
+;;;   
+
+(import "base.min" "module.min"
+        "compiler/common.min"
+        "compiler/x86-64.min")
+
+; syntax
+(define (stx-pair? stx)
+  (if (pair? stx)
+      #t
+      (if (syntax? stx)
+          (pair? (syntax-e stx))
+          #f)))
+
+(define (stx-null? stx)
+  (if (null? stx)
+      #t
+      (if (syntax? stx)
+          (null? (syntax-e stx))
+          #f)))
+
+(define (stx-car stx)
+  (if (syntax? stx)
+      (car (syntax-e stx))
+      (car stx)))
+
+(define (stx-cdr stx)
+  (if (syntax? stx)
+      (cdr (syntax-e stx))
+      (cdr stx)))
+
+(define (identifier? stx)
+  (and (syntax? stx) (symbol? (syntax-e stx))))
+
+(define ((_-form? form-name) expr)
+  (and (stx-pair? expr)
+        (let ([head (stx-car expr)])
+          (and (identifier? head)
+              (eq? (syntax-e head) form-name)))))
+
+(define define-values-form? (_-form? 'define-values))
+; (define define-syntaxes-form? (_-form? 'define-syntaxes))
+(define let-values-form? (_-form? 'let-values))
+(define letrec-values-form? (_-form? 'letrec-values))
+; (define let-syntaxes-form? (_-form? 'let-syntaxes))
+(define quote-form? (_-form? 'quote))
+(define quote-syntax-form? (_-form? 'quote-syntax))
+(define lambda-form? (_-form? 'lambda))
+(define values-form? (_-form? 'values))
+(define begin-form? (_-form? 'begin))
+(define if-form? (_-form? 'if))
+
+; syntax would parse into a self-evaluating expression
+(define (stx-self-evaluating? stx)
+  (let ([datum (syntax-e stx)])
+    (or (boolean? datum)
+        (number? datum)
+        (string? datum)
+        (vector? datum)
+        (char? datum))))
+
+;
+; Assembler
+;
+
+(define (assemble/procedure proc make-label!)
+  ; (display " <assembling: ") (write proc) (display ">") (newline)
+  (define args (second (second proc)))
+  (define instrs (second (third proc)))
+  (define instrs*
+    (let loop ([instrs instrs])
+      (cond
+        [(null? instrs) (list)]
+        [(not (list? (car instrs))) (error 'assemble/procedure "expected a list: " (car instrs))]
+        [else
+         (define instr (first instrs))
+         (define seq
+           (case (first instr)
+            [(literal)
+             ; `(literal <n>)` =>
+             ; Load <n>th literal into `RRES`
+             (define idx (second instr))
+             (list (list 'load-literal RES-REG idx))]
+            [(push-continuation)
+             ; `(push-continuation <label> )` =>
+             (list (list 'push-frame (second instr)))]
+            [(pop-continuation)
+             ; `(pop-continuation <label> )` =>
+             (list (list 'pop-frame))]
+            [(prepare-args)
+             ; `(prepare-args <n>)` =>
+             ; Hint to the assembler
+             (list instr)]
+            [(argument)
+             ; `(argument <n>)` =>
+             ; load `RRES` at `RSP`
+             ; decrement `RSP` by word
+             (define idx (second instr))
+             (list (list 'store-argument RES-REG idx))]
+            [(apply)
+             ; `(apply)` =>
+             ; if PRIMITIVE:
+             ;   Set arg array pointer to `arg1`
+             ;   Set arg count to `arg0`
+             ;   Extract pointer to `RRES`
+             ;   Call using `RRES`
+             ; elif CLOSURE:
+             ;   Save the environment register
+             ;   Load the closure environment
+             ;   Jump to the start of the code
+             ;   Calling convention:
+             ;     R0: environment register
+             ;     R1: closure object
+             ;     R2: argument count
+             ;     <stack>: arguments
+             (define argc (second instr))
+             (define jmp-label (make-label!))
+             (define exit-label (make-label!))
+             (list
+               ; Check argument is closure
+               ; Extract the tag and compare
+               (list 'load-offset T0-REG RES-REG 0)
+               (list 'cmp-tag T0-REG 'closure)
+               (list 'branch jmp-label 'equal)
+               ; Primitive
+               (list 'load T0-REG argc)
+               (list 'sub T1-REG CC-REG (* argc WORD-SIZE))
+               (list 'load-offset RES-REG RES-REG PRIM-FN-OFFSET)
+               (list 'c-call RES-REG T0-REG T1-REG)
+               (list 'branch exit-label 'always)
+               ; Closure
+               (list 'label jmp-label)
+               (list 'push RES-REG)     ; save closure for GC
+               (list 'load T0-REG RES-REG)
+               (list 'load T1-REG argc)
+               (list 'load-offset ENV-REG RES-REG CLOSURE-ENV-OFFSET)
+               (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
+               (list 'c-call RES-REG ENV-REG T0-REG T1-REG)
+               ; End
+               (list 'label exit-label))]
+            [(lookup)
+             ; `(lookup <name>)` =>
+             ; Load <n>th literal into `ARG1` and perform a lookup
+             (list
+               (list 'load-literal T0-REG (second instr))
+               (list 'c-call "env_lookup_var" ENV-REG T0-REG))]
+            [(push-environment)
+             ; `(push-environment)` =>
+             ; extend environment; requires call to C-runtime
+             (list
+               (list 'c-call "make_environment" ENV-REG)
+               (list 'load ENV-REG RES-REG))]
+            [(pop-environment)
+             ; `(pop-environment)` =>
+             ; load the previous environment
+             (list
+               (list 'load-offset ENV-REG ENV-REG ENV-PREV-OFFSET))]
+            [(closure)
+             ; `(closure <idx> <arity>)` =>
+             ; create a closure using the current environment
+             (define idx (second instr))
+             (define arity (third instr))
+             (define-values (arity-low arity-high)
+               (if (pair? arity)
+                   (if (number? (cdr arity))
+                       (values (car arity) (cdr arity))
+                       (values (car arity) ARGC-MAX))
+                   (values arity arity)))
+             (list
+               (list 'load-procedure RES-REG idx)
+               (list 'load T0-REG arity-low)
+               (list 'load T1-REG arity-high)
+               (list 'c-call "make_closure" ENV-REG RES-REG T0-REG T1-REG))]
+            [(branch)
+             ; `(branch label mode ...)` =>
+             ; branch
+             (define label (second instr))
+             (define mode (third instr))
+             (case mode
+               [(lit-eq?)
+                (list
+                  (list 'load-literal T0-REG (fourth instr))
+                  (list 'cmp-ptr RES-REG T0-REG)
+                  (list 'branch label 'equal))]
+               [(always)
+                (list (list 'branch label 'always))]
+               [else
+                (error 'assemble/procedure "unimplemented branch mode" mode)])]
+            [(bind)
+             ; `(bind <n>s ...`) =>
+             ; binds <n>th literal (symbol) to `RES-REG` in the current environment
+             (define idxs (cdr instr))
+             (case (length idxs)
+               [(0)
+                ; do nothing (nothing to bind)
+                (list)]
+               [(1)
+                ; bind RES-REG to first index
+                (list
+                  (list 'load-literal T0-REG (second instr))
+                  (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
+               [else
+                ; bind from values buffer
+                ; RES-REG is guaranteed to be the "multiple values" object
+                (cons (list 'load-address T0-REG "current_thread")
+                  (cons (list 'load-offset T0-REG T0-REG THREAD-VALUES-OFFSET)
+                    (let loop ([idxs idxs] [i 0])
+                      (cond
+                        [(null? idxs) '()]
+                        [else
+                         (cons (list 'load-offset RES-REG T0-REG (* 8 i))
+                           (cons (list 'load-literal T1-REG (car idxs))
+                             (cons (list 'c-call "env_define_var" ENV-REG T1-REG RES-REG)
+                               (loop (cdr idxs) (+ i 1)))))]))))])]
+            [(bind-argument)
+             ; `(bind-argument <n> <name>)` =>
+             ; binds the <n>th argument to in the current enviroment
+             ;  - extract argc (assuming correct ordering, at [CC-REG - 8])
+             ;  - extract the previous FP (stored at [CC-REG])
+             ;  - the <i>th argument is at [CC-REG - 8*argc + 8*idx]
+             (define idx (second instr))
+             (define lit-idx (third instr))
+             (list
+               ; compute `- 8*argc + 8*idx`
+               (list 'load RES-REG idx)
+               (list 'load-offset T0-REG CC-REG (- 8))
+               (list 'sub RES-REG RES-REG T0-REG)
+               (list 'shl RES-REG RES-REG 3)
+               ; load address `[CC-REG - 8*argc + 8*idx]`
+               (list 'load-offset T0-REG CC-REG 0)
+               (list 'add RES-REG RES-REG T0-REG)
+               (list 'load-offset RES-REG RES-REG 0)
+               ; load name and bind
+               (list 'load-literal T0-REG lit-idx)
+               (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
+            [(bind-rest)
+             ; `(bind-rest <n> <name>)` =>
+             ; Binds the <n>th, <n+1>th, ... argument within a list
+             ; to <name> in the current environment.
+             ;  - extract argc (assuming correct ordering, at [CC-REG - 8])
+             ;  - extract the previous FP (stored at [CC-REG])
+             ;  - the <i>th argument is at [CC-REG - 8*argc + 8*idx]
+             (define idx (second instr))
+             (define lit-idx (third instr))
+             (list
+               ; compute `- 8*argc + 8*idx`
+               (list 'load RES-REG idx)
+               (list 'load-offset T1-REG CC-REG (- 8))
+               (list 'sub RES-REG RES-REG T1-REG)
+               (list 'shl RES-REG RES-REG 3)
+               ; load address `[CC-REG - 8*argc + 8*idx]`
+               (list 'load-offset T0-REG CC-REG 0)
+               (list 'add RES-REG RES-REG T0-REG)
+               ; create rest argument 
+               (list 'load T0-REG idx)
+               (list 'sub T1-REG T1-REG T0-REG)
+               (list 'c-call "make_rest_argument" RES-REG T1-REG)
+               ; load name and bind
+               (list 'load-literal T0-REG lit-idx)
+               (list 'c-call "env_define_var" ENV-REG T0-REG RES-REG))]
+            [(push)
+             ; `(push)` =>
+             ; push RES-REG
+             (list (list 'push RES-REG))]
+            [(pop)
+             ; `(pop)` =>
+             ; pop RES-REG
+             (list (list 'pop RES-REG))]
+            [(load-value)
+             ; `(load-value <n>)` =>
+             ; TODO: verify size of values_buffer
+             ; get address of threads `value buffer` and load `RES-REG` into the <n>th slot
+             ; set the size of the buffer
+             (define idx (second instr))
+             (list
+               (list 'load-address T0-REG "current_thread")
+               (list 'load-offset T1-REG T0-REG THREAD-VALUES-OFFSET)
+               (list 'store-offset RES-REG T1-REG (* 8 idx))
+               (list 'load T1-REG (+ idx 1))
+               (list 'store-offset32 T1-REG T0-REG THREAD-VALUES-SIZE-OFFSET))]
+            [(make-void)
+             ; `(make-void)` =>
+             ; get address of "void" object
+             (list (list 'load-address RES-REG "minim_void"))]
+            [(make-values)
+             ; `(make-values)` =>
+             ; get address of "multiple values" object
+             (list (list 'load-address RES-REG "minim_values"))]
+            [(arity-check)
+             ; `(arity-check <n>)` =>
+             ; checks that the correct number of arguments was provided
+             ; to the closure and panics if not.
+             ; stashes the argument register
+             (list
+               (list 'push R2-REG)
+               (list 'c-call "check_arity" R1-REG R2-REG))]
+            [(bind-check)
+             ; `(bind-check <n>)` =>
+             ; checks that the result has the right number of values
+             ; and panic if the check fails:
+             ;
+             ; if `type(RREG) == MINIM_VALUES_TYPE`:
+             ;   check size of values buffer
+             ; else:
+             ;   check that `<n> == 1`
+             ;
+             ; TODO: currently unchecked
+             (list)]
+            [(label)
+             ; `(label <label>)` =>
+             ; nothing to do
+             (list instr)]
+            [else
+             (error 'assemble/procedure "unimplemented" instr)]))
+         (append seq (loop (cdr instrs)))])))
+  
+  (assemble/x86-64 instrs*))
+
+;
+; Flatten
+;
+
+(define (closure-arity formals)
+  (let loop ([formals formals] [i 0])
+    (cond [(null? formals) i]
+          [(pair? formals) (loop (cdr formals) (+ i 1))]
+          [else (cons i #f)])))
+
+(define (make-module-body-closure instrs)
+  (list 'fun
+    (list 'args (list))
+    (list 'instrs instrs)))
+
+(define (make-flat-closure formals instrs literal!)
+  (define arity (closure-arity formals))
+  (define argc (if (pair? arity) (car arity) arity))  ; TODO: bounded variary
+  (list 'fun
+    (list 'args formals)
+    (list 'instrs
+          (append
+            (list
+              (list 'arity-check)
+              (list 'push-environment))
+            (let loop ([args formals] [i 0])
+              (cond
+                [(null? args)
+                 '()]
+                [(pair? args)
+                 (define idx (literal! (car args)))
+                 (cons (list 'bind-argument i idx) (loop (cdr args) (+ i 1)))]
+                [else
+                 (define idx (literal! args))
+                 (list (list 'bind-rest i idx))]))
+            instrs
+            (list (list 'pop-environment))))))
+
+(define (flatten/expr expr procedure! literal! label!)
+  (let rec ([expr expr])
+    (cond
+      [(letrec-values-form? expr)
+       (define bindings (car (stx-cdr expr)))
+       (define body (cdr (stx-cdr expr)))
+       (define prefix (list (list 'push-environment)))
+       (let loop ([bindings (syntax->list bindings)] [instrs prefix])
+         (cond
+           [(null? bindings)
+            (let loop ([body body] [instrs instrs])
+              (cond
+                [(null? body)
+                 (reverse (cons (list 'pop-environment) instrs))]
+                [else
+                 (loop (cdr body) (append (reverse (rec (car body))) instrs))]))]
+           [else
+            (define binding (stx-car bindings))
+            (define ids (syntax->datum (stx-car binding)))
+            (define val-expr (car (stx-cdr binding)))
+            (define binding-instrs
+              (append
+                (rec val-expr)
+                (list
+                  (list 'bind-check (length ids))
+                  (cons 'bind (map literal! ids)))))
+            (loop (cdr bindings) (append (reverse binding-instrs) instrs))]))]
+      [(let-values-form? expr)
+       (define bindings (car (stx-cdr expr)))
+       (define body (cdr (stx-cdr expr)))
+       (define prefix (list (list 'push-environment)))
+       (define val-instrs
+         (let loop ([bindings (syntax->list bindings)] [instrs '()])
+           (cond
+             [(null? bindings) (reverse instrs)]
+             [else
+              (define binding (stx-car bindings))
+              (define val-expr (car (stx-cdr binding)))
+              (define val-instrs (rec val-expr))
+              (loop (cdr bindings) (cons (list 'push) (append (reverse val-instrs) instrs)))])))
+       (define bind-instrs
+         (let loop ([bindings (reverse (syntax->list bindings))] [instrs prefix])
+           (cond
+             [(null? bindings) (reverse instrs)]
+             [else
+              (define binding (stx-car bindings))
+              (define ids (syntax->datum (stx-car binding)))
+              (define bind-instrs
+                (list
+                  (list 'pop)
+                  (list 'bind-check (length ids))
+                  (cons 'bind (map literal! ids))))
+              (loop (cdr bindings) (append (reverse bind-instrs) instrs))])))
+        (define body-instrs
+          (let loop ([body body] [instrs '()])
+            (cond
+              [(null? body)
+               (reverse (cons (list 'pop-environment) instrs))]
+              [else
+               (loop (cdr body) (append (reverse (rec (car body))) instrs))])))
+        (append val-instrs bind-instrs body-instrs)]
+      [(lambda-form? expr)
+       (define formals (stx-car (stx-cdr expr)))
+       (define body (stx-cdr (stx-cdr expr)))
+       (define instrs
+         (let loop ([body body])
+           (cond
+             [(null? body) '()]
+             [else (append (rec (car body)) (loop (cdr body)))])))
+       (define pcode (make-flat-closure (syntax->datum formals) instrs literal!))
+       (define arity (closure-arity (syntax->datum formals)))
+       (define idx (procedure! pcode))
+       (list (list 'closure idx arity))]
+      [(values-form? expr)
+       (define vs (stx-cdr expr))
+       (cond
+         [(null? vs)
+          ; 0 values => just return the "multiple-values" object
+          (list (list 'make-values))]
+         [(null? (cdr vs))
+          ; 1 values => just return the result
+          (rec (car vs))]
+         [else
+          ; multi-values
+          (let loop ([vs vs] [i 0] [seqs '()])
+            (cond
+              [(null? vs)
+               (define seq (apply append (reverse seqs)))
+               (reverse (cons (list 'make-values) (reverse seq)))]
+              [else
+               (define seq (rec (car vs)))
+               (define seq* (reverse (cons (list 'load-value i) (reverse seq))))
+               (loop (cdr vs) (+ i 1) (cons seq* seqs))]))])]
+      [(if-form? expr)
+       (define cond-expr (car (stx-cdr expr)))
+       (define ift-expr (cadr (stx-cdr expr)))
+       (define iff-expr (caddr (stx-cdr expr)))
+       (define iff-label (label!))
+       (define end-label (label!))
+       (define false-idx (literal! #f))
+       (append
+         (rec cond-expr)
+         (list
+           (list 'branch iff-label 'lit-eq? false-idx))
+         (rec ift-expr)
+         (list
+          (list 'branch end-label 'always)
+          (list 'label iff-label))
+         (rec iff-expr)
+         (list
+           (list 'label end-label)))]
+      [(quote-form? expr)
+       (define form (syntax-e expr))
+       (define idx (literal! (syntax->datum (cadr form))))
+       (list (list 'literal idx))]
+      [(begin-form? expr)
+       (define body (stx-cdr expr))
+       (let loop ([body body])
+         (cond
+           [(null? body) '()]
+           [else (append (rec (car body)) (loop (cdr body)))]))]
+      [(stx-list? expr)
+       (define op (stx-car expr))
+       (define args (stx-cdr expr))
+       (define argc (length args))
+       (define label (label!))
+       (append
+         (list
+           (list 'push-continuation label)
+           (list 'prepare-args argc))
+         (let loop ([args args] [i (- argc 1)])
+           (cond
+             [(null? args)
+              ; apply operation
+              (append
+                (rec op)
+                (list
+                  (list 'apply argc)
+                  (list 'label label)
+                  (list 'pop-continuation)))]
+              [else
+               ; process next argument
+               (append
+                 (rec (car args))
+                 (cons
+                   (list 'argument i)
+                   (loop (cdr args) (- i 1))))])))]
+      [(stx-self-evaluating? expr)
+       (define idx (literal! (syntax-e expr)))
+       (list (list 'literal idx))]
+      [(identifier? expr)
+       (define idx (literal! (syntax-e expr)))
+       (list (list 'lookup idx))]
+      [else
+       (error 'flatten/expr "unimplemented" expr)])))
+
+(define (flatten/top-level expr top-level! procedure! literal! label!)
+  ; (display " <top-level: ") (write expr) (display ">") (newline)
+  (cond
+    [(define-values-form? expr)
+     ; decompose
+     (define names (stx-car (stx-cdr expr)))
+     (define e (stx-car (stx-cdr (stx-cdr expr))))
+     ; process identifiers
+     (define ids (map syntax-e (syntax-e names)))
+     (define idxs (map literal! ids))
+     (for-each top-level! ids)
+     ; process expression
+     (append
+       (flatten/expr e procedure! literal! label!)
+       (cons
+         (list 'bind-check (length ids))
+         (map (lambda (i) (list 'bind i)) idxs))
+       (list (list 'make-void)))]
+    [else (flatten/expr expr procedure! literal! label!)]))
+
+(define (compile/file path enter?)
+  (define top-levels '())
+  (define procedures '())
+  (define literals '())
+  (define label-counter 0)
+
+  (define (register-top-level! name)
+    (define count (length top-levels))
+    (set! top-levels (cons name top-levels))
+    count)
+
+  (define (register-procedure! pcode)
+    ;; offset for the module body
+    (define count (+ (length procedures) 1))
+    (set! procedures (cons pcode procedures))
+    count)
+
+  (define (register-literals! lit)
+    (let loop ([lits (reverse literals)] [i 0])
+      (cond
+        [(eq? lits '())
+         (define count (length literals))
+         (set! literals (cons lit literals))
+         count]
+        [(equal? (car lits) lit)
+         i]
+        [else
+         (loop (cdr lits) (+ i 1 ))])))
+
+  (define (register-label!)
+    (define count label-counter)
+    (set! label-counter (+ count 1))
+    (string-append "L" (number->string count)))
+
+  (define-values (exprs xforms imports exports _) (read/module path))
+  (define module-body
+    (let loop ([exprs exprs])
+      (cond
+        [(null? exprs) '()]
+        [else
+         (append
+           (flatten/top-level (car exprs)
+                              register-top-level!
+                              register-procedure!
+                              register-literals!
+                              register-label!)
+           (loop (cdr exprs)))])))
+  
+  ; module body is a nullary function
+  (define module-body-fn (make-module-body-closure module-body))
+
+  ; lists are in reverse order
+  (set! top-levels (reverse top-levels))
+  (set! procedures (cons module-body-fn (reverse procedures)))
+  (set! literals (reverse literals))
+
+  ; debug print report
+  ; (display " top-levels: ") (write top-levels) (newline)
+  ; (display " procedures: ") (write procedures) (newline)
+  ; (display " literals  : ") (write literals) (newline)
+  ; (display " body      : ") (write module-body) (newline)
+
+  ; assemble procedures
+  (define assembly-info
+    (map
+      (lambda (p)
+        (define-values (as link) (assemble/procedure p register-label!))
+        ; (display as) (newline)
+        (cons as link))
+      procedures))
+
+  (define procedures (map car assembly-info))
+  (define links (map cdr assembly-info))
+
+  ; install literals
+  (define literal-address (install-literal-bundle! literals))
+  ; (display "installed literals") (newline)
+
+  ; install procedures (with missing addresses)
+  (define unlinked-code (map (lambda (ss) (apply append ss)) procedures))
+  (define template-address (install-procedure-bundle! unlinked-code))
+
+  ; link
+  (define link-info
+    (cons
+      (cons 'literal literal-address)
+      (let loop ([code unlinked-code] [i 0] [offset 0])
+        (cond [(null? code) '()]
+              [else (cons (cons (list 'procedure i) (+ template-address offset))
+                          (loop (cdr code) (+ i 1) (+ offset (length (car code)))))]))))
+
+  (define linked (map (lambda (p l) (link/x86-64 p l link-info)) procedures links))
+  (define code (map (lambda (ss) (apply append ss)) linked))
+  ; (display "linked symbols") (newline)
+
+  ; reinstall
+  (reinstall-procedure-bundle! template-address code)
+  ; (display "installed procedures") (newline)
+
+  ; report
+  (define report
+    (list
+      (cons 'arch 'x86-64)
+      (cons 'os 'linux-unknown)
+      (cons 'top-level top-levels)
+      (cons 'literals literals)
+      (cons 'assembled procedures)
+      (cons 'links links)))
+
+  (when enter?
+    (call-with-values
+      (lambda () (enter-compiled! template-address))
+      (lambda result
+        (let loop ([result result])
+          (unless (null? result)
+            (write (car result)) (newline)
+            (loop (cdr result)))))))
+
+  report)
+
+; entry point
+(define (main args)
+  ; flags
+  (define enter? #f)
+  ; flag handling
+  (define (handle-flag! flag)
+    (cond
+      [(equal? flag "-e")
+       (set! enter? #t)
+       #t]
+      [(equal? flag "--")
+       #f]
+      [else
+       #f]))
+
+  (define fnames
+    (let loop ([args (cdr args)])
+      (cond
+        [(null? args)
+         (void)]
+        [(handle-flag! (car args))
+         (loop (cdr args))]
+        [else
+         args])))
+  
+  (let loop ([fnames fnames])
+    (unless (null? fnames)
+      (define name (car fnames))
+      (define path
+        (cond
+          [(is-absolute-path? name)  name]
+          [else (build-path (current-directory) name)]))
+      (display "<compiling ") (write name) (display ">") (newline)
+      (compile/file path enter?)
+      (loop (cdr fnames)))))
+
+(main (command-line))

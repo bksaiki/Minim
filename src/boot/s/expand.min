@@ -52,6 +52,15 @@
   (define begin-form? (_-form? 'begin))
   (define if-form? (_-form? 'if))
 
+  ; syntax would parse into a self-evaluating expression
+  (define (stx-self-evaluating? stx)
+    (define datum (syntax-e stx))
+    (or (boolean? datum)
+        (number? datum)
+        (string? datum)
+        (vector? datum)
+        (char? datum)))
+
   ; returns an symbol if it is a duplicate, else false
   (define (duplicate-identifier ids new-ids)
     (let loop ([ids ids] [new-ids new-ids])
@@ -196,12 +205,47 @@
           [else
            (error name "transformer produced something other than syntax" (car results))]))))
 
+  ; body context (sequence of expressions)
+  ; List of Expr, List of Xform -> List of Expr
+  (define (expand/body exprs xforms)
+    (if (null? exprs)
+        (list)
+        (let loop ([exprs exprs] [defines '()])
+          (define expr* (expand/expr (car exprs) xforms))
+          (cond
+            [(null? (cdr exprs))
+             (cond
+               [(define-values-form? expr*)
+                (error 'begin "last form is not an expression" (car exprs))]
+               [(null? defines)
+                (list expr*)]
+               [else
+                (list
+                  (datum->syntax
+                    (list
+                      (quote-syntax letrec-values)
+                      (reverse defines)
+                      expr*)))])]
+            [(define-values-form? expr*)
+             (define form (syntax->list expr*))
+             (define ids (cadr form))
+             (define value (caddr form))
+             (loop (cdr exprs) (cons (list ids value) defines))]
+            [else
+             (define value
+               (datum->syntax
+                 (list
+                   (quote-syntax let-values)
+                   '()
+                   expr*
+                   (list (quote-syntax values)))))
+             (loop (cdr exprs) (cons (list '() value) defines))]))))
+
   ; expression context
   ; Expr, List of Xform -> Expr
   (define (expand/expr expr xforms)
     (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (let loop ([expr expr])
-      ; (writeln expr)
       (cond
         [(define-values-form? expr)
          (check-define-syntaxes/values-form! 'define-values expr)
@@ -253,6 +297,7 @@
          (define name (if (let-values-form? expr) 'let-values 'letrec-values))
          (check-let-syntaxes/values-form! name expr)
          (define form (syntax->list expr))
+         (define body (cddr form))
          (datum->syntax
            (cons (car form)
              (cons
@@ -265,7 +310,7 @@
                     (check-duplicate-identifier! expr name let-ids ids)
                     (cons (list (car binding) (loop (cadr binding)))
                           (rec (cdr bindings) (append ids let-ids)))]))
-               (map loop (cddr form)))))]
+               (expand/body body xforms))))]
         [(lambda-form? expr)
          (check-lambda-form! expr)
          (define head (stx-car expr))
@@ -274,7 +319,7 @@
          (datum->syntax
            (cons head
              (cons formals
-               (map loop body))))]
+               (expand/body body xforms))))]
         [(if-form? expr)
          (check-if-form! expr)
          (define form (syntax->list expr))
@@ -286,9 +331,11 @@
             (loop (cadddr form))))]
         [(begin-form? expr)
          (check-begin-form! expr)
+         (define body (stx-cdr expr))
          (datum->syntax
-           (cons (stx-car expr)
-                 (map loop (cdr (syntax->list expr)))))]
+           (cons
+             (stx-car expr)
+             (expand/body body xforms)))]
         [(quote-form? expr)
          (check-1ary-form! 'quote expr)
          expr]
@@ -307,14 +354,10 @@
          (if maybe-xform
              (loop (eval/xform maybe-xform expr (syntax-e head) $module-boot-expander?))
              expr)]
-        [(let ([datum (syntax-e expr)])
-           (or (boolean? datum)
-               (number? datum)
-               (string? datum)
-               (vector? datum)))
+        [(stx-self-evaluating? expr)
          expr]
         [else
-         (syntax-error #f "bad syntax" expr)])))
+         (syntax-error 'expand/expr "bad syntax" expr)])))
 
   ; module context
   ;  `define-values` => defers expansion until all definitions have been processed

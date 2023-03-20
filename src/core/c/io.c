@@ -225,6 +225,10 @@ loop:
         case '(':
             // vector
             return read_vector(in);
+        case 'x':
+            // hex number
+            c = getc(in);
+            goto read_hex;
         case ';':
             // datum comment
             skip_whitespace(in);
@@ -260,20 +264,66 @@ loop:
             minim_shutdown(1);
         }
     } else if (isdigit(c) || ((c == '-' || c == '+') && isdigit(peek_char(in)))) {
-        // number
+        // decimal number (possibly)
+        // if we encounter a non-digit, the token is a symbol
         num = 0;
         sign = 1;
+        i = 0;
 
         // optional sign
         if (c == '-') {
             sign = -1;
+            buffer[i++] = c;
         } else if (c != '+') {
             ungetc(c, in);
+            buffer[i++] = c;
         }
 
         // magnitude
         while (isdigit(c = getc(in))) {
+            buffer[i++] = c;
             num = (num * 10) + (c - '0');
+        }
+
+        if (is_symbol_char(c)) {
+            goto read_symbol;
+        }
+
+        // check for delimeter
+        if (!is_delimeter(c)) {
+            fprintf(stderr, "expected a delimeter\n");
+            minim_shutdown(1);
+        }
+
+        ungetc(c, in);
+        return make_fixnum(num * sign);
+    } else if (0) {
+        // hexadecimal number
+        // same caveat applies: if we encounter a non-digit, the token is a symbol
+read_hex:
+        num = 0;
+        sign = 1;
+        i = 0;
+
+        // optional sign
+        if (c == '-') {
+            sign = -1;
+            buffer[i++] = c;
+        } else if (c != '+') {
+            ungetc(c, in);
+            buffer[i++] = c;
+        }
+
+        // magnitude
+        while (isxdigit(c = getc(in))) {
+            buffer[i++] = c;
+            if ('A' <= c && c <= 'F')       num = (num * 16) + (10 + (c - 'A'));
+            else if ('a' <= c && c <= 'f')  num = (num * 16) + (10 + (c - 'a'));
+            else                            num = (num * 16) + (c - '0');
+        }
+
+        if (is_symbol_char(c)) {
+            goto read_symbol;
         }
 
         // check for delimeter
@@ -329,7 +379,9 @@ loop:
         // symbol
         i = 0;
 
-        while (is_symbol_char(c) || isdigit(c) || c == '+' || c == '-') {
+read_symbol:
+
+        while (is_symbol_char(c)) {
             if (i < SYMBOL_MAX_LEN - 1) {
                 buffer[i++] = c;
             } else {
@@ -493,6 +545,12 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
     case MINIM_CLOSURE_PROC_TYPE:
         if (minim_closure_name(o) != NULL)
             fprintf(out, "#<procedure:%s>", minim_closure_name(o));
+        else
+            fprintf(out, "#<procedure>");
+        break;
+    case MINIM_NATIVE_CLOSURE_TYPE:
+        if (minim_native_closure_name(o) != NULL)
+            fprintf(out, "#<procedure:%s>", minim_native_closure_name(o));
         else
             fprintf(out, "#<procedure>");
         break;

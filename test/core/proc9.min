@@ -1,0 +1,11 @@
+;
+; Test for core features
+; 2-argument + rest argument (3 arguments)
+;
+
+(define-values (foo)
+  (lambda (x y . xs) xs))
+
+(if (equal? (foo 1 2 3) '(3))
+    (exit 0)
+    (exit 1))

@@ -92,10 +92,10 @@ void check_equal(const char *input, const char *expect) {
 
 #define log_test(name, t) {             \
     if (t() == 1) {                     \
-        printf("[PASSED] %s\n", name);  \
+        printf("[ \033[32mPASS\033[0m ] %s\n", name);  \
     } else {                            \
         return_code = 1;                \
-        printf("[FAILED] %s\n", name);  \
+        printf("[ \033[31mFAIL\033[0m ] %s\n", name);  \
     }                                   \
 }
 

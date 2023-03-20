@@ -1,0 +1,8 @@
+;
+; Test for core features
+; letrec-values: bind 0
+;
+
+(if (equal? (letrec-values () 1) 1)
+    (exit 0)
+    (exit 1))

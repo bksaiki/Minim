@@ -7,6 +7,7 @@ CORE_DIR = src/core
 BOOT_DIR = src/boot
 GC_DIR = src/gc
 BUILD_DIR = build
+TEST_DIR = test
 
 CP = cp
 ECHO = echo
@@ -36,11 +37,14 @@ boehm-gc:
 minim-gc:
 	$(MAKE) -C $(GC_DIR) minim-gc
 
-test:
-	$(MAKE) boot-tests
+test: boot-tests compile-tests
 
 boot-tests:
 	$(MAKE) -C $(BOOT_DIR) test
+	$(MAKE) -C $(TEST_DIR) boot
+
+compile-tests: boot
+	$(MAKE) -C $(TEST_DIR) compile
 
 clean:
 	$(MAKE) -C $(CORE_DIR) clean

@@ -574,6 +574,22 @@ minim_object *list_proc(int argc, minim_object **args) {
     return lst;
 }
 
+minim_object *make_list_proc(int argc, minim_object **args) {
+    // (-> non-negative-integer? any list)
+    minim_object *lst;
+    long len, i;
+
+    if (!minim_is_fixnum(args[0]) || minim_fixnum(args[0]) < 0)
+        bad_type_exn("make-vector", "non-negative-integer?", args[0]);
+    len = minim_fixnum(args[0]);
+
+    lst = minim_null;
+    for (i = 0; i < len; ++i)
+        lst = make_pair(args[1], lst);
+
+    return lst;
+}
+
 minim_object *length_proc(int argc, minim_object **args) {
     // (-> list non-negative-integer?)
     minim_object *it;

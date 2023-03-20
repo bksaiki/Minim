@@ -1,0 +1,11 @@
+;
+; Test for core features
+; Two-argument closure
+;
+
+(define-values (foo)
+  (lambda (x y) y))
+
+(if (equal? (foo 1 2) 2)
+    (exit 0)
+    (exit 1))

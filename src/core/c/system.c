@@ -39,6 +39,37 @@ static char *_get_file_path(const char *rel_path) {
 #endif
 }
 
+void *alloc_page(size_t size)
+{
+    void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == ((void*) -1)) {
+        perror("mmap() failed to allocate a page of memory");
+        return NULL;
+    }
+
+    return ptr;
+}
+
+int make_page_executable(void* page, size_t size)
+{
+    if (mprotect(page, size, PROT_READ | PROT_EXEC) == -1) {
+        perror("mprotect() failed to set page to executable");
+        return -1;
+    }
+
+    return 0;
+}
+
+int make_page_write_only(void* page, size_t size)
+{
+    if (mprotect(page, size, PROT_WRITE) == -1) {
+        perror("mprotect() failed to set page to executable");
+        return -1;
+    }
+
+    return 0;
+}
+
 void set_current_dir(const char *str) {
     if (_set_current_dir(str) != 0) {
         fprintf(stderr, "could not set current directory: %s\n", str);
@@ -143,8 +174,12 @@ minim_object *error_proc(int argc, minim_object **args) {
 }
 
 minim_object *exit_proc(int argc, minim_object **args) {
-    // (-> any)
-    minim_shutdown(0);
+    // (-> number any)
+
+    if (argc == 1 && 0 <= minim_fixnum(args[0]) && minim_fixnum(args[0]) <= 255)
+        minim_shutdown(minim_fixnum(args[0]));
+    else
+        minim_shutdown(0);
 }
 
 minim_object *current_directory_proc(int argc, minim_object **args) {
@@ -165,3 +200,7 @@ minim_object *current_directory_proc(int argc, minim_object **args) {
         return minim_void;
     }
 }
+
+minim_object *command_line_proc(int argc, minim_object **args) {
+    return command_line(current_thread());
+ }

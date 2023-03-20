@@ -211,23 +211,6 @@ minim_object *env_lookup_var(minim_object *env, minim_object *var) {
     minim_shutdown(1);
 }
 
-minim_object *extend_env(minim_object *vars,
-                         minim_object *vals,
-                         minim_object *base_env) {
-    minim_object *env, *var_it, *val_it;
-
-    // TODO: optimize
-    env = make_environment(base_env);
-    var_it = vars; val_it = vals;
-    while (!minim_is_null(var_it)) {
-        env_define_var_no_check(env, minim_car(var_it), minim_car(val_it));
-        var_it = minim_cdr(var_it);
-        val_it = minim_cdr(val_it);   
-    }
-
-    return env;
-}
-
 minim_object *setup_env() {
     return make_environment(empty_env);
 }

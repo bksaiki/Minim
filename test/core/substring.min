@@ -1,0 +1,59 @@
+;
+; Test for core features
+;
+;
+
+(define-values (substring)
+  (lambda (str start end)
+    (letrec-values ([(len) (string-length str)])
+      (if (not (string? str))
+          (error (quote substring) "expected string? for" str)
+          (if (not (number? start))
+              (error (quote substring) "expected number? for" start)
+              (if (not (number? end))
+                  (error (quote substring) "expected number? for" end)
+                  (if (> end len)
+                      (error (quote substring) "index out of bounds" end)
+                      (if (> start end)
+                          (error (quote substring) "invalid bounds" start end)
+                          (if (= start end)
+                              ""
+                              (let-values ()
+                                (letrec-values ([(sstr) (make-string (- end start))])
+                                  (letrec-values ([(loop)
+                                      (lambda (i n)
+                                        (if (= n end)
+                                            sstr
+                                            (let-values ()
+                                              (letrec-values ([()
+                                                  (let-values ()
+                                                    (string-set! sstr i (string-ref str n))
+                                                    (values))])
+                                                (loop (+ i 1) (+ n 1))))))])
+                                    (loop 0 start)))))))))))))
+
+(if (equal? (substring "hello" 0 5) "hello")
+    (void)
+    (exit 1))
+
+(if (equal? (substring "hello" 0 4) "hell")
+    (void)
+    (exit 2))
+
+(if (equal? (substring "hello" 0 3) "hel")
+    (void)
+    (exit 3))
+
+(if (equal? (substring "hello" 1 3) "el")
+    (void)
+    (exit 4))
+
+(if (equal? (substring "hello" 2 3) "l")
+    (void)
+    (exit 5))
+
+(if (equal? (substring "hello" 3 3) "")
+    (void)
+    (exit 6))
+
+(exit 0)

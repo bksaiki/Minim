@@ -89,6 +89,9 @@ typedef enum {
     MINIM_ENVIRONMENT_TYPE,
     MINIM_VALUES_TYPE,
 
+    /* Compiled types */
+    MINIM_NATIVE_CLOSURE_TYPE,
+
     /* Footer */
     MINIM_LAST_TYPE
 } minim_object_type;
@@ -145,7 +148,15 @@ typedef struct {
     minim_object *body;
     minim_object *env;
     char *name;
-} minim_closure_proc_object;
+} minim_closure_object;
+
+typedef struct {
+    minim_object_type type;
+    struct proc_arity arity;
+    minim_object *env;
+    void *fn;
+    char *name;
+} minim_native_closure_object;
 
 typedef struct {
     minim_object_type type;
@@ -173,7 +184,7 @@ typedef struct {
     minim_object *depth;
 } minim_pattern_var_object;
 
-typedef struct minim_env {
+typedef struct {
     minim_object_type type;
     minim_object *prev;
     minim_object *bindings;
@@ -219,13 +230,14 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_pair(x)            (minim_same_type(x, MINIM_PAIR_TYPE))
 #define minim_is_vector(x)          (minim_same_type(x, MINIM_VECTOR_TYPE))
 #define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
-#define minim_is_closure_proc(x)    (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
+#define minim_is_closure(x)         (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
 #define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
 #define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
 #define minim_is_env(x)             (minim_same_type(x, MINIM_ENVIRONMENT_TYPE))
 #define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
+#define minim_is_native_closure(x)  (minim_same_type(x, MINIM_NATIVE_CLOSURE_TYPE))
 
 #define minim_is_null(x)        ((x) == minim_null)
 #define minim_is_empty_vec(x)   ((x) == minim_empty_vec)
@@ -261,11 +273,11 @@ extern minim_object *quote_syntax_symbol;
 #define minim_prim_arity(x)     (((minim_prim_proc_object *) (x))->arity)
 #define minim_prim_proc(x)      (((minim_prim_proc_object *) (x))->fn)
 
-#define minim_closure_args(x)   (((minim_closure_proc_object *) (x))->args)
-#define minim_closure_body(x)   (((minim_closure_proc_object *) (x))->body)
-#define minim_closure_env(x)    (((minim_closure_proc_object *) (x))->env)
-#define minim_closure_name(x)   (((minim_closure_proc_object *) (x))->name)
-#define minim_closure_arity(x)  (((minim_closure_proc_object *) (x))->arity)
+#define minim_closure_args(x)   (((minim_closure_object *) (x))->args)
+#define minim_closure_body(x)   (((minim_closure_object *) (x))->body)
+#define minim_closure_env(x)    (((minim_closure_object *) (x))->env)
+#define minim_closure_name(x)   (((minim_closure_object *) (x))->name)
+#define minim_closure_arity(x)  (((minim_closure_object *) (x))->arity)
 
 #define minim_port_is_ro(x)     (((minim_port_object *) (x))->flags & MINIM_PORT_READ_ONLY)
 #define minim_port_is_open(x)   (((minim_port_object *) (x))->flags & MINIM_PORT_OPEN)
@@ -288,6 +300,11 @@ extern minim_object *quote_syntax_symbol;
 #define minim_env_bindings(x)           (((minim_env *) (x))->bindings)
 #define minim_env_prev(x)               (((minim_env *) (x))->prev)
 
+#define minim_native_closure_arity(x)   (((minim_native_closure_object *) (x))->arity)
+#define minim_native_closure_name(x)    (((minim_native_closure_object *) (x))->name)
+#define minim_native_closure_code(x)    (((minim_native_closure_object *) (x))->code)
+#define minim_native_closure_env(x)     (((minim_native_closure_object *) (x))->env)
+
 // Setters
 
 #define minim_port_set(x, f)        (((minim_port_object *) (x))->flags |= (f))
@@ -296,7 +313,7 @@ extern minim_object *quote_syntax_symbol;
 // Complex predicates
 
 #define minim_is_bool(x)            (minim_is_true(x) || minim_is_false(x))
-#define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure_proc(x))
+#define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
 
@@ -316,7 +333,8 @@ minim_object *make_vector(long len, minim_object *init);
 minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
 minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
-minim_object *make_closure_proc(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
+minim_object *make_closure(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
+minim_object *make_native_closure(minim_object *env, void *fn, short min_arity, short max_arity);
 minim_object *make_input_port(FILE *stream);
 minim_object *make_output_port(FILE *stream);
 minim_object *make_pattern_var(minim_object *value, minim_object *depth);
@@ -370,12 +388,8 @@ void assert_no_call_args();
 // Environments
 
 minim_object *make_environment(minim_object *prev);
-
 minim_object *setup_env();
 minim_object *make_env();
-minim_object *extend_env(minim_object *vars,
-                         minim_object *vals,
-                         minim_object *base_env);
 
 void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val);
 minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val);
@@ -384,6 +398,12 @@ minim_object *env_lookup_var(minim_object *env, minim_object *var);
 int env_var_is_defined(minim_object *env, minim_object *var, int recursive);
 
 extern minim_object *empty_env;
+
+// Memory
+
+void check_native_closure_arity(minim_object *fn, short argc);
+minim_object *call_compiled(minim_object *env, minim_object *addr);
+minim_object *make_rest_argument(minim_object *args[], short argc);
 
 // Symbols
 
@@ -416,6 +436,7 @@ typedef struct minim_thread {
     minim_object *output_port;
     minim_object *current_directory;
     minim_object *boot_expander;
+    minim_object *command_line;
 
     minim_object **values_buffer;
     int values_buffer_size;
@@ -429,6 +450,7 @@ typedef struct minim_thread {
 #define output_port(th)                 ((th)->output_port)
 #define current_directory(th)           ((th)->current_directory)
 #define boot_expander(th)               ((th)->boot_expander)
+#define command_line(th)                ((th)->command_line)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
@@ -464,12 +486,17 @@ char *get_file_dir(const char *realpath);
 char* get_current_dir();
 void set_current_dir(const char *str);
 
+void *alloc_page(size_t size);
+int make_page_executable(void *page, size_t size);
+int make_page_write_only(void *page, size_t size);
+
 minim_object *load_file(const char *fname);
 
 NORETURN void minim_shutdown(int code);
 
 // Exceptions
 
+NORETURN void arity_mismatch_exn(const char *name, proc_arity *arity, short actual);
 NORETURN void bad_syntax_exn(minim_object *expr);
 NORETURN void bad_type_exn(const char *name, const char *type, minim_object *x);
 NORETURN void result_arity_exn(short expected, short actual);
@@ -534,6 +561,7 @@ DEFINE_PRIM_PROC(set_cdr);
 // lists
 DEFINE_PRIM_PROC(is_list);
 DEFINE_PRIM_PROC(list);
+DEFINE_PRIM_PROC(make_list);
 DEFINE_PRIM_PROC(length);
 DEFINE_PRIM_PROC(reverse);
 DEFINE_PRIM_PROC(append);
@@ -611,6 +639,7 @@ DEFINE_PRIM_PROC(is_syntax);
 DEFINE_PRIM_PROC(syntax_e);
 DEFINE_PRIM_PROC(syntax_loc);
 DEFINE_PRIM_PROC(to_syntax);
+DEFINE_PRIM_PROC(to_datum);
 DEFINE_PRIM_PROC(syntax_error);
 DEFINE_PRIM_PROC(syntax_to_list);
 // pattern variables
@@ -640,5 +669,12 @@ DEFINE_PRIM_PROC(load);
 DEFINE_PRIM_PROC(error);
 DEFINE_PRIM_PROC(current_directory);
 DEFINE_PRIM_PROC(exit);
+DEFINE_PRIM_PROC(command_line);
+// Memory
+DEFINE_PRIM_PROC(install_literal_bundle);
+DEFINE_PRIM_PROC(install_proc_bundle);
+DEFINE_PRIM_PROC(reinstall_proc_bundle);
+DEFINE_PRIM_PROC(runtime_address);
+DEFINE_PRIM_PROC(enter_compiled);
 
 #endif  // _MINIM_H_
