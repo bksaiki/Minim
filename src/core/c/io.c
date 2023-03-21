@@ -597,10 +597,12 @@ static void minim_fprintf(FILE *o, const char *form, int v_count, minim_object *
     fi = 0;
     for (i = 0; form[i]; ++i) {
         if (form[i] == '~') {
-            ++i;
+            i++;
             if (!form[i]) {
                 fprintf(stderr, "%s: ill-formed formatting escape\n", prim_name);
-                fprintf(stderr, " at: '%s'\n", form);
+                fprintf(stderr, " at: ");
+                write_object2(stderr, make_string(form), 1, 0);
+                fprintf(stderr, "\n");
                 exit(1);
             }
 
@@ -622,7 +624,9 @@ static void minim_fprintf(FILE *o, const char *form, int v_count, minim_object *
 
     if (fi != v_count) {
         fprintf(stderr, "%s: format string requires %d arguments, given %d\n", prim_name, fi, v_count);
-        fprintf(stderr, " at: '%s'\n", form);
+        fprintf(stderr, " at: ");
+        write_object2(stderr, make_string(form), 1, 0);
+        fprintf(stderr, "\n");
         exit(1);
     }
 
@@ -631,6 +635,7 @@ static void minim_fprintf(FILE *o, const char *form, int v_count, minim_object *
     for (i = 0; form[i]; ++i) {
         if (form[i] == '~') {
             // escape character expected
+            i++;
             switch (form[i])
             {
             case '~':
