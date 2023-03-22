@@ -589,7 +589,7 @@ void write_object(FILE *out, minim_object *o) {
 //  fprintf
 //
 
-static void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name) {
+void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name) {
     long i;
     int vi, fi;
 
@@ -927,6 +927,7 @@ minim_object *newline_proc(int argc, minim_object **args) {
 }
 
 minim_object *fprintf_proc(int argc, minim_object **args) {
+    // (-> output-port string any ... void)
     if (!minim_is_output_port(args[0]))
         bad_type_exn("fprintf", "output-port?", args[0]);
     
@@ -938,12 +939,13 @@ minim_object *fprintf_proc(int argc, minim_object **args) {
 }
 
 minim_object *printf_proc(int argc, minim_object **args) {
-    minim_thread *th;
+    // (-> string any ... void)
+    minim_object *curr_op;
 
     if (!minim_is_string(args[0]))
         bad_type_exn("printf", "string?", args[0]);
 
-    th = current_thread();
-    minim_fprintf(minim_port(output_port(th)), minim_string(args[0]), argc - 1, &args[1], "printf");
+    curr_op = output_port(current_thread());
+    minim_fprintf(minim_port(curr_op), minim_string(args[0]), argc - 1, &args[1], "printf");
     return minim_void;
 }

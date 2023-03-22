@@ -361,9 +361,12 @@ minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_obj
 minim_object *strip_syntax(minim_object *o);
 minim_object *to_syntax(minim_object *o);
 
+// I/O
+
 minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
 void write_object2(FILE *out, minim_object *o, int quote, int display);
+void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name);
 
 // Interpreter
 
@@ -610,6 +613,7 @@ DEFINE_PRIM_PROC(number_to_string);
 DEFINE_PRIM_PROC(string_to_number);
 DEFINE_PRIM_PROC(symbol_to_string);
 DEFINE_PRIM_PROC(string_to_symbol);
+DEFINE_PRIM_PROC(format);
 // hashtable
 DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);

@@ -463,6 +463,11 @@ int test_string() {
     check_equal("(string-append \"foo\" \"bar\")", "\"foobar\"");
     check_equal("(string-append \"foo\" \"bar\" \"baz\")", "\"foobarbaz\"");
 
+    check_equal("(format \"abc\")", "\"abc\"");
+    check_equal("(format \"~a\" 1)", "\"1\"");
+    check_equal("(format \"~a~a\" 1 2)", "\"12\"");
+    check_equal("(format \"~a~a~a\" 1 2 3)", "\"123\"");
+
     return passed;
 }
 
