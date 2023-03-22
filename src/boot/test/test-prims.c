@@ -143,6 +143,9 @@ int test_type_predicates() {
     check_true ("(procedure? (lambda () 1))");
     check_false("(procedure? 1)");
 
+    check_true ("(box? (box 3))");
+    check_false("(box? 1)");
+
     check_true("(hashtable? (make-eq-hashtable))");
     check_false("(hashtable? 1)");
 
@@ -613,6 +616,36 @@ int test_let() {
     return passed;
 }
 
+int test_box() {
+    passed = 1;
+
+    check_equal("(box 'a)", "'#&a");
+    check_equal("(box '(1 2 3))", "'#&(1 2 3)");
+    check_equal("(box (box 3))", "'#&#&3");
+
+    check_equal("(unbox (box 'a))", "'a");
+    check_equal("(unbox (box '(1 2 3)))", "'(1 2 3)");
+    check_equal("(unbox (box (box 3)))", "'#&3");
+
+    check_equal("(begin "
+                  "(define b (box 'a))"
+                  "(set-box! b 'b)"
+                  "(unbox b))",
+                "'b");
+    check_equal("(begin "
+                  "(define b (box '(1 2 3)))"
+                  "(set-box! b '())"
+                  "(unbox b))",
+                "'()");
+    check_equal("(begin "
+                  "(define b (box (box 3)))"
+                  "(set-box! b 0)"
+                  "(unbox b))",
+                "0");
+
+    return passed;
+}
+
 int test_hashtable() {
     passed = 1;
 
@@ -874,6 +907,7 @@ void run_tests() {
     log_test("list", test_list);
     log_test("vector", test_vector);
     log_test("integer", test_integer);
+    log_test("box", test_box);
     log_test("hashtable", test_hashtable);
 
     log_test("apply", test_apply);
