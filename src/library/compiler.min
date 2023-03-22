@@ -505,7 +505,7 @@
                    (list 'argument i)
                    (loop (cdr args) (- i 1))))])))]
       [(stx-self-evaluating? expr)
-       (define idx (literal! (syntax-e expr)))
+       (define idx (literal! (syntax->datum expr)))
        (list (list 'literal idx))]
       [(identifier? expr)
        (define idx (literal! (syntax-e expr)))

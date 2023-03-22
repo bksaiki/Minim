@@ -91,5 +91,5 @@
 ; Type tag => integer
 (define (type-tag->integer type)
   (case type
-    [(closure) 19]
+    [(closure) 20]
     [else (error 'type-tag->integer "unknown type" type)]))
