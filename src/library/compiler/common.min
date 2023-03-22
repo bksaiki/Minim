@@ -91,5 +91,14 @@
 ; Type tag => integer
 (define (type-tag->integer type)
   (case type
-    [(closure) 20]
+    [(symbol)       5]
+    [(fixnum)       6]
+    [(char)         7]
+    [(string)       8]
+    [(pair)         9]
+    [(vector)       10]
+    [(primitive)    11]
+    [(port)         13]
+    [(hashtable)    15]
+    [(closure)      20]
     [else (error 'type-tag->integer "unknown type" type)]))
