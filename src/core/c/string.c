@@ -199,3 +199,27 @@ minim_object *string_to_symbol_proc(int argc, minim_object **args) {
         bad_type_exn("string->symbol", "string?", o);
     return intern(minim_string(o));
 }
+
+minim_object *format_proc(int argc, minim_object **args) {
+    // (-> string any ... string)
+    FILE *o;
+    char *s;
+    long len, i;
+    
+    if (!minim_is_string(args[0]))
+        bad_type_exn("format", "string?", args[0]);
+
+    o = tmpfile();
+    minim_fprintf(o, minim_string(args[0]), argc - 1, &args[1], "format");
+
+    len = ftell(o);
+    s = GC_alloc_atomic((len + 1) * sizeof(char));
+    s[len] = '\0';
+
+    fseek(o, 0, SEEK_SET);
+    for (i = 0; i < len; ++i)
+        s[i] = fgetc(o);
+
+    fclose(o);
+    return make_string2(s);
+}
