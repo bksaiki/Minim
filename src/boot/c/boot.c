@@ -154,6 +154,14 @@ void populate_env(minim_object *env) {
     add_procedure("record?", is_record_proc, 1, 1);
     add_procedure("record-type-descriptor?", is_record_rtd_proc, 1, 1);
     add_procedure("make-record-type-descriptor", make_rtd_proc, 6, 6);
+    add_procedure("record-rtd", record_rtd_proc, 1, 1);
+    add_procedure("record-type-name", record_type_name_proc, 1, 1);
+    add_procedure("record-type-parent", record_type_parent_proc, 1, 1);
+    add_procedure("record-type-uid", record_type_uid_proc, 1, 1);
+    add_procedure("record-type-opaque?", record_type_opaque_proc, 1, 1);
+    add_procedure("record-type-sealed?", record_type_sealed_proc, 1, 1);
+    add_procedure("record-type-field-names", record_type_fields_proc, 1, 1);
+    add_procedure("record-type-field-mutable?", record_type_field_mutable_proc, 2, 2);
 
     add_procedure("box?", is_box_proc, 1, 1);
     add_procedure("box", box_proc, 1, 1);

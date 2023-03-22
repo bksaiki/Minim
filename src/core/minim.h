@@ -341,7 +341,6 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
-#define minim_is_record_rtd(x)      (minim_is_record(x) && (minim_record_rtd(x) == minim_base_rtd))
 
 // Typedefs
 
@@ -517,7 +516,10 @@ minim_object *make_rest_argument(minim_object *args[], short argc);
 #define record_rtd_opaque(rtd)      minim_record_ref(rtd, 3)
 #define record_rtd_sealed(rtd)      minim_record_ref(rtd, 4)
 #define record_rtd_protocol(rtd)    minim_record_ref(rtd, 5)
-#define record_rtd_field(rtd, i)    minim_record_ref(rtd, (record_rtd_min_size + (i)));
+#define record_rtd_field(rtd, i)    minim_record_ref(rtd, (record_rtd_min_size + (i)))
+
+#define record_is_opaque(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
+#define record_is_sealed(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
 
 // Symbols
 
@@ -728,8 +730,15 @@ DEFINE_PRIM_PROC(format);
 // record
 DEFINE_PRIM_PROC(is_record);
 DEFINE_PRIM_PROC(is_record_rtd);
-DEFINE_PRIM_PROC(record_rtd);
 DEFINE_PRIM_PROC(make_rtd);
+DEFINE_PRIM_PROC(record_rtd);
+DEFINE_PRIM_PROC(record_type_name);
+DEFINE_PRIM_PROC(record_type_parent);
+DEFINE_PRIM_PROC(record_type_uid);
+DEFINE_PRIM_PROC(record_type_sealed);
+DEFINE_PRIM_PROC(record_type_opaque);
+DEFINE_PRIM_PROC(record_type_fields);
+DEFINE_PRIM_PROC(record_type_field_mutable);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);

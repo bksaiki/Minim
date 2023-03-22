@@ -13,24 +13,40 @@ minim_object *make_record(minim_object *rtd, int fieldc) {
     return ((minim_object *) o);
 }
 
+// Record type descriptors are records, but they
+// return `#f` when passed to `record?`.
+static int is_true_record(minim_object *o) {
+    minim_object *rtd;
+
+    if (!minim_is_record(o))
+        return 0;
+
+    rtd = minim_record_rtd(o);
+    return record_rtd_opaque(rtd) == minim_false;
+}
+
+// Returns 1 when `o` is a record value, and 0 otherwise.
+static int is_record_value(minim_object *o) {
+    return minim_is_record(o) && minim_record_rtd(o) != minim_base_rtd;
+}
+
+// Returns 1 when `o` is a record type descriptor, and 0 otherwise.
+static int is_record_rtd(minim_object *o) {
+    return minim_is_record(o) && minim_record_rtd(o) == minim_base_rtd;
+}
+
 //
 //
 //
 
 minim_object *is_record_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    minim_object *rtd;
-
-    if (!minim_is_record(args[0]))
-        return minim_false;
-
-    rtd = minim_record_rtd(args[0]);
-    return (record_rtd_opaque(rtd) == minim_false) ? minim_true : minim_false;
+    return is_true_record(args[0]) ? minim_true : minim_false;
 }
 
 minim_object *is_record_rtd_proc(int argc, minim_object **args) {
     // (-> any boolean)
-    return minim_is_record_rtd(args[0]) ? minim_true : minim_false;
+    return is_record_rtd(args[0]) ? minim_true : minim_false;
 }
 
 static void make_rtd_field_exn(const char *reason, minim_object *field, int index) {
@@ -52,9 +68,9 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
     // validate input types
     if (!minim_is_symbol(args[0]))
         bad_type_exn("make-record-type-descriptor", "symbol?", args[0]);
-    if (!minim_is_record_rtd(args[1]) && !minim_is_false(args[1]))
+    if (!is_record_rtd(args[1]) && !minim_is_false(args[1]))
         bad_type_exn("make-record-type-descriptor", "rtd? or #f", args[1]);
-    if (!minim_is_record_rtd(args[2]) && !minim_is_false(args[2]))
+    if (!minim_is_symbol(args[2]) && !minim_is_false(args[2]))
         bad_type_exn("make-record-type-descriptor", "rtd? or #f", args[2]);
     if (!minim_is_bool(args[3]))
         bad_type_exn("make-record-type-descriptor", "boolean?", args[3]);
@@ -146,9 +162,9 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
                     minim_symbol(minim_car(field_it))
                 );
 
-                minim_cdr(field) = make_pair(intern(acc_name), make_pair(intern(mut_name), minim_null));
+                minim_cdr(field_it) = make_pair(intern(acc_name), make_pair(intern(mut_name), minim_null));
             } else {
-                minim_cdr(field) = make_pair(intern(acc_name), minim_null);
+                minim_cdr(field_it) = make_pair(intern(acc_name), minim_null);
             }
         } else {
             // expecting exactly one more entry
@@ -166,4 +182,104 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
     }
 
     return rtd;
+}
+
+minim_object *record_rtd_proc(int argc, minim_object **args) {
+    // (-> record rtd)
+    if (!is_record_value(args[0]))
+        bad_type_exn("record-rtd", "record?", args[0]);
+    
+    if (record_is_opaque(args[0])) {
+        fprintf(stderr, "record-rtd: cannot inspect opaque record\n");
+        fprintf(stderr, " record: ");
+        write_object(stderr, args[0]);
+        fprintf(stderr, "\n");
+        exit(1);
+    }
+
+    return minim_record_rtd(args[0]);
+}
+
+minim_object *record_type_name_proc(int argc, minim_object **args) {
+    // (-> rtd symbol)
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("record-type-name", "record-type-descriptor?", args[0]);
+    
+    return record_rtd_name(args[0]);
+}
+
+minim_object *record_type_parent_proc(int argc, minim_object **args) {
+    // (-> rtd (or symbol #f))
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("record-type-parent", "record-type-descriptor?", args[0]);
+    
+    return record_rtd_parent(args[0]);
+}
+
+minim_object *record_type_uid_proc(int argc, minim_object **args) {
+    // (-> rtd (or symbol #f))
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("record-type-uid", "record-type-descriptor?", args[0]);
+    
+    return record_rtd_uid(args[0]);
+}
+
+minim_object *record_type_opaque_proc(int argc, minim_object **args) {
+    // (-> rtd boolean?)
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("record-type-opaque", "record-type-descriptor?", args[0]);
+    
+    return record_rtd_opaque(args[0]);
+}
+
+minim_object *record_type_sealed_proc(int argc, minim_object **args) {
+    // (-> rtd boolean?)
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("record-type-sealed", "record-type-descriptor?", args[0]);
+    
+    return record_rtd_sealed(args[0]);
+}
+
+minim_object *record_type_fields_proc(int argc, minim_object **args) {
+    // (-> rtd (vector symbol))
+    minim_object *fields;
+    int fieldc, i;
+    
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("record-type-fields", "record-type-descriptor?", args[0]);
+    
+    fieldc = minim_record_count(args[0]) - record_rtd_min_size;
+    if (fieldc == 0)
+        return minim_empty_vec;
+    
+    fields = make_vector(fieldc, NULL);
+    for (i = 0; i < fieldc; ++i) {
+        minim_vector_ref(fields, i) = minim_cadr(record_rtd_field(args[0], i));
+    }
+
+    return fields;
+}
+
+minim_object *record_type_field_mutable_proc(int argc, minim_object **args) {
+    // (-> rtd (vector symbol))
+    minim_object *rtd;
+    int fieldc, idx;
+    
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("record-type-field-mutable", "record-type-descriptor?", args[0]);
+    if (!minim_is_fixnum(args[1]))   // TODO: positive-integer?
+        bad_type_exn("record-type-field-mutable", "integer?", args[0]);
+
+    rtd = args[0];
+    idx = minim_fixnum(args[1]);
+    
+    fieldc = minim_record_count(rtd) - record_rtd_min_size;
+    if (idx < 0 || fieldc < idx) {
+        fprintf(stderr, "record-type-field-mutable: index out of bounds\n");
+        fprintf(stderr, " field count: %d\n", fieldc);
+        fprintf(stderr, " index: %d\n", idx);
+        exit(1);
+    }
+    
+    return (minim_car(record_rtd_field(rtd, idx)) == intern("mutable")) ? minim_true : minim_false;
 }
