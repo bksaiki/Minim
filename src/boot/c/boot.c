@@ -255,6 +255,7 @@ void minim_boot_init() {
     minim_eof = GC_alloc(sizeof(minim_object));
     minim_void = GC_alloc(sizeof(minim_object));
     minim_values = GC_alloc(sizeof(minim_object));
+    minim_base_rtd = make_record(NULL, 0);
 
     minim_null->type = MINIM_NULL_TYPE;
     minim_true->type = MINIM_TRUE_TYPE;

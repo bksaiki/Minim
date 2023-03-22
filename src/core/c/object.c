@@ -11,6 +11,7 @@ minim_object *minim_false;
 minim_object *minim_eof;
 minim_object *minim_void;
 minim_object *minim_values;
+minim_object *minim_base_rtd;
 
 minim_object *quote_symbol;
 minim_object *define_symbol;

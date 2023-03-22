@@ -99,6 +99,8 @@
     [(vector)       10]
     [(primitive)    11]
     [(port)         13]
-    [(hashtable)    15]
-    [(closure)      20]
+    [(record)       14]
+    [(box)          15]
+    [(hashtable)    16]
+    [(closure)      21]
     [else (error 'type-tag->integer "unknown type" type)]))
