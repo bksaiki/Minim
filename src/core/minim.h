@@ -341,6 +341,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
+#define minim_is_record_rtd(x)      (minim_is_record(x) && (minim_record_rtd(x) != minim_base_rtd))
 
 // Typedefs
 
@@ -434,6 +435,89 @@ extern minim_object *empty_env;
 void check_native_closure_arity(minim_object *fn, short argc);
 minim_object *call_compiled(minim_object *env, minim_object *addr);
 minim_object *make_rest_argument(minim_object *args[], short argc);
+
+// Records
+
+/*
+    Records come in two flavors:
+     - record type descriptor
+     - record value
+
+    Record type descriptors have the following structure:
+    
+    +--------------------------+
+    |  RTD pointer (base RTD)  | (rtd)
+    +--------------------------+
+    |           Name           | (fields[0])
+    +--------------------------+
+    |          Parent          | (fields[1])
+    +--------------------------+
+    |            UID           |  ...
+    +--------------------------+
+    |          Opaque?         |
+    +--------------------------+
+    |          Sealed?         |
+    +--------------------------+
+    |  Protocol (constructor)  |
+    +--------------------------+
+    |    Field 0 Descriptor    |
+    +--------------------------+
+    |    Field 1 Descriptor    |
+    +--------------------------+
+    |                          |
+                ...
+    |                          |
+    +--------------------------+
+    |    Field N Descriptor    |
+    +--------------------------+
+
+    Field descriptors have the following possible forms:
+    
+    '(immutable <name> <accessor-name>)
+    '(mutable <name> <accessor-name> <mutator-name>)
+    '(immutable <name>)
+    '(mutable <name>)
+    <name>
+
+    The third and forth forms are just shorthand for
+    
+    '(immutable <name> <rtd-name>-<name>)
+    '(mutable <name> <rtd-name>-<name> <rtd-name>-<name>-set!)
+
+    respectively. The fifth form is just an abbreviation for
+
+    '(immutable <name>)
+
+    There is always a unique record type descriptor during runtime:
+    the base record type descriptor. It cannot be accessed during runtime
+    and serves as the "record type descriptor" of all record type descriptors.
+
+    Record values have the following structure:
+
+    +--------------------------+
+    |        RTD pointer       |
+    +--------------------------+
+    |          Field 0         |
+    +--------------------------+
+    |          Field 1         |
+    +--------------------------+
+    |                          |
+                ...
+    |                          |
+    +--------------------------+
+    |          Field N         |
+    +--------------------------+
+*/
+
+#define record_rtd_min_size         6
+
+#define record_rtd_name(rtd)        minim_record_ref(rtd, 0)
+#define record_rtd_parent(rtd)      minim_record_ref(rtd, 1)
+#define record_rtd_uid(rtd)         minim_record_ref(rtd, 2)
+#define record_rtd_opaque(rtd)      minim_record_ref(rtd, 3)
+#define record_rtd_sealed(rtd)      minim_record_ref(rtd, 4)
+#define record_rtd_protocol(rtd)    minim_record_ref(rtd, 5)
+#define record_rtd_field(rtd, i)    minim_record_ref(rtd, (record_rtd_min_size + (i)));
 
 // Symbols
 
@@ -643,6 +727,8 @@ DEFINE_PRIM_PROC(string_to_symbol);
 DEFINE_PRIM_PROC(format);
 // record
 DEFINE_PRIM_PROC(is_record);
+DEFINE_PRIM_PROC(is_record_rtd);
+DEFINE_PRIM_PROC(record_rtd);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);

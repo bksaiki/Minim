@@ -151,6 +151,9 @@ void populate_env(minim_object *env) {
     add_procedure("string-append", string_append_proc, 0, ARG_MAX);
     add_procedure("format", format_proc, 1, ARG_MAX);
 
+    add_procedure("record?", is_record_proc, 1, 1);
+    add_procedure("record-type-descriptor?", is_record_rtd_proc, 1, 1);
+
     add_procedure("box?", is_box_proc, 1, 1);
     add_procedure("box", box_proc, 1, 1);
     add_procedure("unbox", unbox_proc, 1, 1);
@@ -248,6 +251,8 @@ void minim_boot_init() {
     globals->symbols = make_intern_table();
     globals->current_thread = GC_alloc(sizeof(minim_thread));
 
+    // initialize special values
+
     minim_null = GC_alloc(sizeof(minim_object));
     minim_empty_vec = make_vector(0, NULL);
     minim_true = GC_alloc(sizeof(minim_object));
@@ -255,7 +260,6 @@ void minim_boot_init() {
     minim_eof = GC_alloc(sizeof(minim_object));
     minim_void = GC_alloc(sizeof(minim_object));
     minim_values = GC_alloc(sizeof(minim_object));
-    minim_base_rtd = make_record(NULL, 0);
 
     minim_null->type = MINIM_NULL_TYPE;
     minim_true->type = MINIM_TRUE_TYPE;
@@ -282,6 +286,14 @@ void minim_boot_init() {
     quote_syntax_symbol = intern("quote-syntax");
 
     empty_env = minim_null;
+
+    minim_base_rtd = make_record(NULL, record_rtd_min_size);
+    record_rtd_name(minim_base_rtd) = make_string("$base-record-type");
+    record_rtd_parent(minim_base_rtd) = minim_base_rtd;
+    record_rtd_uid(minim_base_rtd) = minim_false;
+    record_rtd_opaque(minim_base_rtd) = minim_true;
+    record_rtd_sealed(minim_base_rtd) = minim_true;
+    record_rtd_protocol(minim_base_rtd) = minim_false;
 
     // initialize thread
 
