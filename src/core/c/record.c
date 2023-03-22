@@ -283,3 +283,57 @@ minim_object *record_type_field_mutable_proc(int argc, minim_object **args) {
     
     return (minim_car(record_rtd_field(rtd, idx)) == intern("mutable")) ? minim_true : minim_false;
 }
+
+minim_object *make_record_proc(int argc, minim_object **args) {
+    // (-> rtd any ...)
+    minim_object *rtd, *rec;
+    int fieldc, i;
+
+    if (!is_record_rtd(args[0]))
+        bad_type_exn("make_record", "record-type-descriptor?", args[0]);
+    
+    rtd = args[0];
+    fieldc = minim_record_count(rtd) - record_rtd_min_size;
+    while (record_rtd_parent(rtd) != minim_false) {
+        rtd = record_rtd_parent(rtd);
+        fieldc += minim_record_count(rtd) - record_rtd_min_size;
+    }
+
+    if (argc - 1 != fieldc) {
+        fprintf(stderr, "$make-record: arity mismatch\n");
+        fprintf(stderr, " record type: ");
+        write_object(stderr, args[0]);
+        fprintf(stderr, "\n");
+        fprintf(stderr, " field count: %d\n", fieldc);
+        fprintf(stderr, " fields provided: %d\n", argc - 1);
+        exit(1);
+    }
+
+    rec = make_record(args[0], fieldc);
+    for (i = 0; i < fieldc; ++i) {
+        minim_record_ref(rec, i) = args[i + 1];
+    }
+
+    return rec;
+}
+
+minim_object *record_ref_proc(int argc, minim_object **args) {
+    // (-> record idx any)
+    int fieldc, idx;
+
+    if (!is_record_value(args[0]))
+        bad_type_exn("$record-ref", "record?", args[0]);
+    if (!minim_is_fixnum(args[1]))   // TODO: positive-integer?
+        bad_type_exn("$record-ref", "integer?", args[0]);
+
+    fieldc = minim_record_count(args[0]);
+    idx = minim_fixnum(args[1]);
+    if (idx < 0 || fieldc < idx) {
+        fprintf(stderr, "$record-ref: index out of bounds\n");
+        fprintf(stderr, " field count: %d\n", fieldc);
+        fprintf(stderr, " index: %d\n", idx);
+        exit(1);
+    }
+
+    return minim_record_ref(args[0], idx);
+}

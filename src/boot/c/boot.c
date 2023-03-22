@@ -162,6 +162,8 @@ void populate_env(minim_object *env) {
     add_procedure("record-type-sealed?", record_type_sealed_proc, 1, 1);
     add_procedure("record-type-field-names", record_type_fields_proc, 1, 1);
     add_procedure("record-type-field-mutable?", record_type_field_mutable_proc, 2, 2);
+    add_procedure("$make-record", make_record_proc, 1, ARG_MAX);
+    add_procedure("$record-ref", record_ref_proc, 2, 2);
 
     add_procedure("box?", is_box_proc, 1, 1);
     add_procedure("box", box_proc, 1, 1);

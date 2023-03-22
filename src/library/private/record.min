@@ -3,3 +3,12 @@
 ;;;
 
 (import "pre-base.min")
+(export record-predicate)
+
+; (define (record-constructor rtd)
+;   (define argc (vector-length (record-type-field-names rtd)))
+;   (lambda args
+;     (define argc ()
+
+(define (record-predicate rtd)
+  (lambda (r) (and (record? r) (eq? (record-rtd r) rtd))))

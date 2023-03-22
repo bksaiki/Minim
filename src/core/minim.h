@@ -739,6 +739,8 @@ DEFINE_PRIM_PROC(record_type_sealed);
 DEFINE_PRIM_PROC(record_type_opaque);
 DEFINE_PRIM_PROC(record_type_fields);
 DEFINE_PRIM_PROC(record_type_field_mutable);
+DEFINE_PRIM_PROC(make_record);
+DEFINE_PRIM_PROC(record_ref);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);
