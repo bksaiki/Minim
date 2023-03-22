@@ -3,12 +3,49 @@
 ;;;
 
 (import "pre-base.min")
-(export record-predicate)
+(export record-constructor
+        record-predicate
+        record-accessor
+        record-mutator)
 
-; (define (record-constructor rtd)
-;   (define argc (vector-length (record-type-field-names rtd)))
-;   (lambda args
-;     (define argc ()
+;;
+;;  Low-level record procedures
+;;
+
+(define (record-type-size rtd)
+  (vector-length (record-type-field-names rtd)))
+
+(define (record-size rtd)
+  (let loop ([rtd rtd] [size 0])
+    (if (record-type-parent rtd)
+        (loop (record-type-parent rtd) (+ size (record-type-size rtd)))
+        size)))
+
+(define (record-constructor rtd)
+  (define size (record-size rtd))
+  (lambda args (apply $make-record rtd args)))
 
 (define (record-predicate rtd)
   (lambda (r) (and (record? r) (eq? (record-rtd r) rtd))))
+
+(define (record-accessor rtd idx)
+  (define parent-size (if (record-type-parent rtd) (record-size (record-type-parent rtd)) 0))
+  (define this-size (record-type-size rtd))
+  (define idx* (+ parent-size idx))
+  (unless (number? idx)
+    (error 'record-accessor "expected a non-negative integer?" idx))
+  (unless (and (<= 0 idx) (< idx this-size))
+    (error 'record-accessor "index out of bounds: " idx))
+  (lambda (r) ($record-ref r idx*)))
+
+(define (record-mutator rtd idx)
+  (define parent-size (if (record-type-parent rtd) (record-size (record-type-parent rtd)) 0))
+  (define this-size (record-type-size rtd))
+  (define idx* (+ parent-size idx))
+  (unless (number? idx)
+    (error 'record-mutator "expected a non-negative integer?" idx))
+  (unless (and (<= 0 idx) (< idx this-size))
+    (error 'record-mutator "index out of bounds: " idx))
+  (unless (record-type-field-mutable? rtd idx)
+    (error 'record-mutator "field not mutable: " idx))
+  (lambda (r v) ($record-set! r idx* v)))

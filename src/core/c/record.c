@@ -337,3 +337,25 @@ minim_object *record_ref_proc(int argc, minim_object **args) {
 
     return minim_record_ref(args[0], idx);
 }
+
+minim_object *record_set_proc(int argc, minim_object **args) {
+    // (-> record idx any void)
+    int fieldc, idx;
+
+    if (!is_record_value(args[0]))
+        bad_type_exn("$record-ref", "record?", args[0]);
+    if (!minim_is_fixnum(args[1]))   // TODO: positive-integer?
+        bad_type_exn("$record-ref", "integer?", args[0]);
+
+    fieldc = minim_record_count(args[0]);
+    idx = minim_fixnum(args[1]);
+    if (idx < 0 || fieldc < idx) {
+        fprintf(stderr, "$record-ref: index out of bounds\n");
+        fprintf(stderr, " field count: %d\n", fieldc);
+        fprintf(stderr, " index: %d\n", idx);
+        exit(1);
+    }
+
+    minim_record_ref(args[0], idx) = args[2];
+    return minim_void;
+}

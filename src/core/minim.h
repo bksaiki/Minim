@@ -741,6 +741,7 @@ DEFINE_PRIM_PROC(record_type_fields);
 DEFINE_PRIM_PROC(record_type_field_mutable);
 DEFINE_PRIM_PROC(make_record);
 DEFINE_PRIM_PROC(record_ref);
+DEFINE_PRIM_PROC(record_set);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);
