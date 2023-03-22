@@ -689,6 +689,7 @@ loop:
         minim_is_fixnum(expr) ||
         minim_is_char(expr) ||
         minim_is_string(expr) ||
+        minim_is_box(expr) ||
         minim_is_vector(expr)) {
         // self-evaluating
         return expr;

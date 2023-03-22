@@ -225,6 +225,9 @@ loop:
         case '(':
             // vector
             return read_vector(in);
+        case '&':
+            // vector
+            return make_box(read_object(in));
         case 'x':
             // hex number
             c = getc(in);

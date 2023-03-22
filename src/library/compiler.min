@@ -59,6 +59,7 @@
         (number? datum)
         (string? datum)
         (vector? datum)
+        (box? datum)
         (char? datum))))
 
 ;
