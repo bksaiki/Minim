@@ -458,7 +458,7 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
             fprintf(out, "#<base-record-type>");
         } else if (minim_record_rtd(o) == minim_base_rtd) {
             // record type descriptor
-            fprintf(out, "#<record-type: %s>", minim_symbol(record_rtd_name(o)));
+            fprintf(out, "#<record-type:%s>", minim_symbol(record_rtd_name(o)));
         } else {
             // record value
             // TODO: non opaque

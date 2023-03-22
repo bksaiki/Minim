@@ -153,6 +153,7 @@ void populate_env(minim_object *env) {
 
     add_procedure("record?", is_record_proc, 1, 1);
     add_procedure("record-type-descriptor?", is_record_rtd_proc, 1, 1);
+    add_procedure("make-record-type-descriptor", make_rtd_proc, 6, 6);
 
     add_procedure("box?", is_box_proc, 1, 1);
     add_procedure("box", box_proc, 1, 1);

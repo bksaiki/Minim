@@ -341,7 +341,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure(x))
 #define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
 #define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
-#define minim_is_record_rtd(x)      (minim_is_record(x) && (minim_record_rtd(x) != minim_base_rtd))
+#define minim_is_record_rtd(x)      (minim_is_record(x) && (minim_record_rtd(x) == minim_base_rtd))
 
 // Typedefs
 
@@ -729,6 +729,7 @@ DEFINE_PRIM_PROC(format);
 DEFINE_PRIM_PROC(is_record);
 DEFINE_PRIM_PROC(is_record_rtd);
 DEFINE_PRIM_PROC(record_rtd);
+DEFINE_PRIM_PROC(make_rtd);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);
