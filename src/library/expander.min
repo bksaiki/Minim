@@ -75,6 +75,7 @@
         (number? datum)
         (string? datum)
         (vector? datum)
+        (box? datum)
         (char? datum)))
 
   ; returns an symbol if it is a duplicate, else false

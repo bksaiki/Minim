@@ -151,6 +151,11 @@ void populate_env(minim_object *env) {
     add_procedure("string-append", string_append_proc, 0, ARG_MAX);
     add_procedure("format", format_proc, 1, ARG_MAX);
 
+    add_procedure("box?", is_box_proc, 1, 1);
+    add_procedure("box", box_proc, 1, 1);
+    add_procedure("unbox", unbox_proc, 1, 1);
+    add_procedure("set-box!", box_set_proc, 2, 2);
+
     add_procedure("hashtable?", is_hashtable_proc, 1, 1);
     add_procedure("make-eq-hashtable", make_eq_hashtable_proc, 0, 0);   // TODO: allow size hint?
     add_procedure("make-hashtable", make_hashtable_proc, 0, 0);         // TODO: allow size hint?

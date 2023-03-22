@@ -79,6 +79,7 @@ typedef enum {
     MINIM_PORT_TYPE,
 
     /* Composite types */
+    MINIM_BOX_TYPE,
     MINIM_HASHTABLE_TYPE,
     MINIM_SYNTAX_TYPE,
 
@@ -172,6 +173,11 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
+    minim_object *o;
+} minim_box_object;
+
+typedef struct {
+    minim_object_type type;
     minim_object *hash, *equiv;
     minim_object **buckets;
     size_t *alloc_ptr;
@@ -233,6 +239,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_closure(x)         (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
 #define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
+#define minim_is_box(x)             (minim_same_type(x, MINIM_BOX_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
 #define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
 #define minim_is_env(x)             (minim_same_type(x, MINIM_ENVIRONMENT_TYPE))
@@ -286,6 +293,8 @@ extern minim_object *quote_syntax_symbol;
 #define minim_syntax_e(x)       (((minim_syntax_object *) (x))->e)
 #define minim_syntax_loc(x)     (((minim_syntax_object *) (x))->loc)
 
+#define minim_box_contents(x)           (((minim_box_object *) (x))->o)
+
 #define minim_hashtable_buckets(x)      (((minim_hashtable_object *) (x))->buckets)
 #define minim_hashtable_bucket(x, i)    ((((minim_hashtable_object *) (x))->buckets)[i])
 #define minim_hashtable_alloc_ptr(x)    (((minim_hashtable_object *) (x))->alloc_ptr)
@@ -330,6 +339,7 @@ minim_object *make_string(const char *s);
 minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_vector(long len, minim_object *init);
+minim_object *make_box(minim_object *x);
 minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
 minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint);
 minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
@@ -614,6 +624,11 @@ DEFINE_PRIM_PROC(string_to_number);
 DEFINE_PRIM_PROC(symbol_to_string);
 DEFINE_PRIM_PROC(string_to_symbol);
 DEFINE_PRIM_PROC(format);
+// boxes
+DEFINE_PRIM_PROC(is_box);
+DEFINE_PRIM_PROC(box);
+DEFINE_PRIM_PROC(unbox);
+DEFINE_PRIM_PROC(box_set);
 // hashtable
 DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);

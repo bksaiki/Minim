@@ -51,6 +51,9 @@ minim_object *to_syntax(minim_object *o) {
             it = minim_cdr(it);
         } while (1);
 
+    case MINIM_BOX_TYPE:
+        return make_syntax(make_box(to_syntax(minim_box_contents(o))), minim_false);
+
     case MINIM_VECTOR_TYPE:
         it = make_vector(minim_vector_len(o), NULL);
         for (i = 0; i < minim_vector_len(o); ++i)
@@ -72,6 +75,8 @@ minim_object *strip_syntax(minim_object *o) {
         return strip_syntax(minim_syntax_e(o));
     case MINIM_PAIR_TYPE:
         return make_pair(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
+    case MINIM_BOX_TYPE:
+        return make_box(strip_syntax(minim_box_contents(o)));
     case MINIM_VECTOR_TYPE:
         t = make_vector(minim_vector_len(o), NULL);
         for (i = 0; i < minim_vector_len(o); ++i)

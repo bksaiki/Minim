@@ -400,6 +400,10 @@
             ; vector
             (read-char p)
             (datum->syntax (read-vector))]
+           [(eq? c #\&)
+            ; box
+            (read-char p)
+            (datum->syntax (box (read-loop)))]
            [(eq? c #\x)
             ; hex number
             (read-char p)

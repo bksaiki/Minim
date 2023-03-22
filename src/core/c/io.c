@@ -225,6 +225,9 @@ loop:
         case '(':
             // vector
             return read_vector(in);
+        case '&':
+            // vector
+            return make_box(read_object(in));
         case 'x':
             // hex number
             c = getc(in);
@@ -518,6 +521,11 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
             }
             fputc(')', out);
         }
+        break;
+    case MINIM_BOX_TYPE:
+        if (!quote) fputc('\'', out);
+        fputs("#&", out);
+        write_object2(out, minim_box_contents(o), 1, display);
         break;
     case MINIM_HASHTABLE_TYPE:
         if (minim_hashtable_size(o) == 0) {
