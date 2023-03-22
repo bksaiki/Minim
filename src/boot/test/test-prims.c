@@ -619,6 +619,10 @@ int test_let() {
 int test_box() {
     passed = 1;
 
+    check_equal("#&a)", "'#&a");
+    check_equal("#&(1 2 3))", "'#&(1 2 3)");
+    check_equal("#&#&3", "'#&#&3");
+
     check_equal("(box 'a)", "'#&a");
     check_equal("(box '(1 2 3))", "'#&(1 2 3)");
     check_equal("(box (box 3))", "'#&#&3");
