@@ -352,9 +352,11 @@
             (datum->syntax (map loop (syntax->list expr))))]
         [(identifier? expr)
          (define maybe-xform (lookup-xform expr xforms))
-         (if maybe-xform
-             (loop (eval/xform maybe-xform expr (syntax-e head) $module-boot-expander?))
-             expr)]
+         (cond
+           [maybe-xform
+            (loop (eval/xform maybe-xform expr (syntax-e expr) $module-boot-expander?))]
+           [else
+            expr])]
         [(stx-self-evaluating? expr)
          expr]
         [else
@@ -369,6 +371,7 @@
   (define (expand/module exprs xforms)
     ; Expr, List of Xform -> Expr, List of Xform
     (define (expand/top-level expr xforms)
+      ; (printf "~a\n" expr)
       (cond
         [(define-syntaxes-form? expr) (values expr xforms)]
         [(define-values-form? expr) (values expr xforms)]

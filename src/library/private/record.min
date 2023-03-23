@@ -2,11 +2,12 @@
 ;;; Records
 ;;;
 
-(import "pre-base.min")
+(import "pre-base.min" "list.min")
 (export record-constructor
         record-predicate
         record-accessor
-        record-mutator)
+        record-mutator
+        define-record-type)
 
 ;;
 ;;  Low-level record procedures
@@ -49,3 +50,158 @@
   (unless (record-type-field-mutable? rtd idx)
     (error 'record-mutator "field not mutable: " idx))
   (lambda (r v) ($record-set! r idx* v)))
+
+;;
+;;  High-level macros
+;;
+
+;;
+;;  Field descriptors have the following possible forms:
+;;
+;;    '(immutable <name> <accessor-name>)
+;;    '(mutable <name> <accessor-name> <mutator-name>)
+;;    '(immutable <name>)
+;;    '(mutable <name>)
+;;    <name>
+;;
+;;  The third and forth forms are just shorthand for
+;;
+;;    '(immutable <name> <rtd-name>-<name>)
+;;    '(mutable <name> <rtd-name>-<name> <rtd-name>-<name>-set!)
+;;
+;;  respectively. The fifth form is just an abbreviation for
+;;
+;;    '(immutable <name>)
+;;
+
+(define-syntax (define-record-type stx)
+  (syntax-case stx (fields mutable immutable parent sealed opaque)
+    [(_ (name construct predicate) cls ...)
+     ; full form
+     (let ()
+       (define clause-types '())
+       (define parent-rtd #f)
+       (define uid-rtd #f)
+       (define sealed?-rtd #f)
+       (define opaque?-rtd #f)
+       (define fields-rtd '())
+
+       (define rname (syntax->datum #'name))
+       (let loop ([clauses (syntax->list #'(cls ...))])
+         (unless (null? clauses)
+           (define clause (car clauses))
+           (syntax-case clause ()
+             [(fields spec ...)
+              (begin
+                (when (member 'fields clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (define sname (symbol->string rname))
+                (set! fields-rtd
+                  (map
+                    (lambda (s)
+                      (syntax-case s (immutable mutable)
+                        [(immutable fname acc)
+                         ; full immutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (unless (identifier? #'acc)
+                             (syntax-error 'define-record-type "expected an identifier" s #'acc))
+                           s)]
+                        [(mutable fname acc mut)
+                         ; full mutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (unless (identifier? #'acc)
+                             (syntax-error 'define-record-type "expected an identifier" s #'acc))
+                           (unless (identifier? #'mut)
+                             (syntax-error 'define-record-type "expected an identifier" s #'mut))
+                           s)]
+                        [(immutable fname)
+                         ; simple immutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (define field (symbol->string (syntax-e #'fname)))
+                           (with-syntax ([acc (string->symbol (string-append sname "-" field))])
+                             #'(immutable fname acc)))]
+                        [(mutable fname)
+                         ; simple mutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (define field (symbol->string (syntax-e #'fname)))
+                           (with-syntax ([acc (string->symbol (string-append sname "-" field))]
+                                         [mut (string->symbol (string-append sname "-" field "-set!"))])
+                             #'(mutable fname acc mut)))]
+                        [fname
+                         ; identifier
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" #'fname #'fname))
+                           (define field (symbol->string (syntax-e #'fname)))
+                           (with-syntax ([acc (string->symbol (string-append sname "-" field))])
+                             #'(immutable fname acc)))]))
+                    (syntax->list #'(spec ...)))))]
+             [_ (syntax-error 'define-record-type "invalid clause" stx clause)])))
+       (with-syntax ([parent* parent-rtd]
+                     [uid* uid-rtd]
+                     [sealed?* sealed?-rtd]
+                     [opaque?* opaque?-rtd]
+                     [(fields ...)
+                      (map
+                        (lambda (s)
+                          (syntax-case s (immutable mutable)
+                            [(immutable name _) #'(immutable name)]
+                            [(mutable name _ _) #'(mutable name)]))
+                        fields-rtd)]
+                     [(accs ...)
+                      (let loop ([fields-rtd fields-rtd] [i 0] [accum '()])
+                        (cond
+                          [(null? fields-rtd) (reverse accum)]
+                          [else
+                           (loop
+                             (cdr fields-rtd)
+                             (+ i 1)
+                             (cons
+                               (with-syntax ([idx i])
+                                 (syntax-case (car fields-rtd) (immutable mutable)
+                                   [(immutable _ acc) #'(define acc (record-accessor name idx))]
+                                   [(mutable _ acc _) #'(define acc (record-accessor name idx))]))
+                               accum))]))]
+                     [(muts ...)
+                      (let loop ([fields-rtd fields-rtd] [i 0] [accum '()])
+                        (cond
+                          [(null? fields-rtd) (reverse accum)]
+                          [else
+                           (syntax-case (car fields-rtd) (immutable mutable)
+                             [(immutable _ _)
+                              (loop (cdr fields-rtd) (+ i 1) accum)]
+                             [(mutable _ _ mut)
+                              (with-syntax ([idx i])
+                                (loop
+                                  (cdr fields-rtd)
+                                  (+ i 1)
+                                  (cons
+                                    #'(define mut (record-mutator name idx))
+                                    accum)))])]))])
+        #'(begin
+            (define name
+              (make-record-type-descriptor 'name
+                parent* uid* sealed?* opaque?* '#(fields ...)))
+            (define construct (record-constructor name))
+            (define predicate (record-predicate name))
+            (begin accs ...)
+            (begin muts ...))))]
+    [(_ name cls ...) 
+     ; simplified form
+     (if (identifier? #'name)
+         (let ([sname (symbol->string (syntax-e #'name))])
+           (with-syntax ([construct (string->symbol (string-append "make-" sname))]
+                         [predicate (string->symbol (string-append sname "?"))])
+             #'(define-record-type (name construct predicate) cls ...)))
+         (syntax-error 'define-record-type "expected an identifier" stx #'name))]
+    [(_ ...)
+     ; bad form
+     (syntax-error 'define-record-type "missing record name spec" stx)]))

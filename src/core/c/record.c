@@ -62,8 +62,7 @@ static void make_rtd_field_exn(const char *reason, minim_object *field, int inde
 minim_object *make_rtd_proc(int argc, minim_object **args) {
     // (-> symbol (or rtd #f) (or symbol #f) boolean boolean vector rtd)
     minim_object *rtd, *field, *field_it;
-    int fieldc, mutable, name_len, field_len, i;
-    char *acc_name, *mut_name;
+    int fieldc, i;
 
     // validate input types
     if (!minim_is_symbol(args[0]))
@@ -100,22 +99,13 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
     // validate fields
     for (i = 0; i < fieldc; ++i) {
         // need to validate field descriptors
-        // see `minim.h` for desguaring rules
         //
-        //  '(immutable <name> <accessor-name>)
-        //  '(mutable <name> <accessor-name> <mutator-name>)
         //  '(immutable <name>)
         //  '(mutable <name>)
-        //  <name>
         //
         field = minim_vector_ref(args[5], i);
         
-        // <name> (symbol?) => '(immutable <name>)
-        if (minim_is_symbol(field)) {
-            field = make_pair(intern("immutable"), make_pair(field, minim_null));
-        }
-
-        // should be a list now
+        // should be a list
         if (!minim_is_pair(field))
             make_rtd_field_exn("expected a list", field, i);
 
@@ -124,58 +114,19 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
         if (!minim_is_symbol(field_it))
             make_rtd_field_exn("expected 'immutable or 'mutable", field, i);
 
-        if (minim_is_eq(field_it, intern("immutable"))) {
-            mutable = 0;
-        } else if (minim_is_eq(field_it, intern("mutable"))) {
-            mutable = 1;
-        } else {
+        if (!minim_is_eq(field_it, intern("immutable")) &&
+            !minim_is_eq(field_it, intern("mutable"))) {
             make_rtd_field_exn("expected 'immutable or 'mutable", field, i);
         }
 
-        // expecting at least one more entry
+        // expecting exactly one more entry
         field_it = minim_cdr(field);
         if (!minim_is_pair(field_it))
             make_rtd_field_exn("expected a list", field, i);
         if (!minim_is_symbol(minim_car(field_it)))
             make_rtd_field_exn("expected an identitifer after field type", field, i);
-
-        // '(immutable <name>) ==> '(immutable <name> <rtd-name>-<name>)
-        // '(mutable <name>) ==> '(mutable <name> <rtd-name>-<name> <rtd-name>-<name>-set!)
-        if (minim_is_null(minim_cdr(field_it))) {
-            name_len = strlen(minim_symbol(record_rtd_name(rtd)));
-            field_len = strlen(minim_symbol(minim_car(field_it)));
-
-            // make accessor name
-            acc_name = GC_alloc_atomic((name_len + field_len + 2) * sizeof(char));
-            sprintf(
-                acc_name, "%s-%s",    
-                minim_symbol(record_rtd_name(rtd)),
-                minim_symbol(minim_car(field_it))
-            );
-
-            if (mutable) {
-                // make mutator name
-                mut_name = GC_alloc_atomic((name_len + field_len + 7) * sizeof(char));  
-                sprintf(
-                    mut_name, "%s-%s-set!",    
-                    minim_symbol(record_rtd_name(rtd)),
-                    minim_symbol(minim_car(field_it))
-                );
-
-                minim_cdr(field_it) = make_pair(intern(acc_name), make_pair(intern(mut_name), minim_null));
-            } else {
-                minim_cdr(field_it) = make_pair(intern(acc_name), minim_null);
-            }
-        } else {
-            // expecting exactly one more entry
-            field_it = minim_cdr(field_it);
-            if (!minim_is_pair(field_it))
-                make_rtd_field_exn("expected a list", field, i);
-            if (!minim_is_symbol(minim_car(field_it)))
-                make_rtd_field_exn("expected an identitifer after field type", field, i);
-            if (!minim_is_null(minim_cdr(field_it)))
-                make_rtd_field_exn("too many entries in field descriptor", field, i);
-        }
+        if (!minim_is_null(minim_cdr(field_it)))
+            make_rtd_field_exn("too many entries in field descriptor", field, i);
 
         // field descriptor is valid
         minim_record_ref(rtd, i + record_rtd_min_size) = field;

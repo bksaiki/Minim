@@ -470,22 +470,12 @@ minim_object *make_rest_argument(minim_object *args[], short argc);
     |    Field N Descriptor    |
     +--------------------------+
 
-    Field descriptors have the following possible forms:
+    Field descriptors have the form:
     
-    '(immutable <name> <accessor-name>)
-    '(mutable <name> <accessor-name> <mutator-name>)
-    '(immutable <name>)
-    '(mutable <name>)
-    <name>
+        '(immutable <name>)
+        '(mutable <name>)
 
-    The third and forth forms are just shorthand for
-    
-    '(immutable <name> <rtd-name>-<name>)
-    '(mutable <name> <rtd-name>-<name> <rtd-name>-<name>-set!)
-
-    respectively. The fifth form is just an abbreviation for
-
-    '(immutable <name>)
+    Any other descriptor is invalid.
 
     There is always a unique record type descriptor during runtime:
     the base record type descriptor. It cannot be accessed during runtime
