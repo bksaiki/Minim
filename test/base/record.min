@@ -1,0 +1,94 @@
+;;;
+;;; Tests for 'record'
+;;;
+
+(import "../../src/library/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define (check-true d)
+  (unless d
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define (check-false d)
+  (when d
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+;; Basic `define-record-type
+(define (test-0)
+
+  (define-record-type rec
+    (fields
+      (immutable a rec-get-a)
+      (mutable b rec-get-b rec-set-b!)
+      (immutable c)
+      (mutable d)
+      e))
+
+  (check-true (record-type-descriptor? rec))
+  (check-equal? (record-type-field-names rec) #(a b c d e))
+  (check-equal?
+    (map (lambda (i) (record-type-field-mutable? rec i)) '(0 1 2 3 4))
+    '(#f #t #f #t #f))
+
+  ; make sure it doesn't crash
+  make-rec
+  rec?
+  (list
+    rec-get-a
+    rec-get-b
+    rec-c
+    rec-d
+    rec-e)
+  (list
+    rec-set-b!
+    rec-d-set!)
+
+
+  (define r (make-rec 1 2 3 4 5))
+  (check-equal? (record-rtd r) rec)
+  (check-true (rec? r))
+  (check-false (rec? rec))
+  (check-false (rec? 1))
+
+  (check-equal? (rec-get-a r) 1)
+  (check-equal? (rec-get-b r) 2)
+  (check-equal? (rec-c r) 3)
+  (check-equal? (rec-d r) 4)
+  (check-equal? (rec-e r) 5)
+
+  (rec-set-b! r #f)
+  (rec-d-set! r #f)
+
+  (check-equal? (rec-get-a r) 1)
+  (check-equal? (rec-get-b r) #f)
+  (check-equal? (rec-c r) 3)
+  (check-equal? (rec-d r) #f)
+  (check-equal? (rec-e r) 5)
+
+  (void))
+
+
+(test-0)
+
+(when (> num-failed 0)
+  (error #f "test failed"))

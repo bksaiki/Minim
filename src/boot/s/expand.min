@@ -227,6 +227,8 @@
                       (quote-syntax letrec-values)
                       (reverse defines)
                       expr*)))])]
+            [(begin-form? expr*)
+             (loop (append (cdr (syntax->list expr*)) (cdr exprs)) defines)]
             [(define-values-form? expr*)
              (define form (syntax->list expr*))
              (define ids (cadr form))
@@ -336,7 +338,7 @@
          (datum->syntax
            (cons
              (stx-car expr)
-             (expand/body body xforms)))]
+             (map loop (cdr (syntax->list expr)))))]
         [(quote-form? expr)
          (check-1ary-form! 'quote expr)
          expr]
@@ -475,7 +477,8 @@
           [else (loop (cdr exprs) (cons (car exprs) exprs*))])))
 
     (define-values (exprs* xforms*) (expand/non-define-values exprs xforms))
-    (values (expand/define-values exprs* xforms*) xforms*))
+    (define exprs** (expand/define-values exprs* xforms*))
+    (values exprs** xforms*))
 
   ; invoke the module-level expander
   (expand/module exprs xforms))
