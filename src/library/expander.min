@@ -457,8 +457,10 @@
                   (cons expr (loop (cdr exprs)))]
                  [(begin-form? expr)
                   (check-begin-form! expr)
-                  (append (with-scope (cdr (syntax->list expr)) in-scope)
-                          (loop (cdr exprs)))]
+                  (define forms (cdr (syntax->list expr)))
+                  (if (null? forms)
+                      (loop (cdr exprs))
+                      (append (with-scope forms in-scope) (loop (cdr exprs))))]
                  [else
                   (cons (expand/expr expr in-scope) (loop (cdr exprs)))]))])))
       ; done

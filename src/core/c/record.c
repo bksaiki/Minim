@@ -82,8 +82,16 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
     fieldc = minim_vector_len(args[5]);
     if (fieldc + record_rtd_min_size > RECORD_FIELD_MAX) {
         fprintf(stderr, "make-record-type-descriptor: too many fields provided\n");
-        fprintf(stderr, " rtd name: %s\n", minim_symbol(args[0]));
+        fprintf(stderr, " record type: %s\n", minim_symbol(args[0]));
         fprintf(stderr, " field count: %d\n", fieldc);
+        exit(1);
+    }
+
+    // check if parent is sealed
+    if (!minim_is_false(args[1]) && !minim_is_false(record_rtd_sealed(args[1]))) {
+        fprintf(stderr, "make-record-type-descriptor: parent record type is sealed\n");
+        fprintf(stderr, " record type: %s\n", minim_symbol(args[0]));
+        fprintf(stderr, " parent: %s\n", minim_symbol(record_rtd_name(args[1])));
         exit(1);
     }
 
@@ -92,8 +100,8 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
     record_rtd_name(rtd) = args[0];
     record_rtd_parent(rtd) = args[1];
     record_rtd_uid(rtd) = args[2];
-    record_rtd_opaque(rtd) = args[3];
-    record_rtd_sealed(rtd) = args[4];
+    record_rtd_sealed(rtd) = args[3];
+    record_rtd_opaque(rtd) = args[4];
     record_rtd_protocol(rtd) = minim_false;
 
     // validate fields

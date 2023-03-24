@@ -33,8 +33,44 @@
     (newline)
     (set! num-failed (+ num-failed 1))))
 
-;; Basic `define-record-type
+;; Low-level record procedures
 (define (test-0)
+  (define point (make-record-type-descriptor 'point #f #f #f #f '#((mutable x) (mutable y) (mutable z))))
+  (define make-point (record-constructor point))
+  (define point? (record-predicate point))
+  (define point-x (record-accessor point 0))
+  (define point-y (record-accessor point 1))
+  (define point-z (record-accessor point 2))
+  (define point-x-set! (record-mutator point 0))
+  (define point-y-set! (record-mutator point 1))
+  (define point-z-set! (record-mutator point 2))
+
+  (define p (make-point 1 2 3))
+
+  (check-true (point? p))
+  (check-equal? (record-rtd p) point)
+  (check-equal? (point-x p) 1)
+  (check-equal? (point-y p) 2)
+  (check-equal? (point-z p) 3)
+
+  (point-x-set! p 2)
+  (point-y-set! p 3)
+  (point-z-set! p 4)
+
+  (point? p)
+  (point-x p)
+  (point-y p)
+  (point-z p)
+  
+  (check-equal? (point-x p) 2)
+  (check-equal? (point-y p) 3)
+  (check-equal? (point-z p) 4)
+
+  (void))
+
+
+;; Basic `define-record-type` test
+(define (test-1)
 
   (define-record-type rec
     (fields
@@ -88,7 +124,26 @@
   (void))
 
 
+;; Test inheritance
+(define (test-2)
+
+  (define point
+    (make-record-type-descriptor 'point #f
+      #f #f #f '#((mutable x) (mutable y))))
+
+  (define cpoint
+    (make-record-type-descriptor 'cpoint point
+      #f #f #f '#((mutable color))))
+
+
+  (void))
+
+
+;; Run the tests
+
 (test-0)
+(test-1)
+(test-2)
 
 (when (> num-failed 0)
   (error #f "test failed"))

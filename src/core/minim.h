@@ -453,9 +453,9 @@ minim_object *make_rest_argument(minim_object *args[], short argc);
     +--------------------------+
     |            UID           |  ...
     +--------------------------+
-    |          Opaque?         |
-    +--------------------------+
     |          Sealed?         |
+    +--------------------------+
+    |          Opaque?         |
     +--------------------------+
     |  Protocol (constructor)  |
     +--------------------------+
@@ -503,8 +503,8 @@ minim_object *make_rest_argument(minim_object *args[], short argc);
 #define record_rtd_name(rtd)        minim_record_ref(rtd, 0)
 #define record_rtd_parent(rtd)      minim_record_ref(rtd, 1)
 #define record_rtd_uid(rtd)         minim_record_ref(rtd, 2)
-#define record_rtd_opaque(rtd)      minim_record_ref(rtd, 3)
-#define record_rtd_sealed(rtd)      minim_record_ref(rtd, 4)
+#define record_rtd_sealed(rtd)      minim_record_ref(rtd, 3)
+#define record_rtd_opaque(rtd)      minim_record_ref(rtd, 4)
 #define record_rtd_protocol(rtd)    minim_record_ref(rtd, 5)
 #define record_rtd_field(rtd, i)    minim_record_ref(rtd, (record_rtd_min_size + (i)))
 

@@ -664,7 +664,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, co
                 break;
             case 'a':
                 // display
-                write_object2(o, vs[vi++], 0, 1);
+                write_object2(o, vs[vi++], 1, 1);
                 break;
             case 's':
                 // write
