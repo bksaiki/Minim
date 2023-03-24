@@ -529,6 +529,7 @@ minim_object *intern_symbol(intern_table *itab, const char *sym);
 
 // Hashtables
 
+int hashtable_is_equal(minim_object *h1, minim_object *h2);
 int hashtable_set(minim_object *ht, minim_object *k, minim_object *v);
 minim_object *hashtable_find(minim_object *ht, minim_object *k);
 minim_object *hashtable_keys(minim_object *ht);
