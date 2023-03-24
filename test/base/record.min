@@ -6,6 +6,15 @@
 
 (define num-failed 0)
 
+(define (check-eq? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] eq? failed: expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
 (define (check-equal? d0 d1)
   (unless (equal? d0 d1)
     (display "[FAIL] expected ")
@@ -46,6 +55,7 @@
   (define p (make-point 1 2 3))
 
   (check-true (point? p))
+  (check-true (record? p))
   (check-equal? (record-rtd p) point)
   (check-equal? (point-x p) 1)
   (check-equal? (point-y p) 2)
@@ -100,6 +110,7 @@
 
   (define r (make-rec 1 2 3 4 5))
   (check-equal? (record-rtd r) rec)
+  (check-true (record? r))
   (check-true (rec? r))
   (check-false (rec? rec))
   (check-false (rec? 1))
@@ -135,6 +146,8 @@
   (define pt (make-point 1 2))
   (define cpt (make-cpoint 3 4 'blue))
 
+  (check-true (record? pt))
+  (check-true (point? pt))
   (check-equal? (record-type-field-names point) #(x y))
   (check-equal? (record-type-field-names cpoint) #(color))
 
@@ -142,6 +155,9 @@
   (check-equal? (point-y pt) 2)
   ; (cpoint-color pt) => ERROR
 
+  (check-true (record? cpt))
+  (check-true (point? cpt))
+  (check-true (cpoint? cpt))
   (check-equal? (point-x cpt) 3)
   (check-equal? (point-y cpt) 4)
   (check-equal? (cpoint-color cpt) 'blue)
@@ -186,6 +202,30 @@
 
   (void))
 
+;; Singleton example
+(define (test-5)
+  (define nonce-instance #f)
+  (define-record-type (:nonce: make-nonce nonce?)
+    (opaque #t)
+    (protocol
+      (lambda (p)
+        (lambda ()
+          (unless nonce-instance
+            (set! nonce-instance (p)))
+          nonce-instance))))
+
+  (define n1 (make-nonce))
+  (check-false (record? n1))
+  (check-true (nonce? n1))
+
+  (define n2 (make-nonce))
+  (check-false (record? n2))
+  (check-true (nonce? n2))
+
+  (check-eq? n1 n2)
+
+  (void))
+
 ;; Run the tests
 
 (test-0)
@@ -193,6 +233,7 @@
 (test-2)
 (test-3)
 (test-4)
+(test-5)
 
 (when (> num-failed 0)
   (error #f "test failed"))
