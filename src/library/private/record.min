@@ -119,13 +119,14 @@
        (define uid-rtd #f)
        (define sealed?-rtd #f)
        (define opaque?-rtd #f)
+       (define protocol-rtd #f)
        (define fields-rtd '())
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque)
+           (syntax-case clause (fields parent uid sealed opaque protocol)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -154,6 +155,12 @@
                   (syntax-error 'define-record-type "expected a boolean" stx #'b))
                 (set! clause-types (cons 'sealed clause-types))
                 (set! sealed?-rtd #'b))]
+             [(protocol proc)
+              (begin
+                (when (member 'protocol clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (set! clause-types (cons 'protocol clause-types))
+                (set! protocol-rtd #'proc))]
              [(fields spec ...)
               (begin
                 (when (member 'fields clause-types)
@@ -214,6 +221,7 @@
                      [uid* uid-rtd]
                      [sealed?* sealed?-rtd]
                      [opaque?* opaque?-rtd]
+                     [protocol* protocol-rtd]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -249,7 +257,10 @@
                            (format "parent type: ~a" p))
                     (make-record-type-descriptor 'name p
                       uid* sealed?* opaque?* '#(fields ...)))))
-            (define construct (record-constructor name))
+            (define construct
+              (let ([c (record-constructor name)]
+                    [p protocol*])
+                (if p (p c) c)))
             (define predicate (record-predicate name))
             (begin accs ...)
             (begin muts ...))))]

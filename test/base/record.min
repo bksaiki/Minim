@@ -151,11 +151,34 @@
   (void))
 
 
+;; Test protocol
+(define (test-3)
+  (define count 0)
+  (define-record-type (:counting-unit: tick :counting-unit:?)
+    (fields step)
+    (protocol
+      (lambda (p)
+        (lambda (step)
+          (set! count (+ count step))
+          (p step)))))
+
+  (tick 1)
+  (check-equal? count 1)
+
+  (tick 2)
+  (check-equal? count 3)
+
+  (tick 3)
+  (check-equal? count 6)
+
+  (void))
+
 ;; Run the tests
 
 (test-0)
 (test-1)
 (test-2)
+(test-3)
 
 (when (> num-failed 0)
   (error #f "test failed"))
