@@ -24,7 +24,8 @@
 
         set-union
         set-intersect
-        set-subtract)
+        set-subtract
+        set-symmetric-difference)
 
 ;;
 ;;  Definition
@@ -202,4 +203,23 @@
            (when (set-member? st x)
              (set-remove! diff x)))
          diff)
+       (loop (cdr sts))])))
+
+(define (set-symmetric-difference st0 . sts)
+  (for-each (lambda (s)
+              (unless (set? s)
+                (error 'set-symmetric-difference "expected a set" s)))
+            (cons st0 sts))
+  (define diff (set-copy st0))
+  (let loop ([sts sts])
+    (cond
+      [(null? sts) diff]
+      [else
+       (define st (car sts))
+       (set-for-each
+         (lambda (x)
+           (if (set-member? diff x)
+               (set-remove! diff x)
+               (set-add! diff x)))
+         st)
        (loop (cdr sts))])))
