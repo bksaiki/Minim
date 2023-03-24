@@ -143,22 +143,6 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
     return rtd;
 }
 
-minim_object *record_rtd_proc(int argc, minim_object **args) {
-    // (-> record rtd)
-    if (!is_record_value(args[0]))
-        bad_type_exn("record-rtd", "record?", args[0]);
-    
-    if (record_is_opaque(args[0])) {
-        fprintf(stderr, "record-rtd: cannot inspect opaque records\n");
-        fprintf(stderr, " record: ");
-        write_object(stderr, args[0]);
-        fprintf(stderr, "\n");
-        exit(1);
-    }
-
-    return minim_record_rtd(args[0]);
-}
-
 minim_object *record_type_name_proc(int argc, minim_object **args) {
     // (-> rtd symbol)
     if (!is_record_rtd(args[0]))
@@ -274,6 +258,22 @@ minim_object *make_record_proc(int argc, minim_object **args) {
     }
 
     return rec;
+}
+
+minim_object *record_rtd_proc(int argc, minim_object **args) {
+    // (-> record rtd)
+    if (!is_record_value(args[0]))
+        bad_type_exn("record-rtd", "record?", args[0]);
+    
+    // if (record_is_opaque(args[0])) {
+    //     fprintf(stderr, "record-rtd: cannot inspect opaque records\n");
+    //     fprintf(stderr, " record: ");
+    //     write_object(stderr, args[0]);
+    //     fprintf(stderr, "\n");
+    //     exit(1);
+    // }
+
+    return minim_record_rtd(args[0]);
 }
 
 minim_object *record_ref_proc(int argc, minim_object **args) {
