@@ -127,14 +127,26 @@
 ;; Test inheritance
 (define (test-2)
 
-  (define point
-    (make-record-type-descriptor 'point #f
-      #f #f #f '#((mutable x) (mutable y))))
+  (define-record-type point
+    (fields (mutable x) (mutable y)))
 
-  (define cpoint
-    (make-record-type-descriptor 'cpoint point
-      #f #f #f '#((mutable color))))
+  (define-record-type cpoint
+    (parent point)
+    (fields (mutable color)))
 
+  (define pt (make-point 1 2))
+  (define cpt (make-cpoint 3 4 'blue))
+
+  (check-equal? (record-type-field-names point) #(x y))
+  (check-equal? (record-type-field-names cpoint) #(color))
+
+  (check-equal? (point-x pt) 1)
+  (check-equal? (point-y pt) 2)
+  ; (cpoint-color pt) => ERROR
+
+  (check-equal? (point-x cpt) 3)
+  (check-equal? (point-y cpt) 4)
+  (check-equal? (cpoint-color cpt) 'blue)
 
   (void))
 
