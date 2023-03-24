@@ -1,0 +1,282 @@
+;;;
+;;; Records
+;;;
+
+(import "pre-base.min" "list.min")
+(export record?
+        record-rtd
+        record-constructor
+        record-predicate
+        record-accessor
+        record-mutator
+        define-record-type)
+
+(define (record-type-size rtd)
+  (vector-length (record-type-field-names rtd)))
+
+(define (record-size rtd)
+  (let loop ([rtd rtd] [size 0])
+    (let ([size (+ size (record-type-size rtd))])
+      (if (record-type-parent rtd)
+          (loop (record-type-parent rtd) size)
+          size))))
+
+(define (record-is-type? rtd r)
+  (let loop ([r-rtd ($record-rtd r)])
+    (cond
+      [(eq? rtd r-rtd) #t]
+      [(record-type-parent r-rtd) (loop (record-type-parent r-rtd))]
+      [else #f])))
+
+;;
+;;  Low-level record procedures
+;;
+
+(define (record? r)
+  (and ($record-value? r)
+       (not (record-type-opaque? ($record-rtd r)))))
+
+(define (record-rtd r)
+  (define rtd ($record-rtd r))
+  (if (record-type-opaque? rtd)
+      (error 'record-rtd "cannot inspect opaque records"
+             (format " record: ~a" r))
+      rtd))
+
+(define (record-constructor rtd)
+  (define size (record-size rtd))
+  (lambda args
+    (unless (= (length args) size)
+      (error 'arity-mismatch (format "~s constructor" rtd)
+             (format " field count: ~a" size)
+             (format " fields provided: ~a" (length args))))
+    (apply $make-record rtd args)))
+
+(define (record-predicate rtd)
+  (lambda (r) (and ($record-value? r) (record-is-type? rtd r))))
+
+(define (record-accessor rtd idx)
+  (define rtd? (record-predicate rtd))
+  (define prtd (record-type-parent rtd))
+  (define parent-size (if prtd (record-size prtd) 0))
+  (define this-size (record-type-size rtd))
+  (define idx* (+ parent-size idx))
+  (unless (number? idx)
+    (error 'record-accessor "expected a non-negative integer?" idx))
+  (unless (and (<= 0 idx) (< idx this-size))
+    (error 'record-accessor "index out of bounds: " idx))
+  (lambda (r)
+    (unless (rtd? r)
+      (error 'record-accessor "type-violation"
+             (format "expected: ~a" rtd)
+             (format "got: ~a" r)))
+    ($record-ref r idx*)))
+
+(define (record-mutator rtd idx)
+  (define rtd? (record-predicate rtd))
+  (define prtd (record-type-parent rtd))
+  (define parent-size (if prtd (record-size prtd) 0))
+  (define this-size (record-type-size rtd))
+  (define idx* (+ parent-size idx))
+  (unless (number? idx)
+    (error 'record-mutator "expected a non-negative integer?" idx))
+  (unless (and (<= 0 idx) (< idx this-size))
+    (error 'record-mutator "index out of bounds: " idx))
+  (unless (record-type-field-mutable? rtd idx)
+    (error 'record-mutator "field not mutable: " idx))
+  (lambda (r v)
+    (unless (rtd? r)
+      (error 'record-mutator "type-violation"
+             (format "expected: ~a" rtd)
+             (format "got: ~a" r)))
+    ($record-set! r idx* v)))
+
+;;
+;;  High-level macros
+;;
+
+;;
+;;  Field descriptors have the following possible forms:
+;;
+;;    '(immutable <name> <accessor-name>)
+;;    '(mutable <name> <accessor-name> <mutator-name>)
+;;    '(immutable <name>)
+;;    '(mutable <name>)
+;;    <name>
+;;
+;;  The third and forth forms are just shorthand for
+;;
+;;    '(immutable <name> <rtd-name>-<name>)
+;;    '(mutable <name> <rtd-name>-<name> <rtd-name>-<name>-set!)
+;;
+;;  respectively. The fifth form is just an abbreviation for
+;;
+;;    '(immutable <name>)
+;;
+
+(define-syntax (define-record-type stx)
+  (syntax-case stx ()
+    [(_ (name construct predicate) cls ...)
+     ; full form
+     (let ()
+       (define clause-types '())
+       (define parent-rtd #f)
+       (define uid-rtd #f)
+       (define sealed?-rtd #f)
+       (define opaque?-rtd #f)
+       (define protocol-rtd #f)
+       (define fields-rtd '())
+
+       (define rname (syntax->datum #'name))
+       (let loop ([clauses (syntax->list #'(cls ...))])
+         (unless (null? clauses)
+           (define clause (car clauses))
+           (syntax-case clause (fields parent uid sealed opaque protocol)
+             [(parent prtd)
+              (begin
+                (when (member 'parent clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (set! clause-types (cons 'parent clause-types))
+                (set! parent-rtd (syntax prtd)))]
+             [(uid value)
+              (begin
+                (when (member 'uid clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (set! clause-types (cons 'uid clause-types))
+                (set! uid-rtd #'value))]
+             [(opaque b)
+              (begin
+                (when (member 'opaque clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (unless (boolean? (syntax->datum #'b))
+                  (syntax-error 'define-record-type "expected a boolean" stx #'b))
+                (set! clause-types (cons 'opaque clause-types))
+                (set! opaque?-rtd #'b))]
+             [(sealed b)
+              (begin
+                (when (member 'sealed clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (unless (boolean? (syntax->datum #'b))
+                  (syntax-error 'define-record-type "expected a boolean" stx #'b))
+                (set! clause-types (cons 'sealed clause-types))
+                (set! sealed?-rtd #'b))]
+             [(protocol proc)
+              (begin
+                (when (member 'protocol clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (set! clause-types (cons 'protocol clause-types))
+                (set! protocol-rtd #'proc))]
+             [(fields spec ...)
+              (begin
+                (when (member 'fields clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (define sname (symbol->string rname))
+                (set! clause-types (cons 'fields clause-types))
+                (set! fields-rtd
+                  (map
+                    (lambda (s)
+                      (syntax-case s (immutable mutable)
+                        [(immutable fname acc)
+                         ; full immutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (unless (identifier? #'acc)
+                             (syntax-error 'define-record-type "expected an identifier" s #'acc))
+                           s)]
+                        [(mutable fname acc mut)
+                         ; full mutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (unless (identifier? #'acc)
+                             (syntax-error 'define-record-type "expected an identifier" s #'acc))
+                           (unless (identifier? #'mut)
+                             (syntax-error 'define-record-type "expected an identifier" s #'mut))
+                           s)]
+                        [(immutable fname)
+                         ; simple immutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (define field (symbol->string (syntax-e #'fname)))
+                           (with-syntax ([acc (string->symbol (string-append sname "-" field))])
+                             #'(immutable fname acc)))]
+                        [(mutable fname)
+                         ; simple mutable field
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" s #'fname))
+                           (define field (symbol->string (syntax-e #'fname)))
+                           (with-syntax ([acc (string->symbol (string-append sname "-" field))]
+                                         [mut (string->symbol (string-append sname "-" field "-set!"))])
+                             #'(mutable fname acc mut)))]
+                        [fname
+                         ; identifier
+                         (begin
+                           (unless (identifier? #'fname)
+                             (syntax-error 'define-record-type "expected an identifier" #'fname #'fname))
+                           (define field (symbol->string (syntax-e #'fname)))
+                           (with-syntax ([acc (string->symbol (string-append sname "-" field))])
+                             #'(immutable fname acc)))]))
+                    (syntax->list #'(spec ...)))))]
+             [_ (syntax-error 'define-record-type "invalid clause" stx clause)])
+           (loop (cdr clauses))))
+       (with-syntax ([parent* parent-rtd]
+                     [uid* uid-rtd]
+                     [sealed?* sealed?-rtd]
+                     [opaque?* opaque?-rtd]
+                     [protocol* protocol-rtd]
+                     [(fields ...)
+                      (map
+                        (lambda (s)
+                          (syntax-case s (immutable mutable)
+                            [(immutable name _) #'(immutable name)]
+                            [(mutable name _ _) #'(mutable name)]))
+                        fields-rtd)]
+                     [(accs ...)
+                      (enumerate
+                        (lambda (s i)
+                          (with-syntax ([idx i])
+                            (syntax-case s (immutable mutable)
+                              [(immutable _ acc) #'(define acc (record-accessor name idx))]
+                              [(mutable _ acc _) #'(define acc (record-accessor name idx))])))
+                        fields-rtd)]
+                     [(muts ...)
+                      (filter
+                        (lambda (x) x)
+                        (enumerate
+                          (lambda (s i)
+                            (with-syntax ([idx i])
+                              (syntax-case s (immutable mutable)
+                                [(immutable _ _) #f]
+                                [(mutable _ _ mut) #'(define mut (record-mutator name idx))])))
+                          fields-rtd))])
+        #'(begin
+            (define name
+              (let ([p parent*])
+                (if (and p (record-type-opaque? p))
+                    (error 'define-record-type
+                           "parent record type is sealed"
+                           (format "record type: #<record-type:~a>" 'name)
+                           (format "parent type: ~a" p))
+                    (make-record-type-descriptor 'name p
+                      uid* sealed?* opaque?* '#(fields ...)))))
+            (define construct
+              (let ([c (record-constructor name)]
+                    [p protocol*])
+                (if p (p c) c)))
+            (define predicate (record-predicate name))
+            (begin accs ...)
+            (begin muts ...))))]
+    [(_ name cls ...) 
+     ; simplified form
+     (if (identifier? #'name)
+         (let ([sname (symbol->string (syntax-e #'name))])
+           (with-syntax ([construct (string->symbol (string-append "make-" sname))]
+                         [predicate (string->symbol (string-append sname "?"))])
+             #'(define-record-type (name construct predicate) cls ...)))
+         (syntax-error 'define-record-type "expected an identifier" stx #'name))]
+    [(_ ...)
+     ; bad form
+     (syntax-error 'define-record-type "missing record name spec" stx)]))

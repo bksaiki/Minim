@@ -5,9 +5,11 @@
 (import "private/list.min"
         "private/path.min"
         "private/pre-base.min"
+        "private/record.min"
         "private/string.min")
 
 (export (all "private/list.min")
         (all "private/path.min")
         (all "private/pre-base.min")
+        (all "private/record.min")
         (all "private/string.min"))

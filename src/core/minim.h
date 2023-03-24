@@ -28,6 +28,7 @@
 
 #define ARG_MAX                     32767
 #define VALUES_MAX                  32767
+#define RECORD_FIELD_MAX            32767
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
@@ -79,6 +80,7 @@ typedef enum {
     MINIM_PORT_TYPE,
 
     /* Composite types */
+    MINIM_RECORD_TYPE,
     MINIM_BOX_TYPE,
     MINIM_HASHTABLE_TYPE,
     MINIM_SYNTAX_TYPE,
@@ -173,6 +175,13 @@ typedef struct {
 
 typedef struct {
     minim_object_type type;
+    minim_object *rtd;
+    minim_object **fields;
+    int fieldc;
+} minim_record_object;
+
+typedef struct {
+    minim_object_type type;
     minim_object *o;
 } minim_box_object;
 
@@ -205,6 +214,7 @@ extern minim_object *minim_false;
 extern minim_object *minim_eof;
 extern minim_object *minim_void;
 extern minim_object *minim_values;
+extern minim_object *minim_base_rtd;
 
 extern minim_object *quote_symbol;
 extern minim_object *define_symbol;
@@ -238,8 +248,9 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
 #define minim_is_closure(x)         (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
 #define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
-#define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
+#define minim_is_record(x)          (minim_same_type(x, MINIM_RECORD_TYPE))
 #define minim_is_box(x)             (minim_same_type(x, MINIM_BOX_TYPE))
+#define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
 #define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
 #define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
 #define minim_is_env(x)             (minim_same_type(x, MINIM_ENVIRONMENT_TYPE))
@@ -252,6 +263,7 @@ extern minim_object *quote_syntax_symbol;
 #define minim_is_false(x)       ((x) == minim_false)
 #define minim_is_eof(x)         ((x) == minim_eof)
 #define minim_is_void(x)        ((x) == minim_void)
+#define minim_is_base_rtd(x)    ((x) == minim_base_rtd)
 
 // Flags
 
@@ -292,6 +304,10 @@ extern minim_object *quote_syntax_symbol;
 
 #define minim_syntax_e(x)       (((minim_syntax_object *) (x))->e)
 #define minim_syntax_loc(x)     (((minim_syntax_object *) (x))->loc)
+
+#define minim_record_rtd(x)         (((minim_record_object *) (x))->rtd)
+#define minim_record_ref(x, i)      (((minim_record_object *) (x))->fields[i])
+#define minim_record_count(x)       (((minim_record_object *) (x))->fieldc)
 
 #define minim_box_contents(x)           (((minim_box_object *) (x))->o)
 
@@ -339,6 +355,7 @@ minim_object *make_string(const char *s);
 minim_object *make_string2(char *s);
 minim_object *make_pair(minim_object *car, minim_object *cdr);
 minim_object *make_vector(long len, minim_object *init);
+minim_object *make_record(minim_object *rtd, int fieldc);
 minim_object *make_box(minim_object *x);
 minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
 minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint);
@@ -417,6 +434,82 @@ extern minim_object *empty_env;
 void check_native_closure_arity(minim_object *fn, short argc);
 minim_object *call_compiled(minim_object *env, minim_object *addr);
 minim_object *make_rest_argument(minim_object *args[], short argc);
+
+// Records
+
+/*
+    Records come in two flavors:
+     - record type descriptor
+     - record value
+
+    Record type descriptors have the following structure:
+    
+    +--------------------------+
+    |  RTD pointer (base RTD)  | (rtd)
+    +--------------------------+
+    |           Name           | (fields[0])
+    +--------------------------+
+    |          Parent          | (fields[1])
+    +--------------------------+
+    |            UID           |  ...
+    +--------------------------+
+    |          Sealed?         |
+    +--------------------------+
+    |          Opaque?         |
+    +--------------------------+
+    |  Protocol (constructor)  |
+    +--------------------------+
+    |    Field 0 Descriptor    |
+    +--------------------------+
+    |    Field 1 Descriptor    |
+    +--------------------------+
+    |                          |
+                ...
+    |                          |
+    +--------------------------+
+    |    Field N Descriptor    |
+    +--------------------------+
+
+    Field descriptors have the form:
+    
+        '(immutable <name>)
+        '(mutable <name>)
+
+    Any other descriptor is invalid.
+
+    There is always a unique record type descriptor during runtime:
+    the base record type descriptor. It cannot be accessed during runtime
+    and serves as the "record type descriptor" of all record type descriptors.
+
+    Record values have the following structure:
+
+    +--------------------------+
+    |        RTD pointer       |
+    +--------------------------+
+    |          Field 0         |
+    +--------------------------+
+    |          Field 1         |
+    +--------------------------+
+    |                          |
+                ...
+    |                          |
+    +--------------------------+
+    |          Field N         |
+    +--------------------------+
+*/
+
+#define record_rtd_min_size         6
+
+#define record_rtd_name(rtd)        minim_record_ref(rtd, 0)
+#define record_rtd_parent(rtd)      minim_record_ref(rtd, 1)
+#define record_rtd_uid(rtd)         minim_record_ref(rtd, 2)
+#define record_rtd_sealed(rtd)      minim_record_ref(rtd, 3)
+#define record_rtd_opaque(rtd)      minim_record_ref(rtd, 4)
+#define record_rtd_protocol(rtd)    minim_record_ref(rtd, 5)
+#define record_rtd_field(rtd, i)    minim_record_ref(rtd, (record_rtd_min_size + (i)))
+
+#define record_is_opaque(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
+#define record_is_sealed(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
 
 // Symbols
 
@@ -624,6 +717,22 @@ DEFINE_PRIM_PROC(string_to_number);
 DEFINE_PRIM_PROC(symbol_to_string);
 DEFINE_PRIM_PROC(string_to_symbol);
 DEFINE_PRIM_PROC(format);
+// record
+DEFINE_PRIM_PROC(is_record);
+DEFINE_PRIM_PROC(is_record_rtd);
+DEFINE_PRIM_PROC(is_record_value);
+DEFINE_PRIM_PROC(make_rtd);
+DEFINE_PRIM_PROC(record_rtd);
+DEFINE_PRIM_PROC(record_type_name);
+DEFINE_PRIM_PROC(record_type_parent);
+DEFINE_PRIM_PROC(record_type_uid);
+DEFINE_PRIM_PROC(record_type_sealed);
+DEFINE_PRIM_PROC(record_type_opaque);
+DEFINE_PRIM_PROC(record_type_fields);
+DEFINE_PRIM_PROC(record_type_field_mutable);
+DEFINE_PRIM_PROC(make_record);
+DEFINE_PRIM_PROC(record_ref);
+DEFINE_PRIM_PROC(record_set);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);

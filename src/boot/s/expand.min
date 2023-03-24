@@ -227,6 +227,8 @@
                       (quote-syntax letrec-values)
                       (reverse defines)
                       expr*)))])]
+            [(begin-form? expr*)
+             (loop (append (cdr (syntax->list expr*)) (cdr exprs)) defines)]
             [(define-values-form? expr*)
              (define form (syntax->list expr*))
              (define ids (cadr form))
@@ -336,7 +338,7 @@
          (datum->syntax
            (cons
              (stx-car expr)
-             (expand/body body xforms)))]
+             (map loop (cdr (syntax->list expr)))))]
         [(quote-form? expr)
          (check-1ary-form! 'quote expr)
          expr]
@@ -352,9 +354,11 @@
             (datum->syntax (map loop (syntax->list expr))))]
         [(identifier? expr)
          (define maybe-xform (lookup-xform expr xforms))
-         (if maybe-xform
-             (loop (eval/xform maybe-xform expr (syntax-e head) $module-boot-expander?))
-             expr)]
+         (cond
+           [maybe-xform
+            (loop (eval/xform maybe-xform expr (syntax-e expr) $module-boot-expander?))]
+           [else
+            expr])]
         [(stx-self-evaluating? expr)
          expr]
         [else
@@ -369,6 +373,7 @@
   (define (expand/module exprs xforms)
     ; Expr, List of Xform -> Expr, List of Xform
     (define (expand/top-level expr xforms)
+      ; (printf "~a\n" expr)
       (cond
         [(define-syntaxes-form? expr) (values expr xforms)]
         [(define-values-form? expr) (values expr xforms)]
@@ -446,8 +451,10 @@
                   (cons expr (loop (cdr exprs)))]
                  [(begin-form? expr)
                   (check-begin-form! expr)
-                  (append (with-scope (cdr (syntax->list expr)) in-scope)
-                          (loop (cdr exprs)))]
+                  (define forms (cdr (syntax->list expr)))
+                  (if (null? forms)
+                      (loop (cdr exprs))
+                      (append (with-scope forms in-scope) (loop (cdr exprs))))]
                  [else
                   (cons (expand/expr expr in-scope) (loop (cdr exprs)))]))])))
       ; done
@@ -472,7 +479,9 @@
           [else (loop (cdr exprs) (cons (car exprs) exprs*))])))
 
     (define-values (exprs* xforms*) (expand/non-define-values exprs xforms))
-    (values (expand/define-values exprs* xforms*) xforms*))
+    (define exprs** (expand/define-values exprs* xforms*))
+    ; (for-each (lambda (e) (printf "~a\n" e)) exprs**)
+    (values exprs** xforms*))
 
   ; invoke the module-level expander
   (expand/module exprs xforms))

@@ -604,7 +604,7 @@
       (datum->syntax
         (list
           (quote-syntax let)
-          (list (list arg expr))
+          (list (list arg (list (quote-syntax datum->syntax) expr)))
           (list
             (quote-syntax unless)
             (list

@@ -452,7 +452,19 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
     case MINIM_VOID_TYPE:
         fprintf(out, "#<void>");
         break;
-
+    case MINIM_RECORD_TYPE:
+        if (o == minim_base_rtd) {
+            // base record type descriptor
+            fprintf(out, "#<base-record-type>");
+        } else if (minim_record_rtd(o) == minim_base_rtd) {
+            // record type descriptor
+            fprintf(out, "#<record-type:%s>", minim_symbol(record_rtd_name(o)));
+        } else {
+            // record value
+            // TODO: non opaque
+            fprintf(out, "#<%s>", minim_symbol(minim_record_ref(minim_record_rtd(o), 0)));
+        }
+        break;
     case MINIM_SYMBOL_TYPE:
         if (!quote) fputc('\'', out);
         fprintf(out, "%s", minim_symbol(o));
@@ -652,7 +664,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, co
                 break;
             case 'a':
                 // display
-                write_object2(o, vs[vi++], 0, 1);
+                write_object2(o, vs[vi++], 1, 1);
                 break;
             case 's':
                 // write

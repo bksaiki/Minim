@@ -37,6 +37,7 @@ minim_object *to_syntax(minim_object *o) {
     case MINIM_FIXNUM_TYPE:
     case MINIM_CHAR_TYPE:
     case MINIM_STRING_TYPE:
+    case MINIM_RECORD_TYPE:
         return make_syntax(o, minim_false);
     
     case MINIM_PAIR_TYPE:

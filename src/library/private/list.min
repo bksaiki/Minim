@@ -7,7 +7,8 @@
         member
         filter
         foldl foldr
-        assoc)
+        assoc
+        enumerate)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -75,3 +76,8 @@
          (cdar lst)
          (assoc k (cdr lst)))]
     [else (error 'assoc "expected a list of pairs" lst)]))
+
+(define (enumerate f lst)
+  (let loop ([lst lst] [i 0] [acc '()])
+    (cond [(null? lst) (reverse acc)]
+          [else (loop (cdr lst) (+ i 1) (cons (f (car lst) i) acc))])))

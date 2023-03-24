@@ -151,6 +151,22 @@ void populate_env(minim_object *env) {
     add_procedure("string-append", string_append_proc, 0, ARG_MAX);
     add_procedure("format", format_proc, 1, ARG_MAX);
 
+    add_procedure("record?", is_record_proc, 1, 1);
+    add_procedure("record-type-descriptor?", is_record_rtd_proc, 1, 1);
+    add_procedure("make-record-type-descriptor", make_rtd_proc, 6, 6);
+    add_procedure("record-type-name", record_type_name_proc, 1, 1);
+    add_procedure("record-type-parent", record_type_parent_proc, 1, 1);
+    add_procedure("record-type-uid", record_type_uid_proc, 1, 1);
+    add_procedure("record-type-opaque?", record_type_opaque_proc, 1, 1);
+    add_procedure("record-type-sealed?", record_type_sealed_proc, 1, 1);
+    add_procedure("record-type-field-names", record_type_fields_proc, 1, 1);
+    add_procedure("record-type-field-mutable?", record_type_field_mutable_proc, 2, 2);
+    add_procedure("$record-value?", is_record_value_proc, 1, 1);
+    add_procedure("$make-record", make_record_proc, 1, ARG_MAX);
+    add_procedure("$record-rtd", record_rtd_proc, 1, 1);
+    add_procedure("$record-ref", record_ref_proc, 2, 2);
+    add_procedure("$record-set!", record_set_proc, 3, 3);
+
     add_procedure("box?", is_box_proc, 1, 1);
     add_procedure("box", box_proc, 1, 1);
     add_procedure("unbox", unbox_proc, 1, 1);
@@ -248,6 +264,8 @@ void minim_boot_init() {
     globals->symbols = make_intern_table();
     globals->current_thread = GC_alloc(sizeof(minim_thread));
 
+    // initialize special values
+
     minim_null = GC_alloc(sizeof(minim_object));
     minim_empty_vec = make_vector(0, NULL);
     minim_true = GC_alloc(sizeof(minim_object));
@@ -281,6 +299,14 @@ void minim_boot_init() {
     quote_syntax_symbol = intern("quote-syntax");
 
     empty_env = minim_null;
+
+    minim_base_rtd = make_record(NULL, record_rtd_min_size);
+    record_rtd_name(minim_base_rtd) = make_string("$base-record-type");
+    record_rtd_parent(minim_base_rtd) = minim_base_rtd;
+    record_rtd_uid(minim_base_rtd) = minim_false;
+    record_rtd_opaque(minim_base_rtd) = minim_true;
+    record_rtd_sealed(minim_base_rtd) = minim_true;
+    record_rtd_protocol(minim_base_rtd) = minim_false;
 
     // initialize thread
 
