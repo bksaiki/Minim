@@ -1,0 +1,55 @@
+;;;
+;;; Sets
+;;;
+
+(import "pre-base.min" "list.min" "record.min")
+(export make-set set?
+        set-contains?
+        set-add!
+        set-remove!
+        set-count
+        set->list)
+
+;;
+;;  Definition
+;;
+
+(define-record-type set
+  (opaque #t)
+  (sealed #t)
+  (fields (mutable store))
+  (protocol
+    (lambda (p)
+      (lambda xs
+        (define h (make-hashtable))
+        (for-each (lambda (x) (hashtable-set! h x '())) xs)
+        (p h)))))
+
+;;
+;;  Procedures
+;;
+
+(define (set-contains? s v)
+  (unless (set? s)
+    (error 'set-contains? "expected a set" s))
+  (hashtable-contains? (set-store s) v))
+
+(define (set-count s)
+  (unless (set? s)
+    (error 'set-count "expected a set" s))
+  (hashtable-size (set-store s)))
+
+(define (set-add! s v)
+  (unless (set? s)
+    (error 'set-add! "expected a set" s))
+  (hashtable-set! (set-store s) v '()))
+
+(define (set-remove! s v)
+  (unless (set? s)
+    (error 'set-remove! "expected a set" s))
+  (hashtable-delete! (set-store s) v '()))
+
+(define (set->list s)
+  (unless (set? s)
+    (error 'set->list "expected a set" s))
+  (hashtable-keys (set-store s)))
