@@ -108,7 +108,60 @@
 
   (void))
 
+;; Test `set-union`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 2 3))
+  (define s3 (make-set 4 5 6))
 
+  ; 0 arguments
+  (check-equal? (set->list (set-union)) '())
+
+  ; 1 arguments
+  (check-equal? (set->list (set-union s1)) (set->list s1))
+  (check-equal? (set->list (set-union s2)) (set->list s2))
+  (check-equal? (set->list (set-union s3)) (set->list s3))
+
+  ; 2 arguments
+  (check-equal? (set->list (set-union s0 s1)) (set->list s1))
+  (check-equal? (set->list (set-union s0 s3)) (set->list s3))
+  (check-equal? (set->list (set-union s1 s2)) '(2 1 3))
+  (check-equal? (set->list (set-union s1 s3)) '(2 6 1 5 4))
+
+  ; 3 arguments
+  (check-equal? (set->list (set-union s1 s1 s1)) (set->list s1))
+  (check-equal? (set->list (set-union s1 s2 s3)) '(2 6 1 5 4 3))
+
+  (void))
+
+;; Test `set-intersect`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 2 3))
+  (define s3 (make-set 1 2 3))
+
+  ; 0 arguments
+  (check-equal? (set->list (set-intersect)) '())
+
+  ; 1 arguments
+  (check-equal? (set->list (set-intersect s1)) (set->list s1))
+  (check-equal? (set->list (set-intersect s2)) (set->list s2))
+  (check-equal? (set->list (set-intersect s3)) (set->list s3))
+
+  ; 2 arguments
+  (check-equal? (set->list (set-intersect s3 s3)) (set->list s3))
+  (check-equal? (set->list (set-intersect s0 s1)) '())
+  (check-equal? (set->list (set-intersect s0 s3)) '())
+  (check-equal? (set->list (set-intersect s1 s2)) '(2))
+  (check-equal? (set->list (set-intersect s1 s3)) '(2 1))
+
+  ; 3 arguments
+  (check-equal? (set->list (set-intersect s1 s1 s1)) (set->list s1))
+  (check-equal? (set->list (set-intersect s1 s2 s3)) '(2))
+
+  (void))
 
 (when (> num-failed 0)
   (error #f "test failed"))

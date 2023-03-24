@@ -3,14 +3,16 @@
 ;;;
 
 (import "pre-base.min" "list.min" "record.min")
-(export make-set set?
+(export make-set
+        set?
         set-member?
         set-add!
         set-remove!
         set-count
-        set->list)
+        set->list
 
-        ; set-union)
+        set-union
+        set-intersect)
 
 ;;
 ;;  Definition
@@ -60,20 +62,54 @@
 ;;  Set/Set operations
 ;;
 
-; (define (set-union . ss)
-;   (define u (make-set))
-;   (for-each (lambda (s)
-;               (unless (set? s)
-;                 (error 'set-union "expected a set" s))
-;               (for-each (lambda (x) (set-add! u x)) (set->list s)))
-;             ss)
-;   u)
+(define (set-union . ss)
+  (for-each (lambda (s)
+              (unless (set? s)
+                (error 'set-union "expected a set" s)))
+            ss)
+  (cond
+    [(null? ss)
+     (make-set)]
+    [(null? (cdr ss))
+     (define s (car ss))
+     (define c (make-set))
+     (for-each (lambda (x) (set-add! c x)) (set->list s))
+     c]
+    [else
+     (define u (make-set))
+     (for-each (lambda (s)
+                 (unless (set? s)
+                   (error 'set-union "expected a set" s))
+                 (for-each (lambda (x) (set-add! u x)) (set->list s)))
+               ss)
+     u]))
 
-; (define (set-intersect . ss)
-;   (define u (make-set))
-;   (for-each (lambda (s)
-;               (unless (set? s)
-;                 (error 'set-union "expected a set" s))
-;               (for-each (lambda (x) (set-add! u x)) (set->list s)))
-;             ss)
-;   u)
+(define (set-intersect . ss)
+  (for-each (lambda (s)
+              (unless (set? s)
+                (error 'set-intersect "expected a set" s)))
+            ss)
+  (cond
+    [(null? ss)
+     (make-set)]
+    [(null? (cdr ss))
+     (define s (car ss))
+     (define c (make-set))
+     (for-each (lambda (x) (set-add! c x)) (set->list s))
+     c]
+    [else
+     (define s (car ss))
+     (define i (make-set))
+     (for-each (lambda (x) (set-add! i x)) (set->list s))
+     (let loop ([ss (cdr ss)] [i i])
+       (cond
+         [(null? ss) i]
+         [(= (set-count i) 0) i]
+         [else
+          (define s (car ss))
+          (define i* (make-set))
+          (for-each (lambda (x)
+                      (when (set-member? s x)
+                        (set-add! i* x)))
+                    (set->list i))
+          (loop (cdr ss) i*)]))]))
