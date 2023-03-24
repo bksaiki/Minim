@@ -52,7 +52,8 @@
 
 (define (record-accessor rtd idx)
   (define rtd? (record-predicate rtd))
-  (define parent-size (if (record-type-parent rtd) (record-size (record-type-parent rtd)) 0))
+  (define prtd (record-type-parent rtd))
+  (define parent-size (if prtd (record-size prtd) 0))
   (define this-size (record-type-size rtd))
   (define idx* (+ parent-size idx))
   (unless (number? idx)
@@ -68,7 +69,8 @@
 
 (define (record-mutator rtd idx)
   (define rtd? (record-predicate rtd))
-  (define parent-size (if (record-type-parent rtd) (record-size (record-type-parent rtd)) 0))
+  (define prtd (record-type-parent rtd))
+  (define parent-size (if prtd (record-size prtd) 0))
   (define this-size (record-type-size rtd))
   (define idx* (+ parent-size idx))
   (unless (number? idx)
@@ -220,35 +222,23 @@
                             [(mutable name _ _) #'(mutable name)]))
                         fields-rtd)]
                      [(accs ...)
-                      (let loop ([fields-rtd fields-rtd] [i 0] [accum '()])
-                        (cond
-                          [(null? fields-rtd) (reverse accum)]
-                          [else
-                           (loop
-                             (cdr fields-rtd)
-                             (+ i 1)
-                             (cons
-                               (with-syntax ([idx i])
-                                 (syntax-case (car fields-rtd) (immutable mutable)
-                                   [(immutable _ acc) #'(define acc (record-accessor name idx))]
-                                   [(mutable _ acc _) #'(define acc (record-accessor name idx))]))
-                               accum))]))]
+                      (enumerate
+                        (lambda (s i)
+                          (with-syntax ([idx i])
+                            (syntax-case s (immutable mutable)
+                              [(immutable _ acc) #'(define acc (record-accessor name idx))]
+                              [(mutable _ acc _) #'(define acc (record-accessor name idx))])))
+                        fields-rtd)]
                      [(muts ...)
-                      (let loop ([fields-rtd fields-rtd] [i 0] [accum '()])
-                        (cond
-                          [(null? fields-rtd) (reverse accum)]
-                          [else
-                           (syntax-case (car fields-rtd) (immutable mutable)
-                             [(immutable _ _)
-                              (loop (cdr fields-rtd) (+ i 1) accum)]
-                             [(mutable _ _ mut)
-                              (with-syntax ([idx i])
-                                (loop
-                                  (cdr fields-rtd)
-                                  (+ i 1)
-                                  (cons
-                                    #'(define mut (record-mutator name idx))
-                                    accum)))])]))])
+                      (filter
+                        (lambda (x) x)
+                        (enumerate
+                          (lambda (s i)
+                            (with-syntax ([idx i])
+                              (syntax-case s (immutable mutable)
+                                [(immutable _ _) #f]
+                                [(mutable _ _ mut) #'(define mut (record-mutator name idx))])))
+                          fields-rtd))])
         #'(begin
             (define name
               (let ([p parent*])
