@@ -255,6 +255,29 @@
 
   (void))
 
+;; Test `set-subtract`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 2 3))
+  (define s3 (make-set 1 2 3))
+
+  (check-equal? (set->list (set-subtract s0)) (set->list s0))
+  (check-equal? (set->list (set-subtract s1)) (set->list s1)) 
+  (check-equal? (set->list (set-subtract s2)) (set->list s2)) 
+  (check-equal? (set->list (set-subtract s3)) (set->list s3))
+
+  (check-equal? (set->list (set-subtract s3 s0)) '(2 1 3))
+  (check-equal? (set->list (set-subtract s3 s1)) '(3))
+  (check-equal? (set->list (set-subtract s3 s2)) '(1))
+  (check-equal? (set->list (set-subtract s3 s3)) '())
+
+  (check-equal? (set->list (set-subtract s3 s0 s0)) '(2 1 3))
+  (check-equal? (set->list (set-subtract s3 s1 s0)) '(3))
+  (check-equal? (set->list (set-subtract s3 s1 s2)) '())
+
+  (void))
+
 ;; Test `set-map` and `set-for-each`
 (let ()
   (define s0 (make-set))

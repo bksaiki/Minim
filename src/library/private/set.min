@@ -23,7 +23,8 @@
         set-for-each
 
         set-union
-        set-intersect)
+        set-intersect
+        set-subtract)
 
 ;;
 ;;  Definition
@@ -184,3 +185,21 @@
                         (set-add! i* x)))
                     (set->list i))
           (loop (cdr ss) i*)]))]))
+
+(define (set-subtract st0 . sts)
+  (for-each (lambda (s)
+              (unless (set? s)
+                (error 'set-subtract "expected a set" s)))
+            (cons st0 sts))
+  (define diff (set-copy st0))
+  (let loop ([sts sts])
+    (cond
+      [(null? sts) diff]
+      [else
+       (define st (car sts))
+       (set-for-each
+         (lambda (x)
+           (when (set-member? st x)
+             (set-remove! diff x)))
+         diff)
+       (loop (cdr sts))])))
