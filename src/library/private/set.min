@@ -4,11 +4,13 @@
 
 (import "pre-base.min" "list.min" "record.min")
 (export make-set set?
-        set-contains?
+        set-member?
         set-add!
         set-remove!
         set-count
         set->list)
+
+        ; set-union)
 
 ;;
 ;;  Definition
@@ -26,12 +28,12 @@
         (p h)))))
 
 ;;
-;;  Procedures
+;;  Basic operations
 ;;
 
-(define (set-contains? s v)
+(define (set-member? s v)
   (unless (set? s)
-    (error 'set-contains? "expected a set" s))
+    (error 'set-member? "expected a set" s))
   (hashtable-contains? (set-store s) v))
 
 (define (set-count s)
@@ -47,9 +49,31 @@
 (define (set-remove! s v)
   (unless (set? s)
     (error 'set-remove! "expected a set" s))
-  (hashtable-delete! (set-store s) v '()))
+  (hashtable-delete! (set-store s) v))
 
 (define (set->list s)
   (unless (set? s)
     (error 'set->list "expected a set" s))
   (hashtable-keys (set-store s)))
+
+;;
+;;  Set/Set operations
+;;
+
+; (define (set-union . ss)
+;   (define u (make-set))
+;   (for-each (lambda (s)
+;               (unless (set? s)
+;                 (error 'set-union "expected a set" s))
+;               (for-each (lambda (x) (set-add! u x)) (set->list s)))
+;             ss)
+;   u)
+
+; (define (set-intersect . ss)
+;   (define u (make-set))
+;   (for-each (lambda (s)
+;               (unless (set? s)
+;                 (error 'set-union "expected a set" s))
+;               (for-each (lambda (x) (set-add! u x)) (set->list s)))
+;             ss)
+;   u)
