@@ -163,5 +163,36 @@
 
   (void))
 
+;; Test `set-map` and `set-for-each`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 1 2 3))
+  (define calls 0)
+  (define count 0)
+
+  (define (increment! x)
+    (set! calls (+ calls 1))
+    (set! count (+ count x)))
+
+  (check-equal? (set-map (lambda (x) (* 2 x)) s0) '())
+  (check-equal? (set-map (lambda (x) (* 2 x)) s1) '(4 2))
+  (check-equal? (set-map (lambda (x) (* 2 x)) s2) '(4 2 6))
+
+  (set-for-each increment! s0)
+  (check-equal? calls 0)
+  (check-equal? count 0)
+
+  (set-for-each increment! s1)
+  (check-equal? calls 2)
+  (check-equal? count 3)
+
+  (set-for-each increment! s2)
+  (check-equal? calls 5)
+  (check-equal? count 9)
+
+  (void))
+
+
 (when (> num-failed 0)
   (error #f "test failed"))

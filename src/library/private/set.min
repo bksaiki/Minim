@@ -11,6 +11,9 @@
         set-count
         set->list
 
+        set-map
+        set-for-each
+
         set-union
         set-intersect)
 
@@ -57,6 +60,20 @@
   (unless (set? s)
     (error 'set->list "expected a set" s))
   (hashtable-keys (set-store s)))
+
+;;
+;;  Set iteration
+;;
+
+(define (set-map proc st)
+  (unless (set? st)
+    (error 'set-map "expected a set" st))
+  (map proc (set->list st)))
+
+(define (set-for-each proc st)
+  (unless (set? st)
+    (error 'set-for-each "expected a set" st))
+  (for-each proc (set->list st)))
 
 ;;
 ;;  Set/Set operations
