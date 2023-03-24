@@ -89,7 +89,7 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
 
     // check if parent is sealed
     if (!minim_is_false(args[1]) && !minim_is_false(record_rtd_sealed(args[1]))) {
-        fprintf(stderr, "make-record-type-descriptor: parent record type is sealed\n");
+        fprintf(stderr, "make-record-type-descriptor: cannot extend sealed record type\n");
         fprintf(stderr, " record type: %s\n", minim_symbol(args[0]));
         fprintf(stderr, " parent: %s\n", minim_symbol(record_rtd_name(args[1])));
         exit(1);
@@ -149,7 +149,7 @@ minim_object *record_rtd_proc(int argc, minim_object **args) {
         bad_type_exn("record-rtd", "record?", args[0]);
     
     if (record_is_opaque(args[0])) {
-        fprintf(stderr, "record-rtd: cannot inspect opaque record\n");
+        fprintf(stderr, "record-rtd: cannot inspect opaque records\n");
         fprintf(stderr, " record: ");
         write_object(stderr, args[0]);
         fprintf(stderr, "\n");

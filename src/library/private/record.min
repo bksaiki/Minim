@@ -129,6 +129,22 @@
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'uid clause-types))
                 (set! uid-rtd #'value))]
+             [(opaque b)
+              (begin
+                (when (member 'opaque clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (unless (boolean? (syntax->datum #'b))
+                  (syntax-error 'define-record-type "expected a boolean" stx #'b))
+                (set! clause-types (cons 'opaque clause-types))
+                (set! opaque?-rtd #'b))]
+             [(sealed b)
+              (begin
+                (when (member 'sealed clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (unless (boolean? (syntax->datum #'b))
+                  (syntax-error 'define-record-type "expected a boolean" stx #'b))
+                (set! clause-types (cons 'sealed clause-types))
+                (set! sealed?-rtd #'b))]
              [(fields spec ...)
               (begin
                 (when (member 'fields clause-types)
@@ -228,8 +244,14 @@
                                     accum)))])]))])
         #'(begin
             (define name
-              (make-record-type-descriptor 'name parent*
-                uid* sealed?* opaque?* '#(fields ...)))
+              (let ([p parent*])
+                (if (and p (record-type-opaque? p))
+                    (error 'define-record-type
+                           "parent record type is sealed"
+                           (format "record type: #<record-type:~a>" 'name)
+                           (format "parent type: ~a" p))
+                    (make-record-type-descriptor 'name p
+                      uid* sealed?* opaque?* '#(fields ...)))))
             (define construct (record-constructor name))
             (define predicate (record-predicate name))
             (begin accs ...)
