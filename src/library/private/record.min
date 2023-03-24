@@ -3,16 +3,13 @@
 ;;;
 
 (import "pre-base.min" "list.min")
-(export record-rtd
+(export record?
+        record-rtd
         record-constructor
         record-predicate
         record-accessor
         record-mutator
         define-record-type)
-
-;;
-;;  Low-level record procedures
-;;
 
 (define (record-type-size rtd)
   (vector-length (record-type-field-names rtd)))
@@ -31,6 +28,14 @@
       [(record-type-parent r-rtd) (loop (record-type-parent r-rtd))]
       [else #f])))
 
+;;
+;;  Low-level record procedures
+;;
+
+(define (record? r)
+  (and ($record-value? r)
+       (not (record-type-opaque? ($record-rtd r)))))
+
 (define (record-rtd r)
   (define rtd ($record-rtd r))
   (if (record-type-opaque? rtd)
@@ -48,7 +53,7 @@
     (apply $make-record rtd args)))
 
 (define (record-predicate rtd)
-  (lambda (r) (and (record? r) (record-is-type? rtd r))))
+  (lambda (r) (and ($record-value? r) (record-is-type? rtd r))))
 
 (define (record-accessor rtd idx)
   (define rtd? (record-predicate rtd))

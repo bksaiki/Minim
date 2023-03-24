@@ -49,6 +49,11 @@ minim_object *is_record_rtd_proc(int argc, minim_object **args) {
     return is_record_rtd(args[0]) ? minim_true : minim_false;
 }
 
+minim_object *is_record_value_proc(int argc, minim_object **args) {
+    // (-> any boolean)
+    return is_record_value(args[0]) ? minim_true : minim_false;
+}
+
 static void make_rtd_field_exn(const char *reason, minim_object *field, int index) {
     fprintf(stderr, "make-record-type-descriptor: invalid field descriptor\n");
     fprintf(stderr, " why: %s\n", reason);

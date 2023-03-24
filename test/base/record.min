@@ -17,19 +17,17 @@
 
 (define (check-true d)
   (unless d
-    (display "[FAIL] expected ")
-    (write d1)
+    (display "[FAIL] expected #t")
     (display ", received ")
-    (write d0)
+    (write d)
     (newline)
     (set! num-failed (+ num-failed 1))))
 
 (define (check-false d)
   (when d
-    (display "[FAIL] expected ")
-    (write d1)
+    (display "[FAIL] expected #f")
     (display ", received ")
-    (write d0)
+    (write d)
     (newline)
     (set! num-failed (+ num-failed 1))))
 
@@ -173,12 +171,28 @@
 
   (void))
 
+;; Test opacity
+(define (test-4)
+  (define-record-type a)
+
+  (check-false (record-type-opaque? a))
+  (check-true (record? (make-a)))
+
+  (define-record-type b
+    (opaque #t))
+
+  (check-true (record-type-opaque? b))
+  (check-false (record? (make-b)))
+
+  (void))
+
 ;; Run the tests
 
 (test-0)
 (test-1)
 (test-2)
 (test-3)
+(test-4)
 
 (when (> num-failed 0)
   (error #f "test failed"))

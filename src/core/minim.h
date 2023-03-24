@@ -720,6 +720,7 @@ DEFINE_PRIM_PROC(format);
 // record
 DEFINE_PRIM_PROC(is_record);
 DEFINE_PRIM_PROC(is_record_rtd);
+DEFINE_PRIM_PROC(is_record_value);
 DEFINE_PRIM_PROC(make_rtd);
 DEFINE_PRIM_PROC(record_rtd);
 DEFINE_PRIM_PROC(record_type_name);
