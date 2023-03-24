@@ -32,23 +32,39 @@
     (set! num-failed (+ num-failed 1))))
 
 
-;; Test `make-set`, `set?`, and `set-count`
+;; Test `make-set`, `set?`, `set-count`, and `set-empty?`
 (let ()
   (define s0 (make-set))
   (check-true (set? s0))
   (check-equal? (set-count s0) 0)
+  (check-true (set-empty? s0))
 
   (define s1 (make-set 1))
   (check-true (set? s1))
   (check-equal? (set-count s1) 1)
+  (check-false (set-empty? s1))
 
   (define s2 (make-set 1 2))
   (check-true (set? s2))
   (check-equal? (set-count s2) 2)
+  (check-false (set-empty? s2))
 
   (define s3 (make-set 1 2 3))
   (check-true (set? s3))
   (check-equal? (set-count s3) 3)
+  (check-false (set-empty? s3))
+
+  (void))
+
+;; Test `set-copy`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 1 2 3))
+
+  (check-equal? (set->list (set-copy s0)) (set->list s0))
+  (check-equal? (set->list (set-copy s1)) (set->list s1))
+  (check-equal? (set->list (set-copy s2)) (set->list s2))
 
   (void))
 
@@ -94,7 +110,7 @@
   (check-false (set-member? s3 5))
   (void))
 
-;; Test `set-add!`
+;; Test `set-add!` and `set-remove!`
 (let ()
   (define s (make-set 1 2 3))
 
@@ -105,6 +121,22 @@
   (set-remove! s 4)
   (check-equal? (set-count s) 3)
   (check-false (set-member? s 4))
+
+  (void))
+
+;; Test `set-clear!`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 1 2 3))
+
+  (set-clear! s0)
+  (set-clear! s1)
+  (set-clear! s2)
+
+  (check-true (set-empty? s0))
+  (check-true (set-empty? s1))
+  (check-true (set-empty? s2))
 
   (void))
 

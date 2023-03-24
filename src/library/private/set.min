@@ -6,10 +6,14 @@
 (export make-set
         set?
         set-member?
-        set-add!
-        set-remove!
+        set-copy
+        set-empty?
         set-count
         set->list
+
+        set-add!
+        set-remove!
+        set-clear!
 
         set-map
         set-for-each
@@ -41,10 +45,22 @@
     (error 'set-member? "expected a set" s))
   (hashtable-contains? (set-store s) v))
 
+(define (set-empty? st)
+  (unless (set? st)
+    (error 'set-empty? "expected a set" st))
+  (= (hashtable-size (set-store st)) 0))
+
 (define (set-count s)
   (unless (set? s)
     (error 'set-count "expected a set" s))
   (hashtable-size (set-store s)))
+
+(define (set-copy st)
+  (unless (set? st)
+    (error 'set-copy "expected a set" st))
+  (define cp (make-set))
+  (for-each (lambda (x) (set-add! cp x)) (set->list st))
+  cp)
 
 (define (set-add! s v)
   (unless (set? s)
@@ -55,6 +71,11 @@
   (unless (set? s)
     (error 'set-remove! "expected a set" s))
   (hashtable-delete! (set-store s) v))
+
+(define (set-clear! st)
+  (unless (set? st)
+    (error 'set-clear! "expected a set" st))
+  (hashtable-clear! (set-store st)))
 
 (define (set->list s)
   (unless (set? s)
