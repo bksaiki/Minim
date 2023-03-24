@@ -68,6 +68,66 @@
 
   (void))
 
+;; Test `subset?`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 1 2 3))
+
+  (check-true (subset? s0 s0))
+  (check-true (subset? s1 s1))
+  (check-true (subset? s2 s2))
+
+  (check-true (subset? s0 s1))
+  (check-true (subset? s0 s2))
+  (check-true (subset? s1 s2))
+
+  (check-false (subset? s1 s0))
+  (check-false (subset? s2 s0))
+  (check-false (subset? s2 s1))
+
+  (void))
+
+;; Test `proper-subset?`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 1 2 3))
+
+  (check-false (proper-subset? s0 s0))
+  (check-false (proper-subset? s1 s1))
+  (check-false (proper-subset? s2 s2))
+
+  (check-true (proper-subset? s0 s1))
+  (check-true (proper-subset? s0 s2))
+  (check-true (proper-subset? s1 s2))
+
+  (check-false (proper-subset? s1 s0))
+  (check-false (proper-subset? s2 s0))
+  (check-false (proper-subset? s2 s1))
+
+  (void))
+
+;; Test `set=?`
+(let ()
+  (define s0 (make-set))
+  (define s1 (make-set 1 2))
+  (define s2 (make-set 1 2 3))
+
+  (check-true (set=? s0 s0))
+  (check-true (set=? s1 s1))
+  (check-true (set=? s2 s2))
+
+  (check-false (set=? s0 s1))
+  (check-false (set=? s0 s2))
+  (check-false (set=? s1 s2))
+
+  (check-false (set=? s1 s0))
+  (check-false (set=? s2 s0))
+  (check-false (set=? s2 s1))
+
+  (void))
+
 ;; Test `set->list`
 (let ()
   (define s0 (make-set))
@@ -100,7 +160,7 @@
 
   (void))
 
-;; Test `set-count`
+;; Test `set-member?`
 (let ()
   (define s3 (make-set 1 2 3))
   (check-true (set-member? s3 1))

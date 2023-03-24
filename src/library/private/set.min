@@ -11,6 +11,10 @@
         set-count
         set->list
 
+        subset?
+        proper-subset?
+        set=?
+
         set-add!
         set-remove!
         set-clear!
@@ -81,6 +85,35 @@
   (unless (set? s)
     (error 'set->list "expected a set" s))
   (hashtable-keys (set-store s)))
+
+;;
+;;  Set comparison
+;;
+
+(define (subset? st st2)
+  (unless (set? st)
+    (error 'subset? "expected a set" st))
+  (unless (set? st2)
+    (error 'subset? "expected a set" st2))
+  (let loop ([elts (set->list st)])
+    (cond
+      [(null? elts) #t]
+      [(set-member? st2 (car elts)) (loop (cdr elts))]
+      [else #f])))
+
+(define (proper-subset? st st2)
+  (unless (set? st)
+    (error 'proper-subset? "expected a set" st))
+  (unless (set? st2)
+    (error 'proper-subset? "expected a set" st2))
+  (and (subset? st st2) (not (subset? st2 st))))
+
+(define (set=? st st2)
+  (unless (set? st)
+    (error 'set=? "expected a set" st))
+  (unless (set? st2)
+    (error 'set=? "expected a set" st2))
+  (and (subset? st st2) (subset? st2 st)))
 
 ;;
 ;;  Set iteration
