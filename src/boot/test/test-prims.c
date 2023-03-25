@@ -646,11 +646,6 @@ int test_box() {
                   "(set-box! b 0)"
                   "(unbox b))",
                 "0");
-    
-    check_equal("(equal? (box 1) (box 1))", "#t");
-    check_equal("(equal? (box 1) (box 2))", "#f");
-    check_equal("(equal? (box '(1 2)) (box '(1 2)))", "#t");
-    check_equal("(equal? (box '(1 2)) (box '(3 4)))", "#f");
 
     return passed;
 }

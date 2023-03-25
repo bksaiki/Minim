@@ -160,6 +160,12 @@ static size_t equal_hash2(minim_object *o, size_t hash) {
             }
         }
         return hash;
+    case MINIM_BOX_TYPE:
+        return equal_hash2(minim_box_contents(o), hash);
+    // case MINIM_RECORD_TYPE:
+    //     for (i = 0; i < minim_record_count(o); ++i)
+    //         hash = equal_hash2(minim_record_ref(o, i), hash);
+    //     return hash;
     default:
         return eq_hash2(o, hash);
     }
