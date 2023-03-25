@@ -84,6 +84,42 @@ int minim_is_equal(minim_object *a, minim_object *b) {
     case MINIM_HASHTABLE_TYPE:
         return hashtable_is_equal(a, b);
 
+    case MINIM_RECORD_TYPE:
+        // TODO: Other Schemes make records return #f by default for equal?
+        // while providing a way to specifiy an equality procedure for
+        // records of the same type.
+        // In this case, equal? would possibly need access to the
+        // current environment. It's possible that setting the equality
+        // procedure using anything other than a closure should throw
+        // an error.
+        //
+        // Minim implements record equality in the following way:
+        // Any record type descriptor is only `equal?` to itself
+        // Two record values are equal if and only if
+        //  (i)  they share record types
+        //  (ii) each of their fields are `equal?`
+        //
+        if (is_record_rtd(a)) {
+            if (!is_record_rtd(b))
+                return 0;
+
+            // this should use eq? based comparisons
+            return minim_is_eq(a, b);
+        } else {
+            if (!is_record_value(b))
+                return 0;
+
+            if (minim_record_rtd(a) != minim_record_rtd(b))
+                return 0;
+            
+            for (i = 0; i < minim_record_count(a); ++i) {
+                if (!minim_is_equal(minim_record_ref(a, i), minim_record_ref(b, i)))
+                    return 0;
+            }
+
+            return 1;
+        }
+
     default:
         return 0;
     }

@@ -511,6 +511,9 @@ minim_object *make_rest_argument(minim_object *args[], short argc);
 #define record_is_opaque(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
 #define record_is_sealed(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
 
+int is_record_value(minim_object *o);
+int is_record_rtd(minim_object *o);
+
 // Symbols
 
 typedef struct intern_table_bucket {

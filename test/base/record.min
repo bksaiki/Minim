@@ -24,6 +24,15 @@
     (newline)
     (set! num-failed (+ num-failed 1))))
 
+(define (check-not-equal? d0 d1)
+  (when (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
 (define (check-true d)
   (unless d
     (display "[FAIL] expected #t")
@@ -41,7 +50,7 @@
     (set! num-failed (+ num-failed 1))))
 
 ;; Low-level record procedures
-(define (test-0)
+(let ()
   (define point (make-record-type-descriptor 'point #f #f #f #f '#((mutable x) (mutable y) (mutable z))))
   (define make-point (record-constructor point))
   (define point? (record-predicate point))
@@ -78,7 +87,7 @@
 
 
 ;; Basic `define-record-type` test
-(define (test-1)
+(let ()
 
   (define-record-type rec
     (fields
@@ -134,7 +143,7 @@
 
 
 ;; Test inheritance
-(define (test-2)
+(let ()
 
   (define-record-type point
     (fields (mutable x) (mutable y)))
@@ -166,7 +175,8 @@
 
 
 ;; Test protocol
-(define (test-3)
+(let ()
+
   (define count 0)
   (define-record-type (:counting-unit: tick :counting-unit:?)
     (fields step)
@@ -188,7 +198,8 @@
   (void))
 
 ;; Test opacity
-(define (test-4)
+(let ()
+
   (define-record-type a)
 
   (check-false (record-type-opaque? a))
@@ -203,7 +214,8 @@
   (void))
 
 ;; Singleton example
-(define (test-5)
+(let ()
+
   (define nonce-instance #f)
   (define-record-type (:nonce: make-nonce nonce?)
     (opaque #t)
@@ -226,14 +238,39 @@
 
   (void))
 
-;; Run the tests
+;; Test record equality
+(let ()
+  (define-record-type foo
+    (fields a))
 
-(test-0)
-(test-1)
-(test-2)
-(test-3)
-(test-4)
-(test-5)
+  (define f1 (make-foo 1))
+  (define f2 (make-foo 1))
+  (define f3 (make-foo 2))
+
+  (check-equal? f1 f2)
+  (check-not-equal? f1 f3)
+
+  (check-equal? (equal-hash f1) (equal-hash f2))
+  (check-not-equal? (equal-hash f1) (equal-hash f3))
+
+  (define-record-type bar
+    (fields a b))
+
+  (define b1 (make-bar 1 2))
+  (define b2 (make-bar 1 2))
+  (define b3 (make-bar 1 3))
+
+  (check-equal? b1 b2)
+  (check-not-equal? b1 b3)
+
+  (check-equal? (equal-hash b1) (equal-hash b2))
+  (check-not-equal? (equal-hash b1) (equal-hash b3))
+
+  (check-not-equal? foo bar)
+  (check-not-equal? (equal-hash foo) (equal-hash bar))
+
+  (void))
+
 
 (when (> num-failed 0)
   (error #f "test failed"))
