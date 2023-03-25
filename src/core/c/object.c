@@ -77,6 +77,9 @@ int minim_is_equal(minim_object *a, minim_object *b) {
         }
 
         return 1;
+    
+    case MINIM_BOX_TYPE:
+        return minim_is_equal(minim_box_contents(a), minim_box_contents(b));
 
     case MINIM_HASHTABLE_TYPE:
         return hashtable_is_equal(a, b);
