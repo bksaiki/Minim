@@ -4,7 +4,10 @@
 
 (import "pre-base.min" "list.min" "record.min" "set.min")
 (export make-enumeration
-        enum-set-type?)
+        enum-set-type?
+        enum-set->list
+        enum-set-universe
+        enum-set-constructor)
 
 ;;
 ;;  Type definition
@@ -13,7 +16,7 @@
 (define-record-type enum-set-type
   (opaque #t)
   (sealed #t)
-  (fields id universe))
+  (fields id universe subset))
 
 (define (make-enumeration xs)
   (for-each (lambda (x)
@@ -21,12 +24,28 @@
                 (error 'make-enumeration "expected a symbol?" x)))
             xs)
   (define-record-type empty)
-  (make-enum-set-type empty xs))
+  (make-enum-set-type empty xs xs))
 
 ;;
-;;  Low-level procedures
+;;  Procedures
 ;;
+
+(define enum-set->list enum-set-type-subset)
 
 (define (enum-set-universe enum-type)
+  (define universe (enum-set-type-universe enum-type))
   (define-record-type empty)
-  (enum-set empty (enum-set-type-universe enum-type)))
+  (make-enum-set-type empty universe universe))
+
+(define (enum-set-constructor enum-type)
+  (define universe (enum-set-type-universe enum-type))
+  (lambda (xs)
+    (define-record-type empty)
+    (make-enum-set-type
+      empty
+      universe
+      (let loop ([ys universe] [in-xs '()])
+        (cond
+          [(null? ys) (reverse in-xs)]
+          [(member (car ys) xs) (loop (cdr ys) (cons (car ys) in-xs))]
+          [else (loop (cdr ys) in-xs)])))))

@@ -31,7 +31,7 @@
     (newline)
     (set! num-failed (+ num-failed 1))))
 
-; Test `make-enumeration` and `enum-set?`
+; Test `make-enumeration`, `enum-set?`, and `enum-set->list`
 (let ()
   (define e1 (make-enumeration '()))
   (define e2 (make-enumeration '(a)))
@@ -40,6 +40,62 @@
   (check-true (enum-set-type? e1))
   (check-true (enum-set-type? e2))
   (check-true (enum-set-type? e3))
+
+  (check-equal? (enum-set->list e1) '())
+  (check-equal? (enum-set->list e2) '(a))
+  (check-equal? (enum-set->list e3) '(a b c))
+
+  (void))
+
+;; Test `enum-set-constructor`
+(let ()
+  (define e1 (make-enumeration '()))
+  (define c1 (enum-set-constructor e1))
+  (check-equal? (enum-set->list (c1 '())) '())
+  (check-equal? (enum-set->list (c1 '(c a))) '())
+  (check-equal? (enum-set->list (c1 '(b a c))) '())
+  (check-equal? (enum-set->list (c1 '(b c a))) '())
+  (check-equal? (enum-set->list (c1 '(e b d c a))) '())
+
+  (define e2 (make-enumeration '(a b c)))
+  (define c2 (enum-set-constructor e2))
+  (check-equal? (enum-set->list (c2 '())) '())
+  (check-equal? (enum-set->list (c2 '(c a))) '(a c))
+  (check-equal? (enum-set->list (c2 '(b c a))) '(a b c))
+  (check-equal? (enum-set->list (c2 '(e b d c a))) '(a b c))
+
+  (define e3 (make-enumeration '(a b c d e)))
+  (define c3 (enum-set-constructor e3))
+  (check-equal? (enum-set->list (c3 '())) '())
+  (check-equal? (enum-set->list (c3 '(c a))) '(a c))
+  (check-equal? (enum-set->list (c3 '(b c a))) '(a b c))
+  (check-equal? (enum-set->list (c3 '(e b d c a))) '(a b c d e))
+
+  (void))
+
+;; Test `enum-set-universe`
+(let ()
+  (define e1 (make-enumeration '()))
+  (define c1 (enum-set-constructor e1))
+  (check-equal? (enum-set->list (enum-set-universe (c1 '()))) '())
+  (check-equal? (enum-set->list (enum-set-universe (c1 '(c a)))) '())
+  (check-equal? (enum-set->list (enum-set-universe (c1 '(b a c)))) '())
+  (check-equal? (enum-set->list (enum-set-universe (c1 '(b c a)))) '())
+  (check-equal? (enum-set->list (enum-set-universe (c1 '(e b d c a)))) '())
+
+  (define e2 (make-enumeration '(a b c)))
+  (define c2 (enum-set-constructor e2))
+  (check-equal? (enum-set->list (enum-set-universe (c2 '()))) '(a b c))
+  (check-equal? (enum-set->list (enum-set-universe (c2 '(c a)))) '(a b c))
+  (check-equal? (enum-set->list (enum-set-universe (c2 '(b c a)))) '(a b c))
+  (check-equal? (enum-set->list (enum-set-universe (c2 '(e b d c a)))) '(a b c))
+
+  (define e3 (make-enumeration '(a b c d e)))
+  (define c3 (enum-set-constructor e3))
+  (check-equal? (enum-set->list (enum-set-universe (c3 '()))) '(a b c d e))
+  (check-equal? (enum-set->list (enum-set-universe (c3 '(c a)))) '(a b c d e))
+  (check-equal? (enum-set->list (enum-set-universe (c3 '(b c a)))) '(a b c d e))
+  (check-equal? (enum-set->list (enum-set-universe (c3 '(e b d c a)))) '(a b c d e))
 
   (void))
 
