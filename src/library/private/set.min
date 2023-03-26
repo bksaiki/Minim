@@ -2,7 +2,7 @@
 ;;; Sets
 ;;;
 
-(import "pre-base.min" "list.min" "record.min")
+(import "pre-base.min" "record.min")
 (export make-set
         set?
         set-member?

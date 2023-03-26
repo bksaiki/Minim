@@ -1,0 +1,32 @@
+;;;
+;;; Enumeration
+;;;
+
+(import "pre-base.min" "list.min" "record.min" "set.min")
+(export make-enumeration
+        enum-set-type?)
+
+;;
+;;  Type definition
+;;
+
+(define-record-type enum-set-type
+  (opaque #t)
+  (sealed #t)
+  (fields id universe))
+
+(define (make-enumeration xs)
+  (for-each (lambda (x)
+              (unless (symbol? x)
+                (error 'make-enumeration "expected a symbol?" x)))
+            xs)
+  (define-record-type empty)
+  (make-enum-set-type empty xs))
+
+;;
+;;  Low-level procedures
+;;
+
+(define (enum-set-universe enum-type)
+  (define-record-type empty)
+  (enum-set empty (enum-set-type-universe enum-type)))

@@ -255,7 +255,7 @@
         #'(begin
             (define name
               (let ([p parent*])
-                (if (and p (record-type-opaque? p))
+                (if (and p (record-type-sealed? p))
                     (error 'define-record-type
                            "parent record type is sealed"
                            (format "record type: #<record-type:~a>" 'name)

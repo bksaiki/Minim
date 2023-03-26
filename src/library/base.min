@@ -2,14 +2,16 @@
 ;;; Top-level import for base library
 ;;;
 
-(import "private/list.min"
+(import "private/enum.min"
+        "private/list.min"
         "private/path.min"
         "private/pre-base.min"
         "private/record.min"
         "private/set.min"
         "private/string.min")
 
-(export (all "private/list.min")
+(export (all "private/enum.min")
+        (all "private/list.min")
         (all "private/path.min")
         (all "private/pre-base.min")
         (all "private/record.min")
