@@ -15,7 +15,8 @@
         enum-set-union
         enum-set-intersect
         enum-set-difference
-        enum-set-complement)
+        enum-set-complement
+        enum-set-projection)
 
 ;;
 ;;  Type definition
@@ -162,10 +163,20 @@
 
 (define (enum-set-complement enum-set)
   (unless (enum-set? enum-set)
-    (error name "expected an enum-set?" enum-set))
+    (error 'enum-set-complement "expected an enum-set?" enum-set))
   (define enum-type (enum-set-enum-type enum-set))
   (define vs (enum-set-val-set enum-set))
   (make-enum-set enum-type
     (filter (lambda (x) (not (set-member? vs x)))
             (enum-set-type-universe enum-type))))
 
+(define (enum-set-projection e1 e2)
+  (unless (enum-set? e1)
+    (error 'enum-set-projection "expected an enum-set?" e1))
+  (unless (enum-set? e2)
+    (error 'enum-set-projection "expected an enum-set?" e2))
+  (define universe (enum-set-type-universe-set (enum-set-enum-type e2)))
+  (define constructor (enum-set-constructor e2))
+  (constructor
+    (filter (lambda (x) (set-member? universe x))
+            (enum-set-vals e1))))

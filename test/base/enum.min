@@ -276,6 +276,19 @@
 
   (void))
 
+;; Test `enum-set-projection`
+(let ()
+  (define e1 (make-enumeration '(a b c d e)))
+  (define e2 (make-enumeration '(g f e d c)))
+  (define e3 (make-enumeration '(a c e g i k)))
+
+  (check-equal? (enum-set->list (enum-set-projection e1 e2)) '(e d c))
+  (check-equal? (enum-set->list (enum-set-projection e2 e1)) '(c d e))
+  (check-equal? (enum-set->list (enum-set-projection e1 e3)) '(a c e))
+  (check-equal? (enum-set->list (enum-set-projection e2 e3)) '(c e g))
+
+  (void))
+
 
 (when (> num-failed 0)
   (error #f "test failed"))
