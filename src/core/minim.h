@@ -511,6 +511,9 @@ minim_object *make_rest_argument(minim_object *args[], short argc);
 #define record_is_opaque(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
 #define record_is_sealed(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
 
+int is_record_value(minim_object *o);
+int is_record_rtd(minim_object *o);
+
 // Symbols
 
 typedef struct intern_table_bucket {
@@ -529,6 +532,7 @@ minim_object *intern_symbol(intern_table *itab, const char *sym);
 
 // Hashtables
 
+int hashtable_is_equal(minim_object *h1, minim_object *h2);
 int hashtable_set(minim_object *ht, minim_object *k, minim_object *v);
 minim_object *hashtable_find(minim_object *ht, minim_object *k);
 minim_object *hashtable_keys(minim_object *ht);

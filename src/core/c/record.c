@@ -26,12 +26,12 @@ static int is_true_record(minim_object *o) {
 }
 
 // Returns 1 when `o` is a record value, and 0 otherwise.
-static int is_record_value(minim_object *o) {
+int is_record_value(minim_object *o) {
     return minim_is_record(o) && minim_record_rtd(o) != minim_base_rtd;
 }
 
 // Returns 1 when `o` is a record type descriptor, and 0 otherwise.
-static int is_record_rtd(minim_object *o) {
+int is_record_rtd(minim_object *o) {
     return minim_is_record(o) && minim_record_rtd(o) == minim_base_rtd;
 }
 
