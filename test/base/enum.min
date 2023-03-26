@@ -37,9 +37,9 @@
   (define e2 (make-enumeration '(a)))
   (define e3 (make-enumeration '(a b c)))
 
-  (check-true (enum-set-type? e1))
-  (check-true (enum-set-type? e2))
-  (check-true (enum-set-type? e3))
+  (check-true (enum-set? e1))
+  (check-true (enum-set? e2))
+  (check-true (enum-set? e3))
 
   (check-equal? (enum-set->list e1) '())
   (check-equal? (enum-set->list e2) '(a))
