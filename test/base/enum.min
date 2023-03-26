@@ -183,6 +183,78 @@
 
   (void))
 
+;; Test `enum-set-union`
+(let ()
+  (define e (make-enumeration '(a b c d e)))
+  (define c (enum-set-constructor e))
+
+  (define s1 (c '(a)))
+  (define s2 (c '(b)))
+  (define s3 (c '(a b)))
+  (define s4 (c '(c d e)))
+
+  (check-true (enum-set=? (enum-set-union s1 s1) s1))
+  (check-true (enum-set=? (enum-set-union s2 s2) s2))
+  (check-true (enum-set=? (enum-set-union s3 s3) s3))
+  (check-true (enum-set=? (enum-set-union s4 s4) s4))
+
+  (check-equal? (enum-set->list (enum-set-union s1 s2)) '(a b))
+  (check-equal? (enum-set->list (enum-set-union s1 s3)) '(a b))
+  (check-equal? (enum-set->list (enum-set-union s1 s4)) '(a c d e))
+  (check-equal? (enum-set->list (enum-set-union s2 s3)) '(a b))
+  (check-equal? (enum-set->list (enum-set-union s2 s4)) '(b c d e))
+  (check-equal? (enum-set->list (enum-set-union s3 s4)) '(a b c d e))
+
+  (void))
+
+;; Test `enum-set-intersect`
+(let ()
+  (define e (make-enumeration '(a b c d e)))
+  (define c (enum-set-constructor e))
+
+  (define s1 (c '(a)))
+  (define s2 (c '(b)))
+  (define s3 (c '(a b)))
+  (define s4 (c '(a b c d e)))
+
+  (check-true (enum-set=? (enum-set-intersect s1 s1) s1))
+  (check-true (enum-set=? (enum-set-intersect s2 s2) s2))
+  (check-true (enum-set=? (enum-set-intersect s3 s3) s3))
+  (check-true (enum-set=? (enum-set-intersect s4 s4) s4))
+
+  (check-equal? (enum-set->list (enum-set-intersect s1 s2)) '())
+  (check-equal? (enum-set->list (enum-set-intersect s1 s3)) '(a))
+  (check-equal? (enum-set->list (enum-set-intersect s1 s4)) '(a))
+  (check-equal? (enum-set->list (enum-set-intersect s2 s3)) '(b))
+  (check-equal? (enum-set->list (enum-set-intersect s2 s4)) '(b))
+  (check-equal? (enum-set->list (enum-set-intersect s3 s4)) '(a b))
+
+  (void))
+
+;; Test `enum-set-difference`
+(let ()
+  (define e (make-enumeration '(a b c d e)))
+  (define c (enum-set-constructor e))
+
+  (define s1 (c '(a)))
+  (define s2 (c '(b)))
+  (define s3 (c '(a b)))
+  (define s4 (c '(a b c d e)))
+
+  (check-equal? (enum-set->list (enum-set-difference s1 s1)) '())
+  (check-equal? (enum-set->list (enum-set-difference s2 s2)) '())
+  (check-equal? (enum-set->list (enum-set-difference s3 s3)) '())
+  (check-equal? (enum-set->list (enum-set-difference s4 s4)) '())
+
+  (check-equal? (enum-set->list (enum-set-difference s4 s1)) '(b c d e))
+  (check-equal? (enum-set->list (enum-set-difference s4 s2)) '(a c d e))
+  (check-equal? (enum-set->list (enum-set-difference s4 s3)) '(c d e))
+  (check-equal? (enum-set->list (enum-set-difference s3 s1)) '(b))
+  (check-equal? (enum-set->list (enum-set-difference s3 s2)) '(a))
+  (check-equal? (enum-set->list (enum-set-difference s2 s1)) '(b))
+
+  (void))
+
 
 (when (> num-failed 0)
   (error #f "test failed"))

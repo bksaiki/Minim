@@ -11,7 +11,10 @@
         enum-set-indexer
         enum-set-member?
         enum-set-subset?
-        enum-set=?)
+        enum-set=?
+        enum-set-union
+        enum-set-intersect
+        enum-set-difference)
 
 ;;
 ;;  Type definition
@@ -60,7 +63,8 @@
 ;;  Procedures
 ;;
 
-(define enum-set->list enum-set-vals)
+(define (enum-set->list enum-set)
+  (enum-set-vals enum-set))
 
 (define (enum-set-universe enum-set)
   (unless (enum-set? enum-set)
@@ -127,3 +131,30 @@
   (unless (enum-set? e2)
     (error 'enum-set=? "expected an enum-set?" e2))
   (and ($enum-set-subset? e1 e2) ($enum-set-subset? e2 e1)))
+
+(define (enum-set-merger name member?)
+  (lambda (e1 e2)
+    (unless (enum-set? e1)
+      (error name "expected an enum-set?" e1))
+    (unless (enum-set? e2)
+      (error name "expected an enum-set?" e2))
+    (unless (eq? (enum-set-enum-type e1) (enum-set-enum-type e2))
+      (error name "unioning enum sets of different types" e1 e2))
+    (define enum-type (enum-set-enum-type e1))
+    (define vs1 (enum-set-val-set e1))
+    (define vs2 (enum-set-val-set e2))
+    (make-enum-set enum-type (filter (member? vs1 vs2) (enum-set-type-universe enum-type)))))
+
+(define-values (enum-set-union enum-set-intersect enum-set-difference)
+  (values (enum-set-merger 'enum-set-union
+            (lambda (s1 s2)
+              (lambda (x)
+                (or (set-member? s1 x) (set-member? s2 x)))))
+          (enum-set-merger 'enum-set-intersect
+            (lambda (s1 s2)
+              (lambda (x)
+                (and (set-member? s1 x) (set-member? s2 x)))))
+          (enum-set-merger 'enum-set-difference
+            (lambda (s1 s2)
+              (lambda (x)
+                (and (set-member? s1 x) (not (set-member? s2 x))))))))
