@@ -99,6 +99,48 @@
 
   (void))
 
+;; Test `enum-set-member?`
+(let ()
+  (define e (make-enumeration '(a b c)))
+
+  (check-true (enum-set-member? 'a e))
+  (check-true (enum-set-member? 'b e))
+  (check-true (enum-set-member? 'c e))
+  (check-false (enum-set-member? 'd e))
+  (check-false (enum-set-member? 'e e))
+
+  (void))
+
+;; Test `enum-set-subset?`
+(let ()
+  (define e1 (make-enumeration '(a b)))
+  (define e2 (make-enumeration '(b c)))
+  (define e3 (make-enumeration '(a b c)))
+
+  (define c1 (enum-set-constructor e1))
+  (define c2 (enum-set-constructor e2))
+  (define c3 (enum-set-constructor e3))
+
+  (check-true (enum-set-subset? e1 e1))
+  (check-true (enum-set-subset? e2 e2))
+  (check-true (enum-set-subset? e3 e3))
+
+  (check-true (enum-set-subset? e1 e3))
+  (check-true (enum-set-subset? e2 e3))
+  (check-false (enum-set-subset? e3 e1))
+  (check-false (enum-set-subset? e3 e2))
+  (check-false (enum-set-subset? e1 e2))
+  (check-false (enum-set-subset? e2 e1))
+
+  (check-true (enum-set-subset? (c1 '(a)) e1))
+  (check-true (enum-set-subset? (c1 '(b)) e1))
+  (check-false (enum-set-subset? (c1 '(a)) e2))
+  (check-false (enum-set-subset? (c1 '(b)) e2))
+  (check-true (enum-set-subset? (c1 '(a)) e3))
+  (check-true (enum-set-subset? (c1 '(b)) e3))
+
+  (void))
+
 
 (when (> num-failed 0)
   (error #f "test failed"))

@@ -7,24 +7,41 @@
         enum-set-type?
         enum-set->list
         enum-set-universe
-        enum-set-constructor)
+        enum-set-constructor
+        enum-set-member?
+        enum-set-subset?)
 
 ;;
 ;;  Type definition
 ;;
 
+;; The `id` field is to prevent any two
+;; enum-set-types from being comparable
 (define-record-type enum-set-type
   (opaque #t)
   (sealed #t)
-  (fields id universe subset))
+  (fields
+    id        ; record?
+    universe  ; list?
+    subset    ; list?
+  )
+  (protocol
+    (lambda (p)
+      (lambda (univ xs)
+        (define-record-type unique)
+        (p unique univ xs)))))
 
 (define (make-enumeration xs)
   (for-each (lambda (x)
               (unless (symbol? x)
                 (error 'make-enumeration "expected a symbol?" x)))
             xs)
-  (define-record-type empty)
-  (make-enum-set-type empty xs xs))
+  (make-enum-set-type xs xs))
+
+;; Unchecked constructor for a new enum set with values `xs`
+;; within the same universe as `enum-type`.
+(define ($make-derived-enumeration enum-type xs)
+  (make-enum-set-type (enum-set-type-universe enum-type) xs))
 
 ;;
 ;;  Procedures
@@ -33,19 +50,42 @@
 (define enum-set->list enum-set-type-subset)
 
 (define (enum-set-universe enum-type)
+  (unless (enum-set-type? enum-type)
+    (error 'enum-set-universe "expected an enum-set-type?" enum-type))
   (define universe (enum-set-type-universe enum-type))
-  (define-record-type empty)
-  (make-enum-set-type empty universe universe))
+  (make-enum-set-type universe universe))
 
 (define (enum-set-constructor enum-type)
+  (unless (enum-set-type? enum-type)
+    (error 'enum-set-constructor "expected an enum-set-type?" enum-type))
   (define universe (enum-set-type-universe enum-type))
   (lambda (xs)
-    (define-record-type empty)
-    (make-enum-set-type
-      empty
-      universe
+    (for-each (lambda (x)
+                (unless (symbol? x)
+                  (error 'enum-set-constructor "expected a symbol?" x)))
+              xs)
+    (define xs* (apply make-set xs))
+    ($make-derived-enumeration
+      enum-type
       (let loop ([ys universe] [in-xs '()])
         (cond
           [(null? ys) (reverse in-xs)]
-          [(member (car ys) xs) (loop (cdr ys) (cons (car ys) in-xs))]
+          [(set-member? xs* (car ys)) (loop (cdr ys) (cons (car ys) in-xs))]
           [else (loop (cdr ys) in-xs)])))))
+
+(define (enum-set-member? x enum-type)
+  (unless (enum-set-type? enum-type)
+    (error 'enum-set-constructor "expected an enum-set-type?" enum-type))
+  (define s (apply make-set (enum-set-type-subset enum-type)))
+  (and (symbol? x) (set-member? s x)))
+
+(define (list-subset? l1 l2)
+  (subset? (apply make-set l1) (apply make-set l2)))
+
+(define (enum-set-subset? e1 e2)
+  (unless (enum-set-type? e1)
+    (error 'enum-subset? "expected an enum-set-type?" e1))
+  (unless (enum-set-type? e2)
+    (error 'enum-subset? "expected an enum-set-type?" e2))
+  (and (list-subset? (enum-set-type-universe e1) (enum-set-type-universe e2))
+       (list-subset? (enum-set-type-subset e1) (enum-set-type-subset e2))))
