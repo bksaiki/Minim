@@ -255,6 +255,27 @@
 
   (void))
 
+;; Test `enum-set-difference`
+(let ()
+  (define e (make-enumeration '(a b c d e)))
+  (define c (enum-set-constructor e))
+
+  (define s0 (c '()))
+  (define s1 (c '(a)))
+  (define s2 (c '(a b)))
+  (define s3 (c '(a b c)))
+  (define s4 (c '(a b c d)))
+  (define s5 (c '(a b c d e)))
+
+  (check-equal? (enum-set->list (enum-set-complement s0)) '(a b c d e))
+  (check-equal? (enum-set->list (enum-set-complement s1)) '(b c d e))
+  (check-equal? (enum-set->list (enum-set-complement s2)) '(c d e))
+  (check-equal? (enum-set->list (enum-set-complement s3)) '(d e))
+  (check-equal? (enum-set->list (enum-set-complement s4)) '(e))
+  (check-equal? (enum-set->list (enum-set-complement s5)) '())
+
+  (void))
+
 
 (when (> num-failed 0)
   (error #f "test failed"))
