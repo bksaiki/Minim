@@ -99,6 +99,18 @@
 
   (void))
 
+;; Test `enum-set-indexer`
+(let ()
+  (define e (make-enumeration '(a b c)))
+  (define i (enum-set-indexer e))
+
+  (check-equal? (i 'a) 0)
+  (check-equal? (i 'b) 1)
+  (check-equal? (i 'c) 2)
+  (check-equal? (i 'd) #f)
+
+  (void))
+
 ;; Test `enum-set-member?`
 (let ()
   (define e (make-enumeration '(a b c)))
@@ -138,6 +150,36 @@
   (check-false (enum-set-subset? (c1 '(b)) e2))
   (check-true (enum-set-subset? (c1 '(a)) e3))
   (check-true (enum-set-subset? (c1 '(b)) e3))
+
+  (void))
+
+; Test `enum-set=?`
+(let ()
+  (define e1 (make-enumeration '(a b)))
+  (define e2 (make-enumeration '(b c)))
+  (define e3 (make-enumeration '(a b c)))
+
+  (define c1 (enum-set-constructor e1))
+  (define c2 (enum-set-constructor e2))
+  (define c3 (enum-set-constructor e3))
+
+  (check-true (enum-set=? e1 e1))
+  (check-true (enum-set=? e2 e2))
+  (check-true (enum-set=? e3 e3))
+
+  (check-false (enum-set=? e1 e3))
+  (check-false (enum-set=? e2 e3))
+  (check-false (enum-set=? e3 e1))
+  (check-false (enum-set=? e3 e2))
+  (check-false (enum-set=? e1 e2))
+  (check-false (enum-set=? e2 e1))
+
+  (check-false (enum-set=? (c1 '(a)) e1))
+  (check-false (enum-set=? (c1 '(b)) e1))
+  (check-false (enum-set=? (c1 '(a)) e2))
+  (check-false (enum-set=? (c1 '(b)) e2))
+  (check-false (enum-set=? (c1 '(a)) e3))
+  (check-false (enum-set=? (c1 '(b)) e3))
 
   (void))
 

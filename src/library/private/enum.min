@@ -8,8 +8,10 @@
         enum-set->list
         enum-set-universe
         enum-set-constructor
+        enum-set-indexer
         enum-set-member?
-        enum-set-subset?)
+        enum-set-subset?
+        enum-set=?)
 
 ;;
 ;;  Type definition
@@ -73,6 +75,15 @@
           [(set-member? xs* (car ys)) (loop (cdr ys) (cons (car ys) in-xs))]
           [else (loop (cdr ys) in-xs)])))))
 
+(define (enum-set-indexer enum-type)
+  (unless (enum-set-type? enum-type)
+    (error 'enum-set-indexer "expected an enum-set-type?" enum-type))
+  (define universe (enum-set-type-universe enum-type))
+  (lambda (x)
+    (unless (symbol? x)
+      (error 'enum-set-indexer "expected a symbol?" x))
+    (index-of x universe)))
+
 (define (enum-set-member? x enum-type)
   (unless (enum-set-type? enum-type)
     (error 'enum-set-constructor "expected an enum-set-type?" enum-type))
@@ -82,10 +93,20 @@
 (define (list-subset? l1 l2)
   (subset? (apply make-set l1) (apply make-set l2)))
 
+(define ($enum-set-subset? e1 e2)
+  (and (list-subset? (enum-set-type-universe e1) (enum-set-type-universe e2))
+       (list-subset? (enum-set-type-subset e1) (enum-set-type-subset e2))))
+
 (define (enum-set-subset? e1 e2)
   (unless (enum-set-type? e1)
     (error 'enum-subset? "expected an enum-set-type?" e1))
   (unless (enum-set-type? e2)
     (error 'enum-subset? "expected an enum-set-type?" e2))
-  (and (list-subset? (enum-set-type-universe e1) (enum-set-type-universe e2))
-       (list-subset? (enum-set-type-subset e1) (enum-set-type-subset e2))))
+  ($enum-set-subset? e1 e2))
+
+(define (enum-set=? e1 e2)
+  (unless (enum-set-type? e1)
+    (error 'enum-subset? "expected an enum-set-type?" e1))
+  (unless (enum-set-type? e2)
+    (error 'enum-set=? "expected an enum-set-type?" e2))
+  (and ($enum-set-subset? e1 e2) ($enum-set-subset? e2 e1)))
