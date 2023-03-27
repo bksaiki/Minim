@@ -289,6 +289,20 @@
 
   (void))
 
+;; Test 'define-enumeration'
+(let ()
+  (define-enumeration color
+    (red green blue black)
+    color-set)
+
+  (check-equal? (color red) 'red)
+  ; (equal? (color yellow) #f) ==> ERROR
+
+  (check-equal? (enum-set->list (color-set)) '())
+  (check-equal? (enum-set->list (color-set red green)) '(red green))
+  (check-equal? (enum-set->list (color-set red orange yellow green)) '(red green))
+
+  (void))
 
 (when (> num-failed 0)
   (error #f "test failed"))

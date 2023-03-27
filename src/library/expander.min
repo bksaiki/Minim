@@ -223,7 +223,7 @@
           (cond
             [(null? (cdr exprs))
              (cond
-               [(define-values-form? expr*)
+               [(or (define-values-form? expr*) (define-syntaxes-form? expr*))
                 (error 'begin "last form is not an expression" (car exprs))]
                [(null? defines)
                 (list expr*)]
@@ -236,6 +236,24 @@
                       expr*)))])]
             [(begin-form? expr*)
              (loop (append (cdr (syntax->list expr*)) (cdr exprs)) defines)]
+            [(define-syntaxes-form? expr*)
+             ; this creates a break in the body:
+             ; create a `letrec-values` for pending bindings
+             ; create `let-syntaxes` for the current macro
+             ; call `expand/body` on remaining expressions
+             (define form (syntax->list expr*))
+             (define ids (cadr form))
+             (define value (caddr form))
+             (list
+               (expand/expr 
+                 (datum->syntax
+                   (list
+                     (quote-syntax letrec-values)
+                     (reverse defines)
+                     (cons (quote-syntax let-syntaxes)
+                       (cons (list (list ids value))
+                         (cdr exprs)))))
+                 xforms))]
             [(define-values-form? expr*)
              (define form (syntax->list expr*))
              (define ids (cadr form))

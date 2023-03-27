@@ -2,8 +2,9 @@
 ;;; Enumeration
 ;;;
 
-(import "pre-base.min" "list.min" "record.min" "set.min")
-(export make-enumeration
+(import "pre-base.min" "list.min" "record.min" "set.min" "gen-temp.min")
+(export define-enumeration
+        make-enumeration
         enum-set?
         enum-set->list
         enum-set-universe
@@ -180,3 +181,49 @@
   (constructor
     (filter (lambda (x) (set-member? universe x))
             (enum-set-vals e1))))
+
+;;
+;;  Macros
+;;
+
+(define-syntax (define-enumeration stx)
+  (syntax-case stx ()
+    [(_ name (values ...) constructor)
+     (if (identifier? #'name)
+         (let ([ids (syntax->list #'(values ...))])
+           (for-each (lambda (id)
+                       (unless (identifier? id)
+                         (error 'define-enumeration "expected an identifier" stx id)))
+                     ids)
+           (unless (identifier? #'constructor)
+             (error 'define-enumeration "expected an identifier" stx #'constructor))
+           (with-syntax ([(elts ...) (list 'elts '...)]
+                         [id (gen-temp-id (symbol->string (syntax->datum #'name)))])
+             #'(begin
+                 (define id (make-enumeration '(values ...)))
+                 (define-syntax (constructor stx)
+                   (syntax-case stx ()
+                     [(_ elts ...)
+                      #'((enum-set-constructor id) '(elts ...))]
+                     [(_ . _)
+                      (error 'constructor "bad syntax" stx)]))
+                 (define-syntax (name stx)
+                   (syntax-case stx ()
+                     [(_ elt)
+                      (if (identifier? #'elt)
+                          (if (member (syntax->datum #'elt) '(values ...))
+                              #''elt
+                              (error 'name "identifier not in universe" stx #'elt))
+                          (error 'name "expected an identifier" stx #'elt))]
+                     [(_ . _)
+                      (error 'name "bad syntax" stx)]))
+             )))
+         (error 'define-enumeration "expected an identifier" #'name))]
+    [(_ name value-spec constructor _ ...)
+     (syntax-error 'define-enumeration "bad syntax" stx)]
+    [(_ name value-spec)
+     (syntax-error 'define-enumeration "missing constructor name" stx)]
+    [(_ name)
+     (syntax-error 'define-enumeration "missing enumeration values and constructor name" stx)]
+    [(_ . _)
+     (syntax-error 'define-enumeration "bad syntax" stx)]))
