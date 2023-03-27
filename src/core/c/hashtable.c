@@ -134,7 +134,8 @@ static size_t eq_hash2(minim_object *o, size_t hash) {
 }
 
 static size_t equal_hash2(minim_object *o, size_t hash) {
-    minim_object *it;
+    minim_object *it, *res;
+    minim_thread *th;
     long i;
 
     switch (o->type)
@@ -165,11 +166,18 @@ static size_t equal_hash2(minim_object *o, size_t hash) {
     case MINIM_RECORD_TYPE:
         // Hashing records using `equal?` recursively
         // descends through the record
-        if (is_record_rtd(o)) {
-            return eq_hash2(o, hash);
+        th = current_thread();
+        if (record_equal_proc(th) != minim_false &&
+            is_record_value(o)) {
+            // Unsafe code to follow
+            push_call_arg(o);
+            push_call_arg(env_lookup_var(global_env(th), intern("equal-hash")));
+            res = call_with_args(record_hash_proc(th), global_env(th));
+            if (!minim_is_fixnum(res))
+                bad_type_exn("record hash procedure result", "number?", res);
+            return hash + minim_fixnum(res);
         } else {
-            for (i = 0; i < minim_record_count(o); ++i)
-                hash = equal_hash2(minim_record_ref(o, i), hash);
+            return eq_hash2(o, hash);
         }
         return hash;
     default:

@@ -94,16 +94,12 @@ int minim_is_equal(minim_object *a, minim_object *b) {
         // an error.
         //
         // Minim implements record equality in the following way:
-        // Any record type descriptor is only `equal?` to itself
-        // Two record values are equal if and only if
-        //  (i)  they share record types
-        //  (ii) each of their fields are `equal?`
-        //
+        // By default, records of the same type are not `equal?`, but this behavior
+        // can be overriden by modifying `current-record-equal-procedure`.
         if (record_equal_proc(current_thread()) != minim_false &&
             is_record_value(a) &&
             is_record_value(b)) {
             // Unsafe code to follow
-            clear_call_args();
             push_call_arg(a);
             push_call_arg(b);
             push_call_arg(env_lookup_var(global_env(current_thread()), intern("equal?")));

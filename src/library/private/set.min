@@ -41,9 +41,11 @@
         (define h (make-hashtable))
         (for-each (lambda (x) (hashtable-set! h x '())) xs)
         (p h))))
-  (equal
+  (equal+hash
     (lambda (a b rec-equal?)
-      (rec-equal? (set-store a) (set-store b)))))
+      (rec-equal? (set-store a) (set-store b)))
+    (lambda (a rec-hash)
+      (+ (rec-hash (set-store a)) 401235121))))
 
 ;;
 ;;  Basic operations

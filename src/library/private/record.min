@@ -10,6 +10,7 @@
         record-accessor
         record-mutator
         record-type-equal-procedure
+        record-type-hash-procedure
         define-record-type)
 
 (define (record-type-size rtd)
@@ -97,37 +98,32 @@
 ;;
 
 (define $record-eq-procs (make-hashtable))
+(define $record-hash-procs (make-hashtable))
 
 (define (record-type-equal-procedure rtd equal-proc)
   (unless (record-type-descriptor? rtd)
     (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
   (hashtable-set! $record-eq-procs rtd equal-proc))
 
+(define (record-type-hash-procedure rtd hash-proc)
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
+  (hashtable-set! $record-hash-procs rtd hash-proc))
+
 (define (record-equal? a b rec-equal?)
   (define a-rtd ($record-rtd a))
   (define b-rtd ($record-rtd b))
-  (cond
-    [(eq? a-rtd b-rtd)
-     (define proc (hashtable-ref $record-eq-procs a-rtd #f))
-     (cond
-       [proc
-        (let loop ([rtd a-rtd] [i 0])
-          (let ([prtd (record-type-parent rtd)])
-            (if prtd
-                (let loop2 ([fields (record-type-fields rtd)] [j 0])
-                  (if (null? fields)
-                      (loop prtd (+ i j))
-                      (let ([acc (record-accessor rtd j)])
-                        (if (rec-equal? (acc a) (acc b))
-                            (loop2 (cdr fields) (+ i 1))
-                            #f))))
-                #t)))]
-       [else
-        #f])]
-    [else
-     #f]))
+  (and (eq? a-rtd b-rtd)
+       (let ([proc (hashtable-ref $record-eq-procs a-rtd #f)])
+         (and proc (proc a b rec-equal?)))))
 
-(current-record-equal-procedure record-equal?)
+(define (record-hash r rec-hash)
+  (define rtd ($record-rtd r))
+  (define proc (hashtable-ref $record-hash-procs rtd #f))
+  (and proc (proc r rec-hash)))
+
+($current-record-equal-procedure record-equal?)
+($current-record-hash-procedure record-hash)
 
 ;;
 ;;  High-level macros
@@ -165,12 +161,13 @@
        (define protocol-rtd #f)
        (define fields-rtd '())
        (define equal-rtd #f)
+       (define hash-rtd #f)
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque protocol equal)
+           (syntax-case clause (fields parent uid sealed opaque protocol equal+hash)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -205,12 +202,13 @@
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'protocol clause-types))
                 (set! protocol-rtd #'proc))]
-             [(equal proc)
+             [(equal+hash equal hash)
               (begin
-                (when (member 'equal clause-types)
+                (when (member 'equal+hash clause-types)
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
-                (set! clause-types (cons 'equal clause-types))
-                (set! equal-rtd #'proc))]
+                (set! clause-types (cons 'equal+hash clause-types))
+                (set! equal-rtd #'equal)
+                (set! hash-rtd #'hash))]
              [(fields spec ...)
               (begin
                 (when (member 'fields clause-types)
@@ -273,6 +271,7 @@
                      [opaque?* opaque?-rtd]
                      [protocol* protocol-rtd]
                      [equal* equal-rtd]
+                     [hash* hash-rtd]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -315,7 +314,8 @@
             (define predicate (record-predicate name))
             (begin accs ...)
             (begin muts ...)
-            (when equal* (record-type-equal-procedure name equal*)))))]
+            (when equal* (record-type-equal-procedure name equal*))
+            (when hash* (record-type-hash-procedure name hash*)))))]
     [(_ name cls ...) 
      ; simplified form
      (if (identifier? #'name)
