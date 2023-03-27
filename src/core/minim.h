@@ -547,6 +547,7 @@ typedef struct minim_thread {
     minim_object *current_directory;
     minim_object *boot_expander;
     minim_object *command_line;
+    minim_object *record_equal_proc;
 
     minim_object **values_buffer;
     int values_buffer_size;
@@ -561,6 +562,7 @@ typedef struct minim_thread {
 #define current_directory(th)           ((th)->current_directory)
 #define boot_expander(th)               ((th)->boot_expander)
 #define command_line(th)                ((th)->command_line)
+#define record_equal_proc(th)           ((th)->record_equal_proc)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
@@ -737,6 +739,7 @@ DEFINE_PRIM_PROC(record_type_field_mutable);
 DEFINE_PRIM_PROC(make_record);
 DEFINE_PRIM_PROC(record_ref);
 DEFINE_PRIM_PROC(record_set);
+DEFINE_PRIM_PROC(current_record_equal_procedure);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);

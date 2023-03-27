@@ -163,7 +163,8 @@ static size_t equal_hash2(minim_object *o, size_t hash) {
     case MINIM_BOX_TYPE:
         return equal_hash2(minim_box_contents(o), hash);
     case MINIM_RECORD_TYPE:
-        // See note in `minim_is_equal` about record equality
+        // Hashing records using `equal?` recursively
+        // descends through the record
         if (is_record_rtd(o)) {
             return eq_hash2(o, hash);
         } else {

@@ -27,15 +27,13 @@
   (opaque #t)
   (sealed #t)
   (fields
-    id            ; record?
     universe      ; list?
     universe-set  ; set?
   )
   (protocol
     (lambda (p)
       (lambda (univ)
-        (define-record-type id)
-        (p id univ (apply make-set univ))))))
+        (p univ (apply make-set univ))))))
 
 ;; The `id` field is to prevent any two
 ;; enum-set-types from being comparable
@@ -43,7 +41,6 @@
   (opaque #t)
   (sealed #t)
   (fields
-    id          ; record?
     enum-type   ; record?
     vals        ; list?
     val-set     ; set?
@@ -51,8 +48,7 @@
   (protocol
     (lambda (p)
       (lambda (enum-type vals)
-        (define-record-type set-id)
-        (p set-id enum-type vals (apply make-set vals))))))
+        (p enum-type vals (apply make-set vals))))))
 
 (define (make-enumeration xs)
   (for-each (lambda (x)

@@ -9,6 +9,7 @@
         record-predicate
         record-accessor
         record-mutator
+        record-type-equal-procedure
         define-record-type)
 
 (define (record-type-size rtd)
@@ -92,6 +93,43 @@
     ($record-set! r idx* v)))
 
 ;;
+;;  Record equivalence
+;;
+
+(define $record-eq-procs (make-hashtable))
+
+(define (record-type-equal-procedure rtd equal-proc)
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
+  (hashtable-set! $record-eq-procs rtd equal-proc))
+
+(define (record-equal? a b rec-equal?)
+  (define a-rtd ($record-rtd a))
+  (define b-rtd ($record-rtd b))
+  (cond
+    [(eq? a-rtd b-rtd)
+     (define proc (hashtable-ref $record-eq-procs a-rtd #f))
+     (cond
+       [proc
+        (let loop ([rtd a-rtd] [i 0])
+          (let ([prtd (record-type-parent rtd)])
+            (if prtd
+                (let loop2 ([fields (record-type-fields rtd)] [j 0])
+                  (if (null? fields)
+                      (loop prtd (+ i j))
+                      (let ([acc (record-accessor rtd j)])
+                        (if (rec-equal? (acc a) (acc b))
+                            (loop2 (cdr fields) (+ i 1))
+                            #f))))
+                #t)))]
+       [else
+        #f])]
+    [else
+     #f]))
+
+(current-record-equal-procedure record-equal?)
+
+;;
 ;;  High-level macros
 ;;
 
@@ -126,12 +164,13 @@
        (define opaque?-rtd #f)
        (define protocol-rtd #f)
        (define fields-rtd '())
+       (define equal-rtd #f)
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque protocol)
+           (syntax-case clause (fields parent uid sealed opaque protocol equal)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -166,6 +205,12 @@
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'protocol clause-types))
                 (set! protocol-rtd #'proc))]
+             [(equal proc)
+              (begin
+                (when (member 'equal clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (set! clause-types (cons 'equal clause-types))
+                (set! equal-rtd #'proc))]
              [(fields spec ...)
               (begin
                 (when (member 'fields clause-types)
@@ -227,6 +272,7 @@
                      [sealed?* sealed?-rtd]
                      [opaque?* opaque?-rtd]
                      [protocol* protocol-rtd]
+                     [equal* equal-rtd]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -268,7 +314,8 @@
                 (if p (p c) c)))
             (define predicate (record-predicate name))
             (begin accs ...)
-            (begin muts ...))))]
+            (begin muts ...)
+            (when equal* (record-type-equal-procedure name equal*)))))]
     [(_ name cls ...) 
      ; simplified form
      (if (identifier? #'name)

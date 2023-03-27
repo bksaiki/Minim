@@ -166,6 +166,7 @@ void populate_env(minim_object *env) {
     add_procedure("$record-rtd", record_rtd_proc, 1, 1);
     add_procedure("$record-ref", record_ref_proc, 2, 2);
     add_procedure("$record-set!", record_set_proc, 3, 3);
+    add_procedure("current-record-equal-procedure", current_record_equal_procedure_proc, 0, 1);
 
     add_procedure("box?", is_box_proc, 1, 1);
     add_procedure("box", box_proc, 1, 1);
@@ -317,6 +318,8 @@ void minim_boot_init() {
     current_directory(th) = make_string2(get_current_dir());
     command_line(th) = minim_null;
     boot_expander(th) = minim_true;
+    record_equal_proc(th) = minim_false;
+
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(minim_object*));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;
     values_buffer_count(th) = 0;

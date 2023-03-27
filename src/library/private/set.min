@@ -40,7 +40,10 @@
       (lambda xs
         (define h (make-hashtable))
         (for-each (lambda (x) (hashtable-set! h x '())) xs)
-        (p h)))))
+        (p h))))
+  (equal
+    (lambda (a b rec-equal?)
+      (rec-equal? (set-store a) (set-store b)))))
 
 ;;
 ;;  Basic operations

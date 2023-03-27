@@ -269,15 +269,6 @@ minim_object *record_rtd_proc(int argc, minim_object **args) {
     // (-> record rtd)
     if (!is_record_value(args[0]))
         bad_type_exn("record-rtd", "record?", args[0]);
-    
-    // if (record_is_opaque(args[0])) {
-    //     fprintf(stderr, "record-rtd: cannot inspect opaque records\n");
-    //     fprintf(stderr, " record: ");
-    //     write_object(stderr, args[0]);
-    //     fprintf(stderr, "\n");
-    //     exit(1);
-    // }
-
     return minim_record_rtd(args[0]);
 }
 
@@ -322,4 +313,17 @@ minim_object *record_set_proc(int argc, minim_object **args) {
 
     minim_record_ref(args[0], idx) = args[2];
     return minim_void;
+}
+
+minim_object *current_record_equal_procedure_proc(int argc, minim_object **args) {
+    // (-> proc)
+    // (-> proc void)
+    if (argc == 0) {
+        return record_equal_proc(current_thread());
+    } else {
+        if (!minim_is_proc(args[0]))
+            bad_type_exn("current-record-equal-procedure", "procedue?", args[0]);
+        record_equal_proc(current_thread()) = args[0];
+        return minim_void;
+    }
 }
