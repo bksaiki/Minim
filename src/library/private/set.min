@@ -2,7 +2,7 @@
 ;;; Sets
 ;;;
 
-(import "pre-base.min" "list.min" "record.min")
+(import "pre-base.min" "record.min")
 (export make-set
         set?
         set-member?
@@ -40,7 +40,12 @@
       (lambda xs
         (define h (make-hashtable))
         (for-each (lambda (x) (hashtable-set! h x '())) xs)
-        (p h)))))
+        (p h))))
+  (equal+hash
+    (lambda (a b rec-equal?)
+      (rec-equal? (set-store a) (set-store b)))
+    (lambda (a rec-hash)
+      (+ (rec-hash (set-store a)) 401235121))))
 
 ;;
 ;;  Basic operations

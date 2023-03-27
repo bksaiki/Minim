@@ -241,7 +241,12 @@
 ;; Test record equality
 (let ()
   (define-record-type foo
-    (fields a))
+    (fields a)
+    (equal+hash
+      (lambda (a b rec-equal?)
+        (rec-equal? (foo-a a) (foo-a b)))
+      (lambda (a rec-hash)
+        (+ (rec-hash (foo-a a)) 401235121))))
 
   (define f1 (make-foo 1))
   (define f2 (make-foo 1))
@@ -254,7 +259,13 @@
   (check-not-equal? (equal-hash f1) (equal-hash f3))
 
   (define-record-type bar
-    (fields a b))
+    (fields a b)
+    (equal+hash
+      (lambda (a b rec-equal?)
+        (and (rec-equal? (bar-a a) (bar-a b))
+             (rec-equal? (bar-b a) (bar-b b))))
+      (lambda (a rec-hash)
+        (+ (rec-hash (bar-a a)) (rec-hash (bar-b a)) 401235121))))
 
   (define b1 (make-bar 1 2))
   (define b2 (make-bar 1 2))
@@ -265,9 +276,14 @@
 
   (check-equal? (equal-hash b1) (equal-hash b2))
   (check-not-equal? (equal-hash b1) (equal-hash b3))
-
-  (check-not-equal? foo bar)
   (check-not-equal? (equal-hash foo) (equal-hash bar))
+
+  (define-record-type baz
+    (fields a))
+
+  (check-not-equal? (make-baz 1) (make-baz 1))
+  (check-not-equal? (make-baz 1) (make-baz 2))
+  (check-not-equal? foo bar)
 
   (void))
 

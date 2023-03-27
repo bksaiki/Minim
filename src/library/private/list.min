@@ -8,7 +8,8 @@
         filter
         foldl foldr
         assoc
-        enumerate)
+        enumerate
+        index-of)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -54,7 +55,7 @@
           [(pair? xs) (if (f (car xs))
                           (loop (cdr xs) (cons (car xs) acc))
                           (loop (cdr xs) acc))]
-          [else       (error 'map "expected a list" lst)])))
+          [else       (error 'filter "expected a list" lst)])))
 
 (define (foldl f acc lst)
   (let loop ([xs lst] [acc acc])
@@ -81,3 +82,10 @@
   (let loop ([lst lst] [i 0] [acc '()])
     (cond [(null? lst) (reverse acc)]
           [else (loop (cdr lst) (+ i 1) (cons (f (car lst) i) acc))])))
+
+(define (index-of k lst)
+  (let loop ([lst lst] [i 0])
+    (cond
+      [(null? lst) #f]
+      [(equal? k (car lst)) i]
+      [else (loop (cdr lst) (+ i 1))])))

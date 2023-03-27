@@ -62,7 +62,7 @@ minim_object *to_syntax(minim_object *o) {
         return make_syntax(it, minim_false);
 
     default:
-        fprintf(stderr, "datum->syntax: cannot convert to syntax");
+        fprintf(stderr, "datum->syntax: cannot convert to syntax\n");
         minim_shutdown(1);
     }
 }
