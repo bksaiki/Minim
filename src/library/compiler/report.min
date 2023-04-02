@@ -1,0 +1,16 @@
+;;;
+;;; Compiler reports (modules)
+;;;
+
+(import "../base.min")
+(export make-compiled-report
+        compiled-report?
+        compiled-report-arch
+        compiled-report-os
+        compiled-report-literals
+        compiled-report-procedures
+        compiled-report-links)
+
+(define-record-type compiled-report
+  (fields arch os literals procedures links)
+  (opaque #t))

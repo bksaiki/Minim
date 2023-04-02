@@ -2,37 +2,11 @@
 ;;;  Compiler entry point
 ;;;   
 
-(import "base.min" "module.min"
+(import "base.min"
+        "module.min"
         "compiler/common.min"
+        "compiler/report.min"
         "compiler/x86-64.min")
-
-; syntax
-(define (stx-pair? stx)
-  (if (pair? stx)
-      #t
-      (if (syntax? stx)
-          (pair? (syntax-e stx))
-          #f)))
-
-(define (stx-null? stx)
-  (if (null? stx)
-      #t
-      (if (syntax? stx)
-          (null? (syntax-e stx))
-          #f)))
-
-(define (stx-car stx)
-  (if (syntax? stx)
-      (car (syntax-e stx))
-      (car stx)))
-
-(define (stx-cdr stx)
-  (if (syntax? stx)
-      (cdr (syntax-e stx))
-      (cdr stx)))
-
-(define (identifier? stx)
-  (and (syntax? stx) (symbol? (syntax-e stx))))
 
 (define ((_-form? form-name) expr)
   (and (stx-pair? expr)
@@ -533,7 +507,7 @@
        (list (list 'make-void)))]
     [else (flatten/expr expr procedure! literal! label!)]))
 
-(define (compile/file path enter?)
+(define (compile/file path)
   (define top-levels '())
   (define procedures '())
   (define literals '())
@@ -607,11 +581,24 @@
   (define procedures (map car assembly-info))
   (define links (map cdr assembly-info))
 
+  ; report
+  (make-compiled-report 'x86-64
+                        'linux-unknown
+                        literals
+                        procedures
+                        links))
+
+
+(define (run-compiled-module! report)
+  ; unpack report
+  (define literals (compiled-report-literals report))
+  (define procedures (compiled-report-procedures report))
+  (define links (compiled-report-links report))
+
   ; install literals
   (define literal-address (install-literal-bundle! literals))
-  ; (printf "installed literals\n")
 
-  ; install procedures (with missing addresses)
+  ; install template to get initial address
   (define unlinked-code (map (lambda (ss) (apply append ss)) procedures))
   (define template-address (install-procedure-bundle! unlinked-code))
 
@@ -626,32 +613,20 @@
 
   (define linked (map (lambda (p l) (link/x86-64 p l link-info)) procedures links))
   (define code (map (lambda (ss) (apply append ss)) linked))
-  ; (printf "linked symbols\n")
 
   ; reinstall
   (reinstall-procedure-bundle! template-address code)
-  ; (printf "installed procedures\n")
 
-  ; report
-  (define report
-    (list
-      (cons 'arch 'x86-64)
-      (cons 'os 'linux-unknown)
-      (cons 'top-level top-levels)
-      (cons 'literals literals)
-      (cons 'assembled procedures)
-      (cons 'links links)))
+  ; enter
+  (call-with-values
+    (lambda () (enter-compiled! template-address))
+    (lambda result
+      (let loop ([result result])
+        (unless (null? result)
+          (write (car result)) (newline)
+          (loop (cdr result))))))
 
-  (when enter?
-    (call-with-values
-      (lambda () (enter-compiled! template-address))
-      (lambda result
-        (let loop ([result result])
-          (unless (null? result)
-            (write (car result)) (newline)
-            (loop (cdr result)))))))
-
-  report)
+  (void))
 
 ; entry point
 (define (main args)
@@ -683,10 +658,11 @@
       (define name (car fnames))
       (define path
         (cond
-          [(is-absolute-path? name)  name]
+          [(is-absolute-path? name) name]
           [else (build-path (current-directory) name)]))
       (printf "<compiling ~a>\n" name)
-      (compile/file path enter?)
+      (define report (compile/file path))
+      (when enter? (run-compiled-module! report))
       (loop (cdr fnames)))))
 
 (main (command-line))
