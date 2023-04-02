@@ -22,6 +22,15 @@
 #error "compiler not supported"
 #endif
 
+// System constants (assumes 64-bits)
+
+typedef char            minim_char;
+typedef uint32_t        minim_wchar;
+typedef uint8_t         minim_byte;
+typedef uintptr_t       minim_uptr;
+
+#define ptr_size        8
+
 // Constants
 
 #define MINIM_VERSION      "0.3.5"
@@ -377,6 +386,7 @@ minim_object *call_with_values(minim_object *producer, minim_object *consumer, m
 
 int is_list(minim_object *x);
 long list_length(minim_object *xs);
+long improper_list_length(minim_object *xs);
 minim_object *make_assoc(minim_object *xs, minim_object *ys);
 minim_object *copy_list(minim_object *xs);
 
@@ -394,6 +404,28 @@ minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
 void write_object2(FILE *out, minim_object *o, int quote, int display);
 void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name);
+
+// FASL
+
+typedef enum {
+    FASL_NULL = 0,
+    FASL_TRUE,
+    FASL_FALSE,
+    FASL_EOF,
+    FASL_VOID,
+    FASL_SYMBOL,
+    FASL_STRING,
+    FASL_FIXNUM,
+    FASL_CHAR,
+    FASL_PAIR,
+    FASL_VECTOR,
+    FASL_HASHTABLE,
+    FASL_BASE_RTD,
+    FASL_RECORD,
+} fasl_type;
+
+minim_object *read_fasl(FILE *out);
+void write_fasl(FILE *out, minim_object *o);
 
 // Interpreter
 
@@ -804,6 +836,9 @@ DEFINE_PRIM_PROC(write_char);
 DEFINE_PRIM_PROC(newline);
 DEFINE_PRIM_PROC(fprintf);
 DEFINE_PRIM_PROC(printf);
+// FASL
+DEFINE_PRIM_PROC(write_fasl)
+DEFINE_PRIM_PROC(read_fasl)
 // System
 DEFINE_PRIM_PROC(load);
 DEFINE_PRIM_PROC(error);

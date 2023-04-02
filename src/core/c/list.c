@@ -35,6 +35,18 @@ long list_length(minim_object *xs) {
     return length;
 }
 
+long improper_list_length(minim_object *xs) {
+    minim_object *it = xs;
+    long length = 0;
+
+    while (minim_is_pair(it)) {
+        it = minim_cdr(it);
+        ++length;
+    }
+
+    return length;
+}
+
 // Makes an association list.
 // Unsafe: only iterates on `xs`.
 minim_object *make_assoc(minim_object *xs, minim_object *ys) {

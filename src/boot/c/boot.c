@@ -234,6 +234,9 @@ void populate_env(minim_object *env) {
     add_procedure("newline", newline_proc, 0, 1);
     add_procedure("fprintf", fprintf_proc, 2, ARG_MAX);
     add_procedure("printf", printf_proc, 1, ARG_MAX);
+
+    add_procedure("read-fasl", read_fasl_proc, 1, 1);
+    add_procedure("write-fasl", write_fasl_proc, 1, 2);
     
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 2, ARG_MAX);
