@@ -137,6 +137,28 @@ int test_vector() {
     return passed;
 }
 
+int test_hashtable() {
+    passed = 1;
+
+    check_fasl_equal("(make-hashtable)", "#<hashtable>");
+
+    check_fasl_equal("(begin "
+                       "(define ht (make-hashtable)) "
+                       "(hashtable-set! ht 'a 1) "
+                       "ht)",
+                     "#<hashtable (a . 1)>");
+    
+    check_fasl_equal("(begin "
+                       "(define ht (make-hashtable)) "
+                       "(hashtable-set! ht 'a 1) "
+                       "(hashtable-set! ht 'b 2) "
+                       "(hashtable-set! ht 'c 3) "
+                       "ht)",
+                     "#<hashtable (b . 2) (a . 1) (c . 3)>");
+
+    return passed;
+}
+
 int test_record() {
     passed = 1;
 
@@ -170,6 +192,7 @@ void run_tests() {
     log_test("simple", test_simple);
     log_test("pair", test_pair);
     log_test("vector", test_vector);
+    log_test("hashtable", test_hashtable);
     log_test("record", test_record);
 }
 

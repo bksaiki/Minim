@@ -149,6 +149,23 @@ static minim_object* read_fasl_vector(FILE *in) {
     return vec;
 }
 
+static minim_object* read_fasl_hashtable(FILE *in) {
+    minim_object *ht, *h_fn, *e_fn, *k, *v;
+    long size, i;
+
+    size = read_fasl_uptr(in);
+    h_fn = make_prim_proc(equal_hash_proc, "equal-hash", 1, 1);
+    e_fn = make_prim_proc(equal_proc, "equal?", 2, 2);
+    ht = make_hashtable(h_fn, e_fn);
+    for (i = 0; i < size; i++) {
+        k = read_fasl(in);
+        v = read_fasl(in);
+        hashtable_set(ht, k, v);
+    }
+
+    return ht;
+}
+
 static minim_object* read_fasl_record(FILE *in) {
     minim_object *rec, *rtd;
     long len, i;
@@ -192,6 +209,8 @@ minim_object *read_fasl(FILE *in) {
         return minim_empty_vec;
     case FASL_VECTOR:
         return read_fasl_vector(in);
+    case FASL_HASHTABLE:
+        return read_fasl_hashtable(in);
     case FASL_BASE_RTD:
         return minim_base_rtd;
     case FASL_RECORD:
@@ -257,6 +276,7 @@ static void write_fasl_vector(FILE *out, minim_object *v) {
 }
 
 // Serializes a hashtable
+// WARN: internal structure of hashtable may be different
 // TODO: equivalence procedure
 static void write_fasl_hashtable(FILE *out, minim_object *ht) {
     minim_object *b;
@@ -340,6 +360,8 @@ void write_fasl(FILE *out, minim_object *o) {
 //
 
 minim_object *read_fasl_proc(int argc, minim_object **args) {
+    // (-> any)
+    // (-> input-port any)
     minim_object *in_p;
 
     in_p = args[0];
