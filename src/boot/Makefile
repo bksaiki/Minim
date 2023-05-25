@@ -17,10 +17,7 @@ SRCS 		:= $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY))
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
-TESTS		:= $(shell find $(TEST_DIR) -name "*.c")
-TEST_EXES	:= $(TESTS:%.c=$(BUILD_DIR)/%)
-
-CFLAGS		:= -Wall -std=c11 -O3 -g
+CFLAGS		:= -Wall -std=c11 -g
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -L$(CORE_DIR) -lgc -lminim
 
@@ -38,8 +35,9 @@ all: $(CONFIG) $(OBJS)
 profile:
 	$(MAKE) CFLAGS="$(CFLAGS) -pg" all
 
-test: $(CONFIG) $(BUILD_DIR)/test-prims
-	$(BUILD_DIR)/test-prims
+test: $(CONFIG) $(BUILD_DIR)/prims $(BUILD_DIR)/fasl
+	$(BUILD_DIR)/prims
+	$(BUILD_DIR)/fasl
 
 clean:
 	$(RM) build

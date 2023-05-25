@@ -26,8 +26,6 @@ READLINK	:= readlink -f
 .PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
 .SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-all: $(LIBNAME)
-
 $(LIBNAME): $(CONFIG) $(OBJS)
 	ar -rc $(LIBNAME) $(OBJS)
 
@@ -47,4 +45,4 @@ $(BUILD_DIR)%/.:
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
-.PHONY: all build clean
+.PHONY: clean
