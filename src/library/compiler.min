@@ -582,11 +582,9 @@
   (define links (map cdr assembly-info))
 
   ; report
-  (make-compiled-report 'x86-64
-                        'linux-unknown
-                        literals
-                        procedures
-                        links))
+  (make-compiled-report path
+                        'x86-64 'linux-unknown
+                        literals procedures links))
 
 
 (define (run-compiled-module! report)
@@ -628,41 +626,54 @@
 
   (void))
 
+; report writer
+(define (write-report report where fasl?)
+  (define save-file (open-output-file where))
+  (cond
+    [fasl?
+     (write-fasl (compiled-report->list report) save-file)]
+    [else
+     (write (compiled-report->list report) save-file)])
+  (close-output-port save-file))
+
 ; entry point
 (define (main args)
   ; flags
   (define enter? #f)
+  (define save #f)
+  (define fasl? #f)
   ; flag handling
-  (define (handle-flag! flag)
-    (cond
-      [(equal? flag "-e")
-       (set! enter? #t)
-       #t]
-      [(equal? flag "--")
-       #f]
-      [else
-       #f]))
-
   (define fnames
     (let loop ([args (cdr args)])
       (cond
-        [(null? args)
-         (void)]
-        [(handle-flag! (car args))
+        [(null? args) '()]
+        [(equal? (car args) "-e")
+         (set! enter? #t)
          (loop (cdr args))]
-        [else
-         args])))
-  
+        [(equal? (car args) "-f")
+         (set! fasl? #t)
+         (loop (cdr args))]
+        [(equal? (car args) "-s")
+         (when (null? (cdr args))
+           (error 'main "missing argument after flag '-s'"))
+         (set! save (cadr args))
+         (loop (cddr args))]
+        [(equal? (car args) "--") (cdr args)]
+        [else args])))
+
+  (define (->absolute-path path)
+    (if (is-absolute-path? path)
+        path
+        (build-path (current-directory) path)))
+
   (let loop ([fnames fnames])
     (unless (null? fnames)
       (define name (car fnames))
-      (define path
-        (cond
-          [(is-absolute-path? name) name]
-          [else (build-path (current-directory) name)]))
+      (define path (->absolute-path name))
       (printf "<compiling ~a>\n" name)
       (define report (compile/file path))
       (when enter? (run-compiled-module! report))
+      (when save (write-report report (->absolute-path save) fasl?))
       (loop (cdr fnames)))))
 
 (main (command-line))
