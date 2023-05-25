@@ -149,6 +149,19 @@ static minim_object* read_fasl_vector(FILE *in) {
     return vec;
 }
 
+static minim_object* read_fasl_record(FILE *in) {
+    minim_object *rec, *rtd;
+    long len, i;
+
+    len = read_fasl_uptr(in);
+    rtd = read_fasl(in);
+    rec = make_record(rtd, len);
+    for (i = 0; i < len; i++)
+        minim_record_ref(rec, i) = read_fasl(in);
+
+    return rec;
+}
+
 minim_object *read_fasl(FILE *in) {
     fasl_type type;
     
@@ -179,6 +192,10 @@ minim_object *read_fasl(FILE *in) {
         return minim_empty_vec;
     case FASL_VECTOR:
         return read_fasl_vector(in);
+    case FASL_BASE_RTD:
+        return minim_base_rtd;
+    case FASL_RECORD:
+        return read_fasl_record(in);
     
     default:
         fprintf(stderr, "read_fasl: malformed FASL data\n");

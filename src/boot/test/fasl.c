@@ -137,10 +137,40 @@ int test_vector() {
     return passed;
 }
 
+int test_record() {
+    passed = 1;
+
+    check_fasl_equal("(make-record-type-descriptor 'foo #f #f #f #f #())", "#<record-type:foo>");
+    check_fasl_equal("($make-record "
+                      "(make-record-type-descriptor 'foo #f #f #f #f #()))",
+                     "#<foo>");
+
+    check_fasl_equal("(make-record-type-descriptor 'bar #f #f #f #f "
+                      "#((immutable a)))",
+                     "#<record-type:bar>");
+    check_fasl_equal("($make-record "
+                      "(make-record-type-descriptor 'bar #f #f #f #f "
+                       "#((immutable a)))"
+                      "1)",
+                     "#<bar>");
+
+    check_fasl_equal("(make-record-type-descriptor 'baz #f #f #f #f "
+                      "#((immutable a) (immutable b) (immutable c)))",
+                     "#<record-type:baz>");
+    check_fasl_equal("($make-record "
+                      "(make-record-type-descriptor 'baz #f #f #f #f "
+                       "#((immutable a) (immutable b) (immutable c)))"
+                      "1 2 3)",
+                     "#<baz>");
+
+    return passed;
+}
+
 void run_tests() {
     log_test("simple", test_simple);
     log_test("pair", test_pair);
     log_test("vector", test_vector);
+    log_test("record", test_record);
 }
 
 int main(int argc, char **argv) {
