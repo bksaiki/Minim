@@ -113,6 +113,28 @@ static minim_object *read_fasl_char(FILE *in) {
     return make_char(read_fasl_byte(in));
 }
 
+static minim_object *read_fasl_pair(FILE *in) {
+    minim_object *head, *it;
+    long i, len;
+
+    // improper list has at least one element
+    // set the head and hold on to it
+    len = read_fasl_uptr(in);
+    head = make_pair(read_fasl(in), minim_null);
+    it = head;
+
+    // iteratively read the rest of the proper elements
+    for (i = 1; i < len; i++) {
+        minim_cdr(it) = make_pair(read_fasl(in), minim_cdr(it));
+        it = minim_cdr(it);
+    }
+
+    // read the tail
+    minim_cdr(it) = read_fasl(in);
+
+    return head;
+}
+
 minim_object *read_fasl(FILE *in) {
     fasl_type type;
     
@@ -137,6 +159,8 @@ minim_object *read_fasl(FILE *in) {
         return read_fasl_fixnum(in);
     case FASL_CHAR:
         return read_fasl_char(in);
+    case FASL_PAIR:
+        return read_fasl_pair(in);
     
     default:
         fprintf(stderr, "read_fasl: malformed FASL data\n");

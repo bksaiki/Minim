@@ -89,19 +89,45 @@ int test_simple() {
     check_fasl_equal("eof", "#<eof>");
     check_fasl_equal("(void)", "#<void>");
 
+    check_fasl_equal("#\\a", "#\\a");
+    check_fasl_equal("#\\b", "#\\b");
+    check_fasl_equal("#\\0", "#\\0");
+
     check_fasl_equal("'a", "'a");
     check_fasl_equal("'abc", "'abc");
     check_fasl_equal("'abc123", "'abc123");
 
+    check_fasl_equal("\"\"", "\"\"");
     check_fasl_equal("\"a\"", "\"a\"");
     check_fasl_equal("\"abc\"", "\"abc\"");
     check_fasl_equal("\"abc123\"", "\"abc123\"");
+
+    check_fasl_equal("0", "0");
+    check_fasl_equal("123", "123");
+    check_fasl_equal("123456", "123456");
+
+    return passed;
+}
+
+int test_pair() {
+    passed = 1;
+
+    check_fasl_equal("'(1 . 2)", "'(1 . 2)");
+    check_fasl_equal("'(1 2 . 3)", "'(1 2 . 3)");
+    check_fasl_equal("'(1 2 3 . 4)", "'(1 2 3 . 4)");
+
+    check_fasl_equal("'(1)", "'(1)");
+    check_fasl_equal("'(1 2)", "'(1 2)");
+    check_fasl_equal("'(1 2 3)", "'(1 2 3)");
+
+    check_fasl_equal("'((a . 1) (b . 2) (c . 3))", "'((a . 1) (b . 2) (c . 3))");
 
     return passed;
 }
 
 void run_tests() {
     log_test("simple", test_simple);
+    log_test("pair", test_pair);
 }
 
 int main(int argc, char **argv) {
