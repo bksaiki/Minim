@@ -30,6 +30,8 @@
  * 
  *        ::= {void}
  * 
+ *        ::= {empty vector}
+ * 
  *        ::= {symbol} <word n> <byte char1> ... <byte charn>
  * 
  *        ::= {string} <word n> <byte char1> ... <byte charn>
@@ -135,6 +137,18 @@ static minim_object *read_fasl_pair(FILE *in) {
     return head;
 }
 
+static minim_object* read_fasl_vector(FILE *in) {
+    minim_object *vec;
+    long i, len;
+
+    len = read_fasl_uptr(in);
+    vec = make_vector(len, NULL);
+    for (i = 0; i < len; ++i)
+        minim_vector_ref(vec, i) = read_fasl(in);
+
+    return vec;
+}
+
 minim_object *read_fasl(FILE *in) {
     fasl_type type;
     
@@ -161,6 +175,10 @@ minim_object *read_fasl(FILE *in) {
         return read_fasl_char(in);
     case FASL_PAIR:
         return read_fasl_pair(in);
+    case FASL_EMPTY_VECTOR:
+        return minim_empty_vec;
+    case FASL_VECTOR:
+        return read_fasl_vector(in);
     
     default:
         fprintf(stderr, "read_fasl: malformed FASL data\n");
@@ -277,8 +295,12 @@ void write_fasl(FILE *out, minim_object *o) {
         write_fasl_type(out, FASL_PAIR);
         write_fasl_pair(out, o);
     } else if (minim_is_vector(o)) {
-        write_fasl_type(out, FASL_VECTOR);
-        write_fasl_vector(out, o);
+        if (minim_is_empty_vec(o)) {
+            write_fasl_type(out, FASL_EMPTY_VECTOR);
+        } else {
+            write_fasl_type(out, FASL_VECTOR);
+            write_fasl_vector(out, o);
+        }
     } else if (minim_is_hashtable(o)) {
         write_fasl_type(out, FASL_HASHTABLE);
         write_fasl_hashtable(out, o);

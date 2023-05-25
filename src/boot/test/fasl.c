@@ -125,9 +125,22 @@ int test_pair() {
     return passed;
 }
 
+int test_vector() {
+    passed = 1;
+
+    check_fasl_equal("'#()", "'#()");
+    check_fasl_equal("'#(1)", "'#(1)");
+    check_fasl_equal("'#(1 2 3)", "'#(1 2 3)");
+
+    check_fasl_equal("'#((a . 1) (b . 2) (c . 3))", "'#((a . 1) (b . 2) (c . 3))");
+
+    return passed;
+}
+
 void run_tests() {
     log_test("simple", test_simple);
     log_test("pair", test_pair);
+    log_test("vector", test_vector);
 }
 
 int main(int argc, char **argv) {

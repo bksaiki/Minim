@@ -418,6 +418,7 @@ typedef enum {
     FASL_FIXNUM,
     FASL_CHAR,
     FASL_PAIR,
+    FASL_EMPTY_VECTOR,
     FASL_VECTOR,
     FASL_HASHTABLE,
     FASL_BASE_RTD,
