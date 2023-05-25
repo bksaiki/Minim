@@ -32,27 +32,34 @@
  * 
  *        ::= {empty vector}
  * 
- *        ::= {symbol} <word n> <byte char1> ... <byte charn>
+ *        ::= {symbol} <uptr n> <byte char1> ... <byte charn>
  * 
- *        ::= {string} <word n> <byte char1> ... <byte charn>
+ *        ::= {string} <uptr n> <byte char1> ... <byte charn>
  * 
- *        ::= {fixnum} <word value>
+ *        ::= {fixnum} <uptr value>
  * 
  *        ::= {char} <byte>
  *
- *        ::= {pair} <word n> <fasl elt1> ... <fasl eltn> <fasl cdr>
+ *        ::= {pair} <uptr n> <fasl elt1> ... <fasl eltn> <fasl cdr>
  * 
- *        ::= {vector} <word n> <fasl elt1> ... <fasl eltn>
+ *        ::= {vector} <uptr n> <fasl elt1> ... <fasl eltn>
  *
- *        ::= {hashtable} <word n> 
+ *        ::= {hashtable} <uptr n> 
  *                        <keyval kv1> ... <keyval kvn>
  *            <keyval> -> <fasl key> <fasl val>
  * 
  *        ::= {base rtd}
  * 
- *        ::= {record} <word n>
+ *        ::= {record} <uptr n>
  *                     <fasl rtd>
  *                     <field elt1> ... <field eltn>
+ * 
+ * <uptr n> ::= <ubyte1> ... <ubyte1> <ubyte0>
+ * <ubyte1> ::= { k | 1, 0 <= k < 128 }
+ * <ubyte0> ::= { k | 0, 0 <= k < 128 }
+ *              ubytes encode a mixed-length unsigned integer
+ *              each byte stores 7 bits of the uptr and the low
+ *              bit signals if the next byte is part of the same uptr
  *
 */
 
@@ -66,16 +73,23 @@
 #define read_fasl_type(ip)       ((minim_byte) fgetc(ip))
 #define read_fasl_byte(ip)       ((minim_byte) fgetc(ip))
 
-// Unserializes a word (64-bits) with LSB first
+// Unserializes a word that is encoded using a variable-length
+// block encoding 7-bits of the word per byte
 static minim_uptr read_fasl_uptr(FILE *in) {
     minim_uptr u = 0;
-    minim_byte b = 0;
-    int i;
+    minim_byte b, c;
+    int offset = 0;
 
-    for (i = 0; i < ptr_size; ++i) {
+    do {
+        // read and decompose the block
         b = read_fasl_byte(in);
-        u |= (((minim_uptr) b) << (8 * i));
-    }
+        c = b & 0x1;
+        b >>= 1;
+
+        // shift it into the right place
+        u |= (((minim_uptr) b) << offset);
+        offset += 7;
+    } while (c);
 
     return u;
 }
@@ -230,12 +244,23 @@ minim_object *read_fasl(FILE *in) {
 #define write_fasl_type(o, t)       (fputc(((minim_byte) (t)), (o)))
 #define write_fasl_byte(o, b)       (fputc(((minim_byte) (b)), (o)))
 
-// Serializes a word (64-bits) with LSB first
+// Serializes a word using variable-length block
+// encoding 7-bits of the word per byte
 static void write_fasl_uptr(FILE *out, minim_uptr u) {
-    for (int i = 0; i < ptr_size; ++i) {
-        write_fasl_byte(out, u & 0xFF);
-        u >>= 8;
-    }
+    minim_byte b;
+
+    do {
+        // extract 7 lowest bits
+        b = u & 0x7F;
+        u >>= 7;
+
+        // prepare ubyte
+        b <<= 1;
+        b |= (u != 0) ? 1 : 0;
+
+        // write
+        write_fasl_byte(out, b);
+    } while (u != 0);
 }
 
 // Serializes a symbol
