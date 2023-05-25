@@ -181,17 +181,12 @@
                 (loop2 (cdr results) (car results))]))))])))
 
 (define ($load-or-import-no-check path print-handler result-handler)
-  ;; paths
-  (define cwd (current-directory))
-  (define new-cwd (car (split-path path)))
   ;; load expressions
   (define-values (exprs module-xforms imports exports stx-env)
     ($load-module path))
   ;; evaluate
-  (current-directory new-cwd)
   (define env ($eval-environment $base-env imports))
   (define last ($eval-exprs exprs env print-handler))
-  (current-directory cwd)
   ;; handle exports
   (define export-values '())
   (define export-xforms '())
