@@ -3,7 +3,7 @@
 ;;;
 
 (import "../base.min" "common.min" "registers.min")
-(export assemble/x86-64 link/x86-64)
+(export assemble/x86-64 link/x86-64 x86-64-registers)
 
 ;
 ; Constants

@@ -3,16 +3,23 @@
 ;;;
 
 (import "../base.min")
-(export define-registers make-register-set validate-register-set!)
+(export define-registers
+        make-register-set
+        validate-register-set!
+        make-register-allocator
+        register-allocator-new)
 
 (define required-registers '(%cc %sp %env %ret))
 
+;;
+;;  Machine-dependent register set
+;;
+
 (define-record-type register-set
-  (fields registers aliases)
+  (fields real aliases)
   (opaque #t))
 
 (define (validate-register-set! rset)
-  (define registers (register-set-registers rset))
   (define aliases (register-set-aliases rset))
   (for-each (lambda (r)
               (unless (assoc r aliases)
@@ -49,3 +56,28 @@
                rset))))]
     [(_ . _)
      (syntax-error 'define-registers "bad syntax" stx)]))
+
+;;
+;;  Register allocator
+;;
+
+(define-record-type register-allocator
+  (fields target-set virtual-set)
+  (opaque #t)
+  (protocol
+    (lambda (p)
+      (lambda (rset)
+        (p rset '())))))
+
+(define $make-register-allocator
+  (record-constructor register-allocator))
+
+(define (register-allocator-has-register? allocator r)
+  (define rset (register-allocator-target-set allocator))
+  (assoc r (register-set-real rset)))
+
+(define (register-allocator-new allocator)
+  (define vset (register-allocator-virtual-set allocator))
+  (define name (string->symbol (string-append "%t" (string->number (length vset)))))
+  (define allocator* ($make-register-allocator rset (cons name vset)))
+  (values name allocator*))
