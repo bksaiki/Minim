@@ -42,7 +42,7 @@ void env_define_var_no_check(minim_object *env, minim_object *var, minim_object 
 
     frame = minim_env_bindings(env);
     if (minim_is_vector(frame)) {
-        minim_object *new_frame, *bind, *hash, *eq;
+        minim_object *new_frame, *bind;
 
         // small namespace
         for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
@@ -53,9 +53,7 @@ void env_define_var_no_check(minim_object *env, minim_object *var, minim_object 
         }
 
         // too small: convert to a large namespace
-        hash = make_prim_proc(eq_hash_proc, "eq-hash", 1, 1);
-        eq = make_prim_proc(eq_proc, "eq?", 2, 2);
-        new_frame = make_hashtable2(hash, eq, ENVIRONMENT_VECTOR_MAX + 1);
+        new_frame = make_hashtable2(eq_hash_proc_obj, eq_proc_obj, ENVIRONMENT_VECTOR_MAX + 1);
         for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
             bind = minim_vector_ref(frame, i);
             hashtable_set(new_frame, minim_car(bind), minim_cdr(bind));

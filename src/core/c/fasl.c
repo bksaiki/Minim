@@ -168,9 +168,7 @@ static minim_object* read_fasl_hashtable(FILE *in) {
     long size, i;
 
     size = read_fasl_uptr(in);
-    h_fn = make_prim_proc(equal_hash_proc, "equal-hash", 1, 1);
-    e_fn = make_prim_proc(equal_proc, "equal?", 2, 2);
-    ht = make_hashtable(h_fn, e_fn);
+    ht = make_hashtable(equal_hash_proc_obj, equal_proc_obj);
     for (i = 0; i < size; i++) {
         k = read_fasl(in);
         v = read_fasl(in);

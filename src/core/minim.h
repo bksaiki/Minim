@@ -41,7 +41,7 @@ typedef uintptr_t       minim_uptr;
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
-#define ENVIRONMENT_VECTOR_MAX      10
+#define ENVIRONMENT_VECTOR_MAX      6
 
 // Arity
 
@@ -216,15 +216,6 @@ typedef struct {
 
 // Special objects
 
-extern minim_object *minim_null;
-extern minim_object *minim_empty_vec;
-extern minim_object *minim_true;
-extern minim_object *minim_false;
-extern minim_object *minim_eof;
-extern minim_object *minim_void;
-extern minim_object *minim_values;
-extern minim_object *minim_base_rtd;
-
 extern minim_object *quote_symbol;
 extern minim_object *define_symbol;
 extern minim_object *define_values_symbol;
@@ -243,6 +234,20 @@ extern minim_object *or_symbol;
 extern minim_object *syntax_symbol;
 extern minim_object *syntax_loc_symbol;
 extern minim_object *quote_syntax_symbol;
+
+extern minim_object *minim_null;
+extern minim_object *minim_empty_vec;
+extern minim_object *minim_true;
+extern minim_object *minim_false;
+extern minim_object *minim_eof;
+extern minim_object *minim_void;
+extern minim_object *minim_values;
+extern minim_object *minim_base_rtd;
+
+extern minim_object *eq_proc_obj;
+extern minim_object *equal_proc_obj;
+extern minim_object *eq_hash_proc_obj;
+extern minim_object *equal_hash_proc_obj;
 
 // Simple predicates
 
