@@ -203,4 +203,8 @@ minim_object *current_directory_proc(int argc, minim_object **args) {
 
 minim_object *command_line_proc(int argc, minim_object **args) {
     return command_line(current_thread());
- }
+}
+
+minim_object *version_proc(int argc, minim_object **args) {
+    return make_string(MINIM_VERSION);
+}

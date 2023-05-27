@@ -371,14 +371,12 @@ minim_object *is_hashtable_proc(int argc, minim_object **args) {
 
 minim_object *make_eq_hashtable_proc(int argc, minim_object **args) {
     // (-> hashtable)
-    return make_hashtable(make_prim_proc(eq_hash_proc, "eq-hash", 1, 1),
-                          make_prim_proc(eq_proc, "eq?", 2, 2));
+    return make_hashtable(eq_hash_proc_obj, eq_proc_obj);
 }
 
 minim_object *make_hashtable_proc(int argc, minim_object **args) {
     // (-> hashtable)
-    return make_hashtable(make_prim_proc(equal_hash_proc, "equal-hash", 1, 1),
-                          make_prim_proc(equal_proc, "equal?", 2, 2));
+    return make_hashtable(equal_hash_proc_obj, equal_proc_obj);
 }
 
 minim_object *hashtable_size_proc(int argc, minim_object **args) {

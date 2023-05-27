@@ -22,6 +22,15 @@
 #error "compiler not supported"
 #endif
 
+// System constants (assumes 64-bits)
+
+typedef char            minim_char;
+typedef uint32_t        minim_wchar;
+typedef uint8_t         minim_byte;
+typedef uintptr_t       minim_uptr;
+
+#define ptr_size        8
+
 // Constants
 
 #define MINIM_VERSION      "0.3.5"
@@ -32,7 +41,7 @@
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
-#define ENVIRONMENT_VECTOR_MAX      10
+#define ENVIRONMENT_VECTOR_MAX      6
 
 // Arity
 
@@ -207,15 +216,6 @@ typedef struct {
 
 // Special objects
 
-extern minim_object *minim_null;
-extern minim_object *minim_empty_vec;
-extern minim_object *minim_true;
-extern minim_object *minim_false;
-extern minim_object *minim_eof;
-extern minim_object *minim_void;
-extern minim_object *minim_values;
-extern minim_object *minim_base_rtd;
-
 extern minim_object *quote_symbol;
 extern minim_object *define_symbol;
 extern minim_object *define_values_symbol;
@@ -234,6 +234,20 @@ extern minim_object *or_symbol;
 extern minim_object *syntax_symbol;
 extern minim_object *syntax_loc_symbol;
 extern minim_object *quote_syntax_symbol;
+
+extern minim_object *minim_null;
+extern minim_object *minim_empty_vec;
+extern minim_object *minim_true;
+extern minim_object *minim_false;
+extern minim_object *minim_eof;
+extern minim_object *minim_void;
+extern minim_object *minim_values;
+extern minim_object *minim_base_rtd;
+
+extern minim_object *eq_proc_obj;
+extern minim_object *equal_proc_obj;
+extern minim_object *eq_hash_proc_obj;
+extern minim_object *equal_hash_proc_obj;
 
 // Simple predicates
 
@@ -377,6 +391,7 @@ minim_object *call_with_values(minim_object *producer, minim_object *consumer, m
 
 int is_list(minim_object *x);
 long list_length(minim_object *xs);
+long improper_list_length(minim_object *xs);
 minim_object *make_assoc(minim_object *xs, minim_object *ys);
 minim_object *copy_list(minim_object *xs);
 
@@ -394,6 +409,29 @@ minim_object *read_object(FILE *in);
 void write_object(FILE *out, minim_object *o);
 void write_object2(FILE *out, minim_object *o, int quote, int display);
 void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name);
+
+// FASL
+
+typedef enum {
+    FASL_NULL = 0,
+    FASL_TRUE,
+    FASL_FALSE,
+    FASL_EOF,
+    FASL_VOID,
+    FASL_SYMBOL,
+    FASL_STRING,
+    FASL_FIXNUM,
+    FASL_CHAR,
+    FASL_PAIR,
+    FASL_EMPTY_VECTOR,
+    FASL_VECTOR,
+    FASL_HASHTABLE,
+    FASL_BASE_RTD,
+    FASL_RECORD,
+} fasl_type;
+
+minim_object *read_fasl(FILE *out);
+void write_fasl(FILE *out, minim_object *o);
 
 // Interpreter
 
@@ -804,12 +842,16 @@ DEFINE_PRIM_PROC(write_char);
 DEFINE_PRIM_PROC(newline);
 DEFINE_PRIM_PROC(fprintf);
 DEFINE_PRIM_PROC(printf);
+// FASL
+DEFINE_PRIM_PROC(write_fasl)
+DEFINE_PRIM_PROC(read_fasl)
 // System
 DEFINE_PRIM_PROC(load);
 DEFINE_PRIM_PROC(error);
 DEFINE_PRIM_PROC(current_directory);
 DEFINE_PRIM_PROC(exit);
 DEFINE_PRIM_PROC(command_line);
+DEFINE_PRIM_PROC(version);
 // Memory
 DEFINE_PRIM_PROC(install_literal_bundle);
 DEFINE_PRIM_PROC(install_proc_bundle);

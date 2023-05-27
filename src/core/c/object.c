@@ -4,15 +4,6 @@
 
 #include "../minim.h"
 
-minim_object *minim_null;
-minim_object *minim_empty_vec;
-minim_object *minim_true;
-minim_object *minim_false;
-minim_object *minim_eof;
-minim_object *minim_void;
-minim_object *minim_values;
-minim_object *minim_base_rtd;
-
 minim_object *quote_symbol;
 minim_object *define_symbol;
 minim_object *define_values_symbol;
@@ -29,6 +20,20 @@ minim_object *else_symbol;
 minim_object *and_symbol;
 minim_object *or_symbol;
 minim_object *quote_syntax_symbol;
+
+minim_object *minim_null;
+minim_object *minim_empty_vec;
+minim_object *minim_true;
+minim_object *minim_false;
+minim_object *minim_eof;
+minim_object *minim_void;
+minim_object *minim_values;
+minim_object *minim_base_rtd;
+
+minim_object *eq_proc_obj;
+minim_object *equal_proc_obj;
+minim_object *eq_hash_proc_obj;
+minim_object *equal_hash_proc_obj;
 
 int minim_is_eq(minim_object *a, minim_object *b) {
     if (a == b)

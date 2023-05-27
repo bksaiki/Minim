@@ -71,9 +71,8 @@ void populate_env(minim_object *env) {
     add_procedure("symbol->string", symbol_to_string_proc, 1, 1);
     add_procedure("string->symbol", string_to_symbol_proc, 1, 1);
 
-    add_procedure("eq?", eq_proc, 2, 2);
-    add_procedure("equal?", equal_proc, 2, 2);
-
+    add_value("eq?", eq_proc_obj);
+    add_value("equal?", equal_proc_obj);
     add_procedure("not", not_proc, 1, 1);
 
     add_procedure("cons", cons_proc, 2, 2);
@@ -187,8 +186,8 @@ void populate_env(minim_object *env) {
     add_procedure("hashtable-copy", hashtable_copy_proc, 1, 1);     // TODO: set mutability
     add_procedure("hashtable-clear!", hashtable_clear_proc, 1, 1);
 
-    add_procedure("eq-hash", eq_hash_proc, 1, 1);
-    add_procedure("equal-hash", equal_hash_proc, 1, 1);
+    add_value("eq-hash", eq_hash_proc_obj);
+    add_value("equal-hash", equal_hash_proc_obj);
     
     add_procedure("syntax?", is_syntax_proc, 1, 1);
     add_procedure("syntax-e", syntax_e_proc, 1, 1);
@@ -234,6 +233,9 @@ void populate_env(minim_object *env) {
     add_procedure("newline", newline_proc, 0, 1);
     add_procedure("fprintf", fprintf_proc, 2, ARG_MAX);
     add_procedure("printf", printf_proc, 1, ARG_MAX);
+
+    add_procedure("read-fasl", read_fasl_proc, 1, 1);
+    add_procedure("write-fasl", write_fasl_proc, 1, 2);
     
     add_procedure("load", load_proc, 1, 1);
     add_procedure("error", error_proc, 2, ARG_MAX);
@@ -241,6 +243,7 @@ void populate_env(minim_object *env) {
     add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
     add_procedure("command-line", command_line_proc, 0, 0);
+    add_procedure("version", version_proc, 0, 0);
     add_procedure("boot-expander?", boot_expander_proc, 0, 1);
 
     add_procedure("install-literal-bundle!", install_literal_bundle_proc, 1, 1);
@@ -266,22 +269,7 @@ void minim_boot_init() {
     globals->symbols = make_intern_table();
     globals->current_thread = GC_alloc(sizeof(minim_thread));
 
-    // initialize special values
-
-    minim_null = GC_alloc(sizeof(minim_object));
-    minim_empty_vec = make_vector(0, NULL);
-    minim_true = GC_alloc(sizeof(minim_object));
-    minim_false = GC_alloc(sizeof(minim_object));
-    minim_eof = GC_alloc(sizeof(minim_object));
-    minim_void = GC_alloc(sizeof(minim_object));
-    minim_values = GC_alloc(sizeof(minim_object));
-
-    minim_null->type = MINIM_NULL_TYPE;
-    minim_true->type = MINIM_TRUE_TYPE;
-    minim_false->type = MINIM_FALSE_TYPE;
-    minim_eof->type = MINIM_EOF_TYPE;
-    minim_void->type = MINIM_VOID_TYPE;
-    minim_values->type = MINIM_VALUES_TYPE;
+    // initialize special symbols
 
     quote_symbol = intern("quote");
     define_symbol = intern("define");
@@ -300,6 +288,23 @@ void minim_boot_init() {
     or_symbol = intern("or");
     quote_syntax_symbol = intern("quote-syntax");
 
+    // initialize special values
+
+    minim_null = GC_alloc(sizeof(minim_object));
+    minim_empty_vec = make_vector(0, NULL);
+    minim_true = GC_alloc(sizeof(minim_object));
+    minim_false = GC_alloc(sizeof(minim_object));
+    minim_eof = GC_alloc(sizeof(minim_object));
+    minim_void = GC_alloc(sizeof(minim_object));
+    minim_values = GC_alloc(sizeof(minim_object));
+
+    minim_null->type = MINIM_NULL_TYPE;
+    minim_true->type = MINIM_TRUE_TYPE;
+    minim_false->type = MINIM_FALSE_TYPE;
+    minim_eof->type = MINIM_EOF_TYPE;
+    minim_void->type = MINIM_VOID_TYPE;
+    minim_values->type = MINIM_VALUES_TYPE;
+
     empty_env = minim_null;
 
     minim_base_rtd = make_record(NULL, record_rtd_min_size);
@@ -309,6 +314,11 @@ void minim_boot_init() {
     record_rtd_opaque(minim_base_rtd) = minim_true;
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
+
+    eq_proc_obj = make_prim_proc(eq_proc, "eq?", 2, 2);
+    equal_proc_obj = make_prim_proc(equal_proc, "equal?", 2, 2);
+    eq_hash_proc_obj = make_prim_proc(eq_hash_proc, "eq-hash", 1, 1);
+    equal_hash_proc_obj = make_prim_proc(equal_hash_proc, "equal-hash", 1, 1);
 
     // initialize thread
 
