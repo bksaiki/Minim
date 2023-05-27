@@ -44,7 +44,9 @@
  * 
  *        ::= {vector} <uptr n> <fasl elt1> ... <fasl eltn>
  *
- *        ::= {hashtable} <uptr n> 
+ *        ::= {hashtable} <uptr n>
+ *                        <byte type>  0 - eq?
+ *                                     1 - equal?
  *                        <keyval kv1> ... <keyval kvn>
  *            <keyval> -> <fasl key> <fasl val>
  * 
@@ -164,11 +166,23 @@ static minim_object* read_fasl_vector(FILE *in) {
 }
 
 static minim_object* read_fasl_hashtable(FILE *in) {
-    minim_object *ht, *h_fn, *e_fn, *k, *v;
+    minim_object *ht, *k, *v;
     long size, i;
+    minim_byte t;
 
+    // size and type info
     size = read_fasl_uptr(in);
-    ht = make_hashtable(equal_hash_proc_obj, equal_proc_obj);
+    t = read_fasl_byte(in);
+
+    if (t == 0) {
+        ht = make_hashtable(eq_hash_proc_obj, eq_proc_obj);
+    } else if (t == 1) {
+        ht = make_hashtable(equal_hash_proc_obj, equal_proc_obj);
+    } else {
+        fprintf(stderr, "read_fasl: malformed FASL hashtable of type %u\n", t);
+        exit(1);
+    }
+
     for (i = 0; i < size; i++) {
         k = read_fasl(in);
         v = read_fasl(in);
@@ -300,12 +314,26 @@ static void write_fasl_vector(FILE *out, minim_object *v) {
 
 // Serializes a hashtable
 // WARN: internal structure of hashtable may be different
-// TODO: equivalence procedure
 static void write_fasl_hashtable(FILE *out, minim_object *ht) {
     minim_object *b;
     size_t i;
 
     write_fasl_uptr(out, minim_hashtable_size(ht));
+
+    if (minim_hashtable_hash(ht) == eq_hash_proc_obj
+        && minim_hashtable_equiv(ht) == eq_proc_obj) {
+        write_fasl_byte(out, 0);
+    } else if (minim_hashtable_hash(ht) == equal_hash_proc_obj 
+        && minim_hashtable_equiv(ht) == equal_proc_obj) {
+        write_fasl_byte(out, 1);
+    } else {
+        fprintf(stderr, "write_fasl: hashtable not serialiable\n");
+        fprintf(stderr, " object: ");
+        write_object(stderr, ht);
+        fprintf(stderr, "\n");
+        exit(1);
+    }
+
     for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
         b = minim_hashtable_bucket(ht, i);
         if (b) {
