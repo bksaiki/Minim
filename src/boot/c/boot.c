@@ -244,6 +244,7 @@ void populate_env(minim_object *env) {
     add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
     add_procedure("command-line", command_line_proc, 0, 0);
+    add_procedure("version", version_proc, 0, 0);
     add_procedure("boot-expander?", boot_expander_proc, 0, 1);
 
     add_procedure("install-literal-bundle!", install_literal_bundle_proc, 1, 1);

@@ -582,7 +582,7 @@
   (define links (map cdr assembly-info))
 
   ; report
-  (make-compiled-report path
+  (make-compiled-report path (version)
                         'x86-64 'linux-unknown
                         literals procedures links))
 
