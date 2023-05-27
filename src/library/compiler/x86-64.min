@@ -2,7 +2,7 @@
 ;;; x86-64 specific definitions
 ;;;
 
-(import "../base.min" "common.min")
+(import "../base.min" "common.min" "registers.min")
 (export assemble/x86-64 link/x86-64)
 
 ;
@@ -10,6 +10,24 @@
 ;
 
 (define ALIGNMENT 16)
+
+(define-registers x86-64-registers
+  (reserved
+    [%cc          %r14 #t]
+    [%sp          %rsp #t]
+    [%env         %r15 #t])
+  (allocable
+    [%ret         %rax #f]
+    [%arg0        %rdi #f]
+    [%arg1        %rsi #f]
+    [%arg2        %rdx #f]
+    [%arg3        %rcx #f]
+    [%arg4        %r8  #f]
+    [%arg5        %r9  #f]
+    [             %r10 #f]
+    [             %r11 #f]
+    [             %r12 #t]
+    [             %r13 #t]))
 
 ;
 ; Utilities

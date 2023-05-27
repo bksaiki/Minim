@@ -565,7 +565,7 @@
 
   ; debug print report
   ; (printf " top-levels: ~a\n" top-levels)
-  ; (printf " procedures: ~a\n" procedures)
+  (printf " procedures: ~a\n" procedures)
   ; (printf " literals: ~a\n" literals)
   ; (printf " body: ~a\n" module-body)
 

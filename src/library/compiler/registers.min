@@ -1,0 +1,51 @@
+;;;
+;;; Compiler registers
+;;;
+
+(import "../base.min")
+(export define-registers make-register-set validate-register-set!)
+
+(define required-registers '(%cc %sp %env %ret))
+
+(define-record-type register-set
+  (fields registers aliases)
+  (opaque #t))
+
+(define (validate-register-set! rset)
+  (define registers (register-set-registers rset))
+  (define aliases (register-set-aliases rset))
+  (for-each (lambda (r)
+              (unless (assoc r aliases)
+                (error 'validate-register-set! "missing required register" r)))
+            required-registers))
+
+(define-syntax (define-registers stx)
+  (syntax-case stx (reserved allocable)
+    [(_ id (reserved [rreg-alias ... rreg rreg-reserved?] ...)
+           (allocable [areg-alias ... areg areg-reserved?] ...))
+     (begin
+       (unless (identifier? #'id)
+         (syntax-error 'define-enumeration "bad syntax" stx #'id))
+       #'(define id
+           (let ([rregs '(rreg ...)]
+                 [rregs-aliases '((rreg-alias ...) ...)]
+                 [rregs-reserved? '(rreg-reserved? ...)]
+                 [aregs '(areg ...)]
+                 [aregs-aliases '((areg-alias ...) ...)]
+                 [aregs-reserved? '(areg-reserved? ...)])
+             (let* ([registers (append (map list rregs rregs-aliases rregs-reserved?)
+                                       (map list aregs aregs-aliases aregs-reserved?))]
+                    [aliases (let loop ([registers registers] [alias-map '()])
+                               (cond
+                                 [(null? registers) alias-map]
+                                 [else
+                                  (define reg (caar registers))
+                                  (define aliases (cadar registers))
+                                  (loop (cdr registers)
+                                              (append (map (lambda (a) (cons a reg)) aliases)
+                                                      alias-map))]))]
+                    [rset (make-register-set registers aliases)])
+               (validate-register-set! rset)
+               rset))))]
+    [(_ . _)
+     (syntax-error 'define-registers "bad syntax" stx)]))
