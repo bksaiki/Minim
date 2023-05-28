@@ -15,7 +15,7 @@ SRCS 		:= $(shell find $(SRC_DIR) -name "*.c")
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
-CFLAGS		:= -Wall -std=c11 -O3 -g
+CFLAGS		:= -Wall -std=c11 -Og -g
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -lgc
 
@@ -35,6 +35,7 @@ clean:
 $(CONFIG):
 	$(MKDIR_P) $(BUILD_DIR)
 	echo "#define BOOT_DIR \"$(BOOT_DIR)/\"" >> $@
+	echo "#define MINIM_x86_64 1" >> $@
 
 $(BUILD_DIR)/.:
 	$(MKDIR_P) $@

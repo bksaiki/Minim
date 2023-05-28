@@ -636,7 +636,7 @@
      (error 'assemble/instr "unimplemented" instr)]))
 
 (define (assemble/procedure proc label!)
-  (printf " <assembling: ~a>\n" proc)
+  ; (printf " <assembling: ~a>\n" proc)
   (define args (second (second proc)))
   (define instrs (second (third proc)))
 
@@ -665,12 +665,12 @@
          (list)]
         [(list? (car instrs))
          (define-values (seq frame*) (assemble/instr* (first instrs) frame alloc label!))
-         (printf "~a\n" seq)
+        ;  (printf "~a => ~a\n" (car instrs) seq)
          (append seq (loop (cdr instrs) frame*))]
         [else
          (error 'assemble/procedure "expected a list: " (car instrs))])))
   
-  (printf "~a\n" tmp-code)
+  ; (printf "~a\n" tmp-code)
   (assemble/x86-64 instrs*))
 
 ;

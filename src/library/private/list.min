@@ -15,9 +15,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (cons* x . xs)
-  (let loop ([xs xs])
+  (let loop ([x x] [xs xs])
     (cond [(null? xs) x]
-          [else (cons x (loop (car x) (cdr xs)))])))
+          [else (cons x (loop (car xs) (cdr xs)))])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
