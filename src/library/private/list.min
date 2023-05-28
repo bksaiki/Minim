@@ -4,12 +4,20 @@
 
 (import "pre-base.min")
 (export first second third fourth fifth sixth seventh eighth ninth tenth
+        cons*
         member
         filter
         foldl foldr
         assoc
         enumerate
         index-of)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (cons* x . xs)
+  (let loop ([xs xs])
+    (cond [(null? xs) x]
+          [else (cons x (loop (car x) (cdr xs)))])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
