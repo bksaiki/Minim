@@ -1,0 +1,243 @@
+;;;
+;;; Scheme -> Flat IR
+;;;
+
+(import "../base.min" "common.min" )
+(export flatten/top-level)
+
+(define ((_-form? form-name) expr)
+  (and (stx-pair? expr)
+        (let ([head (stx-car expr)])
+          (and (identifier? head)
+              (eq? (syntax-e head) form-name)))))
+
+(define define-values-form? (_-form? 'define-values))
+; (define define-syntaxes-form? (_-form? 'define-syntaxes))
+(define let-values-form? (_-form? 'let-values))
+(define letrec-values-form? (_-form? 'letrec-values))
+; (define let-syntaxes-form? (_-form? 'let-syntaxes))
+(define quote-form? (_-form? 'quote))
+(define quote-syntax-form? (_-form? 'quote-syntax))
+(define lambda-form? (_-form? 'lambda))
+(define values-form? (_-form? 'values))
+(define begin-form? (_-form? 'begin))
+(define if-form? (_-form? 'if))
+
+; syntax would parse into a self-evaluating expression
+(define (stx-self-evaluating? stx)
+  (let ([datum (syntax-e stx)])
+    (or (boolean? datum)
+        (number? datum)
+        (string? datum)
+        (vector? datum)
+        (box? datum)
+        (char? datum))))
+
+;
+; Flatten
+;
+
+(define (closure-arity formals)
+  (let loop ([formals formals] [i 0])
+    (cond [(null? formals) i]
+          [(pair? formals) (loop (cdr formals) (+ i 1))]
+          [else (cons i #f)])))
+
+(define (make-flat-closure formals instrs literal!)
+  (define arity (closure-arity formals))
+  (define argc (if (pair? arity) (car arity) arity))  ; TODO: bounded variary
+  (list 'fun
+    (list 'args formals)
+    (list 'instrs
+          (append
+            (list
+              (list 'arity-check)
+              (list 'push-environment))
+            (let loop ([args formals] [i 0])
+              (cond
+                [(null? args)
+                 '()]
+                [(pair? args)
+                 (define idx (literal! (car args)))
+                 (cons (list 'bind-argument i idx) (loop (cdr args) (+ i 1)))]
+                [else
+                 (define idx (literal! args))
+                 (list (list 'bind-rest i idx))]))
+            instrs
+            (list (list 'pop-environment))))))
+
+(define (flatten/expr expr procedure! literal! label!)
+  (let rec ([expr expr])
+    (cond
+      [(letrec-values-form? expr)
+       (define bindings (car (stx-cdr expr)))
+       (define body (cdr (stx-cdr expr)))
+       (define prefix (list (list 'push-environment)))
+       (let loop ([bindings (syntax->list bindings)] [instrs prefix])
+         (cond
+           [(null? bindings)
+            (let loop ([body body] [instrs instrs])
+              (cond
+                [(null? body)
+                 (reverse (cons (list 'pop-environment) instrs))]
+                [else
+                 (loop (cdr body) (append (reverse (rec (car body))) instrs))]))]
+           [else
+            (define binding (stx-car bindings))
+            (define ids (syntax->datum (stx-car binding)))
+            (define val-expr (car (stx-cdr binding)))
+            (define binding-instrs
+              (append
+                (rec val-expr)
+                (list
+                  (list 'bind-check (length ids))
+                  (cons 'bind (map literal! ids)))))
+            (loop (cdr bindings) (append (reverse binding-instrs) instrs))]))]
+      [(let-values-form? expr)
+       (define bindings (car (stx-cdr expr)))
+       (define body (cdr (stx-cdr expr)))
+       (define prefix (list (list 'push-environment)))
+       (define val-instrs
+         (let loop ([bindings (syntax->list bindings)] [instrs '()])
+           (cond
+             [(null? bindings) (reverse instrs)]
+             [else
+              (define binding (stx-car bindings))
+              (define val-expr (car (stx-cdr binding)))
+              (define val-instrs (rec val-expr))
+              (loop (cdr bindings) (cons (list 'push) (append (reverse val-instrs) instrs)))])))
+       (define bind-instrs
+         (let loop ([bindings (reverse (syntax->list bindings))] [instrs prefix])
+           (cond
+             [(null? bindings) (reverse instrs)]
+             [else
+              (define binding (stx-car bindings))
+              (define ids (syntax->datum (stx-car binding)))
+              (define bind-instrs
+                (list
+                  (list 'pop)
+                  (list 'bind-check (length ids))
+                  (cons 'bind (map literal! ids))))
+              (loop (cdr bindings) (append (reverse bind-instrs) instrs))])))
+        (define body-instrs
+          (let loop ([body body] [instrs '()])
+            (cond
+              [(null? body)
+               (reverse (cons (list 'pop-environment) instrs))]
+              [else
+               (loop (cdr body) (append (reverse (rec (car body))) instrs))])))
+        (append val-instrs bind-instrs body-instrs)]
+      [(lambda-form? expr)
+       (define formals (stx-car (stx-cdr expr)))
+       (define body (stx-cdr (stx-cdr expr)))
+       (define instrs
+         (let loop ([body body])
+           (cond
+             [(null? body) '()]
+             [else (append (rec (car body)) (loop (cdr body)))])))
+       (define pcode (make-flat-closure (syntax->datum formals) instrs literal!))
+       (define arity (closure-arity (syntax->datum formals)))
+       (define idx (procedure! pcode))
+       (list (list 'closure idx arity))]
+      [(values-form? expr)
+       (define vs (stx-cdr expr))
+       (cond
+         [(null? vs)
+          ; 0 values => just return the "multiple-values" object
+          (list (list 'make-values))]
+         [(null? (cdr vs))
+          ; 1 values => just return the result
+          (rec (car vs))]
+         [else
+          ; multi-values
+          (let loop ([vs vs] [i 0] [seqs '()])
+            (cond
+              [(null? vs)
+               (define seq (apply append (reverse seqs)))
+               (reverse (cons (list 'make-values) (reverse seq)))]
+              [else
+               (define seq (rec (car vs)))
+               (define seq* (reverse (cons (list 'load-value i) (reverse seq))))
+               (loop (cdr vs) (+ i 1) (cons seq* seqs))]))])]
+      [(if-form? expr)
+       (define cond-expr (car (stx-cdr expr)))
+       (define ift-expr (cadr (stx-cdr expr)))
+       (define iff-expr (caddr (stx-cdr expr)))
+       (define iff-label (label!))
+       (define end-label (label!))
+       (define false-idx (literal! #f))
+       (append
+         (rec cond-expr)
+         (list
+           (list 'branch iff-label 'lit-eq? false-idx))
+         (rec ift-expr)
+         (list
+          (list 'branch end-label 'always)
+          (list 'label iff-label))
+         (rec iff-expr)
+         (list
+           (list 'label end-label)))]
+      [(quote-form? expr)
+       (define form (syntax-e expr))
+       (define idx (literal! (syntax->datum (cadr form))))
+       (list (list 'literal idx))]
+      [(begin-form? expr)
+       (define body (stx-cdr expr))
+       (let loop ([body body])
+         (cond
+           [(null? body) '()]
+           [else (append (rec (car body)) (loop (cdr body)))]))]
+      [(stx-list? expr)
+       (define op (stx-car expr))
+       (define args (stx-cdr expr))
+       (define argc (length args))
+       (define label (label!))
+       (append
+         (list
+           (list 'push-continuation label)
+           (list 'prepare-args argc))
+         (let loop ([args args] [i (- argc 1)])
+           (cond
+             [(null? args)
+              ; apply operation
+              (append
+                (rec op)
+                (list
+                  (list 'apply argc)
+                  (list 'label label)
+                  (list 'pop-continuation)))]
+              [else
+               ; process next argument
+               (append
+                 (rec (car args))
+                 (cons
+                   (list 'argument i)
+                   (loop (cdr args) (- i 1))))])))]
+      [(stx-self-evaluating? expr)
+       (define idx (literal! (syntax->datum expr)))
+       (list (list 'literal idx))]
+      [(identifier? expr)
+       (define idx (literal! (syntax-e expr)))
+       (list (list 'lookup idx))]
+      [else
+       (error 'flatten/expr "unimplemented" expr)])))
+
+(define (flatten/top-level expr top-level! procedure! literal! label!)
+  ; (printf " <top-level: ~a>\n" expr)
+  (cond
+    [(define-values-form? expr)
+     ; decompose
+     (define names (stx-car (stx-cdr expr)))
+     (define e (stx-car (stx-cdr (stx-cdr expr))))
+     ; process identifiers
+     (define ids (map syntax-e (syntax-e names)))
+     (define idxs (map literal! ids))
+     (for-each top-level! ids)
+     ; process expression
+     (append
+       (flatten/expr e procedure! literal! label!)
+       (cons
+         (list 'bind-check (length ids))
+         (map (lambda (i) (list 'bind i)) idxs))
+       (list (list 'make-void)))]
+    [else (flatten/expr expr procedure! literal! label!)]))
