@@ -455,9 +455,11 @@
        (list 'push RES-REG)     ; save closure for GC
        (list 'load T0-REG RES-REG)
        (list 'load T1-REG argc)
+       (list 'push ENV-REG)
        (list 'load-offset ENV-REG RES-REG CLOSURE-ENV-OFFSET)
        (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
-       (list 'c-call RES-REG ENV-REG T0-REG T1-REG)
+       (list 'c-call RES-REG T0-REG T1-REG)
+       (list 'pop ENV-REG)
        ; End
        (list 'label exit-label))]
     [(lookup)
@@ -614,8 +616,8 @@
      ; to the closure and panics if not.
      ; stashes the argument register
      (list
-       (list 'push R2-REG)
-       (list 'c-call "check_arity" R1-REG R2-REG))]
+       (list 'push R1-REG)
+       (list 'c-call "check_arity" R0-REG R1-REG))]
     [(bind-check)
      ; `(bind-check <n>)` =>
      ; checks that the result has the right number of values

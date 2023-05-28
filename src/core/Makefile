@@ -34,8 +34,7 @@ clean:
 
 $(CONFIG):
 	$(MKDIR_P) $(BUILD_DIR)
-	echo "#define BOOT_DIR \"$(BOOT_DIR)/\"" >> $@
-	echo "#define MINIM_x86_64 1" >> $@
+	echo "#define MINIM_X86_64 1" >> $@
 
 $(BUILD_DIR)/.:
 	$(MKDIR_P) $@

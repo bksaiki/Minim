@@ -12,6 +12,7 @@
 #include <ctype.h>
 
 #include "../gc/gc.h"
+#include "build/config.h"
 
 // Config
 

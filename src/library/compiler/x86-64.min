@@ -70,7 +70,7 @@
   (cond
     [(eq? reg CC-REG)   'rbp]
     [(eq? reg SP-REG)   'rsp]
-    [(eq? reg ENV-REG)  'rdi]
+    [(eq? reg ENV-REG)  'r14]
     [(eq? reg RES-REG)  'rax]
     [(eq? reg R0-REG)   (argument/register 0)]
     [(eq? reg R1-REG)   (argument/register 1)]
