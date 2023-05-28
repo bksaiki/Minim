@@ -5,7 +5,7 @@
 (import "pre-base.min")
 (export first second third fourth fifth sixth seventh eighth ninth tenth
         cons*
-        member
+        member remove remove*
         filter
         foldl foldr
         assoc
@@ -56,6 +56,28 @@
     (cond [(null? xs) #f]
           [(pair? xs) (if (equal? (car xs) k) (car xs) (loop (cdr xs)))]
           [else (error 'member "expected a list" xs)])))
+
+(define (remove k xs)
+  (let loop ([xs xs])
+    (cond [(null? xs) '()]
+          [(pair? xs) (if (equal? (car xs) k)
+                          (loop (cdr xs))
+                          (cons (car xs) (loop (cdr xs))))]
+          [else (error 'remove "expected a list" xs)])))
+
+(define (remove* ks xs)
+  (unless (list? ks)
+    (error 'remove* "expected a list" ks))
+  (let loop ([ks ks] [xs xs])
+    (cond [(null? ks) xs]
+          [(null? xs) '()]
+          [else (loop (cdr ks)
+                      (let loop2 ([xs xs])
+                        (cond [(null? xs) '()]
+                              [(pair? xs) (if (equal? (car xs) (car ks))
+                                              (loop2 (cdr xs))
+                                              (cons (car xs) (loop2 (cdr xs))))]
+                              [else (error 'remove* "expected a list" xs)])))])))
 
 (define (filter f lst)
   (let loop ([xs lst] [acc '()])

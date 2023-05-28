@@ -11,9 +11,7 @@
         "compiler/x86-64.min")
 
 (define (make-module-body-closure instrs)
-  (list 'fun
-    (list 'args (list))
-    (list 'instrs instrs)))
+  (list 'fun (list 'args (list)) (list 'instrs instrs)))
 
 ;
 ; Compiler

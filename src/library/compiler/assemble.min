@@ -113,10 +113,10 @@
          (list 'cmp-tag proc-reg 'closure)
          (list 'branch jmp-label 'equal)
          ; Primitive
-         (list 'load-offset code-reg proc-reg PRIM-FN-OFFSET)
+         (list 'load-offset prim-reg proc-reg PRIM-FN-OFFSET)
          (list 'load argc-reg argc)
          (list 'load-arguments args-reg argc)
-         (list 'c-call code-reg argc-reg args-reg)
+         (list 'c-call prim-reg argc-reg args-reg)
          (list 'branch exit-label 'always)
          ; Closure
          (list 'label jmp-label)
@@ -253,7 +253,7 @@
          (list 'sub offset-reg offset-reg argc-reg)
          (list 'shl offset-reg offset-reg 3)
          ; load address `[CC-REG - 8*argc + 8*idx]`
-         (list 'load-offset aref-reg CC-REG 0)
+         (list 'load-offset aref-reg '%fp 0)
          (list 'add aref-reg aref-reg offset-reg)
          (list 'load-offset value-reg aref-reg 0)
          ; load name and bind
@@ -285,7 +285,7 @@
          (list 'sub offset-reg offset-reg argc-reg)
          (list 'shl offset-reg offset-reg 3)
          ; load address `[CC-REG - 8*argc + 8*idx]`
-         (list 'load-offset aref-reg CC-REG 0)
+         (list 'load-offset aref-reg '%fp 0)
          (list 'add aref-reg aref-reg offset-reg)
          ; create rest argument 
          (list 'load rest-reg argc-reg)
@@ -625,8 +625,10 @@
   (define frame (make-starting-frame))
   
   ;; initial registers
-  (frame-set-arg! frame 0 '%arg0)
-  (frame-set-arg! frame 1 '%arg1)
+  (define proc-reg (register-allocator-new! alloc))
+  (define argc-reg (register-allocator-new! alloc))
+  (frame-set-arg! frame 0 proc-reg)
+  (frame-set-arg! frame 1 argc-reg)
 
   (define tmp-code
     (let loop ([instrs instrs] [frame frame])
@@ -640,5 +642,6 @@
         [else
          (error 'assemble/procedure "expected a list: " (car instrs))])))
   
-  ; (printf "~a\n" tmp-code)
+  (printf "~a\n" tmp-code)
+  (register-assign tmp-code (list proc-reg argc-reg) alloc)
   (assemble/x86-64 instrs*))

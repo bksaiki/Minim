@@ -9,9 +9,11 @@
 
         make-register-allocator
         register-allocator-real-register?
-        register-allocator-new!)
+        register-allocator-new!
 
-(define required-registers '(%cc %sp %env %ret))
+        register-assign)
+
+(define required-registers '(%fp %sp %env %ret))
 
 ;;
 ;;  Machine-dependent register set
@@ -81,3 +83,63 @@
   (define name (string->symbol (string-append "%t" (number->string (length vregs)))))
   (register-allocator-virtual-regs-set! allocator (cons name vregs))
   name)
+
+;;
+;;  Register assigner
+;;
+
+(define (sort-vreg-dict vregs dict)
+  (map (lambda (r)
+         (let ([v (assoc r dict)])
+           (cons r v)))
+       vregs))
+
+(define (compute-first-use instrs unused reverse? vreg?)
+  (let loop ([instrs instrs] [unused unused] [used '()] [i 0])
+    (cond
+      [(null? instrs) used]
+      [else
+       (let loop2 ([args (cdar instrs)] [unused unused] [used used])
+         (cond
+           [(null? args)
+            (loop (cdr instrs) unused used (+ i 1))]
+           [(and (vreg? (car args)) (member (car args) unused))
+            (define idx (if reverse? (- (length instrs) 1) i))
+            (loop2 (cdr args) (remove (car args) unused)
+                   (cons (cons (car args) idx) used))]
+           [else
+            (loop2 (cdr args) unused used)]))])))
+
+(define (register-assign instrs init-used alloc)
+  (define rset (register-allocator-target-regs alloc))
+  (define vregs (reverse (register-allocator-virtual-regs alloc)))
+
+  (define (virtual-register? reg)
+    (and (symbol? reg) (member reg vregs)))
+
+  (define (real-register? reg)
+    (and (symbol? reg)
+         (register-allocator-real-register? allocator reg)))
+
+  ; compute used registers with first/last uses
+  (define no-init-used (remove* init-used vregs))
+  (define-values (first-use last-use used)
+    (let* ([last-use (compute-first-use (reverse instrs) vregs #t virtual-register?)]
+           [first-use (append (map (lambda (r) (cons r 0)) init-used)
+                             (compute-first-use instrs no-init-used #f virtual-register?))]
+           [used (map car (filter (lambda (elt) (cdr elt)) last-use))])
+      (values (sort-vreg-dict used first-use)
+              (sort-vreg-dict used last-use)
+              used)))
+
+  ; find sort 
+
+  (define use-spans (map (lambda (f l) (- (cdr l) (cdr f))) first-use last-use))
+
+  (printf "~a\n" used)
+  (printf "~a\n" first-use)
+  (printf "~a\n" last-use)
+  (printf "~a\n" use-spans)
+
+  (void))
+

@@ -13,7 +13,7 @@
 
 (define-registers x86-64-registers
   (reserved
-    [%cc          %r14 #t]
+    [%fp          %rbp #t]
     [%sp          %rsp #t]
     [%env         %r15 #t])
   (allocable
