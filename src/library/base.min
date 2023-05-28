@@ -8,6 +8,7 @@
         "private/pre-base.min"
         "private/record.min"
         "private/set.min"
+        "private/sort.min"
         "private/string.min")
 
 (export (all "private/enum.min")
@@ -16,4 +17,5 @@
         (all "private/pre-base.min")
         (all "private/record.min")
         (all "private/set.min")
+        (all "private/sort.min")
         (all "private/string.min"))

@@ -132,9 +132,10 @@
               (sort-vreg-dict used last-use)
               used)))
 
-  ; find sort 
-
-  (define use-spans (map (lambda (f l) (- (cdr l) (cdr f))) first-use last-use))
+  ; compute use spans
+  (define sort-span (lambda (elt1 elt2) (> (cdr elt1) (cdr elt2))))
+  (define unsorted-use-spans (map (lambda (f l) (cons (car f) (- (cdr l) (cdr f)))) first-use last-use))
+  (define use-spans (sort unsorted-use-spans sort-span))
 
   (printf "~a\n" used)
   (printf "~a\n" first-use)
