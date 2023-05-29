@@ -3,7 +3,9 @@
 ;;
 
 (import "pre-base.min")
-(export first second third fourth fifth sixth seventh eighth ninth tenth
+(export first second third fourth fifth
+        sixth seventh eighth ninth tenth
+        list-ref
         cons*
         member remove remove*
         filter
@@ -48,6 +50,14 @@
 (define-list-accessor eighth  8)
 (define-list-accessor ninth   9)
 (define-list-accessor tenth   10)
+
+(define (list-ref lst k)
+  (unless (integer? k)  ; TODO: non-negative integer
+    (error 'list-ref "expected a non-negative integer" k))
+  (let loop ([xs lst] [i 0])
+    (cond [(null? xs) (error 'list-ref "index out of bounds" lst k)]
+          [(= i k) (car xs)]
+          [else (loop (cdr xs) (+ i 1))])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; list operations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

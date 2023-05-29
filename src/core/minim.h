@@ -676,6 +676,7 @@ DEFINE_PRIM_PROC(call_with_values);
 DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
+DEFINE_PRIM_PROC(identity);
 // pairs
 DEFINE_PRIM_PROC(is_pair);
 DEFINE_PRIM_PROC(cons);

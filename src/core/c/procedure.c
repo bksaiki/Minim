@@ -101,3 +101,7 @@ minim_object *eval_proc(int argc, minim_object **args) {
 minim_object *apply_proc(int argc, minim_object **args) {
     uncallable_prim_exn("apply");
 }
+
+minim_object *identity_proc(int argc, minim_object **args) {
+    return args[0];
+}

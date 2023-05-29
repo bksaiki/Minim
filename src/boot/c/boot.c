@@ -212,6 +212,7 @@ void populate_env(minim_object *env) {
 
     add_procedure("eval", eval_proc, 1, 2);
     add_procedure("apply", apply_proc, 2, ARG_MAX);
+    add_procedure("identity", identity_proc, 1, 1);
     add_procedure("void", void_proc, 0, 0);
 
     add_procedure("call-with-values", call_with_values_proc, 2, 2);
