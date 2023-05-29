@@ -14,6 +14,7 @@
         register-assign)
 
 (define required-registers '(%fp %sp %env %ret))
+(define argument-registers '(%arg0 %arg1 %arg2 %arg3 %arg4 %arg5))
 
 ;;
 ;;  Machine-dependent register set
@@ -28,7 +29,16 @@
   (for-each (lambda (r)
               (unless (assoc r aliases)
                 (error 'validate-register-set! "missing required register" r)))
-            required-registers))
+            required-registers)
+  (let loop ([regs argument-registers] [supported? #t])
+    (cond [(null? regs)
+           (void)] 
+          [(member (car regs) aliases)
+           (unless supported?
+             (error 'validate-register-set! "missing argument register, before" (car regs)))
+           (loop (cdr regs) supported?)]
+          [else
+           (loop (cdr regs) #f)])))
 
 (define-syntax (define-registers stx)
   (syntax-case stx (reserved allocable)
@@ -94,6 +104,7 @@
            (cons r v)))
        vregs))
 
+; computes index of instruction of first use/init
 (define (compute-first-use instrs unused reverse? vreg?)
   (let loop ([instrs instrs] [unused unused] [used '()] [i 0])
     (cond
@@ -110,7 +121,83 @@
            [else
             (loop2 (cdr args) unused used)]))])))
 
-(define (register-assign instrs init-used alloc)
+; compute the interference graph
+; for virtual registers
+(define (make-if-graph first-uses last-uses)
+  (define forward
+    (map (lambda (elt)
+           (define reg (car elt))
+           (define first-use (assoc reg first-uses))
+           (define last-use (assoc reg last-uses))
+           (define conflicts
+             (filter (lambda (elt)
+                       (define reg2 (car elt))
+                       (define first-use2 (cdr elt))
+                       (and (not (eq? reg reg2))
+                            (>= first-use2 first-use)
+                            (< first-use2 last-use)))
+                     first-uses))
+           (cons reg (map car conflicts)))
+         first-uses))
+
+  (define both
+    (map (lambda (elt)
+           (define reg (car elt))
+           (define forw-conflicts (cdr elt))
+           (define back-conflicts (map car (filter (lambda (elt) (member reg (cdr elt))) forward)))
+           (cons reg (list #f forw-conflicts back-conflicts)))
+         forward))
+
+  both)
+
+(define (if-graph-get if-graph vreg)
+  (assoc vreg if-graph))
+
+(define (if-graph-set if-graph vreg rreg)
+  (cond
+    [(null? if-graph)
+     if-graph]
+    [(eq? (caar if-graph) vreg)
+     (cons (cons vreg (cons rreg (cddar if-graph))) (cdr if-graph))]
+    [else
+     (cons (car if-graph) (if-graph-set (cdr if-graph) vreg rreg))]))
+
+(define (apply-hints if-graph instrs rset vreg?)
+  ; (define (arg-register i)
+  ;   (define args (filter )
+
+  (define (vreg-assign if-graph vreg rreg)
+    (define reg (car (if-graph-get if-graph vreg)))
+    (when (and reg (not (eq? reg rreg)))
+      (printf "warn: CONFLICT ~a ~a\n" vreg rreg))
+    (if-graph-set if-graph vreg rreg))
+
+  (define (c-call-assign-target if-graph vreg)
+    (if (vreg? vreg) (vreg-assign if-graph vreg '%res) if-graph))
+
+  (define (c-call-assign if-graph vreg idx)
+    (if (vreg? vreg) (vreg-assign if-graph vreg '%arg0) if-graph))
+
+  (let loop ([instrs instrs] [if-graph if-graph])
+    (cond
+      [(null? instrs) if-graph]
+      [else
+       (case (caar instrs)
+        [(init)
+         (printf "init: ~a\n" (car instrs))
+         (loop (cdr instrs) if-graph)]
+        [(c-call)
+         (printf "c-call: ~a\n" (car instrs))
+         (define target (cadar instrs))
+         (define args (cddar instrs))
+         (let loop2 ([if-graph (c-call-assign-target if-graph target)] [args args] [i 0])
+           (if (null? args)
+               (loop (cdr instrs) if-graph)
+               (loop2 (c-call-assign if-graph (car args) i) (cdr args) (+ i 1))))]
+        [else
+         (loop (cdr instrs) if-graph)])])))
+
+(define (register-assign instrs alloc)
   (define rset (register-allocator-target-regs alloc))
   (define vregs (reverse (register-allocator-virtual-regs alloc)))
 
@@ -121,26 +208,34 @@
     (and (symbol? reg)
          (register-allocator-real-register? allocator reg)))
 
+  (define (span>? s1 s2)
+    (> (cdr s1) (cdr s2)))
+
   ; compute used registers with first/last uses
-  (define no-init-used (remove* init-used vregs))
-  (define-values (first-use last-use used)
-    (let* ([last-use (compute-first-use (reverse instrs) vregs #t virtual-register?)]
-           [first-use (append (map (lambda (r) (cons r 0)) init-used)
-                             (compute-first-use instrs no-init-used #f virtual-register?))]
+  (define-values (first-uses last-uses used-regs)
+    (let* ([first-use (compute-first-use instrs vregs #f virtual-register?)]
+           [last-use (compute-first-use (reverse instrs) vregs #t virtual-register?)]
            [used (map car (filter (lambda (elt) (cdr elt)) last-use))])
       (values (sort-vreg-dict used first-use)
               (sort-vreg-dict used last-use)
               used)))
 
   ; compute use spans
-  (define sort-span (lambda (elt1 elt2) (> (cdr elt1) (cdr elt2))))
-  (define unsorted-use-spans (map (lambda (f l) (cons (car f) (- (cdr l) (cdr f)))) first-use last-use))
-  (define use-spans (sort unsorted-use-spans sort-span))
+  ; (define use-spans
+  ;   (sort (map (lambda (u f l)
+  ;                (cons u (- (cdr l) (cdr f))))
+  ;              used-regs first-uses last-uses)
+  ;         span>?))
 
-  (printf "~a\n" used)
-  (printf "~a\n" first-use)
-  (printf "~a\n" last-use)
-  (printf "~a\n" use-spans)
+  ; compute interference graph
+  (define if-graph (make-if-graph first-uses last-uses))
+  (define if-graph* (apply-hints if-graph instrs rset virtual-register?))
+    
+  (printf "~a\n" used-regs)
+  (printf "~a\n" first-uses)
+  (printf "~a\n" last-uses)
+  ; (printf "~a\n" use-spans)
+  (printf "~a\n" if-graph*)
 
   (void))
 

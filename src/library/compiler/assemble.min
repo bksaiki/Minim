@@ -96,21 +96,23 @@
      (define exit-label (label!))
      ; registers
      (define proc-reg (frame-result frame))
+     (define tag-reg (register-allocator-new! alloc))
      (define argc-reg (register-allocator-new! alloc))
      (define args-reg (register-allocator-new! alloc))
      (define prim-reg (register-allocator-new! alloc))
      (define code-reg (register-allocator-new! alloc))
+     (define res-reg (register-allocator-new! alloc))
 
      ; result register is '%res
-     (frame-result-set! frame '%res)
+     (frame-result-set! frame res-reg)
 
      ; code
      (values
        (list
          ; Check argument is closure
          ; Extract the tag and compare
-         (list 'load-offset proc-reg proc-reg 0)
-         (list 'cmp-tag proc-reg 'closure)
+         (list 'load-offset tag-reg proc-reg 0)
+         (list 'cmp-tag tag-reg 'closure)
          (list 'branch jmp-label 'equal)
          ; Primitive
          (list 'load-offset prim-reg proc-reg PRIM-FN-OFFSET)
@@ -124,20 +126,23 @@
          (list 'push '%env)
          (list 'load-offset '%env proc-reg CLOSURE-ENV-OFFSET)
          (list 'load-offset code-reg proc-reg CLOSURE-CODE-OFFSET)
-         (list 'c-call code-reg proc-reg argc-reg)
+         (list 'c-call code-reg argc-reg proc-reg)
          (list 'pop '%env)
          ; End
-         (list 'label exit-label))
+         (list 'label exit-label)
+         (list 'mov res-reg '%res))
        frame)]
     [(lookup)
      ; `(lookup <name>)` =>
      ; Load <n>th literal into `ARG1` and perform a lookup
-     (define reg (register-allocator-new! alloc))
-     (frame-result-set! frame '%res)
+     (define lit-reg (register-allocator-new! alloc))
+     (define res-reg (register-allocator-new! alloc))
+     (frame-result-set! frame res-reg)
      (values
        (list
-         (list 'load-literal reg (second instr))
-         (list 'c-call "env_lookup_var" '%env reg))
+         (list 'load-literal lit-reg (second instr))
+         (list 'c-call "env_lookup_var" '%env lit-reg)
+         (list 'mov res-reg '%res))
        frame)]
     [(push-environment)
      ; `(push-environment)` =>
@@ -163,13 +168,15 @@
      (define code-reg (register-allocator-new! alloc))
      (define arity-low-reg (register-allocator-new! alloc))
      (define arity-high-reg (register-allocator-new! alloc))
-     (frame-result-set! frame '%res)
+     (define res-reg (register-allocator-new! alloc))
+     (frame-result-set! frame res-reg)
      (values
        (list
          (list 'load-procedure code-reg idx)
          (list 'load arity-low-reg arity-low)
          (list 'load arity-high-reg arity-high)
-         (list 'c-call "make_closure" '%env code-reg arity-low arity-high))
+         (list 'c-call "make_closure" '%env code-reg arity-low-reg arity-high-reg)
+         (list 'mov res-reg '%res))
        frame)]
     [(branch)
      ; `(branch label mode ...)` =>
@@ -341,8 +348,8 @@
      ; checks that the correct number of arguments was provided
      ; to the closure and panics if not.
      ; stashes the argument register
-     (define cl-reg (frame-get-arg frame 0))
-     (define argc-reg (frame-get-arg frame 1))
+     (define argc-reg (frame-get-arg frame 0))
+     (define cl-reg (frame-get-arg frame 1))
      (values (list (list 'c-call "check_arity" cl-reg argc-reg)) frame)]
     [(bind-check)
      ; `(bind-check <n>)` =>
@@ -625,10 +632,11 @@
   (define frame (make-starting-frame))
   
   ;; initial registers
-  (define proc-reg (register-allocator-new! alloc))
   (define argc-reg (register-allocator-new! alloc))
-  (frame-set-arg! frame 0 proc-reg)
-  (frame-set-arg! frame 1 argc-reg)
+  (define proc-reg (register-allocator-new! alloc))
+  (define header (list 'init argc-reg proc-reg))
+  (frame-set-arg! frame 0 argc-reg)
+  (frame-set-arg! frame 1 proc-reg)
 
   (define tmp-code
     (let loop ([instrs instrs] [frame frame])
@@ -643,5 +651,5 @@
          (error 'assemble/procedure "expected a list: " (car instrs))])))
   
   (printf "~a\n" tmp-code)
-  (register-assign tmp-code (list proc-reg argc-reg) alloc)
+  (register-assign (cons header tmp-code) alloc)
   (assemble/x86-64 instrs*))
