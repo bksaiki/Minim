@@ -15,9 +15,9 @@
   (reserved
     [%fp          %rbp #t]
     [%sp          %rsp #t]
-    [%env         %r15 #t])
+    [%env         %r15 #t]
+    [%ret         %rax #f])   ; TODO: allocate %ret
   (allocable
-    [%ret         %rax #f]
     [%arg0        %rdi #f]
     [%arg1        %rsi #f]
     [%arg2        %rdx #f]

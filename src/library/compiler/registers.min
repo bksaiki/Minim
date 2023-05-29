@@ -24,6 +24,15 @@
   (fields real aliases)
   (opaque #t))
 
+(define (canonicalize-register rset reg)
+  (cond
+    [(member reg (map car (register-set-real rset)))
+     reg]
+    [(member reg (map car (register-set-aliases rset)))
+     (assoc reg (register-set-aliases rset))]
+    [else
+     (error 'canonicalize-register "not a register or register alias" reg)]))
+
 (define (validate-register-set! rset)
   (define aliases (register-set-aliases rset))
   (for-each (lambda (r)
@@ -54,17 +63,22 @@
                  [aregs '(areg ...)]
                  [aregs-aliases '((areg-alias ...) ...)]
                  [aregs-reserved? '(areg-reserved? ...)])
-             (let* ([registers (append (map list rregs rregs-aliases rregs-reserved?)
-                                       (map list aregs aregs-aliases aregs-reserved?))]
-                    [aliases (let loop ([registers registers] [alias-map '()])
-                               (cond
-                                 [(null? registers) alias-map]
-                                 [else
-                                  (define reg (caar registers))
-                                  (define aliases (cadar registers))
-                                  (loop (cdr registers)
-                                              (append (map (lambda (a) (cons a reg)) aliases)
-                                                      alias-map))]))]
+             (let* ([registers
+                     (append
+                       (map (lambda (r a r?) (list r a r? #t))
+                            rregs rregs-aliases rregs-reserved?)
+                       (map (lambda (r a r?) (list r a r? #f))
+                            aregs aregs-aliases aregs-reserved?))]
+                    [aliases
+                     (let loop ([registers registers] [alias-map '()])
+                       (cond
+                         [(null? registers) alias-map]
+                         [else
+                          (define reg (caar registers))
+                          (define aliases (cadar registers))
+                          (loop (cdr registers)
+                                      (append (map (lambda (a) (cons a reg)) aliases)
+                                              alias-map))]))]
                     [rset (make-register-set registers aliases)])
                (validate-register-set! rset)
                rset))))]
@@ -196,9 +210,12 @@
                 [(null? args)
                  (loop (cdr instrs) if-graph)]
                 [(vreg? (car args))
+                 (define vreg (car args))
                  (define reg (arg-register i))
                  (loop2 (cdr args) (+ i 1)
-                        (if reg (if-graph-set if-graph (car args) reg) if-graph))]
+                        (if reg
+                            (if-graph-set if-graph vreg (canonicalize-register rset reg))
+                            if-graph))]
                 [else
                  (loop2 (cdr args) (+ i 1) if-graph)]))]
            [else
@@ -240,7 +257,9 @@
               [(null? args)
                (loop (cdr instrs) hints)]
               [(vreg? (car args))
-               (loop2 (cdr args) (+ i 1) (hint-add hints (car args) (arg-register i)))]
+               (loop2 (cdr args) (+ i 1)
+                      (hint-add hints (car args)
+                                (canonicalize-register rset (arg-register i))))]
               [else
                (loop2 (cdr args) (+ i 1) hints)]))]
          [else
@@ -254,12 +273,6 @@
       (> (+ (length (second v1)) (length v1))
          (+ (length (second v2)) (length v2)))))
 
-  ; Sort graph and compute hints
-  (define if-graph0 if-graph)
-  (define not-done (sort if-graph node>?))
-  (define hints (register-hints instrs rset vreg?))
-  (define conflicts '())
-
   (define (connected-rregs connected if-graph*)
     (filter identity
             (map (lambda (conn)
@@ -269,9 +282,19 @@
                    (and info (first info)))
                  connected)))
 
+  ; TODO: sort registers by priority
+  (define allocable (filter (lambda (elt) (not (fourth elt))) (register-set-real rset)))
   (define (unassigned-rreg conflicts)
-    (register-set-real rset)
+    (define open (filter (lambda (elt) (not (member (first elt) conflicts))) allocable))
+    (and (not (null? open)) (first (car open))))
 
+  ; Sort graph and compute hints
+  (define if-graph0 if-graph)
+  (define not-done (sort if-graph node>?))
+  (define hints (register-hints instrs rset vreg?))
+  (define conflicts '())
+
+  (printf "hints: ~a\n" hints)
 
   ; Iteratively assign
   (let loop ([not-done not-done] [if-graph '()])
@@ -289,18 +312,18 @@
            [hint (first hint)]
            [else
             (define conflicts (connected-rregs (append forw back) if-graph))
-            (printf "UNASSIGNED: ~a ~a\n" vreg conflicts)
-            #f])) ; TODO: assign random temp
+            (unassigned-rreg conflicts)]))
        ; second, check for conflicts
        (define conflict?
-         (or (and hint (> (length hint) 1))
+         (or (not maybe-rreg)
+             (and hint (> (length hint) 1))
              (and rreg (not (eq? rreg maybe-rreg)))
-             (ormap (lambda (conn-rreg) (not (eq? maybe-rreg conn-rreg)))
+             (ormap (lambda (conn-rreg) (eq? maybe-rreg conn-rreg))
                     (connected-rregs (append forw back) if-graph))))
        ; third, update
        (cond
          [conflict?
-          (printf "CONFLICT: ~a\n" vreg)
+          (printf (if maybe-rreg "CONFLICT: ~a\n" "SPILL: ~a\n") vreg)
           (set! conflicts (cons vreg conflicts))
           (loop (cdr not-done) (cons (car not-done) if-graph))]
          [else
