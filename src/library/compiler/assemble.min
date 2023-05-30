@@ -117,7 +117,7 @@
          ; Primitive
          (list 'load-offset prim-reg proc-reg PRIM-FN-OFFSET)
          (list 'load argc-reg argc)
-         (list 'load-arguments args-reg argc)
+         (list 'sub args-reg '%cc (* argc WORD-SIZE))
          (list 'c-call prim-reg argc-reg args-reg)
          (list 'branch exit-label 'always)
          ; Closure
@@ -336,7 +336,7 @@
      ; get address of "void" object
      (define res-reg (register-allocator-new! alloc))
      (frame-result-set! frame res-reg)
-     (values (list (list 'res-reg res-reg "minim_void")) frame)]
+     (values (list (list 'load-address res-reg "minim_void")) frame)]
     [(make-values)
      ; `(make-values)` =>
      ; get address of "multiple values" object
@@ -652,5 +652,4 @@
   ; (printf "~a\n" (cons header tmp-code))
   (define assigned (register-assign (cons header tmp-code) alloc))
   (printf "~a\n" assigned)
-
-  (assemble/x86-64 instrs*))
+  (assemble/x86-64 assigned))
