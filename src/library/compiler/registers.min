@@ -13,7 +13,7 @@
 
         register-assign)
 
-(define required-registers '(%fp %sp %env %ret))
+(define required-registers '(%cc %sp %env %ret))
 (define argument-registers '(%arg0 %arg1 %arg2 %arg3 %arg4 %arg5))
 
 ;;
@@ -100,7 +100,7 @@
 (define (register-allocator-real-register? allocator r)
   (define rset (register-allocator-target-regs allocator))
   (or (assoc r (register-set-real rset))
-      (assoc r (register-set-alias rset))))
+      (assoc r (register-set-aliases rset))))
 
 (define (register-allocator-new! allocator)
   (define vregs (register-allocator-virtual-regs allocator))
@@ -236,34 +236,29 @@
 
   (define (hint-add hints vreg rreg)
     (define rregs (assoc vreg hints))
-    (cond [(not rregs) (cons (cons vreg (list rreg)) hints)]
-          [(or (not rreg) (member rreg rregs)) hints]
-          [else (assoc-set hints vreg (cons rreg rregs))]))
+    (define rreg* (canonicalize-register rset rreg))
+    (cond [(not rregs) (cons (cons vreg (list rreg*)) hints)]
+          [(or (not rreg*) (member rreg* rregs)) hints]
+          [else (assoc-set hints vreg (cons rreg* rregs))]))
 
-  (let loop ([instrs instrs] [hints '()])
-    (cond
-      [(null? instrs) hints]
-      [else
-       (case (caar instrs)
-         [(c-call)
-          (define target (cadar instrs))
-          (define args (cddar instrs))
-          (define hints*
-            (if (vreg? target)
-                (hint-add hints target '%res)
-                hints))
-          (let loop2 ([args args] [i 0] [hints hints])
-            (cond
-              [(null? args)
-               (loop (cdr instrs) hints)]
-              [(vreg? (car args))
-               (loop2 (cdr args) (+ i 1)
-                      (hint-add hints (car args)
-                                (canonicalize-register rset (arg-register i))))]
-              [else
-               (loop2 (cdr args) (+ i 1) hints)]))]
-         [else
-          (loop (cdr instrs) hints)])])))
+  (let loop ([instrs instrs] [i 0] [hints '()])
+    (if (null? instrs)
+        hints
+        (case (caar instrs)
+          [(c-call)
+           (define target (cadar instrs))
+           (define args (cddar instrs))
+           (define hints* (if (vreg? target) (hint-add hints target '%ret) hints))
+           (let loop2 ([args args] [k 0] [hints hints*])
+             (cond
+               [(null? args)
+                (loop (cdr instrs) (+ i 1) hints)]
+               [(vreg? (car args))
+                (loop2 (cdr args) (+ k 1) (hint-add hints (car args) (arg-register k)))]
+               [else
+                (loop2 (cdr args) (+ k 1) hints)]))]
+          [else
+           (loop (cdr instrs) (+ i 1) hints)]))))
 
 (define (apply-assign if-graph instrs rset vreg?)
   ; Sorts nodes in the interference graph by index
@@ -294,42 +289,54 @@
   (define hints (register-hints instrs rset vreg?))
   (define conflicts '())
 
-  (printf "hints: ~a\n" hints)
-
   ; Iteratively assign
   (let loop ([not-done not-done] [if-graph '()])
     (cond
       [(null? not-done) (values if-graph conflicts)]
       [else
        (define vreg (caar not-done))
-       (define rreg (first (cdar not-done)))
+       (define preg (first (cdar not-done)))
        (define forw (second (cdar not-done)))
        (define back (third (cdar not-done)))
-       ; first, check if we have a hint
+       ; check if we have a hint
        (define hint (assoc vreg hints))
-       (define maybe-rreg
-         (cond
-           [hint (first hint)]
-           [else
-            (define conflicts (connected-rregs (append forw back) if-graph))
-            (unassigned-rreg conflicts)]))
-       ; second, check for conflicts
-       (define conflict?
-         (or (not maybe-rreg)
-             (and hint (> (length hint) 1))
-             (and rreg (not (eq? rreg maybe-rreg)))
-             (ormap (lambda (conn-rreg) (eq? maybe-rreg conn-rreg))
-                    (connected-rregs (append forw back) if-graph))))
-       ; third, update
        (cond
-         [conflict?
-          (printf (if maybe-rreg "CONFLICT: ~a\n" "SPILL: ~a\n") vreg)
-          (set! conflicts (cons vreg conflicts))
-          (loop (cdr not-done) (cons (car not-done) if-graph))]
+         [hint
+          (define rreg (first hint))
+          (cond
+            [(and preg (not (eq? preg rreg)))
+             (printf "CONFLICT: ~a (was ~a, hint ~a)\n" vreg preg rreg)
+             (set! conflicts (cons vreg conflicts))
+             (loop (cdr not-done) if-graph)]
+            [(ormap (lambda (conn-rreg) (eq? rreg conn-rreg))
+                    (connected-rregs (append forw back) if-graph))
+             (printf "CONFLICT: ~a (hint ~a)\n" vreg rreg)
+             (set! conflicts (cons vreg conflicts))
+             (loop (cdr not-done) if-graph)]
+            [else
+             (define if-graph* (cons (car not-done) if-graph))
+             (loop (cdr not-done) (if-graph-set if-graph* vreg rreg))])]
          [else
-          (define if-graph* (if-graph-set (cons (car not-done) if-graph) vreg maybe-rreg))
-          (loop (cdr not-done) if-graph*)])])))
+          (define conflicts (connected-rregs (append forw back) if-graph))
+          (define rreg (unassigned-rreg conflicts))
+          (cond
+            [(not rreg)
+             (printf "SPILL: ~a\n" vreg)
+             (set! conflicts (cons vreg conflicts))
+             (loop (cdr not-done) if-graph)]
+            [else
+             (define if-graph* (cons (car not-done) if-graph))
+             (loop (cdr not-done) (if-graph-set if-graph* vreg rreg))])])])))
 
+(define (replace-vregs instrs replace-map rset vreg? rreg?)
+  (map (lambda (instr)
+         (cons (car instr)
+               (map (lambda (arg)
+                      (cond [(vreg? arg) (assoc arg replace-map)]
+                            [(rreg? arg) (canonicalize-register rset arg)]
+                            [else arg]))
+                    (cdr instr))))
+       instrs))
 
 (define (register-assign instrs alloc)
   (define rset (register-allocator-target-regs alloc))
@@ -340,7 +347,7 @@
       (and (symbol? reg) (member reg vregs)))
 
     (define (real-register? reg)
-      (and (symbol? reg) (register-allocator-real-register? allocator reg)))
+      (and (symbol? reg) (register-allocator-real-register? alloc reg)))
 
     ; compute used registers with first/last uses
     (define-values (first-uses last-uses used-regs)
@@ -358,11 +365,14 @@
     (define if-graph* (apply-known if-graph instrs rset virtual-register?))
     (define-values (if-graph** conflicts) (apply-assign if-graph* instrs rset virtual-register?))
       
-    (printf "~a\n" used-regs)
+    ; (printf "~a\n" used-regs)
     ; (printf "~a\n" first-uses)
     ; (printf "~a\n" last-uses)
-    ; (printf "~a\n" use-spans)
-    (printf "~a\n" if-graph**)
+    ; (printf "~a\n" if-graph**)
 
-    (void)))
-
+    (cond
+      [(null? conflicts)
+       (define replace-map (map (lambda (i) (cons (car i) (first (cdr i)))) if-graph**))
+       (replace-vregs instrs replace-map rset virtual-register? real-register?)]
+      [else
+       (error 'register-assign "conflict resolution unimplemented")])))

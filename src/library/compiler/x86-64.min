@@ -13,9 +13,9 @@
 
 (define-registers x86-64-registers
   (reserved
-    [%fp          %rbp #t]
+    [%cc          %rbp #t]
     [%sp          %rsp #t]
-    [%env         %r15 #t]
+    [%env         %r14 #t]
     [%ret         %rax #f])   ; TODO: allocate %ret
   (allocable
     [%arg0        %rdi #f]
@@ -27,7 +27,8 @@
     [             %r10 #f]
     [             %r11 #f]
     [             %r12 #t]
-    [             %r13 #t]))
+    [             %r13 #t]
+    [             %r15 #t]))
 
 ;
 ; Utilities

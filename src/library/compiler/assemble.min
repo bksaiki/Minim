@@ -51,7 +51,7 @@
   (case (first instr)
     [(literal)
      ; `(literal <n>)` =>
-     ; Load <n>th literal into `%res`
+     ; Load <n>th literal into `%ret`
      (define lit-reg (register-allocator-new! alloc))
      (frame-result-set! frame lit-reg)
      (values (list (list 'load-literal lit-reg (second instr))) frame)]
@@ -69,7 +69,7 @@
      (values (list instr) frame)]
     [(argument)
      ; `(argument <n>)` =>
-     ; bind `%res` to nth var
+     ; bind `%ret` to nth var
      (define idx (second instr))
      (define res (frame-result frame))
      (values (list (list 'store-argument res idx)) frame)]
@@ -103,7 +103,7 @@
      (define code-reg (register-allocator-new! alloc))
      (define res-reg (register-allocator-new! alloc))
 
-     ; result register is '%res
+     ; result register is '%ret
      (frame-result-set! frame res-reg)
 
      ; code
@@ -130,7 +130,7 @@
          (list 'pop '%env)
          ; End
          (list 'label exit-label)
-         (list 'mov res-reg '%res))
+         (list 'load res-reg '%ret))
        frame)]
     [(lookup)
      ; `(lookup <name>)` =>
@@ -142,7 +142,7 @@
        (list
          (list 'load-literal lit-reg (second instr))
          (list 'c-call "env_lookup_var" '%env lit-reg)
-         (list 'mov res-reg '%res))
+         (list 'load res-reg '%ret))
        frame)]
     [(push-environment)
      ; `(push-environment)` =>
@@ -150,7 +150,7 @@
      (values
        (list
          (list 'c-call "make_environment" '%env)
-         (list 'load '%env '%res))
+         (list 'load '%env '%ret))
        frame)]
     [(pop-environment)
      ; `(pop-environment)` =>
@@ -176,7 +176,7 @@
          (list 'load arity-low-reg arity-low)
          (list 'load arity-high-reg arity-high)
          (list 'c-call "make_closure" '%env code-reg arity-low-reg arity-high-reg)
-         (list 'mov res-reg '%res))
+         (list 'load res-reg '%ret))
        frame)]
     [(branch)
      ; `(branch label mode ...)` =>
@@ -260,7 +260,7 @@
          (list 'sub offset-reg offset-reg argc-reg)
          (list 'shl offset-reg offset-reg 3)
          ; load address `[CC-REG - 8*argc + 8*idx]`
-         (list 'load-offset aref-reg '%fp 0)
+         (list 'load-offset aref-reg '%cc 0)
          (list 'add aref-reg aref-reg offset-reg)
          (list 'load-offset value-reg aref-reg 0)
          ; load name and bind
@@ -292,7 +292,7 @@
          (list 'sub offset-reg offset-reg argc-reg)
          (list 'shl offset-reg offset-reg 3)
          ; load address `[CC-REG - 8*argc + 8*idx]`
-         (list 'load-offset aref-reg '%fp 0)
+         (list 'load-offset aref-reg '%cc 0)
          (list 'add aref-reg aref-reg offset-reg)
          ; create rest argument 
          (list 'load rest-reg argc-reg)
@@ -350,7 +350,7 @@
      ; stashes the argument register
      (define argc-reg (frame-get-arg frame 0))
      (define cl-reg (frame-get-arg frame 1))
-     (values (list (list 'c-call "check_arity" cl-reg argc-reg)) frame)]
+     (values (list (list 'c-call "check_arity" argc-reg cl-reg)) frame)]
     [(bind-check)
      ; `(bind-check <n>)` =>
      ; checks that the result has the right number of values
@@ -428,8 +428,8 @@
        ; Closure
        (list 'label jmp-label)
        (list 'push RES-REG)     ; save closure for GC
-       (list 'load T0-REG RES-REG)
-       (list 'load T1-REG argc)
+       (list 'load T1-REG RES-REG)
+       (list 'load T0-REG argc)
        (list 'push ENV-REG)
        (list 'load-offset ENV-REG RES-REG CLOSURE-ENV-OFFSET)
        (list 'load-offset RES-REG RES-REG CLOSURE-CODE-OFFSET)
@@ -591,7 +591,7 @@
      ; to the closure and panics if not.
      ; stashes the argument register
      (list
-       (list 'push R1-REG)
+       (list 'push R0-REG)
        (list 'c-call "check_arity" R0-REG R1-REG))]
     [(bind-check)
      ; `(bind-check <n>)` =>
@@ -641,8 +641,7 @@
   (define tmp-code
     (let loop ([instrs instrs] [frame frame])
       (cond
-        [(null? instrs)
-         (list)]
+        [(null? instrs) (list)]
         [(list? (car instrs))
          (define-values (seq frame*) (assemble/instr* (first instrs) frame alloc label!))
         ;  (printf "~a => ~a\n" (car instrs) seq)
@@ -650,6 +649,8 @@
         [else
          (error 'assemble/procedure "expected a list: " (car instrs))])))
   
-  (printf "~a\n" tmp-code)
-  (register-assign (cons header tmp-code) alloc)
+  ; (printf "~a\n" (cons header tmp-code))
+  (define assigned (register-assign (cons header tmp-code) alloc))
+  (printf "~a\n" assigned)
+
   (assemble/x86-64 instrs*))

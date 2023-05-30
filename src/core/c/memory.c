@@ -36,7 +36,7 @@ minim_object *make_rest_argument(minim_object *args[], short argc) {
     return lst;
 }
 
-void check_native_closure_arity(minim_object *fn, short argc) {
+void check_native_closure_arity(short argc, minim_object *fn) {
     struct proc_arity *arity;
     int min_arity, max_arity;
 
