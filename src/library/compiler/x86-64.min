@@ -415,10 +415,12 @@
         (list (instr/load-imm64 dst src))]
        [(list? dst)
         ; Reg => Mem
-        (error 'assemble/instr "unimplemented" instr)]
+        ; (error 'assemble/instr "unimplemented" instr)]
+        (list (list 'load '%rax 0))]
        [(list? src)
         ; Mem => Reg
-        (error 'assemble/instr "unimplemented" instr)]
+        ; (error 'assemble/instr "unimplemented" instr)]
+        (list (list 'load '%rax 0))]
        [else
         ; Reg => Reg
         (list (instr/load dst src))])]
