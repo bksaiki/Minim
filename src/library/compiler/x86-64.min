@@ -390,7 +390,6 @@
          [else
           ; register as argument
           (define src (car args))
-          (define ld (instr/load i-reg src))
           (cond
             [(eq? i-reg src)
              (loop (cdr args) (+ i 1) (cons push prefix) (cons pop suffix))]
@@ -613,18 +612,18 @@
      (define src1 (second instr))
      (define src2 (third instr))
      (list (instr/cmp64 src1 src2))]
-    [(push)
-     ; really just a move
-     (define offset (push-local!))
-     (define byte-offset (- (* WORD-SIZE offset)))
-     (define src (second instr))
-     (list (instr/store-at-offset '%rbp src byte-offset))]
-    [(pop)
-     ; really just a move
-     (define offset (pop-local!))
-     (define byte-offset (- (* WORD-SIZE offset)))
-     (define dst (second instr))
-     (list (instr/load-from-offset dst '%rbp byte-offset))]
+    ; [(push)
+    ;  ; really just a move
+    ;  (define offset (push-local!))
+    ;  (define byte-offset (- (* WORD-SIZE offset)))
+    ;  (define src (second instr))
+    ;  (list (instr/store-at-offset '%rbp src byte-offset))]
+    ; [(pop)
+    ;  ; really just a move
+    ;  (define offset (pop-local!))
+    ;  (define byte-offset (- (* WORD-SIZE offset)))
+    ;  (define dst (second instr))
+    ;  (list (instr/load-from-offset dst '%rbp byte-offset))]
     [(label)
      ; label => just register name and location
      (link! (list 'label (second instr)) (list (length (get-assembled))))
@@ -635,8 +634,55 @@
     [else
      (error 'assemble/x86-64 "unimplemented" instr)]))
 
+;
+; Frame info
+;
 
-(define (assemble/x86-64 instrs)
+;
+; |         ...         |
+; |=====================|
+; |    Return Address   |
+; |---------------------|
+; |      Saved FP       | %sp 
+; |---------------------|
+; |        Arg m        |
+; |---------------------|
+; |         ...         |
+; |---------------------|
+; |        Arg 0        |
+; |---------------------|
+; |       Local 0       |
+; |---------------------|
+; |         ...         |
+; |---------------------|
+; |       Local n       |
+; |---------------------|
+; |    Padding (0/8)    |
+; |=====================|
+; |         ...         | %fp
+;
+
+(define-record-type frame
+  (fields (mutable argc) (mutable locals) prev)
+  (opaque #t))
+
+(define (make-starting-frame argc)
+  (make-frame argc '() #f))
+
+(define (extend-frame prev)
+  (make-frame 0 '() prev))
+
+(define (frame-reserve-args! frame argc)
+  (frame-argc-set! frame argc))
+
+(define (frame-push-local! frame local)
+  (frame-locals-set! frame (cons reg (frame-locals frame))))
+
+;
+; Top-level assembler from generic assembly to x86-64
+;
+
+(define (assemble/x86-64 instrs alloc)
   (define asm-instrs '())
   (define frames '())
   (define framei '())

@@ -280,12 +280,23 @@
              (loop (cdr conn) (cons (cons (car conn) (first info)) rregs))
              (loop (cdr conn) rregs))])))
 
+  (define (reg>? r1 r2)
+    (let ([as1 (second r1)] [p1? (third r1)]
+          [as2 (second r2)] [p2? (third r2)])
+      (cond
+        [(and (null? as1) (not (null? as2))) #t]
+        [(and (not (null? as1)) (null? as2)) #f]
+        [(and (not p1?) p2?) #t]
+        [(and p1? (not p2?)) #f]
+        [else #t])))
+
   ; TODO: sort registers by priority
   (define allocable (filter (lambda (elt) (not (fourth elt))) (register-set-real rset)))
+  (define allocable* (sort allocable reg>?))
 
   (define (unassigned-rreg conflicts)
     (define c-rregs (map cdr conflicts))
-    (define open (filter (lambda (elt) (not (member (first elt) c-rregs))) allocable))
+    (define open (filter (lambda (elt) (not (member (first elt) c-rregs))) allocable*))
     (and (not (null? open)) (first (car open))))
 
   ; Sort graph and compute hints
@@ -316,10 +327,10 @@
             [(not (null? conflicts))
              (define bad-vreg (caar conflicts))
              (set! spills (cons bad-vreg spills))
-             (printf "CONFLICT: ~a ~a\n" vreg conflicts)
+            ;  (printf "CONFLICT: ~a ~a\n" vreg conflicts)
              (loop (cdr not-done) if-graph)]
             [else
-             (printf "~a H> ~a\n" vreg rreg)
+            ;  (printf "~a H> ~a\n" vreg rreg)
              (define if-graph* (cons (car not-done) if-graph))
              (loop (cdr not-done) (if-graph-set if-graph* vreg rreg))])]
          [else
@@ -328,10 +339,10 @@
           (cond
             [(not rreg)
              (set! spills (cons vreg spills))
-             (printf "SPILL: ~a ~a\n" vreg)
+            ;  (printf "SPILL: ~a ~a\n" vreg)
              (loop (cdr not-done) if-graph)]
             [else
-             (printf "~a => ~a\n" vreg rreg)
+            ;  (printf "~a => ~a\n" vreg rreg)
              (define if-graph* (cons (car not-done) if-graph))
              (loop (cdr not-done) (if-graph-set if-graph* vreg rreg))])])])))
 
@@ -355,6 +366,7 @@
                (cdr instr))))
 
   (define first-use+1 (+ (assoc spill first-uses) 1))
+  (define l-reg (register-allocator-new! alloc))
   (let loop ([instrs instrs] [k 0])
     (cond
       [(null? instrs)
@@ -362,11 +374,11 @@
       [(< k first-use+1)
        (cons (car instrs) (loop (cdr instrs) (+ k 1)))]
       [(= k first-use+1)
-       (cons (list 'load (list 'local id) spill)
+       (cons (list 'load l-reg spill)
              (loop instrs (+ k 1)))]
       [(instr-has-vreg? (car instrs) spill)
        (define t-reg (register-allocator-new! alloc))
-       (cons* (list 'load t-reg (list 'local id))
+       (cons* (list 'load t-reg l-reg)
               (replace-vreg (car instrs) spill t-reg)
               (loop (cdr instrs) (+ k 1)))]
       [else
@@ -380,7 +392,7 @@
   (define rset (register-allocator-target-regs alloc))  
   (let loop ([instrs instrs] [spill-count 0])
     (define vregs (reverse (register-allocator-virtual-regs alloc)))
-    (printf "asm> ~a\n" instrs)
+    ; (printf "asm> ~a\n" instrs)
 
     (define (real-register? reg)
       (and (symbol? reg) (register-allocator-real-register? alloc reg)))
@@ -407,14 +419,13 @@
     ; (printf "~a\n" used-regs)
     ; (printf "~a\n" first-uses)
     ; (printf "~a\n" last-uses)
-    (printf "~a\n" if-graph**)
+    ; (printf "~a\n" if-graph**)
 
     (cond
       [(null? spills)
        (define replace-map (map (lambda (i) (cons (car i) (first (cdr i)))) if-graph**))
        (replace-vregs instrs replace-map rset virtual-register? real-register?)]
       [else
-       (printf "~a\n" spills)
        (let loop2 ([instrs instrs] [spills spills] [i spill-count])
          (if (null? spills)
              (loop instrs i)

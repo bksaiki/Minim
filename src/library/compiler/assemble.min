@@ -62,7 +62,9 @@
      (values (list (list 'push-frame label)) frame*)]
     [(pop-continuation)
      ; `(pop-continuation)` =>
-     (values (list (list 'pop-frame)) (frame-prev frame))]
+     (define prev-frame (frame-prev frame))
+     (frame-result-set! prev-frame (frame-result frame))
+     (values (list (list 'pop-frame)) prev-frame)]
     [(prepare-args)
      ; `(prepare-args <n>)` =>
      ; Hint to the assembler
@@ -123,11 +125,9 @@
          ; Closure
          (list 'label jmp-label)
          (list 'load argc-reg argc)
-         (list 'push '%env)
          (list 'load-offset '%env proc-reg CLOSURE-ENV-OFFSET)
          (list 'load-offset code-reg proc-reg CLOSURE-CODE-OFFSET)
          (list 'c-call code-reg argc-reg proc-reg)
-         (list 'pop '%env)
          ; End
          (list 'label exit-label)
          (list 'load res-reg '%ret))
@@ -283,6 +283,7 @@
      (define offset-reg (register-allocator-new! alloc))
      (define rest-reg (register-allocator-new! alloc))
      (define lit-reg (register-allocator-new! alloc))
+     (define rarg-reg (register-allocator-new! alloc))
 
      ; code
      (values
@@ -298,9 +299,10 @@
          (list 'load rest-reg argc-reg)
          (list 'sub rest-reg rest-reg idx)
          (list 'c-call "make_rest_argument" aref-reg rest-reg)
+         (list 'load rarg-reg '%rax)
          ; load name and bind
          (list 'load-literal lit-reg lit-idx)
-         (list 'c-call "env_define_var" '%env lit-reg '%rax))
+         (list 'c-call "env_define_var" '%env lit-reg rarg-reg))
        frame)]
     [(push)
      ; `(push)` =>
@@ -386,6 +388,8 @@
   (frame-set-arg! frame 0 argc-reg)
   (frame-set-arg! frame 1 proc-reg)
 
+  ; (printf "~a\n" instrs)
+
   (define assembled
     (let loop ([instrs instrs] [frame frame])
       (cond
@@ -401,4 +405,4 @@
   ; (printf "asm> ~a\n" assembled)
   (define assigned (register-assign (cons header assembled) alloc))
   (printf "reg> ~a\n" assigned)
-  (assemble/x86-64 assigned))
+  (assemble/x86-64 assigned alloc))

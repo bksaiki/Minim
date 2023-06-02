@@ -13,7 +13,7 @@
 (define (make-module-body-closure instrs)
   (list 'fun  
         (list 'args (list))
-        (list 'instrs (cons (list 'arity-check) instrs))))
+        (list 'instrs instrs)))
 
 ;
 ; Compiler
