@@ -372,6 +372,30 @@
     [else
      (error 'assemble/instr* "unimplemented" instr)]))
 
+(define (assemble/fix-c-calls instrs alloc)
+  (define (vreg? r)
+    (register-allocator-virtual-register? alloc r)) 
+  (let loop ([instrs instrs] [fixed '()])
+    (cond
+      [(null? instrs) (reverse fixed)]
+      [else
+       (define instr (car instrs))
+       (case (car instr)
+         [(c-call)
+          (define tregs (map (lambda (_) (register-allocator-new! alloc)) (cdr instr)))
+          (define load-instrs (map (lambda (treg arg)
+                                     (cond
+                                       [(string? arg) (list 'load-address treg arg)]
+                                       [(symbol? arg) (list 'load treg arg)]
+                                       [(number? arg) (list 'load treg arg)]
+                                       [else (error 'assemble/fix-c-calls "unknown c-call argument" arg)]))
+                                   tregs (cdr instr)))
+          (define c-call (cons 'c-call tregs))
+          (loop (cdr instrs) (cons c-call (append (reverse load-instrs) fixed)))]
+         [else
+          (loop (cdr instrs) (cons instr fixed))])])))
+
+
 (define (assemble/procedure proc label!)
   ; (printf " <assembling: ~a>\n" proc)
   (define args (second (second proc)))
@@ -388,21 +412,26 @@
   (frame-set-arg! frame 0 argc-reg)
   (frame-set-arg! frame 1 proc-reg)
 
-  ; (printf "~a\n" instrs)
+  (printf "flat> ~a\n" instrs)
 
+  ; 1st pass
   (define assembled
     (let loop ([instrs instrs] [frame frame])
       (cond
-        [(null? instrs) (list)]
+        [(null? instrs)
+         (list (list 'load '%ret (frame-result frame)))]
+              ;  (list 'ret))]
         [(list? (car instrs))
          (define-values (seq frame*) (assemble/instr (first instrs) frame alloc label!))
         ;  (printf "~a => ~a\n" (car instrs) seq)
          (append seq (loop (cdr instrs) frame*))]
         [else
          (error 'assemble/procedure "expected a list: " (car instrs))])))
+
+  ; 2nd pass
+  (define assembled* (assemble/fix-c-calls assembled alloc))
   
-  ; (printf "~a\n" (cons header tmp-code))
-  ; (printf "asm> ~a\n" assembled)
-  (define assigned (register-assign (cons header assembled) alloc))
+  (printf "asm> ~a\n" assembled*)
+  (define assigned (register-assign (cons header assembled*) alloc))
   (printf "reg> ~a\n" assigned)
   (assemble/x86-64 assigned alloc))

@@ -9,6 +9,7 @@
 
         make-register-allocator
         register-allocator-real-register?
+        register-allocator-virtual-register?
         register-allocator-new!
 
         register-assign)
@@ -101,6 +102,10 @@
   (define rset (register-allocator-target-regs allocator))
   (or (assoc r (register-set-real rset))
       (assoc r (register-set-aliases rset))))
+
+(define (register-allocator-virtual-register? allocator r)
+  (define vregs (register-allocator-virtual-regs allocator))
+  (member r vregs))
 
 (define (register-allocator-new! allocator)
   (define vregs (register-allocator-virtual-regs allocator))
