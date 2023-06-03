@@ -25,10 +25,10 @@
     [%arg4        %r8  #f]
     [%arg5        %r9  #f]
     [             %r10 #f]
-    [             %r11 #f]))
-    ; [             %r12 #t]
-    ; [             %r13 #t]
-    ; [             %r15 #t]))
+    [             %r11 #f]
+    [             %r12 #t]
+    [             %r13 #t]
+    [             %r15 #t]))
 
 ;
 ; Utilities
@@ -414,12 +414,10 @@
         (list (instr/load-imm64 dst src))]
        [(list? dst)
         ; Reg => Mem
-        ; (error 'assemble/instr "unimplemented" instr)]
-        (list (list 'load '%rax 0))]
+        (error 'assemble/instr "unimplemented" instr)]
        [(list? src)
         ; Mem => Reg
-        ; (error 'assemble/instr "unimplemented" instr)]
-        (list (list 'load '%rax 0))]
+        (error 'assemble/instr "unimplemented" instr)]
        [else
         ; Reg => Reg
         (list (instr/load dst src))])]
@@ -563,33 +561,9 @@
        (instr/add-imm '%rsp WORD-SIZE))]
     [(c-call)
      ; function call
-     ; assumes registers do not require stashing
+     ; assumes registers are in the right place
+     ; and do not require stashing
      (list (instr/call '%rax))]
-     ; function call
-     ; make prefix and suffix code to stash registers
-    ;  (define-values (prefix suffix)
-    ;    (c-call-prefix+suffix (cddr instr) push-local! pop-local!))
-    ;  ; compute prefix
-    ;  ; the actual call
-    ;  (cond
-    ;    [(string? (second instr))
-    ;     ; link required:
-    ;     ;  mov rax, <literal address> => 48 b8 [xx]^8
-    ;     ;  call rax => ff d0
-    ;     (define link-idx (+ (length (get-assembled)) (length prefix)))
-    ;     (link! (list 'runtime (second instr)) (list link-idx 2))
-    ;     (append
-    ;       prefix
-    ;       (list (instr/load-imm64 '%rax 0)
-    ;             (instr/call '%rax))
-    ;       suffix)]
-    ;    [else
-    ;     ; pointer provided [at rax]
-    ;     ;  call rax => ff d0
-    ;     (append
-    ;       prefix
-    ;       (list (instr/call '%rax))
-    ;       suffix)])]
     [(branch)
      ; branching
      (define label (second instr))
@@ -615,18 +589,18 @@
      (define src1 (second instr))
      (define src2 (third instr))
      (list (instr/cmp64 src1 src2))]
-    ; [(push)
-    ;  ; really just a move
-    ;  (define offset (push-local!))
-    ;  (define byte-offset (- (* WORD-SIZE offset)))
-    ;  (define src (second instr))
-    ;  (list (instr/store-at-offset '%rbp src byte-offset))]
-    ; [(pop)
-    ;  ; really just a move
-    ;  (define offset (pop-local!))
-    ;  (define byte-offset (- (* WORD-SIZE offset)))
-    ;  (define dst (second instr))
-    ;  (list (instr/load-from-offset dst '%rbp byte-offset))]
+    [(push)
+     ; really just a move
+     (define offset (push-local!))
+     (define byte-offset (- (* WORD-SIZE offset)))
+     (define src (second instr))
+     (list (instr/store-at-offset '%rbp src byte-offset))]
+    [(pop)
+     ; really just a move
+     (define offset (pop-local!))
+     (define byte-offset (- (* WORD-SIZE offset)))
+     (define dst (second instr))
+     (list (instr/load-from-offset dst '%rbp byte-offset))]
     [(label)
      ; label => just register name and location
      (link! (list 'label (second instr)) (list (length (get-assembled))))

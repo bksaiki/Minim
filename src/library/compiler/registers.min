@@ -371,7 +371,6 @@
                (cdr instr))))
 
   (define first-use+1 (+ (assoc spill first-uses) 1))
-  (define l-reg (register-allocator-new! alloc))
   (let loop ([instrs instrs] [k 0])
     (cond
       [(null? instrs)
@@ -379,15 +378,42 @@
       [(< k first-use+1)
        (cons (car instrs) (loop (cdr instrs) (+ k 1)))]
       [(= k first-use+1)
-       (cons (list 'load l-reg spill)
+       (cons (list 'load (list 'local id) spill)
              (loop instrs (+ k 1)))]
       [(instr-has-vreg? (car instrs) spill)
        (define t-reg (register-allocator-new! alloc))
-       (cons* (list 'load t-reg l-reg)
+       (cons* (list 'load t-reg (list 'local id))
               (replace-vreg (car instrs) spill t-reg)
               (loop (cdr instrs) (+ k 1)))]
       [else
        (cons (car instrs) (loop (cdr instrs) (+ k 1)))])))
+
+(define (apply-callee-saved instrs rset)
+  (define callee-saved
+    (map car (filter (lambda (elt) (and (third elt) (not (fourth elt))))
+                     (register-set-real rset))))
+
+  (define callee-saved-used (make-set))
+  (let loop ([instrs instrs])
+    (unless (null? instrs)
+      (define instr (car instrs))
+      (for-each (lambda (arg)
+                  (when (member arg callee-saved)
+                    (set-add! callee-saved-used arg)))
+                (cdr instr))
+      (loop (cdr instrs))))
+
+  (define used-in-order
+    (filter (lambda (r) (set-member? callee-saved-used r))
+            callee-saved))
+  
+  (define init-instr (car instrs))
+  (define rest-instrs (cdr instrs))
+  (define prefix (map (lambda (r) (list 'push r)) used-in-order))
+  (define suffix (map (lambda (r) (list 'pop r)) (reverse used-in-order)))
+
+  (cons init-instr (append prefix rest-instrs suffix)))
+  
 
 ;
 ; Top-level register assigner
@@ -429,7 +455,8 @@
     (cond
       [(null? spills)
        (define replace-map (map (lambda (i) (cons (car i) (first (cdr i)))) if-graph**))
-       (replace-vregs instrs replace-map rset virtual-register? real-register?)]
+       (define assigned (replace-vregs instrs replace-map rset virtual-register? real-register?))
+       (apply-callee-saved assigned rset)]
       [else
        (let loop2 ([instrs instrs] [spills spills] [i spill-count])
          (if (null? spills)

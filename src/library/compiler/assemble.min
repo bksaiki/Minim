@@ -47,7 +47,7 @@
 ; Assembler
 ;
 
-(define (assemble/instr instr frame alloc label!)
+(define (assemble/instr instr frame alloc argc label!)
   (case (first instr)
     [(literal)
      ; `(literal <n>)` =>
@@ -239,14 +239,13 @@
     [(bind-argument)
      ; `(bind-argument <n> <name>)` =>
      ; binds the <n>th argument to in the current enviroment
-     ;  - extract argc (at %arg1)
      ;  - extract the previous FP (stored at [CC-REG])
      ;  - the <i>th argument is at [CC-REG - 8*argc + 8*idx]
      (define idx (second instr))
      (define lit-idx (third instr))
     
      ; registers
-     (define argc-reg (frame-get-arg frame 1))
+     (define argc-reg (register-allocator-new! alloc))
      (define aref-reg (register-allocator-new! alloc))
      (define offset-reg (register-allocator-new! alloc))
      (define value-reg (register-allocator-new! alloc))
@@ -256,6 +255,7 @@
      (values
        (list
          ; compute `- 8*argc + 8*idx`
+         (list 'load argc-reg argc)
          (list 'load offset-reg idx)
          (list 'sub offset-reg offset-reg argc-reg)
          (list 'shl offset-reg offset-reg 3)
@@ -422,7 +422,7 @@
          (list (list 'load '%ret (frame-result frame)))]
               ;  (list 'ret))]
         [(list? (car instrs))
-         (define-values (seq frame*) (assemble/instr (first instrs) frame alloc label!))
+         (define-values (seq frame*) (assemble/instr (first instrs) frame alloc (length args) label!))
         ;  (printf "~a => ~a\n" (car instrs) seq)
          (append seq (loop (cdr instrs) frame*))]
         [else
