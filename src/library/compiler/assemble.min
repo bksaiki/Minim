@@ -47,7 +47,7 @@
 ; Assembler
 ;
 
-(define (assemble/instr instr frame alloc argc label!)
+(define (assemble/instr instr frame alloc label!)
   (case (first instr)
     [(literal)
      ; `(literal <n>)` =>
@@ -102,6 +102,7 @@
      (define argc-reg (register-allocator-new! alloc))
      (define args-reg (register-allocator-new! alloc))
      (define prim-reg (register-allocator-new! alloc))
+     (define env-reg (register-allocator-new! alloc))
      (define code-reg (register-allocator-new! alloc))
      (define res-reg (register-allocator-new! alloc))
 
@@ -125,9 +126,11 @@
          ; Closure
          (list 'label jmp-label)
          (list 'load argc-reg argc)
+         (list 'load env-reg '%env)
          (list 'load-offset '%env proc-reg CLOSURE-ENV-OFFSET)
          (list 'load-offset code-reg proc-reg CLOSURE-CODE-OFFSET)
          (list 'c-call code-reg argc-reg proc-reg)
+         (list 'load '%env env-reg)
          ; End
          (list 'label exit-label)
          (list 'load res-reg '%ret))
@@ -245,7 +248,7 @@
      (define lit-idx (third instr))
     
      ; registers
-     (define argc-reg (register-allocator-new! alloc))
+     (define argc-reg (frame-get-arg frame 1))
      (define aref-reg (register-allocator-new! alloc))
      (define offset-reg (register-allocator-new! alloc))
      (define value-reg (register-allocator-new! alloc))
@@ -255,7 +258,6 @@
      (values
        (list
          ; compute `- 8*argc + 8*idx`
-         (list 'load argc-reg argc)
          (list 'load offset-reg idx)
          (list 'sub offset-reg offset-reg argc-reg)
          (list 'shl offset-reg offset-reg 3)
@@ -422,7 +424,7 @@
          (list (list 'load '%ret (frame-result frame)))]
               ;  (list 'ret))]
         [(list? (car instrs))
-         (define-values (seq frame*) (assemble/instr (first instrs) frame alloc (length args) label!))
+         (define-values (seq frame*) (assemble/instr (first instrs) frame alloc label!))
         ;  (printf "~a => ~a\n" (car instrs) seq)
          (append seq (loop (cdr instrs) frame*))]
         [else
