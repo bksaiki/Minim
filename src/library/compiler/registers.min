@@ -413,7 +413,23 @@
   (define suffix (map (lambda (r) (list 'pop r)) (reverse used-in-order)))
 
   (cons init-instr (append prefix rest-instrs suffix)))
-  
+
+(define (optimize instrs)
+  (let loop ([instrs instrs])
+    (cond
+      [(null? instrs) '()]
+      [else
+       (define instr (first instrs))
+       (case (first instr)
+         [(load)
+          ; load => remove self-assignment
+          (define dst (second instr))
+          (define src (third instr))
+          (if (eq? dst src)
+              (loop (cdr instrs))
+              (cons instr (loop (cdr instrs))))]
+         [else
+          (cons instr (loop (cdr instrs)))])])))
 
 ;
 ; Top-level register assigner
@@ -456,7 +472,8 @@
       [(null? spills)
        (define replace-map (map (lambda (i) (cons (car i) (first (cdr i)))) if-graph**))
        (define assigned (replace-vregs instrs replace-map rset virtual-register? real-register?))
-       (apply-callee-saved assigned rset)]
+       (define with-stash (apply-callee-saved assigned rset))
+       (optimize with-stash)]
       [else
        (let loop2 ([instrs instrs] [spills spills] [i spill-count])
          (if (null? spills)

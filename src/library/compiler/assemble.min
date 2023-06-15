@@ -385,13 +385,14 @@
        (case (car instr)
          [(c-call)
           (define tregs (map (lambda (_) (register-allocator-new! alloc)) (cdr instr)))
-          (define load-instrs (map (lambda (treg arg)
-                                     (cond
-                                       [(string? arg) (list 'load-address treg arg)]
-                                       [(symbol? arg) (list 'load treg arg)]
-                                       [(number? arg) (list 'load treg arg)]
-                                       [else (error 'assemble/fix-c-calls "unknown c-call argument" arg)]))
-                                   tregs (cdr instr)))
+          (define load-instrs
+            (map (lambda (treg arg)
+                   (cond
+                     [(string? arg) (list 'load-address treg arg)]
+                     [(symbol? arg) (list 'load treg arg)]
+                     [(number? arg) (list 'load treg arg)]
+                     [else (error 'assemble/fix-c-calls "unknown c-call argument" arg)]))
+                 tregs (cdr instr)))
           (define c-call (cons 'c-call tregs))
           (loop (cdr instrs) (cons c-call (append (reverse load-instrs) fixed)))]
          [else

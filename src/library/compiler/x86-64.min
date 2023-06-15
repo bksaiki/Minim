@@ -369,40 +369,39 @@
        (if (= r16 0) 0 (- 16 r16))]
       [else (loop (cdr instrs) (+ len (length (car instrs))))])))
 
-(define (c-call-prefix+suffix args push! pop!)
-  (let loop ([args args] [i 0] [prefix '()] [suffix '()])
-    (cond
-      [(null? args)
-       ; no arguments left to stash
-       (for-each (lambda _ (pop!)) (make-list i #f))
-       (values (reverse prefix) suffix)]
-      [else
-       (define offset (push!))
-       (define byte-offset (- (* WORD-SIZE offset)))
-       (define i-reg (argument/register i))
-       (define push (instr/store-at-offset '%rbp i-reg byte-offset))
-       (define pop (instr/load-from-offset i-reg '%rbp byte-offset))
-       (cond
-         [(number? (car args))
-          ; immediate as argument
-          (define ld (instr/load-imm64 (car args)))
-          (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))]
-         [else
-          ; register as argument
-          (define src (car args))
-          (cond
-            [(eq? i-reg src)
-             (loop (cdr args) (+ i 1) (cons push prefix) (cons pop suffix))]
-            [else
-             (define ld (instr/load i-reg src))
-             (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
+; (define (c-call-prefix+suffix args push! pop!)
+;   (let loop ([args args] [i 0] [prefix '()] [suffix '()])
+;     (cond
+;       [(null? args)
+;        ; no arguments left to stash
+;        (for-each (lambda _ (pop!)) (make-list i #f))
+;        (values (reverse prefix) suffix)]
+;       [else
+;        (define offset (push!))
+;        (define byte-offset (- (* WORD-SIZE offset)))
+;        (define i-reg (argument/register i))
+;        (define push (instr/store-at-offset '%rbp i-reg byte-offset))
+;        (define pop (instr/load-from-offset i-reg '%rbp byte-offset))
+;        (cond
+;          [(number? (car args))
+;           ; immediate as argument
+;           (define ld (instr/load-imm64 (car args)))
+;           (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))]
+;          [else
+;           ; register as argument
+;           (define src (car args))
+;           (cond
+;             [(eq? i-reg src)
+;              (loop (cdr args) (+ i 1) (cons push prefix) (cons pop suffix))]
+;             [else
+;              (define ld (instr/load i-reg src))
+;              (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
 
 
 (define (assemble/instr instr
                         get-assembled
                         link!
-                        push-frame! pop-frame! get-frame
-                        reserve-args! push-local! pop-local!)
+                        push-frame! pop-frame! frame)
   (case (first instr)
     [(load)
      ; mov <dst>, <src>
@@ -549,7 +548,7 @@
        (instr/sub-imm '%rsp 0))]
     [(prepare-args)
      ; hint for the frame size
-     (reserve-args! (second instr))
+     (frame-reserve-args! frame (second instr))
      (list)]
     [(pop-frame)
      ; remove continuation frame
@@ -591,13 +590,13 @@
      (list (instr/cmp64 src1 src2))]
     [(push)
      ; really just a move
-     (define offset (push-local!))
+     (define offset (frame-push-local! frame))
      (define byte-offset (- (* WORD-SIZE offset)))
      (define src (second instr))
      (list (instr/store-at-offset '%rbp src byte-offset))]
     [(pop)
      ; really just a move
-     (define offset (pop-local!))
+     (define offset (frame-pop-local! frame))
      (define byte-offset (- (* WORD-SIZE offset)))
      (define dst (second instr))
      (list (instr/load-from-offset dst '%rbp byte-offset))]
@@ -620,8 +619,8 @@
 ; |=====================|
 ; |    Return Address   |
 ; |---------------------|
-; |      Saved FP       | %sp 
-; |---------------------|
+; |      Saved FP       |
+; |---------------------| %sp 
 ; |        Arg m        |
 ; |---------------------|
 ; |         ...         |
@@ -635,25 +634,50 @@
 ; |       Local n       |
 ; |---------------------|
 ; |    Padding (0/8)    |
-; |=====================|
-; |         ...         | %fp
+; |=====================| %fp
+; |         ...         |
 ;
 
 (define-record-type frame
-  (fields (mutable argc) (mutable locals) prev)
+  (fields (mutable argc) (mutable localc) (mutable locali) (mutable idx) prev)
   (opaque #t))
 
 (define (make-starting-frame argc)
-  (make-frame argc '() #f))
+  (make-frame argc 0 0 3 #f))
 
-(define (extend-frame prev)
-  (make-frame 0 '() prev))
+(define (extend-frame prev idx)
+  (make-frame 0 0 0 idx prev))
 
 (define (frame-reserve-args! frame argc)
   (frame-argc-set! frame argc))
 
-(define (frame-push-local! frame local)
-  (frame-locals-set! frame (cons reg (frame-locals frame))))
+; Adds a local memory location
+; Returns the index within the frame of the new location
+(define (frame-push-local! frame)
+  (define localc (frame-localc frame))
+  (define locali (frame-locali frame))
+  (when (= locali localc)   ; need to reserve more space
+    (frame-localc-set! frame (+ localc 1)))
+  (frame-locali-set! frame (+ locali 1))
+  (+ (frame-argc frame) (frame-locali frame)))
+
+; Removes the last memory location created
+; using `frame-pop-local!`. Returns the index
+; within the frame of the new location
+(define (frame-pop-local! frame)
+  (define locali (frame-locali frame))
+  (when (= locali 0)
+    (error 'assemble/x86-64 "frame-pop-local!: frame size will be negative" frame))
+  (frame-locali-set! frame (- locali 1))
+  (+ (frame-argc frame) locali))
+
+(define (frame-size frame)
+  (define words (+ 2 (frame-argc frame) (frame-localc frame)))
+  (define aligned
+    (if (= (remainder words 2) 0)
+        words
+        (+ words 1)))
+  (* WORD aligned))
 
 ;
 ; Top-level assembler from generic assembly to x86-64
@@ -661,9 +685,8 @@
 
 (define (assemble/x86-64 instrs alloc)
   (define asm-instrs '())
-  (define frames '())
-  (define framei '())
   (define links '())
+  (define frame (make-starting-frame 0))
 
   (define (make-link! key loc)
     (set! links (cons (cons key loc) links)))
@@ -711,49 +734,10 @@
              (loop (cdr instrs) (+ i 1) (cons (car instrs) instrs*))])))))
 
   (define (push-frame! idx)
-    (set! framei (cons idx framei))
-    (set! frames (cons (list 0 0 0) frames)))
+    (set! frame (extend-frame frame idx)))
 
   (define (pop-frame!)
-    (adjust-frame!)
-    (set! framei (cdr framei))
-    (set! frames (cdr frames)))
-  
-  (define (get-frame)
-    (car frames))
-
-  (define (reserve-args! count)
-    (define frame (car frames))
-    (define argc (first frame))
-    (define localc (second frame))
-    (define locali (third frame))
-    (define frame* (list (+ argc count) localc locali))
-    (set! frames (cons frame* (cdr frames))))
-
-  (define (push-local!)
-    (define frame (car frames))
-    (define argc (first frame))
-    (define localc (second frame))
-    (define locali (third frame))
-    (define frame*
-      (if (= locali localc)
-          (list argc (+ localc 1) (+ locali 1))
-          (list argc localc (+ locali 1))))
-    (set! frames (cons frame* (cdr frames)))
-    (+ (first frame*) (third frame*)))
-    
-  (define (pop-local!)
-    (define frame (car frames))
-    (define argc (first frame))
-    (define localc (second frame))
-    (define locali (third frame))
-    (define frame* (list argc localc (- locali 1)))
-    (if (= locali 0)
-        (error 'assemble/x86-64 "pop-local: frame size will be negative" frames)
-        (set! frames (cons frame* (cdr frames))))
-    (+ (first frame) (third frame)))
-  
-  ; (printf "~a\n" instrs)
+    (set! frame (frame-prev frame)))
 
   (push-frame! 3)
   (set! asm-instrs (cons (instr/sub-imm '%rsp 0) (reverse prefix)))
@@ -764,8 +748,7 @@
         (assemble/instr (car instrs)
                         (lambda _ asm-instrs)
                         make-link!
-                        push-frame! pop-frame! get-frame
-                        reserve-args! push-local! pop-local!))
+                        push-frame! pop-frame! frame))
       (set! asm-instrs (append (reverse next) asm-instrs))
       (loop (cdr instrs))))
 
