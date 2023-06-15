@@ -5,7 +5,7 @@
 (import "pre-base.min")
 (export first second third fourth fifth
         sixth seventh eighth ninth tenth
-        list-ref
+        list-ref list-set
         cons*
         member remove remove*
         filter
@@ -129,3 +129,13 @@
       [(null? lst) #f]
       [(equal? k (car lst)) i]
       [else (loop (cdr lst) (+ i 1))])))
+
+(define (list-set lst k v)
+  (unless (integer? k)  ; TODO: non-negative integer
+    (error 'list-set "expected a non-negative integer" k))
+  (let loop ([xs lst] [i 0] [xs* '()])
+    (cond
+      [(null? xs) (error 'list-set "index out of bounds" lst k)]
+      [(= i k) (append (reverse xs*) (cons v (cdr xs)))]
+      [(pair? xs) (loop (cdr xs) (+ i 1) (cons (car xs) xs*))]
+      [else (error 'list-set "expected a list" lst)])))
