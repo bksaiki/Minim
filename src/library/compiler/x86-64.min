@@ -157,6 +157,14 @@
     [else
      (error 'instr/load-from-offset "unimplemented offset" offset)]))
 
+; push <imm>
+(define (instr/push-imm imm)
+  (cond
+    [(<= 0 imm 255)
+     (list #x6a imm)]
+    [else
+     (error 'instr/push-imm "unimplemented" imm)]))
+
 ; push <src>
 (define (instr/push src)
   (define-values (b reg) (register/code src))
@@ -403,8 +411,8 @@
   (define idx (index-of #f (reverse locals)))
   (cond
     [idx  ; open space, update the set of locals
-     (frame-locals-set! frame (list-set locals (- (length locals) idx 1) label))
-     (+ (frame-argc frame) idx)]
+     (frame-locals-set! frame (reverse (list-set (reverse locals) idx label)))
+     (+ (frame-argc frame) (+ idx 1))]
     [else ; need to reserve more space
      (frame-locals-set! frame (cons label locals))
      (+ (frame-argc frame) (length (frame-locals frame)))]))
@@ -413,16 +421,18 @@
 (define (frame-get-local frame label)
   (let loop ([frame frame] [offset 0])
     (cond
-      [(not frame)
-       (error 'frame-get-local! "could not find local" label)]
       [(member label (frame-locals frame))
        (define locals (frame-locals frame))
        (define idx (index-of label locals))
-       (+ offset (frame-argc frame) (- (length locals) idx 1))]
+       (+ offset (frame-argc frame) (- (length locals) idx))]
       [else
-       (loop (frame-prev frame) (+ (frame-size frame) offset))])))
+       (unless (frame-prev frame)
+         (error 'frame-get-local! "could not find local" label))
+       (define prev (frame-prev frame))
+       (define adj-size (+ (* 2 WORD-SIZE) (frame-size prev)))
+       (loop prev (- offset adj-size))])))
 
-; Adds a unnamed local memory location
+; Adds an unnamed local memory location
 ; Returns the index within the frame of the new location
 (define (frame-push-local! frame)
   (frame-set-local! frame #t))
@@ -436,12 +446,13 @@
   (unless idx
     (error 'assemble/x86-64 "frame-pop-local!: frame size will be negative"))
   (frame-locals-set! frame (list-set locals idx #f))
-  (+ (frame-argc frame) (- (length locals) idx 1)))
+  (+ (frame-argc frame) (- (length locals) idx)))
 
+; Frame size ignoring return address and saved FP
 (define (frame-size frame)
-  (define words (+ 2 (frame-argc frame) (length (frame-locals frame))))
+  (define words (+ (frame-argc frame) (length (frame-locals frame))))
   (define aligned (if (= (remainder words 2) 0) words (+ words 1)))
-  (* WORD aligned))
+  (* WORD-SIZE aligned))
 
 ;
 ; Assembler
@@ -601,10 +612,9 @@
      ;  - push label address and BP (do manually to ensure alignment)
      ;  - move BP to SP
      (define label (second instr)) ; TODO handle label
-     (push-frame! (+ (length (get-assembled)) 4))
+     (push-frame! (+ (length (get-assembled)) 3))
      (list
-       (instr/load-imm64 '%rax 0)
-       (instr/push '%rax)
+       (instr/push-imm 0)
        (instr/push '%rbp)
        (instr/load '%rbp '%rsp)
        (instr/sub-imm '%rsp 0))]
@@ -704,15 +714,9 @@
           [else
            (loop (cdr links) (cons (car links) links*))]))))
 
-  (define (adjust-frame!)
-    (define instr-idx (car framei))
-    (define frame (car frames))
-
-    (define frame-size (+ (first frame) (second frame)))
-    (define aligned-size
-      (if (= (remainder frame-size 2) 0)
-          frame-size
-          (+ frame-size 1)))
+  (define (adjust-frame! frame)
+    (define instr-idx (frame-idx frame))
+    (define fsize (frame-size frame))
 
     (set! asm-instrs
       (reverse 
@@ -721,15 +725,15 @@
             [(null? instrs)
              (error 'adjust-frame!
                     "instruction sequence not long enough"
-                    instr-idx asm-intsrs)]
+                    instr-idx asm-instrs)]
             [(= i instr-idx)
              (define instr-len (length (car instrs)))
              (cond
-               [(= aligned-size 0)
+               [(= fsize 0)
                 (adjust-links! i (- 1))
                 (append (reverse instrs*) (cdr instrs))]
                [else
-                (define reserve (instr/sub-imm '%rsp (* WORD-SIZE aligned-size)))
+                (define reserve (instr/sub-imm '%rsp fsize))
                 (append (reverse instrs*) (cons reserve (cdr instrs)))])]
             [else
              (loop (cdr instrs) (+ i 1) (cons (car instrs) instrs*))])))))
@@ -738,6 +742,7 @@
     (set! frame (extend-frame frame idx)))
 
   (define (pop-frame!)
+    (adjust-frame! frame)
     (set! frame (frame-prev frame)))
 
   (set! asm-instrs (cons (instr/sub-imm '%rsp 0) (reverse prefix)))
