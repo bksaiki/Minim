@@ -68,7 +68,10 @@
            (loop (cdr exprs)))])))
   
   ; module body is a nullary function
-  (define module-body-fn (make-module-body-closure module-body))
+  ; lead with a `make-void` in case the body is empty
+  (define module-body-fn
+    (make-module-body-closure
+      (cons (list 'make-void) module-body)))
 
   ; lists are in reverse order
   (set! top-levels (reverse top-levels))
