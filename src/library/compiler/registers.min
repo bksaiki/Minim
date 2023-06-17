@@ -123,6 +123,37 @@
            (cons r v)))
        vregs))
 
+(define (compute-used-registers instrs vreg?)
+  (define used (make-set))
+  (let loop ([instrs instrs])
+    (cond
+      [(null? instrs) (set->list used)]
+      [else
+       (let loop2 ([args (cdar instrs)])
+         (cond
+           [(null? args) (loop (cdr instrs))]
+           [else
+            (when (vreg? (car args))
+              (set-add! used (car args)))
+            (loop2 (cdr args))]))])))
+
+(define (compute-live-ranges instrs used)
+  (define first (make-vector (length used) #f))
+  (define last (make-vector (length used) #f))
+  (let loop ([instrs instrs] [i 0])
+    (unless (null? instrs)
+      (let loop2 ([args (cdar instrs)])
+        (unless (null? args)
+          (define idx (index-of (car args) used))
+          (when idx
+            (unless (vector-ref first idx)
+              (vector-set! first idx i))
+            (vector-set! last idx i))
+          (loop2 (cdr args))))
+      (loop (cdr instrs) (+ i 1))))
+  (values (vector->list first)
+          (vector->list last)))
+
 ; computes index of instruction of first use/init
 (define (compute-first-use instrs unused reverse? vreg?)
   (let loop ([instrs instrs] [unused unused] [used '()] [i 0])
@@ -446,6 +477,13 @@
 
     (define (virtual-register? reg)
       (and (symbol? reg) (member reg vregs)))
+
+    ; compute live ranges
+    (define used-regs* (compute-used-registers instrs virtual-register?))
+    (printf "used: ~a\n" used-regs*)
+
+    (define-values (first-uses* last-uses*) (compute-live-ranges instrs used-regs*))
+    (printf "first: ~a, last: ~a\n" first-uses* last-uses*)
 
     ; compute used registers with first/last uses
     (define-values (first-uses last-uses used-regs)
