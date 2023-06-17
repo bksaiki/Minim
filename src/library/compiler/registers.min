@@ -272,6 +272,16 @@
           [else
            (loop (cdr instrs) hints)]))))
 
+(define (reg>? r1 r2)
+    (let ([as1 (second r1)] [p1? (third r1)]
+          [as2 (second r2)] [p2? (third r2)])
+      (cond
+        [(and (null? as1) (not (null? as2))) #t]
+        [(and (not (null? as1)) (null? as2)) #f]
+        [(and (not p1?) p2?) #t]
+        [(and p1? (not p2?)) #f]
+        [else #t])))
+
 (define (apply-assign if-graph instrs rset vreg?)
   ; Sorts nodes in the interference graph by index
   ;  `ni` ::= `(cons vreg (list rreg forw back))`
@@ -290,29 +300,21 @@
              (loop (cdr conn) (cons (cons (car conn) (first info)) rregs))
              (loop (cdr conn) rregs))])))
 
-  (define (reg>? r1 r2)
-    (let ([as1 (second r1)] [p1? (third r1)]
-          [as2 (second r2)] [p2? (third r2)])
-      (cond
-        [(and (null? as1) (not (null? as2))) #t]
-        [(and (not (null? as1)) (null? as2)) #f]
-        [(and (not p1?) p2?) #t]
-        [(and p1? (not p2?)) #f]
-        [else #t])))
 
-  ; TODO: sort registers by priority
-  (define allocable (filter (lambda (elt) (not (fourth elt))) (register-set-real rset)))
-  (define allocable* (sort allocable reg>?))
+  (define allocable
+    (sort (filter (lambda (elt) (not (fourth elt)))
+                  (register-set-real rset))
+          reg>?))
 
   (define (unassigned-rreg conflicts)
     (define c-rregs (map cdr conflicts))
-    (define open (filter (lambda (elt) (not (member (first elt) c-rregs))) allocable*))
+    (define open (filter (lambda (elt) (not (member (first elt) c-rregs))) allocable))
     (and (not (null? open)) (first (car open))))
 
   ; Sort graph and compute hints
   (define not-done (sort if-graph node>?))
   (define hints (register-hints instrs rset vreg?))
-  (define spills '())
+  (define spills (make-set))
 
   ; Iteratively assign
   (let loop ([not-done not-done] [if-graph '()])
@@ -336,7 +338,7 @@
           (cond
             [(not (null? conflicts))
              (define bad-vreg (caar conflicts))
-             (set! spills (cons bad-vreg spills))
+             (set-add! spills bad-vreg)
             ;  (printf "CONFLICT: ~a ~a\n" vreg conflicts)
              (loop (cdr not-done) if-graph)]
             [else
@@ -348,7 +350,7 @@
           (define rreg (unassigned-rreg conflicts))
           (cond
             [(not rreg)
-             (set! spills (cons vreg spills))
+             (set-add! spills vreg)
             ;  (printf "SPILL: ~a ~a\n" vreg)
              (loop (cdr not-done) if-graph)]
             [else
@@ -443,17 +445,17 @@
 (define (register-assign instrs alloc)
   (define rset (register-allocator-target-regs alloc))  
   (let loop ([instrs instrs] [spill-count 0])
-    (define vregs (reverse (register-allocator-virtual-regs alloc)))
+    (define vregs (apply make-set (register-allocator-virtual-regs alloc)))
     ; (printf "asm> ~a\n" instrs)
 
-    (define (real-register? reg)
+    (define (rreg? reg)
       (and (symbol? reg) (register-allocator-real-register? alloc reg)))
 
-    (define (virtual-register? reg)
-      (and (symbol? reg) (member reg vregs)))
+    (define (vreg? reg)
+      (and (symbol? reg) (set-member? vregs reg)))
 
     ; compute live ranges
-    (define used-regs (compute-used-registers instrs virtual-register?))
+    (define used-regs (compute-used-registers instrs vreg?))
     (define-values (first-uses last-uses) (compute-live-ranges instrs used-regs))
 
     ; convert to hashtables
@@ -466,8 +468,8 @@
     (define if-graph (make-if-graph first-use-map last-use-map))
 
     ; apply known and then color
-    (define if-graph* (apply-known if-graph instrs rset virtual-register?))
-    (define-values (if-graph** spills) (apply-assign if-graph* instrs rset virtual-register?))
+    (define if-graph* (apply-known if-graph instrs rset vreg?))
+    (define-values (if-graph** spills) (apply-assign if-graph* instrs rset vreg?))
       
     ; (printf "~a\n" used-regs)
     ; (printf "~a\n" first-use-map)
@@ -475,13 +477,13 @@
     ; (printf "~a\n" if-graph**)
 
     (cond
-      [(null? spills)
+      [(set-empty? spills)
        (define replace-map (map (lambda (i) (cons (car i) (first (cdr i)))) if-graph**))
-       (define assigned (replace-vregs instrs replace-map rset virtual-register? real-register?))
+       (define assigned (replace-vregs instrs replace-map rset vreg? rreg?))
        (define with-stash (apply-callee-saved assigned rset))
        (optimize with-stash)]
       [else
-       (let loop2 ([instrs instrs] [spills spills] [i spill-count])
+       (let loop2 ([instrs instrs] [spills (set->list spills)] [i spill-count])
          (if (null? spills)
              (loop instrs i)
              (let ([instrs* (apply-spill (car spills) instrs first-use-map alloc i)])
