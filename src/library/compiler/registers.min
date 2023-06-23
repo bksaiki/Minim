@@ -33,19 +33,21 @@
         [else (error 'canonicalize-register "not a register or register alias" reg)]))
 
 (define (validate-register-set! rset)
-  (define aliases (register-set-aliases rset))
+  (define alias-map (register-set-aliases rset))
   ; all required registers are included
   (for-each (lambda (r)
-              (unless (hashtable-contains? aliases r)
+              (unless (hashtable-contains? alias-map r)
                 (error 'validate-register-set! "missing required register" r)))
             required-registers)
   ; subset of argument registers are not disconnected
   (let loop ([regs argument-registers] [supported? #t])
     (unless (null? regs)
       (cond
-        [(hashtable-contains? aliases (car regs))
+        [(hashtable-contains? alias-map (car regs))
          (unless supported?
-           (error 'validate-register-set! "missing argument register, before" (car regs)))
+           (error 'validate-register-set!
+                  "missing argument register, before"
+                  (car regs)))
          (loop (cdr regs) supported?)]
         [else
          (loop (cdr regs) #f)]))))
@@ -88,12 +90,12 @@
 ;;
 
 (define-record-type register-allocator
-  (fields target-regs (mutable virtual-regs))
+  (fields target-regs virtual-regs)
   (opaque #t)
   (protocol
     (lambda (p)
       (lambda (rset)
-        (p rset '())))))
+        (p rset (make-set))))))
 
 (define (register-allocator-real-register? allocator reg)
   (define rset (register-allocator-target-regs allocator))
@@ -102,12 +104,12 @@
 
 (define (register-allocator-virtual-register? allocator r)
   (define vregs (register-allocator-virtual-regs allocator))
-  (member r vregs))
+  (set-member? vregs r))
 
 (define (register-allocator-new! allocator)
   (define vregs (register-allocator-virtual-regs allocator))
-  (define name (string->symbol (string-append "%t" (number->string (length vregs)))))
-  (register-allocator-virtual-regs-set! allocator (cons name vregs))
+  (define name (string->symbol (string-append "%t" (number->string (set-count vregs)))))
+  (set-add! vregs name)
   name)
 
 ;;
@@ -284,10 +286,10 @@
   (define (reg>? r1 r2)
     (define r1-info (hashtable-ref reg-info r1))
     (define r2-info (hashtable-ref reg-info r2))
-    (define as1 (second r1-info))
-    (define as2 (second r2-info))
-    (define p1? (third r1-info))
-    (define p2? (third r2-info))
+    (define as1 (first r1-info))
+    (define as2 (first r2-info))
+    (define p1? (second r1-info))
+    (define p2? (second r2-info))
     (cond
       [(and (null? as1) (not (null? as2))) #t]
       [(and (not (null? as1)) (null? as2)) #f]
@@ -433,7 +435,7 @@
 (define (register-assign instrs alloc)
   (define rset (register-allocator-target-regs alloc))  
   (let loop ([instrs instrs] [spill-count 0])
-    (define vregs (apply make-set (register-allocator-virtual-regs alloc)))
+    (define vregs (register-allocator-virtual-regs alloc))
     ; (printf "asm> ~a\n" instrs)
 
     (define (rreg? reg)
