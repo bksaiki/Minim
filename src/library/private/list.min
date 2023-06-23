@@ -26,7 +26,7 @@
 (define (first xs)
   (if (list? xs)
       (car xs)
-      (error 'name "list?" xs)))
+      (error 'first "list?" xs)))
 
 (define-syntax define-list-accessor
   (syntax-rules ()

@@ -98,7 +98,7 @@
 (define (register-allocator-real-register? allocator reg)
   (define rset (register-allocator-target-regs allocator))
   (or (hashtable-contains? (register-set-real rset) reg)
-      (hashtable-contains? (register-set-alias rset) reg)))
+      (hashtable-contains? (register-set-aliases rset) reg)))
 
 (define (register-allocator-virtual-register? allocator r)
   (define vregs (register-allocator-virtual-regs allocator))
@@ -303,7 +303,7 @@
   (define (unassigned-rreg conflicts)
     (define c-rregs (apply make-set (map cdr conflicts)))
     (define open (filter (lambda (reg) (not (set-member? c-rregs reg))) allocable))
-    (and (not (null? open)) (first (car open))))
+    (and (not (null? open)) (first open)))
 
   ; Sort graph and compute hints
   (define ordered-vregs (sort (hashtable-keys if-graph) node>?))
@@ -380,23 +380,27 @@
        (cons (car instrs) (loop (cdr instrs) (+ k 1)))])))
 
 (define (apply-callee-saved instrs rset)
+  (define reg-info (register-set-real rset))
   (define callee-saved
-    (map car (filter (lambda (elt) (and (third elt) (not (fourth elt))))
-                     (register-set-real rset))))
+    (apply make-set
+           (filter (lambda (r)
+                     (define info (hashtable-ref reg-info r))
+                     (and (second info) (not (third info))))
+                   (hashtable-keys reg-info))))
 
   (define callee-saved-used (make-set))
   (let loop ([instrs instrs])
     (unless (null? instrs)
       (define instr (car instrs))
       (for-each (lambda (arg)
-                  (when (member arg callee-saved)
+                  (when (set-member? callee-saved arg)
                     (set-add! callee-saved-used arg)))
                 (cdr instr))
       (loop (cdr instrs))))
 
   (define used-in-order
     (filter (lambda (r) (set-member? callee-saved-used r))
-            callee-saved))
+            (set->list callee-saved)))
   
   (define init-instr (car instrs))
   (define rest-instrs (cdr instrs))
