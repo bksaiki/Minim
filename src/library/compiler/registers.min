@@ -26,29 +26,29 @@
   (opaque #t))
 
 (define (canonicalize-register rset reg)
-  (cond
-    [(member reg (map car (register-set-real rset)))
-     reg]
-    [(member reg (map car (register-set-aliases rset)))
-     (assoc reg (register-set-aliases rset))]
-    [else
-     (error 'canonicalize-register "not a register or register alias" reg)]))
+  (define real-info (register-set-real rset))
+  (define alias-map (register-set-aliases rset))
+  (cond [(hashtable-contains? real-info reg) reg]
+        [(hashtable-contains? alias-map reg) (hashtable-ref alias-map reg)]
+        [else (error 'canonicalize-register "not a register or register alias" reg)]))
 
 (define (validate-register-set! rset)
   (define aliases (register-set-aliases rset))
+  ; all required registers are included
   (for-each (lambda (r)
-              (unless (assoc r aliases)
+              (unless (hashtable-contains? aliases r)
                 (error 'validate-register-set! "missing required register" r)))
             required-registers)
+  ; subset of argument registers are not disconnected
   (let loop ([regs argument-registers] [supported? #t])
-    (cond [(null? regs)
-           (void)] 
-          [(member (car regs) aliases)
-           (unless supported?
-             (error 'validate-register-set! "missing argument register, before" (car regs)))
-           (loop (cdr regs) supported?)]
-          [else
-           (loop (cdr regs) #f)])))
+    (unless (null? regs)
+      (cond
+        [(hashtable-contains? aliases (car regs))
+         (unless supported?
+           (error 'validate-register-set! "missing argument register, before" (car regs)))
+         (loop (cdr regs) supported?)]
+        [else
+         (loop (cdr regs) #f)]))))
 
 (define-syntax (define-registers stx)
   (syntax-case stx (reserved allocable)
@@ -64,25 +64,22 @@
                  [aregs '(areg ...)]
                  [aregs-aliases '((areg-alias ...) ...)]
                  [aregs-reserved? '(areg-reserved? ...)])
-             (let* ([registers
-                     (append
-                       (map (lambda (r a r?) (list r a r? #t))
-                            rregs rregs-aliases rregs-reserved?)
-                       (map (lambda (r a r?) (list r a r? #f))
-                            aregs aregs-aliases aregs-reserved?))]
-                    [aliases
-                     (let loop ([registers registers] [alias-map '()])
-                       (cond
-                         [(null? registers) alias-map]
-                         [else
-                          (define reg (caar registers))
-                          (define aliases (cadar registers))
-                          (loop (cdr registers)
-                                      (append (map (lambda (a) (cons a reg)) aliases)
-                                              alias-map))]))]
-                    [rset (make-register-set registers aliases)])
-               (validate-register-set! rset)
-               rset))))]
+             ; build the register info and register alias table
+             (define reg-info (make-hashtable))
+             (define alias-map (make-hashtable))
+             (for-each (lambda (r a r?) (hashtable-set! reg-info r (list a r? #t)))
+                       rregs rregs-aliases rregs-reserved?)
+             (for-each (lambda (r a r?) (hashtable-set! reg-info r (list a r? #f)))
+                       aregs aregs-aliases aregs-reserved?)
+             (for-each (lambda (r)
+                         (define aliases (first (hashtable-ref reg-info r)))
+                         (for-each (lambda (a) (hashtable-set! alias-map a r))
+                                   aliases))
+                       (hashtable-keys reg-info))
+             ; validate and return
+             (define rset (make-register-set reg-info alias-map))
+             (validate-register-set! rset)
+             rset)))]
     [(_ . _)
      (syntax-error 'define-registers "bad syntax" stx)]))
 
@@ -98,10 +95,10 @@
       (lambda (rset)
         (p rset '())))))
 
-(define (register-allocator-real-register? allocator r)
+(define (register-allocator-real-register? allocator reg)
   (define rset (register-allocator-target-regs allocator))
-  (or (assoc r (register-set-real rset))
-      (assoc r (register-set-aliases rset))))
+  (or (hashtable-contains? (register-set-real rset) reg)
+      (hashtable-contains? (register-set-alias rset) reg)))
 
 (define (register-allocator-virtual-register? allocator r)
   (define vregs (register-allocator-virtual-regs allocator))
@@ -207,41 +204,39 @@
      (cons (car if-graph) (if-graph-set (cdr if-graph) vreg rreg))]))
 
 (define (apply-known if-graph instrs rset vreg?)
-  (define aliases (map car (register-set-aliases rset)))
-  (define arg-regs (filter (lambda (r) (member r aliases)) argument-registers))
-  
-  (define (arg-register i)
-    (and (< i (length arg-regs))
-         (list-ref arg-regs i)))
+  (define alias-map (register-set-aliases rset))
+  (define arg-regs
+    (list->vector
+      (filter (lambda (r) (hashtable-contains? alias-map r))
+              argument-registers)))
 
-  (let loop ([instrs instrs])
-    (unless (null? instrs)
-      (define instr (car instrs))
+  (define (arg-register i)
+    (and (< i (vector-length arg-regs))
+         (vector-ref arg-regs i)))
+
+  (for-each
+    (lambda (instr)
       (case (car instr)
         [(init)
-         (let loop2 ([args (cdr instr)] [i 0])
+         (let loop ([args (cdr instr)] [i 0])
            (unless (null? args)
              (when (vreg? (car args))
-               (define reg (arg-register i))
-               (if-graph-set-rreg! if-graph (car args)
-                                   (canonicalize-register rset reg)))
-             (loop2 (cdr args) (+ i 1))))])
-      (loop (cdr instrs)))))
+               (define reg (canonicalize-register rset (arg-register i)))
+               (if-graph-set-rreg! if-graph (car args) reg))
+             (loop (cdr args) (+ i 1))))]))
+    instrs))
 
 
 (define (register-hints instrs rset vreg?)
-  (define aliases (map car (register-set-aliases rset)))
-  (define arg-regs (filter (lambda (r) (member r aliases)) argument-registers))
+  (define alias-map (register-set-aliases rset))
+  (define arg-regs
+    (list->vector
+      (filter (lambda (r) (hashtable-contains? alias-map r))
+              argument-registers)))
 
   (define (arg-register i)
-    (and (< i (length arg-regs))
-         (list-ref arg-regs i)))
-
-  (define (assoc-set lst k v)
-    (let loop ([lst lst])
-      (cond [(null? lst) lst]
-            [(eq? (caar lst) k) (cons (cons k v) (cdr lst))]
-            [else (cons (car lst) (loop (cdr lst)))])))
+    (and (< i (vector-length arg-regs))
+         (vector-ref arg-regs i)))
 
   (define hints (make-hashtable))
   (define (hint-add! vreg rreg)
@@ -269,16 +264,6 @@
 
   hints)
 
-(define (reg>? r1 r2)
-    (let ([as1 (second r1)] [p1? (third r1)]
-          [as2 (second r2)] [p2? (third r2)])
-      (cond
-        [(and (null? as1) (not (null? as2))) #t]
-        [(and (not (null? as1)) (null? as2)) #f]
-        [(and (not p1?) p2?) #t]
-        [(and p1? (not p2?)) #f]
-        [else #t])))
-
 (define (apply-assign if-graph instrs rset vreg?)
   ; Sorts nodes in the interference graph by index
   ; `if-graph` maps `ni` to `(list rreg forw back)`
@@ -295,14 +280,29 @@
                    (cons r (and info (first info))))
                  conn)))
 
+  (define reg-info (register-set-real rset))
+  (define (reg>? r1 r2)
+    (define r1-info (hashtable-ref reg-info r1))
+    (define r2-info (hashtable-ref reg-info r2))
+    (define as1 (second r1-info))
+    (define as2 (second r2-info))
+    (define p1? (third r1-info))
+    (define p2? (third r2-info))
+    (cond
+      [(and (null? as1) (not (null? as2))) #t]
+      [(and (not (null? as1)) (null? as2)) #f]
+      [(and (not p1?) p2?) #t]
+      [(and p1? (not p2?)) #f]
+      [else #t]))
+  
   (define allocable
-    (sort (filter (lambda (elt) (not (fourth elt)))
-                  (register-set-real rset))
+    (sort (filter (lambda (r) (not (third (hashtable-ref reg-info r))))
+                  (hashtable-keys reg-info))
           reg>?))
 
   (define (unassigned-rreg conflicts)
-    (define c-rregs (map cdr conflicts))
-    (define open (filter (lambda (elt) (not (member (first elt) c-rregs))) allocable))
+    (define c-rregs (apply make-set (map cdr conflicts)))
+    (define open (filter (lambda (reg) (not (set-member? c-rregs reg))) allocable))
     (and (not (null? open)) (first (car open))))
 
   ; Sort graph and compute hints
