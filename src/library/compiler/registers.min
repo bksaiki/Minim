@@ -22,7 +22,7 @@
 ;;
 
 (define-record-type register-set
-  (fields real aliases)
+  (fields real in-order aliases)
   (opaque #t))
 
 (define (canonicalize-register rset reg)
@@ -31,6 +31,22 @@
   (cond [(hashtable-contains? real-info reg) reg]
         [(hashtable-contains? alias-map reg) (hashtable-ref alias-map reg)]
         [else (error 'canonicalize-register "not a register or register alias" reg)]))
+
+(define (register-total-order rset)
+  (define reg-info (register-set-real rset))
+  (lambda (r1 r2)
+    (define r1-info (hashtable-ref reg-info r1))
+    (define r2-info (hashtable-ref reg-info r2))
+    (define as1 (first r1-info))
+    (define as2 (first r2-info))
+    (define p1? (second r1-info))
+    (define p2? (second r2-info))
+    (cond
+      [(and (null? as1) (not (null? as2))) #t]
+      [(and (not (null? as1)) (null? as2)) #f]
+      [(and (not p1?) p2?) #t]
+      [(and p1? (not p2?)) #f]
+      [else #t])))
 
 (define (validate-register-set! rset)
   (define alias-map (register-set-aliases rset))
@@ -69,6 +85,7 @@
              ; build the register info and register alias table
              (define reg-info (make-hashtable))
              (define alias-map (make-hashtable))
+             (define in-order (append rregs aregs))
              (for-each (lambda (r a r?) (hashtable-set! reg-info r (list a r? #t)))
                        rregs rregs-aliases rregs-reserved?)
              (for-each (lambda (r a r?) (hashtable-set! reg-info r (list a r? #f)))
@@ -77,9 +94,9 @@
                          (define aliases (first (hashtable-ref reg-info r)))
                          (for-each (lambda (a) (hashtable-set! alias-map a r))
                                    aliases))
-                       (hashtable-keys reg-info))
+                       in-order)
              ; validate and return
-             (define rset (make-register-set reg-info alias-map))
+             (define rset (make-register-set reg-info in-order alias-map))
              (validate-register-set! rset)
              rset)))]
     [(_ . _)
@@ -115,12 +132,6 @@
 ;;
 ;;  Register assigner
 ;;
-
-(define (sort-vreg-dict vregs dict)
-  (map (lambda (r)
-         (let ([v (assoc r dict)])
-           (cons r v)))
-       vregs))
 
 (define (compute-used-registers instrs vreg?)
   (define used (make-set))
@@ -195,15 +206,6 @@
 (define (if-graph-set-rreg! if-graph vreg rreg)
   (define info (hashtable-ref if-graph vreg))
   (hashtable-set! if-graph vreg (cons rreg (cdr info))))
-
-(define (if-graph-set if-graph vreg rreg)
-  (cond
-    [(null? if-graph)
-     if-graph]
-    [(eq? (caar if-graph) vreg)
-     (cons (cons vreg (cons rreg (cddar if-graph))) (cdr if-graph))]
-    [else
-     (cons (car if-graph) (if-graph-set (cdr if-graph) vreg rreg))]))
 
 (define (apply-known if-graph instrs rset vreg?)
   (define alias-map (register-set-aliases rset))
@@ -283,24 +285,10 @@
                  conn)))
 
   (define reg-info (register-set-real rset))
-  (define (reg>? r1 r2)
-    (define r1-info (hashtable-ref reg-info r1))
-    (define r2-info (hashtable-ref reg-info r2))
-    (define as1 (first r1-info))
-    (define as2 (first r2-info))
-    (define p1? (second r1-info))
-    (define p2? (second r2-info))
-    (cond
-      [(and (null? as1) (not (null? as2))) #t]
-      [(and (not (null? as1)) (null? as2)) #f]
-      [(and (not p1?) p2?) #t]
-      [(and p1? (not p2?)) #f]
-      [else #t]))
-  
   (define allocable
     (sort (filter (lambda (r) (not (third (hashtable-ref reg-info r))))
-                  (hashtable-keys reg-info))
-          reg>?))
+                  (register-set-in-order rset))
+          (register-total-order rset)))
 
   (define (unassigned-rreg conflicts)
     (define c-rregs (apply make-set (map cdr conflicts)))
@@ -383,12 +371,12 @@
 
 (define (apply-callee-saved instrs rset)
   (define reg-info (register-set-real rset))
-  (define callee-saved
-    (apply make-set
-           (filter (lambda (r)
-                     (define info (hashtable-ref reg-info r))
-                     (and (second info) (not (third info))))
-                   (hashtable-keys reg-info))))
+  (define callee-saved (make-set))
+  (for-each (lambda (reg)
+              (define info (hashtable-ref reg-info reg))
+              (when (and (second info) (not (third info)))
+                (set-add! callee-saved reg)))
+            (hashtable-keys reg-info))
 
   (define callee-saved-used (make-set))
   (let loop ([instrs instrs])
@@ -400,9 +388,10 @@
                 (cdr instr))
       (loop (cdr instrs))))
 
+  (define reg>? (register-total-order rset))
   (define used-in-order
     (filter (lambda (r) (set-member? callee-saved-used r))
-            (set->list callee-saved)))
+            (sort (set->list callee-saved) reg>?)))
   
   (define init-instr (car instrs))
   (define rest-instrs (cdr instrs))
