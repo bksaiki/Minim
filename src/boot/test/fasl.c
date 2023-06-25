@@ -154,7 +154,7 @@ int test_hashtable() {
                        "(hashtable-set! ht 'b 2) "
                        "(hashtable-set! ht 'c 3) "
                        "ht)",
-                     "#<hashtable (a . 1) (c . 3) (b . 2)>");
+                     "#<hashtable (c . 3) (b . 2) (a . 1)>");
 
     return passed;
 }
