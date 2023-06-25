@@ -143,18 +143,18 @@ int test_hashtable() {
     check_fasl_equal("(make-hashtable)", "#<hashtable>");
 
     check_fasl_equal("(begin "
-                       "(define ht (make-hashtable)) "
+                       "(define-values (ht) (make-hashtable)) "
                        "(hashtable-set! ht 'a 1) "
                        "ht)",
                      "#<hashtable (a . 1)>");
     
     check_fasl_equal("(begin "
-                       "(define ht (make-hashtable)) "
+                       "(define-values (ht) (make-hashtable)) "
                        "(hashtable-set! ht 'a 1) "
                        "(hashtable-set! ht 'b 2) "
                        "(hashtable-set! ht 'c 3) "
                        "ht)",
-                     "#<hashtable (c . 3) (b . 2) (a . 1)>");
+                     "#<hashtable (a . 1) (c . 3) (b . 2)>");
 
     return passed;
 }

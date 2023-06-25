@@ -1,0 +1,29 @@
+;;;
+;;; Tests for 'cond'
+;;;
+
+(import "../../src/library/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(check-equal? (cond) (void))
+(check-equal? (cond [#t 1]) 1)
+(check-equal? (cond [1 1]) 1)
+(check-equal? (cond [#t 1] [#f 0]) 1)
+(check-equal? (cond [#f 1] [#t 0]) 0)
+(check-equal? (cond [#f 1] [#f 0]) (void))
+(check-equal? (cond [#f 1] [#f 2] [#t 3]) 3)
+(check-equal? (cond [#f 1] [else 2]) 2)
+(check-equal? (cond [#f 1] [#f 2] [else 3]) 3)
+
+(when (> num-failed 0)
+  (error #f "test failed"))
