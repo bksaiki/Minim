@@ -23,6 +23,12 @@
      split-path)
     ("private/string.min"
      substring)
+    ("private/stx.min"
+     stx-pair?
+     stx-null?
+     stx-car
+     stx-cdr
+     identifier?)
     ("expander.min"
      $expander-pattern-vars
      $base-stx-env
@@ -42,7 +48,10 @@
      $load-or-import-no-check
      $repl
      $load-or-import
-     read/module)
+     read/module
+     load
+     import
+     enter!)
     ("read.min"
      read)))
 

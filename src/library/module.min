@@ -234,3 +234,28 @@
         name
         (build-path (current-directory) name)))
   ($load-module path #f #f))
+
+;; imports a file
+(define (import name)
+  ($load-or-import name (lambda (o) (writeln o)) #f))
+
+;; loads a file
+(define (load name)
+  (define result ($load-or-import name #f (lambda (o) o)))
+  (cond [(not (void? result)) (writeln result)])
+  (enter! name))
+
+(define (enter! name)
+  ;; resolve path
+  (define path
+    (if (is-absolute-path? name)
+        name
+        (build-path (current-directory) name)))
+  ;; set up environment
+  (define maybe-env (assoc path $module-envs))
+  (cond [(not maybe-env)
+         (error 'enter! "unknown module" name)])
+  ;; REPL
+  ($repl (car maybe-env)
+         (extend-environment (cadr maybe-env))
+         (extend-environment (cddr maybe-env))))
