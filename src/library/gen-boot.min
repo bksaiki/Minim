@@ -10,50 +10,15 @@
 ;;
 
 (define boot-info
-  '(("private/list.min"
-     member
-     filter
-     foldl
-     foldr
-     assoc)
-    ("private/path.min"
-     is-absolute-path?
-     build-path
-     path->list
-     split-path)
-    ("private/string.min"
-     substring)
-    ("private/stx.min"
-     stx-pair?
-     stx-null?
-     stx-car
-     stx-cdr
-     identifier?)
-    ("expander.min"
-     $expander-pattern-vars
-     $base-stx-env
-     lookup-xform
-     merge-xforms
-     expand/module
-     expand)
-    ("module.min"
-     $base-env
-     $module-table
-     $module-envs
-     $module-internals
-     writeln
-     $load-module
-     $eval-environment
-     $eval-exprs
-     $load-or-import-no-check
-     $repl
-     $load-or-import
-     read/module
-     load
-     import
-     enter!)
-    ("read.min"
-     read)))
+  '(("private/list.min")
+    ("private/path.min")
+    ("private/record.min")
+    ("private/set.min")
+    ("private/string.min")
+    ("private/stx.min")
+    ("expander.min")
+    ("module.min")
+    ("read.min")))
 
 ;;
 ;;  module processing
@@ -71,23 +36,22 @@
             (and (identifier? head)
                 (eq? (syntax-e head) form-name)))))
   (define define-values-form? (_-form? 'define-values))
-  (define defs (make-hashtable))
-  (for-each (lambda (stx)
-              (when (define-values-form? stx)
-                (define expr (syntax->datum stx))
-                (hashtable-set! defs (first (second expr)) expr)))
-            exprs)
-  defs)
+  (map (lambda (stx)
+         (define expr (syntax->datum stx))
+         (cons (first (second expr)) expr))
+       (filter (lambda (stx) (define-values-form? stx))
+               exprs)))
 
-(define (write-module-definitions path defs boot-file)
+(define (write-module-definitions path exclude boot-file)
   (define-values (exprs xforms imports exports _) (read/module path))
   (define all-defs (module-definitions exprs))
-  (for-each (lambda (def)
-              (unless (hashtable-contains? all-defs def)
-                (error 'write-module-definitions "missing definition" path def))
-              (write (hashtable-ref all-defs def) boot-file)
-              (newline boot-file))
-            defs))
+  (for-each (lambda (entry)
+              (define name (car entry))
+              (define def (cdr entry))
+              (unless (member name exclude)
+                (write def boot-file)
+                (newline boot-file)))
+            all-defs))
 
 ;;
 ;;  entry point
@@ -109,8 +73,8 @@
 
   (for-each (lambda (info)
               (define path (build-path lib-base (car info)))
-              (define defs (cdr info))
-              (write-module-definitions path defs boot-file))
+              (define exclude (cdr info))
+              (write-module-definitions path exclude boot-file))
             boot-info)
   (close-output-port boot-file))
 
