@@ -207,26 +207,6 @@ static void check_assign(minim_object *expr) {
 }
 
 // Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be either
-//  (ii) `(<name> (<symbol> ...) <datum> ...)
-//  (i)  `(<name> <symbol> <datum>)`
-static void check_define(minim_object *expr) {
-    minim_object *rest, *id;
-    
-    rest = minim_cdr(expr);
-    if (!minim_is_pair(rest))
-        bad_syntax_exn(expr);
-
-    id = minim_car(rest);
-    rest = minim_cdr(rest);
-    if (!minim_is_pair(rest))
-        bad_syntax_exn(expr);
-
-    if (minim_is_symbol(id) && !minim_is_null(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> (<symbol> ...) <datum>)
 static void check_define_values(minim_object *expr) {
     minim_object *rest, *ids;
@@ -247,66 +227,6 @@ static void check_define_values(minim_object *expr) {
 
     rest = minim_cdr(rest);
     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(cond . <???>)`
-// Check: `expr` must be `(cond [<test> <clause> ...] ...)`
-// Does not check if each `<clause>` is an expression.
-// Does not check if each `<clause> ...` forms a list.
-// Checks that only `else` appears in the tail position
-static void check_cond(minim_object *expr) {
-    minim_object *rest, *datum;
-
-    rest = minim_cdr(expr);
-    while (minim_is_pair(rest)) {
-        datum = minim_car(rest);
-        if (!minim_is_pair(datum) || !minim_is_pair(minim_cdr(datum)))
-            bad_syntax_exn(expr);
-
-        datum = minim_car(datum);
-        if (minim_is_symbol(datum) &&
-            minim_car(datum) == else_symbol &&
-            !minim_is_null(minim_cdr(rest))) {
-            fprintf(stderr, "cond: else clause must be last");
-            fprintf(stderr, " at: ");
-            write_object2(stderr, expr, 1, 0);
-            fputc('\n', stderr);
-            minim_shutdown(1);
-        }
-
-        rest = minim_cdr(rest);
-    }
-
-    if (!minim_is_null(rest))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(let . <???>)`
-// Check: `expr` must be `(let ([<var> <val>] ...) <body> ...)`
-// Does not check if each `<body>` is an expression.
-// Does not check if `<body> ...` forms a list.
-static void check_let(minim_object *expr) {
-    minim_object *bindings, *bind;
-    
-    bindings = minim_cdr(expr);
-    if (!minim_is_pair(bindings) || !minim_is_pair(minim_cdr(bindings)))
-        bad_syntax_exn(expr);
-    
-    bindings = minim_car(bindings);
-    while (minim_is_pair(bindings)) {
-        bind = minim_car(bindings);
-        if (!minim_is_pair(bind) || !minim_is_symbol(minim_car(bind)))
-            bad_syntax_exn(expr);
-
-        bind = minim_cdr(bind);
-        if (!minim_is_pair(bind) || !minim_is_null(minim_cdr(bind)))
-            bad_syntax_exn(expr);
-
-        bindings = minim_cdr(bindings);
-    }
-
-    if (!minim_is_null(bindings))
         bad_syntax_exn(expr);
 }
 
@@ -346,16 +266,6 @@ static void check_let_values(minim_object *expr) {
 
     if (!minim_is_null(bindings))
         bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(let . <???>)`
-// Check: `expr` must be `(let <name> ([<var> <val>] ...) <body> ...)`
-// Just check that <name> is a symbol and then call
-// `check_loop` starting at (<name> ...)
-static void check_let_loop(minim_object *expr) {
-    if (!minim_is_pair(minim_cdr(expr)) && !minim_is_symbol(minim_cadr(expr)))
-        bad_syntax_exn(expr);
-    check_let(minim_cdr(expr));
 }
 
 // Already assumes `expr` is `(<name> . <???>)`
@@ -403,102 +313,6 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
 //
 //  Evaluation
 //
-
-static minim_object *let_vars(minim_object *bindings) {
-    return (minim_is_null(bindings) ?
-            minim_null :
-            make_pair(minim_caar(bindings),
-                      let_vars(minim_cdr(bindings))));
-}
-
-static minim_object *let_vals(minim_object *bindings) {
-    return (minim_is_null(bindings) ?
-            minim_null :
-            make_pair(minim_car(minim_cdar(bindings)),
-                      let_vals(minim_cdr(bindings))));
-}
-
-// (define (<name> . <formals>) . <body>)
-// => (define <name> (lambda <formals> . <body>))
-// (define <name> <body>)
-// => (define-values (<name>) <body>)
-static minim_object *expand_define(minim_object *define) {
-    minim_object *id, *rest;
-
-    id = minim_cadr(define);
-    rest = minim_cddr(define);
-    if (minim_is_symbol(id)) {
-        // value
-        return make_pair(define_values_symbol,
-               make_pair(make_pair(id, minim_null),
-               rest));
-    } else {
-        minim_object *name, *formals, *body;
-
-        // procedure
-        name = minim_car(minim_cadr(define));
-        formals = minim_cdr(minim_cadr(define));
-        body = minim_cddr(define);
-
-        return expand_define(
-                make_pair(define_symbol,
-                    make_pair(name,
-                    make_pair(
-                            make_pair(lambda_symbol,
-                            make_pair(formals,
-                            body)),
-                    minim_null))));
-    }
-}
-
-// (let ((<var> <val>) ...) . <body>)
-// => (let-values (((<var>) <val>) ...) . <body>)
-static minim_object *expand_let(minim_object *form, minim_object *let) {
-    minim_object *vars, *vals, *bindings, *bind, *it;
-
-    vars = let_vars(minim_cadr(let));
-    vals = let_vals(minim_cadr(let));
-    if (minim_is_null(vars)) {
-        bindings = minim_null;
-    } else {
-        bind = make_pair(make_pair(minim_car(vars), minim_null), make_pair(minim_car(vals), minim_null));
-        bindings = make_pair(bind, minim_null);
-        vars = minim_cdr(vars);
-        vals = minim_cdr(vals);
-        for (it = bindings; !minim_is_null(vars); vars = minim_cdr(vars), vals = minim_cdr(vals)) {
-            bind = make_pair(make_pair(minim_car(vars), minim_null), make_pair(minim_car(vals), minim_null));
-            minim_cdr(it) = make_pair(bind, minim_null);
-            it = minim_cdr(it);
-        }
-    }
-
-    return make_pair(form, make_pair(bindings, minim_cddr(let)));
-}
-
-// (let <name> ((<var> <val>) ...) . <body>)
-// => (letrec-values (((<name>) (lambda (<var> ...) . <body>))) (<name> <val> ...))
-static minim_object *expand_let_loop(minim_object *let) {
-    minim_object *name, *formals, *vals, *body;
-
-    name = minim_cadr(let);
-    formals = let_vars(minim_car(minim_cddr(let)));
-    vals = let_vals(minim_car(minim_cddr(let)));
-    body = minim_cdr(minim_cddr(let));
-
-    return make_pair(letrec_values_symbol,
-           make_pair(                                   // expr rib                      
-                make_pair(                              // bindings
-                    make_pair(                          // binding
-                        make_pair(name, minim_null),    // name 
-                    make_pair(                          // value
-                        make_pair(lambda_symbol,
-                        make_pair(formals,
-                        body)),
-                    minim_null)),
-                minim_null),
-           make_pair(make_pair(name, vals),             // call
-           minim_null)));
-}
 
 static long apply_args() {
     minim_object *lst;
@@ -845,84 +659,7 @@ loop:
 
                 expr = minim_car(expr);
                 goto loop;
-            } else if (minim_is_true(boot_expander(current_thread()))) {
-                // expanded forms
-                if (head == define_symbol) {
-                    // define form
-                    check_define(expr);
-                    expr = expand_define(expr);
-                    goto loop;
-                } else if (head == let_symbol) {
-                    if (minim_is_pair(minim_cdr(expr)) && minim_is_symbol(minim_cadr(expr))) {
-                        // let loop form
-                        check_let_loop(expr);
-                        expr = expand_let_loop(expr);
-                        goto loop;
-                    } else {
-                        // let form
-                        check_let(expr);
-                        expr = expand_let(let_values_symbol, expr);
-                        goto loop;
-                    }
-                } else if (head == letrec_symbol) {
-                    // letrec form
-                    check_let(expr);
-                    expr = expand_let(letrec_values_symbol, expr);
-                    goto loop;
-                } else if (head == cond_symbol) {
-                    // cond form
-                    check_cond(expr);
-                    expr = minim_cdr(expr);
-                    while (!minim_is_null(expr)) {
-                        if (minim_caar(expr) == else_symbol) {
-                            if (!minim_is_null(minim_cdr(expr))) {
-                                fprintf(stderr, "else clause must be last");
-                                minim_shutdown(1);
-                            }
-                            expr = make_pair(begin_symbol, minim_cdar(expr));
-                            goto loop;
-                        } else if (!minim_is_false(eval_expr(minim_caar(expr), env))) {
-                            expr = make_pair(begin_symbol, minim_cdar(expr));
-                            goto loop;
-                        }
-                        expr = minim_cdr(expr);
-                    }
-
-                    return minim_void;
-                } else if (head == and_symbol) {
-                    // and form
-                    check_begin(expr);
-                    expr = minim_cdr(expr);
-                    if (minim_is_null(expr))
-                        return minim_true;
-
-                    while (!minim_is_null(minim_cdr(expr))) {
-                        result = eval_expr(minim_car(expr), env);
-                        if (minim_is_false(result))
-                            return result;
-                        expr = minim_cdr(expr);
-                    }
-
-                    expr = minim_car(expr);
-                    goto loop;
-                } else if (head == or_symbol) {
-                    // or form
-                    check_begin(expr);
-                    expr = minim_cdr(expr);
-                    if (minim_is_null(expr))
-                        return minim_false;
-
-                    while (!minim_is_null(minim_cdr(expr))) {
-                        result = eval_expr(minim_car(expr), env);
-                        if (!minim_is_false(result))
-                            return result;
-                        expr = minim_cdr(expr);
-                    }
-
-                    expr = minim_car(expr);
-                    goto loop;
-                }
-            } 
+            }
         }
 
         proc = eval_expr(head, env);

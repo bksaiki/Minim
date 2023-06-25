@@ -6,30 +6,6 @@
 #include "../boot.h"
 
 //
-//  Primitives
-//
-
-static minim_object *boot_expander_proc(int argc, minim_object **args) {
-    // (-> boolean)
-    // (-> boolean void)
-    minim_object *val;
-    minim_thread *th;
-
-    th = current_thread();
-    if (argc == 0) {
-        // getter
-        return boot_expander(th);
-    } else {
-        // setter
-        val = args[0];
-        if (!minim_is_bool(val))
-            bad_type_exn("boot-expander?", "boolean?", val);
-        boot_expander(th) = val;
-        return minim_void;
-    }
-}
-
-//
 //  Initialization
 //
 
@@ -245,7 +221,6 @@ void populate_env(minim_object *env) {
     add_procedure("current-directory", current_directory_proc, 0, 1);
     add_procedure("command-line", command_line_proc, 0, 0);
     add_procedure("version", version_proc, 0, 0);
-    add_procedure("boot-expander?", boot_expander_proc, 0, 1);
 
     add_procedure("install-literal-bundle!", install_literal_bundle_proc, 1, 1);
     add_procedure("install-procedure-bundle!", install_proc_bundle_proc, 1, 1);
@@ -329,7 +304,6 @@ void minim_boot_init() {
     output_port(th) = make_output_port(stdout);
     current_directory(th) = make_string2(get_current_dir());
     command_line(th) = minim_null;
-    boot_expander(th) = minim_true;
     record_equal_proc(th) = minim_false;
     record_hash_proc(th) = minim_false;
 
