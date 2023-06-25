@@ -3,8 +3,9 @@
 #
 
 SRC_DIR = src
-CORE_DIR = src/core
 BOOT_DIR = src/boot
+CORE_DIR = src/core
+LIB_DIR = src/library
 GC_DIR = src/gc
 BUILD_DIR = build
 TEST_DIR = test
@@ -27,6 +28,11 @@ boot: core
 	$(MKDIR_P) $(BUILD_DIR)/boot
 	$(MAKE) -C $(BOOT_DIR)
 	$(CP) $(BOOT_DIR)/minim $(BUILD_DIR)/boot/
+
+boot-file:
+	$(BOOT_DIR)/minim $(LIB_DIR)/gen-boot.min \
+					  $(LIB_DIR) \
+					  $(BOOT_DIR)/s/boot.min
 
 gc:
 	$(MAKE) -C $(GC_DIR)
@@ -54,4 +60,5 @@ clean:
 clean-all: clean
 	$(MAKE) -C $(GC_DIR) clean
 
-.PHONY: all boot gc boehm-gc minim-gc test boot-tests clean clean-all
+.PHONY: all boot boot-file gc boehm-gc minim-gc \
+	    test boot-tests clean clean-all
