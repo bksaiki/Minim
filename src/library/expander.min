@@ -21,7 +21,8 @@
 
 (define (lookup-xform maybe-id xforms)
   (and (identifier? maybe-id)
-       (assoc (syntax-e maybe-id) xforms)))
+       (let ([entry (assoc (syntax-e maybe-id) xforms)])
+         (and entry (cdr entry)))))
 
 (define (merge-xforms new-xforms xforms)
   (let loop ([new-xforms new-xforms] [xforms xforms])

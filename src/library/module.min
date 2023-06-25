@@ -68,7 +68,7 @@
                    [(string? maybe-import)
                     (define path (build-path new-cwd maybe-import))
                     ($load-or-import path print-handler result-handler)
-                    (define from-module (assoc path $module-table))
+                    (define from-module (cdr (assoc path $module-table)))
                     (set! imported-modules (cons path imported-modules))
                     (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
                     (set! imported (append (cdr from-module) imported)) ; TODO: dedup
@@ -97,7 +97,7 @@
                          [(and (string? module-name)
                                (null? (cddr maybe-export))
                                (member path imported-modules))
-                          (define from-module (assoc path $module-table))
+                          (define from-module (cdr (assoc path $module-table)))
                           (set! exported (append (map car (car from-module))
                                                  (map car (cdr from-module))
                                                  exported))
@@ -178,7 +178,8 @@
        (define maybe-xform (assoc export module-xforms))
        (cond
          [maybe-xform
-          (set! export-xforms (cons (cons export maybe-xform) export-xforms))]
+          (define xform (cdr maybe-xform))
+          (set! export-xforms (cons (cons export xform) export-xforms))]
          [else
           (define value
             (environment-variable-value env export
@@ -224,8 +225,8 @@
         name
         (build-path (current-directory) name)))
   ;; check cache first
-  (cond [(not (assoc path $module-table))
-         ($load-or-import-no-check path print-handler result-handler)]))
+  (unless (assoc path $module-table)
+    ($load-or-import-no-check path print-handler result-handler)))
 
 (define (read/module name)
   ;; resolve path
@@ -253,9 +254,10 @@
         (build-path (current-directory) name)))
   ;; set up environment
   (define maybe-env (assoc path $module-envs))
-  (cond [(not maybe-env)
-         (error 'enter! "unknown module" name)])
+  (unless (not maybe-env)
+    (error 'enter! "unknown module" name))
+  (define env (cdr maybe-env))
   ;; REPL
-  ($repl (car maybe-env)
-         (extend-environment (cadr maybe-env))
-         (extend-environment (cddr maybe-env))))
+  ($repl (car env)
+         (extend-environment (cadr env))
+         (extend-environment (cddr env))))

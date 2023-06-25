@@ -110,13 +110,12 @@
           [else       (error 'foldr "expected a list" lst)])))
 
 (define (assoc k lst)
-  (cond
-    [(null? lst) #f]
-    [(and (pair? lst) (pair? (car lst)))
-     (if (equal? k (caar lst))
-         (cdar lst)
-         (assoc k (cdr lst)))]
-    [else (error 'assoc "expected a list of pairs" lst)]))
+  (let loop ([xs lst])
+    (cond [(null? xs) #f]
+          [(not (pair? xs)) (error 'assoc "not a proper list" lst)]
+          [(not (pair? (car xs))) (error 'assoc "non-pair found in list" lst)]
+          [(equal? k (caar xs)) (car xs)]
+          [else (loop (cdr xs))])))
 
 (define (enumerate f lst)
   (let loop ([lst lst] [i 0] [acc '()])

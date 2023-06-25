@@ -31,8 +31,8 @@ boot: core
 
 boot-file:
 	$(BOOT_DIR)/minim $(LIB_DIR)/gen-boot.min \
-					  $(LIB_DIR) \
-					  $(BOOT_DIR)/s/boot.min
+	                  $(LIB_DIR) \
+	                  $(BOOT_DIR)/s/boot.min
 
 gc:
 	$(MAKE) -C $(GC_DIR)
