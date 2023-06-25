@@ -45,27 +45,7 @@
          (assoc k (cdr lst)))]
     [else (error 'assoc "expected a list of pairs" lst)]))
 
-;; vectors
-
-(define (vector-map proc v)
-  (cond
-    [(not (procedure? proc)) (error 'vector-map "expected a procedure" proc)]
-    [(not (vector? v)) (error 'vector-map "expected a vector" v)]
-    [else
-     (define len (vector-length v))
-     (define r (make-vector len))
-     (let loop ([i 0])
-       (cond [(>= i len) r]
-             [else
-              (vector-set! r i (proc (vector-ref v i)))
-              (loop (+ i 1))]))]))
-
 ;; strings
-
-(define (string-empty? str)
-  (if (string? str)
-      (= (string-length str) 0)
-      (error 'string "expected string?" str)))
  
 (define (substring str start end)
   (define len (string-length str))
@@ -100,7 +80,7 @@
     (let loop ([paths subpaths] [accum (list base)])
       (cond
         [(null? paths) (reverse accum)]
-        [(string-empty? (car paths)) (loop (cdr paths) accum)]
+        [(= (string-length (car paths)) 0) (loop (cdr paths) accum)]
         [(string-terminates-with-/? (car accum)) (loop (cdr paths) (cons (car paths) accum))]
         [else (loop (cdr paths) (cons (car paths) (cons "/" accum)))])))
   (apply string-append paths))
@@ -111,7 +91,7 @@
       (error 'path->list "expected string?" path))
   (let loop ([path path] [accum '()])
     (cond
-      [(string-empty? path)
+      [(= (string-length path) 0)
        (reverse accum)]
       [else
        (define len (string-length path))

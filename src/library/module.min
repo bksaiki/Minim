@@ -6,8 +6,12 @@
 (export read/module)
 
 (define (writeln o)
-  (write o)
-  (newline))
+  (case-lambda
+    [(o)
+     (writeln o (current-output-port))]
+    [(o p)
+     (write o p)
+     (newline p)]))
 
 ;; Base environment when loading modules
 (define $base-env (environment))

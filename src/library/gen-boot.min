@@ -10,13 +10,41 @@
 ;;
 
 (define boot-info
-  '(("expander.min"
+  '(("private/list.min"
+     member
+     filter
+     foldl
+     foldr
+     assoc)
+    ("private/path.min"
+     is-absolute-path?
+     build-path
+     path->list
+     split-path)
+    ("private/string.min"
+     substring)
+    ("expander.min"
      $expander-pattern-vars
      $base-stx-env
      lookup-xform
      merge-xforms
      expand/module
-     expand)))
+     expand)
+    ("module.min"
+     $base-env
+     $module-table
+     $module-envs
+     $module-internals
+     writeln
+     $load-module
+     $eval-environment
+     $eval-exprs
+     $load-or-import-no-check
+     $repl
+     $load-or-import
+     read/module)
+    ("read.min"
+     read)))
 
 ;;
 ;;  module processing
