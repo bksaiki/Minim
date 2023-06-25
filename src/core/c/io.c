@@ -903,7 +903,7 @@ minim_object *write_proc(int argc, minim_object **args) {
             bad_type_exn("write", "output-port?", out_p);
     }
 
-    write_object(minim_port(out_p), o);
+    write_object2(minim_port(out_p), o, 1, 0);
     return minim_void;
 }
 
