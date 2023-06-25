@@ -2,14 +2,33 @@
 ;;; x86-64 specific definitions
 ;;;
 
-(import "../base.min" "common.min")
-(export assemble/x86-64 link/x86-64)
+(import "../base.min" "common.min" "registers.min")
+(export assemble/x86-64 link/x86-64 x86-64-registers)
 
 ;
 ; Constants
 ;
 
 (define ALIGNMENT 16)
+
+(define-registers x86-64-registers
+  (reserved
+    [%cc          %rbp #t]
+    [%sp          %rsp #t]
+    [%env         %r14 #t]
+    [%ret         %rax #f])   ; TODO: allocate %ret
+  (allocable
+    [%arg0        %rdi #f]
+    [%arg1        %rsi #f]
+    [%arg2        %rdx #f]
+    [%arg3        %rcx #f]
+    [%arg4        %r8  #f]
+    [%arg5        %r9  #f]
+    [             %r10 #f]
+    [             %r11 #f]
+    [             %r12 #t]
+    [             %r13 #t]
+    [             %r15 #t]))
 
 ;
 ; Utilities
@@ -48,50 +67,37 @@
 (define (encode/io op reg)
   (+ op reg))
 
-(define (register/from-generic reg)
-  (cond
-    [(eq? reg CC-REG)   'rbp]
-    [(eq? reg SP-REG)   'rsp]
-    [(eq? reg ENV-REG)  'rdi]
-    [(eq? reg RES-REG)  'rax]
-    [(eq? reg R0-REG)   (argument/register 0)]
-    [(eq? reg R1-REG)   (argument/register 1)]
-    [(eq? reg R2-REG)   (argument/register 2)]
-    [(eq? reg T0-REG)   'r10]
-    [(eq? reg T1-REG)   'r11]
-    [else       (error 'register/translate "unknown register" reg)]))
-
 ; Register -> X.RRR
 (define (register/code reg)
   (case reg
-    [(rax)   (values #f 0)]
-    [(rcx)   (values #f 1)]
-    [(rdx)   (values #f 2)]
-    [(rbx)   (values #f 3)]
-    [(rsp)   (values #f 4)]
-    [(rbp)   (values #f 5)]
-    [(rsi)   (values #f 6)]
-    [(rdi)   (values #f 7)]
+    [(%rax)   (values #f 0)]
+    [(%rcx)   (values #f 1)]
+    [(%rdx)   (values #f 2)]
+    [(%rbx)   (values #f 3)]
+    [(%rsp)   (values #f 4)]
+    [(%rbp)   (values #f 5)]
+    [(%rsi)   (values #f 6)]
+    [(%rdi)   (values #f 7)]
 
-    [(r8)    (values #t 0)]
-    [(r9)    (values #t 1)]
-    [(r10)   (values #t 2)]
-    [(r11)   (values #t 3)]
-    [(r12)   (values #t 4)]
-    [(r13)   (values #t 5)]
-    [(r14)   (values #t 6)]
-    [(r15)   (values #t 7)]
+    [(%r8)    (values #t 0)]
+    [(%r9)    (values #t 1)]
+    [(%r10)   (values #t 2)]
+    [(%r11)   (values #t 3)]
+    [(%r12)   (values #t 4)]
+    [(%r13)   (values #t 5)]
+    [(%r14)   (values #t 6)]
+    [(%r15)   (values #t 7)]
 
     [else    (error 'register/code "unknown register" reg)]))
 
 (define (argument/register i)
   (case i
-    [(0)  'rdi]
-    [(1)  'rsi]
-    [(2)  'rdx]
-    [(3)  'rcx]
-    [(4)  'r8]
-    [(5)  'r9]
+    [(0)  '%rdi ]
+    [(1)  '%rsi ]
+    [(2)  '%rdx ]
+    [(3)  '%rcx ]
+    [(4)  '%r8  ]
+    [(5)  '%r9  ]
     [else (error 'argument/register "unimplemeneted")]))
 
 ;
@@ -150,6 +156,14 @@
      (list rex #x8b (encode/modrm 1 reg r/m) (+ 256 offset))]
     [else
      (error 'instr/load-from-offset "unimplemented offset" offset)]))
+
+; push <imm>
+(define (instr/push-imm imm)
+  (cond
+    [(<= 0 imm 255)
+     (list #x6a imm)]
+    [else
+     (error 'instr/push-imm "unimplemented" imm)]))
 
 ; push <src>
 (define (instr/push src)
@@ -349,244 +363,280 @@
       [else (loop (replace/top proc (car links)) (cdr links))])))
 
 ;
+; Frame info
+;
+
+;
+; |         ...         |
+; |=====================|
+; |    Return Address   |
+; |---------------------|
+; |      Saved FP       |
+; |---------------------| %sp 
+; |        Arg m        |
+; |---------------------|
+; |         ...         |
+; |---------------------|
+; |        Arg 0        |
+; |---------------------|
+; |       Local 0       |
+; |---------------------|
+; |         ...         |
+; |---------------------|
+; |       Local n       |
+; |---------------------|
+; |    Padding (0/8)    |
+; |=====================| %fp
+; |         ...         |
+;
+
+(define-record-type frame
+  (fields (mutable argc) (mutable locals) (mutable idx) prev)
+  (opaque #t))
+
+(define (make-starting-frame argc)
+  (make-frame argc '() 3 #f))
+
+(define (extend-frame prev idx)
+  (make-frame 0 '() idx prev))
+
+(define (frame-reserve-args! frame argc)
+  (frame-argc-set! frame argc))
+
+; Adds a named local memory location
+; Returns the index within the frame of the new location
+; Named locations will never be reclaimed
+(define (frame-set-local! frame label)
+  (define locals (frame-locals frame))
+  (define idx (index-of #f (reverse locals)))
+  (cond
+    [idx  ; open space, update the set of locals
+     (frame-locals-set! frame (reverse (list-set (reverse locals) idx label)))
+     (+ (frame-argc frame) (+ idx 1))]
+    [else ; need to reserve more space
+     (frame-locals-set! frame (cons label locals))
+     (+ (frame-argc frame) (length (frame-locals frame)))]))
+
+; Gives the offset of a named local memory location in words
+(define (frame-get-local frame label)
+  (let loop ([frame frame] [offset 0])
+    (cond
+      [(member label (frame-locals frame))
+       (define locals (frame-locals frame))
+       (define idx (index-of label locals))
+       (+ offset (frame-argc frame) (- (length locals) idx))]
+      [else
+       (unless (frame-prev frame)
+         (error 'frame-get-local! "could not find local" label))
+       (define prev (frame-prev frame))
+       (define adj-size (+ (* 2 WORD-SIZE) (frame-size prev)))
+       (loop prev (- offset adj-size))])))
+
+; Adds an unnamed local memory location
+; Returns the index within the frame of the new location
+(define (frame-push-local! frame)
+  (frame-set-local! frame #t))
+
+; Removes the last memory location created
+; using `frame-pop-local!`. Returns the index
+; within the frame of the new location
+(define (frame-pop-local! frame)
+  (define locals (frame-locals frame))
+  (define idx (index-of #t locals))
+  (unless idx
+    (error 'assemble/x86-64 "frame-pop-local!: frame size will be negative"))
+  (frame-locals-set! frame (list-set locals idx #f))
+  (+ (frame-argc frame) (- (length locals) idx)))
+
+; Frame size ignoring return address and saved FP
+(define (frame-size frame)
+  (define words (+ (frame-argc frame) (length (frame-locals frame))))
+  (define aligned (if (= (remainder words 2) 0) words (+ words 1)))
+  (* WORD-SIZE aligned))
+
+;
 ; Assembler
 ;
 
-(define prefix (list (instr/endbr) (instr/push 'rbp) (instr/load 'rbp 'rsp)))
+(define prefix (list (instr/endbr) (instr/push '%rbp) (instr/load '%rbp '%rsp)))
 (define suffix (list (instr/leave) (instr/ret)))
-
-(define (padding-length instrs)
-  (let loop ([instrs instrs] [len 0])
-    (cond
-      [(null? instrs)
-       (define r16 (remainder len 16))
-       (if (= r16 0) 0 (- 16 r16))]
-      [else (loop (cdr instrs) (+ len (length (car instrs))))])))
-
-(define (c-call-prefix+suffix args push! pop!)
-  (let loop ([args args] [i 0] [prefix '()] [suffix '()])
-    (cond
-      [(null? args)
-       ; no arguments left to stash
-       (for-each (lambda _ (pop!)) (make-list i #f))
-       (values (reverse prefix) suffix)]
-      [else
-       (define offset (push!))
-       (define byte-offset (- (* WORD-SIZE offset)))
-       (define i-reg (argument/register i))
-       (define push (instr/store-at-offset 'rbp i-reg byte-offset))
-       (define pop (instr/load-from-offset i-reg 'rbp byte-offset))
-       (cond
-         [(number? (car args))
-          ; immediate as argument
-          (define ld (instr/load-imm64 (car args)))
-          (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))]
-         [else
-          ; register as argument
-          (define src (register/from-generic (car args)))
-          (define ld (instr/load i-reg src))
-          (cond
-            [(eq? i-reg src)
-             (loop (cdr args) (+ i 1) (cons push prefix) (cons pop suffix))]
-            [else
-             (define ld (instr/load i-reg src))
-             (loop (cdr args) (+ i 1) (cons ld (cons push prefix)) (cons pop suffix))])])])))
 
 
 (define (assemble/instr instr
                         get-assembled
                         link!
-                        push-frame! pop-frame! get-frame
-                        reserve-args! push-local! pop-local!)
+                        push-frame! pop-frame! frame)
   (case (first instr)
     [(load)
      ; mov <dst>, <src>
+     (define dst (second instr))
+     (define src (third instr))
      (cond
        [(number? (third instr))
-        (define dst (register/from-generic (second instr)))
-        (list (instr/load-imm64 dst (third instr)))]
+        ; Imm => Reg
+        (list (instr/load-imm64 dst src))]
+       [(and (symbol? src) (symbol? dst))
+        ; Reg => Reg
+        (list (instr/load dst src))]
+       [(and (symbol? src) (list? dst) (eq? (car dst) 'local))
+        ; Reg => Mem
+        (define label (second dst))
+        (define offset (frame-set-local! frame label))
+        (define byte-offset (- (* WORD-SIZE offset)))
+        (list (instr/store-at-offset '%rbp src byte-offset))]
+       [(and (list? src) (eq? (car src) 'local) (symbol? dst))
+        ; Mem => Reg
+        (define label (second src))
+        (define offset (frame-get-local frame label))
+        (define byte-offset (- (* WORD-SIZE offset)))
+        (list (instr/load-from-offset dst '%rbp byte-offset))]
        [else
-        (define dst (register/from-generic (second instr)))
-        (define src (register/from-generic (third instr)))
-        (list (instr/load dst src))])]
+        ; bad
+        (error 'assemble/instr "unknown load type" instr)])]
     [(load-offset)
      ; mov <dst> [<src>+<offset>]
-     (define dst (register/from-generic (second instr)))
-     (define src (register/from-generic (third instr)))
-     (list (instr/load-from-offset dst src (fourth instr)))]
+     (define dst (second instr))
+     (define src (third instr))
+     (define offset (fourth instr))
+     (list (instr/load-from-offset dst src offset))]
     [(store-offset)
      ; mov <dst> [<src>+<offset>]
-     (define src (register/from-generic (second instr)))
-     (define dst (register/from-generic (third instr)))
-     (list (instr/store-at-offset dst src (fourth instr)))]
+     (define src (second instr))
+     (define dst (third instr))
+     (define offset (fourth instr))
+     (list (instr/store-at-offset dst src offset))]
     [(store-offset32)
      ; mov <dst> [<src>+<offset>]
-     (define src (register/from-generic (second instr)))
-     (define dst (register/from-generic (third instr)))
-     (list (instr/store-at-offset32 dst src (fourth instr)))]
+     (define src (second instr))
+     (define dst (third instr))
+     (define offset (fourth instr))
+     (list (instr/store-at-offset32 dst src offset))]
     [(load-literal)
      ; mov <dst>, <literal address> => 48 b8 [xx]^8
      ; mov <dst>, [<dst>] => 48 8b 00
-     (define dst (register/from-generic (second instr)))
-     (link! (list 'literal (third instr)) (list (length (get-assembled)) 2))
-     (list
-       (instr/load-imm64 dst 0)
-       (instr/load-from-offset dst dst 0))]
+     (define dst (second instr))
+     (define addr (third instr))
+     (link! (list 'literal addr) (list (length (get-assembled)) 2))
+     (list (instr/load-imm64 dst 0)
+           (instr/load-from-offset dst dst 0))]
     [(load-procedure)
      ; mov <dst>, <procedure address> => 48 b8 [xx]^8
-     (define dst (register/from-generic (second instr)))
-     (link! (list 'procedure (third instr)) (list (length (get-assembled)) 2))
+     (define dst (second instr))
+     (define addr (third instr))
+     (link! (list 'procedure addr) (list (length (get-assembled)) 2))
      (list (instr/load-imm64 dst 0))]
     [(load-address)
      ; mov <dst>, <address> => 48 b8 [xx]^8
-     (define dst (register/from-generic (second instr)))
-     (link! (list 'runtime (third instr)) (list (length (get-assembled)) 2))
+     (define dst (second instr))
+     (define addr (third instr))
+     (link! (list 'runtime addr) (list (length (get-assembled)) 2))
      (list (instr/load-imm64 dst 0))]
     [(store-argument)
      ; Stores result at ith argument position
      ; The area directly above `rbp` is the argument stack
      ; Note that the argument stack is reverse so 0 is last
      ; mov [rbp-<offset>], <src>
-     (define src (register/from-generic (second instr)))
+     (define src (second instr))
      (define offset (* (+ 1 (third instr)) WORD-SIZE))
-     (list (instr/store-at-offset 'rbp src (- offset)))]
+     (list (instr/store-at-offset '%rbp src (- offset)))]
     [(add)
+     (define dst (second instr))
+     (define src0 (third instr))
+     (define src1 (fourth instr))
      (cond
-       [(symbol? (fourth instr))
+       [(symbol? src1)
         (cond
-          [(eq? (second instr) (third instr))
+          [(eq? dst src0)
            ; x64-style
-           (define dst (register/from-generic (second instr)))
-           (define src (register/from-generic (fourth instr)))
-           (list (instr/add dst src))]
+           (list (instr/add dst src1))]
           [else
            ; ARM-style
            ;  mov <dst> to <src>
            ;  perform x64-style on <dst>
-           (define dst (register/from-generic (second instr)))
-           (define src0 (register/from-generic (third instr)))
-           (define src (register/from-generic (fourth instr)))
-           (list (instr/load dst src0) (instr/add dst src))])]
+           (list (instr/load dst src0) (instr/add dst src1))])]
        [else
         (cond
-          [(eq? (second instr) (third instr))
+          [(eq? dst src0)
            ; x64-style
-           (define dst (register/from-generic (second instr)))
-           (list (instr/add-imm dst (fourth instr)))]
+           (list (instr/add-imm dst src1))]
           [else
            ; ARM-style
            ;  mov <dst> to <src>
            ;  perform x64-style on <dst>
-           (define dst (register/from-generic (second instr)))
-           (define src (register/from-generic (third instr)))
-           (list
-             (instr/load dst src)
-             (instr/add-imm dst (fourth instr)))])])]
+           (list (instr/load dst src0) (instr/add-imm dst src1))])])]
     [(sub)
+     (define dst (second instr))
+     (define src0 (third instr))
+     (define src1 (fourth instr))
      (cond
-       [(symbol? (fourth instr))
+       [(symbol? src1)
         (cond
-          [(eq? (second instr) (third instr))
+          [(eq? dst src0)
            ; x64-style
-           (define dst (register/from-generic (second instr)))
-           (define src (register/from-generic (fourth instr)))
-           (list (instr/sub dst src))]
+           (list (instr/sub dst src1))]
           [else
            ; ARM-style
            ;  mov <dst> to <src>
            ;  perform x64-style on <dst>
-           (define dst (register/from-generic (second instr)))
-           (define src0 (register/from-generic (third instr)))
-           (define src (register/from-generic (fourth instr)))
-           (list (instr/load dst src0) (instr/sub dst src))])]
+           (list (instr/load dst src0) (instr/sub dst src1))])]
        [else
         (cond
-          [(eq? (second instr) (third instr))
+          [(eq? dst src0)
            ; x64-style
-           (define dst (register/from-generic (second instr)))
-           (list (instr/sub-imm dst (fourth instr)))]
+           (list (instr/sub-imm dst src1))]
           [else
            ; ARM-style
            ;  mov <dst> to <src>
            ;  perform x64-style on <dst>
-           (define dst (register/from-generic (second instr)))
-           (define src (register/from-generic (third instr)))
-           (list
-             (instr/load dst src)
-             (instr/sub-imm dst (fourth instr)))])])]
+           (list (instr/load dst src0) (instr/sub-imm dst src1))])])]
     [(shl)
+     (define dst (second instr))
+     (define src0 (third instr))
+     (define src1 (fourth instr))
      (cond
-       [(symbol? (fourth instr))
+       [(symbol? src1)
         (error 'assemble/x86-64 "unimplemented" instr)]
        [else
         (cond
-          [(eq? (second instr) (third instr))
+          [(eq? dst src0)
            ; x64-style
-           (define dst (register/from-generic (second instr)))
-           (list (instr/shl-imm dst (fourth instr)))]
+           (list (instr/shl-imm dst src1))]
           [else
            ; ARM-style
            ;  mov <dst> to <src>
            ;  perform x64-style on <dst>
-           (define dst (register/from-generic (second instr)))
-           (define src (register/from-generic (third instr)))
-           (list
-             (instr/load dst src)
-             (instr/shl-imm dst (fourth instr)))])])]
+           (list (instr/load dst src0) (instr/shl-imm dst src1))])])]
     [(push-frame)
      ; make new continuation frame
      ; similar to calling convention
      ;  - push label address and BP (do manually to ensure alignment)
      ;  - move BP to SP
      (define label (second instr)) ; TODO handle label
-     (push-frame! (+ (length (get-assembled)) 4))
+     (push-frame! (+ (length (get-assembled)) 3))
      (list
-       (instr/load-imm64 'rax 0)
-       (instr/push 'rax)
-       (instr/push 'rbp)
-       (instr/load 'rbp 'rsp)
-       (instr/sub-imm 'rsp 0))]
+       (instr/push-imm 0)
+       (instr/push '%rbp)
+       (instr/load '%rbp '%rsp)
+       (instr/sub-imm '%rsp 0))]
     [(prepare-args)
      ; hint for the frame size
-     (reserve-args! (second instr))
+     (frame-reserve-args! frame (second instr))
      (list)]
     [(pop-frame)
      ; remove continuation frame
      ; just the reverse of `push_frame`
      (pop-frame!)
      (list
-       (instr/load 'rsp 'rbp)
-       (instr/pop 'rbp)
-       (instr/add-imm 'rsp 8))]
+       (instr/load '%rsp '%rbp)
+       (instr/pop '%rbp)
+       (instr/add-imm '%rsp WORD-SIZE))]
     [(c-call)
      ; function call
-     ; make prefix and suffix code to stash registers
-     (define-values (prefix suffix)
-       (c-call-prefix+suffix (cddr instr) push-local! pop-local!))
-     ; compute prefix
-     ; the actual call
-     (cond
-       [(string? (second instr))
-        ; link required:
-        ;  mov rax, <literal address> => 48 b8 [xx]^8
-        ;  call rax => ff d0
-        (define link-idx (+ (length (get-assembled)) (length prefix)))
-        (link! (list 'runtime (second instr)) (list link-idx 2))
-        (append
-          prefix
-          (list
-            (instr/load-imm64 'rax 0)
-            (instr/call 'rax))
-          suffix)]
-       [else
-        ; pointer provided [at rax]
-        ;  call rax => ff d0
-        (append
-          prefix
-          (list (instr/call 'rax))
-          suffix)])]
+     ; assumes registers are in the right place
+     ; and do not require stashing
+     (list (instr/call '%rax))]
     [(branch)
-     ; branching (oh boy ...)
+     ; branching
      (define label (second instr))
      (define mode (third instr))
      (case mode
@@ -601,40 +651,53 @@
     [(cmp-tag)
      ; comparing object tag for type information
      ; cmp <src:32>, <tag>
-     (define src (register/from-generic (second instr)))
+     (define src (second instr))
      (define tag (type-tag->integer (third instr)))
      (list (instr/cmp32-imm src tag))]
     [(cmp-ptr)
      ; comparing register-to-register
      ; cmp <src1:64>, <src2:64>
-     (define src1 (register/from-generic (second instr)))
-     (define src2 (register/from-generic (third instr)))
+     (define src1 (second instr))
+     (define src2 (third instr))
      (list (instr/cmp64 src1 src2))]
     [(push)
      ; really just a move
-     (define offset (push-local!))
+     (define offset (frame-push-local! frame))
      (define byte-offset (- (* WORD-SIZE offset)))
-     (define src (register/from-generic (second instr)))
-     (list (instr/store-at-offset 'rbp src byte-offset))]
+     (define src (second instr))
+     (list (instr/store-at-offset '%rbp src byte-offset))]
     [(pop)
      ; really just a move
-     (define offset (pop-local!))
+     (define offset (frame-pop-local! frame))
      (define byte-offset (- (* WORD-SIZE offset)))
-     (define dst (register/from-generic (second instr)))
-     (list (instr/load-from-offset dst 'rbp byte-offset))]
+     (define dst (second instr))
+     (list (instr/load-from-offset dst '%rbp byte-offset))]
     [(label)
      ; label => just register name and location
      (link! (list 'label (second instr)) (list (length (get-assembled))))
      (list)]
+    [(init)
+     ; init => marker for register assignment
+     (list)]
     [else
      (error 'assemble/x86-64 "unimplemented" instr)]))
 
+(define (padding-length instrs)
+  (let loop ([instrs instrs] [len 0])
+    (cond
+      [(null? instrs)
+       (define r16 (remainder len 16))
+       (if (= r16 0) 0 (- 16 r16))]
+      [else (loop (cdr instrs) (+ len (length (car instrs))))])))
 
-(define (assemble/x86-64 instrs)
+;
+; Top-level assembler from generic assembly to x86-64
+;
+
+(define (assemble/x86-64 instrs alloc)
   (define asm-instrs '())
-  (define frames '())
-  (define framei '())
   (define links '())
+  (define frame (make-starting-frame 0))
 
   (define (make-link! key loc)
     (set! links (cons (cons key loc) links)))
@@ -651,15 +714,9 @@
           [else
            (loop (cdr links) (cons (car links) links*))]))))
 
-  (define (adjust-frame!)
-    (define instr-idx (car framei))
-    (define frame (car frames))
-
-    (define frame-size (+ (first frame) (second frame)))
-    (define aligned-size
-      (if (= (remainder frame-size 2) 0)
-          frame-size
-          (+ frame-size 1)))
+  (define (adjust-frame! frame)
+    (define instr-idx (frame-idx frame))
+    (define fsize (frame-size frame))
 
     (set! asm-instrs
       (reverse 
@@ -668,66 +725,27 @@
             [(null? instrs)
              (error 'adjust-frame!
                     "instruction sequence not long enough"
-                    instr-idx asm-intsrs)]
+                    instr-idx asm-instrs)]
             [(= i instr-idx)
              (define instr-len (length (car instrs)))
              (cond
-               [(= aligned-size 0)
+               [(= fsize 0)
                 (adjust-links! i (- 1))
                 (append (reverse instrs*) (cdr instrs))]
                [else
-                (define reserve (instr/sub-imm 'rsp (* WORD-SIZE aligned-size)))
+                (define reserve (instr/sub-imm '%rsp fsize))
                 (append (reverse instrs*) (cons reserve (cdr instrs)))])]
             [else
              (loop (cdr instrs) (+ i 1) (cons (car instrs) instrs*))])))))
 
   (define (push-frame! idx)
-    (set! framei (cons idx framei))
-    (set! frames (cons (list 0 0 0) frames)))
+    (set! frame (extend-frame frame idx)))
 
   (define (pop-frame!)
-    (adjust-frame!)
-    (set! framei (cdr framei))
-    (set! frames (cdr frames)))
-  
-  (define (get-frame)
-    (car frames))
+    (adjust-frame! frame)
+    (set! frame (frame-prev frame)))
 
-  (define (reserve-args! count)
-    (define frame (car frames))
-    (define argc (first frame))
-    (define localc (second frame))
-    (define locali (third frame))
-    (define frame* (list (+ argc count) localc locali))
-    (set! frames (cons frame* (cdr frames))))
-
-  (define (push-local!)
-    (define frame (car frames))
-    (define argc (first frame))
-    (define localc (second frame))
-    (define locali (third frame))
-    (define frame*
-      (if (= locali localc)
-          (list argc (+ localc 1) (+ locali 1))
-          (list argc localc (+ locali 1))))
-    (set! frames (cons frame* (cdr frames)))
-    (+ (first frame*) (third frame*)))
-    
-  (define (pop-local!)
-    (define frame (car frames))
-    (define argc (first frame))
-    (define localc (second frame))
-    (define locali (third frame))
-    (define frame* (list argc localc (- locali 1)))
-    (if (= locali 0)
-        (error 'assemble/x86-64 "pop-local: frame size will be negative" frames)
-        (set! frames (cons frame* (cdr frames))))
-    (+ (first frame) (third frame)))
-  
-  ; (printf "~a\n" instrs)
-
-  (push-frame! 3)
-  (set! asm-instrs (cons (instr/sub-imm 'rsp 0) (reverse prefix)))
+  (set! asm-instrs (cons (instr/sub-imm '%rsp 0) (reverse prefix)))
 
   (let loop ([instrs instrs])
     (unless (null? instrs)
@@ -735,8 +753,7 @@
         (assemble/instr (car instrs)
                         (lambda _ asm-instrs)
                         make-link!
-                        push-frame! pop-frame! get-frame
-                        reserve-args! push-local! pop-local!))
+                        push-frame! pop-frame! frame))
       (set! asm-instrs (append (reverse next) asm-instrs))
       (loop (cdr instrs))))
 

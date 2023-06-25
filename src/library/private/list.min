@@ -3,20 +3,30 @@
 ;;
 
 (import "pre-base.min")
-(export first second third fourth fifth sixth seventh eighth ninth tenth
-        member
+(export first second third fourth fifth
+        sixth seventh eighth ninth tenth
+        list-ref list-set
+        cons*
+        member remove remove*
         filter
         foldl foldr
         assoc
         enumerate
         index-of)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (cons* x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) x]
+          [else (cons x (loop (car xs) (cdr xs)))])))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; accessors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (first xs)
   (if (list? xs)
       (car xs)
-      (error 'name "list?" xs)))
+      (error 'first "list?" xs)))
 
 (define-syntax define-list-accessor
   (syntax-rules ()
@@ -41,6 +51,14 @@
 (define-list-accessor ninth   9)
 (define-list-accessor tenth   10)
 
+(define (list-ref lst k)
+  (unless (integer? k)  ; TODO: non-negative integer
+    (error 'list-ref "expected a non-negative integer" k))
+  (let loop ([xs lst] [i 0])
+    (cond [(null? xs) (error 'list-ref "index out of bounds" lst k)]
+          [(= i k) (car xs)]
+          [else (loop (cdr xs) (+ i 1))])))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; list operations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (member k xs)
@@ -48,6 +66,28 @@
     (cond [(null? xs) #f]
           [(pair? xs) (if (equal? (car xs) k) (car xs) (loop (cdr xs)))]
           [else (error 'member "expected a list" xs)])))
+
+(define (remove k xs)
+  (let loop ([xs xs])
+    (cond [(null? xs) '()]
+          [(pair? xs) (if (equal? (car xs) k)
+                          (loop (cdr xs))
+                          (cons (car xs) (loop (cdr xs))))]
+          [else (error 'remove "expected a list" xs)])))
+
+(define (remove* ks xs)
+  (unless (list? ks)
+    (error 'remove* "expected a list" ks))
+  (let loop ([ks ks] [xs xs])
+    (cond [(null? ks) xs]
+          [(null? xs) '()]
+          [else (loop (cdr ks)
+                      (let loop2 ([xs xs])
+                        (cond [(null? xs) '()]
+                              [(pair? xs) (if (equal? (car xs) (car ks))
+                                              (loop2 (cdr xs))
+                                              (cons (car xs) (loop2 (cdr xs))))]
+                              [else (error 'remove* "expected a list" xs)])))])))
 
 (define (filter f lst)
   (let loop ([xs lst] [acc '()])
@@ -89,3 +129,13 @@
       [(null? lst) #f]
       [(equal? k (car lst)) i]
       [else (loop (cdr lst) (+ i 1))])))
+
+(define (list-set lst k v)
+  (unless (integer? k)  ; TODO: non-negative integer
+    (error 'list-set "expected a non-negative integer" k))
+  (let loop ([xs lst] [i 0] [xs* '()])
+    (cond
+      [(null? xs) (error 'list-set "index out of bounds" lst k)]
+      [(= i k) (append (reverse xs*) (cons v (cdr xs)))]
+      [(pair? xs) (loop (cdr xs) (+ i 1) (cons (car xs) xs*))]
+      [else (error 'list-set "expected a list" lst)])))

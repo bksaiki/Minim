@@ -12,6 +12,7 @@
 #include <ctype.h>
 
 #include "../gc/gc.h"
+#include "build/config.h"
 
 // Config
 
@@ -469,7 +470,7 @@ extern minim_object *empty_env;
 
 // Memory
 
-void check_native_closure_arity(minim_object *fn, short argc);
+void check_native_closure_arity(short argc, minim_object *fn);
 minim_object *call_compiled(minim_object *env, minim_object *addr);
 minim_object *make_rest_argument(minim_object *args[], short argc);
 
@@ -675,6 +676,7 @@ DEFINE_PRIM_PROC(call_with_values);
 DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
+DEFINE_PRIM_PROC(identity);
 // pairs
 DEFINE_PRIM_PROC(is_pair);
 DEFINE_PRIM_PROC(cons);

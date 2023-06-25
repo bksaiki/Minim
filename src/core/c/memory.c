@@ -4,7 +4,7 @@
 
 #include "../minim.h"
 
-typedef minim_object *(*entry_proc)(minim_object *env);
+typedef minim_object *(*entry_proc)();
 
 struct address_map_t {
     char *name;
@@ -36,7 +36,7 @@ minim_object *make_rest_argument(minim_object *args[], short argc) {
     return lst;
 }
 
-void check_native_closure_arity(minim_object *fn, short argc) {
+void check_native_closure_arity(short argc, minim_object *fn) {
     struct proc_arity *arity;
     int min_arity, max_arity;
 
@@ -52,17 +52,39 @@ void check_native_closure_arity(minim_object *fn, short argc) {
         arity_mismatch_exn(minim_native_closure_name(fn), arity, argc);
 }
 
+#ifdef MINIM_X86_64
+static minim_object *call_compiled_x86_64(entry_proc fn, minim_object *env) {
+    minim_object *res;
+
+    // stash all callee-preserved registers
+    // move `env` to `%r14`
+
+    __asm__ (
+        "movq %1, %%r14\n\t"
+        "call %2\n\t"
+        "mov %0, %%rax\n\t"
+        : "=r" (res)
+        : "r" (env), "r" (fn)
+        : "%rbx", "%r12", "%r13", "%r14", "%r15"
+    );
+
+    return res;
+}
+#endif
+
 minim_object *call_compiled(minim_object *env, minim_object *addr) {
     entry_proc fn;
 
     if (!minim_is_fixnum(addr))
         bad_type_exn("enter-compiled!", "fixnum?", addr);
 
-    // TODO: set up stack segment
-
     // very unsafe code is to follow
-    fn = ((entry_proc) minim_fixnum(addr));
-    return fn(env);
+    #ifdef MINIM_X86_64
+        fn = ((entry_proc) minim_fixnum(addr));
+        return call_compiled_x86_64(fn, env);
+    #else
+    #error architecure unsupported
+    #endif
 }
 
 //

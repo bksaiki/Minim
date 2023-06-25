@@ -1,0 +1,440 @@
+;;;
+;;; Assembler
+;;;
+
+(import "../base.min" "common.min" "registers.min" "x86-64.min")
+(export assemble/procedure)
+
+;
+; Frame info
+;
+
+(define-record-type frame
+  (fields (mutable args) (mutable locals) (mutable result) prev)
+  (opaque #t))
+
+(define (make-starting-frame)
+  (make-frame '#() '() #f #f))
+
+(define (make-child-frame prev)
+  (make-frame (frame-args prev)
+              (frame-locals prev)
+              (frame-result prev)
+              prev))
+
+(define (frame-get-arg frame n)
+  (vector-ref (frame-args frame) n))
+
+(define (frame-set-arg! frame n reg)
+  (define args (frame-args frame))
+  (when (>= n (vector-length args))
+    (define v (make-vector (+ n 1) #f))
+    (enumerate (lambda (r i) (vector-set! v i r)) (vector->list args))
+    (frame-args-set! frame v)
+    (set! args v))
+  (vector-set! args n reg))
+
+(define (frame-push-local! frame reg)
+  (frame-locals-set! frame (cons reg (frame-locals frame))))
+
+(define (frame-pop-local! frame)
+  (define locals (frame-locals frame))
+  (when (null? locals) (error 'frame-pop-local! "popping with no local variables"))
+  (frame-locals-set! frame (cdr locals))
+  (car locals))
+
+;
+; Assembler
+;
+
+(define (assemble/instr instr frame alloc label!)
+  (case (first instr)
+    [(literal)
+     ; `(literal <n>)` =>
+     ; Load <n>th literal into `%ret`
+     (define lit-reg (register-allocator-new! alloc))
+     (frame-result-set! frame lit-reg)
+     (values (list (list 'load-literal lit-reg (second instr))) frame)]
+    [(push-continuation)
+     ; `(push-continuation <label> )` =>
+     (define label (second instr))
+     (define frame* (make-child-frame frame))
+     (values (list (list 'push-frame label)) frame*)]
+    [(pop-continuation)
+     ; `(pop-continuation)` =>
+     (define prev-frame (frame-prev frame))
+     (frame-result-set! prev-frame (frame-result frame))
+     (values (list (list 'pop-frame)) prev-frame)]
+    [(prepare-args)
+     ; `(prepare-args <n>)` =>
+     ; Hint to the assembler
+     (values (list instr) frame)]
+    [(argument)
+     ; `(argument <n>)` =>
+     ; bind `%ret` to nth var
+     (define idx (second instr))
+     (define res (frame-result frame))
+     (values (list (list 'store-argument res idx)) frame)]
+    [(apply)
+     ; `(apply)` =>
+     ; if PRIMITIVE:
+     ;   Set arg array pointer to `arg1`
+     ;   Set arg count to `arg0`
+     ;   Extract pointer to `RRES`
+     ;   Call using `RRES`
+     ; elif CLOSURE:
+     ;   Save the environment register
+     ;   Load the closure environment
+     ;   Jump to the start of the code
+     ;   Calling convention:
+     ;     R0: environment register
+     ;     R1: closure object
+     ;     R2: argument count
+     ;     <stack>: arguments
+     (define argc (second instr))
+
+     ; branch labels
+     (define jmp-label (label!))
+     (define exit-label (label!))
+     ; registers
+     (define proc-reg (frame-result frame))
+     (define tag-reg (register-allocator-new! alloc))
+     (define argc-reg (register-allocator-new! alloc))
+     (define args-reg (register-allocator-new! alloc))
+     (define prim-reg (register-allocator-new! alloc))
+     (define env-reg (register-allocator-new! alloc))
+     (define code-reg (register-allocator-new! alloc))
+     (define res-reg (register-allocator-new! alloc))
+
+     ; result register is '%ret
+     (frame-result-set! frame res-reg)
+
+     ; code
+     (values
+       (list
+         ; Check argument is closure
+         ; Extract the tag and compare
+         (list 'load-offset tag-reg proc-reg 0)
+         (list 'cmp-tag tag-reg 'closure)
+         (list 'branch jmp-label 'equal)
+         ; Primitive
+         (list 'load-offset prim-reg proc-reg PRIM-FN-OFFSET)
+         (list 'load argc-reg argc)
+         (list 'sub args-reg '%cc (* argc WORD-SIZE))
+         (list 'c-call prim-reg argc-reg args-reg)
+         (list 'branch exit-label 'always)
+         ; Closure
+         (list 'label jmp-label)
+         (list 'load argc-reg argc)
+         (list 'load env-reg '%env)
+         (list 'load-offset '%env proc-reg CLOSURE-ENV-OFFSET)
+         (list 'load-offset code-reg proc-reg CLOSURE-CODE-OFFSET)
+         (list 'c-call code-reg argc-reg proc-reg)
+         (list 'load '%env env-reg)
+         ; End
+         (list 'label exit-label)
+         (list 'load res-reg '%ret))
+       frame)]
+    [(lookup)
+     ; `(lookup <name>)` =>
+     ; Load <n>th literal into `ARG1` and perform a lookup
+     (define lit-reg (register-allocator-new! alloc))
+     (define res-reg (register-allocator-new! alloc))
+     (frame-result-set! frame res-reg)
+     (values
+       (list
+         (list 'load-literal lit-reg (second instr))
+         (list 'c-call "env_lookup_var" '%env lit-reg)
+         (list 'load res-reg '%ret))
+       frame)]
+    [(push-environment)
+     ; `(push-environment)` =>
+     ; extend environment; requires call to C-runtime
+     (values
+       (list
+         (list 'c-call "make_environment" '%env)
+         (list 'load '%env '%ret))
+       frame)]
+    [(pop-environment)
+     ; `(pop-environment)` =>
+     ; load the previous environment
+     (values (list (list 'load-offset '%env '%env ENV-PREV-OFFSET)) frame)]
+    [(closure)
+     ; `(closure <idx> <arity>)` =>
+     ; create a closure using the current environment
+     (define idx (second instr))
+     (define arity (third instr))
+     (define-values (arity-low arity-high)
+       (cond [(and (pair? arity) (number? (cdr arity))) (values (car arity) (cdr arity))]
+             [(pair? arity) (values (car arity) ARGC-MAX)]
+             [else (values arity arity)]))
+     (define code-reg (register-allocator-new! alloc))
+     (define arity-low-reg (register-allocator-new! alloc))
+     (define arity-high-reg (register-allocator-new! alloc))
+     (define res-reg (register-allocator-new! alloc))
+     (frame-result-set! frame res-reg)
+     (values
+       (list
+         (list 'load-procedure code-reg idx)
+         (list 'load arity-low-reg arity-low)
+         (list 'load arity-high-reg arity-high)
+         (list 'c-call "make_closure" '%env code-reg arity-low-reg arity-high-reg)
+         (list 'load res-reg '%ret))
+       frame)]
+    [(branch)
+     ; `(branch label mode ...)` =>
+     ; branch
+     (define label (second instr))
+     (define mode (third instr))
+     (case mode
+       [(lit-eq?)
+        (define res-reg (frame-result frame))
+        (define lit-reg (register-allocator-new! alloc))
+        (values
+          (list
+            (list 'load-literal lit-reg (fourth instr))
+            (list 'cmp-ptr res-reg lit-reg)
+            (list 'branch label 'equal))
+          frame)]
+       [(always)
+        (values (list (list 'branch label 'always)) frame)]
+       [else
+        (error 'assemble/procedure "unimplemented branch mode" mode)])]
+    [(bind)
+     ; `(bind <n>s ...`) =>
+     ; binds <n>th literal (symbol) to result register in the current environment
+     (define idxs (cdr instr))
+     (case (length idxs)
+       [(0)
+        ; do nothing (nothing to bind)
+        (values (list) frame)]
+       [(1)
+        ; bind result register to first index
+        (define res-reg (frame-result frame))
+        (define lit-reg (register-allocator-new! alloc))
+        (values
+          (list
+            (list 'load-literal lit-reg (second instr))
+            (list 'c-call "env_define_var" '%env lit-reg res-reg))
+          frame)]
+       [else
+        ; bind from values buffer
+        ; result register is guaranteed to be the "multiple values" object
+        (define res-reg (frame-result frame))
+        (define lit-reg (register-allocator-new! alloc))
+        (define th-reg (register-allocator-new! alloc))
+        (define vref-reg (register-allocator-new! alloc))
+        (define vsize-reg (register-allocator-new! alloc))
+        (values
+          (cons*
+            (list 'load-address th-reg "current_thread")
+            (list 'load-offset vref-reg th-reg THREAD-VALUES-OFFSET)
+            (let loop ([idxs idxs] [i 0])
+              (cond
+                [(null? idxs) '()]
+                [else
+                 (cons*
+                   (list 'load-offset res-reg vref-reg (* 8 i))
+                   (list 'load-literal lit-reg (car idxs))
+                   (list 'c-call "env_define_var" '%env lit-reg res-reg)
+                   (loop (cdr idxs) (+ i 1)))])))
+          frame)])]
+    [(bind-argument)
+     ; `(bind-argument <n> <name>)` =>
+     ; binds the <n>th argument to in the current enviroment
+     ;  - extract the previous FP (stored at [CC-REG])
+     ;  - the <i>th argument is at [CC-REG - 8*argc + 8*idx]
+     (define idx (second instr))
+     (define lit-idx (third instr))
+    
+     ; registers
+     (define argc-reg (frame-get-arg frame 0))
+     (define aref-reg (register-allocator-new! alloc))
+     (define offset-reg (register-allocator-new! alloc))
+     (define value-reg (register-allocator-new! alloc))
+     (define lit-reg (register-allocator-new! alloc))
+
+     ; code
+     (values
+       (list
+         ; compute `- 8*argc + 8*idx`
+         (list 'load offset-reg idx)
+         (list 'sub offset-reg offset-reg argc-reg)
+         (list 'shl offset-reg offset-reg 3)
+         ; load address `[CC-REG - 8*argc + 8*idx]`
+         (list 'load-offset aref-reg '%cc 0)
+         (list 'add aref-reg aref-reg offset-reg)
+         (list 'load-offset value-reg aref-reg 0)
+         ; load name and bind
+         (list 'load-literal lit-reg lit-idx)
+         (list 'c-call "env_define_var" '%env lit-reg value-reg))
+       frame)]
+    [(bind-rest)
+     ; `(bind-rest <n> <name>)` =>
+     ; Binds the <n>th, <n+1>th, ... argument within a list
+     ; to <name> in the current environment.
+     ;  - extract argc (at %arg1)
+     ;  - extract the previous FP (stored at [CC-REG])
+     ;  - the <i>th argument is at [CC-REG - 8*argc + 8*idx]
+     (define idx (second instr))
+     (define lit-idx (third instr))
+
+     ; registers
+     (define argc-reg (frame-get-arg frame 0))
+     (define aref-reg (register-allocator-new! alloc))
+     (define offset-reg (register-allocator-new! alloc))
+     (define rest-reg (register-allocator-new! alloc))
+     (define lit-reg (register-allocator-new! alloc))
+     (define rarg-reg (register-allocator-new! alloc))
+
+     ; code
+     (values
+       (list
+         ; compute `- 8*argc + 8*idx`
+         (list 'load offset-reg idx)
+         (list 'sub offset-reg offset-reg argc-reg)
+         (list 'shl offset-reg offset-reg 3)
+         ; load address `[CC-REG - 8*argc + 8*idx]`
+         (list 'load-offset aref-reg '%cc 0)
+         (list 'add aref-reg aref-reg offset-reg)
+         ; create rest argument 
+         (list 'load rest-reg argc-reg)
+         (list 'sub rest-reg rest-reg idx)
+         (list 'c-call "make_rest_argument" aref-reg rest-reg)
+         (list 'load rarg-reg '%rax)
+         ; load name and bind
+         (list 'load-literal lit-reg lit-idx)
+         (list 'c-call "env_define_var" '%env lit-reg rarg-reg))
+       frame)]
+    [(push)
+     ; `(push)` =>
+     ; add result register as local register
+     (define res-reg (frame-result frame))
+     (frame-push-local! frame res-reg)
+     (values (list) frame)]
+    [(pop)
+     ; `(pop)` =>
+     ; sets last local register as result register
+     (frame-result-set! frame (frame-pop-local! frame))
+     (values (list) frame)]
+    [(load-value)
+     ; `(load-value <n>)` =>
+     ; TODO: verify size of values_buffer
+     ; get address of threads `value buffer` and load `RES-REG` into the <n>th slot
+     ; set the size of the buffer
+     (define idx (second instr))
+     (define res-reg (frame-result frame))
+     (define th-reg (register-allocator-new! alloc))
+     (define vref-reg (register-allocator-new! alloc))
+     (define vsize-reg (register-allocator-new! alloc))
+     (values
+       (list
+         (list 'load-address th-reg "current_thread")
+         (list 'load-offset vref-reg th-reg THREAD-VALUES-OFFSET)
+         (list 'store-offset res-reg vref-reg (* 8 idx))
+         (list 'load vsize-reg (+ idx 1))
+         (list 'store-offset32 vsize-reg th-reg THREAD-VALUES-SIZE-OFFSET))
+       frame)]
+    [(make-void)
+     ; `(make-void)` =>
+     ; get address of "void" object
+     (define res-reg (register-allocator-new! alloc))
+     (frame-result-set! frame res-reg)
+     (values (list (list 'load-address res-reg "minim_void")) frame)]
+    [(make-values)
+     ; `(make-values)` =>
+     ; get address of "multiple values" object
+     (define res-reg (register-allocator-new! alloc))
+     (frame-result-set! frame res-reg)
+     (values (list (list 'load-address res-reg "minim_values")) frame)]
+    [(arity-check)
+     ; `(arity-check <n>)` =>
+     ; checks that the correct number of arguments was provided
+     ; to the closure and panics if not.
+     ; stashes the argument register
+     (define argc-reg (frame-get-arg frame 0))
+     (define cl-reg (frame-get-arg frame 1))
+     (values (list (list 'c-call "check_arity" argc-reg cl-reg)) frame)]
+    [(bind-check)
+     ; `(bind-check <n>)` =>
+     ; checks that the result has the right number of values
+     ; and panic if the check fails:
+     ;
+     ; if `type(RREG) == MINIM_VALUES_TYPE`:
+     ;   check size of values buffer
+     ; else:
+     ;   check that `<n> == 1`
+     ;
+     ; TODO: currently unchecked
+     (values (list) frame)]
+    [(label)
+     ; `(label <label>)` =>
+     ; nothing to do
+     (values (list instr) frame)]
+    [else
+     (error 'assemble/instr* "unimplemented" instr)]))
+
+(define (assemble/fix-c-calls instrs alloc)
+  (define (vreg? r)
+    (register-allocator-virtual-register? alloc r)) 
+  (let loop ([instrs instrs] [fixed '()])
+    (cond
+      [(null? instrs) (reverse fixed)]
+      [else
+       (define instr (car instrs))
+       (case (car instr)
+         [(c-call)
+          (define tregs (map (lambda (_) (register-allocator-new! alloc)) (cdr instr)))
+          (define load-instrs
+            (map (lambda (treg arg)
+                   (cond
+                     [(string? arg) (list 'load-address treg arg)]
+                     [(symbol? arg) (list 'load treg arg)]
+                     [(number? arg) (list 'load treg arg)]
+                     [else (error 'assemble/fix-c-calls "unknown c-call argument" arg)]))
+                 tregs (cdr instr)))
+          (define c-call (cons 'c-call tregs))
+          (loop (cdr instrs) (cons c-call (append (reverse load-instrs) fixed)))]
+         [else
+          (loop (cdr instrs) (cons instr fixed))])])))
+
+
+(define (assemble/procedure proc label!)
+  ; (printf " <assembling: ~a>\n" proc)
+  (define args (second (second proc)))
+  (define instrs (second (third proc)))
+
+  ;; allocator and procedure frame
+  (define alloc (make-register-allocator x86-64-registers))
+  (define frame (make-starting-frame))
+  
+  ;; initial registers
+  (define argc-reg (register-allocator-new! alloc))
+  (define proc-reg (register-allocator-new! alloc))
+  (define header (list 'init argc-reg proc-reg))
+  (frame-set-arg! frame 0 argc-reg)
+  (frame-set-arg! frame 1 proc-reg)
+
+  ; (printf "flat> ~a\n" instrs)
+
+  ; 1st pass
+  (define assembled
+    (let loop ([instrs instrs] [frame frame])
+      (cond
+        [(null? instrs)
+         (list (list 'load '%ret (frame-result frame)))]
+              ;  (list 'ret))]
+        [(list? (car instrs))
+         (define-values (seq frame*) (assemble/instr (first instrs) frame alloc label!))
+        ;  (printf "~a => ~a\n" (car instrs) seq)
+         (append seq (loop (cdr instrs) frame*))]
+        [else
+         (error 'assemble/procedure "expected a list: " (car instrs))])))
+
+  ; 2nd pass
+  (define assembled* (assemble/fix-c-calls assembled alloc))
+  
+  ; (printf "asm> ~a\n" assembled*)
+  (define assigned (register-assign (cons header assembled*) alloc))
+  ; (printf "reg> ~a\n" assigned)
+  (assemble/x86-64 assigned alloc))
