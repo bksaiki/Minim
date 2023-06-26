@@ -5,7 +5,7 @@
 (import "base.min" "expander.min" "read.min")
 (export read/module)
 
-(define (writeln o)
+(define writeln
   (case-lambda
     [(o)
      (writeln o (current-output-port))]
@@ -15,10 +15,11 @@
 
 ;; Module caches
 ;;  name -> (exporting xforms, exporting values)
-;;  name -> (current xforms, current env)
-(define $module-table '())
-(define $module-envs '())
-(define $module-internals '())
+;;  name -> (expand env, eval env)
+;;  name -> (exprs, xforms, imports, exports, expand env)
+(define $module-table (make-hashtable))
+(define $module-envs (make-hashtable))
+(define $module-internals (make-hashtable))
 
 ;; Like `$load-module`, but does not check the cache
 (define ($load-module path print-handler result-handler)
@@ -26,6 +27,7 @@
   (define new-cwd (car (split-path path)))
 
   ;; module information
+  (define scope (scope-extend $base-scope))
   (define exported '())
   (define imported '())
   (define imported-xforms '())
@@ -65,7 +67,7 @@
                    [(string? maybe-import)
                     (define path (build-path new-cwd maybe-import))
                     ($load-or-import path print-handler result-handler)
-                    (define from-module (cdr (assoc path $module-table)))
+                    (define from-module (hashtable-ref $module-table path))
                     (set! imported-modules (cons path imported-modules))
                     (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
                     (set! imported (append (cdr from-module) imported)) ; TODO: dedup
@@ -94,7 +96,7 @@
                          [(and (string? module-name)
                                (null? (cddr maybe-export))
                                (member path imported-modules))
-                          (define from-module (cdr (assoc path $module-table)))
+                          (define from-module (hashtable-ref $module-table path))
                           (set! exported (append (map car (car from-module))
                                                  (map car (cdr from-module))
                                                  exported))
@@ -154,7 +156,8 @@
                [(null? results)
                 (loop (cdr exprs) prev)]
                [else
-                (cond [(not (void? (car results))) (writeln (car results))])
+                (unless (void? (car results))
+                  (writeln (car results)))
                 (loop2 (cdr results) (car results))]))))])))
 
 (define ($load-or-import-no-check path print-handler result-handler)
@@ -185,35 +188,33 @@
        (loop (cdr exports))]))
 
   ;; update module tables
-  (set! $module-table (cons (cons path (cons export-xforms export-values)) $module-table))
-  (set! $module-envs (cons (cons path (cons module-xforms (cons stx-env env))) $module-envs))
-  (set! $module-internals (cons (cons path (list exprs module-xforms imports exports stx-env)) $module-internals))
+  (hashtable-set! $module-table path (cons export-xforms export-values))
+  (hashtable-set! $module-envs path (cons stx-env env))
+  (hashtable-set! $module-internals path (list exprs module-xforms imports exports stx-env))
 
   ;; and done
-  (cond [result-handler (result-handler last)]))
+  (when result-handler
+    (result-handler last)))
 
 ;; REPL with env
 (define ($repl xforms stx-env env)
   (let loop ([xforms xforms])
-    ;; read
+    ; read
     (display "> ")
     (define expr (read))
-    (cond [(eof-object? expr) (exit)])
-    ;; expand
-    (let-values ([(expr* xforms*) (expand expr xforms stx-env)])
-      ;; evaluate and display
-      (call-with-values
-        (lambda () (eval expr env))
-        (lambda results
-          (let loop ([results results])
-            (cond
-              [(null? results) (void)]
-              [(void? (car results)) (loop (cdr results))]
-              [else
-              (writeln (car results))
-              (loop (cdr results))]))))
-      ;; loop
-      (loop xforms*))))
+    (when (eof-object? expr) (exit))
+    ; expand
+    (define-values (expr* xforms*) (expand expr xforms stx-env))
+    ;; evaluate and display
+    (call-with-values
+      (lambda () (eval (syntax->datum expr*) env))
+      (lambda results
+        (for-each (lambda (result)
+                    (unless (void? result)
+                      (writeln result)))
+                  results)))
+    ; loop
+    (loop xforms*)))
 
 (define ($load-or-import name print-handler result-handler)
   ;; resolve path
@@ -222,7 +223,7 @@
         name
         (build-path (current-directory) name)))
   ;; check cache first
-  (unless (assoc path $module-table)
+  (unless (hashtable-contains? $module-table path)
     ($load-or-import-no-check path print-handler result-handler)))
 
 (define (read/module name)
@@ -240,7 +241,7 @@
 ;; loads a file
 (define (load name)
   (define result ($load-or-import name #f (lambda (o) o)))
-  (cond [(not (void? result)) (writeln result)])
+  (unless (void? result) (writeln result))
   (enter! name))
 
 (define (enter! name)
@@ -249,12 +250,12 @@
     (if (is-absolute-path? name)
         name
         (build-path (current-directory) name)))
-  ;; set up environment
-  (define maybe-env (assoc path $module-envs))
-  (unless (not maybe-env)
+  ;; set up environments
+  (unless (hashtable-contains? $module-envs path)
     (error 'enter! "unknown module" name))
-  (define env (cdr maybe-env))
+  (define envs (hashtable-ref $module-envs path))
+  (define xforms (second (hashtable-ref $module-internals path)))
   ;; REPL
-  ($repl (car env)
-         (extend-environment (cadr env))
-         (extend-environment (cddr env))))
+  ($repl xforms
+         (extend-environment (car envs))
+         (extend-environment (cdr envs))))

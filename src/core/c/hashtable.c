@@ -141,9 +141,9 @@ static size_t equal_hash2(minim_object *o, size_t hash) {
     switch (o->type)
     {
     case MINIM_SYMBOL_TYPE:
-        return hash_bytes(&minim_symbol(o), strlen(minim_symbol(o)), hash);
+        return hash_bytes(minim_symbol(o), strlen(minim_symbol(o)), hash);
     case MINIM_STRING_TYPE:
-        return hash_bytes(&minim_string(o), strlen(minim_string(o)), hash);
+        return hash_bytes(minim_string(o), strlen(minim_string(o)), hash);
     case MINIM_PAIR_TYPE:
         return equal_hash2(minim_cdr(o), equal_hash2(minim_car(o), hash));
     case MINIM_VECTOR_TYPE:

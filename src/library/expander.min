@@ -16,15 +16,18 @@
 (export expand
         expand/module
         $base-env
+        $base-scope
         $base-stx-env
+        make-base-scope
+        scope-extend
+        scope-add!
+        scope-names
+        scope-contains?
         merge-xforms)
 
 ;;
 ;;  scope
 ;;
-
-;; Base environment when loading modules
-(define $base-env (environment))
 
 (define-record-type scope
   (fields (mutable bound) (mutable prev)))
@@ -32,9 +35,9 @@
 (define (make-base-scope)
   (define bound (make-set))
   (for-each (lambda (n) (set-add! bound n)) (environment-names $base-env))
-  (define scope (make-scope bound #f)))
+  (make-scope bound #f))
 
-(define (scope-extend scope prev)
+(define (scope-extend prev)
   (make-scope (make-set) prev))
 
 (define (scope-add! scope name)
@@ -54,6 +57,10 @@
     (cond [(not scope) #f]
           [(set-member? (scope-bound scope) name) #t]
           [else (loop (scope-prev scope))])))
+
+;; Base environment when loading modules
+(define $base-env (environment))
+(define $base-scope (make-base-scope))
 
 ;;
 ;;  xforms
