@@ -182,6 +182,7 @@ void populate_env(minim_object *env) {
     add_procedure("environment", environment_proc, 0, 0);
     add_procedure("current-environment", current_environment_proc, 0, 0);
 
+    add_procedure("environment-names", environment_names_proc, 1, 1);
     add_procedure("extend-environment", extend_environment_proc, 1, 1);
     add_procedure("environment-variable-value", environment_variable_value_proc, 2, 3);
     add_procedure("environment-set-variable-value!", environment_set_variable_value_proc, 3, 3);

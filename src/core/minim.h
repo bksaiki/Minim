@@ -805,6 +805,7 @@ DEFINE_PRIM_PROC(equal_hash);
 // environment
 DEFINE_PRIM_PROC(empty_environment);
 DEFINE_PRIM_PROC(extend_environment);
+DEFINE_PRIM_PROC(environment_names);
 DEFINE_PRIM_PROC(environment_variable_value);
 DEFINE_PRIM_PROC(environment_set_variable_value);
 DEFINE_PRIM_PROC(environment);

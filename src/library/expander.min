@@ -13,7 +13,47 @@
 ;;
 
 (import "base.min")
-(export expand expand/module $base-stx-env merge-xforms)
+(export expand
+        expand/module
+        $base-env
+        $base-stx-env
+        merge-xforms)
+
+;;
+;;  scope
+;;
+
+;; Base environment when loading modules
+(define $base-env (environment))
+
+(define-record-type scope
+  (fields (mutable bound) (mutable prev)))
+
+(define (make-base-scope)
+  (define bound (make-set))
+  (for-each (lambda (n) (set-add! bound n)) (environment-names $base-env))
+  (define scope (make-scope bound #f)))
+
+(define (scope-extend scope prev)
+  (make-scope (make-set) prev))
+
+(define (scope-add! scope name)
+  (set-add! (scope-bound scope) name))
+
+(define (scope-names scope)
+  (define names (make-hashtable))
+  (let loop ([scope scope])
+    (when scope
+      (for-each (lambda (n) (set-add! names n))
+                (set->list (scope-bound scope)))
+      (loop (scope-prev scope))))
+  names)
+
+(define (scope-contains? scope name)
+  (let loop ([scope scope])
+    (cond [(not scope) #f]
+          [(set-member? (scope-bound scope) name) #t]
+          [else (loop (scope-prev scope))])))
 
 ;;
 ;;  xforms

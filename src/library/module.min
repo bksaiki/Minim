@@ -13,9 +13,6 @@
      (write o p)
      (newline p)]))
 
-;; Base environment when loading modules
-(define $base-env (environment))
-
 ;; Module caches
 ;;  name -> (exporting xforms, exporting values)
 ;;  name -> (current xforms, current env)
