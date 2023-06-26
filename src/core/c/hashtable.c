@@ -167,8 +167,7 @@ static size_t equal_hash2(minim_object *o, size_t hash) {
         // Hashing records using `equal?` recursively
         // descends through the record
         th = current_thread();
-        if (record_equal_proc(th) != minim_false &&
-            is_record_value(o)) {
+        if (record_hash_proc(th) != minim_false && is_record_value(o)) {
             // Unsafe code to follow
             push_call_arg(o);
             push_call_arg(env_lookup_var(global_env(th), intern("equal-hash")));

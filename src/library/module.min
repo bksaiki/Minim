@@ -5,13 +5,9 @@
 (import "base.min" "expander.min" "read.min")
 (export read/module)
 
-(define writeln
-  (case-lambda
-    [(o)
-     (writeln o (current-output-port))]
-    [(o p)
-     (write o p)
-     (newline p)]))
+(define (writeln o)
+  (write o)
+  (newline))
 
 ;; Module caches
 ;;  name -> (exporting xforms, exporting values)
@@ -63,14 +59,15 @@
                  (loop (cdr exprs) evalable)]
                 [(pair? imports)
                  (define maybe-import (syntax-e (car imports)))
+                 (define path (build-path new-cwd maybe-import))
                  (cond
                    [(string? maybe-import)
-                    (define path (build-path new-cwd maybe-import))
                     ($load-or-import path print-handler result-handler)
                     (define from-module (hashtable-ref $module-table path))
                     (set! imported-modules (cons path imported-modules))
                     (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
                     (set! imported (append (cdr from-module) imported)) ; TODO: dedup
+                    (for-each (lambda (name) (scope-add! scope name)) (cdr from-module))
                     (loop2 (cdr imports))]
                    [else
                     (error 'import "bad import syntax")])]
@@ -115,7 +112,7 @@
     ; setup environment
     (set! stx-env ($base-stx-env ($eval-environment $base-env imported)))
     ; testing
-    (define-values (exprs* xforms*) (expand/module exprs imported-xforms stx-env))
+    (define-values (exprs* xforms*) (expand/module exprs imported-xforms stx-env scope))
     ; update
     (set! module-xforms xforms*)
     exprs*)
