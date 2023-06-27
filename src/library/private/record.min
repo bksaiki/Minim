@@ -120,7 +120,7 @@
 (define (record-hash r rec-hash)
   (define rtd ($record-rtd r))
   (if (hashtable-contains? $record-hash-procs rtd)
-      ((hashtable-ref $record-hash-procs) r rec-hash)
+      ((hashtable-ref $record-hash-procs rtd) r rec-hash)
       0)) ;; TODO: should use default hash-procedure
 
 ($current-record-equal-procedure record-equal?)

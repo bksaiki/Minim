@@ -237,16 +237,94 @@
                    "expected symbol?" k))))
     env))
 
-;; Expands a module (List of Expr, List of Xform, Env)
+
+; returns the identifiers of a `define-syntaxes` / `define-values` form
+(define (define-syntaxes/values-identifiers form)
+  (map syntax-e (syntax->list (stx-car (stx-cdr form)))))
+
+; returns the expr of a `define-syntaxes` / `define-values` form
+(define (define-syntaxes/values-expr form)
+  (stx-car (stx-cdr (stx-cdr form))))
+
+;; Static analyzer for fully expanded modules
+;; Checks:
+;;  - unused variables
+(define (check/module! exprs scope)
+  ;; scan top-level definitions
+  (define (bind/define-values form)
+    (for-each (lambda (id) (scope-add! scope id))
+              (define-syntaxes/values-identifiers form)))
+  
+  ;; recursively checks expressions
+  (define (check/expr! expr scope)
+    (let loop ([expr expr])
+      (cond
+        [(lambda-form? expr)
+         (define formals (stx-car (stx-cdr expr)))
+         (define body (stx-cdr (stx-cdr expr)))
+         
+         (define scope* (scope-extend scope))
+         (let rec ([formals (syntax->datum formals)])
+           (cond
+             [(symbol? formals)
+              (scope-add! scope* formals)]
+             [(pair? formals)
+              (scope-add! scope* (car formals))
+              (rec (cdr formals))]))
+
+         (for-each (lambda (e) (check/expr! e scope*)) body)]
+        [(if-form? expr)
+         (map loop (stx-cdr expr))]
+        [(or (let-values-form? expr) (letrec-values-form? expr))
+         (define bindings (stx-car (stx-cdr expr)))
+         (define body (stx-cdr (stx-cdr expr)))
+
+         (define scope* (scope-extend scope))
+         (define rec-scope (if (let-values-form? expr) scope scope*))
+         
+         (let rec ([bindings (syntax->list bindings)])
+           (unless (null? bindings)
+             (define binding (syntax->list (car bindings)))
+             (define ids (syntax->datum (first binding)))
+             (for-each (lambda (id) (scope-add! scope* id)) ids)
+             (check/expr! (second binding) rec-scope)
+             (rec (cdr bindings))))
+
+         (for-each (lambda (e) (check/expr! e scope*)) body)]
+        [(letrec-values-form? expr)
+         (void)]
+        [(or (quote-form? expr)
+             (stx-self-evaluating? expr))
+         (void)]
+        [(stx-pair? expr)
+         (map loop (syntax->list expr))]
+        [(identifier? expr)
+         (define id (syntax-e expr))
+        ;  (unless (scope-contains? scope id)
+        ;     (printf "unknown variable ~a\n" id))]
+        ]
+        [else
+         (error 'check/expr! "cannot check" expr)])))
+
+  ;; top-level first
+  (for-each
+    (lambda (form)
+      (when (define-values-form? form)
+        (bind/define-values form)))
+    exprs)
+
+  ;; now-recursively descend
+  (for-each
+    (lambda (form)
+      (if (define-values-form? form)
+          (check/expr! (define-syntaxes/values-expr form) scope)
+          (check/expr! form scope)))
+    exprs)
+
+  (void))
+
+;; Expands a module (List of Expr, List of Xform, Env, Scope)
 (define (expand/module exprs xforms env scope)
-  ; returns the identifiers of a `define-syntaxes` / `define-values` form
-  (define (define-syntaxes/values-identifiers form)
-    (map syntax-e (syntax->list (stx-car (stx-cdr form)))))
-
-  ; returns the expr of a `define-syntaxes` / `define-values` form
-  (define (define-syntaxes/values-expr form)
-    (stx-car (stx-cdr (stx-cdr form))))
-
   ; evaluates an expression in a given environment
   ; returning potentially multiple values.
   (define (eval/values expr env)
@@ -271,11 +349,11 @@
 
   ; body context (sequence of expressions)
   ; List of Expr, List of Xform -> List of Expr
-  (define (expand/body exprs xforms scope)
+  (define (expand/body exprs xforms)
     (if (null? exprs)
         (list)
         (let loop ([exprs exprs] [defines '()])
-          (define expr* (expand/expr (car exprs) xforms scope))
+          (define expr* (expand/expr (car exprs) xforms))
           (cond
             [(null? (cdr exprs))
              (cond
@@ -309,8 +387,7 @@
                      (cons (quote-syntax let-syntaxes)
                        (cons (list (list ids value))
                          (cdr exprs)))))
-                 xforms
-                 scope))]
+                 xforms))]
             [(define-values-form? expr*)
              (define form (syntax->list expr*))
              (define ids (cadr form))
@@ -328,10 +405,12 @@
 
   ; expression context
   ; Expr, List of Xform -> Expr
-  (define (expand/expr expr xforms scope)
+  (define (expand/expr expr xforms)
     (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
-    (let loop ([expr expr] [scope scope])
+    (let loop ([expr expr])
       (cond
+        [(define-values-form? expr)
+         expr]
         [(let-syntaxes-form? expr)
          (check-let-syntaxes/values-form! 'let-syntaxes expr)
          (define form (syntax->list expr))
@@ -343,14 +422,13 @@
                   (cons (quote-syntax let-values)
                     (cons (list)
                       (cddr form))))
-                xforms
-                scope)]
+                xforms)]
              [else
               (define binding (syntax->list (car bindings)))
               (define binding-ids (syntax->datum (car binding)))
               (check-duplicate-identifier! expr 'let-syntaxes let-ids binding-ids)
               (define results
-                (let ([rhs (loop (cadr binding) scope)])
+                (let ([rhs (loop (cadr binding))])
                   (eval/values (syntax->datum rhs) env)))
               (if (= (length binding-ids) (length results))
                   (let bind-xforms ([ids binding-ids] [results results] [xforms xforms])
@@ -374,8 +452,6 @@
          (check-let-syntaxes/values-form! name expr)
          (define form (syntax->list expr))
          (define body (cddr form))
-         (define scope* (scope-extend scope))
-         (define let-val-scope (if (let-values-form? expr) scope scope*))
          (datum->syntax
            (cons (car form)
              (cons
@@ -386,42 +462,30 @@
                     (define binding (syntax->list (car bindings)))
                     (define ids (syntax->datum (car binding)))
                     (check-duplicate-identifier! expr name let-ids ids)
-                    (for-each (lambda (id) (scope-add! scope* id)) ids)
-                    (cons (list (car binding) (loop (cadr binding) let-val-scope))
+                    (cons (list (car binding) (loop (cadr binding)))
                           (rec (cdr bindings) (append ids let-ids)))]))
-               (expand/body body xforms scope*))))]
+               (expand/body body xforms))))]
         [(lambda-form? expr)
          (check-lambda-form! expr)
          (define head (stx-car expr))
          (define formals (stx-car (stx-cdr expr)))
          (define body (stx-cdr (stx-cdr expr)))
-         (define scope* (scope-extend scope))
-         (let rec ([formals formals])
-           (cond [(pair? formals)
-                  (scope-add! scope* (car formals))
-                  (rec (cdr formals))]
-                 [(symbol? formals)
-                  (scope-add! scope* formals)]))
          (datum->syntax
            (cons head
              (cons formals
-               (expand/body body xforms scope*))))]
+               (expand/body body xforms))))]
         [(if-form? expr)
          (check-if-form! expr)
          (define form (syntax->list expr))
          (datum->syntax
-           (list (first form)
-                 (loop (second form) scope)
-                 (loop (third form) scope)
-                 (loop (fourth form) scope)))]
+           (cons (first form)
+                 (map loop (cdr form))))]
         [(begin-form? expr)
          (check-begin-form! expr)
          (define body (stx-cdr expr))
          (datum->syntax
-           (cons
-             (stx-car expr)
-             (map (lambda (e) (loop e scope))
-                  (cdr (syntax->list expr)))))]
+           (cons (stx-car expr)
+                 (map loop (cdr (syntax->list expr)))))]
         [(quote-form? expr)
          (check-1ary-form! 'quote expr)
          expr]
@@ -433,18 +497,13 @@
          (define maybe-xform (lookup-xform head xforms))
          (if maybe-xform
             (expand/expr (eval/xform maybe-xform expr (syntax-e head))
-                         (merge-xforms (cadr maybe-xform) xforms)
-                         scope)
-            (datum->syntax
-              (map (lambda (e) (loop e scope))
-                   (syntax->list expr))))]
+                         (merge-xforms (cadr maybe-xform) xforms))
+            (datum->syntax (map loop (syntax->list expr))))]
         [(identifier? expr)
          (define id (syntax->datum expr))
-        ;  (unless (scope-contains? scope id)
-        ;    (printf "missing ~a\n" id))
          (define maybe-xform (lookup-xform expr xforms))
          (if maybe-xform
-             (loop (eval/xform maybe-xform expr id) scope)
+             (loop (eval/xform maybe-xform expr id))
              expr)]
         [(stx-self-evaluating? expr)
          expr]
@@ -457,7 +516,7 @@
   ;  `begin` => splices sequence of expressions
   ;  <expr> => invokes top-level expander
   ; List of Expr, List of Xform -> List of Expr, List of Xform
-  (define (expand/module exprs xforms)
+  (define (expand/module* exprs xforms)
     ; Expr, List of Xform -> Expr, List of Xform
     (define (expand/top-level expr xforms)
       (cond
@@ -498,7 +557,7 @@
                       (check-duplicate-identifier! expr 'define-syntaxes xform-ids ids)
                       (values ids (define-syntaxes/values-expr expr))))
                   (define results
-                    (let ([rhs* (expand/expr rhs in-scope scope)])
+                    (let ([rhs* (expand/expr rhs in-scope)])
                       (eval/values (syntax->datum rhs*) env)))
                   (if (= (length ids) (length results))
                       (let rec ([ids ids] [results results])
@@ -534,7 +593,6 @@
                   (define ids (define-syntaxes/values-identifiers expr))
                   (check-duplicate-identifier! expr 'define-values define-ids ids)
                   (set! define-ids (append ids define-ids))
-                  (for-each (lambda (id) (scope-add! scope id)) ids)
                   (cons expr (loop (cdr exprs)))]
                  [(begin-form? expr)
                   (check-begin-form! expr)
@@ -543,7 +601,7 @@
                       (loop (cdr exprs))
                       (append (with-scope forms in-scope) (loop (cdr exprs))))]
                  [else
-                  (cons (expand/expr expr in-scope scope) (loop (cdr exprs)))]))])))
+                  (cons (expand/expr expr in-scope) (loop (cdr exprs)))]))])))
       ; done
       (values exprs* xforms))
     
@@ -561,16 +619,17 @@
                      (list
                        (car form)
                        (cadr form)
-                       (expand/expr (caddr form) xforms scope)))
+                       (expand/expr (caddr form) xforms)))
                    exprs*))]
           [else (loop (cdr exprs) (cons (car exprs) exprs*))])))
 
     (define-values (exprs* xforms*) (expand/non-define-values exprs xforms))
     (define exprs** (expand/define-values exprs* xforms*))
+    (check/module! exprs** scope)
     (values exprs** xforms*))
 
   ; invoke the module-level expander
-  (expand/module exprs xforms))
+  (expand/module* exprs xforms))
 
 ;; Expands a single expression
 (define (expand expr xforms env)
