@@ -174,7 +174,7 @@
                 (when (member 'parent clause-types)
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'parent clause-types))
-                (set! parent-rtd (syntax prtd)))]
+                (set! parent-rtd #'prtd))]
              [(uid value)
               (begin
                 (when (member 'uid clause-types)

@@ -31,6 +31,8 @@
   (define stx-env #f)
   (define module-xforms '())
 
+  (printf "loading: ~a\n" path)
+
   ;; read phase
   (define ($read)
     (define p (open-input-file path))
@@ -67,7 +69,7 @@
                     (set! imported-modules (cons path imported-modules))
                     (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
                     (set! imported (append (cdr from-module) imported)) ; TODO: dedup
-                    (for-each (lambda (name) (scope-add! scope name)) (cdr from-module))
+                    (for-each (lambda (name) (scope-add! scope name)) (map car (cdr from-module)))
                     (loop2 (cdr imports))]
                    [else
                     (error 'import "bad import syntax")])]
@@ -121,7 +123,7 @@
   (define raw-exprs ($read))
   (define non-import-exprs ($import raw-exprs))
   (define expanded-exprs ($expand non-import-exprs))
- 
+
   ;; return result
   (values expanded-exprs module-xforms imported exported stx-env))
 
@@ -145,6 +147,7 @@
       [(null? exprs) result]
       [else
        (define expr (syntax->datum (car exprs)))
+       (printf "eval ~a\n" expr)
        (call-with-values
          (lambda () (eval expr env))
          (lambda results
@@ -184,7 +187,7 @@
           (set! export-values (cons (cons export value) export-values))])
        (loop (cdr exports))]))
 
-  ;; update module tables
+  ;; update module table
   (hashtable-set! $module-table path (cons export-xforms export-values))
   (hashtable-set! $module-envs path (cons stx-env env))
   (hashtable-set! $module-internals path (list exprs module-xforms imports exports stx-env))

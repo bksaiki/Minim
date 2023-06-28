@@ -94,6 +94,7 @@
 (define let-values-form? (_-form? 'let-values))
 (define letrec-values-form? (_-form? 'letrec-values))
 (define let-syntaxes-form? (_-form? 'let-syntaxes))
+(define set!-form? (_-form? 'set!))
 (define quote-form? (_-form? 'quote))
 (define quote-syntax-form? (_-form? 'quote-syntax))
 (define lambda-form? (_-form? 'lambda))
@@ -149,16 +150,32 @@
                    (list? (syntax->list bind-rib))))
     (syntax-error name "not a sequence of bindings" form bindings))
   (unless (list? bindings)
-    (syntax-error #f "expected a sequence of expressions after the bindings" form))
+    (syntax-error name "expected a sequence of expressions after the bindings" form))
   (let loop ([bindings bindings])
     (unless (null? bindings)
       (define bind (syntax->list (car bindings)))
       (unless (and (list? bind) (= (length bind) 2))
-        (syntax-error #f "expected a sequence of expressions after the bindings" form))
+        (syntax-error name "expected a sequence of expressions after the bindings" form))
       (define ids (syntax->list (car bind)))
       (unless (and (list? ids) (andmap identifier? ids))
         (syntax-error name "not identifiers" form ids))
       (loop (cdr bindings)))))
+
+; checks if a `set!` form is valid
+; assumes form is `(<name> . <rest>)
+(define (check-set!-form! form)
+  (define rib0 (stx-cdr form))
+  (when (stx-null? rib0)
+    (syntax-error 'set! "bad syntax" form))
+  (define id (stx-car rib0))
+  (define rib1 (stx-cdr rib0))
+  (unless (identifier? id)
+    (syntax-error 'set! "not identifier" form id))
+  (when (stx-null? rib1)
+    (syntax-error name "expected an expression after identifier" form))
+  (define rib2 (stx-cdr rib1))
+  (unless (stx-null? rib2)
+    (syntax-error 'set! "too many expressions" form)))
 
 ; checks if a `lambda` form is valid
 ; assues form is `(lambda . <rest>)`
@@ -209,7 +226,11 @@
 ; checks for a duplicate identifier, raising an exception if one is encountered
 (define (check-duplicate-identifier! form name ids new-ids)
   (define dup (duplicate-identifier ids new-ids))
-  (when dup (syntax-error name "duplicate identifier" form dup)))
+  (when dup
+    (syntax-error name
+                  "duplicate identifier"
+                  form
+                  (datum->syntax dup))))
 
 ;;
 ;;  expander
@@ -257,6 +278,7 @@
   
   ;; recursively checks expressions
   (define (check/expr! expr scope)
+    (printf "checking ~a\n" expr)
     (let loop ([expr expr])
       (cond
         [(lambda-form? expr)
@@ -273,8 +295,6 @@
               (rec (cdr formals))]))
 
          (for-each (lambda (e) (check/expr! e scope*)) body)]
-        [(if-form? expr)
-         (map loop (stx-cdr expr))]
         [(or (let-values-form? expr) (letrec-values-form? expr))
          (define bindings (stx-car (stx-cdr expr)))
          (define body (stx-cdr (stx-cdr expr)))
@@ -282,31 +302,42 @@
          (define scope* (scope-extend scope))
          (define rec-scope (if (let-values-form? expr) scope scope*))
          
+         ;; first: register all new identifiers
          (let rec ([bindings (syntax->list bindings)])
            (unless (null? bindings)
              (define binding (syntax->list (car bindings)))
              (define ids (syntax->datum (first binding)))
              (for-each (lambda (id) (scope-add! scope* id)) ids)
-             (check/expr! (second binding) rec-scope)
+             (rec (cdr bindings))))
+
+         ;; second: check all let values
+         (let rec ([bindings (syntax->list bindings)])
+           (unless (null? bindings)
+             (define binding (syntax->list (car bindings)))
+             (define val (second binding))
+             (check/expr! val rec-scope)
              (rec (cdr bindings))))
 
          (for-each (lambda (e) (check/expr! e scope*)) body)]
-        [(letrec-values-form? expr)
-         (void)]
+        [(set!-form? expr)
+         (loop (third (syntax->list expr)))]
+        [(if-form? expr)
+         (map loop (stx-cdr expr))]
         [(or (quote-form? expr)
+             (quote-syntax-form? expr)
              (stx-self-evaluating? expr))
          (void)]
         [(stx-pair? expr)
          (map loop (syntax->list expr))]
         [(identifier? expr)
          (define id (syntax-e expr))
-        ;  (unless (scope-contains? scope id)
-        ;     (printf "unknown variable ~a\n" id))]
-        ]
+         (unless (scope-contains? scope id)
+            (printf "unknown variable ~a\n" id))]
         [else
          (error 'check/expr! "cannot check" expr)])))
 
   ;; top-level first
+  (printf "top: ~a\n" (set->list (scope-names scope)))
   (for-each
     (lambda (form)
       (when (define-values-form? form)
@@ -362,12 +393,12 @@
                [(null? defines)
                 (list expr*)]
                [else
-                (list
+                (define expanded
                   (datum->syntax
-                    (list
-                      (quote-syntax letrec-values)
-                      (reverse defines)
-                      expr*)))])]
+                    (list (quote-syntax letrec-values)
+                          (reverse defines)
+                          expr*)))
+                (list expanded)])]
             [(begin-form? expr*)
              (loop (append (cdr (syntax->list expr*)) (cdr exprs)) defines)]
             [(define-syntaxes-form? expr*)
@@ -376,31 +407,29 @@
              ; create `let-syntaxes` for the current macro
              ; call `expand/body` on remaining expressions
              (define form (syntax->list expr*))
-             (define ids (cadr form))
-             (define value (caddr form))
-             (list
-               (expand/expr 
-                 (datum->syntax
-                   (list
-                     (quote-syntax letrec-values)
-                     (reverse defines)
-                     (cons (quote-syntax let-syntaxes)
-                       (cons (list (list ids value))
-                         (cdr exprs)))))
-                 xforms))]
+             (define ids (second form))
+             (define value (third form))
+             (define collected
+               (datum->syntax
+                  (list (quote-syntax letrec-values)
+                        (reverse defines)
+                        (cons* (quote-syntax let-syntaxes)
+                               (list (list ids value))
+                               (cdr exprs)))))
+             (printf "collected: ~a\n" collected)
+             (list (expand/expr collected xforms))]
             [(define-values-form? expr*)
              (define form (syntax->list expr*))
-             (define ids (cadr form))
-             (define value (caddr form))
+             (define ids (second form))
+             (define value (expand/expr (third form) xforms))
              (loop (cdr exprs) (cons (list ids value) defines))]
             [else
              (define value
                (datum->syntax
-                 (list
-                   (quote-syntax let-values)
-                   '()
-                   expr*
-                   (list (quote-syntax values)))))
+                 (list (quote-syntax let-values)
+                       '()
+                       expr*
+                       (list (quote-syntax values)))))
              (loop (cdr exprs) (cons (list '() value) defines))]))))
 
   ; expression context
@@ -408,6 +437,7 @@
   (define (expand/expr expr xforms)
     (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (let loop ([expr expr])
+      (printf "expanding ~a ~a\n" expr (map car xforms))
       (cond
         [(define-values-form? expr)
          expr]
@@ -455,15 +485,18 @@
          (datum->syntax
            (cons (car form)
              (cons
-               (let rec ([bindings (syntax->list (cadr form))] [let-ids null])
+               (let rec ([bindings (syntax->list (cadr form))]
+                         [let-ids null]
+                         [expanded '()])
                  (cond
-                   [(null? bindings) null]
+                   [(null? bindings) (reverse expanded)]
                    [else
                     (define binding (syntax->list (car bindings)))
-                    (define ids (syntax->datum (car binding)))
+                    (define ids (syntax->datum (first binding)))
                     (check-duplicate-identifier! expr name let-ids ids)
-                    (cons (list (car binding) (loop (cadr binding)))
-                          (rec (cdr bindings) (append ids let-ids)))]))
+                    (rec (cdr bindings)
+                         (append let-ids ids)
+                         (cons (list (first binding) (loop (second binding))) expanded))]))
                (expand/body body xforms))))]
         [(lambda-form? expr)
          (check-lambda-form! expr)
@@ -486,6 +519,13 @@
          (datum->syntax
            (cons (stx-car expr)
                  (map loop (cdr (syntax->list expr)))))]
+        [(set!-form? expr)
+         (check-set!-form! expr)
+         (define form (syntax->list expr))
+         (datum->syntax
+           (list (first form)
+                 (second form)
+                 (loop (third form))))]
         [(quote-form? expr)
          (check-1ary-form! 'quote expr)
          expr]
@@ -613,14 +653,12 @@
           [(null? exprs) (reverse exprs*)]
           [(define-values-form? (car exprs))
            (define form (syntax->list (car exprs)))
-           (loop (cdr exprs)
-                 (cons
-                   (datum->syntax
-                     (list
-                       (car form)
-                       (cadr form)
-                       (expand/expr (caddr form) xforms)))
-                   exprs*))]
+           (define form*
+             (datum->syntax
+               (list (first form)
+                     (second form)
+                     (expand/expr (third form) xforms))))
+           (loop (cdr exprs) (cons form* exprs*))]
           [else (loop (cdr exprs) (cons (car exprs) exprs*))])))
 
     (define-values (exprs* xforms*) (expand/non-define-values exprs xforms))
