@@ -31,8 +31,6 @@
   (define stx-env #f)
   (define module-xforms '())
 
-  (printf "loading: ~a\n" path)
-
   ;; read phase
   (define ($read)
     (define p (open-input-file path))
@@ -147,7 +145,6 @@
       [(null? exprs) result]
       [else
        (define expr (syntax->datum (car exprs)))
-       (printf "eval ~a\n" expr)
        (call-with-values
          (lambda () (eval expr env))
          (lambda results

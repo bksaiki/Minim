@@ -689,6 +689,7 @@ application:
                     if (!minim_is_env(env))
                         bad_type_exn("eval", "environment?", env);
                 }
+                
                 goto loop;
             }
 

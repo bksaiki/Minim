@@ -278,7 +278,6 @@
   
   ;; recursively checks expressions
   (define (check/expr! expr scope)
-    (printf "checking ~a\n" expr)
     (let loop ([expr expr])
       (cond
         [(lambda-form? expr)
@@ -337,7 +336,6 @@
          (error 'check/expr! "cannot check" expr)])))
 
   ;; top-level first
-  (printf "top: ~a\n" (set->list (scope-names scope)))
   (for-each
     (lambda (form)
       (when (define-values-form? form)
@@ -378,6 +376,20 @@
           [else
            (error name "transformer produced something other than syntax" (car results))]))))
 
+            ; [(null? (cdr exprs))
+            ;  (cond
+            ;    [(or (define-values-form? expr*) (define-syntaxes-form? expr*))
+            ;     (error 'begin "last form is not an expression" (car exprs))]
+            ;    [(null? defines)
+            ;     (list expr*)]
+            ;    [else
+            ;     (define expanded
+            ;       (datum->syntax
+            ;         (list (quote-syntax letrec-values)
+            ;               (reverse defines)
+            ;               expr*)))
+            ;     (list expanded)])]
+
   ; body context (sequence of expressions)
   ; List of Expr, List of Xform -> List of Expr
   (define (expand/body exprs xforms)
@@ -386,26 +398,20 @@
         (let loop ([exprs exprs] [defines '()])
           (define expr* (expand/expr (car exprs) xforms))
           (cond
-            [(null? (cdr exprs))
-             (cond
-               [(or (define-values-form? expr*) (define-syntaxes-form? expr*))
-                (error 'begin "last form is not an expression" (car exprs))]
-               [(null? defines)
-                (list expr*)]
-               [else
-                (define expanded
-                  (datum->syntax
-                    (list (quote-syntax letrec-values)
-                          (reverse defines)
-                          expr*)))
-                (list expanded)])]
             [(begin-form? expr*)
-             (loop (append (cdr (syntax->list expr*)) (cdr exprs)) defines)]
+             ; begin forms are just spliced into the body
+             ; they have the highest priority
+             (define form (syntax->list expr*))
+             (loop (append (cdr form) (cdr exprs)) defines)]
             [(define-syntaxes-form? expr*)
              ; this creates a break in the body:
              ; create a `letrec-values` for pending bindings
              ; create `let-syntaxes` for the current macro
              ; call `expand/body` on remaining expressions
+             ; NOT allowed in the last position
+             (when (null? (cdr exprs))
+               (error 'begin "last form is not an expression" (car exprs)))
+
              (define form (syntax->list expr*))
              (define ids (second form))
              (define value (third form))
@@ -416,28 +422,53 @@
                         (cons* (quote-syntax let-syntaxes)
                                (list (list ids value))
                                (cdr exprs)))))
-             (printf "collected: ~a\n" collected)
              (list (expand/expr collected xforms))]
             [(define-values-form? expr*)
+             ; the binding should be transformed into a `let-values`
+             ; but these bindings are deferred until all adjacent
+             ; `define-values` forms are collected
+             ; NOT allowed in the last position
+             (when (null? (cdr exprs))
+               (error 'begin "last form is not an expression" (car exprs)))
+
              (define form (syntax->list expr*))
              (define ids (second form))
              (define value (expand/expr (third form) xforms))
              (loop (cdr exprs) (cons (list ids value) defines))]
-            [else
-             (define value
+            [(not (null? (cdr exprs)))
+             ; internal expression
+             ; the expression is evaluated in a `let-values` form
+             ; but an empty values type `(values)` is returned
+             ; and hence never bound
+             (define apply-expr
                (datum->syntax
                  (list (quote-syntax let-values)
                        '()
                        expr*
                        (list (quote-syntax values)))))
-             (loop (cdr exprs) (cons (list '() value) defines))]))))
+             (loop (cdr exprs) (cons (list '() apply-expr) defines))]
+            [(null? defines)
+             ; last expression
+             ; no variables bound
+             ; so the result is just the last expression
+             (list expr*)]
+            [else
+             ; last expression
+             ; variables bound, so form the `let-values`
+             ; the body of the `let-values` is just the last expression
+             (define expanded
+               (datum->syntax
+                 (list (quote-syntax letrec-values)
+                       (reverse defines)
+                       expr*)))
+              (list expanded)]))))
+
 
   ; expression context
   ; Expr, List of Xform -> Expr
   (define (expand/expr expr xforms)
     (set! $expander-pattern-vars (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (let loop ([expr expr])
-      (printf "expanding ~a ~a\n" expr (map car xforms))
       (cond
         [(define-values-form? expr)
          expr]
@@ -447,7 +478,7 @@
          (let rec ([bindings (syntax->list (cadr form))] [let-ids null] [xforms xforms])
            (cond
              [(null? bindings)
-              (expand/expr  
+              (expand/expr
                 (datum->syntax
                   (cons (quote-syntax let-values)
                     (cons (list)
