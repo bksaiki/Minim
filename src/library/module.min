@@ -112,7 +112,7 @@
     ; setup environment
     (set! stx-env ($base-stx-env ($eval-environment $base-env imported)))
     ; testing
-    (define-values (exprs* xforms*) (expand/module exprs imported-xforms stx-env scope))
+    (define-values (exprs* xforms*) (expand/module path exprs imported-xforms stx-env scope))
     ; update
     (set! module-xforms xforms*)
     exprs*)

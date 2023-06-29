@@ -172,7 +172,7 @@
   (unless (identifier? id)
     (syntax-error 'set! "not identifier" form id))
   (when (stx-null? rib1)
-    (syntax-error name "expected an expression after identifier" form))
+    (syntax-error 'set! "expected an expression after identifier" form))
   (define rib2 (stx-cdr rib1))
   (unless (stx-null? rib2)
     (syntax-error 'set! "too many expressions" form)))
@@ -221,7 +221,7 @@
     (syntax-error 'if "missing an \"else\" statement" form))
   (define iff-rib (stx-cdr ift-rib))
   (unless (stx-null? iff-rib)
-    (syntax-error name "too many expressions" form)))
+    (syntax-error 'if "too many expressions" form)))
 
 ; checks for a duplicate identifier, raising an exception if one is encountered
 (define (check-duplicate-identifier! form name ids new-ids)
@@ -270,15 +270,15 @@
 ;; Static analyzer for fully expanded modules
 ;; Checks:
 ;;  - unused variables
-(define (check/module! exprs scope)
+(define (check/module! path exprs scope)
   ;; scan top-level definitions
   (define (bind/define-values form)
     (for-each (lambda (id) (scope-add! scope id))
               (define-syntaxes/values-identifiers form)))
   
   ;; recursively checks expressions
-  (define (check/expr! expr scope)
-    (let loop ([expr expr])
+  (define (check/expr! expr0 scope)
+    (let loop ([expr expr0])
       (cond
         [(lambda-form? expr)
          (define formals (stx-car (stx-cdr expr)))
@@ -321,17 +321,20 @@
         [(set!-form? expr)
          (loop (third (syntax->list expr)))]
         [(if-form? expr)
-         (map loop (stx-cdr expr))]
+         (for-each loop (stx-cdr expr))]
+        [(begin-form? expr)
+         (for-each loop (stx-cdr expr))]
         [(or (quote-form? expr)
              (quote-syntax-form? expr)
              (stx-self-evaluating? expr))
          (void)]
         [(stx-pair? expr)
-         (map loop (syntax->list expr))]
+         (for-each loop (syntax->list expr))]
         [(identifier? expr)
          (define id (syntax-e expr))
          (unless (scope-contains? scope id)
-            (printf "unknown variable ~a\n" id))]
+           (printf "~a: unknown variable `~a`\n" path id)
+           (printf "  at: ~a\n" (syntax->datum expr0)))]
         [else
          (error 'check/expr! "cannot check" expr)])))
 
@@ -353,7 +356,7 @@
   (void))
 
 ;; Expands a module (List of Expr, List of Xform, Env, Scope)
-(define (expand/module exprs xforms env scope)
+(define (expand/module path exprs xforms env scope)
   ; evaluates an expression in a given environment
   ; returning potentially multiple values.
   (define (eval/values expr env)
@@ -506,7 +509,7 @@
                          [else
                           (error 'let-syntaxes "expected a procedure? received" xform)])]))
                   (error 'let-syntaxes "result arity mismatch"
-                         "expected" (length ids)
+                         "expected" (length binding-ids)
                          "received" (length results)))]))]
         [(or (let-values-form? expr) (letrec-values-form? expr))
          (define name (if (let-values-form? expr) 'let-values 'letrec-values))
@@ -694,7 +697,7 @@
 
     (define-values (exprs* xforms*) (expand/non-define-values exprs xforms))
     (define exprs** (expand/define-values exprs* xforms*))
-    (check/module! exprs** scope)
+    (check/module! path exprs** scope)
     (values exprs** xforms*))
 
   ; invoke the module-level expander
@@ -703,6 +706,6 @@
 ;; Expands a single expression
 (define (expand expr xforms env)
   (define scope (scope-extend $base-scope))
-  (define-values (exprs* xforms*) (expand/module (list expr) xforms env scope))
+  (define-values (exprs* xforms*) (expand/module #f (list expr) xforms env scope))
   (cond [(null? exprs*) (values (quote-syntax (void)) xforms*)]
         [else (values (car exprs*) xforms*)]))
