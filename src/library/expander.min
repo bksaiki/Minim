@@ -379,39 +379,11 @@
           [else
            (error name "transformer produced something other than syntax" (car results))]))))
 
-  ; expands at the top level (expression context)
-  ; Expr, List of Xform -> Expr
-  (define (expand-once expr xforms)
-    (let loop ([expr expr])
-      (cond
-        [(identifier? expr)
-         (define id (syntax->datum expr))
-         (define maybe-xform (lookup-xform expr xforms))
-         (if maybe-xform (loop (eval/xform maybe-xform expr id)) expr)]
-        [(or (stx-self-evaluating? expr)
-             (define-values-form? expr)
-             (let-syntaxes-form? expr)
-             (let-values-form? expr)
-             (letrec-values-form? expr)
-             (lambda-form? expr)
-             (if-form? expr)
-             (begin-form? expr)
-             (set!-form? expr)
-             (quote-form? expr)
-             (quote-syntax-form? expr))
-         expr]
-        [(stx-pair? expr)
-         (define head (stx-car expr))
-         (define maybe-xform (lookup-xform head xforms))
-         (if maybe-xform (loop (eval/xform maybe-xform expr (syntax-e head))) expr)]
-        [else
-         (syntax-error 'expand-once "bad syntax" expr)])))
-
   ; body context (sequence of expressions)
   ; List of Expr [Length >= 1], List of Xform -> List of Expr
   (define (expand/body exprs xforms)
     (let loop ([expr0 (car exprs)] [rest (cdr exprs)] [defines '()])
-      (define expr* (expand-once expr0 xforms))
+     (define expr* (expand/expr expr0 xforms))
       (cond
         [(begin-form? expr*)
          ; begin forms are just spliced into the body
@@ -434,11 +406,14 @@
            (datum->syntax
              (list (quote-syntax letrec-values)
                    (map (lambda (bind)
-                          (list (car bind) (expand/expr (cdr bind) xforms)))
+                          (list (car bind) (cdr bind)))
                         (reverse defines))
-                   (expand/expr (quote-syntax letrec-values)
-                                (list (list ids value))
-                                rest))))]
+                   (expand/expr
+                     (datum->syntax
+                       (list (quote-syntax let-syntaxes)
+                             (list (list ids value))
+                             rest))
+                     xforms))))]
         [(define-values-form? expr*)
          ; the binding should be transformed into a `let-values`
          ; but these bindings are deferred until all adjacent
@@ -449,15 +424,14 @@
 
          (define form (syntax->list expr*))
          (define ids (second form))
-         (define value (third form))
+         (define value (expand/expr (third form) xforms))
          (loop (car rest) (cdr rest) (cons (cons ids value) defines))]
         [(not (null? rest))
          ; internal expression
          (cond
            [(null? defines)
             ; no variables bound, so we just keep expanding
-            (cons* (expand/expr expr* xforms)
-                   (loop (car rest) (cdr rest) defines))]
+            (cons* expr* (loop (car rest) (cdr rest) defines))]
            [else
             ; variables bound
             ; insert a let-values binding for previous definitions
@@ -465,14 +439,14 @@
               (datum->syntax
                 (cons* (quote-syntax letrec-values)
                        (map (lambda (bind)
-                              (list (car bind) (expand/expr (cdr bind) xforms)))
+                              (list (car bind) (cdr bind)))
                             (reverse defines))
-                       (expand/expr expr* xforms)
+                       expr*
                        (loop (car rest) (cdr rest) defines))))])]
         [(null? defines)
          ; last expression (no variables bound)
          ; so the result is just the last expression
-         (list (expand/expr expr* xforms))]
+         (list expr*)]
         [else
          ; last expression (variables bound)
          ; make a `let-values` form with the last expression as the body
@@ -480,24 +454,26 @@
            (datum->syntax
              (list (quote-syntax letrec-values)
                    (map (lambda (bind)
-                          (list (car bind) (expand/expr (cdr bind) xforms)))
+                          (list (car bind) (cdr bind)))
                         (reverse defines))
-                   (expand/expr expr* xforms))))])))
+                   expr*)))])))
 
   ; expands recursively (expression context)
   ; Expr, List of Xform -> Expr
-  (define (expand/expr expr0 xforms)
+  (define (expand/expr expr xforms)
     (define patterns (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (set! $expander-pattern-vars patterns)
-    (let loop ([expr0 expr0])
-      (define expr (expand-once expr0 xforms))
+    (let loop ([expr expr])
       (cond
-        [(identifier? expr)
-         expr]
         [(stx-self-evaluating? expr)
          expr]
-        [(define-values-form? expr)
-         ; define-values form
+        [(identifier? expr)
+         ; transform if xform
+         (define id (syntax->datum expr))
+         (define maybe-xform (lookup-xform expr xforms))
+         (if maybe-xform (loop (eval/xform maybe-xform expr id)) expr)]
+        [(or (define-values-form? expr) (define-syntaxes-form? expr))
+         ; define-values/define-syntaxes form
          ; shouldn't be expanded in this context
          expr]
         [(let-syntaxes-form? expr)
@@ -583,7 +559,12 @@
          (check-1ary-form! 'quote-syntax expr)
          expr]
         [(stx-pair? expr)
-         (datum->syntax (map loop (syntax->list expr)))]
+         (define head (stx-car expr))
+         (define maybe-xform (lookup-xform head xforms))
+         (if maybe-xform
+            (expand/expr (eval/xform maybe-xform expr (syntax-e head))
+                         (merge-xforms (cadr maybe-xform) xforms))
+            (datum->syntax (map loop (syntax->list expr))))]
         [else
          (syntax-error 'expand/expr "bad syntax" expr)])))
 

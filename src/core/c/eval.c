@@ -340,23 +340,31 @@ static long apply_args() {
     return irt_call_args_count;
 }
 
+// Forces `x` to be a single value, that is,
+// if `x` is the result of `(values ...)` it unwraps
+// the result if `x` contains one value and panics
+// otherwise
+static minim_object *force_single_value(minim_object* x) {
+    minim_thread *th;
+    if (minim_is_values(x)) {
+        th = current_thread();
+        if (values_buffer_count(th) != 1)
+            result_arity_exn(1, values_buffer_count(th));
+        return values_buffer_ref(th, 0);
+    } else {
+        return x;
+    }
+}
+
 static long eval_exprs(minim_object *exprs, minim_object *env) {
     minim_object *it, *result;
-    minim_thread *th;
     long argc;
 
     argc = 0;
     assert_no_call_args();
     for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
         result = eval_expr(minim_car(it), env);
-        if (minim_is_values(result)) {
-            th = current_thread();
-            if (values_buffer_count(th) != 1)
-                result_arity_exn(1, values_buffer_count(th));
-            result = values_buffer_ref(th, 0);
-        }
-
-        push_saved_arg(result);
+        push_saved_arg(force_single_value(result));
         ++argc;
     }
 
@@ -389,6 +397,7 @@ minim_object *call_with_args(minim_object *proc, minim_object *env) {
     minim_object *expr, **args;
     int argc;
 
+    proc = force_single_value(proc);
     args = irt_call_args;
     argc = irt_call_args_count;
 
@@ -662,7 +671,7 @@ loop:
             }
         }
 
-        proc = eval_expr(head, env);
+        proc = force_single_value(eval_expr(head, env));
         argc = eval_exprs(minim_cdr(expr), env);
 
 application:
