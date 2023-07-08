@@ -85,9 +85,9 @@
 ;  <expr> = (<name> . <rest>)
 (define ((_-form? form-name) expr)
   (and (stx-pair? expr)
-        (let ([head (stx-car expr)])
+       (let ([head (stx-car expr)])
           (and (identifier? head)
-              (eq? (syntax-e head) form-name)))))
+             (eq? (syntax-e head) form-name)))))
 
 (define define-values-form? (_-form? 'define-values))
 (define define-syntaxes-form? (_-form? 'define-syntaxes))
@@ -113,11 +113,15 @@
 
 ; returns an symbol if it is a duplicate, else false
 (define (duplicate-identifier ids new-ids)
-  (let loop ([ids ids] [new-ids new-ids])
-    (cond [(null? new-ids) #f]
-          [else
-           (define dup (member (car new-ids) ids))
-           (or dup (loop (cons (car new-ids) ids) (cdr new-ids)))])))
+  (define new-unique (make-set))
+  (let loop ([new-ids new-ids])
+    (cond
+      [(null? new-ids) #f]
+      [(set-member? ids (car new-ids)) (car new-ids)]
+      [(set-member? new-unique (car new-ids)) (car new-ids)]
+      [else
+       (set-add! new-unique (car new-ids))
+       (loop (cdr new-ids))])))
 
 ; checks if a `define-syntaxes` / `define-values` form is valid
 ; assumes form is `(<name> . <rest>)
@@ -480,7 +484,8 @@
          (check-let-syntaxes/values-form! 'let-syntaxes expr)
          (define form (syntax->list expr))
          (define body (cddr form))
-         (let rec ([bindings (syntax->list (cadr form))] [let-ids null] [xforms xforms])
+         (define let-ids (make-set))
+         (let rec ([bindings (syntax->list (cadr form))] [xforms xforms])
            (cond
              [(null? bindings)
               (datum->syntax
@@ -499,7 +504,8 @@
               (let bind-xforms ([ids binding-ids] [results results] [xforms xforms])
                 (cond
                   [(null? ids)
-                   (rec (cdr bindings) (append binding-ids let-ids) xforms)]
+                   (for-each (lambda (id) (set-add! let-ids id)) binding-ids)
+                   (rec (cdr bindings) xforms)]
                   [else
                    (define id (car ids))
                    (define xform (car results))
@@ -512,7 +518,7 @@
          (check-let-syntaxes/values-form! name expr)
          (define form (syntax->list expr))
          (define body (cddr form))
-         (define ids '())
+         (define ids (make-set))
          (datum->syntax
            (cons* (car form)
                   (map
@@ -520,7 +526,7 @@
                       (define bind* (syntax->list bind))
                       (define bind-ids (syntax->datum (first bind*)))
                       (check-duplicate-identifier! expr name ids bind-ids)
-                      (set! ids (append bind-ids ids))
+                      (for-each (lambda (id) (set-add! ids id)) bind-ids)
                       (list (first bind*) (loop (second bind*))))
                     (syntax->list (cadr form)))
                   (expand/body body xforms)))]
@@ -602,8 +608,8 @@
     (define (expand/non-define-values exprs xforms)
       ; mutatable state
       (define xforms xforms)
-      (define define-ids null)
-      (define xform-ids null)
+      (define define-ids (make-set))
+      (define xform-ids (make-set))
       ; for each expression
       (define exprs*
         (let loop ([exprs exprs])
@@ -635,13 +641,13 @@
                                 "received" xform))
                        (define binding (cons id (list xform null)))
                        (define xforms-in-scope (cons binding xforms))
-                       (set! xform-ids (cons id xform-ids))
+                       (set-add! xform-ids id)
                        (for-each
                          (lambda (xform)
                            (define id (first xform))
                            (define fn (second xform))
                            (set! xforms
-                                 (cons (if (member id xform-ids)
+                                 (cons (if (set-member? xform-ids id)
                                            (cons id (list fn xforms-in-scope))
                                            xform)
                                        xforms)))
@@ -651,7 +657,7 @@
                   (check-define-syntaxes/values-form! 'define-values expr)
                   (define ids (define-syntaxes/values-identifiers expr))
                   (check-duplicate-identifier! expr 'define-values define-ids ids)
-                  (set! define-ids (append ids define-ids))
+                  (for-each (lambda (id) (set-add! define-ids id)) ids)
                   (cons expr (loop (cdr exprs)))]
                  [(begin-form? expr)
                   (check-begin-form! expr)
