@@ -3,6 +3,7 @@
 ;;;
 
 (import "pre-base.min" "list.min" "record.min" "set.min" "gen-temp.min")
+
 (export define-enumeration
         make-enumeration
         enum-set?

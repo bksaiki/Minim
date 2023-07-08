@@ -4,7 +4,9 @@
 ;;;
 
 (import "and-or.min" "define.min" "let.min"
-        "stx.min" "stxcase.min" "template.min")
+        "stx.min" "stxcase.min" "template.min"
+        "when-unless.min")
+
 (export syntax-rules with-syntax)
 
 (define-syntax (syntax-rules stx)
