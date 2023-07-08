@@ -213,8 +213,7 @@
                               (error 'name "identifier not in universe" stx #'elt))
                           (error 'name "expected an identifier" stx #'elt))]
                      [(_ . _)
-                      (error 'name "bad syntax" stx)]))
-             )))
+                      (error 'name "bad syntax" stx)])))))
          (error 'define-enumeration "expected an identifier" #'name))]
     [(_ name value-spec constructor _ ...)
      (syntax-error 'define-enumeration "bad syntax" stx)]

@@ -8,7 +8,7 @@
 ;; in a top-level context and `let-syntaxes` in an
 ;; expression-level context.
 ;;
-;; This expander stores xforms as an association list mapping
+;; This expander stores xforms as a mapping
 ;;  <name> -> (<proc>, <xforms-in-scope>, <eval-env>)
 ;;
 
@@ -379,11 +379,11 @@
           [else
            (error name "transformer produced something other than syntax" (car results))]))))
 
-  ; body context (sequence of expressions)
+  ; expands sequence of expressions (body context)
   ; List of Expr [Length >= 1], List of Xform -> List of Expr
   (define (expand/body exprs xforms)
     (let loop ([expr0 (car exprs)] [rest (cdr exprs)] [defines '()])
-     (define expr* (expand/expr expr0 xforms))
+      (define expr* (expand/expr expr0 xforms #f))
       (cond
         [(begin-form? expr*)
          ; begin forms are just spliced into the body
@@ -410,10 +410,11 @@
                         (reverse defines))
                    (expand/expr
                      (datum->syntax
-                       (list (quote-syntax let-syntaxes)
-                             (list (list ids value))
-                             rest))
-                     xforms))))]
+                       (cons* (quote-syntax let-syntaxes)
+                              (list (list ids value))
+                              rest))
+                     xforms
+                     #t))))]
         [(define-values-form? expr*)
          ; the binding should be transformed into a `let-values`
          ; but these bindings are deferred until all adjacent
@@ -424,7 +425,7 @@
 
          (define form (syntax->list expr*))
          (define ids (second form))
-         (define value (expand/expr (third form) xforms))
+         (define value (expand/expr (third form) xforms #t))
          (loop (car rest) (cdr rest) (cons (cons ids value) defines))]
         [(not (null? rest))
          ; internal expression
@@ -435,14 +436,12 @@
            [else
             ; variables bound
             ; insert a let-values binding for previous definitions
-            (list
-              (datum->syntax
-                (cons* (quote-syntax letrec-values)
-                       (map (lambda (bind)
-                              (list (car bind) (cdr bind)))
-                            (reverse defines))
-                       expr*
-                       (loop (car rest) (cdr rest) defines))))])]
+            (define bind-expr
+              (list (quote-syntax let-values)
+                    '()
+                    expr*
+                    (list (quote-syntax values))))
+            (loop (car rest) (cdr rest) (cons (cons '() bind-expr) defines))])]
         [(null? defines)
          ; last expression (no variables bound)
          ; so the result is just the last expression
@@ -460,7 +459,7 @@
 
   ; expands recursively (expression context)
   ; Expr, List of Xform -> Expr
-  (define (expand/expr expr xforms)
+  (define (expand/expr expr xforms recur-begin?)
     (define patterns (filter (lambda (e) (pattern-variable? (cadr e))) xforms))
     (set! $expander-pattern-vars patterns)
     (let loop ([expr expr])
@@ -480,20 +479,19 @@
          ; let-syntaxes form
          (check-let-syntaxes/values-form! 'let-syntaxes expr)
          (define form (syntax->list expr))
+         (define body (cddr form))
          (let rec ([bindings (syntax->list (cadr form))] [let-ids null] [xforms xforms])
            (cond
              [(null? bindings)
-              (expand/expr
-                (datum->syntax
-                  (cons (quote-syntax let-values)
-                    (cons (list)
-                      (cddr form))))
-                xforms)]
+              (datum->syntax
+                 (cons* (quote-syntax let-values)
+                        '()
+                        (expand/body body xforms)))]
              [else
               (define binding (syntax->list (car bindings)))
               (define binding-ids (syntax->datum (car binding)))
               (check-duplicate-identifier! expr 'let-syntaxes let-ids binding-ids)
-              (define rhs (expand/expr (loop (cadr binding)) xforms))
+              (define rhs (expand/expr (cadr binding) xforms #t))
               (define results (eval/values (syntax->datum rhs) env))
               (unless (= (length binding-ids) (length results))
                 (error 'let-syntaxes "result arity mismatch"
@@ -542,9 +540,16 @@
         [(begin-form? expr)
          (check-begin-form! expr)
          (define body (stx-cdr expr))
-         (if (null? body)
-             (datum->syntax '(void))
-             (expand/body body xforms))]
+         (cond
+           [(null? body)
+            (datum->syntax '(void))]
+           [recur-begin?
+            (define body* (expand/body body xforms))
+            (if (null? (cdr body*))
+                (car body*)
+                (datum->syntax (cons* 'begin body*)))]
+           [else
+            (datum->syntax (cons* 'begin (map loop body)))])]
         [(set!-form? expr)
          (check-set!-form! expr)
          (define form (syntax->list expr))
@@ -563,7 +568,8 @@
          (define maybe-xform (lookup-xform head xforms))
          (if maybe-xform
             (expand/expr (eval/xform maybe-xform expr (syntax-e head))
-                         (merge-xforms (cadr maybe-xform) xforms))
+                         (merge-xforms (cadr maybe-xform) xforms)
+                         recur-begin?)
             (datum->syntax (map loop (syntax->list expr))))]
         [else
          (syntax-error 'expand/expr "bad syntax" expr)])))
@@ -615,8 +621,7 @@
                       (check-duplicate-identifier! expr 'define-syntaxes xform-ids ids)
                       (values ids (define-syntaxes/values-expr expr))))
                   (define results
-                    (let ([rhs* (expand/expr rhs in-scope)])
-                      (printf "syntax: ~a\n=> ~a\n[~a]\n" rhs rhs* (map car xforms))
+                    (let ([rhs* (expand/expr rhs in-scope #t)])
                       (eval/values (syntax->datum rhs*) env)))
                   (if (= (length ids) (length results))
                       (let rec ([ids ids] [results results])
@@ -660,7 +665,7 @@
                       (loop (cdr exprs))
                       (append (with-scope forms in-scope) (loop (cdr exprs))))]
                  [else
-                  (cons (expand/expr expr in-scope) (loop (cdr exprs)))]))])))
+                  (cons (expand/expr expr in-scope #t) (loop (cdr exprs)))]))])))
       ; done
       (values exprs* xforms))
     
@@ -676,7 +681,7 @@
              (datum->syntax
                (list (first form)
                      (second form)
-                     (expand/expr (third form) xforms))))
+                     (expand/expr (third form) xforms #t))))
            (loop (cdr exprs) (cons form* exprs*))]
           [else (loop (cdr exprs) (cons (car exprs) exprs*))])))
 

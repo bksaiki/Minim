@@ -772,6 +772,8 @@ application:
             fprintf(stderr, "error: not a procedure\n");
             fprintf(stderr, " received:");
             write_object(stderr, proc);
+            fprintf(stderr, "\n at:");
+            write_object(stderr, expr);
             fprintf(stderr, "\n");
             minim_shutdown(1);
         }
