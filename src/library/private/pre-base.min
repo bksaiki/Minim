@@ -6,6 +6,7 @@
         "case.min"
         "cond.min"
         "define.min"
+        "do.min"
         "let.min"
         "stx.min"
         "stxcase.min"
@@ -17,6 +18,7 @@
         (all "case.min")
         (all "cond.min")
         (all "define.min")
+        (all "do.min")
         (all "let.min")
         (all "stx.min")
         (all "stxcase.min")

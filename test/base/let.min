@@ -1,0 +1,36 @@
+;;;
+;;; Tests for 'let'
+;;;
+
+(import "../../src/library/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+;; letrec
+(check-equal? (letrec () 1) 1)
+(check-equal? (letrec ([x 1]) x) 1)
+(check-equal? (letrec ([x 1] [y 2]) x) 1)
+(check-equal? (letrec ([x 1] [y 2]) y) 2)
+(check-equal? (letrec ([x 1] [y 2]) y x) 1);
+(check-equal? (letrec ([x 1]) (let ([y x]) y)) 1)
+(check-equal? (letrec ([f (lambda () 1)]) (f)) 1)
+
+;; let
+(check-equal? (let () 1) 1)
+(check-equal? (let ([x 1]) x) 1)
+(check-equal? (let ([x 1] [y 2]) x) 1)
+(check-equal? (let ([x 1] [y 2]) y) 2)
+(check-equal? (let ([x 1] [y 2]) y x) 1)
+(check-equal? (let ([x 1]) (let ([y x]) y)) 1)
+
+(when (> num-failed 0)
+  (error #f "test failed"))

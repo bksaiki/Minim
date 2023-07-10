@@ -584,7 +584,6 @@ typedef struct minim_thread {
     minim_object *input_port;
     minim_object *output_port;
     minim_object *current_directory;
-    minim_object *boot_expander;
     minim_object *command_line;
     minim_object *record_equal_proc;
     minim_object *record_hash_proc;
@@ -600,7 +599,6 @@ typedef struct minim_thread {
 #define input_port(th)                  ((th)->input_port)
 #define output_port(th)                 ((th)->output_port)
 #define current_directory(th)           ((th)->current_directory)
-#define boot_expander(th)               ((th)->boot_expander)
 #define command_line(th)                ((th)->command_line)
 #define record_equal_proc(th)           ((th)->record_equal_proc)
 #define record_hash_proc(th)            ((th)->record_hash_proc)
@@ -807,6 +805,7 @@ DEFINE_PRIM_PROC(equal_hash);
 // environment
 DEFINE_PRIM_PROC(empty_environment);
 DEFINE_PRIM_PROC(extend_environment);
+DEFINE_PRIM_PROC(environment_names);
 DEFINE_PRIM_PROC(environment_variable_value);
 DEFINE_PRIM_PROC(environment_set_variable_value);
 DEFINE_PRIM_PROC(environment);

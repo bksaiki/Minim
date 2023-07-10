@@ -16,10 +16,12 @@
   (and (identifier? stx)
        (free-identifier=? stx (quote-syntax _))))
 
-(define (assoc xs k)
-  (let loop ([xs xs])
+(define (assoc k lst)
+  (let loop ([xs lst])
     (cond [(null? xs) #f]
-          [(eq? (caar xs) k) (cdar xs)]
+          [(not (pair? xs)) (error 'assoc "not a proper list" lst)]
+          [(not (pair? (car xs))) (error 'assoc "non-pair found in list" lst)]
+          [(equal? k (caar xs)) (car xs)]
           [else (loop (cdr xs))])))
 
 (define (make-wildcard-list len tail?)
@@ -285,8 +287,8 @@
                                        (cdr mapped-vars)
                                        (cdr temp-vars))])))))
              (map (lambda (vdata)
-                    (let ([maybe-rename (assoc var-map (car vdata))])
-                      (if maybe-rename maybe-rename (caddr vdata))))
+                    (define maybe-rename (assoc (car vdata) var-map))
+                    (if maybe-rename (cdr maybe-rename) (caddr vdata)))
                   mapped-vars))]
           [(instr-eq? instr 'vector)
            (list
@@ -300,8 +302,8 @@
           [(instr-eq? instr 'var)
            ; variable
            (define-values (name depth value) (values (car args) (cadr args) (caddr args)))
-           (define maybe-rename (assoc var-map name))
-           (if maybe-rename maybe-rename value)]
+           (define maybe-rename (assoc name var-map))
+           (if maybe-rename (cdr maybe-rename) value)]
           [else
            ; runtime error
            (error #f "unknown template instruction" instr)])))))

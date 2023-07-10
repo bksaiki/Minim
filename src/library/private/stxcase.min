@@ -647,14 +647,12 @@
                                    (loop (cdr pat-vars)
                                          (cdr temp-vars)
                                          (datum->syntax
-                                           (list
-                                             (quote-syntax cdr)
-                                             result-stx))
+                                           (list (quote-syntax cdr)
+                                                 result-stx))
                                          (cons
                                            (list (car temp-vars)
-                                                 (list
-                                                   (quote-syntax car)
-                                                   result-stx))
+                                                 (list (quote-syntax car)
+                                                       result-stx))
                                            bindings))))
                              e)))]
                     

@@ -119,8 +119,9 @@
 
 (define (record-hash r rec-hash)
   (define rtd ($record-rtd r))
-  (define proc (hashtable-ref $record-hash-procs rtd #f))
-  (and proc (proc r rec-hash)))
+  (if (hashtable-contains? $record-hash-procs rtd)
+      ((hashtable-ref $record-hash-procs rtd) r rec-hash)
+      0)) ;; TODO: should use default hash-procedure
 
 ($current-record-equal-procedure record-equal?)
 ($current-record-hash-procedure record-hash)
@@ -173,7 +174,7 @@
                 (when (member 'parent clause-types)
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'parent clause-types))
-                (set! parent-rtd (syntax prtd)))]
+                (set! parent-rtd #'prtd))]
              [(uid value)
               (begin
                 (when (member 'uid clause-types)

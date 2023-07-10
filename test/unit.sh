@@ -21,15 +21,15 @@ SRCS=$(find $CORE_SRC -type f -name "*.min")
 TESTS=$(find $MYDIR/base -type f -name "*.min")
 
 #
-#   Core library
+#   Unit tests
 #
 
 failed=0
 total=0
 
-echo "Running interpreter on core library..."
+echo "Running interpreter on unit tests..."
 
-for file in $SRCS; do
+for file in $TESTS; do
   $MINIM -q $file
   if [ $? -ne 0 ]; then
     echo -e "[ ${RED}FAIL${ENDCOLOR} ] $file"
@@ -40,7 +40,7 @@ for file in $SRCS; do
   ((total++))
 done
 
-printf "%i/%i files run\n" $(expr $total - $failed) $total
+printf "%i/%i tests passed\n" $(expr $total - $failed) $total
 if [[ $failed != 0 ]]; then
   exit 1
 fi

@@ -340,15 +340,15 @@
         [(null? rest)
           (case (first type)
             [(literal)
-             (define addr (assoc 'literal info))
+             (define addr (cdr (assoc 'literal info)))
              (decompose/imm64 (+ addr (* WORD-SIZE (second type))))]
             [(procedure)
-             (define addr (assoc type info))
+             (define addr (cdr (assoc type info)))
              (decompose/imm64 addr)]
             [(runtime)
              (decompose/imm64 (runtime-address (second type)))]
             [(jump)
-             (define label-offset (assoc (second type) label-locs))
+             (define label-offset (cdr (assoc (second type) label-locs)))
              (define offset (- label-offset offset (length proc0)))
              (decompose/imm32 offset)]
             [else

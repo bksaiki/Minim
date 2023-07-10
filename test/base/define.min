@@ -1,0 +1,29 @@
+;;;
+;;; Tests for 'define'
+;;;
+
+(import "../../src/library/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define x 1)
+(define (foo) 1)
+(define (bar x) (+ x 1))
+(define (baz x y) (+ x y))
+
+(check-equal? x 1)
+(check-equal? (foo) 1)
+(check-equal? (bar 1) 2)
+(check-equal? (baz 1 2) 3)
+
+(when (> num-failed 0)
+  (error #f "test failed"))

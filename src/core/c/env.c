@@ -26,6 +26,36 @@ static void not_environment_exn(const char *name, minim_object *frame) {
     minim_shutdown(1);
 }
 
+static minim_object *environment_names(minim_object *env) {
+    minim_object *frame, *names;
+
+    names = make_hashtable(equal_hash_proc_obj, equal_proc_obj);
+    while (minim_is_env(env)) {
+        frame = minim_env_bindings(env);
+        if (minim_is_vector(frame)) {
+            // small namespace
+            for (int i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+                minim_object *bind = minim_vector_ref(frame, i);
+                if (minim_is_false(bind))
+                    break;
+                
+                hashtable_set(names, minim_car(bind), minim_null);
+            }
+        } else if (minim_is_hashtable(frame)) {
+            // large namespace
+            minim_object *keys = hashtable_keys(frame);
+            for (minim_object *it = keys; !minim_is_null(it); it = minim_cdr(it))
+                hashtable_set(names, minim_car(it), minim_null);
+        } else {
+            not_environment_exn("environment_names()", frame);
+        }
+
+        env = minim_env_prev(env);
+    }
+
+    return hashtable_keys(names);
+}
+
 minim_object *make_environment(minim_object *prev) {
     minim_env *env = GC_alloc(sizeof(minim_env));
     env->type = MINIM_ENVIRONMENT_TYPE;
@@ -237,6 +267,13 @@ minim_object *extend_environment_proc(int argc, minim_object **args) {
     if (!minim_is_env(args[0]))
         bad_type_exn("extend-environment", "environment?", args[0]);
     return make_environment(args[0]);
+}
+
+minim_object *environment_names_proc(int argc, minim_object **args) {
+    // (-> environment list)
+    if (!minim_is_env(args[0]))
+        bad_type_exn("extend-environment", "environment?", args[0]);
+    return environment_names(args[0]);
 }
 
 minim_object *environment_variable_value_proc(int argc, minim_object **args) {

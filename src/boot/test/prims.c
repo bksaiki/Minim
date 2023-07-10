@@ -178,8 +178,8 @@ int test_eq() {
     check_true ("(eq? car car)");
     check_false("(eq? car cdr)");
 
-    check_true ("(let ((x '(a))) (eq? x x))");
-    check_true ("(let ((f (lambda (x) x))) (eq? f f))");
+    check_true ("(let-values (((x) '(a))) (eq? x x))");
+    check_true ("(let-values (((f) (lambda (x) x))) (eq? f f))");
 
     return passed;
 }
@@ -217,8 +217,8 @@ int test_equal() {
     check_true("(equal? #(1 2 3) #(1 2 3))");
     check_false("(equal? #(1 2) #(1 2 3))");
 
-    check_true ("(let ((x '(a))) (equal? x x))");
-    check_true ("(let ((f (lambda (x) x))) (equal? f f))");
+    check_true ("(let-values (((x) '(a))) (equal? x x))");
+    check_true ("(let-values (((f) (lambda (x) x))) (equal? f f))");
 
     return passed;
 }
@@ -371,13 +371,13 @@ int test_vector() {
     check_equal("(vector-ref #(1 2 3) 1)", "2");
     check_equal("(vector-ref #(1 2 3) 2)", "3");
 
-    check_equal("(begin (define v #(1 2 3)) (vector-set! v 0 0) v)", "'#(0 2 3)");
-    check_equal("(begin (define v #(1 2 3)) (vector-set! v 1 0) v)", "'#(1 0 3)");
-    check_equal("(begin (define v #(1 2 3)) (vector-set! v 2 0) v)", "'#(1 2 0)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 0 0) v)", "'#(0 2 3)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 1 0) v)", "'#(1 0 3)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 2 0) v)", "'#(1 2 0)");
 
-    check_equal("(begin (define v #()) (vector-fill! v 0) v)", "'#()");
-    check_equal("(begin (define v #(1)) (vector-fill! v 0) v)", "'#(0)");
-    check_equal("(begin (define v #(1 2 3)) (vector-fill! v 0) v)", "'#(0 0 0)");
+    check_equal("(begin (define-values (v) #()) (vector-fill! v 0) v)", "'#()");
+    check_equal("(begin (define-values (v) #(1)) (vector-fill! v 0) v)", "'#(0)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-fill! v 0) v)", "'#(0 0 0)");
 
     return passed;
 }
@@ -457,9 +457,9 @@ int test_string() {
     check_equal("(string-ref \"ab\" 1)", "#\\b");
     check_equal("(string-ref \"abc\" 2)", "#\\c");
 
-    check_equal("(begin (define s \"a\") (string-set! s 0 #\\b) s)", "\"b\"");
-    check_equal("(begin (define s \"ab\") (string-set! s 1 #\\c) s)", "\"ac\"");
-    check_equal("(begin (define s \"abc\") (string-set! s 2 #\\d) s)", "\"abd\"");
+    check_equal("(begin (define-values (s) \"a\") (string-set! s 0 #\\b) s)", "\"b\"");
+    check_equal("(begin (define-values (s) \"ab\") (string-set! s 1 #\\c) s)", "\"ac\"");
+    check_equal("(begin (define-values (s) \"abc\") (string-set! s 2 #\\d) s)", "\"abd\"");
 
     check_equal("(string-append)", "\"\"");
     check_equal("(string-append \"foo\")", "\"foo\"");
@@ -531,11 +531,6 @@ int test_define() {
     check_equal("(define-values (x y) (values 1 2))", "#<void>");
     check_equal("(define-values (x y z) (values 1 2 3))", "#<void>");
 
-    check_equal("(define x 1)", "#<void>");
-    check_equal("(define (foo) 1)", "#<void>");
-    check_equal("(define (foo x) 1)", "#<void>");
-    check_equal("(define (foo x y) 1)", "#<void>");
-
     return passed;
 }
 
@@ -562,22 +557,6 @@ int test_values() {
     return passed;
 }
 
-int test_cond() {
-    passed = 1;
-
-    check_equal("(cond)", "#<void>");
-    check_equal("(cond [#t 1])", "1");
-    check_equal("(cond [1 1])", "1");
-    check_equal("(cond [#t 1] [#f 0])", "1");
-    check_equal("(cond [#f 1] [#t 0])", "0");
-    check_equal("(cond [#f 1] [#f 0])", "#<void>");
-    check_equal("(cond [#f 1] [#f 2] [#t 3])", "3");
-    check_equal("(cond [#f 1] [else 2])", "2");
-    check_equal("(cond [#f 1] [#f 2] [else 3])", "3");
-
-    return passed;
-}
-
 int test_let() {
     passed = 1;
 
@@ -590,14 +569,6 @@ int test_let() {
     check_equal("(letrec-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
     check_equal("(letrec-values ([(f g) (values (lambda () (g 1)) (lambda (x) 1))]) (f))", "1");
 
-    check_equal("(letrec () 1)", "1");
-    check_equal("(letrec ([x 1]) x)", "1");
-    check_equal("(letrec ([x 1] [y 2]) x)", "1");
-    check_equal("(letrec ([x 1] [y 2]) y)", "2");
-    check_equal("(letrec ([x 1] [y 2]) y x)", "1");
-    check_equal("(letrec ([x 1]) (let ([y x]) y))", "1");
-    check_equal("(letrec ([f (lambda () 1)]) (f))", "1");
-
     check_equal("(let-values () 1)", "1");
     check_equal("(let-values ([() (values)]) 1)", "1");
     check_equal("(let-values ([(x) 1]) x)", "1");
@@ -605,13 +576,6 @@ int test_let() {
     check_equal("(let-values ([(x y z) (values 1 2 3)]) (list x y z))", "'(1 2 3)");
     check_equal("(let-values ([(x) 1] [(y) 2]) (list x y))", "'(1 2)");
     check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
-
-    check_equal("(let () 1)", "1");
-    check_equal("(let ([x 1]) x)", "1");
-    check_equal("(let ([x 1] [y 2]) x)", "1");
-    check_equal("(let ([x 1] [y 2]) y)", "2");
-    check_equal("(let ([x 1] [y 2]) y x)", "1");
-    check_equal("(let ([x 1]) (let ([y x]) y))", "1");
 
     return passed;
 }
@@ -632,17 +596,17 @@ int test_box() {
     check_equal("(unbox (box (box 3)))", "'#&3");
 
     check_equal("(begin "
-                  "(define b (box 'a))"
+                  "(define-values (b) (box 'a))"
                   "(set-box! b 'b)"
                   "(unbox b))",
                 "'b");
     check_equal("(begin "
-                  "(define b (box '(1 2 3)))"
+                  "(define-values (b) (box '(1 2 3)))"
                   "(set-box! b '())"
                   "(unbox b))",
                 "'()");
     check_equal("(begin "
-                  "(define b (box (box 3)))"
+                  "(define-values (b) (box (box 3)))"
                   "(set-box! b 0)"
                   "(unbox b))",
                 "0");
@@ -654,25 +618,25 @@ int test_hashtable() {
     passed = 1;
 
     check_equal("(begin "
-                  "(define h (make-eq-hashtable)) "
+                  "(define-values (h) (make-eq-hashtable)) "
                   "(hashtable-set! h 'a 1) "
                   "(hashtable-size h))",
                 "1");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-size h))",
                 "2");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3)"
                    "(hashtable-size h))",
                 "3");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3) "
@@ -688,7 +652,7 @@ int test_hashtable() {
                    "(hashtable-size h))",
                 "12");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3)"
@@ -699,25 +663,25 @@ int test_hashtable() {
                 "3");
 
     check_equal("(begin "
-                  "(define h (make-hashtable)) "
+                  "(define-values (h) (make-hashtable)) "
                   "(hashtable-set! h 'a 1) "
                   "(hashtable-size h))",
                 "1");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-size h))",
                 "2");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3)"
                    "(hashtable-size h))",
                 "3");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3) "
@@ -733,7 +697,7 @@ int test_hashtable() {
                    "(hashtable-size h))",
                 "12");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3)"
@@ -744,18 +708,18 @@ int test_hashtable() {
                 "3");
 
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-ref h 'a))",
                 "1");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-ref h 'b))",
                 "2");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3) "
@@ -763,93 +727,95 @@ int test_hashtable() {
                 "3");
 
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h '() 1) "
                    "(hashtable-set! h '() 2) "
                    "(hashtable-ref h '()))",
                 "2");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h #() 1) "
                    "(hashtable-set! h #() 2) "
                    "(hashtable-ref h #()))",
                 "2");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h '(1) 1) "
                    "(hashtable-set! h '(1) 2) "
                    "(hashtable-ref h '(1)))",
                 "2");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h #(1) 1) "
                    "(hashtable-set! h #(1) 2) "
                    "(hashtable-ref h #(1)))",
                 "2");
 
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-contains? h 'a))",
                 "#t");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-contains? h 'b))",
                 "#f");
 
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-delete! h 'a) "
                    "(hashtable-contains? h 'a))",
                 "#f");
 
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
-                   "(let loop ([i 0]) "
-                     "(if (= i 10000) "
-                         "(void) "
-                         "(begin "
-                           "(hashtable-set! h i (+ i 1)) "
-                           "(loop (+ i 1))))) "
+                   "(define-values (h) (make-hashtable)) "
+                   "(letrec-values ([(loop) "
+                     "(lambda (i)"
+                       "(if (= i 10000) "
+                           "(void) "
+                           "(begin "
+                             "(hashtable-set! h i (+ i 1)) "
+                             "(loop (+ i 1)))))]) "
+                      "(loop 0)) "
                    "(hashtable-size h))",
                 "10000");
 
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-ref h 'a 0))",
                 "0");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-ref h 'a (lambda () 0)))",
                 "0");
 
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-update! h 'a (lambda (x) (* 2 x))) "
                    "(hashtable-ref h 'a))",
                 "2");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-update! h 'a (lambda (x) (* 2 x)) 2) "
                    "(hashtable-ref h 'a))",
                 "4");
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-update! h 'a (lambda (x) (* 2 x)) (lambda () 2)) "
                    "(hashtable-ref h 'a))",
                 "4");
 
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-ref (hashtable-copy h) 'a))",
                 "1");
 
     check_equal("(begin "
-                   "(define h (make-hashtable)) "
+                   "(define-values (h) (make-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3) "
@@ -857,7 +823,7 @@ int test_hashtable() {
                 "2");
 
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3) "
@@ -873,7 +839,7 @@ int test_hashtable() {
                    "(hashtable-ref h 'a))",
                 "1");
     check_equal("(begin "
-                   "(define h (make-eq-hashtable)) "
+                   "(define-values (h) (make-eq-hashtable)) "
                    "(hashtable-set! h 'a 1) "
                    "(hashtable-set! h 'b 2) "
                    "(hashtable-set! h 'c 3) "
@@ -899,7 +865,6 @@ void run_tests() {
     log_test("define", test_define);
     log_test("begin", test_begin);
     log_test("values", test_values);
-    log_test("cond", test_cond);
     log_test("let", test_let);
 
     log_test("type predicates", test_type_predicates);

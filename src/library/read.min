@@ -237,29 +237,14 @@
          c]))
 
     ; decimal number reader
-    (define (read-number c)
+    (define (read-number)
       ; if we encounter a non-digit, the token is a symbol
       ; so we need to track characters that we read
-      (define chars '())
-
-      ; optional sign
-      (define sign
-        (cond
-          [(eq? c #\-)
-           (read-char p)
-           (set! chars (cons c chars))
-           -1]
-          [(eq? c #\+)
-           (read-char p)
-           (set! chars (cons c chars))
-           1]
-          [else
-           1]))
-
       (define 0-char (char->integer #\0))
+      (define chars '())
+      (define num 0)
 
       ; magnitude
-      (define num 0)
       (let read-digit! ()
         (define c (peek-char p))
         (set! chars (cons c chars))
@@ -273,7 +258,7 @@
            (read-symbol chars)]
           [else
            (assert-delimeter! (peek-char p))
-           (* num sign)])))
+           num])))
 
     ; hexidecimal number reader
     (define (read-hex-number c)
@@ -425,9 +410,22 @@
            [else
             ; unknown
             (error 'read "unknown special character" c)])]
-        [(digit-prefix? c)
-          ; number
-          (datum->syntax (read-number c))]
+        [(or (eq? c #\+) (eq? c #\-))
+         ; number or symbol
+         (read-char p)
+         (define n (peek-char p))
+         (cond
+           [(digit? n)
+            ; optional sign
+            (define pos-num (read-number))
+            (if (eq? c #\-)
+                (datum->syntax (- pos-num))
+                (datum->syntax pos-num))]
+           [else
+            (datum->syntax (read-symbol (list c)))])]
+        [(digit? c)
+         ; number
+         (datum->syntax (read-number))]
         [(eq? c #\")
          ; string
          (read-char p)

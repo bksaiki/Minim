@@ -1,0 +1,23 @@
+;;;
+;;; Tests for 'do'
+;;;
+
+(import "../../src/library/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(check-equal?
+  (let ([x '(1 3 5 7 9)])
+    (do ([x x (cdr x)]
+         [sum 0 (+ sum (car x))])
+        ((null? x) sum)))
+  25)
