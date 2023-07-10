@@ -1,0 +1,70 @@
+;;;
+;;; Promises
+;;;
+
+(import "pre-base.min" "record.min")
+(export promise?
+        make-promise    ; TODO: export only because of expander limitations
+        delay
+        lazy
+        force
+        promise-forced?)
+
+;;
+;;  Definition
+;;
+
+(define-record-type promise
+  (opaque #t)
+  (sealed #t)
+  (fields producer (mutable cache) (mutable forced?))
+  (protocol
+    (lambda (p)
+      (lambda (producer)
+        (p producer #f #f))))
+  (custom-write
+    (lambda (p port mode)
+      (if (promise-forced? p)
+          (fprintf port "#<promise:~s>" (promise-cache p))
+          (fprintf port "#<promise>")))))
+
+;;
+;;  Syntax
+;;
+
+(define-syntax (delay stx)
+  (syntax-case stx ()
+    [(_ body ...)
+     #'(make-promise (lambda () body ...))]
+    [_ (syntax-error 'delay "bad syntax" stx)]))
+
+;;
+;;  Operations
+;;
+
+(define (lazy p)
+  (unless (promise? p)
+    (error 'lazy "promise?" p))
+  (let loop ([p p])
+    (cond
+      [(promise-forced? p)
+       (promise-cache p)]
+      [else
+       (define result ((promise-producer p)))
+       (promise-cache-set! p result)
+       (promise-forced?-set! p #t)
+       (if (promise? result) (loop result) result)])))
+
+(define (force p)
+  (unless (promise? p)
+    (error 'force "promise?" p))
+  (cond
+    [(promise-forced? p)
+     (promise-cache p)]
+    [else
+     (define result ((promise-producer p)))
+     (promise-cache-set! p result)
+     (promise-forced?-set! p #t)
+     result]))
+
+

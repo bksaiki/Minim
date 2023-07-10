@@ -6,6 +6,7 @@
         "private/list.min"
         "private/path.min"
         "private/pre-base.min"
+        "private/promise.min"
         "private/record.min"
         "private/set.min"
         "private/sort.min"
@@ -15,6 +16,7 @@
         (all "private/list.min")
         (all "private/path.min")
         (all "private/pre-base.min")
+        (all "private/promise.min")
         (all "private/record.min")
         (all "private/set.min")
         (all "private/sort.min")
