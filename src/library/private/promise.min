@@ -46,14 +46,16 @@
   (unless (promise? p)
     (error 'lazy "promise?" p))
   (let loop ([p p])
-    (cond
-      [(promise-forced? p)
-       (promise-cache p)]
-      [else
-       (define result ((promise-producer p)))
-       (promise-cache-set! p result)
-       (promise-forced?-set! p #t)
-       (if (promise? result) (loop result) result)])))
+    (define result
+      (cond
+        [(promise-forced? p)
+         (promise-cache p)]
+        [else
+         (define result ((promise-producer p)))
+         (promise-cache-set! p result)
+         (promise-forced?-set! p #t)
+         result]))
+    (if (promise? result) (loop result) result)))
 
 (define (force p)
   (unless (promise? p)
