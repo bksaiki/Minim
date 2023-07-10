@@ -65,7 +65,7 @@
                     ($load-or-import path print-handler result-handler)
                     (define from-module (hashtable-ref $module-table path))
                     (set! imported-modules (cons path imported-modules))
-                    (set! imported-xforms (merge-xforms (car from-module) imported-xforms))
+                    (set! imported-xforms (merge-xforms imported-xforms (car from-module)))
                     (set! imported (append (cdr from-module) imported)) ; TODO: dedup
                     (for-each (lambda (name) (scope-add! scope name)) (map car (cdr from-module)))
                     (loop2 (cdr imports))]

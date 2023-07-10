@@ -9,7 +9,7 @@
 ;; expression-level context.
 ;;
 ;; This expander stores xforms as a mapping
-;;  <name> -> (<proc>, <xforms-in-scope>, <eval-env>)
+;;  <name> -> (<proc>, <xforms-in-scope>)
 ;;
 
 (import "base.min")
@@ -71,11 +71,11 @@
        (let ([entry (assoc (syntax-e maybe-id) xforms)])
          (and entry (cdr entry)))))
 
-(define (merge-xforms new-xforms xforms)
-  (let loop ([new-xforms new-xforms] [xforms xforms])
+(define (merge-xforms xforms new-xforms)
+  (let loop ([xforms xforms] [new-xforms new-xforms])
     (cond [(null? new-xforms) xforms]
-          [(assoc (caar new-xforms) xforms) (loop (cdr new-xforms) xforms)]
-          [else (loop (cdr new-xforms) (cons (car new-xforms) xforms))])))
+          [(assoc (caar new-xforms) xforms) (loop xforms (cdr new-xforms))]
+          [else (loop (cons (car new-xforms) xforms) (cdr new-xforms))])))
 
 ;;
 ;;  syntax
@@ -573,7 +573,7 @@
          (define maybe-xform (lookup-xform head xforms))
          (if maybe-xform
             (expand/expr (eval/xform maybe-xform expr (syntax-e head))
-                         (merge-xforms (cadr maybe-xform) xforms)
+                         (merge-xforms xforms (cadr maybe-xform))
                          recur-begin?)
             (datum->syntax (map loop (syntax->list expr))))]
         [else
@@ -599,7 +599,7 @@
            [maybe-xform
             (expand/top-level
               (eval/xform maybe-xform expr (syntax-e head))
-              (merge-xforms (cadr maybe-xform) xforms))]
+              (merge-xforms xforms (cadr maybe-xform)))]
            [else
             (values expr xforms)])]
         [else (values expr xforms)]))
@@ -642,16 +642,19 @@
                        (define binding (cons id (list xform null)))
                        (define xforms-in-scope (cons binding xforms))
                        (set-add! xform-ids id)
-                       (for-each
-                         (lambda (xform)
-                           (define id (first xform))
-                           (define fn (second xform))
-                           (set! xforms
-                                 (cons (if (set-member? xform-ids id)
-                                           (cons id (list fn xforms-in-scope))
-                                           xform)
-                                       xforms)))
-                         xforms-in-scope)
+                       (set! xforms
+                             (let loop ([xforms xforms-in-scope] [new-xforms '()])
+                               (cond
+                                 [(null? xforms) new-xforms]
+                                 [else
+                                  (define xform (first xforms))
+                                  (define id (first xform))
+                                  (define value (second xform))
+                                  (define xform*
+                                    (if (set-member? xform-ids id)
+                                        (cons id (list value xforms-in-scope))
+                                        xform))
+                                  (loop (cdr xforms) (cons xform* new-xforms))])))
                        (rec (cdr ids) (cdr results))]))]
                  [(define-values-form? expr)
                   (check-define-syntaxes/values-form! 'define-values expr)

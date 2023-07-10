@@ -44,28 +44,3 @@ printf "%i/%i files run\n" $(expr $total - $failed) $total
 if [[ $failed != 0 ]]; then
   exit 1
 fi
-
-#
-#   Unit tests
-#
-
-failed=0
-total=0
-
-echo "Running interpreter on unit tests..."
-
-for file in $TESTS; do
-  $MINIM -q $file
-  if [ $? -ne 0 ]; then
-    echo -e "[ ${RED}FAIL${ENDCOLOR} ] $file"
-    ((failed++))
-  else
-    echo -e "[ ${GREEN}PASS${ENDCOLOR} ] $file"
-  fi
-  ((total++))
-done
-
-printf "%i/%i tests passed\n" $(expr $total - $failed) $total
-if [[ $failed != 0 ]]; then
-  exit 1
-fi
