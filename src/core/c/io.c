@@ -432,6 +432,7 @@ static void write_pair(FILE *out, minim_pair_object *p, int quote, int display) 
 
 void write_object2(FILE *out, minim_object *o, int quote, int display) {
     minim_object *it;
+    minim_thread *th;
     char *str;
     long i;
 
@@ -461,7 +462,11 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
             fprintf(out, "#<record-type:%s>", minim_symbol(record_rtd_name(o)));
         } else {
             // record value
-            fprintf(out, "#<%s>", minim_symbol(minim_record_ref(minim_record_rtd(o), 0)));
+            th = current_thread();
+            push_call_arg(o);
+            push_call_arg(make_output_port(out));   // TODO: problematic
+            push_call_arg(make_pair(make_fixnum(quote), make_fixnum(display)));
+            call_with_args(record_write_proc(th), global_env(th));
         }
         break;
     case MINIM_SYMBOL_TYPE:

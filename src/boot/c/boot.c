@@ -143,6 +143,7 @@ void populate_env(minim_object *env) {
     add_procedure("$record-set!", record_set_proc, 3, 3);
     add_procedure("$current-record-equal-procedure", current_record_equal_procedure_proc, 0, 1);
     add_procedure("$current-record-hash-procedure", current_record_hash_procedure_proc, 0, 1);
+    add_procedure("$current-record-write-procedure", current_record_write_procedure_proc, 0, 1);
 
     add_procedure("box?", is_box_proc, 1, 1);
     add_procedure("box", box_proc, 1, 1);
@@ -238,7 +239,9 @@ minim_object *make_env() {
 
 void minim_boot_init() {
     minim_thread *th;
-    minim_object *record_equal_proc_obj, *record_hash_proc_obj;
+    minim_object *record_equal_proc_obj,
+                 *record_hash_proc_obj,
+                 *record_write_proc_obj;
 
     GC_pause();
 
@@ -304,6 +307,9 @@ void minim_boot_init() {
     record_hash_proc_obj = make_prim_proc(default_record_hash_procedure_proc,
                                           "default-record-hash-procedure",
                                           2, 2);
+    record_write_proc_obj = make_prim_proc(default_record_write_procedure_proc,
+                                           "default-record-write-procedure",
+                                           3, 3);
 
     // initialize thread
 
@@ -315,6 +321,7 @@ void minim_boot_init() {
     command_line(th) = minim_null;
     record_equal_proc(th) = record_equal_proc_obj;
     record_hash_proc(th) = record_hash_proc_obj;
+    record_write_proc(th) = record_write_proc_obj;
 
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(minim_object*));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;

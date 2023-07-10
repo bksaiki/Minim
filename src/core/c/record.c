@@ -333,6 +333,24 @@ minim_object *default_record_hash_procedure_proc(int argc, minim_object **args) 
     }
 }
 
+minim_object *default_record_write_procedure_proc(int argc, minim_object **args) {
+    // (-> any proc boolean)
+    minim_object *o, *quote, *display;
+    FILE *out;
+
+    o = args[0];
+    out = minim_port(args[1]);
+    quote = minim_car(args[2]);
+    display = minim_cdr(args[2]);
+    if (is_record_value(o)) {
+        fprintf(out, "#<%s>", minim_symbol(minim_record_ref(minim_record_rtd(o), 0)));
+    } else {
+        write_object2(out, o, minim_fixnum(quote), minim_fixnum(display));
+    }
+
+    return minim_void;
+}
+
 minim_object *current_record_equal_procedure_proc(int argc, minim_object **args) {
     // (-> proc)
     // (-> proc void)
@@ -340,7 +358,7 @@ minim_object *current_record_equal_procedure_proc(int argc, minim_object **args)
         return record_equal_proc(current_thread());
     } else {
         if (!minim_is_proc(args[0]))
-            bad_type_exn("current-record-equal-procedure", "procedue?", args[0]);
+            bad_type_exn("current-record-equal-procedure", "procedure?", args[0]);
         record_equal_proc(current_thread()) = args[0];
         return minim_void;
     }
@@ -353,8 +371,21 @@ minim_object *current_record_hash_procedure_proc(int argc, minim_object **args) 
         return record_hash_proc(current_thread());
     } else {
         if (!minim_is_proc(args[0]))
-            bad_type_exn("current-record-hash-procedure", "procedue?", args[0]);
+            bad_type_exn("current-record-hash-procedure", "procedure?", args[0]);
         record_hash_proc(current_thread()) = args[0];
+        return minim_void;
+    }
+}
+
+minim_object *current_record_write_procedure_proc(int argc, minim_object **args) {
+    // (-> proc)
+    // (-> proc void)
+    if (argc == 0) {
+        return record_write_proc(current_thread());
+    } else {
+        if (!minim_is_proc(args[0]))
+            bad_type_exn("current-record-write-procedure", "procedure?", args[0]);
+        record_write_proc(current_thread()) = args[0];
         return minim_void;
     }
 }
