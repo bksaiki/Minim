@@ -43,7 +43,7 @@
                exprs)))
 
 (define (write-module-definitions path exclude boot-file)
-  (define-values (exprs xforms imports exports _) (read/module path))
+  (define-values (exprs xforms imports exports _ _) (read/module path))
   (define all-defs (module-definitions exprs))
   (for-each (lambda (entry)
               (define name (car entry))

@@ -53,7 +53,7 @@
     (set! label-counter (+ count 1))
     (string-append "L" (number->string count)))
 
-  (define-values (exprs xforms imports exports _) (read/module path))
+  (define-values (exprs xforms imports exports _ _) (read/module path))
   (define module-body
     (let loop ([exprs exprs])
       (cond

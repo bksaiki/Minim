@@ -12,7 +12,7 @@
 ;; Module caches
 ;;  name -> (exporting xforms, exporting values)
 ;;  name -> (expand env, eval env)
-;;  name -> (exprs, xforms, imports, exports, expand env)
+;;  name -> (exprs, xforms, imports, exports, expand env, scope)
 (define $module-table (make-hashtable))
 (define $module-envs (make-hashtable))
 (define $module-internals (make-hashtable))
@@ -123,7 +123,7 @@
   (define expanded-exprs ($expand non-import-exprs))
 
   ;; return result
-  (values expanded-exprs module-xforms imported exported stx-env))
+  (values expanded-exprs module-xforms imported exported stx-env scope))
 
 ;; prepares the evaluation environment given
 ;; an association list of additional values
@@ -159,7 +159,7 @@
 
 (define ($load-or-import-no-check path print-handler result-handler)
   ;; load expressions
-  (define-values (exprs module-xforms imports exports stx-env)
+  (define-values (exprs module-xforms imports exports stx-env scope)
     ($load-module path print-handler result-handler))
   ;; evaluate
   (define env ($eval-environment $base-env imports))
@@ -187,21 +187,21 @@
   ;; update module table
   (hashtable-set! $module-table path (cons export-xforms export-values))
   (hashtable-set! $module-envs path (cons stx-env env))
-  (hashtable-set! $module-internals path (list exprs module-xforms imports exports stx-env))
+  (hashtable-set! $module-internals path (list exprs module-xforms imports exports stx-env scope))
 
   ;; and done
   (when result-handler
     (result-handler last)))
 
 ;; REPL with env
-(define ($repl xforms stx-env env)
+(define ($repl env stx-env xforms scope)
   (let loop ([xforms xforms])
     ; read
     (display "> ")
     (define expr (read))
     (when (eof-object? expr) (exit))
     ; expand
-    (define-values (expr* xforms*) (expand expr xforms stx-env))
+    (define-values (expr* xforms*) (expand expr stx-env xforms scope))
     ;; evaluate and display
     (call-with-values
       (lambda () (eval (syntax->datum expr*) env))
@@ -251,8 +251,11 @@
   (unless (hashtable-contains? $module-envs path)
     (error 'enter! "unknown module" name))
   (define envs (hashtable-ref $module-envs path))
-  (define xforms (second (hashtable-ref $module-internals path)))
+  (define internals (hashtable-ref $module-internals path))
+  (define xforms (second internals))
+  (define scope (sixth internals))
   ;; REPL
-  ($repl xforms
-         (extend-environment (car envs))
-         (extend-environment (cdr envs))))
+  ($repl (extend-environment (car envs))
+         (extend-environment (cdr envs))
+         xforms
+         scope))

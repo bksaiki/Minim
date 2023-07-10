@@ -698,8 +698,7 @@
   (expand/module* exprs xforms))
 
 ;; Expands a single expression
-(define (expand expr xforms env)
-  (define scope (scope-extend $base-scope))
+(define (expand expr env xforms scope)
   (define-values (exprs* xforms*) (expand/module #f (list expr) xforms env scope))
   (cond [(null? exprs*) (values (quote-syntax (void)) xforms*)]
         [else (values (car exprs*) xforms*)]))
