@@ -268,7 +268,7 @@ minim_object *make_record_proc(int argc, minim_object **args) {
 minim_object *record_rtd_proc(int argc, minim_object **args) {
     // (-> record rtd)
     if (!is_record_value(args[0]))
-        bad_type_exn("record-rtd", "record?", args[0]);
+        bad_type_exn("$record-rtd", "record?", args[0]);
     return minim_record_rtd(args[0]);
 }
 
@@ -313,6 +313,24 @@ minim_object *record_set_proc(int argc, minim_object **args) {
 
     minim_record_ref(args[0], idx) = args[2];
     return minim_void;
+}
+
+minim_object *default_record_equal_procedure_proc(int argc, minim_object **args) {
+    // (-> any any proc boolean)
+    if (is_record_value(args[0]) && is_record_value(args[1])) {
+        return minim_is_eq(args[0], args[1]) ? minim_true : minim_false;
+    } else {
+        return minim_is_equal(args[0], args[1]) ? minim_true : minim_false;
+    }
+}
+
+minim_object *default_record_hash_procedure_proc(int argc, minim_object **args) {
+    // (-> any proc boolean)
+    if (is_record_value(args[0])) {
+        return eq_hash_proc(1, args);
+    } else {
+        return equal_hash_proc(1, args);
+    }
 }
 
 minim_object *current_record_equal_procedure_proc(int argc, minim_object **args) {

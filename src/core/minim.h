@@ -779,6 +779,8 @@ DEFINE_PRIM_PROC(record_type_field_mutable);
 DEFINE_PRIM_PROC(make_record);
 DEFINE_PRIM_PROC(record_ref);
 DEFINE_PRIM_PROC(record_set);
+DEFINE_PRIM_PROC(default_record_equal_procedure);
+DEFINE_PRIM_PROC(default_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 // boxes
