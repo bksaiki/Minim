@@ -45,7 +45,10 @@
     (lambda (a b rec-equal?)
       (rec-equal? (set-store a) (set-store b)))
     (lambda (a rec-hash)
-      (+ (rec-hash (set-store a)) 401235121))))
+      (+ (rec-hash (set-store a)) 401235121)))
+  (custom-write
+    (lambda (s port mode)
+      (fprintf port "#<set ~s>" (hashtable-keys (set-store s))))))
 
 ;;
 ;;  Basic operations

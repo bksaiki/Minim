@@ -672,7 +672,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, co
                 break;
             case 's':
                 // write
-                write_object2(o, vs[vi++], 0, 0);
+                write_object2(o, vs[vi++], 1, 0);
                 break;
             default:
                 fprintf(stderr, "%s: unknown formatting escape\n", prim_name);
