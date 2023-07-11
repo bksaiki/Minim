@@ -11,6 +11,7 @@
         record-mutator
         record-type-equal-procedure
         record-type-hash-procedure
+        record-type-write-procedure
         define-record-type)
 
 (define (record-type-size rtd)
@@ -97,34 +98,62 @@
 ;;  Record equivalence
 ;;
 
-(define $record-eq-procs (make-hashtable))
-(define $record-hash-procs (make-hashtable))
+(define $default-record-equal-proc ($current-record-equal-procedure))
+(define $record-equal-procs (make-hashtable))
 
 (define (record-type-equal-procedure rtd equal-proc)
   (unless (record-type-descriptor? rtd)
     (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
-  (hashtable-set! $record-eq-procs rtd equal-proc))
+  (hashtable-set! $record-equal-procs rtd equal-proc))
+
+(define (record-equal? a b rec-equal?)
+  (define a-rtd ($record-rtd a))
+  (define b-rtd ($record-rtd b))
+  (define eq-proc (hashtable-ref $record-equal-procs a-rtd
+                                 (lambda () $default-record-equal-proc)))
+  (and (eq? a-rtd b-rtd) (eq-proc a b rec-equal?)))
+
+($current-record-equal-procedure record-equal?)
+
+;;
+;;  Record hashing
+;;
+
+(define $default-record-hash-proc ($current-record-hash-procedure))
+(define $record-hash-procs (make-hashtable))
 
 (define (record-type-hash-procedure rtd hash-proc)
   (unless (record-type-descriptor? rtd)
     (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
   (hashtable-set! $record-hash-procs rtd hash-proc))
 
-(define (record-equal? a b rec-equal?)
-  (define a-rtd ($record-rtd a))
-  (define b-rtd ($record-rtd b))
-  (and (eq? a-rtd b-rtd)
-       (let ([proc (hashtable-ref $record-eq-procs a-rtd #f)])
-         (and proc (proc a b rec-equal?)))))
-
 (define (record-hash r rec-hash)
   (define rtd ($record-rtd r))
-  (if (hashtable-contains? $record-hash-procs rtd)
-      ((hashtable-ref $record-hash-procs rtd) r rec-hash)
-      0)) ;; TODO: should use default hash-procedure
+  (define hash-proc (hashtable-ref $record-hash-procs rtd
+                                   (lambda () $default-record-hash-proc)))
+  (hash-proc r rec-hash))
 
-($current-record-equal-procedure record-equal?)
 ($current-record-hash-procedure record-hash)
+
+;;
+;;  Record writing
+;;
+
+(define $default-record-write-proc ($current-record-write-procedure))
+(define $record-write-procs (make-hashtable))
+
+(define (record-type-write-procedure rtd write-proc)
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-write-procedure "expected a record type descriptor" rtd))
+  (hashtable-set! $record-write-procs rtd write-proc))
+
+(define (record-write r port mode)
+  (define rtd ($record-rtd r))
+  (define write-proc (hashtable-ref $record-write-procs rtd
+                                    (lambda () $default-record-write-proc)))
+  (write-proc r port mode))
+
+($current-record-write-procedure record-write)
 
 ;;
 ;;  High-level macros
@@ -163,12 +192,14 @@
        (define fields-rtd '())
        (define equal-rtd #f)
        (define hash-rtd #f)
+       (define write-rtd #f)
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque protocol equal+hash)
+           (syntax-case clause (fields parent uid sealed opaque
+                                protocol equal+hash custom-write)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -210,6 +241,12 @@
                 (set! clause-types (cons 'equal+hash clause-types))
                 (set! equal-rtd #'equal)
                 (set! hash-rtd #'hash))]
+             [(custom-write write)
+              (begin
+                (when (member 'custom-write clause-types)
+                  (syntax-error 'define-record-type "duplicate clause" stx clause))
+                (set! clause-types (cons 'custom-write clause-types))
+                (set! write-rtd #'write))]
              [(fields spec ...)
               (begin
                 (when (member 'fields clause-types)
@@ -273,6 +310,7 @@
                      [protocol* protocol-rtd]
                      [equal* equal-rtd]
                      [hash* hash-rtd]
+                     [write* write-rtd]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -316,7 +354,8 @@
             (begin accs ...)
             (begin muts ...)
             (when equal* (record-type-equal-procedure name equal*))
-            (when hash* (record-type-hash-procedure name hash*)))))]
+            (when hash* (record-type-hash-procedure name hash*))
+            (when write* (record-type-write-procedure name write*)))))]
     [(_ name cls ...) 
      ; simplified form
      (if (identifier? #'name)

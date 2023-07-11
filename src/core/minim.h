@@ -587,6 +587,7 @@ typedef struct minim_thread {
     minim_object *command_line;
     minim_object *record_equal_proc;
     minim_object *record_hash_proc;
+    minim_object *record_write_proc;
 
     minim_object **values_buffer;
     int values_buffer_size;
@@ -602,6 +603,7 @@ typedef struct minim_thread {
 #define command_line(th)                ((th)->command_line)
 #define record_equal_proc(th)           ((th)->record_equal_proc)
 #define record_hash_proc(th)            ((th)->record_hash_proc)
+#define record_write_proc(th)           ((th)->record_write_proc)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
@@ -779,8 +781,12 @@ DEFINE_PRIM_PROC(record_type_field_mutable);
 DEFINE_PRIM_PROC(make_record);
 DEFINE_PRIM_PROC(record_ref);
 DEFINE_PRIM_PROC(record_set);
+DEFINE_PRIM_PROC(default_record_equal_procedure);
+DEFINE_PRIM_PROC(default_record_hash_procedure);
+DEFINE_PRIM_PROC(default_record_write_procedure);
 DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
+DEFINE_PRIM_PROC(current_record_write_procedure);
 // boxes
 DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);

@@ -55,6 +55,7 @@ int minim_is_eq(minim_object *a, minim_object *b) {
 }
 
 int minim_is_equal(minim_object *a, minim_object *b) {
+    minim_thread *th;
     long i;
 
     if (minim_is_eq(a, b))
@@ -101,14 +102,14 @@ int minim_is_equal(minim_object *a, minim_object *b) {
         // Minim implements record equality in the following way:
         // By default, records of the same type are not `equal?`, but this behavior
         // can be overriden by modifying `current-record-equal-procedure`.
-        if (record_equal_proc(current_thread()) != minim_false &&
-            is_record_value(a) &&
-            is_record_value(b)) {
+
+        if (is_record_value(a) && is_record_value(b)) {
             // Unsafe code to follow
+            th = current_thread();
             push_call_arg(a);
             push_call_arg(b);
-            push_call_arg(env_lookup_var(global_env(current_thread()), intern("equal?")));
-            return (call_with_args(record_equal_proc(current_thread()), global_env(current_thread())) == minim_false ? 0 : 1);
+            push_call_arg(env_lookup_var(global_env(th), intern("equal?")));
+            return !minim_is_false(call_with_args(record_equal_proc(th), global_env(th)));
         } else {
             return minim_is_eq(a, b);
         }
