@@ -7,7 +7,7 @@
 
 (define num-failed 0)
 
-(define (check-eq? d0 d1)
+(define (check-equal? d0 d1)
   (unless (equal? d0 d1)
     (display "[FAIL] eq? failed: expected ")
     (write d1)
@@ -32,12 +32,22 @@
     (newline)
     (set! num-failed (+ num-failed 1))))
 
-;; generic creation
+;; generics construction
 
 (let ()
   (define-generics empty)
   ($generics-type? gen:empty)
+  (check-true (null? ($generics-type-methods gen:empty)))
   (void))
+
+(let ()
+  (define-generics sequence [stream-empty? s]
+                            [stream-first s]
+                            [stream-next s])
+  ($generics-type? gen:sequence)
+  (check-equal? ($generics-type-methods gen:sequence)
+                 '((stream-empty? s) (stream-first s) (stream-next s))))
+
 
 (when (> num-failed 0)
   (error #f "test failed"))
