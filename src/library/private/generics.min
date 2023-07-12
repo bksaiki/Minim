@@ -85,12 +85,16 @@
 
            (define args (car formals*))
            (let loop ([args (syntax-e args)])
-             (unless (or (null? args) (identifier? args))
+             (unless (or (null? args)
+                         (symbol? args)
+                         (identifier? args))
                (unless (pair? args)
-                 (syntax-error 'define-generics "expected an identifier" stx args))
+                 (syntax-error 'define-generics "expected an identifier"
+                               stx (datum->syntax args)))
                (define arg (car args))
                (unless (identifier? arg)
-                 (syntax-error 'define-generics "expected an identifier" stx arg))
+                 (syntax-error 'define-generics "expected an identifier"
+                               stx (datum->syntax arg)))
                (loop (cdr args))))
            
            (define entry (cons (syntax-e mid) (syntax->datum args)))

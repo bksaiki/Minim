@@ -46,8 +46,27 @@
                             [stream-next s])
   ($generics-type? gen:sequence)
   (check-equal? ($generics-type-methods gen:sequence)
-                 '((stream-empty? s) (stream-first s) (stream-next s))))
+                 '((stream-empty? s) (stream-first s) (stream-next s)))
+  (void))
 
+(let ()
+  (define-generics all-types [0ary]
+                             [1ary a]
+                             [2ary a b]
+                             [3ary a b c]
+                             [at-least-0-ary . rest]
+                             [at-least-1-ary a . rest]
+                             [at-least-2-ary a . rest])
+  ($generics-type? gen:all-types)
+  (check-equal? ($generics-type-methods gen:all-types)
+                '((0ary)
+                  (1ary a)
+                  (2ary a b)
+                  (3ary a b c)
+                  (at-least-0-ary . rest)
+                  (at-least-1-ary a . rest)
+                  (at-least-2-ary a . rest)))
+  (void))                             
 
 (when (> num-failed 0)
   (error #f "test failed"))
