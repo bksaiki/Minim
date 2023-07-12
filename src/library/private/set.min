@@ -2,7 +2,9 @@
 ;;; Sets
 ;;;
 
-(import "pre-base.min" "record.min")
+(import "pre-base.min"
+        "record.min")
+
 (export make-set
         set?
         set-member?
@@ -34,14 +36,14 @@
 (define-record-type set
   (opaque #t)
   (sealed #t)
-  (fields (mutable store))
+  (fields store)
   (protocol
     (lambda (p)
       (lambda xs
         (define h (make-hashtable))
-        (for-each (lambda (x) (hashtable-set! h x '())) xs)
+        (for-each (lambda (x) (hashtable-set! h x #f)) xs)
         (p h))))
-  (equal+hash
+  (methods gen:equal+hash
     (lambda (a b rec-equal?)
       (rec-equal? (set-store a) (set-store b)))
     (lambda (a rec-hash)

@@ -14,8 +14,8 @@
         record-accessor               ;; re-exported
         record-mutator                ;; re-exported
   
-        record-type-equal-procedure
-        record-type-hash-procedure
+        ; record-type-equal-procedure ;; TODO: reimplement
+        ; record-type-hash-procedure
         define-record-type
 
         $make-generics-type           ;; re-exported
@@ -24,67 +24,77 @@
         record-type-generic           ;; re-exported
         record-type-add-generic!      ;; re-exported
 
-        gen:custom-write)
+        gen:equal+hash
+        gen:equal+hash?
+        gen:custom-write
+        gen:custom-write?)
 
 ;;
-;;  Record equivalence
+;;  Record equal? and hashing
 ;;
+
+; Generic interface for comparing and hashing records
+(define-generics equal+hash
+                 [equal-proc a b rec-equal?]
+                 [hash-proc a rec-hash])
 
 (define $default-record-equal-proc ($current-record-equal-procedure))
-(define $record-equal-procs (make-hashtable))
+(define $default-record-hash-proc ($current-record-hash-procedure))
 
-(define (record-type-equal-procedure rtd equal-proc)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
-  (hashtable-set! $record-equal-procs rtd equal-proc))
+(define (unsafe-record-type-equal-procedure rtd)
+  (if (gen:equal+hash? rtd)
+      (record-type-generic rtd gen:equal+hash 'equal-proc)
+      $default-record-equal-proc))
+
+(define (unsafe-record-type-hash-procedure rtd)
+  (if (gen:equal+hash? rtd)
+      (record-type-generic rtd gen:equal+hash 'hash-proc)
+      $default-record-hash-proc))
 
 (define (record-equal? a b rec-equal?)
   (define a-rtd ($record-rtd a))
   (define b-rtd ($record-rtd b))
-  (define eq-proc (hashtable-ref $record-equal-procs a-rtd
-                                 (lambda () $default-record-equal-proc)))
-  (and (eq? a-rtd b-rtd) (eq-proc a b rec-equal?)))
-
-($current-record-equal-procedure record-equal?)
-
-;;
-;;  Record hashing
-;;
-
-(define $default-record-hash-proc ($current-record-hash-procedure))
-(define $record-hash-procs (make-hashtable))
-
-(define (record-type-hash-procedure rtd hash-proc)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
-  (hashtable-set! $record-hash-procs rtd hash-proc))
+  (and (eq? a-rtd b-rtd)
+       (let ([equal-proc (unsafe-record-type-equal-procedure a-rtd)])
+         (equal-proc a b rec-equal?))))
 
 (define (record-hash r rec-hash)
   (define rtd ($record-rtd r))
-  (define hash-proc (hashtable-ref $record-hash-procs rtd
-                                   (lambda () $default-record-hash-proc)))
+  (define hash-proc (unsafe-record-type-hash-procedure rtd))
   (hash-proc r rec-hash))
 
+; (define (record-type-equal-procedure rtd equal-proc)
+;   (unless (record-type-descriptor? rtd)
+;     (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
+;   (hashtable-set! $record-equal-procs rtd equal-proc))
+
+; (define (record-type-hash-procedure rtd hash-proc)
+;   (unless (record-type-descriptor? rtd)
+;     (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
+;   (hashtable-set! $record-hash-procs rtd hash-proc))
+
+($current-record-equal-procedure record-equal?)
 ($current-record-hash-procedure record-hash)
 
 ;;
 ;;  Record writing
 ;;
 
-; Generic record writing interface
+; Generic interface for writing records
 (define-generics custom-write
                  [write-proc v port mode])
 
 (define $default-record-write-proc ($current-record-write-procedure))
 
+(define (unsafe-record-write-procedure rtd)
+  (if (gen:custom-write? rtd)
+      (record-type-generic rtd gen:custom-write 'write-proc)
+      $default-record-write-proc))
+
 (define (record-write r port mode)
   (define rtd ($record-rtd r))
-  (cond
-    [(gen:custom-write? rtd)
-     (define proc (record-type-generic rtd gen:custom-write 'write-proc))
-     (proc r port mode)]
-    [else
-     ($default-record-write-proc r port mode)]))
+  (define write-proc (unsafe-record-write-procedure rtd))
+  (write-proc r port mode))
      
 ($current-record-write-procedure record-write)
 
@@ -123,15 +133,13 @@
        (define opaque?-rtd #f)
        (define protocol-rtd #f)
        (define fields-rtd '())
-       (define equal-rtd #f)
-       (define hash-rtd #f)
        (define methods-rtd (make-hashtable))
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque protocol equal+hash methods)
+           (syntax-case clause (fields parent uid sealed opaque protocol methods)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -166,13 +174,6 @@
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'protocol clause-types))
                 (set! protocol-rtd #'proc))]
-             [(equal+hash equal hash)
-              (begin
-                (when (member 'equal+hash clause-types)
-                  (syntax-error 'define-record-type "duplicate clause" stx clause))
-                (set! clause-types (cons 'equal+hash clause-types))
-                (set! equal-rtd #'equal)
-                (set! hash-rtd #'hash))]
              [(methods gen-id impls ...)
               (begin
                 (unless (identifier? #'gen-id)
@@ -241,8 +242,6 @@
                      [sealed?* sealed?-rtd]
                      [opaque?* opaque?-rtd]
                      [protocol* protocol-rtd]
-                     [equal* equal-rtd]
-                     [hash* hash-rtd]
                      [(gen-methods ...)
                       (map
                         (lambda (gen-id)  ; TODO: weird bugs in `with-syntax`?
@@ -298,9 +297,7 @@
                 (if p (p c) c)))
             (define predicate (record-predicate name))
             (begin accs ...)
-            (begin muts ...)
-            (when equal* (record-type-equal-procedure name equal*))
-            (when hash* (record-type-hash-procedure name hash*)))))]
+            (begin muts ...))))]
     [(_ name cls ...) 
      ; simplified form
      (if (identifier? #'name)
