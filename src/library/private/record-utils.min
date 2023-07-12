@@ -47,7 +47,7 @@
   (define size (record-size rtd))
   (lambda args
     (unless (= (length args) size)
-      (error 'arity-mismatch (format "~s constructor" rtd)
+      (error 'arity-mismatch (format "~s constructor" (record-type-name rtd))
              (format " field count: ~a" size)
              (format " fields provided: ~a" (length args))))
     (apply $make-record rtd args)))

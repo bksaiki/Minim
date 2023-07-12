@@ -13,10 +13,13 @@
         record-predicate              ;; re-exported
         record-accessor               ;; re-exported
         record-mutator                ;; re-exported
+  
         record-type-equal-procedure
         record-type-hash-procedure
         record-type-write-procedure
-        define-record-type)
+        define-record-type
+        
+        gen:custom-write)
 
 ;;
 ;;  Record equivalence
@@ -79,6 +82,10 @@
 
 ($current-record-write-procedure record-write)
 
+; Generic record writing interface
+(define-generics custom-write
+                 [write-proc v port mode])
+
 ;;
 ;;  High-level macros
 ;;
@@ -117,13 +124,14 @@
        (define equal-rtd #f)
        (define hash-rtd #f)
        (define write-rtd #f)
+       (define methods-rtd (make-hashtable))
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque
-                                protocol equal+hash custom-write)
+           (syntax-case clause (fields parent uid sealed opaque protocol
+                                equal+hash methods custom-write)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -171,6 +179,13 @@
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'custom-write clause-types))
                 (set! write-rtd #'write))]
+             [(methods gen-id impls ...)
+              (begin
+                (unless (identifier? #'gen-id)
+                  (syntax-error 'define-record-type "expected identifier" stx #'gen-id))
+                (when (hashtable-contains? methods-rtd (syntax-e #'gen-id))
+                  (syntax-error 'define-record-type "duplicate generics" stx #'gen-id))
+                (hashtable-set! methods-rtd (syntax-e #'gen-id) (syntax->list #'(impls ...))))]
              [(fields spec ...)
               (begin
                 (when (member 'fields clause-types)
@@ -235,6 +250,13 @@
                      [equal* equal-rtd]
                      [hash* hash-rtd]
                      [write* write-rtd]
+                     [(gen-methods ...)
+                      (map
+                        (lambda (gen-id)  ; TODO: weird bugs in `with-syntax`?
+                          (with-syntax ([gen-id gen-id]
+                                        [(gen-methods ...) (hashtable-ref methods-rtd gen-id)])
+                            #'(list gen-id (list gen-methods ...))))
+                        (hashtable-keys methods-rtd))]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -270,6 +292,24 @@
                            (format "parent type: ~a" p))
                     (make-record-type-descriptor 'name p
                       uid* sealed?* opaque?* '#(fields ...)))))
+            (begin
+              (let ()
+                (define methods gen-methods)
+                (define gen-id (first methods))
+                (define fns (second methods))
+                (record-type-add-generics! name gen-id fns)
+                (for-each
+                  (lambda (method fn)
+                    (define arity (procedure-arity fn))
+                    (printf "~a ~a\n" method fn)
+                    (void))
+                  ($generics-type-methods gen-id) fns))
+              ...)
+            ; (for-each
+            ;   (lambda (id impls)
+            ;     (void))
+            ;   (list gen-ids ...)
+            ;   (list methods ...))
             (define construct
               (let ([c (record-constructor name)]
                     [p protocol*])

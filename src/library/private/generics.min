@@ -9,7 +9,7 @@
         $generics-type-methods
         define-generics
         generic-instance?
-        record-type-generics)
+        record-type-add-generics!)
 
 ;;
 ;;  Definitions
@@ -35,17 +35,17 @@
 
 (define $record-generics (make-hashtable))
 
-(define (record-type-generics rtd generic)
+(define (record-type-add-generics! rtd generic impls)
   (unless ($generics-type? generic)
-    (error 'record-type-generics "expected a generic interface" generic))
+    (error 'record-type-add-generics! "expected a generic interface" generic))
   (unless (record-type-descriptor? rtd)
-    (error 'record-type-generics "expected a record type descriptor" rtd))
+    (error 'record-type-add-generics! "expected a record type descriptor" rtd))
   (hashtable-set! $record-generics rtd
                   (cond
-                    [(hashtable-contains? $record-generics) 
-                     (cons generic (hashtable-ref $record-generics rtd))]
+                    [(hashtable-contains? $record-generics rtd) 
+                     (cons (cons generic impls) (hashtable-ref $record-generics rtd))]
                     [else
-                     (list generic)])))
+                     (list (cons generic impls))])))
 
 (define ((generic-instance? generic) rtd)
   (unless ($generics-type? generic)

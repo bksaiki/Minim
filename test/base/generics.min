@@ -66,7 +66,19 @@
                   (at-least-0-ary . rest)
                   (at-least-1-ary a . rest)
                   (at-least-2-ary a . rest)))
-  (void))                             
+  (void))           
+
+;;  record syntax
+
+(let ()
+  (define-record-type point
+    (fields x y)
+    (methods gen:custom-write
+      (lambda (v port mode)
+        (fprintf port "(~s ~s)" (point-x v) (point-y v)))))
+  
+  (define p (make-point 1 2))
+  (printf "~a\n" p))
 
 (when (> num-failed 0)
   (error #f "test failed"))
