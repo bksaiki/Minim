@@ -338,7 +338,8 @@
          (define id (syntax-e expr))
          (unless (scope-contains? scope id)
            (printf "~a: unknown variable `~a`\n" path id)
-           (printf "  at: ~a\n" (syntax->datum expr0)))]
+           (printf "  at: ~a\n" (syntax->datum expr0))
+           (exit 1))]
         [else
          (error 'check/expr! "cannot check" expr)])))
 
