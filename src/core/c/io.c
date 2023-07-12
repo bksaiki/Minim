@@ -680,7 +680,6 @@ void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, co
                 exit(1);
                 break;
             }
-
         } else {
             putc(form[i], o);
         }

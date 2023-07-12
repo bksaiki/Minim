@@ -16,9 +16,14 @@
   
         record-type-equal-procedure
         record-type-hash-procedure
-        record-type-write-procedure
         define-record-type
-        
+
+        $make-generics-type           ;; re-exported
+        define-generics               ;; re-exported
+        generic-instance?             ;; re-exported
+        record-type-generic           ;; re-exported
+        record-type-add-generic!      ;; re-exported
+
         gen:custom-write)
 
 ;;
@@ -66,25 +71,22 @@
 ;;  Record writing
 ;;
 
-(define $default-record-write-proc ($current-record-write-procedure))
-(define $record-write-procs (make-hashtable))
-
-(define (record-type-write-procedure rtd write-proc)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-write-procedure "expected a record type descriptor" rtd))
-  (hashtable-set! $record-write-procs rtd write-proc))
-
-(define (record-write r port mode)
-  (define rtd ($record-rtd r))
-  (define write-proc (hashtable-ref $record-write-procs rtd
-                                    (lambda () $default-record-write-proc)))
-  (write-proc r port mode))
-
-($current-record-write-procedure record-write)
-
 ; Generic record writing interface
 (define-generics custom-write
                  [write-proc v port mode])
+
+(define $default-record-write-proc ($current-record-write-procedure))
+
+(define (record-write r port mode)
+  (define rtd ($record-rtd r))
+  (cond
+    [(gen:custom-write? rtd)
+     (define proc (record-type-generic rtd gen:custom-write 'write-proc))
+     (proc r port mode)]
+    [else
+     ($default-record-write-proc r port mode)]))
+     
+($current-record-write-procedure record-write)
 
 ;;
 ;;  High-level macros
@@ -123,15 +125,13 @@
        (define fields-rtd '())
        (define equal-rtd #f)
        (define hash-rtd #f)
-       (define write-rtd #f)
        (define methods-rtd (make-hashtable))
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque protocol
-                                equal+hash methods custom-write)
+           (syntax-case clause (fields parent uid sealed opaque protocol equal+hash methods)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -173,12 +173,6 @@
                 (set! clause-types (cons 'equal+hash clause-types))
                 (set! equal-rtd #'equal)
                 (set! hash-rtd #'hash))]
-             [(custom-write write)
-              (begin
-                (when (member 'custom-write clause-types)
-                  (syntax-error 'define-record-type "duplicate clause" stx clause))
-                (set! clause-types (cons 'custom-write clause-types))
-                (set! write-rtd #'write))]
              [(methods gen-id impls ...)
               (begin
                 (unless (identifier? #'gen-id)
@@ -249,13 +243,12 @@
                      [protocol* protocol-rtd]
                      [equal* equal-rtd]
                      [hash* hash-rtd]
-                     [write* write-rtd]
                      [(gen-methods ...)
                       (map
                         (lambda (gen-id)  ; TODO: weird bugs in `with-syntax`?
                           (with-syntax ([gen-id gen-id]
                                         [(gen-methods ...) (hashtable-ref methods-rtd gen-id)])
-                            #'(list gen-id (list gen-methods ...))))
+                            #'(cons gen-id (list gen-methods ...))))
                         (hashtable-keys methods-rtd))]
                      [(fields ...)
                       (map
@@ -295,21 +288,10 @@
             (begin
               (let ()
                 (define methods gen-methods)
-                (define gen-id (first methods))
-                (define fns (second methods))
-                (record-type-add-generics! name gen-id fns)
-                (for-each
-                  (lambda (method fn)
-                    (define arity (procedure-arity fn))
-                    (printf "~a ~a\n" method fn)
-                    (void))
-                  ($generics-type-methods gen-id) fns))
+                (define gen-id (car methods))
+                (define fns (cdr methods))
+                (record-type-add-generic! name gen-id fns))
               ...)
-            ; (for-each
-            ;   (lambda (id impls)
-            ;     (void))
-            ;   (list gen-ids ...)
-            ;   (list methods ...))
             (define construct
               (let ([c (record-constructor name)]
                     [p protocol*])
@@ -318,8 +300,7 @@
             (begin accs ...)
             (begin muts ...)
             (when equal* (record-type-equal-procedure name equal*))
-            (when hash* (record-type-hash-procedure name hash*))
-            (when write* (record-type-write-procedure name write*)))))]
+            (when hash* (record-type-hash-procedure name hash*)))))]
     [(_ name cls ...) 
      ; simplified form
      (if (identifier? #'name)

@@ -22,7 +22,7 @@
     (lambda (p)
       (lambda (producer)
         (p producer #f #f))))
-  (custom-write
+  (methods gen:custom-write
     (lambda (p port mode)
       (if (promise-forced? p)
           (fprintf port "#<promise:~s>" (promise-cache p))

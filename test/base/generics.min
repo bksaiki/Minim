@@ -38,6 +38,7 @@
   (define-generics empty)
   ($generics-type? gen:empty)
   (check-true (null? ($generics-type-methods gen:empty)))
+  (check-true (procedure? gen:empty?))
   (void))
 
 (let ()
@@ -45,6 +46,7 @@
                             [stream-first s]
                             [stream-next s])
   ($generics-type? gen:sequence)
+  (check-true (procedure? gen:sequence?))
   (check-equal? ($generics-type-methods gen:sequence)
                  '((stream-empty? s) (stream-first s) (stream-next s)))
   (void))
@@ -58,6 +60,7 @@
                              [at-least-1-ary a . rest]
                              [at-least-2-ary a . rest])
   ($generics-type? gen:all-types)
+  (check-true (procedure? gen:all-types?))
   (check-equal? ($generics-type-methods gen:all-types)
                 '((0ary)
                   (1ary a)
