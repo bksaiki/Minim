@@ -1,0 +1,92 @@
+;;;
+;;; Low-level record procedures
+;;;
+
+(import "pre-base.min")
+
+(export record?
+        record-rtd
+        record-constructor
+        record-predicate
+        record-accessor
+        record-mutator)
+
+(define (record-type-size rtd)
+  (vector-length (record-type-field-names rtd)))
+
+(define (record-size rtd)
+  (let loop ([rtd rtd] [size 0])
+    (let ([size (+ size (record-type-size rtd))])
+      (if (record-type-parent rtd)
+          (loop (record-type-parent rtd) size)
+          size))))
+
+(define (record-is-type? rtd r)
+  (let loop ([r-rtd ($record-rtd r)])
+    (cond
+      [(eq? rtd r-rtd) #t]
+      [(record-type-parent r-rtd) (loop (record-type-parent r-rtd))]
+      [else #f])))
+
+;;
+;;  Low-level record procedures
+;;
+
+(define (record? r)
+  (and ($record-value? r)
+       (not (record-type-opaque? ($record-rtd r)))))
+
+(define (record-rtd r)
+  (define rtd ($record-rtd r))
+  (if (record-type-opaque? rtd)
+      (error 'record-rtd "cannot inspect opaque records"
+             (format " record: ~a" r))
+      rtd))
+
+(define (record-constructor rtd)
+  (define size (record-size rtd))
+  (lambda args
+    (unless (= (length args) size)
+      (error 'arity-mismatch (format "~s constructor" rtd)
+             (format " field count: ~a" size)
+             (format " fields provided: ~a" (length args))))
+    (apply $make-record rtd args)))
+
+(define (record-predicate rtd)
+  (lambda (r) (and ($record-value? r) (record-is-type? rtd r))))
+
+(define (record-accessor rtd idx)
+  (define rtd? (record-predicate rtd))
+  (define prtd (record-type-parent rtd))
+  (define parent-size (if prtd (record-size prtd) 0))
+  (define this-size (record-type-size rtd))
+  (define idx* (+ parent-size idx))
+  (unless (number? idx)
+    (error 'record-accessor "expected a non-negative integer?" idx))
+  (unless (and (<= 0 idx) (< idx this-size))
+    (error 'record-accessor "index out of bounds: " idx))
+  (lambda (r)
+    (unless (rtd? r)
+      (error 'record-accessor "type-violation"
+             (format "expected: ~a" rtd)
+             (format "got: ~a" r)))
+    ($record-ref r idx*)))
+
+(define (record-mutator rtd idx)
+  (define rtd? (record-predicate rtd))
+  (define prtd (record-type-parent rtd))
+  (define parent-size (if prtd (record-size prtd) 0))
+  (define this-size (record-type-size rtd))
+  (define idx* (+ parent-size idx))
+  (unless (number? idx)
+    (error 'record-mutator "expected a non-negative integer?" idx))
+  (unless (and (<= 0 idx) (< idx this-size))
+    (error 'record-mutator "index out of bounds: " idx))
+  (unless (record-type-field-mutable? rtd idx)
+    (error 'record-mutator "field not mutable: " idx))
+  (lambda (r v)
+    (unless (rtd? r)
+      (error 'record-mutator "type-violation"
+             (format "expected: ~a" rtd)
+             (format "got: ~a" r)))
+    ($record-set! r idx* v)))

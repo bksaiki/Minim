@@ -1,0 +1,43 @@
+;;;
+;;; Tests for 'generics'
+;;;
+
+(import "../../src/library/base.min")
+(import "../../src/library/private/generics.min")
+
+(define num-failed 0)
+
+(define (check-eq? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] eq? failed: expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define (check-true d)
+  (unless d
+    (display "[FAIL] expected #t")
+    (display ", received ")
+    (write d)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define (check-false d)
+  (when d
+    (display "[FAIL] expected #f")
+    (display ", received ")
+    (write d)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+;; generic creation
+
+(let ()
+  (define-generics empty)
+  ($generics-type? gen:empty)
+  (void))
+
+(when (> num-failed 0)
+  (error #f "test failed"))

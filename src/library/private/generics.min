@@ -1,0 +1,88 @@
+;;;
+;;; Generics
+;;;
+
+(import "list.min" "pre-base.min" "record-utils.min")
+
+(export $make-generic-type
+        $generics-type?
+        define-generics
+        generic-instance?
+        record-type-generics)
+
+;;
+;;  Definitions
+;;
+
+(define $generics-type
+  (make-record-type-descriptor 'generics
+                               #f #f #f #f
+                               '#((immutable methods))))
+
+(define $generics-type? (record-predicate $generics-type))
+
+(define ($make-generic-type methods)
+  (define $make (record-constructor $generics-type))
+  ; TODO: validation
+
+  ($make methods))
+
+;;
+;;  Records
+;;
+
+(define $record-generics (make-hashtable))
+
+(define (record-type-generics rtd generic)
+  (unless ($generics-type? generic)
+    (error 'record-type-generics "expected a generic interface" generic))
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-generics "expected a record type descriptor" rtd))
+  (hashtable-set! $record-generics rtd
+                  (cond
+                    [(hashtable-contains? $record-generics) 
+                     (cons generic (hashtable-ref $record-generics rtd))]
+                    [else
+                     (list generic)])))
+
+(define ((generic-instance? generic) rtd)
+  (unless ($generics-type? generic)
+    (error 'generic-instance? "expected a generic interface" generic))
+  (unless (record-type-descriptor? rtd)
+    (error 'generic-instance? "expected a record type descriptor" rtd))
+  (and (hashtable-contains? $record-generics)
+       (member (hashtable-ref $record-generics rtd) generic)))
+
+;;
+;;  Syntax
+;;
+;; (define-generics <id>
+;;                  [<method-id> . <formals>]
+;;                  ...)
+;;
+;; <formals> ::= (<arg> ...)
+;;           ::= (<arg> ... . <rest-id>)
+;;           ::= <rest.id>
+;;
+
+(define-syntax (define-generics stx)
+  (syntax-case stx ()
+    [(_ id)
+     (if (identifier? #'id)
+         (let ([gen-id (symbol->string (syntax-e #'id))])
+           (with-syntax ([gen-id (string->symbol (string-append "gen:" gen-id))])
+             #'(define-values (gen-id) ($make-generic-type '()))))
+         (syntax-error 'define-generics "expected an identifier" stx #'id))]
+    [(_ id [method-id . formals] ...)
+     (syntax-error 'define-generics "unimplemented" stx)]
+    [(_ id cls ...)
+     (if (identifier? #'id)
+         (let loop ([clauses (syntax->list #'(cls ...))])
+           (unless (null? clauses)
+             (let ([clause (car clauses)])
+               (syntax-case clause ()
+                 [(method-id . _) (loop (cdr clauses))]
+                 [_ (syntax-error 'define-generics "malformed generic method" stx clause)]))))
+         (syntax-error 'define-generics "expected an identifier" stx #'id))]
+    [_ (syntax-error 'define-generics "bad syntax" stx)]))
+  
