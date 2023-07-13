@@ -615,7 +615,17 @@ static minim_object *eval_letrec_values(minim_object *expr, minim_object *env) {
     return env;
 }
 
-static minim_object *eval_closure(minim_object *proc, int argc, minim_object **args) {
+static minim_object *eval_lambda(minim_object *expr, minim_object *env) {
+    short min_arity, max_arity;
+    check_lambda(expr, &min_arity, &max_arity);
+    return make_closure(minim_cadr(expr),
+                            make_pair(begin_symbol, minim_cddr(expr)),
+                            env,
+                            min_arity,
+                            max_arity);
+}
+
+static minim_object *bind_closure_vals(minim_object *proc, int argc, minim_object **args) {
     minim_object *env, *rest, *vars;
     long i, j;
 
@@ -709,15 +719,8 @@ loop:
                        minim_car(minim_cddr(expr)));
                 goto loop;
             } else if (head == lambda_symbol) {
-                short min_arity, max_arity;
-
                 // lambda form
-                check_lambda(expr, &min_arity, &max_arity);
-                return make_closure(minim_cadr(expr),
-                                        make_pair(begin_symbol, minim_cddr(expr)),
-                                        env,
-                                        min_arity,
-                                        max_arity);
+                return eval_lambda(expr, env);
             } else if (head == begin_symbol) {
                 // begin form
                 check_begin(expr);
@@ -800,7 +803,7 @@ application:
         } else if (minim_is_closure(proc)) {
             // check arity and extend environment
             check_closure_arity(proc, argc);
-            env = eval_closure(proc, argc, irt_call_args);
+            env = bind_closure_vals(proc, argc, irt_call_args);
 
             // tail call
             clear_call_args();
