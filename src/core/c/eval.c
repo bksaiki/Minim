@@ -518,7 +518,132 @@ application:
     }
 }
 
+static void eval_define_values(minim_object *expr, minim_object *env) {
+    minim_object *result, *it;
+    minim_thread *th;
+    long var_count, idx;
+
+    var_count = list_length(minim_cadr(expr));
+    result = eval_expr(minim_car(minim_cddr(expr)), env);
+    if (minim_is_values(result)) {;
+        // multi-valued
+        th = current_thread();
+        if (var_count != values_buffer_count(th))
+            result_arity_exn(var_count, values_buffer_count(th));
+
+        idx = 0;
+        for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it)) {
+            SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
+            env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
+            ++idx;
+        }
+    } else {
+        // single-valued
+        if (var_count != 1)
+            result_arity_exn(var_count, 1);
+        SET_NAME_IF_CLOSURE(minim_car(minim_cadr(expr)), result);
+        env_define_var(env, minim_car(minim_cadr(expr)), result);
+    }
+
+    GC_REGISTER_LOCAL_ARRAY(expr);
+}
+
+static minim_object *eval_let_values(minim_object *expr, minim_object *env) {
+    minim_object *bindings, *bind, *it, *result, *env2;
+    minim_thread *th;
+    long var_count, idx;
+    
+    env2 = make_environment(env);
+    for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
+        bind = minim_car(bindings);
+        var_count = list_length(minim_car(bind));
+        result = eval_expr(minim_cadr(bind), env);
+        if (minim_is_values(result)) {
+            // multi-valued
+            th = current_thread();
+            if (var_count != values_buffer_count(th))
+                result_arity_exn(var_count, values_buffer_count(th));
+
+            idx = 0;
+            for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
+                env_define_var(env2, minim_car(it), values_buffer_ref(th, idx));
+            }
+        } else {
+            // single-valued
+            if (var_count != 1)
+                result_arity_exn(var_count, 1);
+            SET_NAME_IF_CLOSURE(minim_caar(bind), result);
+            env_define_var(env2, minim_caar(bind), result);
+        }
+    }
+
+    return env2;
+}
+
+static minim_object *eval_letrec_values(minim_object *expr, minim_object *env) {
+    minim_object *bindings, *bind, *it, *result;
+    minim_thread *th;
+    long var_count, idx;
+
+    env = make_environment(env);
+    for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
+        bind = minim_car(bindings);
+        var_count = list_length(minim_car(bind));
+        result = eval_expr(minim_cadr(bind), env);
+        if (minim_is_values(result)) {
+            // multi-valued
+            th = current_thread();
+            if (var_count != values_buffer_count(th))
+                result_arity_exn(var_count, values_buffer_count(th));
+
+            idx = 0;
+            for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
+                env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
+            }
+        } else {
+            // single-valued
+            if (var_count != 1)
+                result_arity_exn(var_count, 1);
+
+            SET_NAME_IF_CLOSURE(minim_caar(bind), result);
+            env_define_var(env, minim_caar(bind), result);
+        }
+    }
+
+    return env;
+}
+
+static minim_object *eval_closure(minim_object *proc, int argc, minim_object **args) {
+    minim_object *env, *rest, *vars;
+    long i, j;
+
+    env = make_environment(minim_closure_env(proc));
+
+    // process args
+    i = 0;
+    vars = minim_closure_args(proc);
+    while (minim_is_pair(vars)) {
+        env_define_var_no_check(env, minim_car(vars), args[i]);
+        vars = minim_cdr(vars);
+        ++i;
+    }
+
+    // optionally process rest argument
+    if (minim_is_symbol(vars)) {
+        rest = minim_null;
+        for (j = argc - 1; j >= i; --j)
+            rest = make_pair(args[j], rest);
+        env_define_var_no_check(env, vars, rest);
+    }
+
+    return env;
+}
+
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
+    minim_object *head, *proc, *result, **args;
+    long argc;
 
 loop:
 
@@ -540,99 +665,24 @@ loop:
         write_object2(stderr, expr, 0, 0);
         minim_shutdown(1);
     } else if (minim_is_pair(expr)) {
-        minim_object *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
-        minim_thread *th;
-        long var_count, idx, argc;
-
         // special forms
         head = minim_car(expr);
         if (minim_is_symbol(head)) {
             if (head == define_values_symbol) {
                 // define-values form
                 check_define_values(expr);
-                var_count = list_length(minim_cadr(expr));
-                result = eval_expr(minim_car(minim_cddr(expr)), env);
-                if (minim_is_values(result)) {;
-                    // multi-valued
-                    th = current_thread();
-                    if (var_count != values_buffer_count(th))
-                        result_arity_exn(var_count, values_buffer_count(th));
-
-                    idx = 0;
-                    for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx) {
-                        SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
-                        env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
-                    }
-                } else {
-                    // single-valued
-                    if (var_count != 1)
-                        result_arity_exn(var_count, 1);
-                    SET_NAME_IF_CLOSURE(minim_car(minim_cadr(expr)), result);
-                    env_define_var(env, minim_car(minim_cadr(expr)), result);
-                }
-
-                GC_REGISTER_LOCAL_ARRAY(expr);
+                eval_define_values(expr, env);
                 return minim_void;
             } else if (head == let_values_symbol) {
                 // let-values form
                 check_let_values(expr);
-                env2 = make_environment(env);
-                for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
-                    bind = minim_car(bindings);
-                    var_count = list_length(minim_car(bind));
-                    result = eval_expr(minim_cadr(bind), env);
-                    if (minim_is_values(result)) {
-                        // multi-valued
-                        th = current_thread();
-                        if (var_count != values_buffer_count(th))
-                            result_arity_exn(var_count, values_buffer_count(th));
-
-                        idx = 0;
-                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
-                            SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
-                            env_define_var(env2, minim_car(it), values_buffer_ref(th, idx));
-                        }
-                    } else {
-                        // single-valued
-                        if (var_count != 1)
-                            result_arity_exn(var_count, 1);
-                        SET_NAME_IF_CLOSURE(minim_caar(bind), result);
-                        env_define_var(env2, minim_caar(bind), result);
-                    }
-                }
-                
+                env = eval_let_values(expr, env);
                 expr = make_pair(begin_symbol, (minim_cddr(expr)));
-                env = env2;
                 goto loop;
             } else if (head == letrec_values_symbol) {
                 // letrec-values
                 check_let_values(expr);
-                env = make_environment(env);
-                for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
-                    bind = minim_car(bindings);
-                    var_count = list_length(minim_car(bind));
-                    result = eval_expr(minim_cadr(bind), env);
-                    if (minim_is_values(result)) {
-                        // multi-valued
-                        th = current_thread();
-                        if (var_count != values_buffer_count(th))
-                            result_arity_exn(var_count, values_buffer_count(th));
-
-                        idx = 0;
-                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
-                            SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
-                            env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
-                        }
-                    } else {
-                        // single-valued
-                        if (var_count != 1)
-                            result_arity_exn(var_count, 1);
-
-                        SET_NAME_IF_CLOSURE(minim_caar(bind), result);
-                        env_define_var(env, minim_caar(bind), result);
-                    }
-                }
-
+                env = eval_letrec_values(expr, env);
                 expr = make_pair(begin_symbol, (minim_cddr(expr)));
                 goto loop;
             } else if (head == quote_symbol) {
@@ -748,30 +798,9 @@ application:
             clear_call_args();
             return result;
         } else if (minim_is_closure(proc)) {
-            minim_object *vars, *rest;
-            int i, j;
-
             // check arity and extend environment
             check_closure_arity(proc, argc);
-            env = make_environment(minim_closure_env(proc));
-            args = irt_call_args;
-
-            // process args
-            i = 0;
-            vars = minim_closure_args(proc);
-            while (minim_is_pair(vars)) {
-                env_define_var_no_check(env, minim_car(vars), args[i]);
-                vars = minim_cdr(vars);
-                ++i;
-            }
-
-            // optionally process rest argument
-            if (minim_is_symbol(vars)) {
-                rest = minim_null;
-                for (j = argc - 1; j >= i; --j)
-                    rest = make_pair(args[j], rest);
-                env_define_var_no_check(env, vars, rest);
-            }
+            env = eval_closure(proc, argc, irt_call_args);
 
             // tail call
             clear_call_args();
