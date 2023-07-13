@@ -14,14 +14,14 @@
         record-accessor               ;; re-exported
         record-mutator                ;; re-exported
   
-        ; record-type-equal-procedure ;; TODO: reimplement
-        ; record-type-hash-procedure
+        record-type-equal-procedure
+        record-type-hash-procedure
         define-record-type
 
         $make-generics-type           ;; re-exported
         define-generics               ;; re-exported
         generic-instance?             ;; re-exported
-        record-type-generic           ;; re-exported
+        generics-accessor             ;; re-exported
         record-type-add-generic!      ;; re-exported
 
         gen:equal+hash
@@ -38,17 +38,21 @@
                  [equal-proc a b rec-equal?]
                  [hash-proc a rec-hash])
 
+(define equal-proc-accessor (generics-accessor gen:equal+hash 'equal-proc))
+(define hash-proc-accessor (generics-accessor gen:equal+hash 'hash-proc))
+
+; Fallback implementations for gen:equal+hash methods
 (define $default-record-equal-proc ($current-record-equal-procedure))
 (define $default-record-hash-proc ($current-record-hash-procedure))
 
 (define (unsafe-record-type-equal-procedure rtd)
   (if (gen:equal+hash? rtd)
-      (record-type-generic rtd gen:equal+hash 'equal-proc)
+      (equal-proc-accessor rtd)
       $default-record-equal-proc))
 
 (define (unsafe-record-type-hash-procedure rtd)
   (if (gen:equal+hash? rtd)
-      (record-type-generic rtd gen:equal+hash 'hash-proc)
+      (hash-proc-accessor rtd)
       $default-record-hash-proc))
 
 (define (record-equal? a b rec-equal?)
@@ -63,15 +67,17 @@
   (define hash-proc (unsafe-record-type-hash-procedure rtd))
   (hash-proc r rec-hash))
 
-; (define (record-type-equal-procedure rtd equal-proc)
-;   (unless (record-type-descriptor? rtd)
-;     (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
-;   (hashtable-set! $record-equal-procs rtd equal-proc))
+;; Unlike R6RS, this cannot set the equal procedure
+(define (record-type-equal-procedure rtd)
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
+  (unsafe-record-type-equal-procedure rtd))
 
-; (define (record-type-hash-procedure rtd hash-proc)
-;   (unless (record-type-descriptor? rtd)
-;     (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
-;   (hashtable-set! $record-hash-procs rtd hash-proc))
+;; Unlike R6RS, this cannot set the hash procedure
+(define (record-type-hash-procedure rtd)
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
+  (unsafe-record-type-hash-procedure rtd))
 
 ($current-record-equal-procedure record-equal?)
 ($current-record-hash-procedure record-hash)
@@ -84,11 +90,14 @@
 (define-generics custom-write
                  [write-proc v port mode])
 
+(define write-proc-accessor (generics-accessor gen:custom-write 'write-proc))
+
+; Fallback implementation for gen:custom-write method
 (define $default-record-write-proc ($current-record-write-procedure))
 
 (define (unsafe-record-write-procedure rtd)
   (if (gen:custom-write? rtd)
-      (record-type-generic rtd gen:custom-write 'write-proc)
+      (write-proc-accessor rtd)
       $default-record-write-proc))
 
 (define (record-write r port mode)

@@ -9,10 +9,10 @@
         $generics-type-methods
         $generics-type-method-names
 
+        define-generics
         generic-instance?
-        record-type-add-generic!
-        record-type-generic
-        define-generics)
+        generics-accessor
+        record-type-add-generic!)
 
 ;;
 ;;  Definitions
@@ -21,11 +21,12 @@
 (define $generics-type
   (make-record-type-descriptor 'generics
                                #f #f #f #f
-                               '#((immutable methods))))
+                               '#((immutable name) (immutable methods))))
 
 (define $generics-type? (record-predicate $generics-type))
 (define $make-generics-type (record-constructor $generics-type))
-(define $generics-type-methods (record-accessor $generics-type 0))
+(define $generics-type-name (record-accessor $generics-type 0))
+(define $generics-type-methods (record-accessor $generics-type 1))
 
 (define ($generics-type-method-names generics)
   (unless ($generics-type? generics)
@@ -80,25 +81,28 @@
                     [else
                      (list (cons generic impls))])))
 
-(define (record-type-generic rtd generic name)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-generic "expected a record type descriptor" rtd))  
+(define (generics-accessor generic name)
   (unless ($generics-type? generic)
-    (error 'record-type-generic "expected a generics interface" generic))
+    (error 'generics-accessor "expected a generics interface" generic))
   (unless (symbol? name)
-    (error 'record-type-generic "expected a generics interface" generic))
-  (define rtd-generics (hashtable-ref $record-generics rtd '()))
-  (define maybe-entry (assoc generic rtd-generics))
-  (unless maybe-entry
-    (error 'record-type-generic
-           "generic not associated with record type"
-           generic rtd))
+    (error 'generics-accessor "expected a generics interface" generic))
   (define idx (index-of name ($generics-type-method-names generic)))
   (unless idx
-    (error 'record-type-generic
-           "method name not associated with record type"
-           name rtd))
-  (list-ref (cdr maybe-entry) idx))
+    (error 'generics-accessor
+           "method name not associated with generics interface"
+           name))
+  (lambda (rtd)
+    (unless (record-type-descriptor? rtd)
+       (error 'generics-accessor
+              "expected a record type descriptor"
+              rtd))
+    (define rtd-generics (hashtable-ref $record-generics rtd '()))
+    (define maybe-entry (assoc generic rtd-generics))
+    (if maybe-entry
+        (list-ref (cdr maybe-entry) idx)
+        (error 'generics-accessor
+               "generic not associated with record type"
+               ($generics-type-name generic) rtd))))
 
 (define (generic-instance? generic)
   (unless ($generics-type? generic)
@@ -158,8 +162,9 @@
                      [gen-id? (string->symbol (string-append "gen:" gen-id "?"))]
                      [method-table (reverse method-table)])
          #'(define-values (gen-id gen-id?)
-             (let-values ([(:gen) ($make-generics-type 'method-table)])
+             (let-values ([(:gen) ($make-generics-type 'id 'method-table)])
                (values :gen (generic-instance? :gen))))))]
+
     [(_ id cls ...)
      (if (identifier? #'id)
          (let loop ([clauses (syntax->list #'(cls ...))])
