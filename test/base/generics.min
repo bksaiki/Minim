@@ -78,10 +78,13 @@
     (fields x y)
     (methods gen:custom-write
       (lambda (v port mode)
-        (fprintf port "(~s ~s)" (point-x v) (point-y v)))))
+        (fprintf port "(point ~s ~s)" (point-x v) (point-y v)))))
   
   (define p (make-point 1 2))
-  (printf "~a\n" p))
+  ; (printf "~a\n" p))
+  ; TODO: test print to string
+
+  (void))
 
 (when (> num-failed 0)
   (error #f "test failed"))
