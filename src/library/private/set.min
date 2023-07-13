@@ -81,7 +81,7 @@
 (define (set-add! s v)
   (unless (set? s)
     (error 'set-add! "expected a set" s))
-  (hashtable-set! (set-store s) v '()))
+  (hashtable-set! (set-store s) v #f))
 
 (define (set-remove! s v)
   (unless (set? s)
