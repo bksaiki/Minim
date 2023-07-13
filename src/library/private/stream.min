@@ -17,7 +17,15 @@
         make-list-stream
         list-stream?
         make-vector-stream
-        vector-stream?)
+        vector-stream?
+        make-string-stream
+        string-stream?
+        make-integer-stream
+        integer-stream?
+        make-hashtable-stream
+        hashtable-stream?
+        make-port-stream
+        port-stream?)
 
 ;;
 ;;  Generic function interface
@@ -80,6 +88,12 @@
   (opaque #t)
   (sealed #t)
   (fields v)
+  (protocol
+    (lambda (p)
+      (lambda (l)
+        (unless (list? l)
+          (error 'make-list-stream "expected a list" l))
+        (p l))))
   (methods gen:stream
     (lambda (s) (null? (list-stream-v s)))
     (lambda (s) (car (list-stream-v s)))
@@ -92,10 +106,94 @@
   (protocol
     (lambda (p)
       (lambda (v)
+        (unless (vector? v)
+          (error 'make-vector-stream "expected a vector" v))
         (p v (vector-length v) 0))))
   (methods gen:stream
     (lambda (s) (= (vector-stream-len s) (vector-stream-i s)))
     (lambda (s) (vector-ref (vector-stream-v s)))
-    (lambda (s) (make-list-stream (vector-stream-v s)
-                                  (vector-stream-len s)
-                                  (+ (vector-stream-i s) 1)))))
+    (lambda (s) 
+      (define c (record-constructor vector-stream))
+      (c (vector-stream-v s)
+         (vector-stream-len s)
+         (+ (vector-stream-i s) 1)))))
+
+(define-record-type string-stream
+  (opaque #t)
+  (sealed #t)
+  (fields s len i)
+  (protocol
+    (lambda (p)
+      (lambda (s)
+        (unless (string? s)
+          (error 'make-string-stream "expected a vector" s))
+        (p s (string-length s) 0))))
+  (methods gen:stream
+    (lambda (s) (= (string-stream-len s) (string-stream-i s)))
+    (lambda (s) (string-ref (string-stream-s s)))
+    (lambda (s)
+      (define c (record-constructor string-stream))
+      (c (string-stream-s s)
+         (string-stream-len s)
+         (+ (string-stream-i s) 1)))))
+
+(define-record-type integer-stream
+  (opaque #t)
+  (sealed #t)
+  (fields start end)
+  (protocol
+    (lambda (p)
+      (case-lambda
+        [(end)
+         (make-integer-stream 0 end)]
+        [(start end)
+         (unless (and (integer? start) (>= start 0))
+           (error 'make-integer-stream "expected an exact non-negative integer" start))
+         (unless (and (integer? end) (>= end 0))
+           (error 'make-integer-stream "expected an exact non-negative integer" end))
+         (p start end)])))
+  (methods gen:stream
+    (lambda (s) (>= (integer-stream-start s) (integer-stream-end s)))
+    (lambda (s) (integer-stream-start s))
+    (lambda (s) (make-integer-stream (+ (integer-stream-start s) 1)
+                                     (integer-stream-end s)))))
+
+(define-record-type hashtable-stream
+  (opaque #t)
+  (sealed #t)
+  (fields ks ht)
+  (protocol
+    (lambda (p)
+      (lambda (ht)
+        (unless (hashtable? ht)
+          (error 'make-hashtable-stream "expected a hashtable" ht))
+        (p (hashtable-keys ht) ht))))
+  (methods gen:stream
+    (lambda (s)
+      (null? (hashtable-stream-ks s)))
+    (lambda (s)
+      (define ks (hashtable-stream-ks s))
+      (define ht (hashtable-stream-ht s))
+      (cons (car ks) (hashtable-ref ht (car ks))))
+    (lambda (s)
+      (define c (record-constructor hashtable-stream))
+      (c (cdr (hashtable-stream-ks s))
+         (hashtable-stream-ht s)))))
+
+(define-record-type port-stream
+  (opaque #t)
+  (sealed #t)
+  (fields port)
+  (protocol
+    (lambda (p)
+      (lambda (port)
+        (unless (input-port? port)
+          (error 'make-port-stream "expected an input port" port))
+        (p port))))
+  (methods gen:stream
+    (lambda (s) (char-ready? (port-stream-port s)))
+    (lambda (s) (peek-char (port-stream-port s)))
+    (lambda (s)
+      (define port (port-stream-port s))
+      (read-port port)
+      (make-port-stream port))))
