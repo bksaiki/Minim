@@ -451,6 +451,7 @@ void push_saved_arg(minim_object *arg);
 void push_call_arg(minim_object *arg);
 void prepare_call_args(long count);
 void clear_call_args();
+long stash_call_args();
 
 void assert_no_call_args();
 
@@ -677,6 +678,7 @@ DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
 DEFINE_PRIM_PROC(identity);
+DEFINE_PRIM_PROC(procedure_arity);
 // pairs
 DEFINE_PRIM_PROC(is_pair);
 DEFINE_PRIM_PROC(cons);

@@ -89,7 +89,7 @@ minim_object *copy_list(minim_object *xs) {
 minim_object *for_each(minim_object *proc, int argc, minim_object **args, minim_object *env) {
     minim_object **lsts;
     long len0, len;
-    int i;
+    int stashc, i;
 
     if (!minim_is_proc(proc))
         bad_type_exn("for-each", "procedure?", proc);
@@ -115,7 +115,7 @@ minim_object *for_each(minim_object *proc, int argc, minim_object **args, minim_
     lsts = GC_alloc(argc * sizeof(minim_object *));
     memcpy(lsts, args, argc * sizeof(minim_object *));
 
-    assert_no_call_args();
+    stashc = stash_call_args();
     while (!minim_is_null(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
@@ -126,6 +126,7 @@ minim_object *for_each(minim_object *proc, int argc, minim_object **args, minim_
         call_with_args(proc, env);
     }
 
+    prepare_call_args(stashc);
     return minim_void;
 }
 
@@ -133,7 +134,7 @@ minim_object *map_list(minim_object *proc, int argc, minim_object **args, minim_
     minim_object **lsts, *res, *head, *tail;
     minim_thread *th;
     long len0, len;
-    int i;
+    int stashc, i;
 
     if (!minim_is_proc(proc))
         bad_type_exn("map", "procedure?", proc);
@@ -160,7 +161,7 @@ minim_object *map_list(minim_object *proc, int argc, minim_object **args, minim_
     memcpy(lsts, args, argc * sizeof(minim_object *));
 
     head = NULL;
-    assert_no_call_args();
+    stashc = stash_call_args();
     while (!minim_is_null(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
@@ -188,13 +189,14 @@ minim_object *map_list(minim_object *proc, int argc, minim_object **args, minim_
         }
     }
 
+    prepare_call_args(stashc);
     return (head ? head : minim_null);
 }
 
 minim_object *andmap(minim_object *proc, int argc, minim_object **args, minim_object *env) {
     minim_object **lsts;
     long len0, len;
-    int i;
+    int stashc, i;
 
     if (!minim_is_proc(proc))
         bad_type_exn("andmap", "procedure?", proc);
@@ -220,7 +222,7 @@ minim_object *andmap(minim_object *proc, int argc, minim_object **args, minim_ob
     lsts = GC_alloc(argc * sizeof(minim_object *));
     memcpy(lsts, args, argc * sizeof(minim_object *));
 
-    assert_no_call_args();
+    stashc = stash_call_args();
     while (!minim_is_null(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
@@ -228,17 +230,20 @@ minim_object *andmap(minim_object *proc, int argc, minim_object **args, minim_ob
         }
 
         // only check for false (early exit)
-        if (minim_is_false(call_with_args(proc, env)))
+        if (minim_is_false(call_with_args(proc, env))) {
+            prepare_call_args(stashc);
             return minim_false;
+        }
     }
 
+    prepare_call_args(stashc);
     return minim_true;
 }
 
 minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_object *env) {
     minim_object **lsts;
     long len0, len;
-    int i;
+    int stashc, i;
 
     if (!minim_is_proc(proc))
         bad_type_exn("ormap", "procedure?", proc);
@@ -264,7 +269,7 @@ minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_obj
     lsts = GC_alloc(argc * sizeof(minim_object *));
     memcpy(lsts, args, argc * sizeof(minim_object *));
 
-    assert_no_call_args();
+    stashc = stash_call_args();
     while (!minim_is_null(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
@@ -272,10 +277,13 @@ minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_obj
         }
 
         // only check for false (early exit)
-        if (!minim_is_false(call_with_args(proc, env)))
+        if (!minim_is_false(call_with_args(proc, env))) {
+            prepare_call_args(stashc);
             return minim_true;
+        }
     }
 
+    prepare_call_args(stashc);
     return minim_false;
 }
 

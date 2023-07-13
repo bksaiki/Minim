@@ -2,157 +2,109 @@
 ;;; Records
 ;;;
 
-(import "pre-base.min" "list.min")
-(export record?
-        record-rtd
-        record-constructor
-        record-predicate
-        record-accessor
-        record-mutator
+(import "generics.min"
+        "pre-base.min"
+        "list.min"
+        "record-utils.min")
+
+(export record?                       ;; re-exported
+        record-rtd                    ;; re-exported
+        record-constructor            ;; re-exported
+        record-predicate              ;; re-exported
+        record-accessor               ;; re-exported
+        record-mutator                ;; re-exported
+  
         record-type-equal-procedure
         record-type-hash-procedure
-        record-type-write-procedure
-        define-record-type)
+        define-record-type
 
-(define (record-type-size rtd)
-  (vector-length (record-type-field-names rtd)))
+        $make-generics-type           ;; re-exported
+        define-generics               ;; re-exported
+        generic-instance?             ;; re-exported
+        generics-accessor             ;; re-exported
+        record-type-add-generic!      ;; re-exported
 
-(define (record-size rtd)
-  (let loop ([rtd rtd] [size 0])
-    (let ([size (+ size (record-type-size rtd))])
-      (if (record-type-parent rtd)
-          (loop (record-type-parent rtd) size)
-          size))))
-
-(define (record-is-type? rtd r)
-  (let loop ([r-rtd ($record-rtd r)])
-    (cond
-      [(eq? rtd r-rtd) #t]
-      [(record-type-parent r-rtd) (loop (record-type-parent r-rtd))]
-      [else #f])))
+        gen:equal+hash
+        gen:equal+hash?
+        gen:custom-write
+        gen:custom-write?)
 
 ;;
-;;  Low-level record procedures
+;;  Record equal? and hashing
 ;;
 
-(define (record? r)
-  (and ($record-value? r)
-       (not (record-type-opaque? ($record-rtd r)))))
+; Generic interface for comparing and hashing records
+(define-generics equal+hash
+                 [equal-proc a b rec-equal?]
+                 [hash-proc a rec-hash])
 
-(define (record-rtd r)
-  (define rtd ($record-rtd r))
-  (if (record-type-opaque? rtd)
-      (error 'record-rtd "cannot inspect opaque records"
-             (format " record: ~a" r))
-      rtd))
+(define equal-proc-accessor (generics-accessor gen:equal+hash 'equal-proc))
+(define hash-proc-accessor (generics-accessor gen:equal+hash 'hash-proc))
 
-(define (record-constructor rtd)
-  (define size (record-size rtd))
-  (lambda args
-    (unless (= (length args) size)
-      (error 'arity-mismatch (format "~s constructor" rtd)
-             (format " field count: ~a" size)
-             (format " fields provided: ~a" (length args))))
-    (apply $make-record rtd args)))
-
-(define (record-predicate rtd)
-  (lambda (r) (and ($record-value? r) (record-is-type? rtd r))))
-
-(define (record-accessor rtd idx)
-  (define rtd? (record-predicate rtd))
-  (define prtd (record-type-parent rtd))
-  (define parent-size (if prtd (record-size prtd) 0))
-  (define this-size (record-type-size rtd))
-  (define idx* (+ parent-size idx))
-  (unless (number? idx)
-    (error 'record-accessor "expected a non-negative integer?" idx))
-  (unless (and (<= 0 idx) (< idx this-size))
-    (error 'record-accessor "index out of bounds: " idx))
-  (lambda (r)
-    (unless (rtd? r)
-      (error 'record-accessor "type-violation"
-             (format "expected: ~a" rtd)
-             (format "got: ~a" r)))
-    ($record-ref r idx*)))
-
-(define (record-mutator rtd idx)
-  (define rtd? (record-predicate rtd))
-  (define prtd (record-type-parent rtd))
-  (define parent-size (if prtd (record-size prtd) 0))
-  (define this-size (record-type-size rtd))
-  (define idx* (+ parent-size idx))
-  (unless (number? idx)
-    (error 'record-mutator "expected a non-negative integer?" idx))
-  (unless (and (<= 0 idx) (< idx this-size))
-    (error 'record-mutator "index out of bounds: " idx))
-  (unless (record-type-field-mutable? rtd idx)
-    (error 'record-mutator "field not mutable: " idx))
-  (lambda (r v)
-    (unless (rtd? r)
-      (error 'record-mutator "type-violation"
-             (format "expected: ~a" rtd)
-             (format "got: ~a" r)))
-    ($record-set! r idx* v)))
-
-;;
-;;  Record equivalence
-;;
-
+; Fallback implementations for gen:equal+hash methods
 (define $default-record-equal-proc ($current-record-equal-procedure))
-(define $record-equal-procs (make-hashtable))
+(define $default-record-hash-proc ($current-record-hash-procedure))
 
-(define (record-type-equal-procedure rtd equal-proc)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
-  (hashtable-set! $record-equal-procs rtd equal-proc))
+(define (unsafe-record-type-equal-procedure rtd)
+  (if (gen:equal+hash? rtd)
+      (equal-proc-accessor rtd)
+      $default-record-equal-proc))
+
+(define (unsafe-record-type-hash-procedure rtd)
+  (if (gen:equal+hash? rtd)
+      (hash-proc-accessor rtd)
+      $default-record-hash-proc))
 
 (define (record-equal? a b rec-equal?)
   (define a-rtd ($record-rtd a))
   (define b-rtd ($record-rtd b))
-  (define eq-proc (hashtable-ref $record-equal-procs a-rtd
-                                 (lambda () $default-record-equal-proc)))
-  (and (eq? a-rtd b-rtd) (eq-proc a b rec-equal?)))
-
-($current-record-equal-procedure record-equal?)
-
-;;
-;;  Record hashing
-;;
-
-(define $default-record-hash-proc ($current-record-hash-procedure))
-(define $record-hash-procs (make-hashtable))
-
-(define (record-type-hash-procedure rtd hash-proc)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
-  (hashtable-set! $record-hash-procs rtd hash-proc))
+  (and (eq? a-rtd b-rtd)
+       (let ([equal-proc (unsafe-record-type-equal-procedure a-rtd)])
+         (equal-proc a b rec-equal?))))
 
 (define (record-hash r rec-hash)
   (define rtd ($record-rtd r))
-  (define hash-proc (hashtable-ref $record-hash-procs rtd
-                                   (lambda () $default-record-hash-proc)))
+  (define hash-proc (unsafe-record-type-hash-procedure rtd))
   (hash-proc r rec-hash))
 
+;; Unlike R6RS, this cannot set the equal procedure
+(define (record-type-equal-procedure rtd)
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
+  (unsafe-record-type-equal-procedure rtd))
+
+;; Unlike R6RS, this cannot set the hash procedure
+(define (record-type-hash-procedure rtd)
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
+  (unsafe-record-type-hash-procedure rtd))
+
+($current-record-equal-procedure record-equal?)
 ($current-record-hash-procedure record-hash)
 
 ;;
 ;;  Record writing
 ;;
 
-(define $default-record-write-proc ($current-record-write-procedure))
-(define $record-write-procs (make-hashtable))
+; Generic interface for writing records
+(define-generics custom-write
+                 [write-proc v port mode])
 
-(define (record-type-write-procedure rtd write-proc)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-write-procedure "expected a record type descriptor" rtd))
-  (hashtable-set! $record-write-procs rtd write-proc))
+(define write-proc-accessor (generics-accessor gen:custom-write 'write-proc))
+
+; Fallback implementation for gen:custom-write method
+(define $default-record-write-proc ($current-record-write-procedure))
+
+(define (unsafe-record-write-procedure rtd)
+  (if (gen:custom-write? rtd)
+      (write-proc-accessor rtd)
+      $default-record-write-proc))
 
 (define (record-write r port mode)
   (define rtd ($record-rtd r))
-  (define write-proc (hashtable-ref $record-write-procs rtd
-                                    (lambda () $default-record-write-proc)))
+  (define write-proc (unsafe-record-write-procedure rtd))
   (write-proc r port mode))
-
+     
 ($current-record-write-procedure record-write)
 
 ;;
@@ -190,16 +142,13 @@
        (define opaque?-rtd #f)
        (define protocol-rtd #f)
        (define fields-rtd '())
-       (define equal-rtd #f)
-       (define hash-rtd #f)
-       (define write-rtd #f)
+       (define methods-rtd (make-hashtable))
 
        (define rname (syntax->datum #'name))
        (let loop ([clauses (syntax->list #'(cls ...))])
          (unless (null? clauses)
            (define clause (car clauses))
-           (syntax-case clause (fields parent uid sealed opaque
-                                protocol equal+hash custom-write)
+           (syntax-case clause (fields parent uid sealed opaque protocol methods)
              [(parent prtd)
               (begin
                 (when (member 'parent clause-types)
@@ -234,19 +183,13 @@
                   (syntax-error 'define-record-type "duplicate clause" stx clause))
                 (set! clause-types (cons 'protocol clause-types))
                 (set! protocol-rtd #'proc))]
-             [(equal+hash equal hash)
+             [(methods gen-id impls ...)
               (begin
-                (when (member 'equal+hash clause-types)
-                  (syntax-error 'define-record-type "duplicate clause" stx clause))
-                (set! clause-types (cons 'equal+hash clause-types))
-                (set! equal-rtd #'equal)
-                (set! hash-rtd #'hash))]
-             [(custom-write write)
-              (begin
-                (when (member 'custom-write clause-types)
-                  (syntax-error 'define-record-type "duplicate clause" stx clause))
-                (set! clause-types (cons 'custom-write clause-types))
-                (set! write-rtd #'write))]
+                (unless (identifier? #'gen-id)
+                  (syntax-error 'define-record-type "expected identifier" stx #'gen-id))
+                (when (hashtable-contains? methods-rtd (syntax-e #'gen-id))
+                  (syntax-error 'define-record-type "duplicate generics" stx #'gen-id))
+                (hashtable-set! methods-rtd (syntax-e #'gen-id) (syntax->list #'(impls ...))))]
              [(fields spec ...)
               (begin
                 (when (member 'fields clause-types)
@@ -308,9 +251,13 @@
                      [sealed?* sealed?-rtd]
                      [opaque?* opaque?-rtd]
                      [protocol* protocol-rtd]
-                     [equal* equal-rtd]
-                     [hash* hash-rtd]
-                     [write* write-rtd]
+                     [(gen-methods ...)
+                      (map
+                        (lambda (gen-id)  ; TODO: weird bugs in `with-syntax`?
+                          (with-syntax ([gen-id gen-id]
+                                        [(gen-methods ...) (hashtable-ref methods-rtd gen-id)])
+                            #'(cons gen-id (list gen-methods ...))))
+                        (hashtable-keys methods-rtd))]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -346,16 +293,20 @@
                            (format "parent type: ~a" p))
                     (make-record-type-descriptor 'name p
                       uid* sealed?* opaque?* '#(fields ...)))))
+            (begin
+              (let ()
+                (define methods gen-methods)
+                (define gen-id (car methods))
+                (define fns (cdr methods))
+                (record-type-add-generic! name gen-id fns))
+              ...)
             (define construct
               (let ([c (record-constructor name)]
                     [p protocol*])
                 (if p (p c) c)))
             (define predicate (record-predicate name))
             (begin accs ...)
-            (begin muts ...)
-            (when equal* (record-type-equal-procedure name equal*))
-            (when hash* (record-type-hash-procedure name hash*))
-            (when write* (record-type-write-procedure name write*)))))]
+            (begin muts ...))))]
     [(_ name cls ...) 
      ; simplified form
      (if (identifier? #'name)

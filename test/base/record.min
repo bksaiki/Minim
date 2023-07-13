@@ -242,7 +242,7 @@
 (let ()
   (define-record-type foo
     (fields a)
-    (equal+hash
+    (methods gen:equal+hash
       (lambda (a b rec-equal?)
         (rec-equal? (foo-a a) (foo-a b)))
       (lambda (a rec-hash)
@@ -260,7 +260,7 @@
 
   (define-record-type bar
     (fields a b)
-    (equal+hash
+    (methods gen:equal+hash
       (lambda (a b rec-equal?)
         (and (rec-equal? (bar-a a) (bar-a b))
              (rec-equal? (bar-b a) (bar-b b))))

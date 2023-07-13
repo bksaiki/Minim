@@ -188,6 +188,8 @@ void populate_env(minim_object *env) {
     add_procedure("environment-variable-value", environment_variable_value_proc, 2, 3);
     add_procedure("environment-set-variable-value!", environment_set_variable_value_proc, 3, 3);
 
+    add_procedure("procedure-arity", procedure_arity_proc, 1, 1);
+
     add_procedure("eval", eval_proc, 1, 2);
     add_procedure("apply", apply_proc, 2, ARG_MAX);
     add_procedure("identity", identity_proc, 1, 1);

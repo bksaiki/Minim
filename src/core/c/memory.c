@@ -61,7 +61,7 @@ static minim_object *call_compiled_x86_64(entry_proc fn, minim_object *env) {
 
     __asm__ (
         "movq %1, %%r14\n\t"
-        "call %2\n\t"
+        "call *%2\n\t"
         "mov %0, %%rax\n\t"
         : "=r" (res)
         : "r" (env), "r" (fn)

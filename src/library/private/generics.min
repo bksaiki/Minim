@@ -1,0 +1,178 @@
+;;;
+;;; Generics
+;;;
+
+(import "list.min" "pre-base.min" "record-utils.min")
+
+(export $make-generics-type
+        $generics-type?
+        $generics-type-methods
+        $generics-type-method-names
+
+        define-generics
+        generic-instance?
+        generics-accessor
+        record-type-add-generic!)
+
+;;
+;;  Definitions
+;;
+
+(define $generics-type
+  (make-record-type-descriptor 'generics
+                               #f #f #f #f
+                               '#((immutable name) (immutable methods))))
+
+(define $generics-type? (record-predicate $generics-type))
+(define $make-generics-type (record-constructor $generics-type))
+(define $generics-type-name (record-accessor $generics-type 0))
+(define $generics-type-methods (record-accessor $generics-type 1))
+
+(define ($generics-type-method-names generics)
+  (unless ($generics-type? generics)
+    (error '$generics-type-method-names "expected a generics interface" generics))
+  (map car ($generics-type-methods generics)))
+
+;; Records
+
+(define $record-generics (make-hashtable))
+
+(define (record-type-add-generic! rtd generic impls)
+  ;; validate argument types
+  (unless ($generics-type? generic)
+    (error 'record-type-add-generics! "expected a generics interface" generic))
+  (unless (record-type-descriptor? rtd)
+    (error 'record-type-add-generics! "expected a record type descriptor" rtd))
+  (unless (andmap procedure? impls)
+    (error 'record-type-add-generics! "expected procedures" impls))
+  
+  ;; validate number of methods
+  (define names ($generics-type-method-names generic))
+  (unless (= (length names) (length impls))
+    (error 'record-type-add-generics!
+           "number of procedures does not match interface"
+           (format "expected: ~a" (length names))
+           (format "got: ~a" (length impls))))
+
+  ;; validate arity
+  (for-each
+    (lambda (entry impl)
+      (define id (car entry))
+      (define formals (cdr entry))
+      (define expected-arity
+        (let loop ([formals formals] [i 0])
+          (cond [(null? formals) i]
+                [(symbol? formals) (cons i #f)]
+                [else (loop (cdr formals) (+ i 1))])))
+
+      (define arity (procedure-arity impl))
+      (unless (equal? arity expected-arity)
+        (error 'record-type-add-generics!
+               "method implementation does not match formals"
+               (format "method definition: ~a ~a" id formals)
+               (format "actual arity: ~a" arity))))
+    ($generics-type-methods generic) impls)
+  
+  ;; update generics metadata
+  (hashtable-set! $record-generics rtd
+                  (cond
+                    [(hashtable-contains? $record-generics rtd) 
+                     (cons (cons generic impls) (hashtable-ref $record-generics rtd))]
+                    [else
+                     (list (cons generic impls))])))
+
+(define (generics-accessor generic name)
+  (unless ($generics-type? generic)
+    (error 'generics-accessor "expected a generics interface" generic))
+  (unless (symbol? name)
+    (error 'generics-accessor "expected a generics interface" generic))
+  (define idx (index-of name ($generics-type-method-names generic)))
+  (unless idx
+    (error 'generics-accessor
+           "method name not associated with generics interface"
+           name))
+  (lambda (rtd)
+    (unless (record-type-descriptor? rtd)
+       (error 'generics-accessor
+              "expected a record type descriptor"
+              rtd))
+    (define rtd-generics (hashtable-ref $record-generics rtd '()))
+    (define maybe-entry (assoc generic rtd-generics))
+    (if maybe-entry
+        (list-ref (cdr maybe-entry) idx)
+        (error 'generics-accessor
+               "generic not associated with record type"
+               ($generics-type-name generic) rtd))))
+
+(define (generic-instance? generic)
+  (unless ($generics-type? generic)
+    (error 'generic-instance? "expected a generics interface" generic))
+  (lambda (rtd)
+    (and (record-type-descriptor? rtd)
+         (let ([generics (hashtable-ref $record-generics rtd #f)])
+           (and generics (assoc generic generics))))))
+
+;;
+;;  Syntax
+;;
+;; (define-generics <id>
+;;                  [<method-id> . <formals>]
+;;                  ...)
+;;
+;; <formals> ::= (<arg> ...)
+;;           ::= (<arg> ... . <rest-id>)
+;;           ::= <rest-id>
+;;
+
+(define-syntax (define-generics stx)
+  (syntax-case stx ()
+    [(_ id [method-id . formals] ...)
+     (begin
+       (unless (identifier? #'id)
+         (syntax-error 'define-generics "expected an identifier" stx #'id))
+       (define method-table (list))
+       (define gen-id (symbol->string (syntax-e #'id)))
+
+       (let loop ([method-ids (syntax->list #'(method-id ...))]
+                  [formals* (syntax->list #'(formals ...))])
+         (unless (null? method-ids)
+           (define mid (car method-ids))
+           (unless (identifier? mid)
+             (syntax-error 'define-generics "expected an identifier" stx mid))
+
+           (define args (car formals*))
+           (let loop ([args (syntax-e args)])
+             (unless (or (null? args)
+                         (symbol? args)
+                         (identifier? args))
+               (unless (pair? args)
+                 (syntax-error 'define-generics "expected an identifier"
+                               stx (datum->syntax args)))
+               (define arg (car args))
+               (unless (identifier? arg)
+                 (syntax-error 'define-generics "expected an identifier"
+                               stx (datum->syntax arg)))
+               (loop (cdr args))))
+           
+           (define entry (cons (syntax-e mid) (syntax->datum args)))
+           (set! method-table (cons entry method-table))
+           (loop (cdr method-ids) (cdr formals*))))
+  
+       (with-syntax ([gen-id (string->symbol (string-append "gen:" gen-id))]
+                     [gen-id? (string->symbol (string-append "gen:" gen-id "?"))]
+                     [method-table (reverse method-table)])
+         #'(define-values (gen-id gen-id?)
+             (let-values ([(:gen) ($make-generics-type 'id 'method-table)])
+               (values :gen (generic-instance? :gen))))))]
+
+    [(_ id cls ...)
+     (if (identifier? #'id)
+         (let loop ([clauses (syntax->list #'(cls ...))])
+           (unless (null? clauses)
+             (let ([clause (car clauses)])
+               (syntax-case clause ()
+                 [(method-id . _) (loop (cdr clauses))]
+                 [_ (syntax-error 'define-generics "malformed generic method" stx clause)]))))
+         (syntax-error 'define-generics "expected an identifier" stx #'id))]
+    [_ (syntax-error 'define-generics "bad syntax" stx)]))
+  

@@ -12,6 +12,8 @@
 (define boot-info
   '(("private/list.min")
     ("private/path.min")
+    ("private/record-utils.min")
+    ("private/generics.min")
     ("private/record.min")
     ("private/set.min")
     ("private/string.min")

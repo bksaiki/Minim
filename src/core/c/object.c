@@ -56,7 +56,8 @@ int minim_is_eq(minim_object *a, minim_object *b) {
 
 int minim_is_equal(minim_object *a, minim_object *b) {
     minim_thread *th;
-    long i;
+    long stashc, i;
+    int res;
 
     if (minim_is_eq(a, b))
         return 1;
@@ -106,10 +107,15 @@ int minim_is_equal(minim_object *a, minim_object *b) {
         if (is_record_value(a) && is_record_value(b)) {
             // Unsafe code to follow
             th = current_thread();
+            stashc = stash_call_args();
+
             push_call_arg(a);
             push_call_arg(b);
             push_call_arg(env_lookup_var(global_env(th), intern("equal?")));
-            return !minim_is_false(call_with_args(record_equal_proc(th), global_env(th)));
+            res = !minim_is_false(call_with_args(record_equal_proc(th), global_env(th)));
+
+            prepare_call_args(stashc);
+            return res;
         } else {
             return minim_is_eq(a, b);
         }

@@ -434,7 +434,7 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
     minim_object *it;
     minim_thread *th;
     char *str;
-    long i;
+    long stashc, i;
 
     switch (o->type) {
     case MINIM_NULL_TYPE:
@@ -463,10 +463,14 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
         } else {
             // record value
             th = current_thread();
+            stashc = stash_call_args();
+
             push_call_arg(o);
             push_call_arg(make_output_port(out));   // TODO: problematic
             push_call_arg(make_pair(make_fixnum(quote), make_fixnum(display)));
             call_with_args(record_write_proc(th), global_env(th));
+
+            prepare_call_args(stashc);
         }
         break;
     case MINIM_SYMBOL_TYPE:
@@ -680,7 +684,6 @@ void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, co
                 exit(1);
                 break;
             }
-
         } else {
             putc(form[i], o);
         }
