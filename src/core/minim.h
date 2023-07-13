@@ -451,6 +451,7 @@ void push_saved_arg(minim_object *arg);
 void push_call_arg(minim_object *arg);
 void prepare_call_args(long count);
 void clear_call_args();
+long stash_call_args();
 
 void assert_no_call_args();
 

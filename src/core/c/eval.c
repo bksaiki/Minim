@@ -32,6 +32,12 @@ void assert_no_call_args() {
     }
 }
 
+void push_saved_arg(minim_object *arg) {
+    if (irt_saved_args_count >= irt_saved_args_size)
+        resize_saved_args(irt_saved_args_count + 2);
+    irt_saved_args[irt_saved_args_count++] = arg;
+}
+
 void push_call_arg(minim_object *arg) {
     if (irt_call_args_count >= irt_call_args_size)
         resize_call_args(irt_call_args_count + 1);
@@ -39,20 +45,15 @@ void push_call_arg(minim_object *arg) {
     irt_call_args[irt_call_args_count] = NULL;
 }
 
-void push_saved_arg(minim_object *arg) {
-    if (irt_saved_args_count >= irt_saved_args_size)
-        resize_saved_args(irt_saved_args_count + 2);
-    irt_saved_args[irt_saved_args_count++] = arg;
-}
-
-void clear_call_args() {
-    irt_call_args_count = 0;
-}
-
 void prepare_call_args(long count) {
     if (count > irt_saved_args_count) {
         fprintf(stderr, "prepare_call_args(): trying to restore %ld values, only found %ld\n",
                         count, irt_saved_args_count);
+        minim_shutdown(1);
+    }
+
+    if (irt_call_args_count > 0) {
+        fprintf(stderr, "prepare_call_args(): already prepared, found %ld arguments\n", irt_call_args_count);
         minim_shutdown(1);
     }
 
@@ -63,6 +64,21 @@ void prepare_call_args(long count) {
     irt_call_args[count] = NULL;
     irt_call_args_count = count;
     irt_saved_args_count -= count;
+}
+
+long stash_call_args() {
+    long stash_count, i;
+    
+    stash_count = irt_call_args_count;
+    for (i = 0; i < stash_count; i++)
+        push_saved_arg(irt_call_args[i]);
+
+    irt_call_args_count = 0;
+    return stash_count;
+}
+
+void clear_call_args() {
+    irt_call_args_count = 0;
 }
 
 //
@@ -320,8 +336,6 @@ static long apply_args() {
     // check if last argument is a list
     // safe since call_args >= 2
     lst = irt_call_args[irt_call_args_count - 1];
-    if (!is_list(lst))
-        bad_type_exn("apply", "list?", lst);
 
     // for every arg except the last arg: shift down by 1
     // remove the last argument from the stack
@@ -330,10 +344,13 @@ static long apply_args() {
 
     // for the last argument: push every element of the list
     // onto the call stack
-    while (!minim_is_null(lst)) {
+    while (minim_is_pair(lst)) {
         push_call_arg(minim_car(lst));
         lst = minim_cdr(lst);
     }
+
+    if (!minim_is_null(lst))
+        bad_type_exn("apply", "list?", lst);
 
     // just for safety
     irt_call_args[irt_call_args_count] = NULL;
@@ -375,11 +392,11 @@ static long eval_exprs(minim_object *exprs, minim_object *env) {
 minim_object *call_with_values(minim_object *producer,
                                minim_object *consumer,
                                minim_object *env) {
-    minim_object *produced;
+    minim_object *produced, *result;
     minim_thread *th;
-    long i;
+    long stashc, i;
 
-    assert_no_call_args();
+    stashc = stash_call_args();
     produced = call_with_args(producer, env);
     if (minim_is_values(produced)) {
         // need to unpack
@@ -390,12 +407,14 @@ minim_object *call_with_values(minim_object *producer,
         push_call_arg(produced);
     }
 
-    return call_with_args(consumer, env);
+    result = call_with_args(consumer, env);
+    prepare_call_args(stashc);
+    return result;
 }
 
 minim_object *call_with_args(minim_object *proc, minim_object *env) {
-    minim_object *expr, **args;
-    int argc;
+    minim_object *expr, **args, *result;
+    long argc;
 
     proc = force_single_value(proc);
     args = irt_call_args;
@@ -413,9 +432,6 @@ application:
             goto application;
         }
 
-        // now it's safe to clear
-        clear_call_args();
-
         // special case for `eval`
         if (minim_prim_proc(proc) == eval_proc) {
             expr = args[0];
@@ -424,46 +440,44 @@ application:
                 if (!minim_is_env(env))
                     bad_type_exn("eval", "environment?", env);
             }
-            
+
+            clear_call_args();
             return eval_expr(expr, env);
         }
 
-        // special case for `current-environment`
         if (minim_prim_proc(proc) == current_environment_proc) {
-            return env;
+            // special case: `current-environment`
+            result = env;
+        } else if (minim_prim_proc(proc) == for_each_proc) {
+            // special case: `for-each`
+            result = for_each(args[0], argc - 1, &args[1], env);
+        } else if (minim_prim_proc(proc) == map_proc) {
+            // special case: `map`
+            result = map_list(args[0], argc - 1, &args[1], env);
+        } else if (minim_prim_proc(proc) == andmap_proc) {
+            // special case: `andmap`
+            result = andmap(args[0], argc - 1, &args[1], env);
+        } else if (minim_prim_proc(proc) == ormap_proc) {
+            // special case: `ormap`
+            result = ormap(args[0], argc - 1, &args[1], env);
+        } else if (minim_prim_proc(proc) == enter_compiled_proc) {
+            // special case: `enter-compiled!
+            result = call_compiled(env, args[0]);
+        } else if (minim_prim_proc(proc) == call_with_values_proc) {
+            // special case: `call-with-values`
+            result = call_with_values(args[0], args[1], env);
+        } else {
+            // general case:
+            result = minim_prim_proc(proc)(argc, args);
+        }
+        
+        if (argc != irt_call_args_count) {
+            fprintf(stderr, "call stack corruption");
+            minim_shutdown(1);
         }
 
-        // special case for `for-each`
-        if (minim_prim_proc(proc) == for_each_proc) {
-            return for_each(args[0], argc - 1, &args[1], env);
-        }
-
-        // special case for `map`
-        if (minim_prim_proc(proc) == map_proc) {
-            return map_list(args[0], argc - 1, &args[1], env);
-        }
-
-        // special case for `andmap`
-        if (minim_prim_proc(proc) == andmap_proc) {
-            return andmap(args[0], argc - 1, &args[1], env);
-        }
-
-        // special case for `ormap`
-        if (minim_prim_proc(proc) == ormap_proc) {
-            return ormap(args[0], argc - 1, &args[1], env);
-        }
-
-        // special case for `enter-compiled!
-        if (minim_prim_proc(proc) == enter_compiled_proc) {
-            return call_compiled(env, args[0]);
-        }
-
-        // special case for `call-with-values`
-        if (minim_prim_proc(proc) == call_with_values_proc) {
-            return call_with_values(args[0], args[1], env);
-        }
-
-        return minim_prim_proc(proc)(argc, args);
+        clear_call_args();
+        return result;
     } else if (minim_is_closure(proc)) {
         minim_object *vars, *rest;
         int i, j;
@@ -491,10 +505,11 @@ application:
         }
 
         // tail call (not really)
-        expr = minim_closure_body(proc);
         clear_call_args();
+        expr = minim_closure_body(proc);
         return eval_expr(expr, env);
     } else {
+        clear_call_args();
         fprintf(stderr, "error: not a procedure\n");
         fprintf(stderr, " received:");
         write_object(stderr, proc);
@@ -527,8 +542,7 @@ loop:
     } else if (minim_is_pair(expr)) {
         minim_object *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
         minim_thread *th;
-        long var_count, idx;
-        int argc;
+        long var_count, idx, argc;
 
         // special forms
         head = minim_car(expr);
@@ -687,9 +701,6 @@ application:
                 goto application;
             }
 
-            // now it's safe to clear
-            clear_call_args();
-
             // special case for `eval`
             if (minim_prim_proc(proc) == eval_proc) {
                 expr = args[0];
@@ -699,45 +710,43 @@ application:
                         bad_type_exn("eval", "environment?", env);
                 }
                 
+                clear_call_args();
                 goto loop;
             }
 
-            // special case for `current-environment`
             if (minim_prim_proc(proc) == current_environment_proc) {
-                return env;
+                // special case: `current-environment`
+                result = env;
+            } else if (minim_prim_proc(proc) == for_each_proc) {
+                // special case: `for-each`
+                result = for_each(args[0], argc - 1, &args[1], env);
+            } else if (minim_prim_proc(proc) == map_proc) {
+                // special case: `map`
+                result = map_list(args[0], argc - 1, &args[1], env);
+            } else if (minim_prim_proc(proc) == andmap_proc) {
+                // special case: `andmap`
+                result = andmap(args[0], argc - 1, &args[1], env);
+            } else if (minim_prim_proc(proc) == ormap_proc) {
+                // special case: `ormap`
+                result = ormap(args[0], argc - 1, &args[1], env);
+            } else if (minim_prim_proc(proc) == enter_compiled_proc) {
+                // special case: `enter-compiled!
+                result = call_compiled(env, args[0]);
+            } else if (minim_prim_proc(proc) == call_with_values_proc) {
+                // special case: `call-with-values`
+                result = call_with_values(args[0], args[1], env);
+            } else {
+                // general case:
+                result = minim_prim_proc(proc)(argc, args);
             }
 
-            // special case for `for-each`
-            if (minim_prim_proc(proc) == for_each_proc) {
-                return for_each(args[0], argc - 1, &args[1], env);
+            if (argc != irt_call_args_count) {
+                fprintf(stderr, "call stack corruption");
+                minim_shutdown(1);
             }
 
-            // special case for `map`
-            if (minim_prim_proc(proc) == map_proc) {
-                return map_list(args[0], argc - 1, &args[1], env);
-            }
-
-            // special case for `andmap`
-            if (minim_prim_proc(proc) == andmap_proc) {
-                return andmap(args[0], argc - 1, &args[1], env);
-            }
-
-            // special case for `ormap`
-            if (minim_prim_proc(proc) == ormap_proc) {
-                return ormap(args[0], argc - 1, &args[1], env);
-            }
-
-            // special case for `enter-compiled!
-            if (minim_prim_proc(proc) == enter_compiled_proc) {
-                return call_compiled(env, args[0]);
-            }
-
-            // special case for `call-with-values`
-            if (minim_prim_proc(proc) == call_with_values_proc) {
-                return call_with_values(args[0], args[1], env);
-            }
-
-            return minim_prim_proc(proc)(argc, args);
+            clear_call_args();
+            return result;
         } else if (minim_is_closure(proc)) {
             minim_object *vars, *rest;
             int i, j;
@@ -765,10 +774,11 @@ application:
             }
 
             // tail call
-            expr = minim_closure_body(proc);
             clear_call_args();
+            expr = minim_closure_body(proc);
             goto loop;
         } else {
+            clear_call_args();
             fprintf(stderr, "error: not a procedure\n");
             fprintf(stderr, " received:");
             write_object(stderr, proc);

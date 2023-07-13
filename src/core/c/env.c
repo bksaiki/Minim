@@ -278,7 +278,8 @@ minim_object *environment_names_proc(int argc, minim_object **args) {
 
 minim_object *environment_variable_value_proc(int argc, minim_object **args) {
     // (-> environment symbol -> any)
-    minim_object *env, *name, *exn;
+    minim_object *env, *name, *exn, *res;
+    long stashc;
 
     env = args[0];
     if (!minim_is_env(env))
@@ -302,8 +303,10 @@ minim_object *environment_variable_value_proc(int argc, minim_object **args) {
             if (!minim_is_proc(exn))
                 bad_type_exn("environment-variable-value", "procedure?", exn);
 
-            assert_no_call_args();
-            return call_with_args(exn, env);
+            stashc = stash_call_args();
+            res = call_with_args(exn, env);
+            prepare_call_args(stashc);
+            return res;
         }
     }
 
