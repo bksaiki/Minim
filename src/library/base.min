@@ -10,6 +10,7 @@
         "private/record.min"
         "private/set.min"
         "private/sort.min"
+        "private/stream.min"
         "private/string.min")
 
 (export (all "private/enum.min")
@@ -20,4 +21,5 @@
         (all "private/record.min")
         (all "private/set.min")
         (all "private/sort.min")
+        (all "private/stream.min")
         (all "private/string.min"))

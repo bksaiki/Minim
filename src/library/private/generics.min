@@ -110,7 +110,7 @@
   (lambda (rtd)
     (and (record-type-descriptor? rtd)
          (let ([generics (hashtable-ref $record-generics rtd #f)])
-           (and generics (assoc generic generics))))))
+           (and generics (assoc generic generics) #t)))))
 
 ;;
 ;;  Syntax

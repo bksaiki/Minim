@@ -1,0 +1,101 @@
+;;;
+;;; Stream
+;;;
+
+(import "list.min"
+        "pre-base.min"
+        "record.min")
+
+(export gen:stream
+        gen:stream?
+        
+        stream?
+        stream-empty?
+        stream-first
+        stream-rest
+        
+        make-list-stream
+        list-stream?
+        make-vector-stream
+        vector-stream?)
+
+;;
+;;  Generic function interface
+;;
+
+(define-generics stream
+                 [stream-empty? s]
+                 [stream-first s]
+                 [stream-rest s])
+
+(define $stream-empty?-acc (generics-accessor gen:stream 'stream-empty?))
+(define $stream-first-acc (generics-accessor gen:stream 'stream-first))
+(define $stream-rest-acc (generics-accessor gen:stream 'stream-rest))
+
+;;
+;;  Unsafe stream procedures
+;;
+
+(define (unsafe-stream-empty? s)
+  (($stream-empty?-acc ($record-rtd s)) s))
+
+(define (unsafe-stream-first s)
+  (($stream-first-acc ($record-rtd s)) s))
+
+(define (unsafe-stream-rest s)
+  (($stream-rest-acc ($record-rtd s)) s))
+
+;;
+;;  Streams
+;;
+
+(define (stream? v)
+  (and ($record-value? v)
+       (gen:stream? ($record-rtd v))))
+
+(define (stream-empty? s)
+  (unless (stream? s)
+    (error 'stream-empty? "expected a stream" s))
+  (unsafe-stream-empty? s))
+
+(define (stream-first s)
+  (unless (stream? s)
+    (error 'stream-first "expected a stream" s))
+  (when (stream-empty? s)
+    (error 'stream-first "stream is empty" s))
+  (unsafe-stream-first s))
+
+(define (stream-rest s)
+  (unless (stream? s)
+    (error 'stream-rest "expected a stream" s))
+  (when (stream-empty? s)
+    (error 'stream-rest "stream is empty" s))
+  (unsafe-stream-rest s))
+
+;;
+;;  Streams for primitive types
+;;
+
+(define-record-type list-stream
+  (opaque #t)
+  (sealed #t)
+  (fields v)
+  (methods gen:stream
+    (lambda (s) (null? (list-stream-v s)))
+    (lambda (s) (car (list-stream-v s)))
+    (lambda (s) (make-list-stream (cdr (list-stream-v s))))))
+
+(define-record-type vector-stream
+  (opaque #t)
+  (sealed #t)
+  (fields v len i)
+  (protocol
+    (lambda (p)
+      (lambda (v)
+        (p v (vector-length v) 0))))
+  (methods gen:stream
+    (lambda (s) (= (vector-stream-len s) (vector-stream-i s)))
+    (lambda (s) (vector-ref (vector-stream-v s)))
+    (lambda (s) (make-list-stream (vector-stream-v s)
+                                  (vector-stream-len s)
+                                  (+ (vector-stream-i s) 1)))))
