@@ -54,8 +54,23 @@
            (format "got: ~a" (length impls))))
 
   ;; validate arity
-  ; (for-each
-  ;   (lambda (
+  (for-each
+    (lambda (entry impl)
+      (define id (car entry))
+      (define formals (cdr entry))
+      (define expected-arity
+        (let loop ([formals formals] [i 0])
+          (cond [(null? formals) i]
+                [(symbol? formals) (cons i #f)]
+                [else (loop (cdr formals) (+ i 1))])))
+
+      (define arity (procedure-arity impl))
+      (unless (equal? arity expected-arity)
+        (error 'record-type-add-generics!
+               "method implementation does not match formals"
+               (format "method definition: ~a ~a" id formals)
+               (format "actual arity: ~a" arity))))
+    ($generics-type-methods generic) impls)
   
   ;; update generics metadata
   (hashtable-set! $record-generics rtd

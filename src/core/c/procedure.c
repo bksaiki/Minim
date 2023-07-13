@@ -103,5 +103,36 @@ minim_object *apply_proc(int argc, minim_object **args) {
 }
 
 minim_object *identity_proc(int argc, minim_object **args) {
+    // (-> any any)
     return args[0];
+}
+
+minim_object *procedure_arity_proc(int argc, minim_object **args) {
+    // (-> procedure any)
+    minim_object *proc;
+    proc_arity* arity;
+    int min_arity, max_arity;
+
+    proc = args[0];
+    if (!minim_is_prim_proc(proc) && !minim_is_closure(proc))
+        bad_type_exn("procedure-arity", "procedure?", proc);
+
+    if (minim_is_prim_proc(proc)) {
+        arity = &minim_prim_arity(proc);
+    } else if (minim_is_closure(proc)) {
+        arity = &minim_closure_arity(proc);
+    } else {
+        fprintf(stderr, "procedure-arity_proc(): unreachable");
+        minim_shutdown(1);
+    }
+
+    min_arity = proc_arity_min(arity);
+    max_arity = proc_arity_max(arity);
+    if (proc_arity_is_fixed(arity)) {
+        return make_fixnum(min_arity);
+    } else if (proc_arity_is_unbounded(arity)) {
+        return make_pair(make_fixnum(min_arity), minim_false);
+    } else {
+        return make_pair(make_fixnum(min_arity), make_fixnum(max_arity));   
+    }
 }

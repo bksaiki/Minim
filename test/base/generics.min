@@ -58,7 +58,8 @@
                              [3ary a b c]
                              [at-least-0-ary . rest]
                              [at-least-1-ary a . rest]
-                             [at-least-2-ary a . rest])
+                             [at-least-2-ary a b . rest])
+
   ($generics-type? gen:all-types)
   (check-true (procedure? gen:all-types?))
   (check-equal? ($generics-type-methods gen:all-types)
@@ -68,7 +69,7 @@
                   (3ary a b c)
                   (at-least-0-ary . rest)
                   (at-least-1-ary a . rest)
-                  (at-least-2-ary a . rest)))
+                  (at-least-2-ary a b . rest)))
   (void))           
 
 ;;  record syntax
@@ -83,6 +84,27 @@
   (define p (make-point 1 2))
   ; (printf "~a\n" p))
   ; TODO: test print to string
+
+  (void))
+
+(let ()
+  (define-generics all-types [0ary]
+                             [1ary a]
+                             [2ary a b]
+                             [3ary a b c]
+                             [at-least-0-ary . rest]
+                             [at-least-1-ary a . rest]
+                             [at-least-2-ary a b . rest])
+
+  (define-record-type test
+    (methods gen:all-types
+      (lambda () (list))
+      (lambda (x) (list x))
+      (lambda (x y) (list x y))
+      (lambda (x y z) (list x y z))
+      (lambda rest rest)
+      (lambda (x . rest) (list x rest))
+      (lambda (x y . rest) (list x y rest))))
 
   (void))
 
