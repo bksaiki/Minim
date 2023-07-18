@@ -191,9 +191,9 @@
           (error 'make-port-stream "expected an input port" port))
         (p port))))
   (methods gen:stream
-    (lambda (s) (char-ready? (port-stream-port s)))
+    (lambda (s) (not (char-ready? (port-stream-port s))))
     (lambda (s) (peek-char (port-stream-port s)))
     (lambda (s)
       (define port (port-stream-port s))
-      (read-port port)
+      (read-char port)
       (make-port-stream port))))

@@ -413,109 +413,9 @@ minim_object *call_with_values(minim_object *producer,
 }
 
 minim_object *call_with_args(minim_object *proc, minim_object *env) {
-    minim_object *expr, **args, *result;
-    long argc;
-
-    proc = force_single_value(proc);
-    args = irt_call_args;
-    argc = irt_call_args_count;
-
-application:
-
-    if (minim_is_prim_proc(proc)) {
-        check_prim_proc_arity(proc, argc);
-
-        // special case for `apply`
-        if (minim_prim_proc(proc) == apply_proc) {
-            proc = args[0];
-            argc = apply_args();
-            goto application;
-        }
-
-        // special case for `eval`
-        if (minim_prim_proc(proc) == eval_proc) {
-            expr = args[0];
-            if (argc == 2) {
-                env = args[1];
-                if (!minim_is_env(env))
-                    bad_type_exn("eval", "environment?", env);
-            }
-
-            clear_call_args();
-            return eval_expr(expr, env);
-        }
-
-        if (minim_prim_proc(proc) == current_environment_proc) {
-            // special case: `current-environment`
-            result = env;
-        } else if (minim_prim_proc(proc) == for_each_proc) {
-            // special case: `for-each`
-            result = for_each(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == map_proc) {
-            // special case: `map`
-            result = map_list(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == andmap_proc) {
-            // special case: `andmap`
-            result = andmap(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == ormap_proc) {
-            // special case: `ormap`
-            result = ormap(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == enter_compiled_proc) {
-            // special case: `enter-compiled!
-            result = call_compiled(env, args[0]);
-        } else if (minim_prim_proc(proc) == call_with_values_proc) {
-            // special case: `call-with-values`
-            result = call_with_values(args[0], args[1], env);
-        } else {
-            // general case:
-            result = minim_prim_proc(proc)(argc, args);
-        }
-        
-        if (argc != irt_call_args_count) {
-            fprintf(stderr, "call stack corruption");
-            minim_shutdown(1);
-        }
-
-        clear_call_args();
-        return result;
-    } else if (minim_is_closure(proc)) {
-        minim_object *vars, *rest;
-        int i, j;
-
-        // check arity and extend environment
-        check_closure_arity(proc, argc);
-        env = make_environment(minim_closure_env(proc));
-        args = irt_call_args;
-
-        // process args
-        i = 0;
-        vars = minim_closure_args(proc);
-        while (minim_is_pair(vars)) {
-            env_define_var_no_check(env, minim_car(vars), args[i]);
-            vars = minim_cdr(vars);
-            ++i;
-        }
-
-        // optionally process rest argument
-        if (minim_is_symbol(vars)) {
-            rest = minim_null;
-            for (j = argc - 1; j >= i; --j)
-                rest = make_pair(args[j], rest);
-            env_define_var_no_check(env, vars, rest);
-        }
-
-        // tail call (not really)
-        clear_call_args();
-        expr = minim_closure_body(proc);
-        return eval_expr(expr, env);
-    } else {
-        clear_call_args();
-        fprintf(stderr, "error: not a procedure\n");
-        fprintf(stderr, " received:");
-        write_object(stderr, proc);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
-    }
+    // just calls `eval_expr` since `proc` is allowed
+    // to be an expression or a procedure
+    return eval_expr(proc, env);
 }
 
 static void eval_define_values(minim_object *expr, minim_object *env) {
@@ -654,6 +554,12 @@ static minim_object *bind_closure_vals(minim_object *proc, int argc, minim_objec
 minim_object *eval_expr(minim_object *expr, minim_object *env) {
     minim_object *head, *proc, *result, **args;
     long argc;
+
+    if (minim_is_proc(expr)) {
+        proc = expr;
+        argc = irt_call_args_count;
+        goto application;
+    }
 
 loop:
 
