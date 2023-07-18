@@ -170,7 +170,6 @@
       (define end (integer-stream-end s))
       (define step (integer-stream-step s))
       (make-integer-stream (+ start step) end step))))
-  
 
 (define-record-type hashtable-stream
   (opaque #t)

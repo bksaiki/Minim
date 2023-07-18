@@ -142,8 +142,64 @@
   (check-true (integer-stream? (stream-rest (stream-rest three-stream))))
   (equal? (stream-first (stream-rest (stream-rest three-stream))) 2)
 
+  (define natural-stream (make-integer-stream 1 4))
+  (equal? (stream-first natural-stream) 1)
+  (check-true (integer-stream? (stream-rest natural-stream)))
+  (equal? (stream-first (stream-rest natural-stream)) 2)
+  (check-true (integer-stream? (stream-rest (stream-rest natural-stream))))
+  (equal? (stream-first (stream-rest (stream-rest natural-stream))) 3)
+
+  (define by-two (make-integer-stream 0 5 2))
+  (equal? (stream-first by-two) 0)
+  (check-true (integer-stream? (stream-rest by-two)))
+  (equal? (stream-first (stream-rest by-two)) 2)
+  (check-true (integer-stream? (stream-rest (stream-rest by-two))))
+  (equal? (stream-first (stream-rest (stream-rest by-two))) 4)
+
+  (define desc (make-integer-stream 3 0 -1))
+  (equal? (stream-first desc) 3)
+  (check-true (integer-stream? (stream-rest desc)))
+  (equal? (stream-first (stream-rest desc)) 2)
+  (check-true (integer-stream? (stream-rest (stream-rest desc))))
+  (equal? (stream-first (stream-rest (stream-rest desc))) 1)
+
   (void))
 
+;; hashtable stream
+(let ()
+  (define empty-hashtable (make-hashtable))
+  (define one-hashtable (make-hashtable))
+  (define two-hashtable (make-hashtable))
+  (hashtable-set! one-hashtable 'a 1)
+  (hashtable-set! two-hashtable 'b 2)
+  (hashtable-set! two-hashtable 'c 3)
+
+  (define empty-stream (make-hashtable-stream empty-hashtable))
+  (check-true (stream? empty-stream))
+  (check-true (hashtable-stream? empty-stream))
+  (check-true (stream-empty? empty-stream))
+
+  (define one-stream (make-hashtable-stream one-hashtable))
+  (check-true (stream? one-stream))
+  (check-true (hashtable-stream? one-stream))
+  (check-false (stream-empty? one-stream))
+  (equal? (stream-first one-stream) '((a . 1)))
+  (check-true (stream? (stream-rest one-stream)))
+  (check-true (stream-empty? (stream-rest one-stream)))
+
+  (define two-stream (make-hashtable-stream two-hashtable))
+  (check-true (stream? two-stream))
+  (check-true (hashtable-stream? (stream-rest two-stream)))
+  (check-true (hashtable-stream? (stream-rest (stream-rest two-stream))))
+
+  (void))
+
+;; port streams
+(let ()
+  ; TODO: not sure how to test
+  ; (define port (open-input-file "stream.min"))
+
+  (void))
 
 (when (> num-failed 0)
   (error #f "test failed"))
