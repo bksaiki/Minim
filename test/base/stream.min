@@ -1,0 +1,149 @@
+;;;
+;;; Tests for streams
+;;;
+
+(import "../../src/library/base.min")
+
+(define num-failed 0)
+
+(define (check-equal? d0 d1)
+  (unless (equal? d0 d1)
+    (display "[FAIL] eq? failed: expected ")
+    (write d1)
+    (display ", received ")
+    (write d0)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define (check-true d)
+  (unless d
+    (display "[FAIL] expected #t")
+    (display ", received ")
+    (write d)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+(define (check-false d)
+  (when d
+    (display "[FAIL] expected #f")
+    (display ", received ")
+    (write d)
+    (newline)
+    (set! num-failed (+ num-failed 1))))
+
+;; stream generics
+(let ()
+  (define-record-type nil-stream
+    (opaque #t)
+    (sealed #t)
+    (methods gen:stream
+      (lambda (_) #t)
+      (lambda (_) (error 'nil-stream "unimplemented"))
+      (lambda (_) (error 'nil-stream "unimplemented"))))
+  
+  (define s (make-nil-stream))
+  (check-false (record? s))
+  (check-true (stream? s))
+  (check-true (stream-empty? s))
+
+  (void))
+
+;; list stream
+(let ()
+  (define empty-stream (make-list-stream '()))
+  (check-true (stream? empty-stream))
+  (check-true (list-stream? empty-stream))
+  (check-true (stream-empty? empty-stream))
+
+  (define one-stream (make-list-stream '(1)))
+  (check-true (stream? one-stream))
+  (check-true (list-stream? one-stream))
+  (check-false (stream-empty? one-stream))
+  (equal? (stream-first one-stream) 1)
+  (check-true (stream? (stream-rest one-stream)))
+  (check-true (stream-empty? (stream-rest one-stream)))
+
+  (define three-stream (make-list-stream '(1 2 3)))
+  (equal? (stream-first three-stream) 1)
+  (check-true (list-stream? (stream-rest three-stream)))
+  (equal? (stream-first (stream-rest three-stream)) 2)
+  (check-true (list-stream? (stream-rest (stream-rest three-stream))))
+  (equal? (stream-first (stream-rest (stream-rest three-stream))) 3)
+
+  (void))
+
+;; vector stream
+(let ()
+  (define empty-stream (make-vector-stream #()))
+  (check-true (stream? empty-stream))
+  (check-true (vector-stream? empty-stream))
+  (check-true (stream-empty? empty-stream))
+
+  (define one-stream (make-vector-stream #(1)))
+  (check-true (stream? one-stream))
+  (check-true (vector-stream? one-stream))
+  (check-false (stream-empty? one-stream))
+  (equal? (stream-first one-stream) 1)
+  (check-true (stream? (stream-rest one-stream)))
+  (check-true (stream-empty? (stream-rest one-stream)))
+
+  (define three-stream (make-vector-stream #(1 2 3)))
+  (equal? (stream-first three-stream) 1)
+  (check-true (vector-stream? (stream-rest three-stream)))
+  (equal? (stream-first (stream-rest three-stream)) 2)
+  (check-true (vector-stream? (stream-rest (stream-rest three-stream))))
+  (equal? (stream-first (stream-rest (stream-rest three-stream))) 3)
+
+  (void))
+
+;; string stream
+(let ()
+  (define empty-stream (make-string-stream ""))
+  (check-true (stream? empty-stream))
+  (check-true (string-stream? empty-stream))
+  (check-true (stream-empty? empty-stream))
+
+  (define one-stream (make-string-stream "1"))
+  (check-true (stream? one-stream))
+  (check-true (string-stream? one-stream))
+  (check-false (stream-empty? one-stream))
+  (equal? (stream-first one-stream) #\1)
+  (check-true (stream? (stream-rest one-stream)))
+  (check-true (stream-empty? (stream-rest one-stream)))
+
+  (define three-stream (make-string-stream "123"))
+  (equal? (stream-first three-stream) #\1)
+  (check-true (string-stream? (stream-rest three-stream)))
+  (equal? (stream-first (stream-rest three-stream)) #\2)
+  (check-true (string-stream? (stream-rest (stream-rest three-stream))))
+  (equal? (stream-first (stream-rest (stream-rest three-stream))) #\3)
+
+  (void))
+
+;; integer stream
+(let ()
+  (define empty-stream (make-integer-stream 0))
+  (check-true (stream? empty-stream))
+  (check-true (integer-stream? empty-stream))
+  (check-true (stream-empty? empty-stream))
+
+  (define one-stream (make-integer-stream 1))
+  (check-true (stream? one-stream))
+  (check-true (integer-stream? one-stream))
+  (check-false (stream-empty? one-stream))
+  (equal? (stream-first one-stream) 0)
+  (check-true (stream? (stream-rest one-stream)))
+  (check-true (stream-empty? (stream-rest one-stream)))
+
+  (define three-stream (make-integer-stream 3))
+  (equal? (stream-first three-stream) 0)
+  (check-true (integer-stream? (stream-rest three-stream)))
+  (equal? (stream-first (stream-rest three-stream)) 1)
+  (check-true (integer-stream? (stream-rest (stream-rest three-stream))))
+  (equal? (stream-first (stream-rest (stream-rest three-stream))) 2)
+
+  (void))
+
+
+(when (> num-failed 0)
+  (error #f "test failed"))

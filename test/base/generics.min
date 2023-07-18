@@ -1,5 +1,5 @@
 ;;;
-;;; Tests for 'generics'
+;;; Tests for generics
 ;;;
 
 (import "../../src/library/base.min")

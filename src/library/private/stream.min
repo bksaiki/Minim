@@ -111,7 +111,7 @@
         (p v (vector-length v) 0))))
   (methods gen:stream
     (lambda (s) (= (vector-stream-len s) (vector-stream-i s)))
-    (lambda (s) (vector-ref (vector-stream-v s)))
+    (lambda (s) (vector-ref (vector-stream-v s) (vector-stream-i s)))
     (lambda (s) 
       (define c (record-constructor vector-stream))
       (c (vector-stream-v s)
@@ -130,7 +130,7 @@
         (p s (string-length s) 0))))
   (methods gen:stream
     (lambda (s) (= (string-stream-len s) (string-stream-i s)))
-    (lambda (s) (string-ref (string-stream-s s)))
+    (lambda (s) (string-ref (string-stream-s s) (string-stream-i s)))
     (lambda (s)
       (define c (record-constructor string-stream))
       (c (string-stream-s s)
@@ -140,23 +140,37 @@
 (define-record-type integer-stream
   (opaque #t)
   (sealed #t)
-  (fields start end)
+  (fields start end step)
   (protocol
     (lambda (p)
       (case-lambda
         [(end)
-         (make-integer-stream 0 end)]
+         (make-integer-stream 0 end 1)]
         [(start end)
+         (make-integer-stream start end 1)]
+        [(start end step)
          (unless (and (integer? start) (>= start 0))
            (error 'make-integer-stream "expected an exact non-negative integer" start))
          (unless (and (integer? end) (>= end 0))
            (error 'make-integer-stream "expected an exact non-negative integer" end))
-         (p start end)])))
+         (unless (integer? step)
+           (error 'make-integer-stream "expected an exact integer" step))
+         (p start end step)])))
   (methods gen:stream
-    (lambda (s) (>= (integer-stream-start s) (integer-stream-end s)))
-    (lambda (s) (integer-stream-start s))
-    (lambda (s) (make-integer-stream (+ (integer-stream-start s) 1)
-                                     (integer-stream-end s)))))
+    (lambda (s)
+      (define start (integer-stream-start s))
+      (define end (integer-stream-end s))
+      (if (< (integer-stream-step s) 0)
+          (<= start end)
+          (>= start end)))
+    (lambda (s)
+      (integer-stream-start s))
+    (lambda (s)
+      (define start (integer-stream-start s))
+      (define end (integer-stream-end s))
+      (define step (integer-stream-step s))
+      (make-integer-stream (+ start step) end step))))
+  
 
 (define-record-type hashtable-stream
   (opaque #t)
