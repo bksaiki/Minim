@@ -1,15 +1,9 @@
+// gc.h: shim for garbage collector library
+
 #ifndef _MINIM_GC_SHIM_H_
 #define _MINIM_GC_SHIM_H_
 
-#include "build/config.h"
-
-#ifdef USE_MINIM_GC
-
-#include "minim-gc/gc.h"
-
-#else
-
-#include "boehm-gc/include/gc.h"
+#include "../bdwgc/include/gc.h"
 
 #define GC_alloc(n)                 GC_malloc(n)
 #define GC_calloc(s, n)             GC_malloc((s) * (n))
@@ -21,15 +15,5 @@
 
 #define GC_register_root(o)         GC_add_roots(o, (((void *) o) + sizeof(*o)))
 #define GC_register_dtor(o, p)      GC_register_finalizer(o, p, 0, 0, 0)
-
-#define GC_init(x)          GC_init(); 
-#define GC_finalize()       GC_deinit();
-#define GC_pause()          GC_disable()
-#define GC_resume()         GC_enable()
-
-// ignore
-#define GC_REGISTER_LOCAL_ARRAY(x)
-
-#endif
 
 #endif

@@ -1,8 +1,0 @@
-;
-; Test for core features
-; 3-argument primitive
-;
-
-(if (equal? (cons 1 (cons 2 (cons 3 (cons 4 '())))) '(1 2 3 4))
-    (exit 0)
-    (exit 1))

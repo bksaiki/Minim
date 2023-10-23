@@ -1,4 +1,4 @@
-[submodule "src/gc/boehm-gc"]
-	path = src/gc/boehm-gc
+[submodule "bdwgc"]
+	path = bdwgc
 	url = https://github.com/ivmai/bdwgc.git
 	branch = release-8_2

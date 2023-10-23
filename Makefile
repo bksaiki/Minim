@@ -1,14 +1,20 @@
-#
-#	Top-level Makefile
-#
+# Minim Project
+# Top-level Makefile
 
 SRC_DIR = src
-BOOT_DIR = src/boot
-CORE_DIR = src/core
-LIB_DIR = src/library
-GC_DIR = src/gc
+GC_DIR = bdwgc
 BUILD_DIR = build
-TEST_DIR = test
+
+ENTRY = $(SRC_DIR)/main.c
+OBJNAME = minim
+
+SRCS = $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY) )
+OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o)
+DEPS = $(OBJS:.o=.d)
+
+CFLAGS = -Wall -std=c11 -O2 -g
+DEPFLAGS = -MMD -MP
+LDFLAGS = -L$(GC_DIR)/.libs -lgc
 
 CP = cp
 ECHO = echo
@@ -17,48 +23,33 @@ RM = rm -rf
 SH = bash
 FIND = find
 
-# Top level rules
+.PRECIOUS: $(BUILD_DIR)/. $(BUILD_DIR)%/.
+.SECONDEXPANSION: $(BUILD_DIR)/%.o
 
-all: boot
+all: core
 
-core: gc
-	$(MAKE) -C $(CORE_DIR)
+core: gc $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(ENTRY) $(LDFLAGS) -o $(OBJNAME)
 
-boot: core
-	$(MKDIR_P) $(BUILD_DIR)/boot
-	$(MAKE) -C $(BOOT_DIR)
-	$(CP) $(BOOT_DIR)/minim $(BUILD_DIR)/boot/
-
-boot-file:
-	$(BOOT_DIR)/minim $(LIB_DIR)/gen-boot.min \
-	                  $(LIB_DIR) \
-	                  $(BOOT_DIR)/s/boot.min
-
-gc:
+gc: $(GC_DIR)/Makefile
 	$(MAKE) -C $(GC_DIR)
 
-boehm-gc:
-	$(MAKE) -C $(GC_DIR) boehm-gc
-
-minim-gc:
-	$(MAKE) -C $(GC_DIR) minim-gc
-
-test: boot-tests compile-tests
-
-boot-tests:
-	$(MAKE) -C $(BOOT_DIR) test
-	$(MAKE) -C $(TEST_DIR) boot
-
-compile-tests: boot
-	$(MAKE) -C $(TEST_DIR) compile
-
 clean:
-	$(MAKE) -C $(CORE_DIR) clean
-	$(MAKE) -C $(BOOT_DIR) clean
 	$(RM) $(BUILD_DIR)
 
-clean-all: clean
+clean-all:
 	$(MAKE) -C $(GC_DIR) clean
 
-.PHONY: all boot boot-file gc boehm-gc minim-gc \
-	    test boot-tests clean clean-all
+$(GC_DIR)/Makefile:
+	cd $(GC_DIR) && ./autogen.sh && ./configure --enable-static=yes --enable-shared=no
+
+$(BUILD_DIR)/.:
+	$(MKDIR_P) $@
+
+$(BUILD_DIR)%/.:
+	$(MKDIR_P) $@
+
+$(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
+
+PHONY: gc clean clean-all

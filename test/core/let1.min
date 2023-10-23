@@ -1,8 +1,0 @@
-;
-; Test for core features
-; let-values: bind 1
-;
-
-(if (equal? (let-values ([(x) 1]) x) 1)
-    (exit 0)
-    (exit 1))
