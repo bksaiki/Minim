@@ -43,8 +43,9 @@
 
 typedef unsigned char mbyte;
 typedef unsigned int mchar;
-typedef unsigned long mfixnum;
+typedef long mfixnum;
 typedef unsigned long msize;
+typedef long iptr;
 typedef unsigned long uptr;
 typedef void *mobj;
 
@@ -64,6 +65,7 @@ typedef enum {
     MINIM_OBJ_CHAR,
     MINIM_OBJ_FIXNUM,
     MINIM_OBJ_SYMBOL,
+    MINIM_OBJ_STRING,
     MINIM_OBJ_PAIR,
     MINIM_OBJ_VECTOR,
     MINIM_OBJ_PORT,
@@ -200,6 +202,27 @@ mobj Mport(FILE *f, mbyte flags);
 #define Mlist4(a, b, c, d)  Mcons(a, Mcons(b, Mcons(c, Mcons(d, minim_null))))
 
 //
+//  Wide-string library
+//
+
+mchar *mstr(const char *s);
+size_t mstrlen(const mchar *s);
+int mstrcmp(const mchar *s1, const mchar *s2);
+
+//
+//  Interner
+//
+
+typedef struct _ibucket {
+    mobj sym;
+    struct _ibucket *next;
+} ibucket;
+
+void intern_table_init();
+mobj intern(const char *s);
+mobj intern_str(const mchar *s);
+
+//
 //  Globals
 //
 
@@ -209,11 +232,17 @@ typedef struct _M_thread {
 } mthread;
 
 extern struct _M_globals {
+    // objects
     mobj null_string;
     mobj null_vector;
+    // thread
     mthread *thread;
+    // interner
+    ibucket **oblist;
+    size_t *oblist_len_ptr;
+    size_t oblist_count;
 } M_glob;
 
-void init_minim();
+void minim_init();
 
 #endif

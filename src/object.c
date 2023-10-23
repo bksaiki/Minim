@@ -2,6 +2,12 @@
 
 #include "minim.h"
 
+mobj minim_null;
+mobj minim_true;
+mobj minim_false;
+mobj minim_eof;
+mobj minim_void;
+
 mobj Mchar(mchar c) {
     mobj o = GC_alloc(minim_char_size);
     minim_type(o) = MINIM_OBJ_CHAR;
@@ -10,13 +16,22 @@ mobj Mchar(mchar c) {
 }
 
 mobj Msymbol(const mchar *s) {
-    // mobj o = GC_alloc(minim_symbol_size);
-    // minim_type(o) = MINIM_OBJ_SYMBOL;
-    // minim_char(o) = c;
+    size_t n = mstrlen(s);
+    mchar *str = GC_alloc_atomic((n + 1) * sizeof(mchar));
+    memcpy(str, s, n * sizeof(mchar));
+    str[n] = 0;
+
+    mobj o = GC_alloc(minim_symbol_size);
+    minim_type(o) = MINIM_OBJ_SYMBOL;
+    minim_symbol(o) = str;
+    return o;
 }
 
 mobj Mstring(const char *s) {
-    
+    mobj o = GC_alloc(minim_string_size);
+    minim_type(o) = MINIM_OBJ_STRING;
+    minim_string(o) = mstr(s);
+    return o;
 }
 
 mobj Mfixnum(mfixnum v) {
