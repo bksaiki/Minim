@@ -17,7 +17,7 @@ static void write_char(mobj op, mobj o) {
 }
 
 static void write_fixnum(mobj op, mobj o) {
-    fprintf(op, "%ld", minim_fixnum(o));
+    fprintf(minim_port(op), "%ld", minim_fixnum(o));
 }
 
 static void write_symbol(mobj op, mobj o) {

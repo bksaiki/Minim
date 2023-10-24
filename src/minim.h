@@ -211,6 +211,7 @@ extern mobj minim_void;
 mobj Mchar(mchar c);
 mobj Msymbol(const mchar *s);
 mobj Mstring(const char *s);
+mobj Mstring2(mchar *s);
 mobj Mfixnum(mfixnum v);
 mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(msize n, mobj v);

@@ -44,6 +44,32 @@ static int is_closed_paren(mchar c) {
     return c == ')' || c == ']' || c == '}';
 }
 
+static int is_decnum_str(const mchar *s) {
+    size_t i;
+    int p;
+
+    // optional sign
+    if (s[0] == '\n') {
+        return 0;
+    } else if (s[0] == '+' || s[0] == '-') {
+        i = 1;
+        p = 1;
+    } else {
+        i = 0;
+        p = 0;
+    }
+
+    // scan through decimal characters
+    for (; s[i] && isdigit(s[i]); i++); 
+
+    // different valid conditions depending on sign
+    if (p) {
+        return i >= 2 && !s[i];
+    } else {
+        return i >= 1 && !s[i];
+    }
+}
+
 // Anything that doesn't force a new token
 static int is_symbol_char(mchar c) {
     return !is_delimeter(c);
@@ -243,7 +269,73 @@ static mobj read_char(mobj ip) {
     return Mchar(c);
 }
 
-// Pair/list reader
+// Hexadecimal number reader.
+// If an invalid character is read, panic.
+static mobj read_hexnum(mobj ip) {
+    mfixnum m = 0;
+    int s = 1;
+    mchar c;
+
+    // optional sign
+    c = ip_peek(ip);
+    if (c == '-') {
+        ip_getc(ip);
+        s = -1;
+    } else if (c == '+') {
+        ip_getc(ip);
+    }
+
+    // magnitude as hex digits
+    for (c = ip_getc(ip); isxdigit(c); c = ip_getc(ip)) {
+        m *= 16;
+        if ('A' <= c && c <= 'F') {
+            m += (10 + (c - 'A'));
+        } else if ('a' <= c && c <= 'f') {
+            m += (10 + (c - 'a'));
+        } else {
+            m += (c - '0');
+        }
+    }
+
+    // check if we read an illegal character
+    ip_ungetc(ip, c);
+    if (is_symbol_char(c)) {
+        error1("read_object()", "unexpected character while parsing hexadecimal number", Mchar(c));
+    }
+
+    // check for delimeter
+    assert_delimeter_next(ip);
+    return Mfixnum(s * m);
+}
+
+// String to decnum converter.
+static mobj str_to_decnum(const mchar *str) {
+    mfixnum m;
+    int s, i;
+    
+    // optional sign
+    if (str[0] == '-') {
+        s = -1;
+        i = 1;
+    } else if (str[0] == '+') {
+        s = 1;
+        i = 1;
+    } else {
+        s = 1;
+        i = 0;
+    }
+
+    // convert magnitude as decimal digits
+    m = 0;
+    for (; str[i]; ++i) {
+        m *= 10;
+        m += (str[i] - '0');
+    }
+
+    return Mfixnum(s * m);
+}
+
+// Pair/list reader.
 static mobj read_pair(mobj ip, mchar open_paren) {
     mobj car, cdr;
     mchar c;
@@ -311,6 +403,71 @@ static mobj read_vector(mobj ip, mchar open_paren) {
     return list_to_vector(list_reverse(l));  
 }
 
+// String character (opening quote has been read)
+mobj read_string(mobj ip) {
+    mchar *buffer;
+    size_t len, i;
+    mchar c;
+
+    // set up the buffer
+    len = INIT_READ_BUFFER_LEN;
+    buffer = GC_alloc_atomic(len * sizeof(mchar));
+    i = 0;
+
+    // iteratively read
+    for (c = ip_getc(ip); c != '\"'; c = ip_getc(ip)) {
+        if (c == EOF) {
+            error("read_object()", "unexpected EOF while parsing string");
+        } else if (c == '\\') {
+            // escape character
+            c = ip_getc(ip);
+            if (c == EOF) {
+                error("read_object()", "unexpected EOF while parsing escape character");
+            } else if (c == 'a') {
+                // alarm
+                buffer[i] = BEL_CHAR;
+            } else if (c == 'b') {
+                // backspace
+                buffer[i] = BS_CHAR;
+            } else if (c == 't') {
+                // horizontal tab
+                buffer[i] = '\t';
+            } else if (c == 'v') {
+                // vertical tab
+                buffer[i] = VT_CHAR;
+            } else if (c == 'f') {
+                // form feed
+                buffer[i] = FF_CHAR;
+            } else if (c == 'r') {
+                // carriage return
+                buffer[i] = CR_CHAR;
+            } else if (c == '\"') {
+                // double quote
+                buffer[i] = '\"';
+            } else if (c == '\\') {
+                // backslash
+                buffer[i] = '\\';
+            } else {
+                error1("read_object()", "unknown escape character", Mchar(c));
+            }
+        } else {
+            // normal character
+            buffer[i] = c;
+        }
+
+        i++;
+
+        // ensure enough space for the NULL character
+        if (i + 1 >= len) {
+            len *= 2;
+            buffer = GC_realloc(buffer, len * sizeof(mchar));
+        }
+    }
+
+    buffer[i] = '\0';
+    return Mstring2(buffer);
+}
+
 // Symbol reader with the first character
 mobj read_symbol(mobj ip, mchar c) {
     mchar *buffer;
@@ -339,7 +496,13 @@ mobj read_symbol(mobj ip, mchar c) {
 
     ip_ungetc(ip, c);
     buffer[i] = '\0';
-    return intern_str(buffer);
+
+    // we could have read an integer
+    if (is_decnum_str(buffer)) {
+        return str_to_decnum(buffer);
+    } else {
+        return intern_str(buffer);
+    }
 }
 
 // Top-level reader, invoked for reading arbitrary Scheme expressions.
@@ -369,6 +532,9 @@ loop:
         } else if (c == '&') {
             // #&... => box
             return Mbox(read_object(ip));
+        } else if (c == 'x') {
+            // #x... => (hexadecimal number)
+            return read_hexnum(ip);
         } else if (c == ';') {
             // #; => (datum comment, skip next datum)
             skip_whitespace(ip);
@@ -390,6 +556,9 @@ loop:
     } else if (is_open_paren(c)) {
         // pair of list
         return read_pair(ip, c);
+    } else if (c == '\"') {
+        // string
+        return read_string(ip);
     } else if (is_symbol_char(c)) {
         // symbols
         return read_symbol(ip, c);

@@ -28,9 +28,13 @@ mobj Msymbol(const mchar *s) {
 }
 
 mobj Mstring(const char *s) {
+    return Mstring2(mstr(s));
+}
+
+mobj Mstring2(mchar *s) {
     mobj o = GC_alloc(minim_string_size);
     minim_type(o) = MINIM_OBJ_STRING;
-    minim_string(o) = mstr(s);
+    minim_string(o) = s;
     return o;
 }
 
