@@ -26,5 +26,5 @@ void minim_init() {
 
     // initialize thread
     M_glob.thread->input_port = Mport(stdin, PORT_FLAG_READ | PORT_FLAG_OPEN);
-    M_glob.thread->output_port = Mport(stdin, PORT_FLAG_OPEN);
+    M_glob.thread->output_port = Mport(stdout, PORT_FLAG_OPEN);
 }

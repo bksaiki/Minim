@@ -38,6 +38,12 @@
 #define MINIM_VERSION   "0.4.0"
 
 //
+//  Constants / Limits
+//
+
+#define INIT_READ_BUFFER_LEN    16
+
+//
 //  Types
 //
 
@@ -68,6 +74,7 @@ typedef enum {
     MINIM_OBJ_STRING,
     MINIM_OBJ_PAIR,
     MINIM_OBJ_VECTOR,
+    MINIM_OBJ_BOX,
     MINIM_OBJ_PORT,
 } mobj_enum;
 
@@ -163,6 +170,16 @@ extern mobj minim_void;
 #define minim_vector_len(o)         (*((msize*) PTR_ADD(o, ptr_size)))
 #define minim_vector_ref(o, i)      (*((mobj*) PTR_ADD(o, (2 + (i)) * ptr_size)))
 
+// Box
+// +------------+
+// |    type    | [0, 1)
+// |    ...     |
+// |   content  | [8, 16)
+// +------------+
+#define minim_box_size      (2 * ptr_size)
+#define minim_boxp(o)       (minim_type(o) == MINIM_OBJ_BOX)
+#define minim_unbox(o)      (*((mobj*) PTR_ADD(o, ptr_size)))
+
 // Port
 // +------------+
 // |    type    | [0, 1)
@@ -179,6 +196,9 @@ extern mobj minim_void;
 #define minim_port_openp(o)         (minim_port_flags(o) & PORT_FLAG_OPEN)
 #define minim_port_readp(o)         (minim_port_flags(o) & PORT_FLAG_READ)
 
+#define minim_inportp(o)        (minim_portp(o) && minim_port_readp(o))
+#define minim_outportp(o)       (minim_portp(o) && !minim_port_readp(o))
+
 #define minim_port_set(o, f) \
     minim_port_flags(o) |= (f);
 #define minim_port_unset(o, f) \
@@ -194,6 +214,7 @@ mobj Mstring(const char *s);
 mobj Mfixnum(mfixnum v);
 mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(msize n, mobj v);
+mobj Mbox(mobj x);
 mobj Mport(FILE *f, mbyte flags);
 
 #define Mlist1(a)           Mcons(a, minim_null)
@@ -202,12 +223,40 @@ mobj Mport(FILE *f, mbyte flags);
 #define Mlist4(a, b, c, d)  Mcons(a, Mcons(b, Mcons(c, Mcons(d, minim_null))))
 
 //
+//  Pairs and lists
+//
+
+size_t list_length(mobj o);
+mobj list_reverse(mobj o);
+
+//
+//  Vectors
+//
+
+mobj list_to_vector(mobj o);
+
+//
 //  Wide-string library
 //
 
 mchar *mstr(const char *s);
 size_t mstrlen(const mchar *s);
 int mstrcmp(const mchar *s1, const mchar *s2);
+
+//
+//  I/O
+//
+
+mobj read_object(mobj ip);
+void write_object(mobj op, mobj o);
+
+//
+//  Errors
+//
+
+NORETURN void fatal_exit();
+NORETURN void error(const char *who, const char *why);
+NORETURN void error1(const char *who, const char *why, mobj);
 
 //
 //  Interner
@@ -242,6 +291,10 @@ extern struct _M_globals {
     size_t *oblist_len_ptr;
     size_t oblist_count;
 } M_glob;
+
+#define get_thread()        (M_glob.thread)
+#define get_input_port(th)  ((th)->input_port)
+#define get_output_port(th) ((th)->output_port)   
 
 void minim_init();
 

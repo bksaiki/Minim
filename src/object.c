@@ -58,6 +58,13 @@ mobj Mvector(msize n, mobj v) {
     return o; 
 }
 
+mobj Mbox(mobj x) {
+    mobj o = GC_alloc(minim_box_size);
+    minim_type(o) = MINIM_OBJ_BOX;
+    minim_unbox(o) = x;
+    return o;
+}
+
 mobj Mport(FILE *f, mbyte flags) {
     mobj o = GC_alloc_atomic(minim_port_size);
     minim_type(o) = MINIM_OBJ_PORT;
