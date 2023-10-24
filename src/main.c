@@ -15,6 +15,8 @@ int main(int argc, char **argv) {
     while (1) {
         fputs("> ", stdout);
         o = read_object(get_input_port(th));
+        if (minim_eofp(o))
+            break;
 
         write_object(get_output_port(th), o);
         fputc('\n', stdout);

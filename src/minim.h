@@ -56,7 +56,7 @@ typedef unsigned long uptr;
 typedef void *mobj;
 
 #define ptr_size        sizeof(uptr)
-#define PTR_ADD(p, d)   ((void *) ((uptr) (p)) + d)
+#define PTR_ADD(p, d)   ((void *) ((uptr) (p)) + (d))
 
 //
 //  Objects
@@ -168,7 +168,7 @@ extern mobj minim_void;
 #define minim_vector_size(n)        (ptr_size * (2 + (n)))
 #define minim_vectorp(o)            (minim_type(o) == MINIM_OBJ_VECTOR)
 #define minim_vector_len(o)         (*((msize*) PTR_ADD(o, ptr_size)))
-#define minim_vector_ref(o, i)      (*((mobj*) PTR_ADD(o, (2 + (i)) * ptr_size)))
+#define minim_vector_ref(o, i)      (((mobj*) PTR_ADD(o, 2 * ptr_size))[i])
 
 // Box
 // +------------+

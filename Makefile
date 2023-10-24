@@ -12,7 +12,7 @@ SRCS = $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY) )
 OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS = $(OBJS:.o=.d)
 
-CFLAGS = -Wall -std=c11 -O2 -g
+CFLAGS = -Wall -std=c11 -O0 -g
 DEPFLAGS = -MMD -MP
 LDFLAGS = -L$(GC_DIR)/.libs -lgc
 

@@ -21,7 +21,7 @@
 #define ip_getc(ip)         (getc(minim_port(ip)))
 #define ip_ungetc(ip, c)    (ungetc(c, minim_port(ip)))
 
-static int peek_char(mobj ip) {
+static int ip_peek(mobj ip) {
     int c = ip_getc(ip);
     ip_ungetc(ip, c);
     return c;
@@ -34,6 +34,14 @@ static int is_delimeter(mchar c) {
            c == '[' || c == ']' ||
            c == '{' || c == '}' ||
            c == '"' || c == ';';
+}
+
+static int is_open_paren(mchar c) {
+    return c == '(' || c == '[' || c == '{';
+}
+
+static int is_closed_paren(mchar c) {
+    return c == ')' || c == ']' || c == '}';
 }
 
 // Anything that doesn't force a new token
@@ -56,7 +64,7 @@ static void assert_matching_paren(mchar open, mchar closed) {
 }
 
 static void assert_delimeter_next(mobj ip) {
-    if (!is_delimeter(peek_char(ip))) {
+    if (!is_delimeter(ip_peek(ip))) {
         error("read_object()", "expected a delimeter");
     }
 }
@@ -81,7 +89,41 @@ static void skip_whitespace(mobj ip) {
     }
 }
 
-static void read_expected_charname(mobj ip, const char *s) {
+// Skips whitespace and returns the next character.
+// If an EOF occurs, panics.
+static mchar next_non_whitespace(mobj ip) {
+    skip_whitespace(ip);
+    mchar c = ip_getc(ip);
+    assert_not_eof(c);
+    return c;
+}
+
+// Continually reads from the input port while parsing
+// a block comment, until the block is exited.
+static void skip_block_comment(mobj ip) {
+    size_t block_level = 1;
+    while (block_level > 0) {
+        mchar c = ip_getc(ip);
+        assert_not_eof(c);
+        if (c == '#') {
+            c = ip_peek(ip);
+            if (c == '|') {
+                // increase block level
+                ip_getc(ip);
+                ++block_level;
+            }
+        } else if (c == '|') {
+            c = ip_peek(ip);
+            if (c == '#') {
+                // decrease block level
+                ip_getc(ip);
+                --block_level;
+            }
+        }
+    }
+}
+
+static void read_named_char(mobj ip, const char *s) {
     mchar c;
     while (*s != '\0') {
         c = ip_getc(ip);
@@ -104,95 +146,95 @@ static mobj read_char(mobj ip) {
     if (c == EOF) {
         error("read_object()", "unexpected EOF while parsing character sequence");
     } else if (c == 'a') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'l') {
             // alarm
-            read_expected_charname(ip, "larm");
+            read_named_char(ip, "larm");
             assert_delimeter_next(ip);
             return Mchar(BEL_CHAR);
         }
     } else if (c == 'b') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'a') {
             // backspace
-            read_expected_charname(ip, "ackspace");
+            read_named_char(ip, "ackspace");
             assert_delimeter_next(ip);
             return Mchar(BS_CHAR);
         }
     } else if (c == 'd') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'e') {
             // delete
-            read_expected_charname(ip, "elete");
+            read_named_char(ip, "elete");
             assert_delimeter_next(ip);
             return Mchar(DEL_CHAR);
         }
     } else if (c == 'e') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 's') {
             // esc
-            read_expected_charname(ip, "sc");
+            read_named_char(ip, "sc");
             assert_delimeter_next(ip);
             return Mchar(ESC_CHAR);
         }
     } else if (c == 'l') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'i') {
             // linefeed
-            read_expected_charname(ip, "inefeed");
+            read_named_char(ip, "inefeed");
             assert_delimeter_next(ip);
             return Mchar(LF_CHAR);
         }
     } else if (c == 'n') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'e') {
             // newline
-            read_expected_charname(ip, "ewline");
+            read_named_char(ip, "ewline");
             assert_delimeter_next(ip);
             return Mchar('\n');
         } else if (nc == 'u') {
             // nul
-            read_expected_charname(ip, "ul");
+            read_named_char(ip, "ul");
             assert_delimeter_next(ip);
             return Mchar('\0');
         }
     } else if (c == 'p') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'a') {
             // page
-            read_expected_charname(ip, "age");
+            read_named_char(ip, "age");
             assert_delimeter_next(ip);
             return Mchar(FF_CHAR);
         }
     } else if (c == 'r') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'e') {
             // return
-            read_expected_charname(ip, "eturn");
+            read_named_char(ip, "eturn");
             assert_delimeter_next(ip);
             return Mchar(CR_CHAR);
         }
     } else if (c == 's') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'p') {
             // space
-            read_expected_charname(ip, "pace");
+            read_named_char(ip, "pace");
             assert_delimeter_next(ip);
             return Mchar(' ');
         }
     } else if (c == 't') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 'a') {
             // tab
-            read_expected_charname(ip, "ab");
+            read_named_char(ip, "ab");
             assert_delimeter_next(ip);
             return Mchar(HT_CHAR);
         }
     } else if (c == 'v') {
-        nc = peek_char(ip);
+        nc = ip_peek(ip);
         if (nc == 't') {
             // vtab
-            read_expected_charname(ip, "tab");
+            read_named_char(ip, "tab");
             assert_delimeter_next(ip);
             return Mchar(VT_CHAR);
         }
@@ -201,15 +243,56 @@ static mobj read_char(mobj ip) {
     return Mchar(c);
 }
 
+// Pair/list reader
+static mobj read_pair(mobj ip, mchar open_paren) {
+    mobj car, cdr;
+    mchar c;
+
+    // check for empty list
+    c = next_non_whitespace(ip);
+    if (is_closed_paren(c)) {
+        assert_matching_paren(open_paren, c);
+        return minim_null;
+    }
+
+    // read in car element
+    ip_ungetc(ip, c);
+    car = read_object(ip);
+
+    // check for cons dot
+    c = next_non_whitespace(ip);
+    if (c == '.' && isspace(ip_peek(ip))) {
+        // either a pair or an improper list
+        // read in the cdr element
+        assert_delimeter_next(ip);
+        cdr = read_object(ip);
+
+        // must be terminated by closing paren
+        c = next_non_whitespace(ip);
+        if (!is_closed_paren(c)) {
+            error1("read_object()", "missing pair terminator", Mchar(c));
+        }
+
+        assert_matching_paren(open_paren, c);
+    } else {
+        // (improper) list
+        ip_ungetc(ip, c);
+        cdr = read_pair(ip, open_paren);
+    }
+
+    return Mcons(car, cdr);
+}
+
 // Vector reader
-static mobj read_vector(mobj ip) {
+static mobj read_vector(mobj ip, mchar open_paren) {
     mobj l;
     mchar c;
 
     skip_whitespace(ip);
-    c = peek_char(ip);
-    if (c == ')') {
-        read_char(ip);
+    c = ip_peek(ip);
+    if (is_closed_paren(c)) {
+        ip_getc(ip);
+        assert_matching_paren(open_paren, c);
         return M_glob.null_vector;
     }
 
@@ -217,9 +300,10 @@ static mobj read_vector(mobj ip) {
     while (1) {
         l = Mcons(read_object(ip), l);
         skip_whitespace(ip);
-        c = peek_char(ip);
-        if (c == ')') {
-            read_char(ip);
+        c = ip_peek(ip);
+        if (is_closed_paren(c)) {
+            ip_getc(ip);
+            assert_matching_paren(open_paren, c);
             break;
         }
     }
@@ -241,7 +325,7 @@ mobj read_symbol(mobj ip, mchar c) {
     i = 1;
 
     // iteratively read
-    while (is_symbol_char(c = ip_getc(ip))) {
+    for (c = ip_getc(ip); is_symbol_char(c); c = ip_getc(ip)) {
         // add the character
         buffer[i] = c;
         i++;
@@ -279,27 +363,33 @@ loop:
         } else if (c == '\\') {
             // #\<c>... => character
             return read_char(ip);
-        } else if (c == '(') {
+        } else if (is_open_paren(c)) {
             // #(...) => vector
-            return read_vector(ip);
+            return read_vector(ip, c);
         } else if (c == '&') {
             // #&... => box
             return Mbox(read_object(ip));
         } else if (c == ';') {
             // #; => (datum comment, skip next datum)
             skip_whitespace(ip);
-            c = peek_char(ip);
+            c = ip_peek(ip);
             if (c != EOF) {
                 read_object(ip);    // skip
                 goto loop;
             }
-
             error("read_object()", "unexpected EOF while parsing datum comment");
+        } else if (c == '|') {
+            // #| => (block comment)
+            skip_block_comment(ip);
+            goto loop;
         } else {
             error1("read_object()",
                    "unexpected character following `#`",
                    Mchar(c));
         }
+    } else if (is_open_paren(c)) {
+        // pair of list
+        return read_pair(ip, c);
     } else if (is_symbol_char(c)) {
         // symbols
         return read_symbol(ip, c);

@@ -21,16 +21,14 @@ static void write_fixnum(mobj op, mobj o) {
 }
 
 static void write_symbol(mobj op, mobj o) {
-    mchar *s = minim_symbol(o);
-    for (; *s; s++) {
+    for (mchar *s = minim_symbol(o); *s; s++) {
         op_putc(op, *s);
     }
 }
 
 static void write_string(mobj op, mobj o) {
-    mchar *s = minim_symbol(o);
     op_putc(op, '"');
-    for (; *s; s++) {
+    for (mchar *s = minim_string(o); *s; s++) {
         if (*s == '\n') {
             op_puts(op, "\\n");
         } else if (*s == '\t') {
@@ -45,26 +43,35 @@ static void write_string(mobj op, mobj o) {
 }
 
 static void write_cons(mobj op, mobj o) {
+    op_putc(op, '(');
+
+loop:
     write_object(op, minim_car(o));
     if (minim_consp(minim_cdr(o))) {
-        // single cons cell or end of a cons chain
+        // middle of a (proper/improper) list
         op_putc(op, ' ');
-        write_cons(op, minim_cdr(o));
+        o = minim_cdr(o);
+        goto loop;
     } else if (!minim_nullp(minim_cdr(o))) {
-        // middle of a cons cell
+        // end of an improper list
         op_puts(op, " . ");
         write_object(op, minim_cdr(o));
     }
+
+    op_putc(op, ')');
 }
 
 static void write_vector(mobj op, mobj o) {
-    if (minim_vector_len(o) == 0) {
+    msize len = minim_vector_len(o);
+    if (len == 0) {
         op_puts(op, "#()");
     } else {
         op_puts(op, "#(");
         write_object(op, minim_vector_ref(o, 0));
-        for (size_t i = 1; i < minim_vector_len(o); i++)
+        for (size_t i = 1; i < len; i++) {
+            op_putc(op, ' ');
             write_object(op, minim_vector_ref(o, i));
+        }
         op_putc(op, ')');
     }
 }
