@@ -2,20 +2,6 @@
 
 #include "minim.h"
 
-// special characters
-
-#define NUL_CHAR        ((char) 0x00)       // null
-#define BEL_CHAR        ((char) 0x07)       // alarm / bell
-#define BS_CHAR         ((char) 0x08)       // backspace
-#define HT_CHAR         ((char) 0x09)       // horizontal tab
-#define LF_CHAR         ((char) 0x0A)       // line feed
-#define VT_CHAR         ((char) 0x0B)       // vertical tab
-#define FF_CHAR         ((char) 0x0B)       // form feed (page break)
-#define CR_CHAR         ((char) 0x0D)       // carriage return
-#define ESC_CHAR        ((char) 0x1B)       // escape
-#define SP_CHAR         ((char) 0x20)       // space
-#define DEL_CHAR        ((char) 0x7F)       // delete
-
 // port shims
 
 #define ip_getc(ip)         (getc(minim_port(ip)))
@@ -151,7 +137,7 @@ static void skip_block_comment(mobj ip) {
 
 static void read_named_char(mobj ip, const char *s) {
     mchar c;
-    while (*s != '\0') {
+    for (; *s != '\0'; s++) {
         c = ip_getc(ip);
         if (c != *s) {
             error1("read_object()",
@@ -432,6 +418,9 @@ mobj read_string(mobj ip) {
             } else if (c == 't') {
                 // horizontal tab
                 buffer[i] = '\t';
+            } else if (c == 'n') {
+                // newline
+                buffer[i] = '\n';
             } else if (c == 'v') {
                 // vertical tab
                 buffer[i] = VT_CHAR;

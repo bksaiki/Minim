@@ -7,13 +7,20 @@
 
 static void write_char(mobj op, mobj o) {
     mchar c = minim_char(o);
-    if (c == '\n') {
-        op_puts(op, "#\\newline");
-    } else if (c == ' ') {
-        op_puts(op, "#\\space");
-    } else {
-        op_putc(op, c);
-    }
+
+    op_puts(op, "#\\");
+    if (c == '\0') op_puts(op, "nul");
+    else if (c == BEL_CHAR) op_puts(op, "alarm");
+    else if (c == BS_CHAR) op_puts(op, "backspace");
+    else if (c == '\t') op_puts(op, "tab");
+    else if (c == '\n') op_puts(op, "newline");
+    else if (c == VT_CHAR) op_puts(op, "vtab");
+    else if (c == FF_CHAR) op_puts(op, "page");
+    else if (c == CR_CHAR) op_puts(op, "return");
+    else if (c == ESC_CHAR) op_puts(op, "esc");
+    else if (c == ' ') op_puts(op, "space");
+    else if (c == DEL_CHAR) op_puts(op, "delete");
+    else op_putc(op, c);
 }
 
 static void write_fixnum(mobj op, mobj o) {
@@ -29,10 +36,22 @@ static void write_symbol(mobj op, mobj o) {
 static void write_string(mobj op, mobj o) {
     op_putc(op, '"');
     for (mchar *s = minim_string(o); *s; s++) {
-        if (*s == '\n') {
-            op_puts(op, "\\n");
+        if (*s == BEL_CHAR) {
+            op_puts(op, "\\a");
+        } else if (*s == BS_CHAR) {
+            op_puts(op, "\\b");
         } else if (*s == '\t') {
             op_puts(op, "\\t");
+        } else if (*s == '\n') {
+            op_puts(op, "\\n");
+        } else if (*s == VT_CHAR) {
+            op_puts(op, "\\v");
+        } else if (*s == FF_CHAR) {
+            op_puts(op, "\\f");
+        } else if (*s == CR_CHAR) {
+            op_puts(op, "\\r");
+        } else if (*s == '\"') {
+            op_puts(op, "\\\"");
         } else if (*s == '\\') {
             op_puts(op, "\\\\");
         } else {

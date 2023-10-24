@@ -4,6 +4,7 @@
 SRC_DIR = src
 GC_DIR = bdwgc
 BUILD_DIR = build
+TEST_DIR = test
 
 ENTRY = $(SRC_DIR)/main.c
 OBJNAME = minim
@@ -11,6 +12,9 @@ OBJNAME = minim
 SRCS = $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY) )
 OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS = $(OBJS:.o=.d)
+
+TESTS = $(shell find $(TEST_DIR) -name "*.c")
+TEST_OBJS = $(TESTS:%.c=$(BUILD_DIR)/%)
 
 CFLAGS = -Wall -std=c11 -O0 -g
 DEPFLAGS = -MMD -MP
@@ -34,6 +38,9 @@ core: gc $(OBJS)
 gc: $(GC_DIR)/Makefile
 	$(MAKE) -C $(GC_DIR)
 
+test: gc $(OBJS) $(TEST_OBJS)
+	build/test/read
+
 clean:
 	$(RM) $(BUILD_DIR)
 
@@ -52,4 +59,7 @@ $(BUILD_DIR)%/.:
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
-PHONY: gc clean clean-all
+$(BUILD_DIR)/$(TEST_DIR)/%: $(TEST_DIR)/%.c $(OBJS) | $$(@D)/.
+	$(CC) -g -I$(SRC_DIR) $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
+
+PHONY: all core test gc clean clean-all

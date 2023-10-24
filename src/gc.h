@@ -5,6 +5,9 @@
 
 #include "../bdwgc/include/gc.h"
 
+#define GC_init()                   GC_INIT()
+#define GC_shutdown()               GC_deinit()
+
 #define GC_alloc(n)                 GC_malloc(n)
 #define GC_calloc(s, n)             GC_malloc((s) * (n))
 #define GC_realloc(p, n)            GC_realloc(p, n)

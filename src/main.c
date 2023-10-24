@@ -6,7 +6,7 @@ int main(int argc, char **argv) {
     mobj o;
     mthread *th;
 
-    GC_INIT();
+    GC_init();
 
     printf("Minim v%s\n", MINIM_VERSION);
     minim_init();
@@ -22,6 +22,6 @@ int main(int argc, char **argv) {
         fputc('\n', stdout);
     }
 
-    GC_deinit();
+    GC_shutdown();
     return 0;
 }
