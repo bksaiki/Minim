@@ -224,11 +224,20 @@ mobj Mport(FILE *f, mbyte flags);
 #define Mlist4(a, b, c, d)  Mcons(a, Mcons(b, Mcons(c, Mcons(d, minim_null))))
 
 //
+//  Equality
+//
+
+int minim_eqp(mobj x, mobj y);
+int minim_equalp(mobj x, mobj y);
+
+//
 //  Pairs and lists
 //
 
-size_t list_length(mobj o);
-mobj list_reverse(mobj o);
+int listp(mobj o);
+size_t list_length(mobj l);
+mobj list_reverse(mobj l);
+mobj list_member(mobj x, mobj l);
 
 //
 //  Vectors

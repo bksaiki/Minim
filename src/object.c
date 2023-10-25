@@ -76,3 +76,38 @@ mobj Mport(FILE *f, mbyte flags) {
     minim_port(o) = f;
     return o;
 }
+
+int minim_eqp(mobj x, mobj y) {
+    if (x == y) {
+        return 1;
+    } else if (minim_charp(x)) {
+        return minim_charp(y) && minim_char(x) == minim_char(y);
+    } else if (minim_fixnump(x)) {
+        return minim_fixnum(y) && minim_fixnum(x) == minim_fixnum(y);
+    } else {
+        return 0;
+    }
+}
+
+int minim_equalp(mobj x, mobj y) {
+    if (minim_eqp(x, y)) {
+        return 1;
+    } else if (minim_stringp(x)) {
+        return minim_stringp(y) && mstrcmp(minim_string(x), minim_string(y)) == 0;
+    } else if (minim_consp(x)) {
+        // TODO: cycle detection
+        return minim_consp(y) && \
+            minim_equalp(minim_car(x), minim_car(y)) && \
+            minim_equalp(minim_cdr(x), minim_cdr(y));
+    } else if (minim_vectorp(x)) {
+        if (!minim_vectorp(y)) return 0;
+        if (minim_vector_len(x) != minim_vector_len(y)) return 0;
+        for (msize i = 0; i < minim_vector_len(x); i++) {
+            if (!minim_equalp(minim_vector_ref(x, i), minim_vector_ref(y, i)))
+                return 0;
+        }
+        return 1;
+    } else {
+        return 0;
+    }
+}

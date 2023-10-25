@@ -2,20 +2,28 @@
 
 #include "minim.h"
 
-size_t list_length(mobj o) {
-    size_t l = 0;
-    while (!minim_nullp(o)) {
-        o = minim_cdr(o);
-        ++l;
-    }
-    return l;
+int listp(mobj l) {
+    while (minim_consp(l)) l = minim_cdr(l);
+    return minim_nullp(l);
 }
 
-mobj list_reverse(mobj o) {
+size_t list_length(mobj l) {
+    size_t i = 0;
+    for (; !minim_nullp(l); l = minim_cdr(l)) i++;
+    return i;
+}
+
+mobj list_reverse(mobj l) {
     mobj r = minim_null;
-    while (!minim_nullp(o)) {
-        r = Mcons(minim_car(o), r);
-        o = minim_cdr(o);
-    }
+    for (; !minim_nullp(l); l = minim_cdr(l))
+        r = Mcons(minim_car(l), r);
     return r;
+}
+
+mobj list_member(mobj x, mobj l) {
+    for (; !minim_nullp(l); l = minim_cdr(l)) {
+        if (minim_equalp(minim_car(x), l))
+            return minim_true;
+    }
+    return minim_false;
 }
