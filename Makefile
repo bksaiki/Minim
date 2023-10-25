@@ -16,7 +16,7 @@ DEPS = $(OBJS:.o=.d)
 TESTS = $(shell find $(TEST_DIR) -name "*.c")
 TEST_OBJS = $(TESTS:%.c=$(BUILD_DIR)/%)
 
-CFLAGS = -Wall -std=c11 -O0 -g
+CFLAGS = -Wall -std=c11 -O2 -g
 DEPFLAGS = -MMD -MP
 LDFLAGS = -L$(GC_DIR)/.libs -lgc
 

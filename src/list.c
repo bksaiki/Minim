@@ -29,5 +29,17 @@ mobj list_member(mobj x, mobj l) {
 }
 
 mobj list_append(mobj x, mobj y) {
-    
+    mobj l, t, i;
+
+    if (minim_nullp(x))
+        return y;
+
+    l = t = Mcons(minim_car(x), NULL);
+    for (i = minim_cdr(x); !minim_nullp(i); i = minim_cdr(i)) {
+        minim_cdr(t) = Mcons(minim_car(i), NULL);
+        t = minim_cdr(t);
+    }
+
+    minim_cdr(t) = y;
+    return l;
 }

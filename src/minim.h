@@ -156,7 +156,7 @@ extern mobj minim_void;
 #define minim_caar(o)       minim_car(minim_car(o))
 #define minim_cadr(o)       minim_car(minim_cdr(o))
 #define minim_cdar(o)       minim_cdr(minim_car(o))
-#define minim_cddr(o)       minim_cdr(minim_car(o))
+#define minim_cddr(o)       minim_cdr(minim_cdr(o))
 
 // Vector
 // +------------+
