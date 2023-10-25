@@ -69,11 +69,19 @@ mobj Mbox(mobj x) {
     return o;
 }
 
+static void gc_port_dtor(void *ptr, void *data) {
+    mobj o = (mobj) ptr;
+    if (minim_port_openp(o)) {
+        fclose(minim_port(o));
+    }
+}
+
 mobj Mport(FILE *f, mbyte flags) {
     mobj o = GC_alloc_atomic(minim_port_size);
     minim_type(o) = MINIM_OBJ_PORT;
     minim_port_flags(o) = flags;
     minim_port(o) = f;
+    GC_register_dtor(o, gc_port_dtor);
     return o;
 }
 

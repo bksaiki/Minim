@@ -4,6 +4,22 @@
 
 #include "minim.h"
 
+// core library
+mobj define_values_sym;
+mobj letrec_values_sym;
+mobj let_values_sym;
+mobj values_sym;
+mobj lambda_sym;
+mobj begin_sym;
+mobj if_sym;
+
+mobj define_sym;
+mobj let_sym;
+mobj letrec_sym;
+mobj cond_sym;
+mobj and_sym;
+mobj or_sym;
+
 // from ChezScheme
 size_t bucket_sizes[] = {
     13,

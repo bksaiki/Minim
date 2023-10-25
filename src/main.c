@@ -5,21 +5,79 @@
 int main(int argc, char **argv) {
     mobj o;
     mthread *th;
+    int version = 1;
+    int repl = (argc == 1);
+    int boot = 0;
+    int argi;
+
+    for (argi = 1; argi < argc; argi++) {
+        if (argv[argi][0] != '-')
+            break;
+
+        if (strcmp(argv[argi], "--version") == 0) {
+            version = 1;
+            repl = 0;
+        } else if (strcmp(argv[argi], "--boot") == 0) {
+            version = 0;
+            boot = 1;
+        } else {
+            fprintf(stderr, "unknown flag %s\n", argv[argi]);
+            exit(1);
+        }
+    }
+
+    if (version) {
+        printf("Minim v%s\n", MINIM_VERSION);
+    }
 
     GC_init();
-
-    printf("Minim v%s\n", MINIM_VERSION);
+    GC_pause();
     minim_init();
 
     th = get_thread();
-    while (1) {
-        fputs("> ", stdout);
-        o = read_object(get_input_port(th));
-        if (minim_eofp(o))
-            break;
 
-        write_object(get_output_port(th), o);
-        fputc('\n', stdout);
+    // Bootstrapping
+    if (boot) {
+        // expected two arguments <input> <output>
+        if (argi + 2 != argc) {
+            fprintf(stderr, "command-line arguments expected\n");
+            fprintf(stderr, " expected 2 arguments, given: %d\n", argc - argi);
+            exit(1);
+        }
+
+        mobj ip = open_input_file(argv[argi]);
+        mobj op = open_output_file(argv[argi + 1]);
+        while (1) {
+            // read in an expression
+            o = read_object(ip);
+            if (minim_eofp(o))
+                break;
+
+            // expand
+            o = expand_top(o);
+            write_object(op, o);
+            fputc('\n', minim_port(op));
+        }
+
+        close_port(ip);
+        close_port(op);
+    }
+    
+    // REPL
+    if (repl) {
+        fputs("[cwd ", stdout);
+        write_object(th_output_port(th), th_working_dir(th));
+        fputs("]\n", stdout);
+
+        while (1) {
+            fputs("> ", stdout);
+            o = read_object(th_input_port(th));
+            if (minim_eofp(o))
+                break;
+
+            write_object(th_output_port(th), o);
+            fputc('\n', stdout);
+        }
     }
 
     GC_shutdown();

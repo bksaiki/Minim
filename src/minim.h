@@ -238,6 +238,7 @@ int listp(mobj o);
 size_t list_length(mobj l);
 mobj list_reverse(mobj l);
 mobj list_member(mobj x, mobj l);
+mobj list_append(mobj x, mobj y);
 
 //
 //  Vectors
@@ -273,6 +274,10 @@ int mstrcmp(const mchar *s1, const mchar *s2);
 //  I/O
 //
 
+mobj open_input_file(const char *f);
+mobj open_output_file(const char *f);
+void close_port(mobj p);
+
 mobj read_object(mobj ip);
 void write_object(mobj op, mobj o);
 
@@ -283,6 +288,12 @@ void write_object(mobj op, mobj o);
 NORETURN void fatal_exit();
 NORETURN void error(const char *who, const char *why);
 NORETURN void error1(const char *who, const char *why, mobj);
+
+//
+//  System
+//
+
+char* get_current_dir();
 
 //
 //  Interner
@@ -301,10 +312,32 @@ mobj intern_str(const mchar *s);
 //  Globals
 //
 
+// core syntax
+extern mobj define_values_sym;
+extern mobj letrec_values_sym;
+extern mobj let_values_sym;
+extern mobj values_sym;
+extern mobj lambda_sym;
+extern mobj begin_sym;
+extern mobj if_sym;
+
+// extended syntax
+extern mobj define_sym;
+extern mobj let_sym;
+extern mobj letrec_sym;
+extern mobj cond_sym;
+extern mobj and_sym;
+extern mobj or_sym;
+
 typedef struct _M_thread {
     mobj *input_port;
     mobj *output_port;
+    mobj *working_dir;
 } mthread;
+
+#define th_input_port(th)  ((th)->input_port)
+#define th_output_port(th) ((th)->output_port)   
+#define th_working_dir(th) ((th)->working_dir)
 
 extern struct _M_globals {
     // objects
@@ -319,9 +352,14 @@ extern struct _M_globals {
 } M_glob;
 
 #define get_thread()        (M_glob.thread)
-#define get_input_port(th)  ((th)->input_port)
-#define get_output_port(th) ((th)->output_port)   
 
 void minim_init();
+
+//
+//  Bootstrapping
+//
+
+mobj expand_expr(mobj e);
+mobj expand_top(mobj e);
 
 #endif

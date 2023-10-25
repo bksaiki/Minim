@@ -27,3 +27,7 @@ mobj list_member(mobj x, mobj l) {
     }
     return minim_false;
 }
+
+mobj list_append(mobj x, mobj y) {
+    
+}
