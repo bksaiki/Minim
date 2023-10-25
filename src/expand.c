@@ -22,6 +22,8 @@ static void syntax_error(const char *name,
         write_object(th_output_port(get_thread()), stx);
         fprintf(stderr, "\n");
     }
+    
+    fatal_exit();
 }
 
 static int syntax_formp(mobj head, mobj e) {
@@ -97,8 +99,30 @@ static void check_if_form(mobj e) {
 }
 
 // Assuming `e := (_ ...)`
-// Expecting `e := (begin <e1> <es> ...)`
-static void check_begin_form(mobj e) {
+// Expecting `e := (cond [<test> <then>] ...)
+static void check_cond_form(mobj e) {
+    mobj i, cl;
+    for (i = minim_cdr(e); !minim_nullp(i); i = minim_cdr(i)) {
+        cl = minim_car(i);
+        if (!minim_consp(cl))
+            syntax_error("check_cond_form", "bad clause", e, cl);
+        
+        cl = minim_cdr(cl);
+        if (!minim_consp(cl))
+            syntax_error("check_cond_form", "bad clause", e, minim_car(i));
+
+        cl = minim_cdr(cl);
+        if (!listp(cl)) {
+            syntax_error("check_cond_form",
+                         "expected expression sequence",
+                         e, minim_car(i));
+        }
+    }
+}
+
+// Assuming `e := (_ ...)`
+// Expecting `e := (_ <e1> <es> ...)`
+static void check_0ary_form(mobj e) {
     if (!listp(minim_cdr(e))) {
         syntax_error("check_begin_form",
                      "expected expression sequence",
@@ -177,6 +201,63 @@ static void check_define_values_form(mobj e) {
 }
 
 // Assuming `e := (_ ...)`.
+// Expecting `e := (let <name> ([<id> <e>] ...) <body> ...)
+//              := (let ([<id> <e>] ...) <body> ...)`
+static void check_let_form(mobj e) {
+    mobj rib, bindings, bind, id;
+
+    rib = minim_cdr(e);
+    if (!minim_consp(rib))
+        syntax_error("check_let_form", "bad syntax", e, NULL);
+
+    id = minim_car(rib);
+    if (minim_symbolp(id)) {
+        rib = minim_cdr(rib);
+    }
+
+    bindings = minim_car(rib);
+    while (!minim_nullp(bindings)) {
+        bind = minim_car(bindings);
+        if (!minim_consp(bind)) {
+            syntax_error("check_let_form",
+                         "ill-formed binding",
+                         e, bind);
+        }
+
+        id = minim_car(bind);
+        if (!minim_symbolp(id)) {
+            syntax_error("check_let_form", "expected identifier", e, id);
+        }
+
+        bind = minim_cdr(bind);
+        if (!minim_consp(bind) || !minim_nullp(minim_cdr(bind))) {
+            syntax_error("check_let_form",
+                         "ill-formed binding",
+                         e, minim_car(bindings));
+        }
+
+        bindings = minim_cdr(bindings);
+    }
+
+    if (!minim_nullp(bindings)) {
+        syntax_error("check_let_form",
+                     "expected list of bindings",
+                     e, minim_car(rib));
+    }
+
+    rib = minim_cdr(rib);
+    if (!minim_consp(rib))
+        syntax_error("check_let_form", "missing body", e, NULL);
+    
+    rib = minim_cdr(rib);
+    if (!listp(rib)) {
+        syntax_error("check_let_form",
+                     "expected expression sequence",
+                     e, rib);
+    }
+}
+
+// Assuming `e := (_ ...)`.
 // Expecting `e := (let-values ([(<id> ...) <e>] ...) <body> ...)`.
 static void check_let_values_form(mobj e) {
     mobj rib, bindings, bind, ids;
@@ -247,7 +328,7 @@ static void splice_begin_forms(mobj e) {
     for (mobj i = e; !minim_nullp(i); i = minim_cdr(i)) {
         if (syntax_formp(begin_sym, minim_car(i))) {
             // splice in begin subexpression
-            check_begin_form(minim_car(i));
+            check_0ary_form(minim_car(i));
             if (t == NULL) {
                 // first expression
                 e = Mcons(minim_car(e), list_append(minim_cdar(i), minim_cdr(i)));
@@ -285,6 +366,59 @@ static mobj expand_define_form(mobj e) {
     return Mlist3(define_values_sym, Mlist1(id), body);
 }
 
+// Partial expansion of named `let` form into `let-values` form.
+// `(let <name> ([<id> <e>] ...) <body> ...)
+//  => (let-values ([(<name>) (lambda (<id> ...) <body> ...)])
+//       (<name> <e> ...))`
+static mobj expand_named_let_form(mobj e) {
+    mobj rib, id, vars, vals, bindings, bind, *proc;
+
+    // store id
+    rib = minim_cdr(e);
+    id = minim_car(rib);
+
+    // collect variables and values from bindings
+    rib = minim_cdr(rib);
+    bindings = minim_car(rib);
+    vars = vals = minim_null;
+    while (!minim_nullp(bindings)) {
+        bind = minim_car(bindings);
+        vars = Mcons(minim_car(bind), vars);
+        vals = Mcons(minim_cadr(bind), vals);
+        bindings = minim_cdr(bindings);
+    }
+
+    // constructed backwards as usual
+    vars = list_reverse(vars);
+    vals = list_reverse(vals);
+
+    // compose syntax
+    proc = Mcons(lambda_sym, Mcons(vars, minim_cdr(rib)));
+    return Mlist3(let_values_sym,
+                  Mlist1(Mlist2(Mlist1(id), proc)),
+                  Mcons(id, vals));
+}
+
+// Partial expansion of `let` form into `let-values` form.
+// `(let <name> ([<id> <e>] ...) <body> ...)
+//  => (let-values ([(<id>) <e>] ...) <body> ...)`
+static mobj expand_let_form(mobj e) {
+    mobj rib, bindings, bind;
+
+    rib = minim_cdr(e);
+    if (minim_symbolp(minim_car(rib)))
+        return expand_named_let_form(e);
+
+    bindings = minim_car(rib);
+    while (!minim_nullp(bindings)) {
+        bind = minim_car(bindings);
+        minim_car(bind) = Mlist1(minim_car(bind));
+        bindings = minim_cdr(bindings);
+    }
+
+    return Mcons(let_values_sym, rib);
+}
+
 // Expansion of `let-values` form recursing with `expand-expr`.
 static mobj expand_let_values_form(mobj e) {
     mobj rib, bindings, bind;
@@ -300,6 +434,69 @@ static mobj expand_let_values_form(mobj e) {
     splice_begin_forms(rib);
     minim_cdr(rib) = expand_body(e, minim_cdr(rib));
     return e;
+}
+
+// Recursive expansion of `and` form.
+// `(and) => #t`
+// `(and <e>) => <e>`
+// `(and <e> <es> ...) => (if <e> (and <es> ...) #f)`
+static mobj expand_and_form(mobj e) {
+    mobj cls = minim_cdr(e);
+    if (minim_nullp(cls)) {
+        return minim_true;
+    } else if (minim_nullp(minim_cdr(cls))) {
+        return expand_expr(minim_car(cls));
+    } else { 
+        return Mlist4(if_sym,
+                      expand_expr(minim_car(cls)),
+                      expand_and_form(Mcons(and_sym, minim_cdr(cls))),
+                      minim_false);
+    }
+}
+
+// Recursive expansion of `or` form.
+// `(or) => #f`
+// `(or <e>) => <e>`
+// `(or <e> <es> ...) => (let-values ([(<tmp>) <e>]) (if <tmp> <tmp> (or <es> ...)))`
+static mobj expand_or_form(mobj e) {
+    mobj cls, gen, rec;
+    
+    cls = minim_cdr(e);
+    if (minim_nullp(cls)) {
+        return minim_false;
+    } else if (minim_nullp(minim_cdr(cls))) {
+        return expand_expr(minim_car(cls));
+    } else {
+        gen = intern("$T$");
+        rec = expand_or_form(Mcons(or_sym, minim_cdr(cls)));
+        return Mlist3(let_values_sym,
+                      Mlist1(Mlist2(Mlist1(gen), expand_expr(minim_car(cls)))),
+                      Mlist4(if_sym, gen, gen, rec));
+    }
+}
+
+// Recursive expansion of `cond` form.
+static mobj expand_cond_form(mobj e) {
+    mobj cls, cl, ift, iff;
+    
+    cls = minim_cdr(e);
+    if (minim_nullp(cls)) {
+        return Mlist1(intern("void"));
+    } else {
+        cl = minim_car(cls);
+        ift = expand_expr(Mcons(begin_sym, minim_cdr(cl)));
+        if (minim_car(cl) == intern("else")) {
+            if (!minim_nullp(minim_cdr(cls))) {
+                syntax_error("expand_cond_form",
+                             "`else` clause must be last",
+                             e, cl);
+            }
+            return ift;
+        }
+
+        iff = expand_cond_form(Mcons(cond_sym, minim_cdr(cls)));
+        return Mlist4(if_sym, minim_car(cl), ift, iff);
+    }
 }
 
 // Expands an expression sequence.
@@ -347,7 +544,7 @@ loop:
 //
 
 mobj expand_expr(mobj e) {
-    mobj t, i;
+    mobj i;
 
     write_object(Mport(stdout, 0x0), e);
     fputc('\n', stdout);
@@ -355,11 +552,17 @@ mobj expand_expr(mobj e) {
     if (!minim_consp(e))
         return e;
 
+loop:
     if (syntax_formp(lambda_sym, e)) {
         // lambda form => recurse
         check_lambda_form(e);
         splice_begin_forms(minim_cdr(e));
         minim_cddr(e) = expand_body(e, minim_cddr(e));
+    } else if (syntax_formp(let_sym, e)) {
+        // let form => recurse
+        check_let_form(e);
+        e = expand_let_form(e);
+        goto loop;
     } else if (syntax_formp(let_values_sym, e) ||
                 syntax_formp(letrec_values_sym, e)) {
         // let-values form => recurse
@@ -367,16 +570,33 @@ mobj expand_expr(mobj e) {
         e = expand_let_values_form(e);
     } else if (syntax_formp(begin_sym, e)) {
         // begin form => recurse
-        check_begin_form(e);
+        check_0ary_form(e);
         splice_begin_forms(e);
-        minim_cddr(e) = expand_body(e, minim_cddr(e));
+        e = expand_body(e, minim_cdr(e));
+    } else if (syntax_formp(and_sym, e)) {
+        // and form => recurse
+        check_0ary_form(e);
+        e = expand_and_form(e);
+    } else if (syntax_formp(or_sym, e)) {
+        // or form => recurse
+        check_0ary_form(e);
+        e = expand_or_form(e);
+    } else if (syntax_formp(cond_sym, e)) {
+        // cond form => recurse
+        check_cond_form(e);
+        e = expand_cond_form(e);
     } else if (syntax_formp(if_sym, e)) {
         // if form => recurse
         check_if_form(e);
-        e = Mlist4(minim_car(e),
+        e = Mlist4(if_sym,
                    expand_expr(minim_cadr(e)),
                    expand_expr(minim_car(minim_cddr(e))),
                    expand_expr(minim_cadr(minim_cddr(e))));
+    } else {
+        // operator application
+        for (i = e; !minim_nullp(i); i = minim_cdr(i)) {
+            minim_car(i) = expand_expr(minim_car(i));
+        }
     }
 
     return e;
@@ -405,10 +625,12 @@ loop:
         minim_car(t) = expand_expr(minim_car(t));
     } else if (syntax_formp(begin_sym, e)) {
         // begin form => recurse
-        check_begin_form(e);
+        check_0ary_form(e);
         splice_begin_forms(e);
         for (i = minim_cdr(e); !minim_nullp(i); i = minim_cdr(i))
             minim_car(i) = expand_top(minim_car(i));
+    } else {
+        e = expand_expr(e);   
     }
 
     return e;
