@@ -339,7 +339,7 @@ static mobj read_pair(mobj ip, mchar open_paren) {
 
     // check for cons dot
     c = next_non_whitespace(ip);
-    if (c == '.' && isspace(ip_peek(ip))) {
+    if (c == '.' && is_delimeter(ip_peek(ip))) {
         // either a pair or an improper list
         // read in the cdr element
         assert_delimeter_next(ip);
@@ -548,6 +548,9 @@ loop:
     } else if (c == '\"') {
         // string
         return read_string(ip);
+    } else if (c == '\'') {
+        // shorthand for quote
+        return Mlist2(quote_sym, read_object(ip));
     } else if (is_symbol_char(c)) {
         // symbols
         return read_symbol(ip, c);

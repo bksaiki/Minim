@@ -4,7 +4,6 @@
 
 #include "minim.h"
 
-// core library
 mobj define_values_sym;
 mobj letrec_values_sym;
 mobj let_values_sym;
@@ -12,7 +11,8 @@ mobj values_sym;
 mobj lambda_sym;
 mobj begin_sym;
 mobj if_sym;
-
+mobj quote_sym;
+mobj setb_sym;
 mobj define_sym;
 mobj let_sym;
 mobj letrec_sym;

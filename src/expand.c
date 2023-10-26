@@ -58,7 +58,7 @@ loop:
     }
 }
 
-// Assuming `e := (_ ...)`
+// Assuming `e := (_ ...)`.
 // Expecting `e := (lambda <formals> <body> ..+)`
 static void check_lambda_form(mobj e) {
     mobj rib;
@@ -80,7 +80,7 @@ static void check_lambda_form(mobj e) {
     }
 }
 
-// Assuming `e := (_ ...)`
+// Assuming `e := (_ ...)`.
 // Expecting `e := (if <expr> <expr> <expr>)
 static void check_if_form(mobj e) {
     mobj *rest;
@@ -98,7 +98,7 @@ static void check_if_form(mobj e) {
         syntax_error("check_if_form", "bad syntax", e, NULL);
 }
 
-// Assuming `e := (_ ...)`
+// Assuming `e := (_ ...)`.
 // Expecting `e := (cond [<test> <then>] ...)
 static void check_cond_form(mobj e) {
     mobj i, cl;
@@ -120,7 +120,7 @@ static void check_cond_form(mobj e) {
     }
 }
 
-// Assuming `e := (_ ...)`
+// Assuming `e := (_ ...)`.
 // Expecting `e := (_ <e1> <es> ...)`
 static void check_0ary_form(mobj e) {
     if (!listp(minim_cdr(e))) {
@@ -131,13 +131,38 @@ static void check_0ary_form(mobj e) {
 }
 
 // Assuming `e := (_ ...)`.
+// Expecting `e := (set! <id> <e>)`.
+static void check_setb_form(mobj e) {
+    mobj rib, id;
+
+    rib = minim_cdr(e);
+    if (!minim_consp(rib))
+        syntax_error("check_setb_form", "bad syntax", e, NULL);
+
+    id = minim_car(rib);
+    if (!minim_symbolp(id)) {
+        syntax_error("check_setb_form", "missing identifier", e, id);
+    }
+
+    rib = minim_cdr(rib);
+    if (!minim_consp(rib)) {
+        syntax_error("check_setb_form", "missing body", e, NULL);
+    }
+
+    rib = minim_cdr(rib);
+    if (!minim_nullp(rib)) {
+        syntax_error("check_define_form", "multiple bodies", e, NULL);
+    }
+}
+
+// Assuming `e := (_ ...)`.
 // Expecting `e := (define <id> <e>)
 //              := (define (id <formals> ...) <es> ..+)
 static void check_define_form(mobj e) {
     mobj rib, id;
 
     rib = minim_cdr(e);
-    if (!minim_consp(e))
+    if (!minim_consp(rib))
         syntax_error("check_define_form", "bad syntax", e, NULL);
 
     id = minim_car(rib);
@@ -160,7 +185,7 @@ static void check_define_form(mobj e) {
 
     rib = minim_cdr(rib);
     if (!minim_consp(id) && !minim_nullp(rib)) {
-        syntax_error("check_define_form", "missing bodies", e, NULL);
+        syntax_error("check_define_form", "multiple bodies", e, NULL);
     }
 }
 
@@ -170,7 +195,7 @@ static void check_define_values_form(mobj e) {
     mobj rib, ids;
 
     rib = minim_cdr(e);
-    if (!minim_consp(e))
+    if (!minim_consp(rib))
         syntax_error("check_define_values_form", "bad syntax", e, NULL);
 
     for (ids = minim_car(rib); minim_consp(ids); ids = minim_cdr(ids)) {
@@ -592,6 +617,10 @@ loop:
                    expand_expr(minim_cadr(e)),
                    expand_expr(minim_car(minim_cddr(e))),
                    expand_expr(minim_cadr(minim_cddr(e))));
+    } else if (syntax_formp(setb_sym, e)) {
+        // set! form => recurse
+        check_setb_form(e);
+        minim_car(minim_cddr(e)) = expand_expr(minim_car(minim_cddr(e)));
     } else {
         // operator application
         for (i = e; !minim_nullp(i); i = minim_cdr(i)) {

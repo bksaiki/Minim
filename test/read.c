@@ -91,22 +91,26 @@ int test_simple() {
     check_same("\"abc\"");
     check_same("\"abc\\\"\"");
 
-    check_same("\"(a . b)\"");
-    check_same("\"(a b . c\"");
-    check_same("\"(a b c . d)\"");
+    check_same("(a . b)");
+    check_same("(a b . c)");
+    check_same("(a b c . d)");
 
-    check_same("\"()\"");
-    check_same("\"(a)\"");
-    check_same("\"(a b)\"");
-    check_same("\"(a b c)\"");
+    check_same("()");
+    check_same("(a)");
+    check_same("(a b)");
+    check_same("(a b c)");
 
-    check_same("\"#()\"");
-    check_same("\"#(a)\"");
-    check_same("\"#(a b)\"");
-    check_same("\"#(a b c)\"");
+    check_same("#()");
+    check_same("#(a)");
+    check_same("#(a b)");
+    check_same("#(a b c)");
 
-    check_same("\"((1 2) (3 4))\"");
-    check_same("\"(1 (2 (3 (4))))\"");
+    check_same("((1 2) (3 4))");
+    check_same("(1 (2 (3 (4))))");
+
+    check_equal("'1", "(quote 1)");
+    check_equal("'(1 . 2)", "(quote (1 . 2))");
+    check_equal("'(1 2 3)", "(quote (1 2 3))");
 
     return passed; 
 }

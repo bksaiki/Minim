@@ -320,6 +320,8 @@ extern mobj values_sym;
 extern mobj lambda_sym;
 extern mobj begin_sym;
 extern mobj if_sym;
+extern mobj quote_sym;
+extern mobj setb_sym;
 
 // extended syntax
 extern mobj define_sym;

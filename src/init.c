@@ -46,6 +46,8 @@ void minim_init() {
     lambda_sym = intern("lambda");
     begin_sym = intern("begin");
     if_sym = intern("if");
+    quote_sym = intern("quote");
+    setb_sym = intern("set!");
 
     define_sym = intern("define");
     letrec_sym = intern("letrec");
