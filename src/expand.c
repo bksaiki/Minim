@@ -610,7 +610,16 @@ loop:
         // begin form => recurse
         check_0ary_form(e);
         splice_begin_forms(e);
-        e = expand_body(e, minim_cdr(e));
+        if (minim_nullp(minim_cdr(e))) {
+            // empty sequence
+            e = Mlist1(intern("void"));
+        } else {
+            e = expand_body(e, minim_cdr(e));
+            if (minim_nullp(minim_cddr(e))) {
+                // sequence of length 1
+                e = minim_cadr(e);
+            }
+        }
     } else if (and_formp(e)) {
         // and form => recurse
         check_0ary_form(e);
@@ -651,7 +660,6 @@ mobj expand_top(mobj e) {
         return e;
 
 loop:
-
     if (define_formp(e)) {
         // define form => expansion
         check_define_form(e);
@@ -666,8 +674,18 @@ loop:
         // begin form => recurse
         check_0ary_form(e);
         splice_begin_forms(e);
-        for (i = minim_cdr(e); !minim_nullp(i); i = minim_cdr(i))
-            minim_car(i) = expand_top(minim_car(i));
+        if (minim_nullp(minim_cdr(e))) {
+            // empty sequence
+            e = Mlist1(intern("void"));
+            goto loop;
+        } else if (minim_nullp(minim_cddr(e))) {
+            // sequence of length 1
+            e = minim_cadr(e);
+            goto loop;
+        } else {
+            for (i = minim_cdr(e); !minim_nullp(i); i = minim_cdr(i))
+                minim_car(i) = expand_top(minim_car(i));
+        }
     } else {
         e = expand_expr(e);   
     }
