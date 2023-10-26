@@ -26,3 +26,37 @@ int mstrcmp(const mchar *s1, const mchar *s2) {
 
     return *s1 - *s2;
 }
+
+// largest 64-bit signed integers occupied 20 characters
+#define FIXNUM_STRLEN   21
+
+mobj fixnum_to_string(mobj x) {
+    char buffer[FIXNUM_STRLEN];
+    snprintf(buffer, FIXNUM_STRLEN, "%ld", minim_fixnum(x));
+    return Mstring(buffer);
+}
+
+mobj string_append(mobj x, mobj y) {
+    size_t xlen, ylen, len;
+    mchar *str;
+
+    xlen = mstrlen(minim_string(x));
+    ylen = mstrlen(minim_string(y));
+    len = xlen + ylen;
+
+    str = GC_alloc_atomic((len + 1) * sizeof(mchar));
+    memcpy(str, minim_string(x), xlen * sizeof(mchar));
+    memcpy(&str[xlen], minim_string(y), (ylen + 1) * sizeof(mchar));
+    return Mstring2(str);
+}
+
+mobj string_to_symbol(mobj x) {
+    return intern_str(minim_string(x));
+}
+
+mobj symbol_to_string(mobj x) {
+    size_t len = mstrlen(minim_symbol(x));
+    mchar *str = GC_alloc_atomic((len + 1) * sizeof(mchar));
+    memcpy(str, minim_string(x), (len + 1) * sizeof(mchar));
+    return Mstring2(str);
+}

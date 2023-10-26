@@ -3,7 +3,7 @@
 #include "minim.h"
 
 int main(int argc, char **argv) {
-    mobj o;
+    mobj o, op, ip, es;
     mthread *th;
     int version = 1;
     int repl = (argc == 1);
@@ -45,8 +45,10 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-        mobj ip = open_input_file(argv[argi]);
-        mobj op = open_output_file(argv[argi + 1]);
+        ip = open_input_file(argv[argi]);
+        op = open_output_file(argv[argi + 1]);
+        es = minim_null;
+
         while (1) {
             // read in an expression
             o = read_object(ip);
@@ -57,7 +59,11 @@ int main(int argc, char **argv) {
             o = expand_top(o);
             write_object(op, o);
             fputc('\n', minim_port(op));
+            es = Mcons(o, es);
         }
+
+        es = list_reverse(es);
+        compile_module(op, Mstring(argv[argi]), es);
 
         close_port(ip);
         close_port(op);

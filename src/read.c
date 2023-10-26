@@ -93,6 +93,7 @@ static void skip_whitespace(mobj ip) {
             // comment: ignore until newline
             while (((c = ip_getc(ip)) != EOF) && (c != '\n'));
             ip_ungetc(ip, c);
+            continue;
         }
 
         // too far

@@ -30,6 +30,23 @@ static int syntax_formp(mobj head, mobj e) {
     return minim_consp(e) && minim_car(e) == head;
 }
 
+#define define_values_formp(e)      syntax_formp(define_values_sym, e)
+#define letrec_values_formp(e)      syntax_formp(letrec_values_sym, e)
+#define let_values_formp(e)         syntax_formp(let_values_sym, e)
+#define values_formp(e)             syntax_formp(values_sym, e)
+#define lambda_formp(e)             syntax_formp(lambda_sym, e)
+#define begin_formp(e)              syntax_formp(begin_sym, e)
+#define if_formp(e)                 syntax_formp(if_sym, e)
+#define quote_formp(e)              syntax_formp(quote_sym, e)
+#define setb_formp(e)               syntax_formp(setb_sym, e)
+
+#define define_formp(e)             syntax_formp(define_sym, e)
+#define letrec_formp(e)             syntax_formp(letrec_sym, e)
+#define let_formp(e)                syntax_formp(let_sym, e)
+#define cond_formp(e)               syntax_formp(cond_sym, e)
+#define and_formp(e)                syntax_formp(and_sym, e)
+#define or_formp(e)                 syntax_formp(or_sym, e)
+
 //
 //  Checker
 //
@@ -351,7 +368,7 @@ static void check_let_values_form(mobj e) {
 static void splice_begin_forms(mobj e) {
     mobj t = NULL;
     for (mobj i = e; !minim_nullp(i); i = minim_cdr(i)) {
-        if (syntax_formp(begin_sym, minim_car(i))) {
+        if (begin_formp(minim_car(i))) {
             // splice in begin subexpression
             check_0ary_form(minim_car(i));
             if (t == NULL) {
@@ -531,12 +548,12 @@ static mobj expand_body(mobj form, mobj es) {
     for (mobj i = es; !minim_nullp(i); i = minim_cdr(i)) {
         mobj e = minim_car(i);
 loop:
-        if (syntax_formp(define_sym, e)) {
+        if (define_formp(e)) {
             // define form => expansion
             check_define_form(e);
             e = expand_define_form(e);
             goto loop;
-        } else if (syntax_formp(define_values_sym, e)) {
+        } else if (define_values_formp(e)) {
             if (minim_nullp(minim_cdr(i))) {
                 syntax_error("expand_body",
                              "last form is not an expression",
@@ -571,53 +588,49 @@ loop:
 mobj expand_expr(mobj e) {
     mobj i;
 
-    write_object(Mport(stdout, 0x0), e);
-    fputc('\n', stdout);
-
     if (!minim_consp(e))
         return e;
 
 loop:
-    if (syntax_formp(lambda_sym, e)) {
+    if (lambda_formp(e)) {
         // lambda form => recurse
         check_lambda_form(e);
         splice_begin_forms(minim_cdr(e));
         minim_cddr(e) = expand_body(e, minim_cddr(e));
-    } else if (syntax_formp(let_sym, e)) {
+    } else if (let_formp(e)) {
         // let form => recurse
         check_let_form(e);
         e = expand_let_form(e);
         goto loop;
-    } else if (syntax_formp(let_values_sym, e) ||
-                syntax_formp(letrec_values_sym, e)) {
+    } else if (letrec_values_formp(e) || let_values_formp(e)) {
         // let-values form => recurse
         check_let_values_form(e);
         e = expand_let_values_form(e);
-    } else if (syntax_formp(begin_sym, e)) {
+    } else if (begin_formp(e)) {
         // begin form => recurse
         check_0ary_form(e);
         splice_begin_forms(e);
         e = expand_body(e, minim_cdr(e));
-    } else if (syntax_formp(and_sym, e)) {
+    } else if (and_formp(e)) {
         // and form => recurse
         check_0ary_form(e);
         e = expand_and_form(e);
-    } else if (syntax_formp(or_sym, e)) {
+    } else if (or_formp(e)) {
         // or form => recurse
         check_0ary_form(e);
         e = expand_or_form(e);
-    } else if (syntax_formp(cond_sym, e)) {
+    } else if (cond_formp(e)) {
         // cond form => recurse
         check_cond_form(e);
         e = expand_cond_form(e);
-    } else if (syntax_formp(if_sym, e)) {
+    } else if (if_formp(e)) {
         // if form => recurse
         check_if_form(e);
         e = Mlist4(if_sym,
                    expand_expr(minim_cadr(e)),
                    expand_expr(minim_car(minim_cddr(e))),
                    expand_expr(minim_cadr(minim_cddr(e))));
-    } else if (syntax_formp(setb_sym, e)) {
+    } else if (setb_formp(e)) {
         // set! form => recurse
         check_setb_form(e);
         minim_car(minim_cddr(e)) = expand_expr(minim_car(minim_cddr(e)));
@@ -634,25 +647,22 @@ loop:
 mobj expand_top(mobj e) {
     mobj t, i;
 
-    write_object(Mport(stdout, 0x0), e);
-    fputc('\n', stdout);
-
     if (!minim_consp(e))
         return e;
 
 loop:
 
-    if (syntax_formp(define_sym, e)) {
+    if (define_formp(e)) {
         // define form => expansion
         check_define_form(e);
         e = expand_define_form(e);
         goto loop;
-    } else if (syntax_formp(define_values_sym, e)) {
+    } else if (define_values_formp(e)) {
         // define-values form => expand value
         check_define_values_form(e);
         t = minim_cddr(e);
         minim_car(t) = expand_expr(minim_car(t));
-    } else if (syntax_formp(begin_sym, e)) {
+    } else if (begin_formp(e)) {
         // begin form => recurse
         check_0ary_form(e);
         splice_begin_forms(e);

@@ -270,6 +270,11 @@ mchar *mstr(const char *s);
 size_t mstrlen(const mchar *s);
 int mstrcmp(const mchar *s1, const mchar *s2);
 
+mobj fixnum_to_string(mobj x);
+mobj string_append(mobj x, mobj y);
+mobj string_to_symbol(mobj x);
+mobj symbol_to_string(mobj x);
+
 //
 //  I/O
 //
@@ -363,5 +368,6 @@ void minim_init();
 
 mobj expand_expr(mobj e);
 mobj expand_top(mobj e);
+void compile_module(mobj op, mobj name, mobj es);
 
 #endif
