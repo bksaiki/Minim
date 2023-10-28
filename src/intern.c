@@ -13,6 +13,7 @@ mobj begin_sym;
 mobj if_sym;
 mobj quote_sym;
 mobj setb_sym;
+mobj void_sym;
 mobj define_sym;
 mobj let_sym;
 mobj letrec_sym;

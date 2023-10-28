@@ -48,6 +48,7 @@ void minim_init() {
     if_sym = intern("if");
     quote_sym = intern("quote");
     setb_sym = intern("set!");
+    void_sym = intern("void");
 
     define_sym = intern("define");
     letrec_sym = intern("letrec");

@@ -1,0 +1,58 @@
+Minim Developer's Guide
+
+
+Stack Implementation
+
+Minim uses Chez Scheme's implementations of stacks (and continuations).
+A paper describing this implementation can be found
+  [here](https://dl.acm.org/doi/10.1145/93542.93554)
+  (Hieb, Dybvig, Bruggeman).
+
+The stack is actually a linked list of _stack segments_,
+  each of which contain the actual stack frames where
+  each frame represents a procedure call.
+
+Each stack segment has an associated _stack record_
+  that describes the segment including information like:
+ - a pointer to the base of the stack segment
+ - a pointer to the next stack record
+ - the size of the stack segment, and
+ - return address for the topmost frame
+
+Each stack frame has (from bottom to top),
+  the return address of the current procedure,
+  the n parameters to the procedure (or pointers
+  to cells on the heap if the parameters are mutable).
+The reamining frame contains local variables,
+  temporaries, or partial frames that are being assembled by
+  a yet-to-be executed function.
+A frame pointer register _fp_ always points to the base
+  of the current frame which is always in the topmost
+  stack segment.
+
+Minim makes the change to store the previous value
+  of the stack pointer register in the subsequent word
+  after the location of the return address as with
+  the System V ABI.
+
+In addition, to the frame pointer register (_fp_),
+  Hieg and authors recommend an end-of-stack pointer register _esp_
+  to check via comparison for a stack overflow.
+The register is a constant amount before the actual
+  end of the stack to allow for a frame or two.
+
+Example of a stack:
+
++-------------------------+
+|     Return address      |
++-------------------------+
+|         Prev SP         |
++-------------------------+
+|       Argument 1        |
+|          ...            |
+|       Argument N        |
++-------------------------+
+|         Local 1         |
+|          ...            |
+|         Local M         |
++-------------------------+

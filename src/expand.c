@@ -523,7 +523,7 @@ static mobj expand_cond_form(mobj e) {
     
     cls = minim_cdr(e);
     if (minim_nullp(cls)) {
-        return Mlist1(intern("void"));
+        return Mlist1(void_sym);
     } else {
         cl = minim_car(cls);
         ift = expand_expr(Mcons(begin_sym, minim_cdr(cl)));
@@ -612,7 +612,7 @@ loop:
         splice_begin_forms(e);
         if (minim_nullp(minim_cdr(e))) {
             // empty sequence
-            e = Mlist1(intern("void"));
+            e = Mlist1(void_sym);
         } else {
             e = expand_body(e, minim_cdr(e));
             if (minim_nullp(minim_cddr(e))) {
@@ -676,7 +676,7 @@ loop:
         splice_begin_forms(e);
         if (minim_nullp(minim_cdr(e))) {
             // empty sequence
-            e = Mlist1(intern("void"));
+            e = Mlist1(void_sym);
             goto loop;
         } else if (minim_nullp(minim_cddr(e))) {
             // sequence of length 1

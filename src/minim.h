@@ -237,6 +237,7 @@ int minim_equalp(mobj x, mobj y);
 int listp(mobj o);
 size_t list_length(mobj l);
 mobj list_reverse(mobj l);
+mobj list_ref(mobj l, mobj i);
 mobj list_member(mobj x, mobj l);
 mobj list_append(mobj x, mobj y);
 
@@ -274,6 +275,12 @@ mobj fixnum_to_string(mobj x);
 mobj string_append(mobj x, mobj y);
 mobj string_to_symbol(mobj x);
 mobj symbol_to_string(mobj x);
+
+//
+//  Numbers
+//
+
+#define minim_zerop(o)      (minim_fixnum(o) == 0)
 
 //
 //  I/O
@@ -327,6 +334,7 @@ extern mobj begin_sym;
 extern mobj if_sym;
 extern mobj quote_sym;
 extern mobj setb_sym;
+extern mobj void_sym;
 
 // extended syntax
 extern mobj define_sym;
