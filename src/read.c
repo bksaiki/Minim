@@ -280,7 +280,7 @@ static mobj read_keyword(mobj ip) {
         if (nc == 'o') {
             read_rest_keyword(ip, "oreign-procedure");
             assert_delimeter_next(ip);
-            return intern("#%%foreign-procedure");
+            return foreign_proc_sym;
         }
     }
 

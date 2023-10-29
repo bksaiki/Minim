@@ -371,7 +371,7 @@ static void check_quote_form(mobj e) {
 }
 
 // Assuming `e := (_ ...)`.
-// Expecting `e := (#%%foreign-procedure <id> (<ctypes> ...) <ctype>`.
+// Expecting `e := (#%foreign-procedure <id> (<ctypes> ...) <ctype>`.
 static void check_foreign_proc_form(mobj e) {
     mobj rib, id, itypes, itype, otype;
     

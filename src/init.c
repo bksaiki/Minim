@@ -58,5 +58,8 @@ void minim_init() {
     cond_sym = intern("cond");
     and_sym = intern("and");
     or_sym = intern("or");
-    foreign_proc_sym = intern("#%%foreign-procedure");
+    foreign_proc_sym = intern("#%foreign-procedure");
+
+    // primitive table
+    prim_table_init();
 }

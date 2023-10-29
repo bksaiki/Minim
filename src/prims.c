@@ -32,7 +32,7 @@ mobj lookup_prim(const mchar *name) {
 
     b = symhash(name);
     for (p = minim_vector_ref(M_glob.primlist, b); !minim_nullp(p); p = minim_cdr(p)) {
-        if (mstrcmp(minim_string(minim_car(p)), name) == 0) {
+        if (mstrcmp(minim_string(minim_caar(p)), name) == 0) {
             return minim_cdar(p);
         }
     }
