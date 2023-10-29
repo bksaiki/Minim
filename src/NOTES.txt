@@ -56,3 +56,6 @@ Example of a stack:
 |          ...            |
 |         Local M         |
 +-------------------------+
+
+Caveats:
+ - Local 1 will be reserved for a pointer to an environment pointer

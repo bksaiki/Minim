@@ -20,6 +20,7 @@ mobj letrec_sym;
 mobj cond_sym;
 mobj and_sym;
 mobj or_sym;
+mobj foreign_proc_sym;
 
 // from ChezScheme
 size_t bucket_sizes[] = {

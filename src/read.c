@@ -148,6 +148,18 @@ static void read_named_char(mobj ip, const char *s) {
     }
 }
 
+static void read_rest_keyword(mobj ip, const char *s) {
+    mchar c;
+    for (; *s != '\0'; s++) {
+        c = ip_getc(ip);
+        if (c != *s) {
+            error1("read_object()",
+                   "unexpected character when parsing keyword",
+                   Mchar(c));
+        }
+    }
+}
+
 // Reads a character from the input port.
 // Handles the following named characters:
 // - nul, alarm, backspace, tab, linefeed, newline,
@@ -254,6 +266,25 @@ static mobj read_char(mobj ip) {
     }
 
     return Mchar(c);
+}
+
+// Keyword reader.
+static mobj read_keyword(mobj ip) {
+    mchar c, nc;
+    
+    c = ip_getc(ip);
+    if (c == EOF) {
+        error("read_keyword()", "unexpected EOF while parsing character sequence");
+    } else if (c == 'f') {
+        nc = ip_peek(ip);
+        if (nc == 'o') {
+            read_rest_keyword(ip, "oreign-procedure");
+            assert_delimeter_next(ip);
+            return intern("#%%foreign-procedure");
+        }
+    }
+
+    error("read_object()", "unexpected keyword");
 }
 
 // Hexadecimal number reader.
@@ -522,6 +553,9 @@ loop:
         } else if (c == '&') {
             // #&... => box
             return Mbox(read_object(ip));
+        } else if (c == '%') {
+            // #%... => (special keyword)
+            return read_keyword(ip);
         } else if (c == 'x') {
             // #x... => (hexadecimal number)
             return read_hexnum(ip);

@@ -39,6 +39,7 @@ static int syntax_formp(mobj head, mobj e) {
 #define if_formp(e)                 syntax_formp(if_sym, e)
 #define quote_formp(e)              syntax_formp(quote_sym, e)
 #define setb_formp(e)               syntax_formp(setb_sym, e)
+#define foreign_proc_formp(e)       syntax_formp(foreign_proc_sym, e)
 
 #define define_formp(e)             syntax_formp(define_sym, e)
 #define letrec_formp(e)             syntax_formp(letrec_sym, e)
@@ -360,6 +361,89 @@ static void check_let_values_form(mobj e) {
     }
 }
 
+// Assuming `e := (_ ...)`.
+// Expecting `e := (quote <datum)`
+static void check_quote_form(mobj e) {
+    mobj rib = minim_cdr(e);
+    if (!minim_nullp(minim_cdr(rib))) {
+        syntax_error("check_quote_form", "only a single datum expected", e, NULL);
+    }
+}
+
+// Assuming `e := (_ ...)`.
+// Expecting `e := (#%%foreign-procedure <id> (<ctypes> ...) <ctype>`.
+static void check_foreign_proc_form(mobj e) {
+    mobj rib, id, itypes, itype, otype;
+    
+    rib = minim_cdr(e);
+    if (!minim_consp(rib)) {
+        syntax_error("check_foreign_proc_form",
+                     "bad syntax",
+                     e, NULL);
+    }
+
+    id = minim_car(rib);
+    if (!minim_stringp(id)) {
+        syntax_error("check_foreign_proc_form",
+                     "expected string identifier",
+                     e, id);
+    }
+
+    rib = minim_cdr(rib);
+    if (!minim_consp(rib)) {
+        syntax_error("check_foreign_proc_form",
+                     "expected types",
+                     e, NULL);
+    }
+
+    itypes = minim_car(rib);
+    for (; !minim_nullp(itypes); itypes = minim_cdr(itypes)) {
+        itype = minim_car(itypes);
+        if (!minim_symbolp(itype)) {
+            syntax_error("check_foreign_proc_form",
+                         "expected type identifier",
+                         e, itype);
+        }
+
+        if (itype != intern("scheme-object")) {
+            syntax_error("check_foreign_proc_form",
+                         "unknown type identifier",
+                         e, itype);   
+        }
+    }
+
+    if (!minim_nullp(itypes)) {
+        syntax_error("check_let_values_form",
+                     "expected list of type identifiers",
+                     e, minim_car(rib));
+    }
+
+    rib = minim_cdr(rib);
+    if (!minim_consp(rib)) {
+        syntax_error("check_foreign_proc_form",
+                     "expected types",
+                     e, NULL);
+    }
+
+    otype = minim_car(rib);
+    if (!minim_symbolp(otype)) {
+        syntax_error("check_foreign_proc_form",
+                     "expected type identifier",
+                     e, otype);
+    }
+
+    if (itype != intern("scheme-object")) {
+        syntax_error("check_foreign_proc_form",
+                     "unknown type identifier",
+                     e, otype);   
+    }
+
+    if (!minim_nullp(minim_cdr(rib))) {
+        syntax_error("check_foreign_proc_form",
+                     "bad syntax", e, NULL);
+    }
+}
+
 //
 //  Expander
 //
@@ -643,6 +727,12 @@ loop:
         // set! form => recurse
         check_setb_form(e);
         minim_car(minim_cddr(e)) = expand_expr(minim_car(minim_cddr(e)));
+    } else if (quote_formp(e)) {
+        // quote form
+        check_quote_form(e);
+    } else if (foreign_proc_formp(e)) {
+        // foreign procedure form
+        check_foreign_proc_form(e);
     } else {
         // operator application
         for (i = e; !minim_nullp(i); i = minim_cdr(i)) {

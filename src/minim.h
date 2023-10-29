@@ -42,6 +42,7 @@
 //
 
 #define INIT_READ_BUFFER_LEN    16
+#define PRIM_TABLE_SIZE    509
 
 //
 //  Types
@@ -321,6 +322,14 @@ mobj intern(const char *s);
 mobj intern_str(const mchar *s);
 
 //
+//  Primitives
+//
+
+void prim_table_init();
+mobj lookup_prim(const mchar *name);
+void register_prim(const char *name, void *fn);
+
+//
 //  Globals
 //
 
@@ -343,6 +352,7 @@ extern mobj letrec_sym;
 extern mobj cond_sym;
 extern mobj and_sym;
 extern mobj or_sym;
+extern mobj foreign_proc_sym;
 
 typedef struct _M_thread {
     mobj *input_port;
@@ -364,6 +374,8 @@ extern struct _M_globals {
     ibucket **oblist;
     size_t *oblist_len_ptr;
     size_t oblist_count;
+    // primitive table
+    mobj primlist;
 } M_glob;
 
 #define get_thread()        (M_glob.thread)

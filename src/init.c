@@ -32,6 +32,8 @@ void minim_init() {
     GC_register_root(M_glob.thread);
     intern_table_init();
     GC_register_root(M_glob.oblist);
+    M_glob.primlist = Mvector(PRIM_TABLE_SIZE, minim_null);
+    GC_register_root(M_glob.primlist);
 
     // initialize thread
     th_input_port(M_glob.thread) = Mport(stdin, PORT_FLAG_READ | PORT_FLAG_OPEN);
@@ -56,4 +58,5 @@ void minim_init() {
     cond_sym = intern("cond");
     and_sym = intern("and");
     or_sym = intern("or");
+    foreign_proc_sym = intern("#%%foreign-procedure");
 }
