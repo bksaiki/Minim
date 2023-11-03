@@ -114,5 +114,6 @@ void write_object(mobj op, mobj o) {
     else if (minim_vectorp(o)) write_vector(op, o);
     else if (minim_boxp(o)) write_box(op, o);
     else if (minim_portp(o)) op_puts(op, "#<port>");
+    else if (minim_closurep(o)) op_puts(op, "#<procedure>");
     else op_puts(op, "#<garbage>");
 }

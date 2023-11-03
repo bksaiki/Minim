@@ -64,11 +64,7 @@ typedef void *mobj;
 //
 
 typedef enum {
-    MINIM_OBJ_NULL,
-    MINIM_OBJ_TRUE,
-    MINIM_OBJ_FALSE,
-    MINIM_OBJ_EOF,
-    MINIM_OBJ_VOID,
+    MINIM_OBJ_SPECIAL,
     MINIM_OBJ_CHAR,
     MINIM_OBJ_FIXNUM,
     MINIM_OBJ_SYMBOL,
@@ -77,6 +73,7 @@ typedef enum {
     MINIM_OBJ_VECTOR,
     MINIM_OBJ_BOX,
     MINIM_OBJ_PORT,
+    MINIM_OBJ_CLOSURE
 } mobj_enum;
 
 struct _mobj {
@@ -204,6 +201,20 @@ extern mobj minim_void;
     minim_port_flags(o) |= (f);
 #define minim_port_unset(o, f) \
     minim_port_flags(o) &= ~(f);
+
+// Closure
+// +------------+
+// |    type    | [0, 1)
+// |    env     | [8, 16)
+// |    code    | [16, 24)
+// +------------+
+#define minim_closure_size         (3 * ptr_size)
+#define minim_closure_env_offset   (ptr_size)
+#define minim_closure_code_offset  (2 * ptr_size)
+
+#define minim_closurep(o)          (minim_type(o) == MINIM_OBJ_CLOSURE)
+#define minim_closure_env(o)       (*((mobj*) PTR_ADD(o, minim_closure_env_offset)))
+#define minim_closure_code(o)      (*((void**) PTR_ADD(o, minim_closure_code_offset)))
 
 //
 //  Constructors

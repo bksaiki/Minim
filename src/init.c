@@ -17,11 +17,11 @@ void minim_init() {
     minim_void = GC_alloc_atomic(1);
     GC_register_root(minim_void);
 
-    minim_type(minim_null) = MINIM_OBJ_NULL;
-    minim_type(minim_true) = MINIM_OBJ_TRUE;
-    minim_type(minim_false) = MINIM_OBJ_FALSE;
-    minim_type(minim_eof) = MINIM_OBJ_EOF;
-    minim_type(minim_void) = MINIM_OBJ_VOID;
+    minim_type(minim_null) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_true) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_false) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_eof) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_void) = MINIM_OBJ_SPECIAL;
     
     // initialize globals
     M_glob.null_string = Mstring("");
