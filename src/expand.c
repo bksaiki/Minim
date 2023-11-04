@@ -432,7 +432,7 @@ static void check_foreign_proc_form(mobj e) {
                      e, otype);
     }
 
-    if (itype != intern("scheme-object")) {
+    if (otype != intern("scheme-object")) {
         syntax_error("check_foreign_proc_form",
                      "unknown type identifier",
                      e, otype);   

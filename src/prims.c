@@ -57,4 +57,10 @@ void prim_table_init() {
     register_prim("cons", Mcons);
     register_prim("car", car_proc);
     register_prim("cdr", cdr_proc);
+    register_prim("fxneg", fix_neg);
+    register_prim("fx+", fix_add);
+    register_prim("fx-", fix_sub);
+    register_prim("fx*", fix_mul);
+    register_prim("fx/", fix_div);
+    register_prim("fxrem", fix_rem);
 }

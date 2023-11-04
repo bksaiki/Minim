@@ -128,6 +128,7 @@ extern mobj minim_void;
 #define minim_string_size       (2 * ptr_size)
 #define minim_stringp(o)        (minim_type(o) == MINIM_OBJ_STRING)
 #define minim_string(o)         (*((mchar **) PTR_ADD(o, ptr_size)))
+#define minim_string_ref(o, i)  (minim_string(o)[(i)])
 
 // Fixnum
 // +------------+
@@ -230,10 +231,12 @@ mobj Mvector(msize n, mobj v);
 mobj Mbox(mobj x);
 mobj Mport(FILE *f, mbyte flags);
 
-#define Mlist1(a)           Mcons(a, minim_null)
-#define Mlist2(a, b)        Mcons(a, Mcons(b, minim_null))
-#define Mlist3(a, b, c)     Mcons(a, Mcons(b, Mcons(c, minim_null)))
-#define Mlist4(a, b, c, d)  Mcons(a, Mcons(b, Mcons(c, Mcons(d, minim_null))))
+#define Mlist1(a)                   Mcons(a, minim_null)
+#define Mlist2(a, b)                Mcons(a, Mlist1(b))
+#define Mlist3(a, b, c)             Mcons(a, Mlist2(b, c))
+#define Mlist4(a, b, c, d)          Mcons(a, Mlist3(b, c, d))
+#define Mlist5(a, b, c, d, e)       Mcons(a, Mlist4(b, c, d, e))
+#define Mlist6(a, b, c, d, e, f)    Mcons(a, Mlist5(b, c, d, e, f))
 
 //
 //  Equality
@@ -258,6 +261,17 @@ mobj list_append(mobj x, mobj y);
 //
 
 mobj list_to_vector(mobj o);
+
+//
+//  Numbers
+//
+
+mobj fix_neg(mobj x);
+mobj fix_add(mobj x, mobj y);
+mobj fix_sub(mobj x, mobj y);
+mobj fix_mul(mobj x, mobj y);
+mobj fix_div(mobj x, mobj y);
+mobj fix_rem(mobj x, mobj y);
 
 //
 //  Characters
