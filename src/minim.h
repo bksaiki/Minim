@@ -249,6 +249,13 @@ int minim_equalp(mobj x, mobj y);
 //  Pairs and lists
 //
 
+#define for_each(l, stmts) {    \
+    while (!minim_nullp(l)) { \
+        stmts ; \
+        l = minim_cdr(l); \
+    } \
+}
+
 int listp(mobj o);
 size_t list_length(mobj l);
 mobj list_reverse(mobj l);

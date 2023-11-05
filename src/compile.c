@@ -218,7 +218,7 @@ static mobj cstate_gensym(mobj cstate, mobj name) {
 #define fstate_asm(fs)          minim_vector_ref(fstate, 3)
 
 static mobj init_fstate() {
-    mobj fstate = Mvector(fstate_length, NULL);
+    mobj fstate = make_fstate();
     fstate_name(fstate) = minim_false;
     fstate_arity(fstate) = Mfixnum(0);
     fstate_rest(fstate) = minim_false;
@@ -256,12 +256,12 @@ static mobj procedure_arity(mobj e) {
 
 // Compiles a foreign procedure `(#%foreign-procedure ...)`
 static mobj compile1_foreign(mobj cstate, mobj e) {
-    mobj id, itypes, otype, fstate, args;
+    mobj id, itypes, fstate, args;
     size_t argc;
 
     id = minim_cadr(e);
     itypes = minim_car(minim_cddr(e));
-    otype = minim_cadr(minim_cddr(e));
+    // otype = minim_cadr(minim_cddr(e));
     if (lookup_prim(minim_string(id)) == NULL)
         error1("compile1_foreign", "unknown foreign procedure", id);
 
@@ -615,9 +615,9 @@ static void init_x86_compiler_globals() {
     x86_fp = intern("%r13");
     x86_env = intern("%r9");
     x86_carg0 = intern("%rdi");
-    x86_carg1 = intern("%rdi");
-    x86_carg2 = intern("%rdi");
-    x86_carg3 = intern("%rdi");
+    x86_carg1 = intern("%rsi");
+    x86_carg2 = intern("%rdx");
+    x86_carg3 = intern("%rcx");
     x86_cres = intern("%rax");
 }
 
@@ -706,6 +706,13 @@ static void compile3_proc(mobj cstate, mobj fstate) {
 //  Currently only supporting x86-64
 //
 
+#define rstate_length 4
+#define make_rstate()           Mvector(rstate_length, NULL)
+#define rstate_lasts(r)         minim_vector_ref(r, 0)
+#define rstate_scope(r)         minim_vector_ref(r, 1)
+#define rstate_assigns(r)       minim_vector_ref(r, 2)
+#define rstate_fsize(r)         minim_vector_ref(r, 3)
+
 static int tregp(mobj t) {
     if (!minim_symbolp(t))
         return 0;
@@ -720,8 +727,29 @@ static int tregp(mobj t) {
     return 1;
 }
 
-// Computes last use for temporary registers
-static mobj last_uses(mobj exprs) {
+static int x86_alloc_regp(mobj r) {
+    return r == x86_carg0 ||
+        r == x86_carg1 ||
+        r == x86_carg2 ||
+        r == x86_carg3 ||
+        r == x86_cres;
+}
+    
+
+static mobj init_rstate() {
+    mobj rstate = make_rstate();
+    rstate_lasts(rstate) = minim_false;
+    rstate_scope(rstate) = minim_null;
+    rstate_assigns(rstate) = Mlist5(Mcons(x86_carg0, minim_false),
+                                    Mcons(x86_carg1, minim_false),
+                                    Mcons(x86_carg2, minim_false),
+                                    Mcons(x86_carg3, minim_false),
+                                    Mcons(x86_cres, minim_false));
+    rstate_fsize(rstate) = Mfixnum(0);
+    return rstate;
+}
+
+static void rstate_set_lasts(mobj rs, mobj exprs) {
     mobj dict = minim_null;
     for (; !minim_nullp(exprs); exprs = minim_cdr(exprs)) {
         mobj expr = minim_car(exprs);
@@ -769,152 +797,244 @@ static mobj last_uses(mobj exprs) {
         }
     }
 
-    return dict;
+    rstate_lasts(rs) = dict;
 }
 
-// Checks for avaiable slots. Otherwise, increments fsize
-// and returns the value as a fixnum.
-static mobj assign_reg(mobj tscope, size_t *fsize) {
-    for (size_t i = 0; i < *fsize; ++i) {
-        int found = 0;
-        for (; !minim_nullp(tscope); tscope = minim_cdr(tscope)) {
-            if (minim_fixnum(minim_cdar(tscope)) == i) {
+static mobj last_lookup(mobj rs, mobj reg) {
+    mobj lasts = rstate_lasts(rs);
+    for_each(lasts,
+        if (minim_caar(lasts) == reg)
+            return minim_cdar(lasts);
+    )
+
+    return NULL;
+}
+
+static mobj treg_lookup(mobj rs, mobj reg) {
+    mobj scope = rstate_scope(rs);
+    for_each(scope,
+        if (minim_caar(scope) == reg)
+            return minim_cdar(scope);
+    );
+
+    return NULL;
+}
+
+static mobj treg_assign_reg(mobj rs, mobj treg) {
+    mobj assigns = rstate_assigns(rs);
+    for_each(assigns,
+        if (minim_falsep(minim_cdar(assigns))) {
+            rstate_scope(rs) = Mcons(Mcons(treg, minim_caar(assigns)), rstate_scope(rs));
+            minim_cdar(assigns) = treg;
+            return minim_caar(assigns);
+        }
+    );
+
+    unimplemented_error("ran out of allocable registers");
+    return NULL;
+}
+
+static mobj treg_assign_local(mobj rs, mobj treg) {
+    mobj s, r, e;
+    mfixnum i;
+    int found;
+
+    for (i = 0; i < minim_fixnum(rstate_fsize(rs)); ++i) {
+        s = rstate_scope(rs);
+        found = 0;
+        for_each(s,
+            r = minim_cdar(s);
+            if (minim_consp(r) && i == minim_fixnum(minim_cadr(r))) {   // quick check for `(local _)
                 found = 1;
                 break;
             }
+        );
+
+        if (!found) {
+            e = Mlist2(local_sym, Mfixnum(i));
+            rstate_scope(rs) = Mcons(e, rstate_scope(rs));
+            return e;
         }
-
-        if (!found)
-            return Mfixnum(i);
     }
 
-    return Mfixnum((*fsize)++);
+    e = Mlist2(local_sym, Mfixnum(i));
+    rstate_scope(rs) = Mcons(e, rstate_scope(rs));
+    rstate_fsize(rs)++;
+    return e;
 }
 
-// Looks up a temporary register assignment.
-static mobj reg_lookup(mobj tscope, mobj reg) {
-    for (; !minim_nullp(tscope); tscope = minim_cdr(tscope)) {
-        if (minim_caar(tscope) == reg)
-            return Mlist2(local_sym, minim_cdar(tscope));
-    }
+static mobj treg_assign_or_lookup(mobj rs, mobj treg) {
+    mobj assigns, maybe;
 
-    return minim_false;
+    // try to lookup in scope
+    maybe = treg_lookup(rs, treg);
+    if (maybe) return maybe;
+
+    // try to assign a register
+    assigns = rstate_assigns(rs);
+    for_each(assigns,
+        if (minim_falsep(minim_cdar(assigns))) {
+            rstate_scope(rs) = Mcons(Mcons(treg, minim_caar(assigns)), rstate_scope(rs));
+            minim_cdar(assigns) = treg;
+            return minim_caar(assigns);
+        }
+    );
+
+    // otherwise, assign to stack
+    return treg_assign_local(rs, treg);
 }
 
-static mobj replace_treg(mobj *tscope, mobj reg, size_t *fsize) {
-    mobj maybe = reg_lookup(*tscope, reg);
-    if (maybe == minim_false) {
-        mobj slot = assign_reg(*tscope, fsize);
-        *tscope = Mcons(Mcons(reg, slot), *tscope);
-        return Mlist2(local_sym, slot);
-    } else {
-        return maybe;
-    }
+// Stashes all values assigned to allocable registers to the stack.
+static void rstate_stash(mobj rs) {
+    mobj as, t;
+
+    as = rstate_assigns(rs);
+    for_each(as,
+        t = minim_cdar(as);
+        if (!minim_falsep(t)) {
+            minim_cdar(as) = minim_false;
+            treg_assign_local(rs, t);
+        }
+    );
 }
 
-static mobj init_assigns() {
-    return Mlist5(Mcons(x86_carg0, minim_false),
-                  Mcons(x86_carg1, minim_false),
-                  Mcons(x86_carg2, minim_false),
-                  Mcons(x86_carg3, minim_false),
-                  Mcons(x86_cres, minim_false));
-}
+// For every temporary register, scan to see if we can remove it
+// since it will no longer be used
+static void rstate_prune_lasts(mobj rs, mobj e) {
+    mobj s, p, l, as;
 
-static mobj prune_tscope(mobj lasts, mobj tscope, mobj e) {
-    mobj t, p, l;
-    for (t = tscope; !minim_nullp(t); t = minim_cdr(t)) {
-        p = NULL;
-        for (l = lasts; !minim_nullp(l); l = minim_cdr(l)) {
-            if (minim_caar(t) == minim_caar(l)) {
-                if (minim_cdar(l) == minim_false || minim_cdar(l) == e) {
-                    if (p) {
-                        // removing internally
-                        minim_cdr(p) = minim_cdr(l);
-                    } else {
-                        // removing from head
-                        lasts = minim_cdr(lasts);
+    s = rstate_scope(rs);
+    p = NULL;
+    for_each(s,
+        l = last_lookup(rstate_lasts(rs), minim_caar(s));
+        if (l == minim_false || l == e) {
+            // need to prune
+            // if register, remove assignment
+            if (x86_alloc_regp(minim_cdar(s))) {
+                as = rstate_assigns(rs);
+                for_each(as,
+                    if (minim_caar(as) == minim_cdar(s)) {
+                        minim_cdar(as) = minim_false;
+                        break;
                     }
-                }
+                );
             }
-        }
-    }
 
-    return lasts;
+            // update scope
+            if (p) minim_cdr(p) = minim_cdr(s); // remove internally
+            else rstate_scope(rs) = minim_cdr(rstate_scope(rs)); // remove from front
+        } else {
+            p = s;
+        }
+    );
 }
+
+// static mobj lookup_
 
 static void compile4_proc(mobj cstate, mobj fstate) {
-    mobj instrs, exprs, tscope, assigns, lasts;
-    size_t fsize;
+    mobj exprs, rstate, instrs;
 
-    // compute last use
-    lasts = last_uses(fstate_asm(fstate));
-    // write_object(Mport(stdout, 0x0), lasts); printf("\n");
+    // initialize register state and compute last uses
+    rstate = init_rstate();
+    exprs = fstate_asm(fstate);
+    rstate_set_lasts(rstate, exprs);
 
-    // assign registers in linear pass
-    fsize = 0;
+    printf("> "); write_object(Mport(stdout, 0x0), fstate_asm(fstate)); printf("\n");
+    write_object(Mport(stdout, 0x0), rstate); fprintf(stdout, "\n");
+
+    // linear pass to assign registers
     instrs = minim_null;
-    tscope = minim_null;
-    assigns = init_assigns();
-    for (exprs = fstate_asm(fstate); !minim_nullp(exprs); exprs = minim_cdr(exprs)) {
+    for_each(exprs,
         mobj expr = minim_car(exprs);
         mobj op = minim_car(expr);
         if (op == x86_mov) {
             mobj dst = minim_cadr(expr);
-            if (tregp(dst))
-                dst = replace_treg(&tscope, dst, &fsize);
-
             mobj src = minim_car(minim_cddr(expr));
             if (minim_consp(src)) {
+                // (mov <dst> (<variant> ...))
                 mobj variant = minim_car(src);
-                if (variant == closure_sym ||
-                    variant == literal_sym || 
-                    variant == foreign_sym ||
-                    variant == arg_sym) {
+                if (variant == closure_sym || variant == literal_sym || variant == foreign_sym) {
+                    // assign to either register or memory
+                    if (tregp(dst))
+                        dst = treg_assign_or_lookup(rstate, dst);
+                    add_instr(instrs, Mlist3(op, dst, src));
+                } else if (variant == arg_sym) {
+                    // must assign to register
+                    if (tregp(dst))
+                        dst = treg_assign_reg(rstate, dst);
                     add_instr(instrs, Mlist3(op, dst, src));
                 } else if (variant == mem_sym) {
-                    // TODO what if temporary is not a register
-                    if (tregp(minim_cadr(src)))
-                        error1("compile4_proc", "expected a base register", src);
+                    // (mov <dst> (mem+ <base> <offset>))
+                    mobj base = minim_cadr(src);
+                    if (tregp(base)) {
+                        base = treg_lookup(rstate, base);
+                        if (minim_consp(base))
+                            error1("compile4_proc", "expected a base register", src);
+                        minim_cadr(src) = base;
+                    }
+
+                    if (tregp(dst))
+                        dst = treg_assign_reg(rstate, dst);
                     add_instr(instrs, Mlist3(op, dst, src));
                 } else {
                     error1("compile4_proc", "unknown mov sequence", expr);
                 }
             } else if (minim_symbolp(src)) {
+                // (mov <dst> <src>)
                 if (tregp(src))
-                    src = reg_lookup(tscope, src);
+                    src = treg_lookup(rstate, src);
+
+                if (tregp(dst)) {
+                    if (minim_consp(src)) { // quick check for `($local _)`
+                        dst = treg_assign_reg(rstate, dst);
+                    } else {
+                        dst = treg_assign_or_lookup(rstate, dst);
+                    }
+                }
+
                 add_instr(instrs, Mlist3(op, dst, src));
             } else {
                 error1("compile4_proc", "unknown mov sequence", expr);
             }
         } else if (op == x86_add || op == x86_sub) {
+            // (<op> <dst> <src>)
             mobj dst = minim_cadr(expr);
             mobj src = minim_car(minim_cddr(expr));
-            if (tregp(dst))
-                dst = replace_treg(&tscope, dst, &fsize);
             if (tregp(src))
-                src = reg_lookup(tscope, src);
-            add_instr(instrs, Mlist3(op, dst, src));
-        } else if (op == x86_call) {
-            if (minim_cadr(expr) != x86_cres) {
-                error1("compile4_proc", "expected call for %Cres", expr);
-            add_instr(instrs, expr);
+                src = treg_lookup(rstate, src);
+
+            if (tregp(dst)) {
+                if (minim_consp(src)) { // quick check for `($local _)`
+                    dst = treg_assign_reg(rstate, dst);
+                } else {
+                    dst = treg_assign_or_lookup(rstate, dst);
+                }
             }
+
+            add_instr(instrs, Mlist3(op, dst, src));
         } else if (op == x86_jmp) {
+            // (jmp <tgt>)
             mobj tgt = minim_cadr(expr);
+            // can call from register or memory
             if (tregp(tgt))
-                tgt = reg_lookup(tscope, tgt);
+                tgt = treg_lookup(rstate, tgt);
             add_instr(instrs, Mlist2(op, tgt));
+        } else if (op == x86_call) {
+            if (minim_cadr(expr) != x86_cres)
+                unimplemented_error("cannot call from any other register than %rax");
+            rstate_stash(rstate);
+            add_instr(instrs, expr);
         } else if (op == label_sym) {
             // do nothing
         } else {
             error1("compile4_proc", "unknown sequence", expr);
         }
 
-        // remove entries from `tscope` if they are no longer in scope
-        lasts = prune_tscope(lasts, tscope, expr);
-    }
+        rstate_prune_lasts(rstate, expr);
+    );
 
     fstate_asm(fstate) = list_reverse(instrs);
+    printf("< "); write_object(Mport(stdout, 0x0), fstate_asm(fstate)); printf("\n");
 }
 
 //
