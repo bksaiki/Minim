@@ -649,7 +649,7 @@ static void compile3_proc(mobj cstate, mobj fstate) {
             }
         } else if (ccall_formp(expr)) {
             // (c-call <tgt> <arg> ...)
-            mobj args, env, tgt;
+            mobj args, env;
 
             // stash env register
             env = cstate_gensym(cstate, tloc_pre);
@@ -674,9 +674,8 @@ static void compile3_proc(mobj cstate, mobj fstate) {
             }
 
             // call
-            tgt = cstate_gensym(cstate, tloc_pre);
             add_instr(instrs, Mlist3(x86_mov, x86_cres, minim_cadr(expr)));
-            add_instr(instrs, Mlist2(x86_call, tgt));
+            add_instr(instrs, Mlist2(x86_call, x86_cres));
 
             // restore env register
             add_instr(instrs, Mlist3(x86_mov, env_reg, env));
@@ -721,6 +720,7 @@ static int tregp(mobj t) {
     return 1;
 }
 
+// Computes last use for temporary registers
 static mobj last_uses(mobj exprs) {
     mobj dict = minim_null;
     for (; !minim_nullp(exprs); exprs = minim_cdr(exprs)) {
@@ -772,13 +772,61 @@ static mobj last_uses(mobj exprs) {
     return dict;
 }
 
+// Checks for avaiable slots. Otherwise, increments fsize
+// and returns the value as a fixnum.
+static mobj assign_reg(mobj tscope, size_t *fsize) {
+    for (size_t i = 0; i < *fsize; ++i) {
+        int found = 0;
+        for (; !minim_nullp(tscope); tscope = minim_cdr(tscope)) {
+            if (minim_fixnum(minim_cdar(tscope)) == i) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found)
+            return Mfixnum(i);
+    }
+
+    return Mfixnum((*fsize)++);
+}
+
+// Looks up a temporary register assignment.
+static mobj reg_lookup(mobj tscope, mobj reg) {
+    for (; !minim_nullp(tscope); tscope = minim_cdr(tscope)) {
+        if (minim_caar(tscope) == reg)
+            return Mlist2(local_sym, minim_cdar(tscope));
+    }
+
+    return minim_false;
+}
+
+static mobj replace_treg(mobj *tscope, mobj reg, size_t *fsize) {
+    mobj maybe = reg_lookup(*tscope, reg);
+    if (maybe == minim_false) {
+        mobj slot = assign_reg(*tscope, fsize);
+        *tscope = Mcons(Mcons(reg, slot), *tscope);
+        return Mlist2(local_sym, slot);
+    } else {
+        return maybe;
+    }
+}
+
+static mobj init_assigns() {
+    return Mlist5(Mcons(x86_carg0, minim_false),
+                  Mcons(x86_carg1, minim_false),
+                  Mcons(x86_carg2, minim_false),
+                  Mcons(x86_carg3, minim_false),
+                  Mcons(x86_cres, minim_false));
+}
+
 static mobj prune_tscope(mobj lasts, mobj tscope, mobj e) {
     mobj t, p, l;
     for (t = tscope; !minim_nullp(t); t = minim_cdr(t)) {
         p = NULL;
         for (l = lasts; !minim_nullp(l); l = minim_cdr(l)) {
             if (minim_caar(t) == minim_caar(l)) {
-                if (minim_cdar(l) == e) {
+                if (minim_cdar(l) == minim_false || minim_cdar(l) == e) {
                     if (p) {
                         // removing internally
                         minim_cdr(p) = minim_cdr(l);
@@ -795,24 +843,69 @@ static mobj prune_tscope(mobj lasts, mobj tscope, mobj e) {
 }
 
 static void compile4_proc(mobj cstate, mobj fstate) {
-    mobj instrs, exprs, tscope, lasts, assigns;
+    mobj instrs, exprs, tscope, assigns, lasts;
     size_t fsize;
 
     // compute last use
     lasts = last_uses(fstate_asm(fstate));
-    write_object(Mport(stdout, 0x0), lasts); printf("\n");
+    // write_object(Mport(stdout, 0x0), lasts); printf("\n");
 
     // assign registers in linear pass
     fsize = 0;
+    instrs = minim_null;
     tscope = minim_null;
-    assigns = minim_null;
-    exprs = fstate_asm(fstate);
-    for (; !minim_nullp(exprs); exprs = minim_cdr(exprs)) {
+    assigns = init_assigns();
+    for (exprs = fstate_asm(fstate); !minim_nullp(exprs); exprs = minim_cdr(exprs)) {
         mobj expr = minim_car(exprs);
         mobj op = minim_car(expr);
         if (op == x86_mov) {
-            mobj src = minim_cadr(op);
-            error1("compile4_proc", "unknown mov sequence", expr);
+            mobj dst = minim_cadr(expr);
+            if (tregp(dst))
+                dst = replace_treg(&tscope, dst, &fsize);
+
+            mobj src = minim_car(minim_cddr(expr));
+            if (minim_consp(src)) {
+                mobj variant = minim_car(src);
+                if (variant == closure_sym ||
+                    variant == literal_sym || 
+                    variant == foreign_sym ||
+                    variant == arg_sym) {
+                    add_instr(instrs, Mlist3(op, dst, src));
+                } else if (variant == mem_sym) {
+                    // TODO what if temporary is not a register
+                    if (tregp(minim_cadr(src)))
+                        error1("compile4_proc", "expected a base register", src);
+                    add_instr(instrs, Mlist3(op, dst, src));
+                } else {
+                    error1("compile4_proc", "unknown mov sequence", expr);
+                }
+            } else if (minim_symbolp(src)) {
+                if (tregp(src))
+                    src = reg_lookup(tscope, src);
+                add_instr(instrs, Mlist3(op, dst, src));
+            } else {
+                error1("compile4_proc", "unknown mov sequence", expr);
+            }
+        } else if (op == x86_add || op == x86_sub) {
+            mobj dst = minim_cadr(expr);
+            mobj src = minim_car(minim_cddr(expr));
+            if (tregp(dst))
+                dst = replace_treg(&tscope, dst, &fsize);
+            if (tregp(src))
+                src = reg_lookup(tscope, src);
+            add_instr(instrs, Mlist3(op, dst, src));
+        } else if (op == x86_call) {
+            if (minim_cadr(expr) != x86_cres) {
+                error1("compile4_proc", "expected call for %Cres", expr);
+            add_instr(instrs, expr);
+            }
+        } else if (op == x86_jmp) {
+            mobj tgt = minim_cadr(expr);
+            if (tregp(tgt))
+                tgt = reg_lookup(tscope, tgt);
+            add_instr(instrs, Mlist2(op, tgt));
+        } else if (op == label_sym) {
+            // do nothing
         } else {
             error1("compile4_proc", "unknown sequence", expr);
         }
@@ -820,6 +913,8 @@ static void compile4_proc(mobj cstate, mobj fstate) {
         // remove entries from `tscope` if they are no longer in scope
         lasts = prune_tscope(lasts, tscope, expr);
     }
+
+    fstate_asm(fstate) = list_reverse(instrs);
 }
 
 //
