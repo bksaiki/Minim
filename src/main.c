@@ -3,11 +3,11 @@
 #include "minim.h"
 
 int main(int argc, char **argv) {
-    mobj o, op, ip, es;
+    mobj o, op, ip;
     mthread *th;
     int version = 1;
     int repl = (argc == 1);
-    int boot = 0;
+    int compile = 0;
     int argi;
 
     for (argi = 1; argi < argc; argi++) {
@@ -17,9 +17,9 @@ int main(int argc, char **argv) {
         if (strcmp(argv[argi], "--version") == 0) {
             version = 1;
             repl = 0;
-        } else if (strcmp(argv[argi], "--boot") == 0) {
+        } else if (strcmp(argv[argi], "--compile") == 0) {
             version = 0;
-            boot = 1;
+            compile = 1;
         } else {
             fprintf(stderr, "unknown flag %s\n", argv[argi]);
             exit(1);
@@ -36,8 +36,10 @@ int main(int argc, char **argv) {
 
     th = get_thread();
 
-    // Bootstrapping
-    if (boot) {
+    // Bootstrap compiler
+    if (compile) {
+        mobj es, cstate;
+
         // expected two arguments <input> <output>
         if (argi + 2 != argc) {
             fprintf(stderr, "command-line arguments expected\n");
@@ -50,20 +52,15 @@ int main(int argc, char **argv) {
         es = minim_null;
 
         while (1) {
-            // read in an expression
+            // read in an expression and expand
             o = read_object(ip);
-            if (minim_eofp(o))
-                break;
-
-            // expand
-            o = expand_top(o);
-            write_object(op, o);
-            fputc('\n', minim_port(op));
-            es = Mcons(o, es);
+            if (minim_eofp(o)) break;
+            es = Mcons(expand_top(o), es);
         }
 
         es = list_reverse(es);
-        compile_module(op, Mstring(argv[argi]), es);
+        cstate = compile_module(op, Mstring(argv[argi]), es);
+        write_object(op, cstate);
 
         close_port(ip);
         close_port(op);

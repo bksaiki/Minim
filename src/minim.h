@@ -249,7 +249,7 @@ int minim_equalp(mobj x, mobj y);
 //  Pairs and lists
 //
 
-#define for_each(l, stmts) {    \
+#define for_each(l, stmts...) {    \
     while (!minim_nullp(l)) { \
         stmts ; \
         l = minim_cdr(l); \
@@ -420,6 +420,6 @@ void minim_init();
 
 mobj expand_expr(mobj e);
 mobj expand_top(mobj e);
-void compile_module(mobj op, mobj name, mobj es);
+mobj compile_module(mobj op, mobj name, mobj es);
 
 #endif

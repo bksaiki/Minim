@@ -67,6 +67,7 @@ static mobj cres_reg;
 #define closure_formp(e)    syntax_formp(closure_sym, e)
 #define arg_formp(e)        syntax_formp(arg_sym, e)
 #define local_formp(e)      syntax_formp(local_sym, e)
+#define next_formp(e)       syntax_formp(next_sym, e)
 #define apply_formp(e)      syntax_formp(apply_sym, e)
 #define label_formp(e)      syntax_formp(label_sym, e)
 #define branch_formp(e)     syntax_formp(branch_sym, e)
@@ -290,10 +291,6 @@ static mobj compile1_foreign(mobj cstate, mobj e) {
 static mobj compile1_expr(mobj cstate, mobj fstate, mobj e) {
     mobj loc;
 
-    fputs("expr> ", stdout);
-    write_object(Mport(stdout, PORT_FLAG_OPEN), e);
-    fputs("\n", stdout);
-
 loop:
     if (letrec_values_formp(e) || let_values_formp(e)) {
         // letrec-values form (TODO: this should be different)
@@ -436,10 +433,6 @@ static void compile1_module_level(mobj cstate, mobj e) {
     loffset = cstate_loader(cstate);
     lstate = list_ref(cstate_procs(cstate), loffset);
 
-    fputs("top> ", stdout);
-    write_object(Mport(stdout, PORT_FLAG_OPEN), e);
-    fputs("\n", stdout);
-
 loop:
     if (define_values_formp(e)) {
         // define-values form
@@ -483,6 +476,9 @@ static void compile1_module_loader(mobj cstate, mobj es) {
     // compiles all expressions
     for (; !minim_nullp(es); es = minim_cdr(es))
         compile1_module_level(cstate, minim_car(es));
+
+    // loader needs to return
+    fstate_add_asm(lstate, Mlist1(ret_sym));
 }
 
 //
@@ -734,7 +730,10 @@ static int x86_alloc_regp(mobj r) {
         r == x86_carg3 ||
         r == x86_cres;
 }
-    
+
+static int frame_locp(mobj loc) {
+    return arg_formp(loc) || local_formp(loc) || next_formp(loc) || loc == size_sym;
+}
 
 static mobj init_rstate() {
     mobj rstate = make_rstate();
@@ -844,7 +843,7 @@ static mobj treg_assign_local(mobj rs, mobj treg) {
         found = 0;
         for_each(s,
             r = minim_cdar(s);
-            if (minim_consp(r) && i == minim_fixnum(minim_cadr(r))) {   // quick check for `(local _)
+            if (local_formp(r) && i == minim_fixnum(minim_cadr(r))) {
                 found = 1;
                 break;
             }
@@ -852,14 +851,14 @@ static mobj treg_assign_local(mobj rs, mobj treg) {
 
         if (!found) {
             e = Mlist2(local_sym, Mfixnum(i));
-            rstate_scope(rs) = Mcons(e, rstate_scope(rs));
+            rstate_scope(rs) = Mcons(Mcons(treg, e), rstate_scope(rs));
             return e;
         }
     }
 
     e = Mlist2(local_sym, Mfixnum(i));
-    rstate_scope(rs) = Mcons(e, rstate_scope(rs));
-    rstate_fsize(rs)++;
+    rstate_scope(rs) = Mcons(Mcons(treg, e), rstate_scope(rs));
+    minim_fixnum(rstate_fsize(rs))++;
     return e;
 }
 
@@ -882,6 +881,33 @@ static mobj treg_assign_or_lookup(mobj rs, mobj treg) {
 
     // otherwise, assign to stack
     return treg_assign_local(rs, treg);
+}
+
+// Unassigns a temporary register.
+static void rstate_unassign(mobj rs, mobj reg) {
+    mobj s, p, as;
+
+    s = rstate_scope(rs);
+    p = NULL;
+    for_each(s,
+        if (minim_caar(s) == reg) {
+            if (x86_alloc_regp(reg)) {
+                as = rstate_assigns(rs);
+                for_each(as,
+                    if (minim_caar(as) == reg) {
+                        minim_cdar(as) = minim_false;
+                        break;
+                    }
+                );
+            }
+
+            if (p) minim_cdr(p) = minim_cdr(s); // remove internally
+            else rstate_scope(rs) = minim_cdr(rstate_scope(rs)); // remove from front
+            return;
+        }
+    );
+
+    error1("rstate_unassign", "register not found", reg);
 }
 
 // Stashes all values assigned to allocable registers to the stack.
@@ -929,7 +955,88 @@ static void rstate_prune_lasts(mobj rs, mobj e) {
     );
 }
 
-// static mobj lookup_
+static void compile4_opt(mobj fstate) {
+    mobj instrs = minim_null;
+    mobj exprs = fstate_asm(fstate);
+    for_each(exprs,
+        mobj expr = minim_car(exprs);
+        if (minim_car(expr) == x86_mov) {
+            // eliminate (mov <reg> <reg>)
+            mobj dst = minim_cadr(expr);
+            mobj src = minim_car(minim_cddr(expr));
+            if (src != dst) add_instr(instrs, expr);
+        } else {
+            add_instr(instrs, expr);
+        }
+    );
+
+    fstate_asm(fstate) = list_reverse(instrs);
+}
+
+static mobj replace_frame_loc(mobj loc, size_t argc, size_t localc) {
+    size_t offset;
+
+    if (loc == size_sym) {
+        return Mfixnum(argc + localc);
+    } if (next_formp(loc)) {
+        offset = ptr_size * (argc + localc + minim_fixnum(minim_cadr(loc)));
+        return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
+    } else if (local_formp(loc)) {
+        offset = ptr_size * (argc + minim_fixnum(minim_cadr(loc)));
+        return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
+    } else if (arg_formp(loc)) {
+        offset = ptr_size * minim_fixnum(minim_cadr(loc));
+        return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
+    } else {
+        error1("replace_frame_loc", "not frame location", loc);
+    }
+}
+
+// Resolves frame-dependent locations like `($arg _)` or
+// `($local _)` and constants like `$size`.
+static void compile4_resolve_frame(mobj fstate, mobj rstate) {
+    mobj exprs, expr, op;
+    size_t argc, localc;
+
+    // TODO: rest argument means +1
+    argc = minim_fixnum(fstate_arity(fstate));
+    localc = minim_fixnum(rstate_fsize(rstate));
+
+    // replace values
+    exprs = fstate_asm(fstate);
+    for_each(exprs,
+        expr = minim_car(exprs);
+        op = minim_car(expr);
+        if (op == x86_mov) {
+            mobj dst, src;
+            dst = minim_cadr(expr);
+            if (frame_locp(dst))
+                minim_cadr(expr) = replace_frame_loc(dst, argc, localc);
+
+            src = minim_car(minim_cddr(expr));
+            if (frame_locp(src)) {
+                minim_car(minim_cddr(expr)) = replace_frame_loc(src, argc, localc);
+            }
+        } else if (op == x86_add || op == x86_sub) {
+            mobj dst, src;
+            dst = minim_cadr(expr);
+            if (frame_locp(dst))
+                minim_cadr(expr) = replace_frame_loc(dst, argc, localc);
+
+            src = minim_car(minim_cddr(expr));
+            if (frame_locp(src))
+                minim_car(minim_cddr(expr)) = replace_frame_loc(src, argc, localc);
+        } else if (op == x86_jmp || op == x86_call) {
+            mobj tgt = minim_cadr(expr);
+            if (frame_locp(tgt))
+                minim_cadr(tgt) = replace_frame_loc(tgt, argc, localc);
+        } else if (op == label_sym) {
+            // do nothing
+        } else {
+            error1("compile4_resolve_frame", "unknown sequence", expr);
+        }
+    );
+}
 
 static void compile4_proc(mobj cstate, mobj fstate) {
     mobj exprs, rstate, instrs;
@@ -938,9 +1045,6 @@ static void compile4_proc(mobj cstate, mobj fstate) {
     rstate = init_rstate();
     exprs = fstate_asm(fstate);
     rstate_set_lasts(rstate, exprs);
-
-    printf("> "); write_object(Mport(stdout, 0x0), fstate_asm(fstate)); printf("\n");
-    write_object(Mport(stdout, 0x0), rstate); fprintf(stdout, "\n");
 
     // linear pass to assign registers
     instrs = minim_null;
@@ -968,8 +1072,12 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                     mobj base = minim_cadr(src);
                     if (tregp(base)) {
                         base = treg_lookup(rstate, base);
-                        if (minim_consp(base))
-                            error1("compile4_proc", "expected a base register", src);
+                        if (minim_consp(base)) {
+                            // `base` must be a register
+                            rstate_unassign(rstate, minim_cadr(src));
+                            base = treg_assign_reg(rstate, minim_cadr(src));
+                        }
+
                         minim_cadr(src) = base;
                     }
 
@@ -985,7 +1093,7 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                     src = treg_lookup(rstate, src);
 
                 if (tregp(dst)) {
-                    if (minim_consp(src)) { // quick check for `($local _)`
+                    if (local_formp(src)) {
                         dst = treg_assign_reg(rstate, dst);
                     } else {
                         dst = treg_assign_or_lookup(rstate, dst);
@@ -1004,7 +1112,7 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                 src = treg_lookup(rstate, src);
 
             if (tregp(dst)) {
-                if (minim_consp(src)) { // quick check for `($local _)`
+                if (local_formp(src)) {
                     dst = treg_assign_reg(rstate, dst);
                 } else {
                     dst = treg_assign_or_lookup(rstate, dst);
@@ -1018,6 +1126,7 @@ static void compile4_proc(mobj cstate, mobj fstate) {
             // can call from register or memory
             if (tregp(tgt))
                 tgt = treg_lookup(rstate, tgt);
+            rstate_stash(rstate);
             add_instr(instrs, Mlist2(op, tgt));
         } else if (op == x86_call) {
             if (minim_cadr(expr) != x86_cres)
@@ -1034,14 +1143,19 @@ static void compile4_proc(mobj cstate, mobj fstate) {
     );
 
     fstate_asm(fstate) = list_reverse(instrs);
-    printf("< "); write_object(Mport(stdout, 0x0), fstate_asm(fstate)); printf("\n");
+
+    // remove any self-moves
+    compile4_opt(fstate);
+
+    // resolve frame-dependent locations
+    compile4_resolve_frame(fstate, rstate);
 }
 
 //
 //  Public API
 //
 
-void compile_module(mobj op, mobj name, mobj es) {
+mobj compile_module(mobj op, mobj name, mobj es) {
     mobj cstate, procs;
 
     // check for initialization
@@ -1094,4 +1208,6 @@ void compile_module(mobj op, mobj name, mobj es) {
     write_object(th_output_port(get_thread()), cstate);
     fputs("\n\n", stdout);
     fflush(stdout);
+
+    return cstate;
 }
