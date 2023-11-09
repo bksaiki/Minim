@@ -229,6 +229,7 @@ mobj Mfixnum(mfixnum v);
 mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(msize n, mobj v);
 mobj Mbox(mobj x);
+mobj Mclosure(mobj env, mobj code);
 mobj Mport(FILE *f, mbyte flags);
 
 #define Mlist1(a)                   Mcons(a, minim_null)
@@ -314,6 +315,7 @@ mobj symbol_to_string(mobj x);
 //
 
 #define minim_zerop(o)      (minim_fixnum(o) == 0)
+#define minim_negativep(o)  (minim_fixnum(o) < 0)
 
 //
 //  I/O
@@ -421,5 +423,6 @@ void minim_init();
 mobj expand_expr(mobj e);
 mobj expand_top(mobj e);
 mobj compile_module(mobj op, mobj name, mobj es);
+void install_module(mobj cstate);
 
 #endif

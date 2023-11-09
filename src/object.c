@@ -69,6 +69,14 @@ mobj Mbox(mobj x) {
     return o;
 }
 
+mobj Mclosure(mobj env, mobj code) {
+    mobj o = GC_alloc(minim_closure_size);
+    minim_type(o) = MINIM_OBJ_CLOSURE;
+    minim_closure_env(o) = env;
+    minim_closure_code(o) = code;
+    return o;
+}
+
 static void gc_port_dtor(void *ptr, void *data) {
     mobj o = (mobj) ptr;
     if (minim_port_openp(o)) {

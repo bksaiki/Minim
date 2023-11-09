@@ -178,7 +178,6 @@ static mobj *intern_symbol(const mchar *str) {
     return obj;
 }
 
-
 void intern_table_init() {
     M_glob.oblist_len_ptr = init_alloc_ptr;
     M_glob.oblist = GC_calloc(*init_alloc_ptr, sizeof(ibucket*));

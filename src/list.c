@@ -20,11 +20,15 @@ mobj list_reverse(mobj l) {
 }
 
 mobj list_ref(mobj l, mobj i) {
-    mobj k = i;
+    mobj k = Mfixnum(minim_fixnum(i));
+    if (minim_negativep(k))
+        error1("list_ref", "index is negative", i);
+
     for_each(l,
-        if (minim_zerop(i)) return minim_car(l);
-        k = Mfixnum(minim_fixnum(k) - 1);
+        if (minim_zerop(k)) return minim_car(l);
+        minim_fixnum(k)--;
     );
+
     error1("list_ref", "index out of bounds", i);
 }
 
