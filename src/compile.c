@@ -334,7 +334,9 @@ loop:
         fstate_add_asm(fstate, Mlist1(pop_frame_sym));
     } else if (lambda_formp(e)) {
         // lambda form
-        mobj f2state, arity, code;
+        mobj f2state, arity;
+        size_t idx;
+
         f2state = init_fstate();
         arity = procedure_arity(e);
         fstate_arity(f2state) = minim_car(arity);
@@ -342,12 +344,12 @@ loop:
 
         e = minim_cddr(e);
         e = minim_nullp(minim_cdr(e)) ? minim_car(e) : Mcons(begin_sym, e);
-        code = compile1_expr(cstate, f2state, e);
+        compile1_expr(cstate, f2state, e);
         fstate_add_asm(f2state, Mlist1(ret_sym));
-        cstate_add_proc(cstate, f2state);
+        idx = cstate_add_proc(cstate, f2state);
 
         loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(closure_sym, code)));
+        fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(closure_sym, Mfixnum(idx))));
     } else if (begin_formp(e)) {
         // begin form (at least 2 clauses)
         // execute statements and return the last one
@@ -570,7 +572,7 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 mobj loc = cstate_gensym(cstate, tloc_pre);
                 mobj loc2 = cstate_gensym(cstate, tloc_pre);
                 mobj idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("make_closure")));
-                add_instr(instrs, Mlist3(load_sym, loc, Mlist2(intern("$code"), minim_cadr(src))));
+                add_instr(instrs, Mlist3(load_sym, loc, Mlist2(code_sym, minim_cadr(src))));
                 add_instr(instrs, Mlist3(load_sym, loc2, Mlist2(reloc_sym, idx)));
                 add_instr(instrs, Mlist4(ccall_sym, loc2, env_reg, loc));
                 add_instr(instrs, Mlist3(load_sym, dst, cres_reg));
@@ -1267,32 +1269,84 @@ static void compile4_proc(mobj cstate, mobj fstate) {
 
 #define PAD_LEN     16
 
-static mobj resolve_reloc(mobj reloc) {
-    mobj table, key, val;
+#define lstate_length 4
+#define make_lstate()               Mvector(lstate_length, NULL)
+#define lstate_relocs(l)            minim_vector_ref(l, 0)
+#define lstate_locals(l)            minim_vector_ref(l, 1)
+#define lstate_offsets(l)           minim_vector_ref(l, 2)
+#define lstate_pos(l)               minim_vector_ref(l, 3)
 
-    table = minim_null;
+static mobj init_lstate() {
+    mobj lstate = make_lstate();
+    lstate_relocs(lstate) = minim_false;
+    lstate_locals(lstate) = minim_null;
+    lstate_offsets(lstate) = minim_null;
+    lstate_pos(lstate) = Mfixnum(0);
+    return lstate;
+}
+
+static void lstate_resolve_relocs(mobj lstate, mobj reloc) {
+    mobj table, key, val;
+    size_t i;
+    
+    table = Mvector(list_length(reloc), NULL);
+    i = 0;
+
     for_each(reloc,
         key = minim_car(reloc);
         if (foreign_formp(key)) {
             // ($foreign <name>)
             if (minim_stringp(minim_cadr(key))) {
                 val = lookup_prim(minim_string(minim_cadr(key)));
-                if (!val)
-                    error1("resolve_reloc", "unknown foreign procedure", minim_cadr(key));
-                table = Mcons(Mcons(key, Mfixnum((uptr) val)), table);
+                if (!val) {
+                    error1("resolve_reloc",
+                           "unknown foreign procedure",
+                           minim_cadr(key));
+                }
+
+                minim_vector_ref(table, i) = Mcons(key, Mfixnum((uptr) val));
             } else {
                 error1("resolve_reloc", "unknown $foreign entry", key);
             }
         } else if (literal_formp(key)) {
             // ($literal <datum>)
             val = Mfixnum((uptr) minim_cadr(key));
-            table = Mcons(Mcons(key, val), table);
+            minim_vector_ref(table, i) = Mcons(key, val);
         } else {
             error1("resolve_reloc", "unknown entry", key);
         }
+
+        i++;
     );
 
-    return list_reverse(table);
+    lstate_relocs(lstate) = table;
+}
+
+static mobj lstate_reloc_ref(mobj lstate, mobj idx) {
+    return minim_vector_ref(lstate_relocs(lstate), minim_fixnum(idx));
+}
+
+static void lstate_add_local(mobj lstate, mobj key, mobj offset) {
+    lstate_locals(lstate) = Mcons(Mcons(key, offset), lstate_locals(lstate));
+}
+
+static void lstate_add_offset(mobj lstate, mobj key, mobj imm) {
+    lstate_offsets(lstate) = Mcons(Mcons(key, imm), lstate_offsets(lstate));
+}
+
+static mobj lstate_lookup_local(mobj lstate, mobj key) {
+    mobj locals = lstate_locals(lstate);
+    for_each(locals,
+        if (code_formp(key)) {
+            if (minim_equalp(key, minim_caar(locals)))
+                return minim_cdar(locals);
+        } else {
+            if (key == minim_caar(locals))
+                return minim_cdar(locals);
+        }
+    );
+
+    error1("lstate_lookup_local", "key not found", key);
 }
 
 static mobj x86_encode_rex(int w, int r, int x, int b) {
@@ -1372,11 +1426,13 @@ static mobj x86_encode_mov_imm64(mobj dst, mobj imm) {
     return Mcons(rex, Mcons(op, x86_encode_imm64(imm)));
 }
 
-static mobj x86_encode_mov_rel(mobj dst) {
+static mobj x86_encode_mov_rel(mobj dst, mobj src, mobj lstate, mobj where) {
     mobj imm = x86_encode_imm32(Mfixnum(0));
     mobj rex = x86_encode_rex(1, x86_encode_x(dst), 0, 0);
     mobj op = fix_add(fix_mul(x86_encode_reg(dst), Mfixnum(8)), Mfixnum(5));
-    return Mcons(rex, Mcons(Mfixnum(0x8B), Mcons(op, imm)));
+    mobj instr = Mcons(rex, Mcons(Mfixnum(0x8B), Mcons(op, imm)));
+    lstate_add_offset(lstate, Mcons(src, where), imm);
+    return instr;
 }
 
 static mobj x86_encode_load(mobj dst, mobj src, mobj off) {
@@ -1463,15 +1519,34 @@ static size_t instr_bytes(mobj instrs) {
     return i;
 }
 
-static void compile5_proc(mobj cstate, mobj fstate, mobj relocs) {
-    mobj instrs, exprs, expr, op;
+static void lstate_resolve_offsets(mobj lstate) {
+    mobj offsets = lstate_offsets(lstate);
+    for_each(offsets,
+        mobj src = minim_caar(minim_car(offsets));
+        mobj dst = minim_cdar(minim_car(offsets));
+        mobj imm = minim_cdr(minim_car(offsets));
+
+        mobj src_off = lstate_lookup_local(lstate, src);
+        mobj dst_off = lstate_lookup_local(lstate, dst);
+        mobj offset = fix_sub(src_off, dst_off);
+        mobj bytes = x86_encode_imm32(offset);
+        
+        for_each(imm,
+            minim_car(imm) = minim_car(bytes);
+            bytes = minim_cdr(bytes);
+        );
+    );
+}
+
+static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
+    mobj instrs, exprs;
     size_t len;
 
     instrs = minim_null;
     exprs = fstate_asm(fstate);
     for_each(exprs,
-        expr = minim_car(exprs);
-        op = minim_car(expr);
+        mobj expr = minim_car(exprs);
+        mobj op = minim_car(expr);
         if (op == x86_mov) {
             // mov <dst> <src>
             mobj dst, src;
@@ -1482,11 +1557,13 @@ static void compile5_proc(mobj cstate, mobj fstate, mobj relocs) {
                 if (variant == code_sym) {
                     // (mov <dst> ($code <idx>))
                     // => (mov <dst> [rip+<offset>])
-                    add_instr(instrs, x86_encode_mov_rel(dst));
+                    size_t offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
+                    lstate_add_local(lstate, expr, Mfixnum(offset));
+                    add_instr(instrs, x86_encode_mov_rel(dst, src, lstate, expr));
                 } else if (variant == reloc_sym) {
                     // (mov <dst> ($reloc <idx>))
                     // => (mov <dst> <addr>)
-                    mobj addr = minim_cdr(list_ref(relocs, minim_cadr(src)));
+                    mobj addr = minim_cdr(lstate_reloc_ref(lstate, minim_cadr(src)));
                     add_instr(instrs, x86_encode_mov_imm64(dst, addr));
                 } else if (variant == mem_sym) {
                     // (mov <dst> (mem+ <base> <offset>))
@@ -1503,9 +1580,13 @@ static void compile5_proc(mobj cstate, mobj fstate, mobj relocs) {
                 }
             } else if (labelp(src)) {
                 // (mov <dst> <label)
+                size_t offset;
+
                 if (minim_consp(dst))
                     error1("compile5_proc", "too many memory locations", expr);
-                add_instr(instrs, x86_encode_mov_rel(minim_cadr(expr)));
+                offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
+                lstate_add_local(lstate, expr, Mfixnum(offset));
+                add_instr(instrs, x86_encode_mov_rel(dst, src, lstate, expr));
             } else {
                 if (minim_consp(dst)) {
                     // (mov (mem+ <base> <offset>) <src>)
@@ -1543,36 +1624,48 @@ static void compile5_proc(mobj cstate, mobj fstate, mobj relocs) {
             // jmp <tgt>
             add_instr(instrs, x86_encode_jmp(minim_cadr(expr)));
         } else if (op == label_sym) {
-            // empty sequence
-            add_instr(instrs, minim_null);
+            // empty sequence, need to register location
+            size_t offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
+            lstate_add_local(lstate, minim_cadr(expr), Mfixnum(offset));
         } else {
             error1("compile5_proc", "unknown instruction", expr);
         }
     );
 
-    // add NOP to meeting padding requirement
+    // add NOP to meet padding requirement
     len = instr_bytes(instrs);
     while (len % PAD_LEN) {
         instrs = Mcons(Mlist1(Mfixnum(0x90)), instrs);
         len++;
     }
 
-    instrs = list_reverse(instrs);
-    fprintf(stdout, "%ld: ", len);
-    write_object(Mport(stdout, 0x0), instrs);
-    printf("\n");
+    // replace instructions
+    fstate_asm(fstate) = list_reverse(instrs);
+    lstate_pos(lstate) = Mfixnum(minim_fixnum(lstate_pos(lstate)) + len);
 }
 
 static void compile5_module(mobj cstate) {
-    // resolve relocation table
-    mobj relocs = resolve_reloc(cstate_reloc(cstate));
+    mobj lstate, procs;
+    size_t i;
 
-    write_object(Mport(stdout, 0x0), relocs);
-    fprintf(stdout, "\n");
+    // initialize linker state and resolve relocation table
+    lstate = init_lstate();
+    lstate_resolve_relocs(lstate, cstate_reloc(cstate));
 
     // compile each procedure
-    mobj procs = cstate_procs(cstate);
-    for_each(procs, compile5_proc(cstate, minim_car(procs), relocs));
+    i = 0;
+    procs = cstate_procs(cstate);
+    for_each(procs,
+        lstate_add_local(lstate, Mlist2(code_sym, Mfixnum(i)), lstate_pos(lstate));
+        compile5_proc(cstate, lstate, minim_car(procs));
+        i++;
+    );
+
+    // compute offsets relative to first instruction
+    lstate_resolve_offsets(lstate);
+
+    write_object(Mport(stdout, 0x0), lstate);
+    fprintf(stdout, "\n");
 }
 
 //
@@ -1617,7 +1710,7 @@ void install_module(mobj cstate) {
     // phase 5: translation to binary
     compile5_module(cstate);
 
-    write_object(th_output_port(get_thread()), cstate);
-    fputs("\n\n", stdout);
-    fflush(stdout);
+    // write_object(th_output_port(get_thread()), cstate);
+    // fputs("\n\n", stdout);
+    // fflush(stdout);
 }
