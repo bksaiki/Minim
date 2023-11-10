@@ -341,6 +341,8 @@ NORETURN void error1(const char *who, const char *why, mobj);
 //
 
 char* get_current_dir();
+void *alloc_page(size_t size);
+int make_page_executable(void* page, size_t size);
 
 //
 //  Interner
@@ -423,6 +425,6 @@ void minim_init();
 mobj expand_expr(mobj e);
 mobj expand_top(mobj e);
 mobj compile_module(mobj op, mobj name, mobj es);
-void install_module(mobj cstate);
+void *install_module(mobj cstate);
 
 #endif

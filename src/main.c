@@ -26,13 +26,15 @@ static void boot_compile(const char *input, const char *output) {
 
 static void install_bootfile(const char *input) {
     mobj ip, cstate;
+    void *fn;
 
     ip = open_input_file(input);
     cstate = read_object(ip);
     if (!minim_eofp(read_object(ip)))
         error("install_bootfile", "found additional data after bootfile");
 
-    install_module(cstate);
+    fn = install_module(cstate);
+    printf("[installed %s at %p]\n", input, fn);
 }
 
 int main(int argc, char **argv) {

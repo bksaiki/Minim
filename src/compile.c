@@ -51,6 +51,8 @@ static mobj push_valueb_sym;
 static mobj label_sym;
 static mobj branch_sym;
 static mobj ret_sym;
+static mobj stash_sym;
+static mobj unstash_sym;
 
 static mobj load_sym;
 static mobj ccall_sym;
@@ -78,6 +80,8 @@ static mobj cres_reg;
 #define branch_formp(e)     syntax_formp(branch_sym, e)
 #define bindb_formp(e)      syntax_formp(bindb_sym, e)
 #define ret_formp(e)        syntax_formp(ret_sym, e)
+#define stash_formp(e)      syntax_formp(stash_sym, e)
+#define unstash_formp(e)    syntax_formp(unstash_sym, e)
 
 #define load_formp(e)       syntax_formp(load_sym, e)
 #define ccall_formp(e)      syntax_formp(ccall_sym, e)
@@ -108,6 +112,8 @@ static void init_compile_globals() {
     push_valueb_sym = intern("push-value!");
     branch_sym = intern("branch");
     ret_sym = intern("ret");
+    stash_sym = intern("stash!");
+    unstash_sym = intern("unstash!");
 
     load_sym = intern("load");
     ccall_sym = intern("c-call");
@@ -223,10 +229,10 @@ static mobj cstate_gensym(mobj cstate, mobj name) {
 
 #define fstate_length           4
 #define make_fstate()           Mvector(fstate_length, NULL)
-#define fstate_name(fs)         minim_vector_ref(fstate, 0)
-#define fstate_arity(fs)        minim_vector_ref(fstate, 1)
-#define fstate_rest(fs)         minim_vector_ref(fstate, 2)
-#define fstate_asm(fs)          minim_vector_ref(fstate, 3)
+#define fstate_name(fs)         minim_vector_ref(fs, 0)
+#define fstate_arity(fs)        minim_vector_ref(fs, 1)
+#define fstate_rest(fs)         minim_vector_ref(fs, 2)
+#define fstate_asm(fs)          minim_vector_ref(fs, 3)
 
 static mobj init_fstate() {
     mobj fstate = make_fstate();
@@ -557,7 +563,9 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 
                 // jump to new procedure
                 add_instr(instrs, Mlist3(load_sym, fp_reg, Mlist3(mem_sym, fp_reg, Mlist2(intern("-"), size_sym))));
+                add_instr(instrs, Mlist1(stash_sym));
                 add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), code_loc));
+                add_instr(instrs, Mlist1(unstash_sym));
                 add_instr(instrs, Mlist2(label_sym, ret_label));
 
                 // cleanup
@@ -596,6 +604,7 @@ static void compile2_proc(mobj cstate, mobj fstate) {
             //   (jmp <tmp>)
             mobj loc = cstate_gensym(cstate, tloc_pre);
             add_instr(instrs, Mlist3(load_sym, loc, mem_offset(fp_reg, 0)));
+            add_instr(instrs, Mlist3(load_sym, fp_reg, mem_offset(fp_reg, 1)));
             add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), loc));
         } else if (ccall_formp(expr) || label_formp(expr) || branch_formp(expr)) {
             // leave as is
@@ -673,11 +682,7 @@ static void compile3_proc(mobj cstate, mobj fstate) {
             }
         } else if (ccall_formp(expr)) {
             // (c-call <tgt> <arg> ...)
-            mobj args, env;
-
-            // stash env register
-            env = cstate_gensym(cstate, tloc_pre);
-            add_instr(instrs, Mlist3(x86_mov, env, env_reg));
+            mobj args;
 
             // set appropriate register
             args = minim_cddr(expr);
@@ -697,12 +702,17 @@ static void compile3_proc(mobj cstate, mobj fstate) {
                 args = minim_cdr(args);
             }
 
-            // call
+            // set %Cres to target
             add_instr(instrs, Mlist3(x86_mov, x86_cres, minim_cadr(expr)));
+
+            // stash caller-saved registers
+            add_instr(instrs, Mlist1(stash_sym));
+
+            // call
             add_instr(instrs, Mlist2(x86_call, x86_cres));
 
-            // restore env register
-            add_instr(instrs, Mlist3(x86_mov, env_reg, env));
+            // unstash caller-saved registers
+            add_instr(instrs, Mlist1(unstash_sym));
         } else if (branch_formp(expr)) {
             // (branch <type> <where>)
             mobj tgt = minim_car(minim_cddr(expr));
@@ -714,7 +724,7 @@ static void compile3_proc(mobj cstate, mobj fstate) {
             } else if (type == branch_reg) {
                 add_instr(instrs, Mlist2(x86_jmp, tgt));
             }
-        } else if (label_formp(expr)) {
+        } else if (label_formp(expr) || stash_formp(expr) || unstash_formp(expr)) {
             // do nothing
             add_instr(instrs, expr);
         } else {
@@ -828,7 +838,10 @@ static void rstate_set_lasts(mobj rs, mobj exprs) {
             if (tregp(minim_cadr(expr))) {
                 dict = Mcons(Mcons(minim_cadr(expr), expr), dict);
             }
-        } else if (op == x86_call || op == label_sym) {
+        } else if (op == x86_call ||
+                    op == label_sym ||
+                    op == stash_sym ||
+                    op == unstash_sym) {
             // do nothing
         } else {
             error1("last_uses", "unknown sequence", expr);
@@ -949,20 +962,6 @@ static void rstate_unassign(mobj rs, mobj reg) {
     error1("rstate_unassign", "register not found", reg);
 }
 
-// Stashes all values assigned to allocable registers to the stack.
-static void rstate_stash(mobj rs) {
-    mobj as, t;
-
-    as = rstate_assigns(rs);
-    for_each(as,
-        t = minim_cdar(as);
-        if (!minim_falsep(t)) {
-            minim_cdar(as) = minim_false;
-            treg_assign_local(rs, t);
-        }
-    );
-}
-
 // For every temporary register, scan to see if we can remove it
 // since it will no longer be used
 static void rstate_prune_lasts(mobj rs, mobj e) {
@@ -1016,15 +1015,15 @@ static mobj replace_frame_loc(mobj loc, size_t argc, size_t localc) {
     size_t offset;
 
     if (loc == size_sym) {
-        return Mfixnum(ptr_size * (argc + localc));
+        return Mfixnum(ptr_size * (2 + argc + localc));
     } if (next_formp(loc)) {
-        offset = ptr_size * (argc + localc + minim_fixnum(minim_cadr(loc)));
+        offset = ptr_size * (2 + argc + localc + minim_fixnum(minim_cadr(loc)));
         return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
     } else if (local_formp(loc)) {
-        offset = ptr_size * (argc + minim_fixnum(minim_cadr(loc)));
+        offset = ptr_size * (2 + argc + minim_fixnum(minim_cadr(loc)));
         return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
     } else if (arg_formp(loc)) {
-        offset = ptr_size * minim_fixnum(minim_cadr(loc));
+        offset = ptr_size * (2 + minim_fixnum(minim_cadr(loc)));
         return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
     } else {
         error1("replace_frame_loc", "not frame location", loc);
@@ -1039,7 +1038,10 @@ static void compile4_resolve_frame(mobj fstate, mobj rstate) {
 
     // TODO: rest argument means +1
     argc = minim_fixnum(fstate_arity(fstate));
+
+    // need stack alignment
     localc = minim_fixnum(rstate_fsize(rstate));
+    if ((localc + argc) % 2) localc++;
 
     // replace values
     exprs = fstate_asm(fstate);
@@ -1068,7 +1070,7 @@ static void compile4_resolve_frame(mobj fstate, mobj rstate) {
         } else if (op == x86_jmp || op == x86_call) {
             mobj tgt = minim_cadr(expr);
             if (frame_locp(tgt))
-                minim_cadr(tgt) = replace_frame_loc(tgt, argc, localc);
+                minim_cadr(expr) = replace_frame_loc(tgt, argc, localc);
         } else if (op == label_sym) {
             // do nothing
         } else {
@@ -1146,11 +1148,12 @@ static void compile4_resolve_regs(mobj fstate) {
 }
 
 static void compile4_proc(mobj cstate, mobj fstate) {
-    mobj exprs, rstate, instrs;
+    mobj exprs, rstate, instrs, stash;
 
     // initialize register state and compute last uses
     rstate = init_rstate();
     exprs = fstate_asm(fstate);
+    stash = minim_false;
     rstate_set_lasts(rstate, exprs);
 
     // linear pass to assign registers
@@ -1233,13 +1236,50 @@ static void compile4_proc(mobj cstate, mobj fstate) {
             // can call from register or memory
             if (tregp(tgt))
                 tgt = treg_lookup(rstate, tgt);
-            rstate_stash(rstate);
+
+            // add call
             add_instr(instrs, Mlist2(op, tgt));
         } else if (op == x86_call) {
             if (minim_cadr(expr) != x86_cres)
                 unimplemented_error("cannot call from any other register than %rax");
-            rstate_stash(rstate);
             add_instr(instrs, expr);
+        } else if (op == stash_sym) {
+            mobj as, t, loc;
+
+            if (!minim_falsep(stash))
+                error1("compile4_proc", "stash already occupired", stash);
+
+            // stash allocable registers
+            as = rstate_assigns(rstate);
+            stash = minim_null;
+            for_each(as,
+                t = minim_cdar(as);
+                if (!minim_falsep(t)) {
+                    minim_cdar(as) = minim_false;
+                    loc = treg_assign_local(rstate, t);
+                    add_instr(instrs, Mlist3(x86_mov, loc, minim_caar(as)));
+                    stash = Mcons(Mcons(t, loc), stash);
+                }
+            );
+
+            // stash env register
+            loc = treg_assign_local(rstate, env_reg);
+            add_instr(instrs, Mlist3(x86_mov, loc, env_reg));
+            stash = Mcons(Mcons(env_reg, loc), stash);
+        } else if (op == unstash_sym) {
+            if (minim_falsep(stash))
+                error1("compile4_proc", "cannot unstash empty stash", stash);
+            
+            // only unstash env
+            for_each(stash,
+                if (minim_caar(stash) == env_reg) {
+                    add_instr(instrs, Mlist3(x86_mov, env_reg, minim_cdar(stash)));
+                    rstate_unassign(rstate, env_reg);
+                    break;
+                }
+            );
+
+            stash = minim_false;
         } else if (op == label_sym) {
             // do nothing
             add_instr(instrs, expr);
@@ -1350,7 +1390,7 @@ static mobj lstate_lookup_local(mobj lstate, mobj key) {
 }
 
 static mobj x86_encode_rex(int w, int r, int x, int b) {
-    mfixnum i = (1 << 7) | ((w != 0) << 3) | ((r != 0) << 2) | ((x != 0) << 1) | (b != 0);
+    mfixnum i = (1 << 6) | ((w != 0) << 3) | ((r != 0) << 2) | ((x != 0) << 1) | (b != 0);
     return Mfixnum(i & 0xFF);
 }
 
@@ -1436,8 +1476,8 @@ static mobj x86_encode_mov_rel(mobj dst, mobj src, mobj lstate, mobj where) {
 }
 
 static mobj x86_encode_load(mobj dst, mobj src, mobj off) {
-    mobj rex = x86_encode_rex(1, x86_encode_x(src), 0, x86_encode_x(dst));
-    mobj modrm = x86_encode_modrm(Mfixnum(1), x86_encode_reg(src), x86_encode_reg(dst));
+    mobj rex = x86_encode_rex(1, x86_encode_x(dst), 0, x86_encode_x(src));
+    mobj modrm = x86_encode_modrm(Mfixnum(1), x86_encode_reg(dst), x86_encode_reg(src));
     if (minim_fixnum(off) >= 0 && minim_fixnum(off) < 127) {
         return Mlist4(rex, Mfixnum(0x8B), modrm, off);
     } else if (minim_fixnum(off) >= -128 && minim_fixnum(off) < -1) {
@@ -1502,6 +1542,22 @@ static mobj x86_encode_call(mobj tgt) {
     }
 }
 
+static mobj x86_encode_jmp_rel(mobj base, mobj offset) {
+    mobj instr, modrm, rex;
+    if (minim_fixnum(offset) < 0) {
+        error1("x86_encode_jmp_rel", "unsupported offset", offset);
+    }
+
+    modrm = x86_encode_modrm(Mfixnum(2), Mfixnum(4), x86_encode_reg(base));
+    instr = Mcons(Mfixnum(0xFF), Mcons(modrm, x86_encode_imm32(offset)));
+    if (x86_encode_x(base)) {
+        rex = x86_encode_rex(0, 0, 0, 1);
+        instr = Mcons(rex, instr);
+    }
+
+    return instr;
+}
+
 static mobj x86_encode_jmp(mobj tgt) {
     mobj modrm, rex;
     modrm = x86_encode_modrm(Mfixnum(3), Mfixnum(4), x86_encode_reg(tgt));
@@ -1540,7 +1596,7 @@ static void lstate_resolve_offsets(mobj lstate) {
 
 static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
     mobj instrs, exprs;
-    size_t len;
+    size_t len, offset;
 
     instrs = minim_null;
     exprs = fstate_asm(fstate);
@@ -1557,9 +1613,9 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
                 if (variant == code_sym) {
                     // (mov <dst> ($code <idx>))
                     // => (mov <dst> [rip+<offset>])
-                    size_t offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
-                    lstate_add_local(lstate, expr, Mfixnum(offset));
                     add_instr(instrs, x86_encode_mov_rel(dst, src, lstate, expr));
+                    offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
+                    lstate_add_local(lstate, expr, Mfixnum(offset));
                 } else if (variant == reloc_sym) {
                     // (mov <dst> ($reloc <idx>))
                     // => (mov <dst> <addr>)
@@ -1580,13 +1636,12 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
                 }
             } else if (labelp(src)) {
                 // (mov <dst> <label)
-                size_t offset;
-
                 if (minim_consp(dst))
                     error1("compile5_proc", "too many memory locations", expr);
+
+                add_instr(instrs, x86_encode_mov_rel(dst, src, lstate, expr));
                 offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
                 lstate_add_local(lstate, expr, Mfixnum(offset));
-                add_instr(instrs, x86_encode_mov_rel(dst, src, lstate, expr));
             } else {
                 if (minim_consp(dst)) {
                     // (mov (mem+ <base> <offset>) <src>)
@@ -1622,7 +1677,12 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
             add_instr(instrs, x86_encode_call(minim_cadr(expr)));
         } else if (op == x86_jmp) {
             // jmp <tgt>
-            add_instr(instrs, x86_encode_jmp(minim_cadr(expr)));
+            mobj tgt = minim_cadr(expr);
+            if (minim_symbolp(tgt)) {
+                add_instr(instrs, x86_encode_jmp(tgt));
+            } else {
+                add_instr(instrs, x86_encode_jmp_rel(minim_cadr(tgt), minim_car(minim_cddr(tgt))));
+            }
         } else if (op == label_sym) {
             // empty sequence, need to register location
             size_t offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
@@ -1644,12 +1704,11 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
     lstate_pos(lstate) = Mfixnum(minim_fixnum(lstate_pos(lstate)) + len);
 }
 
-static void compile5_module(mobj cstate) {
-    mobj lstate, procs;
+static void compile5_module(mobj cstate, mobj lstate) {
+    mobj procs;
     size_t i;
 
-    // initialize linker state and resolve relocation table
-    lstate = init_lstate();
+    // resolve relocation table
     lstate_resolve_relocs(lstate, cstate_reloc(cstate));
 
     // compile each procedure
@@ -1664,8 +1723,31 @@ static void compile5_module(mobj cstate) {
     // compute offsets relative to first instruction
     lstate_resolve_offsets(lstate);
 
-    write_object(Mport(stdout, 0x0), lstate);
-    fprintf(stdout, "\n");
+    // procs = cstate_procs(cstate);
+    // for_each(procs,
+    //     write_object(Mport(stdout, 0x0), fstate_asm(minim_car(procs)));
+    //     fprintf(stdout, "\n");
+    // );
+}
+
+static void write_module(mobj cstate, void *page) {
+    mobj procs, instrs, instr, byte;
+    unsigned char *ptr = page;
+    
+    procs = cstate_procs(cstate);
+    for_each(procs,
+        instrs = fstate_asm(minim_car(procs));
+        for_each(instrs,
+            instr = minim_car(instrs);
+            for_each(instr,
+                byte = minim_car(instr);
+                if (minim_fixnum(byte) < 0 || minim_fixnum(byte) >= 256)
+                    error1("write_module", "invalid byte", byte);
+                *ptr = minim_fixnum(byte);
+                ++ptr;
+            );
+        );
+    );
 }
 
 //
@@ -1693,24 +1775,45 @@ mobj compile_module(mobj op, mobj name, mobj es) {
     procs = cstate_procs(cstate);
     for_each(procs, compile3_proc(cstate, minim_car(procs)));
 
+    // write_object(Mport(stdout, 0x0), cstate);
+    // printf("\n");
+
     // phase 4: register allocation
     procs = cstate_procs(cstate);
     for_each(procs, compile4_proc(cstate, minim_car(procs)));
 
+    // write_object(Mport(stdout, 0x0), cstate);
+    // printf("\n");
+
     return cstate;
 }
 
-void install_module(mobj cstate) {
+void *install_module(mobj cstate) {
+    mobj lstate;
+    void *page;
+    size_t size;
+
     // check for initialization
     if (!cstate_init) {
         init_compile_globals();
         init_x86_compiler_globals();
-    } 
+    }
+
+    // initialize linker
+    lstate = init_lstate();
 
     // phase 5: translation to binary
-    compile5_module(cstate);
+    compile5_module(cstate, lstate);
 
-    // write_object(th_output_port(get_thread()), cstate);
-    // fputs("\n\n", stdout);
-    // fflush(stdout);
+    // write page
+    size = minim_fixnum(lstate_pos(lstate));
+    page = alloc_page(size);
+    if (page == NULL)
+        error("install_module", "could not allocate page");
+
+    write_module(cstate, page);
+    if (make_page_executable(page, size) < 0)
+        error("install_module", "could not make page executable");
+
+    return page;
 }
