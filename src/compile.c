@@ -41,6 +41,8 @@ static mobj local_sym;
 static mobj next_sym;
 static mobj prev_sym;
 
+static mobj add_sym;
+static mobj sub_sym;
 static mobj lookup_sym;
 static mobj apply_sym;
 static mobj cmp_sym;
@@ -66,6 +68,8 @@ static mobj sp_reg;
 static mobj carg_reg;
 static mobj cres_reg;
 
+#define add_formp(e)        syntax_formp(add_sym, e)
+#define sub_formp(e)        syntax_formp(sub_sym, e)
 #define reloc_formp(e)      syntax_formp(reloc_sym, e)
 #define lookup_formp(e)     syntax_formp(lookup_sym, e)
 #define literal_formp(e)    syntax_formp(literal_sym, e)
@@ -103,6 +107,8 @@ static void init_compile_globals() {
     next_sym = intern("$next");
     prev_sym = intern("$prev");
 
+    add_sym = intern("+");
+    sub_sym = intern("-");
     lookup_sym = intern("lookup");
     apply_sym = intern("apply");
     cmp_sym = intern("cmp");
@@ -301,6 +307,7 @@ static mobj compile1_foreign(mobj cstate, mobj e) {
     fstate_add_asm(fstate, Mcons(ccall_sym,
                            Mcons(Mlist2(reloc_sym, idx),
                            list_reverse(args))));
+    fstate_add_asm(fstate, Mlist1(ret_sym));
     return fstate;
 }
 
@@ -550,9 +557,8 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 add_instr(instrs, Mlist3(load_sym, env_reg, env_offset));
 
                 // extract closure code location
-                mobj code_loc = cstate_gensym(cstate, tloc_pre);
                 mobj code_offset = mem_offset(proc, minim_closure_code_offset);
-                add_instr(instrs, Mlist3(load_sym, code_loc, code_offset));
+                add_instr(instrs, Mlist3(load_sym, cres_reg, code_offset));
 
                 // fill return address and previous frame position
                 mobj ret_label = cstate_gensym(cstate, label_pre);
@@ -562,16 +568,17 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 add_instr(instrs, Mlist3(load_sym, next_loc(1), fp_reg));
                 
                 // jump to new procedure
-                add_instr(instrs, Mlist3(load_sym, fp_reg, Mlist3(mem_sym, fp_reg, Mlist2(intern("-"), size_sym))));
                 add_instr(instrs, Mlist1(stash_sym));
-                add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), code_loc));
-                add_instr(instrs, Mlist1(unstash_sym));
-                add_instr(instrs, Mlist2(label_sym, ret_label));
+                add_instr(instrs, Mlist4(sub_sym, fp_reg, fp_reg, size_sym));
+                add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), cres_reg));                
 
                 // cleanup
-                add_instr(instrs, Mlist3(load_sym, fp_reg, Mlist3(mem_sym, fp_reg, size_sym)));
-                add_instr(instrs, Mlist3(load_sym, env_reg, stash_loc));
+                add_instr(instrs, Mlist2(label_sym, ret_label));
+                // callee cleans up
+                // add_instr(instrs, Mlist4(add_sym, fp_reg, fp_reg, size_sym));
+                add_instr(instrs, Mlist1(unstash_sym));
                 add_instr(instrs, Mlist3(load_sym, dst, cres_reg));
+                add_instr(instrs, Mlist3(load_sym, env_reg, stash_loc));
             } else if (closure_formp(src)) {
                 // (set! _ ($closure <idx>)) =>
                 //   (load <tmp> ($code <idx>))
@@ -610,6 +617,8 @@ static void compile2_proc(mobj cstate, mobj fstate) {
         } else if (ccall_formp(expr) || label_formp(expr) || branch_formp(expr)) {
             // leave as is
             add_instr(instrs, expr);
+        } else if (minim_consp(expr) && minim_car(expr) == push_valueb_sym) {
+                // TODO
         } else {
             error1("compile2_proc", "unknown sequence", expr);
         }
@@ -733,6 +742,32 @@ static void compile3_proc(mobj cstate, mobj fstate) {
                 unimplemented_error("branch with !=");
             } else if (type == branch_reg) {
                 add_instr(instrs, Mlist2(x86_jmp, tgt));
+            }
+        } else if (add_formp(expr)) {
+            // (add <dst> <src1> <src2>)
+            mobj dst = minim_cadr(expr);
+            mobj src1 = minim_car(minim_cddr(expr));
+            mobj src2 = minim_cadr(minim_cddr(expr));
+            if (dst == src1) {
+                // can be 2 address: (add <dst> <src2>)
+                add_instr(instrs, Mlist3(x86_add, dst, src2));
+            } else {
+                // need to make 2 address
+                add_instr(instrs, Mlist3(x86_mov, dst, src1));
+                add_instr(instrs, Mlist3(x86_add, dst, src2));
+            }
+        } else if (sub_formp(expr)) {
+            // (sub <dst> <src1> <src2>)
+            mobj dst = minim_cadr(expr);
+            mobj src1 = minim_car(minim_cddr(expr));
+            mobj src2 = minim_cadr(minim_cddr(expr));
+            if (dst == src1) {
+                // can be 2 address: (add <dst> <src2>)
+                add_instr(instrs, Mlist3(x86_sub, dst, src2));
+            } else {
+                // need to make 2 address
+                add_instr(instrs, Mlist3(x86_mov, dst, src1));
+                add_instr(instrs, Mlist3(x86_sub, dst, src2));
             }
         } else if (label_formp(expr) || stash_formp(expr) || unstash_formp(expr)) {
             // do nothing
@@ -1484,14 +1519,28 @@ static mobj x86_encode_imm64(mobj imm) {
 static mobj x86_encode_imm32(mobj imm) {
     mobj bytes = minim_null;
     mobj quot = Mfixnum(256);
+    if (minim_fixnum(imm) < -2147483648 || minim_fixnum(imm) > 2147483647) {
+        error1("x86_encode_imm32", "value cannot fit in 32 bits", imm);
+    } else if (minim_fixnum(imm) < 0) {
+        imm = Mfixnum(minim_fixnum(imm) + 0x10000000);
+    }
+
     for (size_t i = 0; i < 4; i++) {
         bytes = Mcons(fix_rem(imm, quot), bytes);
         imm = fix_div(imm, quot);
     }
 
-    if (!minim_zerop(imm))
-        error1("x86_encode_imm32", "value larger than 32 bits", imm);
     return list_reverse(bytes);
+}
+
+static mobj x86_encode_imm8(mobj imm) {
+    if (minim_fixnum(imm) < -128 || minim_fixnum(imm) > 127) {
+        error1("x86_encode_imm32", "value cannot fit in 8 bits", imm);
+    } else if (minim_fixnum(imm) < 0) {
+        return Mfixnum(minim_fixnum(imm) + 256);
+    } else {
+        return imm;
+    }
 }
 
 static mobj x86_encode_modrm(mobj mod, mobj reg, mobj rm) {
@@ -1532,10 +1581,8 @@ static mobj x86_encode_pc_rel(mobj dst, mobj src, mobj lstate, mobj where) {
 static mobj x86_encode_load(mobj dst, mobj src, mobj off) {
     mobj rex = x86_encode_rex(1, x86_encode_x(dst), 0, x86_encode_x(src));
     mobj modrm = x86_encode_modrm(Mfixnum(1), x86_encode_reg(dst), x86_encode_reg(src));
-    if (minim_fixnum(off) >= 0 && minim_fixnum(off) < 127) {
-        return Mlist4(rex, Mfixnum(0x8B), modrm, off);
-    } else if (minim_fixnum(off) >= -128 && minim_fixnum(off) < -1) {
-        return Mlist4(rex, Mfixnum(0x8B), modrm, Mfixnum(minim_fixnum(off) + 256));
+    if (minim_fixnum(off) >= -128 && minim_fixnum(off) <= 127) {
+        return Mlist4(rex, Mfixnum(0x8B), modrm, x86_encode_imm8(off));
     } else {
         error1("x86_encode_load", "unsupported mov offset", off);
     }
@@ -1544,10 +1591,8 @@ static mobj x86_encode_load(mobj dst, mobj src, mobj off) {
 static mobj x86_encode_store(mobj dst, mobj src, mobj off) {
     mobj rex = x86_encode_rex(1, x86_encode_x(src), 0, x86_encode_x(dst));
     mobj modrm = x86_encode_modrm(Mfixnum(1), x86_encode_reg(src), x86_encode_reg(dst));
-    if (minim_fixnum(off) >= 0 && minim_fixnum(off) < 127) {
-        return Mlist4(rex, Mfixnum(0x89), modrm, off);
-    } else if (minim_fixnum(off) >= -128 && minim_fixnum(off) < -1) {
-        return Mlist4(rex, Mfixnum(0x89), modrm, Mfixnum(minim_fixnum(off) + 256));
+    if (minim_fixnum(off) >= -128 && minim_fixnum(off) <= 127) {
+        return Mlist4(rex, Mfixnum(0x89), modrm, x86_encode_imm8(off));
     } else {
         error1("x86_encode_store", "unsupported mov offset", off);
     }
@@ -1562,8 +1607,8 @@ static mobj x86_encode_add(mobj dst, mobj src) {
 static mobj x86_encode_add_imm(mobj dst, mobj imm) {
     mobj op = x86_encode_io(Mfixnum(0xC0), x86_encode_reg(dst));
     mobj rex = x86_encode_rex(1, 0, 0, x86_encode_x(dst));
-    if (minim_fixnum(imm) >= 0 && minim_fixnum(imm) < 256) {
-        return Mlist4(rex, Mfixnum(0x83), op, imm);
+    if (minim_fixnum(imm) >= -128 && minim_fixnum(imm) <= 127) {
+        return Mlist4(rex, Mfixnum(0x83), op, x86_encode_imm8(imm));
     } else {
         error1("compile5_proc", "unsupported add offset", imm);
     }
@@ -1578,8 +1623,8 @@ static mobj x86_encode_sub(mobj dst, mobj src) {
 static mobj x86_encode_sub_imm(mobj dst, mobj imm) {
     mobj op = x86_encode_io(Mfixnum(0xE8), x86_encode_reg(dst));
     mobj rex = x86_encode_rex(1, 0, 0, x86_encode_x(dst));
-    if (minim_fixnum(imm) >= 0 && minim_fixnum(imm) < 256) {
-        return Mlist4(rex, Mfixnum(0x83), op, imm);
+    if (minim_fixnum(imm) >= -128 && minim_fixnum(imm) <= 127) {
+        return Mlist4(rex, Mfixnum(0x83), op, x86_encode_imm8(imm));
     } else {
         error1("compile5_proc", "unsupported sub offset", imm);
     }
@@ -1598,10 +1643,6 @@ static mobj x86_encode_call(mobj tgt) {
 
 static mobj x86_encode_jmp_rel(mobj base, mobj offset) {
     mobj instr, modrm, rex;
-    if (minim_fixnum(offset) < 0) {
-        error1("x86_encode_jmp_rel", "unsupported offset", offset);
-    }
-
     modrm = x86_encode_modrm(Mfixnum(2), Mfixnum(4), x86_encode_reg(base));
     instr = Mcons(Mfixnum(0xFF), Mcons(modrm, x86_encode_imm32(offset)));
     if (x86_encode_x(base)) {
@@ -1821,23 +1862,29 @@ mobj compile_module(mobj op, mobj name, mobj es) {
     cstate = init_cstate(name);
     compile1_module_loader(cstate, es);
 
+    // write_object(Mport(stdout, 0x0), cstate);
+    // printf("\n");
+
     // phase 2: pseudo assembly pass
     procs = cstate_procs(cstate);
     for_each(procs, compile2_proc(cstate, minim_car(procs)));
+
+    // write_object(Mport(stdout, 0x0), cstate);
+    // printf("\n");
 
     // phase 3: architecture-specific assembly
     procs = cstate_procs(cstate);
     for_each(procs, compile3_proc(cstate, minim_car(procs)));
 
-    // write_object(Mport(stdout, 0x0), cstate);
-    // printf("\n");
+    write_object(Mport(stdout, 0x0), cstate);
+    printf("\n");
 
     // phase 4: register allocation
     procs = cstate_procs(cstate);
     for_each(procs, compile4_proc(cstate, minim_car(procs)));
 
-    // write_object(Mport(stdout, 0x0), cstate);
-    // printf("\n");
+    write_object(Mport(stdout, 0x0), cstate);
+    printf("\n");
 
     return cstate;
 }

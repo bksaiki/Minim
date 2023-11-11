@@ -30,7 +30,7 @@ mobj make_env() {
 mobj env_get(mobj env, mobj k) {
     mobj maybe = env_get_entry(env, k);
     if (!maybe) error1("env_get", "unbound variable", k);
-    return maybe;
+    return minim_cdr(maybe);
 }
 
 mobj env_set(mobj env, mobj k, mobj v) {

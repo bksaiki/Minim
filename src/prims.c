@@ -22,6 +22,16 @@ static mobj cdr_proc(mobj x) {
     return minim_cdr(x);
 }
 
+static mobj write_proc(mobj x) {
+    write_object(th_output_port(get_thread()), x);
+    return minim_void;
+}
+
+static mobj newline_proc() {
+    fputc('\n', minim_port(th_output_port(get_thread())));
+    return minim_void;
+}
+
 //
 //  Public API
 //
@@ -63,6 +73,9 @@ void prim_table_init() {
     register_prim("fx*", fix_mul);
     register_prim("fx/", fix_div);
     register_prim("fxrem", fix_rem);
+
+    register_prim("write", write_proc);
+    register_prim("newline", newline_proc);
 
     register_prim("env_set", env_set);
     register_prim("env_get", env_get);
