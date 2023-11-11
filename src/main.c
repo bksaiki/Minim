@@ -35,6 +35,7 @@ static void install_bootfile(const char *input) {
 
     fn = install_module(cstate);
     printf("[installed %s at %p]\n", input, fn);
+    call0(fn);
 }
 
 int main(int argc, char **argv) {

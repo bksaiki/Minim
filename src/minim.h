@@ -366,6 +366,16 @@ mobj lookup_prim(const mchar *name);
 void register_prim(const char *name, void *fn);
 
 //
+//  Runtime
+//
+
+void runtime_init();
+
+mobj env_get(mobj env, mobj k);
+mobj env_set(mobj env, mobj k, mobj v);
+void call0(void *fn);
+
+//
 //  Globals
 //
 

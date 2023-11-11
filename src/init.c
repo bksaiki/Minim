@@ -62,4 +62,5 @@ void minim_init() {
 
     // primitive table
     prim_table_init();
+    runtime_init();
 }

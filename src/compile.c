@@ -601,10 +601,11 @@ static void compile2_proc(mobj cstate, mobj fstate) {
         } else if (ret_formp(expr)) {
             // (ret) =>
             //   (load <tmp> (mem+ %fp 0))
+            //   (load <tmp> (mem+ %fp (- 8)))
             //   (jmp <tmp>)
             mobj loc = cstate_gensym(cstate, tloc_pre);
             add_instr(instrs, Mlist3(load_sym, loc, mem_offset(fp_reg, 0)));
-            add_instr(instrs, Mlist3(load_sym, fp_reg, mem_offset(fp_reg, 1)));
+            add_instr(instrs, Mlist3(load_sym, fp_reg, mem_offset(fp_reg, -8)));
             add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), loc));
         } else if (ccall_formp(expr) || label_formp(expr) || branch_formp(expr)) {
             // leave as is
@@ -630,6 +631,7 @@ static mobj x86_call;
 static mobj x86_jmp;
 
 static mobj x86_fp;
+static mobj x86_sp;
 static mobj x86_env;
 static mobj x86_carg0;
 static mobj x86_carg1;
@@ -645,7 +647,8 @@ static void init_x86_compiler_globals() {
     x86_call = intern("call");
     x86_jmp = intern("jmp");
 
-    x86_fp = intern("%r13");
+    x86_fp = intern("%rbp");
+    x86_sp = intern("%rsp");
     x86_env = intern("%r9");
     x86_carg0 = intern("%rdi");
     x86_carg1 = intern("%rsi");
@@ -665,18 +668,21 @@ static void compile3_proc(mobj cstate, mobj fstate) {
             if (mem_formp(src)) {
                 // (load <dst> (mem+ <src> <offset>))
                 mobj dst = minim_cadr(expr);
-                if (dst == minim_cadr(src)) {
-                    // (load <dst> (mem+ <dst> <offset>))
-                    mobj offset = minim_car(minim_cddr(src));
-                    if (minim_consp(offset)) {
-                        // unsafe: assuming `<offset> = (- <pos_offset>)`
-                        add_instr(instrs, Mlist3(x86_sub, dst, minim_cadr(offset)));
-                    } else {
-                        add_instr(instrs, Mlist3(x86_add, dst, offset));
-                    }
-                } else {
-                    add_instr(instrs, Mlist3(x86_mov, dst, src));
-                }
+                add_instr(instrs, Mlist3(x86_mov, dst, src));
+                // if (dst == minim_cadr(src)) {
+                //     // (load <dst> (mem+ <dst> <offset>))
+                //     mobj offset = minim_car(minim_cddr(src));
+                //     if (minim_consp(offset)) {
+                //         // unsafe: assuming `<offset> = (- <pos_offset>)`
+                //         add_instr(instrs, Mlist3(x86_sub, dst, minim_cadr(offset)));
+                //     } else if (minim_fixnum(offset) < 0) {
+                //         add_instr(instrs, Mlist3(x86_sub, dst, fix_neg(offset)));
+                //     } else {
+                //         add_instr(instrs, Mlist3(x86_add, dst, offset));
+                //     }
+                // } else {
+                //     add_instr(instrs, Mlist3(x86_mov, dst, src));
+                // }
             } else {
                 add_instr(instrs, Mcons(x86_mov, minim_cdr(expr)));
             }
@@ -707,6 +713,10 @@ static void compile3_proc(mobj cstate, mobj fstate) {
 
             // stash caller-saved registers
             add_instr(instrs, Mlist1(stash_sym));
+
+            // set %sp to be at the top of the frame
+            add_instr(instrs, Mlist3(x86_mov, x86_sp, x86_fp));
+            add_instr(instrs, Mlist3(x86_sub, x86_sp, size_sym));
 
             // call
             add_instr(instrs, Mlist2(x86_call, x86_cres));
@@ -935,6 +945,30 @@ static mobj treg_assign_or_lookup(mobj rs, mobj treg) {
     return treg_assign_local(rs, treg);
 }
 
+// Reserves a named register and evicts any temporary register stored
+// there to the stack.
+static mobj rstate_reserve(mobj rs, mobj reg, mobj instrs) {
+    mobj assigns, treg, loc;
+    
+    assigns = rstate_assigns(rs);
+    for_each(assigns,
+        if (minim_caar(assigns) == reg) {
+            treg = minim_cdar(assigns);
+            if (minim_symbolp(treg)) {
+                reg = treg_lookup(rs, treg);
+                loc = treg_assign_local(rs, treg);
+                add_instr(instrs, Mlist3(x86_mov, loc, reg));
+                minim_cdar(assigns) = minim_true;
+                break;
+            } else if (!minim_falsep(treg)) {
+                error1("rstate_reserve", "register already reserved", reg);
+            }
+        }
+    );
+
+    return instrs;
+}
+
 // Unassigns a temporary register.
 static void rstate_unassign(mobj rs, mobj reg) {
     mobj s, p, as;
@@ -1017,13 +1051,13 @@ static mobj replace_frame_loc(mobj loc, size_t argc, size_t localc) {
     if (loc == size_sym) {
         return Mfixnum(ptr_size * (2 + argc + localc));
     } if (next_formp(loc)) {
-        offset = ptr_size * (2 + argc + localc + minim_fixnum(minim_cadr(loc)));
+        offset = -ptr_size * (2 + argc + localc + minim_fixnum(minim_cadr(loc)));
         return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
     } else if (local_formp(loc)) {
-        offset = ptr_size * (2 + argc + minim_fixnum(minim_cadr(loc)));
+        offset = -ptr_size * (2 + argc + minim_fixnum(minim_cadr(loc)));
         return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
     } else if (arg_formp(loc)) {
-        offset = ptr_size * (2 + minim_fixnum(minim_cadr(loc)));
+        offset = -ptr_size * (2 + minim_fixnum(minim_cadr(loc)));
         return Mlist3(mem_sym, x86_fp, Mfixnum(offset));
     } else {
         error1("replace_frame_loc", "not frame location", loc);
@@ -1169,13 +1203,21 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                 mobj variant = minim_car(src);
                 if (variant == code_sym || variant == reloc_sym) {
                     // assign to either register or memory
-                    if (tregp(dst))
+                    if (tregp(dst)) {
                         dst = treg_assign_or_lookup(rstate, dst);
+                    } else {
+                        instrs = rstate_reserve(rstate, dst, instrs);
+                    }
+        
                     add_instr(instrs, Mlist3(op, dst, src));
                 } else if (variant == arg_sym) {
                     // must assign to register
-                    if (tregp(dst))
+                    if (tregp(dst)) {
                         dst = treg_assign_reg(rstate, dst);
+                    } else {
+                        instrs = rstate_reserve(rstate, dst, instrs);
+                    }
+
                     add_instr(instrs, Mlist3(op, dst, src));
                 } else if (variant == mem_sym) {
                     // (mov <dst> (mem+ <base> <offset>))
@@ -1191,8 +1233,12 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                         minim_cadr(src) = base;
                     }
 
-                    if (tregp(dst))
+                    if (tregp(dst)) {
                         dst = treg_assign_reg(rstate, dst);
+                    } else {
+                        instrs = rstate_reserve(rstate, dst, instrs);
+                    }
+
                     add_instr(instrs, Mlist3(op, dst, src));
                 } else {
                     error1("compile4_proc", "unknown mov sequence", expr);
@@ -1208,6 +1254,8 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                     } else {
                         dst = treg_assign_or_lookup(rstate, dst);
                     }
+                } else {
+                    instrs = rstate_reserve(rstate, dst, instrs);
                 }
 
                 add_instr(instrs, Mlist3(op, dst, src));
@@ -1227,6 +1275,8 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                 } else {
                     dst = treg_assign_or_lookup(rstate, dst);
                 }
+            } else {
+                instrs = rstate_reserve(rstate, dst, instrs);
             }
 
             add_instr(instrs, Mlist3(op, dst, src));
@@ -1256,9 +1306,11 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                 t = minim_cdar(as);
                 if (!minim_falsep(t)) {
                     minim_cdar(as) = minim_false;
-                    loc = treg_assign_local(rstate, t);
-                    add_instr(instrs, Mlist3(x86_mov, loc, minim_caar(as)));
-                    stash = Mcons(Mcons(t, loc), stash);
+                    if (minim_symbolp(t)) {
+                        loc = treg_assign_local(rstate, t);
+                        add_instr(instrs, Mlist3(x86_mov, loc, minim_caar(as)));
+                        stash = Mcons(Mcons(t, loc), stash);
+                    }
                 }
             );
 
@@ -1401,6 +1453,7 @@ static mobj x86_encode_reg(mobj reg) {
     else if (reg == x86_carg2) return Mfixnum(2);
     else if (reg == x86_carg3) return Mfixnum(1);
     else if (reg == x86_env) return Mfixnum(1);
+    else if (reg == x86_sp) return Mfixnum(4);
     else if (reg == x86_fp) return Mfixnum(5);
     else error1("x86_encode_reg", "unsupported", reg);
 }
@@ -1412,7 +1465,8 @@ static int x86_encode_x(mobj reg) {
     else if (reg == x86_carg2) return 0;
     else if (reg == x86_carg3) return 0;
     else if (reg == x86_env) return 1;
-    else if (reg == x86_fp) return 1;
+    else if (reg == x86_fp) return 0;
+    else if (reg == x86_sp) return 0;
     else error1("x86_encode_x", "unsupported", reg);
 }
 
@@ -1466,11 +1520,11 @@ static mobj x86_encode_mov_imm64(mobj dst, mobj imm) {
     return Mcons(rex, Mcons(op, x86_encode_imm64(imm)));
 }
 
-static mobj x86_encode_mov_rel(mobj dst, mobj src, mobj lstate, mobj where) {
+static mobj x86_encode_pc_rel(mobj dst, mobj src, mobj lstate, mobj where) {
     mobj imm = x86_encode_imm32(Mfixnum(0));
     mobj rex = x86_encode_rex(1, x86_encode_x(dst), 0, 0);
     mobj op = fix_add(fix_mul(x86_encode_reg(dst), Mfixnum(8)), Mfixnum(5));
-    mobj instr = Mcons(rex, Mcons(Mfixnum(0x8B), Mcons(op, imm)));
+    mobj instr = Mcons(rex, Mcons(Mfixnum(0x8D), Mcons(op, imm)));
     lstate_add_offset(lstate, Mcons(src, where), imm);
     return instr;
 }
@@ -1612,8 +1666,8 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
                 mobj variant = minim_car(src);
                 if (variant == code_sym) {
                     // (mov <dst> ($code <idx>))
-                    // => (mov <dst> [rip+<offset>])
-                    add_instr(instrs, x86_encode_mov_rel(dst, src, lstate, expr));
+                    // => (lea <dst> rip <offset>)
+                    add_instr(instrs, x86_encode_pc_rel(dst, src, lstate, expr));
                     offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
                     lstate_add_local(lstate, expr, Mfixnum(offset));
                 } else if (variant == reloc_sym) {
@@ -1639,7 +1693,7 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
                 if (minim_consp(dst))
                     error1("compile5_proc", "too many memory locations", expr);
 
-                add_instr(instrs, x86_encode_mov_rel(dst, src, lstate, expr));
+                add_instr(instrs, x86_encode_pc_rel(dst, src, lstate, expr));
                 offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
                 lstate_add_local(lstate, expr, Mfixnum(offset));
             } else {

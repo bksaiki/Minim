@@ -22,14 +22,6 @@ static mobj cdr_proc(mobj x) {
     return minim_cdr(x);
 }
 
-static mobj env_set_proc(mobj env, mobj k, mobj v) {
-    error("env_set_proc", "unimplemented");
-}
-
-static mobj env_get_proc(mobj env, mobj k) {
-    error("env_get_proc", "unimplemented");
-}
-
 //
 //  Public API
 //
@@ -72,7 +64,7 @@ void prim_table_init() {
     register_prim("fx/", fix_div);
     register_prim("fxrem", fix_rem);
 
-    register_prim("env_set", env_set_proc);
-    register_prim("env_get", env_get_proc);
+    register_prim("env_set", env_set);
+    register_prim("env_get", env_get);
     register_prim("make_closure", Mclosure);
 }
