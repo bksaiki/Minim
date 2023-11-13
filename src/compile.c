@@ -557,16 +557,16 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 add_instr(instrs, Mlist3(load_sym, stash_loc, env_reg));
                 add_instr(instrs, Mlist3(load_sym, env_reg, env_offset));
 
-                // extract closure code location
-                mobj code_offset = mem_offset(proc, minim_closure_code_offset);
-                add_instr(instrs, Mlist3(load_sym, cres_reg, code_offset));
-
                 // fill return address and previous frame position
                 mobj ret_label = cstate_gensym(cstate, label_pre);
                 mobj label_loc = cstate_gensym(cstate, tloc_pre);
                 add_instr(instrs, Mlist3(load_sym, label_loc, ret_label));
                 add_instr(instrs, Mlist3(load_sym, next_loc(0), label_loc));
                 add_instr(instrs, Mlist3(load_sym, next_loc(1), fp_reg));
+
+                // extract closure code location
+                mobj code_offset = mem_offset(proc, minim_closure_code_offset);
+                add_instr(instrs, Mlist3(load_sym, cres_reg, code_offset));
                 
                 // jump to new procedure
                 add_instr(instrs, Mlist1(stash_sym));
@@ -1272,7 +1272,7 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                     } else if (minim_symbolp(dst)) {
                         rstate_reserve(rstate, dst);
                     }
-                
+
                     add_instr(instrs, Mlist3(op, dst, src));
                 } else {
                     error1("compile4_proc", "unknown mov sequence", expr);
@@ -1282,16 +1282,20 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                     src = treg_lookup(rstate, src);
                 }
 
-                if (tregp(dst)) {
-                    if (local_formp(src)) {
+                if (minim_consp(dst) || tregp(dst)) {
+                    // assigning to memory
+                    if (tregp(dst))
+                        dst = treg_assign_or_lookup(rstate, dst);
+
+                    if (minim_consp(dst) && (minim_consp(src) || labelp(src))) {
+                        // memory to memory requires a fix
                         rstate_reserve(rstate, x86_cres);
                         add_instr(instrs, Mlist3(x86_mov, x86_cres, src));
-                        rstate_unreserve(rstate, x86_cres);
                         src = x86_cres;
+                        rstate_unreserve(rstate, x86_cres);
                     }
-                    
-                    dst = treg_assign_or_lookup(rstate, dst);
                 } else if (minim_symbolp(dst)) {
+                    // assigning to register
                     rstate_reserve(rstate, dst);
                 }
 
@@ -1864,8 +1868,8 @@ mobj compile_module(mobj op, mobj name, mobj es) {
     procs = cstate_procs(cstate);
     for_each(procs, compile3_proc(cstate, minim_car(procs)));
 
-    // write_object(Mport(stdout, 0x0), cstate);
-    // printf("\n");
+    write_object(Mport(stdout, 0x0), cstate);
+    printf("\n");
 
     // phase 4: register allocation
     procs = cstate_procs(cstate);
