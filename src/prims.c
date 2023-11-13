@@ -77,6 +77,7 @@ void prim_table_init() {
     register_prim("write", write_proc);
     register_prim("newline", newline_proc);
 
+    register_prim("env_extend", env_extend);
     register_prim("env_set", env_set);
     register_prim("env_get", env_get);
     register_prim("make_closure", Mclosure);

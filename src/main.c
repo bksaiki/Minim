@@ -2,25 +2,36 @@
 
 #include "minim.h"
 
-static void boot_compile(const char *input, const char *output) {
-    mobj op, ip, o, es, cstate;
+static mobj boot_compile(const char *input) {
+    mobj ip, o, es;
 
     ip = open_input_file(input);
-    op = open_output_file(output);
     es = minim_null;
 
     while (1) {
         // read in an expression and expand
         o = read_object(ip);
-        if (minim_eofp(o)) break;
+        if (minim_eofp(o)) {
+            close_port(ip);
+            break;
+        }
+
         es = Mcons(expand_top(o), es);
     }
 
     es = list_reverse(es);
-    cstate = compile_module(op, Mstring(input), es);
-    write_object(op, cstate);
+    return compile_module(Mstring(input), es);
+}
 
-    close_port(ip);
+static void make_bootfile(const char *input, const char *output) {
+    mobj cstate, op;
+
+    // compile
+    cstate = boot_compile(input);
+
+    // write
+    op = open_output_file(output);
+    write_object(op, cstate);
     close_port(op);
 }
 
@@ -40,7 +51,6 @@ static void install_bootfile(const char *input) {
 
 int main(int argc, char **argv) {
     int version = (argc == 1);
-    int repl = (argc == 1);
     int argi;
 
     GC_init();
@@ -49,7 +59,9 @@ int main(int argc, char **argv) {
     // Process flags
     for (argi = 1; argi < argc; argi++) {
         // first matching
-        if (strcmp(argv[argi], "--") == 0) {
+        if (argv[argi][0] != '-') {
+            break;
+        } else if (strcmp(argv[argi], "--") == 0) {
             break;
         } else if (strcmp(argv[argi], "--version") == 0) {
             version = 1;
@@ -71,7 +83,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "USAGE: minim --compile <source> <output>\n");
             }
 
-            boot_compile(argv[argi + 1], argv[argi + 2]);
+            make_bootfile(argv[argi + 1], argv[argi + 2]);
             argi += 2;
         } else {
             fprintf(stderr, "unknown flag %s\n", argv[argi]);
@@ -84,24 +96,17 @@ int main(int argc, char **argv) {
         printf("Minim v%s\n", MINIM_VERSION);
     }
 
-    // REPL
-    if (repl) {
-        mthread *th = get_thread();
-        mobj o;
+    // compile and install files
+    for (; argi < argc; ++argi) {
+        // compile
+        mobj cstate = boot_compile(argv[argi]);
 
-        fputs("[cwd ", stdout);
-        write_object(th_output_port(th), th_working_dir(th));
-        fputs("]\n", stdout);
+        // install
+        void *fn = install_module(cstate);
+        printf("[installed %s at %p]\n", argv[argi], fn);
 
-        while (1) {
-            fputs("> ", stdout);
-            o = read_object(th_input_port(th));
-            if (minim_eofp(o))
-                break;
-
-            write_object(th_output_port(th), o);
-            fputc('\n', stdout);
-        }
+        // run
+        call0(fn);
     }
 
     GC_shutdown();

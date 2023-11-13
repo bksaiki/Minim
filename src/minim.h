@@ -148,9 +148,12 @@ extern mobj minim_void;
 // |    cdr     | [16, 24)
 // +------------+ 
 #define minim_cons_size         (3 * ptr_size)
+#define minim_car_offset        (ptr_size)
+#define minim_cdr_offset        (2 * ptr_size)
+
 #define minim_consp(o)          (minim_type(o) == MINIM_OBJ_PAIR)
-#define minim_car(o)            (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_cdr(o)            (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_car(o)            (*((mobj*) PTR_ADD(o, minim_car_offset)))
+#define minim_cdr(o)            (*((mobj*) PTR_ADD(o, minim_cdr_offset)))
 
 #define minim_caar(o)       minim_car(minim_car(o))
 #define minim_cadr(o)       minim_car(minim_cdr(o))
@@ -258,6 +261,7 @@ int minim_equalp(mobj x, mobj y);
 
 int listp(mobj o);
 size_t list_length(mobj l);
+mobj make_list(mobj k, mobj i);
 mobj list_reverse(mobj l);
 mobj list_ref(mobj l, mobj i);
 mobj list_member(mobj x, mobj l);
@@ -372,8 +376,10 @@ void register_prim(const char *name, void *fn);
 
 void runtime_init();
 
+mobj env_extend(mobj env);
 mobj env_get(mobj env, mobj k);
 mobj env_set(mobj env, mobj k, mobj v);
+
 void call0(void *fn);
 
 //
@@ -435,7 +441,7 @@ void minim_init();
 
 mobj expand_expr(mobj e);
 mobj expand_top(mobj e);
-mobj compile_module(mobj op, mobj name, mobj es);
+mobj compile_module(mobj name, mobj es);
 void *install_module(mobj cstate);
 
 #endif

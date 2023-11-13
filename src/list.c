@@ -13,6 +13,17 @@ size_t list_length(mobj l) {
     return i;
 }
 
+mobj make_list(mobj k, mobj i) {
+    mobj r = minim_null;
+    size_t l = minim_fixnum(k);
+    while (l > 0) {
+        r = Mcons(i, r);
+        l--;
+    }
+
+    return r;
+}
+
 mobj list_reverse(mobj l) {
     mobj r = minim_null;
     for_each(l, r = Mcons(minim_car(l), r));

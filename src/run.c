@@ -27,6 +27,10 @@ mobj make_env() {
     return Mlist1(minim_null);
 }
 
+mobj env_extend(mobj env) {
+    return Mcons(minim_null, env);
+}
+
 mobj env_get(mobj env, mobj k) {
     mobj maybe = env_get_entry(env, k);
     if (!maybe) error1("env_get", "unbound variable", k);
