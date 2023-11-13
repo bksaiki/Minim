@@ -53,3 +53,21 @@ mobj list_append(mobj x, mobj y) {
     minim_cdr(t) = y;
     return l;
 }
+
+mobj list_assoc(mobj k, mobj l) {
+    for_each(l,
+        if (minim_equalp(minim_caar(l), k))
+            return minim_car(l);
+    );
+
+    return minim_false;
+}
+
+mobj list_assq(mobj k, mobj l) {
+    for_each(l,
+        if (minim_eqp(minim_caar(l), k))
+            return minim_car(l);
+    );
+
+    return minim_false;
+}

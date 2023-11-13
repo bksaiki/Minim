@@ -251,9 +251,8 @@ int minim_equalp(mobj x, mobj y);
 //
 
 #define for_each(l, stmts...) {    \
-    while (!minim_nullp(l)) { \
+    for (; !minim_nullp(l); l = minim_cdr(l)) { \
         stmts ; \
-        l = minim_cdr(l); \
     } \
 }
 
@@ -263,6 +262,8 @@ mobj list_reverse(mobj l);
 mobj list_ref(mobj l, mobj i);
 mobj list_member(mobj x, mobj l);
 mobj list_append(mobj x, mobj y);
+mobj list_assoc(mobj k, mobj l);
+mobj list_assq(mobj k, mobj l);
 
 //
 //  Vectors

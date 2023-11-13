@@ -68,6 +68,7 @@ static mobj sp_reg;
 static mobj carg_reg;
 static mobj cres_reg;
 
+#define carg_formp(e)       syntax_formp(carg_reg, e)
 #define add_formp(e)        syntax_formp(add_sym, e)
 #define sub_formp(e)        syntax_formp(sub_sym, e)
 #define reloc_formp(e)      syntax_formp(reloc_sym, e)
@@ -610,10 +611,9 @@ static void compile2_proc(mobj cstate, mobj fstate) {
             //   (load <tmp> (mem+ %fp 0))
             //   (load <tmp> (mem+ %fp (- 8)))
             //   (jmp <tmp>)
-            mobj loc = cstate_gensym(cstate, tloc_pre);
-            add_instr(instrs, Mlist3(load_sym, loc, mem_offset(fp_reg, 0)));
+            add_instr(instrs, Mlist3(load_sym, c_arg(0), mem_offset(fp_reg, 0)));
             add_instr(instrs, Mlist3(load_sym, fp_reg, mem_offset(fp_reg, -8)));
-            add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), loc));
+            add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), c_arg(0)));
         } else if (ccall_formp(expr) || label_formp(expr) || branch_formp(expr)) {
             // leave as is
             add_instr(instrs, expr);
@@ -666,6 +666,85 @@ static void init_x86_compiler_globals() {
     x86_cres = intern("%rax");
 }
 
+static mobj replace_carg(mobj carg) {
+    size_t i = minim_fixnum(minim_cadr(carg));
+    if (i == 0) return x86_carg0;
+    else if (i == 1) return x86_carg1;
+    else if (i == 2) return x86_carg2;
+    else if (i == 3) return x86_carg3;
+    else error1("replace_carg", "too many call arguments", carg);
+}
+
+static int reg_aliasp(mobj reg) {
+    return carg_formp(reg) ||
+            reg == cc_reg ||
+            reg == fp_reg ||
+            reg == sp_reg ||
+            reg == env_reg ||
+            reg == cres_reg;
+}
+
+static mobj replace_alias(mobj reg) {
+    if (carg_formp(reg)) return replace_carg(reg);
+    else if (reg == cc_reg) error1("replace_alias", "unimplemented", reg);
+    else if (reg == fp_reg) return x86_fp;
+    else if (reg == sp_reg) error1("replace_alias", "unimplemented", reg);
+    else if (reg == env_reg) return x86_env;
+    else if (reg == cres_reg) return x86_cres;
+    else error1("replace_alias", "unknown", reg);
+}
+
+// Resolves architecture-independent register names.
+static void compile3_resolve_regs(mobj fstate) {
+    mobj exprs, expr, op;
+
+    exprs = fstate_asm(fstate);
+    for_each(exprs,
+        expr = minim_car(exprs);
+        op = minim_car(expr);
+        if (op == x86_mov) {
+            mobj dst = minim_cadr(expr);
+            mobj src = minim_car(minim_cddr(expr));
+            if (reg_aliasp(dst)) {
+                minim_cadr(expr) = replace_alias(dst);
+            } else {
+                mobj variant = minim_car(dst);
+                if (variant == mem_sym) {
+                    mobj base = minim_cadr(dst);
+                    if (reg_aliasp(base))
+                        minim_cadr(dst) = replace_alias(base);
+                }
+            }
+
+            if (reg_aliasp(src)) {
+                minim_car(minim_cddr(expr)) = replace_alias(src);
+            } else {
+                mobj variant = minim_car(src);
+                if (variant == mem_sym) {
+                    mobj base = minim_cadr(src);
+                    if (reg_aliasp(base))
+                        minim_cadr(src) = replace_alias(base);
+                }
+            }
+        } else if (op == x86_add || op == x86_sub) {
+            mobj dst = minim_cadr(expr);
+            mobj src = minim_car(minim_cddr(expr));
+            if (reg_aliasp(dst))
+                minim_cadr(expr) = replace_alias(dst);
+            if (reg_aliasp(src))
+                minim_car(minim_cddr(expr)) = replace_alias(src);
+        } else if (op == x86_jmp || op == x86_call) {
+            mobj tgt = minim_cadr(expr);
+            if (reg_aliasp(tgt))
+                minim_cadr(expr) = replace_alias(tgt);
+        } else if (op == label_sym || op == stash_sym || op == unstash_sym) {
+            // do nothing
+        } else {
+            error1("compile3_resolve_regs", "unknown sequence", expr);
+        }
+    );
+}
+
 static void compile3_proc(mobj cstate, mobj fstate) {
     mobj instrs = minim_null;
     mobj exprs = fstate_asm(fstate);
@@ -678,42 +757,18 @@ static void compile3_proc(mobj cstate, mobj fstate) {
                 // (load <dst> (mem+ <src> <offset>))
                 mobj dst = minim_cadr(expr);
                 add_instr(instrs, Mlist3(x86_mov, dst, src));
-                // if (dst == minim_cadr(src)) {
-                //     // (load <dst> (mem+ <dst> <offset>))
-                //     mobj offset = minim_car(minim_cddr(src));
-                //     if (minim_consp(offset)) {
-                //         // unsafe: assuming `<offset> = (- <pos_offset>)`
-                //         add_instr(instrs, Mlist3(x86_sub, dst, minim_cadr(offset)));
-                //     } else if (minim_fixnum(offset) < 0) {
-                //         add_instr(instrs, Mlist3(x86_sub, dst, fix_neg(offset)));
-                //     } else {
-                //         add_instr(instrs, Mlist3(x86_add, dst, offset));
-                //     }
-                // } else {
-                //     add_instr(instrs, Mlist3(x86_mov, dst, src));
-                // }
             } else {
                 add_instr(instrs, Mcons(x86_mov, minim_cdr(expr)));
             }
         } else if (ccall_formp(expr)) {
             // (c-call <tgt> <arg> ...)
-            mobj args;
+            mobj creg, args;
 
             // set appropriate register
             args = minim_cddr(expr);
             for (size_t i = 0; !minim_nullp(args); i++) {
-                if (i == 0) {
-                    add_instr(instrs, Mlist3(x86_mov, x86_carg0, minim_car(args)));
-                } else if (i == 1) {
-                    add_instr(instrs, Mlist3(x86_mov, x86_carg1, minim_car(args)));
-                } else if (i == 2) {
-                    add_instr(instrs, Mlist3(x86_mov, x86_carg2, minim_car(args)));
-                } else if (i == 3) {
-                    add_instr(instrs, Mlist3(x86_mov, x86_carg3, minim_car(args)));
-                } else {
-                    error1("compile3_proc", "too many call arguments", expr);
-                }
-
+                creg = replace_carg(c_arg(i));
+                add_instr(instrs, Mlist3(x86_mov, creg, minim_car(args)));
                 args = minim_cdr(args);
             }
 
@@ -778,6 +833,9 @@ static void compile3_proc(mobj cstate, mobj fstate) {
     }
 
     fstate_asm(fstate) = list_reverse(instrs);
+
+    // resolve architecture-independent registers
+    compile3_resolve_regs(fstate);
 }
 
 //
@@ -820,13 +878,13 @@ static int labelp(mobj t) {
     return 1;
 }
 
-static int x86_alloc_regp(mobj r) {
-    return r == x86_carg0 ||
-        r == x86_carg1 ||
-        r == x86_carg2 ||
-        r == x86_carg3 ||
-        r == x86_cres;
-}
+// static int x86_alloc_regp(mobj r) {
+//     return r == x86_carg0 ||
+//         r == x86_carg1 ||
+//         r == x86_carg2 ||
+//         r == x86_carg3 ||
+//         r == x86_cres;
+// }
 
 static int frame_locp(mobj loc) {
     return arg_formp(loc) || local_formp(loc) || next_formp(loc) || loc == size_sym;
@@ -845,55 +903,68 @@ static mobj init_rstate() {
     return rstate;
 }
 
+static mobj update_uses(mobj uses, mobj treg, mobj expr) {
+    mobj entry = list_assq(treg, uses);
+    if (minim_falsep(entry)) {
+        return Mcons(Mcons(treg, expr), uses);
+    } else {
+        minim_cdr(entry) = expr;
+        return uses;
+    }
+}
+
 static void rstate_set_lasts(mobj rs, mobj exprs) {
-    mobj dict = minim_null;
-    for (; !minim_nullp(exprs); exprs = minim_cdr(exprs)) {
-        mobj expr = minim_car(exprs);
-        mobj op = minim_car(expr);
+    mobj uses, expr, op;
+
+    uses = minim_null;
+    for_each(exprs,
+        expr = minim_car(exprs);
+        op = minim_car(expr);
         if (op == x86_mov) {
-            // (mov <dst> <src>)
+            mobj dst = minim_cadr(expr);
             mobj src = minim_car(minim_cddr(expr));
+            if (tregp(dst))
+                uses = update_uses(uses, dst, expr);
+
             if (minim_consp(src)) {
                 mobj variant = minim_car(src);
                 if (variant == mem_sym) {
                     // (mov <dst> (mem+ <src> <offset>))
-                    if (tregp(src)) {
-                        dict = Mcons(Mcons(minim_cadr(src), expr), dict);
-                    }
+                    src = minim_cadr(src);
+                    if (tregp(src))
+                        uses = update_uses(uses, src, expr);
                 } else if (variant == code_sym || variant == reloc_sym || variant == arg_sym) {
                     // do nothing
                 } else {
-                    error1("last_uses", "unknown mov sequence", expr);
+                    error1("rstate_set_lasts", "unknown mov sequence", expr);
                 }
             } else if (tregp(src)) {
-                dict = Mcons(Mcons(src, expr), dict);
+                uses = update_uses(uses, src, expr);
             } else if (minim_symbolp(src)) {
                 // do nothing
             } else {
-                error1("last_uses", "unknown mov sequence", expr);
+                error1("rstate_set_lasts", "unknown mov sequence", expr);
             }
         } else if (op == x86_add || op == x86_sub) {
-            // (add <dst> <src>)
+            mobj dst = minim_cadr(expr);
             mobj src = minim_car(minim_cddr(expr));
-            if (tregp(src)) {
-                dict = Mcons(Mcons(src, expr), dict);
-            }
-        } else if (op == x86_jmp) {
-            // (jmp <tgt>)
-            if (tregp(minim_cadr(expr))) {
-                dict = Mcons(Mcons(minim_cadr(expr), expr), dict);
-            }
-        } else if (op == x86_call ||
-                    op == label_sym ||
-                    op == stash_sym ||
-                    op == unstash_sym) {
+
+            if (tregp(dst))
+                uses = update_uses(uses, dst, expr);
+            if (tregp(src))
+                uses = update_uses(uses, src, expr);
+        } else if (op == x86_jmp || op == x86_call) {
+            mobj tgt = minim_cadr(expr);
+            if (tregp(tgt))
+                uses = update_uses(uses, tgt, expr);
+        } else if (op == label_sym || op == stash_sym || op == unstash_sym) {
             // do nothing
         } else {
-            error1("last_uses", "unknown sequence", expr);
+            error1("rstate_set_lasts", "unknown sequence", expr);
         }
-    }
+    );
 
-    rstate_lasts(rs) = dict;
+    rstate_lasts(rs) = uses;
 }
 
 static mobj last_lookup(mobj rs, mobj reg) {
@@ -903,10 +974,10 @@ static mobj last_lookup(mobj rs, mobj reg) {
             return minim_cdar(lasts);
     )
 
-    return NULL;
+    error1("last_lookup", "unknown key", Mlist2(reg, rstate_lasts(rs)));
 }
 
-static mobj treg_lookup(mobj rs, mobj reg) {
+static mobj treg_lookup_unsafe(mobj rs, mobj reg) {
     mobj scope = rstate_scope(rs);
     for_each(scope,
         if (minim_caar(scope) == reg)
@@ -916,18 +987,10 @@ static mobj treg_lookup(mobj rs, mobj reg) {
     return NULL;
 }
 
-static mobj treg_assign_reg(mobj rs, mobj treg) {
-    mobj assigns = rstate_assigns(rs);
-    for_each(assigns,
-        if (minim_falsep(minim_cdar(assigns))) {
-            rstate_scope(rs) = Mcons(Mcons(treg, minim_caar(assigns)), rstate_scope(rs));
-            minim_cdar(assigns) = treg;
-            return minim_caar(assigns);
-        }
-    );
-
-    unimplemented_error("ran out of allocable registers");
-    return NULL;
+static mobj treg_lookup(mobj rs, mobj reg) {
+    mobj maybe = treg_lookup_unsafe(rs, reg);
+    if (!maybe) error1("treg_lookup", "unknown register", reg);
+    return maybe;
 }
 
 static mobj treg_assign_local(mobj rs, mobj treg) {
@@ -959,107 +1022,112 @@ static mobj treg_assign_local(mobj rs, mobj treg) {
     return e;
 }
 
+// static mobj unnamed_assign_local(mobj rs, 
+
 static mobj treg_assign_or_lookup(mobj rs, mobj treg) {
-    mobj assigns, maybe;
+    mobj maybe;
 
     // try to lookup in scope
-    maybe = treg_lookup(rs, treg);
+    maybe = treg_lookup_unsafe(rs, treg);
     if (maybe) return maybe;
-
-    // try to assign a register
-    assigns = rstate_assigns(rs);
-    for_each(assigns,
-        if (minim_falsep(minim_cdar(assigns))) {
-            rstate_scope(rs) = Mcons(Mcons(treg, minim_caar(assigns)), rstate_scope(rs));
-            minim_cdar(assigns) = treg;
-            return minim_caar(assigns);
-        }
-    );
 
     // otherwise, assign to stack
     return treg_assign_local(rs, treg);
 }
 
-// Reserves a named register and evicts any temporary register stored
-// there to the stack.
-static mobj rstate_reserve(mobj rs, mobj reg, mobj instrs) {
-    mobj assigns, treg, loc;
-    
-    assigns = rstate_assigns(rs);
-    for_each(assigns,
-        if (minim_caar(assigns) == reg) {
-            treg = minim_cdar(assigns);
-            if (minim_symbolp(treg)) {
-                reg = treg_lookup(rs, treg);
-                loc = treg_assign_local(rs, treg);
-                add_instr(instrs, Mlist3(x86_mov, loc, reg));
-                minim_cdar(assigns) = minim_true;
-                break;
-            } else if (!minim_falsep(treg)) {
-                error1("rstate_reserve", "register already reserved", reg);
-            }
-        }
-    );
+// Unassigns a temporary register.
+// static void rstate_unassign(mobj rs, mobj reg) {
+//     mobj s, p;
 
-    return instrs;
+//     p = NULL;
+//     s = rstate_scope(rs);
+//     for_each(s,
+//         if (minim_caar(s) == reg) {
+//             if (p) minim_cdr(p) = minim_cdr(s); // remove internally
+//             else rstate_scope(rs) = minim_cdr(rstate_scope(rs)); // remove from front
+//             return;
+//         }
+//     );
+
+//     error1("rstate_unassign", "register not found", reg);
+// }
+
+// Reserves an unnamed local.
+static mobj unnamed_assign_local(mobj rs) {
+    return treg_assign_local(rs, minim_false);
 }
 
-// Unassigns a temporary register.
-static void rstate_unassign(mobj rs, mobj reg) {
-    mobj s, p, as;
-
+// Unreserves an unnamed local
+static void unnamed_unassign(mobj rs, mobj local) {
+    mobj s, p;
+    
     s = rstate_scope(rs);
     p = NULL;
     for_each(s,
-        if (minim_caar(s) == reg) {
-            if (x86_alloc_regp(reg)) {
-                as = rstate_assigns(rs);
-                for_each(as,
-                    if (minim_caar(as) == reg) {
-                        minim_cdar(as) = minim_false;
-                        break;
-                    }
-                );
-            }
-
+        if (minim_cdar(s) == local) {
             if (p) minim_cdr(p) = minim_cdr(s); // remove internally
             else rstate_scope(rs) = minim_cdr(rstate_scope(rs)); // remove from front
             return;
         }
     );
 
-    error1("rstate_unassign", "register not found", reg);
+    error1("unnamed_unassign", "register not found", local);
+}
+
+// Reserves a named register.
+// Panics if the register is already reserved.
+static void rstate_reserve(mobj rs, mobj reg) {
+    mobj assigns;
+
+    // ignore special registers
+    if (reg == x86_fp || reg == x86_sp || reg == x86_env)
+        return;
+
+    assigns = rstate_assigns(rs);
+    for_each(assigns,
+        if (minim_caar(assigns) == reg) {
+            if (minim_truep(minim_cdar(assigns))) {
+                error1("rstate_reserve", "already assigned", reg);
+            } else {
+                minim_cdar(assigns) = minim_true;
+                return;
+            }
+        }
+    );
+
+    error1("rstate_reserve", "unknown named register", reg);
+}
+
+static void rstate_unreserve(mobj rs, mobj reg) {
+    mobj assigns = rstate_assigns(rs);
+    for_each(assigns,
+        if (minim_caar(assigns) == reg) {
+            minim_cdar(assigns) = minim_false;
+            return;
+        }
+    );
+
+    error1("rstate_unreserve", "unknown named register", reg);
 }
 
 // For every temporary register, scan to see if we can remove it
 // since it will no longer be used
 static void rstate_prune_lasts(mobj rs, mobj e) {
-    mobj s, p, l, as;
+    mobj s, ns;
 
     s = rstate_scope(rs);
-    p = NULL;
-    for_each(s,
-        l = last_lookup(rstate_lasts(rs), minim_caar(s));
-        if (l == minim_false || l == e) {
-            // need to prune
-            // if register, remove assignment
-            if (x86_alloc_regp(minim_cdar(s))) {
-                as = rstate_assigns(rs);
-                for_each(as,
-                    if (minim_caar(as) == minim_cdar(s)) {
-                        minim_cdar(as) = minim_false;
-                        break;
-                    }
-                );
-            }
+    ns = minim_null;
 
-            // update scope
-            if (p) minim_cdr(p) = minim_cdr(s); // remove internally
-            else rstate_scope(rs) = minim_cdr(rstate_scope(rs)); // remove from front
-        } else {
-            p = s;
+    for_each(s,
+        if (minim_symbolp(minim_caar(s))) {
+            if (last_lookup(rs, minim_caar(s)) == e)
+                continue;
         }
+
+        ns = Mcons(minim_car(s), ns);
     );
+
+    rstate_scope(rs) = list_reverse(ns);
 }
 
 static void compile4_opt(mobj fstate) {
@@ -1148,74 +1216,6 @@ static void compile4_resolve_frame(mobj fstate, mobj rstate) {
     );
 }
 
-static int reg_aliasp(mobj reg) {
-    return reg == cc_reg ||
-            reg == fp_reg ||
-            reg == sp_reg ||
-            reg == env_reg ||
-            reg == cres_reg;
-}
-
-static mobj replace_alias(mobj reg) {
-    if (reg == cc_reg) error1("replace_alias", "unimplemented", reg);
-    else if (reg == fp_reg) return x86_fp;
-    else if (reg == sp_reg) error1("replace_alias", "unimplemented", reg);
-    else if (reg == env_reg) return x86_env;
-    else if (reg == cres_reg) return x86_cres;
-    else error1("replace_alias", "unknown", reg);
-}
-
-// Resolves architecture-independent register names.
-static void compile4_resolve_regs(mobj fstate) {
-    mobj exprs, expr, op;
-
-    exprs = fstate_asm(fstate);
-    for_each(exprs,
-        expr = minim_car(exprs);
-        op = minim_car(expr);
-        if (op == x86_mov) {
-            mobj dst = minim_cadr(expr);
-            mobj src = minim_car(minim_cddr(expr));
-            if (reg_aliasp(dst)) {
-                minim_cadr(expr) = replace_alias(dst);
-            } else {
-                mobj variant = minim_car(dst);
-                if (variant == mem_sym) {
-                    mobj base = minim_cadr(dst);
-                    if (reg_aliasp(base))
-                        minim_cadr(dst) = replace_alias(base);
-                }
-            }
-
-            if (reg_aliasp(src)) {
-                minim_car(minim_cddr(expr)) = replace_alias(src);
-            } else {
-                mobj variant = minim_car(src);
-                if (variant == mem_sym) {
-                    mobj base = minim_cadr(src);
-                    if (reg_aliasp(base))
-                        minim_cadr(src) = replace_alias(base);
-                }
-            }
-        } else if (op == x86_add || op == x86_sub) {
-            mobj dst = minim_cadr(expr);
-            mobj src = minim_car(minim_cddr(expr));
-            if (reg_aliasp(dst))
-                minim_cadr(expr) = replace_alias(dst);
-            if (reg_aliasp(src))
-                minim_car(minim_cddr(expr)) = replace_alias(src);
-        } else if (op == x86_jmp || op == x86_call) {
-            mobj tgt = minim_cadr(expr);
-            if (reg_aliasp(tgt))
-                minim_cadr(expr) = replace_alias(tgt);
-        } else if (op == label_sym) {
-            // do nothing
-        } else {
-            error1("compile4_resolve_regs", "unknown sequence", expr);
-        }
-    );
-}
-
 static void compile4_proc(mobj cstate, mobj fstate) {
     mobj exprs, rstate, instrs, stash;
 
@@ -1236,21 +1236,15 @@ static void compile4_proc(mobj cstate, mobj fstate) {
             if (minim_consp(src)) {
                 // (mov <dst> (<variant> ...))
                 mobj variant = minim_car(src);
-                if (variant == code_sym || variant == reloc_sym) {
-                    // assign to either register or memory
+                if (variant == reloc_sym || variant == code_sym || variant == arg_sym) {
                     if (tregp(dst)) {
+                        rstate_reserve(rstate, x86_cres);
+                        add_instr(instrs, Mlist3(x86_mov, x86_cres, src));
                         dst = treg_assign_or_lookup(rstate, dst);
-                    } else {
-                        instrs = rstate_reserve(rstate, dst, instrs);
-                    }
-        
-                    add_instr(instrs, Mlist3(op, dst, src));
-                } else if (variant == arg_sym) {
-                    // must assign to register
-                    if (tregp(dst)) {
-                        dst = treg_assign_reg(rstate, dst);
-                    } else {
-                        instrs = rstate_reserve(rstate, dst, instrs);
+                        src = x86_cres;
+                        rstate_unreserve(rstate, x86_cres);
+                    } else if (minim_symbolp(dst)) {
+                        rstate_reserve(rstate, dst);
                     }
 
                     add_instr(instrs, Mlist3(op, dst, src));
@@ -1261,36 +1255,44 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                         base = treg_lookup(rstate, base);
                         if (minim_consp(base)) {
                             // `base` must be a register
-                            rstate_unassign(rstate, minim_cadr(src));
-                            base = treg_assign_reg(rstate, minim_cadr(src));
+                            rstate_reserve(rstate, x86_carg0);
+                            add_instr(instrs, Mlist3(x86_mov, x86_carg0, base));
+                            base = x86_carg0;
+                            rstate_unreserve(rstate, x86_carg0);
                         }
-
-                        minim_cadr(src) = base;
                     }
 
+                    src = Mlist3(mem_sym, base, minim_car(minim_cddr(src)));
                     if (tregp(dst)) {
-                        dst = treg_assign_reg(rstate, dst);
-                    } else {
-                        instrs = rstate_reserve(rstate, dst, instrs);
+                        rstate_reserve(rstate, x86_cres);
+                        add_instr(instrs, Mlist3(x86_mov, x86_cres, src));
+                        dst = treg_assign_or_lookup(rstate, dst);
+                        src = x86_cres;
+                        rstate_unreserve(rstate, x86_cres);
+                    } else if (minim_symbolp(dst)) {
+                        rstate_reserve(rstate, dst);
                     }
-
+                
                     add_instr(instrs, Mlist3(op, dst, src));
                 } else {
                     error1("compile4_proc", "unknown mov sequence", expr);
                 }
             } else if (minim_symbolp(src)) {
-                // (mov <dst> <src>)
-                if (tregp(src))
+                if (tregp(src)) {
                     src = treg_lookup(rstate, src);
+                }
 
                 if (tregp(dst)) {
                     if (local_formp(src)) {
-                        dst = treg_assign_reg(rstate, dst);
-                    } else {
-                        dst = treg_assign_or_lookup(rstate, dst);
+                        rstate_reserve(rstate, x86_cres);
+                        add_instr(instrs, Mlist3(x86_mov, x86_cres, src));
+                        rstate_unreserve(rstate, x86_cres);
+                        src = x86_cres;
                     }
-                } else {
-                    instrs = rstate_reserve(rstate, dst, instrs);
+                    
+                    dst = treg_assign_or_lookup(rstate, dst);
+                } else if (minim_symbolp(dst)) {
+                    rstate_reserve(rstate, dst);
                 }
 
                 add_instr(instrs, Mlist3(op, dst, src));
@@ -1298,27 +1300,31 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                 error1("compile4_proc", "unknown mov sequence", expr);
             }
         } else if (op == x86_add || op == x86_sub) {
-            // (<op> <dst> <src>)
             mobj dst = minim_cadr(expr);
             mobj src = minim_car(minim_cddr(expr));
-            if (tregp(src))
+
+            if (tregp(src)) {
                 src = treg_lookup(rstate, src);
+            }
 
             if (tregp(dst)) {
                 if (local_formp(src)) {
-                    dst = treg_assign_reg(rstate, dst);
-                } else {
-                    dst = treg_assign_or_lookup(rstate, dst);
+                    rstate_reserve(rstate, x86_cres);
+                    add_instr(instrs, Mlist3(x86_mov, x86_cres, src));
+                    rstate_unreserve(rstate, x86_cres);
+                    src = x86_cres;
                 }
-            } else {
-                instrs = rstate_reserve(rstate, dst, instrs);
+                
+                dst = treg_assign_or_lookup(rstate, dst);
+            } else if (minim_symbolp(dst)) {
+                rstate_reserve(rstate, dst);
             }
 
             add_instr(instrs, Mlist3(op, dst, src));
         } else if (op == x86_jmp) {
             // (jmp <tgt>)
+            // prefer to call from register
             mobj tgt = minim_cadr(expr);
-            // can call from register or memory
             if (tregp(tgt))
                 tgt = treg_lookup(rstate, tgt);
 
@@ -1329,43 +1335,28 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                 unimplemented_error("cannot call from any other register than %rax");
             add_instr(instrs, expr);
         } else if (op == stash_sym) {
-            mobj as, t, loc;
+            mobj assigns, loc;
 
             if (!minim_falsep(stash))
                 error1("compile4_proc", "stash already occupired", stash);
 
-            // stash allocable registers
-            as = rstate_assigns(rstate);
-            stash = minim_null;
-            for_each(as,
-                t = minim_cdar(as);
-                if (!minim_falsep(t)) {
-                    minim_cdar(as) = minim_false;
-                    if (minim_symbolp(t)) {
-                        loc = treg_assign_local(rstate, t);
-                        add_instr(instrs, Mlist3(x86_mov, loc, minim_caar(as)));
-                        stash = Mcons(Mcons(t, loc), stash);
-                    }
-                }
+            // unreserve all registers
+            assigns = rstate_assigns(rstate);
+            for_each(assigns,
+                minim_cdar(assigns) = minim_false;
             );
-
-            // stash env register
-            loc = treg_assign_local(rstate, env_reg);
-            add_instr(instrs, Mlist3(x86_mov, loc, env_reg));
-            stash = Mcons(Mcons(env_reg, loc), stash);
+            
+            // stash %env
+            loc = unnamed_assign_local(rstate);
+            add_instr(instrs, Mlist3(x86_mov, loc, x86_env));
+            stash = Mcons(x86_env, loc);
         } else if (op == unstash_sym) {
             if (minim_falsep(stash))
                 error1("compile4_proc", "cannot unstash empty stash", stash);
             
-            // only unstash env
-            for_each(stash,
-                if (minim_caar(stash) == env_reg) {
-                    add_instr(instrs, Mlist3(x86_mov, env_reg, minim_cdar(stash)));
-                    rstate_unassign(rstate, env_reg);
-                    break;
-                }
-            );
-
+            // unassign %env
+            unnamed_unassign(rstate, minim_cdr(stash));
+            add_instr(instrs, Mlist3(x86_mov, x86_env, minim_cdr(stash)));
             stash = minim_false;
         } else if (op == label_sym) {
             // do nothing
@@ -1384,9 +1375,6 @@ static void compile4_proc(mobj cstate, mobj fstate) {
 
     // resolve frame-dependent locations
     compile4_resolve_frame(fstate, rstate);
-
-    // resolve architecture-independent registers
-    compile4_resolve_regs(fstate);
 }
 
 //
@@ -1876,8 +1864,8 @@ mobj compile_module(mobj op, mobj name, mobj es) {
     procs = cstate_procs(cstate);
     for_each(procs, compile3_proc(cstate, minim_car(procs)));
 
-    write_object(Mport(stdout, 0x0), cstate);
-    printf("\n");
+    // write_object(Mport(stdout, 0x0), cstate);
+    // printf("\n");
 
     // phase 4: register allocation
     procs = cstate_procs(cstate);
