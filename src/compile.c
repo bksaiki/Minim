@@ -31,7 +31,6 @@ int cstate_init = 0;
 static mobj tloc_pre;
 static mobj label_pre;
 static mobj reloc_sym;
-static mobj imm_sym;
 static mobj literal_sym;
 static mobj closure_sym;
 static mobj code_sym;
@@ -68,10 +67,7 @@ static mobj sp_reg;
 static mobj carg_reg;
 static mobj cres_reg;
 
-#define add_formp(e)        syntax_formp(add_sym, e)
-#define sub_formp(e)        syntax_formp(sub_sym, e)
 #define reloc_formp(e)      syntax_formp(reloc_sym, e)
-#define lookup_formp(e)     syntax_formp(lookup_sym, e)
 #define literal_formp(e)    syntax_formp(literal_sym, e)
 #define closure_formp(e)    syntax_formp(closure_sym, e)
 #define code_formp(e)       syntax_formp(code_sym, e)
@@ -81,6 +77,10 @@ static mobj cres_reg;
 #define local_formp(e)      syntax_formp(local_sym, e)
 #define next_formp(e)       syntax_formp(next_sym, e)
 
+#define lookup_formp(e)         syntax_formp(lookup_sym, e)
+#define add_formp(e)            syntax_formp(add_sym, e)
+#define sub_formp(e)            syntax_formp(sub_sym, e)
+#define cmp_formp(e)            syntax_formp(cmp_sym, e)
 #define push_frame_formp(e)     syntax_formp(push_frame_sym, e)
 #define pop_frame_formp(e)      syntax_formp(pop_frame_sym, e)
 #define apply_formp(e)          syntax_formp(apply_sym, e)
@@ -100,7 +100,6 @@ static void init_compile_globals() {
     label_pre = intern("$L");
 
     reloc_sym = intern("$reloc");
-    imm_sym = intern("$imm");
     literal_sym = intern("$literal");
     closure_sym = intern("$closure");
     code_sym = intern("$code");
@@ -161,8 +160,9 @@ static int literalp(mobj e) {
 }
 
 #define branch_uncond           0
-#define branch_neq              1
-#define branch_reg              2
+#define branch_eq               1
+#define branch_neq              2
+#define branch_reg              3
 
 #define frame_let               0
 #define frame_letrec            1
@@ -382,15 +382,18 @@ loop:
         goto loop;
     } else if (if_formp(e)) {
         // if form
-        mobj cond, ift, iff, liff, lend;
-        liff = cstate_gensym(cstate, label_sym);
-        lend = cstate_gensym(cstate, label_sym);
+        mobj cond, ift, iff, liff, lend, idx, lit;
+        liff = cstate_gensym(cstate, label_pre);
+        lend = cstate_gensym(cstate, label_pre);
         loc = cstate_gensym(cstate, tloc_pre);
+        lit = cstate_gensym(cstate, tloc_pre);
 
         // compile condition
         cond = compile1_expr(cstate, fstate, minim_cadr(e));
-        fstate_add_asm(fstate, Mlist3(cmp_sym, cond, Mlist2(imm_sym, minim_false)));
-        fstate_add_asm(fstate, Mlist3(branch_sym, Mfixnum(branch_neq), liff));
+        idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_false));
+        fstate_add_asm(fstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
+        fstate_add_asm(fstate, Mlist3(cmp_sym, cond, lit));
+        fstate_add_asm(fstate, Mlist3(branch_sym, Mfixnum(branch_eq), liff));
     
         // compile if-true branch
         ift = compile1_expr(cstate, fstate, minim_car(minim_cddr(e)));
@@ -448,12 +451,7 @@ loop:
         // literals
         mobj idx;
         loc = cstate_gensym(cstate, tloc_pre);
-        if (immediatep(e)) {
-            idx = cstate_add_reloc(cstate, Mlist2(imm_sym, e));
-        } else {
-            idx = cstate_add_reloc(cstate, Mlist2(literal_sym, e));
-        }
-
+        idx = cstate_add_reloc(cstate, Mlist2(literal_sym, e));
         fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(reloc_sym, idx)));
     } else {
         error1("compile1_expr", "attempting to compile garbage", e);
@@ -676,7 +674,10 @@ static void compile2_proc(mobj cstate, mobj fstate) {
 
             frames = minim_cdr(frames);
             add_instr(instrs, Mlist3(load_sym, env_reg, mem_offset(env_reg, minim_cdr_offset)));
-        } else if (ccall_formp(expr) || label_formp(expr) || branch_formp(expr)) {
+        } else if (cmp_formp(expr) ||
+                    ccall_formp(expr) ||
+                    label_formp(expr) ||
+                    branch_formp(expr)) {
             // leave as is
             add_instr(instrs, expr);
         } else if (minim_consp(expr) && minim_car(expr) == push_valueb_sym) {
@@ -700,6 +701,9 @@ static mobj x86_mov;
 static mobj x86_lea;
 static mobj x86_call;
 static mobj x86_jmp;
+static mobj x86_je;
+static mobj x86_jne;
+static mobj x86_cmp;
 
 static mobj x86_fp;
 static mobj x86_sp;
@@ -717,6 +721,9 @@ static void init_x86_compiler_globals() {
     x86_lea = intern("lea");
     x86_call = intern("call");
     x86_jmp = intern("jmp");
+    x86_je = intern("je");
+    x86_jne = intern("jne");
+    x86_cmp = intern("cmp");
 
     x86_fp = intern("%rbp");
     x86_sp = intern("%rsp");
@@ -788,14 +795,14 @@ static void compile3_resolve_regs(mobj fstate) {
                         minim_cadr(src) = replace_alias(base);
                 }
             }
-        } else if (op == x86_add || op == x86_sub) {
+        } else if (op == x86_add || op == x86_sub || op == x86_cmp) {
             mobj dst = minim_cadr(expr);
             mobj src = minim_car(minim_cddr(expr));
             if (reg_aliasp(dst))
                 minim_cadr(expr) = replace_alias(dst);
             if (reg_aliasp(src))
                 minim_car(minim_cddr(expr)) = replace_alias(src);
-        } else if (op == x86_jmp || op == x86_call) {
+        } else if (op == x86_jmp || op == x86_je || op == x86_jne || op == x86_call) {
             mobj tgt = minim_cadr(expr);
             if (reg_aliasp(tgt))
                 minim_cadr(expr) = replace_alias(tgt);
@@ -855,10 +862,14 @@ static void compile3_proc(mobj cstate, mobj fstate) {
             size_t type = minim_fixnum(minim_cadr(expr));
             if (type == branch_uncond) {
                 add_instr(instrs, Mlist2(x86_jmp, tgt));
+            } else if (type == branch_eq) {
+                add_instr(instrs, Mlist2(x86_je, tgt));
             } else if (type == branch_neq) {
-                unimplemented_error("branch with !=");
+                add_instr(instrs, Mlist2(x86_jne, tgt));
             } else if (type == branch_reg) {
                 add_instr(instrs, Mlist2(x86_jmp, tgt));
+            } else {
+                error1("compile3_proc", "unknown branch type", minim_cadr(expr));
             }
         } else if (add_formp(expr)) {
             // (add <dst> <src1> <src2>)
@@ -886,7 +897,14 @@ static void compile3_proc(mobj cstate, mobj fstate) {
                 add_instr(instrs, Mlist3(x86_mov, dst, src1));
                 add_instr(instrs, Mlist3(x86_sub, dst, src2));
             }
-        } else if (label_formp(expr) || stash_formp(expr) || unstash_formp(expr)) {
+        } else if (cmp_formp(expr)) {
+            // (cmp <src1> <src2>)
+            mobj src1 = minim_cadr(expr);
+            mobj src2 = minim_car(minim_cddr(expr));
+            add_instr(instrs, Mlist3(x86_cmp, src1, src2));
+        } else if (label_formp(expr) ||
+                    stash_formp(expr) ||
+                    unstash_formp(expr)) {
             // do nothing
             add_instr(instrs, expr);
         } else {
@@ -1007,7 +1025,7 @@ static void rstate_set_lasts(mobj rs, mobj exprs) {
             } else {
                 error1("rstate_set_lasts", "unknown mov sequence", expr);
             }
-        } else if (op == x86_add || op == x86_sub) {
+        } else if (op == x86_add || op == x86_sub || op == x86_cmp) {
             mobj dst = minim_cadr(expr);
             mobj src = minim_car(minim_cddr(expr));
 
@@ -1015,7 +1033,7 @@ static void rstate_set_lasts(mobj rs, mobj exprs) {
                 uses = update_uses(uses, dst, expr);
             if (tregp(src))
                 uses = update_uses(uses, src, expr);
-        } else if (op == x86_jmp || op == x86_call) {
+        } else if (op == x86_jmp || op == x86_je || op == x86_jne || op == x86_call) {
             mobj tgt = minim_cadr(expr);
             if (tregp(tgt))
                 uses = update_uses(uses, tgt, expr);
@@ -1096,23 +1114,6 @@ static mobj treg_assign_or_lookup(mobj rs, mobj treg) {
     // otherwise, assign to stack
     return treg_assign_local(rs, treg);
 }
-
-// Unassigns a temporary register.
-// static void rstate_unassign(mobj rs, mobj reg) {
-//     mobj s, p;
-
-//     p = NULL;
-//     s = rstate_scope(rs);
-//     for_each(s,
-//         if (minim_caar(s) == reg) {
-//             if (p) minim_cdr(p) = minim_cdr(s); // remove internally
-//             else rstate_scope(rs) = minim_cdr(rstate_scope(rs)); // remove from front
-//             return;
-//         }
-//     );
-
-//     error1("rstate_unassign", "register not found", reg);
-// }
 
 // Reserves an unnamed local.
 static mobj unnamed_assign_local(mobj rs) {
@@ -1257,7 +1258,7 @@ static void compile4_resolve_frame(mobj fstate, mobj rstate) {
             if (frame_locp(src)) {
                 minim_car(minim_cddr(expr)) = replace_frame_loc(src, argc, localc);
             }
-        } else if (op == x86_add || op == x86_sub) {
+        } else if (op == x86_add || op == x86_sub || op == x86_cmp) {
             mobj dst, src;
             dst = minim_cadr(expr);
             if (frame_locp(dst))
@@ -1266,7 +1267,7 @@ static void compile4_resolve_frame(mobj fstate, mobj rstate) {
             src = minim_car(minim_cddr(expr));
             if (frame_locp(src))
                 minim_car(minim_cddr(expr)) = replace_frame_loc(src, argc, localc);
-        } else if (op == x86_jmp || op == x86_call) {
+        } else if (op == x86_jmp || op == x86_je || op == x86_jne || op == x86_call) {
             mobj tgt = minim_cadr(expr);
             if (frame_locp(tgt))
                 minim_cadr(expr) = replace_frame_loc(tgt, argc, localc);
@@ -1387,7 +1388,26 @@ static void compile4_proc(mobj cstate, mobj fstate) {
             }
 
             add_instr(instrs, Mlist3(op, dst, src));
-        } else if (op == x86_jmp) {
+        } else if (op == x86_cmp) {
+            // (cmp <src1> <src2>)
+            mobj src1 = minim_cadr(expr);
+            mobj src2 = minim_car(minim_cddr(expr));
+
+            if (tregp(src1))
+                src1 = treg_lookup(rstate, src1);
+            if (tregp(src2))
+                src2 = treg_lookup(rstate, src2);
+
+            // at least one must be a register
+            if (minim_consp(src1) && minim_consp(src2)) {
+                rstate_reserve(rstate, x86_cres);
+                add_instr(instrs, Mlist3(x86_mov, x86_cres, src1));
+                src1 = x86_cres;
+                rstate_unreserve(rstate, x86_cres);
+            }
+
+            add_instr(instrs, Mlist3(op, src1, src2));
+        } else if (op == x86_jmp || op == x86_je || op == x86_jne) {
             // (jmp <tgt>)
             // prefer to call from register
             mobj tgt = minim_cadr(expr);
@@ -1684,6 +1704,22 @@ static mobj x86_encode_sub_imm(mobj dst, mobj imm) {
     }
 }
 
+static mobj x86_encode_cmp(mobj src1, mobj src2) {
+    mobj rex = x86_encode_rex(1, x86_encode_x(src2), 0, x86_encode_x(src1));
+    mobj modrm = x86_encode_modrm(Mfixnum(3), x86_encode_reg(src2), x86_encode_reg(src1));
+    return Mlist3(rex, Mfixnum(0x39), modrm);
+}
+
+static mobj x86_encode_cmp_rel(mobj src1, mobj src2, mobj imm) {
+    mobj rex = x86_encode_rex(1, x86_encode_x(src1), 0, x86_encode_x(src2));
+    mobj modrm = x86_encode_modrm(Mfixnum(1), x86_encode_reg(src1), x86_encode_reg(src2));
+    if (minim_fixnum(imm) >= -128 && minim_fixnum(imm) <= 127) {
+        return Mlist4(rex, Mfixnum(0x3B), modrm, x86_encode_imm8(imm));
+    } else {
+        error1("compile5_proc", "unsupported sub offset", imm);
+    }
+}
+
 static mobj x86_encode_call(mobj tgt) {
     mobj modrm, rex;
     modrm = x86_encode_modrm(Mfixnum(3), Mfixnum(2), x86_encode_reg(tgt));
@@ -1695,7 +1731,7 @@ static mobj x86_encode_call(mobj tgt) {
     }
 }
 
-static mobj x86_encode_jmp_rel(mobj base, mobj offset) {
+static mobj x86_encode_jmp_mem(mobj base, mobj offset) {
     mobj instr, modrm, rex;
     modrm = x86_encode_modrm(Mfixnum(2), Mfixnum(4), x86_encode_reg(base));
     instr = Mcons(Mfixnum(0xFF), Mcons(modrm, x86_encode_imm32(offset)));
@@ -1704,6 +1740,30 @@ static mobj x86_encode_jmp_rel(mobj base, mobj offset) {
         instr = Mcons(rex, instr);
     }
 
+    return instr;
+}
+
+static mobj x86_encode_jmp_rel(mobj lstate, mobj src, mobj where) {
+    mobj instr, imm;
+    imm = x86_encode_imm32(Mfixnum(0));
+    instr = Mcons(Mfixnum(0xE9), imm);
+    lstate_add_offset(lstate, Mcons(where, src), imm);
+    return instr;
+}
+
+static mobj x86_encode_je(mobj lstate, mobj src, mobj where) {
+    mobj instr, imm;
+    imm = x86_encode_imm32(Mfixnum(0));
+    instr = Mcons(Mfixnum(0x0F), Mcons(Mfixnum(0x84), imm));
+    lstate_add_offset(lstate, Mcons(where, src), imm);
+    return instr;
+}
+
+static mobj x86_encode_jne(mobj lstate, mobj src, mobj where) {
+    mobj instr, imm;
+    imm = x86_encode_imm32(Mfixnum(0));
+    instr = Mcons(Mfixnum(0x0F), Mcons(Mfixnum(0x85), imm));
+    lstate_add_offset(lstate, Mcons(where, src), imm);
     return instr;
 }
 
@@ -1735,7 +1795,7 @@ static void lstate_resolve_offsets(mobj lstate) {
         mobj dst_off = lstate_lookup_local(lstate, dst);
         mobj offset = fix_sub(src_off, dst_off);
         mobj bytes = x86_encode_imm32(offset);
-        
+
         for_each(imm,
             minim_car(imm) = minim_car(bytes);
             bytes = minim_cdr(bytes);
@@ -1821,16 +1881,53 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
             } else {
                 add_instr(instrs, x86_encode_sub_imm(dst, src));
             }
+        } else if (op == x86_cmp) {
+            // cmp <src1> <src2>
+            mobj src1 = minim_cadr(expr);
+            mobj src2 = minim_car(minim_cddr(expr));
+            if (minim_symbolp(src1) && minim_symbolp(src2)) {
+                add_instr(instrs, x86_encode_cmp(src1, src2));
+            } else if (minim_symbolp(src1) && mem_formp(src2)) {
+                mobj base = minim_cadr(src2);
+                mobj offset = minim_car(minim_cddr(src2));
+                add_instr(instrs, x86_encode_cmp_rel(src1, base, offset));
+            } else {
+                error1("compile5_proc", "unknown cmp form", expr);
+            }
         } else if (op == x86_call) {
             // call <tgt>
             add_instr(instrs, x86_encode_call(minim_cadr(expr)));
         } else if (op == x86_jmp) {
             // jmp <tgt>
             mobj tgt = minim_cadr(expr);
-            if (minim_symbolp(tgt)) {
+            if (labelp(tgt)) {
+                add_instr(instrs, x86_encode_jmp_rel(lstate, expr, tgt));
+                offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
+                lstate_add_local(lstate, expr, Mfixnum(offset));
+            } else if (minim_symbolp(tgt)) {
                 add_instr(instrs, x86_encode_jmp(tgt));
             } else {
-                add_instr(instrs, x86_encode_jmp_rel(minim_cadr(tgt), minim_car(minim_cddr(tgt))));
+                add_instr(instrs, x86_encode_jmp_mem(minim_cadr(tgt), minim_car(minim_cddr(tgt))));
+            }
+        } else if (op == x86_je) {
+            // jne <tgt>
+            mobj tgt = minim_cadr(expr);
+            if (labelp(tgt)) {
+                add_instr(instrs, x86_encode_je(lstate, expr, tgt));
+                offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
+                lstate_add_local(lstate, expr, Mfixnum(offset));
+            } else {
+                error1("compile5_proc", "unknown jne form", expr);
+            }
+        } else if (op == x86_jne) {
+            // jne <tgt>
+            mobj tgt = minim_cadr(expr);
+            if (labelp(tgt)) {
+                add_instr(instrs, x86_encode_jne(lstate, expr, tgt));
+                offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
+                lstate_add_local(lstate, expr, Mfixnum(offset));
+            } else {
+                error1("compile5_proc", "unknown jne form", expr);
             }
         } else if (op == label_sym) {
             // empty sequence, need to register location

@@ -286,6 +286,12 @@ mobj fix_mul(mobj x, mobj y);
 mobj fix_div(mobj x, mobj y);
 mobj fix_rem(mobj x, mobj y);
 
+mobj fix_eq(mobj x, mobj y);
+mobj fix_lt(mobj x, mobj y);
+mobj fix_gt(mobj x, mobj y);
+mobj fix_le(mobj x, mobj y);
+mobj fix_ge(mobj x, mobj y);
+
 //
 //  Characters
 //

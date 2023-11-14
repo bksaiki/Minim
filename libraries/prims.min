@@ -1,19 +1,8 @@
 ;; Pairs / Lists
 
-(define cons
-  (#%foreign-procedure "cons"
-    (scheme-object scheme-object)
-    scheme-object))
-
-(define car
-  (#%foreign-procedure "car"
-    (scheme-object)
-    scheme-object))
-
-(define cdr
-  (#%foreign-procedure "cdr"
-    (scheme-object)
-    scheme-object))
+(define cons (#%foreign-procedure "cons" (object object) object))
+(define car (#%foreign-procedure "car" (object) object))
+(define cdr (#%foreign-procedure "cdr" (object) object))
 
 (define (caar x) (car (car x)))
 (define (cadr x) (car (cdr x)))
@@ -49,39 +38,19 @@
 
 ;; Numbers
 
-(define fxneg
-  (#%foreign-procedure "fxneg"
-    (scheme-object)
-    scheme-object))
+(define fxneg (#%foreign-procedure "fxneg" (object) object))
+(define fx+ (#%foreign-procedure "fx+" (object object) object))
+(define fx- (#%foreign-procedure "fx-" (object object) object))
+(define fx* (#%foreign-procedure "fx*" (object object) object))
+(define fx/ (#%foreign-procedure "fx/" (object object) object))
 
-(define fx+
-  (#%foreign-procedure "fx+"
-    (scheme-object scheme-object)
-    scheme-object))
-
-(define fx-
-  (#%foreign-procedure "fx-"
-    (scheme-object scheme-object)
-    scheme-object))
-
-(define fx*
-  (#%foreign-procedure "fx*"
-    (scheme-object scheme-object)
-    scheme-object))
-
-(define fx/
-  (#%foreign-procedure "fx/"
-    (scheme-object scheme-object)
-    scheme-object))
+(define fx= (#%foreign-procedure "fx=" (object object) object))
+(define fx< (#%foreign-procedure "fx<" (object object) object))
+(define fx> (#%foreign-procedure "fx>" (object object) object))
+(define fx<= (#%foreign-procedure "fx<=" (object object) object))
+(define fx>= (#%foreign-procedure "fx>=" (object object) object))
 
 ;; Ports
 
-(define write
-  (#%foreign-procedure "write"
-    (scheme-object)
-    scheme-object))
-
-(define newline
-  (#%foreign-procedure "newline"
-    ()
-    scheme-object))
+(define write (#%foreign-procedure "write" (object) object))
+(define newline (#%foreign-procedure "newline" () object))

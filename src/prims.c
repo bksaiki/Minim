@@ -14,6 +14,10 @@ static size_t symhash(const mchar* s) {
     return h % PRIM_TABLE_SIZE;
 }
 
+//
+//  Primitives
+//
+
 static mobj car_proc(mobj x) {
     return minim_car(x);
 }
@@ -67,12 +71,19 @@ void prim_table_init() {
     register_prim("cons", Mcons);
     register_prim("car", car_proc);
     register_prim("cdr", cdr_proc);
+
     register_prim("fxneg", fix_neg);
     register_prim("fx+", fix_add);
     register_prim("fx-", fix_sub);
     register_prim("fx*", fix_mul);
     register_prim("fx/", fix_div);
     register_prim("fxrem", fix_rem);
+
+    register_prim("fx=", fix_eq);
+    register_prim("fx<", fix_lt);
+    register_prim("fx>", fix_gt);
+    register_prim("fx<=", fix_le);
+    register_prim("fx>=", fix_ge);
 
     register_prim("write", write_proc);
     register_prim("newline", newline_proc);
