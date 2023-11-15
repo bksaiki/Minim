@@ -320,7 +320,7 @@ static mobj compile1_expr(mobj cstate, mobj fstate, mobj e) {
 
 loop:
     if (let_values_formp(e)) {
-        // let-values form or letrec-values form
+        // let-values form  form
         mobj bindings, tenv;
 
         // create a new frame and bind to a temporary
@@ -350,6 +350,35 @@ loop:
         // compile body and pop frame
         loc = compile1_expr(cstate, fstate, Mcons(begin_sym, minim_cddr(e)));
         fstate_add_asm(fstate, Mlist1(pop_frame_sym));
+    } else if (letrec_values_formp(e)) {
+        // letrec-values form
+        mobj bindings;
+
+        // create a new frame and bind to a temporary
+        fstate_add_asm(fstate, Mlist2(push_frame_sym, env_reg));
+
+        // TOOD: poison the initial values
+
+        // bind the expressions
+        bindings = minim_cadr(e);
+        for_each(bindings,
+            mobj bind = minim_car(bindings);
+            mobj ids = minim_car(bind);
+            size_t vc = list_length(ids);
+            loc = compile1_expr(cstate, fstate, minim_cadr(bind));
+            if (vc == 1) {
+                mobj lit = cstate_gensym(cstate, tloc_pre);
+                mobj idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_car(ids)));
+                fstate_add_asm(fstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
+                fstate_add_asm(fstate, Mlist4(bindb_sym, env_reg, lit, loc));
+            } else {
+                unimplemented_error("multiple values for let(rec)-values");
+            }
+        );
+
+        // compile body and pop frame
+        loc = compile1_expr(cstate, fstate, Mcons(begin_sym, minim_cddr(e)));
+        fstate_add_asm(fstate, Mlist1(pop_frame_sym));
     } else if (lambda_formp(e)) {
         // lambda form
         mobj f2state, arity, req, rest, body, bind, lit, idx;
@@ -360,15 +389,15 @@ loop:
         fstate_args(f2state) = minim_car(arity);
         fstate_rest(f2state) = minim_cdr(arity);
 
-        // push frame
+        // procedure: push frame
         fstate_add_asm(f2state, Mlist2(push_frame_sym, env_reg));
 
-        // get function pointer for binding
+        // procedure: get function pointer for binding
         bind = cstate_gensym(cstate, tloc_pre);
         idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("env_define")));
         fstate_add_asm(f2state, Mlist3(setb_sym, bind, Mlist2(reloc_sym, idx)));
 
-        // bind arguments in order
+        // procedure: bind arguments in order
         i = 0;
         req = fstate_args(f2state);
         for_each(req,
@@ -384,14 +413,14 @@ loop:
         if (!minim_falsep(rest))
             error1("compile1_proc", "unimplemented rest arguments", fstate);
 
-        // compile body
+        // procedure: compile body
         body = Mcons(begin_sym, minim_cddr(e));
         compile1_expr(cstate, f2state, body);
 
-        // footer
+        // prcoedure: return
         fstate_add_asm(f2state, Mlist1(pop_frame_sym));
         fstate_add_asm(f2state, Mlist1(ret_sym));
-        
+
         // register procedure
         i = cstate_add_proc(cstate, f2state);
         loc = cstate_gensym(cstate, tloc_pre);
@@ -399,6 +428,7 @@ loop:
     } else if (begin_formp(e)) {
         // begin form (at least 2 clauses)
         // execute statements and return the last one
+        write_object(Mport(stdout, 0x0), e);
         e = minim_cdr(e);
         for (; !minim_nullp(minim_cdr(e)); e = minim_cdr(e))
             compile1_expr(cstate, fstate, minim_car(e));
@@ -1604,7 +1634,7 @@ static mobj x86_encode_imm32(mobj imm) {
     if (minim_fixnum(imm) < -2147483648 || minim_fixnum(imm) > 2147483647) {
         error1("x86_encode_imm32", "value cannot fit in 32 bits", imm);
     } else if (minim_fixnum(imm) < 0) {
-        imm = Mfixnum(minim_fixnum(imm) + 0x10000000);
+        imm = Mfixnum(minim_fixnum(imm) + 0x100000000);
     }
 
     for (size_t i = 0; i < 4; i++) {

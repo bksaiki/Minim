@@ -545,6 +545,24 @@ static mobj expand_let_form(mobj e) {
     return Mcons(let_values_sym, rib);
 }
 
+// Partial expansion of `letrec` form into `letrec-values` form.
+// `(letrec ([<id> <e>] ...) <body> ...)
+//  => (letrec-values ([(<id>) <e>] ...) <body> ...)`
+static mobj expand_letrec_form(mobj e) {
+    mobj rib, bindings, bind;
+
+    rib = minim_cdr(e);
+    bindings = minim_car(rib);
+    while (!minim_nullp(bindings)) {
+        bind = minim_car(bindings);
+        minim_car(bind) = Mlist1(minim_car(bind));
+        bindings = minim_cdr(bindings);
+    }
+
+    return Mcons(letrec_values_sym, rib);
+}
+
+
 // Expansion of `let-values` form recursing with `expand-expr`.
 static mobj expand_let_values_form(mobj e) {
     mobj rib, bindings, bind;
@@ -571,10 +589,10 @@ static mobj expand_and_form(mobj e) {
     if (minim_nullp(cls)) {
         return minim_true;
     } else if (minim_nullp(minim_cdr(cls))) {
-        return expand_expr(minim_car(cls));
+        return minim_car(cls);
     } else { 
         return Mlist4(if_sym,
-                      expand_expr(minim_car(cls)),
+                      minim_car(cls),
                       expand_and_form(Mcons(and_sym, minim_cdr(cls))),
                       minim_false);
     }
@@ -591,12 +609,12 @@ static mobj expand_or_form(mobj e) {
     if (minim_nullp(cls)) {
         return minim_false;
     } else if (minim_nullp(minim_cdr(cls))) {
-        return expand_expr(minim_car(cls));
+        return minim_car(cls);
     } else {
         gen = intern("$T$");
         rec = expand_or_form(Mcons(or_sym, minim_cdr(cls)));
         return Mlist3(let_values_sym,
-                      Mlist1(Mlist2(Mlist1(gen), expand_expr(minim_car(cls)))),
+                      Mlist1(Mlist2(Mlist1(gen), minim_car(cls))),
                       Mlist4(if_sym, gen, gen, rec));
     }
 }
@@ -610,7 +628,7 @@ static mobj expand_cond_form(mobj e) {
         return Mlist1(void_sym);
     } else {
         cl = minim_car(cls);
-        ift = expand_expr(Mcons(begin_sym, minim_cdr(cl)));
+        ift = Mcons(begin_sym, minim_cdr(cl));
         if (minim_car(cl) == intern("else")) {
             if (!minim_nullp(minim_cdr(cls))) {
                 syntax_error("expand_cond_form",
@@ -686,6 +704,11 @@ loop:
         check_let_form(e);
         e = expand_let_form(e);
         goto loop;
+    } else if (letrec_formp(e)) {
+        // letrec form => recurse
+        check_let_form(e);
+        e = expand_letrec_form(e);
+        goto loop;
     } else if (letrec_values_formp(e) || let_values_formp(e)) {
         // let-values form => recurse
         check_let_values_form(e);
@@ -699,23 +722,28 @@ loop:
             e = Mlist1(void_sym);
         } else {
             e = expand_body(e, minim_cdr(e));
-            if (minim_nullp(minim_cddr(e))) {
+            if (minim_nullp(minim_cdr(e))) {
                 // sequence of length 1
-                e = minim_cadr(e);
+                e = minim_car(e);
+            } else {
+                e = Mcons(begin_sym, e);
             }
         }
     } else if (and_formp(e)) {
         // and form => recurse
         check_0ary_form(e);
         e = expand_and_form(e);
+        goto loop;
     } else if (or_formp(e)) {
         // or form => recurse
         check_0ary_form(e);
         e = expand_or_form(e);
+        goto loop;
     } else if (cond_formp(e)) {
         // cond form => recurse
         check_cond_form(e);
         e = expand_cond_form(e);
+        goto loop;
     } else if (if_formp(e)) {
         // if form => recurse
         check_if_form(e);

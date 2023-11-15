@@ -34,7 +34,6 @@ mobj env_extend(mobj env) {
 mobj env_get(mobj env, mobj k) {
     mobj maybe = env_get_entry(env, k);
     if (!maybe) error1("env_get", "unbound variable", k);
-    write_object(Mport(stdout, 0x0), Mlist2(maybe, env)); printf("\n");
     return minim_cdr(maybe);
 }
 

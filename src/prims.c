@@ -48,6 +48,11 @@ static mobj newline_proc() {
     return minim_void;
 }
 
+static mobj flush_proc() {
+    fflush(minim_port(th_output_port(get_thread())));
+    return minim_void;
+}
+
 //
 //  Public API
 //
@@ -102,6 +107,7 @@ void prim_table_init() {
 
     register_prim("write", write_proc);
     register_prim("newline", newline_proc);
+    register_prim("flush-output", flush_proc);
 
     register_prim("env_extend", env_extend);
     register_prim("env_set", env_set);
