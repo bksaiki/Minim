@@ -34,17 +34,19 @@ mobj env_extend(mobj env) {
 mobj env_get(mobj env, mobj k) {
     mobj maybe = env_get_entry(env, k);
     if (!maybe) error1("env_get", "unbound variable", k);
+    write_object(Mport(stdout, 0x0), Mlist2(maybe, env)); printf("\n");
     return minim_cdr(maybe);
+}
+
+mobj env_define(mobj env, mobj k, mobj v) {
+    minim_car(env) = Mcons(Mcons(k, v), minim_car(env));
+    return minim_void;
 }
 
 mobj env_set(mobj env, mobj k, mobj v) {
     mobj maybe = env_get_entry(env, k);
-    if (maybe) {
-        minim_cdr(maybe) = v;
-    } else {
-        minim_car(env) = Mcons(Mcons(k, v), minim_car(env));
-    }
-
+    if (!maybe) error1("env_set", "unbound variable", k);
+    minim_cdr(maybe) = v;
     return minim_void;
 }
 

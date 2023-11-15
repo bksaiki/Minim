@@ -494,7 +494,7 @@ static mobj expand_define_form(mobj e) {
 
 // Partial expansion of named `let` form into `let-values` form.
 // `(let <name> ([<id> <e>] ...) <body> ...)
-//  => (let-values ([(<name>) (lambda (<id> ...) <body> ...)])
+//  => (letrec-values ([(<name>) (lambda (<id> ...) <body> ...)])
 //       (<name> <e> ...))`
 static mobj expand_named_let_form(mobj e) {
     mobj rib, id, vars, vals, bindings, bind, *proc;
@@ -520,13 +520,13 @@ static mobj expand_named_let_form(mobj e) {
 
     // compose syntax
     proc = Mcons(lambda_sym, Mcons(vars, minim_cdr(rib)));
-    return Mlist3(let_values_sym,
+    return Mlist3(letrec_values_sym,
                   Mlist1(Mlist2(Mlist1(id), proc)),
                   Mcons(id, vals));
 }
 
 // Partial expansion of `let` form into `let-values` form.
-// `(let <name> ([<id> <e>] ...) <body> ...)
+// `(let ([<id> <e>] ...) <body> ...)
 //  => (let-values ([(<id>) <e>] ...) <body> ...)`
 static mobj expand_let_form(mobj e) {
     mobj rib, bindings, bind;

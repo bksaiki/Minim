@@ -1,5 +1,8 @@
 ;; Pairs / Lists
 
+(define null? (#%foreign-procedure "null?" (object) object))
+(define cons? (#%foreign-procedure "cons?" (object) object))
+
 (define cons (#%foreign-procedure "cons" (object object) object))
 (define car (#%foreign-procedure "car" (object) object))
 (define cdr (#%foreign-procedure "cdr" (object) object))
@@ -37,6 +40,10 @@
 (define (cddddr x) (cdr (cdr (cdr (cdr x)))))
 
 ;; Numbers
+
+(define fixnum? (#%foreign-procedure "fx?" (object) object))
+(define number? fixnum?)
+(define integer? fixnum?)
 
 (define fxneg (#%foreign-procedure "fxneg" (object) object))
 (define fx+ (#%foreign-procedure "fx+" (object object) object))

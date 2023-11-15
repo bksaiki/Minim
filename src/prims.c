@@ -18,6 +18,18 @@ static size_t symhash(const mchar* s) {
 //  Primitives
 //
 
+static mobj nullp_proc(mobj x) {
+    return minim_nullp(x) ? minim_true : minim_false;
+}
+
+static mobj consp_proc(mobj x) {
+    return minim_consp(x) ? minim_true : minim_false;
+}
+
+static mobj fixnump_proc(mobj x) {
+    return minim_fixnump(x) ? minim_true : minim_false;
+}
+
 static mobj car_proc(mobj x) {
     return minim_car(x);
 }
@@ -68,10 +80,13 @@ void register_prim(const char *name, void *fn) {
 }
 
 void prim_table_init() {
+    register_prim("null?", nullp_proc);
+    register_prim("cons?", consp_proc);
     register_prim("cons", Mcons);
     register_prim("car", car_proc);
     register_prim("cdr", cdr_proc);
 
+    register_prim("fx?", fixnump_proc);
     register_prim("fxneg", fix_neg);
     register_prim("fx+", fix_add);
     register_prim("fx-", fix_sub);
@@ -90,6 +105,7 @@ void prim_table_init() {
 
     register_prim("env_extend", env_extend);
     register_prim("env_set", env_set);
+    register_prim("env_define", env_define);
     register_prim("env_get", env_get);
     register_prim("make_closure", Mclosure);
 }
