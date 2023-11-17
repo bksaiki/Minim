@@ -65,6 +65,7 @@ static mobj cc_reg;
 static mobj env_reg;
 static mobj fp_reg;
 static mobj sp_reg;
+static mobj argc_reg;
 static mobj carg_reg;
 static mobj cres_reg;
 
@@ -134,6 +135,7 @@ static void init_compile_globals() {
     size_sym = intern("%size");
     cc_reg = intern("%cc");
     env_reg = intern("%env");
+    argc_reg = intern("%argc");
     fp_reg = intern("%fp");
     sp_reg = intern("%sp");
     carg_reg = intern("%Carg");
@@ -282,8 +284,8 @@ static mobj procedure_formals(mobj e) {
 
 // Compiles a foreign procedure `(#%foreign-procedure ...)`
 static mobj compile1_foreign(mobj cstate, mobj e) {
-    mobj id, itypes, fstate, args, idx;
-    size_t argc;
+    mobj id, itypes, fstate, args, idx, exn_label, exn;
+    size_t argc, i;
 
     id = minim_cadr(e);
     itypes = minim_car(minim_cddr(e));
@@ -296,13 +298,26 @@ static mobj compile1_foreign(mobj cstate, mobj e) {
     fstate_args(fstate) = itypes;
     fstate_rest(fstate) = minim_false;
 
-    argc = 0;
+    // check arity
+    argc = list_length(itypes);
+    exn_label = cstate_gensym(cstate, label_pre);
+    fstate_add_asm(fstate, Mlist3(cmp_sym, argc_reg, Mfixnum(argc)));
+    fstate_add_asm(fstate, Mlist3(branch_sym, Mfixnum(branch_eq), exn_label));
+
+    // handle arity exception
+    exn = cstate_gensym(cstate, tloc_pre);
+    idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("arity_exn")));
+    fstate_add_asm(fstate, Mlist3(setb_sym, exn, Mlist2(reloc_sym, idx)));
+    fstate_add_asm(fstate, Mlist4(ccall_sym, exn, argc_reg, Mfixnum(argc)));
+    fstate_add_asm(fstate, Mlist2(label_sym, exn_label));
+
+    i = 0;
     args = minim_null;
     for (; !minim_nullp(itypes); itypes = minim_cdr(itypes)) {
         mobj loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, arg_loc(argc)));
+        fstate_add_asm(fstate, Mlist3(setb_sym, loc, arg_loc(i)));
         args = Mcons(loc, args);
-        argc++;
+        i++;
     }
 
     // call into C
@@ -311,6 +326,7 @@ static mobj compile1_foreign(mobj cstate, mobj e) {
                            Mcons(Mlist2(reloc_sym, idx),
                            list_reverse(args))));
     fstate_add_asm(fstate, Mlist1(ret_sym));
+
     return fstate;
 }
 
@@ -382,13 +398,33 @@ loop:
     } else if (lambda_formp(e)) {
         // lambda form
         mobj f2state, arity, req, rest, body, bind, lit, idx;
-        size_t i;
+        mobj exn_label, exn;
+        size_t argc, i;
 
         f2state = init_fstate();
         arity = procedure_formals(e);
         fstate_args(f2state) = minim_car(arity);
         fstate_rest(f2state) = minim_cdr(arity);
 
+        // procedure: check arity
+        req = fstate_args(f2state);
+        rest = fstate_rest(f2state);
+        if (!minim_falsep(rest))
+            error1("compile1_proc", "unimplemented rest arguments", fstate);
+
+        // procedure: check arity
+        argc = list_length(req);
+        exn_label = cstate_gensym(cstate, label_pre);
+        fstate_add_asm(f2state, Mlist3(cmp_sym, argc_reg, Mfixnum(argc)));
+        fstate_add_asm(f2state, Mlist3(branch_sym, Mfixnum(branch_eq), exn_label));
+
+        // procedure: handle arity exception
+        exn = cstate_gensym(cstate, tloc_pre);
+        idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("arity_exn")));
+        fstate_add_asm(f2state, Mlist3(setb_sym, exn, Mlist2(reloc_sym, idx)));
+        fstate_add_asm(f2state, Mlist4(ccall_sym, exn, argc_reg, Mfixnum(argc)));
+        fstate_add_asm(f2state, Mlist2(label_sym, exn_label));
+        
         // procedure: push frame
         fstate_add_asm(f2state, Mlist2(push_frame_sym, env_reg));
 
@@ -408,16 +444,13 @@ loop:
             ++i;
         );
 
-        // TODO: rest argument
-        rest = fstate_rest(fstate);
-        if (!minim_falsep(rest))
-            error1("compile1_proc", "unimplemented rest arguments", fstate);
+        // TODO: rest argument    
 
         // procedure: compile body
         body = Mcons(begin_sym, minim_cddr(e));
         compile1_expr(cstate, f2state, body);
 
-        // prcoedure: return
+        // procedure: return
         fstate_add_asm(f2state, Mlist1(pop_frame_sym));
         fstate_add_asm(f2state, Mlist1(ret_sym));
 
@@ -428,7 +461,6 @@ loop:
     } else if (begin_formp(e)) {
         // begin form (at least 2 clauses)
         // execute statements and return the last one
-        write_object(Mport(stdout, 0x0), e);
         e = minim_cdr(e);
         for (; !minim_nullp(minim_cdr(e)); e = minim_cdr(e))
             compile1_expr(cstate, fstate, minim_car(e));
@@ -610,28 +642,36 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 // prepare the stack for a call
                 // reserve 2 words
                 // move arguments into next frame
-                mobj proc = minim_cadr(src);
-                mobj es = minim_cddr(src);
+                mobj proc, es, stash_loc, label_loc, ret_label;
+                mobj env_offset, code_offset;
+                size_t argc;
+
+                proc = minim_cadr(src);
+                es = minim_cddr(src);
+                argc = list_length(es);
                 for (size_t i = 2; !minim_nullp(es); ++i) {
                     add_instr(instrs, Mlist3(load_sym, next_loc(i), minim_car(es)));
                     es = minim_cdr(es);
                 }
 
                 // stash environment and replace with closure environment
-                mobj stash_loc = cstate_gensym(cstate, tloc_pre);
-                mobj env_offset = mem_offset(proc, minim_closure_env_offset);
+                stash_loc = cstate_gensym(cstate, tloc_pre);
+                env_offset = mem_offset(proc, minim_closure_env_offset);
                 add_instr(instrs, Mlist3(load_sym, stash_loc, env_reg));
                 add_instr(instrs, Mlist3(load_sym, env_reg, env_offset));
 
                 // fill return address and previous frame position
-                mobj ret_label = cstate_gensym(cstate, label_pre);
-                mobj label_loc = cstate_gensym(cstate, tloc_pre);
+                ret_label = cstate_gensym(cstate, label_pre);
+                label_loc = cstate_gensym(cstate, tloc_pre);
                 add_instr(instrs, Mlist3(load_sym, label_loc, ret_label));
                 add_instr(instrs, Mlist3(load_sym, next_loc(0), label_loc));
                 add_instr(instrs, Mlist3(load_sym, next_loc(1), fp_reg));
 
+                // set function arity
+                add_instr(instrs, Mlist3(load_sym, argc_reg, Mfixnum(argc)));
+
                 // extract closure code location
-                mobj code_offset = mem_offset(proc, minim_closure_code_offset);
+                code_offset = mem_offset(proc, minim_closure_code_offset);
                 add_instr(instrs, Mlist3(load_sym, cres_reg, code_offset));
                 
                 // jump to new procedure
@@ -746,6 +786,8 @@ static mobj x86_cmp;
 static mobj x86_fp;
 static mobj x86_sp;
 static mobj x86_env;
+static mobj x86_argc;
+
 static mobj x86_carg0;
 static mobj x86_carg1;
 static mobj x86_carg2;
@@ -766,11 +808,23 @@ static void init_x86_compiler_globals() {
     x86_fp = intern("%rbp");
     x86_sp = intern("%rsp");
     x86_env = intern("%r9");
+    x86_argc = intern("%r14");
+
     x86_carg0 = intern("%rdi");
     x86_carg1 = intern("%rsi");
     x86_carg2 = intern("%rdx");
     x86_carg3 = intern("%rcx");
     x86_cres = intern("%rax");
+}
+
+static int reg_aliasp(mobj reg) {
+    return carg_formp(reg) ||
+            reg == cc_reg ||
+            reg == fp_reg ||
+            reg == sp_reg ||
+            reg == env_reg ||
+            reg == cres_reg ||
+            reg == argc_reg;
 }
 
 static mobj replace_carg(mobj carg) {
@@ -782,15 +836,6 @@ static mobj replace_carg(mobj carg) {
     else error1("replace_carg", "too many call arguments", carg);
 }
 
-static int reg_aliasp(mobj reg) {
-    return carg_formp(reg) ||
-            reg == cc_reg ||
-            reg == fp_reg ||
-            reg == sp_reg ||
-            reg == env_reg ||
-            reg == cres_reg;
-}
-
 static mobj replace_alias(mobj reg) {
     if (carg_formp(reg)) return replace_carg(reg);
     else if (reg == cc_reg) error1("replace_alias", "unimplemented", reg);
@@ -798,6 +843,7 @@ static mobj replace_alias(mobj reg) {
     else if (reg == sp_reg) error1("replace_alias", "unimplemented", reg);
     else if (reg == env_reg) return x86_env;
     else if (reg == cres_reg) return x86_cres;
+    else if (reg == argc_reg) return x86_argc;
     else error1("replace_alias", "unknown", reg);
 }
 
@@ -996,14 +1042,6 @@ static int labelp(mobj t) {
     return 1;
 }
 
-// static int x86_alloc_regp(mobj r) {
-//     return r == x86_carg0 ||
-//         r == x86_carg1 ||
-//         r == x86_carg2 ||
-//         r == x86_carg3 ||
-//         r == x86_cres;
-// }
-
 static int frame_locp(mobj loc) {
     return arg_formp(loc) || local_formp(loc) || next_formp(loc) || loc == size_sym;
 }
@@ -1012,11 +1050,13 @@ static mobj init_rstate() {
     mobj rstate = make_rstate();
     rstate_lasts(rstate) = minim_false;
     rstate_scope(rstate) = minim_null;
-    rstate_assigns(rstate) = Mlist5(Mcons(x86_carg0, minim_false),
-                                    Mcons(x86_carg1, minim_false),
-                                    Mcons(x86_carg2, minim_false),
-                                    Mcons(x86_carg3, minim_false),
-                                    Mcons(x86_cres, minim_false));
+    rstate_assigns(rstate) = Mcons(Mcons(x86_carg0, minim_false),
+                             Mcons(Mcons(x86_carg1, minim_false),
+                             Mcons(Mcons(x86_carg2, minim_false),
+                             Mcons(Mcons(x86_carg3, minim_false),
+                             Mcons(Mcons(x86_cres, minim_false),
+                             Mcons(Mcons(x86_argc, minim_false),
+                             minim_null))))));
     rstate_fsize(rstate) = Mfixnum(0);
     return rstate;
 }
@@ -1058,7 +1098,7 @@ static void rstate_set_lasts(mobj rs, mobj exprs) {
                 }
             } else if (tregp(src)) {
                 uses = update_uses(uses, src, expr);
-            } else if (minim_symbolp(src)) {
+            } else if (minim_symbolp(src) || minim_fixnump(src)) {
                 // do nothing
             } else {
                 error1("rstate_set_lasts", "unknown mov sequence", expr);
@@ -1331,6 +1371,10 @@ static void compile4_proc(mobj cstate, mobj fstate) {
     for_each(exprs,
         mobj expr = minim_car(exprs);
         mobj op = minim_car(expr);
+
+        write_object(Mport(stdout, 0x0), expr);
+        printf("\n");
+
         if (op == x86_mov) {
             mobj dst = minim_cadr(expr);
             mobj src = minim_car(minim_cddr(expr));
@@ -1397,6 +1441,15 @@ static void compile4_proc(mobj cstate, mobj fstate) {
                     }
                 } else if (minim_symbolp(dst)) {
                     // assigning to register
+                    rstate_reserve(rstate, dst);
+                }
+
+                add_instr(instrs, Mlist3(op, dst, src));
+            } else if (minim_fixnump(src)) {
+                // leave as-is
+                if (tregp(dst)) {
+                    dst = treg_assign_or_lookup(rstate, dst);
+                }  else if (minim_symbolp(dst)) {
                     rstate_reserve(rstate, dst);
                 }
 
@@ -1602,6 +1655,7 @@ static mobj x86_encode_reg(mobj reg) {
     else if (reg == x86_env) return Mfixnum(1);
     else if (reg == x86_sp) return Mfixnum(4);
     else if (reg == x86_fp) return Mfixnum(5);
+    else if (reg == x86_argc) return Mfixnum(6);
     else error1("x86_encode_reg", "unsupported", reg);
 }
 
@@ -1614,6 +1668,7 @@ static int x86_encode_x(mobj reg) {
     else if (reg == x86_env) return 1;
     else if (reg == x86_fp) return 0;
     else if (reg == x86_sp) return 0;
+    else if (reg == x86_argc) return 1;
     else error1("x86_encode_x", "unsupported", reg);
 }
 
@@ -1673,6 +1728,13 @@ static mobj x86_encode_mov(mobj dst, mobj src) {
     mobj rex = x86_encode_rex(1, x86_encode_x(src), 0, x86_encode_x(dst));
     mobj modrm = x86_encode_modrm(Mfixnum(3), x86_encode_reg(src), x86_encode_reg(dst));
     return Mlist3(rex, Mfixnum(0x89), modrm);
+}
+
+static mobj x86_encode_mov_imm(mobj dst, mobj src) {
+    mobj rex = x86_encode_rex(1, 0, 0, x86_encode_x(dst));
+    mobj modrm = x86_encode_modrm(Mfixnum(3), Mfixnum(0), x86_encode_reg(dst));
+    return Mcons(rex, Mcons(Mfixnum(0xC7), Mcons(modrm, x86_encode_imm32(src))));
+    
 }
 
 static mobj x86_encode_mov_imm64(mobj dst, mobj imm) {
@@ -1746,6 +1808,16 @@ static mobj x86_encode_cmp(mobj src1, mobj src2) {
     mobj rex = x86_encode_rex(1, x86_encode_x(src2), 0, x86_encode_x(src1));
     mobj modrm = x86_encode_modrm(Mfixnum(3), x86_encode_reg(src2), x86_encode_reg(src1));
     return Mlist3(rex, Mfixnum(0x39), modrm);
+}
+
+static mobj x86_encode_cmp_imm(mobj src, mobj imm) {
+    mobj rex = x86_encode_rex(1, 0, 0, x86_encode_x(src));
+    mobj op = x86_encode_io(Mfixnum(0xF8), x86_encode_reg(src));
+    if (minim_fixnum(imm) >= -128 && minim_fixnum(imm) <= 127) {
+        return Mlist4(rex, Mfixnum(0x83), op, x86_encode_imm8(imm));
+    } else {
+        error1("compile5_proc", "unsupported sub offset", imm);
+    }
 }
 
 static mobj x86_encode_cmp_rel(mobj src1, mobj src2, mobj imm) {
@@ -1889,17 +1961,20 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
                 add_instr(instrs, x86_encode_pc_rel(dst, src, lstate, expr));
                 offset = instr_bytes(instrs) + minim_fixnum(lstate_pos(lstate));
                 lstate_add_local(lstate, expr, Mfixnum(offset));
+            } else if (minim_consp(dst)) {
+                // (mov (mem+ <base> <offset>) <src>)
+                // => (mov [<base>+<offset>] <src>)
+                mobj base = minim_cadr(dst);
+                mobj offset = minim_car(minim_cddr(dst));
+                add_instr(instrs, x86_encode_store(base, src, offset));
+            } else if (minim_fixnump(src)) {
+                // (mov <dst> <imm>)
+                if (minim_consp(src))
+                    error1("compile5_proc", "move imm to mem unsupported", expr);
+                add_instr(instrs, x86_encode_mov_imm(dst, src));
             } else {
-                if (minim_consp(dst)) {
-                    // (mov (mem+ <base> <offset>) <src>)
-                    // => (mov [<base>+<offset>] <src>)
-                    mobj base = minim_cadr(dst);
-                    mobj offset = minim_car(minim_cddr(dst));
-                    add_instr(instrs, x86_encode_store(base, src, offset));
-                } else {
-                    // (mov <dst> <src>)
-                    add_instr(instrs, x86_encode_mov(dst, src));
-                }
+                // (mov <dst> <src>)
+                add_instr(instrs, x86_encode_mov(dst, src));
             }
         } else if (op == x86_add) {
             // add <dst> <src>
@@ -1929,6 +2004,8 @@ static void compile5_proc(mobj cstate, mobj lstate, mobj fstate) {
                 mobj base = minim_cadr(src2);
                 mobj offset = minim_car(minim_cddr(src2));
                 add_instr(instrs, x86_encode_cmp_rel(src1, base, offset));
+            } else if (minim_symbolp(src1) && minim_fixnump(src2)) {
+                add_instr(instrs, x86_encode_cmp_imm(src1, src2));
             } else {
                 error1("compile5_proc", "unknown cmp form", expr);
             }

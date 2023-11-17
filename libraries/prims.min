@@ -61,3 +61,4 @@
 
 (define write (#%foreign-procedure "write" (object) object))
 (define newline (#%foreign-procedure "newline" () object))
+(define flush-output (#%foreign-procedure "flush-output" () object))

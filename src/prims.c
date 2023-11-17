@@ -54,6 +54,17 @@ static mobj flush_proc() {
 }
 
 //
+//  Exceptions
+//
+
+static mobj arity_exn(size_t actual, size_t expected) {
+    fprintf(stderr, "arity mismatch\n");
+    fprintf(stderr, " expected: %ld\n", expected);
+    fprintf(stderr, " given: %ld\n", actual);
+    fatal_exit();
+}
+
+//
 //  Public API
 //
 
@@ -114,4 +125,6 @@ void prim_table_init() {
     register_prim("env_define", env_define);
     register_prim("env_get", env_get);
     register_prim("make_closure", Mclosure);
+
+    register_prim("arity_exn", arity_exn);
 }
