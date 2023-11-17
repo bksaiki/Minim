@@ -127,4 +127,5 @@ void prim_table_init() {
     register_prim("make_closure", Mclosure);
 
     register_prim("arity_exn", arity_exn);
+    register_prim("do_rest_arg", do_rest_arg);
 }

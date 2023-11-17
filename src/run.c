@@ -93,3 +93,21 @@ void call0(void *fn) {
     write_object(Mport(stdout, 0x0), env);
     fprintf(stdout, "\n");
 }
+
+mobj do_rest_arg(mobj next, size_t len) {
+    mobj *iter, arg, t;
+
+    if (len == 0)
+        return minim_null;
+
+    iter = &next;
+    arg = t = Mcons(*iter, minim_null);
+    --iter;
+    for (size_t i = 1; i < len; i++) {
+        minim_cdr(t) = Mcons(*iter, minim_null);
+        t = minim_cdr(t);
+        --iter;
+    }
+
+    return arg;
+}
