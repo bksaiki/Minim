@@ -94,20 +94,10 @@ void call0(void *fn) {
     fprintf(stdout, "\n");
 }
 
-mobj do_rest_arg(mobj next, size_t len) {
-    mobj *iter, arg, t;
-
-    if (len == 0)
-        return minim_null;
-
-    iter = &next;
-    arg = t = Mcons(*iter, minim_null);
-    --iter;
-    for (size_t i = 1; i < len; i++) {
-        minim_cdr(t) = Mcons(*iter, minim_null);
-        t = minim_cdr(t);
-        --iter;
-    }
-
-    return arg;
+mobj do_rest_arg() {
+    // fp is %rbp
+    // arity is %r14
+    // argc is %rsi
+    // nth argument is at fp-8(n+2)
+    error("do_rest_arg", "unimplemented");
 }

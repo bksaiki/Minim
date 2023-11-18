@@ -388,7 +388,7 @@ mobj env_define(mobj env, mobj k, mobj v);
 mobj env_set(mobj env, mobj k, mobj v);
 
 void call0(void *fn);
-mobj do_rest_arg(mobj next, size_t len);
+mobj do_rest_arg();
 
 //
 //  Globals
