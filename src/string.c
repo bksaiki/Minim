@@ -27,6 +27,16 @@ int mstrcmp(const mchar *s1, const mchar *s2) {
     return *s1 - *s2;
 }
 
+mobj char_to_integer(mobj x) {
+    return Mfixnum(minim_char(x));
+}
+
+mobj integer_to_char(mobj i) {
+    if (minim_negativep(i) || minim_fixnum(i) < 0x10FFFF)
+        error1("integer_to_char", "integer out of bounds", i);
+    return Mchar(minim_fixnum(i));
+}
+
 // largest 64-bit signed integers occupied 20 characters
 #define FIXNUM_STRLEN   21
 

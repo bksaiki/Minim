@@ -18,6 +18,10 @@ static size_t symhash(const mchar* s) {
 //  Primitives
 //
 
+static mobj booleanp_proc(mobj x) {
+    return minim_boolp(x) ? minim_true : minim_false;
+}
+
 static mobj nullp_proc(mobj x) {
     return minim_nullp(x) ? minim_true : minim_false;
 }
@@ -26,12 +30,32 @@ static mobj consp_proc(mobj x) {
     return minim_consp(x) ? minim_true : minim_false;
 }
 
+static mobj charp_proc(mobj x) {
+    return minim_charp(x) ? minim_true : minim_false;
+}
+
+static mobj stringp_proc(mobj x) {
+    return minim_stringp(x) ? minim_true : minim_false;
+}
+
+static mobj symbolp_proc(mobj x) {
+    return minim_symbolp(x) ? minim_true : minim_false;
+}
+
 static mobj fixnump_proc(mobj x) {
     return minim_fixnump(x) ? minim_true : minim_false;
 }
 
 static mobj vectorp_proc(mobj x) {
     return minim_vectorp(x) ? minim_true : minim_false;
+}
+
+static mobj procedurep_proc(mobj x) {
+    return minim_closurep(x) ? minim_true : minim_false;
+}
+
+static mobj not_proc(mobj x) {
+    return minim_not(x);
 }
 
 static mobj car_proc(mobj x) {
@@ -100,17 +124,20 @@ void register_prim(const char *name, void *fn) {
 }
 
 void prim_table_init() {
-    // pairs and lists
-    register_prim("null?", nullp_proc);
-    register_prim("cons?", consp_proc);
-    register_prim("cons", Mcons);
-    register_prim("car", car_proc);
-    register_prim("cdr", cdr_proc);
-    // vectors
-    register_prim("vector?", vectorp_proc);
-    register_prim("vector-ref", vector_ref);
-    register_prim("vector-set!", vector_set);
-    register_prim("list->vector", list_to_vector);
+    // booleans
+    register_prim("boolean?", booleanp_proc);
+    register_prim("not", not_proc);
+    // characters
+    register_prim("char?", charp_proc);
+    register_prim("char->integer", char_to_integer);
+    register_prim("integer->char", integer_to_char);
+    // symbols
+    register_prim("symbol?", symbolp_proc);
+    // strings
+    register_prim("string?", stringp_proc);
+    register_prim("string->symbol", string_to_symbol);
+    register_prim("symbol->string", symbol_to_string);
+    register_prim("string-append", string_append);
     // numbers
     register_prim("fx?", fixnump_proc);
     register_prim("fxneg", fix_neg);
@@ -125,6 +152,19 @@ void prim_table_init() {
     register_prim("fx>", fix_gt);
     register_prim("fx<=", fix_le);
     register_prim("fx>=", fix_ge);
+    // pairs and lists
+    register_prim("null?", nullp_proc);
+    register_prim("cons?", consp_proc);
+    register_prim("cons", Mcons);
+    register_prim("car", car_proc);
+    register_prim("cdr", cdr_proc);
+    // vectors
+    register_prim("vector?", vectorp_proc);
+    register_prim("vector-ref", vector_ref);
+    register_prim("vector-set!", vector_set);
+    register_prim("list->vector", list_to_vector);
+    // Procedure
+    register_prim("procedure?", procedurep_proc);
     // I/O
     register_prim("write", write_proc);
     register_prim("newline", newline_proc);

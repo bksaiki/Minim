@@ -1,3 +1,43 @@
+;; Booleans
+
+(define boolean? (#%foreign-procedure "boolean?" (object) object))
+(define not (#%foreign-procedure "not" (object) object))
+
+;; Characters
+
+(define char? (#%foreign-procedure "char?" (object) object))
+(define char->integer (#%foreign-procedure "char->integer" (object) object))
+(define integer->char (#%foreign-procedure "integer->char" (object) object))
+
+;; Symbols
+
+(define symbol? (#%foreign-procedure "symbol?" (object) object))
+
+;; Strings
+
+(define string? (#%foreign-procedure "string?" (object) object))
+(define symbol->string (#%foreign-procedure "symbol->string" (object) object))
+(define string->symbol (#%foreign-procedure "string->symbol" (object) object))
+(define $string-append (#%foreign-procedure "string-append" (object object) object))
+
+;; Numbers
+
+(define fixnum? (#%foreign-procedure "fx?" (object) object))
+(define number? fixnum?)
+(define integer? fixnum?)
+
+(define fxneg (#%foreign-procedure "fxneg" (object) object))
+(define fx+ (#%foreign-procedure "fx+" (object object) object))
+(define fx- (#%foreign-procedure "fx-" (object object) object))
+(define fx* (#%foreign-procedure "fx*" (object object) object))
+(define fx/ (#%foreign-procedure "fx/" (object object) object))
+
+(define fx= (#%foreign-procedure "fx=" (object object) object))
+(define fx< (#%foreign-procedure "fx<" (object object) object))
+(define fx> (#%foreign-procedure "fx>" (object object) object))
+(define fx<= (#%foreign-procedure "fx<=" (object object) object))
+(define fx>= (#%foreign-procedure "fx>=" (object object) object))
+
 ;; Pairs / Lists
 
 (define null? (#%foreign-procedure "null?" (object) object))
@@ -46,23 +86,9 @@
 (define vector-set! (#%foreign-procedure "vector-set!" (object object object) object))
 (define list->vector (#%foreign-procedure "list->vector" (object) object))
 
-;; Numbers
+;; Procedures
 
-(define fixnum? (#%foreign-procedure "fx?" (object) object))
-(define number? fixnum?)
-(define integer? fixnum?)
-
-(define fxneg (#%foreign-procedure "fxneg" (object) object))
-(define fx+ (#%foreign-procedure "fx+" (object object) object))
-(define fx- (#%foreign-procedure "fx-" (object object) object))
-(define fx* (#%foreign-procedure "fx*" (object object) object))
-(define fx/ (#%foreign-procedure "fx/" (object object) object))
-
-(define fx= (#%foreign-procedure "fx=" (object object) object))
-(define fx< (#%foreign-procedure "fx<" (object object) object))
-(define fx> (#%foreign-procedure "fx>" (object object) object))
-(define fx<= (#%foreign-procedure "fx<=" (object object) object))
-(define fx>= (#%foreign-procedure "fx>=" (object object) object))
+(define procedure? (#%foreign-procedure "procedure?" (object) object))
 
 ;; Ports
 

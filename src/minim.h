@@ -100,6 +100,7 @@ extern mobj minim_void;
 #define minim_voidp(o)          ((o) == minim_void)
 
 #define minim_boolp(o)          ((o) == minim_true || (o) == minim_false)
+#define minim_not(o)            ((o) == minim_false ? minim_true : minim_false)
 
 // Characters
 // +------------+
@@ -310,6 +311,9 @@ mobj fix_ge(mobj x, mobj y);
 #define ESC_CHAR        ((char) 0x1B)       // escape
 #define SP_CHAR         ((char) 0x20)       // space
 #define DEL_CHAR        ((char) 0x7F)       // delete
+
+mobj char_to_integer(mobj x);
+mobj integer_to_char(mobj i);
 
 //
 //  Strings
