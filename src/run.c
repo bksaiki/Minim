@@ -6,7 +6,6 @@
 
 #define STACK_SIZE  (1024 * 1024)
 
-static mobj stacks;
 static jmp_buf jbuf;
 
 static mobj env_get_entry(mobj env, mobj k) {
@@ -50,7 +49,7 @@ mobj env_set(mobj env, mobj k, mobj v) {
 }
 
 static mobj alloc_stack() {
-    void *page = alloc_page(STACK_SIZE);
+    void *page = GC_alloc(STACK_SIZE);
     if (page == NULL)
         error("alloc_stack", "failed to allocate stack");
     return (mobj) page;
@@ -69,9 +68,11 @@ static void enter_with(void *fn, void *frame, mobj env) {
 
     __asm__ (
         "movq %0, %%r9\n\t"
-        "movq %2, (%1)\n\t"
-        "movq %%rbp, -8(%1)\n\t"
-        "movq %1, %%rbp\n\t"
+        "movq %2, (%%rbp)\n\t"
+        "movq %%rbp, -8(%%rbp)\n\t"
+        // "movq %2, (%1)\n\t"
+        // "movq %%rbp, -8(%1)\n\t"
+        // "movq %1, %%rbp\n\t"
         "jmp *%3\n\t"
         :
         : "r" (env), "r" (frame), "r" (underflow_handler), "r" (fn)
@@ -80,12 +81,12 @@ static void enter_with(void *fn, void *frame, mobj env) {
 }
 
 void runtime_init() {
-    stacks = Mcons(alloc_stack(), minim_null);
+    M_glob.stacks = Mcons(alloc_stack(), minim_null);
 }
 
 void call0(void *fn) {
     mobj env = make_env();
-    mobj stack = minim_car(stacks);
+    mobj stack = minim_car(M_glob.stacks);
     if (setjmp(jbuf) == 0) {
         enter_with(fn, PTR_ADD(stack, STACK_SIZE - 16), env);
     }

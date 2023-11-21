@@ -44,6 +44,7 @@ static mobj add_sym;
 static mobj sub_sym;
 static mobj lookup_sym;
 static mobj apply_sym;
+static mobj tail_apply_sym;
 static mobj cmp_sym;
 static mobj push_frame_sym;
 static mobj pop_frame_sym;
@@ -61,7 +62,6 @@ static mobj ccall_sym;
 static mobj mem_sym;
 
 static mobj size_sym;
-
 static mobj cc_reg;
 static mobj env_reg;
 static mobj fp_reg;
@@ -69,37 +69,6 @@ static mobj sp_reg;
 static mobj argc_reg;
 static mobj carg_reg;
 static mobj cres_reg;
-
-#define reloc_formp(e)      syntax_formp(reloc_sym, e)
-#define literal_formp(e)    syntax_formp(literal_sym, e)
-#define closure_formp(e)    syntax_formp(closure_sym, e)
-#define code_formp(e)       syntax_formp(code_sym, e)
-#define foreign_formp(e)    syntax_formp(foreign_sym, e)
-#define carg_formp(e)       syntax_formp(carg_reg, e)
-#define arg_formp(e)        syntax_formp(arg_sym, e)
-#define local_formp(e)      syntax_formp(local_sym, e)
-#define next_formp(e)       syntax_formp(next_sym, e)
-
-#define lookup_formp(e)         syntax_formp(lookup_sym, e)
-#define add_formp(e)            syntax_formp(add_sym, e)
-#define sub_formp(e)            syntax_formp(sub_sym, e)
-#define cmp_formp(e)            syntax_formp(cmp_sym, e)
-#define push_frame_formp(e)     syntax_formp(push_frame_sym, e)
-#define pop_frame_formp(e)      syntax_formp(pop_frame_sym, e)
-#define apply_formp(e)          syntax_formp(apply_sym, e)
-#define label_formp(e)          syntax_formp(label_sym, e)
-#define branch_formp(e)         syntax_formp(branch_sym, e)
-#define bindb_formp(e)          syntax_formp(bindb_sym, e)
-#define bind_setb_formp(e)      syntax_formp(bind_setb_sym, e)
-#define ret_formp(e)            syntax_formp(ret_sym, e)
-#define stash_formp(e)          syntax_formp(stash_sym, e)
-#define unstash_formp(e)        syntax_formp(unstash_sym, e)
-
-#define load_formp(e)       syntax_formp(load_sym, e)
-#define ccall_formp(e)      syntax_formp(ccall_sym, e)
-#define mem_formp(e)        syntax_formp(mem_sym, e)
-
-#define make_reloc(i)       Mlist2(reloc_sym, i)
 
 static void init_compile_globals() {
     tloc_pre = intern("$t");
@@ -120,6 +89,7 @@ static void init_compile_globals() {
     sub_sym = intern("-");
     lookup_sym = intern("lookup");
     apply_sym = intern("apply");
+    tail_apply_sym = intern("tapply");
     cmp_sym = intern("cmp");
     push_frame_sym = intern("push-frame!");
     pop_frame_sym = intern("pop-frame!");
@@ -136,7 +106,6 @@ static void init_compile_globals() {
     mem_sym = intern("mem+");
 
     size_sym = intern("%size");
-
     cc_reg = intern("%cc");
     env_reg = intern("%env");
     argc_reg = intern("%argc");
@@ -147,6 +116,57 @@ static void init_compile_globals() {
 
     cstate_init = 1;
 }
+
+#define reloc_formp(e)      syntax_formp(reloc_sym, e)
+#define literal_formp(e)    syntax_formp(literal_sym, e)
+#define closure_formp(e)    syntax_formp(closure_sym, e)
+#define code_formp(e)       syntax_formp(code_sym, e)
+#define foreign_formp(e)    syntax_formp(foreign_sym, e)
+#define carg_formp(e)       syntax_formp(carg_reg, e)
+#define arg_formp(e)        syntax_formp(arg_sym, e)
+#define local_formp(e)      syntax_formp(local_sym, e)
+#define next_formp(e)       syntax_formp(next_sym, e)
+
+#define lookup_formp(e)         syntax_formp(lookup_sym, e)
+#define add_formp(e)            syntax_formp(add_sym, e)
+#define sub_formp(e)            syntax_formp(sub_sym, e)
+#define cmp_formp(e)            syntax_formp(cmp_sym, e)
+#define push_frame_formp(e)     syntax_formp(push_frame_sym, e)
+#define pop_frame_formp(e)      syntax_formp(pop_frame_sym, e)
+#define apply_formp(e)          syntax_formp(apply_sym, e)
+#define tapply_formp(e)         syntax_formp(tail_apply_sym, e)
+#define label_formp(e)          syntax_formp(label_sym, e)
+#define branch_formp(e)         syntax_formp(branch_sym, e)
+#define bindb_formp(e)          syntax_formp(bindb_sym, e)
+#define bind_setb_formp(e)      syntax_formp(bind_setb_sym, e)
+#define ret_formp(e)            syntax_formp(ret_sym, e)
+#define stash_formp(e)          syntax_formp(stash_sym, e)
+#define unstash_formp(e)        syntax_formp(unstash_sym, e)
+
+#define load_formp(e)           syntax_formp(load_sym, e)
+#define ccall_formp(e)          syntax_formp(ccall_sym, e)
+#define mem_formp(e)            syntax_formp(mem_sym, e)
+
+#define imake_reloc(i)          Mlist2(reloc_sym, i)
+#define imake_literal(o)        Mlist2(literal_sym, o)
+#define imake_foreign(id)       Mlist2(foreign_sym, id)
+#define imake_code(i)           Mlist2(code_sym, i)
+#define imake_closure(i)        Mlist2(closure_sym, i)
+#define imake_label(id)         Mlist2(label_sym, id)
+
+#define imake_add3(dst, src1, src2)     Mlist4(add_sym, dst, src1, src2)
+#define imake_add2(dst, src)            Mlist3(add_sym, dst, src)
+#define imake_sub3(dst, src1, src2)     Mlist4(sub_sym, dst, src1, src2)
+#define imake_sub2(dst, src)            Mlist3(sub_sym, dst, src)
+#define imake_set(dst, src)             Mlist3(setb_sym, dst, src)
+#define imake_bind(env, id, v)          Mlist4(bindb_sym, env, id, v)
+#define imake_bset(env, id, v)          Mlist4(bind_setb_sym, env, id, v)
+#define imake_load(dst, src)            Mlist3(load_sym, dst, src)
+#define imake_cmp(src1, src2)           Mlist3(cmp_sym, src1, src2)
+#define imake_branch(variant, tgt)      Mlist3(branch_sym, variant, tgt)
+#define imake_ccall(tgt, args)          Mcons(ccall_sym, Mcons(tgt, args))
+#define imake_apply(tgt, args)          Mcons(apply_sym, Mcons(tgt, args))
+#define imake_tapply(tgt, args)         Mcons(tail_apply_sym, Mcons(tgt, args))
 
 #define c_arg(i)            Mlist2(carg_reg, Mfixnum(i))
 #define arg_loc(i)          Mlist2(arg_sym, Mfixnum(i))
@@ -307,37 +327,35 @@ static mobj compile1_foreign(mobj cstate, mobj e) {
     // check arity
     argc = list_length(itypes);
     exn_label = cstate_gensym(cstate, label_pre);
-    fstate_add_asm(fstate, Mlist3(cmp_sym, argc_reg, Mfixnum(argc)));
-    fstate_add_asm(fstate, Mlist3(branch_sym, Mfixnum(branch_eq), exn_label));
+    fstate_add_asm(fstate, imake_cmp(argc_reg, Mfixnum(argc)));
+    fstate_add_asm(fstate, imake_branch(Mfixnum(branch_eq), exn_label));
 
     // handle arity exception
     exn = cstate_gensym(cstate, tloc_pre);
-    idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("arity_exn")));
-    fstate_add_asm(fstate, Mlist3(setb_sym, exn, Mlist2(reloc_sym, idx)));
-    fstate_add_asm(fstate, Mlist4(ccall_sym, exn, argc_reg, Mfixnum(argc)));
-    fstate_add_asm(fstate, Mlist2(label_sym, exn_label));
+    idx = cstate_add_reloc(cstate, imake_foreign(Mstring("arity_exn")));
+    fstate_add_asm(fstate, imake_set(exn, imake_reloc(idx)));
+    fstate_add_asm(fstate, imake_ccall(exn, Mlist2(argc_reg, Mfixnum(argc))));
+    fstate_add_asm(fstate, imake_label(exn_label));
 
     i = 0;
     args = minim_null;
     for (; !minim_nullp(itypes); itypes = minim_cdr(itypes)) {
         mobj loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, arg_loc(i)));
+        fstate_add_asm(fstate, imake_set(loc, arg_loc(i)));
         args = Mcons(loc, args);
         i++;
     }
 
     // call into C
-    idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, id));
-    fstate_add_asm(fstate, Mcons(ccall_sym,
-                           Mcons(Mlist2(reloc_sym, idx),
-                           list_reverse(args))));
+    idx = cstate_add_reloc(cstate, imake_foreign(id));
+    fstate_add_asm(fstate, imake_ccall(imake_reloc(idx), list_reverse(args)));
     fstate_add_asm(fstate, Mlist1(ret_sym));
 
     return fstate;
 }
 
 // Compiles an expression.
-static mobj compile1_expr(mobj cstate, mobj fstate, mobj e) {
+static mobj compile1_expr(mobj cstate, mobj fstate, mobj e, int tailp) {
     mobj loc;
 
 loop:
@@ -355,22 +373,22 @@ loop:
             mobj bind = minim_car(bindings);
             mobj ids = minim_car(bind);
             size_t vc = list_length(ids);
-            loc = compile1_expr(cstate, fstate, minim_cadr(bind));
+            loc = compile1_expr(cstate, fstate, minim_cadr(bind), 0);
             if (vc == 1) {
                 mobj lit = cstate_gensym(cstate, tloc_pre);
-                mobj idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_car(ids)));
-                fstate_add_asm(fstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-                fstate_add_asm(fstate, Mlist4(bindb_sym, tenv, lit, loc));
+                mobj idx = cstate_add_reloc(cstate, imake_literal(minim_car(ids)));
+                fstate_add_asm(fstate, imake_set(lit, imake_reloc(idx)));
+                fstate_add_asm(fstate, imake_bind(tenv, lit, loc));
             } else {
                 unimplemented_error("multiple values for let(rec)-values");
             }
         );
 
         // push frame
-        fstate_add_asm(fstate, Mlist3(setb_sym, env_reg, tenv));
+        fstate_add_asm(fstate, imake_set(env_reg, tenv));
 
         // compile body and pop frame
-        loc = compile1_expr(cstate, fstate, Mcons(begin_sym, minim_cddr(e)));
+        loc = compile1_expr(cstate, fstate, Mcons(begin_sym, minim_cddr(e)), tailp);
         fstate_add_asm(fstate, Mlist1(pop_frame_sym));
     } else if (letrec_values_formp(e)) {
         // letrec-values form
@@ -387,19 +405,19 @@ loop:
             mobj bind = minim_car(bindings);
             mobj ids = minim_car(bind);
             size_t vc = list_length(ids);
-            loc = compile1_expr(cstate, fstate, minim_cadr(bind));
+            loc = compile1_expr(cstate, fstate, minim_cadr(bind), 0);
             if (vc == 1) {
                 mobj lit = cstate_gensym(cstate, tloc_pre);
-                mobj idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_car(ids)));
-                fstate_add_asm(fstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-                fstate_add_asm(fstate, Mlist4(bindb_sym, env_reg, lit, loc));
+                mobj idx = cstate_add_reloc(cstate, imake_literal(minim_car(ids)));
+                fstate_add_asm(fstate, imake_set(lit, imake_reloc(idx)));
+                fstate_add_asm(fstate, imake_bind(env_reg, lit, loc));
             } else {
                 unimplemented_error("multiple values for let(rec)-values");
             }
         );
 
         // compile body and pop frame
-        loc = compile1_expr(cstate, fstate, Mcons(begin_sym, minim_cddr(e)));
+        loc = compile1_expr(cstate, fstate, Mcons(begin_sym, minim_cddr(e)), tailp);
         fstate_add_asm(fstate, Mlist1(pop_frame_sym));
     } else if (lambda_formp(e)) {
         // lambda form
@@ -420,15 +438,15 @@ loop:
         // procedure: check arity
         argc = list_length(req);
         exn_label = cstate_gensym(cstate, label_pre);
-        fstate_add_asm(f2state, Mlist3(cmp_sym, argc_reg, Mfixnum(argc)));
-        fstate_add_asm(f2state, Mlist3(branch_sym, Mfixnum(branch_variant), exn_label));
+        fstate_add_asm(f2state, imake_cmp(argc_reg, Mfixnum(argc)));
+        fstate_add_asm(f2state, imake_branch(Mfixnum(branch_variant), exn_label));
 
         // procedure: handle arity exception
         exn = cstate_gensym(cstate, tloc_pre);
-        idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("arity_exn")));
-        fstate_add_asm(f2state, Mlist3(setb_sym, exn, Mlist2(reloc_sym, idx)));
-        fstate_add_asm(f2state, Mlist4(ccall_sym, exn, argc_reg, Mfixnum(argc)));
-        fstate_add_asm(f2state, Mlist2(label_sym, exn_label));
+        idx = cstate_add_reloc(cstate, imake_foreign(Mstring("arity_exn")));
+        fstate_add_asm(f2state, imake_set(exn, imake_reloc(idx)));
+        fstate_add_asm(f2state, imake_ccall(exn, Mlist2(argc_reg, Mfixnum(argc))));
+        fstate_add_asm(f2state, imake_label(exn_label));
 
         // procedure: create rest argument
         if (!minim_falsep(rest)) {
@@ -446,17 +464,17 @@ loop:
 
         // procedure: get function pointer for binding
         bind = cstate_gensym(cstate, tloc_pre);
-        idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("env_define")));
-        fstate_add_asm(f2state, Mlist3(setb_sym, bind, Mlist2(reloc_sym, idx)));
+        idx = cstate_add_reloc(cstate, imake_foreign(Mstring("env_define")));
+        fstate_add_asm(f2state, imake_set(bind, imake_reloc(idx)));
 
         // procedure: bind arguments in order
         i = 0;
         req = fstate_args(f2state);
         for_each(req,
             lit = cstate_gensym(cstate, tloc_pre);
-            idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_car(req)));
-            fstate_add_asm(f2state, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-            fstate_add_asm(f2state, Mlist5(ccall_sym, bind, env_reg, lit, arg_loc(i)));
+            idx = cstate_add_reloc(cstate, imake_literal(minim_car(req)));
+            fstate_add_asm(f2state, imake_set(lit, imake_reloc(idx)));
+            fstate_add_asm(f2state, imake_ccall(bind, Mlist3(env_reg, lit, arg_loc(i))));
             ++i;
         );
 
@@ -470,7 +488,7 @@ loop:
 
         // procedure: compile body
         body = Mcons(begin_sym, minim_cddr(e));
-        compile1_expr(cstate, f2state, body);
+        compile1_expr(cstate, f2state, body, 1);
 
         // procedure: return
         fstate_add_asm(f2state, Mlist1(pop_frame_sym));
@@ -479,13 +497,13 @@ loop:
         // register procedure
         i = cstate_add_proc(cstate, f2state);
         loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(closure_sym, Mfixnum(i))));
+        fstate_add_asm(fstate, imake_set(loc, imake_closure(Mfixnum(i))));
     } else if (begin_formp(e)) {
         // begin form (at least 2 clauses)
         // execute statements and return the last one
         e = minim_cdr(e);
         for (; !minim_nullp(minim_cdr(e)); e = minim_cdr(e))
-            compile1_expr(cstate, fstate, minim_car(e));
+            compile1_expr(cstate, fstate, minim_car(e), 0);
         e = minim_car(e);
         goto loop;
     } else if (if_formp(e)) {
@@ -497,70 +515,77 @@ loop:
         lit = cstate_gensym(cstate, tloc_pre);
 
         // compile condition
-        cond = compile1_expr(cstate, fstate, minim_cadr(e));
-        idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_false));
-        fstate_add_asm(fstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-        fstate_add_asm(fstate, Mlist3(cmp_sym, cond, lit));
-        fstate_add_asm(fstate, Mlist3(branch_sym, Mfixnum(branch_eq), liff));
+        cond = compile1_expr(cstate, fstate, minim_cadr(e), 0);
+        idx = cstate_add_reloc(cstate, imake_literal(minim_false));
+        fstate_add_asm(fstate, imake_set(lit, imake_reloc(idx)));
+        fstate_add_asm(fstate, imake_cmp(cond, lit));
+        fstate_add_asm(fstate, imake_branch(Mfixnum(branch_eq), liff));
     
         // compile if-true branch
-        ift = compile1_expr(cstate, fstate, minim_car(minim_cddr(e)));
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, ift));
-        fstate_add_asm(fstate, Mlist3(branch_sym, Mfixnum(branch_uncond), lend));
+        ift = compile1_expr(cstate, fstate, minim_car(minim_cddr(e)), tailp);
+        fstate_add_asm(fstate, imake_set(loc, ift));
+        fstate_add_asm(fstate, imake_branch(Mfixnum(branch_uncond), lend));
 
         // compile if-false branch
-        fstate_add_asm(fstate, Mlist2(label_sym, liff));
-        iff = compile1_expr(cstate, fstate, minim_cadr(minim_cddr(e)));
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, iff));
+        fstate_add_asm(fstate, imake_label(liff));
+        iff = compile1_expr(cstate, fstate, minim_cadr(minim_cddr(e)), tailp);
+        fstate_add_asm(fstate, imake_set(loc, iff));
 
-        fstate_add_asm(fstate, Mlist2(label_sym, lend));
+        // exit
+        fstate_add_asm(fstate, imake_label(lend));
     } else if (setb_formp(e)) {
         // set! form
         mobj id, lit, idx;
         id = minim_cadr(e);
-        loc = compile1_expr(cstate, fstate, minim_car(minim_cddr(e)));
+        loc = compile1_expr(cstate, fstate, minim_car(minim_cddr(e)), 0);
         lit = cstate_gensym(cstate, tloc_pre);
-        idx = cstate_add_reloc(cstate, Mlist2(literal_sym, id));
-        fstate_add_asm(fstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-        fstate_add_asm(fstate, Mlist4(bind_setb_sym, env_reg, lit, loc));
+        idx = cstate_add_reloc(cstate, imake_literal(id));
+        fstate_add_asm(fstate, imake_set(lit, imake_reloc(idx)));
+        fstate_add_asm(fstate, imake_bset(env_reg, lit, loc));
     } else if (quote_formp(e)) {
         // quote form
-        mobj idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_cadr(e)));
+        mobj idx = cstate_add_reloc(cstate, imake_literal(minim_cadr(e)));
         loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(reloc_sym, idx)));
+        fstate_add_asm(fstate, imake_set(loc, imake_reloc(idx)));
     } else if (foreign_proc_formp(e)) {
         // foreign procedure
         mobj f2state = compile1_foreign(cstate, e);
         size_t idx = cstate_add_proc(cstate, f2state);
         loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(closure_sym, Mfixnum(idx))));
+        fstate_add_asm(fstate, imake_set(loc, imake_closure(Mfixnum(idx))));
     } else if (minim_consp(e)) {
         // application
         mobj op, args, instr;
         args = minim_null;
-        op = compile1_expr(cstate, fstate, minim_car(e));
+        op = compile1_expr(cstate, fstate, minim_car(e), 0);
         for (e = minim_cdr(e); !minim_nullp(e); e = minim_cdr(e))
-            args = Mcons(compile1_expr(cstate, fstate, minim_car(e)), args);
+            args = Mcons(compile1_expr(cstate, fstate, minim_car(e), 0), args);
 
-        instr = Mcons(apply_sym, Mcons(op, list_reverse(args)));
         loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, instr));
+        if (tailp) {
+            mobj idx = cstate_add_reloc(cstate, imake_literal(minim_void));
+            fstate_add_asm(fstate, imake_tapply(op, list_reverse(args)));
+            fstate_add_asm(fstate, imake_set(loc, imake_reloc(idx)));   // compiler requires result
+        } else {
+            instr = imake_apply(op, list_reverse(args));
+            fstate_add_asm(fstate, imake_set(loc, instr));
+        }
     } else if (minim_nullp(e)) {
         // illegal
         error1("compile1_expr", "empty application", e);
     } else if (minim_symbolp(e)) {
         // identifier
         mobj lit = cstate_gensym(cstate, tloc_pre);
-        mobj idx = cstate_add_reloc(cstate, Mlist2(literal_sym, e));
+        mobj idx = cstate_add_reloc(cstate, imake_literal(e));
         loc = cstate_gensym(cstate, tloc_pre);
-        fstate_add_asm(fstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(lookup_sym, lit)));
+        fstate_add_asm(fstate, imake_set(lit, imake_reloc(idx)));
+        fstate_add_asm(fstate, imake_set(loc, Mlist2(lookup_sym, lit)));
     } else if (literalp(e)) {
         // literals
         mobj idx;
         loc = cstate_gensym(cstate, tloc_pre);
-        idx = cstate_add_reloc(cstate, Mlist2(literal_sym, e));
-        fstate_add_asm(fstate, Mlist3(setb_sym, loc, Mlist2(reloc_sym, idx)));
+        idx = cstate_add_reloc(cstate, imake_literal(e));
+        fstate_add_asm(fstate, imake_set(loc, imake_reloc(idx)));
     } else {
         error1("compile1_expr", "attempting to compile garbage", e);
     }
@@ -581,15 +606,15 @@ loop:
         // define-values form
         ids = minim_cadr(e);
         vc = list_length(ids);
-        loc = compile1_expr(cstate, lstate, minim_car(minim_cddr(e)));
+        loc = compile1_expr(cstate, lstate, minim_car(minim_cddr(e)), 0);
         if (vc > 1) {
             unimplemented_error("multiple values for define-values");
         } else if (vc == 1) {
             // bind the evaluation
             lit = cstate_gensym(cstate, tloc_pre);
-            idx = cstate_add_reloc(cstate, Mlist2(literal_sym, minim_car(ids)));
-            fstate_add_asm(lstate, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-            fstate_add_asm(lstate, Mlist4(bindb_sym, env_reg, lit, loc));
+            idx = cstate_add_reloc(cstate, imake_literal(minim_car(ids)));
+            fstate_add_asm(lstate, imake_set(lit, imake_reloc(idx)));
+            fstate_add_asm(lstate, imake_bind(env_reg, lit, loc));
         } // else (vc == 0) {
         // evaluate without binding, as in, do nothing
         // }
@@ -598,12 +623,12 @@ loop:
         // execute statements and return the last one
         e = minim_cdr(e);
         for (; !minim_nullp(minim_cdr(e)); e = minim_cdr(e))
-            compile1_expr(cstate, lstate, minim_car(e));
+            compile1_expr(cstate, lstate, minim_car(e), 0);
         e = minim_car(e);
         goto loop;
     } else {
         // expression
-        loc = compile1_expr(cstate, lstate, e);
+        loc = compile1_expr(cstate, lstate, e, 0);
         fstate_add_asm(lstate, Mlist2(push_valueb_sym, loc));
     }
 }
@@ -649,16 +674,16 @@ static void compile2_proc(mobj cstate, mobj fstate) {
             mobj src = minim_car(minim_cddr(expr));
             if (minim_symbolp(src)) {
                 // (set! <loc> <src>)
-                add_instr(instrs, Mcons(load_sym, minim_cdr(expr)));
+                add_instr(instrs, imake_load(dst, src));
             } else if (lookup_formp(src)) {
                 // (set! <loc> (lookup _)) =>
                 //   (c-call env_get %env <get>)   // foreign call
                 //   (load <loc> %Cres)
                 mobj loc = cstate_gensym(cstate, tloc_pre);
-                mobj idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("env_get")));
-                add_instr(instrs, Mlist3(load_sym, loc, Mlist2(reloc_sym, idx)));
-                add_instr(instrs, Mlist4(ccall_sym, loc, env_reg, minim_cadr(src)));
-                add_instr(instrs, Mlist3(load_sym, dst, cres_reg));
+                mobj idx = cstate_add_reloc(cstate, imake_foreign(Mstring("env_get")));
+                add_instr(instrs, imake_load(loc, imake_reloc(idx)));
+                add_instr(instrs, imake_ccall(loc, Mlist2(env_reg, minim_cadr(src))));
+                add_instr(instrs, imake_load(dst, cres_reg));
             }  else if (apply_formp(src)) {
                 // (set! _ ($apply <closure> <args> ...)) =>                
                 // prepare the stack for a call
@@ -666,48 +691,48 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 // move arguments into next frame
                 mobj proc, es, stash_loc, label_loc, ret_label;
                 mobj env_offset, code_offset;
-                size_t argc;
+                size_t argc, i;
 
                 proc = minim_cadr(src);
                 es = minim_cddr(src);
                 argc = list_length(es);
-                for (size_t i = 2; !minim_nullp(es); ++i) {
-                    add_instr(instrs, Mlist3(load_sym, next_loc(i), minim_car(es)));
+                for (i = 2; !minim_nullp(es); ++i) {
+                    add_instr(instrs, imake_load(next_loc(i), minim_car(es)));
                     es = minim_cdr(es);
                 }
 
                 // stash environment and replace with closure environment
                 stash_loc = cstate_gensym(cstate, tloc_pre);
                 env_offset = mem_offset(proc, minim_closure_env_offset);
-                add_instr(instrs, Mlist3(load_sym, stash_loc, env_reg));
-                add_instr(instrs, Mlist3(load_sym, env_reg, env_offset));
+                add_instr(instrs, imake_load(stash_loc, env_reg));
+                add_instr(instrs, imake_load(env_reg, env_offset));
 
                 // fill return address and previous frame position
                 ret_label = cstate_gensym(cstate, label_pre);
                 label_loc = cstate_gensym(cstate, tloc_pre);
-                add_instr(instrs, Mlist3(load_sym, label_loc, ret_label));
-                add_instr(instrs, Mlist3(load_sym, next_loc(0), label_loc));
-                add_instr(instrs, Mlist3(load_sym, next_loc(1), fp_reg));
+                add_instr(instrs, imake_load(label_loc, ret_label));
+                add_instr(instrs, imake_load(next_loc(0), label_loc));
+                add_instr(instrs, imake_load(next_loc(1), fp_reg));
 
                 // set function arity
-                add_instr(instrs, Mlist3(load_sym, argc_reg, Mfixnum(argc)));
+                add_instr(instrs, imake_load(argc_reg, Mfixnum(argc)));
 
                 // extract closure code location
                 code_offset = mem_offset(proc, minim_closure_code_offset);
-                add_instr(instrs, Mlist3(load_sym, cres_reg, code_offset));
+                add_instr(instrs, imake_load(cres_reg, code_offset));
                 
                 // jump to new procedure
                 add_instr(instrs, Mlist1(stash_sym));
-                add_instr(instrs, Mlist4(sub_sym, fp_reg, fp_reg, size_sym));
+                add_instr(instrs, imake_sub3(fp_reg, fp_reg, size_sym));
                 add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), cres_reg));                
 
                 // cleanup
-                add_instr(instrs, Mlist2(label_sym, ret_label));
+                add_instr(instrs, imake_label(ret_label));
                 // callee cleans up
                 // add_instr(instrs, Mlist4(add_sym, fp_reg, fp_reg, size_sym));
                 add_instr(instrs, Mlist1(unstash_sym));
-                add_instr(instrs, Mlist3(load_sym, dst, cres_reg));
-                add_instr(instrs, Mlist3(load_sym, env_reg, stash_loc));
+                add_instr(instrs, imake_load(dst, cres_reg));
+                add_instr(instrs, imake_load(env_reg, stash_loc));
             } else if (closure_formp(src)) {
                 // (set! _ ($closure <idx>)) =>
                 //   (load <tmp> ($code <idx>))
@@ -715,14 +740,14 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 //   (load <loc> %Cres)
                 mobj loc = cstate_gensym(cstate, tloc_pre);
                 mobj loc2 = cstate_gensym(cstate, tloc_pre);
-                mobj idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("make_closure")));
-                add_instr(instrs, Mlist3(load_sym, loc, Mlist2(code_sym, minim_cadr(src))));
-                add_instr(instrs, Mlist3(load_sym, loc2, Mlist2(reloc_sym, idx)));
-                add_instr(instrs, Mlist4(ccall_sym, loc2, env_reg, loc));
-                add_instr(instrs, Mlist3(load_sym, dst, cres_reg));
+                mobj idx = cstate_add_reloc(cstate, imake_foreign(Mstring("make_closure")));
+                add_instr(instrs, imake_load(loc, imake_code(minim_cadr(src))));
+                add_instr(instrs, imake_load(loc2, imake_reloc(idx)));
+                add_instr(instrs, imake_ccall(loc2, Mlist2(env_reg, loc)));
+                add_instr(instrs, imake_load(dst, cres_reg));
             } else if (minim_fixnump(src) || reloc_formp(src) || arg_formp(src)) {
                 // (set! _ (<type> _)) => "as-is"
-                add_instr(instrs, Mcons(load_sym, minim_cdr(expr))); 
+                add_instr(instrs, imake_load(dst, src));
             } else {
                 error1("compile2_proc", "unknown set! sequence", expr);
             }
@@ -737,17 +762,54 @@ static void compile2_proc(mobj cstate, mobj fstate) {
             variant = bindb_formp(expr) ? Mstring("env_define") : Mstring("env_set");
 
             loc = cstate_gensym(cstate, tloc_pre);
-            idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, variant));
-            add_instr(instrs, Mlist3(load_sym, loc, Mlist2(reloc_sym, idx)));
-            add_instr(instrs, Mlist5(ccall_sym, loc, env, name, val));
+            idx = cstate_add_reloc(cstate, imake_foreign(variant));
+            add_instr(instrs, imake_load(loc, imake_reloc(idx)));
+            add_instr(instrs, imake_ccall(loc, Mlist3(env, name, val)));
+        } else if (tapply_formp(expr)) {
+            // ($tapply <closure> <args> ...) =>                
+            // prepare the stack for a _tail_ call
+            // move arguments into _this_ frame
+            mobj proc, es, env_offset, code_offset;
+            size_t i, argc;
+            
+            // temporarily store the register in the next frame
+            proc = minim_cadr(expr);
+            es = minim_cddr(expr);
+            argc = list_length(es);
+            for (i = 0; !minim_nullp(es); ++i) {
+                add_instr(instrs, imake_load(next_loc(i), minim_car(es)));
+                es = minim_cdr(es);
+            }
+
+            // use closure environment (no need to stash since already stashed)
+            // stash environment and replace with closure environment
+            env_offset = mem_offset(proc, minim_closure_env_offset);
+            add_instr(instrs, imake_load(env_reg, env_offset));
+
+            // set function arity
+            add_instr(instrs, imake_load(argc_reg, Mfixnum(argc)));
+
+            // extract closure code location
+            code_offset = mem_offset(proc, minim_closure_code_offset);
+            add_instr(instrs, imake_load(cres_reg, code_offset));
+
+            // move arguments into this frame
+            for (i = 0; i < argc; ++i) {
+                add_instr(instrs, imake_load(c_arg(0), next_loc(i)));
+                add_instr(instrs, imake_load(arg_loc(i), c_arg(0)));
+            }
+
+            // jump to new procedure
+            // no need to update frame info or cleanup
+            add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), cres_reg));
         } else if (ret_formp(expr)) {
             // (ret) =>
             //   (load <tmp> (mem+ %fp 0))
             //   (load <tmp> (mem+ %fp (- 8)))
             //   (jmp <tmp>)
-            add_instr(instrs, Mlist3(load_sym, c_arg(0), mem_offset(fp_reg, 0)));
-            add_instr(instrs, Mlist3(load_sym, fp_reg, mem_offset(fp_reg, -8)));
-            add_instr(instrs, Mlist3(branch_sym, Mfixnum(branch_reg), c_arg(0)));
+            add_instr(instrs, imake_load(c_arg(0), mem_offset(fp_reg, 0)));
+            add_instr(instrs, imake_load(fp_reg, mem_offset(fp_reg, -8)));
+            add_instr(instrs, imake_branch(Mfixnum(branch_reg), c_arg(0)));
         } else if (push_frame_formp(expr)) {
             // (push-frame! <dst>) =>
             //   <arity check>
@@ -761,10 +823,10 @@ static void compile2_proc(mobj cstate, mobj fstate) {
 
             // create new frame
             ext = cstate_gensym(cstate, tloc_pre);
-            idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("env_extend")));
-            add_instr(instrs, Mlist3(load_sym, ext, Mlist2(reloc_sym, idx)));
-            add_instr(instrs, Mlist3(ccall_sym, ext, env_reg));
-            add_instr(instrs, Mlist3(load_sym, minim_cadr(expr), cres_reg));
+            idx = cstate_add_reloc(cstate, imake_foreign(Mstring("env_extend")));
+            add_instr(instrs, imake_load(ext, imake_reloc(idx)));
+            add_instr(instrs, imake_ccall(ext, Mlist1(env_reg)));
+            add_instr(instrs, imake_load(minim_cadr(expr), cres_reg));
         } else if (pop_frame_formp(expr)) {
             // (pop-frame!) =>
             //   <load previous pointer>
@@ -773,7 +835,7 @@ static void compile2_proc(mobj cstate, mobj fstate) {
                 error1("compile2_proc", "no more frames to pop", expr);
 
             frames = minim_cdr(frames);
-            add_instr(instrs, Mlist3(load_sym, env_reg, mem_offset(env_reg, minim_cdr_offset)));
+            add_instr(instrs, imake_load(env_reg, mem_offset(env_reg, minim_cdr_offset)));
         } else if (cmp_formp(expr) ||
                     ccall_formp(expr) ||
                     label_formp(expr) ||
@@ -1111,7 +1173,10 @@ static void rstate_set_lasts(mobj rs, mobj exprs) {
                     src = minim_cadr(src);
                     if (tregp(src))
                         uses = update_uses(uses, src, expr);
-                } else if (variant == code_sym || variant == reloc_sym || variant == arg_sym) {
+                } else if (variant == code_sym ||
+                            variant == reloc_sym ||
+                            variant == arg_sym ||
+                            variant == next_sym) {
                     // do nothing
                 } else {
                     error1("rstate_set_lasts", "unknown mov sequence", expr);
@@ -1187,16 +1252,13 @@ static mobj treg_assign_local(mobj rs, mobj treg) {
             }
         );
 
-        if (!found) {
-            e = Mlist2(local_sym, Mfixnum(i));
-            rstate_scope(rs) = Mcons(Mcons(treg, e), rstate_scope(rs));
-            return e;
-        }
+        if (!found)
+            break;
     }
 
     e = Mlist2(local_sym, Mfixnum(i));
     rstate_scope(rs) = Mcons(Mcons(treg, e), rstate_scope(rs));
-    minim_fixnum(rstate_fsize(rs))++;
+    if (found) minim_fixnum(rstate_fsize(rs))++;
     return e;
 }
 
@@ -1245,8 +1307,9 @@ static void rstate_prune_lasts(mobj rs, mobj e) {
 
     for_each(s,
         if (minim_symbolp(minim_caar(s))) {
-            if (last_lookup(rs, minim_caar(s)) == e)
+            if (last_lookup(rs, minim_caar(s)) == e) {
                 continue;
+            }
         }
 
         ns = Mcons(minim_car(s), ns);
@@ -1361,7 +1424,10 @@ static void compile4_proc(mobj cstate, mobj fstate) {
             if (minim_consp(src)) {
                 // (mov <dst> (<variant> ...))
                 mobj variant = minim_car(src);
-                if (variant == reloc_sym || variant == code_sym || variant == arg_sym) {
+                if (variant == reloc_sym ||
+                    variant == code_sym ||
+                    variant == arg_sym ||
+                    variant == next_sym) {
                     if (tregp(dst)) {
                         add_instr(instrs, Mlist3(x86_mov, x86_cres, src));
                         dst = treg_assign_or_lookup(rstate, dst);
@@ -2149,15 +2215,15 @@ mobj compile_module(mobj name, mobj es) {
     procs = cstate_procs(cstate);
     for_each(procs, compile3_proc(cstate, minim_car(procs)));
 
-    write_object(Mport(stdout, 0x0), cstate);
-    printf("\n");
+    // write_object(Mport(stdout, 0x0), cstate);
+    // printf("\n");
 
     // phase 4: register allocation
     procs = cstate_procs(cstate);
     for_each(procs, compile4_proc(cstate, minim_car(procs)));
 
-    write_object(Mport(stdout, 0x0), cstate);
-    printf("\n");
+    // write_object(Mport(stdout, 0x0), cstate);
+    // printf("\n");
 
     return cstate;
 }

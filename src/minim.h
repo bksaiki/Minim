@@ -437,6 +437,8 @@ extern struct _M_globals {
     size_t oblist_count;
     // primitive table
     mobj primlist;
+    // stack segments
+    mobj stacks;
 } M_glob;
 
 #define get_thread()        (M_glob.thread)

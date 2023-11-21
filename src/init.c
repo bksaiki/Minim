@@ -24,16 +24,12 @@ void minim_init() {
     minim_type(minim_void) = MINIM_OBJ_SPECIAL;
     
     // initialize globals
+    GC_register_root(&M_glob);
     M_glob.null_string = Mstring("");
-    GC_register_root(M_glob.null_string);
     M_glob.null_vector = Mvector(0, NULL);
-    GC_register_root(M_glob.null_vector);
     M_glob.thread = GC_alloc(sizeof(mthread));
-    GC_register_root(M_glob.thread);
-    intern_table_init();
-    GC_register_root(M_glob.oblist);
     M_glob.primlist = Mvector(PRIM_TABLE_SIZE, minim_null);
-    GC_register_root(M_glob.primlist);
+    intern_table_init();
 
     // initialize thread
     th_input_port(M_glob.thread) = Mport(stdin, PORT_FLAG_READ | PORT_FLAG_OPEN);

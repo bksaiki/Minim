@@ -27,8 +27,7 @@ char* get_current_dir() {
     return _get_current_dir();
 }
 
-void *alloc_page(size_t size)
-{
+void *alloc_page(size_t size) {
     void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (ptr == ((void*) -1)) {
         perror("mmap() failed to allocate a page of memory");
@@ -38,8 +37,7 @@ void *alloc_page(size_t size)
     return ptr;
 }
 
-int make_page_executable(void* page, size_t size)
-{
+int make_page_executable(void* page, size_t size) {
     if (mprotect(page, size, PROT_READ | PROT_EXEC) == -1) {
         perror("mprotect() failed to set page to executable");
         return -1;

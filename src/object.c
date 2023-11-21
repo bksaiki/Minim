@@ -79,7 +79,7 @@ mobj Mclosure(mobj env, mobj code) {
 
 static void gc_port_dtor(void *ptr, void *data) {
     mobj o = (mobj) ptr;
-    if (minim_port_openp(o)) {
+    if (minim_port_openp(o) && minim_port(o) != stdout && minim_port(o) != stdin) {
         fclose(minim_port(o));
     }
 }
