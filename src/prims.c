@@ -30,6 +30,10 @@ static mobj fixnump_proc(mobj x) {
     return minim_fixnump(x) ? minim_true : minim_false;
 }
 
+static mobj vectorp_proc(mobj x) {
+    return minim_vectorp(x) ? minim_true : minim_false;
+}
+
 static mobj car_proc(mobj x) {
     return minim_car(x);
 }
@@ -96,12 +100,18 @@ void register_prim(const char *name, void *fn) {
 }
 
 void prim_table_init() {
+    // pairs and lists
     register_prim("null?", nullp_proc);
     register_prim("cons?", consp_proc);
     register_prim("cons", Mcons);
     register_prim("car", car_proc);
     register_prim("cdr", cdr_proc);
-
+    // vectors
+    register_prim("vector?", vectorp_proc);
+    register_prim("vector-ref", vector_ref);
+    register_prim("vector-set!", vector_set);
+    register_prim("list->vector", list_to_vector);
+    // numbers
     register_prim("fx?", fixnump_proc);
     register_prim("fxneg", fix_neg);
     register_prim("fx+", fix_add);
@@ -115,17 +125,17 @@ void prim_table_init() {
     register_prim("fx>", fix_gt);
     register_prim("fx<=", fix_le);
     register_prim("fx>=", fix_ge);
-
+    // I/O
     register_prim("write", write_proc);
     register_prim("newline", newline_proc);
     register_prim("flush-output", flush_proc);
-
+    // environments
     register_prim("env_extend", env_extend);
     register_prim("env_set", env_set);
     register_prim("env_define", env_define);
     register_prim("env_get", env_get);
     register_prim("make_closure", Mclosure);
-
+    // runtime utilities
     register_prim("arity_exn", arity_exn);
     register_prim("do_rest_arg", do_rest_arg);
 }

@@ -19,6 +19,7 @@
 #if defined (__GNUC__)
 #define MINIM_GCC     1
 #define NORETURN    __attribute__ ((noreturn))
+#define NOINLINE    __attribute__ ((noinline))
 #else
 #error "compiler not supported"
 #endif
@@ -273,6 +274,8 @@ mobj list_assq(mobj k, mobj l);
 //  Vectors
 //
 
+mobj vector_ref(mobj v, mobj i);
+mobj vector_set(mobj v, mobj i, mobj o);
 mobj list_to_vector(mobj o);
 
 //

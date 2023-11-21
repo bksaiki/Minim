@@ -59,26 +59,40 @@ static void underflow_handler() {
     longjmp(jbuf, 1);
 }
 
-static void enter_with(void *fn, void *frame, mobj env) {
+static void NOINLINE enter_with(void *fn, mobj env) {
     // stash all callee-preserved registers
     // move `env` to `%r9`
-    // set [%rbp] to frame
     // set [%rbp] to `underflow_handler`
     // set [%rbp-8] to `%rbp`
-
     __asm__ (
         "movq %0, %%r9\n\t"
-        "movq %2, (%%rbp)\n\t"
-        "movq %%rbp, -8(%%rbp)\n\t"
-        // "movq %2, (%1)\n\t"
-        // "movq %%rbp, -8(%1)\n\t"
-        // "movq %1, %%rbp\n\t"
-        "jmp *%3\n\t"
+        "movq %1, (%%rsp)\n\t"
+        "movq %%rbp, -8(%%rsp)\n\t"
+        "movq %%rsp, %%rbp\n\t"
+        "jmp *%2\n\t"
         :
-        : "r" (env), "r" (frame), "r" (underflow_handler), "r" (fn)
-        : "%rbx", "%r12", "%r13", "%r14", "%r15"
+        : "r" (env), "r" (underflow_handler), "r" (fn)
+        : "%rbx", "%rcx", "%r12", "%r13", "%r14", "%r15"
     );
 }
+
+// static void NOINLINE enter_with(void *fn, void *frame, mobj env) {
+//     // stash all callee-preserved registers
+//     // move `env` to `%r9`
+//     // set [%rbp] to frame
+//     // set [%rbp] to `underflow_handler`
+//     // set [%rbp-8] to `%rbp`
+//     __asm__ (
+//         "movq %0, %%r9\n\t"
+//         "movq %2, (%1)\n\t"
+//         "movq %%rbp, -8(%1)\n\t"
+//         "movq %1, %%rbp\n\t"
+//         "jmp *%3\n\t"
+//         :
+//         : "r" (env), "r" (frame), "r" (underflow_handler), "r" (fn)
+//         : "%rbx", "%rcx", "%rdx", "%r12", "%r13", "%r14", "%r15"
+//     );
+// }
 
 void runtime_init() {
     M_glob.stacks = Mcons(alloc_stack(), minim_null);
@@ -86,9 +100,10 @@ void runtime_init() {
 
 void call0(void *fn) {
     mobj env = make_env();
-    mobj stack = minim_car(M_glob.stacks);
+    // mobj stack = minim_car(M_glob.stacks);
     if (setjmp(jbuf) == 0) {
-        enter_with(fn, PTR_ADD(stack, STACK_SIZE - 16), env);
+        enter_with(fn, env);
+        // enter_with(fn, PTR_ADD(stack, STACK_SIZE - 16), env);
     }
 
     write_object(Mport(stdout, 0x0), env);

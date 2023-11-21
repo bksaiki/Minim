@@ -39,6 +39,13 @@
 (define (cdddar x) (cdr (cdr (cdr (car x)))))
 (define (cddddr x) (cdr (cdr (cdr (cdr x)))))
 
+;; Vectors
+
+(define vector? (#%foreign-procedure "vector?" (object) object))
+(define vector-ref (#%foreign-procedure "vector-ref" (object object) object))
+(define vector-set! (#%foreign-procedure "vector-set!" (object object object) object))
+(define list->vector (#%foreign-procedure "list->vector" (object) object))
+
 ;; Numbers
 
 (define fixnum? (#%foreign-procedure "fx?" (object) object))
