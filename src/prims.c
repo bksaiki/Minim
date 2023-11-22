@@ -54,6 +54,10 @@ static mobj procedurep_proc(mobj x) {
     return minim_closurep(x) ? minim_true : minim_false;
 }
 
+static mobj listp_proc(mobj x) {
+    return listp(x) ? minim_true : minim_false;
+}
+
 static mobj not_proc(mobj x) {
     return minim_not(x);
 }
@@ -64,6 +68,10 @@ static mobj car_proc(mobj x) {
 
 static mobj cdr_proc(mobj x) {
     return minim_cdr(x);
+}
+
+static mobj length_proc(mobj x) {
+    return Mfixnum(list_length(x));
 }
 
 static mobj write_proc(mobj x) {
@@ -89,6 +97,24 @@ static mobj arity_exn(size_t actual, size_t expected) {
     fprintf(stderr, "arity mismatch\n");
     fprintf(stderr, " expected: %ld\n", expected);
     fprintf(stderr, " given: %ld\n", actual);
+    fatal_exit();
+}
+
+static mobj error1_proc(mobj name, mobj why) {
+    write_object(th_error_port(get_thread()), name);
+    fprintf(minim_port(th_error_port(get_thread())), ": ");
+    write_object(th_error_port(get_thread()), why);
+    fprintf(minim_port(th_error_port(get_thread())), "\n");
+    fatal_exit();
+}
+
+static mobj error2_proc(mobj name, mobj why, mobj what) {
+    write_object(th_error_port(get_thread()), name);
+    fprintf(minim_port(th_error_port(get_thread())), ": ");
+    write_object(th_error_port(get_thread()), why);
+    fprintf(minim_port(th_error_port(get_thread())), "\n what: ");
+    write_object(th_error_port(get_thread()), what);
+    fprintf(minim_port(th_error_port(get_thread())), "\n");
     fatal_exit();
 }
 
@@ -154,12 +180,17 @@ void prim_table_init() {
     register_prim("fx>=", fix_ge);
     // pairs and lists
     register_prim("null?", nullp_proc);
-    register_prim("cons?", consp_proc);
+    register_prim("pair?", consp_proc);
     register_prim("cons", Mcons);
     register_prim("car", car_proc);
     register_prim("cdr", cdr_proc);
+    register_prim("list?", listp_proc);
+    register_prim("length", length_proc);
+    register_prim("reverse", list_reverse);
+    register_prim("append", list_append);
     // vectors
     register_prim("vector?", vectorp_proc);
+    register_prim("vector-length", vector_length);
     register_prim("vector-ref", vector_ref);
     register_prim("vector-set!", vector_set);
     register_prim("list->vector", list_to_vector);
@@ -176,6 +207,8 @@ void prim_table_init() {
     register_prim("env_get", env_get);
     register_prim("make_closure", Mclosure);
     // runtime utilities
+    register_prim("error1", error1_proc);
+    register_prim("error2", error2_proc);
     register_prim("arity_exn", arity_exn);
     register_prim("do_rest_arg", do_rest_arg);
 }

@@ -275,6 +275,7 @@ mobj list_assq(mobj k, mobj l);
 //  Vectors
 //
 
+mobj vector_length(mobj v);
 mobj vector_ref(mobj v, mobj i);
 mobj vector_set(mobj v, mobj i, mobj o);
 mobj list_to_vector(mobj o);
@@ -423,13 +424,15 @@ extern mobj or_sym;
 extern mobj foreign_proc_sym;
 
 typedef struct _M_thread {
-    mobj *input_port;
-    mobj *output_port;
-    mobj *working_dir;
+    mobj input_port;    // stdin
+    mobj output_port;   // stdout
+    mobj error_port;    // stderr
+    mobj working_dir;
 } mthread;
 
 #define th_input_port(th)  ((th)->input_port)
-#define th_output_port(th) ((th)->output_port)   
+#define th_output_port(th) ((th)->output_port)
+#define th_error_port(th)  ((th)->error_port)
 #define th_working_dir(th) ((th)->working_dir)
 
 extern struct _M_globals {

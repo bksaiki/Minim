@@ -34,6 +34,7 @@ void minim_init() {
     // initialize thread
     th_input_port(M_glob.thread) = Mport(stdin, PORT_FLAG_READ | PORT_FLAG_OPEN);
     th_output_port(M_glob.thread) = Mport(stdout, PORT_FLAG_OPEN);
+    th_error_port(M_glob.thread) = Mport(stderr, PORT_FLAG_OPEN);
     th_working_dir(M_glob.thread) = Mstring(get_current_dir());
 
     // get special symbols

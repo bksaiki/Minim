@@ -1,3 +1,7 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Foreign procedures
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; Booleans
 
 (define boolean? (#%foreign-procedure "boolean?" (object) object))
@@ -23,15 +27,11 @@
 ;; Numbers
 
 (define fixnum? (#%foreign-procedure "fx?" (object) object))
-(define number? fixnum?)
-(define integer? fixnum?)
-
 (define fxneg (#%foreign-procedure "fxneg" (object) object))
 (define fx+ (#%foreign-procedure "fx+" (object object) object))
 (define fx- (#%foreign-procedure "fx-" (object object) object))
 (define fx* (#%foreign-procedure "fx*" (object object) object))
 (define fx/ (#%foreign-procedure "fx/" (object object) object))
-
 (define fx= (#%foreign-procedure "fx=" (object object) object))
 (define fx< (#%foreign-procedure "fx<" (object object) object))
 (define fx> (#%foreign-procedure "fx>" (object object) object))
@@ -41,11 +41,49 @@
 ;; Pairs / Lists
 
 (define null? (#%foreign-procedure "null?" (object) object))
-(define cons? (#%foreign-procedure "cons?" (object) object))
+(define pair? (#%foreign-procedure "pair?" (object) object))
+(define list? (#%foreign-procedure "list?" (object) object))
 
 (define cons (#%foreign-procedure "cons" (object object) object))
 (define car (#%foreign-procedure "car" (object) object))
 (define cdr (#%foreign-procedure "cdr" (object) object))
+
+(define length (#%foreign-procedure "length" (object) object))
+(define reverse (#%foreign-procedure "reverse" (object) object))
+(define append2 (#%foreign-procedure "append" (object object) object))
+
+;; Vectors
+
+(define vector? (#%foreign-procedure "vector?" (object) object))
+(define vector-ref (#%foreign-procedure "vector-ref" (object object) object))
+(define vector-set! (#%foreign-procedure "vector-set!" (object object object) object))
+(define list->vector (#%foreign-procedure "list->vector" (object) object))
+
+;; Procedures
+
+(define procedure? (#%foreign-procedure "procedure?" (object) object))
+
+;; Ports
+
+(define write (#%foreign-procedure "write" (object) object))
+(define newline (#%foreign-procedure "newline" () object))
+(define flush-output (#%foreign-procedure "flush-output" () object))
+
+;; Exceptions
+
+(define error1 (#%foreign-procedure "error1" (object object) object))
+(define error2 (#%foreign-procedure "error2" (object object object) object))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Complex primitives
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Numbers
+
+(define number? fixnum?)
+(define integer? fixnum?)
+
+;; Pair / List
 
 (define (caar x) (car (car x)))
 (define (cadr x) (car (cdr x)))
@@ -78,20 +116,3 @@
 (define (cddadr x) (cdr (cdr (car (cdr x)))))
 (define (cdddar x) (cdr (cdr (cdr (car x)))))
 (define (cddddr x) (cdr (cdr (cdr (cdr x)))))
-
-;; Vectors
-
-(define vector? (#%foreign-procedure "vector?" (object) object))
-(define vector-ref (#%foreign-procedure "vector-ref" (object object) object))
-(define vector-set! (#%foreign-procedure "vector-set!" (object object object) object))
-(define list->vector (#%foreign-procedure "list->vector" (object) object))
-
-;; Procedures
-
-(define procedure? (#%foreign-procedure "procedure?" (object) object))
-
-;; Ports
-
-(define write (#%foreign-procedure "write" (object) object))
-(define newline (#%foreign-procedure "newline" () object))
-(define flush-output (#%foreign-procedure "flush-output" () object))
