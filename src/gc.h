@@ -18,7 +18,7 @@
 #define GC_calloc_atomic(s, n)      GC_malloc_atomic((s) * (n))
 #define GC_realloc_atomic(p, n)     GC_realloc(p, n)
 
-#define GC_register_root(o)         GC_add_roots(o, (((void *) o) + sizeof(*o)))
+#define GC_register_root(o, s)      GC_add_roots(o, PTR_ADD(o, s))
 #define GC_register_dtor(o, p)      GC_register_finalizer(o, p, 0, 0, 0)
 
 #endif

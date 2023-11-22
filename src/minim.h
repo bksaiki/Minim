@@ -395,6 +395,7 @@ mobj env_get(mobj env, mobj k);
 mobj env_define(mobj env, mobj k, mobj v);
 mobj env_set(mobj env, mobj k, mobj v);
 
+void underflow_handler();
 void call0(void *fn);
 mobj do_rest_arg();
 

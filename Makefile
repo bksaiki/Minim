@@ -9,14 +9,16 @@ TEST_DIR = test
 ENTRY = $(SRC_DIR)/main.c
 OBJNAME = minim
 
-SRCS = $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY) )
+SRCS = $(shell find $(SRC_DIR) -name "*.c" ! -wholename $(ENTRY))
+ASMS = $(shell find $(SRC_DIR) -name "*.s")
 OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o)
+OBJS += $(ASMS:%.s=$(BUILD_DIR)/%.o)
 DEPS = $(OBJS:.o=.d)
 
 TESTS = $(shell find $(TEST_DIR) -name "*.c")
 TEST_OBJS = $(TESTS:%.c=$(BUILD_DIR)/%)
 
-CFLAGS = -Wall -std=c11 -O2 -g
+CFLAGS = -Wall -std=c11 -O0 -g
 DEPFLAGS = -MMD -MP
 LDFLAGS = -L$(GC_DIR)/.libs -lgc
 
@@ -57,6 +59,9 @@ $(BUILD_DIR)%/.:
 	$(MKDIR_P) $@
 
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.s | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
 $(BUILD_DIR)/$(TEST_DIR)/%: $(TEST_DIR)/%.c $(OBJS) | $$(@D)/.

@@ -8,6 +8,9 @@
 
 static jmp_buf jbuf;
 
+// enter_with.s
+extern void enter_with(void *fn, mobj env);
+
 static mobj env_get_entry(mobj env, mobj k) {
     while (!minim_nullp(env)) {
         mobj bind = minim_car(env);
@@ -55,47 +58,12 @@ static mobj alloc_stack() {
     return (mobj) page;
 }
 
-static void underflow_handler() {
+void underflow_handler() {
     longjmp(jbuf, 1);
 }
 
-static void NOINLINE enter_with(void *fn, mobj env) {
-    // stash all callee-preserved registers
-    // move `env` to `%r9`
-    // set [%rbp] to `underflow_handler`
-    // set [%rbp-8] to `%rbp`
-    __asm__ (
-        "movq %0, %%r9\n\t"
-        "movq %1, (%%rsp)\n\t"
-        "movq %%rbp, -8(%%rsp)\n\t"
-        "movq %%rsp, %%rbp\n\t"
-        "jmp *%2\n\t"
-        :
-        : "r" (env), "r" (underflow_handler), "r" (fn)
-        : "%rbx", "%rcx", "%r12", "%r13", "%r14", "%r15"
-    );
-}
-
-// static void NOINLINE enter_with(void *fn, void *frame, mobj env) {
-//     // stash all callee-preserved registers
-//     // move `env` to `%r9`
-//     // set [%rbp] to frame
-//     // set [%rbp] to `underflow_handler`
-//     // set [%rbp-8] to `%rbp`
-//     __asm__ (
-//         "movq %0, %%r9\n\t"
-//         "movq %2, (%1)\n\t"
-//         "movq %%rbp, -8(%1)\n\t"
-//         "movq %1, %%rbp\n\t"
-//         "jmp *%3\n\t"
-//         :
-//         : "r" (env), "r" (frame), "r" (underflow_handler), "r" (fn)
-//         : "%rbx", "%rcx", "%rdx", "%r12", "%r13", "%r14", "%r15"
-//     );
-// }
-
 void runtime_init() {
-    M_glob.stacks = Mcons(alloc_stack(), minim_null);
+    // M_glob.stacks = Mcons(alloc_stack(), minim_null);
 }
 
 void call0(void *fn) {
@@ -108,12 +76,4 @@ void call0(void *fn) {
 
     write_object(Mport(stdout, 0x0), env);
     fprintf(stdout, "\n");
-}
-
-mobj do_rest_arg() {
-    // fp is %rbp
-    // arity is %r14
-    // argc is %rsi
-    // nth argument is at fp-8(n+2)
-    error("do_rest_arg", "unimplemented");
 }

@@ -422,7 +422,7 @@ loop:
     } else if (lambda_formp(e)) {
         // lambda form
         mobj f2state, arity, req, rest, body, bind, lit, idx;
-        mobj exn_label, exn;
+        mobj exn_label, exn, rest_val, rest_label;
         size_t argc, i, branch_variant;
 
         f2state = init_fstate();
@@ -449,14 +449,17 @@ loop:
         fstate_add_asm(f2state, imake_label(exn_label));
 
         // procedure: create rest argument
+        rest_val = cstate_gensym(cstate, tloc_pre);
         if (!minim_falsep(rest)) {
-            error("compile1_proc", "rest arguments unsupported");
-            // rest_val = cstate_gensym(cstate, tloc_pre);
-            // idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("do_rest_arg")));
-            // fstate_add_asm(f2state, Mlist3(setb_sym, c_arg(0), Mlist2(reloc_sym, idx)));
-            // fstate_add_asm(f2state, Mlist3(setb_sym, c_arg(1), Mfixnum(argc)));
-            // fstate_add_asm(f2state, Mlist2(ccall_sym, c_arg(0)));
-            // fstate_add_asm(f2state, Mlist3(setb_sym, rest_val, cres_reg));
+            rest_label = cstate_gensym(cstate, label_pre);
+            idx = cstate_add_reloc(cstate, Mlist2(foreign_sym, Mstring("do_rest_arg")));
+            fstate_add_asm(f2state, Mlist3(setb_sym, cres_reg, Mlist2(reloc_sym, idx)));
+            fstate_add_asm(f2state, Mlist3(setb_sym, c_arg(0), Mfixnum(argc)));
+            fstate_add_asm(f2state, Mlist3(setb_sym, c_arg(1), rest_label));
+            fstate_add_asm(f2state, imake_branch(Mfixnum(branch_reg), cres_reg));
+
+            fstate_add_asm(f2state, imake_label(rest_label));
+            fstate_add_asm(f2state, Mlist3(setb_sym, rest_val, cres_reg));
         }
         
         // procedure: push frame
@@ -479,12 +482,12 @@ loop:
         );
 
         // bind rest argument
-        // if (!minim_falsep(rest)) {
-        //     lit = cstate_gensym(cstate, tloc_pre);
-        //     idx = cstate_add_reloc(cstate, Mlist2(literal_sym, rest));
-        //     fstate_add_asm(f2state, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
-        //     fstate_add_asm(f2state, Mlist5(ccall_sym, bind, env_reg, lit, rest_val));
-        // }
+        if (!minim_falsep(rest)) {
+            lit = cstate_gensym(cstate, tloc_pre);
+            idx = cstate_add_reloc(cstate, Mlist2(literal_sym, rest));
+            fstate_add_asm(f2state, Mlist3(setb_sym, lit, Mlist2(reloc_sym, idx)));
+            fstate_add_asm(f2state, Mlist5(ccall_sym, bind, env_reg, lit, rest_val));
+        }
 
         // procedure: compile body
         body = Mcons(begin_sym, minim_cddr(e));

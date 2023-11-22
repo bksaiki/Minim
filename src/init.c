@@ -7,15 +7,15 @@ struct _M_globals M_glob;
 void minim_init() {
     // initialize special values
     minim_null = GC_alloc_atomic(1);
-    GC_register_root(minim_null);
+    GC_register_root(minim_null, 1);
     minim_true = GC_alloc_atomic(1);
-    GC_register_root(minim_true);
+    GC_register_root(minim_true, 1);
     minim_false = GC_alloc_atomic(1);
-    GC_register_root(minim_false);
+    GC_register_root(minim_false, 1);
     minim_eof = GC_alloc_atomic(1);
-    GC_register_root(minim_eof);
+    GC_register_root(minim_eof, 1);
     minim_void = GC_alloc_atomic(1);
-    GC_register_root(minim_void);
+    GC_register_root(minim_void, 1);
 
     minim_type(minim_null) = MINIM_OBJ_SPECIAL;
     minim_type(minim_true) = MINIM_OBJ_SPECIAL;
@@ -24,7 +24,7 @@ void minim_init() {
     minim_type(minim_void) = MINIM_OBJ_SPECIAL;
     
     // initialize globals
-    GC_register_root(&M_glob);
+    GC_register_root(&M_glob, sizeof(M_glob));
     M_glob.null_string = Mstring("");
     M_glob.null_vector = Mvector(0, NULL);
     M_glob.thread = GC_alloc(sizeof(mthread));
