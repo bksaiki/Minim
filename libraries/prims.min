@@ -55,6 +55,7 @@
 ;; Vectors
 
 (define vector? (#%foreign-procedure "vector?" (object) object))
+(define vector-length (#%foreign-procedure "vector-length" (object) object))
 (define vector-ref (#%foreign-procedure "vector-ref" (object object) object))
 (define vector-set! (#%foreign-procedure "vector-set!" (object object object) object))
 (define list->vector (#%foreign-procedure "list->vector" (object) object))
@@ -82,6 +83,60 @@
 
 (define number? fixnum?)
 (define integer? fixnum?)
+
+(define (+ . xs)
+  (let loop ([xs xs] [acc 0])
+    (cond [(null? xs) acc]
+          [else (loop (cdr xs) (fx+ acc (car xs)))])))
+
+(define (- x . xs)
+  (if (null? xs)
+      (fxneg x)
+      (let loop ([xs xs] [acc x])
+        (cond [(null? xs) acc]
+              [else (loop (cdr xs) (fx- acc (car xs)))]))))
+
+(define (* . xs)
+  (let loop ([xs xs] [acc 1])
+    (cond [(null? xs) acc]
+          [else (loop (cdr xs) (fx* acc (car xs)))])))
+
+(define (/ x . xs)
+  (if (null? xs)
+      (fx/ 1 x)
+      (let loop ([xs xs] [acc x])
+        (cond [(null? xs) acc]
+              [else (loop (cdr xs) (fx/ acc (car xs)))]))))
+
+(define (= x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) #t]
+          [(fx= x (car xs)) (loop (car xs) (cdr xs))]
+          [else #f])))
+
+(define (< x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) #t]
+          [(fx< x (car xs)) (loop (car xs) (cdr xs))]
+          [else #f])))
+
+(define (> x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) #t]
+          [(fx> x (car xs)) (loop (car xs) (cdr xs))]
+          [else #f])))
+
+(define (<= x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) #t]
+          [(fx<= x (car xs)) (loop (car xs) (cdr xs))]
+          [else #f])))
+
+(define (>= x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) #t]
+          [(fx>= x (car xs)) (loop (car xs) (cdr xs))]
+          [else #f])))
 
 ;; Pair / List
 
@@ -116,3 +171,20 @@
 (define (cddadr x) (cdr (cdr (car (cdr x)))))
 (define (cdddar x) (cdr (cdr (cdr (car x)))))
 (define (cddddr x) (cdr (cdr (cdr (cdr x)))))
+
+(define (list . xs)
+  xs)
+
+(define (append . xs)
+  (cond
+    [(null? xs) '()]
+    [else
+     (define xs (reverse xs))
+     (let loop ([xs (cdr xs)] [lst (car xs)])
+       (cond [(null? xs) lst]
+             [else (loop (cdr xs) (append2 (car xs) lst))]))]))
+
+;; Vectors
+
+(define (vector . xs)
+  (list->vector xs))
