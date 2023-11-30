@@ -65,10 +65,13 @@
 (define procedure? (#%foreign-procedure "procedure?" (object) object))
 
 ;; Ports
-
-(define write (#%foreign-procedure "write" (object) object))
-(define newline (#%foreign-procedure "newline" () object))
-(define flush-output (#%foreign-procedure "flush-output" () object))
+(define input-port? (#%foreign-procedure "input-port?" (object) object))
+(define output-port? (#%foreign-procedure "output-port?" (object) object))
+(define current-input-port (#%foreign-procedure "current-input-port" () object))
+(define current-output-port (#%foreign-procedure "current-output-port" () object))
+(define write (#%foreign-procedure "write" (object object) object))
+(define newline (#%foreign-procedure "newline" (object) object))
+(define flush-output (#%foreign-procedure "flush-output" (object) object))
 
 ;; Exceptions
 
@@ -138,6 +141,30 @@
           [(fx>= x (car xs)) (loop (car xs) (cdr xs))]
           [else #f])))
 
+(define (zero? x)
+  (and (number? x) (= x 0)))
+
+(define (positive? x)
+  (and (number? x) (> x 0)))
+
+(define (negative? x)
+  (and (number? x) (< x 0)))
+
+(define (max x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) x]
+          [(> (car xs) x) (loop (car xs) (cdr xs))]
+          [else (loop x (cdr xs))])))
+
+(define (min x . xs)
+  (let loop ([x x] [xs xs])
+    (cond [(null? xs) x]
+          [(< (car xs) x) (loop (car xs) (cdr xs))]
+          [else (loop x (cdr xs))])))
+
+(define (abs x)
+  (if (negative? x) (- x) x))
+
 ;; Pair / List
 
 (define (caar x) (car (car x)))
@@ -188,3 +215,10 @@
 
 (define (vector . xs)
   (list->vector xs))
+
+(define (vector->list v)
+  (define n (vector-length v))
+  (let loop ([i 0] [lst '()])
+    (if (< i n)
+        (loop (+ i 1) (cons (vector-ref v i) lst))
+        (reverse lst))))

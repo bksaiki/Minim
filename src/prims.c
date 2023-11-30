@@ -58,6 +58,14 @@ static mobj listp_proc(mobj x) {
     return listp(x) ? minim_true : minim_false;
 }
 
+static mobj input_portp_proc(mobj x) {
+    return minim_inportp(x) ? minim_true : minim_false;
+}
+
+static mobj output_portp_proc(mobj x) {
+    return minim_outportp(x) ? minim_true : minim_false;
+}
+
 static mobj not_proc(mobj x) {
     return minim_not(x);
 }
@@ -74,19 +82,27 @@ static mobj length_proc(mobj x) {
     return Mfixnum(list_length(x));
 }
 
-static mobj write_proc(mobj x) {
-    write_object(th_output_port(get_thread()), x);
+static mobj write_proc(mobj x, mobj p) {
+    write_object(p, x);
     return minim_void;
 }
 
-static mobj newline_proc() {
-    fputc('\n', minim_port(th_output_port(get_thread())));
+static mobj newline_proc(mobj p) {
+    fputc('\n', minim_port(p));
     return minim_void;
 }
 
-static mobj flush_proc() {
-    fflush(minim_port(th_output_port(get_thread())));
+static mobj flush_proc(mobj p) {
+    fflush(minim_port(p));
     return minim_void;
+}
+
+static mobj current_output_port_proc() {
+    return th_output_port(get_thread());
+}
+
+static mobj current_input_port_proc() {
+    return th_input_port(get_thread());
 }
 
 //
@@ -197,6 +213,10 @@ void prim_table_init() {
     // Procedure
     register_prim("procedure?", procedurep_proc);
     // I/O
+    register_prim("input-port?", input_portp_proc);
+    register_prim("output-port?", output_portp_proc);
+    register_prim("current-input-port", current_input_port_proc);
+    register_prim("current-output-port", current_output_port_proc);
     register_prim("write", write_proc);
     register_prim("newline", newline_proc);
     register_prim("flush-output", flush_proc);

@@ -1783,11 +1783,17 @@ static mobj x86_encode_load(mobj dst, mobj src, mobj off) {
 }
 
 static mobj x86_encode_store(mobj dst, mobj src, mobj off) {
-    mobj rex = x86_encode_rex(1, x86_encode_x(src), 0, x86_encode_x(dst));
-    mobj modrm = x86_encode_modrm(Mfixnum(1), x86_encode_reg(src), x86_encode_reg(dst));
     if (minim_fixnum(off) >= -128 && minim_fixnum(off) <= 127) {
+        mobj rex = x86_encode_rex(1, x86_encode_x(src), 0, x86_encode_x(dst));
+        mobj modrm = x86_encode_modrm(Mfixnum(1), x86_encode_reg(src), x86_encode_reg(dst));
         return Mlist4(rex, Mfixnum(0x89), modrm, x86_encode_imm8(off));
+    } else if (minim_fixnum(off) >= -2147483648 || minim_fixnum(off) <= 2147483647) {
+        mobj rex = x86_encode_rex(1, x86_encode_x(src), 0, x86_encode_x(dst));
+        mobj modrm = x86_encode_modrm(Mfixnum(2), x86_encode_reg(src), x86_encode_reg(dst));
+        mobj imm = x86_encode_imm32(off);
+        return Mcons(rex, Mcons(Mfixnum(0x89), Mcons(modrm, imm)));
     } else {
+        write_object(Mport(stdout, 0x0), Mlist3(dst, src, off)); printf("\n");
         error1("x86_encode_store", "unsupported mov offset", off);
     }
 }
