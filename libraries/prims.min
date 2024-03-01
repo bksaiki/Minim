@@ -75,8 +75,8 @@
 
 ;; Exceptions
 
-(define error1 (#%foreign-procedure "error1" (object object) object))
-(define error2 (#%foreign-procedure "error2" (object object object) object))
+(define $error1 (#%foreign-procedure "error1" (object object) object))
+(define $error2 (#%foreign-procedure "error2" (object object object) object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Complex primitives
@@ -202,6 +202,16 @@
 (define (list . xs)
   xs)
 
+(define (list-ref lst k)
+  (if (and (integer? k) (not (negative? k)))
+      (let loop ([xs lst] [i 0])
+        (cond
+          [(null? xs) ($error2 'list-ref "index out of bounds" k)]
+          [(not (pair? xs)) ($error2 'list-ref "expected a list" lst)]
+          [(< i k) (loop (cdr xs) (+ i 1))]
+          [else (car xs)]))
+      ($error2 'list-ref "expected non-negative integer" k)))
+
 (define (append . xs)
   (cond
     [(null? xs) '()]
@@ -222,3 +232,7 @@
     (if (< i n)
         (loop (+ i 1) (cons (vector-ref v i) lst))
         (reverse lst))))
+
+
+(define x (list 1 2 3 4 5))
+(define x2 (list-ref x 9))
