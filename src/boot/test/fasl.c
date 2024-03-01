@@ -8,7 +8,7 @@
 #include "../boot.h"
 
 FILE *stream, *fasl_stream;
-minim_object *env;
+mobj *env;
 int return_code, passed;
 
 #define reset() {           \
@@ -28,7 +28,7 @@ int return_code, passed;
 }
 
 void check_fasl_equal(const char *input, const char *expect) {
-    minim_object *o;
+    mobj *o;
     char *str;
     long len, read;
 

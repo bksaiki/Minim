@@ -4,28 +4,28 @@
 
 #include "../minim.h"
 
-minim_object *make_box(minim_object *x) {
+mobj *make_box(mobj *x) {
     minim_box_object *o = GC_alloc(sizeof(minim_box_object));
     o->type = MINIM_BOX_TYPE;
     o->o = x;
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
 //
 //  Primitives
 //
 
-minim_object *is_box_proc(int argc, minim_object **args) {
+mobj *is_box_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_box(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *box_proc(int argc, minim_object **args) {
+mobj *box_proc(int argc, mobj **args) {
     // (-> any box)
     return make_box(args[0]);
 }
 
-minim_object *unbox_proc(int argc, minim_object **args) {
+mobj *unbox_proc(int argc, mobj **args) {
     // (-> box any)
     if (!minim_is_box(args[0]))
         bad_type_exn("unbox", "box?", args[0]);
@@ -33,7 +33,7 @@ minim_object *unbox_proc(int argc, minim_object **args) {
     return minim_box_contents(args[0]);
 }
 
-minim_object *box_set_proc(int argc, minim_object **args) {
+mobj *box_set_proc(int argc, mobj **args) {
     // (-> box any void)
     if (!minim_is_box(args[0]))
         bad_type_exn("unbox", "box?", args[0]);

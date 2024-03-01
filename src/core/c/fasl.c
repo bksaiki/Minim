@@ -72,14 +72,14 @@
 //  Reading FASL
 //
 
-#define read_fasl_type(ip)       ((minim_byte) fgetc(ip))
-#define read_fasl_byte(ip)       ((minim_byte) fgetc(ip))
+#define read_fasl_type(ip)       ((mbyte) fgetc(ip))
+#define read_fasl_byte(ip)       ((mbyte) fgetc(ip))
 
 // Unserializes a word that is encoded using a variable-length
 // block encoding 7-bits of the word per byte
-static minim_uptr read_fasl_uptr(FILE *in) {
-    minim_uptr u = 0;
-    minim_byte b, c;
+static muptr read_fasl_uptr(FILE *in) {
+    muptr u = 0;
+    mbyte b, c;
     int offset = 0;
 
     do {
@@ -89,7 +89,7 @@ static minim_uptr read_fasl_uptr(FILE *in) {
         b >>= 1;
 
         // shift it into the right place
-        u |= (((minim_uptr) b) << offset);
+        u |= (((muptr) b) << offset);
         offset += 7;
     } while (c);
 
@@ -97,7 +97,7 @@ static minim_uptr read_fasl_uptr(FILE *in) {
 }
 
 
-static minim_object *read_fasl_symbol(FILE *in) {
+static mobj *read_fasl_symbol(FILE *in) {
     char *str;
     long len, i;
     
@@ -110,7 +110,7 @@ static minim_object *read_fasl_symbol(FILE *in) {
     return intern(str);
 }
 
-static minim_object *read_fasl_string(FILE *in) {
+static mobj *read_fasl_string(FILE *in) {
     char *str;
     long len, i;
     
@@ -123,27 +123,27 @@ static minim_object *read_fasl_string(FILE *in) {
     return make_string2(str);
 }
 
-static minim_object *read_fasl_fixnum(FILE *in) {
-    return make_fixnum(read_fasl_uptr(in));
+static mobj *read_fasl_fixnum(FILE *in) {
+    return Mfixnum(read_fasl_uptr(in));
 }
 
-static minim_object *read_fasl_char(FILE *in) {
-    return make_char(read_fasl_byte(in));
+static mobj *read_fasl_char(FILE *in) {
+    return Mchar(read_fasl_byte(in));
 }
 
-static minim_object *read_fasl_pair(FILE *in) {
-    minim_object *head, *it;
+static mobj *read_fasl_pair(FILE *in) {
+    mobj *head, *it;
     long i, len;
 
     // improper list has at least one element
     // set the head and hold on to it
     len = read_fasl_uptr(in);
-    head = make_pair(read_fasl(in), minim_null);
+    head = Mcons(read_fasl(in), minim_null);
     it = head;
 
     // iteratively read the rest of the proper elements
     for (i = 1; i < len; i++) {
-        minim_cdr(it) = make_pair(read_fasl(in), minim_cdr(it));
+        minim_cdr(it) = Mcons(read_fasl(in), minim_cdr(it));
         it = minim_cdr(it);
     }
 
@@ -153,8 +153,8 @@ static minim_object *read_fasl_pair(FILE *in) {
     return head;
 }
 
-static minim_object* read_fasl_vector(FILE *in) {
-    minim_object *vec;
+static mobj* read_fasl_vector(FILE *in) {
+    mobj *vec;
     long i, len;
 
     len = read_fasl_uptr(in);
@@ -165,10 +165,10 @@ static minim_object* read_fasl_vector(FILE *in) {
     return vec;
 }
 
-static minim_object* read_fasl_hashtable(FILE *in) {
-    minim_object *ht, *k, *v;
+static mobj* read_fasl_hashtable(FILE *in) {
+    mobj *ht, *k, *v;
     long size, i;
-    minim_byte t;
+    mbyte t;
 
     // size and type info
     size = read_fasl_uptr(in);
@@ -192,8 +192,8 @@ static minim_object* read_fasl_hashtable(FILE *in) {
     return ht;
 }
 
-static minim_object* read_fasl_record(FILE *in) {
-    minim_object *rec, *rtd;
+static mobj* read_fasl_record(FILE *in) {
+    mobj *rec, *rtd;
     long len, i;
 
     len = read_fasl_uptr(in);
@@ -205,7 +205,7 @@ static minim_object* read_fasl_record(FILE *in) {
     return rec;
 }
 
-minim_object *read_fasl(FILE *in) {
+mobj *read_fasl(FILE *in) {
     fasl_type type;
     
     type = read_fasl_type(in);
@@ -253,13 +253,13 @@ minim_object *read_fasl(FILE *in) {
 //  Writing FASL
 //
 
-#define write_fasl_type(o, t)       (fputc(((minim_byte) (t)), (o)))
-#define write_fasl_byte(o, b)       (fputc(((minim_byte) (b)), (o)))
+#define write_fasl_type(o, t)       (fputc(((mbyte) (t)), (o)))
+#define write_fasl_byte(o, b)       (fputc(((mbyte) (b)), (o)))
 
 // Serializes a word using variable-length block
 // encoding 7-bits of the word per byte
-static void write_fasl_uptr(FILE *out, minim_uptr u) {
-    minim_byte b;
+static void write_fasl_uptr(FILE *out, muptr u) {
+    mbyte b;
 
     do {
         // extract 7 lowest bits
@@ -276,22 +276,22 @@ static void write_fasl_uptr(FILE *out, minim_uptr u) {
 }
 
 // Serializes a symbol
-static void write_fasl_symbol(FILE *out, minim_object *sym) {
+static void write_fasl_symbol(FILE *out, mobj *sym) {
     write_fasl_uptr(out, strlen(minim_symbol(sym)));
     for (char *s = minim_symbol(sym); *s; s++)
         write_fasl_byte(out, *s);
 }
 
 // Serializes a string
-static void write_fasl_string(FILE *out, minim_object *str) {
+static void write_fasl_string(FILE *out, mobj *str) {
     write_fasl_uptr(out, strlen(minim_string(str)));
     for (char *s = minim_string(str); *s; s++)
         fputc(*s, out);
 }
 
 // Serializes a pair, improper list, or list
-static void write_fasl_pair(FILE *out, minim_object *p) {
-    minim_object *it;
+static void write_fasl_pair(FILE *out, mobj *p) {
+    mobj *it;
     long len;
     
     len = improper_list_length(p);
@@ -303,7 +303,7 @@ static void write_fasl_pair(FILE *out, minim_object *p) {
 }
 
 // Serializes a vector
-static void write_fasl_vector(FILE *out, minim_object *v) {
+static void write_fasl_vector(FILE *out, mobj *v) {
     long i, len;
     
     len = minim_vector_len(v);
@@ -314,8 +314,8 @@ static void write_fasl_vector(FILE *out, minim_object *v) {
 
 // Serializes a hashtable
 // WARN: internal structure of hashtable may be different
-static void write_fasl_hashtable(FILE *out, minim_object *ht) {
-    minim_object *b;
+static void write_fasl_hashtable(FILE *out, mobj *ht) {
+    mobj *b;
     size_t i;
 
     write_fasl_uptr(out, minim_hashtable_size(ht));
@@ -346,7 +346,7 @@ static void write_fasl_hashtable(FILE *out, minim_object *ht) {
 }
 
 // Serializes a record
-static void write_fasl_record(FILE *out, minim_object *r) {
+static void write_fasl_record(FILE *out, mobj *r) {
     int i;
 
     write_fasl_uptr(out, minim_record_count(r));
@@ -355,7 +355,7 @@ static void write_fasl_record(FILE *out, minim_object *r) {
         write_fasl(out, minim_record_ref(r, i));
 }
 
-void write_fasl(FILE *out, minim_object *o) {
+void write_fasl(FILE *out, mobj *o) {
     if (minim_is_null(o)) {
         write_fasl_type(out, FASL_NULL);
     } else if (minim_is_true(o)) {
@@ -366,7 +366,7 @@ void write_fasl(FILE *out, minim_object *o) {
         write_fasl_type(out, FASL_EOF);
     } else if (minim_is_void(o)) {
         write_fasl_type(out, FASL_VOID);
-    } else if (minim_is_symbol(o)) {
+    } else if (minim_symbolp(o)) {
         // TODO: interned vs. uninterned
         write_fasl_type(out, FASL_SYMBOL);
         write_fasl_symbol(out, o);
@@ -410,10 +410,10 @@ void write_fasl(FILE *out, minim_object *o) {
 //  Primitive
 //
 
-minim_object *read_fasl_proc(int argc, minim_object **args) {
+mobj *read_fasl_proc(int argc, mobj **args) {
     // (-> any)
     // (-> input-port any)
-    minim_object *in_p;
+    mobj *in_p;
 
     in_p = args[0];
     if (!minim_is_input_port(in_p))
@@ -422,10 +422,10 @@ minim_object *read_fasl_proc(int argc, minim_object **args) {
     return read_fasl(minim_port(in_p));
 }
 
-minim_object *write_fasl_proc(int argc, minim_object **args) {
+mobj *write_fasl_proc(int argc, mobj **args) {
     // (-> any void)
     // (-> any output-port void)
-    minim_object *out_p, *o;
+    mobj *out_p, *o;
 
     o = args[0];
     if (argc == 1) {

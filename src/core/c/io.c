@@ -90,7 +90,7 @@ static void skip_whitespace(FILE *in) {
     }
 }
 
-static minim_object *read_char(FILE *in) {
+static mobj *read_char(FILE *in) {
     int c;
 
     c = getc(in);
@@ -102,14 +102,14 @@ static minim_object *read_char(FILE *in) {
         if (peek_char(in) == 'p') {
             read_expected_string(in, "pace");
             peek_expected_delimeter(in);
-            return make_char(' ');
+            return Mchar(' ');
         }
         break;
     case 'n':
         if (peek_char(in) == 'e') {
             read_expected_string(in, "ewline");
             peek_expected_delimeter(in);
-            return make_char('\n');
+            return Mchar('\n');
         }
         break;
     default:
@@ -117,11 +117,11 @@ static minim_object *read_char(FILE *in) {
     }
 
     peek_expected_delimeter(in);
-    return make_char(c);
+    return Mchar(c);
 }
 
-static minim_object *read_pair(FILE *in, char open_paren) {
-    minim_object *car, *cdr;
+static mobj *read_pair(FILE *in, char open_paren) {
+    mobj *car, *cdr;
     int c;
 
     skip_whitespace(in);
@@ -153,7 +153,7 @@ static minim_object *read_pair(FILE *in, char open_paren) {
        if (c == ')' || c == ']' || c == '}') {
             // list read
             assert_matching_paren(open_paren, c);
-            return make_pair(car, cdr);
+            return Mcons(car, cdr);
         }
 
         fprintf(stderr, "missing ')' to terminate pair");
@@ -162,15 +162,15 @@ static minim_object *read_pair(FILE *in, char open_paren) {
         // list
         ungetc(c, in);
         cdr = read_pair(in, open_paren);
-        return make_pair(car, cdr);
+        return Mcons(car, cdr);
     }
 }
 
-static minim_object *read_vector(FILE *in) {
-    minim_object *v, *vn, *e;
+static mobj *read_vector(FILE *in) {
+    mobj *v, *vn, *l;
     int c;
 
-    v = minim_empty_vec;
+    l = minim_null;
     while (1) {
         skip_whitespace(in);
         c = peek_char(in);
@@ -179,21 +179,17 @@ static minim_object *read_vector(FILE *in) {
             break;
         }
 
-        e = read_object(in);
-        if (v == minim_empty_vec) {
-            v = make_vector(1, e);
-        } else {
-            vn = make_vector(minim_vector_len(v) + 1, NULL);
-            memcpy(minim_vector_arr(vn), minim_vector_arr(v), minim_vector_len(v) * sizeof(minim_vector_object*));
-            minim_vector_ref(vn, minim_vector_len(v)) = e;
-            v = vn;
-        }
+        l = Mcons(read_object(in), l);
     }
 
-    return v;
+    if (minim_nullp(l)) {
+        return minim_empty_vec;
+    } else {
+        return list_to_vector(list_reverse(l));
+    }
 }
 
-minim_object *read_object(FILE *in) {
+mobj *read_object(FILE *in) {
     char buffer[SYMBOL_MAX_LEN];
     long num, i, block_level;
     short sign;
@@ -221,7 +217,7 @@ loop:
             return read_char(in);
         case '\'':
             // quote
-            return make_pair(intern("quote-syntax"), make_pair(read_object(in), minim_null));
+            return Mcons(intern("quote-syntax"), Mcons(read_object(in), minim_null));
         case '(':
             // vector
             return read_vector(in);
@@ -299,7 +295,7 @@ loop:
         }
 
         ungetc(c, in);
-        return make_fixnum(num * sign);
+        return Mfixnum(num * sign);
     } else if (0) {
         // hexadecimal number
         // same caveat applies: if we encounter a non-digit, the token is a symbol
@@ -336,7 +332,7 @@ read_hex:
         }
 
         ungetc(c, in);
-        return make_fixnum(num * sign);
+        return Mfixnum(num * sign);
     } else if (c == '"') {
         // string
         i = 0;
@@ -377,7 +373,7 @@ read_hex:
         return read_pair(in, c);
     } else if (c == '\'') {
         // quoted expression
-        return make_pair(intern("quote"), make_pair(read_object(in), minim_null));
+        return Mcons(intern("quote"), Mcons(read_object(in), minim_null));
     } else if (is_symbol_char(c) || ((c == '+' || c == '-') && is_delimeter(peek_char(in)))) {
         // symbol
         i = 0;
@@ -430,8 +426,8 @@ static void write_pair(FILE *out, minim_pair_object *p, int quote, int display) 
     }
 }
 
-void write_object2(FILE *out, minim_object *o, int quote, int display) {
-    minim_object *it;
+void write_object2(FILE *out, mobj *o, int quote, int display) {
+    mobj *it;
     minim_thread *th;
     char *str;
     long stashc, i;
@@ -467,7 +463,7 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
 
             push_call_arg(o);
             push_call_arg(make_output_port(out));   // TODO: problematic
-            push_call_arg(make_pair(make_fixnum(quote), make_fixnum(display)));
+            push_call_arg(Mcons(Mfixnum(quote), Mfixnum(display)));
             call_with_args(record_write_proc(th), global_env(th));
 
             prepare_call_args(stashc);
@@ -609,7 +605,7 @@ void write_object2(FILE *out, minim_object *o, int quote, int display) {
     }
 }
 
-void write_object(FILE *out, minim_object *o) {
+void write_object(FILE *out, mobj *o) {
     write_object2(out, o, 0, 0);
 }
 
@@ -617,7 +613,7 @@ void write_object(FILE *out, minim_object *o) {
 //  fprintf
 //
 
-void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name) {
+void minim_fprintf(FILE *o, const char *form, int v_count, mobj **vs, const char *prim_name) {
     long i;
     int vi, fi;
 
@@ -700,7 +696,7 @@ static void gc_port_dtor(void *ptr, void *data) {
         fclose(minim_port(o));
 }
 
-minim_object *make_input_port(FILE *stream) {
+mobj *make_input_port(FILE *stream) {
     minim_port_object *o;
     
     o = GC_alloc(sizeof(minim_port_object));
@@ -709,10 +705,10 @@ minim_object *make_input_port(FILE *stream) {
     o->stream = stream;
     GC_register_dtor(o, gc_port_dtor);
 
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
-minim_object *make_output_port(FILE *stream) {
+mobj *make_output_port(FILE *stream) {
     minim_port_object *o; // = GC_alloc_opt(sizeof(minim_port_object), gc_port_dtor, NULL);
 
     o = GC_alloc(sizeof(minim_port_object));
@@ -721,36 +717,36 @@ minim_object *make_output_port(FILE *stream) {
     o->stream = stream;
     GC_register_dtor(o, gc_port_dtor);
 
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
 //
 //  Primitives
 //
 
-minim_object *is_input_port_proc(int argc, minim_object **args) {
+mobj *is_input_port_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_input_port(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_output_port_proc(int argc, minim_object **args) {
+mobj *is_output_port_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_output_port(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *current_input_port_proc(int argc, minim_object **args) {
+mobj *current_input_port_proc(int argc, mobj **args) {
     // (-> input-port)
     return input_port(current_thread());
 }
 
-minim_object *current_output_port_proc(int argc, minim_object **args) {
+mobj *current_output_port_proc(int argc, mobj **args) {
     // (-> output-port)
     return output_port(current_thread());
 }
 
-minim_object *open_input_port_proc(int argc, minim_object **args) {
+mobj *open_input_port_proc(int argc, mobj **args) {
     // (-> string input-port)
-    minim_object *port;
+    mobj *port;
     FILE *stream;
 
     if (!minim_is_string(args[0]))
@@ -767,9 +763,9 @@ minim_object *open_input_port_proc(int argc, minim_object **args) {
     return port;
 }
 
-minim_object *open_output_port_proc(int argc, minim_object **args) {
+mobj *open_output_port_proc(int argc, mobj **args) {
     // (-> string output-port)
-    minim_object *port;
+    mobj *port;
     FILE *stream;
 
     if (!minim_is_string(args[0]))
@@ -786,7 +782,7 @@ minim_object *open_output_port_proc(int argc, minim_object **args) {
     return port;
 }
 
-minim_object *close_input_port_proc(int argc, minim_object **args) {
+mobj *close_input_port_proc(int argc, mobj **args) {
     // (-> input-port)
     if (!minim_is_input_port(args[0]))
         bad_type_exn("close-input-port", "input-port?", args[0]);
@@ -796,7 +792,7 @@ minim_object *close_input_port_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *close_output_port_proc(int argc, minim_object **args) {
+mobj *close_output_port_proc(int argc, mobj **args) {
     // (-> output-port)
     if (!minim_is_output_port(args[0]))
         bad_type_exn("close-output-port", "output-port?", args[0]);
@@ -806,10 +802,10 @@ minim_object *close_output_port_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *read_proc(int argc, minim_object **args) {
+mobj *read_proc(int argc, mobj **args) {
     // (-> any)
     // (-> input-port any)
-    minim_object *in_p, *o;
+    mobj *in_p, *o;
 
     if (argc == 0) {
         in_p = input_port(current_thread());
@@ -823,10 +819,10 @@ minim_object *read_proc(int argc, minim_object **args) {
     return (o == NULL) ? minim_eof : o;
 }
 
-minim_object *read_char_proc(int argc, minim_object **args) {
+mobj *read_char_proc(int argc, mobj **args) {
     // (-> char)
     // (-> input-port char)
-    minim_object *in_p;
+    mobj *in_p;
     int ch;
     
     if (argc == 0) {
@@ -838,13 +834,13 @@ minim_object *read_char_proc(int argc, minim_object **args) {
     }
 
     ch = getc(minim_port(in_p));
-    return (ch == EOF) ? minim_eof : make_char(ch);
+    return (ch == EOF) ? minim_eof : Mchar(ch);
 }
 
-minim_object *peek_char_proc(int argc, minim_object **args) {
+mobj *peek_char_proc(int argc, mobj **args) {
     // (-> char)
     // (-> input-port char)
-    minim_object *in_p;
+    mobj *in_p;
     int ch;
     
     if (argc == 0) {
@@ -857,13 +853,13 @@ minim_object *peek_char_proc(int argc, minim_object **args) {
 
     ch = getc(minim_port(in_p));
     ungetc(ch, minim_port(in_p));
-    return (ch == EOF) ? minim_eof : make_char(ch);
+    return (ch == EOF) ? minim_eof : Mchar(ch);
 }
 
-minim_object *char_is_ready_proc(int argc, minim_object **args) {
+mobj *char_is_ready_proc(int argc, mobj **args) {
     // (-> boolean)
     // (-> input-port boolean)
-    minim_object *in_p;
+    mobj *in_p;
     int ch;
 
     if (argc == 0) {
@@ -879,10 +875,10 @@ minim_object *char_is_ready_proc(int argc, minim_object **args) {
     return (ch == EOF) ? minim_false : minim_true;
 }
 
-minim_object *display_proc(int argc, minim_object **args) {
+mobj *display_proc(int argc, mobj **args) {
     // (-> any void)
     // (-> any output-port void)
-    minim_object *out_p, *o;
+    mobj *out_p, *o;
 
     o = args[0];
     if (argc == 1) {
@@ -897,10 +893,10 @@ minim_object *display_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *write_proc(int argc, minim_object **args) {
+mobj *write_proc(int argc, mobj **args) {
     // (-> any void)
     // (-> any output-port void)
-    minim_object *out_p, *o;
+    mobj *out_p, *o;
 
     o = args[0];
     if (argc == 1) {
@@ -915,10 +911,10 @@ minim_object *write_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *write_char_proc(int argc, minim_object **args) {
+mobj *write_char_proc(int argc, mobj **args) {
     // (-> char void)
     // (-> char output-port void)
-    minim_object *out_p, *ch;
+    mobj *out_p, *ch;
 
     ch = args[0];
     if (!minim_is_char(ch))
@@ -936,10 +932,10 @@ minim_object *write_char_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *newline_proc(int argc, minim_object **args) {
+mobj *newline_proc(int argc, mobj **args) {
     // (-> void)
     // (-> output-port void)
-    minim_object *out_p;
+    mobj *out_p;
 
     if (argc == 0) {
         out_p = output_port(current_thread());
@@ -953,7 +949,7 @@ minim_object *newline_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *fprintf_proc(int argc, minim_object **args) {
+mobj *fprintf_proc(int argc, mobj **args) {
     // (-> output-port string any ... void)
     if (!minim_is_output_port(args[0]))
         bad_type_exn("fprintf", "output-port?", args[0]);
@@ -965,9 +961,9 @@ minim_object *fprintf_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *printf_proc(int argc, minim_object **args) {
+mobj *printf_proc(int argc, mobj **args) {
     // (-> string any ... void)
-    minim_object *curr_op;
+    mobj *curr_op;
 
     if (!minim_is_string(args[0]))
         bad_type_exn("printf", "string?", args[0]);

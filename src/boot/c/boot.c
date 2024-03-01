@@ -13,13 +13,13 @@
     env_define_var(env, intern(name), c_val);
 
 #define add_procedure(name, c_fn, min_arity, max_arity) {           \
-    minim_object *sym = intern(name);                               \
+    mobj *sym = intern(name);                               \
     env_define_var(env, sym,                               \
                    make_prim_proc(c_fn, minim_symbol(sym), \
                                   min_arity, max_arity));  \
 }
 
-void populate_env(minim_object *env) {
+void populate_env(mobj *env) {
     add_value("null", minim_null);
     add_value("true", minim_true);
     add_value("false", minim_false);
@@ -233,15 +233,15 @@ void populate_env(minim_object *env) {
     add_procedure("enter-compiled!", enter_compiled_proc, 1, 1);
 }
 
-minim_object *make_env() {
-    minim_object *env = setup_env();
+mobj *make_env() {
+    mobj *env = setup_env();
     populate_env(env);
     return env;
 }
 
 void minim_boot_init() {
     minim_thread *th;
-    minim_object *record_equal_proc_obj,
+    mobj *record_equal_proc_obj,
                  *record_hash_proc_obj,
                  *record_write_proc_obj;
 
@@ -273,13 +273,13 @@ void minim_boot_init() {
 
     // initialize special values
 
-    minim_null = GC_alloc(sizeof(minim_object));
+    minim_null = GC_alloc(sizeof(mobj));
     minim_empty_vec = make_vector(0, NULL);
-    minim_true = GC_alloc(sizeof(minim_object));
-    minim_false = GC_alloc(sizeof(minim_object));
-    minim_eof = GC_alloc(sizeof(minim_object));
-    minim_void = GC_alloc(sizeof(minim_object));
-    minim_values = GC_alloc(sizeof(minim_object));
+    minim_true = GC_alloc(sizeof(mobj));
+    minim_false = GC_alloc(sizeof(mobj));
+    minim_eof = GC_alloc(sizeof(mobj));
+    minim_void = GC_alloc(sizeof(mobj));
+    minim_values = GC_alloc(sizeof(mobj));
 
     minim_null->type = MINIM_NULL_TYPE;
     minim_true->type = MINIM_TRUE_TYPE;
@@ -325,7 +325,7 @@ void minim_boot_init() {
     record_hash_proc(th) = record_hash_proc_obj;
     record_write_proc(th) = record_write_proc_obj;
 
-    values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(minim_object*));
+    values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj*));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;
     values_buffer_count(th) = 0;
     th->pid = 0;    // TODO
@@ -343,8 +343,8 @@ void minim_boot_init() {
 
     // Interpreter runtime
 
-    irt_call_args = GC_alloc(CALL_ARGS_DEFAULT * sizeof(minim_object*));
-    irt_saved_args = GC_alloc(SAVED_ARGS_DEFAULT * sizeof(minim_object*));
+    irt_call_args = GC_alloc(CALL_ARGS_DEFAULT * sizeof(mobj*));
+    irt_saved_args = GC_alloc(SAVED_ARGS_DEFAULT * sizeof(mobj*));
     irt_call_args_count = 0;
     irt_saved_args_count = 0;
     irt_call_args_size = CALL_ARGS_DEFAULT;

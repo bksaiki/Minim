@@ -4,25 +4,25 @@
 
 #include "../minim.h"
 
-minim_object *make_syntax(minim_object *e, minim_object *loc) {
+mobj *make_syntax(mobj *e, mobj *loc) {
     minim_syntax_object *o = GC_alloc(sizeof(minim_syntax_object));
     o->type = MINIM_SYNTAX_TYPE;
     o->e = e;
     o->loc = loc;
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
-minim_object *make_pattern_var(minim_object *value, minim_object *depth) {
+mobj *make_pattern_var(mobj *value, mobj *depth) {
     minim_pattern_var_object *o = GC_alloc(sizeof(minim_pattern_var_object));
     o->type = MINIM_PATTERN_VAR_TYPE;
     o->value = value;
     o->depth = depth;
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
 // Recursively converts an object to syntax
-minim_object *to_syntax(minim_object *o) {
-    minim_object *it;
+mobj *to_syntax(mobj *o) {
+    mobj *it;
     long i;
 
     switch (o->type) {
@@ -67,15 +67,15 @@ minim_object *to_syntax(minim_object *o) {
     }
 }
 
-minim_object *strip_syntax(minim_object *o) {
-    minim_object *t;
+mobj *strip_syntax(mobj *o) {
+    mobj *t;
     long i;
 
     switch (o->type) {
     case MINIM_SYNTAX_TYPE:
         return strip_syntax(minim_syntax_e(o));
     case MINIM_PAIR_TYPE:
-        return make_pair(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
+        return Mcons(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
     case MINIM_BOX_TYPE:
         return make_box(strip_syntax(minim_box_contents(o)));
     case MINIM_VECTOR_TYPE:
@@ -88,7 +88,7 @@ minim_object *strip_syntax(minim_object *o) {
     }
 }
 
-static minim_object *syntax_to_list(minim_object *head, minim_object *it) {
+static mobj *syntax_to_list(mobj *head, mobj *it) {
     if (minim_is_null(minim_cdr(it))) {
         return head;
     } else if (minim_is_pair(minim_cdr(it))) {
@@ -105,20 +105,20 @@ static minim_object *syntax_to_list(minim_object *head, minim_object *it) {
 //  Primitives
 //
 
-minim_object *is_syntax_proc(int argc, minim_object **args) {
+mobj *is_syntax_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_syntax(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *syntax_error_proc(int argc, minim_object **args) {
+mobj *syntax_error_proc(int argc, mobj **args) {
     // (-> (or #f symbol) string any)
     // (-> (or #f symbol) string syntax any)
     // (-> (or #f symbol) string syntax syntaxs any)
-    minim_object *what, *why, *where, *sub;
+    mobj *what, *why, *where, *sub;
 
     what = args[0];
     why = args[1];
-    if (!minim_is_false(what) && !minim_is_symbol(what))
+    if (!minim_is_false(what) && !minim_symbolp(what))
         bad_type_exn("syntax-error", "symbol?", what);
     if (!minim_is_string(why))
         bad_type_exn("syntax-error", "string?", why);
@@ -151,35 +151,35 @@ minim_object *syntax_error_proc(int argc, minim_object **args) {
     minim_shutdown(1);
 }
 
-minim_object *to_datum_proc(int argc, minim_object **args) {
+mobj *to_datum_proc(int argc, mobj **args) {
     // (-> syntax any)
     if (!minim_is_syntax(args[0]))
         bad_type_exn("syntax->datum", "syntax?", args[0]);
     return strip_syntax(args[0]);
 }
 
-minim_object *syntax_e_proc(int argc, minim_object **args) {
+mobj *syntax_e_proc(int argc, mobj **args) {
     // (-> syntax any)
     if (!minim_is_syntax(args[0]))
         bad_type_exn("syntax-e", "syntax?", args[0]);
     return minim_syntax_e(args[0]);
 }
 
-minim_object *syntax_loc_proc(int argc, minim_object **args) {
+mobj *syntax_loc_proc(int argc, mobj **args) {
     // (-> syntax any)
     if (!minim_is_syntax(args[0]))
         bad_type_exn("syntax-loc", "syntax?", args[0]);
     return minim_syntax_loc(args[0]);
 }
 
-minim_object *to_syntax_proc(int argc, minim_object **args) {
+mobj *to_syntax_proc(int argc, mobj **args) {
     // (-> any syntax)
     return to_syntax(args[0]);
 }
 
-minim_object *syntax_to_list_proc(int argc, minim_object **args) {
+mobj *syntax_to_list_proc(int argc, mobj **args) {
     // (-> syntax (or #f list))
-    minim_object *stx, *lst;
+    mobj *stx, *lst;
     
     stx = args[0];
     if (!minim_is_syntax(stx))
@@ -194,13 +194,13 @@ minim_object *syntax_to_list_proc(int argc, minim_object **args) {
         return syntax_to_list(lst, lst);
 }
 
-minim_object *is_pattern_var_proc(int argc, minim_object **args) {
+mobj *is_pattern_var_proc(int argc, mobj **args) {
     return minim_is_pattern_var(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *make_pattern_var_proc(int argc, minim_object **args) {
+mobj *make_pattern_var_proc(int argc, mobj **args) {
     // (-> any non-negative-integer? pattern-var?)
-    minim_object *value, *depth;
+    mobj *value, *depth;
     
     value = args[0];
     depth = args[1];
@@ -209,17 +209,17 @@ minim_object *make_pattern_var_proc(int argc, minim_object **args) {
     return make_pattern_var(value, depth);
 }
 
-minim_object *pattern_var_value_proc(int argc, minim_object **args) {
+mobj *pattern_var_value_proc(int argc, mobj **args) {
     // (-> pattern-var? any)
-    minim_object *var = args[0];
+    mobj *var = args[0];
     if (!minim_is_pattern_var(var))
         bad_type_exn("pattern-variable-value", "pattern-variable?", var);
     return minim_pattern_var_value(var);   
 }
 
-minim_object *pattern_var_depth_proc(int argc, minim_object **args) {
+mobj *pattern_var_depth_proc(int argc, mobj **args) {
     // (-> pattern-var? any)
-    minim_object *var = args[0];
+    mobj *var = args[0];
     if (!minim_is_pattern_var(var))
         bad_type_exn("pattern-variable-depth", "pattern-variable?", var);
     return minim_pattern_var_depth(var);   

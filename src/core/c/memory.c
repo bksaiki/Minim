@@ -4,7 +4,7 @@
 
 #include "../minim.h"
 
-typedef minim_object *(*entry_proc)();
+typedef mobj *(*entry_proc)();
 
 struct address_map_t {
     char *name;
@@ -26,17 +26,17 @@ struct address_map_t address_map[] = {
 //  Runtime
 //
 
-minim_object *make_rest_argument(minim_object *args[], short argc) {
-    minim_object *lst;
+mobj *make_rest_argument(mobj *args[], short argc) {
+    mobj *lst;
     
     lst = minim_null;
     for (short i = argc - 1; i >= 0; --i)
-        lst = make_pair(args[i], lst);
+        lst = Mcons(args[i], lst);
 
     return lst;
 }
 
-void check_native_closure_arity(short argc, minim_object *fn) {
+void check_native_closure_arity(short argc, mobj *fn) {
     struct proc_arity *arity;
     int min_arity, max_arity;
 
@@ -53,8 +53,8 @@ void check_native_closure_arity(short argc, minim_object *fn) {
 }
 
 #ifdef MINIM_X86_64
-static minim_object *call_compiled_x86_64(entry_proc fn, minim_object *env) {
-    minim_object *res;
+static mobj *call_compiled_x86_64(entry_proc fn, mobj *env) {
+    mobj *res;
 
     // stash all callee-preserved registers
     // move `env` to `%r14`
@@ -72,7 +72,7 @@ static minim_object *call_compiled_x86_64(entry_proc fn, minim_object *env) {
 }
 #endif
 
-minim_object *call_compiled(minim_object *env, minim_object *addr) {
+mobj *call_compiled(mobj *env, mobj *addr) {
     entry_proc fn;
 
     if (!minim_is_fixnum(addr))
@@ -91,8 +91,8 @@ minim_object *call_compiled(minim_object *env, minim_object *addr) {
 //  Primitives
 //
 
-minim_object *install_literal_bundle_proc(int argc, minim_object **args) {
-    minim_object **bundle, ***root, *it;
+mobj *install_literal_bundle_proc(int argc, mobj **args) {
+    mobj **bundle, ***root, *it;
     long size, i;
 
     if (!is_list(args[0]))
@@ -100,21 +100,21 @@ minim_object *install_literal_bundle_proc(int argc, minim_object **args) {
 
     // create bundle
     size = list_length(args[0]);
-    bundle = GC_alloc(size * sizeof(minim_object *));
+    bundle = GC_alloc(size * sizeof(mobj *));
     for (i = 0, it = args[0]; !minim_is_null(it); it = minim_cdr(it)) {
         bundle[i] = minim_car(it);
         ++i;
     }
 
     // create GC root
-    root = GC_alloc(sizeof(minim_object**));
+    root = GC_alloc(sizeof(mobj**));
     GC_register_root(root);
 
-    return make_fixnum((long) bundle);
+    return Mfixnum((long) bundle);
 }
 
-minim_object *install_proc_bundle_proc(int argc, minim_object **args) {
-    minim_object *it, *it2;
+mobj *install_proc_bundle_proc(int argc, mobj **args) {
+    mobj *it, *it2;
     char *code;
     long size, offset;
 
@@ -146,11 +146,11 @@ minim_object *install_proc_bundle_proc(int argc, minim_object **args) {
     // mark bundle as executable
     make_page_executable(code, size);
 
-    return make_fixnum((long) code);
+    return Mfixnum((long) code);
 }
 
-minim_object *reinstall_proc_bundle_proc(int argc, minim_object **args) {
-    minim_object *it, *it2;
+mobj *reinstall_proc_bundle_proc(int argc, mobj **args) {
+    mobj *it, *it2;
     char *code;
     long size, offset;
 
@@ -191,7 +191,7 @@ minim_object *reinstall_proc_bundle_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *runtime_address_proc(int argc, minim_object **args) {
+mobj *runtime_address_proc(int argc, mobj **args) {
     char *str;
     int i;
 
@@ -202,16 +202,16 @@ minim_object *runtime_address_proc(int argc, minim_object **args) {
     // search constant addresses
     for (i = 0; address_map[i].fn != NULL; ++i) {
         if (strcmp(str, address_map[i].name) == 0)
-            return make_fixnum((long) address_map[i].fn);
+            return Mfixnum((long) address_map[i].fn);
     }
 
     // search dynamic addresses
     if (strcmp(str, "minim_values") == 0) {
-        return make_fixnum((long) minim_values);
+        return Mfixnum((long) minim_values);
     } else if (strcmp(str, "minim_void") == 0) {
-        return make_fixnum((long) minim_void);
+        return Mfixnum((long) minim_void);
     } else if (strcmp(str, "current_thread") == 0) {
-        return make_fixnum((long) current_thread());
+        return Mfixnum((long) current_thread());
     }
     
     fprintf(stderr, "runtime-address: unknown runtime name\n");
@@ -219,6 +219,6 @@ minim_object *runtime_address_proc(int argc, minim_object **args) {
     exit(1);
 }
 
-minim_object *enter_compiled_proc(int argc, minim_object **args) {
+mobj *enter_compiled_proc(int argc, mobj **args) {
     uncallable_prim_exn("enter-compiled!");
 }

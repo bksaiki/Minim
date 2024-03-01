@@ -5,7 +5,7 @@
 #include "../minim.h"
 
 minim_globals *globals;
-minim_object *empty_env;
+mobj *empty_env;
 
 //
 //  Environments
@@ -19,15 +19,15 @@ minim_object *empty_env;
 //    - otherwise we allocate a hashtable
 //
 
-static void not_environment_exn(const char *name, minim_object *frame) {
+static void not_environment_exn(const char *name, mobj *frame) {
     fprintf(stderr, "%s: not an environment frame: ", name);
     write_object(stderr, frame);
     fprintf(stderr, "\n");
     minim_shutdown(1);
 }
 
-static minim_object *environment_names(minim_object *env) {
-    minim_object *frame, *names;
+static mobj *environment_names(mobj *env) {
+    mobj *frame, *names;
 
     names = make_hashtable(equal_hash_proc_obj, equal_proc_obj);
     while (minim_is_env(env)) {
@@ -35,7 +35,7 @@ static minim_object *environment_names(minim_object *env) {
         if (minim_is_vector(frame)) {
             // small namespace
             for (int i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
-                minim_object *bind = minim_vector_ref(frame, i);
+                mobj *bind = minim_vector_ref(frame, i);
                 if (minim_is_false(bind))
                     break;
                 
@@ -43,8 +43,8 @@ static minim_object *environment_names(minim_object *env) {
             }
         } else if (minim_is_hashtable(frame)) {
             // large namespace
-            minim_object *keys = hashtable_keys(frame);
-            for (minim_object *it = keys; !minim_is_null(it); it = minim_cdr(it))
+            mobj *keys = hashtable_keys(frame);
+            for (mobj *it = keys; !minim_is_null(it); it = minim_cdr(it))
                 hashtable_set(names, minim_car(it), minim_null);
         } else {
             not_environment_exn("environment_names()", frame);
@@ -56,28 +56,28 @@ static minim_object *environment_names(minim_object *env) {
     return hashtable_keys(names);
 }
 
-minim_object *make_environment(minim_object *prev) {
+mobj *make_environment(mobj *prev) {
     minim_env *env = GC_alloc(sizeof(minim_env));
     env->type = MINIM_ENVIRONMENT_TYPE;
     env->bindings = make_vector(ENVIRONMENT_VECTOR_MAX, minim_false);
     env->prev = prev;
 
     
-    return ((minim_object *) env);
+    return ((mobj *) env);
 }
 
-void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val) {
-    minim_object *frame;
+void env_define_var_no_check(mobj *env, mobj *var, mobj *val) {
+    mobj *frame;
     long i;
 
     frame = minim_env_bindings(env);
     if (minim_is_vector(frame)) {
-        minim_object *new_frame, *bind;
+        mobj *new_frame, *bind;
 
         // small namespace
         for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
             if (minim_is_false(minim_vector_ref(frame, i))) {
-                minim_vector_ref(frame, i) = make_pair(var, val);
+                minim_vector_ref(frame, i) = Mcons(var, val);
                 return;
             }
         }
@@ -99,8 +99,8 @@ void env_define_var_no_check(minim_object *env, minim_object *var, minim_object 
     }
 }
 
-minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val) {
-    minim_object *frame, *bind, *old;
+mobj *env_define_var(mobj *env, mobj *var, mobj *val) {
+    mobj *frame, *bind, *old;
     long i;
 
     // check if it is defined, and overwrite the current value
@@ -135,8 +135,8 @@ minim_object *env_define_var(minim_object *env, minim_object *var, minim_object 
     return NULL;
 }
 
-minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *val) {
-    minim_object *frame, *bind, *old;
+mobj *env_set_var(mobj *env, mobj *var, mobj *val) {
+    mobj *frame, *bind, *old;
     long i;
 
     while (minim_is_env(env)) {
@@ -173,8 +173,8 @@ minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *va
     minim_shutdown(1);
 }
 
-int env_var_is_defined(minim_object *env, minim_object *var, int recursive) {
-    minim_object *frame, *bind;
+int env_var_is_defined(mobj *env, mobj *var, int recursive) {
+    mobj *frame, *bind;
     long i;
 
     if (minim_is_env(env)) {
@@ -207,8 +207,8 @@ int env_var_is_defined(minim_object *env, minim_object *var, int recursive) {
     return 0;
 }
 
-minim_object *env_lookup_var(minim_object *env, minim_object *var) {
-    minim_object *frame, *bind;
+mobj *env_lookup_var(mobj *env, mobj *var) {
+    mobj *frame, *bind;
     long i;
 
     while (minim_is_env(env)) {
@@ -239,7 +239,7 @@ minim_object *env_lookup_var(minim_object *env, minim_object *var) {
     minim_shutdown(1);
 }
 
-minim_object *setup_env() {
+mobj *setup_env() {
     return make_environment(empty_env);
 }
 
@@ -247,38 +247,38 @@ minim_object *setup_env() {
 //  Primitives
 //
 
-minim_object *interaction_environment_proc(int argc, minim_object **args) {
+mobj *interaction_environment_proc(int argc, mobj **args) {
     // (-> environment)
     return global_env(current_thread());
 }
 
-minim_object *empty_environment_proc(int argc, minim_object **args) {
+mobj *empty_environment_proc(int argc, mobj **args) {
     // (-> environment)
     return setup_env();
 }
 
-minim_object *environment_proc(int argc, minim_object **args) {
+mobj *environment_proc(int argc, mobj **args) {
     // (-> environment)
     return make_env();
 }
 
-minim_object *extend_environment_proc(int argc, minim_object **args) {
+mobj *extend_environment_proc(int argc, mobj **args) {
     // (-> environment environment)
     if (!minim_is_env(args[0]))
         bad_type_exn("extend-environment", "environment?", args[0]);
     return make_environment(args[0]);
 }
 
-minim_object *environment_names_proc(int argc, minim_object **args) {
+mobj *environment_names_proc(int argc, mobj **args) {
     // (-> environment list)
     if (!minim_is_env(args[0]))
         bad_type_exn("extend-environment", "environment?", args[0]);
     return environment_names(args[0]);
 }
 
-minim_object *environment_variable_value_proc(int argc, minim_object **args) {
+mobj *environment_variable_value_proc(int argc, mobj **args) {
     // (-> environment symbol -> any)
-    minim_object *env, *name, *exn, *res;
+    mobj *env, *name, *exn, *res;
     long stashc;
 
     env = args[0];
@@ -286,7 +286,7 @@ minim_object *environment_variable_value_proc(int argc, minim_object **args) {
         bad_type_exn("environment-variable-value", "environment?", env);
 
     name = args[1];
-    if (!minim_is_symbol(name)) {
+    if (!minim_symbolp(name)) {
         bad_type_exn("environment-variable-value", "symbol?", name);
     } else if (env_var_is_defined(env, name, 0)) {
         // variable found
@@ -314,16 +314,16 @@ minim_object *environment_variable_value_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *environment_set_variable_value_proc(int argc, minim_object **args) {
+mobj *environment_set_variable_value_proc(int argc, mobj **args) {
     // (-> environment symbol any void)
-    minim_object *env, *name, *val;
+    mobj *env, *name, *val;
 
     env = args[0];
     if (!minim_is_env(env))
         bad_type_exn("environment-set-variable-value!", "environment?", env);
 
     name = args[1];
-    if (!minim_is_symbol(name))
+    if (!minim_symbolp(name))
         bad_type_exn("environment-set-variable-value!", "symbol?", name);
 
     val = args[2];
@@ -331,7 +331,7 @@ minim_object *environment_set_variable_value_proc(int argc, minim_object **args)
     return minim_void;
 }
 
-minim_object *current_environment_proc(int argc, minim_object **args) {
+mobj *current_environment_proc(int argc, mobj **args) {
     fprintf(stderr, "current-environment: should not be called directly");
     minim_shutdown(1);
 }

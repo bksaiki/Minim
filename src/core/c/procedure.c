@@ -24,7 +24,7 @@ static void set_arity(proc_arity *arity, short min_arity, short max_arity) {
     }
 }
 
-minim_object *make_prim_proc(minim_prim_proc_t proc,
+mobj *make_prim_proc(minim_prim_proc_t proc,
                              char *name,
                              short min_arity, short max_arity) {
     minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
@@ -33,12 +33,12 @@ minim_object *make_prim_proc(minim_prim_proc_t proc,
     o->name = name;
     set_arity(&o->arity, min_arity, max_arity);
 
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
-minim_object *make_closure(minim_object *args,
-                           minim_object *body,
-                           minim_object *env,
+mobj *make_closure(mobj *args,
+                           mobj *body,
+                           mobj *env,
                            short min_arity,
                            short max_arity) {
     minim_closure_object *o = GC_alloc(sizeof(minim_closure_object));
@@ -48,22 +48,22 @@ minim_object *make_closure(minim_object *args,
     o->env = env;
     o->name = NULL;
     set_arity(&o->arity, min_arity, max_arity);
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
-minim_object *make_native_closure(minim_object *env, void *fn, short min_arity, short max_arity) {
+mobj *make_native_closure(mobj *env, void *fn, short min_arity, short max_arity) {
     minim_native_closure_object *o = GC_alloc(sizeof(minim_native_closure_object));
     o->type = MINIM_NATIVE_CLOSURE_TYPE;
     o->env = env;
     o->fn = fn;
     o->name = NULL;
     set_arity(&o->arity, min_arity, max_arity);
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
 // Resizes the value buffer if need be
 void resize_values_buffer(minim_thread *th, int size) {
-    values_buffer(th) = GC_alloc(size * sizeof(minim_object*));
+    values_buffer(th) = GC_alloc(size * sizeof(mobj*));
     values_buffer_size(th) = size;
 }
 
@@ -71,17 +71,17 @@ void resize_values_buffer(minim_thread *th, int size) {
 //  Procedure
 //
 
-minim_object *is_procedure_proc(int argc, minim_object **args) {
+mobj *is_procedure_proc(int argc, mobj **args) {
     // (-> any boolean)
-    minim_object *o = args[0];
+    mobj *o = args[0];
     return (minim_is_prim_proc(o) || minim_is_closure(o)) ? minim_true : minim_false;
 }
 
-minim_object *call_with_values_proc(int argc, minim_object **args) {
+mobj *call_with_values_proc(int argc, mobj **args) {
     uncallable_prim_exn("call-with-values");
 }
 
-minim_object *values_proc(int argc, minim_object **args) {
+mobj *values_proc(int argc, mobj **args) {
     // (-> any ... (values any ...))
     minim_thread *th;
 
@@ -90,26 +90,26 @@ minim_object *values_proc(int argc, minim_object **args) {
         resize_values_buffer(th, argc);
     
     values_buffer_count(th) = argc;
-    memcpy(values_buffer(th), args, argc * sizeof(minim_object *));    
+    memcpy(values_buffer(th), args, argc * sizeof(mobj *));    
     return minim_values;
 }
 
-minim_object *eval_proc(int argc, minim_object **args) {
+mobj *eval_proc(int argc, mobj **args) {
     uncallable_prim_exn("eval");
 }
 
-minim_object *apply_proc(int argc, minim_object **args) {
+mobj *apply_proc(int argc, mobj **args) {
     uncallable_prim_exn("apply");
 }
 
-minim_object *identity_proc(int argc, minim_object **args) {
+mobj *identity_proc(int argc, mobj **args) {
     // (-> any any)
     return args[0];
 }
 
-minim_object *procedure_arity_proc(int argc, minim_object **args) {
+mobj *procedure_arity_proc(int argc, mobj **args) {
     // (-> procedure any)
-    minim_object *proc;
+    mobj *proc;
     proc_arity* arity;
     int min_arity, max_arity;
 
@@ -129,10 +129,10 @@ minim_object *procedure_arity_proc(int argc, minim_object **args) {
     min_arity = proc_arity_min(arity);
     max_arity = proc_arity_max(arity);
     if (proc_arity_is_fixed(arity)) {
-        return make_fixnum(min_arity);
+        return Mfixnum(min_arity);
     } else if (proc_arity_is_unbounded(arity)) {
-        return make_pair(make_fixnum(min_arity), minim_false);
+        return Mcons(Mfixnum(min_arity), minim_false);
     } else {
-        return make_pair(make_fixnum(min_arity), make_fixnum(max_arity));   
+        return Mcons(Mfixnum(min_arity), Mfixnum(max_arity));   
     }
 }

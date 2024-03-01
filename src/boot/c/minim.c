@@ -61,7 +61,7 @@ static void load_library() {
 
 int main(int argc, char **argv) {
     volatile int stack_top;
-    minim_object *expr, *evaled;
+    mobj *expr, *evaled;
     minim_thread *th;
     int argi, i;
 
@@ -77,19 +77,19 @@ int main(int argc, char **argv) {
         load_library();
 
     for (i = argc - 1; i >= argi; --i)
-        command_line(th) = make_pair(make_string(argv[i]), command_line(th));
+        command_line(th) = Mcons(make_string(argv[i]), command_line(th));
 
     if (argi < argc) {
         if (!interactive && opt_load_library) {
             eval_expr(
-                make_pair(intern("import"),
-                    make_pair(make_string(argv[argi]), 
+                Mcons(intern("import"),
+                    Mcons(make_string(argv[argi]), 
                     minim_null)),
                 global_env(th));
         } else {
             eval_expr(
-                make_pair(intern("load"),
-                    make_pair(make_string(argv[argi]), 
+                Mcons(intern("load"),
+                    Mcons(make_string(argv[argi]), 
                     minim_null)),
                 global_env(th));
         }

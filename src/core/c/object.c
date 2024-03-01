@@ -4,38 +4,38 @@
 
 #include "../minim.h"
 
-minim_object *quote_symbol;
-minim_object *define_symbol;
-minim_object *define_values_symbol;
-minim_object *let_symbol;
-minim_object *let_values_symbol;
-minim_object *letrec_symbol;
-minim_object *letrec_values_symbol;
-minim_object *setb_symbol;
-minim_object *if_symbol;
-minim_object *lambda_symbol;
-minim_object *begin_symbol;
-minim_object *cond_symbol;
-minim_object *else_symbol;
-minim_object *and_symbol;
-minim_object *or_symbol;
-minim_object *quote_syntax_symbol;
+mobj *quote_symbol;
+mobj *define_symbol;
+mobj *define_values_symbol;
+mobj *let_symbol;
+mobj *let_values_symbol;
+mobj *letrec_symbol;
+mobj *letrec_values_symbol;
+mobj *setb_symbol;
+mobj *if_symbol;
+mobj *lambda_symbol;
+mobj *begin_symbol;
+mobj *cond_symbol;
+mobj *else_symbol;
+mobj *and_symbol;
+mobj *or_symbol;
+mobj *quote_syntax_symbol;
 
-minim_object *minim_null;
-minim_object *minim_empty_vec;
-minim_object *minim_true;
-minim_object *minim_false;
-minim_object *minim_eof;
-minim_object *minim_void;
-minim_object *minim_values;
-minim_object *minim_base_rtd;
+mobj *minim_null;
+mobj *minim_empty_vec;
+mobj *minim_true;
+mobj *minim_false;
+mobj *minim_eof;
+mobj *minim_void;
+mobj *minim_values;
+mobj *minim_base_rtd;
 
-minim_object *eq_proc_obj;
-minim_object *equal_proc_obj;
-minim_object *eq_hash_proc_obj;
-minim_object *equal_hash_proc_obj;
+mobj *eq_proc_obj;
+mobj *equal_proc_obj;
+mobj *eq_hash_proc_obj;
+mobj *equal_hash_proc_obj;
 
-int minim_is_eq(minim_object *a, minim_object *b) {
+int minim_is_eq(mobj *a, mobj *b) {
     if (a == b)
         return 1;
 
@@ -54,7 +54,7 @@ int minim_is_eq(minim_object *a, minim_object *b) {
     }
 }
 
-int minim_is_equal(minim_object *a, minim_object *b) {
+int minim_is_equal(mobj *a, mobj *b) {
     minim_thread *th;
     long stashc, i;
     int res;
@@ -129,43 +129,43 @@ int minim_is_equal(minim_object *a, minim_object *b) {
 //  Primitives
 //
 
-minim_object *is_null_proc(int argc, minim_object **args) {
+mobj *is_null_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_null(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_void_proc(int argc, minim_object **args) {
+mobj *is_void_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_void(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_eof_proc(int argc, minim_object **args) {
+mobj *is_eof_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_eof(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_bool_proc(int argc, minim_object **args) {
+mobj *is_bool_proc(int argc, mobj **args) {
     // (-> any boolean)
-    minim_object *o = args[0];
+    mobj *o = args[0];
     return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
 }
 
-minim_object *not_proc(int argc, minim_object **args) {
+mobj *not_proc(int argc, mobj **args) {
     // (-> any boolean)
     return minim_is_false(args[0]) ? minim_true : minim_false;   
 }
 
-minim_object *eq_proc(int argc, minim_object **args) {
+mobj *eq_proc(int argc, mobj **args) {
     // (-> any any boolean)
     return minim_is_eq(args[0], args[1]) ? minim_true : minim_false;
 }
 
-minim_object *equal_proc(int argc, minim_object **args) {
+mobj *equal_proc(int argc, mobj **args) {
     // (-> any any boolean)
     return minim_is_equal(args[0], args[1]) ? minim_true : minim_false;
 }
 
-minim_object *void_proc(int argc, minim_object **args) {
+mobj *void_proc(int argc, mobj **args) {
     // (-> void)
     return minim_void;
 }

@@ -10,7 +10,7 @@
 #define start_size_ptr                      (&bucket_sizes[0])
 #define load_factor(s, a)                   ((double)(s) / (double)(a))
 
-minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn) {
+mobj *make_hashtable(mobj *hash_fn, mobj *equiv_fn) {
     minim_hashtable_object *o;
     
     o = GC_alloc(sizeof(minim_hashtable_object));
@@ -18,14 +18,14 @@ minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn) {
     o->alloc_ptr = start_size_ptr;
     o->alloc = *o->alloc_ptr;
     o->size = 0;
-    o->buckets = GC_calloc(o->alloc, sizeof(minim_object*));
+    o->buckets = GC_calloc(o->alloc, sizeof(mobj*));
     o->hash = hash_fn;
     o->equiv = equiv_fn;
 
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
-minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint) {
+mobj *make_hashtable2(mobj *hash_fn, mobj *equiv_fn, size_t size_hint) {
     minim_hashtable_object *o;
     size_t *alloc_ptr;
 
@@ -36,15 +36,15 @@ minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, siz
     o->alloc_ptr =  alloc_ptr;
     o->alloc = *o->alloc_ptr;
     o->size = 0;
-    o->buckets = GC_calloc(o->alloc, sizeof(minim_object*));
+    o->buckets = GC_calloc(o->alloc, sizeof(mobj*));
     o->hash = hash_fn;
     o->equiv = equiv_fn;
 
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
-int hashtable_is_equal(minim_object *h1, minim_object *h2) {
-    minim_object *it, *v;
+int hashtable_is_equal(mobj *h1, mobj *h2) {
+    mobj *it, *v;
     size_t i;
 
     if (minim_hashtable_size(h1) != minim_hashtable_size(h2))
@@ -64,9 +64,9 @@ int hashtable_is_equal(minim_object *h1, minim_object *h2) {
     return 1;
 }
 
-static minim_object *copy_hashtable(minim_object *src) {
+static mobj *copy_hashtable(mobj *src) {
     minim_hashtable_object *o, *ht;
-    minim_object *b, *it, *t;
+    mobj *b, *it, *t;
     size_t i;
 
     ht = ((minim_hashtable_object *) src);
@@ -76,17 +76,17 @@ static minim_object *copy_hashtable(minim_object *src) {
     o->alloc_ptr = ht->alloc_ptr;
     o->alloc = ht->alloc;
     o->size = ht->size;
-    o->buckets = GC_alloc(o->alloc * sizeof(minim_object*));
+    o->buckets = GC_alloc(o->alloc * sizeof(mobj*));
     o->hash = ht->hash;
     o->equiv = ht->equiv;
 
     for (i = 0; i < ht->alloc; ++i) {
         b = minim_hashtable_bucket(ht, i);
         if (b) {
-            t = make_pair(make_pair(minim_caar(b), minim_cdar(b)), minim_null);
+            t = Mcons(Mcons(minim_caar(b), minim_cdar(b)), minim_null);
             minim_hashtable_bucket(o, i) = t;
             for (it = minim_cdr(b); !minim_is_null(it); it = minim_cdr(it)) {
-                minim_cdr(t) = make_pair(make_pair(minim_caar(it), minim_cdar(it)), minim_null);
+                minim_cdr(t) = Mcons(Mcons(minim_caar(it), minim_cdar(it)), minim_null);
                 t = minim_cdr(t);
             }
         } else {
@@ -94,17 +94,17 @@ static minim_object *copy_hashtable(minim_object *src) {
         }
     }
 
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
-static void hashtable_clear(minim_object *o) {
+static void hashtable_clear(mobj *o) {
     minim_hashtable_object *ht;
 
     ht = ((minim_hashtable_object *) o);
     ht->alloc_ptr = start_size_ptr;
     ht->alloc = *ht->alloc_ptr;
     ht->size = 0;
-    ht->buckets = GC_calloc(ht->alloc, sizeof(minim_object *));
+    ht->buckets = GC_calloc(ht->alloc, sizeof(mobj *));
 }
 
 static size_t hash_bytes(const void *data, size_t len, size_t hash0) {
@@ -121,7 +121,7 @@ static size_t hash_bytes(const void *data, size_t len, size_t hash0) {
     return hash >> 2;
 }
 
-static size_t eq_hash2(minim_object *o, size_t hash) {
+static size_t eq_hash2(mobj *o, size_t hash) {
     switch (o->type)
     {
     case MINIM_FIXNUM_TYPE:
@@ -129,12 +129,12 @@ static size_t eq_hash2(minim_object *o, size_t hash) {
     case MINIM_CHAR_TYPE:
         return hash_bytes(&minim_char(o), sizeof(minim_char(o)), hash);
     default:
-        return hash_bytes(&o, sizeof(minim_object *), hash);
+        return hash_bytes(&o, sizeof(mobj *), hash);
     }
 }
 
-static size_t equal_hash2(minim_object *o, size_t hash) {
-    minim_object *it, *res;
+static size_t equal_hash2(mobj *o, size_t hash) {
+    mobj *it, *res;
     minim_thread *th;
     long stashc, i;
 
@@ -187,16 +187,16 @@ static size_t equal_hash2(minim_object *o, size_t hash) {
     }
 }
 
-static size_t eq_hash(minim_object *o) {
+static size_t eq_hash(mobj *o) {
     return eq_hash2(o, hash_init);
 }
 
-static size_t equal_hash(minim_object *o) {
+static size_t equal_hash(mobj *o) {
     return equal_hash2(o, hash_init);
 }
 
-static size_t hash_key(minim_object *ht, minim_object *k) {
-    minim_object *i, *proc;
+static size_t hash_key(mobj *ht, mobj *k) {
+    mobj *i, *proc;
     minim_thread *th;
     long stashc;
 
@@ -222,8 +222,8 @@ static size_t hash_key(minim_object *ht, minim_object *k) {
     }
 }
 
-static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
-    minim_object *proc;
+static int key_equiv(mobj *ht, mobj *k1, mobj *k2) {
+    mobj *proc;
     minim_thread *th;
     long stashc;
     int res;
@@ -246,17 +246,17 @@ static int key_equiv(minim_object *ht, minim_object *k1, minim_object *k2) {
     }
 }
 
-static void hashtable_resize(minim_object *ht, size_t *alloc_ptr) {
-    minim_object **buckets, *it;
+static void hashtable_resize(mobj *ht, size_t *alloc_ptr) {
+    mobj **buckets, *it;
     size_t i, idx;
 
-    buckets = GC_calloc(*alloc_ptr, sizeof(minim_object *));
+    buckets = GC_calloc(*alloc_ptr, sizeof(mobj *));
     for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
         it = minim_hashtable_bucket(ht, i);
         if (it) {
             for (; !minim_is_null(it); it = minim_cdr(it)) {
                 idx = hash_key(ht, minim_caar(it)) % *alloc_ptr;
-                buckets[idx] = make_pair(minim_car(it), (buckets[idx] ? buckets[idx] : minim_null));
+                buckets[idx] = Mcons(minim_car(it), (buckets[idx] ? buckets[idx] : minim_null));
             }
         }
     }
@@ -266,7 +266,7 @@ static void hashtable_resize(minim_object *ht, size_t *alloc_ptr) {
     minim_hashtable_buckets(ht) = buckets;
 }
 
-static void hashtable_opt_resize(minim_object *ht) {
+static void hashtable_opt_resize(mobj *ht) {
     size_t *alloc_ptr;
     size_t alloc, sz;
 
@@ -279,8 +279,8 @@ static void hashtable_opt_resize(minim_object *ht) {
     }
 }
 
-int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
-    minim_object *b, *bi;
+int hashtable_set(mobj *ht, mobj *k, mobj *v) {
+    mobj *b, *bi;
     size_t i;
 
     hashtable_opt_resize(ht);
@@ -297,13 +297,13 @@ int hashtable_set(minim_object *ht, minim_object *k, minim_object *v) {
         b = minim_null;
     }
 
-    minim_hashtable_bucket(ht, i) = make_pair(make_pair(k, v), b);
+    minim_hashtable_bucket(ht, i) = Mcons(Mcons(k, v), b);
     ++minim_hashtable_size(ht);
     return 0;
 }
 
-static int hashtable_delete(minim_object *ht, minim_object *k) {
-    minim_object *b, *bi, *bp;
+static int hashtable_delete(mobj *ht, mobj *k) {
+    mobj *b, *bi, *bp;
     size_t i;
 
     i = hash_key(ht, k) % minim_hashtable_alloc(ht);
@@ -333,8 +333,8 @@ static int hashtable_delete(minim_object *ht, minim_object *k) {
     return 0;
 }
 
-minim_object *hashtable_find(minim_object *ht, minim_object *k) {
-    minim_object *b;
+mobj *hashtable_find(mobj *ht, mobj *k) {
+    mobj *b;
     size_t i;
 
     i = hash_key(ht, k) % minim_hashtable_alloc(ht);
@@ -349,8 +349,8 @@ minim_object *hashtable_find(minim_object *ht, minim_object *k) {
     return minim_null;
 }
 
-minim_object *hashtable_keys(minim_object *ht) {
-    minim_object *b, *ks;
+mobj *hashtable_keys(mobj *ht) {
+    mobj *b, *ks;
     size_t i;
 
     ks = minim_null;
@@ -358,14 +358,14 @@ minim_object *hashtable_keys(minim_object *ht) {
         b = minim_hashtable_bucket(ht, i);
         if (b) {
             for (; !minim_is_null(b); b = minim_cdr(b))
-                ks = make_pair(minim_caar(b), ks);
+                ks = Mcons(minim_caar(b), ks);
         }
     }
 
     return ks;
 }
 
-static void key_not_found_exn(const char *name, minim_object *k) {
+static void key_not_found_exn(const char *name, mobj *k) {
     fprintf(stderr, "%s: could not find key ", name);
     write_object(stderr, k);
     fprintf(stderr, "\n");
@@ -376,34 +376,34 @@ static void key_not_found_exn(const char *name, minim_object *k) {
 //  Primitives
 //
 
-minim_object *is_hashtable_proc(int argc, minim_object **args) {
+mobj *is_hashtable_proc(int argc, mobj **args) {
     // (-> any boolean)
     return (minim_is_hashtable(args[0]) ? minim_true : minim_false);
 }
 
-minim_object *make_eq_hashtable_proc(int argc, minim_object **args) {
+mobj *make_eq_hashtable_proc(int argc, mobj **args) {
     // (-> hashtable)
     return make_hashtable(eq_hash_proc_obj, eq_proc_obj);
 }
 
-minim_object *make_hashtable_proc(int argc, minim_object **args) {
+mobj *make_hashtable_proc(int argc, mobj **args) {
     // (-> hashtable)
     return make_hashtable(equal_hash_proc_obj, equal_proc_obj);
 }
 
-minim_object *hashtable_size_proc(int argc, minim_object **args) {
+mobj *hashtable_size_proc(int argc, mobj **args) {
     // (-> hashtable any any void)
-    minim_object *ht;
+    mobj *ht;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
         bad_type_exn("hashtable-set!", "hashtable?", ht);
-    return make_fixnum(minim_hashtable_size(ht));
+    return Mfixnum(minim_hashtable_size(ht));
 }
 
-minim_object *hashtable_contains_proc(int argc, minim_object **args) {
+mobj *hashtable_contains_proc(int argc, mobj **args) {
     // (-> hashtable any boolean)
-    minim_object *ht, *k;
+    mobj *ht, *k;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
@@ -413,9 +413,9 @@ minim_object *hashtable_contains_proc(int argc, minim_object **args) {
     return (minim_is_null(hashtable_find(ht, k)) ? minim_false : minim_true);
 }
 
-minim_object *hashtable_set_proc(int argc, minim_object **args) {
+mobj *hashtable_set_proc(int argc, mobj **args) {
     // (-> hashtable any any void)
-    minim_object *ht, *k, *v;
+    mobj *ht, *k, *v;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
@@ -427,9 +427,9 @@ minim_object *hashtable_set_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *hashtable_delete_proc(int argc, minim_object **args) {
+mobj *hashtable_delete_proc(int argc, mobj **args) {
     // (-> hashtable any void)
-    minim_object *ht, *k;
+    mobj *ht, *k;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
@@ -442,10 +442,10 @@ minim_object *hashtable_delete_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *hashtable_update_proc(int argc, minim_object **args) {
+mobj *hashtable_update_proc(int argc, mobj **args) {
     // (-> hashtable any (-> any any) void)
     // (-> hashtable any (-> any any) any void)
-    minim_object *ht, *k, *proc, *b, *env;
+    mobj *ht, *k, *proc, *b, *env;
     long stashc;
 
     ht = args[0];
@@ -465,7 +465,7 @@ minim_object *hashtable_update_proc(int argc, minim_object **args) {
             key_not_found_exn("hashtable-update!", k);
         } else {
             // user-provided failure
-            minim_object *fail, *v;
+            mobj *fail, *v;
 
             fail = args[3];
             env = global_env(current_thread());     // TODO: this seems problematic
@@ -489,10 +489,10 @@ minim_object *hashtable_update_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *hashtable_ref_proc(int argc, minim_object **args) {
+mobj *hashtable_ref_proc(int argc, mobj **args) {
     // (-> hashtable any any)
     // (-> hashtable any any any)
-    minim_object *ht, *k, *b;
+    mobj *ht, *k, *b;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
@@ -509,7 +509,7 @@ minim_object *hashtable_ref_proc(int argc, minim_object **args) {
             minim_shutdown(1);
         } else {
             // user-provided failure
-            minim_object *fail, *env, *result;
+            mobj *fail, *env, *result;
             long stashc;
 
             fail = args[2];
@@ -527,9 +527,9 @@ minim_object *hashtable_ref_proc(int argc, minim_object **args) {
     return minim_cdr(b);
 }
 
-minim_object *hashtable_keys_proc(int argc, minim_object **args) {
+mobj *hashtable_keys_proc(int argc, mobj **args) {
     // (-> hashtable (listof any))
-    minim_object *ht;
+    mobj *ht;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
@@ -537,9 +537,9 @@ minim_object *hashtable_keys_proc(int argc, minim_object **args) {
     return hashtable_keys(ht);
 }
 
-minim_object *hashtable_copy_proc(int argc, minim_object **args) {
+mobj *hashtable_copy_proc(int argc, mobj **args) {
     // (-> hashtable void)
-    minim_object *ht;
+    mobj *ht;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
@@ -547,9 +547,9 @@ minim_object *hashtable_copy_proc(int argc, minim_object **args) {
     return copy_hashtable(ht);
 }
 
-minim_object *hashtable_clear_proc(int argc, minim_object **args) {
+mobj *hashtable_clear_proc(int argc, mobj **args) {
     // (-> hashtable void)
-    minim_object *ht;
+    mobj *ht;
 
     ht = args[0];
     if (!minim_is_hashtable(ht))
@@ -558,10 +558,10 @@ minim_object *hashtable_clear_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *eq_hash_proc(int argc, minim_object **args) {
-    return make_fixnum(eq_hash(args[0]));
+mobj *eq_hash_proc(int argc, mobj **args) {
+    return Mfixnum(eq_hash(args[0]));
 }
 
-minim_object *equal_hash_proc(int argc, minim_object **args) {
-    return make_fixnum(equal_hash(args[0]));
+mobj *equal_hash_proc(int argc, mobj **args) {
+    return Mfixnum(equal_hash(args[0]));
 }

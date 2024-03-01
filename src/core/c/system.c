@@ -99,9 +99,9 @@ char *get_file_dir(const char *realpath) {
     return dirpath;
 }
 
-minim_object *load_file(const char *fname) {
+mobj *load_file(const char *fname) {
     FILE *f;
-    minim_object *result, *expr;
+    mobj *result, *expr;
     char *old_cwd, *cwd;
 
     f = fopen(fname, "r");
@@ -132,23 +132,23 @@ void minim_shutdown(int code) {
 //  Primitives
 //
 
-minim_object *load_proc(int argc, minim_object **args) {
+mobj *load_proc(int argc, mobj **args) {
     // (-> string any)
     if (!minim_is_string(args[0]))
         bad_type_exn("load", "string?", args[0]);
     return load_file(minim_string(args[0]));
 }
 
-minim_object *error_proc(int argc, minim_object **args) {
+mobj *error_proc(int argc, mobj **args) {
     // (-> (or #f string symbol)
     //     string?
     //     any ...
     //     any)
-    minim_object *who, *message;
+    mobj *who, *message;
     int i;
 
     who = args[0];
-    if (!minim_is_false(who) && !minim_is_symbol(who) && !minim_is_string(who))
+    if (!minim_is_false(who) && !minim_symbolp(who) && !minim_is_string(who))
         bad_type_exn("error", "(or #f string? symbol?)", who);
 
     message = args[1];
@@ -173,7 +173,7 @@ minim_object *error_proc(int argc, minim_object **args) {
     minim_shutdown(1);
 }
 
-minim_object *exit_proc(int argc, minim_object **args) {
+mobj *exit_proc(int argc, mobj **args) {
     // (-> number any)
 
     if (argc == 1 && 0 <= minim_fixnum(args[0]) && minim_fixnum(args[0]) <= 255)
@@ -182,10 +182,10 @@ minim_object *exit_proc(int argc, minim_object **args) {
         minim_shutdown(0);
 }
 
-minim_object *current_directory_proc(int argc, minim_object **args) {
+mobj *current_directory_proc(int argc, mobj **args) {
     // (-> string)
     // (-> string void)
-    minim_object *path;
+    mobj *path;
 
     if (argc == 0) {
         // getter
@@ -201,10 +201,10 @@ minim_object *current_directory_proc(int argc, minim_object **args) {
     }
 }
 
-minim_object *command_line_proc(int argc, minim_object **args) {
+mobj *command_line_proc(int argc, mobj **args) {
     return command_line(current_thread());
 }
 
-minim_object *version_proc(int argc, minim_object **args) {
+mobj *version_proc(int argc, mobj **args) {
     return make_string(MINIM_VERSION);
 }

@@ -4,19 +4,19 @@
 
 #include "../minim.h"
 
-minim_object *make_record(minim_object *rtd, int fieldc) {
+mobj *make_record(mobj *rtd, int fieldc) {
     minim_record_object *o = GC_alloc(sizeof(minim_record_object));
     o->type = MINIM_RECORD_TYPE;
     o->rtd = rtd;
-    o->fields = GC_calloc(fieldc, sizeof(minim_object*));
+    o->fields = GC_calloc(fieldc, sizeof(mobj*));
     o->fieldc = fieldc;
-    return ((minim_object *) o);
+    return ((mobj *) o);
 }
 
 // Record type descriptors are records, but they
 // return `#f` when passed to `record?`.
-static int is_true_record(minim_object *o) {
-    minim_object *rtd;
+static int is_true_record(mobj *o) {
+    mobj *rtd;
 
     if (!minim_is_record(o))
         return 0;
@@ -26,12 +26,12 @@ static int is_true_record(minim_object *o) {
 }
 
 // Returns 1 when `o` is a record value, and 0 otherwise.
-int is_record_value(minim_object *o) {
+int is_record_value(mobj *o) {
     return minim_is_record(o) && minim_record_rtd(o) != minim_base_rtd;
 }
 
 // Returns 1 when `o` is a record type descriptor, and 0 otherwise.
-int is_record_rtd(minim_object *o) {
+int is_record_rtd(mobj *o) {
     return minim_is_record(o) && minim_record_rtd(o) == minim_base_rtd;
 }
 
@@ -39,22 +39,22 @@ int is_record_rtd(minim_object *o) {
 //
 //
 
-minim_object *is_record_proc(int argc, minim_object **args) {
+mobj *is_record_proc(int argc, mobj **args) {
     // (-> any boolean)
     return is_true_record(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_record_rtd_proc(int argc, minim_object **args) {
+mobj *is_record_rtd_proc(int argc, mobj **args) {
     // (-> any boolean)
     return is_record_rtd(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *is_record_value_proc(int argc, minim_object **args) {
+mobj *is_record_value_proc(int argc, mobj **args) {
     // (-> any boolean)
     return is_record_value(args[0]) ? minim_true : minim_false;
 }
 
-static void make_rtd_field_exn(const char *reason, minim_object *field, int index) {
+static void make_rtd_field_exn(const char *reason, mobj *field, int index) {
     fprintf(stderr, "make-record-type-descriptor: invalid field descriptor\n");
     fprintf(stderr, " why: %s\n", reason);
     fprintf(stderr, " field desciptor: ");
@@ -64,17 +64,17 @@ static void make_rtd_field_exn(const char *reason, minim_object *field, int inde
     exit(1);
 }
 
-minim_object *make_rtd_proc(int argc, minim_object **args) {
+mobj *make_rtd_proc(int argc, mobj **args) {
     // (-> symbol (or rtd #f) (or symbol #f) boolean boolean vector rtd)
-    minim_object *rtd, *field, *field_it;
+    mobj *rtd, *field, *field_it;
     int fieldc, i;
 
     // validate input types
-    if (!minim_is_symbol(args[0]))
+    if (!minim_symbolp(args[0]))
         bad_type_exn("make-record-type-descriptor", "symbol?", args[0]);
     if (!is_record_rtd(args[1]) && !minim_is_false(args[1]))
         bad_type_exn("make-record-type-descriptor", "rtd? or #f", args[1]);
-    if (!minim_is_symbol(args[2]) && !minim_is_false(args[2]))
+    if (!minim_symbolp(args[2]) && !minim_is_false(args[2]))
         bad_type_exn("make-record-type-descriptor", "rtd? or #f", args[2]);
     if (!minim_is_bool(args[3]))
         bad_type_exn("make-record-type-descriptor", "boolean?", args[3]);
@@ -124,7 +124,7 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
 
         // check type first (either 'immutable or 'mutable)
         field_it = minim_car(field);
-        if (!minim_is_symbol(field_it))
+        if (!minim_symbolp(field_it))
             make_rtd_field_exn("expected 'immutable or 'mutable", field, i);
 
         if (!minim_is_eq(field_it, intern("immutable")) &&
@@ -136,7 +136,7 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
         field_it = minim_cdr(field);
         if (!minim_is_pair(field_it))
             make_rtd_field_exn("expected a list", field, i);
-        if (!minim_is_symbol(minim_car(field_it)))
+        if (!minim_symbolp(minim_car(field_it)))
             make_rtd_field_exn("expected an identitifer after field type", field, i);
         if (!minim_is_null(minim_cdr(field_it)))
             make_rtd_field_exn("too many entries in field descriptor", field, i);
@@ -148,7 +148,7 @@ minim_object *make_rtd_proc(int argc, minim_object **args) {
     return rtd;
 }
 
-minim_object *record_type_name_proc(int argc, minim_object **args) {
+mobj *record_type_name_proc(int argc, mobj **args) {
     // (-> rtd symbol)
     if (!is_record_rtd(args[0]))
         bad_type_exn("record-type-name", "record-type-descriptor?", args[0]);
@@ -156,7 +156,7 @@ minim_object *record_type_name_proc(int argc, minim_object **args) {
     return record_rtd_name(args[0]);
 }
 
-minim_object *record_type_parent_proc(int argc, minim_object **args) {
+mobj *record_type_parent_proc(int argc, mobj **args) {
     // (-> rtd (or symbol #f))
     if (!is_record_rtd(args[0]))
         bad_type_exn("record-type-parent", "record-type-descriptor?", args[0]);
@@ -164,7 +164,7 @@ minim_object *record_type_parent_proc(int argc, minim_object **args) {
     return record_rtd_parent(args[0]);
 }
 
-minim_object *record_type_uid_proc(int argc, minim_object **args) {
+mobj *record_type_uid_proc(int argc, mobj **args) {
     // (-> rtd (or symbol #f))
     if (!is_record_rtd(args[0]))
         bad_type_exn("record-type-uid", "record-type-descriptor?", args[0]);
@@ -172,7 +172,7 @@ minim_object *record_type_uid_proc(int argc, minim_object **args) {
     return record_rtd_uid(args[0]);
 }
 
-minim_object *record_type_opaque_proc(int argc, minim_object **args) {
+mobj *record_type_opaque_proc(int argc, mobj **args) {
     // (-> rtd boolean?)
     if (!is_record_rtd(args[0]))
         bad_type_exn("record-type-opaque", "record-type-descriptor?", args[0]);
@@ -180,7 +180,7 @@ minim_object *record_type_opaque_proc(int argc, minim_object **args) {
     return record_rtd_opaque(args[0]);
 }
 
-minim_object *record_type_sealed_proc(int argc, minim_object **args) {
+mobj *record_type_sealed_proc(int argc, mobj **args) {
     // (-> rtd boolean?)
     if (!is_record_rtd(args[0]))
         bad_type_exn("record-type-sealed", "record-type-descriptor?", args[0]);
@@ -188,9 +188,9 @@ minim_object *record_type_sealed_proc(int argc, minim_object **args) {
     return record_rtd_sealed(args[0]);
 }
 
-minim_object *record_type_fields_proc(int argc, minim_object **args) {
+mobj *record_type_fields_proc(int argc, mobj **args) {
     // (-> rtd (vector symbol))
-    minim_object *fields;
+    mobj *fields;
     int fieldc, i;
     
     if (!is_record_rtd(args[0]))
@@ -208,9 +208,9 @@ minim_object *record_type_fields_proc(int argc, minim_object **args) {
     return fields;
 }
 
-minim_object *record_type_field_mutable_proc(int argc, minim_object **args) {
+mobj *record_type_field_mutable_proc(int argc, mobj **args) {
     // (-> rtd (vector symbol))
-    minim_object *rtd;
+    mobj *rtd;
     int fieldc, idx;
     
     if (!is_record_rtd(args[0]))
@@ -232,9 +232,9 @@ minim_object *record_type_field_mutable_proc(int argc, minim_object **args) {
     return (minim_car(record_rtd_field(rtd, idx)) == intern("mutable")) ? minim_true : minim_false;
 }
 
-minim_object *make_record_proc(int argc, minim_object **args) {
+mobj *make_record_proc(int argc, mobj **args) {
     // (-> rtd any ...)
-    minim_object *rtd, *rec;
+    mobj *rtd, *rec;
     int fieldc, i;
 
     if (!is_record_rtd(args[0]))
@@ -265,14 +265,14 @@ minim_object *make_record_proc(int argc, minim_object **args) {
     return rec;
 }
 
-minim_object *record_rtd_proc(int argc, minim_object **args) {
+mobj *record_rtd_proc(int argc, mobj **args) {
     // (-> record rtd)
     if (!is_record_value(args[0]))
         bad_type_exn("$record-rtd", "record?", args[0]);
     return minim_record_rtd(args[0]);
 }
 
-minim_object *record_ref_proc(int argc, minim_object **args) {
+mobj *record_ref_proc(int argc, mobj **args) {
     // (-> record idx any)
     int fieldc, idx;
 
@@ -293,7 +293,7 @@ minim_object *record_ref_proc(int argc, minim_object **args) {
     return minim_record_ref(args[0], idx);
 }
 
-minim_object *record_set_proc(int argc, minim_object **args) {
+mobj *record_set_proc(int argc, mobj **args) {
     // (-> record idx any void)
     int fieldc, idx;
 
@@ -315,7 +315,7 @@ minim_object *record_set_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *default_record_equal_procedure_proc(int argc, minim_object **args) {
+mobj *default_record_equal_procedure_proc(int argc, mobj **args) {
     // (-> any any proc boolean)
     if (is_record_value(args[0]) && is_record_value(args[1])) {
         return minim_is_eq(args[0], args[1]) ? minim_true : minim_false;
@@ -324,7 +324,7 @@ minim_object *default_record_equal_procedure_proc(int argc, minim_object **args)
     }
 }
 
-minim_object *default_record_hash_procedure_proc(int argc, minim_object **args) {
+mobj *default_record_hash_procedure_proc(int argc, mobj **args) {
     // (-> any proc boolean)
     if (is_record_value(args[0])) {
         return eq_hash_proc(1, args);
@@ -333,9 +333,9 @@ minim_object *default_record_hash_procedure_proc(int argc, minim_object **args) 
     }
 }
 
-minim_object *default_record_write_procedure_proc(int argc, minim_object **args) {
+mobj *default_record_write_procedure_proc(int argc, mobj **args) {
     // (-> any proc boolean)
-    minim_object *o, *quote, *display;
+    mobj *o, *quote, *display;
     FILE *out;
 
     o = args[0];
@@ -351,7 +351,7 @@ minim_object *default_record_write_procedure_proc(int argc, minim_object **args)
     return minim_void;
 }
 
-minim_object *current_record_equal_procedure_proc(int argc, minim_object **args) {
+mobj *current_record_equal_procedure_proc(int argc, mobj **args) {
     // (-> proc)
     // (-> proc void)
     if (argc == 0) {
@@ -364,7 +364,7 @@ minim_object *current_record_equal_procedure_proc(int argc, minim_object **args)
     }
 }
 
-minim_object *current_record_hash_procedure_proc(int argc, minim_object **args) {
+mobj *current_record_hash_procedure_proc(int argc, mobj **args) {
     // (-> proc)
     // (-> proc void)
     if (argc == 0) {
@@ -377,7 +377,7 @@ minim_object *current_record_hash_procedure_proc(int argc, minim_object **args) 
     }
 }
 
-minim_object *current_record_write_procedure_proc(int argc, minim_object **args) {
+mobj *current_record_write_procedure_proc(int argc, mobj **args) {
     // (-> proc)
     // (-> proc void)
     if (argc == 0) {

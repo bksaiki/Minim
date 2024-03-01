@@ -8,7 +8,7 @@
 #include "../boot.h"
 
 FILE *stream;
-minim_object *env;
+mobj *env;
 int return_code, passed;
 
 #define reset() {               \
@@ -23,7 +23,7 @@ int return_code, passed;
 
 #define eval(s)     eval_expr(read_object(stream), env)
 
-char *write(minim_object *o) {
+char *write(mobj *o) {
     char *str;
     size_t read;
     long length;
@@ -57,7 +57,7 @@ char *write(minim_object *o) {
 }
 
 void check_true(const char *input) {
-    minim_object *result;
+    mobj *result;
 
     reset();
     load(input);
@@ -68,7 +68,7 @@ void check_true(const char *input) {
 }
 
 void check_false(const char *input) {
-    minim_object *result;
+    mobj *result;
 
     reset();
     load(input);

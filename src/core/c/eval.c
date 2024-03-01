@@ -17,12 +17,12 @@
 
 static void resize_call_args(short req) {
     while (irt_call_args_size < req)  irt_call_args_size *= 2;
-    irt_call_args = GC_realloc(irt_call_args, irt_call_args_size * sizeof(minim_object*));
+    irt_call_args = GC_realloc(irt_call_args, irt_call_args_size * sizeof(mobj*));
 }
 
 static void resize_saved_args(short req) {
     while (irt_saved_args_size < req)  irt_saved_args_size *= 2;
-    irt_saved_args = GC_realloc(irt_saved_args, irt_saved_args_size * sizeof(minim_object*));
+    irt_saved_args = GC_realloc(irt_saved_args, irt_saved_args_size * sizeof(mobj*));
 }
 
 void assert_no_call_args() {
@@ -32,13 +32,13 @@ void assert_no_call_args() {
     }
 }
 
-void push_saved_arg(minim_object *arg) {
+void push_saved_arg(mobj *arg) {
     if (irt_saved_args_count >= irt_saved_args_size)
         resize_saved_args(irt_saved_args_count + 2);
     irt_saved_args[irt_saved_args_count++] = arg;
 }
 
-void push_call_arg(minim_object *arg) {
+void push_call_arg(mobj *arg) {
     if (irt_call_args_count >= irt_call_args_size)
         resize_call_args(irt_call_args_count + 1);
     irt_call_args[irt_call_args_count++] = arg;
@@ -60,7 +60,7 @@ void prepare_call_args(long count) {
     if (count < irt_call_args_size)
         resize_call_args(count + 1);
     
-    memcpy(irt_call_args, &irt_saved_args[irt_saved_args_count - count], count * sizeof(minim_object*));
+    memcpy(irt_call_args, &irt_saved_args[irt_saved_args_count - count], count * sizeof(mobj*));
     irt_call_args[count] = NULL;
     irt_call_args_count = count;
     irt_saved_args_count -= count;
@@ -85,7 +85,7 @@ void clear_call_args() {
 //  Runtime check
 //
 
-void bad_syntax_exn(minim_object *expr) {
+void bad_syntax_exn(mobj *expr) {
     fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
     fprintf(stderr, " at: ");
     write_object2(stderr, expr, 1, 0);
@@ -93,7 +93,7 @@ void bad_syntax_exn(minim_object *expr) {
     minim_shutdown(1);
 }
 
-void bad_type_exn(const char *name, const char *type, minim_object *x) {
+void bad_type_exn(const char *name, const char *type, mobj *x) {
     fprintf(stderr, "%s: type violation\n", name);
     fprintf(stderr, " expected: %s\n", type);
     fprintf(stderr, " received: ");
@@ -181,16 +181,16 @@ static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum>)
-static void check_1ary_syntax(minim_object *expr) {
-    minim_object *rest = minim_cdr(expr);
+static void check_1ary_syntax(mobj *expr) {
+    mobj *rest = minim_cdr(expr);
     if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum> <datum>)
-static void check_3ary_syntax(minim_object *expr) {
-    minim_object *rest;
+static void check_3ary_syntax(mobj *expr) {
+    mobj *rest;
     
     rest = minim_cdr(expr);
     if (!minim_is_pair(rest))
@@ -207,11 +207,11 @@ static void check_3ary_syntax(minim_object *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr must be `(<name> <symbol> <datum>)`
-static void check_assign(minim_object *expr) {
-    minim_object *rest;
+static void check_assign(mobj *expr) {
+    mobj *rest;
 
     rest = minim_cdr(expr);
-    if (!minim_is_pair(rest) || !minim_is_symbol(minim_car(rest)))
+    if (!minim_is_pair(rest) || !minim_symbolp(minim_car(rest)))
         bad_syntax_exn(expr);
 
     rest = minim_cdr(rest);
@@ -224,8 +224,8 @@ static void check_assign(minim_object *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> (<symbol> ...) <datum>)
-static void check_define_values(minim_object *expr) {
-    minim_object *rest, *ids;
+static void check_define_values(mobj *expr) {
+    mobj *rest, *ids;
     
     rest = minim_cdr(expr);
     if (!minim_is_pair(rest))
@@ -233,7 +233,7 @@ static void check_define_values(minim_object *expr) {
 
     ids = minim_car(rest);
     while (minim_is_pair(ids)) {
-        if (!minim_is_symbol(minim_car(ids)))
+        if (!minim_symbolp(minim_car(ids)))
             bad_syntax_exn(expr);
         ids = minim_cdr(ids);
     } 
@@ -250,8 +250,8 @@ static void check_define_values(minim_object *expr) {
 // Check: `expr` must be `(let-values ([(<var> ...) <val>] ...) <body> ...)`
 // Does not check if each `<body>` is an expression.
 // Does not check if `<body> ...` forms a list.
-static void check_let_values(minim_object *expr) {
-    minim_object *bindings, *bind, *ids;
+static void check_let_values(mobj *expr) {
+    mobj *bindings, *bind, *ids;
     
     bindings = minim_cdr(expr);
     if (!minim_is_pair(bindings) || !minim_is_pair(minim_cdr(bindings)))
@@ -265,7 +265,7 @@ static void check_let_values(minim_object *expr) {
 
         ids = minim_car(bind);
         while (minim_is_pair(ids)) {
-            if (!minim_is_symbol(minim_car(ids)))
+            if (!minim_symbolp(minim_car(ids)))
                 bad_syntax_exn(expr);
             ids = minim_cdr(ids);
         } 
@@ -286,8 +286,8 @@ static void check_let_values(minim_object *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> ...)`
-static void check_begin(minim_object *expr) {
-    minim_object *rest = minim_cdr(expr);
+static void check_begin(mobj *expr) {
+    mobj *rest = minim_cdr(expr);
 
     while (minim_is_pair(rest))
         rest = minim_cdr(rest);
@@ -296,12 +296,12 @@ static void check_begin(minim_object *expr) {
         bad_syntax_exn(expr);
 }
 
-static void check_lambda(minim_object *expr, short *min_arity, short *max_arity) {
-    minim_object *args = minim_cadr(expr);
+static void check_lambda(mobj *expr, short *min_arity, short *max_arity) {
+    mobj *args = minim_cadr(expr);
     int argc = 0;
 
     while (minim_is_pair(args)) {
-        if (!minim_is_symbol(minim_car(args))) {
+        if (!minim_symbolp(minim_car(args))) {
             fprintf(stderr, "expected a identifier for an argument:\n ");
             write_object(stderr, expr);
             fputc('\n', stderr);
@@ -315,7 +315,7 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
     if (minim_is_null(args)) {
         *min_arity = argc;
         *max_arity = argc;
-    } else if (minim_is_symbol(args)) {
+    } else if (minim_symbolp(args)) {
         *min_arity = argc;
         *max_arity = ARG_MAX;
     } else {
@@ -331,7 +331,7 @@ static void check_lambda(minim_object *expr, short *min_arity, short *max_arity)
 //
 
 static long apply_args() {
-    minim_object *lst;
+    mobj *lst;
 
     // check if last argument is a list
     // safe since call_args >= 2
@@ -339,7 +339,7 @@ static long apply_args() {
 
     // for every arg except the last arg: shift down by 1
     // remove the last argument from the stack
-    memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 2) * sizeof(minim_object *));
+    memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 2) * sizeof(mobj *));
     irt_call_args_count -= 2;
 
     // for the last argument: push every element of the list
@@ -361,7 +361,7 @@ static long apply_args() {
 // if `x` is the result of `(values ...)` it unwraps
 // the result if `x` contains one value and panics
 // otherwise
-static minim_object *force_single_value(minim_object* x) {
+static mobj *force_single_value(mobj* x) {
     minim_thread *th;
     if (minim_is_values(x)) {
         th = current_thread();
@@ -373,8 +373,8 @@ static minim_object *force_single_value(minim_object* x) {
     }
 }
 
-static long eval_exprs(minim_object *exprs, minim_object *env) {
-    minim_object *it, *result;
+static long eval_exprs(mobj *exprs, mobj *env) {
+    mobj *it, *result;
     long argc;
 
     argc = 0;
@@ -389,10 +389,10 @@ static long eval_exprs(minim_object *exprs, minim_object *env) {
     return argc;
 }
 
-minim_object *call_with_values(minim_object *producer,
-                               minim_object *consumer,
-                               minim_object *env) {
-    minim_object *produced, *result;
+mobj *call_with_values(mobj *producer,
+                               mobj *consumer,
+                               mobj *env) {
+    mobj *produced, *result;
     minim_thread *th;
     long stashc, i;
 
@@ -412,8 +412,8 @@ minim_object *call_with_values(minim_object *producer,
     return result;
 }
 
-minim_object *call_with_args(minim_object *proc, minim_object *env) {
-    minim_object *expr, **args, *result;
+mobj *call_with_args(mobj *proc, mobj *env) {
+    mobj *expr, **args, *result;
     long argc;
 
     proc = force_single_value(proc);
@@ -479,7 +479,7 @@ application:
         clear_call_args();
         return result;
     } else if (minim_is_closure(proc)) {
-        minim_object *vars, *rest;
+        mobj *vars, *rest;
         int i, j;
 
         // check arity and extend environment
@@ -497,10 +497,10 @@ application:
         }
 
         // optionally process rest argument
-        if (minim_is_symbol(vars)) {
+        if (minim_symbolp(vars)) {
             rest = minim_null;
             for (j = argc - 1; j >= i; --j)
-                rest = make_pair(args[j], rest);
+                rest = Mcons(args[j], rest);
             env_define_var_no_check(env, vars, rest);
         }
 
@@ -518,7 +518,7 @@ application:
     }
 }
 
-minim_object *eval_expr(minim_object *expr, minim_object *env) {
+mobj *eval_expr(mobj *expr, mobj *env) {
 
 loop:
 
@@ -531,7 +531,7 @@ loop:
         minim_is_vector(expr)) {
         // self-evaluating
         return expr;
-    } else if (minim_is_symbol(expr)) {
+    } else if (minim_symbolp(expr)) {
         // variable
         return env_lookup_var(env, expr);
     } else if (minim_is_null(expr)) {
@@ -540,13 +540,13 @@ loop:
         write_object2(stderr, expr, 0, 0);
         minim_shutdown(1);
     } else if (minim_is_pair(expr)) {
-        minim_object *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
+        mobj *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
         minim_thread *th;
         long var_count, idx, argc;
 
         // special forms
         head = minim_car(expr);
-        if (minim_is_symbol(head)) {
+        if (minim_symbolp(head)) {
             if (head == define_values_symbol) {
                 // define-values form
                 check_define_values(expr);
@@ -601,7 +601,7 @@ loop:
                     }
                 }
                 
-                expr = make_pair(begin_symbol, (minim_cddr(expr)));
+                expr = Mcons(begin_symbol, (minim_cddr(expr)));
                 env = env2;
                 goto loop;
             } else if (head == letrec_values_symbol) {
@@ -633,7 +633,7 @@ loop:
                     }
                 }
 
-                expr = make_pair(begin_symbol, (minim_cddr(expr)));
+                expr = Mcons(begin_symbol, (minim_cddr(expr)));
                 goto loop;
             } else if (head == quote_symbol) {
                 // quote form
@@ -664,7 +664,7 @@ loop:
                 // lambda form
                 check_lambda(expr, &min_arity, &max_arity);
                 return make_closure(minim_cadr(expr),
-                                        make_pair(begin_symbol, minim_cddr(expr)),
+                                        Mcons(begin_symbol, minim_cddr(expr)),
                                         env,
                                         min_arity,
                                         max_arity);
@@ -748,7 +748,7 @@ application:
             clear_call_args();
             return result;
         } else if (minim_is_closure(proc)) {
-            minim_object *vars, *rest;
+            mobj *vars, *rest;
             int i, j;
 
             // check arity and extend environment
@@ -766,10 +766,10 @@ application:
             }
 
             // optionally process rest argument
-            if (minim_is_symbol(vars)) {
+            if (minim_symbolp(vars)) {
                 rest = minim_null;
                 for (j = argc - 1; j >= i; --j)
-                    rest = make_pair(args[j], rest);
+                    rest = Mcons(args[j], rest);
                 env_define_var_no_check(env, vars, rest);
             }
 
