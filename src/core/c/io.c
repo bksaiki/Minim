@@ -167,7 +167,7 @@ static mobj *read_pair(FILE *in, char open_paren) {
 }
 
 static mobj *read_vector(FILE *in) {
-    mobj *v, *vn, *l;
+    mobj *l;
     int c;
 
     l = minim_null;
@@ -223,7 +223,7 @@ loop:
             return read_vector(in);
         case '&':
             // vector
-            return make_box(read_object(in));
+            return Mbox(read_object(in));
         case 'x':
             // hex number
             c = getc(in);
@@ -367,7 +367,7 @@ read_hex:
         }
 
         buffer[i] = '\0';
-        return make_string(buffer);
+        return Mstring(buffer);
     } else if (c == '(' || c == '[' || c == '{') {
         // empty list or pair
         return read_pair(in, c);
@@ -413,12 +413,12 @@ read_symbol:
 //  Writing
 //
 
-static void write_pair(FILE *out, minim_pair_object *p, int quote, int display) {
+static void write_pair(FILE *out, mobj p, int quote, int display) {
     write_object2(out, minim_car(p), quote, display);
-    if (minim_is_pair(minim_cdr(p))) {
+    if (minim_consp(minim_cdr(p))) {
         fputc(' ', out);
-        write_pair(out, ((minim_pair_object *) minim_cdr(p)), quote, display);
-    } else if (minim_is_null(minim_cdr(p))) {
+        write_pair(out, minim_cdr(p), quote, display);
+    } else if (minim_nullp(minim_cdr(p))) {
         return;
     } else {
         fprintf(out, " . ");
@@ -432,176 +432,171 @@ void write_object2(FILE *out, mobj *o, int quote, int display) {
     char *str;
     long stashc, i;
 
-    switch (o->type) {
-    case MINIM_NULL_TYPE:
+    if (minim_nullp(o)) {
         if (!quote) fputc('\'', out);
         fprintf(out, "()");
-        break;
-    case MINIM_TRUE_TYPE:
+    } else if (minim_truep(o)) {
         fprintf(out, "#t");
-        break;
-    case MINIM_FALSE_TYPE:
+    } else if (minim_falsep(o)) {
         fprintf(out, "#f");
-        break;
-    case MINIM_EOF_TYPE:
+    } else if (minim_eofp(o)) {
         fprintf(out, "#<eof>");
-        break;
-    case MINIM_VOID_TYPE:
+    } else if (minim_voidp(o)) {
         fprintf(out, "#<void>");
-        break;
-    case MINIM_RECORD_TYPE:
-        if (o == minim_base_rtd) {
-            // base record type descriptor
-            fprintf(out, "#<base-record-type>");
-        } else if (minim_record_rtd(o) == minim_base_rtd) {
-            // record type descriptor
-            fprintf(out, "#<record-type:%s>", minim_symbol(record_rtd_name(o)));
-        } else {
-            // record value
-            th = current_thread();
-            stashc = stash_call_args();
-
-            push_call_arg(o);
-            push_call_arg(make_output_port(out));   // TODO: problematic
-            push_call_arg(Mcons(Mfixnum(quote), Mfixnum(display)));
-            call_with_args(record_write_proc(th), global_env(th));
-
-            prepare_call_args(stashc);
-        }
-        break;
-    case MINIM_SYMBOL_TYPE:
+    } else if (minim_empty_vecp(o)) {
         if (!quote) fputc('\'', out);
-        fprintf(out, "%s", minim_symbol(o));
-        break;
-    case MINIM_FIXNUM_TYPE:
-        fprintf(out, "%ld", minim_fixnum(o));
-        break;
-    case MINIM_CHAR_TYPE:
-        if (display) {
-            fputc(minim_char(o), out);
-        } else {
-            switch (minim_char(o)) {
-            case '\n':
-                fprintf(out, "#\\newline");
-                break;
-            case ' ':
-                fprintf(out, "#\\space");
-                break;
-            default:
-                fprintf(out, "#\\%c", minim_char(o));
-            }
-        }
-        break;
-    case MINIM_STRING_TYPE:
-        str = minim_string(o);
-        if (display) {
-            fprintf(out, "%s", str);
-        } else {
-            fputc('"', out);
-            while (*str != '\0') {
-                switch (*str) {
+        fprintf(out, "#()");
+    } else if (minim_base_rtdp(o)) {
+        fprintf(out, "#<base-record-type>");
+    } else {
+        switch (minim_type(o)) {
+        case MINIM_OBJ_CHAR:
+            if (display) {
+                fputc(minim_char(o), out);
+            } else {
+                switch (minim_char(o)) {
                 case '\n':
-                    fprintf(out, "\\n");
+                    fprintf(out, "#\\newline");
                     break;
-                case '\t':
-                    fprintf(out, "\\t");
-                    break;
-                case '\\':
-                    fprintf(out, "\\\\");
+                case ' ':
+                    fprintf(out, "#\\space");
                     break;
                 default:
-                    fputc(*str, out);
-                    break;
+                    fprintf(out, "#\\%c", minim_char(o));
                 }
-                ++str;
             }
-            fputc('"', out);
-        }
-        break;
-    case MINIM_PAIR_TYPE:
-        if (!quote) fputc('\'', out);
-        fputc('(', out);
-        write_pair(out, ((minim_pair_object *) o), 1, display);
-        fputc(')', out);
-        break;
-    case MINIM_VECTOR_TYPE:
-        if (!quote) fputc('\'', out);
-        if (minim_vector_len(o) == 0) {
-            fputs("#()", out);
-        } else {
-            fputs("#(", out);
-            write_object2(out, minim_vector_ref(o, 0), 1, display);
-            for (long i = 1; i < minim_vector_len(o); ++i) {
-                fputc(' ', out);
-                write_object2(out, minim_vector_ref(o, i), 1, display);
+            break;
+        case MINIM_OBJ_FIXNUM:
+            fprintf(out, "%ld", minim_fixnum(o));
+            break;
+        case MINIM_OBJ_SYMBOL:
+            if (!quote) fputc('\'', out);
+            fprintf(out, "%s", minim_symbol(o));
+            break;
+        case MINIM_OBJ_STRING:
+            str = minim_string(o);
+            if (display) {
+                fprintf(out, "%s", str);
+            } else {
+                fputc('"', out);
+                while (*str != '\0') {
+                    switch (*str) {
+                    case '\n':
+                        fprintf(out, "\\n");
+                        break;
+                    case '\t':
+                        fprintf(out, "\\t");
+                        break;
+                    case '\\':
+                        fprintf(out, "\\\\");
+                        break;
+                    default:
+                        fputc(*str, out);
+                        break;
+                    }
+                    ++str;
+                }
+                fputc('"', out);
             }
+            break;
+        case MINIM_OBJ_PAIR:
+            if (!quote) fputc('\'', out);
+            fputc('(', out);
+            write_pair(out, o, 1, display);
             fputc(')', out);
-        }
-        break;
-    case MINIM_BOX_TYPE:
-        if (!quote) fputc('\'', out);
-        fputs("#&", out);
-        write_object2(out, minim_box_contents(o), 1, display);
-        break;
-    case MINIM_HASHTABLE_TYPE:
-        if (minim_hashtable_size(o) == 0) {
-            fprintf(out, "#<hashtable>");
-        } else {
-            fprintf(out, "#<hashtable");
-            for (i = 0; i < minim_hashtable_alloc(o); ++i) {
-                it = minim_hashtable_bucket(o, i);
-                if (it) {
-                    for (; !minim_is_null(it); it = minim_cdr(it)) {
-                        fputs(" (", out);
-                        write_object2(out, minim_caar(it), 1, display);
-                        fputs(" . ", out);
-                        write_object2(out, minim_cdar(it), 1, display);
-                        fputc(')', out);
+            break;
+        case MINIM_OBJ_VECTOR:
+            if (!quote) fputc('\'', out);
+            if (minim_vector_len(o) == 0) {
+                fputs("#()", out);
+            } else {
+                fputs("#(", out);
+                write_object2(out, minim_vector_ref(o, 0), 1, display);
+                for (long i = 1; i < minim_vector_len(o); ++i) {
+                    fputc(' ', out);
+                    write_object2(out, minim_vector_ref(o, i), 1, display);
+                }
+                fputc(')', out);
+            }
+            break;
+        case MINIM_OBJ_BOX:
+            if (!quote) fputc('\'', out);
+            fputs("#&", out);
+            write_object2(out, minim_unbox(o), 1, display);
+            break;
+        case MINIM_OBJ_PRIM:
+            fprintf(out, "#<procedure:%s>", minim_prim_name(o));
+            break;
+        case MINIM_OBJ_CLOSURE:
+            if (minim_closure_name(o) != NULL)
+                fprintf(out, "#<procedure:%s>", minim_closure_name(o));
+            else
+                fprintf(out, "#<procedure>");
+            break;
+        case MINIM_OBJ_NATIVE_CLOSURE:
+            if (minim_native_closure_name(o) != NULL)
+                fprintf(out, "#<procedure:%s>", minim_native_closure_name(o));
+            else
+                fprintf(out, "#<procedure>");
+            break;
+        case MINIM_OBJ_PORT:
+            if (minim_port_readp(o))
+                fprintf(out, "#<input-port>");
+            else
+                fprintf(out, "#<output-port>");
+            break;
+        case MINIM_OBJ_HASHTABLE:
+            if (minim_hashtable_count(o) == 0) {
+                fprintf(out, "#<hashtable>");
+            } else {
+                fprintf(out, "#<hashtable");
+                for (i = 0; i < minim_hashtable_alloc(o); ++i) {
+                    it = minim_hashtable_bucket(o, i);
+                    if (it) {
+                        for (; !minim_nullp(it); it = minim_cdr(it)) {
+                            fputs(" (", out);
+                            write_object2(out, minim_caar(it), 1, display);
+                            fputs(" . ", out);
+                            write_object2(out, minim_cdar(it), 1, display);
+                            fputc(')', out);
+                        }
                     }
                 }
+                fputc('>', out);
             }
-            fputc('>', out);
-        }
-        break;
-    case MINIM_PRIM_PROC_TYPE:
-        fprintf(out, "#<procedure:%s>", minim_prim_proc_name(o));
-        break;
-    case MINIM_CLOSURE_PROC_TYPE:
-        if (minim_closure_name(o) != NULL)
-            fprintf(out, "#<procedure:%s>", minim_closure_name(o));
-        else
-            fprintf(out, "#<procedure>");
-        break;
-    case MINIM_NATIVE_CLOSURE_TYPE:
-        if (minim_native_closure_name(o) != NULL)
-            fprintf(out, "#<procedure:%s>", minim_native_closure_name(o));
-        else
-            fprintf(out, "#<procedure>");
-        break;
-    case MINIM_PORT_TYPE:
-        if (minim_port_is_ro(o))
-            fprintf(out, "#<input-port>");
-        else
-            fprintf(out, "#<output-port>");
-        break;
-    case MINIM_SYNTAX_TYPE:
-        fprintf(out, "#<syntax ");
-        write_object2(out, strip_syntax(o), 1, display);
-        fputc('>', out);
-        break;
-    case MINIM_PATTERN_VAR_TYPE:
-        fprintf(out, "#<pattern>");
-        break;
-    case MINIM_ENVIRONMENT_TYPE:
-        fprintf(out, "#<environment>");
-        break;
-    case MINIM_VALUES_TYPE:
-        fprintf(stderr, "cannot write multiple values\n");
-        minim_shutdown(1);
+            break;
+        case MINIM_OBJ_RECORD:
+            if (minim_record_rtd(o) == minim_base_rtd) {
+                // record type descriptor
+                fprintf(out, "#<record-type:%s>", minim_symbol(record_rtd_name(o)));
+            } else {
+                // record value
+                th = current_thread();
+                stashc = stash_call_args();
 
-    default:
-        fprintf(stderr, "cannot write unknown object\n");
-        minim_shutdown(1);
+                push_call_arg(o);
+                push_call_arg(Moutput_port(out));   // TODO: problematic
+                push_call_arg(Mcons(Mfixnum(quote), Mfixnum(display)));
+                call_with_args(record_write_proc(th), global_env(th));
+
+                prepare_call_args(stashc);
+            }
+            break;
+        case MINIM_OBJ_SYNTAX:
+            fprintf(out, "#<syntax:");
+            write_object2(out, strip_syntax(o), 1, display);
+            fputc('>', out);
+            break;
+        case MINIM_OBJ_PATTERN:
+            fprintf(out, "#<pattern>");
+            break;
+        case MINIM_OBJ_ENV:
+            fprintf(out, "#<environment>");
+            break;
+        default:
+            fprintf(out, "#<garbage>");
+            break;
+        }
     }
 }
 
@@ -625,7 +620,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj **vs, const char
             if (!form[i]) {
                 fprintf(stderr, "%s: ill-formed formatting escape\n", prim_name);
                 fprintf(stderr, " at: ");
-                write_object2(stderr, make_string(form), 1, 0);
+                write_object2(stderr, Mstring(form), 1, 0);
                 fprintf(stderr, "\n");
                 exit(1);
             }
@@ -649,7 +644,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj **vs, const char
     if (fi != v_count) {
         fprintf(stderr, "%s: format string requires %d arguments, given %d\n", prim_name, fi, v_count);
         fprintf(stderr, " at: ");
-        write_object2(stderr, make_string(form), 1, 0);
+        write_object2(stderr, Mstring(form), 1, 0);
         fprintf(stderr, "\n");
         exit(1);
     }
@@ -691,33 +686,30 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj **vs, const char
 //
 
 static void gc_port_dtor(void *ptr, void *data) {
-    minim_port_object *o = ((minim_port_object *) ptr);
-    if (minim_port_is_open(o))
+    mobj o = ((mobj) ptr);
+    if (minim_port_openp(o) &&
+        minim_port(o) != stdout &&
+        minim_port(o) != stderr &&
+        minim_port(o) != stdin)
         fclose(minim_port(o));
 }
 
-mobj *make_input_port(FILE *stream) {
-    minim_port_object *o;
-    
-    o = GC_alloc(sizeof(minim_port_object));
-    o->type = MINIM_PORT_TYPE;
-    o->flags = MINIM_PORT_READ_ONLY;
-    o->stream = stream;
+mobj Minput_port(FILE *stream) {
+    mobj o = GC_alloc(minim_port_size);
+    minim_type(o) = MINIM_OBJ_PORT;
+    minim_port_flags(o) = PORT_FLAG_READ;
+    minim_port(o) = stream;
     GC_register_dtor(o, gc_port_dtor);
-
-    return ((mobj *) o);
+    return o;
 }
 
-mobj *make_output_port(FILE *stream) {
-    minim_port_object *o; // = GC_alloc_opt(sizeof(minim_port_object), gc_port_dtor, NULL);
-
-    o = GC_alloc(sizeof(minim_port_object));
-    o->type = MINIM_PORT_TYPE;
-    o->flags = 0x0;
-    o->stream = stream;
+mobj Moutput_port(FILE *stream) {
+    mobj o = GC_alloc(minim_port_size);
+    minim_type(o) = MINIM_OBJ_PORT;
+    minim_port_flags(o) = 0x0;
+    minim_port(o) = stream;
     GC_register_dtor(o, gc_port_dtor);
-
-    return ((mobj *) o);
+    return o;
 }
 
 //
@@ -726,12 +718,12 @@ mobj *make_output_port(FILE *stream) {
 
 mobj *is_input_port_proc(int argc, mobj **args) {
     // (-> any boolean)
-    return minim_is_input_port(args[0]) ? minim_true : minim_false;
+    return minim_input_portp(args[0]) ? minim_true : minim_false;
 }
 
 mobj *is_output_port_proc(int argc, mobj **args) {
     // (-> any boolean)
-    return minim_is_output_port(args[0]) ? minim_true : minim_false;
+    return minim_output_portp(args[0]) ? minim_true : minim_false;
 }
 
 mobj *current_input_port_proc(int argc, mobj **args) {
@@ -749,7 +741,7 @@ mobj *open_input_port_proc(int argc, mobj **args) {
     mobj *port;
     FILE *stream;
 
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("open-input-port", "string?", args[0]);
 
     stream = fopen(minim_string(args[0]), "r");
@@ -758,8 +750,8 @@ mobj *open_input_port_proc(int argc, mobj **args) {
         minim_shutdown(1);
     }
 
-    port = make_input_port(stream);
-    minim_port_set(port, MINIM_PORT_OPEN);
+    port = Minput_port(stream);
+    minim_port_set(port, PORT_FLAG_OPEN);
     return port;
 }
 
@@ -768,7 +760,7 @@ mobj *open_output_port_proc(int argc, mobj **args) {
     mobj *port;
     FILE *stream;
 
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("open-output-port", "string?", args[0]);
     
     stream = fopen(minim_string(args[0]), "w");
@@ -777,18 +769,18 @@ mobj *open_output_port_proc(int argc, mobj **args) {
         minim_shutdown(1);
     }
 
-    port = make_output_port(stream);
-    minim_port_set(port, MINIM_PORT_OPEN);
+    port = Moutput_port(stream);
+    minim_port_set(port, PORT_FLAG_OPEN);
     return port;
 }
 
 mobj *close_input_port_proc(int argc, mobj **args) {
     // (-> input-port)
-    if (!minim_is_input_port(args[0]))
+    if (!minim_input_portp(args[0]))
         bad_type_exn("close-input-port", "input-port?", args[0]);
 
     fclose(minim_port(args[0]));
-    minim_port_unset(args[0], MINIM_PORT_OPEN);
+    minim_port_unset(args[0], PORT_FLAG_OPEN);
     return minim_void;
 }
 
@@ -798,7 +790,7 @@ mobj *close_output_port_proc(int argc, mobj **args) {
         bad_type_exn("close-output-port", "output-port?", args[0]);
 
     fclose(minim_port(args[0]));
-    minim_port_unset(args[0], MINIM_PORT_OPEN);
+    minim_port_unset(args[0], PORT_FLAG_OPEN);
     return minim_void;
 }
 
@@ -917,7 +909,7 @@ mobj *write_char_proc(int argc, mobj **args) {
     mobj *out_p, *ch;
 
     ch = args[0];
-    if (!minim_is_char(ch))
+    if (!minim_charp(ch))
         bad_type_exn("write-char", "char?", ch);
 
     if (argc == 1) {
@@ -954,7 +946,7 @@ mobj *fprintf_proc(int argc, mobj **args) {
     if (!minim_is_output_port(args[0]))
         bad_type_exn("fprintf", "output-port?", args[0]);
     
-    if (!minim_is_string(args[1]))
+    if (!minim_stringp(args[1]))
         bad_type_exn("fprintf", "string?", args[1]);
     
     minim_fprintf(minim_port(args[0]), minim_string(args[1]), argc - 2, &args[2], "fprintf");
@@ -965,7 +957,7 @@ mobj *printf_proc(int argc, mobj **args) {
     // (-> string any ... void)
     mobj *curr_op;
 
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("printf", "string?", args[0]);
 
     curr_op = output_port(current_thread());

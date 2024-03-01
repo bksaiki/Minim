@@ -44,8 +44,8 @@ mobj *to_syntax(mobj *o) {
         it = o;
         do {
             minim_car(it) = to_syntax(minim_car(it));
-            if (!minim_is_pair(minim_cdr(it))) {
-                if (!minim_is_null(minim_cdr(it)))
+            if (!minim_consp(minim_cdr(it))) {
+                if (!minim_nullp(minim_cdr(it)))
                     minim_cdr(it) = to_syntax(minim_cdr(it));
                 return make_syntax(o, minim_false);
             }
@@ -53,7 +53,7 @@ mobj *to_syntax(mobj *o) {
         } while (1);
 
     case MINIM_BOX_TYPE:
-        return make_syntax(make_box(to_syntax(minim_box_contents(o))), minim_false);
+        return make_syntax(Mbox(to_syntax(minim_box_contents(o))), minim_false);
 
     case MINIM_VECTOR_TYPE:
         it = make_vector(minim_vector_len(o), NULL);
@@ -77,7 +77,7 @@ mobj *strip_syntax(mobj *o) {
     case MINIM_PAIR_TYPE:
         return Mcons(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
     case MINIM_BOX_TYPE:
-        return make_box(strip_syntax(minim_box_contents(o)));
+        return Mbox(strip_syntax(minim_box_contents(o)));
     case MINIM_VECTOR_TYPE:
         t = make_vector(minim_vector_len(o), NULL);
         for (i = 0; i < minim_vector_len(o); ++i)
@@ -89,9 +89,9 @@ mobj *strip_syntax(mobj *o) {
 }
 
 static mobj *syntax_to_list(mobj *head, mobj *it) {
-    if (minim_is_null(minim_cdr(it))) {
+    if (minim_nullp(minim_cdr(it))) {
         return head;
-    } else if (minim_is_pair(minim_cdr(it))) {
+    } else if (minim_consp(minim_cdr(it))) {
         return syntax_to_list(head, minim_cdr(it));
     } else if (minim_is_syntax(minim_cdr(it))) {
         minim_cdr(it) = minim_syntax_e(minim_cdr(it));
@@ -120,7 +120,7 @@ mobj *syntax_error_proc(int argc, mobj **args) {
     why = args[1];
     if (!minim_is_false(what) && !minim_symbolp(what))
         bad_type_exn("syntax-error", "symbol?", what);
-    if (!minim_is_string(why))
+    if (!minim_stringp(why))
         bad_type_exn("syntax-error", "string?", why);
 
     if (minim_is_false(what))
@@ -186,9 +186,9 @@ mobj *syntax_to_list_proc(int argc, mobj **args) {
         bad_type_exn("syntax->list", "syntax?", stx);
 
     lst = minim_syntax_e(stx);
-    if (minim_is_null(lst))
+    if (minim_nullp(lst))
         return minim_null;
-    else if (!minim_is_pair(lst))
+    else if (!minim_consp(lst))
         return minim_false;
     else 
         return syntax_to_list(lst, lst);
@@ -204,7 +204,7 @@ mobj *make_pattern_var_proc(int argc, mobj **args) {
     
     value = args[0];
     depth = args[1];
-    if (!minim_is_fixnum(depth) || minim_fixnum(depth) < 0)
+    if (!minim_fixnump(depth) || minim_fixnum(depth) < 0)
         bad_type_exn("make-pattern-var", "non-negative-integer?", depth);
     return make_pattern_var(value, depth);
 }

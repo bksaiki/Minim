@@ -131,7 +131,7 @@ int minim_is_equal(mobj *a, mobj *b) {
 
 mobj *is_null_proc(int argc, mobj **args) {
     // (-> any boolean)
-    return minim_is_null(args[0]) ? minim_true : minim_false;
+    return minim_nullp(args[0]) ? minim_true : minim_false;
 }
 
 mobj *is_void_proc(int argc, mobj **args) {

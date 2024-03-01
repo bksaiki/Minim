@@ -120,7 +120,7 @@ static mobj *read_fasl_string(FILE *in) {
         str[i] = read_fasl_byte(in);
     str[len] = '\0';
 
-    return make_string2(str);
+    return Mstring2(str);
 }
 
 static mobj *read_fasl_fixnum(FILE *in) {
@@ -296,7 +296,7 @@ static void write_fasl_pair(FILE *out, mobj *p) {
     
     len = improper_list_length(p);
     write_fasl_uptr(out, len);
-    for (it = p; minim_is_pair(it); it = minim_cdr(it))
+    for (it = p; minim_consp(it); it = minim_cdr(it))
         write_fasl(out, minim_car(it));
     
     write_fasl(out, it);
@@ -337,7 +337,7 @@ static void write_fasl_hashtable(FILE *out, mobj *ht) {
     for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
         b = minim_hashtable_bucket(ht, i);
         if (b) {
-            for (; !minim_is_null(b); b = minim_cdr(b)) {
+            for (; !minim_nullp(b); b = minim_cdr(b)) {
                 write_fasl(out, minim_caar(b));
                 write_fasl(out, minim_cdar(b));
             }
@@ -356,7 +356,7 @@ static void write_fasl_record(FILE *out, mobj *r) {
 }
 
 void write_fasl(FILE *out, mobj *o) {
-    if (minim_is_null(o)) {
+    if (minim_nullp(o)) {
         write_fasl_type(out, FASL_NULL);
     } else if (minim_is_true(o)) {
         write_fasl_type(out, FASL_TRUE);
@@ -370,19 +370,19 @@ void write_fasl(FILE *out, mobj *o) {
         // TODO: interned vs. uninterned
         write_fasl_type(out, FASL_SYMBOL);
         write_fasl_symbol(out, o);
-    } else if (minim_is_string(o)) {
+    } else if (minim_stringp(o)) {
         write_fasl_type(out, FASL_STRING);
         write_fasl_string(out, o);
-    } else if (minim_is_fixnum(o)) {
+    } else if (minim_fixnump(o)) {
         write_fasl_type(out, FASL_FIXNUM);
         write_fasl_uptr(out, minim_fixnum(o));
-    } else if (minim_is_char(o)) {
+    } else if (minim_charp(o)) {
         write_fasl_type(out, FASL_CHAR);
         write_fasl_byte(out, minim_char(o));
-    } else if (minim_is_pair(o)) {
+    } else if (minim_consp(o)) {
         write_fasl_type(out, FASL_PAIR);
         write_fasl_pair(out, o);
-    } else if (minim_is_vector(o)) {
+    } else if (minim_vectorp(o)) {
         if (minim_is_empty_vec(o)) {
             write_fasl_type(out, FASL_EMPTY_VECTOR);
         } else {

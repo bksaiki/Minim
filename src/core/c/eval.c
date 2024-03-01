@@ -183,7 +183,7 @@ static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
 // Check: `expr` must be `(<name> <datum>)
 static void check_1ary_syntax(mobj *expr) {
     mobj *rest = minim_cdr(expr);
-    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+    if (!minim_consp(rest) || !minim_nullp(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
 
@@ -193,15 +193,15 @@ static void check_3ary_syntax(mobj *expr) {
     mobj *rest;
     
     rest = minim_cdr(expr);
-    if (!minim_is_pair(rest))
+    if (!minim_consp(rest))
         bad_syntax_exn(expr);
 
     rest = minim_cdr(rest);
-    if (!minim_is_pair(rest))
+    if (!minim_consp(rest))
         bad_syntax_exn(expr);
 
     rest = minim_cdr(rest);
-    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+    if (!minim_consp(rest) || !minim_nullp(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
 
@@ -211,14 +211,14 @@ static void check_assign(mobj *expr) {
     mobj *rest;
 
     rest = minim_cdr(expr);
-    if (!minim_is_pair(rest) || !minim_symbolp(minim_car(rest)))
+    if (!minim_consp(rest) || !minim_symbolp(minim_car(rest)))
         bad_syntax_exn(expr);
 
     rest = minim_cdr(rest);
-    if (!minim_is_pair(rest))
+    if (!minim_consp(rest))
         bad_syntax_exn(expr);
 
-    if (!minim_is_null(minim_cdr(rest)))
+    if (!minim_nullp(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
 
@@ -228,21 +228,21 @@ static void check_define_values(mobj *expr) {
     mobj *rest, *ids;
     
     rest = minim_cdr(expr);
-    if (!minim_is_pair(rest))
+    if (!minim_consp(rest))
         bad_syntax_exn(expr);
 
     ids = minim_car(rest);
-    while (minim_is_pair(ids)) {
+    while (minim_consp(ids)) {
         if (!minim_symbolp(minim_car(ids)))
             bad_syntax_exn(expr);
         ids = minim_cdr(ids);
     } 
 
-    if (!minim_is_null(ids))
+    if (!minim_nullp(ids))
         bad_syntax_exn(expr);
 
     rest = minim_cdr(rest);
-    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+    if (!minim_consp(rest) || !minim_nullp(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
 
@@ -254,33 +254,33 @@ static void check_let_values(mobj *expr) {
     mobj *bindings, *bind, *ids;
     
     bindings = minim_cdr(expr);
-    if (!minim_is_pair(bindings) || !minim_is_pair(minim_cdr(bindings)))
+    if (!minim_consp(bindings) || !minim_consp(minim_cdr(bindings)))
         bad_syntax_exn(expr);
     
     bindings = minim_car(bindings);
-    while (minim_is_pair(bindings)) {
+    while (minim_consp(bindings)) {
         bind = minim_car(bindings);
-        if (!minim_is_pair(bind))
+        if (!minim_consp(bind))
             bad_syntax_exn(expr);
 
         ids = minim_car(bind);
-        while (minim_is_pair(ids)) {
+        while (minim_consp(ids)) {
             if (!minim_symbolp(minim_car(ids)))
                 bad_syntax_exn(expr);
             ids = minim_cdr(ids);
         } 
 
-        if (!minim_is_null(ids))
+        if (!minim_nullp(ids))
             bad_syntax_exn(expr);
 
         bind = minim_cdr(bind);
-        if (!minim_is_pair(bind) || !minim_is_null(minim_cdr(bind)))
+        if (!minim_consp(bind) || !minim_nullp(minim_cdr(bind)))
             bad_syntax_exn(expr);
 
         bindings = minim_cdr(bindings);
     }
 
-    if (!minim_is_null(bindings))
+    if (!minim_nullp(bindings))
         bad_syntax_exn(expr);
 }
 
@@ -289,10 +289,10 @@ static void check_let_values(mobj *expr) {
 static void check_begin(mobj *expr) {
     mobj *rest = minim_cdr(expr);
 
-    while (minim_is_pair(rest))
+    while (minim_consp(rest))
         rest = minim_cdr(rest);
 
-    if (!minim_is_null(rest))
+    if (!minim_nullp(rest))
         bad_syntax_exn(expr);
 }
 
@@ -300,7 +300,7 @@ static void check_lambda(mobj *expr, short *min_arity, short *max_arity) {
     mobj *args = minim_cadr(expr);
     int argc = 0;
 
-    while (minim_is_pair(args)) {
+    while (minim_consp(args)) {
         if (!minim_symbolp(minim_car(args))) {
             fprintf(stderr, "expected a identifier for an argument:\n ");
             write_object(stderr, expr);
@@ -312,7 +312,7 @@ static void check_lambda(mobj *expr, short *min_arity, short *max_arity) {
         ++argc;
     }
 
-    if (minim_is_null(args)) {
+    if (minim_nullp(args)) {
         *min_arity = argc;
         *max_arity = argc;
     } else if (minim_symbolp(args)) {
@@ -344,12 +344,12 @@ static long apply_args() {
 
     // for the last argument: push every element of the list
     // onto the call stack
-    while (minim_is_pair(lst)) {
+    while (minim_consp(lst)) {
         push_call_arg(minim_car(lst));
         lst = minim_cdr(lst);
     }
 
-    if (!minim_is_null(lst))
+    if (!minim_nullp(lst))
         bad_type_exn("apply", "list?", lst);
 
     // just for safety
@@ -379,7 +379,7 @@ static long eval_exprs(mobj *exprs, mobj *env) {
 
     argc = 0;
     assert_no_call_args();
-    for (it = exprs; !minim_is_null(it); it = minim_cdr(it)) {
+    for (it = exprs; !minim_nullp(it); it = minim_cdr(it)) {
         result = eval_expr(minim_car(it), env);
         push_saved_arg(force_single_value(result));
         ++argc;
@@ -490,7 +490,7 @@ application:
         // process args
         i = 0;
         vars = minim_closure_args(proc);
-        while (minim_is_pair(vars)) {
+        while (minim_consp(vars)) {
             env_define_var_no_check(env, minim_car(vars), args[i]);
             vars = minim_cdr(vars);
             ++i;
@@ -524,22 +524,22 @@ loop:
 
     if (minim_is_true(expr) ||
         minim_is_false(expr) ||
-        minim_is_fixnum(expr) ||
-        minim_is_char(expr) ||
-        minim_is_string(expr) ||
+        minim_fixnump(expr) ||
+        minim_charp(expr) ||
+        minim_stringp(expr) ||
         minim_is_box(expr) ||
-        minim_is_vector(expr)) {
+        minim_vectorp(expr)) {
         // self-evaluating
         return expr;
     } else if (minim_symbolp(expr)) {
         // variable
         return env_lookup_var(env, expr);
-    } else if (minim_is_null(expr)) {
+    } else if (minim_nullp(expr)) {
         fprintf(stderr, "missing procedure expression\n");
         fprintf(stderr, "  in: ");
         write_object2(stderr, expr, 0, 0);
         minim_shutdown(1);
-    } else if (minim_is_pair(expr)) {
+    } else if (minim_consp(expr)) {
         mobj *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
         minim_thread *th;
         long var_count, idx, argc;
@@ -559,7 +559,7 @@ loop:
                         result_arity_exn(var_count, values_buffer_count(th));
 
                     idx = 0;
-                    for (it = minim_cadr(expr); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                    for (it = minim_cadr(expr); !minim_nullp(it); it = minim_cdr(it), ++idx) {
                         SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
                         env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
                     }
@@ -577,7 +577,7 @@ loop:
                 // let-values form
                 check_let_values(expr);
                 env2 = make_environment(env);
-                for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
+                for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
                     result = eval_expr(minim_cadr(bind), env);
@@ -588,7 +588,7 @@ loop:
                             result_arity_exn(var_count, values_buffer_count(th));
 
                         idx = 0;
-                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                        for (it = minim_car(bind); !minim_nullp(it); it = minim_cdr(it), ++idx) {
                             SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
                             env_define_var(env2, minim_car(it), values_buffer_ref(th, idx));
                         }
@@ -608,7 +608,7 @@ loop:
                 // letrec-values
                 check_let_values(expr);
                 env = make_environment(env);
-                for (bindings = minim_cadr(expr); !minim_is_null(bindings); bindings = minim_cdr(bindings)) {
+                for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
                     result = eval_expr(minim_cadr(bind), env);
@@ -619,7 +619,7 @@ loop:
                             result_arity_exn(var_count, values_buffer_count(th));
 
                         idx = 0;
-                        for (it = minim_car(bind); !minim_is_null(it); it = minim_cdr(it), ++idx) {
+                        for (it = minim_car(bind); !minim_nullp(it); it = minim_cdr(it), ++idx) {
                             SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
                             env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
                         }
@@ -672,10 +672,10 @@ loop:
                 // begin form
                 check_begin(expr);
                 expr = minim_cdr(expr);
-                if (minim_is_null(expr))
+                if (minim_nullp(expr))
                     return minim_void;
 
-                while (!minim_is_null(minim_cdr(expr))) {
+                while (!minim_nullp(minim_cdr(expr))) {
                     eval_expr(minim_car(expr), env);
                     expr = minim_cdr(expr);
                 }
@@ -759,7 +759,7 @@ application:
             // process args
             i = 0;
             vars = minim_closure_args(proc);
-            while (minim_is_pair(vars)) {
+            while (minim_consp(vars)) {
                 env_define_var_no_check(env, minim_car(vars), args[i]);
                 vars = minim_cdr(vars);
                 ++i;

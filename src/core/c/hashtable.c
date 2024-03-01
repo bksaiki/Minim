@@ -53,9 +53,9 @@ int hashtable_is_equal(mobj *h1, mobj *h2) {
     for (i = 0; i < minim_hashtable_alloc(h1); ++i) {
         it = minim_hashtable_bucket(h1, i);
         if (it) {
-            for (; !minim_is_null(it); it = minim_cdr(it)) {
+            for (; !minim_nullp(it); it = minim_cdr(it)) {
                 v = hashtable_find(h2, minim_caar(it));
-                if (minim_is_null(v) || !minim_is_equal(minim_cdr(v), minim_cdar(it)))
+                if (minim_nullp(v) || !minim_is_equal(minim_cdr(v), minim_cdar(it)))
                     return 0;
             }
         }
@@ -85,7 +85,7 @@ static mobj *copy_hashtable(mobj *src) {
         if (b) {
             t = Mcons(Mcons(minim_caar(b), minim_cdar(b)), minim_null);
             minim_hashtable_bucket(o, i) = t;
-            for (it = minim_cdr(b); !minim_is_null(it); it = minim_cdr(it)) {
+            for (it = minim_cdr(b); !minim_nullp(it); it = minim_cdr(it)) {
                 minim_cdr(t) = Mcons(Mcons(minim_caar(it), minim_cdar(it)), minim_null);
                 t = minim_cdr(t);
             }
@@ -154,7 +154,7 @@ static size_t equal_hash2(mobj *o, size_t hash) {
         for (i = 0; i < minim_hashtable_alloc(o); ++i) {
             it = minim_hashtable_bucket(o, i);
             if (it) {
-                for (; !minim_is_null(it); it = minim_cdr(it)) {
+                for (; !minim_nullp(it); it = minim_cdr(it)) {
                     hash = equal_hash2(minim_caar(it), hash);
                     hash = equal_hash2(minim_cdar(it), hash);
                 }
@@ -176,7 +176,7 @@ static size_t equal_hash2(mobj *o, size_t hash) {
             res = call_with_args(record_hash_proc(th), global_env(th));
 
             prepare_call_args(stashc);
-            if (!minim_is_fixnum(res))
+            if (!minim_fixnump(res))
                 bad_type_exn("record hash procedure result", "number?", res);
             return hash + minim_fixnum(res);
         } else {
@@ -211,7 +211,7 @@ static size_t hash_key(mobj *ht, mobj *k) {
         i = call_with_args(minim_hashtable_hash(ht), global_env(th));
         prepare_call_args(stashc);
 
-        if (!minim_is_fixnum(i)) {
+        if (!minim_fixnump(i)) {
             fprintf(stderr, "hash function associated with hash table ");
             write_object(stderr, ht);
             fprintf(stderr, " did not return a fixnum");
@@ -254,7 +254,7 @@ static void hashtable_resize(mobj *ht, size_t *alloc_ptr) {
     for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
         it = minim_hashtable_bucket(ht, i);
         if (it) {
-            for (; !minim_is_null(it); it = minim_cdr(it)) {
+            for (; !minim_nullp(it); it = minim_cdr(it)) {
                 idx = hash_key(ht, minim_caar(it)) % *alloc_ptr;
                 buckets[idx] = Mcons(minim_car(it), (buckets[idx] ? buckets[idx] : minim_null));
             }
@@ -287,7 +287,7 @@ int hashtable_set(mobj *ht, mobj *k, mobj *v) {
     i = hash_key(ht, k) % minim_hashtable_alloc(ht);
     b = minim_hashtable_bucket(ht, i);
     if (b) {
-        for (bi = b; !minim_is_null(bi); bi = minim_cdr(bi)) {
+        for (bi = b; !minim_nullp(bi); bi = minim_cdr(bi)) {
             if (key_equiv(ht, minim_caar(bi), k)) {
                 minim_cdar(bi) = v;
                 return 1;
@@ -310,11 +310,11 @@ static int hashtable_delete(mobj *ht, mobj *k) {
     b = minim_hashtable_bucket(ht, i);
     if (b) {
         bp = NULL;
-        for (bi = b; !minim_is_null(bi); bp = bi, bi = minim_cdr(bi)) {
+        for (bi = b; !minim_nullp(bi); bp = bi, bi = minim_cdr(bi)) {
             if (key_equiv(ht, minim_caar(bi), k)) {
                 if (bp == NULL) {
                     // start of the bucket
-                    if (minim_is_null(minim_cdr(bi))) {
+                    if (minim_nullp(minim_cdr(bi))) {
                         minim_hashtable_bucket(ht, i) = NULL;
                     } else {
                         minim_hashtable_bucket(ht, i) = minim_cdr(bi);
@@ -340,7 +340,7 @@ mobj *hashtable_find(mobj *ht, mobj *k) {
     i = hash_key(ht, k) % minim_hashtable_alloc(ht);
     b = minim_hashtable_bucket(ht, i);
     if (b) {
-        for (; !minim_is_null(b); b = minim_cdr(b)) {
+        for (; !minim_nullp(b); b = minim_cdr(b)) {
             if (key_equiv(ht, minim_caar(b), k))
                 return minim_car(b);
         }
@@ -357,7 +357,7 @@ mobj *hashtable_keys(mobj *ht) {
     for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
         b = minim_hashtable_bucket(ht, i);
         if (b) {
-            for (; !minim_is_null(b); b = minim_cdr(b))
+            for (; !minim_nullp(b); b = minim_cdr(b))
                 ks = Mcons(minim_caar(b), ks);
         }
     }
@@ -410,7 +410,7 @@ mobj *hashtable_contains_proc(int argc, mobj **args) {
         bad_type_exn("hashtable-contains?", "hashtable?", ht);
 
     k = args[1];
-    return (minim_is_null(hashtable_find(ht, k)) ? minim_false : minim_true);
+    return (minim_nullp(hashtable_find(ht, k)) ? minim_false : minim_true);
 }
 
 mobj *hashtable_set_proc(int argc, mobj **args) {
@@ -459,7 +459,7 @@ mobj *hashtable_update_proc(int argc, mobj **args) {
 
     stashc = stash_call_args();
     b = hashtable_find(ht, k);
-    if (minim_is_null(b)) {
+    if (minim_nullp(b)) {
         if (argc == 3) {
             // no failure result provided
             key_not_found_exn("hashtable-update!", k);
@@ -500,7 +500,7 @@ mobj *hashtable_ref_proc(int argc, mobj **args) {
 
     k = args[1];
     b = hashtable_find(ht, k);
-    if (minim_is_null(b)) {
+    if (minim_nullp(b)) {
         if (argc == 2) {
             // no failure result provided
             key_not_found_exn("hashtable-ref", k);

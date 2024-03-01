@@ -118,7 +118,7 @@ void populate_env(mobj *env) {
     add_procedure(">", number_gt_proc, 2, ARG_MAX);
     add_procedure("<", number_lt_proc, 2, ARG_MAX);
 
-    add_procedure("make-string", make_string_proc, 1, 2);
+    add_procedure("make-string", Mstring_proc, 1, 2);
     add_procedure("string", string_proc, 0, ARG_MAX);
     add_procedure("string-length", string_length_proc, 1, 1);
     add_procedure("string-ref", string_ref_proc, 2, 2);
@@ -291,7 +291,7 @@ void minim_boot_init() {
     empty_env = minim_null;
 
     minim_base_rtd = make_record(NULL, record_rtd_min_size);
-    record_rtd_name(minim_base_rtd) = make_string("$base-record-type");
+    record_rtd_name(minim_base_rtd) = Mstring("$base-record-type");
     record_rtd_parent(minim_base_rtd) = minim_base_rtd;
     record_rtd_uid(minim_base_rtd) = minim_false;
     record_rtd_opaque(minim_base_rtd) = minim_true;
@@ -317,9 +317,9 @@ void minim_boot_init() {
 
     th = current_thread();
     global_env(th) = make_env();
-    input_port(th) = make_input_port(stdin);
-    output_port(th) = make_output_port(stdout);
-    current_directory(th) = make_string2(get_current_dir());
+    input_port(th) = Minput_port(stdin);
+    output_port(th) = Moutput_port(stdout);
+    current_directory(th) = Mstring2(get_current_dir());
     command_line(th) = minim_null;
     record_equal_proc(th) = record_equal_proc_obj;
     record_hash_proc(th) = record_hash_proc_obj;

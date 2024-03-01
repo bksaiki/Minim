@@ -75,7 +75,7 @@ static mobj *call_compiled_x86_64(entry_proc fn, mobj *env) {
 mobj *call_compiled(mobj *env, mobj *addr) {
     entry_proc fn;
 
-    if (!minim_is_fixnum(addr))
+    if (!minim_fixnump(addr))
         bad_type_exn("enter-compiled!", "fixnum?", addr);
 
     // very unsafe code is to follow
@@ -101,7 +101,7 @@ mobj *install_literal_bundle_proc(int argc, mobj **args) {
     // create bundle
     size = list_length(args[0]);
     bundle = GC_alloc(size * sizeof(mobj *));
-    for (i = 0, it = args[0]; !minim_is_null(it); it = minim_cdr(it)) {
+    for (i = 0, it = args[0]; !minim_nullp(it); it = minim_cdr(it)) {
         bundle[i] = minim_car(it);
         ++i;
     }
@@ -122,12 +122,12 @@ mobj *install_proc_bundle_proc(int argc, mobj **args) {
         bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
 
     // compute size
-    for (size = 0, it = args[0]; !minim_is_null(it); it = minim_cdr(it)) {
+    for (size = 0, it = args[0]; !minim_nullp(it); it = minim_cdr(it)) {
         if (!is_list(minim_car(it)))
             bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
 
-        for (it2 = minim_car(it); !minim_is_null(it2); it2 = minim_cdr(it2)) {
-            if (!minim_is_fixnum(minim_car(it2)))
+        for (it2 = minim_car(it); !minim_nullp(it2); it2 = minim_cdr(it2)) {
+            if (!minim_fixnump(minim_car(it2)))
                 bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
         }
 
@@ -136,8 +136,8 @@ mobj *install_proc_bundle_proc(int argc, mobj **args) {
 
     // create bundle
     code = alloc_page(size);
-    for (offset = 0, it = args[0]; !minim_is_null(it); it = minim_cdr(it)) {
-        for (it2 = minim_car(it); !minim_is_null(it2); it2 = minim_cdr(it2)) {
+    for (offset = 0, it = args[0]; !minim_nullp(it); it = minim_cdr(it)) {
+        for (it2 = minim_car(it); !minim_nullp(it2); it2 = minim_cdr(it2)) {
             // TODO: unsafe, need byte strings
             code[offset++] = ((char) minim_fixnum(minim_car(it2)));
         }
@@ -154,19 +154,19 @@ mobj *reinstall_proc_bundle_proc(int argc, mobj **args) {
     char *code;
     long size, offset;
 
-    if (!minim_is_fixnum(args[0]))
+    if (!minim_fixnump(args[0]))
         bad_type_exn("reinstall-procedure-bundle!", "address", args[0]);
 
     if (!is_list(args[1]))
         bad_type_exn("reinstall-procedure-bundle!", "list of lists of integers", args[1]);
 
     // compute size
-    for (size = 0, it = args[1]; !minim_is_null(it); it = minim_cdr(it)) {
+    for (size = 0, it = args[1]; !minim_nullp(it); it = minim_cdr(it)) {
         if (!is_list(minim_car(it)))
             bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
 
-        for (it2 = minim_car(it); !minim_is_null(it2); it2 = minim_cdr(it2)) {
-            if (!minim_is_fixnum(minim_car(it2)))
+        for (it2 = minim_car(it); !minim_nullp(it2); it2 = minim_cdr(it2)) {
+            if (!minim_fixnump(minim_car(it2)))
                 bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
         }
 
@@ -178,8 +178,8 @@ mobj *reinstall_proc_bundle_proc(int argc, mobj **args) {
     make_page_write_only(code, size);
 
     // overwrite bundle
-    for (offset = 0, it = args[1]; !minim_is_null(it); it = minim_cdr(it)) {
-        for (it2 = minim_car(it); !minim_is_null(it2); it2 = minim_cdr(it2)) {
+    for (offset = 0, it = args[1]; !minim_nullp(it); it = minim_cdr(it)) {
+        for (it2 = minim_car(it); !minim_nullp(it2); it2 = minim_cdr(it2)) {
             // TODO: unsafe, need byte strings
             code[offset++] = ((char) minim_fixnum(minim_car(it2)));
         }
@@ -195,7 +195,7 @@ mobj *runtime_address_proc(int argc, mobj **args) {
     char *str;
     int i;
 
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("runtime-address", "expected a string", args[0]);
     str = minim_string(args[0]);
 

@@ -14,16 +14,16 @@ mobj *Mcons(mobj *car, mobj *cdr) {
 
 // Returns true if the object is a list
 int is_list(mobj *x) {
-    while (minim_is_pair(x)) x = minim_cdr(x);
-    return minim_is_null(x);
+    while (minim_consp(x)) x = minim_cdr(x);
+    return minim_nullp(x);
 }
 
 long list_length(mobj *xs) {
     mobj *it = xs;
     long length = 0;
 
-    while (!minim_is_null(it)) {
-        if (!minim_is_pair(it)) {
+    while (!minim_nullp(it)) {
+        if (!minim_consp(it)) {
             fprintf(stderr, "list_length: not a list");
             minim_shutdown(1);
         }
@@ -49,7 +49,7 @@ long improper_list_length(mobj *xs) {
     mobj *it = xs;
     long length = 0;
 
-    while (minim_is_pair(it)) {
+    while (minim_consp(it)) {
         it = minim_cdr(it);
         ++length;
     }
@@ -62,12 +62,12 @@ long improper_list_length(mobj *xs) {
 mobj *make_assoc(mobj *xs, mobj *ys) {
     mobj *assoc, *it;
 
-    if (minim_is_null(xs))
+    if (minim_nullp(xs))
         return minim_null;
 
     assoc = Mcons(Mcons(minim_car(xs), minim_car(ys)), minim_null);
     it = assoc;
-    while (!minim_is_null(xs = minim_cdr(xs))) {
+    while (!minim_nullp(xs = minim_cdr(xs))) {
         ys = minim_cdr(ys);
         minim_cdr(it) = Mcons(Mcons(minim_car(xs), minim_car(ys)), minim_null);
         it = minim_cdr(it);
@@ -81,14 +81,14 @@ mobj *make_assoc(mobj *xs, mobj *ys) {
 mobj *copy_list(mobj *xs) {
     mobj *head, *tail, *it;
 
-    if (minim_is_null(xs))
+    if (minim_nullp(xs))
         return minim_null;
 
     head = Mcons(minim_car(xs), minim_null);
     tail = head;
     it = xs;
 
-    while (!minim_is_null(it = minim_cdr(it))) {
+    while (!minim_nullp(it = minim_cdr(it))) {
         minim_cdr(tail) = Mcons(minim_car(it), minim_null);
         tail = minim_cdr(tail);
     }
@@ -126,7 +126,7 @@ mobj *for_each(mobj *proc, int argc, mobj **args, mobj *env) {
     memcpy(lsts, args, argc * sizeof(mobj *));
 
     stashc = stash_call_args();
-    while (!minim_is_null(lsts[0])) {
+    while (!minim_nullp(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
             lsts[i] = minim_cdr(lsts[i]);
@@ -172,7 +172,7 @@ mobj *map_list(mobj *proc, int argc, mobj **args, mobj *env) {
 
     head = NULL;
     stashc = stash_call_args();
-    while (!minim_is_null(lsts[0])) {
+    while (!minim_nullp(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
             lsts[i] = minim_cdr(lsts[i]);
@@ -233,7 +233,7 @@ mobj *andmap(mobj *proc, int argc, mobj **args, mobj *env) {
     memcpy(lsts, args, argc * sizeof(mobj *));
 
     stashc = stash_call_args();
-    while (!minim_is_null(lsts[0])) {
+    while (!minim_nullp(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
             lsts[i] = minim_cdr(lsts[i]);
@@ -280,7 +280,7 @@ mobj *ormap(mobj *proc, int argc, mobj **args, mobj *env) {
     memcpy(lsts, args, argc * sizeof(mobj *));
 
     stashc = stash_call_args();
-    while (!minim_is_null(lsts[0])) {
+    while (!minim_nullp(lsts[0])) {
         for (i = 0; i < argc; ++i) {
             push_call_arg(minim_car(lsts[i]));
             lsts[i] = minim_cdr(lsts[i]);
@@ -303,14 +303,14 @@ mobj *ormap(mobj *proc, int argc, mobj **args, mobj *env) {
 
 mobj *is_pair_proc(int argc, mobj **args) {
     // (-> any boolean)
-    return minim_is_pair(args[0]) ? minim_true : minim_false;
+    return minim_consp(args[0]) ? minim_true : minim_false;
 }
 
 mobj *is_list_proc(int argc, mobj **args) {
     // (-> any boolean)
     mobj *thing;
-    for (thing = args[0]; minim_is_pair(thing); thing = minim_cdr(thing));
-    return minim_is_null(thing) ? minim_true : minim_false;
+    for (thing = args[0]; minim_consp(thing); thing = minim_cdr(thing));
+    return minim_nullp(thing) ? minim_true : minim_false;
 }
 
 mobj *cons_proc(int argc, mobj **args) {
@@ -321,7 +321,7 @@ mobj *cons_proc(int argc, mobj **args) {
 mobj *car_proc(int argc, mobj **args) {
     // (-> pair any)
     mobj *o = args[0];
-    if (!minim_is_pair(o))
+    if (!minim_consp(o))
         bad_type_exn("car", "pair?", o);
     return minim_car(o);
 }
@@ -329,7 +329,7 @@ mobj *car_proc(int argc, mobj **args) {
 mobj *cdr_proc(int argc, mobj **args) {
     // (-> pair any)
     mobj *o = args[0];
-    if (!minim_is_pair(o))
+    if (!minim_consp(o))
         bad_type_exn("cdr", "pair?", o);
     return minim_cdr(o);
 }
@@ -337,7 +337,7 @@ mobj *cdr_proc(int argc, mobj **args) {
 mobj *caar_proc(int argc, mobj **args) {
     // (-> (pairof pair any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)))
         bad_type_exn("caar", "(pairof pair? any)", o);
     return minim_caar(o);
 }
@@ -345,7 +345,7 @@ mobj *caar_proc(int argc, mobj **args) {
 mobj *cadr_proc(int argc, mobj **args) {
     // (-> (pairof any pair) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)))
         bad_type_exn("cadr", "(pairof any pair)", o);
     return minim_cadr(o);
 }
@@ -353,7 +353,7 @@ mobj *cadr_proc(int argc, mobj **args) {
 mobj *cdar_proc(int argc, mobj **args) {
     // (-> (pairof pair any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)))
         bad_type_exn("cdar", "(pairof pair? any)", o);
     return minim_cdar(o);
 }
@@ -361,7 +361,7 @@ mobj *cdar_proc(int argc, mobj **args) {
 mobj *cddr_proc(int argc, mobj **args) {
     // (-> (pairof any pair) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)))
         bad_type_exn("cddr", "(pairof any pair)", o);
     return minim_cddr(o);
 }
@@ -369,7 +369,7 @@ mobj *cddr_proc(int argc, mobj **args) {
 mobj *caaar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof pair any) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_caar(o)))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_caar(o)))
         bad_type_exn("caaar", "(pairof (pairof pair? any) any)", o);
     return minim_car(minim_caar(o));
 }
@@ -377,7 +377,7 @@ mobj *caaar_proc(int argc, mobj **args) {
 mobj *caadr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof pair any)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cadr(o)))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cadr(o)))
         bad_type_exn("caadr", "(pairof any (pairof pair? any))", o);
     return minim_car(minim_cadr(o));
 }
@@ -385,7 +385,7 @@ mobj *caadr_proc(int argc, mobj **args) {
 mobj *cadar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof any pair) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_cdar(o)))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_cdar(o)))
         bad_type_exn("cadar", "(pairof (pairof any pair?) any)", o);
     return minim_car(minim_cdar(o));
 }
@@ -393,7 +393,7 @@ mobj *cadar_proc(int argc, mobj **args) {
 mobj *caddr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof any pair)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cddr(o)))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cddr(o)))
         bad_type_exn("caddr", "(pairof any (pairof any pair))", o);
     return minim_car(minim_cddr(o));
 }
@@ -401,7 +401,7 @@ mobj *caddr_proc(int argc, mobj **args) {
 mobj *cdaar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof pair any) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_caar(o)))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_caar(o)))
         bad_type_exn("cdaar", "(pairof (pairof pair? any) any)", o);
     return minim_cdr(minim_caar(o));
 }
@@ -409,7 +409,7 @@ mobj *cdaar_proc(int argc, mobj **args) {
 mobj *cdadr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof pair any)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cadr(o)))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cadr(o)))
         bad_type_exn("cdadr", "(pairof any (pairof pair? any))", o);
     return minim_cdr(minim_cadr(o));
 }
@@ -417,7 +417,7 @@ mobj *cdadr_proc(int argc, mobj **args) {
 mobj *cddar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof any pair) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) || !minim_is_pair(minim_cdar(o)))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_cdar(o)))
         bad_type_exn("cddar", "(pairof (pairof any pair?) any)", o);
     return minim_cdr(minim_cdar(o));
 }
@@ -425,7 +425,7 @@ mobj *cddar_proc(int argc, mobj **args) {
 mobj *cdddr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof any pair)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) || !minim_is_pair(minim_cddr(o)))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cddr(o)))
         bad_type_exn("cdddr", "(pairof any (pairof any pair?))", o);
     return minim_cdr(minim_cddr(o));
 }
@@ -433,8 +433,8 @@ mobj *cdddr_proc(int argc, mobj **args) {
 mobj *caaaar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof (pairof pair any) any) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_car(minim_caar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_caar(o)) || !minim_consp(minim_car(minim_caar(o))))
         bad_type_exn("caaaar", "(pairof (pairof (pairof pair? any) any) any)", o);
     return minim_caar(minim_caar(o));
 }
@@ -442,8 +442,8 @@ mobj *caaaar_proc(int argc, mobj **args) {
 mobj *caaadr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof (pairof pair any) any)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_car(minim_cadr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cadr(o)) || !minim_consp(minim_car(minim_cadr(o))))
         bad_type_exn("caaadr", "(pairof any (pairof (pairof pair? any) any))", o);
     return minim_caar(minim_cadr(o));
 }
@@ -451,8 +451,8 @@ mobj *caaadr_proc(int argc, mobj **args) {
 mobj *caadar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof any (pairof pair any)) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_car(minim_cdar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_cdar(o)) || !minim_consp(minim_car(minim_cdar(o))))
         bad_type_exn("caadar", "(pairof (pairof any (pairof pair? any)) any)", o);
     return minim_caar(minim_cdar(o));
 }
@@ -460,8 +460,8 @@ mobj *caadar_proc(int argc, mobj **args) {
 mobj *caaddr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof any (pairof pair any))) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cddr(o)) ||  !minim_is_pair(minim_car(minim_cddr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cddr(o)) ||  !minim_consp(minim_car(minim_cddr(o))))
         bad_type_exn("caaddr", "(pairof any (pairof any (pairof pair? any)))", o);
     return minim_caar(minim_cddr(o));
 }
@@ -469,8 +469,8 @@ mobj *caaddr_proc(int argc, mobj **args) {
 mobj *cadaar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof (pairof any pair) any) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_cdr(minim_caar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_caar(o)) || !minim_consp(minim_cdr(minim_caar(o))))
         bad_type_exn("cadaar", "(pairof (pairof (pairof any pair?) any) any)", o);
     return minim_cadr(minim_caar(o));
 }
@@ -478,8 +478,8 @@ mobj *cadaar_proc(int argc, mobj **args) {
 mobj *cadadr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof (pairof any pair) any)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_cdr(minim_cadr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cadr(o)) || !minim_consp(minim_cdr(minim_cadr(o))))
         bad_type_exn("cadadr", "(pairof any (pairof (pairof any pair?) any))", o);
     return minim_cadr(minim_cadr(o));
 }
@@ -487,8 +487,8 @@ mobj *cadadr_proc(int argc, mobj **args) {
 mobj *caddar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof any (pairof any pair)) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_cdr(minim_cdar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_cdar(o)) || !minim_consp(minim_cdr(minim_cdar(o))))
         bad_type_exn("caddar", "(pairof (pairof any (pairof any pair?) any)", o);
     return minim_cadr(minim_cdar(o));
 }
@@ -496,8 +496,8 @@ mobj *caddar_proc(int argc, mobj **args) {
 mobj *cadddr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof any (pairof any pair))) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cddr(o)) || !minim_is_pair(minim_cdr(minim_cddr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cddr(o)) || !minim_consp(minim_cdr(minim_cddr(o))))
         bad_type_exn("cadddr", "(pairof any (pairof any (pairof any pair?)))", o);
     return minim_cadr(minim_cddr(o));
 }
@@ -505,8 +505,8 @@ mobj *cadddr_proc(int argc, mobj **args) {
 mobj *cdaaar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof (pairof pair any) any) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_car(minim_caar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_caar(o)) || !minim_consp(minim_car(minim_caar(o))))
         bad_type_exn("cdaaar", "(pairof (pairof (pairof pair? any) any) any)", o);
     return minim_cdar(minim_caar(o));
 }
@@ -514,8 +514,8 @@ mobj *cdaaar_proc(int argc, mobj **args) {
 mobj *cdaadr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof (pairof pair any) any)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_car(minim_cadr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cadr(o)) || !minim_consp(minim_car(minim_cadr(o))))
         bad_type_exn("cdaadr", "(pairof any (pairof (pairof pair? any) any))", o);
     return minim_cdar(minim_cadr(o));
 }
@@ -523,8 +523,8 @@ mobj *cdaadr_proc(int argc, mobj **args) {
 mobj *cdadar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof any (pairof pair any)) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_car(minim_cdar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_cdar(o)) || !minim_consp(minim_car(minim_cdar(o))))
         bad_type_exn("cdadar", "(pairof (pairof any (pairof pair? any)) any)", o);
     return minim_cdar(minim_cdar(o));
 }
@@ -532,8 +532,8 @@ mobj *cdadar_proc(int argc, mobj **args) {
 mobj *cdaddr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof any (pairof pair any))) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cddr(o)) ||  !minim_is_pair(minim_car(minim_cddr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cddr(o)) ||  !minim_consp(minim_car(minim_cddr(o))))
         bad_type_exn("cdaddr", "(pairof any (pairof any (pairof pair? any)))", o);
     return minim_cdar(minim_cddr(o));
 }
@@ -541,8 +541,8 @@ mobj *cdaddr_proc(int argc, mobj **args) {
 mobj *cddaar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof (pairof any pair) any) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_caar(o)) || !minim_is_pair(minim_cdr(minim_caar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_caar(o)) || !minim_consp(minim_cdr(minim_caar(o))))
         bad_type_exn("cddaar", "(pairof (pairof (pairof any pair?) any) any)", o);
     return minim_cddr(minim_caar(o));
 }
@@ -550,8 +550,8 @@ mobj *cddaar_proc(int argc, mobj **args) {
 mobj *cddadr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof (pairof any pair) any)) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cadr(o)) || !minim_is_pair(minim_cdr(minim_cadr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cadr(o)) || !minim_consp(minim_cdr(minim_cadr(o))))
         bad_type_exn("cddadr", "(pairof any (pairof (pairof any pair?) any))", o);
     return minim_cddr(minim_cadr(o));
 }
@@ -559,8 +559,8 @@ mobj *cddadr_proc(int argc, mobj **args) {
 mobj *cdddar_proc(int argc, mobj **args) {
     // (-> (pairof (pairof any (pairof any pair)) any) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_car(o)) ||
-        !minim_is_pair(minim_cdar(o)) || !minim_is_pair(minim_cdr(minim_cdar(o))))
+    if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
+        !minim_consp(minim_cdar(o)) || !minim_consp(minim_cdr(minim_cdar(o))))
         bad_type_exn("cdddar", "(pairof (pairof any (pairof any pair?) any)", o);
     return minim_cddr(minim_cdar(o));
 }
@@ -568,8 +568,8 @@ mobj *cdddar_proc(int argc, mobj **args) {
 mobj *cddddr_proc(int argc, mobj **args) {
     // (-> (pairof any (pairof any (pairof any pair))) any)
     mobj *o = args[0];
-    if (!minim_is_pair(o) || !minim_is_pair(minim_cdr(o)) ||
-        !minim_is_pair(minim_cddr(o)) || !minim_is_pair(minim_cdr(minim_cddr(o))))
+    if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
+        !minim_consp(minim_cddr(o)) || !minim_consp(minim_cdr(minim_cddr(o))))
         bad_type_exn("cddddr", "(pairof any (pairof any (pairof any pair?)))", o);
     return minim_cddr(minim_cddr(o));
 }
@@ -577,7 +577,7 @@ mobj *cddddr_proc(int argc, mobj **args) {
 mobj *set_car_proc(int argc, mobj **args) {
     // (-> pair any void)
     mobj *o = args[0];
-    if (!minim_is_pair(o))
+    if (!minim_consp(o))
         bad_type_exn("set-car!", "pair?", o);
     minim_car(o) = args[1];
     return minim_void;
@@ -586,7 +586,7 @@ mobj *set_car_proc(int argc, mobj **args) {
 mobj *set_cdr_proc(int argc, mobj **args) {
     // (-> pair any void)
     mobj *o = args[0];
-    if (!minim_is_pair(o))
+    if (!minim_consp(o))
         bad_type_exn("set-cdr!", "pair?", o);
     minim_cdr(o) = args[1];
     return minim_void;
@@ -609,7 +609,7 @@ mobj *make_list_proc(int argc, mobj **args) {
     mobj *lst;
     long len, i;
 
-    if (!minim_is_fixnum(args[0]) || minim_fixnum(args[0]) < 0)
+    if (!minim_fixnump(args[0]) || minim_fixnum(args[0]) < 0)
         bad_type_exn("make-vector", "non-negative-integer?", args[0]);
     len = minim_fixnum(args[0]);
 
@@ -626,10 +626,10 @@ mobj *length_proc(int argc, mobj **args) {
     long length;
 
     length = 0;
-    for (it = args[0]; minim_is_pair(it); it = minim_cdr(it))
+    for (it = args[0]; minim_consp(it); it = minim_cdr(it))
         length += 1;
 
-    if (!minim_is_null(it))
+    if (!minim_nullp(it))
         bad_type_exn("length", "list?", args[0]);
 
     return Mfixnum(length);
@@ -640,10 +640,10 @@ mobj *reverse_proc(int argc, mobj **args) {
     mobj *head, *it;
     
     head = minim_null;
-    for (it = args[0]; minim_is_pair(it); it = minim_cdr(it))
+    for (it = args[0]; minim_consp(it); it = minim_cdr(it))
         head = Mcons(minim_car(it), head);
 
-    if (!minim_is_null(it))
+    if (!minim_nullp(it))
         bad_type_exn("reverse", "expected list?", args[0]);
     return head;
 }
@@ -655,8 +655,8 @@ mobj *append_proc(int argc, mobj **args) {
 
     head = NULL;
     for (i = 0; i < argc; ++i) {
-        if (!minim_is_null(args[i])) {
-            for (it = args[i]; minim_is_pair(it); it = minim_cdr(it)) {
+        if (!minim_nullp(args[i])) {
+            for (it = args[i]; minim_consp(it); it = minim_cdr(it)) {
                 if (head) {
                     minim_cdr(lst_it) = Mcons(minim_car(it), minim_null);
                     lst_it = minim_cdr(lst_it);
@@ -666,7 +666,7 @@ mobj *append_proc(int argc, mobj **args) {
                 }
             }
 
-            if (!minim_is_null(it))
+            if (!minim_nullp(it))
                 bad_type_exn("append", "expected list?", args[i]);
         }
     }

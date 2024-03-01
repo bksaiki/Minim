@@ -77,19 +77,19 @@ int main(int argc, char **argv) {
         load_library();
 
     for (i = argc - 1; i >= argi; --i)
-        command_line(th) = Mcons(make_string(argv[i]), command_line(th));
+        command_line(th) = Mcons(Mstring(argv[i]), command_line(th));
 
     if (argi < argc) {
         if (!interactive && opt_load_library) {
             eval_expr(
                 Mcons(intern("import"),
-                    Mcons(make_string(argv[argi]), 
+                    Mcons(Mstring(argv[argi]), 
                     minim_null)),
                 global_env(th));
         } else {
             eval_expr(
                 Mcons(intern("load"),
-                    Mcons(make_string(argv[argi]), 
+                    Mcons(Mstring(argv[argi]), 
                     minim_null)),
                 global_env(th));
         }

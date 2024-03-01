@@ -4,21 +4,16 @@
 
 #include "../minim.h"
 
-mobj *make_vector(long len, mobj *init) {
-    minim_vector_object *o;
-    long i;
-    
-    o = GC_alloc(sizeof(minim_vector_object));
-    o->type = MINIM_VECTOR_TYPE;
-    o->len = len;
-    o->arr = GC_alloc(len * sizeof(mobj *));
-
+mobj make_vector(long len, mobj init) {
+    mobj o = GC_alloc(minim_vector_size(len));
+    minim_type(o) = MINIM_OBJ_VECTOR;
+    minim_vector_len(o) = len;
     if (init != NULL) {
-        for (i = 0; i < len; ++i)
-            o->arr[i] = init;
+        for (long i = 0; i < len; ++i)
+            minim_vector_ref(o, i) = init;
     }
 
-    return ((mobj *) o);
+    return o;
 }
 
 mobj list_to_vector(mobj lst) {
@@ -47,7 +42,7 @@ static void vector_out_of_bounds_exn(const char *name, mobj *v, long idx) {
 
 mobj *is_vector_proc(int argc, mobj **args) {
     // (-> any boolean)
-    return (minim_is_vector(args[0]) ? minim_true : minim_false);
+    return (minim_vectorp(args[0]) ? minim_true : minim_false);
 }
 
 mobj *make_vector_proc(int argc, mobj **args) {
@@ -56,7 +51,7 @@ mobj *make_vector_proc(int argc, mobj **args) {
     mobj *init;
     long len;
 
-    if (!minim_is_fixnum(args[0]) || minim_fixnum(args[0]) < 0)
+    if (!minim_fixnump(args[0]) || minim_fixnum(args[0]) < 0)
         bad_type_exn("make-vector", "non-negative-integer?", args[0]);
     len = minim_fixnum(args[0]);
 
@@ -90,7 +85,7 @@ mobj *vector_length_proc(int argc, mobj **args) {
     mobj *v;
     
     v = args[0];
-    if (!minim_is_vector(v))
+    if (!minim_vectorp(v))
         bad_type_exn("vector-length", "vector?", v);
     return Mfixnum(minim_vector_len(v));
 }
@@ -100,11 +95,11 @@ mobj *vector_ref_proc(int argc, mobj **args) {
     mobj *v, *idx;
     
     v = args[0];
-    if (!minim_is_vector(v))
+    if (!minim_vectorp(v))
         bad_type_exn("vector-ref", "vector?", v);
 
     idx = args[1];
-    if (!minim_is_fixnum(idx) || minim_fixnum(idx) < 0)
+    if (!minim_fixnump(idx) || minim_fixnum(idx) < 0)
         bad_type_exn("vector-ref", "non-negative-integer?", idx);
     if (minim_fixnum(idx) >= minim_vector_len(v))
         vector_out_of_bounds_exn("vector-ref", v, minim_fixnum(idx));
@@ -117,11 +112,11 @@ mobj *vector_set_proc(int argc, mobj **args) {
     mobj *v, *idx;
     
     v = args[0];
-    if (!minim_is_vector(v))
+    if (!minim_vectorp(v))
         bad_type_exn("vector-set!", "vector?", v);
 
     idx = args[1];
-    if (!minim_is_fixnum(idx) || minim_fixnum(idx) < 0)
+    if (!minim_fixnump(idx) || minim_fixnum(idx) < 0)
         bad_type_exn("vector-set!", "non-negative-integer?", idx);
     if (minim_fixnum(idx) >= minim_vector_len(v))
         vector_out_of_bounds_exn("vector-set!", v, minim_fixnum(idx));
@@ -136,7 +131,7 @@ mobj *vector_fill_proc(int argc, mobj **args) {
     long i;
 
     v = args[0];
-    if (!minim_is_vector(v))
+    if (!minim_vectorp(v))
         bad_type_exn("vector-fill!", "vector?", v);
 
     o = args[1];
@@ -152,7 +147,7 @@ mobj *vector_to_list_proc(int argc, mobj **args) {
     long i;
     
     v = args[0];
-    if (!minim_is_vector(v))
+    if (!minim_vectorp(v))
         bad_type_exn("vector->list", "vector?", v);
 
     lst = minim_null;

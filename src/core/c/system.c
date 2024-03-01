@@ -76,7 +76,7 @@ void set_current_dir(const char *str) {
         minim_shutdown(1);
     }
 
-    current_directory(current_thread()) = make_string(str);
+    current_directory(current_thread()) = Mstring(str);
 }
 
 char* get_current_dir() {
@@ -134,7 +134,7 @@ void minim_shutdown(int code) {
 
 mobj *load_proc(int argc, mobj **args) {
     // (-> string any)
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("load", "string?", args[0]);
     return load_file(minim_string(args[0]));
 }
@@ -148,11 +148,11 @@ mobj *error_proc(int argc, mobj **args) {
     int i;
 
     who = args[0];
-    if (!minim_is_false(who) && !minim_symbolp(who) && !minim_is_string(who))
+    if (!minim_is_false(who) && !minim_symbolp(who) && !minim_stringp(who))
         bad_type_exn("error", "(or #f string? symbol?)", who);
 
     message = args[1];
-    if (!minim_is_string(message))
+    if (!minim_stringp(message))
         bad_type_exn("error", "string?", message);
     
     if (minim_is_false(who))
@@ -193,7 +193,7 @@ mobj *current_directory_proc(int argc, mobj **args) {
     } else {
         // setter
         path = args[0];
-        if (!minim_is_string(path))
+        if (!minim_stringp(path))
             bad_type_exn("current-directory", "string?", path);
         
         set_current_dir(minim_string(path));
@@ -206,5 +206,5 @@ mobj *command_line_proc(int argc, mobj **args) {
 }
 
 mobj *version_proc(int argc, mobj **args) {
-    return make_string(MINIM_VERSION);
+    return Mstring(MINIM_VERSION);
 }

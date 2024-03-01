@@ -80,7 +80,7 @@ mobj *make_rtd_proc(int argc, mobj **args) {
         bad_type_exn("make-record-type-descriptor", "boolean?", args[3]);
     if (!minim_is_bool(args[4]))
         bad_type_exn("make-record-type-descriptor", "boolean?", args[4]);
-    if (!minim_is_vector(args[5]))
+    if (!minim_vectorp(args[5]))
         bad_type_exn("make-record-type-descriptor", "vector?", args[5]);
 
     // check number of fields
@@ -119,7 +119,7 @@ mobj *make_rtd_proc(int argc, mobj **args) {
         field = minim_vector_ref(args[5], i);
         
         // should be a list
-        if (!minim_is_pair(field))
+        if (!minim_consp(field))
             make_rtd_field_exn("expected a list", field, i);
 
         // check type first (either 'immutable or 'mutable)
@@ -134,11 +134,11 @@ mobj *make_rtd_proc(int argc, mobj **args) {
 
         // expecting exactly one more entry
         field_it = minim_cdr(field);
-        if (!minim_is_pair(field_it))
+        if (!minim_consp(field_it))
             make_rtd_field_exn("expected a list", field, i);
         if (!minim_symbolp(minim_car(field_it)))
             make_rtd_field_exn("expected an identitifer after field type", field, i);
-        if (!minim_is_null(minim_cdr(field_it)))
+        if (!minim_nullp(minim_cdr(field_it)))
             make_rtd_field_exn("too many entries in field descriptor", field, i);
 
         // field descriptor is valid
@@ -215,7 +215,7 @@ mobj *record_type_field_mutable_proc(int argc, mobj **args) {
     
     if (!is_record_rtd(args[0]))
         bad_type_exn("record-type-field-mutable", "record-type-descriptor?", args[0]);
-    if (!minim_is_fixnum(args[1]))   // TODO: positive-integer?
+    if (!minim_fixnump(args[1]))   // TODO: positive-integer?
         bad_type_exn("record-type-field-mutable", "integer?", args[0]);
 
     rtd = args[0];
@@ -278,7 +278,7 @@ mobj *record_ref_proc(int argc, mobj **args) {
 
     if (!is_record_value(args[0]))
         bad_type_exn("$record-ref", "record?", args[0]);
-    if (!minim_is_fixnum(args[1]))   // TODO: positive-integer?
+    if (!minim_fixnump(args[1]))   // TODO: positive-integer?
         bad_type_exn("$record-ref", "integer?", args[0]);
 
     fieldc = minim_record_count(args[0]);
@@ -299,7 +299,7 @@ mobj *record_set_proc(int argc, mobj **args) {
 
     if (!is_record_value(args[0]))
         bad_type_exn("$record-ref", "record?", args[0]);
-    if (!minim_is_fixnum(args[1]))   // TODO: positive-integer?
+    if (!minim_fixnump(args[1]))   // TODO: positive-integer?
         bad_type_exn("$record-ref", "integer?", args[0]);
 
     fieldc = minim_record_count(args[0]);

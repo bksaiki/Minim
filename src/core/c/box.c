@@ -4,7 +4,7 @@
 
 #include "../minim.h"
 
-mobj *make_box(mobj *x) {
+mobj *Mbox(mobj *x) {
     minim_box_object *o = GC_alloc(sizeof(minim_box_object));
     o->type = MINIM_BOX_TYPE;
     o->o = x;
@@ -22,7 +22,7 @@ mobj *is_box_proc(int argc, mobj **args) {
 
 mobj *box_proc(int argc, mobj **args) {
     // (-> any box)
-    return make_box(args[0]);
+    return Mbox(args[0]);
 }
 
 mobj *unbox_proc(int argc, mobj **args) {
