@@ -96,7 +96,7 @@ void populate_env(mobj *env) {
     add_procedure("ormap", ormap_proc, 2, 2);
 
     add_procedure("vector?", is_vector_proc, 1, 1);
-    add_procedure("make-vector", make_vector_proc, 1, 2);
+    add_procedure("make-vector", Mvector_proc, 1, 2);
     add_procedure("vector", vector_proc, 0, ARG_MAX);
     add_procedure("vector-length", vector_length_proc, 1, 1);
     add_procedure("vector-ref", vector_ref_proc, 2, 2);
@@ -137,7 +137,7 @@ void populate_env(mobj *env) {
     add_procedure("record-type-field-names", record_type_fields_proc, 1, 1);
     add_procedure("record-type-field-mutable?", record_type_field_mutable_proc, 2, 2);
     add_procedure("$record-value?", is_record_value_proc, 1, 1);
-    add_procedure("$make-record", make_record_proc, 1, ARG_MAX);
+    add_procedure("$make-record", Mrecord_proc, 1, ARG_MAX);
     add_procedure("$record-rtd", record_rtd_proc, 1, 1);
     add_procedure("$record-ref", record_ref_proc, 2, 2);
     add_procedure("$record-set!", record_set_proc, 3, 3);
@@ -152,7 +152,7 @@ void populate_env(mobj *env) {
 
     add_procedure("hashtable?", is_hashtable_proc, 1, 1);
     add_procedure("make-eq-hashtable", make_eq_hashtable_proc, 0, 0);   // TODO: allow size hint?
-    add_procedure("make-hashtable", make_hashtable_proc, 0, 0);         // TODO: allow size hint?
+    add_procedure("make-hashtable", Mhashtable_proc, 0, 0);         // TODO: allow size hint?
     add_procedure("hashtable-size", hashtable_size_proc, 1, 1);
     add_procedure("hashtable-contains?", hashtable_contains_proc, 2, 2);
     add_procedure("hashtable-set!", hashtable_set_proc, 3, 3);
@@ -274,7 +274,7 @@ void minim_boot_init() {
     // initialize special values
 
     minim_null = GC_alloc(sizeof(mobj));
-    minim_empty_vec = make_vector(0, NULL);
+    minim_empty_vec = Mvector(0, NULL);
     minim_true = GC_alloc(sizeof(mobj));
     minim_false = GC_alloc(sizeof(mobj));
     minim_eof = GC_alloc(sizeof(mobj));
@@ -290,7 +290,7 @@ void minim_boot_init() {
 
     empty_env = minim_null;
 
-    minim_base_rtd = make_record(NULL, record_rtd_min_size);
+    minim_base_rtd = Mrecord(NULL, record_rtd_min_size);
     record_rtd_name(minim_base_rtd) = Mstring("$base-record-type");
     record_rtd_parent(minim_base_rtd) = minim_base_rtd;
     record_rtd_uid(minim_base_rtd) = minim_false;

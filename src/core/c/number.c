@@ -15,12 +15,12 @@ mobj Mfixnum(long v) {
 //  Primitives
 //
 
-mobj *is_fixnum_proc(int argc, mobj **args) {
+mobj is_fixnum_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_fixnump(args[0]) ? minim_true : minim_false;
 }
 
-mobj *add_proc(int argc, mobj **args) {
+mobj add_proc(int argc, mobj *args) {
     // (-> integer ... integer)
     long result;
     int i;
@@ -35,7 +35,7 @@ mobj *add_proc(int argc, mobj **args) {
     return Mfixnum(result);
 }
 
-mobj *sub_proc(int argc, mobj **args) {
+mobj sub_proc(int argc, mobj *args) {
     // (-> integer integer ... integer)
     long result;
     int i;
@@ -57,7 +57,7 @@ mobj *sub_proc(int argc, mobj **args) {
     return Mfixnum(result);
 }
 
-mobj *mul_proc(int argc, mobj **args) {
+mobj mul_proc(int argc, mobj *args) {
     // (-> integer ... integer)
     long result;
     int i;
@@ -72,7 +72,7 @@ mobj *mul_proc(int argc, mobj **args) {
     return Mfixnum(result);
 }
 
-mobj *div_proc(int argc, mobj **args) {
+mobj div_proc(int argc, mobj *args) {
     // (-> integer integer integer)
     if (!minim_fixnump(args[0]))
             bad_type_exn("/", "integer?", args[0]);
@@ -82,7 +82,7 @@ mobj *div_proc(int argc, mobj **args) {
     return Mfixnum(minim_fixnum(args[0]) / minim_fixnum(args[1]));
 }
 
-mobj *remainder_proc(int argc, mobj **args) {
+mobj remainder_proc(int argc, mobj *args) {
     // (-> integer integer integer)
     if (!minim_fixnump(args[0]))
             bad_type_exn("remainder", "integer?", args[0]);
@@ -92,7 +92,7 @@ mobj *remainder_proc(int argc, mobj **args) {
     return Mfixnum(minim_fixnum(args[0]) % minim_fixnum(args[1]));
 }
 
-mobj *modulo_proc(int argc, mobj **args) {
+mobj modulo_proc(int argc, mobj *args) {
     // (-> integer integer integer)
     long result;
 
@@ -107,7 +107,7 @@ mobj *modulo_proc(int argc, mobj **args) {
     return Mfixnum(result);
 }
 
-mobj *number_eq_proc(int argc, mobj **args) {
+mobj number_eq_proc(int argc, mobj *args) {
     // (-> number number number ... boolean)
     long x0;
     int i;
@@ -126,7 +126,7 @@ mobj *number_eq_proc(int argc, mobj **args) {
     return minim_true;
 }
 
-mobj *number_ge_proc(int argc, mobj **args) { 
+mobj number_ge_proc(int argc, mobj *args) { 
     // (-> number number number ... boolean)
     long xi;
     int i;
@@ -146,7 +146,7 @@ mobj *number_ge_proc(int argc, mobj **args) {
     return minim_true;
 }
 
-mobj *number_le_proc(int argc, mobj **args) { 
+mobj number_le_proc(int argc, mobj *args) { 
     // (-> number number number ... boolean)
     long xi;
     int i;
@@ -166,7 +166,7 @@ mobj *number_le_proc(int argc, mobj **args) {
     return minim_true;
 }
 
-mobj *number_gt_proc(int argc, mobj **args) { 
+mobj number_gt_proc(int argc, mobj *args) { 
     // (-> number number number ... boolean)
     long xi;
     int i;
@@ -186,7 +186,7 @@ mobj *number_gt_proc(int argc, mobj **args) {
     return minim_true;
 }
 
-mobj *number_lt_proc(int argc, mobj **args) { 
+mobj number_lt_proc(int argc, mobj *args) { 
     // (-> number number number ... boolean)
     long xi;
     int i;

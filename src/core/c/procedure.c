@@ -24,11 +24,11 @@ static void set_arity(proc_arity *arity, short min_arity, short max_arity) {
     }
 }
 
-mobj *make_prim_proc(minim_prim_proc_t proc,
+mobj *make_prim_proc(minim_prim_t proc,
                              char *name,
                              short min_arity, short max_arity) {
-    minim_prim_proc_object *o = GC_alloc(sizeof(minim_prim_proc_object));
-    o->type = MINIM_PRIM_PROC_TYPE;
+    minim_prim_object *o = GC_alloc(sizeof(minim_prim_object));
+    o->type = minim_prim_TYPE;
     o->fn = proc;
     o->name = name;
     set_arity(&o->arity, min_arity, max_arity);
@@ -36,7 +36,7 @@ mobj *make_prim_proc(minim_prim_proc_t proc,
     return ((mobj *) o);
 }
 
-mobj *make_closure(mobj *args,
+mobj *Mclosure(mobj *args,
                            mobj *body,
                            mobj *env,
                            short min_arity,
@@ -71,17 +71,17 @@ void resize_values_buffer(minim_thread *th, int size) {
 //  Procedure
 //
 
-mobj *is_procedure_proc(int argc, mobj **args) {
+mobj *is_procedure_proc(int argc, mobj *args) {
     // (-> any boolean)
     mobj *o = args[0];
     return (minim_is_prim_proc(o) || minim_is_closure(o)) ? minim_true : minim_false;
 }
 
-mobj *call_with_values_proc(int argc, mobj **args) {
+mobj *call_with_values_proc(int argc, mobj *args) {
     uncallable_prim_exn("call-with-values");
 }
 
-mobj *values_proc(int argc, mobj **args) {
+mobj *values_proc(int argc, mobj *args) {
     // (-> any ... (values any ...))
     minim_thread *th;
 
@@ -94,20 +94,20 @@ mobj *values_proc(int argc, mobj **args) {
     return minim_values;
 }
 
-mobj *eval_proc(int argc, mobj **args) {
+mobj *eval_proc(int argc, mobj *args) {
     uncallable_prim_exn("eval");
 }
 
-mobj *apply_proc(int argc, mobj **args) {
+mobj *apply_proc(int argc, mobj *args) {
     uncallable_prim_exn("apply");
 }
 
-mobj *identity_proc(int argc, mobj **args) {
+mobj *identity_proc(int argc, mobj *args) {
     // (-> any any)
     return args[0];
 }
 
-mobj *procedure_arity_proc(int argc, mobj **args) {
+mobj *procedure_arity_proc(int argc, mobj *args) {
     // (-> procedure any)
     mobj *proc;
     proc_arity* arity;

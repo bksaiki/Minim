@@ -62,7 +62,7 @@ void check_true(const char *input) {
     reset();
     load(input);
     result = eval();
-    if (!minim_is_true(result)) {
+    if (!minim_truep(result)) {
         log_failed_case(input, "#t", write(result));
     }
 }
@@ -73,7 +73,7 @@ void check_false(const char *input) {
     reset();
     load(input);
     result = eval();
-    if (!minim_is_false(result)) {
+    if (!minim_falsep(result)) {
         log_failed_case(input, "#f", write(result));
     }
 }

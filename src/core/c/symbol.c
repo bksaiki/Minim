@@ -177,7 +177,7 @@ mobj *intern_symbol(intern_table *itab, const char *sym) {
     return obj;
 }
 
-mobj *Msymbol(const char *s) {
+mobj Msymbol(const char *s) {
     mobj o;
     int len;
 
@@ -193,7 +193,7 @@ mobj *Msymbol(const char *s) {
 //  Primitives
 //
 
-mobj *is_symbol_proc(int argc, mobj **args) {
+mobj is_symbol_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_symbolp(args[0]) ? minim_true : minim_false;
 }

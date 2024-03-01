@@ -15,7 +15,7 @@ struct address_map_t address_map[] = {
     { "env_define_var", env_define_var },
     { "env_set_var", env_set_var },
     { "env_lookup_var", env_lookup_var },
-    { "make_closure", make_native_closure },
+    { "Mclosure", Mnative_closure },
     { "check_arity", check_native_closure_arity },
     { "make_rest_argument", make_rest_argument },
     { "make_environment", make_environment },
@@ -36,20 +36,16 @@ mobj *make_rest_argument(mobj *args[], short argc) {
     return lst;
 }
 
-void check_native_closure_arity(short argc, mobj *fn) {
-    struct proc_arity *arity;
-    int min_arity, max_arity;
-
-    arity = &minim_native_closure_arity(fn);
-    min_arity = proc_arity_min(arity);
-    max_arity = proc_arity_max(arity);
+void check_native_closure_arity(short argc, mobj fn) {
+    int min_arity = minim_native_closure_argc_low(fn);
+    int max_arity = minim_native_closure_argc_high(fn);
 
     // TODO: better arity error
     if (argc > max_arity)
-        arity_mismatch_exn(minim_native_closure_name(fn), arity, argc);
+        arity_mismatch_exn(minim_native_closure_name(fn), min_arity, max_arity, argc);
 
     if (argc < min_arity)
-        arity_mismatch_exn(minim_native_closure_name(fn), arity, argc);
+        arity_mismatch_exn(minim_native_closure_name(fn), min_arity, max_arity, argc);
 }
 
 #ifdef MINIM_X86_64
@@ -91,7 +87,7 @@ mobj *call_compiled(mobj *env, mobj *addr) {
 //  Primitives
 //
 
-mobj *install_literal_bundle_proc(int argc, mobj **args) {
+mobj *install_literal_bundle_proc(int argc, mobj *args) {
     mobj **bundle, ***root, *it;
     long size, i;
 
@@ -113,7 +109,7 @@ mobj *install_literal_bundle_proc(int argc, mobj **args) {
     return Mfixnum((long) bundle);
 }
 
-mobj *install_proc_bundle_proc(int argc, mobj **args) {
+mobj *install_proc_bundle_proc(int argc, mobj *args) {
     mobj *it, *it2;
     char *code;
     long size, offset;
@@ -149,7 +145,7 @@ mobj *install_proc_bundle_proc(int argc, mobj **args) {
     return Mfixnum((long) code);
 }
 
-mobj *reinstall_proc_bundle_proc(int argc, mobj **args) {
+mobj *reinstall_proc_bundle_proc(int argc, mobj *args) {
     mobj *it, *it2;
     char *code;
     long size, offset;
@@ -191,7 +187,7 @@ mobj *reinstall_proc_bundle_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *runtime_address_proc(int argc, mobj **args) {
+mobj *runtime_address_proc(int argc, mobj *args) {
     char *str;
     int i;
 
@@ -219,6 +215,6 @@ mobj *runtime_address_proc(int argc, mobj **args) {
     exit(1);
 }
 
-mobj *enter_compiled_proc(int argc, mobj **args) {
+mobj *enter_compiled_proc(int argc, mobj *args) {
     uncallable_prim_exn("enter-compiled!");
 }

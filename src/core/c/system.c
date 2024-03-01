@@ -132,14 +132,14 @@ void minim_shutdown(int code) {
 //  Primitives
 //
 
-mobj *load_proc(int argc, mobj **args) {
+mobj *load_proc(int argc, mobj *args) {
     // (-> string any)
     if (!minim_stringp(args[0]))
         bad_type_exn("load", "string?", args[0]);
     return load_file(minim_string(args[0]));
 }
 
-mobj *error_proc(int argc, mobj **args) {
+mobj *error_proc(int argc, mobj *args) {
     // (-> (or #f string symbol)
     //     string?
     //     any ...
@@ -148,14 +148,14 @@ mobj *error_proc(int argc, mobj **args) {
     int i;
 
     who = args[0];
-    if (!minim_is_false(who) && !minim_symbolp(who) && !minim_stringp(who))
+    if (!minim_falsep(who) && !minim_symbolp(who) && !minim_stringp(who))
         bad_type_exn("error", "(or #f string? symbol?)", who);
 
     message = args[1];
     if (!minim_stringp(message))
         bad_type_exn("error", "string?", message);
     
-    if (minim_is_false(who))
+    if (minim_falsep(who))
         fprintf(stderr, "error");
     else
         write_object2(stderr, who, 1, 1);
@@ -173,7 +173,7 @@ mobj *error_proc(int argc, mobj **args) {
     minim_shutdown(1);
 }
 
-mobj *exit_proc(int argc, mobj **args) {
+mobj *exit_proc(int argc, mobj *args) {
     // (-> number any)
 
     if (argc == 1 && 0 <= minim_fixnum(args[0]) && minim_fixnum(args[0]) <= 255)
@@ -182,7 +182,7 @@ mobj *exit_proc(int argc, mobj **args) {
         minim_shutdown(0);
 }
 
-mobj *current_directory_proc(int argc, mobj **args) {
+mobj *current_directory_proc(int argc, mobj *args) {
     // (-> string)
     // (-> string void)
     mobj *path;
@@ -201,10 +201,10 @@ mobj *current_directory_proc(int argc, mobj **args) {
     }
 }
 
-mobj *command_line_proc(int argc, mobj **args) {
+mobj *command_line_proc(int argc, mobj *args) {
     return command_line(current_thread());
 }
 
-mobj *version_proc(int argc, mobj **args) {
+mobj *version_proc(int argc, mobj *args) {
     return Mstring(MINIM_VERSION);
 }

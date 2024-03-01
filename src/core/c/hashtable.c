@@ -10,7 +10,7 @@
 #define start_size_ptr                      (&bucket_sizes[0])
 #define load_factor(s, a)                   ((double)(s) / (double)(a))
 
-mobj *make_hashtable(mobj *hash_fn, mobj *equiv_fn) {
+mobj *Mhashtable(mobj *hash_fn, mobj *equiv_fn) {
     minim_hashtable_object *o;
     
     o = GC_alloc(sizeof(minim_hashtable_object));
@@ -25,7 +25,7 @@ mobj *make_hashtable(mobj *hash_fn, mobj *equiv_fn) {
     return ((mobj *) o);
 }
 
-mobj *make_hashtable2(mobj *hash_fn, mobj *equiv_fn, size_t size_hint) {
+mobj *Mhashtable2(mobj *hash_fn, mobj *equiv_fn, size_t size_hint) {
     minim_hashtable_object *o;
     size_t *alloc_ptr;
 
@@ -201,9 +201,9 @@ static size_t hash_key(mobj *ht, mobj *k) {
     long stashc;
 
     proc = minim_hashtable_hash(ht);
-    if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_hash_proc) {
+    if (minim_is_prim_proc(proc) && minim_prim(proc) == eq_hash_proc) {
         return eq_hash(k);
-    } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_hash_proc) {
+    } else if (minim_is_prim_proc(proc) && minim_prim(proc) == equal_hash_proc) {
         return equal_hash(k);
     } else {
         th = current_thread();
@@ -229,9 +229,9 @@ static int key_equiv(mobj *ht, mobj *k1, mobj *k2) {
     int res;
 
     proc = minim_hashtable_equiv(ht);
-    if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == eq_proc) {
+    if (minim_is_prim_proc(proc) && minim_prim(proc) == eq_proc) {
         return minim_is_eq(k1, k2);
-    } else if (minim_is_prim_proc(proc) && minim_prim_proc(proc) == equal_proc) {
+    } else if (minim_is_prim_proc(proc) && minim_prim(proc) == equal_proc) {
         return minim_is_equal(k1, k2);
     } else {
         th = current_thread();
@@ -239,7 +239,7 @@ static int key_equiv(mobj *ht, mobj *k1, mobj *k2) {
 
         push_call_arg(k1);
         push_call_arg(k2);
-        res = !minim_is_false(call_with_args(minim_hashtable_equiv(ht), global_env(th)));
+        res = !minim_falsep(call_with_args(minim_hashtable_equiv(ht), global_env(th)));
 
         prepare_call_args(stashc);
         return res;
@@ -376,22 +376,22 @@ static void key_not_found_exn(const char *name, mobj *k) {
 //  Primitives
 //
 
-mobj *is_hashtable_proc(int argc, mobj **args) {
+mobj *is_hashtable_proc(int argc, mobj *args) {
     // (-> any boolean)
     return (minim_is_hashtable(args[0]) ? minim_true : minim_false);
 }
 
-mobj *make_eq_hashtable_proc(int argc, mobj **args) {
+mobj *make_eq_hashtable_proc(int argc, mobj *args) {
     // (-> hashtable)
-    return make_hashtable(eq_hash_proc_obj, eq_proc_obj);
+    return Mhashtable(eq_hash_proc_obj, eq_proc_obj);
 }
 
-mobj *make_hashtable_proc(int argc, mobj **args) {
+mobj *Mhashtable_proc(int argc, mobj *args) {
     // (-> hashtable)
-    return make_hashtable(equal_hash_proc_obj, equal_proc_obj);
+    return Mhashtable(equal_hash_proc_obj, equal_proc_obj);
 }
 
-mobj *hashtable_size_proc(int argc, mobj **args) {
+mobj *hashtable_size_proc(int argc, mobj *args) {
     // (-> hashtable any any void)
     mobj *ht;
 
@@ -401,7 +401,7 @@ mobj *hashtable_size_proc(int argc, mobj **args) {
     return Mfixnum(minim_hashtable_size(ht));
 }
 
-mobj *hashtable_contains_proc(int argc, mobj **args) {
+mobj *hashtable_contains_proc(int argc, mobj *args) {
     // (-> hashtable any boolean)
     mobj *ht, *k;
 
@@ -413,7 +413,7 @@ mobj *hashtable_contains_proc(int argc, mobj **args) {
     return (minim_nullp(hashtable_find(ht, k)) ? minim_false : minim_true);
 }
 
-mobj *hashtable_set_proc(int argc, mobj **args) {
+mobj *hashtable_set_proc(int argc, mobj *args) {
     // (-> hashtable any any void)
     mobj *ht, *k, *v;
 
@@ -427,7 +427,7 @@ mobj *hashtable_set_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *hashtable_delete_proc(int argc, mobj **args) {
+mobj *hashtable_delete_proc(int argc, mobj *args) {
     // (-> hashtable any void)
     mobj *ht, *k;
 
@@ -442,7 +442,7 @@ mobj *hashtable_delete_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *hashtable_update_proc(int argc, mobj **args) {
+mobj *hashtable_update_proc(int argc, mobj *args) {
     // (-> hashtable any (-> any any) void)
     // (-> hashtable any (-> any any) any void)
     mobj *ht, *k, *proc, *b, *env;
@@ -489,7 +489,7 @@ mobj *hashtable_update_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *hashtable_ref_proc(int argc, mobj **args) {
+mobj *hashtable_ref_proc(int argc, mobj *args) {
     // (-> hashtable any any)
     // (-> hashtable any any any)
     mobj *ht, *k, *b;
@@ -527,7 +527,7 @@ mobj *hashtable_ref_proc(int argc, mobj **args) {
     return minim_cdr(b);
 }
 
-mobj *hashtable_keys_proc(int argc, mobj **args) {
+mobj *hashtable_keys_proc(int argc, mobj *args) {
     // (-> hashtable (listof any))
     mobj *ht;
 
@@ -537,7 +537,7 @@ mobj *hashtable_keys_proc(int argc, mobj **args) {
     return hashtable_keys(ht);
 }
 
-mobj *hashtable_copy_proc(int argc, mobj **args) {
+mobj *hashtable_copy_proc(int argc, mobj *args) {
     // (-> hashtable void)
     mobj *ht;
 
@@ -547,7 +547,7 @@ mobj *hashtable_copy_proc(int argc, mobj **args) {
     return copy_hashtable(ht);
 }
 
-mobj *hashtable_clear_proc(int argc, mobj **args) {
+mobj *hashtable_clear_proc(int argc, mobj *args) {
     // (-> hashtable void)
     mobj *ht;
 
@@ -558,10 +558,10 @@ mobj *hashtable_clear_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *eq_hash_proc(int argc, mobj **args) {
+mobj *eq_hash_proc(int argc, mobj *args) {
     return Mfixnum(eq_hash(args[0]));
 }
 
-mobj *equal_hash_proc(int argc, mobj **args) {
+mobj *equal_hash_proc(int argc, mobj *args) {
     return Mfixnum(equal_hash(args[0]));
 }

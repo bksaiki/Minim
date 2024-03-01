@@ -716,27 +716,27 @@ mobj Moutput_port(FILE *stream) {
 //  Primitives
 //
 
-mobj *is_input_port_proc(int argc, mobj **args) {
+mobj is_input_port_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_input_portp(args[0]) ? minim_true : minim_false;
 }
 
-mobj *is_output_port_proc(int argc, mobj **args) {
+mobj is_output_port_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_output_portp(args[0]) ? minim_true : minim_false;
 }
 
-mobj *current_input_port_proc(int argc, mobj **args) {
+mobj current_input_port_proc(int argc, mobj *args) {
     // (-> input-port)
     return input_port(current_thread());
 }
 
-mobj *current_output_port_proc(int argc, mobj **args) {
+mobj current_output_port_proc(int argc, mobj *args) {
     // (-> output-port)
     return output_port(current_thread());
 }
 
-mobj *open_input_port_proc(int argc, mobj **args) {
+mobj open_input_port_proc(int argc, mobj *args) {
     // (-> string input-port)
     mobj *port;
     FILE *stream;
@@ -755,7 +755,7 @@ mobj *open_input_port_proc(int argc, mobj **args) {
     return port;
 }
 
-mobj *open_output_port_proc(int argc, mobj **args) {
+mobj open_output_port_proc(int argc, mobj *args) {
     // (-> string output-port)
     mobj *port;
     FILE *stream;
@@ -774,7 +774,7 @@ mobj *open_output_port_proc(int argc, mobj **args) {
     return port;
 }
 
-mobj *close_input_port_proc(int argc, mobj **args) {
+mobj close_input_port_proc(int argc, mobj *args) {
     // (-> input-port)
     if (!minim_input_portp(args[0]))
         bad_type_exn("close-input-port", "input-port?", args[0]);
@@ -784,7 +784,7 @@ mobj *close_input_port_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *close_output_port_proc(int argc, mobj **args) {
+mobj close_output_port_proc(int argc, mobj *args) {
     // (-> output-port)
     if (!minim_is_output_port(args[0]))
         bad_type_exn("close-output-port", "output-port?", args[0]);
@@ -794,7 +794,7 @@ mobj *close_output_port_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *read_proc(int argc, mobj **args) {
+mobj read_proc(int argc, mobj *args) {
     // (-> any)
     // (-> input-port any)
     mobj *in_p, *o;
@@ -811,7 +811,7 @@ mobj *read_proc(int argc, mobj **args) {
     return (o == NULL) ? minim_eof : o;
 }
 
-mobj *read_char_proc(int argc, mobj **args) {
+mobj read_char_proc(int argc, mobj *args) {
     // (-> char)
     // (-> input-port char)
     mobj *in_p;
@@ -829,7 +829,7 @@ mobj *read_char_proc(int argc, mobj **args) {
     return (ch == EOF) ? minim_eof : Mchar(ch);
 }
 
-mobj *peek_char_proc(int argc, mobj **args) {
+mobj peek_char_proc(int argc, mobj *args) {
     // (-> char)
     // (-> input-port char)
     mobj *in_p;
@@ -848,7 +848,7 @@ mobj *peek_char_proc(int argc, mobj **args) {
     return (ch == EOF) ? minim_eof : Mchar(ch);
 }
 
-mobj *char_is_ready_proc(int argc, mobj **args) {
+mobj char_is_ready_proc(int argc, mobj *args) {
     // (-> boolean)
     // (-> input-port boolean)
     mobj *in_p;
@@ -867,7 +867,7 @@ mobj *char_is_ready_proc(int argc, mobj **args) {
     return (ch == EOF) ? minim_false : minim_true;
 }
 
-mobj *display_proc(int argc, mobj **args) {
+mobj display_proc(int argc, mobj *args) {
     // (-> any void)
     // (-> any output-port void)
     mobj *out_p, *o;
@@ -885,7 +885,7 @@ mobj *display_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *write_proc(int argc, mobj **args) {
+mobj write_proc(int argc, mobj *args) {
     // (-> any void)
     // (-> any output-port void)
     mobj *out_p, *o;
@@ -903,7 +903,7 @@ mobj *write_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *write_char_proc(int argc, mobj **args) {
+mobj write_char_proc(int argc, mobj *args) {
     // (-> char void)
     // (-> char output-port void)
     mobj *out_p, *ch;
@@ -924,7 +924,7 @@ mobj *write_char_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *newline_proc(int argc, mobj **args) {
+mobj newline_proc(int argc, mobj *args) {
     // (-> void)
     // (-> output-port void)
     mobj *out_p;
@@ -941,7 +941,7 @@ mobj *newline_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *fprintf_proc(int argc, mobj **args) {
+mobj fprintf_proc(int argc, mobj *args) {
     // (-> output-port string any ... void)
     if (!minim_is_output_port(args[0]))
         bad_type_exn("fprintf", "output-port?", args[0]);
@@ -953,7 +953,7 @@ mobj *fprintf_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *printf_proc(int argc, mobj **args) {
+mobj printf_proc(int argc, mobj *args) {
     // (-> string any ... void)
     mobj *curr_op;
 

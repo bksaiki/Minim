@@ -102,42 +102,32 @@ void bad_type_exn(const char *name, const char *type, mobj *x) {
     minim_shutdown(1);
 }
 
-void arity_mismatch_exn(const char *name, proc_arity *arity, short actual) {
-    if (name != NULL)
-        fprintf(stderr, "%s: ", name);
+void arity_mismatch_exn(const char *name, int min_arity, int max_arity, short actual) {
+    if (name != NULL) fprintf(stderr, "%s: ", name);
     fprintf(stderr, "arity mismatch\n");
 
-    if (proc_arity_is_fixed(arity)) {
-        switch (proc_arity_min(arity)) {
-        case 0:
-            fprintf(stderr, " expected 0 arguments, received %d\n", actual);
-            break;
-        
-        case 1:
-            fprintf(stderr, " expected 1 argument, received %d\n", actual);
-            break;
-
-        default:
-            fprintf(stderr, " expected %d arguments, received %d\n",
-                            proc_arity_min(arity), actual);
-        }
-    } else if (proc_arity_is_unbounded(arity)) {
-        switch (proc_arity_min(arity)) {
-        case 0:
-            fprintf(stderr, " expected at least 0 arguments, received %d\n", actual);
-            break;
-        
-        case 1:
-            fprintf(stderr, " expected at least 1 argument, received %d\n", actual);
-            break;
-
-        default:
-            fprintf(stderr, " expected at least %d arguments, received %d\n",
-                            proc_arity_min(arity), actual);
-        }
+    if (min_arity == max_arity) {
+        fprintf(
+            stderr, 
+            "expected %d arguments, received %d\n",
+            min_arity,
+            actual
+        );
+    } else if (max_arity == ARG_MAX) {
+        fprintf(
+            stderr, 
+            "expected at least %d arguments, received %d\n",
+            min_arity,
+            actual
+        );
     } else {
-        fprintf(stderr, " expected between %d and %d arguments, received %d\n",
-                        proc_arity_min(arity), proc_arity_max(arity), actual);
+        fprintf(
+            stderr, 
+            "expected between %d and %d arguments, received %d\n",
+            min_arity,
+            max_arity,
+            actual
+        );
     }
 
     minim_shutdown(1);
@@ -159,18 +149,16 @@ static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
 
     min_arity = proc_arity_min(arity);
     max_arity = proc_arity_max(arity);
-
     if (argc > max_arity)
-        arity_mismatch_exn(name, arity, argc);
-
+        arity_mismatch_exn(name, min_arity, max_arity, argc);
     if (argc < min_arity)
-        arity_mismatch_exn(name, arity, argc);
+        arity_mismatch_exn(name, min_arity, max_arity, argc);
 
     return argc;
 }
 
 #define check_prim_proc_arity(prim, argc)   \
-    check_proc_arity(&minim_prim_arity(prim), argc, minim_prim_proc_name(prim))
+    check_proc_arity(&minim_prim_arity(prim), argc, minim_prim_name(prim))
 
 #define check_closure_arity(prim, argc)    \
     check_proc_arity(&minim_closure_arity(prim), argc, minim_closure_name(prim))
@@ -426,14 +414,14 @@ application:
         check_prim_proc_arity(proc, argc);
 
         // special case for `apply`
-        if (minim_prim_proc(proc) == apply_proc) {
+        if (minim_prim(proc) == apply_proc) {
             proc = args[0];
             argc = apply_args();
             goto application;
         }
 
         // special case for `eval`
-        if (minim_prim_proc(proc) == eval_proc) {
+        if (minim_prim(proc) == eval_proc) {
             expr = args[0];
             if (argc == 2) {
                 env = args[1];
@@ -445,30 +433,30 @@ application:
             return eval_expr(expr, env);
         }
 
-        if (minim_prim_proc(proc) == current_environment_proc) {
+        if (minim_prim(proc) == current_environment_proc) {
             // special case: `current-environment`
             result = env;
-        } else if (minim_prim_proc(proc) == for_each_proc) {
+        } else if (minim_prim(proc) == for_each_proc) {
             // special case: `for-each`
             result = for_each(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == map_proc) {
+        } else if (minim_prim(proc) == map_proc) {
             // special case: `map`
             result = map_list(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == andmap_proc) {
+        } else if (minim_prim(proc) == andmap_proc) {
             // special case: `andmap`
             result = andmap(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == ormap_proc) {
+        } else if (minim_prim(proc) == ormap_proc) {
             // special case: `ormap`
             result = ormap(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim_proc(proc) == enter_compiled_proc) {
+        } else if (minim_prim(proc) == enter_compiled_proc) {
             // special case: `enter-compiled!
             result = call_compiled(env, args[0]);
-        } else if (minim_prim_proc(proc) == call_with_values_proc) {
+        } else if (minim_prim(proc) == call_with_values_proc) {
             // special case: `call-with-values`
             result = call_with_values(args[0], args[1], env);
         } else {
             // general case:
-            result = minim_prim_proc(proc)(argc, args);
+            result = minim_prim(proc)(argc, args);
         }
         
         if (argc != irt_call_args_count) {
@@ -522,8 +510,8 @@ mobj *eval_expr(mobj *expr, mobj *env) {
 
 loop:
 
-    if (minim_is_true(expr) ||
-        minim_is_false(expr) ||
+    if (minim_truep(expr) ||
+        minim_falsep(expr) ||
         minim_fixnump(expr) ||
         minim_charp(expr) ||
         minim_stringp(expr) ||
@@ -642,7 +630,7 @@ loop:
             } else if (head == quote_syntax_symbol) {
                 // quote-syntax form
                 check_1ary_syntax(expr);
-                if (minim_is_syntax(minim_cadr(expr)))
+                if (minim_syntaxp(minim_cadr(expr)))
                     return minim_cadr(expr);
                 else
                     return to_syntax(minim_cadr(expr));
@@ -654,7 +642,7 @@ loop:
             } else if (head == if_symbol) {
                 // if form
                 check_3ary_syntax(expr);
-                expr = (minim_is_false(eval_expr(minim_cadr(expr), env)) ?
+                expr = (minim_falsep(eval_expr(minim_cadr(expr), env)) ?
                        minim_cadr(minim_cddr(expr)) :
                        minim_car(minim_cddr(expr)));
                 goto loop;
@@ -663,7 +651,7 @@ loop:
 
                 // lambda form
                 check_lambda(expr, &min_arity, &max_arity);
-                return make_closure(minim_cadr(expr),
+                return Mclosure(minim_cadr(expr),
                                         Mcons(begin_symbol, minim_cddr(expr)),
                                         env,
                                         min_arity,
@@ -695,14 +683,14 @@ application:
             args = irt_call_args;
             
             // special case for `apply`
-            if (minim_prim_proc(proc) == apply_proc) {
+            if (minim_prim(proc) == apply_proc) {
                 proc = args[0];
                 argc = apply_args();
                 goto application;
             }
 
             // special case for `eval`
-            if (minim_prim_proc(proc) == eval_proc) {
+            if (minim_prim(proc) == eval_proc) {
                 expr = args[0];
                 if (argc == 2) {
                     env = args[1];
@@ -714,30 +702,30 @@ application:
                 goto loop;
             }
 
-            if (minim_prim_proc(proc) == current_environment_proc) {
+            if (minim_prim(proc) == current_environment_proc) {
                 // special case: `current-environment`
                 result = env;
-            } else if (minim_prim_proc(proc) == for_each_proc) {
+            } else if (minim_prim(proc) == for_each_proc) {
                 // special case: `for-each`
                 result = for_each(args[0], argc - 1, &args[1], env);
-            } else if (minim_prim_proc(proc) == map_proc) {
+            } else if (minim_prim(proc) == map_proc) {
                 // special case: `map`
                 result = map_list(args[0], argc - 1, &args[1], env);
-            } else if (minim_prim_proc(proc) == andmap_proc) {
+            } else if (minim_prim(proc) == andmap_proc) {
                 // special case: `andmap`
                 result = andmap(args[0], argc - 1, &args[1], env);
-            } else if (minim_prim_proc(proc) == ormap_proc) {
+            } else if (minim_prim(proc) == ormap_proc) {
                 // special case: `ormap`
                 result = ormap(args[0], argc - 1, &args[1], env);
-            } else if (minim_prim_proc(proc) == enter_compiled_proc) {
+            } else if (minim_prim(proc) == enter_compiled_proc) {
                 // special case: `enter-compiled!
                 result = call_compiled(env, args[0]);
-            } else if (minim_prim_proc(proc) == call_with_values_proc) {
+            } else if (minim_prim(proc) == call_with_values_proc) {
                 // special case: `call-with-values`
                 result = call_with_values(args[0], args[1], env);
             } else {
                 // general case:
-                result = minim_prim_proc(proc)(argc, args);
+                result = minim_prim(proc)(argc, args);
             }
 
             if (argc != irt_call_args_count) {

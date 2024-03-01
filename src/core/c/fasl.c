@@ -158,7 +158,7 @@ static mobj* read_fasl_vector(FILE *in) {
     long i, len;
 
     len = read_fasl_uptr(in);
-    vec = make_vector(len, NULL);
+    vec = Mvector(len, NULL);
     for (i = 0; i < len; ++i)
         minim_vector_ref(vec, i) = read_fasl(in);
 
@@ -175,9 +175,9 @@ static mobj* read_fasl_hashtable(FILE *in) {
     t = read_fasl_byte(in);
 
     if (t == 0) {
-        ht = make_hashtable(eq_hash_proc_obj, eq_proc_obj);
+        ht = Mhashtable(eq_hash_proc_obj, eq_proc_obj);
     } else if (t == 1) {
-        ht = make_hashtable(equal_hash_proc_obj, equal_proc_obj);
+        ht = Mhashtable(equal_hash_proc_obj, equal_proc_obj);
     } else {
         fprintf(stderr, "read_fasl: malformed FASL hashtable of type %u\n", t);
         exit(1);
@@ -198,7 +198,7 @@ static mobj* read_fasl_record(FILE *in) {
 
     len = read_fasl_uptr(in);
     rtd = read_fasl(in);
-    rec = make_record(rtd, len);
+    rec = Mrecord(rtd, len);
     for (i = 0; i < len; i++)
         minim_record_ref(rec, i) = read_fasl(in);
 
@@ -318,7 +318,7 @@ static void write_fasl_hashtable(FILE *out, mobj *ht) {
     mobj *b;
     size_t i;
 
-    write_fasl_uptr(out, minim_hashtable_size(ht));
+    write_fasl_uptr(out, minim_hashtable_count(ht));
 
     if (minim_hashtable_hash(ht) == eq_hash_proc_obj
         && minim_hashtable_equiv(ht) == eq_proc_obj) {
@@ -358,9 +358,9 @@ static void write_fasl_record(FILE *out, mobj *r) {
 void write_fasl(FILE *out, mobj *o) {
     if (minim_nullp(o)) {
         write_fasl_type(out, FASL_NULL);
-    } else if (minim_is_true(o)) {
+    } else if (minim_truep(o)) {
         write_fasl_type(out, FASL_TRUE);
-    } else if (minim_is_false(o)) {
+    } else if (minim_falsep(o)) {
         write_fasl_type(out, FASL_FALSE);
     } else if (minim_is_eof(o)) {
         write_fasl_type(out, FASL_EOF);
@@ -394,7 +394,7 @@ void write_fasl(FILE *out, mobj *o) {
         write_fasl_hashtable(out, o);
     } else if (minim_is_base_rtd(o)) {
         write_fasl_type(out, FASL_BASE_RTD);
-    } else if (minim_is_record(o)) {
+    } else if (minim_recordp(o)) {
         write_fasl_type(out, FASL_RECORD);
         write_fasl_record(out, o);
     } else {
@@ -410,7 +410,7 @@ void write_fasl(FILE *out, mobj *o) {
 //  Primitive
 //
 
-mobj *read_fasl_proc(int argc, mobj **args) {
+mobj *read_fasl_proc(int argc, mobj *args) {
     // (-> any)
     // (-> input-port any)
     mobj *in_p;
@@ -422,7 +422,7 @@ mobj *read_fasl_proc(int argc, mobj **args) {
     return read_fasl(minim_port(in_p));
 }
 
-mobj *write_fasl_proc(int argc, mobj **args) {
+mobj *write_fasl_proc(int argc, mobj *args) {
     // (-> any void)
     // (-> any output-port void)
     mobj *out_p, *o;

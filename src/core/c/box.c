@@ -15,17 +15,17 @@ mobj *Mbox(mobj *x) {
 //  Primitives
 //
 
-mobj *is_box_proc(int argc, mobj **args) {
+mobj *is_box_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_is_box(args[0]) ? minim_true : minim_false;
 }
 
-mobj *box_proc(int argc, mobj **args) {
+mobj *box_proc(int argc, mobj *args) {
     // (-> any box)
     return Mbox(args[0]);
 }
 
-mobj *unbox_proc(int argc, mobj **args) {
+mobj *unbox_proc(int argc, mobj *args) {
     // (-> box any)
     if (!minim_is_box(args[0]))
         bad_type_exn("unbox", "box?", args[0]);
@@ -33,7 +33,7 @@ mobj *unbox_proc(int argc, mobj **args) {
     return minim_box_contents(args[0]);
 }
 
-mobj *box_set_proc(int argc, mobj **args) {
+mobj *box_set_proc(int argc, mobj *args) {
     // (-> box any void)
     if (!minim_is_box(args[0]))
         bad_type_exn("unbox", "box?", args[0]);

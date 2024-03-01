@@ -112,7 +112,7 @@ int minim_is_equal(mobj *a, mobj *b) {
             push_call_arg(a);
             push_call_arg(b);
             push_call_arg(env_lookup_var(global_env(th), intern("equal?")));
-            res = !minim_is_false(call_with_args(record_equal_proc(th), global_env(th)));
+            res = !minim_falsep(call_with_args(record_equal_proc(th), global_env(th)));
 
             prepare_call_args(stashc);
             return res;
@@ -129,43 +129,43 @@ int minim_is_equal(mobj *a, mobj *b) {
 //  Primitives
 //
 
-mobj *is_null_proc(int argc, mobj **args) {
+mobj *is_null_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_nullp(args[0]) ? minim_true : minim_false;
 }
 
-mobj *is_void_proc(int argc, mobj **args) {
+mobj *is_void_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_is_void(args[0]) ? minim_true : minim_false;
 }
 
-mobj *is_eof_proc(int argc, mobj **args) {
+mobj *is_eof_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_is_eof(args[0]) ? minim_true : minim_false;
 }
 
-mobj *is_bool_proc(int argc, mobj **args) {
+mobj *is_bool_proc(int argc, mobj *args) {
     // (-> any boolean)
     mobj *o = args[0];
-    return (minim_is_true(o) || minim_is_false(o)) ? minim_true : minim_false;
+    return (minim_truep(o) || minim_falsep(o)) ? minim_true : minim_false;
 }
 
-mobj *not_proc(int argc, mobj **args) {
+mobj *not_proc(int argc, mobj *args) {
     // (-> any boolean)
-    return minim_is_false(args[0]) ? minim_true : minim_false;   
+    return minim_falsep(args[0]) ? minim_true : minim_false;   
 }
 
-mobj *eq_proc(int argc, mobj **args) {
+mobj *eq_proc(int argc, mobj *args) {
     // (-> any any boolean)
     return minim_is_eq(args[0], args[1]) ? minim_true : minim_false;
 }
 
-mobj *equal_proc(int argc, mobj **args) {
+mobj *equal_proc(int argc, mobj *args) {
     // (-> any any boolean)
     return minim_is_equal(args[0], args[1]) ? minim_true : minim_false;
 }
 
-mobj *void_proc(int argc, mobj **args) {
+mobj *void_proc(int argc, mobj *args) {
     // (-> void)
     return minim_void;
 }

@@ -129,6 +129,8 @@ extern mobj minim_values;
 #define minim_empty_vecp(x)   ((x) == minim_empty_vec)
 #define minim_base_rtdp(x)    ((x) == minim_base_rtd)
 
+#define minim_specialp(x)     (minim_nullp(x) || minim_truep(x) || minim_falsep(x) || minim_eofp(x) || minim_voidp(x) || minim_empty_vecp(x) || minim_base_rtdp(o))
+
 #define minim_boolp(o)          ((o) == minim_true || (o) == minim_false)
 #define minim_not(o)            ((o) == minim_false ? minim_true : minim_false)
 
@@ -217,11 +219,11 @@ extern mobj minim_values;
 // +------------+
 
 #define minim_prim_size             (4 * ptr_size)
-#define minim_primp(x)              (minim_type(o) == MINIM_OBJ_PRIM)
-#define minim_prim(x)               (*((*mprim_proc) PTR_ADD(o, ptr_size)))
-#define minim_prim_argc_low(x)      (*((int*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_prim_argc_high(x)     (*((int*) PTR_ADD(o, 2 * ptr_size + 4)))
-#define minim_prim_name(x)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
+#define minim_primp(o)              (minim_type(o) == MINIM_OBJ_PRIM)
+#define minim_prim(o)               (*((*mprim_proc) PTR_ADD(o, ptr_size)))
+#define minim_prim_argc_low(o)      (*((int*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_prim_argc_high(o)     (*((int*) PTR_ADD(o, 2 * ptr_size + 4)))
+#define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
 
 // Closure
 // +------------+
@@ -233,13 +235,13 @@ extern mobj minim_values;
 // |    name    | [32, 40)
 // +------------+
 
-#define minim_closure_size(x)       (5 * ptr_size)
-#define minim_closurep(x)           (minim_type(o) == MINIM_OBJ_CLOSURE)
-#define minim_closure(x)            (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_closure_env(x)        (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_closure_argc_low(x)   (*((int*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_closure_argc_high(x)  (*((int*) PTR_ADD(o, 3 * ptr_size + 4)))
-#define minim_closure_name(x)       (*((char**) PTR_ADD(o, 4 * ptr_size)))
+#define minim_closure_size(o)       (5 * ptr_size)
+#define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
+#define minim_closure(o)            (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_closure_env(o)        (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_closure_argc_low(o)   (*((int*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_closure_argc_high(o)  (*((int*) PTR_ADD(o, 3 * ptr_size + 4)))
+#define minim_closure_name(o)       (*((char**) PTR_ADD(o, 4 * ptr_size)))
 
 // Native closure
 // +------------+
@@ -251,13 +253,13 @@ extern mobj minim_values;
 // |    name    | [32, 40)
 // +------------+
 
-#define minim_native_closure_size(x)        (5 * ptr_size)
-#define minim_native_closurep(x)            (minim_type(o) == MINIM_OBJ_CLOSURE)
-#define minim_native_closure(x)             (*((void*) PTR_ADD(o, ptr_size)))
-#define minim_native_closure_env(x)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_native_closure_argc_low(x)    (*((int*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_native_closure_argc_high(x)   (*((int*) PTR_ADD(o, 3 * ptr_size + 4)))
-#define minim_native_closure_name(x)        (*((char**) PTR_ADD(o, 4 * ptr_size)))
+#define minim_native_closure_size(o)        (5 * ptr_size)
+#define minim_native_closurep(o)            (minim_type(o) == MINIM_OBJ_CLOSURE)
+#define minim_native_closure(o)             (*((void*) PTR_ADD(o, ptr_size)))
+#define minim_native_closure_env(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_native_closure_argc_low(o)    (*((int*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_native_closure_argc_high(o)   (*((int*) PTR_ADD(o, 3 * ptr_size + 4)))
+#define minim_native_closure_name(o)        (*((char**) PTR_ADD(o, 4 * ptr_size)))
 
 // Port
 // +------------+
@@ -320,13 +322,13 @@ extern mobj minim_values;
 // +------------+
 #define minim_hashtable_size             (7 * ptr_size)
 #define minim_hashtablep(o)             (minim_type(o) == MINIM_OBJ_HASHTABLE)
-#define minim_hashtable_hash(x)         (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_hashtable_equiv(x)        (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_hashtable_buckets(x)      (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_hashtable_bucket(x, i)    (((mobj*) PTR_ADD(o, 3 * ptr_size))[i])
-#define minim_hashtable_alloc_ptr(x)    (*((msize**) PTR_ADD(o, 4 * ptr_size)))
-#define minim_hashtable_alloc(x)        (*((msize*) PTR_ADD(o, 5 * ptr_size)))
-#define minim_hashtable_count(x)         (*((msize*) PTR_ADD(o, 6 * ptr_size)))
+#define minim_hashtable_hash(o)         (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_hashtable_equiv(o)        (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_hashtable_buckets(o)      (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_hashtable_bucket(o, i)    (((mobj*) PTR_ADD(o, 3 * ptr_size))[i])
+#define minim_hashtable_alloc_ptr(o)    (*((msize**) PTR_ADD(o, 4 * ptr_size)))
+#define minim_hashtable_alloc(o)        (*((msize*) PTR_ADD(o, 5 * ptr_size)))
+#define minim_hashtable_count(o)         (*((msize*) PTR_ADD(o, 6 * ptr_size)))
 
 // Pattern variable
 // +------------+
@@ -426,8 +428,8 @@ mobj *map_list(mobj *proc, int argc, mobj **args, mobj *env);
 mobj *andmap(mobj *proc, int argc, mobj **args, mobj *env);
 mobj *ormap(mobj *proc, int argc, mobj **args, mobj *env);
 
-mobj *strip_syntax(mobj *o);
-mobj *to_syntax(mobj *o);
+mobj strip_syntax(mobj o);
+mobj to_syntax(mobj o);
 
 // I/O
 
@@ -496,7 +498,7 @@ extern mobj *empty_env;
 
 // Memory
 
-void check_native_closure_arity(short argc, mobj *fn);
+void check_native_closure_arity(short argc, mobj fn);
 mobj *call_compiled(mobj *env, mobj *addr);
 mobj *make_rest_argument(mobj *args[], short argc);
 
@@ -578,8 +580,8 @@ mobj *make_rest_argument(mobj *args[], short argc);
 #define record_is_opaque(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
 #define record_is_sealed(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
 
-int is_record_value(mobj *o);
-int is_record_rtd(mobj *o);
+int is_record_value(mobj o);
+int is_record_rtd(mobj o);
 
 // Symbols
 
@@ -677,7 +679,7 @@ NORETURN void minim_shutdown(int code);
 
 // Exceptions
 
-NORETURN void arity_mismatch_exn(const char *name, proc_arity *arity, short actual);
+NORETURN void arity_mismatch_exn(const char *name, int min_arity, int max_arity, short actual);
 NORETURN void bad_syntax_exn(mobj *expr);
 NORETURN void bad_type_exn(const char *name, const char *type, mobj *x);
 NORETURN void result_arity_exn(short expected, short actual);
@@ -686,7 +688,7 @@ NORETURN void uncallable_prim_exn(const char *name);
 // Primitives
 
 #define DEFINE_PRIM_PROC(name) \
-    mobj *name ## _proc(int, mobj **);
+    mobj name ## _proc(int, mobj *);
 
 // special objects
 DEFINE_PRIM_PROC(is_null);
@@ -754,7 +756,7 @@ DEFINE_PRIM_PROC(andmap);
 DEFINE_PRIM_PROC(ormap);
 // vectors
 DEFINE_PRIM_PROC(is_vector);
-DEFINE_PRIM_PROC(make_vector);
+DEFINE_PRIM_PROC(Mvector);
 DEFINE_PRIM_PROC(vector);
 DEFINE_PRIM_PROC(vector_length);
 DEFINE_PRIM_PROC(vector_ref);
@@ -807,7 +809,7 @@ DEFINE_PRIM_PROC(record_type_sealed);
 DEFINE_PRIM_PROC(record_type_opaque);
 DEFINE_PRIM_PROC(record_type_fields);
 DEFINE_PRIM_PROC(record_type_field_mutable);
-DEFINE_PRIM_PROC(make_record);
+DEFINE_PRIM_PROC(Mrecord);
 DEFINE_PRIM_PROC(record_ref);
 DEFINE_PRIM_PROC(record_set);
 DEFINE_PRIM_PROC(default_record_equal_procedure);
@@ -824,7 +826,7 @@ DEFINE_PRIM_PROC(box_set);
 // hashtable
 DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);
-DEFINE_PRIM_PROC(make_hashtable);
+DEFINE_PRIM_PROC(Mhashtable);
 DEFINE_PRIM_PROC(hashtable_size);
 DEFINE_PRIM_PROC(hashtable_contains);
 DEFINE_PRIM_PROC(hashtable_set);

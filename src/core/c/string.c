@@ -34,12 +34,12 @@ mobj *Mstring2(char *s) {
     return ((mobj *) o);
 }
 
-mobj *is_string_proc(int argc, mobj **args) {
+mobj *is_string_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_stringp(args[0]) ? minim_true : minim_false;
 }
 
-mobj *Mstring_proc(int argc, mobj **args) {
+mobj *Mstring_proc(int argc, mobj *args) {
     // (-> non-negative-integer string)
     // (-> non-negative-integer char string)
     char *str;
@@ -68,7 +68,7 @@ mobj *Mstring_proc(int argc, mobj **args) {
     return Mstring2(str);
 }
 
-mobj *string_proc(int argc, mobj **args) {
+mobj *string_proc(int argc, mobj *args) {
     // (-> char ... string)
     char *str;
     int i;
@@ -85,7 +85,7 @@ mobj *string_proc(int argc, mobj **args) {
     return Mstring2(str);
 }
 
-mobj *string_length_proc(int argc, mobj **args) {
+mobj *string_length_proc(int argc, mobj *args) {
     // (-> string integer)
     mobj *o = args[0];
     if (!minim_stringp(o))
@@ -93,7 +93,7 @@ mobj *string_length_proc(int argc, mobj **args) {
     return Mfixnum(strlen(minim_string(o)));
 }
 
-mobj *string_ref_proc(int argc, mobj **args) {
+mobj *string_ref_proc(int argc, mobj *args) {
     // (-> string non-negative-integer char)
     char *str;
     long len, idx;
@@ -113,7 +113,7 @@ mobj *string_ref_proc(int argc, mobj **args) {
     return Mchar((int) str[idx]);
 }
 
-mobj *string_set_proc(int argc, mobj **args) {
+mobj *string_set_proc(int argc, mobj *args) {
     // (-> string non-negative-integer char void)
     char *str;
     long len, idx;
@@ -138,7 +138,7 @@ mobj *string_set_proc(int argc, mobj **args) {
     return minim_void;
 }
 
-mobj *string_append_proc(int argc, mobj **args) {
+mobj *string_append_proc(int argc, mobj *args) {
     // (-> string ... string)
     char *str;
     long len, j, l;
@@ -164,7 +164,7 @@ mobj *string_append_proc(int argc, mobj **args) {
     return Mstring2(str);
 }
 
-mobj *number_to_string_proc(int argc, mobj **args) {
+mobj *number_to_string_proc(int argc, mobj *args) {
     // (-> number string)
     mobj *o;
     char buffer[30];
@@ -176,7 +176,7 @@ mobj *number_to_string_proc(int argc, mobj **args) {
     return Mstring(buffer);
 }
 
-mobj *string_to_number_proc(int argc, mobj **args) {
+mobj *string_to_number_proc(int argc, mobj *args) {
     // (-> string number)
     mobj *o = args[0];
     if (!minim_stringp(o))
@@ -184,7 +184,7 @@ mobj *string_to_number_proc(int argc, mobj **args) {
     return Mfixnum(atoi(minim_string(o)));
 }
 
-mobj *symbol_to_string_proc(int argc, mobj **args) {
+mobj *symbol_to_string_proc(int argc, mobj *args) {
     // (-> symbol string)
     mobj *o = args[0];
     if (!minim_symbolp(o))
@@ -192,7 +192,7 @@ mobj *symbol_to_string_proc(int argc, mobj **args) {
     return Mstring(minim_symbol(o));
 }
 
-mobj *string_to_symbol_proc(int argc, mobj **args) {
+mobj *string_to_symbol_proc(int argc, mobj *args) {
     // (-> string symbol)
     mobj *o = args[0];
     if (!minim_stringp(o))
@@ -200,7 +200,7 @@ mobj *string_to_symbol_proc(int argc, mobj **args) {
     return intern(minim_string(o));
 }
 
-mobj *format_proc(int argc, mobj **args) {
+mobj *format_proc(int argc, mobj *args) {
     // (-> string any ... string)
     FILE *o;
     char *s;
