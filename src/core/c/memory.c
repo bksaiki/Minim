@@ -4,7 +4,7 @@
 
 #include "../minim.h"
 
-typedef mobj *(*entry_proc)();
+typedef mobj (*entry_proc)();
 
 struct address_map_t {
     char *name;
@@ -100,9 +100,7 @@ mobj install_literal_bundle_proc(int argc, mobj *args) {
     }
 
     // create GC root
-    // root = GC_alloc(sizeof(mobj*));
-    // GC_register_root(root);
-
+    GC_register_root(bundle);
     return Mfixnum((long) bundle);
 }
 

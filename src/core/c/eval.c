@@ -510,27 +510,35 @@ application:
 }
 
 mobj eval_expr(mobj expr, mobj env) {
-
+    
 loop:
 
-    if (minim_truep(expr) ||
-        minim_falsep(expr) ||
-        minim_fixnump(expr) ||
-        minim_charp(expr) ||
-        minim_stringp(expr) ||
-        minim_boxp(expr) ||
-        minim_vectorp(expr)) {
-        // self-evaluating
-        return expr;
-    } else if (minim_symbolp(expr)) {
-        // variable
-        return env_lookup_var(env, expr);
-    } else if (minim_nullp(expr)) {
-        fprintf(stderr, "missing procedure expression\n");
-        fprintf(stderr, "  in: ");
-        write_object2(stderr, expr, 0, 0);
-        minim_shutdown(1);
-    } else if (minim_consp(expr)) {
+    if (!minim_consp(expr)) {
+        if (minim_truep(expr) ||
+            minim_falsep(expr) ||
+            minim_fixnump(expr) ||
+            minim_charp(expr) ||
+            minim_stringp(expr) ||
+            minim_boxp(expr) ||
+            minim_vectorp(expr)) {
+            // self-evaluating
+            return expr;
+        } else if (minim_symbolp(expr)) {
+            // variable
+            return env_lookup_var(env, expr);
+        } else if (minim_nullp(expr)) {
+            // empty application
+            fprintf(stderr, "missing procedure expression\n");
+            fprintf(stderr, "  in: ");
+            write_object2(stderr, expr, 0, 0);
+            minim_shutdown(1);
+        } else {
+            fprintf(stderr, "bad syntax\n");
+            write_object(stderr, expr);
+            fprintf(stderr, "\n");
+            minim_shutdown(1);
+        }
+    } else {
         mobj proc, head, result, it, bindings, bind, env2, *args;
         minim_thread *th;
         long var_count, idx, argc;
@@ -779,11 +787,6 @@ application:
             fprintf(stderr, "\n");
             minim_shutdown(1);
         }
-    } else {
-        fprintf(stderr, "bad syntax\n");
-        write_object(stderr, expr);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
     }
 
     fprintf(stderr, "unreachable\n");

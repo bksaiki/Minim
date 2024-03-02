@@ -50,7 +50,7 @@
 (define-syntax (case/test stx)
   (syntax-case stx ()
     [(_ v ())
-     #'#f]
+     (quote-syntax #f)]
     [(_ v (k))
      #'(equal? v 'k)]
     [(_ v (k ks ...))

@@ -61,8 +61,8 @@ static void load_library() {
 
 int main(int argc, char **argv) {
     volatile int stack_top;
-    mobj *expr, *evaled;
     minim_thread *th;
+    mobj expr, evaled;
     int argi, i;
 
     stack_top = 0;

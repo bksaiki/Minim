@@ -14,6 +14,7 @@ mobj Msyntax(mobj e, mobj loc) {
 
 mobj Mpattern(mobj value, mobj depth) {
     mobj o = GC_alloc(minim_pattern_size);
+    minim_type(o) = MINIM_OBJ_PATTERN;
     minim_pattern_value(o) = value;
     minim_pattern_depth(o) = depth;
     return o;

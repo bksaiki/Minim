@@ -323,10 +323,10 @@ int test_list() {
     check_equal("(append '(a b c) '(d e f))", "'(a b c d e f)");
 
     check_equal("(for-each (lambda (x) x) '())", "#<void>");
-    // check_equal("(for-each (lambda (x) x) '(1))", "#<void>");
-    // check_equal("(for-each (lambda (x) x) '(1 2 3))", "#<void>");
-    // check_equal("(for-each (lambda (x y) x) '(1 2 3) '(a b c))", "#<void>");
-    // check_equal("(for-each (lambda (x y) (+ x y)) '(1 2 3) '(2 4 6))", "#<void>");
+    check_equal("(for-each (lambda (x) x) '(1))", "#<void>");
+    check_equal("(for-each (lambda (x) x) '(1 2 3))", "#<void>");
+    check_equal("(for-each (lambda (x y) x) '(1 2 3) '(a b c))", "#<void>");
+    check_equal("(for-each (lambda (x y) (+ x y)) '(1 2 3) '(2 4 6))", "#<void>");
 
     check_equal("(map (lambda (x) x) '())", "'()");
     check_equal("(map (lambda (x) x) '(1))", "'(1)");

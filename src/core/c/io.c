@@ -443,9 +443,6 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
         fprintf(out, "#<eof>");
     } else if (minim_voidp(o)) {
         fprintf(out, "#<void>");
-    } else if (minim_empty_vecp(o)) {
-        if (!quote) fputc('\'', out);
-        fprintf(out, "#()");
     } else if (minim_base_rtdp(o)) {
         fprintf(out, "#<base-record-type>");
     } else {
@@ -594,7 +591,8 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
             fprintf(out, "#<environment>");
             break;
         default:
-            fprintf(out, "#<garbage>");
+            fprintf(out, "%d %p\n", minim_type(o), minim_values);
+            fprintf(out, "#<garbage:%p>", o);
             break;
         }
     }
