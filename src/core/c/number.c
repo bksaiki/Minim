@@ -15,9 +15,8 @@ mobj Mfixnum(long v) {
 //  Primitives
 //
 
-mobj is_fixnum_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_fixnump(args[0]) ? minim_true : minim_false;
+mobj fixnump_proc(mobj x) {
+    return minim_fixnump(x) ? minim_true : minim_false;
 }
 
 mobj add_proc(int argc, mobj *args) {

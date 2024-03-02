@@ -524,6 +524,9 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
         case MINIM_OBJ_PRIM:
             fprintf(out, "#<procedure:%s>", minim_prim_name(o));
             break;
+        case MINIM_OBJ_PRIM2:
+            fprintf(out, "#<procedure:%s>", minim_prim2_name(o));
+            break;
         case MINIM_OBJ_CLOSURE:
             if (minim_closure_name(o) != NULL)
                 fprintf(out, "#<procedure:%s>", minim_closure_name(o));
@@ -713,15 +716,12 @@ mobj Moutput_port(FILE *stream) {
 //
 //  Primitives
 //
-
-mobj is_input_port_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_input_portp(args[0]) ? minim_true : minim_false;
+mobj input_portp_proc(mobj x) {
+    return minim_input_portp(x) ? minim_true : minim_false;
 }
 
-mobj is_output_port_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_output_portp(args[0]) ? minim_true : minim_false;
+mobj output_portp_proc(mobj x) {
+    return minim_output_portp(x) ? minim_true : minim_false;
 }
 
 mobj current_input_port_proc(int argc, mobj *args) {

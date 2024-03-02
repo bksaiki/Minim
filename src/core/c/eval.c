@@ -160,6 +160,14 @@ static int check_proc_arity(int min_arity, int max_arity, int argc, const char *
         minim_prim_name(prim)   \
     )
 
+#define check_prim2_proc_arity(prim, argc)   \
+    check_proc_arity(   \
+        minim_prim2_argc(prim),  \
+        minim_prim2_argc(prim), \
+        argc, \
+        minim_prim2_name(prim)   \
+    )
+
 #define check_closure_arity(fn, argc)   \
     check_proc_arity(   \
         minim_closure_argc_low(fn), \
@@ -294,7 +302,38 @@ mobj call_with_args(mobj proc, mobj env) {
 
 application:
 
-    if (minim_primp(proc)) {
+    if (minim_prim2p(proc)) {
+        // unsafe primitive
+        // no checking arity just call with C calling conventions
+        check_prim2_proc_arity(proc, argc);
+        args = irt_call_args;
+        switch (argc) {
+        case 0:
+            result = ((mobj (*)()) minim_prim2_proc(proc))();
+            break;
+        case 1:
+            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0]);
+            break;
+        case 2:
+            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1]);
+            break;
+        case 3:
+            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2]);
+            break;
+        case 4:
+            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
+            break;
+        default:
+            clear_call_args();
+            fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+            fprintf(stderr, " received:");
+            write_object(stderr, proc);
+            minim_shutdown(1);
+            break;
+        }
+        clear_call_args();
+        return result;
+    } else if (minim_primp(proc)) {
         check_prim_proc_arity(proc, argc);
 
         // special case for `apply`
@@ -563,7 +602,41 @@ loop:
 
 application:
 
-        if (minim_primp(proc)) {
+        if (minim_prim2p(proc)) {
+            // unsafe primitive
+            // no checking arity just call with C calling conventions
+            check_prim2_proc_arity(proc, argc);
+            args = irt_call_args;
+            switch (argc) {
+            case 0:
+                result = ((mobj (*)()) minim_prim2_proc(proc))();
+                break;
+            case 1:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0]);
+                break;
+            case 2:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1]);
+                break;
+            case 3:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2]);
+                break;
+            case 4:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
+                break;
+            default:
+                clear_call_args();
+                fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+                fprintf(stderr, " received:");
+                write_object(stderr, proc);
+                fprintf(stderr, "\n at:");
+                write_object(stderr, expr);
+                minim_shutdown(1);
+                break;
+            }
+            clear_call_args();
+            return result;
+        } else if (minim_primp(proc)) {
+            // primitive
             check_prim_proc_arity(proc, argc);
             args = irt_call_args;
             

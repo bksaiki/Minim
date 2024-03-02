@@ -15,9 +15,8 @@ mobj Mchar(mchar c) {
 //  Primitives
 //
 
-mobj is_char_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_charp(args[0]) ? minim_true : minim_false;
+mobj charp_proc(mobj x) {
+    return minim_charp(x) ? minim_true : minim_false;
 }
 
 mobj char_to_integer_proc(int argc, mobj *args) {

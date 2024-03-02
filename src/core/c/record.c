@@ -38,19 +38,19 @@ int record_rtdp(mobj o) {
 //
 //
 
-mobj is_record_proc(int argc, mobj *args) {
+mobj recordp_proc(mobj x) {
     // (-> any boolean)
-    return true_recordp(args[0]) ? minim_true : minim_false;
+    return true_recordp(x) ? minim_true : minim_false;
 }
 
-mobj is_record_rtd_proc(int argc, mobj *args) {
+mobj record_rtdp_proc(mobj x) {
     // (-> any boolean)
-    return record_rtdp(args[0]) ? minim_true : minim_false;
+    return record_rtdp(x) ? minim_true : minim_false;
 }
 
-mobj is_record_value_proc(int argc, mobj *args) {
+mobj record_valuep_proc(mobj x) {
     // (-> any boolean)
-    return record_valuep(args[0]) ? minim_true : minim_false;
+    return record_valuep(x) ? minim_true : minim_false;
 }
 
 static void make_rtd_field_exn(const char *reason, mobj *field, int index) {

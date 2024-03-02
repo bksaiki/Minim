@@ -98,9 +98,9 @@ static mobj syntax_to_list(mobj head, mobj it) {
 //  Primitives
 //
 
-mobj is_syntax_proc(int argc, mobj *args) {
+mobj syntaxp_proc(mobj x) {
     // (-> any boolean)
-    return minim_syntaxp(args[0]) ? minim_true : minim_false;
+    return minim_syntaxp(x) ? minim_true : minim_false;
 }
 
 mobj syntax_error_proc(int argc, mobj *args) {
@@ -187,8 +187,8 @@ mobj syntax_to_list_proc(int argc, mobj *args) {
         return syntax_to_list(lst, lst);
 }
 
-mobj is_pattern_var_proc(int argc, mobj *args) {
-    return minim_patternp(args[0]) ? minim_true : minim_false;
+mobj patternp_proc(mobj x) {
+    return minim_patternp(x) ? minim_true : minim_false;
 }
 
 mobj make_pattern_var_proc(int argc, mobj *args) {

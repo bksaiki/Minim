@@ -291,16 +291,12 @@ mobj ormap(mobj proc, int argc, mobj *args, mobj env) {
 //  Primitives
 //
 
-mobj is_pair_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_consp(args[0]) ? minim_true : minim_false;
+mobj consp_proc(mobj x) {
+    return minim_consp(x) ? minim_true : minim_false;
 }
 
-mobj is_list_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    mobj *thing;
-    for (thing = args[0]; minim_consp(thing); thing = minim_cdr(thing));
-    return minim_nullp(thing) ? minim_true : minim_false;
+mobj listp_proc(mobj x) {
+    return minim_listp(x) ? minim_true : minim_false;
 }
 
 mobj cons_proc(int argc, mobj *args) {

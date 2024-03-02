@@ -352,9 +352,9 @@ static void key_not_found_exn(const char *name, mobj k) {
 //  Primitives
 //
 
-mobj is_hashtable_proc(int argc, mobj *args) {
+mobj hashtablep_proc(mobj x) {
     // (-> any boolean)
-    return (minim_hashtablep(args[0]) ? minim_true : minim_false);
+    return minim_hashtablep(x) ? minim_true : minim_false;
 }
 
 mobj make_eq_hashtable_proc(int argc, mobj *args) {

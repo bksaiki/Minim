@@ -35,9 +35,8 @@ mobj Mstring2(char *s) {
     return o;
 }
 
-mobj is_string_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_stringp(args[0]) ? minim_true : minim_false;
+mobj stringp_proc(mobj x) {
+    return minim_stringp(x) ? minim_true : minim_false;
 }
 
 mobj Mstring_proc(int argc, mobj *args) {

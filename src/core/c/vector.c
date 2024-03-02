@@ -41,9 +41,8 @@ static void vector_out_of_bounds_exn(const char *name, mobj v, long idx) {
 //  Primitives
 //
 
-mobj is_vector_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return (minim_vectorp(args[0]) ? minim_true : minim_false);
+mobj vectorp_proc(mobj x) {
+    return minim_vectorp(x) ? minim_true : minim_false;
 }
 
 mobj Mvector_proc(int argc, mobj *args) {

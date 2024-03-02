@@ -15,9 +15,9 @@ mobj Mbox(mobj x) {
 //  Primitives
 //
 
-mobj is_box_proc(int argc, mobj *args) {
+mobj boxp_proc(mobj x) {
     // (-> any boolean)
-    return minim_boxp(args[0]) ? minim_true : minim_false;
+    return minim_boxp(x) ? minim_true : minim_false;
 }
 
 mobj box_proc(int argc, mobj *args) {

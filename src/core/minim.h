@@ -225,6 +225,19 @@ extern mobj minim_values;
 #define minim_prim_argc_high(o)     (*((int*) PTR_ADD(o, 2 * ptr_size + 4)))
 #define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
 
+// Unsafe primitives with direct calling
+// +------------+
+// |    type    | [0, 1)
+// |    argc    | [4, 8)
+// |     fn     | [8, 16)
+// |    name    | [16, 24)
+// +------------+
+#define minim_prim2_size            (3 * ptr_size)
+#define minim_prim2p(o)             (minim_type(o) == MINIM_OBJ_PRIM2)
+#define minim_prim2_argc(o)          (*((int*) PTR_ADD(o, 4)))
+#define minim_prim2_proc(o)         (*((void**) PTR_ADD(o, ptr_size)))
+#define minim_prim2_name(o)         (*((char**) PTR_ADD(o, 2 * ptr_size)))
+
 // Closure
 // +------------+
 // |    type    | [0, 1)
@@ -379,7 +392,7 @@ extern mobj equal_hash_proc_obj;
 
 // Complex predicates
 
-#define minim_procp(x)            (minim_primp(x) || minim_closurep(x))
+#define minim_procp(x)            (minim_primp(x) || minim_prim2p(x) || minim_closurep(x))
 
 // Typedefs
 
@@ -397,6 +410,7 @@ mobj Mbox(mobj x);
 mobj Mhashtable(mobj hash_fn, mobj equiv_fn);
 mobj Mhashtable2(mobj hash_fn, mobj equiv_fn, size_t size_hint);
 mobj Mprim(mprim_proc proc, char *name, short min_arity, short max_arity);
+mobj Mprim2(void *fn, char *name, short arity);
 mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity);
 mobj Mnative_closure(mobj env, void *fn, short min_arity, short max_arity);
 mobj Minput_port(FILE *stream);
@@ -412,6 +426,28 @@ mobj Menv2(mobj prev, size_t size);
 #define Mlist4(a, b, c, d)          Mcons(a, Mlist3(b, c, d))
 
 // Object operations
+
+mobj nullp_proc(mobj x);
+mobj voidp_proc(mobj x);
+mobj eofp_proc(mobj x);
+mobj boolp_proc(mobj x);
+mobj symbolp_proc(mobj x);
+mobj fixnump_proc(mobj x);
+mobj charp_proc(mobj x);
+mobj stringp_proc(mobj x);
+mobj consp_proc(mobj x);
+mobj listp_proc(mobj x);
+mobj vectorp_proc(mobj x);
+mobj procp_proc(mobj x);
+mobj input_portp_proc(mobj x);
+mobj output_portp_proc(mobj x);
+mobj boxp_proc(mobj x);
+mobj hashtablep_proc(mobj x);
+mobj recordp_proc(mobj x);
+mobj record_rtdp_proc(mobj x);
+mobj record_valuep_proc(mobj x);
+mobj syntaxp_proc(mobj x);
+mobj patternp_proc(mobj x);
 
 int minim_eqp(mobj a, mobj b);
 int minim_equalp(mobj a, mobj b);
@@ -696,17 +732,12 @@ void init_prims(mobj env);
     mobj name ## _proc(int, mobj *);
 
 // special objects
-DEFINE_PRIM_PROC(is_null);
-DEFINE_PRIM_PROC(is_void);
-DEFINE_PRIM_PROC(is_eof);
-DEFINE_PRIM_PROC(is_bool);
 DEFINE_PRIM_PROC(not);
 DEFINE_PRIM_PROC(void);
 // equality
 DEFINE_PRIM_PROC(eq);
 DEFINE_PRIM_PROC(equal);
 // procedures
-DEFINE_PRIM_PROC(is_procedure);
 DEFINE_PRIM_PROC(call_with_values);
 DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
@@ -714,7 +745,6 @@ DEFINE_PRIM_PROC(eval);
 DEFINE_PRIM_PROC(identity);
 DEFINE_PRIM_PROC(procedure_arity);
 // pairs
-DEFINE_PRIM_PROC(is_pair);
 DEFINE_PRIM_PROC(cons);
 DEFINE_PRIM_PROC(car);
 DEFINE_PRIM_PROC(cdr);
@@ -749,7 +779,6 @@ DEFINE_PRIM_PROC(cddddr);
 DEFINE_PRIM_PROC(set_car);
 DEFINE_PRIM_PROC(set_cdr);
 // lists
-DEFINE_PRIM_PROC(is_list);
 DEFINE_PRIM_PROC(list);
 DEFINE_PRIM_PROC(make_list);
 DEFINE_PRIM_PROC(length);
@@ -760,7 +789,6 @@ DEFINE_PRIM_PROC(map);
 DEFINE_PRIM_PROC(andmap);
 DEFINE_PRIM_PROC(ormap);
 // vectors
-DEFINE_PRIM_PROC(is_vector);
 DEFINE_PRIM_PROC(Mvector);
 DEFINE_PRIM_PROC(vector);
 DEFINE_PRIM_PROC(vector_length);
@@ -770,7 +798,6 @@ DEFINE_PRIM_PROC(vector_fill);
 DEFINE_PRIM_PROC(vector_to_list);
 DEFINE_PRIM_PROC(list_to_vector);
 // numbers
-DEFINE_PRIM_PROC(is_fixnum);
 DEFINE_PRIM_PROC(add);
 DEFINE_PRIM_PROC(sub);
 DEFINE_PRIM_PROC(mul);
@@ -782,14 +809,10 @@ DEFINE_PRIM_PROC(number_ge);
 DEFINE_PRIM_PROC(number_le);
 DEFINE_PRIM_PROC(number_gt);
 DEFINE_PRIM_PROC(number_lt);
-// symbol
-DEFINE_PRIM_PROC(is_symbol);
-// characters
-DEFINE_PRIM_PROC(is_char);
+// characters;
 DEFINE_PRIM_PROC(char_to_integer);
 DEFINE_PRIM_PROC(integer_to_char);
 // strings
-DEFINE_PRIM_PROC(is_string);
 DEFINE_PRIM_PROC(Mstring);
 DEFINE_PRIM_PROC(string);
 DEFINE_PRIM_PROC(string_length);
@@ -802,9 +825,6 @@ DEFINE_PRIM_PROC(symbol_to_string);
 DEFINE_PRIM_PROC(string_to_symbol);
 DEFINE_PRIM_PROC(format);
 // record
-DEFINE_PRIM_PROC(is_record);
-DEFINE_PRIM_PROC(is_record_rtd);
-DEFINE_PRIM_PROC(is_record_value);
 DEFINE_PRIM_PROC(make_rtd);
 DEFINE_PRIM_PROC(record_rtd);
 DEFINE_PRIM_PROC(record_type_name);
@@ -824,12 +844,10 @@ DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
 // boxes
-DEFINE_PRIM_PROC(is_box);
 DEFINE_PRIM_PROC(box);
 DEFINE_PRIM_PROC(unbox);
 DEFINE_PRIM_PROC(box_set);
 // hashtable
-DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);
 DEFINE_PRIM_PROC(Mhashtable);
 DEFINE_PRIM_PROC(hashtable_size);
@@ -854,7 +872,6 @@ DEFINE_PRIM_PROC(environment);
 DEFINE_PRIM_PROC(current_environment);
 DEFINE_PRIM_PROC(interaction_environment);
 // syntax
-DEFINE_PRIM_PROC(is_syntax);
 DEFINE_PRIM_PROC(syntax_e);
 DEFINE_PRIM_PROC(syntax_loc);
 DEFINE_PRIM_PROC(to_syntax);
@@ -862,13 +879,10 @@ DEFINE_PRIM_PROC(to_datum);
 DEFINE_PRIM_PROC(syntax_error);
 DEFINE_PRIM_PROC(syntax_to_list);
 // pattern variables
-DEFINE_PRIM_PROC(is_pattern_var);
 DEFINE_PRIM_PROC(make_pattern_var);
 DEFINE_PRIM_PROC(pattern_var_value);
 DEFINE_PRIM_PROC(pattern_var_depth);
 // I/O
-DEFINE_PRIM_PROC(is_input_port);
-DEFINE_PRIM_PROC(is_output_port);
 DEFINE_PRIM_PROC(current_input_port);
 DEFINE_PRIM_PROC(current_output_port);
 DEFINE_PRIM_PROC(open_input_port);

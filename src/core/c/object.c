@@ -122,25 +122,20 @@ int minim_equalp(mobj a, mobj b) {
 //  Primitives
 //
 
-mobj is_null_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_nullp(args[0]) ? minim_true : minim_false;
+mobj nullp_proc(mobj x) {
+    return minim_nullp(x) ? minim_true : minim_false;
 }
 
-mobj is_void_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_voidp(args[0]) ? minim_true : minim_false;
+mobj voidp_proc(mobj x) {
+    return minim_voidp(x) ? minim_true : minim_false;
 }
 
-mobj is_eof_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_eofp(args[0]) ? minim_true : minim_false;
+mobj eofp_proc(mobj x) {
+    return minim_eofp(x) ? minim_true : minim_false;
 }
 
-mobj is_bool_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    mobj *o = args[0];
-    return minim_boolp(o) ? minim_true : minim_false;
+mobj boolp_proc(mobj x) {
+    return minim_boolp(x) ? minim_true : minim_false;
 }
 
 mobj not_proc(int argc, mobj *args) {

@@ -8,16 +8,6 @@
 //  Primitives
 //
 
-mobj Mprim(mprim_proc proc, char *name, short min_arity, short max_arity) {
-    mobj o = GC_alloc(minim_prim_size);
-    minim_type(o) = MINIM_OBJ_PRIM;
-    minim_prim(o) = proc;
-    minim_prim_argc_low(o) = min_arity;
-    minim_prim_argc_high(o) = max_arity;
-    minim_prim_name(o) = name;
-    return o;
-}
-
 mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity) {
     mobj o = GC_alloc(minim_closure_size);
     minim_type(o) = MINIM_OBJ_CLOSURE;
@@ -51,9 +41,8 @@ void resize_values_buffer(minim_thread *th, int size) {
 //  Procedure
 //
 
-mobj is_procedure_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_procp(args[0]) ? minim_true : minim_false;
+mobj procp_proc(mobj x) {
+    return minim_procp(x) ? minim_true : minim_false;
 }
 
 mobj call_with_values_proc(int argc, mobj *args) {
@@ -98,6 +87,9 @@ mobj procedure_arity_proc(int argc, mobj *args) {
     if (minim_primp(proc)) {
         min_arity = minim_prim_argc_low(proc);
         max_arity = minim_prim_argc_high(proc);
+    } else if (minim_prim2p(proc)) {
+        min_arity = minim_prim2_argc(proc);
+        max_arity = minim_prim2_argc(proc);
     } else if (minim_closurep(proc)) {
         min_arity = minim_closure_argc_low(proc);
         max_arity = minim_closure_argc_high(proc);
