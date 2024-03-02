@@ -169,157 +169,6 @@ static int check_proc_arity(int min_arity, int max_arity, int argc, const char *
     )
 
 //
-//  Syntax check
-//
-
-// Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be `(<name> <datum>)
-static void check_1ary_syntax(mobj expr) {
-    mobj rest = minim_cdr(expr);
-    if (!minim_consp(rest) || !minim_nullp(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be `(<name> <datum> <datum> <datum>)
-static void check_3ary_syntax(mobj expr) {
-    mobj rest;
-    
-    rest = minim_cdr(expr);
-    if (!minim_consp(rest))
-        bad_syntax_exn(expr);
-
-    rest = minim_cdr(rest);
-    if (!minim_consp(rest))
-        bad_syntax_exn(expr);
-
-    rest = minim_cdr(rest);
-    if (!minim_consp(rest) || !minim_nullp(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr must be `(<name> <symbol> <datum>)`
-static void check_assign(mobj expr) {
-    mobj rest;
-
-    rest = minim_cdr(expr);
-    if (!minim_consp(rest) || !minim_symbolp(minim_car(rest)))
-        bad_syntax_exn(expr);
-
-    rest = minim_cdr(rest);
-    if (!minim_consp(rest))
-        bad_syntax_exn(expr);
-
-    if (!minim_nullp(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be `(<name> (<symbol> ...) <datum>)
-static void check_define_values(mobj expr) {
-    mobj rest, ids;
-    
-    rest = minim_cdr(expr);
-    if (!minim_consp(rest))
-        bad_syntax_exn(expr);
-
-    ids = minim_car(rest);
-    while (minim_consp(ids)) {
-        if (!minim_symbolp(minim_car(ids)))
-            bad_syntax_exn(expr);
-        ids = minim_cdr(ids);
-    } 
-
-    if (!minim_nullp(ids))
-        bad_syntax_exn(expr);
-
-    rest = minim_cdr(rest);
-    if (!minim_consp(rest) || !minim_nullp(minim_cdr(rest)))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(let . <???>)`
-// Check: `expr` must be `(let-values ([(<var> ...) <val>] ...) <body> ...)`
-// Does not check if each `<body>` is an expression.
-// Does not check if `<body> ...` forms a list.
-static void check_let_values(mobj expr) {
-    mobj bindings, bind, ids;
-    
-    bindings = minim_cdr(expr);
-    if (!minim_consp(bindings) || !minim_consp(minim_cdr(bindings)))
-        bad_syntax_exn(expr);
-    
-    bindings = minim_car(bindings);
-    while (minim_consp(bindings)) {
-        bind = minim_car(bindings);
-        if (!minim_consp(bind))
-            bad_syntax_exn(expr);
-
-        ids = minim_car(bind);
-        while (minim_consp(ids)) {
-            if (!minim_symbolp(minim_car(ids)))
-                bad_syntax_exn(expr);
-            ids = minim_cdr(ids);
-        } 
-
-        if (!minim_nullp(ids))
-            bad_syntax_exn(expr);
-
-        bind = minim_cdr(bind);
-        if (!minim_consp(bind) || !minim_nullp(minim_cdr(bind)))
-            bad_syntax_exn(expr);
-
-        bindings = minim_cdr(bindings);
-    }
-
-    if (!minim_nullp(bindings))
-        bad_syntax_exn(expr);
-}
-
-// Already assumes `expr` is `(<name> . <???>)`
-// Check: `expr` must be `(<name> <datum> ...)`
-static void check_begin(mobj expr) {
-    mobj rest = minim_cdr(expr);
-
-    while (minim_consp(rest))
-        rest = minim_cdr(rest);
-
-    if (!minim_nullp(rest))
-        bad_syntax_exn(expr);
-}
-
-static void check_lambda(mobj expr, short *min_arity, short *max_arity) {
-    mobj args = minim_cadr(expr);
-    int argc = 0;
-
-    while (minim_consp(args)) {
-        if (!minim_symbolp(minim_car(args))) {
-            fprintf(stderr, "expected a identifier for an argument:\n ");
-            write_object(stderr, expr);
-            fputc('\n', stderr);
-            minim_shutdown(1);
-        }
-
-        args = minim_cdr(args);
-        ++argc;
-    }
-
-    if (minim_nullp(args)) {
-        *min_arity = argc;
-        *max_arity = argc;
-    } else if (minim_symbolp(args)) {
-        *min_arity = argc;
-        *max_arity = ARG_MAX;
-    } else {
-        fprintf(stderr, "expected an identifier for the rest argument:\n ");
-        write_object(stderr, expr);
-        fputc('\n', stderr);
-        minim_shutdown(1);
-    }
-}
-
-//
 //  Evaluation
 //
 
@@ -362,6 +211,21 @@ static mobj force_single_value(mobj x) {
         return values_buffer_ref(th, 0);
     } else {
         return x;
+    }
+}
+
+static void get_lambda_arity(mobj e, short *min_arity, short *max_arity) {
+    int argc = 0;
+    for (e = minim_cadr(e); minim_consp(e); e = minim_cdr(e)) {
+        ++argc;
+    }
+
+    if (minim_nullp(e)) {
+        *min_arity = argc;
+        *max_arity = argc;
+    } else {
+        *min_arity = argc;
+        *max_arity = ARG_MAX;
     }
 }
 
@@ -432,6 +296,7 @@ application:
             }
 
             clear_call_args();
+            check_expr(expr);
             return eval_expr(expr, env);
         }
 
@@ -548,7 +413,6 @@ loop:
         if (minim_symbolp(head)) {
             if (head == define_values_symbol) {
                 // define-values form
-                check_define_values(expr);
                 var_count = list_length(minim_cadr(expr));
                 result = eval_expr(minim_car(minim_cddr(expr)), env);
                 if (minim_valuesp(result)) {;
@@ -574,7 +438,6 @@ loop:
                 return minim_void;
             } else if (head == let_values_symbol) {
                 // let-values form
-                check_let_values(expr);
                 env2 = Menv(env);
                 for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
@@ -605,7 +468,6 @@ loop:
                 goto loop;
             } else if (head == letrec_values_symbol) {
                 // letrec-values
-                check_let_values(expr);
                 env = Menv(env);
                 for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
@@ -636,32 +498,27 @@ loop:
                 goto loop;
             } else if (head == quote_symbol) {
                 // quote form
-                check_1ary_syntax(expr);
                 return minim_cadr(expr);
             } else if (head == quote_syntax_symbol) {
                 // quote-syntax form
-                check_1ary_syntax(expr);
                 if (minim_syntaxp(minim_cadr(expr)))
                     return minim_cadr(expr);
                 else
                     return to_syntax(minim_cadr(expr));
             } else if (head == setb_symbol) {
                 // set! form
-                check_assign(expr);
                 env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
                 return minim_void;
             } else if (head == if_symbol) {
                 // if form
-                check_3ary_syntax(expr);
                 expr = (minim_falsep(eval_expr(minim_cadr(expr), env)) ?
                        minim_cadr(minim_cddr(expr)) :
                        minim_car(minim_cddr(expr)));
                 goto loop;
             } else if (head == lambda_symbol) {
-                short min_arity, max_arity;
-
                 // lambda form
-                check_lambda(expr, &min_arity, &max_arity);
+                short min_arity, max_arity;
+                get_lambda_arity(expr, &min_arity, &max_arity);
                 return Mclosure(minim_cadr(expr),
                                         Mcons(begin_symbol, minim_cddr(expr)),
                                         env,
@@ -669,7 +526,6 @@ loop:
                                         max_arity);
             } else if (head == begin_symbol) {
                 // begin form
-                check_begin(expr);
                 expr = minim_cdr(expr);
                 if (minim_nullp(expr))
                     return minim_void;
@@ -710,6 +566,7 @@ application:
                 }
                 
                 clear_call_args();
+                check_expr(expr);
                 goto loop;
             }
 

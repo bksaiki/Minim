@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
             expr = read_object(stdin);
             if (expr == NULL) break;
 
+            check_expr(expr);
             evaled = eval_expr(expr, global_env(th));
             if (!minim_voidp(evaled)) {
                 if (minim_valuesp(evaled)) {

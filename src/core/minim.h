@@ -468,6 +468,7 @@ void write_fasl(FILE *out, mobj o);
 #define CALL_ARGS_DEFAULT       10
 #define SAVED_ARGS_DEFAULT      10
 
+void check_expr(mobj expr);
 mobj eval_expr(mobj expr, mobj env);
 
 typedef struct {
