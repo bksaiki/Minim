@@ -466,6 +466,7 @@ mobj caar_proc(mobj x);
 mobj cadr_proc(mobj x);
 mobj cdar_proc(mobj x);
 mobj cddr_proc(mobj x);
+
 mobj caaar_proc(mobj x);
 mobj caadr_proc(mobj x);
 mobj cadar_proc(mobj x);
@@ -474,6 +475,27 @@ mobj cdaar_proc(mobj x);
 mobj cdadr_proc(mobj x);
 mobj cddar_proc(mobj x);
 mobj cdddr_proc(mobj x);
+
+mobj caaaar_proc(mobj x);
+mobj caaadr_proc(mobj x);
+mobj caadar_proc(mobj x);
+mobj caaddr_proc(mobj x);
+mobj cadaar_proc(mobj x);
+mobj cadadr_proc(mobj x);
+mobj caddar_proc(mobj x);
+mobj cadddr_proc(mobj x);
+
+mobj cdaaar_proc(mobj x);
+mobj cdaadr_proc(mobj x);
+mobj cdadar_proc(mobj x);
+mobj cdaddr_proc(mobj x);
+mobj cddaar_proc(mobj x);
+mobj cddadr_proc(mobj x);
+mobj cdddar_proc(mobj x);
+mobj cddddr_proc(mobj x);
+
+mobj set_car_proc(mobj p, mobj x);
+mobj set_cdr_proc(mobj p, mobj x);
 
 mobj fx2_add(mobj x, mobj y);
 mobj fx2_sub(mobj x, mobj y);
@@ -768,27 +790,7 @@ DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
 DEFINE_PRIM_PROC(identity);
 DEFINE_PRIM_PROC(procedure_arity);
-// pairs
-DEFINE_PRIM_PROC(caaaar);
-DEFINE_PRIM_PROC(caaadr);
-DEFINE_PRIM_PROC(caadar);
-DEFINE_PRIM_PROC(caaddr);
-DEFINE_PRIM_PROC(cadaar);
-DEFINE_PRIM_PROC(cadadr);
-DEFINE_PRIM_PROC(caddar);
-DEFINE_PRIM_PROC(cadddr);
-DEFINE_PRIM_PROC(cdaaar);
-DEFINE_PRIM_PROC(cdaadr);
-DEFINE_PRIM_PROC(cdadar);
-DEFINE_PRIM_PROC(cdaddr);
-DEFINE_PRIM_PROC(cddaar);
-DEFINE_PRIM_PROC(cddadr);
-DEFINE_PRIM_PROC(cdddar);
-DEFINE_PRIM_PROC(cddddr);
-DEFINE_PRIM_PROC(set_car);
-DEFINE_PRIM_PROC(set_cdr);
 // lists
-DEFINE_PRIM_PROC(list);
 DEFINE_PRIM_PROC(make_list);
 DEFINE_PRIM_PROC(length);
 DEFINE_PRIM_PROC(reverse);
