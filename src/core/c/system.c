@@ -99,7 +99,7 @@ char *get_file_dir(const char *realpath) {
     return dirpath;
 }
 
-mobj load_file(const char *fname) {
+mobj load_file(const char *fname, mobj env) {
     mobj result, expr;
     char *old_cwd, *cwd;
     FILE *f;
@@ -115,8 +115,10 @@ mobj load_file(const char *fname) {
     set_current_dir(cwd);
 
     result = minim_void;
-    while ((expr = read_object(f)) != NULL)
-        result = eval_expr(expr, global_env(current_thread()));
+    while ((expr = read_object(f)) != NULL) {
+        check_expr(expr);
+        result = eval_expr(expr, env);
+    }
 
     set_current_dir(old_cwd);
     fclose(f);
@@ -136,7 +138,7 @@ mobj load_proc(int argc, mobj *args) {
     // (-> string any)
     if (!minim_stringp(args[0]))
         bad_type_exn("load", "string?", args[0]);
-    return load_file(minim_string(args[0]));
+    return load_file(minim_string(args[0]), global_env(current_thread()));
 }
 
 mobj error_proc(int argc, mobj *args) {

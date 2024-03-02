@@ -19,6 +19,22 @@ mobj fixnump_proc(mobj x) {
     return minim_fixnump(x) ? minim_true : minim_false;
 }
 
+mobj fx2_add(mobj x, mobj y) {
+    return Mfixnum(minim_fixnum(x) + minim_fixnum(y));
+}
+
+mobj fx2_sub(mobj x, mobj y) {
+    return Mfixnum(minim_fixnum(x) - minim_fixnum(y));
+}
+
+mobj fx2_mul(mobj x, mobj y) {
+    return Mfixnum(minim_fixnum(x) * minim_fixnum(y));
+}
+
+mobj fx2_div(mobj x, mobj y) {
+    return Mfixnum(minim_fixnum(x) / minim_fixnum(y));
+}
+
 mobj add_proc(int argc, mobj *args) {
     // (-> integer ... integer)
     long result;

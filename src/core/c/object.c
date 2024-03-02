@@ -138,9 +138,9 @@ mobj boolp_proc(mobj x) {
     return minim_boolp(x) ? minim_true : minim_false;
 }
 
-mobj not_proc(int argc, mobj *args) {
+mobj not_proc(mobj x) {
     // (-> any boolean)
-    return minim_falsep(args[0]) ? minim_true : minim_false;   
+    return minim_falsep(x) ? minim_true : minim_false;   
 }
 
 mobj eq_proc(int argc, mobj *args) {

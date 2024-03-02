@@ -427,6 +427,12 @@ mobj Menv2(mobj prev, size_t size);
 
 // Object operations
 
+int minim_eqp(mobj a, mobj b);
+int minim_equalp(mobj a, mobj b);
+
+mobj call_with_args(mobj proc, mobj env);
+mobj call_with_values(mobj producer, mobj consumer, mobj env);
+
 mobj nullp_proc(mobj x);
 mobj voidp_proc(mobj x);
 mobj eofp_proc(mobj x);
@@ -449,11 +455,30 @@ mobj record_valuep_proc(mobj x);
 mobj syntaxp_proc(mobj x);
 mobj patternp_proc(mobj x);
 
-int minim_eqp(mobj a, mobj b);
-int minim_equalp(mobj a, mobj b);
+mobj not_proc(mobj x);
 
-mobj call_with_args(mobj proc, mobj env);
-mobj call_with_values(mobj producer, mobj consumer, mobj env);
+mobj char_to_integer(mobj x);
+mobj integer_to_char(mobj x);
+
+mobj car_proc(mobj x);
+mobj cdr_proc(mobj x);
+mobj caar_proc(mobj x);
+mobj cadr_proc(mobj x);
+mobj cdar_proc(mobj x);
+mobj cddr_proc(mobj x);
+mobj caaar_proc(mobj x);
+mobj caadr_proc(mobj x);
+mobj cadar_proc(mobj x);
+mobj caddr_proc(mobj x);
+mobj cdaar_proc(mobj x);
+mobj cdadr_proc(mobj x);
+mobj cddar_proc(mobj x);
+mobj cdddr_proc(mobj x);
+
+mobj fx2_add(mobj x, mobj y);
+mobj fx2_sub(mobj x, mobj y);
+mobj fx2_mul(mobj x, mobj y);
+mobj fx2_div(mobj x, mobj y);
 
 int minim_listp(mobj x);
 long list_length(mobj xs);
@@ -712,7 +737,7 @@ void *alloc_page(size_t size);
 int make_page_executable(void *page, size_t size);
 int make_page_write_only(void *page, size_t size);
 
-mobj load_file(const char *fname);
+mobj load_file(const char *fname, mobj env);
 
 NORETURN void minim_shutdown(int code);
 
@@ -732,7 +757,6 @@ void init_prims(mobj env);
     mobj name ## _proc(int, mobj *);
 
 // special objects
-DEFINE_PRIM_PROC(not);
 DEFINE_PRIM_PROC(void);
 // equality
 DEFINE_PRIM_PROC(eq);
@@ -745,21 +769,6 @@ DEFINE_PRIM_PROC(eval);
 DEFINE_PRIM_PROC(identity);
 DEFINE_PRIM_PROC(procedure_arity);
 // pairs
-DEFINE_PRIM_PROC(cons);
-DEFINE_PRIM_PROC(car);
-DEFINE_PRIM_PROC(cdr);
-DEFINE_PRIM_PROC(caar);
-DEFINE_PRIM_PROC(cadr);
-DEFINE_PRIM_PROC(cdar);
-DEFINE_PRIM_PROC(cddr);
-DEFINE_PRIM_PROC(caaar);
-DEFINE_PRIM_PROC(caadr);
-DEFINE_PRIM_PROC(cadar);
-DEFINE_PRIM_PROC(caddr);
-DEFINE_PRIM_PROC(cdaar);
-DEFINE_PRIM_PROC(cdadr);
-DEFINE_PRIM_PROC(cddar);
-DEFINE_PRIM_PROC(cdddr);
 DEFINE_PRIM_PROC(caaaar);
 DEFINE_PRIM_PROC(caaadr);
 DEFINE_PRIM_PROC(caadar);

@@ -35,6 +35,7 @@ clean:
 $(CONFIG):
 	$(MKDIR_P) $(BUILD_DIR)
 	echo "#define MINIM_X86_64 1" >> $@
+	echo "#define PRELUDE_PATH \"$(shell pwd)/s/prelude.min\"" >> $@
 
 $(BUILD_DIR)/.:
 	$(MKDIR_P) $@
