@@ -31,13 +31,10 @@ long list_length(mobj xs) {
     return len;
 }
 
-mobj list_reverse(mobj xs) {
+mobj list_reverse(const mobj xs) {
     mobj v = minim_null;
-    while (!minim_nullp(xs)) {
-        v = Mcons(minim_car(xs), v);
-        xs = minim_cdr(xs);
-    }
-
+    for (mobj t = xs; !minim_nullp(t); t = minim_cdr(t))
+        v = Mcons(minim_car(t), v);
     return v;
 }
 
@@ -461,89 +458,33 @@ mobj set_cdr_proc(mobj p, mobj x) {
     return minim_void;
 }
 
-mobj make_list_proc(int argc, mobj *args) {
+mobj make_list_proc(const mobj len, const mobj init) {
     // (-> non-negative-integer? any list)
-    mobj *lst;
-    long len, i;
-
-    if (!minim_fixnump(args[0]) || minim_fixnum(args[0]) < 0)
-        bad_type_exn("make-vector", "non-negative-integer?", args[0]);
-    len = minim_fixnum(args[0]);
-
-    lst = minim_null;
-    for (i = 0; i < len; ++i)
-        lst = Mcons(args[1], lst);
-
+    mobj lst = minim_null;
+    for (long i = 0; i < minim_fixnum(len); ++i)
+        lst = Mcons(init, lst);
     return lst;
 }
 
-mobj length_proc(int argc, mobj *args) {
+mobj length_proc(const mobj x) {
     // (-> list non-negative-integer?)
-    mobj *it;
-    long length;
-
-    length = 0;
-    for (it = args[0]; minim_consp(it); it = minim_cdr(it))
-        length += 1;
-
-    if (!minim_nullp(it))
-        bad_type_exn("length", "list?", args[0]);
-
-    return Mfixnum(length);
+    return Mfixnum(list_length(x));
 }
 
-mobj reverse_proc(int argc, mobj *args) {
-    // (-> list list)
-    mobj *head, *it;
-    
-    head = minim_null;
-    for (it = args[0]; minim_consp(it); it = minim_cdr(it))
-        head = Mcons(minim_car(it), head);
+mobj list_append2(const mobj xs, const mobj ys) {
+    // (-> list list list)
+    mobj it, hd, tl;
 
-    if (!minim_nullp(it))
-        bad_type_exn("reverse", "expected list?", args[0]);
-    return head;
-}
-
-mobj append_proc(int argc, mobj *args) {
-    // (-> list ... list)
-    mobj *head, *lst_it, *it;
-    int i;
-
-    head = NULL;
-    for (i = 0; i < argc; ++i) {
-        if (!minim_nullp(args[i])) {
-            for (it = args[i]; minim_consp(it); it = minim_cdr(it)) {
-                if (head) {
-                    minim_cdr(lst_it) = Mcons(minim_car(it), minim_null);
-                    lst_it = minim_cdr(lst_it);
-                } else {
-                    head = Mcons(minim_car(it), minim_null);
-                    lst_it = head;
-                }
-            }
-
-            if (!minim_nullp(it))
-                bad_type_exn("append", "expected list?", args[i]);
+    if (minim_nullp(xs)) {
+        return ys;
+    } else {
+        hd = tl = Mcons(minim_car(xs), NULL);
+        for (it = minim_cdr(xs); !minim_nullp(it); it = minim_cdr(it)) {
+            minim_cdr(tl) = Mcons(minim_car(it), NULL);
+            tl = minim_cdr(tl);
         }
+
+        minim_cdr(tl) = ys;
+        return hd;
     }
-
-    return head ? head : minim_null;
-}
-
-mobj for_each_proc(int argc, mobj *args) {
-    // (-> proc list list ... list)
-    uncallable_prim_exn("for-each");
-}
-
-mobj map_proc(int argc, mobj *args) {
-    uncallable_prim_exn("map");
-}
-
-mobj andmap_proc(int argc, mobj *args) {
-    uncallable_prim_exn("andmap");
-}
-
-mobj ormap_proc(int argc, mobj *args) {
-    uncallable_prim_exn("ormap");
 }

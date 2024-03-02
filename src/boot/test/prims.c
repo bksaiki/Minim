@@ -327,6 +327,7 @@ int test_list() {
     check_equal("(for-each (lambda (x) x) '(1 2 3))", "#<void>");
     check_equal("(for-each (lambda (x y) x) '(1 2 3) '(a b c))", "#<void>");
     check_equal("(for-each (lambda (x y) (+ x y)) '(1 2 3) '(2 4 6))", "#<void>");
+    check_equal("(begin (define-values (y) 0) (for-each (lambda (x) (set! y (+ y x))) '(1 2 3)) y)", "6");
 
     check_equal("(map (lambda (x) x) '())", "'()");
     check_equal("(map (lambda (x) x) '(1))", "'(1)");

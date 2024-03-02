@@ -648,3 +648,119 @@
 ;; Lists
 
 (define-values (list) (lambda args args))
+
+(define-values (make-list)
+  (lambda (len init)
+    (if (if (integer? len) (>= len 0) #f)
+        ($make-list len init)
+        (error 'length "expected non-negative integer" len))))
+
+(define-values (length)
+  (lambda (xs)
+    (if (list? xs)
+        ($length xs)
+        (error 'length "expected list" xs))))
+
+(define-values (reverse)
+  (lambda (xs)
+    (if (list? xs)
+        ($reverse xs)
+        (error 'reverse "expected list" xs))))
+
+(define-values (append)
+  (lambda xss
+    (if (null? xss) ; 0 arguments
+        '()
+        (if (list? ($car xss))
+            (if (null? ($cdr xss)) ; 1 argument
+                ($car xss)
+                (letrec-values ([(loop)
+                                 (lambda (acc xss)
+                                   (if (null? xss)
+                                       acc
+                                       (if (list? ($car xss))
+                                           (loop ($append2 ($car xss) acc) ($cdr xss))
+                                           (error 'append "expected list?" ($car xss)))))]
+                                [(xss*) ($reverse xss)])
+                  (loop ($car xss*) ($cdr xss*))))
+            (error 'append "expected list?" ($car xss))))))
+
+(define-values (for-each map andmap ormap)
+  (letrec-values ([(ormap1)
+                   (lambda (pred? xs)
+                     (if (null? xs)
+                         #f
+                         (if (pred? ($car xs))
+                             #t
+                             (ormap1 pred? ($cdr xs)))))]
+                  [(map1)
+                   (lambda (f xs)
+                     (letrec-values ([(loop)
+                                      (lambda (xs acc)
+                                        (if (null? xs)
+                                            (reverse acc)
+                                            (loop ($cdr xs) (cons (f ($car xs)) acc))))])
+                       (loop xs '())))]
+                  [(assert-all-lists!)
+                   (lambda (name xss)
+                     (if (null? xss)
+                         (void)
+                         (if (list? ($car xss))
+                             (assert-all-lists! name ($cdr xss))
+                             (error name "expected list?" ($car xss)))))])
+    (values
+      ;; for-each
+      (lambda (f xs . xss)
+        (if (procedure? f)
+            (begin
+              (assert-all-lists! 'for-each xss)
+              (letrec-values ([(loop)
+                               (lambda (xss)
+                                  (if (ormap1 null? xss)
+                                      (void)
+                                      (begin
+                                        (apply f (map1 $car xss))
+                                        (loop (map1 $cdr xss)))))])
+                (loop (cons xs xss))))
+            (error 'for-each "expected procedure?" f)))
+      ;; map
+      (lambda (f xs . xss)
+        (if (procedure? f)
+            (begin
+              (assert-all-lists! 'map xss)
+              (letrec-values ([(loop)
+                               (lambda (xss acc)
+                                  (if (ormap1 null? xss)
+                                      (reverse acc)
+                                      (loop (map1 $cdr xss)
+                                            (cons (apply f (map1 $car xss)) acc))))])
+                (loop (cons xs xss) '())))
+            (error 'map "expected procedure?" f)))
+      ;; andmap
+      (lambda (f xs . xss)
+        (if (procedure? f)
+            (begin
+              (assert-all-lists! 'andmap xss)
+              (letrec-values ([(loop)
+                               (lambda (xss)
+                                  (if (ormap1 null? xss)
+                                      #t
+                                      (if (apply f (map1 $car xss))
+                                          (loop (map1 $cdr xss))
+                                          #f)))])
+                (loop (cons xs xss))))
+            (error 'andmap "expected procedure?" f)))
+      ;; ormap
+      (lambda (f xs . xss)
+        (if (procedure? f)
+            (begin
+              (assert-all-lists! 'ormap xss)
+              (letrec-values ([(loop)
+                               (lambda (xss)
+                                  (if (ormap1 null? xss)
+                                      #f
+                                      (if (apply f (map1 $car xss))
+                                          #t
+                                          (loop (map1 $cdr xss)))))])
+                (loop (cons xs xss))))
+            (error 'ormap "expected procedure?" f))))))

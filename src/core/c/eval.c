@@ -360,19 +360,6 @@ application:
         if (minim_prim(proc) == current_environment_proc) {
             // special case: `current-environment`
             result = env;
-        } else if (minim_prim(proc) == for_each_proc) {
-            // special case: `for-each`
-            for_each(args[0], argc - 1, &args[1], env);
-            result = minim_void;
-        } else if (minim_prim(proc) == map_proc) {
-            // special case: `map`
-            result = map_list(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim(proc) == andmap_proc) {
-            // special case: `andmap`
-            result = andmap(args[0], argc - 1, &args[1], env);
-        } else if (minim_prim(proc) == ormap_proc) {
-            // special case: `ormap`
-            result = ormap(args[0], argc - 1, &args[1], env);
         } else if (minim_prim(proc) == enter_compiled_proc) {
             // special case: `enter-compiled!
             result = call_compiled(env, args[0]);
@@ -664,19 +651,6 @@ application:
             if (minim_prim(proc) == current_environment_proc) {
                 // special case: `current-environment`
                 result = env;
-            } else if (minim_prim(proc) == for_each_proc) {
-                // special case: `for-each`
-                for_each(args[0], argc - 1, &args[1], env);
-                result = minim_void;
-            } else if (minim_prim(proc) == map_proc) {
-                // special case: `map`
-                result = map_list(args[0], argc - 1, &args[1], env);
-            } else if (minim_prim(proc) == andmap_proc) {
-                // special case: `andmap`
-                result = andmap(args[0], argc - 1, &args[1], env);
-            } else if (minim_prim(proc) == ormap_proc) {
-                // special case: `ormap`
-                result = ormap(args[0], argc - 1, &args[1], env);
             } else if (minim_prim(proc) == enter_compiled_proc) {
                 // special case: `enter-compiled!
                 result = call_compiled(env, args[0]);

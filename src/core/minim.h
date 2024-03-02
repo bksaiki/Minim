@@ -513,9 +513,12 @@ mobj fx2_le(mobj x, mobj y);
 
 int minim_listp(mobj x);
 long list_length(mobj xs);
-mobj list_reverse(mobj xs);
-mobj list_to_vector(mobj xs);
 long improper_list_length(mobj xs);
+mobj make_list_proc(const mobj len, const mobj init);
+mobj length_proc(const mobj xs);
+mobj list_reverse(const mobj xs);
+mobj list_append2(const mobj xs, const mobj ys);
+mobj list_to_vector(mobj xs);
 mobj make_assoc(mobj xs, mobj ys);
 mobj copy_list(mobj xs);
 
@@ -799,15 +802,6 @@ DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
 DEFINE_PRIM_PROC(identity);
 DEFINE_PRIM_PROC(procedure_arity);
-// lists
-DEFINE_PRIM_PROC(make_list);
-DEFINE_PRIM_PROC(length);
-DEFINE_PRIM_PROC(reverse);
-DEFINE_PRIM_PROC(append);
-DEFINE_PRIM_PROC(for_each);
-DEFINE_PRIM_PROC(map);
-DEFINE_PRIM_PROC(andmap);
-DEFINE_PRIM_PROC(ormap);
 // vectors
 DEFINE_PRIM_PROC(Mvector);
 DEFINE_PRIM_PROC(vector);

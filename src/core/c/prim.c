@@ -102,14 +102,10 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$set-car!", set_car_proc, 2);
     add_unsafe_procedure("$set-cdr!", set_cdr_proc, 2);
 
-    add_procedure("make-list", make_list_proc, 2, 2);
-    add_procedure("length", length_proc, 1, 1);
-    add_procedure("reverse", reverse_proc, 1, 1);
-    add_procedure("append", append_proc, 0, ARG_MAX);
-    add_procedure("for-each", for_each_proc, 2, ARG_MAX);
-    add_procedure("map", map_proc, 2, ARG_MAX);
-    add_procedure("andmap", andmap_proc, 2, 2);
-    add_procedure("ormap", ormap_proc, 2, 2);
+    add_unsafe_procedure("$make-list", make_list_proc, 2);
+    add_unsafe_procedure("$length", length_proc, 1);
+    add_unsafe_procedure("$reverse", list_reverse, 1);
+    add_unsafe_procedure("$append2", list_append2, 2);
 
     add_unsafe_procedure("vector?", vectorp_proc, 1);
     add_procedure("make-vector", Mvector_proc, 1, 2);
