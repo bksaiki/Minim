@@ -42,7 +42,7 @@ void populate_env(mobj env) {
     add_procedure("char?", is_char_proc, 1, 1);
     add_procedure("string?", is_string_proc, 1, 1);
     add_procedure("pair?", is_pair_proc, 1, 1);
-    add_procedure("list?", minim_listp_proc, 1, 1);
+    add_procedure("list?", is_listp_proc, 1, 1);
     add_procedure("procedure?", is_procedure_proc, 1, 1);
     add_procedure("input-port?", is_input_port_proc, 1, 1);
     add_procedure("output-port?", is_output_port_proc, 1, 1);

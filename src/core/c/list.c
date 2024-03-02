@@ -296,7 +296,7 @@ mobj is_pair_proc(int argc, mobj *args) {
     return minim_consp(args[0]) ? minim_true : minim_false;
 }
 
-mobj minim_listp_proc(int argc, mobj *args) {
+mobj is_listp_proc(int argc, mobj *args) {
     // (-> any boolean)
     mobj *thing;
     for (thing = args[0]; minim_consp(thing); thing = minim_cdr(thing));

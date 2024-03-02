@@ -17,12 +17,12 @@
 
 static void resize_call_args(short req) {
     while (irt_call_args_size < req)  irt_call_args_size *= 2;
-    irt_call_args = GC_realloc(irt_call_args, irt_call_args_size * sizeof(mobj*));
+    irt_call_args = GC_realloc(irt_call_args, irt_call_args_size * sizeof(mobj));
 }
 
 static void resize_saved_args(short req) {
     while (irt_saved_args_size < req)  irt_saved_args_size *= 2;
-    irt_saved_args = GC_realloc(irt_saved_args, irt_saved_args_size * sizeof(mobj*));
+    irt_saved_args = GC_realloc(irt_saved_args, irt_saved_args_size * sizeof(mobj));
 }
 
 void assert_no_call_args() {
@@ -60,7 +60,7 @@ void prepare_call_args(long count) {
     if (count < irt_call_args_size)
         resize_call_args(count + 1);
     
-    memcpy(irt_call_args, &irt_saved_args[irt_saved_args_count - count], count * sizeof(mobj*));
+    memcpy(irt_call_args, &irt_saved_args[irt_saved_args_count - count], count * sizeof(mobj));
     irt_call_args[count] = NULL;
     irt_call_args_count = count;
     irt_saved_args_count -= count;
@@ -352,8 +352,7 @@ static long apply_args() {
 
 // Forces `x` to be a single value, that is,
 // if `x` is the result of `(values ...)` it unwraps
-// the result if `x` contains one value and panics
-// otherwise
+// the result if `x` contains one value and panics otherwise
 static mobj force_single_value(mobj x) {
     minim_thread *th;
     if (minim_valuesp(x)) {
@@ -442,7 +441,7 @@ application:
         } else if (minim_prim(proc) == for_each_proc) {
             // special case: `for-each`
             for_each(args[0], argc - 1, &args[1], env);
-            return minim_void;
+            result = minim_void;
         } else if (minim_prim(proc) == map_proc) {
             // special case: `map`
             result = map_list(args[0], argc - 1, &args[1], env);
@@ -712,7 +711,7 @@ application:
             } else if (minim_prim(proc) == for_each_proc) {
                 // special case: `for-each`
                 for_each(args[0], argc - 1, &args[1], env);
-                return minim_void;
+                result = minim_void;
             } else if (minim_prim(proc) == map_proc) {
                 // special case: `map`
                 result = map_list(args[0], argc - 1, &args[1], env);

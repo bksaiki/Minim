@@ -744,7 +744,7 @@ DEFINE_PRIM_PROC(cddddr);
 DEFINE_PRIM_PROC(set_car);
 DEFINE_PRIM_PROC(set_cdr);
 // lists
-DEFINE_PRIM_PROC(minim_listp);
+DEFINE_PRIM_PROC(is_listp);
 DEFINE_PRIM_PROC(list);
 DEFINE_PRIM_PROC(make_list);
 DEFINE_PRIM_PROC(length);

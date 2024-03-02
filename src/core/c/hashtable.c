@@ -38,7 +38,7 @@ static mobj hashtable_copy(const mobj src) {
     minim_hashtable_count(dst) = minim_hashtable_count(src);
     minim_hashtable_buckets(dst) = GC_alloc(minim_hashtable_alloc(src) * sizeof(mobj));
     minim_hashtable_hash(dst) = minim_hashtable_hash(src);
-    minim_hashtable_equiv(dst) = minim_hashtable_equiv(dst);
+    minim_hashtable_equiv(dst) = minim_hashtable_equiv(src);
 
     for (long i = 0; i < minim_hashtable_alloc(src); ++i) {
         b = minim_hashtable_bucket(src, i);
