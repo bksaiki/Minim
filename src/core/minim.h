@@ -497,10 +497,19 @@ mobj cddddr_proc(mobj x);
 mobj set_car_proc(mobj p, mobj x);
 mobj set_cdr_proc(mobj p, mobj x);
 
+mobj fx_neg(mobj x);
 mobj fx2_add(mobj x, mobj y);
 mobj fx2_sub(mobj x, mobj y);
 mobj fx2_mul(mobj x, mobj y);
 mobj fx2_div(mobj x, mobj y);
+mobj fx_remainder(mobj x, mobj y);
+mobj fx_modulo(mobj x, mobj y);
+
+mobj fx2_eq(mobj x, mobj y);
+mobj fx2_gt(mobj x, mobj y);
+mobj fx2_lt(mobj x, mobj y);
+mobj fx2_ge(mobj x, mobj y);
+mobj fx2_le(mobj x, mobj y);
 
 int minim_listp(mobj x);
 long list_length(mobj xs);
@@ -808,18 +817,6 @@ DEFINE_PRIM_PROC(vector_set);
 DEFINE_PRIM_PROC(vector_fill);
 DEFINE_PRIM_PROC(vector_to_list);
 DEFINE_PRIM_PROC(list_to_vector);
-// numbers
-DEFINE_PRIM_PROC(add);
-DEFINE_PRIM_PROC(sub);
-DEFINE_PRIM_PROC(mul);
-DEFINE_PRIM_PROC(div);
-DEFINE_PRIM_PROC(remainder);
-DEFINE_PRIM_PROC(modulo);
-DEFINE_PRIM_PROC(number_eq);
-DEFINE_PRIM_PROC(number_ge);
-DEFINE_PRIM_PROC(number_le);
-DEFINE_PRIM_PROC(number_gt);
-DEFINE_PRIM_PROC(number_lt);
 // characters;
 DEFINE_PRIM_PROC(char_to_integer);
 DEFINE_PRIM_PROC(integer_to_char);

@@ -122,23 +122,19 @@ void init_prims(mobj env) {
     add_procedure("list->vector", list_to_vector_proc, 1, 1)
 
     add_unsafe_procedure("fixnum?", fixnump_proc, 1);
+    add_unsafe_procedure("$fxneg", fx_neg, 1);
     add_unsafe_procedure("$fx2+", fx2_add, 2);
     add_unsafe_procedure("$fx2-", fx2_sub, 2);
     add_unsafe_procedure("$fx2*", fx2_mul, 2);
     add_unsafe_procedure("$fx2/", fx2_div, 2);
-
-    add_procedure("+", add_proc, 0, ARG_MAX);
-    add_procedure("-", sub_proc, 1, ARG_MAX);
-    add_procedure("*", mul_proc, 0, ARG_MAX);
-    add_procedure("/", div_proc, 1, ARG_MAX);
-    add_procedure("remainder", remainder_proc, 2, 2);
-    add_procedure("modulo", modulo_proc, 2, 2);
-
-    add_procedure("=", number_eq_proc, 2, ARG_MAX);
-    add_procedure(">=", number_ge_proc, 2, ARG_MAX);
-    add_procedure("<=", number_le_proc, 2, ARG_MAX);
-    add_procedure(">", number_gt_proc, 2, ARG_MAX);
-    add_procedure("<", number_lt_proc, 2, ARG_MAX);
+    add_unsafe_procedure("$fxremainder", fx_remainder, 2);
+    add_unsafe_procedure("$fxmodulo", fx_modulo, 2);
+    
+    add_unsafe_procedure("$fx2=", fx2_eq, 2);
+    add_unsafe_procedure("$fx2>", fx2_gt, 2);
+    add_unsafe_procedure("$fx2<", fx2_lt, 2);
+    add_unsafe_procedure("$fx2>=", fx2_ge, 2);
+    add_unsafe_procedure("$fx2<=", fx2_le, 2);
 
     add_unsafe_procedure("string?", stringp_proc, 1);
     add_procedure("make-string", Mstring_proc, 1, 2);

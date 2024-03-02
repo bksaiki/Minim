@@ -392,10 +392,12 @@ int test_integer() {
     check_equal("(+ 1)", "1");
     check_equal("(+ 1 2)", "3");
     check_equal("(+ 1 2 3)", "6");
+    check_equal("(add1 1)", "2");
 
     check_equal("(- 1)", "-1");
     check_equal("(- 1 2)", "-1");
     check_equal("(- 1 2 3)", "-4");
+    check_equal("(sub1 1)", "0");
 
     check_equal("(*)", "1");
     check_equal("(* 1)", "1");

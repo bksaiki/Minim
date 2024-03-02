@@ -23,20 +23,143 @@
 (define-values (number?) fixnum?)
 
 (define-values (+)
-  (lambda args
-    (if (null? args) ; 0 arguments
+  (lambda xs
+    (if (null? xs) ; 0 arguments
         0
-        (if (null? ($cdr args)) ; 1 arguments
-            ($car args)
-            (if (null? ($cdr args)) ; 2 arguments
-                ($fx2+ ($car args) ($cadr args))
-                (letrec-values ([(loop) ; 3+ arguments
-                                 (lambda (x xs)
-                                    (if (null? xs)
-                                        x
-                                        (loop ($fx2+ x ($car xs)) ($cdr xs))))])
-                  (loop ($fx2+ ($car args) ($cadr args))
-                        ($cddr args))))))))
+        (if (number? ($car xs))
+            (if (null? ($cdr xs)) ; 1 argument
+                ($car xs)
+                (if (number? ($cadr xs))
+                    (if (null? ($cdr xs)) ; 2 arguments
+                        ($fx2+ ($car xs) ($cadr xs))
+                        (letrec-values ([(loop) ; 3+ arguments
+                                         (lambda (x xs)
+                                            (if (null? xs)
+                                                x
+                                                (if (number? ($car xs))
+                                                    (loop ($fx2+ x ($car xs)) ($cdr xs))
+                                                    (error '+ "expected number" ($car xs)))))])
+                          (loop ($fx2+ ($car xs) ($cadr xs)) ($cddr xs))))
+                    (error '+ "expected number" ($cadr xs))))
+            (error '+ "expected number" ($car xs))))))
+        
+(define-values (-)
+  (lambda (x . xs)
+    (if (number? x)
+        (if (null? xs) ; 1 argument
+            ($fxneg x)
+            (if (number? ($car xs))
+                (if (null? ($cdr xs)) ; 2 arguments
+                    ($fx2- x ($car xs))
+                    (letrec-values ([(loop) ; 3+ arguments
+                                     (lambda (x xs)
+                                        (if (null? xs)
+                                            x
+                                            (if (number? ($car xs))
+                                                (loop ($fx2- x ($car xs)) ($cdr xs))
+                                                (error '- "expected number" ($car xs)))))])
+                      (loop ($fx2- x ($car xs)) ($cdr xs))))
+                (error '- "expected number" ($car xs))))
+        (error '- "expected number" x))))
+
+(define-values (*)
+  (lambda xs
+    (if (null? xs) ; 0 arguments
+        1
+        (if (number? ($car xs))
+            (if (null? ($cdr xs)) ; 1 argument
+                ($car xs)
+                (if (number? ($cadr xs))
+                    (if (null? ($cdr xs)) ; 2 arguments
+                        ($fx2* ($car xs) ($cadr xs))
+                        (letrec-values ([(loop) ; 3+ arguments
+                                         (lambda (x xs)
+                                            (if (null? xs)
+                                                x
+                                                (if (number? ($car xs))
+                                                    (loop ($fx2* x ($car xs)) ($cdr xs))
+                                                    (error '* "expected number" ($car xs)))))])
+                          (loop ($fx2* ($car xs) ($cadr xs)) ($cddr xs))))
+                    (error '* "expected number" ($cadr xs))))
+            (error '* "expected number" ($car xs))))))
+
+(define-values (/)
+  (lambda (x . xs)
+    (if (number? x)
+        (if (null? xs) ; 1 argument
+            (if (= x 0)
+                (error '/ "division by zero" 1 x)
+                ($fx2/ 1 x))
+            (if (number? ($car xs))
+                (if (= ($car xs) 0)
+                    (error '/ "division by zero" x ($car xs))
+                    (if (null? ($cdr xs)) ; 2 arguments         
+                        ($fx2/ x ($car xs))
+                        (letrec-values ([(loop) ; 3+ arguments
+                                         (lambda (x xs)
+                                            (if (null? xs)
+                                                x
+                                                (if (number? ($car xs))
+                                                    (if (= ($car xs) 0)
+                                                        (error '/ "division by zero" x ($car xs))
+                                                        (loop ($fx2/ x ($car xs)) ($cdr xs)))
+                                                    (error '/ "expected number" ($car xs)))))])
+                          (loop ($fx2/ x ($car xs)) ($cdr xs)))))
+                (error '/ "expected number" ($car xs))))
+        (error '/ "expected number" x))))
+
+(define-values (remainder)
+  (lambda (x y)
+    (if (number? x)
+        (if (number? y)
+            ($fxremainder x y)
+            (error 'remainder "expected number" y))
+        (error 'remainder "expected number" x))))
+
+(define-values (modulo)
+  (lambda (x y)
+    (if (number? x)
+        (if (number? y)
+            ($fxmodulo x y)
+            (error 'modulo "expected number" y))
+        (error 'modulo "expected number" x))))
+
+(define-values (add1)
+  (lambda (x)
+    (if (number? x)
+        ($fx2+ x 1)
+        (error 'add1 "expected number" x))))
+
+(define-values (sub1)
+  (lambda (x)
+    (if (number? x)
+        ($fx2- x 1)
+        (error 'sub1 "expected number" x))))
+
+(define-values (= > < >= <=)
+  (let-values ([(go)
+                (lambda (cmp name)
+                  (lambda (x . xs)
+                    (if (number? x)
+                        (if (null? xs) ; 1 argument
+                            #t
+                            (letrec-values ([(loop)
+                                             (lambda (x xs)
+                                               (if (null? xs)
+                                                   #t
+                                                   (if (number? ($car xs))
+                                                       (if (cmp x ($car xs))
+                                                           (loop ($car xs) ($cdr xs))
+                                                           #f)
+                                                       (error name "expected number" ($car xs)))))])
+                              (loop x xs)))
+                    (error name "expected number" ($car xs)))))])
+
+    (values (go $fx2= '=)
+            (go $fx2> '>)
+            (go $fx2< '<)
+            (go $fx2>= '<=)
+            (go $fx2<= '>=))))
 
 ;; --------------------------------------------------------
 ;; Pairs

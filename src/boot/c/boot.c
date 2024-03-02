@@ -88,7 +88,6 @@ void minim_boot_init() {
     // initialize thread
 
     th = current_thread();
-    global_env(th) = make_env();
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
     current_directory(th) = Mstring2(get_current_dir());
@@ -123,4 +122,7 @@ void minim_boot_init() {
     irt_saved_args_size = SAVED_ARGS_DEFAULT;
 
     GC_resume();
+    
+    // Make base environment
+    global_env(th) = make_env();
 }
