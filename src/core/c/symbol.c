@@ -125,7 +125,7 @@ static void intern_table_resize(intern_table *itab) {
     itab->alloc = new_alloc;
 }
 
-static void intern_table_insert(intern_table *itab, size_t idx, mobj *sym) {
+static void intern_table_insert(intern_table *itab, size_t idx, mobj sym) {
     intern_table_bucket *b;
     new_bucket(b, sym, itab->buckets[idx]);
     ++itab->size;
@@ -140,14 +140,15 @@ intern_table *make_intern_table() {
     return itab;
 }
 
-mobj *intern_symbol(intern_table *itab, const char *sym) {
+mobj intern_symbol(intern_table *itab, const char *sym) {
     intern_table_bucket *b;
-    mobj *obj;
-    size_t n = strlen(sym);
-    size_t h = hash_bytes(sym, n);
-    size_t idx = h % itab->alloc;
+    mobj obj;
     char *isym;
+    size_t n, h, i, idx;
 
+    n = strlen(sym);
+    h = hash_bytes(sym, n);
+    idx = h % itab->alloc;
     b = itab->buckets[idx];
     while (b != NULL) {
         isym = minim_symbol(b->sym);
@@ -155,7 +156,6 @@ mobj *intern_symbol(intern_table *itab, const char *sym) {
             return b->sym;
 
         if (strlen(isym) == n) {
-            size_t i;
             for (i = 0; i < n; ++i) {
                 if (isym[i] != sym[i])
                     break;

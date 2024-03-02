@@ -102,8 +102,8 @@ int main(int argc, char **argv) {
             if (expr == NULL) break;
 
             evaled = eval_expr(expr, global_env(th));
-            if (!minim_is_void(evaled)) {
-                if (minim_is_values(evaled)) {
+            if (!minim_voidp(evaled)) {
+                if (minim_valuesp(evaled)) {
                     for (int i = 0; i < values_buffer_count(th); ++i) {
                         write_object(stdout, values_buffer_ref(th, i));
                         printf("\n");

@@ -29,7 +29,7 @@ mobj list_to_vector(mobj lst) {
     return v;
 }
 
-static void vector_out_of_bounds_exn(const char *name, mobj *v, long idx) {
+static void vector_out_of_bounds_exn(const char *name, mobj v, long idx) {
     fprintf(stderr, "%s, index out of bounds\n", name);
     fprintf(stderr, " length: %ld\n", minim_vector_len(v));
     fprintf(stderr, " index:  %ld\n", idx);
@@ -48,7 +48,7 @@ mobj is_vector_proc(int argc, mobj *args) {
 mobj Mvector_proc(int argc, mobj *args) {
     // (-> non-negative-integer vector)
     // (-> non-negative-integer any vector)
-    mobj *init;
+    mobj init;
     long len;
 
     if (!minim_fixnump(args[0]) || minim_fixnum(args[0]) < 0)
@@ -73,18 +73,15 @@ mobj Mvector_proc(int argc, mobj *args) {
 
 mobj vector_proc(int argc, mobj *args) {
     // (-> any ... vector)
-    mobj *v;
-    
-    v = Mvector(argc, NULL);
-    memcpy(minim_vector_arr(v), args, argc * sizeof(mobj*));
+    mobj v = Mvector(argc, NULL);
+    for (long i = 0; i < argc; i++)
+        minim_vector_ref(v, i) = args[i];
     return v;
 }
 
 mobj vector_length_proc(int argc, mobj *args) {
     // (-> vector non-negative-integer?)
-    mobj *v;
-    
-    v = args[0];
+    mobj v = args[0];
     if (!minim_vectorp(v))
         bad_type_exn("vector-length", "vector?", v);
     return Mfixnum(minim_vector_len(v));
@@ -92,7 +89,7 @@ mobj vector_length_proc(int argc, mobj *args) {
 
 mobj vector_ref_proc(int argc, mobj *args) {
     // (-> vector non-negative-integer? any)
-    mobj *v, *idx;
+    mobj v, idx;
     
     v = args[0];
     if (!minim_vectorp(v))
@@ -109,7 +106,7 @@ mobj vector_ref_proc(int argc, mobj *args) {
 
 mobj vector_set_proc(int argc, mobj *args) {
     // (-> vector non-negative-integer? any void)
-    mobj *v, *idx;
+    mobj v, idx;
     
     v = args[0];
     if (!minim_vectorp(v))
@@ -127,7 +124,7 @@ mobj vector_set_proc(int argc, mobj *args) {
 
 mobj vector_fill_proc(int argc, mobj *args) {
     // (-> vector any void)
-    mobj *v, *o;
+    mobj v, o;
     long i;
 
     v = args[0];
@@ -143,7 +140,7 @@ mobj vector_fill_proc(int argc, mobj *args) {
 
 mobj vector_to_list_proc(int argc, mobj *args) {
     // (-> vector list)
-    mobj *v, *lst;
+    mobj v, lst;
     long i;
     
     v = args[0];
@@ -160,7 +157,7 @@ mobj vector_to_list_proc(int argc, mobj *args) {
 mobj list_to_vector_proc(int argc, mobj *args) {
     // (-> list vector)
     mobj lst = args[0];
-    if (!is_list(lst))
+    if (!minim_listp(lst))
         bad_type_exn("list->vector", "list?", lst);
     return list_to_vector(lst);
 }

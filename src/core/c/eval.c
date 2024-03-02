@@ -4,11 +4,11 @@
 
 #include "../minim.h"
 
-#define SET_NAME_IF_CLOSURE(name, val) {                    \
-    if (minim_is_closure(val)) {                       \
-        if (minim_closure_name(val) == NULL)                \
-            minim_closure_name(val) = minim_symbol(name);   \
-    }                                                       \
+#define SET_NAME_IF_CLOSURE(name, val) { \
+    if (minim_closurep(val)) { \
+        if (minim_closure_name(val) == NULL) \
+            minim_closure_name(val) = minim_symbol(name); \
+    } \
 }
 
 //
@@ -32,13 +32,13 @@ void assert_no_call_args() {
     }
 }
 
-void push_saved_arg(mobj *arg) {
+void push_saved_arg(mobj arg) {
     if (irt_saved_args_count >= irt_saved_args_size)
         resize_saved_args(irt_saved_args_count + 2);
     irt_saved_args[irt_saved_args_count++] = arg;
 }
 
-void push_call_arg(mobj *arg) {
+void push_call_arg(mobj arg) {
     if (irt_call_args_count >= irt_call_args_size)
         resize_call_args(irt_call_args_count + 1);
     irt_call_args[irt_call_args_count++] = arg;
@@ -85,7 +85,7 @@ void clear_call_args() {
 //  Runtime check
 //
 
-void bad_syntax_exn(mobj *expr) {
+void bad_syntax_exn(mobj expr) {
     fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
     fprintf(stderr, " at: ");
     write_object2(stderr, expr, 1, 0);
@@ -93,7 +93,7 @@ void bad_syntax_exn(mobj *expr) {
     minim_shutdown(1);
 }
 
-void bad_type_exn(const char *name, const char *type, mobj *x) {
+void bad_type_exn(const char *name, const char *type, mobj x) {
     fprintf(stderr, "%s: type violation\n", name);
     fprintf(stderr, " expected: %s\n", type);
     fprintf(stderr, " received: ");
@@ -144,24 +144,29 @@ void uncallable_prim_exn(const char *name) {
     minim_shutdown(1);
 }
 
-static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
-    int min_arity, max_arity;
-
-    min_arity = proc_arity_min(arity);
-    max_arity = proc_arity_max(arity);
+static int check_proc_arity(int min_arity, int max_arity, int argc, const char *name) {
     if (argc > max_arity)
         arity_mismatch_exn(name, min_arity, max_arity, argc);
     if (argc < min_arity)
         arity_mismatch_exn(name, min_arity, max_arity, argc);
-
     return argc;
 }
 
 #define check_prim_proc_arity(prim, argc)   \
-    check_proc_arity(&minim_prim_arity(prim), argc, minim_prim_name(prim))
+    check_proc_arity(   \
+        minim_prim_argc_low(prim),  \
+        minim_prim_argc_high(prim), \
+        argc, \
+        minim_prim_name(prim)   \
+    )
 
-#define check_closure_arity(prim, argc)    \
-    check_proc_arity(&minim_closure_arity(prim), argc, minim_closure_name(prim))
+#define check_closure_arity(fn, argc)   \
+    check_proc_arity(   \
+        minim_closure_argc_low(fn), \
+        minim_closure_argc_high(fn),    \
+        argc,   \
+        minim_closure_name(fn)    \
+    )
 
 //
 //  Syntax check
@@ -169,16 +174,16 @@ static int check_proc_arity(proc_arity *arity, int argc, const char *name) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum>)
-static void check_1ary_syntax(mobj *expr) {
-    mobj *rest = minim_cdr(expr);
+static void check_1ary_syntax(mobj expr) {
+    mobj rest = minim_cdr(expr);
     if (!minim_consp(rest) || !minim_nullp(minim_cdr(rest)))
         bad_syntax_exn(expr);
 }
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> <datum> <datum>)
-static void check_3ary_syntax(mobj *expr) {
-    mobj *rest;
+static void check_3ary_syntax(mobj expr) {
+    mobj rest;
     
     rest = minim_cdr(expr);
     if (!minim_consp(rest))
@@ -195,8 +200,8 @@ static void check_3ary_syntax(mobj *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr must be `(<name> <symbol> <datum>)`
-static void check_assign(mobj *expr) {
-    mobj *rest;
+static void check_assign(mobj expr) {
+    mobj rest;
 
     rest = minim_cdr(expr);
     if (!minim_consp(rest) || !minim_symbolp(minim_car(rest)))
@@ -212,8 +217,8 @@ static void check_assign(mobj *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> (<symbol> ...) <datum>)
-static void check_define_values(mobj *expr) {
-    mobj *rest, *ids;
+static void check_define_values(mobj expr) {
+    mobj rest, ids;
     
     rest = minim_cdr(expr);
     if (!minim_consp(rest))
@@ -238,8 +243,8 @@ static void check_define_values(mobj *expr) {
 // Check: `expr` must be `(let-values ([(<var> ...) <val>] ...) <body> ...)`
 // Does not check if each `<body>` is an expression.
 // Does not check if `<body> ...` forms a list.
-static void check_let_values(mobj *expr) {
-    mobj *bindings, *bind, *ids;
+static void check_let_values(mobj expr) {
+    mobj bindings, bind, ids;
     
     bindings = minim_cdr(expr);
     if (!minim_consp(bindings) || !minim_consp(minim_cdr(bindings)))
@@ -274,8 +279,8 @@ static void check_let_values(mobj *expr) {
 
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> ...)`
-static void check_begin(mobj *expr) {
-    mobj *rest = minim_cdr(expr);
+static void check_begin(mobj expr) {
+    mobj rest = minim_cdr(expr);
 
     while (minim_consp(rest))
         rest = minim_cdr(rest);
@@ -284,8 +289,8 @@ static void check_begin(mobj *expr) {
         bad_syntax_exn(expr);
 }
 
-static void check_lambda(mobj *expr, short *min_arity, short *max_arity) {
-    mobj *args = minim_cadr(expr);
+static void check_lambda(mobj expr, short *min_arity, short *max_arity) {
+    mobj args = minim_cadr(expr);
     int argc = 0;
 
     while (minim_consp(args)) {
@@ -319,7 +324,7 @@ static void check_lambda(mobj *expr, short *min_arity, short *max_arity) {
 //
 
 static long apply_args() {
-    mobj *lst;
+    mobj lst;
 
     // check if last argument is a list
     // safe since call_args >= 2
@@ -349,9 +354,9 @@ static long apply_args() {
 // if `x` is the result of `(values ...)` it unwraps
 // the result if `x` contains one value and panics
 // otherwise
-static mobj *force_single_value(mobj* x) {
+static mobj force_single_value(mobj x) {
     minim_thread *th;
-    if (minim_is_values(x)) {
+    if (minim_valuesp(x)) {
         th = current_thread();
         if (values_buffer_count(th) != 1)
             result_arity_exn(1, values_buffer_count(th));
@@ -361,8 +366,8 @@ static mobj *force_single_value(mobj* x) {
     }
 }
 
-static long eval_exprs(mobj *exprs, mobj *env) {
-    mobj *it, *result;
+static long eval_exprs(mobj exprs, mobj env) {
+    mobj it, result;
     long argc;
 
     argc = 0;
@@ -377,16 +382,14 @@ static long eval_exprs(mobj *exprs, mobj *env) {
     return argc;
 }
 
-mobj *call_with_values(mobj *producer,
-                               mobj *consumer,
-                               mobj *env) {
-    mobj *produced, *result;
+mobj call_with_values(mobj producer, mobj consumer, mobj env) {
+    mobj produced, result;
     minim_thread *th;
     long stashc, i;
 
     stashc = stash_call_args();
     produced = call_with_args(producer, env);
-    if (minim_is_values(produced)) {
+    if (minim_valuesp(produced)) {
         // need to unpack
         th = current_thread();
         for (i = 0; i < values_buffer_count(th); ++i)
@@ -400,8 +403,8 @@ mobj *call_with_values(mobj *producer,
     return result;
 }
 
-mobj *call_with_args(mobj *proc, mobj *env) {
-    mobj *expr, **args, *result;
+mobj call_with_args(mobj proc, mobj env) {
+    mobj expr, result, *args;
     long argc;
 
     proc = force_single_value(proc);
@@ -410,7 +413,7 @@ mobj *call_with_args(mobj *proc, mobj *env) {
 
 application:
 
-    if (minim_is_prim_proc(proc)) {
+    if (minim_primp(proc)) {
         check_prim_proc_arity(proc, argc);
 
         // special case for `apply`
@@ -425,7 +428,7 @@ application:
             expr = args[0];
             if (argc == 2) {
                 env = args[1];
-                if (!minim_is_env(env))
+                if (!minim_envp(env))
                     bad_type_exn("eval", "environment?", env);
             }
 
@@ -438,7 +441,8 @@ application:
             result = env;
         } else if (minim_prim(proc) == for_each_proc) {
             // special case: `for-each`
-            result = for_each(args[0], argc - 1, &args[1], env);
+            for_each(args[0], argc - 1, &args[1], env);
+            return minim_void;
         } else if (minim_prim(proc) == map_proc) {
             // special case: `map`
             result = map_list(args[0], argc - 1, &args[1], env);
@@ -466,13 +470,13 @@ application:
 
         clear_call_args();
         return result;
-    } else if (minim_is_closure(proc)) {
-        mobj *vars, *rest;
+    } else if (minim_closurep(proc)) {
+        mobj vars, rest;
         int i, j;
 
         // check arity and extend environment
         check_closure_arity(proc, argc);
-        env = make_environment(minim_closure_env(proc));
+        env = Menv(minim_closure_env(proc));
         args = irt_call_args;
 
         // process args
@@ -506,7 +510,7 @@ application:
     }
 }
 
-mobj *eval_expr(mobj *expr, mobj *env) {
+mobj eval_expr(mobj expr, mobj env) {
 
 loop:
 
@@ -515,7 +519,7 @@ loop:
         minim_fixnump(expr) ||
         minim_charp(expr) ||
         minim_stringp(expr) ||
-        minim_is_box(expr) ||
+        minim_boxp(expr) ||
         minim_vectorp(expr)) {
         // self-evaluating
         return expr;
@@ -528,7 +532,7 @@ loop:
         write_object2(stderr, expr, 0, 0);
         minim_shutdown(1);
     } else if (minim_consp(expr)) {
-        mobj *proc, *head, *result, *it, *bindings, *bind, *env2, **args;
+        mobj proc, head, result, it, bindings, bind, env2, *args;
         minim_thread *th;
         long var_count, idx, argc;
 
@@ -540,7 +544,7 @@ loop:
                 check_define_values(expr);
                 var_count = list_length(minim_cadr(expr));
                 result = eval_expr(minim_car(minim_cddr(expr)), env);
-                if (minim_is_values(result)) {;
+                if (minim_valuesp(result)) {;
                     // multi-valued
                     th = current_thread();
                     if (var_count != values_buffer_count(th))
@@ -564,12 +568,12 @@ loop:
             } else if (head == let_values_symbol) {
                 // let-values form
                 check_let_values(expr);
-                env2 = make_environment(env);
+                env2 = Menv(env);
                 for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
                     result = eval_expr(minim_cadr(bind), env);
-                    if (minim_is_values(result)) {
+                    if (minim_valuesp(result)) {
                         // multi-valued
                         th = current_thread();
                         if (var_count != values_buffer_count(th))
@@ -595,12 +599,12 @@ loop:
             } else if (head == letrec_values_symbol) {
                 // letrec-values
                 check_let_values(expr);
-                env = make_environment(env);
+                env = Menv(env);
                 for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
                     result = eval_expr(minim_cadr(bind), env);
-                    if (minim_is_values(result)) {
+                    if (minim_valuesp(result)) {
                         // multi-valued
                         th = current_thread();
                         if (var_count != values_buffer_count(th))
@@ -678,7 +682,7 @@ loop:
 
 application:
 
-        if (minim_is_prim_proc(proc)) {
+        if (minim_primp(proc)) {
             check_prim_proc_arity(proc, argc);
             args = irt_call_args;
             
@@ -694,7 +698,7 @@ application:
                 expr = args[0];
                 if (argc == 2) {
                     env = args[1];
-                    if (!minim_is_env(env))
+                    if (!minim_envp(env))
                         bad_type_exn("eval", "environment?", env);
                 }
                 
@@ -707,7 +711,8 @@ application:
                 result = env;
             } else if (minim_prim(proc) == for_each_proc) {
                 // special case: `for-each`
-                result = for_each(args[0], argc - 1, &args[1], env);
+                for_each(args[0], argc - 1, &args[1], env);
+                return minim_void;
             } else if (minim_prim(proc) == map_proc) {
                 // special case: `map`
                 result = map_list(args[0], argc - 1, &args[1], env);
@@ -735,13 +740,13 @@ application:
 
             clear_call_args();
             return result;
-        } else if (minim_is_closure(proc)) {
+        } else if (minim_closurep(proc)) {
             mobj *vars, *rest;
             int i, j;
 
             // check arity and extend environment
             check_closure_arity(proc, argc);
-            env = make_environment(minim_closure_env(proc));
+            env = Menv(minim_closure_env(proc));
             args = irt_call_args;
 
             // process args

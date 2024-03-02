@@ -18,7 +18,7 @@ struct address_map_t address_map[] = {
     { "Mclosure", Mnative_closure },
     { "check_arity", check_native_closure_arity },
     { "make_rest_argument", make_rest_argument },
-    { "make_environment", make_environment },
+    { "make_environment", Menv },
     { "", NULL }
 };
 
@@ -26,13 +26,10 @@ struct address_map_t address_map[] = {
 //  Runtime
 //
 
-mobj *make_rest_argument(mobj *args[], short argc) {
-    mobj *lst;
-    
-    lst = minim_null;
+mobj make_rest_argument(mobj args[], short argc) {
+    mobj lst = minim_null;
     for (short i = argc - 1; i >= 0; --i)
         lst = Mcons(args[i], lst);
-
     return lst;
 }
 
@@ -49,8 +46,8 @@ void check_native_closure_arity(short argc, mobj fn) {
 }
 
 #ifdef MINIM_X86_64
-static mobj *call_compiled_x86_64(entry_proc fn, mobj *env) {
-    mobj *res;
+static mobj call_compiled_x86_64(entry_proc fn, mobj env) {
+    mobj res;
 
     // stash all callee-preserved registers
     // move `env` to `%r14`
@@ -68,7 +65,7 @@ static mobj *call_compiled_x86_64(entry_proc fn, mobj *env) {
 }
 #endif
 
-mobj *call_compiled(mobj *env, mobj *addr) {
+mobj call_compiled(mobj env, mobj addr) {
     entry_proc fn;
 
     if (!minim_fixnump(addr))
@@ -87,39 +84,39 @@ mobj *call_compiled(mobj *env, mobj *addr) {
 //  Primitives
 //
 
-mobj *install_literal_bundle_proc(int argc, mobj *args) {
-    mobj **bundle, ***root, *it;
+mobj install_literal_bundle_proc(int argc, mobj *args) {
+    mobj *bundle, it;
     long size, i;
 
-    if (!is_list(args[0]))
+    if (!minim_listp(args[0]))
         bad_type_exn("install-literal-bundle!", "list?", args[0]);
 
     // create bundle
     size = list_length(args[0]);
-    bundle = GC_alloc(size * sizeof(mobj *));
+    bundle = GC_alloc(size * sizeof(mobj));
     for (i = 0, it = args[0]; !minim_nullp(it); it = minim_cdr(it)) {
         bundle[i] = minim_car(it);
         ++i;
     }
 
     // create GC root
-    root = GC_alloc(sizeof(mobj**));
-    GC_register_root(root);
+    // root = GC_alloc(sizeof(mobj*));
+    // GC_register_root(root);
 
     return Mfixnum((long) bundle);
 }
 
-mobj *install_proc_bundle_proc(int argc, mobj *args) {
-    mobj *it, *it2;
+mobj install_proc_bundle_proc(int argc, mobj *args) {
+    mobj it, it2;
     char *code;
     long size, offset;
 
-    if (!is_list(args[0]))
+    if (!minim_listp(args[0]))
         bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
 
     // compute size
     for (size = 0, it = args[0]; !minim_nullp(it); it = minim_cdr(it)) {
-        if (!is_list(minim_car(it)))
+        if (!minim_listp(minim_car(it)))
             bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
 
         for (it2 = minim_car(it); !minim_nullp(it2); it2 = minim_cdr(it2)) {
@@ -141,24 +138,23 @@ mobj *install_proc_bundle_proc(int argc, mobj *args) {
 
     // mark bundle as executable
     make_page_executable(code, size);
-
     return Mfixnum((long) code);
 }
 
-mobj *reinstall_proc_bundle_proc(int argc, mobj *args) {
-    mobj *it, *it2;
+mobj reinstall_proc_bundle_proc(int argc, mobj *args) {
+    mobj it, it2;
     char *code;
     long size, offset;
 
     if (!minim_fixnump(args[0]))
         bad_type_exn("reinstall-procedure-bundle!", "address", args[0]);
 
-    if (!is_list(args[1]))
+    if (!minim_listp(args[1]))
         bad_type_exn("reinstall-procedure-bundle!", "list of lists of integers", args[1]);
 
     // compute size
     for (size = 0, it = args[1]; !minim_nullp(it); it = minim_cdr(it)) {
-        if (!is_list(minim_car(it)))
+        if (!minim_listp(minim_car(it)))
             bad_type_exn("install-procedure-bundle!", "list of lists of integers", args[0]);
 
         for (it2 = minim_car(it); !minim_nullp(it2); it2 = minim_cdr(it2)) {
@@ -187,7 +183,7 @@ mobj *reinstall_proc_bundle_proc(int argc, mobj *args) {
     return minim_void;
 }
 
-mobj *runtime_address_proc(int argc, mobj *args) {
+mobj runtime_address_proc(int argc, mobj *args) {
     char *str;
     int i;
 
@@ -215,6 +211,6 @@ mobj *runtime_address_proc(int argc, mobj *args) {
     exit(1);
 }
 
-mobj *enter_compiled_proc(int argc, mobj *args) {
+mobj enter_compiled_proc(int argc, mobj *args) {
     uncallable_prim_exn("enter-compiled!");
 }

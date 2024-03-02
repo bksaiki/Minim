@@ -12,11 +12,18 @@
 #define add_value(name, c_val)                  \
     env_define_var(env, intern(name), c_val);
 
-#define add_procedure(name, c_fn, min_arity, max_arity) {           \
-    mobj *sym = intern(name);                               \
-    env_define_var(env, sym,                               \
-                   make_prim_proc(c_fn, minim_symbol(sym), \
-                                  min_arity, max_arity));  \
+#define add_procedure(name, c_fn, min_arity, max_arity) { \
+    mobj sym = intern(name); \
+    env_define_var( \
+        env, \
+        sym, \
+        Mprim( \
+            c_fn, \
+            minim_symbol(sym), \
+            min_arity, \
+            max_arity \
+        ) \
+    ); \
 }
 
 void populate_env(mobj *env) {
@@ -35,7 +42,7 @@ void populate_env(mobj *env) {
     add_procedure("char?", is_char_proc, 1, 1);
     add_procedure("string?", is_string_proc, 1, 1);
     add_procedure("pair?", is_pair_proc, 1, 1);
-    add_procedure("list?", is_list_proc, 1, 1);
+    add_procedure("list?", minim_listp_proc, 1, 1);
     add_procedure("procedure?", is_procedure_proc, 1, 1);
     add_procedure("input-port?", is_input_port_proc, 1, 1);
     add_procedure("output-port?", is_output_port_proc, 1, 1);
@@ -233,7 +240,7 @@ void populate_env(mobj *env) {
     add_procedure("enter-compiled!", enter_compiled_proc, 1, 1);
 }
 
-mobj *make_env() {
+mobj make_env() {
     mobj *env = setup_env();
     populate_env(env);
     return env;
@@ -274,19 +281,19 @@ void minim_boot_init() {
     // initialize special values
 
     minim_null = GC_alloc(sizeof(mobj));
-    minim_empty_vec = Mvector(0, NULL);
     minim_true = GC_alloc(sizeof(mobj));
     minim_false = GC_alloc(sizeof(mobj));
     minim_eof = GC_alloc(sizeof(mobj));
     minim_void = GC_alloc(sizeof(mobj));
+    minim_empty_vec = Mvector(0, NULL);
     minim_values = GC_alloc(sizeof(mobj));
 
-    minim_null->type = MINIM_NULL_TYPE;
-    minim_true->type = MINIM_TRUE_TYPE;
-    minim_false->type = MINIM_FALSE_TYPE;
-    minim_eof->type = MINIM_EOF_TYPE;
-    minim_void->type = MINIM_VOID_TYPE;
-    minim_values->type = MINIM_VALUES_TYPE;
+    minim_type(minim_null) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_true) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_false) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_eof) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_void) = MINIM_OBJ_SPECIAL;
+    minim_type(minim_values) = MINIM_OBJ_SPECIAL;
 
     empty_env = minim_null;
 
@@ -298,20 +305,20 @@ void minim_boot_init() {
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
 
-    eq_proc_obj = make_prim_proc(eq_proc, "eq?", 2, 2);
-    equal_proc_obj = make_prim_proc(equal_proc, "equal?", 2, 2);
-    eq_hash_proc_obj = make_prim_proc(eq_hash_proc, "eq-hash", 1, 1);
-    equal_hash_proc_obj = make_prim_proc(equal_hash_proc, "equal-hash", 1, 1);
+    eq_proc_obj = Mprim(eq_proc, "eq?", 2, 2);
+    equal_proc_obj = Mprim(equal_proc, "equal?", 2, 2);
+    eq_hash_proc_obj = Mprim(eq_hash_proc, "eq-hash", 1, 1);
+    equal_hash_proc_obj = Mprim(equal_hash_proc, "equal-hash", 1, 1);
 
-    record_equal_proc_obj = make_prim_proc(default_record_equal_procedure_proc,
-                                           "default-record-equal-procedure",
-                                           3, 3);
-    record_hash_proc_obj = make_prim_proc(default_record_hash_procedure_proc,
-                                          "default-record-hash-procedure",
-                                          2, 2);
-    record_write_proc_obj = make_prim_proc(default_record_write_procedure_proc,
-                                           "default-record-write-procedure",
-                                           3, 3);
+    record_equal_proc_obj = Mprim(default_record_equal_procedure_proc,
+                                  "default-record-equal-procedure",
+                                  3, 3);
+    record_hash_proc_obj = Mprim(default_record_hash_procedure_proc,
+                                 "default-record-hash-procedure",
+                                 2, 2);
+    record_write_proc_obj = Mprim(default_record_write_procedure_proc,
+                                  "default-record-write-procedure",
+                                  3, 3);
 
     // initialize thread
 

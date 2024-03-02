@@ -99,10 +99,10 @@ char *get_file_dir(const char *realpath) {
     return dirpath;
 }
 
-mobj *load_file(const char *fname) {
-    FILE *f;
-    mobj *result, *expr;
+mobj load_file(const char *fname) {
+    mobj result, expr;
     char *old_cwd, *cwd;
+    FILE *f;
 
     f = fopen(fname, "r");
     if (f == NULL) {
@@ -132,19 +132,19 @@ void minim_shutdown(int code) {
 //  Primitives
 //
 
-mobj *load_proc(int argc, mobj *args) {
+mobj load_proc(int argc, mobj *args) {
     // (-> string any)
     if (!minim_stringp(args[0]))
         bad_type_exn("load", "string?", args[0]);
     return load_file(minim_string(args[0]));
 }
 
-mobj *error_proc(int argc, mobj *args) {
+mobj error_proc(int argc, mobj *args) {
     // (-> (or #f string symbol)
     //     string?
     //     any ...
     //     any)
-    mobj *who, *message;
+    mobj who, message;
     int i;
 
     who = args[0];
@@ -173,7 +173,7 @@ mobj *error_proc(int argc, mobj *args) {
     minim_shutdown(1);
 }
 
-mobj *exit_proc(int argc, mobj *args) {
+mobj exit_proc(int argc, mobj *args) {
     // (-> number any)
 
     if (argc == 1 && 0 <= minim_fixnum(args[0]) && minim_fixnum(args[0]) <= 255)
@@ -182,10 +182,10 @@ mobj *exit_proc(int argc, mobj *args) {
         minim_shutdown(0);
 }
 
-mobj *current_directory_proc(int argc, mobj *args) {
+mobj current_directory_proc(int argc, mobj *args) {
     // (-> string)
     // (-> string void)
-    mobj *path;
+    mobj path;
 
     if (argc == 0) {
         // getter
@@ -201,10 +201,10 @@ mobj *current_directory_proc(int argc, mobj *args) {
     }
 }
 
-mobj *command_line_proc(int argc, mobj *args) {
+mobj command_line_proc(int argc, mobj *args) {
     return command_line(current_thread());
 }
 
-mobj *version_proc(int argc, mobj *args) {
+mobj version_proc(int argc, mobj *args) {
     return Mstring(MINIM_VERSION);
 }

@@ -13,26 +13,22 @@ mobj Mcons(mobj car, mobj cdr) {
 }
 
 // Returns true if the object is a list
-int is_list(mobj *x) {
-    while (minim_consp(x)) x = minim_cdr(x);
+int minim_listp(mobj x) {
+    for (; minim_consp(x); x = minim_cdr(x));
     return minim_nullp(x);
 }
 
-long list_length(mobj *xs) {
-    mobj *it = xs;
-    long length = 0;
-
-    while (!minim_nullp(it)) {
+long list_length(mobj xs) {
+    long len = 0;
+    for (mobj it = xs; !minim_nullp(it); it = minim_cdr(it)) {
         if (!minim_consp(it)) {
             fprintf(stderr, "list_length: not a list");
             minim_shutdown(1);
         }
-
-        it = minim_cdr(it);
-        ++length;
+        ++len;
     }
 
-    return length;
+    return len;
 }
 
 mobj list_reverse(mobj xs) {
@@ -45,22 +41,17 @@ mobj list_reverse(mobj xs) {
     return v;
 }
 
-long improper_list_length(mobj *xs) {
-    mobj *it = xs;
-    long length = 0;
-
-    while (minim_consp(it)) {
-        it = minim_cdr(it);
-        ++length;
-    }
-
-    return length;
+long improper_list_length(mobj xs) {
+    long len = 0;
+    for (; minim_consp(xs); xs = minim_cdr(xs))
+        ++len;
+    return len;
 }
 
 // Makes an association list.
 // Unsafe: only iterates on `xs`.
-mobj *make_assoc(mobj *xs, mobj *ys) {
-    mobj *assoc, *it;
+mobj make_assoc(mobj xs, mobj ys) {
+    mobj assoc, it;
 
     if (minim_nullp(xs))
         return minim_null;
@@ -78,8 +69,8 @@ mobj *make_assoc(mobj *xs, mobj *ys) {
 
 // Copies a list.
 // Unsafe: does not check if `xs` is a list.
-mobj *copy_list(mobj *xs) {
-    mobj *head, *tail, *it;
+mobj copy_list(mobj xs) {
+    mobj head, tail, it;
 
     if (minim_nullp(xs))
         return minim_null;
@@ -96,8 +87,8 @@ mobj *copy_list(mobj *xs) {
     return head;
 }
 
-mobj *for_each(mobj *proc, int argc, mobj **args, mobj *env) {
-    mobj **lsts;
+void for_each(mobj proc, int argc, mobj *args, mobj env) {
+    mobj *lsts;
     long len0, len;
     int stashc, i;
 
@@ -105,7 +96,7 @@ mobj *for_each(mobj *proc, int argc, mobj **args, mobj *env) {
         bad_type_exn("for-each", "procedure?", proc);
 
     for (i = 0; i < argc; ++i) {
-        if (!is_list(args[i]))
+        if (!minim_listp(args[i]))
             bad_type_exn("for-each", "list?", args[i]);
         
         if (i == 0) {
@@ -122,8 +113,8 @@ mobj *for_each(mobj *proc, int argc, mobj **args, mobj *env) {
 
     // stash lists since we call the procedure
     // TODO: potential for GC to lose track of the head of each list
-    lsts = GC_alloc(argc * sizeof(mobj *));
-    memcpy(lsts, args, argc * sizeof(mobj *));
+    lsts = GC_alloc(argc * sizeof(mobj));
+    memcpy(lsts, args, argc * sizeof(mobj));
 
     stashc = stash_call_args();
     while (!minim_nullp(lsts[0])) {
@@ -137,20 +128,19 @@ mobj *for_each(mobj *proc, int argc, mobj **args, mobj *env) {
     }
 
     prepare_call_args(stashc);
-    return minim_void;
 }
 
-mobj *map_list(mobj *proc, int argc, mobj **args, mobj *env) {
-    mobj **lsts, *res, *head, *tail;
+mobj map_list(mobj proc, int argc, mobj *args, mobj env) {
+    mobj *lsts, res, head, tail;
     minim_thread *th;
     long len0, len;
     int stashc, i;
 
-    if (!minim_is_proc(proc))
+    if (!minim_procp(proc))
         bad_type_exn("map", "procedure?", proc);
 
     for (i = 0; i < argc; ++i) {
-        if (!is_list(args[i]))
+        if (!minim_listp(args[i]))
             bad_type_exn("map", "list?", args[i]);
         
         if (i == 0) {
@@ -167,8 +157,8 @@ mobj *map_list(mobj *proc, int argc, mobj **args, mobj *env) {
 
     // stash lists since we call the procedure
     // TODO: potential for GC to lose track of the head of each list
-    lsts = GC_alloc(argc * sizeof(mobj *));
-    memcpy(lsts, args, argc * sizeof(mobj *));
+    lsts = GC_alloc(argc * sizeof(mobj));
+    memcpy(lsts, args, argc * sizeof(mobj));
 
     head = NULL;
     stashc = stash_call_args();
@@ -179,7 +169,7 @@ mobj *map_list(mobj *proc, int argc, mobj **args, mobj *env) {
         }
 
         res = call_with_args(proc, env);
-        if (minim_is_values(res)) {
+        if (minim_valuesp(res)) {
             th = current_thread();
             if (values_buffer_count(th) != 1) {
                 fprintf(stderr, "result arity mismatch\n");
@@ -203,16 +193,16 @@ mobj *map_list(mobj *proc, int argc, mobj **args, mobj *env) {
     return (head ? head : minim_null);
 }
 
-mobj *andmap(mobj *proc, int argc, mobj **args, mobj *env) {
-    mobj **lsts;
+mobj andmap(mobj proc, int argc, mobj *args, mobj env) {
+    mobj *lsts;
     long len0, len;
     int stashc, i;
 
-    if (!minim_is_proc(proc))
+    if (!minim_procp(proc))
         bad_type_exn("andmap", "procedure?", proc);
 
     for (i = 0; i < argc; ++i) {
-        if (!is_list(args[i]))
+        if (!minim_listp(args[i]))
             bad_type_exn("andmap", "list?", args[i]);
         
         if (i == 0) {
@@ -229,8 +219,8 @@ mobj *andmap(mobj *proc, int argc, mobj **args, mobj *env) {
 
     // stash lists since we call the procedure
     // TODO: potential for GC to lose track of the head of each list
-    lsts = GC_alloc(argc * sizeof(mobj *));
-    memcpy(lsts, args, argc * sizeof(mobj *));
+    lsts = GC_alloc(argc * sizeof(mobj));
+    memcpy(lsts, args, argc * sizeof(mobj));
 
     stashc = stash_call_args();
     while (!minim_nullp(lsts[0])) {
@@ -250,16 +240,16 @@ mobj *andmap(mobj *proc, int argc, mobj **args, mobj *env) {
     return minim_true;
 }
 
-mobj *ormap(mobj *proc, int argc, mobj **args, mobj *env) {
-    mobj **lsts;
+mobj ormap(mobj proc, int argc, mobj *args, mobj env) {
+    mobj *lsts;
     long len0, len;
     int stashc, i;
 
-    if (!minim_is_proc(proc))
+    if (!minim_procp(proc))
         bad_type_exn("ormap", "procedure?", proc);
 
     for (i = 0; i < argc; ++i) {
-        if (!is_list(args[i]))
+        if (!minim_listp(args[i]))
             bad_type_exn("ormap", "list?", args[i]);
         
         if (i == 0) {
@@ -276,8 +266,8 @@ mobj *ormap(mobj *proc, int argc, mobj **args, mobj *env) {
 
     // stash lists since we call the procedure
     // TODO: potential for GC to lose track of the head of each list
-    lsts = GC_alloc(argc * sizeof(mobj *));
-    memcpy(lsts, args, argc * sizeof(mobj *));
+    lsts = GC_alloc(argc * sizeof(mobj));
+    memcpy(lsts, args, argc * sizeof(mobj));
 
     stashc = stash_call_args();
     while (!minim_nullp(lsts[0])) {
@@ -301,24 +291,24 @@ mobj *ormap(mobj *proc, int argc, mobj **args, mobj *env) {
 //  Primitives
 //
 
-mobj *is_pair_proc(int argc, mobj *args) {
+mobj is_pair_proc(int argc, mobj *args) {
     // (-> any boolean)
     return minim_consp(args[0]) ? minim_true : minim_false;
 }
 
-mobj *is_list_proc(int argc, mobj *args) {
+mobj minim_listp_proc(int argc, mobj *args) {
     // (-> any boolean)
     mobj *thing;
     for (thing = args[0]; minim_consp(thing); thing = minim_cdr(thing));
     return minim_nullp(thing) ? minim_true : minim_false;
 }
 
-mobj *cons_proc(int argc, mobj *args) {
+mobj cons_proc(int argc, mobj *args) {
     // (-> any any pair)
     return Mcons(args[0], args[1]);
 }
 
-mobj *car_proc(int argc, mobj *args) {
+mobj car_proc(int argc, mobj *args) {
     // (-> pair any)
     mobj *o = args[0];
     if (!minim_consp(o))
@@ -326,7 +316,7 @@ mobj *car_proc(int argc, mobj *args) {
     return minim_car(o);
 }
 
-mobj *cdr_proc(int argc, mobj *args) {
+mobj cdr_proc(int argc, mobj *args) {
     // (-> pair any)
     mobj *o = args[0];
     if (!minim_consp(o))
@@ -334,7 +324,7 @@ mobj *cdr_proc(int argc, mobj *args) {
     return minim_cdr(o);
 }
 
-mobj *caar_proc(int argc, mobj *args) {
+mobj caar_proc(int argc, mobj *args) {
     // (-> (pairof pair any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)))
@@ -342,7 +332,7 @@ mobj *caar_proc(int argc, mobj *args) {
     return minim_caar(o);
 }
 
-mobj *cadr_proc(int argc, mobj *args) {
+mobj cadr_proc(int argc, mobj *args) {
     // (-> (pairof any pair) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)))
@@ -350,7 +340,7 @@ mobj *cadr_proc(int argc, mobj *args) {
     return minim_cadr(o);
 }
 
-mobj *cdar_proc(int argc, mobj *args) {
+mobj cdar_proc(int argc, mobj *args) {
     // (-> (pairof pair any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)))
@@ -358,7 +348,7 @@ mobj *cdar_proc(int argc, mobj *args) {
     return minim_cdar(o);
 }
 
-mobj *cddr_proc(int argc, mobj *args) {
+mobj cddr_proc(int argc, mobj *args) {
     // (-> (pairof any pair) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)))
@@ -366,7 +356,7 @@ mobj *cddr_proc(int argc, mobj *args) {
     return minim_cddr(o);
 }
 
-mobj *caaar_proc(int argc, mobj *args) {
+mobj caaar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof pair any) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_caar(o)))
@@ -374,7 +364,7 @@ mobj *caaar_proc(int argc, mobj *args) {
     return minim_car(minim_caar(o));
 }
 
-mobj *caadr_proc(int argc, mobj *args) {
+mobj caadr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof pair any)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cadr(o)))
@@ -382,7 +372,7 @@ mobj *caadr_proc(int argc, mobj *args) {
     return minim_car(minim_cadr(o));
 }
 
-mobj *cadar_proc(int argc, mobj *args) {
+mobj cadar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof any pair) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_cdar(o)))
@@ -390,7 +380,7 @@ mobj *cadar_proc(int argc, mobj *args) {
     return minim_car(minim_cdar(o));
 }
 
-mobj *caddr_proc(int argc, mobj *args) {
+mobj caddr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof any pair)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cddr(o)))
@@ -398,7 +388,7 @@ mobj *caddr_proc(int argc, mobj *args) {
     return minim_car(minim_cddr(o));
 }
 
-mobj *cdaar_proc(int argc, mobj *args) {
+mobj cdaar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof pair any) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_caar(o)))
@@ -406,7 +396,7 @@ mobj *cdaar_proc(int argc, mobj *args) {
     return minim_cdr(minim_caar(o));
 }
 
-mobj *cdadr_proc(int argc, mobj *args) {
+mobj cdadr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof pair any)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cadr(o)))
@@ -414,7 +404,7 @@ mobj *cdadr_proc(int argc, mobj *args) {
     return minim_cdr(minim_cadr(o));
 }
 
-mobj *cddar_proc(int argc, mobj *args) {
+mobj cddar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof any pair) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) || !minim_consp(minim_cdar(o)))
@@ -422,7 +412,7 @@ mobj *cddar_proc(int argc, mobj *args) {
     return minim_cdr(minim_cdar(o));
 }
 
-mobj *cdddr_proc(int argc, mobj *args) {
+mobj cdddr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof any pair)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) || !minim_consp(minim_cddr(o)))
@@ -430,7 +420,7 @@ mobj *cdddr_proc(int argc, mobj *args) {
     return minim_cdr(minim_cddr(o));
 }
 
-mobj *caaaar_proc(int argc, mobj *args) {
+mobj caaaar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof (pairof pair any) any) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -439,7 +429,7 @@ mobj *caaaar_proc(int argc, mobj *args) {
     return minim_caar(minim_caar(o));
 }
 
-mobj *caaadr_proc(int argc, mobj *args) {
+mobj caaadr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof (pairof pair any) any)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -448,7 +438,7 @@ mobj *caaadr_proc(int argc, mobj *args) {
     return minim_caar(minim_cadr(o));
 }
 
-mobj *caadar_proc(int argc, mobj *args) {
+mobj caadar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof any (pairof pair any)) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -457,7 +447,7 @@ mobj *caadar_proc(int argc, mobj *args) {
     return minim_caar(minim_cdar(o));
 }
 
-mobj *caaddr_proc(int argc, mobj *args) {
+mobj caaddr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof any (pairof pair any))) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -466,7 +456,7 @@ mobj *caaddr_proc(int argc, mobj *args) {
     return minim_caar(minim_cddr(o));
 }
 
-mobj *cadaar_proc(int argc, mobj *args) {
+mobj cadaar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof (pairof any pair) any) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -475,7 +465,7 @@ mobj *cadaar_proc(int argc, mobj *args) {
     return minim_cadr(minim_caar(o));
 }
 
-mobj *cadadr_proc(int argc, mobj *args) {
+mobj cadadr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof (pairof any pair) any)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -484,7 +474,7 @@ mobj *cadadr_proc(int argc, mobj *args) {
     return minim_cadr(minim_cadr(o));
 }
 
-mobj *caddar_proc(int argc, mobj *args) {
+mobj caddar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof any (pairof any pair)) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -493,7 +483,7 @@ mobj *caddar_proc(int argc, mobj *args) {
     return minim_cadr(minim_cdar(o));
 }
 
-mobj *cadddr_proc(int argc, mobj *args) {
+mobj cadddr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof any (pairof any pair))) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -502,7 +492,7 @@ mobj *cadddr_proc(int argc, mobj *args) {
     return minim_cadr(minim_cddr(o));
 }
 
-mobj *cdaaar_proc(int argc, mobj *args) {
+mobj cdaaar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof (pairof pair any) any) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -511,7 +501,7 @@ mobj *cdaaar_proc(int argc, mobj *args) {
     return minim_cdar(minim_caar(o));
 }
 
-mobj *cdaadr_proc(int argc, mobj *args) {
+mobj cdaadr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof (pairof pair any) any)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -520,7 +510,7 @@ mobj *cdaadr_proc(int argc, mobj *args) {
     return minim_cdar(minim_cadr(o));
 }
 
-mobj *cdadar_proc(int argc, mobj *args) {
+mobj cdadar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof any (pairof pair any)) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -529,7 +519,7 @@ mobj *cdadar_proc(int argc, mobj *args) {
     return minim_cdar(minim_cdar(o));
 }
 
-mobj *cdaddr_proc(int argc, mobj *args) {
+mobj cdaddr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof any (pairof pair any))) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -538,7 +528,7 @@ mobj *cdaddr_proc(int argc, mobj *args) {
     return minim_cdar(minim_cddr(o));
 }
 
-mobj *cddaar_proc(int argc, mobj *args) {
+mobj cddaar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof (pairof any pair) any) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -547,7 +537,7 @@ mobj *cddaar_proc(int argc, mobj *args) {
     return minim_cddr(minim_caar(o));
 }
 
-mobj *cddadr_proc(int argc, mobj *args) {
+mobj cddadr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof (pairof any pair) any)) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -556,7 +546,7 @@ mobj *cddadr_proc(int argc, mobj *args) {
     return minim_cddr(minim_cadr(o));
 }
 
-mobj *cdddar_proc(int argc, mobj *args) {
+mobj cdddar_proc(int argc, mobj *args) {
     // (-> (pairof (pairof any (pairof any pair)) any) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_car(o)) ||
@@ -565,7 +555,7 @@ mobj *cdddar_proc(int argc, mobj *args) {
     return minim_cddr(minim_cdar(o));
 }
 
-mobj *cddddr_proc(int argc, mobj *args) {
+mobj cddddr_proc(int argc, mobj *args) {
     // (-> (pairof any (pairof any (pairof any pair))) any)
     mobj *o = args[0];
     if (!minim_consp(o) || !minim_consp(minim_cdr(o)) ||
@@ -574,7 +564,7 @@ mobj *cddddr_proc(int argc, mobj *args) {
     return minim_cddr(minim_cddr(o));
 }
 
-mobj *set_car_proc(int argc, mobj *args) {
+mobj set_car_proc(int argc, mobj *args) {
     // (-> pair any void)
     mobj *o = args[0];
     if (!minim_consp(o))
@@ -583,7 +573,7 @@ mobj *set_car_proc(int argc, mobj *args) {
     return minim_void;
 }
 
-mobj *set_cdr_proc(int argc, mobj *args) {
+mobj set_cdr_proc(int argc, mobj *args) {
     // (-> pair any void)
     mobj *o = args[0];
     if (!minim_consp(o))
@@ -592,7 +582,7 @@ mobj *set_cdr_proc(int argc, mobj *args) {
     return minim_void;
 }
 
-mobj *list_proc(int argc, mobj *args) {
+mobj list_proc(int argc, mobj *args) {
     // (-> any ... list)
     mobj *lst;
     int i;
@@ -604,7 +594,7 @@ mobj *list_proc(int argc, mobj *args) {
     return lst;
 }
 
-mobj *make_list_proc(int argc, mobj *args) {
+mobj make_list_proc(int argc, mobj *args) {
     // (-> non-negative-integer? any list)
     mobj *lst;
     long len, i;
@@ -620,7 +610,7 @@ mobj *make_list_proc(int argc, mobj *args) {
     return lst;
 }
 
-mobj *length_proc(int argc, mobj *args) {
+mobj length_proc(int argc, mobj *args) {
     // (-> list non-negative-integer?)
     mobj *it;
     long length;
@@ -635,7 +625,7 @@ mobj *length_proc(int argc, mobj *args) {
     return Mfixnum(length);
 }
 
-mobj *reverse_proc(int argc, mobj *args) {
+mobj reverse_proc(int argc, mobj *args) {
     // (-> list list)
     mobj *head, *it;
     
@@ -648,7 +638,7 @@ mobj *reverse_proc(int argc, mobj *args) {
     return head;
 }
 
-mobj *append_proc(int argc, mobj *args) {
+mobj append_proc(int argc, mobj *args) {
     // (-> list ... list)
     mobj *head, *lst_it, *it;
     int i;
@@ -674,19 +664,19 @@ mobj *append_proc(int argc, mobj *args) {
     return head ? head : minim_null;
 }
 
-mobj *for_each_proc(int argc, mobj *args) {
+mobj for_each_proc(int argc, mobj *args) {
     // (-> proc list list ... list)
     uncallable_prim_exn("for-each");
 }
 
-mobj *map_proc(int argc, mobj *args) {
+mobj map_proc(int argc, mobj *args) {
     uncallable_prim_exn("map");
 }
 
-mobj *andmap_proc(int argc, mobj *args) {
+mobj andmap_proc(int argc, mobj *args) {
     uncallable_prim_exn("andmap");
 }
 
-mobj *ormap_proc(int argc, mobj *args) {
+mobj ormap_proc(int argc, mobj *args) {
     uncallable_prim_exn("ormap");
 }

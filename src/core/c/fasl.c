@@ -97,7 +97,7 @@ static muptr read_fasl_uptr(FILE *in) {
 }
 
 
-static mobj *read_fasl_symbol(FILE *in) {
+static mobj read_fasl_symbol(FILE *in) {
     char *str;
     long len, i;
     
@@ -110,7 +110,7 @@ static mobj *read_fasl_symbol(FILE *in) {
     return intern(str);
 }
 
-static mobj *read_fasl_string(FILE *in) {
+static mobj read_fasl_string(FILE *in) {
     char *str;
     long len, i;
     
@@ -123,16 +123,16 @@ static mobj *read_fasl_string(FILE *in) {
     return Mstring2(str);
 }
 
-static mobj *read_fasl_fixnum(FILE *in) {
+static mobj read_fasl_fixnum(FILE *in) {
     return Mfixnum(read_fasl_uptr(in));
 }
 
-static mobj *read_fasl_char(FILE *in) {
+static mobj read_fasl_char(FILE *in) {
     return Mchar(read_fasl_byte(in));
 }
 
-static mobj *read_fasl_pair(FILE *in) {
-    mobj *head, *it;
+static mobj read_fasl_pair(FILE *in) {
+    mobj head, it;
     long i, len;
 
     // improper list has at least one element
@@ -153,8 +153,8 @@ static mobj *read_fasl_pair(FILE *in) {
     return head;
 }
 
-static mobj* read_fasl_vector(FILE *in) {
-    mobj *vec;
+static mobj read_fasl_vector(FILE *in) {
+    mobj vec;
     long i, len;
 
     len = read_fasl_uptr(in);
@@ -165,8 +165,8 @@ static mobj* read_fasl_vector(FILE *in) {
     return vec;
 }
 
-static mobj* read_fasl_hashtable(FILE *in) {
-    mobj *ht, *k, *v;
+static mobj read_fasl_hashtable(FILE *in) {
+    mobj ht, k, v;
     long size, i;
     mbyte t;
 
@@ -192,8 +192,8 @@ static mobj* read_fasl_hashtable(FILE *in) {
     return ht;
 }
 
-static mobj* read_fasl_record(FILE *in) {
-    mobj *rec, *rtd;
+static mobj read_fasl_record(FILE *in) {
+    mobj rec, rtd;
     long len, i;
 
     len = read_fasl_uptr(in);
@@ -205,7 +205,7 @@ static mobj* read_fasl_record(FILE *in) {
     return rec;
 }
 
-mobj *read_fasl(FILE *in) {
+mobj read_fasl(FILE *in) {
     fasl_type type;
     
     type = read_fasl_type(in);
@@ -276,24 +276,24 @@ static void write_fasl_uptr(FILE *out, muptr u) {
 }
 
 // Serializes a symbol
-static void write_fasl_symbol(FILE *out, mobj *sym) {
+static void write_fasl_symbol(FILE *out, mobj sym) {
     write_fasl_uptr(out, strlen(minim_symbol(sym)));
     for (char *s = minim_symbol(sym); *s; s++)
         write_fasl_byte(out, *s);
 }
 
 // Serializes a string
-static void write_fasl_string(FILE *out, mobj *str) {
+static void write_fasl_string(FILE *out, mobj str) {
     write_fasl_uptr(out, strlen(minim_string(str)));
     for (char *s = minim_string(str); *s; s++)
         fputc(*s, out);
 }
 
 // Serializes a pair, improper list, or list
-static void write_fasl_pair(FILE *out, mobj *p) {
-    mobj *it;
+static void write_fasl_pair(FILE *out, mobj p) {
+    mobj it;
     long len;
-    
+
     len = improper_list_length(p);
     write_fasl_uptr(out, len);
     for (it = p; minim_consp(it); it = minim_cdr(it))
@@ -303,7 +303,7 @@ static void write_fasl_pair(FILE *out, mobj *p) {
 }
 
 // Serializes a vector
-static void write_fasl_vector(FILE *out, mobj *v) {
+static void write_fasl_vector(FILE *out, mobj v) {
     long i, len;
     
     len = minim_vector_len(v);
@@ -314,8 +314,8 @@ static void write_fasl_vector(FILE *out, mobj *v) {
 
 // Serializes a hashtable
 // WARN: internal structure of hashtable may be different
-static void write_fasl_hashtable(FILE *out, mobj *ht) {
-    mobj *b;
+static void write_fasl_hashtable(FILE *out, mobj ht) {
+    mobj b;
     size_t i;
 
     write_fasl_uptr(out, minim_hashtable_count(ht));
@@ -346,25 +346,23 @@ static void write_fasl_hashtable(FILE *out, mobj *ht) {
 }
 
 // Serializes a record
-static void write_fasl_record(FILE *out, mobj *r) {
-    int i;
-
+static void write_fasl_record(FILE *out, mobj r) {
     write_fasl_uptr(out, minim_record_count(r));
     write_fasl(out, minim_record_rtd(r));
-    for (i = 0; i < minim_record_count(r); ++i)
+    for (int i = 0; i < minim_record_count(r); ++i)
         write_fasl(out, minim_record_ref(r, i));
 }
 
-void write_fasl(FILE *out, mobj *o) {
+void write_fasl(FILE *out, mobj o) {
     if (minim_nullp(o)) {
         write_fasl_type(out, FASL_NULL);
     } else if (minim_truep(o)) {
         write_fasl_type(out, FASL_TRUE);
     } else if (minim_falsep(o)) {
         write_fasl_type(out, FASL_FALSE);
-    } else if (minim_is_eof(o)) {
+    } else if (minim_eofp(o)) {
         write_fasl_type(out, FASL_EOF);
-    } else if (minim_is_void(o)) {
+    } else if (minim_voidp(o)) {
         write_fasl_type(out, FASL_VOID);
     } else if (minim_symbolp(o)) {
         // TODO: interned vs. uninterned
@@ -383,16 +381,16 @@ void write_fasl(FILE *out, mobj *o) {
         write_fasl_type(out, FASL_PAIR);
         write_fasl_pair(out, o);
     } else if (minim_vectorp(o)) {
-        if (minim_is_empty_vec(o)) {
+        if (minim_empty_vecp(o)) {
             write_fasl_type(out, FASL_EMPTY_VECTOR);
         } else {
             write_fasl_type(out, FASL_VECTOR);
             write_fasl_vector(out, o);
         }
-    } else if (minim_is_hashtable(o)) {
+    } else if (minim_hashtablep(o)) {
         write_fasl_type(out, FASL_HASHTABLE);
         write_fasl_hashtable(out, o);
-    } else if (minim_is_base_rtd(o)) {
+    } else if (minim_base_rtdp(o)) {
         write_fasl_type(out, FASL_BASE_RTD);
     } else if (minim_recordp(o)) {
         write_fasl_type(out, FASL_RECORD);
@@ -410,29 +408,26 @@ void write_fasl(FILE *out, mobj *o) {
 //  Primitive
 //
 
-mobj *read_fasl_proc(int argc, mobj *args) {
+mobj read_fasl_proc(int argc, mobj *args) {
     // (-> any)
     // (-> input-port any)
-    mobj *in_p;
-
-    in_p = args[0];
-    if (!minim_is_input_port(in_p))
+    mobj in_p = args[0];
+    if (!minim_input_portp(in_p))
         bad_type_exn("read-fasl", "input-port?", in_p);
-    
     return read_fasl(minim_port(in_p));
 }
 
-mobj *write_fasl_proc(int argc, mobj *args) {
+mobj write_fasl_proc(int argc, mobj *args) {
     // (-> any void)
     // (-> any output-port void)
-    mobj *out_p, *o;
+    mobj out_p, o;
 
     o = args[0];
     if (argc == 1) {
         out_p = output_port(current_thread());
     } else {
         out_p = args[1];
-        if (!minim_is_output_port(out_p))
+        if (!minim_output_portp(out_p))
             bad_type_exn("write-fasl", "output-port?", out_p);
     }
 
