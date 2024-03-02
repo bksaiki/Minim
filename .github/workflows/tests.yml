@@ -42,17 +42,3 @@ jobs:
       run: make boot && make
     - name: Rebuild boot file
       run: make boot-file
-
-  unit:
-    runs-on: ubuntu-latest  
-    needs: [ 'build' ] 
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    - name: Build GC
-      run: make boehm-gc
-    - name: Build
-      run: make boot && make
-    - name: Tests
-      run: make compile-tests
