@@ -8,7 +8,7 @@
 #include "../boot.h"
 
 FILE *stream;
-minim_object *env;
+mobj *env;
 int return_code, passed;
 
 #define reset() {               \
@@ -23,7 +23,7 @@ int return_code, passed;
 
 #define eval(s)     eval_expr(read_object(stream), env)
 
-char *write(minim_object *o) {
+char *write(mobj *o) {
     char *str;
     size_t read;
     long length;
@@ -57,24 +57,26 @@ char *write(minim_object *o) {
 }
 
 void check_true(const char *input) {
-    minim_object *result;
+    mobj *result;
 
     reset();
     load(input);
     result = eval();
-    if (!minim_is_true(result)) {
+    if (!minim_truep(result)) {
         log_failed_case(input, "#t", write(result));
+        passed = 0;
     }
 }
 
 void check_false(const char *input) {
-    minim_object *result;
+    mobj *result;
 
     reset();
     load(input);
     result = eval();
-    if (!minim_is_false(result)) {
+    if (!minim_falsep(result)) {
         log_failed_case(input, "#f", write(result));
+        passed = 0;
     }
 }
 
@@ -86,6 +88,7 @@ void check_equal(const char *input, const char *expect) {
     str = write(eval());
     if (strcmp(str, expect) != 0) {
         log_failed_case(input, expect, str);
+        passed = 0;
     }
     
 }
@@ -477,19 +480,19 @@ int test_string() {
 int test_syntax() {
     passed = 1;
 
-    check_equal("(quote-syntax a)", "#<syntax a>");
-    check_equal("(quote-syntax 1)", "#<syntax 1>");
-    check_equal("(quote-syntax (a b c))", "#<syntax (a b c)>");
+    check_equal("(quote-syntax a)", "#<syntax:a>");
+    check_equal("(quote-syntax 1)", "#<syntax:1>");
+    check_equal("(quote-syntax (a b c))", "#<syntax:(a b c)>");
 
     check_equal("(syntax-e (quote-syntax a))", "'a");
     check_equal("(syntax-e (quote-syntax 1))", "1");
     check_equal("(syntax-e (quote-syntax (a b c)))",
-                "'(#<syntax a> #<syntax b> #<syntax c>)");
+                "'(#<syntax:a> #<syntax:b> #<syntax:c>)");
 
     check_equal("(syntax->list (quote-syntax ()))", "'()");
-    check_equal("(syntax->list (quote-syntax (1)))", "'(#<syntax 1>)");
-    check_equal("(syntax->list (quote-syntax (1 2)))", "'(#<syntax 1> #<syntax 2>)");
-    check_equal("(syntax->list (quote-syntax (1 2 3)))", "'(#<syntax 1> #<syntax 2> #<syntax 3>)");
+    check_equal("(syntax->list (quote-syntax (1)))", "'(#<syntax:1>)");
+    check_equal("(syntax->list (quote-syntax (1 2)))", "'(#<syntax:1> #<syntax:2>)");
+    check_equal("(syntax->list (quote-syntax (1 2 3)))", "'(#<syntax:1> #<syntax:2> #<syntax:3>)");
     check_equal("(syntax->list (quote-syntax (1 2 . 3)))", "#f");
     check_equal("(syntax->list (quote-syntax 1))", "#f");
 

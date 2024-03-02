@@ -25,12 +25,16 @@
 
 // System constants (assumes 64-bits)
 
-typedef char            minim_char;
-typedef uint32_t        minim_wchar;
-typedef uint8_t         minim_byte;
-typedef uintptr_t       minim_uptr;
+
+typedef uint8_t         mbyte;
+typedef int             mchar;
+typedef long            mfixnum;
+typedef uintptr_t       muptr;
+typedef unsigned long   msize;
+typedef void            *mobj;
 
 #define ptr_size        8
+#define PTR_ADD(p, d)   ((void *) ((muptr) (p)) + (d))
 
 // Constants
 
@@ -71,345 +75,372 @@ typedef struct proc_arity {
 // Object types
 
 typedef enum {
-    /* Special types */
-    MINIM_NULL_TYPE,
-    MINIM_TRUE_TYPE,
-    MINIM_FALSE_TYPE,
-    MINIM_EOF_TYPE,
-    MINIM_VOID_TYPE,
-
     /* Primitive types */
-    MINIM_SYMBOL_TYPE,
-    MINIM_FIXNUM_TYPE,
-    MINIM_CHAR_TYPE,
-    MINIM_STRING_TYPE,
-    MINIM_PAIR_TYPE,
-    MINIM_VECTOR_TYPE,
-    MINIM_PRIM_PROC_TYPE,
-    MINIM_CLOSURE_PROC_TYPE,
-    MINIM_PORT_TYPE,
+    MINIM_OBJ_SPECIAL,
+    MINIM_OBJ_CHAR,
+    MINIM_OBJ_FIXNUM,
+    MINIM_OBJ_SYMBOL,
+    MINIM_OBJ_STRING,
+    MINIM_OBJ_PAIR,
+    MINIM_OBJ_VECTOR,
+    MINIM_OBJ_PRIM,
+    MINIM_OBJ_PRIM2,
+    MINIM_OBJ_CLOSURE,
+    MINIM_OBJ_PORT,
 
     /* Composite types */
-    MINIM_RECORD_TYPE,
-    MINIM_BOX_TYPE,
-    MINIM_HASHTABLE_TYPE,
-    MINIM_SYNTAX_TYPE,
+    MINIM_OBJ_RECORD,
+    MINIM_OBJ_BOX,
+    MINIM_OBJ_HASHTABLE,
+    MINIM_OBJ_SYNTAX,
 
     /* Transform types */
-    MINIM_PATTERN_VAR_TYPE,
+    MINIM_OBJ_PATTERN,
 
     /* Runtime types */
-    MINIM_ENVIRONMENT_TYPE,
-    MINIM_VALUES_TYPE,
+    MINIM_OBJ_ENV,
 
     /* Compiled types */
-    MINIM_NATIVE_CLOSURE_TYPE,
+    MINIM_OBJ_NATIVE_CLOSURE,
+} mobj_type;
 
-    /* Footer */
-    MINIM_LAST_TYPE
-} minim_object_type;
+typedef mobj (*mprim_proc)(int, mobj *);
 
-// Object structs
+// Objects
 
-typedef struct {
-    minim_object_type type;
-} minim_object;
+#define minim_type(o)           (*((mbyte*) o))
 
-typedef struct {
-    minim_object_type type;
-    char *value;
-} minim_symbol_object;
+// Intermediates
+// +------------+ 
+// |    type    | [0, 1)
+// +------------+
+extern mobj minim_null;
+extern mobj minim_true;
+extern mobj minim_false;
+extern mobj minim_eof;
+extern mobj minim_void;
+extern mobj minim_empty_vec;
+extern mobj minim_base_rtd;
+extern mobj minim_values;
 
-typedef struct {
-    minim_object_type type;
-    long value; /* TODO: manage size of this */
-} minim_fixnum_object;
+#define minim_nullp(x)        ((x) == minim_null)
+#define minim_truep(x)        ((x) == minim_true)
+#define minim_falsep(x)       ((x) == minim_false)
+#define minim_eofp(x)         ((x) == minim_eof)
+#define minim_voidp(x)        ((x) == minim_void)
+#define minim_valuesp(x)      ((x) == minim_values)
 
-typedef struct {
-    minim_object_type type;
-    char *value;
-} minim_string_object;
+#define minim_empty_vecp(x)   ((x) == minim_empty_vec)
+#define minim_base_rtdp(x)    ((x) == minim_base_rtd)
 
-typedef struct {
-    minim_object_type type;
-    int value;
-} minim_char_object;
+#define minim_boolp(o)          ((o) == minim_true || (o) == minim_false)
+#define minim_not(o)            ((o) == minim_false ? minim_true : minim_false)
 
-typedef struct {
-    minim_object_type type;
-    minim_object *car;
-    minim_object *cdr;
-} minim_pair_object;
+// Characters
+// +------------+
+// |    type    | [0, 1)
+// |     c     |  [4, 8)
+// +------------+
+#define minim_char_size         ptr_size
+#define minim_charp(o)          (minim_type(o) == MINIM_OBJ_CHAR)
+#define minim_char(o)           (*((char *) PTR_ADD(o, 4)))
 
-typedef struct {
-    minim_object_type type;
-    minim_object **arr;
-    long len;
-} minim_vector_object;
+// Fixnum
+// +------------+
+// |    type    | [0, 1)
+// |     v      | [8, 16)
+// +------------+ 
+#define minim_fixnum_size       (2 * ptr_size)
+#define minim_fixnump(o)        (minim_type(o) == MINIM_OBJ_FIXNUM)
+#define minim_fixnum(o)         (*((mfixnum*) PTR_ADD(o, ptr_size)))
 
-typedef struct {
-    minim_object_type type;
-    struct proc_arity arity;
-    minim_object *(*fn)(int, minim_object **);
-    char *name;
-} minim_prim_proc_object;
+// Symbols
+// +------------+
+// |    type    | [0, 1)
+// |    str     | [8, 16)
+// +------------+
+#define minim_symbol_size       (2 * ptr_size)
+#define minim_symbolp(o)        (minim_type(o) == MINIM_OBJ_SYMBOL)
+#define minim_symbol(o)         (*((char **) PTR_ADD(o, ptr_size)))
 
-typedef struct {
-    minim_object_type type;
-    struct proc_arity arity;
-    minim_object *args;
-    minim_object *body;
-    minim_object *env;
-    char *name;
-} minim_closure_object;
+// String
+// +------------+
+// |    type    | [0, 1)
+// |    str     | [8, 16)
+// +------------+ 
+#define minim_string_size       (2 * ptr_size)
+#define minim_stringp(o)        (minim_type(o) == MINIM_OBJ_STRING)
+#define minim_string(o)         (*((char **) PTR_ADD(o, ptr_size)))
+#define minim_string_ref(o, i)  (minim_string(o)[(i)])
 
-typedef struct {
-    minim_object_type type;
-    struct proc_arity arity;
-    minim_object *env;
-    void *fn;
-    char *name;
-} minim_native_closure_object;
+// Pair
+// +------------+
+// |    type    | [0, 1)
+// |    car     | [8, 16)
+// |    cdr     | [16, 24)
+// +------------+ 
+#define minim_cons_size         (3 * ptr_size)
 
-typedef struct {
-    minim_object_type type;
-    FILE *stream;
-    int flags;
-} minim_port_object;
+#define minim_consp(o)          (minim_type(o) == MINIM_OBJ_PAIR)
+#define minim_car(o)            (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_cdr(o)            (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 
-typedef struct {
-    minim_object_type type;
-    minim_object *e;
-    minim_object *loc;
-} minim_syntax_object;
+#define minim_caar(o)       minim_car(minim_car(o))
+#define minim_cadr(o)       minim_car(minim_cdr(o))
+#define minim_cdar(o)       minim_cdr(minim_car(o))
+#define minim_cddr(o)       minim_cdr(minim_cdr(o))
 
-typedef struct {
-    minim_object_type type;
-    minim_object *rtd;
-    minim_object **fields;
-    int fieldc;
-} minim_record_object;
+// Vector
+// +------------+
+// |    type    | [0, 1)
+// |   length   | [8, 16)
+// |    elts    | [16, 16 + 8 * N)
+// +------------+ 
+#define minim_vector_size(n)        (ptr_size * (2 + (n)))
+#define minim_vectorp(o)            (minim_type(o) == MINIM_OBJ_VECTOR)
+#define minim_vector_len(o)         (*((msize*) PTR_ADD(o, ptr_size)))
+#define minim_vector_ref(o, i)      (((mobj*) PTR_ADD(o, 2 * ptr_size))[i])
 
-typedef struct {
-    minim_object_type type;
-    minim_object *o;
-} minim_box_object;
+// Box
+// +------------+
+// |    type    | [0, 1)
+// |   content  | [8, 16)
+// +------------+
+#define minim_box_size      (2 * ptr_size)
+#define minim_boxp(o)       (minim_type(o) == MINIM_OBJ_BOX)
+#define minim_unbox(o)      (*((mobj*) PTR_ADD(o, ptr_size)))
 
-typedef struct {
-    minim_object_type type;
-    minim_object *hash, *equiv;
-    minim_object **buckets;
-    size_t *alloc_ptr;
-    size_t alloc, size;
-} minim_hashtable_object;
+// Primitive
+// +------------+
+// |    type    | [0, 1)
+// |     ptr    | [8, 16)
+// |  argc_low  | [16, 20)
+// |  argc_high | [20, 24)
+// |    name    | [24, 32)
+// +------------+
+#define minim_prim_size             (4 * ptr_size)
+#define minim_primp(o)              (minim_type(o) == MINIM_OBJ_PRIM)
+#define minim_prim(o)               (*((mprim_proc*) PTR_ADD(o, ptr_size)))
+#define minim_prim_argc_low(o)      (*((int*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_prim_argc_high(o)     (*((int*) PTR_ADD(o, 2 * ptr_size + 4)))
+#define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
 
-typedef struct {
-    minim_object_type type;
-    minim_object *value;
-    minim_object *depth;
-} minim_pattern_var_object;
+// Closure
+// +------------+
+// |    type    | [0, 1)
+// |    args    | [8, 16)
+// |    body    | [16, 24)
+// |    env     | [24, 32)
+// |  argc_low  | [32, 36)
+// |  argc_high | [36, 40)
+// |    name    | [40, 48)
+// +------------+
+#define minim_closure_size          (6 * ptr_size)
+#define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
+#define minim_closure_args(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_closure_body(o)       (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_closure_env(o)        (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_closure_argc_low(o)   (*((int*) PTR_ADD(o, 4 * ptr_size)))
+#define minim_closure_argc_high(o)  (*((int*) PTR_ADD(o, 4 * ptr_size + 4)))
+#define minim_closure_name(o)       (*((char**) PTR_ADD(o, 5 * ptr_size)))
 
-typedef struct {
-    minim_object_type type;
-    minim_object *prev;
-    minim_object *bindings;
-} minim_env;
+// Native closure
+// +------------+
+// |    type    | [0, 1)
+// |    body    | [8, 16)
+// |    env     | [16, 24)
+// |  argc_low  | [24, 28)
+// |  argc_high | [28, 32)
+// |    name    | [32, 40)
+// +------------+
+#define minim_native_closure_size           (5 * ptr_size)
+#define minim_native_closurep(o)            (minim_type(o) == MINIM_OBJ_CLOSURE)
+#define minim_native_closure(o)             (*((void**) PTR_ADD(o, ptr_size)))
+#define minim_native_closure_env(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_native_closure_argc_low(o)    (*((int*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_native_closure_argc_high(o)   (*((int*) PTR_ADD(o, 3 * ptr_size + 4)))
+#define minim_native_closure_name(o)        (*((char**) PTR_ADD(o, 4 * ptr_size)))
+
+// Port
+// +------------+
+// |    type    | [0, 1)
+// |    flags   | [1, 2)
+// |     fp     | [8, 16)
+// +------------+
+#define minim_port_size         (2 * ptr_size)
+#define minim_portp(o)          (minim_type(o) == MINIM_OBJ_PORT)
+#define minim_port_flags(o)     (*((mbyte*) PTR_ADD(o, 1)))
+#define minim_port(o)           (*((FILE**) PTR_ADD(o, ptr_size)))
+
+#define PORT_FLAG_OPEN              0x1
+#define PORT_FLAG_READ              0x2
+#define minim_port_openp(o)         (minim_port_flags(o) & PORT_FLAG_OPEN)
+#define minim_port_readp(o)         (minim_port_flags(o) & PORT_FLAG_READ)
+
+#define minim_input_portp(x)        (minim_portp(x) && minim_port_readp(x))
+#define minim_output_portp(x)       (minim_portp(x) && !minim_port_readp(x))
+
+#define minim_port_set(o, f) \
+    minim_port_flags(o) |= (f);
+#define minim_port_unset(o, f) \
+    minim_port_flags(o) &= ~(f);
+
+// Syntax
+// +------------+
+// |    type    | [0, 1)
+// |     e      | [8, 16)
+// |    loc     | [16, 24)
+// +------------+
+#define minim_syntax_size       (3 * ptr_size)
+#define minim_syntaxp(o)        (minim_type(o) == MINIM_OBJ_SYNTAX)
+#define minim_syntax_e(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_syntax_loc(o)     (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+
+// Records: RTD/values
+// +------------+
+// |    type    | [0, 1)
+// |   fieldc   | [4, 8)
+// |    rtd     | [8, 16)
+// |   fields   | [16, 16 + 8 * N)
+// |    ...     |
+// +------------+
+#define minim_record_size(n)        (ptr_size * (2 + (n)))
+#define minim_recordp(o)            (minim_type(o) == MINIM_OBJ_RECORD)
+#define minim_record_count(o)       (*((int*) PTR_ADD(o, 4)))
+#define minim_record_rtd(o)         (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_record_ref(o, i)      (((mobj*) PTR_ADD(o, 2 * ptr_size))[i])
+
+// Hashtables
+// +------------+
+// |    type    | [0, 1)
+// |  hash_fn   | [8, 16)
+// |  equiv_fn  | [16, 24)
+// |   buckets  | [24, 32)
+// |  alloc_ptr | [32, 40]
+// |    count   | [40, 48)
+// +------------+
+#define minim_hashtable_size            (6 * ptr_size)
+#define minim_hashtablep(o)             (minim_type(o) == MINIM_OBJ_HASHTABLE)
+#define minim_hashtable_hash(o)         (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_hashtable_equiv(o)        (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_hashtable_buckets(o)      (*((mobj**) PTR_ADD(o, 3 * ptr_size)))
+#define minim_hashtable_bucket(o, i)    ((minim_hashtable_buckets(o))[i])
+#define minim_hashtable_alloc_ptr(o)    (*((msize**) PTR_ADD(o, 4 * ptr_size)))
+#define minim_hashtable_alloc(o)        (*(minim_hashtable_alloc_ptr(o)))
+#define minim_hashtable_count(o)        (*((msize*) PTR_ADD(o, 5 * ptr_size)))
+
+// Pattern variable
+// +------------+
+// |    type    | [0, 1)
+// |    value   | [8, 16)
+// |    depth   | [16, 24)
+// +------------+
+#define minim_pattern_size      (3 * ptr_size)
+#define minim_patternp(o)       (minim_type(o) == MINIM_OBJ_PATTERN)
+#define minim_pattern_value(o)  (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_pattern_depth(o)  (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+
+// Pattern variable
+// +------------+
+// |    type    | [0, 1)
+// |    prev    | [8, 16)
+// |   bindings | [16, 24)
+// +------------+
+#define minim_env_size          (3 * ptr_size)
+#define minim_envp(o)           (minim_type(o) == MINIM_OBJ_ENV)
+#define minim_env_prev(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_env_bindings(o)   (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 
 // Special objects
 
-extern minim_object *quote_symbol;
-extern minim_object *define_symbol;
-extern minim_object *define_values_symbol;
-extern minim_object *let_symbol;
-extern minim_object *let_values_symbol;
-extern minim_object *letrec_symbol;
-extern minim_object *letrec_values_symbol;
-extern minim_object *setb_symbol;
-extern minim_object *if_symbol;
-extern minim_object *lambda_symbol;
-extern minim_object *begin_symbol;
-extern minim_object *cond_symbol;
-extern minim_object *else_symbol;
-extern minim_object *and_symbol;
-extern minim_object *or_symbol;
-extern minim_object *syntax_symbol;
-extern minim_object *syntax_loc_symbol;
-extern minim_object *quote_syntax_symbol;
+extern mobj quote_symbol;
+extern mobj define_symbol;
+extern mobj define_values_symbol;
+extern mobj let_symbol;
+extern mobj let_values_symbol;
+extern mobj letrec_symbol;
+extern mobj letrec_values_symbol;
+extern mobj setb_symbol;
+extern mobj if_symbol;
+extern mobj lambda_symbol;
+extern mobj begin_symbol;
+extern mobj cond_symbol;
+extern mobj else_symbol;
+extern mobj and_symbol;
+extern mobj or_symbol;
+extern mobj syntax_symbol;
+extern mobj syntax_loc_symbol;
+extern mobj quote_syntax_symbol;
 
-extern minim_object *minim_null;
-extern minim_object *minim_empty_vec;
-extern minim_object *minim_true;
-extern minim_object *minim_false;
-extern minim_object *minim_eof;
-extern minim_object *minim_void;
-extern minim_object *minim_values;
-extern minim_object *minim_base_rtd;
-
-extern minim_object *eq_proc_obj;
-extern minim_object *equal_proc_obj;
-extern minim_object *eq_hash_proc_obj;
-extern minim_object *equal_hash_proc_obj;
-
-// Simple predicates
-
-#define minim_same_type(o, t)   ((o)->type == (t))
-
-#define minim_is_symbol(x)          (minim_same_type(x, MINIM_SYMBOL_TYPE))
-#define minim_is_fixnum(x)          (minim_same_type(x, MINIM_FIXNUM_TYPE))
-#define minim_is_string(x)          (minim_same_type(x, MINIM_STRING_TYPE))
-#define minim_is_char(x)            (minim_same_type(x, MINIM_CHAR_TYPE))
-#define minim_is_pair(x)            (minim_same_type(x, MINIM_PAIR_TYPE))
-#define minim_is_vector(x)          (minim_same_type(x, MINIM_VECTOR_TYPE))
-#define minim_is_prim_proc(x)       (minim_same_type(x, MINIM_PRIM_PROC_TYPE))
-#define minim_is_closure(x)         (minim_same_type(x, MINIM_CLOSURE_PROC_TYPE))
-#define minim_is_port(x)            (minim_same_type(x, MINIM_PORT_TYPE))
-#define minim_is_record(x)          (minim_same_type(x, MINIM_RECORD_TYPE))
-#define minim_is_box(x)             (minim_same_type(x, MINIM_BOX_TYPE))
-#define minim_is_hashtable(x)       (minim_same_type(x, MINIM_HASHTABLE_TYPE))
-#define minim_is_syntax(x)          (minim_same_type(x, MINIM_SYNTAX_TYPE))
-#define minim_is_pattern_var(x)     (minim_same_type(x, MINIM_PATTERN_VAR_TYPE))
-#define minim_is_env(x)             (minim_same_type(x, MINIM_ENVIRONMENT_TYPE))
-#define minim_is_values(x)          (minim_same_type(x, MINIM_VALUES_TYPE))
-#define minim_is_native_closure(x)  (minim_same_type(x, MINIM_NATIVE_CLOSURE_TYPE))
-
-#define minim_is_null(x)        ((x) == minim_null)
-#define minim_is_empty_vec(x)   ((x) == minim_empty_vec)
-#define minim_is_true(x)        ((x) == minim_true)
-#define minim_is_false(x)       ((x) == minim_false)
-#define minim_is_eof(x)         ((x) == minim_eof)
-#define minim_is_void(x)        ((x) == minim_void)
-#define minim_is_base_rtd(x)    ((x) == minim_base_rtd)
-
-// Flags
-
-#define MINIM_PORT_READ_ONLY        0x1
-#define MINIM_PORT_OPEN             0x2
-
-// Accessors
-
-#define minim_car(x)        (((minim_pair_object *) (x))->car)
-#define minim_cdr(x)        (((minim_pair_object *) (x))->cdr)
-#define minim_caar(x)       (minim_car(minim_car(x)))
-#define minim_cadr(x)       (minim_car(minim_cdr(x)))
-#define minim_cdar(x)       (minim_cdr(minim_car(x)))
-#define minim_cddr(x)       (minim_cdr(minim_cdr(x)))
-
-#define minim_vector_len(x)     (((minim_vector_object *) (x))->len)
-#define minim_vector_arr(x)     (((minim_vector_object *) (x))->arr)
-#define minim_vector_ref(x, i)  (((minim_vector_object *) (x))->arr[i])
-
-#define minim_symbol(x)         (((minim_symbol_object *) (x))->value)
-#define minim_fixnum(x)         (((minim_fixnum_object *) (x))->value)
-#define minim_string(x)         (((minim_string_object *) (x))->value)
-#define minim_char(x)           (((minim_char_object *) (x))->value)
-
-#define minim_prim_proc_name(x) (((minim_prim_proc_object *) (x))->name)
-#define minim_prim_arity(x)     (((minim_prim_proc_object *) (x))->arity)
-#define minim_prim_proc(x)      (((minim_prim_proc_object *) (x))->fn)
-
-#define minim_closure_args(x)   (((minim_closure_object *) (x))->args)
-#define minim_closure_body(x)   (((minim_closure_object *) (x))->body)
-#define minim_closure_env(x)    (((minim_closure_object *) (x))->env)
-#define minim_closure_name(x)   (((minim_closure_object *) (x))->name)
-#define minim_closure_arity(x)  (((minim_closure_object *) (x))->arity)
-
-#define minim_port_is_ro(x)     (((minim_port_object *) (x))->flags & MINIM_PORT_READ_ONLY)
-#define minim_port_is_open(x)   (((minim_port_object *) (x))->flags & MINIM_PORT_OPEN)
-#define minim_port(x)           (((minim_port_object *) (x))->stream)
-
-#define minim_syntax_e(x)       (((minim_syntax_object *) (x))->e)
-#define minim_syntax_loc(x)     (((minim_syntax_object *) (x))->loc)
-
-#define minim_record_rtd(x)         (((minim_record_object *) (x))->rtd)
-#define minim_record_ref(x, i)      (((minim_record_object *) (x))->fields[i])
-#define minim_record_count(x)       (((minim_record_object *) (x))->fieldc)
-
-#define minim_box_contents(x)           (((minim_box_object *) (x))->o)
-
-#define minim_hashtable_buckets(x)      (((minim_hashtable_object *) (x))->buckets)
-#define minim_hashtable_bucket(x, i)    ((((minim_hashtable_object *) (x))->buckets)[i])
-#define minim_hashtable_alloc_ptr(x)    (((minim_hashtable_object *) (x))->alloc_ptr)
-#define minim_hashtable_alloc(x)        (((minim_hashtable_object *) (x))->alloc)
-#define minim_hashtable_size(x)         (((minim_hashtable_object *) (x))->size)
-#define minim_hashtable_hash(x)         (((minim_hashtable_object *) (x))->hash)
-#define minim_hashtable_equiv(x)        (((minim_hashtable_object *) (x))->equiv)
-
-#define minim_pattern_var_value(x)      (((minim_pattern_var_object *) (x))->value)
-#define minim_pattern_var_depth(x)      (((minim_pattern_var_object *) (x))->depth)
-
-#define minim_env_bindings(x)           (((minim_env *) (x))->bindings)
-#define minim_env_prev(x)               (((minim_env *) (x))->prev)
-
-#define minim_native_closure_arity(x)   (((minim_native_closure_object *) (x))->arity)
-#define minim_native_closure_name(x)    (((minim_native_closure_object *) (x))->name)
-#define minim_native_closure_code(x)    (((minim_native_closure_object *) (x))->code)
-#define minim_native_closure_env(x)     (((minim_native_closure_object *) (x))->env)
-
-// Setters
-
-#define minim_port_set(x, f)        (((minim_port_object *) (x))->flags |= (f))
-#define minim_port_unset(x, f)      (((minim_port_object *) (x))->flags &= ~(f))
+extern mobj eq_proc_obj;
+extern mobj equal_proc_obj;
+extern mobj eq_hash_proc_obj;
+extern mobj equal_hash_proc_obj;
 
 // Complex predicates
 
-#define minim_is_bool(x)            (minim_is_true(x) || minim_is_false(x))
-#define minim_is_proc(x)            (minim_is_prim_proc(x) || minim_is_closure(x))
-#define minim_is_input_port(x)      (minim_is_port(x) && minim_port_is_ro(x))
-#define minim_is_output_port(x)     (minim_is_port(x) && !minim_port_is_ro(x))
+#define minim_procp(x)            (minim_primp(x) || minim_closurep(x))
 
 // Typedefs
 
-typedef minim_object *(*minim_prim_proc_t)(int argc, minim_object **);
-
 // Constructors
 
-minim_object *make_char(int c);
-minim_object *make_fixnum(long v);
-minim_object *make_symbol(const char *s);
-minim_object *make_string(const char *s);
-minim_object *make_string2(char *s);
-minim_object *make_pair(minim_object *car, minim_object *cdr);
-minim_object *make_vector(long len, minim_object *init);
-minim_object *make_record(minim_object *rtd, int fieldc);
-minim_object *make_box(minim_object *x);
-minim_object *make_hashtable(minim_object *hash_fn, minim_object *equiv_fn);
-minim_object *make_hashtable2(minim_object *hash_fn, minim_object *equiv_fn, size_t size_hint);
-minim_object *make_prim_proc(minim_prim_proc_t proc, char *name, short min_arity, short max_arity);
-minim_object *make_closure(minim_object *args, minim_object *body, minim_object *env, short min_arity, short max_arity);
-minim_object *make_native_closure(minim_object *env, void *fn, short min_arity, short max_arity);
-minim_object *make_input_port(FILE *stream);
-minim_object *make_output_port(FILE *stream);
-minim_object *make_pattern_var(minim_object *value, minim_object *depth);
-minim_object *make_syntax(minim_object *e, minim_object *loc);
+mobj Mchar(mchar c);
+mobj Mfixnum(long v);
+mobj Msymbol(const char *s);
+mobj Mstring(const char *s);
+mobj Mstring2(char *s);
+mobj Mcons(mobj car, mobj cdr);
+mobj Mvector(long len, mobj init);
+mobj Mrecord(mobj rtd, int fieldc);
+mobj Mbox(mobj x);
+mobj Mhashtable(mobj hash_fn, mobj equiv_fn);
+mobj Mhashtable2(mobj hash_fn, mobj equiv_fn, size_t size_hint);
+mobj Mprim(mprim_proc proc, char *name, short min_arity, short max_arity);
+mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity);
+mobj Mnative_closure(mobj env, void *fn, short min_arity, short max_arity);
+mobj Minput_port(FILE *stream);
+mobj Moutput_port(FILE *stream);
+mobj Mpattern(mobj value, mobj depth);
+mobj Msyntax(mobj e, mobj loc);
+mobj Menv(mobj prev);
+mobj Menv2(mobj prev, size_t size);
+
+#define Mlist1(a)                   Mcons(a, minim_null)
+#define Mlist2(a, b)                Mcons(a, Mlist1(b))
+#define Mlist3(a, b, c)             Mcons(a, Mlist2(b, c))
+#define Mlist4(a, b, c, d)          Mcons(a, Mlist3(b, c, d))
 
 // Object operations
 
-int minim_is_eq(minim_object *a, minim_object *b);
-int minim_is_equal(minim_object *a, minim_object *b);
+int minim_eqp(mobj a, mobj b);
+int minim_equalp(mobj a, mobj b);
 
-minim_object *call_with_args(minim_object *proc, minim_object *env);
-minim_object *call_with_values(minim_object *producer, minim_object *consumer, minim_object *env);
+mobj call_with_args(mobj proc, mobj env);
+mobj call_with_values(mobj producer, mobj consumer, mobj env);
 
-int is_list(minim_object *x);
-long list_length(minim_object *xs);
-long improper_list_length(minim_object *xs);
-minim_object *make_assoc(minim_object *xs, minim_object *ys);
-minim_object *copy_list(minim_object *xs);
+int minim_listp(mobj x);
+long list_length(mobj xs);
+mobj list_reverse(mobj xs);
+mobj list_to_vector(mobj xs);
+long improper_list_length(mobj xs);
+mobj make_assoc(mobj xs, mobj ys);
+mobj copy_list(mobj xs);
 
-minim_object *for_each(minim_object *proc, int argc, minim_object **args, minim_object *env);
-minim_object *map_list(minim_object *proc, int argc, minim_object **args, minim_object *env);
-minim_object *andmap(minim_object *proc, int argc, minim_object **args, minim_object *env);
-minim_object *ormap(minim_object *proc, int argc, minim_object **args, minim_object *env);
+void for_each(mobj proc, int argc, mobj *args, mobj env);
+mobj map_list(mobj proc, int argc, mobj *args, mobj env);
+mobj andmap(mobj proc, int argc, mobj *args, mobj env);
+mobj ormap(mobj proc, int argc, mobj *args, mobj env);
 
-minim_object *strip_syntax(minim_object *o);
-minim_object *to_syntax(minim_object *o);
+mobj strip_syntax(mobj o);
+mobj to_syntax(mobj o);
 
 // I/O
 
-minim_object *read_object(FILE *in);
-void write_object(FILE *out, minim_object *o);
-void write_object2(FILE *out, minim_object *o, int quote, int display);
-void minim_fprintf(FILE *o, const char *form, int v_count, minim_object **vs, const char *prim_name);
+mobj read_object(FILE *in);
+void write_object(FILE *out, mobj o);
+void write_object2(FILE *out, mobj o, int quote, int display);
+void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char *prim_name);
 
 // FASL
 
@@ -431,24 +462,25 @@ typedef enum {
     FASL_RECORD,
 } fasl_type;
 
-minim_object *read_fasl(FILE *out);
-void write_fasl(FILE *out, minim_object *o);
+mobj read_fasl(FILE *out);
+void write_fasl(FILE *out, mobj o);
 
 // Interpreter
 
 #define CALL_ARGS_DEFAULT       10
 #define SAVED_ARGS_DEFAULT      10
 
-minim_object *eval_expr(minim_object *expr, minim_object *env);
+void check_expr(mobj expr);
+mobj eval_expr(mobj expr, mobj env);
 
 typedef struct {
-    minim_object **call_args, **saved_args;
+    mobj *call_args, *saved_args;
     long call_args_count, saved_args_count;
     long call_args_size, saved_args_size;
 } interp_rt;
 
-void push_saved_arg(minim_object *arg);
-void push_call_arg(minim_object *arg);
+void push_saved_arg(mobj arg);
+void push_call_arg(mobj arg);
 void prepare_call_args(long count);
 void clear_call_args();
 long stash_call_args();
@@ -456,24 +488,24 @@ long stash_call_args();
 void assert_no_call_args();
 
 // Environments
+mobj setup_env();
+mobj make_env();
 
-minim_object *make_environment(minim_object *prev);
-minim_object *setup_env();
-minim_object *make_env();
+void env_define_var_no_check(mobj env, mobj var, mobj val);
+mobj env_define_var(mobj env, mobj var, mobj val);
+mobj env_set_var(mobj env, mobj var, mobj val);
+mobj env_lookup_var(mobj env, mobj var);
+int env_var_is_defined(mobj env, mobj var, int recursive);
 
-void env_define_var_no_check(minim_object *env, minim_object *var, minim_object *val);
-minim_object *env_define_var(minim_object *env, minim_object *var, minim_object *val);
-minim_object *env_set_var(minim_object *env, minim_object *var, minim_object *val);
-minim_object *env_lookup_var(minim_object *env, minim_object *var);
-int env_var_is_defined(minim_object *env, minim_object *var, int recursive);
-
-extern minim_object *empty_env;
+extern mobj empty_env;
 
 // Memory
 
-void check_native_closure_arity(short argc, minim_object *fn);
-minim_object *call_compiled(minim_object *env, minim_object *addr);
-minim_object *make_rest_argument(minim_object *args[], short argc);
+void check_native_closure_arity(short argc, mobj fn);
+mobj call_compiled(mobj env, mobj addr);
+mobj make_rest_argument(mobj args[], short argc);
+
+// Records
 
 // Records
 
@@ -548,16 +580,16 @@ minim_object *make_rest_argument(minim_object *args[], short argc);
 #define record_rtd_protocol(rtd)    minim_record_ref(rtd, 5)
 #define record_rtd_field(rtd, i)    minim_record_ref(rtd, (record_rtd_min_size + (i)))
 
-#define record_is_opaque(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
-#define record_is_sealed(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
+#define record_opaquep(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
+#define record_sealedp(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
 
-int is_record_value(minim_object *o);
-int is_record_rtd(minim_object *o);
+int record_valuep(mobj o);
+int record_rtdp(mobj o);
 
 // Symbols
 
 typedef struct intern_table_bucket {
-    minim_object *sym;
+    mobj sym;
     struct intern_table_bucket *next;
 } intern_table_bucket;
 
@@ -568,29 +600,29 @@ typedef struct intern_table {
 } intern_table;
 
 intern_table *make_intern_table();
-minim_object *intern_symbol(intern_table *itab, const char *sym);
+mobj intern_symbol(intern_table *itab, const char *sym);
 
 // Hashtables
 
-int hashtable_is_equal(minim_object *h1, minim_object *h2);
-int hashtable_set(minim_object *ht, minim_object *k, minim_object *v);
-minim_object *hashtable_find(minim_object *ht, minim_object *k);
-minim_object *hashtable_keys(minim_object *ht);
+int hashtable_equalp(mobj h1, mobj h2);
+int hashtable_set(mobj ht, mobj k, mobj v);
+mobj hashtable_find(mobj ht, mobj k);
+mobj hashtable_keys(mobj ht);
 
 // Threads
 
 typedef struct minim_thread {
-    minim_object *env;
+    mobj env;
 
-    minim_object *input_port;
-    minim_object *output_port;
-    minim_object *current_directory;
-    minim_object *command_line;
-    minim_object *record_equal_proc;
-    minim_object *record_hash_proc;
-    minim_object *record_write_proc;
+    mobj input_port;
+    mobj output_port;
+    mobj current_directory;
+    mobj command_line;
+    mobj record_equal_proc;
+    mobj record_hash_proc;
+    mobj record_write_proc;
 
-    minim_object **values_buffer;
+    mobj *values_buffer;
     int values_buffer_size;
     int values_buffer_count;
 
@@ -644,22 +676,24 @@ void *alloc_page(size_t size);
 int make_page_executable(void *page, size_t size);
 int make_page_write_only(void *page, size_t size);
 
-minim_object *load_file(const char *fname);
+mobj load_file(const char *fname);
 
 NORETURN void minim_shutdown(int code);
 
 // Exceptions
 
-NORETURN void arity_mismatch_exn(const char *name, proc_arity *arity, short actual);
-NORETURN void bad_syntax_exn(minim_object *expr);
-NORETURN void bad_type_exn(const char *name, const char *type, minim_object *x);
+NORETURN void arity_mismatch_exn(const char *name, int min_arity, int max_arity, short actual);
+NORETURN void bad_syntax_exn(mobj expr);
+NORETURN void bad_type_exn(const char *name, const char *type, mobj x);
 NORETURN void result_arity_exn(short expected, short actual);
 NORETURN void uncallable_prim_exn(const char *name);
 
 // Primitives
 
+void init_prims(mobj env);
+
 #define DEFINE_PRIM_PROC(name) \
-    minim_object *name ## _proc(int, minim_object **);
+    mobj name ## _proc(int, mobj *);
 
 // special objects
 DEFINE_PRIM_PROC(is_null);
@@ -727,7 +761,7 @@ DEFINE_PRIM_PROC(andmap);
 DEFINE_PRIM_PROC(ormap);
 // vectors
 DEFINE_PRIM_PROC(is_vector);
-DEFINE_PRIM_PROC(make_vector);
+DEFINE_PRIM_PROC(Mvector);
 DEFINE_PRIM_PROC(vector);
 DEFINE_PRIM_PROC(vector_length);
 DEFINE_PRIM_PROC(vector_ref);
@@ -756,7 +790,7 @@ DEFINE_PRIM_PROC(char_to_integer);
 DEFINE_PRIM_PROC(integer_to_char);
 // strings
 DEFINE_PRIM_PROC(is_string);
-DEFINE_PRIM_PROC(make_string);
+DEFINE_PRIM_PROC(Mstring);
 DEFINE_PRIM_PROC(string);
 DEFINE_PRIM_PROC(string_length);
 DEFINE_PRIM_PROC(string_ref);
@@ -780,7 +814,7 @@ DEFINE_PRIM_PROC(record_type_sealed);
 DEFINE_PRIM_PROC(record_type_opaque);
 DEFINE_PRIM_PROC(record_type_fields);
 DEFINE_PRIM_PROC(record_type_field_mutable);
-DEFINE_PRIM_PROC(make_record);
+DEFINE_PRIM_PROC(Mrecord);
 DEFINE_PRIM_PROC(record_ref);
 DEFINE_PRIM_PROC(record_set);
 DEFINE_PRIM_PROC(default_record_equal_procedure);
@@ -797,7 +831,7 @@ DEFINE_PRIM_PROC(box_set);
 // hashtable
 DEFINE_PRIM_PROC(is_hashtable);
 DEFINE_PRIM_PROC(make_eq_hashtable);
-DEFINE_PRIM_PROC(make_hashtable);
+DEFINE_PRIM_PROC(Mhashtable);
 DEFINE_PRIM_PROC(hashtable_size);
 DEFINE_PRIM_PROC(hashtable_contains);
 DEFINE_PRIM_PROC(hashtable_set);

@@ -61,8 +61,8 @@ static void load_library() {
 
 int main(int argc, char **argv) {
     volatile int stack_top;
-    minim_object *expr, *evaled;
     minim_thread *th;
+    mobj expr, evaled;
     int argi, i;
 
     stack_top = 0;
@@ -77,19 +77,19 @@ int main(int argc, char **argv) {
         load_library();
 
     for (i = argc - 1; i >= argi; --i)
-        command_line(th) = make_pair(make_string(argv[i]), command_line(th));
+        command_line(th) = Mcons(Mstring(argv[i]), command_line(th));
 
     if (argi < argc) {
         if (!interactive && opt_load_library) {
             eval_expr(
-                make_pair(intern("import"),
-                    make_pair(make_string(argv[argi]), 
+                Mcons(intern("import"),
+                    Mcons(Mstring(argv[argi]), 
                     minim_null)),
                 global_env(th));
         } else {
             eval_expr(
-                make_pair(intern("load"),
-                    make_pair(make_string(argv[argi]), 
+                Mcons(intern("load"),
+                    Mcons(Mstring(argv[argi]), 
                     minim_null)),
                 global_env(th));
         }
@@ -101,9 +101,10 @@ int main(int argc, char **argv) {
             expr = read_object(stdin);
             if (expr == NULL) break;
 
+            check_expr(expr);
             evaled = eval_expr(expr, global_env(th));
-            if (!minim_is_void(evaled)) {
-                if (minim_is_values(evaled)) {
+            if (!minim_voidp(evaled)) {
+                if (minim_valuesp(evaled)) {
                     for (int i = 0; i < values_buffer_count(th); ++i) {
                         write_object(stdout, values_buffer_ref(th, i));
                         printf("\n");

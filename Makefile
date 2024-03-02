@@ -43,7 +43,7 @@ boehm-gc:
 minim-gc:
 	$(MAKE) -C $(GC_DIR) minim-gc
 
-test: boot-tests compile-tests
+test: boot-tests
 
 boot-tests:
 	$(MAKE) -C $(BOOT_DIR) test

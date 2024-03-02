@@ -178,7 +178,7 @@
          (list 'load-procedure code-reg idx)
          (list 'load arity-low-reg arity-low)
          (list 'load arity-high-reg arity-high)
-         (list 'c-call "make_closure" '%env code-reg arity-low-reg arity-high-reg)
+         (list 'c-call "Mclosure" '%env code-reg arity-low-reg arity-high-reg)
          (list 'load res-reg '%ret))
        frame)]
     [(branch)

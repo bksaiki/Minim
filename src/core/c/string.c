@@ -16,37 +16,38 @@ static void string_out_of_bounds_exn(const char *name, const char *str, long idx
 //  Primitives
 //
 
-minim_object *make_string(const char *s) {
-    minim_string_object *o = GC_alloc(sizeof(minim_string_object));
-    int len = strlen(s);
-    
-    o->type = MINIM_STRING_TYPE;
-    o->value = GC_alloc_atomic((len + 1) * sizeof(char));
-    strncpy(o->value, s, len + 1);
-    return ((minim_object *) o);
+mobj Mstring(const char *s) {
+    mobj o;
+    size_t len;
+
+    o = GC_alloc(minim_string_size);
+    len = strlen(s);
+    minim_type(o) = MINIM_OBJ_STRING;
+    minim_string(o) = GC_alloc_atomic((len + 1) * sizeof(char));
+    strncpy(minim_string(o), s, len + 1);
+    return o;
 }
 
-minim_object *make_string2(char *s) {
-    minim_string_object *o = GC_alloc(sizeof(minim_string_object));
-    
-    o->type = MINIM_STRING_TYPE;
-    o->value = s;
-    return ((minim_object *) o);
+mobj Mstring2(char *s) {
+    mobj o = GC_alloc(minim_string_size);
+    minim_type(o) = MINIM_OBJ_STRING;
+    minim_string(o) = s;
+    return o;
 }
 
-minim_object *is_string_proc(int argc, minim_object **args) {
+mobj is_string_proc(int argc, mobj *args) {
     // (-> any boolean)
-    return minim_is_string(args[0]) ? minim_true : minim_false;
+    return minim_stringp(args[0]) ? minim_true : minim_false;
 }
 
-minim_object *make_string_proc(int argc, minim_object **args) {
+mobj Mstring_proc(int argc, mobj *args) {
     // (-> non-negative-integer string)
     // (-> non-negative-integer char string)
     char *str;
     long len, i;
     int c;
 
-    if (!minim_is_fixnum(args[0]) || minim_fixnum(args[0]) < 0)
+    if (!minim_fixnump(args[0]) || minim_fixnum(args[0]) < 0)
         bad_type_exn("make-string", "non-negative-integer?", args[0]);
     len = minim_fixnum(args[0]);
 
@@ -55,7 +56,7 @@ minim_object *make_string_proc(int argc, minim_object **args) {
         c = 'a';
     } else {
         // 2nd case
-        if (!minim_is_char(args[1]))
+        if (!minim_charp(args[1]))
             bad_type_exn("make-string", "char?", args[1]);
         c = minim_char(args[1]);
     }
@@ -65,10 +66,10 @@ minim_object *make_string_proc(int argc, minim_object **args) {
         str[i] = c;
     str[i] = '\0';
 
-    return make_string2(str);
+    return Mstring2(str);
 }
 
-minim_object *string_proc(int argc, minim_object **args) {
+mobj string_proc(int argc, mobj *args) {
     // (-> char ... string)
     char *str;
     int i;
@@ -77,30 +78,30 @@ minim_object *string_proc(int argc, minim_object **args) {
     str[argc] = '\0';
 
     for (i = 0; i < argc; ++i) {
-        if (!minim_is_char(args[i]))
+        if (!minim_charp(args[i]))
             bad_type_exn("make-string", "char?", args[i]);
         str[i] = minim_char(args[i]);
     }
 
-    return make_string2(str);
+    return Mstring2(str);
 }
 
-minim_object *string_length_proc(int argc, minim_object **args) {
+mobj string_length_proc(int argc, mobj *args) {
     // (-> string integer)
-    minim_object *o = args[0];
-    if (!minim_is_string(o))
-        bad_type_exn("string-length", "string?", o);
-    return make_fixnum(strlen(minim_string(o)));
+    mobj s = args[0];
+    if (!minim_stringp(s))
+        bad_type_exn("string-length", "string?", s);
+    return Mfixnum(strlen(minim_string(s)));
 }
 
-minim_object *string_ref_proc(int argc, minim_object **args) {
+mobj string_ref_proc(int argc, mobj *args) {
     // (-> string non-negative-integer char)
     char *str;
     long len, idx;
 
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("string-ref", "string?", args[0]);
-    if (!minim_is_fixnum(args[1]) || minim_fixnum(args[1]) < 0)
+    if (!minim_fixnump(args[1]) || minim_fixnum(args[1]) < 0)
         bad_type_exn("string-ref", "non-negative-integer?", minim_cdar(args));
 
     str = minim_string(args[0]);
@@ -110,20 +111,20 @@ minim_object *string_ref_proc(int argc, minim_object **args) {
     if (idx >= len)
         string_out_of_bounds_exn("string-ref", str, idx);
 
-    return make_char((int) str[idx]);
+    return Mchar((int) str[idx]);
 }
 
-minim_object *string_set_proc(int argc, minim_object **args) {
+mobj string_set_proc(int argc, mobj *args) {
     // (-> string non-negative-integer char void)
     char *str;
     long len, idx;
     char c;
 
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("string-set!", "string?", args[0]);
-    if (!minim_is_fixnum(args[1]) || minim_fixnum(args[1]) < 0)
+    if (!minim_fixnump(args[1]) || minim_fixnum(args[1]) < 0)
         bad_type_exn("string-set!", "non-negative-integer?", minim_cdar(args));
-    if (!minim_is_char(args[2]))
+    if (!minim_charp(args[2]))
         bad_type_exn("string-set!", "char?", args[2]);
 
     str = minim_string(args[0]);
@@ -138,7 +139,7 @@ minim_object *string_set_proc(int argc, minim_object **args) {
     return minim_void;
 }
 
-minim_object *string_append_proc(int argc, minim_object **args) {
+mobj string_append_proc(int argc, mobj *args) {
     // (-> string ... string)
     char *str;
     long len, j, l;
@@ -146,7 +147,7 @@ minim_object *string_append_proc(int argc, minim_object **args) {
 
     len = 0;
     for (i = 0; i < argc; ++i) {
-        if (!minim_is_string(args[i]))
+        if (!minim_stringp(args[i]))
             bad_type_exn("string-append", "string?", args[i]);
         len += strlen(minim_string(args[i]));
     }
@@ -161,52 +162,52 @@ minim_object *string_append_proc(int argc, minim_object **args) {
         j += l;
     }
    
-    return make_string2(str);
+    return Mstring2(str);
 }
 
-minim_object *number_to_string_proc(int argc, minim_object **args) {
+mobj number_to_string_proc(int argc, mobj *args) {
     // (-> number string)
-    minim_object *o;
+    mobj o;
     char buffer[30];
 
     o = args[0];
-    if (!minim_is_fixnum(o))
+    if (!minim_fixnump(o))
         bad_type_exn("number->string", "number?", o);
     sprintf(buffer, "%ld", minim_fixnum(o));
-    return make_string(buffer);
+    return Mstring(buffer);
 }
 
-minim_object *string_to_number_proc(int argc, minim_object **args) {
+mobj string_to_number_proc(int argc, mobj *args) {
     // (-> string number)
-    minim_object *o = args[0];
-    if (!minim_is_string(o))
+    mobj o = args[0];
+    if (!minim_stringp(o))
         bad_type_exn("string->number", "string?", o);
-    return make_fixnum(atoi(minim_string(o)));
+    return Mfixnum(atoi(minim_string(o)));
 }
 
-minim_object *symbol_to_string_proc(int argc, minim_object **args) {
+mobj symbol_to_string_proc(int argc, mobj *args) {
     // (-> symbol string)
-    minim_object *o = args[0];
-    if (!minim_is_symbol(o))
+    mobj o = args[0];
+    if (!minim_symbolp(o))
         bad_type_exn("symbol->string", "symbol?", o);
-    return make_string(minim_symbol(o));
+    return Mstring(minim_symbol(o));
 }
 
-minim_object *string_to_symbol_proc(int argc, minim_object **args) {
+mobj string_to_symbol_proc(int argc, mobj *args) {
     // (-> string symbol)
-    minim_object *o = args[0];
-    if (!minim_is_string(o))
+    mobj o = args[0];
+    if (!minim_stringp(o))
         bad_type_exn("string->symbol", "string?", o);
     return intern(minim_string(o));
 }
 
-minim_object *format_proc(int argc, minim_object **args) {
+mobj format_proc(int argc, mobj *args) {
     // (-> string any ... string)
     FILE *o;
     char *s;
     long len, i;
     
-    if (!minim_is_string(args[0]))
+    if (!minim_stringp(args[0]))
         bad_type_exn("format", "string?", args[0]);
 
     o = tmpfile();
@@ -221,5 +222,5 @@ minim_object *format_proc(int argc, minim_object **args) {
         s[i] = fgetc(o);
 
     fclose(o);
-    return make_string2(s);
+    return Mstring2(s);
 }

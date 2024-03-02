@@ -125,7 +125,7 @@ static void intern_table_resize(intern_table *itab) {
     itab->alloc = new_alloc;
 }
 
-static void intern_table_insert(intern_table *itab, size_t idx, minim_object *sym) {
+static void intern_table_insert(intern_table *itab, size_t idx, mobj sym) {
     intern_table_bucket *b;
     new_bucket(b, sym, itab->buckets[idx]);
     ++itab->size;
@@ -140,14 +140,15 @@ intern_table *make_intern_table() {
     return itab;
 }
 
-minim_object *intern_symbol(intern_table *itab, const char *sym) {
+mobj intern_symbol(intern_table *itab, const char *sym) {
     intern_table_bucket *b;
-    minim_object *obj;
-    size_t n = strlen(sym);
-    size_t h = hash_bytes(sym, n);
-    size_t idx = h % itab->alloc;
+    mobj obj;
     char *isym;
+    size_t n, h, i, idx;
 
+    n = strlen(sym);
+    h = hash_bytes(sym, n);
+    idx = h % itab->alloc;
     b = itab->buckets[idx];
     while (b != NULL) {
         isym = minim_symbol(b->sym);
@@ -155,7 +156,6 @@ minim_object *intern_symbol(intern_table *itab, const char *sym) {
             return b->sym;
 
         if (strlen(isym) == n) {
-            size_t i;
             for (i = 0; i < n; ++i) {
                 if (isym[i] != sym[i])
                     break;
@@ -169,7 +169,7 @@ minim_object *intern_symbol(intern_table *itab, const char *sym) {
     }
 
     // intern symbol
-    obj = make_symbol(sym);
+    obj = Msymbol(sym);
 
     // update table
     resize_if_needed(itab);
@@ -177,21 +177,23 @@ minim_object *intern_symbol(intern_table *itab, const char *sym) {
     return obj;
 }
 
-minim_object *make_symbol(const char *s) {
-    minim_symbol_object *o = GC_alloc(sizeof(minim_symbol_object));
-    int len = strlen(s);
-    
-    o->type = MINIM_SYMBOL_TYPE;
-    o->value = GC_alloc_atomic((len + 1) * sizeof(char));
-    strncpy(o->value, s, len + 1);
-    return ((minim_object *) o);
+mobj Msymbol(const char *s) {
+    mobj o;
+    int len;
+
+    o = GC_alloc(minim_symbol_size);
+    len = strlen(s);
+    minim_type(o) = MINIM_OBJ_SYMBOL;
+    minim_symbol(o) =  GC_alloc_atomic((len + 1) * sizeof(char));
+    strncpy(minim_symbol(o), s, len + 1);
+    return o;
 }
 
 //
 //  Primitives
 //
 
-minim_object *is_symbol_proc(int argc, minim_object **args) {
+mobj is_symbol_proc(int argc, mobj *args) {
     // (-> any boolean)
-    return minim_is_symbol(args[0]) ? minim_true : minim_false;
+    return minim_symbolp(args[0]) ? minim_true : minim_false;
 }
