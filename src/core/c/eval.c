@@ -332,7 +332,7 @@ static long apply_args() {
 
     // for every arg except the last arg: shift down by 1
     // remove the last argument from the stack
-    memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 2) * sizeof(mobj *));
+    memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 2) * sizeof(mobj));
     irt_call_args_count -= 2;
 
     // for the last argument: push every element of the list

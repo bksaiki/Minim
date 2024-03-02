@@ -323,7 +323,7 @@ extern mobj minim_values;
 #define minim_hashtable_hash(o)         (*((mobj*) PTR_ADD(o, ptr_size)))
 #define minim_hashtable_equiv(o)        (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 #define minim_hashtable_buckets(o)      (*((mobj**) PTR_ADD(o, 3 * ptr_size)))
-#define minim_hashtable_bucket(o, i)    (((mobj*) PTR_ADD(o, 3 * ptr_size))[i])
+#define minim_hashtable_bucket(o, i)    ((minim_hashtable_buckets(o))[i])
 #define minim_hashtable_alloc_ptr(o)    (*((msize**) PTR_ADD(o, 4 * ptr_size)))
 #define minim_hashtable_alloc(o)        (*(minim_hashtable_alloc_ptr(o)))
 #define minim_hashtable_count(o)        (*((msize*) PTR_ADD(o, 5 * ptr_size)))

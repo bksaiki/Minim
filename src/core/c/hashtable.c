@@ -28,30 +28,60 @@ mobj Mhashtable(mobj hash_fn, mobj equiv_fn) {
     return Mhashtable2(hash_fn, equiv_fn, 0);
 }
 
-static mobj copy_hashtable(const mobj src) {
-    // copy the hashtable description
-    mobj dst = GC_alloc(minim_hashtable_size);
+
+static mobj hashtable_copy(const mobj src) {
+    mobj dst, b, it, t;
+
+    dst = GC_alloc(minim_hashtable_size);
     minim_type(dst) = MINIM_OBJ_HASHTABLE;
     minim_hashtable_alloc_ptr(dst) = minim_hashtable_alloc_ptr(src);
     minim_hashtable_count(dst) = minim_hashtable_count(src);
     minim_hashtable_buckets(dst) = GC_alloc(minim_hashtable_alloc(src) * sizeof(mobj));
     minim_hashtable_hash(dst) = minim_hashtable_hash(src);
-    minim_hashtable_equiv(dst) = minim_hashtable_equiv(src);
-    
-    // copy the buckets exactly
-    memcpy(
-        minim_hashtable_buckets(dst),
-        minim_hashtable_buckets(src),
-        minim_hashtable_alloc(src) * sizeof(mobj)
-    );
+    minim_hashtable_equiv(dst) = minim_hashtable_equiv(dst);
+
+    for (long i = 0; i < minim_hashtable_alloc(src); ++i) {
+        b = minim_hashtable_bucket(src, i);
+        if (b) {
+            t = Mcons(Mcons(minim_caar(b), minim_cdar(b)), minim_null);
+            minim_hashtable_bucket(dst, i) = t;
+            for (it = minim_cdr(b); !minim_nullp(it); it = minim_cdr(it)) {
+                minim_cdr(t) = Mcons(Mcons(minim_caar(it), minim_cdar(it)), minim_null);
+                t = minim_cdr(t);
+            }
+        } else {
+            minim_hashtable_bucket(dst, i) = NULL;
+        }
+    }
 
     return dst;
+}
+
+int hashtable_equalp(mobj h1, mobj h2) {
+    mobj it, v;
+    size_t i;
+
+    if (minim_hashtable_count(h1) != minim_hashtable_count(h2))
+        return 0;
+
+    for (i = 0; i < minim_hashtable_alloc(h1); ++i) {
+        it = minim_hashtable_bucket(h1, i);
+        if (it) {
+            for (; !minim_nullp(it); it = minim_cdr(it)) {
+                v = hashtable_find(h2, minim_caar(it));
+                if (minim_nullp(v) || !minim_equalp(minim_cdr(v), minim_cdar(it)))
+                    return 0;
+            }
+        }
+    }
+
+    return 1;
 }
 
 static void hashtable_clear(mobj o) {
     minim_hashtable_alloc_ptr(o) = start_size_ptr;
     minim_hashtable_count(o) = 0;
-    memset(minim_hashtable_buckets(o), 0, minim_hashtable_alloc(o) * sizeof(mobj));
+    minim_hashtable_buckets(o) = GC_calloc(minim_hashtable_alloc(o), sizeof(mobj));
 }
 
 static size_t hash_bytes(const void *data, size_t len, size_t hash0) {
@@ -69,22 +99,24 @@ static size_t hash_bytes(const void *data, size_t len, size_t hash0) {
 }
 
 static size_t eq_hash2(mobj o, size_t hash) {
-    switch (minim_type(o)) {
-    case MINIM_OBJ_CHAR:
-        return hash_bytes(&minim_char(o), sizeof(minim_char(o)), hash);
+    switch (minim_type(o))
+    {
     case MINIM_OBJ_FIXNUM:
         return hash_bytes(&minim_fixnum(o), sizeof(minim_fixnum(o)), hash);
+    case MINIM_OBJ_CHAR:
+        return hash_bytes(&minim_char(o), sizeof(minim_char(o)), hash);
     default:
-        return hash_bytes(&o, sizeof(mobj), hash);
+        return hash_bytes(&o, sizeof(mobj ), hash);
     }
 }
 
 static size_t equal_hash2(mobj o, size_t hash) {
+    mobj it, res;
     minim_thread *th;
-    mobj res, it;
     long stashc, i;
 
-    switch (minim_type(o)) {
+    switch (minim_type(o))
+    {
     case MINIM_OBJ_SYMBOL:
         return hash_bytes(minim_symbol(o), strlen(minim_symbol(o)), hash);
     case MINIM_OBJ_STRING:
@@ -112,7 +144,7 @@ static size_t equal_hash2(mobj o, size_t hash) {
         // Hashing records using `equal?` recursively
         // descends through the record
         if (record_valuep(o)) {
-            // Unsafe code to follow
+        // Unsafe code to follow
             th = current_thread();
             stashc = stash_call_args();
 
@@ -136,13 +168,13 @@ static size_t eq_hash(mobj o) {
     return eq_hash2(o, hash_init);
 }
 
-static size_t equal_hash(mobj *o) {
+static size_t equal_hash(mobj o) {
     return equal_hash2(o, hash_init);
 }
 
 static size_t hash_key(mobj ht, mobj k) {
+    mobj i, proc;
     minim_thread *th;
-    mobj proc, i;
     long stashc;
 
     proc = minim_hashtable_hash(ht);
@@ -190,59 +222,35 @@ static int key_equiv(mobj ht, mobj k1, mobj k2) {
     }
 }
 
-int hashtable_equalp(const mobj h1, const mobj h2) {
-    mobj it, v;
-    size_t i;
-
-    if (minim_hashtable_count(h1) != minim_hashtable_count(h2))
-        return 0;
-
-    for (i = 0; i < minim_hashtable_alloc(h1); ++i) {
-        it = minim_hashtable_bucket(h1, i);
-        if (it) {
-            for (; !minim_nullp(it); it = minim_cdr(it)) {
-                v = hashtable_find(h2, minim_caar(it));
-                if (minim_nullp(v) || !minim_equalp(minim_cdr(v), minim_cdar(it)))
-                    return 0;
-            }
-        }
-    }
-
-    return 1;
-}
-
-static void hashtable_resize(mobj *ht, size_t *alloc_ptr) {
-    mobj **buckets, *it;
+static void hashtable_resize(mobj ht, size_t *alloc_ptr) {
+    mobj *buckets, it;
     size_t i, idx;
 
-    buckets = GC_calloc(*alloc_ptr, sizeof(mobj));
+    buckets = GC_calloc(*alloc_ptr, sizeof(mobj ));
     for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
         it = minim_hashtable_bucket(ht, i);
         if (it) {
             for (; !minim_nullp(it); it = minim_cdr(it)) {
                 idx = hash_key(ht, minim_caar(it)) % *alloc_ptr;
-                if (buckets[idx]) {
-                    buckets[idx] = Mcons(minim_car(it), buckets[idx]);
-                } else {
-                    buckets[idx] = Mlist1(minim_car(it));
-                }
+                buckets[idx] = Mcons(minim_car(it), (buckets[idx] ? buckets[idx] : minim_null));
             }
         }
     }
 
     minim_hashtable_alloc_ptr(ht) = alloc_ptr;
-    memcpy(minim_hashtable_buckets(ht), buckets, *alloc_ptr * sizeof(mobj));
+    minim_hashtable_alloc(ht) = *alloc_ptr;
+    minim_hashtable_buckets(ht) = buckets;
 }
 
-static void hashtable_opt_resize(mobj *ht) {
+static void hashtable_opt_resize(mobj ht) {
     size_t *alloc_ptr;
-    size_t alloc, sz;
+    size_t alloc, count;
 
-    sz = minim_hashtable_count(ht);
+    count = minim_hashtable_count(ht);
     alloc = minim_hashtable_alloc(ht);
-    if (load_factor(sz, alloc) > MINIM_HASHTABLE_LOAD_FACTOR) {
+    if (load_factor(count, alloc) > MINIM_HASHTABLE_LOAD_FACTOR) {
         alloc_ptr = minim_hashtable_alloc_ptr(ht);
-        for (; load_factor(sz, *alloc_ptr) > MINIM_HASHTABLE_LOAD_FACTOR; ++alloc_ptr);
+        for (; load_factor(count, *alloc_ptr) > MINIM_HASHTABLE_LOAD_FACTOR; ++alloc_ptr);
         hashtable_resize(ht, alloc_ptr);
     }
 }
@@ -508,7 +516,7 @@ mobj hashtable_copy_proc(int argc, mobj *args) {
     ht = args[0];
     if (!minim_hashtablep(ht))
         bad_type_exn("hashtable-copy", "hashtable?", ht);
-    return copy_hashtable(ht);
+    return hashtable_copy(ht);
 }
 
 mobj hashtable_clear_proc(int argc, mobj *args) {

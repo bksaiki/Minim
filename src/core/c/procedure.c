@@ -14,6 +14,7 @@ mobj Mprim(mprim_proc proc, char *name, short min_arity, short max_arity) {
     minim_prim(o) = proc;
     minim_prim_argc_low(o) = min_arity;
     minim_prim_argc_high(o) = max_arity;
+    minim_prim_name(o) = name;
     return o;
 }
 

@@ -26,7 +26,7 @@
     ); \
 }
 
-void populate_env(mobj *env) {
+void populate_env(mobj env) {
     add_value("null", minim_null);
     add_value("true", minim_true);
     add_value("false", minim_false);
@@ -241,17 +241,15 @@ void populate_env(mobj *env) {
 }
 
 mobj make_env() {
-    mobj *env = setup_env();
+    mobj env = setup_env();
     populate_env(env);
     return env;
 }
 
 void minim_boot_init() {
     minim_thread *th;
-    mobj *record_equal_proc_obj,
-                 *record_hash_proc_obj,
-                 *record_write_proc_obj;
-
+    mobj record_equal_proc_obj, record_hash_proc_obj, record_write_proc_obj;
+    
     GC_pause();
 
     // initialize globals

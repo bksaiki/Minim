@@ -35,7 +35,7 @@ static mobj environment_names(mobj env) {
         if (minim_vectorp(frame)) {
             // small namespace
             for (int i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
-                mobj *bind = minim_vector_ref(frame, i);
+                mobj bind = minim_vector_ref(frame, i);
                 if (minim_falsep(bind))
                     break;
                 
@@ -43,8 +43,8 @@ static mobj environment_names(mobj env) {
             }
         } else if (minim_hashtablep(frame)) {
             // large namespace
-            mobj *keys = hashtable_keys(frame);
-            for (mobj *it = keys; !minim_nullp(it); it = minim_cdr(it))
+            mobj keys = hashtable_keys(frame);
+            for (mobj it = keys; !minim_nullp(it); it = minim_cdr(it))
                 hashtable_set(names, minim_car(it), minim_null);
         } else {
             not_environment_exn("environment_names()", frame);

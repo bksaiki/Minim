@@ -20,7 +20,8 @@ mobj list_to_vector(mobj lst) {
     mobj v, it;
     msize i;
     
-    it = v = Mvector(list_length(lst), NULL);
+    it = lst;
+    v = Mvector(list_length(lst), NULL);
     for (i = 0; i < minim_vector_len(v); ++i) {
         minim_vector_ref(v, i) = minim_car(it);
         it = minim_cdr(it);
