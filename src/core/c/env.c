@@ -15,7 +15,7 @@ mobj empty_env;
 //    frames       ::= ((<var0> . <val1>) (<var1> . <val1>) ...)
 //
 //  Actually:
-//    - each frame is a vector if # of <var>s is less than 10
+//    - each frame is a fixed size vector
 //    - otherwise we allocate a hashtable
 //
 
@@ -34,7 +34,7 @@ static mobj environment_names(mobj env) {
         frame = minim_env_bindings(env);
         if (minim_vectorp(frame)) {
             // small namespace
-            for (int i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+            for (int i = 0; i < minim_vector_len(frame); ++i) {
                 mobj bind = minim_vector_ref(frame, i);
                 if (minim_falsep(bind))
                     break;
@@ -57,23 +57,26 @@ static mobj environment_names(mobj env) {
 }
 
 mobj Menv(mobj prev) {
+    return Menv2(prev, ENVIRONMENT_VECTOR_MAX);
+}
+
+mobj Menv2(mobj prev, size_t size) {
     mobj env = GC_alloc(minim_env_size);
     minim_type(env) = MINIM_OBJ_ENV;
-    minim_env_bindings(env) = Mvector(ENVIRONMENT_VECTOR_MAX, minim_false);
+    minim_env_bindings(env) = Mvector(size, minim_false);
     minim_env_prev(env) = prev;
     return env;
 }
 
 void env_define_var_no_check(mobj env, mobj var, mobj val) {
-    mobj frame;
-    long i;
+    mobj frame, new_frame, bind;
+    long frame_size, i;
 
     frame = minim_env_bindings(env);
     if (minim_vectorp(frame)) {
-        mobj new_frame, bind;
-
         // small namespace
-        for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+        frame_size = minim_vector_len(frame);
+        for (i = 0; i < frame_size; ++i) {
             if (minim_falsep(minim_vector_ref(frame, i))) {
                 minim_vector_ref(frame, i) = Mcons(var, val);
                 return;
@@ -81,8 +84,8 @@ void env_define_var_no_check(mobj env, mobj var, mobj val) {
         }
 
         // too small: convert to a large namespace
-        new_frame = Mhashtable2(eq_hash_proc_obj, eq_proc_obj, ENVIRONMENT_VECTOR_MAX + 1);
-        for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+        new_frame = Mhashtable2(eq_hash_proc_obj, eq_proc_obj, frame_size + 1);
+        for (i = 0; i < frame_size; ++i) {
             bind = minim_vector_ref(frame, i);
             hashtable_set(new_frame, minim_car(bind), minim_cdr(bind));
         }
@@ -105,7 +108,7 @@ mobj env_define_var(mobj env, mobj var, mobj val) {
     frame = minim_env_bindings(env);
     if (minim_vectorp(frame)) {
         // small namespace
-        for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+        for (i = 0; i < minim_vector_len(frame); ++i) {
             bind = minim_vector_ref(frame, i);
             if (minim_falsep(bind))
                 break;
@@ -141,7 +144,7 @@ mobj env_set_var(mobj env, mobj var, mobj val) {
         frame = minim_env_bindings(env);
         if (minim_vectorp(frame)) {
             // small namespace
-            for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+            for (i = 0; i < minim_vector_len(frame); ++i) {
                 bind = minim_vector_ref(frame, i);
                 if (minim_falsep(bind))
                     break;
@@ -179,7 +182,7 @@ int env_var_is_defined(mobj env, mobj var, int recursive) {
         frame = minim_env_bindings(env);
         if (minim_vectorp(frame)) {
             // small namespace
-            for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+            for (i = 0; i < minim_vector_len(frame); ++i) {
                 bind = minim_vector_ref(frame, i);
                 if (minim_falsep(bind))
                     break;
@@ -213,7 +216,7 @@ mobj env_lookup_var(mobj env, mobj var) {
         frame = minim_env_bindings(env);
         if (minim_vectorp(frame)) {
             // small namespace
-            for (i = 0; i < ENVIRONMENT_VECTOR_MAX; ++i) {
+            for (i = 0; i < minim_vector_len(frame); ++i) {
                 bind = minim_vector_ref(frame, i);
                 if (minim_falsep(bind))
                     break;

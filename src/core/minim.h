@@ -403,6 +403,7 @@ mobj Moutput_port(FILE *stream);
 mobj Mpattern(mobj value, mobj depth);
 mobj Msyntax(mobj e, mobj loc);
 mobj Menv(mobj prev);
+mobj Menv2(mobj prev, size_t size);
 
 #define Mlist1(a)                   Mcons(a, minim_null)
 #define Mlist2(a, b)                Mcons(a, Mlist1(b))
@@ -687,6 +688,8 @@ NORETURN void result_arity_exn(short expected, short actual);
 NORETURN void uncallable_prim_exn(const char *name);
 
 // Primitives
+
+void init_prims(mobj env);
 
 #define DEFINE_PRIM_PROC(name) \
     mobj name ## _proc(int, mobj *);

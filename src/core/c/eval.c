@@ -229,6 +229,24 @@ static void get_lambda_arity(mobj e, short *min_arity, short *max_arity) {
     }
 }
 
+static long let_values_env_size(mobj e) {
+    mobj bindings, bind;
+    long var_count = 0;
+    for (bindings = minim_cadr(e); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
+        bind = minim_car(bindings);
+        var_count += list_length(minim_car(bind));
+    }
+    return var_count;
+}
+
+static long closure_env_size(mobj fn) {
+    if (minim_closure_argc_low(fn) == minim_closure_argc_high(fn)) {
+        return minim_closure_argc_low(fn);
+    } else {
+        return minim_closure_argc_low(fn) + 1;
+    }
+}
+
 static long eval_exprs(mobj exprs, mobj env) {
     mobj it, result;
     long argc;
@@ -340,7 +358,7 @@ application:
 
         // check arity and extend environment
         check_closure_arity(proc, argc);
-        env = Menv(minim_closure_env(proc));
+        env = Menv2(minim_closure_env(proc), closure_env_size(proc));
         args = irt_call_args;
 
         // process args
@@ -438,7 +456,7 @@ loop:
                 return minim_void;
             } else if (head == let_values_symbol) {
                 // let-values form
-                env2 = Menv(env);
+                env2 = Menv2(env, let_values_env_size(expr));
                 for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
@@ -468,7 +486,7 @@ loop:
                 goto loop;
             } else if (head == letrec_values_symbol) {
                 // letrec-values
-                env = Menv(env);
+                env2 = Menv2(env, let_values_env_size(expr));
                 for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
@@ -610,7 +628,7 @@ application:
 
             // check arity and extend environment
             check_closure_arity(proc, argc);
-            env = Menv(minim_closure_env(proc));
+            env = Menv2(minim_closure_env(proc), closure_env_size(proc));
             args = irt_call_args;
 
             // process args
