@@ -18,14 +18,7 @@ mobj Mstring(const char *s) {
     return o;
 }
 
-mobj Mstring2(char *s) {
-    mobj o = GC_alloc(minim_string_size);
-    minim_type(o) = MINIM_OBJ_STRING;
-    minim_string(o) = s;
-    return o;
-}
-
-mobj Mstring3(long len, mchar c) {
+mobj Mstring2(long len, mchar c) {
     mobj o = GC_alloc(minim_string_size);
     minim_type(o) = MINIM_OBJ_STRING;
     if (c == 0) {
@@ -40,14 +33,6 @@ mobj Mstring3(long len, mchar c) {
     return o;
 }
 
-static void string_out_of_bounds_exn(const char *name, const char *str, long idx) {
-    fprintf(stderr, "%s, index out of bounds\n", name);
-    fprintf(stderr, " string: %s\n", str);
-    fprintf(stderr, " length: %ld\n", strlen(str));
-    fprintf(stderr, " index:  %ld\n", idx);
-    minim_shutdown(1);
-}
-
 //
 //  Primitives
 //
@@ -58,7 +43,7 @@ mobj stringp_proc(mobj x) {
 
 mobj make_string(mobj len, mobj init) {
     // (-> non-negative-integer char string)
-    return Mstring3(minim_fixnum(len), minim_char(init));
+    return Mstring2(minim_fixnum(len), minim_char(init));
 }
 
 mobj string_length(mobj s) {
@@ -79,7 +64,7 @@ mobj string_set(mobj s, mobj idx, mobj x) {
 
 mobj number_to_string(mobj n) {
     // (-> number string)
-    mobj s = Mstring3(FIXNUM_STRING_LEN, 0);
+    mobj s = Mstring2(FIXNUM_STRING_LEN, 0);
     sprintf(minim_string(s), "%ld", minim_fixnum(n));
     return s;
 }
@@ -105,7 +90,7 @@ mobj list_to_string(mobj xs) {
     long len, i;
 
     len = list_length(xs);
-    s = Mstring3(len, 0);
+    s = Mstring2(len, 0);
     for (i = 0; i < len; i++) {
         minim_string(s)[i] = minim_char(minim_car(xs));
         xs = minim_cdr(xs);
@@ -144,5 +129,5 @@ mobj format_proc(int argc, mobj *args) {
         s[i] = fgetc(o);
 
     fclose(o);
-    return Mstring2(s);
+    return Mstring(s);
 }

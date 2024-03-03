@@ -22,7 +22,9 @@ long list_length(mobj xs) {
     long len = 0;
     for (mobj it = xs; !minim_nullp(it); it = minim_cdr(it)) {
         if (!minim_consp(it)) {
-            fprintf(stderr, "list_length: not a list");
+            fprintf(stderr, "list_length: not a list ");
+            write_object(stderr, xs);
+            fprintf(stderr, "\n");
             minim_shutdown(1);
         }
         ++len;

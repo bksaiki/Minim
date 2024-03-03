@@ -90,7 +90,7 @@ void minim_boot_init() {
     th = current_thread();
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
-    current_directory(th) = Mstring2(get_current_dir());
+    current_directory(th) = Mstring(get_current_dir());
     command_line(th) = minim_null;
     record_equal_proc(th) = record_equal_proc_obj;
     record_hash_proc(th) = record_hash_proc_obj;

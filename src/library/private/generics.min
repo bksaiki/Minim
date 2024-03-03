@@ -2,7 +2,7 @@
 ;;; Generics
 ;;;
 
-(import "list.min" "pre-base.min" "record-utils.min")
+(import "list.min" "pre-base.min")
 
 (export $make-generics-type
         $generics-type?

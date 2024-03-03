@@ -402,8 +402,7 @@ mobj Mchar(mchar c);
 mobj Mfixnum(long v);
 mobj Msymbol(const char *s);
 mobj Mstring(const char *s);
-mobj Mstring2(char *s);
-mobj Mstring3(long len, mchar c);
+mobj Mstring2(long len, mchar c);
 mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(long len, mobj init);
 mobj Mrecord(mobj rtd, int fieldc);
@@ -547,7 +546,22 @@ mobj box_proc(mobj x);
 mobj unbox_proc(mobj x);
 mobj box_set_proc(mobj x, mobj v);
 
-mobj identity_proc();
+mobj make_rtd(mobj name, mobj parent, mobj uid, mobj sealedp, mobj opaquep, mobj fields);
+mobj rtd_name(mobj rtd);
+mobj rtd_parent(mobj rtd);
+mobj rtd_uid(mobj rtd);
+mobj rtd_sealedp(mobj rtd);
+mobj rtd_opaquep(mobj rtd);
+mobj rtd_length(mobj rtd);
+mobj rtd_fields(mobj rtd);
+mobj rtd_field_mutablep(mobj rtd, mobj idx);
+
+mobj make_record(mobj rtd, mobj fields);
+mobj record_rtd_proc(mobj rec);
+mobj record_ref_proc(mobj rec, mobj idx);
+mobj record_set_proc(mobj rec, mobj idx, mobj x);
+
+mobj identity_proc(mobj x);
 
 mobj strip_syntax(mobj o);
 mobj to_syntax(mobj o);
@@ -688,13 +702,13 @@ mobj make_rest_argument(mobj args[], short argc);
 */
 
 #define record_rtd_min_size         6
-
 #define record_rtd_name(rtd)        minim_record_ref(rtd, 0)
 #define record_rtd_parent(rtd)      minim_record_ref(rtd, 1)
 #define record_rtd_uid(rtd)         minim_record_ref(rtd, 2)
 #define record_rtd_sealed(rtd)      minim_record_ref(rtd, 3)
 #define record_rtd_opaque(rtd)      minim_record_ref(rtd, 4)
 #define record_rtd_protocol(rtd)    minim_record_ref(rtd, 5)
+#define record_rtd_fieldc(rtd)      (minim_record_count(rtd) - record_rtd_min_size)
 #define record_rtd_field(rtd, i)    minim_record_ref(rtd, (record_rtd_min_size + (i)))
 
 #define record_opaquep(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
@@ -824,18 +838,6 @@ DEFINE_PRIM_PROC(integer_to_char);
 // strings
 DEFINE_PRIM_PROC(format);
 // record
-DEFINE_PRIM_PROC(make_rtd);
-DEFINE_PRIM_PROC(record_rtd);
-DEFINE_PRIM_PROC(record_type_name);
-DEFINE_PRIM_PROC(record_type_parent);
-DEFINE_PRIM_PROC(record_type_uid);
-DEFINE_PRIM_PROC(record_type_sealed);
-DEFINE_PRIM_PROC(record_type_opaque);
-DEFINE_PRIM_PROC(record_type_fields);
-DEFINE_PRIM_PROC(record_type_field_mutable);
-DEFINE_PRIM_PROC(Mrecord);
-DEFINE_PRIM_PROC(record_ref);
-DEFINE_PRIM_PROC(record_set);
 DEFINE_PRIM_PROC(default_record_equal_procedure);
 DEFINE_PRIM_PROC(default_record_hash_procedure);
 DEFINE_PRIM_PROC(default_record_write_procedure);

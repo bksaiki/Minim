@@ -144,19 +144,22 @@ void init_prims(mobj env) {
 
     add_unsafe_procedure("record?", recordp_proc, 1);
     add_unsafe_procedure("record-type-descriptor?", record_rtdp_proc, 1);
-    add_procedure("make-record-type-descriptor", make_rtd_proc, 6, 6);
-    add_procedure("record-type-name", record_type_name_proc, 1, 1);
-    add_procedure("record-type-parent", record_type_parent_proc, 1, 1);
-    add_procedure("record-type-uid", record_type_uid_proc, 1, 1);
-    add_procedure("record-type-opaque?", record_type_opaque_proc, 1, 1);
-    add_procedure("record-type-sealed?", record_type_sealed_proc, 1, 1);
-    add_procedure("record-type-field-names", record_type_fields_proc, 1, 1);
-    add_procedure("record-type-field-mutable?", record_type_field_mutable_proc, 2, 2);
+    add_unsafe_procedure("$make-record-type-descriptor", make_rtd, 6);
+    add_unsafe_procedure("$record-type-name", rtd_name, 1);
+    add_unsafe_procedure("$record-type-parent", rtd_parent, 1);
+    add_unsafe_procedure("$record-type-uid", rtd_uid, 1);
+    add_unsafe_procedure("$record-type-sealed?", rtd_sealedp, 1);
+    add_unsafe_procedure("$record-type-opaque?", rtd_opaquep, 1);
+    add_unsafe_procedure("$record-type-length", rtd_length, 1);
+    add_unsafe_procedure("$record-type-field-names", rtd_fields, 1);
+    add_unsafe_procedure("$record-type-field-mutable?", rtd_field_mutablep, 2);
+
     add_unsafe_procedure("$record-value?", record_valuep_proc, 1);
-    add_procedure("$make-record", Mrecord_proc, 1, ARG_MAX);
-    add_procedure("$record-rtd", record_rtd_proc, 1, 1);
-    add_procedure("$record-ref", record_ref_proc, 2, 2);
-    add_procedure("$record-set!", record_set_proc, 3, 3);
+    add_unsafe_procedure("$make-record", make_record, 2);
+    add_unsafe_procedure("$record-rtd", record_rtd_proc, 1);
+    add_unsafe_procedure("$record-ref", record_ref_proc, 2);
+    add_unsafe_procedure("$record-set!", record_set_proc, 3);
+
     add_procedure("$current-record-equal-procedure", current_record_equal_procedure_proc, 0, 1);
     add_procedure("$current-record-hash-procedure", current_record_hash_procedure_proc, 0, 1);
     add_procedure("$current-record-write-procedure", current_record_write_procedure_proc, 0, 1);

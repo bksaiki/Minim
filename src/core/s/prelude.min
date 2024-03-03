@@ -988,3 +988,202 @@
 
 ;; --------------------------------------------------------
 ;; Hashtables
+
+;; --------------------------------------------------------
+;; Records
+
+(define-values (make-record-type-descriptor)
+  (letrec-values ([(field-id)
+                   (lambda (field)
+                     (if (pair? field)
+                         (let-values ([(type) ($car field)]
+                                      [(rib) ($cdr field)])
+                            (if (if (eq? type 'immutable) #t (eq? type 'mutable))
+                                (let-values ([(name) ($car rib)]
+                                             [(rib) ($cdr rib)])
+                                   (if (symbol? name)
+                                       (if (null? rib)
+                                           name
+                                           #f)
+                                       #f))
+                                #f))
+                         #f))]
+                  [(check-fields!)
+                   (lambda (fields)
+                     (letrec-values ([(loop)
+                                      (lambda (i ids)
+                                        (if (>= i ($vector-length fields))
+                                            (void)
+                                            (let-values ([(maybe-id) (field-id ($vector-ref fields i))])
+                                              (if maybe-id
+                                                  (if (ormap (lambda (id) (eq? maybe-id id)) ids)
+                                                      (error 'make-record-type-descriptor
+                                                             "duplicate field"
+                                                             maybe-id)
+                                                      (loop (add1 i) (cons maybe-id ids)))
+                                                  (error 'make-record-type-descriptor
+                                                         "invalid field; expected '(immutable <name>) or '(mutable <name>)"
+                                                         field)))))])
+                       (loop 0 '())))])
+    (lambda (name parent uid sealed? opaque? fields)
+      (if (symbol? name)
+          (if (if (record-type-descriptor? parent)
+                  (begin
+                    (if ($record-type-sealed? parent)
+                        (error 'make-record-type-descriptor
+                               "cannot extend sealed record type"
+                               parent)
+                        #t))
+                  (not parent))
+              (if (if (symbol? uid) #t (not uid))
+                  (if (boolean? sealed?)
+                      (if (boolean? opaque?)
+                          (if (vector? fields)
+                             (begin
+                               (check-fields! fields)
+                               ($make-record-type-descriptor name
+                                                             parent
+                                                             uid
+                                                             sealed?
+                                                             opaque?
+                                                             fields))
+                             (error 'make-record-type-descriptor
+                                    "expected vector?"
+                                    fields))
+                          (error 'make-record-type-descriptor
+                                 "expected boolean?"
+                                 opaque?))
+                      (error 'make-record-type-descriptor
+                             "expected boolean?"
+                             sealed?))
+                  (error 'make-record-type-descriptor
+                         "expected symbol? or #f"
+                         uid))
+              (error 'make-record-type-descriptor
+                     "expected record-type-descriptor? or #f"
+                     parent))
+          (error 'make-record-type-descriptor
+                 "expected symbol?"
+                 name)))))
+      
+(define-values (record-type-name
+                record-type-parent
+                record-type-uid
+                record-type-sealed?
+                record-type-opaque?
+                record-type-field-names)
+  (let-values ([(make-accessor)
+                (lambda (name accessor)
+                  (lambda (rtd)
+                    (if (record-type-descriptor? rtd)
+                        (accessor rtd)
+                        (error name "expected record-type-name?" rtd))))])
+    (values
+      (make-accessor 'record-type-name $record-type-name)
+      (make-accessor 'record-type-parent $record-type-parent)
+      (make-accessor 'record-type-uid $record-type-uid)
+      (make-accessor 'record-type-sealed? $record-type-sealed?)
+      (make-accessor 'record-type-opaque? $record-type-opaque?)
+      (make-accessor 'record-type-field-names $record-type-field-names))))
+
+(define-values (record-type-field-mutable?)
+  (lambda (rtd idx)
+    (if (record-type-descriptor? rtd)
+        (if (if (integer? idx) (>= idx 0) #f)
+            (let-values ([(fields) ($record-type-field-names rtd)])
+              (if (< idx ($vector-length fields))
+                  ($record-type-field-mutable? rtd idx)
+                  (error 'record-type-field-mutable? "field index out of bounds" rtd idx)))
+            (error 'record-type-field-mutable? "expected non-negative integer?" idx))
+        (error 'record-type-field-mutable? "expected record-type-name?" rtd))))
+
+(define-values (record?
+                record-rtd
+                record-constructor
+                record-predicate
+                record-accessor
+                record-mutator)
+  (let-values ([(record-size)
+                (lambda (rtd)
+                   (letrec-values ([(loop)
+                                    (lambda (rtd size)
+                                      (let-values ([(size) (+ size ($record-type-length rtd))]
+                                                   [(parent) ($record-type-parent rtd)])
+                                         (if parent
+                                             (loop parent size)
+                                             size)))])
+                     (loop rtd 0)))]
+               [(record-value?)
+                (lambda (rtd rec)
+                  (letrec-values ([(loop)
+                                   (lambda (rec-rtd)
+                                     (if (eq? rtd rec-rtd)
+                                         #t
+                                         (let-values ([(parent) ($record-type-parent rec-rtd)])
+                                           (if parent (loop parent) #f))))])
+                    (loop ($record-rtd rec))))])
+    (values
+      (lambda (rec) ; record?
+        (if ($record-value? rec)
+            (not ($record-type-opaque? ($record-rtd rec)))
+            #f))
+      (lambda (rec) ; record-rtd
+        (if (record? rec)
+            ($record-rtd rec)
+            (error 'record-rtd "not a record" rec)))
+      (lambda (rtd) ; record-constructor
+        (if (record-type-descriptor? rtd)
+            (let-values ([(size) (record-size rtd)])
+              (lambda args
+                (if (= (length args) size)
+                    ($make-record rtd args)
+                    (error 'arity-mismatch 
+                           (format "~s constructor" (record-type-name rtd))
+                           (format " field count: ~a" size)
+                           (format " fields provided: ~a" (length args))))))
+            (error 'record-constructor "expected record-type-descriptor?" rtd)))
+      (lambda (rtd) ; record-predicate
+        (if (record-type-descriptor? rtd)
+            (lambda (rec)
+              (if ($record-value? rec)
+                  (record-value? rtd rec)
+                  #f))
+            (error 'record-predicate "expected record-type-descriptor?" rtd)))
+      (lambda (rtd idx) ; record-accessor
+        (if (record-type-descriptor? rtd)
+            (if (if (integer? idx) (>= idx 0) #f)
+                (if (< idx ($record-type-length rtd))
+                    (let-values ([(rtd?) (record-predicate rtd)]
+                                 [(parent-size) (if ($record-type-parent rtd)
+                                                    (record-size ($record-type-parent rtd))
+                                                    0)])
+                      (let-values ([(actual-idx) (+ parent-size idx)])
+                        (lambda (rec)
+                          (if (rtd? rec)
+                              ($record-ref rec actual-idx)
+                              (error 'record-accessor
+                                     "type violation"
+                                     (format "expected: ~a" rtd)
+                                     (format "got: ~a" rec))))))
+                    (error 'record-accessor "field index out of bounds" rtd idx))
+                (error 'record-accessor "expected record-type-descriptor?" rtd))
+            (error 'record-accessor "expected record-type-descriptor?" rtd)))
+      (lambda (rtd idx) ; record-mutator
+        (if (record-type-descriptor? rtd)
+            (if (if (integer? idx) (>= idx 0) #f)
+                (if (< idx ($record-type-length rtd))
+                    (let-values ([(rtd?) (record-predicate rtd)]
+                                 [(parent-size) (if ($record-type-parent rtd)
+                                                    (record-size ($record-type-parent rtd))
+                                                    0)])
+                      (let-values ([(actual-idx) (+ parent-size idx)])
+                        (lambda (rec v)
+                          (if (rtd? rec)
+                              ($record-set! rec actual-idx v)
+                              (error 'record-mutator
+                                     "type violation"
+                                     (format "expected: ~a" rtd)
+                                     (format "got: ~a" rec))))))
+                    (error 'record-mutator "field index out of bounds" rtd idx))
+                (error 'record-mutator "expected record-type-descriptor?" rtd))
+            (error 'record-mutator "expected record-type-descriptor?" rtd)))))) 

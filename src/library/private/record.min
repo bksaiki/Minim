@@ -4,19 +4,12 @@
 
 (import "generics.min"
         "pre-base.min"
-        "list.min"
-        "record-utils.min")
+        "list.min")
 
-(export record?                       ;; re-exported
-        record-rtd                    ;; re-exported
-        record-constructor            ;; re-exported
-        record-predicate              ;; re-exported
-        record-accessor               ;; re-exported
-        record-mutator                ;; re-exported
-  
+(export define-record-type
         record-type-equal-procedure
         record-type-hash-procedure
-        define-record-type
+        
 
         $make-generics-type           ;; re-exported
         define-generics               ;; re-exported

@@ -120,7 +120,7 @@ static mobj read_fasl_string(FILE *in) {
         str[i] = read_fasl_byte(in);
     str[len] = '\0';
 
-    return Mstring2(str);
+    return Mstring(str);
 }
 
 static mobj read_fasl_fixnum(FILE *in) {

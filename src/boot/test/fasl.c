@@ -164,7 +164,8 @@ int test_record() {
 
     check_fasl_equal("(make-record-type-descriptor 'foo #f #f #f #f #())", "#<record-type:foo>");
     check_fasl_equal("($make-record "
-                      "(make-record-type-descriptor 'foo #f #f #f #f #()))",
+                      "(make-record-type-descriptor 'foo #f #f #f #f #())"
+                      "'())",
                      "#<foo>");
 
     check_fasl_equal("(make-record-type-descriptor 'bar #f #f #f #f "
@@ -173,7 +174,7 @@ int test_record() {
     check_fasl_equal("($make-record "
                       "(make-record-type-descriptor 'bar #f #f #f #f "
                        "#((immutable a)))"
-                      "1)",
+                      "'(1))",
                      "#<bar>");
 
     check_fasl_equal("(make-record-type-descriptor 'baz #f #f #f #f "
@@ -182,7 +183,7 @@ int test_record() {
     check_fasl_equal("($make-record "
                       "(make-record-type-descriptor 'baz #f #f #f #f "
                        "#((immutable a) (immutable b) (immutable c)))"
-                      "1 2 3)",
+                      "'(1 2 3))",
                      "#<baz>");
 
     return passed;

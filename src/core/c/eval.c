@@ -610,6 +610,12 @@ application:
             case 4:
                 result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
                 break;
+            case 5:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4]);
+                break;
+            case 6:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4], args[5]);
+                break;
             default:
                 clear_call_args();
                 fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
