@@ -5,9 +5,8 @@
 #include "../minim.h"
 
 #define SET_NAME_IF_CLOSURE(name, val) { \
-    if (minim_closurep(val)) { \
-        if (minim_closure_name(val) == NULL) \
-            minim_closure_name(val) = minim_symbol(name); \
+    if (minim_closurep(val) && minim_closure_name(val) == NULL) { \
+        minim_closure_name(val) = minim_symbol(name); \
     } \
 }
 
@@ -516,7 +515,7 @@ loop:
                 for (bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
                     bind = minim_car(bindings);
                     var_count = list_length(minim_car(bind));
-                    result = eval_expr(minim_cadr(bind), env);
+                    result = eval_expr(minim_cadr(bind), env2);
                     if (minim_valuesp(result)) {
                         // multi-valued
                         th = current_thread();
@@ -526,7 +525,7 @@ loop:
                         idx = 0;
                         for (it = minim_car(bind); !minim_nullp(it); it = minim_cdr(it), ++idx) {
                             SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
-                            env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
+                            env_define_var(env2, minim_car(it), values_buffer_ref(th, idx));
                         }
                     } else {
                         // single-valued
@@ -534,11 +533,12 @@ loop:
                             result_arity_exn(var_count, 1);
 
                         SET_NAME_IF_CLOSURE(minim_caar(bind), result);
-                        env_define_var(env, minim_caar(bind), result);
+                        env_define_var(env2, minim_caar(bind), result);
                     }
                 }
 
                 expr = Mcons(begin_symbol, (minim_cddr(expr)));
+                env = env2;
                 goto loop;
             } else if (head == quote_symbol) {
                 // quote form

@@ -70,9 +70,8 @@ mobj apply_proc(int argc, mobj *args) {
     uncallable_prim_exn("apply");
 }
 
-mobj identity_proc(int argc, mobj *args) {
-    // (-> any any)
-    return args[0];
+mobj identity_proc(mobj x) {
+    return x;
 }
 
 mobj procedure_arity_proc(int argc, mobj *args) {

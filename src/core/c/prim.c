@@ -62,8 +62,6 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$integer->char", integer_to_char, 1);
 
     add_unsafe_procedure("symbol?", symbolp_proc, 1);
-    add_procedure("symbol->string", symbol_to_string_proc, 1, 1);
-    add_procedure("string->symbol", string_to_symbol_proc, 1, 1);
 
     add_unsafe_procedure("pair?", consp_proc, 1);
     add_unsafe_procedure("list?", listp_proc, 1);
@@ -132,15 +130,17 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$fx2<=", fx2_le, 2);
 
     add_unsafe_procedure("string?", stringp_proc, 1);
-    add_procedure("make-string", Mstring_proc, 1, 2);
-    add_procedure("string", string_proc, 0, ARG_MAX);
-    add_procedure("string-length", string_length_proc, 1, 1);
-    add_procedure("string-ref", string_ref_proc, 2, 2);
-    add_procedure("string-set!", string_set_proc, 3, 3);
-    add_procedure("string-append", string_append_proc, 0, ARG_MAX);
+    add_unsafe_procedure("$make-string", make_string, 2);
+    add_unsafe_procedure("$string-length", string_length, 1);
+    add_unsafe_procedure("$string-ref", string_ref, 2);
+    add_unsafe_procedure("$string-set!", string_set, 3);
+    add_unsafe_procedure("$number->string", number_to_string, 1);
+    add_unsafe_procedure("$string->number", string_to_number, 1);
+    add_unsafe_procedure("$symbol->string", symbol_to_string, 1);
+    add_unsafe_procedure("$string->symbol", string_to_symbol, 1);
+    add_unsafe_procedure("$list->string", list_to_string, 1);
+    add_unsafe_procedure("$string->list", string_to_list, 1);
     add_procedure("format", format_proc, 1, ARG_MAX);
-    add_procedure("number->string", number_to_string_proc, 1, 1);
-    add_procedure("string->number", string_to_number_proc, 1, 1);
 
     add_unsafe_procedure("record?", recordp_proc, 1);
     add_unsafe_procedure("record-type-descriptor?", record_rtdp_proc, 1);
@@ -210,7 +210,7 @@ void init_prims(mobj env) {
 
     add_procedure("eval", eval_proc, 1, 2);
     add_procedure("apply", apply_proc, 2, ARG_MAX);
-    add_procedure("identity", identity_proc, 1, 1);
+    add_unsafe_procedure("identity", identity_proc, 1);
     add_unsafe_procedure("void", void_proc, 0);
 
     add_procedure("call-with-values", call_with_values_proc, 2, 2);

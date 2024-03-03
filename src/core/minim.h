@@ -403,6 +403,7 @@ mobj Mfixnum(long v);
 mobj Msymbol(const char *s);
 mobj Mstring(const char *s);
 mobj Mstring2(char *s);
+mobj Mstring3(long len, mchar c);
 mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(long len, mobj init);
 mobj Mrecord(mobj rtd, int fieldc);
@@ -458,9 +459,35 @@ mobj patternp_proc(mobj x);
 mobj not_proc(mobj x);
 mobj eq_proc(mobj x, mobj y);
 mobj equal_proc(mobj x, mobj y);
+mobj void_proc();
 
 mobj char_to_integer(mobj x);
 mobj integer_to_char(mobj x);
+
+mobj fx_neg(mobj x);
+mobj fx2_add(mobj x, mobj y);
+mobj fx2_sub(mobj x, mobj y);
+mobj fx2_mul(mobj x, mobj y);
+mobj fx2_div(mobj x, mobj y);
+mobj fx_remainder(mobj x, mobj y);
+mobj fx_modulo(mobj x, mobj y);
+
+mobj fx2_eq(mobj x, mobj y);
+mobj fx2_gt(mobj x, mobj y);
+mobj fx2_lt(mobj x, mobj y);
+mobj fx2_ge(mobj x, mobj y);
+mobj fx2_le(mobj x, mobj y);
+
+mobj make_string(mobj len, mobj init);
+mobj string_length(mobj s);
+mobj string_ref(mobj s, mobj idx);
+mobj string_set(mobj s, mobj idx, mobj c);
+mobj number_to_string(mobj n);
+mobj string_to_number(mobj s);
+mobj symbol_to_string(mobj s);
+mobj string_to_symbol(mobj s);
+mobj list_to_string(mobj xs);
+mobj string_to_list(mobj s);
 
 mobj car_proc(mobj x);
 mobj cdr_proc(mobj x);
@@ -499,20 +526,6 @@ mobj cddddr_proc(mobj x);
 mobj set_car_proc(mobj p, mobj x);
 mobj set_cdr_proc(mobj p, mobj x);
 
-mobj fx_neg(mobj x);
-mobj fx2_add(mobj x, mobj y);
-mobj fx2_sub(mobj x, mobj y);
-mobj fx2_mul(mobj x, mobj y);
-mobj fx2_div(mobj x, mobj y);
-mobj fx_remainder(mobj x, mobj y);
-mobj fx_modulo(mobj x, mobj y);
-
-mobj fx2_eq(mobj x, mobj y);
-mobj fx2_gt(mobj x, mobj y);
-mobj fx2_lt(mobj x, mobj y);
-mobj fx2_ge(mobj x, mobj y);
-mobj fx2_le(mobj x, mobj y);
-
 int minim_listp(mobj x);
 long list_length(mobj xs);
 long improper_list_length(mobj xs);
@@ -534,7 +547,7 @@ mobj box_proc(mobj x);
 mobj unbox_proc(mobj x);
 mobj box_set_proc(mobj x, mobj v);
 
-mobj void_proc();
+mobj identity_proc();
 
 mobj strip_syntax(mobj o);
 mobj to_syntax(mobj o);
@@ -804,22 +817,11 @@ DEFINE_PRIM_PROC(call_with_values);
 DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
-DEFINE_PRIM_PROC(identity);
 DEFINE_PRIM_PROC(procedure_arity);
 // characters;
 DEFINE_PRIM_PROC(char_to_integer);
 DEFINE_PRIM_PROC(integer_to_char);
 // strings
-DEFINE_PRIM_PROC(Mstring);
-DEFINE_PRIM_PROC(string);
-DEFINE_PRIM_PROC(string_length);
-DEFINE_PRIM_PROC(string_ref);
-DEFINE_PRIM_PROC(string_set);
-DEFINE_PRIM_PROC(string_append);
-DEFINE_PRIM_PROC(number_to_string);
-DEFINE_PRIM_PROC(string_to_number);
-DEFINE_PRIM_PROC(symbol_to_string);
-DEFINE_PRIM_PROC(string_to_symbol);
 DEFINE_PRIM_PROC(format);
 // record
 DEFINE_PRIM_PROC(make_rtd);

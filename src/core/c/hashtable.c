@@ -205,9 +205,9 @@ static int key_equiv(mobj ht, mobj k1, mobj k2) {
     long stashc;
 
     proc = minim_hashtable_equiv(ht);
-    if (minim_primp(proc) && minim_prim(proc) == eq_proc) {
+    if (minim_prim2p(proc) && minim_prim2_proc(proc) == eq_proc) {
         return minim_eqp(k1, k2);
-    } else if (minim_primp(proc) && minim_prim(proc) == equal_proc) {
+    } else if (minim_prim2p(proc) && minim_prim2_proc(proc) == equal_proc) {
         return minim_equalp(k1, k2);
     } else {
         th = current_thread();
