@@ -143,17 +143,16 @@ mobj not_proc(mobj x) {
     return minim_falsep(x) ? minim_true : minim_false;   
 }
 
-mobj eq_proc(int argc, mobj *args) {
+mobj eq_proc(mobj x, mobj y) {
     // (-> any any boolean)
-    return minim_eqp(args[0], args[1]) ? minim_true : minim_false;
+    return minim_eqp(x, y) ? minim_true : minim_false;
 }
 
-mobj equal_proc(int argc, mobj *args) {
+mobj equal_proc(mobj x, mobj y) {
     // (-> any any boolean)
-    return minim_equalp(args[0], args[1]) ? minim_true : minim_false;
+    return minim_equalp(x, y) ? minim_true : minim_false;
 }
 
-mobj void_proc(int argc, mobj *args) {
-    // (-> void)
+mobj void_proc() {
     return minim_void;
 }

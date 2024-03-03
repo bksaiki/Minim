@@ -44,8 +44,8 @@ mobj Mprim2(void *fn, char *name, short arity) {
 }
 
 void init_prims(mobj env) {
-    eq_proc_obj = Mprim(eq_proc, "eq?", 2, 2);
-    equal_proc_obj = Mprim(equal_proc, "equal?", 2, 2);
+    eq_proc_obj = Mprim2(eq_proc, "eq?", 2);
+    equal_proc_obj = Mprim2(equal_proc, "equal?", 2);
     eq_hash_proc_obj = Mprim(eq_hash_proc, "eq-hash", 1, 1);
     equal_hash_proc_obj = Mprim(equal_hash_proc, "equal-hash", 1, 1);
 
@@ -108,14 +108,13 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$append2", list_append2, 2);
 
     add_unsafe_procedure("vector?", vectorp_proc, 1);
-    add_procedure("make-vector", Mvector_proc, 1, 2);
-    add_procedure("vector", vector_proc, 0, ARG_MAX);
-    add_procedure("vector-length", vector_length_proc, 1, 1);
-    add_procedure("vector-ref", vector_ref_proc, 2, 2);
-    add_procedure("vector-set!", vector_set_proc, 3, 3);
-    add_procedure("vector-fill!", vector_fill_proc, 2, 2);
-    add_procedure("vector->list", vector_to_list_proc, 1, 1);
-    add_procedure("list->vector", list_to_vector_proc, 1, 1)
+    add_unsafe_procedure("$make-vector", make_vector, 2);
+    add_unsafe_procedure("$vector-length", vector_length, 1);
+    add_unsafe_procedure("$vector-ref", vector_ref, 2);
+    add_unsafe_procedure("$vector-set!", vector_set, 3);
+    add_unsafe_procedure("$vector-fill!", vector_fill, 2);
+    add_unsafe_procedure("$list->vector", list_to_vector, 1);
+    add_unsafe_procedure("$vector->list", vector_to_list, 1);
 
     add_unsafe_procedure("fixnum?", fixnump_proc, 1);
     add_unsafe_procedure("$fxneg", fx_neg, 1);
@@ -163,9 +162,9 @@ void init_prims(mobj env) {
     add_procedure("$current-record-write-procedure", current_record_write_procedure_proc, 0, 1);
 
     add_unsafe_procedure("box?", boxp_proc, 1);
-    add_procedure("box", box_proc, 1, 1);
-    add_procedure("unbox", unbox_proc, 1, 1);
-    add_procedure("set-box!", box_set_proc, 2, 2);
+    add_unsafe_procedure("box", box_proc, 1);
+    add_unsafe_procedure("$unbox", unbox_proc, 1);
+    add_unsafe_procedure("$set-box!", box_set_proc, 2);
 
     add_unsafe_procedure("hashtable?", hashtablep_proc, 1);
     add_procedure("make-eq-hashtable", make_eq_hashtable_proc, 0, 0);   // TODO: allow size hint?
@@ -212,7 +211,7 @@ void init_prims(mobj env) {
     add_procedure("eval", eval_proc, 1, 2);
     add_procedure("apply", apply_proc, 2, ARG_MAX);
     add_procedure("identity", identity_proc, 1, 1);
-    add_procedure("void", void_proc, 0, 0);
+    add_unsafe_procedure("void", void_proc, 0);
 
     add_procedure("call-with-values", call_with_values_proc, 2, 2);
     add_procedure("values", values_proc, 0, ARG_MAX);

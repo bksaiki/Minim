@@ -456,6 +456,8 @@ mobj syntaxp_proc(mobj x);
 mobj patternp_proc(mobj x);
 
 mobj not_proc(mobj x);
+mobj eq_proc(mobj x, mobj y);
+mobj equal_proc(mobj x, mobj y);
 
 mobj char_to_integer(mobj x);
 mobj integer_to_char(mobj x);
@@ -518,14 +520,21 @@ mobj make_list_proc(const mobj len, const mobj init);
 mobj length_proc(const mobj xs);
 mobj list_reverse(const mobj xs);
 mobj list_append2(const mobj xs, const mobj ys);
-mobj list_to_vector(mobj xs);
 mobj make_assoc(mobj xs, mobj ys);
-mobj copy_list(mobj xs);
 
-void for_each(mobj proc, int argc, mobj *args, mobj env);
-mobj map_list(mobj proc, int argc, mobj *args, mobj env);
-mobj andmap(mobj proc, int argc, mobj *args, mobj env);
-mobj ormap(mobj proc, int argc, mobj *args, mobj env);
+mobj make_vector(mobj len, mobj init);
+mobj vector_length(mobj v);
+mobj vector_ref(mobj v, mobj idx);
+mobj vector_set(mobj v, mobj idx, mobj x);
+mobj vector_fill(mobj v, mobj x);
+mobj vector_to_list(mobj v);
+mobj list_to_vector(mobj xs);
+
+mobj box_proc(mobj x);
+mobj unbox_proc(mobj x);
+mobj box_set_proc(mobj x, mobj v);
+
+mobj void_proc();
 
 mobj strip_syntax(mobj o);
 mobj to_syntax(mobj o);
@@ -790,11 +799,6 @@ void init_prims(mobj env);
 #define DEFINE_PRIM_PROC(name) \
     mobj name ## _proc(int, mobj *);
 
-// special objects
-DEFINE_PRIM_PROC(void);
-// equality
-DEFINE_PRIM_PROC(eq);
-DEFINE_PRIM_PROC(equal);
 // procedures
 DEFINE_PRIM_PROC(call_with_values);
 DEFINE_PRIM_PROC(values);
@@ -802,15 +806,6 @@ DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
 DEFINE_PRIM_PROC(identity);
 DEFINE_PRIM_PROC(procedure_arity);
-// vectors
-DEFINE_PRIM_PROC(Mvector);
-DEFINE_PRIM_PROC(vector);
-DEFINE_PRIM_PROC(vector_length);
-DEFINE_PRIM_PROC(vector_ref);
-DEFINE_PRIM_PROC(vector_set);
-DEFINE_PRIM_PROC(vector_fill);
-DEFINE_PRIM_PROC(vector_to_list);
-DEFINE_PRIM_PROC(list_to_vector);
 // characters;
 DEFINE_PRIM_PROC(char_to_integer);
 DEFINE_PRIM_PROC(integer_to_char);
@@ -845,10 +840,6 @@ DEFINE_PRIM_PROC(default_record_write_procedure);
 DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
-// boxes
-DEFINE_PRIM_PROC(box);
-DEFINE_PRIM_PROC(unbox);
-DEFINE_PRIM_PROC(box_set);
 // hashtable
 DEFINE_PRIM_PROC(make_eq_hashtable);
 DEFINE_PRIM_PROC(Mhashtable);

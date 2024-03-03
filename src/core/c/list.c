@@ -64,26 +64,6 @@ mobj make_assoc(mobj xs, mobj ys) {
     return assoc;
 }
 
-// Copies a list.
-// Unsafe: does not check if `xs` is a list.
-mobj copy_list(mobj xs) {
-    mobj head, tail, it;
-
-    if (minim_nullp(xs))
-        return minim_null;
-
-    head = Mcons(minim_car(xs), minim_null);
-    tail = head;
-    it = xs;
-
-    while (!minim_nullp(it = minim_cdr(it))) {
-        minim_cdr(tail) = Mcons(minim_car(it), minim_null);
-        tail = minim_cdr(tail);
-    }
-    
-    return head;
-}
-
 void for_each(mobj proc, int argc, mobj *args, mobj env) {
     mobj *lsts;
     long len0, len;
