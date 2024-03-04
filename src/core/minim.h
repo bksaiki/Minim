@@ -532,7 +532,6 @@ mobj make_list_proc(const mobj len, const mobj init);
 mobj length_proc(const mobj xs);
 mobj list_reverse(const mobj xs);
 mobj list_append2(const mobj xs, const mobj ys);
-mobj make_assoc(mobj xs, mobj ys);
 
 mobj make_vector(mobj len, mobj init);
 mobj vector_length(mobj v);

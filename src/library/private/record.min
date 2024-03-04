@@ -7,10 +7,8 @@
         "list.min")
 
 (export define-record-type
-        record-type-equal-procedure
         record-type-hash-procedure
         
-
         $make-generics-type           ;; re-exported
         define-generics               ;; re-exported
         generic-instance?             ;; re-exported
@@ -31,40 +29,21 @@
                  [equal-proc a b rec-equal?]
                  [hash-proc a rec-hash])
 
-(define equal-proc-accessor (generics-accessor gen:equal+hash 'equal-proc))
 (define hash-proc-accessor (generics-accessor gen:equal+hash 'hash-proc))
 
 ; Fallback implementations for gen:equal+hash methods
 (define $default-record-equal-proc ($current-record-equal-procedure))
 (define $default-record-hash-proc ($current-record-hash-procedure))
 
-(define (unsafe-record-type-equal-procedure rtd)
-  (if (gen:equal+hash? rtd)
-      (equal-proc-accessor rtd)
-      $default-record-equal-proc))
-
 (define (unsafe-record-type-hash-procedure rtd)
   (if (gen:equal+hash? rtd)
       (hash-proc-accessor rtd)
       $default-record-hash-proc))
 
-(define (record-equal? a b rec-equal?)
-  (define a-rtd ($record-rtd a))
-  (define b-rtd ($record-rtd b))
-  (and (eq? a-rtd b-rtd)
-       (let ([equal-proc (unsafe-record-type-equal-procedure a-rtd)])
-         (equal-proc a b rec-equal?))))
-
 (define (record-hash r rec-hash)
   (define rtd ($record-rtd r))
   (define hash-proc (unsafe-record-type-hash-procedure rtd))
   (hash-proc r rec-hash))
-
-;; Unlike R6RS, this cannot set the equal procedure
-(define (record-type-equal-procedure rtd)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
-  (unsafe-record-type-equal-procedure rtd))
 
 ;; Unlike R6RS, this cannot set the hash procedure
 (define (record-type-hash-procedure rtd)
@@ -72,7 +51,6 @@
     (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
   (unsafe-record-type-hash-procedure rtd))
 
-($current-record-equal-procedure record-equal?)
 ($current-record-hash-procedure record-hash)
 
 ;;
@@ -293,6 +271,9 @@
                 (define fns (cdr methods))
                 (record-type-add-generic! name gen-id fns))
               ...)
+            (when (gen:equal+hash? name)
+              (define get-equal-proc (generics-accessor gen:equal+hash 'equal-proc))
+              (record-type-equal-procedure name (get-equal-proc name)))
             (define construct
               (let ([c (record-constructor name)]
                     [p protocol*])

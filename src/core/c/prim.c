@@ -183,7 +183,7 @@ void init_prims(mobj env) {
     add_procedure("hashtable-clear!", hashtable_clear_proc, 1, 1);
 
     add_value(env, "eq?", eq_proc_obj);
-    add_value(env, "equal?", equal_proc_obj);
+    add_value(env, "$equal?", equal_proc_obj);
     add_value(env, "eq-hash", eq_hash_proc_obj);
     add_value(env, "equal-hash", equal_hash_proc_obj);
     

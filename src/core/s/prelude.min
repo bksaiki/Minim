@@ -1008,6 +1008,47 @@
                                        #f))
                                 #f))
                          #f))]
+                  [(check-args!)
+                   (lambda (name parent uid sealed? opaque?)
+                     (if (symbol? name)
+                         (if (if (record-type-descriptor? parent)
+                                 (begin
+                                   (if ($record-type-sealed? parent)
+                                       (error 'make-record-type-descriptor
+                                              "cannot extend sealed record type"
+                                              parent)
+                                       #t))
+                                 (not parent))
+                             (if (if (symbol? uid) #t (not uid))
+                                 (if (boolean? sealed?)
+                                     (if (boolean? opaque?)
+                                         (if (vector? fields)
+                                            (begin
+                                              (check-fields! fields)
+                                              ($make-record-type-descriptor name
+                                                                            parent
+                                                                            uid
+                                                                            sealed?
+                                                                            opaque?
+                                                                            fields))
+                                            (error 'make-record-type-descriptor
+                                                   "expected vector?"
+                                                   fields))
+                                         (error 'make-record-type-descriptor
+                                                "expected boolean?"
+                                                opaque?))
+                                     (error 'make-record-type-descriptor
+                                            "expected boolean?"
+                                            sealed?))
+                                 (error 'make-record-type-descriptor
+                                        "expected symbol? or #f"
+                                        uid))
+                             (error 'make-record-type-descriptor
+                                    "expected record-type-descriptor? or #f"
+                                    parent))
+                         (error 'make-record-type-descriptor
+                                "expected symbol?"
+                                name)))]
                   [(check-fields!)
                    (lambda (fields)
                      (letrec-values ([(loop)
@@ -1026,45 +1067,14 @@
                                                          field)))))])
                        (loop 0 '())))])
     (lambda (name parent uid sealed? opaque? fields)
-      (if (symbol? name)
-          (if (if (record-type-descriptor? parent)
-                  (begin
-                    (if ($record-type-sealed? parent)
-                        (error 'make-record-type-descriptor
-                               "cannot extend sealed record type"
-                               parent)
-                        #t))
-                  (not parent))
-              (if (if (symbol? uid) #t (not uid))
-                  (if (boolean? sealed?)
-                      (if (boolean? opaque?)
-                          (if (vector? fields)
-                             (begin
-                               (check-fields! fields)
-                               ($make-record-type-descriptor name
-                                                             parent
-                                                             uid
-                                                             sealed?
-                                                             opaque?
-                                                             fields))
-                             (error 'make-record-type-descriptor
-                                    "expected vector?"
-                                    fields))
-                          (error 'make-record-type-descriptor
-                                 "expected boolean?"
-                                 opaque?))
-                      (error 'make-record-type-descriptor
-                             "expected boolean?"
-                             sealed?))
-                  (error 'make-record-type-descriptor
-                         "expected symbol? or #f"
-                         uid))
-              (error 'make-record-type-descriptor
-                     "expected record-type-descriptor? or #f"
-                     parent))
-          (error 'make-record-type-descriptor
-                 "expected symbol?"
-                 name)))))
+      (let-values ([(rtd) ($make-record-type-descriptor name parent uid sealed? opaque? fields)])
+        (if parent
+            (let-values ([(proc) (record-type-equal-procedure parent)])
+              (if proc
+                  (record-type-equal-procedure rtd proc)
+                  (void)))
+            (void))
+        rtd))))
       
 (define-values (record-type-name
                 record-type-parent
@@ -1187,3 +1197,80 @@
                     (error 'record-mutator "field index out of bounds" rtd idx))
                 (error 'record-mutator "expected record-type-descriptor?" rtd))
             (error 'record-mutator "expected record-type-descriptor?" rtd)))))) 
+
+;; --------------------------------------------------------
+;; Equality
+
+(define-values (record-type-equal-procedure record-equal-procedure)
+  (letrec-values ([(table) '()]
+                  [(table-ref)
+                   (lambda (rtd)
+                     (letrec-values ([(loop)
+                                      (lambda (table)
+                                        (if (null? table)
+                                            #f
+                                            (if (eq? (caar table) rtd)
+                                                (car table)
+                                                (loop (cdr table)))))])
+                       (loop table)))])
+    (values
+      ; record-type-equal-procedure
+      (let-values ([(check-args!)
+                    (lambda (args)
+                      (let-values ([(argc) (length args)])
+                        (if (if (>= argc 1) (<= argc 2) #f)
+                            (let-values ([(rtd) ($car args)])
+                              (if (record-type-descriptor? rtd)
+                                  (if (= argc 2)
+                                      (let-values ([(proc) ($cadr args)])
+                                        (if (procedure? proc)
+                                            (void)
+                                            (error 'record-type-equal-procedure
+                                                   "expected procedure?"
+                                                   rtd)))
+                                      (void))
+                                  (error 'record-type-equal-procedure
+                                         "expected record-type-descriptor?"
+                                         rtd)))
+                            (error 'record-type-equal-procedure
+                                   "expected 1 or 2 arguments"
+                                   (length args)))))])
+        (lambda args ; TODO: case-lambda
+          (check-args! args)
+          (let-values ([(rtd) ($car args)])
+            (let-values ([(maybe-cell) (table-ref rtd)])
+              (if (null? ($cdr args))
+                  (if maybe-cell ($cdr maybe-cell) #f)
+                  (let-values ([(proc) ($cadr args)])
+                    (if maybe-cell
+                        ($set-cdr! maybe-cell proc)
+                        (set! table (cons (cons rtd proc) table)))))))))
+      ; record-equal-procedure
+      (let-values ([(check-args!)
+                    (lambda (a b)
+                      (if ($record-value? a)
+                          (if ($record-value? b)
+                              (void)
+                              (error 'record-equal-procedure "expected record?" b))
+                          (error 'record-equal-procedure "expected record?" a)))])
+        (lambda (a b)
+          (check-args! a b)
+          (let-values ([(a-rtd) ($record-rtd a)]
+                       [(b-rtd) ($record-rtd b)])
+            (let-values ([(proc) (record-type-equal-procedure a-rtd)])
+              (if proc
+                  (if (eq? proc (record-type-equal-procedure b-rtd))
+                      proc
+                      #f)
+                  #f))))))))
+
+(define-values (equal?)
+  (lambda (a b)
+    (if ($record-value? a)
+        (if ($record-value? b)
+            (let-values ([(proc) (record-equal-procedure a b)])
+              (if proc
+                 (proc a b equal?)
+                 ($equal? a b)))
+            #f)
+        ($equal? a b))))
