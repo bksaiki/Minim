@@ -390,8 +390,6 @@ extern mobj equal_hash_proc_obj;
 
 #define minim_procp(x)            (minim_primp(x) || minim_prim2p(x) || minim_closurep(x))
 
-// Typedefs
-
 // Constructors
 
 mobj Mchar(mchar c);
@@ -543,6 +541,7 @@ mobj unbox_proc(mobj x);
 mobj box_set_proc(mobj x, mobj v);
 
 mobj make_hashtable(mobj size);
+mobj hashtable_copy(mobj ht);
 mobj hashtable_size(mobj ht);
 mobj hashtable_size_set(mobj ht, mobj size);
 mobj hashtable_length(mobj ht);
@@ -645,8 +644,6 @@ extern mobj empty_env;
 void check_native_closure_arity(short argc, mobj fn);
 mobj call_compiled(mobj env, mobj addr);
 mobj make_rest_argument(mobj args[], short argc);
-
-// Records
 
 // Records
 
@@ -835,9 +832,6 @@ DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
 DEFINE_PRIM_PROC(procedure_arity);
-// characters;
-DEFINE_PRIM_PROC(char_to_integer);
-DEFINE_PRIM_PROC(integer_to_char);
 // strings
 DEFINE_PRIM_PROC(format);
 // record
@@ -847,21 +841,6 @@ DEFINE_PRIM_PROC(default_record_write_procedure);
 DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
-// hashtable
-// DEFINE_PRIM_PROC(make_eq_hashtable);
-// DEFINE_PRIM_PROC(Mhashtable);
-// DEFINE_PRIM_PROC(hashtable_size);
-// DEFINE_PRIM_PROC(hashtable_contains);
-// DEFINE_PRIM_PROC(hashtable_set);
-// DEFINE_PRIM_PROC(hashtable_delete);
-// DEFINE_PRIM_PROC(hashtable_update);
-// DEFINE_PRIM_PROC(hashtable_ref);
-// DEFINE_PRIM_PROC(hashtable_keys);
-// DEFINE_PRIM_PROC(hashtable_copy);
-// DEFINE_PRIM_PROC(hashtable_clear);
-// hash functions
-// DEFINE_PRIM_PROC(eq_hash);
-// DEFINE_PRIM_PROC(equal_hash);
 // environment
 DEFINE_PRIM_PROC(empty_environment);
 DEFINE_PRIM_PROC(extend_environment);

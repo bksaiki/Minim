@@ -418,6 +418,9 @@ application:
 }
 
 mobj eval_expr(mobj expr, mobj env) {
+
+    write_object(stderr, expr);
+    fprintf(stderr, "\n");
     
 loop:
 

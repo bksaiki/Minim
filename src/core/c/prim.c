@@ -171,6 +171,7 @@ void init_prims(mobj env) {
 
     add_unsafe_procedure("$hashtable?", hashtablep_proc, 1);
     add_unsafe_procedure("$make-hashtable", make_hashtable, 1);
+    add_unsafe_procedure("$hashtable-copy", hashtable_copy, 1);
     add_unsafe_procedure("$hashtable-cells", hashtable_cells, 1);
     add_unsafe_procedure("$hashtable-size", hashtable_size, 1);
     add_unsafe_procedure("$hashtable-size-set!", hashtable_size_set, 2);

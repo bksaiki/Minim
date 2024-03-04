@@ -25,6 +25,34 @@ mobj Mhashtable(size_t size_hint) {
     return o;
 }
 
+mobj hashtable_copy2(mobj ht) {
+    mobj o, hd, tl, b;
+    
+    o = GC_alloc(minim_hashtable_size);
+    minim_type(o) = MINIM_OBJ_HASHTABLE;
+    minim_hashtable_alloc_ptr(o) = minim_hashtable_alloc_ptr(ht);
+    minim_hashtable_buckets(o) = Mvector(minim_hashtable_alloc(o), NULL);
+    minim_hashtable_count(o) = minim_hashtable_count(ht);
+
+    for (long i = 0; i < minim_hashtable_alloc(o); i++) {
+        b = minim_hashtable_bucket(ht, i);
+        if (minim_nullp(b)) {
+            minim_hashtable_bucket(o, i) = minim_null;
+        } else {
+            hd = tl = Mcons(Mcons(minim_caar(b), minim_cdar(b)), NULL);
+            for (b = minim_cdr(b); !minim_nullp(b); b = minim_cdr(b)) {
+                minim_cdr(tl) = Mcons(Mcons(minim_caar(b), minim_cdar(b)), NULL);
+                tl = minim_cdr(tl);
+            }
+
+            minim_cdr(tl) = minim_null;
+            minim_hashtable_bucket(o, i) = hd;
+        }
+    }
+
+    return o;
+}
+
 static size_t hash_bytes(const void *data, size_t len, size_t hash0) {
     const char *str;
     size_t hash;
@@ -67,6 +95,11 @@ mobj hashtablep_proc(mobj x) {
 mobj make_hashtable(mobj size) {
     // (-> integer hashtable)
     return Mhashtable(minim_fixnum(size));
+}
+
+mobj hashtable_copy(mobj ht) {
+    // (-> hashtable hashtable)
+    return hashtable_copy2(ht);
 }
 
 mobj hashtable_size(mobj ht) {

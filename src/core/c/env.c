@@ -53,6 +53,7 @@ static void hashtable_set2(mobj ht, mobj k, mobj v) {
     }
 
     hashtable_set(ht, h, Mcons(Mcons(k, v), b));
+    minim_hashtable_count(ht)++;
 }
 
 static mobj hashtable_find(mobj ht, mobj k) {

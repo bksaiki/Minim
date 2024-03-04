@@ -1203,18 +1203,27 @@
                 $hashtable-store
                 $hashtable-store-set!
                 hashtable-hash-proc
-                hashtable-equiv-proc)
-  (let-values ([($ht) (make-record-type-descriptor
-                        'hashtable #f #f #t #t
-                        #((mutable store) (immutable hash) (immutable equiv)))])
+                hashtable-equiv-proc
+                hashtable-copy)
+
+  (letrec-values ([($ht) (make-record-type-descriptor
+                           'hashtable #f #f #t #t
+                           #((mutable store) (immutable hash) (immutable equiv)))]
+                  [($make-ht) (record-constructor $ht)])
     (values
-      (let-values ([($make-ht) (record-constructor $ht)])
-        (lambda (hash equiv?) ($make-ht ($make-hashtable 0) hash equiv?)))
+      (lambda (hash equiv?)
+        ($make-ht ($make-hashtable 0) hash equiv?))
       (record-predicate $ht)
       (record-accessor $ht 0)
       (record-mutator $ht 0)
       (record-accessor $ht 1)
-      (record-accessor $ht 2))))
+      (record-accessor $ht 2)
+      (lambda (ht)
+        (if (hashtable? ht)
+            ($make-ht ($hashtable-copy ($hashtable-store ht))
+                      (hashtable-hash-proc ht)
+                      (hashtable-equiv-proc ht))
+            (error 'hashtable-copy "expected hashtable?" ht))))))
 
 (define-values (make-eq-hashtable make-hashtable)
   (values (lambda () (make-custom-hashtable eq-hash eq?))
@@ -1225,6 +1234,12 @@
     (if (hashtable? ht)
         ($hashtable-size ($hashtable-store ht))
         (error 'hashtable-set! "expected hashtable?" ht))))
+
+(define-values (hashtable-clear!)
+  (lambda (ht)
+    (if (hashtable? ht)
+        ($hashtable-clear! ($hashtable-store ht))
+        (error 'hashtable-clear! "expected hashtable?" ht))))
 
 (define-values (hashtable-contains?
                 hashtable-ref
@@ -1293,9 +1308,11 @@
                               (void)
                               (let-values ([(a) (car b)])
                                 (if (equiv? (car a) k)
-                                    (if p
-                                        (set-cdr! p (cdr b))
-                                        ($hashtable-set! store h (cdr b)))
+                                    (begin
+                                      (if p
+                                          (set-cdr! p (cdr b))
+                                          ($hashtable-set! store h (cdr b)))
+                                      (decr-size! ht store))
                                     (loop (cdr b) b)))))])
          (loop bucket #f)))]
 
