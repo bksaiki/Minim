@@ -46,8 +46,8 @@ mobj Mprim2(void *fn, char *name, short arity) {
 void init_prims(mobj env) {
     eq_proc_obj = Mprim2(eq_proc, "eq?", 2);
     equal_proc_obj = Mprim2(equal_proc, "equal?", 2);
-    eq_hash_proc_obj = Mprim(eq_hash_proc, "eq-hash", 1, 1);
-    equal_hash_proc_obj = Mprim(equal_hash_proc, "equal-hash", 1, 1);
+    // eq_hash_proc_obj = Mprim(eq_hash_proc, "eq-hash", 1, 1);
+    // equal_hash_proc_obj = Mprim(equal_hash_proc, "equal-hash", 1, 1);
 
     add_unsafe_procedure("null?", nullp_proc, 1);
     add_unsafe_procedure("void?", voidp_proc, 1);
@@ -169,23 +169,20 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$unbox", unbox_proc, 1);
     add_unsafe_procedure("$set-box!", box_set_proc, 2);
 
-    add_unsafe_procedure("hashtable?", hashtablep_proc, 1);
-    add_procedure("make-eq-hashtable", make_eq_hashtable_proc, 0, 0);   // TODO: allow size hint?
-    add_procedure("make-hashtable", Mhashtable_proc, 0, 0);         // TODO: allow size hint?
-    add_procedure("hashtable-size", hashtable_size_proc, 1, 1);
-    add_procedure("hashtable-contains?", hashtable_contains_proc, 2, 2);
-    add_procedure("hashtable-set!", hashtable_set_proc, 3, 3);
-    add_procedure("hashtable-delete!", hashtable_delete_proc, 2, 2);
-    add_procedure("hashtable-update!", hashtable_update_proc, 3, 4);
-    add_procedure("hashtable-ref", hashtable_ref_proc, 2, 3);
-    add_procedure("hashtable-keys", hashtable_keys_proc, 1, 1);
-    add_procedure("hashtable-copy", hashtable_copy_proc, 1, 1);     // TODO: set mutability
-    add_procedure("hashtable-clear!", hashtable_clear_proc, 1, 1);
+    add_unsafe_procedure("$hashtable?", hashtablep_proc, 1);
+    add_unsafe_procedure("$make-hashtable", make_hashtable, 1);
+    add_unsafe_procedure("$hashtable-cells", hashtable_cells, 1);
+    add_unsafe_procedure("$hashtable-size", hashtable_size, 1);
+    add_unsafe_procedure("$hashtable-size-set!", hashtable_size_set, 2);
+    add_unsafe_procedure("$hashtable-length", hashtable_length, 1);
+    add_unsafe_procedure("$hashtable-ref", hashtable_ref, 2);
+    add_unsafe_procedure("$hashtable-set!", hashtable_set, 3);
+    add_unsafe_procedure("$hashtable-clear!", hashtable_clear, 1);
 
     add_value(env, "eq?", eq_proc_obj);
     add_value(env, "$equal?", equal_proc_obj);
-    add_value(env, "eq-hash", eq_hash_proc_obj);
-    add_value(env, "equal-hash", equal_hash_proc_obj);
+    add_unsafe_procedure("eq-hash", eq_hash_proc, 1);
+    add_unsafe_procedure("$equal-hash", equal_hash_proc, 1);
     
     add_unsafe_procedure("syntax?", syntaxp_proc, 1);
     add_procedure("syntax-e", syntax_e_proc, 1, 1);

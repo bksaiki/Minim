@@ -225,7 +225,7 @@ extern mobj minim_values;
 #define minim_prim_argc_high(o)     (*((int*) PTR_ADD(o, 2 * ptr_size + 4)))
 #define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
 
-// Unsafe primitives with direct calling
+// Unsafe primitives
 // +------------+
 // |    type    | [0, 1)
 // |    argc    | [4, 8)
@@ -326,21 +326,17 @@ extern mobj minim_values;
 // Hashtables
 // +------------+
 // |    type    | [0, 1)
-// |  hash_fn   | [8, 16)
-// |  equiv_fn  | [16, 24)
-// |   buckets  | [24, 32)
-// |  alloc_ptr | [32, 40]
-// |    count   | [40, 48)
+// |   buckets  | [8, 16)
+// |  alloc_ptr | [16, 24)
+// |    count   | [24, 32)
 // +------------+
-#define minim_hashtable_size            (6 * ptr_size)
+#define minim_hashtable_size            (4 * ptr_size)
 #define minim_hashtablep(o)             (minim_type(o) == MINIM_OBJ_HASHTABLE)
-#define minim_hashtable_hash(o)         (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_hashtable_equiv(o)        (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_hashtable_buckets(o)      (*((mobj**) PTR_ADD(o, 3 * ptr_size)))
-#define minim_hashtable_bucket(o, i)    ((minim_hashtable_buckets(o))[i])
-#define minim_hashtable_alloc_ptr(o)    (*((msize**) PTR_ADD(o, 4 * ptr_size)))
+#define minim_hashtable_buckets(o)      (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_hashtable_bucket(o, i)    (minim_vector_ref(minim_hashtable_buckets(o), i))
+#define minim_hashtable_alloc_ptr(o)    (*((msize**) PTR_ADD(o, 2 * ptr_size)))
 #define minim_hashtable_alloc(o)        (*(minim_hashtable_alloc_ptr(o)))
-#define minim_hashtable_count(o)        (*((msize*) PTR_ADD(o, 5 * ptr_size)))
+#define minim_hashtable_count(o)        (*((msize*) PTR_ADD(o, 3 * ptr_size)))
 
 // Pattern variable
 // +------------+
@@ -407,8 +403,7 @@ mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(long len, mobj init);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mbox(mobj x);
-mobj Mhashtable(mobj hash_fn, mobj equiv_fn);
-mobj Mhashtable2(mobj hash_fn, mobj equiv_fn, size_t size_hint);
+mobj Mhashtable(size_t size_hint);
 mobj Mprim(mprim_proc proc, char *name, short min_arity, short max_arity);
 mobj Mprim2(void *fn, char *name, short arity);
 mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity);
@@ -429,6 +424,11 @@ mobj Menv2(mobj prev, size_t size);
 
 int minim_eqp(mobj a, mobj b);
 int minim_equalp(mobj a, mobj b);
+
+int minim_listp(mobj x);
+long list_length(mobj xs);
+long improper_list_length(mobj xs);
+int hashtable_equalp(mobj h1, mobj h2);
 
 mobj call_with_args(mobj proc, mobj env);
 mobj call_with_values(mobj producer, mobj consumer, mobj env);
@@ -525,9 +525,6 @@ mobj cddddr_proc(mobj x);
 mobj set_car_proc(mobj p, mobj x);
 mobj set_cdr_proc(mobj p, mobj x);
 
-int minim_listp(mobj x);
-long list_length(mobj xs);
-long improper_list_length(mobj xs);
 mobj make_list_proc(const mobj len, const mobj init);
 mobj length_proc(const mobj xs);
 mobj list_reverse(const mobj xs);
@@ -544,6 +541,20 @@ mobj list_to_vector(mobj xs);
 mobj box_proc(mobj x);
 mobj unbox_proc(mobj x);
 mobj box_set_proc(mobj x, mobj v);
+
+mobj make_hashtable(mobj size);
+mobj hashtable_size(mobj ht);
+mobj hashtable_size_set(mobj ht, mobj size);
+mobj hashtable_length(mobj ht);
+mobj hashtable_ref(mobj ht, mobj h);
+mobj hashtable_set(mobj ht, mobj h, mobj cells);
+mobj hashtable_cells(mobj ht);
+mobj hashtable_keys(mobj ht);
+mobj hashtable_clear(mobj ht);
+
+size_t eq_hash(mobj o);
+mobj eq_hash_proc(mobj x);
+mobj equal_hash_proc(mobj x);
 
 mobj make_rtd(mobj name, mobj parent, mobj uid, mobj sealedp, mobj opaquep, mobj fields);
 mobj rtd_name(mobj rtd);
@@ -732,13 +743,6 @@ typedef struct intern_table {
 intern_table *make_intern_table();
 mobj intern_symbol(intern_table *itab, const char *sym);
 
-// Hashtables
-
-int hashtable_equalp(mobj h1, mobj h2);
-int hashtable_set(mobj ht, mobj k, mobj v);
-mobj hashtable_find(mobj ht, mobj k);
-mobj hashtable_keys(mobj ht);
-
 // Threads
 
 typedef struct minim_thread {
@@ -844,20 +848,20 @@ DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
 // hashtable
-DEFINE_PRIM_PROC(make_eq_hashtable);
-DEFINE_PRIM_PROC(Mhashtable);
-DEFINE_PRIM_PROC(hashtable_size);
-DEFINE_PRIM_PROC(hashtable_contains);
-DEFINE_PRIM_PROC(hashtable_set);
-DEFINE_PRIM_PROC(hashtable_delete);
-DEFINE_PRIM_PROC(hashtable_update);
-DEFINE_PRIM_PROC(hashtable_ref);
-DEFINE_PRIM_PROC(hashtable_keys);
-DEFINE_PRIM_PROC(hashtable_copy);
-DEFINE_PRIM_PROC(hashtable_clear);
+// DEFINE_PRIM_PROC(make_eq_hashtable);
+// DEFINE_PRIM_PROC(Mhashtable);
+// DEFINE_PRIM_PROC(hashtable_size);
+// DEFINE_PRIM_PROC(hashtable_contains);
+// DEFINE_PRIM_PROC(hashtable_set);
+// DEFINE_PRIM_PROC(hashtable_delete);
+// DEFINE_PRIM_PROC(hashtable_update);
+// DEFINE_PRIM_PROC(hashtable_ref);
+// DEFINE_PRIM_PROC(hashtable_keys);
+// DEFINE_PRIM_PROC(hashtable_copy);
+// DEFINE_PRIM_PROC(hashtable_clear);
 // hash functions
-DEFINE_PRIM_PROC(eq_hash);
-DEFINE_PRIM_PROC(equal_hash);
+// DEFINE_PRIM_PROC(eq_hash);
+// DEFINE_PRIM_PROC(equal_hash);
 // environment
 DEFINE_PRIM_PROC(empty_environment);
 DEFINE_PRIM_PROC(extend_environment);

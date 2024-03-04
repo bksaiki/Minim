@@ -238,9 +238,9 @@ mobj default_record_equal_procedure_proc(int argc, mobj *args) {
 mobj default_record_hash_procedure_proc(int argc, mobj *args) {
     // (-> any proc boolean)
     if (record_valuep(args[0])) {
-        return eq_hash_proc(1, args);
+        return eq_hash_proc(args[0]);
     } else {
-        return equal_hash_proc(1, args);
+        return equal_hash_proc(args[0]);
     }
 }
 

@@ -84,8 +84,6 @@ int minim_equalp(mobj a, mobj b) {
             return minim_vector_equalp(a, b);
         case MINIM_OBJ_BOX:
             return minim_equalp(minim_unbox(a), minim_unbox(b));
-        case MINIM_OBJ_HASHTABLE:
-            return hashtable_equalp(a, b);
         default:
             return 0;
         }

@@ -987,9 +987,6 @@
         (error 'set-box! "expected box?" x))))
 
 ;; --------------------------------------------------------
-;; Hashtables
-
-;; --------------------------------------------------------
 ;; Records
 
 (define-values (make-record-type-descriptor)
@@ -1196,10 +1193,207 @@
                                      (format "got: ~a" rec))))))
                     (error 'record-mutator "field index out of bounds" rtd idx))
                 (error 'record-mutator "expected record-type-descriptor?" rtd))
-            (error 'record-mutator "expected record-type-descriptor?" rtd)))))) 
+            (error 'record-mutator "expected record-type-descriptor?" rtd))))))  
 
 ;; --------------------------------------------------------
-;; Equality
+;; Hashtables
+
+(define-values (make-custom-hashtable
+                hashtable?
+                $hashtable-store
+                $hashtable-store-set!
+                hashtable-hash-proc
+                hashtable-equiv-proc)
+  (let-values ([($ht) (make-record-type-descriptor
+                        'hashtable #f #f #t #t
+                        #((mutable store) (immutable hash) (immutable equiv)))])
+    (values
+      (let-values ([($make-ht) (record-constructor $ht)])
+        (lambda (hash equiv?) ($make-ht ($make-hashtable 0) hash equiv?)))
+      (record-predicate $ht)
+      (record-accessor $ht 0)
+      (record-mutator $ht 0)
+      (record-accessor $ht 1)
+      (record-accessor $ht 2))))
+
+(define-values (make-eq-hashtable make-hashtable)
+  (values (lambda () (make-custom-hashtable eq-hash eq?))
+          (lambda () (make-custom-hashtable equal-hash equal?))))
+
+(define-values (hashtable-size)
+  (lambda (ht)
+    (if (hashtable? ht)
+        ($hashtable-size ($hashtable-store ht))
+        (error 'hashtable-set! "expected hashtable?" ht))))
+
+(define-values (hashtable-contains?
+                hashtable-ref
+                hashtable-set!
+                hashtable-update!
+                hashtable-delete!)
+
+  (letrec-values
+    ([(min-size) 13]
+     [(do-hash)
+      (lambda (hash x)
+        (let-values ([(h) (hash x)])
+          (if (fixnum? h)
+              h
+              (error 'do-hash "invalid hash function" hash h))))]
+     [(incr-size!)
+      (lambda (ht store)
+        (let-values ([(size) (add1 ($hashtable-size store))]
+                     [(n) ($hashtable-length store)])
+          ($hashtable-size-set! store size)
+          (if (> size n)
+              (adjust! ht store size)
+              (void))))]
+     [(decr-size!)
+      (lambda (ht store)
+        (let-values ([(size) (sub1 ($hashtable-size store))]
+                     [(n) ($hashtable-length store)])
+          ($hashtable-size-set! store size)
+          (if (if (< size (/ n 4)) (> size min-size) #f)
+              (adjust! ht store size)
+              (void))))]
+     [(adjust!)
+      (lambda (ht store n2)
+        (letrec-values ([(n1) ($hashtable-size store)]
+                        [(store2) ($make-hashtable n2)])
+          (for-each
+            (lambda (a)
+              (let-values ([(h) (do-hash (hashtable-hash-proc ht) (car a))])
+                ($hashtable-set! store2 h (cons a ($hashtable-ref store2 h)))))
+            ($hashtable-cells store))
+         ($hashtable-size-set! store2 n1)
+         ($hashtable-store-set! ht store2)))]
+    
+    [(1/hashtable-cell-ref)
+     (lambda (ht h k)
+       (letrec-values ([(equiv?) (hashtable-equiv-proc ht)]
+                       [(store) ($hashtable-store ht)]
+                       [(loop) (lambda (b)
+                                 (if (null? b)
+                                     #f
+                                     (let-values ([(a) (car b)])
+                                       (if (equiv? (car a) k)
+                                           a
+                                           (loop (cdr b))))))])
+         (loop ($hashtable-ref store h))))]
+
+    [(1/hashtable-cell-delete!)
+     (lambda (ht k)
+       (letrec-values ([(equiv?) (hashtable-equiv-proc ht)]
+                       [(store) ($hashtable-store ht)]
+                       [(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(bucket) ($hashtable-ref store h)]
+                       [(loop)
+                        (lambda (b p)
+                          (if (null? b)
+                              (void)
+                              (let-values ([(a) (car b)])
+                                (if (equiv? (car a) k)
+                                    (if p
+                                        (set-cdr! p (cdr b))
+                                        ($hashtable-set! store h (cdr b)))
+                                    (loop (cdr b) b)))))])
+         (loop bucket #f)))]
+
+    [(1/hashtable-contains?)
+     (lambda (ht k)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell #t #f)))]
+                  
+    [(1/hashtable-ref)
+     (lambda (ht k default)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell
+             ($cdr cell)
+             (if (procedure? default)
+                 (default)
+                 default))))]
+
+    [(1/hashtable-cell)
+     (lambda (ht k default)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell
+             cell
+             (let-values ([(store) ($hashtable-store ht)]
+                          [(cell) (cons k default)])
+               ($hashtable-set! store h (cons cell ($hashtable-ref store h)))
+               (incr-size! ht store)
+               cell))))]
+
+    [(1/hashtable-set!)
+     (lambda (ht k v)
+       (let-values ([(cell) (1/hashtable-cell ht k v)])
+         (set-cdr! cell v)))]
+    
+    [(1/hashtable-update!)
+     (lambda (ht k updater default)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell
+             (set-cdr! cell (updater ($cdr cell)))
+             (let-values ([(store) ($hashtable-store ht)]
+                          [(cell) (cons k (if (procedure? default)
+                                              (updater (default))
+                                              (updater default)))])
+               ($hashtable-set! store h (cons cell ($hashtable-ref store h)))
+               (incr-size! ht store)))))])
+               
+    (values
+      ; hashtable-contains?
+      (lambda (ht k)
+        (if (hashtable? ht)
+            (1/hashtable-contains? ht k)
+            (error 'hashtable-set! "expected hashtable?" ht)))
+      ; hashtable-ref
+      (lambda args ; TODO: case-lambda
+        (let-values ([(argc) ($length args)])
+          (if (if (>= argc 2) (<= argc 3) #f)
+              (let-values ([(ht) ($car args)] [(k) ($cadr args)])
+                (if (hashtable? ht)
+                    (let-values ([(default) (if (= argc 2)
+                                                (lambda () (error 'hashtable-ref "key not found" k))
+                                                ($caddr args))])
+                      (1/hashtable-ref ht k default))
+                    (error 'hashtable-ref "expected hashtable?" ht)))
+              (error 'hashtable-ref "expected 2 or 3 arguments" argc))))
+      ; hashtable-set!
+      (lambda (ht k v)
+        (if (hashtable? ht)
+            (1/hashtable-set! ht k v)
+            (error 'hashtable-set! "expected hashtable?" ht)))
+      ; hashtable-update!
+      (lambda args ; TODO: case-lambda
+        (let-values ([(argc) ($length args)])
+          (if (if (>= argc 3) (<= argc 4) #f)
+              (let-values ([(ht) ($car args)]
+                           [(k) ($cadr args)]
+                           [(updater) ($caddr args)])
+                (if (hashtable? ht)
+                    (if (procedure? updater)
+                        (let-values ([(default) 
+                                      (if (= argc 3)
+                                          (lambda ()
+                                            (error 'hashtable-update "key not found" k))
+                                            ($cadddr args))])
+                          (1/hashtable-update! ht k updater default))
+                        (error 'hashtable-updater "expected procedure?" updater))
+                    (error 'hashtable-updater "expected hashtable?" ht)))
+              (error 'hashtable-updater "expected 3 or 4 arguments" argc))))
+      ; hashtable-delete!
+      (lambda (ht k)
+        (if (hashtable? ht)
+            (1/hashtable-cell-delete! ht k)
+            (error 'hashtable-delete! "expected hashtable?" ht))))))
+
+;; --------------------------------------------------------
+;; Equality + Hashing
 
 (define-values (record-type-equal-procedure record-equal-procedure)
   (letrec-values ([(table) '()]
@@ -1274,3 +1468,34 @@
                  ($equal? a b)))
             #f)
         ($equal? a b))))
+
+(define-values (equal-hash)
+  (letrec-values ([(hash-pair)
+                   (lambda (p hc rec)
+                     (rec ($cdr p) (rec ($car p) hc)))]
+                  [(hash-vector)
+                   (lambda (v hc rec)
+                     (letrec-values ([(loop)
+                                      (lambda (i hc)
+                                        (if (>= i ($vector-length v))
+                                            hc
+                                            (loop (add1 i) (rec ($vector-ref v i) hc))))])
+                       (loop 0 hc)))])
+    (lambda (x)
+      (letrec-values 
+        ([(loop)
+          (lambda (x hc)
+            (if (if (symbol? x) #t (string? x))
+                ($equal-hash x)
+                (if (pair? x)
+                    (hash-pair x hc loop)
+                    (if (vector? x)
+                        (hash-vector x hc loop)
+                        (if (box? x)
+                            (loop (unbox x) (+ hc 410225874))
+                            (if (hashtable? x)
+                                (loop (hashtable->list x) hc)
+                                (if ($record-value? x)
+                                    (eq-hash x)
+                                    (eq-hash x))))))))])
+        (loop x 523658599)))))

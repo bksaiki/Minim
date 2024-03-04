@@ -19,42 +19,9 @@ mobj empty_env;
 //    - otherwise we allocate a hashtable
 //
 
-static void not_environment_exn(const char *name, mobj *frame) {
-    fprintf(stderr, "%s: not an environment frame: ", name);
-    write_object(stderr, frame);
-    fprintf(stderr, "\n");
-    minim_shutdown(1);
-}
-
-static mobj environment_names(mobj env) {
-    mobj frame, names;
-
-    names = Mhashtable(equal_hash_proc_obj, equal_proc_obj);
-    while (minim_envp(env)) {
-        frame = minim_env_bindings(env);
-        if (minim_vectorp(frame)) {
-            // small namespace
-            for (int i = 0; i < minim_vector_len(frame); ++i) {
-                mobj bind = minim_vector_ref(frame, i);
-                if (minim_falsep(bind))
-                    break;
-                
-                hashtable_set(names, minim_car(bind), minim_null);
-            }
-        } else if (minim_hashtablep(frame)) {
-            // large namespace
-            mobj keys = hashtable_keys(frame);
-            for (mobj it = keys; !minim_nullp(it); it = minim_cdr(it))
-                hashtable_set(names, minim_car(it), minim_null);
-        } else {
-            not_environment_exn("environment_names()", frame);
-        }
-
-        env = minim_env_prev(env);
-    }
-
-    return hashtable_keys(names);
-}
+//
+//  Objects
+//
 
 mobj Menv(mobj prev) {
     return Menv2(prev, ENVIRONMENT_VECTOR_MAX);
@@ -66,6 +33,63 @@ mobj Menv2(mobj prev, size_t size) {
     minim_env_bindings(env) = Mvector(size, minim_false);
     minim_env_prev(env) = prev;
     return env;
+}
+
+static void not_environment_exn(const char *name, mobj *frame) {
+    fprintf(stderr, "%s: not an environment frame: ", name);
+    write_object(stderr, frame);
+    fprintf(stderr, "\n");
+    minim_shutdown(1);
+}
+
+static void hashtable_set2(mobj ht, mobj k, mobj v) {
+    mobj h = eq_hash_proc(k);
+    mobj b = hashtable_ref(ht, h);
+    for (mobj bi = b; !minim_nullp(bi); bi = minim_cdr(bi)) {
+        if (minim_caar(bi) == k) {
+            minim_cdar(bi) = v;
+            return;
+        }
+    }
+
+    hashtable_set(ht, h, Mcons(Mcons(k, v), b));
+}
+
+static mobj hashtable_find(mobj ht, mobj k) {
+    mobj h = eq_hash_proc(k);
+    for (mobj b = hashtable_ref(ht, h); !minim_nullp(b); b = minim_cdr(b)) {
+        if (minim_caar(b) == k)
+            return minim_car(b);
+    }
+
+    return minim_false;
+}
+
+static mobj environment_names(mobj env) {
+    mobj frame, names;
+
+    names = Mhashtable(0);
+    for (; minim_envp(env); env = minim_env_prev(env)) {
+        frame = minim_env_bindings(env);
+        if (minim_vectorp(frame)) {
+            // small namespace
+            for (int i = 0; i < minim_vector_len(frame); ++i) {
+                mobj bind = minim_vector_ref(frame, i);
+                if (minim_falsep(bind))
+                    break;
+                
+                hashtable_set2(names, minim_car(bind), minim_null);
+            }
+        } else if (minim_hashtablep(frame)) {
+            // large namespace
+            for (mobj keys = hashtable_keys(frame); !minim_nullp(keys); keys = minim_cdr(keys))
+                hashtable_set2(names, minim_car(keys), minim_null);
+        } else {
+            not_environment_exn("environment_names()", frame);
+        }
+    }
+
+    return hashtable_keys(names);
 }
 
 void env_define_var_no_check(mobj env, mobj var, mobj val) {
@@ -84,17 +108,17 @@ void env_define_var_no_check(mobj env, mobj var, mobj val) {
         }
 
         // too small: convert to a large namespace
-        new_frame = Mhashtable2(eq_hash_proc_obj, eq_proc_obj, frame_size + 1);
+        new_frame = Mhashtable(frame_size + 1);
         for (i = 0; i < frame_size; ++i) {
             bind = minim_vector_ref(frame, i);
-            hashtable_set(new_frame, minim_car(bind), minim_cdr(bind));
+            hashtable_set2(new_frame, minim_car(bind), minim_cdr(bind));
         }
 
-        hashtable_set(new_frame, var, val);
+        hashtable_set2(new_frame, var, val);
         minim_env_bindings(env) = new_frame;
     } else if (minim_hashtablep(frame)) {
         // large namespace
-        hashtable_set(frame, var, val);
+        hashtable_set2(frame, var, val);
     } else {
         not_environment_exn("env_define_var_no_check()", frame);
     }
@@ -122,7 +146,7 @@ mobj env_define_var(mobj env, mobj var, mobj val) {
     } else if (minim_hashtablep(frame)) {
         // large namespace
         bind = hashtable_find(frame, var);
-        if (!minim_nullp(bind)) {
+        if (!minim_falsep(bind)) {
             old = minim_cdr(bind);
             minim_cdr(bind) = val;
             return old;
@@ -158,7 +182,7 @@ mobj env_set_var(mobj env, mobj var, mobj val) {
         } else if (minim_hashtablep(frame)) {
             // large namespace
             bind = hashtable_find(frame, var);
-            if (!minim_nullp(bind)) {
+            if (!minim_falsep(bind)) {
                 old = minim_cdr(bind);
                 minim_cdr(bind) = val;
                 return old;
@@ -193,7 +217,7 @@ int env_var_is_defined(mobj env, mobj var, int recursive) {
         } else if (minim_hashtablep(frame)) {
             // large namespace
             bind = hashtable_find(frame, var);
-            if (!minim_nullp(bind))
+            if (!minim_falsep(bind))
                 return 1;
         } else {
             not_environment_exn("env_var_is_defined()", frame);
@@ -227,7 +251,7 @@ mobj env_lookup_var(mobj env, mobj var) {
         } else if (minim_hashtablep(frame)) {
             // large namespace
             bind = hashtable_find(frame, var);
-            if (!minim_nullp(bind))
+            if (!minim_falsep(bind))
                 return minim_cdr(bind);
         } else {
             not_environment_exn("env_lookup_var()", frame);
