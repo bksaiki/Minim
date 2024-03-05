@@ -197,18 +197,17 @@ void init_prims(mobj env) {
     add_procedure("pattern-variable-value", pattern_var_value_proc, 1, 1);
     add_procedure("pattern-variable-depth", pattern_var_depth_proc, 1, 1);
 
-    add_procedure("interaction-environment", interaction_environment_proc, 0, 0);
-    add_procedure("null-environment", empty_environment_proc, 0, 0);
-    add_procedure("environment", environment_proc, 0, 0);
-    add_procedure("current-environment", current_environment_proc, 0, 0);
-
-    add_procedure("environment-names", environment_names_proc, 1, 1);
-    add_procedure("extend-environment", extend_environment_proc, 1, 1);
-    add_procedure("environment-variable-value", environment_variable_value_proc, 2, 3);
-    add_procedure("environment-set-variable-value!", environment_set_variable_value_proc, 3, 3);
+    add_unsafe_procedure("environment?", environmentp_proc, 1);
+    add_unsafe_procedure("interaction-environment", interaction_environment, 0);
+    add_unsafe_procedure("null-environment", empty_environment, 0);
+    add_unsafe_procedure("environment", environment_proc, 0);
+    add_unsafe_procedure("current-environment", current_environment, 0);
+    add_unsafe_procedure("$environment-extend", extend_environment, 1);
+    add_unsafe_procedure("$environment-names", environment_names, 1);
+    add_unsafe_procedure("$environment-ref", environment_variable_ref, 3);
+    add_unsafe_procedure("$environment-set!", environment_variable_set, 3);
 
     add_procedure("procedure-arity", procedure_arity_proc, 1, 1);
-
     add_procedure("eval", eval_proc, 1, 2);
     add_procedure("apply", apply_proc, 2, ARG_MAX);
     add_unsafe_procedure("identity", identity_proc, 1);

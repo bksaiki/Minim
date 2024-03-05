@@ -2,6 +2,50 @@
 
 #include "../minim.h"
 
+static void write_char(FILE *out, mobj o, int quote, int display) {
+    if (display) {
+        fputc(minim_char(o), out);
+    } else {
+        switch (minim_char(o)) {
+        case '\n':
+            fprintf(out, "#\\newline");
+            break;
+        case ' ':
+            fprintf(out, "#\\space");
+            break;
+        default:
+            fprintf(out, "#\\%c", minim_char(o));
+        }
+    }
+}
+
+static void write_string(FILE *out, mobj o, int quote, int display) {
+    char *str = minim_string(o);
+    if (display) {
+        fprintf(out, "%s", str);
+    } else {
+        fputc('"', out);
+        while (*str != '\0') {
+            switch (*str) {
+            case '\n':
+                fprintf(out, "\\n");
+                break;
+            case '\t':
+                fprintf(out, "\\t");
+                break;
+            case '\\':
+                fprintf(out, "\\\\");
+                break;
+            default:
+                fputc(*str, out);
+                break;
+            }
+            ++str;
+        }
+        fputc('"', out);
+    }
+}
+
 static void write_pair(FILE *out, mobj p, int quote, int display) {
     write_object2(out, minim_car(p), quote, display);
     if (minim_consp(minim_cdr(p))) {
@@ -15,12 +59,21 @@ static void write_pair(FILE *out, mobj p, int quote, int display) {
     }
 }
 
-void write_object2(FILE *out, mobj o, int quote, int display) {
-    minim_thread *th;
-    mobj it;
-    char *str;
-    long stashc, i;
+static void write_vector(FILE *out, mobj o, int quote, int display) {
+    if (minim_vector_len(o) == 0) {
+        fputs("#()", out);
+    } else {
+        fputs("#(", out);
+        write_object2(out, minim_vector_ref(o, 0), 1, display);
+        for (long i = 1; i < minim_vector_len(o); ++i) {
+            fputc(' ', out);
+            write_object2(out, minim_vector_ref(o, i), 1, display);
+        }
+        fputc(')', out);
+    }
+}
 
+void write_object2(FILE *out, mobj o, int quote, int display) {
     if (minim_nullp(o)) {
         if (!quote) fputc('\'', out);
         fprintf(out, "()");
@@ -37,20 +90,7 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
     } else {
         switch (minim_type(o)) {
         case MINIM_OBJ_CHAR:
-            if (display) {
-                fputc(minim_char(o), out);
-            } else {
-                switch (minim_char(o)) {
-                case '\n':
-                    fprintf(out, "#\\newline");
-                    break;
-                case ' ':
-                    fprintf(out, "#\\space");
-                    break;
-                default:
-                    fprintf(out, "#\\%c", minim_char(o));
-                }
-            }
+            write_char(out, o, quote, display);
             break;
         case MINIM_OBJ_FIXNUM:
             fprintf(out, "%ld", minim_fixnum(o));
@@ -60,30 +100,7 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
             fprintf(out, "%s", minim_symbol(o));
             break;
         case MINIM_OBJ_STRING:
-            str = minim_string(o);
-            if (display) {
-                fprintf(out, "%s", str);
-            } else {
-                fputc('"', out);
-                while (*str != '\0') {
-                    switch (*str) {
-                    case '\n':
-                        fprintf(out, "\\n");
-                        break;
-                    case '\t':
-                        fprintf(out, "\\t");
-                        break;
-                    case '\\':
-                        fprintf(out, "\\\\");
-                        break;
-                    default:
-                        fputc(*str, out);
-                        break;
-                    }
-                    ++str;
-                }
-                fputc('"', out);
-            }
+            write_string(out, o, quote, display);
             break;
         case MINIM_OBJ_PAIR:
             if (!quote) fputc('\'', out);
@@ -93,17 +110,7 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
             break;
         case MINIM_OBJ_VECTOR:
             if (!quote) fputc('\'', out);
-            if (minim_vector_len(o) == 0) {
-                fputs("#()", out);
-            } else {
-                fputs("#(", out);
-                write_object2(out, minim_vector_ref(o, 0), 1, display);
-                for (long i = 1; i < minim_vector_len(o); ++i) {
-                    fputc(' ', out);
-                    write_object2(out, minim_vector_ref(o, i), 1, display);
-                }
-                fputc(')', out);
-            }
+            write_vector(out, o, 1, display);
             break;
         case MINIM_OBJ_BOX:
             if (!quote) fputc('\'', out);
@@ -135,24 +142,7 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
                 fprintf(out, "#<output-port>");
             break;
         case MINIM_OBJ_HASHTABLE:
-            if (minim_hashtable_count(o) == 0) {
-                fprintf(out, "#<hashtable>");
-            } else {
-                fprintf(out, "#<hashtable");
-                for (i = 0; i < minim_hashtable_alloc(o); ++i) {
-                    it = minim_hashtable_bucket(o, i);
-                    if (it) {
-                        for (; !minim_nullp(it); it = minim_cdr(it)) {
-                            fputs(" (", out);
-                            write_object2(out, minim_caar(it), 1, display);
-                            fputs(" . ", out);
-                            write_object2(out, minim_cdar(it), 1, display);
-                            fputc(')', out);
-                        }
-                    }
-                }
-                fputc('>', out);
-            }
+            fprintf(out, "#<hashtable>");
             break;
         case MINIM_OBJ_RECORD:
             if (minim_record_rtd(o) == minim_base_rtd) {
@@ -160,15 +150,7 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
                 fprintf(out, "#<record-type:%s>", minim_symbol(record_rtd_name(o)));
             } else {
                 // record value
-                th = current_thread();
-                stashc = stash_call_args();
-
-                push_call_arg(o);
-                push_call_arg(Moutput_port(out));   // TODO: problematic
-                push_call_arg(Mcons(Mfixnum(quote), Mfixnum(display)));
-                call_with_args(record_write_proc(th), global_env(th));
-
-                prepare_call_args(stashc);
+                fprintf(out, "#<%s>", minim_symbol(record_rtd_name(minim_record_rtd(o))));
             }
             break;
         case MINIM_OBJ_SYNTAX:

@@ -244,8 +244,8 @@
 
 ;; Base environment when expanding modules
 (define ($base-stx-env env)
-  (let ([env (extend-environment env)])
-    (environment-set-variable-value!
+  (let ([env (environment-extend env)])
+    (environment-set!
       env
       'get-pattern-variable
       (lambda (k)

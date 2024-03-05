@@ -578,6 +578,16 @@ mobj identity_proc(mobj x);
 mobj strip_syntax(mobj o);
 mobj to_syntax(mobj o);
 
+mobj environmentp_proc(mobj o);
+mobj interaction_environment();
+mobj empty_environment();
+mobj environment_proc();
+mobj current_environment();
+mobj environment_names(mobj env);
+mobj extend_environment(mobj env);
+mobj environment_variable_ref(mobj env, mobj k, mobj fail);
+mobj environment_variable_set(mobj env, mobj k, mobj v);
+
 // I/O
 
 mobj read_object(FILE *in);
@@ -600,7 +610,6 @@ typedef enum {
     FASL_PAIR,
     FASL_EMPTY_VECTOR,
     FASL_VECTOR,
-    FASL_HASHTABLE,
     FASL_BASE_RTD,
     FASL_RECORD,
 } fasl_type;
@@ -844,15 +853,6 @@ DEFINE_PRIM_PROC(default_record_write_procedure);
 DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
-// environment
-DEFINE_PRIM_PROC(empty_environment);
-DEFINE_PRIM_PROC(extend_environment);
-DEFINE_PRIM_PROC(environment_names);
-DEFINE_PRIM_PROC(environment_variable_value);
-DEFINE_PRIM_PROC(environment_set_variable_value);
-DEFINE_PRIM_PROC(environment);
-DEFINE_PRIM_PROC(current_environment);
-DEFINE_PRIM_PROC(interaction_environment);
 // syntax
 DEFINE_PRIM_PROC(syntax_e);
 DEFINE_PRIM_PROC(syntax_loc);

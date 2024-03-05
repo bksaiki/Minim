@@ -165,33 +165,6 @@ static mobj read_fasl_vector(FILE *in) {
     return vec;
 }
 
-// static mobj read_fasl_hashtable(FILE *in) {
-//     mobj ht, k, v;
-//     long size, i;
-//     mbyte t;
-
-//     // size and type info
-//     size = read_fasl_uptr(in);
-//     t = read_fasl_byte(in);
-
-//     if (t == 0) {
-//         ht = Mhashtable(eq_hash_proc_obj, eq_proc_obj);
-//     } else if (t == 1) {
-//         ht = Mhashtable(equal_hash_proc_obj, equal_proc_obj);
-//     } else {
-//         fprintf(stderr, "read_fasl: malformed FASL hashtable of type %u\n", t);
-//         exit(1);
-//     }
-
-//     for (i = 0; i < size; i++) {
-//         k = read_fasl(in);
-//         v = read_fasl(in);
-//         hashtable_set(ht, k, v);
-//     }
-
-//     return ht;
-// }
-
 static mobj read_fasl_record(FILE *in) {
     mobj rec, rtd;
     long len, i;
@@ -235,8 +208,6 @@ mobj read_fasl(FILE *in) {
         return minim_empty_vec;
     case FASL_VECTOR:
         return read_fasl_vector(in);
-    // case FASL_HASHTABLE:
-    //     return read_fasl_hashtable(in);
     case FASL_BASE_RTD:
         return minim_base_rtd;
     case FASL_RECORD:
@@ -312,39 +283,6 @@ static void write_fasl_vector(FILE *out, mobj v) {
         write_fasl(out, minim_vector_ref(v, i));
 }
 
-// Serializes a hashtable
-// WARN: internal structure of hashtable may be different
-// static void write_fasl_hashtable(FILE *out, mobj ht) {
-//     mobj b;
-//     size_t i;
-
-//     write_fasl_uptr(out, minim_hashtable_count(ht));
-
-//     if (minim_hashtable_hash(ht) == eq_hash_proc_obj
-//         && minim_hashtable_equiv(ht) == eq_proc_obj) {
-//         write_fasl_byte(out, 0);
-//     } else if (minim_hashtable_hash(ht) == equal_hash_proc_obj 
-//         && minim_hashtable_equiv(ht) == equal_proc_obj) {
-//         write_fasl_byte(out, 1);
-//     } else {
-//         fprintf(stderr, "write_fasl: hashtable not serialiable\n");
-//         fprintf(stderr, " object: ");
-//         write_object(stderr, ht);
-//         fprintf(stderr, "\n");
-//         exit(1);
-//     }
-
-//     for (i = 0; i < minim_hashtable_alloc(ht); ++i) {
-//         b = minim_hashtable_bucket(ht, i);
-//         if (b) {
-//             for (; !minim_nullp(b); b = minim_cdr(b)) {
-//                 write_fasl(out, minim_caar(b));
-//                 write_fasl(out, minim_cdar(b));
-//             }
-//         }
-//     }
-// }
-
 // Serializes a record
 static void write_fasl_record(FILE *out, mobj r) {
     write_fasl_uptr(out, minim_record_count(r));
@@ -387,9 +325,6 @@ void write_fasl(FILE *out, mobj o) {
             write_fasl_type(out, FASL_VECTOR);
             write_fasl_vector(out, o);
         }
-    // } else if (minim_hashtablep(o)) {
-    //     write_fasl_type(out, FASL_HASHTABLE);
-    //     write_fasl_hashtable(out, o);
     } else if (minim_base_rtdp(o)) {
         write_fasl_type(out, FASL_BASE_RTD);
     } else if (minim_recordp(o)) {

@@ -305,45 +305,50 @@ application:
         // unsafe primitive
         // no checking arity just call with C calling conventions
         check_prim2_proc_arity(proc, argc);
-        args = irt_call_args;
-        switch (argc) {
-        case 0:
-            result = ((mobj (*)()) minim_prim2_proc(proc))();
-            break;
-        case 1:
-            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0]);
-            break;
-        case 2:
-            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1]);
-            break;
-        case 3:
-            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2]);
-            break;
-        case 4:
-            result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
-            break;
-        default:
+        if (minim_prim2_proc(proc) == current_environment) {
+            // special case: `current-environment`
+            return env;
+        } else {
+            args = irt_call_args;
+            switch (argc) {
+            case 0:
+                result = ((mobj (*)()) minim_prim2_proc(proc))();
+                break;
+            case 1:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0]);
+                break;
+            case 2:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1]);
+                break;
+            case 3:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2]);
+                break;
+            case 4:
+                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
+                break;
+            default:
+                clear_call_args();
+                fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+                fprintf(stderr, " received:");
+                write_object(stderr, proc);
+                minim_shutdown(1);
+                break;
+            }
+            
             clear_call_args();
-            fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-            fprintf(stderr, " received:");
-            write_object(stderr, proc);
-            minim_shutdown(1);
-            break;
+            return result;
         }
-        clear_call_args();
-        return result;
     } else if (minim_primp(proc)) {
         check_prim_proc_arity(proc, argc);
-
-        // special case for `apply`
         if (minim_prim(proc) == apply_proc) {
+            // special case for `apply`
             proc = args[0];
             argc = apply_args();
             goto application;
         }
-
-        // special case for `eval`
+        
         if (minim_prim(proc) == eval_proc) {
+            // special case for `eval`
             expr = args[0];
             if (argc == 2) {
                 env = args[1];
@@ -355,11 +360,8 @@ application:
             check_expr(expr);
             return eval_expr(expr, env);
         }
-
-        if (minim_prim(proc) == current_environment_proc) {
-            // special case: `current-environment`
-            result = env;
-        } else if (minim_prim(proc) == enter_compiled_proc) {
+        
+        if (minim_prim(proc) == enter_compiled_proc) {
             // special case: `enter-compiled!
             result = call_compiled(env, args[0]);
         } else if (minim_prim(proc) == call_with_values_proc) {
@@ -596,41 +598,47 @@ application:
             // unsafe primitive
             // no checking arity just call with C calling conventions
             check_prim2_proc_arity(proc, argc);
-            args = irt_call_args;
-            switch (argc) {
-            case 0:
-                result = ((mobj (*)()) minim_prim2_proc(proc))();
-                break;
-            case 1:
-                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0]);
-                break;
-            case 2:
-                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1]);
-                break;
-            case 3:
-                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2]);
-                break;
-            case 4:
-                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
-                break;
-            case 5:
-                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4]);
-                break;
-            case 6:
-                result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4], args[5]);
-                break;
-            default:
+            if (minim_prim2_proc(proc) == current_environment) {
+                // special case: `current-environment`
+                return env;
+            } else {
+                args = irt_call_args;
+                switch (argc) {
+                case 0:
+                    result = ((mobj (*)()) minim_prim2_proc(proc))();
+                    break;
+                case 1:
+                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0]);
+                    break;
+                case 2:
+                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1]);
+                    break;
+                case 3:
+                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2]);
+                    break;
+                case 4:
+                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
+                    break;
+                case 5:
+                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4]);
+                    break;
+                case 6:
+                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4], args[5]);
+                    break;
+                default:
+                    clear_call_args();
+                    fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+                    fprintf(stderr, " received:");
+                    write_object(stderr, proc);
+                    fprintf(stderr, "\n at:");
+                    write_object(stderr, expr);
+                    minim_shutdown(1);
+                    break;
+                }
+
                 clear_call_args();
-                fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-                fprintf(stderr, " received:");
-                write_object(stderr, proc);
-                fprintf(stderr, "\n at:");
-                write_object(stderr, expr);
-                minim_shutdown(1);
-                break;
+                return result;
             }
-            clear_call_args();
-            return result;
         } else if (minim_primp(proc)) {
             // primitive
             check_prim_proc_arity(proc, argc);
@@ -657,10 +665,7 @@ application:
                 goto loop;
             }
 
-            if (minim_prim(proc) == current_environment_proc) {
-                // special case: `current-environment`
-                result = env;
-            } else if (minim_prim(proc) == enter_compiled_proc) {
+            if (minim_prim(proc) == enter_compiled_proc) {
                 // special case: `enter-compiled!
                 result = call_compiled(env, args[0]);
             } else if (minim_prim(proc) == call_with_values_proc) {

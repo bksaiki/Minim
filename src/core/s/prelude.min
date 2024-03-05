@@ -1074,21 +1074,18 @@
                                 name)))]
                   [(check-fields!)
                    (lambda (fields)
-                     (letrec-values ([(loop)
-                                      (lambda (i ids)
-                                        (if (>= i ($vector-length fields))
-                                            (void)
-                                            (let-values ([(maybe-id) (field-id ($vector-ref fields i))])
-                                              (if maybe-id
-                                                  (if (ormap (lambda (id) (eq? maybe-id id)) ids)
-                                                      (error 'make-record-type-descriptor
-                                                             "duplicate field"
-                                                             maybe-id)
-                                                      (loop (add1 i) (cons maybe-id ids)))
-                                                  (error 'make-record-type-descriptor
-                                                         "invalid field; expected '(immutable <name>) or '(mutable <name>)"
-                                                         field)))))])
-                       (loop 0 '())))])
+                     (letrec-values ([(ids) '()])
+                       (for-each
+                         (lambda (i)
+                           (let-values ([(maybe-id) (field-id ($vector-ref fields i))])
+                             (if maybe-id
+                                 (if (ormap (lambda (id) (eq? maybe-id id)) ids)
+                                     (error 'make-record-type-descriptor "duplicate field" maybe-id)
+                                     (set! ids (cons maybe-id ids)))
+                                 (error 'make-record-type-descriptor
+                                        "invalid field; expected '(immutable <name>) or '(mutable <name>)"
+                                        field))))
+                         (iota ($vector-length fields)))))])
     (lambda (name parent uid sealed? opaque? fields)
       (let-values ([(rtd) ($make-record-type-descriptor name parent uid sealed? opaque? fields)])
         (if parent
@@ -1520,7 +1517,7 @@
                                      (let-values ([(proc) ($cadr args)])
                                        (if (procedure? proc)
                                            (void)
-                                           (error name "expected procedure?" rtd)))
+                                           (error name "expected procedure?" p)))
                                      (void))
                                  (error name "expected record-type-descriptor?" rtd)))
                            (error name "expected 1 or 2 arguments" argc))))])
@@ -1574,14 +1571,10 @@
                   [(equal-vector?)
                    (lambda (a b)
                      (if (= ($vector-length a) ($vector-length b))
-                         (letrec-values ([(loop)
-                                          (lambda (i)
-                                            (if (>= i ($vector-length a))
-                                                #t
-                                                (if (equal? ($vector-ref a i) ($vector-ref b i))
-                                                    (loop (add1 i))
-                                                    #f)))])
-                           (loop 0))
+                         (andmap
+                           (lambda (i)
+                             (equal? ($vector-ref a i) ($vector-ref b i)))
+                           (iota ($vector-length a)))
                          #f))]
                   [(equal-hashtable?)
                    (lambda (a b)
@@ -1659,3 +1652,67 @@
                                       (if proc (proc x equal-hash) (eq-hash x)))
                                     (eq-hash x))))))))])
         (loop x 523658599)))))
+
+;; --------------------------------------------------------
+;; Printer
+
+; (define (write)
+;   (letrec-values ([(1/write)
+;                    (lambda (x p)
+;                      (if (if (boolean? x)
+;                              #t
+;                              (eof? 
+;                      (void))])
+;     (lambda args
+;       (let-values ([(argc) (length args)])
+;         (if (= argc 1)
+;             (1/write ($car args))
+;             (if (= argc 2)
+;                 (let-values ([(p) ($cadr args)])
+;                   (if (output-port? p)
+;                       (1/write ($car args) p)
+;                       (error name "expected output-port?" p)))
+;                 (error name "expected 1 or 2 arguments" argc)))))))
+        
+;; --------------------------------------------------------
+;; Environment
+
+(define-values (environment-extend)
+  (lambda (env)
+    (if (environment? env)
+        ($environment-extend env)
+        (error 'environment-extend "expected environment?" env))))
+
+(define-values (environment-names)
+  (lambda (env)
+    (if (environment? env)
+        ($environment-names env)
+        (error 'environment-names "expected environment?" env))))
+
+(define-values (environment-ref)
+  (let-values ([(default-fail)
+                (lambda (key) (error 'environment "key not found" key))])
+    (lambda args
+      (let-values ([(argc) (length args)])
+        (if (if (>= argc 2) (<= argc 3) #f)
+            (let-values ([(env) ($car args)] [(k) ($cadr args)])
+              (if (environment? env)
+                  (if (symbol? k)
+                      (let-values ([(v) ($environment-ref env k default-fail)])
+                        (if (eq? v default-fail)
+                            (if (= argc 2)
+                                (default-fail k)
+                                (let-values ([(fail) ($caddr args)])
+                                  (if (procedure? fail) (fail) fail)))
+                            v))
+                     (error 'environment-ref "expected symbol?" k))
+                 (error 'environment-ref "expected environment?" env)))
+            (error 'environment-ref "expected 1 or 2 arguments" argc))))))
+
+(define-values (environment-set!)
+  (lambda (env k v)
+    (if (environment? env)
+        (if (symbol? k)
+            ($environment-set! env k v)
+            (error 'environment-set! "expected symbol?" k))
+        (error 'environment-set! "expected environment?" env))))
