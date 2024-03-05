@@ -481,7 +481,7 @@ application:
             // special case for `apply`
             if (minim_prim(proc) == apply_proc) {
                 proc = force_single_value(args[0]);
-                if (minim_primp(proc)) {
+                if (!minim_procp(proc)) {
                     fprintf(stderr, "apply: expected a procedure\n");
                     fprintf(stderr, " received:");
                     write_object(stderr, proc);

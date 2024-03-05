@@ -5,19 +5,6 @@
 
 #include "../boot.h"
 
-#define add_value(env, name, c_val)  \
-    env_define_var(env, intern(name), c_val);
-
-mobj make_env() {
-    mobj env = setup_env();
-    add_value(env, "null", minim_null);
-    add_value(env, "true", minim_true);
-    add_value(env, "false", minim_false);
-    add_value(env, "eof", minim_eof);
-    init_prims(env);
-    return env;
-}
-
 void minim_boot_init() {
     minim_thread *th;
     mobj record_equal_proc_obj, record_hash_proc_obj, record_write_proc_obj;

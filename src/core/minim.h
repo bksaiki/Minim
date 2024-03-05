@@ -94,9 +94,6 @@ typedef enum {
     MINIM_OBJ_HASHTABLE,
     MINIM_OBJ_SYNTAX,
 
-    /* Transform types */
-    MINIM_OBJ_PATTERN,
-
     /* Runtime types */
     MINIM_OBJ_ENV,
 
@@ -338,18 +335,7 @@ extern mobj minim_values;
 #define minim_hashtable_alloc(o)        (*(minim_hashtable_alloc_ptr(o)))
 #define minim_hashtable_count(o)        (*((msize*) PTR_ADD(o, 3 * ptr_size)))
 
-// Pattern variable
-// +------------+
-// |    type    | [0, 1)
-// |    value   | [8, 16)
-// |    depth   | [16, 24)
-// +------------+
-#define minim_pattern_size      (3 * ptr_size)
-#define minim_patternp(o)       (minim_type(o) == MINIM_OBJ_PATTERN)
-#define minim_pattern_value(o)  (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_pattern_depth(o)  (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-
-// Pattern variable
+// Environment
 // +------------+
 // |    type    | [0, 1)
 // |    prev    | [8, 16)
@@ -408,7 +394,6 @@ mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity);
 mobj Mnative_closure(mobj env, void *fn, short min_arity, short max_arity);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
-mobj Mpattern(mobj value, mobj depth);
 mobj Msyntax(mobj e, mobj loc);
 mobj Menv(mobj prev);
 mobj Menv2(mobj prev, size_t size);
@@ -451,7 +436,6 @@ mobj recordp_proc(mobj x);
 mobj record_rtdp_proc(mobj x);
 mobj record_valuep_proc(mobj x);
 mobj syntaxp_proc(mobj x);
-mobj patternp_proc(mobj x);
 
 mobj not_proc(mobj x);
 mobj eq_proc(mobj x, mobj y);
@@ -860,10 +844,6 @@ DEFINE_PRIM_PROC(to_syntax);
 DEFINE_PRIM_PROC(to_datum);
 DEFINE_PRIM_PROC(syntax_error);
 DEFINE_PRIM_PROC(syntax_to_list);
-// pattern variables
-DEFINE_PRIM_PROC(make_pattern_var);
-DEFINE_PRIM_PROC(pattern_var_value);
-DEFINE_PRIM_PROC(pattern_var_depth);
 // I/O
 DEFINE_PRIM_PROC(current_input_port);
 DEFINE_PRIM_PROC(current_output_port);

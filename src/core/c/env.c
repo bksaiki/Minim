@@ -215,6 +215,27 @@ mobj env_lookup_var(mobj env, mobj var) {
     minim_shutdown(1);
 }
 
+#define add_value(env, name, c_val)  \
+    env_define_var(env, intern(name), c_val);
+
+static mobj base_env;
+
+mobj make_env() {
+    mobj env  = setup_env();
+    if (base_env == NULL) {
+        add_value(env, "null", minim_null);
+        add_value(env, "true", minim_true);
+        add_value(env, "false", minim_false);
+        add_value(env, "eof", minim_eof);
+        init_prims(env);
+        base_env = env;
+        return env;
+    } else {
+        minim_env_bindings(env) = hashtable_copy(minim_env_bindings(base_env));
+        return env;
+    }
+}
+
 mobj setup_env() {
     return Menv(empty_env);
 }

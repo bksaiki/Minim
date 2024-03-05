@@ -1675,6 +1675,29 @@
 ;                 (error name "expected 1 or 2 arguments" argc)))))))
         
 ;; --------------------------------------------------------
+;; Pattern variables
+
+(define-values (make-pattern-variable
+                pattern-variable?
+                pattern-variable-value
+                pattern-variable-depth)
+  (let-values ([($pvar) (make-record-type-descriptor 'pattern-variable
+                                                     #f
+                                                     #f
+                                                     #t
+                                                     #t
+                                                     #((immutable value) (immutable depth)))])
+    (values
+      (let-values ([($make-pvar) (record-constructor $pvar)])
+        (lambda (x depth)
+          (if (if (integer? depth) (>= depth 0) #f)
+              ($make-pvar x depth)
+              (error 'make-pattern-variable "expected non-negative integer?" depth))))
+      (record-predicate $pvar)
+      (record-accessor $pvar 0)
+      (record-accessor $pvar 1))))
+
+;; --------------------------------------------------------
 ;; Environment
 
 (define-values (environment-extend)

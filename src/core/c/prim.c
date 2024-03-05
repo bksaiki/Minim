@@ -192,10 +192,10 @@ void init_prims(mobj env) {
     add_procedure("syntax->datum", to_datum_proc, 1, 1);
     add_procedure("syntax->list", syntax_to_list_proc, 1, 1);
 
-    add_unsafe_procedure("pattern-variable?", patternp_proc, 1);
-    add_procedure("make-pattern-variable", make_pattern_var_proc, 2, 2);
-    add_procedure("pattern-variable-value", pattern_var_value_proc, 1, 1);
-    add_procedure("pattern-variable-depth", pattern_var_depth_proc, 1, 1);
+    // add_unsafe_procedure("pattern-variable?", patternp_proc, 1);
+    // add_procedure("make-pattern-variable", make_pattern_var_proc, 2, 2);
+    // add_procedure("pattern-variable-value", pattern_var_value_proc, 1, 1);
+    // add_procedure("pattern-variable-depth", pattern_var_depth_proc, 1, 1);
 
     add_unsafe_procedure("environment?", environmentp_proc, 1);
     add_unsafe_procedure("interaction-environment", interaction_environment, 0);

@@ -12,14 +12,6 @@ mobj Msyntax(mobj e, mobj loc) {
     return o;
 }
 
-mobj Mpattern(mobj value, mobj depth) {
-    mobj o = GC_alloc(minim_pattern_size);
-    minim_type(o) = MINIM_OBJ_PATTERN;
-    minim_pattern_value(o) = value;
-    minim_pattern_depth(o) = depth;
-    return o;
-}
-
 // Recursively converts an object to syntax
 mobj to_syntax(mobj o) {
     mobj it;
@@ -185,35 +177,4 @@ mobj syntax_to_list_proc(int argc, mobj *args) {
         return minim_false;
     else 
         return syntax_to_list(lst, lst);
-}
-
-mobj patternp_proc(mobj x) {
-    return minim_patternp(x) ? minim_true : minim_false;
-}
-
-mobj make_pattern_var_proc(int argc, mobj *args) {
-    // (-> any non-negative-integer? pattern-var?)
-    mobj value, depth;
-    
-    value = args[0];
-    depth = args[1];
-    if (!minim_fixnump(depth) || minim_fixnum(depth) < 0)
-        bad_type_exn("make-pattern-var", "non-negative-integer?", depth);
-    return Mpattern(value, depth);
-}
-
-mobj pattern_var_value_proc(int argc, mobj *args) {
-    // (-> pattern-var? any)
-    mobj var = args[0];
-    if (!minim_patternp(var))
-        bad_type_exn("pattern-variable-value", "pattern-variable?", var);
-    return minim_pattern_value(var);   
-}
-
-mobj pattern_var_depth_proc(int argc, mobj *args) {
-    // (-> pattern-var? any)
-    mobj var = args[0];
-    if (!minim_patternp(var))
-        bad_type_exn("pattern-variable-depth", "pattern-variable?", var);
-    return minim_pattern_depth(var);   
 }
