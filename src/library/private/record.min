@@ -7,7 +7,6 @@
         "list.min")
 
 (export define-record-type
-        record-type-hash-procedure
         
         $make-generics-type           ;; re-exported
         define-generics               ;; re-exported
@@ -28,30 +27,6 @@
 (define-generics equal+hash
                  [equal-proc a b rec-equal?]
                  [hash-proc a rec-hash])
-
-(define hash-proc-accessor (generics-accessor gen:equal+hash 'hash-proc))
-
-; Fallback implementations for gen:equal+hash methods
-(define $default-record-equal-proc ($current-record-equal-procedure))
-(define $default-record-hash-proc ($current-record-hash-procedure))
-
-(define (unsafe-record-type-hash-procedure rtd)
-  (if (gen:equal+hash? rtd)
-      (hash-proc-accessor rtd)
-      $default-record-hash-proc))
-
-(define (record-hash r rec-hash)
-  (define rtd ($record-rtd r))
-  (define hash-proc (unsafe-record-type-hash-procedure rtd))
-  (hash-proc r rec-hash))
-
-;; Unlike R6RS, this cannot set the hash procedure
-(define (record-type-hash-procedure rtd)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
-  (unsafe-record-type-hash-procedure rtd))
-
-($current-record-hash-procedure record-hash)
 
 ;;
 ;;  Record writing
@@ -273,7 +248,9 @@
               ...)
             (when (gen:equal+hash? name)
               (define get-equal-proc (generics-accessor gen:equal+hash 'equal-proc))
-              (record-type-equal-procedure name (get-equal-proc name)))
+              (define get-hash-proc (generics-accessor gen:equal+hash 'hash-proc))
+              (record-type-equal-procedure name (get-equal-proc name))
+              (record-type-hash-procedure name (get-hash-proc name)))
             (define construct
               (let ([c (record-constructor name)]
                     [p protocol*])

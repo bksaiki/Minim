@@ -183,7 +183,6 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
             fprintf(out, "#<environment>");
             break;
         default:
-            fprintf(out, "%d %p\n", minim_type(o), minim_values);
             fprintf(out, "#<garbage:%p>", o);
             break;
         }

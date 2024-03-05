@@ -130,6 +130,8 @@ mobj env_define_var(mobj env, mobj var, mobj val) {
             return old;
         }
     } else {
+        printf("%p %p %p %p %p %p\n", minim_true, minim_false, minim_eof, minim_values, minim_void, empty_env);
+        printf("bad: %p %d %p %p\n", env, minim_type(frame), frame, minim_env_prev(env));
         not_environment_exn("env_define_var()", frame);
     }
 

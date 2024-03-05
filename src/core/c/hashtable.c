@@ -218,10 +218,8 @@ mobj hashtable_keys(mobj ht) {
 mobj hashtable_clear(mobj ht) {
     // (-> hashtable void)
     minim_hashtable_alloc_ptr(ht) = start_size_ptr;
-    minim_hashtable_buckets(ht) = GC_alloc(minim_hashtable_alloc(ht) * sizeof(mobj));
-    for (long i = 0; i < minim_hashtable_alloc(ht); i++)
-        minim_hashtable_bucket(ht, i) = minim_null;
-
+    minim_hashtable_buckets(ht) = Mvector(minim_hashtable_alloc(ht), minim_null);
+    minim_hashtable_count(ht) = 0;
     return minim_void;
 }
 
