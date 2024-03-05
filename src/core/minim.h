@@ -551,6 +551,9 @@ mobj hashtable_cells(mobj ht);
 mobj hashtable_keys(mobj ht);
 mobj hashtable_clear(mobj ht);
 
+mobj eq_hashtable_find(mobj ht, mobj k);
+void eq_hashtable_set(mobj ht, mobj k, mobj v);
+
 size_t eq_hash(mobj o);
 mobj eq_hash_proc(mobj x);
 mobj equal_hash_proc(mobj x);

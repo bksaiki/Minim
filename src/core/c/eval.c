@@ -418,9 +418,6 @@ application:
 }
 
 mobj eval_expr(mobj expr, mobj env) {
-
-    write_object(stderr, expr);
-    fprintf(stderr, "\n");
     
 loop:
 
@@ -586,6 +583,9 @@ loop:
                 goto loop;
             }
         }
+
+        // write_object(stderr, expr);
+        // fprintf(stderr, "\n");
 
         proc = force_single_value(eval_expr(head, env));
         argc = eval_exprs(minim_cdr(expr), env);

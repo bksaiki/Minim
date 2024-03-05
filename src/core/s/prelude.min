@@ -910,6 +910,32 @@
                                         (loop (map1 $cdr xss)))))])
               (loop (cons xs xss))))))))
 
+(define-values (iota)
+  (lambda (n)
+    (if (if (fixnum? n) (>= n 0) #f)
+        (letrec-values ([(loop)
+                         (lambda (n xs)
+                           (if (> n 0)
+                               (loop (- n 2) (cons (- n 1) (cons n xs)))
+                               (if (= n 0)
+                                   (cons 0 xs)
+                                   xs)))])
+          (loop (sub1 n) '()))
+        (error 'iota "expected non-negative fixnum" n))))
+
+(define-values (enumerate)
+  (lambda (xs)
+    (if (list? xs)
+        (letrec-values ([(loop)
+                         (lambda (xs i acc)
+                           (if (null? xs)
+                               ($reverse acc)
+                               (loop ($cdr xs)
+                                     (+ i 1)
+                                     (cons (cons ($car xs) i) acc))))])
+          (loop xs 0 '()))
+        (error 'enumerate "expected list?" xs))))
+
 ;; --------------------------------------------------------
 ;; Vector
 
@@ -1235,11 +1261,55 @@
         ($hashtable-size ($hashtable-store ht))
         (error 'hashtable-set! "expected hashtable?" ht))))
 
-(define-values (hashtable-clear!)
-  (lambda (ht)
-    (if (hashtable? ht)
-        ($hashtable-clear! ($hashtable-store ht))
-        (error 'hashtable-clear! "expected hashtable?" ht))))
+(define-values (hashtable-entries hashtable-keys hashtable-vals)
+  (let-values ([(check-arg!)
+                (lambda (name ht)
+                  (if (hashtable? ht)
+                      (void)
+                      (error name "expected hashtable?" ht)))])
+    (values
+      ; hashtable-entries
+      (lambda (ht)
+        (check-arg! 'hashtable-entries ht)
+        (letrec-values ([(store) ($hashtable-store ht)]
+                        [(size) ($hashtable-size store)]
+                        [(keys) ($make-vector size #f)]
+                        [(vals) ($make-vector size #f)]
+                        [(loop) (lambda (cells i)
+                                  (if (null? cells)
+                                      (values keys vals)
+                                      (begin
+                                        (vector-set! keys i ($caar cells))
+                                        (vector-set! vals i ($cdar cells))
+                                        (loop ($cdr cells) (add1 i)))))])
+          (loop ($hashtable-cells store) 0)))
+      ; hashtable-keys
+      (lambda (ht)
+        (check-arg! 'hashtable-entries ht)
+        (letrec-values ([(store) ($hashtable-store ht)]
+                        [(size) ($hashtable-size store)]
+                        [(keys) ($make-vector size #f)]
+                        [(loop) (lambda (cells i)
+                                  (if (null? cells)
+                                      keys
+                                      (begin
+                                        (vector-set! keys i ($caar cells))
+                                        (loop ($cdr cells) (add1 i)))))])
+          (loop ($hashtable-cells store) 0)))
+      ; hashtable-vals
+      (lambda (ht)
+        (check-arg! 'hashtable-entries ht)
+        (letrec-values ([(store) ($hashtable-store ht)]
+                        [(size) ($hashtable-size store)]
+                        [(vals) ($make-vector size #f)]
+                        [(loop) (lambda (cells i)
+                                  (if (null? cells)
+                                      vals
+                                      (begin
+                                        (vector-set! vals i ($cdar cells))
+                                        (loop ($cdr cells) (add1 i)))))])
+          (loop ($hashtable-cells store) 0))))))
+
 
 (define-values (hashtable-contains?
                 hashtable-ref
@@ -1409,6 +1479,12 @@
             (1/hashtable-cell-delete! ht k)
             (error 'hashtable-delete! "expected hashtable?" ht))))))
 
+(define-values (hashtable-clear!)
+  (lambda (ht)
+    (if (hashtable? ht)
+        ($hashtable-clear! ($hashtable-store ht))
+        (error 'hashtable-clear! "expected hashtable?" ht))))
+
 ;; --------------------------------------------------------
 ;; Equality + Hashing
 
@@ -1476,15 +1552,63 @@
                   #f))))))))
 
 (define-values (equal?)
-  (lambda (a b)
-    (if ($record-value? a)
-        (if ($record-value? b)
-            (let-values ([(proc) (record-equal-procedure a b)])
-              (if proc
-                 (proc a b equal?)
-                 ($equal? a b)))
-            #f)
-        ($equal? a b))))
+  (letrec-values ([(equal-pair?)
+                   (lambda (a b)
+                     (if (equal? ($car a) ($car b))
+                         (equal? ($cdr a) ($cdr b))
+                         #f))]
+                  [(equal-vector?)
+                   (lambda (a b)
+                     (if (= ($vector-length a) ($vector-length b))
+                         (letrec-values ([(loop)
+                                          (lambda (i)
+                                            (if (>= i ($vector-length a))
+                                                #t
+                                                (if (equal? ($vector-ref a i) ($vector-ref b i))
+                                                    (loop (add1 i))
+                                                    #f)))])
+                           (loop 0))
+                         #f))]
+                  [(equal-hashtable?)
+                   (lambda (a b)
+                     (if (eq? (hashtable-hash-proc a) (hashtable-hash-proc b))
+                         (if (eq? (hashtable-equiv-proc a) (hashtable-equiv-proc b))
+                             (let-values ([(kas vas) (hashtable-entries a)])
+                               (andmap
+                                 (lambda (i)
+                                   (let-values ([(ka) ($vector-ref kas i)]
+                                                [(va) ($vector-ref vas i)])
+                                     (if (hashtable-contains? b ka)
+                                         (equal? va (hashtable-ref b ka))
+                                         #f)))
+                                 (iota ($vector-length kas))))
+                             #f)
+                         #f))])
+    (lambda (a b)
+      (if (eq? a b)
+          #t
+          (if (if (symbol? a) #f (string? a))
+              ($equal? a b)
+              (if (pair? a)
+                  (if (pair? b)
+                      (equal-pair? a b)
+                      #f)
+                  (if (vector? a)
+                      (if (vector? b)
+                          (equal-vector? a b)
+                          #f)
+                      (if (hashtable? a)
+                          (if (hashtable? b)
+                              (equal-hashtable? a b)
+                              #f)
+                          (if ($record-value? a)
+                              (if ($record-value? b)
+                                  (let-values ([(proc) (record-equal-procedure a b)])
+                                    (if proc
+                                       (proc a b equal?)
+                                       ($equal? a b)))
+                                  #f)
+                              ($equal? a b))))))))))
 
 (define-values (equal-hash)
   (letrec-values ([(hash-pair)

@@ -228,7 +228,7 @@
                           (with-syntax ([gen-id gen-id]
                                         [(gen-methods ...) (hashtable-ref methods-rtd gen-id)])
                             #'(cons gen-id (list gen-methods ...))))
-                        (hashtable-keys methods-rtd))]
+                        (vector->list (hashtable-keys methods-rtd)))]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -237,23 +237,23 @@
                             [(mutable name _ _) #'(mutable name)]))
                         fields-rtd)]
                      [(accs ...)
-                      (enumerate
-                        (lambda (s i)
-                          (with-syntax ([idx i])
-                            (syntax-case s (immutable mutable)
+                      (map
+                        (lambda (s/i)
+                          (with-syntax ([idx (cdr s/i)])
+                            (syntax-case (car s/i) (immutable mutable)
                               [(immutable _ acc) #'(define acc (record-accessor name idx))]
                               [(mutable _ acc _) #'(define acc (record-accessor name idx))])))
-                        fields-rtd)]
+                        (enumerate fields-rtd))]
                      [(muts ...)
                       (filter
-                        (lambda (x) x)
-                        (enumerate
-                          (lambda (s i)
-                            (with-syntax ([idx i])
-                              (syntax-case s (immutable mutable)
+                        identity
+                        (map
+                          (lambda (s/i)
+                            (with-syntax ([idx (cdr s/i)])
+                              (syntax-case (car s/i) (immutable mutable)
                                 [(immutable _ _) #f]
                                 [(mutable _ _ mut) #'(define mut (record-mutator name idx))])))
-                          fields-rtd))])
+                          (enumerate fields-rtd)))])
         #'(begin
             (define name
               (let ([p parent*])

@@ -42,49 +42,26 @@ static void not_environment_exn(const char *name, mobj *frame) {
     minim_shutdown(1);
 }
 
-static void hashtable_set2(mobj ht, mobj k, mobj v) {
-    mobj h = eq_hash_proc(k);
-    mobj b = hashtable_ref(ht, h);
-    for (mobj bi = b; !minim_nullp(bi); bi = minim_cdr(bi)) {
-        if (minim_caar(bi) == k) {
-            minim_cdar(bi) = v;
-            return;
-        }
-    }
-
-    hashtable_set(ht, h, Mcons(Mcons(k, v), b));
-    minim_hashtable_count(ht)++;
-}
-
-static mobj hashtable_find(mobj ht, mobj k) {
-    mobj h = eq_hash_proc(k);
-    for (mobj b = hashtable_ref(ht, h); !minim_nullp(b); b = minim_cdr(b)) {
-        if (minim_caar(b) == k)
-            return minim_car(b);
-    }
-
-    return minim_false;
-}
-
 static mobj environment_names(mobj env) {
-    mobj frame, names;
+    mobj names, frame, bind, keys;
+    long i;
 
     names = Mhashtable(0);
     for (; minim_envp(env); env = minim_env_prev(env)) {
         frame = minim_env_bindings(env);
         if (minim_vectorp(frame)) {
             // small namespace
-            for (int i = 0; i < minim_vector_len(frame); ++i) {
-                mobj bind = minim_vector_ref(frame, i);
+            for (i = 0; i < minim_vector_len(frame); ++i) {
+                bind = minim_vector_ref(frame, i);
                 if (minim_falsep(bind))
                     break;
                 
-                hashtable_set2(names, minim_car(bind), minim_null);
+                eq_hashtable_set(names, minim_car(bind), minim_null);
             }
         } else if (minim_hashtablep(frame)) {
             // large namespace
-            for (mobj keys = hashtable_keys(frame); !minim_nullp(keys); keys = minim_cdr(keys))
-                hashtable_set2(names, minim_car(keys), minim_null);
+            for (keys = hashtable_keys(frame); !minim_nullp(keys); keys = minim_cdr(keys))
+                eq_hashtable_set(names, minim_car(keys), minim_null);
         } else {
             not_environment_exn("environment_names()", frame);
         }
@@ -112,14 +89,14 @@ void env_define_var_no_check(mobj env, mobj var, mobj val) {
         new_frame = Mhashtable(frame_size + 1);
         for (i = 0; i < frame_size; ++i) {
             bind = minim_vector_ref(frame, i);
-            hashtable_set2(new_frame, minim_car(bind), minim_cdr(bind));
+            eq_hashtable_set(new_frame, minim_car(bind), minim_cdr(bind));
         }
 
-        hashtable_set2(new_frame, var, val);
+        eq_hashtable_set(new_frame, var, val);
         minim_env_bindings(env) = new_frame;
     } else if (minim_hashtablep(frame)) {
         // large namespace
-        hashtable_set2(frame, var, val);
+        eq_hashtable_set(frame, var, val);
     } else {
         not_environment_exn("env_define_var_no_check()", frame);
     }
@@ -146,7 +123,7 @@ mobj env_define_var(mobj env, mobj var, mobj val) {
         }
     } else if (minim_hashtablep(frame)) {
         // large namespace
-        bind = hashtable_find(frame, var);
+        bind = eq_hashtable_find(frame, var);
         if (!minim_falsep(bind)) {
             old = minim_cdr(bind);
             minim_cdr(bind) = val;
@@ -182,7 +159,7 @@ mobj env_set_var(mobj env, mobj var, mobj val) {
             }
         } else if (minim_hashtablep(frame)) {
             // large namespace
-            bind = hashtable_find(frame, var);
+            bind = eq_hashtable_find(frame, var);
             if (!minim_falsep(bind)) {
                 old = minim_cdr(bind);
                 minim_cdr(bind) = val;
@@ -217,7 +194,7 @@ int env_var_is_defined(mobj env, mobj var, int recursive) {
             }
         } else if (minim_hashtablep(frame)) {
             // large namespace
-            bind = hashtable_find(frame, var);
+            bind = eq_hashtable_find(frame, var);
             if (!minim_falsep(bind))
                 return 1;
         } else {
@@ -251,7 +228,7 @@ mobj env_lookup_var(mobj env, mobj var) {
             }
         } else if (minim_hashtablep(frame)) {
             // large namespace
-            bind = hashtable_find(frame, var);
+            bind = eq_hashtable_find(frame, var);
             if (!minim_falsep(bind))
                 return minim_cdr(bind);
         } else {
