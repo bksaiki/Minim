@@ -20,17 +20,6 @@ mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity) 
     return o;
 }
 
-mobj Mnative_closure(mobj env, void *fn, short min_arity, short max_arity) {
-    mobj o = GC_alloc(minim_native_closure_size);
-    minim_type(o) = MINIM_OBJ_NATIVE_CLOSURE;
-    minim_native_closure(o) = fn;
-    minim_native_closure_env(o) = env;
-    minim_native_closure_argc_low(o) = min_arity;
-    minim_native_closure_argc_high(o) = max_arity;
-    minim_native_closure_name(o) = NULL;
-    return o;
-}
-
 // Resizes the value buffer if need be
 void resize_values_buffer(minim_thread *th, int size) {
     values_buffer(th) = GC_alloc(size * sizeof(mobj*));
@@ -80,7 +69,7 @@ mobj procedure_arity_proc(int argc, mobj *args) {
     int min_arity, max_arity;
 
     proc = args[0];
-    if (!minim_primp(proc) && !minim_closurep(proc))
+    if (!minim_procp(proc))
         bad_type_exn("procedure-arity", "procedure?", proc);
 
     if (minim_primp(proc)) {
@@ -89,12 +78,9 @@ mobj procedure_arity_proc(int argc, mobj *args) {
     } else if (minim_prim2p(proc)) {
         min_arity = minim_prim2_argc(proc);
         max_arity = minim_prim2_argc(proc);
-    } else if (minim_closurep(proc)) {
+    } else /* minim_closurep(proc) */ {
         min_arity = minim_closure_argc_low(proc);
         max_arity = minim_closure_argc_high(proc);
-    } else {
-        min_arity = minim_native_closure_argc_low(proc);
-        max_arity = minim_native_closure_argc_high(proc);
     }
 
     if (min_arity == max_arity) {

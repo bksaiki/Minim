@@ -19,20 +19,13 @@ void minim_boot_init() {
     // initialize special symbols
 
     quote_symbol = intern("quote");
-    define_symbol = intern("define");
     define_values_symbol = intern("define-values");
-    let_symbol = intern("let");
     let_values_symbol = intern("let-values");
-    letrec_symbol = intern("letrec");
     letrec_values_symbol = intern("letrec-values");
     setb_symbol = intern("set!");
     if_symbol = intern("if");
     lambda_symbol = intern("lambda");
     begin_symbol = intern("begin");
-    cond_symbol = intern("cond");
-    else_symbol = intern("else");
-    and_symbol = intern("and");
-    or_symbol = intern("or");
     quote_syntax_symbol = intern("quote-syntax");
 
     // initialize special values

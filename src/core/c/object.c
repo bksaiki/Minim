@@ -30,11 +30,6 @@ mobj minim_empty_vec;
 mobj minim_base_rtd;
 mobj minim_values;
 
-mobj eq_proc_obj;
-mobj equal_proc_obj;
-mobj eq_hash_proc_obj;
-mobj equal_hash_proc_obj;
-
 int minim_eqp(mobj a, mobj b) {
     if (a == b) {
         return 1;

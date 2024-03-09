@@ -129,12 +129,6 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
             else
                 fprintf(out, "#<procedure>");
             break;
-        case MINIM_OBJ_NATIVE_CLOSURE:
-            if (minim_native_closure_name(o) != NULL)
-                fprintf(out, "#<procedure:%s>", minim_native_closure_name(o));
-            else
-                fprintf(out, "#<procedure>");
-            break;
         case MINIM_OBJ_PORT:
             if (minim_port_readp(o))
                 fprintf(out, "#<input-port>");

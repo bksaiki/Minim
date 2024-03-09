@@ -453,9 +453,8 @@ application:
             // primitive
             check_prim_proc_arity(proc, argc);
             args = irt_call_args;
-            
-            // special case for `apply`
             if (minim_prim(proc) == apply_proc) {
+                // special case for `apply`
                 proc = force_single_value(args[0]);
                 if (!minim_procp(proc)) {
                     fprintf(stderr, "apply: expected a procedure\n");
@@ -467,10 +466,8 @@ application:
 
                 argc = apply_args();
                 goto application;
-            }
-
-            // special case for `eval`
-            if (minim_prim(proc) == eval_proc) {
+            } else if (minim_prim(proc) == eval_proc) {
+                // special case for `eval`
                 expr = args[0];
                 if (argc == 2) {
                     env = args[1];
@@ -481,11 +478,6 @@ application:
                 clear_call_args();
                 check_expr(expr);
                 goto loop;
-            }
-
-            if (minim_prim(proc) == enter_compiled_proc) {
-                // special case: `enter-compiled!
-                result = call_compiled(env, args[0]);
             } else if (minim_prim(proc) == call_with_values_proc) {
                 // special case: `call-with-values`
                 mobj producer, consumer;
@@ -580,7 +572,12 @@ application:
     } else if (minim_symbolp(expr)) {
         // variable
         return env_lookup_var(env, expr);
-    } else if (minim_boolp(expr) || minim_fixnump(expr) || minim_charp(expr) || minim_stringp(expr) || minim_boxp(expr) || minim_vectorp(expr)) {
+    } else if (minim_boolp(expr)
+        || minim_fixnump(expr)
+        || minim_charp(expr)
+        || minim_stringp(expr)
+        || minim_boxp(expr)
+        || minim_vectorp(expr)) {
         // self-evaluating
         return expr;
     } else if (minim_nullp(expr)) {

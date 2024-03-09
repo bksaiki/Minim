@@ -44,11 +44,6 @@ mobj Mprim2(void *fn, char *name, short arity) {
 }
 
 void init_prims(mobj env) {
-    eq_proc_obj = Mprim2(eq_proc, "eq?", 2);
-    equal_proc_obj = Mprim2(equal_proc, "equal?", 2);
-    // eq_hash_proc_obj = Mprim(eq_hash_proc, "eq-hash", 1, 1);
-    // equal_hash_proc_obj = Mprim(equal_hash_proc, "equal-hash", 1, 1);
-
     add_unsafe_procedure("null?", nullp_proc, 1);
     add_unsafe_procedure("void?", voidp_proc, 1);
     add_unsafe_procedure("eof-object?", eofp_proc, 1);
@@ -180,8 +175,8 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$hashtable-set!", hashtable_set, 3);
     add_unsafe_procedure("$hashtable-clear!", hashtable_clear, 1);
 
-    add_value(env, "eq?", eq_proc_obj);
-    add_value(env, "$equal?", equal_proc_obj);
+    add_unsafe_procedure("eq?", eq_proc, 2);
+    add_unsafe_procedure("$equal?", equal_proc, 2);
     add_unsafe_procedure("eq-hash", eq_hash_proc, 1);
     add_unsafe_procedure("$equal-hash", equal_hash_proc, 1);
     
@@ -240,12 +235,6 @@ void init_prims(mobj env) {
     add_procedure("current-directory", current_directory_proc, 0, 1);
     add_procedure("command-line", command_line_proc, 0, 0);
     add_procedure("version", version_proc, 0, 0);
-
-    add_procedure("install-literal-bundle!", install_literal_bundle_proc, 1, 1);
-    add_procedure("install-procedure-bundle!", install_proc_bundle_proc, 1, 1);
-    add_procedure("reinstall-procedure-bundle!", reinstall_proc_bundle_proc, 2, 2);
-    add_procedure("runtime-address", runtime_address_proc, 1, 1);
-    add_procedure("enter-compiled!", enter_compiled_proc, 1, 1);
 
     // Load the prelude
     load_file(PRELUDE_PATH, env);

@@ -254,23 +254,6 @@ extern mobj minim_values;
 #define minim_closure_argc_high(o)  (*((int*) PTR_ADD(o, 4 * ptr_size + 4)))
 #define minim_closure_name(o)       (*((char**) PTR_ADD(o, 5 * ptr_size)))
 
-// Native closure
-// +------------+
-// |    type    | [0, 1)
-// |    body    | [8, 16)
-// |    env     | [16, 24)
-// |  argc_low  | [24, 28)
-// |  argc_high | [28, 32)
-// |    name    | [32, 40)
-// +------------+
-#define minim_native_closure_size           (5 * ptr_size)
-#define minim_native_closurep(o)            (minim_type(o) == MINIM_OBJ_CLOSURE)
-#define minim_native_closure(o)             (*((void**) PTR_ADD(o, ptr_size)))
-#define minim_native_closure_env(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_native_closure_argc_low(o)    (*((int*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_native_closure_argc_high(o)   (*((int*) PTR_ADD(o, 3 * ptr_size + 4)))
-#define minim_native_closure_name(o)        (*((char**) PTR_ADD(o, 4 * ptr_size)))
-
 // Port
 // +------------+
 // |    type    | [0, 1)
@@ -349,28 +332,14 @@ extern mobj minim_values;
 // Special objects
 
 extern mobj quote_symbol;
-extern mobj define_symbol;
 extern mobj define_values_symbol;
-extern mobj let_symbol;
 extern mobj let_values_symbol;
-extern mobj letrec_symbol;
 extern mobj letrec_values_symbol;
 extern mobj setb_symbol;
 extern mobj if_symbol;
 extern mobj lambda_symbol;
 extern mobj begin_symbol;
-extern mobj cond_symbol;
-extern mobj else_symbol;
-extern mobj and_symbol;
-extern mobj or_symbol;
-extern mobj syntax_symbol;
-extern mobj syntax_loc_symbol;
 extern mobj quote_syntax_symbol;
-
-extern mobj eq_proc_obj;
-extern mobj equal_proc_obj;
-extern mobj eq_hash_proc_obj;
-extern mobj equal_hash_proc_obj;
 
 // Complex predicates
 
@@ -391,7 +360,6 @@ mobj Mhashtable(size_t size_hint);
 mobj Mprim(mprim_proc proc, char *name, short min_arity, short max_arity);
 mobj Mprim2(void *fn, char *name, short arity);
 mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity);
-mobj Mnative_closure(mobj env, void *fn, short min_arity, short max_arity);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
 mobj Msyntax(mobj e, mobj loc);
@@ -411,10 +379,6 @@ int minim_equalp(mobj a, mobj b);
 int minim_listp(mobj x);
 long list_length(mobj xs);
 long improper_list_length(mobj xs);
-int hashtable_equalp(mobj h1, mobj h2);
-
-mobj call_with_args(mobj proc, mobj env);
-mobj call_with_values(mobj producer, mobj consumer, mobj env);
 
 mobj nullp_proc(mobj x);
 mobj voidp_proc(mobj x);
@@ -637,12 +601,6 @@ mobj env_lookup_var(mobj env, mobj var);
 int env_var_is_defined(mobj env, mobj var, int recursive);
 
 extern mobj empty_env;
-
-// Memory
-
-void check_native_closure_arity(short argc, mobj fn);
-mobj call_compiled(mobj env, mobj addr);
-mobj make_rest_argument(mobj args[], short argc);
 
 // Records
 
@@ -869,11 +827,5 @@ DEFINE_PRIM_PROC(current_directory);
 DEFINE_PRIM_PROC(exit);
 DEFINE_PRIM_PROC(command_line);
 DEFINE_PRIM_PROC(version);
-// Memory
-DEFINE_PRIM_PROC(install_literal_bundle);
-DEFINE_PRIM_PROC(install_proc_bundle);
-DEFINE_PRIM_PROC(reinstall_proc_bundle);
-DEFINE_PRIM_PROC(runtime_address);
-DEFINE_PRIM_PROC(enter_compiled);
 
 #endif  // _MINIM_H_
