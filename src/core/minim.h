@@ -815,7 +815,7 @@ NORETURN void minim_shutdown(int code);
 NORETURN void arity_mismatch_exn(const char *name, int min_arity, int max_arity, short actual);
 NORETURN void bad_syntax_exn(mobj expr);
 NORETURN void bad_type_exn(const char *name, const char *type, mobj x);
-NORETURN void result_arity_exn(short expected, short actual);
+NORETURN void result_arity_exn(const char *name, short expected, short actual);
 NORETURN void uncallable_prim_exn(const char *name);
 
 // Primitives

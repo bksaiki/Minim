@@ -132,8 +132,13 @@ void arity_mismatch_exn(const char *name, int min_arity, int max_arity, short ac
     minim_shutdown(1);
 }
 
-void result_arity_exn(short expected, short actual) {
-    fprintf(stderr, "result arity mismatch\n");
+void result_arity_exn(const char *name, short expected, short actual) {
+    if (name == NULL) {
+        fprintf(stderr, "result arity mismatch\n");
+    } else {
+        fprintf(stderr, "%s: result arity mismatch\n", name);
+    }
+
     fprintf(stderr, "  expected: %d, received: %d\n", expected, actual);
     minim_shutdown(1);
 }
@@ -214,7 +219,7 @@ static mobj force_single_value(mobj x) {
     if (minim_valuesp(x)) {
         th = current_thread();
         if (values_buffer_count(th) != 1)
-            result_arity_exn(1, values_buffer_count(th));
+            result_arity_exn(NULL, 1, values_buffer_count(th));
         return values_buffer_ref(th, 0);
     } else {
         return x;
@@ -254,6 +259,28 @@ static long closure_env_size(mobj fn) {
     }
 }
 
+static void bind_values(const char *name, mobj env, mobj result, mobj binds) {
+    long bindc = list_length(binds);
+    if (minim_valuesp(result)) {
+        // multi-valued
+        minim_thread *th = current_thread();
+        if (bindc != values_buffer_count(th))
+            result_arity_exn(name, bindc, values_buffer_count(th));
+
+        for (long idx = 0; !minim_nullp(binds); ++idx) {
+            SET_NAME_IF_CLOSURE(minim_car(binds), values_buffer_ref(th, idx));
+            env_define_var(env, minim_car(binds), values_buffer_ref(th, idx));
+            binds = minim_cdr(binds);
+        }
+    } else {
+        // single-valued
+        if (bindc != 1)
+            result_arity_exn(name, bindc, 1);
+        SET_NAME_IF_CLOSURE(minim_car(binds), result);
+        env_define_var(env, minim_car(binds), result);
+    }
+}
+
 static long eval_exprs(mobj exprs, mobj env) {
     mobj it, result;
     long argc;
@@ -284,88 +311,41 @@ mobj eval_expr(mobj expr, mobj env) {
 
 loop:
 
-    if (!minim_consp(expr)) {
-        if (minim_truep(expr) ||
-            minim_falsep(expr) ||
-            minim_fixnump(expr) ||
-            minim_charp(expr) ||
-            minim_stringp(expr) ||
-            minim_boxp(expr) ||
-            minim_vectorp(expr)) {
-            // self-evaluating
-            return expr;
-        } else if (minim_symbolp(expr)) {
-            // variable
-            return env_lookup_var(env, expr);
-        } else if (minim_nullp(expr)) {
-            // empty application
-            fprintf(stderr, "missing procedure expression\n");
-            fprintf(stderr, "  in: ");
-            write_object2(stderr, expr, 0, 0);
-            minim_shutdown(1);
-        } else {
-            fprintf(stderr, "bad syntax\n");
-            write_object(stderr, expr);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
-        }
-    } else {
+    if (minim_consp(expr)) {
         // special forms
         mobj head = minim_car(expr);
         if (minim_symbolp(head)) {
             if (head == define_values_symbol) {
                 // define-values form
-                long var_count = list_length(minim_cadr(expr));
                 mobj result = eval_expr(minim_car(minim_cddr(expr)), env);
-                if (minim_valuesp(result)) {;
-                    // multi-valued
-                    minim_thread *th = current_thread();
-                    if (var_count != values_buffer_count(th))
-                        result_arity_exn(var_count, values_buffer_count(th));
-
-                    long idx = 0;
-                    for (mobj it = minim_cadr(expr); !minim_nullp(it); it = minim_cdr(it), ++idx) {
-                        SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
-                        env_define_var(env, minim_car(it), values_buffer_ref(th, idx));
-                    }
-                } else {
-                    // single-valued
-                    if (var_count != 1)
-                        result_arity_exn(var_count, 1);
-                    SET_NAME_IF_CLOSURE(minim_car(minim_cadr(expr)), result);
-                    env_define_var(env, minim_car(minim_cadr(expr)), result);
-                }
-
+                bind_values("define-values", env, result, minim_cadr(expr));
                 return minim_void;
-            } else if (head == let_values_symbol || head == letrec_values_symbol) {
-                // let-values or letrec-values form
+            } else if (head == let_values_symbol) {
+                // let-values form
                 mobj env2 = Menv2(env, let_values_env_size(expr));
-                mobj val_env = (head == let_values_symbol) ? env : env2;
-                for (mobj bindings = minim_cadr(expr); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
+                mobj bindings = minim_cadr(expr);
+                while (!minim_nullp(bindings)) {
                     mobj bind = minim_car(bindings);
-                    long var_count = list_length(minim_car(bind));
-                    mobj result = eval_expr(minim_cadr(bind), val_env);
-                    if (minim_valuesp(result)) {
-                        // multi-valued
-                        minim_thread *th = current_thread();
-                        if (var_count != values_buffer_count(th))
-                            result_arity_exn(var_count, values_buffer_count(th));
-
-                        long idx = 0;
-                        for (mobj it = minim_car(bind); !minim_nullp(it); it = minim_cdr(it), ++idx) {
-                            SET_NAME_IF_CLOSURE(minim_car(it), values_buffer_ref(th, idx));
-                            env_define_var(env2, minim_car(it), values_buffer_ref(th, idx));
-                        }
-                    } else {
-                        // single-valued
-                        if (var_count != 1)
-                            result_arity_exn(var_count, 1);
-                        SET_NAME_IF_CLOSURE(minim_caar(bind), result);
-                        env_define_var(env2, minim_caar(bind), result);
-                    }
+                    mobj result = eval_expr(minim_cadr(bind), env);
+                    bind_values("let-values", env2, result, minim_car(bind));
+                    bindings = minim_cdr(bindings);
                 }
-                
-                expr = Mcons(begin_symbol, (minim_cddr(expr)));
+
+                expr = Mcons(begin_symbol, minim_cddr(expr));
+                env = env2;
+                goto loop;
+            } else if (head == letrec_values_symbol) {
+                // letrec-values forms
+                mobj env2 = Menv2(env, let_values_env_size(expr));
+                mobj bindings = minim_cadr(expr);
+                while (!minim_nullp(bindings)) {
+                    mobj bind = minim_car(bindings);
+                    mobj result = eval_expr(minim_cadr(bind), env2);
+                    bind_values("letrec-values", env2, result, minim_car(bind));
+                    bindings = minim_cdr(bindings);
+                }
+
+                expr = Mcons(begin_symbol, minim_cddr(expr));
                 env = env2;
                 goto loop;
             } else if (head == quote_symbol) {
@@ -373,11 +353,7 @@ loop:
                 return minim_cadr(expr);
             } else if (head == quote_syntax_symbol) {
                 // quote-syntax form
-                if (minim_syntaxp(minim_cadr(expr))) {
-                    return minim_cadr(expr);
-                } else {
-                    return to_syntax(minim_cadr(expr));
-                }
+                return to_syntax(minim_cadr(expr));
             } else if (head == setb_symbol) {
                 // set! form
                 env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
@@ -601,6 +577,24 @@ application:
             fprintf(stderr, "\n");
             minim_shutdown(1);
         }
+    } else if (minim_symbolp(expr)) {
+        // variable
+        return env_lookup_var(env, expr);
+    } else if (minim_boolp(expr) || minim_fixnump(expr) || minim_charp(expr) || minim_stringp(expr) || minim_boxp(expr) || minim_vectorp(expr)) {
+        // self-evaluating
+        return expr;
+    } else if (minim_nullp(expr)) {
+        // empty application
+        fprintf(stderr, "missing procedure expression\n");
+        fprintf(stderr, "  in: ");
+        write_object2(stderr, expr, 0, 0);
+        minim_shutdown(1);
+    } else {
+        // invalid
+        fprintf(stderr, "bad syntax\n");
+        write_object(stderr, expr);
+        fprintf(stderr, "\n");
+        minim_shutdown(1);
     }
 
     fprintf(stderr, "unreachable\n");
