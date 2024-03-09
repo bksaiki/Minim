@@ -1673,7 +1673,34 @@
 ;                       (1/write ($car args) p)
 ;                       (error name "expected output-port?" p)))
 ;                 (error name "expected 1 or 2 arguments" argc)))))))
-        
+
+;; --------------------------------------------------------
+;; Syntax
+
+(define-values (syntax-e)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax-e stx)
+        (error 'syntax-e "expected syntax?" stx))))
+
+(define-values (syntax-loc)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax-loc stx)
+        (error 'syntax-loc "expected syntax?" stx))))
+
+(define-values (syntax->datum)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax->datum stx)
+        (error 'syntax->datum "expected syntax?" stx))))
+
+(define-values (syntax->list)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax->list stx)
+        (error 'syntax->list "expected syntax?" stx))))
+
 ;; --------------------------------------------------------
 ;; Pattern variables
 

@@ -12,78 +12,44 @@ mobj Msyntax(mobj e, mobj loc) {
     return o;
 }
 
-// Recursively converts an object to syntax
-mobj to_syntax(mobj o) {
-    mobj it;
-    long i;
-    
-    switch (minim_type(o)) {
-    case MINIM_OBJ_SYNTAX:
-        return o;
-    case MINIM_OBJ_SPECIAL:
-    case MINIM_OBJ_CHAR:
-    case MINIM_OBJ_FIXNUM:
-    case MINIM_OBJ_SYMBOL:
-    case MINIM_OBJ_STRING:
-    case MINIM_OBJ_RECORD:
-        return Msyntax(o, minim_false);
-        break;
-    case MINIM_OBJ_PAIR:
-        it = o;
-        do {
-            minim_car(it) = to_syntax(minim_car(it));
-            if (!minim_consp(minim_cdr(it))) {
-                if (!minim_nullp(minim_cdr(it)))
-                    minim_cdr(it) = to_syntax(minim_cdr(it));
-                return Msyntax(o, minim_false);
-            }
-            it = minim_cdr(it);
-        } while (1);
+// Converts a (possibly improper) list to syntax
+static mobj pair_to_syntax(mobj o) {
+    mobj hd, tl, it;
 
-    case MINIM_OBJ_BOX:
-        return Msyntax(Mbox(to_syntax(minim_unbox(o))), minim_false);
-
-    case MINIM_OBJ_VECTOR:
-        it = Mvector(minim_vector_len(o), NULL);
-        for (i = 0; i < minim_vector_len(o); ++i)
-            minim_vector_ref(it, i) = to_syntax(minim_vector_ref(o, i));
-        return Msyntax(it, minim_false);
-    
-    default:
-        fprintf(stderr, "datum->syntax: cannot convert to syntax\n");
-        minim_shutdown(1);
+    hd = tl = Mcons(to_syntax(minim_car(o)), NULL);
+    for (it = minim_cdr(o); minim_consp(it); it = minim_cdr(it)) {
+        minim_cdr(tl) = Mcons(to_syntax(minim_car(it)), NULL);
+        tl = minim_cdr(tl);
     }
-}
 
-mobj strip_syntax(mobj o) {
-    switch (minim_type(o)) {
-    case MINIM_OBJ_SYNTAX:
-        return strip_syntax(minim_syntax_e(o));
-    case MINIM_OBJ_PAIR:
-        return Mcons(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
-    case MINIM_OBJ_BOX:
-        return Mbox(strip_syntax(minim_unbox(o)));
-    case MINIM_OBJ_VECTOR:
-        mobj t = Mvector(minim_vector_len(o), NULL);
-        for (long i = 0; i < minim_vector_len(o); ++i)
-            minim_vector_ref(t, i) = strip_syntax(minim_vector_ref(o, i));
-        return t;
-    default:
-        return o;
-    }
-}
-
-static mobj syntax_to_list(mobj head, mobj it) {
-    if (minim_nullp(minim_cdr(it))) {
-        return head;
-    } else if (minim_consp(minim_cdr(it))) {
-        return syntax_to_list(head, minim_cdr(it));
-    } else if (minim_syntaxp(minim_cdr(it))) {
-        minim_cdr(it) = minim_syntax_e(minim_cdr(it));
-        return syntax_to_list(head, it);
+    if (minim_nullp(it)) {
+        minim_cdr(tl) = minim_null;
     } else {
-        return minim_false;
+        minim_cdr(tl) = to_syntax(it);
     }
+
+    return Msyntax(hd, minim_false);
+}
+
+// Converts a vector to syntax
+static mobj vector_to_syntax(mobj o) {
+    mobj v = Mvector(minim_vector_len(o), NULL);
+    for (long i = 0; i < minim_vector_len(o); i++)
+        minim_vector_ref(v, i) = to_syntax(minim_vector_ref(o, i));
+    return Msyntax(v, minim_false);
+}
+
+// Recursively strips syntax from a vector
+static mobj strip_vector(mobj o) {
+    mobj v = Mvector(minim_vector_len(o), NULL);
+    for (long i = 0; i < minim_vector_len(o); i++)
+        minim_vector_ref(v, i) = strip_syntax(minim_vector_ref(o, i));
+    return v;
+}
+
+// Removes one layer of syntax, if it exists
+static mobj syntax_strip_once(mobj o) {
+    return minim_syntaxp(o) ? minim_syntax_e(o) : o;
 }
 
 //
@@ -93,6 +59,77 @@ static mobj syntax_to_list(mobj head, mobj it) {
 mobj syntaxp_proc(mobj x) {
     // (-> any boolean)
     return minim_syntaxp(x) ? minim_true : minim_false;
+}
+
+mobj syntax_e_proc(mobj stx) {
+    // (-> syntax? any)
+    return minim_syntax_e(stx);
+}
+
+mobj syntax_loc_proc(mobj stx) {
+    // (-> syntax? any)
+    return minim_syntax_loc(stx);
+}
+
+// Recursively converts an object to syntax
+mobj to_syntax(mobj o) {
+    // (-> any syntax)
+    switch (minim_type(o)) {
+    case MINIM_OBJ_SYNTAX:
+        return o;
+    case MINIM_OBJ_PAIR:
+        return pair_to_syntax(o);
+    case MINIM_OBJ_VECTOR:
+        return vector_to_syntax(o);
+    case MINIM_OBJ_BOX:
+        return Msyntax(Mbox(to_syntax(minim_unbox(o))), minim_false);
+    default:
+        return Msyntax(o, minim_false);
+    }
+}
+
+// Recursively converts syntax to an object
+mobj strip_syntax(mobj o) {
+    // (-> syntax any)
+    switch (minim_type(o)) {
+    case MINIM_OBJ_SYNTAX:
+        return strip_syntax(minim_syntax_e(o));
+    case MINIM_OBJ_PAIR:
+        return Mcons(strip_syntax(minim_car(o)), strip_syntax(minim_cdr(o)));
+    case MINIM_OBJ_BOX:
+        return Mbox(strip_syntax(minim_unbox(o)));
+    case MINIM_OBJ_VECTOR:
+        return strip_vector(o);
+    default:
+        return o;
+    }
+}
+
+mobj syntax_to_list(mobj stx) {
+    // (-> syntax (or list #f))
+    mobj hd, tl, it;
+
+    it = syntax_strip_once(stx);
+    if (minim_consp(it)) {
+        hd = tl = Mcons(minim_car(it), NULL);
+        it = syntax_strip_once(minim_cdr(it));
+        while (minim_consp(it)) {
+            minim_cdr(tl) = Mcons(minim_car(it), NULL);
+            it = syntax_strip_once(minim_cdr(it));
+            tl = minim_cdr(tl);
+        }
+
+        if (minim_nullp(it)) {
+            minim_cdr(tl) = minim_null;
+            return hd;
+        } else {
+            return minim_false;
+        }
+    } else if (minim_nullp(it)) {
+        return it;
+    } else {
+        return minim_false;
+    }
 }
 
 mobj syntax_error_proc(int argc, mobj *args) {
@@ -136,45 +173,45 @@ mobj syntax_error_proc(int argc, mobj *args) {
     minim_shutdown(1);
 }
 
-mobj to_datum_proc(int argc, mobj *args) {
-    // (-> syntax any)
-    if (!minim_syntaxp(args[0]))
-        bad_type_exn("syntax->datum", "syntax?", args[0]);
-    return strip_syntax(args[0]);
-}
+// mobj to_datum_proc(int argc, mobj *args) {
+//     // (-> syntax any)
+//     if (!minim_syntaxp(args[0]))
+//         bad_type_exn("syntax->datum", "syntax?", args[0]);
+//     return strip_syntax(args[0]);
+// }
 
-mobj syntax_e_proc(int argc, mobj *args) {
-    // (-> syntax any)
-    if (!minim_syntaxp(args[0]))
-        bad_type_exn("syntax-e", "syntax?", args[0]);
-    return minim_syntax_e(args[0]);
-}
+// mobj syntax_e_proc(int argc, mobj *args) {
+//     // (-> syntax any)
+//     if (!minim_syntaxp(args[0]))
+//         bad_type_exn("syntax-e", "syntax?", args[0]);
+//     return minim_syntax_e(args[0]);
+// }
 
-mobj syntax_loc_proc(int argc, mobj *args) {
-    // (-> syntax any)
-    if (!minim_syntaxp(args[0]))
-        bad_type_exn("syntax-loc", "syntax?", args[0]);
-    return minim_syntax_loc(args[0]);
-}
+// mobj syntax_loc_proc(int argc, mobj *args) {
+//     // (-> syntax any)
+//     if (!minim_syntaxp(args[0]))
+//         bad_type_exn("syntax-loc", "syntax?", args[0]);
+//     return minim_syntax_loc(args[0]);
+// }
 
-mobj to_syntax_proc(int argc, mobj *args) {
-    // (-> any syntax)
-    return to_syntax(args[0]);
-}
+// mobj to_syntax_proc(int argc, mobj *args) {
+//     // (-> any syntax)
+//     return to_syntax(args[0]);
+// }
 
-mobj syntax_to_list_proc(int argc, mobj *args) {
-    // (-> syntax (or #f list))
-    mobj stx, lst;
+// mobj syntax_to_list_proc(int argc, mobj *args) {
+//     // (-> syntax (or #f list))
+//     mobj stx, lst;
     
-    stx = args[0];
-    if (!minim_syntaxp(stx))
-        bad_type_exn("syntax->list", "syntax?", stx);
+//     stx = args[0];
+//     if (!minim_syntaxp(stx))
+//         bad_type_exn("syntax->list", "syntax?", stx);
 
-    lst = minim_syntax_e(stx);
-    if (minim_nullp(lst))
-        return minim_null;
-    else if (!minim_consp(lst))
-        return minim_false;
-    else 
-        return syntax_to_list(lst, lst);
-}
+//     lst = minim_syntax_e(stx);
+//     if (minim_nullp(lst))
+//         return minim_null;
+//     else if (!minim_consp(lst))
+//         return minim_false;
+//     else 
+//         return syntax_to_list(lst, lst);
+// }

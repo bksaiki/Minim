@@ -186,16 +186,11 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$equal-hash", equal_hash_proc, 1);
     
     add_unsafe_procedure("syntax?", syntaxp_proc, 1);
-    add_procedure("syntax-e", syntax_e_proc, 1, 1);
-    add_procedure("syntax-loc", syntax_loc_proc, 2, 2);
-    add_procedure("datum->syntax", to_syntax_proc, 1, 1);
-    add_procedure("syntax->datum", to_datum_proc, 1, 1);
-    add_procedure("syntax->list", syntax_to_list_proc, 1, 1);
-
-    // add_unsafe_procedure("pattern-variable?", patternp_proc, 1);
-    // add_procedure("make-pattern-variable", make_pattern_var_proc, 2, 2);
-    // add_procedure("pattern-variable-value", pattern_var_value_proc, 1, 1);
-    // add_procedure("pattern-variable-depth", pattern_var_depth_proc, 1, 1);
+    add_unsafe_procedure("$syntax-e", syntax_e_proc, 1);
+    add_unsafe_procedure("$syntax-loc", syntax_loc_proc, 1);
+    add_unsafe_procedure("datum->syntax", to_syntax, 1);
+    add_unsafe_procedure("$syntax->datum", strip_syntax, 1);
+    add_unsafe_procedure("$syntax->list", syntax_to_list, 1);
 
     add_unsafe_procedure("environment?", environmentp_proc, 1);
     add_unsafe_procedure("interaction-environment", interaction_environment, 0);

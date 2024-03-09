@@ -559,8 +559,11 @@ mobj record_set_proc(mobj rec, mobj idx, mobj x);
 
 mobj identity_proc(mobj x);
 
+mobj syntax_e_proc(mobj stx);
+mobj syntax_loc_proc(mobj stx);
 mobj strip_syntax(mobj o);
 mobj to_syntax(mobj o);
+mobj syntax_to_list(mobj stx);
 
 mobj environmentp_proc(mobj o);
 mobj interaction_environment();
@@ -838,12 +841,7 @@ DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
 // syntax
-DEFINE_PRIM_PROC(syntax_e);
-DEFINE_PRIM_PROC(syntax_loc);
-DEFINE_PRIM_PROC(to_syntax);
-DEFINE_PRIM_PROC(to_datum);
 DEFINE_PRIM_PROC(syntax_error);
-DEFINE_PRIM_PROC(syntax_to_list);
 // I/O
 DEFINE_PRIM_PROC(current_input_port);
 DEFINE_PRIM_PROC(current_output_port);

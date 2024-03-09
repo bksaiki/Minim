@@ -158,9 +158,6 @@ void write_object2(FILE *out, mobj o, int quote, int display) {
             write_object2(out, strip_syntax(o), 1, display);
             fputc('>', out);
             break;
-        case MINIM_OBJ_PATTERN:
-            fprintf(out, "#<pattern>");
-            break;
         case MINIM_OBJ_ENV:
             fprintf(out, "#<environment>");
             break;
