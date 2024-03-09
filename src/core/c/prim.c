@@ -208,33 +208,36 @@ void init_prims(mobj env) {
 
     add_unsafe_procedure("input-port?", input_portp_proc, 1);
     add_unsafe_procedure("output-port?", output_portp_proc, 1);
-    add_procedure("current-input-port", current_input_port_proc, 0, 0);
-    add_procedure("current-output-port", current_output_port_proc, 0, 0);
-    add_procedure("open-input-file", open_input_port_proc, 1, 1);
-    add_procedure("open-output-file", open_output_port_proc, 1, 1);
-    add_procedure("close-input-port", close_input_port_proc, 1, 1);
-    add_procedure("close-output-port", close_output_port_proc, 1, 1);
-    add_procedure("read", read_proc, 0, 1);
-    add_procedure("read-char", read_char_proc, 0, 1);
-    add_procedure("peek-char", peek_char_proc, 0, 1);
-    add_procedure("char-ready?", char_is_ready_proc, 0, 1);
-    add_procedure("display", display_proc, 1, 2);
-    add_procedure("write", write_proc, 1, 2);
-    add_procedure("write-char", write_char_proc, 1, 2);
-    add_procedure("newline", newline_proc, 0, 1);
+    add_unsafe_procedure("current-input-port", current_input_port, 0);
+    add_unsafe_procedure("current-output-port", current_output_port, 0);
+    add_unsafe_procedure("$open-input-file", open_input_file, 1);
+    add_unsafe_procedure("$open-output-file", open_output_file, 1);
+    add_unsafe_procedure("$close-input-port", close_input_port, 1);
+    add_unsafe_procedure("$close-output-port", close_output_port, 1);
+
+    add_unsafe_procedure("$read", read_proc, 1);
+    add_unsafe_procedure("$read-char", read_char_proc, 1);
+    add_unsafe_procedure("$peek-char", peek_char_proc, 1);
+    add_unsafe_procedure("$char-ready?", char_readyp_proc, 1);
+    add_unsafe_procedure("$display", display_proc, 2);
+    add_unsafe_procedure("$write", write_proc, 2);
+    add_unsafe_procedure("$write-char", write_char_proc, 2);
+    add_unsafe_procedure("$newline", newline_proc, 1);
+    
     add_procedure("fprintf", fprintf_proc, 2, ARG_MAX);
     add_procedure("printf", printf_proc, 1, ARG_MAX);
 
-    add_procedure("read-fasl", read_fasl_proc, 1, 1);
+    add_procedure("read-fasl", read_fasl_proc, 0, 1);
     add_procedure("write-fasl", write_fasl_proc, 1, 2);
     
     add_procedure("load", load_proc, 1, 1);
-    add_procedure("error", error_proc, 2, ARG_MAX);
     add_procedure("exit", exit_proc, 0, 1);
-    add_procedure("syntax-error", syntax_error_proc, 2, 4);
     add_procedure("current-directory", current_directory_proc, 0, 1);
     add_procedure("command-line", command_line_proc, 0, 0);
     add_procedure("version", version_proc, 0, 0);
+
+    add_procedure("error", error_proc, 2, ARG_MAX);
+    add_procedure("syntax-error", syntax_error_proc, 2, 4);
 
     // Load the prelude
     load_file(PRELUDE_PATH, env);

@@ -488,6 +488,22 @@ mobj box_proc(mobj x);
 mobj unbox_proc(mobj x);
 mobj box_set_proc(mobj x, mobj v);
 
+mobj current_input_port();
+mobj current_output_port();
+mobj open_input_file(mobj name);
+mobj open_output_file(mobj name);
+mobj close_input_port(mobj port);
+mobj close_output_port(mobj port);
+
+mobj read_proc(mobj port);
+mobj read_char_proc(mobj port);
+mobj peek_char_proc(mobj port);
+mobj char_readyp_proc(mobj port);
+mobj display_proc(mobj x, mobj port);
+mobj write_proc(mobj x, mobj port);
+mobj write_char_proc(mobj ch, mobj port);
+mobj newline_proc(mobj port);
+
 mobj make_hashtable(mobj size);
 mobj hashtable_copy(mobj ht);
 mobj hashtable_size(mobj ht);
@@ -801,20 +817,20 @@ DEFINE_PRIM_PROC(current_record_write_procedure);
 // syntax
 DEFINE_PRIM_PROC(syntax_error);
 // I/O
-DEFINE_PRIM_PROC(current_input_port);
-DEFINE_PRIM_PROC(current_output_port);
-DEFINE_PRIM_PROC(open_input_port);
-DEFINE_PRIM_PROC(open_output_port);
-DEFINE_PRIM_PROC(close_input_port);
-DEFINE_PRIM_PROC(close_output_port);
-DEFINE_PRIM_PROC(read);
-DEFINE_PRIM_PROC(read_char);
-DEFINE_PRIM_PROC(peek_char);
-DEFINE_PRIM_PROC(char_is_ready);
-DEFINE_PRIM_PROC(display);
-DEFINE_PRIM_PROC(write);
-DEFINE_PRIM_PROC(write_char);
-DEFINE_PRIM_PROC(newline);
+// DEFINE_PRIM_PROC(current_input_port);
+// DEFINE_PRIM_PROC(current_output_port);
+// DEFINE_PRIM_PROC(open_input_port);
+// DEFINE_PRIM_PROC(open_output_port);
+// DEFINE_PRIM_PROC(close_input_port);
+// DEFINE_PRIM_PROC(close_output_port);
+// DEFINE_PRIM_PROC(read);
+// DEFINE_PRIM_PROC(read_char);
+// DEFINE_PRIM_PROC(peek_char);
+// DEFINE_PRIM_PROC(char_is_ready);
+// DEFINE_PRIM_PROC(display);
+// DEFINE_PRIM_PROC(write);
+// DEFINE_PRIM_PROC(write_char);
+// DEFINE_PRIM_PROC(newline);
 DEFINE_PRIM_PROC(fprintf);
 DEFINE_PRIM_PROC(printf);
 // FASL

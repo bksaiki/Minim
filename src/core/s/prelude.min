@@ -1013,6 +1013,104 @@
         (error 'set-box! "expected box?" x))))
 
 ;; --------------------------------------------------------
+;; Ports
+
+(define-values (open-input-file)
+  (lambda (name)
+    (if (string? name)
+        ($open-input-file name)
+        (error 'open-input-file "expected string?" name))))
+
+(define-values (open-output-file)
+  (lambda (name)
+    (if (string? name)
+        ($open-output-file name)
+        (error 'open-output-file "expected string?" name))))
+
+(define-values (close-input-port)
+  (lambda (port)
+    (if (input-port? port)
+        ($close-input-port port)
+        (error 'close-input-file "expected input-port?" port))))
+
+(define-values (close-output-port)
+  (lambda (port)
+    (if (output-port? port)
+        ($close-output-port port)
+        (error 'close-output-file "expected output-port?" port))))
+
+(define-values (read read-char peek-char char-ready?)
+  (let-values ([(go) 
+                (lambda (name proc)
+                  (lambda args
+                    (if (null? args)
+                        (proc (current-input-port))
+                        (if (null? ($cdr args))
+                            (let-values ([(port) ($car args)])
+                              (if (input-port? port)
+                                  (proc port)
+                                  (error name "expected input-port?" port)))
+                            (error name "expected 0 or 1 arguments" ($length args))))))])
+    (values (go 'read $read)
+            (go 'read-char $read-char)
+            (go 'peek-char $peek-char)
+            (go 'char-ready? $char-ready?))))
+
+
+(define-values (display)
+  (lambda args
+    (if (null? args)
+        (if (null? ($cdr args))
+            ($display ($car args) (current-output-port))
+            (if (null? ($cddr args))
+                (let-values ([(port) ($cadr args)])
+                  (if (output-port? port)
+                      ($write ($car args) port)
+                      (error 'display "expected output-port?" port)))
+                (error 'display "expected 1 or 2 arguments" ($length args))))
+        (error 'display "expected 1 or 2 arguments" ($length args)))))
+
+(define-values (write)
+  (lambda args
+    (if (null? args)
+        (if (null? ($cdr args))
+            ($write ($car args) (current-output-port))
+            (if (null? ($cddr args))
+                (let-values ([(port) ($cadr args)])
+                  (if (output-port? port)
+                      ($write ($car args) port)
+                      (error 'write "expected output-port?" port)))
+                (error 'write "expected 1 or 2 arguments" ($length args))))
+        (error 'write "expected 1 or 2 arguments" ($length args)))))
+
+(define-values (write-char)
+  (lambda args
+    (if (null? args)
+        (let ([(ch) ($car args)])
+          (if (char? ch)
+              (if (null? ($cdr args))
+                  ($write-char ch (current-output-port))
+                  (if (null? ($cddr args))
+                      (let-values ([(port) ($cadr args)])
+                        (if (output-port? port)
+                            ($write ch port)
+                            (error 'write-char "expected output-port?" port)))
+                      (error 'write-char "expected 1 or 2 arguments" ($length args))))
+              (error 'write-char "expected char?" ch)))
+        (error 'write-char "expected 1 or 2 arguments" ($length args)))))
+
+(define-values (newline)
+  (lambda args
+    (if (null? args)
+        ($newline (current-output-port))
+        (if (null? ($cdr args))
+            (let-values ([(port) ($car args)])
+              (if (input-port? port)
+                  ($newline port)
+                  (error name "expected input-port?" port)))
+            (error 'newline "expected 0 or 1 arguments" ($length args))))))
+
+;; --------------------------------------------------------
 ;; Records
 
 (define-values (make-record-type-descriptor)

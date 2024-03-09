@@ -116,34 +116,33 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char 
 //  Primitives
 //
 mobj input_portp_proc(mobj x) {
+    // (-> any/c boolean)
     return minim_input_portp(x) ? minim_true : minim_false;
 }
 
 mobj output_portp_proc(mobj x) {
+    // (-> any/c boolean)
     return minim_output_portp(x) ? minim_true : minim_false;
 }
 
-mobj current_input_port_proc(int argc, mobj *args) {
+mobj current_input_port() {
     // (-> input-port)
     return input_port(current_thread());
 }
 
-mobj current_output_port_proc(int argc, mobj *args) {
+mobj current_output_port() {
     // (-> output-port)
     return output_port(current_thread());
 }
 
-mobj open_input_port_proc(int argc, mobj *args) {
-    // (-> string input-port)
+mobj open_input_file(mobj name) {
+    // (-> str input-port)
     FILE *stream;
     mobj port;
 
-    if (!minim_stringp(args[0]))
-        bad_type_exn("open-input-port", "string?", args[0]);
-
-    stream = fopen(minim_string(args[0]), "r");
+    stream = fopen(minim_string(name), "r");
     if (stream == NULL) {
-        fprintf(stderr, "could not open file \"%s\"\n", minim_string(args[0]));
+        fprintf(stderr, "open-input-port: could not open file \"%s\"\n", minim_string(name));
         minim_shutdown(1);
     }
 
@@ -152,17 +151,14 @@ mobj open_input_port_proc(int argc, mobj *args) {
     return port;
 }
 
-mobj open_output_port_proc(int argc, mobj *args) {
-    // (-> string output-port)
+mobj open_output_file(mobj name) {
+    // (-> str output-port)
     FILE *stream;
-    mobj *port;
+    mobj port;
 
-    if (!minim_stringp(args[0]))
-        bad_type_exn("open-output-port", "string?", args[0]);
-    
-    stream = fopen(minim_string(args[0]), "w");
+    stream = fopen(minim_string(name), "w");
     if (stream == NULL) {
-        fprintf(stderr, "could not open file \"%s\"\n", minim_string(args[0]));
+        fprintf(stderr, "open-output-port: could not open file \"%s\"\n", minim_string(name));
         minim_shutdown(1);
     }
 
@@ -171,170 +167,66 @@ mobj open_output_port_proc(int argc, mobj *args) {
     return port;
 }
 
-mobj close_input_port_proc(int argc, mobj *args) {
-    // (-> input-port)
-    if (!minim_input_portp(args[0]))
-        bad_type_exn("close-input-port", "input-port?", args[0]);
-
-    fclose(minim_port(args[0]));
-    minim_port_unset(args[0], PORT_FLAG_OPEN);
+mobj close_input_port(mobj port) {
+    // (-> input-port? void)
+    fclose(minim_port(port));
+    minim_port_unset(port, PORT_FLAG_OPEN);
     return minim_void;
 }
 
-mobj close_output_port_proc(int argc, mobj *args) {
-    // (-> output-port)
-    if (!minim_output_portp(args[0]))
-        bad_type_exn("close-output-port", "output-port?", args[0]);
-
-    fclose(minim_port(args[0]));
-    minim_port_unset(args[0], PORT_FLAG_OPEN);
+mobj close_output_port(mobj port) {
+    // (-> output-port? void)
+    fclose(minim_port(port));
+    minim_port_unset(port, PORT_FLAG_OPEN);
     return minim_void;
 }
 
-mobj read_proc(int argc, mobj *args) {
-    // (-> any)
-    // (-> input-port any)
-    mobj in_p, o;
-
-    if (argc == 0) {
-        in_p = input_port(current_thread());
-    } else {
-        in_p = args[0];
-        if (!minim_input_portp(in_p))
-            bad_type_exn("read", "input-port?", in_p);
-    }
-
-    o = read_object(minim_port(in_p));
-    return (o == NULL) ? minim_eof : o;
+mobj read_proc(mobj port) {
+    // (-> input-port? any/c)
+    return read_object(minim_port(port));
 }
 
-mobj read_char_proc(int argc, mobj *args) {
-    // (-> char)
-    // (-> input-port char)
-    mobj in_p;
-    int ch;
-    
-    if (argc == 0) {
-        in_p = input_port(current_thread());
-    } else {
-        in_p = args[0];
-        if (!minim_input_portp(in_p))
-            bad_type_exn("read-char", "input-port?", in_p);
-    }
-
-    ch = getc(minim_port(in_p));
+mobj read_char_proc(mobj port) {
+    // (-> input-port? char?)
+    mchar ch = getc(minim_port(port));
     return (ch == EOF) ? minim_eof : Mchar(ch);
 }
 
-mobj peek_char_proc(int argc, mobj *args) {
-    // (-> char)
-    // (-> input-port char)
-    mobj in_p;
-    int ch;
-    
-    if (argc == 0) {
-        in_p = input_port(current_thread());
-    } else {
-        in_p = args[0];
-        if (!minim_input_portp(in_p))
-            bad_type_exn("peek-char", "input-port?", in_p);
-    }
-
-    ch = getc(minim_port(in_p));
-    ungetc(ch, minim_port(in_p));
+mobj peek_char_proc(mobj port) {
+    // (-> input-port? char?)
+    mchar ch = getc(minim_port(port));
+    ungetc(ch, minim_port(port));
     return (ch == EOF) ? minim_eof : Mchar(ch);
 }
 
-mobj char_is_ready_proc(int argc, mobj *args) {
-    // (-> boolean)
-    // (-> input-port boolean)
-    mobj in_p;
-    int ch;
-
-    if (argc == 0) {
-        in_p = input_port(current_thread());
-    } else {
-        in_p = args[0];
-        if (!minim_input_portp(in_p))
-            bad_type_exn("peek-char", "input-port?", in_p);
-    }
-
-    ch = getc(minim_port(in_p));
-    ungetc(ch, minim_port(in_p));
+mobj char_readyp_proc(mobj port) {
+    // (-> input-port? char?)
+    mchar ch = getc(minim_port(port));
+    ungetc(ch, minim_port(port));
     return (ch == EOF) ? minim_false : minim_true;
 }
 
-mobj display_proc(int argc, mobj *args) {
-    // (-> any void)
-    // (-> any output-port void)
-    mobj out_p, o;
-
-    o = args[0];
-    if (argc == 1) {
-        out_p = output_port(current_thread());
-    } else {
-        out_p = args[1];
-        if (!minim_output_portp(out_p))
-            bad_type_exn("display", "output-port?", out_p);
-    }
-
-    write_object2(minim_port(out_p), o, 0, 1);
+mobj display_proc(mobj x, mobj port) {
+    // (-> output-port? any/c void)
+    write_object2(minim_port(port), x, 0, 1);
     return minim_void;
 }
 
-mobj write_proc(int argc, mobj *args) {
-    // (-> any void)
-    // (-> any output-port void)
-    mobj out_p, o;
-
-    o = args[0];
-    if (argc == 1) {
-        out_p = output_port(current_thread());
-    } else {
-        out_p = args[1];
-        if (!minim_output_portp(out_p))
-            bad_type_exn("write", "output-port?", out_p);
-    }
-
-    write_object2(minim_port(out_p), o, 1, 0);
+mobj write_proc(mobj x, mobj port) {
+    // (-> output-port? any/c void)
+    write_object2(minim_port(port), x, 1, 0);
     return minim_void;
 }
 
-mobj write_char_proc(int argc, mobj *args) {
-    // (-> char void)
-    // (-> char output-port void)
-    mobj out_p, ch;
-
-    ch = args[0];
-    if (!minim_charp(ch))
-        bad_type_exn("write-char", "char?", ch);
-
-    if (argc == 1) {
-        out_p = output_port(current_thread());
-    } else {
-        out_p = args[1];
-        if (!minim_output_portp(out_p))
-            bad_type_exn("write-char", "output-port?", out_p);
-    }
-
-    putc(minim_char(ch), minim_port(out_p));
+mobj write_char_proc(mobj ch, mobj port) {
+    // (-> output-port? char? void)
+    putc(minim_char(ch), minim_port(port));
     return minim_void;
 }
 
-mobj newline_proc(int argc, mobj *args) {
-    // (-> void)
-    // (-> output-port void)
-    mobj out_p;
-
-    if (argc == 0) {
-        out_p = output_port(current_thread());
-    } else {
-        out_p = args[0];
-        if (!minim_output_portp(out_p))
-            bad_type_exn("newline", "output-port?", out_p);
-    }
-
-    putc('\n', minim_port(out_p));
+mobj newline_proc(mobj port) {
+    // (-> output-port? void)
+    putc('\n', minim_port(port));
     return minim_void;
 }
 
