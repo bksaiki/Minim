@@ -143,42 +143,6 @@ mobj record_set_proc(mobj rec, mobj idx, mobj x) {
     return minim_void;
 }
 
-mobj default_record_equal_procedure_proc(int argc, mobj *args) {
-    // (-> any any proc boolean)
-    if (record_valuep(args[0]) && record_valuep(args[1])) {
-        return minim_eqp(args[0], args[1]) ? minim_true : minim_false;
-    } else {
-        return minim_equalp(args[0], args[1]) ? minim_true : minim_false;
-    }
-}
-
-mobj default_record_hash_procedure_proc(int argc, mobj *args) {
-    // (-> any proc boolean)
-    if (record_valuep(args[0])) {
-        return eq_hash_proc(args[0]);
-    } else {
-        return equal_hash_proc(args[0]);
-    }
-}
-
-mobj default_record_write_procedure_proc(int argc, mobj *args) {
-    // (-> any proc boolean)
-    mobj o, quote, display;
-    FILE *out;
-
-    o = args[0];
-    out = minim_port(args[1]);
-    quote = minim_car(args[2]);
-    display = minim_cdr(args[2]);
-    if (record_valuep(o)) {
-        fprintf(out, "#<%s>", minim_symbol(minim_record_ref(minim_record_rtd(o), 0)));
-    } else {
-        write_object2(out, o, minim_fixnum(quote), minim_fixnum(display));
-    }
-
-    return minim_void;
-}
-
 mobj current_record_equal_procedure_proc(int argc, mobj *args) {
     // (-> proc)
     // (-> proc void)

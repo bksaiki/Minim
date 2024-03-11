@@ -343,29 +343,13 @@ void write_fasl(FILE *out, mobj o) {
 //  Primitive
 //
 
-mobj read_fasl_proc(int argc, mobj *args) {
-    // (-> any)
+mobj fasl_read_proc(mobj port) {
     // (-> input-port any)
-    mobj in_p = args[0];
-    if (!minim_input_portp(in_p))
-        bad_type_exn("read-fasl", "input-port?", in_p);
-    return read_fasl(minim_port(in_p));
+    return read_fasl(minim_port(port));
 }
 
-mobj write_fasl_proc(int argc, mobj *args) {
-    // (-> any void)
+mobj fasl_write_proc(mobj x, mobj port) {
     // (-> any output-port void)
-    mobj out_p, o;
-
-    o = args[0];
-    if (argc == 1) {
-        out_p = output_port(current_thread());
-    } else {
-        out_p = args[1];
-        if (!minim_output_portp(out_p))
-            bad_type_exn("write-fasl", "output-port?", out_p);
-    }
-
-    write_fasl(minim_port(out_p), o);
+    write_fasl(minim_port(port), x);
     return minim_void;
 }

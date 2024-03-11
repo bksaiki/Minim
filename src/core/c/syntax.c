@@ -161,12 +161,12 @@ mobj syntax_error_proc(int argc, mobj *args) {
                 bad_type_exn("syntax-error", "syntax?", sub);
 
             fputs("  at: ", stderr);
-            write_object2(stderr, strip_syntax(sub), 1, 1);
+            write_object(stderr, strip_syntax(sub));
             fprintf(stderr, "\n");
         }
 
         fputs("  in: ", stderr);
-        write_object2(stderr, strip_syntax(where), 1, 1);
+        write_object(stderr, strip_syntax(where));
         fprintf(stderr, "\n");
     }
 

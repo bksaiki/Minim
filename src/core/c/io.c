@@ -51,7 +51,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char 
             if (!form[i]) {
                 fprintf(stderr, "%s: ill-formed formatting escape\n", prim_name);
                 fprintf(stderr, " at: ");
-                write_object2(stderr, Mstring(form), 1, 0);
+                write_object(stderr, Mstring(form));
                 fprintf(stderr, "\n");
                 exit(1);
             }
@@ -75,7 +75,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char 
     if (fi != v_count) {
         fprintf(stderr, "%s: format string requires %d arguments, given %d\n", prim_name, fi, v_count);
         fprintf(stderr, " at: ");
-        write_object2(stderr, Mstring(form), 1, 0);
+        write_object(stderr, Mstring(form));
         fprintf(stderr, "\n");
         exit(1);
     }
@@ -94,11 +94,11 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char 
                 break;
             case 'a':
                 // display
-                write_object2(o, vs[vi++], 1, 1);
+                write_object(o, vs[vi++]);
                 break;
             case 's':
                 // write
-                write_object2(o, vs[vi++], 1, 0);
+                write_object(o, vs[vi++]);
                 break;
             default:
                 fprintf(stderr, "%s: unknown formatting escape\n", prim_name);
@@ -206,23 +206,30 @@ mobj char_readyp_proc(mobj port) {
     return (ch == EOF) ? minim_false : minim_true;
 }
 
-mobj display_proc(mobj x, mobj port) {
-    // (-> output-port? any/c void)
-    write_object2(minim_port(port), x, 0, 1);
-    return minim_void;
-}
-
-mobj write_proc(mobj x, mobj port) {
-    // (-> output-port? any/c void)
-    write_object2(minim_port(port), x, 1, 0);
-    return minim_void;
-}
-
-mobj write_char_proc(mobj ch, mobj port) {
+mobj put_char_proc(mobj port, mobj ch) {
     // (-> output-port? char? void)
     putc(minim_char(ch), minim_port(port));
     return minim_void;
 }
+
+mobj flush_output_proc(mobj port) {
+    // (-> output-port? void)
+    fflush(minim_port(port));
+    return minim_void;
+}
+
+mobj put_string_proc(mobj port, mobj str, mobj start, mobj end) {
+    // (-> output-port? string? integer? integer?)
+    for (long i = minim_fixnum(start); i < minim_fixnum(end); i++)
+        putc(minim_string_ref(str, i), minim_port(port));
+    return minim_void;
+}
+
+// mobj write_char_proc(mobj ch, mobj port) {
+//     // (-> output-port? char? void)
+//     putc(minim_char(ch), minim_port(port));
+//     return minim_void;
+// }
 
 mobj newline_proc(mobj port) {
     // (-> output-port? void)

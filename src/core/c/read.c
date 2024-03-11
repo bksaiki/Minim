@@ -43,19 +43,6 @@ static void peek_expected_delimeter(FILE *in) {
     }
 }
 
-static void read_expected_string(FILE *in, const char *s) {
-    int c;
-
-    while (*s != '\0') {
-        c = getc(in);
-        if (c != *s) {
-            fprintf(stderr, "unexpected character: '%c'\n", c);
-            minim_shutdown(1);
-        }
-        ++s;
-    }
-}
-
 static int is_cons_dot(FILE *in, int c) {
     if (c != '.')
         return 0;
@@ -84,30 +71,117 @@ static void skip_whitespace(FILE *in) {
     }
 }
 
+static void read_named_char(FILE *in, const char *s) {
+    mchar c;
+    for (; *s != '\0'; s++) {
+        c = getc(in);
+        if (c != *s) {
+            fprintf(stderr, "unexpected character when parsing named char\n");
+            minim_shutdown(1);
+        }
+    }
+}
+
 static mobj read_char(FILE *in) {
-    int c;
+    int c, nc;
 
     c = getc(in);
-    switch (c) {
-    case EOF:
-        fprintf(stderr, "incomplete character literal\n");
-        break;
-    case 's':
-        if (peek_char(in) == 'p') {
-            read_expected_string(in, "pace");
+    if (c == EOF) {
+        fprintf(stderr, "unexpected EOF while parsing character sequence");
+        minim_shutdown(1);
+    } else if (c == 'a') {
+        nc = peek_char(in);
+        if (nc == 'l') {
+            // alarm
+            read_named_char(in, "larm");
+            peek_expected_delimeter(in);
+            return Mchar(BEL_CHAR);
+        }
+    } else if (c == 'b') {
+        nc = peek_char(in);
+        if (nc == 'a') {
+            // backspace
+            read_named_char(in, "ackspace");
+            peek_expected_delimeter(in);
+            return Mchar(BS_CHAR);
+        }
+    } else if (c == 'd') {
+        nc = peek_char(in);
+        if (nc == 'e') {
+            // delete
+            read_named_char(in, "elete");
+            peek_expected_delimeter(in);
+            return Mchar(DEL_CHAR);
+        }
+    } else if (c == 'e') {
+        nc = peek_char(in);
+        if (nc == 's') {
+            // esc
+            read_named_char(in, "sc");
+            peek_expected_delimeter(in);
+            return Mchar(ESC_CHAR);
+        }
+    } else if (c == 'l') {
+        nc = peek_char(in);
+        if (nc == 'i') {
+            // linefeed
+            read_named_char(in, "inefeed");
+            peek_expected_delimeter(in);
+            return Mchar(LF_CHAR);
+        }
+    } else if (c == 'n') {
+        nc = peek_char(in);
+        if (nc == 'e') {
+            // newline
+            read_named_char(in, "ewline");
+            peek_expected_delimeter(in);
+            return Mchar('\n');
+        } else if (nc == 'u') {
+            // nul
+            read_named_char(in, "ul");
+            peek_expected_delimeter(in);
+            return Mchar('\0');
+        }
+    } else if (c == 'p') {
+        nc = peek_char(in);
+        if (nc == 'a') {
+            // page
+            read_named_char(in, "age");
+            peek_expected_delimeter(in);
+            return Mchar(FF_CHAR);
+        }
+    } else if (c == 'r') {
+        nc = peek_char(in);
+        if (nc == 'e') {
+            // return
+            read_named_char(in, "eturn");
+            peek_expected_delimeter(in);
+            return Mchar(CR_CHAR);
+        }
+    } else if (c == 's') {
+        nc = peek_char(in);
+        if (nc == 'p') {
+            // space
+            read_named_char(in, "pace");
             peek_expected_delimeter(in);
             return Mchar(' ');
         }
-        break;
-    case 'n':
-        if (peek_char(in) == 'e') {
-            read_expected_string(in, "ewline");
+    } else if (c == 't') {
+        nc = peek_char(in);
+        if (nc == 'a') {
+            // tab
+            read_named_char(in, "ab");
             peek_expected_delimeter(in);
-            return Mchar('\n');
+            return Mchar(HT_CHAR);
         }
-        break;
-    default:
-        break;
+    } else if (c == 'v') {
+        nc = peek_char(in);
+        if (nc == 't') {
+            // vtab
+            read_named_char(in, "tab");
+            peek_expected_delimeter(in);
+            return Mchar(VT_CHAR);
+        }
     }
 
     peek_expected_delimeter(in);

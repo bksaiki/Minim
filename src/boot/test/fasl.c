@@ -7,38 +7,31 @@
 
 #include "../boot.h"
 
-FILE *stream, *fasl_stream;
-mobj *env;
 int return_code, passed;
 
-#define reset() {           \
+#define load(stream, s) {   \
+    fputs(s, stream);       \
     rewind(stream);         \
-    env = make_env();       \
 }
-
-#define load(s) {       \
-    fputs(s, stream);   \
-    rewind(stream);     \
-}
-
-#define eval()      eval_expr(read_object(stream), env)
 
 #define log_failed_case(s, expect, actual) {                            \
     printf(" %s => expected: %s, actual: %s\n", s, expect, actual);     \
 }
 
 void check_fasl_equal(const char *input, const char *expect) {
-    mobj *o;
-    char *str;
-    long len, read;
+    FILE *istream, *fasl_stream, *ostream;
+    mobj o;
+    char *buffer;
+    size_t len, read;
 
-    stream = tmpfile();
+    istream = tmpfile();
+    ostream = tmpfile();
     fasl_stream = tmpfile();
 
     // evaluate input string
-    reset();
-    load(input);
-    o = eval();
+    istream = tmpfile();
+    load(istream, input);
+    o = eval_expr(read_object(istream), make_env());
     
     // write as FASL
     write_fasl(fasl_stream, o);
@@ -48,26 +41,25 @@ void check_fasl_equal(const char *input, const char *expect) {
     o = read_fasl(fasl_stream);
 
     // write object (should be the same)
-    rewind(stream);
-    write_object(stream, o);
+    write_object(ostream, o);
+    len = ftell(ostream);
+    fseek(ostream, 0, SEEK_SET);
 
-    len = ftell(stream);
-    fseek(stream, 0, SEEK_SET);
-
-    str = GC_alloc_atomic((len + 1) * sizeof(char));
-    read = fread(str, 1, len, stream);
-    str[len] = '\0';
-
-    fclose(stream);
-    fclose(fasl_stream);
-
+    buffer = GC_alloc_atomic((len + 1) * sizeof(char));
+    read = fread(buffer, 1, len, ostream);
+    buffer[len] = '\0';
     if (read != len) {
         fprintf(stderr, "read error occured");
         exit(1);
     }
+
+    fclose(istream);
+    fclose(ostream);
+    fclose(fasl_stream);
     
-    if (strcmp(str, expect) != 0) {
-        log_failed_case(input, expect, str);
+    if (strcmp(buffer, expect) != 0) {
+        log_failed_case(input, expect, buffer);
+        passed = 0;
     }
 }
 
@@ -83,7 +75,7 @@ void check_fasl_equal(const char *input, const char *expect) {
 int test_simple() {
     passed = 1;
 
-    check_fasl_equal("'()", "'()");
+    check_fasl_equal("'()", "()");
     check_fasl_equal("#t", "#t");
     check_fasl_equal("#f", "#f");
     check_fasl_equal("eof", "#<eof>");
@@ -93,9 +85,9 @@ int test_simple() {
     check_fasl_equal("#\\b", "#\\b");
     check_fasl_equal("#\\0", "#\\0");
 
-    check_fasl_equal("'a", "'a");
-    check_fasl_equal("'abc", "'abc");
-    check_fasl_equal("'abc123", "'abc123");
+    check_fasl_equal("'a", "a");
+    check_fasl_equal("'abc", "abc");
+    check_fasl_equal("'abc123", "abc123");
 
     check_fasl_equal("\"\"", "\"\"");
     check_fasl_equal("\"a\"", "\"a\"");
@@ -112,15 +104,15 @@ int test_simple() {
 int test_pair() {
     passed = 1;
 
-    check_fasl_equal("'(1 . 2)", "'(1 . 2)");
-    check_fasl_equal("'(1 2 . 3)", "'(1 2 . 3)");
-    check_fasl_equal("'(1 2 3 . 4)", "'(1 2 3 . 4)");
+    check_fasl_equal("'(1 . 2)", "(1 . 2)");
+    check_fasl_equal("'(1 2 . 3)", "(1 2 . 3)");
+    check_fasl_equal("'(1 2 3 . 4)", "(1 2 3 . 4)");
 
-    check_fasl_equal("'(1)", "'(1)");
-    check_fasl_equal("'(1 2)", "'(1 2)");
-    check_fasl_equal("'(1 2 3)", "'(1 2 3)");
+    check_fasl_equal("'(1)", "(1)");
+    check_fasl_equal("'(1 2)", "(1 2)");
+    check_fasl_equal("'(1 2 3)", "(1 2 3)");
 
-    check_fasl_equal("'((a . 1) (b . 2) (c . 3))", "'((a . 1) (b . 2) (c . 3))");
+    check_fasl_equal("'((a . 1) (b . 2) (c . 3))", "((a . 1) (b . 2) (c . 3))");
 
     return passed;
 }
@@ -128,11 +120,11 @@ int test_pair() {
 int test_vector() {
     passed = 1;
 
-    check_fasl_equal("'#()", "'#()");
-    check_fasl_equal("'#(1)", "'#(1)");
-    check_fasl_equal("'#(1 2 3)", "'#(1 2 3)");
+    check_fasl_equal("'#()", "#()");
+    check_fasl_equal("'#(1)", "#(1)");
+    check_fasl_equal("'#(1 2 3)", "#(1 2 3)");
 
-    check_fasl_equal("'#((a . 1) (b . 2) (c . 3))", "'#((a . 1) (b . 2) (c . 3))");
+    check_fasl_equal("'#((a . 1) (b . 2) (c . 3))", "#((a . 1) (b . 2) (c . 3))");
 
     return passed;
 }

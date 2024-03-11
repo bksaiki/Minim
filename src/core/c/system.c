@@ -176,29 +176,28 @@ mobj error_proc(int argc, mobj *args) {
     //     string?
     //     any ...
     //     any)
-    mobj who, message;
-    int i;
+    mobj who, msg;
 
     who = args[0];
     if (!minim_falsep(who) && !minim_symbolp(who) && !minim_stringp(who))
         bad_type_exn("error", "(or #f string? symbol?)", who);
 
-    message = args[1];
-    if (!minim_stringp(message))
-        bad_type_exn("error", "string?", message);
+    msg = args[1];
+    if (!minim_stringp(msg))
+        bad_type_exn("error", "string?", msg);
     
     if (minim_falsep(who))
         fprintf(stderr, "error");
     else
-        write_object2(stderr, who, 1, 1);
+        write_object(stderr, who);
 
     fprintf(stderr, ": ");
-    write_object2(stderr, message, 1, 1);
+    write_object(stderr, string_to_symbol(msg));
     fprintf(stderr, "\n");
 
-    for (i = 2; i < argc; ++i) {
+    for (int i = 2; i < argc; ++i) {
         fprintf(stderr, " ");
-        write_object2(stderr, args[i], 1, 1);
+        write_object(stderr, args[i]);
         fprintf(stderr, "\n");
     }
 

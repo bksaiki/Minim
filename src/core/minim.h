@@ -406,6 +406,18 @@ mobj eq_proc(mobj x, mobj y);
 mobj equal_proc(mobj x, mobj y);
 mobj void_proc();
 
+#define NUL_CHAR        ((mchar) 0x00)      // null
+#define BEL_CHAR        ((mchar) 0x07)      // alarm / bell
+#define BS_CHAR         ((mchar) 0x08)      // backspace
+#define HT_CHAR         ((mchar) 0x09)      // horizontal tab
+#define LF_CHAR         ((mchar) 0x0A)      // line feed
+#define VT_CHAR         ((mchar) 0x0B)      // vertical tab
+#define FF_CHAR         ((mchar) 0x0C)      // form feed (page break)
+#define CR_CHAR         ((mchar) 0x0D)      // carriage return
+#define ESC_CHAR        ((mchar) 0x1B)      // escape
+#define SP_CHAR         ((mchar) 0x20)      // space
+#define DEL_CHAR        ((mchar) 0x7F)      // delete
+
 mobj char_to_integer(mobj x);
 mobj integer_to_char(mobj x);
 
@@ -499,10 +511,14 @@ mobj read_proc(mobj port);
 mobj read_char_proc(mobj port);
 mobj peek_char_proc(mobj port);
 mobj char_readyp_proc(mobj port);
-mobj display_proc(mobj x, mobj port);
-mobj write_proc(mobj x, mobj port);
-mobj write_char_proc(mobj ch, mobj port);
+
+mobj put_char_proc(mobj port, mobj ch);
+mobj put_string_proc(mobj port, mobj ch, mobj start, mobj end);
+mobj flush_output_proc(mobj port);
 mobj newline_proc(mobj port);
+
+mobj fasl_read_proc(mobj port);
+mobj fasl_write_proc(mobj x, mobj port);
 
 mobj make_hashtable(mobj size);
 mobj hashtable_copy(mobj ht);
@@ -565,7 +581,6 @@ mobj command_line_proc();
 
 mobj read_object(FILE *in);
 void write_object(FILE *out, mobj o);
-void write_object2(FILE *out, mobj o, int quote, int display);
 void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char *prim_name);
 
 // FASL
@@ -813,18 +828,12 @@ DEFINE_PRIM_PROC(eval);
 // strings
 DEFINE_PRIM_PROC(format);
 // record
-DEFINE_PRIM_PROC(default_record_equal_procedure);
-DEFINE_PRIM_PROC(default_record_hash_procedure);
-DEFINE_PRIM_PROC(default_record_write_procedure);
 DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
 // I/O
 DEFINE_PRIM_PROC(fprintf);
 DEFINE_PRIM_PROC(printf);
-// FASL
-DEFINE_PRIM_PROC(write_fasl)
-DEFINE_PRIM_PROC(read_fasl)
 // System
 DEFINE_PRIM_PROC(current_directory);
 // Exceptions

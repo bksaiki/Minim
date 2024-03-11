@@ -55,15 +55,9 @@ void minim_boot_init() {
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
 
-    record_equal_proc_obj = Mprim(default_record_equal_procedure_proc,
-                                  "default-record-equal-procedure",
-                                  3, 3);
-    record_hash_proc_obj = Mprim(default_record_hash_procedure_proc,
-                                 "default-record-hash-procedure",
-                                 2, 2);
-    record_write_proc_obj = Mprim(default_record_write_procedure_proc,
-                                  "default-record-write-procedure",
-                                  3, 3);
+    record_equal_proc_obj = minim_false;
+    record_hash_proc_obj = minim_false;
+    record_write_proc_obj = minim_false;
 
     // initialize thread
 

@@ -218,7 +218,7 @@ loop:
         // empty application
         fprintf(stderr, "missing procedure expression\n");
         fprintf(stderr, "  in: ");
-        write_object2(stderr, expr, 0, 0);
+        write_object(stderr, expr);
         minim_shutdown(1);
     } else {
         // unknown

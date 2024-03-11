@@ -220,16 +220,16 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$read-char", read_char_proc, 1);
     add_unsafe_procedure("$peek-char", peek_char_proc, 1);
     add_unsafe_procedure("$char-ready?", char_readyp_proc, 1);
-    add_unsafe_procedure("$display", display_proc, 2);
-    add_unsafe_procedure("$write", write_proc, 2);
-    add_unsafe_procedure("$write-char", write_char_proc, 2);
+    add_unsafe_procedure("$put-char", put_char_proc, 2);
+    add_unsafe_procedure("$put-string", put_string_proc, 4);
+    add_unsafe_procedure("$flush-output-port", flush_output_proc, 1);
     add_unsafe_procedure("$newline", newline_proc, 1);
     
     add_procedure("fprintf", fprintf_proc, 2, ARG_MAX);
     add_procedure("printf", printf_proc, 1, ARG_MAX);
 
-    add_procedure("read-fasl", read_fasl_proc, 0, 1);
-    add_procedure("write-fasl", write_fasl_proc, 1, 2);
+    add_unsafe_procedure("$fasl-read", fasl_read_proc, 1);
+    add_unsafe_procedure("$fasl-write", fasl_write_proc, 2);
     
     add_unsafe_procedure("$load", load_proc, 1);
     add_unsafe_procedure("$exit", exit_proc, 1);

@@ -1039,34 +1039,6 @@
         ($close-output-port port)
         (error 'close-output-file "expected output-port?" port))))
 
-(define-values (read read-char peek-char char-ready?)
-  (let-values ([(go) 
-                (lambda (name proc)
-                  (lambda args
-                    (if (null? args)
-                        (proc (current-input-port))
-                        (if (null? ($cdr args))
-                            (let-values ([(port) ($car args)])
-                              (if (input-port? port)
-                                  (proc port)
-                                  (error name "expected input-port?" port)))
-                            (error name "expected 0 or 1 arguments" ($length args))))))])
-    (values (go 'read $read)
-            (go 'read-char $read-char)
-            (go 'peek-char $peek-char)
-            (go 'char-ready? $char-ready?))))
-
-(define-values (newline)
-  (lambda args
-    (if (null? args)
-        ($newline (current-output-port))
-        (if (null? ($cdr args))
-            (let-values ([(port) ($car args)])
-              (if (input-port? port)
-                  ($newline port)
-                  (error name "expected input-port?" port)))
-            (error 'newline "expected 0 or 1 arguments" ($length args))))))
-
 ;; --------------------------------------------------------
 ;; Records
 
@@ -1145,12 +1117,16 @@
       (let-values ([(rtd) ($make-record-type-descriptor name parent uid sealed? opaque? fields)])
         (if parent
             (let-values ([(rec-equal?) (record-type-equal-procedure parent)]
-                         [(rec-hash) (record-type-hash-procedure parent)])
+                         [(rec-hash) (record-type-hash-procedure parent)]
+                         [(rec-writer) (record-writer parent)])
               (if rec-equal?
                   (record-type-equal-procedure rtd rec-equal?)
                   (void))
               (if rec-hash
                   (record-type-hash-procedure rtd rec-hash)
+                  (void))
+              (if rec-writer
+                  (record-writer rec-writer)
                   (void)))
             (void))
         rtd))))
@@ -1542,10 +1518,9 @@
         (error 'hashtable-clear! "expected hashtable?" ht))))
 
 ;; --------------------------------------------------------
-;; Equality + Hashing
+;; Record: equality + hashing + writing
 
 (define-values (record-type-equal-procedure record-type-hash-procedure)
-
   (letrec-values ([($equal-table) (make-eq-hashtable)]
                   [($hash-table) (make-eq-hashtable)]
                   [(do-table-ref)
@@ -1616,6 +1591,31 @@
           (record-type-hash-procedure rtd))
         (error 'record-equal-procedure "expected record?" a))))
 
+(define-values (record-writer)
+  (letrec-values ([($writer-table) (make-eq-hashtable)]
+                  [(check-args!)
+                   (lambda (name args)
+                     (let-values ([(argc) (length args)])
+                       (if (if (>= argc 1) (<= argc 2) #f)
+                           (let-values ([(rtd) ($car args)])
+                             (if (record-type-descriptor? rtd)
+                                 (if (= argc 2)
+                                     (let-values ([(proc) ($cadr args)])
+                                       (if (procedure? proc)
+                                           (void)
+                                           (error name "expected procedure?" p)))
+                                     (void))
+                                 (error name "expected record-type-descriptor?" rtd)))
+                           (error name "expected 1 or 2 arguments" argc))))])
+    (lambda args
+      (check-args! 'record-type-equal-procedure args)
+      (let-values ([(rtd) ($car args)])
+        (if (null? ($cdr args))
+            (hashtable-ref $writer-table rtd #f)
+            (hashtable-set! $writer-table rtd ($cadr args)))))))
+
+;; --------------------------------------------------------
+;; Equality + Hashing
 
 (define-values (equal?)
   (letrec-values ([(equal-pair?)
@@ -1709,56 +1709,77 @@
         (loop x 523658599)))))
 
 ;; --------------------------------------------------------
+;; Reader
+
+(define-values (read read-char peek-char char-ready?)
+  (let-values ([(go) 
+                (lambda (name proc)
+                  (lambda args
+                    (if (null? args)
+                        (proc (current-input-port))
+                        (if (null? ($cdr args))
+                            (let-values ([(port) ($car args)])
+                              (if (input-port? port)
+                                  (proc port)
+                                  (error name "expected input-port?" port)))
+                            (error name "expected 0 or 1 arguments" ($length args))))))])
+    (values (go 'read $read)
+            (go 'read-char $read-char)
+            (go 'peek-char $peek-char)
+            (go 'char-ready? $char-ready?))))
+
+;; --------------------------------------------------------
 ;; Writing
 
-(define-values (record-writer)
-  (letrec-values ([($writer-table) (make-eq-hashtable)]
-                  [(check-args!)
-                   (lambda (name args)
-                     (let-values ([(argc) (length args)])
-                       (if (if (>= argc 1) (<= argc 2) #f)
-                           (let-values ([(rtd) ($car args)])
-                             (if (record-type-descriptor? rtd)
-                                 (if (= argc 2)
-                                     (let-values ([(proc) ($cadr args)])
-                                       (if (procedure? proc)
-                                           (void)
-                                           (error name "expected procedure?" p)))
-                                     (void))
-                                 (error name "expected record-type-descriptor?" rtd)))
-                           (error name "expected 1 or 2 arguments" argc))))])
-    (lambda args
-      (check-args! 'record-type-equal-procedure args)
-      (let-values ([(rtd) ($car args)])
-        (if (null? ($cdr args))
-            (hashtable-ref $writer-table rtd)
-            (hashtable-set! $writer-table rtd ($cadr args)))))))
+(define-values (put-char)
+  (lambda (p ch)
+    (if (output-port? p)
+        (if (char? ch)
+            ($put-char p ch)
+            (error 'put-char "expected char?" ch))
+        (error 'put-char "expected output-port?" ch))))
 
-(define-values (display)
+(define-values (put-string)
   (lambda args
-    (if (null? args)
-        (if (null? ($cdr args))
-            ($display ($car args) (current-output-port))
-            (if (null? ($cddr args))
-                (let-values ([(port) ($cadr args)])
-                  (if (output-port? port)
-                      ($write ($car args) port)
-                      (error 'display "expected output-port?" port)))
-                (error 'display "expected 1 or 2 arguments" ($length args))))
-        (error 'display "expected 1 or 2 arguments" ($length args)))))
+    (let-values ([(argc) ($length args)])
+      (if (<= 2 argc 4)
+          (letrec-values ([(p) ($car args)]
+                          [(str) ($cadr args)]
+                          [(len) ($string-length str)])
+            (if (output-port? p)
+                (void)
+                (error 'put-string "expected output-port?" ch))
+            (if (string? str)
+                (void)
+                (error 'put-string "expected string?" ch))
+            (if (= argc 2)
+                ($put-string p str 0 len)
+                (let-values ([(start) ($caddr args)])
+                  (if (integer? start)
+                      (void)
+                      (error 'put-string "expected integer?" start))
+                  (if (< start len)
+                      (if (= argc 3)
+                          ($put-string p str start len)
+                          (let-values ([(end) ($cadddr args)])
+                            (if (integer? end)
+                                (void)
+                                (error 'put-string "expected integer?" end))
+                            (if (< end start)
+                                (error 'put-string "must have start <= end" start end)
+                                (void))
+                            (if (>= end len)
+                                (error 'put-string "end index out of bounds" end len)
+                                (void))
+                            ($put-string p str start end)))
+                      (error 'put-string "start index out of bounds" start len)))))
+          (error 'put-string "expected 2, 3, or 4 arguments" argc)))))
 
-(define-values (write)
-  (lambda args
-    (if (null? args)
-        (if (null? ($cdr args))
-            ($write ($car args) (current-output-port))
-            (if (null? ($cddr args))
-                (let-values ([(port) ($cadr args)])
-                  (if (output-port? port)
-                      ($write ($car args) port)
-                      (error 'write "expected output-port?" port)))
-                (error 'write "expected 1 or 2 arguments" ($length args))))
-        (error 'write "expected 1 or 2 arguments" ($length args)))))
+(define-values (flush-output-port)
+  (lambda (port)
+    (if (output-port? port)
+        ($flush-output-port port)
+        (error 'flush-output-port "expected output-port?" port))))
 
 (define-values (write-char)
   (lambda args
@@ -1775,6 +1796,181 @@
                       (error 'write-char "expected 1 or 2 arguments" ($length args))))
               (error 'write-char "expected char?" ch)))
         (error 'write-char "expected 1 or 2 arguments" ($length args)))))
+
+(define-values (put-datum write display)
+  (letrec-values ([(lparen rparen) (values #\( #\))]
+                  ; main writer
+                  [(wr)
+                   (lambda (x d? p)
+                     (if (symbol? x) (put-string p (symbol->string x))
+                     (if (pair? x) (wrpair x d? p)
+                     (if (number? x) (put-string p (number->string x))
+                     (if (null? x) (put-string p "()")
+                     (if (boolean? x) (put-string p (if x "#t" "#f"))
+                     (if (char? x) (if d? (put-char p x) (wrchar x p))
+                     (if (string? x) (if d? (put-string p x) (wrstring x p))
+                     (if (vector? x) (wrvector x d? p)
+                     (if (eof-object? x) (put-string p "#<eof>")
+                     (if (void? x) (put-string p "#<void>")
+                     (if (input-port? x) (put-string p "#<input port>")
+                     (if (output-port? x) (put-string p "#<output port>")
+                     (if (procedure? x) (put-string p "#<procedure>")
+                     (if (syntax? x) (wrsyntax x d? p)
+                     (if (environment? x) (put-string p "#<environment>")
+                     (if (record-type-descriptor? x) (wrrtd x d? p)
+                     (if ($record-value? x) (wrrecord x d? p)
+                     (put-string p "#<garbage>")))))))))))))))))))]
+                  ; character writer
+                  [(wrchar)
+                   (lambda (x p)
+                     (put-string p "#\\")
+                     (if (eq? x #\alarm) (put-string p "alarm")
+                     (if (eq? x #\backspace) (put-string p "backspace")
+                     (if (eq? x #\delete) (put-string p "delete")
+                     (if (eq? x #\esc) (put-string p "esc")
+                     (if (eq? x #\newline) (put-string p "newline")
+                     (if (eq? x #\nul) (put-string p "nul")
+                     (if (eq? x #\page) (put-string p "page")
+                     (if (eq? x #\return) (put-string p "return")
+                     (if (eq? x #\space) (put-string p "space")
+                     (if (eq? x #\tab) (put-string p "tab")
+                     (if (eq? x #\vtab) (put-string p "vtab")
+                     (put-char p x)))))))))))))]
+                  ; string writer
+                  [(wrstring)
+                   (lambda (x p)
+                     (put-char p #\")
+                     (for-each
+                       (lambda (i)
+                         (let-values ([(c) (string-ref x i)])
+                           (if (eq? c #\alarm) (put-string p "\\a")
+                           (if (eq? c #\backspace) (put-string p "\\b")
+                           (if (eq? c #\newline) (put-string p "\\n")
+                           (if (eq? c #\page) (put-string p "\\f")
+                           (if (eq? c #\return) (put-string p "\\r")
+                           (if (eq? c #\tab) (put-string p "\\t")
+                           (if (eq? c #\vtab) (put-string p "\\v")
+                           (if (eq? c #\") (put-string p "\\\"")
+                           (if (eq? c #\\) (put-string p "\\\\")
+                           (put-char p c))))))))))))
+                       (iota (string-length x)))
+                     (put-char p #\"))]
+                  ; pair writer
+                  [(wrpair)
+                   (lambda (x d? p)
+                     (put-char p lparen)
+                     (letrec-values ([(loop)
+                                      (lambda (x)
+                                         (wr (car x) d? p)
+                                         (if (pair? (cdr x))
+                                             (begin
+                                               (put-char p #\space)
+                                               (loop (cdr x)))
+                                             (if (null? (cdr x))
+                                                 (void)
+                                                 (begin
+                                                   (put-string p " . ")
+                                                   (wr (cdr x) d? p)))))])
+                       (loop x))
+                     (put-char p rparen))]
+                  ; vector writer
+                  [(wrvector)
+                   (lambda (x d? p)
+                     (put-string p "#(")
+                     (letrec-values ([(n) (vector-length x)]
+                                     [(loop)
+                                      (lambda (i sep)
+                                        (if (>= i n)
+                                            (void)
+                                            (begin
+                                              (put-char p sep)
+                                              (wr (vector-ref x i) d? p)
+                                              (loop (+ i 1) #\space))))])
+                       (loop 0 lparen))
+                     (put-char p rparen))]
+                  ; record type writer
+                  [(wrrtd)
+                   (lambda (x d? p)
+                     (put-string p "#<record-type:")
+                     (wr (record-type-name x) d? p)
+                     (put-char p '>'))]
+                  ; record value writer
+                  [(wrrecord)
+                   (lambda (x d? p)
+                     (let-values ([(proc) (record-writer ($record-rtd x))])
+                       (if proc
+                           (proc x p d?) 
+                           (begin
+                             (put-string p "#<")
+                             (wr (record-type-name ($record-rdd x)) d? p)
+                             (put-char p '>')))))]
+                  ; syntax writer
+                  [(wrsyntax)
+                   (lambda (x d? p)
+                     (put-string p "#<syntax ")
+                     (wr (syntax->datum x) d? p)
+                     (put-char p '>'))]
+                  ; check and call
+                  [(go)
+                   (lambda (who x d? p)
+                     (if (output-port? p)
+                         (wr x d? p)
+                         (error who "expected output-port?" p)))])
+    (values
+      ; put-datum
+      (lambda (p x) (go 'put-datum x #f p))
+      ; write
+      (lambda args
+        (let-values ([(argc) ($length args)])
+          (if (= argc 1)
+              (go 'write ($car args) #f (current-output-port))
+              (if (= argc 2)
+                  (go 'write ($car args) #f ($cadr args))
+                  (error 'write "expected 1 or 2 arguments" argc)))))
+      ; display
+      (lambda args
+        (let-values ([(argc) ($length args)])
+          (if (= argc 1)
+              (go 'display ($car args) #t (current-output-port))
+              (if (= argc 2)
+                  (go 'display ($car args) #t ($cadr args))
+                  (error 'display "expected 1 or 2 arguments" argc))))))))
+
+(define-values (newline)
+  (lambda args
+    (if (null? args)
+        ($newline (current-output-port))
+        (if (null? ($cdr args))
+            (let-values ([(port) ($car args)])
+              (if (input-port? port)
+                  ($newline port)
+                  (error name "expected input-port?" port)))
+            (error 'newline "expected 0 or 1 arguments" ($length args))))))
+
+;; --------------------------------------------------------
+;; Formatter
+
+; (define-values (fprintf printf)
+;   (letrec-values ([(dofmt)
+;                    (lambda (p fmt args)
+;                      (letrec-values ([(nmax) (sub1 (string-length fmt))])
+;                                      [(loop)
+;                                       (lambda (n nmax))
+
+;; --------------------------------------------------------
+;; FASL I/O
+
+(define-values (fasl-read)
+  (lambda (port)
+    (if (input-port? port)
+        ($fasl-read port)
+        (error 'fasl-read "expected input-port?" port))))
+
+(define-values (fasl-write)
+  (lambda (x port)
+    (if (output-port? port)
+        ($fasl-write x port)
+        (error 'fasl-write "expected output-port?" port))))
 
 ;; --------------------------------------------------------
 ;; Syntax

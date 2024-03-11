@@ -87,7 +87,7 @@ void clear_call_args() {
 void bad_syntax_exn(mobj expr) {
     fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
     fprintf(stderr, " at: ");
-    write_object2(stderr, expr, 1, 0);
+    write_object(stderr, expr);
     fputc('\n', stderr);
     minim_shutdown(1);
 }
@@ -584,7 +584,7 @@ application:
         // empty application
         fprintf(stderr, "missing procedure expression\n");
         fprintf(stderr, "  in: ");
-        write_object2(stderr, expr, 0, 0);
+        write_object(stderr, expr);
         minim_shutdown(1);
     } else {
         // invalid
