@@ -134,11 +134,41 @@ void minim_shutdown(int code) {
 //  Primitives
 //
 
-mobj load_proc(int argc, mobj *args) {
+mobj load_proc(mobj fname) {
     // (-> string any)
-    if (!minim_stringp(args[0]))
-        bad_type_exn("load", "string?", args[0]);
-    return load_file(minim_string(args[0]), global_env(current_thread()));
+    return load_file(minim_string(fname), global_env(current_thread()));
+}
+
+mobj exit_proc(mobj code) {
+    // (-> byte any)
+    minim_shutdown(minim_fixnum(code));
+}
+
+mobj current_directory_proc(int argc, mobj *args) {
+    // (-> string)
+    // (-> string void)
+    mobj path;
+
+    if (argc == 0) {
+        // getter
+        return current_directory(current_thread());
+    } else {
+        // setter
+        path = args[0];
+        if (!minim_stringp(path))
+            bad_type_exn("current-directory", "string?", path);
+        
+        set_current_dir(minim_string(path));
+        return minim_void;
+    }
+}
+
+mobj command_line_proc() {
+    return command_line(current_thread());
+}
+
+mobj version_proc() {
+    return Mstring(MINIM_VERSION);
 }
 
 mobj error_proc(int argc, mobj *args) {
@@ -173,40 +203,4 @@ mobj error_proc(int argc, mobj *args) {
     }
 
     minim_shutdown(1);
-}
-
-mobj exit_proc(int argc, mobj *args) {
-    // (-> number any)
-
-    if (argc == 1 && 0 <= minim_fixnum(args[0]) && minim_fixnum(args[0]) <= 255)
-        minim_shutdown(minim_fixnum(args[0]));
-    else
-        minim_shutdown(0);
-}
-
-mobj current_directory_proc(int argc, mobj *args) {
-    // (-> string)
-    // (-> string void)
-    mobj path;
-
-    if (argc == 0) {
-        // getter
-        return current_directory(current_thread());
-    } else {
-        // setter
-        path = args[0];
-        if (!minim_stringp(path))
-            bad_type_exn("current-directory", "string?", path);
-        
-        set_current_dir(minim_string(path));
-        return minim_void;
-    }
-}
-
-mobj command_line_proc(int argc, mobj *args) {
-    return command_line(current_thread());
-}
-
-mobj version_proc(int argc, mobj *args) {
-    return Mstring(MINIM_VERSION);
 }

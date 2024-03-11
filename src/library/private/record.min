@@ -20,7 +20,7 @@
         gen:custom-write?)
 
 ;;
-;;  Record equal? and hashing
+;;  Some predefined generics
 ;;
 
 ; Generic interface for comparing and hashing records
@@ -28,30 +28,9 @@
                  [equal-proc a b rec-equal?]
                  [hash-proc a rec-hash])
 
-;;
-;;  Record writing
-;;
-
 ; Generic interface for writing records
 (define-generics custom-write
                  [write-proc v port mode])
-
-(define write-proc-accessor (generics-accessor gen:custom-write 'write-proc))
-
-; Fallback implementation for gen:custom-write method
-(define $default-record-write-proc ($current-record-write-procedure))
-
-(define (unsafe-record-write-procedure rtd)
-  (if (gen:custom-write? rtd)
-      (write-proc-accessor rtd)
-      $default-record-write-proc))
-
-(define (record-write r port mode)
-  (define rtd ($record-rtd r))
-  (define write-proc (unsafe-record-write-procedure rtd))
-  (write-proc r port mode))
-     
-($current-record-write-procedure record-write)
 
 ;;
 ;;  High-level macros
@@ -251,6 +230,9 @@
               (define get-hash-proc (generics-accessor gen:equal+hash 'hash-proc))
               (record-type-equal-procedure name (get-equal-proc name))
               (record-type-hash-procedure name (get-hash-proc name)))
+            (when (gen:custom-write? name)
+              (define get-write-proc (generics-accessor gen:custom-write 'write-proc))
+              (record-writer name (get-write-proc name)))
             (define construct
               (let ([c (record-constructor name)]
                     [p protocol*])

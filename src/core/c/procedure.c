@@ -63,14 +63,9 @@ mobj identity_proc(mobj x) {
     return x;
 }
 
-mobj procedure_arity_proc(int argc, mobj *args) {
+mobj procedure_arity_proc(mobj proc) {
     // (-> procedure any)
-    mobj proc;
     int min_arity, max_arity;
-
-    proc = args[0];
-    if (!minim_procp(proc))
-        bad_type_exn("procedure-arity", "procedure?", proc);
 
     if (minim_primp(proc)) {
         min_arity = minim_prim_argc_low(proc);

@@ -197,11 +197,12 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$environment-ref", environment_variable_ref, 3);
     add_unsafe_procedure("$environment-set!", environment_variable_set, 3);
 
-    add_procedure("procedure-arity", procedure_arity_proc, 1, 1);
-    add_procedure("eval", eval_proc, 1, 2);
-    add_procedure("apply", apply_proc, 2, ARG_MAX);
+    add_unsafe_procedure("procedure-arity", procedure_arity_proc, 1);
     add_unsafe_procedure("identity", identity_proc, 1);
     add_unsafe_procedure("void", void_proc, 0);
+
+    add_procedure("eval", eval_proc, 1, 2);
+    add_procedure("apply", apply_proc, 2, ARG_MAX);
 
     add_procedure("call-with-values", call_with_values_proc, 2, 2);
     add_procedure("values", values_proc, 0, ARG_MAX);
@@ -230,11 +231,12 @@ void init_prims(mobj env) {
     add_procedure("read-fasl", read_fasl_proc, 0, 1);
     add_procedure("write-fasl", write_fasl_proc, 1, 2);
     
-    add_procedure("load", load_proc, 1, 1);
-    add_procedure("exit", exit_proc, 0, 1);
+    add_unsafe_procedure("$load", load_proc, 1);
+    add_unsafe_procedure("$exit", exit_proc, 1);
+    add_unsafe_procedure("version", version_proc, 0);
+
     add_procedure("current-directory", current_directory_proc, 0, 1);
-    add_procedure("command-line", command_line_proc, 0, 0);
-    add_procedure("version", version_proc, 0, 0);
+    add_unsafe_procedure("command-line", command_line_proc, 0);
 
     add_procedure("error", error_proc, 2, ARG_MAX);
     add_procedure("syntax-error", syntax_error_proc, 2, 4);

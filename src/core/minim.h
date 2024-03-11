@@ -538,6 +538,7 @@ mobj record_ref_proc(mobj rec, mobj idx);
 mobj record_set_proc(mobj rec, mobj idx, mobj x);
 
 mobj identity_proc(mobj x);
+mobj procedure_arity_proc(mobj proc);
 
 mobj syntax_e_proc(mobj stx);
 mobj syntax_loc_proc(mobj stx);
@@ -554,6 +555,11 @@ mobj environment_names(mobj env);
 mobj extend_environment(mobj env);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
 mobj environment_variable_set(mobj env, mobj k, mobj v);
+
+mobj load_proc(mobj fname);
+mobj exit_proc(mobj code);
+mobj version_proc();
+mobj command_line_proc();
 
 // I/O
 
@@ -804,7 +810,6 @@ DEFINE_PRIM_PROC(call_with_values);
 DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
-DEFINE_PRIM_PROC(procedure_arity);
 // strings
 DEFINE_PRIM_PROC(format);
 // record
@@ -814,34 +819,16 @@ DEFINE_PRIM_PROC(default_record_write_procedure);
 DEFINE_PRIM_PROC(current_record_equal_procedure);
 DEFINE_PRIM_PROC(current_record_hash_procedure);
 DEFINE_PRIM_PROC(current_record_write_procedure);
-// syntax
-DEFINE_PRIM_PROC(syntax_error);
 // I/O
-// DEFINE_PRIM_PROC(current_input_port);
-// DEFINE_PRIM_PROC(current_output_port);
-// DEFINE_PRIM_PROC(open_input_port);
-// DEFINE_PRIM_PROC(open_output_port);
-// DEFINE_PRIM_PROC(close_input_port);
-// DEFINE_PRIM_PROC(close_output_port);
-// DEFINE_PRIM_PROC(read);
-// DEFINE_PRIM_PROC(read_char);
-// DEFINE_PRIM_PROC(peek_char);
-// DEFINE_PRIM_PROC(char_is_ready);
-// DEFINE_PRIM_PROC(display);
-// DEFINE_PRIM_PROC(write);
-// DEFINE_PRIM_PROC(write_char);
-// DEFINE_PRIM_PROC(newline);
 DEFINE_PRIM_PROC(fprintf);
 DEFINE_PRIM_PROC(printf);
 // FASL
 DEFINE_PRIM_PROC(write_fasl)
 DEFINE_PRIM_PROC(read_fasl)
 // System
-DEFINE_PRIM_PROC(load);
-DEFINE_PRIM_PROC(error);
 DEFINE_PRIM_PROC(current_directory);
-DEFINE_PRIM_PROC(exit);
-DEFINE_PRIM_PROC(command_line);
-DEFINE_PRIM_PROC(version);
+// Exceptions
+DEFINE_PRIM_PROC(error);
+DEFINE_PRIM_PROC(syntax_error);
 
 #endif  // _MINIM_H_
