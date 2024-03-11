@@ -1918,7 +1918,7 @@
                   ; vector writer
                   [(wrvector)
                    (lambda (x d? p)
-                     (put-string p "#(")
+                     (put-char p #\#)
                      (letrec-values ([(n) (vector-length x)]
                                      [(loop)
                                       (lambda (i sep)
@@ -1935,7 +1935,7 @@
                    (lambda (x d? p)
                      (put-string p "#<record-type:")
                      (wr (record-type-name x) d? p)
-                     (put-char p '>'))]
+                     (put-char p #\>))]
                   ; record value writer
                   [(wrrecord)
                    (lambda (x d? p)
@@ -1945,13 +1945,13 @@
                            (begin
                              (put-string p "#<")
                              (wr (record-type-name ($record-rdd x)) d? p)
-                             (put-char p '>')))))]
+                             (put-char p #\>)))))]
                   ; syntax writer
                   [(wrsyntax)
                    (lambda (x d? p)
                      (put-string p "#<syntax ")
                      (wr (syntax->datum x) d? p)
-                     (put-char p '>'))]
+                     (put-char p #\>))]
                   ; check and call
                   [(go)
                    (lambda (who x d? p)
