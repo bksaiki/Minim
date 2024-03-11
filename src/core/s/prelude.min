@@ -1532,6 +1532,28 @@
 ;; --------------------------------------------------------
 ;; Record: equality + hashing + writing
 
+(define-values (default-record-equal-procedure)
+  (lambda args
+    (if (null? args)
+        ($default-record-equal-procedure)
+        (if (null? ($cdr args))
+            (let-values ([(proc) ($car args)])
+              (if (procedure? proc)
+                  ($default-record-equal-procedure-set! proc)
+                  (error 'default-record-equal-procedure "expected procedure?" proc)))
+            (error 'default-record-equal-procedure "expected 0 or 1 argumetns" ($length args))))))
+
+(define-values (default-record-hash-procedure)
+  (lambda args
+    (if (null? args)
+        ($default-record-hash-procedure)
+        (if (null? ($cdr args))
+            (let-values ([(proc) ($car args)])
+              (if (procedure? proc)
+                  ($default-record-hash-procedure-set! proc)
+                  (error 'default-record-hash-procedure "expected procedure?" proc)))
+            (error 'default-record-hash-procedure "expected 0 or 1 argumetns" ($length args))))))
+
 (define-values (record-type-equal-procedure record-type-hash-procedure)
   (letrec-values ([($equal-table) (make-eq-hashtable)]
                   [($hash-table) (make-eq-hashtable)]
@@ -1684,7 +1706,10 @@
                                       (let-values ([(proc) (record-equal-procedure a b)])
                                         (if proc
                                            (proc a b equal?)
-                                           ($equal? a b)))
+                                           (let-values ([(proc) (default-record-equal-procedure)])
+                                             (if proc
+                                                 (proc a b equal?)
+                                                 ($equal? a b)))))
                                       #f)
                                   ($equal? a b)))))))))))
 
@@ -1716,7 +1741,12 @@
                                 (loop (hashtable->list x) hc)
                                 (if ($record-value? x)
                                     (let-values ([(proc) (record-hash-procedure x)])
-                                      (if proc (proc x equal-hash) (eq-hash x)))
+                                      (if proc
+                                          (proc x equal-hash)
+                                          (let-values ([(proc) (default-record-hash-procedure)])
+                                            (if proc
+                                                (proc x equal-hash)
+                                                (eq-hash x)))))
                                     (eq-hash x))))))))])
         (loop x 523658599)))))
 
@@ -1954,9 +1984,9 @@
         ($newline (current-output-port))
         (if (null? ($cdr args))
             (let-values ([(port) ($car args)])
-              (if (input-port? port)
+              (if (output-port? port)
                   ($newline port)
-                  (error name "expected input-port?" port)))
+                  (error 'newline "expected output port?" port)))
             (error 'newline "expected 0 or 1 arguments" ($length args))))))
 
 ;; --------------------------------------------------------
@@ -2175,3 +2205,14 @@
                   ($exit code)
                   (error 'exit "expected an integer between 0 and 255" code)))
             (error 'exit "expected 0 or 1 arguments" ($length args))))))
+
+(define-values (current-directory)
+  (lambda args
+    (if (null? args)
+        ($current-directory)
+        (if (null? ($cdr args))
+            (let-values ([(path) ($car args)])
+              (if (string? path)
+                  ($current-directory-set! path)
+                  (error 'current-directory "expected string?" path)))
+            (error 'current-directory "expected 0 or 1 arguments" (length args))))))

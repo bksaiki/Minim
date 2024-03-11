@@ -144,27 +144,20 @@ mobj exit_proc(mobj code) {
     minim_shutdown(minim_fixnum(code));
 }
 
-mobj current_directory_proc(int argc, mobj *args) {
-    // (-> string)
-    // (-> string void)
-    mobj path;
-
-    if (argc == 0) {
-        // getter
-        return current_directory(current_thread());
-    } else {
-        // setter
-        path = args[0];
-        if (!minim_stringp(path))
-            bad_type_exn("current-directory", "string?", path);
-        
-        set_current_dir(minim_string(path));
-        return minim_void;
-    }
+mobj command_line_proc() {
+    // (-> list)
+    return command_line(current_thread());
 }
 
-mobj command_line_proc() {
-    return command_line(current_thread());
+mobj current_directory_proc() {
+    // (-> string)
+    return current_directory(current_thread());
+}
+
+mobj current_directory_set_proc(mobj path) {
+    // (-> string void)
+    set_current_dir(minim_string(path));
+    return minim_void;
 }
 
 mobj version_proc() {

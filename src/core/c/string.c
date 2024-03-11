@@ -107,27 +107,3 @@ mobj string_to_list(mobj s) {
         lst = Mcons(Mchar(minim_string(s)[i]), lst);
     return lst;
 }
-
-mobj format_proc(int argc, mobj *args) {
-    // (-> string any ... string)
-    FILE *o;
-    char *s;
-    long len, i;
-    
-    if (!minim_stringp(args[0]))
-        bad_type_exn("format", "string?", args[0]);
-
-    o = tmpfile();
-    minim_fprintf(o, minim_string(args[0]), argc - 1, &args[1], "format");
-
-    len = ftell(o);
-    s = GC_alloc_atomic((len + 1) * sizeof(char));
-    s[len] = '\0';
-
-    fseek(o, 0, SEEK_SET);
-    for (i = 0; i < len; ++i)
-        s[i] = fgetc(o);
-
-    fclose(o);
-    return Mstring(s);
-}

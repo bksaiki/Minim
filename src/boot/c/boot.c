@@ -7,7 +7,6 @@
 
 void minim_boot_init() {
     minim_thread *th;
-    mobj record_equal_proc_obj, record_hash_proc_obj, record_write_proc_obj;
     
     GC_pause();
 
@@ -55,10 +54,6 @@ void minim_boot_init() {
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
 
-    record_equal_proc_obj = minim_false;
-    record_hash_proc_obj = minim_false;
-    record_write_proc_obj = minim_false;
-
     // initialize thread
 
     th = current_thread();
@@ -66,9 +61,8 @@ void minim_boot_init() {
     output_port(th) = Moutput_port(stdout);
     current_directory(th) = Mstring(get_current_dir());
     command_line(th) = minim_null;
-    record_equal_proc(th) = record_equal_proc_obj;
-    record_hash_proc(th) = record_hash_proc_obj;
-    record_write_proc(th) = record_write_proc_obj;
+    record_equal_proc(th) = minim_false;
+    record_hash_proc(th) = minim_false;
 
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj*));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;

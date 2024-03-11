@@ -217,7 +217,7 @@
                            (format "record type: #<record-type:~a>" 'name)
                            (format "parent type: ~a" p))
                     (make-record-type-descriptor 'name p
-                      uid* sealed?* opaque?* '#(fields ...)))))
+                      uid* sealed?* opaque?* #(fields ...)))))
             (begin
               (let ()
                 (define methods gen-methods)

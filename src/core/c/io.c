@@ -297,27 +297,3 @@ mobj newline_proc(mobj port) {
     putc('\n', minim_port(port));
     return minim_void;
 }
-
-mobj fprintf_proc(int argc, mobj *args) {
-    // (-> output-port string any ... void)
-    if (!minim_output_portp(args[0]))
-        bad_type_exn("fprintf", "output-port?", args[0]);
-    
-    if (!minim_stringp(args[1]))
-        bad_type_exn("fprintf", "string?", args[1]);
-    
-    minim_fprintf(minim_port(args[0]), minim_string(args[1]), argc - 2, &args[2], "fprintf");
-    return minim_void;
-}
-
-mobj printf_proc(int argc, mobj *args) {
-    // (-> string any ... void)
-    mobj curr_op;
-
-    if (!minim_stringp(args[0]))
-        bad_type_exn("printf", "string?", args[0]);
-
-    curr_op = output_port(current_thread());
-    minim_fprintf(minim_port(curr_op), minim_string(args[0]), argc - 1, &args[1], "printf");
-    return minim_void;
-}

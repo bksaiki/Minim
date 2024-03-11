@@ -154,9 +154,10 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$record-ref", record_ref_proc, 2);
     add_unsafe_procedure("$record-set!", record_set_proc, 3);
 
-    add_procedure("$current-record-equal-procedure", current_record_equal_procedure_proc, 0, 1);
-    add_procedure("$current-record-hash-procedure", current_record_hash_procedure_proc, 0, 1);
-    add_procedure("$current-record-write-procedure", current_record_write_procedure_proc, 0, 1);
+    add_unsafe_procedure("$default-record-equal-procedure", default_record_equal_proc, 0);
+    add_unsafe_procedure("$default-record-equal-procedure-set!", default_record_equal_set_proc, 1);
+    add_unsafe_procedure("$default-record-hash-procedure", default_record_hash_proc, 0);
+    add_unsafe_procedure("$default-record-hash-procedure-set!", default_record_hash_set_proc, 1);
 
     add_unsafe_procedure("box?", boxp_proc, 1);
     add_unsafe_procedure("box", box_proc, 1);
@@ -234,9 +235,9 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$load", load_proc, 1);
     add_unsafe_procedure("$exit", exit_proc, 1);
     add_unsafe_procedure("version", version_proc, 0);
-
-    add_procedure("current-directory", current_directory_proc, 0, 1);
     add_unsafe_procedure("command-line", command_line_proc, 0);
+    add_unsafe_procedure("$current-directory", current_directory_proc, 0);
+    add_unsafe_procedure("$current-directory-set!", current_directory_set_proc, 1);
 
     add_procedure("error", error_proc, 2, ARG_MAX);
     add_procedure("syntax-error", syntax_error_proc, 2, 4);

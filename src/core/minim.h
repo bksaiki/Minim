@@ -555,6 +555,11 @@ mobj rtd_length(mobj rtd);
 mobj rtd_fields(mobj rtd);
 mobj rtd_field_mutablep(mobj rtd, mobj idx);
 
+mobj default_record_equal_proc();
+mobj default_record_equal_set_proc(mobj proc);
+mobj default_record_hash_proc();
+mobj default_record_hash_set_proc(mobj proc);
+
 mobj make_record(mobj rtd, mobj fields);
 mobj record_rtd_proc(mobj rec);
 mobj record_ref_proc(mobj rec, mobj idx);
@@ -583,6 +588,8 @@ mobj load_proc(mobj fname);
 mobj exit_proc(mobj code);
 mobj version_proc();
 mobj command_line_proc();
+mobj current_directory_proc();
+mobj current_directory_set_proc(mobj path);
 
 // I/O
 
@@ -752,7 +759,6 @@ typedef struct minim_thread {
     mobj command_line;
     mobj record_equal_proc;
     mobj record_hash_proc;
-    mobj record_write_proc;
 
     mobj *values_buffer;
     int values_buffer_size;
@@ -768,7 +774,6 @@ typedef struct minim_thread {
 #define command_line(th)                ((th)->command_line)
 #define record_equal_proc(th)           ((th)->record_equal_proc)
 #define record_hash_proc(th)            ((th)->record_hash_proc)
-#define record_write_proc(th)           ((th)->record_write_proc)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
@@ -832,17 +837,6 @@ DEFINE_PRIM_PROC(call_with_values);
 DEFINE_PRIM_PROC(values);
 DEFINE_PRIM_PROC(apply)
 DEFINE_PRIM_PROC(eval);
-// strings
-DEFINE_PRIM_PROC(format);
-// record
-DEFINE_PRIM_PROC(current_record_equal_procedure);
-DEFINE_PRIM_PROC(current_record_hash_procedure);
-DEFINE_PRIM_PROC(current_record_write_procedure);
-// I/O
-DEFINE_PRIM_PROC(fprintf);
-DEFINE_PRIM_PROC(printf);
-// System
-DEFINE_PRIM_PROC(current_directory);
 // Exceptions
 DEFINE_PRIM_PROC(error);
 DEFINE_PRIM_PROC(syntax_error);

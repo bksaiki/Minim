@@ -143,41 +143,24 @@ mobj record_set_proc(mobj rec, mobj idx, mobj x) {
     return minim_void;
 }
 
-mobj current_record_equal_procedure_proc(int argc, mobj *args) {
-    // (-> proc)
-    // (-> proc void)
-    if (argc == 0) {
-        return record_equal_proc(current_thread());
-    } else {
-        if (!minim_procp(args[0]))
-            bad_type_exn("current-record-equal-procedure", "procedure?", args[0]);
-        record_equal_proc(current_thread()) = args[0];
-        return minim_void;
-    }
+mobj default_record_equal_proc() {
+    // (-> procedure)
+    return record_equal_proc(current_thread());
 }
 
-mobj current_record_hash_procedure_proc(int argc, mobj *args) {
-    // (-> proc)
-    // (-> proc void)
-    if (argc == 0) {
-        return record_hash_proc(current_thread());
-    } else {
-        if (!minim_procp(args[0]))
-            bad_type_exn("current-record-hash-procedure", "procedure?", args[0]);
-        record_hash_proc(current_thread()) = args[0];
-        return minim_void;
-    }
+mobj default_record_equal_set_proc(mobj proc) {
+    // (-> procedure void)
+    record_equal_proc(current_thread()) = proc;
+    return minim_void;
 }
 
-mobj current_record_write_procedure_proc(int argc, mobj *args) {
-    // (-> proc)
-    // (-> proc void)
-    if (argc == 0) {
-        return record_write_proc(current_thread());
-    } else {
-        if (!minim_procp(args[0]))
-            bad_type_exn("current-record-write-procedure", "procedure?", args[0]);
-        record_write_proc(current_thread()) = args[0];
-        return minim_void;
-    }
+mobj default_record_hash_proc() {
+    // (-> procedure)
+    return record_hash_proc(current_thread());
+}
+
+mobj default_record_hash_set_proc(mobj proc) {
+    // (-> procedure void)
+    record_hash_proc(current_thread()) = proc;
+    return minim_void;
 }
