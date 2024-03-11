@@ -866,6 +866,55 @@ int test_hashtable() {
     return passed;
 }
 
+int test_port() {
+    passed = 1;
+
+    check_equal("(input-port? (current-input-port))", "#t");
+    check_equal("(output-port? (current-input-port))", "#f");
+    check_equal("(input-port? (current-output-port))", "#f");
+    check_equal("(output-port? (current-output-port))", "#t");
+
+    check_equal("(string-port? (current-input-port))", "#f");
+    check_equal("(string-port? (current-output-port))", "#f");
+    check_equal("(input-port? (open-input-string \"hello\"))", "#t");
+    check_equal("(output-port? (open-input-string \"hello\"))", "#f");
+    check_equal("(string-port? (open-input-string \"hello\"))", "#t");
+    check_equal("(input-port? (open-output-string))", "#f");
+    check_equal("(output-port? (open-output-string))", "#t");
+    check_equal("(string-port? (open-output-string))", "#t");
+
+    check_equal("(begin "
+                  "(define-values (p) (open-input-string \"1\")) "
+                  "(read p))",
+                "1");
+
+    check_equal("(begin "
+                  "(define-values (p) (open-input-string \"(1 2 3)\")) "
+                  "(read p))",
+                "(1 2 3)");
+    
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\") "
+                  "(get-output-string p)) ",
+                "\"hello\"");
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\") "
+                  "(get-output-string p) "
+                  "(get-output-string p))",
+                "\"\"");
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\") "
+                  "(get-output-string p) "
+                  "(put-string p \"bye\")"
+                  "(get-output-string p))",
+                "\"bye\"");
+
+    return passed;
+}
+
 void run_tests() {
     log_test("simple eval", test_simple_eval);
     log_test("syntax", test_syntax);
@@ -886,6 +935,7 @@ void run_tests() {
     log_test("integer", test_integer);
     log_test("box", test_box);
     log_test("hashtable", test_hashtable);
+    log_test("port", test_port);
 
     log_test("apply", test_apply);
 }

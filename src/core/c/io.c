@@ -115,6 +115,7 @@ void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char 
 //
 //  Primitives
 //
+
 mobj input_portp_proc(mobj x) {
     // (-> any/c boolean)
     return minim_input_portp(x) ? minim_true : minim_false;
@@ -123,6 +124,11 @@ mobj input_portp_proc(mobj x) {
 mobj output_portp_proc(mobj x) {
     // (-> any/c boolean)
     return minim_output_portp(x) ? minim_true : minim_false;
+}
+
+mobj string_portp_proc(mobj x) {
+    // (-> any/c boolean)
+    return minim_string_portp(x) ? minim_true : minim_false;
 }
 
 mobj current_input_port() {
@@ -147,7 +153,7 @@ mobj open_input_file(mobj name) {
     }
 
     port = Minput_port(stream);
-    minim_port_set(port, PORT_FLAG_OPEN);
+    minim_port_set(port, PORT_FLAG_OPEN | PORT_FLAG_READ);
     return port;
 }
 
@@ -167,6 +173,42 @@ mobj open_output_file(mobj name) {
     return port;
 }
 
+mobj open_input_string(mobj str) {
+    // (-> str input-port)
+    FILE *stream;
+    mobj port;
+
+    // port backed by a temporary file
+    stream = tmpfile();
+    if (stream == NULL) {
+        fprintf(stderr, "open_input_string(): failed to create buffer\n");
+        minim_shutdown(1);
+    }
+    fputs(minim_string(str), stream);
+    fseek(stream, 0, SEEK_SET);
+
+    port = Minput_port(stream);
+    minim_port_set(port, PORT_FLAG_OPEN | PORT_FLAG_STR);
+    return port;
+}
+
+mobj open_output_string() {
+    // (-> str output-port)
+    FILE *stream;
+    mobj port;
+
+    // port backed by a temporary file
+    stream = tmpfile();
+    if (stream == NULL) {
+        fprintf(stderr, "open_input_string(): failed to create buffer\n");
+        minim_shutdown(1);
+    }
+
+    port = Moutput_port(stream);
+    minim_port_set(port, PORT_FLAG_OPEN | PORT_FLAG_STR);
+    return port;
+}
+
 mobj close_input_port(mobj port) {
     // (-> input-port? void)
     fclose(minim_port(port));
@@ -179,6 +221,31 @@ mobj close_output_port(mobj port) {
     fclose(minim_port(port));
     minim_port_unset(port, PORT_FLAG_OPEN);
     return minim_void;
+}
+
+mobj get_output_string(mobj port) {
+    // (-> (and output-port? string-port?) string?)
+    mobj str;
+    size_t len, read;
+    
+    // read from file
+    len = ftell(minim_port(port));
+    if (len != 0) {
+        str = Mstring2(len, 0);
+        fseek(minim_port(port), 0, SEEK_SET);
+        read = fread(minim_string(str), len, 1, minim_port(port));
+        if (read != 1) {
+            fprintf(stderr, "get_output_string: failed to read %ld character form port\n", len);
+            minim_shutdown(1);
+        }
+
+        // reset port, set null-terminator and return
+        rewind(minim_port(port));
+        minim_string(str)[len] = '\0';
+        return str;
+    } else {
+        return Mstring("");
+    }
 }
 
 mobj read_proc(mobj port) {
@@ -224,12 +291,6 @@ mobj put_string_proc(mobj port, mobj str, mobj start, mobj end) {
         putc(minim_string_ref(str, i), minim_port(port));
     return minim_void;
 }
-
-// mobj write_char_proc(mobj ch, mobj port) {
-//     // (-> output-port? char? void)
-//     putc(minim_char(ch), minim_port(port));
-//     return minim_void;
-// }
 
 mobj newline_proc(mobj port) {
     // (-> output-port? void)

@@ -135,7 +135,6 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$string->symbol", string_to_symbol, 1);
     add_unsafe_procedure("$list->string", list_to_string, 1);
     add_unsafe_procedure("$string->list", string_to_list, 1);
-    add_procedure("format", format_proc, 1, ARG_MAX);
 
     add_unsafe_procedure("record?", recordp_proc, 1);
     add_unsafe_procedure("record-type-descriptor?", record_rtdp_proc, 1);
@@ -209,12 +208,16 @@ void init_prims(mobj env) {
 
     add_unsafe_procedure("input-port?", input_portp_proc, 1);
     add_unsafe_procedure("output-port?", output_portp_proc, 1);
+    add_unsafe_procedure("string-port?", string_portp_proc, 1);
     add_unsafe_procedure("current-input-port", current_input_port, 0);
     add_unsafe_procedure("current-output-port", current_output_port, 0);
     add_unsafe_procedure("$open-input-file", open_input_file, 1);
     add_unsafe_procedure("$open-output-file", open_output_file, 1);
+    add_unsafe_procedure("$open-input-string", open_input_string, 1);
+    add_unsafe_procedure("open-output-string", open_output_string, 0);
     add_unsafe_procedure("$close-input-port", close_input_port, 1);
     add_unsafe_procedure("$close-output-port", close_output_port, 1);
+    add_unsafe_procedure("$get-output-string", get_output_string, 1);
 
     add_unsafe_procedure("$read", read_proc, 1);
     add_unsafe_procedure("$read-char", read_char_proc, 1);
@@ -224,9 +227,6 @@ void init_prims(mobj env) {
     add_unsafe_procedure("$put-string", put_string_proc, 4);
     add_unsafe_procedure("$flush-output-port", flush_output_proc, 1);
     add_unsafe_procedure("$newline", newline_proc, 1);
-    
-    add_procedure("fprintf", fprintf_proc, 2, ARG_MAX);
-    add_procedure("printf", printf_proc, 1, ARG_MAX);
 
     add_unsafe_procedure("$fasl-read", fasl_read_proc, 1);
     add_unsafe_procedure("$fasl-write", fasl_write_proc, 2);

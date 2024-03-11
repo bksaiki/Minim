@@ -1027,17 +1027,29 @@
         ($open-output-file name)
         (error 'open-output-file "expected string?" name))))
 
+(define-values (open-input-string)
+  (lambda (str)
+    (if (string? str)
+        ($open-input-string str)
+        (error 'open-input-string "expected string?" name))))
+
 (define-values (close-input-port)
   (lambda (port)
     (if (input-port? port)
         ($close-input-port port)
-        (error 'close-input-file "expected input-port?" port))))
+        (error 'close-input-file "expected input port?" port))))
 
 (define-values (close-output-port)
   (lambda (port)
     (if (output-port? port)
         ($close-output-port port)
-        (error 'close-output-file "expected output-port?" port))))
+        (error 'close-output-file "expected output port?" port))))
+
+(define-values (get-output-string)
+  (lambda (port)
+    (if (if (output-port? port) (string-port? port) #f)
+        ($get-output-string port)
+        (error 'get-output-string "expected string output port" port))))
 
 ;; --------------------------------------------------------
 ;; Records
@@ -1950,12 +1962,91 @@
 ;; --------------------------------------------------------
 ;; Formatter
 
-; (define-values (fprintf printf)
-;   (letrec-values ([(dofmt)
-;                    (lambda (p fmt args)
-;                      (letrec-values ([(nmax) (sub1 (string-length fmt))])
-;                                      [(loop)
-;                                       (lambda (n nmax))
+(define-values (fprintf printf format)
+  (letrec-values ([(fmt-args)
+                   (lambda (who fmt)
+                     (letrec-values ([(len) (string-length fmt)]
+                                     [(loop)
+                                      (lambda (n args)
+                                        (if (>= n len)
+                                            (reverse args)
+                                            (let-values ([(c) (string-ref fmt n)])
+                                              (if (eq? c #\~)
+                                                  (if (>= (+ n 1) len)
+                                                      (error who "ill-formed format string" fmt)
+                                                      (let-values ([(nc) (string-ref fmt (+ n 1))])
+                                                        (if (if (eq? nc #\a) #t (eq? nc #\A))
+                                                            (loop (+ n 2) (cons #f args))
+                                                            (if (if (eq? nc #\s) #t (eq? nc #\S))
+                                                                (loop (+ n 2) (cons #f args))
+                                                                (if (eq? nc #\%)
+                                                                    (loop (+ n 2) args)
+                                                                    (if (eq? nc #\~)
+                                                                        (loop (+ n 2) xs)
+                                                                        (error who "unknown format directive" nc)))))))
+                                                  (loop (+ n 1) args)))))])
+                       (loop 0 '())))]                                                
+      
+                  [(check-format!)
+                   (lambda (who fmt args)
+                     (let-values ([(fmt-preds) (fmt-args who fmt)])
+                       (if (= (length fmt-preds) (length args))
+                           (for-each
+                             (lambda (fmt-pred arg)
+                               (if (if fmt-pred (fmt-pred arg) #t)
+                                   (void)
+                                   (error who "format argument failed predicate" fmt-pred arg)))
+                             fmt-preds args)
+                           (error who "format string arity mismatch" (length fmt-preds) (length args)))))]
+                                        
+                  [(do-format)
+                   (lambda (p fmt args)
+                     (letrec-values ([(len) (string-length fmt)]
+                                     [(loop)
+                                      (lambda (n xs)
+                                        (if (>= n len)
+                                            (void)
+                                            (let-values ([(c) (string-ref fmt n)])
+                                              (if (eq? c #\~)
+                                                  (let-values ([(nc) (string-ref fmt (+ n 1))])
+                                                    (if (if (eq? nc #\a) #t (eq? nc #\A))
+                                                        (begin
+                                                          (display (car xs) p)
+                                                          (loop (+ n 2) (cdr xs)))
+                                                        (if (if (eq? nc #\s) #t (eq? nc #\S))
+                                                            (begin
+                                                              (write (car xs) p)
+                                                              (loop (+ n 2) (cdr xs)))
+                                                            (if (eq? nc #\%)
+                                                                (begin
+                                                                  (newline p)
+                                                                  (loop (+ n 2) xs))
+                                                                (begin ; ~~
+                                                                  (put-char p #\~)
+                                                                  (loop (+ n 2) xs))))))
+                                                  (begin
+                                                    (put-char p c)
+                                                    (loop (+ n 1) xs))))))])
+                       (loop 0 args)))])
+    (values
+      ; fprintf
+      (lambda (p fmt . args)
+        (if (output-port? p)
+            (begin
+              (check-format! 'fprintf fmt args)
+              (do-format p fmt args))
+            (error 'fprintf "expected output port?" fmt)))
+      ; printf
+      (lambda (fmt . args)
+        (check-format! 'printf fmt args)
+        (do-format (current-output-port) fmt args))
+      ; format
+      (lambda (fmt . args)
+        (check-format! 'format fmt args)
+        (let-values ([(p) (open-output-string)])
+          (do-format p fmt args)
+          (get-output-string p))))))
+                                        
 
 ;; --------------------------------------------------------
 ;; FASL I/O

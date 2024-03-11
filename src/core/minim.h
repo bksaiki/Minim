@@ -267,11 +267,14 @@ extern mobj minim_values;
 
 #define PORT_FLAG_OPEN              0x1
 #define PORT_FLAG_READ              0x2
+#define PORT_FLAG_STR               0x4
 #define minim_port_openp(o)         (minim_port_flags(o) & PORT_FLAG_OPEN)
 #define minim_port_readp(o)         (minim_port_flags(o) & PORT_FLAG_READ)
+#define minim_port_strp(o)          (minim_port_flags(o) & PORT_FLAG_STR)
 
 #define minim_input_portp(x)        (minim_portp(x) && minim_port_readp(x))
 #define minim_output_portp(x)       (minim_portp(x) && !minim_port_readp(x))
+#define minim_string_portp(x)       (minim_portp(x) && minim_port_strp(x))
 
 #define minim_port_set(o, f) \
     minim_port_flags(o) |= (f);
@@ -394,6 +397,7 @@ mobj vectorp_proc(mobj x);
 mobj procp_proc(mobj x);
 mobj input_portp_proc(mobj x);
 mobj output_portp_proc(mobj x);
+mobj string_portp_proc(mobj x);
 mobj boxp_proc(mobj x);
 mobj hashtablep_proc(mobj x);
 mobj recordp_proc(mobj x);
@@ -504,8 +508,11 @@ mobj current_input_port();
 mobj current_output_port();
 mobj open_input_file(mobj name);
 mobj open_output_file(mobj name);
+mobj open_input_string(mobj str);
+mobj open_output_string();
 mobj close_input_port(mobj port);
 mobj close_output_port(mobj port);
+mobj get_output_string(mobj port);
 
 mobj read_proc(mobj port);
 mobj read_char_proc(mobj port);
