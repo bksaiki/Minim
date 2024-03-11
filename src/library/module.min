@@ -128,14 +128,14 @@
 ;; prepares the evaluation environment given
 ;; an association list of additional values
 (define ($eval-environment env imports)
-  (define env* (extend-environment env))
+  (define env* (environment-extend env))
   (let loop ([imports imports])
     (cond
       [(null? imports) env*]
       [else
        (define name (caar imports))
        (define value (cdar imports))
-       (environment-set-variable-value! env* name value)
+       (environment-set! env* name value)
        (loop (cdr imports))])))
 
 ;; evaluates a set of expressions under a given environment
@@ -179,8 +179,9 @@
           (set! export-xforms (cons (cons export xform) export-xforms))]
          [else
           (define value
-            (environment-variable-value env export
-              (lambda () (error 'export "undefined export" export))))
+            (environment-ref env
+                             export
+                            (lambda () (error 'export "undefined export" export))))
           (set! export-values (cons (cons export value) export-values))])
        (loop (cdr exports))]))
 
@@ -255,7 +256,7 @@
   (define xforms (second internals))
   (define scope (sixth internals))
   ;; REPL
-  ($repl (extend-environment (car envs))
-         (extend-environment (cdr envs))
+  ($repl (environment-extend (car envs))
+         (environment-extend (cdr envs))
          xforms
          scope))

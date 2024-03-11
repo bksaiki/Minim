@@ -1,0 +1,2218 @@
+; Wrapped primitives
+
+;; --------------------------------------------------------
+;; Characters
+
+(define-values (char->integer)
+  (lambda (x)
+    (if (char? x)
+        ($char->integer x)
+        (error 'char->integer "expected char?" x))))
+
+(define-values (integer->char)
+  (lambda (x)
+    (if (integer? x) ; TODO: bounds on characters
+        ($integer->char x)
+        (error 'integer->char "expected integer?" x))))
+
+;; --------------------------------------------------------
+;; Numbers
+
+; TODO: update once we have more number types
+(define-values (integer?) fixnum?)
+(define-values (number?) fixnum?)
+
+(define-values (+)
+  (lambda xs
+    (if (null? xs) ; 0 arguments
+        0
+        (if (number? ($car xs))
+            (if (null? ($cdr xs)) ; 1 argument
+                ($car xs)
+                (if (number? ($cadr xs))
+                    (if (null? ($cdr xs)) ; 2 arguments
+                        ($fx2+ ($car xs) ($cadr xs))
+                        (letrec-values ([(loop) ; 3+ arguments
+                                         (lambda (x xs)
+                                            (if (null? xs)
+                                                x
+                                                (if (number? ($car xs))
+                                                    (loop ($fx2+ x ($car xs)) ($cdr xs))
+                                                    (error '+ "expected number" ($car xs)))))])
+                          (loop ($fx2+ ($car xs) ($cadr xs)) ($cddr xs))))
+                    (error '+ "expected number" ($cadr xs))))
+            (error '+ "expected number" ($car xs))))))
+        
+(define-values (-)
+  (lambda (x . xs)
+    (if (number? x)
+        (if (null? xs) ; 1 argument
+            ($fxneg x)
+            (if (number? ($car xs))
+                (if (null? ($cdr xs)) ; 2 arguments
+                    ($fx2- x ($car xs))
+                    (letrec-values ([(loop) ; 3+ arguments
+                                     (lambda (x xs)
+                                        (if (null? xs)
+                                            x
+                                            (if (number? ($car xs))
+                                                (loop ($fx2- x ($car xs)) ($cdr xs))
+                                                (error '- "expected number" ($car xs)))))])
+                      (loop ($fx2- x ($car xs)) ($cdr xs))))
+                (error '- "expected number" ($car xs))))
+        (error '- "expected number" x))))
+
+(define-values (*)
+  (lambda xs
+    (if (null? xs) ; 0 arguments
+        1
+        (if (number? ($car xs))
+            (if (null? ($cdr xs)) ; 1 argument
+                ($car xs)
+                (if (number? ($cadr xs))
+                    (if (null? ($cdr xs)) ; 2 arguments
+                        ($fx2* ($car xs) ($cadr xs))
+                        (letrec-values ([(loop) ; 3+ arguments
+                                         (lambda (x xs)
+                                            (if (null? xs)
+                                                x
+                                                (if (number? ($car xs))
+                                                    (loop ($fx2* x ($car xs)) ($cdr xs))
+                                                    (error '* "expected number" ($car xs)))))])
+                          (loop ($fx2* ($car xs) ($cadr xs)) ($cddr xs))))
+                    (error '* "expected number" ($cadr xs))))
+            (error '* "expected number" ($car xs))))))
+
+(define-values (/)
+  (lambda (x . xs)
+    (if (number? x)
+        (if (null? xs) ; 1 argument
+            (if (= x 0)
+                (error '/ "division by zero" 1 x)
+                ($fx2/ 1 x))
+            (if (number? ($car xs))
+                (if (= ($car xs) 0)
+                    (error '/ "division by zero" x ($car xs))
+                    (if (null? ($cdr xs)) ; 2 arguments         
+                        ($fx2/ x ($car xs))
+                        (letrec-values ([(loop) ; 3+ arguments
+                                         (lambda (x xs)
+                                            (if (null? xs)
+                                                x
+                                                (if (number? ($car xs))
+                                                    (if (= ($car xs) 0)
+                                                        (error '/ "division by zero" x ($car xs))
+                                                        (loop ($fx2/ x ($car xs)) ($cdr xs)))
+                                                    (error '/ "expected number" ($car xs)))))])
+                          (loop ($fx2/ x ($car xs)) ($cdr xs)))))
+                (error '/ "expected number" ($car xs))))
+        (error '/ "expected number" x))))
+
+(define-values (remainder)
+  (lambda (x y)
+    (if (number? x)
+        (if (number? y)
+            ($fxremainder x y)
+            (error 'remainder "expected number" y))
+        (error 'remainder "expected number" x))))
+
+(define-values (modulo)
+  (lambda (x y)
+    (if (number? x)
+        (if (number? y)
+            ($fxmodulo x y)
+            (error 'modulo "expected number" y))
+        (error 'modulo "expected number" x))))
+
+(define-values (add1)
+  (lambda (x)
+    (if (number? x)
+        ($fx2+ x 1)
+        (error 'add1 "expected number" x))))
+
+(define-values (sub1)
+  (lambda (x)
+    (if (number? x)
+        ($fx2- x 1)
+        (error 'sub1 "expected number" x))))
+
+(define-values (= > < >= <=)
+  (let-values ([(go)
+                (lambda (cmp name)
+                  (lambda (x . xs)
+                    (if (number? x)
+                        (if (null? xs) ; 1 argument
+                            #t
+                            (letrec-values ([(loop)
+                                             (lambda (x xs)
+                                               (if (null? xs)
+                                                   #t
+                                                   (if (number? ($car xs))
+                                                       (if (cmp x ($car xs))
+                                                           (loop ($car xs) ($cdr xs))
+                                                           #f)
+                                                       (error name "expected number" ($car xs)))))])
+                              (loop x xs)))
+                    (error name "expected number" ($car xs)))))])
+
+    (values (go $fx2= '=)
+            (go $fx2> '>)
+            (go $fx2< '<)
+            (go $fx2>= '<=)
+            (go $fx2<= '>=))))
+
+;; --------------------------------------------------------
+;; String
+
+(define-values (string list->string)
+  (let-values ([(check-arg!)
+                (lambda (who xs)
+                  (for-each (lambda (x)
+                              (if (char? x)
+                                  (void)
+                                  (error who "expected char?" x)))
+                            xs))])
+    (values
+      (lambda args ; string
+        (check-arg! 'string args)
+        ($list->string args))
+      (lambda (xs) ; list->string
+        (check-arg! 'list->string xs)
+        ($list->string xs)))))
+
+(define-values (make-string)
+  (lambda args ; TODO: case-lambda
+    (let-values ([(argc) ($length args)])
+      (if (if (>= argc 1) (<= argc 2) #f)
+          (let-values ([(len) ($car args)]
+                       [(init) (if (= argc 2) ($cadr args) #\a)])
+            (if (if (integer? len) (>= len 0) #f)
+                (if (char? init)
+                    ($make-string len init)
+                    (error 'make-string "expected char?" init))
+                (error 'make-string "expected non-negative integer" len)))
+          (error 'make-string "expected 1 or 2 arguments" argc)))))
+
+(define-values (string-length)
+  (lambda (s)
+    (if (string? s)
+        ($string-length s)
+        (error 'string-length "expected a string" s))))
+
+(define-values (string-ref)
+  (lambda (s idx)
+    (if (string? s)
+        (if (if (integer? idx) (>= idx 0) #f)
+            (if (>= idx ($string-length s))
+                (error 'string-ref "index out of range" idx)
+                ($string-ref s idx))
+            (error 'string-ref "expected non-negative integer" idx))
+        (error 'string-ref "expected string?" s))))
+
+(define-values (string-set!)
+  (lambda (s idx c)
+    (if (string? s)
+        (if (if (integer? idx) (>= idx 0) #f)
+            (if (>= idx ($string-length s))
+                (error 'string-set! "index out of range" idx)
+                (if (char? c)
+                    ($string-set! s idx c)
+                    (error 'string-set! "expected char?" c)))
+            (error 'string-set! "expected non-negative integer" idx))
+        (error 'string-set! "expected string?" s))))
+
+(define-values (string-append)
+  (let-values ([(check-args!)
+                (lambda (xs)
+                  (for-each (lambda (x)
+                              (if (string? x)
+                                  (void)
+                                  (error 'string-append "expected string?" s)))
+                            xs))]
+               [(sum-lengths)
+                (lambda (xs)
+                  (letrec-values ([(loop)
+                                   (lambda (xs len)
+                                     (if (null? xs)
+                                         len
+                                         (loop ($cdr xs) (+ len ($string-length ($car xs))))))])
+                    (loop xs 0)))])
+    (lambda args
+      (check-args! args)
+      (if (null? args)
+          ""
+          (if (null? ($cdr args))
+              ($car args)
+              (letrec-values ([(s) ($make-string (sum-lengths args) #\0)]
+                              [(loop)
+                               (lambda (xs i j)
+                                 (if (null? xs)
+                                     s
+                                     (if (>= j ($string-length ($car xs)))
+                                         (loop ($cdr xs) i 0)
+                                         (begin
+                                           (string-set! s i (string-ref ($car xs) j))
+                                           (loop xs (add1 i) (add1 j))))))])
+                (loop args 0 0)))))))
+
+(define-values (number->string)
+  (lambda (n)
+    (if (number? n)
+        ($number->string n)
+        (error 'number->string "expected a number" n))))
+
+(define-values (string->number)
+  (lambda (s)
+    (if (string? s)
+        ($string->number s)
+        (error 'string->number "expected a string" s))))
+
+(define-values (symbol->string)
+  (lambda (s)
+    (if (symbol? s)
+        ($symbol->string s)
+        (error 'symbol->string "expected a symbol" s))))
+
+(define-values (string->symbol)
+  (lambda (s)
+    (if (string? s)
+        ($string->symbol s)
+        (error 'string->symbol "expected a string" s))))
+
+(define-values (string->list)
+  (lambda (s)
+    (if (string? s)
+        ($string->list s)
+        (error 'string->list "expected a string" s))))
+
+;; --------------------------------------------------------
+;; Pairs
+
+(define-values (car)
+  (lambda (x) 
+    (if (pair? x)
+        ($car x)
+        (error 'car "expected pair?" x))))
+
+(define-values (cdr)
+  (lambda (x) 
+    (if (pair? x)
+        ($cdr x)
+        (error 'cdr "expected pair?" x))))
+
+(define-values (caar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caar "(pairof pair? any)" x))])               
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                ($car t)
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cadr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cadr "(pairof any pair?)" x))])
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                ($car t)
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdar "(pairof pair? any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                ($cdr t)
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cddr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cddr "(pairof any pair?)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                ($cdr t)
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caaar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caaar "(pairof (pairof pair? any) any)" x))])               
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      ($car t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caadr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caadr "(pairof any (pairof pair? any))" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      ($car t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cadar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cadar "(pairof (pairof any pair?) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      ($car t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caddr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caddr "(pairof (pairof any pair?) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      ($car t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdaar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdaar "(pairof (pairof pair? any) any)" x))])               
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      ($cdr t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdadr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdadr "(pairof any (pairof pair? any))" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      ($cdr t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cddar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cddar "(pairof (pairof any pair?) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      ($cdr t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdddr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdddr "(pairof (pairof any pair?) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      ($cdr t)
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caaaar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caaaar "(pairof (pairof (pairof pair? any) any) any)" x))])               
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caaadr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caaadr "(pairof any (pairof (pairof pair? any) any))" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caadar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caadar "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caaddr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caaddr "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cadaar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cadaar "(pairof (pairof (pairof any pair?) any) any)" x))])               
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cadadr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cadadr "(pairof any (pairof (pairof any pair?) any))" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (caddar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'caddar "(pairof (pairof any (pairof any pair?)) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cadddr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cadddr "(pairof (pairof any (pairof any pair?) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($car t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdaaar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdaaar "(pairof (pairof (pairof pair? any) any) any)" x))])               
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdaadr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdaadr "(pairof any (pairof (pairof pair? any) any))" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdadar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdadar "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdaddr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdaddr "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($car t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cddaar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cddaar "(pairof (pairof (pairof any pair?) any) any)" x))])               
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cddadr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cddadr "(pairof any (pairof (pairof any pair?) any))" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($car t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cdddar)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cdddar "(pairof (pairof any (pairof any pair?)) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($car x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (cddddr)
+  (let-values ([(oops!)
+                (lambda (x)
+                  (error 'cddddr "(pairof (pairof any (pairof any pair?) any)" x))]) 
+    (lambda (x)
+      (if (pair? x)
+          (let-values ([(t) ($cdr x)])
+            (if (pair? t)
+                (let-values ([(t) ($cdr t)])
+                  (if (pair? t)
+                      (let-values ([(t) ($cdr t)])
+                        (if (pair? t)
+                            ($cdr t)
+                            (oops! x)))
+                      (oops! x)))
+                (oops! x)))
+          (oops! x)))))
+
+(define-values (set-car!)
+  (lambda (p x)
+    (if (pair? p)
+        ($set-car! p x)
+        (error 'set-car! "expected pair?" p))))
+
+(define-values (set-cdr!)
+  (lambda (p x)
+    (if (pair? p)
+        ($set-cdr! p x)
+        (error 'set-cdr! "expected pair?" p))))
+
+;; --------------------------------------------------------
+;; Lists
+
+(define-values (list) (lambda args args))
+
+(define-values (make-list)
+  (lambda (len init)
+    (if (if (integer? len) (>= len 0) #f)
+        ($make-list len init)
+        (error 'length "expected non-negative integer" len))))
+
+(define-values (length)
+  (lambda (xs)
+    (if (list? xs)
+        ($length xs)
+        (error 'length "expected list" xs))))
+
+(define-values (reverse)
+  (lambda (xs)
+    (if (list? xs)
+        ($reverse xs)
+        (error 'reverse "expected list" xs))))
+
+(define-values (append)
+  (lambda xss
+    (if (null? xss) ; 0 arguments
+        '()
+        (if (list? ($car xss))
+            (if (null? ($cdr xss)) ; 1 argument
+                ($car xss)
+                (letrec-values ([(loop)
+                                 (lambda (acc xss)
+                                   (if (null? xss)
+                                       acc
+                                       (if (list? ($car xss))
+                                           (loop ($append2 ($car xss) acc) ($cdr xss))
+                                           (error 'append "expected list?" ($car xss)))))]
+                                [(xss*) ($reverse xss)])
+                  (loop ($car xss*) ($cdr xss*))))
+            (error 'append "expected list?" ($car xss))))))
+
+(define-values (for-each map andmap ormap)
+  (letrec-values ([(for-each1) ; optimized `for-each` for one argument
+                   (lambda (f xs)
+                     (if (null? xs)
+                         (void)
+                         (begin
+                           (f ($car xs))
+                           (for-each1 f ($cdr xs)))))]
+                  [(map1) ; optimized `map` for one argument
+                   (lambda (f xs)
+                     (letrec-values ([(loop)
+                                      (lambda (xs acc)
+                                        (if (null? xs)
+                                            (reverse acc)
+                                            (loop ($cdr xs) (cons (f ($car xs)) acc))))])
+                       (loop xs '())))]
+                  [(andmap1) ; optimized `andmap` for one argument
+                   (lambda (pred? xs)
+                     (if (null? xs)
+                         #t
+                         (if (pred? ($car xs))
+                             (andmap1 pred? ($cdr xs))
+                             #f)))]
+                  [(ormap1) ; optimized `ormap` for one argument
+                   (lambda (pred? xs)
+                     (if (null? xs)
+                         #f
+                         (if (pred? ($car xs))
+                             #t
+                             (ormap1 pred? ($cdr xs)))))]
+                  [(check-args!)
+                   (lambda (who f xss)
+                     (if (procedure? f)
+                         (letrec-values ([(loop)
+                                          (lambda (prev-len xss)
+                                            (if (null? xss)
+                                                (void)
+                                                (if (list? ($car xss))
+                                                    (let-values ([(len) ($length ($car xss))])
+                                                      (if (if prev-len
+                                                              (= prev-len len)
+                                                              #t)
+                                                          (loop len ($cdr xss))
+                                                          (error who "lists do not have same size"
+                                                                 len prev-len)))
+                                                    (error who "expected list?" ($car xss)))))])
+                           (loop #f xss))
+                         (error who "expected procedure?" f)))])
+    (values
+      ;; for-each
+      (lambda (f xs . xss)
+        (check-args! 'for-each f (cons xs xss))
+        (if (null? xss)
+            (for-each1 f xs)
+            (letrec-values ([(loop)
+                             (lambda (xss)
+                                (if (ormap1 null? xss)
+                                    (void)
+                                    (begin
+                                      (apply f (map1 $car xss))
+                                      (loop (map1 $cdr xss)))))])
+                    (loop (cons xs xss)))))
+      ;; map
+      (lambda (f xs . xss)
+        (check-args! 'map f (cons xs xss))
+        (if (null? xss)
+            (map1 f xs)
+            (letrec-values ([(loop)
+                             (lambda (xss acc)
+                                (if (ormap1 null? xss)
+                                    (reverse acc)
+                                    (loop (map1 $cdr xss)
+                                          (cons (apply f (map1 $car xss)) acc))))])
+              (loop (cons xs xss) '()))))
+      ;; andmap
+      (lambda (f xs . xss)
+        (check-args! 'andmap f (cons xs xss))
+        (if (null? xss)
+            (andmap1 f xs)
+            (letrec-values ([(loop)
+                             (lambda (xss)
+                                (if (ormap1 null? xss)
+                                    #t
+                                    (if (apply f (map1 $car xss))
+                                        (loop (map1 $cdr xss))
+                                        #f)))])
+              (loop (cons xs xss)))))
+      ;; ormap
+      (lambda (f xs . xss)
+        (check-args! 'ormap f (cons xs xss))
+        (if (null? xss)
+            (ormap1 f xs)
+            (letrec-values ([(loop)
+                             (lambda (xss)
+                                (if (ormap1 null? xss)
+                                    #f
+                                    (if (apply f (map1 $car xss))
+                                        #t
+                                        (loop (map1 $cdr xss)))))])
+              (loop (cons xs xss))))))))
+
+(define-values (iota)
+  (lambda (n)
+    (if (if (fixnum? n) (>= n 0) #f)
+        (letrec-values ([(loop)
+                         (lambda (n xs)
+                           (if (> n 0)
+                               (loop (- n 2) (cons (- n 1) (cons n xs)))
+                               (if (= n 0)
+                                   (cons 0 xs)
+                                   xs)))])
+          (loop (sub1 n) '()))
+        (error 'iota "expected non-negative fixnum" n))))
+
+(define-values (enumerate)
+  (lambda (xs)
+    (if (list? xs)
+        (letrec-values ([(loop)
+                         (lambda (xs i acc)
+                           (if (null? xs)
+                               ($reverse acc)
+                               (loop ($cdr xs)
+                                     (+ i 1)
+                                     (cons (cons ($car xs) i) acc))))])
+          (loop xs 0 '()))
+        (error 'enumerate "expected list?" xs))))
+
+;; --------------------------------------------------------
+;; Vector
+
+(define-values (vector)
+  (lambda args ($list->vector args)))
+
+(define-values (make-vector)
+  (lambda args ; TODO: case-lambda
+    (let-values ([(argc) ($length args)])
+      (if (if (>= argc 1) (<= argc 2) #f)
+          (let-values ([(len) ($car args)]
+                       [(init) (if (= argc 2) ($cadr args) 0)])
+            (if (if (integer? len) (>= len 0) #f)
+                ($make-vector len init)
+                (error 'make-vector "expected non-negative integer" len)))
+          (error 'make-vector "expected 1 or 2 arguments" argc)))))
+
+(define-values (vector-length)
+  (lambda (v)
+    (if (vector? v)
+        ($vector-length v)
+        (error 'vector-length "expected vector?" v))))
+
+(define-values (vector-ref)
+  (lambda (v idx)
+    (if (vector? v)
+        (if (if (integer? idx) (>= idx 0) #f)
+            (if (>= idx ($vector-length v))
+                (error 'vector-ref "index out of range" idx)
+                ($vector-ref v idx))
+            (error 'vector-ref "expected non-negative integer" idx))
+        (error 'vector-ref "expected vector?" v))))
+
+(define-values (vector-set!)
+  (lambda (v idx x)
+    (if (vector? v)
+        (if (if (integer? idx) (>= idx 0) #f)
+            (if (>= idx ($vector-length v))
+                (error 'vector-set! "index out of range" idx)
+                ($vector-set! v idx x))
+            (error 'vector-set! "expected non-negative integer" idx))
+        (error 'vector-set! "expected vector?" v))))
+
+(define-values (vector-fill!)
+  (lambda (v x)
+    (if (vector? v)
+        ($vector-fill! v x)
+        (error 'vector->list "expected vector?" v))))
+
+(define-values (list->vector)
+  (lambda (xs)
+    (if (list? xs)
+        ($list->vector xs)
+        (error 'list->vector "expected list?" xs))))
+
+(define-values (vector->list)
+  (lambda (v)
+    (if (vector? v)
+        ($vector->list v)
+        (error 'vector->list "expected vector?" v))))
+
+;; --------------------------------------------------------
+;; Boxes
+
+(define-values (unbox)
+  (lambda (x)
+    (if (box? x)
+        ($unbox x)
+        (error 'unbox "expected box?" x))))
+
+(define-values (set-box!)
+  (lambda (x v)
+    (if (box? x)
+        ($set-box! x v)
+        (error 'set-box! "expected box?" x))))
+
+;; --------------------------------------------------------
+;; Ports
+
+(define-values (open-input-file)
+  (lambda (name)
+    (if (string? name)
+        ($open-input-file name)
+        (error 'open-input-file "expected string?" name))))
+
+(define-values (open-output-file)
+  (lambda (name)
+    (if (string? name)
+        ($open-output-file name)
+        (error 'open-output-file "expected string?" name))))
+
+(define-values (open-input-string)
+  (lambda (str)
+    (if (string? str)
+        ($open-input-string str)
+        (error 'open-input-string "expected string?" name))))
+
+(define-values (close-input-port)
+  (lambda (port)
+    (if (input-port? port)
+        ($close-input-port port)
+        (error 'close-input-file "expected input port?" port))))
+
+(define-values (close-output-port)
+  (lambda (port)
+    (if (output-port? port)
+        ($close-output-port port)
+        (error 'close-output-file "expected output port?" port))))
+
+(define-values (get-output-string)
+  (lambda (port)
+    (if (if (output-port? port) (string-port? port) #f)
+        ($get-output-string port)
+        (error 'get-output-string "expected string output port" port))))
+
+;; --------------------------------------------------------
+;; Records
+
+(define-values (make-record-type-descriptor)
+  (letrec-values ([(field-id)
+                   (lambda (field)
+                     (if (pair? field)
+                         (let-values ([(type) ($car field)]
+                                      [(rib) ($cdr field)])
+                            (if (if (eq? type 'immutable) #t (eq? type 'mutable))
+                                (let-values ([(name) ($car rib)]
+                                             [(rib) ($cdr rib)])
+                                   (if (symbol? name)
+                                       (if (null? rib)
+                                           name
+                                           #f)
+                                       #f))
+                                #f))
+                         #f))]
+                  [(check-args!)
+                   (lambda (name parent uid sealed? opaque?)
+                     (if (symbol? name)
+                         (if (if (record-type-descriptor? parent)
+                                 (begin
+                                   (if ($record-type-sealed? parent)
+                                       (error 'make-record-type-descriptor
+                                              "cannot extend sealed record type"
+                                              parent)
+                                       #t))
+                                 (not parent))
+                             (if (if (symbol? uid) #t (not uid))
+                                 (if (boolean? sealed?)
+                                     (if (boolean? opaque?)
+                                         (if (vector? fields)
+                                            (begin
+                                              (check-fields! fields)
+                                              ($make-record-type-descriptor name
+                                                                            parent
+                                                                            uid
+                                                                            sealed?
+                                                                            opaque?
+                                                                            fields))
+                                            (error 'make-record-type-descriptor
+                                                   "expected vector?"
+                                                   fields))
+                                         (error 'make-record-type-descriptor
+                                                "expected boolean?"
+                                                opaque?))
+                                     (error 'make-record-type-descriptor
+                                            "expected boolean?"
+                                            sealed?))
+                                 (error 'make-record-type-descriptor
+                                        "expected symbol? or #f"
+                                        uid))
+                             (error 'make-record-type-descriptor
+                                    "expected record-type-descriptor? or #f"
+                                    parent))
+                         (error 'make-record-type-descriptor
+                                "expected symbol?"
+                                name)))]
+                  [(check-fields!)
+                   (lambda (fields)
+                     (letrec-values ([(ids) '()])
+                       (for-each
+                         (lambda (i)
+                           (let-values ([(maybe-id) (field-id ($vector-ref fields i))])
+                             (if maybe-id
+                                 (if (ormap (lambda (id) (eq? maybe-id id)) ids)
+                                     (error 'make-record-type-descriptor "duplicate field" maybe-id)
+                                     (set! ids (cons maybe-id ids)))
+                                 (error 'make-record-type-descriptor
+                                        "invalid field; expected '(immutable <name>) or '(mutable <name>)"
+                                        field))))
+                         (iota ($vector-length fields)))))])
+    (lambda (name parent uid sealed? opaque? fields)
+      (let-values ([(rtd) ($make-record-type-descriptor name parent uid sealed? opaque? fields)])
+        (if parent
+            (let-values ([(rec-equal?) (record-type-equal-procedure parent)]
+                         [(rec-hash) (record-type-hash-procedure parent)]
+                         [(rec-writer) (record-writer parent)])
+              (if rec-equal?
+                  (record-type-equal-procedure rtd rec-equal?)
+                  (void))
+              (if rec-hash
+                  (record-type-hash-procedure rtd rec-hash)
+                  (void))
+              (if rec-writer
+                  (record-writer rec-writer)
+                  (void)))
+            (void))
+        rtd))))
+      
+(define-values (record-type-name
+                record-type-parent
+                record-type-uid
+                record-type-sealed?
+                record-type-opaque?
+                record-type-field-names)
+  (let-values ([(make-accessor)
+                (lambda (name accessor)
+                  (lambda (rtd)
+                    (if (record-type-descriptor? rtd)
+                        (accessor rtd)
+                        (error name "expected record-type-name?" rtd))))])
+    (values
+      (make-accessor 'record-type-name $record-type-name)
+      (make-accessor 'record-type-parent $record-type-parent)
+      (make-accessor 'record-type-uid $record-type-uid)
+      (make-accessor 'record-type-sealed? $record-type-sealed?)
+      (make-accessor 'record-type-opaque? $record-type-opaque?)
+      (make-accessor 'record-type-field-names $record-type-field-names))))
+
+(define-values (record-type-field-mutable?)
+  (lambda (rtd idx)
+    (if (record-type-descriptor? rtd)
+        (if (if (integer? idx) (>= idx 0) #f)
+            (let-values ([(fields) ($record-type-field-names rtd)])
+              (if (< idx ($vector-length fields))
+                  ($record-type-field-mutable? rtd idx)
+                  (error 'record-type-field-mutable? "field index out of bounds" rtd idx)))
+            (error 'record-type-field-mutable? "expected non-negative integer?" idx))
+        (error 'record-type-field-mutable? "expected record-type-name?" rtd))))
+
+(define-values (record?
+                record-rtd
+                record-constructor
+                record-predicate
+                record-accessor
+                record-mutator)
+  (let-values ([(record-size)
+                (lambda (rtd)
+                   (letrec-values ([(loop)
+                                    (lambda (rtd size)
+                                      (let-values ([(size) (+ size ($record-type-length rtd))]
+                                                   [(parent) ($record-type-parent rtd)])
+                                         (if parent
+                                             (loop parent size)
+                                             size)))])
+                     (loop rtd 0)))]
+               [(record-value?)
+                (lambda (rtd rec)
+                  (letrec-values ([(loop)
+                                   (lambda (rec-rtd)
+                                     (if (eq? rtd rec-rtd)
+                                         #t
+                                         (let-values ([(parent) ($record-type-parent rec-rtd)])
+                                           (if parent (loop parent) #f))))])
+                    (loop ($record-rtd rec))))])
+    (values
+      (lambda (rec) ; record?
+        (if ($record-value? rec)
+            (not ($record-type-opaque? ($record-rtd rec)))
+            #f))
+      (lambda (rec) ; record-rtd
+        (if (record? rec)
+            ($record-rtd rec)
+            (error 'record-rtd "not a record" rec)))
+      (lambda (rtd) ; record-constructor
+        (if (record-type-descriptor? rtd)
+            (let-values ([(size) (record-size rtd)])
+              (lambda args
+                (if (= (length args) size)
+                    ($make-record rtd args)
+                    (error 'arity-mismatch 
+                           (format "~s constructor" (record-type-name rtd))
+                           (format " field count: ~a" size)
+                           (format " fields provided: ~a" (length args))))))
+            (error 'record-constructor "expected record-type-descriptor?" rtd)))
+      (lambda (rtd) ; record-predicate
+        (if (record-type-descriptor? rtd)
+            (lambda (rec)
+              (if ($record-value? rec)
+                  (record-value? rtd rec)
+                  #f))
+            (error 'record-predicate "expected record-type-descriptor?" rtd)))
+      (lambda (rtd idx) ; record-accessor
+        (if (record-type-descriptor? rtd)
+            (if (if (integer? idx) (>= idx 0) #f)
+                (if (< idx ($record-type-length rtd))
+                    (let-values ([(rtd?) (record-predicate rtd)]
+                                 [(parent-size) (if ($record-type-parent rtd)
+                                                    (record-size ($record-type-parent rtd))
+                                                    0)])
+                      (let-values ([(actual-idx) (+ parent-size idx)])
+                        (lambda (rec)
+                          (if (rtd? rec)
+                              ($record-ref rec actual-idx)
+                              (error 'record-accessor
+                                     "type violation"
+                                     (format "expected: ~a" rtd)
+                                     (format "got: ~a" rec))))))
+                    (error 'record-accessor "field index out of bounds" rtd idx))
+                (error 'record-accessor "expected record-type-descriptor?" rtd))
+            (error 'record-accessor "expected record-type-descriptor?" rtd)))
+      (lambda (rtd idx) ; record-mutator
+        (if (record-type-descriptor? rtd)
+            (if (if (integer? idx) (>= idx 0) #f)
+                (if (< idx ($record-type-length rtd))
+                    (let-values ([(rtd?) (record-predicate rtd)]
+                                 [(parent-size) (if ($record-type-parent rtd)
+                                                    (record-size ($record-type-parent rtd))
+                                                    0)])
+                      (let-values ([(actual-idx) (+ parent-size idx)])
+                        (lambda (rec v)
+                          (if (rtd? rec)
+                              ($record-set! rec actual-idx v)
+                              (error 'record-mutator
+                                     "type violation"
+                                     (format "expected: ~a" rtd)
+                                     (format "got: ~a" rec))))))
+                    (error 'record-mutator "field index out of bounds" rtd idx))
+                (error 'record-mutator "expected record-type-descriptor?" rtd))
+            (error 'record-mutator "expected record-type-descriptor?" rtd))))))  
+
+;; --------------------------------------------------------
+;; Hashtables
+
+(define-values (make-custom-hashtable
+                hashtable?
+                $hashtable-store
+                $hashtable-store-set!
+                hashtable-hash-proc
+                hashtable-equiv-proc
+                hashtable-copy)
+
+  (letrec-values ([($ht) (make-record-type-descriptor
+                           'hashtable #f #f #t #t
+                           #((mutable store) (immutable hash) (immutable equiv)))]
+                  [($make-ht) (record-constructor $ht)])
+    (values
+      (lambda (hash equiv?)
+        ($make-ht ($make-hashtable 0) hash equiv?))
+      (record-predicate $ht)
+      (record-accessor $ht 0)
+      (record-mutator $ht 0)
+      (record-accessor $ht 1)
+      (record-accessor $ht 2)
+      (lambda (ht)
+        (if (hashtable? ht)
+            ($make-ht ($hashtable-copy ($hashtable-store ht))
+                      (hashtable-hash-proc ht)
+                      (hashtable-equiv-proc ht))
+            (error 'hashtable-copy "expected hashtable?" ht))))))
+
+(define-values (make-eq-hashtable make-hashtable)
+  (values (lambda () (make-custom-hashtable eq-hash eq?))
+          (lambda () (make-custom-hashtable equal-hash equal?))))
+
+(define-values (hashtable-size)
+  (lambda (ht)
+    (if (hashtable? ht)
+        ($hashtable-size ($hashtable-store ht))
+        (error 'hashtable-set! "expected hashtable?" ht))))
+
+(define-values (hashtable-entries hashtable-keys hashtable-vals)
+  (let-values ([(check-arg!)
+                (lambda (name ht)
+                  (if (hashtable? ht)
+                      (void)
+                      (error name "expected hashtable?" ht)))])
+    (values
+      ; hashtable-entries
+      (lambda (ht)
+        (check-arg! 'hashtable-entries ht)
+        (letrec-values ([(store) ($hashtable-store ht)]
+                        [(size) ($hashtable-size store)]
+                        [(keys) ($make-vector size #f)]
+                        [(vals) ($make-vector size #f)]
+                        [(loop) (lambda (cells i)
+                                  (if (null? cells)
+                                      (values keys vals)
+                                      (begin
+                                        (vector-set! keys i ($caar cells))
+                                        (vector-set! vals i ($cdar cells))
+                                        (loop ($cdr cells) (add1 i)))))])
+          (loop ($hashtable-cells store) 0)))
+      ; hashtable-keys
+      (lambda (ht)
+        (check-arg! 'hashtable-entries ht)
+        (letrec-values ([(store) ($hashtable-store ht)]
+                        [(size) ($hashtable-size store)]
+                        [(keys) ($make-vector size #f)]
+                        [(loop) (lambda (cells i)
+                                  (if (null? cells)
+                                      keys
+                                      (begin
+                                        (vector-set! keys i ($caar cells))
+                                        (loop ($cdr cells) (add1 i)))))])
+          (loop ($hashtable-cells store) 0)))
+      ; hashtable-vals
+      (lambda (ht)
+        (check-arg! 'hashtable-entries ht)
+        (letrec-values ([(store) ($hashtable-store ht)]
+                        [(size) ($hashtable-size store)]
+                        [(vals) ($make-vector size #f)]
+                        [(loop) (lambda (cells i)
+                                  (if (null? cells)
+                                      vals
+                                      (begin
+                                        (vector-set! vals i ($cdar cells))
+                                        (loop ($cdr cells) (add1 i)))))])
+          (loop ($hashtable-cells store) 0))))))
+
+
+(define-values (hashtable-contains?
+                hashtable-ref
+                hashtable-set!
+                hashtable-update!
+                hashtable-delete!)
+
+  (letrec-values
+    ([(min-size) 13]
+     [(do-hash)
+      (lambda (hash x)
+        (let-values ([(h) (hash x)])
+          (if (fixnum? h)
+              h
+              (error 'do-hash "invalid hash function" hash h))))]
+     [(incr-size!)
+      (lambda (ht store)
+        (let-values ([(size) (add1 ($hashtable-size store))]
+                     [(n) ($hashtable-length store)])
+          ($hashtable-size-set! store size)
+          (if (> size n)
+              (adjust! ht store size)
+              (void))))]
+     [(decr-size!)
+      (lambda (ht store)
+        (let-values ([(size) (sub1 ($hashtable-size store))]
+                     [(n) ($hashtable-length store)])
+          ($hashtable-size-set! store size)
+          (if (if (< size (/ n 4)) (> size min-size) #f)
+              (adjust! ht store size)
+              (void))))]
+     [(adjust!)
+      (lambda (ht store n2)
+        (letrec-values ([(n1) ($hashtable-size store)]
+                        [(store2) ($make-hashtable n2)])
+          (for-each
+            (lambda (a)
+              (let-values ([(h) (do-hash (hashtable-hash-proc ht) (car a))])
+                ($hashtable-set! store2 h (cons a ($hashtable-ref store2 h)))))
+            ($hashtable-cells store))
+         ($hashtable-size-set! store2 n1)
+         ($hashtable-store-set! ht store2)))]
+    
+    [(1/hashtable-cell-ref)
+     (lambda (ht h k)
+       (letrec-values ([(equiv?) (hashtable-equiv-proc ht)]
+                       [(store) ($hashtable-store ht)]
+                       [(loop) (lambda (b)
+                                 (if (null? b)
+                                     #f
+                                     (let-values ([(a) (car b)])
+                                       (if (equiv? (car a) k)
+                                           a
+                                           (loop (cdr b))))))])
+         (loop ($hashtable-ref store h))))]
+
+    [(1/hashtable-cell-delete!)
+     (lambda (ht k)
+       (letrec-values ([(equiv?) (hashtable-equiv-proc ht)]
+                       [(store) ($hashtable-store ht)]
+                       [(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(bucket) ($hashtable-ref store h)]
+                       [(loop)
+                        (lambda (b p)
+                          (if (null? b)
+                              (void)
+                              (let-values ([(a) (car b)])
+                                (if (equiv? (car a) k)
+                                    (begin
+                                      (if p
+                                          (set-cdr! p (cdr b))
+                                          ($hashtable-set! store h (cdr b)))
+                                      (decr-size! ht store))
+                                    (loop (cdr b) b)))))])
+         (loop bucket #f)))]
+
+    [(1/hashtable-contains?)
+     (lambda (ht k)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell #t #f)))]
+                  
+    [(1/hashtable-ref)
+     (lambda (ht k default)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell
+             ($cdr cell)
+             (if (procedure? default)
+                 (default)
+                 default))))]
+
+    [(1/hashtable-cell)
+     (lambda (ht k default)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell
+             cell
+             (let-values ([(store) ($hashtable-store ht)]
+                          [(cell) (cons k default)])
+               ($hashtable-set! store h (cons cell ($hashtable-ref store h)))
+               (incr-size! ht store)
+               cell))))]
+
+    [(1/hashtable-set!)
+     (lambda (ht k v)
+       (let-values ([(cell) (1/hashtable-cell ht k v)])
+         (set-cdr! cell v)))]
+    
+    [(1/hashtable-update!)
+     (lambda (ht k updater default)
+       (letrec-values ([(h) (do-hash (hashtable-hash-proc ht) k)]
+                       [(cell) (1/hashtable-cell-ref ht h k)])
+         (if cell
+             (set-cdr! cell (updater ($cdr cell)))
+             (let-values ([(store) ($hashtable-store ht)]
+                          [(cell) (cons k (if (procedure? default)
+                                              (updater (default))
+                                              (updater default)))])
+               ($hashtable-set! store h (cons cell ($hashtable-ref store h)))
+               (incr-size! ht store)))))])
+               
+    (values
+      ; hashtable-contains?
+      (lambda (ht k)
+        (if (hashtable? ht)
+            (1/hashtable-contains? ht k)
+            (error 'hashtable-set! "expected hashtable?" ht)))
+      ; hashtable-ref
+      (lambda args ; TODO: case-lambda
+        (let-values ([(argc) ($length args)])
+          (if (if (>= argc 2) (<= argc 3) #f)
+              (let-values ([(ht) ($car args)] [(k) ($cadr args)])
+                (if (hashtable? ht)
+                    (let-values ([(default) (if (= argc 2)
+                                                (lambda () (error 'hashtable-ref "key not found" k))
+                                                ($caddr args))])
+                      (1/hashtable-ref ht k default))
+                    (error 'hashtable-ref "expected hashtable?" ht)))
+              (error 'hashtable-ref "expected 2 or 3 arguments" argc))))
+      ; hashtable-set!
+      (lambda (ht k v)
+        (if (hashtable? ht)
+            (1/hashtable-set! ht k v)
+            (error 'hashtable-set! "expected hashtable?" ht)))
+      ; hashtable-update!
+      (lambda args ; TODO: case-lambda
+        (let-values ([(argc) ($length args)])
+          (if (if (>= argc 3) (<= argc 4) #f)
+              (let-values ([(ht) ($car args)]
+                           [(k) ($cadr args)]
+                           [(updater) ($caddr args)])
+                (if (hashtable? ht)
+                    (if (procedure? updater)
+                        (let-values ([(default) 
+                                      (if (= argc 3)
+                                          (lambda ()
+                                            (error 'hashtable-update "key not found" k))
+                                            ($cadddr args))])
+                          (1/hashtable-update! ht k updater default))
+                        (error 'hashtable-updater "expected procedure?" updater))
+                    (error 'hashtable-updater "expected hashtable?" ht)))
+              (error 'hashtable-updater "expected 3 or 4 arguments" argc))))
+      ; hashtable-delete!
+      (lambda (ht k)
+        (if (hashtable? ht)
+            (1/hashtable-cell-delete! ht k)
+            (error 'hashtable-delete! "expected hashtable?" ht))))))
+
+(define-values (hashtable-clear!)
+  (lambda (ht)
+    (if (hashtable? ht)
+        ($hashtable-clear! ($hashtable-store ht))
+        (error 'hashtable-clear! "expected hashtable?" ht))))
+
+;; --------------------------------------------------------
+;; Record: equality + hashing + writing
+
+(define-values (default-record-equal-procedure)
+  (lambda args
+    (if (null? args)
+        ($default-record-equal-procedure)
+        (if (null? ($cdr args))
+            (let-values ([(proc) ($car args)])
+              (if (procedure? proc)
+                  ($default-record-equal-procedure-set! proc)
+                  (error 'default-record-equal-procedure "expected procedure?" proc)))
+            (error 'default-record-equal-procedure "expected 0 or 1 argumetns" ($length args))))))
+
+(define-values (default-record-hash-procedure)
+  (lambda args
+    (if (null? args)
+        ($default-record-hash-procedure)
+        (if (null? ($cdr args))
+            (let-values ([(proc) ($car args)])
+              (if (procedure? proc)
+                  ($default-record-hash-procedure-set! proc)
+                  (error 'default-record-hash-procedure "expected procedure?" proc)))
+            (error 'default-record-hash-procedure "expected 0 or 1 argumetns" ($length args))))))
+
+(define-values (record-type-equal-procedure record-type-hash-procedure)
+  (letrec-values ([($equal-table) (make-eq-hashtable)]
+                  [($hash-table) (make-eq-hashtable)]
+                  [(do-table-ref)
+                   (lambda (rtd mode)
+                     (if (eq? mode 'equal)
+                         (hashtable-ref $equal-table rtd #f)
+                         (if (eq? mode 'hash)
+                             (hashtable-ref $hash-table rtd #f)
+                             (error 'do-table-ref "unexpected mode" mode))))]
+                  [(do-table-set!)
+                   (lambda (rtd mode proc)
+                     (if (eq? mode 'equal)
+                         (hashtable-set! $equal-table rtd proc)
+                         (if (eq? mode 'hash)
+                             (hashtable-set! $hash-table rtd proc)
+                             (error 'do-table-ref "unexpected mode" mode))))]
+                  [(check-args!)
+                   (lambda (name args)
+                     (let-values ([(argc) (length args)])
+                       (if (if (>= argc 1) (<= argc 2) #f)
+                           (let-values ([(rtd) ($car args)])
+                             (if (record-type-descriptor? rtd)
+                                 (if (= argc 2)
+                                     (let-values ([(proc) ($cadr args)])
+                                       (if (procedure? proc)
+                                           (void)
+                                           (error name "expected procedure?" p)))
+                                     (void))
+                                 (error name "expected record-type-descriptor?" rtd)))
+                           (error name "expected 1 or 2 arguments" argc))))])
+    (values
+      ; record-type-equal-procedure
+      (lambda args
+        (check-args! 'record-type-equal-procedure args)
+        (let-values ([(rtd) ($car args)])
+          (if (null? ($cdr args))
+              (do-table-ref rtd 'equal)
+              (let-values ([(proc) ($cadr args)])
+                (do-table-set! rtd 'equal proc)))))
+      ; record-hash-equal-procedure
+      (lambda args
+        (check-args! 'record-hash-equal-procedure args)
+        (let-values ([(rtd) ($car args)])
+          (if (null? ($cdr args))
+              (do-table-ref rtd 'hash)
+              (let-values ([(proc) ($cadr args)])
+                (do-table-set! rtd 'hash proc))))))))
+
+(define-values (record-equal-procedure)
+  (lambda (a b)
+    (if ($record-value? a)
+        (if ($record-value? b)
+            (let-values ([(a-rtd) ($record-rtd a)]
+                         [(b-rtd) ($record-rtd b)])
+              (let-values ([(proc) (record-type-equal-procedure a-rtd)])
+                (if proc
+                    (if (eq? proc (record-type-equal-procedure b-rtd))
+                        proc
+                        #f)
+                    #f)))
+            (error 'record-equal-procedure "expected record?" b))
+        (error 'record-equal-procedure "expected record?" a))))
+
+(define-values (record-hash-procedure)
+  (lambda (a)
+    (if ($record-value? a)
+        (let-values ([(rtd) ($record-rtd a)])
+          (record-type-hash-procedure rtd))
+        (error 'record-equal-procedure "expected record?" a))))
+
+(define-values (record-writer)
+  (letrec-values ([($writer-table) (make-eq-hashtable)]
+                  [(check-args!)
+                   (lambda (name args)
+                     (let-values ([(argc) (length args)])
+                       (if (if (>= argc 1) (<= argc 2) #f)
+                           (let-values ([(rtd) ($car args)])
+                             (if (record-type-descriptor? rtd)
+                                 (if (= argc 2)
+                                     (let-values ([(proc) ($cadr args)])
+                                       (if (procedure? proc)
+                                           (void)
+                                           (error name "expected procedure?" p)))
+                                     (void))
+                                 (error name "expected record-type-descriptor?" rtd)))
+                           (error name "expected 1 or 2 arguments" argc))))])
+    (lambda args
+      (check-args! 'record-type-equal-procedure args)
+      (let-values ([(rtd) ($car args)])
+        (if (null? ($cdr args))
+            (hashtable-ref $writer-table rtd #f)
+            (hashtable-set! $writer-table rtd ($cadr args)))))))
+
+;; --------------------------------------------------------
+;; Equality + Hashing
+
+(define-values (equal?)
+  (letrec-values ([(equal-pair?)
+                   (lambda (a b)
+                     (if (equal? ($car a) ($car b))
+                         (equal? ($cdr a) ($cdr b))
+                         #f))]
+                  [(equal-vector?)
+                   (lambda (a b)
+                     (if (= ($vector-length a) ($vector-length b))
+                         (andmap
+                           (lambda (i)
+                             (equal? ($vector-ref a i) ($vector-ref b i)))
+                           (iota ($vector-length a)))
+                         #f))]
+                  [(equal-hashtable?)
+                   (lambda (a b)
+                     (if (eq? (hashtable-hash-proc a) (hashtable-hash-proc b))
+                         (if (eq? (hashtable-equiv-proc a) (hashtable-equiv-proc b))
+                             (let-values ([(kas vas) (hashtable-entries a)])
+                               (andmap
+                                 (lambda (i)
+                                   (let-values ([(ka) ($vector-ref kas i)]
+                                                [(va) ($vector-ref vas i)])
+                                     (if (hashtable-contains? b ka)
+                                         (equal? va (hashtable-ref b ka))
+                                         #f)))
+                                 (iota ($vector-length kas))))
+                             #f)
+                         #f))])
+    (lambda (a b)
+      (if (eq? a b)
+          #t
+          (if (if (symbol? a) #f (string? a))
+              ($equal? a b)
+              (if (pair? a)
+                  (if (pair? b)
+                      (equal-pair? a b)
+                      #f)
+                  (if (vector? a)
+                      (if (vector? b)
+                          (equal-vector? a b)
+                          #f)
+                      (if (box? a)
+                          (if (box? b)
+                              (equal? (unbox a) (unbox b))
+                              #f)
+                          (if (hashtable? a)
+                              (if (hashtable? b)
+                                  (equal-hashtable? a b)
+                                  #f)
+                              (if ($record-value? a)
+                                  (if ($record-value? b)
+                                      (let-values ([(proc) (record-equal-procedure a b)])
+                                        (if proc
+                                           (proc a b equal?)
+                                           (let-values ([(proc) (default-record-equal-procedure)])
+                                             (if proc
+                                                 (proc a b equal?)
+                                                 ($equal? a b)))))
+                                      #f)
+                                  ($equal? a b)))))))))))
+
+(define-values (equal-hash)
+  (letrec-values ([(hash-pair)
+                   (lambda (p hc rec)
+                     (rec ($cdr p) (rec ($car p) hc)))]
+                  [(hash-vector)
+                   (lambda (v hc rec)
+                     (letrec-values ([(loop)
+                                      (lambda (i hc)
+                                        (if (>= i ($vector-length v))
+                                            hc
+                                            (loop (add1 i) (rec ($vector-ref v i) hc))))])
+                       (loop 0 hc)))])
+    (lambda (x)
+      (letrec-values 
+        ([(loop)
+          (lambda (x hc)
+            (if (if (symbol? x) #t (string? x))
+                ($equal-hash x)
+                (if (pair? x)
+                    (hash-pair x hc loop)
+                    (if (vector? x)
+                        (hash-vector x hc loop)
+                        (if (box? x)
+                            (loop (unbox x) (+ hc 410225874))
+                            (if (hashtable? x)
+                                (loop (hashtable->list x) hc)
+                                (if ($record-value? x)
+                                    (let-values ([(proc) (record-hash-procedure x)])
+                                      (if proc
+                                          (proc x equal-hash)
+                                          (let-values ([(proc) (default-record-hash-procedure)])
+                                            (if proc
+                                                (proc x equal-hash)
+                                                (eq-hash x)))))
+                                    (eq-hash x))))))))])
+        (loop x 523658599)))))
+
+;; --------------------------------------------------------
+;; Reader
+
+(define-values (read read-char peek-char char-ready?)
+  (let-values ([(go) 
+                (lambda (name proc)
+                  (lambda args
+                    (if (null? args)
+                        (proc (current-input-port))
+                        (if (null? ($cdr args))
+                            (let-values ([(port) ($car args)])
+                              (if (input-port? port)
+                                  (proc port)
+                                  (error name "expected input-port?" port)))
+                            (error name "expected 0 or 1 arguments" ($length args))))))])
+    (values (go 'read $read)
+            (go 'read-char $read-char)
+            (go 'peek-char $peek-char)
+            (go 'char-ready? $char-ready?))))
+
+;; --------------------------------------------------------
+;; Writing
+
+(define-values (put-char)
+  (lambda (p ch)
+    (if (output-port? p)
+        (if (char? ch)
+            ($put-char p ch)
+            (error 'put-char "expected char?" ch))
+        (error 'put-char "expected output-port?" ch))))
+
+(define-values (put-string)
+  (lambda args
+    (let-values ([(argc) ($length args)])
+      (if (<= 2 argc 4)
+          (letrec-values ([(p) ($car args)]
+                          [(str) ($cadr args)]
+                          [(len) ($string-length str)])
+            (if (output-port? p)
+                (void)
+                (error 'put-string "expected output-port?" ch))
+            (if (string? str)
+                (void)
+                (error 'put-string "expected string?" ch))
+            (if (= argc 2)
+                ($put-string p str 0 len)
+                (let-values ([(start) ($caddr args)])
+                  (if (integer? start)
+                      (void)
+                      (error 'put-string "expected integer?" start))
+                  (if (< start len)
+                      (if (= argc 3)
+                          ($put-string p str start len)
+                          (let-values ([(end) ($cadddr args)])
+                            (if (integer? end)
+                                (void)
+                                (error 'put-string "expected integer?" end))
+                            (if (< end start)
+                                (error 'put-string "must have start <= end" start end)
+                                (void))
+                            (if (>= end len)
+                                (error 'put-string "end index out of bounds" end len)
+                                (void))
+                            ($put-string p str start end)))
+                      (error 'put-string "start index out of bounds" start len)))))
+          (error 'put-string "expected 2, 3, or 4 arguments" argc)))))
+
+(define-values (flush-output-port)
+  (lambda (port)
+    (if (output-port? port)
+        ($flush-output-port port)
+        (error 'flush-output-port "expected output-port?" port))))
+
+(define-values (write-char)
+  (lambda args
+    (if (null? args)
+        (let ([(ch) ($car args)])
+          (if (char? ch)
+              (if (null? ($cdr args))
+                  ($write-char ch (current-output-port))
+                  (if (null? ($cddr args))
+                      (let-values ([(port) ($cadr args)])
+                        (if (output-port? port)
+                            ($write ch port)
+                            (error 'write-char "expected output-port?" port)))
+                      (error 'write-char "expected 1 or 2 arguments" ($length args))))
+              (error 'write-char "expected char?" ch)))
+        (error 'write-char "expected 1 or 2 arguments" ($length args)))))
+
+(define-values (put-datum write display)
+  (letrec-values ([(lparen rparen) (values #\( #\))]
+                  ; main writer
+                  [(wr)
+                   (lambda (x d? p)
+                     (if (symbol? x) (put-string p (symbol->string x))
+                     (if (pair? x) (wrpair x d? p)
+                     (if (number? x) (put-string p (number->string x))
+                     (if (null? x) (put-string p "()")
+                     (if (boolean? x) (put-string p (if x "#t" "#f"))
+                     (if (char? x) (if d? (put-char p x) (wrchar x p))
+                     (if (string? x) (if d? (put-string p x) (wrstring x p))
+                     (if (vector? x) (wrvector x d? p)
+                     (if (eof-object? x) (put-string p "#<eof>")
+                     (if (void? x) (put-string p "#<void>")
+                     (if (input-port? x) (put-string p "#<input port>")
+                     (if (output-port? x) (put-string p "#<output port>")
+                     (if (procedure? x) (put-string p "#<procedure>")
+                     (if (syntax? x) (wrsyntax x d? p)
+                     (if (environment? x) (put-string p "#<environment>")
+                     (if (record-type-descriptor? x) (wrrtd x d? p)
+                     (if ($record-value? x) (wrrecord x d? p)
+                     (put-string p "#<garbage>")))))))))))))))))))]
+                  ; character writer
+                  [(wrchar)
+                   (lambda (x p)
+                     (put-string p "#\\")
+                     (if (eq? x #\alarm) (put-string p "alarm")
+                     (if (eq? x #\backspace) (put-string p "backspace")
+                     (if (eq? x #\delete) (put-string p "delete")
+                     (if (eq? x #\esc) (put-string p "esc")
+                     (if (eq? x #\newline) (put-string p "newline")
+                     (if (eq? x #\nul) (put-string p "nul")
+                     (if (eq? x #\page) (put-string p "page")
+                     (if (eq? x #\return) (put-string p "return")
+                     (if (eq? x #\space) (put-string p "space")
+                     (if (eq? x #\tab) (put-string p "tab")
+                     (if (eq? x #\vtab) (put-string p "vtab")
+                     (put-char p x)))))))))))))]
+                  ; string writer
+                  [(wrstring)
+                   (lambda (x p)
+                     (put-char p #\")
+                     (for-each
+                       (lambda (i)
+                         (let-values ([(c) (string-ref x i)])
+                           (if (eq? c #\alarm) (put-string p "\\a")
+                           (if (eq? c #\backspace) (put-string p "\\b")
+                           (if (eq? c #\newline) (put-string p "\\n")
+                           (if (eq? c #\page) (put-string p "\\f")
+                           (if (eq? c #\return) (put-string p "\\r")
+                           (if (eq? c #\tab) (put-string p "\\t")
+                           (if (eq? c #\vtab) (put-string p "\\v")
+                           (if (eq? c #\") (put-string p "\\\"")
+                           (if (eq? c #\\) (put-string p "\\\\")
+                           (put-char p c))))))))))))
+                       (iota (string-length x)))
+                     (put-char p #\"))]
+                  ; pair writer
+                  [(wrpair)
+                   (lambda (x d? p)
+                     (put-char p lparen)
+                     (letrec-values ([(loop)
+                                      (lambda (x)
+                                         (wr (car x) d? p)
+                                         (if (pair? (cdr x))
+                                             (begin
+                                               (put-char p #\space)
+                                               (loop (cdr x)))
+                                             (if (null? (cdr x))
+                                                 (void)
+                                                 (begin
+                                                   (put-string p " . ")
+                                                   (wr (cdr x) d? p)))))])
+                       (loop x))
+                     (put-char p rparen))]
+                  ; vector writer
+                  [(wrvector)
+                   (lambda (x d? p)
+                     (put-char p #\#)
+                     (letrec-values ([(n) (vector-length x)]
+                                     [(loop)
+                                      (lambda (i sep)
+                                        (if (>= i n)
+                                            (void)
+                                            (begin
+                                              (put-char p sep)
+                                              (wr (vector-ref x i) d? p)
+                                              (loop (+ i 1) #\space))))])
+                       (loop 0 lparen))
+                     (put-char p rparen))]
+                  ; record type writer
+                  [(wrrtd)
+                   (lambda (x d? p)
+                     (put-string p "#<record-type:")
+                     (wr (record-type-name x) d? p)
+                     (put-char p #\>))]
+                  ; record value writer
+                  [(wrrecord)
+                   (lambda (x d? p)
+                     (let-values ([(proc) (record-writer ($record-rtd x))])
+                       (if proc
+                           (proc x p d?) 
+                           (begin
+                             (put-string p "#<")
+                             (wr (record-type-name ($record-rdd x)) d? p)
+                             (put-char p #\>)))))]
+                  ; syntax writer
+                  [(wrsyntax)
+                   (lambda (x d? p)
+                     (put-string p "#<syntax ")
+                     (wr (syntax->datum x) d? p)
+                     (put-char p #\>))]
+                  ; check and call
+                  [(go)
+                   (lambda (who x d? p)
+                     (if (output-port? p)
+                         (wr x d? p)
+                         (error who "expected output-port?" p)))])
+    (values
+      ; put-datum
+      (lambda (p x) (go 'put-datum x #f p))
+      ; write
+      (lambda args
+        (let-values ([(argc) ($length args)])
+          (if (= argc 1)
+              (go 'write ($car args) #f (current-output-port))
+              (if (= argc 2)
+                  (go 'write ($car args) #f ($cadr args))
+                  (error 'write "expected 1 or 2 arguments" argc)))))
+      ; display
+      (lambda args
+        (let-values ([(argc) ($length args)])
+          (if (= argc 1)
+              (go 'display ($car args) #t (current-output-port))
+              (if (= argc 2)
+                  (go 'display ($car args) #t ($cadr args))
+                  (error 'display "expected 1 or 2 arguments" argc))))))))
+
+(define-values (newline)
+  (lambda args
+    (if (null? args)
+        ($newline (current-output-port))
+        (if (null? ($cdr args))
+            (let-values ([(port) ($car args)])
+              (if (output-port? port)
+                  ($newline port)
+                  (error 'newline "expected output port?" port)))
+            (error 'newline "expected 0 or 1 arguments" ($length args))))))
+
+;; --------------------------------------------------------
+;; Formatter
+
+(define-values (fprintf printf format)
+  (letrec-values ([(fmt-args)
+                   (lambda (who fmt)
+                     (letrec-values ([(len) (string-length fmt)]
+                                     [(loop)
+                                      (lambda (n args)
+                                        (if (>= n len)
+                                            (reverse args)
+                                            (let-values ([(c) (string-ref fmt n)])
+                                              (if (eq? c #\~)
+                                                  (if (>= (+ n 1) len)
+                                                      (error who "ill-formed format string" fmt)
+                                                      (let-values ([(nc) (string-ref fmt (+ n 1))])
+                                                        (if (if (eq? nc #\a) #t (eq? nc #\A))
+                                                            (loop (+ n 2) (cons #f args))
+                                                            (if (if (eq? nc #\s) #t (eq? nc #\S))
+                                                                (loop (+ n 2) (cons #f args))
+                                                                (if (eq? nc #\%)
+                                                                    (loop (+ n 2) args)
+                                                                    (if (eq? nc #\~)
+                                                                        (loop (+ n 2) xs)
+                                                                        (error who "unknown format directive" nc)))))))
+                                                  (loop (+ n 1) args)))))])
+                       (loop 0 '())))]                                                
+      
+                  [(check-format!)
+                   (lambda (who fmt args)
+                     (let-values ([(fmt-preds) (fmt-args who fmt)])
+                       (if (= (length fmt-preds) (length args))
+                           (for-each
+                             (lambda (fmt-pred arg)
+                               (if (if fmt-pred (fmt-pred arg) #t)
+                                   (void)
+                                   (error who "format argument failed predicate" fmt-pred arg)))
+                             fmt-preds args)
+                           (error who "format string arity mismatch" (length fmt-preds) (length args)))))]
+                                        
+                  [(do-format)
+                   (lambda (p fmt args)
+                     (letrec-values ([(len) (string-length fmt)]
+                                     [(loop)
+                                      (lambda (n xs)
+                                        (if (>= n len)
+                                            (void)
+                                            (let-values ([(c) (string-ref fmt n)])
+                                              (if (eq? c #\~)
+                                                  (let-values ([(nc) (string-ref fmt (+ n 1))])
+                                                    (if (if (eq? nc #\a) #t (eq? nc #\A))
+                                                        (begin
+                                                          (display (car xs) p)
+                                                          (loop (+ n 2) (cdr xs)))
+                                                        (if (if (eq? nc #\s) #t (eq? nc #\S))
+                                                            (begin
+                                                              (write (car xs) p)
+                                                              (loop (+ n 2) (cdr xs)))
+                                                            (if (eq? nc #\%)
+                                                                (begin
+                                                                  (newline p)
+                                                                  (loop (+ n 2) xs))
+                                                                (begin ; ~~
+                                                                  (put-char p #\~)
+                                                                  (loop (+ n 2) xs))))))
+                                                  (begin
+                                                    (put-char p c)
+                                                    (loop (+ n 1) xs))))))])
+                       (loop 0 args)))])
+    (values
+      ; fprintf
+      (lambda (p fmt . args)
+        (if (output-port? p)
+            (begin
+              (check-format! 'fprintf fmt args)
+              (do-format p fmt args))
+            (error 'fprintf "expected output port?" fmt)))
+      ; printf
+      (lambda (fmt . args)
+        (check-format! 'printf fmt args)
+        (do-format (current-output-port) fmt args))
+      ; format
+      (lambda (fmt . args)
+        (check-format! 'format fmt args)
+        (let-values ([(p) (open-output-string)])
+          (do-format p fmt args)
+          (get-output-string p))))))
+                                        
+
+;; --------------------------------------------------------
+;; FASL I/O
+
+(define-values (fasl-read)
+  (lambda (port)
+    (if (input-port? port)
+        ($fasl-read port)
+        (error 'fasl-read "expected input-port?" port))))
+
+(define-values (fasl-write)
+  (lambda (x port)
+    (if (output-port? port)
+        ($fasl-write x port)
+        (error 'fasl-write "expected output-port?" port))))
+
+;; --------------------------------------------------------
+;; Syntax
+
+(define-values (syntax-e)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax-e stx)
+        (error 'syntax-e "expected syntax?" stx))))
+
+(define-values (syntax-loc)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax-loc stx)
+        (error 'syntax-loc "expected syntax?" stx))))
+
+(define-values (syntax->datum)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax->datum stx)
+        (error 'syntax->datum "expected syntax?" stx))))
+
+(define-values (syntax->list)
+  (lambda (stx)
+    (if (syntax? stx)
+        ($syntax->list stx)
+        (error 'syntax->list "expected syntax?" stx))))
+
+;; --------------------------------------------------------
+;; Pattern variables
+
+(define-values (make-pattern-variable
+                pattern-variable?
+                pattern-variable-value
+                pattern-variable-depth)
+  (let-values ([($pvar) (make-record-type-descriptor 'pattern-variable
+                                                     #f
+                                                     #f
+                                                     #t
+                                                     #t
+                                                     #((immutable value) (immutable depth)))])
+    (values
+      (let-values ([($make-pvar) (record-constructor $pvar)])
+        (lambda (x depth)
+          (if (if (integer? depth) (>= depth 0) #f)
+              ($make-pvar x depth)
+              (error 'make-pattern-variable "expected non-negative integer?" depth))))
+      (record-predicate $pvar)
+      (record-accessor $pvar 0)
+      (record-accessor $pvar 1))))
+
+;; --------------------------------------------------------
+;; Environment
+
+(define-values (environment-extend)
+  (lambda (env)
+    (if (environment? env)
+        ($environment-extend env)
+        (error 'environment-extend "expected environment?" env))))
+
+(define-values (environment-names)
+  (lambda (env)
+    (if (environment? env)
+        ($environment-names env)
+        (error 'environment-names "expected environment?" env))))
+
+(define-values (environment-ref)
+  (let-values ([(default-fail)
+                (lambda (key) (error 'environment "key not found" key))])
+    (lambda args
+      (let-values ([(argc) (length args)])
+        (if (if (>= argc 2) (<= argc 3) #f)
+            (let-values ([(env) ($car args)] [(k) ($cadr args)])
+              (if (environment? env)
+                  (if (symbol? k)
+                      (let-values ([(v) ($environment-ref env k default-fail)])
+                        (if (eq? v default-fail)
+                            (if (= argc 2)
+                                (default-fail k)
+                                (let-values ([(fail) ($caddr args)])
+                                  (if (procedure? fail) (fail) fail)))
+                            v))
+                     (error 'environment-ref "expected symbol?" k))
+                 (error 'environment-ref "expected environment?" env)))
+            (error 'environment-ref "expected 1 or 2 arguments" argc))))))
+
+(define-values (environment-set!)
+  (lambda (env k v)
+    (if (environment? env)
+        (if (symbol? k)
+            ($environment-set! env k v)
+            (error 'environment-set! "expected symbol?" k))
+        (error 'environment-set! "expected environment?" env))))
+
+;; --------------------------------------------------------
+;; System
+
+(define-values (load)
+  (lambda (fname)
+    (if (string? fname)
+        ($load fname)
+        (error 'load "expected a string" fname))))
+
+(define-values (exit)
+  (lambda args
+    (if (null? args)
+        ($exit 0)
+        (if (null? ($cdr args))
+            (let-values ([(code) ($car args)])
+              (if (if (integer? code) (<= 0 code 255) #f)
+                  ($exit code)
+                  (error 'exit "expected an integer between 0 and 255" code)))
+            (error 'exit "expected 0 or 1 arguments" ($length args))))))
+
+(define-values (current-directory)
+  (lambda args
+    (if (null? args)
+        ($current-directory)
+        (if (null? ($cdr args))
+            (let-values ([(path) ($car args)])
+              (if (string? path)
+                  ($current-directory-set! path)
+                  (error 'current-directory "expected string?" path)))
+            (error 'current-directory "expected 0 or 1 arguments" (length args))))))

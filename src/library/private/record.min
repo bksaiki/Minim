@@ -4,20 +4,10 @@
 
 (import "generics.min"
         "pre-base.min"
-        "list.min"
-        "record-utils.min")
+        "list.min")
 
-(export record?                       ;; re-exported
-        record-rtd                    ;; re-exported
-        record-constructor            ;; re-exported
-        record-predicate              ;; re-exported
-        record-accessor               ;; re-exported
-        record-mutator                ;; re-exported
-  
-        record-type-equal-procedure
-        record-type-hash-procedure
-        define-record-type
-
+(export define-record-type
+        
         $make-generics-type           ;; re-exported
         define-generics               ;; re-exported
         generic-instance?             ;; re-exported
@@ -30,7 +20,7 @@
         gen:custom-write?)
 
 ;;
-;;  Record equal? and hashing
+;;  Some predefined generics
 ;;
 
 ; Generic interface for comparing and hashing records
@@ -38,74 +28,9 @@
                  [equal-proc a b rec-equal?]
                  [hash-proc a rec-hash])
 
-(define equal-proc-accessor (generics-accessor gen:equal+hash 'equal-proc))
-(define hash-proc-accessor (generics-accessor gen:equal+hash 'hash-proc))
-
-; Fallback implementations for gen:equal+hash methods
-(define $default-record-equal-proc ($current-record-equal-procedure))
-(define $default-record-hash-proc ($current-record-hash-procedure))
-
-(define (unsafe-record-type-equal-procedure rtd)
-  (if (gen:equal+hash? rtd)
-      (equal-proc-accessor rtd)
-      $default-record-equal-proc))
-
-(define (unsafe-record-type-hash-procedure rtd)
-  (if (gen:equal+hash? rtd)
-      (hash-proc-accessor rtd)
-      $default-record-hash-proc))
-
-(define (record-equal? a b rec-equal?)
-  (define a-rtd ($record-rtd a))
-  (define b-rtd ($record-rtd b))
-  (and (eq? a-rtd b-rtd)
-       (let ([equal-proc (unsafe-record-type-equal-procedure a-rtd)])
-         (equal-proc a b rec-equal?))))
-
-(define (record-hash r rec-hash)
-  (define rtd ($record-rtd r))
-  (define hash-proc (unsafe-record-type-hash-procedure rtd))
-  (hash-proc r rec-hash))
-
-;; Unlike R6RS, this cannot set the equal procedure
-(define (record-type-equal-procedure rtd)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-equal-procedure "expected a record type descriptor" rtd))
-  (unsafe-record-type-equal-procedure rtd))
-
-;; Unlike R6RS, this cannot set the hash procedure
-(define (record-type-hash-procedure rtd)
-  (unless (record-type-descriptor? rtd)
-    (error 'record-type-hash-procedure "expected a record type descriptor" rtd))
-  (unsafe-record-type-hash-procedure rtd))
-
-($current-record-equal-procedure record-equal?)
-($current-record-hash-procedure record-hash)
-
-;;
-;;  Record writing
-;;
-
 ; Generic interface for writing records
 (define-generics custom-write
                  [write-proc v port mode])
-
-(define write-proc-accessor (generics-accessor gen:custom-write 'write-proc))
-
-; Fallback implementation for gen:custom-write method
-(define $default-record-write-proc ($current-record-write-procedure))
-
-(define (unsafe-record-write-procedure rtd)
-  (if (gen:custom-write? rtd)
-      (write-proc-accessor rtd)
-      $default-record-write-proc))
-
-(define (record-write r port mode)
-  (define rtd ($record-rtd r))
-  (define write-proc (unsafe-record-write-procedure rtd))
-  (write-proc r port mode))
-     
-($current-record-write-procedure record-write)
 
 ;;
 ;;  High-level macros
@@ -257,7 +182,7 @@
                           (with-syntax ([gen-id gen-id]
                                         [(gen-methods ...) (hashtable-ref methods-rtd gen-id)])
                             #'(cons gen-id (list gen-methods ...))))
-                        (hashtable-keys methods-rtd))]
+                        (vector->list (hashtable-keys methods-rtd)))]
                      [(fields ...)
                       (map
                         (lambda (s)
@@ -266,23 +191,23 @@
                             [(mutable name _ _) #'(mutable name)]))
                         fields-rtd)]
                      [(accs ...)
-                      (enumerate
-                        (lambda (s i)
-                          (with-syntax ([idx i])
-                            (syntax-case s (immutable mutable)
+                      (map
+                        (lambda (s/i)
+                          (with-syntax ([idx (cdr s/i)])
+                            (syntax-case (car s/i) (immutable mutable)
                               [(immutable _ acc) #'(define acc (record-accessor name idx))]
                               [(mutable _ acc _) #'(define acc (record-accessor name idx))])))
-                        fields-rtd)]
+                        (enumerate fields-rtd))]
                      [(muts ...)
                       (filter
-                        (lambda (x) x)
-                        (enumerate
-                          (lambda (s i)
-                            (with-syntax ([idx i])
-                              (syntax-case s (immutable mutable)
+                        identity
+                        (map
+                          (lambda (s/i)
+                            (with-syntax ([idx (cdr s/i)])
+                              (syntax-case (car s/i) (immutable mutable)
                                 [(immutable _ _) #f]
                                 [(mutable _ _ mut) #'(define mut (record-mutator name idx))])))
-                          fields-rtd))])
+                          (enumerate fields-rtd)))])
         #'(begin
             (define name
               (let ([p parent*])
@@ -300,6 +225,14 @@
                 (define fns (cdr methods))
                 (record-type-add-generic! name gen-id fns))
               ...)
+            (when (gen:equal+hash? name)
+              (define get-equal-proc (generics-accessor gen:equal+hash 'equal-proc))
+              (define get-hash-proc (generics-accessor gen:equal+hash 'hash-proc))
+              (record-type-equal-procedure name (get-equal-proc name))
+              (record-type-hash-procedure name (get-hash-proc name)))
+            (when (gen:custom-write? name)
+              (define get-write-proc (generics-accessor gen:custom-write 'write-proc))
+              (record-writer name (get-write-proc name)))
             (define construct
               (let ([c (record-constructor name)]
                     [p protocol*])

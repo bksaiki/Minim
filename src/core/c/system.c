@@ -99,7 +99,7 @@ char *get_file_dir(const char *realpath) {
     return dirpath;
 }
 
-mobj load_file(const char *fname) {
+mobj load_file(const char *fname, mobj env) {
     mobj result, expr;
     char *old_cwd, *cwd;
     FILE *f;
@@ -115,8 +115,10 @@ mobj load_file(const char *fname) {
     set_current_dir(cwd);
 
     result = minim_void;
-    while ((expr = read_object(f)) != NULL)
-        result = eval_expr(expr, global_env(current_thread()));
+    while ((expr = read_object(f)) != NULL) {
+        check_expr(expr);
+        result = eval_expr(expr, env);
+    }
 
     set_current_dir(old_cwd);
     fclose(f);
@@ -132,79 +134,69 @@ void minim_shutdown(int code) {
 //  Primitives
 //
 
-mobj load_proc(int argc, mobj *args) {
+mobj load_proc(mobj fname) {
     // (-> string any)
-    if (!minim_stringp(args[0]))
-        bad_type_exn("load", "string?", args[0]);
-    return load_file(minim_string(args[0]));
+    return load_file(minim_string(fname), global_env(current_thread()));
 }
 
-mobj error_proc(int argc, mobj *args) {
+mobj exit_proc(mobj code) {
+    // (-> byte any)
+    minim_shutdown(minim_fixnum(code));
+}
+
+mobj command_line_proc() {
+    // (-> list)
+    return command_line(current_thread());
+}
+
+mobj current_directory_proc() {
+    // (-> string)
+    return current_directory(current_thread());
+}
+
+mobj current_directory_set_proc(mobj path) {
+    // (-> string void)
+    set_current_dir(minim_string(path));
+    return minim_void;
+}
+
+mobj version_proc() {
+    return Mstring(MINIM_VERSION);
+}
+
+mobj error_proc() {
+    uncallable_prim_exn("error");
+}
+
+mobj do_error(int argc, mobj *args) {
     // (-> (or #f string symbol)
     //     string?
     //     any ...
     //     any)
-    mobj who, message;
-    int i;
+    mobj who, msg;
 
     who = args[0];
     if (!minim_falsep(who) && !minim_symbolp(who) && !minim_stringp(who))
         bad_type_exn("error", "(or #f string? symbol?)", who);
 
-    message = args[1];
-    if (!minim_stringp(message))
-        bad_type_exn("error", "string?", message);
+    msg = args[1];
+    if (!minim_stringp(msg))
+        bad_type_exn("error", "string?", msg);
     
     if (minim_falsep(who))
         fprintf(stderr, "error");
     else
-        write_object2(stderr, who, 1, 1);
+        write_object(stderr, who);
 
     fprintf(stderr, ": ");
-    write_object2(stderr, message, 1, 1);
+    write_object(stderr, string_to_symbol(msg));
     fprintf(stderr, "\n");
 
-    for (i = 2; i < argc; ++i) {
+    for (int i = 2; i < argc; ++i) {
         fprintf(stderr, " ");
-        write_object2(stderr, args[i], 1, 1);
+        write_object(stderr, args[i]);
         fprintf(stderr, "\n");
     }
 
     minim_shutdown(1);
-}
-
-mobj exit_proc(int argc, mobj *args) {
-    // (-> number any)
-
-    if (argc == 1 && 0 <= minim_fixnum(args[0]) && minim_fixnum(args[0]) <= 255)
-        minim_shutdown(minim_fixnum(args[0]));
-    else
-        minim_shutdown(0);
-}
-
-mobj current_directory_proc(int argc, mobj *args) {
-    // (-> string)
-    // (-> string void)
-    mobj path;
-
-    if (argc == 0) {
-        // getter
-        return current_directory(current_thread());
-    } else {
-        // setter
-        path = args[0];
-        if (!minim_stringp(path))
-            bad_type_exn("current-directory", "string?", path);
-        
-        set_current_dir(minim_string(path));
-        return minim_void;
-    }
-}
-
-mobj command_line_proc(int argc, mobj *args) {
-    return command_line(current_thread());
-}
-
-mobj version_proc(int argc, mobj *args) {
-    return Mstring(MINIM_VERSION);
 }

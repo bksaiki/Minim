@@ -15,7 +15,7 @@ SRCS 		:= $(shell find $(SRC_DIR) -name "*.c")
 OBJS 		:= $(SRCS:%.c=$(BUILD_DIR)/%.o)
 DEPS 		:= $(OBJS:.o=.d)
 
-CFLAGS		:= -Wall -std=c11 -Og -g
+CFLAGS		:= -Wall -std=c11 -O2 -g
 DEPFLAGS 	:= -MMD -MP
 LDFLAGS 	:= -L$(GC_DIR) -lgc
 
@@ -35,6 +35,7 @@ clean:
 $(CONFIG):
 	$(MKDIR_P) $(BUILD_DIR)
 	echo "#define MINIM_X86_64 1" >> $@
+	echo "#define PRELUDE_PATH \"$(shell pwd)/s/prelude.min\"" >> $@
 
 $(BUILD_DIR)/.:
 	$(MKDIR_P) $@

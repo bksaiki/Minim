@@ -193,7 +193,6 @@ mobj Msymbol(const char *s) {
 //  Primitives
 //
 
-mobj is_symbol_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_symbolp(args[0]) ? minim_true : minim_false;
+mobj symbolp_proc(mobj x) {
+    return minim_symbolp(x) ? minim_true : minim_false;
 }

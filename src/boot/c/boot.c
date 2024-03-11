@@ -5,22 +5,8 @@
 
 #include "../boot.h"
 
-#define add_value(env, name, c_val)  \
-    env_define_var(env, intern(name), c_val);
-
-mobj make_env() {
-    mobj env = setup_env();
-    add_value(env, "null", minim_null);
-    add_value(env, "true", minim_true);
-    add_value(env, "false", minim_false);
-    add_value(env, "eof", minim_eof);
-    init_prims(env);
-    return env;
-}
-
 void minim_boot_init() {
     minim_thread *th;
-    mobj record_equal_proc_obj, record_hash_proc_obj, record_write_proc_obj;
     
     GC_pause();
 
@@ -32,20 +18,13 @@ void minim_boot_init() {
     // initialize special symbols
 
     quote_symbol = intern("quote");
-    define_symbol = intern("define");
     define_values_symbol = intern("define-values");
-    let_symbol = intern("let");
     let_values_symbol = intern("let-values");
-    letrec_symbol = intern("letrec");
     letrec_values_symbol = intern("letrec-values");
     setb_symbol = intern("set!");
     if_symbol = intern("if");
     lambda_symbol = intern("lambda");
     begin_symbol = intern("begin");
-    cond_symbol = intern("cond");
-    else_symbol = intern("else");
-    and_symbol = intern("and");
-    or_symbol = intern("or");
     quote_syntax_symbol = intern("quote-syntax");
 
     // initialize special values
@@ -75,27 +54,15 @@ void minim_boot_init() {
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
 
-    record_equal_proc_obj = Mprim(default_record_equal_procedure_proc,
-                                  "default-record-equal-procedure",
-                                  3, 3);
-    record_hash_proc_obj = Mprim(default_record_hash_procedure_proc,
-                                 "default-record-hash-procedure",
-                                 2, 2);
-    record_write_proc_obj = Mprim(default_record_write_procedure_proc,
-                                  "default-record-write-procedure",
-                                  3, 3);
-
     // initialize thread
 
     th = current_thread();
-    global_env(th) = make_env();
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
-    current_directory(th) = Mstring2(get_current_dir());
+    current_directory(th) = Mstring(get_current_dir());
     command_line(th) = minim_null;
-    record_equal_proc(th) = record_equal_proc_obj;
-    record_hash_proc(th) = record_hash_proc_obj;
-    record_write_proc(th) = record_write_proc_obj;
+    record_equal_proc(th) = minim_false;
+    record_hash_proc(th) = minim_false;
 
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj*));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;
@@ -123,4 +90,7 @@ void minim_boot_init() {
     irt_saved_args_size = SAVED_ARGS_DEFAULT;
 
     GC_resume();
+    
+    // Make base environment
+    global_env(th) = make_env();
 }

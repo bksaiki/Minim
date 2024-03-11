@@ -30,11 +30,6 @@ mobj minim_empty_vec;
 mobj minim_base_rtd;
 mobj minim_values;
 
-mobj eq_proc_obj;
-mobj equal_proc_obj;
-mobj eq_hash_proc_obj;
-mobj equal_hash_proc_obj;
-
 int minim_eqp(mobj a, mobj b) {
     if (a == b) {
         return 1;
@@ -52,11 +47,19 @@ int minim_eqp(mobj a, mobj b) {
     }
 }
 
-int minim_equalp(mobj a, mobj b) {
-    minim_thread *th;
-    long stashc, i;
-    int res;
+static int minim_vector_equalp(mobj a, mobj b) {
+    if (minim_vector_len(a) != minim_vector_len(b))
+        return 0;
 
+    for (long i = 0; i < minim_vector_len(a); ++i) {
+        if (!minim_equalp(minim_vector_ref(a, i), minim_vector_ref(b, i)))
+            return 0;
+    }
+
+    return 1;
+}
+
+int minim_equalp(mobj a, mobj b) {
     if (a == b) {
         return 1;
     } else if (minim_type(a) != minim_type(b)) {
@@ -73,45 +76,9 @@ int minim_equalp(mobj a, mobj b) {
             return minim_equalp(minim_car(a), minim_car(b)) &&
                 minim_equalp(minim_cdr(a), minim_cdr(b));
         case MINIM_OBJ_VECTOR:
-            if (minim_vector_len(a) != minim_vector_len(b))
-                return 0;
-            for (i = 0; i < minim_vector_len(a); ++i) {
-                if (!minim_equalp(minim_vector_ref(a, i), minim_vector_ref(b, i)))
-                    return 0;
-            }
-            return 1;
+            return minim_vector_equalp(a, b);
         case MINIM_OBJ_BOX:
             return minim_equalp(minim_unbox(a), minim_unbox(b));
-        case MINIM_OBJ_HASHTABLE:
-            return hashtable_equalp(a, b);
-        case MINIM_OBJ_RECORD:
-            // TODO: Other Schemes make records return #f by default for equal?
-            // while providing a way to specifiy an equality procedure for
-            // records of the same type.
-            // In this case, equal? would possibly need access to the
-            // current environment. It's possible that setting the equality
-            // procedure using anything other than a closure should throw
-            // an error.
-            //
-            // Minim implements record equality in the following way:
-            // By default, records of the same type are not `equal?`, but this behavior
-            // can be overriden by modifying `current-record-equal-procedure`.
-            if (record_valuep(a) && record_valuep(b)) {
-                // Unsafe code to follow
-                th = current_thread();
-                stashc = stash_call_args();
-
-                push_call_arg(a);
-                push_call_arg(b);
-                push_call_arg(env_lookup_var(global_env(th), intern("equal?")));
-                res = !minim_falsep(call_with_args(record_equal_proc(th), global_env(th)));
-
-                prepare_call_args(stashc);
-                return res;
-            } else {
-                return 0;
-            }
-
         default:
             return 0;
         }
@@ -122,43 +89,37 @@ int minim_equalp(mobj a, mobj b) {
 //  Primitives
 //
 
-mobj is_null_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_nullp(args[0]) ? minim_true : minim_false;
+mobj nullp_proc(mobj x) {
+    return minim_nullp(x) ? minim_true : minim_false;
 }
 
-mobj is_void_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_voidp(args[0]) ? minim_true : minim_false;
+mobj voidp_proc(mobj x) {
+    return minim_voidp(x) ? minim_true : minim_false;
 }
 
-mobj is_eof_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_eofp(args[0]) ? minim_true : minim_false;
+mobj eofp_proc(mobj x) {
+    return minim_eofp(x) ? minim_true : minim_false;
 }
 
-mobj is_bool_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    mobj *o = args[0];
-    return minim_boolp(o) ? minim_true : minim_false;
+mobj boolp_proc(mobj x) {
+    return minim_boolp(x) ? minim_true : minim_false;
 }
 
-mobj not_proc(int argc, mobj *args) {
+mobj not_proc(mobj x) {
     // (-> any boolean)
-    return minim_falsep(args[0]) ? minim_true : minim_false;   
+    return minim_falsep(x) ? minim_true : minim_false;   
 }
 
-mobj eq_proc(int argc, mobj *args) {
+mobj eq_proc(mobj x, mobj y) {
     // (-> any any boolean)
-    return minim_eqp(args[0], args[1]) ? minim_true : minim_false;
+    return minim_eqp(x, y) ? minim_true : minim_false;
 }
 
-mobj equal_proc(int argc, mobj *args) {
+mobj equal_proc(mobj x, mobj y) {
     // (-> any any boolean)
-    return minim_equalp(args[0], args[1]) ? minim_true : minim_false;
+    return minim_equalp(x, y) ? minim_true : minim_false;
 }
 
-mobj void_proc(int argc, mobj *args) {
-    // (-> void)
+mobj void_proc() {
     return minim_void;
 }

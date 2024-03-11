@@ -7,90 +7,92 @@
 
 #include "../boot.h"
 
-FILE *stream;
-mobj *env;
 int return_code, passed;
 
-#define reset() {               \
-    rewind(stream);             \
-    env = make_env();    \
+#define load(stream, s) {   \
+    fputs(s, stream);       \
+    rewind(stream);         \
 }
 
-#define load(s) {       \
-    fputs(s, stream);   \
-    rewind(stream);     \
-}
+char *write(mobj o) {
+    FILE *stream;
+    char *buffer;
+    size_t len, read;
 
-#define eval(s)     eval_expr(read_object(stream), env)
-
-char *write(mobj *o) {
-    char *str;
-    size_t read;
-    long length;
-
-    rewind(stream);
+    stream = tmpfile();
     write_object(stream, o);
-
-    length = ftell(stream);
+    len = ftell(stream);
     fseek(stream, 0, SEEK_SET);
 
-    str = GC_alloc_atomic((length + 1) * sizeof(char));
-    read = fread(str, 1, length, stream);
-    str[length] = '\0';
-
-    if (read != length) {
+    buffer = GC_alloc_atomic((len + 1) * sizeof(char));
+    read = fread(buffer, 1, len, stream);
+    buffer[len] = '\0';
+    if (read != len) {
         fprintf(stderr, "read error occured");
         exit(1);
     }
 
-    return str;
-}
-
-#define no_check(s) {       \
-    reset();                \
-    load(s);                \
-    eval();                 \
+    fclose(stream);
+    return buffer;
 }
 
 #define log_failed_case(s, expect, actual) {                        \
     printf(" %s => expected: %s, actual: %s\n", s, expect, actual); \
 }
 
-void check_true(const char *input) {
-    mobj *result;
+void no_check(const char *input) {
+    FILE *istream;
 
-    reset();
-    load(input);
-    result = eval();
+    istream = tmpfile();
+    load(istream, input);
+    eval_expr(read_object(istream), make_env());
+}
+
+void check_true(const char *input) {
+    FILE *istream;
+    mobj result;
+
+    istream = tmpfile();
+    load(istream, input);
+    result = eval_expr(read_object(istream), make_env());
     if (!minim_truep(result)) {
         log_failed_case(input, "#t", write(result));
         passed = 0;
     }
+
+    fclose(istream);
 }
 
 void check_false(const char *input) {
-    mobj *result;
+    FILE *istream;
+    mobj result;
 
-    reset();
-    load(input);
-    result = eval();
+    istream = tmpfile();
+    load(istream, input);
+    result = eval_expr(read_object(istream), make_env());
     if (!minim_falsep(result)) {
         log_failed_case(input, "#f", write(result));
         passed = 0;
     }
+
+    fclose(istream);
 }
 
 void check_equal(const char *input, const char *expect) {
+    FILE *istream;
+    mobj result;
     char *str;
 
-    reset();
-    load(input);
-    str = write(eval());
+    istream = tmpfile();
+    load(istream, input);
+    result = eval_expr(read_object(istream), make_env());
+    str = write(result);
     if (strcmp(str, expect) != 0) {
         log_failed_case(input, expect, str);
         passed = 0;
     }
     
+    fclose(istream);
 }
 
 #define log_test(name, t) {             \
@@ -241,15 +243,15 @@ int test_type_conversions() {
 
     check_equal("(symbol->string 'a)", "\"a\"");
     check_equal("(symbol->string 'foo)", "\"foo\"");
-    check_equal("(string->symbol \"a\")", "'a");
-    check_equal("(string->symbol \"foo\")", "'foo");
+    check_equal("(string->symbol \"a\")", "a");
+    check_equal("(string->symbol \"foo\")", "foo");
 
-    check_equal("(vector->list #())", "'()");
-    check_equal("(vector->list #(1))", "'(1)");
-    check_equal("(vector->list #(1 2 3))", "'(1 2 3)");
-    check_equal("(list->vector '())", "'#()");
-    check_equal("(list->vector '(1))", "'#(1)");
-    check_equal("(list->vector '(1 2 3))", "'#(1 2 3)");
+    check_equal("(vector->list #())", "()");
+    check_equal("(vector->list #(1))", "(1)");
+    check_equal("(vector->list #(1 2 3))", "(1 2 3)");
+    check_equal("(list->vector '())", "#()");
+    check_equal("(list->vector '(1))", "#(1)");
+    check_equal("(list->vector '(1 2 3))", "#(1 2 3)");
 
     return passed;
 }
@@ -257,16 +259,16 @@ int test_type_conversions() {
 int test_list() {
     passed = 1;
 
-    check_equal("(cons 1 2)", "'(1 . 2)");
-    check_equal("(cons 1 (cons 2 3))", "'(1 2 . 3)");
-    check_equal("(cons 1 '())", "'(1)");
+    check_equal("(cons 1 2)", "(1 . 2)");
+    check_equal("(cons 1 (cons 2 3))", "(1 2 . 3)");
+    check_equal("(cons 1 '())", "(1)");
 
     check_equal("(car '(1 . 2))", "1");
     check_equal("(cdr '(1 . 2))", "2");
     check_equal("(car '(1 . (2 . 3)))", "1");
-    check_equal("(cdr '(1 . (2 . 3)))", "'(2 . 3)");
+    check_equal("(cdr '(1 . (2 . 3)))", "(2 . 3)");
     check_equal("(car '(1))", "1");
-    check_equal("(cdr '(1))", "'()");
+    check_equal("(cdr '(1))", "()");
 
     check_equal("(caar '((1 . 2) 3 . 4))", "1");
     check_equal("(cadr '((1 . 2) 3 . 4))", "3");
@@ -299,40 +301,41 @@ int test_list() {
     check_equal("(cdddar '((((1 . 2) . (3 . 4)) . ((5 . 6) . (7 . 8))) ((9 . 10) . (11 . 12)) . ((13 . 14) . (15 . 16))))", "8");
     check_equal("(cddddr '((((1 . 2) . (3 . 4)) . ((5 . 6) . (7 . 8))) ((9 . 10) . (11 . 12)) . ((13 . 14) . (15 . 16))))", "16");
 
-    check_equal("(list)", "'()");
-    check_equal("(list 1)", "'(1)");
-    check_equal("(list 1 2)", "'(1 2)");
-    check_equal("(list 1 2 3)", "'(1 2 3)");
+    check_equal("(list)", "()");
+    check_equal("(list 1)", "(1)");
+    check_equal("(list 1 2)", "(1 2)");
+    check_equal("(list 1 2 3)", "(1 2 3)");
 
     check_equal("(length '())", "0");
     check_equal("(length '(1))", "1");
     check_equal("(length '(1 2))", "2");
     check_equal("(length '(1 2 3))", "3");
 
-    check_equal("(reverse '())", "'()");
-    check_equal("(reverse '(1))", "'(1)");
-    check_equal("(reverse '(1 2))", "'(2 1)");
-    check_equal("(reverse '(1 2 3))", "'(3 2 1)");
+    check_equal("(reverse '())", "()");
+    check_equal("(reverse '(1))", "(1)");
+    check_equal("(reverse '(1 2))", "(2 1)");
+    check_equal("(reverse '(1 2 3))", "(3 2 1)");
 
-    check_equal("(append)", "'()");
-    check_equal("(append '())", "'()");
-    check_equal("(append '() '() '())", "'()");
-    check_equal("(append '(a))", "'(a)");
-    check_equal("(append '(a b c))", "'(a b c)");
-    check_equal("(append '(a b c) '(d))", "'(a b c d)");
-    check_equal("(append '(a b c) '(d e f))", "'(a b c d e f)");
+    check_equal("(append)", "()");
+    check_equal("(append '())", "()");
+    check_equal("(append '() '() '())", "()");
+    check_equal("(append '(a))", "(a)");
+    check_equal("(append '(a b c))", "(a b c)");
+    check_equal("(append '(a b c) '(d))", "(a b c d)");
+    check_equal("(append '(a b c) '(d e f))", "(a b c d e f)");
 
     check_equal("(for-each (lambda (x) x) '())", "#<void>");
     check_equal("(for-each (lambda (x) x) '(1))", "#<void>");
     check_equal("(for-each (lambda (x) x) '(1 2 3))", "#<void>");
     check_equal("(for-each (lambda (x y) x) '(1 2 3) '(a b c))", "#<void>");
     check_equal("(for-each (lambda (x y) (+ x y)) '(1 2 3) '(2 4 6))", "#<void>");
+    check_equal("(begin (define-values (y) 0) (for-each (lambda (x) (set! y (+ y x))) '(1 2 3)) y)", "6");
 
-    check_equal("(map (lambda (x) x) '())", "'()");
-    check_equal("(map (lambda (x) x) '(1))", "'(1)");
-    check_equal("(map (lambda (x) x) '(1 2 3))", "'(1 2 3)");
-    check_equal("(map (lambda (x y) x) '(1 2 3) '(a b c))", "'(1 2 3)");
-    check_equal("(map (lambda (x y) (+ x y)) '(1 2 3) '(2 4 6))", "'(3 6 9)");
+    check_equal("(map (lambda (x) x) '())", "()");
+    check_equal("(map (lambda (x) x) '(1))", "(1)");
+    check_equal("(map (lambda (x) x) '(1 2 3))", "(1 2 3)");
+    check_equal("(map (lambda (x y) x) '(1 2 3) '(a b c))", "(1 2 3)");
+    check_equal("(map (lambda (x y) (+ x y)) '(1 2 3) '(2 4 6))", "(3 6 9)");
 
     check_equal("(andmap (lambda (x) (eq? x 'a)) '())", "#t");
     check_equal("(andmap (lambda (x) (eq? x 'a)) '(a))", "#t");
@@ -354,17 +357,17 @@ int test_list() {
 int test_vector() {
     passed = 1;
 
-    check_equal("(make-vector 0)", "'#()");
-    check_equal("(make-vector 1)", "'#(0)");
-    check_equal("(make-vector 3)", "'#(0 0 0)");
+    check_equal("(make-vector 0)", "#()");
+    check_equal("(make-vector 1)", "#(0)");
+    check_equal("(make-vector 3)", "#(0 0 0)");
 
-    check_equal("(make-vector 0 1)", "'#()");
-    check_equal("(make-vector 1 1)", "'#(1)");
-    check_equal("(make-vector 3 1)", "'#(1 1 1)");
+    check_equal("(make-vector 0 1)", "#()");
+    check_equal("(make-vector 1 1)", "#(1)");
+    check_equal("(make-vector 3 1)", "#(1 1 1)");
 
-    check_equal("(vector)", "'#()");
-    check_equal("(vector 1)", "'#(1)");
-    check_equal("(vector 1 2 3)", "'#(1 2 3)");
+    check_equal("(vector)", "#()");
+    check_equal("(vector 1)", "#(1)");
+    check_equal("(vector 1 2 3)", "#(1 2 3)");
 
     check_equal("(vector-length #())", "0");
     check_equal("(vector-length #(1))", "1");
@@ -374,13 +377,13 @@ int test_vector() {
     check_equal("(vector-ref #(1 2 3) 1)", "2");
     check_equal("(vector-ref #(1 2 3) 2)", "3");
 
-    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 0 0) v)", "'#(0 2 3)");
-    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 1 0) v)", "'#(1 0 3)");
-    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 2 0) v)", "'#(1 2 0)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 0 0) v)", "#(0 2 3)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 1 0) v)", "#(1 0 3)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-set! v 2 0) v)", "#(1 2 0)");
 
-    check_equal("(begin (define-values (v) #()) (vector-fill! v 0) v)", "'#()");
-    check_equal("(begin (define-values (v) #(1)) (vector-fill! v 0) v)", "'#(0)");
-    check_equal("(begin (define-values (v) #(1 2 3)) (vector-fill! v 0) v)", "'#(0 0 0)");
+    check_equal("(begin (define-values (v) #()) (vector-fill! v 0) v)", "#()");
+    check_equal("(begin (define-values (v) #(1)) (vector-fill! v 0) v)", "#(0)");
+    check_equal("(begin (define-values (v) #(1 2 3)) (vector-fill! v 0) v)", "#(0 0 0)");
 
     return passed;
 }
@@ -392,10 +395,12 @@ int test_integer() {
     check_equal("(+ 1)", "1");
     check_equal("(+ 1 2)", "3");
     check_equal("(+ 1 2 3)", "6");
+    check_equal("(add1 1)", "2");
 
     check_equal("(- 1)", "-1");
     check_equal("(- 1 2)", "-1");
     check_equal("(- 1 2 3)", "-4");
+    check_equal("(sub1 1)", "0");
 
     check_equal("(*)", "1");
     check_equal("(* 1)", "1");
@@ -480,19 +485,19 @@ int test_string() {
 int test_syntax() {
     passed = 1;
 
-    check_equal("(quote-syntax a)", "#<syntax:a>");
-    check_equal("(quote-syntax 1)", "#<syntax:1>");
-    check_equal("(quote-syntax (a b c))", "#<syntax:(a b c)>");
+    check_equal("(quote-syntax a)", "#<syntax>");
+    check_equal("(quote-syntax 1)", "#<syntax>");
+    check_equal("(quote-syntax (a b c))", "#<syntax>");
 
-    check_equal("(syntax-e (quote-syntax a))", "'a");
+    check_equal("(syntax-e (quote-syntax a))", "a");
     check_equal("(syntax-e (quote-syntax 1))", "1");
     check_equal("(syntax-e (quote-syntax (a b c)))",
-                "'(#<syntax:a> #<syntax:b> #<syntax:c>)");
+                "(#<syntax> #<syntax> #<syntax>)");
 
-    check_equal("(syntax->list (quote-syntax ()))", "'()");
-    check_equal("(syntax->list (quote-syntax (1)))", "'(#<syntax:1>)");
-    check_equal("(syntax->list (quote-syntax (1 2)))", "'(#<syntax:1> #<syntax:2>)");
-    check_equal("(syntax->list (quote-syntax (1 2 3)))", "'(#<syntax:1> #<syntax:2> #<syntax:3>)");
+    check_equal("(syntax->list (quote-syntax ()))", "()");
+    check_equal("(syntax->list (quote-syntax (1)))", "(#<syntax>)");
+    check_equal("(syntax->list (quote-syntax (1 2)))", "(#<syntax> #<syntax>)");
+    check_equal("(syntax->list (quote-syntax (1 2 3)))", "(#<syntax> #<syntax> #<syntax>)");
     check_equal("(syntax->list (quote-syntax (1 2 . 3)))", "#f");
     check_equal("(syntax->list (quote-syntax 1))", "#f");
 
@@ -566,19 +571,19 @@ int test_let() {
     check_equal("(letrec-values () 1)", "1");
     check_equal("(letrec-values ([() (values)]) 1)", "1");
     check_equal("(letrec-values ([(x) 1]) x)", "1");
-    check_equal("(letrec-values ([(x y) (values 1 2)]) (list x y))", "'(1 2)");
-    check_equal("(letrec-values ([(x y z) (values 1 2 3)]) (list x y z))", "'(1 2 3)");
-    check_equal("(letrec-values ([(x) 1] [(y) 2]) (list x y))", "'(1 2)");
-    check_equal("(letrec-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(letrec-values ([(x y) (values 1 2)]) (list x y))", "(1 2)");
+    check_equal("(letrec-values ([(x y z) (values 1 2 3)]) (list x y z))", "(1 2 3)");
+    check_equal("(letrec-values ([(x) 1] [(y) 2]) (list x y))", "(1 2)");
+    check_equal("(letrec-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "(1 2 3)");
     check_equal("(letrec-values ([(f g) (values (lambda () (g 1)) (lambda (x) 1))]) (f))", "1");
 
     check_equal("(let-values () 1)", "1");
     check_equal("(let-values ([() (values)]) 1)", "1");
     check_equal("(let-values ([(x) 1]) x)", "1");
-    check_equal("(let-values ([(x y) (values 1 2)]) (list x y))", "'(1 2)");
-    check_equal("(let-values ([(x y z) (values 1 2 3)]) (list x y z))", "'(1 2 3)");
-    check_equal("(let-values ([(x) 1] [(y) 2]) (list x y))", "'(1 2)");
-    check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "'(1 2 3)");
+    check_equal("(let-values ([(x y) (values 1 2)]) (list x y))", "(1 2)");
+    check_equal("(let-values ([(x y z) (values 1 2 3)]) (list x y z))", "(1 2 3)");
+    check_equal("(let-values ([(x) 1] [(y) 2]) (list x y))", "(1 2)");
+    check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (list x y z))", "(1 2 3)");
 
     return passed;
 }
@@ -586,28 +591,28 @@ int test_let() {
 int test_box() {
     passed = 1;
 
-    check_equal("#&a)", "'#&a");
-    check_equal("#&(1 2 3))", "'#&(1 2 3)");
-    check_equal("#&#&3", "'#&#&3");
+    check_equal("#&a)", "#&a");
+    check_equal("#&(1 2 3))", "#&(1 2 3)");
+    check_equal("#&#&3", "#&#&3");
 
-    check_equal("(box 'a)", "'#&a");
-    check_equal("(box '(1 2 3))", "'#&(1 2 3)");
-    check_equal("(box (box 3))", "'#&#&3");
+    check_equal("(box 'a)", "#&a");
+    check_equal("(box '(1 2 3))", "#&(1 2 3)");
+    check_equal("(box (box 3))", "#&#&3");
 
-    check_equal("(unbox (box 'a))", "'a");
-    check_equal("(unbox (box '(1 2 3)))", "'(1 2 3)");
-    check_equal("(unbox (box (box 3)))", "'#&3");
+    check_equal("(unbox (box 'a))", "a");
+    check_equal("(unbox (box '(1 2 3)))", "(1 2 3)");
+    check_equal("(unbox (box (box 3)))", "#&3");
 
     check_equal("(begin "
                   "(define-values (b) (box 'a))"
                   "(set-box! b 'b)"
                   "(unbox b))",
-                "'b");
+                "b");
     check_equal("(begin "
                   "(define-values (b) (box '(1 2 3)))"
                   "(set-box! b '())"
                   "(unbox b))",
-                "'()");
+                "()");
     check_equal("(begin "
                   "(define-values (b) (box (box 3)))"
                   "(set-box! b 0)"
@@ -861,6 +866,55 @@ int test_hashtable() {
     return passed;
 }
 
+int test_port() {
+    passed = 1;
+
+    check_equal("(input-port? (current-input-port))", "#t");
+    check_equal("(output-port? (current-input-port))", "#f");
+    check_equal("(input-port? (current-output-port))", "#f");
+    check_equal("(output-port? (current-output-port))", "#t");
+
+    check_equal("(string-port? (current-input-port))", "#f");
+    check_equal("(string-port? (current-output-port))", "#f");
+    check_equal("(input-port? (open-input-string \"hello\"))", "#t");
+    check_equal("(output-port? (open-input-string \"hello\"))", "#f");
+    check_equal("(string-port? (open-input-string \"hello\"))", "#t");
+    check_equal("(input-port? (open-output-string))", "#f");
+    check_equal("(output-port? (open-output-string))", "#t");
+    check_equal("(string-port? (open-output-string))", "#t");
+
+    check_equal("(begin "
+                  "(define-values (p) (open-input-string \"1\")) "
+                  "(read p))",
+                "1");
+
+    check_equal("(begin "
+                  "(define-values (p) (open-input-string \"(1 2 3)\")) "
+                  "(read p))",
+                "(1 2 3)");
+    
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\") "
+                  "(get-output-string p)) ",
+                "\"hello\"");
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\") "
+                  "(get-output-string p) "
+                  "(get-output-string p))",
+                "\"\"");
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\") "
+                  "(get-output-string p) "
+                  "(put-string p \"bye\")"
+                  "(get-output-string p))",
+                "\"bye\"");
+
+    return passed;
+}
+
 void run_tests() {
     log_test("simple eval", test_simple_eval);
     log_test("syntax", test_syntax);
@@ -881,6 +935,7 @@ void run_tests() {
     log_test("integer", test_integer);
     log_test("box", test_box);
     log_test("hashtable", test_hashtable);
+    log_test("port", test_port);
 
     log_test("apply", test_apply);
 }
@@ -890,13 +945,11 @@ int main(int argc, char **argv) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
-    stream = tmpfile();
 
     stack_top = 0;
     return_code = stack_top;
     run_tests();
 
-    fclose(stream);
     GC_finalize();
     return return_code;
 }

@@ -11,7 +11,6 @@
         filter
         foldl foldr
         assoc
-        enumerate
         index-of)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -116,11 +115,6 @@
           [(not (pair? (car xs))) (error 'assoc "non-pair found in list" lst)]
           [(equal? k (caar xs)) (car xs)]
           [else (loop (cdr xs))])))
-
-(define (enumerate f lst)
-  (let loop ([lst lst] [i 0] [acc '()])
-    (cond [(null? lst) (reverse acc)]
-          [else (loop (cdr lst) (+ i 1) (cons (f (car lst) i) acc))])))
 
 (define (index-of k lst)
   (let loop ([lst lst] [i 0])

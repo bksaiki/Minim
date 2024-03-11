@@ -15,23 +15,14 @@ mobj Mchar(mchar c) {
 //  Primitives
 //
 
-mobj is_char_proc(int argc, mobj *args) {
-    // (-> any boolean)
-    return minim_charp(args[0]) ? minim_true : minim_false;
+mobj charp_proc(mobj x) {
+    return minim_charp(x) ? minim_true : minim_false;
 }
 
-mobj char_to_integer_proc(int argc, mobj *args) {
-    // (-> char integer)
-    mobj *o = args[0];
-    if (!minim_charp(o))
-        bad_type_exn("char->integer", "char?", o);
-    return Mfixnum(minim_char(o));
+mobj char_to_integer(mobj x) {
+    return Mfixnum(minim_char(x));
 }
 
-mobj integer_to_char_proc(int argc, mobj *args) {
-    // (-> integer char)
-    mobj *o = args[0];
-    if (!minim_fixnump(o))
-        bad_type_exn("integer->char", "integer?", o);
-    return Mchar(minim_fixnum(args[0]));
+mobj integer_to_char(mobj x) {
+    return Mchar(minim_fixnum(x));
 }

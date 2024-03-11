@@ -44,13 +44,13 @@
   (check-equal? h1 h2)
 
   (define keys '(d e f g h i j k l m n o))
-  (enumerate (lambda (k i) (hashtable-set! h1 k i)) keys)
-  (enumerate (lambda (k i) (hashtable-delete! h1 k)) keys)
+  (for-each (lambda (k/i) (hashtable-set! h1 (car k/i) (cdr k/i))) (enumerate keys))
+  (for-each (lambda (k) (hashtable-delete! h1 k)) keys)
   (check-equal? h1 h2)
 
   (define keys '(d e f g h i j k l m n o))
-  (enumerate (lambda (k i) (hashtable-set! h1 k i)) keys)
-  (enumerate (lambda (k i) (hashtable-set! h2 k i)) keys)
+  (for-each (lambda (k/i) (hashtable-set! h1 (car k/i) (cdr k/i))) (enumerate keys))
+  (for-each (lambda (k/i) (hashtable-set! h2 (car k/i) (cdr k/i))) (enumerate keys))
   (check-equal? h1 h2)
 
   (void))

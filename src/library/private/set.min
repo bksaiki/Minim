@@ -50,7 +50,7 @@
       (+ (rec-hash (set-store a)) 401235121)))
   (methods gen:custom-write
     (lambda (s port mode)
-      (fprintf port "#<set ~s>" (hashtable-keys (set-store s))))))
+      (fprintf port "#<set ~s>" (vector->list (hashtable-keys (set-store s)))))))
 
 ;;
 ;;  Basic operations
@@ -96,7 +96,7 @@
 (define (set->list s)
   (unless (set? s)
     (error 'set->list "expected a set" s))
-  (hashtable-keys (set-store s)))
+  (vector->list (hashtable-keys (set-store s))))
 
 ;;
 ;;  Set comparison

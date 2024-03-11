@@ -244,8 +244,8 @@
 
 ;; Base environment when expanding modules
 (define ($base-stx-env env)
-  (let ([env (extend-environment env)])
-    (environment-set-variable-value!
+  (let ([env (environment-extend env)])
+    (environment-set!
       env
       'get-pattern-variable
       (lambda (k)
@@ -576,7 +576,10 @@
             (expand/expr (eval/xform maybe-xform expr (syntax-e head))
                          (merge-xforms xforms (cadr maybe-xform))
                          recur-begin?)
-            (datum->syntax (map loop (syntax->list expr))))]
+            (let ([stx-lst (syntax->list expr)])
+              (if (list? stx-lst)
+                  (datum->syntax (map loop stx-lst))
+                  (error 'expand/expr "invalid application" expr))))]
         [else
          (syntax-error 'expand/expr "bad syntax" expr)])))
 
