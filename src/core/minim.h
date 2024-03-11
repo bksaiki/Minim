@@ -217,23 +217,10 @@ extern mobj minim_values;
 // +------------+
 #define minim_prim_size             (4 * ptr_size)
 #define minim_primp(o)              (minim_type(o) == MINIM_OBJ_PRIM)
-#define minim_prim(o)               (*((mprim_proc*) PTR_ADD(o, ptr_size)))
+#define minim_prim(o)               (*((void**) PTR_ADD(o, ptr_size)))
 #define minim_prim_argc_low(o)      (*((int*) PTR_ADD(o, 2 * ptr_size)))
 #define minim_prim_argc_high(o)     (*((int*) PTR_ADD(o, 2 * ptr_size + 4)))
 #define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
-
-// Unsafe primitives
-// +------------+
-// |    type    | [0, 1)
-// |    argc    | [4, 8)
-// |     fn     | [8, 16)
-// |    name    | [16, 24)
-// +------------+
-#define minim_prim2_size            (3 * ptr_size)
-#define minim_prim2p(o)             (minim_type(o) == MINIM_OBJ_PRIM2)
-#define minim_prim2_argc(o)          (*((int*) PTR_ADD(o, 4)))
-#define minim_prim2_proc(o)         (*((void**) PTR_ADD(o, ptr_size)))
-#define minim_prim2_name(o)         (*((char**) PTR_ADD(o, 2 * ptr_size)))
 
 // Closure
 // +------------+
@@ -346,7 +333,7 @@ extern mobj quote_syntax_symbol;
 
 // Complex predicates
 
-#define minim_procp(x)            (minim_primp(x) || minim_prim2p(x) || minim_closurep(x))
+#define minim_procp(x)  (minim_primp(x) || minim_closurep(x))
 
 // Constructors
 
@@ -360,8 +347,7 @@ mobj Mvector(long len, mobj init);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mbox(mobj x);
 mobj Mhashtable(size_t size_hint);
-mobj Mprim(mprim_proc proc, char *name, short min_arity, short max_arity);
-mobj Mprim2(void *fn, char *name, short arity);
+mobj Mprim(void *fn, char *name, short min_arity, short max_arity);
 mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
@@ -590,6 +576,16 @@ mobj version_proc();
 mobj command_line_proc();
 mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
+
+mobj eval_proc();
+mobj apply_proc();
+mobj call_with_values_proc();
+mobj values_proc();
+mobj error_proc();
+mobj syntax_error_proc();
+
+mobj do_error(int argc, mobj *args);
+mobj do_syntax_error(int argc, mobj *args);
 
 // I/O
 
@@ -828,17 +824,5 @@ NORETURN void uncallable_prim_exn(const char *name);
 // Primitives
 
 void init_prims(mobj env);
-
-#define DEFINE_PRIM_PROC(name) \
-    mobj name ## _proc(int, mobj *);
-
-// procedures
-DEFINE_PRIM_PROC(call_with_values);
-DEFINE_PRIM_PROC(values);
-DEFINE_PRIM_PROC(apply)
-DEFINE_PRIM_PROC(eval);
-// Exceptions
-DEFINE_PRIM_PROC(error);
-DEFINE_PRIM_PROC(syntax_error);
 
 #endif  // _MINIM_H_

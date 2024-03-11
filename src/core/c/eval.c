@@ -164,14 +164,6 @@ static int check_proc_arity(int min_arity, int max_arity, int argc, const char *
         minim_prim_name(prim)   \
     )
 
-#define check_prim2_proc_arity(prim, argc)   \
-    check_proc_arity(   \
-        minim_prim2_argc(prim),  \
-        minim_prim2_argc(prim), \
-        argc, \
-        minim_prim2_name(prim)   \
-    )
-
 #define check_closure_arity(fn, argc)   \
     check_proc_arity(   \
         minim_closure_argc_low(fn), \
@@ -400,57 +392,10 @@ loop:
 
 application:
 
-        if (minim_prim2p(proc)) {
-            // unsafe primitive
-            // no checking arity just call with C calling conventions
-            check_prim2_proc_arity(proc, argc);
-            if (minim_prim2_proc(proc) == current_environment) {
-                // special case: `current-environment`
-                return env;
-            } else {
-                mobj result;
-                args = irt_call_args;
-
-                switch (argc) {
-                case 0:
-                    result = ((mobj (*)()) minim_prim2_proc(proc))();
-                    break;
-                case 1:
-                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0]);
-                    break;
-                case 2:
-                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1]);
-                    break;
-                case 3:
-                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2]);
-                    break;
-                case 4:
-                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3]);
-                    break;
-                case 5:
-                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4]);
-                    break;
-                case 6:
-                    result = ((mobj (*)()) minim_prim2_proc(proc))(args[0], args[1], args[2], args[3], args[4], args[5]);
-                    break;
-                default:
-                    clear_call_args();
-                    fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-                    fprintf(stderr, " received:");
-                    write_object(stderr, proc);
-                    fprintf(stderr, "\n at:");
-                    write_object(stderr, expr);
-                    minim_shutdown(1);
-                    break;
-                }
-
-                clear_call_args();
-                return result;
-            }
-        } else if (minim_primp(proc)) {
+        if (minim_primp(proc)) {
+            // primitives
             mobj result;
 
-            // primitive
             check_prim_proc_arity(proc, argc);
             args = irt_call_args;
             if (minim_prim(proc) == apply_proc) {
@@ -478,6 +423,15 @@ application:
                 clear_call_args();
                 check_expr(expr);
                 goto loop;
+            } else if (minim_prim(proc) == values_proc) {
+                // special case: `values`
+                minim_thread *th = current_thread();
+                if (argc > values_buffer_size(th))
+                    resize_values_buffer(th, argc);
+                values_buffer_count(th) = argc;
+                memcpy(values_buffer(th), args, argc * sizeof(mobj));    
+                clear_call_args();
+                return minim_values;
             } else if (minim_prim(proc) == call_with_values_proc) {
                 // special case: `call-with-values`
                 mobj producer, consumer;
@@ -517,18 +471,58 @@ application:
                 // TODO: this is not in tail position
                 result = eval_expr(consumer, env);
                 prepare_call_args(stashc);
-            } else {
-                // general case:
-                result = minim_prim(proc)(argc, args);
-            }
-
-            if (argc != irt_call_args_count) {
-                fprintf(stderr, "call stack corruption");
+                clear_call_args();
+                return result;
+            } else if (minim_prim(proc) == current_environment) {
+                // special case: `current-environment`
+                return env;
+            } else if (minim_prim(proc) == error_proc) {
+                // special case: `error`
+                do_error(argc, args);
+                fprintf(stderr, "unreachable\n");
                 minim_shutdown(1);
-            }
+            } else if (minim_prim(proc) == syntax_error_proc) {
+                // special case: `syntax-error`
+                do_syntax_error(argc, args);
+                fprintf(stderr, "unreachable\n");
+                minim_shutdown(1);
+            } else {
+                switch (argc) {
+                case 0:
+                    result = ((mobj (*)()) minim_prim(proc))();
+                    break;
+                case 1:
+                    result = ((mobj (*)()) minim_prim(proc))(args[0]);
+                    break;
+                case 2:
+                    result = ((mobj (*)()) minim_prim(proc))(args[0], args[1]);
+                    break;
+                case 3:
+                    result = ((mobj (*)()) minim_prim(proc))(args[0], args[1], args[2]);
+                    break;
+                case 4:
+                    result = ((mobj (*)()) minim_prim(proc))(args[0], args[1], args[2], args[3]);
+                    break;
+                case 5:
+                    result = ((mobj (*)()) minim_prim(proc))(args[0], args[1], args[2], args[3], args[4]);
+                    break;
+                case 6:
+                    result = ((mobj (*)()) minim_prim(proc))(args[0], args[1], args[2], args[3], args[4], args[5]);
+                    break;
+                default:
+                    clear_call_args();
+                    fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+                    fprintf(stderr, " received:");
+                    write_object(stderr, proc);
+                    fprintf(stderr, "\n at:");
+                    write_object(stderr, expr);
+                    minim_shutdown(1);
+                    break;
+                }
 
-            clear_call_args();
-            return result;
+                clear_call_args();
+                return result;
+            }
         } else if (minim_closurep(proc)) {
             mobj *vars, *rest;
             int i, j;

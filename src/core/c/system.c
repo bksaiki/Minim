@@ -164,7 +164,11 @@ mobj version_proc() {
     return Mstring(MINIM_VERSION);
 }
 
-mobj error_proc(int argc, mobj *args) {
+mobj error_proc() {
+    uncallable_prim_exn("error");
+}
+
+mobj do_error(int argc, mobj *args) {
     // (-> (or #f string symbol)
     //     string?
     //     any ...

@@ -132,7 +132,11 @@ mobj syntax_to_list(mobj stx) {
     }
 }
 
-mobj syntax_error_proc(int argc, mobj *args) {
+mobj syntax_error_proc() {
+    uncallable_prim_exn("syntax-error");
+}
+
+mobj do_syntax_error(int argc, mobj *args) {
     // (-> (or #f symbol) string any)
     // (-> (or #f symbol) string syntax any)
     // (-> (or #f symbol) string syntax syntaxs any)
@@ -172,46 +176,3 @@ mobj syntax_error_proc(int argc, mobj *args) {
 
     minim_shutdown(1);
 }
-
-// mobj to_datum_proc(int argc, mobj *args) {
-//     // (-> syntax any)
-//     if (!minim_syntaxp(args[0]))
-//         bad_type_exn("syntax->datum", "syntax?", args[0]);
-//     return strip_syntax(args[0]);
-// }
-
-// mobj syntax_e_proc(int argc, mobj *args) {
-//     // (-> syntax any)
-//     if (!minim_syntaxp(args[0]))
-//         bad_type_exn("syntax-e", "syntax?", args[0]);
-//     return minim_syntax_e(args[0]);
-// }
-
-// mobj syntax_loc_proc(int argc, mobj *args) {
-//     // (-> syntax any)
-//     if (!minim_syntaxp(args[0]))
-//         bad_type_exn("syntax-loc", "syntax?", args[0]);
-//     return minim_syntax_loc(args[0]);
-// }
-
-// mobj to_syntax_proc(int argc, mobj *args) {
-//     // (-> any syntax)
-//     return to_syntax(args[0]);
-// }
-
-// mobj syntax_to_list_proc(int argc, mobj *args) {
-//     // (-> syntax (or #f list))
-//     mobj stx, lst;
-    
-//     stx = args[0];
-//     if (!minim_syntaxp(stx))
-//         bad_type_exn("syntax->list", "syntax?", stx);
-
-//     lst = minim_syntax_e(stx);
-//     if (minim_nullp(lst))
-//         return minim_null;
-//     else if (!minim_consp(lst))
-//         return minim_false;
-//     else 
-//         return syntax_to_list(lst, lst);
-// }

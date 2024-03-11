@@ -57,10 +57,12 @@ static void write_box(FILE *out, mobj o) {
     write_object(out, minim_unbox(o));
 }
 
-static void write_procedure(FILE *out, mobj o) {
-    if (minim_primp(o)) fprintf(out, "#<procedure:%s>", minim_prim_name(o));
-    else if (minim_prim2p(o)) fprintf(out, "#<procedure:%s>", minim_prim2_name(o));
-    else /* closure */ fprintf(out, "#<procedure:%s>", minim_closure_name(o));
+static void write_closure(FILE *out, mobj o) {
+    if (minim_closure_name(o)) {
+        fprintf(out, "#<procedure:%s>", minim_closure_name(o));
+    } else {
+        fputs("#<procedure>", out);
+    }
 }
 
 static void write_record(FILE *out, mobj o) {
@@ -85,7 +87,8 @@ void write_object(FILE *out, mobj o) {
     else if (minim_consp(o)) write_pair(out, o);
     else if (minim_vectorp(o)) write_vector(out, o);
     else if (minim_boxp(o)) write_box(out, o);
-    else if (minim_procp(o)) write_procedure(out, o);
+    else if (minim_primp(o)) fprintf(out, "#<procedure:%s>", minim_prim_name(o));
+    else if (minim_closurep(o)) write_closure(out, o);
     else if (minim_input_portp(o)) fputs("#<input-port>", out);
     else if (minim_output_portp(o)) fputs("#<output-port>", out);
     else if (minim_hashtablep(o)) fputs("#<hashtable>", out);

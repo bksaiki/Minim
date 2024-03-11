@@ -34,28 +34,19 @@ mobj procp_proc(mobj x) {
     return minim_procp(x) ? minim_true : minim_false;
 }
 
-mobj call_with_values_proc(int argc, mobj *args) {
+mobj call_with_values_proc() {
     uncallable_prim_exn("call-with-values");
 }
 
-mobj values_proc(int argc, mobj *args) {
-    // (-> any ... (values any ...))
-    minim_thread *th;
-
-    th = current_thread();
-    if (argc > values_buffer_size(th))
-        resize_values_buffer(th, argc);
-    
-    values_buffer_count(th) = argc;
-    memcpy(values_buffer(th), args, argc * sizeof(mobj *));    
-    return minim_values;
+mobj values_proc() {
+    uncallable_prim_exn("values");
 }
 
-mobj eval_proc(int argc, mobj *args) {
+mobj eval_proc() {
     uncallable_prim_exn("eval");
 }
 
-mobj apply_proc(int argc, mobj *args) {
+mobj apply_proc() {
     uncallable_prim_exn("apply");
 }
 
@@ -70,9 +61,6 @@ mobj procedure_arity_proc(mobj proc) {
     if (minim_primp(proc)) {
         min_arity = minim_prim_argc_low(proc);
         max_arity = minim_prim_argc_high(proc);
-    } else if (minim_prim2p(proc)) {
-        min_arity = minim_prim2_argc(proc);
-        max_arity = minim_prim2_argc(proc);
     } else /* minim_closurep(proc) */ {
         min_arity = minim_closure_argc_low(proc);
         max_arity = minim_closure_argc_high(proc);
