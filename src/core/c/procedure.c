@@ -20,12 +20,6 @@ mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity) 
     return o;
 }
 
-// Resizes the value buffer if need be
-void resize_values_buffer(minim_thread *th, int size) {
-    values_buffer(th) = GC_alloc(size * sizeof(mobj*));
-    values_buffer_size(th) = size;
-}
-
 //
 //  Procedure
 //

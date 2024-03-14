@@ -57,6 +57,8 @@ void minim_boot_init() {
     // initialize thread
 
     th = current_thread();
+    th->pid = 0;    // TODO
+
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
     current_directory(th) = Mstring(get_current_dir());
@@ -64,10 +66,13 @@ void minim_boot_init() {
     record_equal_proc(th) = minim_false;
     record_hash_proc(th) = minim_false;
 
-    values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj*));
+    values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;
     values_buffer_count(th) = 0;
-    th->pid = 0;    // TODO
+
+    eval_buffer(th) = GC_alloc(INIT_EVAL_BUFFER_LEN * sizeof(mobj));
+    eval_buffer_size(th) = INIT_EVAL_BUFFER_LEN;
+    eval_buffer_count(th) = 0;
 
     // GC roots
 
@@ -79,15 +84,6 @@ void minim_boot_init() {
     GC_register_root(minim_void);
     GC_register_root(minim_values);
     GC_register_root(globals);
-
-    // Interpreter runtime
-
-    irt_call_args = GC_alloc(CALL_ARGS_DEFAULT * sizeof(mobj*));
-    irt_saved_args = GC_alloc(SAVED_ARGS_DEFAULT * sizeof(mobj*));
-    irt_call_args_count = 0;
-    irt_saved_args_count = 0;
-    irt_call_args_size = CALL_ARGS_DEFAULT;
-    irt_saved_args_size = SAVED_ARGS_DEFAULT;
 
     GC_resume();
     

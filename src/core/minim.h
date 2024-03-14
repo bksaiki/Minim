@@ -46,6 +46,7 @@ typedef void            *mobj;
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
+#define INIT_EVAL_BUFFER_LEN        10
 #define ENVIRONMENT_VECTOR_MAX      6
 
 // Arity
@@ -587,11 +588,26 @@ mobj syntax_error_proc();
 mobj do_error(int argc, mobj *args);
 mobj do_syntax_error(int argc, mobj *args);
 
+// Continuations
+// +------------+
+// |    prev    | [0, 8)
+// |    env     | [8, 16)
+// |    len     | [16, 24)
+// |    args    | [24, 24 + 8 * N)
+// +------------+
+
+#define continuation_size(n)        ((3 + n) * sizeof(mobj))
+#define continuation_prev(c)        (*((mobj*) (c)))
+#define continuation_env(c)         (*((mobj*) PTR_ADD(c, ptr_size)))
+#define continuation_len(c)         (*((size_t*) PTR_ADD(c, 2 * ptr_size)))
+#define continuation_saved(c)       ((mobj*) PTR_ADD(c, 3 * ptr_size))
+
+mobj Mcontinuation(mobj prev, mobj env, size_t size);
+
 // I/O
 
 mobj read_object(FILE *in);
 void write_object(FILE *out, mobj o);
-void minim_fprintf(FILE *o, const char *form, int v_count, mobj *vs, const char *prim_name);
 
 // FASL
 
@@ -617,25 +633,8 @@ void write_fasl(FILE *out, mobj o);
 
 // Interpreter
 
-#define CALL_ARGS_DEFAULT       10
-#define SAVED_ARGS_DEFAULT      10
-
 void check_expr(mobj expr);
 mobj eval_expr(mobj expr, mobj env);
-
-typedef struct {
-    mobj *call_args, *saved_args;
-    long call_args_count, saved_args_count;
-    long call_args_size, saved_args_size;
-} interp_rt;
-
-void push_saved_arg(mobj arg);
-void push_call_arg(mobj arg);
-void prepare_call_args(long count);
-void clear_call_args();
-long stash_call_args();
-
-void assert_no_call_args();
 
 // Environments
 mobj setup_env();
@@ -747,23 +746,31 @@ mobj intern_symbol(intern_table *itab, const char *sym);
 // Threads
 
 typedef struct minim_thread {
+    // thread runtime
     mobj env;
-
+    mobj continuation;
+    // thread parameters
     mobj input_port;
     mobj output_port;
     mobj current_directory;
     mobj command_line;
     mobj record_equal_proc;
     mobj record_hash_proc;
-
+    // `values` stack
     mobj *values_buffer;
     int values_buffer_size;
     int values_buffer_count;
-
+    // `eval` stack
+    mobj *eval_buffer;
+    int eval_buffer_size;
+    int eval_buffer_count;
+    // thread id
     int pid;
 } minim_thread;
 
 #define global_env(th)                  ((th)->env)
+#define current_continuation(th)        ((th)->continuation)
+
 #define input_port(th)                  ((th)->input_port)
 #define output_port(th)                 ((th)->output_port)
 #define current_directory(th)           ((th)->current_directory)
@@ -772,16 +779,18 @@ typedef struct minim_thread {
 #define record_hash_proc(th)            ((th)->record_hash_proc)
 
 #define values_buffer(th)               ((th)->values_buffer)
-#define values_buffer_ref(th, idx)      ((th)->values_buffer[(idx)])
+#define values_buffer_ref(th, i)        ((values_buffer(th))[i])
 #define values_buffer_size(th)          ((th)->values_buffer_size)
 #define values_buffer_count(th)         ((th)->values_buffer_count)
 
-void resize_values_buffer(minim_thread *th, int size);
+#define eval_buffer(th)                 ((th)->eval_buffer)
+#define eval_buffer_ref(th, i)          ((eval_buffer(th))[i])
+#define eval_buffer_size(th)            ((th)->eval_buffer_size)
+#define eval_buffer_count(th)           ((th)->eval_buffer_count)
 
 // Globals
 
-typedef struct minim_globals {
-    interp_rt irt;
+typedef struct minim_globals {;
     minim_thread *current_thread;
     intern_table *symbols;
 } minim_globals;
@@ -791,13 +800,6 @@ extern size_t bucket_sizes[];
 
 #define current_thread()    (globals->current_thread)
 #define intern(s)           (intern_symbol(globals->symbols, s))
-
-#define irt_call_args               (globals->irt.call_args)
-#define irt_saved_args              (globals->irt.saved_args)
-#define irt_call_args_count         (globals->irt.call_args_count)
-#define irt_saved_args_count        (globals->irt.saved_args_count)
-#define irt_call_args_size          (globals->irt.call_args_size)
-#define irt_saved_args_size         (globals->irt.saved_args_size)
 
 // System
 
