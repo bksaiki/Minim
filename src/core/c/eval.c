@@ -14,18 +14,6 @@
 //  Runtime check
 //
 
-void assert_no_call_args() {
-    if (eval_buffer_count(current_thread()) > 0) {
-        fprintf(
-            stderr,
-            "[assert failed] assert_no_call_args(): args on stack %d\n",
-            eval_buffer_count(current_thread())
-        );
-
-        exit(1);
-    }
-}
-
 void bad_syntax_exn(mobj expr) {
     fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
     fprintf(stderr, " at: ");
@@ -129,6 +117,10 @@ static void push_arg(mobj x) {
     eval_buffer_count(th)++;
 }
 
+static void clear_args() {
+    eval_buffer_count(current_thread()) = 0;
+}
+
 static void save_frame(mobj env) {
     minim_thread *th;
     mobj prev, curr;
@@ -138,10 +130,8 @@ static void save_frame(mobj env) {
     prev = current_continuation(th);
     curr = Mcontinuation(prev, env, eval_buffer_count(th));
 
-    fprintf(stderr, "new cont frame %p => %p (%d)\n", prev, curr, eval_buffer_count(th));
-
     // copy arguments into frame and clear the eval stack
-    memcpy(continuation_saved(curr), eval_buffer(th), eval_buffer_count(th));
+    memcpy(continuation_saved(curr), eval_buffer(th), eval_buffer_count(th) * sizeof(mobj));
     eval_buffer_count(th) = 0;
 
     // update thread info
@@ -158,9 +148,7 @@ static void resume_frame() {
 
     // copy all values in frame to the eval stack and update the parameters
     eval_buffer_count(th) = continuation_len(frame);
-    memcpy(eval_buffer(th), continuation_saved(frame), eval_buffer_count(th));
-
-    fprintf(stderr, "popping cont frame %p => %p\n", frame, continuation_prev(frame));
+    memcpy(eval_buffer(th), continuation_saved(frame), eval_buffer_count(th) * sizeof(mobj));
 
     // update thread info
     current_continuation(th) = continuation_prev(frame);
@@ -173,46 +161,51 @@ static void do_values() {
         values_buffer(th) = GC_realloc(values_buffer(th), values_buffer_size(th) * sizeof(mobj));
     }
 
-    memcpy(values_buffer(th), eval_buffer(th), eval_buffer_count(th));
+    memcpy(values_buffer(th), eval_buffer(th), eval_buffer_count(th) * sizeof(mobj));
     values_buffer_count(th) = eval_buffer_count(th);
 }
 
-// static long apply_args() {
-//     mobj lst;
+static void values_to_args(mobj x) {
+    minim_thread *th;
+    long i;
+    
+    if (minim_valuesp(x)) {
+        // multi-valued
+        th = current_thread();
+        for (i = 0; i < values_buffer_count(th); i++) {
+            push_arg(values_buffer_ref(th, i));
+        }
+    } else {
+        // single-valued
+        push_arg(x);
+    }
+}
 
-//     // check if last argument is a list
-//     // safe since call_args >= 2
-//     lst = irt_call_args[irt_call_args_count - 1];
+static void do_apply() {
+    minim_thread *th;
+    mobj rest;
+    long i;
 
-//     // for every arg except the last arg: shift down by 1
-//     // remove the last argument from the stack
-//     memcpy(irt_call_args, &irt_call_args[1], (irt_call_args_count - 2) * sizeof(mobj));
-//     irt_call_args_count -= 2;
+    // shift standard arguments by 1 (procedure is consumed)
+    th = current_thread();
+    rest = eval_buffer_ref(th, eval_buffer_count(th) - 1);
+    for (i = 0; i < eval_buffer_count(th) - 2; i++)
+        eval_buffer_ref(th, i) = eval_buffer_ref(th, i + 1);
 
-//     // for the last argument: push every element of the list
-//     // onto the call stack
-//     while (minim_consp(lst)) {
-//         push_call_arg(minim_car(lst));
-//         lst = minim_cdr(lst);
-//     }
-
-//     if (!minim_nullp(lst))
-//         bad_type_exn("apply", "list?", lst);
-
-//     // just for safety
-//     irt_call_args[irt_call_args_count] = NULL;
-//     return irt_call_args_count;
-// }
+    eval_buffer_count(th) -= 2;
+    for (; !minim_nullp(rest); rest = minim_cdr(rest))
+        push_arg(minim_car(rest));
+}
 
 // Forces `x` to be a single value, that is,
 // if `x` is the result of `(values ...)` it unwraps
 // the result if `x` contains one value and panics otherwise
 static mobj force_single_value(mobj x) {
-    minim_thread *th;
     if (minim_valuesp(x)) {
-        th = current_thread();
+        minim_thread *th = current_thread();
         if (values_buffer_count(th) != 1)
             result_arity_exn(NULL, 1, values_buffer_count(th));
+
         values_buffer_count(th) = 0;
         return values_buffer_ref(th, 0);
     } else {
@@ -253,43 +246,42 @@ static long closure_env_size(mobj fn) {
     }
 }
 
-static void bind_values(const char *name, mobj env, mobj result, mobj binds) {
-    long bindc = list_length(binds);
-    if (minim_valuesp(result)) {
-        // multi-valued
-        minim_thread *th = current_thread();
-        if (bindc != values_buffer_count(th))
-            result_arity_exn(name, bindc, values_buffer_count(th));
+static void bind_values(const char *name, mobj env, mobj ids, mobj vals) {
+    minim_thread *th;
+    long bindc, idx;
 
-        for (long idx = 0; !minim_nullp(binds); ++idx) {
-            SET_NAME_IF_CLOSURE(minim_car(binds), values_buffer_ref(th, idx));
-            env_define_var(env, minim_car(binds), values_buffer_ref(th, idx));
-            binds = minim_cdr(binds);
+    bindc = list_length(ids);
+    if (minim_valuesp(vals)) {
+        // multi-valued
+        th = current_thread();
+        if (bindc != values_buffer_count(th)) {
+            result_arity_exn(name, bindc, values_buffer_count(th));
         }
+
+        idx = 0;
+        for (; !minim_nullp(ids); ids = minim_cdr(ids)) {
+            SET_NAME_IF_CLOSURE(minim_car(ids), values_buffer_ref(th, idx));
+            env_define_var(env, minim_car(ids), values_buffer_ref(th, idx));
+            idx += 1;
+        }
+
+        for (long idx = 0; !minim_nullp(ids); ++idx) {
+            SET_NAME_IF_CLOSURE(minim_car(ids), values_buffer_ref(th, idx));
+            env_define_var(env, minim_car(ids), values_buffer_ref(th, idx));
+            ids = minim_cdr(ids);
+        }
+
+        values_buffer_count(th) = 0;
     } else {
         // single-valued
-        if (bindc != 1)
+        if (bindc != 1) {
             result_arity_exn(name, bindc, 1);
-        SET_NAME_IF_CLOSURE(minim_car(binds), result);
-        env_define_var(env, minim_car(binds), result);
+        }
+
+        SET_NAME_IF_CLOSURE(minim_car(ids), vals);
+        env_define_var(env, minim_car(ids), vals);
     }
 }
-
-// static long eval_exprs(mobj exprs, mobj env) {
-//     mobj it, result;
-//     long argc;
-
-//     argc = 0;
-//     assert_no_call_args();
-//     for (it = exprs; !minim_nullp(it); it = minim_cdr(it)) {
-//         result = eval_expr(minim_car(it), env);
-//         push_saved_arg(force_single_value(result));
-//         ++argc;
-//     }
-
-//     prepare_call_args(argc);
-//     return argc;
-// }
 
 mobj eval_expr(mobj expr, mobj env) {
     mobj *args, proc;
@@ -305,10 +297,6 @@ mobj eval_expr(mobj expr, mobj env) {
 
 loop:
 
-    fprintf(stderr, "%d %d ", eval_buffer_count(current_thread()), values_buffer_count(current_thread()));
-    write_object(stderr, expr);
-    fprintf(stderr, "\n");
-
     if (minim_consp(expr)) {
         // special forms
         mobj head = minim_car(expr);
@@ -316,7 +304,7 @@ loop:
             if (head == define_values_symbol) {
                 // define-values form
                 mobj result = eval_expr(minim_car(minim_cddr(expr)), env);
-                bind_values("define-values", env, result, minim_cadr(expr));
+                bind_values("define-values", env, minim_cadr(expr), result);
                 return minim_void;
             } else if (head == let_values_symbol) {
                 // let-values form
@@ -325,7 +313,7 @@ loop:
                 while (!minim_nullp(bindings)) {
                     mobj bind = minim_car(bindings);
                     mobj result = eval_expr(minim_cadr(bind), env);
-                    bind_values("let-values", env2, result, minim_car(bind));
+                    bind_values("let-values", env2, minim_car(bind), result);
                     bindings = minim_cdr(bindings);
                 }
 
@@ -339,7 +327,7 @@ loop:
                 while (!minim_nullp(bindings)) {
                     mobj bind = minim_car(bindings);
                     mobj result = eval_expr(minim_cadr(bind), env2);
-                    bind_values("letrec-values", env2, result, minim_car(bind));
+                    bind_values("letrec-values", env2, minim_car(bind), result);
                     bindings = minim_cdr(bindings);
                 }
 
@@ -394,31 +382,31 @@ loop:
         proc = force_single_value(eval_expr(head, env));
         for (mobj it = minim_cdr(expr); !minim_nullp(it); it = minim_cdr(it))
             push_arg(force_single_value(eval_expr(minim_car(it), env)));
-        
-        args = eval_buffer(current_thread());
-        argc = eval_buffer_count(current_thread());
 
 application:
 
+        args = eval_buffer(current_thread());
+        argc = eval_buffer_count(current_thread());
         if (minim_primp(proc)) {
             // primitives
             mobj result;
 
             check_prim_proc_arity(proc, argc);    
             if (minim_prim(proc) == apply_proc) {
+                mobj rest;
+
                 // special case for `apply`
                 proc = force_single_value(args[0]);
-                if (!minim_procp(proc)) {
-                    fprintf(stderr, "apply: expected a procedure\n");
-                    fprintf(stderr, " received:");
-                    write_object(stderr, proc);
-                    fprintf(stderr, "\n");
-                    minim_shutdown(1);
-                }
+                if (!minim_procp(proc))
+                    bad_type_exn("apply", "procedure?", env);
 
-                fprintf(stderr, "apply: unimplemented\n");
-                minim_shutdown(1);
-                // argc = apply_args();
+                // last argument must be a list
+                rest = args[argc - 1];
+                if (!minim_listp(rest))
+                    bad_type_exn("apply", "list?", rest);
+
+                // push list argument to stack
+                do_apply();
                 goto application;
             } else if (minim_prim(proc) == eval_proc) {
                 // special case for `eval`
@@ -439,47 +427,25 @@ application:
                 return minim_values;
             } else if (minim_prim(proc) == call_with_values_proc) {
                 // special case: `call-with-values`
-                // mobj producer, consumer;
-                // long stashc;
-                fprintf(stderr, "call-with-values: unimplemented\n");
-                minim_shutdown(1);
+                mobj producer, consumer;
                 
-                // producer = force_single_value(args[0]);
-                // consumer = args[1];
-                // if (!minim_procp(producer)) {
-                //     fprintf(stderr, "call-with-values: expected a procedure\n");
-                //     fprintf(stderr, " received:");
-                //     write_object(stderr, producer);
-                //     fprintf(stderr, "\n");
-                //     minim_shutdown(1);
-                // }
+                // check producer
+                producer = args[0];
+                consumer = args[1];
 
-                // // call the producer and process results
-                // stashc = stash_call_args();
-                // result = eval_expr(producer, env);
-                // if (minim_valuesp(result)) {
-                //     // need to unpack
-                //     minim_thread *th = current_thread();
-                //     for (long i = 0; i < values_buffer_count(th); ++i)
-                //         push_call_arg(values_buffer_ref(th, i));
-                // } else {
-                //     push_call_arg(result);
-                // }
+                if (!minim_procp(producer))
+                    bad_type_exn("call-with-values", "procedure?", producer);
+                if (!minim_procp(consumer))
+                    bad_type_exn("call-with-values", "procedure?", consumer);
 
-                // consumer = force_single_value(consumer);
-                // if (minim_primp(consumer)) {
-                //     fprintf(stderr, "call-with-values: expected a procedure\n");
-                //     fprintf(stderr, " received:");
-                //     write_object(stderr, consumer);
-                //     fprintf(stderr, "\n");
-                //     minim_shutdown(1);
-                // }
+                // call the producer, pushing result to eval stack
+                clear_args();
+                save_frame(env);
+                values_to_args(eval_expr(producer, env));
 
-                // // TODO: this is not in tail position
-                // result = eval_expr(consumer, env);
-                // prepare_call_args(stashc);
-                // clear_call_args();
-                // return result;
+                // call the consumer in the tail position
+                proc = consumer;
+                goto application;
             } else if (minim_prim(proc) == current_environment) {
                 // special case: `current-environment`
                 resume_frame();
