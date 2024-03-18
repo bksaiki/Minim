@@ -25,7 +25,6 @@
 
 // System constants (assumes 64-bits)
 
-
 typedef uint8_t         mbyte;
 typedef int             mchar;
 typedef long            mfixnum;
@@ -35,6 +34,10 @@ typedef void            *mobj;
 
 #define ptr_size        8
 #define PTR_ADD(p, d)   ((void *) ((muptr) (p)) + (d))
+
+// Forward
+
+typedef struct minim_thread     minim_thread;
 
 // Constants
 
@@ -46,7 +49,6 @@ typedef void            *mobj;
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
-#define INIT_EVAL_BUFFER_LEN        10
 #define ENVIRONMENT_VECTOR_MAX      6
 
 // Arity
@@ -592,17 +594,34 @@ mobj do_syntax_error(int argc, mobj *args);
 // +------------+
 // |    prev    | [0, 8)
 // |    env     | [8, 16)
-// |    len     | [16, 24)
-// |    args    | [24, 24 + 8 * N)
+// |    sfp     | [16, 24)
+// |    cp      | [24, 32)
+// |    ac      | [32, 40)
 // +------------+
 
-#define continuation_size(n)        ((3 + n) * sizeof(mobj))
+#define continuation_size           (5 * sizeof(mobj))
 #define continuation_prev(c)        (*((mobj*) (c)))
 #define continuation_env(c)         (*((mobj*) PTR_ADD(c, ptr_size)))
-#define continuation_len(c)         (*((size_t*) PTR_ADD(c, 2 * ptr_size)))
-#define continuation_saved(c)       ((mobj*) PTR_ADD(c, 3 * ptr_size))
+#define continuation_sfp(c)         (*((mobj**) PTR_ADD(c, 2 * ptr_size)))
+#define continuation_cp(c)          (*((mobj*) PTR_ADD(c, 3 * ptr_size)))
+#define continuation_ac(c)          (*((size_t*) PTR_ADD(c, 4 * ptr_size)))
 
-mobj Mcontinuation(mobj prev, mobj env, size_t size);
+mobj Mcontinuation(mobj prev, mobj env, minim_thread *th);
+
+// Stack segment
+// +--------------+
+// |     Prev     | [0, 8)
+// |     Size     | [8, 16)
+// |     ...      | [16, ...)
+// +--------------+
+
+#define stack_seg_default_size      (1024 * 1024)
+#define stack_seg_prev(s)           (*((mobj *) (s)))
+#define stack_seg_size(s)           (*((size_t*) PTR_ADD(s, ptr_size)))
+#define stack_seg_base(s)           PTR_ADD(s, 2 * ptr_size)
+#define stack_seg_end(s)            PTR_ADD(stack_seg_base(s), stack_seg_size(s))
+
+mobj Mstack_segment(mobj prev, size_t size);
 
 // I/O
 
@@ -747,8 +766,12 @@ mobj intern_symbol(intern_table *itab, const char *sym);
 
 typedef struct minim_thread {
     // thread runtime
-    mobj env;
-    mobj continuation;
+    mobj env;           // environment
+    mobj continuation;  // continuation
+    mobj segment;       // stack segment
+    mobj *sfp;          // stack pointer
+    mobj cp;            // current procedure
+    size_t ac;          // argument counter
     // thread parameters
     mobj input_port;
     mobj output_port;
@@ -760,16 +783,16 @@ typedef struct minim_thread {
     mobj *values_buffer;
     int values_buffer_size;
     int values_buffer_count;
-    // `eval` stack
-    mobj *eval_buffer;
-    int eval_buffer_size;
-    int eval_buffer_count;
     // thread id
     int pid;
 } minim_thread;
 
 #define global_env(th)                  ((th)->env)
 #define current_continuation(th)        ((th)->continuation)
+#define current_segment(th)             ((th)->segment)
+#define current_sfp(th)                 ((th)->sfp)
+#define current_cp(th)                  ((th)->cp)
+#define current_ac(th)                  ((th)->ac)
 
 #define input_port(th)                  ((th)->input_port)
 #define output_port(th)                 ((th)->output_port)
@@ -782,11 +805,6 @@ typedef struct minim_thread {
 #define values_buffer_ref(th, i)        ((values_buffer(th))[i])
 #define values_buffer_size(th)          ((th)->values_buffer_size)
 #define values_buffer_count(th)         ((th)->values_buffer_count)
-
-#define eval_buffer(th)                 ((th)->eval_buffer)
-#define eval_buffer_ref(th, i)          ((eval_buffer(th))[i])
-#define eval_buffer_size(th)            ((th)->eval_buffer_size)
-#define eval_buffer_count(th)           ((th)->eval_buffer_count)
 
 // Globals
 

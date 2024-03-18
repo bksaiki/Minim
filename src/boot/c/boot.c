@@ -66,13 +66,14 @@ void minim_boot_init() {
     record_equal_proc(th) = minim_false;
     record_hash_proc(th) = minim_false;
 
+    current_segment(th) = Mstack_segment(NULL, stack_seg_default_size);
+    current_sfp(th) = stack_seg_base(current_segment(th));
+    current_cp(th) = NULL;
+    current_ac(th) = 0;
+
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;
     values_buffer_count(th) = 0;
-
-    eval_buffer(th) = GC_alloc(INIT_EVAL_BUFFER_LEN * sizeof(mobj));
-    eval_buffer_size(th) = INIT_EVAL_BUFFER_LEN;
-    eval_buffer_count(th) = 0;
 
     // GC roots
 
