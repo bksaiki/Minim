@@ -615,7 +615,7 @@ mobj Mcontinuation(mobj prev, mobj env, minim_thread *th);
 // |     ...      | [16, ...)
 // +--------------+
 
-#define stack_seg_default_size      (1024 * 1024)
+#define stack_seg_default_size      (1024)
 #define stack_seg_prev(s)           (*((mobj *) (s)))
 #define stack_seg_size(s)           (*((size_t*) PTR_ADD(s, ptr_size)))
 #define stack_seg_base(s)           PTR_ADD(s, 2 * ptr_size)

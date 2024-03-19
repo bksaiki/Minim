@@ -1,0 +1,21 @@
+;; Factorial
+
+(define-values (factorial-naive)
+  (lambda (n)
+    (if (<= n 0)
+        1
+        (* n (factorial-naive (- n 1))))))
+
+(define-values (factorial)
+  (lambda (n)
+    (letrec-values ([(loop)
+                     (lambda (n acc)
+                       (if (<= n 0)
+                           acc
+                           (loop (- n 1) (* n acc))))])
+      (loop n 1))))
+
+
+
+(factorial-naive 1000)
+(factorial 1000)

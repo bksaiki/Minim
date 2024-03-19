@@ -48,9 +48,7 @@ test: boot-tests
 boot-tests:
 	$(MAKE) -C $(BOOT_DIR) test
 	$(MAKE) -C $(TEST_DIR) boot
-
-compile-tests: boot
-	$(MAKE) -C $(TEST_DIR) compile
+	$(MAKE) -C $(TEST_DIR) examples
 
 clean:
 	$(MAKE) -C $(CORE_DIR) clean
