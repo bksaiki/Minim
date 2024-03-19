@@ -13,7 +13,7 @@ mobj Mcontinuation(mobj prev, mobj env, minim_thread *th) {
 }
 
 mobj Mstack_segment(mobj prev, size_t size) {
-    mobj sseg = GC_alloc(size - (2 * ptr_size));
+    mobj sseg = GC_alloc(size);
     stack_seg_prev(sseg) = prev;
     stack_seg_size(sseg) = size;
     return sseg;

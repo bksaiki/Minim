@@ -599,7 +599,7 @@ mobj do_syntax_error(int argc, mobj *args);
 // |    ac      | [32, 40)
 // +------------+
 
-#define continuation_size           (5 * sizeof(mobj))
+#define continuation_size           (5 * ptr_size)
 #define continuation_prev(c)        (*((mobj*) (c)))
 #define continuation_env(c)         (*((mobj*) PTR_ADD(c, ptr_size)))
 #define continuation_sfp(c)         (*((mobj**) PTR_ADD(c, 2 * ptr_size)))
@@ -616,6 +616,7 @@ mobj Mcontinuation(mobj prev, mobj env, minim_thread *th);
 // +--------------+
 
 #define stack_seg_default_size      (1024)
+#define stack_seg_header_size       (2 * ptr_size)
 #define stack_seg_prev(s)           (*((mobj *) (s)))
 #define stack_seg_size(s)           (*((size_t*) PTR_ADD(s, ptr_size)))
 #define stack_seg_base(s)           PTR_ADD(s, 2 * ptr_size)

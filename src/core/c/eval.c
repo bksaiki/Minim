@@ -106,27 +106,37 @@ static int check_proc_arity(int min_arity, int max_arity, int argc, const char *
 //  Evaluation
 //
 
+#define stack_frame_size(th, addt)  ((current_ac(th) + (addt)) * ptr_size)
+
 static int stack_overflowp(size_t argc) {
     minim_thread *th;
     mobj sseg;
     
     th = current_thread();
     sseg = current_segment(th);
-    return PTR_ADD(current_sfp(th), (current_ac(th) + argc) * ptr_size) >= stack_seg_end(sseg);
+    return PTR_ADD(current_sfp(th), stack_frame_size(th, argc)) >= stack_seg_end(sseg);
 }
 
-static void check_stack_space(size_t argc) {
+static void grow_stack(size_t size) {
+    minim_thread *th;
+    mobj sseg;
+    size_t req, actual;
+
+    // compute required space
+    th = current_thread();
+    req = size + stack_seg_header_size;
+    actual = (req > stack_seg_default_size) ? req : stack_seg_default_size;
+
+    // allocate the new stack segment
+    sseg = Mstack_segment(current_segment(th), actual);
+    current_segment(th) = sseg;
+    current_sfp(th) = stack_seg_base(sseg);
+}
+
+static void maybe_grow_stack(size_t argc) {
     minim_thread *th = current_thread();
     if (stack_overflowp(argc)) {
-        fprintf(stderr, "stack overflow: unimplemented\n");
-        fprintf(
-            stderr,
-            " sfp=%p, ac=%ld, esp=%p\n",
-            current_sfp(th),
-            current_ac(th),
-            stack_seg_end(current_segment(th))
-        );
-        minim_shutdown(1);
+        grow_stack(stack_frame_size(th, argc));
     }
 }
 
@@ -179,17 +189,18 @@ static void pop_frame() {
     seg = current_segment(th);
     sfp = current_sfp(th);
 
-    // possibly need to handle underflow
-    if (!(((void *) sfp) >= stack_seg_base(seg) && ((void *) sfp) < stack_seg_end(seg))) {
-        fprintf(stderr, "stack underflow: unimplemented\n");
-        minim_shutdown(1);
-    }
-
     // pop continuation and update thread-local data
     current_continuation(th) = continuation_prev(cc);
     current_sfp(th) = continuation_sfp(cc);
     current_cp(th) = continuation_cp(cc);
     current_ac(th) = continuation_ac(cc);
+
+    // underflow if frame pointer is not in segment
+    sfp = current_sfp(th);
+    if (!(((void *) sfp) >= stack_seg_base(seg) && ((void *) sfp) < stack_seg_end(seg))) {
+        // just pop the current segment
+        current_segment(th) = stack_seg_prev(seg);
+    }
 
     // fprintf(stderr, "popped continuation (%p)\n", cc);
     // if (cc) {
@@ -236,7 +247,7 @@ static void values_to_args(mobj x) {
 static void do_apply() {
     minim_thread *th;
     mobj *sfp, rest;
-    size_t i, ac;
+    size_t i, ac, len;
 
     th = current_thread();
     sfp = current_sfp(th);
@@ -249,9 +260,15 @@ static void do_apply() {
 
     // check if we have room for the application
     current_ac(th) -= 2;
-    if (stack_overflowp(list_length(rest))) {
-        fprintf(stderr, "do_apply(): stack overflow unimplemented\n");
-        minim_shutdown(1);
+    len = list_length(rest);
+    if (stack_overflowp(len)) {
+        mobj *nsfp;
+
+        grow_stack(stack_frame_size(th, len));
+        nsfp = current_sfp(th);
+        for (i = 0; i < ac; i++)
+            nsfp[i] = sfp[i];
+        sfp = nsfp;
     }
 
     // push rest argument to stack
@@ -451,7 +468,7 @@ loop:
 
         // save the current continuation and check if we need a new stack segment
         push_frame(env);
-        check_stack_space(list_length(minim_cdr(expr)));
+        maybe_grow_stack(list_length(minim_cdr(expr)));
 
         // evaluate the current application
         current_cp(th) = force_single_value(eval_expr(head, env));
@@ -517,7 +534,7 @@ application:
                 
                 // create a new frame, push values to arguments, and call producer
                 push_frame(env);
-                check_stack_space(values_buffer_count(th));
+                maybe_grow_stack(values_buffer_count(th));
                 values_to_args(result);
                 current_cp(th) = consumer;
                 goto application;

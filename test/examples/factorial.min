@@ -19,3 +19,4 @@
 
 (factorial-naive 1000)
 (factorial 1000)
+(apply * (map add1 (iota 1000)))
