@@ -101,7 +101,7 @@ typedef enum {
     MINIM_OBJ_ENV,
 
     /* Compiled types */
-    MINIM_OBJ_NATIVE_CLOSURE,
+    MINIM_OBJ_JIT,
 } mobj_type;
 
 typedef mobj (*mprim_proc)(int, mobj *);
@@ -322,6 +322,17 @@ extern mobj minim_values;
 #define minim_env_prev(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
 #define minim_env_bindings(o)   (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 
+// JIT code
+// +------------+
+// |    type    | [0, 1)
+// |    size    | [8, 16)
+// |    instrs  | [16, ...) 
+// +------------+
+#define minim_jit_size(n)       ((2 * ptr_size) + (n * ptr_size))
+#define minim_jitp(o)           (minim_type(o) == MINIM_OBJ_JIT)
+#define minim_jit_len(o)       (*((size_t*) PTR_ADD(o, ptr_size)))
+#define minim_jit_ref(o, i)     (((mobj*) PTR_ADD(o, 2 * ptr_size))[i])    
+
 // Special objects
 
 extern mobj quote_symbol;
@@ -336,6 +347,7 @@ extern mobj quote_syntax_symbol;
 
 extern mobj apply_symbol;
 extern mobj bind_symbol;
+extern mobj bind_values_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
 extern mobj check_arity_symbol;
@@ -587,6 +599,9 @@ mobj environment_names(mobj env);
 mobj extend_environment(mobj env);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
 mobj environment_variable_set(mobj env, mobj k, mobj v);
+
+mobj Mjit(size_t size);
+mobj jit_to_instrs(mobj jit);
 
 mobj load_proc(mobj fname);
 mobj exit_proc(mobj code);

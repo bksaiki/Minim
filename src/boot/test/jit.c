@@ -117,6 +117,39 @@ int test_simple() {
     return passed;
 }
 
+int test_if() {
+    passed = 1;
+
+    check_equal("(if #t 1 0)", "1");
+    check_equal("(if #f 1 0)", "0");
+    check_equal("(if 1 1 0)", "1");
+    check_equal("(if 0 1 0)", "1");
+
+    return passed;
+}
+
+int test_closure() {
+    passed = 1;
+
+    check_equal("(lambda () 1)", "#<procedure>");
+    check_equal("(lambda (x) (cons x 1))", "#<procedure>");
+    check_equal("(lambda (x y) (cons x y))", "#<procedure>");
+    check_equal("(lambda (x y . rest) ($append rest))", "#<procedure>");
+
+    return passed;
+}
+
+int test_app() {
+    passed = 1;
+
+    check_equal("(void)", "#<void>");
+    check_equal("(null? '())", "#t");
+    check_equal("(cons 'a 'b)", "(a . b)");
+    // check_equal("(cons (cons 'a 'b) (cons 'c 'd))", "((a . b) (c . d))");
+
+    return passed;
+}
+
 int main(int argc, char **argv) {
     volatile int stack_top;
 
@@ -127,7 +160,9 @@ int main(int argc, char **argv) {
     return_code = stack_top;
 
     log_test("simple", test_simple);
-
+    log_test("if", test_if);
+    log_test("closure", test_closure);
+    log_test("app", test_app);
 
     GC_finalize();
     return return_code;

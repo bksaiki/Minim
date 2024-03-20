@@ -16,6 +16,7 @@ mobj quote_syntax_symbol;
 
 mobj apply_symbol;
 mobj bind_symbol;
+mobj bind_values_symbol;
 mobj brancha_symbol;
 mobj branchf_symbol;
 mobj check_arity_symbol;

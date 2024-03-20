@@ -3,6 +3,27 @@
 #include "../minim.h"
 
 //
+//  JIT object
+//
+
+mobj Mjit(size_t size) {
+    mobj o = GC_alloc(minim_jit_size(size));
+    minim_type(o) = MINIM_OBJ_JIT;
+    minim_jit_len(o) = size;
+    return o;
+}
+
+mobj jit_to_instrs(mobj jit) {
+    mobj ins;
+    size_t i;
+
+    ins = minim_null;
+    for (i = 0; i < minim_jit_len(jit); i++)
+        ins = Mcons(minim_car(minim_jit_ref(jit, i)), ins);
+    return list_reverse(ins);
+}
+
+//
 //  Utilities
 //
 
@@ -13,28 +34,28 @@ static int get_lambda_arity(mobj e, long *req_arity) {
     return !minim_nullp(e);
 }
 
-// static void get_lambda_arity(mobj e, short *min_arity, short *max_arity) {
-//     int argc = 0;
-//     for (e = minim_cadr(e); minim_consp(e); e = minim_cdr(e)) {
-//         ++argc;
-//     }
+static mobj write_jit(mobj ins) {
+    mobj jit;
+    size_t i, len;
 
-//     if (minim_nullp(e)) {
-//         *min_arity = argc;
-//         *max_arity = argc;
-//     } else {
-//         *min_arity = argc;
-//         *max_arity = ARG_MAX;
-//     }
-// }
+    len = list_length(ins);
+    jit = Mjit(len);
+    for (i = 0; i < len; i++) {
+        minim_jit_ref(jit, i) = Mcons(minim_car(ins), minim_cdr(ins));
+        ins = minim_cdr(ins);
+    }
+
+    return jit;
+}
 
 //
 //  Compiler env
 //
 
-#define cenv_length     2
-#define cenv_labels(c)  (minim_vector_ref(c, 0))
-#define cenv_tmpls(c)   (minim_vector_ref(c, 1))
+#define cenv_length         2
+#define cenv_labels(c)      (minim_vector_ref(c, 0))
+#define cenv_tmpls(c)       (minim_vector_ref(c, 1))
+#define cenv_num_tmpls(c)   list_length(minim_unbox(cenv_tmpls(c)))
 
 static mobj make_cenv() {
     mobj cenv = Mvector(cenv_length, NULL);
@@ -69,7 +90,7 @@ static mobj cenv_make_label(mobj cenv) {
     return label;
 }
 
-static mobj cenv_template_add(mobj cenv, mobj ins) {
+static mobj cenv_template_add(mobj cenv, mobj jit) {
     mobj tmpl_box;
     size_t num_tmpls;
 
@@ -78,8 +99,42 @@ static mobj cenv_template_add(mobj cenv, mobj ins) {
     num_tmpls = list_length(minim_unbox(tmpl_box));
 
     // update list
-    minim_unbox(tmpl_box) = Mcons(ins, minim_unbox(tmpl_box));
+    minim_unbox(tmpl_box) = Mcons(jit, minim_unbox(tmpl_box));
     return Mfixnum(num_tmpls);
+}
+
+static mobj cenv_template_ref(mobj cenv, size_t i) {
+    mobj tmpls;
+    size_t j;
+    
+    tmpls = list_reverse(minim_unbox(cenv_tmpls(cenv)));
+    for (j = i; j > 0; j--) {
+        if (minim_nullp(tmpls)) {
+            fprintf(stderr, "cenv_template_ref(): index out of bounds %ld\n", i);
+            minim_shutdown(1);
+        }
+
+        tmpls = minim_cdr(tmpls);
+    }
+
+    return minim_car(tmpls);
+}
+
+//
+//  Resolver
+//
+
+static void resolve_refs(mobj cenv, mobj ins) {
+    mobj in, jit;
+
+    for (; !minim_nullp(ins); ins = minim_cdr(ins)) {
+        in = minim_car(ins);
+        if (minim_car(in) == make_closure_symbol) {
+            // closure: need to lookup JIT object to embed
+            jit = cenv_template_ref(cenv, minim_fixnum(minim_cadr(in)));
+            minim_cadr(in) = jit;
+        }
+    }
 }
 
 //
@@ -89,17 +144,16 @@ static mobj cenv_template_add(mobj cenv, mobj ins) {
 static mobj compile_expr(mobj expr, mobj env, int tailp);
 
 static mobj compile_define_values(mobj expr, mobj env) {
-    mobj ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
-    fprintf(stderr, "compile_expr: define-values unimplemented\n");
-    fprintf(stderr, " at: ");
-    write_object(stderr, expr);
-    write_object(stderr, ins);
-    fprintf(stderr, "\n");
-    minim_shutdown(1);
+    mobj ids, ins;
+
+    ids = minim_cadr(expr);
+    ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
+    list_set_tail(ins, Mlist1(Mlist3(bind_values_symbol, Mfixnum(list_length(ids)), ids)));
+    return ins;
 }
 
 static mobj compile_lambda(mobj expr, mobj env) {
-    mobj args, body, ins, idx;
+    mobj args, body, ins, idx, jit;
     long i, req_arity;
     int restp;
     
@@ -134,13 +188,16 @@ static mobj compile_lambda(mobj expr, mobj env) {
     body = Mcons(begin_symbol, minim_cddr(expr));
     list_set_tail(ins, compile_expr(body, extend_cenv(env), 1));
 
-    // register JIT block
-    idx = cenv_template_add(env, ins);
-
-    write_object(stderr, idx);
-    fprintf(stderr, ": ");
+    fprintf(stderr, "%ld: ", cenv_num_tmpls(env));
     write_object(stderr, ins);
     fprintf(stderr, "\n");
+
+    // resolve references
+    resolve_refs(env, ins);
+
+    // register JIT block
+    jit = write_jit(ins);
+    idx = cenv_template_add(env, jit);
 
     // instruction
     return Mlist1(Mlist2(make_closure_symbol, idx));
@@ -170,20 +227,25 @@ static mobj compile_begin(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_if(mobj expr, mobj env, int tailp) {
-    mobj ins, cond_ins, ift_ins, iff_ins, label;
+    mobj ins, cond_ins, ift_ins, iff_ins, liff, lend;
 
     // compile the parts
     cond_ins = compile_expr(minim_cadr(expr), env, 0);
     ift_ins = compile_expr(minim_car(minim_cddr(expr)), env, tailp);
     iff_ins = compile_expr(minim_cadr(minim_cddr(expr)), env, tailp);
-    label = cenv_make_label(env);
+
+    // labels
+    liff = cenv_make_label(env);
+    lend = cenv_make_label(env);
 
     // compose the instructions together
     ins = cond_ins;
-    list_set_tail(ins, Mlist1(Mlist2(branchf_symbol, label)));
+    list_set_tail(ins, Mlist1(Mlist2(branchf_symbol, liff)));
     list_set_tail(ins, ift_ins);
-    list_set_tail(ins, Mlist1(label));
+    list_set_tail(ins, Mlist1(Mlist2(brancha_symbol, lend)));
+    list_set_tail(ins, Mlist1(liff));
     list_set_tail(ins, iff_ins);
+    list_set_tail(ins, Mlist1(lend));
     return ins;
 }
 
@@ -200,7 +262,7 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
 
     // compute procedure
     ins = list_append2(ins, compile_expr(minim_car(expr), env, 0));
-    list_set_tail(ins, Mlist1(Mlist1(push_symbol)));
+    list_set_tail(ins, Mlist1(Mlist1(set_proc_symbol)));
 
     // compute arguments
     for (it = minim_cdr(expr); !minim_nullp(it); it = minim_cdr(it)) {
@@ -224,11 +286,8 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
         // special form or application
         mobj head = minim_car(expr);
         if (minim_symbolp(head)) {
-            // possible special forms
-            if (head == define_values_symbol) {
-                // define-values form
-                return compile_define_values(expr, env);
-            } else if (head == lambda_symbol) {
+            // special forms
+            if (head == lambda_symbol) {
                 // lambda form
                 return compile_lambda(expr, env);
             } else if (head == begin_symbol) {
@@ -237,6 +296,9 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
             } else if (head == if_symbol) {
                 // if form
                 return compile_if(expr, env, tailp);
+            } else if (head == quote_symbol) {
+                // quote form
+                return Mlist1(Mlist2(literal_symbol, minim_cadr(expr)));
             }
         }
 
@@ -262,10 +324,32 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
     }
 }
 
+static mobj compile_top(mobj expr, mobj env) {
+    if (minim_consp(expr)) {
+        // special form or application
+        mobj head = minim_car(expr);
+        if (minim_symbolp(head)) {
+            // special forms
+            if (head == define_values_symbol) {
+                // define-values form
+                return compile_define_values(expr, env);
+            }
+        }
+    }
+
+    // expression context otherwise
+    return compile_expr(expr, env, 1);
+}
+
 //
 //  Public API
 //
 
 mobj compile_jit(mobj expr) {
-    return compile_expr(expr, make_cenv(), 1);
+    mobj env, ins;
+
+    env = make_cenv();
+    ins = compile_top(expr, env);
+    resolve_refs(env, ins);
+    return write_jit(ins);
 }

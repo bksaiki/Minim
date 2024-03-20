@@ -29,6 +29,7 @@ void minim_boot_init() {
 
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");
+    bind_values_symbol = intern("#%bind-values");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
     check_arity_symbol = intern("#%check-arity");
