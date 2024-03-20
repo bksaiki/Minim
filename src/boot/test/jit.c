@@ -149,9 +149,30 @@ int test_app() {
     check_equal("(cons (cons 'a 'b) (cons 'c 'd))", "((a . b) c . d)");
     check_equal("(cons ((lambda () 'a)) (cons 'b 'c))", "(a b . c)");
     check_equal("((lambda (x) (cons x 2)) 1)", "(1 . 2)");
+    check_equal("((lambda (x y) (cons x y)) 1 2)", "(1 . 2)");
 
     return passed;
 }
+
+int test_rest() {
+    passed = 1;
+
+    check_equal("((lambda xs xs))", "()");
+    check_equal("((lambda xs xs) 1)", "(1)");
+    check_equal("((lambda xs xs) 1 2)", "(1 2)");
+
+    check_equal("((lambda (x . ys) (cons ys x)) 1)", "(() . 1)");
+    check_equal("((lambda (x . ys) (cons ys x)) 1 2)", "((2) . 1)");
+    check_equal("((lambda (x . ys) (cons ys x)) 1 2 3)", "((2 3) . 1)");
+
+    check_equal("((lambda (x y . zs) (cons zs (cons y x))) 1 2)", "(() 2 . 1)");
+    check_equal("((lambda (x y . zs) (cons zs (cons y x))) 1 2 3)", "((3) 2 . 1)");
+    check_equal("((lambda (x y . zs) (cons zs (cons y x))) 1 2 3 4)", "((3 4) 2 . 1)");
+
+    return passed;
+}
+
+
 
 int test_let_values() {
     passed = 1;
@@ -190,6 +211,7 @@ int main(int argc, char **argv) {
     log_test("if", test_if);
     log_test("closure", test_closure);
     log_test("app", test_app);
+    log_test("rest", test_rest);
     log_test("let-values", test_let_values);
 
     GC_finalize();

@@ -159,6 +159,15 @@ static void resolve_refs(mobj cenv, mobj ins) {
 
 static mobj compile_expr(mobj expr, mobj env, int tailp);
 
+static mobj with_tail_ret(mobj ins, int tailp) {
+    if (tailp) {
+        // tail position: must return
+        list_set_tail(ins, Mlist1(Mlist1(ret_symbol)));
+    }
+
+    return ins;
+}
+
 static mobj compile_define_values(mobj expr, mobj env) {
     mobj ids, ins;
 
@@ -178,7 +187,7 @@ static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
 
     env_size = let_values_size(expr);
     binds = minim_cadr(expr);
-    body = minim_car(minim_cddr(expr));
+    body = Mcons(begin_symbol, minim_cddr(expr));
 
     // push a new environment
     ins = Mlist2(
@@ -211,7 +220,7 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
 
     env_size = let_values_size(expr);
     binds = minim_cadr(expr);
-    body = minim_car(minim_cddr(expr));
+    body = Mcons(begin_symbol, minim_cddr(expr));
 
     // stash a new environment
     ins = Mlist2(
@@ -286,7 +295,9 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     body = Mcons(begin_symbol, minim_cddr(expr));
     list_set_tail(ins, compile_expr(body, extend_cenv(env), 1));
 
-    fprintf(stderr, "%ld: ", cenv_num_tmpls(env));
+    fprintf(stderr, "%ld:\n expr:", cenv_num_tmpls(env));
+    write_object(stderr, expr);
+    fprintf(stderr, "\n code:");
     write_object(stderr, ins);
     fprintf(stderr, "\n");
 
@@ -299,24 +310,21 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     idx = cenv_template_add(env, code);
 
     // instruction
-    ins = Mlist2(make_closure_symbol, idx);
-    if (tailp) {
-        // tail position: must return
-        return Mlist2(ins, Mlist1(ret_symbol));
-    } else {
-        // non-tail position: subsequent instructions
-        return Mlist1(ins);
-    }
+    ins = Mlist1(Mlist2(make_closure_symbol, idx));
+    return with_tail_ret(ins, tailp);
 }
 
 static mobj compile_begin(mobj expr, mobj env, int tailp) {
-    mobj exprs = minim_cdr(expr);
+    mobj exprs, ins;
+    
+    exprs = minim_cdr(expr);
     if (minim_nullp(exprs)) {
         // empty body
-        return Mlist2(literal_symbol, minim_void);
+        ins = Mlist1(Mlist2(literal_symbol, minim_void));
+        return with_tail_ret(ins, tailp);
     } else {
         // non-empty body
-        mobj ins, ins_sub;
+        mobj ins_sub;
         
         // all except last is not in tail position
         ins = minim_null;
@@ -333,22 +341,37 @@ static mobj compile_begin(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_if(mobj expr, mobj env, int tailp) {
-    mobj ins, cond_ins, ift_ins, iff_ins, label;
+    mobj ins, cond_ins, ift_ins, iff_ins;
 
     // compile the parts
     cond_ins = compile_expr(minim_cadr(expr), env, 0);
     ift_ins = compile_expr(minim_car(minim_cddr(expr)), env, tailp);
     iff_ins = compile_expr(minim_cadr(minim_cddr(expr)), env, tailp);
 
-    // label
-    label = cenv_make_label(env);
-
-    // compose the instructions together
     ins = cond_ins;
-    list_set_tail(ins, Mlist1(Mlist2(branchf_symbol, label)));
-    list_set_tail(ins, ift_ins);
-    list_set_tail(ins, Mlist1(label));
-    list_set_tail(ins, iff_ins);
+    if (tailp) {
+        // tail position: returns will be handled by branches
+        mobj liff = cenv_make_label(env);
+
+        // compose the instructions together
+        list_set_tail(ins, Mlist1(Mlist2(branchf_symbol, liff)));
+        list_set_tail(ins, ift_ins);
+        list_set_tail(ins, Mlist1(liff));
+        list_set_tail(ins, iff_ins);
+    } else {
+        // non-tail position: subsequent instruction so need to jump
+        mobj liff = cenv_make_label(env);
+        mobj lend = cenv_make_label(env);
+
+        // compose the instructions together
+        list_set_tail(ins, Mlist1(Mlist2(branchf_symbol, liff)));
+        list_set_tail(ins, ift_ins);
+        list_set_tail(ins, Mlist1(Mlist2(brancha_symbol, lend)));
+        list_set_tail(ins, Mlist1(liff));
+        list_set_tail(ins, iff_ins);
+        list_set_tail(ins, Mlist1(lend));
+    }
+    
     return ins;
 }
 
@@ -385,25 +408,13 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_lookup(mobj expr, int tailp) {
-    mobj in = Mlist2(lookup_symbol, expr);
-    if (tailp) {
-        // tail position: must return
-        return Mlist2(in, Mlist1(ret_symbol));
-    } else {
-        // non-tail position: subsequent instructions
-        return Mlist1(in);
-    }
+    mobj ins = Mlist1(Mlist2(lookup_symbol, expr));
+    return with_tail_ret(ins, tailp);
 }
 
 static mobj compile_literal(mobj expr, int tailp) {
-    mobj in = Mlist2(literal_symbol, expr);
-    if (tailp) {
-        // tail position: must return
-        return Mlist2(in, Mlist1(ret_symbol));
-    } else {
-        // non-tail position: subsequent instructions
-        return Mlist1(in);
-    }
+    mobj ins = Mlist1(Mlist2(literal_symbol, expr));
+    return with_tail_ret(ins, tailp);
 }
 
 static mobj compile_expr(mobj expr, mobj env, int tailp) {
@@ -430,6 +441,9 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
             } else if (head == quote_symbol) {
                 // quote form
                 return compile_literal(minim_cadr(expr), tailp);
+            } else if (head == quote_syntax_symbol) {
+                // quote-syntax form
+                return compile_literal(to_syntax(minim_cadr(expr)), tailp);
             }
         }
 

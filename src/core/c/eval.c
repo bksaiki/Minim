@@ -188,6 +188,36 @@ static mobj pop_frame() {
     return cc;
 }
 
+static mobj do_rest(size_t idx) {
+    minim_thread *th;
+    size_t ac;
+
+    th = current_thread();
+    ac = current_ac(th);
+    if (idx > ac) {
+        fprintf(stderr, "do_rest(): starting index out of bounds\n");
+        fprintf(stderr, " idx=%ld, ac=%ld\n", idx, ac);
+        minim_shutdown(1);
+    }
+
+    if (idx == ac) {
+        // empty
+        return minim_null;
+    } else {
+        mobj hd, tl, *sfp;
+
+        sfp = current_sfp(th);
+        hd = tl = Mcons(sfp[idx], NULL);
+        for (idx += 1; idx < ac; idx++) {
+            minim_cdr(tl) = Mcons(sfp[idx], NULL);
+            tl = minim_cdr(tl);
+        }
+
+        minim_cdr(tl) = minim_null;
+        return hd;
+    }
+}
+
 static void do_values() {
     minim_thread *th = current_thread();
     mobj *sfp = current_sfp(th);
@@ -349,7 +379,7 @@ mobj eval_expr(mobj expr, mobj env) {
     th = current_thread();
     current_ac(th) = 0;
     istream = minim_code_ref(code, 0);
-    res = minim_void;
+    res = NULL;
 
 // instruction processor
 loop:
@@ -365,6 +395,14 @@ loop:
             minim_shutdown(1);
         }
     }
+
+    fprintf(stderr, "eval: ");
+    write_object(stderr, ins);
+    if (res) {
+        fprintf(stderr, " res=");
+        write_object(stderr, res);
+    }
+    fprintf(stderr, "\n");
 
     ty = minim_car(ins);
     if (ty == literal_symbol) {
@@ -384,9 +422,6 @@ loop:
     } else if (ty == pop_symbol) {
         // pop
         res = pop_arg();
-    } else if (ty == bind_symbol) {
-        // bind
-        env_define_var(env, minim_cadr(ins), res);
     } else if (ty == apply_symbol) {
         // apply
         if (minim_primp(current_cp(th))) {
@@ -394,21 +429,23 @@ loop:
         } else if (minim_closurep(current_cp(th))) {
             goto call_closure;
         } else {
-            fprintf(stderr, "expected procedure\n");
-            fprintf(stderr, " got: ");
-            write_object(stderr, current_cp(th));
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
+            goto not_procedure;
         }
     } else if (ty == ret_symbol) {
         // ret
         goto restore_frame;
+    } else if (ty == bind_symbol) {
+        // bind
+        env_define_var(env, minim_cadr(ins), res);
+        res = minim_void;
     } else if (ty == bind_values_symbol) {
         // bind-values
         bind_values(env, minim_cadr(ins), res);
+        res = minim_void;
     } else if (ty == bind_values_top_symbol) {
         // bind-values/top (special variant for `let-values`)
         bind_values(current_sfp(th)[current_ac(th) - 1], minim_cadr(ins), res);
+        res = minim_void;
     } else if (ty == make_env_symbol) {
         // make-env
         res = Menv2(env, minim_fixnum(minim_cadr(ins)));
@@ -421,13 +458,17 @@ loop:
     } else if (ty == save_cc_symbol) {
         // save-cc
         push_frame(env, Mcons(istream, minim_cadr(ins)));
+    } else if (ty == get_arg_symbol) {
+        // get-arg
+        res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
+    } else if (ty == do_rest_symbol) {
+        // do-rest
+        res = do_rest(minim_fixnum(minim_cadr(ins)));
     } else if (ty == clear_frame_symbol) {
         // clear frame
         current_cp(th) = NULL;
         current_ac(th) = 0;
-    } else if (ty == get_arg_symbol) {
-        // get-arg
-        res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
+        res = NULL;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
         label = minim_cadr(ins);
@@ -506,6 +547,7 @@ call_closure:
 
 // call primitive procedure
 call_prim:
+    mobj *args;
     mobj (*prim)();
 
     // check arity
@@ -513,13 +555,23 @@ call_prim:
 
     // split on special cases
     prim = minim_prim(current_cp(th));
+    args = current_sfp(th);
     if (prim == values_proc) {
-        // values
+        // special case: `values`
         do_values();
         res = minim_values;
+    } else if (prim == error_proc) {
+        // special case: `error`
+        do_error(current_ac(th), args);
+        fprintf(stderr, "unreachable\n");
+        minim_shutdown(1);
+    } else if (prim == syntax_error_proc) {
+        // special case: `syntax-error`
+        do_syntax_error(current_ac(th), args);
+        fprintf(stderr, "unreachable\n");
+        minim_shutdown(1);
     } else {
         // default: call based on arity
-        mobj *args = current_sfp(th);
         switch (current_ac(th)) {
         case 0:
             res = prim();
@@ -555,4 +607,11 @@ call_prim:
     current_cp(th) = NULL;
     current_ac(th) = 0;
     goto restore_frame;
+
+not_procedure:
+    fprintf(stderr, "expected procedure\n");
+    fprintf(stderr, " got: ");
+    write_object(stderr, current_cp(th));
+    fprintf(stderr, "\n");
+    minim_shutdown(1);
 }
