@@ -26,6 +26,7 @@ void minim_boot_init() {
     lambda_symbol = intern("lambda");
     begin_symbol = intern("begin");
     quote_syntax_symbol = intern("quote-syntax");
+    values_symbol = intern("values");
 
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");
@@ -33,12 +34,16 @@ void minim_boot_init() {
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
     check_arity_symbol = intern("#%check-arity");
+    clear_frame_symbol = intern("#%clear-frame");
     do_rest_symbol = intern("#%do-rest");
     get_arg_symbol = intern("#%get-arg");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
     make_closure_symbol = intern("#%make-closure");
+    make_env_symbol = intern("#%make-env");
+    pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");
+    push_env_symbol = intern("#%push-env");
     ret_symbol = intern("#%ret");
     save_cc_symbol = intern("#%save-cc");
     set_proc_symbol = intern("#%set-proc");

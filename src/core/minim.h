@@ -349,28 +349,33 @@ extern mobj minim_values;
 
 // Special objects
 
-extern mobj quote_symbol;
+extern mobj begin_symbol;
 extern mobj define_values_symbol;
-extern mobj let_values_symbol;
-extern mobj letrec_values_symbol;
-extern mobj setb_symbol;
 extern mobj if_symbol;
 extern mobj lambda_symbol;
-extern mobj begin_symbol;
+extern mobj let_values_symbol;
+extern mobj letrec_values_symbol;
+extern mobj quote_symbol;
 extern mobj quote_syntax_symbol;
+extern mobj setb_symbol;
+extern mobj values_symbol;
 
 extern mobj apply_symbol;
 extern mobj bind_symbol;
 extern mobj bind_values_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
+extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj do_rest_symbol;
 extern mobj get_arg_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
 extern mobj make_closure_symbol;
+extern mobj make_env_symbol;
+extern mobj pop_env_symbol;
 extern mobj push_symbol;
+extern mobj push_env_symbol;
 extern mobj ret_symbol;
 extern mobj set_proc_symbol;
 extern mobj save_cc_symbol;

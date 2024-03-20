@@ -34,6 +34,20 @@ static int get_lambda_arity(mobj e, long *req_arity) {
     return !minim_nullp(e);
 }
 
+static size_t let_values_size(mobj e) {
+    mobj binds;
+    size_t var_count;
+    
+    var_count = 0;
+    binds = minim_cadr(e);
+    while (!minim_nullp(binds)) {
+        var_count += list_length(minim_caar(binds));
+        binds = minim_cdr(binds);
+    }
+
+    return var_count;
+}
+
 static mobj write_code(mobj ins, mobj arity) {
     mobj code;
     size_t i, len;
@@ -158,9 +172,42 @@ static mobj compile_define_values(mobj expr, mobj env) {
     return ins;
 }
 
+static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
+    mobj binds, body, ins;
+    size_t env_size;
+
+    env_size = let_values_size(expr);
+    binds = minim_cadr(expr);
+    body = minim_car(minim_cddr(expr));
+
+    // push a new environment
+    ins = Mlist2(
+        Mlist2(make_env_symbol, Mfixnum(env_size)),
+        Mlist1(push_env_symbol)
+    );
+
+    // bind values
+    for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
+        list_set_tail(ins, compile_expr(minim_car(minim_cdar(binds)), env, 0));
+        list_set_tail(ins, Mlist1(
+            Mlist3(bind_values_symbol, Mfixnum(list_length(minim_caar(binds))), minim_caar(binds))
+        ));
+    }
+
+    // evaluate body
+    list_set_tail(ins, compile_expr(body, env, tailp));
+
+    // if we are not in tail position, pop the environment
+    if (!tailp) {
+        list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
+    }
+
+    return ins;
+}
+
 static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     mobj args, body, ins, idx, code, arity;
-    long i, req_arity;
+    long i, req_arity, env_size;
     int restp;
     
     // arity check
@@ -170,6 +217,13 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     } else {
         ins = Mlist1(Mlist2(check_arity_symbol, Mfixnum(req_arity)));
     }
+
+    // push environment
+    env_size = req_arity + (tailp ? 1 : 0);
+    list_set_tail(ins, Mlist2(
+        Mlist2(make_env_symbol, Mfixnum(env_size)),
+        Mlist1(push_env_symbol)
+    ));
 
     // bind arguments
     args = minim_cadr(expr);
@@ -189,6 +243,9 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
             Mlist2(bind_symbol, args)
         )); 
     }
+
+    // reset the frame
+    list_set_tail(ins, Mlist1(Mlist1(clear_frame_symbol)));
 
     // compile the body
     body = Mcons(begin_symbol, minim_cddr(expr));
@@ -320,7 +377,10 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
         mobj head = minim_car(expr);
         if (minim_symbolp(head)) {
             // special forms
-            if (head == lambda_symbol) {
+            if (head == letrec_values_symbol) {
+                // letrec-values form
+                return compile_letrec_values(expr, env, tailp);
+            } else if (head == lambda_symbol) {
                 // lambda form
                 return compile_lambda(expr, env, tailp);
             } else if (head == begin_symbol) {

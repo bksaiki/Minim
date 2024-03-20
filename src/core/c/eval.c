@@ -139,27 +139,16 @@ static void maybe_grow_stack(size_t argc) {
 }
 
 static void push_arg(mobj x) {
-    minim_thread *th;
-    mobj *sfp;
-    size_t ac;
-    
-    th = current_thread();
-    sfp = current_sfp(th);
-    ac = current_ac(th);
-
-    sfp[ac] = x;
+    minim_thread *th = current_thread();
+    current_sfp(th)[current_ac(th)] = x;
     current_ac(th) += 1;
 }
 
 static void push_frame(mobj env, mobj pc) {
-    minim_thread *th;
-    mobj cc;
-    size_t ac;
-
     // get current continuation and argument count
-    th = current_thread();
-    cc = current_continuation(th);
-    ac = current_ac(th);
+    minim_thread *th = current_thread();
+    mobj cc = current_continuation(th);
+    size_t ac = current_ac(th);
 
     // update current continuation, frame pointer, and argument count
     cc = Mcontinuation(cc, pc, env, th);
@@ -167,25 +156,14 @@ static void push_frame(mobj env, mobj pc) {
     current_sfp(th) = PTR_ADD(current_sfp(th), ac * ptr_size);
     current_cp(th) = NULL;
     current_ac(th) = 0;
-
-    // fprintf(stderr, "saving continuation (%p)\n", cc);
-    // if (cc) {
-    //     fprintf(stderr, " prev=%p\n", continuation_prev(cc));  
-    //     fprintf(stderr, " sfp=%p\n", continuation_sfp(cc));
-    //     fprintf(stderr, " cp=%p\n", continuation_cp(cc));
-    //     fprintf(stderr, " ac=%ld\n", continuation_ac(cc));
-    // }
 }
 
-static void pop_frame() {
-    minim_thread *th;
-    mobj cc, seg, *sfp;
-
+static mobj pop_frame() {
     // get current continuation
-    th = current_thread();
-    cc = current_continuation(th);
-    seg = current_segment(th);
-    sfp = current_sfp(th);
+    minim_thread *th = current_thread();
+    mobj cc = current_continuation(th);
+    mobj *seg = current_segment(th);
+    mobj *sfp = current_sfp(th);
 
     // pop continuation and update thread-local data
     current_continuation(th) = continuation_prev(cc);
@@ -200,23 +178,13 @@ static void pop_frame() {
         current_segment(th) = stack_seg_prev(seg);
     }
 
-    // fprintf(stderr, "popped continuation (%p)\n", cc);
-    // if (cc) {
-    //     fprintf(stderr, " prev=%p\n", continuation_prev(cc));  
-    //     fprintf(stderr, " sfp=%p\n", continuation_sfp(cc));
-    //     fprintf(stderr, " cp=%p\n", continuation_cp(cc));
-    //     fprintf(stderr, " ac=%ld\n", continuation_ac(cc));
-    // }
+    return cc;
 }
 
 static void do_values() {
-    minim_thread *th;
-    mobj *sfp;
-    size_t ac;
-
-    th = current_thread();
-    sfp = current_sfp(th);
-    ac = current_ac(th);
+    minim_thread *th = current_thread();
+    mobj *sfp = current_sfp(th);
+    size_t ac = current_ac(th);
 
     // check if the values buffer is large enough
     if (ac >= values_buffer_size(th)) {
@@ -299,21 +267,6 @@ static mobj force_single_value(mobj x) {
         return values_buffer_ref(th, 0);
     } else {
         return x;
-    }
-}
-
-static void get_lambda_arity(mobj e, short *min_arity, short *max_arity) {
-    int argc = 0;
-    for (e = minim_cadr(e); minim_consp(e); e = minim_cdr(e)) {
-        ++argc;
-    }
-
-    if (minim_nullp(e)) {
-        *min_arity = argc;
-        *max_arity = argc;
-    } else {
-        *min_arity = argc;
-        *max_arity = ARG_MAX;
     }
 }
 
@@ -420,15 +373,21 @@ loop:
         // push
         maybe_grow_stack(1);
         push_arg(res);
+    } else if (ty == bind_symbol) {
+        // bind
+        env_define_var(env, minim_cadr(ins), res);
     } else if (ty == apply_symbol) {
         // apply
-        // fprintf(stderr, "apply [%ld]: ", current_ac(th));
-        // write_object(stderr, current_cp(th));
-        // fprintf(stderr, "\n");
         if (minim_primp(current_cp(th))) {
             goto call_prim;
-        } else {
+        } else if (minim_closurep(current_cp(th))) {
             goto call_closure;
+        } else {
+            fprintf(stderr, "expected procedure\n");
+            fprintf(stderr, " got: ");
+            write_object(stderr, current_cp(th));
+            fprintf(stderr, "\n");
+            minim_shutdown(1);
         }
     } else if (ty == ret_symbol) {
         // ret
@@ -436,6 +395,25 @@ loop:
     } else if (ty == bind_values_symbol) {
         // bind-values
         bind_values(env, minim_cadr(ins), minim_car(minim_cddr(ins)), res);
+    } else if (ty == make_env_symbol) {
+        // make-env
+        res = Menv2(env, minim_fixnum(minim_cadr(ins)));
+    } else if (ty == push_env_symbol) {
+        // push-env
+        env = res;
+    } else if (ty == pop_env_symbol) {
+        // pop-env
+        env = minim_env_prev(env);
+    } else if (ty == save_cc_symbol) {
+        // save-cc
+        push_frame(env, Mcons(istream, minim_cadr(ins)));
+    } else if (ty == clear_frame_symbol) {
+        // clear frame
+        current_cp(th) = NULL;
+        current_ac(th) = 0;
+    } else if (ty == get_arg_symbol) {
+        // get-arg
+        res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
         label = minim_cadr(ins);
@@ -487,13 +465,19 @@ find_label:
 
 // restores previous continuation
 restore_frame:
-    if (minim_nullp(current_continuation(th))) {
-        // stack fully unwound, so leave the function
-        return res;
-    }
+    mobj cc, pc;
 
-    fprintf(stderr, "unimplemented: restore_frame()\n");
-    minim_shutdown(1);
+    // check if stack is fully unwound
+    if (minim_nullp(current_continuation(th)))
+        return res;
+    
+    // otherwise, restore the old instruction stream and environment
+    cc = pop_frame();
+    pc = continuation_pc(cc);
+    istream = minim_car(pc);
+    label = minim_cdr(pc);
+    env = continuation_env(cc);
+    goto find_label;
 
 // call closure
 call_closure:
@@ -508,42 +492,48 @@ call_closure:
 // call primitive procedure
 call_prim:
     mobj (*prim)();
-    mobj *args;
 
     // check arity
     check_arity(env, minim_prim_arity(current_cp(th)));
 
-    // call based on arity
+    // split on special cases
     prim = minim_prim(current_cp(th));
-    args = current_sfp(th);
-    switch (current_ac(th)) {
-    case 0:
-        res = prim();
-        break;
-    case 1:
-        res = prim(args[0]);
-        break;
-    case 2:
-        res = prim(args[0], args[1]);
-        break;
-    case 3:
-        res = prim(args[0], args[1], args[2]);
-        break;
-    case 4:
-        res = prim(args[0], args[1], args[2], args[3]);
-        break;
-    case 5:
-        res = prim(args[0], args[1], args[2], args[3], args[4]);
-        break;
-    case 6:
-        res = prim(args[0], args[1], args[2], args[3], args[4], args[5]);
-        break;
-    default:
-        fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-        fprintf(stderr, " received: ");
-        write_object(stderr, current_cp(th));
-        minim_shutdown(1);
-        break;
+    if (prim == values_proc) {
+        // values
+        do_values();
+        res = minim_values;
+    } else {
+        // default: call based on arity
+        mobj *args = current_sfp(th);
+        switch (current_ac(th)) {
+        case 0:
+            res = prim();
+            break;
+        case 1:
+            res = prim(args[0]);
+            break;
+        case 2:
+            res = prim(args[0], args[1]);
+            break;
+        case 3:
+            res = prim(args[0], args[1], args[2]);
+            break;
+        case 4:
+            res = prim(args[0], args[1], args[2], args[3]);
+            break;
+        case 5:
+            res = prim(args[0], args[1], args[2], args[3], args[4]);
+            break;
+        case 6:
+            res = prim(args[0], args[1], args[2], args[3], args[4], args[5]);
+            break;
+        default:
+            fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+            fprintf(stderr, " received: ");
+            write_object(stderr, current_cp(th));
+            minim_shutdown(1);
+            break;
+        }
     }
 
     // clear arguments and pop frame
