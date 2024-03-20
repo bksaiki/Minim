@@ -35,7 +35,8 @@ all: $(CONFIG) $(OBJS)
 profile:
 	$(MAKE) CFLAGS="$(CFLAGS) -pg" all
 
-test: $(CONFIG) $(BUILD_DIR)/prims $(BUILD_DIR)/fasl
+test: $(CONFIG) $(BUILD_DIR)/jit $(BUILD_DIR)/prims $(BUILD_DIR)/fasl
+	$(BUILD_DIR)/jit
 	$(BUILD_DIR)/prims
 	$(BUILD_DIR)/fasl
 

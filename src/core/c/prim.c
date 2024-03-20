@@ -232,7 +232,4 @@ void init_prims(mobj env) {
 
     add_vprocedure("error", error_proc, 2, ARG_MAX);
     add_vprocedure("syntax-error", syntax_error_proc, 2, 4);
-
-    // Load the prelude
-    load_file(PRELUDE_PATH, env);
 }

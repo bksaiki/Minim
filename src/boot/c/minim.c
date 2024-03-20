@@ -71,7 +71,10 @@ int main(int argc, char **argv) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
+
+    // load the prelude
     th = current_thread();
+    load_prelude(global_env(th));
 
     if (opt_load_library)
         load_library();

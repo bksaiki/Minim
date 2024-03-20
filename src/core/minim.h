@@ -339,10 +339,11 @@ extern mobj bind_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
 extern mobj check_arity_symbol;
-extern mobj closure_symbol;
+extern mobj do_rest_symbol;
 extern mobj get_arg_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
+extern mobj make_closure_symbol;
 extern mobj push_symbol;
 extern mobj set_proc_symbol;
 extern mobj save_cc_symbol;
@@ -849,6 +850,7 @@ int make_page_executable(void *page, size_t size);
 int make_page_write_only(void *page, size_t size);
 
 mobj load_file(const char *fname, mobj env);
+mobj load_prelude(mobj env);
 
 NORETURN void minim_shutdown(int code);
 

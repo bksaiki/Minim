@@ -32,10 +32,11 @@ void minim_boot_init() {
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
     check_arity_symbol = intern("#%check-arity");
-    closure_symbol = intern("#%make-closure");
+    do_rest_symbol = intern("#%do-rest");
     get_arg_symbol = intern("#%get-arg");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
+    make_closure_symbol = intern("#%make-closure");
     push_symbol = intern("#%push");
     save_cc_symbol = intern("#%save-cc");
     set_proc_symbol = intern("#%set-proc");
@@ -72,6 +73,7 @@ void minim_boot_init() {
     th = current_thread();
     th->pid = 0;    // TODO
 
+    global_env(th) = make_env();
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
     current_directory(th) = Mstring(get_current_dir());
@@ -100,7 +102,4 @@ void minim_boot_init() {
     GC_register_root(globals);
 
     GC_resume();
-    
-    // Make base environment
-    global_env(th) = make_env();
 }

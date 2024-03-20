@@ -657,8 +657,8 @@ application:
 }
 
 mobj eval_expr(mobj expr, mobj env) {
-    mobj compiled = compile_jit(expr);
-    write_object(stderr, compiled);
-    fprintf(stderr, "\n");
+    // mobj compiled = compile_jit(expr);
+    // write_object(stderr, compiled);
+    // fprintf(stderr, "\n");
     return eval_expr2(expr, env);
 }

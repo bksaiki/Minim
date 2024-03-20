@@ -945,6 +945,7 @@ int main(int argc, char **argv) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
+    load_prelude(global_env(current_thread()));
 
     stack_top = 0;
     return_code = stack_top;

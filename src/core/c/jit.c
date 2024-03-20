@@ -124,22 +124,26 @@ static mobj compile_lambda(mobj expr, mobj env) {
 
     // bind rest argument
     if (restp) {
-        
+        list_set_tail(ins, Mlist2(
+            Mlist2(do_rest_symbol, Mfixnum(req_arity)),
+            Mlist2(bind_symbol, args)
+        )); 
     }
-
 
     // compile the body
     body = Mcons(begin_symbol, minim_cddr(expr));
     list_set_tail(ins, compile_expr(body, extend_cenv(env), 1));
 
-    write_object(stderr, ins);
-    fprintf(stderr, "\n");
-
     // register JIT block
     idx = cenv_template_add(env, ins);
 
+    write_object(stderr, idx);
+    fprintf(stderr, ": ");
+    write_object(stderr, ins);
+    fprintf(stderr, "\n");
+
     // instruction
-    return Mlist1(Mlist2(closure_symbol, idx));
+    return Mlist1(Mlist2(make_closure_symbol, idx));
 }
 
 static mobj compile_begin(mobj expr, mobj env, int tailp) {
