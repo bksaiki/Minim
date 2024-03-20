@@ -165,7 +165,7 @@ static mobj compile_define_values(mobj expr, mobj env) {
     ids = minim_cadr(expr);
     ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
     list_set_tail(ins, Mlist2(
-        Mlist3(bind_values_symbol, Mfixnum(list_length(ids)), ids),
+        Mlist2(bind_values_symbol, ids),
         Mlist1(ret_symbol)
     ));
 
@@ -190,11 +190,46 @@ static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
     for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
         list_set_tail(ins, compile_expr(minim_car(minim_cdar(binds)), env, 0));
         list_set_tail(ins, Mlist1(
-            Mlist3(bind_values_symbol, Mfixnum(list_length(minim_caar(binds))), minim_caar(binds))
+            Mlist2(bind_values_symbol, minim_caar(binds))
         ));
     }
 
     // evaluate body
+    list_set_tail(ins, compile_expr(body, env, tailp));
+
+    // if we are not in tail position, pop the environment
+    if (!tailp) {
+        list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
+    }
+
+    return ins;
+}
+
+static mobj compile_let_values(mobj expr, mobj env, int tailp) {
+    mobj binds, body, ins;
+    size_t env_size;
+
+    env_size = let_values_size(expr);
+    binds = minim_cadr(expr);
+    body = minim_car(minim_cddr(expr));
+
+    // stash a new environment
+    ins = Mlist2(
+        Mlist2(make_env_symbol, Mfixnum(env_size)),
+        Mlist1(push_symbol)     // use `push` to move to stack
+    );
+
+    // bind values to new environment
+    // need to use special `bind-values/top` to access new environment
+    for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
+        list_set_tail(ins, compile_expr(minim_car(minim_cdar(binds)), env, 0));
+        list_set_tail(ins, Mlist1(
+            Mlist2(bind_values_top_symbol, minim_caar(binds))
+        ));
+    }
+
+    // evaluate body
+    list_set_tail(ins, Mlist2(Mlist1(pop_symbol), Mlist1(push_env_symbol)));
     list_set_tail(ins, compile_expr(body, env, tailp));
 
     // if we are not in tail position, pop the environment
@@ -380,6 +415,9 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
             if (head == letrec_values_symbol) {
                 // letrec-values form
                 return compile_letrec_values(expr, env, tailp);
+            } else if (head == let_values_symbol) {
+                // let-values form
+                return compile_let_values(expr, env, tailp);
             } else if (head == lambda_symbol) {
                 // lambda form
                 return compile_lambda(expr, env, tailp);

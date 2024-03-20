@@ -163,6 +163,16 @@ int test_let_values() {
     check_equal("(letrec-values ([(x y z) (values 1 2 3)]) (cons x (cons y z)))", "(1 2 . 3)");
     check_equal("(letrec-values ([(x) 1] [(y) 2]) (cons x y))", "(1 . 2)");
     check_equal("(letrec-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (cons x (cons y z)))", "(1 2 . 3)");
+    check_equal("(letrec-values ([(x) 1]) (letrec-values ([(x) 2] [(y) (cons x 3)]) (cons x y)))", "(2 2 . 3)");
+
+    check_equal("(let-values () 1)", "1");
+    check_equal("(let-values ([() (values)]) 1)", "1");
+    check_equal("(let-values ([(x) 1]) x)", "1");
+    check_equal("(let-values ([(x y) (values 1 2)]) (cons x y))", "(1 . 2)");
+    check_equal("(let-values ([(x y z) (values 1 2 3)]) (cons x (cons y z)))", "(1 2 . 3)");
+    check_equal("(let-values ([(x) 1] [(y) 2]) (cons x y))", "(1 . 2)");
+    check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (cons x (cons y z)))", "(1 2 . 3)");
+    check_equal("(let-values ([(x) 1]) (let-values ([(x) 2] [(y) (cons x 3)]) (cons x y)))", "(2 1 . 3)");
 
     return passed;
 }

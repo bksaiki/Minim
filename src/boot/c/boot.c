@@ -31,6 +31,7 @@ void minim_boot_init() {
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");
     bind_values_symbol = intern("#%bind-values");
+    bind_values_top_symbol = intern("#%bind-values/top");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
     check_arity_symbol = intern("#%check-arity");
@@ -41,6 +42,7 @@ void minim_boot_init() {
     lookup_symbol = intern("#%lookup");
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
+    pop_symbol = intern("#%pop");
     pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");
     push_env_symbol = intern("#%push-env");

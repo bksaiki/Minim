@@ -144,6 +144,13 @@ static void push_arg(mobj x) {
     current_ac(th) += 1;
 }
 
+static mobj pop_arg() {
+    minim_thread *th = current_thread();
+    mobj x = current_sfp(th)[current_ac(th) - 1];
+    current_ac(th) -= 1;
+    return x;
+}
+
 static void push_frame(mobj env, mobj pc) {
     // get current continuation and argument count
     minim_thread *th = current_thread();
@@ -280,15 +287,16 @@ static long let_values_env_size(mobj e) {
     return var_count;
 }
 
-static void bind_values(mobj env, mobj count, mobj ids, mobj res) {
+static void bind_values(mobj env, mobj ids, mobj res) {
+    size_t count = list_length(ids);
     if (minim_valuesp(res)) {
         // multi-valued result
         minim_thread *th;
         size_t i;
 
         th = current_thread();
-        if (minim_fixnum(count) != values_buffer_count(th))
-            result_arity_exn(NULL, minim_fixnum(count), values_buffer_count(th));
+        if (count != values_buffer_count(th))
+            result_arity_exn(NULL, count, values_buffer_count(th));
 
         i = 0;
         for (; !minim_nullp(ids); ids = minim_cdr(ids)) {
@@ -298,8 +306,8 @@ static void bind_values(mobj env, mobj count, mobj ids, mobj res) {
         }
     } else {
         // single-valued result
-        if (minim_fixnum(count) != 1) {
-            result_arity_exn(NULL, minim_fixnum(count), 1);
+        if (count != 1) {
+            result_arity_exn(NULL, count, 1);
         } else {
             SET_NAME_IF_CLOSURE(minim_car(ids), res);
             env_define_var(env, minim_car(ids), res);
@@ -373,6 +381,9 @@ loop:
         // push
         maybe_grow_stack(1);
         push_arg(res);
+    } else if (ty == pop_symbol) {
+        // pop
+        res = pop_arg();
     } else if (ty == bind_symbol) {
         // bind
         env_define_var(env, minim_cadr(ins), res);
@@ -394,7 +405,10 @@ loop:
         goto restore_frame;
     } else if (ty == bind_values_symbol) {
         // bind-values
-        bind_values(env, minim_cadr(ins), minim_car(minim_cddr(ins)), res);
+        bind_values(env, minim_cadr(ins), res);
+    } else if (ty == bind_values_top_symbol) {
+        // bind-values/top (special variant for `let-values`)
+        bind_values(current_sfp(th)[current_ac(th) - 1], minim_cadr(ins), res);
     } else if (ty == make_env_symbol) {
         // make-env
         res = Menv2(env, minim_fixnum(minim_cadr(ins)));
@@ -472,6 +486,7 @@ restore_frame:
         return res;
     
     // otherwise, restore the old instruction stream and environment
+    // and seek to the expected label
     cc = pop_frame();
     pc = continuation_pc(cc);
     istream = minim_car(pc);
