@@ -58,8 +58,9 @@ static void write_box(FILE *out, mobj o) {
 }
 
 static void write_closure(FILE *out, mobj o) {
-    if (minim_closure_name(o)) {
-        fprintf(out, "#<procedure:%s>", minim_closure_name(o));
+    mobj code = minim_closure_code(o);
+    if (minim_code_name(code)) {
+        fprintf(out, "#<procedure:%s>", minim_code_name(code));
     } else {
         fputs("#<procedure>", out);
     }
@@ -95,6 +96,7 @@ void write_object(FILE *out, mobj o) {
     else if (minim_recordp(o)) write_record(out, o);
     else if (minim_syntaxp(o)) fputs("#<syntax>", out);
     else if (minim_envp(o)) fputs("#<environment>", out);
-    else if (minim_jitp(o)) fputs("#<code>", out);
+    else if (minim_continuationp(o)) fputs("#<continuation>", out);
+    else if (minim_codep(o)) fputs("#<code>", out);
     else fputs("#<garbage>", out);
 }

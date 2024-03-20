@@ -39,6 +39,7 @@ void minim_boot_init() {
     lookup_symbol = intern("#%lookup");
     make_closure_symbol = intern("#%make-closure");
     push_symbol = intern("#%push");
+    ret_symbol = intern("#%ret");
     save_cc_symbol = intern("#%save-cc");
     set_proc_symbol = intern("#%set-proc");
 
@@ -75,17 +76,18 @@ void minim_boot_init() {
     th->pid = 0;    // TODO
 
     global_env(th) = make_env();
+    current_continuation(th) = minim_null;
+    current_segment(th) = Mstack_segment(NULL, stack_seg_default_size);
+    current_sfp(th) = stack_seg_base(current_segment(th));
+    current_cp(th) = NULL;
+    current_ac(th) = 0;
+
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
     current_directory(th) = Mstring(get_current_dir());
     command_line(th) = minim_null;
     record_equal_proc(th) = minim_false;
     record_hash_proc(th) = minim_false;
-
-    current_segment(th) = Mstack_segment(NULL, stack_seg_default_size);
-    current_sfp(th) = stack_seg_base(current_segment(th));
-    current_cp(th) = NULL;
-    current_ac(th) = 0;
 
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;

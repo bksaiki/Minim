@@ -99,9 +99,8 @@ typedef enum {
 
     /* Runtime types */
     MINIM_OBJ_ENV,
-
-    /* Compiled types */
-    MINIM_OBJ_JIT,
+    MINIM_OBJ_CONTINUATION,
+    MINIM_OBJ_CODE,
 } mobj_type;
 
 typedef mobj (*mprim_proc)(int, mobj *);
@@ -213,36 +212,26 @@ extern mobj minim_values;
 // Primitive
 // +------------+
 // |    type    | [0, 1)
-// |     ptr    | [8, 16)
-// |  argc_low  | [16, 20)
-// |  argc_high | [20, 24)
+// |    ptr     | [8, 16)
+// |    arity   | [16, 24)
 // |    name    | [24, 32)
 // +------------+
 #define minim_prim_size             (4 * ptr_size)
 #define minim_primp(o)              (minim_type(o) == MINIM_OBJ_PRIM)
 #define minim_prim(o)               (*((void**) PTR_ADD(o, ptr_size)))
-#define minim_prim_argc_low(o)      (*((int*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_prim_argc_high(o)     (*((int*) PTR_ADD(o, 2 * ptr_size + 4)))
+#define minim_prim_arity(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 #define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
 
 // Closure
 // +------------+
 // |    type    | [0, 1)
-// |    args    | [8, 16)
-// |    body    | [16, 24)
-// |    env     | [24, 32)
-// |  argc_low  | [32, 36)
-// |  argc_high | [36, 40)
-// |    name    | [40, 48)
+// |    env     | [8, 16)
+// |    code    | [16, 24)
 // +------------+
-#define minim_closure_size          (6 * ptr_size)
+#define minim_closure_size          (3 * ptr_size)
 #define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
-#define minim_closure_args(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_closure_body(o)       (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_closure_env(o)        (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_closure_argc_low(o)   (*((int*) PTR_ADD(o, 4 * ptr_size)))
-#define minim_closure_argc_high(o)  (*((int*) PTR_ADD(o, 4 * ptr_size + 4)))
-#define minim_closure_name(o)       (*((char**) PTR_ADD(o, 5 * ptr_size)))
+#define minim_closure_env(o)        (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_closure_code(o)       (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 
 // Port
 // +------------+
@@ -322,16 +311,41 @@ extern mobj minim_values;
 #define minim_env_prev(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
 #define minim_env_bindings(o)   (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 
-// JIT code
+// Continuations
 // +------------+
-// |    type    | [0, 1)
-// |    size    | [8, 16)
-// |    instrs  | [16, ...) 
+// |    type    | [0, 8)
+// |    prev    | [8, 16)
+// |    pc      | [16, 24)
+// |    env     | [24, 32)
+// |    sfp     | [32, 40)
+// |    cp      | [40, 48)
+// |    ac      | [48, 56)
 // +------------+
-#define minim_jit_size(n)       ((2 * ptr_size) + (n * ptr_size))
-#define minim_jitp(o)           (minim_type(o) == MINIM_OBJ_JIT)
-#define minim_jit_len(o)       (*((size_t*) PTR_ADD(o, ptr_size)))
-#define minim_jit_ref(o, i)     (((mobj*) PTR_ADD(o, 2 * ptr_size))[i])    
+
+#define continuation_size           (7 * ptr_size)
+#define minim_continuationp(o)      (minim_type(o) == MINIM_OBJ_CONTINUATION)
+#define continuation_prev(c)        (*((mobj*) PTR_ADD(c, ptr_size)))
+#define continuation_pc(c)          (*((mobj*) PTR_ADD(c, 2 * ptr_size)))
+#define continuation_env(c)         (*((mobj*) PTR_ADD(c, 3 * ptr_size)))
+#define continuation_sfp(c)         (*((mobj**) PTR_ADD(c, 4 * ptr_size)))
+#define continuation_cp(c)          (*((mobj*) PTR_ADD(c, 5 * ptr_size)))
+#define continuation_ac(c)          (*((size_t*) PTR_ADD(c, 6 * ptr_size)))
+
+// Code
+// +------------+
+// |   type     | [0, 1)
+// |   size     | [8, 16)
+// |   name     | [16, 24)
+// |   arity    | [24, 32)
+// |   instrs   | [32, ...) 
+// +------------+
+#define minim_code_header_size  4
+#define minim_code_size(n)      ((minim_code_header_size * ptr_size) + (n * ptr_size))
+#define minim_codep(o)          (minim_type(o) == MINIM_OBJ_CODE)
+#define minim_code_len(o)       (*((size_t*) PTR_ADD(o, ptr_size)))
+#define minim_code_name(o)      (*((char**) PTR_ADD(o, 2 * ptr_size)))
+#define minim_code_arity(o)     (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_code_ref(o, i)     (((mobj*) PTR_ADD(o, 4 * ptr_size))[i])    
 
 // Special objects
 
@@ -357,6 +371,7 @@ extern mobj literal_symbol;
 extern mobj lookup_symbol;
 extern mobj make_closure_symbol;
 extern mobj push_symbol;
+extern mobj ret_symbol;
 extern mobj set_proc_symbol;
 extern mobj save_cc_symbol;
 
@@ -376,13 +391,15 @@ mobj Mvector(long len, mobj init);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mbox(mobj x);
 mobj Mhashtable(size_t size_hint);
-mobj Mprim(void *fn, char *name, short min_arity, short max_arity);
-mobj Mclosure(mobj args, mobj body, mobj env, short min_arity, short max_arity);
+mobj Mprim(void *fn, char *name, mobj arity);
+mobj Mclosure(mobj env, mobj code);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
 mobj Msyntax(mobj e, mobj loc);
 mobj Menv(mobj prev);
 mobj Menv2(mobj prev, size_t size);
+mobj Mcontinuation(mobj prev, mobj pc, mobj env, minim_thread *th);
+mobj Mcode(size_t size);
 
 #define Mlist1(a)                   Mcons(a, minim_null)
 #define Mlist2(a, b)                Mcons(a, Mlist1(b))
@@ -600,8 +617,7 @@ mobj extend_environment(mobj env);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
 mobj environment_variable_set(mobj env, mobj k, mobj v);
 
-mobj Mjit(size_t size);
-mobj jit_to_instrs(mobj jit);
+mobj code_to_instrs(mobj code);
 
 mobj load_proc(mobj fname);
 mobj exit_proc(mobj code);
@@ -620,28 +636,10 @@ mobj syntax_error_proc();
 mobj do_error(int argc, mobj *args);
 mobj do_syntax_error(int argc, mobj *args);
 
-// Continuations
-// +------------+
-// |    prev    | [0, 8)
-// |    env     | [8, 16)
-// |    sfp     | [16, 24)
-// |    cp      | [24, 32)
-// |    ac      | [32, 40)
-// +------------+
-
-#define continuation_size           (5 * ptr_size)
-#define continuation_prev(c)        (*((mobj*) (c)))
-#define continuation_env(c)         (*((mobj*) PTR_ADD(c, ptr_size)))
-#define continuation_sfp(c)         (*((mobj**) PTR_ADD(c, 2 * ptr_size)))
-#define continuation_cp(c)          (*((mobj*) PTR_ADD(c, 3 * ptr_size)))
-#define continuation_ac(c)          (*((size_t*) PTR_ADD(c, 4 * ptr_size)))
-
-mobj Mcontinuation(mobj prev, mobj env, minim_thread *th);
-
 // Stack segment
 // +--------------+
-// |     Prev     | [0, 8)
-// |     Size     | [8, 16)
+// |     prev     | [0, 8)
+// |     size     | [8, 16)
 // |     ...      | [16, ...)
 // +--------------+
 
@@ -871,7 +869,7 @@ NORETURN void minim_shutdown(int code);
 
 // Exceptions
 
-NORETURN void arity_mismatch_exn(const char *name, int min_arity, int max_arity, short actual);
+NORETURN void arity_mismatch_exn(mobj proc, size_t actual);
 NORETURN void bad_syntax_exn(mobj expr);
 NORETURN void bad_type_exn(const char *name, const char *type, mobj x);
 NORETURN void result_arity_exn(const char *name, short expected, short actual);

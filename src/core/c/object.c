@@ -26,6 +26,7 @@ mobj literal_symbol;
 mobj lookup_symbol;
 mobj make_closure_symbol;
 mobj push_symbol;
+mobj ret_symbol;
 mobj set_proc_symbol;
 mobj save_cc_symbol;
 

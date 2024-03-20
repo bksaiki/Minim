@@ -145,7 +145,8 @@ int test_app() {
     check_equal("(void)", "#<void>");
     check_equal("(null? '())", "#t");
     check_equal("(cons 'a 'b)", "(a . b)");
-    // check_equal("(cons (cons 'a 'b) (cons 'c 'd))", "((a . b) (c . d))");
+    check_equal("((lambda () 1))", "1");
+    check_equal("(cons (cons 'a 'b) (cons 'c 'd))", "((a . b) (c . d))");
 
     return passed;
 }
