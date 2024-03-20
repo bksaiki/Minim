@@ -27,6 +27,19 @@ void minim_boot_init() {
     begin_symbol = intern("begin");
     quote_syntax_symbol = intern("quote-syntax");
 
+    apply_symbol = intern("#%apply");
+    bind_symbol = intern("#%bind");
+    brancha_symbol = intern("#%brancha");
+    branchf_symbol = intern("#%branchf");
+    check_arity_symbol = intern("#%check-arity");
+    closure_symbol = intern("#%make-closure");
+    get_arg_symbol = intern("#%get-arg");
+    literal_symbol = intern("#%literal");
+    lookup_symbol = intern("#%lookup");
+    push_symbol = intern("#%push");
+    save_cc_symbol = intern("#%save-cc");
+    set_proc_symbol = intern("#%set-proc");
+
     // initialize special values
 
     minim_null = GC_alloc(sizeof(mobj));

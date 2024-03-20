@@ -334,6 +334,19 @@ extern mobj lambda_symbol;
 extern mobj begin_symbol;
 extern mobj quote_syntax_symbol;
 
+extern mobj apply_symbol;
+extern mobj bind_symbol;
+extern mobj brancha_symbol;
+extern mobj branchf_symbol;
+extern mobj check_arity_symbol;
+extern mobj closure_symbol;
+extern mobj get_arg_symbol;
+extern mobj literal_symbol;
+extern mobj lookup_symbol;
+extern mobj push_symbol;
+extern mobj set_proc_symbol;
+extern mobj save_cc_symbol;
+
 // Complex predicates
 
 #define minim_procp(x)  (minim_primp(x) || minim_closurep(x))
@@ -371,6 +384,7 @@ int minim_equalp(mobj a, mobj b);
 int minim_listp(mobj x);
 long list_length(mobj xs);
 long improper_list_length(mobj xs);
+void list_set_tail(mobj xs, mobj ys);
 
 mobj nullp_proc(mobj x);
 mobj voidp_proc(mobj x);
@@ -615,7 +629,7 @@ mobj Mcontinuation(mobj prev, mobj env, minim_thread *th);
 // |     ...      | [16, ...)
 // +--------------+
 
-#define stack_seg_default_size      (1024)
+#define stack_seg_default_size      (1024 * 1024)
 #define stack_seg_header_size       (2 * ptr_size)
 #define stack_seg_prev(s)           (*((mobj *) (s)))
 #define stack_seg_size(s)           (*((size_t*) PTR_ADD(s, ptr_size)))
@@ -650,6 +664,10 @@ typedef enum {
 
 mobj read_fasl(FILE *out);
 void write_fasl(FILE *out, mobj o);
+
+// JIT compiler
+
+mobj compile_jit(mobj expr);
 
 // Interpreter
 

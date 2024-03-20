@@ -5,21 +5,27 @@
 #include "../minim.h"
 
 mobj quote_symbol;
-mobj define_symbol;
 mobj define_values_symbol;
-mobj let_symbol;
 mobj let_values_symbol;
-mobj letrec_symbol;
 mobj letrec_values_symbol;
 mobj setb_symbol;
 mobj if_symbol;
 mobj lambda_symbol;
 mobj begin_symbol;
-mobj cond_symbol;
-mobj else_symbol;
-mobj and_symbol;
-mobj or_symbol;
 mobj quote_syntax_symbol;
+
+mobj apply_symbol;
+mobj bind_symbol;
+mobj brancha_symbol;
+mobj branchf_symbol;
+mobj check_arity_symbol;
+mobj closure_symbol;
+mobj get_arg_symbol;
+mobj literal_symbol;
+mobj lookup_symbol;
+mobj push_symbol;
+mobj set_proc_symbol;
+mobj save_cc_symbol;
 
 mobj minim_null;
 mobj minim_true;

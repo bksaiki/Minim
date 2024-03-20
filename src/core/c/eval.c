@@ -368,10 +368,10 @@ static void bind_values(const char *name, mobj env, mobj ids, mobj vals) {
     }
 }
 
-mobj eval_expr(mobj expr, mobj env) {
+mobj eval_expr2(mobj expr, mobj env) {
     minim_thread *th;
 
-    // HACK: call-with-values will invoke producer with `eval_expr`
+    // HACK: call-with-values will invoke producer with `eval_expr2`
     th = current_thread();
     if (minim_procp(expr)) {
         push_frame(env);
@@ -387,7 +387,7 @@ loop:
         if (minim_symbolp(head)) {
             if (head == define_values_symbol) {
                 // define-values form
-                mobj result = eval_expr(minim_car(minim_cddr(expr)), env);
+                mobj result = eval_expr2(minim_car(minim_cddr(expr)), env);
                 bind_values("define-values", env, minim_cadr(expr), result);
                 return minim_void;
             } else if (head == let_values_symbol) {
@@ -396,7 +396,7 @@ loop:
                 mobj bindings = minim_cadr(expr);
                 while (!minim_nullp(bindings)) {
                     mobj bind = minim_car(bindings);
-                    mobj result = eval_expr(minim_cadr(bind), env);
+                    mobj result = eval_expr2(minim_cadr(bind), env);
                     bind_values("let-values", env2, minim_car(bind), result);
                     bindings = minim_cdr(bindings);
                 }
@@ -410,7 +410,7 @@ loop:
                 mobj bindings = minim_cadr(expr);
                 while (!minim_nullp(bindings)) {
                     mobj bind = minim_car(bindings);
-                    mobj result = eval_expr(minim_cadr(bind), env2);
+                    mobj result = eval_expr2(minim_cadr(bind), env2);
                     bind_values("letrec-values", env2, minim_car(bind), result);
                     bindings = minim_cdr(bindings);
                 }
@@ -426,11 +426,11 @@ loop:
                 return to_syntax(minim_cadr(expr));
             } else if (head == setb_symbol) {
                 // set! form
-                env_set_var(env, minim_cadr(expr), eval_expr(minim_car(minim_cddr(expr)), env));
+                env_set_var(env, minim_cadr(expr), eval_expr2(minim_car(minim_cddr(expr)), env));
                 return minim_void;
             } else if (head == if_symbol) {
                 // if form
-                if (minim_falsep(eval_expr(minim_cadr(expr), env))) {
+                if (minim_falsep(eval_expr2(minim_cadr(expr), env))) {
                     expr = minim_cadr(minim_cddr(expr));
                 } else {
                     expr = minim_car(minim_cddr(expr));
@@ -453,7 +453,7 @@ loop:
                     return minim_void;
 
                 while (!minim_nullp(minim_cdr(expr))) {
-                    eval_expr(minim_car(expr), env);
+                    eval_expr2(minim_car(expr), env);
                     expr = minim_cdr(expr);
                 }
 
@@ -471,9 +471,9 @@ loop:
         maybe_grow_stack(list_length(minim_cdr(expr)));
 
         // evaluate the current application
-        current_cp(th) = force_single_value(eval_expr(head, env));
+        current_cp(th) = force_single_value(eval_expr2(head, env));
         for (mobj it = minim_cdr(expr); !minim_nullp(it); it = minim_cdr(it)) {
-            push_arg(force_single_value(eval_expr(minim_car(it), env)));
+            push_arg(force_single_value(eval_expr2(minim_car(it), env)));
         }
 
 application:
@@ -530,7 +530,7 @@ application:
 
                 // clear current frame and call consumer
                 pop_frame();
-                result = eval_expr(producer, env);
+                result = eval_expr2(producer, env);
                 
                 // create a new frame, push values to arguments, and call producer
                 push_frame(env);
@@ -654,4 +654,11 @@ application:
 
     fprintf(stderr, "unreachable\n");
     minim_shutdown(1);
+}
+
+mobj eval_expr(mobj expr, mobj env) {
+    mobj compiled = compile_jit(expr);
+    write_object(stderr, compiled);
+    fprintf(stderr, "\n");
+    return eval_expr2(expr, env);
 }

@@ -47,6 +47,16 @@ long improper_list_length(mobj xs) {
     return len;
 }
 
+void list_set_tail(mobj xs, mobj ys) {
+    mobj t;
+
+    if (!minim_consp(xs))
+        bad_type_exn("list_set_tail()", "pair?", xs);
+    
+    for (t = xs; minim_consp(minim_cdr(t)); t = minim_cdr(t));
+    minim_cdr(t) = ys;
+}
+
 //
 //  Primitives
 //
