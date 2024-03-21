@@ -218,4 +218,5 @@ void init_prims(mobj env) {
 
     add_cprocedure("eval", compile_eval);
     add_cprocedure("error", compile_error);
+    add_procedure("$boot-error", boot_error_proc, 3);
 }

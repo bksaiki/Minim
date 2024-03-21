@@ -167,36 +167,3 @@ mobj current_directory_set_proc(mobj path) {
 mobj version_proc() {
     return Mstring(MINIM_VERSION);
 }
-
-mobj do_error(int argc, mobj *args) {
-    // (-> (or #f string symbol)
-    //     string?
-    //     any ...
-    //     any)
-    mobj who, msg;
-
-    who = args[0];
-    if (!minim_falsep(who) && !minim_symbolp(who) && !minim_stringp(who))
-        bad_type_exn("error", "(or #f string? symbol?)", who);
-
-    msg = args[1];
-    if (!minim_stringp(msg))
-        bad_type_exn("error", "string?", msg);
-    
-    if (minim_falsep(who))
-        fprintf(stderr, "error");
-    else
-        write_object(stderr, who);
-
-    fprintf(stderr, ": ");
-    write_object(stderr, string_to_symbol(msg));
-    fprintf(stderr, "\n");
-
-    for (int i = 2; i < argc; ++i) {
-        fprintf(stderr, " ");
-        write_object(stderr, args[i]);
-        fprintf(stderr, "\n");
-    }
-
-    minim_shutdown(1);
-}

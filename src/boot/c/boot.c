@@ -104,6 +104,7 @@ void minim_boot_init() {
     command_line(th) = minim_null;
     record_equal_proc(th) = minim_false;
     record_hash_proc(th) = minim_false;
+    error_handler(th) = minim_false;
 
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;

@@ -1,6 +1,13 @@
 ; Wrapped primitives
 
 ;; --------------------------------------------------------
+;; Exceptions
+
+(define-values (error)
+  (lambda (who msg . args)
+    ($boot-error who msg args)))
+
+;; --------------------------------------------------------
 ;; Characters
 
 (define-values (char->integer)

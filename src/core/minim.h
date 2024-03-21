@@ -604,6 +604,7 @@ mobj command_line_proc();
 mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
+mobj boot_error_proc(mobj who, mobj msg, mobj args);
 mobj do_error(int argc, mobj *args);
 
 // Stack segment
@@ -792,6 +793,7 @@ typedef struct minim_thread {
     mobj command_line;
     mobj record_equal_proc;
     mobj record_hash_proc;
+    mobj error_handler;
     // `values` stack
     mobj *values_buffer;
     int values_buffer_size;
@@ -813,6 +815,7 @@ typedef struct minim_thread {
 #define command_line(th)                ((th)->command_line)
 #define record_equal_proc(th)           ((th)->record_equal_proc)
 #define record_hash_proc(th)            ((th)->record_hash_proc)
+#define error_handler(th)               ((th)->error_handler)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, i)        ((values_buffer(th))[i])
