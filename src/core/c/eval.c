@@ -38,17 +38,11 @@ void arity_mismatch_exn(mobj proc, size_t actual) {
     mobj code, arity;
 
     // print name and extract arity
-    if (minim_primp(proc)) {
-        if (minim_prim_name(proc))
-            fprintf(stderr, "%s: ", minim_prim_name(proc));
-        arity = minim_prim_arity(proc);
-    } else { // closure
-        code = minim_closure_code(proc);
-        if (minim_code_name(code))
-            fprintf(stderr, "%s: ", minim_code_name(code));
-        arity = minim_code_arity(code);
-    }
+    code = minim_closure_code(proc);
+    if (minim_code_name(code))
+        fprintf(stderr, "%s: ", minim_code_name(code));
 
+    arity = minim_code_arity(code);
     if (minim_fixnump(arity)) {
         // exact arity
         fprintf(
@@ -434,9 +428,7 @@ loop:
     } else if (ty == apply_symbol) {
         // apply
 application:
-        if (minim_primp(current_cp(th))) {
-            goto call_prim;
-        } else if (minim_closurep(current_cp(th))) {
+        if (minim_closurep(current_cp(th))) {
             goto call_closure;
         } else {
             goto not_procedure;
@@ -557,11 +549,6 @@ call_closure:
     // don't clear either the current procedure or argument count
     // since this is required for binding and arity check
     goto loop;
-
-// call primitive procedure
-call_prim:
-    // check arity
-    check_arity(env, minim_prim_arity(current_cp(th)));
 
 // performs `do-eval` instruction
 do_eval:

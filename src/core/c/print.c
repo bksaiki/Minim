@@ -88,7 +88,6 @@ void write_object(FILE *out, mobj o) {
     else if (minim_consp(o)) write_pair(out, o);
     else if (minim_vectorp(o)) write_vector(out, o);
     else if (minim_boxp(o)) write_box(out, o);
-    else if (minim_primp(o)) fprintf(out, "#<procedure:%s>", minim_prim_name(o));
     else if (minim_closurep(o)) write_closure(out, o);
     else if (minim_input_portp(o)) fputs("#<input-port>", out);
     else if (minim_output_portp(o)) fputs("#<output-port>", out);

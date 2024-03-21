@@ -26,9 +26,5 @@ mobj procp_proc(mobj x) {
 
 mobj procedure_arity_proc(mobj proc) {
     // (-> procedure any)
-    if (minim_primp(proc)) {
-        return minim_prim_arity(proc);
-    } else {
-        return minim_code_arity(minim_closure_code(proc));
-    }
+    return minim_code_arity(minim_closure_code(proc));
 }

@@ -2,15 +2,6 @@
 
 #include "../minim.h"
 
-mobj Mprim(void *fn, char *name, mobj arity) {
-    mobj o = GC_alloc(minim_prim_size);
-    minim_type(o) = MINIM_OBJ_PRIM;
-    minim_prim(o) = fn;
-    minim_prim_arity(o) = arity;
-    minim_prim_name(o) = name;
-    return o;
-}
-
 #define add_value(env, name, c_val)  \
     env_define_var(env, intern(name), c_val);
 

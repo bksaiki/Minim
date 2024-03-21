@@ -43,37 +43,11 @@ typedef struct minim_thread     minim_thread;
 
 #define MINIM_VERSION      "0.3.5"
 
-#define ARG_MAX                     32767
-#define VALUES_MAX                  32767
 #define RECORD_FIELD_MAX            32767
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
 #define ENVIRONMENT_VECTOR_MAX      6
-
-// Arity
-
-typedef enum {
-    PROC_ARITY_FIXED,
-    PROC_ARITY_UNBOUNDED,
-    PROC_ARITY_RANGE
-} proc_arity_type;
-
-typedef struct proc_arity {
-    proc_arity_type type;
-    short arity_min, arity_max;
-} proc_arity;
-
-#define proc_arity_same_type(p, t)      ((p)->type == (t))
-#define proc_arity_is_fixed(p)          (proc_arity_same_type(p, PROC_ARITY_FIXED))
-#define proc_arity_is_unbounded(p)      (proc_arity_same_type(p, PROC_ARITY_UNBOUNDED))
-#define proc_arity_is_range(p)          (proc_arity_same_type(p, PROC_ARITY_RANGE))
-
-#define proc_arity_min(p)               ((p)->arity_min)
-#define proc_arity_max(p)               ((p)->arity_max)
-
-#define proc_arity_is_between(p, min, max)      \
-    (((min) <= (p)->arity_min) && ((p)->arity_max <= (max)))
 
 // Object types
 
@@ -86,8 +60,6 @@ typedef enum {
     MINIM_OBJ_STRING,
     MINIM_OBJ_PAIR,
     MINIM_OBJ_VECTOR,
-    MINIM_OBJ_PRIM,
-    MINIM_OBJ_PRIM2,
     MINIM_OBJ_CLOSURE,
     MINIM_OBJ_PORT,
 
@@ -208,19 +180,6 @@ extern mobj minim_values;
 #define minim_box_size      (2 * ptr_size)
 #define minim_boxp(o)       (minim_type(o) == MINIM_OBJ_BOX)
 #define minim_unbox(o)      (*((mobj*) PTR_ADD(o, ptr_size)))
-
-// Primitive
-// +------------+
-// |    type    | [0, 1)
-// |    ptr     | [8, 16)
-// |    arity   | [16, 24)
-// |    name    | [24, 32)
-// +------------+
-#define minim_prim_size             (4 * ptr_size)
-#define minim_primp(o)              (minim_type(o) == MINIM_OBJ_PRIM)
-#define minim_prim(o)               (*((void**) PTR_ADD(o, ptr_size)))
-#define minim_prim_arity(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
 
 // Closure
 // +------------+
@@ -397,7 +356,7 @@ extern mobj save_cc_symbol;
 
 // Complex predicates
 
-#define minim_procp(x)  (minim_primp(x) || minim_closurep(x))
+#define minim_procp(x)  (minim_closurep(x))
 
 // Constructors
 
@@ -411,7 +370,6 @@ mobj Mvector(long len, mobj init);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mbox(mobj x);
 mobj Mhashtable(size_t size_hint);
-mobj Mprim(void *fn, char *name, mobj arity);
 mobj Mclosure(mobj env, mobj code);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
@@ -646,7 +604,6 @@ mobj command_line_proc();
 mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
-mobj error_proc();
 mobj do_error(int argc, mobj *args);
 
 // Stack segment
@@ -896,7 +853,6 @@ NORETURN void arity_mismatch_exn(mobj proc, size_t actual);
 NORETURN void bad_syntax_exn(mobj expr);
 NORETURN void bad_type_exn(const char *name, const char *type, mobj x);
 NORETURN void result_arity_exn(const char *name, short expected, short actual);
-NORETURN void uncallable_prim_exn(const char *name);
 
 // Primitives
 
