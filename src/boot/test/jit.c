@@ -193,6 +193,8 @@ int test_apply() {
 int test_call_with_values() {
     passed = 1;
 
+    check_equal("(call-with-values (lambda () (values)) (lambda () 1))", "1");
+
 
     return passed;
 }
@@ -236,6 +238,7 @@ int main(int argc, char **argv) {
     log_test("app", test_app);
     log_test("rest", test_rest);
     log_test("apply", test_apply);
+    log_test("call-with-values", test_call_with_values);
     log_test("let-values", test_let_values);
 
     GC_finalize();

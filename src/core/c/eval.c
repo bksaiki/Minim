@@ -541,11 +541,28 @@ restore_frame:
     // otherwise, restore the old instruction stream and environment
     // and seek to the expected label
     cc = pop_frame();
+    env = continuation_env(cc);
     pc = continuation_pc(cc);
     istream = minim_car(pc);
-    label = minim_cdr(pc);
-    env = continuation_env(cc);
-    goto find_label;
+    if (minim_falsep(minim_cdr(pc))) {
+        // return from producer of `call-with-values`
+        // call consumer in tail position
+        goto call_consumer;
+    } else {
+        label = minim_cdr(pc);
+        
+        goto find_label;
+    }
+
+// call-with-values consumer
+call_consumer:
+    // set current procedure to consumer and clear arguments
+    current_cp(th) = current_sfp(th)[1];
+    current_ac(th) = 0;
+    // push result to arguments
+    values_to_args(res);
+    // call consumer
+    goto application;
 
 // call closure
 call_closure:
@@ -581,6 +598,15 @@ call_prim:
         do_error(current_ac(th), args);
         fprintf(stderr, "unreachable\n");
         minim_shutdown(1);
+    } else if (prim == call_with_values_proc) {
+        // special case: `call-with-values`
+        check_call_with_values(current_sfp(th));
+        // producer is not in tail position so save continuation
+        push_frame(env, Mcons(istream, minim_false));
+        // set the current procedure and argument count
+        current_cp(th) = args[0];
+        current_ac(th) = 0;
+        goto application;
     } else if (prim == syntax_error_proc) {
         // special case: `syntax-error`
         do_syntax_error(current_ac(th), args);
