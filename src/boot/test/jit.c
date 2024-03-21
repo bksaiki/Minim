@@ -172,7 +172,30 @@ int test_rest() {
     return passed;
 }
 
+int test_apply() {
+    passed = 1;
 
+    check_equal("(apply (lambda xs xs) '())", "()");
+    check_equal("(apply (lambda xs xs) '(1))", "(1)");
+    check_equal("(apply (lambda xs xs) '(1 2))", "(1 2)");
+
+    check_equal("(apply (lambda xs xs) 1 '())", "(1)");
+    check_equal("(apply (lambda xs xs) 1 '(2))", "(1 2)");
+    check_equal("(apply (lambda xs xs) 1 '(2 3))", "(1 2 3)");
+
+    check_equal("(apply (lambda xs xs) 1 2 '())", "(1 2)");
+    check_equal("(apply (lambda xs xs) 1 2 '(3))", "(1 2 3)");
+    check_equal("(apply (lambda xs xs) 1 2 '(3 4))", "(1 2 3 4)");
+    
+    return passed;
+}
+
+int test_call_with_values() {
+    passed = 1;
+
+
+    return passed;
+}
 
 int test_let_values() {
     passed = 1;
@@ -212,6 +235,7 @@ int main(int argc, char **argv) {
     log_test("closure", test_closure);
     log_test("app", test_app);
     log_test("rest", test_rest);
+    log_test("apply", test_apply);
     log_test("let-values", test_let_values);
 
     GC_finalize();

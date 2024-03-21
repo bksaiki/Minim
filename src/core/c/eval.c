@@ -256,7 +256,10 @@ static void do_apply() {
     sfp = current_sfp(th);
     ac = current_ac(th);
 
-    // first, shift arguments by 1 (since `apply` itself is consumed)
+    // the first argument becomes the current procedure
+    current_cp(th) = sfp[0];
+
+    // shift arguments by 1 (since `apply` itself is consumed)
     rest = sfp[ac - 1];
     for (i = 0; i < ac - 2; i++)
         sfp[i] = sfp[i + 1];
@@ -356,9 +359,17 @@ static void check_arity(mobj env, mobj spec) {
         if (ac != minim_fixnum(spec))
             arity_mismatch_exn(current_cp(th), ac);
     } else {
-        // at least arity
-        if (ac < minim_fixnum(minim_car(spec)))
-            arity_mismatch_exn(current_cp(th), ac);
+        mobj min = minim_car(spec);
+        mobj max = minim_cdr(spec);
+        if (minim_falsep(max)) {
+            // at least arity
+            if (ac < minim_fixnum(min))
+                arity_mismatch_exn(current_cp(th), ac);
+        } else {
+            // range arity
+            if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
+                arity_mismatch_exn(current_cp(th), ac);
+        }
     }
 }
 
@@ -424,6 +435,7 @@ loop:
         res = pop_arg();
     } else if (ty == apply_symbol) {
         // apply
+application:
         if (minim_primp(current_cp(th))) {
             goto call_prim;
         } else if (minim_closurep(current_cp(th))) {
@@ -560,6 +572,10 @@ call_prim:
         // special case: `values`
         do_values();
         res = minim_values;
+    } else if (prim == apply_proc) {
+        // special case: `apply`
+        do_apply();
+        goto application;
     } else if (prim == error_proc) {
         // special case: `error`
         do_error(current_ac(th), args);
