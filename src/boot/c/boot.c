@@ -38,11 +38,13 @@ void minim_boot_init() {
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");
+    do_error_symbol = intern("#%do-error");
     do_eval_symbol = intern("#%do-eval");
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
     do_with_values_symbol = intern("#%do-with_values");
     get_arg_symbol = intern("#%get-arg");
+    get_env_symbol = intern("#%get-env");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
     make_closure_symbol = intern("#%make-closure");

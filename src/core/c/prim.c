@@ -210,7 +210,7 @@ void init_prims(mobj env) {
     add_procedure("interaction-environment", interaction_environment, 0);
     add_procedure("null-environment", empty_environment, 0);
     add_procedure("environment", environment_proc, 0);
-    add_procedure("current-environment", current_environment, 0);
+    add_cprocedure("current-environment", compile_current_environment);
     add_procedure("$environment-extend", extend_environment, 1);
     add_procedure("$environment-names", environment_names, 1);
     add_procedure("$environment-ref", environment_variable_ref, 3);
@@ -256,6 +256,5 @@ void init_prims(mobj env) {
     add_procedure("$current-directory-set!", current_directory_set_proc, 1);
 
     add_cprocedure("eval", compile_eval);
-    add_rprocedure("error", error_proc, 2);
-    add_vprocedure("syntax-error", syntax_error_proc, 2, 4);
+    add_cprocedure("error", compile_error);
 }

@@ -358,7 +358,7 @@ static void check_arity(mobj env, mobj spec) {
 mobj eval_expr(mobj expr, mobj env) {
     minim_thread *th;
     mobj *istream;
-    mobj code, ins, ty, res;
+    mobj code, ins, ty, res, penv;
 
     // compile to instructions
     code = compile_expr(expr);
@@ -367,6 +367,7 @@ mobj eval_expr(mobj expr, mobj env) {
     th = current_thread();
     current_ac(th) = 0;
     istream = minim_code_it(code);
+    penv = env;
     res = NULL;
 
 // instruction processor
@@ -445,10 +446,21 @@ application:
     } else if (ty == get_arg_symbol) {
         // get-arg
         res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
+    } else if (ty == get_env_symbol) {
+        // get-env
+        if (current_continuation(th) == minim_null) {
+            res = penv;
+        } else {
+            res = continuation_env(current_continuation(th));
+        }
     } else if (ty == do_apply_symbol) {
         // do-apply
         do_apply();
         goto application;
+    } else if (ty == do_error_symbol) {
+        // do-error
+        do_error(current_ac(th), current_sfp(th));
+        goto unreachable;
     } else if (ty == do_eval_symbol) {
         // do-eval
         goto do_eval;
@@ -525,50 +537,35 @@ call_prim:
     // split on special cases
     prim = minim_prim(current_cp(th));
     args = current_sfp(th);
-    if (prim == error_proc) {
-        // special case: `error`
-        do_error(current_ac(th), args);
-        fprintf(stderr, "unreachable\n");
+    // default: call based on arity
+    switch (current_ac(th)) {
+    case 0:
+        res = prim();
+        break;
+    case 1:
+        res = prim(args[0]);
+        break;
+    case 2:
+        res = prim(args[0], args[1]);
+        break;
+    case 3:
+        res = prim(args[0], args[1], args[2]);
+        break;
+    case 4:
+        res = prim(args[0], args[1], args[2], args[3]);
+        break;
+    case 5:
+        res = prim(args[0], args[1], args[2], args[3], args[4]);
+        break;
+    case 6:
+        res = prim(args[0], args[1], args[2], args[3], args[4], args[5]);
+        break;
+    default:
+        fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+        fprintf(stderr, " received: ");
+        write_object(stderr, current_cp(th));
         minim_shutdown(1);
-    } else if (prim == current_environment) {
-        // special case: `current-environment`
-        res = env;
-    } else if (prim == syntax_error_proc) {
-        // special case: `syntax-error`
-        do_syntax_error(current_ac(th), args);
-        fprintf(stderr, "unreachable\n");
-        minim_shutdown(1);
-    } else {
-        // default: call based on arity
-        switch (current_ac(th)) {
-        case 0:
-            res = prim();
-            break;
-        case 1:
-            res = prim(args[0]);
-            break;
-        case 2:
-            res = prim(args[0], args[1]);
-            break;
-        case 3:
-            res = prim(args[0], args[1], args[2]);
-            break;
-        case 4:
-            res = prim(args[0], args[1], args[2], args[3]);
-            break;
-        case 5:
-            res = prim(args[0], args[1], args[2], args[3], args[4]);
-            break;
-        case 6:
-            res = prim(args[0], args[1], args[2], args[3], args[4], args[5]);
-            break;
-        default:
-            fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-            fprintf(stderr, " received: ");
-            write_object(stderr, current_cp(th));
-            minim_shutdown(1);
-            break;
-        }
+        break;
     }
 
     // clear arguments and pop frame
@@ -608,5 +605,9 @@ not_procedure:
     fprintf(stderr, " got: ");
     write_object(stderr, current_cp(th));
     fprintf(stderr, "\n");
+    minim_shutdown(1);
+
+unreachable:
+    fprintf(stderr, "unreachable");
     minim_shutdown(1);
 }

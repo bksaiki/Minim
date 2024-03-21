@@ -374,11 +374,13 @@ extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
+extern mobj do_error_symbol;
 extern mobj do_eval_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
 extern mobj get_arg_symbol;
+extern mobj get_env_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
 extern mobj make_closure_symbol;
@@ -644,10 +646,7 @@ mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
 mobj error_proc();
-mobj syntax_error_proc();
-
 mobj do_error(int argc, mobj *args);
-mobj do_syntax_error(int argc, mobj *args);
 
 // Stack segment
 // +--------------+
@@ -699,6 +698,8 @@ mobj compile_expr(mobj expr);
 
 mobj compile_apply(mobj name);
 mobj compile_call_with_values(mobj name);
+mobj compile_current_environment(mobj name);
+mobj compile_error(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);
 mobj compile_values(mobj name);

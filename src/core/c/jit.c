@@ -615,7 +615,7 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
     minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(empty_env, code);
+    return Mclosure(setup_env(), code);
 }
 
 // Short hand for making a function that just calls `compile_do_ret`
@@ -642,6 +642,8 @@ mobj compile_expr(mobj expr) {
 }
 
 define_do_ret(compile_apply, Mcons(Mfixnum(2), minim_false), Mlist1(do_apply_symbol));
+define_do_ret(compile_current_environment, Mfixnum(0), Mlist1(get_env_symbol));
+define_do_ret(compile_error, Mcons(Mfixnum(2), minim_false), Mlist1(do_error_symbol));
 define_do_ret(compile_identity, Mfixnum(1), Mlist2(get_arg_symbol, Mfixnum(0)));
 define_do_ret(compile_values, Mcons(Mfixnum(0), minim_false), Mlist1(do_values_symbol));
 define_do_ret(compile_void, Mfixnum(0), Mlist2(literal_symbol, minim_void));
@@ -679,7 +681,7 @@ mobj compile_call_with_values(mobj name) {
     minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(empty_env, code);
+    return Mclosure(setup_env(), code);
 }
 
 // Custom `eval` compilation
@@ -702,5 +704,5 @@ mobj compile_eval(mobj name) {
     minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(empty_env, code);
+    return Mclosure(setup_env(), code);
 }
