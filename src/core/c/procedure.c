@@ -24,18 +24,6 @@ mobj procp_proc(mobj x) {
     return minim_procp(x) ? minim_true : minim_false;
 }
 
-mobj call_with_values_proc() {
-    uncallable_prim_exn("call-with-values");
-}
-
-mobj eval_proc() {
-    uncallable_prim_exn("eval");
-}
-
-mobj identity_proc(mobj x) {
-    return x;
-}
-
 mobj procedure_arity_proc(mobj proc) {
     // (-> procedure any)
     if (minim_primp(proc)) {

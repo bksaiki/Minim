@@ -374,6 +374,7 @@ extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
+extern mobj do_eval_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
@@ -459,7 +460,6 @@ mobj syntaxp_proc(mobj x);
 mobj not_proc(mobj x);
 mobj eq_proc(mobj x, mobj y);
 mobj equal_proc(mobj x, mobj y);
-mobj void_proc();
 
 #define NUL_CHAR        ((mchar) 0x00)      // null
 #define BEL_CHAR        ((mchar) 0x07)      // alarm / bell
@@ -616,7 +616,6 @@ mobj record_rtd_proc(mobj rec);
 mobj record_ref_proc(mobj rec, mobj idx);
 mobj record_set_proc(mobj rec, mobj idx, mobj x);
 
-mobj identity_proc(mobj x);
 mobj procedure_arity_proc(mobj proc);
 
 mobj syntax_e_proc(mobj stx);
@@ -644,8 +643,6 @@ mobj command_line_proc();
 mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
-mobj eval_proc();
-mobj call_with_values_proc();
 mobj error_proc();
 mobj syntax_error_proc();
 
@@ -702,7 +699,10 @@ mobj compile_expr(mobj expr);
 
 mobj compile_apply(mobj name);
 mobj compile_call_with_values(mobj name);
+mobj compile_eval(mobj name);
+mobj compile_identity(mobj name);
 mobj compile_values(mobj name);
+mobj compile_void(mobj name);
 
 // Interpreter
 

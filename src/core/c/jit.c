@@ -595,6 +595,35 @@ static mobj compile_expr2(mobj expr, mobj env, int tailp) {
     }
 }
 
+// Common idiom for custom compilation targets
+static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
+    mobj env, ins, reloc, code;
+
+    // prepare compiler
+    env = make_cenv();
+    
+    // hand written procedure
+    ins = Mlist3(
+        Mlist2(check_arity_symbol, arity),
+        do_instr,
+        Mlist1(ret_symbol)
+    );
+
+    // write to code
+    reloc = resolve_refs(env, ins);
+    code = write_code(ins, reloc, arity);
+    minim_code_name(code) = name;
+
+    // return a closure
+    return Mclosure(empty_env, code);
+}
+
+// Short hand for making a function that just calls `compile_do_ret`
+#define define_do_ret(fn_name, arity, do_instr) \
+    mobj fn_name(mobj name) { \
+        return compile_do_ret(name, arity, do_instr); \
+    }
+
 //
 //  Public API
 //
@@ -612,45 +641,39 @@ mobj compile_expr(mobj expr) {
     return write_code(ins, reloc, Mfixnum(0));
 }
 
-mobj compile_apply(mobj name) {
-    mobj env, ins, reloc, code;
-    
-    // hand written procedure
-    env = make_cenv();
-    ins = Mlist2(Mlist1(do_apply_symbol), Mlist1(ret_symbol));
-    reloc = resolve_refs(env, ins);
-    code = write_code(ins, reloc, Mcons(Mfixnum(2), minim_false));
-    minim_code_name(code) = name;
+define_do_ret(compile_apply, Mcons(Mfixnum(2), minim_false), Mlist1(do_apply_symbol));
+define_do_ret(compile_identity, Mfixnum(1), Mlist2(get_arg_symbol, Mfixnum(0)));
+define_do_ret(compile_values, Mcons(Mfixnum(0), minim_false), Mlist1(do_values_symbol));
+define_do_ret(compile_void, Mfixnum(0), Mlist2(literal_symbol, minim_void));
 
-    // return a closure
-    return Mclosure(empty_env, code);
-}
-
+// Custom `call-with-values` compilation
 mobj compile_call_with_values(mobj name) {
-    mobj env, ins, label, reloc, code;
+    mobj env, arity, ins, label, reloc, code;
 
     // prepare compiler
     env = make_cenv();
+    arity = Mfixnum(2);
     label = cenv_make_label(env);
     
     // hand written procedure
     ins = list_append2(
         Mlist6(
+            Mlist2(check_arity_symbol, arity),      // check arity
             Mlist1(pop_symbol),                     // pop consumer
             Mlist1(set_proc_symbol),                // set consumer as procedure
             Mlist1(pop_symbol),                     // pop producer
             Mlist2(save_cc_symbol, label),          // create new frame
-            Mlist1(set_proc_symbol),                // set producer as procedure
-            Mlist1(apply_symbol)                    // call and restore previous frame
+            Mlist1(set_proc_symbol)                 // set producer as procedure
         ),
-        Mlist3(
+        Mlist4(
+            Mlist1(apply_symbol),                   // call and restore previous frame
             label,
             Mlist1(do_with_values_symbol),          // convert result to arguments
             Mlist1(apply_symbol)                    // call consumer
         )
     );
 
-    // 
+    // write to code
     reloc = resolve_refs(env, ins);
     code = write_code(ins, reloc, Mcons(Mfixnum(2), Mfixnum(2)));
     minim_code_name(code) = name;
@@ -659,14 +682,23 @@ mobj compile_call_with_values(mobj name) {
     return Mclosure(empty_env, code);
 }
 
-mobj compile_values(mobj name) {
-    mobj env, ins, reloc, code;
+// Custom `eval` compilation
+mobj compile_eval(mobj name) {
+    mobj env, arity, ins, reloc, code;
+
+    // prepare compiler
+    env = make_cenv();
+    arity = Mcons(Mfixnum(1), Mfixnum(2));
     
     // hand written procedure
-    env = make_cenv();
-    ins = Mlist2(Mlist1(do_values_symbol), Mlist1(ret_symbol));
+    ins = Mlist2(
+        Mlist2(check_arity_symbol, arity),
+        Mlist1(do_eval_symbol)
+    );
+
+    // write to code
     reloc = resolve_refs(env, ins);
-    code = write_code(ins, reloc, Mcons(Mfixnum(0), minim_false));
+    code = write_code(ins, reloc, Mcons(Mfixnum(1), Mfixnum(2)));
     minim_code_name(code) = name;
 
     // return a closure

@@ -217,13 +217,11 @@ void init_prims(mobj env) {
     add_procedure("$environment-set!", environment_variable_set, 3);
 
     add_procedure("procedure-arity", procedure_arity_proc, 1);
-    add_procedure("identity", identity_proc, 1);
-    add_procedure("void", void_proc, 0);
-
-    add_vprocedure("eval", eval_proc, 1, 2);
+    add_cprocedure("identity", compile_identity);
     add_cprocedure("apply", compile_apply);
     add_cprocedure("call-with-values", compile_call_with_values);
     add_cprocedure("values", compile_values);
+    add_cprocedure("void", compile_void);
 
     add_procedure("input-port?", input_portp_proc, 1);
     add_procedure("output-port?", output_portp_proc, 1);
@@ -257,6 +255,7 @@ void init_prims(mobj env) {
     add_procedure("$current-directory", current_directory_proc, 0);
     add_procedure("$current-directory-set!", current_directory_set_proc, 1);
 
+    add_cprocedure("eval", compile_eval);
     add_rprocedure("error", error_proc, 2);
     add_vprocedure("syntax-error", syntax_error_proc, 2, 4);
 }

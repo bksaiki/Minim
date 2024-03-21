@@ -25,6 +25,7 @@ mobj check_arity_symbol;
 mobj check_stack_symbol;
 mobj clear_frame_symbol;
 mobj do_apply_symbol;
+mobj do_eval_symbol;
 mobj do_rest_symbol;
 mobj do_values_symbol;
 mobj do_with_values_symbol;
@@ -139,8 +140,4 @@ mobj eq_proc(mobj x, mobj y) {
 mobj equal_proc(mobj x, mobj y) {
     // (-> any any boolean)
     return minim_equalp(x, y) ? minim_true : minim_false;
-}
-
-mobj void_proc() {
-    return minim_void;
 }

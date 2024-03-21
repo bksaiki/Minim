@@ -38,6 +38,7 @@ void minim_boot_init() {
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");
+    do_eval_symbol = intern("#%do-eval");
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
     do_with_values_symbol = intern("#%do-with_values");

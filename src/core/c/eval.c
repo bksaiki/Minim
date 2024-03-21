@@ -449,6 +449,9 @@ application:
         // do-apply
         do_apply();
         goto application;
+    } else if (ty == do_eval_symbol) {
+        // do-eval
+        goto do_eval;
     } else if (ty == do_rest_symbol) {
         // do-rest
         res = do_rest(minim_fixnum(minim_cadr(ins)));
@@ -527,14 +530,6 @@ call_prim:
         do_error(current_ac(th), args);
         fprintf(stderr, "unreachable\n");
         minim_shutdown(1);
-    } else if (prim == eval_proc) {
-        // special case: `eval` (1 or 2 arguments)
-        // compile the expression into a nullary function
-        // and call in tail position
-        env = current_ac(th) == 2 ? args[1] : env;
-        current_cp(th) = Mclosure(env, compile_expr(args[0]));
-        current_ac(th) = 0;
-        goto application;
     } else if (prim == current_environment) {
         // special case: `current-environment`
         res = env;
@@ -580,6 +575,16 @@ call_prim:
     current_cp(th) = NULL;
     current_ac(th) = 0;
     goto restore_frame;
+
+// performs `do-eval` instruction
+do_eval:
+    // compile expression into a nullary function and
+    // call it in tail position
+    args = current_sfp(th);
+    env = current_ac(th) == 2 ? args[1] : env;
+    current_cp(th) = Mclosure(env, compile_expr(args[0]));
+    current_ac(th) = 0;
+    goto application;
 
 // restores previous continuation
 restore_frame:
