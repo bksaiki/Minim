@@ -39,32 +39,26 @@ static char *_get_file_path(const char *rel_path) {
 #endif
 }
 
-void *alloc_page(size_t size)
-{
+void *alloc_page(size_t size) {
     void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (ptr == ((void*) -1)) {
-        perror("mmap() failed to allocate a page of memory");
-        return NULL;
+        minim_error("alloc_page", "allocation failed");
     }
 
     return ptr;
 }
 
-int make_page_executable(void* page, size_t size)
-{
+int make_page_executable(void* page, size_t size) {
     if (mprotect(page, size, PROT_READ | PROT_EXEC) == -1) {
-        perror("mprotect() failed to set page to executable");
-        return -1;
+        minim_error("alloc_page", "failed to set page to executable");
     }
 
     return 0;
 }
 
-int make_page_write_only(void* page, size_t size)
-{
+int make_page_write_only(void* page, size_t size) {
     if (mprotect(page, size, PROT_WRITE) == -1) {
-        perror("mprotect() failed to set page to executable");
-        return -1;
+        minim_error("alloc_page", "failed to set page to write-only");
     }
 
     return 0;
@@ -72,8 +66,7 @@ int make_page_write_only(void* page, size_t size)
 
 void set_current_dir(const char *str) {
     if (_set_current_dir(str) != 0) {
-        fprintf(stderr, "could not set current directory: %s\n", str);
-        minim_shutdown(1);
+        minim_error1("set_current_dir", "could not set current directory", Mstring(str));
     }
 
     current_directory(current_thread()) = Mstring(str);
@@ -89,8 +82,7 @@ char *get_file_dir(const char *realpath) {
 
     for (i = strlen(realpath) - 1; i >= 0 && realpath[i] != '/'; --i);
     if (i < 0) {
-        fprintf(stderr, "could not resolve directory of path %s\n", realpath);
-        minim_shutdown(1);
+        minim_error1("get_file_dir", "could not resolve directory", Mstring(realpath));
     }
 
     dirpath = GC_alloc_atomic((i + 2) * sizeof(char));
@@ -106,8 +98,7 @@ mobj load_file(const char *fname, mobj env) {
 
     f = fopen(fname, "r");
     if (f == NULL) {
-        fprintf(stderr, "could not open file \"%s\"\n", fname);
-        minim_shutdown(1);
+        minim_error1("load_file", "could not open file", Mstring(fname));
     }
 
     old_cwd = _get_current_dir();

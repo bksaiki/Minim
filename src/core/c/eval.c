@@ -27,62 +27,30 @@ void bad_type_exn(const char *name, const char *type, mobj x) {
 
 void arity_mismatch_exn(mobj proc, size_t actual) {
     mobj code, arity;
+    char *name;
 
-    // print name and extract arity
     code = minim_closure_code(proc);
-    if (minim_code_name(code))
-        fprintf(stderr, "%s: ", minim_code_name(code));
-
+    name = minim_code_name(code);
     arity = minim_code_arity(code);
     if (minim_fixnump(arity)) {
         // exact arity
-        fprintf(
-            stderr, 
-            "expected %ld arguments, received %ld\n",
-            minim_fixnum(arity),
-            actual
-        );
+        minim_error2(name, "arity mismatch", arity, Mfixnum(actual));
     } else {
         // range of arities
         mobj min_arity = minim_car(arity);
         mobj max_arity = minim_cdr(arity);
         if (minim_falsep(max_arity)) {
             // at-least arity
-            fprintf(
-                stderr, 
-                "expected at least %ld arguments, received %ld\n",
-                minim_fixnum(min_arity),
-                actual
-            );
+            minim_error2(name, "arity mismatch, expected at least", min_arity, Mfixnum(actual));
         } else {
             // range arity
-            fprintf(
-                stderr, 
-                "expected between %ld and %ld arguments, received %ld\n",
-                minim_fixnum(min_arity),
-                minim_fixnum(max_arity),
-                actual
-            );
+            minim_error3(name, "arity mismatch, expected between", min_arity, max_arity, Mfixnum(actual));
         }
     }
-
-    minim_shutdown(1);
 }
 
 void result_arity_exn(const char *name, short expected, short actual) {
-    if (name == NULL) {
-        fprintf(stderr, "result arity mismatch\n");
-    } else {
-        fprintf(stderr, "%s: result arity mismatch\n", name);
-    }
-
-    fprintf(stderr, "  expected: %d, received: %d\n", expected, actual);
-    minim_shutdown(1);
-}
-
-void uncallable_prim_exn(const char *name) {
-    fprintf(stderr, "%s: should not be called directly", name);
-    minim_shutdown(1);
+    minim_error2(name, "result arity mismatch", Mfixnum(expected), Mfixnum(actual));
 }
 
 //
@@ -220,10 +188,7 @@ static mobj do_ccall(mobj (*prim)()) {
     case 6:
         return prim(args[0], args[1], args[2], args[3], args[4], args[5]);
     default:
-        fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-        fprintf(stderr, " received: ");
-        write_object(stderr, current_cp(th));
-        minim_shutdown(1);
+        minim_error1(NULL, "cannot call kernel function with 7 or more arguments", current_cp(th));
     }
 }
 
@@ -234,9 +199,7 @@ static mobj do_rest(size_t idx) {
     th = current_thread();
     ac = current_ac(th);
     if (idx > ac) {
-        fprintf(stderr, "do_rest(): starting index out of bounds\n");
-        fprintf(stderr, " idx=%ld, ac=%ld\n", idx, ac);
-        minim_shutdown(1);
+        minim_error2("do_rest", "base index exceed argument count", Mfixnum(idx), Mfixnum(ac));
     }
 
     if (idx == ac) {
@@ -388,15 +351,10 @@ mobj eval_expr(mobj expr, mobj env) {
 loop:
     ins = *istream;
     if (!minim_consp(ins)) {
-        if (minim_stringp(ins)) {
-            // label (skip)
+        // TODO: this check should not be required
+        if (minim_stringp(ins))
             goto next;
-        } else {
-            fprintf(stderr, "not bytecode: ");
-            write_object(stderr, ins);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
-        }
+        minim_error1(NULL, "executing non-bytecode", ins);
     }
 
     ty = minim_car(ins);
@@ -515,10 +473,7 @@ application:
         // check arity
         check_arity(env, minim_cadr(ins));
     } else {
-        fprintf(stderr, "invalid bytecode: ");
-        write_object(stderr, ins);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
+        minim_error1(NULL, "invalid bytecode", ins);
     }
 
 // move to next instruction
@@ -526,8 +481,7 @@ application:
 next:
     istream++;
     if (*istream == NULL) {
-        fprintf(stderr, "eval_expr(), instruction sequence unexpectedly ended\n");
-        minim_shutdown(1);
+        minim_error(NULL, "bytecode out of bounds");
     }
     goto loop;
 
@@ -569,13 +523,8 @@ restore_frame:
     goto loop;
 
 not_procedure:
-    fprintf(stderr, "expected procedure\n");
-    fprintf(stderr, " got: ");
-    write_object(stderr, current_cp(th));
-    fprintf(stderr, "\n");
-    minim_shutdown(1);
+    minim_error1(NULL, "expected procedure", current_cp(th));
 
 unreachable:
-    fprintf(stderr, "unreachable");
-    minim_shutdown(1);
+    minim_error1(NULL, "unreachable", current_cp(th));
 }
