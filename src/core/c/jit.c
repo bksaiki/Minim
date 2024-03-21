@@ -168,17 +168,13 @@ static mobj with_tail_ret(mobj ins, int tailp) {
     return ins;
 }
 
-static mobj compile_define_values(mobj expr, mobj env) {
+static mobj compile_define_values(mobj expr, mobj env, int tailp) {
     mobj ids, ins;
 
     ids = minim_cadr(expr);
     ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
-    list_set_tail(ins, Mlist2(
-        Mlist2(bind_values_symbol, ids),
-        Mlist1(ret_symbol)
-    ));
-
-    return ins;
+    list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, ids)));
+    return with_tail_ret(ins, tailp);
 }
 
 static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
@@ -249,6 +245,12 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
     return ins;
 }
 
+static mobj compile_setb(mobj expr, mobj env, int tailp) {
+    mobj ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
+    list_set_tail(ins, Mlist1(Mlist2(rebind_symbol, minim_cadr(expr))));
+    return with_tail_ret(ins, tailp);
+}
+
 static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     mobj args, body, ins, idx, code, arity;
     long i, req_arity, env_size;
@@ -295,11 +297,11 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     body = Mcons(begin_symbol, minim_cddr(expr));
     list_set_tail(ins, compile_expr(body, extend_cenv(env), 1));
 
-    fprintf(stderr, "%ld:\n expr:", cenv_num_tmpls(env));
-    write_object(stderr, expr);
-    fprintf(stderr, "\n code:");
-    write_object(stderr, ins);
-    fprintf(stderr, "\n");
+    // fprintf(stderr, "%ld:\n expr:", cenv_num_tmpls(env));
+    // write_object(stderr, expr);
+    // fprintf(stderr, "\n code:");
+    // write_object(stderr, ins);
+    // fprintf(stderr, "\n");
 
     // resolve references
     resolve_refs(env, ins);
@@ -423,12 +425,18 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
         mobj head = minim_car(expr);
         if (minim_symbolp(head)) {
             // special forms
-            if (head == letrec_values_symbol) {
+            if (head == define_values_symbol) {
+                // define-values form
+                return compile_define_values(expr, env, tailp);
+            } else if (head == letrec_values_symbol) {
                 // letrec-values form
                 return compile_letrec_values(expr, env, tailp);
             } else if (head == let_values_symbol) {
                 // let-values form
                 return compile_let_values(expr, env, tailp);
+            } else if (head == setb_symbol) {
+                // set! form
+                return compile_setb(expr, env, tailp);
             } else if (head == lambda_symbol) {
                 // lambda form
                 return compile_lambda(expr, env, tailp);
@@ -469,23 +477,6 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
     }
 }
 
-static mobj compile_top(mobj expr, mobj env) {
-    if (minim_consp(expr)) {
-        // special form or application
-        mobj head = minim_car(expr);
-        if (minim_symbolp(head)) {
-            // special forms
-            if (head == define_values_symbol) {
-                // define-values form
-                return compile_define_values(expr, env);
-            }
-        }
-    }
-
-    // expression context otherwise
-    return compile_expr(expr, env, 1);
-}
-
 //
 //  Public API
 //
@@ -494,7 +485,7 @@ mobj compile_jit(mobj expr) {
     mobj env, ins;
 
     env = make_cenv();
-    ins = compile_top(expr, env);
+    ins = compile_expr(expr, env, 1);
     resolve_refs(env, ins);
-    return write_code(ins, minim_false);
+    return write_code(ins, Mfixnum(0));
 }

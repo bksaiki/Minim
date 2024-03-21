@@ -310,16 +310,6 @@ static mobj force_single_value(mobj x) {
     }
 }
 
-static long let_values_env_size(mobj e) {
-    mobj bindings, bind;
-    long var_count = 0;
-    for (bindings = minim_cadr(e); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
-        bind = minim_car(bindings);
-        var_count += list_length(minim_car(bind));
-    }
-    return var_count;
-}
-
 static void bind_values(mobj env, mobj ids, mobj res) {
     size_t count = list_length(ids);
     if (minim_valuesp(res)) {
@@ -383,8 +373,8 @@ mobj eval_expr(mobj expr, mobj env) {
 
     // compile to instructions
     code = compile_jit(expr);
-    write_object(stderr, code_to_instrs(code));
-    fprintf(stderr, "\n");
+    // write_object(stderr, code_to_instrs(code));
+    // fprintf(stderr, "\n");
 
     // set up instruction evaluator
     th = current_thread();
@@ -407,13 +397,13 @@ loop:
         }
     }
 
-    fprintf(stderr, "eval: ");
-    write_object(stderr, ins);
-    if (res) {
-        fprintf(stderr, " res=");
-        write_object(stderr, res);
-    }
-    fprintf(stderr, "\n");
+    // fprintf(stderr, "eval: ");
+    // write_object(stderr, ins);
+    // if (res) {
+    //     fprintf(stderr, " res=");
+    //     write_object(stderr, res);
+    // }
+    // fprintf(stderr, "\n");
 
     ty = minim_car(ins);
     if (ty == literal_symbol) {
@@ -429,7 +419,7 @@ loop:
     } else if (ty == push_symbol) {
         // push
         maybe_grow_stack(1);
-        push_arg(res);
+        push_arg(force_single_value(res));
     } else if (ty == pop_symbol) {
         // pop
         res = pop_arg();
@@ -457,6 +447,10 @@ application:
     } else if (ty == bind_values_top_symbol) {
         // bind-values/top (special variant for `let-values`)
         bind_values(current_sfp(th)[current_ac(th) - 1], minim_cadr(ins), res);
+        res = minim_void;
+    } else if (ty == rebind_symbol) {
+        // rebind
+        env_set_var(env, minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == make_env_symbol) {
         // make-env
@@ -535,8 +529,10 @@ restore_frame:
     mobj cc, pc;
 
     // check if stack is fully unwound
-    if (minim_nullp(current_continuation(th)))
+    if (minim_nullp(current_continuation(th))) {
+        // this is the only normal exit point from this function
         return res;
+    }
     
     // otherwise, restore the old instruction stream and environment
     // and seek to the expected label
@@ -607,6 +603,17 @@ call_prim:
         current_cp(th) = args[0];
         current_ac(th) = 0;
         goto application;
+    } else if (prim == eval_proc) {
+        // special case: `eval` (1 or 2 arguments)
+        // compile the expression into a nullary function
+        // and call in tail position
+        env = current_ac(th) == 2 ? args[1] : env;
+        current_cp(th) = Mclosure(env, compile_jit(args[0]));
+        current_ac(th) = 0;
+        goto application;
+    } else if (prim == current_environment) {
+        // special case: `current-environment`
+        res = env;
     } else if (prim == syntax_error_proc) {
         // special case: `syntax-error`
         do_syntax_error(current_ac(th), args);

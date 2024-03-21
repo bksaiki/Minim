@@ -33,6 +33,7 @@ mobj pop_symbol;
 mobj pop_env_symbol;
 mobj push_symbol;
 mobj push_env_symbol;
+mobj rebind_symbol;
 mobj ret_symbol;
 mobj set_proc_symbol;
 mobj save_cc_symbol;

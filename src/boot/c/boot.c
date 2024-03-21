@@ -46,6 +46,7 @@ void minim_boot_init() {
     pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");
     push_env_symbol = intern("#%push-env");
+    rebind_symbol = intern("#%rebind");
     ret_symbol = intern("#%ret");
     save_cc_symbol = intern("#%save-cc");
     set_proc_symbol = intern("#%set-proc");

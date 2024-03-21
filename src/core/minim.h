@@ -378,6 +378,7 @@ extern mobj pop_symbol;
 extern mobj pop_env_symbol;
 extern mobj push_symbol;
 extern mobj push_env_symbol;
+extern mobj rebind_symbol;
 extern mobj ret_symbol;
 extern mobj set_proc_symbol;
 extern mobj save_cc_symbol;
