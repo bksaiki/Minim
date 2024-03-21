@@ -368,6 +368,7 @@ extern mobj brancha_symbol;
 extern mobj branchf_symbol;
 extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
+extern mobj check_stack_symbol;
 extern mobj do_rest_symbol;
 extern mobj get_arg_symbol;
 extern mobj literal_symbol;

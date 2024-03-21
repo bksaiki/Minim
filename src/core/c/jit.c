@@ -297,12 +297,6 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     body = Mcons(begin_symbol, minim_cddr(expr));
     list_set_tail(ins, compile_expr(body, extend_cenv(env), 1));
 
-    // fprintf(stderr, "%ld:\n expr:", cenv_num_tmpls(env));
-    // write_object(stderr, expr);
-    // fprintf(stderr, "\n code:");
-    // write_object(stderr, ins);
-    // fprintf(stderr, "\n");
-
     // resolve references
     resolve_refs(env, ins);
 
@@ -379,6 +373,7 @@ static mobj compile_if(mobj expr, mobj env, int tailp) {
 
 static mobj compile_app(mobj expr, mobj env, int tailp) {
     mobj ins, label, it;
+    size_t argc;
 
     // need to save a continuation if not in tail position
     if (tailp) {
@@ -391,6 +386,10 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
     // compute procedure
     ins = list_append2(ins, compile_expr(minim_car(expr), env, 0));
     list_set_tail(ins, Mlist1(Mlist1(set_proc_symbol)));
+
+    // emit stack hint
+    argc = list_length(minim_cdr(expr));
+    list_set_tail(ins, Mlist1(Mlist2(check_stack_symbol, Mfixnum(argc))));
 
     // compute arguments
     for (it = minim_cdr(expr); !minim_nullp(it); it = minim_cdr(it)) {

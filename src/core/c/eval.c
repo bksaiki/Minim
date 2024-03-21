@@ -218,35 +218,6 @@ static mobj do_rest(size_t idx) {
     }
 }
 
-static void do_values() {
-    minim_thread *th = current_thread();
-    mobj *sfp = current_sfp(th);
-    size_t ac = current_ac(th);
-
-    // check if the values buffer is large enough
-    if (ac >= values_buffer_size(th)) {
-        values_buffer_size(th) = 2 * ac;
-        values_buffer(th) = GC_realloc(values_buffer(th), values_buffer_size(th) * sizeof(mobj));
-    }
-
-    // copy arguments from the stack to the values buffer
-    memcpy(values_buffer(th), sfp, ac * sizeof(mobj));
-    values_buffer_count(th) = ac;
-}
-
-static void values_to_args(mobj x) {
-    if (minim_valuesp(x)) {
-        // multi-valued
-        minim_thread *th = current_thread();
-        for (size_t i = 0; i < values_buffer_count(th); i++) {
-            push_arg(values_buffer_ref(th, i));
-        }
-    } else {
-        // single-valued
-        push_arg(x);
-    }
-}
-
 static void do_apply() {
     minim_thread *th;
     mobj *sfp, rest;
@@ -282,6 +253,35 @@ static void do_apply() {
         push_arg(minim_car(rest));
 }
 
+static void do_values() {
+    minim_thread *th = current_thread();
+    mobj *sfp = current_sfp(th);
+    size_t ac = current_ac(th);
+
+    // check if the values buffer is large enough
+    if (ac >= values_buffer_size(th)) {
+        values_buffer_size(th) = 2 * ac;
+        values_buffer(th) = GC_realloc(values_buffer(th), values_buffer_size(th) * sizeof(mobj));
+    }
+
+    // copy arguments from the stack to the values buffer
+    memcpy(values_buffer(th), sfp, ac * sizeof(mobj));
+    values_buffer_count(th) = ac;
+}
+
+static void values_to_args(mobj x) {
+    if (minim_valuesp(x)) {
+        // multi-valued
+        minim_thread *th = current_thread();
+        for (size_t i = 0; i < values_buffer_count(th); i++) {
+            push_arg(values_buffer_ref(th, i));
+        }
+    } else {
+        // single-valued
+        push_arg(x);
+    }
+}
+
 static void check_call_with_values(mobj *args) {
     mobj producer, consumer;
     
@@ -307,6 +307,22 @@ static mobj force_single_value(mobj x) {
         return values_buffer_ref(th, 0);
     } else {
         return x;
+    }
+}
+
+static mobj find_label(mobj istream, mobj label) {
+    while (1) {
+        istream = minim_cdr(istream);
+        if (minim_nullp(istream)) {
+            // exhausted instruction stream
+            fprintf(stderr, "unable to find label: ");
+            write_object(stderr, label);
+            fprintf(stderr, "\n");
+            minim_shutdown(1);
+        } else if (minim_car(istream) == label) {
+            // found label
+            return istream;
+        }
     }
 }
 
@@ -373,8 +389,6 @@ mobj eval_expr(mobj expr, mobj env) {
 
     // compile to instructions
     code = compile_jit(expr);
-    // write_object(stderr, code_to_instrs(code));
-    // fprintf(stderr, "\n");
 
     // set up instruction evaluator
     th = current_thread();
@@ -397,14 +411,6 @@ loop:
         }
     }
 
-    // fprintf(stderr, "eval: ");
-    // write_object(stderr, ins);
-    // if (res) {
-    //     fprintf(stderr, " res=");
-    //     write_object(stderr, res);
-    // }
-    // fprintf(stderr, "\n");
-
     ty = minim_car(ins);
     if (ty == literal_symbol) {
         // literal
@@ -418,7 +424,6 @@ loop:
         current_cp(th) = res;
     } else if (ty == push_symbol) {
         // push
-        maybe_grow_stack(1);
         push_arg(force_single_value(res));
     } else if (ty == pop_symbol) {
         // pop
@@ -488,6 +493,9 @@ application:
     } else if (ty == make_closure_symbol) {
         // make-closure
         res = Mclosure(env, minim_cadr(ins));
+    } else if (ty == check_stack_symbol) {
+        // check stack
+        maybe_grow_stack(minim_fixnum(minim_cadr(ins)));
     } else if (ty == check_arity_symbol) {
         // check arity
         check_arity(env, minim_cadr(ins));
@@ -508,47 +516,10 @@ next:
     }
     goto loop;
 
-// advances until it finds a label
+// finds a label
 find_label:
-    istream = minim_cdr(istream);
-    if (minim_nullp(istream)) {
-        // exhausted instruction stream
-        fprintf(stderr, "unable to find label: ");
-        write_object(stderr, label);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
-    } else if (minim_car(istream) == label) {
-        // found label
-        goto next;
-    }
-    
-    goto find_label;
-
-// restores previous continuation
-restore_frame:
-    mobj cc, pc;
-
-    // check if stack is fully unwound
-    if (minim_nullp(current_continuation(th))) {
-        // this is the only normal exit point from this function
-        return res;
-    }
-    
-    // otherwise, restore the old instruction stream and environment
-    // and seek to the expected label
-    cc = pop_frame();
-    env = continuation_env(cc);
-    pc = continuation_pc(cc);
-    istream = minim_car(pc);
-    if (minim_falsep(minim_cdr(pc))) {
-        // return from producer of `call-with-values`
-        // call consumer in tail position
-        goto call_consumer;
-    } else {
-        label = minim_cdr(pc);
-        
-        goto find_label;
-    }
+    istream = find_label(istream, label);
+    goto next;
 
 // call-with-values consumer
 call_consumer:
@@ -656,6 +627,32 @@ call_prim:
     current_cp(th) = NULL;
     current_ac(th) = 0;
     goto restore_frame;
+
+// restores previous continuation
+restore_frame:
+    mobj cc, pc;
+
+    // check if stack is fully unwound
+    if (minim_nullp(current_continuation(th))) {
+        // this is the only normal exit point from this function
+        return res;
+    }
+    
+    // otherwise, restore the old instruction stream and environment
+    // and seek to the expected label
+    cc = pop_frame();
+    env = continuation_env(cc);
+    pc = continuation_pc(cc);
+    istream = minim_car(pc);
+    if (minim_falsep(minim_cdr(pc))) {
+        // return from producer of `call-with-values`
+        // call consumer in tail position
+        goto call_consumer;
+    } else {
+        // else find the label and resume execution
+        label = minim_cdr(pc);
+        goto find_label;
+    }
 
 not_procedure:
     fprintf(stderr, "expected procedure\n");

@@ -22,6 +22,7 @@ mobj bind_values_top_symbol;
 mobj brancha_symbol;
 mobj branchf_symbol;
 mobj check_arity_symbol;
+mobj check_stack_symbol;
 mobj clear_frame_symbol;
 mobj do_rest_symbol;
 mobj get_arg_symbol;

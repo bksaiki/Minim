@@ -21,6 +21,9 @@ FIND = find
 
 all: boot
 
+profile:
+	$(MAKE) CFLAGS="-pg $(CFLAGS)" all
+
 core: gc
 	$(MAKE) -C $(CORE_DIR)
 
@@ -58,5 +61,5 @@ clean:
 clean-all: clean
 	$(MAKE) -C $(GC_DIR) clean
 
-.PHONY: all boot boot-file gc boehm-gc minim-gc \
+.PHONY: all profile boot boot-file gc boehm-gc minim-gc \
 	    test boot-tests clean clean-all
