@@ -261,7 +261,7 @@ mobj empty_environment() {
 
 mobj environment_proc() {
     // (-> environment)
-    return make_env();
+    return base_env;
 }
 
 mobj current_environment() {

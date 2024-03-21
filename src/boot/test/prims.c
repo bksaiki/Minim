@@ -104,24 +104,6 @@ void check_equal(const char *input, const char *expect) {
     }                                   \
 }
 
-int test_simple_eval() {
-    passed = 1;
-
-    no_check("1");
-    no_check("'a");
-    no_check("#\\a");
-    no_check("#()");
-    no_check("#(1)");
-    no_check("#(1 2 3)");
-    no_check("\"foo\"");
-    no_check("'()");
-    no_check("'(1 . 2)");
-    no_check("'(1 2 3)");
-    no_check("'(1 2 . 3)");
-
-    return passed;
-}
-
 int test_type_predicates() {
     passed = 1;
 
@@ -916,7 +898,6 @@ int test_port() {
 }
 
 void run_tests() {
-    log_test("simple eval", test_simple_eval);
     log_test("syntax", test_syntax);
     log_test("if", test_if);
     log_test("define", test_define);
@@ -945,6 +926,7 @@ int main(int argc, char **argv) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
+    load_prelude(global_env(current_thread()));
 
     stack_top = 0;
     return_code = stack_top;

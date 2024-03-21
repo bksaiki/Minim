@@ -35,7 +35,8 @@ all: $(CONFIG) $(OBJS)
 profile:
 	$(MAKE) CFLAGS="$(CFLAGS) -pg" all
 
-test: $(CONFIG) $(BUILD_DIR)/prims $(BUILD_DIR)/fasl
+test: $(CONFIG) $(BUILD_DIR)/jit $(BUILD_DIR)/prims $(BUILD_DIR)/fasl
+	$(BUILD_DIR)/jit
 	$(BUILD_DIR)/prims
 	$(BUILD_DIR)/fasl
 
@@ -55,7 +56,7 @@ $(BUILD_DIR)%/.:
 $(BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c | $$(@D)/.
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS)
+$(BUILD_DIR)/%: $(TEST_DIR)/%.c $(OBJS) $(GC_DIR)/libgc.a $(CORE_DIR)/libminim.a
 	$(CC) -g $(CFLAGS) $(DEPFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
 .PHONY: clean core profile test

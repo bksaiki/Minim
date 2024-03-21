@@ -2,18 +2,43 @@
 
 #include "../minim.h"
 
-mobj Mprim(void *proc, char *name, short min_arity, short max_arity) {
+mobj Mprim(void *fn, char *name, mobj arity) {
     mobj o = GC_alloc(minim_prim_size);
     minim_type(o) = MINIM_OBJ_PRIM;
-    minim_prim(o) = proc;
-    minim_prim_argc_low(o) = min_arity;
-    minim_prim_argc_high(o) = max_arity;
+    minim_prim(o) = fn;
+    minim_prim_arity(o) = arity;
     minim_prim_name(o) = name;
     return o;
 }
 
 #define add_value(env, name, c_val)  \
     env_define_var(env, intern(name), c_val);
+
+#define add_procedure(name, c_fn, arity) { \
+    mobj sym = intern(name); \
+    env_define_var( \
+        env, \
+        sym, \
+        Mprim( \
+            c_fn, \
+            minim_symbol(sym), \
+            Mfixnum(arity) \
+        ) \
+    ); \
+}
+
+#define add_rprocedure(name, c_fn, min_arity) { \
+    mobj sym = intern(name); \
+    env_define_var( \
+        env, \
+        sym, \
+        Mprim( \
+            c_fn, \
+            minim_symbol(sym), \
+            Mcons(Mfixnum(min_arity), minim_false) \
+        ) \
+    ); \
+}
 
 #define add_vprocedure(name, c_fn, min_arity, max_arity) { \
     mobj sym = intern(name); \
@@ -23,15 +48,9 @@ mobj Mprim(void *proc, char *name, short min_arity, short max_arity) {
         Mprim( \
             c_fn, \
             minim_symbol(sym), \
-            min_arity, \
-            max_arity \
+            Mcons(Mfixnum(min_arity), Mfixnum(max_arity)) \
         ) \
     ); \
-}
-
-#define add_procedure(name, c_fn, arity) { \
-    mobj sym = intern(name); \
-    env_define_var(env, intern(name), Mprim(c_fn, minim_symbol(sym), arity, arity)); \
 }
 
 void init_prims(mobj env) {
@@ -193,10 +212,10 @@ void init_prims(mobj env) {
     add_procedure("void", void_proc, 0);
 
     add_vprocedure("eval", eval_proc, 1, 2);
-    add_vprocedure("apply", apply_proc, 2, ARG_MAX);
+    add_rprocedure("apply", apply_proc, 2);
 
     add_vprocedure("call-with-values", call_with_values_proc, 2, 2);
-    add_vprocedure("values", values_proc, 0, ARG_MAX);
+    add_rprocedure("values", values_proc, 0);
 
     add_procedure("input-port?", input_portp_proc, 1);
     add_procedure("output-port?", output_portp_proc, 1);
@@ -230,9 +249,6 @@ void init_prims(mobj env) {
     add_procedure("$current-directory", current_directory_proc, 0);
     add_procedure("$current-directory-set!", current_directory_set_proc, 1);
 
-    add_vprocedure("error", error_proc, 2, ARG_MAX);
+    add_rprocedure("error", error_proc, 2);
     add_vprocedure("syntax-error", syntax_error_proc, 2, 4);
-
-    // Load the prelude
-    load_file(PRELUDE_PATH, env);
 }

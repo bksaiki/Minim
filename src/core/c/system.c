@@ -125,6 +125,10 @@ mobj load_file(const char *fname, mobj env) {
     return result;
 }
 
+mobj load_prelude(mobj env) {
+    return load_file(PRELUDE_PATH, env);
+}
+
 void minim_shutdown(int code) {
     GC_finalize();
     exit(code);

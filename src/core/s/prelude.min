@@ -158,8 +158,8 @@
     (values (go $fx2= '=)
             (go $fx2> '>)
             (go $fx2< '<)
-            (go $fx2>= '<=)
-            (go $fx2<= '>=))))
+            (go $fx2>= '>=)
+            (go $fx2<= '<=))))
 
 ;; --------------------------------------------------------
 ;; String
@@ -1243,7 +1243,7 @@
                                      (format "expected: ~a" rtd)
                                      (format "got: ~a" rec))))))
                     (error 'record-accessor "field index out of bounds" rtd idx))
-                (error 'record-accessor "expected record-type-descriptor?" rtd))
+                (error 'record-accessor "expected non-negative integer" idx))
             (error 'record-accessor "expected record-type-descriptor?" rtd)))
       (lambda (rtd idx) ; record-mutator
         (if (record-type-descriptor? rtd)
@@ -1262,7 +1262,7 @@
                                      (format "expected: ~a" rtd)
                                      (format "got: ~a" rec))))))
                     (error 'record-mutator "field index out of bounds" rtd idx))
-                (error 'record-mutator "expected record-type-descriptor?" rtd))
+                (error 'record-mutator "expected non-negative integer" idx))
             (error 'record-mutator "expected record-type-descriptor?" rtd))))))  
 
 ;; --------------------------------------------------------

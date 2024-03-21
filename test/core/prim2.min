@@ -1,8 +1,0 @@
-;
-; Test for core features
-; 2-argument primitive
-;
-
-(if (equal? (list 1 2) '(1 2))
-    (exit 0)
-    (exit 1))

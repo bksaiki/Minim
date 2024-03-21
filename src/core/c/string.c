@@ -27,9 +27,9 @@ mobj Mstring2(long len, mchar c) {
         minim_string(o) = GC_alloc_atomic((len + 1) * sizeof(char));
         for (long i = 0; i < len; i++)
             minim_string(o)[i] = c;
-        minim_string(o)[len] = '\0';
     }
 
+    minim_string(o)[len] = '\0';
     return o;
 }
 

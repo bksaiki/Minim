@@ -26,6 +26,31 @@ void minim_boot_init() {
     lambda_symbol = intern("lambda");
     begin_symbol = intern("begin");
     quote_syntax_symbol = intern("quote-syntax");
+    values_symbol = intern("values");
+
+    apply_symbol = intern("#%apply");
+    bind_symbol = intern("#%bind");
+    bind_values_symbol = intern("#%bind-values");
+    bind_values_top_symbol = intern("#%bind-values/top");
+    brancha_symbol = intern("#%brancha");
+    branchf_symbol = intern("#%branchf");
+    check_arity_symbol = intern("#%check-arity");
+    check_stack_symbol = intern("#%check-stack");
+    clear_frame_symbol = intern("#%clear-frame");
+    do_rest_symbol = intern("#%do-rest");
+    get_arg_symbol = intern("#%get-arg");
+    literal_symbol = intern("#%literal");
+    lookup_symbol = intern("#%lookup");
+    make_closure_symbol = intern("#%make-closure");
+    make_env_symbol = intern("#%make-env");
+    pop_symbol = intern("#%pop");
+    pop_env_symbol = intern("#%pop-env");
+    push_symbol = intern("#%push");
+    push_env_symbol = intern("#%push-env");
+    rebind_symbol = intern("#%rebind");
+    ret_symbol = intern("#%ret");
+    save_cc_symbol = intern("#%save-cc");
+    set_proc_symbol = intern("#%set-proc");
 
     // initialize special values
 
@@ -57,6 +82,15 @@ void minim_boot_init() {
     // initialize thread
 
     th = current_thread();
+    th->pid = 0;    // TODO
+
+    global_env(th) = make_env();
+    current_continuation(th) = minim_null;
+    current_segment(th) = Mstack_segment(NULL, stack_seg_default_size);
+    current_sfp(th) = stack_seg_base(current_segment(th));
+    current_cp(th) = NULL;
+    current_ac(th) = 0;
+
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
     current_directory(th) = Mstring(get_current_dir());
@@ -64,10 +98,9 @@ void minim_boot_init() {
     record_equal_proc(th) = minim_false;
     record_hash_proc(th) = minim_false;
 
-    values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj*));
+    values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;
     values_buffer_count(th) = 0;
-    th->pid = 0;    // TODO
 
     // GC roots
 
@@ -80,17 +113,5 @@ void minim_boot_init() {
     GC_register_root(minim_values);
     GC_register_root(globals);
 
-    // Interpreter runtime
-
-    irt_call_args = GC_alloc(CALL_ARGS_DEFAULT * sizeof(mobj*));
-    irt_saved_args = GC_alloc(SAVED_ARGS_DEFAULT * sizeof(mobj*));
-    irt_call_args_count = 0;
-    irt_saved_args_count = 0;
-    irt_call_args_size = CALL_ARGS_DEFAULT;
-    irt_saved_args_size = SAVED_ARGS_DEFAULT;
-
     GC_resume();
-    
-    // Make base environment
-    global_env(th) = make_env();
 }
