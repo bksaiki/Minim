@@ -282,18 +282,6 @@ static void values_to_args(mobj x) {
     }
 }
 
-static void check_call_with_values(mobj *args) {
-    mobj producer, consumer;
-    
-    producer = args[0];
-    if (!minim_procp(producer))
-        bad_type_exn("call-with-values", "procedure?", producer);
-
-    consumer = args[1];
-    if (!minim_procp(consumer))
-        bad_type_exn("call-with-values", "procedure?", consumer);
-}
-
 // Forces `x` to be a single value, that is,
 // if `x` is the result of `(values ...)` it unwraps
 // the result if `x` contains one value and panics otherwise
@@ -453,7 +441,7 @@ application:
         env = minim_env_prev(env);
     } else if (ty == save_cc_symbol) {
         // save-cc
-        push_frame(env, Mcons(istream, minim_cadr(ins)));
+        push_frame(env, minim_cadr(ins));
     } else if (ty == get_arg_symbol) {
         // get-arg
         res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
@@ -468,6 +456,10 @@ application:
         // do-values
         do_values();
         res = minim_values;
+    } else if (ty == do_with_values_symbol) {
+        // do-with-values
+        values_to_args(res);
+        goto application;
     } else if (ty == clear_frame_symbol) {
         // clear frame
         current_cp(th) = NULL;
@@ -509,16 +501,6 @@ next:
     }
     goto loop;
 
-// call-with-values consumer
-call_consumer:
-    // set current procedure to consumer and clear arguments
-    current_cp(th) = current_sfp(th)[1];
-    current_ac(th) = 0;
-    // push result to arguments
-    values_to_args(res);
-    // call consumer
-    goto application;
-
 // call closure
 call_closure:
     code = minim_closure_code(current_cp(th));
@@ -545,15 +527,6 @@ call_prim:
         do_error(current_ac(th), args);
         fprintf(stderr, "unreachable\n");
         minim_shutdown(1);
-    } else if (prim == call_with_values_proc) {
-        // special case: `call-with-values`
-        check_call_with_values(current_sfp(th));
-        // producer is not in tail position so save continuation
-        push_frame(env, Mcons(istream, minim_false));
-        // set the current procedure and argument count
-        current_cp(th) = args[0];
-        current_ac(th) = 0;
-        goto application;
     } else if (prim == eval_proc) {
         // special case: `eval` (1 or 2 arguments)
         // compile the expression into a nullary function
@@ -610,7 +583,7 @@ call_prim:
 
 // restores previous continuation
 restore_frame:
-    mobj cc, pc;
+    mobj cc;
 
     // check if stack is fully unwound
     if (minim_nullp(current_continuation(th))) {
@@ -622,17 +595,8 @@ restore_frame:
     // and seek to the expected label
     cc = pop_frame();
     env = continuation_env(cc);
-    pc = continuation_pc(cc);
-    istream = minim_car(pc);
-    if (minim_falsep(minim_cdr(pc))) {
-        // return from producer of `call-with-values`
-        // call consumer in tail position
-        goto call_consumer;
-    } else {
-        // else resume execution at provided PC
-        istream = minim_cdr(pc);
-        goto loop;
-    }
+    istream = continuation_pc(cc);
+    goto loop;
 
 not_procedure:
     fprintf(stderr, "expected procedure\n");

@@ -222,7 +222,7 @@ void init_prims(mobj env) {
 
     add_vprocedure("eval", eval_proc, 1, 2);
     add_cprocedure("apply", compile_apply);
-    add_vprocedure("call-with-values", call_with_values_proc, 2, 2);
+    add_cprocedure("call-with-values", compile_call_with_values);
     add_cprocedure("values", compile_values);
 
     add_procedure("input-port?", input_portp_proc, 1);

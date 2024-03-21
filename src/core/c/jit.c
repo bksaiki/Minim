@@ -615,7 +615,7 @@ mobj compile_expr(mobj expr) {
 mobj compile_apply(mobj name) {
     mobj env, ins, reloc, code;
     
-    // hand written apply procedure
+    // hand written procedure
     env = make_cenv();
     ins = Mlist2(Mlist1(do_apply_symbol), Mlist1(ret_symbol));
     reloc = resolve_refs(env, ins);
@@ -626,10 +626,43 @@ mobj compile_apply(mobj name) {
     return Mclosure(empty_env, code);
 }
 
+mobj compile_call_with_values(mobj name) {
+    mobj env, ins, label, reloc, code;
+
+    // prepare compiler
+    env = make_cenv();
+    label = cenv_make_label(env);
+    
+    // hand written procedure
+    ins = list_append2(
+        Mlist6(
+            Mlist1(pop_symbol),                     // pop consumer
+            Mlist1(set_proc_symbol),                // set consumer as procedure
+            Mlist1(pop_symbol),                     // pop producer
+            Mlist2(save_cc_symbol, label),          // create new frame
+            Mlist1(set_proc_symbol),                // set producer as procedure
+            Mlist1(apply_symbol)                    // call and restore previous frame
+        ),
+        Mlist3(
+            label,
+            Mlist1(do_with_values_symbol),          // convert result to arguments
+            Mlist1(apply_symbol)                    // call consumer
+        )
+    );
+
+    // 
+    reloc = resolve_refs(env, ins);
+    code = write_code(ins, reloc, Mcons(Mfixnum(2), Mfixnum(2)));
+    minim_code_name(code) = name;
+
+    // return a closure
+    return Mclosure(empty_env, code);
+}
+
 mobj compile_values(mobj name) {
     mobj env, ins, reloc, code;
     
-    // hand written values procedure
+    // hand written procedure
     env = make_cenv();
     ins = Mlist2(Mlist1(do_values_symbol), Mlist1(ret_symbol));
     reloc = resolve_refs(env, ins);

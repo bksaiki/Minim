@@ -376,6 +376,7 @@ extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
+extern mobj do_with_values_symbol;
 extern mobj get_arg_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
@@ -420,6 +421,8 @@ mobj Mcode(size_t size);
 #define Mlist2(a, b)                Mcons(a, Mlist1(b))
 #define Mlist3(a, b, c)             Mcons(a, Mlist2(b, c))
 #define Mlist4(a, b, c, d)          Mcons(a, Mlist3(b, c, d))
+#define Mlist5(a, b, c, d, e)       Mcons(a, Mlist4(b, c, d, e))
+#define Mlist6(a, b, c, d, e, f)    Mcons(a, Mlist5(b, c, d, e, f))
 
 // Object operations
 
@@ -538,7 +541,7 @@ mobj set_cdr_proc(mobj p, mobj x);
 mobj make_list_proc(const mobj len, const mobj init);
 mobj length_proc(const mobj xs);
 mobj list_reverse(const mobj xs);
-mobj list_append2(const mobj xs, const mobj ys);
+mobj list_append2(mobj xs, mobj ys);
 
 mobj make_vector(mobj len, mobj init);
 mobj vector_length(mobj v);
@@ -698,6 +701,7 @@ mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_expr(mobj expr);
 
 mobj compile_apply(mobj name);
+mobj compile_call_with_values(mobj name);
 mobj compile_values(mobj name);
 
 // Interpreter

@@ -40,6 +40,7 @@ void minim_boot_init() {
     do_apply_symbol = intern("#%do-apply");
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
+    do_with_values_symbol = intern("#%do-with_values");
     get_arg_symbol = intern("#%get-arg");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");

@@ -244,7 +244,7 @@ mobj length_proc(const mobj x) {
     return Mfixnum(list_length(x));
 }
 
-mobj list_append2(const mobj xs, const mobj ys) {
+mobj list_append2(mobj xs, mobj ys) {
     // (-> list list list)
     mobj it, hd, tl;
 
