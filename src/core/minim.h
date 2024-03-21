@@ -373,7 +373,9 @@ extern mobj branchf_symbol;
 extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
+extern mobj do_apply_symbol;
 extern mobj do_rest_symbol;
+extern mobj do_values_symbol;
 extern mobj get_arg_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
@@ -640,9 +642,7 @@ mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
 mobj eval_proc();
-mobj apply_proc();
 mobj call_with_values_proc();
-mobj values_proc();
 mobj error_proc();
 mobj syntax_error_proc();
 
@@ -694,7 +694,11 @@ void write_fasl(FILE *out, mobj o);
 
 // JIT compiler
 
-mobj compile_jit(mobj expr);
+mobj compile_prim(const char *who, void *fn, mobj arity);
+mobj compile_expr(mobj expr);
+
+mobj compile_apply(mobj name);
+mobj compile_values(mobj name);
 
 // Interpreter
 

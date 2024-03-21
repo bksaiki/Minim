@@ -28,16 +28,8 @@ mobj call_with_values_proc() {
     uncallable_prim_exn("call-with-values");
 }
 
-mobj values_proc() {
-    uncallable_prim_exn("values");
-}
-
 mobj eval_proc() {
     uncallable_prim_exn("eval");
-}
-
-mobj apply_proc() {
-    uncallable_prim_exn("apply");
 }
 
 mobj identity_proc(mobj x) {

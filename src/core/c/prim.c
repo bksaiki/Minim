@@ -53,6 +53,15 @@ mobj Mprim(void *fn, char *name, mobj arity) {
     ); \
 }
 
+#define add_cprocedure(name, gen) { \
+    mobj sym = intern(name); \
+    env_define_var( \
+        env, \
+        sym, \
+        gen(sym) \
+    ); \
+}
+
 void init_prims(mobj env) {
     add_procedure("null?", nullp_proc, 1);
     add_procedure("void?", voidp_proc, 1);
@@ -212,10 +221,9 @@ void init_prims(mobj env) {
     add_procedure("void", void_proc, 0);
 
     add_vprocedure("eval", eval_proc, 1, 2);
-    add_rprocedure("apply", apply_proc, 2);
-
+    add_cprocedure("apply", compile_apply);
     add_vprocedure("call-with-values", call_with_values_proc, 2, 2);
-    add_rprocedure("values", values_proc, 0);
+    add_cprocedure("values", compile_values);
 
     add_procedure("input-port?", input_portp_proc, 1);
     add_procedure("output-port?", output_portp_proc, 1);

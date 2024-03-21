@@ -276,7 +276,7 @@ static mobj resolve_refs(mobj cenv, mobj ins) {
 //  Compiler
 //
 
-static mobj compile_expr(mobj expr, mobj env, int tailp);
+static mobj compile_expr2(mobj expr, mobj env, int tailp);
 
 static mobj with_tail_ret(mobj ins, int tailp) {
     if (tailp) {
@@ -291,7 +291,7 @@ static mobj compile_define_values(mobj expr, mobj env, int tailp) {
     mobj ids, ins;
 
     ids = minim_cadr(expr);
-    ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
+    ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
     list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, ids)));
     return with_tail_ret(ins, tailp);
 }
@@ -312,14 +312,14 @@ static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
 
     // bind values
     for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
-        list_set_tail(ins, compile_expr(minim_car(minim_cdar(binds)), env, 0));
+        list_set_tail(ins, compile_expr2(minim_car(minim_cdar(binds)), env, 0));
         list_set_tail(ins, Mlist1(
             Mlist2(bind_values_symbol, minim_caar(binds))
         ));
     }
 
     // evaluate body
-    list_set_tail(ins, compile_expr(body, env, tailp));
+    list_set_tail(ins, compile_expr2(body, env, tailp));
 
     // if we are not in tail position, pop the environment
     if (!tailp) {
@@ -346,7 +346,7 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
     // bind values to new environment
     // need to use special `bind-values/top` to access new environment
     for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
-        list_set_tail(ins, compile_expr(minim_car(minim_cdar(binds)), env, 0));
+        list_set_tail(ins, compile_expr2(minim_car(minim_cdar(binds)), env, 0));
         list_set_tail(ins, Mlist1(
             Mlist2(bind_values_top_symbol, minim_caar(binds))
         ));
@@ -354,7 +354,7 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
 
     // evaluate body
     list_set_tail(ins, Mlist2(Mlist1(pop_symbol), Mlist1(push_env_symbol)));
-    list_set_tail(ins, compile_expr(body, env, tailp));
+    list_set_tail(ins, compile_expr2(body, env, tailp));
 
     // if we are not in tail position, pop the environment
     if (!tailp) {
@@ -365,7 +365,7 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_setb(mobj expr, mobj env, int tailp) {
-    mobj ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
+    mobj ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
     list_set_tail(ins, Mlist1(Mlist2(rebind_symbol, minim_cadr(expr))));
     return with_tail_ret(ins, tailp);
 }
@@ -414,7 +414,7 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
 
     // compile the body
     body = Mcons(begin_symbol, minim_cddr(expr));
-    list_set_tail(ins, compile_expr(body, extend_cenv(env), 1));
+    list_set_tail(ins, compile_expr2(body, extend_cenv(env), 1));
 
     // resolve references
     reloc = resolve_refs(env, ins);
@@ -444,13 +444,13 @@ static mobj compile_begin(mobj expr, mobj env, int tailp) {
         // all except last is not in tail position
         ins = minim_null;
         while (!minim_nullp(minim_cdr(exprs))) {
-            ins_sub = compile_expr(minim_car(exprs), env, 0);
+            ins_sub = compile_expr2(minim_car(exprs), env, 0);
             ins = list_append2(ins, ins_sub);
             exprs = minim_cdr(exprs);
         }
 
         // last expression is in tail position
-        ins_sub = compile_expr(minim_car(exprs), env, tailp);
+        ins_sub = compile_expr2(minim_car(exprs), env, tailp);
         return list_append2(ins, ins_sub);
     }
 }
@@ -459,9 +459,9 @@ static mobj compile_if(mobj expr, mobj env, int tailp) {
     mobj ins, cond_ins, ift_ins, iff_ins;
 
     // compile the parts
-    cond_ins = compile_expr(minim_cadr(expr), env, 0);
-    ift_ins = compile_expr(minim_car(minim_cddr(expr)), env, tailp);
-    iff_ins = compile_expr(minim_cadr(minim_cddr(expr)), env, tailp);
+    cond_ins = compile_expr2(minim_cadr(expr), env, 0);
+    ift_ins = compile_expr2(minim_car(minim_cddr(expr)), env, tailp);
+    iff_ins = compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp);
 
     ins = cond_ins;
     if (tailp) {
@@ -503,7 +503,7 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
     }
 
     // compute procedure
-    ins = list_append2(ins, compile_expr(minim_car(expr), env, 0));
+    ins = list_append2(ins, compile_expr2(minim_car(expr), env, 0));
     list_set_tail(ins, Mlist1(Mlist1(set_proc_symbol)));
 
     // emit stack hint
@@ -512,7 +512,7 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
 
     // compute arguments
     for (it = minim_cdr(expr); !minim_nullp(it); it = minim_cdr(it)) {
-        list_set_tail(ins, compile_expr(minim_car(it), env, 0));
+        list_set_tail(ins, compile_expr2(minim_car(it), env, 0));
         list_set_tail(ins, Mlist1(Mlist1(push_symbol)));
     }
 
@@ -537,7 +537,7 @@ static mobj compile_literal(mobj expr, int tailp) {
     return with_tail_ret(ins, tailp);
 }
 
-static mobj compile_expr(mobj expr, mobj env, int tailp) {
+static mobj compile_expr2(mobj expr, mobj env, int tailp) {
     if (minim_consp(expr)) {
         // special form or application
         mobj head = minim_car(expr);
@@ -587,7 +587,7 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
         // self-evaluating
         return compile_literal(expr, tailp);
     } else {
-        fprintf(stderr, "compile_expr: unimplemented\n");
+        fprintf(stderr, "compile_expr2: unimplemented\n");
         fprintf(stderr, " at: ");
         write_object(stderr, expr);
         fprintf(stderr, "\n");
@@ -599,11 +599,43 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
 //  Public API
 //
 
-mobj compile_jit(mobj expr) {
+mobj compile_prim(const char *who, void *fn, mobj arity) {
+    return minim_void;
+}
+
+mobj compile_expr(mobj expr) {
     mobj env, ins, reloc;
 
     env = make_cenv();
-    ins = compile_expr(expr, env, 1);
+    ins = compile_expr2(expr, env, 1);
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
+}
+
+mobj compile_apply(mobj name) {
+    mobj env, ins, reloc, code;
+    
+    // hand written apply procedure
+    env = make_cenv();
+    ins = Mlist2(Mlist1(do_apply_symbol), Mlist1(ret_symbol));
+    reloc = resolve_refs(env, ins);
+    code = write_code(ins, reloc, Mcons(Mfixnum(2), minim_false));
+    minim_code_name(code) = name;
+
+    // return a closure
+    return Mclosure(empty_env, code);
+}
+
+mobj compile_values(mobj name) {
+    mobj env, ins, reloc, code;
+    
+    // hand written values procedure
+    env = make_cenv();
+    ins = Mlist2(Mlist1(do_values_symbol), Mlist1(ret_symbol));
+    reloc = resolve_refs(env, ins);
+    code = write_code(ins, reloc, Mcons(Mfixnum(0), minim_false));
+    minim_code_name(code) = name;
+
+    // return a closure
+    return Mclosure(empty_env, code);
 }

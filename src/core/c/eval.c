@@ -373,7 +373,7 @@ mobj eval_expr(mobj expr, mobj env) {
     mobj code, ins, ty, res;
 
     // compile to instructions
-    code = compile_jit(expr);
+    code = compile_expr(expr);
 
     // set up instruction evaluator
     th = current_thread();
@@ -457,9 +457,17 @@ application:
     } else if (ty == get_arg_symbol) {
         // get-arg
         res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
+    } else if (ty == do_apply_symbol) {
+        // do-apply
+        do_apply();
+        goto application;
     } else if (ty == do_rest_symbol) {
         // do-rest
         res = do_rest(minim_fixnum(minim_cadr(ins)));
+    } else if (ty == do_values_symbol) {
+        // do-values
+        do_values();
+        res = minim_values;
     } else if (ty == clear_frame_symbol) {
         // clear frame
         current_cp(th) = NULL;
@@ -532,15 +540,7 @@ call_prim:
     // split on special cases
     prim = minim_prim(current_cp(th));
     args = current_sfp(th);
-    if (prim == values_proc) {
-        // special case: `values`
-        do_values();
-        res = minim_values;
-    } else if (prim == apply_proc) {
-        // special case: `apply`
-        do_apply();
-        goto application;
-    } else if (prim == error_proc) {
+    if (prim == error_proc) {
         // special case: `error`
         do_error(current_ac(th), args);
         fprintf(stderr, "unreachable\n");
@@ -559,7 +559,7 @@ call_prim:
         // compile the expression into a nullary function
         // and call in tail position
         env = current_ac(th) == 2 ? args[1] : env;
-        current_cp(th) = Mclosure(env, compile_jit(args[0]));
+        current_cp(th) = Mclosure(env, compile_expr(args[0]));
         current_ac(th) = 0;
         goto application;
     } else if (prim == current_environment) {

@@ -37,7 +37,9 @@ void minim_boot_init() {
     check_arity_symbol = intern("#%check-arity");
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
+    do_apply_symbol = intern("#%do-apply");
     do_rest_symbol = intern("#%do-rest");
+    do_values_symbol = intern("#%do-values");
     get_arg_symbol = intern("#%get-arg");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
