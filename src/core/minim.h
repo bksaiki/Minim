@@ -370,6 +370,7 @@ extern mobj bind_values_symbol;
 extern mobj bind_values_top_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
+extern mobj ccall_symbol;
 extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
@@ -693,8 +694,8 @@ void write_fasl(FILE *out, mobj o);
 
 // JIT compiler
 
-mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_expr(mobj expr);
+mobj compile_prim(const char *who, void *fn, mobj arity);
 
 mobj compile_apply(mobj name);
 mobj compile_call_with_values(mobj name);

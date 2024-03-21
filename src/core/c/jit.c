@@ -628,10 +628,6 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
 //  Public API
 //
 
-mobj compile_prim(const char *who, void *fn, mobj arity) {
-    return minim_void;
-}
-
 mobj compile_expr(mobj expr) {
     mobj env, ins, reloc;
 
@@ -639,6 +635,10 @@ mobj compile_expr(mobj expr) {
     ins = compile_expr2(expr, env, 1);
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
+}
+
+mobj compile_prim(const char *who, void *fn, mobj arity) {
+    return compile_do_ret(intern(who), arity, Mlist2(ccall_symbol, fn));
 }
 
 define_do_ret(compile_apply, Mcons(Mfixnum(2), minim_false), Mlist1(do_apply_symbol));

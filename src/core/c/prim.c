@@ -19,37 +19,7 @@ mobj Mprim(void *fn, char *name, mobj arity) {
     env_define_var( \
         env, \
         sym, \
-        Mprim( \
-            c_fn, \
-            minim_symbol(sym), \
-            Mfixnum(arity) \
-        ) \
-    ); \
-}
-
-#define add_rprocedure(name, c_fn, min_arity) { \
-    mobj sym = intern(name); \
-    env_define_var( \
-        env, \
-        sym, \
-        Mprim( \
-            c_fn, \
-            minim_symbol(sym), \
-            Mcons(Mfixnum(min_arity), minim_false) \
-        ) \
-    ); \
-}
-
-#define add_vprocedure(name, c_fn, min_arity, max_arity) { \
-    mobj sym = intern(name); \
-    env_define_var( \
-        env, \
-        sym, \
-        Mprim( \
-            c_fn, \
-            minim_symbol(sym), \
-            Mcons(Mfixnum(min_arity), Mfixnum(max_arity)) \
-        ) \
+        compile_prim(name, c_fn, Mfixnum(arity)) \
     ); \
 }
 

@@ -34,6 +34,7 @@ void minim_boot_init() {
     bind_values_top_symbol = intern("#%bind-values/top");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
+    ccall_symbol = intern("#%ccall");
     check_arity_symbol = intern("#%check-arity");
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");

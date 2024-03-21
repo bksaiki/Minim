@@ -188,6 +188,60 @@ static mobj pop_frame() {
     return cc;
 }
 
+static void check_arity(mobj env, mobj spec) {
+    minim_thread *th;
+    size_t ac;
+
+    th = current_thread();
+    ac = current_ac(th);
+    if (minim_fixnump(spec)) {
+        // exact arity
+        if (ac != minim_fixnum(spec))
+            arity_mismatch_exn(current_cp(th), ac);
+    } else {
+        mobj min = minim_car(spec);
+        mobj max = minim_cdr(spec);
+        if (minim_falsep(max)) {
+            // at least arity
+            if (ac < minim_fixnum(min))
+                arity_mismatch_exn(current_cp(th), ac);
+        } else {
+            // range arity
+            if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
+                arity_mismatch_exn(current_cp(th), ac);
+        }
+    }
+}
+
+static mobj do_ccall(mobj (*prim)()) {
+    minim_thread *th;
+    mobj *args;
+    
+    th = current_thread();
+    args = current_sfp(th);
+    switch (current_ac(th)) {
+    case 0:
+        return prim();
+    case 1:
+        return prim(args[0]);
+    case 2:
+        return prim(args[0], args[1]);
+    case 3:
+        return prim(args[0], args[1], args[2]);
+    case 4:
+        return prim(args[0], args[1], args[2], args[3]);
+    case 5:
+        return prim(args[0], args[1], args[2], args[3], args[4]);
+    case 6:
+        return prim(args[0], args[1], args[2], args[3], args[4], args[5]);
+    default:
+        fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+        fprintf(stderr, " received: ");
+        write_object(stderr, current_cp(th));
+        minim_shutdown(1);
+    }
+}
+
 static mobj do_rest(size_t idx) {
     minim_thread *th;
     size_t ac;
@@ -326,31 +380,6 @@ static void bind_values(mobj env, mobj ids, mobj res) {
     }
 }
 
-static void check_arity(mobj env, mobj spec) {
-    minim_thread *th;
-    size_t ac;
-
-    th = current_thread();
-    ac = current_ac(th);
-    if (minim_fixnump(spec)) {
-        // exact arity
-        if (ac != minim_fixnum(spec))
-            arity_mismatch_exn(current_cp(th), ac);
-    } else {
-        mobj min = minim_car(spec);
-        mobj max = minim_cdr(spec);
-        if (minim_falsep(max)) {
-            // at least arity
-            if (ac < minim_fixnum(min))
-                arity_mismatch_exn(current_cp(th), ac);
-        } else {
-            // range arity
-            if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
-                arity_mismatch_exn(current_cp(th), ac);
-        }
-    }
-}
-
 //
 //  Evaluator
 //
@@ -415,6 +444,9 @@ application:
     } else if (ty == ret_symbol) {
         // ret
         goto restore_frame;
+    } else if (ty == ccall_symbol) {
+        // ccall
+        res = do_ccall(minim_cadr(ins));
     } else if (ty == bind_symbol) {
         // bind
         env_define_var(env, minim_cadr(ins), res);
@@ -528,56 +560,14 @@ call_closure:
 
 // call primitive procedure
 call_prim:
-    mobj *args;
-    mobj (*prim)();
-
     // check arity
     check_arity(env, minim_prim_arity(current_cp(th)));
-
-    // split on special cases
-    prim = minim_prim(current_cp(th));
-    args = current_sfp(th);
-    // default: call based on arity
-    switch (current_ac(th)) {
-    case 0:
-        res = prim();
-        break;
-    case 1:
-        res = prim(args[0]);
-        break;
-    case 2:
-        res = prim(args[0], args[1]);
-        break;
-    case 3:
-        res = prim(args[0], args[1], args[2]);
-        break;
-    case 4:
-        res = prim(args[0], args[1], args[2], args[3]);
-        break;
-    case 5:
-        res = prim(args[0], args[1], args[2], args[3], args[4]);
-        break;
-    case 6:
-        res = prim(args[0], args[1], args[2], args[3], args[4], args[5]);
-        break;
-    default:
-        fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-        fprintf(stderr, " received: ");
-        write_object(stderr, current_cp(th));
-        minim_shutdown(1);
-        break;
-    }
-
-    // clear arguments and pop frame
-    current_cp(th) = NULL;
-    current_ac(th) = 0;
-    goto restore_frame;
 
 // performs `do-eval` instruction
 do_eval:
     // compile expression into a nullary function and
     // call it in tail position
-    args = current_sfp(th);
+    mobj *args = current_sfp(th);
     env = current_ac(th) == 2 ? args[1] : env;
     current_cp(th) = Mclosure(env, compile_expr(args[0]));
     current_ac(th) = 0;
