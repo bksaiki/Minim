@@ -310,21 +310,6 @@ static mobj force_single_value(mobj x) {
     }
 }
 
-static mobj *find_label(mobj *istream, mobj label) {
-    for (; *istream; istream++) {
-        if (*istream == label) {
-            // found label
-            return istream;
-        }
-    }
-
-    // exhausted instruction stream
-    fprintf(stderr, "unable to find label: ");
-    write_object(stderr, label);
-    fprintf(stderr, "\n");
-    minim_shutdown(1);
-}
-
 static void bind_values(mobj env, mobj ids, mobj res) {
     size_t count = list_length(ids);
     if (minim_valuesp(res)) {
@@ -385,7 +370,7 @@ static void check_arity(mobj env, mobj spec) {
 mobj eval_expr(mobj expr, mobj env) {
     minim_thread *th;
     mobj *istream;
-    mobj code, ins, ty, res, label;
+    mobj code, ins, ty, res;
 
     // compile to instructions
     code = compile_jit(expr);
@@ -482,13 +467,13 @@ application:
         res = NULL;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
-        label = minim_cadr(ins);
-        goto find_label;
+        istream = minim_cadr(ins);
+        goto loop;
     } else if (ty == branchf_symbol) {
         // branchf (jump if #f)
         if (res == minim_false) {
-            label = minim_cadr(ins);
-            goto find_label;
+            istream = minim_cadr(ins);
+            goto loop;
         }
     } else if (ty == make_closure_symbol) {
         // make-closure
@@ -515,12 +500,6 @@ next:
         minim_shutdown(1);
     }
     goto loop;
-
-// finds a label
-find_label:
-    istream++;
-    istream = find_label(istream, label);
-    goto next;
 
 // call-with-values consumer
 call_consumer:
@@ -650,9 +629,9 @@ restore_frame:
         // call consumer in tail position
         goto call_consumer;
     } else {
-        // else find the label and resume execution
-        label = minim_cdr(pc);
-        goto find_label;
+        // else resume execution at provided PC
+        istream = minim_cdr(pc);
+        goto loop;
     }
 
 not_procedure:

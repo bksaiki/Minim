@@ -31,7 +31,7 @@ mobj Mcode(size_t size) {
 }
 
 mobj code_to_instrs(mobj code) {
-    mobj ins, in, reloc, inv_reloc;
+    mobj ins, reloc, inv_reloc, *istream;
     size_t i;
 
     // build inverse reloc table
@@ -43,8 +43,29 @@ mobj code_to_instrs(mobj code) {
 
     // build instruction sequence
     ins = minim_null;
+    istream = minim_code_it(code);
     for (i = 0; i < minim_code_len(code); i++) {
-        in = minim_car(minim_code_ref(code, i));        
+        mobj in, ref;
+        
+        // possibly replace jumps
+        in = istream[i];
+        if (minim_car(in) == brancha_symbol) {
+            // brancha
+            in = Mlist2(brancha_symbol, assq_ref(inv_reloc, minim_cadr(in)));
+        } else if (minim_car(in) == branchf_symbol) {
+            // branchf
+            in = Mlist2(branchf_symbol, assq_ref(inv_reloc, minim_cadr(in)));
+        } else if (minim_car(in) == save_cc_symbol) {
+            // save-cc
+            in = Mlist2(save_cc_symbol, assq_ref(inv_reloc, minim_cadr(in)));
+        }
+
+        // restore label
+        ref = assq_ref(inv_reloc, &istream[i]);
+        if (!minim_falsep(ref)) {
+            ins = Mcons(ref, ins);
+        }
+
         ins = Mcons(in, ins);
     }
 
@@ -77,27 +98,54 @@ static size_t let_values_size(mobj e) {
 }
 
 static mobj write_code(mobj ins, mobj reloc, mobj arity) {
-    mobj code;
-    size_t i, len;
+    mobj code, *istream;
+    size_t i;
 
     // allocate code object and fill header
-    len = list_length(ins);
-    code = Mcode(len);
+    code = Mcode(list_length(ins));
     minim_code_name(code) = NULL;
-    minim_code_reloc(code) = reloc;
+    minim_code_reloc(code) = minim_null;
     minim_code_arity(code) = arity;
+    istream = minim_code_it(code);
 
-    // write_object(stderr, ins);
-    // fprintf(stderr, "\n");
+    // need to recompute the reloc table for in-code addresses
+    for (; !minim_nullp(reloc); reloc = minim_cdr(reloc)) {
+        mobj it = ins;
+        for (i = 0; i < minim_code_len(code); i++) {
+            if (minim_car(it) == minim_cdar(reloc)) {
+                mobj cell = Mcons(minim_caar(reloc), &istream[i]);
+                minim_code_reloc(code) = Mcons(cell, minim_code_reloc(code)); 
+                break;
+            }
+    
+            it = minim_cdr(it);
+        }
+    }
+
+    reloc = list_reverse(minim_code_reloc(code));
+    minim_code_reloc(code) = reloc;
 
     // write instructions
-    for (i = 0; i < len; i++) {
-        minim_code_ref(code, i) = minim_car(ins);
+    for (i = 0; i < minim_code_len(code); i++) {
+        mobj in = minim_car(ins);
+        if (minim_car(in) == brancha_symbol) {
+            // brancha
+            in = Mlist2(brancha_symbol, assq_ref(reloc, minim_cadr(in)));
+        } else if (minim_car(in) == branchf_symbol) {
+            // branchf
+            in = Mlist2(branchf_symbol, assq_ref(reloc, minim_cadr(in)));
+        } else if (minim_car(in) == save_cc_symbol) {
+            // save-cc
+            in = Mlist2(save_cc_symbol, assq_ref(reloc, minim_cadr(in)));
+        }
+
+        // add instruction
+        istream[i] = in;
         ins = minim_cdr(ins);
     }
 
     // NULL terminator
-    minim_code_ref(code, i) = NULL;
+    istream[i] = NULL;
     return code;
 }
 
@@ -189,7 +237,7 @@ static mobj resolve_refs(mobj cenv, mobj ins) {
         if (minim_stringp(in)) {
             // label found (first one is the leading one)
             mobj l0 = in;
-            reloc = assq_set(reloc, l0, minim_cdr(it));
+            reloc = assq_set(reloc, l0, minim_cadr(it));
             label_map = assq_set(label_map, l0, l0);
             // subsequent labels
             for (; minim_stringp(minim_cadr(it)); it = minim_cdr(it))
@@ -202,30 +250,24 @@ static mobj resolve_refs(mobj cenv, mobj ins) {
         mobj in = minim_car(it);
         if (minim_car(in) == brancha_symbol) {
             // brancha: need to replace the label with the next instruction
-            mobj label = assq_ref(label_map, minim_cadr(in));
-            // minim_cadr(in) = assq_ref(reloc, label);
-            minim_cadr(in) = label;
+            minim_cadr(in) = assq_ref(label_map, minim_cadr(in));
         } else if (minim_car(in) == branchf_symbol) {
             // branchf: need to replace the label with the next instruction
-            mobj label = assq_ref(label_map, minim_cadr(in));
-            // minim_cadr(in) = assq_ref(reloc, label);
-            minim_cadr(in) = label;
+            minim_cadr(in) = assq_ref(label_map, minim_cadr(in));
         } else if (minim_car(in) == make_closure_symbol) {
             // closure: need to lookup JIT object to embed
             minim_cadr(in) = cenv_template_ref(cenv, minim_fixnum(minim_cadr(in)));
         } else if (minim_car(in) == save_cc_symbol) {
             // save-cc: need to replace the label with the next instruction
-            mobj label = assq_ref(label_map, minim_cadr(in));
-            // minim_cadr(in) = assq_ref(reloc, label);
-            minim_cadr(in) = label;
+            minim_cadr(in) = assq_ref(label_map, minim_cadr(in));
         }
     }
 
     // eliminate labels (assumes head is not a label)
-    // for (; !minim_nullp(minim_cdr(ins)); ins = minim_cdr(ins)) {
-    //     if (minim_stringp(minim_cadr(ins)))
-    //         minim_cdr(ins) = minim_cddr(ins);
-    // }
+    for (; !minim_nullp(minim_cdr(ins)); ins = minim_cdr(ins)) {
+        if (minim_stringp(minim_cadr(ins)))
+            minim_cdr(ins) = minim_cddr(ins);
+    }
 
     return reloc;   
 }
