@@ -310,20 +310,19 @@ static mobj force_single_value(mobj x) {
     }
 }
 
-static mobj find_label(mobj istream, mobj label) {
-    while (1) {
-        istream = minim_cdr(istream);
-        if (minim_nullp(istream)) {
-            // exhausted instruction stream
-            fprintf(stderr, "unable to find label: ");
-            write_object(stderr, label);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
-        } else if (minim_car(istream) == label) {
+static mobj *find_label(mobj *istream, mobj label) {
+    for (; *istream; istream++) {
+        if (*istream == label) {
             // found label
             return istream;
         }
     }
+
+    // exhausted instruction stream
+    fprintf(stderr, "unable to find label: ");
+    write_object(stderr, label);
+    fprintf(stderr, "\n");
+    minim_shutdown(1);
 }
 
 static void bind_values(mobj env, mobj ids, mobj res) {
@@ -385,7 +384,8 @@ static void check_arity(mobj env, mobj spec) {
 
 mobj eval_expr(mobj expr, mobj env) {
     minim_thread *th;
-    mobj code, istream, ins, ty, res, label;
+    mobj *istream;
+    mobj code, ins, ty, res, label;
 
     // compile to instructions
     code = compile_jit(expr);
@@ -393,12 +393,12 @@ mobj eval_expr(mobj expr, mobj env) {
     // set up instruction evaluator
     th = current_thread();
     current_ac(th) = 0;
-    istream = minim_code_ref(code, 0);
+    istream = minim_code_it(code);
     res = NULL;
 
 // instruction processor
 loop:
-    ins = minim_car(istream);
+    ins = *istream;
     if (!minim_consp(ins)) {
         if (minim_stringp(ins)) {
             // label (skip)
@@ -509,8 +509,8 @@ application:
 // move to next instruction
 // bail if the instruction stream is empty
 next:
-    istream = minim_cdr(istream);
-    if (minim_nullp(istream)) {
+    istream++;
+    if (*istream == NULL) {
         fprintf(stderr, "eval_expr(), instruction sequence unexpectedly ended\n");
         minim_shutdown(1);
     }
@@ -518,6 +518,7 @@ next:
 
 // finds a label
 find_label:
+    istream++;
     istream = find_label(istream, label);
     goto next;
 
@@ -535,7 +536,7 @@ call_consumer:
 call_closure:
     code = minim_closure_code(current_cp(th));
     // set instruction stream and env
-    istream = minim_code_ref(code, 0);
+    istream = minim_code_it(code);
     env = minim_closure_env(current_cp(th));
     // don't clear either the current procedure or argument count
     // since this is required for binding and arity check

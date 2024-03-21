@@ -337,15 +337,19 @@ extern mobj minim_values;
 // |   size     | [8, 16)
 // |   name     | [16, 24)
 // |   arity    | [24, 32)
-// |   instrs   | [32, ...) 
+// |   reloc    | [32, 40)
+// |   instrs   | [40, ...) 
+// |   ...      |
 // +------------+
-#define minim_code_header_size  4
-#define minim_code_size(n)      ((minim_code_header_size * ptr_size) + (n * ptr_size))
-#define minim_codep(o)          (minim_type(o) == MINIM_OBJ_CODE)
-#define minim_code_len(o)       (*((size_t*) PTR_ADD(o, ptr_size)))
-#define minim_code_name(o)      (*((char**) PTR_ADD(o, 2 * ptr_size)))
-#define minim_code_arity(o)     (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_code_ref(o, i)     (((mobj*) PTR_ADD(o, 4 * ptr_size))[i])    
+#define minim_code_header_size      5
+#define minim_code_size(n)          ((minim_code_header_size * ptr_size) + (n * ptr_size) + ptr_size)
+#define minim_codep(o)              (minim_type(o) == MINIM_OBJ_CODE)
+#define minim_code_len(o)           (*((size_t*) PTR_ADD(o, ptr_size)))
+#define minim_code_name(o)          (*((char**) PTR_ADD(o, 2 * ptr_size)))
+#define minim_code_arity(o)         (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_code_reloc(o)         (*((mobj*) PTR_ADD(o, 4 * ptr_size)))
+#define minim_code_it(o)            ((mobj *) PTR_ADD(o, 5 * ptr_size))
+#define minim_code_ref(o, i)        (minim_code_it(o)[i]) 
 
 // Special objects
 
