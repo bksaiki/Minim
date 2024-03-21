@@ -71,8 +71,7 @@ mobj open_input_file(mobj name) {
 
     stream = fopen(minim_string(name), "r");
     if (stream == NULL) {
-        fprintf(stderr, "open-input-port: could not open file \"%s\"\n", minim_string(name));
-        minim_shutdown(1);
+        minim_error1("open-input-file", "cannot open input file", name);
     }
 
     port = Minput_port(stream);
@@ -87,8 +86,7 @@ mobj open_output_file(mobj name) {
 
     stream = fopen(minim_string(name), "w");
     if (stream == NULL) {
-        fprintf(stderr, "open-output-port: could not open file \"%s\"\n", minim_string(name));
-        minim_shutdown(1);
+        minim_error1("open-output-file", "cannot open output file", name);
     }
 
     port = Moutput_port(stream);
@@ -104,9 +102,9 @@ mobj open_input_string(mobj str) {
     // port backed by a temporary file
     stream = tmpfile();
     if (stream == NULL) {
-        fprintf(stderr, "open_input_string(): failed to create buffer\n");
-        minim_shutdown(1);
+        minim_error("open-input-string", "cannot create buffer");
     }
+
     fputs(minim_string(str), stream);
     fseek(stream, 0, SEEK_SET);
 
@@ -123,8 +121,7 @@ mobj open_output_string() {
     // port backed by a temporary file
     stream = tmpfile();
     if (stream == NULL) {
-        fprintf(stderr, "open_input_string(): failed to create buffer\n");
-        minim_shutdown(1);
+        minim_error("open-output-string", "cannot create buffer");
     }
 
     port = Moutput_port(stream);
@@ -158,8 +155,7 @@ mobj get_output_string(mobj port) {
         fseek(minim_port(port), 0, SEEK_SET);
         read = fread(minim_string(str), len, 1, minim_port(port));
         if (read != 1) {
-            fprintf(stderr, "get_output_string: failed to read %ld character form port\n", len);
-            minim_shutdown(1);
+            minim_error("get-output-string", "failed to read from");
         }
 
         // reset port, set null-terminator and return

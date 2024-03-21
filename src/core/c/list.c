@@ -18,33 +18,18 @@ int minim_listp(mobj x) {
     return minim_nullp(x);
 }
 
+// Returns length of a (possibly improper) llist.
 long list_length(mobj xs) {
     long len = 0;
-    for (mobj it = xs; !minim_nullp(it); it = minim_cdr(it)) {
-        if (!minim_consp(it)) {
-            fprintf(stderr, "list_length: not a list ");
-            write_object(stderr, xs);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
-        }
-        ++len;
-    }
-
+    for (; minim_consp(xs); xs = minim_cdr(xs), len++);
     return len;
 }
 
-mobj list_reverse(const mobj xs) {
-    mobj v = minim_null;
-    for (mobj t = xs; !minim_nullp(t); t = minim_cdr(t))
-        v = Mcons(minim_car(t), v);
-    return v;
-}
-
-long improper_list_length(mobj xs) {
-    long len = 0;
-    for (; minim_consp(xs); xs = minim_cdr(xs))
-        ++len;
-    return len;
+mobj list_reverse(mobj xs) {
+    mobj ys = minim_null;
+    for (; !minim_nullp(xs); xs = minim_cdr(xs))
+        ys = Mcons(minim_car(xs), ys);
+    return ys;
 }
 
 void list_set_tail(mobj xs, mobj ys) {
@@ -231,7 +216,7 @@ mobj set_cdr_proc(mobj p, mobj x) {
     return minim_void;
 }
 
-mobj make_list_proc(const mobj len, const mobj init) {
+mobj make_list_proc(mobj len, mobj init) {
     // (-> non-negative-integer? any list)
     mobj lst = minim_null;
     for (long i = 0; i < minim_fixnum(len); ++i)

@@ -499,9 +499,9 @@ mobj cddddr_proc(mobj x);
 mobj set_car_proc(mobj p, mobj x);
 mobj set_cdr_proc(mobj p, mobj x);
 
-mobj make_list_proc(const mobj len, const mobj init);
-mobj length_proc(const mobj xs);
-mobj list_reverse(const mobj xs);
+mobj make_list_proc(mobj len, mobj init);
+mobj length_proc(mobj xs);
+mobj list_reverse(mobj xs);
 mobj list_append2(mobj xs, mobj ys);
 
 mobj make_vector(mobj len, mobj init);
@@ -589,7 +589,6 @@ mobj environmentp_proc(mobj o);
 mobj interaction_environment();
 mobj empty_environment();
 mobj environment_proc();
-mobj current_environment();
 mobj environment_names(mobj env);
 mobj extend_environment(mobj env);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
@@ -605,6 +604,11 @@ mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
 mobj boot_error_proc(mobj who, mobj msg, mobj args);
+
+NORETURN void minim_error(const char *name, const char *msg);
+NORETURN void minim_error1(const char *name, const char *msg, mobj x);
+NORETURN void minim_error2(const char *name, const char *msg, mobj x, mobj y);
+NORETURN void minim_error3(const char *name, const char *msg, mobj x, mobj y, mobj z);
 mobj do_error(int argc, mobj *args);
 
 // Stack segment
@@ -794,6 +798,7 @@ typedef struct minim_thread {
     mobj record_equal_proc;
     mobj record_hash_proc;
     mobj error_handler;
+    mobj c_error_handler;
     // `values` stack
     mobj *values_buffer;
     int values_buffer_size;
@@ -816,6 +821,7 @@ typedef struct minim_thread {
 #define record_equal_proc(th)           ((th)->record_equal_proc)
 #define record_hash_proc(th)            ((th)->record_hash_proc)
 #define error_handler(th)               ((th)->error_handler)
+#define c_error_handler(th)             ((th)->c_error_handler)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, i)        ((values_buffer(th))[i])

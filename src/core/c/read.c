@@ -2,22 +2,6 @@
 
 #include "../minim.h"
 
-static void assert_not_eof(char c) {
-    if (c == EOF) {
-        fprintf(stderr, "unexpected end of input\n");
-        minim_shutdown(1);
-    }
-}
-
-static void assert_matching_paren(char open, char closed) {
-    if (!(open == '(' && closed == ')') && 
-        !(open == '[' && closed == ']') &&
-        !(open == '{' && closed == '}')) {
-        fprintf(stderr, "parenthesis mismatch: %c closed off %c\n", closed, open);
-        minim_shutdown(1);
-    }
-}
-
 static int is_delimeter(int c) {
     return isspace(c) || c == EOF || 
            c == '(' || c == ')' ||
@@ -30,6 +14,25 @@ static int is_symbol_char(int c) {
     return !is_delimeter(c);
 }
 
+static void assert_not_eof(char c) {
+    if (c == EOF) {
+        minim_error("read_object", "unexpected end of input");
+    }
+}
+
+static void assert_delimeter(char c) {
+    if (!is_delimeter(c)) {
+        minim_error1("read_object", "expected delimeter", Mchar(c));
+    }
+}
+
+static void assert_matching_paren(char open, char closed) {
+    if (!(open == '(' && closed == ')') && 
+        !(open == '[' && closed == ']') &&
+        !(open == '{' && closed == '}')) {
+        minim_error2("read_object", "parenthesis mismatch", Mchar(closed), Mchar(open));
+    }
+}
 static int peek_char(FILE *in) {
     int c = getc(in);
     ungetc(c, in);
@@ -37,10 +40,8 @@ static int peek_char(FILE *in) {
 }
 
 static void peek_expected_delimeter(FILE *in) {
-    if (!is_delimeter(peek_char(in))) {
-        fprintf(stderr, "expected a delimeter\n");
-        minim_shutdown(1);
-    }
+    mchar c = peek_char(in);
+    assert_delimeter(c);
 }
 
 static int is_cons_dot(FILE *in, int c) {
@@ -76,8 +77,7 @@ static void read_named_char(FILE *in, const char *s) {
     for (; *s != '\0'; s++) {
         c = getc(in);
         if (c != *s) {
-            fprintf(stderr, "unexpected character when parsing named char\n");
-            minim_shutdown(1);
+            minim_error1("read_object", "unexpected character when parsing named character", Mchar(c));
         }
     }
 }
@@ -86,10 +86,8 @@ static mobj read_char(FILE *in) {
     int c, nc;
 
     c = getc(in);
-    if (c == EOF) {
-        fprintf(stderr, "unexpected EOF while parsing character sequence");
-        minim_shutdown(1);
-    } else if (c == 'a') {
+    assert_not_eof(c);
+    if (c == 'a') {
         nc = peek_char(in);
         if (nc == 'l') {
             // alarm
@@ -224,8 +222,7 @@ static mobj read_pair(FILE *in, char open_paren) {
             return Mcons(car, cdr);
         }
 
-        fprintf(stderr, "missing ')' to terminate pair");
-        minim_shutdown(1);        
+        minim_error1("read_object", "expected pair terminator", Mchar(c));      
     } else {
         // list
         ungetc(c, in);
@@ -274,6 +271,12 @@ loop:
         // special value
         c = getc(in);
         switch (c) {
+        case '%':
+            // symbol
+            ungetc(c, in);
+            c = '#';
+            i = 0;
+            goto read_symbol;
         case 't':
             // true
             return minim_true;
@@ -327,8 +330,7 @@ loop:
 
             goto loop;
         default:
-            fprintf(stderr, "unknown special constant");
-            minim_shutdown(1);
+            minim_error1("read_object", "unknown special datum", Mchar(c));   
         }
     } else if (isdigit(c) || ((c == '-' || c == '+') && isdigit(peek_char(in)))) {
         // decimal number (possibly)
@@ -357,12 +359,9 @@ loop:
         }
 
         // check for delimeter
-        if (!is_delimeter(c)) {
-            fprintf(stderr, "expected a delimeter\n");
-            minim_shutdown(1);
-        }
-
+        assert_delimeter(c);
         ungetc(c, in);
+    
         return Mfixnum(num * sign);
     } else if (0) {
         // hexadecimal number
@@ -394,17 +393,15 @@ read_hex:
         }
 
         // check for delimeter
-        if (!is_delimeter(c)) {
-            fprintf(stderr, "expected a delimeter\n");
-            minim_shutdown(1);
-        }
-
+        assert_delimeter(c);
         ungetc(c, in);
+
         return Mfixnum(num * sign);
     } else if (c == '"') {
         // string
         i = 0;
         while ((c = getc(in)) != '"') {
+            assert_not_eof(c);
             if (c == '\\') {
                 c = getc(in);
                 if (c == 'n') {
@@ -418,20 +415,15 @@ read_hex:
                 } else if (c == '\"') {
                     c = '\"';
                 } else {
-                    fprintf(stderr, "unknown escape character: %c\n", c);
-                    minim_shutdown(1);
+                    minim_error1("read_object", "unknown escape character", Mchar(c));
                 }
-            } else if (c == EOF) {
-                fprintf(stderr, "non-terminated string literal\n");
-                minim_shutdown(1);
             }
 
-            if (i < SYMBOL_MAX_LEN - 1) {
-                buffer[i++] = c;
-            } else {
-                fprintf(stderr, "string is too long, max allowed %d characters", SYMBOL_MAX_LEN);
-                minim_shutdown(1);
+            if (i >= SYMBOL_MAX_LEN) {
+                minim_error("read_object", "string exceeded max length");
             }
+
+            buffer[i++] = c;
         }
 
         buffer[i] = '\0';
@@ -449,30 +441,24 @@ read_hex:
 read_symbol:
 
         while (is_symbol_char(c)) {
-            if (i < SYMBOL_MAX_LEN - 1) {
-                buffer[i++] = c;
-            } else {
-                fprintf(stderr, "symbol is too long, max allowed %d characters", SYMBOL_MAX_LEN);
-                minim_shutdown(1);
+            if (i >= SYMBOL_MAX_LEN) {
+                minim_error("read_object", "symbol exceeded max length");
             }
+
+            buffer[i++] = c;
             c = getc(in);
         }
 
-        if (!is_delimeter(c)) {
-            fprintf(stderr, "expected a delimeter\n");
-            minim_shutdown(1);
-        }
-
+        assert_delimeter(c);
         ungetc(c, in);
+
         buffer[i] = '\0';
         return intern(buffer);
     } else if (c == EOF) {
         return NULL;
     } else {
-        fprintf(stderr, "unexpected input: %c\n", c);
-        minim_shutdown(1);
+        minim_error1("read_object", "unexpected input", Mchar(c));
     }
 
-    fprintf(stderr, "unreachable");
-    minim_shutdown(1);
+    minim_error("read_object", "unreachable");
 }

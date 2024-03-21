@@ -18,20 +18,11 @@
 //
 
 void bad_syntax_exn(mobj expr) {
-    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
-    fprintf(stderr, " at: ");
-    write_object(stderr, expr);
-    fputc('\n', stderr);
-    minim_shutdown(1);
+    minim_error1(minim_symbol(minim_car(expr)), "bad syntax", expr);
 }
 
 void bad_type_exn(const char *name, const char *type, mobj x) {
-    fprintf(stderr, "%s: type violation\n", name);
-    fprintf(stderr, " expected: %s\n", type);
-    fprintf(stderr, " received: ");
-    write_object(stderr, x);
-    fputc('\n', stderr);
-    minim_shutdown(1);
+    minim_error2(name, "type violation", Mstring(type), x);
 }
 
 void arity_mismatch_exn(mobj proc, size_t actual) {

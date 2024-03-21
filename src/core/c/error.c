@@ -2,18 +2,20 @@
 
 #include "../minim.h"
 
-
 NORETURN static void do_error2(const char *name, const char *msg, mobj args) {
     minim_thread *th;
 
     th = current_thread();
-    if (minim_falsep(error_handler(th))) {
-        // error handler is not set up
-        fprintf(stderr, "error occured before handler set up\n");
-        if (name) fprintf(stderr, "%s: %s\n", name, msg);
-        else fprintf(stderr, "%s\n", msg);
-        write_object(stderr, args);
-        putc('\n', stderr);
+    if (minim_nullp(current_continuation(th)) || minim_falsep(c_error_handler(th))) {
+        // exception cannot be handled by runtime
+        if (name) fprintf(stderr, "Error in %s: %s", name, msg);
+        else fprintf(stderr, "Error: %s", msg);
+        for (; !minim_nullp(args); args = minim_cdr(args)) {
+            fputs("\n ", stderr);
+            write_object(stderr, minim_car(args));
+        }
+
+        fputc('\n', stderr);
         minim_shutdown(1);
     }
 
@@ -21,7 +23,7 @@ NORETURN static void do_error2(const char *name, const char *msg, mobj args) {
 }
 
 //
-//  Public API
+//  C-side errors
 //
 
 void minim_error(const char *name, const char *msg) {

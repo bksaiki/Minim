@@ -210,11 +210,8 @@ static mobj cenv_template_ref(mobj cenv, size_t i) {
     
     tmpls = list_reverse(minim_unbox(cenv_tmpls(cenv)));
     for (j = i; j > 0; j--) {
-        if (minim_nullp(tmpls)) {
-            fprintf(stderr, "cenv_template_ref(): index out of bounds %ld\n", i);
-            minim_shutdown(1);
-        }
-
+        if (minim_nullp(tmpls))
+            minim_error1("cenv_template_ref", "index out of bounds", Mfixnum(i));
         tmpls = minim_cdr(tmpls);
     }
 
@@ -587,11 +584,7 @@ static mobj compile_expr2(mobj expr, mobj env, int tailp) {
         // self-evaluating
         return compile_literal(expr, tailp);
     } else {
-        fprintf(stderr, "compile_expr2: unimplemented\n");
-        fprintf(stderr, " at: ");
-        write_object(stderr, expr);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
+        minim_error1("compile_expr", "cannot compile", expr);
     }
 }
 
