@@ -43,37 +43,11 @@ typedef struct minim_thread     minim_thread;
 
 #define MINIM_VERSION      "0.3.5"
 
-#define ARG_MAX                     32767
-#define VALUES_MAX                  32767
 #define RECORD_FIELD_MAX            32767
 #define SYMBOL_MAX_LEN              4096
 
 #define INIT_VALUES_BUFFER_LEN      10
 #define ENVIRONMENT_VECTOR_MAX      6
-
-// Arity
-
-typedef enum {
-    PROC_ARITY_FIXED,
-    PROC_ARITY_UNBOUNDED,
-    PROC_ARITY_RANGE
-} proc_arity_type;
-
-typedef struct proc_arity {
-    proc_arity_type type;
-    short arity_min, arity_max;
-} proc_arity;
-
-#define proc_arity_same_type(p, t)      ((p)->type == (t))
-#define proc_arity_is_fixed(p)          (proc_arity_same_type(p, PROC_ARITY_FIXED))
-#define proc_arity_is_unbounded(p)      (proc_arity_same_type(p, PROC_ARITY_UNBOUNDED))
-#define proc_arity_is_range(p)          (proc_arity_same_type(p, PROC_ARITY_RANGE))
-
-#define proc_arity_min(p)               ((p)->arity_min)
-#define proc_arity_max(p)               ((p)->arity_max)
-
-#define proc_arity_is_between(p, min, max)      \
-    (((min) <= (p)->arity_min) && ((p)->arity_max <= (max)))
 
 // Object types
 
@@ -86,8 +60,6 @@ typedef enum {
     MINIM_OBJ_STRING,
     MINIM_OBJ_PAIR,
     MINIM_OBJ_VECTOR,
-    MINIM_OBJ_PRIM,
-    MINIM_OBJ_PRIM2,
     MINIM_OBJ_CLOSURE,
     MINIM_OBJ_PORT,
 
@@ -208,19 +180,6 @@ extern mobj minim_values;
 #define minim_box_size      (2 * ptr_size)
 #define minim_boxp(o)       (minim_type(o) == MINIM_OBJ_BOX)
 #define minim_unbox(o)      (*((mobj*) PTR_ADD(o, ptr_size)))
-
-// Primitive
-// +------------+
-// |    type    | [0, 1)
-// |    ptr     | [8, 16)
-// |    arity   | [16, 24)
-// |    name    | [24, 32)
-// +------------+
-#define minim_prim_size             (4 * ptr_size)
-#define minim_primp(o)              (minim_type(o) == MINIM_OBJ_PRIM)
-#define minim_prim(o)               (*((void**) PTR_ADD(o, ptr_size)))
-#define minim_prim_arity(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_prim_name(o)          (*((char**) PTR_ADD(o, 3 * ptr_size)))
 
 // Closure
 // +------------+
@@ -370,11 +329,18 @@ extern mobj bind_values_symbol;
 extern mobj bind_values_top_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
+extern mobj ccall_symbol;
 extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
+extern mobj do_apply_symbol;
+extern mobj do_error_symbol;
+extern mobj do_eval_symbol;
 extern mobj do_rest_symbol;
+extern mobj do_values_symbol;
+extern mobj do_with_values_symbol;
 extern mobj get_arg_symbol;
+extern mobj get_env_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
 extern mobj make_closure_symbol;
@@ -390,7 +356,7 @@ extern mobj save_cc_symbol;
 
 // Complex predicates
 
-#define minim_procp(x)  (minim_primp(x) || minim_closurep(x))
+#define minim_procp(x)  (minim_closurep(x))
 
 // Constructors
 
@@ -404,7 +370,6 @@ mobj Mvector(long len, mobj init);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mbox(mobj x);
 mobj Mhashtable(size_t size_hint);
-mobj Mprim(void *fn, char *name, mobj arity);
 mobj Mclosure(mobj env, mobj code);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
@@ -418,6 +383,8 @@ mobj Mcode(size_t size);
 #define Mlist2(a, b)                Mcons(a, Mlist1(b))
 #define Mlist3(a, b, c)             Mcons(a, Mlist2(b, c))
 #define Mlist4(a, b, c, d)          Mcons(a, Mlist3(b, c, d))
+#define Mlist5(a, b, c, d, e)       Mcons(a, Mlist4(b, c, d, e))
+#define Mlist6(a, b, c, d, e, f)    Mcons(a, Mlist5(b, c, d, e, f))
 
 // Object operations
 
@@ -454,7 +421,6 @@ mobj syntaxp_proc(mobj x);
 mobj not_proc(mobj x);
 mobj eq_proc(mobj x, mobj y);
 mobj equal_proc(mobj x, mobj y);
-mobj void_proc();
 
 #define NUL_CHAR        ((mchar) 0x00)      // null
 #define BEL_CHAR        ((mchar) 0x07)      // alarm / bell
@@ -536,7 +502,7 @@ mobj set_cdr_proc(mobj p, mobj x);
 mobj make_list_proc(const mobj len, const mobj init);
 mobj length_proc(const mobj xs);
 mobj list_reverse(const mobj xs);
-mobj list_append2(const mobj xs, const mobj ys);
+mobj list_append2(mobj xs, mobj ys);
 
 mobj make_vector(mobj len, mobj init);
 mobj vector_length(mobj v);
@@ -611,7 +577,6 @@ mobj record_rtd_proc(mobj rec);
 mobj record_ref_proc(mobj rec, mobj idx);
 mobj record_set_proc(mobj rec, mobj idx, mobj x);
 
-mobj identity_proc(mobj x);
 mobj procedure_arity_proc(mobj proc);
 
 mobj syntax_e_proc(mobj stx);
@@ -639,15 +604,7 @@ mobj command_line_proc();
 mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
-mobj eval_proc();
-mobj apply_proc();
-mobj call_with_values_proc();
-mobj values_proc();
-mobj error_proc();
-mobj syntax_error_proc();
-
 mobj do_error(int argc, mobj *args);
-mobj do_syntax_error(int argc, mobj *args);
 
 // Stack segment
 // +--------------+
@@ -694,7 +651,17 @@ void write_fasl(FILE *out, mobj o);
 
 // JIT compiler
 
-mobj compile_jit(mobj expr);
+mobj compile_expr(mobj expr);
+mobj compile_prim(const char *who, void *fn, mobj arity);
+
+mobj compile_apply(mobj name);
+mobj compile_call_with_values(mobj name);
+mobj compile_current_environment(mobj name);
+mobj compile_error(mobj name);
+mobj compile_eval(mobj name);
+mobj compile_identity(mobj name);
+mobj compile_values(mobj name);
+mobj compile_void(mobj name);
 
 // Interpreter
 
@@ -886,7 +853,6 @@ NORETURN void arity_mismatch_exn(mobj proc, size_t actual);
 NORETURN void bad_syntax_exn(mobj expr);
 NORETURN void bad_type_exn(const char *name, const char *type, mobj x);
 NORETURN void result_arity_exn(const char *name, short expected, short actual);
-NORETURN void uncallable_prim_exn(const char *name);
 
 // Primitives
 

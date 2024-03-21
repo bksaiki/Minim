@@ -194,7 +194,8 @@ int test_call_with_values() {
     passed = 1;
 
     check_equal("(call-with-values (lambda () (values)) (lambda () 1))", "1");
-
+    check_equal("(call-with-values (lambda () '(1 2 3)) $length)", "3");
+    check_equal("(call-with-values (lambda () (values 1 2)) cons)", "(1 . 2)");
 
     return passed;
 }

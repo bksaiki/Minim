@@ -2120,6 +2120,28 @@
         ($syntax->list stx)
         (error 'syntax->list "expected syntax?" stx))))
 
+(define-values (syntax-error)
+  (lambda args
+    (let-values ([(argc) ($length args)])
+      (if (if (>= argc 2) (<= argc 4) #f)
+          (let-values ([(who) ($car args)] [(msg) ($cadr args)])
+            (if (if who #t (symbol? who))
+                (if (string? msg)
+                    (if (= argc 2)
+                        (error who msg)
+                        (let-values ([(stx) ($caddr args)])
+                          (if (syntax? stx)
+                              (if (= argc 3)
+                                  (error who msg 'where ($syntax->datum stx))
+                                  (let-values ([(sub-stx) ($cadddr args)])
+                                    (if (syntax? sub-stx)
+                                        (error who msg 'at ($syntax->datum) 'where ($syntax->datum stx))
+                                        (error 'syntax-error "expected syntax" sub-stx))))
+                              (error 'syntax-error "expected syntax" stx))))
+                    (error 'syntax-error "expected string" msg))
+                (error 'syntax-error "expected symbol or #f" who)))
+          (error 'syntax-error "expected 2, 3, or 4 arguments" argc)))))
+
 ;; --------------------------------------------------------
 ;; Pattern variables
 

@@ -276,7 +276,7 @@ static mobj resolve_refs(mobj cenv, mobj ins) {
 //  Compiler
 //
 
-static mobj compile_expr(mobj expr, mobj env, int tailp);
+static mobj compile_expr2(mobj expr, mobj env, int tailp);
 
 static mobj with_tail_ret(mobj ins, int tailp) {
     if (tailp) {
@@ -291,7 +291,7 @@ static mobj compile_define_values(mobj expr, mobj env, int tailp) {
     mobj ids, ins;
 
     ids = minim_cadr(expr);
-    ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
+    ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
     list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, ids)));
     return with_tail_ret(ins, tailp);
 }
@@ -312,14 +312,14 @@ static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
 
     // bind values
     for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
-        list_set_tail(ins, compile_expr(minim_car(minim_cdar(binds)), env, 0));
+        list_set_tail(ins, compile_expr2(minim_car(minim_cdar(binds)), env, 0));
         list_set_tail(ins, Mlist1(
             Mlist2(bind_values_symbol, minim_caar(binds))
         ));
     }
 
     // evaluate body
-    list_set_tail(ins, compile_expr(body, env, tailp));
+    list_set_tail(ins, compile_expr2(body, env, tailp));
 
     // if we are not in tail position, pop the environment
     if (!tailp) {
@@ -346,7 +346,7 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
     // bind values to new environment
     // need to use special `bind-values/top` to access new environment
     for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
-        list_set_tail(ins, compile_expr(minim_car(minim_cdar(binds)), env, 0));
+        list_set_tail(ins, compile_expr2(minim_car(minim_cdar(binds)), env, 0));
         list_set_tail(ins, Mlist1(
             Mlist2(bind_values_top_symbol, minim_caar(binds))
         ));
@@ -354,7 +354,7 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
 
     // evaluate body
     list_set_tail(ins, Mlist2(Mlist1(pop_symbol), Mlist1(push_env_symbol)));
-    list_set_tail(ins, compile_expr(body, env, tailp));
+    list_set_tail(ins, compile_expr2(body, env, tailp));
 
     // if we are not in tail position, pop the environment
     if (!tailp) {
@@ -365,7 +365,7 @@ static mobj compile_let_values(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_setb(mobj expr, mobj env, int tailp) {
-    mobj ins = compile_expr(minim_car(minim_cddr(expr)), env, 0);
+    mobj ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
     list_set_tail(ins, Mlist1(Mlist2(rebind_symbol, minim_cadr(expr))));
     return with_tail_ret(ins, tailp);
 }
@@ -414,7 +414,7 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
 
     // compile the body
     body = Mcons(begin_symbol, minim_cddr(expr));
-    list_set_tail(ins, compile_expr(body, extend_cenv(env), 1));
+    list_set_tail(ins, compile_expr2(body, extend_cenv(env), 1));
 
     // resolve references
     reloc = resolve_refs(env, ins);
@@ -444,13 +444,13 @@ static mobj compile_begin(mobj expr, mobj env, int tailp) {
         // all except last is not in tail position
         ins = minim_null;
         while (!minim_nullp(minim_cdr(exprs))) {
-            ins_sub = compile_expr(minim_car(exprs), env, 0);
+            ins_sub = compile_expr2(minim_car(exprs), env, 0);
             ins = list_append2(ins, ins_sub);
             exprs = minim_cdr(exprs);
         }
 
         // last expression is in tail position
-        ins_sub = compile_expr(minim_car(exprs), env, tailp);
+        ins_sub = compile_expr2(minim_car(exprs), env, tailp);
         return list_append2(ins, ins_sub);
     }
 }
@@ -459,9 +459,9 @@ static mobj compile_if(mobj expr, mobj env, int tailp) {
     mobj ins, cond_ins, ift_ins, iff_ins;
 
     // compile the parts
-    cond_ins = compile_expr(minim_cadr(expr), env, 0);
-    ift_ins = compile_expr(minim_car(minim_cddr(expr)), env, tailp);
-    iff_ins = compile_expr(minim_cadr(minim_cddr(expr)), env, tailp);
+    cond_ins = compile_expr2(minim_cadr(expr), env, 0);
+    ift_ins = compile_expr2(minim_car(minim_cddr(expr)), env, tailp);
+    iff_ins = compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp);
 
     ins = cond_ins;
     if (tailp) {
@@ -503,7 +503,7 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
     }
 
     // compute procedure
-    ins = list_append2(ins, compile_expr(minim_car(expr), env, 0));
+    ins = list_append2(ins, compile_expr2(minim_car(expr), env, 0));
     list_set_tail(ins, Mlist1(Mlist1(set_proc_symbol)));
 
     // emit stack hint
@@ -512,7 +512,7 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
 
     // compute arguments
     for (it = minim_cdr(expr); !minim_nullp(it); it = minim_cdr(it)) {
-        list_set_tail(ins, compile_expr(minim_car(it), env, 0));
+        list_set_tail(ins, compile_expr2(minim_car(it), env, 0));
         list_set_tail(ins, Mlist1(Mlist1(push_symbol)));
     }
 
@@ -537,7 +537,7 @@ static mobj compile_literal(mobj expr, int tailp) {
     return with_tail_ret(ins, tailp);
 }
 
-static mobj compile_expr(mobj expr, mobj env, int tailp) {
+static mobj compile_expr2(mobj expr, mobj env, int tailp) {
     if (minim_consp(expr)) {
         // special form or application
         mobj head = minim_car(expr);
@@ -587,7 +587,7 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
         // self-evaluating
         return compile_literal(expr, tailp);
     } else {
-        fprintf(stderr, "compile_expr: unimplemented\n");
+        fprintf(stderr, "compile_expr2: unimplemented\n");
         fprintf(stderr, " at: ");
         write_object(stderr, expr);
         fprintf(stderr, "\n");
@@ -595,15 +595,114 @@ static mobj compile_expr(mobj expr, mobj env, int tailp) {
     }
 }
 
+// Common idiom for custom compilation targets
+static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
+    mobj env, ins, reloc, code;
+
+    // prepare compiler
+    env = make_cenv();
+    
+    // hand written procedure
+    ins = Mlist3(
+        Mlist2(check_arity_symbol, arity),
+        do_instr,
+        Mlist1(ret_symbol)
+    );
+
+    // write to code
+    reloc = resolve_refs(env, ins);
+    code = write_code(ins, reloc, arity);
+    minim_code_name(code) = name;
+
+    // return a closure
+    return Mclosure(setup_env(), code);
+}
+
+// Short hand for making a function that just calls `compile_do_ret`
+#define define_do_ret(fn_name, arity, do_instr) \
+    mobj fn_name(mobj name) { \
+        return compile_do_ret(name, arity, do_instr); \
+    }
+
 //
 //  Public API
 //
 
-mobj compile_jit(mobj expr) {
+mobj compile_expr(mobj expr) {
     mobj env, ins, reloc;
 
     env = make_cenv();
-    ins = compile_expr(expr, env, 1);
+    ins = compile_expr2(expr, env, 1);
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
+}
+
+mobj compile_prim(const char *who, void *fn, mobj arity) {
+    return compile_do_ret(intern(who), arity, Mlist2(ccall_symbol, fn));
+}
+
+define_do_ret(compile_apply, Mcons(Mfixnum(2), minim_false), Mlist1(do_apply_symbol));
+define_do_ret(compile_current_environment, Mfixnum(0), Mlist1(get_env_symbol));
+define_do_ret(compile_error, Mcons(Mfixnum(2), minim_false), Mlist1(do_error_symbol));
+define_do_ret(compile_identity, Mfixnum(1), Mlist2(get_arg_symbol, Mfixnum(0)));
+define_do_ret(compile_values, Mcons(Mfixnum(0), minim_false), Mlist1(do_values_symbol));
+define_do_ret(compile_void, Mfixnum(0), Mlist2(literal_symbol, minim_void));
+
+// Custom `call-with-values` compilation
+mobj compile_call_with_values(mobj name) {
+    mobj env, arity, ins, label, reloc, code;
+
+    // prepare compiler
+    env = make_cenv();
+    arity = Mfixnum(2);
+    label = cenv_make_label(env);
+    
+    // hand written procedure
+    ins = list_append2(
+        Mlist6(
+            Mlist2(check_arity_symbol, arity),      // check arity
+            Mlist1(pop_symbol),                     // pop consumer
+            Mlist1(set_proc_symbol),                // set consumer as procedure
+            Mlist1(pop_symbol),                     // pop producer
+            Mlist2(save_cc_symbol, label),          // create new frame
+            Mlist1(set_proc_symbol)                 // set producer as procedure
+        ),
+        Mlist4(
+            Mlist1(apply_symbol),                   // call and restore previous frame
+            label,
+            Mlist1(do_with_values_symbol),          // convert result to arguments
+            Mlist1(apply_symbol)                    // call consumer
+        )
+    );
+
+    // write to code
+    reloc = resolve_refs(env, ins);
+    code = write_code(ins, reloc, Mcons(Mfixnum(2), Mfixnum(2)));
+    minim_code_name(code) = name;
+
+    // return a closure
+    return Mclosure(setup_env(), code);
+}
+
+// Custom `eval` compilation
+mobj compile_eval(mobj name) {
+    mobj env, arity, ins, reloc, code;
+
+    // prepare compiler
+    env = make_cenv();
+    arity = Mcons(Mfixnum(1), Mfixnum(2));
+    
+    // hand written procedure
+    ins = Mlist2(
+        Mlist2(check_arity_symbol, arity),
+        Mlist1(do_eval_symbol)
+    );
+
+    // write to code
+    reloc = resolve_refs(env, ins);
+    code = write_code(ins, reloc, Mcons(Mfixnum(1), Mfixnum(2)));
+    minim_code_name(code) = name;
+
+    // return a closure
+    return Mclosure(setup_env(), code);
 }

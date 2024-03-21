@@ -38,17 +38,11 @@ void arity_mismatch_exn(mobj proc, size_t actual) {
     mobj code, arity;
 
     // print name and extract arity
-    if (minim_primp(proc)) {
-        if (minim_prim_name(proc))
-            fprintf(stderr, "%s: ", minim_prim_name(proc));
-        arity = minim_prim_arity(proc);
-    } else { // closure
-        code = minim_closure_code(proc);
-        if (minim_code_name(code))
-            fprintf(stderr, "%s: ", minim_code_name(code));
-        arity = minim_code_arity(code);
-    }
+    code = minim_closure_code(proc);
+    if (minim_code_name(code))
+        fprintf(stderr, "%s: ", minim_code_name(code));
 
+    arity = minim_code_arity(code);
     if (minim_fixnump(arity)) {
         // exact arity
         fprintf(
@@ -188,6 +182,60 @@ static mobj pop_frame() {
     return cc;
 }
 
+static void check_arity(mobj env, mobj spec) {
+    minim_thread *th;
+    size_t ac;
+
+    th = current_thread();
+    ac = current_ac(th);
+    if (minim_fixnump(spec)) {
+        // exact arity
+        if (ac != minim_fixnum(spec))
+            arity_mismatch_exn(current_cp(th), ac);
+    } else {
+        mobj min = minim_car(spec);
+        mobj max = minim_cdr(spec);
+        if (minim_falsep(max)) {
+            // at least arity
+            if (ac < minim_fixnum(min))
+                arity_mismatch_exn(current_cp(th), ac);
+        } else {
+            // range arity
+            if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
+                arity_mismatch_exn(current_cp(th), ac);
+        }
+    }
+}
+
+static mobj do_ccall(mobj (*prim)()) {
+    minim_thread *th;
+    mobj *args;
+    
+    th = current_thread();
+    args = current_sfp(th);
+    switch (current_ac(th)) {
+    case 0:
+        return prim();
+    case 1:
+        return prim(args[0]);
+    case 2:
+        return prim(args[0], args[1]);
+    case 3:
+        return prim(args[0], args[1], args[2]);
+    case 4:
+        return prim(args[0], args[1], args[2], args[3]);
+    case 5:
+        return prim(args[0], args[1], args[2], args[3], args[4]);
+    case 6:
+        return prim(args[0], args[1], args[2], args[3], args[4], args[5]);
+    default:
+        fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
+        fprintf(stderr, " received: ");
+        write_object(stderr, current_cp(th));
+        minim_shutdown(1);
+    }
+}
+
 static mobj do_rest(size_t idx) {
     minim_thread *th;
     size_t ac;
@@ -282,18 +330,6 @@ static void values_to_args(mobj x) {
     }
 }
 
-static void check_call_with_values(mobj *args) {
-    mobj producer, consumer;
-    
-    producer = args[0];
-    if (!minim_procp(producer))
-        bad_type_exn("call-with-values", "procedure?", producer);
-
-    consumer = args[1];
-    if (!minim_procp(consumer))
-        bad_type_exn("call-with-values", "procedure?", consumer);
-}
-
 // Forces `x` to be a single value, that is,
 // if `x` is the result of `(values ...)` it unwraps
 // the result if `x` contains one value and panics otherwise
@@ -338,31 +374,6 @@ static void bind_values(mobj env, mobj ids, mobj res) {
     }
 }
 
-static void check_arity(mobj env, mobj spec) {
-    minim_thread *th;
-    size_t ac;
-
-    th = current_thread();
-    ac = current_ac(th);
-    if (minim_fixnump(spec)) {
-        // exact arity
-        if (ac != minim_fixnum(spec))
-            arity_mismatch_exn(current_cp(th), ac);
-    } else {
-        mobj min = minim_car(spec);
-        mobj max = minim_cdr(spec);
-        if (minim_falsep(max)) {
-            // at least arity
-            if (ac < minim_fixnum(min))
-                arity_mismatch_exn(current_cp(th), ac);
-        } else {
-            // range arity
-            if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
-                arity_mismatch_exn(current_cp(th), ac);
-        }
-    }
-}
-
 //
 //  Evaluator
 //
@@ -370,15 +381,16 @@ static void check_arity(mobj env, mobj spec) {
 mobj eval_expr(mobj expr, mobj env) {
     minim_thread *th;
     mobj *istream;
-    mobj code, ins, ty, res;
+    mobj code, ins, ty, res, penv;
 
     // compile to instructions
-    code = compile_jit(expr);
+    code = compile_expr(expr);
 
     // set up instruction evaluator
     th = current_thread();
     current_ac(th) = 0;
     istream = minim_code_it(code);
+    penv = env;
     res = NULL;
 
 // instruction processor
@@ -416,9 +428,7 @@ loop:
     } else if (ty == apply_symbol) {
         // apply
 application:
-        if (minim_primp(current_cp(th))) {
-            goto call_prim;
-        } else if (minim_closurep(current_cp(th))) {
+        if (minim_closurep(current_cp(th))) {
             goto call_closure;
         } else {
             goto not_procedure;
@@ -426,6 +436,9 @@ application:
     } else if (ty == ret_symbol) {
         // ret
         goto restore_frame;
+    } else if (ty == ccall_symbol) {
+        // ccall
+        res = do_ccall(minim_cadr(ins));
     } else if (ty == bind_symbol) {
         // bind
         env_define_var(env, minim_cadr(ins), res);
@@ -453,13 +466,39 @@ application:
         env = minim_env_prev(env);
     } else if (ty == save_cc_symbol) {
         // save-cc
-        push_frame(env, Mcons(istream, minim_cadr(ins)));
+        push_frame(env, minim_cadr(ins));
     } else if (ty == get_arg_symbol) {
         // get-arg
         res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
+    } else if (ty == get_env_symbol) {
+        // get-env
+        if (current_continuation(th) == minim_null) {
+            res = penv;
+        } else {
+            res = continuation_env(current_continuation(th));
+        }
+    } else if (ty == do_apply_symbol) {
+        // do-apply
+        do_apply();
+        goto application;
+    } else if (ty == do_error_symbol) {
+        // do-error
+        do_error(current_ac(th), current_sfp(th));
+        goto unreachable;
+    } else if (ty == do_eval_symbol) {
+        // do-eval
+        goto do_eval;
     } else if (ty == do_rest_symbol) {
         // do-rest
         res = do_rest(minim_fixnum(minim_cadr(ins)));
+    } else if (ty == do_values_symbol) {
+        // do-values
+        do_values();
+        res = minim_values;
+    } else if (ty == do_with_values_symbol) {
+        // do-with-values
+        values_to_args(res);
+        goto application;
     } else if (ty == clear_frame_symbol) {
         // clear frame
         current_cp(th) = NULL;
@@ -501,16 +540,6 @@ next:
     }
     goto loop;
 
-// call-with-values consumer
-call_consumer:
-    // set current procedure to consumer and clear arguments
-    current_cp(th) = current_sfp(th)[1];
-    current_ac(th) = 0;
-    // push result to arguments
-    values_to_args(res);
-    // call consumer
-    goto application;
-
 // call closure
 call_closure:
     code = minim_closure_code(current_cp(th));
@@ -521,96 +550,19 @@ call_closure:
     // since this is required for binding and arity check
     goto loop;
 
-// call primitive procedure
-call_prim:
-    mobj *args;
-    mobj (*prim)();
-
-    // check arity
-    check_arity(env, minim_prim_arity(current_cp(th)));
-
-    // split on special cases
-    prim = minim_prim(current_cp(th));
-    args = current_sfp(th);
-    if (prim == values_proc) {
-        // special case: `values`
-        do_values();
-        res = minim_values;
-    } else if (prim == apply_proc) {
-        // special case: `apply`
-        do_apply();
-        goto application;
-    } else if (prim == error_proc) {
-        // special case: `error`
-        do_error(current_ac(th), args);
-        fprintf(stderr, "unreachable\n");
-        minim_shutdown(1);
-    } else if (prim == call_with_values_proc) {
-        // special case: `call-with-values`
-        check_call_with_values(current_sfp(th));
-        // producer is not in tail position so save continuation
-        push_frame(env, Mcons(istream, minim_false));
-        // set the current procedure and argument count
-        current_cp(th) = args[0];
-        current_ac(th) = 0;
-        goto application;
-    } else if (prim == eval_proc) {
-        // special case: `eval` (1 or 2 arguments)
-        // compile the expression into a nullary function
-        // and call in tail position
-        env = current_ac(th) == 2 ? args[1] : env;
-        current_cp(th) = Mclosure(env, compile_jit(args[0]));
-        current_ac(th) = 0;
-        goto application;
-    } else if (prim == current_environment) {
-        // special case: `current-environment`
-        res = env;
-    } else if (prim == syntax_error_proc) {
-        // special case: `syntax-error`
-        do_syntax_error(current_ac(th), args);
-        fprintf(stderr, "unreachable\n");
-        minim_shutdown(1);
-    } else {
-        // default: call based on arity
-        switch (current_ac(th)) {
-        case 0:
-            res = prim();
-            break;
-        case 1:
-            res = prim(args[0]);
-            break;
-        case 2:
-            res = prim(args[0], args[1]);
-            break;
-        case 3:
-            res = prim(args[0], args[1], args[2]);
-            break;
-        case 4:
-            res = prim(args[0], args[1], args[2], args[3]);
-            break;
-        case 5:
-            res = prim(args[0], args[1], args[2], args[3], args[4]);
-            break;
-        case 6:
-            res = prim(args[0], args[1], args[2], args[3], args[4], args[5]);
-            break;
-        default:
-            fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-            fprintf(stderr, " received: ");
-            write_object(stderr, current_cp(th));
-            minim_shutdown(1);
-            break;
-        }
-    }
-
-    // clear arguments and pop frame
-    current_cp(th) = NULL;
+// performs `do-eval` instruction
+do_eval:
+    // compile expression into a nullary function and
+    // call it in tail position
+    mobj *args = current_sfp(th);
+    env = current_ac(th) == 2 ? args[1] : env;
+    current_cp(th) = Mclosure(env, compile_expr(args[0]));
     current_ac(th) = 0;
-    goto restore_frame;
+    goto application;
 
 // restores previous continuation
 restore_frame:
-    mobj cc, pc;
+    mobj cc;
 
     // check if stack is fully unwound
     if (minim_nullp(current_continuation(th))) {
@@ -622,22 +574,17 @@ restore_frame:
     // and seek to the expected label
     cc = pop_frame();
     env = continuation_env(cc);
-    pc = continuation_pc(cc);
-    istream = minim_car(pc);
-    if (minim_falsep(minim_cdr(pc))) {
-        // return from producer of `call-with-values`
-        // call consumer in tail position
-        goto call_consumer;
-    } else {
-        // else resume execution at provided PC
-        istream = minim_cdr(pc);
-        goto loop;
-    }
+    istream = continuation_pc(cc);
+    goto loop;
 
 not_procedure:
     fprintf(stderr, "expected procedure\n");
     fprintf(stderr, " got: ");
     write_object(stderr, current_cp(th));
     fprintf(stderr, "\n");
+    minim_shutdown(1);
+
+unreachable:
+    fprintf(stderr, "unreachable");
     minim_shutdown(1);
 }

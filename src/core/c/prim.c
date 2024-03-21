@@ -2,15 +2,6 @@
 
 #include "../minim.h"
 
-mobj Mprim(void *fn, char *name, mobj arity) {
-    mobj o = GC_alloc(minim_prim_size);
-    minim_type(o) = MINIM_OBJ_PRIM;
-    minim_prim(o) = fn;
-    minim_prim_arity(o) = arity;
-    minim_prim_name(o) = name;
-    return o;
-}
-
 #define add_value(env, name, c_val)  \
     env_define_var(env, intern(name), c_val);
 
@@ -19,37 +10,16 @@ mobj Mprim(void *fn, char *name, mobj arity) {
     env_define_var( \
         env, \
         sym, \
-        Mprim( \
-            c_fn, \
-            minim_symbol(sym), \
-            Mfixnum(arity) \
-        ) \
+        compile_prim(name, c_fn, Mfixnum(arity)) \
     ); \
 }
 
-#define add_rprocedure(name, c_fn, min_arity) { \
+#define add_cprocedure(name, gen) { \
     mobj sym = intern(name); \
     env_define_var( \
         env, \
         sym, \
-        Mprim( \
-            c_fn, \
-            minim_symbol(sym), \
-            Mcons(Mfixnum(min_arity), minim_false) \
-        ) \
-    ); \
-}
-
-#define add_vprocedure(name, c_fn, min_arity, max_arity) { \
-    mobj sym = intern(name); \
-    env_define_var( \
-        env, \
-        sym, \
-        Mprim( \
-            c_fn, \
-            minim_symbol(sym), \
-            Mcons(Mfixnum(min_arity), Mfixnum(max_arity)) \
-        ) \
+        gen(sym) \
     ); \
 }
 
@@ -201,21 +171,18 @@ void init_prims(mobj env) {
     add_procedure("interaction-environment", interaction_environment, 0);
     add_procedure("null-environment", empty_environment, 0);
     add_procedure("environment", environment_proc, 0);
-    add_procedure("current-environment", current_environment, 0);
+    add_cprocedure("current-environment", compile_current_environment);
     add_procedure("$environment-extend", extend_environment, 1);
     add_procedure("$environment-names", environment_names, 1);
     add_procedure("$environment-ref", environment_variable_ref, 3);
     add_procedure("$environment-set!", environment_variable_set, 3);
 
     add_procedure("procedure-arity", procedure_arity_proc, 1);
-    add_procedure("identity", identity_proc, 1);
-    add_procedure("void", void_proc, 0);
-
-    add_vprocedure("eval", eval_proc, 1, 2);
-    add_rprocedure("apply", apply_proc, 2);
-
-    add_vprocedure("call-with-values", call_with_values_proc, 2, 2);
-    add_rprocedure("values", values_proc, 0);
+    add_cprocedure("identity", compile_identity);
+    add_cprocedure("apply", compile_apply);
+    add_cprocedure("call-with-values", compile_call_with_values);
+    add_cprocedure("values", compile_values);
+    add_cprocedure("void", compile_void);
 
     add_procedure("input-port?", input_portp_proc, 1);
     add_procedure("output-port?", output_portp_proc, 1);
@@ -249,6 +216,6 @@ void init_prims(mobj env) {
     add_procedure("$current-directory", current_directory_proc, 0);
     add_procedure("$current-directory-set!", current_directory_set_proc, 1);
 
-    add_rprocedure("error", error_proc, 2);
-    add_vprocedure("syntax-error", syntax_error_proc, 2, 4);
+    add_cprocedure("eval", compile_eval);
+    add_cprocedure("error", compile_error);
 }
