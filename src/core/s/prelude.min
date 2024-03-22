@@ -1,11 +1,15 @@
 ; Wrapped primitives
 
 ;; --------------------------------------------------------
-;; Exceptions
+;; Low-level exceptions
 
 (define-values (error)
   (lambda (who msg . args)
     ($boot-error who msg args)))
+
+($c-error-handler
+  (lambda (who msg args)
+    (apply error who msg args)))
 
 ;; --------------------------------------------------------
 ;; Characters

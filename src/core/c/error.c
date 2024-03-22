@@ -18,8 +18,15 @@ NORETURN static void do_error2(const char *name, const char *msg, mobj args) {
         fputc('\n', stderr);
         minim_shutdown(1);
     }
-
-    minim_shutdown(1);
+    
+    // call back into the Scheme runtime
+    current_ac(th) = 3;
+    reserve_stack(th, 3);
+    set_arg(th, 0, (name ? Mstring(name) : minim_false));
+    set_arg(th, 1, Mstring(msg));
+    set_arg(th, 2, args);
+    current_cp(th) = c_error_handler(th);
+    longjmp(*current_reentry(th), 1);
 }
 
 //
@@ -42,40 +49,12 @@ void minim_error3(const char *name, const char *msg, mobj x, mobj y, mobj z) {
     do_error2(name, msg, Mlist3(x, y, z));
 }
 
-mobj do_error(int argc, mobj *args) {
-    // (-> (or #f string symbol)
-    //     string?
-    //     any ...
-    //     any)
-    mobj who, msg, alist;
-
-    who = args[0];
-    if (!minim_falsep(who) && !minim_symbolp(who) && !minim_stringp(who))
-        bad_type_exn("error", "(or #f string? symbol?)", who);
-
-    msg = args[1];
-    if (!minim_stringp(msg))
-        bad_type_exn("error", "string?", msg);
-    
-    alist = minim_null;
-    for (int i = 2; i < argc; i++)
-        alist = Mcons(args[i], alist);
-    alist = list_reverse(alist);
-
-    if (minim_falsep(who))
-        do_error2(NULL, minim_string(msg), alist);
-    else if (minim_stringp(who))
-        do_error2(minim_string(who), minim_string(msg), alist);
-    else
-        do_error2(minim_symbol(who), minim_string(msg), alist);
-}
-
 //
 //  Primitives
 //
 
 mobj boot_error_proc(mobj who, mobj msg, mobj args) {
-    fprintf(stderr, "error caught before error handlers initalized\n");
+    fprintf(stderr, "error caught before error handlers initialized\n");
     fprintf(stderr, "who: ");
     write_object(stderr, who);
     fprintf(stderr, "\nmsg: ");
@@ -84,4 +63,15 @@ mobj boot_error_proc(mobj who, mobj msg, mobj args) {
     write_object(stderr, args);
     fprintf(stderr, "\n");
     minim_shutdown(1);
+}
+
+mobj c_error_handler_proc() {
+    // (-> any (or procedure #f))
+    return c_error_handler(current_thread());
+}
+
+mobj c_error_handler_set_proc(mobj proc) {
+    // (-> procedure void)
+    c_error_handler(current_thread()) = proc;
+    return minim_void;
 }

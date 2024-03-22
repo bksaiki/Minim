@@ -5,6 +5,7 @@
 #ifndef _MINIM_H_
 #define _MINIM_H_
 
+#include <setjmp.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -334,7 +335,6 @@ extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
-extern mobj do_error_symbol;
 extern mobj do_eval_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
@@ -604,12 +604,13 @@ mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
 mobj boot_error_proc(mobj who, mobj msg, mobj args);
+mobj c_error_handler_proc();
+mobj c_error_handler_set_proc(mobj proc);
 
 NORETURN void minim_error(const char *name, const char *msg);
 NORETURN void minim_error1(const char *name, const char *msg, mobj x);
 NORETURN void minim_error2(const char *name, const char *msg, mobj x, mobj y);
 NORETURN void minim_error3(const char *name, const char *msg, mobj x, mobj y, mobj z);
-mobj do_error(int argc, mobj *args);
 
 // Stack segment
 // +--------------+
@@ -662,13 +663,16 @@ mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_apply(mobj name);
 mobj compile_call_with_values(mobj name);
 mobj compile_current_environment(mobj name);
-mobj compile_error(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);
 mobj compile_values(mobj name);
 mobj compile_void(mobj name);
 
 // Interpreter
+
+void reserve_stack(minim_thread *th, size_t argc);
+void set_arg(minim_thread *th, size_t i, mobj x);
+mobj get_arg(minim_thread *th, size_t i);
 
 void check_expr(mobj expr);
 mobj eval_expr(mobj expr, mobj env);
@@ -790,6 +794,7 @@ typedef struct minim_thread {
     mobj *sfp;          // stack pointer
     mobj cp;            // current procedure
     size_t ac;          // argument counter
+    jmp_buf *reentry;   // jmp_buf for re-entry
     // thread parameters
     mobj input_port;
     mobj output_port;
@@ -813,6 +818,7 @@ typedef struct minim_thread {
 #define current_sfp(th)                 ((th)->sfp)
 #define current_cp(th)                  ((th)->cp)
 #define current_ac(th)                  ((th)->ac)
+#define current_reentry(th)             ((th)->reentry)
 
 #define input_port(th)                  ((th)->input_port)
 #define output_port(th)                 ((th)->output_port)

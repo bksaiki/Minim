@@ -208,7 +208,8 @@ void init_prims(mobj env) {
 
     add_procedure("$fasl-read", fasl_read_proc, 1);
     add_procedure("$fasl-write", fasl_write_proc, 2);
-    
+
+    add_cprocedure("eval", compile_eval);
     add_procedure("$load", load_proc, 1);
     add_procedure("$exit", exit_proc, 1);
     add_procedure("version", version_proc, 0);
@@ -216,7 +217,8 @@ void init_prims(mobj env) {
     add_procedure("$current-directory", current_directory_proc, 0);
     add_procedure("$current-directory-set!", current_directory_set_proc, 1);
 
-    add_cprocedure("eval", compile_eval);
-    add_cprocedure("error", compile_error);
+    /// add_procedure("$c-error-handler", c_error_handler_proc, 0);
+    add_procedure("$c-error-handler", c_error_handler_set_proc, 1);
     add_procedure("$boot-error", boot_error_proc, 3);
+
 }

@@ -58,14 +58,15 @@ void result_arity_exn(const char *name, short expected, short actual) {
 //
 
 #define stack_frame_size(th, addt)  ((current_ac(th) + (addt)) * ptr_size)
+#define stack_cushion               (8 * ptr_size)
 
-static int stack_overflowp(size_t argc) {
+static int stack_overflowp(size_t size) {
     minim_thread *th;
     mobj sseg;
     
     th = current_thread();
     sseg = current_segment(th);
-    return PTR_ADD(current_sfp(th), stack_frame_size(th, argc)) >= stack_seg_end(sseg);
+    return PTR_ADD(current_sfp(th), size) >= PTR_ADD(stack_seg_end(sseg), -stack_cushion);
 }
 
 static void grow_stack(size_t size) {
@@ -84,11 +85,23 @@ static void grow_stack(size_t size) {
     current_sfp(th) = stack_seg_base(sseg);
 }
 
+void reserve_stack(minim_thread *th, size_t argc) {
+    size_t req = argc * ptr_size;
+    if (stack_overflowp(req))
+        grow_stack(req);
+}
+
+void set_arg(minim_thread *th, size_t i, mobj x) {
+    current_sfp(th)[i] = x;
+}
+
+mobj get_arg(minim_thread *th, size_t i) {
+    return current_sfp(th)[i];
+}
+
 static void maybe_grow_stack(size_t argc) {
     minim_thread *th = current_thread();
-    if (stack_overflowp(argc)) {
-        grow_stack(stack_frame_size(th, argc));
-    }
+    reserve_stack(th, current_ac(th) + argc);
 }
 
 static void push_arg(mobj x) {
@@ -223,7 +236,7 @@ static mobj do_rest(size_t idx) {
 static void do_apply() {
     minim_thread *th;
     mobj *sfp, rest;
-    size_t i, ac, len;
+    size_t i, ac, len, req;
 
     th = current_thread();
     sfp = current_sfp(th);
@@ -240,10 +253,11 @@ static void do_apply() {
     // check if we have room for the application
     current_ac(th) -= 2;
     len = list_length(rest);
-    if (stack_overflowp(len)) {
+    req = stack_frame_size(th, len);
+    if (stack_overflowp(req)) {
         mobj *nsfp;
 
-        grow_stack(stack_frame_size(th, len));
+        grow_stack(req);
         nsfp = current_sfp(th);
         for (i = 0; i < ac; i++)
             nsfp[i] = sfp[i];
@@ -332,20 +346,25 @@ static void bind_values(mobj env, mobj ids, mobj res) {
 //  Evaluator
 //
 
-mobj eval_expr(mobj expr, mobj env) {
+static mobj eval_istream(mobj *istream, mobj env) {
     minim_thread *th;
-    mobj *istream;
-    mobj code, ins, ty, res, penv;
-
-    // compile to instructions
-    code = compile_expr(expr);
-
-    // set up instruction evaluator
+    mobj ins, ty, res, penv;
+    
+    // setup interpreter
     th = current_thread();
     current_ac(th) = 0;
-    istream = minim_code_it(code);
     penv = env;
     res = NULL;
+
+    // push entry continuation frame
+    push_frame(env, minim_null);
+
+    // possibly handle long jump back into the procedure
+    if (setjmp(*current_reentry(th)) != 0) {
+        // long jumped from somewhere mysterious
+        // only valid long jumps require an immediate function application
+        goto application;
+    }
 
 // instruction processor
 loop:
@@ -370,7 +389,8 @@ loop:
         current_cp(th) = res;
     } else if (ty == push_symbol) {
         // push
-        push_arg(force_single_value(res));
+        res = force_single_value(res);
+        push_arg(res);
     } else if (ty == pop_symbol) {
         // pop
         res = pop_arg();
@@ -421,7 +441,7 @@ application:
         res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
     } else if (ty == get_env_symbol) {
         // get-env
-        if (current_continuation(th) == minim_null) {
+        if (minim_nullp(current_continuation(th))) {
             res = penv;
         } else {
             res = continuation_env(current_continuation(th));
@@ -430,10 +450,6 @@ application:
         // do-apply
         do_apply();
         goto application;
-    } else if (ty == do_error_symbol) {
-        // do-error
-        do_error(current_ac(th), current_sfp(th));
-        goto unreachable;
     } else if (ty == do_eval_symbol) {
         // do-eval
         goto do_eval;
@@ -487,7 +503,7 @@ next:
 
 // call closure
 call_closure:
-    code = minim_closure_code(current_cp(th));
+    mobj code = minim_closure_code(current_cp(th));
     // set instruction stream and env
     istream = minim_code_it(code);
     env = minim_closure_env(current_cp(th));
@@ -507,24 +523,25 @@ do_eval:
 
 // restores previous continuation
 restore_frame:
-    mobj cc;
-
-    // check if stack is fully unwound
-    if (minim_nullp(current_continuation(th))) {
-        // this is the only normal exit point from this function
-        return res;
-    }
-    
-    // otherwise, restore the old instruction stream and environment
+    // restore the old instruction stream and environment
     // and seek to the expected label
-    cc = pop_frame();
+    mobj cc = pop_frame();
     env = continuation_env(cc);
     istream = continuation_pc(cc);
+    if (minim_nullp(istream)) {
+        // we reached the entry continuation frame
+        // so the "next" thing to do is exit
+        return res;
+    }
+
+    // otherwise execute at *istream
     goto loop;
 
 not_procedure:
     minim_error1(NULL, "expected procedure", current_cp(th));
+}
 
-unreachable:
-    minim_error1(NULL, "unreachable", current_cp(th));
+mobj eval_expr(mobj expr, mobj env) {
+    mobj code = compile_expr(expr);
+    return eval_istream(minim_code_it(code), env);
 }

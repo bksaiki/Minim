@@ -220,9 +220,9 @@ loop:
         return;
     } else if (minim_nullp(expr)) {
         // empty application
-        minim_error1("", "missing procedure expression", expr);
+        minim_error1(NULL, "missing procedure expression", expr);
     } else {
         // unknown
-        minim_error1("", "bad syntax", expr);
+        minim_error1(NULL, "bad syntax", expr);
     }
 }

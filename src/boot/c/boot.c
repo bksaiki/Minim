@@ -39,7 +39,6 @@ void minim_boot_init() {
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");
-    do_error_symbol = intern("#%do-error");
     do_eval_symbol = intern("#%do-eval");
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
@@ -97,6 +96,7 @@ void minim_boot_init() {
     current_sfp(th) = stack_seg_base(current_segment(th));
     current_cp(th) = NULL;
     current_ac(th) = 0;
+    current_reentry(th) = GC_alloc(sizeof(jmp_buf));
 
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);

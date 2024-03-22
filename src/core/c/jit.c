@@ -636,7 +636,6 @@ mobj compile_prim(const char *who, void *fn, mobj arity) {
 
 define_do_ret(compile_apply, Mcons(Mfixnum(2), minim_false), Mlist1(do_apply_symbol));
 define_do_ret(compile_current_environment, Mfixnum(0), Mlist1(get_env_symbol));
-define_do_ret(compile_error, Mcons(Mfixnum(2), minim_false), Mlist1(do_error_symbol));
 define_do_ret(compile_identity, Mfixnum(1), Mlist2(get_arg_symbol, Mfixnum(0)));
 define_do_ret(compile_values, Mcons(Mfixnum(0), minim_false), Mlist1(do_values_symbol));
 define_do_ret(compile_void, Mfixnum(0), Mlist2(literal_symbol, minim_void));
