@@ -23,6 +23,10 @@
   (lambda (who v descr lower upper index)
     (error who "index out of bounds" v descr lower upper index)))
 
+(define-values (raise-missing-error)
+  (lambda (who descr x k)
+    (error who "not found" who descr x k)))
+
 ($c-error-handler
   (lambda (who msg args)
     (apply error who msg args)))
@@ -943,8 +947,7 @@
                                                               (= prev-len len)
                                                               #t)
                                                           (loop len ($cdr xss))
-                                                          (error who "lists do not have same size"
-                                                                 len prev-len)))
+                                                          (errorf who "lists do not have same size; expected ~a, given ~a" prev-len ($car xss))))
                                                     (raise-argument-error who "list?" ($car xss)))))])
                            (loop #f xss))
                          (raise-argument-error who "procedure?" f)))])
@@ -1582,7 +1585,11 @@
                                               (updater (default))
                                               (updater default)))])
                ($hashtable-set! store h (cons cell ($hashtable-ref store h)))
-               (incr-size! ht store)))))])
+               (incr-size! ht store)))))]
+
+    [(no-key!)
+     (lambda (who ht k)
+        (raise-missing-error who "key" ht k))])
                
     (values
       ; hashtable-contains?
@@ -1597,7 +1604,7 @@
               (let-values ([(ht) ($car args)] [(k) ($cadr args)])
                 (if (hashtable? ht)
                     (let-values ([(default) (if (= argc 2)
-                                                (lambda () (error 'hashtable-ref "key not found" k))
+                                                (lambda () (no-key! 'hashtable-ref ht k))
                                                 ($caddr args))])
                       (1/hashtable-ref ht k default))
                     (raise-argument-error 'hashtable-ref "hashtable?" ht)))
@@ -1618,9 +1625,8 @@
                     (if (procedure? updater)
                         (let-values ([(default) 
                                       (if (= argc 3)
-                                          (lambda ()
-                                            (error 'hashtable-update "key not found" k))
-                                            ($cadddr args))])
+                                          (lambda () (no-key! 'hashtable-update ht k))
+                                          ($cadddr args))])
                           (1/hashtable-update! ht k updater default))
                         (raise-argument-error 'hashtable-updater "procedure?" updater))
                     (raise-argument-error 'hashtable-updater "hashtable?" ht)))
@@ -2270,7 +2276,8 @@
 
 (define-values (environment-ref)
   (let-values ([(default-fail)
-                (lambda (key) (error 'environment "key not found" key))])
+                (lambda (env key)
+                  (raise-missing-error 'environment' "key" env key))])
     (lambda args
       (let-values ([(argc) (length args)])
         (if (if (>= argc 2) (<= argc 3) #f)
@@ -2280,7 +2287,7 @@
                       (let-values ([(v) ($environment-ref env k default-fail)])
                         (if (eq? v default-fail)
                             (if (= argc 2)
-                                (default-fail k)
+                                (default-fail env k)
                                 (let-values ([(fail) ($caddr args)])
                                   (if (procedure? fail) (fail) fail)))
                             v))
@@ -2380,6 +2387,16 @@
             (record-accessor &range 3)
             (record-accessor &range 4))))
 
+; missing exception
+(define-values (&missing make-missing-exn missing-exn? missing-exn-description missing-exn-value missing-exn-key)
+  (let-values ([(&missing) (make-record-type-descriptor '&missing-exn &exn #f #t #t #(description value key))])
+    (values &missing
+            (record-constructor &missing)
+            (record-predicate &missing)
+            (record-accessor &missing 0)
+            (record-accessor &missing 1)
+            (record-accessor &missing 2))))
+
 ; syntax exception
 (define-values (&syntax make-syntax-exn syntax-exn? syntax-exn-form syntax-exn-subform)
   (let-values ([(&syntax) (make-record-type-descriptor '&syntax-exn &exn #f #t #t #(form subform))])
@@ -2438,18 +2455,23 @@
                                  (range-exn-description exn)
                                  (range-exn-index exn)))
                     (eprintf "  in: ~a\n" (range-exn-value exn)))
-                  (if (syntax-exn? exn)
-                      (begin ; syntax exception
+                  (if (missing-exn? exn)
+                      (begin ; missing exception
                         (display-exn exn)
-                        (if (syntax-exn-form exn)
-                            (eprintf "  in: ~a\n" (syntax-exn-form exn))
-                            (void))
-                        (if (syntax-exn-subform exn)
-                            (eprintf "  at: ~a\n" (syntax-exn-subform exn))
-                            (void)))
-                      (if (exn? exn) ; base exception
-                          (display-exn exn)
-                          (eprintf "uncaught exception: ~a\n" exn))))))
+                        (eprintf "  ~a: ~a\n" (missing-exn-description exn) (missing-exn-key exn))
+                        (eprintf "  in: ~a\n" (missing-exn-value exn)))
+                      (if (syntax-exn? exn)
+                          (begin ; syntax exception
+                            (display-exn exn)
+                            (if (syntax-exn-form exn)
+                                (eprintf "  in: ~a\n" (syntax-exn-form exn))
+                                (void))
+                            (if (syntax-exn-subform exn)
+                                (eprintf "  at: ~a\n" (syntax-exn-subform exn))
+                                (void)))
+                          (if (exn? exn) ; base exception
+                              (display-exn exn)
+                              (eprintf "uncaught exception: ~a\n" exn)))))))
       (exit 1))))
 
 (current-error-handler default-error-handler)
@@ -2496,7 +2518,6 @@
             (raise-argument-error 'raise-argument-error "string?" expected))
         (raise-argument-error 'raise-argument-error "symbol?" who))))
 
-; TODO: modifying the message
 (set! raise-range-error
   (lambda (who v descr lower upper index)
     (if (symbol? who)
@@ -2513,6 +2534,14 @@
                 (raise-argument-error 'raise-range-error "integer?" lower))
             (raise-argument-error 'raise-range-error "string?" descr))
     (raise-argument-error 'raise-range-error "symbol?" who))))
+
+(set! raise-missing-error
+  (lambda (who descr x k)
+    (if (symbol? who)
+        (if (string? descr)
+            (raise (make-missing-exn who (format "~a not found" descr) descr x k))
+            (raise-argument-error 'raise-argument-error "string?" descr))
+        (raise-argument-error 'raise-argument-error "symbol?" who))))
 
 (define-values (raise-syntax-error)
   (lambda args
