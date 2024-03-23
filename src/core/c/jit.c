@@ -103,7 +103,6 @@ static mobj write_code(mobj ins, mobj reloc, mobj arity) {
 
     // allocate code object and fill header
     code = Mcode(list_length(ins));
-    minim_code_name(code) = NULL;
     minim_code_reloc(code) = minim_null;
     minim_code_arity(code) = arity;
     istream = minim_code_it(code);
@@ -590,7 +589,7 @@ static mobj compile_expr2(mobj expr, mobj env, int tailp) {
 
 // Common idiom for custom compilation targets
 static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
-    mobj env, ins, reloc, code;
+    mobj env, ins, reloc, code, cl;
 
     // prepare compiler
     env = make_cenv();
@@ -605,10 +604,11 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
     // write to code
     reloc = resolve_refs(env, ins);
     code = write_code(ins, reloc, arity);
-    minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(setup_env(), code);
+    cl = Mclosure(setup_env(), code);
+    minim_closure_name(cl) = name;
+    return cl;
 }
 
 // Short hand for making a function that just calls `compile_do_ret`
@@ -643,7 +643,7 @@ define_do_ret(compile_void, Mfixnum(0), Mlist2(literal_symbol, minim_void));
 
 // Custom `call-with-values` compilation
 mobj compile_call_with_values(mobj name) {
-    mobj env, arity, ins, label, reloc, code;
+    mobj env, arity, ins, label, reloc, code, cl;
 
     // prepare compiler
     env = make_cenv();
@@ -671,15 +671,16 @@ mobj compile_call_with_values(mobj name) {
     // write to code
     reloc = resolve_refs(env, ins);
     code = write_code(ins, reloc, Mcons(Mfixnum(2), Mfixnum(2)));
-    minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(setup_env(), code);
+    cl = Mclosure(setup_env(), code);
+    minim_closure_name(cl) = name;
+    return cl;
 }
 
 // Custom `eval` compilation
 mobj compile_eval(mobj name) {
-    mobj env, arity, ins, reloc, code;
+    mobj env, arity, ins, reloc, code, cl;
 
     // prepare compiler
     env = make_cenv();
@@ -694,8 +695,9 @@ mobj compile_eval(mobj name) {
     // write to code
     reloc = resolve_refs(env, ins);
     code = write_code(ins, reloc, Mcons(Mfixnum(1), Mfixnum(2)));
-    minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(setup_env(), code);
+    cl = Mclosure(setup_env(), code);
+    minim_closure_name(cl) = name;
+    return cl;
 }

@@ -187,11 +187,13 @@ extern mobj minim_values;
 // |    type    | [0, 1)
 // |    env     | [8, 16)
 // |    code    | [16, 24)
+// |    name    | [24, 32)
 // +------------+
-#define minim_closure_size          (3 * ptr_size)
+#define minim_closure_size          (4 * ptr_size)
 #define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
 #define minim_closure_env(o)        (*((mobj*) PTR_ADD(o, ptr_size)))
 #define minim_closure_code(o)       (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_closure_name(o)       (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
 
 // Port
 // +------------+
@@ -295,20 +297,18 @@ extern mobj minim_values;
 // +------------+
 // |   type     | [0, 1)
 // |   size     | [8, 16)
-// |   name     | [16, 24)
 // |   arity    | [24, 32)
 // |   reloc    | [32, 40)
 // |   instrs   | [40, ...) 
 // |   ...      |
 // +------------+
-#define minim_code_header_size      5
+#define minim_code_header_size      4
 #define minim_code_size(n)          ((minim_code_header_size * ptr_size) + (n * ptr_size) + ptr_size)
 #define minim_codep(o)              (minim_type(o) == MINIM_OBJ_CODE)
 #define minim_code_len(o)           (*((size_t*) PTR_ADD(o, ptr_size)))
-#define minim_code_name(o)          (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_code_arity(o)         (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_code_reloc(o)         (*((mobj*) PTR_ADD(o, 4 * ptr_size)))
-#define minim_code_it(o)            ((mobj *) PTR_ADD(o, 5 * ptr_size))
+#define minim_code_arity(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_code_reloc(o)         (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_code_it(o)            ((mobj *) PTR_ADD(o, 4 * ptr_size))
 #define minim_code_ref(o, i)        (minim_code_it(o)[i]) 
 
 // Special objects
@@ -580,6 +580,8 @@ mobj record_ref_proc(mobj rec, mobj idx);
 mobj record_set_proc(mobj rec, mobj idx, mobj x);
 
 mobj procedure_arity_proc(mobj proc);
+mobj procedure_name_proc(mobj proc);
+mobj procedure_rename_proc(mobj proc, mobj id);
 
 mobj syntax_e_proc(mobj stx);
 mobj syntax_loc_proc(mobj stx);

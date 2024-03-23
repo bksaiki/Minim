@@ -6,9 +6,8 @@
 
 #define SET_NAME_IF_CLOSURE(name, o) { \
     if (minim_closurep(o)) { \
-        mobj code = minim_closure_code(o); \
-        if (minim_code_name(code) == NULL) { \
-            minim_code_name(code) = name; \
+        if (minim_falsep(minim_closure_name(o))) { \
+            minim_closure_name(o) = name; \
         } \
     } \
 }
@@ -29,8 +28,13 @@ void arity_mismatch_exn(mobj proc, size_t actual) {
     mobj code, arity;
     char *name;
 
+    if (minim_falsep(minim_closure_name(proc))) {
+        name = NULL;
+    } else {
+        name = minim_symbol(minim_closure_name(proc));
+    }
+
     code = minim_closure_code(proc);
-    name = minim_code_name(code) ? minim_string(minim_code_name(code)) : NULL;
     arity = minim_code_arity(code);
     if (minim_fixnump(arity)) {
         // exact arity

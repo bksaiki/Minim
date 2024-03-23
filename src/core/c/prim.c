@@ -27,7 +27,6 @@ void init_prims(mobj env) {
     add_procedure("null?", nullp_proc, 1);
     add_procedure("void?", voidp_proc, 1);
     add_procedure("eof-object?", eofp_proc, 1);
-    add_procedure("procedure?", procp_proc, 1);
 
     add_procedure("boolean?", boolp_proc, 1);
     add_procedure("not", not_proc, 1);
@@ -177,7 +176,11 @@ void init_prims(mobj env) {
     add_procedure("$environment-ref", environment_variable_ref, 3);
     add_procedure("$environment-set!", environment_variable_set, 3);
 
-    add_procedure("procedure-arity", procedure_arity_proc, 1);
+    add_procedure("procedure?", procp_proc, 1);
+    add_procedure("$procedure-arity", procedure_arity_proc, 1);
+    add_procedure("$procedure-name", procedure_name_proc, 1);
+    add_procedure("$procedure-rename", procedure_rename_proc, 2);
+
     add_cprocedure("identity", compile_identity);
     add_cprocedure("apply", compile_apply);
     add_cprocedure("call-with-values", compile_call_with_values);
