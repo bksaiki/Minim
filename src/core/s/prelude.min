@@ -19,6 +19,10 @@
   (lambda (who arity cnt)
     (error who "arity mismatch" arity cnt)))
 
+(define-values (raise-range-error)
+  (lambda (who v descr lower upper index)
+    (error who "index out of bounds" v descr lower upper index)))
+
 ($c-error-handler
   (lambda (who msg args)
     (apply error who msg args)))
@@ -774,7 +778,7 @@
     (if (string? s)
         (if (if (integer? idx) (>= idx 0) #f)
             (if (>= idx ($string-length s))
-                (error 'string-ref "index out of range" idx)
+                (raise-range-error 'string-ref s "" 0 ($string-length s) idx)
                 ($string-ref s idx))
             (raise-argument-error 'string-ref "non-negative-integer?" idx))
         (raise-argument-error 'string-ref "string?" s))))
@@ -784,7 +788,7 @@
     (if (string? s)
         (if (if (integer? idx) (>= idx 0) #f)
             (if (>= idx ($string-length s))
-                (error 'string-set! "index out of range" idx)
+                (raise-range-error 'string-set! s "" 0 ($string-length s) idx)
                 (if (char? c)
                     ($string-set! s idx c)
                     (raise-argument-error 'string-set! "char?" c)))
@@ -1051,7 +1055,7 @@
     (if (vector? v)
         (if (if (integer? idx) (>= idx 0) #f)
             (if (>= idx ($vector-length v))
-                (error 'vector-ref "index out of range" idx)
+                (raise-range-error 'vector-ref "" v 0 ($vector-length v) idx)
                 ($vector-ref v idx))
             (raise-argument-error 'vector-ref "non-negative-integer?" idx))
         (raise-argument-error 'vector-ref "vector?" v))))
@@ -1061,7 +1065,7 @@
     (if (vector? v)
         (if (if (integer? idx) (>= idx 0) #f)
             (if (>= idx ($vector-length v))
-                (error 'vector-set! "index out of range" idx)
+                (raise-range-error 'vector-set! "" v 0 ($vector-length v) idx)
                 ($vector-set! v idx x))
             (raise-argument-error 'vector-set! "non-negative-integer?" idx))
         (raise-argument-error 'vector-set! "vector?" v))))
@@ -1268,7 +1272,7 @@
             (let-values ([(fields) ($record-type-field-names rtd)])
               (if (< idx ($vector-length fields))
                   ($record-type-field-mutable? rtd idx)
-                  (error 'record-type-field-mutable? "field index out of bounds" rtd idx)))
+                  (raise-range-error 'record-type-field-mutable rtd "" 0 ($vector-length fields) idx)))
             (raise-argument-error 'record-type-field-mutable? "non-negative integer?" idx))
         (raise-argument-error 'record-type-field-mutable? "record-type-name?" rtd))))
 
@@ -1344,7 +1348,7 @@
                                              (format "~a" (record-type-name rtd))
                                              rec)))])
                       acc)
-                    (error 'record-accessor "field index out of bounds" rtd idx))
+                    (raise-range-error 'record-accessor rtd "" 0 ($record-type-length rtd) idx))
                 (raise-argument-error 'record-accessor "non-negative-integer?" idx))
             (raise-argument-error 'record-accessor "record-type-descriptor?" rtd)))
       (lambda (rtd idx) ; record-mutator
@@ -1365,7 +1369,7 @@
                                              (format "~a" (record-type-name rtd))
                                              rec)))])
                       mut)
-                    (error 'record-mutator "field index out of bounds" rtd idx))
+                    (raise-range-error 'record-mutator rtd "" 0 ($record-type-length rtd) idx))
                 (raise-argument-error 'record-mutator "non-negative-integer?" idx))
             (raise-argument-error 'record-mutator "record-type-descriptor?" rtd))))))  
 
@@ -1909,16 +1913,14 @@
                           ($put-string p str start len)
                           (let-values ([(end) ($cadddr args)])
                             (if (integer? end)
-                                (void)
+                                (if (<= end len)
+                                    (if (<= start end)
+                                        ($put-string p str start end)
+                                        (raise-range-error 'put-string str "end" start (+ len 1) end))
+                                    (raise-range-error 'put-string str "start" 0 len end))
                                 (raise-argument-error 'put-string "integer?" end))
-                            (if (< end start)
-                                (error 'put-string "must have start <= end" start end)
-                                (void))
-                            (if (>= end len)
-                                (error 'put-string "end index out of bounds" end len)
-                                (void))
                             ($put-string p str start end)))
-                      (error 'put-string "start index out of bounds" start len)))))
+                      (raise-range-error 'put-string str "start" 0 len start)))))
           (raise-arity-error 'put-string '(2 3 4) argc)))))
 
 (define-values (flush-output-port)
@@ -2366,6 +2368,18 @@
             (record-accessor &arity 0)
             (record-accessor &arity 1))))
 
+; range exception
+(define-values (&range make-range-exn range-exn? range-exn-value range-exn-description range-exn-lower range-exn-upper range-exn-index)
+  (let-values ([(&range) (make-record-type-descriptor '&range-exn &exn #f #t #t #(value description lower upper index))])
+    (values &range
+            (record-constructor &range)
+            (record-predicate &range)
+            (record-accessor &range 0)
+            (record-accessor &range 1)
+            (record-accessor &range 2)
+            (record-accessor &range 3)
+            (record-accessor &range 4))))
+
 ; syntax exception
 (define-values (&syntax make-syntax-exn syntax-exn? syntax-exn-form syntax-exn-subform)
   (let-values ([(&syntax) (make-record-type-descriptor '&syntax-exn &exn #f #t #t #(form subform))])
@@ -2404,26 +2418,38 @@
       (if (argument-exn? exn)
           (begin ; argument exception
             (display-exn exn)
-            (eprintf " expected: ~a\n" (argument-exn-expect exn))
-            (eprintf " given: ~a\n" (argument-exn-actual exn)))
+            (eprintf "  expected: ~a\n" (argument-exn-expect exn))
+            (eprintf "  given: ~a\n" (argument-exn-actual exn)))
           (if (arity-exn? exn)
               (begin ; arity exception
-              (display-exn exn)
-              (eprintf " expected: ")
-              (display-arity (arity-exn-expect exn))
-              (eprintf " given: ~a\n" (arity-exn-actual exn)))
-              (if (syntax-exn? exn)
-                  (begin ; syntax exception
+                (display-exn exn)
+                (eprintf "  expected: ")
+                (display-arity (arity-exn-expect exn))
+                (eprintf "  given: ~a\n" (arity-exn-actual exn)))
+              (if (range-exn? exn)
+                  (begin ; range exception
                     (display-exn exn)
-                    (if (syntax-exn-form exn)
-                        (eprintf " in: ~a\n" (syntax-exn-form exn))
-                        (void))
-                    (if (syntax-exn-subform exn)
-                        (eprintf " at: ~a\n" (syntax-exn-subform exn))
-                        (void)))
-                  (if (exn? exn) ; base exception
-                      (display-exn exn)
-                      (eprintf "uncaught exception: ~a\n" exn)))))
+                    (eprintf "  range: [~a, ~a)\n"
+                             (range-exn-lower exn)
+                             (range-exn-upper exn))
+                    (if (= (string-length (range-exn-description exn)) 0)
+                        (eprintf "  index: ~a\n" (range-exn-index exn))
+                        (eprintf "  ~a index: ~a\n"
+                                 (range-exn-description exn)
+                                 (range-exn-index exn)))
+                    (eprintf "  in: ~a\n" (range-exn-value exn)))
+                  (if (syntax-exn? exn)
+                      (begin ; syntax exception
+                        (display-exn exn)
+                        (if (syntax-exn-form exn)
+                            (eprintf "  in: ~a\n" (syntax-exn-form exn))
+                            (void))
+                        (if (syntax-exn-subform exn)
+                            (eprintf "  at: ~a\n" (syntax-exn-subform exn))
+                            (void)))
+                      (if (exn? exn) ; base exception
+                          (display-exn exn)
+                          (eprintf "uncaught exception: ~a\n" exn))))))
       (exit 1))))
 
 (current-error-handler default-error-handler)
@@ -2435,9 +2461,14 @@
             (raise
               (if (null? args)
                   (make-exn who msg)
-                  (if (null? (cdr args))
-                      (make-exn who (format "~a\n reason: ~a" msg (car args)))
-                      (make-exn who (format "~a\n reasons: ~a" msg args)))))
+                  (let-values ([(p) (open-output-string)])
+                    (fprintf p "~a\n" msg)
+                    (if (null? (cdr args))
+                        (fprintf p "  reason: ~s" (car args))
+                        (begin
+                          (fprintf p "  reasons...:")
+                          (for-each (lambda (x) (fprintf p "\n   ~s" x)) args)))
+                    (make-exn who (get-output-string p)))))
             (raise-argument-error 'error "string?" msg))
         (raise-argument-error 'error "symbol? or #f" who))))
 
@@ -2464,6 +2495,24 @@
             (raise (make-argument-exn who "contract violation" expected v))
             (raise-argument-error 'raise-argument-error "string?" expected))
         (raise-argument-error 'raise-argument-error "symbol?" who))))
+
+; TODO: modifying the message
+(set! raise-range-error
+  (lambda (who v descr lower upper index)
+    (if (symbol? who)
+        (if (string? descr)
+            (if (integer? lower)
+                (if (integer? upper)
+                    (if (integer? index)
+                        (let-values ([(msg) (if (= (string-length descr) 0)
+                                                "index out of bounds"
+                                                (format "~a index out of bounds" descr))])
+                          (raise (make-range-exn who msg v descr lower upper index)))
+                        (raise-argument-error 'raise-range-error "integer?" index))
+                    (raise-argument-error 'raise-range-error "integer?" upper))
+                (raise-argument-error 'raise-range-error "integer?" lower))
+            (raise-argument-error 'raise-range-error "string?" descr))
+    (raise-argument-error 'raise-range-error "symbol?" who))))
 
 (define-values (raise-syntax-error)
   (lambda args
