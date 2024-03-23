@@ -30,11 +30,11 @@ void arity_mismatch_exn(mobj proc, size_t actual) {
     char *name;
 
     code = minim_closure_code(proc);
-    name = minim_code_name(code);
+    name = minim_code_name(code) ? minim_string(minim_code_name(code)) : NULL;
     arity = minim_code_arity(code);
     if (minim_fixnump(arity)) {
         // exact arity
-        minim_error2(minim_string(name), "arity mismatch", arity, Mfixnum(actual));
+        minim_error2(name, "arity mismatch", arity, Mfixnum(actual));
     } else {
         // range of arities
         mobj min_arity = minim_car(arity);
@@ -42,14 +42,14 @@ void arity_mismatch_exn(mobj proc, size_t actual) {
         if (minim_falsep(max_arity)) {
             // at-least arity
             minim_error2(
-                minim_string(name),
+                name,
                 "arity mismatch, expected at least",
                 min_arity, Mfixnum(actual)
             );
         } else {
             // range arity
             minim_error3(
-                minim_string(name),
+                name,
                 "arity mismatch, expected between",
                 min_arity, max_arity, Mfixnum(actual)
             );

@@ -7,6 +7,10 @@
   (lambda (who msg . args)
     ($boot-error who msg args)))
 
+(define-values (raise-argument-error)
+  (lambda (who expected v)
+    (error who "contract violation" expected v)))
+
 ($c-error-handler
   (lambda (who msg args)
     (apply error who msg args)))
@@ -18,13 +22,13 @@
   (lambda (x)
     (if (char? x)
         ($char->integer x)
-        (error 'char->integer "expected char?" x))))
+        (raise-argument-error 'char->integer "char?" x))))
 
 (define-values (integer->char)
   (lambda (x)
     (if (integer? x) ; TODO: bounds on characters
         ($integer->char x)
-        (error 'integer->char "expected integer?" x))))
+        (raise-argument-error 'integer->char "integer?" x))))
 
 ;; --------------------------------------------------------
 ;; Numbers
@@ -49,10 +53,10 @@
                                                 x
                                                 (if (number? ($car xs))
                                                     (loop ($fx2+ x ($car xs)) ($cdr xs))
-                                                    (error '+ "expected number" ($car xs)))))])
+                                                    (raise-argument-error '+ "number?" ($car xs)))))])
                           (loop ($fx2+ ($car xs) ($cadr xs)) ($cddr xs))))
-                    (error '+ "expected number" ($cadr xs))))
-            (error '+ "expected number" ($car xs))))))
+                    (raise-argument-error '+ "number?" ($cadr xs))))
+            (raise-argument-error '+ "number?" ($car xs))))))
         
 (define-values (-)
   (lambda (x . xs)
@@ -68,10 +72,10 @@
                                             x
                                             (if (number? ($car xs))
                                                 (loop ($fx2- x ($car xs)) ($cdr xs))
-                                                (error '- "expected number" ($car xs)))))])
+                                                (raise-argument-error '- "number?" ($car xs)))))])
                       (loop ($fx2- x ($car xs)) ($cdr xs))))
-                (error '- "expected number" ($car xs))))
-        (error '- "expected number" x))))
+                (raise-argument-error '- "number?" ($car xs))))
+        (raise-argument-error '- "number?" x))))
 
 (define-values (*)
   (lambda xs
@@ -89,10 +93,10 @@
                                                 x
                                                 (if (number? ($car xs))
                                                     (loop ($fx2* x ($car xs)) ($cdr xs))
-                                                    (error '* "expected number" ($car xs)))))])
+                                                    (raise-argument-error '* "number?" ($car xs)))))])
                           (loop ($fx2* ($car xs) ($cadr xs)) ($cddr xs))))
-                    (error '* "expected number" ($cadr xs))))
-            (error '* "expected number" ($car xs))))))
+                    (raise-argument-error '* "number?" ($cadr xs))))
+            (raise-argument-error '* "number?" ($car xs))))))
 
 (define-values (/)
   (lambda (x . xs)
@@ -103,7 +107,7 @@
                 ($fx2/ 1 x))
             (if (number? ($car xs))
                 (if (= ($car xs) 0)
-                    (error '/ "division by zero" x ($car xs))
+                    (error'/ "division by zero" x ($car xs))
                     (if (null? ($cdr xs)) ; 2 arguments         
                         ($fx2/ x ($car xs))
                         (letrec-values ([(loop) ; 3+ arguments
@@ -114,38 +118,38 @@
                                                     (if (= ($car xs) 0)
                                                         (error '/ "division by zero" x ($car xs))
                                                         (loop ($fx2/ x ($car xs)) ($cdr xs)))
-                                                    (error '/ "expected number" ($car xs)))))])
+                                                    (raise-argument-error '/ "number?" ($car xs)))))])
                           (loop ($fx2/ x ($car xs)) ($cdr xs)))))
-                (error '/ "expected number" ($car xs))))
-        (error '/ "expected number" x))))
+                (raise-argument-error '/ "number?" ($car xs))))
+        (raise-argument-error '/ "number?" x))))
 
 (define-values (remainder)
   (lambda (x y)
     (if (number? x)
         (if (number? y)
             ($fxremainder x y)
-            (error 'remainder "expected number" y))
-        (error 'remainder "expected number" x))))
+            (raise-argument-error 'remainder "number?" y))
+        (raise-argument-error 'remainder "number?" x))))
 
 (define-values (modulo)
   (lambda (x y)
     (if (number? x)
         (if (number? y)
             ($fxmodulo x y)
-            (error 'modulo "expected number" y))
-        (error 'modulo "expected number" x))))
+            (raise-argument-error 'modulo "number?" y))
+        (raise-argument-error 'modulo "number?" x))))
 
 (define-values (add1)
   (lambda (x)
     (if (number? x)
         ($fx2+ x 1)
-        (error 'add1 "expected number" x))))
+        (raise-argument-error 'add1 "number?" x))))
 
 (define-values (sub1)
   (lambda (x)
     (if (number? x)
         ($fx2- x 1)
-        (error 'sub1 "expected number" x))))
+        (raise-argument-error 'sub1 "number?" x))))
 
 (define-values (= > < >= <=)
   (let-values ([(go)
@@ -162,9 +166,9 @@
                                                        (if (cmp x ($car xs))
                                                            (loop ($car xs) ($cdr xs))
                                                            #f)
-                                                       (error name "expected number" ($car xs)))))])
+                                                       (raise-argument-error name "number?" ($car xs)))))])
                               (loop x xs)))
-                    (error name "expected number" ($car xs)))))])
+                    (raise-argument-error name "number?" ($car xs)))))])
 
     (values (go $fx2= '=)
             (go $fx2> '>)
@@ -181,7 +185,7 @@
                   (for-each (lambda (x)
                               (if (char? x)
                                   (void)
-                                  (error who "expected char?" x)))
+                                  (raise-argument-error who "char?" x)))
                             xs))])
     (values
       (lambda args ; string
@@ -200,15 +204,15 @@
             (if (if (integer? len) (>= len 0) #f)
                 (if (char? init)
                     ($make-string len init)
-                    (error 'make-string "expected char?" init))
-                (error 'make-string "expected non-negative integer" len)))
-          (error 'make-string "expected 1 or 2 arguments" argc)))))
+                    (raise-argument-error 'make-string "char?" init))
+                (raise-argument-error 'make-string "non-negative-integer?" len)))
+          (error 'make-string "1 or 2 arguments" argc)))))
 
 (define-values (string-length)
   (lambda (s)
     (if (string? s)
         ($string-length s)
-        (error 'string-length "expected a string" s))))
+        (raise-argument-error 'string-length "a string" s))))
 
 (define-values (string-ref)
   (lambda (s idx)
@@ -217,8 +221,8 @@
             (if (>= idx ($string-length s))
                 (error 'string-ref "index out of range" idx)
                 ($string-ref s idx))
-            (error 'string-ref "expected non-negative integer" idx))
-        (error 'string-ref "expected string?" s))))
+            (raise-argument-error 'string-ref "non-negative-integer?" idx))
+        (raise-argument-error 'string-ref "string?" s))))
 
 (define-values (string-set!)
   (lambda (s idx c)
@@ -228,9 +232,9 @@
                 (error 'string-set! "index out of range" idx)
                 (if (char? c)
                     ($string-set! s idx c)
-                    (error 'string-set! "expected char?" c)))
-            (error 'string-set! "expected non-negative integer" idx))
-        (error 'string-set! "expected string?" s))))
+                    (raise-argument-error 'string-set! "char?" c)))
+            (raise-argument-error 'string-set! "non-negative-integer?" idx))
+        (raise-argument-error 'string-set! "string?" s))))
 
 (define-values (string-append)
   (let-values ([(check-args!)
@@ -238,7 +242,7 @@
                   (for-each (lambda (x)
                               (if (string? x)
                                   (void)
-                                  (error 'string-append "expected string?" s)))
+                                  (raise-argument-error 'string-append "string?" s)))
                             xs))]
                [(sum-lengths)
                 (lambda (xs)
@@ -270,31 +274,31 @@
   (lambda (n)
     (if (number? n)
         ($number->string n)
-        (error 'number->string "expected a number" n))))
+        (raise-argument-error 'number->string "number?" n))))
 
 (define-values (string->number)
   (lambda (s)
     (if (string? s)
         ($string->number s)
-        (error 'string->number "expected a string" s))))
+        (raise-argument-error 'string->number "string?" s))))
 
 (define-values (symbol->string)
   (lambda (s)
     (if (symbol? s)
         ($symbol->string s)
-        (error 'symbol->string "expected a symbol" s))))
+        (raise-argument-error 'symbol->string "symbol?" s))))
 
 (define-values (string->symbol)
   (lambda (s)
     (if (string? s)
         ($string->symbol s)
-        (error 'string->symbol "expected a string" s))))
+        (raise-argument-error 'string->symbol "string?" s))))
 
 (define-values (string->list)
   (lambda (s)
     (if (string? s)
         ($string->list s)
-        (error 'string->list "expected a string" s))))
+        (raise-argument-error 'string->list "string?" s))))
 
 ;; --------------------------------------------------------
 ;; Pairs
@@ -303,18 +307,18 @@
   (lambda (x) 
     (if (pair? x)
         ($car x)
-        (error 'car "expected pair?" x))))
+        (raise-argument-error 'car "pair?" x))))
 
 (define-values (cdr)
   (lambda (x) 
     (if (pair? x)
         ($cdr x)
-        (error 'cdr "expected pair?" x))))
+        (raise-argument-error 'cdr "pair?" x))))
 
 (define-values (caar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caar "(pairof pair? any)" x))])               
+                  (raise-argument-error 'caar "(pairof pair? any)" x))])               
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -326,7 +330,7 @@
 (define-values (cadr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cadr "(pairof any pair?)" x))])
+                  (raise-argument-error 'cadr "(pairof any pair?)" x))])
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -338,7 +342,7 @@
 (define-values (cdar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdar "(pairof pair? any)" x))]) 
+                  (raise-argument-error 'cdar "(pairof pair? any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -350,7 +354,7 @@
 (define-values (cddr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cddr "(pairof any pair?)" x))]) 
+                  (raise-argument-error 'cddr "(pairof any pair?)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -362,7 +366,7 @@
 (define-values (caaar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caaar "(pairof (pairof pair? any) any)" x))])               
+                  (raise-argument-error 'caaar "(pairof (pairof pair? any) any)" x))])               
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -377,7 +381,7 @@
 (define-values (caadr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caadr "(pairof any (pairof pair? any))" x))]) 
+                  (raise-argument-error 'caadr "(pairof any (pairof pair? any))" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -392,7 +396,7 @@
 (define-values (cadar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cadar "(pairof (pairof any pair?) any)" x))]) 
+                  (raise-argument-error 'cadar "(pairof (pairof any pair?) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -407,7 +411,7 @@
 (define-values (caddr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caddr "(pairof (pairof any pair?) any)" x))]) 
+                  (raise-argument-error 'caddr "(pairof (pairof any pair?) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -422,7 +426,7 @@
 (define-values (cdaar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdaar "(pairof (pairof pair? any) any)" x))])               
+                  (raise-argument-error 'cdaar "(pairof (pairof pair? any) any)" x))])               
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -437,7 +441,7 @@
 (define-values (cdadr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdadr "(pairof any (pairof pair? any))" x))]) 
+                  (raise-argument-error 'cdadr "(pairof any (pairof pair? any))" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -452,7 +456,7 @@
 (define-values (cddar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cddar "(pairof (pairof any pair?) any)" x))]) 
+                  (raise-argument-error 'cddar "(pairof (pairof any pair?) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -467,7 +471,7 @@
 (define-values (cdddr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdddr "(pairof (pairof any pair?) any)" x))]) 
+                  (raise-argument-error 'cdddr "(pairof (pairof any pair?) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -482,7 +486,7 @@
 (define-values (caaaar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caaaar "(pairof (pairof (pairof pair? any) any) any)" x))])               
+                  (raise-argument-error 'caaaar "(pairof (pairof (pairof pair? any) any) any)" x))])               
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -500,7 +504,7 @@
 (define-values (caaadr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caaadr "(pairof any (pairof (pairof pair? any) any))" x))]) 
+                  (raise-argument-error 'caaadr "(pairof any (pairof (pairof pair? any) any))" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -518,7 +522,7 @@
 (define-values (caadar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caadar "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+                  (raise-argument-error 'caadar "(pairof (pairof any (pairof pair? any)) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -536,7 +540,7 @@
 (define-values (caaddr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caaddr "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+                  (raise-argument-error 'caaddr "(pairof (pairof any (pairof pair? any)) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -554,7 +558,7 @@
 (define-values (cadaar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cadaar "(pairof (pairof (pairof any pair?) any) any)" x))])               
+                  (raise-argument-error 'cadaar "(pairof (pairof (pairof any pair?) any) any)" x))])               
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -572,7 +576,7 @@
 (define-values (cadadr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cadadr "(pairof any (pairof (pairof any pair?) any))" x))]) 
+                  (raise-argument-error 'cadadr "(pairof any (pairof (pairof any pair?) any))" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -590,7 +594,7 @@
 (define-values (caddar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'caddar "(pairof (pairof any (pairof any pair?)) any)" x))]) 
+                  (raise-argument-error 'caddar "(pairof (pairof any (pairof any pair?)) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -608,7 +612,7 @@
 (define-values (cadddr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cadddr "(pairof (pairof any (pairof any pair?) any)" x))]) 
+                  (raise-argument-error 'cadddr "(pairof (pairof any (pairof any pair?) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -626,7 +630,7 @@
 (define-values (cdaaar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdaaar "(pairof (pairof (pairof pair? any) any) any)" x))])               
+                  (raise-argument-error 'cdaaar "(pairof (pairof (pairof pair? any) any) any)" x))])               
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -644,7 +648,7 @@
 (define-values (cdaadr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdaadr "(pairof any (pairof (pairof pair? any) any))" x))]) 
+                  (raise-argument-error 'cdaadr "(pairof any (pairof (pairof pair? any) any))" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -662,7 +666,7 @@
 (define-values (cdadar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdadar "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+                  (raise-argument-error 'cdadar "(pairof (pairof any (pairof pair? any)) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -680,7 +684,7 @@
 (define-values (cdaddr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdaddr "(pairof (pairof any (pairof pair? any)) any)" x))]) 
+                  (raise-argument-error 'cdaddr "(pairof (pairof any (pairof pair? any)) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -698,7 +702,7 @@
 (define-values (cddaar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cddaar "(pairof (pairof (pairof any pair?) any) any)" x))])               
+                  (raise-argument-error 'cddaar "(pairof (pairof (pairof any pair?) any) any)" x))])               
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -716,7 +720,7 @@
 (define-values (cddadr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cddadr "(pairof any (pairof (pairof any pair?) any))" x))]) 
+                  (raise-argument-error 'cddadr "(pairof any (pairof (pairof any pair?) any))" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -734,7 +738,7 @@
 (define-values (cdddar)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cdddar "(pairof (pairof any (pairof any pair?)) any)" x))]) 
+                  (raise-argument-error 'cdddar "(pairof (pairof any (pairof any pair?)) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($car x)])
@@ -752,7 +756,7 @@
 (define-values (cddddr)
   (let-values ([(oops!)
                 (lambda (x)
-                  (error 'cddddr "(pairof (pairof any (pairof any pair?) any)" x))]) 
+                  (raise-argument-error 'cddddr "(pairof (pairof any (pairof any pair?) any)" x))]) 
     (lambda (x)
       (if (pair? x)
           (let-values ([(t) ($cdr x)])
@@ -771,13 +775,13 @@
   (lambda (p x)
     (if (pair? p)
         ($set-car! p x)
-        (error 'set-car! "expected pair?" p))))
+        (raise-argument-error 'set-car! "pair?" p))))
 
 (define-values (set-cdr!)
   (lambda (p x)
     (if (pair? p)
         ($set-cdr! p x)
-        (error 'set-cdr! "expected pair?" p))))
+        (raise-argument-error 'set-cdr! "pair?" p))))
 
 ;; --------------------------------------------------------
 ;; Lists
@@ -788,19 +792,19 @@
   (lambda (len init)
     (if (if (integer? len) (>= len 0) #f)
         ($make-list len init)
-        (error 'length "expected non-negative integer" len))))
+        (raise-argument-error 'length "non-negative-integer?" len))))
 
 (define-values (length)
   (lambda (xs)
     (if (list? xs)
         ($length xs)
-        (error 'length "expected list" xs))))
+        (raise-argument-error 'length "list?" xs))))
 
 (define-values (reverse)
   (lambda (xs)
     (if (list? xs)
         ($reverse xs)
-        (error 'reverse "expected list" xs))))
+        (raise-argument-error 'reverse "list?" xs))))
 
 (define-values (append)
   (lambda xss
@@ -815,10 +819,10 @@
                                        acc
                                        (if (list? ($car xss))
                                            (loop ($append2 ($car xss) acc) ($cdr xss))
-                                           (error 'append "expected list?" ($car xss)))))]
+                                           (raise-argument-error 'append "list?" ($car xss)))))]
                                 [(xss*) ($reverse xss)])
                   (loop ($car xss*) ($cdr xss*))))
-            (error 'append "expected list?" ($car xss))))))
+            (raise-argument-error 'append "list?" ($car xss))))))
 
 (define-values (for-each map andmap ormap)
   (letrec-values ([(for-each1) ; optimized `for-each` for one argument
@@ -865,9 +869,9 @@
                                                           (loop len ($cdr xss))
                                                           (error who "lists do not have same size"
                                                                  len prev-len)))
-                                                    (error who "expected list?" ($car xss)))))])
+                                                    (raise-argument-error who "list?" ($car xss)))))])
                            (loop #f xss))
-                         (error who "expected procedure?" f)))])
+                         (raise-argument-error who "procedure?" f)))])
     (values
       ;; for-each
       (lambda (f xs . xss)
@@ -932,7 +936,7 @@
                                    (cons 0 xs)
                                    xs)))])
           (loop (sub1 n) '()))
-        (error 'iota "expected non-negative fixnum" n))))
+        (raise-argument-error 'iota "non-negative-fixnum?" n))))
 
 (define-values (enumerate)
   (lambda (xs)
@@ -945,7 +949,7 @@
                                      (+ i 1)
                                      (cons (cons ($car xs) i) acc))))])
           (loop xs 0 '()))
-        (error 'enumerate "expected list?" xs))))
+        (raise-argument-error 'enumerate "list?" xs))))
 
 ;; --------------------------------------------------------
 ;; Vector
@@ -961,14 +965,14 @@
                        [(init) (if (= argc 2) ($cadr args) 0)])
             (if (if (integer? len) (>= len 0) #f)
                 ($make-vector len init)
-                (error 'make-vector "expected non-negative integer" len)))
-          (error 'make-vector "expected 1 or 2 arguments" argc)))))
+                (raise-argument-error 'make-vector "non-negative-integer?" len)))
+          (raise-argument-error 'make-vector "1 or 2 arguments" argc)))))
 
 (define-values (vector-length)
   (lambda (v)
     (if (vector? v)
         ($vector-length v)
-        (error 'vector-length "expected vector?" v))))
+        (raise-argument-error 'vector-length "vector?" v))))
 
 (define-values (vector-ref)
   (lambda (v idx)
@@ -977,8 +981,8 @@
             (if (>= idx ($vector-length v))
                 (error 'vector-ref "index out of range" idx)
                 ($vector-ref v idx))
-            (error 'vector-ref "expected non-negative integer" idx))
-        (error 'vector-ref "expected vector?" v))))
+            (raise-argument-error 'vector-ref "non-negative-integer?" idx))
+        (raise-argument-error 'vector-ref "vector?" v))))
 
 (define-values (vector-set!)
   (lambda (v idx x)
@@ -987,26 +991,26 @@
             (if (>= idx ($vector-length v))
                 (error 'vector-set! "index out of range" idx)
                 ($vector-set! v idx x))
-            (error 'vector-set! "expected non-negative integer" idx))
-        (error 'vector-set! "expected vector?" v))))
+            (raise-argument-error 'vector-set! "non-negative-integer?" idx))
+        (raise-argument-error 'vector-set! "vector?" v))))
 
 (define-values (vector-fill!)
   (lambda (v x)
     (if (vector? v)
         ($vector-fill! v x)
-        (error 'vector->list "expected vector?" v))))
+        (raise-argument-error 'vector->list "vector?" v))))
 
 (define-values (list->vector)
   (lambda (xs)
     (if (list? xs)
         ($list->vector xs)
-        (error 'list->vector "expected list?" xs))))
+        (raise-argument-error 'list->vector "list?" xs))))
 
 (define-values (vector->list)
   (lambda (v)
     (if (vector? v)
         ($vector->list v)
-        (error 'vector->list "expected vector?" v))))
+        (raise-argument-error 'vector->list "vector?" v))))
 
 ;; --------------------------------------------------------
 ;; Boxes
@@ -1015,13 +1019,13 @@
   (lambda (x)
     (if (box? x)
         ($unbox x)
-        (error 'unbox "expected box?" x))))
+        (raise-argument-error 'unbox "box?" x))))
 
 (define-values (set-box!)
   (lambda (x v)
     (if (box? x)
         ($set-box! x v)
-        (error 'set-box! "expected box?" x))))
+        (raise-argument-error 'set-box! "box?" x))))
 
 ;; --------------------------------------------------------
 ;; Ports
@@ -1030,37 +1034,37 @@
   (lambda (name)
     (if (string? name)
         ($open-input-file name)
-        (error 'open-input-file "expected string?" name))))
+        (raise-argument-error 'open-input-file "string?" name))))
 
 (define-values (open-output-file)
   (lambda (name)
     (if (string? name)
         ($open-output-file name)
-        (error 'open-output-file "expected string?" name))))
+        (raise-argument-error 'open-output-file "string?" name))))
 
 (define-values (open-input-string)
   (lambda (str)
     (if (string? str)
         ($open-input-string str)
-        (error 'open-input-string "expected string?" name))))
+        (raise-argument-error 'open-input-string "string?" name))))
 
 (define-values (close-input-port)
   (lambda (port)
     (if (input-port? port)
         ($close-input-port port)
-        (error 'close-input-file "expected input port?" port))))
+        (raise-argument-error 'close-input-file "input-port?" port))))
 
 (define-values (close-output-port)
   (lambda (port)
     (if (output-port? port)
         ($close-output-port port)
-        (error 'close-output-file "expected output port?" port))))
+        (raise-argument-error 'close-output-file "output-port?" port))))
 
 (define-values (get-output-string)
   (lambda (port)
     (if (if (output-port? port) (string-port? port) #f)
         ($get-output-string port)
-        (error 'get-output-string "expected string output port" port))))
+        (raise-argument-error 'get-output-string "(and output-port? string-port?)" port))))
 
 ;; --------------------------------------------------------
 ;; Records
@@ -1087,9 +1091,10 @@
                          (if (if (record-type-descriptor? parent)
                                  (begin
                                    (if ($record-type-sealed? parent)
-                                       (error 'make-record-type-descriptor
-                                              "cannot extend sealed record type"
-                                              parent)
+                                       (raise-argument-error
+                                         'make-record-type-descriptor
+                                         "non-sealed record type"
+                                         parent)
                                        #t))
                                  (not parent))
                              (if (if (symbol? uid) #t (not uid))
@@ -1104,24 +1109,30 @@
                                                                             sealed?
                                                                             opaque?
                                                                             fields))
-                                            (error 'make-record-type-descriptor
-                                                   "expected vector?"
-                                                   fields))
-                                         (error 'make-record-type-descriptor
-                                                "expected boolean?"
-                                                opaque?))
-                                     (error 'make-record-type-descriptor
-                                            "expected boolean?"
-                                            sealed?))
-                                 (error 'make-record-type-descriptor
-                                        "expected symbol? or #f"
-                                        uid))
-                             (error 'make-record-type-descriptor
-                                    "expected record-type-descriptor? or #f"
-                                    parent))
-                         (error 'make-record-type-descriptor
-                                "expected symbol?"
-                                name)))]
+                                            (raise-argument-error
+                                              'make-record-type-descriptor
+                                              "vector?"
+                                              fields))
+                                         (raise-argument-error
+                                           'make-record-type-descriptor
+                                           "boolean?"
+                                           opaque?))
+                                     (raise-argument-error
+                                       'make-record-type-descriptor
+                                       "boolean?"
+                                       sealed?))
+                                 (raise-argument-error
+                                   'make-record-type-descriptor
+                                   "symbol? or #f"
+                                   uid))
+                             (raise-argument-error
+                               'make-record-type-descriptor
+                               "record-type-descriptor? or #f"
+                               parent))
+                         (raise-argument-error
+                           'make-record-type-descriptor
+                           "symbol?"
+                           name)))]
                   [(check-fields!)
                    (lambda (fields)
                      (letrec-values ([(ids) '()])
@@ -1130,11 +1141,15 @@
                            (let-values ([(maybe-id) (field-id ($vector-ref fields i))])
                              (if maybe-id
                                  (if (ormap (lambda (id) (eq? maybe-id id)) ids)
-                                     (error 'make-record-type-descriptor "duplicate field" maybe-id)
+                                     (raise-argument-error
+                                       'make-record-type-descriptor
+                                       "duplicate field"
+                                       maybe-id)
                                      (set! ids (cons maybe-id ids)))
-                                 (error 'make-record-type-descriptor
-                                        "invalid field; expected '(immutable <name>) or '(mutable <name>)"
-                                        field))))
+                                 (raise-argument-error
+                                   'make-record-type-descriptor
+                                   "invalid field; '(immutable <name>) or '(mutable <name>)"
+                                   field))))
                          (iota ($vector-length fields)))))])
     (lambda (name parent uid sealed? opaque? fields)
       (let-values ([(rtd) ($make-record-type-descriptor name parent uid sealed? opaque? fields)])
@@ -1165,7 +1180,7 @@
                   (lambda (rtd)
                     (if (record-type-descriptor? rtd)
                         (accessor rtd)
-                        (error name "expected record-type-name?" rtd))))])
+                        (raise-argument-error name "record-type-name?" rtd))))])
     (values
       (make-accessor 'record-type-name $record-type-name)
       (make-accessor 'record-type-parent $record-type-parent)
@@ -1182,8 +1197,8 @@
               (if (< idx ($vector-length fields))
                   ($record-type-field-mutable? rtd idx)
                   (error 'record-type-field-mutable? "field index out of bounds" rtd idx)))
-            (error 'record-type-field-mutable? "expected non-negative integer?" idx))
-        (error 'record-type-field-mutable? "expected record-type-name?" rtd))))
+            (raise-argument-error 'record-type-field-mutable? "non-negative integer?" idx))
+        (raise-argument-error 'record-type-field-mutable? "record-type-name?" rtd))))
 
 (define-values (record?
                 record-rtd
@@ -1218,7 +1233,7 @@
       (lambda (rec) ; record-rtd
         (if (record? rec)
             ($record-rtd rec)
-            (error 'record-rtd "not a record" rec)))
+            (raise-argument-error 'record-rtd "record?" rec)))
       (lambda (rtd) ; record-constructor
         (if (record-type-descriptor? rtd)
             (let-values ([(size) (record-size rtd)])
@@ -1229,14 +1244,14 @@
                            (format "~s constructor" (record-type-name rtd))
                            (format " field count: ~a" size)
                            (format " fields provided: ~a" (length args))))))
-            (error 'record-constructor "expected record-type-descriptor?" rtd)))
+            (raise-argument-error 'record-constructor "record-type-descriptor?" rtd)))
       (lambda (rtd) ; record-predicate
         (if (record-type-descriptor? rtd)
             (lambda (rec)
               (if ($record-value? rec)
                   (record-value? rtd rec)
                   #f))
-            (error 'record-predicate "expected record-type-descriptor?" rtd)))
+            (raise-argument-error 'record-predicate "record-type-descriptor?" rtd)))
       (lambda (rtd idx) ; record-accessor
         (if (record-type-descriptor? rtd)
             (if (if (integer? idx) (>= idx 0) #f)
@@ -1254,8 +1269,8 @@
                                      (format "expected: ~a" rtd)
                                      (format "got: ~a" rec))))))
                     (error 'record-accessor "field index out of bounds" rtd idx))
-                (error 'record-accessor "expected non-negative integer" idx))
-            (error 'record-accessor "expected record-type-descriptor?" rtd)))
+                (raise-argument-error 'record-accessor "non-negative-integer?" idx))
+            (raise-argument-error 'record-accessor "record-type-descriptor?" rtd)))
       (lambda (rtd idx) ; record-mutator
         (if (record-type-descriptor? rtd)
             (if (if (integer? idx) (>= idx 0) #f)
@@ -1273,8 +1288,8 @@
                                      (format "expected: ~a" rtd)
                                      (format "got: ~a" rec))))))
                     (error 'record-mutator "field index out of bounds" rtd idx))
-                (error 'record-mutator "expected non-negative integer" idx))
-            (error 'record-mutator "expected record-type-descriptor?" rtd))))))  
+                (raise-argument-error 'record-mutator "non-negative-integer?" idx))
+            (raise-argument-error 'record-mutator "record-type-descriptor?" rtd))))))  
 
 ;; --------------------------------------------------------
 ;; Hashtables
@@ -1304,7 +1319,7 @@
             ($make-ht ($hashtable-copy ($hashtable-store ht))
                       (hashtable-hash-proc ht)
                       (hashtable-equiv-proc ht))
-            (error 'hashtable-copy "expected hashtable?" ht))))))
+            (raise-argument-error 'hashtable-copy "hashtable?" ht))))))
 
 (define-values (make-eq-hashtable make-hashtable)
   (values (lambda () (make-custom-hashtable eq-hash eq?))
@@ -1314,14 +1329,14 @@
   (lambda (ht)
     (if (hashtable? ht)
         ($hashtable-size ($hashtable-store ht))
-        (error 'hashtable-set! "expected hashtable?" ht))))
+        (raise-argument-error 'hashtable-set! "hashtable?" ht))))
 
 (define-values (hashtable-entries hashtable-keys hashtable-vals)
   (let-values ([(check-arg!)
                 (lambda (name ht)
                   (if (hashtable? ht)
                       (void)
-                      (error name "expected hashtable?" ht)))])
+                      (raise-argument-error name "hashtable?" ht)))])
     (values
       ; hashtable-entries
       (lambda (ht)
@@ -1379,7 +1394,7 @@
         (let-values ([(h) (hash x)])
           (if (fixnum? h)
               h
-              (error 'do-hash "invalid hash function" hash h))))]
+              (raise-argument-error 'do-hash "invalid hash function" hash h))))]
      [(incr-size!)
       (lambda (ht store)
         (let-values ([(size) (add1 ($hashtable-size store))]
@@ -1492,7 +1507,7 @@
       (lambda (ht k)
         (if (hashtable? ht)
             (1/hashtable-contains? ht k)
-            (error 'hashtable-set! "expected hashtable?" ht)))
+            (raise-argument-error 'hashtable-set! "hashtable?" ht)))
       ; hashtable-ref
       (lambda args ; TODO: case-lambda
         (let-values ([(argc) ($length args)])
@@ -1503,13 +1518,13 @@
                                                 (lambda () (error 'hashtable-ref "key not found" k))
                                                 ($caddr args))])
                       (1/hashtable-ref ht k default))
-                    (error 'hashtable-ref "expected hashtable?" ht)))
-              (error 'hashtable-ref "expected 2 or 3 arguments" argc))))
+                    (raise-argument-error 'hashtable-ref "hashtable?" ht)))
+              (error 'hashtable-ref "2 or 3 arguments" argc))))
       ; hashtable-set!
       (lambda (ht k v)
         (if (hashtable? ht)
             (1/hashtable-set! ht k v)
-            (error 'hashtable-set! "expected hashtable?" ht)))
+            (raise-argument-error 'hashtable-set! "hashtable?" ht)))
       ; hashtable-update!
       (lambda args ; TODO: case-lambda
         (let-values ([(argc) ($length args)])
@@ -1525,20 +1540,20 @@
                                             (error 'hashtable-update "key not found" k))
                                             ($cadddr args))])
                           (1/hashtable-update! ht k updater default))
-                        (error 'hashtable-updater "expected procedure?" updater))
-                    (error 'hashtable-updater "expected hashtable?" ht)))
-              (error 'hashtable-updater "expected 3 or 4 arguments" argc))))
+                        (raise-argument-error 'hashtable-updater "procedure?" updater))
+                    (raise-argument-error 'hashtable-updater "hashtable?" ht)))
+              (error 'hashtable-updater "3 or 4 arguments" argc))))
       ; hashtable-delete!
       (lambda (ht k)
         (if (hashtable? ht)
             (1/hashtable-cell-delete! ht k)
-            (error 'hashtable-delete! "expected hashtable?" ht))))))
+            (raise-argument-error 'hashtable-delete! "hashtable?" ht))))))
 
 (define-values (hashtable-clear!)
   (lambda (ht)
     (if (hashtable? ht)
         ($hashtable-clear! ($hashtable-store ht))
-        (error 'hashtable-clear! "expected hashtable?" ht))))
+        (raise-argument-error 'hashtable-clear! "hashtable?" ht))))
 
 ;; --------------------------------------------------------
 ;; Record: equality + hashing + writing
@@ -1551,8 +1566,8 @@
             (let-values ([(proc) ($car args)])
               (if (procedure? proc)
                   ($default-record-equal-procedure-set! proc)
-                  (error 'default-record-equal-procedure "expected procedure?" proc)))
-            (error 'default-record-equal-procedure "expected 0 or 1 argumetns" ($length args))))))
+                  (raise-argument-error 'default-record-equal-procedure "procedure?" proc)))
+            (error 'default-record-equal-procedure "0 or 1 arguments" ($length args))))))
 
 (define-values (default-record-hash-procedure)
   (lambda args
@@ -1562,8 +1577,8 @@
             (let-values ([(proc) ($car args)])
               (if (procedure? proc)
                   ($default-record-hash-procedure-set! proc)
-                  (error 'default-record-hash-procedure "expected procedure?" proc)))
-            (error 'default-record-hash-procedure "expected 0 or 1 argumetns" ($length args))))))
+                  (raise-argument-error 'default-record-hash-procedure "procedure?" proc)))
+            (error 'default-record-hash-procedure "0 or 1 arguments" ($length args))))))
 
 (define-values (record-type-equal-procedure record-type-hash-procedure)
   (letrec-values ([($equal-table) (make-eq-hashtable)]
@@ -1574,14 +1589,14 @@
                          (hashtable-ref $equal-table rtd #f)
                          (if (eq? mode 'hash)
                              (hashtable-ref $hash-table rtd #f)
-                             (error 'do-table-ref "unexpected mode" mode))))]
+                             (error 'do-table-ref "unknown mode" mode))))]
                   [(do-table-set!)
                    (lambda (rtd mode proc)
                      (if (eq? mode 'equal)
                          (hashtable-set! $equal-table rtd proc)
                          (if (eq? mode 'hash)
                              (hashtable-set! $hash-table rtd proc)
-                             (error 'do-table-ref "unexpected mode" mode))))]
+                             (error 'do-table-ref "unknown mode" mode))))]
                   [(check-args!)
                    (lambda (name args)
                      (let-values ([(argc) (length args)])
@@ -1592,10 +1607,10 @@
                                      (let-values ([(proc) ($cadr args)])
                                        (if (procedure? proc)
                                            (void)
-                                           (error name "expected procedure?" p)))
+                                           (raise-argument-error name "procedure?" p)))
                                      (void))
-                                 (error name "expected record-type-descriptor?" rtd)))
-                           (error name "expected 1 or 2 arguments" argc))))])
+                                 (raise-argument-error name "record-type-descriptor?" rtd)))
+                           (error name "1 or 2 arguments" argc))))])
     (values
       ; record-type-equal-procedure
       (lambda args
@@ -1626,15 +1641,15 @@
                         proc
                         #f)
                     #f)))
-            (error 'record-equal-procedure "expected record?" b))
-        (error 'record-equal-procedure "expected record?" a))))
+            (raise-argument-error 'record-equal-procedure "record?" b))
+        (raise-argument-error 'record-equal-procedure "record?" a))))
 
 (define-values (record-hash-procedure)
   (lambda (a)
     (if ($record-value? a)
         (let-values ([(rtd) ($record-rtd a)])
           (record-type-hash-procedure rtd))
-        (error 'record-equal-procedure "expected record?" a))))
+        (raise-argument-error 'record-equal-procedure "record?" a))))
 
 (define-values (record-writer)
   (letrec-values ([($writer-table) (make-eq-hashtable)]
@@ -1648,10 +1663,10 @@
                                      (let-values ([(proc) ($cadr args)])
                                        (if (procedure? proc)
                                            (void)
-                                           (error name "expected procedure?" p)))
+                                           (raise-argument-error name "procedure?" p)))
                                      (void))
-                                 (error name "expected record-type-descriptor?" rtd)))
-                           (error name "expected 1 or 2 arguments" argc))))])
+                                 (raise-argument-error name "record-type-descriptor?" rtd)))
+                           (error name "1 or 2 arguments" argc))))])
     (lambda args
       (check-args! 'record-type-equal-procedure args)
       (let-values ([(rtd) ($car args)])
@@ -1774,8 +1789,8 @@
                             (let-values ([(port) ($car args)])
                               (if (input-port? port)
                                   (proc port)
-                                  (error name "expected input-port?" port)))
-                            (error name "expected 0 or 1 arguments" ($length args))))))])
+                                  (raise-argument-error name "input-port?" port)))
+                            (error name "0 or 1 arguments" ($length args))))))])
     (values (go 'read $read)
             (go 'read-char $read-char)
             (go 'peek-char $peek-char)
@@ -1789,8 +1804,8 @@
     (if (output-port? p)
         (if (char? ch)
             ($put-char p ch)
-            (error 'put-char "expected char?" ch))
-        (error 'put-char "expected output-port?" ch))))
+            (raise-argument-error 'put-char "char?" ch))
+        (raise-argument-error 'put-char "output-port?" ch))))
 
 (define-values (put-string)
   (lambda args
@@ -1801,23 +1816,23 @@
                           [(len) ($string-length str)])
             (if (output-port? p)
                 (void)
-                (error 'put-string "expected output-port?" ch))
+                (raise-argument-error 'put-string "output-port?" ch))
             (if (string? str)
                 (void)
-                (error 'put-string "expected string?" ch))
+                (raise-argument-error 'put-string "string?" ch))
             (if (= argc 2)
                 ($put-string p str 0 len)
                 (let-values ([(start) ($caddr args)])
                   (if (integer? start)
                       (void)
-                      (error 'put-string "expected integer?" start))
+                      (raise-argument-error 'put-string "integer?" start))
                   (if (< start len)
                       (if (= argc 3)
                           ($put-string p str start len)
                           (let-values ([(end) ($cadddr args)])
                             (if (integer? end)
                                 (void)
-                                (error 'put-string "expected integer?" end))
+                                (raise-argument-error 'put-string "integer?" end))
                             (if (< end start)
                                 (error 'put-string "must have start <= end" start end)
                                 (void))
@@ -1826,13 +1841,13 @@
                                 (void))
                             ($put-string p str start end)))
                       (error 'put-string "start index out of bounds" start len)))))
-          (error 'put-string "expected 2, 3, or 4 arguments" argc)))))
+          (error 'put-string "2, 3, or 4 arguments" argc)))))
 
 (define-values (flush-output-port)
   (lambda (port)
     (if (output-port? port)
         ($flush-output-port port)
-        (error 'flush-output-port "expected output-port?" port))))
+        (raise-argument-error 'flush-output-port "output-port?" port))))
 
 (define-values (write-char)
   (lambda args
@@ -1845,10 +1860,10 @@
                       (let-values ([(port) ($cadr args)])
                         (if (output-port? port)
                             ($write ch port)
-                            (error 'write-char "expected output-port?" port)))
-                      (error 'write-char "expected 1 or 2 arguments" ($length args))))
-              (error 'write-char "expected char?" ch)))
-        (error 'write-char "expected 1 or 2 arguments" ($length args)))))
+                            (raise-argument-error 'write-char "output-port?" port)))
+                      (error 'write-char "1 or 2 arguments" ($length args))))
+              (raise-argument-error 'write-char "char?" ch)))
+        (error 'write-char "1 or 2 arguments" ($length args)))))
 
 (define-values (put-datum write display)
   (letrec-values ([(lparen rparen) (values #\( #\))]
@@ -1968,7 +1983,7 @@
                    (lambda (who x d? p)
                      (if (output-port? p)
                          (wr x d? p)
-                         (error who "expected output-port?" p)))])
+                         (raise-argument-error who "output-port?" p)))])
     (values
       ; put-datum
       (lambda (p x) (go 'put-datum x #f p))
@@ -1979,7 +1994,7 @@
               (go 'write ($car args) #f (current-output-port))
               (if (= argc 2)
                   (go 'write ($car args) #f ($cadr args))
-                  (error 'write "expected 1 or 2 arguments" argc)))))
+                  (error 'write "1 or 2 arguments" argc)))))
       ; display
       (lambda args
         (let-values ([(argc) ($length args)])
@@ -1987,7 +2002,7 @@
               (go 'display ($car args) #t (current-output-port))
               (if (= argc 2)
                   (go 'display ($car args) #t ($cadr args))
-                  (error 'display "expected 1 or 2 arguments" argc))))))))
+                  (error 'display "1 or 2 arguments" argc))))))))
 
 (define-values (newline)
   (lambda args
@@ -1997,8 +2012,8 @@
             (let-values ([(port) ($car args)])
               (if (output-port? port)
                   ($newline port)
-                  (error 'newline "expected output port?" port)))
-            (error 'newline "expected 0 or 1 arguments" ($length args))))))
+                  (raise-argument-error 'newline "output port?" port)))
+            (error 'newline "0 or 1 arguments" ($length args))))))
 
 ;; --------------------------------------------------------
 ;; Formatter
@@ -2036,7 +2051,7 @@
                              (lambda (fmt-pred arg)
                                (if (if fmt-pred (fmt-pred arg) #t)
                                    (void)
-                                   (error who "format argument failed predicate" fmt-pred arg)))
+                                   (error who "format argument predicate failed" fmt-pred arg)))
                              fmt-preds args)
                            (error who "format string arity mismatch" (length fmt-preds) (length args)))))]
                                         
@@ -2076,7 +2091,7 @@
             (begin
               (check-format! 'fprintf fmt args)
               (do-format p fmt args))
-            (error 'fprintf "expected output port?" fmt)))
+            (raise-argument-error 'fprintf "output port?" fmt)))
       ; printf
       (lambda (fmt . args)
         (check-format! 'printf fmt args)
@@ -2100,13 +2115,13 @@
   (lambda (port)
     (if (input-port? port)
         ($fasl-read port)
-        (error 'fasl-read "expected input-port?" port))))
+        (raise-argument-error 'fasl-read "input-port?" port))))
 
 (define-values (fasl-write)
   (lambda (x port)
     (if (output-port? port)
         ($fasl-write x port)
-        (error 'fasl-write "expected output-port?" port))))
+        (raise-argument-error 'fasl-write "output-port?" port))))
 
 ;; --------------------------------------------------------
 ;; Syntax
@@ -2115,25 +2130,25 @@
   (lambda (stx)
     (if (syntax? stx)
         ($syntax-e stx)
-        (error 'syntax-e "expected syntax?" stx))))
+        (raise-argument-error 'syntax-e "syntax?" stx))))
 
 (define-values (syntax-loc)
   (lambda (stx)
     (if (syntax? stx)
         ($syntax-loc stx)
-        (error 'syntax-loc "expected syntax?" stx))))
+        (raise-argument-error 'syntax-loc "syntax?" stx))))
 
 (define-values (syntax->datum)
   (lambda (stx)
     (if (syntax? stx)
         ($syntax->datum stx)
-        (error 'syntax->datum "expected syntax?" stx))))
+        (raise-argument-error 'syntax->datum "syntax?" stx))))
 
 (define-values (syntax->list)
   (lambda (stx)
     (if (syntax? stx)
         ($syntax->list stx)
-        (error 'syntax->list "expected syntax?" stx))))
+        (raise-argument-error 'syntax->list "syntax?" stx))))
 
 ;; --------------------------------------------------------
 ;; Pattern variables
@@ -2153,7 +2168,7 @@
         (lambda (x depth)
           (if (if (integer? depth) (>= depth 0) #f)
               ($make-pvar x depth)
-              (error 'make-pattern-variable "expected non-negative integer?" depth))))
+              (raise-argument-error 'make-pattern-variable "non-negative-integer?" depth))))
       (record-predicate $pvar)
       (record-accessor $pvar 0)
       (record-accessor $pvar 1))))
@@ -2165,13 +2180,13 @@
   (lambda (env)
     (if (environment? env)
         ($environment-extend env)
-        (error 'environment-extend "expected environment?" env))))
+        (raise-argument-error 'environment-extend "environment?" env))))
 
 (define-values (environment-names)
   (lambda (env)
     (if (environment? env)
         ($environment-names env)
-        (error 'environment-names "expected environment?" env))))
+        (raise-argument-error 'environment-names "environment?" env))))
 
 (define-values (environment-ref)
   (let-values ([(default-fail)
@@ -2189,17 +2204,17 @@
                                 (let-values ([(fail) ($caddr args)])
                                   (if (procedure? fail) (fail) fail)))
                             v))
-                     (error 'environment-ref "expected symbol?" k))
-                 (error 'environment-ref "expected environment?" env)))
-            (error 'environment-ref "expected 1 or 2 arguments" argc))))))
+                     (raise-argument-error 'environment-ref "symbol?" k))
+                 (raise-argument-error 'environment-ref "environment?" env)))
+            (error 'environment-ref "1 or 2 arguments" argc))))))
 
 (define-values (environment-set!)
   (lambda (env k v)
     (if (environment? env)
         (if (symbol? k)
             ($environment-set! env k v)
-            (error 'environment-set! "expected symbol?" k))
-        (error 'environment-set! "expected environment?" env))))
+            (raise-argument-error 'environment-set! "symbol?" k))
+        (raise-argument-error 'environment-set! "environment?" env))))
 
 ;; --------------------------------------------------------
 ;; System
@@ -2208,7 +2223,7 @@
   (lambda (fname)
     (if (string? fname)
         ($load fname)
-        (error 'load "expected a string" fname))))
+        (raise-argument-error 'load "string?" fname))))
 
 (define-values (exit)
   (lambda args
@@ -2218,8 +2233,8 @@
             (let-values ([(code) ($car args)])
               (if (if (integer? code) (<= 0 code 255) #f)
                   ($exit code)
-                  (error 'exit "expected an integer between 0 and 255" code)))
-            (error 'exit "expected 0 or 1 arguments" ($length args))))))
+                  (raise-argument-error 'exit "an integer between 0 and 255" code)))
+            (error 'exit "0 or 1 arguments" ($length args))))))
 
 (define-values (current-directory)
   (lambda args
@@ -2229,8 +2244,8 @@
             (let-values ([(path) ($car args)])
               (if (string? path)
                   ($current-directory-set! path)
-                  (error 'current-directory "expected string?" path)))
-            (error 'current-directory "expected 0 or 1 arguments" (length args))))))
+                  (raise-argument-error 'current-directory "string?" path)))
+            (error 'current-directory "0 or 1 arguments" (length args))))))
 
 ;; --------------------------------------------------------
 ;; Exceptions
@@ -2243,8 +2258,8 @@
             (let-values ([(path) ($car args)])
               (if (procedure? path)
                   ($current-error-handler-set! path)
-                  (error 'current-error-handler "expected procedure?" path)))
-            (error 'current-error-handler "expected 0 or 1 arguments" (length args))))))
+                  (raise-argument-error 'current-error-handler "procedure?" path)))
+            (error 'current-error-handler "0 or 1 arguments" (length args))))))
 
 ; base exception
 (define-values (&exn make-exn exn? exn-who exn-message)
@@ -2257,7 +2272,7 @@
 
 ; argument exception
 (define-values (&argument make-argument-exn argument-exn? argument-exn-expect argument-exn-actual)
-  (let-values ([(&argument) (make-record-type-descriptor '&syntax-exn &exn #f #t #t #(expect actual))])
+  (let-values ([(&argument) (make-record-type-descriptor '&argument-exn &exn #f #t #t #(expect actual))])
     (values &argument
             (record-constructor &argument)
             (record-predicate &argument)
@@ -2281,18 +2296,23 @@
                       (eprintf "~a: ~a\n" (exn-who exn) (exn-message exn))
                       (eprintf "error: ~a\n" (exn-message exn))))])
     (lambda (exn)
-      (if (syntax-exn? exn)
-          (begin ; syntax exception
+      (if (argument-exn? exn)
+          (begin ; argument exception
             (display-exn exn)
-            (if (syntax-exn-form exn)
-                (eprintf " in: ~a\n" (syntax-exn-form exn))
-                (void))
-            (if (syntax-exn-subform exn)
-                (eprintf " at: ~a\n" (syntax-exn-subform exn))
-                (void)))
-          (if (exn? exn) ; base exception
-              (display-exn exn)
-              (eprintf "uncaught exception: ~a\n" exn)))
+            (eprintf " expected: ~a\n" (argument-exn-expect exn))
+            (eprintf " given: ~a\n" (argument-exn-actual exn)))
+          (if (syntax-exn? exn)
+              (begin ; syntax exception
+                (display-exn exn)
+                (if (syntax-exn-form exn)
+                    (eprintf " in: ~a\n" (syntax-exn-form exn))
+                    (void))
+                (if (syntax-exn-subform exn)
+                    (eprintf " at: ~a\n" (syntax-exn-subform exn))
+                    (void)))
+              (if (exn? exn) ; base exception
+                  (display-exn exn)
+                  (eprintf "uncaught exception: ~a\n" exn))))
       (exit 1))))
 
 (current-error-handler default-error-handler)
@@ -2306,12 +2326,17 @@
               (make-exn who (format "~a\n reason: ~a" msg (car args)))
               (make-exn who (format "~a\n reasons: ~a" msg args)))))))
 
-; (define-values (raise-argument-error)
-;   (lambda (name expected v/pos . vs)
-;     (if (symbol? name)
-;         ()
+(set! raise-argument-error
+  (let-values ([(oops!)
+                (lambda (expected v)
+                  (raise-argument-error 'raise-argument-error expected v))])
+    (lambda (who expected v)
+      (if (symbol? who)
+          (if (string? expected)
+              (raise (make-argument-exn who "contract violation" expected v))
+              (oops! "string?" expected))
+          (oops! "symbol?" who)))))
 
-; syntax error raiser
 (define-values (raise-syntax-error)
   (lambda args
     (let-values ([(argc) ($length args)])
@@ -2320,25 +2345,25 @@
                         (let-values ([(who) ($car args)])
                           (if (if who (symbol? who) #t)
                               who
-                              (error 'syntax-error "expected symbol or #f" who)))]
+                              (raise-argument-error 'syntax-error "symbol or #f" who)))]
                        [(msg)
                         (let-values ([(msg) ($cadr args)])
                           (if (string? msg)
                               msg
-                              (error 'syntax-error "expected string" msg)))]
+                              (raise-argument-error 'syntax-error "string" msg)))]
                        [(stx)
                         (if (>= argc 3)
                             (let-values ([(stx) ($caddr args)])
                               (if (syntax? stx)
                                   ($syntax->datum stx)
-                                  (error 'syntax-error "expected syntax" stx)))
+                                  (raise-argument-error 'syntax-error "syntax" stx)))
                             #f)]
                        [(sub-stx)
                         (if (= argc 4)
                             (let-values ([(sub-stx) ($cadddr args)])
                               (if (syntax? sub-stx)
                                   ($syntax->datum sub-stx)
-                                  (error 'syntax-error "expected syntax" sub-stx)))
+                                  (raise-argument-error 'syntax-error "syntax" sub-stx)))
                             #f)])
             (raise (make-syntax-exn who msg stx sub-stx)))
-          (error 'syntax-error "expected 2, 3, or 4 arguments" argc)))))
+          (error 'syntax-error "2, 3, or 4 arguments" argc)))))
