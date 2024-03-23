@@ -7,6 +7,10 @@
   (lambda (who msg . args)
     ($boot-error who msg args)))
 
+(define-values (errorf)
+  (lambda (who fmt . args)
+    (apply error who "formatted error" msg args)))
+
 (define-values (raise-argument-error)
   (lambda (who expected v)
     (error who "contract violation" expected v)))
@@ -575,11 +579,11 @@
     (if (number? x)
         (if (null? xs) ; 1 argument
             (if (= x 0)
-                (error '/ "division by zero" 1 x)
+                (error '/ "division by zero")
                 ($fx2/ 1 x))
             (if (number? ($car xs))
                 (if (= ($car xs) 0)
-                    (error'/ "division by zero" x ($car xs))
+                    (error '/ "division by zero")
                     (if (null? ($cdr xs)) ; 2 arguments         
                         ($fx2/ x ($car xs))
                         (letrec-values ([(loop) ; 3+ arguments
@@ -588,7 +592,7 @@
                                                 x
                                                 (if (number? ($car xs))
                                                     (if (= ($car xs) 0)
-                                                        (error '/ "division by zero" x ($car xs))
+                                                        (error '/ "division by zero")
                                                         (loop ($fx2/ x ($car xs)) ($cdr xs)))
                                                     (raise-argument-error '/ "number?" ($car xs)))))])
                           (loop ($fx2/ x ($car xs)) ($cdr xs)))))
@@ -763,7 +767,7 @@
   (lambda (s)
     (if (string? s)
         ($string-length s)
-        (raise-argument-error 'string-length "a string" s))))
+        (raise-argument-error 'string-length "string?" s))))
 
 (define-values (string-ref)
   (lambda (s idx)
@@ -1304,15 +1308,17 @@
             (raise-argument-error 'record-rtd "record?" rec)))
       (lambda (rtd) ; record-constructor
         (if (record-type-descriptor? rtd)
-            (let-values ([(size) (record-size rtd)])
-              (lambda args
-                (if (= (length args) size)
-                    ($make-record rtd args)
-                    (error 'arity-mismatch 
-                           (format "~s constructor" (record-type-name rtd))
-                           (format " field count: ~a" size)
-                           (format " fields provided: ~a" (length args))))))
-            (raise-argument-error 'record-constructor "record-type-descriptor?" rtd)))
+            (letrec-values ([(size) (record-size rtd)]
+                            [(make)
+                             (lambda args
+                               (if (= (length args) size)
+                                   ($make-record rtd args)
+                                   (raise-arity-error make size (length args))))])
+              make)
+            (raise-argument-error
+              'record-constructor
+              "record-type-descriptor?"
+              rtd)))
       (lambda (rtd) ; record-predicate
         (if (record-type-descriptor? rtd)
             (lambda (rec)
@@ -1324,18 +1330,20 @@
         (if (record-type-descriptor? rtd)
             (if (if (integer? idx) (>= idx 0) #f)
                 (if (< idx ($record-type-length rtd))
-                    (let-values ([(rtd?) (record-predicate rtd)]
-                                 [(parent-size) (if ($record-type-parent rtd)
-                                                    (record-size ($record-type-parent rtd))
-                                                    0)])
-                      (let-values ([(actual-idx) (+ parent-size idx)])
-                        (lambda (rec)
-                          (if (rtd? rec)
-                              ($record-ref rec actual-idx)
-                              (error 'record-accessor
-                                     "type violation"
-                                     (format "expected: ~a" rtd)
-                                     (format "got: ~a" rec))))))
+                    (letrec-values ([(rtd?) (record-predicate rtd)]
+                                    [(actual-idx)
+                                     (if ($record-type-parent rtd)
+                                         (+ idx (record-size ($record-type-parent rtd)))
+                                         idx)]
+                                    [(acc)
+                                     (lambda (rec)
+                                       (if (rtd? rec)
+                                           ($record-ref rec actual-idx)
+                                           (raise-argument-error
+                                             (procedure-name acc)
+                                             (format "~a" (record-type-name rtd))
+                                             rec)))])
+                      acc)
                     (error 'record-accessor "field index out of bounds" rtd idx))
                 (raise-argument-error 'record-accessor "non-negative-integer?" idx))
             (raise-argument-error 'record-accessor "record-type-descriptor?" rtd)))
@@ -1343,18 +1351,20 @@
         (if (record-type-descriptor? rtd)
             (if (if (integer? idx) (>= idx 0) #f)
                 (if (< idx ($record-type-length rtd))
-                    (let-values ([(rtd?) (record-predicate rtd)]
-                                 [(parent-size) (if ($record-type-parent rtd)
-                                                    (record-size ($record-type-parent rtd))
-                                                    0)])
-                      (let-values ([(actual-idx) (+ parent-size idx)])
-                        (lambda (rec v)
-                          (if (rtd? rec)
-                              ($record-set! rec actual-idx v)
-                              (error 'record-mutator
-                                     "type violation"
-                                     (format "expected: ~a" rtd)
-                                     (format "got: ~a" rec))))))
+                    (letrec-values ([(rtd?) (record-predicate rtd)]
+                                    [(actual-idx)
+                                     (if ($record-type-parent rtd)
+                                         (+ idx (record-size ($record-type-parent rtd)))
+                                         idx)]
+                                    [(mut)
+                                     (lambda (rec v)
+                                       (if (rtd? rec)
+                                           ($record-set! rec actual-idx v)
+                                           (raise-argument-error
+                                             (procedure-name mut)
+                                             (format "~a" (record-type-name rtd))
+                                             rec)))])
+                      mut)
                     (error 'record-mutator "field index out of bounds" rtd idx))
                 (raise-argument-error 'record-mutator "non-negative-integer?" idx))
             (raise-argument-error 'record-mutator "record-type-descriptor?" rtd))))))  
@@ -1657,14 +1667,14 @@
                          (hashtable-ref $equal-table rtd #f)
                          (if (eq? mode 'hash)
                              (hashtable-ref $hash-table rtd #f)
-                             (error 'do-table-ref "unknown mode" mode))))]
+                             (errorf 'do-table-ref "unknown mode: ~a" mode))))]
                   [(do-table-set!)
                    (lambda (rtd mode proc)
                      (if (eq? mode 'equal)
                          (hashtable-set! $equal-table rtd proc)
                          (if (eq? mode 'hash)
                              (hashtable-set! $hash-table rtd proc)
-                             (error 'do-table-ref "unknown mode" mode))))]
+                             (errorf 'do-table-ref "unknown mode: ~a" mode))))]
                   [(check-args!)
                    (lambda (name args)
                      (let-values ([(argc) (length args)])
@@ -2097,7 +2107,7 @@
                                             (let-values ([(c) (string-ref fmt n)])
                                               (if (eq? c #\~)
                                                   (if (>= (+ n 1) len)
-                                                      (error who "ill-formed format string" fmt)
+                                                      (errorf who "ill-formed format string `~a`" fmt)
                                                       (let-values ([(nc) (string-ref fmt (+ n 1))])
                                                         (if (if (eq? nc #\a) #t (eq? nc #\A))
                                                             (loop (+ n 2) (cons #f args))
@@ -2107,7 +2117,7 @@
                                                                     (loop (+ n 2) args)
                                                                     (if (eq? nc #\~)
                                                                         (loop (+ n 2) xs)
-                                                                        (error who "unknown format directive" nc)))))))
+                                                                        (errorf who "unknown format directive `~a`" nc)))))))
                                                   (loop (+ n 1) args)))))])
                        (loop 0 '())))]                                                
       
@@ -2119,9 +2129,9 @@
                              (lambda (fmt-pred arg)
                                (if (if fmt-pred (fmt-pred arg) #t)
                                    (void)
-                                   (error who "format argument predicate failed" fmt-pred arg)))
+                                   (errorf who "format argument ~a, given unexpected value ~a" fmt-pred arg)))
                              fmt-preds args)
-                           (error who "format string arity mismatch" (length fmt-preds) (length args)))))]
+                           (errorf who "format string requires ~a argument, given ~a" (length fmt-preds) (length args)))))]
                                         
                   [(do-format)
                    (lambda (p fmt args)
@@ -2420,12 +2430,24 @@
 
 (set! error
   (lambda (who msg . args)
-    (raise
-      (if (null? args)
-          (make-exn who msg)
-          (if (null? (cdr args))
-              (make-exn who (format "~a\n reason: ~a" msg (car args)))
-              (make-exn who (format "~a\n reasons: ~a" msg args)))))))
+    (if (if who (symbol? who) #t)
+        (if (string? msg)
+            (raise
+              (if (null? args)
+                  (make-exn who msg)
+                  (if (null? (cdr args))
+                      (make-exn who (format "~a\n reason: ~a" msg (car args)))
+                      (make-exn who (format "~a\n reasons: ~a" msg args)))))
+            (raise-argument-error 'error "string?" msg))
+        (raise-argument-error 'error "symbol? or #f" who))))
+
+(set! errorf
+  (lambda (who fmt . args)
+    (if (if who (symbol? who) #t)
+        (if (string? fmt)
+            (error who (apply format fmt args))
+            (raise-argument-error 'errorf "string?" fmt))
+        (raise-argument-error 'errorf "symbol? or #f" who))))
 
 (set! raise-arity-error
   (lambda (who arity cnt)
