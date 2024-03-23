@@ -129,7 +129,7 @@
     [(_ id [method-id . formals] ...)
      (begin
        (unless (identifier? #'id)
-         (syntax-error 'define-generics "expected an identifier" stx #'id))
+         (raise-syntax-error 'define-generics "expected an identifier" stx #'id))
        (define method-table (list))
        (define gen-id (symbol->string (syntax-e #'id)))
 
@@ -138,7 +138,7 @@
          (unless (null? method-ids)
            (define mid (car method-ids))
            (unless (identifier? mid)
-             (syntax-error 'define-generics "expected an identifier" stx mid))
+             (raise-syntax-error 'define-generics "expected an identifier" stx mid))
 
            (define args (car formals*))
            (let loop ([args (syntax-e args)])
@@ -146,11 +146,11 @@
                          (symbol? args)
                          (identifier? args))
                (unless (pair? args)
-                 (syntax-error 'define-generics "expected an identifier"
+                 (raise-syntax-error 'define-generics "expected an identifier"
                                stx (datum->syntax args)))
                (define arg (car args))
                (unless (identifier? arg)
-                 (syntax-error 'define-generics "expected an identifier"
+                 (raise-syntax-error 'define-generics "expected an identifier"
                                stx (datum->syntax arg)))
                (loop (cdr args))))
            
@@ -172,7 +172,7 @@
              (let ([clause (car clauses)])
                (syntax-case clause ()
                  [(method-id . _) (loop (cdr clauses))]
-                 [_ (syntax-error 'define-generics "malformed generic method" stx clause)]))))
-         (syntax-error 'define-generics "expected an identifier" stx #'id))]
-    [_ (syntax-error 'define-generics "bad syntax" stx)]))
+                 [_ (raise-syntax-error 'define-generics "malformed generic method" stx clause)]))))
+         (raise-syntax-error 'define-generics "expected an identifier" stx #'id))]
+    [_ (raise-syntax-error 'define-generics "bad syntax" stx)]))
   

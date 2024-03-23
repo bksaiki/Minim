@@ -216,10 +216,10 @@
                       (error 'name "bad syntax" stx)])))))
          (error 'define-enumeration "expected an identifier" #'name))]
     [(_ name value-spec constructor _ ...)
-     (syntax-error 'define-enumeration "bad syntax" stx)]
+     (raise-syntax-error 'define-enumeration "bad syntax" stx)]
     [(_ name value-spec)
-     (syntax-error 'define-enumeration "missing constructor name" stx)]
+     (raise-syntax-error 'define-enumeration "missing constructor name" stx)]
     [(_ name)
-     (syntax-error 'define-enumeration "missing enumeration values and constructor name" stx)]
+     (raise-syntax-error 'define-enumeration "missing enumeration values and constructor name" stx)]
     [(_ . _)
-     (syntax-error 'define-enumeration "bad syntax" stx)]))
+     (raise-syntax-error 'define-enumeration "bad syntax" stx)]))

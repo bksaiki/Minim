@@ -36,7 +36,7 @@
   (syntax-case stx ()
     [(_ body ...)
      #'(make-promise (lambda () body ...))]
-    [_ (syntax-error 'delay "bad syntax" stx)]))
+    [_ (raise-syntax-error 'delay "bad syntax" stx)]))
 
 ;;
 ;;  Operations

@@ -2255,6 +2255,15 @@
             (record-accessor &exn 0)
             (record-accessor &exn 1))))
 
+; argument exception
+(define-values (&argument make-argument-exn argument-exn? argument-exn-expect argument-exn-actual)
+  (let-values ([(&argument) (make-record-type-descriptor '&syntax-exn &exn #f #t #t #(expect actual))])
+    (values &argument
+            (record-constructor &argument)
+            (record-predicate &argument)
+            (record-accessor &argument 0)
+            (record-accessor &argument 1))))
+
 ; syntax exception
 (define-values (&syntax make-syntax-exn syntax-exn? syntax-exn-form syntax-exn-subform)
   (let-values ([(&syntax) (make-record-type-descriptor '&syntax-exn &exn #f #t #t #(form subform))])
@@ -2297,14 +2306,13 @@
               (make-exn who (format "~a\n reason: ~a" msg (car args)))
               (make-exn who (format "~a\n reasons: ~a" msg args)))))))
 
-; argument error raiser
-; (define-values (argument-error)
+; (define-values (raise-argument-error)
 ;   (lambda (name expected v/pos . vs)
 ;     (if (symbol? name)
 ;         ()
 
 ; syntax error raiser
-(define-values (syntax-error)
+(define-values (raise-syntax-error)
   (lambda args
     (let-values ([(argc) ($length args)])
       (if (if (>= argc 2) (<= argc 4) #f)

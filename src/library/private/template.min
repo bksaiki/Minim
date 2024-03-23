@@ -15,4 +15,4 @@
   (define get-pattern get-pattern-variable)     ; TODO: leaky; hooks into expander
   (if (and (list? l) (= (length l) 2))
       (do-template stx (cadr l) get-pattern)
-      (syntax-error #f "bad syntax" stx)))
+      (raise-syntax-error #f "bad syntax" stx)))
