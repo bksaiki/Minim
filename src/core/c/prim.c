@@ -189,6 +189,7 @@ void init_prims(mobj env) {
     add_procedure("string-port?", string_portp_proc, 1);
     add_procedure("current-input-port", current_input_port, 0);
     add_procedure("current-output-port", current_output_port, 0);
+    add_procedure("current-error-port", current_error_port, 0);
     add_procedure("$open-input-file", open_input_file, 1);
     add_procedure("$open-output-file", open_output_file, 1);
     add_procedure("$open-input-string", open_input_string, 1);
@@ -219,6 +220,8 @@ void init_prims(mobj env) {
 
     /// add_procedure("$c-error-handler", c_error_handler_proc, 0);
     add_procedure("$c-error-handler", c_error_handler_set_proc, 1);
+    add_procedure("$current-error-handler", error_handler_proc, 0);
+    add_procedure("$current-error-handler-set!", error_handler_set_proc, 1);
     add_procedure("$boot-error", boot_error_proc, 3);
-
+    add_cprocedure("raise", compile_raise);
 }

@@ -60,7 +60,7 @@ static void write_box(FILE *out, mobj o) {
 static void write_closure(FILE *out, mobj o) {
     mobj code = minim_closure_code(o);
     if (minim_code_name(code)) {
-        fprintf(out, "#<procedure:%s>", minim_code_name(code));
+        fprintf(out, "#<procedure:%s>", minim_symbol(minim_code_name(code)));
     } else {
         fputs("#<procedure>", out);
     }

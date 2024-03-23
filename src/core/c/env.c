@@ -143,7 +143,7 @@ mobj env_set_var(mobj env, mobj var, mobj val) {
         env = minim_env_prev(env);
     }
 
-    minim_error1("env_set_var", "unbound_variable", var);
+    minim_error1("env_set_var", "unbound variable", var);
 }
 
 int env_var_is_defined(mobj env, mobj var, int recursive) {
@@ -208,7 +208,9 @@ mobj env_lookup_var(mobj env, mobj var) {
         env = minim_env_prev(env);
     }
 
-    minim_error1("env_lookup_var", "unbound_variable", var);
+    write_object(stderr, var);
+    fprintf(stderr, "\n");
+    minim_error1("env_lookup_var", "unbound variable", var);
 }
 
 #define add_value(env, name, c_val)  \

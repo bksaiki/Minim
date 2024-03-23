@@ -305,7 +305,7 @@ extern mobj minim_values;
 #define minim_code_size(n)          ((minim_code_header_size * ptr_size) + (n * ptr_size) + ptr_size)
 #define minim_codep(o)              (minim_type(o) == MINIM_OBJ_CODE)
 #define minim_code_len(o)           (*((size_t*) PTR_ADD(o, ptr_size)))
-#define minim_code_name(o)          (*((char**) PTR_ADD(o, 2 * ptr_size)))
+#define minim_code_name(o)          (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
 #define minim_code_arity(o)         (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
 #define minim_code_reloc(o)         (*((mobj*) PTR_ADD(o, 4 * ptr_size)))
 #define minim_code_it(o)            ((mobj *) PTR_ADD(o, 5 * ptr_size))
@@ -336,6 +336,7 @@ extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
 extern mobj do_eval_symbol;
+extern mobj do_raise_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
@@ -518,6 +519,7 @@ mobj box_set_proc(mobj x, mobj v);
 
 mobj current_input_port();
 mobj current_output_port();
+mobj current_error_port();
 mobj open_input_file(mobj name);
 mobj open_output_file(mobj name);
 mobj open_input_string(mobj str);
@@ -606,6 +608,8 @@ mobj current_directory_set_proc(mobj path);
 mobj boot_error_proc(mobj who, mobj msg, mobj args);
 mobj c_error_handler_proc();
 mobj c_error_handler_set_proc(mobj proc);
+mobj error_handler_proc();
+mobj error_handler_set_proc(mobj proc);
 
 NORETURN void minim_error(const char *name, const char *msg);
 NORETURN void minim_error1(const char *name, const char *msg, mobj x);
@@ -665,6 +669,7 @@ mobj compile_call_with_values(mobj name);
 mobj compile_current_environment(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);
+mobj compile_raise(mobj name);
 mobj compile_values(mobj name);
 mobj compile_void(mobj name);
 
@@ -798,6 +803,7 @@ typedef struct minim_thread {
     // thread parameters
     mobj input_port;
     mobj output_port;
+    mobj error_port;
     mobj current_directory;
     mobj command_line;
     mobj record_equal_proc;
@@ -822,6 +828,7 @@ typedef struct minim_thread {
 
 #define input_port(th)                  ((th)->input_port)
 #define output_port(th)                 ((th)->output_port)
+#define error_port(th)                 ((th)->error_port)
 #define current_directory(th)           ((th)->current_directory)
 #define command_line(th)                ((th)->command_line)
 #define record_equal_proc(th)           ((th)->record_equal_proc)

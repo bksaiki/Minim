@@ -8,7 +8,7 @@
     if (minim_closurep(o)) { \
         mobj code = minim_closure_code(o); \
         if (minim_code_name(code) == NULL) { \
-            minim_code_name(code) = minim_symbol(name); \
+            minim_code_name(code) = name; \
         } \
     } \
 }
@@ -34,17 +34,25 @@ void arity_mismatch_exn(mobj proc, size_t actual) {
     arity = minim_code_arity(code);
     if (minim_fixnump(arity)) {
         // exact arity
-        minim_error2(name, "arity mismatch", arity, Mfixnum(actual));
+        minim_error2(minim_string(name), "arity mismatch", arity, Mfixnum(actual));
     } else {
         // range of arities
         mobj min_arity = minim_car(arity);
         mobj max_arity = minim_cdr(arity);
         if (minim_falsep(max_arity)) {
             // at-least arity
-            minim_error2(name, "arity mismatch, expected at least", min_arity, Mfixnum(actual));
+            minim_error2(
+                minim_string(name),
+                "arity mismatch, expected at least",
+                min_arity, Mfixnum(actual)
+            );
         } else {
             // range arity
-            minim_error3(name, "arity mismatch, expected between", min_arity, max_arity, Mfixnum(actual));
+            minim_error3(
+                minim_string(name),
+                "arity mismatch, expected between",
+                min_arity, max_arity, Mfixnum(actual)
+            );
         }
     }
 }
@@ -453,6 +461,9 @@ application:
     } else if (ty == do_eval_symbol) {
         // do-eval
         goto do_eval;
+    } else if (ty == do_raise_symbol) {
+        // do-raise
+        goto do_raise;
     } else if (ty == do_rest_symbol) {
         // do-rest
         res = do_rest(minim_fixnum(minim_cadr(ins)));
@@ -519,6 +530,18 @@ do_eval:
     env = current_ac(th) == 2 ? args[1] : env;
     current_cp(th) = Mclosure(env, compile_expr(args[0]));
     current_ac(th) = 0;
+    goto application;
+
+// performs `do-raise` instruction
+do_raise:
+    // check if an error handler has been installed
+    args = current_sfp(th);
+    if (minim_falsep(error_handler(th))) {
+        boot_error_proc(minim_false, Mstring("unhandled exception"), args[0]);
+    }
+
+    // set procedure to handler and call
+    current_cp(th) = error_handler(th);
     goto application;
 
 // restores previous continuation

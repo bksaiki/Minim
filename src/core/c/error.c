@@ -20,12 +20,14 @@ NORETURN static void do_error2(const char *name, const char *msg, mobj args) {
     }
     
     // call back into the Scheme runtime
-    current_ac(th) = 3;
     reserve_stack(th, 3);
+    current_ac(th) = 3;
+    current_cp(th) = c_error_handler(th);
+    
     set_arg(th, 0, (name ? Mstring(name) : minim_false));
     set_arg(th, 1, Mstring(msg));
     set_arg(th, 2, args);
-    current_cp(th) = c_error_handler(th);
+    
     longjmp(*current_reentry(th), 1);
 }
 
@@ -73,5 +75,16 @@ mobj c_error_handler_proc() {
 mobj c_error_handler_set_proc(mobj proc) {
     // (-> procedure void)
     c_error_handler(current_thread()) = proc;
+    return minim_void;
+}
+
+mobj error_handler_proc() {
+    // (-> any (or procedure #f))
+    return error_handler(current_thread());
+}
+
+mobj error_handler_set_proc(mobj proc) {
+    // (-> procedure void)
+    error_handler(current_thread()) = proc;
     return minim_void;
 }

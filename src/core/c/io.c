@@ -64,6 +64,11 @@ mobj current_output_port() {
     return output_port(current_thread());
 }
 
+mobj current_error_port() {
+    // (-> output-port)
+    return error_port(current_thread());
+}
+
 mobj open_input_file(mobj name) {
     // (-> str input-port)
     FILE *stream;

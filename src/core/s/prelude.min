@@ -1955,7 +1955,7 @@
                            (proc x p d?) 
                            (begin
                              (put-string p "#<")
-                             (wr (record-type-name ($record-rdd x)) d? p)
+                             (wr (record-type-name ($record-rtd x)) d? p)
                              (put-char p #\>)))))]
                   ; syntax writer
                   [(wrsyntax)
@@ -2003,7 +2003,7 @@
 ;; --------------------------------------------------------
 ;; Formatter
 
-(define-values (fprintf printf format)
+(define-values (fprintf printf eprintf format)
   (letrec-values ([(fmt-args)
                    (lambda (who fmt)
                      (letrec-values ([(len) (string-length fmt)]
@@ -2081,6 +2081,10 @@
       (lambda (fmt . args)
         (check-format! 'printf fmt args)
         (do-format (current-output-port) fmt args))
+      ; eprintf
+      (lambda (fmt . args)
+        (check-format! 'eprintf fmt args)
+        (do-format (current-error-port) fmt args))
       ; format
       (lambda (fmt . args)
         (check-format! 'format fmt args)
@@ -2130,28 +2134,6 @@
     (if (syntax? stx)
         ($syntax->list stx)
         (error 'syntax->list "expected syntax?" stx))))
-
-(define-values (syntax-error)
-  (lambda args
-    (let-values ([(argc) ($length args)])
-      (if (if (>= argc 2) (<= argc 4) #f)
-          (let-values ([(who) ($car args)] [(msg) ($cadr args)])
-            (if (if who #t (symbol? who))
-                (if (string? msg)
-                    (if (= argc 2)
-                        (error who msg)
-                        (let-values ([(stx) ($caddr args)])
-                          (if (syntax? stx)
-                              (if (= argc 3)
-                                  (error who msg 'where ($syntax->datum stx))
-                                  (let-values ([(sub-stx) ($cadddr args)])
-                                    (if (syntax? sub-stx)
-                                        (error who msg 'at ($syntax->datum) 'where ($syntax->datum stx))
-                                        (error 'syntax-error "expected syntax" sub-stx))))
-                              (error 'syntax-error "expected syntax" stx))))
-                    (error 'syntax-error "expected string" msg))
-                (error 'syntax-error "expected symbol or #f" who)))
-          (error 'syntax-error "expected 2, 3, or 4 arguments" argc)))))
 
 ;; --------------------------------------------------------
 ;; Pattern variables
@@ -2249,3 +2231,106 @@
                   ($current-directory-set! path)
                   (error 'current-directory "expected string?" path)))
             (error 'current-directory "expected 0 or 1 arguments" (length args))))))
+
+;; --------------------------------------------------------
+;; Exceptions
+
+(define-values (current-error-handler)
+  (lambda args
+    (if (null? args)
+        ($current-error-handler)
+        (if (null? ($cdr args))
+            (let-values ([(path) ($car args)])
+              (if (procedure? path)
+                  ($current-error-handler-set! path)
+                  (error 'current-error-handler "expected procedure?" path)))
+            (error 'current-error-handler "expected 0 or 1 arguments" (length args))))))
+
+; base exception
+(define-values (&exn make-exn exn? exn-who exn-message)
+  (let-values ([(&exn) (make-record-type-descriptor '&exn #f #f #t #t #(who message))])
+    (values &exn
+            (record-constructor &exn)
+            (record-predicate &exn)
+            (record-accessor &exn 0)
+            (record-accessor &exn 1))))
+
+; syntax exception
+(define-values (&syntax make-syntax-exn syntax-exn? syntax-exn-form syntax-exn-subform)
+  (let-values ([(&syntax) (make-record-type-descriptor '&syntax-exn &exn #f #t #t #(form subform))])
+    (values &syntax
+            (record-constructor &syntax)
+            (record-predicate &syntax)
+            (record-accessor &syntax 0)
+            (record-accessor &syntax 1))))
+
+; default error handler
+(define-values (default-error-handler)
+  (let-values ([(display-exn)
+                (lambda (exn)
+                  (if (exn-who exn)
+                      (eprintf "~a: ~a\n" (exn-who exn) (exn-message exn))
+                      (eprintf "error: ~a\n" (exn-message exn))))])
+    (lambda (exn)
+      (if (syntax-exn? exn)
+          (begin ; syntax exception
+            (display-exn exn)
+            (if (syntax-exn-form exn)
+                (eprintf " in: ~a\n" (syntax-exn-form exn))
+                (void))
+            (if (syntax-exn-subform exn)
+                (eprintf " at: ~a\n" (syntax-exn-subform exn))
+                (void)))
+          (if (exn? exn) ; base exception
+              (display-exn exn)
+              (eprintf "uncaught exception: ~a\n" exn)))
+      (exit 1))))
+
+(current-error-handler default-error-handler)
+
+(set! error
+  (lambda (who msg . args)
+    (raise
+      (if (null? args)
+          (make-exn who msg)
+          (if (null? (cdr args))
+              (make-exn who (format "~a\n reason: ~a" msg (car args)))
+              (make-exn who (format "~a\n reasons: ~a" msg args)))))))
+
+; argument error raiser
+; (define-values (argument-error)
+;   (lambda (name expected v/pos . vs)
+;     (if (symbol? name)
+;         ()
+
+; syntax error raiser
+(define-values (syntax-error)
+  (lambda args
+    (let-values ([(argc) ($length args)])
+      (if (if (>= argc 2) (<= argc 4) #f)
+          (let-values ([(who)
+                        (let-values ([(who) ($car args)])
+                          (if (if who (symbol? who) #t)
+                              who
+                              (error 'syntax-error "expected symbol or #f" who)))]
+                       [(msg)
+                        (let-values ([(msg) ($cadr args)])
+                          (if (string? msg)
+                              msg
+                              (error 'syntax-error "expected string" msg)))]
+                       [(stx)
+                        (if (>= argc 3)
+                            (let-values ([(stx) ($caddr args)])
+                              (if (syntax? stx)
+                                  ($syntax->datum stx)
+                                  (error 'syntax-error "expected syntax" stx)))
+                            #f)]
+                       [(sub-stx)
+                        (if (= argc 4)
+                            (let-values ([(sub-stx) ($cadddr args)])
+                              (if (syntax? sub-stx)
+                                  ($syntax->datum sub-stx)
+                                  (error 'syntax-error "expected syntax" sub-stx)))
+                            #f)])
+            (raise (make-syntax-exn who msg stx sub-stx)))
+          (error 'syntax-error "expected 2, 3, or 4 arguments" argc)))))

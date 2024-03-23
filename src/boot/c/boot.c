@@ -40,6 +40,7 @@ void minim_boot_init() {
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");
     do_eval_symbol = intern("#%do-eval");
+    do_raise_symbol = intern("#%do-raise");
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
     do_with_values_symbol = intern("#%do-with_values");
@@ -100,6 +101,7 @@ void minim_boot_init() {
 
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
+    error_port(th) = Moutput_port(stderr);
     current_directory(th) = Mstring(get_current_dir());
     command_line(th) = minim_null;
     record_equal_proc(th) = minim_false;
