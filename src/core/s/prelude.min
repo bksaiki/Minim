@@ -11,6 +11,10 @@
   (lambda (who expected v)
     (error who "contract violation" expected v)))
 
+(define-values (raise-arity-error)
+  (lambda (who arity cnt)
+    (error who "arity mismatch" arity cnt)))
+
 ($c-error-handler
   (lambda (who msg args)
     (apply error who msg args)))
@@ -753,7 +757,7 @@
                     ($make-string len init)
                     (raise-argument-error 'make-string "char?" init))
                 (raise-argument-error 'make-string "non-negative-integer?" len)))
-          (error 'make-string "1 or 2 arguments" argc)))))
+          (raise-arity-error 'make-string '(1 2) argc)))))
 
 (define-values (string-length)
   (lambda (s)
@@ -1030,7 +1034,7 @@
             (if (if (integer? len) (>= len 0) #f)
                 ($make-vector len init)
                 (raise-argument-error 'make-vector "non-negative-integer?" len)))
-          (raise-argument-error 'make-vector "1 or 2 arguments" argc)))))
+          (raise-arity-error 'make-vector '(1 2) argc)))))
 
 (define-values (vector-length)
   (lambda (v)
@@ -1583,7 +1587,7 @@
                                                 ($caddr args))])
                       (1/hashtable-ref ht k default))
                     (raise-argument-error 'hashtable-ref "hashtable?" ht)))
-              (error 'hashtable-ref "2 or 3 arguments" argc))))
+              (raise-arity-error 'hashtable-ref '(2 3) argc))))
       ; hashtable-set!
       (lambda (ht k v)
         (if (hashtable? ht)
@@ -1606,7 +1610,7 @@
                           (1/hashtable-update! ht k updater default))
                         (raise-argument-error 'hashtable-updater "procedure?" updater))
                     (raise-argument-error 'hashtable-updater "hashtable?" ht)))
-              (error 'hashtable-updater "3 or 4 arguments" argc))))
+              (raise-arity-error 'hashtable-updater '(3 4) argc))))
       ; hashtable-delete!
       (lambda (ht k)
         (if (hashtable? ht)
@@ -1631,7 +1635,7 @@
               (if (procedure? proc)
                   ($default-record-equal-procedure-set! proc)
                   (raise-argument-error 'default-record-equal-procedure "procedure?" proc)))
-            (error 'default-record-equal-procedure "0 or 1 arguments" ($length args))))))
+            (raise-arity-error 'default-record-equal-procedure '(0 1) ($length args))))))
 
 (define-values (default-record-hash-procedure)
   (lambda args
@@ -1642,7 +1646,7 @@
               (if (procedure? proc)
                   ($default-record-hash-procedure-set! proc)
                   (raise-argument-error 'default-record-hash-procedure "procedure?" proc)))
-            (error 'default-record-hash-procedure "0 or 1 arguments" ($length args))))))
+            (raise-arity-error 'default-record-hash-procedure '(0 1) ($length args))))))
 
 (define-values (record-type-equal-procedure record-type-hash-procedure)
   (letrec-values ([($equal-table) (make-eq-hashtable)]
@@ -1674,7 +1678,7 @@
                                            (raise-argument-error name "procedure?" p)))
                                      (void))
                                  (raise-argument-error name "record-type-descriptor?" rtd)))
-                           (error name "1 or 2 arguments" argc))))])
+                           (raise-arity-error name '(1 2) argc))))])
     (values
       ; record-type-equal-procedure
       (lambda args
@@ -1730,7 +1734,7 @@
                                            (raise-argument-error name "procedure?" p)))
                                      (void))
                                  (raise-argument-error name "record-type-descriptor?" rtd)))
-                           (error name "1 or 2 arguments" argc))))])
+                           (raise-arity-error name '(1 2) argc))))])
     (lambda args
       (check-args! 'record-type-equal-procedure args)
       (let-values ([(rtd) ($car args)])
@@ -1854,7 +1858,7 @@
                               (if (input-port? port)
                                   (proc port)
                                   (raise-argument-error name "input-port?" port)))
-                            (error name "0 or 1 arguments" ($length args))))))])
+                            (raise-arity-error name '(0 1) ($length args))))))])
     (values (go 'read $read)
             (go 'read-char $read-char)
             (go 'peek-char $peek-char)
@@ -1905,7 +1909,7 @@
                                 (void))
                             ($put-string p str start end)))
                       (error 'put-string "start index out of bounds" start len)))))
-          (error 'put-string "2, 3, or 4 arguments" argc)))))
+          (raise-arity-error 'put-string '(2 3 4) argc)))))
 
 (define-values (flush-output-port)
   (lambda (port)
@@ -1925,9 +1929,9 @@
                         (if (output-port? port)
                             ($write ch port)
                             (raise-argument-error 'write-char "output-port?" port)))
-                      (error 'write-char "1 or 2 arguments" ($length args))))
+                      (raise-arity-error 'write-char '(1 2) ($length args))))
               (raise-argument-error 'write-char "char?" ch)))
-        (error 'write-char "1 or 2 arguments" ($length args)))))
+        (raise-arity-error 'write-char '(1 2) ($length args)))))
 
 (define-values (put-datum write display)
   (letrec-values ([(lparen rparen) (values #\( #\))]
@@ -2058,7 +2062,7 @@
               (go 'write ($car args) #f (current-output-port))
               (if (= argc 2)
                   (go 'write ($car args) #f ($cadr args))
-                  (error 'write "1 or 2 arguments" argc)))))
+                  (raise-arity-error 'write '(1 2) argc)))))
       ; display
       (lambda args
         (let-values ([(argc) ($length args)])
@@ -2066,7 +2070,7 @@
               (go 'display ($car args) #t (current-output-port))
               (if (= argc 2)
                   (go 'display ($car args) #t ($cadr args))
-                  (error 'display "1 or 2 arguments" argc))))))))
+                  (raise-arity-error 'display '(1 2) argc))))))))
 
 (define-values (newline)
   (lambda args
@@ -2077,7 +2081,7 @@
               (if (output-port? port)
                   ($newline port)
                   (raise-argument-error 'newline "output port?" port)))
-            (error 'newline "0 or 1 arguments" ($length args))))))
+            (raise-arity-error 'newline '(0 1) ($length args))))))
 
 ;; --------------------------------------------------------
 ;; Formatter
@@ -2270,7 +2274,7 @@
                             v))
                      (raise-argument-error 'environment-ref "symbol?" k))
                  (raise-argument-error 'environment-ref "environment?" env)))
-            (error 'environment-ref "1 or 2 arguments" argc))))))
+            (raise-arity-error 'environment-ref '(1 2) argc))))))
 
 (define-values (environment-set!)
   (lambda (env k v)
@@ -2298,7 +2302,7 @@
               (if (if (integer? code) (<= 0 code 255) #f)
                   ($exit code)
                   (raise-argument-error 'exit "an integer between 0 and 255" code)))
-            (error 'exit "0 or 1 arguments" ($length args))))))
+            (raise-arity-error 'exit '(0 1) ($length args))))))
 
 (define-values (current-directory)
   (lambda args
@@ -2309,7 +2313,7 @@
               (if (string? path)
                   ($current-directory-set! path)
                   (raise-argument-error 'current-directory "string?" path)))
-            (error 'current-directory "0 or 1 arguments" (length args))))))
+            (raise-arity-error 'current-directory '(0 1) (length args))))))
 
 ;; --------------------------------------------------------
 ;; Exceptions
@@ -2323,7 +2327,7 @@
               (if (procedure? path)
                   ($current-error-handler-set! path)
                   (raise-argument-error 'current-error-handler "procedure?" path)))
-            (error 'current-error-handler "0 or 1 arguments" (length args))))))
+            (raise-arity-error 'current-error-handler '(0 1) (length args))))))
 
 ; base exception
 (define-values (&exn make-exn exn? exn-who exn-message)
@@ -2343,6 +2347,15 @@
             (record-accessor &argument 0)
             (record-accessor &argument 1))))
 
+; arity exception
+(define-values (&arity make-arity-exn arity-exn? arity-exn-expect arity-exn-actual)
+  (let-values ([(&arity) (make-record-type-descriptor '&arity-exn &exn #f #t #t #(expect actual))])
+    (values &arity
+            (record-constructor &arity)
+            (record-predicate &arity)
+            (record-accessor &arity 0)
+            (record-accessor &arity 1))))
+
 ; syntax exception
 (define-values (&syntax make-syntax-exn syntax-exn? syntax-exn-form syntax-exn-subform)
   (let-values ([(&syntax) (make-record-type-descriptor '&syntax-exn &exn #f #t #t #(form subform))])
@@ -2358,25 +2371,49 @@
                 (lambda (exn)
                   (if (exn-who exn)
                       (eprintf "~a: ~a\n" (exn-who exn) (exn-message exn))
-                      (eprintf "error: ~a\n" (exn-message exn))))])
+                      (eprintf "error: ~a\n" (exn-message exn))))]
+               [(display-arity)
+                (lambda (x)
+                  (if (number? x)
+                      (eprintf "~a\n" x)
+                      (letrec-values ([(loop)
+                                       (lambda (x)
+                                         (if (null? x)
+                                             (eprintf "\n")
+                                             (if (cdr x)
+                                                 (begin
+                                                   (eprintf ", ~a" (car x))
+                                                   (loop (cdr x)))
+                                                 (eprintf ", at least ~a\n" (car x)))))])
+                        (if (cdr x)
+                            (begin
+                              (eprintf "~a" (car x))
+                              (loop (cdr x)))
+                            (eprintf "at least ~a\n" (car x))))))])
     (lambda (exn)
       (if (argument-exn? exn)
           (begin ; argument exception
             (display-exn exn)
             (eprintf " expected: ~a\n" (argument-exn-expect exn))
             (eprintf " given: ~a\n" (argument-exn-actual exn)))
-          (if (syntax-exn? exn)
-              (begin ; syntax exception
-                (display-exn exn)
-                (if (syntax-exn-form exn)
-                    (eprintf " in: ~a\n" (syntax-exn-form exn))
-                    (void))
-                (if (syntax-exn-subform exn)
-                    (eprintf " at: ~a\n" (syntax-exn-subform exn))
-                    (void)))
-              (if (exn? exn) ; base exception
-                  (display-exn exn)
-                  (eprintf "uncaught exception: ~a\n" exn))))
+          (if (arity-exn? exn)
+              (begin ; arity exception
+              (display-exn exn)
+              (eprintf " expected: ")
+              (display-arity (arity-exn-expect exn))
+              (eprintf " given: ~a\n" (arity-exn-actual exn)))
+              (if (syntax-exn? exn)
+                  (begin ; syntax exception
+                    (display-exn exn)
+                    (if (syntax-exn-form exn)
+                        (eprintf " in: ~a\n" (syntax-exn-form exn))
+                        (void))
+                    (if (syntax-exn-subform exn)
+                        (eprintf " at: ~a\n" (syntax-exn-subform exn))
+                        (void)))
+                  (if (exn? exn) ; base exception
+                      (display-exn exn)
+                      (eprintf "uncaught exception: ~a\n" exn)))))
       (exit 1))))
 
 (current-error-handler default-error-handler)
@@ -2390,16 +2427,21 @@
               (make-exn who (format "~a\n reason: ~a" msg (car args)))
               (make-exn who (format "~a\n reasons: ~a" msg args)))))))
 
+(set! raise-arity-error
+  (lambda (who arity cnt)
+    (if (symbol? who)
+        (if (procedure-arity? arity)
+            (raise (make-arity-exn who "arity mismatch" arity cnt))
+            (raise-argument-error 'raise-arity-error "procedure-arity?" arity))
+        (raise-argument-error 'raise-arity-error "symbol?" who))))
+
 (set! raise-argument-error
-  (let-values ([(oops!)
-                (lambda (expected v)
-                  (raise-argument-error 'raise-argument-error expected v))])
-    (lambda (who expected v)
-      (if (symbol? who)
-          (if (string? expected)
-              (raise (make-argument-exn who "contract violation" expected v))
-              (oops! "string?" expected))
-          (oops! "symbol?" who)))))
+  (lambda (who expected v)
+    (if (symbol? who)
+        (if (string? expected)
+            (raise (make-argument-exn who "contract violation" expected v))
+            (raise-argument-error 'raise-argument-error "string?" expected))
+        (raise-argument-error 'raise-argument-error "symbol?" who))))
 
 (define-values (raise-syntax-error)
   (lambda args
@@ -2430,4 +2472,4 @@
                                   (raise-argument-error 'syntax-error "syntax" sub-stx)))
                             #f)])
             (raise (make-syntax-exn who msg stx sub-stx)))
-          (error 'syntax-error "2, 3, or 4 arguments" argc)))))
+          (raise-arity-error 'syntax-error '(2 3 4) argc)))))
