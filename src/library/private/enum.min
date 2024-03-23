@@ -20,9 +20,8 @@
         enum-set-complement
         enum-set-projection)
 
-;;
-;;  Type definition
-;;
+;; --------------------------------------------------------
+;; Type
 
 (define-record-type enum-set-type
   (opaque #t)
@@ -51,36 +50,47 @@
       (lambda (enum-type vals)
         (p enum-type vals (apply make-set vals))))))
 
+;; --------------------------------------------------------
+;; Exceptions
+
+(define (non-symbol-error who v)
+  (raise-argument-error who "symbol?" v))
+
+(define (non-enum-set-error who v)
+  (raise-argument-error who "enum-set?" v))
+
+;; --------------------------------------------------------
+;; Procedural layer
+
 (define (make-enumeration xs)
-  (for-each (lambda (x)
-              (unless (symbol? x)
-                (error 'make-enumeration "expected a symbol?" x)))
-            xs)
+  (for-each
+    (lambda (x)
+      (unless (symbol? x)
+        (non-symbol-error 'make-enumeration x)))
+    xs)
   (define enum-type (make-enum-set-type xs))
   (make-enum-set enum-type xs))
 
-;;
-;;  Procedures
-;;
-
 (define (enum-set->list enum-set)
+  (unless (enum-set? enum-set)
+    (non-enum-set-error 'enum-set->list enum-set))
   (enum-set-vals enum-set))
 
 (define (enum-set-universe enum-set)
   (unless (enum-set? enum-set)
-    (error 'enum-set-universe "expected an enum-set?" enum-set))
+    (non-enum-set-error 'enum-set-universe enum-set))
   (define enum-type (enum-set-enum-type enum-set))
   (make-enum-set enum-type (enum-set-type-universe enum-type)))
 
 (define (enum-set-constructor enum-set)
   (unless (enum-set? enum-set)
-    (error 'enum-set-constructor "expected an enum-set?" enum-set))
+    (non-enum-set-error 'enum-set-constructor enum-set))
   (define enum-type (enum-set-enum-type enum-set))
   (define universe (enum-set-type-universe enum-type))
   (lambda (xs)
     (for-each (lambda (x)
                 (unless (symbol? x)
-                  (error 'enum-set-constructor "expected a symbol?" x)))
+                  (non-symbol-error 'enum-set-constructor x)))
               xs)
     (define xs* (apply make-set xs))
     (make-enum-set
@@ -93,12 +103,12 @@
 
 (define (enum-set-indexer enum-set)
   (unless (enum-set? enum-set)
-    (error 'enum-set-indexer "expected an enum-set?" enum-set))
+    (non-enum-set-error 'enum-set-indexer enum-set))
   (define enum-type (enum-set-enum-type enum-set))
   (define universe (enum-set-type-universe enum-type))
   (lambda (x)
     (unless (symbol? x)
-      (error 'enum-set-indexer "expected a symbol?" x))
+      (non-symbol-error 'enum-set-indexer x))
     (index-of x universe)))
 
 (define ($enum-set-member? x enum-set)
@@ -106,7 +116,7 @@
 
 (define (enum-set-member? x enum-set)
   (unless (enum-set? enum-set)
-    (error 'enum-set-member? "expected an enum-set?" enum-set))
+    (non-enum-set-error 'enum-set-member? enum-set))
   ($enum-set-member? x enum-set))
 
 (define (list-subset? l1 l2)
@@ -120,24 +130,24 @@
 
 (define (enum-set-subset? e1 e2)
   (unless (enum-set? e1)
-    (error 'enum-subset? "expected an enum-set?" e1))
+    (non-enum-set-error 'enum-set-subset? e1))
   (unless (enum-set? e2)
-    (error 'enum-subset? "expected an enum-set?" e2))
+    (non-enum-set-error 'enum-set-subset? e2))
   ($enum-set-subset? e1 e2))
 
 (define (enum-set=? e1 e2)
   (unless (enum-set? e1)
-    (error 'enum-subset? "expected an enum-set?" e1))
+    (non-enum-set-error 'enum-set=? e1))
   (unless (enum-set? e2)
-    (error 'enum-set=? "expected an enum-set?" e2))
+    (non-enum-set-error 'enum-set=? e2))
   (and ($enum-set-subset? e1 e2) ($enum-set-subset? e2 e1)))
 
 (define (enum-set-merger name member?)
   (lambda (e1 e2)
     (unless (enum-set? e1)
-      (error name "expected an enum-set?" e1))
+      (non-enum-set-error name e1))
     (unless (enum-set? e2)
-      (error name "expected an enum-set?" e2))
+      (non-enum-set-error name e2))
     (unless (eq? (enum-set-enum-type e1) (enum-set-enum-type e2))
       (error name "unioning enum sets of different types" e1 e2))
     (define enum-type (enum-set-enum-type e1))
@@ -161,7 +171,7 @@
 
 (define (enum-set-complement enum-set)
   (unless (enum-set? enum-set)
-    (error 'enum-set-complement "expected an enum-set?" enum-set))
+    (non-enum-set-error 'enum-set-complement enum-set))
   (define enum-type (enum-set-enum-type enum-set))
   (define vs (enum-set-val-set enum-set))
   (make-enum-set enum-type
@@ -170,9 +180,9 @@
 
 (define (enum-set-projection e1 e2)
   (unless (enum-set? e1)
-    (error 'enum-set-projection "expected an enum-set?" e1))
+    (non-enum-set-error 'enum-set-projection e1))
   (unless (enum-set? e2)
-    (error 'enum-set-projection "expected an enum-set?" e2))
+    (non-enum-set-error 'enum-set-projection e2))
   (define universe (enum-set-type-universe-set (enum-set-enum-type e2)))
   (define constructor (enum-set-constructor e2))
   (constructor
@@ -190,10 +200,10 @@
          (let ([ids (syntax->list #'(values ...))])
            (for-each (lambda (id)
                        (unless (identifier? id)
-                         (error 'define-enumeration "expected an identifier" stx id)))
+                         (raise-syntax-error 'define-enumeration "expected an identifier" stx id)))
                      ids)
            (unless (identifier? #'constructor)
-             (error 'define-enumeration "expected an identifier" stx #'constructor))
+             (raise-syntax-error 'define-enumeration "expected an identifier" stx #'constructor))
            (with-syntax ([(elts ...) (list 'elts '...)]
                          [id (gen-temp-id (symbol->string (syntax->datum #'name)))])
              #'(begin
@@ -203,18 +213,18 @@
                      [(_ elts ...)
                       #'((enum-set-constructor id) '(elts ...))]
                      [(_ . _)
-                      (error 'constructor "bad syntax" stx)]))
+                      (raise-syntax-error 'constructor "bad syntax" stx)]))
                  (define-syntax (name stx)
                    (syntax-case stx ()
                      [(_ elt)
                       (if (identifier? #'elt)
                           (if (member (syntax->datum #'elt) '(values ...))
                               #''elt
-                              (error 'name "identifier not in universe" stx #'elt))
-                          (error 'name "expected an identifier" stx #'elt))]
+                              (raise-syntax-error 'name "identifier not in universe" stx #'elt))
+                          (raise-syntax-error 'name "expected an identifier" stx #'elt))]
                      [(_ . _)
-                      (error 'name "bad syntax" stx)])))))
-         (error 'define-enumeration "expected an identifier" #'name))]
+                      (raise-syntax-error 'name "bad syntax" stx)])))))
+         (raise-syntax-error 'define-enumeration "expected an identifier" #'name))]
     [(_ name value-spec constructor _ ...)
      (raise-syntax-error 'define-enumeration "bad syntax" stx)]
     [(_ name value-spec)

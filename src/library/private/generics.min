@@ -14,9 +14,8 @@
         generics-accessor
         record-type-add-generic!)
 
-;;
-;;  Definitions
-;;
+;; --------------------------------------------------------
+;; Generics type
 
 (define $generics-type
   (make-record-type-descriptor 'generics
@@ -28,9 +27,15 @@
 (define $generics-type-name (record-accessor $generics-type 0))
 (define $generics-type-methods (record-accessor $generics-type 1))
 
+(define (non-generics-type-error who v)
+  (raise-argument-error who "generics interface" v))
+
+(define (non-rtd-error who v)
+  (raise-argument-error who "record-type-descriptor?" v))
+
 (define ($generics-type-method-names generics)
   (unless ($generics-type? generics)
-    (error '$generics-type-method-names "expected a generics interface" generics))
+    (non-generics-type-error '$generics-type-method-names generics))
   (map car ($generics-type-methods generics)))
 
 ;; Records
@@ -40,11 +45,13 @@
 (define (record-type-add-generic! rtd generic impls)
   ;; validate argument types
   (unless ($generics-type? generic)
-    (error 'record-type-add-generics! "expected a generics interface" generic))
+    (non-generics-type-error 'record-type-add-generics! generic))
   (unless (record-type-descriptor? rtd)
-    (error 'record-type-add-generics! "expected a record type descriptor" rtd))
-  (unless (andmap procedure? impls)
-    (error 'record-type-add-generics! "expected procedures" impls))
+    (non-rtd-error 'record-type-add-generics! rtd))
+  (unless (and (list? impls) (andmap procedure? impls))
+    (raise-argument-error 'record-type-add-generics!
+                          "list of procedures"
+                          impls))
   
   ;; validate number of methods
   (define names ($generics-type-method-names generic))
@@ -83,9 +90,9 @@
 
 (define (generics-accessor generic name)
   (unless ($generics-type? generic)
-    (error 'generics-accessor "expected a generics interface" generic))
+    (non-generics-type-error 'generics-accessor generic))
   (unless (symbol? name)
-    (error 'generics-accessor "expected a generics interface" generic))
+    (raise-argument-error 'generics-accessor "symbol?" generic))
   (define idx (index-of name ($generics-type-method-names generic)))
   (unless idx
     (error 'generics-accessor
@@ -93,9 +100,7 @@
            name))
   (lambda (rtd)
     (unless (record-type-descriptor? rtd)
-       (error 'generics-accessor
-              "expected a record type descriptor"
-              rtd))
+      (non-rtd-error #f rtd))
     (define rtd-generics (hashtable-ref $record-generics rtd '()))
     (define maybe-entry (assoc generic rtd-generics))
     (if maybe-entry
@@ -106,7 +111,7 @@
 
 (define (generic-instance? generic)
   (unless ($generics-type? generic)
-    (error 'generic-instance? "expected a generics interface" generic))
+    (non-generics-type-error 'generic-instance? generic))
   (lambda (rtd)
     (and (record-type-descriptor? rtd)
          (let ([generics (hashtable-ref $record-generics rtd #f)])
