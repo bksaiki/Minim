@@ -19,8 +19,8 @@
 (define (assoc k lst)
   (let loop ([xs lst])
     (cond [(null? xs) #f]
-          [(not (pair? xs)) (error 'assoc "not a proper list" lst)]
-          [(not (pair? (car xs))) (error 'assoc "non-pair found in list" lst)]
+          [(not (pair? xs)) (raise-argument-error 'assoc "list?" lst)]
+          [(not (pair? (car xs))) (raise-argument-error 'assoc "list?" lst)]
           [(equal? k (caar xs)) (car xs)]
           [else (loop (cdr xs))])))
 
@@ -95,7 +95,10 @@
            (define-values (inner inner-vars) (loop (caddr args) (+ depth 1)))
            (cond
              [(null? inner-vars)
-              (error 'syntax "no pattern variables before ellipsis in template" stx tstx)]
+              (raise-syntax-error
+                'syntax
+                "no pattern variables before ellipsis in template"
+                stx tstx)]
              [(ormap (lambda (v)
                        (let ([pdepth (cadr v)])
                          (>= pdepth depth)))
@@ -110,7 +113,10 @@
                             (loop (cdr vars) mapped (cons (car vars) const)))))))
               (values (list 'append tstx mapped-vars const-vars inner) inner-vars)]
              [else
-              (error 'syntax "too many ellipses in template" stx (quote-syntax ...))])]
+              (raise-syntax-error
+                'syntax
+                "too many ellipses in template"
+                stx (quote-syntax ...))])]
           [(instr-eq? instr 'vector)
            ; vector
            (define-values (inner vars) (loop (car args) depth))
@@ -233,7 +239,7 @@
          [pattern
           (define pdepth (pattern-variable-depth pattern))
           (when (> pdepth depth)
-            (error 'syntax "missing ellipses" stx tstx))
+            (raise-syntax-error 'syntax "missing ellipses" stx tstx))
           (list 'var tstx (syntax-e tstx) pdepth (pattern-variable-value pattern))]
          [else
           (list 'const tstx (syntax-e tstx))])]

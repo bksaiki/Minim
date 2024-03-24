@@ -70,9 +70,9 @@
                     (for-each (lambda (name) (scope-add! scope name)) (map car (cdr from-module)))
                     (loop2 (cdr imports))]
                    [else
-                    (error 'import "bad import syntax")])]
+                    (raise-syntax-error 'import "bad import syntax" (car exprs) (car imports))])]
                 [else
-                 (error 'import "bad import syntax")]))]
+                 (raise-syntax-error 'import "bad import syntax" (car exprs))]))]
            [(and (pair? expr) (eq? (syntax-e (car expr)) 'export))
             (let loop2 ([exports (cdr expr)])
               (cond
@@ -98,12 +98,12 @@
                                                  (map car (cdr from-module))
                                                  exported))
                           (loop2 (cdr exports))]
-                         [else (error 'export "bad export syntax")])]
-                      [else (error 'export "bad export syntax")])]
+                         [else (raise-syntax-error 'export "bad export syntax" (car exports))])]
+                      [else (raise-syntax-error 'export "bad export syntax" (car exports))])]
                    [else
-                    (error 'export "bad export syntax")])]
+                    (raise-syntax-error 'export "bad export syntax" (car exports))])]
                 [else
-                 (error 'export "bad export syntax")]))]
+                 (raise-syntax-error 'export "bad export syntax" (car exports))]))]
            [else
             (loop (cdr exprs) (cons (car exprs) evalable))])])))
 

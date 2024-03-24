@@ -212,10 +212,10 @@
             (define name
               (let ([p parent*])
                 (if (and p (record-type-sealed? p))
-                    (error 'define-record-type
-                           "parent record type is sealed"
-                           (format "record type: #<record-type:~a>" 'name)
-                           (format "parent type: ~a" p))
+                    (raise-argument-error
+                      'define-record-type
+                      "non-sealed parent record"
+                      p)
                     (make-record-type-descriptor 'name p
                       uid* sealed?* opaque?* '#(fields ...)))))
             (begin

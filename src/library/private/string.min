@@ -7,18 +7,20 @@
 
 (define (substring str start end)
   (define len (string-length str))
-  (cond
-    [(not (string? str)) (error 'substring "expected string? for" str)]
-    [(not (number? start)) (error 'substring "expected number? for" start)]
-    [(not (number? end)) (error 'substring "expected number? for" end)]
-    [(> end len) (error 'substring "index out of bounds" end)]
-    [(> start end) (error 'substring "invalid bounds" start end)]
-    [(= start end) ""]
-    [else
-     (define sstr (make-string (- end start)))
-     (let loop ([i 0] [n start])
-       (cond
-         [(= n end) sstr]
-         [else
-          (string-set! sstr i (string-ref str n))
-          (loop (+ i 1) (+ n 1))]))]))
+  (unless (string? str)
+    (raise-argument-error 'substring "string?" str))
+  (unless (non-negative-integer? start)
+    (raise-argument-error 'substring "non-negative-integer?" start))
+  (unless (non-negative-integer? end)
+    (raise-argument-error 'substring "non-negative-integer?" end))
+  (unless (<= end len)
+    (raise-range-error 'substring str "end" 0 (+ len 1) end))
+  (unless (<= start end)
+    (raise-range-error 'substring str "start" 0 end))
+  (define sstr (make-string (- end start)))
+  (let loop ([i 0] [n start])
+    (cond
+      [(= n end) sstr]
+      [else
+       (string-set! sstr i (string-ref str n))
+       (loop (+ i 1) (+ n 1))])))

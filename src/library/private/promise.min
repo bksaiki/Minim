@@ -44,7 +44,7 @@
 
 (define (lazy p)
   (unless (promise? p)
-    (error 'lazy "promise?" p))
+    (raise-argument-error 'lazy "promise?" p))
   (let loop ([p p])
     (define result
       (cond
@@ -59,7 +59,7 @@
 
 (define (force p)
   (unless (promise? p)
-    (error 'force "promise?" p))
+    (raise-argument-error 'force "promise?" p))
   (cond
     [(promise-forced? p)
      (promise-cache p)]

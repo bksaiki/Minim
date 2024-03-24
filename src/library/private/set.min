@@ -56,47 +56,50 @@
 ;;  Basic operations
 ;;
 
-(define (set-member? s v)
-  (unless (set? s)
-    (error 'set-member? "expected a set" s))
-  (hashtable-contains? (set-store s) v))
+(define (not-set-error who v)
+  (raise-argument-error who "set?" v))
+
+(define (set-member? st v)
+  (unless (set? st)
+    (not-set-error 'set-member? st))
+  (hashtable-contains? (set-store st) v))
 
 (define (set-empty? st)
   (unless (set? st)
-    (error 'set-empty? "expected a set" st))
+    (not-set-error 'set-empty? st))
   (= (hashtable-size (set-store st)) 0))
 
-(define (set-count s)
-  (unless (set? s)
-    (error 'set-count "expected a set" s))
-  (hashtable-size (set-store s)))
+(define (set-count st)
+  (unless (set? st)
+    (not-set-error 'set-count st))
+  (hashtable-size (set-store st)))
 
 (define (set-copy st)
   (unless (set? st)
-    (error 'set-copy "expected a set" st))
+    (not-set-error 'set-copy st))
   (define cp (make-set))
   (for-each (lambda (x) (set-add! cp x)) (set->list st))
   cp)
 
-(define (set-add! s v)
-  (unless (set? s)
-    (error 'set-add! "expected a set" s))
-  (hashtable-set! (set-store s) v #f))
+(define (set-add! st v)
+  (unless (set? st)
+    (not-set-error 'set-add! st))
+  (hashtable-set! (set-store st) v #f))
 
-(define (set-remove! s v)
-  (unless (set? s)
-    (error 'set-remove! "expected a set" s))
-  (hashtable-delete! (set-store s) v))
+(define (set-remove! st v)
+  (unless (set? st)
+    (not-set-error 'set-remove! st))
+  (hashtable-delete! (set-store st) v))
 
 (define (set-clear! st)
   (unless (set? st)
-    (error 'set-clear! "expected a set" st))
+    (not-set-error 'set-clear! st))
   (hashtable-clear! (set-store st)))
 
-(define (set->list s)
-  (unless (set? s)
-    (error 'set->list "expected a set" s))
-  (vector->list (hashtable-keys (set-store s))))
+(define (set->list st)
+  (unless (set? st)
+    (not-set-error 'set->list st))
+  (vector->list (hashtable-keys (set-store st))))
 
 ;;
 ;;  Set comparison
@@ -104,9 +107,9 @@
 
 (define (subset? st st2)
   (unless (set? st)
-    (error 'subset? "expected a set" st))
+    (not-set-error 'subset? st))
   (unless (set? st2)
-    (error 'subset? "expected a set" st2))
+    (not-set-error 'subset? st2))
   (let loop ([elts (set->list st)])
     (cond
       [(null? elts) #t]
@@ -115,16 +118,16 @@
 
 (define (proper-subset? st st2)
   (unless (set? st)
-    (error 'proper-subset? "expected a set" st))
+    (not-set-error 'proper-subset? st))
   (unless (set? st2)
-    (error 'proper-subset? "expected a set" st2))
+    (not-set-error 'proper-subset? st2))
   (and (subset? st st2) (not (subset? st2 st))))
 
 (define (set=? st st2)
   (unless (set? st)
-    (error 'set=? "expected a set" st))
+    (not-set-error 'set=? st))
   (unless (set? st2)
-    (error 'set=? "expected a set" st2))
+    (not-set-error 'set=? st2))
   (and (subset? st st2) (subset? st2 st)))
 
 ;;
@@ -133,12 +136,12 @@
 
 (define (set-map proc st)
   (unless (set? st)
-    (error 'set-map "expected a set" st))
+    (not-set-error 'set-map st))
   (map proc (set->list st)))
 
 (define (set-for-each proc st)
   (unless (set? st)
-    (error 'set-for-each "expected a set" st))
+    (not-set-error 'set-for-each st))
   (for-each proc (set->list st)))
 
 ;;
@@ -146,10 +149,11 @@
 ;;
 
 (define (set-union . ss)
-  (for-each (lambda (s)
-              (unless (set? s)
-                (error 'set-union "expected a set" s)))
-            ss)
+  (for-each
+    (lambda (s)
+      (unless (set? s)
+        (not-set-error 'set-union s)))
+    ss)
   (cond
     [(null? ss)
      (make-set)]
@@ -160,18 +164,20 @@
      c]
     [else
      (define u (make-set))
-     (for-each (lambda (s)
-                 (unless (set? s)
-                   (error 'set-union "expected a set" s))
-                 (for-each (lambda (x) (set-add! u x)) (set->list s)))
-               ss)
+     (for-each
+       (lambda (s)
+         (for-each
+           (lambda (x) (set-add! u x))
+           (set->list s)))
+       ss)
      u]))
 
 (define (set-intersect . ss)
-  (for-each (lambda (s)
-              (unless (set? s)
-                (error 'set-intersect "expected a set" s)))
-            ss)
+  (for-each
+    (lambda (s)
+      (unless (set? s)
+        (not-set-error 'set-intersect s)))
+    ss)
   (cond
     [(null? ss)
      (make-set)]
@@ -198,10 +204,11 @@
           (loop (cdr ss) i*)]))]))
 
 (define (set-subtract st0 . sts)
-  (for-each (lambda (s)
-              (unless (set? s)
-                (error 'set-subtract "expected a set" s)))
-            (cons st0 sts))
+  (for-each
+    (lambda (s)
+      (unless (set? s)
+        (not-set-error 'set-subtract s)))
+    (cons st0 sts))
   (define diff (set-copy st0))
   (let loop ([sts sts])
     (cond
@@ -216,10 +223,11 @@
        (loop (cdr sts))])))
 
 (define (set-symmetric-difference st0 . sts)
-  (for-each (lambda (s)
-              (unless (set? s)
-                (error 'set-symmetric-difference "expected a set" s)))
-            (cons st0 sts))
+  (for-each
+    (lambda (s)
+      (unless (set? s)
+        (not-set-error 'set-symmetric-difference s)))
+    (cons st0 sts))
   (define diff (set-copy st0))
   (let loop ([sts sts])
     (cond

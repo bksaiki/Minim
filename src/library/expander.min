@@ -258,8 +258,7 @@
                                        (cadar assoc)
                                        (loop (cdr assoc)))))])
               (loop $expander-pattern-vars))
-            (error 'get-pattern-variable
-                   "expected symbol?" k))))
+            (raise-argument-error 'get-pattern-variable "symbol?" k))))
     env))
 
 
@@ -511,7 +510,7 @@
                    (define id (car ids))
                    (define xform (car results))
                    (unless (or (procedure? xform) (pattern-variable? xform))
-                     (error 'let-syntaxes "expected a procedure? received" xform))
+                     (raise-argument-error 'let-syntaxes "rocedure?" xform))
                    (define xform-entry (cons id (list xform xforms)))
                    (bind-xforms (cdr ids) (cdr results) (cons xform-entry xforms))]))]))]
         [(or (let-values-form? expr) (letrec-values-form? expr))
@@ -641,8 +640,7 @@
                        (define id (car ids))
                        (define xform (car results))
                        (unless (procedure? xform)
-                         (error 'define-syntaxes "expected a procedure?"
-                                "received" xform))
+                         (raise-argumenterror 'define-syntaxes "procedure?" xform))
                        (define binding (cons id (list xform null)))
                        (define xforms-in-scope (cons binding xforms))
                        (set-add! xform-ids id)
