@@ -640,7 +640,7 @@
                        (define id (car ids))
                        (define xform (car results))
                        (unless (procedure? xform)
-                         (raise-argumenterror 'define-syntaxes "procedure?" xform))
+                         (raise-argument-error 'define-syntaxes "procedure?" xform))
                        (define binding (cons id (list xform null)))
                        (define xforms-in-scope (cons binding xforms))
                        (set-add! xform-ids id)
