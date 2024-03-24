@@ -171,11 +171,6 @@ mobj env_lookup_var(mobj env, mobj var) {
     }
 }
 
-int env_var_is_defined(mobj env, mobj var, int rec) {
-    mobj cell = env_find(env, var, rec);
-    return !minim_falsep(cell);
-}
-
 #define add_value(env, name, c_val)  \
     env_define_var(env, intern(name), c_val);
 
@@ -237,13 +232,8 @@ mobj environment_names(mobj env) {
 
 mobj environment_variable_ref(mobj env, mobj k, mobj fail) {
     // (-> environment symbol any)
-    if (env_var_is_defined(env, k, 0)) {
-        // variable found
-        return env_lookup_var(env, k);
-    } else {
-        // variable not found
-        return fail;
-    }
+    mobj cell = env_find(env, k, 1);
+    return minim_falsep(cell) ? fail : minim_cdr(cell);
 }
 
 mobj environment_variable_set(mobj env, mobj k, mobj v) {
