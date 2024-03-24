@@ -553,6 +553,7 @@ mobj hashtable_keys(mobj ht);
 mobj hashtable_clear(mobj ht);
 
 mobj eq_hashtable_find(mobj ht, mobj k);
+mobj eq_hashtable_find2(mobj ht, mobj k, size_t h);
 void eq_hashtable_set(mobj ht, mobj k, mobj v);
 
 size_t eq_hash(mobj o);

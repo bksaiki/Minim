@@ -340,7 +340,7 @@ static void bind_values(mobj env, mobj ids, mobj res) {
         i = 0;
         for (; !minim_nullp(ids); ids = minim_cdr(ids)) {
             SET_NAME_IF_CLOSURE(minim_car(ids), values_buffer_ref(th, i));
-            env_define_var(env, minim_car(ids), values_buffer_ref(th, i));
+            env_define_var_no_check(env, minim_car(ids), values_buffer_ref(th, i));
             i += 1;
         }
     } else {
@@ -349,7 +349,7 @@ static void bind_values(mobj env, mobj ids, mobj res) {
             result_arity_exn(NULL, count, 1);
         } else {
             SET_NAME_IF_CLOSURE(minim_car(ids), res);
-            env_define_var(env, minim_car(ids), res);
+            env_define_var_no_check(env, minim_car(ids), res);
         }
     }
 }
@@ -422,7 +422,7 @@ application:
         res = do_ccall(minim_cadr(ins));
     } else if (ty == bind_symbol) {
         // bind
-        env_define_var(env, minim_cadr(ins), res);
+        env_define_var_no_check(env, minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == bind_values_symbol) {
         // bind-values

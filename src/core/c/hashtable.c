@@ -90,10 +90,14 @@ static mobj hashtable_copy2(mobj ht) {
 }
 
 mobj eq_hashtable_find(mobj ht, mobj k) {
+    return eq_hashtable_find2(ht, k, eq_hash(k));
+}
+
+mobj eq_hashtable_find2(mobj ht, mobj k, size_t h) {
     mobj b, bi;
     size_t i;
 
-    i = eq_hash(k) % minim_hashtable_alloc(ht);
+    i = h % minim_hashtable_alloc(ht);
     b = minim_hashtable_bucket(ht, i);
     for (bi = b; !minim_nullp(bi); bi = minim_cdr(bi)) {
         if (minim_eqp(minim_caar(bi), k)) {
