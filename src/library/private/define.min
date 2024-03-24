@@ -10,9 +10,9 @@
     (lambda (name define-stx values-stx)
       (lambda (stx)
         (if (not (stx-list? stx))
-            (syntax-error name "bad syntax" stx)
+            (raise-syntax-error name "bad syntax" stx)
             (let-values ([(e) (stx-cdr stx)]
-                         [(serr) (lambda (msg at) (syntax-error name msg stx at))])
+                         [(serr) (lambda (msg at) (raise-syntax-error name msg stx at))])
               (if (stx-null? e)
                   (serr "bad syntax" stx)
                   (let-values ([(id) (stx-car e)]

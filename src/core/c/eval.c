@@ -6,9 +6,8 @@
 
 #define SET_NAME_IF_CLOSURE(name, o) { \
     if (minim_closurep(o)) { \
-        mobj code = minim_closure_code(o); \
-        if (minim_code_name(code) == NULL) { \
-            minim_code_name(code) = minim_symbol(name); \
+        if (minim_falsep(minim_closure_name(o))) { \
+            minim_closure_name(o) = name; \
         } \
     } \
 }
@@ -18,80 +17,52 @@
 //
 
 void bad_syntax_exn(mobj expr) {
-    fprintf(stderr, "%s: bad syntax\n", minim_symbol(minim_car(expr)));
-    fprintf(stderr, " at: ");
-    write_object(stderr, expr);
-    fputc('\n', stderr);
-    minim_shutdown(1);
+    minim_error1(minim_symbol(minim_car(expr)), "bad syntax", expr);
 }
 
 void bad_type_exn(const char *name, const char *type, mobj x) {
-    fprintf(stderr, "%s: type violation\n", name);
-    fprintf(stderr, " expected: %s\n", type);
-    fprintf(stderr, " received: ");
-    write_object(stderr, x);
-    fputc('\n', stderr);
-    minim_shutdown(1);
+    minim_error2(name, "type violation", Mstring(type), x);
 }
 
 void arity_mismatch_exn(mobj proc, size_t actual) {
     mobj code, arity;
+    char *name;
 
-    // print name and extract arity
+    if (minim_falsep(minim_closure_name(proc))) {
+        name = NULL;
+    } else {
+        name = minim_symbol(minim_closure_name(proc));
+    }
+
     code = minim_closure_code(proc);
-    if (minim_code_name(code))
-        fprintf(stderr, "%s: ", minim_code_name(code));
-
     arity = minim_code_arity(code);
     if (minim_fixnump(arity)) {
         // exact arity
-        fprintf(
-            stderr, 
-            "expected %ld arguments, received %ld\n",
-            minim_fixnum(arity),
-            actual
-        );
+        minim_error2(name, "arity mismatch", arity, Mfixnum(actual));
     } else {
         // range of arities
         mobj min_arity = minim_car(arity);
         mobj max_arity = minim_cdr(arity);
         if (minim_falsep(max_arity)) {
             // at-least arity
-            fprintf(
-                stderr, 
-                "expected at least %ld arguments, received %ld\n",
-                minim_fixnum(min_arity),
-                actual
+            minim_error2(
+                name,
+                "arity mismatch, expected at least",
+                min_arity, Mfixnum(actual)
             );
         } else {
             // range arity
-            fprintf(
-                stderr, 
-                "expected between %ld and %ld arguments, received %ld\n",
-                minim_fixnum(min_arity),
-                minim_fixnum(max_arity),
-                actual
+            minim_error3(
+                name,
+                "arity mismatch, expected between",
+                min_arity, max_arity, Mfixnum(actual)
             );
         }
     }
-
-    minim_shutdown(1);
 }
 
 void result_arity_exn(const char *name, short expected, short actual) {
-    if (name == NULL) {
-        fprintf(stderr, "result arity mismatch\n");
-    } else {
-        fprintf(stderr, "%s: result arity mismatch\n", name);
-    }
-
-    fprintf(stderr, "  expected: %d, received: %d\n", expected, actual);
-    minim_shutdown(1);
-}
-
-void uncallable_prim_exn(const char *name) {
-    fprintf(stderr, "%s: should not be called directly", name);
-    minim_shutdown(1);
+    minim_error2(name, "result arity mismatch", Mfixnum(expected), Mfixnum(actual));
 }
 
 //
@@ -99,14 +70,15 @@ void uncallable_prim_exn(const char *name) {
 //
 
 #define stack_frame_size(th, addt)  ((current_ac(th) + (addt)) * ptr_size)
+#define stack_cushion               (8 * ptr_size)
 
-static int stack_overflowp(size_t argc) {
+static int stack_overflowp(size_t size) {
     minim_thread *th;
     mobj sseg;
     
     th = current_thread();
     sseg = current_segment(th);
-    return PTR_ADD(current_sfp(th), stack_frame_size(th, argc)) >= stack_seg_end(sseg);
+    return PTR_ADD(current_sfp(th), size) >= PTR_ADD(stack_seg_end(sseg), -stack_cushion);
 }
 
 static void grow_stack(size_t size) {
@@ -125,11 +97,23 @@ static void grow_stack(size_t size) {
     current_sfp(th) = stack_seg_base(sseg);
 }
 
+void reserve_stack(minim_thread *th, size_t argc) {
+    size_t req = argc * ptr_size;
+    if (stack_overflowp(req))
+        grow_stack(req);
+}
+
+void set_arg(minim_thread *th, size_t i, mobj x) {
+    current_sfp(th)[i] = x;
+}
+
+mobj get_arg(minim_thread *th, size_t i) {
+    return current_sfp(th)[i];
+}
+
 static void maybe_grow_stack(size_t argc) {
     minim_thread *th = current_thread();
-    if (stack_overflowp(argc)) {
-        grow_stack(stack_frame_size(th, argc));
-    }
+    reserve_stack(th, current_ac(th) + argc);
 }
 
 static void push_arg(mobj x) {
@@ -229,10 +213,7 @@ static mobj do_ccall(mobj (*prim)()) {
     case 6:
         return prim(args[0], args[1], args[2], args[3], args[4], args[5]);
     default:
-        fprintf(stderr, "error: called unsafe primitive with too many arguments\n");
-        fprintf(stderr, " received: ");
-        write_object(stderr, current_cp(th));
-        minim_shutdown(1);
+        minim_error1(NULL, "cannot call kernel function with 7 or more arguments", current_cp(th));
     }
 }
 
@@ -243,9 +224,7 @@ static mobj do_rest(size_t idx) {
     th = current_thread();
     ac = current_ac(th);
     if (idx > ac) {
-        fprintf(stderr, "do_rest(): starting index out of bounds\n");
-        fprintf(stderr, " idx=%ld, ac=%ld\n", idx, ac);
-        minim_shutdown(1);
+        minim_error2("do_rest", "base index exceed argument count", Mfixnum(idx), Mfixnum(ac));
     }
 
     if (idx == ac) {
@@ -269,7 +248,7 @@ static mobj do_rest(size_t idx) {
 static void do_apply() {
     minim_thread *th;
     mobj *sfp, rest;
-    size_t i, ac, len;
+    size_t i, ac, len, req;
 
     th = current_thread();
     sfp = current_sfp(th);
@@ -286,10 +265,11 @@ static void do_apply() {
     // check if we have room for the application
     current_ac(th) -= 2;
     len = list_length(rest);
-    if (stack_overflowp(len)) {
+    req = stack_frame_size(th, len);
+    if (stack_overflowp(req)) {
         mobj *nsfp;
 
-        grow_stack(stack_frame_size(th, len));
+        grow_stack(req);
         nsfp = current_sfp(th);
         for (i = 0; i < ac; i++)
             nsfp[i] = sfp[i];
@@ -378,34 +358,34 @@ static void bind_values(mobj env, mobj ids, mobj res) {
 //  Evaluator
 //
 
-mobj eval_expr(mobj expr, mobj env) {
+static mobj eval_istream(mobj *istream, mobj env) {
     minim_thread *th;
-    mobj *istream;
-    mobj code, ins, ty, res, penv;
-
-    // compile to instructions
-    code = compile_expr(expr);
-
-    // set up instruction evaluator
+    mobj ins, ty, res, penv;
+    
+    // setup interpreter
     th = current_thread();
     current_ac(th) = 0;
-    istream = minim_code_it(code);
     penv = env;
     res = NULL;
+
+    // push entry continuation frame
+    push_frame(env, minim_null);
+
+    // possibly handle long jump back into the procedure
+    if (setjmp(*current_reentry(th)) != 0) {
+        // long jumped from somewhere mysterious
+        // only valid long jumps require an immediate function application
+        goto application;
+    }
 
 // instruction processor
 loop:
     ins = *istream;
     if (!minim_consp(ins)) {
-        if (minim_stringp(ins)) {
-            // label (skip)
+        // TODO: this check should not be required
+        if (minim_stringp(ins))
             goto next;
-        } else {
-            fprintf(stderr, "not bytecode: ");
-            write_object(stderr, ins);
-            fprintf(stderr, "\n");
-            minim_shutdown(1);
-        }
+        minim_error1(NULL, "executing non-bytecode", ins);
     }
 
     ty = minim_car(ins);
@@ -421,7 +401,8 @@ loop:
         current_cp(th) = res;
     } else if (ty == push_symbol) {
         // push
-        push_arg(force_single_value(res));
+        res = force_single_value(res);
+        push_arg(res);
     } else if (ty == pop_symbol) {
         // pop
         res = pop_arg();
@@ -472,7 +453,7 @@ application:
         res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
     } else if (ty == get_env_symbol) {
         // get-env
-        if (current_continuation(th) == minim_null) {
+        if (minim_nullp(current_continuation(th))) {
             res = penv;
         } else {
             res = continuation_env(current_continuation(th));
@@ -481,13 +462,12 @@ application:
         // do-apply
         do_apply();
         goto application;
-    } else if (ty == do_error_symbol) {
-        // do-error
-        do_error(current_ac(th), current_sfp(th));
-        goto unreachable;
     } else if (ty == do_eval_symbol) {
         // do-eval
         goto do_eval;
+    } else if (ty == do_raise_symbol) {
+        // do-raise
+        goto do_raise;
     } else if (ty == do_rest_symbol) {
         // do-rest
         res = do_rest(minim_fixnum(minim_cadr(ins)));
@@ -524,10 +504,7 @@ application:
         // check arity
         check_arity(env, minim_cadr(ins));
     } else {
-        fprintf(stderr, "invalid bytecode: ");
-        write_object(stderr, ins);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
+        minim_error1(NULL, "invalid bytecode", ins);
     }
 
 // move to next instruction
@@ -535,14 +512,13 @@ application:
 next:
     istream++;
     if (*istream == NULL) {
-        fprintf(stderr, "eval_expr(), instruction sequence unexpectedly ended\n");
-        minim_shutdown(1);
+        minim_error(NULL, "bytecode out of bounds");
     }
     goto loop;
 
 // call closure
 call_closure:
-    code = minim_closure_code(current_cp(th));
+    mobj code = minim_closure_code(current_cp(th));
     // set instruction stream and env
     istream = minim_code_it(code);
     env = minim_closure_env(current_cp(th));
@@ -560,31 +536,39 @@ do_eval:
     current_ac(th) = 0;
     goto application;
 
+// performs `do-raise` instruction
+do_raise:
+    // check if an error handler has been installed
+    args = current_sfp(th);
+    if (minim_falsep(error_handler(th))) {
+        boot_error_proc(minim_false, Mstring("unhandled exception"), args[0]);
+    }
+
+    // set procedure to handler and call
+    current_cp(th) = error_handler(th);
+    goto application;
+
 // restores previous continuation
 restore_frame:
-    mobj cc;
-
-    // check if stack is fully unwound
-    if (minim_nullp(current_continuation(th))) {
-        // this is the only normal exit point from this function
-        return res;
-    }
-    
-    // otherwise, restore the old instruction stream and environment
+    // restore the old instruction stream and environment
     // and seek to the expected label
-    cc = pop_frame();
+    mobj cc = pop_frame();
     env = continuation_env(cc);
     istream = continuation_pc(cc);
+    if (minim_nullp(istream)) {
+        // we reached the entry continuation frame
+        // so the "next" thing to do is exit
+        return res;
+    }
+
+    // otherwise execute at *istream
     goto loop;
 
 not_procedure:
-    fprintf(stderr, "expected procedure\n");
-    fprintf(stderr, " got: ");
-    write_object(stderr, current_cp(th));
-    fprintf(stderr, "\n");
-    minim_shutdown(1);
+    minim_error1(NULL, "expected procedure", current_cp(th));
+}
 
-unreachable:
-    fprintf(stderr, "unreachable");
-    minim_shutdown(1);
+mobj eval_expr(mobj expr, mobj env) {
+    mobj code = compile_expr(expr);
+    return eval_istream(minim_code_it(code), env);
 }

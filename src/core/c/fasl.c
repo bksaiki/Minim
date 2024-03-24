@@ -265,7 +265,7 @@ static void write_fasl_pair(FILE *out, mobj p) {
     mobj it;
     long len;
 
-    len = improper_list_length(p);
+    len = list_length(p);
     write_fasl_uptr(out, len);
     for (it = p; minim_consp(it); it = minim_cdr(it))
         write_fasl(out, minim_car(it));

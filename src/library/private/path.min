@@ -29,7 +29,7 @@
 
 (define (split-path path)
   (unless (string? path)
-    (error 'split-path "expected string?" path))
+    (raise-argument-error 'split-path "string?" path))
   (define path-elems (reverse (path->list path)))
   (cond
     [(pair? (cdr path-elems))
@@ -41,7 +41,7 @@
 
 (define (path->list path)
   (unless (string? path)
-    (error 'path->list "expected string?" path))
+    (raise-argument-error 'path->list "string?" path))
   (let loop ([path path] [accum '()])
     (cond
       [(= (string-length path) 0)

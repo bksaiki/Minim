@@ -36,11 +36,9 @@ mobj Menv2(mobj prev, size_t size) {
 }
 
 static void not_environment_exn(const char *name, mobj *frame) {
-    fprintf(stderr, "%s: not an environment frame: ", name);
-    write_object(stderr, frame);
-    fprintf(stderr, "\n");
-    minim_shutdown(1);
+    minim_error1(name, "not an environment frame", frame);
 }
+
 void env_define_var_no_check(mobj env, mobj var, mobj val) {
     mobj frame, new_frame, bind;
     long frame_size, i;
@@ -145,8 +143,7 @@ mobj env_set_var(mobj env, mobj var, mobj val) {
         env = minim_env_prev(env);
     }
 
-    fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
-    minim_shutdown(1);
+    minim_error1("env_set_var", "unbound variable", var);
 }
 
 int env_var_is_defined(mobj env, mobj var, int recursive) {
@@ -211,8 +208,9 @@ mobj env_lookup_var(mobj env, mobj var) {
         env = minim_env_prev(env);
     }
 
-    fprintf(stderr, "unbound variable: %s\n", minim_symbol(var));
-    minim_shutdown(1);
+    write_object(stderr, var);
+    fprintf(stderr, "\n");
+    minim_error1("env_lookup_var", "unbound variable", var);
 }
 
 #define add_value(env, name, c_val)  \
@@ -262,12 +260,6 @@ mobj empty_environment() {
 mobj environment_proc() {
     // (-> environment)
     return base_env;
-}
-
-mobj current_environment() {
-    // (-> environment)
-    fprintf(stderr, "current-environment: should not be called directly");
-    minim_shutdown(1);
 }
 
 mobj extend_environment(mobj env) {

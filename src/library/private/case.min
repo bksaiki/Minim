@@ -28,11 +28,11 @@
               (loop (cdr clauses))]
              [((_ ...) . _)
               (syntax-case clause ()
-                [(_) (syntax-error 'case "missing expression after datum sequence" stx clause)]
-                [_ (syntax-error 'case "not a datum sequence" stx clause)])]
-             [(_ . _) (syntax-error 'case "not a datum sequence" stx clause)]
-             [_ (syntax-error 'case "ill-formed clause" stx clause)]))))]
-    [_ (syntax-error 'case "bad syntax" stx)]))
+                [(_) (raise-syntax-error 'case "missing expression after datum sequence" stx clause)]
+                [_ (raise-syntax-error 'case "not a datum sequence" stx clause)])]
+             [(_ . _) (raise-syntax-error 'case "not a datum sequence" stx clause)]
+             [_ (raise-syntax-error 'case "ill-formed clause" stx clause)]))))]
+    [_ (raise-syntax-error 'case "bad syntax" stx)]))
 
 (define-syntax (case/else stx)
   (syntax-case stx (else)
@@ -70,10 +70,10 @@
              [((_ ...) _ ...)
               (loop (cdr clauses))]
              [((_ ...) . _)
-              (syntax-error 'case-lambda "missing body after formals" stx clause)]
+              (raise-syntax-error 'case-lambda "missing body after formals" stx clause)]
              [_
-              (syntax-error 'case-lambda "ill-formed clause" stx clause)]))))]
-    [_ (syntax-error 'case-lambda "bad syntax" stx)]))
+              (raise-syntax-error 'case-lambda "ill-formed clause" stx clause)]))))]
+    [_ (raise-syntax-error 'case-lambda "bad syntax" stx)]))
 
 (define-syntax case-lambda/clause
   (syntax-rules ()

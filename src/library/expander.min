@@ -128,41 +128,41 @@
 (define (check-define-syntaxes/values-form! name form)
   (define rib0 (stx-cdr form))
   (when (stx-null? rib0)
-    (syntax-error name "bad syntax" form))
+    (raise-syntax-error name "bad syntax" form))
   (define ids (syntax->list (stx-car rib0)))
   (define rib1 (stx-cdr rib0))
   (unless (and (list? ids) (andmap identifier? ids))
-    (syntax-error name "not identifiers" form ids))
+    (raise-syntax-error name "not identifiers" form ids))
   (when (stx-null? rib1)
-    (syntax-error name "expected an expression after identifiers" form))
+    (raise-syntax-error name "expected an expression after identifiers" form))
   (define rib2 (stx-cdr rib1))
   (unless (stx-null? rib2)
-    (syntax-error name "too many expressions" form)))
+    (raise-syntax-error name "too many expressions" form)))
 
 ; checks if a `let-syntaxes` / `let-values` form is valid
 ; assumes form is `(<name> . <rest>)
 (define (check-let-syntaxes/values-form! name form)
   (define rib (stx-cdr form))
   (when (stx-null? rib)
-    (syntax-error name "bad syntax" form))
+    (raise-syntax-error name "bad syntax" form))
   (define bindings (syntax->list (stx-car rib)))
   (define bind-rib (stx-cdr rib))
   (when (null? bind-rib)
-    (syntax-error name "missing body" form))
+    (raise-syntax-error name "missing body" form))
   (unless (or (list? bind-rib)
               (and (syntax? bind-rib)
                    (list? (syntax->list bind-rib))))
-    (syntax-error name "not a sequence of bindings" form bindings))
+    (raise-syntax-error name "not a sequence of bindings" form bindings))
   (unless (list? bindings)
-    (syntax-error name "expected a sequence of expressions after the bindings" form))
+    (raise-syntax-error name "expected a sequence of expressions after the bindings" form))
   (let loop ([bindings bindings])
     (unless (null? bindings)
       (define bind (syntax->list (car bindings)))
       (unless (and (list? bind) (= (length bind) 2))
-        (syntax-error name "expected a sequence of expressions after the bindings" form))
+        (raise-syntax-error name "expected a sequence of expressions after the bindings" form))
       (define ids (syntax->list (car bind)))
       (unless (and (list? ids) (andmap identifier? ids))
-        (syntax-error name "not identifiers" form ids))
+        (raise-syntax-error name "not identifiers" form ids))
       (loop (cdr bindings)))))
 
 ; checks if a `set!` form is valid
@@ -170,68 +170,68 @@
 (define (check-set!-form! form)
   (define rib0 (stx-cdr form))
   (when (stx-null? rib0)
-    (syntax-error 'set! "bad syntax" form))
+    (raise-syntax-error 'set! "bad syntax" form))
   (define id (stx-car rib0))
   (define rib1 (stx-cdr rib0))
   (unless (identifier? id)
-    (syntax-error 'set! "not identifier" form id))
+    (raise-syntax-error 'set! "not identifier" form id))
   (when (stx-null? rib1)
-    (syntax-error 'set! "expected an expression after identifier" form))
+    (raise-syntax-error 'set! "expected an expression after identifier" form))
   (define rib2 (stx-cdr rib1))
   (unless (stx-null? rib2)
-    (syntax-error 'set! "too many expressions" form)))
+    (raise-syntax-error 'set! "too many expressions" form)))
 
 ; checks if a `lambda` form is valid
 ; assues form is `(lambda . <rest>)`
 (define (check-lambda-form! form)
   (define rib0 (stx-cdr form))
   (when (stx-null? rib0)
-    (syntax-error #f "missing formals" form))
+    (raise-syntax-error #f "missing formals" form))
   (define formals (stx-car rib0))
   (define rib1 (stx-cdr rib0))
   (when (null? rib1)
-    (syntax-error #f "missing expression after formals" form))
+    (raise-syntax-error #f "missing expression after formals" form))
   (define rib2 (stx-cdr rib1))
   (unless (or (list? rib2)
               (and (syntax? rib2)
                    (list? (syntax->list rib2))))
-    (syntax-error #f "expected a sequence of expressions after formals" form)))
+    (raise-syntax-error #f "expected a sequence of expressions after formals" form)))
 
 ; checks if a `begin` form is valid
 ; assues form is `(<name> . <rest>)`
 (define (check-begin-form! form)
   (unless (syntax->list form)
-    (syntax-error 'begin "bad syntax" form)))
+    (raise-syntax-error 'begin "bad syntax" form)))
 
 ; checks if a unary form is valid, i.e. `(<name> <expr>)`.
 (define (check-1ary-form! name form)
   (define rib0 (stx-cdr form))
   (when (stx-null? rib0)
-    (syntax-error name "expected an expression" form))
+    (raise-syntax-error name "expected an expression" form))
   (define rib1 (stx-cdr rib0))
   (unless (stx-null? rib1)
-    (syntax-error name "too many expressions" form)))
+    (raise-syntax-error name "too many expressions" form)))
 
 ; checks if an `if` form is valid, i.e. `(if <cond> <if-true> <if-false>)`.
 (define (check-if-form! form)
   (define rib (stx-cdr form))
   (when (stx-null? rib)
-    (syntax-error 'if "bad syntax" form))
+    (raise-syntax-error 'if "bad syntax" form))
   (define cond-rib (stx-cdr rib))
   (when (stx-null? cond-rib)
-    (syntax-error 'if "bad syntax" form))
+    (raise-syntax-error 'if "bad syntax" form))
   (define ift-rib (stx-cdr cond-rib))
   (when (stx-null? ift-rib)
-    (syntax-error 'if "missing an \"else\" statement" form))
+    (raise-syntax-error 'if "missing an \"else\" statement" form))
   (define iff-rib (stx-cdr ift-rib))
   (unless (stx-null? iff-rib)
-    (syntax-error 'if "too many expressions" form)))
+    (raise-syntax-error 'if "too many expressions" form)))
 
 ; checks for a duplicate identifier, raising an exception if one is encountered
 (define (check-duplicate-identifier! form name ids new-ids)
   (define dup (duplicate-identifier ids new-ids))
   (when dup
-    (syntax-error name
+    (raise-syntax-error name
                   "duplicate identifier"
                   form
                   (datum->syntax dup))))
@@ -258,8 +258,7 @@
                                        (cadar assoc)
                                        (loop (cdr assoc)))))])
               (loop $expander-pattern-vars))
-            (error 'get-pattern-variable
-                   "expected symbol?" k))))
+            (raise-argument-error 'get-pattern-variable "symbol?" k))))
     env))
 
 
@@ -511,7 +510,7 @@
                    (define id (car ids))
                    (define xform (car results))
                    (unless (or (procedure? xform) (pattern-variable? xform))
-                     (error 'let-syntaxes "expected a procedure? received" xform))
+                     (raise-argument-error 'let-syntaxes "rocedure?" xform))
                    (define xform-entry (cons id (list xform xforms)))
                    (bind-xforms (cdr ids) (cdr results) (cons xform-entry xforms))]))]))]
         [(or (let-values-form? expr) (letrec-values-form? expr))
@@ -581,7 +580,7 @@
                   (datum->syntax (map loop stx-lst))
                   (error 'expand/expr "invalid application" expr))))]
         [else
-         (syntax-error 'expand/expr "bad syntax" expr)])))
+         (raise-syntax-error 'expand/expr "bad syntax" expr)])))
 
   ; module context
   ;  `define-values` => defers expansion until all definitions have been processed
@@ -641,8 +640,7 @@
                        (define id (car ids))
                        (define xform (car results))
                        (unless (procedure? xform)
-                         (error 'define-syntaxes "expected a procedure?"
-                                "received" xform))
+                         (raise-argument-error 'define-syntaxes "procedure?" xform))
                        (define binding (cons id (list xform null)))
                        (define xforms-in-scope (cons binding xforms))
                        (set-add! xform-ids id)

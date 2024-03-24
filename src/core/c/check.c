@@ -2,6 +2,16 @@
 
 #include "../minim.h"
 
+static void assert_identifier(mobj expr, mobj id) {
+    if (!minim_symbolp(id)) {
+        minim_error2(
+            minim_symbol(minim_car(expr)),
+            "expected identifier",
+            expr, id
+        );
+    }
+}
+
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum>)
 static void check_1ary_syntax(mobj expr) {
@@ -124,19 +134,11 @@ static void check_begin(mobj expr) {
 static void check_lambda(mobj expr) {
     mobj args = minim_cadr(expr);
     for (; minim_consp(args); args = minim_cdr(args)) {
-        if (!minim_symbolp(minim_car(args))) {
-            fprintf(stderr, "expected a identifier for an argument:\n ");
-            write_object(stderr, expr);
-            fputc('\n', stderr);
-            minim_shutdown(1);
-        }
+        assert_identifier(expr, minim_car(args));
     }
 
-    if (!minim_nullp(args) && !minim_symbolp(args)) {
-        fprintf(stderr, "expected an identifier for the rest argument:\n ");
-        write_object(stderr, expr);
-        fputc('\n', stderr);
-        minim_shutdown(1);
+    if (!minim_nullp(args)) {
+        assert_identifier(expr, args);
     }
 }
 
@@ -197,12 +199,14 @@ loop:
 
             expr = minim_car(expr);
             goto loop;
-        } else {
+        } else if (minim_listp(expr)) {
             // application
             check_begin(expr);
             for (expr = minim_cdr(expr); !minim_nullp(expr); expr = minim_cdr(expr)) {
                 check_expr(minim_car(expr));
             }
+        } else {
+            minim_error1("", "malformed application", expr);
         }
     } else if (minim_truep(expr) ||
         minim_falsep(expr) ||
@@ -216,15 +220,9 @@ loop:
         return;
     } else if (minim_nullp(expr)) {
         // empty application
-        fprintf(stderr, "missing procedure expression\n");
-        fprintf(stderr, "  in: ");
-        write_object(stderr, expr);
-        minim_shutdown(1);
+        minim_error1(NULL, "missing procedure expression", expr);
     } else {
         // unknown
-        fprintf(stderr, "bad syntax\n");
-        write_object(stderr, expr);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
+        minim_error1(NULL, "bad syntax", expr);
     }
 }

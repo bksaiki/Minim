@@ -27,7 +27,6 @@ void init_prims(mobj env) {
     add_procedure("null?", nullp_proc, 1);
     add_procedure("void?", voidp_proc, 1);
     add_procedure("eof-object?", eofp_proc, 1);
-    add_procedure("procedure?", procp_proc, 1);
 
     add_procedure("boolean?", boolp_proc, 1);
     add_procedure("not", not_proc, 1);
@@ -177,7 +176,11 @@ void init_prims(mobj env) {
     add_procedure("$environment-ref", environment_variable_ref, 3);
     add_procedure("$environment-set!", environment_variable_set, 3);
 
-    add_procedure("procedure-arity", procedure_arity_proc, 1);
+    add_procedure("procedure?", procp_proc, 1);
+    add_procedure("$procedure-arity", procedure_arity_proc, 1);
+    add_procedure("$procedure-name", procedure_name_proc, 1);
+    add_procedure("$procedure-rename", procedure_rename_proc, 2);
+
     add_cprocedure("identity", compile_identity);
     add_cprocedure("apply", compile_apply);
     add_cprocedure("call-with-values", compile_call_with_values);
@@ -189,6 +192,7 @@ void init_prims(mobj env) {
     add_procedure("string-port?", string_portp_proc, 1);
     add_procedure("current-input-port", current_input_port, 0);
     add_procedure("current-output-port", current_output_port, 0);
+    add_procedure("current-error-port", current_error_port, 0);
     add_procedure("$open-input-file", open_input_file, 1);
     add_procedure("$open-output-file", open_output_file, 1);
     add_procedure("$open-input-string", open_input_string, 1);
@@ -208,7 +212,8 @@ void init_prims(mobj env) {
 
     add_procedure("$fasl-read", fasl_read_proc, 1);
     add_procedure("$fasl-write", fasl_write_proc, 2);
-    
+
+    add_cprocedure("eval", compile_eval);
     add_procedure("$load", load_proc, 1);
     add_procedure("$exit", exit_proc, 1);
     add_procedure("version", version_proc, 0);
@@ -216,6 +221,10 @@ void init_prims(mobj env) {
     add_procedure("$current-directory", current_directory_proc, 0);
     add_procedure("$current-directory-set!", current_directory_set_proc, 1);
 
-    add_cprocedure("eval", compile_eval);
-    add_cprocedure("error", compile_error);
+    /// add_procedure("$c-error-handler", c_error_handler_proc, 0);
+    add_procedure("$c-error-handler", c_error_handler_set_proc, 1);
+    add_procedure("$current-error-handler", error_handler_proc, 0);
+    add_procedure("$current-error-handler-set!", error_handler_set_proc, 1);
+    add_procedure("$boot-error", boot_error_proc, 3);
+    add_cprocedure("raise", compile_raise);
 }

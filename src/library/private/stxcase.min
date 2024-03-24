@@ -9,7 +9,7 @@
 (define-syntax (syntax-case stx)
   (define l (syntax->list stx))
   (unless (and (list? l) (> (length l) 3))
-    (syntax-error 'syntax-case "bad syntax" stx))
+    (raise-syntax-error 'syntax-case "bad syntax" stx))
   (let ([arg (quote-syntax arg)]
         [expr (cadr l)]
         [lits (caddr l)]
@@ -17,7 +17,7 @@
     (for-each
       (lambda (x)
         (unless (identifier? x)
-          (syntax-error
+          (raise-syntax-error
             'syntax-case
             "literal is not an identifier"
             stx
@@ -26,7 +26,7 @@
     (for-each
       (lambda (cl)
         (unless (and (stx-list? cl) (<= 2 (length (syntax->list cl)) 3))
-          (syntax-error
+          (raise-syntax-error
             'syntax-case
             "expected a clause with a pattern, optional guard expression, and expression"
             stx
@@ -121,7 +121,10 @@
              ;; datum
              vars]
             [else
-             (error 'syntax-case "improper pattern" stx pattern0)])))]
+             (raise-syntax-error 'syntax-case
+                                 "improper pattern"
+                                 stx
+                                 pattern0)])))]
 
           [gen-matcher
       (lambda (pattern0)
@@ -147,10 +150,10 @@
                      [(stx-...? (stx-car pat))
                       (cond
                         [ellipsis?
-                         (syntax-error 'syntax-case "ellipsis in pattern follows other ellipsis"
+                         (raise-syntax-error 'syntax-case "ellipsis in pattern follows other ellipsis"
                                        pattern (stx-car pat))]
                         [(= idx-be 0)
-                         (syntax-error 'syntax-case "ellipsis in pattern not preceded by a subpattern"
+                         (raise-syntax-error 'syntax-case "ellipsis in pattern not preceded by a subpattern"
                                        pattern (stx-car pat))]
                         [else
                          (loop (stx-cdr pat) idx-be idx-ae #t)])]
@@ -353,10 +356,10 @@
                      (and (identifier? next) (eq? (syntax-e next) '...)))
                    (cond
                      [ellipsis?
-                      (syntax-error 'syntax-case "ellipsis in pattern follows other ellipsis"
+                      (raise-syntax-error 'syntax-case "ellipsis in pattern follows other ellipsis"
                                     pattern (vector-ref v i))]
                      [(= idx-be 0)
-                      (syntax-error 'syntax-case "ellipsis in pattern not preceded by a subpattern"
+                      (raise-syntax-error 'syntax-case "ellipsis in pattern not preceded by a subpattern"
                                     pattern (vector-ref v i))]
                      [else
                       (loop (+ i 1) idx-be idx-ae #t)])]
@@ -597,7 +600,10 @@
                      #f))
                  arg))]
             [else
-             (error 'syntax-case "improper pattern" stx pattern0)]))
+             (raise-argument-error 'syntax-case
+                                   "improper pattern"
+                                   stx
+                                   pattern0)]))
           
         (gen-match/expr pattern0 arg))])
       
@@ -620,7 +626,7 @@
                      [results results])
             (if (null? patterns)
                 (list
-                  (quote-syntax syntax-error)
+                  (quote-syntax raise-syntax-error)
                   #f
                   "bad syntax"
                   arg)

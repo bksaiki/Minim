@@ -103,7 +103,6 @@ static mobj write_code(mobj ins, mobj reloc, mobj arity) {
 
     // allocate code object and fill header
     code = Mcode(list_length(ins));
-    minim_code_name(code) = NULL;
     minim_code_reloc(code) = minim_null;
     minim_code_arity(code) = arity;
     istream = minim_code_it(code);
@@ -210,11 +209,8 @@ static mobj cenv_template_ref(mobj cenv, size_t i) {
     
     tmpls = list_reverse(minim_unbox(cenv_tmpls(cenv)));
     for (j = i; j > 0; j--) {
-        if (minim_nullp(tmpls)) {
-            fprintf(stderr, "cenv_template_ref(): index out of bounds %ld\n", i);
-            minim_shutdown(1);
-        }
-
+        if (minim_nullp(tmpls))
+            minim_error1("cenv_template_ref", "index out of bounds", Mfixnum(i));
         tmpls = minim_cdr(tmpls);
     }
 
@@ -587,17 +583,13 @@ static mobj compile_expr2(mobj expr, mobj env, int tailp) {
         // self-evaluating
         return compile_literal(expr, tailp);
     } else {
-        fprintf(stderr, "compile_expr2: unimplemented\n");
-        fprintf(stderr, " at: ");
-        write_object(stderr, expr);
-        fprintf(stderr, "\n");
-        minim_shutdown(1);
+        minim_error1("compile_expr", "cannot compile", expr);
     }
 }
 
 // Common idiom for custom compilation targets
 static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
-    mobj env, ins, reloc, code;
+    mobj env, ins, reloc, code, cl;
 
     // prepare compiler
     env = make_cenv();
@@ -612,10 +604,11 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
     // write to code
     reloc = resolve_refs(env, ins);
     code = write_code(ins, reloc, arity);
-    minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(setup_env(), code);
+    cl = Mclosure(setup_env(), code);
+    minim_closure_name(cl) = name;
+    return cl;
 }
 
 // Short hand for making a function that just calls `compile_do_ret`
@@ -643,14 +636,14 @@ mobj compile_prim(const char *who, void *fn, mobj arity) {
 
 define_do_ret(compile_apply, Mcons(Mfixnum(2), minim_false), Mlist1(do_apply_symbol));
 define_do_ret(compile_current_environment, Mfixnum(0), Mlist1(get_env_symbol));
-define_do_ret(compile_error, Mcons(Mfixnum(2), minim_false), Mlist1(do_error_symbol));
 define_do_ret(compile_identity, Mfixnum(1), Mlist2(get_arg_symbol, Mfixnum(0)));
+define_do_ret(compile_raise, Mfixnum(1), Mlist1(do_raise_symbol));
 define_do_ret(compile_values, Mcons(Mfixnum(0), minim_false), Mlist1(do_values_symbol));
 define_do_ret(compile_void, Mfixnum(0), Mlist2(literal_symbol, minim_void));
 
 // Custom `call-with-values` compilation
 mobj compile_call_with_values(mobj name) {
-    mobj env, arity, ins, label, reloc, code;
+    mobj env, arity, ins, label, reloc, code, cl;
 
     // prepare compiler
     env = make_cenv();
@@ -678,15 +671,16 @@ mobj compile_call_with_values(mobj name) {
     // write to code
     reloc = resolve_refs(env, ins);
     code = write_code(ins, reloc, Mcons(Mfixnum(2), Mfixnum(2)));
-    minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(setup_env(), code);
+    cl = Mclosure(setup_env(), code);
+    minim_closure_name(cl) = name;
+    return cl;
 }
 
 // Custom `eval` compilation
 mobj compile_eval(mobj name) {
-    mobj env, arity, ins, reloc, code;
+    mobj env, arity, ins, reloc, code, cl;
 
     // prepare compiler
     env = make_cenv();
@@ -701,8 +695,9 @@ mobj compile_eval(mobj name) {
     // write to code
     reloc = resolve_refs(env, ins);
     code = write_code(ins, reloc, Mcons(Mfixnum(1), Mfixnum(2)));
-    minim_code_name(code) = name;
 
     // return a closure
-    return Mclosure(setup_env(), code);
+    cl = Mclosure(setup_env(), code);
+    minim_closure_name(cl) = name;
+    return cl;
 }

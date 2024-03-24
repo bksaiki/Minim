@@ -7,13 +7,13 @@
 
 (define-syntax (let stx)
   (if (not (stx-list? stx))
-      (syntax-error 'let "bad syntax" stx)
+      (raise-syntax-error 'let "bad syntax" stx)
       (let-values ([(e) (stx-cdr stx)]
                    [(serr)
                     (lambda (msg at)
-                      (syntax-error 'let msg stx at))])
+                      (raise-syntax-error 'let msg stx at))])
         (if (stx-null? e)
-            (syntax-error 'let "bad syntax" stx)
+            (raise-syntax-error 'let "bad syntax" stx)
             (let-values ([(bindings) (stx-car e)]
                          [(e) (stx-cdr e)])
               (if (stx-null? e)
@@ -79,13 +79,13 @@
 
 (define-syntax (let* stx)
   (if (not (stx-list? stx))
-      (syntax-error 'let* "bad syntax" stx)
+      (raise-syntax-error 'let* "bad syntax" stx)
       (let-values ([(e) (stx-cdr stx)]
                    [(serr)
                     (lambda (msg at)
-                      (syntax-error 'let* msg stx at))])
+                      (raise-syntax-error 'let* msg stx at))])
         (if (stx-null? e)
-            (syntax-error 'let* "bad syntax" stx)
+            (raise-syntax-error 'let* "bad syntax" stx)
             (let-values ([(bindings) (stx-car e)]
                          [(e) (stx-cdr e)])
               (if (stx-null? e)
@@ -135,13 +135,13 @@
 
 (define-syntax (letrec stx)
   (if (not (stx-list? stx))
-      (syntax-error 'letrec "bad syntax" stx)
+      (raise-syntax-error 'letrec "bad syntax" stx)
       (let-values ([(e) (stx-cdr stx)]
                    [(serr)
                     (lambda (msg at)
-                      (syntax-error 'letrec msg stx at))])
+                      (raise-syntax-error 'letrec msg stx at))])
         (if (stx-null? e)
-            (syntax-error 'letrec "bad syntax" stx)
+            (raise-syntax-error 'letrec "bad syntax" stx)
             (let-values ([(bindings) (stx-car e)]
                          [(e) (stx-cdr e)])
               (if (stx-null? e)

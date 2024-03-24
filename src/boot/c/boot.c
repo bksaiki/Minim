@@ -39,8 +39,8 @@ void minim_boot_init() {
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");
-    do_error_symbol = intern("#%do-error");
     do_eval_symbol = intern("#%do-eval");
+    do_raise_symbol = intern("#%do-raise");
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
     do_with_values_symbol = intern("#%do-with_values");
@@ -97,13 +97,17 @@ void minim_boot_init() {
     current_sfp(th) = stack_seg_base(current_segment(th));
     current_cp(th) = NULL;
     current_ac(th) = 0;
+    current_reentry(th) = GC_alloc(sizeof(jmp_buf));
 
     input_port(th) = Minput_port(stdin);
     output_port(th) = Moutput_port(stdout);
+    error_port(th) = Moutput_port(stderr);
     current_directory(th) = Mstring(get_current_dir());
     command_line(th) = minim_null;
     record_equal_proc(th) = minim_false;
     record_hash_proc(th) = minim_false;
+    error_handler(th) = minim_false;
+    c_error_handler(th) = minim_false;
 
     values_buffer(th) = GC_alloc(INIT_VALUES_BUFFER_LEN * sizeof(mobj));
     values_buffer_size(th) = INIT_VALUES_BUFFER_LEN;

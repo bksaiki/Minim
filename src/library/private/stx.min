@@ -19,9 +19,9 @@
 (define-values (free-identifier=?)
   (lambda (a b)
     (if (not (identifier? a))
-        (error 'free-identifier=? "expected identifier?" a)
+        (raise-argument-error 'free-identifier=? "identifier?" a)
         (if (not (identifier? b))
-            (error 'free-identifier=? "expected identifier?" b)
+            (raise-argument-error 'free-identifier=? "identifier?" b)
             (eq? (syntax-e a) (syntax-e b))))))
 
 (define-values (stx-null?)

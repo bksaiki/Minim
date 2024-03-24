@@ -5,6 +5,7 @@
 #ifndef _MINIM_H_
 #define _MINIM_H_
 
+#include <setjmp.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -186,11 +187,13 @@ extern mobj minim_values;
 // |    type    | [0, 1)
 // |    env     | [8, 16)
 // |    code    | [16, 24)
+// |    name    | [24, 32)
 // +------------+
-#define minim_closure_size          (3 * ptr_size)
+#define minim_closure_size          (4 * ptr_size)
 #define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
 #define minim_closure_env(o)        (*((mobj*) PTR_ADD(o, ptr_size)))
 #define minim_closure_code(o)       (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_closure_name(o)       (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
 
 // Port
 // +------------+
@@ -294,20 +297,18 @@ extern mobj minim_values;
 // +------------+
 // |   type     | [0, 1)
 // |   size     | [8, 16)
-// |   name     | [16, 24)
 // |   arity    | [24, 32)
 // |   reloc    | [32, 40)
 // |   instrs   | [40, ...) 
 // |   ...      |
 // +------------+
-#define minim_code_header_size      5
+#define minim_code_header_size      4
 #define minim_code_size(n)          ((minim_code_header_size * ptr_size) + (n * ptr_size) + ptr_size)
 #define minim_codep(o)              (minim_type(o) == MINIM_OBJ_CODE)
 #define minim_code_len(o)           (*((size_t*) PTR_ADD(o, ptr_size)))
-#define minim_code_name(o)          (*((char**) PTR_ADD(o, 2 * ptr_size)))
-#define minim_code_arity(o)         (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_code_reloc(o)         (*((mobj*) PTR_ADD(o, 4 * ptr_size)))
-#define minim_code_it(o)            ((mobj *) PTR_ADD(o, 5 * ptr_size))
+#define minim_code_arity(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_code_reloc(o)         (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_code_it(o)            ((mobj *) PTR_ADD(o, 4 * ptr_size))
 #define minim_code_ref(o, i)        (minim_code_it(o)[i]) 
 
 // Special objects
@@ -334,8 +335,8 @@ extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
-extern mobj do_error_symbol;
 extern mobj do_eval_symbol;
+extern mobj do_raise_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
@@ -499,9 +500,9 @@ mobj cddddr_proc(mobj x);
 mobj set_car_proc(mobj p, mobj x);
 mobj set_cdr_proc(mobj p, mobj x);
 
-mobj make_list_proc(const mobj len, const mobj init);
-mobj length_proc(const mobj xs);
-mobj list_reverse(const mobj xs);
+mobj make_list_proc(mobj len, mobj init);
+mobj length_proc(mobj xs);
+mobj list_reverse(mobj xs);
 mobj list_append2(mobj xs, mobj ys);
 
 mobj make_vector(mobj len, mobj init);
@@ -518,6 +519,7 @@ mobj box_set_proc(mobj x, mobj v);
 
 mobj current_input_port();
 mobj current_output_port();
+mobj current_error_port();
 mobj open_input_file(mobj name);
 mobj open_output_file(mobj name);
 mobj open_input_string(mobj str);
@@ -578,6 +580,8 @@ mobj record_ref_proc(mobj rec, mobj idx);
 mobj record_set_proc(mobj rec, mobj idx, mobj x);
 
 mobj procedure_arity_proc(mobj proc);
+mobj procedure_name_proc(mobj proc);
+mobj procedure_rename_proc(mobj proc, mobj id);
 
 mobj syntax_e_proc(mobj stx);
 mobj syntax_loc_proc(mobj stx);
@@ -589,7 +593,6 @@ mobj environmentp_proc(mobj o);
 mobj interaction_environment();
 mobj empty_environment();
 mobj environment_proc();
-mobj current_environment();
 mobj environment_names(mobj env);
 mobj extend_environment(mobj env);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
@@ -604,7 +607,16 @@ mobj command_line_proc();
 mobj current_directory_proc();
 mobj current_directory_set_proc(mobj path);
 
-mobj do_error(int argc, mobj *args);
+mobj boot_error_proc(mobj who, mobj msg, mobj args);
+mobj c_error_handler_proc();
+mobj c_error_handler_set_proc(mobj proc);
+mobj error_handler_proc();
+mobj error_handler_set_proc(mobj proc);
+
+NORETURN void minim_error(const char *name, const char *msg);
+NORETURN void minim_error1(const char *name, const char *msg, mobj x);
+NORETURN void minim_error2(const char *name, const char *msg, mobj x, mobj y);
+NORETURN void minim_error3(const char *name, const char *msg, mobj x, mobj y, mobj z);
 
 // Stack segment
 // +--------------+
@@ -657,13 +669,17 @@ mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_apply(mobj name);
 mobj compile_call_with_values(mobj name);
 mobj compile_current_environment(mobj name);
-mobj compile_error(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);
+mobj compile_raise(mobj name);
 mobj compile_values(mobj name);
 mobj compile_void(mobj name);
 
 // Interpreter
+
+void reserve_stack(minim_thread *th, size_t argc);
+void set_arg(minim_thread *th, size_t i, mobj x);
+mobj get_arg(minim_thread *th, size_t i);
 
 void check_expr(mobj expr);
 mobj eval_expr(mobj expr, mobj env);
@@ -785,13 +801,17 @@ typedef struct minim_thread {
     mobj *sfp;          // stack pointer
     mobj cp;            // current procedure
     size_t ac;          // argument counter
+    jmp_buf *reentry;   // jmp_buf for re-entry
     // thread parameters
     mobj input_port;
     mobj output_port;
+    mobj error_port;
     mobj current_directory;
     mobj command_line;
     mobj record_equal_proc;
     mobj record_hash_proc;
+    mobj error_handler;
+    mobj c_error_handler;
     // `values` stack
     mobj *values_buffer;
     int values_buffer_size;
@@ -806,13 +826,17 @@ typedef struct minim_thread {
 #define current_sfp(th)                 ((th)->sfp)
 #define current_cp(th)                  ((th)->cp)
 #define current_ac(th)                  ((th)->ac)
+#define current_reentry(th)             ((th)->reentry)
 
 #define input_port(th)                  ((th)->input_port)
 #define output_port(th)                 ((th)->output_port)
+#define error_port(th)                 ((th)->error_port)
 #define current_directory(th)           ((th)->current_directory)
 #define command_line(th)                ((th)->command_line)
 #define record_equal_proc(th)           ((th)->record_equal_proc)
 #define record_hash_proc(th)            ((th)->record_hash_proc)
+#define error_handler(th)               ((th)->error_handler)
+#define c_error_handler(th)             ((th)->c_error_handler)
 
 #define values_buffer(th)               ((th)->values_buffer)
 #define values_buffer_ref(th, i)        ((values_buffer(th))[i])
