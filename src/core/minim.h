@@ -670,6 +670,19 @@ mobj procedure_rename_proc(mobj proc, mobj id);
 
 // System
 
+char *get_file_dir(const char *realpath);
+char* get_current_dir();
+void set_current_dir(const char *str);
+
+void *alloc_page(size_t size);
+int make_page_executable(void *page, size_t size);
+int make_page_write_only(void *page, size_t size);
+
+mobj load_file(const char *fname, mobj env);
+mobj load_prelude(mobj env);
+
+NORETURN void minim_shutdown(int code);
+
 mobj load_proc(mobj fname);
 mobj exit_proc(mobj code);
 mobj version_proc();
@@ -679,16 +692,21 @@ mobj current_directory_set_proc(mobj path);
 
 // Exceptions
 
-mobj boot_error_proc(mobj who, mobj msg, mobj args);
-mobj c_error_handler_proc();
-mobj c_error_handler_set_proc(mobj proc);
-mobj error_handler_proc();
-mobj error_handler_set_proc(mobj proc);
+NORETURN void arity_mismatch_exn(mobj proc, size_t actual);
+NORETURN void bad_syntax_exn(mobj expr);
+NORETURN void bad_type_exn(const char *name, const char *type, mobj x);
+NORETURN void result_arity_exn(const char *name, short expected, short actual);
 
 NORETURN void minim_error(const char *name, const char *msg);
 NORETURN void minim_error1(const char *name, const char *msg, mobj x);
 NORETURN void minim_error2(const char *name, const char *msg, mobj x, mobj y);
 NORETURN void minim_error3(const char *name, const char *msg, mobj x, mobj y, mobj z);
+
+mobj boot_error_proc(mobj who, mobj msg, mobj args);
+mobj c_error_handler_proc();
+mobj c_error_handler_set_proc(mobj proc);
+mobj error_handler_proc();
+mobj error_handler_set_proc(mobj proc);
 
 // Code
 // +------------+
@@ -850,41 +868,16 @@ typedef struct minim_thread {
 
 // Globals
 
-typedef struct minim_globals {;
-    minim_thread *current_thread;
-    intern_table *symbols;
-} minim_globals;
-
-extern minim_globals *globals;
+extern intern_table *symbols;
+extern minim_thread **curr_thread_ref;
 extern size_t bucket_sizes[];
 
-#define current_thread()    (globals->current_thread)
-#define intern(s)           (intern_symbol(globals->symbols, s))
-
-// System
-
-char *get_file_dir(const char *realpath);
-char* get_current_dir();
-void set_current_dir(const char *str);
-
-void *alloc_page(size_t size);
-int make_page_executable(void *page, size_t size);
-int make_page_write_only(void *page, size_t size);
-
-mobj load_file(const char *fname, mobj env);
-mobj load_prelude(mobj env);
-
-NORETURN void minim_shutdown(int code);
-
-// Exceptions
-
-NORETURN void arity_mismatch_exn(mobj proc, size_t actual);
-NORETURN void bad_syntax_exn(mobj expr);
-NORETURN void bad_type_exn(const char *name, const char *type, mobj x);
-NORETURN void result_arity_exn(const char *name, short expected, short actual);
+#define current_thread()    (*curr_thread_ref)
+#define intern(s)           (intern_symbol(symbols, s))
 
 // Primitives
 
+void init_minim();
 void init_prims(mobj env);
 
 #endif  // _MINIM_H_

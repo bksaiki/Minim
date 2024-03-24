@@ -4,7 +4,6 @@
 
 #include "../minim.h"
 
-minim_globals *globals;
 mobj empty_env;
 
 //
