@@ -26,8 +26,10 @@
 #error "compiler not supported"
 #endif
 
-#define RECORD_FIELD_MAX            32767
-#define SYMBOL_MAX_LEN              4096
+#define RECORD_FIELD_MAX    32767
+#define SYMBOL_MAX_LEN      4096
+#define STACK_SIZE          65520
+#define STACK_SLOP          1024
 
 #define INIT_VALUES_BUFFER_LEN      10
 #define ENVIRONMENT_VECTOR_MAX      6
@@ -639,7 +641,7 @@ mobj env_lookup_var(mobj env, mobj var);
 
 // Continuations
 // +------------+
-// |    type    | [0, 8)
+// |    type    | [0, 1)
 // |    prev    | [8, 16)
 // |    pc      | [16, 24)
 // |    env     | [24, 32)
@@ -647,7 +649,6 @@ mobj env_lookup_var(mobj env, mobj var);
 // |    cp      | [40, 48)
 // |    ac      | [48, 56)
 // +------------+
-
 #define continuation_size           (7 * ptr_size)
 #define minim_continuationp(o)      (minim_type(o) == MINIM_OBJ_CONTINUATION)
 #define continuation_prev(c)        (*((mobj*) PTR_ADD(c, ptr_size)))
@@ -657,7 +658,7 @@ mobj env_lookup_var(mobj env, mobj var);
 #define continuation_cp(c)          (*((mobj*) PTR_ADD(c, 5 * ptr_size)))
 #define continuation_ac(c)          (*((size_t*) PTR_ADD(c, 6 * ptr_size)))
 
-mobj Mcontinuation(mobj prev, mobj pc, mobj env, minim_thread *th);
+mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
 
 // Procedures
 
@@ -708,6 +709,49 @@ mobj c_error_handler_set_proc(mobj proc);
 mobj error_handler_proc();
 mobj error_handler_set_proc(mobj proc);
 
+// Cached stack
+// +--------------+
+// |     base     | [0, 8)
+// |     prev     | [8, 16)
+// |     size     | [16, 24)
+// |     ret      | [24, 32)
+// +--------------+
+#define cache_stack_size            (4 * ptr_size)
+#define cache_stack_base(s)         (*((mobj**) (s)))
+#define cache_stack_prev(s)         (*((mobj*) PTR_ADD(s, ptr_size)))
+#define cache_stack_len(s)          (*((size_t *) PTR_ADD(s, 2 * ptr_size)))
+#define cache_stack_ret(s)          (*((mobj*) PTR_ADD(s, 3 * ptr_size)))
+
+mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
+
+// Thread context
+// Encapsulates all Scheme runtime information of a thread
+#define tc_size                 (22 * ptr_size)
+#define tc_ac(tc)               (*((size_t *) (tc)))
+#define tc_cp(tc)               (*((mobj*) PTR_ADD(tc, ptr_size)))
+#define tc_sfp(tc)              (*((mobj**) PTR_ADD(tc, 2 * ptr_size)))
+#define tc_esp(tc)              (*((mobj**) PTR_ADD(tc, 3 * ptr_size)))
+#define tc_ccont(tc)            (*((mobj*) PTR_ADD(tc, 4 * ptr_size)))
+#define tc_env(tc)              (*((mobj*) PTR_ADD(tc, 5 * ptr_size)))
+#define tc_vc(tc)               (*((size_t*) PTR_ADD(tc, 6 * ptr_size)))
+#define tc_values(tc)           (*((mobj**) PTR_ADD(tc, 7 * ptr_size)))
+#define tc_stack_base(tc)       (*((mobj**) PTR_ADD(tc, 8 * ptr_size)))
+#define tc_stack_size(tc)       (*((size_t*) PTR_ADD(tc, 9 * ptr_size)))
+#define tc_stack_link(tc)       (*((void**) PTR_ADD(tc, 10 * ptr_size)))
+#define tc_sseg(tc)             (*((mobj**) PTR_ADD(tc, 11 * ptr_size)))
+#define tc_reentry(tc)          (*((jmp_buf**) PTR_ADD(tc, 12 * ptr_size)))
+#define tc_input_port(tc)       (*((mobj*) PTR_ADD(tc, 13 * ptr_size)))
+#define tc_output_port(tc)      (*((mobj*) PTR_ADD(tc, 14 * ptr_size)))
+#define tc_error_port(tc)       (*((mobj*) PTR_ADD(tc, 15 * ptr_size)))
+#define tc_directory(tc)        (*((mobj*) PTR_ADD(tc, 16 * ptr_size)))
+#define tc_command_line(tc)     (*((mobj*) PTR_ADD(tc, 17 * ptr_size)))
+#define tc_record_equal(tc)     (*((mobj*) PTR_ADD(tc, 18 * ptr_size)))
+#define tc_record_hash(tc)      (*((mobj*) PTR_ADD(tc, 19 * ptr_size)))
+#define tc_error_handler(tc)    (*((mobj*) PTR_ADD(tc, 20 * ptr_size)))
+#define tc_c_error_handler(tc)  (*((mobj*) PTR_ADD(tc, 21 * ptr_size)))
+
+mobj Mthread_context();
+
 // Code
 // +------------+
 // |   type     | [0, 1)
@@ -728,22 +772,6 @@ mobj error_handler_set_proc(mobj proc);
 
 mobj Mcode(size_t size);
 mobj code_to_instrs(mobj code);
-
-// Stack segment
-// +--------------+
-// |     prev     | [0, 8)
-// |     size     | [8, 16)
-// |     ...      | [16, ...)
-// +--------------+
-
-#define stack_seg_default_size      (1024 * 1024)
-#define stack_seg_header_size       (2 * ptr_size)
-#define stack_seg_prev(s)           (*((mobj *) (s)))
-#define stack_seg_size(s)           (*((size_t*) PTR_ADD(s, ptr_size)))
-#define stack_seg_base(s)           PTR_ADD(s, 2 * ptr_size)
-#define stack_seg_end(s)            PTR_ADD(stack_seg_base(s), stack_seg_size(s))
-
-mobj Mstack_segment(mobj prev, size_t size);
 
 // I/O
 
@@ -791,9 +819,9 @@ mobj compile_void(mobj name);
 
 // Interpreter
 
-void reserve_stack(minim_thread *th, size_t argc);
-void set_arg(minim_thread *th, size_t i, mobj x);
-mobj get_arg(minim_thread *th, size_t i);
+void reserve_stack(mobj tc, size_t argc);
+void set_arg(mobj tc, size_t i, mobj x);
+mobj get_arg(mobj tc, size_t i);
 
 void check_expr(mobj expr);
 mobj eval_expr(mobj expr, mobj env);
@@ -814,66 +842,14 @@ typedef struct intern_table {
 intern_table *make_intern_table();
 mobj intern_symbol(intern_table *itab, const char *sym);
 
-// Threads
-
-typedef struct minim_thread {
-    // thread runtime
-    mobj env;           // environment
-    mobj continuation;  // continuation
-    mobj segment;       // stack segment
-    mobj *sfp;          // stack pointer
-    mobj cp;            // current procedure
-    size_t ac;          // argument counter
-    jmp_buf *reentry;   // jmp_buf for re-entry
-    // thread parameters
-    mobj input_port;
-    mobj output_port;
-    mobj error_port;
-    mobj current_directory;
-    mobj command_line;
-    mobj record_equal_proc;
-    mobj record_hash_proc;
-    mobj error_handler;
-    mobj c_error_handler;
-    // `values` stack
-    mobj *values_buffer;
-    int values_buffer_size;
-    int values_buffer_count;
-    // thread id
-    int pid;
-} minim_thread;
-
-#define global_env(th)                  ((th)->env)
-#define current_continuation(th)        ((th)->continuation)
-#define current_segment(th)             ((th)->segment)
-#define current_sfp(th)                 ((th)->sfp)
-#define current_cp(th)                  ((th)->cp)
-#define current_ac(th)                  ((th)->ac)
-#define current_reentry(th)             ((th)->reentry)
-
-#define input_port(th)                  ((th)->input_port)
-#define output_port(th)                 ((th)->output_port)
-#define error_port(th)                 ((th)->error_port)
-#define current_directory(th)           ((th)->current_directory)
-#define command_line(th)                ((th)->command_line)
-#define record_equal_proc(th)           ((th)->record_equal_proc)
-#define record_hash_proc(th)            ((th)->record_hash_proc)
-#define error_handler(th)               ((th)->error_handler)
-#define c_error_handler(th)             ((th)->c_error_handler)
-
-#define values_buffer(th)               ((th)->values_buffer)
-#define values_buffer_ref(th, i)        ((values_buffer(th))[i])
-#define values_buffer_size(th)          ((th)->values_buffer_size)
-#define values_buffer_count(th)         ((th)->values_buffer_count)
-
 // Globals
 
 extern intern_table *symbols;
-extern minim_thread **curr_thread_ref;
+extern mobj *curr_thread_ref;
 extern size_t bucket_sizes[];
 
-#define current_thread()    (*curr_thread_ref)
-#define intern(s)           (intern_symbol(symbols, s))
+#define current_tc()    (*curr_thread_ref)
+#define intern(s)       (intern_symbol(symbols, s))
 
 // Primitives
 

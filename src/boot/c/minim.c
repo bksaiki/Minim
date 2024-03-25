@@ -55,7 +55,7 @@ static int handle_flags(int argc, char **argv) {
 static void load_library() {
     char *old_cwd = get_current_dir();
     set_current_dir(BOOT_DIR);
-    load_file("boot.min", global_env(current_thread()));
+    load_file("boot.min", global_env(current_tc()));
     set_current_dir(old_cwd);
 }
 
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
     minim_boot_init();
 
     // load the prelude
-    th = current_thread();
+    th = current_tc();
     load_prelude(global_env(th));
 
     if (opt_load_library)

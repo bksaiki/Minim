@@ -3,16 +3,16 @@
 #include "../minim.h"
 
 intern_table *symbols;
-minim_thread **curr_thread_ref;
+mobj *curr_thread_ref;
 
 void init_minim() {
     // interned symbol table
     symbols = make_intern_table();
     GC_register_root(symbols);
     // pointer to a thread context
-    curr_thread_ref = GC_alloc(sizeof(minim_thread *));
+    curr_thread_ref = GC_alloc(sizeof(mobj));
     GC_register_root(curr_thread_ref);
-    current_thread() = NULL; // to be initialized later
+    current_tc() = NULL; // to be initialized later
 
     // initialize special symbols
     quote_symbol = intern("quote");

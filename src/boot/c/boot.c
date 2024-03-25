@@ -13,8 +13,8 @@ void minim_boot_init() {
 
     // initialize thread
 
-    current_thread() = GC_alloc(sizeof(minim_thread));
-    th = current_thread();
+    current_tc() = GC_alloc(sizeof(minim_thread));
+    th = current_tc();
     th->pid = 0;    // TODO
 
     global_env(th) = make_env();

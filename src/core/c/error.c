@@ -3,10 +3,8 @@
 #include "../minim.h"
 
 NORETURN static void do_error2(const char *name, const char *msg, mobj args) {
-    minim_thread *th;
-
-    th = current_thread();
-    if (minim_nullp(current_continuation(th)) || minim_falsep(c_error_handler(th))) {
+    mobj tc = current_tc();
+    if (minim_nullp(tc_ccont(tc)) || minim_falsep(tc_c_error_handler(tc))) {
         // exception cannot be handled by runtime
         if (name) fprintf(stderr, "Error in %s: %s", name, msg);
         else fprintf(stderr, "Error: %s", msg);
@@ -20,15 +18,14 @@ NORETURN static void do_error2(const char *name, const char *msg, mobj args) {
     }
     
     // call back into the Scheme runtime
-    reserve_stack(th, 3);
-    current_ac(th) = 3;
-    current_cp(th) = c_error_handler(th);
+    reserve_stack(tc, 3);
+    tc_ac(tc) = 3;
+    tc_cp(tc) = tc_c_error_handler(tc);
+    set_arg(tc, 0, (name ? Mstring(name) : minim_false));
+    set_arg(tc, 1, Mstring(msg));
+    set_arg(tc, 2, args);
     
-    set_arg(th, 0, (name ? Mstring(name) : minim_false));
-    set_arg(th, 1, Mstring(msg));
-    set_arg(th, 2, args);
-    
-    longjmp(*current_reentry(th), 1);
+    longjmp(*tc_reentry(tc), 1);
 }
 
 //
@@ -69,22 +66,22 @@ mobj boot_error_proc(mobj who, mobj msg, mobj args) {
 
 mobj c_error_handler_proc() {
     // (-> any (or procedure #f))
-    return c_error_handler(current_thread());
+    return tc_c_error_handler(current_tc());
 }
 
 mobj c_error_handler_set_proc(mobj proc) {
     // (-> procedure void)
-    c_error_handler(current_thread()) = proc;
+    tc_c_error_handler(current_tc()) = proc;
     return minim_void;
 }
 
 mobj error_handler_proc() {
     // (-> any (or procedure #f))
-    return error_handler(current_thread());
+    return tc_error_handler(current_tc());
 }
 
 mobj error_handler_set_proc(mobj proc) {
     // (-> procedure void)
-    error_handler(current_thread()) = proc;
+    tc_error_handler(current_tc()) = proc;
     return minim_void;
 }
