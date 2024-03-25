@@ -69,7 +69,7 @@ void set_current_dir(const char *str) {
         minim_error1("set_current_dir", "could not set current directory", Mstring(str));
     }
 
-    current_directory(current_tc()) = Mstring(str);
+    tc_directory(current_tc()) = Mstring(str);
 }
 
 char* get_current_dir() {
@@ -91,7 +91,7 @@ char *get_file_dir(const char *realpath) {
     return dirpath;
 }
 
-mobj load_file(const char *fname, mobj env) {
+mobj load_file(mobj tc, const char *fname){
     mobj result, expr;
     char *old_cwd, *cwd;
     FILE *f;
@@ -108,7 +108,7 @@ mobj load_file(const char *fname, mobj env) {
     result = minim_void;
     while ((expr = read_object(f)) != NULL) {
         check_expr(expr);
-        result = eval_expr(expr, env);
+        result = eval_expr(tc, expr);
     }
 
     set_current_dir(old_cwd);
@@ -116,8 +116,8 @@ mobj load_file(const char *fname, mobj env) {
     return result;
 }
 
-mobj load_prelude(mobj env) {
-    return load_file(PRELUDE_PATH, env);
+mobj load_prelude(mobj tc) {
+    return load_file(tc, PRELUDE_PATH);
 }
 
 void minim_shutdown(int code) {
@@ -131,7 +131,7 @@ void minim_shutdown(int code) {
 
 mobj load_proc(mobj fname) {
     // (-> string any)
-    return load_file(minim_string(fname), global_env(current_tc()));
+    return load_file(current_tc(), minim_string(fname));
 }
 
 mobj exit_proc(mobj code) {
@@ -141,12 +141,12 @@ mobj exit_proc(mobj code) {
 
 mobj command_line_proc() {
     // (-> list)
-    return command_line(current_tc());
+    return tc_command_line(current_tc());
 }
 
 mobj current_directory_proc() {
     // (-> string)
-    return current_directory(current_tc());
+    return tc_directory(current_tc());
 }
 
 mobj current_directory_set_proc(mobj path) {

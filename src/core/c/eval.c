@@ -73,7 +73,7 @@ void result_arity_exn(const char *name, short expected, short actual) {
 #define stack_cushion               (8 * ptr_size)
 
 static int stack_overflowp(mobj tc, size_t size) {
-    return PTR_ADD(tc_sfp(tc), size) >= tc_esp(tc);
+    return (uintptr_t) PTR_ADD(tc_sfp(tc), size) >= (uintptr_t) tc_esp(tc);
 }
 
 static void grow_stack(mobj tc, size_t size) {
@@ -89,10 +89,10 @@ static void grow_stack(mobj tc, size_t size) {
     srecord = Mcached_stack(tc_stack_base(tc), tc_stack_link(tc), tc_stack_size(tc), tc_ccont(tc));
 
     // allocate new stack segment
-    stack = GC_alloc(req);
+    stack = GC_alloc(actual);
     tc_stack_base(tc) = stack;
     tc_stack_link(tc) = srecord;
-    tc_stack_size(tc) = req;
+    tc_stack_size(tc) = actual;
     tc_sfp(tc) = tc_stack_base(tc);
     tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - STACK_SLOP;
 }
@@ -166,38 +166,31 @@ static mobj pop_frame(mobj tc) {
     return cc;
 }
 
-static void check_arity(mobj env, mobj spec) {
-    minim_thread *th;
-    size_t ac;
-
-    th = current_tc();
-    ac = current_ac(th);
+static void check_arity(mobj tc, mobj spec) {
+    mobj cp = tc_cp(tc);
+    size_t ac = tc_ac(tc);
     if (minim_fixnump(spec)) {
         // exact arity
         if (ac != minim_fixnum(spec))
-            arity_mismatch_exn(current_cp(th), ac);
+            arity_mismatch_exn(cp, ac);
     } else {
         mobj min = minim_car(spec);
         mobj max = minim_cdr(spec);
         if (minim_falsep(max)) {
             // at least arity
             if (ac < minim_fixnum(min))
-                arity_mismatch_exn(current_cp(th), ac);
+                arity_mismatch_exn(cp, ac);
         } else {
             // range arity
             if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
-                arity_mismatch_exn(current_cp(th), ac);
+                arity_mismatch_exn(cp, ac);
         }
     }
 }
 
-static mobj do_ccall(mobj (*prim)()) {
-    minim_thread *th;
-    mobj *args;
-    
-    th = current_tc();
-    args = current_sfp(th);
-    switch (current_ac(th)) {
+static mobj do_ccall(mobj tc, mobj (*prim)()) {
+    mobj *args = tc_sfp(tc);
+    switch (tc_ac(tc)) {
     case 0:
         return prim();
     case 1:
@@ -213,18 +206,19 @@ static mobj do_ccall(mobj (*prim)()) {
     case 6:
         return prim(args[0], args[1], args[2], args[3], args[4], args[5]);
     default:
-        minim_error1(NULL, "cannot call kernel function with 7 or more arguments", current_cp(th));
+        minim_error1(NULL, "cannot call kernel function with 7 or more arguments", tc_cp(tc));
     }
 }
 
-static mobj do_rest(size_t idx) {
-    minim_thread *th;
-    size_t ac;
-
-    th = current_tc();
-    ac = current_ac(th);
+static mobj do_rest(mobj tc, size_t idx) {
+    size_t ac = tc_ac(tc);
     if (idx > ac) {
-        minim_error2("do_rest", "base index exceed argument count", Mfixnum(idx), Mfixnum(ac));
+        minim_error2(
+            "do_rest",
+            "base index exceed argument count",
+            Mfixnum(idx),
+            Mfixnum(ac)
+        );
     }
 
     if (idx == ac) {
@@ -233,7 +227,7 @@ static mobj do_rest(size_t idx) {
     } else {
         mobj hd, tl, *sfp;
 
-        sfp = current_sfp(th);
+        sfp = tc_sfp(tc);
         hd = tl = Mcons(sfp[idx], NULL);
         for (idx += 1; idx < ac; idx++) {
             minim_cdr(tl) = Mcons(sfp[idx], NULL);
@@ -309,31 +303,24 @@ static mobj force_single_value(mobj tc, mobj x) {
     }
 }
 
-static void bind_values(mobj env, mobj ids, mobj res) {
-    size_t count = list_length(ids);
+static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
+    size_t i, count;
+
+    count = list_length(ids);
+    if (tc_vc(tc) != count)
+        result_arity_exn(NULL, count, tc_vc(tc));
+
     if (minim_valuesp(res)) {
         // multi-valued result
-        minim_thread *th;
-        size_t i;
-
-        th = current_tc();
-        if (count != values_buffer_count(th))
-            result_arity_exn(NULL, count, values_buffer_count(th));
-
-        i = 0;
-        for (; !minim_nullp(ids); ids = minim_cdr(ids)) {
-            SET_NAME_IF_CLOSURE(minim_car(ids), values_buffer_ref(th, i));
-            env_define_var_no_check(env, minim_car(ids), values_buffer_ref(th, i));
-            i += 1;
+        for (i = 0; i < count; i++) {
+            SET_NAME_IF_CLOSURE(minim_car(ids), tc_values(tc)[i]);
+            env_define_var_no_check(env, minim_car(ids), tc_values(tc)[i]);
+            ids = minim_cdr(ids);
         }
     } else {
         // single-valued result
-        if (count != 1) {
-            result_arity_exn(NULL, count, 1);
-        } else {
-            SET_NAME_IF_CLOSURE(minim_car(ids), res);
-            env_define_var_no_check(env, minim_car(ids), res);
-        }
+        SET_NAME_IF_CLOSURE(minim_car(ids), res);
+        env_define_var_no_check(env, minim_car(ids), res);
     }
 }
 
@@ -342,7 +329,7 @@ static void bind_values(mobj env, mobj ids, mobj res) {
 //
 
 static mobj eval_istream(mobj tc, mobj *istream) {
-    mobj tc, ins, ty, res, penv;
+    mobj ins, ty, res, penv;
     
     // setup interpreter
     tc = current_tc();
@@ -377,22 +364,22 @@ loop:
         res = minim_cadr(ins);
     } else if (ty == lookup_symbol) {
         // lookup
-        res = env_lookup_var(env, minim_cadr(ins));
+        res = env_lookup_var(tc_env(tc), minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
         res = force_single_value(tc, res);
-        current_cp(tc) = res;
+        tc_cp(tc) = res;
     } else if (ty == push_symbol) {
         // push
-        res = force_single_value(res);
-        push_arg(res);
+        res = force_single_value(tc, res);
+        push_arg(tc, res);
     } else if (ty == pop_symbol) {
         // pop
-        res = pop_arg();
+        res = pop_arg(tc);
     } else if (ty == apply_symbol) {
         // apply
 application:
-        if (minim_closurep(current_cp(th))) {
+        if (minim_closurep(tc_cp(tc))) {
             goto call_closure;
         } else {
             goto not_procedure;
@@ -402,48 +389,48 @@ application:
         goto restore_frame;
     } else if (ty == ccall_symbol) {
         // ccall
-        res = do_ccall(minim_cadr(ins));
+        res = do_ccall(tc, minim_cadr(ins));
     } else if (ty == bind_symbol) {
         // bind
-        env_define_var_no_check(env, minim_cadr(ins), res);
+        env_define_var_no_check(tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == bind_values_symbol) {
         // bind-values
-        bind_values(env, minim_cadr(ins), res);
+        bind_values(tc, tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == bind_values_top_symbol) {
         // bind-values/top (special variant for `let-values`)
-        bind_values(current_sfp(th)[current_ac(th) - 1], minim_cadr(ins), res);
+        bind_values(tc, tc_sfp(tc)[tc_ac(tc) - 1], minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind
-        env_set_var(env, minim_cadr(ins), res);
+        env_set_var(tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == make_env_symbol) {
         // make-env
-        res = Menv2(env, minim_fixnum(minim_cadr(ins)));
+        res = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == push_env_symbol) {
         // push-env
-        env = res;
+        tc_env(tc) = res;
     } else if (ty == pop_env_symbol) {
         // pop-env
-        env = minim_env_prev(env);
+        tc_env(tc) = minim_env_prev(tc_env(tc));
     } else if (ty == save_cc_symbol) {
         // save-cc
-        push_frame(env, minim_cadr(ins));
+        push_frame(tc, minim_cadr(ins));
     } else if (ty == get_arg_symbol) {
         // get-arg
-        res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
+        res = tc_sfp(tc)[minim_fixnum(minim_cadr(ins))];
     } else if (ty == get_env_symbol) {
         // get-env
-        if (minim_nullp(current_continuation(th))) {
+        if (minim_nullp(tc_ccont(tc))) {
             res = penv;
         } else {
-            res = continuation_env(current_continuation(th));
+            res = continuation_env(tc_ccont(tc));
         }
     } else if (ty == do_apply_symbol) {
         // do-apply
-        do_apply();
+        do_apply(tc);
         goto application;
     } else if (ty == do_eval_symbol) {
         // do-eval
@@ -453,20 +440,19 @@ application:
         goto do_raise;
     } else if (ty == do_rest_symbol) {
         // do-rest
-        res = do_rest(minim_fixnum(minim_cadr(ins)));
+        res = do_rest(tc, minim_fixnum(minim_cadr(ins)));
     } else if (ty == do_values_symbol) {
         // do-values
-        do_values();
+        do_values(tc);
         res = minim_values;
     } else if (ty == do_with_values_symbol) {
         // do-with-values
-        values_to_args(res);
+        values_to_args(tc, res);
         goto application;
     } else if (ty == clear_frame_symbol) {
         // clear frame
-        current_cp(th) = NULL;
-        current_ac(th) = 0;
-        res = NULL;
+        tc_cp(tc) = NULL;
+        tc_ac(tc) = 0;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
         istream = minim_cadr(ins);
@@ -479,13 +465,13 @@ application:
         }
     } else if (ty == make_closure_symbol) {
         // make-closure
-        res = Mclosure(env, minim_cadr(ins));
+        res = Mclosure(tc_env(tc), minim_cadr(ins));
     } else if (ty == check_stack_symbol) {
         // check stack
-        maybe_grow_stack(minim_fixnum(minim_cadr(ins)));
+        maybe_grow_stack(tc, minim_fixnum(minim_cadr(ins)));
     } else if (ty == check_arity_symbol) {
         // check arity
-        check_arity(env, minim_cadr(ins));
+        check_arity(tc, minim_cadr(ins));
     } else {
         minim_error1(NULL, "invalid bytecode", ins);
     }
@@ -501,10 +487,9 @@ next:
 
 // call closure
 call_closure:
-    mobj code = minim_closure_code(current_cp(th));
     // set instruction stream and env
-    istream = minim_code_it(code);
-    env = minim_closure_env(current_cp(th));
+    istream = minim_code_it(minim_closure_code(tc_cp(tc)));
+    tc_env(tc) = minim_closure_env(tc_cp(tc));
     // don't clear either the current procedure or argument count
     // since this is required for binding and arity check
     goto loop;
@@ -513,30 +498,30 @@ call_closure:
 do_eval:
     // compile expression into a nullary function and
     // call it in tail position
-    mobj *args = current_sfp(th);
-    env = current_ac(th) == 2 ? args[1] : env;
-    current_cp(th) = Mclosure(env, compile_expr(args[0]));
-    current_ac(th) = 0;
+    mobj *args = tc_sfp(tc);
+    tc_env(tc) = tc_ac(tc) == 2 ? args[1] : tc_env(tc);
+    tc_cp(tc) = Mclosure(tc_env(tc), compile_expr(args[0]));
+    tc_ac(tc) = 0;
     goto application;
 
 // performs `do-raise` instruction
 do_raise:
     // check if an error handler has been installed
-    args = current_sfp(th);
-    if (minim_falsep(error_handler(th))) {
+    args = tc_sfp(tc);
+    if (minim_falsep(tc_error_handler(tc))) {
         boot_error_proc(minim_false, Mstring("unhandled exception"), args[0]);
     }
 
     // set procedure to handler and call
-    current_cp(th) = error_handler(th);
+    tc_cp(tc) = tc_error_handler(tc);
     goto application;
 
 // restores previous continuation
 restore_frame:
     // restore the old instruction stream and environment
     // and seek to the expected label
-    mobj cc = pop_frame();
-    env = continuation_env(cc);
+    mobj cc = pop_frame(tc);
+    tc_env(tc) = continuation_env(cc);
     istream = continuation_pc(cc);
     if (minim_nullp(istream)) {
         // we reached the entry continuation frame
@@ -548,10 +533,10 @@ restore_frame:
     goto loop;
 
 not_procedure:
-    minim_error1(NULL, "expected procedure", current_cp(th));
+    minim_error1(NULL, "expected procedure", tc_cp(tc));
 }
 
-mobj eval_expr(mobj expr, mobj env) {
+mobj eval_expr(mobj tc, mobj expr) {
     mobj code = compile_expr(expr);
-    return eval_istream(minim_code_it(code), env);
+    return eval_istream(tc, minim_code_it(code));
 }

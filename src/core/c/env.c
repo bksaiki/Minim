@@ -206,7 +206,7 @@ mobj environmentp_proc(mobj x) {
 
 mobj interaction_environment() {
     // (-> environment)
-    return global_env(current_tc());
+    return tc_env(current_tc());
 }
 
 mobj empty_environment() {

@@ -46,10 +46,6 @@ typedef void            *mobj;
 #define ptr_size        8
 #define PTR_ADD(p, d)   ((void *) ((muptr) (p)) + (d))
 
-// Forward
-
-typedef struct minim_thread     minim_thread;
-
 // Special symbols
 
 extern mobj begin_symbol;
@@ -679,8 +675,8 @@ void *alloc_page(size_t size);
 int make_page_executable(void *page, size_t size);
 int make_page_write_only(void *page, size_t size);
 
-mobj load_file(const char *fname, mobj env);
-mobj load_prelude(mobj env);
+mobj load_file(mobj tc, const char *fname);
+mobj load_prelude(mobj tc);
 
 NORETURN void minim_shutdown(int code);
 
@@ -824,7 +820,7 @@ void set_arg(mobj tc, size_t i, mobj x);
 mobj get_arg(mobj tc, size_t i);
 
 void check_expr(mobj expr);
-mobj eval_expr(mobj expr, mobj env);
+mobj eval_expr(mobj tc, mobj expr);
 
 // intern table
 
