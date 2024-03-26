@@ -746,6 +746,10 @@ mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
 #define tc_error_handler(tc)    (*((mobj*) PTR_ADD(tc, 20 * ptr_size)))
 #define tc_c_error_handler(tc)  (*((mobj*) PTR_ADD(tc, 21 * ptr_size)))
 
+#define tc_ra(tc)               (tc_sfp(tc)[0])
+#define tc_frame(tc)            ((mobj *) PTR_ADD(tc_sfp(tc), ptr_size))
+#define tc_frame_ref(tc, i)     (tc_frame(tc)[i])
+
 mobj Mthread_context();
 
 // Code

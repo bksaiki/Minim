@@ -69,7 +69,7 @@ void result_arity_exn(const char *name, short expected, short actual) {
 //  Evaluation
 //
 
-#define stack_frame_size(th, addt)  ((tc_ac(th) + (addt)) * ptr_size)
+#define stack_frame_size(th, addt)  ((1 + tc_ac(th) + (addt)) * ptr_size)
 #define stack_cushion               (8 * ptr_size)
 
 static int stack_overflowp(mobj tc, size_t size) {
@@ -98,17 +98,17 @@ static void grow_stack(mobj tc, size_t size) {
 }
 
 void reserve_stack(mobj tc, size_t argc) {
-    size_t req = argc * ptr_size;
+    size_t req = (1 + argc) * ptr_size;
     if (stack_overflowp(tc, req))
         grow_stack(tc, req);
 }
 
 void set_arg(mobj tc, size_t i, mobj x) {
-    tc_sfp(tc)[i] = x;
+    tc_frame_ref(tc, i) = x;
 }
 
 mobj get_arg(mobj tc, size_t i) {
-    return tc_sfp(tc)[i];
+    return tc_frame_ref(tc, i);
 }
 
 static void maybe_grow_stack(mobj tc, size_t argc) {
@@ -116,54 +116,30 @@ static void maybe_grow_stack(mobj tc, size_t argc) {
 }
 
 static void push_arg(mobj tc, mobj x) {
-    tc_sfp(tc)[tc_ac(tc)] = x;
+    tc_frame_ref(tc, tc_ac(tc)) = x;
     tc_ac(tc) += 1;
 }
 
 static mobj pop_arg(mobj tc) {
-    mobj x = tc_sfp(tc)[tc_ac(tc) - 1];
+    mobj x = tc_frame_ref(tc, tc_ac(tc) - 1);
     tc_ac(tc) -= 1;
     return x;
 }
 
 static void push_frame(mobj tc, mobj pc) {
     mobj cc;
-    size_t ac;
+    size_t size;
 
-    // get current continuation and argument count
+    // get current continuation and frame size
     cc = tc_ccont(tc);
-    ac = tc_ac(tc);
+    size = 1 + tc_ac(tc);
 
     // update current continuation, frame pointer, and argument count
     tc_ccont(tc) = Mcontinuation(cc, pc, tc_env(tc), tc);
-    tc_sfp(tc) = PTR_ADD(tc_sfp(tc), ac * ptr_size);
-    tc_cp(tc) = NULL;
+    tc_sfp(tc) = PTR_ADD(tc_sfp(tc), size * ptr_size);
+    tc_ra(tc) = pc;
+    tc_cp(tc) = minim_void;
     tc_ac(tc) = 0;
-}
-
-static mobj pop_frame(mobj tc) {
-    mobj cc, srecord;
-
-    // check for underflow
-    if (tc_sfp(tc) <= tc_stack_base(tc)) {
-        // underflow, so need to unpack the first stack record
-        srecord = tc_stack_link(tc);
-        tc_stack_base(tc) = cache_stack_base(srecord);
-        tc_stack_size(tc) = cache_stack_len(srecord);
-        tc_stack_link(tc) = cache_stack_prev(srecord);
-        tc_sfp(tc) = tc_stack_base(tc);
-        tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - STACK_SLOP;
-        cc = cache_stack_ret(srecord);
-    } else {
-        cc = tc_ccont(tc);
-    }
-
-    // update thread parameters
-    tc_ccont(tc) = continuation_prev(cc);
-    tc_sfp(tc) = continuation_sfp(cc);
-    tc_cp(tc) = continuation_cp(cc);
-    tc_ac(tc) = continuation_ac(cc);
-    return cc;
 }
 
 static void check_arity(mobj tc, mobj spec) {
@@ -189,7 +165,7 @@ static void check_arity(mobj tc, mobj spec) {
 }
 
 static mobj do_ccall(mobj tc, mobj (*prim)()) {
-    mobj *args = tc_sfp(tc);
+    mobj *args = tc_frame(tc);
     switch (tc_ac(tc)) {
     case 0:
         return prim();
@@ -225,12 +201,11 @@ static mobj do_rest(mobj tc, size_t idx) {
         // empty
         return minim_null;
     } else {
-        mobj hd, tl, *sfp;
+        mobj hd, tl;
 
-        sfp = tc_sfp(tc);
-        hd = tl = Mcons(sfp[idx], NULL);
+        hd = tl = Mcons(tc_frame_ref(tc, idx), NULL);
         for (idx += 1; idx < ac; idx++) {
-            minim_cdr(tl) = Mcons(sfp[idx], NULL);
+            minim_cdr(tl) = Mcons(tc_frame_ref(tc, idx), NULL);
             tl = minim_cdr(tl);
         }
 
@@ -240,7 +215,7 @@ static mobj do_rest(mobj tc, size_t idx) {
 }
 
 static void do_apply(mobj tc) {
-    mobj *sfp, *nsfp, rest;
+    mobj *sfp, rest;
     size_t i, ac, len, req;
 
     // thread parameters
@@ -248,12 +223,12 @@ static void do_apply(mobj tc) {
     ac = tc_ac(tc);
 
     // the first argument becomes the current procedure
-    tc_cp(tc) = sfp[0];
+    tc_cp(tc) = tc_frame_ref(tc, 0);
 
     // shift arguments by 1 (since `apply` itself is consumed)
-    rest = sfp[ac - 1];
+    rest = tc_frame_ref(tc, ac - 1);
     for (i = 0; i < ac - 2; i++)
-        sfp[i] = sfp[i + 1];
+        tc_frame_ref(tc, i) = tc_frame_ref(tc, i + 1);
 
     // check if we have room for the application
     tc_ac(tc) -= 2;
@@ -261,10 +236,8 @@ static void do_apply(mobj tc) {
     req = stack_frame_size(tc, len);
     if (stack_overflowp(tc, req)) {
         grow_stack(tc, req);
-        nsfp = tc_sfp(tc);
         for (i = 0; i < ac; i++)
-            nsfp[i] = sfp[i];
-        sfp = nsfp;
+            tc_frame_ref(tc, i) = sfp[i + 1]; 
     }
 
     // push rest argument to stack
@@ -272,10 +245,19 @@ static void do_apply(mobj tc) {
         push_arg(tc, minim_car(rest));
 }
 
-static void do_values(mobj tc) {
+static mobj do_values(mobj tc) {
     tc_vc(tc) = tc_ac(tc);
-    tc_values(tc) = GC_alloc(tc_vc(tc) * sizeof(mobj));
-    memcpy(tc_values(tc), tc_sfp(tc), tc_vc(tc) * sizeof(mobj));
+    if (tc_ac(tc) == 0) {
+        tc_values(tc) = NULL;
+        return minim_values;
+    } else if (tc_ac(tc) == 1) {
+        tc_values(tc) = NULL;
+        return tc_frame_ref(tc, 0);
+    } else {
+        tc_values(tc) = GC_alloc(tc_vc(tc) * sizeof(mobj));
+        memcpy(tc_values(tc), tc_frame(tc), tc_vc(tc) * sizeof(mobj));
+        return minim_values;
+    }
 }
 
 static void values_to_args(mobj tc, mobj x) {
@@ -293,25 +275,20 @@ static void values_to_args(mobj tc, mobj x) {
 // if `x` is the result of `(values ...)` it unwraps
 // the result if `x` contains one value and panics otherwise
 static mobj force_single_value(mobj tc, mobj x) {
-    if (tc_vc(tc) != 1)
+    if (minim_valuesp(x))
         result_arity_exn(NULL, 1, tc_vc(tc));
-
-    if (minim_valuesp(x)) {
-        return tc_values(tc)[0];
-    } else {
-        return x;
-    }
+    return x;
 }
 
 static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
     size_t i, count;
 
     count = list_length(ids);
-    if (tc_vc(tc) != count)
-        result_arity_exn(NULL, count, tc_vc(tc));
-
     if (minim_valuesp(res)) {
         // multi-valued result
+        if (tc_vc(tc) != count)
+            result_arity_exn(NULL, count, tc_vc(tc));
+
         for (i = 0; i < count; i++) {
             SET_NAME_IF_CLOSURE(minim_car(ids), tc_values(tc)[i]);
             env_define_var_no_check(env, minim_car(ids), tc_values(tc)[i]);
@@ -319,6 +296,9 @@ static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
         }
     } else {
         // single-valued result
+        if (count != 1)
+            result_arity_exn(NULL, count, 1);
+
         SET_NAME_IF_CLOSURE(minim_car(ids), res);
         env_define_var_no_check(env, minim_car(ids), res);
     }
@@ -329,22 +309,22 @@ static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
 //
 
 static mobj eval_istream(mobj tc, mobj *istream) {
-    mobj ins, ty, res, penv;
+    mobj ins, ty, res, penv, cc;
     
     // setup interpreter
     tc = current_tc();
-    tc_cp(tc) = NULL;
+    tc_ra(tc) = NULL;
+    tc_cp(tc) = minim_void;
     tc_ac(tc) = 0;
-    penv = tc_env(tc);
-    res = NULL;
+    res = minim_void;
 
-    // push entry continuation frame
-    push_frame(tc, minim_null);
+    // hack needed for `get-env` insruction
+    penv = tc_env(tc);
 
     // possibly handle long jump back into the procedure
     if (setjmp(*tc_reentry(tc)) != 0) {
         // long jumped from somewhere mysterious
-        // only valid long jumps require an immediate function application
+        // valid long jumps require an immediate function application
         goto application;
     }
 
@@ -358,6 +338,14 @@ loop:
         minim_error1(NULL, "executing non-bytecode", ins);
     }
 
+    // write_object(stderr, ins);
+    // fprintf(stderr, " res=");
+    // write_object(stderr, res);
+    // fprintf(stderr, " cp=");
+    // write_object(stderr, tc_cp(tc));
+    // fprintf(stderr, " ac=%ld, sfp=%p, ccont=%p, pc=%p, ra=%p, vc=%ld\n",
+    //     tc_ac(tc), tc_sfp(tc), tc_ccont(tc), istream, tc_ra(tc), tc_vc(tc));
+
     ty = minim_car(ins);
     if (ty == literal_symbol) {
         // literal
@@ -367,8 +355,7 @@ loop:
         res = env_lookup_var(tc_env(tc), minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
-        res = force_single_value(tc, res);
-        tc_cp(tc) = res;
+        tc_cp(tc) = force_single_value(tc, res);
     } else if (ty == push_symbol) {
         // push
         res = force_single_value(tc, res);
@@ -400,7 +387,7 @@ application:
         res = minim_void;
     } else if (ty == bind_values_top_symbol) {
         // bind-values/top (special variant for `let-values`)
-        bind_values(tc, tc_sfp(tc)[tc_ac(tc) - 1], minim_cadr(ins), res);
+        bind_values(tc, tc_frame_ref(tc, tc_ac(tc) - 1), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind
@@ -420,7 +407,7 @@ application:
         push_frame(tc, minim_cadr(ins));
     } else if (ty == get_arg_symbol) {
         // get-arg
-        res = tc_sfp(tc)[minim_fixnum(minim_cadr(ins))];
+        res = tc_frame_ref(tc, minim_fixnum(minim_cadr(ins)));
     } else if (ty == get_env_symbol) {
         // get-env
         if (minim_nullp(tc_ccont(tc))) {
@@ -443,15 +430,14 @@ application:
         res = do_rest(tc, minim_fixnum(minim_cadr(ins)));
     } else if (ty == do_values_symbol) {
         // do-values
-        do_values(tc);
-        res = minim_values;
+        res = do_values(tc);
     } else if (ty == do_with_values_symbol) {
         // do-with-values
         values_to_args(tc, res);
         goto application;
     } else if (ty == clear_frame_symbol) {
         // clear frame
-        tc_cp(tc) = NULL;
+        tc_cp(tc) = minim_void;
         tc_ac(tc) = 0;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
@@ -491,25 +477,27 @@ call_closure:
     istream = minim_code_it(minim_closure_code(tc_cp(tc)));
     tc_env(tc) = minim_closure_env(tc_cp(tc));
     // don't clear either the current procedure or argument count
-    // since this is required for binding and arity check
+    // since this is required for binding and arity checkf
     goto loop;
 
 // performs `do-eval` instruction
 do_eval:
     // compile expression into a nullary function and
     // call it in tail position
-    mobj *args = tc_sfp(tc);
-    tc_env(tc) = tc_ac(tc) == 2 ? args[1] : tc_env(tc);
-    tc_cp(tc) = Mclosure(tc_env(tc), compile_expr(args[0]));
+    tc_env(tc) = tc_ac(tc) == 2 ? tc_frame_ref(tc, 1) : tc_env(tc);
+    tc_cp(tc) = Mclosure(tc_env(tc), compile_expr(tc_frame_ref(tc, 0)));
     tc_ac(tc) = 0;
     goto application;
 
 // performs `do-raise` instruction
 do_raise:
     // check if an error handler has been installed
-    args = tc_sfp(tc);
     if (minim_falsep(tc_error_handler(tc))) {
-        boot_error_proc(minim_false, Mstring("unhandled exception"), args[0]);
+        boot_error_proc(
+            minim_false,
+            Mstring("unhandled exception"),
+            tc_frame_ref(tc, 0)
+        );
     }
 
     // set procedure to handler and call
@@ -518,18 +506,35 @@ do_raise:
 
 // restores previous continuation
 restore_frame:
-    // restore the old instruction stream and environment
-    // and seek to the expected label
-    mobj cc = pop_frame(tc);
-    tc_env(tc) = continuation_env(cc);
-    istream = continuation_pc(cc);
-    if (minim_nullp(istream)) {
-        // we reached the entry continuation frame
-        // so the "next" thing to do is exit
-        return res;
+    if (tc_sfp(tc) <= tc_stack_base(tc)) {
+        // we underflowed, so we need to unpack the previous stack
+        mobj srecord = tc_stack_link(tc);
+        if (minim_nullp(srecord)) {
+            // no previous stack so we should exit
+            // make sure to pop entry frame
+            tc_env(tc) = penv;
+            return res;
+        }
+
+        tc_stack_base(tc) = cache_stack_base(srecord);
+        tc_stack_size(tc) = cache_stack_len(srecord);
+        tc_stack_link(tc) = cache_stack_prev(srecord);
+        tc_sfp(tc) = tc_stack_base(tc);
+        tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - STACK_SLOP;
+        cc = cache_stack_ret(srecord);
+    } else {
+        cc = tc_ccont(tc);
     }
 
-    // otherwise execute at *istream
+    // restore instruction stream and environment
+    istream = tc_ra(tc);
+    tc_env(tc) = continuation_env(cc);
+
+    // update thread parameters
+    tc_ccont(tc) = continuation_prev(cc);
+    tc_sfp(tc) = continuation_sfp(cc);
+    tc_cp(tc) = continuation_cp(cc);
+    tc_ac(tc) = continuation_ac(cc);
     goto loop;
 
 not_procedure:
@@ -537,6 +542,10 @@ not_procedure:
 }
 
 mobj eval_expr(mobj tc, mobj expr) {
+    // fprintf(stderr, "eval: ");
+    // write_object(stderr, expr);
+    // fprintf(stderr, "\n");
+
     mobj code = compile_expr(expr);
     return eval_istream(tc, minim_code_it(code));
 }

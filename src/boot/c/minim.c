@@ -55,7 +55,7 @@ static int handle_flags(int argc, char **argv) {
 static void load_library() {
     char *old_cwd = get_current_dir();
     set_current_dir(BOOT_DIR);
-    load_file("boot.min", tc_env(current_tc()));
+    load_file(current_tc(), "boot.min");
     set_current_dir(old_cwd);
 }
 
