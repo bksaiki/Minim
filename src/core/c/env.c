@@ -23,7 +23,7 @@ mobj empty_env;
 //
 
 mobj Menv(mobj prev) {
-    return Menv2(prev, ENVIRONMENT_VECTOR_MAX);
+    return Menv2(prev, env_vector_max);
 }
 
 mobj Menv2(mobj prev, size_t size) {

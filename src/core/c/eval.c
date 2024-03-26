@@ -73,7 +73,7 @@ void result_arity_exn(const char *name, short expected, short actual) {
 #define stack_cushion               (8 * ptr_size)
 
 static int stack_overflowp(mobj tc, size_t size) {
-    return (uintptr_t) PTR_ADD(tc_sfp(tc), size) >= (uintptr_t) tc_esp(tc);
+    return (uintptr_t) ptr_add(tc_sfp(tc), size) >= (uintptr_t) tc_esp(tc);
 }
 
 static void grow_stack(mobj tc, size_t size) {
@@ -82,8 +82,8 @@ static void grow_stack(mobj tc, size_t size) {
     size_t req, actual;
 
     // compute required space
-    req = size + STACK_SLOP;
-    actual = (req > STACK_SIZE) ? req : STACK_SIZE;
+    req = size + stack_slop;
+    actual = (req > stack_size) ? req : stack_size;
 
     // allocate stack record for previous segment
     srecord = Mcached_stack(tc_stack_base(tc), tc_stack_link(tc), tc_stack_size(tc), tc_ccont(tc));
@@ -94,7 +94,7 @@ static void grow_stack(mobj tc, size_t size) {
     tc_stack_link(tc) = srecord;
     tc_stack_size(tc) = actual;
     tc_sfp(tc) = tc_stack_base(tc);
-    tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - STACK_SLOP;
+    tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - stack_slop;
 }
 
 void reserve_stack(mobj tc, size_t argc) {
@@ -136,7 +136,7 @@ static void push_frame(mobj tc, mobj pc) {
 
     // update current continuation, frame pointer, and argument count
     tc_ccont(tc) = Mcontinuation(cc, pc, tc_env(tc), tc);
-    tc_sfp(tc) = PTR_ADD(tc_sfp(tc), size * ptr_size);
+    tc_sfp(tc) = ptr_add(tc_sfp(tc), size * ptr_size);
     tc_ra(tc) = pc;
     tc_cp(tc) = minim_void;
     tc_ac(tc) = 0;
@@ -520,7 +520,7 @@ restore_frame:
         tc_stack_size(tc) = cache_stack_len(srecord);
         tc_stack_link(tc) = cache_stack_prev(srecord);
         tc_sfp(tc) = tc_stack_base(tc);
-        tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - STACK_SLOP;
+        tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - stack_slop;
         cc = cache_stack_ret(srecord);
     } else {
         cc = tc_ccont(tc);

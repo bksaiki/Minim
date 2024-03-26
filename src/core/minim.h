@@ -26,14 +26,6 @@
 #error "compiler not supported"
 #endif
 
-#define RECORD_FIELD_MAX    32767
-#define SYMBOL_MAX_LEN      4096
-#define STACK_SIZE          65520
-#define STACK_SLOP          1024
-
-#define INIT_VALUES_BUFFER_LEN      10
-#define ENVIRONMENT_VECTOR_MAX      6
-
 // System constants (assumes 64-bits)
 
 typedef uint8_t         mbyte;
@@ -44,7 +36,15 @@ typedef unsigned long   msize;
 typedef void            *mobj;
 
 #define ptr_size        8
-#define PTR_ADD(p, d)   ((void *) ((muptr) (p)) + (d))
+#define ptr_add(p, d)   ((void *) ((muptr) (p)) + (d))
+
+// constants
+
+#define symbol_max_len          4096
+#define stack_size              65520
+#define stack_frame_limit       512
+#define stack_slop              (2 * stack_frame_limit)
+#define env_vector_max          6
 
 // Special symbols
 
@@ -165,7 +165,7 @@ mobj equal_proc(mobj x, mobj y);
 // +------------+
 #define minim_char_size         ptr_size
 #define minim_charp(o)          (minim_type(o) == MINIM_OBJ_CHAR)
-#define minim_char(o)           (*((char *) PTR_ADD(o, 4)))
+#define minim_char(o)           (*((char *) ptr_add(o, 4)))
 
 #define NUL_CHAR        ((mchar) 0x00)      // null
 #define BEL_CHAR        ((mchar) 0x07)      // alarm / bell
@@ -192,7 +192,7 @@ mobj integer_to_char(mobj x);
 // +------------+ 
 #define minim_fixnum_size       (2 * ptr_size)
 #define minim_fixnump(o)        (minim_type(o) == MINIM_OBJ_FIXNUM)
-#define minim_fixnum(o)         (*((mfixnum*) PTR_ADD(o, ptr_size)))
+#define minim_fixnum(o)         (*((mfixnum*) ptr_add(o, ptr_size)))
 
 mobj Mfixnum(long v);
 
@@ -218,7 +218,7 @@ mobj fx2_le(mobj x, mobj y);
 // +------------+
 #define minim_symbol_size       (2 * ptr_size)
 #define minim_symbolp(o)        (minim_type(o) == MINIM_OBJ_SYMBOL)
-#define minim_symbol(o)         (*((char **) PTR_ADD(o, ptr_size)))
+#define minim_symbol(o)         (*((char **) ptr_add(o, ptr_size)))
 
 mobj Msymbol(const char *s);
 mobj symbolp_proc(mobj x);
@@ -230,7 +230,7 @@ mobj symbolp_proc(mobj x);
 // +------------+ 
 #define minim_string_size       (2 * ptr_size)
 #define minim_stringp(o)        (minim_type(o) == MINIM_OBJ_STRING)
-#define minim_string(o)         (*((char **) PTR_ADD(o, ptr_size)))
+#define minim_string(o)         (*((char **) ptr_add(o, ptr_size)))
 #define minim_string_ref(o, i)  (minim_string(o)[(i)])
 
 mobj Mstring(const char *s);
@@ -257,8 +257,8 @@ mobj string_to_list(mobj s);
 #define minim_cons_size         (3 * ptr_size)
 
 #define minim_consp(o)          (minim_type(o) == MINIM_OBJ_PAIR)
-#define minim_car(o)            (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_cdr(o)            (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_car(o)            (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_cdr(o)            (*((mobj*) ptr_add(o, 2 * ptr_size)))
 
 #define minim_caar(o)       minim_car(minim_car(o))
 #define minim_cadr(o)       minim_car(minim_cdr(o))
@@ -330,8 +330,8 @@ mobj list_append2(mobj xs, mobj ys);
 // +------------+ 
 #define minim_vector_size(n)        (ptr_size * (2 + (n)))
 #define minim_vectorp(o)            (minim_type(o) == MINIM_OBJ_VECTOR)
-#define minim_vector_len(o)         (*((msize*) PTR_ADD(o, ptr_size)))
-#define minim_vector_ref(o, i)      (((mobj*) PTR_ADD(o, 2 * ptr_size))[i])
+#define minim_vector_len(o)         (*((msize*) ptr_add(o, ptr_size)))
+#define minim_vector_ref(o, i)      (((mobj*) ptr_add(o, 2 * ptr_size))[i])
 
 mobj Mvector(long len, mobj init);
 
@@ -351,7 +351,7 @@ mobj list_to_vector(mobj xs);
 // +------------+
 #define minim_box_size      (2 * ptr_size)
 #define minim_boxp(o)       (minim_type(o) == MINIM_OBJ_BOX)
-#define minim_unbox(o)      (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_unbox(o)      (*((mobj*) ptr_add(o, ptr_size)))
 
 mobj Mbox(mobj x);
 
@@ -369,9 +369,9 @@ mobj box_set_proc(mobj x, mobj v);
 // +------------+
 #define minim_closure_size          (4 * ptr_size)
 #define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
-#define minim_closure_env(o)        (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_closure_code(o)       (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_closure_name(o)       (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_closure_env(o)        (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_closure_code(o)       (*((mobj*) ptr_add(o, 2 * ptr_size)))
+#define minim_closure_name(o)       (*((mobj*) ptr_add(o, 3 * ptr_size)))
 
 mobj Mclosure(mobj env, mobj code);
 
@@ -383,8 +383,8 @@ mobj Mclosure(mobj env, mobj code);
 // +------------+
 #define minim_port_size         (2 * ptr_size)
 #define minim_portp(o)          (minim_type(o) == MINIM_OBJ_PORT)
-#define minim_port_flags(o)     (*((mbyte*) PTR_ADD(o, 1)))
-#define minim_port(o)           (*((FILE**) PTR_ADD(o, ptr_size)))
+#define minim_port_flags(o)     (*((mbyte*) ptr_add(o, 1)))
+#define minim_port(o)           (*((FILE**) ptr_add(o, ptr_size)))
 
 #define PORT_FLAG_OPEN              0x1
 #define PORT_FLAG_READ              0x2
@@ -436,8 +436,8 @@ mobj newline_proc(mobj port);
 // +------------+
 #define minim_syntax_size       (3 * ptr_size)
 #define minim_syntaxp(o)        (minim_type(o) == MINIM_OBJ_SYNTAX)
-#define minim_syntax_e(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_syntax_loc(o)     (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_syntax_e(o)       (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_syntax_loc(o)     (*((mobj*) ptr_add(o, 2 * ptr_size)))
 
 mobj Msyntax(mobj e, mobj loc);
 
@@ -458,9 +458,9 @@ mobj syntax_to_list(mobj stx);
 // +------------+
 #define minim_record_size(n)        (ptr_size * (2 + (n)))
 #define minim_recordp(o)            (minim_type(o) == MINIM_OBJ_RECORD)
-#define minim_record_count(o)       (*((int*) PTR_ADD(o, 4)))
-#define minim_record_rtd(o)         (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_record_ref(o, i)      (((mobj*) PTR_ADD(o, 2 * ptr_size))[i])
+#define minim_record_count(o)       (*((int*) ptr_add(o, 4)))
+#define minim_record_rtd(o)         (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_record_ref(o, i)      (((mobj*) ptr_add(o, 2 * ptr_size))[i])
 
 mobj Mrecord(mobj rtd, int fieldc);
 
@@ -574,11 +574,11 @@ mobj default_record_hash_set_proc(mobj proc);
 // +------------+
 #define minim_hashtable_size            (4 * ptr_size)
 #define minim_hashtablep(o)             (minim_type(o) == MINIM_OBJ_HASHTABLE)
-#define minim_hashtable_buckets(o)      (*((mobj*) PTR_ADD(o, ptr_size)))
+#define minim_hashtable_buckets(o)      (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_hashtable_bucket(o, i)    (minim_vector_ref(minim_hashtable_buckets(o), i))
-#define minim_hashtable_alloc_ptr(o)    (*((msize**) PTR_ADD(o, 2 * ptr_size)))
+#define minim_hashtable_alloc_ptr(o)    (*((msize**) ptr_add(o, 2 * ptr_size)))
 #define minim_hashtable_alloc(o)        (*(minim_hashtable_alloc_ptr(o)))
-#define minim_hashtable_count(o)        (*((msize*) PTR_ADD(o, 3 * ptr_size)))
+#define minim_hashtable_count(o)        (*((msize*) ptr_add(o, 3 * ptr_size)))
 
 mobj Mhashtable(size_t size_hint);
 
@@ -610,8 +610,8 @@ mobj hashtable_clear(mobj ht);
 // +------------+
 #define minim_env_size          (3 * ptr_size)
 #define minim_envp(o)           (minim_type(o) == MINIM_OBJ_ENV)
-#define minim_env_prev(o)       (*((mobj*) PTR_ADD(o, ptr_size)))
-#define minim_env_bindings(o)   (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
+#define minim_env_prev(o)       (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_env_bindings(o)   (*((mobj*) ptr_add(o, 2 * ptr_size)))
 
 mobj Menv(mobj prev);
 mobj Menv2(mobj prev, size_t size);
@@ -647,12 +647,12 @@ mobj env_lookup_var(mobj env, mobj var);
 // +------------+
 #define continuation_size           (7 * ptr_size)
 #define minim_continuationp(o)      (minim_type(o) == MINIM_OBJ_CONTINUATION)
-#define continuation_prev(c)        (*((mobj*) PTR_ADD(c, ptr_size)))
-#define continuation_pc(c)          (*((mobj*) PTR_ADD(c, 2 * ptr_size)))
-#define continuation_env(c)         (*((mobj*) PTR_ADD(c, 3 * ptr_size)))
-#define continuation_sfp(c)         (*((mobj**) PTR_ADD(c, 4 * ptr_size)))
-#define continuation_cp(c)          (*((mobj*) PTR_ADD(c, 5 * ptr_size)))
-#define continuation_ac(c)          (*((size_t*) PTR_ADD(c, 6 * ptr_size)))
+#define continuation_prev(c)        (*((mobj*) ptr_add(c, ptr_size)))
+#define continuation_pc(c)          (*((mobj*) ptr_add(c, 2 * ptr_size)))
+#define continuation_env(c)         (*((mobj*) ptr_add(c, 3 * ptr_size)))
+#define continuation_sfp(c)         (*((mobj**) ptr_add(c, 4 * ptr_size)))
+#define continuation_cp(c)          (*((mobj*) ptr_add(c, 5 * ptr_size)))
+#define continuation_ac(c)          (*((size_t*) ptr_add(c, 6 * ptr_size)))
 
 mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
 
@@ -714,9 +714,9 @@ mobj error_handler_set_proc(mobj proc);
 // +--------------+
 #define cache_stack_size            (4 * ptr_size)
 #define cache_stack_base(s)         (*((mobj**) (s)))
-#define cache_stack_prev(s)         (*((mobj*) PTR_ADD(s, ptr_size)))
-#define cache_stack_len(s)          (*((size_t *) PTR_ADD(s, 2 * ptr_size)))
-#define cache_stack_ret(s)          (*((mobj*) PTR_ADD(s, 3 * ptr_size)))
+#define cache_stack_prev(s)         (*((mobj*) ptr_add(s, ptr_size)))
+#define cache_stack_len(s)          (*((size_t *) ptr_add(s, 2 * ptr_size)))
+#define cache_stack_ret(s)          (*((mobj*) ptr_add(s, 3 * ptr_size)))
 
 mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
 
@@ -724,30 +724,30 @@ mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
 // Encapsulates all Scheme runtime information of a thread
 #define tc_size                 (22 * ptr_size)
 #define tc_ac(tc)               (*((size_t *) (tc)))
-#define tc_cp(tc)               (*((mobj*) PTR_ADD(tc, ptr_size)))
-#define tc_sfp(tc)              (*((mobj**) PTR_ADD(tc, 2 * ptr_size)))
-#define tc_esp(tc)              (*((mobj**) PTR_ADD(tc, 3 * ptr_size)))
-#define tc_ccont(tc)            (*((mobj*) PTR_ADD(tc, 4 * ptr_size)))
-#define tc_env(tc)              (*((mobj*) PTR_ADD(tc, 5 * ptr_size)))
-#define tc_vc(tc)               (*((size_t*) PTR_ADD(tc, 6 * ptr_size)))
-#define tc_values(tc)           (*((mobj**) PTR_ADD(tc, 7 * ptr_size)))
-#define tc_stack_base(tc)       (*((mobj**) PTR_ADD(tc, 8 * ptr_size)))
-#define tc_stack_size(tc)       (*((size_t*) PTR_ADD(tc, 9 * ptr_size)))
-#define tc_stack_link(tc)       (*((void**) PTR_ADD(tc, 10 * ptr_size)))
-#define tc_sseg(tc)             (*((mobj**) PTR_ADD(tc, 11 * ptr_size)))
-#define tc_reentry(tc)          (*((jmp_buf**) PTR_ADD(tc, 12 * ptr_size)))
-#define tc_input_port(tc)       (*((mobj*) PTR_ADD(tc, 13 * ptr_size)))
-#define tc_output_port(tc)      (*((mobj*) PTR_ADD(tc, 14 * ptr_size)))
-#define tc_error_port(tc)       (*((mobj*) PTR_ADD(tc, 15 * ptr_size)))
-#define tc_directory(tc)        (*((mobj*) PTR_ADD(tc, 16 * ptr_size)))
-#define tc_command_line(tc)     (*((mobj*) PTR_ADD(tc, 17 * ptr_size)))
-#define tc_record_equal(tc)     (*((mobj*) PTR_ADD(tc, 18 * ptr_size)))
-#define tc_record_hash(tc)      (*((mobj*) PTR_ADD(tc, 19 * ptr_size)))
-#define tc_error_handler(tc)    (*((mobj*) PTR_ADD(tc, 20 * ptr_size)))
-#define tc_c_error_handler(tc)  (*((mobj*) PTR_ADD(tc, 21 * ptr_size)))
+#define tc_cp(tc)               (*((mobj*) ptr_add(tc, ptr_size)))
+#define tc_sfp(tc)              (*((mobj**) ptr_add(tc, 2 * ptr_size)))
+#define tc_esp(tc)              (*((mobj**) ptr_add(tc, 3 * ptr_size)))
+#define tc_ccont(tc)            (*((mobj*) ptr_add(tc, 4 * ptr_size)))
+#define tc_env(tc)              (*((mobj*) ptr_add(tc, 5 * ptr_size)))
+#define tc_vc(tc)               (*((size_t*) ptr_add(tc, 6 * ptr_size)))
+#define tc_values(tc)           (*((mobj**) ptr_add(tc, 7 * ptr_size)))
+#define tc_stack_base(tc)       (*((mobj**) ptr_add(tc, 8 * ptr_size)))
+#define tc_stack_size(tc)       (*((size_t*) ptr_add(tc, 9 * ptr_size)))
+#define tc_stack_link(tc)       (*((void**) ptr_add(tc, 10 * ptr_size)))
+#define tc_sseg(tc)             (*((mobj**) ptr_add(tc, 11 * ptr_size)))
+#define tc_reentry(tc)          (*((jmp_buf**) ptr_add(tc, 12 * ptr_size)))
+#define tc_input_port(tc)       (*((mobj*) ptr_add(tc, 13 * ptr_size)))
+#define tc_output_port(tc)      (*((mobj*) ptr_add(tc, 14 * ptr_size)))
+#define tc_error_port(tc)       (*((mobj*) ptr_add(tc, 15 * ptr_size)))
+#define tc_directory(tc)        (*((mobj*) ptr_add(tc, 16 * ptr_size)))
+#define tc_command_line(tc)     (*((mobj*) ptr_add(tc, 17 * ptr_size)))
+#define tc_record_equal(tc)     (*((mobj*) ptr_add(tc, 18 * ptr_size)))
+#define tc_record_hash(tc)      (*((mobj*) ptr_add(tc, 19 * ptr_size)))
+#define tc_error_handler(tc)    (*((mobj*) ptr_add(tc, 20 * ptr_size)))
+#define tc_c_error_handler(tc)  (*((mobj*) ptr_add(tc, 21 * ptr_size)))
 
 #define tc_ra(tc)               (tc_sfp(tc)[0])
-#define tc_frame(tc)            ((mobj *) PTR_ADD(tc_sfp(tc), ptr_size))
+#define tc_frame(tc)            ((mobj *) ptr_add(tc_sfp(tc), ptr_size))
 #define tc_frame_ref(tc, i)     (tc_frame(tc)[i])
 
 mobj Mthread_context();
@@ -764,10 +764,10 @@ mobj Mthread_context();
 #define minim_code_header_size      4
 #define minim_code_size(n)          ((minim_code_header_size * ptr_size) + (n * ptr_size) + ptr_size)
 #define minim_codep(o)              (minim_type(o) == MINIM_OBJ_CODE)
-#define minim_code_len(o)           (*((size_t*) PTR_ADD(o, ptr_size)))
-#define minim_code_arity(o)         (*((mobj*) PTR_ADD(o, 2 * ptr_size)))
-#define minim_code_reloc(o)         (*((mobj*) PTR_ADD(o, 3 * ptr_size)))
-#define minim_code_it(o)            ((mobj *) PTR_ADD(o, 4 * ptr_size))
+#define minim_code_len(o)           (*((size_t*) ptr_add(o, ptr_size)))
+#define minim_code_arity(o)         (*((mobj*) ptr_add(o, 2 * ptr_size)))
+#define minim_code_reloc(o)         (*((mobj*) ptr_add(o, 3 * ptr_size)))
+#define minim_code_it(o)            ((mobj *) ptr_add(o, 4 * ptr_size))
 #define minim_code_ref(o, i)        (minim_code_it(o)[i]) 
 
 mobj Mcode(size_t size);
