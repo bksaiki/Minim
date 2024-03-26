@@ -145,22 +145,22 @@ mobj record_set_proc(mobj rec, mobj idx, mobj x) {
 
 mobj default_record_equal_proc() {
     // (-> procedure)
-    return record_equal_proc(current_thread());
+    return tc_record_equal(current_tc());
 }
 
 mobj default_record_equal_set_proc(mobj proc) {
     // (-> procedure void)
-    record_equal_proc(current_thread()) = proc;
+    tc_record_equal(current_tc()) = proc;
     return minim_void;
 }
 
 mobj default_record_hash_proc() {
     // (-> procedure)
-    return record_hash_proc(current_thread());
+    return tc_record_hash(current_tc());
 }
 
 mobj default_record_hash_set_proc(mobj proc) {
     // (-> procedure void)
-    record_hash_proc(current_thread()) = proc;
+    tc_record_hash(current_tc()) = proc;
     return minim_void;
 }

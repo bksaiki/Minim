@@ -55,14 +55,13 @@ static int handle_flags(int argc, char **argv) {
 static void load_library() {
     char *old_cwd = get_current_dir();
     set_current_dir(BOOT_DIR);
-    load_file("boot.min", global_env(current_thread()));
+    load_file(current_tc(), "boot.min");
     set_current_dir(old_cwd);
 }
 
 int main(int argc, char **argv) {
     volatile int stack_top;
-    minim_thread *th;
-    mobj expr, evaled;
+    mobj tc, expr, evaled;
     int argi, i;
 
     stack_top = 0;
@@ -73,28 +72,30 @@ int main(int argc, char **argv) {
     minim_boot_init();
 
     // load the prelude
-    th = current_thread();
-    load_prelude(global_env(th));
+    tc = current_tc();
+    load_prelude(tc_env(tc));
 
     if (opt_load_library)
         load_library();
 
     for (i = argc - 1; i >= argi; --i)
-        command_line(th) = Mcons(Mstring(argv[i]), command_line(th));
+        tc_command_line(tc) = Mcons(Mstring(argv[i]), tc_command_line(tc));
 
     if (argi < argc) {
         if (!interactive && opt_load_library) {
             eval_expr(
+                tc,
                 Mcons(intern("import"),
                     Mcons(Mstring(argv[argi]), 
-                    minim_null)),
-                global_env(th));
+                    minim_null))
+            );
         } else {
             eval_expr(
+                tc,
                 Mcons(intern("load"),
                     Mcons(Mstring(argv[argi]), 
-                    minim_null)),
-                global_env(th));
+                    minim_null))
+            );
         }
     }
         
@@ -105,11 +106,11 @@ int main(int argc, char **argv) {
             if (expr == NULL) break;
 
             check_expr(expr);
-            evaled = eval_expr(expr, global_env(th));
+            evaled = eval_expr(tc, expr);
             if (!minim_voidp(evaled)) {
                 if (minim_valuesp(evaled)) {
-                    for (int i = 0; i < values_buffer_count(th); ++i) {
-                        write_object(stdout, values_buffer_ref(th, i));
+                    for (int i = 0; i < tc_vc(tc); ++i) {
+                        write_object(stdout, tc_values(tc)[i]);
                         printf("\n");
                     }
                 } else {

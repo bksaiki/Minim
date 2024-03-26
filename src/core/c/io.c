@@ -56,17 +56,17 @@ mobj string_portp_proc(mobj x) {
 
 mobj current_input_port() {
     // (-> input-port)
-    return input_port(current_thread());
+    return tc_input_port(current_tc());
 }
 
 mobj current_output_port() {
     // (-> output-port)
-    return output_port(current_thread());
+    return tc_output_port(current_tc());
 }
 
 mobj current_error_port() {
     // (-> output-port)
-    return error_port(current_thread());
+    return tc_error_port(current_tc());
 }
 
 mobj open_input_file(mobj name) {

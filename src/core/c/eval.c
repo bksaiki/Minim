@@ -69,135 +69,104 @@ void result_arity_exn(const char *name, short expected, short actual) {
 //  Evaluation
 //
 
-#define stack_frame_size(th, addt)  ((current_ac(th) + (addt)) * ptr_size)
+#define stack_frame_size(th, addt)  ((1 + tc_ac(th) + (addt)) * ptr_size)
 #define stack_cushion               (8 * ptr_size)
 
-static int stack_overflowp(size_t size) {
-    minim_thread *th;
-    mobj sseg;
-    
-    th = current_thread();
-    sseg = current_segment(th);
-    return PTR_ADD(current_sfp(th), size) >= PTR_ADD(stack_seg_end(sseg), -stack_cushion);
+static int stack_overflowp(mobj tc, size_t size) {
+    return (uintptr_t) ptr_add(tc_sfp(tc), size) >= (uintptr_t) tc_esp(tc);
 }
 
-static void grow_stack(size_t size) {
-    minim_thread *th;
-    mobj sseg;
+static void grow_stack(mobj tc, size_t size) {
+    mobj srecord;
+    void *stack;
     size_t req, actual;
 
     // compute required space
-    th = current_thread();
-    req = size + stack_seg_header_size;
-    actual = (req > stack_seg_default_size) ? req : stack_seg_default_size;
+    req = size + stack_slop;
+    actual = (req > stack_size) ? req : stack_size;
 
-    // allocate the new stack segment
-    sseg = Mstack_segment(current_segment(th), actual);
-    current_segment(th) = sseg;
-    current_sfp(th) = stack_seg_base(sseg);
+    // allocate stack record for previous segment
+    srecord = Mcached_stack(tc_stack_base(tc), tc_stack_link(tc), tc_stack_size(tc), tc_ccont(tc));
+
+    // allocate new stack segment
+    stack = GC_alloc(actual);
+    tc_stack_base(tc) = stack;
+    tc_stack_link(tc) = srecord;
+    tc_stack_size(tc) = actual;
+    tc_sfp(tc) = tc_stack_base(tc);
+    tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - stack_slop;
 }
 
-void reserve_stack(minim_thread *th, size_t argc) {
-    size_t req = argc * ptr_size;
-    if (stack_overflowp(req))
-        grow_stack(req);
+void reserve_stack(mobj tc, size_t argc) {
+    size_t req = (1 + argc) * ptr_size;
+    if (stack_overflowp(tc, req))
+        grow_stack(tc, req);
 }
 
-void set_arg(minim_thread *th, size_t i, mobj x) {
-    current_sfp(th)[i] = x;
+void set_arg(mobj tc, size_t i, mobj x) {
+    tc_frame_ref(tc, i) = x;
 }
 
-mobj get_arg(minim_thread *th, size_t i) {
-    return current_sfp(th)[i];
+mobj get_arg(mobj tc, size_t i) {
+    return tc_frame_ref(tc, i);
 }
 
-static void maybe_grow_stack(size_t argc) {
-    minim_thread *th = current_thread();
-    reserve_stack(th, current_ac(th) + argc);
+static void maybe_grow_stack(mobj tc, size_t argc) {
+    reserve_stack(tc, tc_ac(tc) + argc);
 }
 
-static void push_arg(mobj x) {
-    minim_thread *th = current_thread();
-    current_sfp(th)[current_ac(th)] = x;
-    current_ac(th) += 1;
+static void push_arg(mobj tc, mobj x) {
+    tc_frame_ref(tc, tc_ac(tc)) = x;
+    tc_ac(tc) += 1;
 }
 
-static mobj pop_arg() {
-    minim_thread *th = current_thread();
-    mobj x = current_sfp(th)[current_ac(th) - 1];
-    current_ac(th) -= 1;
+static mobj pop_arg(mobj tc) {
+    mobj x = tc_frame_ref(tc, tc_ac(tc) - 1);
+    tc_ac(tc) -= 1;
     return x;
 }
 
-static void push_frame(mobj env, mobj pc) {
-    // get current continuation and argument count
-    minim_thread *th = current_thread();
-    mobj cc = current_continuation(th);
-    size_t ac = current_ac(th);
+static void push_frame(mobj tc, mobj pc) {
+    mobj cc;
+    size_t size;
+
+    // get current continuation and frame size
+    cc = tc_ccont(tc);
+    size = 1 + tc_ac(tc);
 
     // update current continuation, frame pointer, and argument count
-    cc = Mcontinuation(cc, pc, env, th);
-    current_continuation(th) = cc;
-    current_sfp(th) = PTR_ADD(current_sfp(th), ac * ptr_size);
-    current_cp(th) = NULL;
-    current_ac(th) = 0;
+    tc_ccont(tc) = Mcontinuation(cc, pc, tc_env(tc), tc);
+    tc_sfp(tc) = ptr_add(tc_sfp(tc), size * ptr_size);
+    tc_ra(tc) = pc;
+    tc_cp(tc) = minim_void;
+    tc_ac(tc) = 0;
 }
 
-static mobj pop_frame() {
-    // get current continuation
-    minim_thread *th = current_thread();
-    mobj cc = current_continuation(th);
-    mobj *seg = current_segment(th);
-    mobj *sfp = current_sfp(th);
-
-    // pop continuation and update thread-local data
-    current_continuation(th) = continuation_prev(cc);
-    current_sfp(th) = continuation_sfp(cc);
-    current_cp(th) = continuation_cp(cc);
-    current_ac(th) = continuation_ac(cc);
-
-    // underflow if frame pointer is not in segment
-    sfp = current_sfp(th);
-    if (!(((void *) sfp) >= stack_seg_base(seg) && ((void *) sfp) < stack_seg_end(seg))) {
-        // just pop the current segment
-        current_segment(th) = stack_seg_prev(seg);
-    }
-
-    return cc;
-}
-
-static void check_arity(mobj env, mobj spec) {
-    minim_thread *th;
-    size_t ac;
-
-    th = current_thread();
-    ac = current_ac(th);
+static void check_arity(mobj tc, mobj spec) {
+    mobj cp = tc_cp(tc);
+    size_t ac = tc_ac(tc);
     if (minim_fixnump(spec)) {
         // exact arity
         if (ac != minim_fixnum(spec))
-            arity_mismatch_exn(current_cp(th), ac);
+            arity_mismatch_exn(cp, ac);
     } else {
         mobj min = minim_car(spec);
         mobj max = minim_cdr(spec);
         if (minim_falsep(max)) {
             // at least arity
             if (ac < minim_fixnum(min))
-                arity_mismatch_exn(current_cp(th), ac);
+                arity_mismatch_exn(cp, ac);
         } else {
             // range arity
             if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
-                arity_mismatch_exn(current_cp(th), ac);
+                arity_mismatch_exn(cp, ac);
         }
     }
 }
 
-static mobj do_ccall(mobj (*prim)()) {
-    minim_thread *th;
-    mobj *args;
-    
-    th = current_thread();
-    args = current_sfp(th);
-    switch (current_ac(th)) {
+static mobj do_ccall(mobj tc, mobj (*prim)()) {
+    mobj *args = tc_frame(tc);
+    switch (tc_ac(tc)) {
     case 0:
         return prim();
     case 1:
@@ -213,30 +182,30 @@ static mobj do_ccall(mobj (*prim)()) {
     case 6:
         return prim(args[0], args[1], args[2], args[3], args[4], args[5]);
     default:
-        minim_error1(NULL, "cannot call kernel function with 7 or more arguments", current_cp(th));
+        minim_error1(NULL, "cannot call kernel function with 7 or more arguments", tc_cp(tc));
     }
 }
 
-static mobj do_rest(size_t idx) {
-    minim_thread *th;
-    size_t ac;
-
-    th = current_thread();
-    ac = current_ac(th);
+static mobj do_rest(mobj tc, size_t idx) {
+    size_t ac = tc_ac(tc);
     if (idx > ac) {
-        minim_error2("do_rest", "base index exceed argument count", Mfixnum(idx), Mfixnum(ac));
+        minim_error2(
+            "do_rest",
+            "base index exceed argument count",
+            Mfixnum(idx),
+            Mfixnum(ac)
+        );
     }
 
     if (idx == ac) {
         // empty
         return minim_null;
     } else {
-        mobj hd, tl, *sfp;
+        mobj hd, tl;
 
-        sfp = current_sfp(th);
-        hd = tl = Mcons(sfp[idx], NULL);
+        hd = tl = Mcons(tc_frame_ref(tc, idx), NULL);
         for (idx += 1; idx < ac; idx++) {
-            minim_cdr(tl) = Mcons(sfp[idx], NULL);
+            minim_cdr(tl) = Mcons(tc_frame_ref(tc, idx), NULL);
             tl = minim_cdr(tl);
         }
 
@@ -245,112 +214,93 @@ static mobj do_rest(size_t idx) {
     }
 }
 
-static void do_apply() {
-    minim_thread *th;
+static void do_apply(mobj tc) {
     mobj *sfp, rest;
     size_t i, ac, len, req;
 
-    th = current_thread();
-    sfp = current_sfp(th);
-    ac = current_ac(th);
+    // thread parameters
+    sfp = tc_sfp(tc);
+    ac = tc_ac(tc);
 
     // the first argument becomes the current procedure
-    current_cp(th) = sfp[0];
+    tc_cp(tc) = tc_frame_ref(tc, 0);
 
     // shift arguments by 1 (since `apply` itself is consumed)
-    rest = sfp[ac - 1];
+    rest = tc_frame_ref(tc, ac - 1);
     for (i = 0; i < ac - 2; i++)
-        sfp[i] = sfp[i + 1];
+        tc_frame_ref(tc, i) = tc_frame_ref(tc, i + 1);
 
     // check if we have room for the application
-    current_ac(th) -= 2;
+    tc_ac(tc) -= 2;
     len = list_length(rest);
-    req = stack_frame_size(th, len);
-    if (stack_overflowp(req)) {
-        mobj *nsfp;
-
-        grow_stack(req);
-        nsfp = current_sfp(th);
+    req = stack_frame_size(tc, len);
+    if (stack_overflowp(tc, req)) {
+        grow_stack(tc, req);
         for (i = 0; i < ac; i++)
-            nsfp[i] = sfp[i];
-        sfp = nsfp;
+            tc_frame_ref(tc, i) = sfp[i + 1]; 
     }
 
     // push rest argument to stack
     for (; !minim_nullp(rest); rest = minim_cdr(rest))
-        push_arg(minim_car(rest));
+        push_arg(tc, minim_car(rest));
 }
 
-static void do_values() {
-    minim_thread *th = current_thread();
-    mobj *sfp = current_sfp(th);
-    size_t ac = current_ac(th);
-
-    // check if the values buffer is large enough
-    if (ac >= values_buffer_size(th)) {
-        values_buffer_size(th) = 2 * ac;
-        values_buffer(th) = GC_realloc(values_buffer(th), values_buffer_size(th) * sizeof(mobj));
+static mobj do_values(mobj tc) {
+    tc_vc(tc) = tc_ac(tc);
+    if (tc_ac(tc) == 0) {
+        tc_values(tc) = NULL;
+        return minim_values;
+    } else if (tc_ac(tc) == 1) {
+        tc_values(tc) = NULL;
+        return tc_frame_ref(tc, 0);
+    } else {
+        tc_values(tc) = GC_alloc(tc_vc(tc) * sizeof(mobj));
+        memcpy(tc_values(tc), tc_frame(tc), tc_vc(tc) * sizeof(mobj));
+        return minim_values;
     }
-
-    // copy arguments from the stack to the values buffer
-    memcpy(values_buffer(th), sfp, ac * sizeof(mobj));
-    values_buffer_count(th) = ac;
 }
 
-static void values_to_args(mobj x) {
+static void values_to_args(mobj tc, mobj x) {
     if (minim_valuesp(x)) {
         // multi-valued
-        minim_thread *th = current_thread();
-        for (size_t i = 0; i < values_buffer_count(th); i++) {
-            push_arg(values_buffer_ref(th, i));
-        }
+        for (size_t i = 0; i < tc_vc(tc); i++)
+            push_arg(tc, tc_values(tc)[i]);
     } else {
         // single-valued
-        push_arg(x);
+        push_arg(tc, x);
     }
 }
 
 // Forces `x` to be a single value, that is,
 // if `x` is the result of `(values ...)` it unwraps
 // the result if `x` contains one value and panics otherwise
-static mobj force_single_value(mobj x) {
-    if (minim_valuesp(x)) {
-        minim_thread *th = current_thread();
-        if (values_buffer_count(th) != 1)
-            result_arity_exn(NULL, 1, values_buffer_count(th));
-
-        values_buffer_count(th) = 0;
-        return values_buffer_ref(th, 0);
-    } else {
-        return x;
-    }
+static mobj force_single_value(mobj tc, mobj x) {
+    if (minim_valuesp(x))
+        result_arity_exn(NULL, 1, tc_vc(tc));
+    return x;
 }
 
-static void bind_values(mobj env, mobj ids, mobj res) {
-    size_t count = list_length(ids);
+static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
+    size_t i, count;
+
+    count = list_length(ids);
     if (minim_valuesp(res)) {
         // multi-valued result
-        minim_thread *th;
-        size_t i;
+        if (tc_vc(tc) != count)
+            result_arity_exn(NULL, count, tc_vc(tc));
 
-        th = current_thread();
-        if (count != values_buffer_count(th))
-            result_arity_exn(NULL, count, values_buffer_count(th));
-
-        i = 0;
-        for (; !minim_nullp(ids); ids = minim_cdr(ids)) {
-            SET_NAME_IF_CLOSURE(minim_car(ids), values_buffer_ref(th, i));
-            env_define_var(env, minim_car(ids), values_buffer_ref(th, i));
-            i += 1;
+        for (i = 0; i < count; i++) {
+            SET_NAME_IF_CLOSURE(minim_car(ids), tc_values(tc)[i]);
+            env_define_var_no_check(env, minim_car(ids), tc_values(tc)[i]);
+            ids = minim_cdr(ids);
         }
     } else {
         // single-valued result
-        if (count != 1) {
+        if (count != 1)
             result_arity_exn(NULL, count, 1);
-        } else {
-            SET_NAME_IF_CLOSURE(minim_car(ids), res);
-            env_define_var(env, minim_car(ids), res);
-        }
+
+        SET_NAME_IF_CLOSURE(minim_car(ids), res);
+        env_define_var_no_check(env, minim_car(ids), res);
     }
 }
 
@@ -358,23 +308,23 @@ static void bind_values(mobj env, mobj ids, mobj res) {
 //  Evaluator
 //
 
-static mobj eval_istream(mobj *istream, mobj env) {
-    minim_thread *th;
-    mobj ins, ty, res, penv;
+static mobj eval_istream(mobj tc, mobj *istream) {
+    mobj ins, ty, res, penv, cc;
     
     // setup interpreter
-    th = current_thread();
-    current_ac(th) = 0;
-    penv = env;
-    res = NULL;
+    tc = current_tc();
+    tc_ra(tc) = NULL;
+    tc_cp(tc) = minim_void;
+    tc_ac(tc) = 0;
+    res = minim_void;
 
-    // push entry continuation frame
-    push_frame(env, minim_null);
+    // hack needed for `get-env` insruction
+    penv = tc_env(tc);
 
     // possibly handle long jump back into the procedure
-    if (setjmp(*current_reentry(th)) != 0) {
+    if (setjmp(*tc_reentry(tc)) != 0) {
         // long jumped from somewhere mysterious
-        // only valid long jumps require an immediate function application
+        // valid long jumps require an immediate function application
         goto application;
     }
 
@@ -388,28 +338,35 @@ loop:
         minim_error1(NULL, "executing non-bytecode", ins);
     }
 
+    // write_object(stderr, ins);
+    // fprintf(stderr, " res=");
+    // write_object(stderr, res);
+    // fprintf(stderr, " cp=");
+    // write_object(stderr, tc_cp(tc));
+    // fprintf(stderr, " ac=%ld, sfp=%p, ccont=%p, pc=%p, ra=%p, vc=%ld\n",
+    //     tc_ac(tc), tc_sfp(tc), tc_ccont(tc), istream, tc_ra(tc), tc_vc(tc));
+
     ty = minim_car(ins);
     if (ty == literal_symbol) {
         // literal
         res = minim_cadr(ins);
     } else if (ty == lookup_symbol) {
         // lookup
-        res = env_lookup_var(env, minim_cadr(ins));
+        res = env_lookup_var(tc_env(tc), minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
-        res = force_single_value(res);
-        current_cp(th) = res;
+        tc_cp(tc) = force_single_value(tc, res);
     } else if (ty == push_symbol) {
         // push
-        res = force_single_value(res);
-        push_arg(res);
+        res = force_single_value(tc, res);
+        push_arg(tc, res);
     } else if (ty == pop_symbol) {
         // pop
-        res = pop_arg();
+        res = pop_arg(tc);
     } else if (ty == apply_symbol) {
         // apply
 application:
-        if (minim_closurep(current_cp(th))) {
+        if (minim_closurep(tc_cp(tc))) {
             goto call_closure;
         } else {
             goto not_procedure;
@@ -419,48 +376,48 @@ application:
         goto restore_frame;
     } else if (ty == ccall_symbol) {
         // ccall
-        res = do_ccall(minim_cadr(ins));
+        res = do_ccall(tc, minim_cadr(ins));
     } else if (ty == bind_symbol) {
         // bind
-        env_define_var(env, minim_cadr(ins), res);
+        env_define_var_no_check(tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == bind_values_symbol) {
         // bind-values
-        bind_values(env, minim_cadr(ins), res);
+        bind_values(tc, tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == bind_values_top_symbol) {
         // bind-values/top (special variant for `let-values`)
-        bind_values(current_sfp(th)[current_ac(th) - 1], minim_cadr(ins), res);
+        bind_values(tc, tc_frame_ref(tc, tc_ac(tc) - 1), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind
-        env_set_var(env, minim_cadr(ins), res);
+        env_set_var(tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == make_env_symbol) {
         // make-env
-        res = Menv2(env, minim_fixnum(minim_cadr(ins)));
+        res = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == push_env_symbol) {
         // push-env
-        env = res;
+        tc_env(tc) = res;
     } else if (ty == pop_env_symbol) {
         // pop-env
-        env = minim_env_prev(env);
+        tc_env(tc) = minim_env_prev(tc_env(tc));
     } else if (ty == save_cc_symbol) {
         // save-cc
-        push_frame(env, minim_cadr(ins));
+        push_frame(tc, minim_cadr(ins));
     } else if (ty == get_arg_symbol) {
         // get-arg
-        res = current_sfp(th)[minim_fixnum(minim_cadr(ins))];
+        res = tc_frame_ref(tc, minim_fixnum(minim_cadr(ins)));
     } else if (ty == get_env_symbol) {
         // get-env
-        if (minim_nullp(current_continuation(th))) {
+        if (minim_nullp(tc_ccont(tc))) {
             res = penv;
         } else {
-            res = continuation_env(current_continuation(th));
+            res = continuation_env(tc_ccont(tc));
         }
     } else if (ty == do_apply_symbol) {
         // do-apply
-        do_apply();
+        do_apply(tc);
         goto application;
     } else if (ty == do_eval_symbol) {
         // do-eval
@@ -470,20 +427,18 @@ application:
         goto do_raise;
     } else if (ty == do_rest_symbol) {
         // do-rest
-        res = do_rest(minim_fixnum(minim_cadr(ins)));
+        res = do_rest(tc, minim_fixnum(minim_cadr(ins)));
     } else if (ty == do_values_symbol) {
         // do-values
-        do_values();
-        res = minim_values;
+        res = do_values(tc);
     } else if (ty == do_with_values_symbol) {
         // do-with-values
-        values_to_args(res);
+        values_to_args(tc, res);
         goto application;
     } else if (ty == clear_frame_symbol) {
         // clear frame
-        current_cp(th) = NULL;
-        current_ac(th) = 0;
-        res = NULL;
+        tc_cp(tc) = minim_void;
+        tc_ac(tc) = 0;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
         istream = minim_cadr(ins);
@@ -496,13 +451,13 @@ application:
         }
     } else if (ty == make_closure_symbol) {
         // make-closure
-        res = Mclosure(env, minim_cadr(ins));
+        res = Mclosure(tc_env(tc), minim_cadr(ins));
     } else if (ty == check_stack_symbol) {
         // check stack
-        maybe_grow_stack(minim_fixnum(minim_cadr(ins)));
+        maybe_grow_stack(tc, minim_fixnum(minim_cadr(ins)));
     } else if (ty == check_arity_symbol) {
         // check arity
-        check_arity(env, minim_cadr(ins));
+        check_arity(tc, minim_cadr(ins));
     } else {
         minim_error1(NULL, "invalid bytecode", ins);
     }
@@ -518,57 +473,79 @@ next:
 
 // call closure
 call_closure:
-    mobj code = minim_closure_code(current_cp(th));
     // set instruction stream and env
-    istream = minim_code_it(code);
-    env = minim_closure_env(current_cp(th));
+    istream = minim_code_it(minim_closure_code(tc_cp(tc)));
+    tc_env(tc) = minim_closure_env(tc_cp(tc));
     // don't clear either the current procedure or argument count
-    // since this is required for binding and arity check
+    // since this is required for binding and arity checkf
     goto loop;
 
 // performs `do-eval` instruction
 do_eval:
     // compile expression into a nullary function and
     // call it in tail position
-    mobj *args = current_sfp(th);
-    env = current_ac(th) == 2 ? args[1] : env;
-    current_cp(th) = Mclosure(env, compile_expr(args[0]));
-    current_ac(th) = 0;
+    tc_env(tc) = tc_ac(tc) == 2 ? tc_frame_ref(tc, 1) : tc_env(tc);
+    tc_cp(tc) = Mclosure(tc_env(tc), compile_expr(tc_frame_ref(tc, 0)));
+    tc_ac(tc) = 0;
     goto application;
 
 // performs `do-raise` instruction
 do_raise:
     // check if an error handler has been installed
-    args = current_sfp(th);
-    if (minim_falsep(error_handler(th))) {
-        boot_error_proc(minim_false, Mstring("unhandled exception"), args[0]);
+    if (minim_falsep(tc_error_handler(tc))) {
+        boot_error_proc(
+            minim_false,
+            Mstring("unhandled exception"),
+            tc_frame_ref(tc, 0)
+        );
     }
 
     // set procedure to handler and call
-    current_cp(th) = error_handler(th);
+    tc_cp(tc) = tc_error_handler(tc);
     goto application;
 
 // restores previous continuation
 restore_frame:
-    // restore the old instruction stream and environment
-    // and seek to the expected label
-    mobj cc = pop_frame();
-    env = continuation_env(cc);
-    istream = continuation_pc(cc);
-    if (minim_nullp(istream)) {
-        // we reached the entry continuation frame
-        // so the "next" thing to do is exit
-        return res;
+    if (tc_sfp(tc) <= tc_stack_base(tc)) {
+        // we underflowed, so we need to unpack the previous stack
+        mobj srecord = tc_stack_link(tc);
+        if (minim_nullp(srecord)) {
+            // no previous stack so we should exit
+            // make sure to pop entry frame
+            tc_env(tc) = penv;
+            return res;
+        }
+
+        tc_stack_base(tc) = cache_stack_base(srecord);
+        tc_stack_size(tc) = cache_stack_len(srecord);
+        tc_stack_link(tc) = cache_stack_prev(srecord);
+        tc_sfp(tc) = tc_stack_base(tc);
+        tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - stack_slop;
+        cc = cache_stack_ret(srecord);
+    } else {
+        cc = tc_ccont(tc);
     }
 
-    // otherwise execute at *istream
+    // restore instruction stream and environment
+    istream = tc_ra(tc);
+    tc_env(tc) = continuation_env(cc);
+
+    // update thread parameters
+    tc_ccont(tc) = continuation_prev(cc);
+    tc_sfp(tc) = continuation_sfp(cc);
+    tc_cp(tc) = continuation_cp(cc);
+    tc_ac(tc) = continuation_ac(cc);
     goto loop;
 
 not_procedure:
-    minim_error1(NULL, "expected procedure", current_cp(th));
+    minim_error1(NULL, "expected procedure", tc_cp(tc));
 }
 
-mobj eval_expr(mobj expr, mobj env) {
+mobj eval_expr(mobj tc, mobj expr) {
+    // fprintf(stderr, "eval: ");
+    // write_object(stderr, expr);
+    // fprintf(stderr, "\n");
+
     mobj code = compile_expr(expr);
-    return eval_istream(minim_code_it(code), env);
+    return eval_istream(tc, minim_code_it(code));
 }

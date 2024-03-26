@@ -20,7 +20,7 @@ int return_code, passed;
 
 void check_fasl_equal(const char *input, const char *expect) {
     FILE *istream, *fasl_stream, *ostream;
-    mobj o;
+    mobj tc, o;
     char *buffer;
     size_t len, read;
 
@@ -30,8 +30,9 @@ void check_fasl_equal(const char *input, const char *expect) {
 
     // evaluate input string
     istream = tmpfile();
+    tc = current_tc();
     load(istream, input);
-    o = eval_expr(read_object(istream), make_env());
+    o = eval_expr(tc, read_object(istream));
     
     // write as FASL
     write_fasl(fasl_stream, o);
@@ -171,7 +172,7 @@ int main(int argc, char **argv) {
 
     GC_init(((void*) &stack_top));
     minim_boot_init();
-    load_prelude(global_env(current_thread()));
+    load_prelude(current_tc());
 
     stack_top = 0;
     return_code = stack_top;

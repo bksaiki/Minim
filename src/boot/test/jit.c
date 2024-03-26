@@ -37,19 +37,24 @@ char *write(mobj o) {
 
 void no_check(const char *input) {
     FILE *istream;
+    mobj tc;
 
     istream = tmpfile();
+    tc = current_tc();
     load(istream, input);
-    eval_expr(read_object(istream), make_env());
+    tc_env(tc) = make_env();
+    eval_expr(tc, read_object(istream));
 }
 
 void check_true(const char *input) {
     FILE *istream;
-    mobj result;
+    mobj tc, result;
 
     istream = tmpfile();
+    tc = current_tc();
     load(istream, input);
-    result = eval_expr(read_object(istream), make_env());
+    tc_env(tc) = make_env();
+    result = eval_expr(tc, read_object(istream));
     if (!minim_truep(result)) {
         log_failed_case(input, "#t", write(result));
         passed = 0;
@@ -60,11 +65,13 @@ void check_true(const char *input) {
 
 void check_false(const char *input) {
     FILE *istream;
-    mobj result;
+    mobj tc, result;
 
     istream = tmpfile();
+    tc = current_tc();
     load(istream, input);
-    result = eval_expr(read_object(istream), make_env());
+    tc_env(tc) = make_env();
+    result = eval_expr(tc, read_object(istream));
     if (!minim_falsep(result)) {
         log_failed_case(input, "#f", write(result));
         passed = 0;
@@ -75,12 +82,14 @@ void check_false(const char *input) {
 
 void check_equal(const char *input, const char *expect) {
     FILE *istream;
-    mobj result;
+    mobj tc, result;
     char *str;
 
     istream = tmpfile();
+    tc = current_tc();
     load(istream, input);
-    result = eval_expr(read_object(istream), make_env());
+    tc_env(tc) = make_env();
+    result = eval_expr(tc, read_object(istream));
     str = write(result);
     if (strcmp(str, expect) != 0) {
         log_failed_case(input, expect, str);
@@ -186,7 +195,7 @@ int test_apply() {
     check_equal("(apply (lambda xs xs) 1 2 '())", "(1 2)");
     check_equal("(apply (lambda xs xs) 1 2 '(3))", "(1 2 3)");
     check_equal("(apply (lambda xs xs) 1 2 '(3 4))", "(1 2 3 4)");
-    
+
     return passed;
 }
 

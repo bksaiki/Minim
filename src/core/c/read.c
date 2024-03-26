@@ -255,7 +255,7 @@ static mobj read_vector(FILE *in) {
 }
 
 mobj read_object(FILE *in) {
-    char buffer[SYMBOL_MAX_LEN];
+    char buffer[symbol_max_len];
     long num, i, block_level;
     short sign;
     char c;
@@ -419,7 +419,7 @@ read_hex:
                 }
             }
 
-            if (i >= SYMBOL_MAX_LEN) {
+            if (i >= symbol_max_len) {
                 minim_error("read_object", "string exceeded max length");
             }
 
@@ -441,7 +441,7 @@ read_hex:
 read_symbol:
 
         while (is_symbol_char(c)) {
-            if (i >= SYMBOL_MAX_LEN) {
+            if (i >= symbol_max_len) {
                 minim_error("read_object", "symbol exceeded max length");
             }
 
