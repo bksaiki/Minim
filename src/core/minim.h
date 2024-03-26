@@ -146,18 +146,6 @@ extern mobj minim_values;
 #define minim_boolp(o)          ((o) == minim_true || (o) == minim_false)
 #define minim_not(o)            ((o) == minim_false ? minim_true : minim_false)
 
-mobj nullp_proc(mobj x);
-mobj voidp_proc(mobj x);
-mobj eofp_proc(mobj x);
-mobj boolp_proc(mobj x);
-mobj not_proc(mobj x);
-
-int minim_eqp(mobj a, mobj b);
-int minim_equalp(mobj a, mobj b);
-
-mobj eq_proc(mobj x, mobj y);
-mobj equal_proc(mobj x, mobj y);
-
 // Characters
 // +------------+
 // |    type    | [0, 1)
@@ -179,12 +167,6 @@ mobj equal_proc(mobj x, mobj y);
 #define SP_CHAR         ((mchar) 0x20)      // space
 #define DEL_CHAR        ((mchar) 0x7F)      // delete
 
-mobj Mchar(mchar c);
-
-mobj charp_proc(mobj x);
-mobj char_to_integer(mobj x);
-mobj integer_to_char(mobj x);
-
 // Fixnum
 // +------------+
 // |    type    | [0, 1)
@@ -193,23 +175,6 @@ mobj integer_to_char(mobj x);
 #define minim_fixnum_size       (2 * ptr_size)
 #define minim_fixnump(o)        (minim_type(o) == MINIM_OBJ_FIXNUM)
 #define minim_fixnum(o)         (*((mfixnum*) ptr_add(o, ptr_size)))
-
-mobj Mfixnum(long v);
-
-mobj fixnump_proc(mobj x);
-mobj fx_neg(mobj x);
-mobj fx2_add(mobj x, mobj y);
-mobj fx2_sub(mobj x, mobj y);
-mobj fx2_mul(mobj x, mobj y);
-mobj fx2_div(mobj x, mobj y);
-mobj fx_remainder(mobj x, mobj y);
-mobj fx_modulo(mobj x, mobj y);
-
-mobj fx2_eq(mobj x, mobj y);
-mobj fx2_gt(mobj x, mobj y);
-mobj fx2_lt(mobj x, mobj y);
-mobj fx2_ge(mobj x, mobj y);
-mobj fx2_le(mobj x, mobj y);
 
 // Symbols
 // +------------+
@@ -220,9 +185,6 @@ mobj fx2_le(mobj x, mobj y);
 #define minim_symbolp(o)        (minim_type(o) == MINIM_OBJ_SYMBOL)
 #define minim_symbol(o)         (*((char **) ptr_add(o, ptr_size)))
 
-mobj Msymbol(const char *s);
-mobj symbolp_proc(mobj x);
-
 // String
 // +------------+
 // |    type    | [0, 1)
@@ -232,21 +194,6 @@ mobj symbolp_proc(mobj x);
 #define minim_stringp(o)        (minim_type(o) == MINIM_OBJ_STRING)
 #define minim_string(o)         (*((char **) ptr_add(o, ptr_size)))
 #define minim_string_ref(o, i)  (minim_string(o)[(i)])
-
-mobj Mstring(const char *s);
-mobj Mstring2(long len, mchar c);
-
-mobj stringp_proc(mobj x);
-mobj make_string(mobj len, mobj init);
-mobj string_length(mobj s);
-mobj string_ref(mobj s, mobj idx);
-mobj string_set(mobj s, mobj idx, mobj c);
-mobj number_to_string(mobj n);
-mobj string_to_number(mobj s);
-mobj symbol_to_string(mobj s);
-mobj string_to_symbol(mobj s);
-mobj list_to_string(mobj xs);
-mobj string_to_list(mobj s);
 
 // Pair
 // +------------+
@@ -265,62 +212,12 @@ mobj string_to_list(mobj s);
 #define minim_cdar(o)       minim_cdr(minim_car(o))
 #define minim_cddr(o)       minim_cdr(minim_cdr(o))
 
-mobj Mcons(mobj car, mobj cdr);
-mobj consp_proc(mobj x);
-
-mobj car_proc(mobj x);
-mobj cdr_proc(mobj x);
-mobj caar_proc(mobj x);
-mobj cadr_proc(mobj x);
-mobj cdar_proc(mobj x);
-mobj cddr_proc(mobj x);
-
-mobj caaar_proc(mobj x);
-mobj caadr_proc(mobj x);
-mobj cadar_proc(mobj x);
-mobj caddr_proc(mobj x);
-mobj cdaar_proc(mobj x);
-mobj cdadr_proc(mobj x);
-mobj cddar_proc(mobj x);
-mobj cdddr_proc(mobj x);
-
-mobj caaaar_proc(mobj x);
-mobj caaadr_proc(mobj x);
-mobj caadar_proc(mobj x);
-mobj caaddr_proc(mobj x);
-mobj cadaar_proc(mobj x);
-mobj cadadr_proc(mobj x);
-mobj caddar_proc(mobj x);
-mobj cadddr_proc(mobj x);
-
-mobj cdaaar_proc(mobj x);
-mobj cdaadr_proc(mobj x);
-mobj cdadar_proc(mobj x);
-mobj cdaddr_proc(mobj x);
-mobj cddaar_proc(mobj x);
-mobj cddadr_proc(mobj x);
-mobj cdddar_proc(mobj x);
-mobj cddddr_proc(mobj x);
-
-mobj set_car_proc(mobj p, mobj x);
-mobj set_cdr_proc(mobj p, mobj x);
-
 #define Mlist1(a)                   Mcons(a, minim_null)
 #define Mlist2(a, b)                Mcons(a, Mlist1(b))
 #define Mlist3(a, b, c)             Mcons(a, Mlist2(b, c))
 #define Mlist4(a, b, c, d)          Mcons(a, Mlist3(b, c, d))
 #define Mlist5(a, b, c, d, e)       Mcons(a, Mlist4(b, c, d, e))
 #define Mlist6(a, b, c, d, e, f)    Mcons(a, Mlist5(b, c, d, e, f))
-
-mobj listp_proc(mobj x);
-int minim_listp(mobj x);
-long list_length(mobj xs);
-void list_set_tail(mobj xs, mobj ys);
-
-mobj make_list_proc(mobj len, mobj init);
-mobj length_proc(mobj xs);
-mobj list_reverse(mobj xs);
-mobj list_append2(mobj xs, mobj ys);
 
 // Vector
 // +------------+
@@ -333,17 +230,6 @@ mobj list_append2(mobj xs, mobj ys);
 #define minim_vector_len(o)         (*((msize*) ptr_add(o, ptr_size)))
 #define minim_vector_ref(o, i)      (((mobj*) ptr_add(o, 2 * ptr_size))[i])
 
-mobj Mvector(long len, mobj init);
-
-mobj vectorp_proc(mobj x);
-mobj make_vector(mobj len, mobj init);
-mobj vector_length(mobj v);
-mobj vector_ref(mobj v, mobj idx);
-mobj vector_set(mobj v, mobj idx, mobj x);
-mobj vector_fill(mobj v, mobj x);
-mobj vector_to_list(mobj v);
-mobj list_to_vector(mobj xs);
-
 // Box
 // +------------+
 // |    type    | [0, 1)
@@ -352,13 +238,6 @@ mobj list_to_vector(mobj xs);
 #define minim_box_size      (2 * ptr_size)
 #define minim_boxp(o)       (minim_type(o) == MINIM_OBJ_BOX)
 #define minim_unbox(o)      (*((mobj*) ptr_add(o, ptr_size)))
-
-mobj Mbox(mobj x);
-
-mobj boxp_proc(mobj x);
-mobj box_proc(mobj x);
-mobj unbox_proc(mobj x);
-mobj box_set_proc(mobj x, mobj v);
 
 // Closure
 // +------------+
@@ -372,8 +251,6 @@ mobj box_set_proc(mobj x, mobj v);
 #define minim_closure_env(o)        (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_closure_code(o)       (*((mobj*) ptr_add(o, 2 * ptr_size)))
 #define minim_closure_name(o)       (*((mobj*) ptr_add(o, 3 * ptr_size)))
-
-mobj Mclosure(mobj env, mobj code);
 
 // Port
 // +------------+
@@ -400,34 +277,6 @@ mobj Mclosure(mobj env, mobj code);
 #define minim_port_set(o, f)    minim_port_flags(o) |= (f);
 #define minim_port_unset(o, f)  minim_port_flags(o) &= ~(f);
 
-mobj Minput_port(FILE *stream);
-mobj Moutput_port(FILE *stream);
-
-mobj input_portp_proc(mobj x);
-mobj output_portp_proc(mobj x);
-mobj string_portp_proc(mobj x);
-
-mobj current_input_port();
-mobj current_output_port();
-mobj current_error_port();
-mobj open_input_file(mobj name);
-mobj open_output_file(mobj name);
-mobj open_input_string(mobj str);
-mobj open_output_string();
-mobj close_input_port(mobj port);
-mobj close_output_port(mobj port);
-mobj get_output_string(mobj port);
-
-mobj read_proc(mobj port);
-mobj read_char_proc(mobj port);
-mobj peek_char_proc(mobj port);
-mobj char_readyp_proc(mobj port);
-
-mobj put_char_proc(mobj port, mobj ch);
-mobj put_string_proc(mobj port, mobj ch, mobj start, mobj end);
-mobj flush_output_proc(mobj port);
-mobj newline_proc(mobj port);
-
 // Syntax
 // +------------+
 // |    type    | [0, 1)
@@ -438,15 +287,6 @@ mobj newline_proc(mobj port);
 #define minim_syntaxp(o)        (minim_type(o) == MINIM_OBJ_SYNTAX)
 #define minim_syntax_e(o)       (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_syntax_loc(o)     (*((mobj*) ptr_add(o, 2 * ptr_size)))
-
-mobj Msyntax(mobj e, mobj loc);
-
-mobj syntaxp_proc(mobj x);
-mobj syntax_e_proc(mobj stx);
-mobj syntax_loc_proc(mobj stx);
-mobj strip_syntax(mobj o);
-mobj to_syntax(mobj o);
-mobj syntax_to_list(mobj stx);
 
 // Records: RTD/values
 // +------------+
@@ -461,17 +301,6 @@ mobj syntax_to_list(mobj stx);
 #define minim_record_count(o)       (*((int*) ptr_add(o, 4)))
 #define minim_record_rtd(o)         (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_record_ref(o, i)      (((mobj*) ptr_add(o, 2 * ptr_size))[i])
-
-mobj Mrecord(mobj rtd, int fieldc);
-
-mobj recordp_proc(mobj x);
-mobj record_rtdp_proc(mobj x);
-mobj record_valuep_proc(mobj x);
-
-mobj make_record(mobj rtd, mobj fields);
-mobj record_rtd_proc(mobj rec);
-mobj record_ref_proc(mobj rec, mobj idx);
-mobj record_set_proc(mobj rec, mobj idx, mobj x);
 
 /*
     Records come in two flavors:
@@ -547,6 +376,245 @@ mobj record_set_proc(mobj rec, mobj idx, mobj x);
 #define record_opaquep(o)     (record_rtd_opaque(minim_record_rtd(o)) == minim_true)
 #define record_sealedp(o)     (record_rtd_sealed(minim_record_rtd(o)) == minim_true)
 
+// Hashtables
+// +------------+
+// |    type    | [0, 1)
+// |   buckets  | [8, 16)
+// |  alloc_ptr | [16, 24)
+// |    count   | [24, 32)
+// +------------+
+#define minim_hashtable_size            (4 * ptr_size)
+#define minim_hashtablep(o)             (minim_type(o) == MINIM_OBJ_HASHTABLE)
+#define minim_hashtable_buckets(o)      (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_hashtable_bucket(o, i)    (minim_vector_ref(minim_hashtable_buckets(o), i))
+#define minim_hashtable_alloc_ptr(o)    (*((msize**) ptr_add(o, 2 * ptr_size)))
+#define minim_hashtable_alloc(o)        (*(minim_hashtable_alloc_ptr(o)))
+#define minim_hashtable_count(o)        (*((msize*) ptr_add(o, 3 * ptr_size)))
+
+// Environment
+// +------------+
+// |    type    | [0, 1)
+// |    prev    | [8, 16)
+// |   bindings | [16, 24)
+// +------------+
+#define minim_env_size          (3 * ptr_size)
+#define minim_envp(o)           (minim_type(o) == MINIM_OBJ_ENV)
+#define minim_env_prev(o)       (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_env_bindings(o)   (*((mobj*) ptr_add(o, 2 * ptr_size)))
+
+// Continuations
+// +------------+
+// |    type    | [0, 1)
+// |    prev    | [8, 16)
+// |    pc      | [16, 24)
+// |    env     | [24, 32)
+// |    sfp     | [32, 40)
+// |    cp      | [40, 48)
+// |    ac      | [48, 56)
+// +------------+
+#define continuation_size           (7 * ptr_size)
+#define minim_continuationp(o)      (minim_type(o) == MINIM_OBJ_CONTINUATION)
+#define continuation_prev(c)        (*((mobj*) ptr_add(c, ptr_size)))
+#define continuation_pc(c)          (*((mobj*) ptr_add(c, 2 * ptr_size)))
+#define continuation_env(c)         (*((mobj*) ptr_add(c, 3 * ptr_size)))
+#define continuation_sfp(c)         (*((mobj**) ptr_add(c, 4 * ptr_size)))
+#define continuation_cp(c)          (*((mobj*) ptr_add(c, 5 * ptr_size)))
+#define continuation_ac(c)          (*((size_t*) ptr_add(c, 6 * ptr_size)))
+
+// Procedures
+
+#define minim_procp(x)  (minim_closurep(x))
+
+// Constructors
+
+mobj Mchar(mchar c);
+mobj Mfixnum(long v);
+mobj Msymbol(const char *s);
+mobj Mstring(const char *s);
+mobj Mstring2(long len, mchar c);
+mobj Mcons(mobj car, mobj cdr);
+mobj Mvector(long len, mobj init);
+mobj Mbox(mobj x);
+mobj Mclosure(mobj env, mobj code);
+mobj Minput_port(FILE *stream);
+mobj Moutput_port(FILE *stream);
+mobj Msyntax(mobj e, mobj loc);
+mobj Mrecord(mobj rtd, int fieldc);
+mobj Mhashtable(size_t size_hint);
+mobj Menv(mobj prev);
+mobj Menv2(mobj prev, size_t size);
+mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
+
+// Object
+
+mobj nullp_proc(mobj x);
+mobj voidp_proc(mobj x);
+mobj eofp_proc(mobj x);
+mobj boolp_proc(mobj x);
+mobj not_proc(mobj x);
+
+// Equality
+
+int minim_eqp(mobj a, mobj b);
+int minim_equalp(mobj a, mobj b);
+
+mobj eq_proc(mobj x, mobj y);
+mobj equal_proc(mobj x, mobj y);
+
+// Chars
+
+mobj charp_proc(mobj x);
+mobj char_to_integer(mobj x);
+mobj integer_to_char(mobj x);
+
+// Fixnums
+
+mobj fixnump_proc(mobj x);
+mobj fx_neg(mobj x);
+mobj fx2_add(mobj x, mobj y);
+mobj fx2_sub(mobj x, mobj y);
+mobj fx2_mul(mobj x, mobj y);
+mobj fx2_div(mobj x, mobj y);
+mobj fx_remainder(mobj x, mobj y);
+mobj fx_modulo(mobj x, mobj y);
+mobj fx2_eq(mobj x, mobj y);
+mobj fx2_gt(mobj x, mobj y);
+mobj fx2_lt(mobj x, mobj y);
+mobj fx2_ge(mobj x, mobj y);
+mobj fx2_le(mobj x, mobj y);
+
+// Symbol
+
+mobj symbolp_proc(mobj x);
+
+// Pair
+
+mobj stringp_proc(mobj x);
+mobj make_string(mobj len, mobj init);
+mobj string_length(mobj s);
+mobj string_ref(mobj s, mobj idx);
+mobj string_set(mobj s, mobj idx, mobj c);
+mobj number_to_string(mobj n);
+mobj string_to_number(mobj s);
+mobj symbol_to_string(mobj s);
+mobj string_to_symbol(mobj s);
+mobj list_to_string(mobj xs);
+mobj string_to_list(mobj s);
+
+mobj consp_proc(mobj x);
+mobj car_proc(mobj x);
+mobj cdr_proc(mobj x);
+mobj caar_proc(mobj x);
+mobj cadr_proc(mobj x);
+mobj cdar_proc(mobj x);
+mobj cddr_proc(mobj x);
+
+mobj caaar_proc(mobj x);
+mobj caadr_proc(mobj x);
+mobj cadar_proc(mobj x);
+mobj caddr_proc(mobj x);
+mobj cdaar_proc(mobj x);
+mobj cdadr_proc(mobj x);
+mobj cddar_proc(mobj x);
+mobj cdddr_proc(mobj x);
+
+mobj caaaar_proc(mobj x);
+mobj caaadr_proc(mobj x);
+mobj caadar_proc(mobj x);
+mobj caaddr_proc(mobj x);
+mobj cadaar_proc(mobj x);
+mobj cadadr_proc(mobj x);
+mobj caddar_proc(mobj x);
+mobj cadddr_proc(mobj x);
+
+mobj cdaaar_proc(mobj x);
+mobj cdaadr_proc(mobj x);
+mobj cdadar_proc(mobj x);
+mobj cdaddr_proc(mobj x);
+mobj cddaar_proc(mobj x);
+mobj cddadr_proc(mobj x);
+mobj cdddar_proc(mobj x);
+mobj cddddr_proc(mobj x);
+
+mobj set_car_proc(mobj p, mobj x);
+mobj set_cdr_proc(mobj p, mobj x);
+
+// List
+
+int minim_listp(mobj x);
+long list_length(mobj xs);
+void list_set_tail(mobj xs, mobj ys);
+
+mobj listp_proc(mobj x);
+mobj make_list_proc(mobj len, mobj init);
+mobj length_proc(mobj xs);
+mobj list_reverse(mobj xs);
+mobj list_append2(mobj xs, mobj ys);
+
+// Vector
+
+mobj vectorp_proc(mobj x);
+mobj make_vector(mobj len, mobj init);
+mobj vector_length(mobj v);
+mobj vector_ref(mobj v, mobj idx);
+mobj vector_set(mobj v, mobj idx, mobj x);
+mobj vector_fill(mobj v, mobj x);
+mobj vector_to_list(mobj v);
+mobj list_to_vector(mobj xs);
+
+// Box
+
+mobj boxp_proc(mobj x);
+mobj box_proc(mobj x);
+mobj unbox_proc(mobj x);
+mobj box_set_proc(mobj x, mobj v);
+
+// Port
+
+mobj input_portp_proc(mobj x);
+mobj output_portp_proc(mobj x);
+mobj string_portp_proc(mobj x);
+
+mobj current_input_port();
+mobj current_output_port();
+mobj current_error_port();
+mobj open_input_file(mobj name);
+mobj open_output_file(mobj name);
+mobj open_input_string(mobj str);
+mobj open_output_string();
+mobj close_input_port(mobj port);
+mobj close_output_port(mobj port);
+mobj get_output_string(mobj port);
+
+mobj read_proc(mobj port);
+mobj read_char_proc(mobj port);
+mobj peek_char_proc(mobj port);
+mobj char_readyp_proc(mobj port);
+
+mobj put_char_proc(mobj port, mobj ch);
+mobj put_string_proc(mobj port, mobj ch, mobj start, mobj end);
+mobj flush_output_proc(mobj port);
+mobj newline_proc(mobj port);
+
+// Syntax
+
+mobj syntaxp_proc(mobj x);
+mobj syntax_e_proc(mobj stx);
+mobj syntax_loc_proc(mobj stx);
+mobj strip_syntax(mobj o);
+mobj to_syntax(mobj o);
+mobj syntax_to_list(mobj stx);
+
+// Records
+
+mobj make_record(mobj rtd, mobj fields);
+mobj recordp_proc(mobj x);
+mobj record_rtdp_proc(mobj x);
+mobj record_valuep_proc(mobj x);
+mobj record_rtd_proc(mobj rec);
+mobj record_ref_proc(mobj rec, mobj idx);
+mobj record_set_proc(mobj rec, mobj idx, mobj x);
+
 int record_valuep(mobj o);
 int record_rtdp(mobj o);
 
@@ -565,22 +633,7 @@ mobj default_record_equal_set_proc(mobj proc);
 mobj default_record_hash_proc();
 mobj default_record_hash_set_proc(mobj proc);
 
-// Hashtables
-// +------------+
-// |    type    | [0, 1)
-// |   buckets  | [8, 16)
-// |  alloc_ptr | [16, 24)
-// |    count   | [24, 32)
-// +------------+
-#define minim_hashtable_size            (4 * ptr_size)
-#define minim_hashtablep(o)             (minim_type(o) == MINIM_OBJ_HASHTABLE)
-#define minim_hashtable_buckets(o)      (*((mobj*) ptr_add(o, ptr_size)))
-#define minim_hashtable_bucket(o, i)    (minim_vector_ref(minim_hashtable_buckets(o), i))
-#define minim_hashtable_alloc_ptr(o)    (*((msize**) ptr_add(o, 2 * ptr_size)))
-#define minim_hashtable_alloc(o)        (*(minim_hashtable_alloc_ptr(o)))
-#define minim_hashtable_count(o)        (*((msize*) ptr_add(o, 3 * ptr_size)))
-
-mobj Mhashtable(size_t size_hint);
+// Hashtable
 
 size_t eq_hash(mobj o);
 mobj eq_hash_proc(mobj x);
@@ -603,27 +656,6 @@ mobj hashtable_keys(mobj ht);
 mobj hashtable_clear(mobj ht);
 
 // Environment
-// +------------+
-// |    type    | [0, 1)
-// |    prev    | [8, 16)
-// |   bindings | [16, 24)
-// +------------+
-#define minim_env_size          (3 * ptr_size)
-#define minim_envp(o)           (minim_type(o) == MINIM_OBJ_ENV)
-#define minim_env_prev(o)       (*((mobj*) ptr_add(o, ptr_size)))
-#define minim_env_bindings(o)   (*((mobj*) ptr_add(o, 2 * ptr_size)))
-
-mobj Menv(mobj prev);
-mobj Menv2(mobj prev, size_t size);
-
-mobj environmentp_proc(mobj o);
-mobj interaction_environment();
-mobj empty_environment();
-mobj environment_proc();
-mobj environment_names(mobj env);
-mobj extend_environment(mobj env);
-mobj environment_variable_ref(mobj env, mobj k, mobj fail);
-mobj environment_variable_set(mobj env, mobj k, mobj v);
 
 extern mobj empty_env;
 
@@ -635,30 +667,16 @@ mobj env_define_var(mobj env, mobj var, mobj val);
 mobj env_set_var(mobj env, mobj var, mobj val);
 mobj env_lookup_var(mobj env, mobj var);
 
-// Continuations
-// +------------+
-// |    type    | [0, 1)
-// |    prev    | [8, 16)
-// |    pc      | [16, 24)
-// |    env     | [24, 32)
-// |    sfp     | [32, 40)
-// |    cp      | [40, 48)
-// |    ac      | [48, 56)
-// +------------+
-#define continuation_size           (7 * ptr_size)
-#define minim_continuationp(o)      (minim_type(o) == MINIM_OBJ_CONTINUATION)
-#define continuation_prev(c)        (*((mobj*) ptr_add(c, ptr_size)))
-#define continuation_pc(c)          (*((mobj*) ptr_add(c, 2 * ptr_size)))
-#define continuation_env(c)         (*((mobj*) ptr_add(c, 3 * ptr_size)))
-#define continuation_sfp(c)         (*((mobj**) ptr_add(c, 4 * ptr_size)))
-#define continuation_cp(c)          (*((mobj*) ptr_add(c, 5 * ptr_size)))
-#define continuation_ac(c)          (*((size_t*) ptr_add(c, 6 * ptr_size)))
-
-mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
+mobj environmentp_proc(mobj o);
+mobj interaction_environment();
+mobj empty_environment();
+mobj environment_proc();
+mobj environment_names(mobj env);
+mobj extend_environment(mobj env);
+mobj environment_variable_ref(mobj env, mobj k, mobj fail);
+mobj environment_variable_set(mobj env, mobj k, mobj v);
 
 // Procedures
-
-#define minim_procp(x)  (minim_closurep(x))
 
 mobj procp_proc(mobj x);
 mobj procedure_arity_proc(mobj proc);
