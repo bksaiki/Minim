@@ -49,6 +49,7 @@ typedef void            *mobj;
 // Special symbols
 
 extern mobj begin_symbol;
+extern mobj case_lambda_symbol;
 extern mobj define_values_symbol;
 extern mobj if_symbol;
 extern mobj lambda_symbol;
@@ -65,16 +66,20 @@ extern mobj bind_values_symbol;
 extern mobj bind_values_top_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
+extern mobj branchlt_symbol;
+extern mobj branchne_symbol;
 extern mobj ccall_symbol;
 extern mobj clear_frame_symbol;
 extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
+extern mobj do_arity_error_symbol;
 extern mobj do_eval_symbol;
 extern mobj do_raise_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
+extern mobj get_ac_symbol;
 extern mobj get_arg_symbol;
 extern mobj get_env_symbol;
 extern mobj literal_symbol;

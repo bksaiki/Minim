@@ -4,15 +4,16 @@
 
 #include "../minim.h"
 
-mobj quote_symbol;
+mobj begin_symbol;
+mobj case_lambda_symbol;
 mobj define_values_symbol;
-mobj let_values_symbol;
-mobj letrec_values_symbol;
-mobj setb_symbol;
 mobj if_symbol;
 mobj lambda_symbol;
-mobj begin_symbol;
+mobj let_values_symbol;
+mobj letrec_values_symbol;
+mobj quote_symbol;
 mobj quote_syntax_symbol;
+mobj setb_symbol;
 mobj values_symbol;
 
 mobj apply_symbol;
@@ -21,16 +22,20 @@ mobj bind_values_symbol;
 mobj bind_values_top_symbol;
 mobj brancha_symbol;
 mobj branchf_symbol;
+mobj branchlt_symbol;
+mobj branchne_symbol;
 mobj ccall_symbol;
 mobj check_arity_symbol;
 mobj check_stack_symbol;
 mobj clear_frame_symbol;
 mobj do_apply_symbol;
+mobj do_arity_error_symbol;
 mobj do_eval_symbol;
 mobj do_raise_symbol;
 mobj do_rest_symbol;
 mobj do_values_symbol;
 mobj do_with_values_symbol;
+mobj get_ac_symbol;
 mobj get_arg_symbol;
 mobj get_env_symbol;
 mobj literal_symbol;

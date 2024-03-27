@@ -405,6 +405,9 @@ application:
     } else if (ty == save_cc_symbol) {
         // save-cc
         push_frame(tc, minim_cadr(ins));
+    } else if (ty == get_ac_symbol) {
+        // get-ac
+        res = (mobj*) tc_ac(tc);
     } else if (ty == get_arg_symbol) {
         // get-arg
         res = tc_frame_ref(tc, minim_fixnum(minim_cadr(ins)));
@@ -419,6 +422,9 @@ application:
         // do-apply
         do_apply(tc);
         goto application;
+    } else if (ty == do_arity_error_symbol) {
+        // do-apply
+        arity_mismatch_exn(tc_cp(tc), tc_ac(tc));
     } else if (ty == do_eval_symbol) {
         // do-eval
         goto do_eval;
@@ -447,6 +453,18 @@ application:
         // branchf (jump if #f)
         if (res == minim_false) {
             istream = minim_cadr(ins);
+            goto loop;
+        }
+    } else if (ty == branchne_symbol) {
+        // branchne (jump if not equal)
+        if (((mfixnum) res) != minim_fixnum(minim_cadr(ins))) {
+            istream = minim_car(minim_cddr(ins));
+            goto loop;
+        }
+    } else if (ty == branchlt_symbol) {
+        // branchlt (jump if less than)
+        if (((mfixnum) res) < minim_fixnum(minim_cadr(ins))) {
+            istream = minim_car(minim_cddr(ins));
             goto loop;
         }
     } else if (ty == make_closure_symbol) {

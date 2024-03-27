@@ -142,6 +142,26 @@ static void check_lambda(mobj expr) {
     }
 }
 
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> ...)`
+static void check_case_lambda(mobj expr) {
+    mobj clauses, args;
+
+    for (clauses = minim_cdr(expr); minim_consp(clauses); clauses = minim_cdr(clauses)) {
+        args = minim_caar(expr);
+        for (; minim_consp(args); args = minim_cdr(args))
+            assert_identifier(expr, minim_car(args));
+
+        if (!minim_nullp(args))
+            assert_identifier(expr, args);
+
+        check_expr(Mcons(begin_symbol, minim_cdar(clauses)));       
+    }
+
+    if (!minim_nullp(clauses))
+        bad_syntax_exn(expr);
+}
+
 //
 //  Public
 //
@@ -188,6 +208,9 @@ loop:
             check_lambda(expr);
             expr = Mcons(begin_symbol, minim_cddr(expr));
             goto loop;
+        } else if (head == case_lambda_symbol) {
+            // lambda form
+            check_case_lambda(expr);
         } else if (head == begin_symbol) {
             // begin form
             check_begin(expr);

@@ -76,11 +76,19 @@ mobj code_to_instrs(mobj code) {
 //  Utilities
 //
 
-static int get_lambda_arity(mobj e, long *req_arity) {
-    *req_arity = 0;
-    for (e = minim_cadr(e); minim_consp(e); e = minim_cdr(e))
-        ++(*req_arity);
+static int get_formals_len(mobj e, size_t *len) {
+    *len = 0;
+    for (; minim_consp(e); e = minim_cdr(e))
+        ++(*len);
     return !minim_nullp(e);
+}
+
+static mobj update_arity(mobj arity, size_t req_arity, int restp) {
+    if (minim_nullp(arity)) {
+        return restp ? Mcons(Mfixnum(req_arity), minim_false) : Mfixnum(req_arity);
+    } else {
+        minim_error("update_arity", "unimplemented\n");
+    }
 }
 
 static size_t let_values_size(mobj e) {
@@ -133,6 +141,12 @@ static mobj write_code(mobj ins, mobj reloc, mobj arity) {
         } else if (minim_car(in) == branchf_symbol) {
             // branchf
             in = Mlist2(branchf_symbol, assq_ref(reloc, minim_cadr(in)));
+        } else if (minim_car(in) == branchlt_symbol) {
+            // branchlt
+            in = Mlist3(branchlt_symbol, minim_cadr(in), assq_ref(reloc, minim_car(minim_cddr(in))));
+        } else if (minim_car(in) == branchne_symbol) {
+            // branchne
+            in = Mlist3(branchne_symbol, minim_cadr(in), assq_ref(reloc, minim_car(minim_cddr(in))));
         } else if (minim_car(in) == save_cc_symbol) {
             // save-cc
             in = Mlist2(save_cc_symbol, assq_ref(reloc, minim_cadr(in)));
@@ -250,6 +264,12 @@ static mobj resolve_refs(mobj cenv, mobj ins) {
         } else if (minim_car(in) == branchf_symbol) {
             // branchf: need to replace the label with the next instruction
             minim_cadr(in) = assq_ref(label_map, minim_cadr(in));
+        } else if (minim_car(in) == branchlt_symbol) {
+            // branchlt: need to replace the label with the next instruction
+            minim_car(minim_cddr(in)) = assq_ref(label_map, minim_car(minim_cddr(in)));
+        } else if (minim_car(in) == branchne_symbol) {
+            // branchne: need to replace the label with the next instruction
+            minim_car(minim_cddr(in)) = assq_ref(label_map, minim_car(minim_cddr(in)));
         } else if (minim_car(in) == make_closure_symbol) {
             // closure: need to lookup JIT object to embed
             minim_cadr(in) = cenv_template_ref(cenv, minim_fixnum(minim_cadr(in)));
@@ -366,29 +386,19 @@ static mobj compile_setb(mobj expr, mobj env, int tailp) {
     return with_tail_ret(ins, tailp);
 }
 
-static mobj compile_lambda(mobj expr, mobj env, int tailp) {
-    mobj args, body, ins, idx, reloc, code, arity;
-    long i, req_arity, env_size;
-    int restp;
-    
-    // arity check
-    restp = get_lambda_arity(expr, &req_arity);
-    if (restp) {
-        ins = Mlist1(Mlist2(check_arity_symbol, Mcons(Mfixnum(req_arity), minim_false)));
-    } else {
-        ins = Mlist1(Mlist2(check_arity_symbol, Mfixnum(req_arity)));
-    }
+static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp) {
+    mobj ins, args, body;
+    size_t env_size, i;
 
-    // push environment
-    env_size = req_arity + (tailp ? 1 : 0);
-    list_set_tail(ins, Mlist2(
+    env_size = arity + (restp ? 1 : 0);
+    ins = Mlist2(
         Mlist2(make_env_symbol, Mfixnum(env_size)),
         Mlist1(push_env_symbol)
-    ));
+    );
 
     // bind arguments
-    args = minim_cadr(expr);
-    for (i = 0; i < req_arity; i++) {
+    args = minim_car(clause);
+    for (i = 0; i < arity; i++) {
         list_set_tail(ins, Mlist2(
             Mlist2(get_arg_symbol, Mfixnum(i)),
             Mlist2(bind_symbol, minim_car(args))
@@ -400,7 +410,7 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     // bind rest argument
     if (restp) {
         list_set_tail(ins, Mlist2(
-            Mlist2(do_rest_symbol, Mfixnum(req_arity)),
+            Mlist2(do_rest_symbol, Mfixnum(arity)),
             Mlist2(bind_symbol, args)
         )); 
     }
@@ -409,14 +419,48 @@ static mobj compile_lambda(mobj expr, mobj env, int tailp) {
     list_set_tail(ins, Mlist1(Mlist1(clear_frame_symbol)));
 
     // compile the body
-    body = Mcons(begin_symbol, minim_cddr(expr));
+    body = Mcons(begin_symbol, minim_cdr(clause));
     list_set_tail(ins, compile_expr2(body, extend_cenv(env), 1));
+    return ins;
+}
+
+static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
+    mobj ins, clauses, label, reloc, idx, arity, code;
+
+    ins = minim_null;
+    arity = minim_null;
+    label = NULL;
+
+    // create labels for each clause
+    for (clauses = minim_cdr(expr); !minim_nullp(clauses); clauses = minim_cdr(clauses)) {
+        mobj branch, cl_ins;
+        size_t req_arity;
+        int restp;
+
+        // compute arity of clause
+        restp = get_formals_len(minim_caar(clauses), &req_arity);
+        branch = restp ? branchlt_symbol : branchne_symbol;
+        if (label) {
+            list_set_tail(ins, Mlist1(label));
+            label = cenv_make_label(env);
+            list_set_tail(ins, Mlist1(Mlist3(branch, Mfixnum(req_arity), label)));
+        } else {
+            label = cenv_make_label(env);
+            ins = Mlist2(Mlist1(get_ac_symbol), Mlist3(branch, Mfixnum(req_arity), label));
+        }
+
+        arity = update_arity(arity, req_arity, restp);
+        cl_ins = compile_lambda_clause(minim_car(clauses), env, req_arity, restp);
+        list_set_tail(ins, cl_ins);
+    }
+
+    // arity exception
+    list_set_tail(ins, Mlist2(label, Mlist1(do_arity_error_symbol)));
 
     // resolve references
     reloc = resolve_refs(env, ins);
 
     // register JIT block
-    arity = restp ? Mcons(Mfixnum(req_arity), minim_false) : Mfixnum(req_arity);
     code = write_code(ins, reloc, arity);
     idx = cenv_template_add(env, code);
 
@@ -553,7 +597,10 @@ static mobj compile_expr2(mobj expr, mobj env, int tailp) {
                 return compile_setb(expr, env, tailp);
             } else if (head == lambda_symbol) {
                 // lambda form
-                return compile_lambda(expr, env, tailp);
+                return compile_case_lambda(Mlist2(case_lambda_symbol, minim_cdr(expr)), env, tailp);
+            } else if (head == case_lambda_symbol) {
+                // case-lambda form
+                return compile_case_lambda(expr, env, tailp);
             } else if (head == begin_symbol) {
                 // begin form
                 return compile_begin(expr, env, tailp);
