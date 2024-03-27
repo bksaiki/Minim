@@ -85,9 +85,52 @@ static int get_formals_len(mobj e, size_t *len) {
 
 static mobj update_arity(mobj arity, size_t req_arity, int restp) {
     if (minim_nullp(arity)) {
+        // no arity set
         return restp ? Mcons(Mfixnum(req_arity), minim_false) : Mfixnum(req_arity);
+    } else if (minim_fixnump(arity)) {
+        // single arity
+        if (req_arity > minim_fixnum(arity)) {
+            if (restp) {
+                 return Mcons(arity, Mcons(Mfixnum(req_arity), minim_false));
+            } else {
+                return Mlist2(arity, Mfixnum(req_arity));
+            }
+        } else if (req_arity == minim_fixnum(arity)) {
+            if (restp) {
+                return Mcons(arity, minim_false);
+            } else {
+                return arity;
+            }
+        } else {
+            if (restp) {
+                return Mcons(Mfixnum(req_arity), minim_false);
+            } else {
+                return Mcons(Mfixnum(req_arity), arity);
+            }
+        }
     } else {
-        minim_error("update_arity", "unimplemented\n");
+        // multi-arity or arity with rest
+        if (req_arity > minim_fixnum(minim_car(arity))) {
+            if (minim_falsep(minim_cdr(arity))) {
+                return arity;
+            } else {
+                return Mcons(minim_car(arity), update_arity(minim_cdr(arity), req_arity, restp));
+            }
+        } else if (req_arity == minim_fixnum(minim_car(arity))) {
+            if (restp) {
+                return Mcons(minim_car(arity), minim_false);
+            } else {
+                return arity;
+            }
+        } else {
+            if (restp) {
+                return Mcons(minim_car(arity), minim_false);
+            } else {
+                return Mcons(Mfixnum(req_arity), arity);
+            }
+        }
+
+        minim_error("update_arity", "unimplemented");
     }
 }
 

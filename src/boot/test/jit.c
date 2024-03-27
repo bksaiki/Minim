@@ -181,6 +181,32 @@ int test_rest() {
     return passed;
 }
 
+int test_case_lambda() {
+    passed = 1;
+
+    check_equal("((case-lambda [() 1]))", "1");
+    check_equal("((case-lambda [(x) x]) 1)", "1");
+    check_equal("((case-lambda [(x y) (cons x y)]) 1 2)", "(1 . 2)");
+    check_equal("((case-lambda [(x y . zs) (cons zs (cons x y))]) 1 2 3 4)", "((3 4) 1 . 2)");
+
+    check_equal("((case-lambda [() 0] [(x) 1] [(x y) 2] [(x y . zs) 'more]))", "0");
+    check_equal("((case-lambda [() 0] [(x) 1] [(x y) 2] [(x y . zs) 'more]) 1)", "1");
+    check_equal("((case-lambda [() 0] [(x) 1] [(x y) 2] [(x y . zs) 'more]) 1 2)", "2");
+    check_equal("((case-lambda [() 0] [(x) 1] [(x y) 2] [(x y . zs) 'more]) 1 2 3)", "more");
+    check_equal("($procedure-arity (case-lambda [() 0] [(x) 1] [(x y) 2] [(x y . zs) 'more]))", "(0 1 2 . #f)");
+
+    check_equal("((case-lambda [(x y . zs) 'more] [(x y) 2] [(x) 1] [() 0]))", "0");
+    check_equal("((case-lambda [(x y . zs) 'more] [(x y) 2] [(x) 1] [() 0]) 1)", "1");
+    check_equal("((case-lambda [(x y . zs) 'more] [(x y) 2] [(x) 1] [() 0]) 1 2)", "more");
+    check_equal("((case-lambda [(x y . zs) 'more] [(x y) 2] [(x) 1] [() 0]) 1 2 3)", "more");
+    check_equal("($procedure-arity (case-lambda [(x y . zs) 'more] [(x y) 2] [(x) 1] [() 0]))", "(0 1 2 . #f)");
+
+    check_equal("($procedure-arity (case-lambda [(x y z . rest) 'more] [(x) 1]))", "(1 3 . #f)");
+    check_equal("($procedure-arity (case-lambda [() 1] [(x y z . rest) 'more] [(x) 1]))", "(0 1 3 . #f)");
+
+    return passed;
+}
+
 int test_apply() {
     passed = 1;
 
@@ -247,6 +273,7 @@ int main(int argc, char **argv) {
     log_test("closure", test_closure);
     log_test("app", test_app);
     log_test("rest", test_rest);
+    log_test("case-lambda", test_case_lambda);
     log_test("apply", test_apply);
     log_test("call-with-values", test_call_with_values);
     log_test("let-values", test_let_values);
