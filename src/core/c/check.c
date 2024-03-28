@@ -148,8 +148,7 @@ static void check_case_lambda(mobj expr) {
     mobj clauses, args;
 
     for (clauses = minim_cdr(expr); minim_consp(clauses); clauses = minim_cdr(clauses)) {
-        args = minim_caar(expr);
-        for (; minim_consp(args); args = minim_cdr(args))
+        for (args = minim_caar(clauses); minim_consp(args); args = minim_cdr(args))
             assert_identifier(expr, minim_car(args));
 
         if (!minim_nullp(args))
