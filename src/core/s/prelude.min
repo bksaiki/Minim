@@ -1009,60 +1009,68 @@
                          (raise-argument-error who "procedure?" f)))])
     (values
       ;; for-each
-      (lambda (f xs . xss)
-        (check-args! 'for-each f (cons xs xss))
-        (if (null? xss)
-            (for-each1 f xs)
-            (letrec-values ([(loop)
+      (case-lambda
+        [(f xs)
+         (check-args! 'for-each f (list xs))
+         (for-each1 f xs)]
+        [(f xs . xss)
+         (check-args! 'for-each f (cons xs xss))
+         (letrec-values ([(loop)
                              (lambda (xss)
                                 (if (ormap1 null? xss)
                                     (void)
                                     (begin
                                       (apply f (map1 $car xss))
                                       (loop (map1 $cdr xss)))))])
-                    (loop (cons xs xss)))))
+           (loop (cons xs xss)))])
       ;; map
-      (lambda (f xs . xss)
-        (check-args! 'map f (cons xs xss))
-        (if (null? xss)
-            (map1 f xs)
-            (letrec-values ([(loop)
-                             (lambda (xss acc)
-                                (if (ormap1 null? xss)
-                                    (reverse acc)
-                                    (loop (map1 $cdr xss)
-                                          (cons (apply f (map1 $car xss)) acc))))])
-              (loop (cons xs xss) '()))))
+      (case-lambda
+        [(f xs)
+         (check-args! 'map f (list xs))
+         (map1 f xs)]
+        [(f xs . xss)
+         (check-args! 'map f (cons xs xss))
+         (letrec-values ([(loop)
+                          (lambda (xss acc)
+                             (if (ormap1 null? xss)
+                                 (reverse acc)
+                                 (loop (map1 $cdr xss)
+                                       (cons (apply f (map1 $car xss)) acc))))])
+           (loop (cons xs xss) '()))])
       ;; andmap
-      (lambda (f xs . xss)
-        (check-args! 'andmap f (cons xs xss))
-        (if (null? xss)
-            (andmap1 f xs)
-            (letrec-values ([(loop)
-                             (lambda (xss)
-                                (if (ormap1 null? xss)
-                                    #t
-                                    (if (apply f (map1 $car xss))
-                                        (loop (map1 $cdr xss))
-                                        #f)))])
-              (loop (cons xs xss)))))
+      (case-lambda
+        [(f xs)
+         (check-args! 'andmap f (list xs))
+         (andmap1 f xs)]
+        [(f xs . xss)
+         (check-args! 'andmap f (cons xs xss))
+         (letrec-values ([(loop)
+                          (lambda (xss)
+                             (if (ormap1 null? xss)
+                                 #t
+                                 (if (apply f (map1 $car xss))
+                                     (loop (map1 $cdr xss))
+                                     #f)))])
+           (loop (cons xs xss)))])
       ;; ormap
-      (lambda (f xs . xss)
-        (check-args! 'ormap f (cons xs xss))
-        (if (null? xss)
-            (ormap1 f xs)
-            (letrec-values ([(loop)
-                             (lambda (xss)
-                                (if (ormap1 null? xss)
-                                    #f
-                                    (if (apply f (map1 $car xss))
-                                        #t
-                                        (loop (map1 $cdr xss)))))])
-              (loop (cons xs xss))))))))
+      (case-lambda
+        [(f xs)
+         (check-args! 'ormap f (list xs))
+         (ormap1 f xs)]
+        [(f xs . xss)
+         (check-args! 'ormap f (cons xs xss))
+         (letrec-values ([(loop)
+                          (lambda (xss)
+                             (if (ormap1 null? xss)
+                                 #f
+                                 (if (apply f (map1 $car xss))
+                                     #t
+                                     (loop (map1 $cdr xss)))))])
+           (loop (cons xs xss)))]))))
 
 (define-values (iota)
   (lambda (n)
-    (if (if (fixnum? n) (>= n 0) #f)
+    (if (non-negative-integer? n)
         (letrec-values ([(loop)
                          (lambda (n xs)
                            (if (> n 0)
@@ -1093,15 +1101,18 @@
   (lambda args ($list->vector args)))
 
 (define-values (make-vector)
-  (lambda args ; TODO: case-lambda
-    (let-values ([(argc) ($length args)])
-      (if (if (>= argc 1) (<= argc 2) #f)
-          (let-values ([(len) ($car args)]
-                       [(init) (if (= argc 2) ($cadr args) 0)])
-            (if (if (integer? len) (>= len 0) #f)
-                ($make-vector len init)
-                (raise-argument-error 'make-vector "non-negative-integer?" len)))
-          (raise-arity-error 'make-vector '(1 2) argc)))))
+  (let-values ([(check-length!)
+                (lambda (n)
+                  (if (non-negative-integer? n)
+                      (void)
+                      (raise-argument-error 'make-vector "non-negative-integer?" n)))])
+    (case-lambda
+      [(n)
+       (check-length! n)
+       ($make-vector n 0)]
+      [(n fill)
+       (check-length! n)
+       ($make-vector n fill)])))
 
 (define-values (vector-length)
   (lambda (v)
@@ -1112,7 +1123,7 @@
 (define-values (vector-ref)
   (lambda (v idx)
     (if (vector? v)
-        (if (if (integer? idx) (>= idx 0) #f)
+        (if (non-negative-integer? idx)
             (if (>= idx ($vector-length v))
                 (raise-range-error 'vector-ref "" v 0 ($vector-length v) idx)
                 ($vector-ref v idx))
@@ -1122,7 +1133,7 @@
 (define-values (vector-set!)
   (lambda (v idx x)
     (if (vector? v)
-        (if (if (integer? idx) (>= idx 0) #f)
+        (if (non-negative-integer? idx)
             (if (>= idx ($vector-length v))
                 (raise-range-error 'vector-set! "" v 0 ($vector-length v) idx)
                 ($vector-set! v idx x))
@@ -1238,12 +1249,13 @@
                                          (if (vector? fields)
                                             (begin
                                               (check-fields! fields)
-                                              ($make-record-type-descriptor name
-                                                                            parent
-                                                                            uid
-                                                                            sealed?
-                                                                            opaque?
-                                                                            fields))
+                                              ($make-record-type-descriptor
+                                                 name
+                                                 parent
+                                                 uid
+                                                 sealed?
+                                                 opaque?
+                                                 fields))
                                             (raise-argument-error
                                               'make-record-type-descriptor
                                               "vector?"
@@ -1645,53 +1657,53 @@
 
     [(no-key!)
      (lambda (who ht k)
-        (raise-missing-error who "key" ht k))])
+        (raise-missing-error who "key" ht k))]
+    
+    [(non-hashtable-error)
+     (lambda (who v)
+       (raise-argument-error who "hashtable?" v))])
                
     (values
       ; hashtable-contains?
       (lambda (ht k)
         (if (hashtable? ht)
             (1/hashtable-contains? ht k)
-            (raise-argument-error 'hashtable-set! "hashtable?" ht)))
+            (non-hashtable-error 'hashtable-set! ht)))
       ; hashtable-ref
-      (lambda args ; TODO: case-lambda
-        (let-values ([(argc) ($length args)])
-          (if (if (>= argc 2) (<= argc 3) #f)
-              (let-values ([(ht) ($car args)] [(k) ($cadr args)])
-                (if (hashtable? ht)
-                    (let-values ([(default) (if (= argc 2)
-                                                (lambda () (no-key! 'hashtable-ref ht k))
-                                                ($caddr args))])
-                      (1/hashtable-ref ht k default))
-                    (raise-argument-error 'hashtable-ref "hashtable?" ht)))
-              (raise-arity-error 'hashtable-ref '(2 3) argc))))
+      (case-lambda
+        [(ht k)
+         (if (hashtable? ht)
+             (1/hashtable-ref ht k (lambda () (no-key! 'hashtable-ref ht k)))
+             (non-hashtable-error 'hashtable-ref ht))]
+        [(ht k default)
+         (if (hashtable? ht)
+             (1/hashtable-ref ht k default)
+             (non-hashtable-error 'hashtable-ref ht))])
       ; hashtable-set!
       (lambda (ht k v)
         (if (hashtable? ht)
             (1/hashtable-set! ht k v)
-            (raise-argument-error 'hashtable-set! "hashtable?" ht)))
+            (non-hashtable-error 'hashtable-set! ht)))
       ; hashtable-update!
-      (lambda args ; TODO: case-lambda
-        (let-values ([(argc) ($length args)])
-          (if (if (>= argc 3) (<= argc 4) #f)
-              (let-values ([(ht) ($car args)]
-                           [(k) ($cadr args)]
-                           [(updater) ($caddr args)])
-                (if (hashtable? ht)
-                    (if (procedure? updater)
-                        (let-values ([(default) 
-                                      (if (= argc 3)
-                                          (lambda () (no-key! 'hashtable-update ht k))
-                                          ($cadddr args))])
-                          (1/hashtable-update! ht k updater default))
-                        (raise-argument-error 'hashtable-updater "procedure?" updater))
-                    (raise-argument-error 'hashtable-updater "hashtable?" ht)))
-              (raise-arity-error 'hashtable-updater '(3 4) argc))))
+      (case-lambda
+        [(ht k updater)
+         (if (hashtable? ht)
+             (if (procedure? updater)
+                 (1/hashtable-update! ht k updater
+                                      (lambda () (no-key! 'hashtable-update ht k)))
+                 (raise-argument-error 'hashtable-update! "procedure?" updater))
+             (non-hashtable-error 'hashtable-update! ht))]
+        [(ht k updater default)
+         (if (hashtable? ht)
+             (if (procedure? updater)
+                 (1/hashtable-update! ht k updater default)
+                 (raise-argument-error 'hashtable-update! "procedure?" updater))
+             (non-hashtable-error 'hashtable-update! ht))])
       ; hashtable-delete!
       (lambda (ht k)
         (if (hashtable? ht)
             (1/hashtable-cell-delete! ht k)
-            (raise-argument-error 'hashtable-delete! "hashtable?" ht))))))
+            (non-hashtable-error 'hashtable-set! ht))))))
 
 (define-values (hashtable-clear!)
   (lambda (ht)
@@ -1702,27 +1714,27 @@
 ;; --------------------------------------------------------
 ;; Record: equality + hashing + writing
 
+; TODO: thread parameter
 (define-values (default-record-equal-procedure)
-  (lambda args
-    (if (null? args)
-        ($default-record-equal-procedure)
-        (if (null? ($cdr args))
-            (let-values ([(proc) ($car args)])
-              (if (procedure? proc)
-                  ($default-record-equal-procedure-set! proc)
-                  (raise-argument-error 'default-record-equal-procedure "procedure?" proc)))
-            (raise-arity-error 'default-record-equal-procedure '(0 1) ($length args))))))
+  (case-lambda
+    [() ($default-record-equal-procedure)]
+    [(proc)
+     (if (procedure? proc)
+         ($default-record-equal-procedure proc)
+         (raise-argument-error 'default-record-equal-procedure
+                               "procedure?"
+                               proc))]))
 
+; TODO: thread parameter
 (define-values (default-record-hash-procedure)
-  (lambda args
-    (if (null? args)
-        ($default-record-hash-procedure)
-        (if (null? ($cdr args))
-            (let-values ([(proc) ($car args)])
-              (if (procedure? proc)
-                  ($default-record-hash-procedure-set! proc)
-                  (raise-argument-error 'default-record-hash-procedure "procedure?" proc)))
-            (raise-arity-error 'default-record-hash-procedure '(0 1) ($length args))))))
+  (case-lambda
+    [() ($default-record-equal-procedure)]
+    [(proc)
+     (if (procedure? proc)
+         ($default-record-hash-procedure proc)
+         (raise-argument-error 'default-record-hash-procedure
+                               "procedure?"
+                               proc))]))
 
 (define-values (record-type-equal-procedure record-type-hash-procedure)
   (letrec-values ([($equal-table) (make-eq-hashtable)]
