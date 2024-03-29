@@ -209,10 +209,14 @@ mobj flush_output_proc(mobj port) {
     return minim_void;
 }
 
-mobj put_string_proc(mobj port, mobj str, mobj start, mobj end) {
+mobj put_string_proc(mobj port, mobj str, mobj start, mobj len) {
     // (-> output-port? string? integer? integer?)
-    for (long i = minim_fixnum(start); i < minim_fixnum(end); i++)
+    long start_idx = minim_fixnum(start);
+    long end_idx = start_idx + minim_fixnum(len);
+    for (long i = start_idx; i < end_idx; i++) {
         putc(minim_string_ref(str, i), minim_port(port));
+    }
+
     return minim_void;
 }
 

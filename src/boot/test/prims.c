@@ -900,6 +900,17 @@ int test_port() {
                   "(get-output-string p))",
                 "\"bye\"");
 
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\" 1) "
+                  "(get-output-string p))",
+                "\"ello\"");
+    check_equal("(begin "
+                  "(define-values (p) (open-output-string)) "
+                  "(put-string p \"hello\" 1 2) "
+                  "(get-output-string p))",
+                "\"el\"");
+
     return passed;
 }
 

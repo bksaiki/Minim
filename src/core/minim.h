@@ -597,7 +597,7 @@ mobj peek_char_proc(mobj port);
 mobj char_readyp_proc(mobj port);
 
 mobj put_char_proc(mobj port, mobj ch);
-mobj put_string_proc(mobj port, mobj ch, mobj start, mobj end);
+mobj put_string_proc(mobj port, mobj ch, mobj start, mobj len);
 mobj flush_output_proc(mobj port);
 mobj newline_proc(mobj port);
 

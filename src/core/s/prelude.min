@@ -1753,37 +1753,37 @@
                          (if (eq? mode 'hash)
                              (hashtable-set! $hash-table rtd proc)
                              (errorf 'do-table-ref "unknown mode: ~a" mode))))]
-                  [(check-args!)
-                   (lambda (name args)
-                     (let-values ([(argc) (length args)])
-                       (if (if (>= argc 1) (<= argc 2) #f)
-                           (let-values ([(rtd) ($car args)])
-                             (if (record-type-descriptor? rtd)
-                                 (if (= argc 2)
-                                     (let-values ([(proc) ($cadr args)])
-                                       (if (procedure? proc)
-                                           (void)
-                                           (raise-argument-error name "procedure?" p)))
-                                     (void))
-                                 (raise-argument-error name "record-type-descriptor?" rtd)))
-                           (raise-arity-error name '(1 2) argc))))])
+                  [(non-rtd-error)
+                   (lambda (who v)
+                     (raise-argument-error who "record-type-desriptor?" v_))]
+                  [(non-proc-error)
+                   (lambda (who v)
+                     (raise-argument-error who "procedure?" v))])
     (values
       ; record-type-equal-procedure
-      (lambda args
-        (check-args! 'record-type-equal-procedure args)
-        (let-values ([(rtd) ($car args)])
-          (if (null? ($cdr args))
-              (do-table-ref rtd 'equal)
-              (let-values ([(proc) ($cadr args)])
-                (do-table-set! rtd 'equal proc)))))
+      (case-lambda
+        [(rtd)
+         (if (record-type-descriptor? rtd)
+             (do-table-ref rtd 'equal)
+             (non-rtd-error 'record-type-equal-procedure rtd))]
+        [(rtd proc)
+         (if (record-type-descriptor? rtd)
+             (if (procedure? proc)
+                 (do-table-set! rtd 'equal proc)
+                 (non-proc-error 'record-type-equal-procedure proc))
+             (non-rtd-error 'record-type-equal-procedure rtd))])
       ; record-hash-equal-procedure
-      (lambda args
-        (check-args! 'record-hash-equal-procedure args)
-        (let-values ([(rtd) ($car args)])
-          (if (null? ($cdr args))
-              (do-table-ref rtd 'hash)
-              (let-values ([(proc) ($cadr args)])
-                (do-table-set! rtd 'hash proc))))))))
+      (case-lambda
+        [(rtd)
+         (if (record-type-descriptor? rtd)
+             (do-table-ref rtd 'hash)
+             (non-rtd-error 'record-type-hash-procedure rtd))]
+        [(rtd proc)
+         (if (record-type-descriptor? rtd)
+             (if (procedure? proc)
+                 (do-table-set! rtd 'hash proc)
+                 (non-proc-error 'record-type-hash-procedure proc))
+             (non-rtd-error 'record-type-hash-procedure rtd))]))))
 
 (define-values (record-equal-procedure)
   (lambda (a b)
@@ -1809,26 +1809,23 @@
 
 (define-values (record-writer)
   (letrec-values ([($writer-table) (make-eq-hashtable)]
-                  [(check-args!)
-                   (lambda (name args)
-                     (let-values ([(argc) (length args)])
-                       (if (if (>= argc 1) (<= argc 2) #f)
-                           (let-values ([(rtd) ($car args)])
-                             (if (record-type-descriptor? rtd)
-                                 (if (= argc 2)
-                                     (let-values ([(proc) ($cadr args)])
-                                       (if (procedure? proc)
-                                           (void)
-                                           (raise-argument-error name "procedure?" p)))
-                                     (void))
-                                 (raise-argument-error name "record-type-descriptor?" rtd)))
-                           (raise-arity-error name '(1 2) argc))))])
-    (lambda args
-      (check-args! 'record-type-equal-procedure args)
-      (let-values ([(rtd) ($car args)])
-        (if (null? ($cdr args))
-            (hashtable-ref $writer-table rtd #f)
-            (hashtable-set! $writer-table rtd ($cadr args)))))))
+                  [(non-rtd-error)
+                   (lambda (who v)
+                     (raise-argument-error who "record-type-desriptor?" v_))]
+                  [(non-proc-error)
+                   (lambda (who v)
+                     (raise-argument-error who "procedure?" v))])
+    (case-lambda
+        [(rtd)
+         (if (record-type-descriptor? rtd)
+             (hashtable-ref $writer-table rtd #f)
+             (non-rtd-error 'record-writer rtd))]
+        [(rtd proc)
+         (if (record-type-descriptor? rtd)
+             (if (procedure? proc)
+                 (hashtable-set! $writer-table rtd proc)
+                 (non-proc-error 'record-writer proc))
+             (non-rtd-error 'record-writer rtd))])))
 
 ;; --------------------------------------------------------
 ;; Equality + Hashing
@@ -1938,15 +1935,13 @@
 (define-values (read read-char peek-char char-ready?)
   (let-values ([(go) 
                 (lambda (name proc)
-                  (lambda args
-                    (if (null? args)
-                        (proc (current-input-port))
-                        (if (null? ($cdr args))
-                            (let-values ([(port) ($car args)])
-                              (if (input-port? port)
-                                  (proc port)
-                                  (raise-argument-error name "input-port?" port)))
-                            (raise-arity-error name '(0 1) ($length args))))))])
+                  (case-lambda
+                    [()
+                     (proc (current-input-port))]
+                    [(p)
+                     (if (input-port? p)
+                         (proc p)
+                         (raise-argument-error name "input-port?" p))]))])
     (values (go 'read $read)
             (go 'read-char $read-char)
             (go 'peek-char $peek-char)
@@ -1964,38 +1959,48 @@
         (raise-argument-error 'put-char "output-port?" ch))))
 
 (define-values (put-string)
-  (lambda args
-    (let-values ([(argc) ($length args)])
-      (if (<= 2 argc 4)
-          (letrec-values ([(p) ($car args)]
-                          [(str) ($cadr args)]
-                          [(len) ($string-length str)])
-            (if (output-port? p)
-                (void)
-                (raise-argument-error 'put-string "output-port?" ch))
-            (if (string? str)
-                (void)
-                (raise-argument-error 'put-string "string?" ch))
-            (if (= argc 2)
-                ($put-string p str 0 len)
-                (let-values ([(start) ($caddr args)])
-                  (if (integer? start)
-                      (void)
-                      (raise-argument-error 'put-string "integer?" start))
-                  (if (< start len)
-                      (if (= argc 3)
-                          ($put-string p str start len)
-                          (let-values ([(end) ($cadddr args)])
-                            (if (integer? end)
-                                (if (<= end len)
-                                    (if (<= start end)
-                                        ($put-string p str start end)
-                                        (raise-range-error 'put-string str "end" start (+ len 1) end))
-                                    (raise-range-error 'put-string str "start" 0 len end))
-                                (raise-argument-error 'put-string "integer?" end))
-                            ($put-string p str start end)))
-                      (raise-range-error 'put-string str "start" 0 len start)))))
-          (raise-arity-error 'put-string '(2 3 4) argc)))))
+  (let-values ([(non-output-port-error)
+                (lambda (v)
+                  (raise-argument-error 'put-string "output-port?" v))]
+               [(non-string-error)
+                (lambda (v)
+                  (raise-argument-error 'put-string "string?" v))]
+               [(non-integer-error)
+                (lambda (v)
+                  (raise-argument-error 'put-string "integer?" v))]
+               [(1/put-string)
+                (lambda (p s start n)
+                  (let-values ([(len) ($string-length s)])
+                    (if (<= start len)
+                        (if (<= (+ start n) len)
+                            ($put-string p s start n)
+                            (raise-range-error 'put-string str "end" 0 (+ len 1) (+ start n)))
+                        (raise-range-error 'put-string str "start" 0 (+ len 1) start))))])
+    (case-lambda
+      [(p s)
+       (if (output-port? p)
+           (if (string? s)
+               ($put-string p s 0 ($string-length s))
+               (non-string-error s))
+           (non-output-port-error p))]
+      [(p s start)
+       (if (output-port? p)
+           (if (string? s)
+               (if (non-negative-integer? start)
+                   (1/put-string p s start (- ($string-length s) start))
+                   (non-integer-error start))
+               (non-string-error s))
+           (non-output-port-error p))]
+      [(p s start n)
+       (if (output-port? p)
+           (if (string? s)
+               (if (non-negative-integer? start)
+                   (if (non-negative-integer? n)
+                       (1/put-string p s start n)
+                       (non-integer-error start))
+                   (non-integer-error start))
+               (non-string-error s))
+           (non-output-port-error p))])))
 
 (define-values (flush-output-port)
   (lambda (port)
@@ -2004,20 +2009,17 @@
         (raise-argument-error 'flush-output-port "output-port?" port))))
 
 (define-values (write-char)
-  (lambda args
-    (if (null? args)
-        (let ([(ch) ($car args)])
-          (if (char? ch)
-              (if (null? ($cdr args))
-                  ($write-char ch (current-output-port))
-                  (if (null? ($cddr args))
-                      (let-values ([(port) ($cadr args)])
-                        (if (output-port? port)
-                            ($write ch port)
-                            (raise-argument-error 'write-char "output-port?" port)))
-                      (raise-arity-error 'write-char '(1 2) ($length args))))
-              (raise-argument-error 'write-char "char?" ch)))
-        (raise-arity-error 'write-char '(1 2) ($length args)))))
+  (case-lambda
+    [(c)
+     (if (char? c)
+         ($write-char c (current-output-port))
+         (raise-argument-error 'write-char "char?" c))]
+    [(c p)
+     (if (char? c)
+         (if (output-port? p)
+             ($write-char c p)
+             (raise-argument-error 'write-char "output-port?" port))
+         (raise-argument-error 'write-char "char?" c))]))
 
 (define-values (put-datum write display)
   (letrec-values ([(lparen rparen) (values #\( #\))]
@@ -2140,34 +2142,25 @@
                          (raise-argument-error who "output-port?" p)))])
     (values
       ; put-datum
-      (lambda (p x) (go 'put-datum x #f p))
+      (lambda (p x)
+        (go 'put-datum x #f p))
       ; write
-      (lambda args
-        (let-values ([(argc) ($length args)])
-          (if (= argc 1)
-              (go 'write ($car args) #f (current-output-port))
-              (if (= argc 2)
-                  (go 'write ($car args) #f ($cadr args))
-                  (raise-arity-error 'write '(1 2) argc)))))
+      (case-lambda
+        [(o) (go 'write o #f (current-output-port))]
+        [(o p) (go 'write o #f p)])
       ; display
-      (lambda args
-        (let-values ([(argc) ($length args)])
-          (if (= argc 1)
-              (go 'display ($car args) #t (current-output-port))
-              (if (= argc 2)
-                  (go 'display ($car args) #t ($cadr args))
-                  (raise-arity-error 'display '(1 2) argc))))))))
+      (case-lambda
+        [(o) (go 'display o #t (current-output-port))]
+        [(o p) (go 'display o #t p)]))))
 
 (define-values (newline)
-  (lambda args
-    (if (null? args)
-        ($newline (current-output-port))
-        (if (null? ($cdr args))
-            (let-values ([(port) ($car args)])
-              (if (output-port? port)
-                  ($newline port)
-                  (raise-argument-error 'newline "output port?" port)))
-            (raise-arity-error 'newline '(0 1) ($length args))))))
+  (case-lambda
+    [()
+     ($newline (current-output-port))]
+    [(p)
+     (if (output-port? port)
+         ($newline port)
+         (raise-argument-error 'newline "output port?" p))]))
 
 ;; --------------------------------------------------------
 ;; Formatter
@@ -2343,25 +2336,26 @@
         (raise-argument-error 'environment-names "environment?" env))))
 
 (define-values (environment-ref)
-  (let-values ([(default-fail)
-                (lambda (env key)
-                  (raise-missing-error 'environment' "key" env key))])
-    (lambda args
-      (let-values ([(argc) (length args)])
-        (if (if (>= argc 2) (<= argc 3) #f)
-            (let-values ([(env) ($car args)] [(k) ($cadr args)])
-              (if (environment? env)
-                  (if (symbol? k)
-                      (let-values ([(v) ($environment-ref env k default-fail)])
-                        (if (eq? v default-fail)
-                            (if (= argc 2)
-                                (default-fail env k)
-                                (let-values ([(fail) ($caddr args)])
-                                  (if (procedure? fail) (fail) fail)))
-                            v))
-                     (raise-argument-error 'environment-ref "symbol?" k))
-                 (raise-argument-error 'environment-ref "environment?" env)))
-            (raise-arity-error 'environment-ref '(1 2) argc))))))
+  (letrec-values ([(default-fail)
+                   (lambda (env k)
+                     (raise-missing-error 'environment-ref "key" env k))]
+                  [(1/environment-ref)
+                   (lambda (env k fail)
+                     (if (environment? env)
+                         (if (symbol? k)
+                             (let-values ([(v) ($environment-ref env k fail)])
+                               (if (eq? v fail)
+                                   (if (procedure? fail)
+                                       (fail)
+                                       fail)
+                                   v))
+                             (raise-arugment-error 'environment-ref "symbol?" k))
+                         (raise-arugment-error 'environment-ref "environment?" env)))])        
+    (case-lambda
+      [(env k)
+       (1/environment-ref env k default-fail)]
+      [(env k fail)
+       (1/environment-ref env k fail)])))
 
 (define-values (environment-set!)
   (lambda (env k v)
@@ -2381,40 +2375,35 @@
         (raise-argument-error 'load "string?" fname))))
 
 (define-values (exit)
-  (lambda args
-    (if (null? args)
-        ($exit 0)
-        (if (null? ($cdr args))
-            (let-values ([(code) ($car args)])
-              (if (if (integer? code) (<= 0 code 255) #f)
-                  ($exit code)
-                  (raise-argument-error 'exit "an integer between 0 and 255" code)))
-            (raise-arity-error 'exit '(0 1) ($length args))))))
+  (case-lambda
+    [() ($exit 0)]
+    [(v)
+     (if (if (integer? v) (<= 0 v 255) #f)
+         ($exit v)
+         (raise-argument-error 'exit "an integer between 0 and 255" v))]))
 
+; TODO: thread parameter
 (define-values (current-directory)
-  (lambda args
-    (if (null? args)
-        ($current-directory)
-        (if (null? ($cdr args))
-            (let-values ([(path) ($car args)])
-              (if (string? path)
-                  ($current-directory-set! path)
-                  (raise-argument-error 'current-directory "string?" path)))
-            (raise-arity-error 'current-directory '(0 1) (length args))))))
+  (case-lambda
+    [()
+     ($current-directory)]
+    [(path)
+     (if (string? path)
+         ($current-directory-set! path)
+         (raise-argument-error 'current-directory "string?" path))]))
 
 ;; --------------------------------------------------------
 ;; Exceptions
 
+; TODO: thread parameter
 (define-values (current-error-handler)
-  (lambda args
-    (if (null? args)
-        ($current-error-handler)
-        (if (null? ($cdr args))
-            (let-values ([(path) ($car args)])
-              (if (procedure? path)
-                  ($current-error-handler-set! path)
-                  (raise-argument-error 'current-error-handler "procedure?" path)))
-            (raise-arity-error 'current-error-handler '(0 1) (length args))))))
+  (case-lambda
+    [()
+     ($current-error-handler)]
+    [(proc)
+     (if (procedure? proc)
+         ($current-error-handler-set! proc)
+         (raise-argument-error 'current-error-handler "procedure?" proc))]))
 
 ; base exception
 (define-values (&exn make-exn exn? exn-who exn-message)
@@ -2612,32 +2601,23 @@
         (raise-argument-error 'raise-argument-error "symbol? or #f" who))))
 
 (define-values (raise-syntax-error)
-  (lambda args
-    (let-values ([(argc) ($length args)])
-      (if (if (>= argc 2) (<= argc 4) #f)
-          (let-values ([(who)
-                        (let-values ([(who) ($car args)])
-                          (if (if who (symbol? who) #t)
-                              who
-                              (raise-argument-error 'syntax-error "symbol or #f" who)))]
-                       [(msg)
-                        (let-values ([(msg) ($cadr args)])
-                          (if (string? msg)
-                              msg
-                              (raise-argument-error 'syntax-error "string" msg)))]
-                       [(stx)
-                        (if (>= argc 3)
-                            (let-values ([(stx) ($caddr args)])
-                              (if (syntax? stx)
-                                  ($syntax->datum stx)
-                                  (raise-argument-error 'syntax-error "syntax" stx)))
-                            #f)]
-                       [(sub-stx)
-                        (if (= argc 4)
-                            (let-values ([(sub-stx) ($cadddr args)])
-                              (if (syntax? sub-stx)
-                                  ($syntax->datum sub-stx)
-                                  (raise-argument-error 'syntax-error "syntax" sub-stx)))
-                            #f)])
-            (raise (make-syntax-exn who msg stx sub-stx)))
-          (raise-arity-error 'syntax-error '(2 3 4) argc)))))
+  (let-values ([($raise-syntax-error)
+                (lambda (who msg stx sub-stx)
+                  (if (if who (symbol? who) #t)
+                      (if (string? msg)
+                          (if (if stx (syntax? stx) #t)
+                              (if (if sub-stx (syntax? sub-stx) #t)
+                                  (raise
+                                    (make-syntax-exn
+                                      who
+                                      msg
+                                      (if (syntax? stx) ($syntax->datum stx) #f)
+                                      (if (syntax? sub-stx) ($syntax->datum sub-stx) #f)))
+                                  (raise-argument-error 'syntax-error "syntax or #f" sub-stx))
+                              (raise-argument-error 'syntax-error "syntax or #f" stx))
+                          (raise-argument-error 'syntax-error "string" msg))
+                      (raise-argument-error 'syntax-error "symbol or #f" who)))])
+    (case-lambda
+      [(who msg) ($raise-syntax-error who msg #f #f)]
+      [(who msg stx) ($raise-syntax-error who msg stx #f)]
+      [(who msg stx sub-stx) ($raise-syntax-error who msg stx sub-stx)])))
