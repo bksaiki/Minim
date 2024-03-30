@@ -335,7 +335,6 @@
              (define formals (stx-car clause))
              (define body (stx-cdr clause))
              (define scope* (scope-extend scope))
-             (printf "~a ~a\n" clause formals)
              (check/formals! scope* formals expr)
              (for-each (lambda (e) (check/expr! e scope*)) body))
            (stx-cdr expr))]
