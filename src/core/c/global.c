@@ -15,15 +15,16 @@ void init_minim() {
     current_tc() = NULL; // to be initialized later
 
     // initialize special symbols
-    quote_symbol = intern("quote");
+    begin_symbol = intern("begin");
+    case_lambda_symbol = intern("case-lambda");
     define_values_symbol = intern("define-values");
-    let_values_symbol = intern("let-values");
-    letrec_values_symbol = intern("letrec-values");
-    setb_symbol = intern("set!");
     if_symbol = intern("if");
     lambda_symbol = intern("lambda");
-    begin_symbol = intern("begin");
+    let_values_symbol = intern("let-values");
+    letrec_values_symbol = intern("letrec-values");
+    quote_symbol = intern("quote");
     quote_syntax_symbol = intern("quote-syntax");
+    setb_symbol = intern("set!");
     values_symbol = intern("values");
 
     apply_symbol = intern("#%apply");
@@ -32,16 +33,20 @@ void init_minim() {
     bind_values_top_symbol = intern("#%bind-values/top");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
+    branchlt_symbol = intern("#%branchlt");
+    branchne_symbol = intern("#%branchne");
     ccall_symbol = intern("#%ccall");
     check_arity_symbol = intern("#%check-arity");
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");
+    do_arity_error_symbol = intern("#%do-arity-error");
     do_eval_symbol = intern("#%do-eval");
     do_raise_symbol = intern("#%do-raise");
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
-    do_with_values_symbol = intern("#%do-with_values");
+    do_with_values_symbol = intern("#%do-with-values");
+    get_ac_symbol = intern("#%get-ac");
     get_arg_symbol = intern("#%get-arg");
     get_env_symbol = intern("#%get-env");
     literal_symbol = intern("#%literal");
