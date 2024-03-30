@@ -556,6 +556,9 @@ mobj length_proc(mobj xs);
 mobj list_reverse(mobj xs);
 mobj list_append2(mobj xs, mobj ys);
 
+mobj assq_ref(mobj xs, mobj k);
+mobj assq_set(mobj xs, mobj k, mobj v);
+
 // Vector
 
 mobj vectorp_proc(mobj x);
@@ -828,9 +831,19 @@ mobj fasl_write_proc(mobj x, mobj port);
 
 // JIT compiler
 
-mobj compile_expr(mobj expr);
-mobj compile_prim(const char *who, void *fn, mobj arity);
+mobj make_cenv();
+mobj extend_cenv(mobj cenv);
+mobj cenv_make_label(mobj cenv);
+mobj cenv_template_add(mobj cenv, mobj jit);
+mobj cenv_template_ref(mobj cenv, size_t i);
 
+mobj write_code(mobj ins, mobj reloc, mobj arity);
+mobj resolve_refs(mobj cenv, mobj ins);
+
+mobj compile_expr(mobj expr);
+mobj compile_expr2(mobj expr, mobj env, int tailp);
+
+mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_apply(mobj name);
 mobj compile_call_with_values(mobj name);
 mobj compile_current_environment(mobj name);
