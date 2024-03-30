@@ -91,6 +91,9 @@ mobj write_code(mobj ins, mobj reloc, mobj arity) {
         } else if (minim_car(in) == branchf_symbol) {
             // branchf
             in = Mlist2(branchf_symbol, minim_cdr(assq_ref(reloc, minim_cadr(in))));
+        } else if (minim_car(in) == branchgt_symbol) {
+            // branchgt
+            in = Mlist3(branchgt_symbol, minim_cadr(in), minim_cdr(assq_ref(reloc, minim_car(minim_cddr(in)))));
         } else if (minim_car(in) == branchlt_symbol) {
             // branchlt
             in = Mlist3(branchlt_symbol, minim_cadr(in), minim_cdr(assq_ref(reloc, minim_car(minim_cddr(in)))));

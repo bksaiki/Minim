@@ -142,28 +142,6 @@ static void push_frame(mobj tc, mobj pc) {
     tc_ac(tc) = 0;
 }
 
-static void check_arity(mobj tc, mobj spec) {
-    mobj cp = tc_cp(tc);
-    size_t ac = tc_ac(tc);
-    if (minim_fixnump(spec)) {
-        // exact arity
-        if (ac != minim_fixnum(spec))
-            arity_mismatch_exn(cp, ac);
-    } else {
-        mobj min = minim_car(spec);
-        mobj max = minim_cdr(spec);
-        if (minim_falsep(max)) {
-            // at least arity
-            if (ac < minim_fixnum(min))
-                arity_mismatch_exn(cp, ac);
-        } else {
-            // range arity
-            if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
-                arity_mismatch_exn(cp, ac);
-        }
-    }
-}
-
 static mobj do_ccall(mobj tc, mobj (*prim)()) {
     mobj *args = tc_frame(tc);
     switch (tc_ac(tc)) {
@@ -455,9 +433,9 @@ application:
             istream = minim_cadr(ins);
             goto loop;
         }
-    } else if (ty == branchne_symbol) {
-        // branchne (jump if not equal)
-        if (((mfixnum) res) != minim_fixnum(minim_cadr(ins))) {
+    } else if (ty == branchgt_symbol) {
+        // branchgt (jump if greater than)
+        if (((mfixnum) res) > minim_fixnum(minim_cadr(ins))) {
             istream = minim_car(minim_cddr(ins));
             goto loop;
         }
@@ -467,15 +445,18 @@ application:
             istream = minim_car(minim_cddr(ins));
             goto loop;
         }
+    } else if (ty == branchne_symbol) {
+        // branchne (jump if not equal)
+        if (((mfixnum) res) != minim_fixnum(minim_cadr(ins))) {
+            istream = minim_car(minim_cddr(ins));
+            goto loop;
+        }
     } else if (ty == make_closure_symbol) {
         // make-closure
         res = Mclosure(tc_env(tc), minim_cadr(ins));
     } else if (ty == check_stack_symbol) {
         // check stack
         maybe_grow_stack(tc, minim_fixnum(minim_cadr(ins)));
-    } else if (ty == check_arity_symbol) {
-        // check arity
-        check_arity(tc, minim_cadr(ins));
     } else {
         minim_error1(NULL, "invalid bytecode", ins);
     }

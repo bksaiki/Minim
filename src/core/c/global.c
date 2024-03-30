@@ -33,10 +33,10 @@ void init_minim() {
     bind_values_top_symbol = intern("#%bind-values/top");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
+    branchgt_symbol = intern("#%branchgt");
     branchlt_symbol = intern("#%branchlt");
     branchne_symbol = intern("#%branchne");
     ccall_symbol = intern("#%ccall");
-    check_arity_symbol = intern("#%check-arity");
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");

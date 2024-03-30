@@ -104,6 +104,9 @@ mobj resolve_refs(mobj cenv, mobj ins) {
         } else if (minim_car(in) == branchf_symbol) {
             // branchf: need to replace the label with the next instruction
             minim_cadr(in) = minim_cdr(assq_ref(label_map, minim_cadr(in)));
+        } else if (minim_car(in) == branchgt_symbol) {
+            // branchgt: need to replace the label with the next instruction
+            minim_car(minim_cddr(in)) = minim_cdr(assq_ref(label_map, minim_car(minim_cddr(in))));
         } else if (minim_car(in) == branchlt_symbol) {
             // branchlt: need to replace the label with the next instruction
             minim_car(minim_cddr(in)) = minim_cdr(assq_ref(label_map, minim_car(minim_cddr(in))));
