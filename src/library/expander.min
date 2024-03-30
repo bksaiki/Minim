@@ -98,6 +98,7 @@
 (define quote-form? (_-form? 'quote))
 (define quote-syntax-form? (_-form? 'quote-syntax))
 (define lambda-form? (_-form? 'lambda))
+(define case-lambda-form? (_-form? 'case-lambda))
 (define begin-form? (_-form? 'begin))
 (define if-form? (_-form? 'if))
 
@@ -197,6 +198,31 @@
                    (list? (syntax->list rib2))))
     (raise-syntax-error #f "expected a sequence of expressions after formals" form)))
 
+; checks if a `case-lambda` form is valid
+; assues form is `(lambda . <rest>)`
+(define (check-case-lambda-form! form)
+  (define clauses (stx-cdr form))
+  (let loop ([clauses clauses])
+    (cond
+      [(pair? clauses)
+       (define clause (car clauses))
+       (when (stx-null? clause)
+         (raise-syntax-error #f "missing formals" form))
+       (define formals (stx-car clause))
+       (define rib1 (stx-cdr clause))
+       (when (null? rib1)
+         (raise-syntax-error #f "missing expression after formals" form))
+       (define rib2 (stx-cdr rib1))
+       (unless (or (list? rib2)
+                   (and (syntax? rib2)
+                       (list? (syntax->list rib2))))
+         (raise-syntax-error #f "expected a sequence of expressions after formals" form))
+       (loop (cdr clauses))]
+      [(null? clauses)
+       (void)]
+      [else
+       (raise-syntax-error #f "bad syntax" form)])))
+
 ; checks if a `begin` form is valid
 ; assues form is `(<name> . <rest>)`
 (define (check-begin-form! form)
@@ -279,24 +305,40 @@
     (for-each (lambda (id) (scope-add! scope id))
               (define-syntaxes/values-identifiers form)))
   
+  ;; checks a formal list
+  (define (check/formals! scope formals expr)
+    (let rec ([formals (syntax->datum formals)])
+      (cond
+        [(pair? formals)
+         (scope-add! scope (car formals))
+         (rec (cdr formals))]
+        [(symbol? formals)
+         (scope-add! scope formals)]
+        [(null? formals)
+         (void)]
+        [else
+         (error 'check/expr! "malformed formals" expr)])))
+
   ;; recursively checks expressions
   (define (check/expr! expr0 scope)
     (let loop ([expr expr0])
       (cond
         [(lambda-form? expr)
-         (define formals (stx-car (stx-cdr expr)))
-         (define body (stx-cdr (stx-cdr expr)))
-         
+         (define formals (car (stx-cdr expr)))
+         (define body (cdr (stx-cdr expr)))
          (define scope* (scope-extend scope))
-         (let rec ([formals (syntax->datum formals)])
-           (cond
-             [(symbol? formals)
-              (scope-add! scope* formals)]
-             [(pair? formals)
-              (scope-add! scope* (car formals))
-              (rec (cdr formals))]))
-
+         (check/formals! scope* formals expr)
          (for-each (lambda (e) (check/expr! e scope*)) body)]
+        [(case-lambda-form? expr)
+         (for-each
+           (lambda (clause)
+             (define formals (stx-car clause))
+             (define body (stx-cdr clause))
+             (define scope* (scope-extend scope))
+             (printf "~a ~a\n" clause formals)
+             (check/formals! scope* formals expr)
+             (for-each (lambda (e) (check/expr! e scope*)) body))
+           (stx-cdr expr))]
         [(or (let-values-form? expr) (letrec-values-form? expr))
          (define bindings (stx-car (stx-cdr expr)))
          (define body (stx-cdr (stx-cdr expr)))
@@ -536,6 +578,17 @@
          (define formals (stx-car (stx-cdr expr)))
          (define body (stx-cdr (stx-cdr expr)))
          (datum->syntax (cons* head formals (expand/body body xforms)))]
+        [(case-lambda-form? expr)
+         (check-case-lambda-form! expr)
+         (define head (stx-car expr))
+         (datum->syntax
+           (cons
+             head
+             (map
+               (lambda (clause)
+                 (define formals (stx-car clause))
+                 (cons formals (expand/body (stx-cdr clause) xforms)))
+               (stx-cdr expr))))]
         [(if-form? expr)
          (check-if-form! expr)
          (define form (syntax->list expr))

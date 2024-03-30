@@ -2018,7 +2018,7 @@
      (if (char? c)
          (if (output-port? p)
              ($write-char c p)
-             (raise-argument-error 'write-char "output-port?" port))
+             (raise-argument-error 'write-char "output-port?" p))
          (raise-argument-error 'write-char "char?" c))]))
 
 (define-values (put-datum write display)
@@ -2158,8 +2158,8 @@
     [()
      ($newline (current-output-port))]
     [(p)
-     (if (output-port? port)
-         ($newline port)
+     (if (output-port? p)
+         ($newline p)
          (raise-argument-error 'newline "output port?" p))]))
 
 ;; --------------------------------------------------------
@@ -2616,7 +2616,7 @@
                                   (raise-argument-error 'syntax-error "syntax or #f" sub-stx))
                               (raise-argument-error 'syntax-error "syntax or #f" stx))
                           (raise-argument-error 'syntax-error "string" msg))
-                      (raise-argument-error 'syntax-error "symbol or #f" who)))])
+                      (raise-argument-error 'syntax-error "symbol? or #f" who)))])
     (case-lambda
       [(who msg) ($raise-syntax-error who msg #f #f)]
       [(who msg stx) ($raise-syntax-error who msg stx #f)]
