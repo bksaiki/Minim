@@ -18,6 +18,14 @@ int minim_listp(mobj x) {
     return minim_nullp(x);
 }
 
+// Constructs a list of size `len` with elements `init`
+mobj make_list(size_t len, mobj init) {
+    mobj lst = minim_null;
+    for (size_t i = 0; i < len; ++i)
+        lst = Mcons(init, lst);
+    return lst;
+}
+
 // Returns length of a (possibly improper) llist.
 long list_length(mobj xs) {
     long len = 0;
@@ -218,10 +226,7 @@ mobj set_cdr_proc(mobj p, mobj x) {
 
 mobj make_list_proc(mobj len, mobj init) {
     // (-> non-negative-integer? any list)
-    mobj lst = minim_null;
-    for (long i = 0; i < minim_fixnum(len); ++i)
-        lst = Mcons(init, lst);
-    return lst;
+    return make_list(minim_fixnum(len), init);
 }
 
 mobj length_proc(const mobj x) {

@@ -235,7 +235,7 @@ static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
 
     // bind and evaluate
     list_set_tail(ins, compile_expr2(minim_cadr(expr), env, 0));
-    list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, minim_cadr(expr))));
+    list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, minim_car(minim_cddr(expr)))));
     list_set_tail(ins, compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp));
 
     // pop environment if not tail recursive
@@ -251,9 +251,9 @@ static mobj compile_mvvalues(mobj expr, mobj env, int tailp) {
     
     vals = minim_cdr(expr);
     if (minim_nullp(vals)) {
-        ins = Mlist2(Mlist1(clear_frame_symbol), Mlist1(do_values_symbol));
+        ins = Mlist1(Mlist1(do_values_symbol));
     } else {
-        ins = Mlist2(Mlist1(clear_frame_symbol), Mlist2(check_stack_symbol, Mfixnum(list_length(vals))));
+        ins = Mlist1(Mlist2(check_stack_symbol, Mfixnum(list_length(vals))));
         for (; !minim_nullp(vals); vals = minim_cdr(vals)) {
             list_set_tail(ins, compile_expr2(minim_car(vals), env, 0));
             list_set_tail(ins, Mlist1(Mlist1(push_symbol)));
@@ -405,9 +405,9 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
                 return compile_mvlet(expr, env, tailp);
             } else if (head == mvvalues_symbol) {
                 // mv-values form
-                fprintf(stderr, "opt: ");
-                write_object(stderr, expr);
-                fprintf(stderr, "\n");
+                // fprintf(stderr, "opt: ");
+                // write_object(stderr, expr);
+                // fprintf(stderr, "\n");
                 return compile_mvvalues(expr, env, tailp);
             } else if (head == begin_symbol) {
                 // begin form

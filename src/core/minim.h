@@ -496,7 +496,7 @@ mobj fx2_le(mobj x, mobj y);
 
 mobj symbolp_proc(mobj x);
 
-// Pair
+// String
 
 mobj stringp_proc(mobj x);
 mobj make_string(mobj len, mobj init);
@@ -509,6 +509,8 @@ mobj symbol_to_string(mobj s);
 mobj string_to_symbol(mobj s);
 mobj list_to_string(mobj xs);
 mobj string_to_list(mobj s);
+
+// Pair
 
 mobj consp_proc(mobj x);
 mobj car_proc(mobj x);
@@ -551,6 +553,7 @@ mobj set_cdr_proc(mobj p, mobj x);
 // List
 
 int minim_listp(mobj x);
+mobj make_list(size_t len, mobj init);
 long list_length(mobj xs);
 void list_set_tail(mobj xs, mobj ys);
 

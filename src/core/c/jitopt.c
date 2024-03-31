@@ -3,6 +3,7 @@
 #include "../minim.h"
 
 // L0 optimization: normalization
+// - `letrec-values` expressions to `let-values` with `set!`
 // - `let-values` expressions to nested `call-with-values`
 // - `case-lambda` expression with one clause are converted to `lambda` expressions
 
@@ -39,25 +40,84 @@ static mobj make_tmp_ids(mobj ids) {
     }
 }
 
-// L0 optimization for `letrec-values`
-static mobj jit_opt_L0_letrec_values(mobj expr) {
-    mobj bindings, binding, body, hd, tl;
-    
+static mobj let_values_ids(mobj expr) {
+    mobj bindings, binds, bind_it, hd, tl;
+
+    hd = tl = minim_null;
     bindings = minim_cadr(expr);
-    body = jit_opt_L0_seq(minim_cddr(expr));
-    if (minim_nullp(bindings)) {
-        return Mcons(letrec_values_symbol, Mcons(minim_null, body));
-    } else {
-        binding = minim_car(bindings);
-        hd = tl = Mcons(Mlist2(minim_car(binding), jit_opt_L0(minim_cadr(binding))), minim_null);
-        for (bindings = minim_cdr(bindings); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
-            binding = minim_car(bindings);
-            minim_cdr(tl) = Mcons(Mlist2(minim_car(binding), jit_opt_L0(minim_cadr(binding))), minim_null);
-            tl = minim_cdr(tl);
+    while (!minim_nullp(bindings)) {
+        binds = minim_car(bindings);
+        for (bind_it = minim_car(binds); !minim_nullp(bind_it); bind_it = minim_cdr(bind_it)) {
+            if (minim_nullp(hd)) {
+                hd = tl = Mcons(minim_car(bind_it), minim_null);
+            } else {
+                minim_cdr(tl) = Mcons(minim_car(bind_it), minim_null);
+                tl = minim_cdr(tl);
+            }
         }
 
-        return Mcons(letrec_values_symbol, Mcons(hd, body));
+        bindings = minim_cdr(bindings);
     }
+
+    return hd;
+}
+
+static mobj letrec_set_expr(mobj binds) {
+    mobj ids, tmps, hd, tl;
+    
+    ids = minim_car(binds);
+    tmps = make_tmp_ids(ids);
+    hd = tl = Mcons(let_values_symbol, minim_null);
+    minim_cdr(tl) = Mcons(Mlist1(Mlist2(tmps, minim_cadr(binds))), minim_null);
+    tl = minim_cdr(tl);
+    if (minim_nullp(ids)) {
+        minim_cdr(tl) = Mlist1(Mlist1(values_symbol));
+    } else {
+        while (!minim_nullp(ids)) {
+            minim_cdr(tl) = Mcons(Mlist3(setb_symbol, minim_car(ids), minim_car(tmps)), minim_null);
+            tl = minim_cdr(tl);
+            ids = minim_cdr(ids);
+            tmps = minim_cdr(tmps);
+        }
+    }
+
+    return hd;
+}
+
+// L0 optimization for `letrec-values`
+// `(letrec-values ([(id ...) expr] ...) body ...`
+//  => `(let-values ([(id ...) <unbound>] ...)
+//        (let-values ([(fresh ...) expr])
+//          (set! id fresh)
+//          ...)
+//        body
+//        ...)`
+static mobj jit_opt_L0_letrec_values(mobj expr) {
+    mobj let_ids, let_expr, let_it, bindings, binds;
+
+    // top rib
+    let_ids = let_values_ids(expr);
+    let_it = Mcons(Mlist1(Mlist2(let_ids, Mcons(values_symbol, make_list(list_length(let_ids), minim_false)))), minim_null);
+    let_expr = Mcons(let_values_symbol, let_it);
+
+    // process bindings
+    bindings = minim_cadr(expr);
+    while (!minim_nullp(bindings)) {
+        binds = minim_car(bindings);
+        minim_cdr(let_it) = Mcons(letrec_set_expr(binds), minim_null);
+        let_it = minim_cdr(let_it);
+        bindings = minim_cdr(bindings);
+    }
+    
+    // body
+    minim_cdr(let_it) = minim_cddr(expr);
+    // write_object(stderr, expr);
+    // fprintf(stderr, " => ");
+    // write_object(stderr, let_expr);
+    // fprintf(stderr, "\n");
+
+
+    return jit_opt_L0(let_expr);
 }
 
 // L0 optimization for `let-values`
@@ -79,6 +139,10 @@ static mobj jit_opt_L0_let_values2(mobj bindings, mobj ids, mobj tmps, mobj body
 }
 
 // L0 optimization for `let-values`
+// For each binding `[(id ...) expr]`
+//  - create fresh identifiers
+//  - capture the result of `expr` with `call-with-values`
+// The body is transformed into `call-with-values` using the actual identifiers
 static mobj jit_opt_L0_let_values(mobj expr) {
     expr = jit_opt_L0_let_values2(minim_cadr(expr), minim_null, minim_null, minim_cddr(expr));
     return jit_opt_L0(expr);
@@ -291,16 +355,17 @@ static mobj jit_opt_L1_mvcall(mobj expr) {
         } else if (minim_car(e) == mvvalues_symbol) {
             // (mv-call (mv-values e ...) consumer) => (consumer e ...)
             return jit_opt_L1(Mcons(consumer, minim_cdr(e)));
-        } else if (minim_consp(consumer) && minim_car(consumer) == lambda_symbol) {
-            // (mv-call e (lambda (id ...) body) => (mv-let e (id ...) body)
-            mobj body = minim_cddr(consumer);
-            return jit_opt_L1(Mlist4(
-                mvlet_symbol,
-                e,
-                minim_cadr(consumer),
-                minim_nullp(minim_cdr(body)) ? minim_car(body) : Mcons(begin_symbol, body)
-            ));
         }
+        // } else if (minim_consp(consumer) && minim_car(consumer) == lambda_symbol) {
+        //     // (mv-call e (lambda (id ...) body) => (mv-let e (id ...) body)
+        //     mobj body = minim_cddr(consumer);
+        //     return jit_opt_L1(Mlist4(
+        //         mvlet_symbol,
+        //         e,
+        //         minim_cadr(consumer),
+        //         minim_nullp(minim_cdr(body)) ? minim_car(body) : Mcons(begin_symbol, body)
+        //     ));
+        // }
     }
     
     // (mv-call e_s consumer) => (consumer e_s)
@@ -357,8 +422,10 @@ mobj jit_opt_L1(mobj expr) {
                         jit_opt_L1(minim_car(minim_cddr(expr)))
                 ));
             } else if (head == mvcall_symbol) {
-                // mvcall form
+                // mv-call form
                 return jit_opt_L1_mvcall(expr);
+            } else if (head == mvlet_symbol) {
+                // mv-let
             }
         }
 

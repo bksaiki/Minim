@@ -130,7 +130,10 @@ mobj compile_expr(mobj expr) {
 
     // compilation
     env = make_cenv();
-    ins = compile_expr2(L2, env, 1);
+    ins = compile_expr2(L1, env, 1);
+    // write_object(stderr, ins);
+    // fprintf(stderr, "\n");
+
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }

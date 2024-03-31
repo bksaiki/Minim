@@ -2535,7 +2535,7 @@
 
 (set! error
   (lambda (who msg . args)
-    (if (if who (symbol? who) #t)
+    (if (if who (if (symbol? who) #t (string? who)) #t)
         (if (string? msg)
             (raise
               (if (null? args)
@@ -2549,7 +2549,7 @@
                           (for-each (lambda (x) (fprintf p "\n   ~s" x)) args)))
                     (make-exn who (get-output-string p)))))
             (raise-argument-error 'error "string?" msg))
-        (raise-argument-error 'error "symbol? or #f" who))))
+        (raise-argument-error 'error "symbol? or string? or #f" who))))
 
 (set! errorf
   (lambda (who fmt . args)

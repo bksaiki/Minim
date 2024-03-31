@@ -662,7 +662,6 @@
     ; List of Expr, List of Xform -> List of Expr, List of Xform
     (define (expand/non-define-values exprs xforms)
       ; mutatable state
-      (define xforms xforms)
       (define define-ids (make-set))
       (define xform-ids (make-set))
       ; for each expression
@@ -671,8 +670,8 @@
           (cond
             [(null? exprs) null]
             [else
-             (let with-scope ([exprs exprs] [in-scope xforms])
-               (define-values (expr in-scope) (expand/top-level (car exprs) in-scope))
+             (let with-scope ([exprs exprs] [in-scope0 xforms])
+               (define-values (expr in-scope) (expand/top-level (car exprs) in-scope0))
                (cond
                  [(define-syntaxes-form? expr)
                   (check-define-syntaxes/values-form! 'define-syntaxes expr)
