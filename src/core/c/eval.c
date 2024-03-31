@@ -413,7 +413,6 @@ application:
     } else if (ty == do_with_values_symbol) {
         // do-with-values
         values_to_args(tc, res);
-        goto application;
     } else if (ty == clear_frame_symbol) {
         // clear frame
         tc_cp(tc) = minim_void;
@@ -471,7 +470,7 @@ call_closure:
     istream = minim_code_it(minim_closure_code(tc_cp(tc)));
     tc_env(tc) = minim_closure_env(tc_cp(tc));
     // don't clear either the current procedure or argument count
-    // since this is required for binding and arity checkf
+    // since this is required for binding and arity check
     goto loop;
 
 // performs `do-eval` instruction
@@ -536,6 +535,9 @@ not_procedure:
 }
 
 mobj eval_expr(mobj tc, mobj expr) {
+    // write_object(stderr, expr);
+    // fprintf(stderr, "\n");
+
     mobj code = compile_expr(expr);
     return eval_istream(tc, minim_code_it(code));
 }

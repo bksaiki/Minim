@@ -247,20 +247,6 @@ int test_let_values() {
     check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (cons x (cons y z)))", "(1 2 . 3)");
     check_equal("(let-values ([(x) 1]) (let-values ([(x) 2] [(y) (cons x 3)]) (cons x y)))", "(2 1 . 3)");
 
-    return passed;
-}
-
-int test_call_with_values() {
-    passed = 1;
-
-    check_equal("(call-with-values (lambda () (values)) (lambda () 1))", "1");
-    check_equal("(call-with-values (lambda () '(1 2 3)) $length)", "3");
-    check_equal("(call-with-values (lambda () (values 1 2)) cons)", "(1 . 2)");
-
-    check_equal("(call-with-values (lambda () 1 2) (lambda (x) x))", "2");
-    check_equal("(call-with-values (lambda () 1) (lambda (x) (begin 2 x)))", "1");
-    check_equal("(cons 1 (call-with-values (lambda () 2) (lambda (x) x)))", "(1 . 2)");
-    
     check_equal(
         "(letrec-values ([(foo) (values 1)]"
                         "[(bar baz) (values 1 2)])"
@@ -275,6 +261,20 @@ int test_call_with_values() {
            "(cons foo (cons bar baz))))",
         "(1 2 3 . 4)"
     );
+
+    return passed;
+}
+
+int test_call_with_values() {
+    passed = 1;
+
+    check_equal("(call-with-values (lambda () (values)) (lambda () 1))", "1");
+    check_equal("(call-with-values (lambda () '(1 2 3)) $length)", "3");
+    check_equal("(call-with-values (lambda () (values 1 2)) cons)", "(1 . 2)");
+
+    check_equal("(call-with-values (lambda () 1 2) (lambda (x) x))", "2");
+    check_equal("(call-with-values (lambda () 1) (lambda (x) (begin 2 x)))", "1");
+    check_equal("(cons 1 (call-with-values (lambda () 2) (lambda (x) x)))", "(1 . 2)");
 
     return passed;
 }

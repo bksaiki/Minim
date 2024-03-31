@@ -64,20 +64,6 @@ static mobj update_arity(mobj arity, size_t req_arity, int restp) {
     }
 }
 
-static size_t let_values_size(mobj e) {
-    mobj binds;
-    size_t var_count;
-    
-    var_count = 0;
-    binds = minim_cadr(e);
-    while (!minim_nullp(binds)) {
-        var_count += list_length(minim_caar(binds));
-        binds = minim_cdr(binds);
-    }
-
-    return var_count;
-}
-
 //
 //  Compiler
 //
@@ -98,39 +84,6 @@ static mobj compile_define_values(mobj expr, mobj env, int tailp) {
     ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
     list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, ids)));
     return with_tail_ret(ins, tailp);
-}
-
-static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
-    mobj binds, body, ins;
-    size_t env_size;
-
-    env_size = let_values_size(expr);
-    binds = minim_cadr(expr);
-    body = Mcons(begin_symbol, minim_cddr(expr));
-
-    // push a new environment
-    ins = Mlist2(
-        Mlist2(make_env_symbol, Mfixnum(env_size)),
-        Mlist1(push_env_symbol)
-    );
-
-    // bind values
-    for (; !minim_nullp(binds); binds = minim_cdr(binds)) {
-        list_set_tail(ins, compile_expr2(minim_car(minim_cdar(binds)), env, 0));
-        list_set_tail(ins, Mlist1(
-            Mlist2(bind_values_symbol, minim_caar(binds))
-        ));
-    }
-
-    // evaluate body
-    list_set_tail(ins, compile_expr2(body, env, tailp));
-
-    // pop environment if not tail recursive
-    if (!tailp) {
-        list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
-    }
-
-    return ins;
 }
 
 static mobj compile_setb(mobj expr, mobj env, int tailp) {
@@ -222,6 +175,30 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
     return with_tail_ret(ins, tailp);
 }
 
+static mobj compile_mvcall(mobj expr, mobj env, int tailp) {
+    mobj ins, label;
+
+    // need to save a continuation if not in tail position
+    if (tailp) {
+        ins = compile_expr2(minim_cadr(expr), env, 0);
+    } else {
+        label = cenv_make_label(env);
+        ins = Mlist1(Mlist2(save_cc_symbol, label));
+        list_set_tail(ins, compile_expr2(minim_cadr(expr), env, 0));
+    }
+    
+    list_set_tail(ins, Mlist2(Mlist1(clear_frame_symbol), Mlist1(do_with_values_symbol)));
+    list_set_tail(ins, compile_expr2(minim_car(minim_cddr(expr)), env, 0));
+    list_set_tail(ins, Mlist2(Mlist1(set_proc_symbol), Mlist1(apply_symbol)));
+
+    // need a label to jump to if not in tail position
+    if (!tailp) {
+        list_set_tail(ins, Mlist1(label));
+    }
+
+    return ins;
+}
+
 static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
     mobj ins;
     size_t env_size;
@@ -242,6 +219,9 @@ static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
     if (!tailp) {
         list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
     }
+
+    write_object(stderr, ins);
+    fprintf(stderr, "\n");
 
     return ins;
 }
@@ -382,9 +362,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
             if (head == define_values_symbol) {
                 // define-values form
                 return compile_define_values(expr, env, tailp);
-            } else if (head == letrec_values_symbol) {
-                // letrec-values form
-                return compile_letrec_values(expr, env, tailp);
             } else if (head == setb_symbol) {
                 // set! form
                 return compile_setb(expr, env, tailp);
@@ -396,12 +373,12 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
                 return compile_case_lambda(expr, env, tailp);
             } else if (head == mvcall_symbol) {
                 // mv-call form
-                minim_error1("compile_expr", "unimplemented", expr);
+                return compile_mvcall(expr, env, tailp);
             } else if (head == mvlet_symbol) {
                 // mv-let form
-                fprintf(stderr, "opt: ");
-                write_object(stderr, expr);
-                fprintf(stderr, "\n");
+                // fprintf(stderr, "opt: ");
+                // write_object(stderr, expr);
+                // fprintf(stderr, "\n");
                 return compile_mvlet(expr, env, tailp);
             } else if (head == mvvalues_symbol) {
                 // mv-values form

@@ -125,12 +125,16 @@ mobj compile_expr(mobj expr) {
     // optimization
     L1 = jit_opt_L0(expr);
     L2 = jit_opt_L1(L1);
+
+    // write_object(stderr, L1);
+    // fprintf(stderr, "\n");
+
     // write_object(stderr, L2);
     // fprintf(stderr, "\n");
 
     // compilation
     env = make_cenv();
-    ins = compile_expr2(L1, env, 1);
+    ins = compile_expr2(L2, env, 1);
     // write_object(stderr, ins);
     // fprintf(stderr, "\n");
 

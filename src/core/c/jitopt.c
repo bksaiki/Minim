@@ -259,27 +259,6 @@ static mobj jit_opt_L1_seq(mobj exprs) {
     }
 }
 
-// L1 optimization for `letrec-values`
-static mobj jit_opt_L1_letrec_values(mobj expr) {
-    mobj bindings, binding, body, hd, tl;
-    
-    bindings = minim_cadr(expr);
-    body = jit_opt_L1_seq(minim_cddr(expr));
-    if (minim_nullp(bindings)) {
-        return Mcons(minim_car(expr), Mcons(minim_null, body));
-    } else {
-        binding = minim_car(bindings);
-        hd = tl = Mcons(Mlist2(minim_car(binding), jit_opt_L1(minim_cadr(binding))), minim_null);
-        for (bindings = minim_cdr(bindings); !minim_nullp(bindings); bindings = minim_cdr(bindings)) {
-            binding = minim_car(bindings);
-            minim_cdr(tl) = Mcons(Mlist2(minim_car(binding), jit_opt_L1(minim_cadr(binding))), minim_null);
-            tl = minim_cdr(tl);
-        }
-
-        return Mcons(minim_car(expr), Mcons(hd, body));
-    }
-}
-
 // L1 optimization for a single `case-lambda` clause
 static mobj jit_opt_L1_case_lambda_clause(mobj clause) {
     return Mcons(minim_car(clause), jit_opt_L1_seq(minim_cdr(clause)));
@@ -339,37 +318,46 @@ static mobj jit_opt_L1_values(mobj expr) {
 static mobj jit_opt_L1_mvcall(mobj expr) {
     mobj e, consumer, producer;
 
-    e = minim_cadr(expr);
-    consumer = minim_car(minim_cddr(expr));
-    if (minim_consp(e)) {
-        if (minim_consp(minim_car(e)) && minim_caar(e) == lambda_symbol) {
-            producer = minim_car(e);
-            // can assume `(mv-call ((lambda () e ...))
-            if (minim_nullp(minim_cdr(minim_cddr(producer)))) {
-                // (mv-call ((lambda () e)) consumer) => (mv-call e consumer)
-                return jit_opt_L1(Mlist3(mvcall_symbol, minim_car(minim_cddr(producer)), consumer));
-            } else {
-                // (mv-call ((lambda () e ...) consumer => (mv-call (begin e ...) consumer)
-                return jit_opt_L1(Mlist3(mvcall_symbol, Mcons(begin_symbol, minim_cddr(producer)), consumer)); 
-            }
-        } else if (minim_car(e) == mvvalues_symbol) {
-            // (mv-call (mv-values e ...) consumer) => (consumer e ...)
-            return jit_opt_L1(Mcons(consumer, minim_cdr(e)));
-        }
-        // } else if (minim_consp(consumer) && minim_car(consumer) == lambda_symbol) {
-        //     // (mv-call e (lambda (id ...) body) => (mv-let e (id ...) body)
-        //     mobj body = minim_cddr(consumer);
-        //     return jit_opt_L1(Mlist4(
-        //         mvlet_symbol,
-        //         e,
-        //         minim_cadr(consumer),
-        //         minim_nullp(minim_cdr(body)) ? minim_car(body) : Mcons(begin_symbol, body)
-        //     ));
-        // }
-    }
-    
-    // (mv-call e_s consumer) => (consumer e_s)
-    return jit_opt_L1(Mlist2(consumer, e));
+    // e = minim_cadr(expr);
+    // consumer = minim_car(minim_cddr(expr));
+    // if (minim_consp(e)) {
+    //     if (minim_consp(minim_car(e)) && minim_caar(e) == lambda_symbol) {
+    //         producer = minim_car(e);
+    //         // can assume `(mv-call ((lambda () e ...))
+    //         if (minim_nullp(minim_cdr(minim_cddr(producer)))) {
+    //             // (mv-call ((lambda () e)) consumer) => (mv-call e consumer)
+    //             return jit_opt_L1(Mlist3(mvcall_symbol, minim_car(minim_cddr(producer)), consumer));
+    //         } else {
+    //             // (mv-call ((lambda () e ...) consumer => (mv-call (begin e ...) consumer)
+    //             return jit_opt_L1(Mlist3(mvcall_symbol, Mcons(begin_symbol, minim_cddr(producer)), consumer)); 
+    //         }
+    //     } else if (minim_car(e) == mvvalues_symbol) {
+    //         // (mv-call (mv-values e ...) consumer) => (consumer e ...)
+    //         return jit_opt_L1(Mcons(consumer, minim_cdr(e)));
+    //     } else if (minim_car(e) == quote_symbol || minim_car(e) == quote_syntax_symbol) {
+    //         // anything quoted is a literal so:
+    //         // (mv-call e_lit consumer) => (consumer e_s)
+    //         return jit_opt_L1(Mlist2(consumer, e));
+    //     }
+
+    //     if (minim_consp(consumer) && minim_car(consumer) == lambda_symbol) {
+    //         // (mv-call e (lambda (id ...) body) => (mv-let e (id ...) body)
+    //         mobj body = minim_cddr(consumer);
+    //         return jit_opt_L1(Mlist4(
+    //             mvlet_symbol,
+    //             e,
+    //             minim_cadr(consumer),
+    //             minim_nullp(minim_cdr(body)) ? minim_car(body) : Mcons(begin_symbol, body)
+    //         ));
+    //     }
+
+    //     return expr;
+    // } else {
+    //     // (mv-call e_lit consumer) => (consumer e_s)
+    //     return jit_opt_L1(Mlist2(consumer, e));
+    // }
+
+    return expr;
 }
 
 // Perform L1 optimization
@@ -382,9 +370,7 @@ mobj jit_opt_L1(mobj expr) {
             if (head == define_values_symbol) {
                 // define-values form
                 return Mlist3(head, minim_cadr(expr), jit_opt_L1(minim_car(minim_cddr(expr))));
-            } else if (head == letrec_values_symbol) {
-                // letrec-values form
-                return jit_opt_L1_letrec_values(expr);
+            } else if (head == setb_symbol) {
                 // set! form
                 return Mlist3(head, minim_cadr(expr), jit_opt_L1(minim_car(minim_cddr(expr))));
             } else if (head == lambda_symbol) {
