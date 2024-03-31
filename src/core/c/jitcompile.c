@@ -220,9 +220,6 @@ static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
         list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
     }
 
-    write_object(stderr, ins);
-    fprintf(stderr, "\n");
-
     return ins;
 }
 
@@ -376,15 +373,9 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
                 return compile_mvcall(expr, env, tailp);
             } else if (head == mvlet_symbol) {
                 // mv-let form
-                // fprintf(stderr, "opt: ");
-                // write_object(stderr, expr);
-                // fprintf(stderr, "\n");
                 return compile_mvlet(expr, env, tailp);
             } else if (head == mvvalues_symbol) {
                 // mv-values form
-                // fprintf(stderr, "opt: ");
-                // write_object(stderr, expr);
-                // fprintf(stderr, "\n");
                 return compile_mvvalues(expr, env, tailp);
             } else if (head == begin_symbol) {
                 // begin form

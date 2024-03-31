@@ -439,6 +439,7 @@ extern mobj minim_values;
 mobj Mchar(mchar c);
 mobj Mfixnum(long v);
 mobj Msymbol(const char *s);
+mobj Mgensym(const char *s);
 mobj Mstring(const char *s);
 mobj Mstring2(long len, mchar c);
 mobj Mcons(mobj car, mobj cdr);
