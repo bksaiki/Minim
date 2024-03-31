@@ -125,7 +125,7 @@ static mobj compile_letrec_values(mobj expr, mobj env, int tailp) {
     // evaluate body
     list_set_tail(ins, compile_expr2(body, env, tailp));
 
-    // if we are not in tail position, pop the environment
+    // pop environment if not tail recursive
     if (!tailp) {
         list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
     }
@@ -219,6 +219,49 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
 
     // instruction
     ins = Mlist1(Mlist2(make_closure_symbol, idx));
+    return with_tail_ret(ins, tailp);
+}
+
+static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
+    mobj ins;
+    size_t env_size;
+
+    // push environment
+    env_size = list_length(minim_car(minim_cddr(expr)));
+    ins = Mlist2(
+        Mlist2(make_env_symbol, Mfixnum(env_size)),
+        Mlist1(push_env_symbol)
+    );
+
+    // bind and evaluate
+    list_set_tail(ins, compile_expr2(minim_cadr(expr), env, 0));
+    list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, minim_cadr(expr))));
+    list_set_tail(ins, compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp));
+
+    // pop environment if not tail recursive
+    if (!tailp) {
+        list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
+    }
+
+    return ins;
+}
+
+static mobj compile_mvvalues(mobj expr, mobj env, int tailp) {
+    mobj vals, ins;
+    
+    vals = minim_cdr(expr);
+    if (minim_nullp(vals)) {
+        ins = Mlist2(Mlist1(clear_frame_symbol), Mlist1(do_values_symbol));
+    } else {
+        ins = Mlist2(Mlist1(clear_frame_symbol), Mlist2(check_stack_symbol, Mfixnum(list_length(vals))));
+        for (; !minim_nullp(vals); vals = minim_cdr(vals)) {
+            list_set_tail(ins, compile_expr2(minim_car(vals), env, 0));
+            list_set_tail(ins, Mlist1(Mlist1(push_symbol)));
+        }
+
+        list_set_tail(ins, Mlist2(Mlist1(do_values_symbol), Mlist1(clear_frame_symbol)));
+    }
+
     return with_tail_ret(ins, tailp);
 }
 
@@ -351,6 +394,21 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
             } else if (head == case_lambda_symbol) {
                 // case-lambda form
                 return compile_case_lambda(expr, env, tailp);
+            } else if (head == mvcall_symbol) {
+                // mv-call form
+                minim_error1("compile_expr", "unimplemented", expr);
+            } else if (head == mvlet_symbol) {
+                // mv-let form
+                fprintf(stderr, "opt: ");
+                write_object(stderr, expr);
+                fprintf(stderr, "\n");
+                return compile_mvlet(expr, env, tailp);
+            } else if (head == mvvalues_symbol) {
+                // mv-values form
+                fprintf(stderr, "opt: ");
+                write_object(stderr, expr);
+                fprintf(stderr, "\n");
+                return compile_mvvalues(expr, env, tailp);
             } else if (head == begin_symbol) {
                 // begin form
                 return compile_begin(expr, env, tailp);

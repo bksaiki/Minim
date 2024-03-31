@@ -273,15 +273,14 @@ static mobj jit_opt_L1_values(mobj expr) {
 
 // L1 optimization for `values`
 static mobj jit_opt_L1_mvcall(mobj expr) {
-    mobj e, consumer, head;
+    mobj e, consumer, producer;
 
     e = minim_cadr(expr);
     consumer = minim_car(minim_cddr(expr));
     if (minim_consp(e)) {
-        head = minim_car(e);
-        if (minim_consp(head) && minim_car(head) == lambda_symbol) {
+        if (minim_consp(minim_car(e)) && minim_caar(e) == lambda_symbol) {
+            producer = minim_car(e);
             // can assume `(mv-call ((lambda () e ...))
-            mobj producer = head;
             if (minim_nullp(minim_cdr(minim_cddr(producer)))) {
                 // (mv-call ((lambda () e)) consumer) => (mv-call e consumer)
                 return jit_opt_L1(Mlist3(mvcall_symbol, minim_car(minim_cddr(producer)), consumer));
@@ -289,16 +288,18 @@ static mobj jit_opt_L1_mvcall(mobj expr) {
                 // (mv-call ((lambda () e ...) consumer => (mv-call (begin e ...) consumer)
                 return jit_opt_L1(Mlist3(mvcall_symbol, Mcons(begin_symbol, minim_cddr(producer)), consumer)); 
             }
-        } else if (head == mvvalues_symbol) {
+        } else if (minim_car(e) == mvvalues_symbol) {
             // (mv-call (mv-values e ...) consumer) => (consumer e ...)
             return jit_opt_L1(Mcons(consumer, minim_cdr(e)));
         } else if (minim_consp(consumer) && minim_car(consumer) == lambda_symbol) {
-            return jit_opt_L1(
-                Mcons(mvlet_symbol,
-                Mcons(e,
-                Mcons(minim_cadr(consumer),
-                minim_cddr(consumer))))
-            );
+            // (mv-call e (lambda (id ...) body) => (mv-let e (id ...) body)
+            mobj body = minim_cddr(consumer);
+            return jit_opt_L1(Mlist4(
+                mvlet_symbol,
+                e,
+                minim_cadr(consumer),
+                minim_nullp(minim_cdr(body)) ? minim_car(body) : Mcons(begin_symbol, body)
+            ));
         }
     }
     

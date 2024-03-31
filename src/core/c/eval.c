@@ -323,13 +323,10 @@ loop:
         minim_error1(NULL, "executing non-bytecode", ins);
     }
 
-    // write_object(stderr, ins);
-    // fprintf(stderr, " res=");
-    // write_object(stderr, res);
-    // fprintf(stderr, " cp=");
-    // write_object(stderr, tc_cp(tc));
-    // fprintf(stderr, " ac=%ld, sfp=%p, ccont=%p, pc=%p, ra=%p, vc=%ld\n",
-    //     tc_ac(tc), tc_sfp(tc), tc_ccont(tc), istream, tc_ra(tc), tc_vc(tc));
+    if (minim_car(ins) != branchne_symbol) {
+        write_object(stderr, ins);
+        fprintf(stderr, "\n");
+    }
 
     ty = minim_car(ins);
     if (ty == literal_symbol) {
@@ -544,9 +541,9 @@ not_procedure:
 }
 
 mobj eval_expr(mobj tc, mobj expr) {
-    // fprintf(stderr, "eval: ");
-    // write_object(stderr, expr);
-    // fprintf(stderr, "\n");
+    fprintf(stderr, "eval: ");
+    write_object(stderr, expr);
+    fprintf(stderr, "\n");
 
     mobj code = compile_expr(expr);
     return eval_istream(tc, minim_code_it(code));
