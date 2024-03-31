@@ -120,10 +120,14 @@ mobj write_code(mobj ins, mobj reloc, mobj arity) {
 //
 
 mobj compile_expr(mobj expr) {
-    mobj env, ins, reloc;
+    mobj env, L1, ins, reloc;
 
     env = make_cenv();
-    ins = compile_expr2(expr, env, 1);
+    L1 = jit_opt_L0(expr);
+    // write_object(stderr, L1);
+    // fprintf(stderr, "\n");
+
+    ins = compile_expr2(L1, env, 1);
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }

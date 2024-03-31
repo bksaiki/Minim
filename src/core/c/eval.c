@@ -194,7 +194,7 @@ static mobj do_rest(mobj tc, size_t idx) {
 
 static void do_apply(mobj tc) {
     mobj *sfp, rest;
-    size_t i, ac, len, req;
+    size_t i, ac, req;
 
     // thread parameters
     sfp = tc_sfp(tc);
@@ -202,16 +202,23 @@ static void do_apply(mobj tc) {
 
     // the first argument becomes the current procedure
     tc_cp(tc) = tc_frame_ref(tc, 0);
+    if (!minim_procp(tc_cp(tc))) {
+        bad_type_exn("apply", "list?", tc_cp(tc));
+    }
+
+    // save rest argument (needs to be a list)
+    rest = tc_frame_ref(tc, ac - 1);
+    if (!minim_listp(rest)) {
+        bad_type_exn("apply", "list?", rest);
+    }
 
     // shift arguments by 1 (since `apply` itself is consumed)
-    rest = tc_frame_ref(tc, ac - 1);
+    tc_ac(tc) -= 2;
     for (i = 0; i < ac - 2; i++)
         tc_frame_ref(tc, i) = tc_frame_ref(tc, i + 1);
 
     // check if we have room for the application
-    tc_ac(tc) -= 2;
-    len = list_length(rest);
-    req = stack_frame_size(tc, len);
+    req = stack_frame_size(tc, list_length(rest));
     if (stack_overflowp(tc, req)) {
         grow_stack(tc, req);
         for (i = 0; i < ac; i++)
@@ -362,10 +369,6 @@ application:
     } else if (ty == bind_values_symbol) {
         // bind-values
         bind_values(tc, tc_env(tc), minim_cadr(ins), res);
-        res = minim_void;
-    } else if (ty == bind_values_top_symbol) {
-        // bind-values/top (special variant for `let-values`)
-        bind_values(tc, tc_frame_ref(tc, tc_ac(tc) - 1), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind

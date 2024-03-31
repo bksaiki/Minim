@@ -16,6 +16,7 @@ void init_minim() {
 
     // initialize special symbols
     begin_symbol = intern("begin");
+    call_with_values_symbol = intern("call-with-values");
     case_lambda_symbol = intern("case-lambda");
     define_values_symbol = intern("define-values");
     if_symbol = intern("if");
@@ -27,10 +28,13 @@ void init_minim() {
     setb_symbol = intern("set!");
     values_symbol = intern("values");
 
+    mvcall_symbol = intern("#%mvcall");
+    mvlet_symbol = intern("#%mvlet");
+    mvvalues_symbol = intern("#%mvvalues");
+
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");
     bind_values_symbol = intern("#%bind-values");
-    bind_values_top_symbol = intern("#%bind-values/top");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
     branchgt_symbol = intern("#%branchgt");

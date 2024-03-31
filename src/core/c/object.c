@@ -5,6 +5,7 @@
 #include "../minim.h"
 
 mobj begin_symbol;
+mobj call_with_values_symbol;
 mobj case_lambda_symbol;
 mobj define_values_symbol;
 mobj if_symbol;
@@ -16,10 +17,13 @@ mobj quote_syntax_symbol;
 mobj setb_symbol;
 mobj values_symbol;
 
+mobj mvcall_symbol;
+mobj mvlet_symbol;
+mobj mvvalues_symbol;
+
 mobj apply_symbol;
 mobj bind_symbol;
 mobj bind_values_symbol;
-mobj bind_values_top_symbol;
 mobj brancha_symbol;
 mobj branchf_symbol;
 mobj branchgt_symbol;

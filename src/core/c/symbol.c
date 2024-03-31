@@ -184,7 +184,7 @@ mobj Msymbol(const char *s) {
     o = GC_alloc(minim_symbol_size);
     len = strlen(s);
     minim_type(o) = MINIM_OBJ_SYMBOL;
-    minim_symbol(o) =  GC_alloc_atomic((len + 1) * sizeof(char));
+    minim_symbol(o) = GC_alloc_atomic((len + 1) * sizeof(char));
     strncpy(minim_symbol(o), s, len + 1);
     return o;
 }
