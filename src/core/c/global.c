@@ -28,9 +28,9 @@ void init_minim() {
     setb_symbol = intern("set!");
     values_symbol = intern("values");
 
-    mvcall_symbol = intern("#%mvcall");
-    mvlet_symbol = intern("#%mvlet");
-    mvvalues_symbol = intern("#%mvvalues");
+    mvcall_symbol = intern("#%mv-call");
+    mvlet_symbol = intern("#%mv-let");
+    mvvalues_symbol = intern("#%mv-values");
 
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");

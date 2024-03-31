@@ -232,6 +232,8 @@ int test_call_with_values() {
     check_equal("(call-with-values (lambda () '(1 2 3)) $length)", "3");
     check_equal("(call-with-values (lambda () (values 1 2)) cons)", "(1 . 2)");
 
+    check_equal("(call-with-values (lambda () 1 2) (lambda (x) x))", "2");
+
     return passed;
 }
 

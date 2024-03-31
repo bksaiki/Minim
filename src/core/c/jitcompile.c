@@ -342,9 +342,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
             } else if (head == letrec_values_symbol) {
                 // letrec-values form
                 return compile_letrec_values(expr, env, tailp);
-            } else if (head == let_values_symbol) {
-                // letrec-values form
-                minim_error1("compile_expr", "let-values should have been compiled away", expr);
             } else if (head == setb_symbol) {
                 // set! form
                 return compile_setb(expr, env, tailp);
