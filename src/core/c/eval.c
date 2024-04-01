@@ -371,7 +371,7 @@ application:
         res = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == push_env_symbol) {
         // push-env
-        tc_env(tc) = res;
+        tc_env(tc) = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == pop_env_symbol) {
         // pop-env
         tc_env(tc) = minim_env_prev(tc_env(tc));

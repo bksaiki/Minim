@@ -97,10 +97,7 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
     size_t env_size, i;
 
     env_size = arity + (restp ? 1 : 0);
-    ins = Mlist2(
-        Mlist2(make_env_symbol, Mfixnum(env_size)),
-        Mlist1(push_env_symbol)
-    );
+    ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
 
     // bind arguments
     args = minim_car(clause);
@@ -200,22 +197,24 @@ static mobj compile_mvcall(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
-    mobj ins;
+    mobj ins, ids;
     size_t env_size;
 
-    // push environment
-    env_size = list_length(minim_car(minim_cddr(expr)));
-    ins = Mlist2(
-        Mlist2(make_env_symbol, Mfixnum(env_size)),
-        Mlist1(push_env_symbol)
-    );
+    // evaluate producer
+    ins = compile_expr2(minim_cadr(expr), env, 0);
 
-    // bind and evaluate
-    list_set_tail(ins, compile_expr2(minim_cadr(expr), env, 0));
-    list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, minim_car(minim_cddr(expr)))));
+    // bind result in new environment
+    ids = minim_car(minim_cddr(expr));
+    env_size = list_length(ids);
+    list_set_tail(ins, Mlist2(
+        Mlist2(push_env_symbol, Mfixnum(env_size)),
+        Mlist2(bind_values_symbol, ids)
+    ));
+
+    // evaluate body
     list_set_tail(ins, compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp));
-
-    // pop environment if not tail recursive
+    
+    // pop environment if not in tail position
     if (!tailp) {
         list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
     }

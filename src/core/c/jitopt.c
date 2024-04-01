@@ -366,16 +366,18 @@ static mobj jit_opt_L1_mvcall(mobj expr) {
             return jit_opt_L1(Mlist2(consumer, e));
         }
 
-        // if (minim_consp(consumer) && minim_car(consumer) == lambda_symbol) {
-        //     // (mv-call e (lambda (id ...) body) => (mv-let e (id ...) body)
-        //     mobj body = minim_cddr(consumer);
-        //     return jit_opt_L1(Mlist4(
-        //         mvlet_symbol,
-        //         e,
-        //         minim_cadr(consumer),
-        //         minim_nullp(minim_cdr(body)) ? minim_car(body) : Mcons(begin_symbol, body)
-        //     ));
-        // }
+        if (minim_consp(consumer) &&
+            minim_car(consumer) == lambda_symbol &&
+            minim_consp(minim_cadr(consumer))) {
+            // (mv-call e (lambda (id ...) body) => (mv-let e (id ...) body)
+            mobj body = minim_cddr(consumer);
+            return jit_opt_L1(Mlist4(
+                mvlet_symbol,
+                e,
+                minim_cadr(consumer),
+                minim_nullp(minim_cdr(body)) ? minim_car(body) : Mcons(begin_symbol, body)
+            ));
+        }
 
         return expr;
     } else {
@@ -436,6 +438,12 @@ mobj jit_opt_L1(mobj expr) {
                 return jit_opt_L1_mvcall(expr);
             } else if (head == mvlet_symbol) {
                 // mv-let
+                return Mlist4(
+                    mvlet_symbol,
+                    jit_opt_L1(minim_cadr(expr)),
+                    minim_car(minim_cddr(expr)),
+                    jit_opt_L1(minim_cadr(minim_cddr(expr)))
+                );
             }
         }
 
