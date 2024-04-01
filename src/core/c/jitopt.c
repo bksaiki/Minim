@@ -468,3 +468,156 @@ mobj jit_opt_L1(mobj expr) {
         return expr;
     }
 }
+
+// L2 optimization: closure elimination
+//  - `((lambda (ids ...) body ...) args ...)`
+//     => `(mv-let (values args ...) (ids ...) (begin body ...)`
+
+// L2 optimization for sequences
+static mobj jit_opt_L2_seq(mobj exprs) {
+    if (minim_nullp(exprs)) {
+        return minim_null;   
+    } else {
+        mobj hd, tl;
+
+        hd = tl = Mcons(jit_opt_L2(minim_car(exprs)), minim_null);
+        for (exprs = minim_cdr(exprs); !minim_nullp(exprs); exprs = minim_cdr(exprs)) {
+            minim_cdr(tl) = Mcons(jit_opt_L2(minim_car(exprs)), minim_null);
+            tl = minim_cdr(tl);
+        }
+
+        return hd;
+    }
+}
+
+// L2 optimization for a single `case-lambda` clause
+static mobj jit_opt_L2_case_lambda_clause(mobj clause) {
+    return Mcons(minim_car(clause), jit_opt_L2_seq(minim_cdr(clause)));
+}
+
+// L2 optimization for `case-lambda`
+static mobj jit_opt_L2_case_lambda(mobj expr) {
+    mobj clauses, hd, tl;
+    clauses = minim_cdr(expr);
+    if (minim_nullp(clauses)) {
+        return expr;
+    } else {
+        hd = tl = Mcons(jit_opt_L2_case_lambda_clause(minim_car(clauses)), minim_null);
+        for (clauses = minim_cdr(clauses); !minim_nullp(clauses); clauses = minim_cdr(clauses)) {
+            minim_cdr(tl) = Mcons(jit_opt_L2_case_lambda_clause(minim_car(clauses)), minim_null);
+            tl = minim_cdr(tl);
+        }
+        
+        return Mcons(minim_car(expr), hd);
+    }
+}
+
+// L2 optimization for `application`
+static mobj jit_opt_L2_app(mobj expr) {
+    mobj hd, tl, args, body;
+
+    hd = minim_car(expr);
+    if (minim_consp(hd) && minim_car(hd) == lambda_symbol && minim_listp(minim_cadr(hd))) {
+        // `((lambda (ids ...) body ...) args ...)`
+        // => `(mv-let (values args ...) (ids ...) (begin body ...)`
+        args = minim_cdr(expr);
+        body = minim_cddr(hd);
+        if (minim_nullp(args)) {
+            expr = minim_nullp(minim_cdr(body))
+                ? minim_car(body)
+                : Mcons(begin_symbol, body);
+        } else if (minim_nullp(minim_cdr(args))) {
+            expr = Mlist4(
+                mvlet_symbol,
+                minim_car(args),
+                minim_cadr(hd),
+                minim_nullp(minim_cdr(body))
+                    ? minim_car(body)
+                    : Mcons(begin_symbol, body)
+            );
+        } else {
+            expr = Mlist4(
+                mvlet_symbol,
+                Mcons(values_symbol, args),
+                minim_cadr(hd),
+                minim_nullp(minim_cdr(body))
+                    ? minim_car(body)
+                    : Mcons(begin_symbol, body)
+            );
+        }
+
+        return jit_opt_L2(expr);
+    } else {
+        hd = tl = Mcons(jit_opt_L2(minim_car(expr)), minim_null);
+        for (expr = minim_cdr(expr); !minim_nullp(expr); expr = minim_cdr(expr)) {
+            minim_cdr(tl) = Mcons(jit_opt_L2(minim_car(expr)), minim_null);
+            tl = minim_cdr(tl);
+        }
+    }
+
+    return hd;
+}
+
+// Perform L2 optimization
+mobj jit_opt_L2(mobj expr) {
+    if (minim_consp(expr)) {
+        // special form or application
+        mobj head = minim_car(expr);
+        if (minim_symbolp(head)) {
+            // special forms
+            if (head == define_values_symbol) {
+                // define-values form
+                return Mlist3(head, minim_cadr(expr), jit_opt_L2(minim_car(minim_cddr(expr))));
+            } else if (head == setb_symbol) {
+                // set! form
+                return Mlist3(head, minim_cadr(expr), jit_opt_L2(minim_car(minim_cddr(expr))));
+            } else if (head == lambda_symbol) {
+                // lambda form
+                return Mcons(head, Mcons(minim_cadr(expr), jit_opt_L2_seq(minim_cddr(expr))));
+            } else if (head == case_lambda_symbol) {
+                // case-lambda form
+                return jit_opt_L2_case_lambda(expr);
+            } else if (head == mvcall_symbol) {
+                // mv-call form
+                return Mlist3(
+                    head,
+                    jit_opt_L2(minim_cadr(expr)),
+                    jit_opt_L2(minim_car(minim_cddr(expr)))
+                );
+            } else if (head == mvlet_symbol) {
+                // mv-let form
+               return Mlist4(
+                    mvlet_symbol,
+                    jit_opt_L2(minim_cadr(expr)),
+                    minim_car(minim_cddr(expr)),
+                    jit_opt_L2(minim_cadr(minim_cddr(expr)))
+                );
+            } else if (head == mvvalues_symbol) {
+                // mv-values form
+                return Mcons(head, jit_opt_L2_seq(minim_cdr(expr)));
+            } else if (head == begin_symbol) {
+                // begin form
+                return Mcons(head, jit_opt_L2_seq(minim_cdr(expr)));
+            } else if (head == if_symbol) {
+                // if form
+                return Mlist4(
+                    if_symbol,
+                    jit_opt_L2(minim_cadr(expr)),
+                    jit_opt_L2(minim_car(minim_cddr(expr))),
+                    jit_opt_L2(minim_cadr(minim_cddr(expr)))
+                );
+            } else if (head == quote_symbol) {
+                // quote form
+                return expr;
+            } else if (head == quote_syntax_symbol) {
+                // quote-syntax form
+                return expr;
+            }
+        }
+
+        // application
+        return jit_opt_L2_app(expr);
+    } else {
+        return expr;
+    }
+}

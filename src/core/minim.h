@@ -850,6 +850,7 @@ mobj resolve_refs(mobj cenv, mobj ins);
 
 mobj jit_opt_L0(mobj expr);
 mobj jit_opt_L1(mobj expr);
+mobj jit_opt_L2(mobj expr);
 mobj compile_expr(mobj expr);
 mobj compile_expr2(mobj expr, mobj env, int tailp);
 
