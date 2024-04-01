@@ -146,7 +146,22 @@ static mobj jit_opt_L0_let_values2(mobj bindings, mobj ids, mobj tmps, mobj body
 //  - capture the result of `expr` with `call-with-values`
 // The body is transformed into `call-with-values` using the actual identifiers
 static mobj jit_opt_L0_let_values(mobj expr) {
-    expr = jit_opt_L0_let_values2(minim_cadr(expr), minim_null, minim_null, minim_cddr(expr));
+    mobj bindings, body;
+
+    bindings = minim_cadr(expr);
+    body = minim_cddr(expr);
+    if (minim_nullp(bindings)) {
+        expr = Mcons(begin_symbol, body);
+    } else if (minim_nullp(minim_cdr(bindings))) {
+        expr = Mlist3(
+            call_with_values_symbol,
+            Mlist3(lambda_symbol, minim_null, minim_cadr(minim_car(bindings))),
+            Mcons(lambda_symbol, Mcons(minim_caar(bindings), body))
+        );
+    } else {
+        expr = jit_opt_L0_let_values2(bindings, minim_null, minim_null, body);
+    }
+
     return jit_opt_L0(expr);
 }
 

@@ -126,18 +126,13 @@ mobj compile_expr(mobj expr) {
     L1 = jit_opt_L0(expr);
     L2 = jit_opt_L1(L1);
 
-    // write_object(stderr, L1);
-    // fprintf(stderr, "\n");
-
+    // fprintf(stderr, ">");
     // write_object(stderr, L2);
     // fprintf(stderr, "\n");
 
     // compilation
     env = make_cenv();
     ins = compile_expr2(L2, env, 1);
-    // write_object(stderr, ins);
-    // fprintf(stderr, "\n");
-
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }
