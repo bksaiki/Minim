@@ -58,6 +58,7 @@ void init_minim() {
     tl_lookup_symbol = intern("#%tl-lookup");
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
+    make_unbound_symbol = intern("#%make-unbound");
     pop_symbol = intern("#%pop");
     pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");
@@ -87,6 +88,9 @@ void init_minim() {
     minim_values = GC_alloc(sizeof(mbyte));
     GC_register_root(minim_values);
     minim_type(minim_values) = MINIM_OBJ_SPECIAL;
+    minim_unbound = GC_alloc(sizeof(mbyte));
+    GC_register_root(minim_unbound);
+    minim_type(minim_unbound) = MINIM_OBJ_SPECIAL;
     minim_empty_vec = Mvector(0, NULL);
     GC_register_root(minim_empty_vec);
 

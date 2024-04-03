@@ -593,8 +593,8 @@
          (if (number? x)
              (if (number? y)
                  ($fx2+ x y)
-                 (non-number-error '+ x))
-             (non-number-error '+ y))]
+                 (non-number-error '+ y))
+             (non-number-error '+ x))]
         [(x y . rest)
          (if (number? x)
              (if (number? y)
@@ -606,8 +606,8 @@
                                              (loop ($fx2+ x ($car xs)) ($cdr xs))
                                              (non-number-error '+ ($car xs)))))])
                    (loop ($fx2+ x y) rest))
-                 (non-number-error '+ x))
-             (non-number-error '+ y))])
+                 (non-number-error '+ y))
+             (non-number-error '+ x))])
       ; -
       (case-lambda
         [(x)
@@ -618,8 +618,8 @@
          (if (number? x)
              (if (number? y)
                  ($fx2- x y)
-                 (non-number-error '- x))
-             (non-number-error '- y))]
+                 (non-number-error '- y))
+             (non-number-error '- x))]
         [(x y . rest)
          (if (number? x)
              (if (number? y)
@@ -631,8 +631,8 @@
                                              (loop ($fx2- x ($car xs)) ($cdr xs))
                                              (non-number-error '- ($car xs)))))])
                    (loop ($fx2- x y) rest))
-                 (non-number-error '- x))
-             (non-number-error '- y))])
+                 (non-number-error '- y))
+             (non-number-error '- x))])
       ; *
       (case-lambda
         [() 1]
@@ -644,8 +644,8 @@
          (if (number? x)
              (if (number? y)
                  ($fx2* x y)
-                 (non-number-error '* x))
-             (non-number-error '* y))]
+                 (non-number-error '* y))
+             (non-number-error '* x))]
         [(x y . rest)
          (if (number? x)
              (if (number? y)
@@ -673,8 +673,8 @@
                  (if (zero? y)
                      (division-0-error '/ y)
                      ($fx2/ x y))
-                 (non-number-error '- x))
-             (non-number-error '- y))]
+                 (non-number-error '- y))
+             (non-number-error '- x))]
         [(x y . rest)
          (if (number? x)
              (if (number? y)
@@ -690,8 +690,8 @@
                                                      (loop ($fx2- x ($car xs)) ($cdr xs)))
                                                  (non-number-error '- ($car xs)))))])
                        (loop ($fx2- x y) rest)))
-                 (non-number-error '- x))
-             (non-number-error '- y))]))))
+                 (non-number-error '- y))
+             (non-number-error '- x))]))))
 
 (define-values (add1)
   (lambda (x)

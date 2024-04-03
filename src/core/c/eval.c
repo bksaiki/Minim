@@ -265,12 +265,6 @@ static mobj force_single_value(mobj tc, mobj x) {
     return x;
 }
 
-static mobj env_at_depth(mobj env, mobj idx) {
-    for (size_t i = minim_fixnum(idx); i > 0; i--)
-        env = minim_env_prev(env);
-    return env;
-}
-
 static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
     size_t i, count;
 
@@ -293,6 +287,32 @@ static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
         SET_NAME_IF_CLOSURE(minim_car(ids), res);
         env_define_var_no_check(env, minim_car(ids), res);
     }
+}
+
+static mobj env_lookup(mobj env, mobj coord) {
+    mobj cell;
+    size_t i;
+
+    for (i = minim_fixnum(minim_car(coord)); i > 0; i--)
+        env = minim_env_prev(env);
+
+    cell = vector_ref(minim_env_bindings(env), minim_cdr(coord));
+    if (minim_cdr(cell) == minim_unbound)
+        minim_error1(NULL, "cannot use before initialization", minim_car(cell));
+    return minim_cdr(cell);
+}
+
+static mobj env_tl_lookup(mobj env, mobj id, mobj depth) {
+    mobj val;
+    size_t i;
+
+    for (i = minim_fixnum(depth); i > 0; i--)
+        env = minim_env_prev(env);
+
+    val = env_lookup_var(env, id);
+    if (val == minim_unbound)
+        minim_error1(NULL, "cannot use before initialization", id);
+    return val;
 }
 
 //
@@ -335,12 +355,10 @@ loop:
         res = minim_cadr(ins);
     } else if (ty == lookup_symbol) {
         // lookup
-        res = env_at_depth(tc_env(tc), minim_car(minim_cadr(ins)));
-        res = minim_cdr(vector_ref(minim_env_bindings(res), minim_cdr(minim_cadr(ins))));
+        res = env_lookup(tc_env(tc), minim_cadr(ins));
     } else if (ty == tl_lookup_symbol) {
         // top-level lookup
-        res = env_at_depth(tc_env(tc), minim_car(minim_cddr(ins)));
-        res = env_lookup_var(res, minim_cadr(ins));
+        res = env_tl_lookup(tc_env(tc), minim_cadr(ins), minim_car(minim_cddr(ins)));
     } else if (ty == set_proc_symbol) {
         // set-proc
         tc_cp(tc) = force_single_value(tc, res);

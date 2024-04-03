@@ -64,6 +64,7 @@ extern mobj values_symbol;
 extern mobj mvcall_symbol;
 extern mobj mvlet_symbol;
 extern mobj mvvalues_symbol;
+extern mobj make_unbound_symbol;
 
 extern mobj apply_symbol;
 extern mobj bind_symbol;
@@ -142,6 +143,7 @@ extern mobj minim_void;
 extern mobj minim_empty_vec;
 extern mobj minim_base_rtd;
 extern mobj minim_values;
+extern mobj minim_unbound;
 
 #define minim_nullp(x)        ((x) == minim_null)
 #define minim_truep(x)        ((x) == minim_true)

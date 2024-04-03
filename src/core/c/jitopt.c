@@ -103,7 +103,7 @@ static mobj jit_opt_L0_letrec_values(mobj expr) {
     } else {
         // initial bindings
         let_ids = let_values_ids(expr);
-        let_init = Mcons(values_symbol, make_list(list_length(let_ids), minim_false));
+        let_init = Mcons(values_symbol, make_list(list_length(let_ids), Mlist1(make_unbound_symbol)));
         let_it = Mlist1(Mlist1(Mlist2(let_ids, let_init)));
         let_expr = Mcons(let_values_symbol, let_it);
 

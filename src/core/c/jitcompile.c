@@ -407,6 +407,9 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
             } else if (head == quote_syntax_symbol) {
                 // quote-syntax form
                 return compile_literal(to_syntax(minim_cadr(expr)), tailp);
+            } else if (head == make_unbound_symbol) {
+                // make-unbound form
+                return compile_literal(minim_unbound, tailp);
             }
         }
 

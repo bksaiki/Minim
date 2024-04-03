@@ -20,6 +20,7 @@ mobj values_symbol;
 mobj mvcall_symbol;
 mobj mvlet_symbol;
 mobj mvvalues_symbol;
+mobj make_unbound_symbol;
 
 mobj apply_symbol;
 mobj bind_symbol;
@@ -64,6 +65,7 @@ mobj minim_void;
 mobj minim_empty_vec;
 mobj minim_base_rtd;
 mobj minim_values;
+mobj minim_unbound;
 
 int minim_eqp(mobj a, mobj b) {
     if (a == b) {
