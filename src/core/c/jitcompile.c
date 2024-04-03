@@ -100,6 +100,7 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
     ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
 
     // bind arguments
+    env = extend_cenv(env);
     args = minim_car(clause);
     for (i = 0; i < arity; i++) {
         list_set_tail(ins, Mlist2(
@@ -107,11 +108,13 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
             Mlist2(bind_symbol, minim_car(args))
         ));
 
+        cenv_id_add(env, minim_car(args));
         args = minim_cdr(args);
     }
 
     // bind rest argument
     if (restp) {
+        cenv_id_add(env, args);
         list_set_tail(ins, Mlist2(
             Mlist2(do_rest_symbol, Mfixnum(arity)),
             Mlist2(bind_symbol, args)
@@ -123,7 +126,7 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
 
     // compile the body
     body = Mcons(begin_symbol, minim_cdr(clause));
-    list_set_tail(ins, compile_expr2(body, extend_cenv(env), 1));
+    list_set_tail(ins, compile_expr2(body, env, 1));
     return ins;
 }
 
@@ -197,14 +200,19 @@ static mobj compile_mvcall(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
-    mobj ins, ids;
+    mobj ins, ids, it;
     size_t env_size;
 
     // evaluate producer
     ins = compile_expr2(minim_cadr(expr), env, 0);
 
-    // bind result in new environment
+    // extend compile environment
+    env = extend_cenv(env);
     ids = minim_car(minim_cddr(expr));
+    for (it = ids; !minim_nullp(it); it = minim_cdr(it))
+        cenv_id_add(env, minim_car(it));
+
+    // bind result in new environment
     env_size = list_length(ids);
     list_set_tail(ins, Mlist2(
         Mlist2(push_env_symbol, Mfixnum(env_size)),
@@ -339,8 +347,19 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
     return ins;
 }
 
-static mobj compile_lookup(mobj expr, int tailp) {
-    mobj ins = Mlist1(Mlist2(lookup_symbol, expr));
+static mobj compile_lookup(mobj id, mobj env, int tailp) {
+    mobj ins, ref;
+
+    ref = cenv_id_ref(env, id);
+    if (minim_falsep(ref)) {
+        // top-level symbol
+        ref = cenv_depth(env);
+        ins = Mlist1(Mlist3(tl_lookup_symbol, id, ref));
+    } else {
+        // local symbol
+        ins = Mlist1(Mlist2(lookup_symbol, ref));
+    }
+
     return with_tail_ret(ins, tailp);
 }
 
@@ -395,7 +414,7 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
         return compile_app(expr, env, tailp);
     } else if (minim_symbolp(expr)) {
         // symbol
-        return compile_lookup(expr, tailp);
+        return compile_lookup(expr, env, tailp);
     } else if (minim_boolp(expr)
         || minim_fixnump(expr)
         || minim_charp(expr)

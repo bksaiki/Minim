@@ -6,22 +6,28 @@
 //  Compiler environments
 //
 
-#define cenv_length         2
-#define cenv_labels(c)      (minim_vector_ref(c, 0))
-#define cenv_tmpls(c)       (minim_vector_ref(c, 1))
+#define cenv_length         4
+#define cenv_prev(c)        (minim_vector_ref(c, 0))
+#define cenv_labels(c)      (minim_vector_ref(c, 1))
+#define cenv_tmpls(c)       (minim_vector_ref(c, 2))
+#define cenv_bound(c)       (minim_vector_ref(c, 3))
 #define cenv_num_tmpls(c)   list_length(minim_unbox(cenv_tmpls(c)))
 
 mobj make_cenv() {
     mobj cenv = Mvector(cenv_length, NULL);
+    cenv_prev(cenv) = minim_null;
     cenv_labels(cenv) = Mbox(minim_null);
     cenv_tmpls(cenv) = Mbox(minim_null);
+    cenv_bound(cenv) = minim_null;
     return cenv;
 }
 
 mobj extend_cenv(mobj cenv) {
     mobj cenv2 = Mvector(cenv_length, NULL);
+    cenv_prev(cenv2) = cenv;
     cenv_labels(cenv2) = cenv_labels(cenv);
     cenv_tmpls(cenv2) = cenv_tmpls(cenv);
+    cenv_bound(cenv2) = minim_null;
     return cenv2;
 }
 
@@ -69,6 +75,47 @@ mobj cenv_template_ref(mobj cenv, size_t i) {
     }
 
     return minim_car(tmpls);
+}
+
+void cenv_id_add(mobj cenv, mobj id) {
+    // ordering matters
+    if (minim_nullp(cenv_bound(cenv))) {
+        cenv_bound(cenv) = Mlist1(id);
+    } else {
+        list_set_tail(cenv_bound(cenv), Mlist1(id));
+    }
+}
+
+mobj cenv_id_ref(mobj cenv, mobj id) {
+    mobj it;
+    size_t depth, offset;
+
+    depth = 0;
+    offset = 0;
+    for (it = cenv_bound(cenv); !minim_nullp(it); it = minim_cdr(it), offset++) {
+        if (minim_car(it) == id) {
+            return Mcons(Mfixnum(depth), Mfixnum(offset));
+        }
+    }
+
+    depth += 1;
+    for (cenv = cenv_prev(cenv); !minim_nullp(cenv); cenv = cenv_prev(cenv), depth++) {
+        offset = 0;
+        for (it = cenv_bound(cenv); !minim_nullp(it); it = minim_cdr(it), offset++) {
+            if (minim_car(it) == id) {
+                return Mcons(Mfixnum(depth), Mfixnum(offset));
+            }
+        }
+    }
+
+    return minim_false;
+}
+
+mobj cenv_depth(mobj cenv) {
+    size_t depth = 0;
+    for (cenv = cenv_prev(cenv); !minim_nullp(cenv); cenv = cenv_prev(cenv))
+        depth++;
+    return Mfixnum(depth);
 }
 
 //

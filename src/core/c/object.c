@@ -44,6 +44,7 @@ mobj get_arg_symbol;
 mobj get_env_symbol;
 mobj literal_symbol;
 mobj lookup_symbol;
+mobj tl_lookup_symbol;
 mobj make_closure_symbol;
 mobj make_env_symbol;
 mobj pop_symbol;

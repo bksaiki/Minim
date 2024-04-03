@@ -265,6 +265,12 @@ static mobj force_single_value(mobj tc, mobj x) {
     return x;
 }
 
+static mobj env_at_depth(mobj env, mobj idx) {
+    for (size_t i = minim_fixnum(idx); i > 0; i--)
+        env = minim_env_prev(env);
+    return env;
+}
+
 static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
     size_t i, count;
 
@@ -329,7 +335,12 @@ loop:
         res = minim_cadr(ins);
     } else if (ty == lookup_symbol) {
         // lookup
-        res = env_lookup_var(tc_env(tc), minim_cadr(ins));
+        res = env_at_depth(tc_env(tc), minim_car(minim_cadr(ins)));
+        res = minim_cdr(vector_ref(minim_env_bindings(res), minim_cdr(minim_cadr(ins))));
+    } else if (ty == tl_lookup_symbol) {
+        // top-level lookup
+        res = env_at_depth(tc_env(tc), minim_car(minim_cddr(ins)));
+        res = env_lookup_var(res, minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
         tc_cp(tc) = force_single_value(tc, res);

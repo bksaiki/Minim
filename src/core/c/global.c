@@ -55,6 +55,7 @@ void init_minim() {
     get_env_symbol = intern("#%get-env");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
+    tl_lookup_symbol = intern("#%tl-lookup");
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
     pop_symbol = intern("#%pop");

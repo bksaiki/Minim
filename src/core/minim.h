@@ -88,6 +88,7 @@ extern mobj get_arg_symbol;
 extern mobj get_env_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
+extern mobj tl_lookup_symbol;
 extern mobj make_closure_symbol;
 extern mobj make_env_symbol;
 extern mobj pop_symbol;
@@ -812,6 +813,11 @@ mobj code_to_instrs(mobj code);
 mobj read_object(FILE *in);
 void write_object(FILE *out, mobj o);
 
+#define writeln_object(out, o) { \
+    write_object(out, o); \
+    fprintf(out, "\n"); \
+}
+
 // FASL
 
 typedef enum {
@@ -844,6 +850,9 @@ mobj extend_cenv(mobj cenv);
 mobj cenv_make_label(mobj cenv);
 mobj cenv_template_add(mobj cenv, mobj jit);
 mobj cenv_template_ref(mobj cenv, size_t i);
+void cenv_id_add(mobj cenv, mobj id);
+mobj cenv_id_ref(mobj cenv, mobj id);
+mobj cenv_depth(mobj cenv);
 
 mobj write_code(mobj ins, mobj reloc, mobj arity);
 mobj resolve_refs(mobj cenv, mobj ins);
