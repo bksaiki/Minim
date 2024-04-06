@@ -222,6 +222,8 @@ int test_apply() {
     check_equal("(apply (lambda xs xs) 1 2 '(3))", "(1 2 3)");
     check_equal("(apply (lambda xs xs) 1 2 '(3 4))", "(1 2 3 4)");
 
+    check_equal("(apply apply (cons cons '((1 2))))", "(1 . 2)");
+
     return passed;
 }
 

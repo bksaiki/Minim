@@ -724,6 +724,10 @@
 ;; --------------------------------------------------------
 ;; Procedure
 
+(define-values (call-with-values)
+  (lambda (producer consumer)
+    (call-with-values producer consumer)))
+
 (define-values (procedure-arity?)
   (lambda (x)
     (if (non-negative-integer? x)

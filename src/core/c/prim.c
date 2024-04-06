@@ -183,7 +183,6 @@ void init_prims(mobj env) {
 
     add_cprocedure("identity", compile_identity);
     add_cprocedure("apply", compile_apply);
-    add_cprocedure("call-with-values", compile_call_with_values);
     add_cprocedure("values", compile_values);
     add_cprocedure("void", compile_void);
 

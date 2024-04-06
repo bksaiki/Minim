@@ -867,7 +867,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp);
 
 mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_apply(mobj name);
-mobj compile_call_with_values(mobj name);
 mobj compile_current_environment(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);

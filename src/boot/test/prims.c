@@ -503,6 +503,14 @@ int test_apply() {
 
     check_equal("(apply apply + '(()))", "0");
     check_equal("(apply apply + '(1 2 (3 4)))", "10");
+
+    check_equal(
+        "(apply call-with-values "
+          "(cons (lambda () 1) "
+          "(cons (lambda (x) (cons x 2)) "
+          "'())))",
+        "(1 . 2)"
+    );
     
     return passed;
 }
