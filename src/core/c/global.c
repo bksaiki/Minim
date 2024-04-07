@@ -94,8 +94,6 @@ void init_minim() {
     minim_empty_vec = Mvector(0, NULL);
     GC_register_root(minim_empty_vec);
 
-    empty_env = minim_null;
-
     minim_base_rtd = Mrecord(NULL, record_rtd_min_size);
     GC_register_root(minim_base_rtd);
 
@@ -105,5 +103,8 @@ void init_minim() {
     record_rtd_opaque(minim_base_rtd) = minim_true;
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
+
+    empty_env = Mtop_env(0);
+    init_base_env();
 }
 

@@ -123,6 +123,7 @@ typedef enum {
 
     /* Runtime types */
     MINIM_OBJ_ENV,
+    MINIM_OBJ_TOPENV,
     MINIM_OBJ_CONTINUATION,
     MINIM_OBJ_CODE,
 } mobj_type;
@@ -415,6 +416,21 @@ extern mobj minim_unbound;
 #define minim_env_prev(o)       (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_env_bindings(o)   (*((mobj*) ptr_add(o, 2 * ptr_size)))
 
+// Environment (top-level)
+// +------------+
+// |   type     | [0, 1)
+// |  buckets   | [8, 16)
+// |  alloc_ptr | [16, 24)
+// |   count    | [24, 32)
+// +------------+
+#define minim_top_env_size              (4 * ptr_size)
+#define minim_top_envp(o)               (minim_type(o) == MINIM_OBJ_TOPENV)
+#define minim_top_env_buckets(o)        (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_top_env_bucket(o, i)      (minim_vector_ref(minim_top_env_buckets(o), i))
+#define minim_top_env_alloc_ptr(o)      (*((msize**) ptr_add(o, 2 * ptr_size)))
+#define minim_top_env_alloc(o)          (*(minim_top_env_alloc_ptr(o)))
+#define minim_top_env_count(o)          (*((msize*) ptr_add(o, 3 * ptr_size)))
+
 // Continuations
 // +------------+
 // |    type    | [0, 1)
@@ -457,6 +473,7 @@ mobj Mrecord(mobj rtd, int fieldc);
 mobj Mhashtable(size_t size_hint);
 mobj Menv(mobj prev);
 mobj Menv2(mobj prev, size_t size);
+mobj Mtop_env(size_t size_hint);
 mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
 
 // Object
@@ -678,9 +695,16 @@ mobj hashtable_clear(mobj ht);
 // Environment
 
 extern mobj empty_env;
+extern mobj base_env;
+
+void init_base_env();
 
 mobj setup_env();
 mobj make_env();
+
+mobj top_env_copy(mobj env, int mutablep);
+mobj top_env_insert(mobj env, mobj k, mobj v);
+mobj top_env_find(mobj env, mobj k);
 
 void env_define_var_no_check(mobj env, mobj var, mobj val);
 mobj env_define_var(mobj env, mobj var, mobj val);
