@@ -22,7 +22,7 @@ FIND = find
 all: boot
 
 profile:
-	$(MAKE) CFLAGS="-pg $(CFLAGS)" all
+	$(MAKE) all PROFILE=-pg
 
 core: gc
 	$(MAKE) -C $(CORE_DIR)

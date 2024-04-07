@@ -49,6 +49,7 @@ typedef void            *mobj;
 // Special symbols
 
 extern mobj begin_symbol;
+extern mobj call_with_values_symbol;
 extern mobj case_lambda_symbol;
 extern mobj define_values_symbol;
 extern mobj if_symbol;
@@ -60,17 +61,21 @@ extern mobj quote_syntax_symbol;
 extern mobj setb_symbol;
 extern mobj values_symbol;
 
+extern mobj mvcall_symbol;
+extern mobj mvlet_symbol;
+extern mobj mvvalues_symbol;
+extern mobj make_unbound_symbol;
+
 extern mobj apply_symbol;
 extern mobj bind_symbol;
 extern mobj bind_values_symbol;
-extern mobj bind_values_top_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
+extern mobj branchgt_symbol;
 extern mobj branchlt_symbol;
 extern mobj branchne_symbol;
 extern mobj ccall_symbol;
 extern mobj clear_frame_symbol;
-extern mobj check_arity_symbol;
 extern mobj check_stack_symbol;
 extern mobj do_apply_symbol;
 extern mobj do_arity_error_symbol;
@@ -84,6 +89,7 @@ extern mobj get_arg_symbol;
 extern mobj get_env_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
+extern mobj tl_lookup_symbol;
 extern mobj make_closure_symbol;
 extern mobj make_env_symbol;
 extern mobj pop_symbol;
@@ -137,6 +143,7 @@ extern mobj minim_void;
 extern mobj minim_empty_vec;
 extern mobj minim_base_rtd;
 extern mobj minim_values;
+extern mobj minim_unbound;
 
 #define minim_nullp(x)        ((x) == minim_null)
 #define minim_truep(x)        ((x) == minim_true)
@@ -144,6 +151,7 @@ extern mobj minim_values;
 #define minim_eofp(x)         ((x) == minim_eof)
 #define minim_voidp(x)        ((x) == minim_void)
 #define minim_valuesp(x)      ((x) == minim_values)
+#define minim_unboundp(x)     ((x) == minim_unbound)
 
 #define minim_empty_vecp(x)   ((x) == minim_empty_vec)
 #define minim_base_rtdp(x)    ((x) == minim_base_rtd)
@@ -435,6 +443,7 @@ extern mobj minim_values;
 mobj Mchar(mchar c);
 mobj Mfixnum(long v);
 mobj Msymbol(const char *s);
+mobj Mgensym(const char *s);
 mobj Mstring(const char *s);
 mobj Mstring2(long len, mchar c);
 mobj Mcons(mobj car, mobj cdr);
@@ -492,7 +501,7 @@ mobj fx2_le(mobj x, mobj y);
 
 mobj symbolp_proc(mobj x);
 
-// Pair
+// String
 
 mobj stringp_proc(mobj x);
 mobj make_string(mobj len, mobj init);
@@ -505,6 +514,8 @@ mobj symbol_to_string(mobj s);
 mobj string_to_symbol(mobj s);
 mobj list_to_string(mobj xs);
 mobj string_to_list(mobj s);
+
+// Pair
 
 mobj consp_proc(mobj x);
 mobj car_proc(mobj x);
@@ -547,6 +558,7 @@ mobj set_cdr_proc(mobj p, mobj x);
 // List
 
 int minim_listp(mobj x);
+mobj make_list(size_t len, mobj init);
 long list_length(mobj xs);
 void list_set_tail(mobj xs, mobj ys);
 
@@ -555,6 +567,9 @@ mobj make_list_proc(mobj len, mobj init);
 mobj length_proc(mobj xs);
 mobj list_reverse(mobj xs);
 mobj list_append2(mobj xs, mobj ys);
+
+mobj assq_ref(mobj xs, mobj k);
+mobj assq_set(mobj xs, mobj k, mobj v);
 
 // Vector
 
@@ -801,6 +816,11 @@ mobj code_to_instrs(mobj code);
 mobj read_object(FILE *in);
 void write_object(FILE *out, mobj o);
 
+#define writeln_object(out, o) { \
+    write_object(out, o); \
+    fprintf(out, "\n"); \
+}
+
 // FASL
 
 typedef enum {
@@ -828,11 +848,26 @@ mobj fasl_write_proc(mobj x, mobj port);
 
 // JIT compiler
 
-mobj compile_expr(mobj expr);
-mobj compile_prim(const char *who, void *fn, mobj arity);
+mobj make_cenv();
+mobj extend_cenv(mobj cenv);
+mobj cenv_make_label(mobj cenv);
+mobj cenv_template_add(mobj cenv, mobj jit);
+mobj cenv_template_ref(mobj cenv, size_t i);
+void cenv_id_add(mobj cenv, mobj id);
+mobj cenv_id_ref(mobj cenv, mobj id);
+mobj cenv_depth(mobj cenv);
 
+mobj write_code(mobj ins, mobj reloc, mobj arity);
+mobj resolve_refs(mobj cenv, mobj ins);
+
+mobj jit_opt_L0(mobj expr);
+mobj jit_opt_L1(mobj expr);
+mobj jit_opt_L2(mobj expr);
+mobj compile_expr(mobj expr);
+mobj compile_expr2(mobj expr, mobj env, int tailp);
+
+mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_apply(mobj name);
-mobj compile_call_with_values(mobj name);
 mobj compile_current_environment(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);

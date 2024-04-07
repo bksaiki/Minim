@@ -142,28 +142,6 @@ static void push_frame(mobj tc, mobj pc) {
     tc_ac(tc) = 0;
 }
 
-static void check_arity(mobj tc, mobj spec) {
-    mobj cp = tc_cp(tc);
-    size_t ac = tc_ac(tc);
-    if (minim_fixnump(spec)) {
-        // exact arity
-        if (ac != minim_fixnum(spec))
-            arity_mismatch_exn(cp, ac);
-    } else {
-        mobj min = minim_car(spec);
-        mobj max = minim_cdr(spec);
-        if (minim_falsep(max)) {
-            // at least arity
-            if (ac < minim_fixnum(min))
-                arity_mismatch_exn(cp, ac);
-        } else {
-            // range arity
-            if (ac < minim_fixnum(min) || ac > minim_fixnum(max))
-                arity_mismatch_exn(cp, ac);
-        }
-    }
-}
-
 static mobj do_ccall(mobj tc, mobj (*prim)()) {
     mobj *args = tc_frame(tc);
     switch (tc_ac(tc)) {
@@ -216,7 +194,7 @@ static mobj do_rest(mobj tc, size_t idx) {
 
 static void do_apply(mobj tc) {
     mobj *sfp, rest;
-    size_t i, ac, len, req;
+    size_t i, ac, req;
 
     // thread parameters
     sfp = tc_sfp(tc);
@@ -224,16 +202,23 @@ static void do_apply(mobj tc) {
 
     // the first argument becomes the current procedure
     tc_cp(tc) = tc_frame_ref(tc, 0);
+    if (!minim_procp(tc_cp(tc))) {
+        bad_type_exn("apply", "list?", tc_cp(tc));
+    }
+
+    // save rest argument (needs to be a list)
+    rest = tc_frame_ref(tc, ac - 1);
+    if (!minim_listp(rest)) {
+        bad_type_exn("apply", "list?", rest);
+    }
 
     // shift arguments by 1 (since `apply` itself is consumed)
-    rest = tc_frame_ref(tc, ac - 1);
+    tc_ac(tc) -= 2;
     for (i = 0; i < ac - 2; i++)
         tc_frame_ref(tc, i) = tc_frame_ref(tc, i + 1);
 
     // check if we have room for the application
-    tc_ac(tc) -= 2;
-    len = list_length(rest);
-    req = stack_frame_size(tc, len);
+    req = stack_frame_size(tc, list_length(rest));
     if (stack_overflowp(tc, req)) {
         grow_stack(tc, req);
         for (i = 0; i < ac; i++)
@@ -304,6 +289,32 @@ static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
     }
 }
 
+static mobj env_lookup(mobj env, mobj coord) {
+    mobj cell;
+    size_t i;
+
+    for (i = minim_fixnum(minim_car(coord)); i > 0; i--)
+        env = minim_env_prev(env);
+
+    cell = vector_ref(minim_env_bindings(env), minim_cdr(coord));
+    if (minim_cdr(cell) == minim_unbound)
+        minim_error1(NULL, "cannot use before initialization", minim_car(cell));
+    return minim_cdr(cell);
+}
+
+static mobj env_tl_lookup(mobj env, mobj id, mobj depth) {
+    mobj val;
+    size_t i;
+
+    for (i = minim_fixnum(depth); i > 0; i--)
+        env = minim_env_prev(env);
+
+    val = env_lookup_var(env, id);
+    if (val == minim_unbound)
+        minim_error1(NULL, "cannot use before initialization", id);
+    return val;
+}
+
 //
 //  Evaluator
 //
@@ -333,18 +344,8 @@ loop:
     ins = *istream;
     if (!minim_consp(ins)) {
         // TODO: this check should not be required
-        if (minim_stringp(ins))
-            goto next;
         minim_error1(NULL, "executing non-bytecode", ins);
     }
-
-    // write_object(stderr, ins);
-    // fprintf(stderr, " res=");
-    // write_object(stderr, res);
-    // fprintf(stderr, " cp=");
-    // write_object(stderr, tc_cp(tc));
-    // fprintf(stderr, " ac=%ld, sfp=%p, ccont=%p, pc=%p, ra=%p, vc=%ld\n",
-    //     tc_ac(tc), tc_sfp(tc), tc_ccont(tc), istream, tc_ra(tc), tc_vc(tc));
 
     ty = minim_car(ins);
     if (ty == literal_symbol) {
@@ -352,7 +353,10 @@ loop:
         res = minim_cadr(ins);
     } else if (ty == lookup_symbol) {
         // lookup
-        res = env_lookup_var(tc_env(tc), minim_cadr(ins));
+        res = env_lookup(tc_env(tc), minim_cadr(ins));
+    } else if (ty == tl_lookup_symbol) {
+        // top-level lookup
+        res = env_tl_lookup(tc_env(tc), minim_cadr(ins), minim_car(minim_cddr(ins)));
     } else if (ty == set_proc_symbol) {
         // set-proc
         tc_cp(tc) = force_single_value(tc, res);
@@ -385,10 +389,6 @@ application:
         // bind-values
         bind_values(tc, tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
-    } else if (ty == bind_values_top_symbol) {
-        // bind-values/top (special variant for `let-values`)
-        bind_values(tc, tc_frame_ref(tc, tc_ac(tc) - 1), minim_cadr(ins), res);
-        res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind
         env_set_var(tc_env(tc), minim_cadr(ins), res);
@@ -398,13 +398,13 @@ application:
         res = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == push_env_symbol) {
         // push-env
-        tc_env(tc) = res;
+        tc_env(tc) = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == pop_env_symbol) {
         // pop-env
         tc_env(tc) = minim_env_prev(tc_env(tc));
     } else if (ty == save_cc_symbol) {
         // save-cc
-        push_frame(tc, minim_cadr(ins));
+        push_frame(tc, (mobj*) minim_fixnum(minim_cadr(ins)));
     } else if (ty == get_ac_symbol) {
         // get-ac
         res = (mobj*) tc_ac(tc);
@@ -440,31 +440,36 @@ application:
     } else if (ty == do_with_values_symbol) {
         // do-with-values
         values_to_args(tc, res);
-        goto application;
     } else if (ty == clear_frame_symbol) {
         // clear frame
         tc_cp(tc) = minim_void;
         tc_ac(tc) = 0;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
-        istream = minim_cadr(ins);
+        istream = (mobj*) minim_fixnum(minim_cadr(ins));
         goto loop;
     } else if (ty == branchf_symbol) {
         // branchf (jump if #f)
         if (res == minim_false) {
-            istream = minim_cadr(ins);
+            istream = (mobj*) minim_fixnum(minim_cadr(ins));
             goto loop;
         }
-    } else if (ty == branchne_symbol) {
-        // branchne (jump if not equal)
-        if (((mfixnum) res) != minim_fixnum(minim_cadr(ins))) {
-            istream = minim_car(minim_cddr(ins));
+    } else if (ty == branchgt_symbol) {
+        // branchgt (jump if greater than)
+        if (((mfixnum) res) > minim_fixnum(minim_cadr(ins))) {
+            istream = (mobj*) minim_fixnum(minim_car(minim_cddr(ins)));
             goto loop;
         }
     } else if (ty == branchlt_symbol) {
         // branchlt (jump if less than)
         if (((mfixnum) res) < minim_fixnum(minim_cadr(ins))) {
-            istream = minim_car(minim_cddr(ins));
+            istream = (mobj*) minim_fixnum(minim_car(minim_cddr(ins)));
+            goto loop;
+        }
+    } else if (ty == branchne_symbol) {
+        // branchne (jump if not equal)
+        if (((mfixnum) res) != minim_fixnum(minim_cadr(ins))) {
+            istream = (mobj*) minim_fixnum(minim_car(minim_cddr(ins)));
             goto loop;
         }
     } else if (ty == make_closure_symbol) {
@@ -473,16 +478,12 @@ application:
     } else if (ty == check_stack_symbol) {
         // check stack
         maybe_grow_stack(tc, minim_fixnum(minim_cadr(ins)));
-    } else if (ty == check_arity_symbol) {
-        // check arity
-        check_arity(tc, minim_cadr(ins));
     } else {
         minim_error1(NULL, "invalid bytecode", ins);
     }
 
 // move to next instruction
 // bail if the instruction stream is empty
-next:
     istream++;
     if (*istream == NULL) {
         minim_error(NULL, "bytecode out of bounds");
@@ -495,7 +496,7 @@ call_closure:
     istream = minim_code_it(minim_closure_code(tc_cp(tc)));
     tc_env(tc) = minim_closure_env(tc_cp(tc));
     // don't clear either the current procedure or argument count
-    // since this is required for binding and arity checkf
+    // since this is required for binding and arity check
     goto loop;
 
 // performs `do-eval` instruction
@@ -560,10 +561,6 @@ not_procedure:
 }
 
 mobj eval_expr(mobj tc, mobj expr) {
-    // fprintf(stderr, "eval: ");
-    // write_object(stderr, expr);
-    // fprintf(stderr, "\n");
-
     mobj code = compile_expr(expr);
     return eval_istream(tc, minim_code_it(code));
 }

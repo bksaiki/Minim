@@ -23,7 +23,11 @@ mobj empty_env;
 //
 
 mobj Menv(mobj prev) {
-    return Menv2(prev, env_vector_max);
+    mobj env = GC_alloc(minim_env_size);
+    minim_type(env) = MINIM_OBJ_ENV;
+    minim_env_bindings(env) = Mvector(env_vector_max, minim_false);
+    minim_env_prev(env) = prev;
+    return env;
 }
 
 mobj Menv2(mobj prev, size_t size) {

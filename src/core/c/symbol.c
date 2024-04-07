@@ -184,8 +184,24 @@ mobj Msymbol(const char *s) {
     o = GC_alloc(minim_symbol_size);
     len = strlen(s);
     minim_type(o) = MINIM_OBJ_SYMBOL;
-    minim_symbol(o) =  GC_alloc_atomic((len + 1) * sizeof(char));
+    minim_symbol(o) = GC_alloc_atomic((len + 1) * sizeof(char));
     strncpy(minim_symbol(o), s, len + 1);
+    return o;
+}
+
+static long gensym_counter = 0;
+
+mobj Mgensym(const char *s) {
+    mobj o;
+    size_t n;
+    
+    n = snprintf(NULL, 0, "%s%ld\n", s, gensym_counter);
+    o = GC_alloc(minim_symbol_size);
+    minim_type(o) = MINIM_OBJ_SYMBOL;
+    minim_symbol(o) = GC_alloc_atomic((n + 1) * sizeof(char));
+    snprintf(minim_symbol(o), n + 1, "%s%ld", s, gensym_counter);
+    gensym_counter++;
+
     return o;
 }
 

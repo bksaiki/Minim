@@ -85,16 +85,16 @@
                                   (eq? (syntax-e next) '...)))))
              (cond
                [ellipsis-next?
-                (define vars (loop head-pat (+ depth 1) vars))
-                (define after-ellipsis
-                        (let ([tail (stx-cdr tail-pat)])
-                          (if (syntax? tail)
-                              tail
-                              (datum->syntax tail))))
-                (loop after-ellipsis depth vars)]
+                (let ([vars (loop head-pat (+ depth 1) vars)]
+                      [after-ellipsis
+                       (let ([tail (stx-cdr tail-pat)])
+                         (if (syntax? tail)
+                             tail
+                             (datum->syntax tail)))])
+                  (loop after-ellipsis depth vars))]
                [else
-                (define vars (loop head-pat depth vars))
-                (loop tail-pat depth vars)])]
+                (let ([vars (loop head-pat depth vars)])
+                  (loop tail-pat depth vars))])]
             [(stx-vector? pattern)
              (define v (syntax-e pattern))
              (define len (vector-length v))

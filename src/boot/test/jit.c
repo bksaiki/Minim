@@ -222,15 +222,7 @@ int test_apply() {
     check_equal("(apply (lambda xs xs) 1 2 '(3))", "(1 2 3)");
     check_equal("(apply (lambda xs xs) 1 2 '(3 4))", "(1 2 3 4)");
 
-    return passed;
-}
-
-int test_call_with_values() {
-    passed = 1;
-
-    check_equal("(call-with-values (lambda () (values)) (lambda () 1))", "1");
-    check_equal("(call-with-values (lambda () '(1 2 3)) $length)", "3");
-    check_equal("(call-with-values (lambda () (values 1 2)) cons)", "(1 . 2)");
+    check_equal("(apply apply (cons cons '((1 2))))", "(1 . 2)");
 
     return passed;
 }
@@ -246,6 +238,7 @@ int test_let_values() {
     check_equal("(letrec-values ([(x) 1] [(y) 2]) (cons x y))", "(1 . 2)");
     check_equal("(letrec-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (cons x (cons y z)))", "(1 2 . 3)");
     check_equal("(letrec-values ([(x) 1]) (letrec-values ([(x) 2] [(y) (cons x 3)]) (cons x y)))", "(2 2 . 3)");
+    check_equal("(letrec-values ([(x) 1]) 1 2 3)", "3");
 
     check_equal("(let-values () 1)", "1");
     check_equal("(let-values ([() (values)]) 1)", "1");
@@ -255,6 +248,35 @@ int test_let_values() {
     check_equal("(let-values ([(x) 1] [(y) 2]) (cons x y))", "(1 . 2)");
     check_equal("(let-values ([() (values)] [(x) 1] [(y z) (values 2 3)]) (cons x (cons y z)))", "(1 2 . 3)");
     check_equal("(let-values ([(x) 1]) (let-values ([(x) 2] [(y) (cons x 3)]) (cons x y)))", "(2 1 . 3)");
+
+    check_equal(
+        "(letrec-values ([(foo) (values 1)]"
+                        "[(bar baz) (values 1 2)])"
+           "(cons foo (cons bar baz)))",
+        "(1 1 . 2)"
+    );
+
+    check_equal(
+        "(cons 1 "
+           "(letrec-values ([(foo) (values 2)]"
+                           "[(bar baz) (values 3 4)])"
+           "(cons foo (cons bar baz))))",
+        "(1 2 3 . 4)"
+    );
+
+    return passed;
+}
+
+int test_call_with_values() {
+    passed = 1;
+
+    check_equal("(call-with-values (lambda () (values)) (lambda () 1))", "1");
+    check_equal("(call-with-values (lambda () '(1 2 3)) $length)", "3");
+    check_equal("(call-with-values (lambda () (values 1 2)) cons)", "(1 . 2)");
+
+    check_equal("(call-with-values (lambda () 1 2) (lambda (x) x))", "2");
+    check_equal("(call-with-values (lambda () 1) (lambda (x) (begin 2 x)))", "1");
+    check_equal("(cons 1 (call-with-values (lambda () 2) (lambda (x) x)))", "(1 . 2)");
 
     return passed;
 }
@@ -275,8 +297,8 @@ int main(int argc, char **argv) {
     log_test("rest", test_rest);
     log_test("case-lambda", test_case_lambda);
     log_test("apply", test_apply);
-    log_test("call-with-values", test_call_with_values);
     log_test("let-values", test_let_values);
+    log_test("call-with-values", test_call_with_values);
 
     GC_finalize();
     return return_code;

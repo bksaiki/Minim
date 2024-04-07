@@ -18,6 +18,14 @@ int minim_listp(mobj x) {
     return minim_nullp(x);
 }
 
+// Constructs a list of size `len` with elements `init`
+mobj make_list(size_t len, mobj init) {
+    mobj lst = minim_null;
+    for (size_t i = 0; i < len; ++i)
+        lst = Mcons(init, lst);
+    return lst;
+}
+
 // Returns length of a (possibly improper) llist.
 long list_length(mobj xs) {
     long len = 0;
@@ -218,10 +226,7 @@ mobj set_cdr_proc(mobj p, mobj x) {
 
 mobj make_list_proc(mobj len, mobj init) {
     // (-> non-negative-integer? any list)
-    mobj lst = minim_null;
-    for (long i = 0; i < minim_fixnum(len); ++i)
-        lst = Mcons(init, lst);
-    return lst;
+    return make_list(minim_fixnum(len), init);
 }
 
 mobj length_proc(const mobj x) {
@@ -245,4 +250,47 @@ mobj list_append2(mobj xs, mobj ys) {
         minim_cdr(tl) = ys;
         return hd;
     }
+}
+
+mobj assq_ref(mobj xs, mobj k) {
+    for (; !minim_nullp(xs); xs = minim_cdr(xs)) {
+        if (minim_eqp(minim_caar(xs), k))
+            return minim_car(xs);
+    }
+
+    return minim_false;
+}
+
+mobj assq_set(mobj xs, mobj k, mobj v) {
+    if (minim_nullp(xs)) {
+        return Mlist1(Mcons(k, v));
+    } else {
+        mobj hd, tl;
+
+        if (minim_eqp(minim_caar(xs), k))
+            return Mcons(Mcons(minim_caar(xs), v), minim_cdr(xs));
+
+        hd = tl = Mcons(minim_car(xs), minim_null);
+        for (xs = minim_cdr(xs); !minim_nullp(xs); xs = minim_cdr(xs)) {
+            if (minim_eqp(minim_caar(xs), k)) {
+                minim_cdr(tl) = Mcons(Mcons(minim_caar(xs), v), minim_cdr(xs));
+                return hd;
+            } else {
+                minim_cdr(tl) = Mcons(minim_car(xs), minim_null);
+                tl = minim_cdr(tl);
+            }
+        }
+
+        minim_cdr(tl) = Mcons(Mcons(k, v), minim_null);
+        return hd;
+    }
+        
+    mobj cell = assq_ref(xs, k);
+    if (minim_falsep(cell)) {
+        return Mcons(Mcons(k, v), xs);
+    } else {
+
+    }
+
+    return Mcons(Mcons(k, v), xs);
 }

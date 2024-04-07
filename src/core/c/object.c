@@ -5,6 +5,7 @@
 #include "../minim.h"
 
 mobj begin_symbol;
+mobj call_with_values_symbol;
 mobj case_lambda_symbol;
 mobj define_values_symbol;
 mobj if_symbol;
@@ -16,16 +17,20 @@ mobj quote_syntax_symbol;
 mobj setb_symbol;
 mobj values_symbol;
 
+mobj mvcall_symbol;
+mobj mvlet_symbol;
+mobj mvvalues_symbol;
+mobj make_unbound_symbol;
+
 mobj apply_symbol;
 mobj bind_symbol;
 mobj bind_values_symbol;
-mobj bind_values_top_symbol;
 mobj brancha_symbol;
 mobj branchf_symbol;
+mobj branchgt_symbol;
 mobj branchlt_symbol;
 mobj branchne_symbol;
 mobj ccall_symbol;
-mobj check_arity_symbol;
 mobj check_stack_symbol;
 mobj clear_frame_symbol;
 mobj do_apply_symbol;
@@ -40,6 +45,7 @@ mobj get_arg_symbol;
 mobj get_env_symbol;
 mobj literal_symbol;
 mobj lookup_symbol;
+mobj tl_lookup_symbol;
 mobj make_closure_symbol;
 mobj make_env_symbol;
 mobj pop_symbol;
@@ -59,6 +65,7 @@ mobj minim_void;
 mobj minim_empty_vec;
 mobj minim_base_rtd;
 mobj minim_values;
+mobj minim_unbound;
 
 int minim_eqp(mobj a, mobj b) {
     if (a == b) {

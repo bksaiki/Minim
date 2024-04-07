@@ -16,6 +16,7 @@ void init_minim() {
 
     // initialize special symbols
     begin_symbol = intern("begin");
+    call_with_values_symbol = intern("call-with-values");
     case_lambda_symbol = intern("case-lambda");
     define_values_symbol = intern("define-values");
     if_symbol = intern("if");
@@ -27,16 +28,19 @@ void init_minim() {
     setb_symbol = intern("set!");
     values_symbol = intern("values");
 
+    mvcall_symbol = intern("#%mv-call");
+    mvlet_symbol = intern("#%mv-let");
+    mvvalues_symbol = intern("#%mv-values");
+
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");
     bind_values_symbol = intern("#%bind-values");
-    bind_values_top_symbol = intern("#%bind-values/top");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
+    branchgt_symbol = intern("#%branchgt");
     branchlt_symbol = intern("#%branchlt");
     branchne_symbol = intern("#%branchne");
     ccall_symbol = intern("#%ccall");
-    check_arity_symbol = intern("#%check-arity");
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
     do_apply_symbol = intern("#%do-apply");
@@ -51,8 +55,10 @@ void init_minim() {
     get_env_symbol = intern("#%get-env");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
+    tl_lookup_symbol = intern("#%tl-lookup");
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
+    make_unbound_symbol = intern("#%make-unbound");
     pop_symbol = intern("#%pop");
     pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");
@@ -82,6 +88,9 @@ void init_minim() {
     minim_values = GC_alloc(sizeof(mbyte));
     GC_register_root(minim_values);
     minim_type(minim_values) = MINIM_OBJ_SPECIAL;
+    minim_unbound = GC_alloc(sizeof(mbyte));
+    GC_register_root(minim_unbound);
+    minim_type(minim_unbound) = MINIM_OBJ_SPECIAL;
     minim_empty_vec = Mvector(0, NULL);
     GC_register_root(minim_empty_vec);
 
