@@ -28,30 +28,45 @@ mobj code_to_instrs(mobj code) {
     ins = minim_null;
     istream = minim_code_it(code);
     for (i = 0; i < minim_code_len(code); i++) {
-        mobj in, ref;
+        mobj ref, in;
+
+        // restore label
+        ref = assq_ref(inv_reloc, Mfixnum((intptr_t) &istream[i]));
+        if (!minim_falsep(ref)) {
+            ins = Mcons(minim_cdr(ref), ins);
+        }
         
         // possibly replace jumps
         in = istream[i];
         if (minim_car(in) == brancha_symbol) {
             // brancha
-            in = Mlist2(brancha_symbol, minim_cdr(assq_ref(inv_reloc, minim_cadr(in))));
+            ref = assq_ref(inv_reloc, minim_cadr(in));
+            in = Mlist2(brancha_symbol, minim_cdr(ref));
         } else if (minim_car(in) == branchf_symbol) {
             // branchf
-            in = Mlist2(branchf_symbol, minim_cdr(assq_ref(inv_reloc, minim_cadr(in))));
+            ref = assq_ref(inv_reloc, minim_cadr(in));
+            in = Mlist2(branchf_symbol, minim_cdr(ref));
+        } else if (minim_car(in) == branchgt_symbol) {
+            // branchgt
+            ref = assq_ref(inv_reloc, minim_car(minim_cddr(in)));
+            in = Mlist3(branchgt_symbol, minim_cadr(in), minim_cdr(ref));
+        } else if (minim_car(in) == branchlt_symbol) {
+            // branchlt
+            ref = assq_ref(inv_reloc, minim_car(minim_cddr(in)));
+            in = Mlist3(branchlt_symbol, minim_cadr(in), minim_cdr(ref));
+        } else if (minim_car(in) == branchne_symbol) {
+            // branchne
+            ref = assq_ref(inv_reloc, minim_car(minim_cddr(in)));
+            in = Mlist3(branchne_symbol, minim_cadr(in), minim_cdr(ref));
         } else if (minim_car(in) == save_cc_symbol) {
             // save-cc
             in = Mlist2(save_cc_symbol, minim_cdr(assq_ref(inv_reloc, minim_cadr(in))));
         }
-
-        // restore label
-        ref = minim_cdr(assq_ref(inv_reloc, &istream[i]));
-        if (!minim_falsep(ref)) {
-            ins = Mcons(ref, ins);
-        }
-
+    
         ins = Mcons(in, ins);
     }
 
+    writeln_object(stderr, ins);
     return list_reverse(ins);
 }
 
@@ -70,7 +85,7 @@ mobj write_code(mobj ins, mobj reloc, mobj arity) {
         mobj it = ins;
         for (i = 0; i < minim_code_len(code); i++) {
             if (minim_car(it) == minim_cdar(reloc)) {
-                mobj cell = Mcons(minim_caar(reloc), &istream[i]);
+                mobj cell = Mcons(minim_caar(reloc), Mfixnum((intptr_t) &istream[i]));
                 minim_code_reloc(code) = Mcons(cell, minim_code_reloc(code)); 
                 break;
             }

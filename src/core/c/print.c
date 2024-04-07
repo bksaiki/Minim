@@ -81,6 +81,7 @@ void write_object(FILE *out, mobj o) {
     else if (minim_eofp(o)) fputs("#<eof>", out);
     else if (minim_voidp(o)) fputs("#<void>", out);
     else if (minim_base_rtdp(o)) fputs("#<base-record-type>", out);
+    else if (minim_unboundp(o)) fputs("#<unbound>", out);
     else if (minim_charp(o)) write_char(out, o);
     else if (minim_fixnump(o)) fprintf(out, "%ld", minim_fixnum(o));
     else if (minim_symbolp(o)) fprintf(out, "%s", minim_symbol(o));

@@ -8,7 +8,7 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
 
     // prepare compiler
     env = make_cenv();
-    label = arity;
+    label = cenv_make_label(env);
     
     // hand written procedure
     ins = Mlist6(

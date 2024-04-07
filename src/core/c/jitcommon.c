@@ -122,6 +122,15 @@ mobj cenv_depth(mobj cenv) {
 //  Resolver
 //
 
+static mobj next_non_label(mobj ins) {
+    for (ins = minim_cdr(ins); !minim_nullp(ins); ins = minim_cdr(ins)) {
+        if (!minim_stringp(minim_car(ins)))
+            return minim_car(ins);
+    }
+
+    minim_error("next_non_label", "no next instruction");
+}
+
 mobj resolve_refs(mobj cenv, mobj ins) {
     mobj reloc, label_map;
 
@@ -133,12 +142,11 @@ mobj resolve_refs(mobj cenv, mobj ins) {
         mobj in = minim_car(it);
         if (minim_stringp(in)) {
             // label found (first one is the leading one)
-            mobj l0 = in;
-            reloc = assq_set(reloc, l0, minim_cadr(it));
-            label_map = assq_set(label_map, l0, l0);
+            reloc = assq_set(reloc, in, next_non_label(it));
+            label_map = assq_set(label_map, in, in);
             // subsequent labels
             for (; minim_stringp(minim_cadr(it)); it = minim_cdr(it))
-                label_map = assq_set(label_map, minim_cadr(it), l0);
+                label_map = assq_set(label_map, minim_cadr(it), in);
         }
     }
 

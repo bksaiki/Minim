@@ -344,8 +344,6 @@ loop:
     ins = *istream;
     if (!minim_consp(ins)) {
         // TODO: this check should not be required
-        if (minim_stringp(ins))
-            goto next;
         minim_error1(NULL, "executing non-bytecode", ins);
     }
 
@@ -406,7 +404,7 @@ application:
         tc_env(tc) = minim_env_prev(tc_env(tc));
     } else if (ty == save_cc_symbol) {
         // save-cc
-        push_frame(tc, minim_cadr(ins));
+        push_frame(tc, (mobj*) minim_fixnum(minim_cadr(ins)));
     } else if (ty == get_ac_symbol) {
         // get-ac
         res = (mobj*) tc_ac(tc);
@@ -448,30 +446,30 @@ application:
         tc_ac(tc) = 0;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)
-        istream = minim_cadr(ins);
+        istream = (mobj*) minim_fixnum(minim_cadr(ins));
         goto loop;
     } else if (ty == branchf_symbol) {
         // branchf (jump if #f)
         if (res == minim_false) {
-            istream = minim_cadr(ins);
+            istream = (mobj*) minim_fixnum(minim_cadr(ins));
             goto loop;
         }
     } else if (ty == branchgt_symbol) {
         // branchgt (jump if greater than)
         if (((mfixnum) res) > minim_fixnum(minim_cadr(ins))) {
-            istream = minim_car(minim_cddr(ins));
+            istream = (mobj*) minim_fixnum(minim_car(minim_cddr(ins)));
             goto loop;
         }
     } else if (ty == branchlt_symbol) {
         // branchlt (jump if less than)
         if (((mfixnum) res) < minim_fixnum(minim_cadr(ins))) {
-            istream = minim_car(minim_cddr(ins));
+            istream = (mobj*) minim_fixnum(minim_car(minim_cddr(ins)));
             goto loop;
         }
     } else if (ty == branchne_symbol) {
         // branchne (jump if not equal)
         if (((mfixnum) res) != minim_fixnum(minim_cadr(ins))) {
-            istream = minim_car(minim_cddr(ins));
+            istream = (mobj*) minim_fixnum(minim_car(minim_cddr(ins)));
             goto loop;
         }
     } else if (ty == make_closure_symbol) {
@@ -486,7 +484,6 @@ application:
 
 // move to next instruction
 // bail if the instruction stream is empty
-next:
     istream++;
     if (*istream == NULL) {
         minim_error(NULL, "bytecode out of bounds");
@@ -564,9 +561,6 @@ not_procedure:
 }
 
 mobj eval_expr(mobj tc, mobj expr) {
-    // write_object(stderr, expr);
-    // fprintf(stderr, "\n");
-
     mobj code = compile_expr(expr);
     return eval_istream(tc, minim_code_it(code));
 }

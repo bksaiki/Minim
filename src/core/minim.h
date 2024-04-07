@@ -151,6 +151,7 @@ extern mobj minim_unbound;
 #define minim_eofp(x)         ((x) == minim_eof)
 #define minim_voidp(x)        ((x) == minim_void)
 #define minim_valuesp(x)      ((x) == minim_values)
+#define minim_unboundp(x)     ((x) == minim_unbound)
 
 #define minim_empty_vecp(x)   ((x) == minim_empty_vec)
 #define minim_base_rtdp(x)    ((x) == minim_base_rtd)
