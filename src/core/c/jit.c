@@ -70,9 +70,26 @@ mobj code_to_instrs(mobj code) {
     return list_reverse(ins);
 }
 
+static mobj remove_labels(mobj ins) {
+    mobj hd, tl;
+
+    hd = tl = Mcons(minim_car(ins), minim_null);
+    for (ins = minim_cdr(ins); !minim_nullp(ins); ins = minim_cdr(ins)) {
+        if (!minim_stringp(minim_car(ins))) {
+            minim_cdr(tl) = Mcons(minim_car(ins), minim_null);
+            tl = minim_cdr(tl);
+        }
+    }
+
+    return hd;
+}
+
 mobj write_code(mobj ins, mobj reloc, mobj arity) {
     mobj code, *istream;
     size_t i;
+
+    // remove labels
+    ins = remove_labels(ins);
 
     // allocate code object and fill header
     code = Mcode(list_length(ins));

@@ -177,11 +177,5 @@ mobj resolve_refs(mobj cenv, mobj ins) {
         }
     }
 
-    // eliminate labels (assumes head is not a label)
-    for (; !minim_nullp(minim_cdr(ins)); ins = minim_cdr(ins)) {
-        if (minim_stringp(minim_cadr(ins)))
-            minim_cdr(ins) = minim_cddr(ins);
-    }
-
     return reloc;   
 }
