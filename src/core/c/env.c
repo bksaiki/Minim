@@ -4,14 +4,11 @@
 
 #include "../minim.h"
 
-//
+//F
 //  Top-level environments
 //  Just a special eq?-based hashtable
 //  Each cell is: `((key . value) . (hash . mutable?))
 //
-
-mobj empty_env;
-mobj base_env;
 
 #define start_size_ptr                      (&bucket_sizes[0])
 
@@ -293,7 +290,10 @@ mobj env_lookup_var(mobj env, mobj var) {
 #define add_value(env, name, c_val)  \
     env_define_var(env, intern(name), c_val);
 
-void init_base_env() {
+mobj base_env;
+
+void init_envs() {
+    // base environment
     base_env = Mtop_env(1024);
     add_value(base_env, "null", minim_null);
     add_value(base_env, "true", minim_true);
@@ -302,12 +302,12 @@ void init_base_env() {
     init_prims(base_env);
 }
 
-mobj make_env() {
-    return top_env_copy(base_env, 0);
+mobj make_empty_env() {
+    return Mtop_env(0);
 }
 
-mobj setup_env() {
-    return top_env_copy(empty_env, 0);
+mobj make_base_env() {
+    return top_env_copy(base_env, 0);
 }
 
 //
@@ -326,12 +326,12 @@ mobj interaction_environment() {
 
 mobj empty_environment() {
     // (-> environment)
-    return setup_env();
+    return make_empty_env();
 }
 
 mobj environment_proc() {
     // (-> environment)
-    return base_env;
+    return make_base_env();
 }
 
 mobj extend_environment(mobj env) {

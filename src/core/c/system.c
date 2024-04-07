@@ -117,7 +117,12 @@ mobj load_file(mobj tc, const char *fname){
 }
 
 mobj load_prelude(mobj tc) {
-    return load_file(tc, PRELUDE_PATH);
+    mobj result;
+
+    tc_env(tc) = base_env;
+    result = load_file(tc, PRELUDE_PATH);
+    tc_env(tc) = top_env_copy(base_env, 0);
+    return result;
 }
 
 void minim_shutdown(int code) {

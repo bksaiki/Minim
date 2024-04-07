@@ -694,13 +694,12 @@ mobj hashtable_clear(mobj ht);
 
 // Environment
 
-extern mobj empty_env;
 extern mobj base_env;
 
-void init_base_env();
+void init_envs();
 
-mobj setup_env();
-mobj make_env();
+mobj make_empty_env();
+mobj make_base_env();
 
 mobj top_env_copy(mobj env, int mutablep);
 mobj top_env_insert(mobj env, mobj k, mobj v);

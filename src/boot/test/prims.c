@@ -40,14 +40,6 @@ char *write(mobj o) {
     printf(" %s => expected: %s, actual: %s\n", s, expect, actual); \
 }
 
-void no_check(const char *input) {
-    FILE *istream;
-
-    istream = tmpfile();
-    load(istream, input);
-    eval_expr(read_object(istream), make_env());
-}
-
 void check_true(const char *input) {
     FILE *istream;
     mobj tc, result;
@@ -55,7 +47,7 @@ void check_true(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_env();
+    tc_env(tc) = make_base_env();
     result = eval_expr(tc, read_object(istream));
     if (!minim_truep(result)) {
         log_failed_case(input, "#t", write(result));
@@ -72,7 +64,7 @@ void check_false(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_env();
+    tc_env(tc) = make_base_env();
     result = eval_expr(tc, read_object(istream));
     if (!minim_falsep(result)) {
         log_failed_case(input, "#f", write(result));
@@ -90,7 +82,7 @@ void check_equal(const char *input, const char *expect) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_env();
+    tc_env(tc) = make_base_env();
     result = eval_expr(tc, read_object(istream));
     str = write(result);
     if (strcmp(str, expect) != 0) {

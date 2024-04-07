@@ -104,7 +104,6 @@ void init_minim() {
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
 
-    empty_env = Mtop_env(0);
-    init_base_env();
+    init_envs();
 }
 
