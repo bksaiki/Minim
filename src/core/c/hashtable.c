@@ -32,7 +32,7 @@ static size_t eq_hash2(mobj o, size_t hash) {
     case MINIM_OBJ_CHAR:
         return hash_bytes(&minim_char(o), sizeof(minim_char(o)), hash);
     default:
-        return hash_bytes(&o, sizeof(mobj ), hash);
+        return hash_bytes(&o, sizeof(mobj), hash);
     }
 }
 

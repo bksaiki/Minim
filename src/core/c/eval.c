@@ -302,17 +302,18 @@ static mobj env_lookup(mobj env, mobj coord) {
     return minim_cdr(cell);
 }
 
-static mobj env_tl_lookup(mobj env, mobj id, mobj depth) {
-    mobj val;
-    size_t i;
+static mobj env_tl_lookup(mobj tc, mobj id) {
+    mobj cell, val;
+    
+    cell = top_env_find(tc_tenv(tc), id);
+    if (!minim_falsep(cell)) {
+        val = minim_cdar(cell);
+        if (val == minim_unbound)
+            minim_error1(NULL, "cannot use before initialization", id);
+        return val;
+    }
 
-    for (i = minim_fixnum(depth); i > 0; i--)
-        env = minim_env_prev(env);
-
-    val = env_lookup_var(env, id);
-    if (val == minim_unbound)
-        minim_error1(NULL, "cannot use before initialization", id);
-    return val;
+    minim_error1(NULL, "unbound variable", id);
 }
 
 //
@@ -356,7 +357,7 @@ loop:
         res = env_lookup(tc_env(tc), minim_cadr(ins));
     } else if (ty == tl_lookup_symbol) {
         // top-level lookup
-        res = env_tl_lookup(tc_env(tc), minim_cadr(ins), minim_car(minim_cddr(ins)));
+        res = env_tl_lookup(tc, minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
         tc_cp(tc) = force_single_value(tc, res);
@@ -395,10 +396,10 @@ application:
         res = minim_void;
     } else if (ty == make_env_symbol) {
         // make-env
-        res = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
+        res = Menv(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == push_env_symbol) {
         // push-env
-        tc_env(tc) = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
+        tc_env(tc) = Menv(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == pop_env_symbol) {
         // pop-env
         tc_env(tc) = minim_env_prev(tc_env(tc));

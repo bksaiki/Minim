@@ -162,6 +162,7 @@ mobj compile_expr(mobj expr) {
     // compilation
     env = make_cenv();
     ins = compile_expr2(L3, env, 1);
+    // writeln_object(stderr, ins);
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }

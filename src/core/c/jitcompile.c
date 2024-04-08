@@ -353,8 +353,7 @@ static mobj compile_lookup(mobj id, mobj env, int tailp) {
     ref = cenv_id_ref(env, id);
     if (minim_falsep(ref)) {
         // top-level symbol
-        ref = cenv_depth(env);
-        ins = Mlist1(Mlist3(tl_lookup_symbol, id, ref));
+        ins = Mlist1(Mlist2(tl_lookup_symbol, id));
     } else {
         // local symbol
         ins = Mlist1(Mlist2(lookup_symbol, ref));

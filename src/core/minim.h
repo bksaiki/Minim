@@ -471,8 +471,7 @@ mobj Moutput_port(FILE *stream);
 mobj Msyntax(mobj e, mobj loc);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mhashtable(size_t size_hint);
-mobj Menv(mobj prev);
-mobj Menv2(mobj prev, size_t size);
+mobj Menv(mobj prev, size_t size);
 mobj Mtop_env(size_t size_hint);
 mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
 
@@ -783,7 +782,7 @@ mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
 
 // Thread context
 // Encapsulates all Scheme runtime information of a thread
-#define tc_size                 (22 * ptr_size)
+#define tc_size                 (23 * ptr_size)
 #define tc_ac(tc)               (*((size_t *) (tc)))
 #define tc_cp(tc)               (*((mobj*) ptr_add(tc, ptr_size)))
 #define tc_sfp(tc)              (*((mobj**) ptr_add(tc, 2 * ptr_size)))
@@ -806,6 +805,7 @@ mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
 #define tc_record_hash(tc)      (*((mobj*) ptr_add(tc, 19 * ptr_size)))
 #define tc_error_handler(tc)    (*((mobj*) ptr_add(tc, 20 * ptr_size)))
 #define tc_c_error_handler(tc)  (*((mobj*) ptr_add(tc, 21 * ptr_size)))
+#define tc_tenv(tc)             (*((mobj*) ptr_add(tc, 22 * ptr_size)))
 
 #define tc_ra(tc)               (tc_sfp(tc)[0])
 #define tc_frame(tc)            ((mobj *) ptr_add(tc_sfp(tc), ptr_size))

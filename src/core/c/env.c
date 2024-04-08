@@ -131,9 +131,11 @@ mobj top_env_insert(mobj env, mobj k, mobj v) {
 
     h = eq_hash(k);
     i = h % minim_top_env_alloc(env);
+
     b = minim_top_env_bucket(env, i);
     cell = Mcons(Mcons(k, v), Mcons(Mfixnum(h), minim_true));
     minim_top_env_bucket(env, i) = Mcons(cell, b);
+    minim_top_env_count(env) += 1;
     return cell;
 }
 
@@ -178,15 +180,7 @@ static mobj top_env_symbols(mobj env) {
 //    - otherwise we allocate a hashtable
 //
 
-mobj Menv(mobj prev) {
-    mobj env = GC_alloc(minim_env_size);
-    minim_type(env) = MINIM_OBJ_ENV;
-    minim_env_bindings(env) = Mvector(env_vector_max, minim_false);
-    minim_env_prev(env) = prev;
-    return env;
-}
-
-mobj Menv2(mobj prev, size_t size) {
+mobj Menv(mobj prev, size_t size) {
     mobj env = GC_alloc(minim_env_size);
     minim_type(env) = MINIM_OBJ_ENV;
     minim_env_bindings(env) = Mvector(size, minim_false);
@@ -349,7 +343,7 @@ mobj base_env;
 
 void init_envs() {
     // base environment
-    base_env = Mtop_env(1024);
+    base_env = Mtop_env(0);
     add_value(base_env, "null", minim_null);
     add_value(base_env, "true", minim_true);
     add_value(base_env, "false", minim_false);
