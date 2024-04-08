@@ -2327,11 +2327,27 @@
 ;; --------------------------------------------------------
 ;; Environment
 
+(define-values (environment)
+  (lambda () (make-base-environment)))
+
+(define-values (copy-environment)
+  (letrec-values ([(1/copy-environment)
+                   (lambda (env mutable? syms)
+                     (if (environment? env)
+                         (if (boolean? mutable?)
+                             (if (andmap symbol? syms)
+                                 ($copy-environment env mutable? syms)
+                                 (raise-argument-error 'copy-environment "list of symbols" syms))
+                             (raise-argument-error 'copy-environment "boolean?" mutable?))
+                         (raise-argument-error 'copy-environment "environment?" env)))])
+    (case-lambda
+      [(env) (1/copy-environment env #t (environment-names env))]
+      [(env mutable?) (1/copy-environment env mutable? (environment-names env))]
+      [(env mutable? syms) (1/copy-environment env mutable? syms)])))
+
 (define-values (environment-extend)
   (lambda (env)
-    (if (environment? env)
-        ($environment-extend env)
-        (raise-argument-error 'environment-extend "environment?" env))))
+    (copy-environment env #f)))
 
 (define-values (environment-names)
   (lambda (env)

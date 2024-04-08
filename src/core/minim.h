@@ -702,6 +702,7 @@ mobj make_empty_env();
 mobj make_base_env();
 
 mobj top_env_copy(mobj env, int mutablep);
+mobj top_env_copy2(mobj env, mobj syms, int mutablep);
 mobj top_env_insert(mobj env, mobj k, mobj v);
 mobj top_env_find(mobj env, mobj k);
 
@@ -711,11 +712,10 @@ mobj env_set_var(mobj env, mobj var, mobj val);
 mobj env_lookup_var(mobj env, mobj var);
 
 mobj environmentp_proc(mobj o);
-mobj interaction_environment();
-mobj empty_environment();
-mobj environment_proc();
+mobj make_empty_environment();
+mobj make_base_environment();
 mobj environment_names(mobj env);
-mobj extend_environment(mobj env);
+mobj copy_environment(mobj env, mobj mutablep, mobj syms);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
 mobj environment_variable_set(mobj env, mobj k, mobj v);
 
@@ -891,7 +891,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp);
 
 mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_apply(mobj name);
-mobj compile_current_environment(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);
 mobj compile_raise(mobj name);

@@ -66,10 +66,44 @@ mobj top_env_copy(mobj env, int mutablep) {
     return env2;
 }
 
+// The binding, if any, for each symbol in syms is copied into
+// a new environment.
+mobj top_env_copy2(mobj env, mobj syms, int mutablep) {
+    mobj env2, b, cell;
+    size_t *alloc_ptr, i, max_size;
+
+    max_size = list_length(syms);
+    alloc_ptr = start_size_ptr;
+    for (; *alloc_ptr < 4 * max_size; ++alloc_ptr);
+
+    env2 = GC_alloc(minim_top_env_size);
+    minim_type(env2) = MINIM_OBJ_TOPENV;
+    minim_top_env_alloc_ptr(env2) = alloc_ptr;
+    minim_top_env_buckets(env2) = Mvector(minim_top_env_alloc(env2), minim_null);
+    minim_top_env_count(env2) = 0;
+
+    for (; !minim_nullp(syms); syms = minim_cdr(syms)) {
+        cell = top_env_find(env, minim_car(syms));
+        if (!minim_falsep(cell)) {
+            i = minim_fixnum(minim_cadr(cell)) % minim_top_env_alloc(env2);
+            b = minim_top_env_bucket(env2, i);
+            cell = Mcons(
+                Mcons(minim_caar(cell), minim_cdar(cell)),
+                Mcons(minim_cadr(cell), mutablep ? minim_true : minim_false)
+            );
+
+            minim_top_env_bucket(env2, i) = Mcons(cell, b);
+            minim_top_env_count(env2) += 1;
+        }
+    }    
+
+
+    return env2;
+}
+
 static void top_env_resize(mobj env) {
     mobj nb, b, cell;
-    size_t *alloc_ptr;
-    size_t i, j;
+    size_t *alloc_ptr, i, j;
 
     // find the right size
     alloc_ptr = start_size_ptr;
@@ -115,6 +149,21 @@ mobj top_env_find(mobj env, mobj k) {
     }
 
     return minim_false;
+}
+
+static mobj top_env_symbols(mobj env) {
+    mobj syms, b, cell;
+
+    syms = minim_null;
+    for (size_t i = 0; i < minim_top_env_alloc(env); i++) {
+        b = minim_top_env_bucket(env, i);
+        for (; !minim_nullp(b); b = minim_cdr(b)) {
+            cell = minim_car(b);
+            syms = Mcons(minim_caar(cell), syms);
+        }
+    }
+
+    return syms;
 }
 
 //
@@ -186,7 +235,9 @@ static mobj env_find(mobj env, mobj k, int rec) {
 }
 
 static mobj env_names(mobj env) {
-    mobj names = Mhashtable(0);
+    mobj names, syms;
+    
+    names = Mhashtable(0);
     for (; minim_envp(env); env = minim_env_prev(env)) {
         mobj frame = minim_env_bindings(env);
         if (minim_vectorp(frame)) {
@@ -204,6 +255,10 @@ static mobj env_names(mobj env) {
             for (; !minim_nullp(keys); keys = minim_cdr(keys))
                 eq_hashtable_set(names, minim_car(keys), minim_null);
         }
+    }
+
+    for (syms = top_env_symbols(env); !minim_nullp(syms); syms = minim_cdr(syms)) {
+        eq_hashtable_set(names, minim_car(syms), minim_null);
     }
 
     return hashtable_keys(names);
@@ -316,27 +371,24 @@ mobj make_base_env() {
 
 mobj environmentp_proc(mobj x) {
     // (-> any boolean)
-    return minim_envp(x) ? minim_true : minim_false;
+    return minim_top_envp(x) ? minim_true : minim_false;
 }
 
-mobj interaction_environment() {
-    // (-> environment)
-    return tc_env(current_tc());
-}
-
-mobj empty_environment() {
+mobj make_empty_environment() {
     // (-> environment)
     return make_empty_env();
 }
 
-mobj environment_proc() {
+mobj make_base_environment() {
     // (-> environment)
     return make_base_env();
 }
 
-mobj extend_environment(mobj env) {
-    // (-> environment environment)
-    return Menv(env);
+mobj copy_environment(mobj env, mobj mutablep, mobj syms) {
+    // (-> environment boolean? list? environment)
+    if (!minim_top_envp(env))
+        minim_error1("copy_environment", "expected top-level environment", env);
+    return top_env_copy2(env, syms, minim_truep(mutablep));
 }
 
 mobj environment_names(mobj env) {
