@@ -34,7 +34,7 @@
 
 (define (make-base-scope)
   (define bound (make-set))
-  (for-each (lambda (n) (set-add! bound n)) (environment-names $base-env))
+  (for-each (lambda (n) (set-add! bound n)) (environment-symbols $base-env))
   (make-scope bound #f))
 
 (define (scope-extend prev)
@@ -59,7 +59,7 @@
           [else (loop (scope-prev scope))])))
 
 ;; Base environment when loading modules
-(define $base-env (environment))
+(define $base-env (make-base-environment))
 (define $base-scope (make-base-scope))
 
 ;;
@@ -270,7 +270,7 @@
 
 ;; Base environment when expanding modules
 (define ($base-stx-env env)
-  (let ([env (environment-extend env)])
+  (let ([env (copy-environment env #f)])
     (environment-set!
       env
       'get-pattern-variable

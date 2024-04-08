@@ -128,7 +128,7 @@
 ;; prepares the evaluation environment given
 ;; an association list of additional values
 (define ($eval-environment env imports)
-  (define env* (environment-extend env))
+  (define env* (copy-environment env #f))
   (let loop ([imports imports])
     (cond
       [(null? imports) env*]
@@ -256,7 +256,7 @@
   (define xforms (second internals))
   (define scope (sixth internals))
   ;; REPL
-  ($repl (environment-extend (car envs))
-         (environment-extend (cdr envs))
+  ($repl (copy-environment (car envs) #f)
+         (copy-environment (cdr envs))
          xforms
          scope))

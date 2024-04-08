@@ -170,7 +170,7 @@ void init_prims(mobj env) {
     add_procedure("make-empty-environment", make_empty_environment, 0);
     add_procedure("make-base-environment", make_base_environment, 0);
     add_procedure("$copy-environment", copy_environment, 3);
-    add_procedure("$environment-names", environment_names, 1);
+    add_procedure("$environment-symbols", environment_names, 1);
     add_procedure("$environment-ref", environment_variable_ref, 3);
     add_procedure("$environment-set!", environment_variable_set, 3);
 
