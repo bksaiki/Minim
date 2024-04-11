@@ -86,9 +86,10 @@ extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
 extern mobj get_ac_symbol;
 extern mobj get_arg_symbol;
-extern mobj get_env_symbol;
+extern mobj get_tenv_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
+extern mobj tl_bind_values_symbol;
 extern mobj tl_lookup_symbol;
 extern mobj make_closure_symbol;
 extern mobj make_env_symbol;
@@ -98,7 +99,9 @@ extern mobj push_symbol;
 extern mobj push_env_symbol;
 extern mobj rebind_symbol;
 extern mobj ret_symbol;
+extern mobj set_arg_symbol;
 extern mobj set_proc_symbol;
+extern mobj set_tenv_symbol;
 extern mobj save_cc_symbol;
 
 // Object types

@@ -330,7 +330,7 @@ static mobj eval_istream(mobj tc, mobj *istream) {
     tc_ac(tc) = 0;
     res = minim_void;
 
-    // hack needed for `get-env` insruction
+    // need to stash for when we exit this function
     penv = tc_env(tc);
 
     // possibly handle long jump back into the procedure
@@ -390,6 +390,10 @@ application:
         // bind-values
         bind_values(tc, tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
+    } else if (ty == tl_bind_values_symbol) {
+        // tl-bind-values
+        bind_values(tc, tc_tenv(tc), minim_cadr(ins), res);
+        res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind
         env_set_var(tc_env(tc), minim_cadr(ins), res);
@@ -412,13 +416,15 @@ application:
     } else if (ty == get_arg_symbol) {
         // get-arg
         res = tc_frame_ref(tc, minim_fixnum(minim_cadr(ins)));
-    } else if (ty == get_env_symbol) {
-        // get-env
-        if (minim_nullp(tc_ccont(tc))) {
-            res = penv;
-        } else {
-            res = continuation_env(tc_ccont(tc));
-        }
+    } else if (ty == set_arg_symbol) {
+        // set-arg
+        tc_frame_ref(tc, minim_fixnum(minim_cadr(ins))) = res;
+    } else if (ty == get_tenv_symbol) {
+        // get-tenv
+        res = tc_tenv(tc);
+    } else if (ty == set_tenv_symbol) {
+        // set-tenv
+        tc_tenv(tc) = res;
     } else if (ty == do_apply_symbol) {
         // do-apply
         do_apply(tc);
@@ -428,7 +434,7 @@ application:
         arity_mismatch_exn(tc_cp(tc), tc_ac(tc));
     } else if (ty == do_eval_symbol) {
         // do-eval
-        goto do_eval;
+        res = Mclosure(tc_tenv(tc), compile_expr(tc_frame_ref(tc, 0)));
     } else if (ty == do_raise_symbol) {
         // do-raise
         goto do_raise;
@@ -499,15 +505,6 @@ call_closure:
     // don't clear either the current procedure or argument count
     // since this is required for binding and arity check
     goto loop;
-
-// performs `do-eval` instruction
-do_eval:
-    // compile expression into a nullary function and
-    // call it in tail position
-    tc_env(tc) = tc_ac(tc) == 2 ? tc_frame_ref(tc, 1) : tc_env(tc);
-    tc_cp(tc) = Mclosure(tc_env(tc), compile_expr(tc_frame_ref(tc, 0)));
-    tc_ac(tc) = 0;
-    goto application;
 
 // performs `do-raise` instruction
 do_raise:

@@ -97,21 +97,63 @@ mobj compile_values(mobj name) {
 
 // Custom `eval` compilation
 mobj compile_eval(mobj name) {
-    mobj env, label, ins, reloc, code, cl;
+    mobj env, Larity2, Lpop_tenv, Larity_err, ins, reloc, code, cl;
 
     // prepare compiler
     env = make_cenv();
-    label = cenv_make_label(env);
+    Larity2 = cenv_make_label(env);
+    Larity_err = cenv_make_label(env);
+    Lpop_tenv = cenv_make_label(env);
     
-    // hand written procedure
-    ins = Mlist6(
-        Mlist1(get_ac_symbol),
-        Mlist3(branchlt_symbol, Mfixnum(1), label),
-        Mlist3(branchgt_symbol, Mfixnum(2), label),
-        Mlist1(do_eval_symbol),
-        label,
-        Mlist1(do_arity_error_symbol)
-    );
+    // hand written
+    ins = list_append2(
+        Mlist2(
+            Mlist1(get_ac_symbol),
+            Mlist3(branchne_symbol, Mfixnum(1), Larity2)
+        ),
+        // %ac == 1 (in tail position)
+        list_append2(Mlist4(
+            Mlist1(do_eval_symbol),
+            Mlist1(clear_frame_symbol),
+            Mlist1(set_proc_symbol),
+            Mlist1(apply_symbol)
+        ),
+        // %ac == 2 (not in tail position since we need to restore top-level env)
+        // need to use an additional stack frame location for swapping
+        //  sfp[2]: env
+        //  sfp[1]: expr
+        list_append2(
+            list_append2(Mlist6(
+                Larity2,
+                Mlist3(branchne_symbol, Mfixnum(2), Larity_err),
+                Mlist2(get_arg_symbol, Mfixnum(1)),
+                Mlist2(set_arg_symbol, Mfixnum(2)), // new %tenv at sfp[3]
+                Mlist1(get_tenv_symbol),
+                Mlist2(set_arg_symbol, Mfixnum(1)) // old %tenv at sfp[2]
+            ),
+            list_append2(Mlist6(
+                Mlist2(get_arg_symbol, Mfixnum(2)),
+                Mlist1(set_tenv_symbol),
+                Mlist1(do_eval_symbol),
+                Mlist2(save_cc_symbol, Lpop_tenv),
+                Mlist1(set_proc_symbol),
+                Mlist1(apply_symbol)
+            ),
+            Mlist6(
+                Lpop_tenv,
+                Mlist2(set_arg_symbol, Mfixnum(0)), // result at sfp[1]
+                Mlist2(get_arg_symbol, Mfixnum(1)), // old %tenv
+                Mlist1(set_tenv_symbol),
+                Mlist2(get_arg_symbol, Mfixnum(0)), // fetch result
+                Mlist1(ret_symbol)
+            ))
+        ),
+        // %ac == 0 or %ac > 2
+        Mlist2(
+            Larity_err,
+            Mlist1(do_arity_error_symbol)
+        )
+    )));
 
     // write to code
     reloc = resolve_refs(env, ins);

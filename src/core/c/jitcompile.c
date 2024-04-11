@@ -82,7 +82,7 @@ static mobj compile_define_values(mobj expr, mobj env, int tailp) {
 
     ids = minim_cadr(expr);
     ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
-    list_set_tail(ins, Mlist1(Mlist2(bind_values_symbol, ids)));
+    list_set_tail(ins, Mlist1(Mlist2(tl_bind_values_symbol, ids)));
     return with_tail_ret(ins, tailp);
 }
 

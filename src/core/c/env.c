@@ -228,35 +228,35 @@ static mobj env_find(mobj env, mobj k, int rec) {
     return minim_falsep(cell) ? minim_false : minim_car(cell);
 }
 
-static mobj env_names(mobj env) {
-    mobj names, syms;
+// static mobj env_names(mobj env) {
+//     mobj names, syms;
     
-    names = Mhashtable(0);
-    for (; minim_envp(env); env = minim_env_prev(env)) {
-        mobj frame = minim_env_bindings(env);
-        if (minim_vectorp(frame)) {
-            // small namespace
-            for (long i = 0; i < minim_vector_len(frame); ++i) {
-                mobj bind = minim_vector_ref(frame, i);
-                if (minim_falsep(bind))
-                    break;
+//     names = Mhashtable(0);
+//     for (; minim_envp(env); env = minim_env_prev(env)) {
+//         mobj frame = minim_env_bindings(env);
+//         if (minim_vectorp(frame)) {
+//             // small namespace
+//             for (long i = 0; i < minim_vector_len(frame); ++i) {
+//                 mobj bind = minim_vector_ref(frame, i);
+//                 if (minim_falsep(bind))
+//                     break;
                 
-                eq_hashtable_set(names, minim_car(bind), minim_null);
-            }
-        } else{
-            // large namespace
-            mobj keys = hashtable_keys(frame);
-            for (; !minim_nullp(keys); keys = minim_cdr(keys))
-                eq_hashtable_set(names, minim_car(keys), minim_null);
-        }
-    }
+//                 eq_hashtable_set(names, minim_car(bind), minim_null);
+//             }
+//         } else{
+//             // large namespace
+//             mobj keys = hashtable_keys(frame);
+//             for (; !minim_nullp(keys); keys = minim_cdr(keys))
+//                 eq_hashtable_set(names, minim_car(keys), minim_null);
+//         }
+//     }
 
-    for (syms = top_env_symbols(env); !minim_nullp(syms); syms = minim_cdr(syms)) {
-        eq_hashtable_set(names, minim_car(syms), minim_null);
-    }
+//     for (syms = top_env_symbols(env); !minim_nullp(syms); syms = minim_cdr(syms)) {
+//         eq_hashtable_set(names, minim_car(syms), minim_null);
+//     }
 
-    return hashtable_keys(names);
-}
+//     return hashtable_keys(names);
+// }
 
 void env_define_var_no_check(mobj env, mobj var, mobj val) {
     mobj frame, nframe, cell;
@@ -387,17 +387,24 @@ mobj copy_environment(mobj env, mobj mutablep, mobj syms) {
 
 mobj environment_names(mobj env) {
     // (-> environment (listof symbol))
-    return env_names(env);
+    return top_env_symbols(env);
 }
 
 mobj environment_variable_ref(mobj env, mobj k, mobj fail) {
     // (-> environment symbol any)
-    mobj cell = env_find(env, k, 1);
-    return minim_falsep(cell) ? fail : minim_cdr(cell);
+    mobj cell = top_env_find(env, k);
+    return minim_falsep(cell) ? fail : minim_cdar(cell);
 }
 
 mobj environment_variable_set(mobj env, mobj k, mobj v) {
     // (-> environment symbol any void)
-    env_define_var(env, k, v);
+    mobj cell = top_env_find(env, k);
+    if (minim_falsep(cell)) {
+        top_env_insert(env, k, v);
+    } else {
+        // TODO: error if cell is immutable
+        minim_cdar(cell) = v;
+    }
+
     return minim_void;
 }
