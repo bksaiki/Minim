@@ -408,3 +408,12 @@ mobj environment_variable_set(mobj env, mobj k, mobj v) {
 
     return minim_void;
 }
+
+mobj current_environment() {
+    return tc_tenv(current_tc());
+}
+
+mobj current_environment_set(mobj env) {
+    tc_tenv(current_tc()) = env;
+    return minim_void;
+}

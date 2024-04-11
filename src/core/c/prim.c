@@ -173,6 +173,8 @@ void init_prims(mobj env) {
     add_procedure("$environment-symbols", environment_names, 1);
     add_procedure("$environment-ref", environment_variable_ref, 3);
     add_procedure("$environment-set!", environment_variable_set, 3);
+    add_procedure("$current-environment", current_environment, 0);
+    add_procedure("$current-environment-set!", current_environment_set, 1);
 
     add_procedure("procedure?", procp_proc, 1);
     add_procedure("$procedure-arity", procedure_arity_proc, 1);

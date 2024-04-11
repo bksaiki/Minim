@@ -720,6 +720,8 @@ mobj environment_names(mobj env);
 mobj copy_environment(mobj env, mobj mutablep, mobj syms);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
 mobj environment_variable_set(mobj env, mobj k, mobj v);
+mobj current_environment();
+mobj current_environment_set(mobj proc);
 
 // Procedures
 

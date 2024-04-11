@@ -302,10 +302,12 @@ static mobj env_lookup(mobj env, mobj coord) {
     return minim_cdr(cell);
 }
 
-static mobj env_tl_lookup(mobj tc, mobj id) {
+static mobj env_tl_lookup(mobj env, mobj id) {
     mobj cell, val;
-    
-    cell = top_env_find(tc_tenv(tc), id);
+
+    for (; !minim_top_envp(env); env = minim_env_prev(env));
+
+    cell = top_env_find(env, id);
     if (!minim_falsep(cell)) {
         val = minim_cdar(cell);
         if (val == minim_unbound)
@@ -357,7 +359,7 @@ loop:
         res = env_lookup(tc_env(tc), minim_cadr(ins));
     } else if (ty == tl_lookup_symbol) {
         // top-level lookup
-        res = env_tl_lookup(tc, minim_cadr(ins));
+        res = env_tl_lookup(tc_env(tc), minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
         tc_cp(tc) = force_single_value(tc, res);

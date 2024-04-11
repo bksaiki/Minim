@@ -154,7 +154,7 @@ mobj write_code(mobj ins, mobj reloc, mobj arity) {
 mobj compile_expr(mobj expr) {
     mobj env, L1, L2, L3, ins, reloc;
 
-    writeln_object(stderr, expr);
+    // writeln_object(stderr, expr);
 
     // optimization
     L1 = jit_opt_L0(expr);
@@ -164,7 +164,6 @@ mobj compile_expr(mobj expr) {
     // compilation
     env = make_cenv();
     ins = compile_expr2(L3, env, 1);
-    // writeln_object(stderr, ins);
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }
