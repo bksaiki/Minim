@@ -167,14 +167,14 @@ void init_prims(mobj env) {
     add_procedure("$syntax->list", syntax_to_list, 1);
 
     add_procedure("environment?", environmentp_proc, 1);
-    add_procedure("interaction-environment", interaction_environment, 0);
-    add_procedure("null-environment", empty_environment, 0);
-    add_procedure("environment", environment_proc, 0);
-    add_cprocedure("current-environment", compile_current_environment);
-    add_procedure("$environment-extend", extend_environment, 1);
-    add_procedure("$environment-names", environment_names, 1);
+    add_procedure("make-empty-environment", make_empty_environment, 0);
+    add_procedure("make-base-environment", make_base_environment, 0);
+    add_procedure("$copy-environment", copy_environment, 3);
+    add_procedure("$environment-symbols", environment_names, 1);
     add_procedure("$environment-ref", environment_variable_ref, 3);
     add_procedure("$environment-set!", environment_variable_set, 3);
+    add_procedure("$current-environment", current_environment, 0);
+    add_procedure("$current-environment-set!", current_environment_set, 1);
 
     add_procedure("procedure?", procp_proc, 1);
     add_procedure("$procedure-arity", procedure_arity_proc, 1);

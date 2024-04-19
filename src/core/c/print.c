@@ -96,6 +96,7 @@ void write_object(FILE *out, mobj o) {
     else if (minim_recordp(o)) write_record(out, o);
     else if (minim_syntaxp(o)) fputs("#<syntax>", out);
     else if (minim_envp(o)) fputs("#<environment>", out);
+    else if (minim_top_envp(o)) fputs("#<environment>", out);
     else if (minim_continuationp(o)) fputs("#<continuation>", out);
     else if (minim_codep(o)) fputs("#<code>", out);
     else fputs("#<garbage>", out);

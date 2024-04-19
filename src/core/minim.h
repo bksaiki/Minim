@@ -86,9 +86,10 @@ extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
 extern mobj get_ac_symbol;
 extern mobj get_arg_symbol;
-extern mobj get_env_symbol;
+extern mobj get_tenv_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
+extern mobj tl_bind_values_symbol;
 extern mobj tl_lookup_symbol;
 extern mobj make_closure_symbol;
 extern mobj make_env_symbol;
@@ -98,7 +99,9 @@ extern mobj push_symbol;
 extern mobj push_env_symbol;
 extern mobj rebind_symbol;
 extern mobj ret_symbol;
+extern mobj set_arg_symbol;
 extern mobj set_proc_symbol;
+extern mobj set_tenv_symbol;
 extern mobj save_cc_symbol;
 
 // Object types
@@ -123,6 +126,7 @@ typedef enum {
 
     /* Runtime types */
     MINIM_OBJ_ENV,
+    MINIM_OBJ_TOPENV,
     MINIM_OBJ_CONTINUATION,
     MINIM_OBJ_CODE,
 } mobj_type;
@@ -415,6 +419,21 @@ extern mobj minim_unbound;
 #define minim_env_prev(o)       (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_env_bindings(o)   (*((mobj*) ptr_add(o, 2 * ptr_size)))
 
+// Environment (top-level)
+// +------------+
+// |   type     | [0, 1)
+// |  buckets   | [8, 16)
+// |  alloc_ptr | [16, 24)
+// |   count    | [24, 32)
+// +------------+
+#define minim_top_env_size              (4 * ptr_size)
+#define minim_top_envp(o)               (minim_type(o) == MINIM_OBJ_TOPENV)
+#define minim_top_env_buckets(o)        (*((mobj*) ptr_add(o, ptr_size)))
+#define minim_top_env_bucket(o, i)      (minim_vector_ref(minim_top_env_buckets(o), i))
+#define minim_top_env_alloc_ptr(o)      (*((msize**) ptr_add(o, 2 * ptr_size)))
+#define minim_top_env_alloc(o)          (*(minim_top_env_alloc_ptr(o)))
+#define minim_top_env_count(o)          (*((msize*) ptr_add(o, 3 * ptr_size)))
+
 // Continuations
 // +------------+
 // |    type    | [0, 1)
@@ -455,8 +474,8 @@ mobj Moutput_port(FILE *stream);
 mobj Msyntax(mobj e, mobj loc);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mhashtable(size_t size_hint);
-mobj Menv(mobj prev);
-mobj Menv2(mobj prev, size_t size);
+mobj Menv(mobj prev, size_t size);
+mobj Mtop_env(size_t size_hint);
 mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
 
 // Object
@@ -677,10 +696,17 @@ mobj hashtable_clear(mobj ht);
 
 // Environment
 
-extern mobj empty_env;
+extern mobj base_env;
 
-mobj setup_env();
-mobj make_env();
+void init_envs();
+
+mobj make_empty_env();
+mobj make_base_env();
+
+mobj top_env_copy(mobj env, int mutablep);
+mobj top_env_copy2(mobj env, mobj syms, int mutablep);
+mobj top_env_insert(mobj env, mobj k, mobj v);
+mobj top_env_find(mobj env, mobj k);
 
 void env_define_var_no_check(mobj env, mobj var, mobj val);
 mobj env_define_var(mobj env, mobj var, mobj val);
@@ -688,13 +714,14 @@ mobj env_set_var(mobj env, mobj var, mobj val);
 mobj env_lookup_var(mobj env, mobj var);
 
 mobj environmentp_proc(mobj o);
-mobj interaction_environment();
-mobj empty_environment();
-mobj environment_proc();
+mobj make_empty_environment();
+mobj make_base_environment();
 mobj environment_names(mobj env);
-mobj extend_environment(mobj env);
+mobj copy_environment(mobj env, mobj mutablep, mobj syms);
 mobj environment_variable_ref(mobj env, mobj k, mobj fail);
 mobj environment_variable_set(mobj env, mobj k, mobj v);
+mobj current_environment();
+mobj current_environment_set(mobj proc);
 
 // Procedures
 
@@ -760,7 +787,7 @@ mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
 
 // Thread context
 // Encapsulates all Scheme runtime information of a thread
-#define tc_size                 (22 * ptr_size)
+#define tc_size                 (23 * ptr_size)
 #define tc_ac(tc)               (*((size_t *) (tc)))
 #define tc_cp(tc)               (*((mobj*) ptr_add(tc, ptr_size)))
 #define tc_sfp(tc)              (*((mobj**) ptr_add(tc, 2 * ptr_size)))
@@ -783,6 +810,7 @@ mobj Mcached_stack(mobj *base, mobj prev, size_t len, mobj ret);
 #define tc_record_hash(tc)      (*((mobj*) ptr_add(tc, 19 * ptr_size)))
 #define tc_error_handler(tc)    (*((mobj*) ptr_add(tc, 20 * ptr_size)))
 #define tc_c_error_handler(tc)  (*((mobj*) ptr_add(tc, 21 * ptr_size)))
+#define tc_tenv(tc)             (*((mobj*) ptr_add(tc, 22 * ptr_size)))
 
 #define tc_ra(tc)               (tc_sfp(tc)[0])
 #define tc_frame(tc)            ((mobj *) ptr_add(tc_sfp(tc), ptr_size))
@@ -868,7 +896,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp);
 
 mobj compile_prim(const char *who, void *fn, mobj arity);
 mobj compile_apply(mobj name);
-mobj compile_current_environment(mobj name);
 mobj compile_eval(mobj name);
 mobj compile_identity(mobj name);
 mobj compile_raise(mobj name);

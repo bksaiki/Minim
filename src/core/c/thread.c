@@ -3,13 +3,17 @@
 #include "../minim.h"
 
 mobj Mthread_context() {
-    mobj tc = GC_alloc(tc_size);
+    mobj tc, env;
+    
+    tc = GC_alloc(tc_size);
+    env = make_base_env();
+
     tc_ac(tc) = 0;
     tc_cp(tc) = NULL;
     tc_sfp(tc) = NULL;
     tc_esp(tc) = NULL;
     tc_ccont(tc) = minim_null;
-    tc_env(tc) = empty_env;
+    tc_env(tc) = env;
     tc_vc(tc) = 0;
     tc_values(tc) = NULL;
     tc_stack_base(tc) = NULL;
@@ -25,5 +29,6 @@ mobj Mthread_context() {
     tc_record_hash(tc) = minim_false;
     tc_error_handler(tc) = minim_false;
     tc_c_error_handler(tc) = minim_false;
+    tc_tenv(tc) = env;
     return tc;
 }

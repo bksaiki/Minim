@@ -302,17 +302,20 @@ static mobj env_lookup(mobj env, mobj coord) {
     return minim_cdr(cell);
 }
 
-static mobj env_tl_lookup(mobj env, mobj id, mobj depth) {
-    mobj val;
-    size_t i;
+static mobj env_tl_lookup(mobj env, mobj id) {
+    mobj cell, val;
 
-    for (i = minim_fixnum(depth); i > 0; i--)
-        env = minim_env_prev(env);
+    for (; !minim_top_envp(env); env = minim_env_prev(env));
 
-    val = env_lookup_var(env, id);
-    if (val == minim_unbound)
-        minim_error1(NULL, "cannot use before initialization", id);
-    return val;
+    cell = top_env_find(env, id);
+    if (!minim_falsep(cell)) {
+        val = minim_cdar(cell);
+        if (val == minim_unbound)
+            minim_error1(NULL, "cannot use before initialization", id);
+        return val;
+    }
+
+    minim_error1(NULL, "unbound variable", id);
 }
 
 //
@@ -329,7 +332,7 @@ static mobj eval_istream(mobj tc, mobj *istream) {
     tc_ac(tc) = 0;
     res = minim_void;
 
-    // hack needed for `get-env` insruction
+    // need to stash for when we exit this function
     penv = tc_env(tc);
 
     // possibly handle long jump back into the procedure
@@ -343,7 +346,6 @@ static mobj eval_istream(mobj tc, mobj *istream) {
 loop:
     ins = *istream;
     if (!minim_consp(ins)) {
-        // TODO: this check should not be required
         minim_error1(NULL, "executing non-bytecode", ins);
     }
 
@@ -356,7 +358,7 @@ loop:
         res = env_lookup(tc_env(tc), minim_cadr(ins));
     } else if (ty == tl_lookup_symbol) {
         // top-level lookup
-        res = env_tl_lookup(tc_env(tc), minim_cadr(ins), minim_car(minim_cddr(ins)));
+        res = env_tl_lookup(tc_env(tc), minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
         tc_cp(tc) = force_single_value(tc, res);
@@ -389,16 +391,20 @@ application:
         // bind-values
         bind_values(tc, tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
+    } else if (ty == tl_bind_values_symbol) {
+        // tl-bind-values
+        bind_values(tc, tc_tenv(tc), minim_cadr(ins), res);
+        res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind
         env_set_var(tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == make_env_symbol) {
         // make-env
-        res = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
+        res = Menv(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == push_env_symbol) {
         // push-env
-        tc_env(tc) = Menv2(tc_env(tc), minim_fixnum(minim_cadr(ins)));
+        tc_env(tc) = Menv(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == pop_env_symbol) {
         // pop-env
         tc_env(tc) = minim_env_prev(tc_env(tc));
@@ -411,13 +417,15 @@ application:
     } else if (ty == get_arg_symbol) {
         // get-arg
         res = tc_frame_ref(tc, minim_fixnum(minim_cadr(ins)));
-    } else if (ty == get_env_symbol) {
-        // get-env
-        if (minim_nullp(tc_ccont(tc))) {
-            res = penv;
-        } else {
-            res = continuation_env(tc_ccont(tc));
-        }
+    } else if (ty == set_arg_symbol) {
+        // set-arg
+        tc_frame_ref(tc, minim_fixnum(minim_cadr(ins))) = res;
+    } else if (ty == get_tenv_symbol) {
+        // get-tenv
+        res = tc_tenv(tc);
+    } else if (ty == set_tenv_symbol) {
+        // set-tenv
+        tc_tenv(tc) = res;
     } else if (ty == do_apply_symbol) {
         // do-apply
         do_apply(tc);
@@ -427,7 +435,7 @@ application:
         arity_mismatch_exn(tc_cp(tc), tc_ac(tc));
     } else if (ty == do_eval_symbol) {
         // do-eval
-        goto do_eval;
+        res = Mclosure(tc_tenv(tc), compile_expr(tc_frame_ref(tc, 0)));
     } else if (ty == do_raise_symbol) {
         // do-raise
         goto do_raise;
@@ -498,15 +506,6 @@ call_closure:
     // don't clear either the current procedure or argument count
     // since this is required for binding and arity check
     goto loop;
-
-// performs `do-eval` instruction
-do_eval:
-    // compile expression into a nullary function and
-    // call it in tail position
-    tc_env(tc) = tc_ac(tc) == 2 ? tc_frame_ref(tc, 1) : tc_env(tc);
-    tc_cp(tc) = Mclosure(tc_env(tc), compile_expr(tc_frame_ref(tc, 0)));
-    tc_ac(tc) = 0;
-    goto application;
 
 // performs `do-raise` instruction
 do_raise:

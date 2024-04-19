@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 
     // load the prelude
     tc = current_tc();
-    load_prelude(tc_env(tc));
+    load_prelude(tc);
 
     if (opt_load_library)
         load_library();

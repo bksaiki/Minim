@@ -52,9 +52,10 @@ void init_minim() {
     do_with_values_symbol = intern("#%do-with-values");
     get_ac_symbol = intern("#%get-ac");
     get_arg_symbol = intern("#%get-arg");
-    get_env_symbol = intern("#%get-env");
+    get_tenv_symbol = intern("#%get-tenv");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
+    tl_bind_values_symbol = intern("#%tl-bind-values");
     tl_lookup_symbol = intern("#%tl-lookup");
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
@@ -66,6 +67,8 @@ void init_minim() {
     rebind_symbol = intern("#%rebind");
     ret_symbol = intern("#%ret");
     save_cc_symbol = intern("#%save-cc");
+    set_arg_symbol = intern("#%set-arg");
+    set_tenv_symbol = intern("#%set-tenv");
     set_proc_symbol = intern("#%set-proc");
 
     // initialize special values    
@@ -94,8 +97,6 @@ void init_minim() {
     minim_empty_vec = Mvector(0, NULL);
     GC_register_root(minim_empty_vec);
 
-    empty_env = minim_null;
-
     minim_base_rtd = Mrecord(NULL, record_rtd_min_size);
     GC_register_root(minim_base_rtd);
 
@@ -105,5 +106,7 @@ void init_minim() {
     record_rtd_opaque(minim_base_rtd) = minim_true;
     record_rtd_sealed(minim_base_rtd) = minim_true;
     record_rtd_protocol(minim_base_rtd) = minim_false;
+
+    init_envs();
 }
 

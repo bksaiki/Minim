@@ -17,6 +17,5 @@ void minim_boot_init() {
     tc_stack_size(tc) = stack_size;
     tc_sfp(tc) = tc_stack_base(tc);
     tc_esp(tc) = tc_sfp(tc) + tc_stack_size(tc) - stack_slop;
-    tc_env(tc) = make_env();
     current_tc() = tc;
 }

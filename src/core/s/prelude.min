@@ -2327,17 +2327,26 @@
 ;; --------------------------------------------------------
 ;; Environment
 
-(define-values (environment-extend)
-  (lambda (env)
-    (if (environment? env)
-        ($environment-extend env)
-        (raise-argument-error 'environment-extend "environment?" env))))
+(define-values (copy-environment)
+  (letrec-values ([(1/copy-environment)
+                   (lambda (env mutable? syms)
+                     (if (environment? env)
+                         (if (boolean? mutable?)
+                             (if (andmap symbol? syms)
+                                 ($copy-environment env mutable? syms)
+                                 (raise-argument-error 'copy-environment "list of symbols" syms))
+                             (raise-argument-error 'copy-environment "boolean?" mutable?))
+                         (raise-argument-error 'copy-environment "environment?" env)))])
+    (case-lambda
+      [(env) (1/copy-environment env #t (environment-symbols env))]
+      [(env mutable?) (1/copy-environment env mutable? (environment-symbols env))]
+      [(env mutable? syms) (1/copy-environment env mutable? syms)])))
 
-(define-values (environment-names)
+(define-values (environment-symbols)
   (lambda (env)
     (if (environment? env)
-        ($environment-names env)
-        (raise-argument-error 'environment-names "environment?" env))))
+        ($environment-symbols env)
+        (raise-argument-error 'environment-symbols "environment?" env))))
 
 (define-values (environment-ref)
   (letrec-values ([(default-fail)
@@ -2368,6 +2377,14 @@
             ($environment-set! env k v)
             (raise-argument-error 'environment-set! "symbol?" k))
         (raise-argument-error 'environment-set! "environment?" env))))
+
+(define-values (current-environment)
+  (case-lambda
+    [() ($current-environment)]
+    [(env)
+     (if (environment? env)
+         ($current-environment-set! env)
+         (raise-argument-error 'current-environment "environment?" env))]))
 
 ;; --------------------------------------------------------
 ;; System
