@@ -4,7 +4,7 @@
 
 #include "../minim.h"
 
-//F
+//
 //  Top-level environments
 //  Just a special eq?-based hashtable
 //  Each cell is: `((key . value) . (hash . mutable?))
@@ -169,15 +169,8 @@ static mobj top_env_symbols(mobj env) {
 }
 
 //
-//  Environments
-//
-//  Ideally:
-//    environments ::= (<frame0> <frame1> ...)
-//    frames       ::= ((<var0> . <val1>) (<var1> . <val1>) ...)
-//
-//  Actually:
-//    - each frame is a fixed size vector
-//    - otherwise we allocate a hashtable
+//  Frame environments:
+//  A vector of bindings with a previous frame pointer
 //
 
 mobj Menv(mobj prev, size_t size) {
@@ -190,33 +183,16 @@ mobj Menv(mobj prev, size_t size) {
 
 static mobj env_find(mobj env, mobj k, int rec) {
     mobj frame, cell;
-    size_t h;
-    int hp = 0;
+    size_t i;
 
     for (; minim_envp(env); env = minim_env_prev(env)) {
         frame = minim_env_bindings(env);
-        if (minim_vectorp(frame)) {
-            // small namespace
-            for (long i = 0; i < minim_vector_len(frame); i++) {
-                cell = minim_vector_ref(frame, i);
-                if (minim_falsep(cell))
-                    break;
+        for (i = 0; i < minim_vector_len(frame); i++) {
+            cell = minim_vector_ref(frame, i);
+            if (minim_falsep(cell))
+                break;
 
-                if (minim_car(cell) == k)
-                    return cell;
-            }
-        } else {
-            // large namespace
-            frame = minim_env_bindings(env);
-
-            // hash key as needed
-            if (!hp) {
-                h = eq_hash(k);
-                hp = 1;
-            }
-
-            cell = eq_hashtable_find2(frame, k, h);
-            if (!minim_falsep(cell))
+            if (minim_car(cell) == k)
                 return cell;
         }
 
@@ -228,69 +204,25 @@ static mobj env_find(mobj env, mobj k, int rec) {
     return minim_falsep(cell) ? minim_false : minim_car(cell);
 }
 
-// static mobj env_names(mobj env) {
-//     mobj names, syms;
-    
-//     names = Mhashtable(0);
-//     for (; minim_envp(env); env = minim_env_prev(env)) {
-//         mobj frame = minim_env_bindings(env);
-//         if (minim_vectorp(frame)) {
-//             // small namespace
-//             for (long i = 0; i < minim_vector_len(frame); ++i) {
-//                 mobj bind = minim_vector_ref(frame, i);
-//                 if (minim_falsep(bind))
-//                     break;
-                
-//                 eq_hashtable_set(names, minim_car(bind), minim_null);
-//             }
-//         } else{
-//             // large namespace
-//             mobj keys = hashtable_keys(frame);
-//             for (; !minim_nullp(keys); keys = minim_cdr(keys))
-//                 eq_hashtable_set(names, minim_car(keys), minim_null);
-//         }
-//     }
-
-//     for (syms = top_env_symbols(env); !minim_nullp(syms); syms = minim_cdr(syms)) {
-//         eq_hashtable_set(names, minim_car(syms), minim_null);
-//     }
-
-//     return hashtable_keys(names);
-// }
-
 void env_define_var_no_check(mobj env, mobj var, mobj val) {
-    mobj frame, nframe, cell;
-    size_t size;
+    mobj frame, cell;
+    size_t size, i;
 
     if (minim_top_envp(env)) {
         // TODO: splice this out
         top_env_insert(env, var, val);
     } else {
         frame = minim_env_bindings(env);
-        if (minim_vectorp(frame)) {
-            // small namespace
-            size = minim_vector_len(frame);
-            for (long i = 0; i < size; ++i) {
-                cell = minim_vector_ref(frame, i);
-                if (minim_falsep(cell)) {
-                    minim_vector_ref(frame, i) = Mcons(var, val);
-                    return;
-                }
+        size = minim_vector_len(frame);
+        for (i = 0; i < size; ++i) {
+            cell = minim_vector_ref(frame, i);
+            if (minim_falsep(cell)) {
+                minim_vector_ref(frame, i) = Mcons(var, val);
+                return;
             }
-
-            // too small: convert to a large namespace
-            nframe = Mhashtable(size + 1);
-            for (long i = 0; i < size; ++i) {
-                cell = minim_vector_ref(frame, i);
-                eq_hashtable_set(nframe, minim_car(cell), minim_cdr(cell));
-            }
-
-            eq_hashtable_set(nframe, var, val);
-            minim_env_bindings(env) = nframe;
-        } else {
-            // large namespace
-            eq_hashtable_set(frame, var, val);
         }
+
+        minim_error1("env_define_var_no_check", "exceeded environment size", var);
     }
 }
 

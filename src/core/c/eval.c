@@ -346,7 +346,6 @@ static mobj eval_istream(mobj tc, mobj *istream) {
 loop:
     ins = *istream;
     if (!minim_consp(ins)) {
-        // TODO: this check should not be required
         minim_error1(NULL, "executing non-bytecode", ins);
     }
 
