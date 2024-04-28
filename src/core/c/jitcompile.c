@@ -168,10 +168,10 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
 
     // register JIT block
     code = write_code(ins, reloc, arity);
-    idx = cenv_template_add(env, code);
+    idx = global_cenv_add_template(cenv_global_env(env), code);
 
     // instruction
-    ins = Mlist1(Mlist2(make_closure_symbol, idx));
+    ins = Mlist1(Mlist2(make_closure_symbol, Mfixnum(idx)));
     return with_tail_ret(ins, tailp);
 }
 

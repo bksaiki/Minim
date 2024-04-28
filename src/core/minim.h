@@ -876,11 +876,14 @@ mobj fasl_write_proc(mobj x, mobj port);
 
 // JIT compiler
 
-mobj make_cenv();
+mobj make_global_cenv();
+size_t global_cenv_add_template(mobj cenv, mobj jit);
+mobj global_cenv_ref_template(mobj cenv, size_t i);
+
+mobj make_cenv(mobj global_env);
 mobj extend_cenv(mobj cenv);
+mobj cenv_global_env(mobj cenv);
 mobj cenv_make_label(mobj cenv);
-mobj cenv_template_add(mobj cenv, mobj jit);
-mobj cenv_template_ref(mobj cenv, size_t i);
 void cenv_id_add(mobj cenv, mobj id);
 mobj cenv_id_ref(mobj cenv, mobj id);
 mobj cenv_depth(mobj cenv);
