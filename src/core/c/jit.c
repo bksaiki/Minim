@@ -152,7 +152,7 @@ mobj write_code(mobj ins, mobj reloc, mobj arity) {
 //
 
 mobj compile_expr(mobj expr) {
-    mobj env, L1, L2, L3, ins, reloc;
+    mobj env, env2, L1, L2, L3, ins, reloc, fvs;
 
     // optimization passes
     L1 = jit_opt_L0(expr);
@@ -160,8 +160,10 @@ mobj compile_expr(mobj expr) {
     L3 = jit_opt_L2(L2);
 
     // compilation
-    env = make_global_cenv();
-    env = make_cenv(env);
+    env = make_cenv(make_global_cenv());
+    env2 = make_scope_cenv(env);
+    fvs = free_vars(L3);
+
     ins = compile_expr2(L3, env, 1);
     reloc = resolve_refs(env, ins);
     return write_code(ins, reloc, Mfixnum(0));

@@ -131,7 +131,8 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
 }
 
 static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
-    mobj ins, clauses, label, reloc, idx, arity, code;
+    mobj ins, clauses, label, reloc, arity, code;
+    size_t idx;
 
     ins = minim_null;
     arity = minim_null;

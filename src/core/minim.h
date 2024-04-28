@@ -578,6 +578,7 @@ mobj set_cdr_proc(mobj p, mobj x);
 
 int minim_listp(mobj x);
 mobj make_list(size_t len, mobj init);
+mobj copy_list(mobj xs);
 long list_length(mobj xs);
 void list_set_tail(mobj xs, mobj ys);
 
@@ -587,6 +588,7 @@ mobj length_proc(mobj xs);
 mobj list_reverse(mobj xs);
 mobj list_append2(mobj xs, mobj ys);
 
+mobj memq(mobj xs, mobj k);
 mobj assq_ref(mobj xs, mobj k);
 mobj assq_set(mobj xs, mobj k, mobj v);
 
@@ -887,6 +889,12 @@ mobj cenv_make_label(mobj cenv);
 void cenv_id_add(mobj cenv, mobj id);
 mobj cenv_id_ref(mobj cenv, mobj id);
 mobj cenv_depth(mobj cenv);
+
+mobj make_scope_cenv(mobj proc_cenv);
+mobj scope_cenv_extend(mobj cenv);
+mobj scope_cenv_proc_env(mobj cenv);
+
+mobj free_vars(mobj expr);
 
 mobj write_code(mobj ins, mobj reloc, mobj arity);
 mobj resolve_refs(mobj cenv, mobj ins);

@@ -26,6 +26,23 @@ mobj make_list(size_t len, mobj init) {
     return lst;
 }
 
+// Constructrs a copy of a list
+mobj copy_list(mobj xs) {
+    mobj hd, tl;
+
+    if (minim_nullp(xs)) {
+        return xs;
+    } else {
+        hd = tl = Mcons(minim_car(xs), minim_null);
+        for (xs = minim_cdr(xs); !minim_nullp(xs); xs = minim_cdr(xs)) {
+            minim_cdr(tl) = Mcons(minim_car(xs), minim_null);
+            tl = minim_cdr(tl);
+        }
+
+        return hd;
+    }
+}
+
 // Returns length of a (possibly improper) llist.
 long list_length(mobj xs) {
     long len = 0;
@@ -250,6 +267,15 @@ mobj list_append2(mobj xs, mobj ys) {
         minim_cdr(tl) = ys;
         return hd;
     }
+}
+
+mobj memq(mobj xs, mobj k) {
+    for (; !minim_nullp(xs); xs = minim_cdr(xs)) {
+        if (minim_eqp(minim_car(xs), k))
+            return xs;
+    }
+
+    return minim_false;
 }
 
 mobj assq_ref(mobj xs, mobj k) {

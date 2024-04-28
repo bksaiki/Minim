@@ -3,9 +3,8 @@
 #include "../minim.h"
 
 //
-//  Compiler environments
-//
-//  A global compile-time environment represents a single compilation instance;
+//  Global compiler environment
+//  Represents a single compilation that may span multiple instances.
 //
 
 #define global_cenv_length          1
@@ -38,20 +37,22 @@ mobj global_cenv_ref_template(mobj cenv, size_t i) {
     return minim_car(tmpls);
 }
 
-#define cenv_length         5
+//
+//  Procedure-level compiler enviornment
+//  Represents a single procedure
+//
+
+#define cenv_length         4
 #define cenv_global(c)      (minim_vector_ref(c, 0))
 #define cenv_prev(c)        (minim_vector_ref(c, 1))
 #define cenv_labels(c)      (minim_vector_ref(c, 2))
-#define cenv_tmpls(c)       (minim_vector_ref(c, 3))
-#define cenv_bound(c)       (minim_vector_ref(c, 4))
-#define cenv_num_tmpls(c)   list_length(minim_unbox(cenv_tmpls(c)))
+#define cenv_bound(c)       (minim_vector_ref(c, 3))
 
 mobj make_cenv(mobj global_cenv) {
     mobj cenv = Mvector(cenv_length, NULL);
     cenv_global(cenv) = global_cenv;
     cenv_prev(cenv) = minim_null;
     cenv_labels(cenv) = Mbox(minim_null);
-    cenv_tmpls(cenv) = Mbox(minim_null);
     cenv_bound(cenv) = minim_null;
     return cenv;
 }
@@ -61,7 +62,6 @@ mobj extend_cenv(mobj cenv) {
     cenv_global(cenv2) = cenv_global(cenv);
     cenv_prev(cenv2) = cenv;
     cenv_labels(cenv2) = cenv_labels(cenv);
-    cenv_tmpls(cenv2) = cenv_tmpls(cenv);
     cenv_bound(cenv2) = minim_null;
     return cenv2;
 }
@@ -128,6 +128,33 @@ mobj cenv_depth(mobj cenv) {
     for (cenv = cenv_prev(cenv); !minim_nullp(cenv); cenv = cenv_prev(cenv))
         depth++;
     return Mfixnum(depth);
+}
+
+//
+//  Scope-level environment
+//  Represents the current compile-time scope
+//
+
+#define scope_cenv_length       2
+#define scope_cenv_proc(c)      (minim_vector_ref(c, 0))
+#define scope_cenv_bound(c)     (minim_vector_ref(c, 1))
+
+mobj make_scope_cenv(mobj proc_cenv) {
+    mobj cenv = Mvector(scope_cenv_length, NULL);
+    scope_cenv_proc(cenv) = proc_cenv;
+    scope_cenv_bound(cenv) = minim_null;
+    return cenv;
+}
+
+mobj scope_cenv_extend(mobj cenv) {
+    mobj cenv2 = Mvector(scope_cenv_length, NULL);
+    scope_cenv_proc(cenv2) = scope_cenv_proc(cenv);
+    scope_cenv_bound(cenv2) = copy_list(scope_cenv_bound(cenv));
+    return cenv2;
+}
+
+mobj scope_cenv_proc_env(mobj cenv) {
+    return scope_cenv_proc(cenv);
 }
 
 //
