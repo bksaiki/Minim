@@ -7,7 +7,7 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
     mobj env, label, ins, reloc, code, cl;
 
     // prepare compiler
-    env = make_cenv();
+    env = make_cenv(make_global_cenv());
     label = cenv_make_label(env);
     
     // hand written procedure
@@ -49,7 +49,7 @@ mobj compile_apply(mobj name) {
     mobj env, label, ins, reloc, code, cl;
 
     // prepare compiler
-    env = make_cenv();
+    env = make_cenv(make_global_cenv());
     label = cenv_make_label(env);
     
     // hand written procedure
@@ -77,7 +77,7 @@ mobj compile_values(mobj name) {
     mobj env, ins, reloc, code, cl;
 
     // prepare compiler
-    env = make_cenv();
+    env = make_cenv(make_global_cenv());
     
     // hand written procedure
     ins = Mlist2(
@@ -100,7 +100,7 @@ mobj compile_eval(mobj name) {
     mobj env, Larity2, Lpop_tenv, Larity_err, ins, reloc, code, cl;
 
     // prepare compiler
-    env = make_cenv();
+    env = make_cenv(make_global_cenv());
     Larity2 = cenv_make_label(env);
     Larity_err = cenv_make_label(env);
     Lpop_tenv = cenv_make_label(env);

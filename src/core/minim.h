@@ -894,7 +894,7 @@ mobj make_scope_cenv(mobj proc_cenv);
 mobj scope_cenv_extend(mobj cenv);
 mobj scope_cenv_proc_env(mobj cenv);
 
-mobj free_vars(mobj expr);
+mobj free_vars(mobj expr, mobj table);
 
 mobj write_code(mobj ins, mobj reloc, mobj arity);
 mobj resolve_refs(mobj cenv, mobj ins);

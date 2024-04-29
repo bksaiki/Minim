@@ -152,20 +152,28 @@ mobj write_code(mobj ins, mobj reloc, mobj arity) {
 //
 
 mobj compile_expr(mobj expr) {
-    mobj env, env2, L1, L2, L3, ins, reloc, fvs;
+    mobj global_env, proc_env, scope_env;
+    mobj fv_table;
+    mobj L1, L2, L3;
+    mobj ins, reloc;
 
     // optimization passes
     L1 = jit_opt_L0(expr);
     L2 = jit_opt_L1(L1);
     L3 = jit_opt_L2(L2);
 
-    // compilation
-    env = make_cenv(make_global_cenv());
-    env2 = make_scope_cenv(env);
-    fvs = free_vars(L3);
+    // prepare initial compiler environments
+    global_env = make_global_cenv();
+    proc_env = make_cenv(global_env);
+    scope_env = make_scope_cenv(proc_env);
 
-    ins = compile_expr2(L3, env, 1);
-    reloc = resolve_refs(env, ins);
+    // compute free variables
+    fv_table = Mbox(minim_null);
+    free_vars(L3, fv_table);
+
+    // compile
+    ins = compile_expr2(L3, proc_env, 1);
+    reloc = resolve_refs(proc_env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }
 

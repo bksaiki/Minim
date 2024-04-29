@@ -5,11 +5,11 @@
 static mobj formals_to_ids(mobj formals) {
     mobj ids = minim_null;
     for (; minim_consp(formals); formals = minim_cdr(formals)) {
-        ids = Mcons(ids, minim_null);
+        ids = Mcons(minim_car(formals), ids);
     }
 
     if (!minim_nullp(formals))
-        ids = Mcons(formals, minim_null);
+        ids = Mcons(formals, ids);
 
     return list_reverse(ids);
 }
@@ -18,7 +18,7 @@ static mobj merge_free_vars(mobj xs1, mobj xs2) {
     mobj fvs = xs2;
 
     for (; !minim_nullp(xs1); xs1 = minim_cdr(xs1)) {
-        if (!memq(xs2, minim_car(xs1)))
+        if (minim_falsep(memq(xs2, minim_car(xs1))))
             fvs = Mcons(minim_car(xs1), fvs);
     }
 
@@ -37,61 +37,68 @@ static mobj remove_free_vars(mobj ks, mobj fvs) {
     return fvs2;
 }
 
-static mobj define_values_free_vars(mobj e) {
+static mobj define_values_free_vars(mobj e, mobj table) {
     return remove_free_vars(
         minim_cadr(e),
-        free_vars(minim_car(minim_cddr(e)))
+        free_vars(minim_car(minim_cddr(e)), table)
     );
 }
 
-static mobj lambda_free_vars(mobj e) {
-    mobj ids, seq;
+static mobj lambda_free_vars(mobj e, mobj table) {
+    mobj fvs, ids, seq;
     
     ids = formals_to_ids(minim_cadr(e));
     seq = Mcons(begin_symbol, minim_cddr(e));
-    return remove_free_vars(ids, free_vars(seq));
+    fvs = remove_free_vars(ids, free_vars(seq, table));
+
+    if (!minim_nullp(fvs))
+        minim_unbox(table) = Mcons(Mcons(e, fvs), minim_unbox(table));
+    return fvs;
 }
 
-static mobj case_lambda_free_vars(mobj e) {
-    mobj fvs, ids, seq;
+static mobj case_lambda_free_vars(mobj e, mobj table) {
+    mobj fvs, fvs2, ids, seq;
     
     fvs = minim_null;
     for (e = minim_cdr(e); !minim_nullp(e); e = minim_cdr(e)) {
         ids = formals_to_ids(minim_caar(e));
         seq = Mcons(begin_symbol, minim_cdar(e));
-        fvs = merge_free_vars(remove_free_vars(ids, free_vars(seq)), fvs);
+        fvs2 = remove_free_vars(ids, free_vars(seq, table));
+        fvs = merge_free_vars(fvs2, fvs);
     }
 
+    if (!minim_nullp(fvs))
+        minim_unbox(table) = Mcons(Mcons(e, fvs), minim_unbox(table));
     return fvs;
 }
 
-static mobj mvlet_free_vars(mobj e) {
+static mobj mvlet_free_vars(mobj e, mobj table) {
     return merge_free_vars(
         remove_free_vars(
             minim_car(minim_cddr(e)),
-            free_vars(minim_cadr(minim_cddr(e)))
+            free_vars(minim_cadr(minim_cddr(e)), table)
         ),
-        free_vars(minim_cadr(e))
+        free_vars(minim_cadr(e), table)
     );
 }
 
-static mobj begin_free_vars(mobj e) {
+static mobj begin_free_vars(mobj e, mobj table) {
     mobj fvs;
     
     fvs = minim_null;
     for (e = minim_cdr(e); !minim_nullp(e); e = minim_cdr(e))
-        fvs = merge_free_vars(free_vars(minim_car(e)), fvs);
+        fvs = merge_free_vars(free_vars(minim_car(e), table), fvs);
     return fvs;
 }
 
-static mobj app_free_vars(mobj e) {
-    mobj fvs = free_vars(minim_car(e));
+static mobj app_free_vars(mobj e, mobj table) {
+    mobj fvs = free_vars(minim_car(e), table);
     for (e = minim_cdr(e); !minim_nullp(e); e = minim_cdr(e))
-        fvs = merge_free_vars(free_vars(minim_car(e)), fvs);
+        fvs = merge_free_vars(free_vars(minim_car(e), table), fvs);
     return fvs;
 }
 
-mobj free_vars(mobj expr) {
+mobj free_vars(mobj expr, mobj table) {
     if (minim_consp(expr)) {
         // special form or application
         mobj head = minim_car(expr);
@@ -99,31 +106,31 @@ mobj free_vars(mobj expr) {
             // special forms
             if (head == define_values_symbol) {
                 // define-values form
-                return define_values_free_vars(expr);
+                return define_values_free_vars(expr, table);
             } else if (head == setb_symbol) {
                 // set! form
-                return begin_free_vars(expr);
+                return begin_free_vars(expr, table);
             } else if (head == lambda_symbol) {
                 // lambda form
-                return lambda_free_vars(expr);
+                return lambda_free_vars(expr, table);
             } else if (head == case_lambda_symbol) {
                 // case-lambda form
-                return case_lambda_free_vars(expr);
+                return case_lambda_free_vars(expr, table);
             } else if (head == mvcall_symbol) {
                 // mv-call form
-                return begin_free_vars(expr);
+                return begin_free_vars(expr, table);
             } else if (head == mvlet_symbol) {
                 // mv-let form
-                return mvlet_free_vars(expr);
+                return mvlet_free_vars(expr, table);
             } else if (head == mvvalues_symbol) {
                 // mv-values form
-                return begin_free_vars(expr);
+                return begin_free_vars(expr, table);
             } else if (head == begin_symbol) {
                 // begin form
-                return begin_free_vars(expr);
+                return begin_free_vars(expr, table);
             } else if (head == if_symbol) {
                 // if form
-                return begin_free_vars(expr);
+                return begin_free_vars(expr, table);
             } else if (head == quote_symbol) {
                 // quote form
                 return minim_null;
@@ -137,7 +144,7 @@ mobj free_vars(mobj expr) {
         }
 
         // application
-        return app_free_vars(expr);
+        return app_free_vars(expr, table);
     } else if (minim_symbolp(expr)) {
         // symbol
         return Mlist1(expr);
