@@ -93,6 +93,7 @@ extern mobj tl_bind_values_symbol;
 extern mobj tl_lookup_symbol;
 extern mobj make_closure_symbol;
 extern mobj make_env_symbol;
+extern mobj mov_symbol;
 extern mobj pop_symbol;
 extern mobj pop_env_symbol;
 extern mobj push_symbol;
@@ -262,12 +263,16 @@ extern mobj minim_unbound;
 // |    env     | [8, 16)
 // |    code    | [16, 24)
 // |    name    | [24, 32)
+// |    #free   | [32, 40)
+// |    free    | [40, ...)
 // +------------+
-#define minim_closure_size          (4 * ptr_size)
+#define minim_closure_size(n)       ((5 + (n)) * ptr_size)
 #define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
 #define minim_closure_env(o)        (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_closure_code(o)       (*((mobj*) ptr_add(o, 2 * ptr_size)))
 #define minim_closure_name(o)       (*((mobj*) ptr_add(o, 3 * ptr_size)))
+#define minim_closure_count(o)      (*((size_t*) ptr_add(o, 4 * ptr_size)))
+#define minim_closure_ref(o, i)     (*((mobj*) ptr_add(o, (5 + (i)) * ptr_size)))
 
 // Port
 // +------------+
@@ -468,7 +473,7 @@ mobj Mstring2(long len, mchar c);
 mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(long len, mobj init);
 mobj Mbox(mobj x);
-mobj Mclosure(mobj env, mobj code);
+mobj Mclosure(mobj env, mobj code, size_t free_count);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
 mobj Msyntax(mobj e, mobj loc);

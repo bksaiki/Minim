@@ -49,6 +49,7 @@ mobj tl_bind_values_symbol;
 mobj tl_lookup_symbol;
 mobj make_closure_symbol;
 mobj make_env_symbol;
+mobj mov_symbol;
 mobj pop_symbol;
 mobj pop_env_symbol;
 mobj push_symbol;

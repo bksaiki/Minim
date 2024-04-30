@@ -82,7 +82,7 @@ static mobj compile_define_values(mobj expr, mobj env, int tailp) {
 
     ids = minim_cadr(expr);
     ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
-    list_set_tail(ins, Mlist1(Mlist2(tl_bind_values_symbol, ids)));
+    list_set_tail(ins, Mlist1(Mlist3(tl_bind_values_symbol, Mfixnum(list_length(ids)), ids)));
     return with_tail_ret(ins, tailp);
 }
 
@@ -185,7 +185,9 @@ static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int 
     idx = global_cenv_add_template(scope_cenv_global_env(env), code);
 
     // instruction to construct closure
-    ins = Mlist1(Mlist2(make_closure_symbol, Mfixnum(idx)));
+    ins = Mlist1(Mlist3(make_closure_symbol, Mfixnum(idx), Mfixnum(list_length(fvs))));
+
+    
     return with_tail_ret(ins, tailp);
 }
 
@@ -228,7 +230,7 @@ static mobj compile_mvcall(mobj expr, mobj env, int tailp) {
 
 static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
     mobj ins, ids, it;
-    size_t env_size, bidx;
+    size_t bidx, valc;
 
     // evaluate producer
     ins = compile_expr2(minim_cadr(expr), env, 0);
@@ -243,8 +245,8 @@ static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
         scope_cenv_bind(env, minim_car(it));
 
     // bind result in new environment
-    env_size = list_length(ids);
-    list_set_tail(ins, Mlist1(Mlist3(bind_values_symbol, Mfixnum(bidx), ids)));
+    valc = list_length(ids);
+    list_set_tail(ins, Mlist1(Mlist4(bind_values_symbol, Mfixnum(bidx), Mfixnum(valc), ids)));
 
     // evaluate body
     list_set_tail(ins, compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp));

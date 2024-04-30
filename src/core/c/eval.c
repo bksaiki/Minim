@@ -265,32 +265,70 @@ static mobj force_single_value(mobj tc, mobj x) {
     return x;
 }
 
-static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
-    size_t i, count;
+// static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
+//     size_t i, count;
 
-    count = list_length(ids);
-    if (minim_valuesp(res)) {
+//     count = list_length(ids);
+//     if (minim_valuesp(res)) {
+//         // multi-valued result
+//         if (tc_vc(tc) != count)
+//             result_arity_exn(NULL, count, tc_vc(tc));
+
+//         for (i = 0; i < count; i++) {
+//             SET_NAME_IF_CLOSURE(minim_car(ids), tc_values(tc)[i]);
+//             env_define_var_no_check(env, minim_car(ids), tc_values(tc)[i]);
+//             ids = minim_cdr(ids);
+//         }
+//     } else {
+//         // single-valued result
+//         if (count != 1)
+//             result_arity_exn(NULL, count, 1);
+
+//         SET_NAME_IF_CLOSURE(minim_car(ids), res);
+//         env_define_var_no_check(env, minim_car(ids), res);
+//     }
+// }
+
+static void env_bind_values(mobj tc, mobj idx, mobj valc, mobj ids, mobj val) {
+    mobj bindings;
+    size_t count, bidx;
+    
+    count = minim_fixnum(valc);
+    if (minim_valuesp(val)) {
         // multi-valued result
-        if (tc_vc(tc) != count)
+        if (tc_vc(tc) != count) {
             result_arity_exn(NULL, count, tc_vc(tc));
+        }
 
-        for (i = 0; i < count; i++) {
-            SET_NAME_IF_CLOSURE(minim_car(ids), tc_values(tc)[i]);
-            env_define_var_no_check(env, minim_car(ids), tc_values(tc)[i]);
+        bindings = minim_env_bindings(tc_env(tc));
+        bidx = minim_fixnum(idx);
+        for (size_t i = 0; i < count; i++) {
+            mobj val = tc_values(tc)[i];
+            SET_NAME_IF_CLOSURE(minim_car(ids), val);
+            minim_vector_ref(bindings, bidx) = Mcons(minim_car(ids), val);
             ids = minim_cdr(ids);
+            bidx += 1;
         }
     } else {
         // single-valued result
-        if (count != 1)
+        if (count != 1) {
             result_arity_exn(NULL, count, 1);
+        }
 
-        SET_NAME_IF_CLOSURE(minim_car(ids), res);
-        env_define_var_no_check(env, minim_car(ids), res);
+        bindings = minim_env_bindings(tc_env(tc));
+        SET_NAME_IF_CLOSURE(minim_car(ids), val);
+        bidx = minim_fixnum(idx);
+        minim_vector_ref(bindings, bidx) = Mcons(minim_car(ids), val);
     }
 }
 
-static mobj env_lookup(mobj env, mobj idx) {
-    mobj cell = vector_ref(minim_env_bindings(env), idx);
+static void env_bind(mobj tc, mobj idx, mobj id, mobj val) {
+    mobj bindings = minim_env_bindings(tc_env(tc));
+    minim_vector_ref(bindings, minim_fixnum(idx)) = Mcons(id, val);
+}
+
+static mobj env_lookup(mobj tc, mobj idx) {
+    mobj cell = vector_ref(minim_env_bindings(tc_env(tc)), idx);
     if (minim_cdr(cell) == minim_unbound) {
         minim_error1(
             NULL,
@@ -302,10 +340,35 @@ static mobj env_lookup(mobj env, mobj idx) {
     return minim_cdr(cell);
 }
 
-static mobj env_tl_lookup(mobj env, mobj id) {
-    mobj cell, val;
+static void tl_env_bind_values(mobj tc, mobj valc, mobj ids, mobj val) {
+    size_t count = minim_fixnum(valc);
+    if (minim_valuesp(val)) {
+        // multi-valued result
+        if (tc_vc(tc) != count) {
+            result_arity_exn(NULL, count, tc_vc(tc));
+        }
 
-    for (; !minim_top_envp(env); env = minim_env_prev(env));
+        for (size_t i = 0; i < count; i++) {
+            mobj val = tc_values(tc)[i];
+            SET_NAME_IF_CLOSURE(minim_car(ids), val);
+            top_env_insert(tc_tenv(tc), minim_car(ids), val);
+            ids = minim_cdr(ids);
+        }
+    } else {
+        // single-valued result
+        if (count != 1) {
+            result_arity_exn(NULL, count, 1);
+        }
+
+        SET_NAME_IF_CLOSURE(minim_car(ids), val);
+        top_env_insert(tc_tenv(tc), minim_car(ids), val);
+    }
+}
+
+static mobj env_tl_lookup(mobj tc, mobj id) {
+    mobj env, cell, val;
+
+    for (env = tc_env(tc); !minim_top_envp(env); env = minim_env_prev(env));
 
     cell = top_env_find(env, id);
     if (!minim_falsep(cell)) {
@@ -355,10 +418,10 @@ loop:
         res = minim_cadr(ins);
     } else if (ty == lookup_symbol) {
         // lookup
-        res = env_lookup(tc_env(tc), minim_cadr(ins));
+        res = env_lookup(tc, minim_cadr(ins));
     } else if (ty == tl_lookup_symbol) {
         // top-level lookup
-        res = env_tl_lookup(tc_env(tc), minim_cadr(ins));
+        res = env_tl_lookup(tc, minim_cadr(ins));
     } else if (ty == set_proc_symbol) {
         // set-proc
         tc_cp(tc) = force_single_value(tc, res);
@@ -385,17 +448,15 @@ application:
         res = do_ccall(tc, minim_cadr(ins));
     } else if (ty == bind_symbol) {
         // bind
-        minim_error1("eval", "unimplemented", ins);
-        env_define_var_no_check(tc_env(tc), minim_cadr(ins), res);
+        env_bind(tc, minim_cadr(ins), minim_car(minim_cddr(ins)), res);
         res = minim_void;
     } else if (ty == bind_values_symbol) {
         // bind-values
-        minim_error1("eval", "unimplemented", ins);
-        bind_values(tc, tc_env(tc), minim_cadr(ins), res);
+        env_bind_values(tc, minim_cadr(ins), minim_car(minim_cddr(ins)), minim_cadr(minim_cddr(ins)), res);
         res = minim_void;
     } else if (ty == tl_bind_values_symbol) {
         // tl-bind-values
-        bind_values(tc, tc_tenv(tc), minim_cadr(ins), res);
+        tl_env_bind_values(tc, minim_cadr(ins), minim_car(minim_cddr(ins)), res);
         res = minim_void;
     } else if (ty == rebind_symbol) {
         // rebind
@@ -437,7 +498,7 @@ application:
         arity_mismatch_exn(tc_cp(tc), tc_ac(tc));
     } else if (ty == do_eval_symbol) {
         // do-eval
-        res = Mclosure(tc_tenv(tc), compile_expr(tc_frame_ref(tc, 0)));
+        res = Mclosure(tc_tenv(tc), compile_expr(tc_frame_ref(tc, 0)), 0);
     } else if (ty == do_raise_symbol) {
         // do-raise
         goto do_raise;
@@ -484,7 +545,7 @@ application:
         }
     } else if (ty == make_closure_symbol) {
         // make-closure
-        res = Mclosure(tc_env(tc), minim_cadr(ins));
+        res = Mclosure(tc_env(tc), minim_cadr(ins), minim_fixnum(minim_car(minim_cddr(ins))));
     } else if (ty == check_stack_symbol) {
         // check stack
         maybe_grow_stack(tc, minim_fixnum(minim_cadr(ins)));

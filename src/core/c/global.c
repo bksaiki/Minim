@@ -60,6 +60,7 @@ void init_minim() {
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
     make_unbound_symbol = intern("#%make-unbound");
+    mov_symbol = intern("#%mov");
     pop_symbol = intern("#%pop");
     pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");

@@ -25,7 +25,7 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
     code = write_code(ins, reloc, arity);
 
     // return a closure
-    cl = Mclosure(base_env, code);
+    cl = Mclosure(base_env, code, 0);
     minim_closure_name(cl) = name;
     return cl;
 }
@@ -67,7 +67,7 @@ mobj compile_apply(mobj name) {
     code = write_code(ins, reloc, Mcons(Mfixnum(2), minim_false));
 
     // return a closure
-    cl = Mclosure(base_env, code);
+    cl = Mclosure(base_env, code, 0);
     minim_closure_name(cl) = name;
     return cl;
 }
@@ -90,7 +90,7 @@ mobj compile_values(mobj name) {
     code = write_code(ins, reloc, Mcons(Mfixnum(0), minim_false));
 
     // return a closure
-    cl = Mclosure(base_env, code);
+    cl = Mclosure(base_env, code, 0);
     minim_closure_name(cl) = name;
     return cl;
 }
@@ -160,7 +160,7 @@ mobj compile_eval(mobj name) {
     code = write_code(ins, reloc, Mlist2(Mfixnum(1), Mfixnum(2)));
 
     // return a closure
-    cl = Mclosure(base_env, code);
+    cl = Mclosure(base_env, code, 0);
     minim_closure_name(cl) = name;
     return cl;
 }
