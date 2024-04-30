@@ -170,9 +170,10 @@ mobj compile_expr(mobj expr) {
     // compute free variables
     fv_table = Mbox(minim_null);
     free_vars(L3, fv_table);
+    global_cenv_set_fvs(global_env, minim_unbox(fv_table));
 
     // compile
-    ins = compile_expr2(L3, proc_env, 1);
+    ins = compile_expr2(L3, scope_env, 1);
     reloc = resolve_refs(proc_env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }

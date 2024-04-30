@@ -130,7 +130,7 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
     return ins;
 }
 
-static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
+static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
     mobj ins, clauses, label, reloc, arity, code;
     size_t idx;
 
@@ -149,10 +149,10 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
         branch = restp ? branchlt_symbol : branchne_symbol;
         if (label) {
             list_set_tail(ins, Mlist1(label));
-            label = cenv_make_label(env);
+            label = scope_cenv_make_label(env);
             list_set_tail(ins, Mlist1(Mlist3(branch, Mfixnum(req_arity), label)));
         } else {
-            label = cenv_make_label(env);
+            label = scope_cenv_make_label(env);
             ins = Mlist2(Mlist1(get_ac_symbol), Mlist3(branch, Mfixnum(req_arity), label));
         }
 
@@ -277,17 +277,16 @@ static mobj compile_begin(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_if(mobj expr, mobj env, int tailp) {
-    mobj ins, cond_ins, ift_ins, iff_ins;
+    mobj ins, ift_ins, iff_ins, liff, lend;
 
     // compile the parts
-    cond_ins = compile_expr2(minim_cadr(expr), env, 0);
+    ins = compile_expr2(minim_cadr(expr), env, 0);
     ift_ins = compile_expr2(minim_car(minim_cddr(expr)), env, tailp);
     iff_ins = compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp);
 
-    ins = cond_ins;
     if (tailp) {
         // tail position: returns will be handled by branches
-        mobj liff = cenv_make_label(env);
+        liff = scope_cenv_make_label(env);
 
         // compose the instructions together
         list_set_tail(ins, Mlist1(Mlist2(branchf_symbol, liff)));
@@ -296,8 +295,8 @@ static mobj compile_if(mobj expr, mobj env, int tailp) {
         list_set_tail(ins, iff_ins);
     } else {
         // non-tail position: subsequent instruction so need to jump
-        mobj liff = cenv_make_label(env);
-        mobj lend = cenv_make_label(env);
+        liff = scope_cenv_make_label(env);
+        lend = scope_cenv_make_label(env);
 
         // compose the instructions together
         list_set_tail(ins, Mlist1(Mlist2(branchf_symbol, liff)));
@@ -319,7 +318,7 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
     if (tailp) {
         ins = minim_null;
     } else {
-        label = cenv_make_label(env);
+        label = scope_cenv_make_label(env);
         ins = Mlist1(Mlist2(save_cc_symbol, label));
     }
 
@@ -376,24 +375,32 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
             // special forms
             if (head == define_values_symbol) {
                 // define-values form
+                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_define_values(expr, env, tailp);
             } else if (head == setb_symbol) {
                 // set! form
+                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_setb(expr, env, tailp);
             } else if (head == lambda_symbol) {
                 // lambda form
-                return compile_case_lambda(Mlist2(case_lambda_symbol, minim_cdr(expr)), env, tailp);
+                mobj fvs = global_cenv_get_fvs(cenv_global_env(scope_cenv_proc_env(env)), expr);
+                expr = Mlist2(case_lambda_symbol, minim_cdr(expr));
+                return compile_case_lambda(expr, env, tailp, fvs);
             } else if (head == case_lambda_symbol) {
                 // case-lambda form
-                return compile_case_lambda(expr, env, tailp);
+                mobj fvs = global_cenv_get_fvs(cenv_global_env(scope_cenv_proc_env(env)), expr);
+                return compile_case_lambda(expr, env, tailp, fvs);
             } else if (head == mvcall_symbol) {
                 // mv-call form
+                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_mvcall(expr, env, tailp);
             } else if (head == mvlet_symbol) {
                 // mv-let form
+                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_mvlet(expr, env, tailp);
             } else if (head == mvvalues_symbol) {
                 // mv-values form
+                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_mvvalues(expr, env, tailp);
             } else if (head == begin_symbol) {
                 // begin form
@@ -417,6 +424,7 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
         return compile_app(expr, env, tailp);
     } else if (minim_symbolp(expr)) {
         // symbol
+        minim_error1("compile_expr2", "unimplemented", expr);
         return compile_lookup(expr, env, tailp);
     } else if (minim_boolp(expr)
         || minim_fixnump(expr)

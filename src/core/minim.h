@@ -881,18 +881,17 @@ mobj fasl_write_proc(mobj x, mobj port);
 mobj make_global_cenv();
 size_t global_cenv_add_template(mobj cenv, mobj jit);
 mobj global_cenv_ref_template(mobj cenv, size_t i);
+void global_cenv_set_fvs(mobj cenv, mobj fvs);
+mobj global_cenv_get_fvs(mobj cenv, mobj e);
 
 mobj make_cenv(mobj global_env);
-mobj extend_cenv(mobj cenv);
 mobj cenv_global_env(mobj cenv);
 mobj cenv_make_label(mobj cenv);
-void cenv_id_add(mobj cenv, mobj id);
-mobj cenv_id_ref(mobj cenv, mobj id);
-mobj cenv_depth(mobj cenv);
 
 mobj make_scope_cenv(mobj proc_cenv);
 mobj scope_cenv_extend(mobj cenv);
 mobj scope_cenv_proc_env(mobj cenv);
+mobj scope_cenv_make_label(mobj cenv);
 
 mobj free_vars(mobj expr, mobj table);
 
