@@ -100,21 +100,21 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
     ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
 
     // bind arguments
-    env = extend_cenv(env);
     args = minim_car(clause);
+    env = scope_cenv_extend(env);
     for (i = 0; i < arity; i++) {
+        scope_cenv_bind(env, minim_car(args));
         list_set_tail(ins, Mlist2(
             Mlist2(get_arg_symbol, Mfixnum(i)),
             Mlist2(bind_symbol, minim_car(args))
         ));
 
-        cenv_id_add(env, minim_car(args));
         args = minim_cdr(args);
     }
 
     // bind rest argument
     if (restp) {
-        cenv_id_add(env, args);
+        scope_cenv_bind(env, args);
         list_set_tail(ins, Mlist2(
             Mlist2(do_rest_symbol, Mfixnum(arity)),
             Mlist2(bind_symbol, args)
@@ -132,13 +132,24 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
 
 static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
     mobj ins, clauses, label, reloc, arity, code;
+    mobj proc_env, scope_env;
     size_t idx;
 
     ins = minim_null;
     arity = minim_null;
     label = NULL;
 
-    // create labels for each clause
+    // create new procedure compiler environment
+    proc_env = make_cenv(scope_cenv_global_env(env));
+    cenv_set_fvs(proc_env, fvs);
+
+    // create new scope compiler environment
+    // contains free variables but no arguments
+    scope_env = make_scope_cenv(proc_env);
+    for (mobj it = fvs; !minim_nullp(it); it = minim_cdr(it))
+        scope_cenv_bind(scope_env, minim_car(it));
+
+    // compile for each clause
     for (clauses = minim_cdr(expr); !minim_nullp(clauses); clauses = minim_cdr(clauses)) {
         mobj branch, cl_ins;
         size_t req_arity;
@@ -149,15 +160,15 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
         branch = restp ? branchlt_symbol : branchne_symbol;
         if (label) {
             list_set_tail(ins, Mlist1(label));
-            label = scope_cenv_make_label(env);
+            label = cenv_make_label(proc_env);
             list_set_tail(ins, Mlist1(Mlist3(branch, Mfixnum(req_arity), label)));
         } else {
-            label = scope_cenv_make_label(env);
+            label = cenv_make_label(proc_env);
             ins = Mlist2(Mlist1(get_ac_symbol), Mlist3(branch, Mfixnum(req_arity), label));
         }
 
         arity = update_arity(arity, req_arity, restp);
-        cl_ins = compile_lambda_clause(minim_car(clauses), env, req_arity, restp);
+        cl_ins = compile_lambda_clause(minim_car(clauses), scope_env, req_arity, restp);
         list_set_tail(ins, cl_ins);
     }
 
@@ -169,7 +180,7 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
 
     // register JIT block
     code = write_code(ins, reloc, arity);
-    idx = global_cenv_add_template(cenv_global_env(env), code);
+    idx = global_cenv_add_template(scope_cenv_global_env(env), code);
 
     // instruction
     ins = Mlist1(Mlist2(make_closure_symbol, Mfixnum(idx)));
@@ -383,12 +394,12 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
                 return compile_setb(expr, env, tailp);
             } else if (head == lambda_symbol) {
                 // lambda form
-                mobj fvs = global_cenv_get_fvs(cenv_global_env(scope_cenv_proc_env(env)), expr);
+                mobj fvs = global_cenv_get_fvs(scope_cenv_global_env(env), expr);
                 expr = Mlist2(case_lambda_symbol, minim_cdr(expr));
                 return compile_case_lambda(expr, env, tailp, fvs);
             } else if (head == case_lambda_symbol) {
                 // case-lambda form
-                mobj fvs = global_cenv_get_fvs(cenv_global_env(scope_cenv_proc_env(env)), expr);
+                mobj fvs = global_cenv_get_fvs(scope_cenv_global_env(env), expr);
                 return compile_case_lambda(expr, env, tailp, fvs);
             } else if (head == mvcall_symbol) {
                 // mv-call form

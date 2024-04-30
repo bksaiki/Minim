@@ -7,9 +7,10 @@
 //  Represents a single compilation that may span multiple instances.
 //
 
-#define global_cenv_length          2
+#define global_cenv_length          3
 #define global_cenv_tmpls(c)        (minim_vector_ref(c, 0))
 #define global_cenv_fvs(c)          (minim_vector_ref(c, 1))
+#define global_cenv_bound(c)        (minim_vector_ref(c, 2))
 #define global_cenv_num_tmpls(c)    (list_length(global_cenv_tmpls(c)))
 
 mobj make_global_cenv() {
@@ -46,7 +47,15 @@ void global_cenv_set_fvs(mobj cenv, mobj fvs) {
 mobj global_cenv_get_fvs(mobj cenv, mobj e) {
     mobj cell = assq_ref(global_cenv_fvs(cenv), e);
     return minim_falsep(cell) ? minim_null : minim_cdr(cell);
+}
 
+void global_cenv_set_bound(mobj cenv, mobj bound) {
+    global_cenv_bound(cenv) = bound;
+}
+
+mobj global_cenv_get_bound(mobj cenv, mobj e) {
+    mobj cell = assq_ref(global_cenv_bound(cenv), e);
+    return minim_falsep(cell) ? minim_null : minim_cdr(cell);
 }
 
 //
@@ -90,6 +99,10 @@ mobj cenv_make_label(mobj cenv) {
     return label;
 }
 
+void cenv_set_fvs(mobj cenv, mobj fvs) {
+    cenv_fvs(cenv) = fvs;
+}
+
 //
 //  Scope-level environment
 //  Represents the current compile-time scope
@@ -117,8 +130,22 @@ mobj scope_cenv_proc_env(mobj cenv) {
     return scope_cenv_proc(cenv);
 }
 
+mobj scope_cenv_global_env(mobj cenv) {
+    return cenv_global(scope_cenv_proc(cenv));
+}
+
 mobj scope_cenv_make_label(mobj cenv) {
     return cenv_make_label(scope_cenv_proc(cenv));
+}
+
+size_t scope_cenv_bind(mobj cenv, mobj id) {
+    size_t idx = list_length(scope_cenv_bound(cenv));
+    scope_cenv_bound(cenv) = Mcons(id, scope_cenv_bound(cenv));
+    return idx;
+}
+
+mobj scope_cenv_ref(mobj cenv, mobj id) {
+    
 }
 
 //

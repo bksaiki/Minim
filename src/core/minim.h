@@ -883,17 +883,24 @@ size_t global_cenv_add_template(mobj cenv, mobj jit);
 mobj global_cenv_ref_template(mobj cenv, size_t i);
 void global_cenv_set_fvs(mobj cenv, mobj fvs);
 mobj global_cenv_get_fvs(mobj cenv, mobj e);
+void global_cenv_set_bound(mobj cenv, mobj bound);
+mobj global_cenv_get_bound(mobj cenv, mobj e);
 
 mobj make_cenv(mobj global_env);
 mobj cenv_global_env(mobj cenv);
 mobj cenv_make_label(mobj cenv);
+void cenv_set_fvs(mobj cenv, mobj fvs);
 
 mobj make_scope_cenv(mobj proc_cenv);
 mobj scope_cenv_extend(mobj cenv);
 mobj scope_cenv_proc_env(mobj cenv);
+mobj scope_cenv_global_env(mobj cenv);
 mobj scope_cenv_make_label(mobj cenv);
+size_t scope_cenv_bind(mobj cenv, mobj id);
+mobj scope_cenv_ref(mobj cenv, mobj id);
 
-mobj free_vars(mobj expr, mobj table);
+mobj jit_free_vars(mobj expr, mobj table);
+mobj jit_bound_vars(mobj expr, mobj table);
 
 mobj write_code(mobj ins, mobj reloc, mobj arity);
 mobj resolve_refs(mobj cenv, mobj ins);

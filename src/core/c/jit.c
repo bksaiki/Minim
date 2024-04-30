@@ -153,7 +153,7 @@ mobj write_code(mobj ins, mobj reloc, mobj arity) {
 
 mobj compile_expr(mobj expr) {
     mobj global_env, proc_env, scope_env;
-    mobj fv_table;
+    mobj fv_table, bound_table;
     mobj L1, L2, L3;
     mobj ins, reloc;
 
@@ -169,8 +169,13 @@ mobj compile_expr(mobj expr) {
 
     // compute free variables
     fv_table = Mbox(minim_null);
-    free_vars(L3, fv_table);
+    jit_free_vars(L3, fv_table);
     global_cenv_set_fvs(global_env, minim_unbox(fv_table));
+
+    // compute bound variables
+    bound_table = Mbox(minim_null);
+    jit_bound_vars(L3, bound_table);
+    global_cenv_set_bound(global_env, bound_table);
 
     // compile
     ins = compile_expr2(L3, scope_env, 1);
