@@ -188,29 +188,22 @@ static mobj lambda_bound_vars(mobj e, mobj table) {
     mobj bound = bound_vars(minim_car(minim_cddr(e)), table);
     bound = list_append2(ids, bound);
 
-    if (!minim_nullp(bound))
-        minim_unbox(table) = Mcons(Mcons(e, Mlist1(bound)), minim_unbox(table));
+    minim_unbox(table) = Mcons(Mcons(e, Mlist1(bound)), minim_unbox(table));
     return minim_null;
 }
 
 static mobj case_lambda_bound_vars(mobj e, mobj table) {
     mobj clause_bound = minim_null;
-    int any_boundp = 0;
     for (mobj clauses = minim_cdr(e); !minim_nullp(clauses); clauses = minim_cdr(clauses)) {
         mobj ids = formals_to_ids(minim_cadr(e));
         mobj bound = list_append2(ids, bound_vars(minim_car(minim_cddr(e)), table));
-        bound = list_append2(ids, bound);
-
-        clause_bound = Mcons(bound, clause_bound);
-        any_boundp |= !minim_nullp(bound);
+        clause_bound = Mcons(list_append2(ids, bound), clause_bound);
     }
 
-    if (any_boundp) {
-         minim_unbox(table) = Mcons(
-            Mcons(e, list_reverse(clause_bound)),
-            minim_unbox(table)
-        );
-    }
+    minim_unbox(table) = Mcons(
+        Mcons(e, list_reverse(clause_bound)),
+        minim_unbox(table)
+    );
 
     return minim_null;
 }

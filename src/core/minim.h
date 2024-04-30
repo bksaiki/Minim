@@ -896,6 +896,7 @@ mobj scope_cenv_extend(mobj cenv);
 mobj scope_cenv_proc_env(mobj cenv);
 mobj scope_cenv_global_env(mobj cenv);
 mobj scope_cenv_make_label(mobj cenv);
+size_t scope_cenv_bind_count(mobj cenv);
 size_t scope_cenv_bind(mobj cenv, mobj id);
 mobj scope_cenv_ref(mobj cenv, mobj id);
 

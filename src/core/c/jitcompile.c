@@ -92,32 +92,32 @@ static mobj compile_setb(mobj expr, mobj env, int tailp) {
     return with_tail_ret(ins, tailp);
 }
 
-static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp) {
+static mobj compile_lambda_clause(mobj clause, mobj env, mobj fvs, mobj bound) {
     mobj ins, args, body;
-    size_t env_size, i;
+    size_t env_size, aidx, bidx;
 
-    env_size = arity + (restp ? 1 : 0);
+    env_size = list_length(fvs) + list_length(bound);
     ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
 
     // bind arguments
-    args = minim_car(clause);
     env = scope_cenv_extend(env);
-    for (i = 0; i < arity; i++) {
-        scope_cenv_bind(env, minim_car(args));
+    aidx = 0;
+    for (args = minim_car(clause); minim_consp(args); args = minim_cdr(args)) {
+        bidx = scope_cenv_bind(env, minim_car(args));
         list_set_tail(ins, Mlist2(
-            Mlist2(get_arg_symbol, Mfixnum(i)),
-            Mlist2(bind_symbol, minim_car(args))
+            Mlist2(get_arg_symbol, Mfixnum(aidx)),
+            Mlist3(bind_symbol, Mfixnum(bidx), minim_car(args))
         ));
 
-        args = minim_cdr(args);
+        aidx += 1;
     }
 
     // bind rest argument
-    if (restp) {
-        scope_cenv_bind(env, args);
+    if (!minim_nullp(args)) {
+        bidx = scope_cenv_bind(env, args);
         list_set_tail(ins, Mlist2(
-            Mlist2(do_rest_symbol, Mfixnum(arity)),
-            Mlist2(bind_symbol, args)
+            Mlist2(do_rest_symbol, Mfixnum(aidx)),
+            Mlist3(bind_symbol, Mfixnum(bidx), args)
         )); 
     }
 
@@ -130,7 +130,7 @@ static mobj compile_lambda_clause(mobj clause, mobj env, size_t arity, int restp
     return ins;
 }
 
-static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
+static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int tailp) {
     mobj ins, clauses, label, reloc, arity, code;
     mobj proc_env, scope_env;
     size_t idx;
@@ -158,6 +158,8 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
         // compute arity of clause
         restp = get_formals_len(minim_caar(clauses), &req_arity);
         branch = restp ? branchlt_symbol : branchne_symbol;
+
+        // emit jump for arity mismatch
         if (label) {
             list_set_tail(ins, Mlist1(label));
             label = cenv_make_label(proc_env);
@@ -166,9 +168,9 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
             label = cenv_make_label(proc_env);
             ins = Mlist2(Mlist1(get_ac_symbol), Mlist3(branch, Mfixnum(req_arity), label));
         }
-
+        
         arity = update_arity(arity, req_arity, restp);
-        cl_ins = compile_lambda_clause(minim_car(clauses), scope_env, req_arity, restp);
+        cl_ins = compile_lambda_clause(minim_car(clauses), scope_env, fvs, bound);
         list_set_tail(ins, cl_ins);
     }
 
@@ -182,9 +184,22 @@ static mobj compile_case_lambda(mobj expr, mobj env, int tailp, mobj fvs) {
     code = write_code(ins, reloc, arity);
     idx = global_cenv_add_template(scope_cenv_global_env(env), code);
 
-    // instruction
+    // instruction to construct closure
     ins = Mlist1(Mlist2(make_closure_symbol, Mfixnum(idx)));
     return with_tail_ret(ins, tailp);
+}
+
+static mobj compile_lambda(mobj expr, mobj env, int tailp) {
+    mobj fvs = global_cenv_get_fvs(scope_cenv_global_env(env), expr);
+    mobj bound = global_cenv_get_bound(scope_cenv_global_env(env), expr);
+    expr = Mlist2(case_lambda_symbol, minim_cdr(expr));
+    return compile_case_lambda2(expr, env, fvs, bound, tailp);
+}
+
+static mobj compile_case_lambda(mobj expr, mobj env, int tailp) {
+    mobj fvs = global_cenv_get_fvs(scope_cenv_global_env(env), expr);
+    mobj bound = global_cenv_get_bound(scope_cenv_global_env(env), expr);
+    return compile_case_lambda2(expr, env, fvs, bound, tailp);
 }
 
 static mobj compile_mvcall(mobj expr, mobj env, int tailp) {
@@ -194,7 +209,7 @@ static mobj compile_mvcall(mobj expr, mobj env, int tailp) {
     if (tailp) {
         ins = compile_expr2(minim_cadr(expr), env, 0);
     } else {
-        label = cenv_make_label(env);
+        label = scope_cenv_make_label(env);
         ins = Mlist1(Mlist2(save_cc_symbol, label));
         list_set_tail(ins, compile_expr2(minim_cadr(expr), env, 0));
     }
@@ -213,23 +228,23 @@ static mobj compile_mvcall(mobj expr, mobj env, int tailp) {
 
 static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
     mobj ins, ids, it;
-    size_t env_size;
+    size_t env_size, bidx;
 
     // evaluate producer
     ins = compile_expr2(minim_cadr(expr), env, 0);
 
-    // extend compile environment
-    env = extend_cenv(env);
+    // extend compile-time environment
+    env = scope_cenv_extend(env);
     ids = minim_car(minim_cddr(expr));
+
+    // bind values in run-time environment
+    bidx = scope_cenv_bind_count(env);
     for (it = ids; !minim_nullp(it); it = minim_cdr(it))
-        cenv_id_add(env, minim_car(it));
+        scope_cenv_bind(env, minim_car(it));
 
     // bind result in new environment
     env_size = list_length(ids);
-    list_set_tail(ins, Mlist2(
-        Mlist2(push_env_symbol, Mfixnum(env_size)),
-        Mlist2(bind_values_symbol, ids)
-    ));
+    list_set_tail(ins, Mlist1(Mlist3(bind_values_symbol, Mfixnum(bidx), ids)));
 
     // evaluate body
     list_set_tail(ins, compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp));
@@ -361,7 +376,7 @@ static mobj compile_app(mobj expr, mobj env, int tailp) {
 static mobj compile_lookup(mobj id, mobj env, int tailp) {
     mobj ins, ref;
 
-    ref = cenv_id_ref(env, id);
+    ref = scope_cenv_ref(env, id);
     if (minim_falsep(ref)) {
         // top-level symbol
         ins = Mlist1(Mlist2(tl_lookup_symbol, id));
@@ -386,7 +401,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
             // special forms
             if (head == define_values_symbol) {
                 // define-values form
-                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_define_values(expr, env, tailp);
             } else if (head == setb_symbol) {
                 // set! form
@@ -394,24 +408,18 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
                 return compile_setb(expr, env, tailp);
             } else if (head == lambda_symbol) {
                 // lambda form
-                mobj fvs = global_cenv_get_fvs(scope_cenv_global_env(env), expr);
-                expr = Mlist2(case_lambda_symbol, minim_cdr(expr));
-                return compile_case_lambda(expr, env, tailp, fvs);
+                return compile_lambda(expr, env, tailp);
             } else if (head == case_lambda_symbol) {
                 // case-lambda form
-                mobj fvs = global_cenv_get_fvs(scope_cenv_global_env(env), expr);
-                return compile_case_lambda(expr, env, tailp, fvs);
+                return compile_case_lambda(expr, env, tailp);
             } else if (head == mvcall_symbol) {
                 // mv-call form
-                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_mvcall(expr, env, tailp);
             } else if (head == mvlet_symbol) {
                 // mv-let form
-                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_mvlet(expr, env, tailp);
             } else if (head == mvvalues_symbol) {
                 // mv-values form
-                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_mvvalues(expr, env, tailp);
             } else if (head == begin_symbol) {
                 // begin form
@@ -435,7 +443,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
         return compile_app(expr, env, tailp);
     } else if (minim_symbolp(expr)) {
         // symbol
-        minim_error1("compile_expr2", "unimplemented", expr);
         return compile_lookup(expr, env, tailp);
     } else if (minim_boolp(expr)
         || minim_fixnump(expr)

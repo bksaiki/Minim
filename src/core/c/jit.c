@@ -175,7 +175,7 @@ mobj compile_expr(mobj expr) {
     // compute bound variables
     bound_table = Mbox(minim_null);
     jit_bound_vars(L3, bound_table);
-    global_cenv_set_bound(global_env, bound_table);
+    global_cenv_set_bound(global_env, minim_unbox(bound_table));
 
     // compile
     ins = compile_expr2(L3, scope_env, 1);

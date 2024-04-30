@@ -289,16 +289,16 @@ static void bind_values(mobj tc, mobj env, mobj ids, mobj res) {
     }
 }
 
-static mobj env_lookup(mobj env, mobj coord) {
-    mobj cell;
-    size_t i;
+static mobj env_lookup(mobj env, mobj idx) {
+    mobj cell = vector_ref(minim_env_bindings(env), idx);
+    if (minim_cdr(cell) == minim_unbound) {
+        minim_error1(
+            NULL,
+            "cannot use before initialization",
+            minim_car(cell)
+        );
+    }
 
-    for (i = minim_fixnum(minim_car(coord)); i > 0; i--)
-        env = minim_env_prev(env);
-
-    cell = vector_ref(minim_env_bindings(env), minim_cdr(coord));
-    if (minim_cdr(cell) == minim_unbound)
-        minim_error1(NULL, "cannot use before initialization", minim_car(cell));
     return minim_cdr(cell);
 }
 
@@ -385,10 +385,12 @@ application:
         res = do_ccall(tc, minim_cadr(ins));
     } else if (ty == bind_symbol) {
         // bind
+        minim_error1("eval", "unimplemented", ins);
         env_define_var_no_check(tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == bind_values_symbol) {
         // bind-values
+        minim_error1("eval", "unimplemented", ins);
         bind_values(tc, tc_env(tc), minim_cadr(ins), res);
         res = minim_void;
     } else if (ty == tl_bind_values_symbol) {

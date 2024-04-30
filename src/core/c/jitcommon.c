@@ -17,6 +17,7 @@ mobj make_global_cenv() {
     mobj cenv = Mvector(global_cenv_length, NULL);
     global_cenv_tmpls(cenv) = minim_null;
     global_cenv_fvs(cenv) = minim_null;
+    global_cenv_bound(cenv) = minim_null;
     return cenv;
 }
 
@@ -138,6 +139,10 @@ mobj scope_cenv_make_label(mobj cenv) {
     return cenv_make_label(scope_cenv_proc(cenv));
 }
 
+size_t scope_cenv_bind_count(mobj cenv) {
+    return list_length(scope_cenv_bound(cenv));
+}
+
 size_t scope_cenv_bind(mobj cenv, mobj id) {
     size_t idx = list_length(scope_cenv_bound(cenv));
     scope_cenv_bound(cenv) = Mcons(id, scope_cenv_bound(cenv));
@@ -145,7 +150,12 @@ size_t scope_cenv_bind(mobj cenv, mobj id) {
 }
 
 mobj scope_cenv_ref(mobj cenv, mobj id) {
-    
+    mobj ref = memq(scope_cenv_bound(cenv), id);
+    if (minim_falsep(ref)) {
+        return ref;
+    } else {
+        return Mfixnum(list_length(ref) - 1);
+    }
 }
 
 //
