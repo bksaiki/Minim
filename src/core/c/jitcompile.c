@@ -99,7 +99,17 @@ static mobj compile_lambda_clause(mobj clause, mobj env, mobj fvs, mobj bound) {
     env_size = list_length(fvs) + list_length(bound);
     ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
 
-    // bind arguments
+    // load free variables from closure
+    bidx = 0;
+    for (mobj it = fvs; !minim_nullp(it); it = minim_cdr(it)) {
+        list_set_tail(ins, Mlist2(
+            Mlist3(closure_ref_symbol, Mfixnum(cp_reg_idx), Mfixnum(bidx)),
+            Mlist2(bind_symbol, Mfixnum(bidx))
+        ));
+        bidx += 1;
+    }
+
+    // bind arguments)
     env = scope_cenv_extend(env);
     aidx = 0;
     for (args = minim_car(clause); minim_consp(args); args = minim_cdr(args)) {
@@ -128,6 +138,17 @@ static mobj compile_lambda_clause(mobj clause, mobj env, mobj fvs, mobj bound) {
     body = Mcons(begin_symbol, minim_cdr(clause));
     list_set_tail(ins, compile_expr2(body, env, 1));
     return ins;
+}
+
+static mobj compile_lookup_cell(mobj id, mobj env) {
+    mobj ref = scope_cenv_ref(env, id);
+    if (minim_falsep(ref)) {
+        // top-level symbol
+        return Mlist1(Mlist2(tl_lookup_cell_symbol, id));
+    } else {
+        // local symbol
+        return Mlist1(Mlist2(lookup_cell_symbol, ref));
+    }
 }
 
 static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int tailp) {
@@ -176,6 +197,7 @@ static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int 
 
     // arity exception
     list_set_tail(ins, Mlist2(label, Mlist1(do_arity_error_symbol)));
+    writeln_object(stderr, ins);
 
     // resolve references
     reloc = resolve_refs(env, ins);
@@ -184,10 +206,21 @@ static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int 
     code = write_code(ins, reloc, arity);
     idx = global_cenv_add_template(scope_cenv_global_env(env), code);
 
-    // instruction to construct closure
-    ins = Mlist1(Mlist3(make_closure_symbol, Mfixnum(idx), Mfixnum(list_length(fvs))));
+    // construct closure and store in temporary
+    ins = Mlist2(
+        Mlist3(make_closure_symbol, Mfixnum(idx), Mfixnum(list_length(fvs))),
+        Mlist3(mov_symbol, Mfixnum(t0_reg_idx), Mfixnum(res_reg_idx))
+    );
 
-    
+    // for each free variable, lookup the cell and copy into closure
+    idx = 0;
+    for (; !minim_nullp(fvs); fvs = minim_cdr(fvs)) {
+        list_set_tail(ins, compile_lookup_cell(minim_car(fvs), env));
+        list_set_tail(ins, Mlist1(Mlist4(closure_set_symbol, Mfixnum(t0_reg_idx), Mfixnum(idx), Mfixnum(res_reg_idx))));
+        idx += 1;
+    }
+
+    list_set_tail(ins, Mlist1(Mlist3(mov_symbol, Mfixnum(res_reg_idx), Mfixnum(t0_reg_idx))));
     return with_tail_ret(ins, tailp);
 }
 

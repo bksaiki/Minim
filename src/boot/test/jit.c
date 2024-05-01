@@ -143,7 +143,7 @@ int test_closure() {
     check_equal("(lambda () 1)", "#<procedure>");
     check_equal("(lambda (x) (cons x 1))", "#<procedure>");
     check_equal("(lambda (x y) (cons x y))", "#<procedure>");
-    check_equal("(lambda (x y . rest) ($append rest))", "#<procedure>");
+    check_equal("(lambda (x y . rest) ($append2 rest))", "#<procedure>");
 
     return passed;
 }

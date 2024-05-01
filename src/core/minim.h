@@ -77,6 +77,8 @@ extern mobj branchne_symbol;
 extern mobj ccall_symbol;
 extern mobj clear_frame_symbol;
 extern mobj check_stack_symbol;
+extern mobj closure_ref_symbol;
+extern mobj closure_set_symbol;
 extern mobj do_apply_symbol;
 extern mobj do_arity_error_symbol;
 extern mobj do_eval_symbol;
@@ -89,8 +91,10 @@ extern mobj get_arg_symbol;
 extern mobj get_tenv_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
+extern mobj lookup_cell_symbol;
 extern mobj tl_bind_values_symbol;
 extern mobj tl_lookup_symbol;
+extern mobj tl_lookup_cell_symbol;
 extern mobj make_closure_symbol;
 extern mobj make_env_symbol;
 extern mobj mov_symbol;
@@ -926,6 +930,13 @@ mobj compile_values(mobj name);
 mobj compile_void(mobj name);
 
 // Interpreter
+
+#define tmp_reg_count       3
+#define res_reg_idx         0
+#define t0_reg_idx          1
+#define t1_reg_idx          2
+#define cp_reg_idx          3
+#define ac_reg_idx          4
 
 void reserve_stack(mobj tc, size_t argc);
 void set_arg(mobj tc, size_t i, mobj x);

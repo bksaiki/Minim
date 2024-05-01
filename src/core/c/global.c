@@ -43,6 +43,8 @@ void init_minim() {
     ccall_symbol = intern("#%ccall");
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
+    closure_ref_symbol = intern("#%closure-ref");
+    closure_set_symbol = intern("#%closure-set!");
     do_apply_symbol = intern("#%do-apply");
     do_arity_error_symbol = intern("#%do-arity-error");
     do_eval_symbol = intern("#%do-eval");
@@ -55,8 +57,10 @@ void init_minim() {
     get_tenv_symbol = intern("#%get-tenv");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
+    lookup_cell_symbol = intern("#%lookup-cell");
     tl_bind_values_symbol = intern("#%tl-bind-values");
     tl_lookup_symbol = intern("#%tl-lookup");
+    tl_lookup_cell_symbol = intern("#%tl-lookup-cell");
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
     make_unbound_symbol = intern("#%make-unbound");
