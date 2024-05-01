@@ -80,6 +80,7 @@ extern mobj clear_frame_symbol;
 extern mobj check_stack_symbol;
 extern mobj closure_ref_symbol;
 extern mobj closure_set_symbol;
+extern mobj closure_bind_symbol;
 extern mobj do_apply_symbol;
 extern mobj do_arity_error_symbol;
 extern mobj do_eval_symbol;

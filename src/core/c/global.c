@@ -46,6 +46,7 @@ void init_minim() {
     clear_frame_symbol = intern("#%clear-frame");
     closure_ref_symbol = intern("#%closure-ref");
     closure_set_symbol = intern("#%closure-set!");
+    closure_bind_symbol = intern("#%closure-bind!");
     do_apply_symbol = intern("#%do-apply");
     do_arity_error_symbol = intern("#%do-arity-error");
     do_eval_symbol = intern("#%do-eval");

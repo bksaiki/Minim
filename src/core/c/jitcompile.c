@@ -107,17 +107,23 @@ static mobj compile_lambda_clause(mobj clause, mobj env, mobj fvs, mobj bound) {
     size_t env_size, aidx, bidx;
 
     env_size = list_length(fvs) + list_length(bound);
-    ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
+    ins = Mlist2(
+        Mlist2(push_env_symbol, Mfixnum(env_size)),     // create new environment
+        Mlist1(closure_bind_symbol)                     // copy free variables
+    );
 
-    // load free variables from closure
-    bidx = 0;
-    for (mobj it = fvs; !minim_nullp(it); it = minim_cdr(it)) {
-        list_set_tail(ins, Mlist2(
-            Mlist3(closure_ref_symbol, Mfixnum(cp_reg_idx), Mfixnum(bidx)),
-            Mlist2(bind_cell_symbol, Mfixnum(bidx))
-        ));
-        bidx += 1;
-    }
+    // ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
+
+    // // load free variables from closure
+    // bidx = 0;
+    // for (mobj it = fvs; !minim_nullp(it); it = minim_cdr(it)) {
+    //     list_set_tail(ins, Mlist2(
+    //         Mlist3(closure_ref_symbol, Mfixnum(cp_reg_idx), Mfixnum(bidx)),
+    //         Mlist2(bind_cell_symbol, Mfixnum(bidx))
+    //     ));
+    //     bidx += 1;
+    // }
+
 
     // bind arguments
     env = scope_cenv_extend(env);

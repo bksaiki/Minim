@@ -14,6 +14,7 @@ mobj Mclosure(mobj env, mobj code, size_t free_count) {
     minim_closure_env(o) = env;
     minim_closure_code(o) = code;
     minim_closure_name(o) = minim_false;
+    minim_closure_count(o) = free_count;
     return o;
 }
 

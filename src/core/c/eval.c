@@ -265,6 +265,76 @@ static mobj force_single_value(mobj tc, mobj x) {
     return x;
 }
 
+static void tl_env_bind_values(mobj tc, mobj valc, mobj ids, mobj val) {
+    mobj cell;
+    size_t count;
+    
+    count = minim_fixnum(valc);
+    if (minim_valuesp(val)) {
+        // multi-valued result
+        if (tc_vc(tc) != count) {
+            result_arity_exn(NULL, count, tc_vc(tc));
+        }
+
+        for (size_t i = 0; i < count; i++) {
+            val = tc_values(tc)[i];
+            SET_NAME_IF_CLOSURE(minim_car(ids), val);
+            cell = top_env_find(tc_tenv(tc), minim_car(ids));
+            if (!minim_falsep(cell)) {
+                minim_cdar(cell) = val;
+            } else {
+                top_env_insert(tc_tenv(tc), minim_car(ids), val);
+            }
+
+            ids = minim_cdr(ids);
+        }
+    } else {
+        // single-valued result
+        if (count != 1) {
+            result_arity_exn(NULL, count, 1);
+        }
+
+        SET_NAME_IF_CLOSURE(minim_car(ids), val);
+        cell = top_env_find(tc_tenv(tc), minim_car(ids));
+        if (!minim_falsep(cell)) {
+            minim_cdar(cell) = val;
+        } else {
+            top_env_insert(tc_tenv(tc), minim_car(ids), val);
+        }
+    }
+}
+
+static mobj tl_env_lookup_value(mobj tc, mobj id) {
+    mobj cell = top_env_find(tc_tenv(tc), id);
+    if (!minim_falsep(cell)) {
+        cell = minim_car(cell); // extract (<id> . <value>) cell
+        if (minim_cdr(cell) == minim_unbound) {
+            minim_error1(NULL, "cannot use before initialization", id);
+        }
+        return minim_cdr(cell);
+    } else {
+        minim_error1(NULL, "cannot use before initialization", id);
+    }
+}
+
+static mobj tl_env_lookup_cell(mobj tc, mobj id) {
+    mobj cell = top_env_find(tc_tenv(tc), id);
+    if (minim_falsep(cell)) {
+        cell = top_env_insert(tc_tenv(tc), id, minim_unbound);
+    }
+
+    return minim_car(cell);
+}
+
+static void tl_env_rebind(mobj tc, mobj id, mobj val) {
+    mobj cell = top_env_find(tc_tenv(tc), id);
+    if (minim_falsep(cell)) {
+        minim_error1(NULL, "cannot use before initialization", id);
+    }
+
+    minim_cdar(cell) = val;
+}
+
 static void env_bind_cell(mobj tc, mobj cell, mobj idx) {
     if (!minim_envp(tc_env(tc))) {
         minim_error1("env_bind_cell", "expected environment", tc_env(tc));
@@ -346,74 +416,15 @@ static mobj env_lookup_cell(mobj tc, mobj idx) {
     return vector_ref(minim_env_bindings(tc_env(tc)), idx);
 }
 
-static void tl_env_bind_values(mobj tc, mobj valc, mobj ids, mobj val) {
-    mobj cell;
-    size_t count;
-    
-    count = minim_fixnum(valc);
-    if (minim_valuesp(val)) {
-        // multi-valued result
-        if (tc_vc(tc) != count) {
-            result_arity_exn(NULL, count, tc_vc(tc));
-        }
-
-        for (size_t i = 0; i < count; i++) {
-            val = tc_values(tc)[i];
-            SET_NAME_IF_CLOSURE(minim_car(ids), val);
-            cell = top_env_find(tc_tenv(tc), minim_car(ids));
-            if (!minim_falsep(cell)) {
-                minim_cdar(cell) = val;
-            } else {
-                top_env_insert(tc_tenv(tc), minim_car(ids), val);
-            }
-
-            ids = minim_cdr(ids);
-        }
-    } else {
-        // single-valued result
-        if (count != 1) {
-            result_arity_exn(NULL, count, 1);
-        }
-
-        SET_NAME_IF_CLOSURE(minim_car(ids), val);
-        cell = top_env_find(tc_tenv(tc), minim_car(ids));
-        if (!minim_falsep(cell)) {
-            minim_cdar(cell) = val;
-        } else {
-            top_env_insert(tc_tenv(tc), minim_car(ids), val);
-        }
-    }
-}
-
-static mobj tl_env_lookup_value(mobj tc, mobj id) {
-    mobj cell = top_env_find(tc_tenv(tc), id);
-    if (!minim_falsep(cell)) {
-        cell = minim_car(cell); // extract (<id> . <value>) cell
-        if (minim_cdr(cell) == minim_unbound) {
-            minim_error1(NULL, "cannot use before initialization", id);
-        }
-        return minim_cdr(cell);
-    } else {
-        minim_error1(NULL, "cannot use before initialization", id);
-    }
-}
-
-static mobj tl_env_lookup_cell(mobj tc, mobj id) {
-    mobj cell = top_env_find(tc_tenv(tc), id);
-    if (minim_falsep(cell)) {
-        cell = top_env_insert(tc_tenv(tc), id, minim_unbound);
+static void env_load_closure(mobj tc, mobj proc) {
+    if (!minim_envp(tc_env(tc))) {
+        minim_error1("env_load_closure", "expected environment", tc_env(tc));
     }
 
-    return minim_car(cell);
-}
-
-static void tl_env_rebind(mobj tc, mobj id, mobj val) {
-    mobj cell = top_env_find(tc_tenv(tc), id);
-    if (minim_falsep(cell)) {
-        minim_error1(NULL, "cannot use before initialization", id);
+    mobj bindings = minim_env_bindings(tc_env(tc));
+    for (size_t i = 0; i < minim_closure_count(proc); i++) {
+        minim_vector_ref(bindings, i) = minim_closure_ref(proc, i);
     }
-
-    minim_cdar(cell) = val;
 }
 
 static mobj load_reg(mobj tc, mobj *tregs, mobj ins, mobj idx) {
@@ -537,6 +548,9 @@ loop:
         v0 = load_reg(tc, tregs, ins, minim_cadr(ins));
         v1 = load_reg(tc, tregs, ins, minim_cadr(minim_cddr(ins)));
         minim_closure_ref(v0, minim_fixnum(minim_car(minim_cddr(ins)))) = v1;
+    } else if (ty == closure_bind_symbol) {
+        // closure-bind!
+        env_load_closure(tc, tc_cp(tc));
     } else if (ty == apply_symbol) {
         // apply
 application:
@@ -625,7 +639,7 @@ application:
         values_to_args(tc, tregs[0]);
     } else if (ty == clear_frame_symbol) {
         // clear frame
-        tc_cp(tc) = minim_void;
+        tc_cp(tc) = NULL;
         tc_ac(tc) = 0;
     } else if (ty == brancha_symbol) {
         // brancha (jump always)

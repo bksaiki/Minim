@@ -36,6 +36,7 @@ mobj check_stack_symbol;
 mobj clear_frame_symbol;
 mobj closure_ref_symbol;
 mobj closure_set_symbol;
+mobj closure_bind_symbol;
 mobj do_apply_symbol;
 mobj do_arity_error_symbol;
 mobj do_eval_symbol;
