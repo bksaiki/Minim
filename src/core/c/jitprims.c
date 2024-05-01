@@ -31,7 +31,7 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
 }
 
 mobj compile_prim(const char *who, void *fn, mobj arity) {
-    return compile_do_ret(intern(who), arity, Mlist2(ccall_symbol, fn));
+    return compile_do_ret(intern(who), arity, Mlist2(ccall_symbol, Mfixnum((intptr_t) fn)));
 }
 
 // Short hand for making a function that just calls `compile_do_ret`

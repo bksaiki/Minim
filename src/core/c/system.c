@@ -120,10 +120,10 @@ mobj load_prelude(mobj tc) {
     mobj result;
 
     tc_tenv(tc) = base_env;
-    tc_env(tc) = tc_tenv(tc);
+    tc_env(tc) = NULL;
     result = load_file(tc, PRELUDE_PATH);
     tc_tenv(tc) = top_env_copy(base_env, 0);
-    tc_env(tc) = tc_tenv(tc);
+    tc_env(tc) = NULL;
 
     return result;
 }

@@ -67,9 +67,9 @@ static mobj case_lambda_free_vars(mobj e, mobj table) {
     mobj fvs, fvs2, ids, seq;
     
     fvs = minim_null;
-    for (e = minim_cdr(e); !minim_nullp(e); e = minim_cdr(e)) {
-        ids = formals_to_ids(minim_caar(e));
-        seq = Mcons(begin_symbol, minim_cdar(e));
+    for (mobj clauses = minim_cdr(e); !minim_nullp(clauses); clauses = minim_cdr(clauses)) {
+        ids = formals_to_ids(minim_caar(clauses));
+        seq = Mcons(begin_symbol, minim_cdar(clauses));
         fvs2 = remove_free_vars(ids, free_vars(seq, table));
         fvs = merge_free_vars(fvs2, fvs);
     }
@@ -185,7 +185,7 @@ static mobj define_values_bound_vars(mobj e, mobj table) {
 
 static mobj lambda_bound_vars(mobj e, mobj table) {
     mobj ids = formals_to_ids(minim_cadr(e));
-    mobj bound = bound_vars(minim_car(minim_cddr(e)), table);
+    mobj bound = bound_vars(Mcons(begin_symbol, minim_cddr(e)), table);
     bound = list_append2(ids, bound);
 
     minim_unbox(table) = Mcons(Mcons(e, Mlist1(bound)), minim_unbox(table));

@@ -14,7 +14,7 @@ int return_code, passed;
     rewind(stream);         \
 }
 
-char *write(mobj o) {
+char *write_debug(mobj o) {
     FILE *stream;
     char *buffer;
     size_t len, read;
@@ -51,7 +51,7 @@ void check_true(const char *input) {
     tc_env(tc) = tc_tenv(tc);
     result = eval_expr(tc, read_object(istream));
     if (!minim_truep(result)) {
-        log_failed_case(input, "#t", write(result));
+        log_failed_case(input, "#t", write_debug(result));
         passed = 0;
     }
 
@@ -69,7 +69,7 @@ void check_false(const char *input) {
     tc_env(tc) = tc_tenv(tc);
     result = eval_expr(tc, read_object(istream));
     if (!minim_falsep(result)) {
-        log_failed_case(input, "#f", write(result));
+        log_failed_case(input, "#f", write_debug(result));
         passed = 0;
     }
 
@@ -87,7 +87,7 @@ void check_equal(const char *input, const char *expect) {
     tc_tenv(tc) = make_base_env();
     tc_env(tc) = tc_tenv(tc);
     result = eval_expr(tc, read_object(istream));
-    str = write(result);
+    str = write_debug(result);
     if (strcmp(str, expect) != 0) {
         log_failed_case(input, expect, str);
         passed = 0;

@@ -161,7 +161,7 @@ static mobj compile_lookup_cell(mobj id, mobj env) {
     }
 }
 
-static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int tailp) {
+static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bounds, int tailp) {
     mobj ins, clauses, label, reloc, arity, code;
     mobj proc_env, scope_env;
     size_t idx;
@@ -201,8 +201,9 @@ static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int 
         }
         
         arity = update_arity(arity, req_arity, restp);
-        cl_ins = compile_lambda_clause(minim_car(clauses), scope_env, fvs, bound);
+        cl_ins = compile_lambda_clause(minim_car(clauses), scope_env, fvs, minim_car(bounds));
         list_set_tail(ins, cl_ins);
+        bounds = minim_cdr(bounds);
     }
 
     // arity exception

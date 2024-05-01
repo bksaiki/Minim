@@ -13,7 +13,7 @@ mobj Mthread_context() {
     tc_sfp(tc) = NULL;
     tc_esp(tc) = NULL;
     tc_ccont(tc) = minim_null;
-    tc_env(tc) = env;
+    tc_env(tc) = NULL;
     tc_vc(tc) = 0;
     tc_values(tc) = NULL;
     tc_stack_base(tc) = NULL;

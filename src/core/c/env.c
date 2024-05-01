@@ -103,7 +103,7 @@ mobj top_env_copy2(mobj env, mobj syms, int mutablep) {
 
 static void top_env_resize(mobj env) {
     mobj nb, b, cell;
-    size_t *alloc_ptr, i, j;
+    size_t *alloc_ptr,  i, j;
 
     // find the right size
     alloc_ptr = start_size_ptr;

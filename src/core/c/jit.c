@@ -154,7 +154,7 @@ mobj compile_expr(mobj expr) {
     mobj global_env, proc_env, scope_env;
     mobj fv_table, bound_table;
     mobj L1, L2, L3;
-    mobj ins, reloc;
+    mobj bound, ins, reloc;
 
     // optimization passes
     L1 = jit_opt_L0(expr);
@@ -173,11 +173,16 @@ mobj compile_expr(mobj expr) {
 
     // compute bound variables
     bound_table = Mbox(minim_null);
-    jit_bound_vars(L3, bound_table);
+    bound = jit_bound_vars(L3, bound_table);
     global_cenv_set_bound(global_env, minim_unbox(bound_table));
 
     // compile
     ins = compile_expr2(L3, scope_env, 1);
+    if (!minim_nullp(bound)) {
+        // any top-level let expression needs a temporary environment
+        ins = Mcons(Mlist2(push_env_symbol, Mfixnum(list_length(bound))), ins);
+    }
+
     reloc = resolve_refs(proc_env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }
