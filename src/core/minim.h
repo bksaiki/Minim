@@ -68,6 +68,7 @@ extern mobj make_unbound_symbol;
 
 extern mobj apply_symbol;
 extern mobj bind_symbol;
+extern mobj bind_cell_symbol;
 extern mobj bind_values_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
@@ -95,6 +96,7 @@ extern mobj lookup_cell_symbol;
 extern mobj tl_bind_values_symbol;
 extern mobj tl_lookup_symbol;
 extern mobj tl_lookup_cell_symbol;
+extern mobj tl_rebind_symbol;
 extern mobj make_closure_symbol;
 extern mobj make_env_symbol;
 extern mobj mov_symbol;

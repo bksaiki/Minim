@@ -87,8 +87,18 @@ static mobj compile_define_values(mobj expr, mobj env, int tailp) {
 }
 
 static mobj compile_setb(mobj expr, mobj env, int tailp) {
-    mobj ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
-    list_set_tail(ins, Mlist1(Mlist2(rebind_symbol, minim_cadr(expr))));
+    mobj ins, ref;
+
+    ins = compile_expr2(minim_car(minim_cddr(expr)), env, 0);
+    ref = scope_cenv_ref(env, minim_cadr(expr));
+    if (minim_falsep(ref)) {
+        // top-level symbol
+        list_set_tail(ins, Mlist1(Mlist2(tl_rebind_symbol, minim_cadr(expr))));
+    } else {
+        // local symbol
+        list_set_tail(ins, Mlist1(Mlist2(rebind_symbol, ref)));
+    }
+
     return with_tail_ret(ins, tailp);
 }
 
@@ -104,12 +114,12 @@ static mobj compile_lambda_clause(mobj clause, mobj env, mobj fvs, mobj bound) {
     for (mobj it = fvs; !minim_nullp(it); it = minim_cdr(it)) {
         list_set_tail(ins, Mlist2(
             Mlist3(closure_ref_symbol, Mfixnum(cp_reg_idx), Mfixnum(bidx)),
-            Mlist2(bind_symbol, Mfixnum(bidx))
+            Mlist2(bind_cell_symbol, Mfixnum(bidx))
         ));
         bidx += 1;
     }
 
-    // bind arguments)
+    // bind arguments
     env = scope_cenv_extend(env);
     aidx = 0;
     for (args = minim_car(clause); minim_consp(args); args = minim_cdr(args)) {
@@ -197,7 +207,6 @@ static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int 
 
     // arity exception
     list_set_tail(ins, Mlist2(label, Mlist1(do_arity_error_symbol)));
-    writeln_object(stderr, ins);
 
     // resolve references
     reloc = resolve_refs(env, ins);
@@ -206,21 +215,26 @@ static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bound, int 
     code = write_code(ins, reloc, arity);
     idx = global_cenv_add_template(scope_cenv_global_env(env), code);
 
-    // construct closure and store in temporary
-    ins = Mlist2(
-        Mlist3(make_closure_symbol, Mfixnum(idx), Mfixnum(list_length(fvs))),
-        Mlist3(mov_symbol, Mfixnum(t0_reg_idx), Mfixnum(res_reg_idx))
-    );
+    // construct closure
+    ins = Mlist1(Mlist3(make_closure_symbol, Mfixnum(idx), Mfixnum(list_length(fvs))));
 
-    // for each free variable, lookup the cell and copy into closure
-    idx = 0;
-    for (; !minim_nullp(fvs); fvs = minim_cdr(fvs)) {
-        list_set_tail(ins, compile_lookup_cell(minim_car(fvs), env));
-        list_set_tail(ins, Mlist1(Mlist4(closure_set_symbol, Mfixnum(t0_reg_idx), Mfixnum(idx), Mfixnum(res_reg_idx))));
-        idx += 1;
+    // if any free variables
+    if (!minim_nullp(fvs)) {
+        // move closure to temporary
+        list_set_tail(ins, Mlist1(Mlist3(mov_symbol, Mfixnum(t0_reg_idx), Mfixnum(res_reg_idx))));
+
+        // for each free variable, lookup the cell and copy into closure
+        idx = 0;
+        for (; !minim_nullp(fvs); fvs = minim_cdr(fvs)) {
+            list_set_tail(ins, compile_lookup_cell(minim_car(fvs), env));
+            list_set_tail(ins, Mlist1(Mlist4(closure_set_symbol, Mfixnum(t0_reg_idx), Mfixnum(idx), Mfixnum(res_reg_idx))));
+            idx += 1;
+        }
+
+        // move closure back
+        list_set_tail(ins, Mlist1(Mlist3(mov_symbol, Mfixnum(res_reg_idx), Mfixnum(t0_reg_idx))));
     }
 
-    list_set_tail(ins, Mlist1(Mlist3(mov_symbol, Mfixnum(res_reg_idx), Mfixnum(t0_reg_idx))));
     return with_tail_ret(ins, tailp);
 }
 
@@ -283,12 +297,6 @@ static mobj compile_mvlet(mobj expr, mobj env, int tailp) {
 
     // evaluate body
     list_set_tail(ins, compile_expr2(minim_cadr(minim_cddr(expr)), env, tailp));
-    
-    // pop environment if not in tail position
-    if (!tailp) {
-        list_set_tail(ins, Mlist1(Mlist1(pop_env_symbol)));
-    }
-
     return ins;
 }
 
@@ -439,7 +447,6 @@ mobj compile_expr2(mobj expr, mobj env, int tailp) {
                 return compile_define_values(expr, env, tailp);
             } else if (head == setb_symbol) {
                 // set! form
-                minim_error1("compile_expr2", "unimplemented", expr);
                 return compile_setb(expr, env, tailp);
             } else if (head == lambda_symbol) {
                 // lambda form

@@ -195,8 +195,8 @@ static mobj lambda_bound_vars(mobj e, mobj table) {
 static mobj case_lambda_bound_vars(mobj e, mobj table) {
     mobj clause_bound = minim_null;
     for (mobj clauses = minim_cdr(e); !minim_nullp(clauses); clauses = minim_cdr(clauses)) {
-        mobj ids = formals_to_ids(minim_cadr(e));
-        mobj bound = list_append2(ids, bound_vars(minim_car(minim_cddr(e)), table));
+        mobj ids = formals_to_ids(minim_caar(clauses));
+        mobj bound = list_append2(ids, bound_vars(Mcons(begin_symbol, minim_cdar(clauses)), table));
         clause_bound = Mcons(list_append2(ids, bound), clause_bound);
     }
 

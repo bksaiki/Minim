@@ -24,6 +24,7 @@ mobj make_unbound_symbol;
 
 mobj apply_symbol;
 mobj bind_symbol;
+mobj bind_cell_symbol;
 mobj bind_values_symbol;
 mobj brancha_symbol;
 mobj branchf_symbol;
@@ -51,6 +52,7 @@ mobj lookup_cell_symbol;
 mobj tl_bind_values_symbol;
 mobj tl_lookup_symbol;
 mobj tl_lookup_cell_symbol;
+mobj tl_rebind_symbol;
 mobj make_closure_symbol;
 mobj make_env_symbol;
 mobj mov_symbol;

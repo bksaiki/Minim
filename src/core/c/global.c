@@ -34,6 +34,7 @@ void init_minim() {
 
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");
+    bind_cell_symbol = intern("#%bind-cell");
     bind_values_symbol = intern("#%bind-values");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
@@ -61,6 +62,7 @@ void init_minim() {
     tl_bind_values_symbol = intern("#%tl-bind-values");
     tl_lookup_symbol = intern("#%tl-lookup");
     tl_lookup_cell_symbol = intern("#%tl-lookup-cell");
+    tl_rebind_symbol = intern("#%tl-rebind!");
     make_closure_symbol = intern("#%make-closure");
     make_env_symbol = intern("#%make-env");
     make_unbound_symbol = intern("#%make-unbound");

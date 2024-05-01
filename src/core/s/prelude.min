@@ -9,7 +9,7 @@
 
 (define-values (errorf)
   (lambda (who fmt . args)
-    (apply error who "formatted error" msg args)))
+    (apply error who "formatted error" fmt args)))
 
 (define-values (raise-argument-error)
   (lambda (who expected v)

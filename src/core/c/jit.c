@@ -66,7 +66,6 @@ mobj code_to_instrs(mobj code) {
         ins = Mcons(in, ins);
     }
 
-    writeln_object(stderr, ins);
     return list_reverse(ins);
 }
 
@@ -171,7 +170,6 @@ mobj compile_expr(mobj expr) {
     fv_table = Mbox(minim_null);
     jit_free_vars(L3, fv_table);
     global_cenv_set_fvs(global_env, minim_unbox(fv_table));
-    writeln_object(stderr, fv_table);
 
     // compute bound variables
     bound_table = Mbox(minim_null);
@@ -180,7 +178,6 @@ mobj compile_expr(mobj expr) {
 
     // compile
     ins = compile_expr2(L3, scope_env, 1);
-    writeln_object(stderr, ins);
     reloc = resolve_refs(proc_env, ins);
     return write_code(ins, reloc, Mfixnum(0));
 }
