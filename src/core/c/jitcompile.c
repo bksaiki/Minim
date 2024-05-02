@@ -118,7 +118,7 @@ static mobj compile_lambda_clause(mobj clause, mobj env, mobj fvs, mobj bound) {
     for (args = minim_car(clause); minim_consp(args); args = minim_cdr(args)) {
         bidx = scope_cenv_bind(env, minim_car(args));
         list_set_tail(ins, Mlist2(
-            Mlist2(get_arg_symbol, Mfixnum(aidx)),
+            Mlist3(get_arg_symbol, Mfixnum(res_reg_idx), Mfixnum(aidx)),
             Mlist3(bind_symbol, Mfixnum(bidx), minim_car(args))
         ));
 

@@ -40,7 +40,7 @@ mobj compile_prim(const char *who, void *fn, mobj arity) {
         return compile_do_ret(name, arity, do_instr); \
     }
 
-define_do_ret(compile_identity, Mfixnum(1), Mlist2(get_arg_symbol, Mfixnum(0)))
+define_do_ret(compile_identity, Mfixnum(1), Mlist3(get_arg_symbol, Mfixnum(res_reg_idx), Mfixnum(0)))
 define_do_ret(compile_raise, Mfixnum(1), Mlist1(do_raise_symbol))
 define_do_ret(compile_void, Mfixnum(0), Mlist2(literal_symbol, minim_void))
 
@@ -112,39 +112,39 @@ mobj compile_eval(mobj name) {
             Mlist3(branchne_symbol, Mfixnum(1), Larity2)
         ),
         // %ac == 1 (in tail position)
-        list_append2(Mlist4(
+        //  sfp[1]: expr
+        list_append2(Mlist5(
+            Mlist3(get_arg_symbol, Mfixnum(res_reg_idx), Mfixnum(0)),  // %res <- %sfp[1] [expr]
             Mlist1(do_eval_symbol),
             Mlist1(clear_frame_symbol),
             Mlist1(set_proc_symbol),
             Mlist1(apply_symbol)
         ),
         // %ac == 2 (not in tail position since we need to restore top-level env)
-        // need to use an additional stack frame location for swapping
+        // stash the old environment in the current frame
         //  sfp[2]: env
         //  sfp[1]: expr
         list_append2(
             list_append2(Mlist6(
                 Larity2,
                 Mlist3(branchne_symbol, Mfixnum(2), Larity_err),
-                Mlist2(get_arg_symbol, Mfixnum(1)),
-                Mlist2(set_arg_symbol, Mfixnum(2)), // new %tenv at sfp[3]
-                Mlist1(get_tenv_symbol),
-                Mlist2(set_arg_symbol, Mfixnum(1)) // old %tenv at sfp[2]
+                Mlist3(get_arg_symbol, Mfixnum(res_reg_idx), Mfixnum(0)), // %res <- %sfp[1] [expr]
+                Mlist3(get_arg_symbol, Mfixnum(t0_reg_idx), Mfixnum(1)),  // %t0 <- %sfp[2] [new env]
+                Mlist2(get_tenv_symbol, Mfixnum(t1_reg_idx)), // %t1 <- %tenv [old env]
+                Mlist3(set_arg_symbol, Mfixnum(1), Mfixnum(t1_reg_idx))  // %sfp[2] <- %t1 [old env]
+                
             ),
-            list_append2(Mlist6(
-                Mlist2(get_arg_symbol, Mfixnum(2)),
-                Mlist1(set_tenv_symbol),
+            list_append2(Mlist5(
+                Mlist2(set_tenv_symbol, Mfixnum(t0_reg_idx)),   // %tenv <- %t0 [new env]
                 Mlist1(do_eval_symbol),
                 Mlist2(save_cc_symbol, Lpop_tenv),
                 Mlist1(set_proc_symbol),
                 Mlist1(apply_symbol)
             ),
-            Mlist6(
+            Mlist4(
                 Lpop_tenv,
-                Mlist2(set_arg_symbol, Mfixnum(0)), // result at sfp[1]
-                Mlist2(get_arg_symbol, Mfixnum(1)), // old %tenv
-                Mlist1(set_tenv_symbol),
-                Mlist2(get_arg_symbol, Mfixnum(0)), // fetch result
+                Mlist3(get_arg_symbol, Mfixnum(t0_reg_idx), Mfixnum(1)),  // %t0 <- %sfp[2] [old env]
+                Mlist2(set_tenv_symbol, Mfixnum(t0_reg_idx)), // %tenv <- %t0 [old env]
                 Mlist1(ret_symbol)
             ))
         ),

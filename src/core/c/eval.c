@@ -559,17 +559,18 @@ application:
         // save-cc
         push_frame(tc, (mobj) minim_fixnum(minim_cadr(ins)));
     } else if (ty == get_arg_symbol) {
-        // get-arg
-        tregs[0] = tc_frame_ref(tc, minim_fixnum(minim_cadr(ins)));
+        // (get-arg <reg> <stack index>)
+        v0 = tc_frame_ref(tc, minim_fixnum(minim_car(minim_cddr(ins))));
+        store_reg(tc, tregs, ins, minim_cadr(ins), v0);
     } else if (ty == set_arg_symbol) {
         // set-arg
         tc_frame_ref(tc, minim_fixnum(minim_cadr(ins))) = tregs[0];
     } else if (ty == get_tenv_symbol) {
-        // get-tenv
-        tregs[0] = tc_tenv(tc);
+        // (get-tenv <dst reg>)
+        store_reg(tc, tregs, ins, minim_cadr(ins), tc_tenv(tc));
     } else if (ty == set_tenv_symbol) {
-        // set-tenv
-        tc_tenv(tc) = tregs[0];
+        // (set-tenv <src reg>)
+        tc_tenv(tc) = load_reg(tc, tregs, ins, minim_cadr(ins));
     } else if (ty == do_apply_symbol) {
         // do-apply
         do_apply(tc);
@@ -579,7 +580,7 @@ application:
         arity_mismatch_exn(tc_cp(tc), tc_ac(tc));
     } else if (ty == do_eval_symbol) {
         // do-eval
-        tregs[0] = Mclosure(Menv(0), compile_expr(tc_frame_ref(tc, 0)), 0);
+        tregs[0] = Mclosure(Menv(0), compile_expr(tregs[0]), 0);
     } else if (ty == do_raise_symbol) {
         // do-raise
         goto do_raise;
