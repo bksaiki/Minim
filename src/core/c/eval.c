@@ -328,39 +328,19 @@ static mobj tl_env_lookup_cell(mobj tc, mobj id) {
 
 static void tl_env_rebind(mobj tc, mobj id, mobj val) {
     mobj cell = top_env_find(tc_tenv(tc), id);
-    if (minim_falsep(cell)) {
-        minim_error1(NULL, "cannot use before initialization", id);
-    }
-
     minim_cdar(cell) = val;
 }
 
 static void env_bind_cell(mobj tc, mobj cell, mobj idx) {
-    if (!minim_envp(tc_env(tc))) {
-        minim_error1("env_bind_cell", "expected environment", tc_env(tc));
-    }
-
-    mobj bindings = minim_env_bindings(tc_env(tc));
-    minim_vector_ref(bindings, minim_fixnum(idx)) = cell;
+    minim_env_ref(tc_env(tc), minim_fixnum(idx)) = cell;
 }
 
 static void env_rebind(mobj tc, mobj idx, mobj val) {
-    if (!minim_envp(tc_env(tc))) {
-        minim_error1("env_rebind", "expected environment", tc_env(tc));
-    }
-
-    mobj bindings = minim_env_bindings(tc_env(tc));
-    mobj cell = minim_vector_ref(bindings, minim_fixnum(idx));
-    minim_cdr(cell) = val;
+    minim_cdr(minim_env_ref(tc_env(tc), minim_fixnum(idx))) = val;
 }
 
 static void env_bind_values(mobj tc, mobj idx, mobj valc, mobj ids, mobj val) {
-    mobj bindings;
     size_t count, bidx;
-
-    if (!minim_envp(tc_env(tc))) {
-        minim_error1("env_bind_values", "expected environment", tc_env(tc));
-    }
     
     count = minim_fixnum(valc);
     if (minim_valuesp(val)) {
@@ -369,12 +349,11 @@ static void env_bind_values(mobj tc, mobj idx, mobj valc, mobj ids, mobj val) {
             result_arity_exn(NULL, count, tc_vc(tc));
         }
 
-        bindings = minim_env_bindings(tc_env(tc));
         bidx = minim_fixnum(idx);
         for (size_t i = 0; i < count; i++) {
             mobj val = tc_values(tc)[i];
             SET_NAME_IF_CLOSURE(minim_car(ids), val);
-            minim_vector_ref(bindings, bidx) = Mcons(minim_car(ids), val);
+            minim_env_ref(tc_env(tc), bidx) = Mcons(minim_car(ids), val);
             ids = minim_cdr(ids);
             bidx += 1;
         }
@@ -384,19 +363,13 @@ static void env_bind_values(mobj tc, mobj idx, mobj valc, mobj ids, mobj val) {
             result_arity_exn(NULL, count, 1);
         }
 
-        bindings = minim_env_bindings(tc_env(tc));
         SET_NAME_IF_CLOSURE(minim_car(ids), val);
-        bidx = minim_fixnum(idx);
-        minim_vector_ref(bindings, bidx) = Mcons(minim_car(ids), val);
+        minim_env_ref(tc_env(tc), minim_fixnum(idx)) = Mcons(minim_car(ids), val);
     }
 }
 
 static mobj env_lookup_value(mobj tc, mobj idx) {
-    if (!minim_envp(tc_env(tc))) {
-        minim_error1("env_lookup_value", "expected environment", tc_env(tc));
-    }
-
-    mobj cell = vector_ref(minim_env_bindings(tc_env(tc)), idx);
+    mobj cell = minim_env_ref(tc_env(tc), minim_fixnum(idx));
     if (minim_cdr(cell) == minim_unbound) {
         minim_error1(
             NULL,
@@ -409,21 +382,12 @@ static mobj env_lookup_value(mobj tc, mobj idx) {
 }
 
 static mobj env_lookup_cell(mobj tc, mobj idx) {
-    if (!minim_envp(tc_env(tc))) {
-        minim_error1("env_lookup_cell", "expected environment", tc_env(tc));
-    }
-
-    return vector_ref(minim_env_bindings(tc_env(tc)), idx);
+    return minim_env_ref(tc_env(tc), minim_fixnum(idx));
 }
 
 static void env_load_closure(mobj tc, mobj proc) {
-    if (!minim_envp(tc_env(tc))) {
-        minim_error1("env_load_closure", "expected environment", tc_env(tc));
-    }
-
-    mobj bindings = minim_env_bindings(tc_env(tc));
     for (size_t i = 0; i < minim_closure_count(proc); i++) {
-        minim_vector_ref(bindings, i) = minim_closure_ref(proc, i);
+        minim_env_ref(tc_env(tc), i) = minim_closure_ref(proc, i);
     }
 }
 
@@ -438,7 +402,7 @@ static mobj load_reg(mobj tc, mobj *tregs, mobj ins, mobj idx) {
         case 3:
             return tc_cp(tc);
         case 4:
-            return Mfixnum(tc_ac(tc));
+            return (mobj) tc_ac(tc);
         default:
             minim_error1(NULL, "invalid register", ins);
     }
@@ -459,7 +423,7 @@ static void store_reg(mobj tc, mobj *tregs, mobj ins, mobj idx, mobj val) {
             tc_cp(tc) = val;
             break;
         case 4:
-            tc_ac(tc) = minim_fixnum(val);
+            tc_ac(tc) = (mfixnum) val;
             break;
         default:
             minim_error1(NULL, "invalid register", ins);
@@ -588,21 +552,12 @@ application:
     } else if (ty == tl_rebind_symbol) {
         // tl-rebind
         tl_env_rebind(tc, minim_cadr(ins), tregs[0]);
-    } else if (ty == make_env_symbol) {
-        // make-env
-        tregs[0] = Menv(tc_env(tc), minim_fixnum(minim_cadr(ins)));
     } else if (ty == push_env_symbol) {
         // push-env
-        tc_env(tc) = Menv(tc_env(tc), minim_fixnum(minim_cadr(ins)));
-    } else if (ty == pop_env_symbol) {
-        // pop-env
-        tc_env(tc) = minim_env_prev(tc_env(tc));
+        tc_env(tc) = Menv(minim_fixnum(minim_cadr(ins)));
     } else if (ty == save_cc_symbol) {
         // save-cc
-        push_frame(tc, (mobj*) minim_fixnum(minim_cadr(ins)));
-    } else if (ty == get_ac_symbol) {
-        // get-ac
-        tregs[0] = (mobj*) tc_ac(tc);
+        push_frame(tc, (mobj) minim_fixnum(minim_cadr(ins)));
     } else if (ty == get_arg_symbol) {
         // get-arg
         tregs[0] = tc_frame_ref(tc, minim_fixnum(minim_cadr(ins)));
@@ -624,7 +579,7 @@ application:
         arity_mismatch_exn(tc_cp(tc), tc_ac(tc));
     } else if (ty == do_eval_symbol) {
         // do-eval
-        tregs[0] = Mclosure(Menv(NULL, 0), compile_expr(tc_frame_ref(tc, 0)), 0);
+        tregs[0] = Mclosure(Menv(0), compile_expr(tc_frame_ref(tc, 0)), 0);
     } else if (ty == do_raise_symbol) {
         // do-raise
         goto do_raise;

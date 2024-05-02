@@ -54,7 +54,6 @@ void init_minim() {
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
     do_with_values_symbol = intern("#%do-with-values");
-    get_ac_symbol = intern("#%get-ac");
     get_arg_symbol = intern("#%get-arg");
     get_tenv_symbol = intern("#%get-tenv");
     literal_symbol = intern("#%literal");
@@ -65,11 +64,9 @@ void init_minim() {
     tl_lookup_cell_symbol = intern("#%tl-lookup-cell");
     tl_rebind_symbol = intern("#%tl-rebind!");
     make_closure_symbol = intern("#%make-closure");
-    make_env_symbol = intern("#%make-env");
     make_unbound_symbol = intern("#%make-unbound");
     mov_symbol = intern("#%mov");
     pop_symbol = intern("#%pop");
-    pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");
     push_env_symbol = intern("#%push-env");
     rebind_symbol = intern("#%rebind");

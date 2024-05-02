@@ -112,19 +112,6 @@ static mobj compile_lambda_clause(mobj clause, mobj env, mobj fvs, mobj bound) {
         Mlist1(closure_bind_symbol)                     // copy free variables
     );
 
-    // ins = Mlist1(Mlist2(push_env_symbol, Mfixnum(env_size)));
-
-    // // load free variables from closure
-    // bidx = 0;
-    // for (mobj it = fvs; !minim_nullp(it); it = minim_cdr(it)) {
-    //     list_set_tail(ins, Mlist2(
-    //         Mlist3(closure_ref_symbol, Mfixnum(cp_reg_idx), Mfixnum(bidx)),
-    //         Mlist2(bind_cell_symbol, Mfixnum(bidx))
-    //     ));
-    //     bidx += 1;
-    // }
-
-
     // bind arguments
     env = scope_cenv_extend(env);
     aidx = 0;
@@ -203,7 +190,10 @@ static mobj compile_case_lambda2(mobj expr, mobj env, mobj fvs, mobj bounds, int
             list_set_tail(ins, Mlist1(Mlist3(branch, Mfixnum(req_arity), label)));
         } else {
             label = cenv_make_label(proc_env);
-            ins = Mlist2(Mlist1(get_ac_symbol), Mlist3(branch, Mfixnum(req_arity), label));
+            ins = Mlist2(
+                Mlist3(mov_symbol, Mfixnum(res_reg_idx), Mfixnum(ac_reg_idx)),
+                Mlist3(branch, Mfixnum(req_arity), label)
+            );
         }
         
         arity = update_arity(arity, req_arity, restp);

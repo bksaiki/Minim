@@ -12,7 +12,7 @@ static mobj compile_do_ret(mobj name, mobj arity, mobj do_instr) {
     
     // hand written procedure
     ins = Mlist6(
-        Mlist1(get_ac_symbol),
+        Mlist3(mov_symbol, Mfixnum(res_reg_idx), Mfixnum(ac_reg_idx)),
         Mlist3(branchne_symbol, arity, label),
         do_instr,
         Mlist1(ret_symbol),
@@ -54,7 +54,7 @@ mobj compile_apply(mobj name) {
     
     // hand written procedure
     ins = Mlist6(
-        Mlist1(get_ac_symbol),
+        Mlist3(mov_symbol, Mfixnum(res_reg_idx), Mfixnum(ac_reg_idx)),
         Mlist3(branchlt_symbol, Mfixnum(2), label),
         Mlist1(do_apply_symbol),
         Mlist1(ret_symbol),
@@ -108,7 +108,7 @@ mobj compile_eval(mobj name) {
     // hand written
     ins = list_append2(
         Mlist2(
-            Mlist1(get_ac_symbol),
+            Mlist3(mov_symbol, Mfixnum(res_reg_idx), Mfixnum(ac_reg_idx)),
             Mlist3(branchne_symbol, Mfixnum(1), Larity2)
         ),
         // %ac == 1 (in tail position)

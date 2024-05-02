@@ -88,7 +88,6 @@ extern mobj do_raise_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
-extern mobj get_ac_symbol;
 extern mobj get_arg_symbol;
 extern mobj get_tenv_symbol;
 extern mobj literal_symbol;
@@ -99,10 +98,8 @@ extern mobj tl_lookup_symbol;
 extern mobj tl_lookup_cell_symbol;
 extern mobj tl_rebind_symbol;
 extern mobj make_closure_symbol;
-extern mobj make_env_symbol;
 extern mobj mov_symbol;
 extern mobj pop_symbol;
-extern mobj pop_env_symbol;
 extern mobj push_symbol;
 extern mobj push_env_symbol;
 extern mobj rebind_symbol;
@@ -423,13 +420,12 @@ extern mobj minim_unbound;
 // Environment
 // +------------+
 // |    type    | [0, 1)
-// |    prev    | [8, 16)
-// |   bindings | [16, 24)
+// |   bindings | [16, 16 + 8N)
+// |    ...     |
 // +------------+
-#define minim_env_size          (3 * ptr_size)
+#define minim_env_size(n)       ((1 + (n)) * ptr_size)
 #define minim_envp(o)           (minim_type(o) == MINIM_OBJ_ENV)
-#define minim_env_prev(o)       (*((mobj*) ptr_add(o, ptr_size)))
-#define minim_env_bindings(o)   (*((mobj*) ptr_add(o, 2 * ptr_size)))
+#define minim_env_ref(o, i)     (*((mobj*) ptr_add(o, (1 + (i)) * ptr_size)))
 
 // Environment (top-level)
 // +------------+
@@ -486,7 +482,7 @@ mobj Moutput_port(FILE *stream);
 mobj Msyntax(mobj e, mobj loc);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mhashtable(size_t size_hint);
-mobj Menv(mobj prev, size_t size);
+mobj Menv(size_t size);
 mobj Mtop_env(size_t size_hint);
 mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
 
@@ -721,11 +717,6 @@ mobj top_env_copy(mobj env, int mutablep);
 mobj top_env_copy2(mobj env, mobj syms, int mutablep);
 mobj top_env_insert(mobj env, mobj k, mobj v);
 mobj top_env_find(mobj env, mobj k);
-
-void env_define_var_no_check(mobj env, mobj var, mobj val);
-mobj env_define_var(mobj env, mobj var, mobj val);
-mobj env_set_var(mobj env, mobj var, mobj val);
-mobj env_lookup_var(mobj env, mobj var);
 
 mobj environmentp_proc(mobj o);
 mobj make_empty_environment();

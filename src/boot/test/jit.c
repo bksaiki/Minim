@@ -42,7 +42,7 @@ void no_check(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     eval_expr(tc, read_object(istream));
 }
 
@@ -53,7 +53,7 @@ void check_true(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     result = eval_expr(tc, read_object(istream));
     if (!minim_truep(result)) {
         log_failed_case(input, "#t", write_debug(result));
@@ -70,7 +70,7 @@ void check_false(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     result = eval_expr(tc, read_object(istream));
     if (!minim_falsep(result)) {
         log_failed_case(input, "#f", write_debug(result));
@@ -88,7 +88,7 @@ void check_equal(const char *input, const char *expect) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     result = eval_expr(tc, read_object(istream));
     str = write_debug(result);
     if (strcmp(str, expect) != 0) {
