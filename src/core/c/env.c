@@ -103,7 +103,7 @@ mobj top_env_copy2(mobj env, mobj syms, int mutablep) {
 
 static void top_env_resize(mobj env) {
     mobj nb, b, cell;
-    size_t *alloc_ptr, i, j;
+    size_t *alloc_ptr,  i, j;
 
     // find the right size
     alloc_ptr = start_size_ptr;
@@ -173,103 +173,14 @@ static mobj top_env_symbols(mobj env) {
 //  A vector of bindings with a previous frame pointer
 //
 
-mobj Menv(mobj prev, size_t size) {
-    mobj env = GC_alloc(minim_env_size);
+mobj Menv(size_t size) {
+    mobj env = GC_alloc(minim_env_size(size));
     minim_type(env) = MINIM_OBJ_ENV;
-    minim_env_bindings(env) = Mvector(size, minim_false);
-    minim_env_prev(env) = prev;
     return env;
 }
 
-static mobj env_find(mobj env, mobj k, int rec) {
-    mobj frame, cell;
-    size_t i;
-
-    for (; minim_envp(env); env = minim_env_prev(env)) {
-        frame = minim_env_bindings(env);
-        for (i = 0; i < minim_vector_len(frame); i++) {
-            cell = minim_vector_ref(frame, i);
-            if (minim_falsep(cell))
-                break;
-
-            if (minim_car(cell) == k)
-                return cell;
-        }
-
-        if (!rec)
-            break;
-    }
-
-    cell = top_env_find(env, k);
-    return minim_falsep(cell) ? minim_false : minim_car(cell);
-}
-
-void env_define_var_no_check(mobj env, mobj var, mobj val) {
-    mobj frame, cell;
-    size_t size, i;
-
-    if (minim_top_envp(env)) {
-        // TODO: splice this out
-        top_env_insert(env, var, val);
-    } else {
-        frame = minim_env_bindings(env);
-        size = minim_vector_len(frame);
-        for (i = 0; i < size; ++i) {
-            cell = minim_vector_ref(frame, i);
-            if (minim_falsep(cell)) {
-                minim_vector_ref(frame, i) = Mcons(var, val);
-                return;
-            }
-        }
-
-        minim_error1("env_define_var_no_check", "exceeded environment size", var);
-    }
-}
-
-mobj env_define_var(mobj env, mobj var, mobj val) {
-    mobj cell, old;
-    
-    cell = env_find(env, var, 0);
-    if (minim_falsep(cell)) {
-        // insert new cell
-        env_define_var_no_check(env, var, val);
-        return NULL;
-    } else {
-        // overwrite cell
-        old = minim_cdr(cell);
-        minim_cdr(cell) = val;
-        return old;
-    }
-}
-
-mobj env_set_var(mobj env, mobj var, mobj val) {
-    mobj cell, old;
-    
-    cell = env_find(env, var, 1);
-    if (minim_falsep(cell)) {
-        // panic, cannot find cell
-        minim_error1("env_set_var", "unbound variable", var);
-    } else {
-        // overwrite cell
-        old = minim_cdr(cell);
-        minim_cdr(cell) = val;
-        return old;
-    }
-}
-
-mobj env_lookup_var(mobj env, mobj var) {
-    mobj cell = env_find(env, var, 1);
-    if (minim_falsep(cell)) {
-        // panic, cannot find cell
-        minim_error1("env_lookup_var", "unbound variable", var);
-    } else {
-        // found cell
-        return minim_cdr(cell);
-    }
-}
-
 #define add_value(env, name, c_val)  \
-    env_define_var(env, intern(name), c_val);
+    top_env_insert(env, intern(name), c_val);
 
 mobj base_env;
 

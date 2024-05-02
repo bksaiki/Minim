@@ -34,6 +34,7 @@ void init_minim() {
 
     apply_symbol = intern("#%apply");
     bind_symbol = intern("#%bind");
+    bind_cell_symbol = intern("#%bind-cell");
     bind_values_symbol = intern("#%bind-values");
     brancha_symbol = intern("#%brancha");
     branchf_symbol = intern("#%branchf");
@@ -43,6 +44,9 @@ void init_minim() {
     ccall_symbol = intern("#%ccall");
     check_stack_symbol = intern("#%check-stack");
     clear_frame_symbol = intern("#%clear-frame");
+    closure_ref_symbol = intern("#%closure-ref");
+    closure_set_symbol = intern("#%closure-set!");
+    closure_bind_symbol = intern("#%closure-bind!");
     do_apply_symbol = intern("#%do-apply");
     do_arity_error_symbol = intern("#%do-arity-error");
     do_eval_symbol = intern("#%do-eval");
@@ -50,18 +54,19 @@ void init_minim() {
     do_rest_symbol = intern("#%do-rest");
     do_values_symbol = intern("#%do-values");
     do_with_values_symbol = intern("#%do-with-values");
-    get_ac_symbol = intern("#%get-ac");
     get_arg_symbol = intern("#%get-arg");
     get_tenv_symbol = intern("#%get-tenv");
     literal_symbol = intern("#%literal");
     lookup_symbol = intern("#%lookup");
+    lookup_cell_symbol = intern("#%lookup-cell");
     tl_bind_values_symbol = intern("#%tl-bind-values");
     tl_lookup_symbol = intern("#%tl-lookup");
+    tl_lookup_cell_symbol = intern("#%tl-lookup-cell");
+    tl_rebind_symbol = intern("#%tl-rebind!");
     make_closure_symbol = intern("#%make-closure");
-    make_env_symbol = intern("#%make-env");
     make_unbound_symbol = intern("#%make-unbound");
+    mov_symbol = intern("#%mov");
     pop_symbol = intern("#%pop");
-    pop_env_symbol = intern("#%pop-env");
     push_symbol = intern("#%push");
     push_env_symbol = intern("#%push-env");
     rebind_symbol = intern("#%rebind");

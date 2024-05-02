@@ -9,7 +9,7 @@ int return_code, passed;
     rewind(stream);         \
 }
 
-char *write(mobj o) {
+char *write_debug(mobj o) {
     FILE *stream;
     char *buffer;
     size_t len, read;
@@ -42,7 +42,7 @@ void no_check(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     eval_expr(tc, read_object(istream));
 }
 
@@ -53,10 +53,10 @@ void check_true(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     result = eval_expr(tc, read_object(istream));
     if (!minim_truep(result)) {
-        log_failed_case(input, "#t", write(result));
+        log_failed_case(input, "#t", write_debug(result));
         passed = 0;
     }
 
@@ -70,10 +70,10 @@ void check_false(const char *input) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     result = eval_expr(tc, read_object(istream));
     if (!minim_falsep(result)) {
-        log_failed_case(input, "#f", write(result));
+        log_failed_case(input, "#f", write_debug(result));
         passed = 0;
     }
 
@@ -88,9 +88,9 @@ void check_equal(const char *input, const char *expect) {
     istream = tmpfile();
     tc = current_tc();
     load(istream, input);
-    tc_env(tc) = make_base_env();
+    tc_env(tc) = NULL;
     result = eval_expr(tc, read_object(istream));
-    str = write(result);
+    str = write_debug(result);
     if (strcmp(str, expect) != 0) {
         log_failed_case(input, expect, str);
         passed = 0;
@@ -143,7 +143,7 @@ int test_closure() {
     check_equal("(lambda () 1)", "#<procedure>");
     check_equal("(lambda (x) (cons x 1))", "#<procedure>");
     check_equal("(lambda (x y) (cons x y))", "#<procedure>");
-    check_equal("(lambda (x y . rest) ($append rest))", "#<procedure>");
+    check_equal("(lambda (x y . rest) ($append2 rest))", "#<procedure>");
 
     return passed;
 }
@@ -159,6 +159,8 @@ int test_app() {
     check_equal("(cons ((lambda () 'a)) (cons 'b 'c))", "(a b . c)");
     check_equal("((lambda (x) (cons x 2)) 1)", "(1 . 2)");
     check_equal("((lambda (x y) (cons x y)) 1 2)", "(1 . 2)");
+
+    check_equal("(((lambda (x) (lambda (y) (cons x y))) 1) 2)", "(1 . 2)");
 
     return passed;
 }
@@ -203,6 +205,8 @@ int test_case_lambda() {
 
     check_equal("($procedure-arity (case-lambda [(x y z . rest) 'more] [(x) 1]))", "(1 3 . #f)");
     check_equal("($procedure-arity (case-lambda [() 1] [(x y z . rest) 'more] [(x) 1]))", "(0 1 3 . #f)");
+
+    check_equal("(((lambda (x) (case-lambda [(y) (cons x y)] [(y z) (cons x (cons y z))])) 1) 2 3)", "(1 2 . 3)");
 
     return passed;
 }

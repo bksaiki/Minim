@@ -3,11 +3,11 @@
 #include "../minim.h"
 
 #define add_value(env, name, c_val)  \
-    env_define_var(env, intern(name), c_val);
+    top_env_insert(env, intern(name), c_val);
 
 #define add_procedure(name, c_fn, arity) { \
     mobj sym = intern(name); \
-    env_define_var( \
+    top_env_insert( \
         env, \
         sym, \
         compile_prim(name, c_fn, Mfixnum(arity)) \
@@ -16,7 +16,7 @@
 
 #define add_cprocedure(name, gen) { \
     mobj sym = intern(name); \
-    env_define_var( \
+    top_env_insert( \
         env, \
         sym, \
         gen(sym) \

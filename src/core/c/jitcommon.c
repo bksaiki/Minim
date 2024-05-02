@@ -3,32 +3,82 @@
 #include "../minim.h"
 
 //
-//  Compiler environments
+//  Global compiler environment
+//  Represents a single compilation that may span multiple instances.
 //
 
-#define cenv_length         4
-#define cenv_prev(c)        (minim_vector_ref(c, 0))
-#define cenv_labels(c)      (minim_vector_ref(c, 1))
-#define cenv_tmpls(c)       (minim_vector_ref(c, 2))
-#define cenv_bound(c)       (minim_vector_ref(c, 3))
-#define cenv_num_tmpls(c)   list_length(minim_unbox(cenv_tmpls(c)))
+#define global_cenv_length          3
+#define global_cenv_tmpls(c)        (minim_vector_ref(c, 0))
+#define global_cenv_fvs(c)          (minim_vector_ref(c, 1))
+#define global_cenv_bound(c)        (minim_vector_ref(c, 2))
+#define global_cenv_num_tmpls(c)    (list_length(global_cenv_tmpls(c)))
 
-mobj make_cenv() {
-    mobj cenv = Mvector(cenv_length, NULL);
-    cenv_prev(cenv) = minim_null;
-    cenv_labels(cenv) = Mbox(minim_null);
-    cenv_tmpls(cenv) = Mbox(minim_null);
-    cenv_bound(cenv) = minim_null;
+mobj make_global_cenv() {
+    mobj cenv = Mvector(global_cenv_length, NULL);
+    global_cenv_tmpls(cenv) = minim_null;
+    global_cenv_fvs(cenv) = minim_null;
+    global_cenv_bound(cenv) = minim_null;
     return cenv;
 }
 
-mobj extend_cenv(mobj cenv) {
-    mobj cenv2 = Mvector(cenv_length, NULL);
-    cenv_prev(cenv2) = cenv;
-    cenv_labels(cenv2) = cenv_labels(cenv);
-    cenv_tmpls(cenv2) = cenv_tmpls(cenv);
-    cenv_bound(cenv2) = minim_null;
-    return cenv2;
+size_t global_cenv_add_template(mobj cenv, mobj jit) {
+    size_t idx = global_cenv_num_tmpls(cenv);
+    global_cenv_tmpls(cenv) = Mcons(jit, global_cenv_tmpls(cenv));
+    return idx;
+}
+
+mobj global_cenv_ref_template(mobj cenv, size_t i) {
+    mobj tmpls;
+    size_t j;
+    
+    tmpls = list_reverse(global_cenv_tmpls(cenv));
+    for (j = i; j > 0; j--) {
+        if (minim_nullp(tmpls))
+            minim_error1("cenv_template_ref", "index out of bounds", Mfixnum(i));
+        tmpls = minim_cdr(tmpls);
+    }
+
+    return minim_car(tmpls);
+}
+
+void global_cenv_set_fvs(mobj cenv, mobj fvs) {
+    global_cenv_fvs(cenv) = fvs;
+}
+
+mobj global_cenv_get_fvs(mobj cenv, mobj e) {
+    mobj cell = assq_ref(global_cenv_fvs(cenv), e);
+    return minim_falsep(cell) ? minim_null : minim_cdr(cell);
+}
+
+void global_cenv_set_bound(mobj cenv, mobj bound) {
+    global_cenv_bound(cenv) = bound;
+}
+
+mobj global_cenv_get_bound(mobj cenv, mobj e) {
+    mobj cell = assq_ref(global_cenv_bound(cenv), e);
+    return minim_falsep(cell) ? minim_null : minim_cdr(cell);
+}
+
+//
+//  Procedure-level compiler enviornment
+//  Represents a single procedure
+//
+
+#define cenv_length         3
+#define cenv_global(c)      (minim_vector_ref(c, 0))
+#define cenv_labels(c)      (minim_vector_ref(c, 1))
+#define cenv_fvs(c)         (minim_vector_ref(c, 2))
+
+mobj make_cenv(mobj global_cenv) {
+    mobj cenv = Mvector(cenv_length, NULL);
+    cenv_global(cenv) = global_cenv;
+    cenv_labels(cenv) = Mbox(minim_null);
+    cenv_fvs(cenv) = minim_null;
+    return cenv;
+}
+
+mobj cenv_global_env(mobj cenv) {
+    return cenv_global(cenv);
 }
 
 mobj cenv_make_label(mobj cenv) {
@@ -50,72 +100,62 @@ mobj cenv_make_label(mobj cenv) {
     return label;
 }
 
-mobj cenv_template_add(mobj cenv, mobj jit) {
-    mobj tmpl_box;
-    size_t num_tmpls;
-
-    // unbox list of templates
-    tmpl_box = cenv_tmpls(cenv);
-    num_tmpls = list_length(minim_unbox(tmpl_box));
-
-    // update list
-    minim_unbox(tmpl_box) = Mcons(jit, minim_unbox(tmpl_box));
-    return Mfixnum(num_tmpls);
+void cenv_set_fvs(mobj cenv, mobj fvs) {
+    cenv_fvs(cenv) = fvs;
 }
 
-mobj cenv_template_ref(mobj cenv, size_t i) {
-    mobj tmpls;
-    size_t j;
-    
-    tmpls = list_reverse(minim_unbox(cenv_tmpls(cenv)));
-    for (j = i; j > 0; j--) {
-        if (minim_nullp(tmpls))
-            minim_error1("cenv_template_ref", "index out of bounds", Mfixnum(i));
-        tmpls = minim_cdr(tmpls);
-    }
+//
+//  Scope-level environment
+//  Represents the current compile-time scope
+//
 
-    return minim_car(tmpls);
+#define scope_cenv_length       2
+#define scope_cenv_proc(c)      (minim_vector_ref(c, 0))
+#define scope_cenv_bound(c)     (minim_vector_ref(c, 1))
+
+mobj make_scope_cenv(mobj proc_cenv) {
+    mobj cenv = Mvector(scope_cenv_length, NULL);
+    scope_cenv_proc(cenv) = proc_cenv;
+    scope_cenv_bound(cenv) = minim_null;
+    return cenv;
 }
 
-void cenv_id_add(mobj cenv, mobj id) {
-    // ordering matters
-    if (minim_nullp(cenv_bound(cenv))) {
-        cenv_bound(cenv) = Mlist1(id);
+mobj scope_cenv_extend(mobj cenv) {
+    mobj cenv2 = Mvector(scope_cenv_length, NULL);
+    scope_cenv_proc(cenv2) = scope_cenv_proc(cenv);
+    scope_cenv_bound(cenv2) = copy_list(scope_cenv_bound(cenv));
+    return cenv2;
+}
+
+mobj scope_cenv_proc_env(mobj cenv) {
+    return scope_cenv_proc(cenv);
+}
+
+mobj scope_cenv_global_env(mobj cenv) {
+    return cenv_global(scope_cenv_proc(cenv));
+}
+
+mobj scope_cenv_make_label(mobj cenv) {
+    return cenv_make_label(scope_cenv_proc(cenv));
+}
+
+size_t scope_cenv_bind_count(mobj cenv) {
+    return list_length(scope_cenv_bound(cenv));
+}
+
+size_t scope_cenv_bind(mobj cenv, mobj id) {
+    size_t idx = list_length(scope_cenv_bound(cenv));
+    scope_cenv_bound(cenv) = Mcons(id, scope_cenv_bound(cenv));
+    return idx;
+}
+
+mobj scope_cenv_ref(mobj cenv, mobj id) {
+    mobj ref = memq(scope_cenv_bound(cenv), id);
+    if (minim_falsep(ref)) {
+        return ref;
     } else {
-        list_set_tail(cenv_bound(cenv), Mlist1(id));
+        return Mfixnum(list_length(ref) - 1);
     }
-}
-
-mobj cenv_id_ref(mobj cenv, mobj id) {
-    mobj it;
-    size_t depth, offset;
-
-    depth = 0;
-    offset = 0;
-    for (it = cenv_bound(cenv); !minim_nullp(it); it = minim_cdr(it), offset++) {
-        if (minim_car(it) == id) {
-            return Mcons(Mfixnum(depth), Mfixnum(offset));
-        }
-    }
-
-    depth += 1;
-    for (cenv = cenv_prev(cenv); !minim_nullp(cenv); cenv = cenv_prev(cenv), depth++) {
-        offset = 0;
-        for (it = cenv_bound(cenv); !minim_nullp(it); it = minim_cdr(it), offset++) {
-            if (minim_car(it) == id) {
-                return Mcons(Mfixnum(depth), Mfixnum(offset));
-            }
-        }
-    }
-
-    return minim_false;
-}
-
-mobj cenv_depth(mobj cenv) {
-    size_t depth = 0;
-    for (cenv = cenv_prev(cenv); !minim_nullp(cenv); cenv = cenv_prev(cenv))
-        depth++;
-    return Mfixnum(depth);
 }
 
 //
@@ -170,7 +210,7 @@ mobj resolve_refs(mobj cenv, mobj ins) {
             minim_car(minim_cddr(in)) = minim_cdr(assq_ref(label_map, minim_car(minim_cddr(in))));
         } else if (minim_car(in) == make_closure_symbol) {
             // closure: need to lookup JIT object to embed
-            minim_cadr(in) = cenv_template_ref(cenv, minim_fixnum(minim_cadr(in)));
+            minim_cadr(in) = global_cenv_ref_template(cenv_global(cenv), minim_fixnum(minim_cadr(in)));
         } else if (minim_car(in) == save_cc_symbol) {
             // save-cc: need to replace the label with the next instruction
             minim_cadr(in) = minim_cdr(assq_ref(label_map, minim_cadr(in)));

@@ -68,6 +68,7 @@ extern mobj make_unbound_symbol;
 
 extern mobj apply_symbol;
 extern mobj bind_symbol;
+extern mobj bind_cell_symbol;
 extern mobj bind_values_symbol;
 extern mobj brancha_symbol;
 extern mobj branchf_symbol;
@@ -77,6 +78,9 @@ extern mobj branchne_symbol;
 extern mobj ccall_symbol;
 extern mobj clear_frame_symbol;
 extern mobj check_stack_symbol;
+extern mobj closure_ref_symbol;
+extern mobj closure_set_symbol;
+extern mobj closure_bind_symbol;
 extern mobj do_apply_symbol;
 extern mobj do_arity_error_symbol;
 extern mobj do_eval_symbol;
@@ -84,17 +88,18 @@ extern mobj do_raise_symbol;
 extern mobj do_rest_symbol;
 extern mobj do_values_symbol;
 extern mobj do_with_values_symbol;
-extern mobj get_ac_symbol;
 extern mobj get_arg_symbol;
 extern mobj get_tenv_symbol;
 extern mobj literal_symbol;
 extern mobj lookup_symbol;
+extern mobj lookup_cell_symbol;
 extern mobj tl_bind_values_symbol;
 extern mobj tl_lookup_symbol;
+extern mobj tl_lookup_cell_symbol;
+extern mobj tl_rebind_symbol;
 extern mobj make_closure_symbol;
-extern mobj make_env_symbol;
+extern mobj mov_symbol;
 extern mobj pop_symbol;
-extern mobj pop_env_symbol;
 extern mobj push_symbol;
 extern mobj push_env_symbol;
 extern mobj rebind_symbol;
@@ -262,12 +267,16 @@ extern mobj minim_unbound;
 // |    env     | [8, 16)
 // |    code    | [16, 24)
 // |    name    | [24, 32)
+// |    #free   | [32, 40)
+// |    free    | [40, ...)
 // +------------+
-#define minim_closure_size          (4 * ptr_size)
+#define minim_closure_size(n)       ((5 + (n)) * ptr_size)
 #define minim_closurep(o)           (minim_type(o) == MINIM_OBJ_CLOSURE)
 #define minim_closure_env(o)        (*((mobj*) ptr_add(o, ptr_size)))
 #define minim_closure_code(o)       (*((mobj*) ptr_add(o, 2 * ptr_size)))
 #define minim_closure_name(o)       (*((mobj*) ptr_add(o, 3 * ptr_size)))
+#define minim_closure_count(o)      (*((size_t*) ptr_add(o, 4 * ptr_size)))
+#define minim_closure_ref(o, i)     (*((mobj*) ptr_add(o, (5 + (i)) * ptr_size)))
 
 // Port
 // +------------+
@@ -411,13 +420,12 @@ extern mobj minim_unbound;
 // Environment
 // +------------+
 // |    type    | [0, 1)
-// |    prev    | [8, 16)
-// |   bindings | [16, 24)
+// |   bindings | [16, 16 + 8N)
+// |    ...     |
 // +------------+
-#define minim_env_size          (3 * ptr_size)
+#define minim_env_size(n)       ((1 + (n)) * ptr_size)
 #define minim_envp(o)           (minim_type(o) == MINIM_OBJ_ENV)
-#define minim_env_prev(o)       (*((mobj*) ptr_add(o, ptr_size)))
-#define minim_env_bindings(o)   (*((mobj*) ptr_add(o, 2 * ptr_size)))
+#define minim_env_ref(o, i)     (*((mobj*) ptr_add(o, (1 + (i)) * ptr_size)))
 
 // Environment (top-level)
 // +------------+
@@ -468,13 +476,13 @@ mobj Mstring2(long len, mchar c);
 mobj Mcons(mobj car, mobj cdr);
 mobj Mvector(long len, mobj init);
 mobj Mbox(mobj x);
-mobj Mclosure(mobj env, mobj code);
+mobj Mclosure(mobj env, mobj code, size_t free_count);
 mobj Minput_port(FILE *stream);
 mobj Moutput_port(FILE *stream);
 mobj Msyntax(mobj e, mobj loc);
 mobj Mrecord(mobj rtd, int fieldc);
 mobj Mhashtable(size_t size_hint);
-mobj Menv(mobj prev, size_t size);
+mobj Menv(size_t size);
 mobj Mtop_env(size_t size_hint);
 mobj Mcontinuation(mobj prev, mobj pc, mobj env, mobj tc);
 
@@ -578,6 +586,7 @@ mobj set_cdr_proc(mobj p, mobj x);
 
 int minim_listp(mobj x);
 mobj make_list(size_t len, mobj init);
+mobj copy_list(mobj xs);
 long list_length(mobj xs);
 void list_set_tail(mobj xs, mobj ys);
 
@@ -587,6 +596,7 @@ mobj length_proc(mobj xs);
 mobj list_reverse(mobj xs);
 mobj list_append2(mobj xs, mobj ys);
 
+mobj memq(mobj xs, mobj k);
 mobj assq_ref(mobj xs, mobj k);
 mobj assq_set(mobj xs, mobj k, mobj v);
 
@@ -707,11 +717,6 @@ mobj top_env_copy(mobj env, int mutablep);
 mobj top_env_copy2(mobj env, mobj syms, int mutablep);
 mobj top_env_insert(mobj env, mobj k, mobj v);
 mobj top_env_find(mobj env, mobj k);
-
-void env_define_var_no_check(mobj env, mobj var, mobj val);
-mobj env_define_var(mobj env, mobj var, mobj val);
-mobj env_set_var(mobj env, mobj var, mobj val);
-mobj env_lookup_var(mobj env, mobj var);
 
 mobj environmentp_proc(mobj o);
 mobj make_empty_environment();
@@ -876,14 +881,30 @@ mobj fasl_write_proc(mobj x, mobj port);
 
 // JIT compiler
 
-mobj make_cenv();
-mobj extend_cenv(mobj cenv);
+mobj make_global_cenv();
+size_t global_cenv_add_template(mobj cenv, mobj jit);
+mobj global_cenv_ref_template(mobj cenv, size_t i);
+void global_cenv_set_fvs(mobj cenv, mobj fvs);
+mobj global_cenv_get_fvs(mobj cenv, mobj e);
+void global_cenv_set_bound(mobj cenv, mobj bound);
+mobj global_cenv_get_bound(mobj cenv, mobj e);
+
+mobj make_cenv(mobj global_env);
+mobj cenv_global_env(mobj cenv);
 mobj cenv_make_label(mobj cenv);
-mobj cenv_template_add(mobj cenv, mobj jit);
-mobj cenv_template_ref(mobj cenv, size_t i);
-void cenv_id_add(mobj cenv, mobj id);
-mobj cenv_id_ref(mobj cenv, mobj id);
-mobj cenv_depth(mobj cenv);
+void cenv_set_fvs(mobj cenv, mobj fvs);
+
+mobj make_scope_cenv(mobj proc_cenv);
+mobj scope_cenv_extend(mobj cenv);
+mobj scope_cenv_proc_env(mobj cenv);
+mobj scope_cenv_global_env(mobj cenv);
+mobj scope_cenv_make_label(mobj cenv);
+size_t scope_cenv_bind_count(mobj cenv);
+size_t scope_cenv_bind(mobj cenv, mobj id);
+mobj scope_cenv_ref(mobj cenv, mobj id);
+
+mobj jit_free_vars(mobj expr, mobj table);
+mobj jit_bound_vars(mobj expr, mobj table);
 
 mobj write_code(mobj ins, mobj reloc, mobj arity);
 mobj resolve_refs(mobj cenv, mobj ins);
@@ -903,6 +924,13 @@ mobj compile_values(mobj name);
 mobj compile_void(mobj name);
 
 // Interpreter
+
+#define tmp_reg_count       3
+#define res_reg_idx         0
+#define t0_reg_idx          1
+#define t1_reg_idx          2
+#define cp_reg_idx          3
+#define ac_reg_idx          4
 
 void reserve_stack(mobj tc, size_t argc);
 void set_arg(mobj tc, size_t i, mobj x);
