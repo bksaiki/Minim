@@ -897,6 +897,7 @@
 ;; Vectors
 
 (export vector
+        make-vector
         vector-length
         vector-ref
         vector-set!
@@ -905,6 +906,14 @@
 
 (define (vector . xs)
   ($list->vector xs))
+
+(define (make-vector n . args)
+  (unless (and (fixnum? n) (>= n 0))
+    (raise-argument-error 'vector-ref "non-negative fixnum" n))
+  (cond
+    [(null? args) ($make-vector n 0)]
+    [(null? (cdr args)) ($make-vector n (car args))]
+    [else (error 'make-vector "expected 1 or 2 arguments" (1+ (length args)))]))
 
 (define (non-vector-error name x)
   (raise-argument-error name "vector?" x))

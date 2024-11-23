@@ -573,6 +573,7 @@ extern obj length_prim;
 extern obj reverse_prim;
 extern obj append_prim;
 
+extern obj make_vector_prim;
 extern obj vector_length_prim;
 extern obj vector_ref_prim;
 extern obj vector_set_prim;

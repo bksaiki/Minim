@@ -196,6 +196,10 @@ int test_list(void) {
 int test_vector(void) {
     passed = 1;
 
+    check_equal("(make-vector 0 1)", "#()");
+    check_equal("(make-vector 1 1)", "#(1)");
+    check_equal("(make-vector 3 1)", "#(1 1 1)");
+
     check_equal("(vector-length #())", "0");
     check_equal("(vector-length #(1))", "1");
     check_equal("(vector-length #(1 2 3))", "3");

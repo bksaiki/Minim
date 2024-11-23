@@ -29,6 +29,7 @@ obj length_prim;
 obj reverse_prim;
 obj append_prim;
 
+obj make_vector_prim;
 obj vector_length_prim;
 obj vector_ref_prim;
 obj vector_set_prim;
@@ -96,6 +97,7 @@ proc1(not_proc, x, Mnot(x))
 proc1(car_proc, x, Mcar(x))
 proc1(cdr_proc, x, Mcdr(x))
 
+proc2(make_vector_proc, n, x, Mvector(Mfixnum_value(n), x));
 proc1(vector_length_proc, x, Mfixnum(Mvector_len(x)))
 proc2(vector_ref_proc, x, y, Mvector_ref(x, Mfixnum_value(y)))
 
@@ -145,6 +147,7 @@ void init_prims(void) {
     reverse_prim = Mprim(Mreverse, 1, "reverse");
     append_prim = Mprim(Mappend, 2, "append");
 
+    make_vector_prim = Mprim(make_vector_proc, 2, "make-vector");
     vector_length_prim = Mprim(vector_length_proc, 1, "vector-length");
     vector_ref_prim = Mprim(vector_ref_proc, 2, "vector-ref");
     vector_set_prim = Mprim(vector_set_proc, 3, "vector-set!");
@@ -222,6 +225,7 @@ obj prim_env(obj env) {
     env_add_prim(env, reverse_prim);
     env_add_prim(env, append_prim);
 
+    env_add_prim(env, make_vector_prim);
     env_add_prim(env, vector_length_prim);
     env_add_prim(env, vector_ref_prim);
     env_add_prim(env, vector_set_prim);
