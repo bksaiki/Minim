@@ -222,7 +222,49 @@ static void check_begin(obj e) {
 // Already assumes `expr` is `(<name> . <???>)`
 // Check: `expr` must be `(<name> <datum> ...)`
 static void check_lambda(obj e) {
-    check_formals(e, Mcadr(e));
+    obj rib;
+
+    rib = Mcdr(e);
+    if (!Mconsp(rib))
+        bad_syntax_exn(e);
+    check_formals(e, Mcar(rib));
+
+    rib = Mcdr(rib);
+    if (!Mconsp(rib))
+        bad_syntax_exn(e);
+
+    while (Mconsp(rib))
+        rib = Mcdr(rib);
+
+    if (!Mnullp(rib))
+        bad_syntax_exn(e);
+}
+
+// Already assumes `expr` is `(<name> . <???>)`
+// Check: `expr` must be `(<name> <datum> ...)`
+static void check_case_lambda(obj e) {
+    obj rib, it;
+    
+    rib = Mcdr(e);
+    for (; Mconsp(rib); rib = Mcdr(rib)) {
+        it = Mcar(rib);
+        if (!Mconsp(it))
+            bad_syntax_exn(e);
+        check_formals(e, Mcar(it));
+
+        it = Mcdr(it);
+        if (!Mconsp(it))
+            bad_syntax_exn(e);
+        
+        while (Mconsp(it))
+            it = Mcdr(it);
+        
+        if (!Mnullp(it))
+            bad_syntax_exn(e);
+    }
+
+    if (!Mnullp(rib))
+        bad_syntax_exn(e);
 }
 
 static void check_import_spec(obj e, obj spec) {
@@ -345,7 +387,7 @@ loop:
 }
 
 void check_expr(obj e) {
-    obj hd, it;
+    obj hd, it, it2;
 
     if (Mconsp(e)) {
         hd = Mcar(e);
@@ -407,6 +449,12 @@ void check_expr(obj e) {
             check_lambda(e);
             for (it = Mcddr(e); !Mnullp(it); it = Mcdr(it))
                 check_expr(Mcar(it));
+        } else if (hd == Mcase_lambda_symbol) {
+            check_case_lambda(e);
+            for (it = Mcdr(e); !Mnullp(it); it = Mcdr(it)) {
+                for (it2 = Mcdar(it); !Mnullp(it2); it2 = Mcdr(it2))
+                    check_expr(Mcar(it2));
+            }
         } else if (hd == Msetb_symbol) {
             check_setb(e);
         } else if (hd == Mquote_symbol) {

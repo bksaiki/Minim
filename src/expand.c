@@ -230,6 +230,25 @@ static obj expand_letrec_expr(obj e) {
     return Mcons(Mlet_symbol, Mcons(binds, body));
 }
 
+// (case-lambda ...)
+static obj expand_case_lambda(obj e) {
+    obj rib, hd, tl;
+
+    rib = Mcdr(e);
+    if (Mnullp(rib)) {
+        return Mlist1(Mcase_lambda_symbol);
+    } else {
+        writeln_object(stderr, rib);
+        hd = tl = Mlist1(Mlist2(Mcaar(rib), expand_expr(condense_body(Mcdar(rib)))));
+        for (rib = Mcdr(rib); !Mnullp(rib); rib = Mcdr(rib)) {
+            Mcdr(tl) = Mlist1(Mlist2(Mcaar(rib), expand_expr(condense_body(Mcdar(rib)))));
+            tl = Mcdr(tl);
+        }
+
+        return Mcons(Mcase_lambda_symbol, hd);
+    }
+}
+
 // (define <id> <expr>)
 // =>
 // (define-values (<id>) <expr>)
@@ -369,6 +388,8 @@ loop:
             }
         } else if (hd == Mlambda_symbol) {
             return Mlist3(Mlambda_symbol, Mcadr(e), expand_expr(condense_body(Mcddr(e))));
+        } else if (hd == Mcase_lambda_symbol) {
+            return expand_case_lambda(e);
         } else if (hd == Msetb_symbol) {
             return Mlist3(Msetb_symbol, Mcadr(e), expand_expr(Mcaddr(e)));
         } else if (hd == Mquote_symbol) {

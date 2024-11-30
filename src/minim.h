@@ -56,6 +56,7 @@ typedef void        *obj;
 
 extern obj Mand_symbol;
 extern obj Mbegin_symbol;
+extern obj Mcase_lambda_symbol;
 extern obj Mcond_symbol;
 extern obj Mif_symbol;
 extern obj Mlambda_symbol;

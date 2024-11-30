@@ -14,6 +14,7 @@ obj Munbound;
 
 obj Mand_symbol;
 obj Mbegin_symbol;
+obj Mcase_lambda_symbol;
 obj Mcond_symbol;
 obj Mif_symbol;
 obj Mlambda_symbol;
@@ -69,6 +70,7 @@ void minim_init(void) {
     Mand_symbol = Mintern("and");
     Mbegin_symbol = Mintern("begin");
     Mcond_symbol = Mintern("cond");
+    Mcase_lambda_symbol = Mintern("case-lambda");
     Mif_symbol = Mintern("if");
     Mlambda_symbol = Mintern("lambda");
     Mlet_symbol = Mintern("let");

@@ -201,6 +201,18 @@ int test_lambda(void) {
     check_equal("((lambda (x y . zs) (cons x zs)) 1 2 3)", "(1 3)");
     check_equal("((lambda (x y . zs) (cons x zs)) 1 2 3 4 5)", "(1 3 4 5)");
 
+
+    return passed;
+}
+
+int test_case_lambda(void) {
+    passed = 1;
+
+    check_equal("((case-lambda [() 0]))", "0");
+    check_equal("((case-lambda [(a) 1]))", "1");
+    check_equal("((case-lambda [(a b) 2]))", "2");
+    check_equal("((case-lambda [(a b c) 3]))", "3");
+
     return passed;
 }
 
@@ -233,6 +245,7 @@ int main(int argc, char **argv) {
     log_test("letrec", test_letrec, return_code);
     log_test("let (loop)", test_let_loop, return_code);
     log_test("lambda", test_lambda, return_code);
+    log_test("case-lambda", test_case_lambda, return_code);
     log_test("set!", test_setb, return_code);
 
     minim_shutdown(return_code);
