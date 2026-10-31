@@ -1,6 +1,6 @@
 /**
  * @file
- * Precise copying collector (Cheney) and root stacks.
+ * Precise generational copying collector (Cheney) and root stacks.
  */
 
 #include "gc.h"
@@ -12,9 +12,15 @@
 #include "minim.h"
 
 enum {
-    MIN_BUDGET = 1024 * 1024,  // bytes
-    GROWTH = 2,                // budget is GROWTH * live bytes
+    DEFAULT_TRIP = 1024 * 1024,     // bytes
+    MIN_MAJOR_LIMIT = 1024 * 1024,  // bytes
+    GROWTH = 2,                     // the old generation's growth that triggers a major collection
 };
+
+static minim_gc_policy policy;
+static size_t trips;        // calls to minim_gc_collect
+static size_t major_limit;  // old-generation bytes that trigger a major collection
+static bool minor;          // whether the collection in progress is minor
 
 typedef struct root_stack {
     minim_obj **items;
@@ -38,7 +44,19 @@ static void push(root_stack *s, minim_obj *p) {
 }
 
 void minim_gc_init(void) {
-    minim_heap.budget = MIN_BUDGET;
+    policy = (minim_gc_policy){.trip_bytes = DEFAULT_TRIP, .radix = 0};
+    trips = 0;
+    major_limit = MIN_MAJOR_LIMIT;
+    minim_heap.budget = policy.trip_bytes;
+}
+
+minim_gc_policy minim_gc_get_policy(void) {
+    return policy;
+}
+
+void minim_gc_set_policy(minim_gc_policy p) {
+    policy = p;
+    minim_heap.budget = policy.trip_bytes;
 }
 
 void minim_gc_shutdown(void) {
@@ -112,6 +130,9 @@ static minim_obj copy(minim_obj x) {
         return x;  // not a heap object
     }
 
+    if (minor && minim_chunk_of(x)->generation != 0)
+        return x;  // old objects stay put
+
     minim_obj *old = (minim_obj *)(x - tag);
     if (old[0] == MINIM_FORWARD)
         return old[1];
@@ -184,9 +205,15 @@ static bool scan(minim_space *s, cursor *c, size_t (*scan_obj)(minim_obj *)) {
     }
 }
 
-void minim_gc_collect(void) {
+// Copies the young generation's survivors into the old generation, and in a
+// major collection also the old generation's.  Until there is a write barrier,
+// a minor collection scans every old object as a root.
+static void collect(bool is_minor) {
+    minor = is_minor;
     minim_space from[MINIM_SPACE_COUNT];
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
+        if (minor && i != MINIM_SPACE_NEW)
+            continue;
         from[i] = minim_heap.spaces[i];
         minim_heap.spaces[i] = (minim_space){.generation = from[i].generation};
     }
@@ -211,11 +238,38 @@ void minim_gc_collect(void) {
         scanned |= scan(typed, &typed_cursor, scan_typed);
     } while (scanned);
 
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
-        minim_space_free(&from[i]);
+    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
+        if (!minor || i == MINIM_SPACE_NEW)
+            minim_space_free(&from[i]);
+    }
 
     minim_heap.live = minim_space_used(pairs) + minim_space_used(symbols)
                     + minim_space_used(typed);
-    size_t budget = GROWTH * minim_heap.live;
-    minim_heap.budget = budget > MIN_BUDGET ? budget : MIN_BUDGET;
+    minim_heap.budget = policy.trip_bytes;
+    if (minor) {
+        minim_heap.minor_collections++;
+    } else {
+        minim_heap.major_collections++;
+        size_t limit = GROWTH * minim_heap.live;
+        major_limit = limit > MIN_MAJOR_LIMIT ? limit : MIN_MAJOR_LIMIT;
+    }
+}
+
+void minim_gc_collect_minor(void) {
+    collect(true);
+}
+
+void minim_gc_collect_major(void) {
+    collect(false);
+}
+
+void minim_gc_collect(void) {
+    trips++;
+    if (policy.radix != 0 && trips % policy.radix == 0) {
+        collect(false);
+        return;
+    }
+    collect(true);
+    if (minim_heap.live > major_limit)
+        collect(false);
 }

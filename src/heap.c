@@ -73,7 +73,9 @@ static void space_grow(minim_space *s, size_t nbytes) {
     }
     s->last = c;
     s->alloc = c->data;
-    s->avail = size;
+    // A large object's chunk holds nothing else, so every object starts in its
+    // chunk's first MINIM_CHUNK_SIZE bytes.
+    s->avail = bytes > MINIM_CHUNK_SIZE ? nbytes : size;
     minim_heap.size += bytes;
 }
 
@@ -92,7 +94,7 @@ void *minim_heap_alloc(size_t nbytes) {
 #ifdef MINIM_GC_STRESS
     static unsigned long count;
     if (++count % MINIM_GC_STRESS == 0)
-        minim_gc_collect();
+        minim_gc_collect_major();
 #else
     if (nbytes > minim_heap.budget)
         minim_gc_collect();

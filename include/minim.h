@@ -262,8 +262,26 @@ void minim_gc_protect(minim_obj *const *vars, size_t n);
 /** Protects a variable for the life of the runtime. */
 void minim_gc_add_global(minim_obj *p);
 
-/** Collects garbage now. */
+/** When collections run; see docs/design/gc.md. */
+typedef struct minim_gc_policy {
+    size_t trip_bytes;  ///< bytes allocated between collections
+    size_t radix;       ///< every `radix`-th collection is major; 0 for none
+} minim_gc_policy;
+
+/** The collection policy: by default a 1 MiB trip and radix 0. */
+minim_gc_policy minim_gc_get_policy(void);
+
+/** Sets the collection policy; the next collection is a full trip away. */
+void minim_gc_set_policy(minim_gc_policy policy);
+
+/** Runs the collection the policy calls for: minor, or major by radix or growth. */
 void minim_gc_collect(void);
+
+/** Collects the young generation, promoting its survivors to the old one. */
+void minim_gc_collect_minor(void);
+
+/** Collects both generations, copying every live object. */
+void minim_gc_collect_major(void);
 
 // Pairs
 

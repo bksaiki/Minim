@@ -56,7 +56,7 @@ static void test_footprint(void) {
 }
 
 static void test_gc(void) {
-    minim_gc_collect();
+    minim_gc_collect_major();
     size_t base = minim_heap.live;  // the symbol table
 
     minim_obj s = minim_string_from_cstr("café");
@@ -68,7 +68,7 @@ static void test_gc(void) {
     lst = minim_cons(lst, MINIM_NIL);
 
     minim_obj old = s;
-    minim_gc_collect();
+    minim_gc_collect_major();
     CHECK(s != old);  // moved
     CHECK_CHARS(s, 'c', 'a', 'f', 0xE9);
     CHECK_EQ(minim_vector_ref(v, 0), s);

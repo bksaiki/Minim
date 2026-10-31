@@ -1,7 +1,7 @@
 # Object representation and garbage collection
 
-Minim uses tagged 64-bit values and a precise, non-generational copying
-collector.  Both are simplified from Chez Scheme (Dybvig, Eby, and Bruggeman
+Minim uses tagged 64-bit values and a precise, generational copying
+collector with two generations.  Both are simplified from Chez Scheme (Dybvig, Eby, and Bruggeman
 1994).
 
 ## Values
@@ -46,10 +46,10 @@ the last one.  There are four:
 
 | Space | Holds |
 |---|---|
-| new | every newly allocated object, all kinds interleaved |
-| pair | pairs and closures that survived a collection |
-| symbol | symbols that survived a collection |
-| typed | typed objects that survived a collection |
+| new | the young generation: every newly allocated object, all kinds interleaved |
+| pair | old pairs and closures |
+| symbol | old symbols |
+| typed | old typed objects |
 
 Pairs and symbols have no header, so a space of mixed kinds can't be parsed.
 The collector never parses the new space; it sorts survivors by kind as it
@@ -57,26 +57,50 @@ copies them, as Chez does.
 
 ## Collection
 
+An object is young until it survives a collection, which promotes it to the
+old generation, the per-kind spaces.  Two kinds of collection, both
 Cheney-style copying:
 
-1. Copy every root.  An object's kind, and so its to-space, comes from the
+- **Minor** (`minim_gc_collect_minor`): the from-space is the new space.
+  Old objects stay put: `copy` returns any object in an old chunk unchanged.
+- **Major** (`minim_gc_collect_major`): the from-space is every space, and
+  the to-spaces are fresh old spaces, so every live object moves.
+
+Each one:
+
+1. Copies every root.  An object's kind, and so its to-space, comes from the
    pointer's tag.  The old copy gets the forward marker in word 0 and the new
    pointer in word 1, so later references find it.
-2. Scan the pair, symbol, and typed spaces from their start until no scan
-   cursor moves.  Pairs, symbols, and closures are two traced words; a typed
-   object is traced according to its header (vector elements are traced,
-   string chars aren't, and a primitive's C function pointer isn't).  Copying during the scan appends to the spaces being scanned.
-3. Free every from-space chunk.
+2. Scans the old spaces from their start until no scan cursor moves.  Pairs,
+   symbols, and closures are two traced words; a typed object is traced
+   according to its header (vector elements are traced, string chars aren't,
+   and a primitive's C function pointer isn't).  Copying during the scan
+   appends to the spaces being scanned.  In a minor collection, this scan
+   also visits every old object that was already there, so old objects that
+   point to young ones act as roots.
+3. Frees every from-space chunk.
 
-The collector isn't generational, so every live object is in from-space when a
-collection starts, and it needs no table mapping addresses to chunks.
+After either one, nothing is young.
 
-**Trigger.**  A collection runs when an allocation would exceed the budget,
-`max(1 MiB, 2 × live bytes after the last collection)`.  The build option
-`MINIM_GC_STRESS` collects every `MINIM_GC_STRESS_INTERVAL` allocations
-instead (default 1, every allocation), which exposes missing roots under
-AddressSanitizer.  Only interval 1 catches a root missing across a single
-allocation.
+**Policy.**  `minim_gc_collect` runs the collection the policy calls for, and
+an allocation calls it when the budget runs out.  The policy
+(`minim_gc_set_policy`, after Chez's `collect-trip-bytes` and
+`collect-generation-radix`) has two settings:
+
+| Setting | Meaning | Default |
+|---|---|---|
+| `trip_bytes` | bytes allocated between collections | 1 MiB |
+| `radix` | every `radix`-th collection is major; 0 for none | 0 |
+
+Otherwise the collection is minor, followed by a major one if the old
+generation has grown past `max(1 MiB, 2 × its size after the last major
+collection)`.  So long-lived data is copied once when promoted, then about
+once per doubling of the old generation.
+
+The build option `MINIM_GC_STRESS` instead runs a major collection every
+`MINIM_GC_STRESS_INTERVAL` allocations (default 1, every allocation), which
+exposes missing roots under AddressSanitizer.  Only interval 1 catches a root
+missing across a single allocation.
 
 ## Roots
 
@@ -102,7 +126,7 @@ allocation.
 
 ## Not included
 
-Generations, card marking, a segment table, non-copying large objects, an
+More than two generations, a write barrier, a segment table, non-copying large objects, an
 unscanned space for pointer-free data, weak pairs, and guardians.  None would
 change object layouts.
 

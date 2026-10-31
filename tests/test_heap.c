@@ -106,7 +106,7 @@ static bool chunks_aligned(void) {
 }
 
 static void test_chunk_of(void) {
-    minim_gc_collect();  // resets the budget, so the allocations below don't collect
+    minim_gc_collect_major();  // resets the budget, so the allocations below don't collect
     minim_obj pair = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_obj sym = MINIM_NIL;
     minim_obj str = MINIM_NIL;
@@ -116,14 +116,17 @@ static void test_chunk_of(void) {
     str = minim_string_from_cstr("abc");
     big = minim_make_vector(2 * MINIM_CHUNK_SIZE / sizeof(minim_obj), MINIM_NIL);
 #ifndef MINIM_GC_STRESS  // which collects at every allocation
+    minim_obj after = minim_cons(MINIM_NIL, MINIM_NIL);  // not in the large chunk's tail
     CHECK(in_chunk(pair, 0));
     CHECK(in_chunk(str, 0));
     CHECK(in_chunk(big, 0));
+    CHECK(in_chunk(after, 0));
+    CHECK(minim_chunk_of(after) != minim_chunk_of(big));
 #endif
     CHECK(chunks_aligned());
 
     // Survivors are copied into the per-kind spaces.
-    minim_gc_collect();
+    minim_gc_collect_major();
     CHECK(in_chunk(pair, 1));
     CHECK(in_chunk(sym, 1));
     CHECK(in_chunk(str, 1));

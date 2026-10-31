@@ -158,7 +158,7 @@ static void test_value_stack_restored(void) {
 // Collects, then returns its second argument.
 static minim_obj collect_then_second(minim_obj *args, size_t n) {
     (void)n;
-    minim_gc_collect();
+    minim_gc_collect_major();
     return args[1];
 }
 

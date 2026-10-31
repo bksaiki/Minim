@@ -49,8 +49,8 @@ typedef struct minim_space {
 } minim_space;
 
 /**
- * Heap spaces.  New objects go in MINIM_SPACE_NEW; survivors are copied into
- * the space for their kind.
+ * Heap spaces.  New objects, the young generation, go in MINIM_SPACE_NEW;
+ * survivors are copied into the old generation's space for their kind.
  */
 enum {
     MINIM_SPACE_NEW,
@@ -65,8 +65,10 @@ extern struct minim_heap {
     minim_space spaces[MINIM_SPACE_COUNT];
     size_t size;       ///< bytes held in chunks
     size_t allocated;  ///< bytes handed out by minim_heap_alloc since init
-    size_t live;       ///< bytes surviving the last collection
+    size_t live;       ///< bytes in the old generation after the last collection
     size_t budget;     ///< bytes to allocate before the next collection
+    size_t minor_collections;
+    size_t major_collections;
 } minim_heap;
 
 /** Empties the heap. */
