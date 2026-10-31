@@ -11,8 +11,6 @@
 
 #include "minim.h"
 
-static_assert(alignof(max_align_t) >= MINIM_ALIGN, "malloc must return 16-byte aligned memory");
-
 struct minim_heap minim_heap;
 
 void minim_heap_init(void) {
@@ -36,6 +34,9 @@ static void space_grow(minim_space *s, size_t nbytes) {
     minim_chunk *c = malloc(sizeof(minim_chunk) + size);
     if (c == NULL)
         minim_out_of_memory();
+    // 64-bit malloc returns 16-byte aligned blocks even where max_align_t is
+    // only 8-byte aligned (macOS arm64, MSVC).
+    assert(((uintptr_t)c & (MINIM_ALIGN - 1)) == 0);
     *c = (minim_chunk){.size = size};
 
     if (s->last != NULL) {
