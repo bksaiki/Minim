@@ -13,4 +13,13 @@ ctest --preset dev
 ./build/dev/minim
 ```
 
-The `stress` preset also collects garbage on every allocation.
+The `dev` preset is a debug build with sanitizers; `stress` also collects
+garbage on every allocation.  For an optimized build:
+
+```sh
+cmake --preset release
+cmake --build --preset release
+./build/release/minim
+```
+
+`-DMINIM_BUILD_TESTS=OFF` skips building the tests.

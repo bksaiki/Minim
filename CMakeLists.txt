@@ -6,15 +6,26 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Without a build type, single-config generators build unoptimized.
+get_property(multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(NOT multi_config AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+option(MINIM_BUILD_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
 option(MINIM_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(MINIM_GC_STRESS "Collect garbage on every allocation" OFF)
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wall -Wextra)
+    add_compile_options(-Wall -Wextra -Wpedantic)
     if(MINIM_SANITIZE)
-        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        # Without -fno-sanitize-recover, UBSan reports errors but exits 0.
+        add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all
+                            -fno-omit-frame-pointer)
         add_link_options(-fsanitize=address,undefined)
     endif()
+elseif(MSVC)
+    add_compile_options(/W4)
 endif()
 
 if(MINIM_GC_STRESS)
@@ -40,5 +51,7 @@ set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not 
 add_executable(minim src/main.c)
 target_link_libraries(minim PRIVATE libminim)
 
-enable_testing()
-add_subdirectory(tests)
+if(MINIM_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

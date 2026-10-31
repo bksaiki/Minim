@@ -18,14 +18,24 @@
       "cacheVariables": {
         "MINIM_GC_STRESS": "ON"
       }
+    },
+    {
+      "name": "release",
+      "displayName": "Optimized, without sanitizers",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
-    { "name": "stress", "configurePreset": "stress" }
+    { "name": "stress", "configurePreset": "stress" },
+    { "name": "release", "configurePreset": "release" }
   ],
   "testPresets": [
     { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
-    { "name": "stress", "configurePreset": "stress", "output": { "outputOnFailure": true } }
+    { "name": "stress", "configurePreset": "stress", "output": { "outputOnFailure": true } },
+    { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } }
   ]
 }
