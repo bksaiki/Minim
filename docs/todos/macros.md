@@ -350,6 +350,19 @@ cmake --build --preset dev && ctest --preset dev -R 'syntax-rules|repl'
 
 ### Phase 6 - Local macros
 
+**Done.**  Details settled during the phase:
+
+- A local macro's meaning in a frame is its transformer procedure, a
+  variable's its fresh name; `%macro` accepts either a procedure or a global
+  name.  `%bind-macro!` binds one.
+- `let-syntax` and `letrec-syntax` expand to `((lambda () body ...))`, so the
+  body is a full body that may define, local to it.  `letrec-syntax`'s
+  transformers close over the new frame; `let-syntax`'s over the outer
+  environment.
+- An internal `define-syntax` binds while the body is scanned, so it serves
+  the forms scanned after it, and every definition's expression, which is
+  expanded once the scan is done.
+
 - `src/prelude.scm`: `let-syntax`, `letrec-syntax`, and `define-syntax` in
   bodies.  Macro bindings in syntactic environments, closed over their
   definition environment, which instantiated aliases carry.

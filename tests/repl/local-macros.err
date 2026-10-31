@@ -1,0 +1,6 @@
+error: unbound variable: my-and
+error: unbound variable: b
+error: bad syntax: m
+error: bad syntax: (let-syntax ((m)) 1)
+error: bad syntax: (let-syntax ((m (syntax-rules () ((_) 1)))))
+error: bad syntax: (define-syntax m)

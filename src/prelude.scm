@@ -62,8 +62,8 @@
     (loop (vector-length v) '())))
 
 ;; A syntactic environment is a list of frames, innermost first.  A frame is a
-;; one-element list holding an association list of (identifier . meaning); a
-;; variable's meaning is its fresh name.
+;; one-element list holding an association list of (identifier . meaning): a
+;; variable's fresh name, or a local macro's transformer.
 
 (define %extend
   (lambda (env)
@@ -76,6 +76,11 @@
     (define name (gensym (symbol->string id)))
     (set-car! (car env) (cons (cons id name) (car (car env))))
     name))
+
+;; Binds the identifier `id` in the innermost frame of `env` to `transformer`.
+(define %bind-macro!
+  (lambda (env id transformer)
+    (set-car! (car env) (cons (cons id transformer) (car (car env))))))
 
 ;; Meaning of `id` in `env`, or #f.
 (define %lookup
@@ -105,10 +110,11 @@
                 (%resolve (%alias-original id) (%alias-env id))
                 id)))))
 
-;; The transformer `x` names, `x` a resolved identifier, or #f.
+;; The transformer `x` names, `x` a resolved identifier, or #f: a local macro
+;; resolves to its transformer, a global one to its name.
 (define %macro
   (lambda (x)
-    (%lookup-in x %macros '())))
+    (if (procedure? x) x (%lookup-in x %macros '()))))
 
 ;; What the head of `x` resolves to, if `x` is a pair headed by an identifier;
 ;; otherwise #f.
@@ -185,7 +191,11 @@
                                             (%syntax-error (%strip (car (cdr x)))
                                                            (%strip (cdr (cdr x))))
                                             (%bad-syntax x))
-                                        (%expand-list x env))))))))))))
+                                        (if (eq? k 'let-syntax)
+                                            (%expand-let-syntax x env #f)
+                                            (if (eq? k 'letrec-syntax)
+                                                (%expand-let-syntax x env #t)
+                                                (%expand-list x env))))))))))))))
 
 (define %expand-set
   (lambda (x env)
@@ -235,7 +245,14 @@
                           (cons (cons (%bind-variable! inner (car (cdr x))) (car (cdr (cdr x))))
                                 defs))
                     (%bad-syntax x))
-                (finish defs (cons x rest))))))
+                (if (eq? k 'define-syntax)
+                    (if (if (eq? (%length x 0) 3) (symbol? (car (cdr x))) #f)
+                        (begin
+                          (%bind-macro! inner (car (cdr x))
+                                        (%transformer (car (cdr (cdr x))) inner))
+                          (scan rest defs))
+                        (%bad-syntax x))
+                    (finish defs (cons x rest)))))))
     (define finish
       (lambda (defs exprs)
         (define body
@@ -244,6 +261,28 @@
                    (%expand-list exprs inner)))
         (if (null? body) (%bad-syntax whole) body)))
     (scan forms '())))
+
+;; Expands `(let-syntax ((k spec) ...) body ...)`, or `letrec-syntax` if
+;; `rec`, into a call of a procedure with that body.  The transformers close
+;; over `env`, or for `letrec-syntax` over the new frame, so they see each
+;; other.
+(define %expand-let-syntax
+  (lambda (x env rec)
+    (define inner (%extend env))
+    (define bind
+      (lambda (bindings)
+        (if (null? bindings)
+            #f
+            (if (if (eq? (%length (car bindings) 0) 2) (symbol? (car (car bindings))) #f)
+                (begin
+                  (%bind-macro! inner (car (car bindings))
+                                (%transformer (car (cdr (car bindings))) (if rec inner env)))
+                  (bind (cdr bindings)))
+                (%bad-syntax x)))))
+    (if (if (< 2 (%length x 0)) (%length (car (cdr x)) 0) #f)
+        (bind (car (cdr x)))
+        (%bad-syntax x))
+    (list (cons 'lambda (cons '() (%expand-body (cdr (cdr x)) inner x))))))
 
 ;; Code building the quasiquote template `t` at nesting depth `depth` (R7RS
 ;; 4.2.8), from cons, append, apply, vector, and quote.
