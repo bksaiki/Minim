@@ -2,10 +2,12 @@
 
 #include "gc.h"
 #include "heap.h"
+#include "symbol.h"
 
 void minim_init(void) {
     minim_heap_init();
     minim_gc_init();
+    minim_symbol_init();
 }
 
 void minim_shutdown(void) {

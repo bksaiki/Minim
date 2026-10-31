@@ -33,6 +33,7 @@ typedef struct minim_space {
 enum {
     MINIM_SPACE_NEW,
     MINIM_SPACE_PAIR,
+    MINIM_SPACE_SYMBOL,
     MINIM_SPACE_TYPED,
     MINIM_SPACE_COUNT,
 };

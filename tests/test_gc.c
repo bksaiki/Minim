@@ -79,22 +79,24 @@ static void test_cycles(void) {
 }
 
 // Keeps one list among many garbage lists, then collects.
-static void collect_with_garbage(void) {
+static void collect_with_garbage(size_t base) {
     minim_obj keep = make_list(10);
     MINIM_FRAME(&keep);
     for (int i = 0; i < 1000; i++)
         make_list(10);
 
     minim_gc_collect();
-    CHECK_EQ(minim_heap.live, 10 * 16);
+    CHECK_EQ(minim_heap.live, base + 10 * 16);
     CHECK(is_list(keep, 10));
     MINIM_RETURN_VOID;
 }
 
 static void test_reclaim(void) {
-    collect_with_garbage();
     minim_gc_collect();
-    CHECK_EQ(minim_heap.live, 0);
+    size_t base = minim_heap.live;  // the symbol table
+    collect_with_garbage(base);
+    minim_gc_collect();
+    CHECK_EQ(minim_heap.live, base);
 }
 
 static void test_bounded(void) {

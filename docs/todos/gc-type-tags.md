@@ -362,6 +362,20 @@ cmake --build --preset stress && ctest --preset stress -R string
 
 ### Phase 6 - Symbols
 
+**Done.**  Diverged from the plan:
+
+- The table is a vector in the GC heap, registered with
+  `minim_gc_add_global`, rather than an array in C memory.  The collector
+  updates it like any other root, so `gc.c` has no symbol-table code.  It
+  hashes names with FNV-1a, uses linear probing, and doubles at load factor
+  1/2.  `src/symbol.h` has only `minim_symbol_init`.
+- `minim_intern` stores an immutable copy of the name.  This is the first use
+  of `MINIM_HEADER_IMMUTABLE`: `minim_string_set` asserts on it.
+- Pairs and symbols share one scan function, `scan_two_words`.
+- The table is always live (528 B empty), so `test_gc.c` and
+  `test_string.c` now check live bytes relative to a baseline.
+- `test_symbol.c` interns 1k symbols instead of 10k under `stress`.
+
 - `include/minim.h`, `src/symbol.c`:
   - `minim_intern(minim_obj str)` and `minim_intern_cstr(const char *)`,
     backed by an open-addressing table in C memory.  It hashes by name, so no

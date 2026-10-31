@@ -25,6 +25,7 @@ add_library(minim_core STATIC
     src/gc.c
     src/heap.c
     src/object.c
+    src/symbol.c
 )
 target_include_directories(minim_core PUBLIC include PRIVATE src)
 

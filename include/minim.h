@@ -55,6 +55,7 @@ enum {
 // Object sizes in bytes, before rounding to the allocation unit
 enum {
     MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
+    MINIM_SYMBOL_SIZE = 2 * sizeof(minim_obj),
 };
 
 static inline size_t minim_vector_size(size_t n) {
@@ -270,7 +271,30 @@ static inline uint32_t minim_string_ref(minim_obj s, size_t i) {
 
 static inline void minim_string_set(minim_obj s, size_t i, uint32_t c) {
     assert(i < minim_string_length(s) && minim_is_scalar_value(c));
+    assert(!(minim_typed_header(s) & MINIM_HEADER_IMMUTABLE));
     minim_string_chars(s)[i] = c;
+}
+
+// Symbols: interned, never freed.  New symbols are MINIM_UNBOUND.
+
+// Returns the symbol named `str`, creating it with an immutable copy of
+// `str` if needed.
+minim_obj minim_intern(minim_obj str);
+minim_obj minim_intern_cstr(const char *s);
+
+static inline minim_obj minim_symbol_name(minim_obj sym) {
+    assert(minim_is_symbol(sym));
+    return ((const minim_obj *)(sym - MINIM_TAG_SYMBOL))[0];
+}
+
+static inline minim_obj minim_symbol_value(minim_obj sym) {
+    assert(minim_is_symbol(sym));
+    return ((const minim_obj *)(sym - MINIM_TAG_SYMBOL))[1];
+}
+
+static inline void minim_set_symbol_value(minim_obj sym, minim_obj x) {
+    assert(minim_is_symbol(sym));
+    ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[1] = x;
 }
 
 #endif

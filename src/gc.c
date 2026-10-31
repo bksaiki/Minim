@@ -75,7 +75,7 @@ static size_t typed_size(minim_obj header) {
 // and returns the new reference.
 static minim_obj copy(minim_obj x) {
     minim_obj tag = minim_tag(x);
-    if (tag != MINIM_TAG_PAIR && tag != MINIM_TAG_TYPED)
+    if (tag != MINIM_TAG_PAIR && tag != MINIM_TAG_SYMBOL && tag != MINIM_TAG_TYPED)
         return x;
 
     minim_obj *old = (minim_obj *)(x - tag);
@@ -84,12 +84,19 @@ static minim_obj copy(minim_obj x) {
 
     size_t size;
     minim_space *to;
-    if (tag == MINIM_TAG_PAIR) {
+    switch (tag) {
+    case MINIM_TAG_PAIR:
         size = MINIM_PAIR_SIZE;
         to = &minim_heap.spaces[MINIM_SPACE_PAIR];
-    } else {
+        break;
+    case MINIM_TAG_SYMBOL:
+        size = MINIM_SYMBOL_SIZE;
+        to = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
+        break;
+    default:
         size = typed_size(old[0]);
         to = &minim_heap.spaces[MINIM_SPACE_TYPED];
+        break;
     }
 
     void *p = minim_space_alloc(to, size);
@@ -100,11 +107,12 @@ static minim_obj copy(minim_obj x) {
     return y;
 }
 
-// Copies the referents of the object at `p`; returns its size.
-static size_t scan_pair(minim_obj *p) {
+// Copies the referents of the object at `p`; returns its size.  Pairs and
+// symbols are two traced words.
+static size_t scan_two_words(minim_obj *p) {
     p[0] = copy(p[0]);
     p[1] = copy(p[1]);
-    return MINIM_PAIR_SIZE;
+    return 2 * sizeof(minim_obj);
 }
 
 static size_t scan_typed(minim_obj *p) {
@@ -168,19 +176,23 @@ void minim_gc_collect(void) {
         *locals.items[i] = copy(*locals.items[i]);
 
     minim_space *pairs = &minim_heap.spaces[MINIM_SPACE_PAIR];
+    minim_space *symbols = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
     minim_space *typed = &minim_heap.spaces[MINIM_SPACE_TYPED];
     cursor pair_cursor = {0};
+    cursor symbol_cursor = {0};
     cursor typed_cursor = {0};
     bool scanned;
     do {
-        scanned = scan(pairs, &pair_cursor, scan_pair);
+        scanned = scan(pairs, &pair_cursor, scan_two_words);
+        scanned |= scan(symbols, &symbol_cursor, scan_two_words);
         scanned |= scan(typed, &typed_cursor, scan_typed);
     } while (scanned);
 
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
         minim_space_free(&from[i]);
 
-    minim_heap.live = minim_space_used(pairs) + minim_space_used(typed);
+    minim_heap.live = minim_space_used(pairs) + minim_space_used(symbols)
+                    + minim_space_used(typed);
     size_t budget = GROWTH * minim_heap.live;
     minim_heap.budget = budget > MIN_BUDGET ? budget : MIN_BUDGET;
 }
