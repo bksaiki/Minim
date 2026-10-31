@@ -7,10 +7,11 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, and 41 primitives.  It has a precise copying collector, a reader,
-a printer, and an explicit-stack evaluator with proper tail calls and the
-special forms `quote`, `if`, `define`, `set!`, `lambda`, and `begin` (see
-`docs/design/`).
+closures, and 64 primitives, including structural equality, hashing, and
+char and string operations (milestone 1).  It has a precise copying
+collector, a reader, a printer, and an explicit-stack evaluator with proper
+tail calls and the special forms `quote`, `if`, `define`, `set!`, `lambda`,
+and `begin` (see `docs/design/`).
 
 Missing, roughly in order of how much it limits writing programs:
 
@@ -18,8 +19,6 @@ Missing, roughly in order of how much it limits writing programs:
 |---|---|
 | Derived forms | `let`, `cond`, `and`, `or`, `case`, `do`, named `let` |
 | List library | `map`, `for-each`, `append`, `reverse`, `assq`, `member` |
-| Equality | `eqv?`, `equal?` |
-| Char and string operations | `char->integer`, `string-append`, `substring`, `string=?` |
 | Running files | `minim file.scm`, `load` |
 | Macros | `define-syntax`, `syntax-rules`, `quasiquote` |
 | Control | `call/cc`, `dynamic-wind`, `values`, `error`, `guard` |
@@ -35,7 +34,7 @@ Open items).
 Ordered by dependency, then by how much each unblocks.  Sizes are rough:
 S is one or two phases, M three to five, L more.
 
-### 1. Equality, hashing, chars, and strings (S)
+### 1. Equality, hashing, chars, and strings (S) — done
 
 Primitives that later milestones assume:
 

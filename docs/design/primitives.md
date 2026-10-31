@@ -25,6 +25,24 @@ the value stack `[apply f a ... lst]` into `[f a ... elements of lst]` and
 applies `f`, so `apply` in tail position is a tail call.  An ordinary
 primitive couldn't call a closure without re-entering `minim_eval`.
 
+## Equality and hashing
+
+- `equal?` walks pairs and vectors with an explicit stack, never C
+  recursion, so arbitrarily deep structure is fine.  The stack starts on the C
+  stack and moves to `malloc`'d memory only if it outgrows 64 entries; it is
+  freed before returning, which is safe because `equal?` neither raises nor
+  allocates on the heap.
+- A hash must agree with its equality, so `equal-hash` mirrors `equal?`:
+  equal values visit the same values in the same order.  Its 64-value budget
+  makes it O(1) and terminating on cyclic data.
+- Every hash is stable under the moving collector: strings and symbols hash
+  their chars (with a kind marker for symbols), primitives their C function
+  pointer, and all closures one constant.  `eq?` hashing of heap objects, which
+  needs a stable per-object identity, is left to hashtables (roadmap
+  milestone 7).
+- The FNV-1a step (`minim_hash_mix`, `minim_string_hash` in `minim.h`) is
+  shared with the symbol table.
+
 ## Library
 
 ### Fixnums
@@ -118,4 +136,6 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 - Type errors are `<name>: not a <type>`.
 - Index errors are `<name>: bad index`, covering non-fixnum, negative, and
   out-of-range indices.
+- Strings are mutable except symbol names; `string-set!` on one raises
+  `string-set!: immutable string`.  String literals are mutable, unlike R7RS.
 - Void results print nothing at the REPL.
