@@ -373,6 +373,14 @@ bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result);
 /** Message and irritant of the last error. */
 void minim_last_error(const char **msg, minim_obj *irritant);
 
+/** Writes the last error to `out` as `error: msg: irritant`. */
+void minim_write_error(FILE *out);
+
+// Reading
+
+/** Reads the next datum from `in`, or returns MINIM_EOF.  Raises on bad syntax. */
+minim_obj minim_read(FILE *in);
+
 // Printing
 
 /** Writes `x` to `out` in `write` syntax.  Never allocates. */

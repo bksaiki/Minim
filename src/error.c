@@ -30,12 +30,7 @@ void minim_error(const char *msg, minim_obj irritant) {
     error_msg = msg;
     error_irritant = irritant;
     if (current == NULL) {
-        fprintf(stderr, "error: %s", msg);
-        if (irritant != MINIM_VOID) {
-            fputs(": ", stderr);
-            minim_write(stderr, irritant);
-        }
-        fputc('\n', stderr);
+        minim_write_error(stderr);
         abort();
     }
     longjmp(current->buf, 1);
@@ -60,4 +55,13 @@ bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result) {
 void minim_last_error(const char **msg, minim_obj *irritant) {
     *msg = error_msg;
     *irritant = error_irritant;
+}
+
+void minim_write_error(FILE *out) {
+    fprintf(out, "error: %s", error_msg);
+    if (error_irritant != MINIM_VOID) {
+        fputs(": ", out);
+        minim_write(out, error_irritant);
+    }
+    fputc('\n', out);
 }

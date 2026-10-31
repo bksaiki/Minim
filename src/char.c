@@ -47,6 +47,40 @@ size_t minim_utf8_decode(const unsigned char *s, uint32_t *c) {
     return len;
 }
 
+int32_t minim_utf8_getc(FILE *in) {
+    int b = getc(in);
+    if (b == EOF)
+        return -1;
+
+    size_t len = 1;
+    if ((b & 0xE0) == 0xC0)
+        len = 2;
+    else if ((b & 0xF0) == 0xE0)
+        len = 3;
+    else if ((b & 0xF8) == 0xF0)
+        len = 4;
+
+    // Read continuation bytes, leaving the first non-continuation byte.
+    unsigned char buf[5] = {(unsigned char)b};
+    size_t n = 1;
+    while (n < len) {
+        int c = getc(in);
+        if (c == EOF)
+            break;
+        if ((c & 0xC0) != 0x80) {
+            ungetc(c, in);
+            break;
+        }
+        buf[n++] = (unsigned char)c;
+    }
+    buf[n] = '\0';
+
+    uint32_t c;
+    if (minim_utf8_decode(buf, &c) != n)
+        c = 0xFFFD;
+    return (int32_t)c;
+}
+
 size_t minim_utf8_encode(uint32_t c, unsigned char out[4]) {
     if (c < 0x80) {
         out[0] = (unsigned char)c;

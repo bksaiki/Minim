@@ -15,3 +15,18 @@ minim_add_test(string INTERNAL)
 minim_add_test(symbol)
 minim_add_test(print INTERNAL)
 minim_add_test(error)
+minim_add_test(read)
+
+# minim_add_repl_test(name): pipes repl/<name>.scm into minim and compares
+# stdout with repl/<name>.out.
+function(minim_add_repl_test name)
+    set(dir ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME repl_${name}
+        COMMAND ${CMAKE_COMMAND}
+            -DMINIM=$<TARGET_FILE:minim>
+            -DINPUT=${dir}/repl/${name}.scm
+            -DEXPECTED=${dir}/repl/${name}.out
+            -P ${dir}/run_repl.cmake)
+endfunction()
+
+minim_add_repl_test(echo)

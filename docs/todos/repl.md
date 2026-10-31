@@ -226,6 +226,21 @@ cmake --build --preset dev && ctest --preset dev -R error
 
 ### Phase 3 - Reader and read-print loop
 
+**Done.**  Details settled during the phase:
+
+- `minim_utf8_getc(FILE *)` in `src/char.c` reads one code point.  The reader
+  only ever pushes back ASCII delimiters, so `ungetc`'s one-byte pushback is
+  enough and no state persists between `minim_read` calls.
+- Token characters accumulate in a static buffer, so an error can't leak it.
+- Tokens that aren't fixnums, like `1.5`, read as symbols.
+- `minim_write_error(FILE *)` prints the last error; the REPL and the no-catch
+  fallback share it.
+- `main.c` defines `_POSIX_C_SOURCE` for `isatty`/`fileno`, since the build
+  uses strict C17.
+- The golden runner captures minim's stderr and shows it only on failure.
+- After an error, the REPL continues from the rest of the line rather than
+  discarding it.
+
 - `include/minim.h`, `src/read.c`: `minim_read`.
 - `src/main.c`: loop: prompt `> ` on stderr if stdin is a terminal
   (`isatty`, or `_isatty` on Windows), `minim_read` from stdin,
