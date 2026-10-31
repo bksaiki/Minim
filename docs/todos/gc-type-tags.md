@@ -210,6 +210,20 @@ cmake --preset dev && cmake --build --preset dev && ctest --preset dev -R smoke
 
 ### Phase 2 - Value representation
 
+**Done.**  Additions beyond the plan:
+
+- Typed-object header constants (`MINIM_HEADER_*`, `MINIM_TYPE_VECTOR`,
+  `MINIM_TYPE_STRING`) and `minim_typed_header`, which `minim_is_vector` and
+  `minim_is_string` need.
+- `minim_tag` and `minim_is_typed` helpers.
+- `assert` range checks in `minim_fixnum` and `minim_char`.  A
+  `static_assert` checks for arithmetic right shift, which
+  `minim_fixnum_value` relies on.
+- `MINIM_FIXNUM_MIN` / `MAX` are macros: their values don't fit in an `enum`
+  under C17.
+- `test_object.c` also checks the vector and string predicates on
+  stack-allocated fake objects, since there is no heap yet.
+
 - `include/minim.h`:
   - `minim_obj`, tag and immediate constants;
   - `minim_fixnum`, `minim_fixnum_value`, `MINIM_FIXNUM_MIN`,

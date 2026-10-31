@@ -5,3 +5,4 @@ function(minim_add_test name)
 endfunction()
 
 minim_add_test(smoke)
+minim_add_test(object)
