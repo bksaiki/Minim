@@ -106,7 +106,7 @@ static void test_uninterned(void) {
     CHECK_EQ(minim_symbol_name(b), minim_symbol_name(a));  // an immutable one is shared
     CHECK_EQ(minim_symbol_value(a), MINIM_UNBOUND);
 
-    // Kept alive only by references, with its value.
+    // Survives a collection while referenced, value intact.
     minim_set_symbol_value(a, minim_fixnum(7));
     minim_gc_collect();
     CHECK_EQ(minim_symbol_value(a), minim_fixnum(7));

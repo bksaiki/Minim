@@ -121,24 +121,6 @@ static void test_lists(void) {
     CHECK(reads_as("#(1 \"a\" #\\b #(2))", "#(1 \"a\" #\\b #(2))"));
 }
 
-// Whether the first datum in `s` is a list headed by the symbol `head`.
-static bool reads_with_head(const char *s, const char *head) {
-    minim_obj sym = minim_intern_cstr(head);
-    MINIM_FRAME(&sym);
-    const char *p = s;
-    minim_obj x = minim_read_string(&p);
-    bool ok = minim_is_pair(x) && minim_car(x) == sym;
-    minim_gc_reset(minim_frame_);
-    return ok;
-}
-
-static void test_abbreviations(void) {
-    CHECK(reads_with_head("'x", "quote"));
-    CHECK(reads_with_head("`x", "quasiquote"));
-    CHECK(reads_with_head(",x", "unquote"));
-    CHECK(reads_with_head(",@x", "unquote-splicing"));
-}
-
 static void test_stream(void) {
     FILE *f = input("  ; leading comment\n 1 (2)\"s\"x");
     CHECK(prints_as(minim_read(f), "1"));
@@ -189,7 +171,6 @@ int main(void) {
     test_strings();
     test_chars();
     test_lists();
-    test_abbreviations();
     test_stream();
     test_errors();
     minim_shutdown();

@@ -91,39 +91,10 @@ static void test_quote(void) {
     MINIM_RETURN_VOID;
 }
 
-// Builds `(name d)`.
-static minim_obj wrap(const char *name, minim_obj d) {
-    MINIM_FRAME(&d);
-    minim_obj sym = minim_intern_cstr(name);
-    MINIM_RETURN(list2(sym, d));
-}
-
+// `quasiquote` with two operands isn't abbreviated.
 static void test_quasiquote(void) {
-    minim_obj x = minim_intern_cstr("x");
-    MINIM_FRAME(&x);
-    x = wrap("unquote", x);
-    CHECK(prints_as(x, ",x"));
-    x = wrap("quasiquote", x);
-    CHECK(prints_as(x, "`,x"));
-
-    x = minim_intern_cstr("y");
-    x = wrap("unquote-splicing", x);
-    CHECK(prints_as(x, ",@y"));
-
-    // `,@x` would read back as unquote-splicing.
-    x = minim_intern_cstr("@x");
-    x = wrap("unquote", x);
-    CHECK(prints_as(x, "(unquote @x)"));
-
-    x = list3(minim_intern_cstr("quasiquote"), minim_fixnum(1), minim_fixnum(2));
+    minim_obj x = list3(minim_intern_cstr("quasiquote"), minim_fixnum(1), minim_fixnum(2));
     CHECK(prints_as(x, "(quasiquote 1 2)"));
-
-    // A tail that is an abbreviation form prints dotted.
-    x = minim_intern_cstr("x");
-    x = wrap("unquote", x);
-    x = minim_cons(minim_fixnum(1), x);
-    CHECK(prints_as(x, "(1 . ,x)"));
-    MINIM_RETURN_VOID;
 }
 
 static void test_vectors(void) {

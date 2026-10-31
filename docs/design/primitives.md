@@ -122,7 +122,6 @@ For the macro expander in the prelude; the `%` marks them internal.
 | `(%make-alias id env)` | a new alias: an uninterned symbol named like the symbol `id`, recording `id` and `env` |
 | `(%alias-original x)`, `(%alias-env x)` | the `id` or `env` an alias was made with; `#f` if `x` isn't an alias |
 | `(%bound? sym)` | whether the global `sym` holds a value; `#f` for an alias |
-| `(%bad-syntax form)` | raises `bad syntax` with `form` as the irritant |
 | `(%syntax-error message args)` | raises the string `message` with `args` as the irritant: void if empty, its element if it has one |
 
 An alias stores `#(tag id env)` in its value slot, where `tag` is a private

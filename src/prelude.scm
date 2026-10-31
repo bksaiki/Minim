@@ -1,9 +1,12 @@
-;;; Library procedures written in Scheme, evaluated by minim_init.
+;;; The expander, the derived forms, and the list library, in Scheme;
+;;; evaluated by minim_init.
 
-;;; Expander.  (%expand form) rewrites a top-level form into core forms; the
-;;; evaluator calls it on every top-level form once it is defined, last in this
-;;; section.  The expander uses only core forms (quote, if, define, set!,
-;;; lambda, begin) and primitives.  See docs/design/macros.md.
+;;; Expander.  (%expand form) rewrites a top-level form into core forms.  The
+;;; evaluator applies it to every top-level form once %expand is defined, so
+;;; this section uses only core forms and primitives.
+
+(define %bad-syntax
+  (lambda (x) (%syntax-error "bad syntax" (list x))))
 
 ;; Global macros: an association list of (symbol . transformer).
 (define %macros '())
@@ -54,6 +57,11 @@
   (lambda (x n)
     (if (null? x) n (if (pair? x) (%length (cdr x) (+ n 1)) #f))))
 
+;; Whether `x` is `(k identifier expression)`, as in define, define-syntax, set!.
+(define %binding-form?
+  (lambda (x)
+    (if (eq? (%length x 0) 3) (symbol? (car (cdr x))) #f)))
+
 (define %vector->list
   (lambda (v)
     (define loop
@@ -95,9 +103,9 @@
             (cdr (car bindings))
             (%lookup-in id (cdr bindings) env)))))
 
-;; What `id` refers to in `env`: its local meaning; for an alias, the global it
-;; was defined as at top level, or else its original in the alias's
-;; environment; otherwise the global symbol itself.
+;; What `id` means in `env`: its local binding; else its top-level rename;
+;; else, for an alias, its original's meaning in the alias's environment; else
+;; the global `id`.
 (define %resolve
   (lambda (id env)
     (define meaning (%lookup id env))
@@ -110,8 +118,8 @@
                 (%resolve (%alias-original id) (%alias-env id))
                 id)))))
 
-;; The transformer `x` names, `x` a resolved identifier, or #f: a local macro
-;; resolves to its transformer, a global one to its name.
+;; The transformer for the resolved identifier `x` (a local transformer, or a
+;; global macro's name), or #f.
 (define %macro
   (lambda (x)
     (if (procedure? x) x (%lookup-in x %macros '()))))
@@ -175,7 +183,7 @@
             (if (eq? k 'quasiquote)
                 (if (= n 2) (%qq (car (cdr x)) 0 env) (%bad-syntax x))
                 (if (eq? k 'lambda)
-                    (%expand-lambda x env)
+                    (%expand-lambda x n env)
                     (if (eq? k 'if)
                         (if (if (= n 3) #t (= n 4))
                             (cons 'if (%expand-list (cdr x) env))
@@ -199,16 +207,13 @@
 
 (define %expand-set
   (lambda (x env)
-    (define var
-      (if (= (length x) 3)
-          (if (symbol? (car (cdr x))) (%resolve (car (cdr x)) env) #f)
-          #f))
+    (define var (if (%binding-form? x) (%resolve (car (cdr x)) env) #f))
     (if (if var (not (%macro var)) #f)
         (list 'set! var (%expand-expr (car (cdr (cdr x))) env))
         (%bad-syntax x))))
 
 (define %expand-lambda
-  (lambda (x env)
+  (lambda (x n env)
     (define inner (%extend env))
     (define rename
       (lambda (params)
@@ -219,7 +224,7 @@
             (if (null? params)
                 '()
                 (if (symbol? params) (%bind-variable! inner params) (%bad-syntax x))))))
-    (define params (if (< (length x) 3) (%bad-syntax x) (rename (car (cdr x)))))
+    (define params (if (< n 3) (%bad-syntax x) (rename (car (cdr x)))))
     (cons 'lambda (cons params (%expand-body (cdr (cdr x)) inner x)))))
 
 ;; Expands the body `forms` of the form `whole` in a new frame over `env`
@@ -240,13 +245,13 @@
         (if (eq? k 'begin)
             (if (%length x 0) (scan (%append (cdr x) rest) defs) (%bad-syntax x))
             (if (eq? k 'define)
-                (if (if (eq? (%length x 0) 3) (symbol? (car (cdr x))) #f)
+                (if (%binding-form? x)
                     (scan rest
                           (cons (cons (%bind-variable! inner (car (cdr x))) (car (cdr (cdr x))))
                                 defs))
                     (%bad-syntax x))
                 (if (eq? k 'define-syntax)
-                    (if (if (eq? (%length x 0) 3) (symbol? (car (cdr x))) #f)
+                    (if (%binding-form? x)
                         (begin
                           (%bind-macro! inner (car (cdr x))
                                         (%transformer (car (cdr (cdr x))) inner))
@@ -263,9 +268,8 @@
     (scan forms '())))
 
 ;; Expands `(let-syntax ((k spec) ...) body ...)`, or `letrec-syntax` if
-;; `rec`, into a call of a procedure with that body.  The transformers close
-;; over `env`, or for `letrec-syntax` over the new frame, so they see each
-;; other.
+;; `rec`, into `((lambda () body ...))`.  The transformers close over `env`,
+;; or over the new frame if `rec`.
 (define %expand-let-syntax
   (lambda (x env rec)
     (define inner (%extend env))
@@ -303,7 +307,9 @@
             (if (pair? t)
                 (if (if (= depth 0) (eq? (%keyword (car t) env) 'unquote-splicing) #f)
                     (if (eq? (%length (car t) 0) 2)
-                        (list 'append (%expand-expr (car (cdr (car t))) env) (%qq (cdr t) depth env))
+                        (list 'append
+                              (%expand-expr (car (cdr (car t))) env)
+                              (%qq (cdr t) depth env))
                         (%bad-syntax (car t)))
                     (%qq-cons (%qq (car t) depth env) (%qq (cdr t) depth env)))
                 (if (vector? t)
@@ -464,8 +470,8 @@
             (list (instantiate e b #f))
             (%append-map (lambda (b) (repeat e (- k 1) b)) (iterations e b)))))
 
-    ;; The bindings for each step of an ellipsis over `e`: its variables that are
-    ;; bound to sequences, each bound in turn to their elements.
+    ;; One binding list per step of an ellipsis over `e`, each binding `e`'s
+    ;; sequence variables to their next elements.
     (define iterations
       (lambda (e b)
         (define vars (sequence-vars e b '()))
@@ -531,21 +537,18 @@
 ;; fresh global that only this use's insertions of `id` refer to (R7RS 5.3.1).
 (define %top-name
   (lambda (id)
-    (define renamed (%lookup-in id %top-renames '()))
-    (define original (if renamed #f (%resolve id '())))
-    (define fresh
-      (if renamed
-          #f
-          (if (%alias-original id) (if (%bound? original) #f (gensym (symbol->string id))) #f)))
-    (if renamed
-        renamed
-        (if fresh
-            (begin (set! %top-renames (cons (cons id fresh) %top-renames)) fresh)
-            original))))
+    (define name (%resolve id '()))  ; already renamed, or else the original
+    (if (if (%alias-original id)
+            (not (if (%bound? name) #t (%lookup-in id %top-renames '())))
+            #f)
+        (begin
+          (set! %top-renames (cons (cons id (gensym (symbol->string id))) %top-renames))
+          (cdr (car %top-renames)))
+        name)))
 
 (define %expand-define
   (lambda (x)
-    (define name (if (if (eq? (%length x 0) 3) (symbol? (car (cdr x))) #f)
+    (define name (if (%binding-form? x)
                      (%top-name (car (cdr x)))
                      (%bad-syntax x)))
     (if (%macro name) (set! %macros (%unbind-macro name %macros)) #f)
@@ -553,7 +556,7 @@
 
 (define %expand-define-syntax
   (lambda (x)
-    (define name (if (if (eq? (%length x 0) 3) (symbol? (car (cdr x))) #f)
+    (define name (if (%binding-form? x)
                      (%resolve (car (cdr x)) '())
                      (%bad-syntax x)))
     (define transformer (%transformer (car (cdr (cdr x))) '()))

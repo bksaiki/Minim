@@ -189,7 +189,7 @@ static void test_map_long_list(void) {
 }
 
 static void test_tail_calls(void) {
-    size_t cap = minim_gc.values.cap;  // the prelude's expansion leaves it above its minimum
+    size_t cap = minim_gc.values.cap;  // already grown by the prelude
     char src[256];
     snprintf(src, sizeof(src),
              "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop %d)",

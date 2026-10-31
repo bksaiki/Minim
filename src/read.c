@@ -306,7 +306,7 @@ static minim_obj read_hash(source *in) {
 }
 
 // Reads the datum after an abbreviation like `'`, starting with `c`, and
-// returns `(sym datum)`.  `sym` is read after reading, which may collect.
+// returns `(*sym datum)`.  `*sym` is loaded after the read, which may collect.
 static minim_obj read_abbreviation(source *in, int32_t c, const minim_obj *sym, const char *msg) {
     minim_obj datum;
     if (read_item_from(in, c, &datum) != ITEM)

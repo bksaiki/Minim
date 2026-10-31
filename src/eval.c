@@ -23,7 +23,7 @@ enum {
     K_DEFINE,    // symbol
     K_SET,       // symbol
     K_ARGS,      // remaining operands
-    K_EXPAND,    // unused; evaluates the expanded form
+    K_EXPAND,    // unused
     K_TOPLEVEL,  // remaining top-level forms
 };
 

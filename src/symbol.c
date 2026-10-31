@@ -114,7 +114,7 @@ minim_obj minim_make_uninterned(minim_obj str) {
     minim_obj *p = minim_heap_alloc(MINIM_SYMBOL_SIZE);
     p[0] = name;
     p[1] = MINIM_UNBOUND;
-    MINIM_RETURN((minim_obj)p | MINIM_TAG_SYMBOL);
+    MINIM_RETURN(((minim_obj)p) | MINIM_TAG_SYMBOL);
 }
 
 minim_obj minim_intern_cstr(const char *s) {

@@ -76,7 +76,7 @@ static const char *abbreviation(minim_obj x) {
         return "`";
     if (head == minim_sym_unquote_splicing)
         return ",@";
-    // `,@x` would read back as unquote-splicing.
+    // `(unquote @x)` stays long: `,@x` reads as unquote-splicing.
     if (head == minim_sym_unquote
         && !(minim_is_symbol(d) && minim_string_length(minim_symbol_name(d)) > 0
              && minim_string_ref(minim_symbol_name(d), 0) == '@'))

@@ -720,20 +720,17 @@ static minim_obj prim_is_bound(minim_obj *args, size_t n) {
                    && alias_info(args[0]) == MINIM_FALSE);
 }
 
-static minim_obj prim_bad_syntax(minim_obj *args, size_t n) {
-    (void)n;
-    minim_error("bad syntax", args[0]);
-}
 
-// Raises the string args[0] with the list args[1] as the irritant: void if
-// empty, its element if it has one.
+// Raises the message args[0] with the irritants args[1]: void if none, the
+// one if single, else the list.
 static minim_obj prim_syntax_error(minim_obj *args, size_t n) {
     (void)n;
     static char *message;  // must outlive the catch; replaced by the next one
+    minim_obj rest = args[1];
     check(minim_is_string(args[0]), "syntax-error: not a string", args[0]);
+    check(minim_is_null(rest) || minim_is_pair(rest), "syntax-error: not a list", rest);
     free(message);
     message = minim_string_to_utf8(args[0]);
-    minim_obj rest = args[1];
     if (minim_is_null(rest))
         minim_error(message, MINIM_VOID);
     minim_error(message, minim_is_null(minim_cdr(rest)) ? minim_car(rest) : rest);
@@ -818,7 +815,6 @@ void minim_prims_init(void) {
     define_primitive("%alias-original", prim_alias_original, 1, 1);
     define_primitive("%alias-env", prim_alias_env, 1, 1);
     define_primitive("%bound?", prim_is_bound, 1, 1);
-    define_primitive("%bad-syntax", prim_bad_syntax, 1, 1);
     define_primitive("%syntax-error", prim_syntax_error, 2, 2);
     define_primitive("write", prim_write, 1, 1);
     define_primitive("display", prim_display, 1, 1);

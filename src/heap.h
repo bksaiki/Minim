@@ -105,8 +105,8 @@ void *minim_space_alloc(minim_space *s, size_t nbytes);
 void minim_space_free(minim_space *s);
 
 /**
- * Spare chunks kept: as many as are in use, so a major collection can rebuild
- * the old generation from them, plus the nursery's worth and the quarantine.
+ * Spare-chunk limit: the chunks in use (room for a major collection), plus the
+ * nursery's worth and the quarantine.
  */
 size_t minim_heap_max_spares(void);
 

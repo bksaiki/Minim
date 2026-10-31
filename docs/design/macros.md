@@ -115,5 +115,12 @@ syntax`.  The code refers to the global `cons`, `append`, `apply`, and
 ## Errors
 
 Malformed forms raise `bad syntax` when expanded, before any of the form
-runs, with the smallest enclosing form as the irritant (`%bad-syntax`).
-`syntax-error` raises through `%syntax-error`.
+runs, with the smallest enclosing form as the irritant.  Both they and
+`syntax-error` raise through the primitive `%syntax-error`.
+
+## Limitations
+
+The expander calls ordinary globals (`car`, `list`, `not`, `gensym`, ...), so
+redefining one at top level breaks expansion of every later form.  The
+generated code for quasiquote and `case` likewise refers to the global
+`cons`, `append`, `apply`, `vector`, and `memv`.

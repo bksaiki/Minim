@@ -7,7 +7,7 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 77 primitives, and a Scheme prelude with the list library
+closures, 76 primitives, and a Scheme prelude with the list library
 (`map`, `append`, `member`, `fold`, ...).  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls and the special forms `quote`, `if`, `define`, `set!`, `lambda`,
@@ -141,6 +141,10 @@ Not features, but needed as programs grow:
 - Cheaper long-lived data: a generation for what survives startup, so major
   collections stop copying the prelude, or a `syntax-rules` that allocates
   less.
+- Separate system bindings from the user's top level, so redefining `car` or
+  `list` doesn't break the expander or the prelude (`docs/design/macros.md`,
+  Limitations).  Until then, cheap local lookup (the lexical-address pass
+  below) would let the expander close over the primitives it uses.
 - Evaluator speed: a pre-pass that resolves variables to lexical addresses,
   with environments as vectors.  `src/env.h` already hides the
   representation.
