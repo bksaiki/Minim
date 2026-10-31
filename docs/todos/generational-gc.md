@@ -671,6 +671,16 @@ cmake --build --preset dev && ctest --preset dev -R 'heap|gc|stale' && ctest --p
 
 ### After the last phase
 
+**Done.**  The docs describe the finished collector: `gc.md` (heap with spare
+chunks, collection, write barrier, settings, stress testing, roots),
+`environment.md` (`MINIM_GC_STARTUP`, `minim_gc_set_config`), `primitives.md`,
+`eval.md` (`minim_gc.values`), the design index, `README.md` (the `stress`
+test preset), and the roadmap (milestone 8's collector items done; 70
+primitives).  The full-stress line below is dropped: the `stress` preset now
+runs radix 1, and the `gc-settings` defaults test would fail under it by
+design.  `dev` (37), `stress` (28), release, and a clean `dev` build with
+warnings as errors all pass.
+
 Sync the docs with the finished collector:
 
 - `docs/design/gc.md`: stress mode as a policy, with no build option, and a
@@ -685,7 +695,6 @@ Then run everything:
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress
-MINIM_GC_NURSERY=1 MINIM_GC_RADIX=1 ctest --preset dev
 cmake --preset release && cmake --build --preset release
 ```
 

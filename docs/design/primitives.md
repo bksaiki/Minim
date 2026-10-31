@@ -142,7 +142,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 
 | Call | Result |
 |---|---|
-| `(collect)` | runs the collection the policy calls for; void |
+| `(collect)` | runs the collection the settings call for; void |
 | `(collect-nursery-bytes)`, `(collect-nursery-bytes n)` | bytes allocated between collections; `n` sets it, a positive fixnum |
 | `(collect-generation-radix)`, `(collect-generation-radix r)` | every `r`-th collection is major, or none for 0; `r` sets it, a nonnegative fixnum |
 | `(collect-major-growth)`, `(collect-major-growth g)` | the factor the old generation grows by before a major collection; `g` sets it, a positive fixnum |

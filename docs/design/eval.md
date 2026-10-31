@@ -29,7 +29,7 @@ protected by `MINIM_FRAME`, so a catch restores them with the root stack.
 | `SET` | symbol | set it to the value |
 | `ARGS` | remaining operands | push the value; evaluate the next operand or apply |
 
-**Value stack.**  `minim_values` (in `gc.c`) holds the operator and evaluated
+**Value stack.**  `minim_gc.values` (in `gc.h`) holds the operator and evaluated
 operands of calls in progress.  An `ARGS` frame records `base`, the height
 where its call's values start.  The collector scans `[0, len)` and updates
 entries in place, so a pointer into the stack survives allocation, but not a
