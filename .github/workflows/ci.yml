@@ -15,6 +15,6 @@ jobs:
         preset: [dev, stress]
     steps:
       - uses: actions/checkout@v7
-      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --preset ${{ matrix.preset }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
       - run: cmake --build --preset ${{ matrix.preset }}
       - run: ctest --preset ${{ matrix.preset }}

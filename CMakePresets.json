@@ -8,6 +8,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_FLAGS_DEBUG": "-g -O1",
+        "MINIM_BUILD_TESTS": "ON",
         "MINIM_SANITIZE": "ON"
       }
     },
@@ -18,11 +19,20 @@
       "cacheVariables": {
         "MINIM_GC_STRESS": "ON"
       }
+    },
+    {
+      "name": "release",
+      "displayName": "Optimized, without sanitizers",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
-    { "name": "stress", "configurePreset": "stress" }
+    { "name": "stress", "configurePreset": "stress" },
+    { "name": "release", "configurePreset": "release" }
   ],
   "testPresets": [
     { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
