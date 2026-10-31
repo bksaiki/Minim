@@ -8,7 +8,9 @@ objects yet.
 
 `minim_read(FILE *in)` returns the next datum, or `MINIM_EOF` at the end of
 input.  It is recursive descent over UTF-8 input and reports bad syntax with
-`minim_error`.
+`minim_error`.  Internally the reader reads from a *source*, a file or a
+string; `minim_read_string` (`src/read.h`) reads from a string and advances
+it.
 
 | Syntax | Reads as |
 |---|---|

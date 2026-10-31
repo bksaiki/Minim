@@ -74,6 +74,17 @@ as `#<procedure>`, since closures have no names.
 
 ### Phase 1 - Reading from strings
 
+**Done.**  Diverged from the plan:
+
+- `src/char.c` is unchanged.  A string source decodes with the existing
+  `minim_utf8_decode`; only a file source needs `minim_utf8_getc`.
+- Pushing back into a string steps its position back one byte, which is
+  right because only ASCII is ever pushed back.
+- On a read error, `minim_read_string` leaves `*s` unchanged (checked by
+  hand).
+- `tests/test_read.c` became an `INTERNAL` test, to include `src/read.h`.
+- `docs/design/repl.md` mentions the source and `minim_read_string`.
+
 - `src/read.c`: an internal `source` (a `FILE *` or a string with a
   position), with `getc` and `ungetc` operations; every reader function takes
   a `source *` instead of a `FILE *`.  `minim_read(FILE *)` wraps a file

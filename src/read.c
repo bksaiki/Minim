@@ -3,6 +3,8 @@
  * Reader.
  */
 
+#include "read.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -53,17 +55,39 @@ static bool is_delimiter(int32_t c) {
     return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';';
 }
 
-// Pushes back `c`; only ASCII can be pushed back, and only once.
-static void unread(FILE *in, int32_t c) {
-    if (c >= 0)
-        ungetc(c, in);
+// Where the reader reads from: a file, or a NUL-terminated string.
+typedef struct source {
+    FILE *file;                // NULL for a string
+    const unsigned char *str;  // next byte of the string
+} source;
+
+// Reads one code point, or returns -1 at the end.
+static int32_t next(source *in) {
+    if (in->file != NULL)
+        return minim_utf8_getc(in->file);
+    if (*in->str == '\0')
+        return -1;
+    uint32_t c;
+    in->str += minim_utf8_decode(in->str, &c);
+    return (int32_t)c;
+}
+
+// Pushes back `c`, the last code point read; only ASCII can be pushed back,
+// and only once.
+static void unread(source *in, int32_t c) {
+    if (c < 0)
+        return;
+    if (in->file != NULL)
+        ungetc(c, in->file);
+    else
+        in->str--;
 }
 
 // Appends characters to the token up to the next delimiter, which is left
 // unread.
-static void read_until_delimiter(FILE *in) {
+static void read_until_delimiter(source *in) {
     for (;;) {
-        int32_t c = minim_utf8_getc(in);
+        int32_t c = next(in);
         if (is_delimiter(c)) {
             unread(in, c);
             return;
@@ -73,12 +97,12 @@ static void read_until_delimiter(FILE *in) {
 }
 
 // Skips whitespace and comments; returns the next character.
-static int32_t skip_atmosphere(FILE *in) {
+static int32_t skip_atmosphere(source *in) {
     for (;;) {
-        int32_t c = minim_utf8_getc(in);
+        int32_t c = next(in);
         if (c == ';') {
             do
-                c = minim_utf8_getc(in);
+                c = next(in);
             while (c >= 0 && c != '\n');
         } else if (!is_whitespace(c)) {
             return c;
@@ -137,10 +161,10 @@ static bool parse_fixnum(minim_obj *x) {
     return true;
 }
 
-static minim_obj read_string(FILE *in) {
+static minim_obj read_string(source *in) {
     token.len = 0;
     for (;;) {
-        int32_t c = minim_utf8_getc(in);
+        int32_t c = next(in);
         if (c < 0)
             minim_error("eof in string", MINIM_VOID);
         if (c == '"')
@@ -150,7 +174,7 @@ static minim_obj read_string(FILE *in) {
             continue;
         }
 
-        c = minim_utf8_getc(in);
+        c = next(in);
         switch (c) {
         case '"': token_push('"'); break;
         case '\\': token_push('\\'); break;
@@ -158,7 +182,7 @@ static minim_obj read_string(FILE *in) {
         case 't': token_push('\t'); break;
         case 'x': {
             size_t start = token.len;
-            while ((c = minim_utf8_getc(in)) >= 0 && c != ';')
+            while ((c = next(in)) >= 0 && c != ';')
                 token_push((uint32_t)c);
             int32_t v = c == ';' ? parse_hex(start, token.len) : -1;
             if (v < 0)
@@ -173,13 +197,13 @@ static minim_obj read_string(FILE *in) {
     }
 }
 
-static minim_obj read_char(FILE *in) {
+static minim_obj read_char(source *in) {
     static const struct { const char *name; uint32_t c; } names[] = {
         {"nul", 0x00}, {"tab", '\t'}, {"newline", '\n'}, {"space", ' '},
     };
 
     // The first character is part of the token even if it is a delimiter.
-    int32_t c = minim_utf8_getc(in);
+    int32_t c = next(in);
     if (c < 0)
         minim_error("eof in char", MINIM_VOID);
     token.len = 0;
@@ -201,10 +225,10 @@ static minim_obj read_char(FILE *in) {
 // What read_item found
 enum { ITEM, CLOSE, DOT, END };
 
-static int read_item(FILE *in, minim_obj *x);
+static int read_item(source *in, minim_obj *x);
 
 // Reads a datum, which must be present.
-static minim_obj read_required(FILE *in, const char *context) {
+static minim_obj read_required(source *in, const char *context) {
     minim_obj x;
     if (read_item(in, &x) != ITEM)
         minim_error(context, MINIM_VOID);
@@ -212,7 +236,7 @@ static minim_obj read_required(FILE *in, const char *context) {
 }
 
 // Reads the rest of a list after its `(`.
-static minim_obj read_list(FILE *in) {
+static minim_obj read_list(source *in) {
     minim_obj head = MINIM_NIL;
     minim_obj tail = MINIM_NIL;
     minim_obj x = MINIM_NIL;
@@ -244,7 +268,7 @@ static minim_obj read_list(FILE *in) {
 }
 
 // Reads the rest of a vector after its `#(`.
-static minim_obj read_vector(FILE *in) {
+static minim_obj read_vector(source *in) {
     minim_obj lst = MINIM_NIL;
     minim_obj x = MINIM_NIL;
     MINIM_FRAME(&lst, &x);
@@ -263,8 +287,8 @@ static minim_obj read_vector(FILE *in) {
     MINIM_RETURN(v);
 }
 
-static minim_obj read_hash(FILE *in) {
-    int32_t c = minim_utf8_getc(in);
+static minim_obj read_hash(source *in) {
+    int32_t c = next(in);
     if (c == '(')
         return read_vector(in);
     if (c == '\\')
@@ -281,7 +305,7 @@ static minim_obj read_hash(FILE *in) {
 }
 
 // Reads the next item into `*x`; returns what was found.
-static int read_item(FILE *in, minim_obj *x) {
+static int read_item(source *in, minim_obj *x) {
     int32_t c = skip_atmosphere(in);
     switch (c) {
     case -1:
@@ -315,7 +339,7 @@ static int read_item(FILE *in, minim_obj *x) {
     }
 }
 
-minim_obj minim_read(FILE *in) {
+static minim_obj read_datum(source *in) {
     minim_obj x;
     switch (read_item(in, &x)) {
     case END:
@@ -327,4 +351,16 @@ minim_obj minim_read(FILE *in) {
     default:
         return x;
     }
+}
+
+minim_obj minim_read(FILE *in) {
+    source src = {.file = in};
+    return read_datum(&src);
+}
+
+minim_obj minim_read_string(const char **s) {
+    source src = {.str = (const unsigned char *)*s};
+    minim_obj x = read_datum(&src);
+    *s = (const char *)src.str;
+    return x;
 }
