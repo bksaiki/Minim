@@ -35,6 +35,24 @@ static int test_failures = 0;
         }                                                                   \
     } while (0)
 
+/**
+ * Whether the collector runs at nearly every allocation, as in the `_stress`
+ * copies.
+ */
+static inline bool gc_stressed(void) {
+    return minim_gc_get_config().nursery_bytes < 1024;
+}
+
+/**
+ * Sets the default collector settings, for a test that relies on when
+ * collections happen; returns the settings to restore.
+ */
+static inline minim_gc_config use_default_gc_config(void) {
+    minim_gc_config saved = minim_gc_get_config();
+    minim_gc_set_config(minim_gc_default_config());
+    return saved;
+}
+
 /** Exit status for main. */
 static inline int test_result(void) {
     return test_failures == 0 ? 0 : 1;

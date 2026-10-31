@@ -74,7 +74,7 @@ static void test_gc(void) {
 
     minim_obj old_c = c;
     minim_obj old_p = p;
-    minim_gc_collect();
+    minim_gc_collect_major();
     CHECK(c != old_c);  // moved
     CHECK(p != old_p);
 

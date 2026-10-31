@@ -60,7 +60,7 @@ static void test_gc(void) {
     minim_set_symbol_value(sym, val);
 
     minim_obj old = sym;
-    minim_gc_collect();
+    minim_gc_collect_major();
     CHECK(sym != old);  // moved
     CHECK_EQ(minim_intern_cstr("kept"), sym);
     CHECK_EQ(minim_symbol_value(sym), val);
@@ -71,16 +71,12 @@ static void test_gc(void) {
 // Symbols are never freed, even when unreferenced.
 static void test_strong(void) {
     minim_set_symbol_value(minim_intern_cstr("ghost"), minim_fixnum(42));
-    minim_gc_collect();
+    minim_gc_collect_major();
     CHECK_EQ(minim_symbol_value(minim_intern_cstr("ghost")), minim_fixnum(42));
 }
 
 static void test_growth(void) {
-#ifdef MINIM_GC_STRESS
-    const size_t n = 1000;  // every allocation collects
-#else
-    const size_t n = 10000;
-#endif
+    const size_t n = gc_stressed() ? 1000 : 10000;
     char name[32];
     minim_obj syms = minim_make_vector(n, MINIM_NIL);
     MINIM_FRAME(&syms);

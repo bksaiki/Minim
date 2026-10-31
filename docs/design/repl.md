@@ -1,4 +1,4 @@
-# REPL: reader, printer, and errors
+# REPL: reader and printer
 
 `minim` reads expressions from stdin, evaluates them, and prints the
 results (see `eval.md`).  All I/O is through `FILE *`; there are no port
@@ -52,24 +52,6 @@ data.  Cyclic data loops forever.
 `minim_display` is the same, except that strings and chars, including nested
 ones, print as their characters: `(1 "a" #\b)` displays as `(1 a b)`.
 
-## Errors
-
-```c
-_Noreturn void minim_error(const char *msg, minim_obj irritant);
-bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result);
-```
-
-`minim_error` records `msg` and `irritant` and `longjmp`s to the innermost
-`minim_catch`.  That catch restores the root stack to its height on entry and
-returns `false`.  `minim_last_error` and `minim_write_error` retrieve the
-error.
-
-- `msg` is stored as a pointer, so it must outlive the catch; in practice it
-  is a literal.
-- `MINIM_VOID` as the irritant means there is none.
-- The irritant is a GC root, so it survives collections.
-- Catches nest.  With none installed, `minim_error` prints and aborts.
-
 ## REPL
 
 With a file argument, `src/main.c` evaluates `(load "file")`.  It prints
@@ -77,12 +59,10 @@ nothing else, and an error is printed to stderr with exit status 1.  More
 than one argument prints a usage message and exits with status 2.
 
 Otherwise it runs the REPL, which loops: read, `minim_eval`, then write the
-value and a newline unless it is void.  A read or evaluation error prints `error: msg: irritant`
-to stderr, and reading continues with the rest of the input.
+value and a newline unless it is void.  A read or evaluation error prints
+`error: msg: irritant` to stderr (`errors.md`), and reading continues with the
+rest of the input.
 
 The `> ` prompt goes to stderr, and only when stdin is a terminal, as in
-bash and Python.  Piped runs print only results to stdout, which the golden
-tests in `tests/repl/` rely on: each `<name>.scm` is piped into `minim` and
-its stdout is compared with `<name>.out`.  Script tests in `tests/scripts/`
-run `minim <file>` and also check the exit status.  `tests/run_minim.cmake`
-runs both.
+bash and Python, so piped runs print only results to stdout, as the REPL
+tests expect (`testing.md`).

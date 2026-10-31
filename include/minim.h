@@ -63,6 +63,12 @@ enum {
     MINIM_TYPE_PRIMITIVE = 0x4,
 };
 
+/** Allocation constants. */
+enum {
+    MINIM_ALIGN = 16,              ///< object alignment and size unit
+    MINIM_CHUNK_SIZE = 16 * 1024,  ///< heap chunk size and alignment in bytes
+};
+
 /** Object sizes in bytes, before rounding to the allocation unit. */
 enum {
     MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
@@ -262,8 +268,55 @@ void minim_gc_protect(minim_obj *const *vars, size_t n);
 /** Protects a variable for the life of the runtime. */
 void minim_gc_add_global(minim_obj *p);
 
-/** Collects garbage now. */
+/**
+ * Collector settings.  After a minor collection, a major one runs if the old
+ * generation exceeds both `major_min_bytes` and `major_growth` times its size
+ * after the last major collection.  Every setting is at most MINIM_FIXNUM_MAX,
+ * and `major_growth` and `stack_initial_capacity` are at least 1.
+ */
+typedef struct minim_gc_config {
+    size_t nursery_bytes;           ///< bytes allocated between collections
+    size_t radix;                   ///< every `radix`-th collection is major; 0 for none
+    size_t major_growth;            ///< old-generation growth factor that triggers a major one
+    size_t major_min_bytes;         ///< old-generation size below which growth is ignored
+    size_t stack_initial_capacity;  ///< elements the collector's stacks first allocate
+} minim_gc_config;
+
+/**
+ * The default collector settings: a 1 MiB nursery, radix 0, and major
+ * collections when the old generation doubles, past 1 MiB.
+ */
+minim_gc_config minim_gc_default_config(void);
+
+/** The collector settings. */
+minim_gc_config minim_gc_get_config(void);
+
+/**
+ * Sets the collector settings.  The nursery starts over; `stack_initial_capacity`
+ * affects only stacks not yet allocated, since stacks never shrink.
+ */
+void minim_gc_set_config(minim_gc_config config);
+
+/** Runs the collection the settings call for: minor, or major by radix or growth. */
 void minim_gc_collect(void);
+
+/** Collects the young generation, promoting its survivors to the old one. */
+void minim_gc_collect_minor(void);
+
+/** Collects both generations, copying every live object. */
+void minim_gc_collect_major(void);
+
+/** Remembers the old object `obj` until the next collection. */
+void minim_gc_remember(minim_obj obj);
+
+/** Write barrier, after storing `x` into `obj`: remembers `obj` if old and `x` is a heap object. */
+static inline void minim_gc_write(minim_obj obj, minim_obj x) {
+    minim_obj tag = minim_tag(x);
+    // An object's chunk, found by alignment, starts with its generation.
+    if (tag != MINIM_TAG_FIXNUM && tag != MINIM_TAG_IMMEDIATE
+        && *(const unsigned char *)(obj & ~(minim_obj)(MINIM_CHUNK_SIZE - 1)) != 0)
+        minim_gc_remember(obj);
+}
 
 // Pairs
 
@@ -286,12 +339,14 @@ static inline minim_obj minim_cdr(minim_obj p) {
 static inline void minim_set_car(minim_obj p, minim_obj x) {
     assert(minim_is_pair(p));
     ((minim_obj *)(p - MINIM_TAG_PAIR))[0] = x;
+    minim_gc_write(p, x);
 }
 
 /** Sets the second field of the pair `p`. */
 static inline void minim_set_cdr(minim_obj p, minim_obj x) {
     assert(minim_is_pair(p));
     ((minim_obj *)(p - MINIM_TAG_PAIR))[1] = x;
+    minim_gc_write(p, x);
 }
 
 // Vectors
@@ -315,6 +370,7 @@ static inline minim_obj minim_vector_ref(minim_obj v, size_t i) {
 static inline void minim_vector_set(minim_obj v, size_t i, minim_obj x) {
     assert(i < minim_vector_length(v));
     ((minim_obj *)(v - MINIM_TAG_TYPED))[1 + i] = x;
+    minim_gc_write(v, x);
 }
 
 // Strings: arrays of Unicode scalar values
@@ -398,6 +454,7 @@ static inline minim_obj minim_symbol_value(minim_obj sym) {
 static inline void minim_set_symbol_value(minim_obj sym, minim_obj x) {
     assert(minim_is_symbol(sym));
     ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[1] = x;
+    minim_gc_write(sym, x);
 }
 
 // Procedures

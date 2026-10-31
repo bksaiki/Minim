@@ -83,7 +83,7 @@ static void test_irritant_survives_gc(void) {
     minim_obj x = minim_cons(minim_fixnum(1), minim_fixnum(2));
     minim_obj r;
     CHECK(!minim_catch(raise, &x, &r));
-    minim_gc_collect();
+    minim_gc_collect_major();
 
     const char *msg;
     minim_obj irritant;

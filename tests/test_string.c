@@ -3,7 +3,7 @@
  * Tests for strings.
  */
 
-#include "heap.h"
+#include "gc.h"
 #include "minim.h"
 #include "test.h"
 
@@ -49,15 +49,15 @@ static void test_footprint(void) {
     // 8 B header + 4 B per char, rounded up to 16
     const size_t sizes[][2] = {{0, 16}, {2, 16}, {3, 32}, {6, 32}, {7, 48}};
     for (size_t i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
-        size_t before = minim_heap.allocated;
+        size_t before = minim_gc.allocated;
         minim_make_string(sizes[i][0], 'a');
-        CHECK_EQ(minim_heap.allocated - before, sizes[i][1]);
+        CHECK_EQ(minim_gc.allocated - before, sizes[i][1]);
     }
 }
 
 static void test_gc(void) {
-    minim_gc_collect();
-    size_t base = minim_heap.live;  // the symbol table
+    minim_gc_collect_major();
+    size_t base = minim_gc.live;  // the symbol table
 
     minim_obj s = minim_string_from_cstr("café");
     minim_obj v = MINIM_NIL;
@@ -68,13 +68,13 @@ static void test_gc(void) {
     lst = minim_cons(lst, MINIM_NIL);
 
     minim_obj old = s;
-    minim_gc_collect();
+    minim_gc_collect_major();
     CHECK(s != old);  // moved
     CHECK_CHARS(s, 'c', 'a', 'f', 0xE9);
     CHECK_EQ(minim_vector_ref(v, 0), s);
     CHECK_EQ(minim_vector_ref(v, 1), s);
     CHECK_CHARS(minim_car(lst), 'x');
-    CHECK_EQ(minim_heap.live, base + 32 + 32 + 16 + 16);  // vector, "café", "x", pair
+    CHECK_EQ(minim_gc.live, base + 32 + 32 + 16 + 16);  // vector, "café", "x", pair
     MINIM_RETURN_VOID;
 }
 

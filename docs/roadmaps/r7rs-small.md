@@ -1,4 +1,4 @@
-# Roadmap
+# Roadmap: R7RS-small
 
 Where Minim goes after the basic REPL.  Each milestone gets its own
 implementation plan in `docs/todos/` when it starts; this document only orders
@@ -7,8 +7,8 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 65 primitives, and a Scheme prelude with the list library
-(`map`, `append`, `member`, `fold`, ...).  It has a precise copying
+closures, 70 primitives, and a Scheme prelude with the list library
+(`map`, `append`, `member`, `fold`, ...).  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls and the special forms `quote`, `if`, `define`, `set!`, `lambda`,
 and `begin`.  `minim file.scm` runs a file, and `load` loads one (see
@@ -129,10 +129,10 @@ Depends on 3 (`define-record-type` is a macro).
 Not features, but needed as programs grow:
 
 - A weak symbol table, so unused symbols are collected, as Chez does.
-- Chunk reuse in the collector; this also speeds up stress mode.
-- A static space for objects created at startup (the prelude), never copied
-  again, as in Chez's static generation.  Stress mode now copies the prelude
-  on every allocation, which tripled the stress suite's time.
+- Done: a two-generation collector with a write barrier, reuse of freed
+  chunks, and run-time collector settings (`docs/design/gc.md`).
+- More generations, as in Chez, if major collections become frequent or
+  long.
 - Evaluator speed: a pre-pass that resolves variables to lexical addresses,
   with environments as vectors.  `src/env.h` already hides the
   representation.

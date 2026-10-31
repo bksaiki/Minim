@@ -1,8 +1,8 @@
 # Object representation and garbage collection
 
-Minim uses tagged 64-bit values and a precise, non-generational copying
-collector.  Both are simplified from Chez Scheme (Dybvig, Eby, and Bruggeman
-1994).
+Minim uses tagged 64-bit values and a precise, generational copying
+collector with two generations.  Both are simplified from Chez Scheme
+(Dybvig, Eby, and Bruggeman 1994).
 
 ## Values
 
@@ -32,45 +32,110 @@ closure  [ code : (params . body) | env ]     16 B
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 ```
 
+A primitive's fields:
+
+- `fn` is `minim_obj fn(minim_obj *args, size_t n)` and isn't traced.  `args`
+  points into the value stack, so it stays valid across allocation
+  (`eval.md`); primitives must not push onto it.
+- `name` is a symbol, used for printing (`#<procedure car>`).
+- `min` and `max` are fixnum arities; `max` is `MINIM_VARIADIC` (-1) for any
+  number of arguments.  The evaluator checks them before calling `fn`.
+
 ## Heap
 
-Memory is a set of `malloc`'d 64 KiB chunks; a larger object gets a chunk of
-its own.  A *space* is a chain of chunks in allocation order with a bump
-pointer into the last one.  There are four:
+Memory is a set of 16 KiB chunks, each aligned to its size; a larger object
+gets a chunk of its own, a multiple of 16 KiB, holding nothing else.  Every
+object starts in its chunk's first 16 KiB, so clearing the low 14 bits of its
+address finds its chunk (`minim_chunk_of`).  A chunk's header starts with its
+generation, 0 or 1.  Chunks come from `aligned_alloc` (`_aligned_malloc` on
+MSVC); at 16 KiB, glibc and ASan serve them from their pools, while larger
+aligned chunks would each be mapped from the OS.
 
-| Space | Holds |
-|---|---|
-| new | every newly allocated object, all kinds interleaved |
-| pair | pairs and closures that survived a collection |
-| symbol | symbols that survived a collection |
-| typed | typed objects that survived a collection |
+A *space* is a chain of chunks in allocation order with a bump pointer into
+the last one.  There are four:
+
+| Space | Generation | Holds |
+|---|---|---|
+| new | young (0) | every newly allocated object, all kinds interleaved |
+| pair | old (1) | pairs and closures |
+| symbol | old (1) | symbols |
+| typed | old (1) | typed objects |
 
 Pairs and symbols have no header, so a space of mixed kinds can't be parsed.
 The collector never parses the new space; it sorts survivors by kind as it
 copies them, as Chez does.
 
+**Spare chunks.**  Chunks freed by a collection are queued as spares, oldest
+first, and new chunks come from the queue before `aligned_alloc`.  At most the
+nursery's worth plus a quarantine are kept; large chunks and the rest are
+freed.  Under AddressSanitizer, a chunk's data stays poisoned until each
+object in it is allocated, and a spare is reused only after 8 newer ones (the
+quarantine, `MINIM_CHUNK_QUARANTINE`), so a stale pointer into a collected
+chunk still faults.
+
+All collector state, including the spaces, spares, roots, and settings, is
+one struct, `minim_gc` (`src/gc.h`).
+
 ## Collection
 
-Cheney-style copying:
+An object is young until it survives a collection, which promotes it to the
+old generation.  Both kinds of collection are Cheney-style copying:
 
-1. Copy every root.  An object's kind, and so its to-space, comes from the
+- **Minor** (`minim_gc_collect_minor`): the from-space is the new space; old
+  objects stay put.
+- **Major** (`minim_gc_collect_major`): the from-space is every space, and
+  the to-spaces are fresh old spaces, so every live object moves.
+
+Each one:
+
+1. Copies every root.  An object's kind, and so its to-space, comes from the
    pointer's tag.  The old copy gets the forward marker in word 0 and the new
    pointer in word 1, so later references find it.
-2. Scan the pair, symbol, and typed spaces from their start until no scan
-   cursor moves.  Pairs, symbols, and closures are two traced words; a typed
-   object is traced according to its header (vector elements are traced,
-   string chars aren't, and a primitive's C function pointer isn't).  Copying during the scan appends to the spaces being scanned.
-3. Free every from-space chunk.
+2. In a minor collection, scans the remembered old objects (below).
+3. Scans what was copied, from where the old spaces ended before the
+   collection, until no scan cursor moves.  Pairs, symbols, and closures are
+   two traced words; a typed object is traced by its header (vector elements
+   are, string chars and a primitive's C function pointer aren't).
+4. Releases the from-space chunks.
 
-The collector isn't generational, so every live object is in from-space when a
-collection starts, and it needs no table mapping addresses to chunks.
+Afterward, nothing is young.
 
-**Trigger.**  A collection runs when an allocation would exceed the budget,
-`max(1 MiB, 2 × live bytes after the last collection)`.  The build option
-`MINIM_GC_STRESS` collects every `MINIM_GC_STRESS_INTERVAL` allocations
-instead (default 1, every allocation), which exposes missing roots under
-AddressSanitizer.  Only interval 1 catches a root missing across a single
-allocation.
+**Write barrier.**  A minor collection must find every old object that points
+to a young one.  Every pointer write into an existing object goes through
+`minim_set_car`, `minim_set_cdr`, `minim_vector_set`, or
+`minim_set_symbol_value`, which end with the inline `minim_gc_write(obj, x)`:
+if `x` is a heap object and `obj`'s chunk is old, `obj` is remembered.  A bit
+per 16 bytes in each chunk header keeps an object in the remembered set at
+most once.  A minor collection scans the set and clears it; a major one just
+clears it.  Constructors and the collector write directly, without the
+barrier.
+
+## Settings
+
+`minim_gc_collect`, which allocation calls when the nursery is full, runs the
+collection the settings call for.  The settings are a `minim_gc_config`, the
+first two after Chez's `collect-trip-bytes` and `collect-generation-radix`:
+
+| Setting | Meaning | Default |
+|---|---|---|
+| `nursery_bytes` | bytes allocated between collections | 1 MiB |
+| `radix` | every `radix`-th collection is major; 0 for none | 0 |
+| `major_growth` | after a minor collection, a major one runs when the old generation exceeds this multiple of its size after the last major collection... | 2 |
+| `major_min_bytes` | ...and this many bytes | 1 MiB |
+| `stack_initial_capacity` | elements the root, value, and remembered stacks first allocate | 64 |
+
+So by default long-lived data is copied once when promoted, then about once
+per doubling of the old generation.
+
+They are set by `minim_gc_set_config`, the `MINIM_GC_` environment variables
+(`environment.md`), and the `collect-` primitives (`primitives.md`).  Startup
+(`minim_init`) runs with the defaults; the environment's settings apply after
+it, or from the start with `MINIM_GC_STARTUP=1`.
+
+**Stress testing.**  A 1-byte nursery collects at every allocation, so a
+missing root moves its object at the next allocation, where AddressSanitizer
+reports the stale use.  Minor collections also catch a missed write barrier;
+major ones also move old objects.  The stress tests are in `testing.md`.
 
 ## Roots
 
@@ -88,7 +153,8 @@ allocation.
   allocating calls must not be nested in arguments.
 - **Globals.**  Variables registered with `minim_gc_add_global`.
 - **Value stack.**  The evaluator's operator and operand values for calls in
-  progress (`minim_values`), updated in place.
+  progress (`minim_gc.values`), updated in place.
+- **Remembered set.**  In a minor collection, as above.
 - **Symbol table.**  A vector in the heap, registered as a global.  It hashes
   by name, so moving symbols doesn't invalidate it.  It is strong: symbols are
   never freed, unlike Chez, which drops symbols with no references, value, or
@@ -96,9 +162,13 @@ allocation.
 
 ## Not included
 
-Generations, card marking, a segment table, non-copying large objects, an
-unscanned space for pointer-free data, weak pairs, and guardians.  None would
-change object layouts.
+Chez has several generations, older ones collected geometrically less often
+(`collect-generation-radix`).  Minim has two, but stores the generation as a
+number, so more could be added: per-generation spaces, and a barrier that
+records the youngest generation each old object points to.
+
+Also not included: card marking, a segment table, non-copying large
+objects, an unscanned space for pointer-free data, weak pairs, and guardians.
 
 ## References
 

@@ -3,7 +3,7 @@
  * Tests for the printer.
  */
 
-#include "heap.h"
+#include "gc.h"
 #include "minim.h"
 #include "test.h"
 
@@ -106,9 +106,9 @@ static void test_vectors(void) {
     CHECK(prints_as(v, "#(1 #(2) \"s\")"));
 
     // Printing allocates nothing.
-    size_t before = minim_heap.allocated;
+    size_t before = minim_gc.allocated;
     CHECK(prints_as(v, "#(1 #(2) \"s\")"));
-    CHECK_EQ(minim_heap.allocated, before);
+    CHECK_EQ(minim_gc.allocated, before);
     MINIM_RETURN_VOID;
 }
 

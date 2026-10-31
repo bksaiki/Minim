@@ -4,7 +4,6 @@
  */
 
 #include "gc.h"
-#include "heap.h"
 #include "minim.h"
 #include "test.h"
 
@@ -150,15 +149,15 @@ static void test_errors(void) {
 }
 
 static void test_value_stack_restored(void) {
-    size_t before = minim_values.len;
+    size_t before = minim_gc.values.len;
     CHECK(fails_with("(+ 1 (+ 2 (car 5)))", "car: not a pair"));
-    CHECK_EQ(minim_values.len, before);
+    CHECK_EQ(minim_gc.values.len, before);
 }
 
 // Collects, then returns its second argument.
 static minim_obj collect_then_second(minim_obj *args, size_t n) {
     (void)n;
-    minim_gc_collect();
+    minim_gc_collect_major();
     return args[1];
 }
 
@@ -172,18 +171,14 @@ static void test_primitive_allocates(void) {
 }
 
 static void test_apply_restores_value_stack(void) {
-    size_t before = minim_values.len;
+    size_t before = minim_gc.values.len;
     CHECK(fails_with("(+ 1 (apply + 1 '(2 . 3)))", "apply: not a list"));
-    CHECK_EQ(minim_values.len, before);
+    CHECK_EQ(minim_gc.values.len, before);
 }
 
 // map in the prelude recurses on the heap, not the C stack.
 static void test_map_long_list(void) {
-#ifdef MINIM_GC_STRESS
-    const long n = 1000;  // collections are frequent, with a growing live set
-#else
-    const long n = 100000;
-#endif
+    const long n = gc_stressed() ? 1000 : 100000;
     char src[256];
     snprintf(src, sizeof(src),
              "(define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))"
@@ -194,25 +189,22 @@ static void test_map_long_list(void) {
 }
 
 static void test_tail_calls(void) {
-#ifdef MINIM_GC_STRESS
-    const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 10000)";
-#else
-    const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 100000)";
-#endif
+    char src[256];
+    snprintf(src, sizeof(src),
+             "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop %d)",
+             gc_stressed() ? 10000 : 100000);
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.
-    CHECK(minim_heap.size <= 8 * 1024 * 1024);
-    CHECK(minim_values.cap <= 64);
+    CHECK(minim_gc.size <= 8 * 1024 * 1024);
+    CHECK(minim_gc.values.cap <= 64);
 
     // `apply` in tail position is a tail call too.
-#ifdef MINIM_GC_STRESS
-    src = "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop 2000)";
-#else
-    src = "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop 100000)";
-#endif
+    snprintf(src, sizeof(src),
+             "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop %d)",
+             gc_stressed() ? 2000 : 100000);
     CHECK(evals_to(src, "done"));
-    CHECK(minim_heap.size <= 8 * 1024 * 1024);
-    CHECK(minim_values.cap <= 64);
+    CHECK(minim_gc.size <= 8 * 1024 * 1024);
+    CHECK(minim_gc.values.cap <= 64);
 }
 
 int main(void) {

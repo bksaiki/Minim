@@ -5,39 +5,99 @@
 
 #include "heap.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _MSC_VER
+#include <malloc.h>
+#endif
 
+#include "gc.h"
 #include "minim.h"
 
-struct minim_heap minim_heap;
-
-void minim_heap_init(void) {
-    minim_heap = (struct minim_heap){0};
-}
-
-void minim_heap_shutdown(void) {
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
-        minim_space_free(&minim_heap.spaces[i]);
-    minim_heap = (struct minim_heap){0};
-}
+#ifdef MINIM_ASAN
+#include <sanitizer/asan_interface.h>
+#else
+#define ASAN_POISON_MEMORY_REGION(p, n) ((void)(p), (void)(n))
+#define ASAN_UNPOISON_MEMORY_REGION(p, n) ((void)(p), (void)(n))
+#endif
 
 void minim_out_of_memory(void) {
     fprintf(stderr, "minim: out of memory\n");
     abort();
 }
 
-// Closes the last chunk of `s` and appends one that fits `nbytes`.
-static void space_grow(minim_space *s, size_t nbytes) {
-    size_t size = nbytes > MINIM_CHUNK_SIZE ? nbytes : MINIM_CHUNK_SIZE;
-    minim_chunk *c = malloc(sizeof(minim_chunk) + size);
+// Bytes allocated for a chunk with `capacity` bytes of data.
+static size_t chunk_bytes(size_t capacity) {
+    return offsetof(minim_chunk, data) + capacity;
+}
+
+// A new chunk of `bytes`, a multiple of MINIM_CHUNK_SIZE, aligned to its size.
+static minim_chunk *chunk_alloc(size_t bytes) {
+#ifdef _MSC_VER
+    minim_chunk *c = _aligned_malloc(bytes, MINIM_CHUNK_SIZE);
+#else
+    minim_chunk *c = aligned_alloc(MINIM_CHUNK_SIZE, bytes);
+#endif
     if (c == NULL)
         minim_out_of_memory();
-    // 64-bit malloc returns 16-byte aligned blocks even where max_align_t is
-    // only 8-byte aligned (macOS arm64, MSVC).
-    assert(((uintptr_t)c & (MINIM_ALIGN - 1)) == 0);
-    *c = (minim_chunk){.size = size};
+    minim_gc.size += bytes;
+    return c;
+}
+
+static void chunk_free(minim_chunk *c) {
+    minim_gc.size -= chunk_bytes(c->size);
+#ifdef _MSC_VER
+    _aligned_free(c);
+#else
+    free(c);
+#endif
+}
+
+// Takes the oldest spare, or NULL if none is past the quarantine.
+static minim_chunk *take_spare(void) {
+    minim_chunk_queue *q = &minim_gc.spares;
+    if (q->len <= MINIM_CHUNK_QUARANTINE)
+        return NULL;
+    minim_chunk *c = q->first;
+    q->first = c->next;
+    if (q->first == NULL)
+        q->last = NULL;
+    q->len--;
+    return c;
+}
+
+size_t minim_heap_max_spares(void) {
+    return minim_gc.config.nursery_bytes / MINIM_CHUNK_SIZE + 1 + MINIM_CHUNK_QUARANTINE;
+}
+
+// Makes `c` a spare, or frees it if it is large or there are enough spares.
+static void release_chunk(minim_chunk *c) {
+    minim_chunk_queue *q = &minim_gc.spares;
+    if (chunk_bytes(c->size) != MINIM_CHUNK_SIZE || q->len >= minim_heap_max_spares()) {
+        chunk_free(c);
+        return;
+    }
+    ASAN_POISON_MEMORY_REGION(c->data, c->size);
+    c->next = NULL;
+    if (q->last != NULL)
+        q->last->next = c;
+    else
+        q->first = c;
+    q->last = c;
+    q->len++;
+}
+
+// Closes the last chunk of `s` and appends one that fits `nbytes`.  Its data
+// stays poisoned until allocated.
+static void space_grow(minim_space *s, size_t nbytes) {
+    // A multiple of MINIM_CHUNK_SIZE, as aligned_alloc requires.
+    size_t bytes = (chunk_bytes(nbytes) + MINIM_CHUNK_SIZE - 1) & ~(size_t)(MINIM_CHUNK_SIZE - 1);
+    minim_chunk *c = bytes == MINIM_CHUNK_SIZE ? take_spare() : NULL;
+    if (c == NULL)
+        c = chunk_alloc(bytes);
+    size_t size = bytes - offsetof(minim_chunk, data);
+    *c = (minim_chunk){.generation = s->generation, .size = size};
+    ASAN_POISON_MEMORY_REGION(c->data, size);
 
     if (s->last != NULL) {
         s->last->end = s->alloc;
@@ -47,8 +107,8 @@ static void space_grow(minim_space *s, size_t nbytes) {
     }
     s->last = c;
     s->alloc = c->data;
-    s->avail = size;
-    minim_heap.size += size;
+    // A large object's chunk holds nothing else.
+    s->avail = bytes > MINIM_CHUNK_SIZE ? nbytes : size;
 }
 
 void *minim_space_alloc(minim_space *s, size_t nbytes) {
@@ -58,38 +118,42 @@ void *minim_space_alloc(minim_space *s, size_t nbytes) {
     void *p = s->alloc;
     s->alloc += nbytes;
     s->avail -= nbytes;
+    ASAN_UNPOISON_MEMORY_REGION(p, nbytes);
     return p;
 }
 
 void *minim_heap_alloc(size_t nbytes) {
     nbytes = minim_align_up(nbytes);
-#ifdef MINIM_GC_STRESS
-    static unsigned long count;
-    if (++count % MINIM_GC_STRESS == 0)
+    if (nbytes > minim_gc.budget)
         minim_gc_collect();
-#else
-    if (nbytes > minim_heap.budget)
-        minim_gc_collect();
-#endif
-    minim_heap.budget = nbytes < minim_heap.budget ? minim_heap.budget - nbytes : 0;
-    minim_heap.allocated += nbytes;
-    return minim_space_alloc(&minim_heap.spaces[MINIM_SPACE_NEW], nbytes);
+    minim_gc.budget = nbytes < minim_gc.budget ? minim_gc.budget - nbytes : 0;
+    minim_gc.allocated += nbytes;
+    return minim_space_alloc(&minim_gc.spaces[MINIM_SPACE_NEW], nbytes);
 }
 
 void minim_space_free(minim_space *s) {
     minim_chunk *c = s->first;
     while (c != NULL) {
         minim_chunk *next = c->next;
-        minim_heap.size -= c->size;
-        free(c);
+        release_chunk(c);
         c = next;
     }
-    *s = (minim_space){0};
+    *s = (minim_space){.generation = s->generation};
+}
+
+void minim_heap_free_spares(void) {
+    minim_chunk *c = minim_gc.spares.first;
+    while (c != NULL) {
+        minim_chunk *next = c->next;
+        chunk_free(c);
+        c = next;
+    }
+    minim_gc.spares = (minim_chunk_queue){0};
 }
 
 size_t minim_space_used(const minim_space *s) {
     size_t used = 0;
     for (const minim_chunk *c = s->first; c != NULL; c = c->next)
-        used += (size_t)((c == s->last ? s->alloc : c->end) - c->data);
+        used += (size_t)(minim_chunk_end(s, c) - c->data);
     return used;
 }
