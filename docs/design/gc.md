@@ -112,6 +112,7 @@ first two after Chez's `collect-trip-bytes` and `collect-generation-radix`:
 | `radix` | every `radix`-th collection is major; 0 for none | 0 |
 | `major_growth` | after a minor collection, a major one runs when the old generation exceeds this multiple of its size after the last major collection... | 2 |
 | `major_min_bytes` | ...and this many bytes | 1 MiB |
+| `stack_initial_capacity` | elements the root, value, and remembered stacks first allocate | 64 |
 
 So by default long-lived data is copied once when promoted, then about once
 per doubling of the old generation.

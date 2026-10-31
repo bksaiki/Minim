@@ -268,21 +268,35 @@ void minim_gc_protect(minim_obj *const *vars, size_t n);
 /** Protects a variable for the life of the runtime. */
 void minim_gc_add_global(minim_obj *p);
 
-/** Collector settings: when collections run; see docs/design/gc.md. */
+/**
+ * Collector settings.  A collection runs after every `nursery_bytes` of
+ * allocation.  Every `radix`-th one is major (none if `radix` is 0); the
+ * others are minor, each followed by a major one if the old generation now
+ * exceeds both `major_growth` times its size after the last major collection
+ * and `major_min_bytes`.
+ */
 typedef struct minim_gc_config {
-    size_t nursery_bytes;    ///< nursery size: bytes allocated between collections
-    size_t radix;            ///< every `radix`-th collection is major; 0 for none
-    size_t major_growth;     ///< major when the old generation grows by this factor
-    size_t major_min_bytes;  ///< but not before it exceeds this size
+    size_t nursery_bytes;           ///< bytes allocated between collections
+    size_t radix;                   ///< every `radix`-th collection is major; 0 for none
+    size_t major_growth;            ///< old-generation growth factor that triggers a major one
+    size_t major_min_bytes;         ///< size the old generation must also exceed
+    size_t stack_initial_capacity;  ///< elements the collector's stacks first allocate
 } minim_gc_config;
 
 /**
- * The collector settings.  By default: a 1 MiB nursery, radix 0, and major
+ * The default collector settings: a 1 MiB nursery, radix 0, and major
  * collections when the old generation doubles, past 1 MiB.
  */
+minim_gc_config minim_gc_default_config(void);
+
+/** The collector settings. */
 minim_gc_config minim_gc_get_config(void);
 
-/** Sets the collector settings; `major_growth` must be at least 1.  The nursery starts over. */
+/**
+ * Sets the collector settings; `major_growth` and `stack_initial_capacity` must
+ * be at least 1.  The nursery starts over; `stack_initial_capacity` affects
+ * only stacks not yet allocated, since stacks never shrink.
+ */
 void minim_gc_set_config(minim_gc_config config);
 
 /** Runs the collection the settings call for: minor, or major by radix or growth. */

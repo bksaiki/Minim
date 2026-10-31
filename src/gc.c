@@ -14,17 +14,19 @@
 #include "minim.h"
 #include "system.h"
 
-enum {
-    DEFAULT_NURSERY = 1024 * 1024,    // bytes
-    DEFAULT_MAJOR_GROWTH = 2,
-    DEFAULT_MAJOR_MIN = 1024 * 1024,  // bytes
+static const minim_gc_config DEFAULT_CONFIG = {
+    .nursery_bytes = 1024 * 1024,
+    .radix = 0,
+    .major_growth = 2,
+    .major_min_bytes = 1024 * 1024,
+    .stack_initial_capacity = 64,
 };
 
 struct minim_gc minim_gc;
 
-static void push_root(minim_root_stack *s, minim_obj *p) {
+static void push_root(struct minim_gc *gc, minim_root_stack *s, minim_obj *p) {
     if (s->len == s->cap) {
-        s->cap = s->cap ? 2 * s->cap : 64;
+        s->cap = s->cap ? 2 * s->cap : gc->config.stack_initial_capacity;
         s->items = realloc(s->items, s->cap * sizeof(*s->items));
         if (s->items == NULL)
             minim_out_of_memory();
@@ -32,9 +34,9 @@ static void push_root(minim_root_stack *s, minim_obj *p) {
     s->items[s->len++] = p;
 }
 
-static void push_obj(minim_obj_stack *s, minim_obj x) {
+static void push_obj(struct minim_gc *gc, minim_obj_stack *s, minim_obj x) {
     if (s->len == s->cap) {
-        s->cap = s->cap ? 2 * s->cap : 64;
+        s->cap = s->cap ? 2 * s->cap : gc->config.stack_initial_capacity;
         s->items = realloc(s->items, s->cap * sizeof(*s->items));
         if (s->items == NULL)
             minim_out_of_memory();
@@ -60,12 +62,7 @@ static size_t getenv_integer(const char *name, size_t min, size_t max, const cha
 }
 
 void minim_gc_init(void) {
-    const minim_gc_config defaults = {
-        .nursery_bytes = DEFAULT_NURSERY,
-        .radix = 0,
-        .major_growth = DEFAULT_MAJOR_GROWTH,
-        .major_min_bytes = DEFAULT_MAJOR_MIN,
-    };
+    const minim_gc_config defaults = DEFAULT_CONFIG;
     const size_t max = MINIM_FIXNUM_MAX;
     minim_gc_config env = {
         .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, max, "a positive integer",
@@ -76,6 +73,7 @@ void minim_gc_init(void) {
                                        defaults.major_growth),
         .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN", 0, max, "a nonnegative integer",
                                           defaults.major_min_bytes),
+        .stack_initial_capacity = defaults.stack_initial_capacity,
     };
     bool startup = getenv_integer("MINIM_GC_STARTUP", 0, 1, "0 or 1", 0);
 
@@ -100,12 +98,16 @@ void minim_gc_shutdown(void) {
     minim_gc = (struct minim_gc){0};
 }
 
+minim_gc_config minim_gc_default_config(void) {
+    return DEFAULT_CONFIG;
+}
+
 minim_gc_config minim_gc_get_config(void) {
     return minim_gc.config;
 }
 
 void minim_gc_set_config(minim_gc_config config) {
-    assert(config.major_growth >= 1);
+    assert(config.major_growth >= 1 && config.stack_initial_capacity >= 1);
     minim_gc.config = config;
     minim_gc.budget = config.nursery_bytes;
 }
@@ -124,11 +126,11 @@ void minim_gc_remember(minim_obj obj) {
     if (*word & bit)
         return;
     *word |= bit;
-    push_obj(&minim_gc.remembered, obj);
+    push_obj(&minim_gc, &minim_gc.remembered, obj);
 }
 
 void minim_values_push(minim_obj x) {
-    push_obj(&minim_gc.values, x);
+    push_obj(&minim_gc, &minim_gc.values, x);
 }
 
 size_t minim_gc_mark(void) {
@@ -142,11 +144,11 @@ void minim_gc_reset(size_t mark) {
 
 void minim_gc_protect(minim_obj *const *vars, size_t n) {
     for (size_t i = 0; i < n; i++)
-        push_root(&minim_gc.locals, vars[i]);
+        push_root(&minim_gc, &minim_gc.locals, vars[i]);
 }
 
 void minim_gc_add_global(minim_obj *p) {
-    push_root(&minim_gc.globals, p);
+    push_root(&minim_gc, &minim_gc.globals, p);
 }
 
 static size_t typed_size(minim_obj header) {
@@ -343,7 +345,7 @@ void minim_gc_collect_major(void) {
 }
 
 // Whether the old generation has outgrown its configured limit.
-static bool major_due(void) {
+static bool old_generation_outgrown(void) {
     size_t live = minim_gc.live;
     const minim_gc_config *c = &minim_gc.config;
     // live > major_growth * major_base, without overflow, as live >= 1
@@ -357,6 +359,6 @@ void minim_gc_collect(void) {
         return;
     }
     collect(true);
-    if (major_due())
+    if (old_generation_outgrown())
         collect(false);
 }
