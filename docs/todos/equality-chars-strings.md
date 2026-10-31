@@ -134,6 +134,19 @@ cmake --build --preset dev && ctest --preset dev -R 'chars|prims'
 
 ### Phase 3 - Strings
 
+**Done.**  Details settled during the phase:
+
+- `bound_arg` checks a position in `[0, max]` for `substring`'s range;
+  `index_arg` still checks `[0, len)`.
+- String comparisons use their own `compare_strings`, which applies the same
+  `eq`/`lt`/... predicates to `string_compare(a, b)` and 0, since strings
+  have no single integer key.
+- `string-set!` checks the string's type, then mutability, then the index,
+  then the char.
+- Checked by hand: making `string-append` read an argument's chars before
+  allocating makes `repl_strings` fail under `stress` with an ASan
+  heap-use-after-free.
+
 - `src/prims.c`:
   - `make-string`, `string-set!` (with the immutability check);
   - `string-append`, `substring`;

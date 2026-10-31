@@ -1,0 +1,10 @@
+error: string-set!: immutable string: "abc"
+error: string-set!: bad index: 3
+error: string-set!: not a char: "a"
+error: string-append: not a string: b
+error: substring: bad index: 6
+error: substring: bad index: 3
+error: list->string: not a char: 1
+error: list->string: not a list: (#\a . #\b)
+error: make-string: bad length: -1
+error: string<?: not a string: b

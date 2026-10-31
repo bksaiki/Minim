@@ -88,9 +88,16 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 
 | Call | Result |
 |---|---|
+| `(string? x)` | whether `x` is a string |
+| `(make-string k [c])` | new string of length `k`, filled with `c` (default `#\space`) |
 | `(string-length s)` | length of `s` |
 | `(string-ref s i)` | char `i` of `s` |
-| `(string? x)` | whether `x` is a string |
+| `(string-set! s i c)` | sets char `i` of `s`, which must be mutable (symbol names aren't); void |
+| `(string-append s ...)` | new string of the arguments' chars in order |
+| `(substring s start end)` | new string of chars `start` through `end - 1` |
+| `(string=? s ...)`, `(string<? ...)`, `(string>? ...)`, `(string<=? ...)`, `(string>=? ...)` | whether each adjacent pair is in order, lexicographically by code point |
+| `(string->list s)` | list of the chars of `s` |
+| `(list->string lst)` | new string of the chars in the list `lst` |
 | `(symbol->string sym)` | the name of `sym`, an immutable string (not a copy) |
 | `(string->symbol s)` | the symbol named `s` |
 
