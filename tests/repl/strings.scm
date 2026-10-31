@@ -1,0 +1,46 @@
+; Building
+(make-string 3 #\x)
+(make-string 2)
+(make-string 0)
+(define s (make-string 3 #\a))
+(string-set! s 1 #\xe9)
+s
+(string-append)
+(string-append "ab")
+(string-append "ab" "" "c\xe9;" "d")
+(substring "hello" 1 3)
+(substring "hello" 0 5)
+(substring "hello" 2 2)
+(substring "caf\xe9;" 3 4)
+
+; Comparisons are lexicographic by code point.
+(string=? "abc" "abc" "abc")
+(string=? "abc" "abd")
+(string=? "")
+(string<? "abc" "abd")
+(string<? "ab" "abc")
+(string<? "abc" "ab")
+(string<? "Z" "a")
+(string>? "b" "a")
+(string<=? "a" "a" "b")
+(string>=? "a" "b")
+(string<? "caf\xe9;" "cafe")
+
+; Conversions
+(string->list "")
+(string->list "a\xe9;c")
+(list->string '())
+(list->string (list #\a #\xe9 #\c))
+(equal? (list->string (string->list "round trip")) "round trip")
+
+; Errors
+(string-set! (symbol->string 'abc) 0 #\x)
+(string-set! s 3 #\a)
+(string-set! s 0 "a")
+(string-append "a" 'b)
+(substring "hello" 2 6)
+(substring "hello" 3 2)
+(list->string (list #\a 1))
+(list->string (cons #\a #\b))
+(make-string -1)
+(string<? "a" 'b)

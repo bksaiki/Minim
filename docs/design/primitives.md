@@ -25,6 +25,24 @@ the value stack `[apply f a ... lst]` into `[f a ... elements of lst]` and
 applies `f`, so `apply` in tail position is a tail call.  An ordinary
 primitive couldn't call a closure without re-entering `minim_eval`.
 
+## Equality and hashing
+
+- `equal?` walks pairs and vectors with an explicit stack, never C
+  recursion, so arbitrarily deep structure is fine.  The stack starts on the C
+  stack and moves to `malloc`'d memory only if it outgrows 64 entries; it is
+  freed before returning, which is safe because `equal?` neither raises nor
+  allocates on the heap.
+- A hash must agree with its equality, so `equal-hash` mirrors `equal?`:
+  equal values visit the same values in the same order.  Its 64-value budget
+  makes it O(1) and terminating on cyclic data.
+- Every hash is stable under the moving collector: strings and symbols hash
+  their chars (with a kind marker for symbols), primitives their C function
+  pointer, and all closures one constant.  `eq?` hashing of heap objects, which
+  needs a stable per-object identity, is left to hashtables (roadmap
+  milestone 7).
+- The FNV-1a step (`minim_hash_mix`, `minim_string_hash` in `minim.h`) is
+  shared with the symbol table.
+
 ## Library
 
 ### Fixnums
@@ -40,6 +58,15 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 | `(< n ...)`, `(> ...)`, `(<= ...)`, `(>= ...)` | whether each adjacent pair is in order |
 | `(fixnum? x)` | whether `x` is a fixnum |
 | `(zero? n)` | whether `n` is 0 |
+
+### Chars
+
+| Call | Result |
+|---|---|
+| `(char? x)` | whether `x` is a char |
+| `(char->integer c)` | the code point of `c` |
+| `(integer->char k)` | the char with code point `k`, which must be a Unicode scalar value |
+| `(char=? c ...)`, `(char<? ...)`, `(char>? ...)`, `(char<=? ...)`, `(char>=? ...)` | whether each adjacent pair is in order, by code point |
 
 ### Pairs and lists
 
@@ -59,6 +86,9 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 | Call | Result |
 |---|---|
 | `(eq? a b)` | whether `a` and `b` are the same object |
+| `(eqv? a b)` | same as `eq?` (they will differ for flonums and bignums) |
+| `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else by `eqv?`.  Cyclic data loops forever |
+| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
 
@@ -77,11 +107,19 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 
 | Call | Result |
 |---|---|
+| `(string? x)` | whether `x` is a string |
+| `(make-string k [c])` | new string of length `k`, filled with `c` (default `#\space`) |
 | `(string-length s)` | length of `s` |
 | `(string-ref s i)` | char `i` of `s` |
-| `(string? x)` | whether `x` is a string |
+| `(string-set! s i c)` | sets char `i` of `s`, which must be mutable (symbol names aren't); void |
+| `(string-append s ...)` | new string of the arguments' chars in order |
+| `(substring s start end)` | new string of chars `start` through `end - 1` |
+| `(string=? s ...)`, `(string<? ...)`, `(string>? ...)`, `(string<=? ...)`, `(string>=? ...)` | whether each adjacent pair is in order, lexicographically by code point |
+| `(string->list s)` | list of the chars of `s` |
+| `(list->string lst)` | new string of the chars in the list `lst` |
 | `(symbol->string sym)` | the name of `sym`, an immutable string (not a copy) |
 | `(string->symbol s)` | the symbol named `s` |
+| `(string-hash s)` | a non-negative fixnum, equal for `string=?` strings |
 
 ### Output
 
@@ -98,4 +136,6 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 - Type errors are `<name>: not a <type>`.
 - Index errors are `<name>: bad index`, covering non-fixnum, negative, and
   out-of-range indices.
+- Strings are mutable except symbol names; `string-set!` on one raises
+  `string-set!: immutable string`.  String literals are mutable, unlike R7RS.
 - Void results print nothing at the REPL.
