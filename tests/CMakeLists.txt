@@ -107,6 +107,7 @@ function(minim_add_script_test name)
 endfunction()
 
 minim_add_repl_test(chars)
+minim_add_repl_test(derived)
 minim_add_repl_test(echo)
 minim_add_repl_test(equality)
 minim_add_repl_test(eval)

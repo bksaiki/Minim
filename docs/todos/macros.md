@@ -388,6 +388,30 @@ cmake --build --preset dev && ctest --preset dev -R 'macros|repl'
 
 ### Phase 7 - Derived forms
 
+**Done.**  Details settled during the phase:
+
+- The forms follow R7RS 7.3, except: `letrec` and `letrec*` both expand to
+  internal `define`s in a new body (letrec* semantics; R7RS differs only in
+  error cases); named `let` goes through `letrec`; `unless` uses `(if test
+  (if #f #f) ...)` rather than `not`; `do` loops with a named `let`.  `case`
+  calls the prelude's `memv` at run time.
+- The list library uses named `let`, `cond`, `and`, `or`, and `when` where
+  they replace nested `if`s and inner `define`d loops.
+- `test_startup`'s check that startup used the default nursery is now "at
+  most one minor collection per default nursery's worth of allocation"
+  instead of "fewer than 10 collections": startup allocates 29 MB now (28
+  minor collections), against 8.5 MB with the expander alone.  Starting
+  stressed by mistake fails it.
+- `test_eval`'s tail-call test also loops through `and`, `or`, `when`, and a
+  named `let` with `cond`, checking the value stack doesn't grow.
+- Release startup: 35 ms (20 runs: 0.698 s), from 12.8 ms after Phase 5.
+- Stress suite, `-j 8`: 4 min 17 s, from about 40 s.  `startup_stress` takes
+  255 s, `repl_derived_stress` 154 s, `eval_stress` 106 s: every derived form
+  is now a `syntax-rules` expansion, allocating heavily, and radix 2 makes
+  every other allocation a major collection, which copies the whole old
+  generation, transformers included.  With radix 16 for the copies and for
+  `startup_stress`, 37 s.  Open: see Open items.
+
 - `src/prelude.scm`: the derived forms, as macros, defined right after
   `syntax-rules`.  The prelude after them may use them; the list library is
   rewritten with `let`, `cond`, `and`, and `or` where that reads better.
@@ -442,4 +466,13 @@ expander.
 
 ## Open items
 
-None.
+### How much stress can the suite afford, now that expansion allocates?
+
+- **Radix 2 for the copies, radix 1 for `startup_stress`** (now): 4 min 17 s
+  with `-j 8`.  Catches an unrooted old object at any site.
+- **Radix 16 for both**: 37 s.  Misses an unrooted old object at a site run
+  fewer than about 16 times under the tests.
+- **Cheaper collections or expansion**: a generation for what survives
+  startup, so major collections don't copy the prelude; or a `syntax-rules`
+  that allocates less.  Each is its own plan.
+- **Provisional:** none; needs the owner's call before the last step.

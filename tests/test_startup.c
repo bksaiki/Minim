@@ -21,7 +21,8 @@ int main(int argc, char **argv) {
         CHECK_EQ(minors, 0);
         CHECK(majors > 1000);
     } else {
-        CHECK(minors + majors < 10);
+        // At most one minor collection per default nursery's worth of allocation.
+        CHECK(minors <= minim_gc.allocated / minim_gc_default_config().nursery_bytes);
     }
 
     // Either way, the program runs with the environment's settings.
