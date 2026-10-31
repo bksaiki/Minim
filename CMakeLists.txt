@@ -21,7 +21,7 @@ if(MINIM_GC_STRESS)
     add_compile_definitions(MINIM_GC_STRESS)
 endif()
 
-add_library(minim_core STATIC
+add_library(libminim STATIC
     src/char.c
     src/env.c
     src/error.c
@@ -34,10 +34,11 @@ add_library(minim_core STATIC
     src/read.c
     src/symbol.c
 )
-target_include_directories(minim_core PUBLIC include PRIVATE src)
+target_include_directories(libminim PUBLIC include PRIVATE src)
+set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not liblibminim.a
 
 add_executable(minim src/main.c)
-target_link_libraries(minim PRIVATE minim_core)
+target_link_libraries(minim PRIVATE libminim)
 
 enable_testing()
 add_subdirectory(tests)
