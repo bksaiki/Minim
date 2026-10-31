@@ -188,7 +188,7 @@ void minim_gc_collect(void) {
     minim_space from[MINIM_SPACE_COUNT];
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
         from[i] = minim_heap.spaces[i];
-        minim_heap.spaces[i] = (minim_space){0};
+        minim_heap.spaces[i] = (minim_space){.generation = from[i].generation};
     }
 
     for (size_t i = 0; i < globals.len; i++)

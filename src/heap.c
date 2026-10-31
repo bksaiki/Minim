@@ -5,9 +5,11 @@
 
 #include "heap.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _MSC_VER
+#include <malloc.h>
+#endif
 
 #include "minim.h"
 
@@ -15,6 +17,8 @@ struct minim_heap minim_heap;
 
 void minim_heap_init(void) {
     minim_heap = (struct minim_heap){0};
+    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
+        minim_heap.spaces[i].generation = i == MINIM_SPACE_NEW ? 0 : 1;
 }
 
 void minim_heap_shutdown(void) {
@@ -28,16 +32,38 @@ void minim_out_of_memory(void) {
     abort();
 }
 
+#ifdef _MSC_VER
+static void *chunk_alloc(size_t size) {
+    return _aligned_malloc(size, MINIM_CHUNK_SIZE);
+}
+
+static void chunk_free(void *p) {
+    _aligned_free(p);
+}
+#else
+static void *chunk_alloc(size_t size) {
+    return aligned_alloc(MINIM_CHUNK_SIZE, size);
+}
+
+static void chunk_free(void *p) {
+    free(p);
+}
+#endif
+
+// Bytes allocated for a chunk with `capacity` bytes of data.
+static size_t chunk_bytes(size_t capacity) {
+    return offsetof(minim_chunk, data) + capacity;
+}
+
 // Closes the last chunk of `s` and appends one that fits `nbytes`.
 static void space_grow(minim_space *s, size_t nbytes) {
-    size_t size = nbytes > MINIM_CHUNK_SIZE ? nbytes : MINIM_CHUNK_SIZE;
-    minim_chunk *c = malloc(sizeof(minim_chunk) + size);
+    // A multiple of MINIM_CHUNK_SIZE, as aligned_alloc requires.
+    size_t bytes = (chunk_bytes(nbytes) + MINIM_CHUNK_SIZE - 1) & ~(size_t)(MINIM_CHUNK_SIZE - 1);
+    minim_chunk *c = chunk_alloc(bytes);
     if (c == NULL)
         minim_out_of_memory();
-    // 64-bit malloc returns 16-byte aligned blocks even where max_align_t is
-    // only 8-byte aligned (macOS arm64, MSVC).
-    assert(((uintptr_t)c & (MINIM_ALIGN - 1)) == 0);
-    *c = (minim_chunk){.size = size};
+    size_t size = bytes - offsetof(minim_chunk, data);
+    *c = (minim_chunk){.generation = s->generation, .size = size};
 
     if (s->last != NULL) {
         s->last->end = s->alloc;
@@ -48,7 +74,7 @@ static void space_grow(minim_space *s, size_t nbytes) {
     s->last = c;
     s->alloc = c->data;
     s->avail = size;
-    minim_heap.size += size;
+    minim_heap.size += bytes;
 }
 
 void *minim_space_alloc(minim_space *s, size_t nbytes) {
@@ -80,11 +106,11 @@ void minim_space_free(minim_space *s) {
     minim_chunk *c = s->first;
     while (c != NULL) {
         minim_chunk *next = c->next;
-        minim_heap.size -= c->size;
-        free(c);
+        minim_heap.size -= chunk_bytes(c->size);
+        chunk_free(c);
         c = next;
     }
-    *s = (minim_space){0};
+    *s = (minim_space){.generation = s->generation};
 }
 
 size_t minim_space_used(const minim_space *s) {

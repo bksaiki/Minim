@@ -34,9 +34,15 @@ primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 
 ## Heap
 
-Memory is a set of `malloc`'d 64 KiB chunks; a larger object gets a chunk of
-its own.  A *space* is a chain of chunks in allocation order with a bump
-pointer into the last one.  There are four:
+Memory is a set of 16 KiB chunks, each aligned to its size; a larger object
+gets a chunk of its own, a multiple of 16 KiB.  A chunk's header records its
+generation: 0 in the new space, 1 in the others.  Every object starts in its
+chunk's first 16 KiB, so clearing the low 14 bits of an object's address finds
+its chunk (`minim_chunk_of`).  Chunks come from `aligned_alloc`
+(`_aligned_malloc` on MSVC).
+
+A *space* is a chain of chunks in allocation order with a bump pointer into
+the last one.  There are four:
 
 | Space | Holds |
 |---|---|

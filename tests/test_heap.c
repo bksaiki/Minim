@@ -85,12 +85,60 @@ static void test_large_vector(void) {
     MINIM_RETURN_VOID;
 }
 
+// Whether `x` lies in the data of the chunk minim_chunk_of finds, a chunk of
+// generation `gen`.
+static bool in_chunk(minim_obj x, unsigned gen) {
+    minim_chunk *c = minim_chunk_of(x);
+    uintptr_t p = x & ~(minim_obj)MINIM_TAG_MASK;
+    return c->generation == gen && (uintptr_t)c->data <= p && p < (uintptr_t)c->data + c->size;
+}
+
+// Whether every chunk of every space is aligned and of the space's generation.
+static bool chunks_aligned(void) {
+    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
+        const minim_space *s = &minim_heap.spaces[i];
+        for (const minim_chunk *c = s->first; c != NULL; c = c->next) {
+            if ((uintptr_t)c % MINIM_CHUNK_SIZE != 0 || c->generation != s->generation)
+                return false;
+        }
+    }
+    return true;
+}
+
+static void test_chunk_of(void) {
+    minim_gc_collect();  // resets the budget, so the allocations below don't collect
+    minim_obj pair = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_obj sym = MINIM_NIL;
+    minim_obj str = MINIM_NIL;
+    minim_obj big = MINIM_NIL;
+    MINIM_FRAME(&pair, &sym, &str, &big);
+    sym = minim_intern_cstr("chunk-of");
+    str = minim_string_from_cstr("abc");
+    big = minim_make_vector(2 * MINIM_CHUNK_SIZE / sizeof(minim_obj), MINIM_NIL);
+#ifndef MINIM_GC_STRESS  // which collects at every allocation
+    CHECK(in_chunk(pair, 0));
+    CHECK(in_chunk(str, 0));
+    CHECK(in_chunk(big, 0));
+#endif
+    CHECK(chunks_aligned());
+
+    // Survivors are copied into the per-kind spaces.
+    minim_gc_collect();
+    CHECK(in_chunk(pair, 1));
+    CHECK(in_chunk(sym, 1));
+    CHECK(in_chunk(str, 1));
+    CHECK(in_chunk(big, 1));
+    CHECK(chunks_aligned());
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_list();
     test_nested_vector();
     test_footprint();
     test_large_vector();
+    test_chunk_of();
     minim_shutdown();
     return test_result();
 }
