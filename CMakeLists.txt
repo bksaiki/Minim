@@ -23,10 +23,13 @@ endif()
 
 add_library(minim_core STATIC
     src/char.c
+    src/env.c
     src/error.c
+    src/eval.c
     src/gc.c
     src/heap.c
     src/object.c
+    src/prims.c
     src/print.c
     src/read.c
     src/symbol.c

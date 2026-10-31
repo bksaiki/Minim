@@ -9,6 +9,7 @@
 #include "error.h"
 #include "gc.h"
 #include "heap.h"
+#include "prims.h"
 #include "symbol.h"
 
 void minim_init(void) {
@@ -16,6 +17,7 @@ void minim_init(void) {
     minim_gc_init();
     minim_error_init();
     minim_symbol_init();
+    minim_prims_init();
 }
 
 void minim_shutdown(void) {
@@ -49,6 +51,27 @@ minim_obj minim_make_string(size_t n, uint32_t c) {
     for (size_t i = 0; i < n; i++)
         chars[i] = c;
     return (minim_obj)p | MINIM_TAG_TYPED;
+}
+
+minim_obj minim_make_closure(minim_obj code, minim_obj env) {
+    MINIM_FRAME(&code, &env);
+    minim_obj *p = minim_heap_alloc(MINIM_CLOSURE_SIZE);
+    p[0] = code;
+    p[1] = env;
+    MINIM_RETURN((minim_obj)p | MINIM_TAG_CLOSURE);
+}
+
+minim_obj minim_make_primitive(minim_obj name, minim_prim_fn fn,
+                               intptr_t min_arity, intptr_t max_arity) {
+    assert(min_arity >= 0 && (max_arity == MINIM_VARIADIC || max_arity >= min_arity));
+    MINIM_FRAME(&name);
+    minim_obj *p = minim_heap_alloc(MINIM_PRIMITIVE_SIZE);
+    p[0] = minim_make_header(0, MINIM_TYPE_PRIMITIVE);
+    p[1] = (minim_obj)fn;
+    p[2] = name;
+    p[3] = minim_fixnum(min_arity);
+    p[4] = minim_fixnum(max_arity);
+    MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
 }
 
 minim_obj minim_string_from_cstr(const char *s) {

@@ -14,11 +14,12 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 | `000` | fixnum | 61-bit signed integer, `n << 3` |
 | `001` | pair | `[car, cdr]` |
 | `011` | symbol | `[name, value]` |
+| `101` | closure | `[code, env]` |
 | `110` | immediate | `#f`, `#t`, `'()`, void, eof, unbound, chars, forward marker |
 | `111` | typed object | first word is a header |
-| `010`, `100`, `101` | | reserved (flonum, -, closure) |
+| `010`, `100` | | reserved (flonum, -) |
 
-Typed objects (vectors, strings) start with a header,
+Typed objects (vectors, strings, primitives) start with a header,
 `(length << 4) | (immutable << 3) | type`.  Every object is at least 2 words,
 so any object can hold a forwarding record.
 
@@ -27,6 +28,8 @@ pair     [ car | cdr ]                        16 B
 symbol   [ name : string | value ]            16 B
 vector   [ header | e0 | e1 | ... ]           8 + 8n B, rounded up to 16
 string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
+closure  [ code : (params . body) | env ]     16 B
+primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 ```
 
 ## Heap
@@ -38,7 +41,7 @@ pointer into the last one.  There are four:
 | Space | Holds |
 |---|---|
 | new | every newly allocated object, all kinds interleaved |
-| pair | pairs that survived a collection |
+| pair | pairs and closures that survived a collection |
 | symbol | symbols that survived a collection |
 | typed | typed objects that survived a collection |
 
@@ -54,9 +57,9 @@ Cheney-style copying:
    pointer's tag.  The old copy gets the forward marker in word 0 and the new
    pointer in word 1, so later references find it.
 2. Scan the pair, symbol, and typed spaces from their start until no scan
-   cursor moves.  Pairs and symbols are two traced words; a typed object is
-   traced according to its header (vector elements are traced, string chars
-   aren't).  Copying during the scan appends to the spaces being scanned.
+   cursor moves.  Pairs, symbols, and closures are two traced words; a typed
+   object is traced according to its header (vector elements are traced,
+   string chars aren't, and a primitive's C function pointer isn't).  Copying during the scan appends to the spaces being scanned.
 3. Free every from-space chunk.
 
 The collector isn't generational, so every live object is in from-space when a
@@ -82,6 +85,8 @@ roots under AddressSanitizer.
   Every local holding an object across an allocation must be protected, and
   allocating calls must not be nested in arguments.
 - **Globals.**  Variables registered with `minim_gc_add_global`.
+- **Value stack.**  The evaluator's operator and operand values for calls in
+  progress (`minim_values`), updated in place.
 - **Symbol table.**  A vector in the heap, registered as a global.  It hashes
   by name, so moving symbols doesn't invalidate it.  It is strong: symbols are
   never freed, unlike Chez, which drops symbols with no references, value, or

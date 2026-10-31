@@ -1,6 +1,6 @@
 /**
  * @file
- * Command-line entry point: a read-print loop.
+ * Command-line entry point: a read-eval-print loop.
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -22,6 +22,10 @@ static minim_obj read_stdin(void *arg) {
     return minim_read(stdin);
 }
 
+static minim_obj eval(void *expr) {
+    return minim_eval(*(minim_obj *)expr);
+}
+
 int main(void) {
     minim_init();
     bool interactive = isatty(fileno(stdin));
@@ -36,8 +40,14 @@ int main(void) {
         }
         if (x == MINIM_EOF)
             break;
-        minim_write(stdout, x);
-        putchar('\n');
+        if (!minim_catch(eval, &x, &x)) {
+            minim_write_error(stderr);
+            continue;
+        }
+        if (x != MINIM_VOID) {
+            minim_write(stdout, x);
+            putchar('\n');
+        }
     }
 
     if (interactive)

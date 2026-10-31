@@ -34,6 +34,13 @@ static void write_char(FILE *out, uint32_t c) {
     }
 }
 
+// Writes the characters of the string `s` unescaped.
+static void write_chars(FILE *out, minim_obj s) {
+    const uint32_t *chars = minim_string_chars(s);
+    for (size_t i = 0; i < minim_string_length(s); i++)
+        write_utf8(out, chars[i]);
+}
+
 static void write_string(FILE *out, minim_obj s) {
     const uint32_t *chars = minim_string_chars(s);
     size_t n = minim_string_length(s);
@@ -55,13 +62,6 @@ static void write_string(FILE *out, minim_obj s) {
     fputc('"', out);
 }
 
-static void write_symbol(FILE *out, minim_obj sym) {
-    minim_obj name = minim_symbol_name(sym);
-    const uint32_t *chars = minim_string_chars(name);
-    for (size_t i = 0; i < minim_string_length(name); i++)
-        write_utf8(out, chars[i]);
-}
-
 // Whether `x` is `(quote y)`.
 static bool is_quote_form(minim_obj x) {
     minim_obj rest = minim_cdr(x);
@@ -69,49 +69,64 @@ static bool is_quote_form(minim_obj x) {
         && minim_is_null(minim_cdr(rest));
 }
 
-static void write_pair(FILE *out, minim_obj x) {
+static void print(FILE *out, minim_obj x, bool display);
+
+static void write_pair(FILE *out, minim_obj x, bool display) {
     if (is_quote_form(x)) {
         fputc('\'', out);
-        minim_write(out, minim_car(minim_cdr(x)));
+        print(out, minim_car(minim_cdr(x)), display);
         return;
     }
 
     fputc('(', out);
-    minim_write(out, minim_car(x));
+    print(out, minim_car(x), display);
     for (x = minim_cdr(x); minim_is_pair(x); x = minim_cdr(x)) {
         fputc(' ', out);
-        minim_write(out, minim_car(x));
+        print(out, minim_car(x), display);
     }
     if (!minim_is_null(x)) {
         fputs(" . ", out);
-        minim_write(out, x);
+        print(out, x, display);
     }
     fputc(')', out);
 }
 
-static void write_vector(FILE *out, minim_obj v) {
+static void write_vector(FILE *out, minim_obj v, bool display) {
     fputs("#(", out);
     for (size_t i = 0; i < minim_vector_length(v); i++) {
         if (i > 0)
             fputc(' ', out);
-        minim_write(out, minim_vector_ref(v, i));
+        print(out, minim_vector_ref(v, i), display);
     }
     fputc(')', out);
 }
 
-void minim_write(FILE *out, minim_obj x) {
+// Prints `x` in `write` syntax, or with strings and chars unescaped if
+// `display`.
+static void print(FILE *out, minim_obj x, bool display) {
     if (minim_is_fixnum(x))
         fprintf(out, "%" PRIdPTR, minim_fixnum_value(x));
+    else if (minim_is_char(x) && display)
+        write_utf8(out, minim_char_value(x));
     else if (minim_is_char(x))
         write_char(out, minim_char_value(x));
     else if (minim_is_pair(x))
-        write_pair(out, x);
+        write_pair(out, x, display);
     else if (minim_is_symbol(x))
-        write_symbol(out, x);
+        write_chars(out, minim_symbol_name(x));
     else if (minim_is_vector(x))
-        write_vector(out, x);
+        write_vector(out, x, display);
+    else if (minim_is_string(x) && display)
+        write_chars(out, x);
     else if (minim_is_string(x))
         write_string(out, x);
+    else if (minim_is_closure(x))
+        fputs("#<procedure>", out);
+    else if (minim_is_primitive(x)) {
+        fputs("#<procedure ", out);
+        write_chars(out, minim_symbol_name(minim_primitive_name(x)));
+        fputc('>', out);
+    }
     else if (x == MINIM_TRUE)
         fputs("#t", out);
     else if (x == MINIM_FALSE)
@@ -126,4 +141,12 @@ void minim_write(FILE *out, minim_obj x) {
         fputs("#<unbound>", out);
     else
         fputs("#<garbage>", out);
+}
+
+void minim_write(FILE *out, minim_obj x) {
+    print(out, x, false);
+}
+
+void minim_display(FILE *out, minim_obj x) {
+    print(out, x, true);
 }

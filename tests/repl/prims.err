@@ -1,0 +1,13 @@
+error: quotient: division by zero: 0
+error: <=: not a fixnum: a
+error: length: not a list: (1 . 2)
+error: set-car!: not a pair: 5
+error: vector-ref: not a vector: (1)
+error: vector-ref: bad index: 3
+error: vector-set!: bad index: -1
+error: make-vector: bad length: -1
+error: string-ref: bad index: 3
+error: string-length: not a string: abc
+error: symbol->string: not a symbol: "abc"
+error: apply: not a list: 2
+error: arity mismatch: #<procedure car>

@@ -8,6 +8,7 @@
 #include <setjmp.h>
 #include <stdlib.h>
 
+#include "gc.h"
 #include "minim.h"
 
 typedef struct handler {
@@ -39,10 +40,12 @@ void minim_error(const char *msg, minim_obj irritant) {
 bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result) {
     handler h = {.prev = current};
     size_t mark = minim_gc_mark();
+    size_t values = minim_values.len;
     current = &h;
     if (setjmp(h.buf) != 0) {
         current = h.prev;
         minim_gc_reset(mark);
+        minim_values.len = values;
         return false;
     }
 

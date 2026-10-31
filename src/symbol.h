@@ -9,8 +9,23 @@
 
 #include "minim.h"
 
+/** The symbol `begin`. */
+extern minim_obj minim_sym_begin;
+
+/** The symbol `define`. */
+extern minim_obj minim_sym_define;
+
+/** The symbol `if`. */
+extern minim_obj minim_sym_if;
+
+/** The symbol `lambda`. */
+extern minim_obj minim_sym_lambda;
+
 /** The symbol `quote`. */
 extern minim_obj minim_sym_quote;
+
+/** The symbol `set!`. */
+extern minim_obj minim_sym_set;
 
 /** Creates the symbol table and well-known symbols; call after minim_gc_init. */
 void minim_symbol_init(void);
