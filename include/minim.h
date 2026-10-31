@@ -440,7 +440,7 @@ _Noreturn void minim_error(const char *msg, minim_obj irritant);
 
 /**
  * Calls `fn(arg)`.  Returns `true` and stores its result in `*result`, or
- * returns `false` if it raised an error, restoring the root stack.
+ * returns `false` if it raised an error, restoring the root and value stacks.
  */
 bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result);
 
@@ -449,6 +449,11 @@ void minim_last_error(const char **msg, minim_obj *irritant);
 
 /** Writes the last error to `out` as `error: msg: irritant`. */
 void minim_write_error(FILE *out);
+
+// Evaluation
+
+/** Value of `expr` in the global environment.  Raises on errors. */
+minim_obj minim_eval(minim_obj expr);
 
 // Reading
 

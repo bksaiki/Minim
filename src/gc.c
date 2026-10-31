@@ -25,6 +25,8 @@ typedef struct root_stack {
 static root_stack locals;  // the shadow stack
 static root_stack globals;
 
+struct minim_values minim_values;
+
 static void push(root_stack *s, minim_obj *p) {
     if (s->len == s->cap) {
         s->cap = s->cap ? 2 * s->cap : 64;
@@ -42,8 +44,20 @@ void minim_gc_init(void) {
 void minim_gc_shutdown(void) {
     free(locals.items);
     free(globals.items);
+    free(minim_values.items);
     locals = (root_stack){0};
     globals = (root_stack){0};
+    minim_values = (struct minim_values){0};
+}
+
+void minim_values_push(minim_obj x) {
+    if (minim_values.len == minim_values.cap) {
+        minim_values.cap = minim_values.cap ? 2 * minim_values.cap : 64;
+        minim_values.items = realloc(minim_values.items, minim_values.cap * sizeof(minim_obj));
+        if (minim_values.items == NULL)
+            minim_out_of_memory();
+    }
+    minim_values.items[minim_values.len++] = x;
 }
 
 size_t minim_gc_mark(void) {
@@ -181,6 +195,8 @@ void minim_gc_collect(void) {
         *globals.items[i] = copy(*globals.items[i]);
     for (size_t i = 0; i < locals.len; i++)
         *locals.items[i] = copy(*locals.items[i]);
+    for (size_t i = 0; i < minim_values.len; i++)
+        minim_values.items[i] = copy(minim_values.items[i]);
 
     minim_space *pairs = &minim_heap.spaces[MINIM_SPACE_PAIR];
     minim_space *symbols = &minim_heap.spaces[MINIM_SPACE_SYMBOL];

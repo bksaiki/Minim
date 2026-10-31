@@ -85,6 +85,8 @@ roots under AddressSanitizer.
   Every local holding an object across an allocation must be protected, and
   allocating calls must not be nested in arguments.
 - **Globals.**  Variables registered with `minim_gc_add_global`.
+- **Value stack.**  The evaluator's operator and operand values for calls in
+  progress (`minim_values`), updated in place.
 - **Symbol table.**  A vector in the heap, registered as a global.  It hashes
   by name, so moving symbols doesn't invalidate it.  It is strong: symbols are
   never freed, unlike Chez, which drops symbols with no references, value, or

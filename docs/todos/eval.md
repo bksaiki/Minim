@@ -66,7 +66,8 @@ primitive header = (0 << 4) | (immutable << 3) | 100
 ## Evaluator
 
 `minim_eval(minim_obj expr)` evaluates `expr` in the global environment.  The
-machine's state is a set of registers, all registered as global roots:
+machine's state is a set of registers, locals of `minim_eval` protected by
+`MINIM_FRAME`:
 
 | Register | Holds |
 |---|---|
@@ -76,8 +77,9 @@ machine's state is a set of registers, all registered as global roots:
 | `k` | continuation: a chain of heap frames |
 
 Each frame is a vector `#(kind next ...saved)`, where `kind` is a fixnum.
-Kinds: `IF` (then, else, env), `SEQ` (remaining body, env), `DEFINE` and
-`SET` (symbol, env), `ARGS` (remaining operands, env, base), and `HALT`.
+Kinds: `IF` (branches, env), `SEQ` (remaining body, env), `DEFINE` and
+`SET` (symbol, env), and `ARGS` (remaining operands, env, base).  `k = '()`
+returns from `minim_eval`.
 
 **Value stack.**  A growable C array of `minim_obj` in `gc.c`, scanned as
 roots in `[0, sp)` and updated in place by the collector.  It holds the
@@ -104,7 +106,7 @@ stack stays valid across allocation, but not across a push, which may
 - **Truthiness:** everything except `#f` is true.
 - **Errors** (unbound variable, non-procedure call, arity mismatch, bad
   syntax) go through `minim_error`.  `minim_catch` also restores the
-  value-stack height and resets the registers.
+  value-stack height; the registers are restored with the root stack.
 
 ## Phases
 
@@ -143,6 +145,25 @@ cmake --build --preset stress && ctest --preset stress -R procedure
 
 ### Phase 2 - Evaluator
 
+**Done.**  Diverged from the plan:
+
+- The registers are locals of `minim_eval` in a `MINIM_FRAME`, not global
+  roots.  A catch restores them with the root stack, so `error.c` knows
+  nothing about the evaluator, and `minim_eval` can be re-entered later.
+- There is no `HALT` frame: `k = '()` returns.  Frames are 5-slot vectors
+  `#(kind next a b c)`.
+- Special-form symbols join `minim_sym_quote` in `src/symbol.h`
+  (`intern_global` interns each into a registered C global).
+- The value stack has `minim_values_push`; popping assigns
+  `minim_values.len`.
+- `tests/repl/echo.scm` now quotes its data, since the REPL evaluates.
+- The stress-mode tail loops run 10k iterations (`tests/repl/tail.scm` too,
+  since a golden file can't vary by preset).  At 100k, `eval` and `repl_tail`
+  took about 30 s each under stress; they now take about 3 s.  `dev` still runs
+  1M.
+- Checked by hand: 1M-deep non-tail recursion works (no C stack) and leaves a
+  171 MiB heap, so the test's 8 MiB bound catches a missing tail call.
+
 - `src/env.h`, `src/env.c`: environments.  `minim_env_extend(params, args,
   n, parent)` reads `args` by index after each allocation.
 - `src/gc.h`, `src/gc.c`: the value stack (`minim_values_push`,
@@ -166,9 +187,9 @@ Tests:
   allocates before reading its later arguments still sees them correctly.
 - `tests/repl/eval.scm`: arithmetic, `define`, closures (a counter), and
   error recovery.
-- `tests/repl/tail.scm`: a 100k-iteration tail loop completes.
+- `tests/repl/tail.scm`: a 10k-iteration tail loop completes.
   `tests/test_eval.c` also checks a 1M-iteration loop keeps the heap bounded
-  (100k under `stress`).
+  (10k under `stress`).
 
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'eval|repl'

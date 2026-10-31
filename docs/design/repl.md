@@ -1,7 +1,7 @@
 # REPL: reader, printer, and errors
 
-`minim` reads data from stdin and prints each one back.  All I/O is through
-`FILE *`; there are no port objects yet.
+`minim` reads expressions from stdin, evaluates them, and prints the
+results.  All I/O is through `FILE *`; there are no port objects yet.
 
 ## Reader
 
@@ -65,9 +65,9 @@ error.
 
 ## REPL
 
-`src/main.c` loops: read, write the datum, newline.  A read error prints
-`error: msg: irritant` to stderr, and reading continues with the rest of the
-input.
+`src/main.c` loops: read, `minim_eval`, then write the value and a newline
+unless it is void.  A read or evaluation error prints `error: msg: irritant`
+to stderr, and reading continues with the rest of the input.
 
 The `> ` prompt goes to stderr, and only when stdin is a terminal, as in
 bash and Python.  Piped runs print only results to stdout, which the golden
