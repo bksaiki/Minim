@@ -41,7 +41,7 @@ bytevectors, hashtables, ports, environments, reader, printer, and evaluator.
 | Word size | 64-bit only | one tagging scheme |
 | Collector | copying (Cheney) | bump allocation, no fragmentation, small |
 | To-spaces | segregated by kind (pair, symbol, typed) | pairs stay 2 words |
-| Roots from C | shadow stack with saved mark | no pop counting |
+| Roots from C | shadow stack with frame macros | no pop counting |
 | String chars | `uint32_t` | O(1) `string-ref` / `string-set!` |
 | Symbol names | string objects, so strings come first | nothing `malloc`'d outside the GC |
 | Symbol table | strong; symbols are never freed | simple |
@@ -54,7 +54,7 @@ bytevectors, hashtables, ports, environments, reader, printer, and evaluator.
 - Every external symbol starts with `minim_`, internal ones included: a static
   library shares the linking program's namespace.
 - `static inline` functions for predicates, accessors, and encoding.  Macros
-  only where an address is taken (`MINIM_PROTECT`).
+  only where a function can't work (`MINIM_FRAME`, `MINIM_PROTECT`).
 - Predicates return `bool` and are named `minim_is_*`.
 - Constants are `enum`s.
 - Fixed-width types where layout matters: `uint32_t` chars, `intptr_t` fixnum
@@ -151,16 +151,14 @@ None affects object layouts.
 
 **Roots:**
 
-- the shadow stack of `minim_obj *`:
+- the shadow stack of `minim_obj *`, managed with OCaml-style frame macros:
   ```c
-  size_t m = minim_gc_mark();
-  MINIM_PROTECT(a);
-  MINIM_PROTECT(b);
-  minim_obj tail = minim_cons(b, MINIM_NIL);  // may GC; a and b are updated
-  MINIM_PROTECT(tail);
-  minim_obj r = minim_cons(a, tail);
-  minim_gc_reset(m);
-  return r;
+  minim_obj list2(minim_obj a, minim_obj b) {
+      MINIM_FRAME(&a, &b);                          // saves the stack top
+      minim_obj tail = minim_cons(b, MINIM_NIL);  // may GC; a and b are updated
+      MINIM_PROTECT(&tail);
+      MINIM_RETURN(minim_cons(a, tail));          // restores the stack top
+  }
   ```
 - registered globals (`minim_gc_add_global(minim_obj *)`);
 - the symbol table (Phase 6).
@@ -281,6 +279,29 @@ cmake --build --preset dev && ctest --preset dev -R heap
 ```
 
 ### Phase 4 - Precise copying collector
+
+**Done.**  Diverged from the plan:
+
+- Every space, the new area included, keeps its chunks in allocation order,
+  so the collector can scan to-spaces in copy order.  When an allocation
+  doesn't fit, the current chunk is closed and a chunk of
+  `max(64 KiB, size)` is appended.  This replaces Phase 3's side chunk for
+  large objects and wastes the rest of the current chunk when a large object
+  arrives.
+- Heap state is the internal global `minim_heap`, with `size`, `allocated`,
+  `live`, and `budget` fields; tests read it directly.
+  `minim_heap_allocated()` was removed.
+- Frame macros on top of `minim_gc_mark` / `minim_gc_reset` /
+  `minim_gc_protect`: `MINIM_FRAME(&a, ...)` saves the stack top and protects
+  any number of variables (a compound-literal array gives the count),
+  `MINIM_PROTECT(&a, ...)` adds more, and
+  `MINIM_RETURN(e)` / `MINIM_RETURN_VOID` restore the stack top on return.
+  Modeled on OCaml's `CAMLparam` / `CAMLreturn`.
+- `test_heap.c` now protects its locals so it passes under `stress`.
+- `test_gc.c` runs 100k iterations instead of 1M under `stress`, since every
+  allocation collects there.
+- Checked by hand: an unprotected local in a stress build triggers an ASan
+  heap-use-after-free.
 
 - `include/minim.h`: `minim_gc_mark`, `minim_gc_reset`, `MINIM_PROTECT`,
   `minim_gc_add_global`, `minim_gc_collect`.

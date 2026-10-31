@@ -22,6 +22,7 @@ if(MINIM_GC_STRESS)
 endif()
 
 add_library(minim_core STATIC
+    src/gc.c
     src/heap.c
     src/object.c
 )

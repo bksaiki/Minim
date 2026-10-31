@@ -145,6 +145,55 @@ static inline bool minim_is_null(minim_obj x) {
 void minim_init(void);
 void minim_shutdown(void);
 
+// Garbage collection
+//
+// Any allocation may collect, which moves objects.  A local holding an object
+// across a call that may allocate must be protected in a frame:
+//
+//     minim_obj list2(minim_obj a, minim_obj b) {
+//         MINIM_FRAME(&a, &b);
+//         minim_obj tail = minim_cons(b, MINIM_NIL);
+//         MINIM_PROTECT(&tail);
+//         MINIM_RETURN(minim_cons(a, tail));
+//     }
+//
+// Leave a frame only through MINIM_RETURN or MINIM_RETURN_VOID.  Don't nest
+// allocating calls (`minim_cons(a, minim_cons(b, c))`): `a` may be read before
+// the inner call collects.
+
+size_t minim_gc_mark(void);
+void minim_gc_reset(size_t mark);
+void minim_gc_protect(minim_obj *const *vars, size_t n);
+
+// Opens a frame and protects the variables at the given addresses.
+#define MINIM_FRAME(...)                       \
+    size_t minim_frame_ = minim_gc_mark();     \
+    MINIM_PROTECT(__VA_ARGS__)
+
+// Protects the variables at the given addresses until the frame closes.
+#define MINIM_PROTECT(...)                                       \
+    minim_gc_protect((minim_obj *[]){__VA_ARGS__},               \
+                     sizeof((minim_obj *[]){__VA_ARGS__}) / sizeof(minim_obj *))
+
+// Closes the frame and returns `e`, which is evaluated inside the frame.
+#define MINIM_RETURN(e)                        \
+    do {                                       \
+        minim_obj minim_result_ = (e);         \
+        minim_gc_reset(minim_frame_);          \
+        return minim_result_;                  \
+    } while (0)
+
+#define MINIM_RETURN_VOID                      \
+    do {                                       \
+        minim_gc_reset(minim_frame_);          \
+        return;                                \
+    } while (0)
+
+// Registers a variable that holds an object for the life of the runtime.
+void minim_gc_add_global(minim_obj *p);
+
+void minim_gc_collect(void);
+
 // Pairs
 
 minim_obj minim_cons(minim_obj car, minim_obj cdr);

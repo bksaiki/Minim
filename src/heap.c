@@ -1,68 +1,87 @@
 #include "heap.h"
 
 #include <assert.h>
-#include <stdalign.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "minim.h"
+
 static_assert(alignof(max_align_t) >= MINIM_ALIGN, "malloc must return 16-byte aligned memory");
 
-typedef struct minim_chunk {
-    struct minim_chunk *next;
-    alignas(MINIM_ALIGN) unsigned char data[];
-} minim_chunk;
-
-// The new area: a chain of chunks with one bump pointer.
-static struct minim_heap {
-    minim_chunk *chunks;   // newest first
-    unsigned char *alloc;  // bump pointer into the current chunk
-    size_t avail;          // bytes left in the current chunk
-    size_t allocated;
-} heap;
-
-static minim_chunk *new_chunk(size_t size) {
-    minim_chunk *c = malloc(sizeof(minim_chunk) + size);
-    if (c == NULL) {
-        fprintf(stderr, "minim: out of memory\n");
-        abort();
-    }
-    c->next = heap.chunks;
-    heap.chunks = c;
-    return c;
-}
+struct minim_heap minim_heap;
 
 void minim_heap_init(void) {
-    heap = (struct minim_heap){0};
+    minim_heap = (struct minim_heap){0};
 }
 
 void minim_heap_shutdown(void) {
-    minim_chunk *c = heap.chunks;
-    while (c != NULL) {
-        minim_chunk *next = c->next;
-        free(c);
-        c = next;
-    }
-    heap = (struct minim_heap){0};
+    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
+        minim_space_free(&minim_heap.spaces[i]);
+    minim_heap = (struct minim_heap){0};
 }
 
-void *minim_heap_alloc(size_t nbytes) {
-    nbytes = (nbytes + MINIM_ALIGN - 1) & ~(size_t)(MINIM_ALIGN - 1);
-    heap.allocated += nbytes;
+void minim_out_of_memory(void) {
+    fprintf(stderr, "minim: out of memory\n");
+    abort();
+}
 
-    // Large objects get their own chunk; the current chunk stays in use.
-    if (nbytes > MINIM_CHUNK_SIZE)
-        return new_chunk(nbytes)->data;
+// Closes the last chunk of `s` and appends one that fits `nbytes`.
+static void space_grow(minim_space *s, size_t nbytes) {
+    size_t size = nbytes > MINIM_CHUNK_SIZE ? nbytes : MINIM_CHUNK_SIZE;
+    minim_chunk *c = malloc(sizeof(minim_chunk) + size);
+    if (c == NULL)
+        minim_out_of_memory();
+    *c = (minim_chunk){.size = size};
 
-    if (nbytes > heap.avail) {
-        heap.alloc = new_chunk(MINIM_CHUNK_SIZE)->data;
-        heap.avail = MINIM_CHUNK_SIZE;
+    if (s->last != NULL) {
+        s->last->end = s->alloc;
+        s->last->next = c;
+    } else {
+        s->first = c;
     }
-    void *p = heap.alloc;
-    heap.alloc += nbytes;
-    heap.avail -= nbytes;
+    s->last = c;
+    s->alloc = c->data;
+    s->avail = size;
+    minim_heap.size += size;
+}
+
+void *minim_space_alloc(minim_space *s, size_t nbytes) {
+    nbytes = minim_align_up(nbytes);
+    if (nbytes > s->avail)
+        space_grow(s, nbytes);
+    void *p = s->alloc;
+    s->alloc += nbytes;
+    s->avail -= nbytes;
     return p;
 }
 
-size_t minim_heap_allocated(void) {
-    return heap.allocated;
+void *minim_heap_alloc(size_t nbytes) {
+    nbytes = minim_align_up(nbytes);
+#ifdef MINIM_GC_STRESS
+    minim_gc_collect();
+#else
+    if (nbytes > minim_heap.budget)
+        minim_gc_collect();
+#endif
+    minim_heap.budget = nbytes < minim_heap.budget ? minim_heap.budget - nbytes : 0;
+    minim_heap.allocated += nbytes;
+    return minim_space_alloc(&minim_heap.spaces[MINIM_SPACE_NEW], nbytes);
+}
+
+void minim_space_free(minim_space *s) {
+    minim_chunk *c = s->first;
+    while (c != NULL) {
+        minim_chunk *next = c->next;
+        minim_heap.size -= c->size;
+        free(c);
+        c = next;
+    }
+    *s = (minim_space){0};
+}
+
+size_t minim_space_used(const minim_space *s) {
+    size_t used = 0;
+    for (const minim_chunk *c = s->first; c != NULL; c = c->next)
+        used += (size_t)((c == s->last ? s->alloc : c->end) - c->data);
+    return used;
 }
