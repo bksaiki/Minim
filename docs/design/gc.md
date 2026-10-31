@@ -66,9 +66,11 @@ The collector never parses the new space; it sorts survivors by kind as it
 copies them, as Chez does.
 
 **Spare chunks.**  Chunks freed by a collection are queued as spares, oldest
-first, and new chunks come from the queue before `aligned_alloc`.  At most the
-nursery's worth plus a quarantine are kept; large chunks and the rest are
-freed.  Under AddressSanitizer, a chunk's data stays poisoned until each
+first, and new chunks come from the queue before `aligned_alloc`.  After each
+collection the queue is trimmed to as many chunks as are in use, plus the
+nursery's worth and a quarantine, so a major collection rebuilds the old
+generation from spares and the heap stays within about twice what is in use.
+Large chunks are freed.  Under AddressSanitizer, a chunk's data stays poisoned until each
 object in it is allocated, and a spare is reused only after 8 newer ones (the
 quarantine, `MINIM_CHUNK_QUARANTINE`), so a stale pointer into a collected
 chunk still faults.

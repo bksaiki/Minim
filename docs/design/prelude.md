@@ -11,13 +11,14 @@ they can't call closures (see `primitives.md`).
   a generated `prelude_scm.c` as `const unsigned char minim_prelude_scm[]`,
   NUL-terminated.  Editing the `.scm` file regenerates it.  A byte array, not a
   string literal, avoids MSVC's string-literal length limit.
-- `minim_prelude_init` (`src/prelude.c`), called last by `minim_init`, reads
+- `minim_prelude_init` (`src/prelude.c`), called by `minim_init`, reads
   each form with `minim_read_string` and evaluates it.  No catch is installed,
   so an error in the prelude, which is a bug in Minim, aborts with the
   message.
 - The prelude starts with the expander (`macros.md`), which uses only the core
-  forms (`quote`, `if`, `define`, `set!`, `lambda`, `begin`).  Every form
-  after it is expanded.
+  forms (`quote`, `if`, `define`, `set!`, `lambda`, `begin`), then defines the
+  derived forms.  Every form after the expander is expanded, and the library
+  uses the derived forms.
 
 ## Library
 

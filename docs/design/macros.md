@@ -1,40 +1,37 @@
 # Macros and expansion
 
-The expander, `%expand`, is Scheme code at the start of `src/prelude.scm`. It
+The expander, `%expand`, is Scheme code at the start of `src/prelude.scm`.  It
 rewrites each top-level form into the core forms the evaluator knows:
-`quote`, `if`, `define`, `set!`, `lambda`, and `begin` (see `eval.md`). The
-evaluator calls it on every top-level form once it is defined. Because it is
-defined last in its section, the expander's own code runs unexpanded, and
-everything after it in the prelude is expanded.
+`quote`, `if`, `define`, `set!`, `lambda`, and `begin` (`eval.md`).  The
+evaluator calls it on every top-level form once it is defined; it is defined
+last in its section, so its own code runs unexpanded.  The derived forms come
+right after it, as macros.
 
-Hygiene uses renaming (Clinger and Rees, "Macros That Work"):
-
-- every local variable gets a fresh uninterned name;
-- identifiers that a macro inserts are aliases (see `primitives.md`), which
-  remember where the macro was defined.
+Hygiene uses renaming (Clinger and Rees, "Macros That Work"): every local
+variable gets a fresh uninterned name, and every identifier a macro inserts
+is an *alias* (`primitives.md`), which remembers its original identifier and
+the environment where the macro was defined.
 
 ## Syntactic environments
 
-The expander tracks what each identifier means with a *syntactic
-environment*:
+A *syntactic environment* says what identifiers mean.  It is a list of frames,
+innermost first; a frame is a one-element list holding an association list of
+`(identifier . meaning)`, so a body can add to its frame as it scans.  A
+variable's meaning is its fresh name (`(gensym "x")`, printing as `x`); a
+local macro's is its transformer.  The global environment is `'()`.
 
-- It is a list of frames, innermost first.
-- Each frame is a one-element list holding an association list of
-  `(identifier . meaning)`, so a body can add bindings to its frame as it
-  finds them.
-- A variable's meaning is its fresh name, `(gensym "x")`, which prints as `x`.
-- The global environment is `'()`.
+**Resolving an identifier:**
 
-**Resolving an identifier** in an environment:
+1. If the environment binds it, that meaning.
+2. Otherwise, for an alias defined at top level as a fresh global (below),
+   that global.
+3. Otherwise, for an alias, its original resolved in the alias's environment.
+4. Otherwise the symbol itself: a global variable, special form, or global
+   macro (`%macros`, an association list).
 
-1. If the environment binds it, that binding's meaning.
-2. Otherwise, if it is an alias, its original, resolved in the alias's
-   environment.
-3. Otherwise the symbol itself: a global variable, a special form, or a
-   global macro.
-
-A form is a special form or a macro use only when its head resolves to that
-global. So a local variable named `if` is just a variable.
+A form is a special form only when its head resolves to that global, so a
+local variable named `if` is just a variable, and a macro's `if` is the
+special form even where the user has bound `if`.
 
 ## Expansion
 
@@ -43,53 +40,80 @@ global. So a local variable named `if` is just a variable.
 | identifier | its resolution; `bad syntax` if that is a macro |
 | constant | itself, with aliases stripped from vectors |
 | `(quote d)` | `d` with every alias replaced by its original |
-| `` (quasiquote t) `` | code building `t`; see below |
+| `(quasiquote t)` | code building `t`; see below |
 | `(lambda params body ...)` | fresh names for `params`, then the body in a new frame |
 | `(if ...)`, `(set! x e)`, `(begin ...)`, `(f arg ...)` | subforms expanded |
-| `(define x e)` | only at top level or at the start of a body; elsewhere `bad syntax` |
+| `(let-syntax ((k spec) ...) body ...)` | `((lambda () body ...))`, with each `k` bound in a new frame to a transformer closed over the outer environment |
+| `(letrec-syntax ...)` | likewise, the transformers closed over the new frame |
+| `(syntax-error msg arg ...)` | raises `msg` with the arguments, at expansion time |
 | `(k ...)`, `k` a macro | the transformer's result, expanded again |
+| `(define ...)`, `(define-syntax ...)` | only at top level or at the start of a body; elsewhere `bad syntax` |
 
-**Top level.** A `begin` is spliced: each of its forms is expanded as a
-top-level form, in order. `(define x e)` keeps `x` and expands `e`.
+**Top level.**  A `begin` is spliced: each of its forms is expanded as a
+top-level form, in order.
 
-**Bodies** (R7RS 5.4): first, the body's leading forms are scanned.
+- `(define x e)` defines `x`.  An alias `x`, inserted by a macro, defines its
+  original if that already holds a value; otherwise a fresh global, recorded
+  so that the same macro use's other insertions of `x` resolve to it while
+  user code still sees `x` as its original (R7RS 5.3.1).  A definition removes
+  a global macro of the same name.
+- `(define-syntax k spec)` binds the global macro `k` (an alias's original)
+  and expands to `(begin)`.
 
-- Each form is expanded at its head until its head isn't a macro use.
-- A `begin` is spliced into the rest of the body.
-- Each `define` binds its name to a fresh name in the body's frame.
-- The first other form ends the scan; the rest of the body is expressions.
+**Bodies** (R7RS 5.4): the leading forms are scanned first.  Each is expanded
+at its head until its head isn't a macro use; a `begin` is spliced; a
+`define` binds its name to a fresh name in the body's frame, and a
+`define-syntax` binds its macro there at once.  The first other form ends the
+scan.  Then each definition's expression and the remaining forms are
+expanded in the body's frame, so they all see every definition.  Definitions
+stay `define` forms, which the evaluator binds in the procedure's frame.
 
-Then every definition's expression and every remaining form is expanded in
-the body's frame. So each definition, and the expressions after it, can see
-all of the body's definitions. The definitions stay `define` forms, which the
-evaluator binds in the procedure's frame.
+## `syntax-rules`
 
-**Quasiquote** (R7RS 4.2.8):
+The only transformer: `(syntax-rules (literal ...) rule ...)`, or
+`(syntax-rules ellipsis (literal ...) rule ...)` with a custom ellipsis
+(R7RS 4.3.2).  It becomes a procedure from a use and its environment to the
+use's expansion, closed over the definition environment.
 
-- **Building code.** `` `t `` becomes calls to `cons`, `append`, and
-  `apply vector`, which build `t` at run time, and `quote` for its constant
-  parts. Unquoted expressions are evaluated left to right.
-- **Nesting.** Each nested quasiquote raises the nesting depth by one, and
-  each `unquote` lowers it. Only parts at depth 0 are evaluated.
-- **Constant folding.** A template with nothing to evaluate becomes a single
-  `quote`.
-- **Errors.** `,@` outside a list element (`` `,@x `` or `` `(a . ,@x) ``) is
-  `bad syntax`. `,@` of a non-list raises in `append`.
+**Matching.**  Rules are tried in order, ignoring the keyword position; none
+matching is `bad syntax`.
 
-The generated code refers to the global names `cons`, `append`, `apply`, and
-`vector`, so redefining one of them at top level breaks quasiquote, as it
-already breaks the prelude.
+- The ellipsis, `_`, and literals are recognized by binding, not name: a
+  literal matches an input identifier that resolves, in the use's
+  environment, as the literal does in the definition's.
+- An ellipsis may be nested and followed by more patterns.  Dotted and vector
+  patterns match accordingly; other data match by `equal?`.
+- A pattern variable is bound to its depth and match; at depth n > 0 the
+  match is a list of depth n - 1 matches.
+
+**Instantiation.**  A pattern variable is replaced by its match.  Every other
+identifier becomes an alias, one per name per use, so a binding the template
+introduces can't capture the user's identifiers, and a free one means what it
+meant where the macro was defined.  `x ...` repeats over `x`'s match, `x ...
+...` flattens a level, and `(... template)` escapes the ellipsis.  A variable
+at the wrong depth, or ellipsis variables of different lengths, are `bad
+syntax`.
+
+## Derived forms
+
+`let` (with named `let`), `let*`, `letrec`, `letrec*`, `and`, `or`, `when`,
+`unless`, `cond` (with `else` and `=>`), `case` (with `else` and `=>`), and
+`do`, as `syntax-rules` macros after R7RS 7.3.  `letrec` and `letrec*` both
+expand to internal definitions, so both have `letrec*` semantics.  `case`
+calls the prelude's `memv`.
+
+## Quasiquote
+
+`` `t `` (R7RS 4.2.8) becomes calls to `cons`, `append`, and `apply vector`,
+which build `t`, with `quote` for its constant parts; a template with nothing
+to evaluate becomes one `quote`.  Unquoted expressions are evaluated left to
+right.  Each nested quasiquote raises the depth by one and each `unquote`
+lowers it; only depth 0 is evaluated.  `,@` outside a list element is `bad
+syntax`.  The code refers to the global `cons`, `append`, `apply`, and
+`vector`.
 
 ## Errors
 
-Malformed forms raise `bad syntax`, with the smallest enclosing form as the
-irritant, through the `%bad-syntax` primitive. These errors are now raised
-when the form is expanded, before any of it runs. For example, defining a
-procedure with a malformed body fails immediately, not when the procedure is
-called.
-
-## Cost
-
-Release startup, which includes expanding the prelude, went from about 2.4 ms
-to 10 ms. Expanding the prelude also non-tail recurses, so the value stack's
-capacity starts at 128 rather than 64.
+Malformed forms raise `bad syntax` when expanded, before any of the form
+runs, with the smallest enclosing form as the irritant (`%bad-syntax`).
+`syntax-error` raises through `%syntax-error`.

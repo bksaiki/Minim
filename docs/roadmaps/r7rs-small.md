@@ -7,19 +7,18 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 70 primitives, and a Scheme prelude with the list library
+closures, 77 primitives, and a Scheme prelude with the list library
 (`map`, `append`, `member`, `fold`, ...).  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls and the special forms `quote`, `if`, `define`, `set!`, `lambda`,
-and `begin`.  `minim file.scm` runs a file, and `load` loads one (see
-`docs/design/`).
+and `begin`.  A hygienic expander in the prelude adds quasiquote,
+`syntax-rules` macros, and the derived forms.  `minim file.scm` runs a file,
+and `load` loads one (see `docs/design/`).
 
 Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Derived forms | `let`, `cond`, `and`, `or`, `case`, `do`, named `let` |
-| Macros | `define-syntax`, `syntax-rules`, `quasiquote` |
 | Control | `call/cc`, `dynamic-wind`, `values`, `error`, `guard` |
 | Numbers | flonums, bignums, rationals |
 | I/O | ports, `read`, `read-char`, string and file ports |
@@ -64,7 +63,7 @@ remaining library can be written in Scheme.
 
 Depends on 1 (`equal?` for `member` and `assoc`).
 
-### 3. Derived forms and macros (M–L)
+### 3. Derived forms and macros (M–L) — done
 
 - `quasiquote`, `unquote`, and `unquote-splicing` in the reader and expander.
 - An expansion pass between `minim_read` and `minim_eval`, which rewrites
@@ -73,8 +72,8 @@ Depends on 1 (`equal?` for `member` and `assoc`).
 - The derived forms, defined as macros in the prelude: `let`, `let*`,
   `letrec`, named `let`, `cond`, `case`, `and`, `or`, `when`, `unless`, `do`.
 
-Depends on 2, since the derived forms live in the prelude.  The main
-decision is hygiene (see Open items).
+Depends on 2, since the derived forms live in the prelude.  Macros are
+hygienic, as R7RS requires (`docs/design/macros.md`).
 
 ### 4. Control and errors (M)
 
@@ -133,6 +132,15 @@ Not features, but needed as programs grow:
   chunks, and run-time collector settings (`docs/design/gc.md`).
 - More generations, as in Chez, if major collections become frequent or
   long.
+- Bootstrap the prelude: expand it at build time with a first-stage `minim`,
+  so startup only evaluates core forms.  With it, `minim_init` starts only
+  the core and `minim_load_prelude` loads the prelude like any file, under
+  the environment's collector settings from the start (no
+  `MINIM_GC_STARTUP`).  Expansion now makes startup 35 ms and stressed
+  startup about 16 s; this is the next PR.
+- Cheaper long-lived data: a generation for what survives startup, so major
+  collections stop copying the prelude, or a `syntax-rules` that allocates
+  less.
 - Evaluator speed: a pre-pass that resolves variables to lexical addresses,
   with environments as vectors.  `src/env.h` already hides the
   representation.
@@ -162,18 +170,6 @@ normalization.
   over complete", but needs a written list of what's in and out.
 - **Provisional:** a subset of R7RS-small, extended milestone by milestone.
   The conformance suite records exactly what passes.
-
-### Hygienic or non-hygienic macros?
-
-- **`syntax-rules` with hygiene** is the standard, but it needs renaming and
-  environments of syntax, the largest single piece of this roadmap.
-- **Non-hygienic `define-macro`** (like Common Lisp's `defmacro`) is a few
-  dozen lines, but users can capture identifiers by accident.
-- **Middle ground:** non-hygienic `syntax-rules`, using its pattern language
-  without renaming.  It covers the derived forms at low cost; hygiene can come
-  later.
-- **Provisional:** the middle ground first.  Reopen before user macros
-  matter.
 
 ### Library in C or in Scheme?
 

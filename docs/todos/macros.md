@@ -410,7 +410,9 @@ cmake --build --preset dev && ctest --preset dev -R 'macros|repl'
   is now a `syntax-rules` expansion, allocating heavily, and radix 2 makes
   every other allocation a major collection, which copies the whole old
   generation, transformers included.  With radix 16 for the copies and for
-  `startup_stress`, 37 s.  Open: see Open items.
+  `startup_stress`, 37 s, which was chosen (see Open items).
+  `test_startup`'s stressed check is now "over 1000 minor and 100 major
+  collections" rather than "only major ones".
 
 - `src/prelude.scm`: the derived forms, as macros, defined right after
   `syntax-rules`.  The prelude after them may use them; the list library is
@@ -436,7 +438,62 @@ cmake --build --preset dev && ctest --preset dev
 cmake --build --preset stress && ctest --preset stress
 ```
 
+### Phase 8 - Starting without the prelude
+
+**Done, then reverted.**  It saved about 1 s per suite run, and the next PR
+replaces it: `minim_init()` starts only the core and `minim_load_prelude()`
+loads the prelude like any file, together with applying the environment's
+collector settings from the start (no `MINIM_GC_STARTUP`) and expanding the
+prelude at build time, which pays for stressing it.  As implemented before
+the revert:
+
+- `minim_init(const minim_init_options *options)`; `NULL` or zeroed fields
+  are the defaults.  `src/main.c`, `test_eval`, `test_startup`, and
+  `test_stale` pass `NULL`; nine tests pass `.no_prelude = true`
+  (`test_object` never called `minim_init`).
+- `test_symbol` checks that without the prelude `car` is bound but `map` and
+  `%expand` aren't.
+- Serial suite times barely moved: `dev` 50.2 s → 49.0 s, `stress` 2 min
+  17 s → 2 min 15 s.  The tests that skip the prelude were already fast;
+  the time is in the REPL tests, `eval`, and `startup_stress`, which need it.
+
+Every test pays for loading the prelude, about 35 ms in release and more
+under ASan, now that it expands its own `syntax-rules` forms.  Ten of the
+thirteen C unit tests never evaluate Scheme: `object`, `heap`, `gc`,
+`string`, `symbol`, `print`, `error`, `read`, `procedure`, and `prims`.
+
+- `include/minim.h`, `src/object.c`: `minim_init` takes options,
+  `void minim_init(const minim_init_options *options)`, where `NULL` means
+  the defaults.  The struct's first field is `bool no_prelude`, negative so
+  that zero and `NULL` load the prelude.  Without the prelude there is no
+  expander, so top-level forms run unexpanded, as before Phase 2.  A struct
+  rather than a `bool` reads clearly at the call site and leaves room for
+  more startup options (initial collector settings, say).
+- Every caller: `src/main.c` and the tests pass `NULL`; the ten tests above
+  pass `&(minim_init_options){.no_prelude = true}`.
+- Measure the suite in both presets before and after.
+
+Separate because it changes startup for embedders and tests, not the
+language.
+
+Tests: the ten tests pass as before, in both presets.  A unit test that
+`no_prelude` leaves `map` and `%expand` unbound.
+
+```sh
+cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j
+```
+
 ### After the last phase
+
+**Done.**  The design docs and roadmap describe the finished branch:
+`macros.md` rewritten (environments, expansion, `syntax-rules`, derived
+forms, quasiquote, errors; its old cost notes dropped), `primitives.md`
+(`%syntax-error`), `prelude.md` (derived forms), `gc.md` (spare-chunk limit
+and trimming), `testing.md` (radix 16), and the roadmap (milestone 3 done,
+the hygiene open item settled, and milestone 8 items for bootstrapping the
+prelude and for cheaper long-lived data).  `dev` (44) and `stress` (34) pass;
+release builds.  Release startup 33 ms (20 runs: 0.652 s); `ctest --preset
+stress -j 8` 39 s.
 
 **Changes on this branch outside the phases**, made after rebasing onto the
 generational collector:
@@ -453,7 +510,12 @@ Sync the design docs: `macros.md` (and every doc Phases 1-4 touched) against
 the code, adding `syntax-rules`, hygiene, top-level definitions inserted by
 macros, `syntax-error`, local macros, and the derived forms; `primitives.md`
 for `%syntax-error`; `gc.md`'s spare-chunk paragraph for the new limit and
-trimming.
+trimming; `testing.md` for radix 16 in the stress copies and
+`startup_stress`.  The roadmap: milestone 3 done, the hygiene open item
+settled, and under milestone 8 an item for cheaper major collections or
+expansion (a generation for what survives startup, or a `syntax-rules` that
+allocates less), since expansion now makes startup 35 ms and stress testing
+costly.
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress
@@ -466,13 +528,12 @@ expander.
 
 ## Open items
 
-### How much stress can the suite afford, now that expansion allocates?
+None.  Settled before Phase 8: skipping the prelude is an option to
+`minim_init`, not a second function or an environment variable, so a test
+states what it needs in its own code and the option set can grow.
 
-- **Radix 2 for the copies, radix 1 for `startup_stress`** (now): 4 min 17 s
-  with `-j 8`.  Catches an unrooted old object at any site.
-- **Radix 16 for both**: 37 s.  Misses an unrooted old object at a site run
-  fewer than about 16 times under the tests.
-- **Cheaper collections or expansion**: a generation for what survives
-  startup, so major collections don't copy the prelude; or a `syntax-rules`
-  that allocates less.  Each is its own plan.
-- **Provisional:** none; needs the owner's call before the last step.
+Stress cost was settled after Phase 7: radix 16 for the stress copies
+and `startup_stress` (37 s with `-j 8`, against 4 min 17 s at radix 2 and
+1), accepting that an unrooted old object at a site run fewer than about 16
+times can be missed.  Making collections or expansion cheaper goes on the
+roadmap.
