@@ -110,7 +110,21 @@ evaluator recognizes their function pointers (`minim_prim_apply`,
 | `(list->string lst)` | new string of the chars in the list `lst` |
 | `(symbol->string sym)` | the name of `sym`, an immutable string (not a copy) |
 | `(string->symbol s)` | the symbol named `s` |
+| `(gensym [s])` | a new uninterned symbol named `s` (default `g0`, `g1`, ...): it prints like its name but is `eq?` to no other symbol |
 | `(string-hash s)` | a non-negative fixnum, equal for `string=?` strings |
+
+### Expander support
+
+For the macro expander in the prelude; the `%` marks them internal.
+
+| Call | Result |
+|---|---|
+| `(%make-alias id env)` | a new alias: an uninterned symbol named like the symbol `id`, recording `id` and `env` |
+| `(%alias-original x)`, `(%alias-env x)` | the `id` or `env` an alias was made with; `#f` if `x` isn't an alias |
+| `(%bound? sym)` | whether the global `sym` holds a value; `#f` for an alias |
+
+An alias stores `#(tag id env)` in its value slot, where `tag` is a private
+uninterned symbol, so no value a program can build looks like an alias.
 
 ### Output
 

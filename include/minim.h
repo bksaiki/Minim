@@ -430,10 +430,16 @@ static inline void minim_string_set(minim_obj s, size_t i, uint32_t c) {
     minim_string_chars(s)[i] = c;
 }
 
-// Symbols: interned and never freed
+// Symbols: interned ones are never freed
 
-/** Symbol named `str`; a new one gets a copy of `str` and is unbound. */
+/** Symbol named `str`; a new one is unbound, with an immutable copy of `str` as its name. */
 minim_obj minim_intern(minim_obj str);
+
+/**
+ * New unbound symbol named `str`, not in the symbol table, so distinct from
+ * every other symbol.  An immutable `str` is shared, not copied.
+ */
+minim_obj minim_make_uninterned(minim_obj str);
 
 /** minim_intern with a UTF-8 name. */
 minim_obj minim_intern_cstr(const char *s);

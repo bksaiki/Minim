@@ -204,6 +204,17 @@ cmake --build --preset stress && ctest --preset stress -R 'eval|load'
 
 ### Phase 3 - Uninterned symbols and aliases
 
+**Done.**  Details settled during the phase:
+
+- An alias's value slot holds `#(tag id env)` rather than `(id . env)`, with
+  `tag` a private uninterned symbol: a renamed global (a gensym) may hold any
+  value, including a pair, and must not look like an alias.
+- `%bound?` is `#f` for an alias, whose value slot isn't a global value.
+- `minim_intern` now creates its symbol with `minim_make_uninterned`, which
+  shares an immutable name (another symbol's) instead of copying it, so an
+  alias costs one symbol and one vector.
+- `(gensym)` names are `g0`, `g1`, ...; `(gensym s)` takes a string.
+
 - `src/symbol.c`, `include/minim.h`: `minim_make_uninterned(name)`, a symbol
   not in the symbol table.
 - `src/prims.c`:

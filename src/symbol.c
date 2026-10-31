@@ -91,26 +91,30 @@ minim_obj minim_intern(minim_obj str) {
     if (found != EMPTY)
         return found;
 
-    minim_obj name = MINIM_NIL;
+    minim_obj sym = minim_make_uninterned(str);
+    MINIM_FRAME(&sym);
+    // Keep the load factor at most 1/2.
+    if (2 * (count + 1) > minim_vector_length(table))
+        grow();
+    minim_vector_set(table, find_slot(minim_symbol_name(sym)), sym);
+    count++;
+    MINIM_RETURN(sym);
+}
+
+minim_obj minim_make_uninterned(minim_obj str) {
+    minim_obj name = str;
     MINIM_FRAME(&str, &name);
-    size_t n = minim_string_length(str);
-    name = minim_make_string(n, 0);
-    memcpy(minim_string_chars(name), minim_string_chars(str), n * sizeof(uint32_t));
-    ((minim_obj *)(name - MINIM_TAG_TYPED))[0] |= MINIM_HEADER_IMMUTABLE;
+    if (!(minim_typed_header(str) & MINIM_HEADER_IMMUTABLE)) {
+        size_t n = minim_string_length(str);
+        name = minim_make_string(n, 0);
+        memcpy(minim_string_chars(name), minim_string_chars(str), n * sizeof(uint32_t));
+        ((minim_obj *)(name - MINIM_TAG_TYPED))[0] |= MINIM_HEADER_IMMUTABLE;
+    }
 
     minim_obj *p = minim_heap_alloc(MINIM_SYMBOL_SIZE);
     p[0] = name;
     p[1] = MINIM_UNBOUND;
-    minim_obj sym = (minim_obj)p | MINIM_TAG_SYMBOL;
-
-    // Keep the load factor at most 1/2.
-    if (2 * (count + 1) > minim_vector_length(table)) {
-        MINIM_PROTECT(&sym);
-        grow();
-    }
-    minim_vector_set(table, find_slot(name), sym);
-    count++;
-    MINIM_RETURN(sym);
+    MINIM_RETURN((minim_obj)p | MINIM_TAG_SYMBOL);
 }
 
 minim_obj minim_intern_cstr(const char *s) {
