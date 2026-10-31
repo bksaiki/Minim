@@ -1,7 +1,8 @@
 # REPL: reader, printer, and errors
 
 `minim` reads expressions from stdin, evaluates them, and prints the
-results.  All I/O is through `FILE *`; there are no port objects yet.
+results (see `eval.md`).  All I/O is through `FILE *`; there are no port
+objects yet.
 
 ## Reader
 
@@ -41,9 +42,13 @@ allocates, so it is safe on error paths.
 | symbol | its name |
 | pair | `(a b . c)`; `(quote x)` as `'x` |
 | vector | `#(a b)` |
+| procedure | `#<procedure>`, or `#<procedure car>` for a primitive |
 
 Output is UTF-8.  Everything except the `#<...>` forms reads back as equal
 data.  Cyclic data loops forever.
+
+`minim_display` is the same, except that strings and chars, including nested
+ones, print as their characters: `(1 "a" #\b)` displays as `(1 a b)`.
 
 ## Errors
 
