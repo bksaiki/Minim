@@ -180,15 +180,17 @@ static void test_apply_restores_value_stack(void) {
 // map in the prelude recurses on the heap, not the C stack.
 static void test_map_long_list(void) {
 #ifdef MINIM_GC_STRESS
-    const char *n = "1000";  // every allocation collects, with a growing live set
+    const long n = 1000;  // collections are frequent, with a growing live set
 #else
-    const char *n = "100000";
+    const long n = 100000;
 #endif
     char src[256];
     snprintf(src, sizeof(src),
              "(define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))"
-             "(fold + 0 (map (lambda (x) (* 2 x)) (build %s '())))", n);
-    CHECK(evals_to(src, strcmp(n, "1000") == 0 ? "1001000" : "10000100000"));
+             "(fold + 0 (map (lambda (x) (* 2 x)) (build %ld '())))", n);
+    char expect[32];
+    snprintf(expect, sizeof(expect), "%ld", n * (n + 1));  // 2 * (1 + ... + n)
+    CHECK(evals_to(src, expect));
 }
 
 static void test_tail_calls(void) {

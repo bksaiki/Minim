@@ -30,6 +30,9 @@ elseif(MSVC)
 endif()
 
 if(MINIM_GC_STRESS)
+    if(NOT MINIM_GC_STRESS_INTERVAL MATCHES "^[1-9][0-9]*$")
+        message(FATAL_ERROR "MINIM_GC_STRESS_INTERVAL must be a positive integer, not '${MINIM_GC_STRESS_INTERVAL}'")
+    endif()
     add_compile_definitions(MINIM_GC_STRESS=${MINIM_GC_STRESS_INTERVAL})
 endif()
 
