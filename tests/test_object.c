@@ -65,8 +65,8 @@ static void test_no_heap_predicates(void) {
 
 // Typed objects built on the stack, since there is no heap yet
 static void test_typed(void) {
-    alignas(16) minim_obj vec[2] = {(minim_obj)3 << MINIM_HEADER_LENGTH_SHIFT | MINIM_TYPE_VECTOR};
-    alignas(16) minim_obj str[2] = {(minim_obj)3 << MINIM_HEADER_LENGTH_SHIFT | MINIM_TYPE_STRING};
+    alignas(16) minim_obj vec[2] = {minim_make_header(3, MINIM_TYPE_VECTOR)};
+    alignas(16) minim_obj str[2] = {minim_make_header(3, MINIM_TYPE_STRING)};
     minim_obj v = (minim_obj)vec | MINIM_TAG_TYPED;
     minim_obj s = (minim_obj)str | MINIM_TAG_TYPED;
 

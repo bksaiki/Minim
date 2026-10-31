@@ -21,9 +21,11 @@ if(MINIM_GC_STRESS)
     add_compile_definitions(MINIM_GC_STRESS)
 endif()
 
-# Header-only until it has sources.
-add_library(minim_core INTERFACE)
-target_include_directories(minim_core INTERFACE include)
+add_library(minim_core STATIC
+    src/heap.c
+    src/object.c
+)
+target_include_directories(minim_core PUBLIC include PRIVATE src)
 
 add_executable(minim src/main.c)
 target_link_libraries(minim PRIVATE minim_core)

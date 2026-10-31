@@ -248,6 +248,14 @@ cmake --build --preset dev && ctest --preset dev -R object
 
 ### Phase 3 - Heap allocation (no collection)
 
+**Done.**  Additions beyond the plan:
+
+- `minim_heap_allocated()` (internal) reports total bytes handed out; tests
+  use it to check footprints.
+- `minim_add_test(name INTERNAL)` gives a test access to `src/` headers.
+- `minim_init` / `minim_shutdown` live in `object.c` for now.
+- Accessors `assert` their argument's type and index.
+
 - `CMakeLists.txt`: make `minim_core` a `STATIC` library with its sources
   listed explicitly; `include` becomes `PUBLIC`, and `src` is added as
   `PRIVATE`.

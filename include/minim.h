@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 // A tagged Scheme value.  The low 3 bits are the primary tag; heap objects
@@ -51,6 +52,15 @@ enum {
     MINIM_TYPE_STRING = 0x2,
 };
 
+// Object sizes in bytes, before rounding to the allocation unit
+enum {
+    MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
+};
+
+static inline size_t minim_vector_size(size_t n) {
+    return (1 + n) * sizeof(minim_obj);
+}
+
 // Fixnums: 61-bit signed integers stored as n << 3
 
 #define MINIM_FIXNUM_MAX ((intptr_t)(((uintptr_t)1 << 60) - 1))
@@ -81,6 +91,10 @@ static inline uint32_t minim_char_value(minim_obj x) {
 }
 
 // Typed objects
+
+static inline minim_obj minim_make_header(size_t length, minim_obj type) {
+    return ((minim_obj)length << MINIM_HEADER_LENGTH_SHIFT) | type;
+}
 
 static inline minim_obj minim_typed_header(minim_obj x) {
     return *(const minim_obj *)(x - MINIM_TAG_TYPED);
@@ -124,6 +138,54 @@ static inline bool minim_is_boolean(minim_obj x) {
 
 static inline bool minim_is_null(minim_obj x) {
     return x == MINIM_NIL;
+}
+
+// Runtime
+
+void minim_init(void);
+void minim_shutdown(void);
+
+// Pairs
+
+minim_obj minim_cons(minim_obj car, minim_obj cdr);
+
+static inline minim_obj minim_car(minim_obj p) {
+    assert(minim_is_pair(p));
+    return ((const minim_obj *)(p - MINIM_TAG_PAIR))[0];
+}
+
+static inline minim_obj minim_cdr(minim_obj p) {
+    assert(minim_is_pair(p));
+    return ((const minim_obj *)(p - MINIM_TAG_PAIR))[1];
+}
+
+static inline void minim_set_car(minim_obj p, minim_obj x) {
+    assert(minim_is_pair(p));
+    ((minim_obj *)(p - MINIM_TAG_PAIR))[0] = x;
+}
+
+static inline void minim_set_cdr(minim_obj p, minim_obj x) {
+    assert(minim_is_pair(p));
+    ((minim_obj *)(p - MINIM_TAG_PAIR))[1] = x;
+}
+
+// Vectors
+
+minim_obj minim_make_vector(size_t n, minim_obj fill);
+
+static inline size_t minim_vector_length(minim_obj v) {
+    assert(minim_is_vector(v));
+    return (size_t)(minim_typed_header(v) >> MINIM_HEADER_LENGTH_SHIFT);
+}
+
+static inline minim_obj minim_vector_ref(minim_obj v, size_t i) {
+    assert(i < minim_vector_length(v));
+    return ((const minim_obj *)(v - MINIM_TAG_TYPED))[1 + i];
+}
+
+static inline void minim_vector_set(minim_obj v, size_t i, minim_obj x) {
+    assert(i < minim_vector_length(v));
+    ((minim_obj *)(v - MINIM_TAG_TYPED))[1 + i] = x;
 }
 
 #endif
