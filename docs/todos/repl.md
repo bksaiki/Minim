@@ -163,9 +163,21 @@ stack stays valid across allocation, but not across a push, which may
 
 ### Phase 1 - Printer
 
+**Done.**  Details settled during the phase:
+
+- Well-known symbols live in `src/symbol.h`, interned by
+  `minim_symbol_init` and registered as roots.  `minim_sym_quote` is the
+  first; Phase 5's special-form symbols go there too.  Interning on first use
+  would allocate during printing and leave a stale pointer after
+  `minim_shutdown`.
+- The UTF-8 codec is `src/char.c` (`minim_utf8_decode`, `minim_utf8_encode`).
+- Control characters (`< 0x20`, `0x7F`–`0x9F`) print as `#\x7f` in chars and
+  `\x1;` in strings, matching the reader's planned escapes.  Unrecognized
+  values print as `#<unknown>`.
+
 - `include/minim.h`, `src/print.c`: `minim_write`.
 - `src/object.c`: split out a UTF-8 encoder (`minim_utf8_encode`, internal,
-  in a new `src/utf8.h` with the existing decoder).
+  in a new `src/char.h` with the existing decoder).
 
 Separate because every later phase uses it for tests and debugging.
 

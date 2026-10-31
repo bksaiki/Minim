@@ -22,9 +22,11 @@ if(MINIM_GC_STRESS)
 endif()
 
 add_library(minim_core STATIC
+    src/char.c
     src/gc.c
     src/heap.c
     src/object.c
+    src/print.c
     src/symbol.c
 )
 target_include_directories(minim_core PUBLIC include PRIVATE src)

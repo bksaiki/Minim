@@ -69,10 +69,15 @@ static void grow(void) {
     MINIM_RETURN_VOID;
 }
 
+minim_obj minim_sym_quote;
+
 void minim_symbol_init(void) {
     table = minim_make_vector(INITIAL_CAPACITY, EMPTY);
     count = 0;
     minim_gc_add_global(&table);
+
+    minim_sym_quote = minim_intern_cstr("quote");
+    minim_gc_add_global(&minim_sym_quote);
 }
 
 minim_obj minim_intern(minim_obj str) {

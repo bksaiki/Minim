@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /**
  * A tagged Scheme value.  The low 3 bits are the primary tag; heap objects
@@ -353,5 +354,10 @@ static inline void minim_set_symbol_value(minim_obj sym, minim_obj x) {
     assert(minim_is_symbol(sym));
     ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[1] = x;
 }
+
+// Printing
+
+/** Writes `x` to `out` in `write` syntax.  Never allocates. */
+void minim_write(FILE *out, minim_obj x);
 
 #endif
