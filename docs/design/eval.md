@@ -34,6 +34,8 @@ operands of calls in progress.  An `ARGS` frame records `base`, the height
 where its call's values start.  The collector scans `[0, len)` and updates
 entries in place, so a pointer into the stack survives allocation, but not a
 push, which may `realloc`.  `minim_catch` restores the height after an error.
+The stack keeps its peak capacity: non-tail recursion like the prelude's `map`
+leaves it large for the rest of the session.
 
 ## Environments
 
