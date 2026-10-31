@@ -143,6 +143,22 @@ cmake --preset dev && cmake --build --preset dev && ctest --preset dev -R prelud
 
 ### Phase 3 - List library
 
+**Done.**  Details settled during the phase:
+
+- `memq`/`memv` and `assq`/`assv` call `member` and `assoc` with `eq?` or
+  `eqv?`.  `for-each` with several lists calls `map` and discards the result,
+  rather than duplicating `map`'s helpers.  Void is written `(if #f #f)`.
+- The 100k-element `map` check is in `tests/test_eval.c` (1k under `stress`),
+  not the golden file.  Building the list under stress collects on every
+  allocation while the live set grows, which is quadratic.
+- Non-tail recursion like `map`'s grows the value stack, and it keeps its peak
+  capacity.  The `map` check therefore runs after the tail-call checks, which
+  assert the value stack stayed small.
+- Measured: the prelude's code is permanently live, so stress mode, which
+  copies the live heap on every allocation, slowed down.  The full `stress`
+  suite went from about 13 s to 30 s (`eval` 3.8 s to 14.8 s, `gc` 2.4 s to
+  5.5 s, `repl_tail` 2.7 s to 5.7 s).  This grows with the prelude.
+
 - `src/prelude.scm`: the procedures in the table above.
 - `docs/design/prelude.md`: the library table.
 

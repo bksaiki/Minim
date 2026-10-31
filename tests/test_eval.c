@@ -177,6 +177,20 @@ static void test_apply_restores_value_stack(void) {
     CHECK_EQ(minim_values.len, before);
 }
 
+// map in the prelude recurses on the heap, not the C stack.
+static void test_map_long_list(void) {
+#ifdef MINIM_GC_STRESS
+    const char *n = "1000";  // every allocation collects, with a growing live set
+#else
+    const char *n = "100000";
+#endif
+    char src[256];
+    snprintf(src, sizeof(src),
+             "(define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))"
+             "(fold + 0 (map (lambda (x) (* 2 x)) (build %s '())))", n);
+    CHECK(evals_to(src, strcmp(n, "1000") == 0 ? "1001000" : "10000100000"));
+}
+
 static void test_tail_calls(void) {
 #ifdef MINIM_GC_STRESS
     const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 10000)";
@@ -211,6 +225,7 @@ int main(void) {
     test_apply_restores_value_stack();
     test_primitive_allocates();
     test_tail_calls();
+    test_map_long_list();  // after test_tail_calls, which checks the value stack's capacity
     minim_shutdown();
     return test_result();
 }

@@ -23,6 +23,16 @@ they can't call closures (see `primitives.md`).
 | Procedure | Result |
 |---|---|
 | `(list? x)` | whether `x` is a proper list; `#f` for cyclic lists |
+| `(append lst ...)` | the lists joined; all but the last are copied, the last is shared |
+| `(reverse lst)` | a new list in reverse order |
+| `(list-tail lst k)`, `(list-ref lst k)` | the `k`th tail, or element |
+| `(list-copy lst)` | a copy of the pairs of `lst`; an improper tail is kept |
+| `(memq x lst)`, `(memv x lst)`, `(member x lst [compare])` | the first tail whose car matches `x` by `eq?`, `eqv?`, or `compare` (default `equal?`); `#f` if none |
+| `(assq x alist)`, `(assv x alist)`, `(assoc x alist [compare])` | the first pair whose car matches `x`, likewise; `#f` if none |
+| `(map f lst ...)` | a list of `f` applied to corresponding elements, left to right, stopping at the shortest list |
+| `(for-each f lst ...)` | like `map`, for effect; void |
+| `(filter keep? lst)` | the elements satisfying `keep?`, in order |
+| `(fold kons knil lst)`, `(fold-right kons knil lst)` | SRFI-1 folds, calling `(kons elem acc)` from the left or right |
 
 Prelude procedures print as `#<procedure>`, since closures have no names.
 Errors inside them come from the primitives they call.
