@@ -202,6 +202,16 @@ cmake --build --preset stress && ctest --preset stress -R 'eval|repl'
 
 ### Phase 3 - Primitive library
 
+**Done.**  Details settled during the phase:
+
+- The golden runner also compares stderr with `<name>.err` when that file
+  exists, so `prims.err` checks each family's type and index errors.
+- Type errors are `<name>: not a <type>`; index errors are `<name>: bad
+  index`, covering non-fixnum, negative, and out-of-range indices.
+- `make-vector` fills with 0 by default, as Chez does.
+- `symbol->string` returns the symbol's immutable name, not a copy.
+- Mutators, `write`, and `newline` return void.
+
 - `src/prims.c`:
   - pairs: `set-car!`, `set-cdr!`, `pair?`, `null?`, `list`;
   - `eq?`, `not`, `symbol?`, `procedure?`, `boolean?`;
