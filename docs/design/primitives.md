@@ -41,6 +41,15 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 | `(fixnum? x)` | whether `x` is a fixnum |
 | `(zero? n)` | whether `n` is 0 |
 
+### Chars
+
+| Call | Result |
+|---|---|
+| `(char? x)` | whether `x` is a char |
+| `(char->integer c)` | the code point of `c` |
+| `(integer->char k)` | the char with code point `k`, which must be a Unicode scalar value |
+| `(char=? c ...)`, `(char<? ...)`, `(char>? ...)`, `(char<=? ...)`, `(char>=? ...)` | whether each adjacent pair is in order, by code point |
+
 ### Pairs and lists
 
 | Call | Result |

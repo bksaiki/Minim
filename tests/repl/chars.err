@@ -1,0 +1,6 @@
+error: integer->char: not a scalar value: 55296
+error: integer->char: not a scalar value: -1
+error: integer->char: not a scalar value: 1114112
+error: integer->char: not a fixnum: #\a
+error: char->integer: not a char: 97
+error: char<?: not a char: 1

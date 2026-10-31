@@ -102,6 +102,16 @@ cmake --build --preset stress && ctest --preset stress -R 'equality|prims'
 
 ### Phase 2 - Chars
 
+**Done.**  Details settled during the phase:
+
+- `compare` takes a key function `intptr_t key(minim_obj, const char *msg)`.
+  `fixnum_arg` is the fixnum key; a new `char_arg` is the char key.
+- `integer->char` raises `integer->char: not a fixnum` for a non-fixnum, and
+  `integer->char: not a scalar value` for a surrogate or a value outside
+  `[0, 0x10FFFF]`.
+- `tests/repl/chars.out` is written with the raw UTF-8 for `#\x10FFFF`,
+  which the printer emits as-is since it isn't a control character.
+
 - `src/prims.c`:
   - generalize `compare` to take a key function; the fixnum comparisons use a
     fixnum key;

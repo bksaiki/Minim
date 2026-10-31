@@ -33,6 +33,7 @@ function(minim_add_repl_test name)
             -P ${dir}/run_repl.cmake)
 endfunction()
 
+minim_add_repl_test(chars)
 minim_add_repl_test(echo)
 minim_add_repl_test(equality)
 minim_add_repl_test(eval)

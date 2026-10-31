@@ -34,6 +34,12 @@ static intptr_t fixnum_arg(minim_obj x, const char *msg) {
     return minim_fixnum_value(x);
 }
 
+// Code of the char `x`; raises `msg` otherwise.
+static intptr_t char_arg(minim_obj x, const char *msg) {
+    check(minim_is_char(x), msg, x);
+    return minim_char_value(x);
+}
+
 // Fixnum for `v`; raises `msg` if it is out of range.
 static minim_obj fixnum_result(intptr_t v, const char *msg) {
     if (v < MINIM_FIXNUM_MIN || v > MINIM_FIXNUM_MAX)
@@ -94,15 +100,18 @@ static minim_obj prim_remainder(minim_obj *args, size_t n) {
     return minim_fixnum(a % b);
 }
 
-// Whether every adjacent pair of fixnums satisfies `cmp`; raises `msg` on a
-// non-fixnum.
-static minim_obj compare(minim_obj *args, size_t n, bool (*cmp)(intptr_t, intptr_t),
-                         const char *msg) {
+// Whether the keys of every adjacent pair of arguments satisfy `cmp`.  `key`
+// extracts a key from an argument, raising `msg` on the wrong type; every
+// argument is checked.
+static minim_obj compare(minim_obj *args, size_t n, intptr_t (*key)(minim_obj, const char *),
+                         bool (*cmp)(intptr_t, intptr_t), const char *msg) {
     bool result = true;
+    intptr_t prev = 0;
     for (size_t i = 0; i < n; i++) {
-        intptr_t v = fixnum_arg(args[i], msg);
-        if (i > 0 && !cmp(minim_fixnum_value(args[i - 1]), v))
+        intptr_t v = key(args[i], msg);
+        if (i > 0 && !cmp(prev, v))
             result = false;
+        prev = v;
     }
     return boolean(result);
 }
@@ -114,23 +123,61 @@ static bool le(intptr_t a, intptr_t b) { return a <= b; }
 static bool ge(intptr_t a, intptr_t b) { return a >= b; }
 
 static minim_obj prim_num_eq(minim_obj *args, size_t n) {
-    return compare(args, n, eq, "=: not a fixnum");
+    return compare(args, n, fixnum_arg, eq, "=: not a fixnum");
 }
 
 static minim_obj prim_lt(minim_obj *args, size_t n) {
-    return compare(args, n, lt, "<: not a fixnum");
+    return compare(args, n, fixnum_arg, lt, "<: not a fixnum");
 }
 
 static minim_obj prim_gt(minim_obj *args, size_t n) {
-    return compare(args, n, gt, ">: not a fixnum");
+    return compare(args, n, fixnum_arg, gt, ">: not a fixnum");
 }
 
 static minim_obj prim_le(minim_obj *args, size_t n) {
-    return compare(args, n, le, "<=: not a fixnum");
+    return compare(args, n, fixnum_arg, le, "<=: not a fixnum");
 }
 
 static minim_obj prim_ge(minim_obj *args, size_t n) {
-    return compare(args, n, ge, ">=: not a fixnum");
+    return compare(args, n, fixnum_arg, ge, ">=: not a fixnum");
+}
+
+static minim_obj prim_is_char(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(minim_is_char(args[0]));
+}
+
+static minim_obj prim_char_to_integer(minim_obj *args, size_t n) {
+    (void)n;
+    return minim_fixnum(char_arg(args[0], "char->integer: not a char"));
+}
+
+static minim_obj prim_integer_to_char(minim_obj *args, size_t n) {
+    (void)n;
+    intptr_t v = fixnum_arg(args[0], "integer->char: not a fixnum");
+    check(v >= 0 && v <= 0x10FFFF && minim_is_scalar_value((uint32_t)v),
+          "integer->char: not a scalar value", args[0]);
+    return minim_char((uint32_t)v);
+}
+
+static minim_obj prim_char_eq(minim_obj *args, size_t n) {
+    return compare(args, n, char_arg, eq, "char=?: not a char");
+}
+
+static minim_obj prim_char_lt(minim_obj *args, size_t n) {
+    return compare(args, n, char_arg, lt, "char<?: not a char");
+}
+
+static minim_obj prim_char_gt(minim_obj *args, size_t n) {
+    return compare(args, n, char_arg, gt, "char>?: not a char");
+}
+
+static minim_obj prim_char_le(minim_obj *args, size_t n) {
+    return compare(args, n, char_arg, le, "char<=?: not a char");
+}
+
+static minim_obj prim_char_ge(minim_obj *args, size_t n) {
+    return compare(args, n, char_arg, ge, "char>=?: not a char");
 }
 
 static minim_obj prim_is_fixnum(minim_obj *args, size_t n) {
@@ -398,6 +445,14 @@ void minim_prims_init(void) {
     define_primitive("remainder", prim_remainder, 2, 2);
     define_primitive("fixnum?", prim_is_fixnum, 1, 1);
     define_primitive("zero?", prim_is_zero, 1, 1);
+    define_primitive("char?", prim_is_char, 1, 1);
+    define_primitive("char->integer", prim_char_to_integer, 1, 1);
+    define_primitive("integer->char", prim_integer_to_char, 1, 1);
+    define_primitive("char=?", prim_char_eq, 1, MINIM_VARIADIC);
+    define_primitive("char<?", prim_char_lt, 1, MINIM_VARIADIC);
+    define_primitive("char>?", prim_char_gt, 1, MINIM_VARIADIC);
+    define_primitive("char<=?", prim_char_le, 1, MINIM_VARIADIC);
+    define_primitive("char>=?", prim_char_ge, 1, MINIM_VARIADIC);
     define_primitive("cons", prim_cons, 2, 2);
     define_primitive("car", prim_car, 1, 1);
     define_primitive("cdr", prim_cdr, 1, 1);
