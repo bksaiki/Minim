@@ -116,7 +116,4 @@ void minim_heap_trim_spares(void);
 /** Frees the spare chunks. */
 void minim_heap_free_spares(void);
 
-/** Bytes in use in `s`. */
-size_t minim_space_used(const minim_space *s);
-
 #endif

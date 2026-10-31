@@ -156,10 +156,3 @@ void minim_heap_free_spares(void) {
     }
     minim_gc.spares = (minim_chunk_queue){0};
 }
-
-size_t minim_space_used(const minim_space *s) {
-    size_t used = 0;
-    for (const minim_chunk *c = s->first; c != NULL; c = c->next)
-        used += (size_t)(minim_chunk_end(s, c) - c->data);
-    return used;
-}

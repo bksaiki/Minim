@@ -192,6 +192,7 @@ static minim_obj copy(minim_obj x) {
 
     size_t size = tag == MINIM_TAG_TYPED ? typed_size(old[0]) : 2 * sizeof(minim_obj);
     void *p = minim_space_alloc(to, size);
+    minim_gc.live += minim_align_up(size);
     memcpy(p, old, size);
     minim_obj y = (minim_obj)p | tag;
     old[0] = MINIM_FORWARD;
@@ -284,6 +285,8 @@ static void collect(bool minor) {
         // is every object in the old spaces.
         cursors[i] = end_of(&minim_gc.spaces[i]);
     }
+    if (!minim_gc.minor)
+        minim_gc.live = 0;  // counted again as `copy` fills the old spaces
 
     for (size_t i = 0; i < minim_gc.globals.len; i++)
         *minim_gc.globals.items[i] = copy(*minim_gc.globals.items[i]);
@@ -313,12 +316,9 @@ static void collect(bool minor) {
         }
     } while (scanned);
 
-    minim_gc.live = 0;
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
         if (!minim_gc.minor || i == MINIM_SPACE_NEW)
             minim_space_free(&from[i]);
-        if (i != MINIM_SPACE_NEW)
-            minim_gc.live += minim_space_used(&minim_gc.spaces[i]);
     }
     minim_heap_trim_spares();
     minim_gc.budget = minim_gc.config.nursery_bytes;
