@@ -51,7 +51,9 @@ set_tests_properties(startup_stress PROPERTIES
 if(MINIM_SANITIZE)
     minim_test_executable(stale INTERNAL)
     add_test(NAME stale COMMAND test_stale)
+    # ASan aborts on macOS by default, which CTest counts as a failure.
     set_tests_properties(stale PROPERTIES
+        ENVIRONMENT "ASAN_OPTIONS=abort_on_error=0"
         PASS_REGULAR_EXPRESSION "AddressSanitizer: use-after-poison")
 endif()
 

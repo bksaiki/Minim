@@ -297,7 +297,8 @@ static void collect(bool minor) {
     if (minim_gc.minor) {
         for (size_t i = 0; i < minim_gc.remembered.len; i++) {
             uint64_t bit;
-            *remembered_word(minim_gc.remembered.items[i], &bit) &= ~bit;
+            uint64_t *word = remembered_word(minim_gc.remembered.items[i], &bit);
+            *word &= ~bit;
             scan_object(minim_gc.remembered.items[i]);
         }
     }
