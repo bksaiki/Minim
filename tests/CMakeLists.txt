@@ -120,6 +120,7 @@ minim_add_repl_test(prelude)
 minim_add_repl_test(prims)
 minim_add_repl_test(strings)
 minim_add_repl_test(symbols)
+minim_add_repl_test(syntax-rules)
 minim_add_repl_test(tail)
 
 minim_add_script_test(fail STATUS 1)

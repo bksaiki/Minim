@@ -290,6 +290,38 @@ cmake --build --preset dev && ctest --preset dev -R repl
 
 ### Phase 5 - Global macros and hygienic `syntax-rules`
 
+**Done.**  Details settled during the phase:
+
+- A transformer is a procedure `(form use-env)` → expansion.  `%syntax-rules`
+  builds one closed over the spec and its definition environment, so Phase 6
+  passes a local environment instead of `'()`.
+- The ellipsis (default or custom), `_`, and literals are recognized by
+  resolution: a pattern identifier is the ellipsis if it resolves like it in
+  the definition environment, and a literal matches an input identifier that
+  resolves (in the use environment) as the literal does (in the definition
+  one).
+- Pattern variables are bound to `(depth . match)`; a match at depth n > 0 is
+  the list of depth n - 1 matches, so `x ... ...` flattens one level per
+  ellipsis.  A variable used at the wrong depth, or ellipsis variables of
+  unequal lengths, raise `bad syntax`.
+- Aliases: one per template identifier per use, from a table the transformer
+  resets on each call.
+- Inserted top-level `define`: `%top-name` assigns the original when it holds
+  a value; otherwise it defines a fresh global and records `(alias . name)`
+  in `%top-renames`, which `%resolve` consults before an alias's original, so
+  the same use's other insertions find it while user code sees the original.
+  An inserted `define-syntax` binds its original name (simpler; R7RS leaves
+  it open).
+- A top-level `define` of a macro's name removes the macro.
+- `syntax-error` is a new primitive, `(%syntax-error message args)`, whose
+  message is a Scheme string: converted with `minim_string_to_utf8` into a
+  buffer kept until the next syntax error, since `minim_error` keeps the
+  pointer.  The irritant is void, the single argument, or the list.
+- `define-syntax` outside the top level is `bad syntax` until Phase 6.
+- `docs/design/macros.md` is not touched (policy); its `syntax-rules` and
+  hygiene sections go in the post-plan sync.
+- Release startup: 12.8 ms (20 runs: 0.256 s), from about 10 ms.
+
 - `src/prelude.scm`: the matcher and template instantiator, with custom
   ellipsis, `(... ...)`, and aliasing; top-level `define-syntax`;
   `syntax-error`; and the rule for top-level definitions inserted by a macro.
@@ -381,7 +413,10 @@ generational collector:
 - CI runs `ctest --preset <preset> -j`, one job per processor (CMake 3.29+).
 
 Sync the design docs: `macros.md` (and every doc Phases 1-4 touched) against
-the code; `gc.md`'s spare-chunk paragraph for the new limit and trimming.
+the code, adding `syntax-rules`, hygiene, top-level definitions inserted by
+macros, `syntax-error`, local macros, and the derived forms; `primitives.md`
+for `%syntax-error`; `gc.md`'s spare-chunk paragraph for the new limit and
+trimming.
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress

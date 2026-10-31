@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "char.h"
 #include "heap.h"
 #include "minim.h"
 
@@ -724,6 +725,20 @@ static minim_obj prim_bad_syntax(minim_obj *args, size_t n) {
     minim_error("bad syntax", args[0]);
 }
 
+// Raises the string args[0] with the list args[1] as the irritant: void if
+// empty, its element if it has one.
+static minim_obj prim_syntax_error(minim_obj *args, size_t n) {
+    (void)n;
+    static char *message;  // must outlive the catch; replaced by the next one
+    check(minim_is_string(args[0]), "syntax-error: not a string", args[0]);
+    free(message);
+    message = minim_string_to_utf8(args[0]);
+    minim_obj rest = args[1];
+    if (minim_is_null(rest))
+        minim_error(message, MINIM_VOID);
+    minim_error(message, minim_is_null(minim_cdr(rest)) ? minim_car(rest) : rest);
+}
+
 static void define_primitive(const char *name, minim_prim_fn fn, intptr_t min, intptr_t max) {
     minim_obj sym = minim_intern_cstr(name);
     MINIM_FRAME(&sym);
@@ -804,6 +819,7 @@ void minim_prims_init(void) {
     define_primitive("%alias-env", prim_alias_env, 1, 1);
     define_primitive("%bound?", prim_is_bound, 1, 1);
     define_primitive("%bad-syntax", prim_bad_syntax, 1, 1);
+    define_primitive("%syntax-error", prim_syntax_error, 2, 2);
     define_primitive("write", prim_write, 1, 1);
     define_primitive("display", prim_display, 1, 1);
     define_primitive("newline", prim_newline, 0, 0);
