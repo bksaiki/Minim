@@ -4,7 +4,6 @@
  */
 
 #include "gc.h"
-#include "heap.h"
 #include "minim.h"
 #include "test.h"
 
@@ -150,9 +149,9 @@ static void test_errors(void) {
 }
 
 static void test_value_stack_restored(void) {
-    size_t before = minim_values.len;
+    size_t before = minim_gc.values.len;
     CHECK(fails_with("(+ 1 (+ 2 (car 5)))", "car: not a pair"));
-    CHECK_EQ(minim_values.len, before);
+    CHECK_EQ(minim_gc.values.len, before);
 }
 
 // Collects, then returns its second argument.
@@ -172,9 +171,9 @@ static void test_primitive_allocates(void) {
 }
 
 static void test_apply_restores_value_stack(void) {
-    size_t before = minim_values.len;
+    size_t before = minim_gc.values.len;
     CHECK(fails_with("(+ 1 (apply + 1 '(2 . 3)))", "apply: not a list"));
-    CHECK_EQ(minim_values.len, before);
+    CHECK_EQ(minim_gc.values.len, before);
 }
 
 // map in the prelude recurses on the heap, not the C stack.
@@ -196,16 +195,16 @@ static void test_tail_calls(void) {
              gc_stressed() ? 10000 : 100000);
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.
-    CHECK(minim_heap.size <= 8 * 1024 * 1024);
-    CHECK(minim_values.cap <= 64);
+    CHECK(minim_gc.size <= 8 * 1024 * 1024);
+    CHECK(minim_gc.values.cap <= 64);
 
     // `apply` in tail position is a tail call too.
     snprintf(src, sizeof(src),
              "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop %d)",
              gc_stressed() ? 2000 : 100000);
     CHECK(evals_to(src, "done"));
-    CHECK(minim_heap.size <= 8 * 1024 * 1024);
-    CHECK(minim_values.cap <= 64);
+    CHECK(minim_gc.size <= 8 * 1024 * 1024);
+    CHECK(minim_gc.values.cap <= 64);
 }
 
 int main(void) {

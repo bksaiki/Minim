@@ -14,7 +14,6 @@
 #include "symbol.h"
 
 void minim_init(void) {
-    minim_heap_init();
     minim_gc_init();
     minim_error_init();
     minim_symbol_init();
@@ -24,7 +23,6 @@ void minim_init(void) {
 
 void minim_shutdown(void) {
     minim_gc_shutdown();
-    minim_heap_shutdown();
 }
 
 minim_obj minim_cons(minim_obj car, minim_obj cdr) {

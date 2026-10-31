@@ -35,19 +35,21 @@ static int test_failures = 0;
         }                                                                   \
     } while (0)
 
-/** Whether the collection policy collects at nearly every allocation, as the
- * `_stress` tests' does; slow tests then do less work. */
+/**
+ * Whether the collector settings collect at nearly every allocation, as in the
+ * `_stress` copies; slow tests then do less work.
+ */
 static inline bool gc_stressed(void) {
-    return minim_gc_get_policy().nursery_bytes < 1024;
+    return minim_gc_get_config().nursery_bytes < 1024;
 }
 
 /**
- * Sets the default collection policy, for a test that relies on when
- * collections happen; returns the policy to restore.
+ * Sets the default collector settings, for a test that relies on when
+ * collections happen; returns the settings to restore.
  */
-static inline minim_gc_policy default_gc_policy(void) {
-    minim_gc_policy saved = minim_gc_get_policy();
-    minim_gc_set_policy((minim_gc_policy){
+static inline minim_gc_config default_gc_config(void) {
+    minim_gc_config saved = minim_gc_get_config();
+    minim_gc_set_config((minim_gc_config){
         .nursery_bytes = 1024 * 1024,
         .radix = 0,
         .major_growth = 2,

@@ -128,7 +128,8 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
         }
 
         // Application: evaluate the operator, then each operand, onto the value stack.
-        k = make_frame(K_ARGS, k, minim_cdr(expr), env, minim_fixnum((intptr_t)minim_values.len));
+        x = minim_fixnum((intptr_t)minim_gc.values.len);
+        k = make_frame(K_ARGS, k, minim_cdr(expr), env, x);
         expr = minim_car(expr);
         goto eval;
     }
@@ -185,29 +186,29 @@ ret:  // Passes `val` to `k`.
 
 apply:  // Applies the procedure at `base` to the values above it.
     {
-        size_t n = minim_values.len - base - 1;
-        x = minim_values.items[base];
+        size_t n = minim_gc.values.len - base - 1;
+        x = minim_gc.values.items[base];
         if (minim_is_primitive(x)) {
             if (!primitive_accepts(x, n))
                 minim_error("arity mismatch", x);
             if (minim_primitive_fn(x) == minim_prim_apply) {
                 // [apply f a ... lst] becomes [f a ... elements of lst].
-                x = minim_values.items[--minim_values.len];
+                x = minim_gc.values.items[--minim_gc.values.len];
                 if (list_length(x) < 0)
                     minim_error("apply: not a list", x);
-                memmove(minim_values.items + base, minim_values.items + base + 1,
-                        (minim_values.len - base - 1) * sizeof(minim_obj));
-                minim_values.len--;
+                memmove(minim_gc.values.items + base, minim_gc.values.items + base + 1,
+                        (minim_gc.values.len - base - 1) * sizeof(minim_obj));
+                minim_gc.values.len--;
                 for (; minim_is_pair(x); x = minim_cdr(x))
                     minim_values_push(minim_car(x));
                 goto apply;
             }
             if (minim_primitive_fn(x) == minim_prim_load) {
                 // Evaluates the file's forms, then void, in the global environment.
-                if (!minim_is_string(minim_values.items[base + 1]))
-                    minim_error("load: not a string", minim_values.items[base + 1]);
-                x = minim_read_file(minim_values.items[base + 1]);
-                minim_values.len = base;
+                if (!minim_is_string(minim_gc.values.items[base + 1]))
+                    minim_error("load: not a string", minim_gc.values.items[base + 1]);
+                x = minim_read_file(minim_gc.values.items[base + 1]);
+                minim_gc.values.len = base;
                 env = MINIM_NIL;
                 if (minim_is_null(x)) {
                     val = MINIM_VOID;
@@ -217,8 +218,8 @@ apply:  // Applies the procedure at `base` to the values above it.
                 k = make_frame(K_SEQ, k, val, env, MINIM_NIL);
                 goto sequence;
             }
-            val = minim_primitive_fn(x)(minim_values.items + base + 1, n);
-            minim_values.len = base;
+            val = minim_primitive_fn(x)(minim_gc.values.items + base + 1, n);
+            minim_gc.values.len = base;
             goto ret;
         }
         if (!minim_is_closure(x))
@@ -227,8 +228,8 @@ apply:  // Applies the procedure at `base` to the values above it.
         minim_obj params = minim_car(minim_closure_code(x));
         if (!accepts(params, n))
             minim_error("arity mismatch", x);
-        env = minim_env_extend(params, minim_values.items + base + 1, n, minim_closure_env(x));
-        minim_values.len = base;
+        env = minim_env_extend(params, minim_gc.values.items + base + 1, n, minim_closure_env(x));
+        minim_gc.values.len = base;
         x = minim_cdr(minim_closure_code(x));
         goto sequence;
     }

@@ -11,21 +11,8 @@
 #include <malloc.h>
 #endif
 
+#include "gc.h"
 #include "minim.h"
-
-struct minim_heap minim_heap;
-
-void minim_heap_init(void) {
-    minim_heap = (struct minim_heap){0};
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
-        minim_heap.spaces[i].generation = i == MINIM_SPACE_NEW ? 0 : 1;
-}
-
-void minim_heap_shutdown(void) {
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
-        minim_space_free(&minim_heap.spaces[i]);
-    minim_heap = (struct minim_heap){0};
-}
 
 void minim_out_of_memory(void) {
     fprintf(stderr, "minim: out of memory\n");
@@ -76,7 +63,7 @@ static void space_grow(minim_space *s, size_t nbytes) {
     // A large object's chunk holds nothing else, so every object starts in its
     // chunk's first MINIM_CHUNK_SIZE bytes.
     s->avail = bytes > MINIM_CHUNK_SIZE ? nbytes : size;
-    minim_heap.size += bytes;
+    minim_gc.size += bytes;
 }
 
 void *minim_space_alloc(minim_space *s, size_t nbytes) {
@@ -91,18 +78,18 @@ void *minim_space_alloc(minim_space *s, size_t nbytes) {
 
 void *minim_heap_alloc(size_t nbytes) {
     nbytes = minim_align_up(nbytes);
-    if (nbytes > minim_heap.budget)
+    if (nbytes > minim_gc.budget)
         minim_gc_collect();
-    minim_heap.budget = nbytes < minim_heap.budget ? minim_heap.budget - nbytes : 0;
-    minim_heap.allocated += nbytes;
-    return minim_space_alloc(&minim_heap.spaces[MINIM_SPACE_NEW], nbytes);
+    minim_gc.budget = nbytes < minim_gc.budget ? minim_gc.budget - nbytes : 0;
+    minim_gc.allocated += nbytes;
+    return minim_space_alloc(&minim_gc.spaces[MINIM_SPACE_NEW], nbytes);
 }
 
 void minim_space_free(minim_space *s) {
     minim_chunk *c = s->first;
     while (c != NULL) {
         minim_chunk *next = c->next;
-        minim_heap.size -= chunk_bytes(c->size);
+        minim_gc.size -= chunk_bytes(c->size);
         chunk_free(c);
         c = next;
     }

@@ -59,9 +59,9 @@ that don't tend to live long.  A generational collector copies an object
 roughly once, when it is promoted, rather than at every collection.
 
 **Out of scope:**
-- **Chunk reuse**, also on the roadmap.  Reusing from-space chunks would hide
-  stale pointers from AddressSanitizer, and catching those is what stress mode
-  is for.
+- **Chunk reuse**, at first: reusing from-space chunks would hide stale
+  pointers from AddressSanitizer, and catching those is what stress mode is
+  for.  Phase 8 adds it back with poisoning and a quarantine.
 - **A static space**, weak references, guardians, mark-in-place, and evaluator
   speed.
 
@@ -497,6 +497,120 @@ Measure each both on this branch and with the macros branch rebased on it.
 cmake --preset dev && cmake --build --preset dev && ctest --preset stress
 ```
 
+### Phase 6 - One configuration struct, one state struct
+
+**Done.**  Details settled during the phase:
+
+- Configuration: `minim_gc_policy` is renamed `minim_gc_config`, with
+  `minim_gc_get_config` and `minim_gc_set_config`; the primitives' helper is
+  `config_setting`, and the test helper `default_gc_config`.
+- State: `struct minim_gc minim_gc` in `src/gc.h`, holding the configuration,
+  the spaces, the root stacks (`minim_root_stack`), the value stack and the
+  remembered set (`minim_obj_stack`), the byte counts, the collection
+  counters, and the scheduling bookkeeping.  `minim_heap` and `minim_values`
+  are gone; their fields are `minim_gc.*` and `minim_gc.values`.
+- `minim_heap_init` and `minim_heap_shutdown` are folded into
+  `minim_gc_init` and `minim_gc_shutdown`, which assign the whole struct.
+- `minim_gc_remembered()` is gone; tests read `minim_gc.remembered.len`.
+
+The collector's configuration and state are spread across file-level
+variables: in `gc.c`, `policy`, `scheduled`, `major_base`, `minor`, the root
+stacks `locals` and `globals`, and the remembered set; in `gc.h`,
+`minim_values`; in `heap.h`, `minim_heap` with the spaces and counters; and
+Phases 7 and 8 then add their state (the startup flag, the chunk free
+list) to these structs.
+
+- **Configuration:** one struct holding every setting, now the policy's four
+  fields; Phases 7 and 8 add the startup flag and the quarantine size.  It is what the
+  environment variables, the C API, and the primitives read and write.
+  `minim_gc_policy` becomes it, or part of it.
+- **State:** one struct holding the configuration and all run-time state:
+  spaces, root stacks, value stack, remembered set,
+  counters, and the bookkeeping for the next major collection.  One global
+  instance; `minim_heap` and `minim_values` become fields of it.
+- Initialization and shutdown reset that one struct, so nothing is left out
+  between `minim_init` and `minim_shutdown`.
+
+Separate because it is a pure restructuring: no behaviour changes, and the
+existing tests are its regression net.  It comes before Phases 7 and 8 so
+their state goes straight into the new structs.
+
+Tests: none new; the full suite in both presets.
+
+```sh
+cmake --build --preset dev && ctest --preset dev && ctest --preset stress
+```
+
+### Phase 7 - Stress the program, not startup
+
+Phase 5 left every stress copy paying for startup: with `macros`, each one
+spends about 3 s expanding the prelude under stress, the same code every
+time.  Startup is stressed once instead, and the other copies stress only the
+program.
+
+- `src/gc.c`: the `MINIM_GC_` variables are still parsed by `minim_gc_init`,
+  so a malformed value fails before anything runs, but the policy they set
+  takes effect at the end of `minim_init`; startup runs with the default
+  policy.  A new variable, `MINIM_GC_STARTUP=1`, applies it from the start.
+- `src/object.c`: `minim_init` applies the policy last.
+- `tests/CMakeLists.txt`: one stress test of startup alone, `startup_stress`,
+  runs `minim` on empty input with `MINIM_GC_STARTUP=1 MINIM_GC_NURSERY=1
+  MINIM_GC_RADIX=1`.
+- Measure `ctest --preset stress` with radix 16 and radix 1, and pick the
+  radix for the stress copies (see Open items).
+
+Separate because it changes what the stress tests cover, which Phase 5
+measured.
+
+Tests: `tests/test_startup.c`, registered twice with different environments
+and an argument giving the expectation: with `MINIM_GC_NURSERY=1` alone,
+`minim_init` runs few collections and the policy afterward is the variable's;
+with `MINIM_GC_STARTUP=1` too, it runs one per allocation.  A script test
+for a malformed `MINIM_GC_STARTUP`.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'startup|gc' && ctest --preset stress
+```
+
+### Phase 8 - Reuse nursery chunks
+
+Every collection frees the nursery's chunks and the next allocations get
+fresh ones from `aligned_alloc`, a fixed cost per collection that dominates
+under stress.  Generational collectors normally reuse the nursery.
+
+- `src/heap.c`: freed standard-size chunks go on a FIFO free list, which
+  `space_grow` takes from before calling `aligned_alloc`.  Large chunks are
+  still freed.  The list is capped (the nursery's chunks plus the
+  quarantine), and the surplus is freed.
+- Under AddressSanitizer (`__SANITIZE_ADDRESS__`, or
+  `__has_feature(address_sanitizer)`):
+  - a freed chunk's data is poisoned (`ASAN_POISON_MEMORY_REGION`), and
+    `minim_space_alloc` unpoisons each object it hands out, so a stale
+    pointer into a free or unused part still faults;
+  - a chunk is reused only after the free list holds more than a quarantine
+    of newer chunks (8), so a stale pointer isn't immediately aliased by the
+    next object, which under stress lands at the same address.
+  Without it, no quarantine: a freed chunk is reused at once.
+- First, profile one collection under stress to confirm chunk allocation is
+  the fixed cost worth removing; record the split here.
+
+Separate because it changes memory reuse, the risk Phase 1 avoided, and its
+ASan behaviour needs its own test.
+
+Tests:
+- `tests/test_heap.c`: a chunk freed by a collection is reused after at most
+  the quarantine's worth of new chunks; a large chunk isn't.
+- `tests/test_stale.c`, built only with `MINIM_SANITIZE` and registered with
+  `WILL_FAIL`: holds a young object unrooted across a minor collection and
+  reads it, which ASan must report.  It guards the poisoning and quarantine.
+
+Measure the stress suite, stress startup, and the two allocation programs
+again.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'heap|gc|stale' && ctest --preset stress
+```
+
 ### After the last phase
 
 Sync the docs with the finished collector:
@@ -519,4 +633,29 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-None.
+### How is stressing startup selected?
+
+- **Provisional:** the policy variables apply after startup, and
+  `MINIM_GC_STARTUP=1` makes them apply from the start, as above.
+- **Alternative:** they apply from the start, as now, and a variable delays
+  them until after startup.  This keeps today's meaning of the variables, but
+  makes the common case, stressing a program, the one that needs the extra
+  variable.
+- Reopen if stressing startup turns out to be the common need.
+
+### Which radix do the stress copies use after Phase 7?
+
+- **Radix 1** catches an unrooted old object at any site, which radix 16
+  misses at sites run fewer than about 16 times (Phase 5).
+- **Radix 16** is cheaper.
+- **Provisional:** radix 1 if `ctest --preset stress`, serial, stays under
+  about 30 s, the pre-macros suite's time; otherwise 16.
+
+### How big is the quarantine, and does it cover old-space chunks?
+
+- **Size:** 8 chunks keeps a stale pointer poisoned for 8 collections under
+  stress, at the cost of 128 KiB held back.  Reopen if `test_stale` or an
+  injected bug shows misses.
+- **Scope:** every standard-size chunk goes through the same free list,
+  including old-space chunks freed by a major collection.  One mechanism is
+  simpler than a nursery-only one.

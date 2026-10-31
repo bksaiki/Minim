@@ -629,37 +629,37 @@ static minim_obj prim_collect(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
-// Returns the policy setting at `offset` in minim_gc_policy, or sets it to
+// Returns the collector setting at `offset` in minim_gc_config, or sets it to
 // args[0], a fixnum of at least `min`.
-static minim_obj policy_setting(minim_obj *args, size_t n, size_t offset, intptr_t min,
+static minim_obj config_setting(minim_obj *args, size_t n, size_t offset, intptr_t min,
                                 const char *msg) {
-    minim_gc_policy policy = minim_gc_get_policy();
-    size_t *field = (size_t *)((char *)&policy + offset);
+    minim_gc_config config = minim_gc_get_config();
+    size_t *field = (size_t *)((char *)&config + offset);
     if (n == 0)
         return minim_fixnum((intptr_t)*field);
     check(minim_is_fixnum(args[0]) && minim_fixnum_value(args[0]) >= min, msg, args[0]);
     *field = (size_t)minim_fixnum_value(args[0]);
-    minim_gc_set_policy(policy);
+    minim_gc_set_config(config);
     return MINIM_VOID;
 }
 
 static minim_obj prim_collect_nursery_bytes(minim_obj *args, size_t n) {
-    return policy_setting(args, n, offsetof(minim_gc_policy, nursery_bytes), 1,
+    return config_setting(args, n, offsetof(minim_gc_config, nursery_bytes), 1,
                           "collect-nursery-bytes: not a positive fixnum");
 }
 
 static minim_obj prim_collect_generation_radix(minim_obj *args, size_t n) {
-    return policy_setting(args, n, offsetof(minim_gc_policy, radix), 0,
+    return config_setting(args, n, offsetof(minim_gc_config, radix), 0,
                           "collect-generation-radix: not a nonnegative fixnum");
 }
 
 static minim_obj prim_collect_major_growth(minim_obj *args, size_t n) {
-    return policy_setting(args, n, offsetof(minim_gc_policy, major_growth), 1,
+    return config_setting(args, n, offsetof(minim_gc_config, major_growth), 1,
                           "collect-major-growth: not a positive fixnum");
 }
 
 static minim_obj prim_collect_major_min_bytes(minim_obj *args, size_t n) {
-    return policy_setting(args, n, offsetof(minim_gc_policy, major_min_bytes), 0,
+    return config_setting(args, n, offsetof(minim_gc_config, major_min_bytes), 0,
                           "collect-major-min-bytes: not a nonnegative fixnum");
 }
 

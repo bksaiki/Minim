@@ -268,24 +268,24 @@ void minim_gc_protect(minim_obj *const *vars, size_t n);
 /** Protects a variable for the life of the runtime. */
 void minim_gc_add_global(minim_obj *p);
 
-/** When collections run; see docs/design/gc.md. */
-typedef struct minim_gc_policy {
+/** Collector settings: when collections run; see docs/design/gc.md. */
+typedef struct minim_gc_config {
     size_t nursery_bytes;    ///< nursery size: bytes allocated between collections
     size_t radix;            ///< every `radix`-th collection is major; 0 for none
     size_t major_growth;     ///< major when the old generation grows by this factor
     size_t major_min_bytes;  ///< but not before it exceeds this size
-} minim_gc_policy;
+} minim_gc_config;
 
 /**
- * The collection policy.  By default: a 1 MiB nursery, radix 0, and major
+ * The collector settings.  By default: a 1 MiB nursery, radix 0, and major
  * collections when the old generation doubles, past 1 MiB.
  */
-minim_gc_policy minim_gc_get_policy(void);
+minim_gc_config minim_gc_get_config(void);
 
-/** Sets the collection policy; `major_growth` must be at least 1.  The nursery starts over. */
-void minim_gc_set_policy(minim_gc_policy policy);
+/** Sets the collector settings; `major_growth` must be at least 1.  The nursery starts over. */
+void minim_gc_set_config(minim_gc_config config);
 
-/** Runs the collection the policy calls for: minor, or major by radix or growth. */
+/** Runs the collection the settings call for: minor, or major by radix or growth. */
 void minim_gc_collect(void);
 
 /** Collects the young generation, promoting its survivors to the old one. */

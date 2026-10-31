@@ -3,6 +3,7 @@
  * Tests for allocation and object layouts.
  */
 
+#include "gc.h"
 #include "heap.h"
 #include "minim.h"
 #include "test.h"
@@ -56,16 +57,16 @@ static void test_nested_vector(void) {
 }
 
 static void test_footprint(void) {
-    size_t before = minim_heap.allocated;
+    size_t before = minim_gc.allocated;
     minim_cons(MINIM_NIL, MINIM_NIL);
-    CHECK_EQ(minim_heap.allocated - before, 16);
+    CHECK_EQ(minim_gc.allocated - before, 16);
 
     // 8 B header + 8 B per element, rounded up to 16
     const size_t sizes[][2] = {{0, 16}, {1, 16}, {2, 32}, {3, 32}, {4, 48}};
     for (size_t i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
-        before = minim_heap.allocated;
+        before = minim_gc.allocated;
         minim_make_vector(sizes[i][0], MINIM_NIL);
-        CHECK_EQ(minim_heap.allocated - before, sizes[i][1]);
+        CHECK_EQ(minim_gc.allocated - before, sizes[i][1]);
     }
 }
 
@@ -96,7 +97,7 @@ static bool in_chunk(minim_obj x, unsigned gen) {
 // Whether every chunk of every space is aligned and of the space's generation.
 static bool chunks_aligned(void) {
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        const minim_space *s = &minim_heap.spaces[i];
+        const minim_space *s = &minim_gc.spaces[i];
         for (const minim_chunk *c = s->first; c != NULL; c = c->next) {
             if ((uintptr_t)c % MINIM_CHUNK_SIZE != 0 || c->generation != s->generation)
                 return false;
@@ -106,7 +107,7 @@ static bool chunks_aligned(void) {
 }
 
 static void test_chunk_of(void) {
-    minim_gc_policy saved = default_gc_policy();  // so the allocations below don't collect
+    minim_gc_config saved = default_gc_config();  // so the allocations below don't collect
     minim_obj pair = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_obj sym = MINIM_NIL;
     minim_obj str = MINIM_NIL;
@@ -130,7 +131,7 @@ static void test_chunk_of(void) {
     CHECK(in_chunk(str, 1));
     CHECK(in_chunk(big, 1));
     CHECK(chunks_aligned());
-    minim_gc_set_policy(saved);
+    minim_gc_set_config(saved);
     MINIM_RETURN_VOID;
 }
 

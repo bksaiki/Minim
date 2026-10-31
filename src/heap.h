@@ -61,23 +61,6 @@ enum {
     MINIM_SPACE_COUNT,
 };
 
-/** The heap. */
-extern struct minim_heap {
-    minim_space spaces[MINIM_SPACE_COUNT];
-    size_t size;       ///< bytes held in chunks
-    size_t allocated;  ///< bytes handed out by minim_heap_alloc since init
-    size_t live;       ///< bytes in the old generation after the last collection
-    size_t budget;     ///< bytes to allocate before the next collection
-    size_t minor_collections;
-    size_t major_collections;
-} minim_heap;
-
-/** Empties the heap. */
-void minim_heap_init(void);
-
-/** Frees the heap. */
-void minim_heap_shutdown(void);
-
 /** Reports that memory is exhausted and aborts. */
 _Noreturn void minim_out_of_memory(void);
 

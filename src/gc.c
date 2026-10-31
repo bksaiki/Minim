@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "system.h"
 #include "heap.h"
 #include "minim.h"
+#include "system.h"
 
 enum {
     DEFAULT_NURSERY = 1024 * 1024,    // bytes
@@ -20,30 +20,9 @@ enum {
     DEFAULT_MAJOR_MIN = 1024 * 1024,  // bytes
 };
 
-static minim_gc_policy policy;
-static size_t scheduled;   // calls to minim_gc_collect
-static size_t major_base;  // old-generation bytes after the last major collection
-static bool minor;         // whether the collection in progress is minor
+struct minim_gc minim_gc;
 
-typedef struct root_stack {
-    minim_obj **items;
-    size_t len;
-    size_t cap;
-} root_stack;
-
-static root_stack locals;  // the shadow stack
-static root_stack globals;
-
-// Old objects written since the last collection, each once.
-static struct {
-    minim_obj *items;
-    size_t len;
-    size_t cap;
-} remembered;
-
-struct minim_values minim_values;
-
-static void push(root_stack *s, minim_obj *p) {
+static void push_root(minim_root_stack *s, minim_obj *p) {
     if (s->len == s->cap) {
         s->cap = s->cap ? 2 * s->cap : 64;
         s->items = realloc(s->items, s->cap * sizeof(*s->items));
@@ -51,6 +30,16 @@ static void push(root_stack *s, minim_obj *p) {
             minim_out_of_memory();
     }
     s->items[s->len++] = p;
+}
+
+static void push_obj(minim_obj_stack *s, minim_obj x) {
+    if (s->len == s->cap) {
+        s->cap = s->cap ? 2 * s->cap : 64;
+        s->items = realloc(s->items, s->cap * sizeof(*s->items));
+        if (s->items == NULL)
+            minim_out_of_memory();
+    }
+    s->items[s->len++] = x;
 }
 
 // Value of the environment variable `name`, a decimal integer from `min` to
@@ -71,39 +60,40 @@ static size_t getenv_integer(const char *name, size_t min, const char *expected,
 }
 
 void minim_gc_init(void) {
-    policy = (minim_gc_policy){
-        .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, "a positive integer", DEFAULT_NURSERY),
-        .radix = getenv_integer("MINIM_GC_RADIX", 0, "a nonnegative integer", 0),
-        .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, "a positive integer",
-                                       DEFAULT_MAJOR_GROWTH),
-        .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN", 0, "a nonnegative integer",
-                                          DEFAULT_MAJOR_MIN),
+    minim_gc = (struct minim_gc){
+        .config = {
+            .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, "a positive integer",
+                                            DEFAULT_NURSERY),
+            .radix = getenv_integer("MINIM_GC_RADIX", 0, "a nonnegative integer", 0),
+            .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, "a positive integer",
+                                           DEFAULT_MAJOR_GROWTH),
+            .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN", 0, "a nonnegative integer",
+                                              DEFAULT_MAJOR_MIN),
+        },
     };
-    scheduled = 0;
-    major_base = 0;
-    minim_heap.budget = policy.nursery_bytes;
-}
-
-minim_gc_policy minim_gc_get_policy(void) {
-    return policy;
-}
-
-void minim_gc_set_policy(minim_gc_policy p) {
-    assert(p.major_growth >= 1);
-    policy = p;
-    minim_heap.budget = policy.nursery_bytes;
+    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
+        minim_gc.spaces[i].generation = i == MINIM_SPACE_NEW ? 0 : 1;
+    minim_gc.budget = minim_gc.config.nursery_bytes;
 }
 
 void minim_gc_shutdown(void) {
-    free(locals.items);
-    free(globals.items);
-    free(minim_values.items);
-    free(remembered.items);
-    locals = (root_stack){0};
-    globals = (root_stack){0};
-    minim_values = (struct minim_values){0};
-    remembered.items = NULL;
-    remembered.len = remembered.cap = 0;
+    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
+        minim_space_free(&minim_gc.spaces[i]);
+    free(minim_gc.locals.items);
+    free(minim_gc.globals.items);
+    free(minim_gc.values.items);
+    free(minim_gc.remembered.items);
+    minim_gc = (struct minim_gc){0};
+}
+
+minim_gc_config minim_gc_get_config(void) {
+    return minim_gc.config;
+}
+
+void minim_gc_set_config(minim_gc_config config) {
+    assert(config.major_growth >= 1);
+    minim_gc.config = config;
+    minim_gc.budget = config.nursery_bytes;
 }
 
 // The word holding `obj`'s remembered bit, and the bit in `*bit`.
@@ -120,45 +110,29 @@ void minim_gc_remember(minim_obj obj) {
     if (*word & bit)
         return;
     *word |= bit;
-    if (remembered.len == remembered.cap) {
-        remembered.cap = remembered.cap ? 2 * remembered.cap : 64;
-        remembered.items = realloc(remembered.items, remembered.cap * sizeof(minim_obj));
-        if (remembered.items == NULL)
-            minim_out_of_memory();
-    }
-    remembered.items[remembered.len++] = obj;
-}
-
-size_t minim_gc_remembered(void) {
-    return remembered.len;
+    push_obj(&minim_gc.remembered, obj);
 }
 
 void minim_values_push(minim_obj x) {
-    if (minim_values.len == minim_values.cap) {
-        minim_values.cap = minim_values.cap ? 2 * minim_values.cap : 64;
-        minim_values.items = realloc(minim_values.items, minim_values.cap * sizeof(minim_obj));
-        if (minim_values.items == NULL)
-            minim_out_of_memory();
-    }
-    minim_values.items[minim_values.len++] = x;
+    push_obj(&minim_gc.values, x);
 }
 
 size_t minim_gc_mark(void) {
-    return locals.len;
+    return minim_gc.locals.len;
 }
 
 void minim_gc_reset(size_t mark) {
-    assert(mark <= locals.len);
-    locals.len = mark;
+    assert(mark <= minim_gc.locals.len);
+    minim_gc.locals.len = mark;
 }
 
 void minim_gc_protect(minim_obj *const *vars, size_t n) {
     for (size_t i = 0; i < n; i++)
-        push(&locals, vars[i]);
+        push_root(&minim_gc.locals, vars[i]);
 }
 
 void minim_gc_add_global(minim_obj *p) {
-    push(&globals, p);
+    push_root(&minim_gc.globals, p);
 }
 
 static size_t typed_size(minim_obj header) {
@@ -183,19 +157,19 @@ static minim_obj copy(minim_obj x) {
     switch (tag) {
     case MINIM_TAG_PAIR:
     case MINIM_TAG_CLOSURE:
-        to = &minim_heap.spaces[MINIM_SPACE_PAIR];
+        to = &minim_gc.spaces[MINIM_SPACE_PAIR];
         break;
     case MINIM_TAG_SYMBOL:
-        to = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
+        to = &minim_gc.spaces[MINIM_SPACE_SYMBOL];
         break;
     case MINIM_TAG_TYPED:
-        to = &minim_heap.spaces[MINIM_SPACE_TYPED];
+        to = &minim_gc.spaces[MINIM_SPACE_TYPED];
         break;
     default:
         return x;  // not a heap object
     }
 
-    if (minor && minim_chunk_of(x)->generation != 0)
+    if (minim_gc.minor && minim_chunk_of(x)->generation != 0)
         return x;  // old objects stay put in a minor collection
 
     minim_obj *old = (minim_obj *)(x - tag);
@@ -288,41 +262,41 @@ static cursor end_of(const minim_space *s) {
 // major collection also the old generation's.  A minor collection treats the
 // remembered old objects as roots.
 static void collect(bool is_minor) {
-    minor = is_minor;
+    minim_gc.minor = is_minor;  // for copy
     minim_space from[MINIM_SPACE_COUNT];
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        if (minor && i != MINIM_SPACE_NEW)
+        if (is_minor && i != MINIM_SPACE_NEW)
             continue;
-        from[i] = minim_heap.spaces[i];
-        minim_heap.spaces[i] = (minim_space){.generation = from[i].generation};
+        from[i] = minim_gc.spaces[i];
+        minim_gc.spaces[i] = (minim_space){.generation = from[i].generation};
     }
 
     // Objects copied from here on are scanned; in a major collection, that is
     // every object in the old spaces.
-    minim_space *pairs = &minim_heap.spaces[MINIM_SPACE_PAIR];
-    minim_space *symbols = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
-    minim_space *typed = &minim_heap.spaces[MINIM_SPACE_TYPED];
+    minim_space *pairs = &minim_gc.spaces[MINIM_SPACE_PAIR];
+    minim_space *symbols = &minim_gc.spaces[MINIM_SPACE_SYMBOL];
+    minim_space *typed = &minim_gc.spaces[MINIM_SPACE_TYPED];
     cursor pair_cursor = end_of(pairs);
     cursor symbol_cursor = end_of(symbols);
     cursor typed_cursor = end_of(typed);
 
-    for (size_t i = 0; i < globals.len; i++)
-        *globals.items[i] = copy(*globals.items[i]);
-    for (size_t i = 0; i < locals.len; i++)
-        *locals.items[i] = copy(*locals.items[i]);
-    for (size_t i = 0; i < minim_values.len; i++)
-        minim_values.items[i] = copy(minim_values.items[i]);
+    for (size_t i = 0; i < minim_gc.globals.len; i++)
+        *minim_gc.globals.items[i] = copy(*minim_gc.globals.items[i]);
+    for (size_t i = 0; i < minim_gc.locals.len; i++)
+        *minim_gc.locals.items[i] = copy(*minim_gc.locals.items[i]);
+    for (size_t i = 0; i < minim_gc.values.len; i++)
+        minim_gc.values.items[i] = copy(minim_gc.values.items[i]);
 
     // In a major collection, the remembered objects are in from-space, and
     // their chunks are freed below, bits and all.
-    if (minor) {
-        for (size_t i = 0; i < remembered.len; i++) {
+    if (is_minor) {
+        for (size_t i = 0; i < minim_gc.remembered.len; i++) {
             uint64_t bit;
-            *remembered_word(remembered.items[i], &bit) &= ~bit;
-            scan_object(remembered.items[i]);
+            *remembered_word(minim_gc.remembered.items[i], &bit) &= ~bit;
+            scan_object(minim_gc.remembered.items[i]);
         }
     }
-    remembered.len = 0;
+    minim_gc.remembered.len = 0;
     bool scanned;
     do {
         scanned = scan(pairs, &pair_cursor, scan_two_words);
@@ -331,18 +305,18 @@ static void collect(bool is_minor) {
     } while (scanned);
 
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        if (!minor || i == MINIM_SPACE_NEW)
+        if (!is_minor || i == MINIM_SPACE_NEW)
             minim_space_free(&from[i]);
     }
 
-    minim_heap.live = minim_space_used(pairs) + minim_space_used(symbols)
+    minim_gc.live = minim_space_used(pairs) + minim_space_used(symbols)
                     + minim_space_used(typed);
-    minim_heap.budget = policy.nursery_bytes;
-    if (minor) {
-        minim_heap.minor_collections++;
+    minim_gc.budget = minim_gc.config.nursery_bytes;
+    if (is_minor) {
+        minim_gc.minor_collections++;
     } else {
-        minim_heap.major_collections++;
-        major_base = minim_heap.live;
+        minim_gc.major_collections++;
+        minim_gc.major_base = minim_gc.live;
     }
 }
 
@@ -354,16 +328,17 @@ void minim_gc_collect_major(void) {
     collect(false);
 }
 
-// Whether the old generation has outgrown the policy's limit.
+// Whether the old generation has outgrown its configured limit.
 static bool major_due(void) {
-    size_t live = minim_heap.live;
+    size_t live = minim_gc.live;
+    const minim_gc_config *c = &minim_gc.config;
     // live > major_growth * major_base, without overflow, as live >= 1
-    return live > policy.major_min_bytes && (live - 1) / policy.major_growth >= major_base;
+    return live > c->major_min_bytes && (live - 1) / c->major_growth >= minim_gc.major_base;
 }
 
 void minim_gc_collect(void) {
-    scheduled++;
-    if (policy.radix != 0 && scheduled % policy.radix == 0) {
+    minim_gc.scheduled++;
+    if (minim_gc.config.radix != 0 && minim_gc.scheduled % minim_gc.config.radix == 0) {
         collect(false);
         return;
     }
