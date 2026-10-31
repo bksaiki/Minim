@@ -14,6 +14,11 @@ breakdown, one phase per commit.
 - **Comments stay succinct**, and notes about *process* (what was tried, what
   a phase decided, why an ordering was chosen) belong in this document, not in
   source comments.
+- **Design docs are synced after the last phase**, not during the phases, so
+  they never describe an intermediate state.  Phases 1-4 edited them before
+  this rule; the sync covers whatever they still get wrong.
+- **Design docs stay succinct**: only the details a reader needs to understand
+  the current implementation, said in as few words as possible.
 
 ## Context
 
@@ -364,9 +369,22 @@ cmake --build --preset stress && ctest --preset stress
 
 ### After the last phase
 
+**Changes on this branch outside the phases**, made after rebasing onto the
+generational collector:
+
+- Spare chunks: the limit counts chunks in use (`minim_heap_max_spares`: in
+  use + the nursery's worth + the quarantine), and `minim_heap_trim_spares`
+  trims the queue after each collection.  The old limit (the nursery's worth
+  plus the quarantine) made every major collection under stress allocate
+  fresh chunks and free the surplus, which kept ASan's 256 MB quarantine full:
+  stress tests peaked at about 490 MB each, now 16-148 MB.
+- CI runs `ctest --preset <preset> -j`, one job per processor (CMake 3.29+).
+
+Sync the design docs: `macros.md` (and every doc Phases 1-4 touched) against
+the code; `gc.md`'s spare-chunk paragraph for the new limit and trimming.
+
 ```sh
-cmake --preset dev && cmake --build --preset dev && ctest --preset dev
-cmake --preset stress && cmake --build --preset stress && ctest --preset stress
+cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress
 ```
 
 Also measure startup time (`time ./build/release/minim < /dev/null`) and the
