@@ -31,6 +31,18 @@ minim_add_test(procedure)
 minim_add_test(eval INTERNAL)
 minim_add_test(prims)
 
+# Startup runs with the default collector settings unless MINIM_GC_STARTUP=1,
+# so startup is stressed only here.
+add_executable(test_startup test_startup.c)
+target_link_libraries(test_startup PRIVATE libminim)
+target_include_directories(test_startup PRIVATE ${PROJECT_SOURCE_DIR}/src)
+add_test(NAME startup COMMAND test_startup program)
+set_tests_properties(startup PROPERTIES ENVIRONMENT "MINIM_GC_NURSERY=1")
+add_test(NAME startup_stress COMMAND test_startup startup)
+set_tests_properties(startup_stress PROPERTIES
+    LABELS stress
+    ENVIRONMENT "MINIM_GC_STARTUP=1;MINIM_GC_NURSERY=1;MINIM_GC_RADIX=1")
+
 # minim_add_repl_test(name): pipes repl/<name>.scm into minim, run from repl/,
 # and compares stdout with repl/<name>.out, and stderr with repl/<name>.err if
 # it exists.
@@ -102,6 +114,7 @@ minim_add_script_test(gc-settings-bad-radix STATUS 1 ARGS gc-settings.scm ENV MI
 minim_add_script_test(gc-settings-bad-growth STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_MAJOR_GROWTH=0)
 minim_add_script_test(gc-settings-bad-min STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_MAJOR_MIN=x)
 minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_NURSERY=1k)
+minim_add_script_test(gc-settings-bad-startup STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_STARTUP=2)
 minim_add_script_test(hello)
 minim_add_script_test(missing STATUS 1)
 minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)

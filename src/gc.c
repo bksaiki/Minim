@@ -43,16 +43,16 @@ static void push_obj(minim_obj_stack *s, minim_obj x) {
 }
 
 // Value of the environment variable `name`, a decimal integer from `min` to
-// the largest fixnum, or `fallback` if it is unset.  Exits if it is malformed.
-static size_t getenv_integer(const char *name, size_t min, const char *expected, size_t fallback) {
+// `max`, or `fallback` if it is unset.  Exits if it is malformed.
+static size_t getenv_integer(const char *name, size_t min, size_t max, const char *expected,
+                             size_t fallback) {
     const char *s = minim_getenv(name);
     if (s == NULL)
         return fallback;
     char *end;
     errno = 0;
     unsigned long long v = strtoull(s, &end, 10);
-    if (*s < '0' || *s > '9' || *end != '\0' || errno == ERANGE || v < min
-        || v > MINIM_FIXNUM_MAX) {
+    if (*s < '0' || *s > '9' || *end != '\0' || errno == ERANGE || v < min || v > max) {
         fprintf(stderr, "minim: %s must be %s, not \"%s\"\n", name, expected, s);
         exit(EXIT_FAILURE);
     }
@@ -60,20 +60,33 @@ static size_t getenv_integer(const char *name, size_t min, const char *expected,
 }
 
 void minim_gc_init(void) {
-    minim_gc = (struct minim_gc){
-        .config = {
-            .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, "a positive integer",
-                                            DEFAULT_NURSERY),
-            .radix = getenv_integer("MINIM_GC_RADIX", 0, "a nonnegative integer", 0),
-            .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, "a positive integer",
-                                           DEFAULT_MAJOR_GROWTH),
-            .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN", 0, "a nonnegative integer",
-                                              DEFAULT_MAJOR_MIN),
-        },
+    const minim_gc_config defaults = {
+        .nursery_bytes = DEFAULT_NURSERY,
+        .radix = 0,
+        .major_growth = DEFAULT_MAJOR_GROWTH,
+        .major_min_bytes = DEFAULT_MAJOR_MIN,
     };
+    const size_t max = MINIM_FIXNUM_MAX;
+    minim_gc_config env = {
+        .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, max, "a positive integer",
+                                        defaults.nursery_bytes),
+        .radix = getenv_integer("MINIM_GC_RADIX", 0, max, "a nonnegative integer",
+                                defaults.radix),
+        .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, max, "a positive integer",
+                                       defaults.major_growth),
+        .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN", 0, max, "a nonnegative integer",
+                                          defaults.major_min_bytes),
+    };
+    bool startup = getenv_integer("MINIM_GC_STARTUP", 0, 1, "0 or 1", 0);
+
+    minim_gc = (struct minim_gc){.config = startup ? env : defaults, .program_config = env};
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
         minim_gc.spaces[i].generation = i == MINIM_SPACE_NEW ? 0 : 1;
     minim_gc.budget = minim_gc.config.nursery_bytes;
+}
+
+void minim_gc_finish_startup(void) {
+    minim_gc_set_config(minim_gc.program_config);
 }
 
 void minim_gc_shutdown(void) {

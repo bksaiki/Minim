@@ -1,0 +1,1 @@
+minim: MINIM_GC_STARTUP must be 0 or 1, not "2"

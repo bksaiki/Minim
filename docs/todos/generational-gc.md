@@ -543,6 +543,26 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress
 
 ### Phase 7 - Stress the program, not startup
 
+**Done.**  Details settled during the phase:
+
+- The startup flag isn't part of `minim_gc_config`: it only matters during
+  `minim_init`.  `minim_gc_init` reads every variable, keeps the environment's
+  settings in `minim_gc.program_config`, and starts with the defaults unless
+  `MINIM_GC_STARTUP` is 1.  `minim_gc_finish_startup`, last in `minim_init`,
+  applies them.  `MINIM_GC_STARTUP` must be 0 or 1.
+- `test_startup` is registered as `startup` (dev: `MINIM_GC_NURSERY=1`
+  alone; startup runs fewer than 10 collections, the program collects) and
+  `startup_stress` (labelled `stress`: full stress from the start; startup
+  runs only major collections, over 1000).  `startup_stress` is the one
+  stress test of startup.  Dropping the `minim_gc_finish_startup` call fails
+  `startup`.
+- `ctest --preset stress`, serial, 28 tests: radix 16 in 10.6 s, radix 1 in
+  32.1 s (`eval_stress` 13.5 s; `repl_tail_stress`, `repl_gc_stress`, and
+  `gc_stress` about 5 s each).  Radix 1 is just over the 30 s line, so the
+  copies keep radix 16.
+- Not yet measured with `macros`: `startup_stress` runs the expander under
+  radix 1, which Phase 5 suggests takes about 28 s.
+
 Phase 5 left every stress copy paying for startup: with `macros`, each one
 spends about 3 s expanding the prelude under stress, the same code every
 time.  Startup is stressed once instead, and the other copies stress only the

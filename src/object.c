@@ -19,6 +19,7 @@ void minim_init(void) {
     minim_symbol_init();
     minim_prims_init();
     minim_prelude_init();
+    minim_gc_finish_startup();
 }
 
 void minim_shutdown(void) {
