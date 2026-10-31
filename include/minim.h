@@ -61,6 +61,10 @@ static inline size_t minim_vector_size(size_t n) {
     return (1 + n) * sizeof(minim_obj);
 }
 
+static inline size_t minim_string_size(size_t n) {
+    return sizeof(minim_obj) + n * sizeof(uint32_t);
+}
+
 // Fixnums: 61-bit signed integers stored as n << 3
 
 #define MINIM_FIXNUM_MAX ((intptr_t)(((uintptr_t)1 << 60) - 1))
@@ -81,8 +85,12 @@ static inline intptr_t minim_fixnum_value(minim_obj x) {
 
 // Chars: Unicode scalar values stored as (c << 8) | MINIM_TYPE_CHAR
 
+static inline bool minim_is_scalar_value(uint32_t c) {
+    return c <= 0x10FFFF && (c < 0xD800 || c > 0xDFFF);
+}
+
 static inline minim_obj minim_char(uint32_t c) {
-    assert(c <= 0x10FFFF && (c < 0xD800 || c > 0xDFFF));
+    assert(minim_is_scalar_value(c));
     return ((minim_obj)c << MINIM_CHAR_SHIFT) | MINIM_TYPE_CHAR;
 }
 
@@ -235,6 +243,34 @@ static inline minim_obj minim_vector_ref(minim_obj v, size_t i) {
 static inline void minim_vector_set(minim_obj v, size_t i, minim_obj x) {
     assert(i < minim_vector_length(v));
     ((minim_obj *)(v - MINIM_TAG_TYPED))[1 + i] = x;
+}
+
+// Strings: arrays of Unicode scalar values
+
+minim_obj minim_make_string(size_t n, uint32_t c);
+
+// Decodes UTF-8; invalid bytes become U+FFFD.
+minim_obj minim_string_from_cstr(const char *s);
+
+static inline size_t minim_string_length(minim_obj s) {
+    assert(minim_is_string(s));
+    return (size_t)(minim_typed_header(s) >> MINIM_HEADER_LENGTH_SHIFT);
+}
+
+// Valid until the next allocation.
+static inline uint32_t *minim_string_chars(minim_obj s) {
+    assert(minim_is_string(s));
+    return (uint32_t *)(s - MINIM_TAG_TYPED + sizeof(minim_obj));
+}
+
+static inline uint32_t minim_string_ref(minim_obj s, size_t i) {
+    assert(i < minim_string_length(s));
+    return minim_string_chars(s)[i];
+}
+
+static inline void minim_string_set(minim_obj s, size_t i, uint32_t c) {
+    assert(i < minim_string_length(s) && minim_is_scalar_value(c));
+    minim_string_chars(s)[i] = c;
 }
 
 #endif

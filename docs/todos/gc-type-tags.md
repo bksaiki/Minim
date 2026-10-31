@@ -329,6 +329,17 @@ cmake --preset stress && cmake --build --preset stress && ctest --preset stress 
 
 ### Phase 5 - Strings
 
+**Done.**  Details settled during the phase:
+
+- The C API passes chars as `uint32_t` code points: `minim_make_string(n,
+  c)`, `minim_string_ref`, `minim_string_set`.  It does not use `minim_char`
+  objects.
+- Added `minim_string_size`, `minim_string_chars` (a raw pointer, valid until
+  the next allocation), and `minim_is_scalar_value` (now shared with
+  `minim_char`).
+- `minim_string_from_cstr` turns each invalid UTF-8 byte into U+FFFD: bad lead
+  bytes, truncated, overlong, surrogate, and > U+10FFFF sequences.
+
 - `include/minim.h`, `src/object.c`: `minim_make_string(n, ch)`,
   `minim_string_length`, `minim_string_ref`, `minim_string_set`, and
   `minim_string_from_cstr` (decodes UTF-8).

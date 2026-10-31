@@ -64,6 +64,8 @@ static size_t typed_size(minim_obj header) {
     switch (header & MINIM_HEADER_TYPE_MASK) {
     case MINIM_TYPE_VECTOR:
         return minim_vector_size(n);
+    case MINIM_TYPE_STRING:
+        return minim_string_size(n);
     default:
         abort();  // unknown type
     }
@@ -113,6 +115,8 @@ static size_t scan_typed(minim_obj *p) {
         for (size_t i = 0; i < n; i++)
             p[1 + i] = copy(p[1 + i]);
         break;
+    case MINIM_TYPE_STRING:
+        break;  // no pointers
     default:
         abort();  // unknown type
     }
