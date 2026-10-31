@@ -26,6 +26,9 @@ void minim_values_push(minim_obj x);
 /** Initializes the collector; call after minim_heap_init. */
 void minim_gc_init(void);
 
+/** Number of objects remembered since the last collection. */
+size_t minim_gc_remembered(void);
+
 /** Frees the root and value stacks. */
 void minim_gc_shutdown(void);
 

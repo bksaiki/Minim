@@ -6,15 +6,12 @@
 #ifndef MINIM_HEAP_H
 #define MINIM_HEAP_H
 
+#include <assert.h>
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/** Allocation constants. */
-enum {
-    MINIM_ALIGN = 16,              ///< object alignment and size unit
-    MINIM_CHUNK_SIZE = 16 * 1024,  ///< chunk size and alignment in bytes, header included
-};
+#include "minim.h"
 
 /** `n` rounded up to a multiple of MINIM_ALIGN. */
 static inline size_t minim_align_up(size_t n) {
@@ -27,12 +24,16 @@ static inline size_t minim_align_up(size_t n) {
  * object starts in its chunk's first MINIM_CHUNK_SIZE bytes.
  */
 typedef struct minim_chunk {
-    unsigned char generation;  ///< 0 for new objects, 1 for survivors
+    unsigned char generation;  ///< 0 for new objects, 1 for survivors; first, for minim_gc_write
     struct minim_chunk *next;  ///< next newer chunk
     unsigned char *end;        ///< end of used data, once a newer chunk exists
     size_t size;               ///< capacity of `data`
+    /// A bit per MINIM_ALIGN bytes: whether the object starting there is remembered.
+    uint64_t remembered[MINIM_CHUNK_SIZE / MINIM_ALIGN / 64];
     alignas(MINIM_ALIGN) unsigned char data[];
 } minim_chunk;
+
+static_assert(offsetof(minim_chunk, generation) == 0, "minim_gc_write reads the first byte");
 
 /** The chunk holding the object at address `p`; `p` may be tagged. */
 static inline minim_chunk *minim_chunk_of(uintptr_t p) {

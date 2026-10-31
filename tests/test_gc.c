@@ -3,6 +3,7 @@
  * Tests for the collector.
  */
 
+#include "gc.h"
 #include "heap.h"
 #include "minim.h"
 #include "test.h"
@@ -143,12 +144,15 @@ static void test_promotion(void) {
 }
 
 // Old objects set to point to young ones, through each setter, keep them alive.
+// Each setter writes a different object, so one barrier can't cover another.
 static void test_old_to_young(void) {
     minim_obj pair = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_obj pair2 = MINIM_NIL;
     minim_obj vec = MINIM_NIL;
     minim_obj sym = MINIM_NIL;
     minim_obj lst = MINIM_NIL;
-    MINIM_FRAME(&pair, &vec, &sym, &lst);
+    MINIM_FRAME(&pair, &pair2, &vec, &sym, &lst);
+    pair2 = minim_cons(MINIM_NIL, MINIM_NIL);
     vec = minim_make_vector(2, MINIM_NIL);
     sym = minim_intern_cstr("old-to-young");
     minim_gc_collect_minor();
@@ -156,7 +160,7 @@ static void test_old_to_young(void) {
     lst = make_list(10);
     minim_set_car(pair, lst);
     lst = make_list(11);
-    minim_set_cdr(pair, lst);
+    minim_set_cdr(pair2, lst);
     lst = make_list(12);
     minim_vector_set(vec, 1, lst);
     lst = make_list(13);
@@ -167,7 +171,7 @@ static void test_old_to_young(void) {
         minim_gc_collect_minor();
     }
     CHECK(is_list(minim_car(pair), 10));
-    CHECK(is_list(minim_cdr(pair), 11));
+    CHECK(is_list(minim_cdr(pair2), 11));
     CHECK(is_list(minim_vector_ref(vec, 1), 12));
     CHECK(is_list(minim_symbol_value(sym), 13));
     MINIM_RETURN_VOID;
@@ -252,6 +256,52 @@ static void test_policy(void) {
 #endif
 }
 
+// The barrier remembers an old object once, only for a heap value, until the
+// next collection.
+static void test_remembered(void) {
+    minim_obj vec = minim_make_vector(2, MINIM_NIL);
+    minim_obj young = MINIM_NIL;
+    MINIM_FRAME(&vec, &young);
+    minim_gc_collect_minor();
+    CHECK_EQ(minim_gc_remembered(), 0);
+
+    minim_vector_set(vec, 0, minim_fixnum(1));
+    minim_vector_set(vec, 1, MINIM_TRUE);
+    CHECK_EQ(minim_gc_remembered(), 0);
+
+    young = minim_cons(MINIM_NIL, MINIM_NIL);
+    for (int i = 0; i < 3; i++)
+        minim_vector_set(vec, 0, young);
+    CHECK_EQ(minim_gc_remembered(), 1);
+    minim_gc_collect_minor();
+    CHECK_EQ(minim_gc_remembered(), 0);
+
+    // Remembered again after its bit was cleared, and forgotten by a major collection.
+    young = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_vector_set(vec, 1, young);
+    CHECK_EQ(minim_gc_remembered(), 1);
+    minim_gc_collect_major();
+    CHECK_EQ(minim_gc_remembered(), 0);
+    CHECK_EQ(minim_vector_ref(vec, 1), young);
+    MINIM_RETURN_VOID;
+}
+
+// A symbol interned into an old symbol table survives minor collections.
+static void test_old_symbol_table(void) {
+    minim_gc_collect_minor();
+    minim_obj sym = minim_intern_cstr("interned-late");
+    minim_obj str = MINIM_NIL;
+    MINIM_FRAME(&sym, &str);
+    for (int i = 0; i < 3; i++) {
+        make_list(100);  // garbage
+        minim_gc_collect_minor();
+    }
+    CHECK_EQ(minim_intern_cstr("interned-late"), sym);
+    str = minim_symbol_name(sym);
+    CHECK_EQ(minim_string_length(str), 13);
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_survive();
@@ -266,6 +316,8 @@ int main(void) {
     test_major_reclaims();
     test_generational();
     test_policy();
+    test_remembered();
+    test_old_symbol_table();
     minim_shutdown();
     return test_result();
 }

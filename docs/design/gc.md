@@ -71,16 +71,37 @@ Each one:
 1. Copies every root.  An object's kind, and so its to-space, comes from the
    pointer's tag.  The old copy gets the forward marker in word 0 and the new
    pointer in word 1, so later references find it.
-2. Scans the old spaces from their start until no scan cursor moves.  Pairs,
-   symbols, and closures are two traced words; a typed object is traced
-   according to its header (vector elements are traced, string chars aren't,
-   and a primitive's C function pointer isn't).  Copying during the scan
-   appends to the spaces being scanned.  In a minor collection, this scan
-   also visits every old object that was already there, so old objects that
-   point to young ones act as roots.
-3. Frees every from-space chunk.
+2. In a minor collection, scans the remembered old objects (see below), which
+   copies the young objects they point to.
+3. Scans what was copied, in the old spaces from where they ended before the
+   collection, until no scan cursor moves.  Pairs, symbols, and closures are
+   two traced words; a typed object is traced according to its header
+   (vector elements are traced, string chars aren't, and a primitive's C
+   function pointer isn't).  Copying during the scan appends to the spaces
+   being scanned.
+4. Frees every from-space chunk.
 
 After either one, nothing is young.
+
+**Write barrier.**  A minor collection must find every old object that points
+to a young one.  Every write of a pointer into a heap object goes through
+`minim_set_car`, `minim_set_cdr`, `minim_vector_set`, or
+`minim_set_symbol_value`, which end with `minim_gc_write(obj, x)`.  When `x`
+is a heap object and `obj` is old, that calls `minim_gc_remember(obj)`.
+
+- `minim_gc_write` is inline: a tag test, then a read of the generation, the
+  first byte of `obj`'s chunk.
+- Each chunk header has a bitmap, a bit per 16 bytes, marking which of its
+  objects are remembered, so an object enters the remembered set, an array, at
+  most once per collection.
+- A minor collection scans the remembered objects, clearing their bits, and
+  empties the set.  A major collection just empties it: the remembered objects
+  are in from-space, and their chunks are freed.
+- The barrier doesn't check whether `x` is young; an old `x` costs one entry
+  that the next collection scans for nothing.
+
+Constructors write into new, young objects directly, without the barrier, and
+the collector writes into objects it is copying or scanning.
 
 **Policy.**  `minim_gc_collect` runs the collection the policy calls for, and
 an allocation calls it when the budget runs out.  The policy
@@ -126,7 +147,7 @@ missing across a single allocation.
 
 ## Not included
 
-More than two generations, a write barrier, a segment table, non-copying large objects, an
+More than two generations, card marking, a segment table, non-copying large objects, an
 unscanned space for pointer-free data, weak pairs, and guardians.  None would
 change object layouts.
 

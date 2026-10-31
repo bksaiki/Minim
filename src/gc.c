@@ -31,6 +31,13 @@ typedef struct root_stack {
 static root_stack locals;  // the shadow stack
 static root_stack globals;
 
+// Old objects written since the last collection, each once.
+static struct {
+    minim_obj *items;
+    size_t len;
+    size_t cap;
+} remembered;
+
 struct minim_values minim_values;
 
 static void push(root_stack *s, minim_obj *p) {
@@ -63,9 +70,39 @@ void minim_gc_shutdown(void) {
     free(locals.items);
     free(globals.items);
     free(minim_values.items);
+    free(remembered.items);
     locals = (root_stack){0};
     globals = (root_stack){0};
     minim_values = (struct minim_values){0};
+    remembered.items = NULL;
+    remembered.len = remembered.cap = 0;
+}
+
+// The word holding `obj`'s remembered bit, and the bit in `*bit`.
+static uint64_t *remembered_word(minim_obj obj, uint64_t *bit) {
+    minim_chunk *c = minim_chunk_of(obj);
+    size_t i = ((obj & ~(minim_obj)MINIM_TAG_MASK) - (uintptr_t)c) / MINIM_ALIGN;
+    *bit = (uint64_t)1 << (i % 64);
+    return &c->remembered[i / 64];
+}
+
+void minim_gc_remember(minim_obj obj) {
+    uint64_t bit;
+    uint64_t *word = remembered_word(obj, &bit);
+    if (*word & bit)
+        return;
+    *word |= bit;
+    if (remembered.len == remembered.cap) {
+        remembered.cap = remembered.cap ? 2 * remembered.cap : 64;
+        remembered.items = realloc(remembered.items, remembered.cap * sizeof(minim_obj));
+        if (remembered.items == NULL)
+            minim_out_of_memory();
+    }
+    remembered.items[remembered.len++] = obj;
+}
+
+size_t minim_gc_remembered(void) {
+    return remembered.len;
 }
 
 void minim_values_push(minim_obj x) {
@@ -131,7 +168,7 @@ static minim_obj copy(minim_obj x) {
     }
 
     if (minor && minim_chunk_of(x)->generation != 0)
-        return x;  // old objects stay put
+        return x;  // old objects stay put in a minor collection
 
     minim_obj *old = (minim_obj *)(x - tag);
     if (old[0] == MINIM_FORWARD)
@@ -205,9 +242,23 @@ static bool scan(minim_space *s, cursor *c, size_t (*scan_obj)(minim_obj *)) {
     }
 }
 
+// Scans the object `x`, which hasn't moved: copies its referents.
+static void scan_object(minim_obj x) {
+    minim_obj *p = (minim_obj *)(x - minim_tag(x));
+    if (minim_tag(x) == MINIM_TAG_TYPED)
+        scan_typed(p);
+    else
+        scan_two_words(p);
+}
+
+// A cursor at the end of `s`, where objects copied next will start.
+static cursor end_of(const minim_space *s) {
+    return s->last == NULL ? (cursor){0} : (cursor){s->last, s->alloc};
+}
+
 // Copies the young generation's survivors into the old generation, and in a
-// major collection also the old generation's.  Until there is a write barrier,
-// a minor collection scans every old object as a root.
+// major collection also the old generation's.  A minor collection treats the
+// remembered old objects as roots.
 static void collect(bool is_minor) {
     minor = is_minor;
     minim_space from[MINIM_SPACE_COUNT];
@@ -218,6 +269,15 @@ static void collect(bool is_minor) {
         minim_heap.spaces[i] = (minim_space){.generation = from[i].generation};
     }
 
+    // Objects copied from here on are scanned; in a major collection, that is
+    // every object in the old spaces.
+    minim_space *pairs = &minim_heap.spaces[MINIM_SPACE_PAIR];
+    minim_space *symbols = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
+    minim_space *typed = &minim_heap.spaces[MINIM_SPACE_TYPED];
+    cursor pair_cursor = end_of(pairs);
+    cursor symbol_cursor = end_of(symbols);
+    cursor typed_cursor = end_of(typed);
+
     for (size_t i = 0; i < globals.len; i++)
         *globals.items[i] = copy(*globals.items[i]);
     for (size_t i = 0; i < locals.len; i++)
@@ -225,12 +285,16 @@ static void collect(bool is_minor) {
     for (size_t i = 0; i < minim_values.len; i++)
         minim_values.items[i] = copy(minim_values.items[i]);
 
-    minim_space *pairs = &minim_heap.spaces[MINIM_SPACE_PAIR];
-    minim_space *symbols = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
-    minim_space *typed = &minim_heap.spaces[MINIM_SPACE_TYPED];
-    cursor pair_cursor = {0};
-    cursor symbol_cursor = {0};
-    cursor typed_cursor = {0};
+    // In a major collection, the remembered objects are in from-space, and
+    // their chunks are freed below, bits and all.
+    if (minor) {
+        for (size_t i = 0; i < remembered.len; i++) {
+            uint64_t bit;
+            *remembered_word(remembered.items[i], &bit) &= ~bit;
+            scan_object(remembered.items[i]);
+        }
+    }
+    remembered.len = 0;
     bool scanned;
     do {
         scanned = scan(pairs, &pair_cursor, scan_two_words);

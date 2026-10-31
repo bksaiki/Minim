@@ -63,6 +63,12 @@ enum {
     MINIM_TYPE_PRIMITIVE = 0x4,
 };
 
+/** Allocation constants. */
+enum {
+    MINIM_ALIGN = 16,              ///< object alignment and size unit
+    MINIM_CHUNK_SIZE = 16 * 1024,  ///< heap chunk size and alignment in bytes
+};
+
 /** Object sizes in bytes, before rounding to the allocation unit. */
 enum {
     MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
@@ -283,6 +289,21 @@ void minim_gc_collect_minor(void);
 /** Collects both generations, copying every live object. */
 void minim_gc_collect_major(void);
 
+/** Remembers the old object `obj` until the next collection. */
+void minim_gc_remember(minim_obj obj);
+
+/**
+ * Write barrier, after storing `x` into the object `obj`: an old object that
+ * may now point to a young one is remembered.  The first byte of an object's
+ * chunk, found by alignment, is its generation.
+ */
+static inline void minim_gc_write(minim_obj obj, minim_obj x) {
+    minim_obj tag = minim_tag(x);
+    if (tag != MINIM_TAG_FIXNUM && tag != MINIM_TAG_IMMEDIATE
+        && *(const unsigned char *)(obj & ~(minim_obj)(MINIM_CHUNK_SIZE - 1)) != 0)
+        minim_gc_remember(obj);
+}
+
 // Pairs
 
 /** New pair. */
@@ -304,12 +325,14 @@ static inline minim_obj minim_cdr(minim_obj p) {
 static inline void minim_set_car(minim_obj p, minim_obj x) {
     assert(minim_is_pair(p));
     ((minim_obj *)(p - MINIM_TAG_PAIR))[0] = x;
+    minim_gc_write(p, x);
 }
 
 /** Sets the second field of the pair `p`. */
 static inline void minim_set_cdr(minim_obj p, minim_obj x) {
     assert(minim_is_pair(p));
     ((minim_obj *)(p - MINIM_TAG_PAIR))[1] = x;
+    minim_gc_write(p, x);
 }
 
 // Vectors
@@ -333,6 +356,7 @@ static inline minim_obj minim_vector_ref(minim_obj v, size_t i) {
 static inline void minim_vector_set(minim_obj v, size_t i, minim_obj x) {
     assert(i < minim_vector_length(v));
     ((minim_obj *)(v - MINIM_TAG_TYPED))[1 + i] = x;
+    minim_gc_write(v, x);
 }
 
 // Strings: arrays of Unicode scalar values
@@ -416,6 +440,7 @@ static inline minim_obj minim_symbol_value(minim_obj sym) {
 static inline void minim_set_symbol_value(minim_obj sym, minim_obj x) {
     assert(minim_is_symbol(sym));
     ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[1] = x;
+    minim_gc_write(sym, x);
 }
 
 // Procedures
