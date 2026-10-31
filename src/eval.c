@@ -102,21 +102,11 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
             expr = minim_car(minim_cdr(expr));
             goto eval;
         } else if (x == minim_sym_define) {
-            x = len >= 2 ? minim_car(minim_cdr(expr)) : MINIM_NIL;
-            if (minim_is_symbol(x) && len == 3) {
-                k = make_frame(K_DEFINE, k, x, env, MINIM_NIL);
-                expr = minim_car(minim_cdr(minim_cdr(expr)));
-                goto eval;
-            }
-            // (define (f . params) body ...) binds f to (lambda params body ...).
-            if (!minim_is_pair(x) || !minim_is_symbol(minim_car(x)) || len < 3
-                || !valid_params(minim_cdr(x)))
+            if (len != 3 || !minim_is_symbol(minim_car(minim_cdr(expr))))
                 minim_error("bad syntax", expr);
-            val = minim_cons(minim_cdr(x), minim_cdr(minim_cdr(expr)));
-            val = minim_make_closure(val, env);
-            minim_env_define(env, minim_car(x), val);
-            val = MINIM_VOID;
-            goto ret;
+            k = make_frame(K_DEFINE, k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
+            expr = minim_car(minim_cdr(minim_cdr(expr)));
+            goto eval;
         } else if (x == minim_sym_set) {
             if (len != 3 || !minim_is_symbol(minim_car(minim_cdr(expr))))
                 minim_error("bad syntax", expr);

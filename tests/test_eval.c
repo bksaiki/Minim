@@ -78,7 +78,7 @@ static void test_special_forms(void) {
     CHECK(evals_to("(if #f 1)", "#<void>"));
     CHECK(evals_to("(define x 5) x", "5"));
     CHECK(evals_to("(define x 1) (set! x 2) x", "2"));
-    CHECK(evals_to("(define (f a b) (+ a b)) (f 2 3)", "5"));
+    CHECK(evals_to("(define f (lambda (a b) (+ a b))) (f 2 3)", "5"));
     CHECK(evals_to("(define x 1)", "#<void>"));
     CHECK(evals_to("((lambda (x y) (+ x y)) 1 2)", "3"));
     CHECK(evals_to("(lambda (x) x)", "#<procedure>"));
@@ -91,14 +91,15 @@ static void test_parameters(void) {
     CHECK(evals_to("((lambda (x . r) r) 1)", "()"));
     CHECK(evals_to("((lambda r r))", "()"));
     CHECK(evals_to("((lambda r r) 1 2)", "(1 2)"));
-    CHECK(evals_to("(define (f . r) r) (f 1 2)", "(1 2)"));
+    CHECK(evals_to("(define f (lambda r r)) (f 1 2)", "(1 2)"));
 }
 
 static void test_closures(void) {
     const char *counter =
-        "(define (make-counter)"
-        "  (define n 0)"
-        "  (lambda () (set! n (+ n 1)) n))"
+        "(define make-counter"
+        "  (lambda ()"
+        "    (define n 0)"
+        "    (lambda () (set! n (+ n 1)) n)))"
         "(define a (make-counter))"
         "(define b (make-counter))";
     char src[512];
@@ -107,10 +108,10 @@ static void test_closures(void) {
     snprintf(src, sizeof(src), "%s (a) (b) (b)", counter);
     CHECK(evals_to(src, "2"));
 
-    CHECK(evals_to("(define (f) (define a 1) (define b 2) (+ a b)) (f)", "3"));
-    CHECK(evals_to("(define (adder n) (lambda (x) (+ x n))) ((adder 3) 4)", "7"));
-    CHECK(evals_to("(define x 1) (define (f x) (set! x 5) x) (f 0)", "5"));
-    CHECK(evals_to("(define x 1) (define (f x) (set! x 5) x) (f 0) x", "1"));
+    CHECK(evals_to("(define f (lambda () (define a 1) (define b 2) (+ a b))) (f)", "3"));
+    CHECK(evals_to("(define adder (lambda (n) (lambda (x) (+ x n)))) ((adder 3) 4)", "7"));
+    CHECK(evals_to("(define x 1) (define f (lambda (x) (set! x 5) x)) (f 0)", "5"));
+    CHECK(evals_to("(define x 1) (define f (lambda (x) (set! x 5) x)) (f 0) x", "1"));
 }
 
 static void test_primitives(void) {
@@ -148,7 +149,8 @@ static void test_errors(void) {
     CHECK(fails_with("(quote 1 2)", "bad syntax"));
     CHECK(fails_with("(define)", "bad syntax"));
     CHECK(fails_with("(define x)", "bad syntax"));
-    CHECK(fails_with("(define (f))", "bad syntax"));
+    CHECK(fails_with("(define x 1 2)", "bad syntax"));
+    CHECK(fails_with("(define (f) 1)", "bad syntax"));
     CHECK(fails_with("(set! 1 2)", "bad syntax"));
     CHECK(fails_with("(lambda (1) 1)", "bad syntax"));
     CHECK(fails_with("(lambda (x))", "bad syntax"));
@@ -179,9 +181,9 @@ static void test_primitive_allocates(void) {
 
 static void test_tail_calls(void) {
 #ifdef MINIM_GC_STRESS
-    const char *src = "(define (loop n) (if (= n 0) 'done (loop (- n 1)))) (loop 10000)";
+    const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 10000)";
 #else
-    const char *src = "(define (loop n) (if (= n 0) 'done (loop (- n 1)))) (loop 100000)";
+    const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 100000)";
 #endif
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.

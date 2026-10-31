@@ -24,7 +24,7 @@ This plan adds procedures, an evaluator, and a primitive library, so the REPL
 evaluates what it reads:
 
 ```
-> (define (count n) (if (= n 0) 'done (count (- n 1))))
+> (define count (lambda (n) (if (= n 0) 'done (count (- n 1)))))
 > (count 1000000)
 done
 > (car 5)
@@ -94,8 +94,8 @@ stack stays valid across allocation, but not across a push, which may
   `(bindings . parent)` whose bindings are an association list; `'()` is the
   global environment, which uses symbol value slots.  An internal `define`
   prepends to the innermost frame's bindings.
-- **Special forms:** `quote`, `if`, `define` (variable and `(define (f . args)
-  ...)`), `set!`, `lambda` (fixed and rest parameters), `begin`.  Their symbols
+- **Special forms:** `quote`, `if`, `define` (only `(define name expr)`),
+  `set!`, `lambda` (fixed and rest parameters), `begin`.  Their symbols
   are interned at init into C globals registered as roots.
 - **Application** pushes the operator and then each operand, left to right.
   With `n = sp - base - 1` operands, a primitive gets `fn(&stack[base + 1],
@@ -211,6 +211,9 @@ cmake --build --preset stress && ctest --preset stress -R 'eval|repl'
 - `make-vector` fills with 0 by default, as Chez does.
 - `symbol->string` returns the symbol's immutable name, not a copy.
 - Mutators, `write`, and `newline` return void.
+- Later: `define` accepts only `(define name expr)`.  The procedure shorthand
+  `(define (f . params) body ...)` was removed; write
+  `(define f (lambda params body ...))`.
 
 - `src/prims.c`:
   - pairs: `set-car!`, `set-cdr!`, `pair?`, `null?`, `list`;
