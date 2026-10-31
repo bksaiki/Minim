@@ -269,52 +269,63 @@ static minim_obj prim_eq(minim_obj *args, size_t n) {
     return boolean(args[0] == args[1]);
 }
 
-// Pairs of values `equal?` has yet to compare, as `a0, b0, a1, b1, ...`.
-// Static, so it is reused across calls.
-static struct {
+// Pairs of values `equal?` has yet to compare, as `a0, b0, a1, b1, ...`.  It
+// starts in `small` and moves to the C heap if it outgrows it.
+typedef struct pending {
     minim_obj *items;
     size_t len;
     size_t cap;
+    minim_obj small[64];
 } pending;
 
 // Queues `a` and `b` for comparison unless they are the same object.
-static void pending_push(minim_obj a, minim_obj b) {
+static void pending_push(pending *p, minim_obj a, minim_obj b) {
     if (a == b)
         return;
-    if (pending.len + 2 > pending.cap) {
-        pending.cap = pending.cap ? 2 * pending.cap : 64;
-        pending.items = realloc(pending.items, pending.cap * sizeof(minim_obj));
-        if (pending.items == NULL)
+    if (p->len + 2 > p->cap) {
+        p->cap *= 2;
+        minim_obj *items = p->items == p->small
+            ? malloc(p->cap * sizeof(minim_obj))
+            : realloc(p->items, p->cap * sizeof(minim_obj));
+        if (items == NULL)
             minim_out_of_memory();
+        if (p->items == p->small)
+            memcpy(items, p->small, p->len * sizeof(minim_obj));
+        p->items = items;
     }
-    pending.items[pending.len++] = a;
-    pending.items[pending.len++] = b;
+    p->items[p->len++] = a;
+    p->items[p->len++] = b;
 }
 
 // Compares with an explicit stack, so deep structure can't overflow the C
-// stack.  Nothing here allocates on the heap, so queued values stay valid.
+// stack.  Nothing here allocates on the heap, so queued values stay valid,
+// and nothing raises, so the stack is always freed.
 static bool is_equal(minim_obj a, minim_obj b) {
-    pending.len = 0;
-    pending_push(a, b);
-    while (pending.len > 0) {
-        b = pending.items[--pending.len];
-        a = pending.items[--pending.len];
+    pending p = {.cap = sizeof(p.small) / sizeof(p.small[0])};
+    p.items = p.small;
+    pending_push(&p, a, b);
+
+    bool result = true;
+    while (result && p.len > 0) {
+        b = p.items[--p.len];
+        a = p.items[--p.len];
         if (minim_is_pair(a) && minim_is_pair(b)) {
-            pending_push(minim_cdr(a), minim_cdr(b));
-            pending_push(minim_car(a), minim_car(b));
+            pending_push(&p, minim_cdr(a), minim_cdr(b));
+            pending_push(&p, minim_car(a), minim_car(b));
         } else if (minim_is_vector(a) && minim_is_vector(b)) {
-            if (minim_vector_length(a) != minim_vector_length(b))
-                return false;
-            for (size_t i = 0; i < minim_vector_length(a); i++)
-                pending_push(minim_vector_ref(a, i), minim_vector_ref(b, i));
+            result = minim_vector_length(a) == minim_vector_length(b);
+            for (size_t i = 0; result && i < minim_vector_length(a); i++)
+                pending_push(&p, minim_vector_ref(a, i), minim_vector_ref(b, i));
         } else if (minim_is_string(a) && minim_is_string(b)) {
-            if (!minim_string_equal(a, b))
-                return false;
+            result = minim_string_equal(a, b);
         } else {
-            return false;  // distinct, and not both pairs, vectors, or strings
+            result = false;  // distinct, and not both pairs, vectors, or strings
         }
     }
-    return true;
+
+    if (p.items != p.small)
+        free(p.items);
+    return result;
 }
 
 static minim_obj prim_equal(minim_obj *args, size_t n) {

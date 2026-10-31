@@ -41,7 +41,7 @@ string and char procedures are easier to build on these primitives.
 |---|---|---|
 | `eqv?` | the same function as `eq?` | they differ only for flonums and bignums, which don't exist until milestone 6 |
 | `equal?` | pairs, vectors, and strings compared structurally; everything else by `eqv?` | R7RS |
-| `equal?` traversal | an explicit stack in a static C buffer, not C recursion | deeply car-nested data would overflow the C stack; the buffer is static so it can't leak, and `equal?` never allocates on the heap, so raw values in it stay valid |
+| `equal?` traversal | an explicit stack, not C recursion: 64 entries on the C stack, moving to `malloc`'d memory if it outgrows them, freed before returning | deeply car-nested data would overflow the C stack; `equal?` never raises, so the buffer can't leak, and never allocates on the heap, so raw values in it stay valid |
 | Cycles in `equal?` | loop forever | the roadmap defers cycle detection |
 | Comparison helper | generalize `compare` in `prims.c` to take a key function (fixnum value or char code) | one helper serves fixnum and char comparisons; strings compare via a three-way `string_compare` checked against 0 with the same predicates |
 | `make-string` default fill | `#\space` | R7RS leaves it unspecified; a space prints readably |
@@ -71,6 +71,9 @@ Unicode tables; `string-copy`, `string-fill!`, and the optional `start` /
 
 - `string_equal` moved from `symbol.c` to `minim.h` as
   `minim_string_equal`, shared by the symbol table and `equal?`.
+- Later, in review: the stack was first a static buffer that kept its peak
+  size for the rest of the session (16 MiB after comparing two 1M-element
+  vectors).  It is now per call, as above.
 - `equal?` skips queuing pairs of identical objects, so car-nested lists with
   `'()` tails keep the stack at two entries per level.
 - `tests/test_prims.c` calls the primitive's function directly rather than
