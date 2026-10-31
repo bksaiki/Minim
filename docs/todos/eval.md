@@ -17,7 +17,7 @@ breakdown, one phase per commit.
 
 ## Context
 
-The REPL (`docs/todos/repl.md`) reads data, prints them back, and recovers
+The REPL (`docs/design/repl.md`) reads data, prints them back, and recovers
 from errors with `minim_error` / `minim_catch`.  Nothing evaluates them.
 
 This plan adds procedures, an evaluator, and a primitive library, so the REPL
