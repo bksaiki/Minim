@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 /**
  * A tagged Scheme value.  The low 3 bits are the primary tag; heap objects
@@ -340,6 +341,13 @@ static inline uint32_t *minim_string_chars(minim_obj s) {
 static inline uint32_t minim_string_ref(minim_obj s, size_t i) {
     assert(i < minim_string_length(s));
     return minim_string_chars(s)[i];
+}
+
+/** Whether the strings `a` and `b` have the same chars. */
+static inline bool minim_string_equal(minim_obj a, minim_obj b) {
+    size_t n = minim_string_length(a);
+    return n == minim_string_length(b)
+        && memcmp(minim_string_chars(a), minim_string_chars(b), n * sizeof(uint32_t)) == 0;
 }
 
 /** Sets char `i` of the mutable string `s`. */

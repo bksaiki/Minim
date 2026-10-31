@@ -1,4 +1,4 @@
-# Equality, chars, and strings: roadmap milestone 1
+# Equality, hashing, chars, and strings: roadmap milestone 1
 
 Implementation plan.  The design is settled; what follows is the phase
 breakdown, one phase per commit.
@@ -29,6 +29,7 @@ not build or compare them:
 | `(char<? #\a #\b)` | `error: unbound variable: char<?` |
 | `(string-append "a" "b")` | `error: unbound variable: string-append` |
 | `(string=? "a" "a")` | `error: unbound variable: string=?` |
+| `(equal-hash '(1 2))` | `error: unbound variable: equal-hash` |
 | `(string-set! (symbol->string 'a) 0 #\b)` | not defined; the C accessor `minim_string_set` would hit an `assert` on the immutable name |
 
 Milestone 2's prelude needs these: `member` and `assoc` use `equal?`, and
@@ -48,9 +49,16 @@ string and char procedures are easier to build on these primitives.
 | `substring` | `(substring s start end)`, all required | as in R7RS |
 | Comparison sets | all five for chars and strings (`=?`, `<?`, `>?`, `<=?`, `>=?`) | one line each with the shared helper; matches the fixnum comparisons |
 | String literals | mutable; only symbol names are immutable | simplest; revisit with the conformance suite (roadmap milestone 9) |
+| Hashing | `string-hash` and `equal-hash`, next to `equal?` in `prims.c` | a hash must agree with its equality (`equal?` values hash equal); defining them together keeps that checkable |
+| String hash | FNV-1a over the chars, as `minim_string_hash` shared with the symbol table | the symbol table already uses it |
+| `equal-hash` traversal | at most 64 nodes of pairs and vectors | O(1) per call, and terminates on cyclic data, as bounded hashes in Chez and R6RS implementations do |
+| `equal-hash` of procedures | a primitive hashes its C function pointer; every closure hashes to one constant | both are stable under the moving collector; closures are `equal?` only when `eq?`, which needs the `eq?`-hash design of milestone 7 to spread well |
+| Hash results | non-negative fixnums | usable as indices from Scheme |
 | Allocation inside string primitives | re-read `minim_string_chars` after every allocation | the pointer is only valid until the next allocation, but `args` itself is safe (the value stack is updated in place) |
 
-Out of scope: case-insensitive comparisons (`char-ci=?`, `string-ci=?`),
+Out of scope: `eq-hash` and `eqv-hash` of heap objects, since hashing by
+address must survive the moving collector (roadmap milestone 7);
+case-insensitive comparisons (`char-ci=?`, `string-ci=?`),
 character classes and case (`char-alphabetic?`, `char-upcase`), which need
 Unicode tables; `string-copy`, `string-fill!`, and the optional `start` /
 `end` arguments of `string->list`.
@@ -58,6 +66,16 @@ Unicode tables; `string-copy`, `string-fill!`, and the optional `start` /
 ## Phases
 
 ### Phase 1 - Equality
+
+**Done.**  Details settled during the phase:
+
+- `string_equal` moved from `symbol.c` to `minim.h` as
+  `minim_string_equal`, shared by the symbol table and `equal?`.
+- `equal?` skips queuing pairs of identical objects, so car-nested lists with
+  `'()` tails keep the stack at two entries per level.
+- `tests/test_prims.c` calls the primitive's function directly rather than
+  through the evaluator.  It looks the primitive up before calling, since
+  interning allocates and could move the structures being compared.
 
 - `src/prims.c`:
   - `eqv?`, registered with `eq?`'s function;
@@ -129,6 +147,32 @@ Tests (`tests/repl/strings.scm` / `.out` / `.err`, also in `stress`):
 ```sh
 cmake --build --preset dev && ctest --preset dev -R strings
 cmake --build --preset stress && ctest --preset stress -R strings
+```
+
+### Phase 4 - Hashing
+
+- `include/minim.h`: `minim_string_hash`, moved from `symbol.c`'s `hash`.
+- `src/prims.c`, next to `equal?`:
+  - `string-hash`;
+  - `equal-hash`, combining element hashes over at most 64 nodes of pairs
+    and vectors, with symbols hashed by name, primitives by function
+    pointer, and closures to a constant.
+- `docs/design/primitives.md`: both, in "Identity and types" (`equal-hash`)
+  and "Strings and symbols" (`string-hash`).
+
+Separate because it builds on Phase 1's `equal?` and Phase 3's strings, and
+its invariant (equal values hash equal) is checked against both.
+
+Tests (`tests/repl/hashing.scm` / `.out`):
+
+- `equal?` values hash equal: lists built by `list` and by quoting, nested
+  vectors, strings built by `string-append` and by literals, symbols;
+- `(string-hash "a")` and `(string-hash "b")` differ;
+- results are fixnums (`fixnum?`) and non-negative;
+- a cyclic list (built with `set-cdr!`) hashes without hanging.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R hashing
 ```
 
 ### After the last phase

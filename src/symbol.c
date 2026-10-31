@@ -37,12 +37,6 @@ static uint64_t hash(minim_obj str) {
     return h;
 }
 
-static bool string_equal(minim_obj a, minim_obj b) {
-    size_t n = minim_string_length(a);
-    return n == minim_string_length(b)
-        && memcmp(minim_string_chars(a), minim_string_chars(b), n * sizeof(uint32_t)) == 0;
-}
-
 // Returns the slot holding the symbol named `str`, or the empty slot where it
 // belongs.
 static size_t find_slot(minim_obj str) {
@@ -50,7 +44,7 @@ static size_t find_slot(minim_obj str) {
     size_t i = hash(str) & mask;
     for (;;) {
         minim_obj sym = minim_vector_ref(table, i);
-        if (sym == EMPTY || string_equal(minim_symbol_name(sym), str))
+        if (sym == EMPTY || minim_string_equal(minim_symbol_name(sym), str))
             return i;
         i = (i + 1) & mask;
     }

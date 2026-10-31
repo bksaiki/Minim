@@ -35,11 +35,11 @@ Open items).
 Ordered by dependency, then by how much each unblocks.  Sizes are rough:
 S is one or two phases, M three to five, L more.
 
-### 1. Equality, chars, and strings (S)
+### 1. Equality, hashing, chars, and strings (S)
 
 Primitives that later milestones assume:
 
-- `eqv?`, `equal?`;
+- `eqv?`, `equal?`, and the content hashes `string-hash` and `equal-hash`;
 - `char?`, `char->integer`, `integer->char`, `char=?`, `char<?`;
 - `make-string`, `string-set!`, `string-append`, `substring`, `string=?`,
   `string<?`, `string->list`, `list->string`.
@@ -119,9 +119,9 @@ hand-written bignums or GMP (see Open items).
 ### 7. More data types (M)
 
 - Records: `define-record-type`, as typed objects with a type descriptor.
-- Hashtables: `eq?`-based and `equal?`-based.  Address hashing must survive
-  the moving collector, by rehashing after a collection or by hashing a
-  stable per-object value.
+- Hashtables: `eq?`-based and `equal?`-based (`equal-hash` exists from
+  milestone 1).  `eq?` hashing must survive the moving collector, by rehashing
+  after a collection or by hashing a stable per-object value.
 - Bytevectors (an unscanned typed object), and boxes.
 
 Depends on 3 (`define-record-type` is a macro).

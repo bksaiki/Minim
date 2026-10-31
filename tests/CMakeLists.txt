@@ -18,6 +18,7 @@ minim_add_test(error)
 minim_add_test(read)
 minim_add_test(procedure)
 minim_add_test(eval INTERNAL)
+minim_add_test(prims)
 
 # minim_add_repl_test(name): pipes repl/<name>.scm into minim and compares
 # stdout with repl/<name>.out, and stderr with repl/<name>.err if it exists.
@@ -33,6 +34,7 @@ function(minim_add_repl_test name)
 endfunction()
 
 minim_add_repl_test(echo)
+minim_add_repl_test(equality)
 minim_add_repl_test(eval)
 minim_add_repl_test(prims)
 minim_add_repl_test(tail)

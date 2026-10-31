@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 
+#include "heap.h"
 #include "minim.h"
 
 static minim_obj boolean(bool b) {
@@ -213,6 +214,59 @@ static minim_obj prim_eq(minim_obj *args, size_t n) {
     return boolean(args[0] == args[1]);
 }
 
+// Pairs of values `equal?` has yet to compare, as `a0, b0, a1, b1, ...`.
+// Static, so it is reused across calls.
+static struct {
+    minim_obj *items;
+    size_t len;
+    size_t cap;
+} pending;
+
+// Queues `a` and `b` for comparison unless they are the same object.
+static void pending_push(minim_obj a, minim_obj b) {
+    if (a == b)
+        return;
+    if (pending.len + 2 > pending.cap) {
+        pending.cap = pending.cap ? 2 * pending.cap : 64;
+        pending.items = realloc(pending.items, pending.cap * sizeof(minim_obj));
+        if (pending.items == NULL)
+            minim_out_of_memory();
+    }
+    pending.items[pending.len++] = a;
+    pending.items[pending.len++] = b;
+}
+
+// Compares with an explicit stack, so deep structure can't overflow the C
+// stack.  Nothing here allocates on the heap, so queued values stay valid.
+static bool is_equal(minim_obj a, minim_obj b) {
+    pending.len = 0;
+    pending_push(a, b);
+    while (pending.len > 0) {
+        b = pending.items[--pending.len];
+        a = pending.items[--pending.len];
+        if (minim_is_pair(a) && minim_is_pair(b)) {
+            pending_push(minim_cdr(a), minim_cdr(b));
+            pending_push(minim_car(a), minim_car(b));
+        } else if (minim_is_vector(a) && minim_is_vector(b)) {
+            if (minim_vector_length(a) != minim_vector_length(b))
+                return false;
+            for (size_t i = 0; i < minim_vector_length(a); i++)
+                pending_push(minim_vector_ref(a, i), minim_vector_ref(b, i));
+        } else if (minim_is_string(a) && minim_is_string(b)) {
+            if (!minim_string_equal(a, b))
+                return false;
+        } else {
+            return false;  // distinct, and not both pairs, vectors, or strings
+        }
+    }
+    return true;
+}
+
+static minim_obj prim_equal(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(is_equal(args[0], args[1]));
+}
+
 static minim_obj prim_not(minim_obj *args, size_t n) {
     (void)n;
     return boolean(args[0] == MINIM_FALSE);
@@ -355,6 +409,8 @@ void minim_prims_init(void) {
     define_primitive("length", prim_length, 1, 1);
     define_primitive("apply", minim_prim_apply, 2, MINIM_VARIADIC);
     define_primitive("eq?", prim_eq, 2, 2);
+    define_primitive("eqv?", prim_eq, 2, 2);
+    define_primitive("equal?", prim_equal, 2, 2);
     define_primitive("not", prim_not, 1, 1);
     define_primitive("symbol?", prim_is_symbol, 1, 1);
     define_primitive("procedure?", prim_is_procedure, 1, 1);

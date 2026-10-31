@@ -59,6 +59,8 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 | Call | Result |
 |---|---|
 | `(eq? a b)` | whether `a` and `b` are the same object |
+| `(eqv? a b)` | same as `eq?` (they will differ for flonums and bignums) |
+| `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else by `eqv?`.  Cyclic data loops forever |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
 
