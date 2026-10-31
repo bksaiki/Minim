@@ -26,22 +26,11 @@ enum {
 static minim_obj table;
 static size_t count;
 
-static uint64_t hash(minim_obj str) {
-    const uint32_t *chars = minim_string_chars(str);
-    size_t n = minim_string_length(str);
-    uint64_t h = 14695981039346656037u;  // FNV-1a
-    for (size_t i = 0; i < n; i++) {
-        h ^= chars[i];
-        h *= 1099511628211u;
-    }
-    return h;
-}
-
 // Returns the slot holding the symbol named `str`, or the empty slot where it
 // belongs.
 static size_t find_slot(minim_obj str) {
     size_t mask = minim_vector_length(table) - 1;
-    size_t i = hash(str) & mask;
+    size_t i = minim_string_hash(str) & mask;
     for (;;) {
         minim_obj sym = minim_vector_ref(table, i);
         if (sym == EMPTY || minim_string_equal(minim_symbol_name(sym), str))

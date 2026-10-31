@@ -350,6 +350,23 @@ static inline bool minim_string_equal(minim_obj a, minim_obj b) {
         && memcmp(minim_string_chars(a), minim_string_chars(b), n * sizeof(uint32_t)) == 0;
 }
 
+/** Initial value of a hash (the FNV-1a offset basis). */
+#define MINIM_HASH_INIT UINT64_C(14695981039346656037)
+
+/** Mixes `x` into the hash `h` (one FNV-1a step). */
+static inline uint64_t minim_hash_mix(uint64_t h, uint64_t x) {
+    return (h ^ x) * UINT64_C(1099511628211);
+}
+
+/** Hash of the chars of the string `s`. */
+static inline uint64_t minim_string_hash(minim_obj s) {
+    const uint32_t *chars = minim_string_chars(s);
+    uint64_t h = MINIM_HASH_INIT;
+    for (size_t i = 0; i < minim_string_length(s); i++)
+        h = minim_hash_mix(h, chars[i]);
+    return h;
+}
+
 /** Sets char `i` of the mutable string `s`. */
 static inline void minim_string_set(minim_obj s, size_t i, uint32_t c) {
     assert(i < minim_string_length(s) && minim_is_scalar_value(c));

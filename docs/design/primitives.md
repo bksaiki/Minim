@@ -70,6 +70,7 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 | `(eq? a b)` | whether `a` and `b` are the same object |
 | `(eqv? a b)` | same as `eq?` (they will differ for flonums and bignums) |
 | `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else by `eqv?`.  Cyclic data loops forever |
+| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
 
@@ -100,6 +101,7 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 | `(list->string lst)` | new string of the chars in the list `lst` |
 | `(symbol->string sym)` | the name of `sym`, an immutable string (not a copy) |
 | `(string->symbol s)` | the symbol named `s` |
+| `(string-hash s)` | a non-negative fixnum, equal for `string=?` strings |
 
 ### Output
 

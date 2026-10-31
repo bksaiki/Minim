@@ -322,6 +322,58 @@ static minim_obj prim_equal(minim_obj *args, size_t n) {
     return boolean(is_equal(args[0], args[1]));
 }
 
+// Values `equal-hash` visits, at most; the rest of the structure is ignored,
+// which keeps it O(1) and terminating on cyclic data.
+enum { HASH_BUDGET = 64 };
+
+// Kind markers, so different kinds with the same contents hash differently
+enum { HASH_PAIR = 1, HASH_VECTOR, HASH_SYMBOL, HASH_CLOSURE };
+
+// Hash agreeing with `equal?`: equal values visit the same nodes in the same
+// order, so they consume the budget identically.
+static uint64_t equal_hash(minim_obj x, int *budget) {
+    if (--*budget < 0)
+        return 0;
+    if (minim_is_string(x))
+        return minim_string_hash(x);
+    if (minim_is_symbol(x))
+        return minim_hash_mix(minim_string_hash(minim_symbol_name(x)), HASH_SYMBOL);
+    if (minim_is_primitive(x))
+        return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
+    if (minim_is_closure(x))
+        return HASH_CLOSURE;  // closures are equal? only when eq?
+    if (minim_is_pair(x)) {
+        uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);
+        h = minim_hash_mix(h, equal_hash(minim_car(x), budget));
+        return minim_hash_mix(h, equal_hash(minim_cdr(x), budget));
+    }
+    if (minim_is_vector(x)) {
+        uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_VECTOR);
+        h = minim_hash_mix(h, minim_vector_length(x));
+        for (size_t i = 0; i < minim_vector_length(x) && *budget > 0; i++)
+            h = minim_hash_mix(h, equal_hash(minim_vector_ref(x, i), budget));
+        return h;
+    }
+    return minim_hash_mix(MINIM_HASH_INIT, x);  // immediates
+}
+
+// Non-negative fixnum for the hash `h`
+static minim_obj hash_result(uint64_t h) {
+    return minim_fixnum((intptr_t)(h & (uint64_t)MINIM_FIXNUM_MAX));
+}
+
+static minim_obj prim_equal_hash(minim_obj *args, size_t n) {
+    (void)n;
+    int budget = HASH_BUDGET;
+    return hash_result(equal_hash(args[0], &budget));
+}
+
+static minim_obj prim_string_hash(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_string(args[0]), "string-hash: not a string", args[0]);
+    return hash_result(minim_string_hash(args[0]));
+}
+
 static minim_obj prim_not(minim_obj *args, size_t n) {
     (void)n;
     return boolean(args[0] == MINIM_FALSE);
@@ -594,6 +646,8 @@ void minim_prims_init(void) {
     define_primitive("eq?", prim_eq, 2, 2);
     define_primitive("eqv?", prim_eq, 2, 2);
     define_primitive("equal?", prim_equal, 2, 2);
+    define_primitive("equal-hash", prim_equal_hash, 1, 1);
+    define_primitive("string-hash", prim_string_hash, 1, 1);
     define_primitive("not", prim_not, 1, 1);
     define_primitive("symbol?", prim_is_symbol, 1, 1);
     define_primitive("procedure?", prim_is_procedure, 1, 1);

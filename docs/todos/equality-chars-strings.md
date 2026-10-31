@@ -174,6 +174,16 @@ cmake --build --preset stress && ctest --preset stress -R strings
 
 ### Phase 4 - Hashing
 
+**Done.**  Details settled during the phase:
+
+- `minim.h` gained `MINIM_HASH_INIT` and `minim_hash_mix` (one FNV-1a step)
+  alongside `minim_string_hash`, so the symbol table, `string-hash`, and
+  `equal-hash` share one mixing function.
+- The 64-value budget counts every value visited, not just pairs and vectors;
+  a vector's loop stops once it runs out, so a large vector costs O(1) too.
+- Kind markers keep a symbol, a string with the same name, a pair, and a
+  vector with the same elements from colliding systematically.
+
 - `include/minim.h`: `minim_string_hash`, moved from `symbol.c`'s `hash`.
 - `src/prims.c`, next to `equal?`:
   - `string-hash`;
