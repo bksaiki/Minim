@@ -15,6 +15,9 @@ extern minim_obj minim_sym_begin;
 /** The symbol `define`. */
 extern minim_obj minim_sym_define;
 
+/** The symbol `%expand`, the expander called on each top-level form. */
+extern minim_obj minim_sym_expand;
+
 /** The symbol `if`. */
 extern minim_obj minim_sym_if;
 

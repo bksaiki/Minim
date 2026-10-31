@@ -169,6 +169,17 @@ cmake --build --preset dev && ctest --preset dev -R 'read|print|echo'
 
 ### Phase 2 - Expansion hook
 
+**Done.**  Details settled during the phase:
+
+- A `toplevel` entry in `minim_eval` resets `env`, then either evaluates the
+  form or pushes a `K_EXPAND` frame and applies `%expand` to it on the value
+  stack.  `load` now pushes a `K_TOPLEVEL` frame over the file's forms
+  instead of running them as a `K_SEQ` body; an empty file needs no special
+  case.
+- The tests are a REPL golden test (`tests/repl/expand.scm`, with
+  `load/expand.scm`) rather than `tests/test_eval.c`: defining `%expand` there
+  would leak into the unit tests that follow.
+
 - `src/symbol.c`, `src/symbol.h`: the symbol `%expand`.
 - `src/eval.c`: top-level forms run through a new frame pair.  `K_EXPAND`
   receives an expanded form and evaluates it in the global environment;

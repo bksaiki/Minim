@@ -534,7 +534,7 @@ void minim_write_error(FILE *out);
 
 // Evaluation
 
-/** Value of `expr` in the global environment.  Raises on errors. */
+/** Value of the top-level form `expr`, expanded by `%expand` if bound.  Raises on errors. */
 minim_obj minim_eval(minim_obj expr);
 
 // Reading

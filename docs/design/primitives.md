@@ -14,8 +14,8 @@ evaluator recognizes their function pointers (`minim_prim_apply`,
   `[f a ... elements of lst]` and applies `f`, so `apply` in tail position is
   a tail call.
 - `load` reads the whole file with `minim_read_file` (`src/read.h`), which
-  always closes it, even on a read error.  It then evaluates the forms, then
-  void, as a body in the global environment.  A read error therefore runs
+  always closes it, even on a read error.  It then runs the forms as top-level
+  forms (see `eval.md`) and returns void.  A read error therefore runs
   none of the file.
 
 ## Equality and hashing
@@ -136,7 +136,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 
 | Call | Result |
 |---|---|
-| `(load path)` | evaluates the forms in the file `path`, relative to the current directory, in the global environment; void |
+| `(load path)` | runs the forms in the file `path`, relative to the current directory, as top-level forms; void |
 
 ## Conventions
 
