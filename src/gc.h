@@ -44,8 +44,8 @@ extern struct minim_gc {
     size_t budget;               ///< bytes to allocate before the next collection
     size_t major_base;           ///< bytes in the old generation after the last major collection
     size_t scheduled;            ///< calls to minim_gc_collect
-    size_t minor_collections;
-    size_t major_collections;
+    /** Collections, by the oldest generation each collected. */
+    size_t collections[MINIM_MAX_GENERATION + 1];
     unsigned collecting;         ///< in a collection, the oldest generation it collects
     unsigned target;             ///< in a collection, the generation survivors go to
 } minim_gc;

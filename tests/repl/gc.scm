@@ -3,16 +3,20 @@
 (collect-nursery-bytes)
 (collect-generation-radix 4)
 (collect-generation-radix)
+(collect-maximum-generation 3)
+(collect-maximum-generation)
 (collect-major-growth 3)
 (collect-major-growth)
 (collect-major-min-bytes 0)
 (collect-major-min-bytes)
 (collect)
 
-; Programs behave the same when every allocation collects, with every second
-; collection major, and with any growth of the old generation also major.
+; Programs behave the same when every allocation collects, through three old
+; generations on a radix-2 schedule, and with any growth of the old
+; generations also collecting them all.
 (collect-nursery-bytes 1)
 (collect-generation-radix 2)
+(collect-maximum-generation 3)
 (collect-major-growth 1)
 (define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))
 (define lst (build 1000 '()))
@@ -24,6 +28,7 @@
 v
 (collect-nursery-bytes 1048576)
 (collect-generation-radix 0)
+(collect-maximum-generation 1)
 (collect-major-growth 2)
 (collect-major-min-bytes 1048576)
 
@@ -33,6 +38,8 @@ v
 (collect-nursery-bytes 'a)
 (collect-generation-radix -1)
 (collect-generation-radix "2")
+(collect-maximum-generation 0)
+(collect-maximum-generation 9)
 (collect-major-growth 0)
 (collect-major-min-bytes -1)
 (collect 1)

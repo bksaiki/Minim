@@ -128,11 +128,13 @@ minim_add_repl_test(tail)
 minim_add_script_test(fail STATUS 1)
 minim_add_script_test(gc-settings NO_STRESS)  # the defaults
 minim_add_script_test(gc-settings-env ARGS gc-settings.scm
-    ENV MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=16 MINIM_GC_MAJOR_GROWTH=3
-        MINIM_GC_MAJOR_MIN_BYTES=0)
+    ENV MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=16 MINIM_GC_MAX_GENERATION=3
+        MINIM_GC_MAJOR_GROWTH=3 MINIM_GC_MAJOR_MIN_BYTES=0)
 minim_add_script_test(gc-settings-bad-nursery STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=0)
 minim_add_script_test(gc-settings-bad-radix STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_RADIX=-1)
+minim_add_script_test(gc-settings-bad-generation STATUS 1 ARGS gc-settings.scm
+    ENV MINIM_GC_MAX_GENERATION=9)
 minim_add_script_test(gc-settings-bad-growth STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_MAJOR_GROWTH=0)
 minim_add_script_test(gc-settings-bad-min STATUS 1 ARGS gc-settings.scm

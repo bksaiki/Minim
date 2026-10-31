@@ -15,8 +15,8 @@ int main(int argc, char **argv) {
     if (argc != 2)
         return 2;
     minim_init();
-    size_t minors = minim_gc.minor_collections;
-    size_t majors = minim_gc.major_collections;
+    size_t minors = minim_gc.collections[0];
+    size_t majors = minim_gc.collections[1];
     if (strcmp(argv[1], "startup") == 0) {
         // A collection at every allocation, both kinds.
         CHECK(minors > 1000);
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     // Either way, the program runs with the environment's settings.
     CHECK_EQ(minim_gc_get_config().nursery_bytes, 1);
     minim_cons(MINIM_NIL, MINIM_NIL);
-    CHECK(minim_gc.minor_collections + minim_gc.major_collections > minors + majors);
+    CHECK(minim_gc.collections[0] + minim_gc.collections[1] > minors + majors);
     minim_shutdown();
     return test_result();
 }

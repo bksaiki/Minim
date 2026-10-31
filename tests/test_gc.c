@@ -143,8 +143,8 @@ static void test_promotion(void) {
 static void test_collect_generation(void) {
     minim_obj p = minim_cons(minim_fixnum(1), MINIM_NIL);
     MINIM_FRAME(&p);
-    size_t minors = minim_gc.minor_collections;
-    size_t majors = minim_gc.major_collections;
+    size_t minors = minim_gc.collections[0];
+    size_t majors = minim_gc.collections[1];
     minim_gc_collect_generation(0);
     CHECK(is_old(p));
     minim_obj promoted = p;
@@ -153,8 +153,8 @@ static void test_collect_generation(void) {
     minim_gc_collect_generation(1);
     CHECK(p != promoted);
     CHECK_EQ(minim_car(p), minim_fixnum(1));
-    CHECK_EQ(minim_gc.minor_collections - minors, 2);
-    CHECK_EQ(minim_gc.major_collections - majors, 1);
+    CHECK_EQ(minim_gc.collections[0] - minors, 2);
+    CHECK_EQ(minim_gc.collections[1] - majors, 1);
     MINIM_RETURN_VOID;
 }
 
@@ -237,12 +237,12 @@ static void test_generational(void) {
     minim_gc_config saved = use_default_gc_config();
     minim_obj keep = make_list(100000);  // 1.6 MB
     MINIM_FRAME(&keep);
-    size_t minors = minim_gc.minor_collections;
-    size_t majors = minim_gc.major_collections;
+    size_t minors = minim_gc.collections[0];
+    size_t majors = minim_gc.collections[1];
     for (int i = 0; i < 1000000; i++)
         minim_cons(MINIM_NIL, MINIM_NIL);  // 16 MB
-    CHECK(minim_gc.minor_collections - minors >= 15);
-    CHECK_EQ(minim_gc.major_collections, majors);
+    CHECK(minim_gc.collections[0] - minors >= 15);
+    CHECK_EQ(minim_gc.collections[1], majors);
     CHECK(is_list(keep, 100000));
     minim_gc_set_config(saved);
     MINIM_RETURN_VOID;
@@ -250,10 +250,10 @@ static void test_generational(void) {
 
 static void test_config(void) {
     minim_gc_config saved = use_default_gc_config();
-    size_t collections = minim_gc.minor_collections + minim_gc.major_collections;
+    size_t collections = minim_gc.collections[0] + minim_gc.collections[1];
     for (int i = 0; i < 100; i++)
         minim_cons(MINIM_NIL, MINIM_NIL);  // within the default 1 MiB nursery
-    CHECK_EQ(minim_gc.minor_collections + minim_gc.major_collections, collections);
+    CHECK_EQ(minim_gc.collections[0] + minim_gc.collections[1], collections);
 
     // A 1-byte nursery collects at every allocation; radix 4 makes every 4th major.
     minim_gc_config config = minim_gc_get_config();
@@ -261,24 +261,24 @@ static void test_config(void) {
     config.radix = 4;
     minim_gc_set_config(config);
     CHECK_EQ(minim_gc_get_config().radix, 4);
-    size_t minors = minim_gc.minor_collections;
-    size_t majors = minim_gc.major_collections;
+    size_t minors = minim_gc.collections[0];
+    size_t majors = minim_gc.collections[1];
     for (int i = 0; i < 8; i++)
         minim_cons(MINIM_NIL, MINIM_NIL);
-    CHECK_EQ(minim_gc.minor_collections - minors, 6);
-    CHECK_EQ(minim_gc.major_collections - majors, 2);
+    CHECK_EQ(minim_gc.collections[0] - minors, 6);
+    CHECK_EQ(minim_gc.collections[1] - majors, 2);
     minim_gc_set_config(saved);
 }
 
 // Promotes one more pair onto `*keep` with each of `n` scheduled collections;
 // returns how many were followed by a major collection.
 static size_t majors_after(minim_obj *keep, int n) {
-    size_t majors = minim_gc.major_collections;
+    size_t majors = minim_gc.collections[1];
     for (int i = 0; i < n; i++) {
         *keep = minim_cons(MINIM_NIL, *keep);
         minim_gc_collect();
     }
-    return minim_gc.major_collections - majors;
+    return minim_gc.collections[1] - majors;
 }
 
 static void test_major_growth(void) {
@@ -358,6 +358,105 @@ static void test_old_symbol_table(void) {
     MINIM_RETURN_VOID;
 }
 
+// The defaults with `max_generation` generations; returns the settings to restore.
+static minim_gc_config use_generations(size_t max_generation) {
+    minim_gc_config saved = use_default_gc_config();
+    minim_gc_config config = minim_gc_get_config();
+    config.max_generation = max_generation;
+    minim_gc_set_config(config);
+    return saved;
+}
+
+static unsigned generation(minim_obj x) {
+    return minim_chunk_of(x)->generation;
+}
+
+// An object ages a generation per collection that includes it, up to the
+// oldest; a collection of g leaves older objects in place.
+static void test_aging(void) {
+    minim_gc_config saved = use_generations(3);
+    minim_obj p = minim_cons(minim_fixnum(1), MINIM_NIL);
+    MINIM_FRAME(&p);
+    for (unsigned g = 0; g < 3; g++) {
+        minim_gc_collect_generation(g);
+        CHECK_EQ(generation(p), g + 1);
+    }
+    minim_gc_collect_generation(3);
+    CHECK_EQ(generation(p), 3);
+    minim_obj where = p;
+    for (unsigned g = 0; g < 3; g++) {
+        minim_gc_collect_generation(g);
+        CHECK_EQ(p, where);
+    }
+    CHECK_EQ(minim_car(p), minim_fixnum(1));
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
+// The n-th scheduled collection collects the largest g with radix^g dividing n.
+static void test_schedule(void) {
+    minim_gc_config saved = use_generations(3);
+    minim_gc_config config = minim_gc_get_config();
+    const unsigned radix2[] = {0, 1, 0, 2, 0, 1, 0, 3};
+    const unsigned radix1[] = {3, 3};
+    const struct {
+        size_t radix;
+        const unsigned *expect;
+        size_t n;
+    } cases[] = {{2, radix2, 8}, {1, radix1, 2}};
+    for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++) {
+        config.radix = cases[c].radix;
+        minim_gc_set_config(config);  // restarts the schedule
+        for (size_t i = 0; i < cases[c].n; i++) {
+            size_t before = minim_gc.collections[cases[c].expect[i]];
+            minim_gc_collect();
+            CHECK_EQ(minim_gc.collections[cases[c].expect[i]], before + 1);
+        }
+    }
+    minim_gc_set_config(saved);
+}
+
+// Older objects set with each setter to point to new ones keep them alive as
+// collections of every level age them.
+static void test_older_to_younger(void) {
+    minim_gc_config saved = use_generations(3);
+    minim_obj pair3 = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_obj vec3 = MINIM_NIL;
+    minim_obj sym3 = MINIM_NIL;
+    minim_obj pair2 = MINIM_NIL;
+    minim_obj lst = MINIM_NIL;
+    MINIM_FRAME(&pair3, &vec3, &sym3, &pair2, &lst);
+    vec3 = minim_make_vector(1, MINIM_NIL);
+    sym3 = minim_intern_cstr("older-to-younger");
+    for (unsigned g = 0; g < 3; g++)
+        minim_gc_collect_generation(g);  // into generation 3
+    pair2 = minim_cons(MINIM_NIL, MINIM_NIL);
+    for (unsigned g = 0; g < 2; g++)
+        minim_gc_collect_generation(g);  // into generation 2
+    CHECK_EQ(generation(pair3), 3);
+    CHECK_EQ(generation(pair2), 2);
+
+    lst = make_list(10);
+    minim_set_car(pair3, lst);
+    lst = make_list(11);
+    minim_set_cdr(pair2, lst);
+    lst = make_list(12);
+    minim_vector_set(vec3, 0, lst);
+    lst = make_list(13);
+    minim_set_symbol_value(sym3, lst);
+    lst = MINIM_NIL;
+    for (unsigned g = 0; g <= 3; g++) {
+        make_list(100);  // garbage
+        minim_gc_collect_generation(g);
+        CHECK(is_list(minim_car(pair3), 10));
+        CHECK(is_list(minim_cdr(pair2), 11));
+        CHECK(is_list(minim_vector_ref(vec3, 0), 12));
+        CHECK(is_list(minim_symbol_value(sym3), 13));
+    }
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_survive();
@@ -376,6 +475,9 @@ int main(void) {
     test_major_growth();
     test_remembered();
     test_old_symbol_table();
+    test_aging();
+    test_schedule();
+    test_older_to_younger();
     minim_shutdown();
     return test_result();
 }

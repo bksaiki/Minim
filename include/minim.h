@@ -269,22 +269,26 @@ void minim_gc_protect(minim_obj *const *vars, size_t n);
 void minim_gc_add_global(minim_obj *p);
 
 /**
- * Collector settings.  After a minor collection, a major one runs if the old
- * generation exceeds both `major_min_bytes` and `major_growth` times its size
- * after the last major collection.  Every setting is at most MINIM_FIXNUM_MAX,
- * and `major_growth` and `stack_initial_capacity` are at least 1.
+ * Collector settings.  The n-th collection collects generations 0 through the
+ * largest g at most `max_generation` such that `radix`^g divides n, or only 0
+ * if `radix` is 0.  After a collection of only generation 0, a major one runs
+ * if the old generations exceed both `major_min_bytes` and `major_growth`
+ * times their size after the last major collection.  Every setting is at most
+ * MINIM_FIXNUM_MAX, `max_generation` at most 8, and `major_growth`,
+ * `max_generation`, and `stack_initial_capacity` at least 1.
  */
 typedef struct minim_gc_config {
     size_t nursery_bytes;           ///< bytes allocated between collections
-    size_t radix;                   ///< every `radix`-th collection is major; 0 for none
+    size_t radix;                   ///< base of the generation schedule; 0 for generation 0 only
+    size_t max_generation;          ///< the oldest generation
     size_t major_growth;            ///< old-generation growth factor that triggers a major one
     size_t major_min_bytes;         ///< old-generation size below which growth is ignored
     size_t stack_initial_capacity;  ///< elements the collector's stacks first allocate
 } minim_gc_config;
 
 /**
- * The default collector settings: a 1 MiB nursery, radix 0, and major
- * collections when the old generation doubles, past 1 MiB.
+ * The default collector settings: a 1 MiB nursery, radix 0, one old
+ * generation, and major collections when it doubles, past 1 MiB.
  */
 minim_gc_config minim_gc_default_config(void);
 
@@ -292,12 +296,13 @@ minim_gc_config minim_gc_default_config(void);
 minim_gc_config minim_gc_get_config(void);
 
 /**
- * Sets the collector settings.  The nursery starts over; `stack_initial_capacity`
- * affects only stacks not yet allocated, since stacks never shrink.
+ * Sets the collector settings.  The nursery and the schedule start over;
+ * `stack_initial_capacity` affects only stacks not yet allocated, since stacks
+ * never shrink.
  */
 void minim_gc_set_config(minim_gc_config config);
 
-/** Runs the collection the settings call for: minor, or major by radix or growth. */
+/** Runs the collection the settings call for: by the schedule, or major by growth. */
 void minim_gc_collect(void);
 
 /** Collects generation 0, the nursery, promoting its survivors to generation 1. */
@@ -307,8 +312,8 @@ void minim_gc_collect_minor(void);
 void minim_gc_collect_major(void);
 
 /**
- * Collects generations 0 through `g`, promoting their survivors to `g + 1`,
- * or keeping them in `g` if it is the oldest.
+ * Collects generations 0 through `g`, promoting their survivors to `g + 1`.
+ * Collecting the oldest collects every generation into it.
  */
 void minim_gc_collect_generation(unsigned g);
 

@@ -149,6 +149,30 @@ cmake --build --preset dev && ctest --preset dev -R 'gc|heap'
 
 ### Phase 2 - More generations, older ones scanned in full
 
+**Done.**  Details settled during the phase:
+
+- Collecting the oldest generation collects every generation present
+  (`collecting` = `MINIM_MAX_GENERATION`) into fresh spaces for the oldest,
+  so lowering `max_generation` at run time merges the generations above it.
+- The target generation is scanned from its start, which covers its old
+  objects as roots along with what is copied in; generations above it are
+  scanned once each.  The remembered set is emptied, bits cleared, after
+  every collection.  `end_of` and `scan_object` became unused and were
+  removed; Phase 3 brings them back.
+- `minim_gc.collections[g]`, collections by the oldest generation each
+  collected, replaces `minor_collections` and `major_collections`.
+- `minim_gc_set_config` restarts the schedule (`scheduled` = 0) as well as
+  the nursery, so a test can predict it.
+- `config_setting` in `prims.c` takes a maximum; `collect-maximum-generation`
+  rejects values outside 1 to 8 with "bad generation".
+- Tests: `test_aging`, `test_schedule` (radix 2 and radix 1), and
+  `test_older_to_younger` (holders in generations 3 and 2, one per setter,
+  targets aged through every level).  Not scanning the generations above the
+  target, or skipping the target's old objects, each fails it.  `gc.scm` and
+  the script tests cover the setting and `MINIM_GC_MAX_GENERATION`.
+- `ctest --preset stress -j 8`: 1 min 40 s, from 27.5 s, as expected: every
+  minor collection scans the whole old generation until Phase 3.
+
 - `src/gc.c`: promotion to g + 1, the radix schedule over generations, and
   `max_generation` in `minim_gc_config` (default still 1).  A collection of
   0..g scans every object in generations above g as roots: correct without

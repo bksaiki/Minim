@@ -1,0 +1,1 @@
+minim: MINIM_GC_MAX_GENERATION must be an integer from 1 to 8, not "9"
