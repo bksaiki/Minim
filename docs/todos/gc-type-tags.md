@@ -1,0 +1,422 @@
+# Object representation and GC: tagged pointers with a precise copying collector
+
+Implementation plan.  The design is settled; what follows is the phase
+breakdown, one phase per commit.
+
+## Working policy
+
+- **Pause after each phase for review.** Do not begin the next phase until the
+  current one has been looked at.
+- **Do not commit.** The author of the change leaves the working tree dirty;
+  commits are made by the repository owner.
+- **Run only the tests relevant to the phase.** The full suite runs once, at
+  the end, after the last phase.
+- **Comments stay succinct**, and notes about *process* (what was tried, what
+  a phase decided, why an ordering was chosen) belong in this document, not in
+  source comments.
+
+## Context
+
+Today the repo has only `src/main.c` (hello world) and a single-executable
+`CMakeLists.txt`.  This plan adds the runtime core:
+
+- a tagged value type `minim_obj`, using Chez Scheme's 64-bit tag assignments;
+- four heap object kinds: **pairs, vectors, strings, symbols**;
+- a **precise** copying garbage collector.
+
+Chez is the reference for data representation and the collector, not for C
+style.
+
+Out of scope: non-fixnum numbers, closures, primitives, boxes, records,
+bytevectors, hashtables, ports, environments, reader, printer, and evaluator.
+
+**Decisions:**
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Language | C17 | every major compiler, MSVC included |
+| Public names | `minim_` / `MINIM_` prefix, snake_case | avoids collisions |
+| Library | static only | no export macros or ABI promises yet |
+| Runtime state | file-scope globals; one runtime per process | short calls |
+| Word size | 64-bit only | one tagging scheme |
+| Collector | copying (Cheney) | bump allocation, no fragmentation, small |
+| To-spaces | segregated by kind (pair, symbol, typed) | pairs stay 2 words |
+| Roots from C | shadow stack with frame macros | no pop counting |
+| String chars | `uint32_t` | O(1) `string-ref` / `string-set!` |
+| Symbol names | string objects, so strings come first | nothing `malloc`'d outside the GC |
+| Symbol table | strong; symbols are never freed | simple |
+
+## C conventions
+
+- C17 with `-Wall -Wextra`; `<stdbool.h>`, `<stdint.h>`, `static_assert`.
+- One public header, `include/minim.h`.  Internal headers stay in `src/`;
+  tests that inspect internals add `src/` to their include path.
+- Every external symbol starts with `minim_`, internal ones included: a static
+  library shares the linking program's namespace.
+- `static inline` functions for predicates, accessors, and encoding.  Macros
+  only where a function can't work (`MINIM_FRAME`, `MINIM_PROTECT`).
+- Predicates return `bool` and are named `minim_is_*`.
+- Constants are `enum`s.
+- Fixed-width types where layout matters: `uint32_t` chars, `intptr_t` fixnum
+  values, `size_t` lengths.
+- Build configurations live in `CMakePresets.json`.
+
+## Value representation
+
+`typedef uintptr_t minim_obj;`.  The low 3 bits are the primary tag.
+
+| Low 3 bits | Kind          | Notes                                              |
+|------------|---------------|----------------------------------------------------|
+| `000`      | fixnum        | 61-bit signed integer, `n << 3`                    |
+| `001`      | pair          | pointer to `[car, cdr]`                            |
+| `010`      | (flonum)      | reserved                                           |
+| `011`      | symbol        | pointer to `[name, value]`                         |
+| `100`      | -             | unused                                             |
+| `101`      | (closure)     | reserved                                           |
+| `110`      | immediate     | see below                                          |
+| `111`      | typed object  | pointer to an object whose first word is a header  |
+
+Fixnum `+` and `-` work directly on tagged values.
+
+**Immediates** (low byte):
+
+| Constant         | Encoding        |
+|------------------|-----------------|
+| `MINIM_FALSE`    | `0x06`          |
+| `MINIM_TRUE`     | `0x0E`          |
+| `MINIM_NIL`      | `0x26`          |
+| `MINIM_VOID`     | `0x2E`          |
+| `MINIM_EOF`      | `0x36`          |
+| `MINIM_UNBOUND`  | `0x1E`          |
+| `MINIM_FORWARD`  | `0x3E` (GC only) |
+| char `c`         | `(c << 8) \| 0x16` (Unicode scalar value) |
+
+**Heap layouts.**  Objects are 16-byte aligned and at least 2 words, so any
+object can hold a forwarding record.
+
+```
+pair     (tag 001)   [ car | cdr ]                          16 B
+symbol   (tag 011)   [ name : string | value ]              16 B
+vector   (tag 111)   [ header | e0 | e1 | ... ]             8 + 8n B, rounded up to 16
+string   (tag 111)   [ header | c0 c1 ... (uint32_t each) ] 8 + 4n B, rounded up to 16
+
+vector header = (n << 4) | (immutable << 3) | 000
+string header = (n << 4) | (immutable << 3) | 010
+```
+
+The immutable bits are reserved; nothing sets them yet.
+
+Accessors subtract the tag:
+
+```c
+static inline minim_obj minim_car(minim_obj p) {
+    return ((minim_obj *)(p - MINIM_TAG_PAIR))[0];
+}
+```
+
+## Heap and collector
+
+A simplified version of Chez's design (Dybvig, Eby, and Bruggeman 1994).
+
+**Lifecycle.**  `minim_init()` and `minim_shutdown()` create and free the
+heap.
+
+**Chunks.**  Memory is `malloc`'d 64 KiB chunks; a larger object gets its own
+chunk.  `static_assert(alignof(max_align_t) >= 16)` guarantees alignment.
+
+**Allocation.**  New objects of every kind are interleaved in one *new area*
+with a single bump pointer.
+
+**Collection** is Cheney-style copying.  Pairs and symbols have no header, so
+survivors are copied into per-kind to-spaces (`pair`, `symbol`, `typed`),
+chosen by primary tag:
+
+1. Copy every root.  The old object gets `MINIM_FORWARD` in word 0 and the new
+   tagged pointer in word 1.
+2. Scan each to-space linearly until all three cursors catch up: pair and
+   symbol spaces in 16-byte strides, the typed space by header (vector
+   elements are traced; strings are skipped).
+3. Free all from-space chunks.
+
+From-space is never scanned, so the mixed new area is never parsed.  With no
+generations, every live object is in from-space at collection start, so no
+segment table is needed.
+
+**Not adopted from Chez:** generations, card marking, the segment table,
+large-object handling, an unscanned data space, weak pairs, and guardians.
+None affects object layouts.
+
+**Trigger.**  Collect when bytes allocated since the last GC exceed
+`max(MIN_HEAP, live_after_last_gc * GROWTH)`.
+
+**Roots:**
+
+- the shadow stack of `minim_obj *`, managed with OCaml-style frame macros:
+  ```c
+  minim_obj list2(minim_obj a, minim_obj b) {
+      MINIM_FRAME(&a, &b);                          // saves the stack top
+      minim_obj tail = minim_cons(b, MINIM_NIL);  // may GC; a and b are updated
+      MINIM_PROTECT(&tail);
+      MINIM_RETURN(minim_cons(a, tail));          // restores the stack top
+  }
+  ```
+- registered globals (`minim_gc_add_global(minim_obj *)`);
+- the symbol table (Phase 6).
+
+Rules:
+
+- Protect any local that must survive a call that can allocate.
+- Constructors protect their own arguments.
+- Never nest allocating calls (`minim_cons(a, minim_cons(b, MINIM_NIL))`): C
+  may read `a` before the inner call collects.
+
+**Stress mode.**  `MINIM_GC_STRESS` collects on every allocation, exposing
+unprotected roots.
+
+## Phases
+
+### Phase 1 - Build and test scaffolding
+
+**Done.**  Diverged from the plan:
+
+- CMake 3.21, not 3.20: preset schema v2 requires a `generator`; v3 (3.21)
+  doesn't, so MSVC and Ninja both keep working.
+- `minim_core` is an `INTERFACE` library, because CMake rejects a `STATIC`
+  library with no sources.  Phase 3 makes it `STATIC`.
+
+- `CMakeLists.txt`:
+  - CMake 3.21 (presets v3) and C17;
+  - static library `minim_core` (`src/*.c` except `main.c`) plus the `minim`
+    executable;
+  - `target_include_directories(minim_core PUBLIC include PRIVATE src)`;
+  - `enable_testing()` and a `tests/` subdirectory;
+  - options `MINIM_SANITIZE` (ASan + UBSan) and `MINIM_GC_STRESS`.
+- `CMakePresets.json`: configure, build, and test presets `dev` (Debug,
+  sanitizers, `build/dev`) and `stress` (`dev` plus `MINIM_GC_STRESS`,
+  `build/stress`).
+- `include/minim.h`: empty, with include guards.
+- `tests/test.h`: `CHECK(cond)` and `CHECK_EQ(a, b)`; failures print file and
+  line and set a nonzero exit code.
+- `tests/test_smoke.c`: one passing check.
+- `README.md`: CMake 3.21+, C17, and the preset commands.
+
+Separate because every later phase adds tests on top of it.
+
+```sh
+cmake --preset dev && cmake --build --preset dev && ctest --preset dev -R smoke
+```
+
+### Phase 2 - Value representation
+
+**Done.**  Additions beyond the plan:
+
+- Typed-object header constants (`MINIM_HEADER_*`, `MINIM_TYPE_VECTOR`,
+  `MINIM_TYPE_STRING`) and `minim_typed_header`, which `minim_is_vector` and
+  `minim_is_string` need.
+- `minim_tag` and `minim_is_typed` helpers.
+- `assert` range checks in `minim_fixnum` and `minim_char`.  A
+  `static_assert` checks for arithmetic right shift, which
+  `minim_fixnum_value` relies on.
+- `MINIM_FIXNUM_MIN` / `MAX` are macros: their values don't fit in an `enum`
+  under C17.
+- `test_object.c` also checks the vector and string predicates on
+  stack-allocated fake objects, since there is no heap yet.
+
+- `include/minim.h`:
+  - `minim_obj`, tag and immediate constants;
+  - `minim_fixnum`, `minim_fixnum_value`, `MINIM_FIXNUM_MIN`,
+    `MINIM_FIXNUM_MAX`, `minim_char`, `minim_char_value`;
+  - `minim_is_fixnum`, `_pair`, `_symbol`, `_vector`, `_string`, `_char`,
+    `_boolean`, `_null`;
+  - `static_assert` on 64-bit pointers.
+
+Separate because it is pure encoding, testable without a heap.
+
+Tests (`tests/test_object.c`):
+
+- fixnum round-trips at 0, ±1, `MINIM_FIXNUM_MIN`, and `MINIM_FIXNUM_MAX`;
+- addition on tagged fixnums;
+- char round-trips (ASCII, `U+10FFFF`);
+- each immediate satisfies exactly one predicate;
+- immediates and fixnums satisfy no heap predicate.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R object
+```
+
+### Phase 3 - Heap allocation (no collection)
+
+**Done.**  Additions beyond the plan:
+
+- `minim_heap_allocated()` (internal) reports total bytes handed out; tests
+  use it to check footprints.
+- `minim_add_test(name INTERNAL)` gives a test access to `src/` headers.
+- `minim_init` / `minim_shutdown` live in `object.c` for now.
+- Accessors `assert` their argument's type and index.
+
+- `CMakeLists.txt`: make `minim_core` a `STATIC` library with its sources
+  listed explicitly; `include` becomes `PUBLIC`, and `src` is added as
+  `PRIVATE`.
+- `src/heap.h`, `src/heap.c`: chunks, the new area, and
+  `minim_heap_alloc(nbytes)` (rounds up to 16).  The heap only grows; failed
+  `malloc` aborts.
+- `include/minim.h`, `src/object.c`: `minim_init`, `minim_shutdown`,
+  `minim_cons`, `minim_car`, `minim_cdr`, `minim_set_car`, `minim_set_cdr`,
+  `minim_make_vector(n, fill)`, `minim_vector_length`, `minim_vector_ref`,
+  `minim_vector_set`.
+
+Separate so the allocator and layouts are reviewed before objects move.
+
+Tests (`tests/test_heap.c`):
+
+- build and read back lists and nested vectors;
+- a length-0 vector takes 16 B;
+- a vector larger than a chunk works;
+- every object is 16-byte aligned with the right tag.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R heap
+```
+
+### Phase 4 - Precise copying collector
+
+**Done.**  Diverged from the plan:
+
+- Every space, the new area included, keeps its chunks in allocation order,
+  so the collector can scan to-spaces in copy order.  When an allocation
+  doesn't fit, the current chunk is closed and a chunk of
+  `max(64 KiB, size)` is appended.  This replaces Phase 3's side chunk for
+  large objects and wastes the rest of the current chunk when a large object
+  arrives.
+- Heap state is the internal global `minim_heap`, with `size`, `allocated`,
+  `live`, and `budget` fields; tests read it directly.
+  `minim_heap_allocated()` was removed.
+- Frame macros on top of `minim_gc_mark` / `minim_gc_reset` /
+  `minim_gc_protect`: `MINIM_FRAME(&a, ...)` saves the stack top and protects
+  any number of variables (a compound-literal array gives the count),
+  `MINIM_PROTECT(&a, ...)` adds more, and
+  `MINIM_RETURN(e)` / `MINIM_RETURN_VOID` restore the stack top on return.
+  Modeled on OCaml's `CAMLparam` / `CAMLreturn`.
+- `test_heap.c` now protects its locals so it passes under `stress`.
+- `test_gc.c` runs 100k iterations instead of 1M under `stress`, since every
+  allocation collects there.
+- Checked by hand: an unprotected local in a stress build triggers an ASan
+  heap-use-after-free.
+
+- `include/minim.h`: `minim_gc_mark`, `minim_gc_reset`, `MINIM_PROTECT`,
+  `minim_gc_add_global`, `minim_gc_collect`.
+- `src/gc.h`, `src/gc.c`: shadow stack, global roots, pair and typed
+  to-spaces, forwarding, scan loop, trigger, and the `MINIM_GC_STRESS` hook in
+  `minim_heap_alloc`.
+- `src/object.c`: constructors protect their arguments.
+
+The symbol to-space comes in Phase 6.
+
+Separate because the collector is the riskiest change.
+
+Tests (`tests/test_gc.c`, also in `stress`):
+
+- a rooted list and vector survive intact;
+- sharing is preserved (two roots to one pair stay `==`);
+- cycles survive (a `set-cdr!` loop, a self-containing vector);
+- unreachable data is reclaimed (live bytes drop);
+- 1M allocations with a bounded live set keep the heap bounded.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R gc
+cmake --preset stress && cmake --build --preset stress && ctest --preset stress -R gc
+```
+
+### Phase 5 - Strings
+
+**Done.**  Details settled during the phase:
+
+- The C API passes chars as `uint32_t` code points: `minim_make_string(n,
+  c)`, `minim_string_ref`, `minim_string_set`.  It does not use `minim_char`
+  objects.
+- Added `minim_string_size`, `minim_string_chars` (a raw pointer, valid until
+  the next allocation), and `minim_is_scalar_value` (now shared with
+  `minim_char`).
+- `minim_string_from_cstr` turns each invalid UTF-8 byte into U+FFFD: bad lead
+  bytes, truncated, overlong, surrogate, and > U+10FFFF sequences.
+
+- `include/minim.h`, `src/object.c`: `minim_make_string(n, ch)`,
+  `minim_string_length`, `minim_string_ref`, `minim_string_set`, and
+  `minim_string_from_cstr` (decodes UTF-8).
+- `src/gc.c`: the typed-space scan skips strings.
+
+Separate because it is the first pointer-free typed object, so the scan loop
+starts dispatching on the header.
+
+Tests (`tests/test_string.c`, also in `stress`):
+
+- ASCII and multi-byte UTF-8 round-trips;
+- `minim_string_ref` / `minim_string_set` on non-ASCII chars;
+- footprint is 8 + 4n bytes, rounded up to 16;
+- strings in vectors and lists survive GC intact.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R string
+cmake --build --preset stress && ctest --preset stress -R string
+```
+
+### Phase 6 - Symbols
+
+**Done.**  Diverged from the plan:
+
+- The table is a vector in the GC heap, registered with
+  `minim_gc_add_global`, rather than an array in C memory.  The collector
+  updates it like any other root, so `gc.c` has no symbol-table code.  It
+  hashes names with FNV-1a, uses linear probing, and doubles at load factor
+  1/2.  `src/symbol.h` has only `minim_symbol_init`.
+- `minim_intern` stores an immutable copy of the name.  This is the first use
+  of `MINIM_HEADER_IMMUTABLE`: `minim_string_set` asserts on it.
+- Pairs and symbols share one scan function, `scan_two_words`.
+- The table is always live (528 B empty), so `test_gc.c` and
+  `test_string.c` now check live bytes relative to a baseline.
+- `test_symbol.c` interns 1k symbols instead of 10k under `stress`.
+
+- `include/minim.h`, `src/symbol.c`:
+  - `minim_intern(minim_obj str)` and `minim_intern_cstr(const char *)`,
+    backed by an open-addressing table in C memory.  It hashes by name, so no
+    rehash after GC, and it is a strong root.
+  - `minim_symbol_name`, `minim_symbol_value`, `minim_set_symbol_value`.  New
+    symbols start as `MINIM_UNBOUND`.
+- `src/gc.c`: the symbol to-space (16-byte strides, both fields traced).
+
+Separate because the table is the first long-lived C-side root.
+
+Tests (`tests/test_symbol.c`, also in `stress`):
+
+- the same name interns to `==` symbols, from a string or a C string;
+- distinct names give distinct symbols;
+- symbols stay `==` and keep names and values across GC;
+- the table grows past its initial capacity (10k symbols).
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R symbol
+cmake --build --preset stress && ctest --preset stress -R symbol
+```
+
+### After the last phase
+
+```sh
+cmake --preset dev && cmake --build --preset dev && ctest --preset dev
+cmake --preset stress && cmake --build --preset stress && ctest --preset stress
+```
+
+No linter is configured; the build must be warning-free.
+
+## Open items
+
+None.
+
+## References
+
+- R. K. Dybvig, D. Eby, C. Bruggeman.  *Don't Stop the BIBOP: Flexible and
+  Efficient Storage Management for Dynamically-Typed Languages.*  Indiana
+  University TR #400, 1994.  https://hdl.handle.net/2022/34235
+- Chez Scheme `s/cmacros.ss`: tags, immediates, headers, layouts.
+  https://github.com/cisco/ChezScheme/blob/main/s/cmacros.ss
+- C. J. Cheney.  *A nonrecursive list compacting algorithm.*  CACM 13(11),
+  1970.
