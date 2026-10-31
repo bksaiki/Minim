@@ -1,0 +1,30 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Debug with sanitizers",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "MINIM_SANITIZE": "ON"
+      }
+    },
+    {
+      "name": "stress",
+      "displayName": "Debug with sanitizers and GC stress",
+      "inherits": "dev",
+      "cacheVariables": {
+        "MINIM_GC_STRESS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev", "configurePreset": "dev" },
+    { "name": "stress", "configurePreset": "stress" }
+  ],
+  "testPresets": [
+    { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
+    { "name": "stress", "configurePreset": "stress", "output": { "outputOnFailure": true } }
+  ]
+}

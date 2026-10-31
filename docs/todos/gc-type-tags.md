@@ -179,8 +179,15 @@ unprotected roots.
 
 ### Phase 1 - Build and test scaffolding
 
+**Done.**  Diverged from the plan:
+
+- CMake 3.21, not 3.20: preset schema v2 requires a `generator`; v3 (3.21)
+  doesn't, so MSVC and Ninja both keep working.
+- `minim_core` is an `INTERFACE` library, because CMake rejects a `STATIC`
+  library with no sources.  Phase 3 makes it `STATIC`.
+
 - `CMakeLists.txt`:
-  - CMake 3.20 (test presets) and C17;
+  - CMake 3.21 (presets v3) and C17;
   - static library `minim_core` (`src/*.c` except `main.c`) plus the `minim`
     executable;
   - `target_include_directories(minim_core PUBLIC include PRIVATE src)`;
@@ -193,7 +200,7 @@ unprotected roots.
 - `tests/test.h`: `CHECK(cond)` and `CHECK_EQ(a, b)`; failures print file and
   line and set a nonzero exit code.
 - `tests/test_smoke.c`: one passing check.
-- `README.md`: CMake 3.20+, C17, and the preset commands.
+- `README.md`: CMake 3.21+, C17, and the preset commands.
 
 Separate because every later phase adds tests on top of it.
 
@@ -227,6 +234,9 @@ cmake --build --preset dev && ctest --preset dev -R object
 
 ### Phase 3 - Heap allocation (no collection)
 
+- `CMakeLists.txt`: make `minim_core` a `STATIC` library with its sources
+  listed explicitly; `include` becomes `PUBLIC`, and `src` is added as
+  `PRIVATE`.
 - `src/heap.h`, `src/heap.c`: chunks, the new area, and
   `minim_heap_alloc(nbytes)` (rounds up to 16).  The heap only grows; failed
   `malloc` aborts.
