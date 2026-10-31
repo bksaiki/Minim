@@ -1,0 +1,1 @@
+minim: MINIM_GC_NURSERY must be a positive integer, not "0"

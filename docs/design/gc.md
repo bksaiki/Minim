@@ -105,13 +105,21 @@ the collector writes into objects it is copying or scanning.
 
 **Policy.**  `minim_gc_collect` runs the collection the policy calls for, and
 an allocation calls it when the budget runs out.  The policy
-(`minim_gc_set_policy`, after Chez's `collect-trip-bytes` and
-`collect-generation-radix`) has two settings:
+(`minim_gc_set_policy`) has two settings, after Chez's `collect-trip-bytes`
+and `collect-generation-radix`:
 
 | Setting | Meaning | Default |
 |---|---|---|
-| `trip_bytes` | bytes allocated between collections | 1 MiB |
+| `nursery_bytes` | bytes allocated between collections | 1 MiB |
 | `radix` | every `radix`-th collection is major; 0 for none | 0 |
+
+Other ways to set them:
+
+- **Environment:** `MINIM_GC_NURSERY` and `MINIM_GC_RADIX` (see
+  `environment.md`), so any program or test can be stressed without
+  rebuilding.
+- **Scheme:** `collect`, `collect-nursery-bytes`, and `collect-generation-radix`
+  (see `primitives.md`) run and set the policy.
 
 Otherwise the collection is minor, followed by a major one if the old
 generation has grown past `max(1 MiB, 2 × its size after the last major

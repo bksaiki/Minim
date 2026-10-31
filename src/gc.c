@@ -5,20 +5,23 @@
 
 #include "gc.h"
 
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "system.h"
 #include "heap.h"
 #include "minim.h"
 
 enum {
-    DEFAULT_TRIP = 1024 * 1024,     // bytes
+    DEFAULT_NURSERY = 1024 * 1024,     // bytes
     MIN_MAJOR_LIMIT = 1024 * 1024,  // bytes
     GROWTH = 2,                     // the old generation's growth that triggers a major collection
 };
 
 static minim_gc_policy policy;
-static size_t trips;        // calls to minim_gc_collect
+static size_t scheduled;    // calls to minim_gc_collect
 static size_t major_limit;  // old-generation bytes that trigger a major collection
 static bool minor;          // whether the collection in progress is minor
 
@@ -50,11 +53,31 @@ static void push(root_stack *s, minim_obj *p) {
     s->items[s->len++] = p;
 }
 
+// Value of the environment variable `name`, a decimal integer from `min` to
+// the largest fixnum, or `fallback` if it is unset.  Exits if it is malformed.
+static size_t getenv_integer(const char *name, size_t min, const char *expected, size_t fallback) {
+    const char *s = minim_getenv(name);
+    if (s == NULL)
+        return fallback;
+    char *end;
+    errno = 0;
+    unsigned long long v = strtoull(s, &end, 10);
+    if (*s < '0' || *s > '9' || *end != '\0' || errno == ERANGE || v < min
+        || v > MINIM_FIXNUM_MAX) {
+        fprintf(stderr, "minim: %s must be %s, not \"%s\"\n", name, expected, s);
+        exit(EXIT_FAILURE);
+    }
+    return (size_t)v;
+}
+
 void minim_gc_init(void) {
-    policy = (minim_gc_policy){.trip_bytes = DEFAULT_TRIP, .radix = 0};
-    trips = 0;
+    policy = (minim_gc_policy){
+        .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, "a positive integer", DEFAULT_NURSERY),
+        .radix = getenv_integer("MINIM_GC_RADIX", 0, "a nonnegative integer", 0),
+    };
+    scheduled = 0;
     major_limit = MIN_MAJOR_LIMIT;
-    minim_heap.budget = policy.trip_bytes;
+    minim_heap.budget = policy.nursery_bytes;
 }
 
 minim_gc_policy minim_gc_get_policy(void) {
@@ -63,7 +86,7 @@ minim_gc_policy minim_gc_get_policy(void) {
 
 void minim_gc_set_policy(minim_gc_policy p) {
     policy = p;
-    minim_heap.budget = policy.trip_bytes;
+    minim_heap.budget = policy.nursery_bytes;
 }
 
 void minim_gc_shutdown(void) {
@@ -309,7 +332,7 @@ static void collect(bool is_minor) {
 
     minim_heap.live = minim_space_used(pairs) + minim_space_used(symbols)
                     + minim_space_used(typed);
-    minim_heap.budget = policy.trip_bytes;
+    minim_heap.budget = policy.nursery_bytes;
     if (minor) {
         minim_heap.minor_collections++;
     } else {
@@ -328,8 +351,8 @@ void minim_gc_collect_major(void) {
 }
 
 void minim_gc_collect(void) {
-    trips++;
-    if (policy.radix != 0 && trips % policy.radix == 0) {
+    scheduled++;
+    if (policy.radix != 0 && scheduled % policy.radix == 0) {
         collect(false);
         return;
     }

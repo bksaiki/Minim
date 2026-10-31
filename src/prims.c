@@ -622,6 +622,35 @@ static minim_obj prim_newline(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
+static minim_obj prim_collect(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    minim_gc_collect();
+    return MINIM_VOID;
+}
+
+static minim_obj prim_collect_nursery_bytes(minim_obj *args, size_t n) {
+    minim_gc_policy policy = minim_gc_get_policy();
+    if (n == 0)
+        return minim_fixnum((intptr_t)policy.nursery_bytes);
+    check(minim_is_fixnum(args[0]) && minim_fixnum_value(args[0]) > 0,
+          "collect-nursery-bytes: not a positive fixnum", args[0]);
+    policy.nursery_bytes = (size_t)minim_fixnum_value(args[0]);
+    minim_gc_set_policy(policy);
+    return MINIM_VOID;
+}
+
+static minim_obj prim_collect_generation_radix(minim_obj *args, size_t n) {
+    minim_gc_policy policy = minim_gc_get_policy();
+    if (n == 0)
+        return minim_fixnum((intptr_t)policy.radix);
+    check(minim_is_fixnum(args[0]) && minim_fixnum_value(args[0]) >= 0,
+          "collect-generation-radix: not a nonnegative fixnum", args[0]);
+    policy.radix = (size_t)minim_fixnum_value(args[0]);
+    minim_gc_set_policy(policy);
+    return MINIM_VOID;
+}
+
 static void define_primitive(const char *name, minim_prim_fn fn, intptr_t min, intptr_t max) {
     minim_obj sym = minim_intern_cstr(name);
     MINIM_FRAME(&sym);
@@ -696,4 +725,7 @@ void minim_prims_init(void) {
     define_primitive("write", prim_write, 1, 1);
     define_primitive("display", prim_display, 1, 1);
     define_primitive("newline", prim_newline, 0, 0);
+    define_primitive("collect", prim_collect, 0, 0);
+    define_primitive("collect-nursery-bytes", prim_collect_nursery_bytes, 0, 1);
+    define_primitive("collect-generation-radix", prim_collect_generation_radix, 0, 1);
 }

@@ -22,6 +22,12 @@ The `dev` preset is a debug build with sanitizers and tests; `stress` also
 collects garbage on every allocation.  Tests are off otherwise
 (`-DMINIM_BUILD_TESTS=ON` enables them).
 
+In any build, the environment variables `MINIM_GC_NURSERY` (bytes allocated
+between collections) and `MINIM_GC_RADIX` (every *n*-th collection is major)
+change when the collector runs.  `MINIM_GC_NURSERY=1` collects at every
+allocation, which exposes missing GC roots under the sanitizers.  See
+[`docs/design/environment.md`](docs/design/environment.md).
+
 ```sh
 cmake --preset dev
 cmake --build --preset dev

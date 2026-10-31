@@ -63,6 +63,7 @@ add_library(libminim STATIC
     src/print.c
     src/read.c
     src/symbol.c
+    src/system.c
 )
 target_include_directories(libminim PUBLIC include PRIVATE src)
 set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not liblibminim.a

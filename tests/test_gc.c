@@ -240,11 +240,11 @@ static void test_policy(void) {
     minim_gc_policy saved = minim_gc_get_policy();
     size_t collections = minim_heap.minor_collections + minim_heap.major_collections;
     for (int i = 0; i < 100; i++)
-        minim_cons(MINIM_NIL, MINIM_NIL);  // within the default 1 MiB trip
+        minim_cons(MINIM_NIL, MINIM_NIL);  // within the default 1 MiB nursery
     CHECK_EQ(minim_heap.minor_collections + minim_heap.major_collections, collections);
 
-    // A 1-byte trip collects at every allocation; radix 4 makes every 4th major.
-    minim_gc_set_policy((minim_gc_policy){.trip_bytes = 1, .radix = 4});
+    // A 1-byte nursery collects at every allocation; radix 4 makes every 4th major.
+    minim_gc_set_policy((minim_gc_policy){.nursery_bytes = 1, .radix = 4});
     CHECK_EQ(minim_gc_get_policy().radix, 4);
     size_t minors = minim_heap.minor_collections;
     size_t majors = minim_heap.major_collections;

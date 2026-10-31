@@ -270,14 +270,14 @@ void minim_gc_add_global(minim_obj *p);
 
 /** When collections run; see docs/design/gc.md. */
 typedef struct minim_gc_policy {
-    size_t trip_bytes;  ///< bytes allocated between collections
-    size_t radix;       ///< every `radix`-th collection is major; 0 for none
+    size_t nursery_bytes;  ///< nursery size: bytes allocated between collections
+    size_t radix;          ///< every `radix`-th collection is major; 0 for none
 } minim_gc_policy;
 
-/** The collection policy: by default a 1 MiB trip and radix 0. */
+/** The collection policy: by default a 1 MiB nursery and radix 0. */
 minim_gc_policy minim_gc_get_policy(void);
 
-/** Sets the collection policy; the next collection is a full trip away. */
+/** Sets the collection policy; the nursery starts over. */
 void minim_gc_set_policy(minim_gc_policy policy);
 
 /** Runs the collection the policy calls for: minor, or major by radix or growth. */

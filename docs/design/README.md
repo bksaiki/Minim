@@ -8,3 +8,4 @@
 - [Primitives](primitives.md): primitive procedures and the built-in library.
 - [Prelude](prelude.md): the library written in Scheme, and how it is
   embedded and loaded.
+- [Environment variables](environment.md): every variable Minim reads.

@@ -35,12 +35,12 @@ function(minim_add_repl_test name)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
 endfunction()
 
-# minim_add_script_test(name [STATUS n] [ARGS arg...]): runs `minim ARGS`
-# (default `<name>.scm`) from scripts/, and checks the exit status (default 0),
-# stdout against scripts/<name>.out, and stderr against scripts/<name>.err if
-# it exists.
+# minim_add_script_test(name [STATUS n] [ARGS arg...] [ENV var=value...]):
+# runs `minim ARGS` (default `<name>.scm`) from scripts/ with ENV set, and
+# checks the exit status (default 0), stdout against scripts/<name>.out, and
+# stderr against scripts/<name>.err if it exists.
 function(minim_add_script_test name)
-    cmake_parse_arguments(PARSE_ARGV 1 opt "" "STATUS" "ARGS")
+    cmake_parse_arguments(PARSE_ARGV 1 opt "" "STATUS" "ARGS;ENV")
     if(NOT DEFINED opt_STATUS)
         set(opt_STATUS 0)
     endif()
@@ -58,12 +58,16 @@ function(minim_add_script_test name)
             -DEXPECTED=${dir}/${name}.out
             -DEXPECTED_ERR=${dir}/${name}.err
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
+    if(opt_ENV)
+        set_tests_properties(script_${name} PROPERTIES ENVIRONMENT "${opt_ENV}")
+    endif()
 endfunction()
 
 minim_add_repl_test(chars)
 minim_add_repl_test(echo)
 minim_add_repl_test(equality)
 minim_add_repl_test(eval)
+minim_add_repl_test(gc)
 minim_add_repl_test(hashing)
 minim_add_repl_test(lists)
 minim_add_repl_test(load)
@@ -73,6 +77,11 @@ minim_add_repl_test(strings)
 minim_add_repl_test(tail)
 
 minim_add_script_test(fail STATUS 1)
+minim_add_script_test(gc-settings)
+minim_add_script_test(gc-settings-env ARGS gc-settings.scm ENV MINIM_GC_NURSERY=1 MINIM_GC_RADIX=16)
+minim_add_script_test(gc-settings-bad-nursery STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_NURSERY=0)
+minim_add_script_test(gc-settings-bad-radix STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_RADIX=-1)
+minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_NURSERY=1k)
 minim_add_script_test(hello)
 minim_add_script_test(missing STATUS 1)
 minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)

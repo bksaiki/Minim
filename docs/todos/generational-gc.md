@@ -124,11 +124,11 @@ Going to more generations means adding:
 - A minor collection is `minim_gc_collect_minor()` in `gc.h`.
 
 **Collection policy**, set at run time as in Chez (`collect-trip-bytes`,
-`collect-generation-radix`):
+here the nursery size, and `collect-generation-radix`):
 
 | Setting | Meaning | Default |
 |---|---|---|
-| trip bytes | allocation between minor collections | 1 MiB, today's minimum budget |
+| nursery bytes | allocation between minor collections | 1 MiB, today's minimum budget |
 | radix | every *r*-th minor collection is major; 0 means never by count | 0 |
 
 - **Major collection by growth:** after a minor collection, a major one also
@@ -136,15 +136,15 @@ Going to more generations means adding:
   collection, with a minimum of 1 MiB.  So long-lived data is copied once at
   promotion, then about once per doubling of the old generation.
 - **The allocation check is unchanged:** a budget compared with each
-  allocation's size, reset to the trip after a collection.
+  allocation's size, reset to the nursery size after a collection.
 - **Setting it:**
   - a C API in `minim.h`, `minim_gc_set_policy` and `minim_gc_get_policy`,
     for embedders and unit tests;
-  - the environment variables `MINIM_GC_TRIP` and `MINIM_GC_RADIX`, read by
+  - the environment variables `MINIM_GC_NURSERY` and `MINIM_GC_RADIX`, read by
     `minim_init`, so any binary or test can be stressed without rebuilding
     (.NET's `GCStress` works the same way).  A malformed value aborts with a
     message;
-  - Scheme primitives `(collect)`, `(collect-trip-bytes [n])`, and
+  - Scheme primitives `(collect)`, `(collect-nursery-bytes [n])`, and
     `(collect-generation-radix [r])`, so a golden test can stress only the
     code it exercises.  Chez's radix applies to each generation in turn;
     with two generations it means the same thing, except that 0 is ours.
@@ -173,11 +173,11 @@ Going to more generations means adding:
   remembered object, then the set and its bits are cleared.
 - The bitmap is allocated only for old chunks.
 
-**Stress mode is a policy, not a build.**  A trip of 1 byte collects before
+**Stress mode is a policy, not a build.**  A 1-byte nursery collects before
 every allocation, which is today's `MINIM_GC_STRESS`.  The compile-time option
 and the `stress` configure preset go away.
 
-| Mode | Trip | Radix | Catches |
+| Mode | Nursery | Radix | Catches |
 |---|---|---|---|
 | stress | 1 | 16 | unrooted young objects and missed barriers at every allocation; unrooted old objects at every 16th |
 | full stress | 1 | 1 | everything, at today's cost |
@@ -190,11 +190,11 @@ and the `stress` configure preset go away.
   injected bugs, but that interval applied to *all* collections, so
   young-object bugs went unchecked too.
 - **CTest:** every test is registered twice.  The second copy is named
-  `<name>_stress`, labelled `stress`, and runs with `MINIM_GC_TRIP=1` and
+  `<name>_stress`, labelled `stress`, and runs with `MINIM_GC_NURSERY=1` and
   `MINIM_GC_RADIX=16`.
   - Test presets on the one `dev` build: `dev` excludes the label, `stress`
     runs only it.  CI keeps its two jobs from one configure preset.
-  - Full stress is by hand: `MINIM_GC_TRIP=1 MINIM_GC_RADIX=1 ctest --preset
+  - Full stress is by hand: `MINIM_GC_NURSERY=1 MINIM_GC_RADIX=1 ctest --preset
     dev`.  Tests without their own settings inherit the environment.
 - **Tests that shrink their work under stress** (`#ifdef MINIM_GC_STRESS`
   today) check the policy at run time instead.
@@ -266,9 +266,9 @@ cmake --build --preset dev && ctest --preset dev -R 'heap|gc'
   `minim_gc_collect`, which runs the policy, as Chez's `(collect)` does.
   The allocator calls `minim_gc_collect` when the budget runs out.  Existing
   callers, all expecting every object to move, call `minim_gc_collect_major`.
-- The policy is `minim_gc_policy {trip_bytes, radix}`, with
+- The policy is `minim_gc_policy {nursery_bytes, radix}`, with
   `minim_gc_get_policy` and `minim_gc_set_policy`; setting it restarts the
-  trip.  Counters are `minim_heap.minor_collections` and
+  nursery.  Counters are `minim_heap.minor_collections` and
   `major_collections`.
 - A minor collection scans the old spaces from their start, which covers both
   the old objects as roots and the promoted ones.
@@ -287,7 +287,7 @@ cmake --build --preset dev && ctest --preset dev -R 'heap|gc'
 - `src/gc.c`, `src/gc.h`, `src/heap.c`, `src/heap.h`:
   - `minim_gc_collect_minor`;
   - `copy` leaves old objects alone in a minor collection;
-  - the collection policy's C API (trip bytes and radix) and the growth
+  - the collection policy's C API (nursery bytes and radix) and the growth
     trigger, with collection counters;
   - `minim_gc_collect` stays major.
 - Until Phase 3, a minor collection scans the whole old generation as roots:
@@ -309,7 +309,7 @@ Tests (`tests/test_gc.c`, also in `stress`):
 - a major collection reclaims old garbage;
 - with a large structure live, a long run of short-lived allocations does
   mostly minor collections (through the counters);
-- trip and radix: a small trip collects on schedule, and radix *r* makes every
+- nursery and radix: a small nursery collects on schedule, and radix *r* makes every
   *r*-th collection major.
 
 Tests set the policy themselves where they need a schedule, and restore it.
@@ -367,8 +367,26 @@ cmake --build --preset stress && ctest --preset stress -R gc
 
 ### Phase 4 - Run-time collection settings
 
-- `src/gc.c`: `minim_init` reads `MINIM_GC_TRIP` and `MINIM_GC_RADIX`.
-- `src/prims.c`: `collect`, `collect-trip-bytes`, and
+**Done.**  Details settled during the phase:
+
+- `minim_gc_init` reads the variables, so the settings cover startup.  A
+  malformed value, or one past the largest fixnum, prints `minim: MINIM_GC_NURSERY
+  must be a positive integer, not "1k"` and exits with status 1.
+- `(collect)` takes no arguments; the setters return void and reject a
+  non-fixnum or out-of-range value.
+- The defaults are tested in a script test without the variables
+  (`gc-settings`), not in `tests/repl/gc.scm`, which Phase 5's stress copy
+  will run with the variables set.  The REPL test sets everything it reads.
+- `minim_add_script_test` takes `ENV var=value...`.
+- Chez's "trip bytes" is called the nursery size throughout, the standard
+  term: `nursery_bytes`, `MINIM_GC_NURSERY`, `collect-nursery-bytes`.
+- Environment variables are read only through `minim_getenv(name)` in a new
+  `src/system.h`, the home for OS interfaces.  It returns the value, or NULL
+  if unset or empty; callers convert.  `docs/design/environment.md` lists
+  every variable.
+
+- `src/gc.c`: `minim_init` reads `MINIM_GC_NURSERY` and `MINIM_GC_RADIX`.
+- `src/prims.c`: `collect`, `collect-nursery-bytes`, and
   `collect-generation-radix`.
 - `docs/design/gc.md`, `docs/design/primitives.md`, `README.md`: the
   settings.
@@ -379,7 +397,7 @@ stresses, so both can be compared on the same tree.
 Tests:
 - `tests/repl/gc.scm` / `.out` / `.err`: the primitives' defaults, setting
   and reading them back, rejected values, and a loop that builds a list with
-  the trip at 1;
+  the nursery at 1 byte;
 - script tests that run `minim` with each variable set, including malformed
   values (exit status and message).
 
@@ -416,7 +434,7 @@ which settings catch each, and how long `ctest --preset stress` takes:
 Measure and record here, against the tables in Context:
 - the two allocation programs;
 - release startup (20 runs);
-- stress startup (`MINIM_GC_TRIP=1 MINIM_GC_RADIX=16`);
+- stress startup (`MINIM_GC_NURSERY=1 MINIM_GC_RADIX=16`);
 - the stress suite's total time.
 
 Measure each both on this branch and with the macros branch rebased on it.
@@ -429,7 +447,7 @@ cmake --preset dev && cmake --build --preset dev && ctest --preset stress
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress
-MINIM_GC_TRIP=1 MINIM_GC_RADIX=1 ctest --preset dev
+MINIM_GC_NURSERY=1 MINIM_GC_RADIX=1 ctest --preset dev
 cmake --preset release && cmake --build --preset release
 ```
 
