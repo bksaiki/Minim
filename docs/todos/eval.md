@@ -211,6 +211,17 @@ cmake --build --preset stress && ctest --preset stress -R 'eval|repl'
 - `make-vector` fills with 0 by default, as Chez does.
 - `symbol->string` returns the symbol's immutable name, not a copy.
 - Mutators, `write`, and `newline` return void.
+- Later additions: `>`, `<=`, `>=` (one `compare` helper serves all five
+  comparisons), `quotient`, `remainder`, `fixnum?`, `zero?`, `length`,
+  `display`, and `apply`.
+  - `display` is a flag through the printer (`minim_display`): strings and
+    chars, including nested ones, print as their characters.
+  - `apply` is registered as a primitive but handled in the evaluator's
+    apply step, recognized by its function pointer (`minim_prim_apply`,
+    never called).  It reshapes the value stack `[apply f a ... lst]` into
+    `[f a ... elements]` and applies `f`, so `apply` in tail position is a
+    tail call.  An ordinary primitive couldn't call closures without
+    re-entering `minim_eval`, and can't push onto the value stack.
 - Later: `define` accepts only `(define name expr)`.  The procedure shorthand
   `(define (f . params) body ...)` was removed; write
   `(define f (lambda params body ...))`.

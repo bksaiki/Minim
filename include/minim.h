@@ -465,4 +465,7 @@ minim_obj minim_read(FILE *in);
 /** Writes `x` to `out` in `write` syntax.  Never allocates. */
 void minim_write(FILE *out, minim_obj x);
 
+/** Like minim_write, but strings and chars print as their characters. */
+void minim_display(FILE *out, minim_obj x);
+
 #endif

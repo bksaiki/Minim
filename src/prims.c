@@ -5,6 +5,8 @@
 
 #include "prims.h"
 
+#include <stdlib.h>
+
 #include "minim.h"
 
 static minim_obj boolean(bool b) {
@@ -75,24 +77,69 @@ static minim_obj prim_mul(minim_obj *args, size_t n) {
     return minim_fixnum(product);
 }
 
-static minim_obj prim_num_eq(minim_obj *args, size_t n) {
+static minim_obj prim_quotient(minim_obj *args, size_t n) {
+    (void)n;
+    intptr_t a = fixnum_arg(args[0], "quotient: not a fixnum");
+    intptr_t b = fixnum_arg(args[1], "quotient: not a fixnum");
+    check(b != 0, "quotient: division by zero", args[1]);
+    return fixnum_result(a / b, "quotient: fixnum overflow");
+}
+
+static minim_obj prim_remainder(minim_obj *args, size_t n) {
+    (void)n;
+    intptr_t a = fixnum_arg(args[0], "remainder: not a fixnum");
+    intptr_t b = fixnum_arg(args[1], "remainder: not a fixnum");
+    check(b != 0, "remainder: division by zero", args[1]);
+    return minim_fixnum(a % b);
+}
+
+// Whether every adjacent pair of fixnums satisfies `cmp`; raises `msg` on a
+// non-fixnum.
+static minim_obj compare(minim_obj *args, size_t n, bool (*cmp)(intptr_t, intptr_t),
+                         const char *msg) {
     bool result = true;
     for (size_t i = 0; i < n; i++) {
-        fixnum_arg(args[i], "=: not a fixnum");
-        if (i > 0 && args[i] != args[i - 1])
+        intptr_t v = fixnum_arg(args[i], msg);
+        if (i > 0 && !cmp(minim_fixnum_value(args[i - 1]), v))
             result = false;
     }
-    return result ? MINIM_TRUE : MINIM_FALSE;
+    return boolean(result);
+}
+
+static bool eq(intptr_t a, intptr_t b) { return a == b; }
+static bool lt(intptr_t a, intptr_t b) { return a < b; }
+static bool gt(intptr_t a, intptr_t b) { return a > b; }
+static bool le(intptr_t a, intptr_t b) { return a <= b; }
+static bool ge(intptr_t a, intptr_t b) { return a >= b; }
+
+static minim_obj prim_num_eq(minim_obj *args, size_t n) {
+    return compare(args, n, eq, "=: not a fixnum");
 }
 
 static minim_obj prim_lt(minim_obj *args, size_t n) {
-    bool result = true;
-    for (size_t i = 0; i < n; i++) {
-        intptr_t v = fixnum_arg(args[i], "<: not a fixnum");
-        if (i > 0 && minim_fixnum_value(args[i - 1]) >= v)
-            result = false;
-    }
-    return result ? MINIM_TRUE : MINIM_FALSE;
+    return compare(args, n, lt, "<: not a fixnum");
+}
+
+static minim_obj prim_gt(minim_obj *args, size_t n) {
+    return compare(args, n, gt, ">: not a fixnum");
+}
+
+static minim_obj prim_le(minim_obj *args, size_t n) {
+    return compare(args, n, le, "<=: not a fixnum");
+}
+
+static minim_obj prim_ge(minim_obj *args, size_t n) {
+    return compare(args, n, ge, ">=: not a fixnum");
+}
+
+static minim_obj prim_is_fixnum(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(minim_is_fixnum(args[0]));
+}
+
+static minim_obj prim_is_zero(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(fixnum_arg(args[0], "zero?: not a fixnum") == 0);
 }
 
 static minim_obj prim_cons(minim_obj *args, size_t n) {
@@ -142,6 +189,23 @@ static minim_obj prim_list(minim_obj *args, size_t n) {
     for (size_t i = n; i > 0; i--)
         lst = minim_cons(args[i - 1], lst);
     MINIM_RETURN(lst);
+}
+
+static minim_obj prim_length(minim_obj *args, size_t n) {
+    (void)n;
+    intptr_t len = 0;
+    minim_obj x = args[0];
+    for (; minim_is_pair(x); x = minim_cdr(x))
+        len++;
+    check(minim_is_null(x), "length: not a list", args[0]);
+    return minim_fixnum(len);
+}
+
+// Applied by the evaluator, which owns the value stack; never called.
+minim_obj minim_prim_apply(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    abort();
 }
 
 static minim_obj prim_eq(minim_obj *args, size_t n) {
@@ -246,6 +310,12 @@ static minim_obj prim_write(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
+static minim_obj prim_display(minim_obj *args, size_t n) {
+    (void)n;
+    minim_display(stdout, args[0]);
+    return MINIM_VOID;
+}
+
 static minim_obj prim_newline(minim_obj *args, size_t n) {
     (void)args;
     (void)n;
@@ -267,6 +337,13 @@ void minim_prims_init(void) {
     define_primitive("*", prim_mul, 0, MINIM_VARIADIC);
     define_primitive("=", prim_num_eq, 1, MINIM_VARIADIC);
     define_primitive("<", prim_lt, 1, MINIM_VARIADIC);
+    define_primitive(">", prim_gt, 1, MINIM_VARIADIC);
+    define_primitive("<=", prim_le, 1, MINIM_VARIADIC);
+    define_primitive(">=", prim_ge, 1, MINIM_VARIADIC);
+    define_primitive("quotient", prim_quotient, 2, 2);
+    define_primitive("remainder", prim_remainder, 2, 2);
+    define_primitive("fixnum?", prim_is_fixnum, 1, 1);
+    define_primitive("zero?", prim_is_zero, 1, 1);
     define_primitive("cons", prim_cons, 2, 2);
     define_primitive("car", prim_car, 1, 1);
     define_primitive("cdr", prim_cdr, 1, 1);
@@ -275,6 +352,8 @@ void minim_prims_init(void) {
     define_primitive("pair?", prim_is_pair, 1, 1);
     define_primitive("null?", prim_is_null, 1, 1);
     define_primitive("list", prim_list, 0, MINIM_VARIADIC);
+    define_primitive("length", prim_length, 1, 1);
+    define_primitive("apply", minim_prim_apply, 2, MINIM_VARIADIC);
     define_primitive("eq?", prim_eq, 2, 2);
     define_primitive("not", prim_not, 1, 1);
     define_primitive("symbol?", prim_is_symbol, 1, 1);
@@ -292,5 +371,6 @@ void minim_prims_init(void) {
     define_primitive("symbol->string", prim_symbol_to_string, 1, 1);
     define_primitive("string->symbol", prim_string_to_symbol, 1, 1);
     define_primitive("write", prim_write, 1, 1);
+    define_primitive("display", prim_display, 1, 1);
     define_primitive("newline", prim_newline, 0, 0);
 }

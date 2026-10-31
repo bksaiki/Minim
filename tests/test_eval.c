@@ -179,6 +179,12 @@ static void test_primitive_allocates(void) {
     MINIM_RETURN_VOID;
 }
 
+static void test_apply_restores_value_stack(void) {
+    size_t before = minim_values.len;
+    CHECK(fails_with("(+ 1 (apply + 1 '(2 . 3)))", "apply: not a list"));
+    CHECK_EQ(minim_values.len, before);
+}
+
 static void test_tail_calls(void) {
 #ifdef MINIM_GC_STRESS
     const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 10000)";
@@ -187,6 +193,16 @@ static void test_tail_calls(void) {
 #endif
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.
+    CHECK(minim_heap.size <= 8 * 1024 * 1024);
+    CHECK(minim_values.cap <= 64);
+
+    // `apply` in tail position is a tail call too.
+#ifdef MINIM_GC_STRESS
+    src = "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop 2000)";
+#else
+    src = "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop 100000)";
+#endif
+    CHECK(evals_to(src, "done"));
     CHECK(minim_heap.size <= 8 * 1024 * 1024);
     CHECK(minim_values.cap <= 64);
 }
@@ -200,6 +216,7 @@ int main(void) {
     test_primitives();
     test_errors();
     test_value_stack_restored();
+    test_apply_restores_value_stack();
     test_primitive_allocates();
     test_tail_calls();
     minim_shutdown();

@@ -3,9 +3,12 @@
  * Evaluator: an explicit-stack machine with continuation frames on the heap.
  */
 
+#include <string.h>
+
 #include "env.h"
 #include "gc.h"
 #include "minim.h"
+#include "prims.h"
 #include "symbol.h"
 
 // Continuation frames are vectors `#(kind next code env base)`.
@@ -69,8 +72,9 @@ minim_obj minim_eval(minim_obj expr) {
     minim_obj val = MINIM_VOID;
     minim_obj k = MINIM_NIL;  // continuation; '() returns from minim_eval
     minim_obj x = MINIM_NIL;  // scratch
-    MINIM_FRAME(&expr, &env, &val, &k, &x);
     size_t base = 0;  // value-stack height where the applied call's values start
+
+    MINIM_FRAME(&expr, &env, &val, &k, &x);
 
 eval:  // Evaluates `expr` in `env`, then continues with `k`.
     if (minim_is_symbol(expr)) {
@@ -190,6 +194,18 @@ apply:  // Applies the procedure at `base` to the values above it.
         if (minim_is_primitive(x)) {
             if (!primitive_accepts(x, n))
                 minim_error("arity mismatch", x);
+            if (minim_primitive_fn(x) == minim_prim_apply) {
+                // [apply f a ... lst] becomes [f a ... elements of lst].
+                x = minim_values.items[--minim_values.len];
+                if (list_length(x) < 0)
+                    minim_error("apply: not a list", x);
+                memmove(minim_values.items + base, minim_values.items + base + 1,
+                        (minim_values.len - base - 1) * sizeof(minim_obj));
+                minim_values.len--;
+                for (; minim_is_pair(x); x = minim_cdr(x))
+                    minim_values_push(minim_car(x));
+                goto apply;
+            }
             val = minim_primitive_fn(x)(minim_values.items + base + 1, n);
             minim_values.len = base;
             goto ret;

@@ -1,3 +1,21 @@
+; Arithmetic
+(> 3 2 1)
+(> 3 3)
+(<= 1 1 2)
+(<= 2 1)
+(>= 2 2 1)
+(>= 2 3)
+(quotient 7 2)
+(quotient -7 2)
+(remainder 7 2)
+(remainder -7 2)
+(fixnum? 5)
+(fixnum? 'a)
+(zero? 0)
+(zero? 3)
+(quotient 1 0)
+(<= 1 'a)
+
 ; Pairs
 (define p (cons 1 2))
 (set-car! p 10)
@@ -9,6 +27,9 @@ p
 (null? p)
 (list)
 (list 1 'a "b")
+(length '())
+(length '(1 2 3))
+(length '(1 . 2))
 (set-car! 5 1)
 
 ; Identity and types
@@ -52,8 +73,21 @@ v
 (string-length 'abc)
 (symbol->string "abc")
 
+; Application
+(apply + '(1 2 3))
+(apply + 1 2 '(3 4))
+(apply list '())
+(apply apply (list + '(1 2)))
+(apply (lambda (a . r) r) 1 '(2 3))
+(apply + 1 2)
+(apply car '(1 2))
+
 ; Output
 (write "hi\n")
 (newline)
 (write 'x)
+(newline)
+(display "hi")
+(newline)
+(display '(1 "a" #\b))
 (newline)
