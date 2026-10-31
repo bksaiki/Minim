@@ -2,9 +2,21 @@
 
 Minim is a Scheme implementation.
 
-# Building
+## Building
 
 Requires CMake 3.21+ and a C17 compiler.
+
+```sh
+cmake --preset release
+cmake --build --preset release
+./build/release/minim
+```
+
+## Development
+
+The `dev` preset is a debug build with sanitizers and tests; `stress` also
+collects garbage on every allocation.  Tests are off otherwise
+(`-DMINIM_BUILD_TESTS=ON` enables them).
 
 ```sh
 cmake --preset dev
@@ -13,13 +25,5 @@ ctest --preset dev
 ./build/dev/minim
 ```
 
-The `dev` preset is a debug build with sanitizers; `stress` also collects
-garbage on every allocation.  For an optimized build:
-
-```sh
-cmake --preset release
-cmake --build --preset release
-./build/release/minim
-```
-
-`-DMINIM_BUILD_TESTS=OFF` skips building the tests.
+Design notes are in [`docs/design/`](docs/design/README.md), and planned work
+in [`docs/roadmap.md`](docs/roadmap.md).

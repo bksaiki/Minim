@@ -8,6 +8,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_FLAGS_DEBUG": "-g -O1",
+        "MINIM_BUILD_TESTS": "ON",
         "MINIM_SANITIZE": "ON"
       }
     },
@@ -35,7 +36,6 @@
   ],
   "testPresets": [
     { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
-    { "name": "stress", "configurePreset": "stress", "output": { "outputOnFailure": true } },
-    { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } }
+    { "name": "stress", "configurePreset": "stress", "output": { "outputOnFailure": true } }
   ]
 }

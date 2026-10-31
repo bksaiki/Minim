@@ -12,7 +12,7 @@ if(NOT multi_config AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-option(MINIM_BUILD_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
+option(MINIM_BUILD_TESTS "Build the tests" OFF)
 option(MINIM_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(MINIM_GC_STRESS "Collect garbage on every allocation" OFF)
 
