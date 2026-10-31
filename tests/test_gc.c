@@ -175,7 +175,7 @@ static void test_old_to_young(void) {
 
 // An old object pointing to a young one that points back to an old one.
 static void test_old_young_old(void) {
-    minim_gc_config saved = default_gc_config();  // so allocating `b` doesn't collect
+    minim_gc_config saved = use_default_gc_config();  // so allocating `b` doesn't collect
     minim_obj a = minim_cons(minim_fixnum(1), MINIM_NIL);
     minim_obj b = MINIM_NIL;
     minim_obj c = MINIM_NIL;
@@ -215,7 +215,7 @@ static void test_major_reclaims(void) {
 // With a large structure live, short-lived allocation runs only minor
 // collections.
 static void test_generational(void) {
-    minim_gc_config saved = default_gc_config();
+    minim_gc_config saved = use_default_gc_config();
     minim_obj keep = make_list(100000);  // 1.6 MB
     MINIM_FRAME(&keep);
     size_t minors = minim_gc.minor_collections;
@@ -229,18 +229,18 @@ static void test_generational(void) {
     MINIM_RETURN_VOID;
 }
 
-static void test_policy(void) {
-    minim_gc_config saved = default_gc_config();
+static void test_config(void) {
+    minim_gc_config saved = use_default_gc_config();
     size_t collections = minim_gc.minor_collections + minim_gc.major_collections;
     for (int i = 0; i < 100; i++)
         minim_cons(MINIM_NIL, MINIM_NIL);  // within the default 1 MiB nursery
     CHECK_EQ(minim_gc.minor_collections + minim_gc.major_collections, collections);
 
     // A 1-byte nursery collects at every allocation; radix 4 makes every 4th major.
-    minim_gc_config p = minim_gc_get_config();
-    p.nursery_bytes = 1;
-    p.radix = 4;
-    minim_gc_set_config(p);
+    minim_gc_config config = minim_gc_get_config();
+    config.nursery_bytes = 1;
+    config.radix = 4;
+    minim_gc_set_config(config);
     CHECK_EQ(minim_gc_get_config().radix, 4);
     size_t minors = minim_gc.minor_collections;
     size_t majors = minim_gc.major_collections;
@@ -263,26 +263,26 @@ static size_t majors_after(minim_obj *keep, int n) {
 }
 
 static void test_major_growth(void) {
-    minim_gc_config saved = default_gc_config();  // no collections but the scheduled ones
+    minim_gc_config saved = use_default_gc_config();  // no collections but the scheduled ones
     minim_obj keep = MINIM_NIL;
     MINIM_FRAME(&keep);
-    minim_gc_config p = minim_gc_get_config();
+    minim_gc_config config = minim_gc_get_config();
 
     // Any growth past the size after the last major collection.
-    p.major_growth = 1;
-    p.major_min_bytes = 0;
-    minim_gc_set_config(p);
+    config.major_growth = 1;
+    config.major_min_bytes = 0;
+    minim_gc_set_config(config);
     CHECK_EQ(majors_after(&keep, 4), 4);
 
     // Not before the old generation exceeds the minimum.
-    p.major_min_bytes = 64 * 1024 * 1024;
-    minim_gc_set_config(p);
+    config.major_min_bytes = 64 * 1024 * 1024;
+    minim_gc_set_config(config);
     CHECK_EQ(majors_after(&keep, 4), 0);
 
     // Not before it grows by the factor.
-    p.major_growth = 1000;
-    p.major_min_bytes = 0;
-    minim_gc_set_config(p);
+    config.major_growth = 1000;
+    config.major_min_bytes = 0;
+    minim_gc_set_config(config);
     CHECK_EQ(majors_after(&keep, 4), 0);
     int n = 0;
     for (minim_obj x = keep; minim_is_pair(x); x = minim_cdr(x))
@@ -352,7 +352,7 @@ int main(void) {
     test_old_young_old();
     test_major_reclaims();
     test_generational();
-    test_policy();
+    test_config();
     test_major_growth();
     test_remembered();
     test_old_symbol_table();

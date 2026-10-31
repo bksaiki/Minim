@@ -13,6 +13,7 @@
 
 #include "minim.h"
 
+/** Defined when built with AddressSanitizer. */
 #if defined(__SANITIZE_ADDRESS__)
 #define MINIM_ASAN 1
 #elif defined(__has_feature)
@@ -39,11 +40,11 @@ static inline size_t minim_align_up(size_t n) {
  * object starts in its chunk's first MINIM_CHUNK_SIZE bytes.
  */
 typedef struct minim_chunk {
-    unsigned char generation;  ///< 0 for new objects, 1 for survivors; first, for minim_gc_write
+    unsigned char generation;  ///< 0 for new objects, 1 for survivors
     struct minim_chunk *next;  ///< next newer chunk in its space, or next spare
     unsigned char *end;        ///< end of used data, once a newer chunk exists
     size_t size;               ///< capacity of `data`
-    /// A bit per MINIM_ALIGN bytes: whether the object starting there is remembered.
+    /** A bit per MINIM_ALIGN bytes: whether the object starting there is remembered. */
     uint64_t remembered[MINIM_CHUNK_SIZE / MINIM_ALIGN / 64];
     alignas(MINIM_ALIGN) unsigned char data[];
 } minim_chunk;
@@ -71,6 +72,11 @@ typedef struct minim_space {
     unsigned char generation;  ///< of every chunk in the space
 } minim_space;
 
+/** End of the objects in `c`, a chunk of `s`. */
+static inline unsigned char *minim_chunk_end(const minim_space *s, const minim_chunk *c) {
+    return c == s->last ? s->alloc : c->end;
+}
+
 /**
  * Heap spaces.  New objects, the young generation, go in MINIM_SPACE_NEW;
  * survivors are copied into the old generation's space for their kind.
@@ -86,7 +92,7 @@ enum {
 /** Reports that memory is exhausted and aborts. */
 _Noreturn void minim_out_of_memory(void);
 
-/** Allocates `nbytes` in the new area; may collect first. */
+/** Allocates `nbytes` in the nursery; may collect first. */
 void *minim_heap_alloc(size_t nbytes);
 
 /** Allocates `nbytes` in `s`; never collects. */
@@ -97,6 +103,9 @@ void *minim_space_alloc(minim_space *s, size_t nbytes);
  * for reuse, up to a limit; the rest are freed.
  */
 void minim_space_free(minim_space *s);
+
+/** Spare chunks kept: enough to refill the nursery, plus the quarantine. */
+size_t minim_heap_max_spares(void);
 
 /** Frees the spare chunks. */
 void minim_heap_free_spares(void);

@@ -269,17 +269,16 @@ void minim_gc_protect(minim_obj *const *vars, size_t n);
 void minim_gc_add_global(minim_obj *p);
 
 /**
- * Collector settings.  A collection runs after every `nursery_bytes` of
- * allocation.  Every `radix`-th one is major (none if `radix` is 0); the
- * others are minor, each followed by a major one if the old generation now
- * exceeds both `major_growth` times its size after the last major collection
- * and `major_min_bytes`.
+ * Collector settings.  After a minor collection, a major one runs if the old
+ * generation exceeds both `major_min_bytes` and `major_growth` times its size
+ * after the last major collection.  Every setting is at most MINIM_FIXNUM_MAX,
+ * and `major_growth` and `stack_initial_capacity` are at least 1.
  */
 typedef struct minim_gc_config {
     size_t nursery_bytes;           ///< bytes allocated between collections
     size_t radix;                   ///< every `radix`-th collection is major; 0 for none
     size_t major_growth;            ///< old-generation growth factor that triggers a major one
-    size_t major_min_bytes;         ///< size the old generation must also exceed
+    size_t major_min_bytes;         ///< old-generation size below which growth is ignored
     size_t stack_initial_capacity;  ///< elements the collector's stacks first allocate
 } minim_gc_config;
 
@@ -293,9 +292,8 @@ minim_gc_config minim_gc_default_config(void);
 minim_gc_config minim_gc_get_config(void);
 
 /**
- * Sets the collector settings; `major_growth` and `stack_initial_capacity` must
- * be at least 1.  The nursery starts over; `stack_initial_capacity` affects
- * only stacks not yet allocated, since stacks never shrink.
+ * Sets the collector settings.  The nursery starts over; `stack_initial_capacity`
+ * affects only stacks not yet allocated, since stacks never shrink.
  */
 void minim_gc_set_config(minim_gc_config config);
 
@@ -311,13 +309,10 @@ void minim_gc_collect_major(void);
 /** Remembers the old object `obj` until the next collection. */
 void minim_gc_remember(minim_obj obj);
 
-/**
- * Write barrier, after storing `x` into the object `obj`: an old object that
- * may now point to a young one is remembered.  The first byte of an object's
- * chunk, found by alignment, is its generation.
- */
+/** Write barrier, after storing `x` into `obj`: remembers `obj` if old and `x` is a heap object. */
 static inline void minim_gc_write(minim_obj obj, minim_obj x) {
     minim_obj tag = minim_tag(x);
+    // An object's chunk, found by alignment, starts with its generation.
     if (tag != MINIM_TAG_FIXNUM && tag != MINIM_TAG_IMMEDIATE
         && *(const unsigned char *)(obj & ~(minim_obj)(MINIM_CHUNK_SIZE - 1)) != 0)
         minim_gc_remember(obj);

@@ -122,11 +122,12 @@ They are set by `minim_gc_set_config`, the `MINIM_GC_` environment variables
 (`minim_init`) runs with the defaults; the environment's settings apply after
 it, or from the start with `MINIM_GC_STARTUP=1`.
 
-**Stress testing.**  A 1-byte nursery collects at every allocation, and radix
-1 makes every collection major, so a missing root moves its object at the
-next allocation, where AddressSanitizer reports the stale use.  Every test
-has a copy, `<name>_stress`, run with those settings by the `stress` test
-preset; `startup_stress` alone stresses startup.
+**Stress testing.**  A 1-byte nursery collects at every allocation, so a
+missing root moves its object at the next allocation, where AddressSanitizer
+reports the stale use.  Radix 2 alternates minor collections, which also
+catch a missed write barrier, and major ones, which also move old objects.
+Every test has a copy, `<name>_stress`, run with those settings by the
+`stress` test preset; `startup_stress` alone stresses startup, with radix 1.
 
 ## Roots
 

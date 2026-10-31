@@ -26,30 +26,34 @@ void minim_out_of_memory(void) {
     abort();
 }
 
-#ifdef _MSC_VER
-static void *chunk_alloc(size_t size) {
-    return _aligned_malloc(size, MINIM_CHUNK_SIZE);
-}
-
-static void chunk_free(void *p) {
-    _aligned_free(p);
-}
-#else
-static void *chunk_alloc(size_t size) {
-    return aligned_alloc(MINIM_CHUNK_SIZE, size);
-}
-
-static void chunk_free(void *p) {
-    free(p);
-}
-#endif
-
 // Bytes allocated for a chunk with `capacity` bytes of data.
 static size_t chunk_bytes(size_t capacity) {
     return offsetof(minim_chunk, data) + capacity;
 }
 
-// A spare chunk, past the quarantine, or NULL.
+// A new chunk of `bytes`, a multiple of MINIM_CHUNK_SIZE, aligned to its size.
+static minim_chunk *chunk_alloc(size_t bytes) {
+#ifdef _MSC_VER
+    minim_chunk *c = _aligned_malloc(bytes, MINIM_CHUNK_SIZE);
+#else
+    minim_chunk *c = aligned_alloc(MINIM_CHUNK_SIZE, bytes);
+#endif
+    if (c == NULL)
+        minim_out_of_memory();
+    minim_gc.size += bytes;
+    return c;
+}
+
+static void chunk_free(minim_chunk *c) {
+    minim_gc.size -= chunk_bytes(c->size);
+#ifdef _MSC_VER
+    _aligned_free(c);
+#else
+    free(c);
+#endif
+}
+
+// Takes the oldest spare, or NULL if none is past the quarantine.
 static minim_chunk *take_spare(void) {
     minim_chunk_queue *q = &minim_gc.spares;
     if (q->len <= MINIM_CHUNK_QUARANTINE)
@@ -62,16 +66,14 @@ static minim_chunk *take_spare(void) {
     return c;
 }
 
-// Spares kept: enough to refill the nursery, plus the quarantine.
-static size_t max_spares(void) {
+size_t minim_heap_max_spares(void) {
     return minim_gc.config.nursery_bytes / MINIM_CHUNK_SIZE + 1 + MINIM_CHUNK_QUARANTINE;
 }
 
 // Makes `c` a spare, or frees it if it is large or there are enough spares.
 static void release_chunk(minim_chunk *c) {
     minim_chunk_queue *q = &minim_gc.spares;
-    if (chunk_bytes(c->size) != MINIM_CHUNK_SIZE || q->len >= max_spares()) {
-        minim_gc.size -= chunk_bytes(c->size);
+    if (chunk_bytes(c->size) != MINIM_CHUNK_SIZE || q->len >= minim_heap_max_spares()) {
         chunk_free(c);
         return;
     }
@@ -91,12 +93,8 @@ static void space_grow(minim_space *s, size_t nbytes) {
     // A multiple of MINIM_CHUNK_SIZE, as aligned_alloc requires.
     size_t bytes = (chunk_bytes(nbytes) + MINIM_CHUNK_SIZE - 1) & ~(size_t)(MINIM_CHUNK_SIZE - 1);
     minim_chunk *c = bytes == MINIM_CHUNK_SIZE ? take_spare() : NULL;
-    if (c == NULL) {
+    if (c == NULL)
         c = chunk_alloc(bytes);
-        if (c == NULL)
-            minim_out_of_memory();
-        minim_gc.size += bytes;
-    }
     size_t size = bytes - offsetof(minim_chunk, data);
     *c = (minim_chunk){.generation = s->generation, .size = size};
     ASAN_POISON_MEMORY_REGION(c->data, size);
@@ -109,8 +107,7 @@ static void space_grow(minim_space *s, size_t nbytes) {
     }
     s->last = c;
     s->alloc = c->data;
-    // A large object's chunk holds nothing else, so every object starts in its
-    // chunk's first MINIM_CHUNK_SIZE bytes.
+    // A large object's chunk holds nothing else.
     s->avail = bytes > MINIM_CHUNK_SIZE ? nbytes : size;
 }
 
@@ -148,8 +145,6 @@ void minim_heap_free_spares(void) {
     minim_chunk *c = minim_gc.spares.first;
     while (c != NULL) {
         minim_chunk *next = c->next;
-        minim_gc.size -= chunk_bytes(c->size);
-        ASAN_UNPOISON_MEMORY_REGION(c->data, c->size);
         chunk_free(c);
         c = next;
     }
@@ -159,6 +154,6 @@ void minim_heap_free_spares(void) {
 size_t minim_space_used(const minim_space *s) {
     size_t used = 0;
     for (const minim_chunk *c = s->first; c != NULL; c = c->next)
-        used += (size_t)((c == s->last ? s->alloc : c->end) - c->data);
+        used += (size_t)(minim_chunk_end(s, c) - c->data);
     return used;
 }

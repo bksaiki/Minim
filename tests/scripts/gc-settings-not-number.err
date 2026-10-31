@@ -1,1 +1,1 @@
-minim: MINIM_GC_NURSERY must be a positive integer, not "1k"
+minim: MINIM_GC_NURSERY_BYTES must be an integer from 1 to 1152921504606846975, not "1k"

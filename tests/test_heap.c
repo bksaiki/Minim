@@ -86,8 +86,7 @@ static void test_large_vector(void) {
     MINIM_RETURN_VOID;
 }
 
-// Whether `x` lies in the data of the chunk minim_chunk_of finds, a chunk of
-// generation `gen`.
+// Whether `x` lies in its chunk's data, and the chunk has generation `gen`.
 static bool in_chunk(minim_obj x, unsigned gen) {
     minim_chunk *c = minim_chunk_of(x);
     uintptr_t p = x & ~(minim_obj)MINIM_TAG_MASK;
@@ -107,7 +106,7 @@ static bool chunks_aligned(void) {
 }
 
 static void test_chunk_of(void) {
-    minim_gc_config saved = default_gc_config();  // so the allocations below don't collect
+    minim_gc_config saved = use_default_gc_config();  // so the allocations below don't collect
     minim_obj pair = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_obj sym = MINIM_NIL;
     minim_obj str = MINIM_NIL;
@@ -135,21 +134,19 @@ static void test_chunk_of(void) {
     MINIM_RETURN_VOID;
 }
 
-// Whether every spare chunk is standard-size, and there are no more of them
-// than the nursery needs plus the quarantine.
+// Whether every spare chunk is standard-size, and there are at most the limit.
 static bool spares_bounded(void) {
     size_t n = 0;
     for (const minim_chunk *c = minim_gc.spares.first; c != NULL; c = c->next, n++) {
         if (offsetof(minim_chunk, data) + c->size != MINIM_CHUNK_SIZE)
             return false;
     }
-    size_t max = minim_gc.config.nursery_bytes / MINIM_CHUNK_SIZE + 1 + MINIM_CHUNK_QUARANTINE;
-    return n == minim_gc.spares.len && n <= max;
+    return n == minim_gc.spares.len && n <= minim_heap_max_spares();
 }
 
 // A chunk freed by a collection is reused, once the quarantine has passed.
 static void test_chunk_reuse(void) {
-    minim_gc_config saved = default_gc_config();
+    minim_gc_config saved = use_default_gc_config();
     minim_gc_collect_major();
     minim_obj p = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_chunk *chunk = minim_chunk_of(p);

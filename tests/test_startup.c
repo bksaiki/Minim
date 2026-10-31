@@ -1,9 +1,7 @@
 /**
  * @file
- * Tests for when the environment's collector settings apply.  Run with
- * MINIM_GC_NURSERY=1 and either argument: `program` expects startup to run
- * with the defaults, `startup` (with MINIM_GC_STARTUP=1 and MINIM_GC_RADIX=1)
- * expects a major collection at every allocation during startup.
+ * Tests that the environment's collector settings apply after startup, or
+ * during it with MINIM_GC_STARTUP=1.
  */
 
 #include <string.h>
@@ -12,6 +10,7 @@
 #include "minim.h"
 #include "test.h"
 
+// argv[1] is "startup" under MINIM_GC_STARTUP=1, otherwise "program".
 int main(int argc, char **argv) {
     if (argc != 2)
         return 2;

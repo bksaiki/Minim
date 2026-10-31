@@ -34,7 +34,7 @@
     },
     {
       "name": "stress",
-      "displayName": "Every test under GC stress",
+      "displayName": "Tests under GC stress",
       "configurePreset": "dev",
       "output": { "outputOnFailure": true },
       "filter": { "include": { "label": "stress" } }

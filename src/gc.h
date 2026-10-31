@@ -51,9 +51,9 @@ extern struct minim_gc {
 void minim_values_push(minim_obj x);
 
 /**
- * Empties the heap and reads the settings from the environment.  They apply
- * once startup finishes, or from now if MINIM_GC_STARTUP is 1; until then,
- * the defaults apply.
+ * Resets the collector and reads its settings from the environment.  They
+ * apply once startup finishes, or from now if MINIM_GC_STARTUP is 1; until
+ * then, the defaults apply.
  */
 void minim_gc_init(void);
 

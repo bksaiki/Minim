@@ -1,1 +1,1 @@
-minim: MINIM_GC_MAJOR_GROWTH must be a positive integer, not "0"
+minim: MINIM_GC_MAJOR_GROWTH must be an integer from 1 to 1152921504606846975, not "0"

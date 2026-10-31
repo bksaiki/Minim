@@ -45,9 +45,8 @@ static void push_obj(struct minim_gc *gc, minim_obj_stack *s, minim_obj x) {
 }
 
 // Value of the environment variable `name`, a decimal integer from `min` to
-// `max`, or `fallback` if it is unset.  Exits if it is malformed.
-static size_t getenv_integer(const char *name, size_t min, size_t max, const char *expected,
-                             size_t fallback) {
+// `max`, or `fallback` if it is unset.  Exits if it is malformed or out of range.
+static size_t getenv_integer(const char *name, size_t min, size_t max, size_t fallback) {
     const char *s = minim_getenv(name);
     if (s == NULL)
         return fallback;
@@ -55,29 +54,28 @@ static size_t getenv_integer(const char *name, size_t min, size_t max, const cha
     errno = 0;
     unsigned long long v = strtoull(s, &end, 10);
     if (*s < '0' || *s > '9' || *end != '\0' || errno == ERANGE || v < min || v > max) {
-        fprintf(stderr, "minim: %s must be %s, not \"%s\"\n", name, expected, s);
+        fprintf(stderr, "minim: %s must be an integer from %zu to %zu, not \"%s\"\n", name, min,
+                max, s);
         exit(EXIT_FAILURE);
     }
     return (size_t)v;
 }
 
 void minim_gc_init(void) {
-    const minim_gc_config defaults = DEFAULT_CONFIG;
     const size_t max = MINIM_FIXNUM_MAX;
     minim_gc_config env = {
-        .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, max, "a positive integer",
-                                        defaults.nursery_bytes),
-        .radix = getenv_integer("MINIM_GC_RADIX", 0, max, "a nonnegative integer",
-                                defaults.radix),
-        .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, max, "a positive integer",
-                                       defaults.major_growth),
-        .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN", 0, max, "a nonnegative integer",
-                                          defaults.major_min_bytes),
-        .stack_initial_capacity = defaults.stack_initial_capacity,
+        .nursery_bytes = getenv_integer("MINIM_GC_NURSERY_BYTES", 1, max,
+                                        DEFAULT_CONFIG.nursery_bytes),
+        .radix = getenv_integer("MINIM_GC_RADIX", 0, max, DEFAULT_CONFIG.radix),
+        .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, max,
+                                       DEFAULT_CONFIG.major_growth),
+        .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN_BYTES", 0, max,
+                                          DEFAULT_CONFIG.major_min_bytes),
+        .stack_initial_capacity = DEFAULT_CONFIG.stack_initial_capacity,
     };
-    bool startup = getenv_integer("MINIM_GC_STARTUP", 0, 1, "0 or 1", 0);
+    bool startup = getenv_integer("MINIM_GC_STARTUP", 0, 1, 0);
 
-    minim_gc = (struct minim_gc){.config = startup ? env : defaults, .program_config = env};
+    minim_gc = (struct minim_gc){.config = startup ? env : DEFAULT_CONFIG, .program_config = env};
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
         minim_gc.spaces[i].generation = i == MINIM_SPACE_NEW ? 0 : 1;
     minim_gc.budget = minim_gc.config.nursery_bytes;
@@ -112,7 +110,7 @@ void minim_gc_set_config(minim_gc_config config) {
     minim_gc.budget = config.nursery_bytes;
 }
 
-// The word holding `obj`'s remembered bit, and the bit in `*bit`.
+// The word holding `obj`'s remembered bit; sets `*bit` to its mask.
 static uint64_t *remembered_word(minim_obj obj, uint64_t *bit) {
     minim_chunk *c = minim_chunk_of(obj);
     size_t i = ((obj & ~(minim_obj)MINIM_TAG_MASK) - (uintptr_t)c) / MINIM_ALIGN;
@@ -228,15 +226,11 @@ static size_t scan_typed(minim_obj *p) {
     return typed_size(header);
 }
 
-// Position of the next unscanned object in a space
+// Position of the next unscanned object in a space.
 typedef struct cursor {
     minim_chunk *chunk;
     unsigned char *p;
 } cursor;
-
-static unsigned char *chunk_end(const minim_space *s, const minim_chunk *c) {
-    return c == s->last ? s->alloc : c->end;
-}
 
 // Scans `s` from `c` to its end; returns whether anything was scanned.
 static bool scan(minim_space *s, cursor *c, size_t (*scan_obj)(minim_obj *)) {
@@ -249,7 +243,7 @@ static bool scan(minim_space *s, cursor *c, size_t (*scan_obj)(minim_obj *)) {
     bool scanned = false;
     for (;;) {
         // Scanning may copy into `s`, so the end is rechecked each time.
-        while (c->p < chunk_end(s, c->chunk)) {
+        while (c->p < minim_chunk_end(s, c->chunk)) {
             c->p += minim_align_up(scan_obj((minim_obj *)c->p));
             scanned = true;
         }
@@ -277,24 +271,19 @@ static cursor end_of(const minim_space *s) {
 // Copies the young generation's survivors into the old generation, and in a
 // major collection also the old generation's.  A minor collection treats the
 // remembered old objects as roots.
-static void collect(bool is_minor) {
-    minim_gc.minor = is_minor;  // for copy
+static void collect(bool minor) {
+    minim_gc.minor = minor;
     minim_space from[MINIM_SPACE_COUNT];
+    cursor cursors[MINIM_SPACE_COUNT];  // of the old spaces
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        if (is_minor && i != MINIM_SPACE_NEW)
-            continue;
-        from[i] = minim_gc.spaces[i];
-        minim_gc.spaces[i] = (minim_space){.generation = from[i].generation};
+        if (!minim_gc.minor || i == MINIM_SPACE_NEW) {
+            from[i] = minim_gc.spaces[i];
+            minim_gc.spaces[i] = (minim_space){.generation = from[i].generation};
+        }
+        // Objects copied from here on are scanned; in a major collection, that
+        // is every object in the old spaces.
+        cursors[i] = end_of(&minim_gc.spaces[i]);
     }
-
-    // Objects copied from here on are scanned; in a major collection, that is
-    // every object in the old spaces.
-    minim_space *pairs = &minim_gc.spaces[MINIM_SPACE_PAIR];
-    minim_space *symbols = &minim_gc.spaces[MINIM_SPACE_SYMBOL];
-    minim_space *typed = &minim_gc.spaces[MINIM_SPACE_TYPED];
-    cursor pair_cursor = end_of(pairs);
-    cursor symbol_cursor = end_of(symbols);
-    cursor typed_cursor = end_of(typed);
 
     for (size_t i = 0; i < minim_gc.globals.len; i++)
         *minim_gc.globals.items[i] = copy(*minim_gc.globals.items[i]);
@@ -305,7 +294,7 @@ static void collect(bool is_minor) {
 
     // In a major collection, the remembered objects are in from-space, and
     // their chunks are freed below, bits and all.
-    if (is_minor) {
+    if (minim_gc.minor) {
         for (size_t i = 0; i < minim_gc.remembered.len; i++) {
             uint64_t bit;
             *remembered_word(minim_gc.remembered.items[i], &bit) &= ~bit;
@@ -315,20 +304,23 @@ static void collect(bool is_minor) {
     minim_gc.remembered.len = 0;
     bool scanned;
     do {
-        scanned = scan(pairs, &pair_cursor, scan_two_words);
-        scanned |= scan(symbols, &symbol_cursor, scan_two_words);
-        scanned |= scan(typed, &typed_cursor, scan_typed);
+        scanned = false;
+        for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
+            if (i != MINIM_SPACE_NEW)
+                scanned |= scan(&minim_gc.spaces[i], &cursors[i],
+                                i == MINIM_SPACE_TYPED ? scan_typed : scan_two_words);
+        }
     } while (scanned);
 
+    minim_gc.live = 0;
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        if (!is_minor || i == MINIM_SPACE_NEW)
+        if (!minim_gc.minor || i == MINIM_SPACE_NEW)
             minim_space_free(&from[i]);
+        if (i != MINIM_SPACE_NEW)
+            minim_gc.live += minim_space_used(&minim_gc.spaces[i]);
     }
-
-    minim_gc.live = minim_space_used(pairs) + minim_space_used(symbols)
-                    + minim_space_used(typed);
     minim_gc.budget = minim_gc.config.nursery_bytes;
-    if (is_minor) {
+    if (minim_gc.minor) {
         minim_gc.minor_collections++;
     } else {
         minim_gc.major_collections++;
@@ -348,7 +340,7 @@ void minim_gc_collect_major(void) {
 static bool old_generation_outgrown(void) {
     size_t live = minim_gc.live;
     const minim_gc_config *c = &minim_gc.config;
-    // live > major_growth * major_base, without overflow, as live >= 1
+    // live > major_growth * major_base without overflow; live >= 1 by the first test
     return live > c->major_min_bytes && (live - 1) / c->major_growth >= minim_gc.major_base;
 }
 
