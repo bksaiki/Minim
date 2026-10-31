@@ -1,0 +1,6 @@
+error: load: cannot open file: "load/missing.scm"
+error: load: not a string: 5
+error: eof in list
+error: unbound variable: never-defined
+error: car: not a pair: 5
+error: unbound variable: after-error

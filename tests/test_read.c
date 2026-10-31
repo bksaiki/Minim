@@ -6,27 +6,35 @@
 #include <string.h>
 
 #include "minim.h"
+#include "read.h"
 #include "test.h"
 
-// Whether the first datum in `s` prints as `expect`.
+// Whether the first datum in `s`, read from a file and from a string, prints
+// as `expect`.
 static bool reads_as(const char *s, const char *expect) {
     FILE *f = input(s);
     minim_obj x = minim_read(f);
     fclose(f);
-    return prints_as(x, expect);
+    if (!prints_as(x, expect))
+        return false;
+
+    const char *p = s;
+    return prints_as(minim_read_string(&p), expect);
 }
 
 static minim_obj read_file(void *f) {
     return minim_read(f);
 }
 
-// Whether reading `s` raises the error `msg`.
-static bool fails_with(const char *s, const char *msg) {
-    FILE *f = input(s);
+static minim_obj read_string(void *s) {
+    const char *p = s;
+    return minim_read_string(&p);
+}
+
+// Whether reading `s` with `read` raises the error `msg`.
+static bool raises(minim_obj (*read)(void *), void *arg, const char *s, const char *msg) {
     minim_obj x;
-    bool ok = minim_catch(read_file, f, &x);
-    fclose(f);
-    if (ok) {
+    if (minim_catch(read, arg, &x)) {
         fprintf(stderr, "`%s` read without error\n", s);
         return false;
     }
@@ -39,6 +47,14 @@ static bool fails_with(const char *s, const char *msg) {
         return false;
     }
     return true;
+}
+
+// Whether reading `s`, from a file and from a string, raises the error `msg`.
+static bool fails_with(const char *s, const char *msg) {
+    FILE *f = input(s);
+    bool ok = raises(read_file, f, s, msg);
+    fclose(f);
+    return ok && raises(read_string, (void *)s, s, msg);
 }
 
 static void test_atoms(void) {
@@ -105,6 +121,15 @@ static void test_stream(void) {
     CHECK_EQ(minim_read(f), MINIM_EOF);
     CHECK_EQ(minim_read(f), MINIM_EOF);
     fclose(f);
+
+    const char *p = "  ; leading comment\n 1 (2)\"s\"x caf\u00e9";
+    CHECK(prints_as(minim_read_string(&p), "1"));
+    CHECK(prints_as(minim_read_string(&p), "(2)"));
+    CHECK(prints_as(minim_read_string(&p), "\"s\""));
+    CHECK(prints_as(minim_read_string(&p), "x"));
+    CHECK(prints_as(minim_read_string(&p), "caf\u00e9"));
+    CHECK_EQ(minim_read_string(&p), MINIM_EOF);
+    CHECK_EQ(minim_read_string(&p), MINIM_EOF);
 }
 
 static void test_errors(void) {

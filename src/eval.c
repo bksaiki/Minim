@@ -9,6 +9,7 @@
 #include "gc.h"
 #include "minim.h"
 #include "prims.h"
+#include "read.h"
 #include "symbol.h"
 
 // Continuation frames are vectors `#(kind next code env base)`.
@@ -200,6 +201,21 @@ apply:  // Applies the procedure at `base` to the values above it.
                 for (; minim_is_pair(x); x = minim_cdr(x))
                     minim_values_push(minim_car(x));
                 goto apply;
+            }
+            if (minim_primitive_fn(x) == minim_prim_load) {
+                // Evaluates the file's forms, then void, in the global environment.
+                if (!minim_is_string(minim_values.items[base + 1]))
+                    minim_error("load: not a string", minim_values.items[base + 1]);
+                x = minim_read_file(minim_values.items[base + 1]);
+                minim_values.len = base;
+                env = MINIM_NIL;
+                if (minim_is_null(x)) {
+                    val = MINIM_VOID;
+                    goto ret;
+                }
+                val = minim_cons(MINIM_VOID, MINIM_NIL);
+                k = make_frame(K_SEQ, k, val, env, MINIM_NIL);
+                goto sequence;
             }
             val = minim_primitive_fn(x)(minim_values.items + base + 1, n);
             minim_values.len = base;

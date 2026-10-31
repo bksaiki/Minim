@@ -17,13 +17,20 @@ primitive  (tag 111)   [ header | fn | name | min | max ]     40 B, rounded up t
 - `min` and `max` are fixnum arities; `max` is `MINIM_VARIADIC` (-1) for any
   number of arguments.  The evaluator checks them before calling `fn`.
 
-## `apply`
+## `apply` and `load`
 
-`apply` is registered as a primitive, but the evaluator recognizes its
-function pointer (`minim_prim_apply`) and never calls it.  Instead, it rewrites
-the value stack `[apply f a ... lst]` into `[f a ... elements of lst]` and
-applies `f`, so `apply` in tail position is a tail call.  An ordinary
-primitive couldn't call a closure without re-entering `minim_eval`.
+Both need to evaluate code, which an ordinary primitive can't do without
+re-entering `minim_eval`.  So both are registered as primitives, but the
+evaluator recognizes their function pointers (`minim_prim_apply`,
+`minim_prim_load`) and never calls them:
+
+- `apply` rewrites the value stack `[apply f a ... lst]` into
+  `[f a ... elements of lst]` and applies `f`, so `apply` in tail position is
+  a tail call.
+- `load` reads the whole file with `minim_read_file` (`src/read.h`), which
+  always closes it, even on a read error.  It then evaluates the forms, then
+  void, as a body in the global environment.  A read error therefore runs
+  none of the file.
 
 ## Equality and hashing
 
@@ -128,6 +135,12 @@ primitive couldn't call a closure without re-entering `minim_eval`.
 | `(write x)` | prints `x` in `write` syntax to stdout; void |
 | `(display x)` | prints `x` with strings and chars unescaped; void |
 | `(newline)` | prints a newline; void |
+
+### Files
+
+| Call | Result |
+|---|---|
+| `(load path)` | evaluates the forms in the file `path`, relative to the current directory, in the global environment; void |
 
 ## Conventions
 

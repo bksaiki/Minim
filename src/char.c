@@ -5,6 +5,10 @@
 
 #include "char.h"
 
+#include <stdlib.h>
+
+#include "heap.h"
+
 #include "minim.h"
 
 size_t minim_utf8_decode(const unsigned char *s, uint32_t *c) {
@@ -101,4 +105,16 @@ size_t minim_utf8_encode(uint32_t c, unsigned char out[4]) {
         out[3] = (unsigned char)(0x80 | (c & 0x3F));
         return 4;
     }
+}
+
+char *minim_string_to_utf8(minim_obj s) {
+    size_t n = minim_string_length(s);
+    unsigned char *out = malloc(4 * n + 1);
+    if (out == NULL)
+        minim_out_of_memory();
+    size_t len = 0;
+    for (size_t i = 0; i < n; i++)
+        len += minim_utf8_encode(minim_string_ref(s, i), out + len);
+    out[len] = '\0';
+    return (char *)out;
 }

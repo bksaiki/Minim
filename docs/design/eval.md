@@ -34,6 +34,8 @@ operands of calls in progress.  An `ARGS` frame records `base`, the height
 where its call's values start.  The collector scans `[0, len)` and updates
 entries in place, so a pointer into the stack survives allocation, but not a
 push, which may `realloc`.  `minim_catch` restores the height after an error.
+The stack keeps its peak capacity: non-tail recursion like the prelude's `map`
+leaves it large for the rest of the session.
 
 ## Environments
 
@@ -64,8 +66,8 @@ Malformed forms raise `bad syntax`.
 The machine pushes the operator, then each operand left to right.  With `n`
 operands:
 
-- A primitive gets `fn(&stack[base + 1], n)` after an arity check.  `apply` is
-  the exception; see `primitives.md`.
+- A primitive gets `fn(&stack[base + 1], n)` after an arity check.  `apply` and
+  `load` are the exceptions; see `primitives.md`.
 - A closure binds its parameters from the same slots with
   `minim_env_extend`, then evaluates its body.  The call's values are popped
   first, and a call in tail position pushes no frame.

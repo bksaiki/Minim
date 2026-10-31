@@ -14,7 +14,8 @@ endif()
 
 option(MINIM_BUILD_TESTS "Build the tests" OFF)
 option(MINIM_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-option(MINIM_GC_STRESS "Collect garbage on every allocation" OFF)
+option(MINIM_GC_STRESS "Collect garbage frequently, every MINIM_GC_STRESS_INTERVAL allocations" OFF)
+set(MINIM_GC_STRESS_INTERVAL 1 CACHE STRING "Allocations between collections under MINIM_GC_STRESS")
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
@@ -29,10 +30,27 @@ elseif(MSVC)
 endif()
 
 if(MINIM_GC_STRESS)
-    add_compile_definitions(MINIM_GC_STRESS)
+    if(NOT MINIM_GC_STRESS_INTERVAL MATCHES "^[1-9][0-9]*$")
+        message(FATAL_ERROR "MINIM_GC_STRESS_INTERVAL must be a positive integer, not '${MINIM_GC_STRESS_INTERVAL}'")
+    endif()
+    add_compile_definitions(MINIM_GC_STRESS=${MINIM_GC_STRESS_INTERVAL})
 endif()
 
+# The prelude's source, embedded as a C array
+set(prelude_c ${CMAKE_CURRENT_BINARY_DIR}/prelude_scm.c)
+add_custom_command(
+    OUTPUT ${prelude_c}
+    COMMAND ${CMAKE_COMMAND}
+        -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.scm
+        -DOUTPUT=${prelude_c}
+        -DNAME=minim_prelude_scm
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed.cmake
+    DEPENDS src/prelude.scm cmake/embed.cmake
+    COMMENT "Embedding prelude.scm"
+)
+
 add_library(libminim STATIC
+    ${prelude_c}
     src/char.c
     src/env.c
     src/error.c
@@ -40,6 +58,7 @@ add_library(libminim STATIC
     src/gc.c
     src/heap.c
     src/object.c
+    src/prelude.c
     src/prims.c
     src/print.c
     src/read.c

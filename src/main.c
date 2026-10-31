@@ -1,6 +1,6 @@
 /**
  * @file
- * Command-line entry point: a read-eval-print loop.
+ * Command-line entry point: runs a file, or a read-eval-print loop.
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -26,8 +26,27 @@ static minim_obj eval(void *expr) {
     return minim_eval(*(minim_obj *)expr);
 }
 
-int main(void) {
-    minim_init();
+// Evaluates `(load path)`.
+static minim_obj load(void *path) {
+    minim_obj expr = minim_string_from_cstr(path);
+    MINIM_FRAME(&expr);
+    expr = minim_cons(expr, MINIM_NIL);
+    minim_obj sym = minim_intern_cstr("load");
+    expr = minim_cons(sym, expr);
+    MINIM_RETURN(minim_eval(expr));
+}
+
+// Runs the file `path`; returns the exit status.
+static int run_file(const char *path) {
+    minim_obj x;
+    if (!minim_catch(load, (void *)path, &x)) {
+        minim_write_error(stderr);
+        return 1;
+    }
+    return 0;
+}
+
+static int run_repl(void) {
     bool interactive = isatty(fileno(stdin));
     for (;;) {
         if (interactive)
@@ -52,6 +71,17 @@ int main(void) {
 
     if (interactive)
         fputc('\n', stderr);
-    minim_shutdown();
     return 0;
+}
+
+int main(int argc, char **argv) {
+    if (argc > 2) {
+        fputs("usage: minim [file]\n", stderr);
+        return 2;
+    }
+
+    minim_init();
+    int status = argc == 2 ? run_file(argv[1]) : run_repl();
+    minim_shutdown();
+    return status;
 }

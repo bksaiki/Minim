@@ -7,19 +7,18 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, and 64 primitives, including structural equality, hashing, and
-char and string operations (milestone 1).  It has a precise copying
+closures, 65 primitives, and a Scheme prelude with the list library
+(`map`, `append`, `member`, `fold`, ...).  It has a precise copying
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls and the special forms `quote`, `if`, `define`, `set!`, `lambda`,
-and `begin` (see `docs/design/`).
+and `begin`.  `minim file.scm` runs a file, and `load` loads one (see
+`docs/design/`).
 
 Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
 | Derived forms | `let`, `cond`, `and`, `or`, `case`, `do`, named `let` |
-| List library | `map`, `for-each`, `append`, `reverse`, `assq`, `member` |
-| Running files | `minim file.scm`, `load` |
 | Macros | `define-syntax`, `syntax-rules`, `quasiquote` |
 | Control | `call/cc`, `dynamic-wind`, `values`, `error`, `guard` |
 | Numbers | flonums, bignums, rationals |
@@ -47,7 +46,7 @@ Mostly mechanical additions to `prims.c`.  `equal?` must handle deep
 structure without recursing on the C stack, using an explicit stack.  Cycles
 can loop for now.
 
-### 2. Prelude and running files (M)
+### 2. Prelude and running files (M) — done
 
 A Scheme-level library, compiled into the binary and loaded at
 `minim_init`.
@@ -131,6 +130,9 @@ Not features, but needed as programs grow:
 
 - A weak symbol table, so unused symbols are collected, as Chez does.
 - Chunk reuse in the collector; this also speeds up stress mode.
+- A static space for objects created at startup (the prelude), never copied
+  again, as in Chez's static generation.  Stress mode now copies the prelude
+  on every allocation, which tripled the stress suite's time.
 - Evaluator speed: a pre-pass that resolves variables to lexical addresses,
   with environments as vectors.  `src/env.h` already hides the
   representation.
