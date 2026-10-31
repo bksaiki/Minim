@@ -78,9 +78,12 @@ minim_add_repl_test(tail)
 
 minim_add_script_test(fail STATUS 1)
 minim_add_script_test(gc-settings)
-minim_add_script_test(gc-settings-env ARGS gc-settings.scm ENV MINIM_GC_NURSERY=1 MINIM_GC_RADIX=16)
+minim_add_script_test(gc-settings-env ARGS gc-settings.scm
+    ENV MINIM_GC_NURSERY=1 MINIM_GC_RADIX=16 MINIM_GC_MAJOR_GROWTH=3 MINIM_GC_MAJOR_MIN=0)
 minim_add_script_test(gc-settings-bad-nursery STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_NURSERY=0)
 minim_add_script_test(gc-settings-bad-radix STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_RADIX=-1)
+minim_add_script_test(gc-settings-bad-growth STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_MAJOR_GROWTH=0)
+minim_add_script_test(gc-settings-bad-min STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_MAJOR_MIN=x)
 minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_NURSERY=1k)
 minim_add_script_test(hello)
 minim_add_script_test(missing STATUS 1)

@@ -244,7 +244,10 @@ static void test_policy(void) {
     CHECK_EQ(minim_heap.minor_collections + minim_heap.major_collections, collections);
 
     // A 1-byte nursery collects at every allocation; radix 4 makes every 4th major.
-    minim_gc_set_policy((minim_gc_policy){.nursery_bytes = 1, .radix = 4});
+    minim_gc_policy p = saved;
+    p.nursery_bytes = 1;
+    p.radix = 4;
+    minim_gc_set_policy(p);
     CHECK_EQ(minim_gc_get_policy().radix, 4);
     size_t minors = minim_heap.minor_collections;
     size_t majors = minim_heap.major_collections;
@@ -253,6 +256,54 @@ static void test_policy(void) {
     CHECK_EQ(minim_heap.minor_collections - minors, 6);
     CHECK_EQ(minim_heap.major_collections - majors, 2);
     minim_gc_set_policy(saved);
+#endif
+}
+
+#ifndef MINIM_GC_STRESS
+// Promotes one more pair onto `*keep` with each of `n` scheduled collections;
+// returns how many were followed by a major collection.
+static size_t majors_after(minim_obj *keep, int n) {
+    size_t majors = minim_heap.major_collections;
+    for (int i = 0; i < n; i++) {
+        *keep = minim_cons(MINIM_NIL, *keep);
+        minim_gc_collect();
+    }
+    return minim_heap.major_collections - majors;
+}
+#endif
+
+static void test_major_growth(void) {
+#ifndef MINIM_GC_STRESS  // where every allocation runs a major collection
+    minim_gc_policy saved = minim_gc_get_policy();
+    minim_obj keep = MINIM_NIL;
+    MINIM_FRAME(&keep);
+    minim_gc_policy p = saved;
+    p.nursery_bytes = 1024 * 1024;  // no collections but the scheduled ones
+    p.radix = 0;
+
+    // Any growth past the size after the last major collection.
+    p.major_growth = 1;
+    p.major_min_bytes = 0;
+    minim_gc_set_policy(p);
+    CHECK_EQ(majors_after(&keep, 4), 4);
+
+    // Not before the old generation exceeds the minimum.
+    p.major_min_bytes = 64 * 1024 * 1024;
+    minim_gc_set_policy(p);
+    CHECK_EQ(majors_after(&keep, 4), 0);
+
+    // Not before it grows by the factor.
+    p.major_growth = 1000;
+    p.major_min_bytes = 0;
+    minim_gc_set_policy(p);
+    CHECK_EQ(majors_after(&keep, 4), 0);
+    int n = 0;
+    for (minim_obj x = keep; minim_is_pair(x); x = minim_cdr(x))
+        n++;
+    CHECK_EQ(n, 12);
+
+    minim_gc_set_policy(saved);
+    MINIM_RETURN_VOID;
 #endif
 }
 
@@ -316,6 +367,7 @@ int main(void) {
     test_major_reclaims();
     test_generational();
     test_policy();
+    test_major_growth();
     test_remembered();
     test_old_symbol_table();
     minim_shutdown();

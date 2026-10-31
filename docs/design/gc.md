@@ -105,26 +105,28 @@ the collector writes into objects it is copying or scanning.
 
 **Policy.**  `minim_gc_collect` runs the collection the policy calls for, and
 an allocation calls it when the budget runs out.  The policy
-(`minim_gc_set_policy`) has two settings, after Chez's `collect-trip-bytes`
-and `collect-generation-radix`:
+(`minim_gc_set_policy`) has four settings, the first two after Chez's
+`collect-trip-bytes` and `collect-generation-radix`:
 
 | Setting | Meaning | Default |
 |---|---|---|
 | `nursery_bytes` | bytes allocated between collections | 1 MiB |
 | `radix` | every `radix`-th collection is major; 0 for none | 0 |
+| `major_growth` | a minor collection is followed by a major one when the old generation exceeds this multiple of its size after the last major collection... | 2 |
+| `major_min_bytes` | ...and exceeds this size | 1 MiB |
+
+By default, then, a collection is minor, and a major one follows when the old
+generation has doubled past 1 MiB.  Long-lived data is copied once when
+promoted, then about once per doubling of the old generation.
 
 Other ways to set them:
 
-- **Environment:** `MINIM_GC_NURSERY` and `MINIM_GC_RADIX` (see
-  `environment.md`), so any program or test can be stressed without
-  rebuilding.
-- **Scheme:** `collect`, `collect-nursery-bytes`, and `collect-generation-radix`
-  (see `primitives.md`) run and set the policy.
-
-Otherwise the collection is minor, followed by a major one if the old
-generation has grown past `max(1 MiB, 2 × its size after the last major
-collection)`.  So long-lived data is copied once when promoted, then about
-once per doubling of the old generation.
+- **Environment:** `MINIM_GC_NURSERY`, `MINIM_GC_RADIX`,
+  `MINIM_GC_MAJOR_GROWTH`, and `MINIM_GC_MAJOR_MIN` (see `environment.md`), so
+  any program or test can be stressed without rebuilding.
+- **Scheme:** `collect` runs the policy, and `collect-nursery-bytes`,
+  `collect-generation-radix`, `collect-major-growth`, and
+  `collect-major-min-bytes` read and set it (see `primitives.md`).
 
 The build option `MINIM_GC_STRESS` instead runs a major collection every
 `MINIM_GC_STRESS_INTERVAL` allocations (default 1, every allocation), which

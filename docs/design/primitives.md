@@ -145,6 +145,8 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 | `(collect)` | runs the collection the policy calls for; void |
 | `(collect-nursery-bytes)`, `(collect-nursery-bytes n)` | bytes allocated between collections; `n` sets it, a positive fixnum |
 | `(collect-generation-radix)`, `(collect-generation-radix r)` | every `r`-th collection is major, or none for 0; `r` sets it, a nonnegative fixnum |
+| `(collect-major-growth)`, `(collect-major-growth g)` | the factor the old generation grows by before a major collection; `g` sets it, a positive fixnum |
+| `(collect-major-min-bytes)`, `(collect-major-min-bytes n)` | the size the old generation must also exceed; `n` sets it, a nonnegative fixnum |
 
 ### Files
 

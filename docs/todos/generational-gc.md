@@ -14,6 +14,9 @@ breakdown, one phase per commit.
 - **Comments stay succinct**, and notes about *process* (what was tried, what
   a phase decided, why an ordering was chosen) belong in this document, not in
   source comments.
+- **Design docs are synced after the last phase**, not during the phases, so
+  they never describe an intermediate state.  Phases 1-4 edited them before
+  this rule; the sync covers whatever they still get wrong.
 
 ## Context
 
@@ -133,7 +136,7 @@ here the nursery size, and `collect-generation-radix`):
 
 - **Major collection by growth:** after a minor collection, a major one also
   runs when the old generation exceeds twice its size after the last major
-  collection, with a minimum of 1 MiB.  So long-lived data is copied once at
+  collection, with a minimum of 1 MiB (both settings since Phase 4).  So long-lived data is copied once at
   promotion, then about once per doubling of the old generation.
 - **The allocation check is unchanged:** a budget compared with each
   allocation's size, reset to the nursery size after a collection.
@@ -380,6 +383,12 @@ cmake --build --preset stress && ctest --preset stress -R gc
 - `minim_add_script_test` takes `ENV var=value...`.
 - Chez's "trip bytes" is called the nursery size throughout, the standard
   term: `nursery_bytes`, `MINIM_GC_NURSERY`, `collect-nursery-bytes`.
+- The growth trigger's two constants became policy settings too:
+  `major_growth` (default 2) and `major_min_bytes` (default 1 MiB), with
+  `MINIM_GC_MAJOR_GROWTH`, `MINIM_GC_MAJOR_MIN`, `collect-major-growth`, and
+  `collect-major-min-bytes`.  The limit is computed from the policy at each
+  check, so a change applies at once.  The four primitives share one
+  `policy_setting` helper.
 - Environment variables are read only through `minim_getenv(name)` in a new
   `src/system.h`, the home for OS interfaces.  It returns the value, or NULL
   if unset or empty; callers convert.  `docs/design/environment.md` lists
@@ -417,11 +426,6 @@ cmake --build --preset dev && ctest --preset dev -R 'gc|prims'
 - `src/heap.c`: the compile-time stress branch goes.
 - `tests/test_*.c`: `#ifdef MINIM_GC_STRESS` becomes a run-time check of the
   policy.
-- `docs/design/gc.md`, `README.md`: stress mode.
-- `docs/roadmap.md`:
-  - milestone 8's static-space item is replaced by generations;
-  - the chunk-reuse item notes the ASan tradeoff.
-
 Separate because it changes test coverage and CI, which is decided by
 measurement.
 
@@ -444,6 +448,18 @@ cmake --preset dev && cmake --build --preset dev && ctest --preset stress
 ```
 
 ### After the last phase
+
+Sync the docs with the finished collector:
+
+- `docs/design/gc.md`: stress mode as a policy, with no build option, and a
+  check of every section against the code;
+- `docs/design/environment.md`, `docs/design/primitives.md`: check against
+  the code;
+- `README.md`: stress testing with the test presets and variables;
+- `docs/roadmap.md`: milestone 8's static-space item replaced by
+  generations, and the chunk-reuse item noting the ASan tradeoff.
+
+Then run everything:
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress

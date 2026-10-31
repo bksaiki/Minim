@@ -14,15 +14,17 @@ A new variable goes in the table below.
 |---|---|---|---|
 | `MINIM_GC_NURSERY` | positive integer | 1048576 (1 MiB) | bytes allocated between collections |
 | `MINIM_GC_RADIX` | nonnegative integer | 0 | every *n*-th collection is major; 0 for none |
+| `MINIM_GC_MAJOR_GROWTH` | positive integer | 2 | a major collection follows when the old generation grows by this factor |
+| `MINIM_GC_MAJOR_MIN` | nonnegative integer | 1048576 (1 MiB) | ...and exceeds this many bytes |
 
 Values must be decimal and at most the largest fixnum, 2^60 - 1.
 
-Both set the collection policy (see `gc.md`).  A program can still change the
-policy later, with `minim_gc_set_policy` or the `collect-nursery-bytes` and
-`collect-generation-radix` primitives.
+The `MINIM_GC_` variables set the collection policy (see `gc.md`).  A program
+can still change it later, with `minim_gc_set_policy` or the `collect-`
+primitives.
 
-`MINIM_GC_NURSERY=1` collects at every allocation, which exposes missing GC roots
-under AddressSanitizer:
+`MINIM_GC_NURSERY=1` collects at every allocation, which exposes missing GC
+roots under AddressSanitizer:
 
 ```sh
 MINIM_GC_NURSERY=1 MINIM_GC_RADIX=16 ./build/dev/minim file.scm

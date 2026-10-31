@@ -3,4 +3,6 @@ error: collect-nursery-bytes: not a positive fixnum: -1
 error: collect-nursery-bytes: not a positive fixnum: a
 error: collect-generation-radix: not a nonnegative fixnum: -1
 error: collect-generation-radix: not a nonnegative fixnum: "2"
+error: collect-major-growth: not a positive fixnum: 0
+error: collect-major-min-bytes: not a nonnegative fixnum: -1
 error: arity mismatch: #<procedure collect>

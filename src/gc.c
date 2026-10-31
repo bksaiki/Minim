@@ -15,15 +15,15 @@
 #include "minim.h"
 
 enum {
-    DEFAULT_NURSERY = 1024 * 1024,     // bytes
-    MIN_MAJOR_LIMIT = 1024 * 1024,  // bytes
-    GROWTH = 2,                     // the old generation's growth that triggers a major collection
+    DEFAULT_NURSERY = 1024 * 1024,    // bytes
+    DEFAULT_MAJOR_GROWTH = 2,
+    DEFAULT_MAJOR_MIN = 1024 * 1024,  // bytes
 };
 
 static minim_gc_policy policy;
-static size_t scheduled;    // calls to minim_gc_collect
-static size_t major_limit;  // old-generation bytes that trigger a major collection
-static bool minor;          // whether the collection in progress is minor
+static size_t scheduled;   // calls to minim_gc_collect
+static size_t major_base;  // old-generation bytes after the last major collection
+static bool minor;         // whether the collection in progress is minor
 
 typedef struct root_stack {
     minim_obj **items;
@@ -74,9 +74,13 @@ void minim_gc_init(void) {
     policy = (minim_gc_policy){
         .nursery_bytes = getenv_integer("MINIM_GC_NURSERY", 1, "a positive integer", DEFAULT_NURSERY),
         .radix = getenv_integer("MINIM_GC_RADIX", 0, "a nonnegative integer", 0),
+        .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, "a positive integer",
+                                       DEFAULT_MAJOR_GROWTH),
+        .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN", 0, "a nonnegative integer",
+                                          DEFAULT_MAJOR_MIN),
     };
     scheduled = 0;
-    major_limit = MIN_MAJOR_LIMIT;
+    major_base = 0;
     minim_heap.budget = policy.nursery_bytes;
 }
 
@@ -85,6 +89,7 @@ minim_gc_policy minim_gc_get_policy(void) {
 }
 
 void minim_gc_set_policy(minim_gc_policy p) {
+    assert(p.major_growth >= 1);
     policy = p;
     minim_heap.budget = policy.nursery_bytes;
 }
@@ -337,8 +342,7 @@ static void collect(bool is_minor) {
         minim_heap.minor_collections++;
     } else {
         minim_heap.major_collections++;
-        size_t limit = GROWTH * minim_heap.live;
-        major_limit = limit > MIN_MAJOR_LIMIT ? limit : MIN_MAJOR_LIMIT;
+        major_base = minim_heap.live;
     }
 }
 
@@ -350,6 +354,13 @@ void minim_gc_collect_major(void) {
     collect(false);
 }
 
+// Whether the old generation has outgrown the policy's limit.
+static bool major_due(void) {
+    size_t live = minim_heap.live;
+    // live > major_growth * major_base, without overflow, as live >= 1
+    return live > policy.major_min_bytes && (live - 1) / policy.major_growth >= major_base;
+}
+
 void minim_gc_collect(void) {
     scheduled++;
     if (policy.radix != 0 && scheduled % policy.radix == 0) {
@@ -357,6 +368,6 @@ void minim_gc_collect(void) {
         return;
     }
     collect(true);
-    if (minim_heap.live > major_limit)
+    if (major_due())
         collect(false);
 }
