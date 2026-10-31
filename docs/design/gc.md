@@ -32,6 +32,15 @@ closure  [ code : (params . body) | env ]     16 B
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 ```
 
+A primitive's fields:
+
+- `fn` is `minim_obj fn(minim_obj *args, size_t n)` and isn't traced.  `args`
+  points into the value stack, so it stays valid across allocation
+  (`eval.md`); primitives must not push onto it.
+- `name` is a symbol, used for printing (`#<procedure car>`).
+- `min` and `max` are fixnum arities; `max` is `MINIM_VARIADIC` (-1) for any
+  number of arguments.  The evaluator checks them before calling `fn`.
+
 ## Heap
 
 Memory is a set of 16 KiB chunks, each aligned to its size; a larger object
@@ -39,7 +48,8 @@ gets a chunk of its own, a multiple of 16 KiB, holding nothing else.  Every
 object starts in its chunk's first 16 KiB, so clearing the low 14 bits of its
 address finds its chunk (`minim_chunk_of`).  A chunk's header starts with its
 generation, 0 or 1.  Chunks come from `aligned_alloc` (`_aligned_malloc` on
-MSVC).
+MSVC); at 16 KiB, glibc and ASan serve them from their pools, while larger
+aligned chunks would each be mapped from the OS.
 
 A *space* is a chain of chunks in allocation order with a bump pointer into
 the last one.  There are four:
@@ -124,10 +134,8 @@ it, or from the start with `MINIM_GC_STARTUP=1`.
 
 **Stress testing.**  A 1-byte nursery collects at every allocation, so a
 missing root moves its object at the next allocation, where AddressSanitizer
-reports the stale use.  Radix 2 alternates minor collections, which also
-catch a missed write barrier, and major ones, which also move old objects.
-Every test has a copy, `<name>_stress`, run with those settings by the
-`stress` test preset; `startup_stress` alone stresses startup, with radix 1.
+reports the stale use.  Minor collections also catch a missed write barrier;
+major ones also move old objects.  The stress tests are in `testing.md`.
 
 ## Roots
 
@@ -154,7 +162,12 @@ Every test has a copy, `<name>_stress`, run with those settings by the
 
 ## Not included
 
-More than two generations, card marking, a segment table, non-copying large
+Chez has several generations, older ones collected geometrically less often
+(`collect-generation-radix`).  Minim has two, but stores the generation as a
+number, so more could be added: per-generation spaces, and a barrier that
+records the youngest generation each old object points to.
+
+Also not included: card marking, a segment table, non-copying large
 objects, an unscanned space for pointer-free data, weak pairs, and guardians.
 
 ## References

@@ -3,20 +3,6 @@
 Primitive procedures are C functions, bound as global symbol values by
 `minim_prims_init` (`src/prims.c`).  The evaluator calls them; see `eval.md`.
 
-## Representation
-
-```
-primitive  (tag 111)   [ header | fn | name | min | max ]     40 B, rounded up to 48
-```
-
-- `fn` is `minim_obj fn(minim_obj *args, size_t n)` and isn't traced.  `args`
-  points into the value stack, which the collector updates in place, so it
-  stays valid across allocation.  Primitives must not push onto the value
-  stack.
-- `name` is a symbol, used for printing (`#<procedure car>`).
-- `min` and `max` are fixnum arities; `max` is `MINIM_VARIADIC` (-1) for any
-  number of arguments.  The evaluator checks them before calling `fn`.
-
 ## `apply` and `load`
 
 Both need to evaluate code, which an ordinary primitive can't do without
@@ -35,17 +21,15 @@ evaluator recognizes their function pointers (`minim_prim_apply`,
 ## Equality and hashing
 
 - `equal?` walks pairs and vectors with an explicit stack, never C
-  recursion, so arbitrarily deep structure is fine.  The stack starts on the C
-  stack and moves to `malloc`'d memory only if it outgrows 64 entries; it is
-  freed before returning, which is safe because `equal?` neither raises nor
-  allocates on the heap.
+  recursion, so arbitrarily deep structure is fine.  The stack is on the C
+  stack until it outgrows 64 entries.
 - A hash must agree with its equality, so `equal-hash` mirrors `equal?`:
   equal values visit the same values in the same order.  Its 64-value budget
   makes it O(1) and terminating on cyclic data.
 - Every hash is stable under the moving collector: strings and symbols hash
   their chars (with a kind marker for symbols), primitives their C function
   pointer, and all closures one constant.  `eq?` hashing of heap objects, which
-  needs a stable per-object identity, is left to hashtables (roadmap
+  needs a stable per-object identity, is left to hashtables (R7RS-small roadmap
   milestone 7).
 - The FNV-1a step (`minim_hash_mix`, `minim_string_hash` in `minim.h`) is
   shared with the symbol table.
@@ -163,4 +147,3 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
   out-of-range indices.
 - Strings are mutable except symbol names; `string-set!` on one raises
   `string-set!: immutable string`.  String literals are mutable, unlike R7RS.
-- Void results print nothing at the REPL.

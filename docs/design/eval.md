@@ -6,12 +6,8 @@ calls run in constant space.  Primitive procedures are in `primitives.md`.
 
 ## Closures
 
-```
-closure    (tag 101)   [ code : (params . body) | env ]       16 B
-```
-
-A closure's `code` is its lambda's `(params . body)`.  Closures share the pair
-to-space, since both are two traced words.
+A closure (layout in `gc.md`) holds its lambda's `(params . body)` as `code`,
+and the environment it was created in.
 
 ## Machine
 
@@ -33,7 +29,7 @@ protected by `MINIM_FRAME`, so a catch restores them with the root stack.
 operands of calls in progress.  An `ARGS` frame records `base`, the height
 where its call's values start.  The collector scans `[0, len)` and updates
 entries in place, so a pointer into the stack survives allocation, but not a
-push, which may `realloc`.  `minim_catch` restores the height after an error.
+push, which may `realloc`.  `minim_catch` restores the height after an error (`errors.md`).
 The stack keeps its peak capacity: non-tail recursion like the prelude's `map`
 leaves it large for the rest of the session.
 

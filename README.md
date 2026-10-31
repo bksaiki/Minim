@@ -29,13 +29,14 @@ ctest --preset stress    # each test again, collecting garbage at every allocati
 ./build/dev/minim
 ```
 
-The stress tests expose missing GC roots under the sanitizers.  Environment
-variables do the same for any program (see
+The stress tests expose missing GC roots under the sanitizers (see
+[`docs/design/testing.md`](docs/design/testing.md)).  Environment variables do
+the same for any program (see
 [`docs/design/environment.md`](docs/design/environment.md)):
 
 ```sh
 MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=1 ./build/dev/minim file.scm
 ```
 
-Design notes are in [`docs/design/`](docs/design/README.md), and planned work
-in [`docs/roadmap.md`](docs/roadmap.md).
+The documentation is indexed in [`docs/README.md`](docs/README.md): design
+notes, roadmaps, and plans in progress.
