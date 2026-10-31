@@ -16,22 +16,6 @@ static FILE *input(const char *s) {
     return f;
 }
 
-// Whether `x` prints as `expect`; reports a mismatch.
-static bool prints_as(minim_obj x, const char *expect) {
-    FILE *f = tmpfile();
-    minim_write(f, x);
-    rewind(f);
-    char buf[256];
-    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
-    buf[n] = '\0';
-    fclose(f);
-    if (strcmp(buf, expect) != 0) {
-        fprintf(stderr, "printed `%s`, expected `%s`\n", buf, expect);
-        return false;
-    }
-    return true;
-}
-
 // Whether the first datum in `s` prints as `expect`.
 static bool reads_as(const char *s, const char *expect) {
     FILE *f = input(s);

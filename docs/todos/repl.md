@@ -1,4 +1,4 @@
-# REPL: printer, reader, and an explicit-stack evaluator
+# REPL: printer, reader, and a read-print loop
 
 Implementation plan.  The design is settled; what follows is the phase
 breakdown, one phase per commit.
@@ -20,37 +20,30 @@ breakdown, one phase per commit.
 The runtime has tagged values (fixnums, chars, booleans, `'()`, void, eof),
 four heap kinds (pairs, vectors, strings, symbols), a precise copying
 collector, and symbol interning (see `docs/design/gc.md`).  `src/main.c` still
-prints "Hello, world!".  Nothing can print, read, or evaluate Scheme.
+prints "Hello, world!".  Nothing can print or read Scheme.
 
-This plan adds, in order: a printer, a reader with a read-print loop, error
-recovery, procedures, and an evaluator, ending with a REPL:
+This plan adds a printer, error recovery, and a reader, ending with a REPL
+that echoes data back:
 
 ```
-> (define (count n) (if (= n 0) 'done (count (- n 1))))
-> (count 1000000)
-done
-> (car 5)
-error: car: not a pair: 5
+> (1 2 . 3)
+(1 2 . 3)
+> )
+error: unexpected )
 > 
 ```
 
-Out of scope: macros and derived forms (`let`, `cond`, `and`, `or`),
-`quasiquote`, `call/cc`, non-fixnum numbers, `equal?`,
-port objects, file loading, line editing, and condition objects.
+Evaluation comes next, in `docs/todos/eval.md`.
+
+Out of scope: evaluation, port objects, file loading, line editing, and
+condition objects.
 
 **Decisions:**
 
 | Decision | Choice | Reason |
 |---|---|---|
-| Evaluator | explicit-stack machine; continuation frames on the heap | proper tail calls; `call/cc` possible later; state is a few GC roots, not C locals |
-| Errors | `longjmp` to the innermost `minim_catch` | unwinds C primitives and the reader; restores the root stack |
+| Errors | `longjmp` to the innermost `minim_catch` | unwinds C code and the reader; restores the root stack |
 | Input / output | `FILE *`; no port objects | ports can come later |
-| Closures | primary tag `101`, 2 words, no header | reserved tag; fits the existing two-word scan |
-| Primitives | typed objects holding a C function pointer | must live in the heap, since the collector copies every tagged pointer |
-| Primitive arguments | an array on a value stack: `fn(minim_obj *args, size_t n)` | no allocation per call; `args[i]` access.  A future `call/cc` must copy the stack |
-| Global environment | symbol value slots | already exist; `MINIM_UNBOUND` means unbound |
-| Local environments | association lists behind `src/env.h` | simple now; a hash table can replace them without touching the evaluator |
-| Special forms | recognized by operator symbol identity | simple; local bindings can't shadow them |
 | REPL prompt | on stderr, only when stdin is a terminal (`isatty`) | the Unix convention (bash, Python); piped runs print only results |
 
 ## Printer
@@ -68,7 +61,6 @@ allocates, so it is safe in error paths.
 | symbol | name, UTF-8 encoded |
 | pair | `(a b . c)`; `(quote x)` as `'x` |
 | vector | `#(a b)` |
-| procedure | `#<procedure>`, or `#<procedure car>` for primitives |
 
 Cyclic data loops forever; datum labels are out of scope.
 
@@ -81,10 +73,10 @@ bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result);
 
 `minim_catch` saves the root-stack height and a `jmp_buf`, then calls `fn`.
 `minim_error` records the message and irritant (a global root) and jumps to
-the innermost catch, which restores the root-stack height, the value-stack
-height (from Phase 5), and the evaluator registers, and returns `false`.  `minim_last_error(const char **msg, minim_obj
-*irritant)` retrieves them.  Catches nest.  With no catch installed,
-`minim_error` prints and aborts.
+the innermost catch, which restores the root-stack height and returns
+`false`.  `minim_last_error(const char **msg, minim_obj *irritant)` retrieves
+them.  Catches nest.  With no catch installed, `minim_error` prints and
+aborts.
 
 ## Reader
 
@@ -102,63 +94,6 @@ recursive descent and reports errors with `minim_error`.
 - `;` comments.
 - Input is UTF-8; the decoder in `object.c` becomes shared.
 
-## Procedures
-
-```
-closure    (tag 101)   [ lambda : (params . body) | env ]   16 B
-primitive  (tag 111)   [ header | fn | name ]               24 B → 32 B
-
-primitive header = (arity << 4) | (immutable << 3) | 100
-```
-
-- Closures go in the pair to-space, which holds any two traced words.
-- A primitive's `fn` is a raw `minim_obj (*)(minim_obj *args, size_t n)` and
-  isn't traced; `name` (a symbol) is.  The header's length field holds the arity; `-1` (all
-  bits set) means variadic.
-- `minim_is_procedure` covers both kinds.
-
-## Evaluator
-
-`minim_eval(minim_obj expr)` evaluates `expr` in the global environment.  The
-machine's state is a set of registers, all registered as global roots:
-
-| Register | Holds |
-|---|---|
-| `expr` | expression being evaluated |
-| `env` | current environment |
-| `val` | last value |
-| `k` | continuation: a chain of heap frames |
-
-Each frame is a vector `#(kind next ...saved)`, where `kind` is a fixnum.
-Kinds: `IF` (then, else, env), `SEQ` (remaining body, env), `DEFINE` and
-`SET` (symbol, env), `ARGS` (remaining operands, env, base), and `HALT`.
-
-**Value stack.**  A growable C array of `minim_obj` in `gc.c`, scanned as
-roots in `[0, sp)` and updated in place by the collector.  It holds the
-operator and evaluated operands of calls in progress; an `ARGS` frame records
-`base`, the stack height where its call's values start.  A pointer into the
-stack stays valid across allocation, but not across a push, which may
-`realloc`; primitives never push.
-
-- **Environments.**  The evaluator uses only `src/env.h`: `minim_env_extend`
-  (new frame from parameters and arguments), `minim_env_lookup`,
-  `minim_env_define`, and `minim_env_set`.  A local environment is a pair
-  `(bindings . parent)` whose bindings are an association list; `'()` is the
-  global environment, which uses symbol value slots.  An internal `define`
-  prepends to the innermost frame's bindings.
-- **Special forms:** `quote`, `if`, `define` (variable and `(define (f . args)
-  ...)`), `set!`, `lambda` (fixed and rest parameters), `begin`.  Their symbols
-  are interned at init into C globals registered as roots.
-- **Application** pushes the operator and then each operand, left to right.
-  With `n = sp - base - 1` operands, a primitive gets `fn(&stack[base + 1],
-  n)`; a closure binds its parameters from the same slots with
-  `minim_env_extend`.  Either way the call's values are popped (`sp = base`)
-  before the result or the body is used.  A call in tail position pushes no
-  frame, so loops run in constant space.
-- **Truthiness:** everything except `#f` is true.
-- **Errors** (unbound variable, non-procedure call, arity mismatch, bad
-  syntax) go through `minim_error`.
-
 ## Phases
 
 ### Phase 1 - Printer
@@ -167,7 +102,7 @@ stack stays valid across allocation, but not across a push, which may
 
 - Well-known symbols live in `src/symbol.h`, interned by
   `minim_symbol_init` and registered as roots.  `minim_sym_quote` is the
-  first; Phase 5's special-form symbols go there too.  Interning on first use
+  first; the evaluator's special-form symbols go there too.  Interning on first use
   would allocate during printing and leave a stale pointer after
   `minim_shutdown`.
 - The UTF-8 codec is `src/char.c` (`minim_utf8_decode`, `minim_utf8_encode`).
@@ -262,83 +197,6 @@ Tests:
 
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'read|repl'
-```
-
-### Phase 4 - Procedures
-
-- `include/minim.h`, `src/object.c`: `MINIM_TAG_CLOSURE`,
-  `MINIM_TYPE_PRIMITIVE`, constructors, accessors, `minim_is_procedure`.
-- `src/gc.c`: closures copy into the pair space; primitives scan only `name`.
-- `src/print.c`: procedure printing.
-
-Separate so the new layouts and collector changes are reviewed before the
-evaluator depends on them.
-
-Tests (`tests/test_procedure.c`, also in `stress`):
-
-- constructors and accessors; predicates are disjoint from the other kinds;
-- a closure and a primitive survive a collection with their fields intact,
-  and a primitive's `fn` still works after it.
-
-```sh
-cmake --build --preset dev && ctest --preset dev -R procedure
-cmake --build --preset stress && ctest --preset stress -R procedure
-```
-
-### Phase 5 - Evaluator
-
-- `src/env.h`, `src/env.c`: environments.  `minim_env_extend(params, args,
-  n, parent)` reads `args` by index after each allocation.
-- `src/gc.h`, `src/gc.c`: the value stack (`minim_values_push`,
-  `minim_values_pop`, the stack height), scanned during collection.
-- `src/error.c`: `minim_catch` also saves and restores the value-stack height.
-- `include/minim.h`, `src/eval.c`: the machine, special forms, and
-  `minim_eval`.
-- `src/prims.c`: fixnum `+`, `-`, `*`, `=`, `<` (overflow is an error), plus
-  `cons`, `car`, `cdr`; installed as global symbol values by `minim_init`.
-- `src/main.c`: the loop calls `minim_eval` and prints nothing for void.
-
-Separate because it is the largest change; the primitive library waits for
-Phase 6.
-
-Tests:
-
-- `tests/test_eval.c`, also in `stress`: each special form, closures
-  capturing and mutating their environment, rest parameters, internal
-  `define`, and each error kind through `minim_catch`.  After an error, the
-  value stack is back at its height before the call.  A primitive that
-  allocates before reading its later arguments still sees them correctly.
-- `tests/repl/eval.scm`: arithmetic, `define`, closures (a counter), and
-  error recovery.
-- `tests/repl/tail.scm`: a 100k-iteration tail loop completes.
-  `tests/test_eval.c` also checks a 1M-iteration loop keeps the heap bounded
-  (100k under `stress`).
-
-```sh
-cmake --build --preset dev && ctest --preset dev -R 'eval|repl'
-cmake --build --preset stress && ctest --preset stress -R 'eval|repl'
-```
-
-### Phase 6 - Primitive library
-
-- `src/prims.c`:
-  - pairs: `set-car!`, `set-cdr!`, `pair?`, `null?`, `list`;
-  - `eq?`, `not`, `symbol?`, `procedure?`, `boolean?`;
-  - vectors: `vector`, `make-vector`, `vector-ref`, `vector-set!`,
-    `vector-length`, `vector?`;
-  - strings: `string-length`, `string-ref`, `string?`, `symbol->string`,
-    `string->symbol`;
-  - `write`, `newline`.
-- Each primitive checks its argument types with `minim_error`.
-
-Separate from Phase 5 so the evaluator is reviewed without a long list of
-primitives attached.
-
-Tests (`tests/repl/prims.scm`): each primitive, plus a type error and an
-index error for each family.
-
-```sh
-cmake --build --preset dev && ctest --preset dev -R repl
 ```
 
 ### After the last phase
