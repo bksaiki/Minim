@@ -92,6 +92,7 @@ void minim_gc_finish_startup(void) {
 void minim_gc_shutdown(void) {
     for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
         minim_space_free(&minim_gc.spaces[i]);
+    minim_heap_free_spares();
     free(minim_gc.locals.items);
     free(minim_gc.globals.items);
     free(minim_gc.values.items);

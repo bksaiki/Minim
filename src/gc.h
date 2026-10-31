@@ -31,6 +31,7 @@ extern struct minim_gc {
     minim_gc_config config;
     minim_gc_config program_config;  ///< from the environment, for after startup
     minim_space spaces[MINIM_SPACE_COUNT];
+    minim_chunk_queue spares;    ///< freed standard-size chunks, reused oldest first
     minim_root_stack locals;     ///< the shadow stack
     minim_root_stack globals;    ///< from minim_gc_add_global
     minim_obj_stack values;      ///< values of calls in progress, updated in place

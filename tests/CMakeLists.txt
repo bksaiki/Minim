@@ -1,12 +1,12 @@
 # minim_add_stressed(name command...): adds the test `name`, and `name_stress`,
-# the same test labelled `stress` and run with the GC collecting at every
-# allocation and every 16th collection major.
+# the same test labelled `stress` and run, after startup, with a major
+# collection at every allocation.
 function(minim_add_stressed name)
     add_test(NAME ${name} COMMAND ${ARGN})
     add_test(NAME ${name}_stress COMMAND ${ARGN})
     set_tests_properties(${name}_stress PROPERTIES
         LABELS stress
-        ENVIRONMENT "MINIM_GC_NURSERY=1;MINIM_GC_RADIX=16")
+        ENVIRONMENT "MINIM_GC_NURSERY=1;MINIM_GC_RADIX=1")
 endfunction()
 
 # minim_add_test(name [INTERNAL]): INTERNAL tests may include headers from src/.
@@ -42,6 +42,16 @@ add_test(NAME startup_stress COMMAND test_startup startup)
 set_tests_properties(startup_stress PROPERTIES
     LABELS stress
     ENVIRONMENT "MINIM_GC_STARTUP=1;MINIM_GC_NURSERY=1;MINIM_GC_RADIX=1")
+
+# A stale pointer must stay poisoned; only meaningful under AddressSanitizer.
+if(MINIM_SANITIZE)
+    add_executable(test_stale test_stale.c)
+    target_link_libraries(test_stale PRIVATE libminim)
+    target_include_directories(test_stale PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME stale COMMAND test_stale)
+    set_tests_properties(stale PROPERTIES
+        PASS_REGULAR_EXPRESSION "AddressSanitizer: use-after-poison")
+endif()
 
 # minim_add_repl_test(name): pipes repl/<name>.scm into minim, run from repl/,
 # and compares stdout with repl/<name>.out, and stderr with repl/<name>.err if

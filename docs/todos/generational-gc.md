@@ -594,6 +594,44 @@ cmake --build --preset dev && ctest --preset dev -R 'startup|gc' && ctest --pres
 
 ### Phase 8 - Reuse nursery chunks
 
+**Done.**  Details settled during the phase:
+
+- Profile, before: gprof with `-pg -fno-inline` distorted the run (2 minutes
+  for a loop that takes 11 s), so it was measured directly instead.  A loop
+  program (`loop.scm`: 20,000 iterations building a 20-element list), `-O1`
+  without sanitizers, a 1-byte nursery: minor collections only 5.2 s, radix
+  16 11.2 s, so about 2 µs per minor collection.  A free-list prototype took
+  minor-only to 2.6 s: chunk allocation was half of that cost.
+- The spares are a `minim_chunk_queue` in `minim_gc.spares`, taken in
+  `space_grow` and filled by `minim_space_free`.  At most `nursery_bytes /
+  MINIM_CHUNK_SIZE + 1 + MINIM_CHUNK_QUARANTINE` are kept; large chunks and
+  the surplus are freed.  `minim_heap_free_spares` frees them at shutdown.
+  Spare chunks count in `minim_gc.size`.
+- The quarantine is a constant, `MINIM_CHUNK_QUARANTINE` in `heap.h` (8 under
+  ASan, else 0), not a configuration field: nothing needs to change it at run
+  time.
+- `space_grow` poisons every new chunk's data, not only reused ones, and
+  `minim_space_alloc` unpoisons each object; the header stays unpoisoned, as
+  the barrier and the queue read it.
+- `test_stale` uses `PASS_REGULAR_EXPRESSION "AddressSanitizer:
+  use-after-poison"` rather than `WILL_FAIL`, so a crash of any other kind
+  fails it.  Its first version passed with the quarantine at 0: the spare
+  queue held older chunks, so the next allocation never reached the stale
+  pair's.  It now takes every spare first.  With the quarantine at 0, or
+  without poisoning, it fails.
+- Measurements (ASan stress suite serial; release programs):
+
+  | | Phase 7 | Phase 8 |
+  |---|---|---|
+  | stress suite, radix 16 | 10.6 s | 6.7 s |
+  | stress suite, radix 1 | 32.1 s | 24.1 s |
+  | `loop.scm`, minor only, no sanitizers | 5.2 s | 2.5 s |
+  | long-lived program | 2.56 s | 1.36 s |
+  | short-lived program | 1.76 s | 0.96 s |
+
+- Radix 1 is now under the 30 s line, so the stress copies use it, per the
+  open item.
+
 Every collection frees the nursery's chunks and the next allocations get
 fresh ones from `aligned_alloc`, a fixed cost per collection that dominates
 under stress.  Generational collectors normally reuse the nursery.

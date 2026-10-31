@@ -135,6 +135,55 @@ static void test_chunk_of(void) {
     MINIM_RETURN_VOID;
 }
 
+// Whether every spare chunk is standard-size, and there are no more of them
+// than the nursery needs plus the quarantine.
+static bool spares_bounded(void) {
+    size_t n = 0;
+    for (const minim_chunk *c = minim_gc.spares.first; c != NULL; c = c->next, n++) {
+        if (offsetof(minim_chunk, data) + c->size != MINIM_CHUNK_SIZE)
+            return false;
+    }
+    size_t max = minim_gc.config.nursery_bytes / MINIM_CHUNK_SIZE + 1 + MINIM_CHUNK_QUARANTINE;
+    return n == minim_gc.spares.len && n <= max;
+}
+
+// A chunk freed by a collection is reused, once the quarantine has passed.
+static void test_chunk_reuse(void) {
+    minim_gc_config saved = default_gc_config();
+    minim_gc_collect_major();
+    minim_obj p = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_chunk *chunk = minim_chunk_of(p);
+    size_t ahead = minim_gc.spares.len;  // spares reused before `chunk`
+
+    // Each minor collection makes the nursery's one chunk a spare, and the next
+    // allocation takes the oldest spare past the quarantine.
+    size_t reused_after = 0;
+    for (size_t i = 1; i <= ahead + MINIM_CHUNK_QUARANTINE + 1 && reused_after == 0; i++) {
+        minim_gc_collect_minor();
+        p = minim_cons(MINIM_NIL, MINIM_NIL);
+        if (minim_chunk_of(p) == chunk)
+            reused_after = i;
+    }
+    CHECK(reused_after > MINIM_CHUNK_QUARANTINE);
+    CHECK(spares_bounded());
+
+    // Large chunks are freed, not kept.
+    minim_make_vector(2 * MINIM_CHUNK_SIZE / sizeof(minim_obj), MINIM_NIL);
+    minim_gc_collect_minor();
+    CHECK(spares_bounded());
+
+    // A major collection frees many chunks; only the limit is kept.
+    minim_obj lst = MINIM_NIL;
+    MINIM_FRAME(&lst);
+    for (int i = 0; i < 100000; i++)
+        lst = minim_cons(MINIM_NIL, lst);  // 1.6 MB, promoted
+    lst = MINIM_NIL;
+    minim_gc_collect_major();
+    CHECK(spares_bounded());
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_list();
@@ -142,6 +191,7 @@ int main(void) {
     test_footprint();
     test_large_vector();
     test_chunk_of();
+    test_chunk_reuse();
     minim_shutdown();
     return test_result();
 }

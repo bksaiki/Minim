@@ -13,6 +13,21 @@
 
 #include "minim.h"
 
+#if defined(__SANITIZE_ADDRESS__)
+#define MINIM_ASAN 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define MINIM_ASAN 1
+#endif
+#endif
+
+#ifdef MINIM_ASAN
+/** Spare chunks kept before one is reused, so a stale pointer stays poisoned. */
+#define MINIM_CHUNK_QUARANTINE 8
+#else
+#define MINIM_CHUNK_QUARANTINE 0
+#endif
+
 /** `n` rounded up to a multiple of MINIM_ALIGN. */
 static inline size_t minim_align_up(size_t n) {
     return (n + MINIM_ALIGN - 1) & ~(size_t)(MINIM_ALIGN - 1);
@@ -25,7 +40,7 @@ static inline size_t minim_align_up(size_t n) {
  */
 typedef struct minim_chunk {
     unsigned char generation;  ///< 0 for new objects, 1 for survivors; first, for minim_gc_write
-    struct minim_chunk *next;  ///< next newer chunk
+    struct minim_chunk *next;  ///< next newer chunk in its space, or next spare
     unsigned char *end;        ///< end of used data, once a newer chunk exists
     size_t size;               ///< capacity of `data`
     /// A bit per MINIM_ALIGN bytes: whether the object starting there is remembered.
@@ -39,6 +54,13 @@ static_assert(offsetof(minim_chunk, generation) == 0, "minim_gc_write reads the 
 static inline minim_chunk *minim_chunk_of(uintptr_t p) {
     return (minim_chunk *)(p & ~(uintptr_t)(MINIM_CHUNK_SIZE - 1));
 }
+
+/** Chunks in a first-in, first-out queue, linked by `next`. */
+typedef struct minim_chunk_queue {
+    minim_chunk *first;
+    minim_chunk *last;
+    size_t len;
+} minim_chunk_queue;
 
 /** Chunks in allocation order, with a bump pointer into the last one. */
 typedef struct minim_space {
@@ -70,8 +92,14 @@ void *minim_heap_alloc(size_t nbytes);
 /** Allocates `nbytes` in `s`; never collects. */
 void *minim_space_alloc(minim_space *s, size_t nbytes);
 
-/** Frees every chunk in `s` and empties it, keeping its generation. */
+/**
+ * Empties `s`, keeping its generation.  Its standard-size chunks become spares
+ * for reuse, up to a limit; the rest are freed.
+ */
 void minim_space_free(minim_space *s);
+
+/** Frees the spare chunks. */
+void minim_heap_free_spares(void);
 
 /** Bytes in use in `s`. */
 size_t minim_space_used(const minim_space *s);
