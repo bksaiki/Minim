@@ -138,6 +138,19 @@ in both kinds of clause), and `do`.
 
 ### Phase 1 - Quasiquote syntax
 
+**Done.**  Details settled during the phase:
+
+- `read_item` is split into skipping atmosphere plus `read_item_from(in, c,
+  x)`.  After `,`, the next character may begin the datum and may be
+  non-ASCII, which can't be pushed back, so it is handed on directly.
+- The abbreviation helper takes a pointer to the symbol's global and reads it
+  after the datum, since reading the datum may collect and move the symbol.
+- The printer abbreviates a list's tail too, so `` `(1 . ,x) `` prints as
+  written rather than as `` `(1 unquote x) `` (as Chez does).  A consequence:
+  `(a quote b)` prints as `(a . 'b)`.  `(unquote @x)` stays unabbreviated.
+- Errors: `eof after quasiquote`, `eof after unquote`, `eof after
+  unquote-splicing`, matching `eof after quote`.
+
 - `src/read.c`: `` `x ``, `,x`, and `,@x` read as `(quasiquote x)`,
   `(unquote x)`, and `(unquote-splicing x)`.
 - `src/symbol.c`, `src/symbol.h`: the three symbols.

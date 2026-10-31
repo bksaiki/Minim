@@ -56,8 +56,11 @@ minim_obj minim_sym_begin;
 minim_obj minim_sym_define;
 minim_obj minim_sym_if;
 minim_obj minim_sym_lambda;
+minim_obj minim_sym_quasiquote;
 minim_obj minim_sym_quote;
 minim_obj minim_sym_set;
+minim_obj minim_sym_unquote;
+minim_obj minim_sym_unquote_splicing;
 
 // Interns `name` into the global `*var` and registers it as a root.
 static void intern_global(minim_obj *var, const char *name) {
@@ -74,8 +77,11 @@ void minim_symbol_init(void) {
     intern_global(&minim_sym_define, "define");
     intern_global(&minim_sym_if, "if");
     intern_global(&minim_sym_lambda, "lambda");
+    intern_global(&minim_sym_quasiquote, "quasiquote");
     intern_global(&minim_sym_quote, "quote");
     intern_global(&minim_sym_set, "set!");
+    intern_global(&minim_sym_unquote, "unquote");
+    intern_global(&minim_sym_unquote_splicing, "unquote-splicing");
 }
 
 minim_obj minim_intern(minim_obj str) {

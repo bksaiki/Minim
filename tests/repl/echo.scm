@@ -6,6 +6,7 @@
 #\a #\space
 '(1 2 . 3)
 ''x
+'`(a ,b ,@c)
 #(1 #(2) "s")
 #t #false
 ; A read error is reported on stderr and the loop continues.
