@@ -7,6 +7,12 @@ evaluator calls it on every top-level form once it is defined; it is defined
 last in its section, so its own code runs unexpanded.  The derived forms come
 right after it, as macros.
 
+It is written in Scheme because expansion is list processing, which in C
+would need `MINIM_FRAME` around every allocation.  Each top-level form is
+expanded just before it runs, so a `define-syntax` applies to the forms after
+it.  The expander's procedures and variables start with `%`, out of the way
+of user names.
+
 Hygiene uses renaming (Clinger and Rees, "Macros That Work"): every local
 variable gets a fresh uninterned name, and every identifier a macro inserts
 is an *alias* (`primitives.md`), which remembers its original identifier and
