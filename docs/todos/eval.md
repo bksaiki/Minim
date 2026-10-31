@@ -50,16 +50,16 @@ Out of scope: macros and derived forms (`let`, `cond`, `and`, `or`),
 ## Procedures
 
 ```
-closure    (tag 101)   [ lambda : (params . body) | env ]   16 B
-primitive  (tag 111)   [ header | fn | name ]               24 B → 32 B
+closure    (tag 101)   [ code : (params . body) | env ]       16 B
+primitive  (tag 111)   [ header | fn | name | min | max ]     40 B → 48 B
 
-primitive header = (arity << 4) | (immutable << 3) | 100
+primitive header = (0 << 4) | (immutable << 3) | 100
 ```
 
 - Closures go in the pair to-space, which holds any two traced words.
 - A primitive's `fn` is a raw `minim_obj (*)(minim_obj *args, size_t n)` and
-  isn't traced; `name` (a symbol) is.  The header's length field holds the arity; `-1` (all
-  bits set) means variadic.
+  isn't traced; `name` (a symbol) is.  `min` and `max` are fixnum arities;
+  `max` is `MINIM_VARIADIC` (-1) for any number of arguments.
 - `minim_is_procedure` covers both kinds.
 - They print as `#<procedure>`, or `#<procedure car>` for primitives.
 
@@ -109,6 +109,18 @@ stack stays valid across allocation, but not across a push, which may
 ## Phases
 
 ### Phase 1 - Procedures
+
+**Done.**  Diverged from the plan:
+
+- Primitives store `min` and `max` arities as fixnum fields instead of one
+  arity in the header, since Phase 3's `make-vector` takes 1 or 2 arguments.
+  This makes them 40 B (48 B allocated) instead of 24 B.
+- A closure's first field is `code` (accessor `minim_closure_code`).
+- `MINIM_VARIADIC` (-1) is the `max` for any number of arguments; `minim_prim_fn`
+  is the function type.
+- `tests/test_procedure.c` also covers printing.  Its first stress run caught
+  a test that read a field and then allocated in the same `CHECK_EQ`.
+- `docs/design/gc.md` now lists the closure tag and both layouts.
 
 - `include/minim.h`, `src/object.c`: `MINIM_TAG_CLOSURE`,
   `MINIM_TYPE_PRIMITIVE`, constructors, accessors, `minim_is_procedure`.

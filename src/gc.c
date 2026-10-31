@@ -71,6 +71,8 @@ static size_t typed_size(minim_obj header) {
         return minim_vector_size(n);
     case MINIM_TYPE_STRING:
         return minim_string_size(n);
+    case MINIM_TYPE_PRIMITIVE:
+        return MINIM_PRIMITIVE_SIZE;
     default:
         abort();  // unknown type
     }
@@ -83,6 +85,7 @@ static minim_obj copy(minim_obj x) {
     minim_space *to;
     switch (tag) {
     case MINIM_TAG_PAIR:
+    case MINIM_TAG_CLOSURE:
         to = &minim_heap.spaces[MINIM_SPACE_PAIR];
         break;
     case MINIM_TAG_SYMBOL:
@@ -108,8 +111,8 @@ static minim_obj copy(minim_obj x) {
     return y;
 }
 
-// Copies the referents of the object at `p`; returns its size.  Pairs and
-// symbols are two traced words.
+// Copies the referents of the object at `p`; returns its size.  Pairs,
+// symbols, and closures are two traced words.
 static size_t scan_two_words(minim_obj *p) {
     p[0] = copy(p[0]);
     p[1] = copy(p[1]);
@@ -126,6 +129,9 @@ static size_t scan_typed(minim_obj *p) {
         break;
     case MINIM_TYPE_STRING:
         break;  // no pointers
+    case MINIM_TYPE_PRIMITIVE:
+        p[2] = copy(p[2]);  // name; `fn` is a C pointer, the arities fixnums
+        break;
     default:
         abort();  // unknown type
     }

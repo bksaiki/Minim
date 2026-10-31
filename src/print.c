@@ -112,6 +112,13 @@ void minim_write(FILE *out, minim_obj x) {
         write_vector(out, x);
     else if (minim_is_string(x))
         write_string(out, x);
+    else if (minim_is_closure(x))
+        fputs("#<procedure>", out);
+    else if (minim_is_primitive(x)) {
+        fputs("#<procedure ", out);
+        write_symbol(out, minim_primitive_name(x));
+        fputc('>', out);
+    }
     else if (x == MINIM_TRUE)
         fputs("#t", out);
     else if (x == MINIM_FALSE)

@@ -30,6 +30,7 @@ enum {
     MINIM_TAG_FIXNUM = 0x0,
     MINIM_TAG_PAIR = 0x1,
     MINIM_TAG_SYMBOL = 0x3,
+    MINIM_TAG_CLOSURE = 0x5,
     MINIM_TAG_IMMEDIATE = 0x6,
     MINIM_TAG_TYPED = 0x7,
 };
@@ -58,12 +59,15 @@ enum {
 
     MINIM_TYPE_VECTOR = 0x0,
     MINIM_TYPE_STRING = 0x2,
+    MINIM_TYPE_PRIMITIVE = 0x4,
 };
 
 /** Object sizes in bytes, before rounding to the allocation unit. */
 enum {
     MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
     MINIM_SYMBOL_SIZE = 2 * sizeof(minim_obj),
+    MINIM_CLOSURE_SIZE = 2 * sizeof(minim_obj),
+    MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
 };
 
 /** Size in bytes of a vector of length `n`. */
@@ -172,6 +176,22 @@ static inline bool minim_is_vector(minim_obj x) {
 static inline bool minim_is_string(minim_obj x) {
     return minim_is_typed(x)
         && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_STRING;
+}
+
+/** Whether `x` is a closure. */
+static inline bool minim_is_closure(minim_obj x) {
+    return minim_tag(x) == MINIM_TAG_CLOSURE;
+}
+
+/** Whether `x` is a primitive. */
+static inline bool minim_is_primitive(minim_obj x) {
+    return minim_is_typed(x)
+        && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_PRIMITIVE;
+}
+
+/** Whether `x` is a closure or a primitive. */
+static inline bool minim_is_procedure(minim_obj x) {
+    return minim_is_closure(x) || minim_is_primitive(x);
 }
 
 /** Whether `x` is a char. */
@@ -353,6 +373,60 @@ static inline minim_obj minim_symbol_value(minim_obj sym) {
 static inline void minim_set_symbol_value(minim_obj sym, minim_obj x) {
     assert(minim_is_symbol(sym));
     ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[1] = x;
+}
+
+// Procedures
+
+/** New closure over `code`, a `(params . body)` pair, in `env`. */
+minim_obj minim_make_closure(minim_obj code, minim_obj env);
+
+/** Code, `(params . body)`, of the closure `c`. */
+static inline minim_obj minim_closure_code(minim_obj c) {
+    assert(minim_is_closure(c));
+    return ((const minim_obj *)(c - MINIM_TAG_CLOSURE))[0];
+}
+
+/** Environment of the closure `c`. */
+static inline minim_obj minim_closure_env(minim_obj c) {
+    assert(minim_is_closure(c));
+    return ((const minim_obj *)(c - MINIM_TAG_CLOSURE))[1];
+}
+
+/** C function of a primitive, called with its `n` arguments. */
+typedef minim_obj (*minim_prim_fn)(minim_obj *args, size_t n);
+
+/** Maximum arity of a primitive that takes any number of arguments. */
+enum { MINIM_VARIADIC = -1 };
+
+/**
+ * New primitive named by the symbol `name`, taking between `min_arity` and
+ * `max_arity` arguments (or MINIM_VARIADIC).
+ */
+minim_obj minim_make_primitive(minim_obj name, minim_prim_fn fn,
+                               intptr_t min_arity, intptr_t max_arity);
+
+/** Function of the primitive `p`. */
+static inline minim_prim_fn minim_primitive_fn(minim_obj p) {
+    assert(minim_is_primitive(p));
+    return (minim_prim_fn)((const minim_obj *)(p - MINIM_TAG_TYPED))[1];
+}
+
+/** Name of the primitive `p`. */
+static inline minim_obj minim_primitive_name(minim_obj p) {
+    assert(minim_is_primitive(p));
+    return ((const minim_obj *)(p - MINIM_TAG_TYPED))[2];
+}
+
+/** Minimum arity of the primitive `p`. */
+static inline intptr_t minim_primitive_min_arity(minim_obj p) {
+    assert(minim_is_primitive(p));
+    return minim_fixnum_value(((const minim_obj *)(p - MINIM_TAG_TYPED))[3]);
+}
+
+/** Maximum arity of the primitive `p`, or MINIM_VARIADIC. */
+static inline intptr_t minim_primitive_max_arity(minim_obj p) {
+    assert(minim_is_primitive(p));
+    return minim_fixnum_value(((const minim_obj *)(p - MINIM_TAG_TYPED))[4]);
 }
 
 // Errors
