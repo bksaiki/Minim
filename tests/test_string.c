@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Tests for strings.
+ */
+
 #include "heap.h"
 #include "minim.h"
 #include "test.h"

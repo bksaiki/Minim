@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Runtime lifecycle and object constructors.
+ */
+
 #include "minim.h"
 
 #include "gc.h"

@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Symbol interning.
+ */
+
 #include "symbol.h"
 
 #include <string.h>

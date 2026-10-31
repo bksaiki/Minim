@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Tests for value encoding and predicates.
+ */
+
 #include <stdalign.h>
 
 #include "minim.h"

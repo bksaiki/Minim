@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Checks that the build and harness work.
+ */
+
 #include "minim.h"
 #include "test.h"
 

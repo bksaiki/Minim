@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Tests for the collector.
+ */
+
 #include "heap.h"
 #include "minim.h"
 #include "test.h"

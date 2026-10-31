@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Minimal test harness.
+ */
+
 #ifndef MINIM_TEST_H
 #define MINIM_TEST_H
 

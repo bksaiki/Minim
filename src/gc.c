@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Precise copying collector (Cheney) and root stacks.
+ */
+
 #include "gc.h"
 
 #include <stdlib.h>

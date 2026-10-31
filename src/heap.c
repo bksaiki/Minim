@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Chunk and space allocation.
+ */
+
 #include "heap.h"
 
 #include <assert.h>

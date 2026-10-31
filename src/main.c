@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Command-line entry point.
+ */
+
 #include <stdio.h>
 
 #include "minim.h"

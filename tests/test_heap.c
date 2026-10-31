@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Tests for allocation and object layouts.
+ */
+
 #include "heap.h"
 #include "minim.h"
 #include "test.h"

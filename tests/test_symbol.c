@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Tests for symbols.
+ */
+
 #include <stdio.h>
 
 #include "minim.h"
