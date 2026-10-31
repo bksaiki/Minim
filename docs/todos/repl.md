@@ -193,6 +193,18 @@ cmake --build --preset dev && ctest --preset dev -R print
 
 ### Phase 2 - Errors
 
+**Done.**  Details settled during the phase:
+
+- `src/error.h` has `minim_error_init`, called from `minim_init`; it
+  registers the irritant as a root.
+- `MINIM_VOID` means no irritant; the no-catch fallback then prints only the
+  message.
+- `msg` is stored as a pointer, so it must outlive the catch (in practice, a
+  literal).
+- On error, `*result` is left untouched.
+- Checked by hand: an error with no catch prints `error: msg: irritant` and
+  aborts.
+
 - `include/minim.h`, `src/error.c`: `minim_error`, `minim_catch`,
   `minim_last_error`.
 

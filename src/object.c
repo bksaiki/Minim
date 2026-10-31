@@ -5,14 +5,16 @@
 
 #include "minim.h"
 
+#include "char.h"
+#include "error.h"
 #include "gc.h"
 #include "heap.h"
 #include "symbol.h"
-#include "char.h"
 
 void minim_init(void) {
     minim_heap_init();
     minim_gc_init();
+    minim_error_init();
     minim_symbol_init();
 }
 
