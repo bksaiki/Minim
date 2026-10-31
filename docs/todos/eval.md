@@ -151,7 +151,7 @@ cmake --build --preset stress && ctest --preset stress -R procedure
   roots.  A catch restores them with the root stack, so `error.c` knows
   nothing about the evaluator, and `minim_eval` can be re-entered later.
 - There is no `HALT` frame: `k = '()` returns.  Frames are 5-slot vectors
-  `#(kind next a b c)`.
+  `#(kind next code env base)`.
 - Special-form symbols join `minim_sym_quote` in `src/symbol.h`
   (`intern_global` interns each into a registered C global).
 - The value stack has `minim_values_push`; popping assigns
@@ -159,8 +159,12 @@ cmake --build --preset stress && ctest --preset stress -R procedure
 - `tests/repl/echo.scm` now quotes its data, since the REPL evaluates.
 - The stress-mode tail loops run 10k iterations (`tests/repl/tail.scm` too,
   since a golden file can't vary by preset).  At 100k, `eval` and `repl_tail`
-  took about 30 s each under stress; they now take about 3 s.  `dev` still runs
-  1M.
+  took about 30 s each under stress; they now take about 3 s.  `dev` runs
+  100k: at 1M it took 7 s, and 100k non-tail iterations (~17 MiB) still exceed
+  the 8 MiB bound.
+- The `dev` and `stress` presets compile with `-O1`, as AddressSanitizer
+  recommends.  `-O0` made the evaluator about 10x slower; `test_eval` went
+  from 7.2 s to 0.3 s.
 - Checked by hand: 1M-deep non-tail recursion works (no C stack) and leaves a
   171 MiB heap, so the test's 8 MiB bound catches a missing tail call.
 
@@ -188,8 +192,8 @@ Tests:
 - `tests/repl/eval.scm`: arithmetic, `define`, closures (a counter), and
   error recovery.
 - `tests/repl/tail.scm`: a 10k-iteration tail loop completes.
-  `tests/test_eval.c` also checks a 1M-iteration loop keeps the heap bounded
-  (10k under `stress`).
+  `tests/test_eval.c` also checks a 100k-iteration loop keeps the heap
+  bounded (10k under `stress`).
 
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'eval|repl'

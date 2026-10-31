@@ -8,26 +8,28 @@
 #include "minim.h"
 #include "symbol.h"
 
-// Continuation frames are vectors `#(kind next a b c)`.
-enum { F_KIND, F_NEXT, F_A, F_B, F_C, FRAME_SIZE };
+// Continuation frames are vectors `#(kind next code env base)`.
+enum { F_KIND, F_NEXT, F_CODE, F_ENV, F_BASE, FRAME_SIZE };
 
-// Frame kinds, with their fields
+// Frame kinds, with what `code` holds.  Only K_ARGS uses `base`: the
+// value-stack height where its call's values start.
 enum {
-    K_IF,      // branches `(then [else])`, env
-    K_SEQ,     // remaining body, env
-    K_DEFINE,  // symbol, env
-    K_SET,     // symbol, env
-    K_ARGS,    // remaining operands, env, base of the call's values
+    K_IF,      // branches `(then [else])`
+    K_SEQ,     // remaining body
+    K_DEFINE,  // symbol
+    K_SET,     // symbol
+    K_ARGS,    // remaining operands
 };
 
-static minim_obj make_frame(intptr_t kind, minim_obj next, minim_obj a, minim_obj b, minim_obj c) {
-    MINIM_FRAME(&next, &a, &b, &c);
+static minim_obj make_frame(intptr_t kind, minim_obj next, minim_obj code, minim_obj env,
+                            minim_obj base) {
+    MINIM_FRAME(&next, &code, &env, &base);
     minim_obj f = minim_make_vector(FRAME_SIZE, MINIM_NIL);
     minim_vector_set(f, F_KIND, minim_fixnum(kind));
     minim_vector_set(f, F_NEXT, next);
-    minim_vector_set(f, F_A, a);
-    minim_vector_set(f, F_B, b);
-    minim_vector_set(f, F_C, c);
+    minim_vector_set(f, F_CODE, code);
+    minim_vector_set(f, F_ENV, env);
+    minim_vector_set(f, F_BASE, base);
     MINIM_RETURN(f);
 }
 
@@ -154,8 +156,8 @@ ret:  // Passes `val` to `k`.
     k = minim_vector_ref(x, F_NEXT);
     switch (minim_fixnum_value(minim_vector_ref(x, F_KIND))) {
     case K_IF:
-        env = minim_vector_ref(x, F_B);
-        x = minim_vector_ref(x, F_A);
+        env = minim_vector_ref(x, F_ENV);
+        x = minim_vector_ref(x, F_CODE);
         if (val != MINIM_FALSE) {
             expr = minim_car(x);
             goto eval;
@@ -167,27 +169,27 @@ ret:  // Passes `val` to `k`.
         expr = minim_car(minim_cdr(x));
         goto eval;
     case K_SEQ:
-        env = minim_vector_ref(x, F_B);
-        x = minim_vector_ref(x, F_A);
+        env = minim_vector_ref(x, F_ENV);
+        x = minim_vector_ref(x, F_CODE);
         goto sequence;
     case K_DEFINE:
-        minim_env_define(minim_vector_ref(x, F_B), minim_vector_ref(x, F_A), val);
+        minim_env_define(minim_vector_ref(x, F_ENV), minim_vector_ref(x, F_CODE), val);
         val = MINIM_VOID;
         goto ret;
     case K_SET:
-        minim_env_set(minim_vector_ref(x, F_B), minim_vector_ref(x, F_A), val);
+        minim_env_set(minim_vector_ref(x, F_ENV), minim_vector_ref(x, F_CODE), val);
         val = MINIM_VOID;
         goto ret;
     default:  // K_ARGS
         minim_values_push(val);
-        env = minim_vector_ref(x, F_B);
-        if (minim_is_pair(minim_vector_ref(x, F_A))) {
-            minim_obj rest = minim_cdr(minim_vector_ref(x, F_A));
-            k = make_frame(K_ARGS, k, rest, env, minim_vector_ref(x, F_C));
-            expr = minim_car(minim_vector_ref(x, F_A));
+        env = minim_vector_ref(x, F_ENV);
+        if (minim_is_pair(minim_vector_ref(x, F_CODE))) {
+            minim_obj rest = minim_cdr(minim_vector_ref(x, F_CODE));
+            k = make_frame(K_ARGS, k, rest, env, minim_vector_ref(x, F_BASE));
+            expr = minim_car(minim_vector_ref(x, F_CODE));
             goto eval;
         }
-        base = (size_t)minim_fixnum_value(minim_vector_ref(x, F_C));
+        base = (size_t)minim_fixnum_value(minim_vector_ref(x, F_BASE));
         goto apply;
     }
 

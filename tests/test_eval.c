@@ -181,7 +181,7 @@ static void test_tail_calls(void) {
 #ifdef MINIM_GC_STRESS
     const char *src = "(define (loop n) (if (= n 0) 'done (loop (- n 1)))) (loop 10000)";
 #else
-    const char *src = "(define (loop n) (if (= n 0) 'done (loop (- n 1)))) (loop 1000000)";
+    const char *src = "(define (loop n) (if (= n 0) 'done (loop (- n 1)))) (loop 100000)";
 #endif
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.
