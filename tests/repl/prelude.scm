@@ -1,0 +1,13 @@
+; list? is defined by the prelude.
+(list? '())
+(list? '(1 2 3))
+(list? '(1 . 2))
+(list? '(1 2 . 3))
+(list? 5)
+(list? #(1 2))
+(define c (list 1 2 3))
+(set-cdr! (cdr (cdr c)) c)
+(list? c)
+(define d (list 1 2))
+(set-cdr! (cdr d) d)
+(list? d)

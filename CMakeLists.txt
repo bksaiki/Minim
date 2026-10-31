@@ -32,7 +32,21 @@ if(MINIM_GC_STRESS)
     add_compile_definitions(MINIM_GC_STRESS)
 endif()
 
+# The prelude's source, embedded as a C array
+set(prelude_c ${CMAKE_CURRENT_BINARY_DIR}/prelude_scm.c)
+add_custom_command(
+    OUTPUT ${prelude_c}
+    COMMAND ${CMAKE_COMMAND}
+        -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.scm
+        -DOUTPUT=${prelude_c}
+        -DNAME=minim_prelude_scm
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed.cmake
+    DEPENDS src/prelude.scm cmake/embed.cmake
+    COMMENT "Embedding prelude.scm"
+)
+
 add_library(libminim STATIC
+    ${prelude_c}
     src/char.c
     src/env.c
     src/error.c
@@ -40,6 +54,7 @@ add_library(libminim STATIC
     src/gc.c
     src/heap.c
     src/object.c
+    src/prelude.c
     src/prims.c
     src/print.c
     src/read.c

@@ -108,6 +108,16 @@ cmake --build --preset dev && ctest --preset dev -R read
 
 ### Phase 2 - Embedding the prelude
 
+**Done.**  Details settled during the phase:
+
+- The generated file names its source by file name only, not absolute path,
+  so its contents don't depend on where the repository is checked out.
+- `list?` uses Floyd's cycle detection, so cyclic lists return `#f` (R7RS).
+- Since every test now evaluates the prelude at startup, the full suite was
+  run in both presets, not just the phase's tests.
+- Checked by hand: touching `src/prelude.scm` re-embeds it and relinks
+  `libminim`; a no-op build does neither.
+
 - `cmake/embed.cmake`: reads a file as hex and writes a C array of its
   bytes, NUL-terminated.
 - `CMakeLists.txt`: an `add_custom_command` generating

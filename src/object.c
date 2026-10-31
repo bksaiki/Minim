@@ -9,6 +9,7 @@
 #include "error.h"
 #include "gc.h"
 #include "heap.h"
+#include "prelude.h"
 #include "prims.h"
 #include "symbol.h"
 
@@ -18,6 +19,7 @@ void minim_init(void) {
     minim_error_init();
     minim_symbol_init();
     minim_prims_init();
+    minim_prelude_init();
 }
 
 void minim_shutdown(void) {
