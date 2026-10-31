@@ -300,11 +300,17 @@ void minim_gc_set_config(minim_gc_config config);
 /** Runs the collection the settings call for: minor, or major by radix or growth. */
 void minim_gc_collect(void);
 
-/** Collects the young generation, promoting its survivors to the old one. */
+/** Collects generation 0, the nursery, promoting its survivors to generation 1. */
 void minim_gc_collect_minor(void);
 
-/** Collects both generations, copying every live object. */
+/** Collects every generation, copying every live object. */
 void minim_gc_collect_major(void);
+
+/**
+ * Collects generations 0 through `g`, promoting their survivors to `g + 1`,
+ * or keeping them in `g` if it is the oldest.
+ */
+void minim_gc_collect_generation(unsigned g);
 
 /** Remembers the old object `obj` until the next collection. */
 void minim_gc_remember(minim_obj obj);

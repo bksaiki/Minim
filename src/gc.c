@@ -76,8 +76,10 @@ void minim_gc_init(void) {
     bool startup = getenv_integer("MINIM_GC_STARTUP", 0, 1, 0);
 
     minim_gc = (struct minim_gc){.config = startup ? env : DEFAULT_CONFIG, .program_config = env};
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
-        minim_gc.spaces[i].generation = i == MINIM_SPACE_NEW ? 0 : 1;
+    for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
+        for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
+            minim_gc.old[g][k].generation = (unsigned char)g;
+    }
     minim_gc.budget = minim_gc.config.nursery_bytes;
 }
 
@@ -86,8 +88,11 @@ void minim_gc_finish_startup(void) {
 }
 
 void minim_gc_shutdown(void) {
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++)
-        minim_space_free(&minim_gc.spaces[i]);
+    minim_space_free(&minim_gc.nursery);
+    for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
+        for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
+            minim_space_free(&minim_gc.old[g][k]);
+    }
     minim_heap_free_spares();
     free(minim_gc.locals.items);
     free(minim_gc.globals.items);
@@ -163,36 +168,36 @@ static size_t typed_size(minim_obj header) {
     }
 }
 
-// Copies the object `x` refers to into its to-space, unless already copied,
-// and returns the new reference.
+// Copies the object `x` refers to into the target generation, unless it is
+// older than the collection or already copied, and returns the new reference.
 static minim_obj copy(minim_obj x) {
     minim_obj tag = minim_tag(x);
-    minim_space *to;
+    size_t kind;
     switch (tag) {
     case MINIM_TAG_PAIR:
     case MINIM_TAG_CLOSURE:
-        to = &minim_gc.spaces[MINIM_SPACE_PAIR];
+        kind = MINIM_KIND_PAIR;
         break;
     case MINIM_TAG_SYMBOL:
-        to = &minim_gc.spaces[MINIM_SPACE_SYMBOL];
+        kind = MINIM_KIND_SYMBOL;
         break;
     case MINIM_TAG_TYPED:
-        to = &minim_gc.spaces[MINIM_SPACE_TYPED];
+        kind = MINIM_KIND_TYPED;
         break;
     default:
         return x;  // not a heap object
     }
 
-    if (minim_gc.minor && minim_chunk_of(x)->generation != 0)
-        return x;  // old objects stay put in a minor collection
+    if (minim_chunk_of(x)->generation > minim_gc.collecting)
+        return x;
 
     minim_obj *old = (minim_obj *)(x - tag);
     if (old[0] == MINIM_FORWARD)
         return old[1];
 
     size_t size = tag == MINIM_TAG_TYPED ? typed_size(old[0]) : 2 * sizeof(minim_obj);
-    void *p = minim_space_alloc(to, size);
-    minim_gc.live += minim_align_up(size);
+    void *p = minim_space_alloc(&minim_gc.old[minim_gc.target][kind], size);
+    minim_gc.old_bytes[minim_gc.target] += minim_align_up(size);
     memcpy(p, old, size);
     minim_obj y = (minim_obj)p | tag;
     old[0] = MINIM_FORWARD;
@@ -269,24 +274,33 @@ static cursor end_of(const minim_space *s) {
     return s->last == NULL ? (cursor){0} : (cursor){s->last, s->alloc};
 }
 
-// Copies the young generation's survivors into the old generation, and in a
-// major collection also the old generation's.  A minor collection treats the
-// remembered old objects as roots.
-static void collect(bool minor) {
-    minim_gc.minor = minor;
-    minim_space from[MINIM_SPACE_COUNT];
-    cursor cursors[MINIM_SPACE_COUNT];  // of the old spaces
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        if (!minim_gc.minor || i == MINIM_SPACE_NEW) {
-            from[i] = minim_gc.spaces[i];
-            minim_gc.spaces[i] = (minim_space){.generation = from[i].generation};
+// The oldest generation.
+static unsigned oldest(void) {
+    return 1;
+}
+
+// Collects generations 0 through `g`, copying their survivors into `g + 1`, or
+// into fresh spaces for `g` if it is the oldest.  Remembered objects in older
+// generations are roots.
+static void collect(unsigned g) {
+    minim_gc.collecting = g;
+    minim_gc.target = g < oldest() ? g + 1 : g;
+    unsigned t = minim_gc.target;
+
+    minim_space nursery = minim_gc.nursery;
+    minim_space from[MINIM_MAX_GENERATION + 1][MINIM_KIND_COUNT];
+    minim_gc.nursery = (minim_space){.generation = 0};
+    for (unsigned i = 1; i <= g; i++) {
+        for (size_t k = 0; k < MINIM_KIND_COUNT; k++) {
+            from[i][k] = minim_gc.old[i][k];
+            minim_gc.old[i][k] = (minim_space){.generation = (unsigned char)i};
         }
-        // Objects copied from here on are scanned; in a major collection, that
-        // is every object in the old spaces.
-        cursors[i] = end_of(&minim_gc.spaces[i]);
+        minim_gc.old_bytes[i] = 0;  // counted again as `copy` fills the target
     }
-    if (!minim_gc.minor)
-        minim_gc.live = 0;  // counted again as `copy` fills the old spaces
+    // Objects copied from here on are scanned.
+    cursor cursors[MINIM_KIND_COUNT];
+    for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
+        cursors[k] = end_of(&minim_gc.old[t][k]);
 
     for (size_t i = 0; i < minim_gc.globals.len; i++)
         *minim_gc.globals.items[i] = copy(*minim_gc.globals.items[i]);
@@ -295,9 +309,9 @@ static void collect(bool minor) {
     for (size_t i = 0; i < minim_gc.values.len; i++)
         minim_gc.values.items[i] = copy(minim_gc.values.items[i]);
 
-    // In a major collection, the remembered objects are in from-space, and
-    // their chunks are freed below, bits and all.
-    if (minim_gc.minor) {
+    // Collecting the oldest generation moves the remembered objects; their
+    // chunks are freed below, bits and all.
+    if (g < oldest()) {
         for (size_t i = 0; i < minim_gc.remembered.len; i++) {
             uint64_t bit;
             uint64_t *word = remembered_word(minim_gc.remembered.items[i], &bit);
@@ -309,33 +323,40 @@ static void collect(bool minor) {
     bool scanned;
     do {
         scanned = false;
-        for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-            if (i != MINIM_SPACE_NEW)
-                scanned |= scan(&minim_gc.spaces[i], &cursors[i],
-                                i == MINIM_SPACE_TYPED ? scan_typed : scan_two_words);
-        }
+        for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
+            scanned |= scan(&minim_gc.old[t][k], &cursors[k],
+                            k == MINIM_KIND_TYPED ? scan_typed : scan_two_words);
     } while (scanned);
 
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        if (!minim_gc.minor || i == MINIM_SPACE_NEW)
-            minim_space_free(&from[i]);
+    minim_space_free(&nursery);
+    for (unsigned i = 1; i <= g; i++) {
+        for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
+            minim_space_free(&from[i][k]);
     }
+    minim_gc.live = 0;
+    for (unsigned i = 1; i <= oldest(); i++)
+        minim_gc.live += minim_gc.old_bytes[i];
     minim_heap_trim_spares();
     minim_gc.budget = minim_gc.config.nursery_bytes;
-    if (minim_gc.minor) {
+    if (g == 0)
         minim_gc.minor_collections++;
-    } else {
+    if (g == oldest()) {
         minim_gc.major_collections++;
         minim_gc.major_base = minim_gc.live;
     }
 }
 
+void minim_gc_collect_generation(unsigned g) {
+    assert(g <= oldest());
+    collect(g);
+}
+
 void minim_gc_collect_minor(void) {
-    collect(true);
+    collect(0);
 }
 
 void minim_gc_collect_major(void) {
-    collect(false);
+    collect(oldest());
 }
 
 // Whether the old generation has outgrown its configured limit.
@@ -349,10 +370,10 @@ static bool old_generation_outgrown(void) {
 void minim_gc_collect(void) {
     minim_gc.scheduled++;
     if (minim_gc.config.radix != 0 && minim_gc.scheduled % minim_gc.config.radix == 0) {
-        collect(false);
+        collect(oldest());
         return;
     }
-    collect(true);
+    collect(0);
     if (old_generation_outgrown())
-        collect(false);
+        collect(oldest());
 }

@@ -139,6 +139,25 @@ static void test_promotion(void) {
     MINIM_RETURN_VOID;
 }
 
+// Collecting generation 0 is a minor collection; the oldest, a major one.
+static void test_collect_generation(void) {
+    minim_obj p = minim_cons(minim_fixnum(1), MINIM_NIL);
+    MINIM_FRAME(&p);
+    size_t minors = minim_gc.minor_collections;
+    size_t majors = minim_gc.major_collections;
+    minim_gc_collect_generation(0);
+    CHECK(is_old(p));
+    minim_obj promoted = p;
+    minim_gc_collect_generation(0);
+    CHECK_EQ(p, promoted);
+    minim_gc_collect_generation(1);
+    CHECK(p != promoted);
+    CHECK_EQ(minim_car(p), minim_fixnum(1));
+    CHECK_EQ(minim_gc.minor_collections - minors, 2);
+    CHECK_EQ(minim_gc.major_collections - majors, 1);
+    MINIM_RETURN_VOID;
+}
+
 // Old objects set to point to young ones, through each setter, keep them alive.
 // Each setter writes a different object, so one barrier can't cover another.
 static void test_old_to_young(void) {
@@ -348,6 +367,7 @@ int main(void) {
     test_reclaim();
     test_bounded();
     test_promotion();
+    test_collect_generation();
     test_old_to_young();
     test_old_young_old();
     test_major_reclaims();

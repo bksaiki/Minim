@@ -129,7 +129,7 @@ void *minim_heap_alloc(size_t nbytes) {
         minim_gc_collect();
     minim_gc.budget = nbytes < minim_gc.budget ? minim_gc.budget - nbytes : 0;
     minim_gc.allocated += nbytes;
-    return minim_space_alloc(&minim_gc.spaces[MINIM_SPACE_NEW], nbytes);
+    return minim_space_alloc(&minim_gc.nursery, nbytes);
 }
 
 void minim_space_free(minim_space *s) {

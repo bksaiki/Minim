@@ -116,6 +116,21 @@ what the default catches.
 
 ### Phase 1 - Spaces indexed by generation
 
+**Done.**  Details settled during the phase:
+
+- `minim_gc.nursery` is generation 0; `minim_gc.old[g][kind]` holds
+  generation g for g ≥ 1 (row 0 unused, so the index is the chunk header's
+  generation), with `minim_gc.old_bytes[g]`.  `MINIM_MAX_GENERATION` (8) in
+  `heap.h` sizes them.  The `MINIM_SPACE_*` enum became `MINIM_KIND_*`.
+- `collect(g)` sets `minim_gc.collecting` and `minim_gc.target`, replacing
+  `minim_gc.minor`; `copy` leaves objects older than `collecting` in place.
+  The oldest generation is `oldest()`, fixed at 1 until Phase 2.
+- Remembered objects are scanned unless the oldest generation is collected,
+  and the set is emptied after every collection: right for two generations;
+  Phase 2 changes it.
+- `minor_collections` counts collections of generation 0, and
+  `major_collections` those of the oldest.
+
 - `src/heap.h`, `src/gc.h`, `src/gc.c`: the old spaces become
   `old[generation][kind]`; `collect(g)` replaces `collect(bool minor)`;
   per-generation byte counts; `minim_gc_collect_generation(g)` in

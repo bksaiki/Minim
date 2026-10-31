@@ -77,17 +77,16 @@ static inline unsigned char *minim_chunk_end(const minim_space *s, const minim_c
     return c == s->last ? s->alloc : c->end;
 }
 
-/**
- * Heap spaces.  New objects, the young generation, go in MINIM_SPACE_NEW;
- * survivors are copied into the old generation's space for their kind.
- */
+/** Kinds of object, each with its own space in every old generation. */
 enum {
-    MINIM_SPACE_NEW,
-    MINIM_SPACE_PAIR,
-    MINIM_SPACE_SYMBOL,
-    MINIM_SPACE_TYPED,
-    MINIM_SPACE_COUNT,
+    MINIM_KIND_PAIR,  ///< pairs and closures
+    MINIM_KIND_SYMBOL,
+    MINIM_KIND_TYPED,
+    MINIM_KIND_COUNT,
 };
+
+/** The most old generations the heap holds. */
+enum { MINIM_MAX_GENERATION = 8 };
 
 /** Reports that memory is exhausted and aborts. */
 _Noreturn void minim_out_of_memory(void);
