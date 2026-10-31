@@ -199,6 +199,25 @@ cmake --build --preset dev && ctest --preset dev -R 'gc' && ctest --preset stres
 
 ### Phase 3 - Remembered set across generations
 
+**Done.**  Details settled during the phase:
+
+- `pointer_fields` lists an object's pointer fields once, for `scan_object`
+  (restored) and the new `points_younger`.  The target's scan starts at its
+  end again (`end_of`, restored), taken after the from-spaces are reset:
+  taking it before, in a full collection, left the cursor in a discarded
+  chunk, which UBSan caught.
+- A collection scans the remembered objects above the collected
+  generations, then keeps those still pointing younger and clears the bits
+  of the rest, including moved ones (their chunks are still allocated then).
+- `test_remembered_generations`: an entry survives collections 0 and 1 while
+  its target is younger, is dropped when the target reaches its generation,
+  and a later write remembers it again.
+- Injected bugs, each caught: dropping every entry, and not scanning the
+  surviving entries (`test_older_to_younger`); keeping every entry
+  (`test_remembered_generations`).
+- `ctest --preset stress -j 8`: 19.5 s (Phase 2: 1 min 40 s; before this
+  plan: 27.5 s).  Release benchmarks unchanged: 1.63 s and 1.09 s.
+
 - `src/gc.c`: collections scan only remembered objects above g instead of
   whole generations; after a collection, entries are kept or dropped as in
   the design.

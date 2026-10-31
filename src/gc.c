@@ -265,6 +265,53 @@ static bool scan(minim_space *s, cursor *c, size_t (*scan_obj)(minim_obj *)) {
     }
 }
 
+// A cursor at the end of `s`, where objects copied next will start.
+static cursor end_of(const minim_space *s) {
+    return s->last == NULL ? (cursor){0} : (cursor){s->last, s->alloc};
+}
+
+// The fields of the object `x` that may hold pointers, in `*fields`; returns
+// how many.
+static size_t pointer_fields(minim_obj x, minim_obj **fields) {
+    minim_obj *p = (minim_obj *)(x - minim_tag(x));
+    if (minim_tag(x) != MINIM_TAG_TYPED) {
+        *fields = p;
+        return 2;
+    }
+    switch (minim_header_type(p[0])) {
+    case MINIM_TYPE_VECTOR:
+        *fields = p + 1;
+        return minim_header_length(p[0]);
+    case MINIM_TYPE_PRIMITIVE:
+        *fields = p + 2;  // the name
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+// Scans the object `x`, which hasn't moved: copies its referents.
+static void scan_object(minim_obj x) {
+    minim_obj *fields;
+    size_t n = pointer_fields(x, &fields);
+    for (size_t i = 0; i < n; i++)
+        fields[i] = copy(fields[i]);
+}
+
+// Whether the old object `x` points to a younger generation.
+static bool points_younger(minim_obj x) {
+    unsigned char generation = minim_chunk_of(x)->generation;
+    minim_obj *fields;
+    size_t n = pointer_fields(x, &fields);
+    for (size_t i = 0; i < n; i++) {
+        minim_obj tag = minim_tag(fields[i]);
+        if (tag != MINIM_TAG_FIXNUM && tag != MINIM_TAG_IMMEDIATE
+            && minim_chunk_of(fields[i])->generation < generation)
+            return true;
+    }
+    return false;
+}
+
 // The oldest generation.
 static unsigned oldest(void) {
     return (unsigned)minim_gc.config.max_generation;
@@ -272,8 +319,8 @@ static unsigned oldest(void) {
 
 // Collects generations 0 through `g`, copying their survivors into `g + 1`.
 // Collecting the oldest collects every generation present into fresh spaces
-// for it, so lowering max_generation merges the ones above.  Every older
-// generation is scanned whole, as roots.
+// for it, so lowering max_generation merges the ones above.  The remembered
+// objects in older generations are roots.
 static void collect(unsigned g) {
     bool full = g == oldest();
     unsigned last = full ? MINIM_MAX_GENERATION : g;  // the oldest collected
@@ -291,6 +338,10 @@ static void collect(unsigned g) {
         }
         minim_gc.old_bytes[i] = 0;  // counted again as `copy` fills the target
     }
+    // Objects copied from here on are scanned.
+    cursor cursors[MINIM_KIND_COUNT];
+    for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
+        cursors[k] = end_of(&minim_gc.old[t][k]);
 
     for (size_t i = 0; i < minim_gc.globals.len; i++)
         *minim_gc.globals.items[i] = copy(*minim_gc.globals.items[i]);
@@ -299,15 +350,11 @@ static void collect(unsigned g) {
     for (size_t i = 0; i < minim_gc.values.len; i++)
         minim_gc.values.items[i] = copy(minim_gc.values.items[i]);
 
-    // Generations above the target, whole; the target is scanned whole below,
-    // its old objects with what is copied into it.
-    for (unsigned i = t + 1; i <= MINIM_MAX_GENERATION; i++) {
-        for (size_t k = 0; k < MINIM_KIND_COUNT; k++) {
-            cursor c = {0};
-            scan(&minim_gc.old[i][k], &c, k == MINIM_KIND_TYPED ? scan_typed : scan_two_words);
-        }
+    for (size_t i = 0; i < minim_gc.remembered.len; i++) {
+        minim_obj x = minim_gc.remembered.items[i];
+        if (minim_chunk_of(x)->generation > last)
+            scan_object(x);
     }
-    cursor cursors[MINIM_KIND_COUNT] = {{0}};
     bool scanned;
     do {
         scanned = false;
@@ -316,13 +363,20 @@ static void collect(unsigned g) {
                             k == MINIM_KIND_TYPED ? scan_typed : scan_two_words);
     } while (scanned);
 
-    // The scans cover every old object, so nothing needs remembering.
+    // Keep the remembered objects that weren't moved and still point younger;
+    // a moved one's referents moved with it.
+    size_t kept = 0;
     for (size_t i = 0; i < minim_gc.remembered.len; i++) {
-        uint64_t bit;
-        uint64_t *word = remembered_word(minim_gc.remembered.items[i], &bit);
-        *word &= ~bit;
+        minim_obj x = minim_gc.remembered.items[i];
+        if (minim_chunk_of(x)->generation > last && points_younger(x)) {
+            minim_gc.remembered.items[kept++] = x;
+        } else {
+            uint64_t bit;
+            uint64_t *word = remembered_word(x, &bit);
+            *word &= ~bit;
+        }
     }
-    minim_gc.remembered.len = 0;
+    minim_gc.remembered.len = kept;
 
     minim_space_free(&nursery);
     for (unsigned i = 1; i <= last; i++) {

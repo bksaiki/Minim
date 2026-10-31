@@ -457,6 +457,41 @@ static void test_older_to_younger(void) {
     MINIM_RETURN_VOID;
 }
 
+static bool remembered(minim_obj x) {
+    for (size_t i = 0; i < minim_gc.remembered.len; i++) {
+        if (minim_gc.remembered.items[i] == x)
+            return true;
+    }
+    return false;
+}
+
+// An object stays remembered while it points to a younger generation.
+static void test_remembered_generations(void) {
+    minim_gc_config saved = use_generations(3);
+    minim_obj holder = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_obj young = MINIM_NIL;
+    MINIM_FRAME(&holder, &young);
+    for (unsigned g = 0; g < 3; g++)
+        minim_gc_collect_generation(g);  // into generation 3
+    young = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_set_car(holder, young);
+    CHECK(remembered(holder));
+    for (unsigned g = 0; g < 2; g++) {
+        minim_gc_collect_generation(g);
+        CHECK_EQ(generation(minim_car(holder)), g + 1);
+        CHECK(remembered(holder));
+    }
+    minim_gc_collect_generation(2);  // `young` reaches generation 3
+    CHECK(!remembered(holder));
+
+    // Its bit was cleared, so the next write remembers it again.
+    young = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_set_car(holder, young);
+    CHECK(remembered(holder));
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_survive();
@@ -478,6 +513,7 @@ int main(void) {
     test_aging();
     test_schedule();
     test_older_to_younger();
+    test_remembered_generations();
     minim_shutdown();
     return test_result();
 }
