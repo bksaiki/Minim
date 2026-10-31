@@ -76,19 +76,52 @@ obj Mprim(void *fn, iptr arity, const char *name) {
     return x;
 }
 
-obj Mclosure(obj env, obj formals, obj body) {
-    obj x;
+static obj formals_to_arity(obj formals) {
     iptr arity;
+
+    for (arity = 0; Mconsp(formals); formals = Mcdr(formals), ++arity);
+    return Mfixnum(Mnullp(formals) ? arity : (-arity - 1));
+}
+
+obj Mclosure(obj env, obj formals, obj body) {
+    obj x = GC_malloc(Mclosure_size);
+    obj_type(x) = CLOSURE_OBJ_TYPE;
+    Mclosure_casep(x) = 0;
+    Mclosure_env(x) = env;
+    Mclosure_name(x) = Mfalse;
+    Mclosure_body(x) = Mlist1(body);
+    Mclosure_formals(x) = Mlist1(formals);
+    Mclosure_arity(x) = Mlist1(formals_to_arity(formals));
+    return x;
+}
+
+obj Mclosure2(obj env, obj clauses) {
+    obj x, b_tl, f_tl, a_tl;
     
     x = GC_malloc(Mclosure_size);
     obj_type(x) = CLOSURE_OBJ_TYPE;
+    Mclosure_casep(x) = 1;
     Mclosure_env(x) = env;
-    Mclosure_body(x) = body;
-    Mclosure_formals(x) = formals;
     Mclosure_name(x) = Mfalse;
+    
+    if (Mnullp(clauses)) {
+        Mclosure_body(x) = Mnull;
+        Mclosure_formals(x) = Mnull;
+        Mclosure_arity(x) = Mnull;
+    } else {
+        Mclosure_body(x) = b_tl = Mlist1(Mcadar(clauses));
+        Mclosure_formals(x) = f_tl = Mlist1(Mcaar(clauses));
+        Mclosure_arity(x) = a_tl = Mlist1(formals_to_arity(Mcaar(clauses)));
+        for (clauses = Mcdr(clauses); !Mnullp(clauses); clauses = Mcdr(clauses)) {
+            Mcdr(b_tl) = Mlist1(Mcadar(clauses));
+            Mcdr(f_tl) = Mlist1(Mcaar(clauses));
+            Mcdr(a_tl) = Mlist1(formals_to_arity(Mcaar(clauses)));
+            b_tl = Mcdr(b_tl);
+            f_tl = Mcdr(f_tl);
+            a_tl = Mcdr(a_tl);
+        }
 
-    for (arity = 0; Mconsp(formals); formals = Mcdr(formals), ++arity);
-    Mclosure_arity(x) = Mnullp(formals) ? arity : (-arity - 1);
+    }
 
     return x;
 }

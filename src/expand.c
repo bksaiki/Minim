@@ -238,7 +238,6 @@ static obj expand_case_lambda(obj e) {
     if (Mnullp(rib)) {
         return Mlist1(Mcase_lambda_symbol);
     } else {
-        writeln_object(stderr, rib);
         hd = tl = Mlist1(Mlist2(Mcaar(rib), expand_expr(condense_body(Mcdar(rib)))));
         for (rib = Mcdr(rib); !Mnullp(rib); rib = Mcdr(rib)) {
             Mcdr(tl) = Mlist1(Mlist2(Mcaar(rib), expand_expr(condense_body(Mcdar(rib)))));

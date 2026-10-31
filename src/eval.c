@@ -21,13 +21,25 @@ static void assert_single_value(obj tc, obj x) {
     }
 }
 
+static int arity_validp(obj arity, uptr argc) {
+    iptr arity_val = Mfixnum_value(arity);
+    if (arity_val >= 0) {
+        // exact arity
+        return arity_val == argc;
+    } else {
+        // at-least arity
+        arity_val = -arity_val - 1;
+        return argc >= arity_val;
+    }
+}
+
 static void check_callcc(obj f) {
     if (Mprimp(f)) {
         iptr arity = Mprim_arity(f);
         if (arity < 0 ? arity < -2 : arity != 1)
             minim_error1("call/cc", "expected a procedure of at least 1 argument", f);
     } else if (Mclosurep(f)) {
-        iptr arity = Mclosure_arity(f);
+        iptr arity = Mfixnum_value(Mclosure_arity(f));
         if (arity < 0 ? arity < -2 : arity != 1)
             minim_error1("call/cc", "expected a procedure of at least 1 argument", f);
     } else if (Mcontinuationp(f)) {
@@ -43,7 +55,7 @@ static void assert_thunk(const char *name, obj f) {
         if (arity < 0 ? arity != -1 : arity != 0)
             minim_error1(name, "expected a procedure of at least 0 argument", f);
     } else if (Mclosurep(f)) {
-        iptr arity = Mclosure_arity(f);
+        iptr arity = Mfixnum_value(Mclosure_arity(f));
         if (arity < 0 ? arity < -1 : arity != 0)
             minim_error1(name, "expected a procedure of at least 0 argument", f);
     } else if (Mcontinuationp(f)) {
@@ -82,33 +94,8 @@ static void check_prim_arity(obj tc, obj f, uptr arg0) {
     }
 }
 
-static void check_closure_arity(obj tc, obj f, uptr arg0) {
-    iptr arity, argc;
-
-    arity = Mclosure_arity(f);
-    argc = (iptr) (Mtc_ac(tc) - arg0);
-    if (arity >= 0) {
-        // exact arity
-        if (argc != arity) {
-            minim_error2(
-                Msymbol_value(Mclosure_name(f)),
-                "arity mismatch",
-                Mfixnum(Mclosure_arity(f)),
-                Mfixnum(argc)
-            );
-        }
-    } else {
-        // at-least arity
-        arity = -arity - 1;
-        if (argc < arity) {
-            minim_error2(
-                Msymbol_value(Mclosure_name(f)),
-                "arity mismatch",
-                Mlist2(Mintern("at-least"), Mfixnum(Mclosure_arity(f))),
-                Mfixnum(argc)
-            );
-        }
-    }
+NORETURN static void closure_arity_error(obj tc, obj f) {
+    minim_error1("check_arity_error()", "unimplemented", f);
 }
 
 static uptr do_arg(obj tc, obj x) {
@@ -342,22 +329,45 @@ static obj do_prim(obj tc, obj f, uptr arg0) {
     }
 }
 
-static obj do_closure(obj tc, obj f, uptr arg0) {
-    obj env, it;
-    uptr argi;
+static obj do_closure_env(obj tc, obj env, obj formals, uptr arg0) {
+    obj it;
+    uptr i;
 
-    argi = arg0;
-    env = env_extend(Mclosure_env(f));
-    for (it = Mclosure_formals(f); Mconsp(it); it = Mcdr(it)) {
-        env_insert(env, Mcar(it), Mtc_ab(tc)[argi]);
-        argi++;
+    i = arg0;
+    env = env_extend(env);
+    for (it = formals; Mconsp(it); it = Mcdr(it)) {
+        env_insert(env, Mcar(it), Mtc_ab(tc)[i]);
+        i++;
     }
 
     if (!Mnullp(it)) {
-        env_insert(env, it, args_to_list(tc, argi));
+        env_insert(env, it, args_to_list(tc, i));
     }
 
     return env;
+}
+
+static obj do_closure(obj tc, obj f, uptr arg0) {
+    obj f_it, a_it, b_it;
+    uptr argc;
+
+    f_it = Mclosure_formals(f);
+    a_it = Mclosure_arity(f);
+    b_it = Mclosure_body(f);
+
+    argc = Mtc_ac(tc) - arg0;
+    while (!Mnullp(f_it)) {
+        if (arity_validp(Mcar(a_it), argc)) {
+            // found a clause with satisfiable arity
+            return Mcons(do_closure_env(tc, Mclosure_env(f), Mcar(f_it), arg0), Mcar(b_it));
+        }
+
+        f_it = Mcdr(f_it);
+        a_it = Mcdr(a_it);
+        b_it = Mcdr(b_it);
+    }
+
+    closure_arity_error(tc, f);
 }
 
 static obj do_begin(obj tc) {
@@ -485,6 +495,10 @@ loop:
             // lambda
             x = Mclosure(Mtc_env(tc), Mcadr(e), Mcaddr(e));
             goto do_k;
+        } else if (hd == Mcase_lambda_symbol) {
+            // case-lambda
+            x = Mclosure2(Mtc_env(tc), Mcdr(e));
+            goto do_k;
         } else if (hd == Msetb_symbol) {
             // set!
             Mtc_cc(tc) = Msetb_continuation(Mtc_cc(tc), Mtc_env(tc), Mcadr(e));
@@ -564,9 +578,9 @@ do_app:
         clear_arg_buffer(tc, argf);
         goto do_k;
     } else if (Mclosurep(f)) {
-        check_closure_arity(tc, f, argf + 1);
-        Mtc_env(tc) = do_closure(tc, f, argf + 1);
-        e = Mclosure_body(f);
+        x = do_closure(tc, f, argf + 1);
+        Mtc_env(tc) = Mcar(x);
+        e = Mcdr(x);
         clear_arg_buffer(tc, argf);
         goto loop;
     } else if (Mcontinuationp(f)) {

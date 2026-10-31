@@ -235,8 +235,9 @@ obj Mprim(void *fn, iptr arity, const char *name);
 // Closure
 // +------------+
 // |    type    | [0, 1)
+// |    case?   | [1, 2)
 // |    env     | [8, 16)
-// |    code    | [16, 24)
+// |    body    | [16, 24)
 // |   formals  | [24, 32)
 // |    arity   | [32, 40)
 // |    name    | [40, 48)
@@ -244,13 +245,15 @@ obj Mprim(void *fn, iptr arity, const char *name);
 
 #define Mclosure_size           (6 * ptr_size)
 #define Mclosurep(o)            (obj_type(o) == CLOSURE_OBJ_TYPE)
+#define Mclosure_casep(o)       (*((byte *) ptr_add(o, 1)))
 #define Mclosure_env(o)         (*((obj *) ptr_add(o, ptr_size)))
 #define Mclosure_body(o)        (*((obj *) ptr_add(o, 2 * ptr_size)))
 #define Mclosure_formals(o)     (*((obj *) ptr_add(o, 3 * ptr_size)))
-#define Mclosure_arity(o)       (*((iptr*) ptr_add(o, 4 * ptr_size)))
+#define Mclosure_arity(o)       (*((obj*) ptr_add(o, 4 * ptr_size)))
 #define Mclosure_name(o)        (*((obj*) ptr_add(o, 5 * ptr_size)))
 
 obj Mclosure(obj env, obj formals, obj body);
+obj Mclosure2(obj env, obj clauses);
 
 // Continuation
 // +------------+
