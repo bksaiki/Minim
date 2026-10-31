@@ -8,14 +8,6 @@
 #include "minim.h"
 #include "test.h"
 
-// A file holding `s`, positioned at its start.
-static FILE *input(const char *s) {
-    FILE *f = tmpfile();
-    fputs(s, f);
-    rewind(f);
-    return f;
-}
-
 // Whether the first datum in `s` prints as `expect`.
 static bool reads_as(const char *s, const char *expect) {
     FILE *f = input(s);

@@ -8,14 +8,6 @@
 #include "minim.h"
 #include "test.h"
 
-// A file holding `s`, positioned at its start.
-static FILE *input(const char *s) {
-    FILE *f = tmpfile();
-    fputs(s, f);
-    rewind(f);
-    return f;
-}
-
 // Evaluates every datum in the file `f`; returns the last value.
 static minim_obj eval_file(void *f) {
     minim_obj val = MINIM_VOID;

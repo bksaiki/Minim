@@ -40,6 +40,14 @@ static inline int test_result(void) {
     return test_failures == 0 ? 0 : 1;
 }
 
+/** A temporary file holding `s`, positioned at its start. */
+static inline FILE *input(const char *s) {
+    FILE *f = tmpfile();
+    fputs(s, f);
+    rewind(f);
+    return f;
+}
+
 /** Whether `x` prints as `expect`; reports a mismatch. */
 static inline bool prints_as(minim_obj x, const char *expect) {
     FILE *f = tmpfile();
