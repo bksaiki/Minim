@@ -1,0 +1,12 @@
+42
+-7
+foo
+"hi\n"
+#\a
+#\space
+(1 2 . 3)
+'x
+#(1 #(2) "s")
+#t
+#f
+(after error)

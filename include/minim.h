@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /**
  * A tagged Scheme value.  The low 3 bits are the primary tag; heap objects
@@ -353,5 +354,36 @@ static inline void minim_set_symbol_value(minim_obj sym, minim_obj x) {
     assert(minim_is_symbol(sym));
     ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[1] = x;
 }
+
+// Errors
+
+/**
+ * Jumps to the innermost minim_catch, recording `msg` (which must outlive the
+ * catch, e.g. a literal) and `irritant` (MINIM_VOID for none).  With no catch
+ * installed, prints the error and aborts.
+ */
+_Noreturn void minim_error(const char *msg, minim_obj irritant);
+
+/**
+ * Calls `fn(arg)`.  Returns `true` and stores its result in `*result`, or
+ * returns `false` if it raised an error, restoring the root stack.
+ */
+bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result);
+
+/** Message and irritant of the last error. */
+void minim_last_error(const char **msg, minim_obj *irritant);
+
+/** Writes the last error to `out` as `error: msg: irritant`. */
+void minim_write_error(FILE *out);
+
+// Reading
+
+/** Reads the next datum from `in`, or returns MINIM_EOF.  Raises on bad syntax. */
+minim_obj minim_read(FILE *in);
+
+// Printing
+
+/** Writes `x` to `out` in `write` syntax.  Never allocates. */
+void minim_write(FILE *out, minim_obj x);
 
 #endif

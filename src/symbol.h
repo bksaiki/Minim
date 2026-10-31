@@ -1,12 +1,18 @@
 /**
  * @file
- * Symbol table lifecycle.  The symbol API is in minim.h.
+ * Symbol table lifecycle and well-known symbols.  The symbol API is in
+ * minim.h.
  */
 
 #ifndef MINIM_SYMBOL_H
 #define MINIM_SYMBOL_H
 
-/** Creates the symbol table; call after minim_gc_init. */
+#include "minim.h"
+
+/** The symbol `quote`. */
+extern minim_obj minim_sym_quote;
+
+/** Creates the symbol table and well-known symbols; call after minim_gc_init. */
 void minim_symbol_init(void);
 
 #endif
