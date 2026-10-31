@@ -57,7 +57,10 @@ one has run, so a `%expand` defined by one form applies to the next.
 ## Special forms
 
 `quote`, `if`, `define`, `set!`, `lambda`, and `begin`, recognized by the
-operator symbol itself, so local bindings can't shadow them.
+operator symbol itself.  The expander (`macros.md`) renames local variables,
+so a local named `if` never reaches the evaluator as `if`, and it rejects
+malformed forms and misplaced `define`s before they run.  The checks below
+remain for forms evaluated before the expander is defined.
 
 - `define` takes only `(define name expr)`.  At top level it binds globally;
   in a procedure body it prepends to the innermost frame.  It is accepted

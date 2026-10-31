@@ -719,6 +719,11 @@ static minim_obj prim_is_bound(minim_obj *args, size_t n) {
                    && alias_info(args[0]) == MINIM_FALSE);
 }
 
+static minim_obj prim_bad_syntax(minim_obj *args, size_t n) {
+    (void)n;
+    minim_error("bad syntax", args[0]);
+}
+
 static void define_primitive(const char *name, minim_prim_fn fn, intptr_t min, intptr_t max) {
     minim_obj sym = minim_intern_cstr(name);
     MINIM_FRAME(&sym);
@@ -798,6 +803,7 @@ void minim_prims_init(void) {
     define_primitive("%alias-original", prim_alias_original, 1, 1);
     define_primitive("%alias-env", prim_alias_env, 1, 1);
     define_primitive("%bound?", prim_is_bound, 1, 1);
+    define_primitive("%bad-syntax", prim_bad_syntax, 1, 1);
     define_primitive("write", prim_write, 1, 1);
     define_primitive("display", prim_display, 1, 1);
     define_primitive("newline", prim_newline, 0, 0);

@@ -238,6 +238,26 @@ cmake --build --preset dev && ctest --preset dev -R symbol
 
 ### Phase 4 - Expander and quasiquote
 
+**Done.**  Details settled during the phase:
+
+- Environments are lists of frames; a frame is a one-element list holding an
+  association list, so a body adds bindings in place as it scans.  A
+  variable's meaning is its gensym; Phase 6 adds macro meanings.
+- A new primitive, `(%bad-syntax form)`, raises `bad syntax` from Scheme.
+- `define` outside the top level or a body's leading definitions is now `bad
+  syntax`, as in R7RS, and malformed forms raise when expanded rather than
+  when run.  No existing test relied on the old behaviour.
+- Quasiquote folds constant parts into a single `quote`; vectors use `(apply
+  vector ...)`.  `,@` outside a list element is `bad syntax`.
+- The test is `tests/repl/expander.scm`, since `expand.scm` is Phase 2's hook
+  test.
+- `test_tail_calls` compared the value stack's capacity with 64; expanding
+  the prelude recurses, leaving it at 128, so the test now checks that the
+  loops don't grow it.
+- Release startup: about 2.4 ms before, 10 ms after.  Stress startup
+  (collecting on every allocation): 0.14 s before, 28 s after, since every
+  collection copies the whole prelude.
+
 - `src/prelude.scm`, first: `%expand` with syntactic environments,
   resolution, renaming of `lambda` parameters and internal `define`s, body
   scanning, and `quasiquote`.  The global macro table (`%macros`) and macro

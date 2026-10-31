@@ -15,8 +15,9 @@ they can't call closures (see `primitives.md`).
   each form with `minim_read_string` and evaluates it.  No catch is installed,
   so an error in the prelude, which is a bug in Minim, aborts with the
   message.
-- The prelude uses only the core forms (`quote`, `if`, `define`, `set!`,
-  `lambda`, `begin`) until macros exist.
+- The prelude starts with the expander (`macros.md`), which uses only the core
+  forms (`quote`, `if`, `define`, `set!`, `lambda`, `begin`).  Every form
+  after it is expanded.
 
 ## Library
 

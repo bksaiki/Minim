@@ -189,6 +189,7 @@ static void test_map_long_list(void) {
 }
 
 static void test_tail_calls(void) {
+    size_t cap = minim_gc.values.cap;  // the prelude's expansion leaves it above its minimum
     char src[256];
     snprintf(src, sizeof(src),
              "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop %d)",
@@ -196,7 +197,7 @@ static void test_tail_calls(void) {
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.
     CHECK(minim_gc.size <= 8 * 1024 * 1024);
-    CHECK(minim_gc.values.cap <= 64);
+    CHECK_EQ(minim_gc.values.cap, cap);
 
     // `apply` in tail position is a tail call too.
     snprintf(src, sizeof(src),
@@ -204,7 +205,7 @@ static void test_tail_calls(void) {
              gc_stressed() ? 2000 : 100000);
     CHECK(evals_to(src, "done"));
     CHECK(minim_gc.size <= 8 * 1024 * 1024);
-    CHECK(minim_gc.values.cap <= 64);
+    CHECK_EQ(minim_gc.values.cap, cap);
 }
 
 int main(void) {
