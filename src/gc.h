@@ -37,12 +37,11 @@ extern struct minim_gc {
     minim_root_stack locals;     ///< the shadow stack
     minim_root_stack globals;    ///< from minim_gc_add_global
     minim_obj_stack values;      ///< values of calls in progress, updated in place
-    minim_obj_stack remembered;  ///< old objects written since the last collection, each once
+    minim_obj_stack remembered;  ///< old objects that may point younger, each once
     size_t size;                 ///< bytes held in chunks
     size_t allocated;            ///< bytes handed out by minim_heap_alloc since init
     size_t live;                 ///< bytes in the old generations after the last collection
     size_t budget;               ///< bytes to allocate before the next collection
-    size_t major_base;           ///< bytes in the old generation after the last major collection
     size_t scheduled;            ///< calls to minim_gc_collect
     /** Collections, by the oldest generation each collected. */
     size_t collections[MINIM_MAX_GENERATION + 1];

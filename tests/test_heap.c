@@ -130,12 +130,13 @@ static void test_chunk_of(void) {
     CHECK(minim_chunk_of(after) != minim_chunk_of(big));
     CHECK(chunks_aligned());
 
-    // Survivors are copied into the per-kind spaces.
+    // A major collection copies survivors into the oldest generation's spaces.
     minim_gc_collect_major();
-    CHECK(in_chunk(pair, 1));
-    CHECK(in_chunk(sym, 1));
-    CHECK(in_chunk(str, 1));
-    CHECK(in_chunk(big, 1));
+    unsigned oldest = (unsigned)minim_gc_default_config().max_generation;
+    CHECK(in_chunk(pair, oldest));
+    CHECK(in_chunk(sym, oldest));
+    CHECK(in_chunk(str, oldest));
+    CHECK(in_chunk(big, oldest));
     CHECK(chunks_aligned());
     minim_gc_set_config(saved);
     MINIM_RETURN_VOID;

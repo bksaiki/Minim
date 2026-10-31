@@ -139,22 +139,24 @@ static void test_promotion(void) {
     MINIM_RETURN_VOID;
 }
 
-// Collecting generation 0 is a minor collection; the oldest, a major one.
+// Collecting generation 0 promotes the nursery; a major collection, of the
+// oldest generation, moves everything.
 static void test_collect_generation(void) {
     minim_obj p = minim_cons(minim_fixnum(1), MINIM_NIL);
     MINIM_FRAME(&p);
+    unsigned oldest = (unsigned)minim_gc_get_config().max_generation;
     size_t minors = minim_gc.collections[0];
-    size_t majors = minim_gc.collections[1];
+    size_t majors = minim_gc.collections[oldest];
     minim_gc_collect_generation(0);
     CHECK(is_old(p));
     minim_obj promoted = p;
     minim_gc_collect_generation(0);
     CHECK_EQ(p, promoted);
-    minim_gc_collect_generation(1);
+    minim_gc_collect_major();
     CHECK(p != promoted);
     CHECK_EQ(minim_car(p), minim_fixnum(1));
     CHECK_EQ(minim_gc.collections[0] - minors, 2);
-    CHECK_EQ(minim_gc.collections[1] - majors, 1);
+    CHECK_EQ(minim_gc.collections[oldest] - majors, 1);
     MINIM_RETURN_VOID;
 }
 
@@ -231,18 +233,19 @@ static void test_major_reclaims(void) {
     MINIM_RETURN_VOID;
 }
 
-// With a large structure live, short-lived allocation runs only minor
-// collections.
+// With a large structure live, short-lived allocation runs collections of the
+// young generations only.
 static void test_generational(void) {
     minim_gc_config saved = use_default_gc_config();
+    unsigned oldest = (unsigned)minim_gc_get_config().max_generation;
     minim_obj keep = make_list(100000);  // 1.6 MB
     MINIM_FRAME(&keep);
     size_t minors = minim_gc.collections[0];
-    size_t majors = minim_gc.collections[1];
+    size_t majors = minim_gc.collections[oldest];
     for (int i = 0; i < 1000000; i++)
-        minim_cons(MINIM_NIL, MINIM_NIL);  // 16 MB
-    CHECK(minim_gc.collections[0] - minors >= 15);
-    CHECK_EQ(minim_gc.collections[1], majors);
+        minim_cons(MINIM_NIL, MINIM_NIL);  // 16 MB: about 16 collections
+    CHECK(minim_gc.collections[0] - minors >= 10);
+    CHECK_EQ(minim_gc.collections[oldest], majors);
     CHECK(is_list(keep, 100000));
     minim_gc_set_config(saved);
     MINIM_RETURN_VOID;
@@ -255,7 +258,8 @@ static void test_config(void) {
         minim_cons(MINIM_NIL, MINIM_NIL);  // within the default 1 MiB nursery
     CHECK_EQ(minim_gc.collections[0] + minim_gc.collections[1], collections);
 
-    // A 1-byte nursery collects at every allocation; radix 4 makes every 4th major.
+    // A 1-byte nursery collects at every allocation; radix 4 makes every 4th
+    // collect generation 1 too.
     minim_gc_config config = minim_gc_get_config();
     config.nursery_bytes = 1;
     config.radix = 4;
@@ -270,46 +274,11 @@ static void test_config(void) {
     minim_gc_set_config(saved);
 }
 
-// Promotes one more pair onto `*keep` with each of `n` scheduled collections;
-// returns how many were followed by a major collection.
-static size_t majors_after(minim_obj *keep, int n) {
-    size_t majors = minim_gc.collections[1];
-    for (int i = 0; i < n; i++) {
-        *keep = minim_cons(MINIM_NIL, *keep);
-        minim_gc_collect();
-    }
-    return minim_gc.collections[1] - majors;
-}
-
-static void test_major_growth(void) {
-    minim_gc_config saved = use_default_gc_config();  // no collections but the scheduled ones
-    minim_obj keep = MINIM_NIL;
-    MINIM_FRAME(&keep);
-    minim_gc_config config = minim_gc_get_config();
-
-    // Any growth past the size after the last major collection.
-    config.major_growth = 1;
-    config.major_min_bytes = 0;
-    minim_gc_set_config(config);
-    CHECK_EQ(majors_after(&keep, 4), 4);
-
-    // Not before the old generation exceeds the minimum.
-    config.major_min_bytes = 64 * 1024 * 1024;
-    minim_gc_set_config(config);
-    CHECK_EQ(majors_after(&keep, 4), 0);
-
-    // Not before it grows by the factor.
-    config.major_growth = 1000;
-    config.major_min_bytes = 0;
-    minim_gc_set_config(config);
-    CHECK_EQ(majors_after(&keep, 4), 0);
-    int n = 0;
-    for (minim_obj x = keep; minim_is_pair(x); x = minim_cdr(x))
-        n++;
-    CHECK_EQ(n, 12);
-
-    minim_gc_set_config(saved);
-    MINIM_RETURN_VOID;
+// The youngest generation the remembered object `x` may point to, or -1 if
+// `x` isn't remembered.
+static int remembered_youngest(minim_obj x) {
+    minim_chunk *c = minim_chunk_of(x);
+    return c->remembered[((x & ~(minim_obj)MINIM_TAG_MASK) - (uintptr_t)c) / MINIM_ALIGN] - 1;
 }
 
 // The barrier remembers an old object once, only for a heap value, until the
@@ -457,15 +426,8 @@ static void test_older_to_younger(void) {
     MINIM_RETURN_VOID;
 }
 
-static bool remembered(minim_obj x) {
-    for (size_t i = 0; i < minim_gc.remembered.len; i++) {
-        if (minim_gc.remembered.items[i] == x)
-            return true;
-    }
-    return false;
-}
-
-// An object stays remembered while it points to a younger generation.
+// An object stays remembered, with the youngest generation it points to, while
+// that generation is younger.
 static void test_remembered_generations(void) {
     minim_gc_config saved = use_generations(3);
     minim_obj holder = minim_cons(MINIM_NIL, MINIM_NIL);
@@ -475,19 +437,29 @@ static void test_remembered_generations(void) {
         minim_gc_collect_generation(g);  // into generation 3
     young = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_set_car(holder, young);
-    CHECK(remembered(holder));
+    CHECK_EQ(remembered_youngest(holder), 0);
     for (unsigned g = 0; g < 2; g++) {
         minim_gc_collect_generation(g);
         CHECK_EQ(generation(minim_car(holder)), g + 1);
-        CHECK(remembered(holder));
+        CHECK_EQ(remembered_youngest(holder), (int)g + 1);
     }
-    minim_gc_collect_generation(2);  // `young` reaches generation 3
-    CHECK(!remembered(holder));
 
-    // Its bit was cleared, so the next write remembers it again.
+    // A write while remembered makes it a root for the nursery again.
+    young = minim_cons(MINIM_NIL, MINIM_NIL);
+    minim_set_cdr(holder, young);
+    CHECK_EQ(remembered_youngest(holder), 0);
+    minim_gc_collect_minor();
+    CHECK_EQ(generation(minim_cdr(holder)), 1);
+    CHECK_EQ(remembered_youngest(holder), 1);
+    minim_gc_collect_generation(1);
+    CHECK_EQ(remembered_youngest(holder), 2);
+    minim_gc_collect_generation(2);  // both referents reach generation 3
+    CHECK_EQ(remembered_youngest(holder), -1);
+
+    // Forgotten, so the next write remembers it again.
     young = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_set_car(holder, young);
-    CHECK(remembered(holder));
+    CHECK_EQ(remembered_youngest(holder), 0);
     minim_gc_set_config(saved);
     MINIM_RETURN_VOID;
 }
@@ -507,7 +479,6 @@ int main(void) {
     test_major_reclaims();
     test_generational();
     test_config();
-    test_major_growth();
     test_remembered();
     test_old_symbol_table();
     test_aging();

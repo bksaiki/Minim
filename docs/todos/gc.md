@@ -238,6 +238,49 @@ cmake --build --preset dev && ctest --preset dev -R 'gc' && ctest --preset stres
 
 ### Phase 4 - Defaults and stress settings
 
+**Done.**  Details settled during the phase:
+
+- The radix minimum is now 1 (`MINIM_GC_RADIX`, `collect-generation-radix`);
+  radix 1 collects the oldest generation every time, the hand-run full
+  stress.
+- Measuring found the remembered set rescanning, at every collection,
+  objects that only point into generations it doesn't collect (a 512-slot
+  vector in generation 2 pointing into 1, scanned at every nursery
+  collection: 13M scans in `derived.scm` minor-only, against 14K before this
+  plan).  Fixed here: each chunk's remembered bit per slot became a byte,
+  1 + the youngest generation the object may point to; the barrier sets it
+  to 1 (generation 0), a collection of 0..g scans only objects whose
+  youngest is at most g, and afterwards recomputes it for those.  Costs 1 KiB
+  per chunk header (was 128 bytes).  A first attempt, rows of the
+  remembered set by youngest generation, missed a write to an object already
+  remembered in an older row; `test_remembered_generations` now covers that
+  case, and catches it when reinjected.
+- Measured on the ASan `dev` build (Context in parentheses):
+
+  | Run | stress, default | minor-only | no stress | full stress (radix 1) |
+  |---|---|---|---|---|
+  | `derived.scm` | 1.8 s (13.5) | 0.75 s (0.67) | 0.18 s (0.2) | 209 s |
+  | `test_eval` | 1.4 s (9.6) | 0.54 s (0.52) | 1.8 s (1.7) | 145 s |
+
+  Minor-only is `MINIM_GC_RADIX` at the fixnum maximum.  Full stress was
+  measured before the remembered-set fix.
+- `ctest --preset stress -j 8`: 5.2 s (Context: 27.5 s).  Release: the
+  allocation programs 1.54 s and 1.09 s (Phase 3: 1.63 s, 1.09 s); startup
+  0.38 s for 20 runs.
+- Injected bugs.  In real code (`make_frame` dropping the root of `next` or
+  `code`; `minim_set_symbol_value` skipping the barrier), each fails nearly
+  every test, at startup, in `dev` and `stress` alike.  A synthetic site,
+  holding a pair of generation g unrooted across one allocation, n times,
+  under stress:
+
+  | g | caught at n = |
+  |---|---|
+  | 0 | 1 |
+  | 1 | 4 |
+  | 4 (oldest) | 256; radix 1: 1 |
+
+  That is, a site must run 4^g times for stress to catch it.
+
 - `src/gc.c`, `include/minim.h`, `src/prims.c`: the defaults become
   `max_generation` 4 and `radix` 4; the growth trigger and its settings,
   variables, and primitives are removed, with their tests (`test_gc`'s

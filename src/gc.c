@@ -16,10 +16,8 @@
 
 static const minim_gc_config DEFAULT_CONFIG = {
     .nursery_bytes = 1024 * 1024,
-    .radix = 0,
-    .max_generation = 1,
-    .major_growth = 2,
-    .major_min_bytes = 1024 * 1024,
+    .radix = 4,
+    .max_generation = 4,
     .stack_initial_capacity = 64,
 };
 
@@ -67,13 +65,9 @@ void minim_gc_init(void) {
     minim_gc_config env = {
         .nursery_bytes = getenv_integer("MINIM_GC_NURSERY_BYTES", 1, max,
                                         DEFAULT_CONFIG.nursery_bytes),
-        .radix = getenv_integer("MINIM_GC_RADIX", 0, max, DEFAULT_CONFIG.radix),
+        .radix = getenv_integer("MINIM_GC_RADIX", 1, max, DEFAULT_CONFIG.radix),
         .max_generation = getenv_integer("MINIM_GC_MAX_GENERATION", 1, MINIM_MAX_GENERATION,
                                          DEFAULT_CONFIG.max_generation),
-        .major_growth = getenv_integer("MINIM_GC_MAJOR_GROWTH", 1, max,
-                                       DEFAULT_CONFIG.major_growth),
-        .major_min_bytes = getenv_integer("MINIM_GC_MAJOR_MIN_BYTES", 0, max,
-                                          DEFAULT_CONFIG.major_min_bytes),
         .stack_initial_capacity = DEFAULT_CONFIG.stack_initial_capacity,
     };
     bool startup = getenv_integer("MINIM_GC_STARTUP", 0, 1, 0);
@@ -113,28 +107,24 @@ minim_gc_config minim_gc_get_config(void) {
 }
 
 void minim_gc_set_config(minim_gc_config config) {
-    assert(config.major_growth >= 1 && config.stack_initial_capacity >= 1);
+    assert(config.nursery_bytes >= 1 && config.radix >= 1 && config.stack_initial_capacity >= 1);
     assert(config.max_generation >= 1 && config.max_generation <= MINIM_MAX_GENERATION);
     minim_gc.config = config;
     minim_gc.scheduled = 0;
     minim_gc.budget = config.nursery_bytes;
 }
 
-// The word holding `obj`'s remembered bit; sets `*bit` to its mask.
-static uint64_t *remembered_word(minim_obj obj, uint64_t *bit) {
+// `obj`'s byte in its chunk's `remembered`.
+static unsigned char *remembered_byte(minim_obj obj) {
     minim_chunk *c = minim_chunk_of(obj);
-    size_t i = ((obj & ~(minim_obj)MINIM_TAG_MASK) - (uintptr_t)c) / MINIM_ALIGN;
-    *bit = (uint64_t)1 << (i % 64);
-    return &c->remembered[i / 64];
+    return &c->remembered[((obj & ~(minim_obj)MINIM_TAG_MASK) - (uintptr_t)c) / MINIM_ALIGN];
 }
 
 void minim_gc_remember(minim_obj obj) {
-    uint64_t bit;
-    uint64_t *word = remembered_word(obj, &bit);
-    if (*word & bit)
-        return;
-    *word |= bit;
-    push_obj(&minim_gc, &minim_gc.remembered, obj);
+    unsigned char *r = remembered_byte(obj);
+    if (*r == 0)
+        push_obj(&minim_gc, &minim_gc.remembered, obj);
+    *r = 1;  // may point to generation 0
 }
 
 void minim_values_push(minim_obj x) {
@@ -298,18 +288,18 @@ static void scan_object(minim_obj x) {
         fields[i] = copy(fields[i]);
 }
 
-// Whether the old object `x` points to a younger generation.
-static bool points_younger(minim_obj x) {
-    unsigned char generation = minim_chunk_of(x)->generation;
+// The youngest generation the old object `x` points to, or its own.
+static unsigned youngest_referent(minim_obj x) {
+    unsigned youngest = minim_chunk_of(x)->generation;
     minim_obj *fields;
     size_t n = pointer_fields(x, &fields);
     for (size_t i = 0; i < n; i++) {
         minim_obj tag = minim_tag(fields[i]);
         if (tag != MINIM_TAG_FIXNUM && tag != MINIM_TAG_IMMEDIATE
-            && minim_chunk_of(fields[i])->generation < generation)
-            return true;
+            && minim_chunk_of(fields[i])->generation < youngest)
+            youngest = minim_chunk_of(fields[i])->generation;
     }
-    return false;
+    return youngest;
 }
 
 // The oldest generation.
@@ -320,7 +310,7 @@ static unsigned oldest(void) {
 // Collects generations 0 through `g`, copying their survivors into `g + 1`.
 // Collecting the oldest collects every generation present into fresh spaces
 // for it, so lowering max_generation merges the ones above.  The remembered
-// objects in older generations are roots.
+// objects in older generations that may point into them are roots.
 static void collect(unsigned g) {
     bool full = g == oldest();
     unsigned last = full ? MINIM_MAX_GENERATION : g;  // the oldest collected
@@ -352,7 +342,7 @@ static void collect(unsigned g) {
 
     for (size_t i = 0; i < minim_gc.remembered.len; i++) {
         minim_obj x = minim_gc.remembered.items[i];
-        if (minim_chunk_of(x)->generation > last)
+        if (minim_chunk_of(x)->generation > last && *remembered_byte(x) - 1u <= last)
             scan_object(x);
     }
     bool scanned;
@@ -363,18 +353,19 @@ static void collect(unsigned g) {
                             k == MINIM_KIND_TYPED ? scan_typed : scan_two_words);
     } while (scanned);
 
-    // Keep the remembered objects that weren't moved and still point younger;
-    // a moved one's referents moved with it.
+    // Update the scanned objects' youngest referents, dropping those that no
+    // longer point younger, and the moved ones, whose referents moved with them.
     size_t kept = 0;
     for (size_t i = 0; i < minim_gc.remembered.len; i++) {
         minim_obj x = minim_gc.remembered.items[i];
-        if (minim_chunk_of(x)->generation > last && points_younger(x)) {
-            minim_gc.remembered.items[kept++] = x;
-        } else {
-            uint64_t bit;
-            uint64_t *word = remembered_word(x, &bit);
-            *word &= ~bit;
+        unsigned char *r = remembered_byte(x);
+        if (*r - 1u <= last) {
+            unsigned generation = minim_chunk_of(x)->generation;
+            unsigned youngest = generation > last ? youngest_referent(x) : generation;
+            *r = youngest < generation ? (unsigned char)(youngest + 1) : 0;
         }
+        if (*r != 0)
+            minim_gc.remembered.items[kept++] = x;
     }
     minim_gc.remembered.len = kept;
 
@@ -389,8 +380,6 @@ static void collect(unsigned g) {
     minim_heap_trim_spares();
     minim_gc.budget = minim_gc.config.nursery_bytes;
     minim_gc.collections[g]++;
-    if (full)
-        minim_gc.major_base = minim_gc.live;
 }
 
 void minim_gc_collect_generation(unsigned g) {
@@ -406,20 +395,12 @@ void minim_gc_collect_major(void) {
     collect(oldest());
 }
 
-// Whether the old generation has outgrown its configured limit.
-static bool old_generation_outgrown(void) {
-    size_t live = minim_gc.live;
-    const minim_gc_config *c = &minim_gc.config;
-    // live > major_growth * major_base without overflow; live >= 1 by the first test
-    return live > c->major_min_bytes && (live - 1) / c->major_growth >= minim_gc.major_base;
-}
-
 // The oldest generation the `n`-th scheduled collection collects: the largest
 // g up to the oldest such that radix^g divides `n`.
 static unsigned scheduled_generation(size_t n) {
     size_t radix = minim_gc.config.radix;
     unsigned g = 0;
-    while (radix != 0 && g < oldest() && n % radix == 0) {
+    while (g < oldest() && n % radix == 0) {
         n /= radix;
         g++;
     }
@@ -427,8 +408,5 @@ static unsigned scheduled_generation(size_t n) {
 }
 
 void minim_gc_collect(void) {
-    unsigned g = scheduled_generation(++minim_gc.scheduled);
-    collect(g);
-    if (g == 0 && old_generation_outgrown())
-        collect(oldest());
+    collect(scheduled_generation(++minim_gc.scheduled));
 }

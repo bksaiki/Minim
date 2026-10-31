@@ -270,25 +270,20 @@ void minim_gc_add_global(minim_obj *p);
 
 /**
  * Collector settings.  The n-th collection collects generations 0 through the
- * largest g at most `max_generation` such that `radix`^g divides n, or only 0
- * if `radix` is 0.  After a collection of only generation 0, a major one runs
- * if the old generations exceed both `major_min_bytes` and `major_growth`
- * times their size after the last major collection.  Every setting is at most
- * MINIM_FIXNUM_MAX, `max_generation` at most 8, and `major_growth`,
- * `max_generation`, and `stack_initial_capacity` at least 1.
+ * largest g at most `max_generation` such that `radix`^g divides n.  Every
+ * setting is at least 1 and at most MINIM_FIXNUM_MAX; `max_generation` is at
+ * most 8.
  */
 typedef struct minim_gc_config {
     size_t nursery_bytes;           ///< bytes allocated between collections
-    size_t radix;                   ///< base of the generation schedule; 0 for generation 0 only
+    size_t radix;                   ///< base of the generation schedule
     size_t max_generation;          ///< the oldest generation
-    size_t major_growth;            ///< old-generation growth factor that triggers a major one
-    size_t major_min_bytes;         ///< old-generation size below which growth is ignored
     size_t stack_initial_capacity;  ///< elements the collector's stacks first allocate
 } minim_gc_config;
 
 /**
- * The default collector settings: a 1 MiB nursery, radix 0, one old
- * generation, and major collections when it doubles, past 1 MiB.
+ * The default collector settings: a 1 MiB nursery, radix 4, and four old
+ * generations, so generation g is collected every 4^g collections.
  */
 minim_gc_config minim_gc_default_config(void);
 
@@ -302,7 +297,7 @@ minim_gc_config minim_gc_get_config(void);
  */
 void minim_gc_set_config(minim_gc_config config);
 
-/** Runs the collection the settings call for: by the schedule, or major by growth. */
+/** Runs the collection the schedule calls for. */
 void minim_gc_collect(void);
 
 /** Collects generation 0, the nursery, promoting its survivors to generation 1. */

@@ -653,23 +653,13 @@ static minim_obj prim_collect_nursery_bytes(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_collect_generation_radix(minim_obj *args, size_t n) {
-    return config_setting(args, n, offsetof(minim_gc_config, radix), 0, MINIM_FIXNUM_MAX,
-                          "collect-generation-radix: not a nonnegative fixnum");
+    return config_setting(args, n, offsetof(minim_gc_config, radix), 1, MINIM_FIXNUM_MAX,
+                          "collect-generation-radix: not a positive fixnum");
 }
 
 static minim_obj prim_collect_maximum_generation(minim_obj *args, size_t n) {
     return config_setting(args, n, offsetof(minim_gc_config, max_generation), 1,
                           MINIM_MAX_GENERATION, "collect-maximum-generation: bad generation");
-}
-
-static minim_obj prim_collect_major_growth(minim_obj *args, size_t n) {
-    return config_setting(args, n, offsetof(minim_gc_config, major_growth), 1, MINIM_FIXNUM_MAX,
-                          "collect-major-growth: not a positive fixnum");
-}
-
-static minim_obj prim_collect_major_min_bytes(minim_obj *args, size_t n) {
-    return config_setting(args, n, offsetof(minim_gc_config, major_min_bytes), 0, MINIM_FIXNUM_MAX,
-                          "collect-major-min-bytes: not a nonnegative fixnum");
 }
 
 // Aliases are uninterned symbols whose value is `#(alias_tag id env)`.
@@ -829,6 +819,4 @@ void minim_prims_init(void) {
     define_primitive("collect-nursery-bytes", prim_collect_nursery_bytes, 0, 1);
     define_primitive("collect-generation-radix", prim_collect_generation_radix, 0, 1);
     define_primitive("collect-maximum-generation", prim_collect_maximum_generation, 0, 1);
-    define_primitive("collect-major-growth", prim_collect_major_growth, 0, 1);
-    define_primitive("collect-major-min-bytes", prim_collect_major_min_bytes, 0, 1);
 }

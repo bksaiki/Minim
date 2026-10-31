@@ -40,12 +40,15 @@ static inline size_t minim_align_up(size_t n) {
  * object starts in its chunk's first MINIM_CHUNK_SIZE bytes.
  */
 typedef struct minim_chunk {
-    unsigned char generation;  ///< 0 for new objects, 1 for survivors
+    unsigned char generation;  ///< its objects' generation
     struct minim_chunk *next;  ///< next newer chunk in its space, or next spare
     unsigned char *end;        ///< end of used data, once a newer chunk exists
     size_t size;               ///< capacity of `data`
-    /** A bit per MINIM_ALIGN bytes: whether the object starting there is remembered. */
-    uint64_t remembered[MINIM_CHUNK_SIZE / MINIM_ALIGN / 64];
+    /**
+     * A byte per MINIM_ALIGN bytes: for a remembered object starting there, 1 + the
+     * youngest generation it may point to; otherwise 0.
+     */
+    unsigned char remembered[MINIM_CHUNK_SIZE / MINIM_ALIGN];
     alignas(MINIM_ALIGN) unsigned char data[];
 } minim_chunk;
 
