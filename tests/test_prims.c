@@ -23,11 +23,7 @@ static minim_obj nest(minim_obj x, size_t depth) {
 // `equal?` uses an explicit stack, so depth that would overflow the C stack
 // is fine.
 static void test_equal_deep(void) {
-#ifdef MINIM_GC_STRESS
-    const size_t depth = 1000;  // every allocation collects
-#else
-    const size_t depth = 1000000;
-#endif
+    const size_t depth = gc_stressed() ? 1000 : 1000000;
     minim_obj a = nest(minim_fixnum(1), depth);
     minim_obj b = MINIM_NIL;
     minim_obj c = MINIM_NIL;

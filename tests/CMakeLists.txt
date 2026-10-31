@@ -1,3 +1,14 @@
+# minim_add_stressed(name command...): adds the test `name`, and `name_stress`,
+# the same test labelled `stress` and run with the GC collecting at every
+# allocation and every 16th collection major.
+function(minim_add_stressed name)
+    add_test(NAME ${name} COMMAND ${ARGN})
+    add_test(NAME ${name}_stress COMMAND ${ARGN})
+    set_tests_properties(${name}_stress PROPERTIES
+        LABELS stress
+        ENVIRONMENT "MINIM_GC_NURSERY=1;MINIM_GC_RADIX=16")
+endfunction()
+
 # minim_add_test(name [INTERNAL]): INTERNAL tests may include headers from src/.
 function(minim_add_test name)
     add_executable(test_${name} test_${name}.c)
@@ -5,7 +16,7 @@ function(minim_add_test name)
     if("INTERNAL" IN_LIST ARGN)
         target_include_directories(test_${name} PRIVATE ${PROJECT_SOURCE_DIR}/src)
     endif()
-    add_test(NAME ${name} COMMAND test_${name})
+    minim_add_stressed(${name} test_${name})
 endfunction()
 
 minim_add_test(object)
@@ -25,8 +36,8 @@ minim_add_test(prims)
 # it exists.
 function(minim_add_repl_test name)
     set(dir ${CMAKE_CURRENT_SOURCE_DIR}/repl)
-    add_test(NAME repl_${name}
-        COMMAND ${CMAKE_COMMAND}
+    minim_add_stressed(repl_${name}
+        ${CMAKE_COMMAND}
             -DMINIM=$<TARGET_FILE:minim>
             -DDIR=${dir}
             -DINPUT=${dir}/${name}.scm
@@ -35,12 +46,14 @@ function(minim_add_repl_test name)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
 endfunction()
 
-# minim_add_script_test(name [STATUS n] [ARGS arg...] [ENV var=value...]):
+# minim_add_script_test(name [NO_STRESS] [STATUS n] [ARGS arg...]
+#                       [ENV var=value...]):
 # runs `minim ARGS` (default `<name>.scm`) from scripts/ with ENV set, and
 # checks the exit status (default 0), stdout against scripts/<name>.out, and
-# stderr against scripts/<name>.err if it exists.
+# stderr against scripts/<name>.err if it exists.  A test with ENV or
+# NO_STRESS has no stress copy.
 function(minim_add_script_test name)
-    cmake_parse_arguments(PARSE_ARGV 1 opt "" "STATUS" "ARGS;ENV")
+    cmake_parse_arguments(PARSE_ARGV 1 opt "NO_STRESS" "STATUS" "ARGS;ENV")
     if(NOT DEFINED opt_STATUS)
         set(opt_STATUS 0)
     endif()
@@ -49,17 +62,21 @@ function(minim_add_script_test name)
     endif()
     string(REPLACE ";" "|" args "${opt_ARGS}")
     set(dir ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
-    add_test(NAME script_${name}
-        COMMAND ${CMAKE_COMMAND}
-            -DMINIM=$<TARGET_FILE:minim>
-            -DDIR=${dir}
-            -DARGS=${args}
-            -DSTATUS=${opt_STATUS}
-            -DEXPECTED=${dir}/${name}.out
-            -DEXPECTED_ERR=${dir}/${name}.err
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
-    if(opt_ENV)
-        set_tests_properties(script_${name} PROPERTIES ENVIRONMENT "${opt_ENV}")
+    set(command ${CMAKE_COMMAND}
+        -DMINIM=$<TARGET_FILE:minim>
+        -DDIR=${dir}
+        -DARGS=${args}
+        -DSTATUS=${opt_STATUS}
+        -DEXPECTED=${dir}/${name}.out
+        -DEXPECTED_ERR=${dir}/${name}.err
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
+    if(opt_ENV OR opt_NO_STRESS)
+        add_test(NAME script_${name} COMMAND ${command})
+        if(opt_ENV)
+            set_tests_properties(script_${name} PROPERTIES ENVIRONMENT "${opt_ENV}")
+        endif()
+    else()
+        minim_add_stressed(script_${name} ${command})
     endif()
 endfunction()
 
@@ -77,7 +94,7 @@ minim_add_repl_test(strings)
 minim_add_repl_test(tail)
 
 minim_add_script_test(fail STATUS 1)
-minim_add_script_test(gc-settings)
+minim_add_script_test(gc-settings NO_STRESS)  # the defaults
 minim_add_script_test(gc-settings-env ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY=1 MINIM_GC_RADIX=16 MINIM_GC_MAJOR_GROWTH=3 MINIM_GC_MAJOR_MIN=0)
 minim_add_script_test(gc-settings-bad-nursery STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_NURSERY=0)

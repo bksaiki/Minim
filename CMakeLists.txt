@@ -14,8 +14,6 @@ endif()
 
 option(MINIM_BUILD_TESTS "Build the tests" OFF)
 option(MINIM_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-option(MINIM_GC_STRESS "Collect garbage frequently, every MINIM_GC_STRESS_INTERVAL allocations" OFF)
-set(MINIM_GC_STRESS_INTERVAL 1 CACHE STRING "Allocations between collections under MINIM_GC_STRESS")
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
@@ -27,13 +25,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 elseif(MSVC)
     add_compile_options(/W4)
-endif()
-
-if(MINIM_GC_STRESS)
-    if(NOT MINIM_GC_STRESS_INTERVAL MATCHES "^[1-9][0-9]*$")
-        message(FATAL_ERROR "MINIM_GC_STRESS_INTERVAL must be a positive integer, not '${MINIM_GC_STRESS_INTERVAL}'")
-    endif()
-    add_compile_definitions(MINIM_GC_STRESS=${MINIM_GC_STRESS_INTERVAL})
 endif()
 
 # The prelude's source, embedded as a C array

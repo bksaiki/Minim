@@ -76,11 +76,7 @@ static void test_strong(void) {
 }
 
 static void test_growth(void) {
-#ifdef MINIM_GC_STRESS
-    const size_t n = 1000;  // every allocation collects
-#else
-    const size_t n = 10000;
-#endif
+    const size_t n = gc_stressed() ? 1000 : 10000;
     char name[32];
     minim_obj syms = minim_make_vector(n, MINIM_NIL);
     MINIM_FRAME(&syms);

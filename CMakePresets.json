@@ -13,14 +13,6 @@
       }
     },
     {
-      "name": "stress",
-      "displayName": "Debug with sanitizers and GC stress",
-      "inherits": "dev",
-      "cacheVariables": {
-        "MINIM_GC_STRESS": "ON"
-      }
-    },
-    {
       "name": "release",
       "displayName": "Optimized, without sanitizers",
       "binaryDir": "${sourceDir}/build/${presetName}",
@@ -31,11 +23,21 @@
   ],
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
-    { "name": "stress", "configurePreset": "stress" },
     { "name": "release", "configurePreset": "release" }
   ],
   "testPresets": [
-    { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
-    { "name": "stress", "configurePreset": "stress", "output": { "outputOnFailure": true } }
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "stress" } }
+    },
+    {
+      "name": "stress",
+      "displayName": "Every test under GC stress",
+      "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "filter": { "include": { "label": "stress" } }
+    }
   ]
 }

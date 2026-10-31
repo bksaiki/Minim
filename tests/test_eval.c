@@ -179,11 +179,7 @@ static void test_apply_restores_value_stack(void) {
 
 // map in the prelude recurses on the heap, not the C stack.
 static void test_map_long_list(void) {
-#ifdef MINIM_GC_STRESS
-    const long n = 1000;  // collections are frequent, with a growing live set
-#else
-    const long n = 100000;
-#endif
+    const long n = gc_stressed() ? 1000 : 100000;
     char src[256];
     snprintf(src, sizeof(src),
              "(define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))"
@@ -194,22 +190,19 @@ static void test_map_long_list(void) {
 }
 
 static void test_tail_calls(void) {
-#ifdef MINIM_GC_STRESS
-    const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 10000)";
-#else
-    const char *src = "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop 100000)";
-#endif
+    char src[256];
+    snprintf(src, sizeof(src),
+             "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop %d)",
+             gc_stressed() ? 10000 : 100000);
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.
     CHECK(minim_heap.size <= 8 * 1024 * 1024);
     CHECK(minim_values.cap <= 64);
 
     // `apply` in tail position is a tail call too.
-#ifdef MINIM_GC_STRESS
-    src = "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop 2000)";
-#else
-    src = "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop 100000)";
-#endif
+    snprintf(src, sizeof(src),
+             "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop %d)",
+             gc_stressed() ? 2000 : 100000);
     CHECK(evals_to(src, "done"));
     CHECK(minim_heap.size <= 8 * 1024 * 1024);
     CHECK(minim_values.cap <= 64);

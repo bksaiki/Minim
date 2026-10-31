@@ -416,6 +416,56 @@ cmake --build --preset dev && ctest --preset dev -R 'gc|prims'
 
 ### Phase 5 - Stress as a policy
 
+**Done.**  Details settled during the phase:
+
+- `minim_add_stressed(name command...)` in `tests/CMakeLists.txt` registers
+  both copies; each test helper uses it.  Script tests with `ENV`, or the new
+  `NO_STRESS` flag (`gc-settings`, which checks the defaults), get no stress
+  copy.  The `stress` test preset has 27 tests.
+- `tests/test.h`: `gc_stressed()` (nursery under 1 KiB) shrinks slow tests,
+  and `default_gc_policy()` sets the defaults for a test that relies on when
+  collections happen, returning the policy to restore.  `test_heap`'s
+  young-object checks and `test_gc`'s scheduling tests use it, so they run in
+  both copies instead of being compiled out.
+- CI: one `dev` configure and build per job; the matrix is over the test
+  presets.
+
+Injected bugs (`ctest --preset dev`, `--preset stress`, and full stress):
+
+| Bug | normal | stress | full |
+|---|---|---|---|
+| `minim_cons` doesn't protect `cdr` (young) | caught | caught | caught |
+| `grow` doesn't protect the old table | caught | caught | caught |
+| `minim_set_cdr` skips the barrier | caught | caught | caught |
+
+These sit on hot paths, so they don't separate the settings.  A synthetic
+program that holds an *old* pair unrooted across one allocation, at a site
+run *n* times:
+
+| *n* | radix 16 | radix 1 | default policy |
+|---|---|---|---|
+| 1, 4 | missed | caught | missed |
+| 16, 64 | caught | caught | missed (64) |
+
+So radix 16 catches an old-object bug only at a site that runs at least
+about 16 times under the tests; `stress-full` (radix 1) catches it anywhere.
+
+Measurements (release unless noted):
+
+| | Phase 1 / before | This branch | With `macros` merged |
+|---|---|---|---|
+| long-lived program | 3.72 s, 96 MB | 2.56 s, 27 MB | 2.36 s, 27 MB |
+| short-lived program | 1.59 s | 1.76 s | 1.74 s |
+| startup (20 runs) | 0.048 s | 0.036 s | 0.21 s |
+| stress startup (`dev` build) | 0.14 s (`macros`: 28 s) | 0.06 s | 3.1 s |
+| stress suite, serial | about 29 s (old preset) | 11.3 s | 104 s |
+
+With `macros`, stress startup is 9× faster than under the old preset, as
+estimated, but each of the 30 stress tests still spends about 3 s starting
+up: expanding the prelude allocates about 270,000 times, and a collection at
+every allocation has a fixed cost (roots, a fresh nursery chunk) even when
+little survives.
+
 - `CMakeLists.txt`, `CMakePresets.json`, `.github/workflows/ci.yml`:
   - remove `MINIM_GC_STRESS`, `MINIM_GC_STRESS_INTERVAL`, and the `stress`
     configure and build presets;

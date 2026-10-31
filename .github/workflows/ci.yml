@@ -12,9 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        preset: [dev, stress]
+        tests: [dev, stress]
     steps:
       - uses: actions/checkout@v7
-      - run: cmake --preset ${{ matrix.preset }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-      - run: cmake --build --preset ${{ matrix.preset }}
-      - run: ctest --preset ${{ matrix.preset }}
+      - run: cmake --preset dev -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+      - run: cmake --build --preset dev
+      - run: ctest --preset ${{ matrix.tests }}
