@@ -92,6 +92,29 @@ static void test_growth(void) {
     MINIM_RETURN_VOID;
 }
 
+static void test_uninterned(void) {
+    minim_obj str = minim_string_from_cstr("u");
+    minim_obj a = MINIM_NIL;
+    minim_obj b = MINIM_NIL;
+    MINIM_FRAME(&str, &a, &b);
+    a = minim_make_uninterned(str);
+    b = minim_make_uninterned(minim_symbol_name(a));
+    CHECK(minim_is_symbol(a));
+    CHECK(a != b);
+    CHECK(minim_intern(str) != a);
+    CHECK(minim_symbol_name(a) != str);                    // a mutable name is copied
+    CHECK_EQ(minim_symbol_name(b), minim_symbol_name(a));  // an immutable one is shared
+    CHECK_EQ(minim_symbol_value(a), MINIM_UNBOUND);
+
+    // Survives a collection while referenced, value intact.
+    minim_set_symbol_value(a, minim_fixnum(7));
+    minim_gc_collect();
+    CHECK_EQ(minim_symbol_value(a), minim_fixnum(7));
+    CHECK_EQ(minim_string_ref(minim_symbol_name(a), 0), 'u');
+    CHECK(minim_intern_cstr("u") != a);
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_same_name();
@@ -100,6 +123,7 @@ int main(void) {
     test_gc();
     test_strong();
     test_growth();
+    test_uninterned();
     minim_shutdown();
     return test_result();
 }

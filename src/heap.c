@@ -67,13 +67,14 @@ static minim_chunk *take_spare(void) {
 }
 
 size_t minim_heap_max_spares(void) {
-    return minim_gc.config.nursery_bytes / MINIM_CHUNK_SIZE + 1 + MINIM_CHUNK_QUARANTINE;
+    size_t in_use = minim_gc.size / MINIM_CHUNK_SIZE - minim_gc.spares.len;
+    return in_use + minim_gc.config.nursery_bytes / MINIM_CHUNK_SIZE + 1 + MINIM_CHUNK_QUARANTINE;
 }
 
-// Makes `c` a spare, or frees it if it is large or there are enough spares.
+// Makes `c` a spare, or frees it if it is large.
 static void release_chunk(minim_chunk *c) {
     minim_chunk_queue *q = &minim_gc.spares;
-    if (chunk_bytes(c->size) != MINIM_CHUNK_SIZE || q->len >= minim_heap_max_spares()) {
+    if (chunk_bytes(c->size) != MINIM_CHUNK_SIZE) {
         chunk_free(c);
         return;
     }
@@ -139,6 +140,11 @@ void minim_space_free(minim_space *s) {
         c = next;
     }
     *s = (minim_space){.generation = s->generation};
+}
+
+void minim_heap_trim_spares(void) {
+    while (minim_gc.spares.len > minim_heap_max_spares())
+        chunk_free(take_spare());
 }
 
 void minim_heap_free_spares(void) {

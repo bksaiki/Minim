@@ -62,25 +62,42 @@ static void write_string(FILE *out, minim_obj s) {
     fputc('"', out);
 }
 
-// Whether `x` is `(quote y)`.
-static bool is_quote_form(minim_obj x) {
+// The abbreviation for the pair `x` if it is `(quote d)`, `(quasiquote d)`,
+// `(unquote d)`, or `(unquote-splicing d)`; otherwise NULL.
+static const char *abbreviation(minim_obj x) {
     minim_obj rest = minim_cdr(x);
-    return minim_car(x) == minim_sym_quote && minim_is_pair(rest)
-        && minim_is_null(minim_cdr(rest));
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+        return NULL;
+    minim_obj head = minim_car(x);
+    minim_obj d = minim_car(rest);
+    if (head == minim_sym_quote)
+        return "'";
+    if (head == minim_sym_quasiquote)
+        return "`";
+    if (head == minim_sym_unquote_splicing)
+        return ",@";
+    // `(unquote @x)` stays long: `,@x` reads as unquote-splicing.
+    if (head == minim_sym_unquote
+        && !(minim_is_symbol(d) && minim_string_length(minim_symbol_name(d)) > 0
+             && minim_string_ref(minim_symbol_name(d), 0) == '@'))
+        return ",";
+    return NULL;
 }
 
 static void print(FILE *out, minim_obj x, bool display);
 
 static void write_pair(FILE *out, minim_obj x, bool display) {
-    if (is_quote_form(x)) {
-        fputc('\'', out);
+    const char *abbrev = abbreviation(x);
+    if (abbrev != NULL) {
+        fputs(abbrev, out);
         print(out, minim_car(minim_cdr(x)), display);
         return;
     }
 
     fputc('(', out);
     print(out, minim_car(x), display);
-    for (x = minim_cdr(x); minim_is_pair(x); x = minim_cdr(x)) {
+    // A tail like `(unquote x)` prints dotted and abbreviated: `(a . ,x)`.
+    for (x = minim_cdr(x); minim_is_pair(x) && abbreviation(x) == NULL; x = minim_cdr(x)) {
         fputc(' ', out);
         print(out, minim_car(x), display);
     }

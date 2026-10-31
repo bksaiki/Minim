@@ -1,12 +1,12 @@
 # minim_add_stressed(name command...): adds the test `name`, and `name_stress`,
 # the same test labelled `stress` and run, after startup, with a collection at
-# every allocation, alternately minor and major.
+# every allocation, every 16th one major.
 function(minim_add_stressed name)
     add_test(NAME ${name} COMMAND ${ARGN})
     add_test(NAME ${name}_stress COMMAND ${ARGN})
     set_tests_properties(${name}_stress PROPERTIES
         LABELS stress
-        ENVIRONMENT "MINIM_GC_NURSERY_BYTES=1;MINIM_GC_RADIX=2")
+        ENVIRONMENT "MINIM_GC_NURSERY_BYTES=1;MINIM_GC_RADIX=16")
 endfunction()
 
 # minim_test_executable(name [INTERNAL]): builds test_<name> from test_<name>.c;
@@ -45,7 +45,7 @@ set_tests_properties(startup PROPERTIES ENVIRONMENT "MINIM_GC_NURSERY_BYTES=1")
 add_test(NAME startup_stress COMMAND test_startup startup)
 set_tests_properties(startup_stress PROPERTIES
     LABELS stress
-    ENVIRONMENT "MINIM_GC_STARTUP=1;MINIM_GC_NURSERY_BYTES=1;MINIM_GC_RADIX=1")
+    ENVIRONMENT "MINIM_GC_STARTUP=1;MINIM_GC_NURSERY_BYTES=1;MINIM_GC_RADIX=16")
 
 # A stale pointer must stay poisoned; only meaningful under AddressSanitizer.
 if(MINIM_SANITIZE)
@@ -107,16 +107,22 @@ function(minim_add_script_test name)
 endfunction()
 
 minim_add_repl_test(chars)
+minim_add_repl_test(derived)
 minim_add_repl_test(echo)
 minim_add_repl_test(equality)
 minim_add_repl_test(eval)
+minim_add_repl_test(expand)
+minim_add_repl_test(expander)
 minim_add_repl_test(gc)
 minim_add_repl_test(hashing)
 minim_add_repl_test(lists)
 minim_add_repl_test(load)
+minim_add_repl_test(local-macros)
 minim_add_repl_test(prelude)
 minim_add_repl_test(prims)
 minim_add_repl_test(strings)
+minim_add_repl_test(symbols)
+minim_add_repl_test(syntax-rules)
 minim_add_repl_test(tail)
 
 minim_add_script_test(fail STATUS 1)

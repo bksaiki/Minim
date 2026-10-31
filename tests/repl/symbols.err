@@ -1,0 +1,3 @@
+error: gensym: not a string: x
+error: %make-alias: not a symbol: "if"
+error: %bound?: not a symbol: 5

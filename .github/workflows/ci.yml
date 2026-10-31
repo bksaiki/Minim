@@ -17,4 +17,4 @@ jobs:
       - uses: actions/checkout@v7
       - run: cmake --preset dev -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
       - run: cmake --build --preset dev
-      - run: ctest --preset ${{ matrix.tests }}
+      - run: ctest --preset ${{ matrix.tests }} -j  # one job per processor (CMake 3.29+)

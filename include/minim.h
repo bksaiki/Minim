@@ -430,10 +430,13 @@ static inline void minim_string_set(minim_obj s, size_t i, uint32_t c) {
     minim_string_chars(s)[i] = c;
 }
 
-// Symbols: interned and never freed
+// Symbols: interned ones are never freed
 
-/** Symbol named `str`; a new one gets a copy of `str` and is unbound. */
+/** Interned symbol named `str`; a new one is made as by minim_make_uninterned. */
 minim_obj minim_intern(minim_obj str);
+
+/** New unbound, uninterned symbol named `str`, which is copied unless immutable. */
+minim_obj minim_make_uninterned(minim_obj str);
 
 /** minim_intern with a UTF-8 name. */
 minim_obj minim_intern_cstr(const char *s);
@@ -534,7 +537,7 @@ void minim_write_error(FILE *out);
 
 // Evaluation
 
-/** Value of `expr` in the global environment.  Raises on errors. */
+/** Value of the top-level form `expr`, expanded by `%expand` if bound.  Raises on errors. */
 minim_obj minim_eval(minim_obj expr);
 
 // Reading

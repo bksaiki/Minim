@@ -9,5 +9,6 @@
 - [Primitives](primitives.md): primitive procedures and the built-in library.
 - [Prelude](prelude.md): the library written in Scheme, and how it is
   embedded and loaded.
+- [Macros](macros.md): the expander, syntactic environments, and hygiene.
 - [Environment variables](environment.md): every variable Minim reads.
 - [Testing](testing.md): the test kinds and GC stress tests.

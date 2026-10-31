@@ -226,6 +226,7 @@ static minim_obj read_char(source *in) {
 enum { ITEM, CLOSE, DOT, END };
 
 static int read_item(source *in, minim_obj *x);
+static int read_item_from(source *in, int32_t c, minim_obj *x);
 
 // Reads a datum, which must be present.
 static minim_obj read_required(source *in, const char *context) {
@@ -304,9 +305,23 @@ static minim_obj read_hash(source *in) {
     minim_error("bad # syntax", token_string());
 }
 
+// Reads the datum after an abbreviation like `'`, starting with `c`, and
+// returns `(*sym datum)`.  `*sym` is loaded after the read, which may collect.
+static minim_obj read_abbreviation(source *in, int32_t c, const minim_obj *sym, const char *msg) {
+    minim_obj datum;
+    if (read_item_from(in, c, &datum) != ITEM)
+        minim_error(msg, MINIM_VOID);
+    datum = minim_cons(datum, MINIM_NIL);
+    return minim_cons(*sym, datum);
+}
+
 // Reads the next item into `*x`; returns what was found.
 static int read_item(source *in, minim_obj *x) {
-    int32_t c = skip_atmosphere(in);
+    return read_item_from(in, skip_atmosphere(in), x);
+}
+
+// Like read_item, with `c` the item's first character, already read.
+static int read_item_from(source *in, int32_t c, minim_obj *x) {
     switch (c) {
     case -1:
         return END;
@@ -321,12 +336,27 @@ static int read_item(source *in, minim_obj *x) {
     case '#':
         *x = read_hash(in);
         return ITEM;
-    case '\'': {
-        minim_obj datum = read_required(in, "eof after quote");
-        datum = minim_cons(datum, MINIM_NIL);
-        *x = minim_cons(minim_sym_quote, datum);
+    case '\'':
+        *x = read_abbreviation(in, skip_atmosphere(in), &minim_sym_quote, "eof after quote");
         return ITEM;
-    }
+    case '`':
+        *x = read_abbreviation(in, skip_atmosphere(in), &minim_sym_quasiquote,
+                               "eof after quasiquote");
+        return ITEM;
+    case ',':
+        // `,@` is one token; otherwise the next character may begin the datum.
+        c = next(in);
+        if (c == '@') {
+            *x = read_abbreviation(in, skip_atmosphere(in), &minim_sym_unquote_splicing,
+                                   "eof after unquote-splicing");
+            return ITEM;
+        }
+        if (is_whitespace(c) || c == ';') {
+            unread(in, c);
+            c = skip_atmosphere(in);
+        }
+        *x = read_abbreviation(in, c, &minim_sym_unquote, "eof after unquote");
+        return ITEM;
     default:
         token.len = 0;
         token_push((uint32_t)c);

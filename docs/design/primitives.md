@@ -14,8 +14,8 @@ evaluator recognizes their function pointers (`minim_prim_apply`,
   `[f a ... elements of lst]` and applies `f`, so `apply` in tail position is
   a tail call.
 - `load` reads the whole file with `minim_read_file` (`src/read.h`), which
-  always closes it, even on a read error.  It then evaluates the forms, then
-  void, as a body in the global environment.  A read error therefore runs
+  always closes it, even on a read error.  It then runs the forms as top-level
+  forms (see `eval.md`) and returns void.  A read error therefore runs
   none of the file.
 
 ## Equality and hashing
@@ -110,7 +110,22 @@ evaluator recognizes their function pointers (`minim_prim_apply`,
 | `(list->string lst)` | new string of the chars in the list `lst` |
 | `(symbol->string sym)` | the name of `sym`, an immutable string (not a copy) |
 | `(string->symbol s)` | the symbol named `s` |
+| `(gensym [s])` | a new uninterned symbol named `s` (default `g0`, `g1`, ...): it prints like its name but is `eq?` to no other symbol |
 | `(string-hash s)` | a non-negative fixnum, equal for `string=?` strings |
+
+### Expander support
+
+For the macro expander in the prelude; the `%` marks them internal.
+
+| Call | Result |
+|---|---|
+| `(%make-alias id env)` | a new alias: an uninterned symbol named like the symbol `id`, recording `id` and `env` |
+| `(%alias-original x)`, `(%alias-env x)` | the `id` or `env` an alias was made with; `#f` if `x` isn't an alias |
+| `(%bound? sym)` | whether the global `sym` holds a value; `#f` for an alias |
+| `(%syntax-error message args)` | raises the string `message` with `args` as the irritant: void if empty, its element if it has one |
+
+An alias stores `#(tag id env)` in its value slot, where `tag` is a private
+uninterned symbol, so no value a program can build looks like an alias.
 
 ### Output
 
@@ -136,7 +151,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 
 | Call | Result |
 |---|---|
-| `(load path)` | evaluates the forms in the file `path`, relative to the current directory, in the global environment; void |
+| `(load path)` | runs the forms in the file `path`, relative to the current directory, as top-level forms; void |
 
 ## Conventions
 

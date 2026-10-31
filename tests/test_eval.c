@@ -189,6 +189,7 @@ static void test_map_long_list(void) {
 }
 
 static void test_tail_calls(void) {
+    size_t cap = minim_gc.values.cap;  // already grown by the prelude
     char src[256];
     snprintf(src, sizeof(src),
              "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop %d)",
@@ -196,7 +197,7 @@ static void test_tail_calls(void) {
     CHECK(evals_to(src, "done"));
     // Without tail calls, every iteration's frame would still be live.
     CHECK(minim_gc.size <= 8 * 1024 * 1024);
-    CHECK(minim_gc.values.cap <= 64);
+    CHECK_EQ(minim_gc.values.cap, cap);
 
     // `apply` in tail position is a tail call too.
     snprintf(src, sizeof(src),
@@ -204,7 +205,21 @@ static void test_tail_calls(void) {
              gc_stressed() ? 2000 : 100000);
     CHECK(evals_to(src, "done"));
     CHECK(minim_gc.size <= 8 * 1024 * 1024);
-    CHECK(minim_gc.values.cap <= 64);
+    CHECK_EQ(minim_gc.values.cap, cap);
+
+    // So is the last subform of `and`, `or`, `when`, and a named `let`'s body.
+    const char *loops[] = {
+        "(define loop (lambda (n) (and #t (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
+        "(define loop (lambda (n) (or #f (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
+        "(define loop (lambda (n) (if (= n 0) 'done (when #t (loop (- n 1)))))) (loop %d)",
+        "(let loop ((n %d)) (cond ((= n 0) 'done) (else (loop (- n 1)))))",
+    };
+    for (size_t i = 0; i < sizeof(loops) / sizeof(loops[0]); i++) {
+        snprintf(src, sizeof(src), loops[i], gc_stressed() ? 2000 : 100000);
+        CHECK(evals_to(src, "done"));
+        CHECK(minim_gc.size <= 8 * 1024 * 1024);
+        CHECK_EQ(minim_gc.values.cap, cap);
+    }
 }
 
 int main(void) {

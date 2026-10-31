@@ -99,13 +99,19 @@ void *minim_heap_alloc(size_t nbytes);
 void *minim_space_alloc(minim_space *s, size_t nbytes);
 
 /**
- * Empties `s`, keeping its generation.  Its standard-size chunks become spares
- * for reuse, up to a limit; the rest are freed.
+ * Empties `s`, keeping its generation.  Its standard-size chunks become spares;
+ * large ones are freed.
  */
 void minim_space_free(minim_space *s);
 
-/** Spare chunks kept: enough to refill the nursery, plus the quarantine. */
+/**
+ * Spare-chunk limit: the chunks in use (room for a major collection), plus the
+ * nursery's worth and the quarantine.
+ */
 size_t minim_heap_max_spares(void);
+
+/** Frees the oldest spare chunks beyond minim_heap_max_spares(). */
+void minim_heap_trim_spares(void);
 
 /** Frees the spare chunks. */
 void minim_heap_free_spares(void);

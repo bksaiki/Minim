@@ -320,6 +320,7 @@ static void collect(bool minor) {
         if (i != MINIM_SPACE_NEW)
             minim_gc.live += minim_space_used(&minim_gc.spaces[i]);
     }
+    minim_heap_trim_spares();
     minim_gc.budget = minim_gc.config.nursery_bytes;
     if (minim_gc.minor) {
         minim_gc.minor_collections++;

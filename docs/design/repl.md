@@ -20,7 +20,7 @@ it.
 | `"..."` | string, with `\"`, `\\`, `\n`, `\t`, and `\xHH;` escapes |
 | `#\a`, `#\space`, `#\newline`, `#\tab`, `#\nul`, `#\xHH` | char |
 | `#t`, `#f`, `#true`, `#false` | boolean |
-| `'x` | `(quote x)` |
+| `'x`, `` `x ``, `,x`, `,@x` | `(quote x)`, `(quasiquote x)`, `(unquote x)`, `(unquote-splicing x)`; whitespace may follow, but `,@` is one token |
 | anything else up to a delimiter | symbol (case-sensitive), including `+`, `-`, `...`, and `1.5` |
 
 Delimiters are whitespace, `(`, `)`, `"`, and `;`.  `;` starts a comment that
@@ -42,7 +42,7 @@ allocates, so it is safe on error paths.
 | char | `#\a`; named chars by name; other control chars as `#\x7f` |
 | string | `"..."` with `\"`, `\\`, `\n`, `\t`; other control chars as `\x1;` |
 | symbol | its name |
-| pair | `(a b . c)`; `(quote x)` as `'x` |
+| pair | `(a b . c)`; `(quote x)` as `'x`, and likewise `` ` ``, `,`, `,@`, also as a tail: `(a . ,x)`.  `(unquote @x)` isn't abbreviated, since `,@x` would read back differently |
 | vector | `#(a b)` |
 | procedure | `#<procedure>`, or `#<procedure car>` for a primitive |
 

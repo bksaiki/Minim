@@ -1,0 +1,6 @@
+error: unbound variable: secret
+error: bad syntax: (my-or 1)
+error: bad syntax: (lambda (x) x)
+error: not a pair: 5
+error: two: (1 2)
+error: bad syntax: x

@@ -1,0 +1,2 @@
+error: bad syntax: (let ((x)) x)
+error: bad syntax: (cond)

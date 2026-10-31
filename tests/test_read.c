@@ -107,6 +107,15 @@ static void test_lists(void) {
     CHECK(reads_as("( a\n\tb )", "(a b)"));
     CHECK(reads_as("(a ; comment\n b)", "(a b)"));
     CHECK(reads_as("'x", "'x"));
+    CHECK(reads_as("`x", "`x"));
+    CHECK(reads_as("`(a ,b ,@c)", "`(a ,b ,@c)"));
+    CHECK(reads_as("`(a ,(b ,@c))", "`(a ,(b ,@c))"));
+    CHECK(reads_as("`(1 . ,x)", "`(1 . ,x)"));
+    CHECK(reads_as("`#(1 ,x)", "`#(1 ,x)"));
+    CHECK(reads_as(", x", ",x"));
+    CHECK(reads_as(",; comment\nx", ",x"));
+    CHECK(reads_as(",caf\u00e9", ",caf\u00e9"));
+    CHECK(reads_as(", @x", "(unquote @x)"));
     CHECK(reads_as("'(1 2)", "'(1 2)"));
     CHECK(reads_as("#()", "#()"));
     CHECK(reads_as("#(1 \"a\" #\\b #(2))", "#(1 \"a\" #\\b #(2))"));
@@ -147,6 +156,10 @@ static void test_errors(void) {
     CHECK(fails_with("#q", "bad # syntax"));
     CHECK(fails_with("#\\bogus", "bad char"));
     CHECK(fails_with("'", "eof after quote"));
+    CHECK(fails_with("`", "eof after quasiquote"));
+    CHECK(fails_with(",", "eof after unquote"));
+    CHECK(fails_with(",@", "eof after unquote-splicing"));
+    CHECK(fails_with("(a ,)", "eof after unquote"));
     CHECK(fails_with("1152921504606846976", "fixnum out of range"));
     CHECK(fails_with("-1152921504606846977", "fixnum out of range"));
 }

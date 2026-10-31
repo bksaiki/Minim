@@ -18,11 +18,13 @@ enum { F_KIND, F_NEXT, F_CODE, F_ENV, F_BASE, FRAME_SIZE };
 // Frame kinds, with what `code` holds.  Only K_ARGS uses `base`: the
 // value-stack height where its call's values start.
 enum {
-    K_IF,      // branches `(then [else])`
-    K_SEQ,     // remaining body
-    K_DEFINE,  // symbol
-    K_SET,     // symbol
-    K_ARGS,    // remaining operands
+    K_IF,        // branches `(then [else])`
+    K_SEQ,       // remaining body
+    K_DEFINE,    // symbol
+    K_SET,       // symbol
+    K_ARGS,      // remaining operands
+    K_EXPAND,    // unused
+    K_TOPLEVEL,  // remaining top-level forms
 };
 
 static minim_obj make_frame(intptr_t kind, minim_obj next, minim_obj code, minim_obj env,
@@ -76,6 +78,16 @@ minim_obj minim_eval(minim_obj expr) {
     size_t base = 0;  // value-stack height where the applied call's values start
 
     MINIM_FRAME(&expr, &env, &val, &k, &x);
+
+toplevel:  // Expands `expr` with `%expand`, if bound, then evaluates it globally.
+    env = MINIM_NIL;
+    if (minim_symbol_value(minim_sym_expand) == MINIM_UNBOUND)
+        goto eval;
+    k = make_frame(K_EXPAND, k, MINIM_NIL, MINIM_NIL, MINIM_NIL);
+    base = minim_gc.values.len;
+    minim_values_push(minim_symbol_value(minim_sym_expand));
+    minim_values_push(expr);
+    goto apply;
 
 eval:  // Evaluates `expr` in `env`, then continues with `k`.
     if (minim_is_symbol(expr)) {
@@ -171,6 +183,19 @@ ret:  // Passes `val` to `k`.
         minim_env_set(minim_vector_ref(x, F_ENV), minim_vector_ref(x, F_CODE), val);
         val = MINIM_VOID;
         goto ret;
+    case K_EXPAND:
+        expr = val;
+        env = MINIM_NIL;
+        goto eval;
+    case K_TOPLEVEL:
+        x = minim_vector_ref(x, F_CODE);
+        if (minim_is_null(x)) {
+            val = MINIM_VOID;
+            goto ret;
+        }
+        k = make_frame(K_TOPLEVEL, k, minim_cdr(x), MINIM_NIL, MINIM_NIL);
+        expr = minim_car(x);
+        goto toplevel;
     default:  // K_ARGS
         minim_values_push(val);
         env = minim_vector_ref(x, F_ENV);
@@ -204,19 +229,13 @@ apply:  // Applies the procedure at `base` to the values above it.
                 goto apply;
             }
             if (minim_primitive_fn(x) == minim_prim_load) {
-                // Evaluates the file's forms, then void, in the global environment.
+                // Runs the file's forms as top-level forms, then returns void.
                 if (!minim_is_string(minim_gc.values.items[base + 1]))
                     minim_error("load: not a string", minim_gc.values.items[base + 1]);
                 x = minim_read_file(minim_gc.values.items[base + 1]);
                 minim_gc.values.len = base;
-                env = MINIM_NIL;
-                if (minim_is_null(x)) {
-                    val = MINIM_VOID;
-                    goto ret;
-                }
-                val = minim_cons(MINIM_VOID, MINIM_NIL);
-                k = make_frame(K_SEQ, k, val, env, MINIM_NIL);
-                goto sequence;
+                k = make_frame(K_TOPLEVEL, k, x, MINIM_NIL, MINIM_NIL);
+                goto ret;
             }
             val = minim_primitive_fn(x)(minim_gc.values.items + base + 1, n);
             minim_gc.values.len = base;

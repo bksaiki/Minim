@@ -91,6 +91,12 @@ static void test_quote(void) {
     MINIM_RETURN_VOID;
 }
 
+// `quasiquote` with two operands isn't abbreviated.
+static void test_quasiquote(void) {
+    minim_obj x = list3(minim_intern_cstr("quasiquote"), minim_fixnum(1), minim_fixnum(2));
+    CHECK(prints_as(x, "(quasiquote 1 2)"));
+}
+
 static void test_vectors(void) {
     minim_obj v = minim_make_vector(0, MINIM_NIL);
     minim_obj inner = MINIM_NIL;
@@ -120,6 +126,7 @@ int main(void) {
     test_symbols();
     test_pairs();
     test_quote();
+    test_quasiquote();
     test_vectors();
     minim_shutdown();
     return test_result();

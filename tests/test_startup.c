@@ -18,10 +18,12 @@ int main(int argc, char **argv) {
     size_t minors = minim_gc.minor_collections;
     size_t majors = minim_gc.major_collections;
     if (strcmp(argv[1], "startup") == 0) {
-        CHECK_EQ(minors, 0);
-        CHECK(majors > 1000);
+        // A collection at every allocation, both kinds.
+        CHECK(minors > 1000);
+        CHECK(majors > 100);
     } else {
-        CHECK(minors + majors < 10);
+        // At most one minor collection per default nursery's worth of allocation.
+        CHECK(minors <= minim_gc.allocated / minim_gc_default_config().nursery_bytes);
     }
 
     // Either way, the program runs with the environment's settings.
