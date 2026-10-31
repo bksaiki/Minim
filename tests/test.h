@@ -8,8 +8,10 @@
 
 #include <stdio.h>
 
+/** Number of failed checks. */
 static int test_failures = 0;
 
+/** Records a failure unless `cond` holds. */
 #define CHECK(cond)                                                         \
     do {                                                                    \
         if (!(cond)) {                                                      \
@@ -19,6 +21,7 @@ static int test_failures = 0;
         }                                                                   \
     } while (0)
 
+/** Records a failure unless `a == b`, printing both values. */
 #define CHECK_EQ(a, b)                                                      \
     do {                                                                    \
         long long a_ = (long long)(a), b_ = (long long)(b);                 \
@@ -29,7 +32,7 @@ static int test_failures = 0;
         }                                                                   \
     } while (0)
 
-// Exit status for main.
+/** Exit status for main. */
 static inline int test_result(void) {
     return test_failures == 0 ? 0 : 1;
 }

@@ -124,6 +124,16 @@ static inline minim_obj minim_make_header(size_t length, minim_obj type) {
     return ((minim_obj)length << MINIM_HEADER_LENGTH_SHIFT) | type;
 }
 
+/** Length field of the typed-object header `h`. */
+static inline size_t minim_header_length(minim_obj h) {
+    return (size_t)(h >> MINIM_HEADER_LENGTH_SHIFT);
+}
+
+/** Type field of the typed-object header `h`. */
+static inline minim_obj minim_header_type(minim_obj h) {
+    return h & MINIM_HEADER_TYPE_MASK;
+}
+
 /** Header word of the typed object `x`. */
 static inline minim_obj minim_typed_header(minim_obj x) {
     return *(const minim_obj *)(x - MINIM_TAG_TYPED);
@@ -154,13 +164,13 @@ static inline bool minim_is_typed(minim_obj x) {
 /** Whether `x` is a vector. */
 static inline bool minim_is_vector(minim_obj x) {
     return minim_is_typed(x)
-        && (minim_typed_header(x) & MINIM_HEADER_TYPE_MASK) == MINIM_TYPE_VECTOR;
+        && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_VECTOR;
 }
 
 /** Whether `x` is a string. */
 static inline bool minim_is_string(minim_obj x) {
     return minim_is_typed(x)
-        && (minim_typed_header(x) & MINIM_HEADER_TYPE_MASK) == MINIM_TYPE_STRING;
+        && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_STRING;
 }
 
 /** Whether `x` is a char. */
@@ -270,7 +280,7 @@ minim_obj minim_make_vector(size_t n, minim_obj fill);
 /** Length of the vector `v`. */
 static inline size_t minim_vector_length(minim_obj v) {
     assert(minim_is_vector(v));
-    return (size_t)(minim_typed_header(v) >> MINIM_HEADER_LENGTH_SHIFT);
+    return minim_header_length(minim_typed_header(v));
 }
 
 /** Element `i` of the vector `v`. */
@@ -296,7 +306,7 @@ minim_obj minim_string_from_cstr(const char *s);
 /** Length of the string `s`. */
 static inline size_t minim_string_length(minim_obj s) {
     assert(minim_is_string(s));
-    return (size_t)(minim_typed_header(s) >> MINIM_HEADER_LENGTH_SHIFT);
+    return minim_header_length(minim_typed_header(s));
 }
 
 /** Chars of the string `s`, valid until the next allocation. */

@@ -36,7 +36,10 @@ typedef struct minim_space {
     size_t avail;          ///< free bytes in `last`
 } minim_space;
 
-/** Heap spaces.  The collector copies new objects into one per kind. */
+/**
+ * Heap spaces.  New objects go in MINIM_SPACE_NEW; survivors are copied into
+ * the space for their kind.
+ */
 enum {
     MINIM_SPACE_NEW,
     MINIM_SPACE_PAIR,

@@ -65,8 +65,8 @@ void minim_gc_add_global(minim_obj *p) {
 }
 
 static size_t typed_size(minim_obj header) {
-    size_t n = (size_t)(header >> MINIM_HEADER_LENGTH_SHIFT);
-    switch (header & MINIM_HEADER_TYPE_MASK) {
+    size_t n = minim_header_length(header);
+    switch (minim_header_type(header)) {
     case MINIM_TYPE_VECTOR:
         return minim_vector_size(n);
     case MINIM_TYPE_STRING:
@@ -80,30 +80,26 @@ static size_t typed_size(minim_obj header) {
 // and returns the new reference.
 static minim_obj copy(minim_obj x) {
     minim_obj tag = minim_tag(x);
-    if (tag != MINIM_TAG_PAIR && tag != MINIM_TAG_SYMBOL && tag != MINIM_TAG_TYPED)
-        return x;
+    minim_space *to;
+    switch (tag) {
+    case MINIM_TAG_PAIR:
+        to = &minim_heap.spaces[MINIM_SPACE_PAIR];
+        break;
+    case MINIM_TAG_SYMBOL:
+        to = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
+        break;
+    case MINIM_TAG_TYPED:
+        to = &minim_heap.spaces[MINIM_SPACE_TYPED];
+        break;
+    default:
+        return x;  // not a heap object
+    }
 
     minim_obj *old = (minim_obj *)(x - tag);
     if (old[0] == MINIM_FORWARD)
         return old[1];
 
-    size_t size;
-    minim_space *to;
-    switch (tag) {
-    case MINIM_TAG_PAIR:
-        size = MINIM_PAIR_SIZE;
-        to = &minim_heap.spaces[MINIM_SPACE_PAIR];
-        break;
-    case MINIM_TAG_SYMBOL:
-        size = MINIM_SYMBOL_SIZE;
-        to = &minim_heap.spaces[MINIM_SPACE_SYMBOL];
-        break;
-    default:
-        size = typed_size(old[0]);
-        to = &minim_heap.spaces[MINIM_SPACE_TYPED];
-        break;
-    }
-
+    size_t size = tag == MINIM_TAG_TYPED ? typed_size(old[0]) : 2 * sizeof(minim_obj);
     void *p = minim_space_alloc(to, size);
     memcpy(p, old, size);
     minim_obj y = (minim_obj)p | tag;
@@ -122,8 +118,8 @@ static size_t scan_two_words(minim_obj *p) {
 
 static size_t scan_typed(minim_obj *p) {
     minim_obj header = p[0];
-    size_t n = (size_t)(header >> MINIM_HEADER_LENGTH_SHIFT);
-    switch (header & MINIM_HEADER_TYPE_MASK) {
+    size_t n = minim_header_length(header);
+    switch (minim_header_type(header)) {
     case MINIM_TYPE_VECTOR:
         for (size_t i = 0; i < n; i++)
             p[1 + i] = copy(p[1 + i]);

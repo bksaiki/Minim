@@ -68,7 +68,7 @@ static void test_no_heap_predicates(void) {
     }
 }
 
-// Typed objects built on the stack, since there is no heap yet
+// Typed objects built on the stack, so no runtime is needed
 static void test_typed(void) {
     alignas(16) minim_obj vec[2] = {minim_make_header(3, MINIM_TYPE_VECTOR)};
     alignas(16) minim_obj str[2] = {minim_make_header(3, MINIM_TYPE_STRING)};
