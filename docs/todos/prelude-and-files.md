@@ -229,6 +229,18 @@ cmake --build --preset dev && ctest --preset dev -R 'load|repl'
 
 ### Phase 5 - Running files
 
+**Done.**  Details settled during the phase:
+
+- `tests/run_repl.cmake` became `tests/run_minim.cmake`.  It takes `DIR` (the
+  working directory), optional `INPUT` and `ARGS` (separated by `|`, since
+  `add_test` would split a CMake list), and `STATUS`.
+- `minim_add_script_test` also accepts `ARGS`, for the usage test and a
+  missing file.
+- The REPL and script runs are now `run_repl` and `run_file` in `main.c`.
+  `main` handles the usage error before `minim_init`.
+- After the last phase, the full suite passes in both presets; `stress` takes
+  about 29 s, dominated by copying the prelude (see Phase 3).
+
 - `src/main.c`: with one argument, evaluates `(load "<path>")` inside a
   `minim_catch`; on an error, prints it to stderr and exits with status 1.
   With no arguments, the REPL as before.  More than one argument prints a

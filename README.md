@@ -9,8 +9,12 @@ Requires CMake 3.21+ and a C17 compiler.
 ```sh
 cmake --preset release
 cmake --build --preset release
-./build/release/minim
+./build/release/minim             # a REPL
+./build/release/minim file.scm    # runs a file
 ```
+
+Running a file prints only what it `display`s or `write`s.  An error stops it
+with exit status 1.
 
 ## Development
 
