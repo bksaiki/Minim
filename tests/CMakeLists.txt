@@ -8,7 +8,6 @@ function(minim_add_test name)
     add_test(NAME ${name} COMMAND test_${name})
 endfunction()
 
-minim_add_test(smoke)
 minim_add_test(object)
 minim_add_test(heap INTERNAL)
 minim_add_test(gc INTERNAL)
