@@ -1,8 +1,10 @@
-# Pipes INPUT into MINIM and compares its stdout with EXPECTED, and its stderr
-# with EXPECTED_ERR if that file exists.
+# Pipes INPUT into MINIM, run from INPUT's directory, and compares its stdout
+# with EXPECTED, and its stderr with EXPECTED_ERR if that file exists.
+get_filename_component(dir ${INPUT} DIRECTORY)
 execute_process(
     COMMAND ${MINIM}
     INPUT_FILE ${INPUT}
+    WORKING_DIRECTORY ${dir}
     OUTPUT_VARIABLE actual
     ERROR_VARIABLE errors
     RESULT_VARIABLE status

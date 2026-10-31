@@ -158,6 +158,12 @@ cmake --preset dev && cmake --build --preset dev && ctest --preset dev -R prelud
   copies the live heap on every allocation, slowed down.  The full `stress`
   suite went from about 13 s to 30 s (`eval` 3.8 s to 14.8 s, `gc` 2.4 s to
   5.5 s, `repl_tail` 2.7 s to 5.7 s).  This grows with the prelude.
+- Later: `MINIM_GC_STRESS_INTERVAL` (default 1) sets the allocations between
+  stress collections.  At 16, the suite took 3 s instead of 29 s, but missed
+  both injected bugs (an unprotected local, and `string-append` reading before
+  allocating): each fails only if a collection happens at one particular
+  allocation.  So the default stays 1, and the variable only speeds up local
+  runs.  The real fix is a static space for the prelude (roadmap milestone 8).
 
 - `src/prelude.scm`: the procedures in the table above.
 - `docs/design/prelude.md`: the library table.
@@ -179,6 +185,20 @@ cmake --build --preset stress && ctest --preset stress -R lists
 ```
 
 ### Phase 4 - `load`
+
+**Done.**  Details settled during the phase:
+
+- `minim_read_file` takes the path as a Scheme string and converts it with a
+  new `minim_string_to_utf8` (`src/char.c`).  It frees the C string right
+  after `fopen`, so an error can't leak it.
+- The evaluator evaluates the forms followed by void by pushing a `K_SEQ`
+  frame whose body is `(#<void>)`; void evaluates to itself.
+- `tests/run_repl.cmake` runs `minim` from the input file's directory.
+- A test that loaded a bad file 2000 times under a lowered file-descriptor
+  limit did catch a missing `fclose`, but was dropped.  It wasn't portable
+  (`setrlimit`), changed a process-wide limit, and guarded three easily
+  reviewed lines.  LeakSanitizer can't catch a missing `fclose`, because glibc
+  keeps open `FILE`s reachable.
 
 - `src/read.c`, `src/read.h`: `minim_read_file(const char *path)` returns the
   file's forms as a list.  It reads inside a `minim_catch`, so the file is

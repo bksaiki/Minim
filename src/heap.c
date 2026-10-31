@@ -64,7 +64,9 @@ void *minim_space_alloc(minim_space *s, size_t nbytes) {
 void *minim_heap_alloc(size_t nbytes) {
     nbytes = minim_align_up(nbytes);
 #ifdef MINIM_GC_STRESS
-    minim_gc_collect();
+    static unsigned long count;
+    if (++count % MINIM_GC_STRESS == 0)
+        minim_gc_collect();
 #else
     if (nbytes > minim_heap.budget)
         minim_gc_collect();

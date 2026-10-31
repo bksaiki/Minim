@@ -64,8 +64,8 @@ Malformed forms raise `bad syntax`.
 The machine pushes the operator, then each operand left to right.  With `n`
 operands:
 
-- A primitive gets `fn(&stack[base + 1], n)` after an arity check.  `apply` is
-  the exception; see `primitives.md`.
+- A primitive gets `fn(&stack[base + 1], n)` after an arity check.  `apply` and
+  `load` are the exceptions; see `primitives.md`.
 - A closure binds its parameters from the same slots with
   `minim_env_extend`, then evaluates its body.  The call's values are popped
   first, and a call in tail position pushes no frame.

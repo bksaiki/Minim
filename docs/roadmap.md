@@ -131,6 +131,9 @@ Not features, but needed as programs grow:
 
 - A weak symbol table, so unused symbols are collected, as Chez does.
 - Chunk reuse in the collector; this also speeds up stress mode.
+- A static space for objects created at startup (the prelude), never copied
+  again, as in Chez's static generation.  Stress mode now copies the prelude
+  on every allocation, which tripled the stress suite's time.
 - Evaluator speed: a pre-pass that resolves variables to lexical addresses,
   with environments as vectors.  `src/env.h` already hides the
   representation.

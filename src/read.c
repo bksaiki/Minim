@@ -364,3 +364,40 @@ minim_obj minim_read_string(const char **s) {
     *s = (const char *)src.str;
     return x;
 }
+
+// Reads every form from the file `f` into a list.
+static minim_obj read_forms(void *f) {
+    source src = {.file = f};
+    minim_obj head = MINIM_NIL;
+    minim_obj tail = MINIM_NIL;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&head, &tail, &x);
+    while ((x = read_datum(&src)) != MINIM_EOF) {
+        x = minim_cons(x, MINIM_NIL);
+        if (minim_is_null(head))
+            head = x;
+        else
+            minim_set_cdr(tail, x);
+        tail = x;
+    }
+    MINIM_RETURN(head);
+}
+
+minim_obj minim_read_file(minim_obj path) {
+    char *name = minim_string_to_utf8(path);
+    FILE *f = fopen(name, "r");
+    free(name);
+    if (f == NULL)
+        minim_error("load: cannot open file", path);
+
+    minim_obj forms;
+    bool ok = minim_catch(read_forms, f, &forms);
+    fclose(f);
+    if (!ok) {
+        const char *msg;
+        minim_obj irritant;
+        minim_last_error(&msg, &irritant);
+        minim_error(msg, irritant);
+    }
+    return forms;
+}

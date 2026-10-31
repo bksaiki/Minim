@@ -15,4 +15,10 @@
  */
 minim_obj minim_read_string(const char **s);
 
+/**
+ * The forms of the file named by the string `path`, as a list.  Raises
+ * `load: cannot open file` or a read error; the file is always closed.
+ */
+minim_obj minim_read_file(minim_obj path);
+
 #endif

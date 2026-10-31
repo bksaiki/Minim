@@ -67,8 +67,10 @@ collection starts, and it needs no table mapping addresses to chunks.
 
 **Trigger.**  A collection runs when an allocation would exceed the budget,
 `max(1 MiB, 2 × live bytes after the last collection)`.  The build option
-`MINIM_GC_STRESS` collects on every allocation instead, which exposes missing
-roots under AddressSanitizer.
+`MINIM_GC_STRESS` collects every `MINIM_GC_STRESS_INTERVAL` allocations
+instead (default 1, every allocation), which exposes missing roots under
+AddressSanitizer.  Only interval 1 catches a root missing across a single
+allocation.
 
 ## Roots
 
