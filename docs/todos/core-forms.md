@@ -100,6 +100,23 @@ cmake --build --preset dev && ctest --preset dev -R 'expansion'
 
 ### Phase 2 - Bodies into letrec-values
 
+**Done.**  Details settled during the phase:
+
+- The body scan now collects `(formals . expression)` for both `define` and
+  `define-values`; `finish` builds the clauses.
+- The new tests went into `tests/repl/expander.scm`, beside the existing
+  internal-definition tests, rather than the three files planned: a
+  definition using a parameter, and bodies of only definitions in `lambda`,
+  `let`, `let-values`, and with `define-syntax`.  `(let () (define z 1))`
+  reports `(lambda () (define z 1))`, the form the `let` macro made; Phase 3
+  changes it to `let-values`.
+- Fixed in passing: the first plan placed `let*-values` between `letrec*` and
+  its comment.
+- Measured against `main`, release, run alternately three times: the
+  allocation programs unchanged (2.7 s, 1.8 s); a loop calling a procedure
+  with two internal definitions 2M times unchanged (2.6-2.8 s), so the extra
+  frame costs nothing visible; 20 startups 0.61-0.65 s (`main`: 0.68-0.73 s).
+
 - `src/prelude.scm`: `%expand-body`'s `finish` builds the `letrec-values`
   form; a body of only definitions is `bad syntax`.  `letrec*` (and so
   `letrec`) becomes `letrec-values` directly.

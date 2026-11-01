@@ -262,12 +262,13 @@
 
 ;; Expands the body `forms` of the form `whole` in a new frame over `env`
 ;; (R7RS 5.4).  The leading definitions, with `begin` spliced, are bound
-;; first, so every definition and expression sees all of them.
+;; first, so every definition and expression sees all of them, and become one
+;; `letrec-values`.
 (define %expand-body
   (lambda (forms env whole)
     (define inner (%extend env))
-    ;; `defs` collects (define name expression) and (define-values formals
-    ;; expression), names renamed and expressions unexpanded, in reverse.
+    ;; `defs` collects (formals . expression), names renamed and expressions
+    ;; unexpanded, in reverse.
     (define scan
       (lambda (forms defs)
         (if (null? forms)
@@ -281,14 +282,14 @@
             (if (eq? k 'define)
                 (if (%binding-form? x)
                     (scan rest
-                          (cons (list 'define (%bind-variable! inner (car (cdr x)))
+                          (cons (cons (list (%bind-variable! inner (car (cdr x))))
                                       (car (cdr (cdr x))))
                                 defs))
                     (%bad-syntax x))
                 (if (eq? k 'define-values)
                     (if (eq? (%length x 0) 3)
                         (scan rest
-                              (cons (list 'define-values (%bind-formals! inner (car (cdr x)) x)
+                              (cons (cons (%bind-formals! inner (car (cdr x)) x)
                                           (car (cdr (cdr x))))
                                     defs))
                         (%bad-syntax x))
@@ -302,12 +303,10 @@
                         (finish defs (cons x rest))))))))
     (define finish
       (lambda (defs exprs)
-        (define body
-          (%append (%map (lambda (d)
-                           (list (car d) (car (cdr d)) (%expand-expr (car (cdr (cdr d))) inner)))
-                         (%reverse defs))
-                   (%expand-list exprs inner)))
-        (if (null? body) (%bad-syntax whole) body)))
+        (define clauses
+          (%map (lambda (d) (list (car d) (%expand-expr (cdr d) inner))) (%reverse defs)))
+        (define body (if (null? exprs) (%bad-syntax whole) (%expand-list exprs inner)))
+        (if (null? clauses) body (list (cons 'letrec-values (cons clauses body))))))
     (scan forms '())))
 
 ;; Expands `(let-syntax ((k spec) ...) body ...)`, or `letrec-syntax` if
@@ -647,17 +646,17 @@
     ((_ ((name val) rest ...) body1 body2 ...)
      (let ((name val)) (let* (rest ...) body1 body2 ...)))))
 
-;; Internal definitions, so each `val` sees every name (letrec* semantics).
 (define-syntax let*-values
   (syntax-rules ()
     ((_ () body1 body2 ...) (let () body1 body2 ...))
     ((_ (binding rest ...) body1 body2 ...)
      (let-values (binding) (let*-values (rest ...) body1 body2 ...)))))
 
+;; letrec-values evaluates each `val` in order, seeing every name.
 (define-syntax letrec*
   (syntax-rules ()
     ((_ ((name val) ...) body1 body2 ...)
-     ((lambda () (define name val) ... (let () body1 body2 ...))))))
+     (letrec-values (((name) val) ...) body1 body2 ...))))
 
 (define-syntax letrec
   (syntax-rules ()
