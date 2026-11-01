@@ -76,6 +76,7 @@ void minim_gc_init(void) {
     if (minim_gc.values.items == NULL)
         minim_out_of_memory();
     minim_gc.values.below = MINIM_NIL;
+    minim_gc.winders = MINIM_NIL;
     for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
         for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
             minim_gc.old[g][k].generation = (unsigned char)g;
@@ -324,6 +325,7 @@ static void collect(unsigned g) {
     for (size_t i = 0; i < minim_gc.values.len; i++)
         minim_gc.values.items[i] = copy(minim_gc.values.items[i]);
     minim_gc.values.below = copy(minim_gc.values.below);
+    minim_gc.winders = copy(minim_gc.winders);
     for (size_t i = 0; i < minim_gc.spill.len; i++)
         minim_gc.spill.items[i] = copy(minim_gc.spill.items[i]);
 

@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "char.h"
+#include "gc.h"
 #include "heap.h"
 #include "minim.h"
 
@@ -331,6 +332,19 @@ minim_obj minim_prim_call_cc(minim_obj *args, size_t n) {
     (void)args;
     (void)n;
     abort();
+}
+
+// The `dynamic-wind` calls in progress, for the prelude's `call/cc`.
+static minim_obj prim_winders(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    return minim_gc.winders;
+}
+
+static minim_obj prim_set_winders(minim_obj *args, size_t n) {
+    (void)n;
+    minim_gc.winders = args[0];
+    return MINIM_VOID;
 }
 
 // Applied by the evaluator, which evaluates the file's forms; never called.
@@ -881,6 +895,8 @@ void minim_prims_init(void) {
     define_primitive("values", minim_prim_values, 0, MINIM_VARIADIC);
     define_primitive("call-with-values", minim_prim_call_with_values, 2, 2);
     define_primitive("%call/cc", minim_prim_call_cc, 1, 1);
+    define_primitive("%winders", prim_winders, 0, 0);
+    define_primitive("%set-winders!", prim_set_winders, 1, 1);
     define_primitive("eq?", prim_eq, 2, 2);
     define_primitive("eqv?", prim_eq, 2, 2);
     define_primitive("equal?", prim_equal, 2, 2);

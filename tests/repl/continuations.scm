@@ -28,6 +28,42 @@
 (procedure? k)
 k
 
+; dynamic-wind runs `before`, the thunk, then `after`, and returns the
+; thunk's values.
+(define log '())
+(define (note x) (set! log (cons x log)))
+(define (ext name thunk)
+  (dynamic-wind (lambda () (note (list 'in name))) thunk (lambda () (note (list 'out name)))))
+(call-with-values (lambda () (ext 'v (lambda () (values 1 2)))) list)
+(reverse log)
+
+; An escape out of nested extents runs the `after`s innermost first.
+(set! log '())
+(call/cc (lambda (k) (ext 1 (lambda () (ext 2 (lambda () (k 'escaped)))))))
+(reverse log)
+
+; Re-entry runs the `before`s outermost first.
+(define re #f)
+(ext 1 (lambda () (ext 2 (lambda () (call/cc (lambda (c) (set! re c))) 'body))))
+(set! log '())
+(re 'again)
+(reverse log)
+
+; A jump between sibling extents leaves one and enters the other.
+(define kb #f)
+(ext 'b (lambda () (call/cc (lambda (c) (set! kb c))) 'b-done))
+(set! log '())
+(ext 'a (lambda () (kb 'jump)))
+(reverse log)
+
+; An error skips `after`, and a later jump runs no stale one.
+(set! log '())
+(ext 'e (lambda () (car 5)))
+(reverse log)
+(set! log '())
+(k 30)
+(reverse log)
+
 ; Errors.
 (+ 1 (call/cc (lambda (c) (c 1 2))))
 (call/cc 5)

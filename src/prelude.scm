@@ -129,6 +129,48 @@
         knil
         (kons (car lst) (fold-right kons knil (cdr lst))))))
 
-;; Continuations.
-(define call/cc %call/cc)
-(define call-with-current-continuation %call/cc)
+;; Continuations.  The winders (`%winders`) are the `dynamic-wind` calls in
+;; progress, innermost first, as (before . after) pairs.
+
+(define (dynamic-wind before thunk after)
+  (before)
+  (%set-winders! (cons (cons before after) (%winders)))
+  (call-with-values thunk
+    (lambda results
+      (%set-winders! (cdr (%winders)))
+      (after)
+      (apply values results))))
+
+;; The tail the winder lists `x` and `y` share.
+(define (%common-tail x y)
+  (let ((lx (length x))
+        (ly (length y)))
+    (let loop ((x (if (> lx ly) (list-tail x (- lx ly)) x))
+               (y (if (> ly lx) (list-tail y (- ly lx)) y)))
+      (if (eq? x y) x (loop (cdr x) (cdr y))))))
+
+;; Runs the `after`s out from the current winders to their common tail with
+;; `target`, then the `before`s in to `target`, each outside its own extent.
+(define (%rewind! target)
+  (let ((common (%common-tail (%winders) target)))
+    (let out ((ws (%winders)))
+      (unless (eq? ws common)
+        (%set-winders! (cdr ws))
+        ((cdar ws))
+        (out (cdr ws))))
+    (let in ((ws target))
+      (unless (eq? ws common)
+        (in (cdr ws))
+        ((caar ws))
+        (%set-winders! ws)))))
+
+(define (call/cc f)
+  (%call/cc
+   (lambda (k)
+     (let ((winders (%winders)))
+       (f (lambda results
+            (unless (eq? (%winders) winders)
+              (%rewind! winders))
+            (apply k results)))))))
+
+(define call-with-current-continuation call/cc)

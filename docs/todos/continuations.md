@@ -305,6 +305,23 @@ cmake --build --preset dev && ctest --preset dev -R 'continuations|eval|boot' &&
 
 ### Phase 3 - dynamic-wind
 
+**Done.**  Details settled during the phase:
+
+- The winders are `minim_gc.winders`, a collector root, read and set by
+  `%winders` and `%set-winders!` (`src/prims.c`).  On an error,
+  `minim_catch` sets them to `'()`, not a saved value: it is entered outside
+  any evaluation, where no `dynamic-wind` is in progress, and a saved heap
+  pointer in a C local would go stale across a collection and `longjmp`.
+- `src/prelude.scm`: `dynamic-wind`, `%common-tail`, `%rewind!` (the
+  `after`s out to the common tail, then the `before`s in, each run outside
+  its own extent), and `call/cc`, which wraps `%call/cc`.
+- Since `call/cc` passes a closure, a continuation now prints as
+  `#<procedure>`, and `(call/cc)`'s arity error names `#<procedure>`; the
+  raw `#<continuation>` is visible only through `%call/cc`.
+  `tests/repl/continuations.out` and `.err` changed accordingly.
+- Tests as planned, in `tests/repl/continuations.scm`.  Full suites pass:
+  `dev` 48, `stress` 38 (19.8 s).
+
 - `src/prelude.scm`: `dynamic-wind` and the winding `call/cc`.
   `src/prelude.boot` regenerated.
 - The winders and `minim_catch` restoring them (see Open items).
