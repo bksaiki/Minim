@@ -122,7 +122,7 @@ have `letrec*` semantics.  `case` calls the prelude's `memv`.
 
 ## Quasiquote
 
-`` `t `` (R7RS 4.2.8) becomes calls to `cons`, `append`, and `apply vector`,
+`` `t `` (R7RS 4.2.8) becomes calls to `cons`, `append`, and `list->vector`,
 which build `t`, with `quote` for its constant parts; a template with nothing
 to evaluate becomes one `quote`.  Unquoted expressions are evaluated left to
 right.  Each nested quasiquote raises the depth by one and each `unquote`
@@ -141,4 +141,4 @@ runs, with the smallest enclosing form as the irritant.  Both they and
 The expander calls ordinary globals (`car`, `list`, `map`, `assq`, `gensym`,
 ...), so redefining one at top level breaks expansion of every later form.  The
 generated code for quasiquote and `case` likewise refers to the global
-`cons`, `append`, `apply`, `vector`, and `memv`.
+`cons`, `append`, `list->vector`, and `memv`.

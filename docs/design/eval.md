@@ -39,14 +39,42 @@ one is in `val`, any other count is atop the value stack.  `SEQ` and
 exactly one, as does `minim_eval`, otherwise `wrong number of values`, with
 the list of values as the irritant.
 
-**Value stack.**  `minim_gc.values` (in `gc.h`) holds the operator and
-evaluated operands of calls in progress, and multiple values being returned.
-An `ARGS` frame records `base`, the height where its call's values start.
-The collector scans `[0, len)` and updates entries in place, so a pointer
-into the stack survives allocation, but not a push, which may `realloc`.
-`minim_catch` restores the height after an error (`errors.md`).  The stack
-keeps its peak capacity: non-tail recursion like the prelude's `map` leaves
-it large for the rest of the session.
+**Value stack** (`src/stack.h`).  `minim_gc.values` holds the operators
+and evaluated operands of calls in progress, and multiple values being
+returned.  Frames refer to it by height: an `ARGS` frame's `base` is where
+its call's values start.  Its top is a fixed C buffer of 8,192 values
+(`MINIM_SEGMENT_SIZE`); below it, a chain of frozen segments, heap vectors
+`#(prev start v ...)` that are never mutated, holds the rest.  A frozen value
+keeps its height.
+
+- Before a call's operator is pushed, the call reserves room for all its
+  values; if they don't fit, the buffer's values are frozen into a segment
+  and the buffer starts empty at the same height.  So a call's values are
+  always together in the buffer, which never moves: a primitive's `args`
+  stays valid across allocation.
+- A call written with more than 8,191 operands (`MINIM_MAX_ARGS`), or
+  returning more values, raises `too many arguments`; `apply` has no limit
+  (`primitives.md`).
+- A frame resuming below the buffer copies the newest segment back into it.
+  A `CALL_VALUES` frame whose consumer was frozen while the producer ran
+  copies just that value back, below the values returned.
+- `minim_catch` unwinds to its entry height after an error (`errors.md`).
+
+## Continuations
+
+A continuation is the frames `k` and the value stack below them.
+`(%call/cc f)` freezes the buffer's values below the call into a new segment,
+at most one segment's copy, and makes a continuation object holding `k`,
+that chain of segments, and its height; it then applies `f` to it in tail
+position.  Applying a continuation to `n` arguments replaces the stack with
+the captured chain, the buffer holding just the arguments, sets `k`, and
+returns them as `n` values; frames resuming below reload the captured
+values.  The current continuation is discarded.
+
+A frame chain ends at `'()`, the return from `minim_eval`, so a continuation
+captured by one top-level form and invoked by a later one finishes the
+earlier form's work and returns from the current `minim_eval`.  `call/cc`
+and `dynamic-wind` wrap `%call/cc` in the prelude (`prelude.md`).
 
 ## Top-level forms
 
@@ -101,11 +129,13 @@ Malformed forms raise `bad syntax`.
 The machine pushes the operator, then each operand left to right.  With `n`
 operands:
 
-- A primitive gets `fn(&stack[base + 1], n)` after an arity check.  `apply` and
-  `load` are the exceptions; see `primitives.md`.
+- A primitive gets `fn(&stack[base + 1], n)` after an arity check.  `apply`,
+  `load`, `values`, `call-with-values`, and `%call/cc` are the exceptions;
+  see `primitives.md`.
+- A continuation returns its arguments (Continuations).
 - A closure binds its parameters from the same slots with
   `minim_env_extend`, then evaluates its body.  The call's values are popped
   first, and a call in tail position pushes no frame.
 
 Errors: `unbound variable`, `not a procedure`, `arity mismatch`,
-`wrong number of values`, and `bad syntax`.
+`wrong number of values`, `too many arguments`, and `bad syntax`.

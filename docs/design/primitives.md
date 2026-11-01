@@ -5,19 +5,23 @@ Primitive procedures are C functions, bound as global symbol values by
 
 ## Primitives the evaluator applies
 
-`apply`, `load`, `values`, and `call-with-values` need to evaluate code or
-return to the machine, which an ordinary primitive can't do without
-re-entering `minim_eval`.  So they are registered as primitives, but the
-evaluator recognizes their function pointers (`minim_prim_apply`, ...) and
-never calls them:
+`apply`, `load`, `values`, `call-with-values`, and `%call/cc` need to
+evaluate code or return to the machine, which an ordinary primitive can't do
+without re-entering `minim_eval`.  So they are registered as primitives, but
+the evaluator recognizes their function pointers (`minim_prim_apply`, ...)
+and never calls them:
 
 - `apply` rewrites the value stack `[apply f a ... lst]` into
   `[f a ... elements of lst]` and applies `f`, so `apply` in tail position is
-  a tail call.
+  a tail call.  Beyond the stack's limit (`eval.md`), a closure binds its
+  parameters straight from the list, and a primitive gets its arguments in
+  `minim_gc.spill`.
 - `values` returns its arguments as the values (`eval.md`).
 - `call-with-values` rewrites `[call-with-values producer consumer]` into
   `[consumer producer]` and applies the producer.  Its values return right
   above the consumer, which is then applied to them in tail position.
+- `%call/cc` applies its argument to the continuation of the call, in tail
+  position (`eval.md`).
 - `load` reads the whole file with `minim_read_file` (`src/read.h`), which
   always closes it, even on a read error.  It then runs the forms as top-level
   forms (see `eval.md`) and returns void.  A read error therefore runs
@@ -80,6 +84,8 @@ never calls them:
 | `(apply f x ... lst)` | `f` applied to the `x`s and the elements of `lst` |
 | `(values x ...)` | the `x`s, as any number of values |
 | `(call-with-values producer consumer)` | `consumer` applied to the values of `(producer)` |
+| `(%call/cc f)` | `f` applied to the continuation of the call, a `#<continuation>`; for the prelude's `call/cc` |
+| `(%winders)`, `(%set-winders! w)` | the `dynamic-wind`s in progress, innermost first, as `(before . after)` pairs; sets them |
 
 ### Identity and types
 
@@ -102,6 +108,7 @@ never calls them:
 | `(vector-set! v i x)` | sets element `i` of `v`; void |
 | `(vector-length v)` | length of `v` |
 | `(vector->list v [start [end]])` | the elements of `v` from `start` (default 0) to `end` (default its length), as a list |
+| `(list->vector lst)` | a new vector of the elements of the proper list `lst` |
 | `(vector? x)` | whether `x` is a vector |
 
 ### Strings and symbols

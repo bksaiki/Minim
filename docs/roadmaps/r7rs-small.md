@@ -7,7 +7,7 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 83 primitives, and a Scheme prelude with the list library
+closures, 87 primitives, and a Scheme prelude with the list library
 (`map`, `append`, `member`, `fold`, ...).  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls, multiple values, and the special forms `quote`, `if`, `define`,
@@ -20,7 +20,7 @@ Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Control | `call/cc`, `dynamic-wind`, `error`, `guard` |
+| Control | `error`, `guard` |
 | Libraries | `import`, `define-library` |
 | Numbers | flonums, bignums, rationals |
 | I/O | ports, `read`, `read-char`, string and file ports |
@@ -84,9 +84,8 @@ hygienic, as R7RS requires (`docs/design/macros.md`).
 - `error`, `raise`, `with-exception-handler`, and `guard`, with condition
   objects (message and irritants).  `minim_error` raises one, so C and Scheme
   errors are the same kind of thing.
-- `call/cc`.  Heap continuation frames make capture cheap.  The value stack
-  must be copied on capture and restored on reentry.
-- `dynamic-wind`, which `call/cc` and `guard` must respect.
+- Done: `call/cc` and `dynamic-wind`, on a segmented value stack, so a
+  capture copies at most one segment (`docs/design/eval.md`).
 
 Depends on 3 (`guard` is a macro).
 

@@ -19,9 +19,9 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 | `111` | typed object | first word is a header |
 | `010`, `100` | | reserved (flonum, -) |
 
-Typed objects (vectors, strings, primitives) start with a header,
-`(length << 4) | (immutable << 3) | type`.  Every object is at least 2 words,
-so any object can hold a forwarding record.
+Typed objects (vectors, strings, primitives, continuations) start with a
+header, `(length << 4) | (immutable << 3) | type`.  Every object is at least
+2 words, so any object can hold a forwarding record.
 
 ```
 pair     [ car | cdr ]                        16 B
@@ -30,7 +30,11 @@ vector   [ header | e0 | e1 | ... ]           8 + 8n B, rounded up to 16
 string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
 closure  [ code : (params . body) | env ]     16 B
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
+continuation [ header | k | stack | height ]  32 B
 ```
+
+A continuation's `k` is its continuation frames, `stack` the frozen segments
+of its value stack, and `height` a fixnum, where they end (`eval.md`).
 
 A primitive's fields:
 
@@ -164,8 +168,11 @@ tests are in `testing.md`.
   Every local holding an object across an allocation must be protected, and
   allocating calls must not be nested in arguments.
 - **Globals.**  Variables registered with `minim_gc_add_global`.
-- **Value stack.**  The evaluator's operator and operand values for calls in
-  progress (`minim_gc.values`), updated in place.
+- **Value stack.**  The evaluator's values for calls in progress
+  (`minim_gc.values`, `eval.md`): its buffer, updated in place, and its chain
+  of frozen segments.  Also `minim_gc.spill`, the arguments `apply` gives a
+  primitive beyond the stack's limit, and `minim_gc.winders`, the
+  `dynamic-wind`s in progress.
 - **Remembered set.**  As above.
 - **Symbol table.**  A vector in the heap, registered as a global.  It hashes
   by name, so moving symbols doesn't invalidate it.  It is strong: symbols are
