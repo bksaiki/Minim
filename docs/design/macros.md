@@ -68,7 +68,7 @@ top-level form, in order.
   a global macro of the same name.  `(define-values formals e)` defines each
   of its formals the same way.
 - `(define-syntax k spec)` binds the global macro `k` (an alias's original)
-  and expands to `(begin)`.
+  with `%define-macro!` and expands to `(begin)`.
 
 **Bodies** (R7RS 5.4): the leading forms are scanned first.  Each is expanded
 at its head until its head isn't a macro use; a `begin` is spliced; a

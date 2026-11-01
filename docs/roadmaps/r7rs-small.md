@@ -52,8 +52,8 @@ A Scheme-level library, compiled into the binary and loaded at
 `minim_init`.
 
 - `minim file.scm` runs a file; `(load "file.scm")` loads one.
-- `src/prelude.scm` is embedded at build time (CMake turns it into a C
-  string) and evaluated at startup.
+- `src/prelude.scm` is expanded into `src/prelude.boot`, which is embedded
+  at build time and evaluated at startup.
 - The prelude defines what is easiest in Scheme, above all higher-order
   procedures, which primitives can't express because they can't call
   closures: `map`, `for-each`, `append`, `reverse`, `list-tail`, `assq`,
@@ -132,13 +132,12 @@ Not features, but needed as programs grow:
 - Done: a generational collector on Chez's radix schedule, with a write
   barrier, reuse of freed chunks, and run-time collector settings
   (`docs/design/gc.md`).
-- Bootstrap the prelude: expand it at build time with a first-stage `minim`,
-  so startup only evaluates core forms.  With it, `minim_init` starts only
-  the core and `minim_load_prelude` loads the prelude like any file, under
-  the environment's collector settings from the start (no
-  `MINIM_GC_STARTUP`).  Expansion now makes startup about 19 ms, and
-  1.8 s stressed.  Then the evaluator can drop internal `define`, which only
-  the expander's unexpanded code uses.
+- Done: startup loads the prelude already expanded, from a checked-in boot
+  file (`docs/design/prelude.md`), so it expands nothing and runs under the
+  environment's collector settings throughout.
+- Self-host the expander: rewrite it in normal Scheme, regenerating the boot
+  file with itself, then drop internal `define` and `define-values` from the
+  evaluator, which only the expander's unexpanded code uses.
 - Done: expansion into the `-values` binding forms, so `let` allocates no
   closure and each frame's variables are known before it runs.
 - Separate system bindings from the user's top level, so redefining `car` or

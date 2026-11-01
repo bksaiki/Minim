@@ -138,9 +138,8 @@ So by default the oldest generation is collected every 256 collections
 (256 MiB of allocation).  Changing the settings restarts the schedule.
 
 They are set by `minim_gc_set_config`, the `MINIM_GC_` environment variables
-(`environment.md`), and the `collect-` primitives (`primitives.md`).  Startup
-(`minim_init`) runs with the defaults; the environment's settings apply after
-it, or from the start with `MINIM_GC_STARTUP=1`.
+(`environment.md`), and the `collect-` primitives (`primitives.md`).  The
+environment's settings apply from the start of `minim_init`.
 
 **Stress testing.**  A 1-byte nursery collects at every allocation, so a
 missing root moves a young object at the next allocation, where
