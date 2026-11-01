@@ -85,8 +85,8 @@ static void test_values(void) {
     CHECK_EQ(minim_gc.values.len, before);
 }
 
-// The core forms binding multiple values, without the expander, which doesn't
-// know them yet.
+// The core forms binding multiple values, without the expander, so the
+// evaluator's own checks run.
 static void test_binding_values(void) {
     minim_obj expand = minim_symbol_value(minim_sym_expand);
     MINIM_FRAME(&expand);
@@ -110,16 +110,6 @@ static void test_binding_values(void) {
     CHECK(evals_to("(letrec-values (((ev? od?) (values (lambda (n) (if (= n 0) #t (od? (- n 1))))"
                    " (lambda (n) (if (= n 0) #f (ev? (- n 1)))))))"
                    " (ev? 10))", "#t"));
-
-    // The body is in tail position.
-    size_t cap = minim_gc.values.cap;
-    char src[256];
-    snprintf(src, sizeof(src),
-             "(define loop (lambda (n) (if (= n 0) 'done (let-values (((m) (- n 1))) (loop m)))))"
-             " (loop %d)", gc_stressed() ? 2000 : 100000);
-    CHECK(evals_to(src, "done"));
-    CHECK(minim_gc.size <= 8 * 1024 * 1024);
-    CHECK_EQ(minim_gc.values.cap, cap);
 
     CHECK(fails_with("(define-values (a b) (values 1))", "wrong number of values"));
     CHECK(fails_with("(define-values (a . r) (values))", "wrong number of values"));
@@ -291,13 +281,15 @@ static void test_tail_calls(void) {
     CHECK(minim_gc.size <= 8 * 1024 * 1024);
     CHECK_EQ(minim_gc.values.cap, cap);
 
-    // So is the last subform of `and`, `or`, `when`, and a named `let`'s body,
-    // and the consumer of `call-with-values`.
+    // So are the last subform of `and`, `or`, and `when`, the body of a named
+    // `let` or a `let-values`, and the consumer of `call-with-values`.
     const char *loops[] = {
         "(define loop (lambda (n) (and #t (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
         "(define loop (lambda (n) (or #f (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
         "(define loop (lambda (n) (if (= n 0) 'done (when #t (loop (- n 1)))))) (loop %d)",
         "(let loop ((n %d)) (cond ((= n 0) 'done) (else (loop (- n 1)))))",
+        "(define loop (lambda (n) (if (= n 0) 'done (let-values (((m) (- n 1))) (loop m)))))"
+        " (loop %d)",
         "(define loop (lambda (n) (if (= n 0) 'done"
         " (call-with-values (lambda () (values (- n 1) 0)) (lambda (m z) (loop m)))))) (loop %d)",
     };

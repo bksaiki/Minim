@@ -238,13 +238,14 @@ ret:  // Passes the values being returned to `k`.
     x = k;
     k = minim_vector_ref(x, F_NEXT);
     intptr_t kind = minim_fixnum_value(minim_vector_ref(x, F_KIND));
-    if (nvals != 1) {
-        if (kind == K_SEQ || kind == K_TOPLEVEL) {  // discarded
-            minim_gc.values.len -= nvals;
-            nvals = 1;
-        } else if (kind != K_CALL_VALUES && kind != K_DEFINE_VALUES && kind != K_LET_VALUES) {
+    if (kind == K_CALL_VALUES || kind == K_DEFINE_VALUES || kind == K_LET_VALUES) {
+        if (nvals == 1)
+            minim_values_push(val);  // they take their values from the stack
+    } else if (nvals != 1) {
+        if (kind != K_SEQ && kind != K_TOPLEVEL)
             wrong_number_of_values(nvals);
-        }
+        minim_gc.values.len -= nvals;  // discarded
+        nvals = 1;
     }
     switch (kind) {
     case K_IF:
@@ -286,15 +287,11 @@ ret:  // Passes the values being returned to `k`.
         expr = minim_car(x);
         goto toplevel;
     case K_DEFINE_VALUES:
-        if (nvals == 1)
-            minim_values_push(val);
         bind_values(minim_vector_ref(x, F_ENV), minim_vector_ref(x, F_CODE), nvals);
         nvals = 1;
         val = MINIM_VOID;
         goto ret;
     case K_LET_VALUES:
-        if (nvals == 1)
-            minim_values_push(val);
         env = minim_vector_ref(x, F_ENV);
         frame = minim_vector_ref(x, F_BASE);
         x = minim_vector_ref(x, F_CODE);
@@ -303,8 +300,6 @@ ret:  // Passes the values being returned to `k`.
         x = minim_cons(minim_cdr(minim_car(x)), minim_cdr(x));
         goto let_values;
     case K_CALL_VALUES:  // apply the consumer, below the values
-        if (nvals == 1)
-            minim_values_push(val);
         nvals = 1;
         base = (size_t)minim_fixnum_value(minim_vector_ref(x, F_BASE));
         goto apply;
