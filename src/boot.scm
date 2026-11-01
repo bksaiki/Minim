@@ -47,6 +47,6 @@
       (lambda (x)
         (cond ((symbol? x) (rename x))
               ((pair? x) (let* ((a (walk (car x))) (d (walk (cdr x)))) (cons a d)))
-              ((vector? x) (apply vector (walk (%vector->list x))))
+              ((vector? x) (apply vector (walk (vector->list x))))
               (else x))))
     (walk x)))

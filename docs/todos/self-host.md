@@ -125,6 +125,26 @@ Added when Phase 1 started: the rewrite would otherwise keep about 80 nested
 
 ### Phase 1 - Rewrite: expansion
 
+**Done.**  Details settled during the phase:
+
+- **The list library moved to the top of the prelude.**  The boot file loads
+  in order, and each `%define-macro!` in it builds a transformer while
+  loading, which runs `%resolve` and so `assq`.  The library depends on
+  nothing above it.  The file's header says what may run while loading.
+- The helpers with library equivalents went everywhere, not just in this
+  phase's code: `%map`, `%append`, `%reverse`, `%memq`, `%drop`
+  (`list-tail`), `%vector->list`.  In the quasiquote and `syntax-rules` code
+  and in `src/boot.scm` that is a rename only.  `%strip-pair` and
+  `%strip-vector` were inlined into `%strip`, and `%expand-let-values`'s
+  `zip` became `(map list ...)`.  Kept: `%append-map`, `%pairs`, `%take`,
+  `%length`.
+- `%expand-form`, `%expand-body`, and `%expand` dispatch with `case`.  `let*`
+  wherever expansion order matters, since it decides fresh-name numbering.
+- First regeneration, then the full suites with no expected output changed,
+  then a second regeneration identical to the first.  The boot file has 73
+  forms (8 helpers fewer).  `prelude.scm`: 394 lines added, 528 removed,
+  including the library's move.
+
 - `src/prelude.scm`: the helpers, syntactic environments, resolution,
   `%expand-head` through `%expand-let-syntax`, and the top-level forms
   (`%top-name` through `%expand`), in normal Scheme.  The section header
