@@ -59,10 +59,10 @@ enum {
     MINIM_HEADER_LENGTH_SHIFT = 4,
 
     MINIM_TYPE_VECTOR = 0x0,
+    MINIM_TYPE_ERROR = 0x1,
     MINIM_TYPE_STRING = 0x2,
     MINIM_TYPE_PRIMITIVE = 0x4,
     MINIM_TYPE_CONTINUATION = 0x6,
-    MINIM_TYPE_ERROR = 0x1,
 };
 
 /** Allocation constants. */

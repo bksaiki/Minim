@@ -144,7 +144,7 @@ static void bind_values(minim_obj env, minim_obj formals, size_t n) {
 static minim_obj run(minim_obj expr, bool many, bool expand, bool raise) {
     minim_obj env = MINIM_NIL;
     minim_obj val = MINIM_VOID;
-    minim_obj k = MINIM_NIL;  // continuation; '() returns from eval
+    minim_obj k = MINIM_NIL;  // continuation; '() returns from run
     minim_obj x = MINIM_NIL;  // scratch
     minim_obj frame = MINIM_NIL;  // the frame a let-values form binds into
     size_t base = 0;  // value-stack height where the applied call's values start
@@ -156,7 +156,7 @@ static minim_obj run(minim_obj expr, bool many, bool expand, bool raise) {
     if (raise) {  // `%raise-c-error` never returns
         minim_stack_reserve(2);
         base = minim_stack_height();
-        minim_stack_push(minim_symbol_value(minim_sym_raise));
+        minim_stack_push(minim_symbol_value(minim_sym_raise_c_error));
         minim_stack_push(expr);
         goto apply;
     }
