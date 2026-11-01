@@ -83,7 +83,7 @@ void minim_symbol_init(void) {
     intern_global(&minim_sym_define_values, "define-values");
     intern_global(&minim_sym_expand, "%expand");
     intern_global(&minim_sym_if, "if");
-    intern_global(&minim_sym_raise, "%raise");
+    intern_global(&minim_sym_raise, "%raise-c-error");
     intern_global(&minim_sym_lambda, "lambda");
     intern_global(&minim_sym_let_values, "let-values");
     intern_global(&minim_sym_letrec_values, "letrec-values");

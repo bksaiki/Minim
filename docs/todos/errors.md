@@ -259,6 +259,12 @@ error, updated.
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
 
+**Done.**
+- `%raise-c-error` replaces `%raise` as what `eval` applies (`minim_sym_raise`
+  names it).  An uncaught Scheme `raise` reaches it too: `%raise-uncaught`'s
+  error comes back to `eval`'s catch while winders remain.
+- Ran both full suites and the release build.
+
 ### After the last phase
 
 Sync the docs: `errors.md` (error objects, handlers, C errors raising in

@@ -57,8 +57,11 @@
               ((same? x (car lst)) lst)
               (else (loop (cdr lst))))))))
 
-(define memq (lambda (x lst) (member x lst eq?)))
-(define memv (lambda (x lst) (member x lst eqv?)))
+(define memq
+  (lambda (x lst) (member x lst eq?)))
+
+(define memv
+  (lambda (x lst) (member x lst eqv?)))
 
 ;; The first pair of `alist` whose car matches `x` under `same?`, or #f.
 (define assoc
@@ -69,8 +72,11 @@
               ((same? x (car (car alist))) (car alist))
               (else (loop (cdr alist))))))))
 
-(define assq (lambda (x alist) (assoc x alist eq?)))
-(define assv (lambda (x alist) (assoc x alist eqv?)))
+(define assq
+  (lambda (x alist) (assoc x alist eq?)))
+
+(define assv
+  (lambda (x alist) (assoc x alist eqv?)))
 
 ;; Applies `f` to the elements of the lists in turn, stopping at the shortest.
 (define map
@@ -180,10 +186,9 @@
 
 (define (%with-handlers handlers thunk)
   (let ((outer (%handlers)))
-    (dynamic-wind
-     (lambda () (%set-handlers! handlers))
-     thunk
-     (lambda () (%set-handlers! outer)))))
+    (dynamic-wind (lambda () (%set-handlers! handlers))
+                  thunk
+                  (lambda () (%set-handlers! outer)))))
 
 (define (with-exception-handler handler thunk)
   (%with-handlers (cons handler (%handlers)) thunk))
@@ -196,16 +201,29 @@
     (if (null? handlers)
         (%raise-uncaught obj)
         (%with-handlers (cdr handlers)
-          (lambda ()
-            (if continuable?
-                ((car handlers) obj)
-                (begin
-                  ((car handlers) obj)
-                  (raise (%make-error-object "handler returned" (list obj))))))))))
+                        (lambda ()
+                          (if continuable?
+                              ((car handlers) obj)
+                              (begin
+                                ((car handlers) obj)
+                                (raise (%make-error-object "handler returned"
+                                                           (list obj))))))))))
 
-(define (raise obj) (%raise obj #f))
-(define (raise-continuable obj) (%raise obj #t))
-(define (error message . irritants) (raise (%make-error-object message irritants)))
+(define (raise obj)
+  (%raise obj #f))
+
+(define (raise-continuable obj)
+  (%raise obj #t))
+
+(define (error message . irritants)
+  (raise (%make-error-object message irritants)))
+
+;; Raises the error object `e`, of an error from C, to the handlers; with none,
+;; leaves Scheme after leaving every `dynamic-wind`, as a jump would.
+(define (%raise-c-error e)
+  (if (null? (%handlers))
+      (begin (%rewind! '()) (%raise-uncaught e))
+      (%raise e #f)))
 
 ;; `guard` (R7RS 4.2.7): calls `body` with a handler that escapes to the
 ;; guard's continuation and calls `(handler condition reraise)` there.
@@ -215,14 +233,12 @@
   ((call/cc
     (lambda (guard-k)
       (with-exception-handler
-       (lambda (condition)
-         ((call/cc
-           (lambda (handler-k)
-             (guard-k
-              (lambda ()
-                (handler condition
-                         (lambda ()
-                           (handler-k (lambda () (raise-continuable condition)))))))))))
-       (lambda ()
-         (call-with-values body
-           (lambda results (guard-k (lambda () (apply values results)))))))))))
+        (lambda (condition)
+          ((call/cc
+            (lambda (handler-k)
+              (define (reraise)
+                (handler-k (lambda () (raise-continuable condition))))
+              (guard-k (lambda () (handler condition reraise)))))))
+        (lambda ()
+          (call-with-values body
+            (lambda results (guard-k (lambda () (apply values results)))))))))))

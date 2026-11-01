@@ -122,8 +122,8 @@ e
 ; A handler returning from a C error.
 (with-exception-handler (lambda (e) 'ignored) (lambda () (car 5)))
 
-; An error a handler escapes from runs the afters it leaves; an unhandled one
-; doesn't.
+; An error runs the afters it leaves: one a handler escapes from, and an
+; unhandled one.
 (set! log '())
 (define (logged thunk)
   (dynamic-wind (lambda () (set! log (cons 'in log))) thunk (lambda () (set! log (cons 'out log)))))
@@ -166,3 +166,18 @@ e
 (call-with-values (lambda () (guard (e (#t (values 'a 'b))) (raise 0))) list)
 (%winders)
 (%handlers)
+
+; An unhandled error, or an uncaught raise, runs the afters of nested
+; dynamic-winds, innermost first, before the REPL reports it.
+(set! log '())
+(logged (lambda () (logged (lambda () (vector-ref (vector) 0)))))
+(reverse log)
+(set! log '())
+(logged (lambda () (logged (lambda () (raise 'nested)))))
+(reverse log)
+
+; An error in an after replaces the error; the outer afters still run.
+(set! log '())
+(logged (lambda () (dynamic-wind (lambda () #f) (lambda () (car 5)) (lambda () (cdr 6)))))
+(reverse log)
+(%winders)

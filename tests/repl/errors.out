@@ -38,7 +38,7 @@ out
 ("car: not a pair" (r) #f #f)
 "car: not a pair"
 (in out)
-(in)
+(in out)
 ()
 ()
 (symbol boom)
@@ -55,4 +55,8 @@ no-raise
 (1 2 3)
 (a b)
 ()
+()
+(in in out out)
+(in in out out)
+(in out)
 ()

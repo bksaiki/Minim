@@ -13,3 +13,6 @@ error: car: not a pair: r
 error: handler returned: #<error car: not a pair>
 error: car: not a pair: 1
 error: uncaught exception: unmatched
+error: vector-ref: bad index: 0
+error: uncaught exception: nested
+error: cdr: not a pair: 6

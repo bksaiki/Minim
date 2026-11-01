@@ -418,7 +418,7 @@ static void test_many_arguments(void) {
 }
 
 // A handled error, deep in a recursion or in a long `apply`, leaves the value
-// stack, winders, and spill as they were; an unhandled one, the winders empty.
+// stack, winders, and spill as they were; an unhandled one runs the afters.
 static void test_handled_errors(void) {
     size_t before = minim_stack_height();
     char buf[512];
@@ -436,10 +436,12 @@ static void test_handled_errors(void) {
     CHECK_EQ(minim_gc.handlers, MINIM_NIL);
     CHECK_EQ(minim_gc.spill.len, 0);
 
-    CHECK(fails_with("(dynamic-wind (lambda () #f) (lambda () (deep 10)) (lambda () #f))",
+    CHECK(fails_with("(define out #f) (dynamic-wind (lambda () #f) (lambda () (deep 10))"
+                     " (lambda () (set! out #t)))",
                      "car: not a pair"));
     CHECK_EQ(minim_stack_height(), before);
     CHECK_EQ(minim_gc.winders, MINIM_NIL);
+    CHECK(evals_to("out", "#t"));
 }
 
 int main(void) {

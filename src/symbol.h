@@ -21,7 +21,7 @@ extern minim_obj minim_sym_define_values;
 /** The symbol `%expand`, the expander called on each top-level form. */
 extern minim_obj minim_sym_expand;
 
-/** The symbol `%raise`, called on errors from C when a handler is installed. */
+/** The symbol `%raise-c-error`, called on errors from C. */
 extern minim_obj minim_sym_raise;
 
 /** The symbol `if`. */
