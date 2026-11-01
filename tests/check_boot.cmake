@@ -1,7 +1,8 @@
-# Fails unless BOOT_GEN, run on SRC/prelude.scm, writes SRC/prelude.boot.
+# Fails unless BOOT_GEN, run on SRC/prelude.scm and SRC/expander.scm, writes
+# SRC/prelude.boot.
 # Usage: cmake -DBOOT_GEN=... -DSRC=... -DOUTPUT=... -P check_boot.cmake
 execute_process(
-    COMMAND ${BOOT_GEN} ${SRC}/boot.scm ${SRC}/prelude.scm ${OUTPUT}
+    COMMAND ${BOOT_GEN} ${SRC}/boot.scm ${OUTPUT} ${SRC}/prelude.scm ${SRC}/expander.scm
     RESULT_VARIABLE status)
 if(NOT status EQUAL 0)
     message(FATAL_ERROR "boot_gen failed")

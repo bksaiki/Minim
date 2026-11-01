@@ -25,8 +25,8 @@ function(minim_add_test name)
     minim_add_stressed(${name} test_${name})
 endfunction()
 
-# src/prelude.boot must be what boot_gen makes of src/prelude.scm, which also
-# means it reproduces itself, since boot_gen starts from it.
+# src/prelude.boot must be what boot_gen makes of the prelude's sources, which
+# also means it reproduces itself, since boot_gen starts from it.
 add_test(NAME boot COMMAND ${CMAKE_COMMAND}
     -DBOOT_GEN=$<TARGET_FILE:boot_gen>
     -DSRC=${PROJECT_SOURCE_DIR}/src

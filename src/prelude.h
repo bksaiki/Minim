@@ -1,7 +1,8 @@
 /**
  * @file
- * The prelude: the expander and library procedures written in Scheme
- * (`src/prelude.scm`), loaded from its expansion (`src/prelude.boot`).
+ * The prelude: library procedures (`src/prelude.scm`) and the expander
+ * (`src/expander.scm`), written in Scheme and loaded from their expansion
+ * (`src/prelude.boot`).
  */
 
 #ifndef MINIM_PRELUDE_H
