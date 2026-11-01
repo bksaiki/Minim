@@ -35,7 +35,7 @@ never calls them:
   their chars (with a kind marker for symbols), primitives their C function
   pointer, and all closures one constant.  `eq?` hashing of heap objects, which
   needs a stable per-object identity, is left to hashtables (R7RS-small roadmap
-  milestone 7).
+  milestone 8).
 - The FNV-1a step (`minim_hash_mix`, `minim_string_hash` in `minim.h`) is
   shared with the symbol table.
 

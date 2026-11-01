@@ -1,0 +1,253 @@
+# Continuations: a segmented value stack, call/cc, and dynamic-wind
+
+Implementation plan.  The design is settled; what follows is the phase
+breakdown, one phase per commit.
+
+Errors (`raise`, `guard`, ...) are a separate, later plan, which this one
+prepares for: `guard` is built from continuations and `dynamic-wind`.
+
+## Working policy
+
+- **Pause after each phase for review.** Do not begin the next phase until the
+  current one has been looked at.
+- **Do not commit.** The author of the change leaves the working tree dirty;
+  commits are made by the repository owner.
+- **Run only the tests relevant to the phase.** The full suite runs once, at
+  the end, after the last phase.
+- **Comments stay succinct**, and notes about *process* (what was tried, what
+  a phase decided, why an ordering was chosen) belong in this document, not in
+  source comments.
+- **Design docs are synced after the last phase**, not during the phases, so
+  they never describe an intermediate state.  Each phase records its decisions
+  in this document instead.
+- **Design docs stay succinct**: only the details a reader needs to understand
+  the current implementation, said in as few words as possible.
+
+## Context
+
+R7RS requires `call-with-current-continuation` (`call/cc`) and
+`dynamic-wind` (6.10); Minim has neither (roadmap milestone 4).
+
+The evaluator's state (`eval.md`) is two things:
+
+- **The continuation `k`**, a chain of heap frames, never mutated once made.
+  Capturing it is keeping a pointer.
+- **The value stack** (`minim_gc.values`), one growable C array holding the
+  operators and operands of calls in progress, and values being returned.
+  Frames refer to it by height (an `ARGS` frame's `base`).
+
+A continuation needs both.  Copying the value stack on every capture costs
+time and memory in proportion to its height, which deep non-tail recursion
+makes large.  Chez Scheme avoids the equivalent cost for its control stack by
+segmenting it (Hieb, Dybvig, and Bruggeman, "Representing Control in the
+Presence of First-Class Continuations", 1990); Minim's frames are already on
+the heap, so only the value stack needs segmenting.
+
+## Design
+
+**The segmented value stack.**  The stack is a writable C buffer on top of a
+chain of frozen segments:
+
+```
+frozen segment (heap vector, never mutated):
+
+  #( prev   start   v0   v1   ...   vn-1 )
+     │      │       └── the values at logical heights start .. start+n-1
+     │      └── fixnum: logical height of v0
+     └── the next older frozen segment, or '()
+```
+
+```c
+struct minim_value_stack {
+    minim_obj *items;  // capacity MINIM_SEGMENT_SIZE, never reallocated
+    size_t len;        // values in the buffer
+    size_t start;      // logical height of items[0]
+    minim_obj below;   // the newest frozen segment, or '()
+};
+```
+
+- **Sizes.**  `MINIM_SEGMENT_SIZE` is 8,192 values (64 KiB), about Chez
+  Scheme's stack (`s/cmacros.ss`: four 16 KiB segments), and
+  `MINIM_MAX_ARGS` is 8,191, Gambit's and Vicare's limit; Chicken 4 had
+  2,048, and Racket and Chibi have none (survey:
+  docs.scheme.org/surveys/apply-args-limit).
+- **Heights** are logical, `start + len` at the top, so frames keep plain
+  heights.  The buffer never moves, so a primitive's `args` pointer stays
+  valid across allocation, as now.
+- **Copy-out.**  Before a call's operator is pushed, if fewer than
+  `MINIM_MAX_ARGS + 1` slots remain, the buffer's values become a new frozen
+  segment, `below` points to it, and the buffer restarts empty at the same
+  logical height.  So a call's values never straddle two segments.  A call
+  with more than `MINIM_MAX_ARGS` arguments, written out or through `apply`
+  or `values`, raises `too many arguments`.
+- **Underflow.**  On returning to a frame whose height is below `start`, the
+  segment `below` is copied back into the buffer, and `start` and `below` are
+  taken from its slots.  The frozen copy stays as it was, so anything sharing
+  it never sees a write.  Values being returned on top of the buffer are set
+  aside across the reload.
+- **The collector** sees frozen segments as vectors, and scans the buffer and
+  `below` as roots.  Nothing about it changes.
+- **`minim_catch`** copies the buffer out on entry, unless it is empty, and
+  on an error restores `start`, `len`, and `below`.  With the buffer empty at
+  entry, nothing a continuation did inside can have corrupted what is
+  restored.
+
+**Continuation objects.**  A new typed object, `[header | k | segment]`.  It
+is a procedure (`procedure?`), prints as `#<continuation>`, and is traced
+like a vector's elements.
+
+- **`(%call/cc f)`**, a primitive the machine applies itself as it does
+  `apply`, freezes the buffer's values into a new segment *without* emptying
+  the buffer, makes a continuation of `k` and that segment, and applies `f`
+  to it in tail position.  Capture costs at most one segment's copy,
+  whatever the recursion depth.
+- **Applying a continuation** to `n` arguments sets them aside, empties the
+  buffer onto the captured segment (`below` = it, `start` = its end), sets
+  `k`, and returns the arguments as `n` values.  The next return underflows
+  into the captured values.  The current continuation is discarded, so a loop
+  through continuations runs in constant space.
+- **Delimited by `minim_eval`.**  A frame chain ends at `'()`, the return from
+  `minim_eval`, so a continuation captured by one top-level form and invoked
+  by a later one finishes the earlier form's work and returns from the current
+  `minim_eval`: after `(+ 1 (call/cc (lambda (c) (set! k c) 1)))` prints `2`,
+  `(k 10)` prints `11`.  Nothing re-enters `minim_eval` while the machine
+  runs (primitives don't), so the stack belongs to one machine.
+
+**Later, if measurements or programs call for it**: a call too big for the
+buffer gets its own oversized buffer, as a large object gets its own chunk,
+removing the cap; and an underflow copies only the returning frame's values,
+splitting the frozen segment, as Chez copies only the top frame, instead of
+the whole segment.
+
+**`dynamic-wind`**, in the prelude (`src/prelude.scm`), after the R7RS
+reference implementation:
+
+- The *winders* list the `dynamic-wind` calls in progress, innermost first,
+  as `(before . after)` pairs.
+- `(dynamic-wind before thunk after)` calls `before`, pushes the pair, calls
+  `thunk`, pops it, calls `after`, and returns `thunk`'s values.
+- `call/cc` wraps `%call/cc`: the procedure it passes to `f` remembers the
+  winders when captured and, when called, runs `after`s out to the common
+  tail of the two lists and `before`s in to the remembered one, then applies
+  the raw continuation.
+
+**Errors** escape by `longjmp`, past any `dynamic-wind`, without running
+`after`s; the errors plan changes that.  Until then `minim_catch` restores the
+winders too, so a caught error leaves no stale pair for a later jump to run.
+
+## Phases
+
+### Phase 0 - Bounded applications in the prelude
+
+- `src/prims.c`: `list->vector` (R7RS 6.8).
+- `src/expander.scm`: no `apply` to a list of unbounded length:
+  `%append-map` appends as it goes; `%strip`, `instantiate`, and quasiquote's
+  vector code use `list->vector`.  `src/prelude.boot` regenerated twice.
+
+Separate because the cap in Phase 1 would otherwise break large macro uses
+and vector literals.
+
+Tests: `tests/repl/prims.scm`: `list->vector`.  `tests/repl/expander.scm`: a
+quasiquoted vector and a `syntax-rules` ellipsis, each of 10,000 elements,
+more than `MINIM_MAX_ARGS`, so they keep guarding once Phase 1 adds the cap.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'repl|boot' && ctest --preset stress -R 'repl'
+```
+
+### Phase 1 - Segmented value stack
+
+- `src/gc.h`, `src/gc.c`: `struct minim_value_stack` in place of the values
+  array; `below` a root; copy-out, underflow, and push.
+- `src/eval.c`: copy-out before pushing an operator; underflow on return;
+  `too many arguments`; `apply` and `values` check the cap.
+- `src/error.c`: `minim_catch` as above.
+
+Separate because it changes the stack under every call with behaviour
+unchanged, measurable alone, before anything depends on it.
+
+Tests:
+
+- `tests/test_eval.c`: non-tail recursion 10,000 deep, crossing many
+  segments; several values returned across an underflow; an error deep in a
+  recursion, then a clean stack; `too many arguments` for a long `apply`;
+  `test_tail_calls` checks no frozen segments build up, in place of the
+  array's capacity.
+- The full suite, unchanged.  Measure against `main`, run alternately:
+  release, the allocation programs, a call-heavy loop, deep recursion, and
+  `ctest --preset stress -j 8`.
+
+```sh
+cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
+```
+
+### Phase 2 - Continuation objects and %call/cc
+
+- `include/minim.h`, `src/object.c`: the continuation type, constructor, and
+  accessors; `minim_is_procedure` includes it.
+- `src/gc.c`: tracing and size.  `src/print.c`: `#<continuation>`.
+  `src/prims.c`: `equal-hash` treats it as it treats closures.
+- `src/eval.c`, `src/prims.c`, `src/prims.h`: `%call/cc` and applying a
+  continuation.
+- `src/prelude.scm`: `call/cc` and `call-with-current-continuation` as
+  `%call/cc`, until Phase 3.  `src/prelude.boot` regenerated.
+
+Separate because it is the machine change, testable without `dynamic-wind`.
+
+Tests:
+
+- `tests/repl/continuations.scm` (new): an escape from `for-each`; the
+  example above across two top-level forms; re-entry several times within one
+  form; `(k)` and `(k 1 2)` into `call-with-values`; capture 10,000 deep and
+  re-entry there; `procedure?` and printing; `(call/cc 5)`, `(call/cc)`.
+- `tests/test_eval.c`: a loop through `call/cc` in tail position runs in
+  constant space.  Measure a capture 10,000 deep, and a loop capturing every
+  step.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'continuations|eval|boot' && ctest --preset stress -R 'continuations|eval'
+```
+
+### Phase 3 - dynamic-wind
+
+- `src/prelude.scm`: `dynamic-wind` and the winding `call/cc`.
+  `src/prelude.boot` regenerated.
+- The winders and `minim_catch` restoring them (see Open items).
+
+Separate because it is Scheme on top of Phase 2, with its own semantics.
+
+Tests (`tests/repl/continuations.scm`, with a log of thunk calls): the order
+`before`, thunk, `after`, returning several values; an escape out of nested
+extents runs the `after`s innermost first; re-entry runs the `before`s
+outermost first; a jump between sibling extents; after an error inside a
+thunk, a later jump runs no stale `after`.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'continuations|boot' && ctest --preset stress -R 'continuations'
+```
+
+### After the last phase
+
+Sync the docs: `eval.md` (the segmented value stack, capturing and applying
+continuations, delimited by `minim_eval`, `too many arguments`), `gc.md`
+(frozen segments and the continuation object), `primitives.md` (`%call/cc`,
+`list->vector`), `prelude.md` (`call/cc`, `dynamic-wind`), `errors.md`
+(`minim_catch` and the value stack and winders; errors skip `after`s), and
+the roadmap (milestone 4: `call/cc` and `dynamic-wind` done).
+
+```sh
+cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
+cmake --preset release && cmake --build --preset release
+```
+
+## Open items
+
+### Where do the winders live?
+
+`minim_catch`, in C, must restore them after an error.  A Scheme global,
+`%winders`, keeps `dynamic-wind` all Scheme, but then C reaches into a prelude
+variable by name.  A variable in the evaluator's C state, read and set by
+two primitives (`%winders`, `%set-winders!`), keeps the layers apart.
+
+Provisionally the C variable, registered as a collector root.  Reopen if the
+errors plan wants the winders elsewhere.
