@@ -73,6 +73,12 @@ its body with a handler that escapes to the `guard`'s continuation and runs
 the clauses there; if none matches, it jumps back and re-raises with
 `raise-continuable`.  `%raise-c-error` is what errors from C raise through.
 
+`define-record-type` (`macros.md`) binds procedures from `%record-constructor`,
+`%record-predicate`, `%record-accessor`, and `%record-modifier`, which find
+each field's index once, when the definition runs.  An accessor or modifier
+checks the type with `%record?`, then reads or sets the field, raising
+`name: not a type` with the record as the irritant otherwise.
+
 Prelude procedures print as `#<procedure>`, since closures have no names.
 Errors inside them come from the primitives they call, except those of
 `raise`.

@@ -98,14 +98,27 @@ and never calls them:
 | `(read-error? x)`, `(file-error? x)` | whether `x` is an error object from reading a file, or from failing to open one, in `load` |
 | `(%make-error-object message irritants)` | a new error object of the string `message` and the list `irritants`; for the prelude's `error` |
 
+### Records
+
+For the prelude's `define-record-type`.  An rtd's fields (`gc.md`) read
+through `%record-ref`, but only `%make-record-type` sets them.
+
+| Call | Result |
+|---|---|
+| `(%make-record-type name fields)` | a new rtd named by the symbol `name`, with the list of distinct symbols `fields` |
+| `(%make-record rtd)` | a new record of `rtd`, its fields `#f`; not of the base rtd |
+| `(%record? x rtd)` | whether `x` is a record of `rtd` |
+| `(%record-rtd r)` | the rtd of the record `r` |
+| `(%record-ref r i)`, `(%record-set! r i v)` | field `i` of the record `r`; sets it, refusing an rtd (`immutable record type`) |
+
 ### Identity and types
 
 | Call | Result |
 |---|---|
 | `(eq? a b)` | whether `a` and `b` are the same object |
 | `(eqv? a b)` | same as `eq?` (they will differ for flonums and bignums) |
-| `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else by `eqv?`.  Cyclic data loops forever |
-| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, and error objects all hash alike |
+| `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else, records included, by `eqv?`.  Cyclic data loops forever |
+| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, error objects, and records all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
 

@@ -310,6 +310,96 @@ static void test_remembered(void) {
     MINIM_RETURN_VOID;
 }
 
+// A new rtd named `name` with `n` fields, named by the list `fields`.
+static minim_obj make_type(const char *name, intptr_t n, minim_obj fields) {
+    minim_obj rtd = MINIM_NIL;
+    MINIM_FRAME(&fields, &rtd);
+    rtd = minim_make_record(minim_base_rtd);
+    minim_record_set(rtd, MINIM_RTD_NFIELDS, minim_fixnum(n));
+    minim_record_set(rtd, MINIM_RTD_FIELDS, fields);
+    minim_obj sym = minim_intern_cstr(name);
+    minim_record_set(rtd, MINIM_RTD_NAME, sym);
+    MINIM_RETURN(rtd);
+}
+
+// A new rtd named `name` with the fields `x` and `y`.
+static minim_obj make_point_type(const char *name) {
+    minim_obj fields = MINIM_NIL;
+    MINIM_FRAME(&fields);
+    minim_obj sym = minim_intern_cstr("y");
+    fields = minim_cons(sym, fields);
+    sym = minim_intern_cstr("x");
+    fields = minim_cons(sym, fields);
+    MINIM_RETURN(make_type(name, 2, fields));
+}
+
+// A record of `rtd` holding (0 ... n-1) and n.
+static minim_obj make_point(minim_obj rtd, intptr_t n) {
+    minim_obj r = MINIM_NIL;
+    MINIM_FRAME(&rtd, &r);
+    r = minim_make_record(rtd);
+    minim_obj lst = make_list(n);
+    minim_record_set(r, 0, lst);
+    minim_record_set(r, 1, minim_fixnum(n));
+    MINIM_RETURN(r);
+}
+
+static bool is_point(minim_obj r, minim_obj rtd, intptr_t n) {
+    return minim_is_record(r) && minim_record_rtd(r) == rtd && minim_record_length(r) == 2
+        && is_list(minim_record_ref(r, 0), n) && minim_record_ref(r, 1) == minim_fixnum(n);
+}
+
+// Records survive collections whether copied before their rtd or after it, which
+// leaves the rtd forwarded; the base rtd stays its own rtd.
+static void test_records(void) {
+    minim_gc_config saved = use_default_gc_config();  // so only the explicit collections run
+    minim_obj before = MINIM_NIL;
+    minim_obj rtd = make_point_type("point");
+    minim_obj after = MINIM_NIL;
+    minim_obj empty = MINIM_NIL;
+    MINIM_FRAME(&before, &rtd, &after, &empty);  // the roots are copied in this order
+    before = make_point(rtd, 10);
+    after = make_point(rtd, 20);
+    empty = make_type("empty", 0, MINIM_NIL);
+    empty = minim_make_record(empty);
+
+    for (int major = 0; major < 2; major++) {
+        minim_obj old = rtd;
+        if (major)
+            minim_gc_collect_major();
+        else
+            minim_gc_collect_minor();
+        CHECK(rtd != old);
+        CHECK(is_point(before, rtd, 10));
+        CHECK(is_point(after, rtd, 20));
+        CHECK_EQ(minim_record_rtd(rtd), minim_base_rtd);
+        CHECK_EQ(minim_record_rtd(minim_base_rtd), minim_base_rtd);
+        CHECK(minim_is_record(empty) && minim_record_length(empty) == 0);
+        rtd = make_point_type("point");  // young again, for the next round
+        before = make_point(rtd, 10);
+        after = make_point(rtd, 20);
+    }
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
+// Setting a field of an old record to a young value remembers the record.
+static void test_record_barrier(void) {
+    minim_gc_config saved = use_default_gc_config();
+    minim_obj rtd = make_point_type("point");
+    minim_obj r = MINIM_NIL;
+    MINIM_FRAME(&rtd, &r);
+    r = make_point(rtd, 1);
+    minim_gc_collect_minor();
+    CHECK_EQ(generation(r), 1);
+    minim_obj lst = make_list(5);
+    minim_record_set(r, 0, lst);
+    minim_gc_collect_minor();
+    CHECK(is_list(minim_record_ref(r, 0), 5));
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_survive();
@@ -323,6 +413,8 @@ int main(void) {
     test_schedule();
     test_older_to_younger();
     test_remembered();
+    test_records();
+    test_record_barrier();
     minim_shutdown();
     return test_result();
 }

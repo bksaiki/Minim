@@ -577,3 +577,23 @@
     ((_ (var clause ...) body1 body2 ...)
      (%guard (lambda () body1 body2 ...)
              (lambda (var reraise) (cond clause ... (else (reraise))))))))
+
+(define-syntax define-record-type
+  (syntax-rules ()
+    ((_ type (ctor cfield ...) pred (field accessor . modifier) ...)
+     (begin
+       (define type (%make-record-type 'type '(field ...)))
+       (define ctor
+         (let ((make (%record-constructor type '(cfield ...))))
+           (lambda (cfield ...) (make (list cfield ...)))))
+       (define pred (%record-predicate type))
+       (%define-record-field type field accessor . modifier) ...))))
+
+(define-syntax %define-record-field
+  (syntax-rules ()
+    ((_ type field accessor)
+     (define accessor (%record-accessor type 'field 'accessor)))
+    ((_ type field accessor modifier)
+     (begin
+       (define accessor (%record-accessor type 'field 'accessor))
+       (define modifier (%record-modifier type 'field 'modifier))))))

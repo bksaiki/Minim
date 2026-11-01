@@ -454,7 +454,8 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
         return minim_hash_mix(minim_string_hash(minim_symbol_name(x)), HASH_SYMBOL);
     if (minim_is_primitive(x))
         return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
-    if (minim_is_closure(x) || minim_is_continuation(x) || minim_is_error_object(x))
+    if (minim_is_closure(x) || minim_is_continuation(x) || minim_is_error_object(x)
+        || minim_is_record(x))
         return HASH_CLOSURE;  // equal? only when eq?
     if (minim_is_pair(x)) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);
@@ -909,6 +910,64 @@ static minim_obj prim_raise_uncaught(minim_obj *args, size_t n) {
     minim_error("uncaught exception", args[0]);
 }
 
+// A new rtd named by the symbol args[0], with the distinct symbols of the list
+// args[1] as its fields.  The rtd's fields are set only here.
+static minim_obj prim_make_record_type(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_symbol(args[0]), "%make-record-type: not a symbol", args[0]);
+    intptr_t len = 0;
+    minim_obj x = args[1];
+    for (; minim_is_pair(x); x = minim_cdr(x), len++) {
+        bool ok = minim_is_symbol(minim_car(x));
+        minim_obj y = args[1];
+        for (intptr_t i = 0; ok && i < len; i++, y = minim_cdr(y))
+            ok = minim_car(y) != minim_car(x);  // a cycle repeats a field
+        check(ok, "%make-record-type: bad fields", args[1]);
+    }
+    check(minim_is_null(x), "%make-record-type: bad fields", args[1]);
+    minim_obj rtd = minim_make_record(minim_base_rtd);
+    minim_record_set(rtd, MINIM_RTD_NAME, args[0]);
+    minim_record_set(rtd, MINIM_RTD_NFIELDS, minim_fixnum(len));
+    minim_record_set(rtd, MINIM_RTD_FIELDS, args[1]);
+    return rtd;
+}
+
+static minim_obj prim_is_record(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(minim_is_record(args[0]) && minim_record_rtd(args[0]) == args[1]);
+}
+
+static minim_obj prim_record_rtd(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_record(args[0]), "%record-rtd: not a record", args[0]);
+    return minim_record_rtd(args[0]);
+}
+
+// Not the base rtd: an rtd's fields are set only by `%make-record-type`.
+static minim_obj prim_make_record(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_record(args[0]) && minim_record_rtd(args[0]) == minim_base_rtd
+          && args[0] != minim_base_rtd, "%make-record: not a record type", args[0]);
+    return minim_make_record(args[0]);
+}
+
+static minim_obj prim_record_ref(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_record(args[0]), "%record-ref: not a record", args[0]);
+    return minim_record_ref(args[0], index_arg(args[1], minim_record_length(args[0]),
+                                               "%record-ref: bad index"));
+}
+
+static minim_obj prim_record_set(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_record(args[0]), "%record-set!: not a record", args[0]);
+    check(minim_record_rtd(args[0]) != minim_base_rtd, "%record-set!: immutable record type",
+          args[0]);
+    size_t i = index_arg(args[1], minim_record_length(args[0]), "%record-set!: bad index");
+    minim_record_set(args[0], i, args[2]);
+    return MINIM_VOID;
+}
+
 static void define_primitive(const char *name, minim_prim_fn fn, intptr_t min, intptr_t max) {
     minim_obj sym = minim_intern_cstr(name);
     MINIM_FRAME(&sym);
@@ -1010,6 +1069,12 @@ void minim_prims_init(void) {
     define_primitive("error-object-irritants", prim_error_object_irritants, 1, 1);
     define_primitive("read-error?", prim_is_read_error, 1, 1);
     define_primitive("file-error?", prim_is_file_error, 1, 1);
+    define_primitive("%make-record-type", prim_make_record_type, 2, 2);
+    define_primitive("%record?", prim_is_record, 2, 2);
+    define_primitive("%record-rtd", prim_record_rtd, 1, 1);
+    define_primitive("%make-record", prim_make_record, 1, 1);
+    define_primitive("%record-ref", prim_record_ref, 2, 2);
+    define_primitive("%record-set!", prim_record_set, 3, 3);
     define_primitive("write", prim_write, 1, 1);
     define_primitive("display", prim_display, 1, 1);
     define_primitive("newline", prim_newline, 0, 0);

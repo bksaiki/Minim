@@ -1,0 +1,20 @@
+error: %make-record-type: not a symbol: "point"
+error: %make-record-type: bad fields: (x x)
+error: %make-record-type: bad fields: (x 1)
+error: %make-record-type: bad fields: (x . y)
+error: %make-record: not a record type: 5
+error: %make-record: not a record type: #<point>
+error: %make-record: not a record type: #<record-type record-type>
+error: %record-rtd: not a record: 5
+error: %record-ref: not a record: 5
+error: %record-ref: bad index: 2
+error: %record-ref: bad index: -1
+error: %record-set!: not a record: 5
+error: %record-set!: bad index: 2
+error: %record-set!: immutable record type: #<record-type point>
+error: kar: not a <pare>: 5
+error: set-kar!: not a <pare>: (1 . 2)
+error: kdr: not a <pare>: #<node>
+error: arity mismatch: #<procedure>
+error: define-record-type: no such field: z
+error: %make-record-type: bad fields: (x x)

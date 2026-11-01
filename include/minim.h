@@ -63,6 +63,7 @@ enum {
     MINIM_TYPE_STRING = 0x2,
     MINIM_TYPE_PRIMITIVE = 0x4,
     MINIM_TYPE_CONTINUATION = 0x6,
+    MINIM_TYPE_RECORD = 0x7,  ///< a record's first word, its rtd, read as a header
 };
 
 /** Allocation constants. */
@@ -83,6 +84,11 @@ enum {
 
 /** Size in bytes of a vector of length `n`. */
 static inline size_t minim_vector_size(size_t n) {
+    return (1 + n) * sizeof(minim_obj);
+}
+
+/** Size in bytes of a record with `n` fields. */
+static inline size_t minim_record_size(size_t n) {
     return (1 + n) * sizeof(minim_obj);
 }
 
@@ -209,6 +215,11 @@ static inline bool minim_is_continuation(minim_obj x) {
 /** Whether `x` is an error object. */
 static inline bool minim_is_error_object(minim_obj x) {
     return minim_is_typed(x) && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_ERROR;
+}
+
+/** Whether `x` is a record, including a record-type descriptor. */
+static inline bool minim_is_record(minim_obj x) {
+    return minim_is_typed(x) && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_RECORD;
 }
 
 /** Whether `x` is a closure, a primitive, or a continuation. */
@@ -558,6 +569,49 @@ static inline size_t minim_continuation_height(minim_obj c) {
     assert(minim_is_continuation(c));
     return (size_t)minim_fixnum_value(((const minim_obj *)(c - MINIM_TAG_TYPED))[3]);
 }
+
+// Records: `[rtd | field ...]`.  A record-type descriptor (rtd) is a record of
+// the base rtd, whose rtd is itself, with the fields below.  `nfields` is at
+// word 2, which copying an object doesn't overwrite, so the collector can read
+// a record's size through a copied rtd.
+
+/** Fields of a record-type descriptor. */
+enum {
+    MINIM_RTD_NAME,     ///< symbol
+    MINIM_RTD_NFIELDS,  ///< fixnum: fields of its records
+    MINIM_RTD_FIELDS,   ///< list of field names
+    MINIM_RTD_LENGTH,
+};
+
+/** The rtd of record-type descriptors, its own rtd. */
+extern minim_obj minim_base_rtd;
+
+/** Record-type descriptor of the record `r`. */
+static inline minim_obj minim_record_rtd(minim_obj r) {
+    assert(minim_is_record(r));
+    return ((const minim_obj *)(r - MINIM_TAG_TYPED))[0];
+}
+
+/** Field `i` of the record `r`. */
+static inline minim_obj minim_record_ref(minim_obj r, size_t i) {
+    assert(minim_is_record(r));
+    return ((const minim_obj *)(r - MINIM_TAG_TYPED))[1 + i];
+}
+
+/** Sets field `i` of the record `r` to `x`. */
+static inline void minim_record_set(minim_obj r, size_t i, minim_obj x) {
+    assert(minim_is_record(r));
+    ((minim_obj *)(r - MINIM_TAG_TYPED))[1 + i] = x;
+    minim_gc_write(r, x);
+}
+
+/** Number of fields of the record `r`. */
+static inline size_t minim_record_length(minim_obj r) {
+    return (size_t)minim_fixnum_value(minim_record_ref(minim_record_rtd(r), MINIM_RTD_NFIELDS));
+}
+
+/** New record of the rtd `rtd`, its fields #f. */
+minim_obj minim_make_record(minim_obj rtd);
 
 /** Kinds of error object. */
 typedef enum { MINIM_ERROR_GENERAL, MINIM_ERROR_READ, MINIM_ERROR_FILE } minim_error_kind;
