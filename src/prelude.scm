@@ -310,7 +310,7 @@
     (scan forms '())))
 
 ;; Expands `(let-syntax ((k spec) ...) body ...)`, or `letrec-syntax` if
-;; `rec`, into `((lambda () body ...))`.  The transformers close over `env`,
+;; `rec`, into `(let-values () body ...)`.  The transformers close over `env`,
 ;; or over the new frame if `rec`.
 (define %expand-let-syntax
   (lambda (x env rec)
@@ -328,7 +328,7 @@
     (if (if (< 2 (%length x 0)) (%length (car (cdr x)) 0) #f)
         (bind (car (cdr x)))
         (%bad-syntax x))
-    (list (cons 'lambda (cons '() (%expand-body (cdr (cdr x)) inner x))))))
+    (cons 'let-values (cons '() (%expand-body (cdr (cdr x)) inner x)))))
 
 ;; Code building the quasiquote template `t` at nesting depth `depth` (R7RS
 ;; 4.2.8), from cons, append, apply, vector, and quote.
@@ -636,7 +636,7 @@
 (define-syntax let
   (syntax-rules ()
     ((_ ((name val) ...) body1 body2 ...)
-     ((lambda (name ...) body1 body2 ...) val ...))
+     (let-values (((name) val) ...) body1 body2 ...))
     ((_ tag ((name val) ...) body1 body2 ...)
      ((letrec ((tag (lambda (name ...) body1 body2 ...))) tag) val ...))))
 

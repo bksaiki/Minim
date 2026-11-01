@@ -139,6 +139,14 @@ cmake --build --preset dev && ctest --preset dev -R 'repl|eval' && ctest --prese
 
 ### Phase 3 - let into let-values
 
+**Done.**  As planned.  No `lambda` call is left in any expansion of a
+binding form.  `(let () (define z 1))` now reports `(let-values () (define z
+1))`.  Measured against `main`, release, run alternately three times: a loop
+calling a procedure with a two-binding `let*` and a `let` 2M times,
+3.07-3.15 s (`main`: 3.27-3.37 s), the gain modest since each `let-values`
+clause still allocates a frame; the allocation programs unchanged; 20
+startups 0.63-0.65 s (`main`: 0.67-0.70 s).
+
 - `src/prelude.scm`: `let` (unnamed) becomes `let-values`;
   `%expand-let-syntax` returns `(let-values () body ...)`.
 
