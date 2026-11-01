@@ -15,14 +15,14 @@ runs each again under GC stress.
 ## GC stress
 
 Every test has a copy, `<name>_stress`, labelled `stress`, run with
-`MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=16`: after startup, a collection at
-every allocation, every 16th one major (`gc.md`).  An unrooted old object is
-caught only where a major collection happens, so at sites the tests run at
-least about 16 times.  Script tests that
-set their own environment, or are marked `NO_STRESS`, have none.
+`MINIM_GC_NURSERY_BYTES=1`: after startup, a collection at every allocation,
+on the default schedule (`gc.md`).  An unrooted object in generation g is
+caught only at a site the tests run about 4^g times; `MINIM_GC_RADIX=1`, by
+hand, catches it at every site, but takes minutes.  Script tests that set
+their own environment, or are marked `NO_STRESS`, have none.
 
-- `startup_stress` stresses startup alone, with `MINIM_GC_STARTUP=1` and
-  radix 16.
+- `startup_stress` stresses startup alone, with `MINIM_GC_STARTUP=1`;
+  startup allocates the same way every run.
 - `stale`, built only with sanitizers, checks that AddressSanitizer reports
   a stale pointer into a collected chunk.
 - Slow tests do less work when `gc_stressed()`; tests that rely on when
