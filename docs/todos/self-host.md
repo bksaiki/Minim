@@ -162,6 +162,18 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 
 ### Phase 2 - Rewrite: quasiquote and syntax-rules
 
+**Done.**  Details settled during the phase:
+
+- `%syntax-rules` looks bindings up with `assq`; a binding is now described
+  as (identifier depth . match), the shape it already had.
+- `%all-null?` went: where it was used, the first sequence is empty, so "all
+  empty" is `(null? (filter pair? seqs))`.
+- The expander now has no `(define name (lambda ...))`, no nested `if` used
+  as `and`, and no nested `car`/`cdr` chains.
+- First regeneration, the full suites with no expected output changed, then a
+  second regeneration identical to the first.  The boot file has 72 forms.
+  `prelude.scm`: 181 lines added, 232 removed.
+
 - `src/prelude.scm`: `%qq` through `%qq-vector`, `%transformer`,
   `%syntax-rules`, and their helpers, in normal Scheme.
 - `src/prelude.boot`: regenerated twice.

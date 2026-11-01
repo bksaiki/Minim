@@ -367,238 +367,188 @@
 
 ;; Code building the quasiquote template `t` at nesting depth `depth` (R7RS
 ;; 4.2.8), from cons, append, apply, vector, and quote.
-(define %qq
-  (lambda (t depth env)
-    (define k (%keyword t env))
-    (define keyword-then
-      (lambda (depth)
-        (%qq-cons (list 'quote (%strip (car t))) (%qq (cdr t) depth env))))
-    (if (if (eq? k 'unquote) #t (eq? k 'unquote-splicing))
-        (if (< 0 depth)
-            (keyword-then (- depth 1))
-            (if (if (eq? k 'unquote) (eq? (%length t 0) 2) #f)
-                (%expand-expr (car (cdr t)) env)
-                (%bad-syntax t)))
-        (if (eq? k 'quasiquote)
-            (keyword-then (+ depth 1))
-            (if (pair? t)
-                (if (if (= depth 0) (eq? (%keyword (car t) env) 'unquote-splicing) #f)
-                    (if (eq? (%length (car t) 0) 2)
-                        (list 'append
-                              (%expand-expr (car (cdr (car t))) env)
-                              (%qq (cdr t) depth env))
-                        (%bad-syntax (car t)))
-                    (%qq-cons (%qq (car t) depth env) (%qq (cdr t) depth env)))
-                (if (vector? t)
-                    (%qq-vector (%qq (vector->list t) depth env))
-                    (list 'quote (%strip t))))))))
+(define (%qq t depth env)
+  (let ((k (%keyword t env)))
+    (define (keyword-then depth)
+      (%qq-cons (list 'quote (%strip (car t))) (%qq (cdr t) depth env)))
+    (cond ((memq k '(unquote unquote-splicing))
+           (cond ((< 0 depth) (keyword-then (- depth 1)))
+                 ((and (eq? k 'unquote) (eq? (%length t 0) 2)) (%expand-expr (cadr t) env))
+                 (else (%bad-syntax t))))
+          ((eq? k 'quasiquote) (keyword-then (+ depth 1)))
+          ((and (pair? t) (= depth 0) (eq? (%keyword (car t) env) 'unquote-splicing))
+           (if (eq? (%length (car t) 0) 2)
+               (list 'append (%expand-expr (cadr (car t)) env) (%qq (cdr t) depth env))
+               (%bad-syntax (car t))))
+          ((pair? t) (%qq-cons (%qq (car t) depth env) (%qq (cdr t) depth env)))
+          ((vector? t) (%qq-vector (%qq (vector->list t) depth env)))
+          (else (list 'quote (%strip t))))))
 
-(define %quoted?
-  (lambda (code)
-    (if (pair? code) (eq? (car code) 'quote) #f)))
+(define (%quoted? code)
+  (and (pair? code) (eq? (car code) 'quote)))
 
-(define %qq-cons
-  (lambda (a d)
-    (if (if (%quoted? a) (%quoted? d) #f)
-        (list 'quote (cons (car (cdr a)) (car (cdr d))))
-        (list 'cons a d))))
+(define (%qq-cons a d)
+  (if (and (%quoted? a) (%quoted? d))
+      (list 'quote (cons (cadr a) (cadr d)))
+      (list 'cons a d)))
 
-(define %qq-vector
-  (lambda (code)
-    (if (%quoted? code)
-        (list 'quote (apply vector (car (cdr code))))
-        (list 'apply 'vector code))))
+(define (%qq-vector code)
+  (if (%quoted? code)
+      (list 'quote (apply vector (cadr code)))
+      (list 'apply 'vector code)))
 
 ;; The transformer `spec` denotes in `env`: a procedure from a macro use and its
 ;; environment to the use's expansion.
-(define %transformer
-  (lambda (spec env)
-    (if (eq? (%keyword spec env) 'syntax-rules)
-        (%syntax-rules spec env)
-        (%bad-syntax spec))))
+(define (%transformer spec env)
+  (if (eq? (%keyword spec env) 'syntax-rules)
+      (%syntax-rules spec env)
+      (%bad-syntax spec)))
 
 ;; The transformer for `(syntax-rules [ellipsis] (literal ...) rule ...)` in
-;; `env` (R7RS 4.3.2).  Pattern variables are bound to (depth . match), where
-;; a match at depth n > 0 is a list of matches at depth n - 1.
-(define %syntax-rules
-  (lambda (spec env)
-    (define custom (if (pair? (cdr spec)) (symbol? (car (cdr spec))) #f))
-    (define rest (if custom (cdr (cdr spec)) (cdr spec)))
-    (define ellipsis (%resolve (if custom (car (cdr spec)) '...) env))
-    (define literals (if (pair? rest) (car rest) (%bad-syntax spec)))
-    (define rules (cdr rest))
-    (define renames '())  ; one alias per identifier per use
+;; `env` (R7RS 4.3.2).  A binding of a pattern variable is (identifier depth .
+;; match), where a match at depth n > 0 is a list of matches at depth n - 1.
+(define (%syntax-rules spec env)
+  (define custom (and (pair? (cdr spec)) (symbol? (cadr spec))))
+  (define rest (if custom (cddr spec) (cdr spec)))
+  (define ellipsis (%resolve (if custom (cadr spec) '...) env))
+  (define literals (if (pair? rest) (car rest) (%bad-syntax spec)))
+  (define rules (cdr rest))
+  (define renames '())  ; one alias per identifier per use
 
-    (define ellipsis?
-      (lambda (x) (if (symbol? x) (eq? (%resolve x env) ellipsis) #f)))
-    (define literal?
-      (lambda (x) (memq x literals)))
-    (define underscore?
-      (lambda (x) (eq? (%resolve x env) '_)))
-    (define followed-by-ellipsis?
-      (lambda (x) (if (pair? (cdr x)) (ellipsis? (car (cdr x))) #f)))
+  (define (ellipsis? x) (and (symbol? x) (eq? (%resolve x env) ellipsis)))
+  (define (literal? x) (memq x literals))
+  (define (underscore? x) (eq? (%resolve x env) '_))
+  (define (followed-by-ellipsis? x) (and (pair? (cdr x)) (ellipsis? (cadr x))))
 
-    ;; The pattern variables of `pat` at nesting `depth`, as (identifier . depth).
-    (define pattern-vars
-      (lambda (pat depth acc)
-        (if (symbol? pat)
-            (if (if (literal? pat) #t (if (underscore? pat) #t (ellipsis? pat)))
-                acc
-                (cons (cons pat depth) acc))
-            (if (pair? pat)
-                (if (followed-by-ellipsis? pat)
-                    (pattern-vars (cdr (cdr pat)) depth (pattern-vars (car pat) (+ depth 1) acc))
-                    (pattern-vars (cdr pat) depth (pattern-vars (car pat) depth acc)))
-                (if (vector? pat) (pattern-vars (vector->list pat) depth acc) acc)))))
+  ;; The pattern variables of `pat` at nesting `depth`, as (identifier . depth).
+  (define (pattern-vars pat depth acc)
+    (cond ((symbol? pat)
+           (if (or (literal? pat) (underscore? pat) (ellipsis? pat))
+               acc
+               (cons (cons pat depth) acc)))
+          ((pair? pat)
+           (if (followed-by-ellipsis? pat)
+               (pattern-vars (cddr pat) depth (pattern-vars (car pat) (+ depth 1) acc))
+               (pattern-vars (cdr pat) depth (pattern-vars (car pat) depth acc))))
+          ((vector? pat) (pattern-vars (vector->list pat) depth acc))
+          (else acc)))
 
-    ;; `b` extended with the bindings that make `pat` match `form`, or #f.
-    (define match
-      (lambda (pat form use-env b)
-        (if (not b)
-            #f
-            (if (symbol? pat)
-                (if (literal? pat)
-                    (if (if (symbol? form) (eq? (%resolve form use-env) (%resolve pat env)) #f)
-                        b
-                        #f)
-                    (if (underscore? pat) b (cons (cons pat (cons 0 form)) b)))
-                (if (pair? pat)
-                    (if (followed-by-ellipsis? pat)
-                        (match-ellipsis pat form use-env b)
-                        (if (pair? form)
-                            (match (cdr pat) (cdr form) use-env
-                                   (match (car pat) (car form) use-env b))
-                            #f))
-                    (if (null? pat)
-                        (if (null? form) b #f)
-                        (if (vector? pat)
-                            (if (vector? form)
-                                (match (vector->list pat) (vector->list form) use-env b)
-                                #f)
-                            (if (equal? pat form) b #f))))))))
+  ;; `b` extended with the bindings that make `pat` match `form`, or #f.
+  (define (match pat form use-env b)
+    (cond ((not b) #f)
+          ((symbol? pat)
+           (cond ((literal? pat)
+                  (and (symbol? form) (eq? (%resolve form use-env) (%resolve pat env)) b))
+                 ((underscore? pat) b)
+                 (else (cons (cons pat (cons 0 form)) b))))
+          ((pair? pat)
+           (cond ((followed-by-ellipsis? pat) (match-ellipsis pat form use-env b))
+                 ((pair? form)
+                  (match (cdr pat) (cdr form) use-env (match (car pat) (car form) use-env b)))
+                 (else #f)))
+          ((null? pat) (and (null? form) b))
+          ((vector? pat)
+           (and (vector? form) (match (vector->list pat) (vector->list form) use-env b)))
+          (else (and (equal? pat form) b))))
 
-    ;; Matches `(p ellipsis . rest)`: `p` against as many elements as `rest`
-    ;; leaves, binding each variable of `p` to the list of its matches.
-    (define match-ellipsis
-      (lambda (pat form use-env b)
-        (define p (car pat))
-        (define rest (cdr (cdr pat)))
-        (define n (- (%pairs form) (%pairs rest)))
-        (define matches
-          (if (< n 0) '(#f) (map (lambda (x) (match p x use-env '())) (%take form n))))
-        (if (memq #f matches)
-            #f
-            (match rest (list-tail form n) use-env
-                   (bind-sequences (pattern-vars p 0 '()) matches b)))))
+  ;; Matches `(p ellipsis . rest)`: `p` against as many elements as `rest`
+  ;; leaves, binding each variable of `p` to the list of its matches.
+  (define (match-ellipsis pat form use-env b)
+    (let* ((p (car pat))
+           (rest (cddr pat))
+           (n (- (%pairs form) (%pairs rest)))
+           (matches (if (< n 0)
+                        '(#f)
+                        (map (lambda (x) (match p x use-env '())) (%take form n)))))
+      (and (not (memq #f matches))
+           (match rest (list-tail form n) use-env
+                  (bind-sequences (pattern-vars p 0 '()) matches b)))))
 
-    (define bind-sequences
-      (lambda (vars matches b)
-        (if (null? vars)
-            b
-            (bind-sequences
-             (cdr vars)
-             matches
-             (cons (cons (car (car vars))
-                         (cons (+ (cdr (car vars)) 1)
-                               (map (lambda (m) (cdr (%lookup-in (car (car vars)) m '())))
-                                     matches)))
-                   b)))))
+  (define (bind-sequences vars matches b)
+    (if (null? vars)
+        b
+        (let ((v (car vars)))
+          (bind-sequences (cdr vars)
+                          matches
+                          (cons (cons (car v)
+                                      (cons (+ (cdr v) 1)
+                                            (map (lambda (m) (cddr (assq (car v) m))) matches)))
+                                b)))))
 
-    ;; The alias for the template identifier `id` in this use.
-    (define alias
-      (lambda (id)
-        (define found (%lookup-in id renames '()))
-        (define new (if found #f (%make-alias id env)))
-        (if found
-            found
-            (begin (set! renames (cons (cons id new) renames)) new))))
+  ;; The alias for the template identifier `id` in this use.
+  (define (alias id)
+    (cond ((assq id renames) => cdr)
+          (else (let ((new (%make-alias id env)))
+                  (set! renames (cons (cons id new) renames))
+                  new))))
 
-    ;; Instantiates `tmpl` with the bindings `b`; `escaped` disables the ellipsis.
-    (define instantiate
-      (lambda (tmpl b escaped)
-        (if (symbol? tmpl)
-            ((lambda (binding)
-               (if binding
-                   (if (= (car binding) 0) (cdr binding) (%bad-syntax tmpl))
-                   (alias tmpl)))
-             (%lookup-in tmpl b '()))
-            (if (pair? tmpl)
-                (if (if escaped #f (if (ellipsis? (car tmpl)) (pair? (cdr tmpl)) #f))
-                    (instantiate (car (cdr tmpl)) b #t)  ; (... template)
-                    (if (if escaped #f (followed-by-ellipsis? tmpl))
-                        (instantiate-ellipses (car tmpl) (cdr tmpl) 0 b)
-                        (cons (instantiate (car tmpl) b escaped)
-                              (instantiate (cdr tmpl) b escaped))))
-                (if (vector? tmpl)
-                    (apply vector (instantiate (vector->list tmpl) b escaped))
-                    tmpl)))))
+  ;; Instantiates `tmpl` with the bindings `b`; `escaped` disables the ellipsis.
+  (define (instantiate tmpl b escaped)
+    (cond ((symbol? tmpl)
+           (let ((binding (assq tmpl b)))
+             (cond ((not binding) (alias tmpl))
+                   ((= (cadr binding) 0) (cddr binding))
+                   (else (%bad-syntax tmpl)))))
+          ((pair? tmpl)
+           (cond ((and (not escaped) (ellipsis? (car tmpl)) (pair? (cdr tmpl)))
+                  (instantiate (cadr tmpl) b #t))  ; (... template)
+                 ((and (not escaped) (followed-by-ellipsis? tmpl))
+                  (instantiate-ellipses (car tmpl) (cdr tmpl) 0 b))
+                 (else (cons (instantiate (car tmpl) b escaped)
+                             (instantiate (cdr tmpl) b escaped)))))
+          ((vector? tmpl) (apply vector (instantiate (vector->list tmpl) b escaped)))
+          (else tmpl)))
 
-    ;; Instantiates `e` followed by `k` ellipses so far and then `rest`.
-    (define instantiate-ellipses
-      (lambda (e rest k b)
-        (if (if (pair? rest) (ellipsis? (car rest)) #f)
-            (instantiate-ellipses e (cdr rest) (+ k 1) b)
-            (append (repeat e k b) (instantiate rest b #f)))))
+  ;; Instantiates `e` followed by `k` ellipses so far and then `rest`.
+  (define (instantiate-ellipses e rest k b)
+    (if (and (pair? rest) (ellipsis? (car rest)))
+        (instantiate-ellipses e (cdr rest) (+ k 1) b)
+        (append (repeat e k b) (instantiate rest b #f))))
 
-    ;; The instantiations of `e` under `k` ellipses, as a list.
-    (define repeat
-      (lambda (e k b)
-        (if (= k 0)
-            (list (instantiate e b #f))
-            (%append-map (lambda (b) (repeat e (- k 1) b)) (iterations e b)))))
+  ;; The instantiations of `e` under `k` ellipses, as a list.
+  (define (repeat e k b)
+    (if (= k 0)
+        (list (instantiate e b #f))
+        (%append-map (lambda (b) (repeat e (- k 1) b)) (iterations e b))))
 
-    ;; One binding list per step of an ellipsis over `e`, each binding `e`'s
-    ;; sequence variables to their next elements.
-    (define iterations
-      (lambda (e b)
-        (define vars (sequence-vars e b '()))
-        (define step
-          (lambda (seqs)
-            (if (null? (car seqs))
-                (if (%all-null? seqs) '() (%bad-syntax e))
-                (if (memq '() seqs)
-                    (%bad-syntax e)
-                    (cons (bind-step vars seqs b) (step (map cdr seqs)))))))
-        (if (null? vars) (%bad-syntax e) (step (map (lambda (v) (cdr (cdr v))) vars)))))
+  ;; One binding list per step of an ellipsis over `e`, each binding `e`'s
+  ;; sequence variables to their next elements.
+  (define (iterations e b)
+    (let ((vars (sequence-vars e b '())))
+      (define (step seqs)
+        (cond ((null? (car seqs)) (if (null? (filter pair? seqs)) '() (%bad-syntax e)))
+              ((memq '() seqs) (%bad-syntax e))
+              (else (cons (bind-step vars seqs b) (step (map cdr seqs))))))
+      (if (null? vars) (%bad-syntax e) (step (map cddr vars)))))
 
-    ;; The bindings of `b` for identifiers in `tmpl` that are bound to sequences.
-    (define sequence-vars
-      (lambda (tmpl b acc)
-        (if (symbol? tmpl)
-            ((lambda (binding)
-               (if (if binding (< 0 (car binding)) #f) (cons (cons tmpl binding) acc) acc))
-             (%lookup-in tmpl b '()))
-            (if (pair? tmpl)
-                (sequence-vars (cdr tmpl) b (sequence-vars (car tmpl) b acc))
-                (if (vector? tmpl) (sequence-vars (vector->list tmpl) b acc) acc)))))
+  ;; The bindings of `b` for identifiers in `tmpl` that are bound to sequences.
+  (define (sequence-vars tmpl b acc)
+    (cond ((symbol? tmpl)
+           (let ((binding (assq tmpl b)))
+             (if (and binding (< 0 (cadr binding))) (cons binding acc) acc)))
+          ((pair? tmpl) (sequence-vars (cdr tmpl) b (sequence-vars (car tmpl) b acc)))
+          ((vector? tmpl) (sequence-vars (vector->list tmpl) b acc))
+          (else acc)))
 
-    (define bind-step
-      (lambda (vars seqs b)
-        (if (null? vars)
-            b
-            (bind-step (cdr vars) (cdr seqs)
-                       (cons (cons (car (car vars))
-                                   (cons (- (car (cdr (car vars))) 1) (car (car seqs))))
-                             b)))))
+  (define (bind-step vars seqs b)
+    (if (null? vars)
+        b
+        (bind-step (cdr vars)
+                   (cdr seqs)
+                   (cons (cons (caar vars) (cons (- (cadr (car vars)) 1) (caar seqs))) b))))
 
-    (define apply-rules
-      (lambda (rules form use-env)
-        (define rule (if (null? rules) (%bad-syntax form) (car rules)))
-        (define b
-          (if (if (eq? (%length rule 0) 2) (pair? (car rule)) #f)
-              (match (cdr (car rule)) (cdr form) use-env '())
-              (%bad-syntax spec)))
-        (if b
-            (instantiate (car (cdr rule)) b #f)
-            (apply-rules (cdr rules) form use-env))))
+  (define (apply-rules rules form use-env)
+    (let* ((rule (if (null? rules) (%bad-syntax form) (car rules)))
+           (b (if (and (eq? (%length rule 0) 2) (pair? (car rule)))
+                  (match (cdar rule) (cdr form) use-env '())
+                  (%bad-syntax spec))))
+      (if b
+          (instantiate (cadr rule) b #f)
+          (apply-rules (cdr rules) form use-env))))
 
-    (lambda (form use-env)
-      (set! renames '())
-      (apply-rules rules form use-env))))
-
-(define %all-null?
-  (lambda (lists)
-    (if (null? lists) #t (if (null? (car lists)) (%all-null? (cdr lists)) #f))))
+  (lambda (form use-env)
+    (set! renames '())
+    (apply-rules rules form use-env)))
 
 ;; `macros` without a binding for `name`.
 (define (%unbind-macro name macros)
