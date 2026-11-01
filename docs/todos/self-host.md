@@ -76,6 +76,17 @@ can't start, `git checkout src/prelude.boot` recovers.
 
 ### Phase 0 - Procedure definitions
 
+**Done.**  Details settled during the phase:
+
+- `%define-procedure` does the rewrite for both places.  The `lambda` it
+  inserts is `(%make-alias 'lambda '())`, so `(let ((lambda 0)) (define (f)
+  1) (f))` still works.  A non-identifier name, too few parts, or an improper
+  form is `bad syntax` naming the form as written.
+- Regenerated twice, with the REPL tests between; the second run was
+  identical to the first, since the source doesn't use the new form yet.
+  The boot file changed in 5 lines.
+- Also tested: `(define (f) . 1)` is `bad syntax`.
+
 - `src/prelude.scm`: `%expand-define` and `%expand-body`'s scan accept
   `(define (name . formals) body ...)`, rewriting it to `(define name (lambda
   formals body ...))` first, so the rest of their handling is unchanged.

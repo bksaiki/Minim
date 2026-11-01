@@ -62,6 +62,21 @@
   (lambda (x)
     (if (eq? (%length x 0) 3) (symbol? (car (cdr x))) #f)))
 
+;; The `define` form `x`, with `(define (name . formals) body ...)` rewritten as
+;; `(define name (lambda formals body ...))`.  The `lambda` is an alias for the
+;; special form, so a local binding can't capture it.
+(define %define-procedure
+  (lambda (x)
+    (if (if (pair? (cdr x)) (pair? (car (cdr x))) #f)
+        (if (if (%length x 0)
+                (if (< 2 (%length x 0)) (symbol? (car (car (cdr x)))) #f)
+                #f)
+            (list (car x)
+                  (car (car (cdr x)))
+                  (cons (%make-alias 'lambda '()) (cons (cdr (car (cdr x))) (cdr (cdr x)))))
+            (%bad-syntax x))
+        x)))
+
 (define %vector->list
   (lambda (v)
     (define loop
@@ -275,8 +290,9 @@
             (finish defs '())
             (scan-form (%expand-head (car forms) inner) (cdr forms) defs))))
     (define scan-form
-      (lambda (x rest defs)
-        (define k (%keyword x inner))
+      (lambda (form rest defs)
+        (define k (%keyword form inner))
+        (define x (if (eq? k 'define) (%define-procedure form) form))
         (if (eq? k 'begin)
             (if (%length x 0) (scan (%append (cdr x) rest) defs) (%bad-syntax x))
             (if (eq? k 'define)
@@ -596,7 +612,8 @@
     name))
 
 (define %expand-define
-  (lambda (x)
+  (lambda (form)
+    (define x (%define-procedure form))
     (define name (if (%binding-form? x) (%top-define! (car (cdr x))) (%bad-syntax x)))
     (list 'define name (%expand-expr (car (cdr (cdr x))) '()))))
 

@@ -215,7 +215,7 @@ static void test_errors(void) {
     CHECK(fails_with("(define)", "bad syntax"));
     CHECK(fails_with("(define x)", "bad syntax"));
     CHECK(fails_with("(define x 1 2)", "bad syntax"));
-    CHECK(fails_with("(define (f) 1)", "bad syntax"));
+    CHECK(fails_with("(define (1) 1)", "bad syntax"));
     CHECK(fails_with("(set! 1 2)", "bad syntax"));
     CHECK(fails_with("(lambda (1) 1)", "bad syntax"));
     CHECK(fails_with("(lambda (x))", "bad syntax"));

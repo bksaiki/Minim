@@ -3,6 +3,8 @@
 (lambda () (letrec-values (((x y) (values 1 2)) ((z) 3)) (+ x y z)))
 (lambda () 1)
 (lambda () (letrec-values (((f) (lambda () (letrec-values (((g) 1)) g)))) (f)))
+(define f (lambda (a . r) (cons a r)))
+(lambda () (letrec-values (((g) (lambda () 1))) (g)))
 (let-values (((y) 1)) y)
 (let-values () 1)
 (let-values (((a) 1)) (let-values (((b) a)) (let-values () b)))
