@@ -27,9 +27,9 @@ static void record_init(void) {
 
     minim_obj fields = MINIM_NIL;
     MINIM_FRAME(&fields);
-    const char *names[] = {"fields", "nfields", "name"};
-    for (size_t i = 0; i < MINIM_RTD_LENGTH; i++) {
-        minim_obj sym = minim_intern_cstr(names[i]);
+    const char *names[] = {"name", "nfields", "fields"};
+    for (size_t i = MINIM_RTD_LENGTH; i > 0; i--) {
+        minim_obj sym = minim_intern_cstr(names[i - 1]);
         fields = minim_cons(sym, fields);
     }
     minim_record_set(minim_base_rtd, MINIM_RTD_FIELDS, fields);

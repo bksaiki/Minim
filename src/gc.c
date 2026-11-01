@@ -147,10 +147,13 @@ void minim_gc_add_global(minim_obj *p) {
     push_root(&minim_gc, &minim_gc.globals, p);
 }
 
-// Fields of records of the rtd `rtd`, which may have been copied: copying
-// leaves `nfields`, at word 2, in place.
+_Static_assert(1 + MINIM_RTD_NFIELDS >= 2, "copying overwrites words 0 and 1");
+
+// Fields of records of the rtd `rtd`, which may have been copied, which leaves
+// `nfields` in place.
 static size_t rtd_nfields(minim_obj rtd) {
-    return (size_t)minim_fixnum_value(((const minim_obj *)(rtd - MINIM_TAG_TYPED))[2]);
+    const minim_obj *p = (const minim_obj *)(rtd - MINIM_TAG_TYPED);
+    return (size_t)minim_fixnum_value(p[1 + MINIM_RTD_NFIELDS]);
 }
 
 static size_t typed_size(minim_obj header) {
