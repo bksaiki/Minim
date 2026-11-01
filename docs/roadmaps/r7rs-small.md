@@ -137,7 +137,10 @@ Not features, but needed as programs grow:
   the core and `minim_load_prelude` loads the prelude like any file, under
   the environment's collector settings from the start (no
   `MINIM_GC_STARTUP`).  Expansion now makes startup about 19 ms, and
-  1.8 s stressed; this is the next PR.
+  1.8 s stressed.  Then the evaluator can drop internal `define`, which only
+  the expander's unexpanded code uses.
+- Done: expansion into the `-values` binding forms, so `let` allocates no
+  closure and each frame's variables are known before it runs.
 - Separate system bindings from the user's top level, so redefining `car` or
   `list` doesn't break the expander or the prelude (`docs/design/macros.md`,
   Limitations).  Until then, cheap local lookup (the lexical-address pass
