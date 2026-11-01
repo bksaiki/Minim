@@ -186,6 +186,20 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 
 ### Phase 3 - Drop internal definitions from the evaluator
 
+**Done.**  `define` and `define-values` are `bad syntax` unless the
+environment is global.  `minim_env_define` now just prepends to a local
+frame, without first looking for a binding to update: its only local callers
+are the `-values` binding forms, which bind into a fresh frame, and a
+duplicate name still resolves to the later binding.  The check is on the
+environment, not the position: `(if #t (define x 1))` evaluated unexpanded is
+accepted, since the expander, not the evaluator, rejects a definition
+anywhere but top level (a strict evaluator check would need a flag tracking
+syntactic position; walking the continuation can't see tail positions).
+`test_binding_values`
+checks internal `define` and `define-values` in a `lambda` and a `let-values`
+body are `bad syntax`; its internal `define-values` case is now covered only
+through the expander (`tests/repl/values.scm`).  Full suites pass.
+
 - `src/eval.c`: `define` and `define-values` are `bad syntax` outside the
   global environment.
 - `src/env.c`, `src/env.h`: `minim_env_define` keeps what `let-values` and

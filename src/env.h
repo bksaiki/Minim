@@ -22,7 +22,10 @@ minim_obj minim_env_extend(minim_obj params, minim_obj *args, size_t n, minim_ob
 /** Value of `sym` in `env`; raises if unbound. */
 minim_obj minim_env_lookup(minim_obj env, minim_obj sym);
 
-/** Binds `sym` to `val` in the innermost frame of `env`. */
+/**
+ * Binds `sym` to `val`: globally if `env` is `'()`, otherwise in the innermost
+ * frame of `env`, shadowing any binding of `sym` there.
+ */
 void minim_env_define(minim_obj env, minim_obj sym, minim_obj val);
 
 /** Sets the existing binding of `sym` in `env`; raises if unbound. */

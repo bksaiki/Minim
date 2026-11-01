@@ -98,8 +98,6 @@ static void test_binding_values(void) {
     CHECK(evals_to("(define-values r (values 1 2)) r", "(1 2)"));
     CHECK(evals_to("(define-values (a) 5) a", "5"));
     CHECK(evals_to("(define-values () (values))", "#<void>"));
-    CHECK(evals_to("(define a 0) (define f (lambda () (define-values (a b) (values 1 2)) (+ a b)))"
-                   " (cons (f) a)", "(3 . 0)"));
 
     CHECK(evals_to("(let-values (((a b) (values 1 2)) ((c) 3)) (list a b c))", "(1 2 3)"));
     CHECK(evals_to("(let-values (((a . r) (values 1 2 3)) (s (values))) (list a r s))",
@@ -116,6 +114,10 @@ static void test_binding_values(void) {
     CHECK(fails_with("(let-values (((a) (values 1 2))) a)", "wrong number of values"));
     CHECK(fails_with("(define-values (a 1) 2)", "bad syntax"));
     CHECK(fails_with("(define-values (a))", "bad syntax"));
+    // Bodies' definitions are the expander's to turn into letrec-values.
+    CHECK(fails_with("((lambda () (define a 1) a))", "bad syntax"));
+    CHECK(fails_with("((lambda () (define-values (a) 1) a))", "bad syntax"));
+    CHECK(fails_with("(let-values () (define a 1) a)", "bad syntax"));
     CHECK(fails_with("(let-values (((a) 1)))", "bad syntax"));
     CHECK(fails_with("(let-values ((a)) 1)", "bad syntax"));
     CHECK(fails_with("(let-values (((1) 1)) 1)", "bad syntax"));
