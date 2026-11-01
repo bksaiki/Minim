@@ -7,10 +7,10 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, continuations, error objects, 96 primitives, and a Scheme prelude
-with the list library (`map`, `append`, `member`, `fold`, ...),
-`dynamic-wind`, and exceptions.  It has a precise generational
-collector, a reader, a printer, and an explicit-stack evaluator with proper
+closures, continuations, error objects, records, 102 primitives, and a Scheme
+prelude with the list library (`map`, `append`, `member`, `fold`, ...),
+`dynamic-wind`, and exceptions.  It has a precise generational collector, a
+reader, a printer, and an explicit-stack evaluator with proper
 tail calls, multiple values, and the special forms `quote`, `if`, `define`,
 `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
 `letrec-values`.  A hygienic expander in the prelude adds quasiquote,
@@ -24,7 +24,7 @@ Missing, roughly in order of how much it limits writing programs:
 | Libraries | `import`, `define-library` |
 | Numbers | flonums, bignums, rationals |
 | I/O | ports, `read`, `read-char`, string and file ports |
-| Data types | records, hashtables, bytevectors |
+| Data types | hashtables, bytevectors |
 
 **Target:** a practical subset of R7RS-small, simple before complete (see
 Open items).
@@ -139,7 +139,8 @@ hand-written bignums or GMP (see Open items).
 
 ### 8. More data types (M)
 
-- Records: `define-record-type`, as typed objects with a type descriptor.
+- Done: records, `define-record-type`, as typed objects whose first word is
+  their type descriptor (`docs/design/gc.md`).
 - Hashtables: `eq?`-based and `equal?`-based (`equal-hash` exists from
   milestone 1).  `eq?` hashing must survive the moving collector, by rehashing
   after a collection or by hashing a stable per-object value.

@@ -19,11 +19,11 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 | `111` | typed object | first word is a header |
 | `010`, `100` | | reserved (flonum, -) |
 
-Typed objects (vectors, strings, primitives, continuations, error objects)
-start with a header, `(length << 4) | (immutable << 3) | type`.  Error objects
-have type 1, the first odd code; an odd code can't equal the forwarding
-marker.  Every object is at least
-2 words, so any object can hold a forwarding record.
+Typed objects (vectors, strings, primitives, continuations, error objects,
+records) start with a header, `(length << 4) | (immutable << 3) | type`.
+Error objects have type 1, the first odd code; an odd code can't equal the
+forwarding marker.  Every object is at least 2 words, so any object can hold
+a forwarding record.
 
 ```
 pair     [ car | cdr ]                        16 B
@@ -34,7 +34,17 @@ closure  [ code : (params . body) | env ]     16 B
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 continuation [ header | k | stack | height ]  32 B
 error    [ header | kind | message | irritants ]  32 B
+record   [ rtd | f0 | f1 | ... ]              8 + 8n B, rounded up to 16
 ```
+
+A record's first word is its record-type descriptor (rtd), a typed-object
+pointer, whose low bits `111` read as header type 7, after Chez Scheme.  An
+rtd is a record of the base rtd, `minim_base_rtd`, which is its own rtd; its
+fields are `name` (a symbol), `nfields` (a fixnum), and `fields` (the list of
+field names).  A record's size is 1 + `nfields`, read from word 2 of its
+rtd: copying overwrites only words 0 and 1, so either copy of an rtd gives
+it.  A record's pointer fields start at word 0, so its rtd is traced like a
+field.
 
 A continuation's `k` is its continuation frames, `stack` the frozen segments
 of its value stack, and `height` a fixnum, where they end (`eval.md`).

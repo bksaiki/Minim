@@ -126,6 +126,14 @@ clause ... (else (reraise))))`, without the added `else` when the last clause
 is one.  The clauses run in the `guard`'s continuation, so a call from one is
 a tail call.
 
+`define-record-type` (R7RS 5.5) binds the type's name to a new rtd
+(`gc.md`), as Chez does, and the constructor, predicate, accessors, and
+modifiers to procedures from the prelude's helpers (`prelude.md`).  The
+constructor is `(lambda (field ...) ...)`, so a wrong count is `arity
+mismatch`; the fields it doesn't name are `#f`.  A record prints as `#<name>`
+and an rtd as `#<record-type name>`, without one pair of angle brackets
+around `name`.
+
 ## Quasiquote
 
 `` `t `` (R7RS 4.2.8) becomes calls to `cons`, `append`, and `list->vector`,
