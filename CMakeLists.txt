@@ -67,11 +67,14 @@ add_executable(boot_gen src/boot.c)
 target_link_libraries(boot_gen PRIVATE libminim)
 target_include_directories(boot_gen PRIVATE src)
 
-# Regenerates src/prelude.boot from src/prelude.scm.  After an expander change,
-# run it twice: the second run expands with the new expander.
+# Regenerates src/prelude.boot from src/prelude.scm, replacing it only if
+# generation succeeds.  After an expander change, run it twice: the second run
+# expands with the new expander.
 add_custom_target(boot
     COMMAND boot_gen ${CMAKE_CURRENT_SOURCE_DIR}/src/boot.scm
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.scm ${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.boot
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.scm ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.boot
     COMMENT "Regenerating src/prelude.boot"
 )
 
