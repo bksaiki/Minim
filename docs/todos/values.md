@@ -125,6 +125,12 @@ forms are `bad syntax`, checked as for `lambda`.
 
 ### Phase 1 - Multiple values in the machine
 
+**Done.**  As planned.  `minim_eval` and `minim_eval_values` share one
+machine, `eval(expr, many)`.  The REPL still skips void values.  A loaded
+file's forms returning several values are covered by
+`tests/repl/load/values.scm`.  Release benchmarks unchanged against `main`
+(2.7-2.8 s and 1.8-1.9 s for both, run alternately).
+
 - `src/eval.c`: the `nvals` register; the checks on `ret` above; `values`
   and `call-with-values` applied in `apply`, with the `CALL_VALUES` frame.
   `minim_eval_values`, sharing the machine with `minim_eval`.
@@ -213,23 +219,7 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### How does C get multiple values?
-
-`minim_eval` returns one `minim_obj`.  The options: a second function
-returning a list of the values (one allocation per call, simple), or one
-function returning a count and leaving the values somewhere C can read (no
-allocation, but it exposes the value stack or needs an out-array).
-
-Provisionally `minim_eval_values`, returning a list.  Reopen if a caller
-needs values without allocating.
-
-### Is `letrec-values` user-visible, under that name?
-
-Plan 2 needs it as a core form.  Racket exposes it as `letrec-values` with
-in-order (`letrec*`) evaluation; R7RS has no such form, so the name is free,
-but `letrec*-values` would say what it does.
-
-Provisionally Racket's name and semantics, visible to users.  A reference to
-a variable whose init hasn't run is `unbound variable`, since the expander
-renames locals and nothing outer shares the name.  Reopen if Plan 2 wants a
-different initialization check.
+None.  Settled before Phase 1: C gets multiple values from
+`minim_eval_values`, a list; `letrec-values` keeps Racket's name and in-order
+semantics, visible to users, and a reference to a variable whose init hasn't
+run is `unbound variable`.

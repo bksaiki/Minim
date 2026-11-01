@@ -52,6 +52,38 @@ static bool fails_with(const char *src, const char *msg) {
     return true;
 }
 
+static minim_obj eval_values(void *f) {
+    return minim_eval_values(minim_read(f));
+}
+
+// Whether the expression `src` returns values whose list prints as `expect`.
+static bool values_are(const char *src, const char *expect) {
+    FILE *f = input(src);
+    minim_obj val;
+    bool ok = minim_catch(eval_values, f, &val);
+    fclose(f);
+    if (!ok) {
+        fprintf(stderr, "`%s` raised ", src);
+        minim_write_error(stderr);
+        return false;
+    }
+    return prints_as(val, expect);
+}
+
+// minim_eval takes exactly one value; minim_eval_values any number.
+static void test_values(void) {
+    size_t before = minim_gc.values.len;
+    CHECK(fails_with("(values)", "wrong number of values"));
+    CHECK(fails_with("(values 1 2)", "wrong number of values"));
+    CHECK_EQ(minim_gc.values.len, before);
+    CHECK(evals_to("(values 1)", "1"));
+    CHECK(values_are("(values)", "()"));
+    CHECK(values_are("(values 1 2)", "(1 2)"));
+    CHECK(values_are("5", "(5)"));
+    CHECK(values_are("(call-with-values (lambda () (values 1 2)) values)", "(1 2)"));
+    CHECK_EQ(minim_gc.values.len, before);
+}
+
 static void test_self_evaluating(void) {
     CHECK(evals_to("42", "42"));
     CHECK(evals_to("\"s\"", "\"s\""));
@@ -207,12 +239,15 @@ static void test_tail_calls(void) {
     CHECK(minim_gc.size <= 8 * 1024 * 1024);
     CHECK_EQ(minim_gc.values.cap, cap);
 
-    // So is the last subform of `and`, `or`, `when`, and a named `let`'s body.
+    // So is the last subform of `and`, `or`, `when`, and a named `let`'s body,
+    // and the consumer of `call-with-values`.
     const char *loops[] = {
         "(define loop (lambda (n) (and #t (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
         "(define loop (lambda (n) (or #f (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
         "(define loop (lambda (n) (if (= n 0) 'done (when #t (loop (- n 1)))))) (loop %d)",
         "(let loop ((n %d)) (cond ((= n 0) 'done) (else (loop (- n 1)))))",
+        "(define loop (lambda (n) (if (= n 0) 'done"
+        " (call-with-values (lambda () (values (- n 1) 0)) (lambda (m z) (loop m)))))) (loop %d)",
     };
     for (size_t i = 0; i < sizeof(loops) / sizeof(loops[0]); i++) {
         snprintf(src, sizeof(src), loops[i], gc_stressed() ? 2000 : 100000);
@@ -233,6 +268,7 @@ int main(void) {
     test_value_stack_restored();
     test_apply_restores_value_stack();
     test_primitive_allocates();
+    test_values();
     test_tail_calls();
     test_map_long_list();  // after test_tail_calls, which checks the value stack's capacity
     minim_shutdown();

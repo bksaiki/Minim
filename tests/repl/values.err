@@ -1,0 +1,8 @@
+error: wrong number of values: (2 3)
+error: wrong number of values: ()
+error: wrong number of values: (1 2)
+error: wrong number of values: (1 2)
+error: wrong number of values: ()
+error: arity mismatch: #<procedure>
+error: not a procedure: 1
+error: arity mismatch: #<procedure call-with-values>
