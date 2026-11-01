@@ -1,12 +1,12 @@
 # Macros and expansion
 
-The expander, `%expand`, is Scheme code at the start of `src/prelude.scm`.  It
-rewrites each top-level form into the core forms the evaluator knows:
-`quote`, `if`, `define`, `set!`, `lambda`, `begin`, `define-values`,
-`let-values`, and `letrec-values` (`eval.md`).  The
-evaluator calls it on every top-level form once it is defined; it is defined
-last in its section, so its own code runs unexpanded.  The derived forms come
-right after it, as macros.
+The expander, `%expand`, is Scheme code in `src/prelude.scm`.  It rewrites
+each top-level form into the core forms the evaluator knows: `quote`, `if`,
+`define`, `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
+`letrec-values` (`eval.md`).  The evaluator calls it on every top-level form
+once it is defined.  Startup loads the prelude already expanded
+(`prelude.md`), so the expander is written in ordinary Scheme, using the
+derived forms that follow it as macros and the list library before it.
 
 It is written in Scheme because expansion is list processing, which in C
 would need `MINIM_FRAME` around every allocation.  Each top-level form is
@@ -57,6 +57,11 @@ special form even where the user has bound `if`.
 | `(syntax-error msg arg ...)` | raises `msg` with the arguments, at expansion time |
 | `(k ...)`, `k` a macro | the transformer's result, expanded again |
 | `(define ...)`, `(define-values ...)`, `(define-syntax ...)` | only at top level or at the start of a body; elsewhere `bad syntax` |
+
+**Procedure definitions.**  `(define (f . formals) body ...)` is `(define f
+(lambda formals body ...))`, at top level and in bodies (R7RS 5.3); the
+`lambda` is an alias for the special form, so a local `lambda` can't capture
+it.
 
 **Top level.**  A `begin` is spliced: each of its forms is expanded as a
 top-level form, in order.
@@ -132,7 +137,7 @@ runs, with the smallest enclosing form as the irritant.  Both they and
 
 ## Limitations
 
-The expander calls ordinary globals (`car`, `list`, `not`, `gensym`, ...), so
-redefining one at top level breaks expansion of every later form.  The
+The expander calls ordinary globals (`car`, `list`, `map`, `assq`, `gensym`,
+...), so redefining one at top level breaks expansion of every later form.  The
 generated code for quasiquote and `case` likewise refers to the global
 `cons`, `append`, `apply`, `vector`, and `memv`.

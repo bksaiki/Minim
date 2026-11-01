@@ -50,6 +50,7 @@ never calls them:
 | `(* n ...)` | product; `1` with no arguments |
 | `(quotient n m)` | `n / m`, truncated toward zero |
 | `(remainder n m)` | remainder with the sign of `n` |
+| `(number->string n [radix])` | the digits of `n` in radix 2, 8, 10 (default), or 16 |
 | `(= n ...)` | whether all are equal |
 | `(< n ...)`, `(> ...)`, `(<= ...)`, `(>= ...)` | whether each adjacent pair is in order |
 | `(fixnum? x)` | whether `x` is a fixnum |
@@ -70,6 +71,7 @@ never calls them:
 |---|---|
 | `(cons a d)` | new pair |
 | `(car p)`, `(cdr p)` | first or second field of the pair `p` |
+| `(caar p)`, `(cadr p)`, `(cdar p)`, `(cddr p)` | compositions of `car` and `cdr`: `(cadr p)` is `(car (cdr p))` |
 | `(set-car! p x)`, `(set-cdr! p x)` | sets a field of `p`; void |
 | `(pair? x)` | whether `x` is a pair |
 | `(null? x)` | whether `x` is `'()` |
@@ -99,6 +101,7 @@ never calls them:
 | `(vector-ref v i)` | element `i` of `v` |
 | `(vector-set! v i x)` | sets element `i` of `v`; void |
 | `(vector-length v)` | length of `v` |
+| `(vector->list v [start [end]])` | the elements of `v` from `start` (default 0) to `end` (default its length), as a list |
 | `(vector? x)` | whether `x` is a vector |
 
 ### Strings and symbols

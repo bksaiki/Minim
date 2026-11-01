@@ -35,8 +35,10 @@ the one it contains.
   each form with `minim_read_string` and evaluates it with
   `minim_eval_expanded`, without expansion.  No catch is installed, so an
   error in the prelude, which is a bug in Minim, aborts with the message.
-- The prelude starts with the expander (`macros.md`), then defines the
-  derived forms and the library.
+- The prelude defines the list library, then the expander (`macros.md`),
+  then the derived forms.  Its forms load in order, and each
+  `%define-macro!` builds a transformer as it loads, so the expander code
+  that runs then may call only what is defined above it.
 
 ## Library
 

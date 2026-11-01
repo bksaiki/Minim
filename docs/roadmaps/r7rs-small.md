@@ -7,7 +7,7 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 77 primitives, and a Scheme prelude with the list library
+closures, 83 primitives, and a Scheme prelude with the list library
 (`map`, `append`, `member`, `fold`, ...).  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls, multiple values, and the special forms `quote`, `if`, `define`,
@@ -135,9 +135,8 @@ Not features, but needed as programs grow:
 - Done: startup loads the prelude already expanded, from a checked-in boot
   file (`docs/design/prelude.md`), so it expands nothing and runs under the
   environment's collector settings throughout.
-- Self-host the expander: rewrite it in normal Scheme, regenerating the boot
-  file with itself, then drop internal `define` and `define-values` from the
-  evaluator, which only the expander's unexpanded code uses.
+- Done: the expander is written in normal Scheme and regenerates its own
+  boot file; the evaluator binds definitions only globally.
 - Done: expansion into the `-values` binding forms, so `let` allocates no
   closure and each frame's variables are known before it runs.
 - Separate system bindings from the user's top level, so redefining `car` or
