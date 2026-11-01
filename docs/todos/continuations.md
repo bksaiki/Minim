@@ -175,6 +175,56 @@ cmake --build --preset dev && ctest --preset dev -R 'repl|boot' && ctest --prese
 
 ### Phase 1 - Segmented value stack
 
+**Done.**  Details settled during the phase:
+
+- **A call reserves exactly its own values**, not `MINIM_MAX_ARGS + 1`: an
+  application knows its operand count from the form's length.  With a
+  segment of 8,192 and a cap of 8,191, reserving the cap would have frozen
+  at nearly every call.  The cap is unchanged: a call must fit an empty
+  buffer.
+- **The module** is `src/stack.c` and `src/stack.h`.  The fast paths of
+  push, reserve, and reload are inline, with freezing and reloading out of
+  line; inlining cut the slowdown on call-heavy programs from 6-10% to about
+  4%.
+- **Heights never drift**: a freeze happens at the current height, a call is
+  applied only with its values in the buffer, and only a resuming `ARGS`
+  frame reloads, with the buffer then empty.
+- **`call-with-values`**: a freeze while the producer ran leaves the consumer
+  frozen just below the buffer; `minim_stack_include` copies it back down,
+  without allocating, into the slot its `values` call reserved.  Reloads
+  then ignore a segment's values the buffer already holds.
+- **`minim_catch`** saves only the height and on an error unwinds to it,
+  dropping and reloading segments (`minim_stack_unwind`).  Freezing at
+  entry, as planned, would allocate while callers hold unrooted objects (the
+  REPL's datum), and a saved `below` in a C local would go stale across a
+  collection and `longjmp`.  Phase 2 must revisit this: a continuation from
+  outside, invoked inside, replaces the chain the unwind walks.
+- **`apply`**: within the cap it spreads in place, relocating to the bottom
+  of the buffer if it must; beyond it (`apply_long` in `src/eval.c`), a
+  closure binds from a fresh list (`minim_env_extend_list`), and a primitive
+  takes `minim_gc.spill`, a collector root that `minim_catch` clears.
+  `apply` of `apply`, `values`, `call-with-values`, or `load` beyond the cap
+  raises `too many arguments`.
+- **Tests**: `tests/test_stack.c` (new) drives the module directly, since
+  when a freeze happens depends on how full the buffer is; it caught
+  `minim_stack_unwind` walking off the end of the chain.  `test_eval`:
+  `test_deep_recursion` and `test_many_arguments`; `test_tail_calls` now
+  checks, through a test primitive `stack-height`, that each loop's height
+  at its last iteration equals its height with none, in place of the old
+  array's capacity.  Under stress, recursion 6,000 deep, and no 8,191-operand
+  call: each collection scans the whole buffer, so these took minutes.
+- Measured against `main`, release, run alternately five times:
+
+  | Program | This phase | `main` |
+  |---|---|---|
+  | `(sum 100000)` non-tail, 30 times | 2.16-2.33 s | 2.48-2.59 s |
+  | `fib 27` | 0.29-0.32 s | 0.30-0.32 s |
+  | a `let`-heavy loop | 3.12-3.26 s | 2.95-3.10 s |
+  | the short-lived allocation program | 1.81-1.87 s | 1.72-1.80 s |
+
+  `ctest --preset stress -j 8`: 19-20 s (from 14), `eval_stress` the longest
+  at 17 s.
+
 - `src/gc.h`, `src/gc.c`: `struct minim_value_stack` in place of the values
   array; `below` a root; copy-out, underflow, and push.
 - `src/eval.c`: copy-out before pushing an operator; underflow on return;

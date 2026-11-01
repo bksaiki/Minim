@@ -36,6 +36,7 @@ add_test(NAME boot COMMAND ${CMAKE_COMMAND}
 minim_add_test(object)
 minim_add_test(heap INTERNAL)
 minim_add_test(gc INTERNAL)
+minim_add_test(stack INTERNAL)
 minim_add_test(string INTERNAL)
 minim_add_test(symbol)
 minim_add_test(print INTERNAL)

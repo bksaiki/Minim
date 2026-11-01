@@ -44,6 +44,21 @@ minim_obj minim_env_extend(minim_obj params, minim_obj *args, size_t n, minim_ob
     MINIM_RETURN(minim_cons(bindings, parent));
 }
 
+minim_obj minim_env_extend_list(minim_obj params, minim_obj args, minim_obj parent) {
+    minim_obj bindings = MINIM_NIL;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&params, &args, &parent, &bindings, &x);
+    for (; minim_is_pair(params); params = minim_cdr(params), args = minim_cdr(args)) {
+        x = minim_cons(minim_car(params), minim_car(args));
+        bindings = minim_cons(x, bindings);
+    }
+    if (minim_is_symbol(params)) {
+        x = minim_cons(params, args);
+        bindings = minim_cons(x, bindings);
+    }
+    MINIM_RETURN(minim_cons(bindings, parent));
+}
+
 minim_obj minim_env_lookup(minim_obj env, minim_obj sym) {
     minim_obj b = find_binding(env, sym);
     if (!minim_is_null(b))

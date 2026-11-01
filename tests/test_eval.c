@@ -7,6 +7,7 @@
 
 #include "gc.h"
 #include "minim.h"
+#include "stack.h"
 #include "symbol.h"
 #include "test.h"
 
@@ -75,16 +76,16 @@ static bool values_are(const char *src, const char *expect) {
 
 // minim_eval takes exactly one value; minim_eval_values any number.
 static void test_values(void) {
-    size_t before = minim_gc.values.len;
+    size_t before = minim_stack_height();
     CHECK(fails_with("(values)", "wrong number of values"));
     CHECK(fails_with("(values 1 2)", "wrong number of values"));
-    CHECK_EQ(minim_gc.values.len, before);
+    CHECK_EQ(minim_stack_height(), before);
     CHECK(evals_to("(values 1)", "1"));
     CHECK(values_are("(values)", "()"));
     CHECK(values_are("(values 1 2)", "(1 2)"));
     CHECK(values_are("5", "(5)"));
     CHECK(values_are("(call-with-values (lambda () (values 1 2)) values)", "(1 2)"));
-    CHECK_EQ(minim_gc.values.len, before);
+    CHECK_EQ(minim_stack_height(), before);
 }
 
 // The core forms binding multiple values, without the expander, so the
@@ -93,7 +94,7 @@ static void test_binding_values(void) {
     minim_obj expand = minim_symbol_value(minim_sym_expand);
     MINIM_FRAME(&expand);
     minim_set_symbol_value(minim_sym_expand, MINIM_UNBOUND);
-    size_t before = minim_gc.values.len;
+    size_t before = minim_stack_height();
 
     CHECK(evals_to("(define-values (a b) (values 1 2)) (cons a b)", "(1 . 2)"));
     CHECK(evals_to("(define-values (a . r) (values 1 2 3)) (cons a r)", "(1 2 3)"));
@@ -124,7 +125,7 @@ static void test_binding_values(void) {
     CHECK(fails_with("(let-values ((a)) 1)", "bad syntax"));
     CHECK(fails_with("(let-values (((1) 1)) 1)", "bad syntax"));
     CHECK(fails_with("(letrec-values (((a) 1) . b) 1)", "bad syntax"));
-    CHECK_EQ(minim_gc.values.len, before);
+    CHECK_EQ(minim_stack_height(), before);
 
     minim_set_symbol_value(minim_sym_expand, expand);
     MINIM_RETURN_VOID;
@@ -227,9 +228,9 @@ static void test_errors(void) {
 }
 
 static void test_value_stack_restored(void) {
-    size_t before = minim_gc.values.len;
+    size_t before = minim_stack_height();
     CHECK(fails_with("(+ 1 (+ 2 (car 5)))", "car: not a pair"));
-    CHECK_EQ(minim_gc.values.len, before);
+    CHECK_EQ(minim_stack_height(), before);
 }
 
 // Collects, then returns its second argument.
@@ -249,9 +250,9 @@ static void test_primitive_allocates(void) {
 }
 
 static void test_apply_restores_value_stack(void) {
-    size_t before = minim_gc.values.len;
+    size_t before = minim_stack_height();
     CHECK(fails_with("(+ 1 (apply + 1 '(2 . 3)))", "apply: not a list"));
-    CHECK_EQ(minim_gc.values.len, before);
+    CHECK_EQ(minim_stack_height(), before);
 }
 
 // map in the prelude recurses on the heap, not the C stack.
@@ -266,43 +267,64 @@ static void test_map_long_list(void) {
     CHECK(evals_to(src, expect));
 }
 
+static minim_obj stack_height(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    return minim_fixnum((intptr_t)minim_stack_height());
+}
+
+// The value of `(loop n)` after the definitions in `tmpl`, an integer.
+static intptr_t loop_result(const char *tmpl, int n) {
+    char src[512];
+    snprintf(src, sizeof(src), tmpl, n);
+    FILE *f = input(src);
+    minim_obj val;
+    bool ok = minim_catch(eval_file, f, &val);
+    fclose(f);
+    if (!ok) {
+        minim_write_error(stderr);
+        return -1;
+    }
+    return minim_fixnum_value(val);
+}
+
+// Each loop returns the value stack's height at its last iteration, which
+// must be what it is with no iterations, and leaves the heap small.
 static void test_tail_calls(void) {
-    size_t cap = minim_gc.values.cap;  // already grown by the prelude
-    char src[256];
-    snprintf(src, sizeof(src),
-             "(define loop (lambda (n) (if (= n 0) 'done (loop (- n 1))))) (loop %d)",
-             gc_stressed() ? 10000 : 100000);
-    CHECK(evals_to(src, "done"));
-    // Without tail calls, every iteration's frame would still be live.
-    CHECK(minim_gc.size <= 8 * 1024 * 1024);
-    CHECK_EQ(minim_gc.values.cap, cap);
+    minim_obj sym = minim_intern_cstr("stack-height");
+    MINIM_FRAME(&sym);
+    minim_obj p = minim_make_primitive(sym, stack_height, 0, 0);
+    minim_set_symbol_value(sym, p);
 
-    // `apply` in tail position is a tail call too.
-    snprintf(src, sizeof(src),
-             "(define loop (lambda (n) (if (= n 0) 'done (apply loop (list (- n 1)))))) (loop %d)",
-             gc_stressed() ? 2000 : 100000);
-    CHECK(evals_to(src, "done"));
-    CHECK(minim_gc.size <= 8 * 1024 * 1024);
-    CHECK_EQ(minim_gc.values.cap, cap);
-
-    // So are the last subform of `and`, `or`, and `when`, the body of a named
-    // `let` or a `let-values`, and the consumer of `call-with-values`.
     const char *loops[] = {
-        "(define loop (lambda (n) (and #t (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
-        "(define loop (lambda (n) (or #f (if (= n 0) 'done (loop (- n 1)))))) (loop %d)",
-        "(define loop (lambda (n) (if (= n 0) 'done (when #t (loop (- n 1)))))) (loop %d)",
-        "(let loop ((n %d)) (cond ((= n 0) 'done) (else (loop (- n 1)))))",
-        "(define loop (lambda (n) (if (= n 0) 'done (let-values (((m) (- n 1))) (loop m)))))"
+        "(define loop (lambda (n) (if (= n 0) (stack-height) (loop (- n 1))))) (loop %d)",
+        // `apply` in tail position, and the last subform of `and`, `or`, and
+        // `when`, the body of a named `let` or a `let-values`, and the consumer
+        // of `call-with-values`
+        "(define loop (lambda (n) (if (= n 0) (stack-height) (apply loop (list (- n 1))))))"
         " (loop %d)",
-        "(define loop (lambda (n) (if (= n 0) 'done"
-        " (call-with-values (lambda () (values (- n 1) 0)) (lambda (m z) (loop m)))))) (loop %d)",
+        "(define loop (lambda (n) (and #t (if (= n 0) (stack-height) (loop (- n 1))))))"
+        " (loop %d)",
+        "(define loop (lambda (n) (or #f (if (= n 0) (stack-height) (loop (- n 1))))))"
+        " (loop %d)",
+        "(define loop (lambda (n) (if (= n 0) (stack-height) (when #t (loop (- n 1))))))"
+        " (loop %d)",
+        "(define (loop n) (let lp ((n n)) (cond ((= n 0) (stack-height)) (else (lp (- n 1))))))"
+        " (loop %d)",
+        "(define loop (lambda (n) (if (= n 0) (stack-height)"
+        " (let-values (((m) (- n 1))) (loop m))))) (loop %d)",
+        "(define loop (lambda (n) (if (= n 0) (stack-height)"
+        " (call-with-values (lambda () (values (- n 1) 0)) (lambda (m z) (loop m))))))"
+        " (loop %d)",
     };
     for (size_t i = 0; i < sizeof(loops) / sizeof(loops[0]); i++) {
-        snprintf(src, sizeof(src), loops[i], gc_stressed() ? 2000 : 100000);
-        CHECK(evals_to(src, "done"));
+        intptr_t base = loop_result(loops[i], 0);
+        CHECK(base >= 0);
+        CHECK_EQ(loop_result(loops[i], gc_stressed() ? 2000 : 100000), base);
+        // Without tail calls, every iteration's frame would still be live.
         CHECK(minim_gc.size <= 8 * 1024 * 1024);
-        CHECK_EQ(minim_gc.values.cap, cap);
     }
+    MINIM_RETURN_VOID;
 }
 
 // `prefix`, then " 0" `n` times, then `suffix`, in a new malloc'd string.
@@ -332,6 +354,60 @@ static void test_large_forms(void) {
     free(src);
 }
 
+// Non-tail recursion deep enough to freeze and reload many segments, with one
+// or several values returned at every depth, and an error from the bottom.
+static void test_deep_recursion(void) {
+    size_t before = minim_stack_height();
+    const int n = gc_stressed() ? 6000 : 100000;  // about two values a level
+    char src[512];
+    char expect[64];
+    snprintf(src, sizeof(src),
+             "(define (sum n) (if (= n 0) 0 (+ n (sum (- n 1))))) (sum %d)", n);
+    snprintf(expect, sizeof(expect), "%lld", (long long)n * (n + 1) / 2);
+    CHECK(evals_to(src, expect));
+    snprintf(src, sizeof(src),
+             "(define (sum2 n) (if (= n 0) 0"
+             " (+ (call-with-values (lambda () (values n 1)) -) (sum2 (- n 1)))))"
+             " (sum2 %d)", n);
+    snprintf(expect, sizeof(expect), "%lld", (long long)n * (n - 1) / 2);
+    CHECK(evals_to(src, expect));
+    snprintf(src, sizeof(src),
+             "(define (bad n) (if (= n 0) (car 5) (+ 1 (bad (- n 1))))) (bad %d)", n);
+    CHECK(fails_with(src, "car: not a pair"));
+    CHECK_EQ(minim_stack_height(), before);
+    CHECK_EQ(minim_gc.values.below, MINIM_NIL);
+}
+
+// A call written with more operands than fit raises; `apply` takes any number.
+static void test_many_arguments(void) {
+    if (!gc_stressed()) {  // the cap is the point, and minutes under stress
+        char *src = repeat_zeros("(+", MINIM_MAX_ARGS, ")");
+        CHECK(evals_to(src, "0"));
+        free(src);
+        src = repeat_zeros("(+", MINIM_MAX_ARGS + 1, ")");
+        CHECK(fails_with(src, "too many arguments"));
+        free(src);
+    }
+
+    const int n = gc_stressed() ? 10000 : 100000;  // more than MINIM_MAX_ARGS
+    char buf[1024];
+    char expect[64];
+    snprintf(buf, sizeof(buf),
+             "(define (iota n) (let loop ((i n) (acc '()))"
+             " (if (= i 0) acc (loop (- i 1) (cons i acc)))))"
+             " (define l (iota %d))"
+             " (define (count . r) (length r))"
+             " (define (f a b . r) (list a b (length r)))"
+             " (list (apply count l) (apply f 1 2 l) (apply + 1 2 l) (length (apply list l)))",
+             n);
+    snprintf(expect, sizeof(expect), "(%d (1 2 %d) %lld %d)", n, n,
+             (long long)n * (n + 1) / 2 + 3, n);
+    CHECK(evals_to(buf, expect));
+    CHECK(fails_with("(apply values l)", "too many arguments"));
+    CHECK(fails_with("(apply car l)", "arity mismatch"));
+    CHECK_EQ(minim_gc.spill.len, 0);
+}
+
 int main(void) {
     minim_init();
     test_self_evaluating();
@@ -347,7 +423,9 @@ int main(void) {
     test_binding_values();
     test_tail_calls();
     test_map_long_list();
-    test_large_forms();  // after test_tail_calls, which checks the value stack's capacity
+    test_large_forms();
+    test_deep_recursion();
+    test_many_arguments();  // after test_tail_calls, which checks the value stack's capacity
     minim_shutdown();
     return test_result();
 }
