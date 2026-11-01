@@ -52,12 +52,13 @@ today, and `minim_prelude_init` evaluates its forms *without* expanding them,
 through a new internal entry point, `minim_eval_expanded`, that skips
 `%expand`.
 
-**Generating it.**  A driver, `tools/boot.c`, links `libminim` (so the running
-expander is the one built from the current boot file), loads
-`tools/boot.scm`, reads `src/prelude.scm` with `minim_read_file`, and writes
-each form's expansion.  It expands without evaluating: the running system
+**Generating it.**  A driver, `src/boot.c`, links `libminim` (so the running
+expander is the one built from the current boot file), loads `src/boot.scm`,
+reads `src/prelude.scm` with `minim_read_file`, and writes each form's
+expansion.  Both sit beside what they correspond to (`main.c`,
+`prelude.scm`), as Guile keeps its expander's generator beside it.  It expands without evaluating: the running system
 already has every global and macro the prelude defines.  `%boot-form` in
-`tools/boot.scm` does the per-form work:
+`src/boot.scm` does the per-form work:
 
 - A top-level `begin` is spliced, as `%expand` does.
 - A `define-syntax` is expanded (which registers the macro, so later forms
@@ -76,6 +77,7 @@ their base names, so two `x`s would read back as one.  Before writing,
 counting distinct symbols of each base name within the top-level form, so a
 change to one form doesn't renumber the others.  A symbol is interned when
 `(string->symbol (symbol->string s))` is itself.  `x.1` reads as a symbol.
+`N` is written with `number->string`, which Phase 0 adds.
 
 **Up to date.**  A CMake target, `boot`, regenerates `src/prelude.boot` in the
 source tree; a test, `boot`, generates it into the build tree and compares.
@@ -86,11 +88,28 @@ new one.
 
 ## Phases
 
+### Phase 0 - number->string
+
+**Done.**  As planned; hex digits are lowercase.
+
+- `src/prims.c`: `(number->string z [radix])` (R7RS 6.2.7) for fixnums, with
+  radix 2, 8, 10, or 16, default 10.
+
+Separate because it is a library addition the generator needs, reviewable on
+its own.
+
+Tests: `tests/repl/prims.scm`: each radix, zero, negatives, the largest and
+smallest fixnums; errors for a non-fixnum and a bad radix.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'prims' && ctest --preset stress -R 'prims'
+```
+
 ### Phase 1 - Writing expanded forms
 
 - `src/prelude.scm`: `%define-macro!`, used by `%expand-define-syntax`.
-- `tools/boot.scm`: `%boot-form` and the renaming.
-- `tools/boot.c` and its CMake target `boot_gen` (not built by default):
+- `src/boot.scm`: `%boot-form` and the renaming.
+- `src/boot.c` and its CMake target `boot_gen` (not built by default):
   writes the boot file to a given path.
 
 Separate because it builds and checks the writer before anything depends on
@@ -98,7 +117,7 @@ its output.
 
 Tests:
 
-- `tests/repl/boot.scm` (new), which loads `tools/boot.scm`: renaming (two
+- `tests/repl/boot.scm` (new), which loads `src/boot.scm`: renaming (two
   distinct `x`s get `x.1` and `x.2`, the same symbol one name, interned
   symbols unchanged, numbering restarting per form), `begin` splicing,
   `define-syntax` written as `%define-macro!`, and a `%top-renames` failure.
