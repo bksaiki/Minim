@@ -16,15 +16,22 @@ static size_t seg_start(minim_obj seg) {
     return (size_t)minim_fixnum_value(minim_vector_ref(seg, SEG_START));
 }
 
-// Freezes the buffer's first `k` values into a new segment, moving the rest
-// down.
-static void freeze(size_t k) {
+// A new frozen segment of the buffer's first `k` values, over `below`.
+static minim_obj make_segment(size_t k) {
     minim_obj seg = minim_make_vector(k + SEG_VALUES, MINIM_NIL);  // the whole buffer is a root
     minim_value_stack *s = &minim_gc.values;
     minim_vector_set(seg, SEG_PREV, s->below);
     minim_vector_set(seg, SEG_START, minim_fixnum((intptr_t)s->start));
     for (size_t i = 0; i < k; i++)
         minim_vector_set(seg, SEG_VALUES + i, s->items[i]);
+    return seg;
+}
+
+// Freezes the buffer's first `k` values into a new segment, moving the rest
+// down.
+static void freeze(size_t k) {
+    minim_obj seg = make_segment(k);
+    minim_value_stack *s = &minim_gc.values;
     memmove(s->items, s->items + k, (s->len - k) * sizeof(minim_obj));
     s->len -= k;
     s->start += k;
@@ -97,15 +104,7 @@ void minim_stack_include(size_t h) {
 minim_obj minim_stack_capture(size_t h) {
     assert(h >= minim_gc.values.start && h <= minim_stack_height());
     size_t k = h - minim_gc.values.start;
-    if (k == 0)
-        return minim_gc.values.below;
-    minim_obj seg = minim_make_vector(k + SEG_VALUES, MINIM_NIL);  // the whole buffer is a root
-    minim_value_stack *s = &minim_gc.values;
-    minim_vector_set(seg, SEG_PREV, s->below);
-    minim_vector_set(seg, SEG_START, minim_fixnum((intptr_t)s->start));
-    for (size_t i = 0; i < k; i++)
-        minim_vector_set(seg, SEG_VALUES + i, s->items[i]);
-    return seg;
+    return k == 0 ? minim_gc.values.below : make_segment(k);
 }
 
 void minim_stack_reinstate(minim_obj stack, size_t height, size_t from, size_t n) {
