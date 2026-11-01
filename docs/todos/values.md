@@ -161,6 +161,14 @@ cmake --build --preset dev && ctest --preset dev -R 'eval|values' && ctest --pre
 
 ### Phase 2 - Binding forms in the evaluator
 
+**Done.**  As planned.  `bind_values` binds formals to the values atop the
+value stack for both frame kinds.  A new register, `frame`, holds the frame a
+let form binds into between `let_values` steps.  Each clause after the first
+allocates one pair, for the frame's `(clauses . body)`.  `test_binding_values`
+also checks that the body is in tail position.  Injected bugs, each caught:
+`let-values` inits evaluated in the new frame, and `define-values` refusing
+several values.
+
 - `src/eval.c`: `define-values`, `let-values`, and `letrec-values` as core
   forms, with the `DEFINE_VALUES` and `LET_VALUES` frames.
 - `src/symbol.c`, `src/symbol.h`: their symbols.

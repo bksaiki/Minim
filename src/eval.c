@@ -15,17 +15,20 @@
 // Continuation frames are vectors `#(kind next code env base)`.
 enum { F_KIND, F_NEXT, F_CODE, F_ENV, F_BASE, FRAME_SIZE };
 
-// Frame kinds, with what `code` holds.  `base` is a value-stack height: for
-// K_ARGS, where its call's values start; for K_CALL_VALUES, the consumer's slot.
+// Frame kinds, with what `code` holds.  For K_ARGS, `base` is the value-stack
+// height where its call's values start; for K_CALL_VALUES, the consumer's slot;
+// for K_LET_VALUES, the new frame its clauses bind into.
 enum {
-    K_IF,           // branches `(then [else])`
-    K_SEQ,          // remaining body
-    K_DEFINE,       // symbol
-    K_SET,          // symbol
-    K_ARGS,         // remaining operands
-    K_EXPAND,       // unused
-    K_TOPLEVEL,     // remaining top-level forms
-    K_CALL_VALUES,  // unused
+    K_IF,             // branches `(then [else])`
+    K_SEQ,            // remaining body
+    K_DEFINE,         // symbol
+    K_SET,            // symbol
+    K_ARGS,           // remaining operands
+    K_EXPAND,         // unused
+    K_TOPLEVEL,       // remaining top-level forms
+    K_CALL_VALUES,    // unused
+    K_DEFINE_VALUES,  // formals
+    K_LET_VALUES,     // `(clauses . body)`, the first clause's init being evaluated
 };
 
 static minim_obj make_frame(intptr_t kind, minim_obj next, minim_obj code, minim_obj env,
@@ -55,6 +58,16 @@ static bool valid_params(minim_obj params) {
             return false;
     }
     return minim_is_null(params) || minim_is_symbol(params);
+}
+
+// Whether `clauses` is a list of `(formals init)`.
+static bool valid_clauses(minim_obj clauses) {
+    for (; minim_is_pair(clauses); clauses = minim_cdr(clauses)) {
+        minim_obj c = minim_car(clauses);
+        if (list_length(c) != 2 || !valid_params(minim_car(c)))
+            return false;
+    }
+    return minim_is_null(clauses);
 }
 
 // Whether a closure with `params` accepts `n` arguments.
@@ -87,17 +100,34 @@ static _Noreturn void wrong_number_of_values(size_t n) {
     minim_error("wrong number of values", pop_values(n));
 }
 
+// Binds `formals` in `env`, with minim_env_define, to the `n` values atop the
+// value stack, and pops them.
+static void bind_values(minim_obj env, minim_obj formals, size_t n) {
+    if (!accepts(formals, n))
+        wrong_number_of_values(n);
+    MINIM_FRAME(&env, &formals);
+    size_t start = minim_gc.values.len - n;
+    size_t i = start;
+    for (; minim_is_pair(formals); formals = minim_cdr(formals), i++)
+        minim_env_define(env, minim_car(formals), minim_gc.values.items[i]);
+    if (minim_is_symbol(formals))
+        minim_env_define(env, formals, pop_values(minim_gc.values.len - i));
+    minim_gc.values.len = start;
+    MINIM_RETURN_VOID;
+}
+
 // Evaluates `expr`; returns its one value, or the list of its values if `many`.
 static minim_obj eval(minim_obj expr, bool many) {
     minim_obj env = MINIM_NIL;
     minim_obj val = MINIM_VOID;
     minim_obj k = MINIM_NIL;  // continuation; '() returns from eval
     minim_obj x = MINIM_NIL;  // scratch
+    minim_obj frame = MINIM_NIL;  // the frame a let-values form binds into
     size_t base = 0;  // value-stack height where the applied call's values start
     // Values being returned: 1 in `val`, or any other count atop the value stack.
     size_t nvals = 1;
 
-    MINIM_FRAME(&expr, &env, &val, &k, &x);
+    MINIM_FRAME(&expr, &env, &val, &k, &x, &frame);
 
 toplevel:  // Expands `expr` with `%expand`, if bound, then evaluates it globally.
     env = MINIM_NIL;
@@ -145,6 +175,20 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
             k = make_frame(kind, k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
             expr = minim_car(minim_cdr(minim_cdr(expr)));
             goto eval;
+        } else if (x == minim_sym_define_values) {
+            if (len != 3 || !valid_params(minim_car(minim_cdr(expr))))
+                minim_error("bad syntax", expr);
+            k = make_frame(K_DEFINE_VALUES, k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
+            expr = minim_car(minim_cdr(minim_cdr(expr)));
+            goto eval;
+        } else if (x == minim_sym_let_values || x == minim_sym_letrec_values) {
+            if (len < 3 || !valid_clauses(minim_car(minim_cdr(expr))))
+                minim_error("bad syntax", expr);
+            frame = minim_env_extend(MINIM_NIL, NULL, 0, env);
+            if (x == minim_sym_letrec_values)
+                env = frame;
+            x = minim_cdr(expr);
+            goto let_values;
         } else if (x == minim_sym_lambda) {
             if (len < 3 || !valid_params(minim_car(minim_cdr(expr))))
                 minim_error("bad syntax", expr);
@@ -172,6 +216,17 @@ sequence:  // Evaluates the non-empty body `x` in `env`; the last expression is 
     expr = minim_car(x);
     goto eval;
 
+let_values:  // Evaluates the next init of `x`, `(clauses . body)`, in `env`, or else
+             // the body in `frame`.
+    if (minim_is_null(minim_car(x))) {
+        env = frame;
+        x = minim_cdr(x);
+        goto sequence;
+    }
+    k = make_frame(K_LET_VALUES, k, x, env, frame);
+    expr = minim_car(minim_cdr(minim_car(minim_car(x))));
+    goto eval;
+
 ret:  // Passes the values being returned to `k`.
     if (minim_is_null(k)) {
         if (many)
@@ -184,11 +239,11 @@ ret:  // Passes the values being returned to `k`.
     k = minim_vector_ref(x, F_NEXT);
     intptr_t kind = minim_fixnum_value(minim_vector_ref(x, F_KIND));
     if (nvals != 1) {
-        if (kind != K_SEQ && kind != K_TOPLEVEL && kind != K_CALL_VALUES)
-            wrong_number_of_values(nvals);
-        if (kind != K_CALL_VALUES) {  // discarded
+        if (kind == K_SEQ || kind == K_TOPLEVEL) {  // discarded
             minim_gc.values.len -= nvals;
             nvals = 1;
+        } else if (kind != K_CALL_VALUES && kind != K_DEFINE_VALUES && kind != K_LET_VALUES) {
+            wrong_number_of_values(nvals);
         }
     }
     switch (kind) {
@@ -230,6 +285,23 @@ ret:  // Passes the values being returned to `k`.
         k = make_frame(K_TOPLEVEL, k, minim_cdr(x), MINIM_NIL, MINIM_NIL);
         expr = minim_car(x);
         goto toplevel;
+    case K_DEFINE_VALUES:
+        if (nvals == 1)
+            minim_values_push(val);
+        bind_values(minim_vector_ref(x, F_ENV), minim_vector_ref(x, F_CODE), nvals);
+        nvals = 1;
+        val = MINIM_VOID;
+        goto ret;
+    case K_LET_VALUES:
+        if (nvals == 1)
+            minim_values_push(val);
+        env = minim_vector_ref(x, F_ENV);
+        frame = minim_vector_ref(x, F_BASE);
+        x = minim_vector_ref(x, F_CODE);
+        bind_values(frame, minim_car(minim_car(minim_car(x))), nvals);
+        nvals = 1;
+        x = minim_cons(minim_cdr(minim_car(x)), minim_cdr(x));
+        goto let_values;
     case K_CALL_VALUES:  // apply the consumer, below the values
         if (nvals == 1)
             minim_values_push(val);

@@ -5,6 +5,7 @@
 
 #include "gc.h"
 #include "minim.h"
+#include "symbol.h"
 #include "test.h"
 
 // Evaluates every datum in the file `f`; returns the last value.
@@ -82,6 +83,57 @@ static void test_values(void) {
     CHECK(values_are("5", "(5)"));
     CHECK(values_are("(call-with-values (lambda () (values 1 2)) values)", "(1 2)"));
     CHECK_EQ(minim_gc.values.len, before);
+}
+
+// The core forms binding multiple values, without the expander, which doesn't
+// know them yet.
+static void test_binding_values(void) {
+    minim_obj expand = minim_symbol_value(minim_sym_expand);
+    MINIM_FRAME(&expand);
+    minim_set_symbol_value(minim_sym_expand, MINIM_UNBOUND);
+    size_t before = minim_gc.values.len;
+
+    CHECK(evals_to("(define-values (a b) (values 1 2)) (cons a b)", "(1 . 2)"));
+    CHECK(evals_to("(define-values (a . r) (values 1 2 3)) (cons a r)", "(1 2 3)"));
+    CHECK(evals_to("(define-values r (values 1 2)) r", "(1 2)"));
+    CHECK(evals_to("(define-values (a) 5) a", "5"));
+    CHECK(evals_to("(define-values () (values))", "#<void>"));
+    CHECK(evals_to("(define a 0) (define f (lambda () (define-values (a b) (values 1 2)) (+ a b)))"
+                   " (cons (f) a)", "(3 . 0)"));
+
+    CHECK(evals_to("(let-values (((a b) (values 1 2)) ((c) 3)) (list a b c))", "(1 2 3)"));
+    CHECK(evals_to("(let-values (((a . r) (values 1 2 3)) (s (values))) (list a r s))",
+                   "(1 (2 3) ())"));
+    CHECK(evals_to("(let-values () 1 2)", "2"));
+    CHECK(evals_to("(define a 1) (let-values (((a) 2) ((b) a)) (list a b))", "(2 1)"));
+    CHECK(evals_to("(letrec-values (((a) 1) ((b) (+ a 1))) (list a b))", "(1 2)"));
+    CHECK(evals_to("(letrec-values (((ev? od?) (values (lambda (n) (if (= n 0) #t (od? (- n 1))))"
+                   " (lambda (n) (if (= n 0) #f (ev? (- n 1)))))))"
+                   " (ev? 10))", "#t"));
+
+    // The body is in tail position.
+    size_t cap = minim_gc.values.cap;
+    char src[256];
+    snprintf(src, sizeof(src),
+             "(define loop (lambda (n) (if (= n 0) 'done (let-values (((m) (- n 1))) (loop m)))))"
+             " (loop %d)", gc_stressed() ? 2000 : 100000);
+    CHECK(evals_to(src, "done"));
+    CHECK(minim_gc.size <= 8 * 1024 * 1024);
+    CHECK_EQ(minim_gc.values.cap, cap);
+
+    CHECK(fails_with("(define-values (a b) (values 1))", "wrong number of values"));
+    CHECK(fails_with("(define-values (a . r) (values))", "wrong number of values"));
+    CHECK(fails_with("(let-values (((a) (values 1 2))) a)", "wrong number of values"));
+    CHECK(fails_with("(define-values (a 1) 2)", "bad syntax"));
+    CHECK(fails_with("(define-values (a))", "bad syntax"));
+    CHECK(fails_with("(let-values (((a) 1)))", "bad syntax"));
+    CHECK(fails_with("(let-values ((a)) 1)", "bad syntax"));
+    CHECK(fails_with("(let-values (((1) 1)) 1)", "bad syntax"));
+    CHECK(fails_with("(letrec-values (((a) 1) . b) 1)", "bad syntax"));
+    CHECK_EQ(minim_gc.values.len, before);
+
+    minim_set_symbol_value(minim_sym_expand, expand);
+    MINIM_RETURN_VOID;
 }
 
 static void test_self_evaluating(void) {
@@ -269,6 +321,7 @@ int main(void) {
     test_apply_restores_value_stack();
     test_primitive_allocates();
     test_values();
+    test_binding_values();
     test_tail_calls();
     test_map_long_list();  // after test_tail_calls, which checks the value stack's capacity
     minim_shutdown();

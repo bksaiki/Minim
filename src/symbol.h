@@ -15,6 +15,9 @@ extern minim_obj minim_sym_begin;
 /** The symbol `define`. */
 extern minim_obj minim_sym_define;
 
+/** The symbol `define-values`. */
+extern minim_obj minim_sym_define_values;
+
 /** The symbol `%expand`, the expander called on each top-level form. */
 extern minim_obj minim_sym_expand;
 
@@ -23,6 +26,12 @@ extern minim_obj minim_sym_if;
 
 /** The symbol `lambda`. */
 extern minim_obj minim_sym_lambda;
+
+/** The symbol `let-values`. */
+extern minim_obj minim_sym_let_values;
+
+/** The symbol `letrec-values`. */
+extern minim_obj minim_sym_letrec_values;
 
 /** The symbol `quasiquote`. */
 extern minim_obj minim_sym_quasiquote;
