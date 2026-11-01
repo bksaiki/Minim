@@ -82,6 +82,9 @@ procedure's frame, but expanded code no longer uses that.  See Open items.
 
 ### Phase 1 - Expansion tests
 
+**Done.**  As planned; also `letrec*`, `letrec-syntax`, and a nested body.
+The test has no stderr, so no `.err` file.
+
 - `tests/repl/expansion.scm` (new): prints `(%expand 'form)` for each row of
   the Context table, plus `do`, `let*-values`, nested bodies, and a body with
   `define-syntax`.  Uninterned names print as their base names, so the output
