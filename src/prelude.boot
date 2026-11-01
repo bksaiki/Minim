@@ -23,7 +23,7 @@
 (define %take (lambda (lst.1 n.1) (if (= n.1 0) '() (cons (car lst.1) (%take (cdr lst.1) (- n.1 1))))))
 (define %length (lambda (x.1 n.1) (if (null? x.1) (begin n.1) (if (pair? x.1) (begin (%length (cdr x.1) (+ n.1 1))) (begin #f)))))
 (define %binding-form? (lambda (x.1) (if (eq? (%length x.1 0) 3) (symbol? (cadr x.1)) #f)))
-(define %define-procedure (lambda (x.1) (if (not (if (pair? (cdr x.1)) (pair? (cadr x.1)) #f)) (begin x.1) (if (if (%length x.1 0) (if (< 2 (%length x.1 0)) (symbol? (car (cadr x.1))) #f) #f) (begin (cons (car x.1) (cons (car (cadr x.1)) (cons (cons (%make-alias 'lambda '()) (cons (cdr (cadr x.1)) (append (cddr x.1) '()))) '())))) (begin (%bad-syntax x.1))))))
+(define %define-procedure (lambda (x.1) (letrec-values (((n.1) (%length x.1 0))) (if (not (if (pair? (cdr x.1)) (pair? (cadr x.1)) #f)) (begin x.1) (if (if n.1 (if (< 2 n.1) (symbol? (car (cadr x.1))) #f) #f) (begin (cons (car x.1) (cons (car (cadr x.1)) (cons (cons (%make-alias 'lambda '()) (cons (cdr (cadr x.1)) (append (cddr x.1) '()))) '())))) (begin (%bad-syntax x.1)))))))
 (define %extend (lambda (env.1) (cons (list '()) env.1)))
 (define %bind-variable! (lambda (env.1 id.1) (let-values (((name.1) (gensym (symbol->string id.1)))) (set-car! (car env.1) (cons (cons id.1 name.1) (caar env.1))) name.1)))
 (define %bind-macro! (lambda (env.1 id.1 transformer.1) (set-car! (car env.1) (cons (cons id.1 transformer.1) (caar env.1)))))

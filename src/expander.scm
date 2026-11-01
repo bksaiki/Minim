@@ -38,8 +38,9 @@
 ;; `(define name (lambda formals body ...))`.  The `lambda` is an alias for the
 ;; special form, so a local binding can't capture it.
 (define (%define-procedure x)
+  (define n (%length x 0))
   (cond ((not (and (pair? (cdr x)) (pair? (cadr x)))) x)
-        ((and (%length x 0) (< 2 (%length x 0)) (symbol? (car (cadr x))))
+        ((and n (< 2 n) (symbol? (car (cadr x))))
          `(,(car x) ,(car (cadr x)) (,(%make-alias 'lambda '()) ,(cdr (cadr x)) ,@(cddr x))))
         (else (%bad-syntax x))))
 
