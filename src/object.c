@@ -13,10 +13,36 @@
 #include "prims.h"
 #include "symbol.h"
 
+minim_obj minim_base_rtd;
+
+// Makes the base rtd, which is its own rtd.
+static void record_init(void) {
+    minim_obj *p = minim_heap_alloc(minim_record_size(MINIM_RTD_LENGTH));
+    minim_base_rtd = (minim_obj)p | MINIM_TAG_TYPED;
+    p[0] = minim_base_rtd;
+    p[1 + MINIM_RTD_NAME] = MINIM_FALSE;
+    p[1 + MINIM_RTD_NFIELDS] = minim_fixnum(MINIM_RTD_LENGTH);
+    p[1 + MINIM_RTD_FIELDS] = MINIM_NIL;
+    minim_gc_add_global(&minim_base_rtd);
+
+    minim_obj fields = MINIM_NIL;
+    MINIM_FRAME(&fields);
+    const char *names[] = {"fields", "nfields", "name"};
+    for (size_t i = 0; i < MINIM_RTD_LENGTH; i++) {
+        minim_obj sym = minim_intern_cstr(names[i]);
+        fields = minim_cons(sym, fields);
+    }
+    minim_record_set(minim_base_rtd, MINIM_RTD_FIELDS, fields);
+    minim_obj name = minim_intern_cstr("record-type");
+    minim_record_set(minim_base_rtd, MINIM_RTD_NAME, name);
+    MINIM_RETURN_VOID;
+}
+
 void minim_init(void) {
     minim_gc_init();
     minim_error_init();
     minim_symbol_init();
+    record_init();
     minim_prims_init();
     minim_prelude_init();
 }
@@ -81,6 +107,16 @@ minim_obj minim_make_continuation(minim_obj k, minim_obj stack, size_t height) {
     p[1] = k;
     p[2] = stack;
     p[3] = minim_fixnum((intptr_t)height);
+    MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
+}
+
+minim_obj minim_make_record(minim_obj rtd) {
+    MINIM_FRAME(&rtd);
+    size_t n = (size_t)minim_fixnum_value(minim_record_ref(rtd, MINIM_RTD_NFIELDS));
+    minim_obj *p = minim_heap_alloc(minim_record_size(n));
+    p[0] = rtd;
+    for (size_t i = 0; i < n; i++)
+        p[1 + i] = MINIM_FALSE;
     MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
 }
 

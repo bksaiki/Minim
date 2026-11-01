@@ -147,6 +147,12 @@ void minim_gc_add_global(minim_obj *p) {
     push_root(&minim_gc, &minim_gc.globals, p);
 }
 
+// Fields of records of the rtd `rtd`, which may have been copied: copying
+// leaves `nfields`, at word 2, in place.
+static size_t rtd_nfields(minim_obj rtd) {
+    return (size_t)minim_fixnum_value(((const minim_obj *)(rtd - MINIM_TAG_TYPED))[2]);
+}
+
 static size_t typed_size(minim_obj header) {
     size_t n = minim_header_length(header);
     switch (minim_header_type(header)) {
@@ -160,6 +166,8 @@ static size_t typed_size(minim_obj header) {
         return MINIM_CONTINUATION_SIZE;
     case MINIM_TYPE_ERROR:
         return MINIM_ERROR_OBJECT_SIZE;
+    case MINIM_TYPE_RECORD:
+        return minim_record_size(rtd_nfields(header));
     default:
         abort();  // unknown type
     }
@@ -228,6 +236,9 @@ static size_t pointer_fields(minim_obj x, minim_obj **fields) {
     case MINIM_TYPE_ERROR:
         *fields = p + 2;  // the message and irritants; the kind is a fixnum
         return 2;
+    case MINIM_TYPE_RECORD:
+        *fields = p;  // the rtd, then the fields
+        return 1 + rtd_nfields(p[0]);
     default:
         return 0;
     }

@@ -104,7 +104,7 @@ Error objects still print as `#<error message>`, by their rtd.
 - `include/minim.h`: `MINIM_TYPE_RECORD`; `minim_is_record`,
   `minim_record_rtd`, `minim_record_length`, `minim_record_ref`,
   `minim_record_set` (with the barrier); `minim_make_record(rtd)` (fields
-  `#f`) and `minim_make_record_type(name, fields)`; `minim_base_rtd`.
+  `#f`), the only constructor; `minim_base_rtd`.
 - `src/object.c`: the constructors, and the base rtd, made at startup and
   registered as a global.
 - `src/gc.c`: the record cases of `typed_size` and `pointer_fields`.
@@ -122,6 +122,23 @@ its own rtd after a collection.
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'gc|object|print' && ctest --preset stress -R 'gc'
 ```
+
+**Done.**
+- One object type and one constructor: an rtd is
+  `minim_make_record(minim_base_rtd)` with its fields set.  The rtd-specific C
+  is the field layout (`MINIM_RTD_NAME`, `_NFIELDS`, `_FIELDS`), fixed because
+  the collector reads `nfields`, and printing.  No rtd constructor or
+  accessors: Scheme can't set an rtd's fields (`%record-set!` refuses), so
+  only C makes rtds, `%make-record-type` and Phase 4's error rtd.
+- The base rtd is made by `record_init` in `minim_init`, after the symbols;
+  its `nfields` is set before anything allocates.
+- The collector reads `nfields` raw (`rtd_nfields` in `gc.c`), since the
+  rtd's first word may be the forwarding marker.
+- The record tests pin the default collector settings: under stress, the
+  allocations between the explicit collections promote the rtd early.  The
+  barrier test fails, under ASan, with the barrier removed.
+- Printing tests in `test_print.c`.  Ran `ctest -R 'gc|object|print'`, dev
+  and stress.
 
 ### Phase 2 - Primitives
 

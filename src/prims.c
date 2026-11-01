@@ -454,7 +454,8 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
         return minim_hash_mix(minim_string_hash(minim_symbol_name(x)), HASH_SYMBOL);
     if (minim_is_primitive(x))
         return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
-    if (minim_is_closure(x) || minim_is_continuation(x) || minim_is_error_object(x))
+    if (minim_is_closure(x) || minim_is_continuation(x) || minim_is_error_object(x)
+        || minim_is_record(x))
         return HASH_CLOSURE;  // equal? only when eq?
     if (minim_is_pair(x)) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);

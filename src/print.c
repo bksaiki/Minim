@@ -118,6 +118,25 @@ static void write_vector(FILE *out, minim_obj v, bool display) {
     fputc(')', out);
 }
 
+// Writes the record `r` as `#<name>`, or an rtd as `#<record-type name>`, with
+// one pair of angle brackets stripped from `name`.
+static void write_record(FILE *out, minim_obj r) {
+    minim_obj rtd = minim_record_rtd(r);
+    if (rtd == minim_base_rtd) {
+        fputs("#<record-type ", out);
+        rtd = r;
+    } else {
+        fputs("#<", out);
+    }
+    minim_obj name = minim_symbol_name(minim_record_ref(rtd, MINIM_RTD_NAME));
+    const uint32_t *chars = minim_string_chars(name);
+    size_t n = minim_string_length(name);
+    bool strip = n >= 2 && chars[0] == '<' && chars[n - 1] == '>';
+    for (size_t i = strip; i < n - strip; i++)
+        write_utf8(out, chars[i]);
+    fputc('>', out);
+}
+
 // Prints `x` in `write` syntax, or with strings and chars unescaped if
 // `display`.
 static void print(FILE *out, minim_obj x, bool display) {
@@ -141,6 +160,8 @@ static void print(FILE *out, minim_obj x, bool display) {
         fputs("#<procedure>", out);
     else if (minim_is_continuation(x))
         fputs("#<continuation>", out);
+    else if (minim_is_record(x))
+        write_record(out, x);
     else if (minim_is_error_object(x)) {
         fputs("#<error ", out);
         print(out, minim_error_object_message(x), true);

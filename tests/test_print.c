@@ -118,6 +118,31 @@ static void test_vectors(void) {
     MINIM_RETURN_VOID;
 }
 
+// A new rtd named `name`, with no fields.
+static minim_obj make_type(const char *name) {
+    minim_obj rtd = minim_make_record(minim_base_rtd);
+    MINIM_FRAME(&rtd);
+    minim_record_set(rtd, MINIM_RTD_NFIELDS, minim_fixnum(0));
+    minim_record_set(rtd, MINIM_RTD_FIELDS, MINIM_NIL);
+    minim_obj sym = minim_intern_cstr(name);
+    minim_record_set(rtd, MINIM_RTD_NAME, sym);
+    MINIM_RETURN(rtd);
+}
+
+// A record prints its type's name, without angle brackets; an rtd, as a record type.
+static void test_records(void) {
+    minim_obj rtd = make_type("<point>");
+    minim_obj r = MINIM_NIL;
+    MINIM_FRAME(&rtd, &r);
+    CHECK(prints_as(rtd, "#<record-type point>"));
+    r = minim_make_record(rtd);
+    CHECK(prints_as(r, "#<point>"));
+    rtd = make_type("<");
+    CHECK(prints_as(rtd, "#<record-type <>"));
+    CHECK(prints_as(minim_base_rtd, "#<record-type record-type>"));
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_immediates();
@@ -128,6 +153,7 @@ int main(void) {
     test_quote();
     test_quasiquote();
     test_vectors();
+    test_records();
     minim_shutdown();
     return test_result();
 }
