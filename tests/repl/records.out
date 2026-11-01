@@ -1,0 +1,17 @@
+#<record-type point>
+<point>
+2
+(x y)
+#<point>
+(#f #f)
+(1 (2))
+#t
+#<other>
+(#t #f #f #f)
+#t
+#<record-type record-type>
+#t
+(#t #f #t)
+(1 2 3)
+"%make-record-type: bad fields"
+2

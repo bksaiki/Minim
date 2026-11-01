@@ -159,6 +159,17 @@ printing; `equal?` on records; reading an rtd's name and fields.
 cmake --build --preset dev && ctest --preset dev -R 'records|prims' && ctest --preset stress -R 'records'
 ```
 
+**Done.**
+- `%make-record` also refuses the base rtd: a record of it would be an rtd
+  with `nfields` `#f`, which the collector can't size.
+- `%make-record-type`'s distinctness check compares each field with the
+  `len` before it, so a cyclic list repeats one and is refused rather than
+  looping.  (A first version, comparing up to the current pair, looped on a
+  cycle back to the head.)
+- Error messages: `not a symbol`, `bad fields`, `not a record type`,
+  `not a record`, `bad index`, `immutable record type`.
+- Ran `ctest -R 'records|prims'`, dev and stress.
+
 ### Phase 3 - define-record-type
 
 - `src/prelude.scm`: the helpers making the constructor, predicate,
