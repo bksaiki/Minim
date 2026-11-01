@@ -86,6 +86,17 @@ and never calls them:
 | `(call-with-values producer consumer)` | `consumer` applied to the values of `(producer)` |
 | `(%call/cc f)` | `f` applied to the continuation of the call, a `#<continuation>`; for the prelude's `call/cc` |
 | `(%winders)`, `(%set-winders! w)` | the `dynamic-wind`s in progress, innermost first, as `(before . after)` pairs; sets them |
+| `(%handlers)`, `(%set-handlers! h)` | the exception handlers installed, innermost first; sets them |
+| `(%raise-uncaught obj)` | leaves Scheme with `obj`, which no handler took (`errors.md`) |
+
+### Errors
+
+| Call | Result |
+|---|---|
+| `(error-object? x)` | whether `x` is an error object |
+| `(error-object-message e)`, `(error-object-irritants e)` | the message string, or the list of irritants, of the error object `e` |
+| `(read-error? x)`, `(file-error? x)` | whether `x` is an error object from reading a file, or from failing to open one, in `load` |
+| `(%make-error-object message irritants)` | a new error object of the string `message` and the list `irritants`; for the prelude's `error` |
 
 ### Identity and types
 
@@ -94,7 +105,7 @@ and never calls them:
 | `(eq? a b)` | whether `a` and `b` are the same object |
 | `(eqv? a b)` | same as `eq?` (they will differ for flonums and bignums) |
 | `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else by `eqv?`.  Cyclic data loops forever |
-| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures all hash alike |
+| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, and error objects all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
 

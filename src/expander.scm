@@ -7,7 +7,8 @@
 ;;; Expander.  (%expand form) rewrites a top-level form into core forms.  The
 ;;; evaluator applies it to every top-level form once %expand is defined.
 
-(define (%bad-syntax x) (%syntax-error "bad syntax" (list x)))
+(define (%bad-syntax x)
+  (%syntax-error "bad syntax" (list x)))
 
 ;; Global macros: an association list of (symbol . transformer).
 (define %macros '())
@@ -15,7 +16,8 @@
 ;; Aliases defined at top level as fresh globals: (alias . global name).
 (define %top-renames '())
 
-(define (%append-map f lst) (apply append (map f lst)))
+(define (%append-map f lst)
+  (apply append (map f lst)))
 
 ;; Number of pairs in the chain `x`.
 (define (%pairs x)
@@ -48,7 +50,8 @@
 ;; one-element list holding an association list of (identifier . meaning): a
 ;; variable's fresh name, or a local macro's transformer.
 
-(define (%extend env) (cons (list '()) env))
+(define (%extend env)
+  (cons (list '()) env))
 
 ;; Binds the identifier `id` in the innermost frame of `env` to a fresh name,
 ;; which it returns.
@@ -565,3 +568,12 @@
            (begin command ... (loop (do "step" var step ...) ...)))))
     ((_ "step" x) x)
     ((_ "step" x y) y)))
+
+(define-syntax guard
+  (syntax-rules (else)
+    ((_ (var clause ... (else result1 result2 ...)) body1 body2 ...)
+     (%guard (lambda () body1 body2 ...)
+             (lambda (var reraise) (cond clause ... (else result1 result2 ...)))))
+    ((_ (var clause ...) body1 body2 ...)
+     (%guard (lambda () body1 body2 ...)
+             (lambda (var reraise) (cond clause ... (else (reraise))))))))

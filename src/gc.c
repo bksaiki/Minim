@@ -77,6 +77,7 @@ void minim_gc_init(void) {
         minim_out_of_memory();
     minim_gc.values.below = MINIM_NIL;
     minim_gc.winders = MINIM_NIL;
+    minim_gc.handlers = MINIM_NIL;
     for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
         for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
             minim_gc.old[g][k].generation = (unsigned char)g;
@@ -157,6 +158,8 @@ static size_t typed_size(minim_obj header) {
         return MINIM_PRIMITIVE_SIZE;
     case MINIM_TYPE_CONTINUATION:
         return MINIM_CONTINUATION_SIZE;
+    case MINIM_TYPE_ERROR:
+        return MINIM_ERROR_OBJECT_SIZE;
     default:
         abort();  // unknown type
     }
@@ -221,6 +224,9 @@ static size_t pointer_fields(minim_obj x, minim_obj **fields) {
         return 1;
     case MINIM_TYPE_CONTINUATION:
         *fields = p + 1;  // the frames and segments; the height is a fixnum
+        return 2;
+    case MINIM_TYPE_ERROR:
+        *fields = p + 2;  // the message and irritants; the kind is a fixnum
         return 2;
     default:
         return 0;
@@ -326,6 +332,7 @@ static void collect(unsigned g) {
         minim_gc.values.items[i] = copy(minim_gc.values.items[i]);
     minim_gc.values.below = copy(minim_gc.values.below);
     minim_gc.winders = copy(minim_gc.winders);
+    minim_gc.handlers = copy(minim_gc.handlers);
     for (size_t i = 0; i < minim_gc.spill.len; i++)
         minim_gc.spill.items[i] = copy(minim_gc.spill.items[i]);
 

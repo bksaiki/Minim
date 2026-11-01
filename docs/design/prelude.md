@@ -57,9 +57,22 @@ the one it contains.
 | `(call/cc f)`, `(call-with-current-continuation f)` | `f` applied to the current continuation, a procedure taking any number of values to return |
 | `(dynamic-wind before thunk after)` | calls `before`, `thunk`, then `after`, returning `thunk`'s values; a continuation leaving `thunk`'s extent runs `after`, and one entering it runs `before` |
 
+| `(with-exception-handler handler thunk)` | calls `thunk` with `handler` installed for its extent |
+| `(raise obj)` | calls the innermost handler on `obj`, with the handlers outside it installed; if it returns, raises `handler returned` with irritants `(obj)` to them |
+| `(raise-continuable obj)` | likewise, returning the handler's values |
+| `(error message irritant ...)` | raises a new error object |
+
 `call/cc` wraps `%call/cc` (`primitives.md`): the procedure it passes runs
 the `after`s of the `dynamic-wind`s it leaves, innermost first, and the
 `before`s of those it enters, outermost first, before jumping.
 
+The exception procedures follow the R7RS reference implementation
+(`errors.md`).  `%with-handlers` installs a list of handlers through
+`dynamic-wind`.  `%guard`, which `guard` expands into (`macros.md`), calls
+its body with a handler that escapes to the `guard`'s continuation and runs
+the clauses there; if none matches, it jumps back and re-raises with
+`raise-continuable`.  `%raise-c-error` is what errors from C raise through.
+
 Prelude procedures print as `#<procedure>`, since closures have no names.
-Errors inside them come from the primitives they call.
+Errors inside them come from the primitives they call, except those of
+`raise`.

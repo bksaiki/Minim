@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "env.h"
+#include "error.h"
 #include "eval.h"
 #include "gc.h"
 #include "minim.h"
@@ -137,12 +138,13 @@ static void bind_values(minim_obj env, minim_obj formals, size_t n) {
     MINIM_RETURN_VOID;
 }
 
-// Evaluates `expr`, expanded first if `expand`; returns its one value, or the
-// list of its values if `many`.
-static minim_obj eval(minim_obj expr, bool many, bool expand) {
+// Evaluates `expr`, expanded first if `expand`, or raises it with
+// `%raise-c-error` if `raise`; returns its one value, or the list of its values
+// if `many`.
+static minim_obj run(minim_obj expr, bool many, bool expand, bool raise) {
     minim_obj env = MINIM_NIL;
     minim_obj val = MINIM_VOID;
-    minim_obj k = MINIM_NIL;  // continuation; '() returns from eval
+    minim_obj k = MINIM_NIL;  // continuation; '() returns from run
     minim_obj x = MINIM_NIL;  // scratch
     minim_obj frame = MINIM_NIL;  // the frame a let-values form binds into
     size_t base = 0;  // value-stack height where the applied call's values start
@@ -150,6 +152,14 @@ static minim_obj eval(minim_obj expr, bool many, bool expand) {
     size_t nvals = 1;
 
     MINIM_FRAME(&expr, &env, &val, &k, &x, &frame);
+
+    if (raise) {  // `%raise-c-error` never returns
+        minim_stack_reserve(2);
+        base = minim_stack_height();
+        minim_stack_push(minim_symbol_value(minim_sym_raise_c_error));
+        minim_stack_push(expr);
+        goto apply;
+    }
 
 toplevel:  // Expands `expr` with `%expand`, if `expand` and bound, then evaluates it globally.
     env = MINIM_NIL;
@@ -480,6 +490,30 @@ apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, w
         minim_stack_pop_to(base);
         goto ret;
     }
+}
+
+// `run`, where an error with a handler or a `dynamic-wind` in progress goes to
+// `%raise-c-error` as an error object; it leaves only with neither.
+static minim_obj eval(minim_obj expr, bool many, bool expand) {
+    MINIM_FRAME(&expr);
+    size_t mark = minim_gc_mark();
+    size_t height = minim_stack_height();
+    minim_catch_frame c;
+    minim_catch_push(&c);
+    if (setjmp(c.buf) != 0) {
+        minim_gc_reset(mark);
+        minim_gc.spill.len = 0;
+        if (minim_is_null(minim_gc.handlers) && minim_is_null(minim_gc.winders)) {
+            minim_catch_pop(&c);
+            minim_reraise();
+        }
+        minim_stack_unwind(height);
+        expr = run(minim_last_error_object(), many, expand, true);
+    } else {
+        expr = run(expr, many, expand, false);
+    }
+    minim_catch_pop(&c);
+    MINIM_RETURN(expr);
 }
 
 minim_obj minim_eval(minim_obj expr) {

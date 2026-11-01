@@ -141,6 +141,11 @@ static void print(FILE *out, minim_obj x, bool display) {
         fputs("#<procedure>", out);
     else if (minim_is_continuation(x))
         fputs("#<continuation>", out);
+    else if (minim_is_error_object(x)) {
+        fputs("#<error ", out);
+        print(out, minim_error_object_message(x), true);
+        fputc('>', out);
+    }
     else if (minim_is_primitive(x)) {
         fputs("#<procedure ", out);
         write_chars(out, minim_symbol_name(minim_primitive_name(x)));

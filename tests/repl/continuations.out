@@ -20,7 +20,7 @@ body
 b-done
 b-done
 ((in a) (out a) (in b) (out b))
-((in e))
+((in e) (out e))
 31
 ()
 done

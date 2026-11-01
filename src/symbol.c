@@ -62,6 +62,7 @@ minim_obj minim_sym_let_values;
 minim_obj minim_sym_letrec_values;
 minim_obj minim_sym_quasiquote;
 minim_obj minim_sym_quote;
+minim_obj minim_sym_raise_c_error;
 minim_obj minim_sym_set;
 minim_obj minim_sym_unquote;
 minim_obj minim_sym_unquote_splicing;
@@ -87,6 +88,7 @@ void minim_symbol_init(void) {
     intern_global(&minim_sym_letrec_values, "letrec-values");
     intern_global(&minim_sym_quasiquote, "quasiquote");
     intern_global(&minim_sym_quote, "quote");
+    intern_global(&minim_sym_raise_c_error, "%raise-c-error");
     intern_global(&minim_sym_set, "set!");
     intern_global(&minim_sym_unquote, "unquote");
     intern_global(&minim_sym_unquote_splicing, "unquote-splicing");

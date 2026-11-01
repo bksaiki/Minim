@@ -316,11 +316,14 @@ static void test_tail_calls(void) {
         "(define loop (lambda (n) (if (= n 0) (stack-height)"
         " (call-with-values (lambda () (values (- n 1) 0)) (lambda (m z) (loop m))))))"
         " (loop %d)",
-        // and a call through `call/cc`, and a loop that re-enters a continuation
+        // and a call through `call/cc`, a loop that re-enters a continuation,
+        // and a call from a `guard` clause
         "(define loop (lambda (n) (if (= n 0) (stack-height)"
         " (call/cc (lambda (k) (loop (- n 1))))))) (loop %d)",
         "(define (loop n) (let ((i 0) (k #f)) (call/cc (lambda (c) (set! k c)))"
         " (set! i (+ i 1)) (if (< i n) (k #f) (stack-height)))) (loop %d)",
+        "(define (loop n) (if (= n 0) (stack-height)"
+        " (guard (e (#t (loop (- n 1)))) (car e)))) (loop %d)",
     };
     for (size_t i = 0; i < sizeof(loops) / sizeof(loops[0]); i++) {
         intptr_t base = loop_result(loops[i], 0);
@@ -414,6 +417,33 @@ static void test_many_arguments(void) {
     CHECK_EQ(minim_gc.spill.len, 0);
 }
 
+// A handled error, deep in a recursion or in a long `apply`, leaves the value
+// stack, winders, and spill as they were; an unhandled one runs the afters.
+static void test_handled_errors(void) {
+    size_t before = minim_stack_height();
+    char buf[512];
+    snprintf(buf, sizeof(buf),
+             "(define (catch thunk) (call/cc (lambda (k) (with-exception-handler"
+             " (lambda (e) (k (error-object-message e))) thunk))))"
+             " (define (deep n) (if (= n 0) (car 'x) (+ 1 (deep (- n 1)))))"
+             " (define (iota n) (let loop ((i n) (acc '()))"
+             " (if (= i 0) acc (loop (- i 1) (cons i acc)))))"
+             " (list (catch (lambda () (deep %d))) (catch (lambda () (apply + 'x (iota %d)))))",
+             gc_stressed() ? 1000 : 100000, 2 * MINIM_SEGMENT_SIZE);
+    CHECK(evals_to(buf, "(\"car: not a pair\" \"+: not a fixnum\")"));
+    CHECK_EQ(minim_stack_height(), before);
+    CHECK_EQ(minim_gc.winders, MINIM_NIL);
+    CHECK_EQ(minim_gc.handlers, MINIM_NIL);
+    CHECK_EQ(minim_gc.spill.len, 0);
+
+    CHECK(fails_with("(define out #f) (dynamic-wind (lambda () #f) (lambda () (deep 10))"
+                     " (lambda () (set! out #t)))",
+                     "car: not a pair"));
+    CHECK_EQ(minim_stack_height(), before);
+    CHECK_EQ(minim_gc.winders, MINIM_NIL);
+    CHECK(evals_to("out", "#t"));
+}
+
 int main(void) {
     minim_init();
     test_self_evaluating();
@@ -432,6 +462,7 @@ int main(void) {
     test_large_forms();
     test_deep_recursion();
     test_many_arguments();  // after test_tail_calls, which checks the value stack's capacity
+    test_handled_errors();
     minim_shutdown();
     return test_result();
 }

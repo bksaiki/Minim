@@ -39,6 +39,9 @@ extern minim_obj minim_sym_quasiquote;
 /** The symbol `quote`. */
 extern minim_obj minim_sym_quote;
 
+/** The symbol `%raise-c-error`, called on errors from C. */
+extern minim_obj minim_sym_raise_c_error;
+
 /** The symbol `set!`. */
 extern minim_obj minim_sym_set;
 

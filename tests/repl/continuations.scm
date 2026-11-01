@@ -56,7 +56,7 @@ k
 (ext 'a (lambda () (kb 'jump)))
 (reverse log)
 
-; An error skips `after`, and a later jump runs no stale one.
+; An unhandled error runs `after`, and a later jump runs no stale one.
 (set! log '())
 (ext 'e (lambda () (car 5)))
 (reverse log)
