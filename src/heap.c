@@ -129,7 +129,7 @@ void *minim_heap_alloc(size_t nbytes) {
         minim_gc_collect();
     minim_gc.budget = nbytes < minim_gc.budget ? minim_gc.budget - nbytes : 0;
     minim_gc.allocated += nbytes;
-    return minim_space_alloc(&minim_gc.spaces[MINIM_SPACE_NEW], nbytes);
+    return minim_space_alloc(&minim_gc.nursery, nbytes);
 }
 
 void minim_space_free(minim_space *s) {
@@ -155,11 +155,4 @@ void minim_heap_free_spares(void) {
         c = next;
     }
     minim_gc.spares = (minim_chunk_queue){0};
-}
-
-size_t minim_space_used(const minim_space *s) {
-    size_t used = 0;
-    for (const minim_chunk *c = s->first; c != NULL; c = c->next)
-        used += (size_t)(minim_chunk_end(s, c) - c->data);
-    return used;
 }

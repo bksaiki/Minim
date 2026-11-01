@@ -1,12 +1,12 @@
 # minim_add_stressed(name command...): adds the test `name`, and `name_stress`,
 # the same test labelled `stress` and run, after startup, with a collection at
-# every allocation, every 16th one major.
+# every allocation on the default schedule.
 function(minim_add_stressed name)
     add_test(NAME ${name} COMMAND ${ARGN})
     add_test(NAME ${name}_stress COMMAND ${ARGN})
     set_tests_properties(${name}_stress PROPERTIES
         LABELS stress
-        ENVIRONMENT "MINIM_GC_NURSERY_BYTES=1;MINIM_GC_RADIX=16")
+        ENVIRONMENT "MINIM_GC_NURSERY_BYTES=1")
 endfunction()
 
 # minim_test_executable(name [INTERNAL]): builds test_<name> from test_<name>.c;
@@ -45,7 +45,7 @@ set_tests_properties(startup PROPERTIES ENVIRONMENT "MINIM_GC_NURSERY_BYTES=1")
 add_test(NAME startup_stress COMMAND test_startup startup)
 set_tests_properties(startup_stress PROPERTIES
     LABELS stress
-    ENVIRONMENT "MINIM_GC_STARTUP=1;MINIM_GC_NURSERY_BYTES=1;MINIM_GC_RADIX=16")
+    ENVIRONMENT "MINIM_GC_STARTUP=1;MINIM_GC_NURSERY_BYTES=1")
 
 # A stale pointer must stay poisoned; only meaningful under AddressSanitizer.
 if(MINIM_SANITIZE)
@@ -128,15 +128,12 @@ minim_add_repl_test(tail)
 minim_add_script_test(fail STATUS 1)
 minim_add_script_test(gc-settings NO_STRESS)  # the defaults
 minim_add_script_test(gc-settings-env ARGS gc-settings.scm
-    ENV MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=16 MINIM_GC_MAJOR_GROWTH=3
-        MINIM_GC_MAJOR_MIN_BYTES=0)
+    ENV MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=16 MINIM_GC_MAX_GENERATION=3)
 minim_add_script_test(gc-settings-bad-nursery STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=0)
-minim_add_script_test(gc-settings-bad-radix STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_RADIX=-1)
-minim_add_script_test(gc-settings-bad-growth STATUS 1 ARGS gc-settings.scm
-    ENV MINIM_GC_MAJOR_GROWTH=0)
-minim_add_script_test(gc-settings-bad-min STATUS 1 ARGS gc-settings.scm
-    ENV MINIM_GC_MAJOR_MIN_BYTES=x)
+minim_add_script_test(gc-settings-bad-radix STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_RADIX=0)
+minim_add_script_test(gc-settings-bad-generation STATUS 1 ARGS gc-settings.scm
+    ENV MINIM_GC_MAX_GENERATION=9)
 minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1k)
 minim_add_script_test(gc-settings-big-nursery STATUS 1 ARGS gc-settings.scm

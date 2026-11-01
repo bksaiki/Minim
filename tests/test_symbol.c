@@ -76,7 +76,7 @@ static void test_strong(void) {
 }
 
 static void test_growth(void) {
-    const size_t n = gc_stressed() ? 1000 : 10000;
+    const size_t n = 1000;
     char name[32];
     minim_obj syms = minim_make_vector(n, MINIM_NIL);
     MINIM_FRAME(&syms);

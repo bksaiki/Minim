@@ -40,12 +40,15 @@ static inline size_t minim_align_up(size_t n) {
  * object starts in its chunk's first MINIM_CHUNK_SIZE bytes.
  */
 typedef struct minim_chunk {
-    unsigned char generation;  ///< 0 for new objects, 1 for survivors
+    unsigned char generation;  ///< its objects' generation
     struct minim_chunk *next;  ///< next newer chunk in its space, or next spare
     unsigned char *end;        ///< end of used data, once a newer chunk exists
     size_t size;               ///< capacity of `data`
-    /** A bit per MINIM_ALIGN bytes: whether the object starting there is remembered. */
-    uint64_t remembered[MINIM_CHUNK_SIZE / MINIM_ALIGN / 64];
+    /**
+     * A byte per MINIM_ALIGN bytes: for a remembered object starting there, 1 + the
+     * youngest generation it may point to; otherwise 0.
+     */
+    unsigned char remembered[MINIM_CHUNK_SIZE / MINIM_ALIGN];
     alignas(MINIM_ALIGN) unsigned char data[];
 } minim_chunk;
 
@@ -77,17 +80,16 @@ static inline unsigned char *minim_chunk_end(const minim_space *s, const minim_c
     return c == s->last ? s->alloc : c->end;
 }
 
-/**
- * Heap spaces.  New objects, the young generation, go in MINIM_SPACE_NEW;
- * survivors are copied into the old generation's space for their kind.
- */
+/** Kinds of object, each with its own space in every old generation. */
 enum {
-    MINIM_SPACE_NEW,
-    MINIM_SPACE_PAIR,
-    MINIM_SPACE_SYMBOL,
-    MINIM_SPACE_TYPED,
-    MINIM_SPACE_COUNT,
+    MINIM_KIND_PAIR,  ///< pairs and closures
+    MINIM_KIND_SYMBOL,
+    MINIM_KIND_TYPED,
+    MINIM_KIND_COUNT,
 };
+
+/** The most old generations the heap holds. */
+enum { MINIM_MAX_GENERATION = 8 };
 
 /** Reports that memory is exhausted and aborts. */
 _Noreturn void minim_out_of_memory(void);
@@ -115,8 +117,5 @@ void minim_heap_trim_spares(void);
 
 /** Frees the spare chunks. */
 void minim_heap_free_spares(void);
-
-/** Bytes in use in `s`. */
-size_t minim_space_used(const minim_space *s);
 
 #endif

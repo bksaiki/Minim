@@ -269,22 +269,21 @@ void minim_gc_protect(minim_obj *const *vars, size_t n);
 void minim_gc_add_global(minim_obj *p);
 
 /**
- * Collector settings.  After a minor collection, a major one runs if the old
- * generation exceeds both `major_min_bytes` and `major_growth` times its size
- * after the last major collection.  Every setting is at most MINIM_FIXNUM_MAX,
- * and `major_growth` and `stack_initial_capacity` are at least 1.
+ * Collector settings.  The n-th collection collects generations 0 through the
+ * largest g at most `max_generation` such that `radix`^g divides n.  Every
+ * setting is at least 1 and at most MINIM_FIXNUM_MAX; `max_generation` is at
+ * most 8.
  */
 typedef struct minim_gc_config {
     size_t nursery_bytes;           ///< bytes allocated between collections
-    size_t radix;                   ///< every `radix`-th collection is major; 0 for none
-    size_t major_growth;            ///< old-generation growth factor that triggers a major one
-    size_t major_min_bytes;         ///< old-generation size below which growth is ignored
+    size_t radix;                   ///< base of the generation schedule
+    size_t max_generation;          ///< the oldest generation
     size_t stack_initial_capacity;  ///< elements the collector's stacks first allocate
 } minim_gc_config;
 
 /**
- * The default collector settings: a 1 MiB nursery, radix 0, and major
- * collections when the old generation doubles, past 1 MiB.
+ * The default collector settings: a 1 MiB nursery, radix 4, and four old
+ * generations, so generation g is collected every 4^g collections.
  */
 minim_gc_config minim_gc_default_config(void);
 
@@ -292,21 +291,28 @@ minim_gc_config minim_gc_default_config(void);
 minim_gc_config minim_gc_get_config(void);
 
 /**
- * Sets the collector settings.  The nursery starts over; `stack_initial_capacity`
- * affects only stacks not yet allocated, since stacks never shrink.
+ * Sets the collector settings.  The nursery and the schedule start over;
+ * `stack_initial_capacity` affects only stacks not yet allocated, since stacks
+ * never shrink.
  */
 void minim_gc_set_config(minim_gc_config config);
 
-/** Runs the collection the settings call for: minor, or major by radix or growth. */
+/** Runs the collection the schedule calls for. */
 void minim_gc_collect(void);
 
-/** Collects the young generation, promoting its survivors to the old one. */
+/** Collects generation 0, the nursery, promoting its survivors to generation 1. */
 void minim_gc_collect_minor(void);
 
-/** Collects both generations, copying every live object. */
+/** Collects every generation, copying every live object. */
 void minim_gc_collect_major(void);
 
-/** Remembers the old object `obj` until the next collection. */
+/**
+ * Collects generations 0 through `g`, promoting their survivors to `g + 1`.
+ * Collecting the oldest collects every generation into it.
+ */
+void minim_gc_collect_generation(unsigned g);
+
+/** Remembers the old object `obj`, which may now point into the nursery. */
 void minim_gc_remember(minim_obj obj);
 
 /** Write barrier, after storing `x` into `obj`: remembers `obj` if old and `x` is a heap object. */

@@ -93,16 +93,23 @@ static bool in_chunk(minim_obj x, unsigned gen) {
     return c->generation == gen && (uintptr_t)c->data <= p && p < (uintptr_t)c->data + c->size;
 }
 
-// Whether every chunk of every space is aligned and of the space's generation.
-static bool chunks_aligned(void) {
-    for (size_t i = 0; i < MINIM_SPACE_COUNT; i++) {
-        const minim_space *s = &minim_gc.spaces[i];
-        for (const minim_chunk *c = s->first; c != NULL; c = c->next) {
-            if ((uintptr_t)c % MINIM_CHUNK_SIZE != 0 || c->generation != s->generation)
-                return false;
-        }
+// Whether every chunk of `s` is aligned and of the space's generation.
+static bool space_aligned(const minim_space *s) {
+    for (const minim_chunk *c = s->first; c != NULL; c = c->next) {
+        if ((uintptr_t)c % MINIM_CHUNK_SIZE != 0 || c->generation != s->generation)
+            return false;
     }
     return true;
+}
+
+// Whether every chunk of every space is aligned and of the space's generation.
+static bool chunks_aligned(void) {
+    bool ok = space_aligned(&minim_gc.nursery);
+    for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
+        for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
+            ok = ok && space_aligned(&minim_gc.old[g][k]);
+    }
+    return ok;
 }
 
 static void test_chunk_of(void) {
@@ -123,12 +130,13 @@ static void test_chunk_of(void) {
     CHECK(minim_chunk_of(after) != minim_chunk_of(big));
     CHECK(chunks_aligned());
 
-    // Survivors are copied into the per-kind spaces.
+    // A major collection copies survivors into the oldest generation's spaces.
     minim_gc_collect_major();
-    CHECK(in_chunk(pair, 1));
-    CHECK(in_chunk(sym, 1));
-    CHECK(in_chunk(str, 1));
-    CHECK(in_chunk(big, 1));
+    unsigned oldest = (unsigned)minim_gc_default_config().max_generation;
+    CHECK(in_chunk(pair, oldest));
+    CHECK(in_chunk(sym, oldest));
+    CHECK(in_chunk(str, oldest));
+    CHECK(in_chunk(big, oldest));
     CHECK(chunks_aligned());
     minim_gc_set_config(saved);
     MINIM_RETURN_VOID;

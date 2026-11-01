@@ -141,11 +141,10 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 
 | Call | Result |
 |---|---|
-| `(collect)` | runs the collection the settings call for; void |
+| `(collect)` | runs the next scheduled collection; void |
 | `(collect-nursery-bytes)`, `(collect-nursery-bytes n)` | bytes allocated between collections; `n` sets it, a positive fixnum |
-| `(collect-generation-radix)`, `(collect-generation-radix r)` | every `r`-th collection is major, or none for 0; `r` sets it, a nonnegative fixnum |
-| `(collect-major-growth)`, `(collect-major-growth g)` | the factor the old generation grows by before a major collection; `g` sets it, a positive fixnum |
-| `(collect-major-min-bytes)`, `(collect-major-min-bytes n)` | the size the old generation must also exceed; `n` sets it, a nonnegative fixnum |
+| `(collect-generation-radix)`, `(collect-generation-radix r)` | the schedule's base: generation g is collected every `r`^g collections; `r` sets it, a positive fixnum |
+| `(collect-maximum-generation)`, `(collect-maximum-generation g)` | the oldest generation; `g` sets it, from 1 to 8 |
 
 ### Files
 

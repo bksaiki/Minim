@@ -128,19 +128,15 @@ Depends on 3 (`define-record-type` is a macro).
 Not features, but needed as programs grow:
 
 - A weak symbol table, so unused symbols are collected, as Chez does.
-- Done: a two-generation collector with a write barrier, reuse of freed
-  chunks, and run-time collector settings (`docs/design/gc.md`).
-- More generations, as in Chez, if major collections become frequent or
-  long.
+- Done: a generational collector on Chez's radix schedule, with a write
+  barrier, reuse of freed chunks, and run-time collector settings
+  (`docs/design/gc.md`).
 - Bootstrap the prelude: expand it at build time with a first-stage `minim`,
   so startup only evaluates core forms.  With it, `minim_init` starts only
   the core and `minim_load_prelude` loads the prelude like any file, under
   the environment's collector settings from the start (no
-  `MINIM_GC_STARTUP`).  Expansion now makes startup 35 ms and stressed
-  startup about 16 s; this is the next PR.
-- Cheaper long-lived data: a generation for what survives startup, so major
-  collections stop copying the prelude, or a `syntax-rules` that allocates
-  less.
+  `MINIM_GC_STARTUP`).  Expansion now makes startup about 19 ms, and
+  1.8 s stressed; this is the next PR.
 - Separate system bindings from the user's top level, so redefining `car` or
   `list` doesn't break the expander or the prelude (`docs/design/macros.md`,
   Limitations).  Until then, cheap local lookup (the lexical-address pass
