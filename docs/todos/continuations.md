@@ -78,8 +78,15 @@ struct minim_value_stack {
   `MINIM_MAX_ARGS + 1` slots remain, the buffer's values become a new frozen
   segment, `below` points to it, and the buffer restarts empty at the same
   logical height.  So a call's values never straddle two segments.  A call
-  with more than `MINIM_MAX_ARGS` arguments, written out or through `apply`
-  or `values`, raises `too many arguments`.
+  written out with more than `MINIM_MAX_ARGS` operands, in source or by a
+  macro, raises `too many arguments`.
+- **`apply` is exempt.**  Applied to a closure, it binds the parameters
+  straight from the list, a rest parameter getting a copy of the remaining
+  tail, so the stack isn't involved.  Applied to a primitive with more
+  arguments than fit, it spreads them into a temporary C array, a collector
+  root for the call, since a primitive takes a C array.  `values` and a
+  continuation still return at most `MINIM_MAX_ARGS` values, since values
+  are returned on the stack; more raises `too many arguments`.
 - **Underflow.**  On returning to a frame whose height is below `start`, the
   segment `below` is copied back into the buffer, and `start` and `below` are
   taken from its slots.  The frozen copy stays as it was, so anything sharing
@@ -139,6 +146,17 @@ winders too, so a caught error leaves no stale pair for a later jump to run.
 
 ### Phase 0 - Bounded applications in the prelude
 
+**Done.**  `list->vector` checks for a proper list (`list->vector: not a
+list`).  `%append-map` keeps `(apply append (map f lst))`: `append` is a
+closure, so Phase 1's `apply` exemption leaves it uncapped, and one call
+beats a call per element.  Quasiquote's generated
+vector code now calls `list->vector`, so `macros.md`'s Limitations list
+changes (`apply` and `vector` out, `list->vector` in).  `src/boot.scm` uses
+`list->vector` too.  The boot file changed in 4 lines; the second
+regeneration was identical.  `test_eval`'s `test_large_forms` builds both
+forms as strings; it uses 100 elements under stress, where 10,000 took
+minutes, and 10,000 otherwise (about 4 s under ASan, linear in size).
+
 - `src/prims.c`: `list->vector` (R7RS 6.8).
 - `src/expander.scm`: no `apply` to a list of unbounded length:
   `%append-map` appends as it goes; `%strip`, `instantiate`, and quasiquote's
@@ -170,7 +188,9 @@ Tests:
 
 - `tests/test_eval.c`: non-tail recursion 10,000 deep, crossing many
   segments; several values returned across an underflow; an error deep in a
-  recursion, then a clean stack; `too many arguments` for a long `apply`;
+  recursion, then a clean stack; `too many arguments` for a written-out call
+  over the cap; `apply` of a closure (with a rest parameter) and of a
+  primitive (`+`) to 100,000 elements;
   `test_tail_calls` checks no frozen segments build up, in place of the
   array's capacity.
 - The full suite, unchanged.  Measure against `main`, run alternately:
@@ -242,12 +262,14 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### Where do the winders live?
+None.  Settled:
 
-`minim_catch`, in C, must restore them after an error.  A Scheme global,
-`%winders`, keeps `dynamic-wind` all Scheme, but then C reaches into a prelude
-variable by name.  A variable in the evaluator's C state, read and set by
-two primitives (`%winders`, `%set-winders!`), keeps the layers apart.
-
-Provisionally the C variable, registered as a collector root.  Reopen if the
-errors plan wants the winders elsewhere.
+- Before Phase 0: the winders are a C variable in the evaluator's state,
+  registered as a collector root, read and set by `%winders` and
+  `%set-winders!`.
+- During Phase 0: returning more than `MINIM_MAX_ARGS` values, from `values`
+  or a continuation, raises `too many arguments`, as Gambit and Vicare cap
+  arguments; `apply` of closures and primitives stays uncapped.  Values set
+  aside across an underflow then fit a fixed-size C array.  A separate values
+  buffer, uncapped and never captured since values are only ever in flight to
+  the next return, is the option if a program needs more.

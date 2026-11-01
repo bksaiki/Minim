@@ -84,6 +84,9 @@ v
 (vector->list '(1))
 (vector->list #(1 2) 3)
 (vector->list #(1 2) 2 1)
+(list->vector '(1 (2) "s"))
+(list->vector '())
+(list->vector '(1 . 2))
 
 ; Strings and symbols
 (string-length "caf\xe9;")

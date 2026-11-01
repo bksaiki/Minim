@@ -3,6 +3,8 @@
  * Tests for the evaluator.
  */
 
+#include <stdlib.h>
+
 #include "gc.h"
 #include "minim.h"
 #include "symbol.h"
@@ -303,6 +305,33 @@ static void test_tail_calls(void) {
     }
 }
 
+// `prefix`, then " 0" `n` times, then `suffix`, in a new malloc'd string.
+static char *repeat_zeros(const char *prefix, size_t n, const char *suffix) {
+    size_t len = strlen(prefix) + 2 * n + strlen(suffix);
+    char *s = malloc(len + 1);
+    char *p = s + sprintf(s, "%s", prefix);
+    for (size_t i = 0; i < n; i++, p += 2)
+        memcpy(p, " 0", 2);
+    strcpy(p, suffix);
+    return s;
+}
+
+// Forms with more elements than a call may take arguments: a quasiquoted
+// vector, and a macro use whose ellipsis instantiates that many.
+static void test_large_forms(void) {
+    const size_t n = gc_stressed() ? 100 : 10000;
+    char expect[32];
+    char *src = repeat_zeros("(define x 1) (vector-length `#(,x", n, "))");
+    snprintf(expect, sizeof(expect), "%zu", n + 1);
+    CHECK(evals_to(src, expect));
+    free(src);
+    src = repeat_zeros("(define-syntax count (syntax-rules () ((_ e ...) (vector-length #(e ...)))))"
+                       " (count", n, ")");
+    snprintf(expect, sizeof(expect), "%zu", n);
+    CHECK(evals_to(src, expect));
+    free(src);
+}
+
 int main(void) {
     minim_init();
     test_self_evaluating();
@@ -317,7 +346,8 @@ int main(void) {
     test_values();
     test_binding_values();
     test_tail_calls();
-    test_map_long_list();  // after test_tail_calls, which checks the value stack's capacity
+    test_map_long_list();
+    test_large_forms();  // after test_tail_calls, which checks the value stack's capacity
     minim_shutdown();
     return test_result();
 }

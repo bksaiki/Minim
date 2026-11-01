@@ -525,6 +525,22 @@ static minim_obj prim_vector_to_list(minim_obj *args, size_t n) {
     MINIM_RETURN(lst);
 }
 
+// A new vector of the elements of the proper list args[0].
+static minim_obj prim_list_to_vector(minim_obj *args, size_t n) {
+    (void)n;
+    size_t len = 0;
+    minim_obj x = args[0];
+    for (; minim_is_pair(x); x = minim_cdr(x))
+        len++;
+    check(minim_is_null(x), "list->vector: not a list", args[0]);
+
+    minim_obj v = minim_make_vector(len, MINIM_NIL);
+    x = args[0];  // the collection may have moved it
+    for (size_t i = 0; i < len; i++, x = minim_cdr(x))
+        minim_vector_set(v, i, minim_car(x));
+    return v;
+}
+
 static minim_obj prim_is_vector(minim_obj *args, size_t n) {
     (void)n;
     return boolean(minim_is_vector(args[0]));
@@ -872,6 +888,7 @@ void minim_prims_init(void) {
     define_primitive("vector-set!", prim_vector_set, 3, 3);
     define_primitive("vector-length", prim_vector_length, 1, 1);
     define_primitive("vector->list", prim_vector_to_list, 1, 3);
+    define_primitive("list->vector", prim_list_to_vector, 1, 1);
     define_primitive("vector?", prim_is_vector, 1, 1);
     define_primitive("string-length", prim_string_length, 1, 1);
     define_primitive("string-ref", prim_string_ref, 2, 2);
