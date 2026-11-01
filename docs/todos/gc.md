@@ -301,6 +301,31 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 
 ### Phase 5 - Remove tuning that no longer pays
 
+**Done.**  Each knob measured under stress at the unstressed size:
+
+- `gc_stressed()` stays, for `test_eval` (over 10 min) and `test_prims`
+  (over 5 min): they build long or deep live structures, which every
+  collection of the oldest generation copies, or loop 100K times.  It goes
+  from `test_gc`'s `test_bounded` (1M allocations always, 1.9 s stressed;
+  100K unstressed would allocate under two nurseries, checking nothing) and
+  `test_symbol`'s `test_growth` (1000 symbols always; with the prelude's
+  ~450, still enough to grow the table).
+- `NO_STRESS` stays, on `gc-settings` alone: it prints the defaults, which
+  stress overrides.
+- `MINIM_GC_STARTUP` stays: a stressed startup costs 1.8 s and allocates
+  the same way every run, so stressing it in all 33 copies would add ~60 s
+  of CPU and no coverage.  It goes with the prelude bootstrap.
+- Also, at review: `test_gc` trimmed from 19 tests to 11, merging overlaps
+  (`test_promotion` and `test_collect_generation` into `test_aging`;
+  `test_cycles` into `test_sharing`; `test_major_reclaims` into
+  `test_reclaim`; `test_remembered_generations` into `test_remembered`;
+  `test_config` to the nursery, the radix being `test_schedule`'s) and
+  dropping the subsumed (`test_old_to_young`, by `test_older_to_younger`;
+  `test_old_symbol_table`, by the vector barrier there and `symbol_stress`;
+  `test_generational`, which guarded the removed growth trigger).  The
+  remembered-set bugs injected in Phases 3 and 4 are still caught.
+- `ctest --preset stress -j 8`: 5.9 s.
+
 With stress cheap, remove what existed only to keep it affordable, each
 measured before it goes: `gc_stressed()` and the loop sizes it shrinks,
 `NO_STRESS` where a test only had it for speed, and `MINIM_GC_STARTUP` if
