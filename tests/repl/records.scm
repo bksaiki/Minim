@@ -51,3 +51,47 @@ o
 (%record-set! p 2 0)
 (%record-set! point 1 100)
 (%record-ref point 1)
+
+; define-record-type: R7RS 5.5's example.
+(define-record-type <pare> (kons x y) pare? (x kar set-kar!) (y kdr))
+(pare? (kons 1 2))
+(pare? (cons 1 2))
+(kar (kons 1 2))
+(kdr (kons 1 2))
+(let ((k (kons 1 2))) (set-kar! k 3) (kar k))
+(kons 1 2)
+<pare>
+
+; A constructor naming some fields, in another order; the rest are #f.
+(define-record-type node (make-node right key) node? (key node-key) (left node-left set-node-left!)
+  (right node-right))
+(define n (make-node 'r 'k))
+(list (node-key n) (node-left n) (node-right n))
+(set-node-left! n 'l)
+(node-left n)
+
+; No fields.
+(define-record-type unit (make-unit) unit?)
+(list (unit? (make-unit)) (unit? n) (eq? (make-unit) (make-unit)))
+
+; Definitions in a body; two types with one name are distinct.
+(define (make-type-pair)
+  (define-record-type box (make-box v) box? (v box-v))
+  (list make-box box?))
+(define a (make-type-pair))
+(define b (make-type-pair))
+(list ((cadr a) ((car a) 1)) ((cadr b) ((car a) 1)))
+
+; Hygiene: fields named like the globals the expansion uses.
+(define-record-type thing (make-thing list make error) thing? (list thing-list) (make thing-make)
+  (error thing-error))
+(define t (make-thing 1 2 3))
+(list (thing-list t) (thing-make t) (thing-error t))
+
+; Errors.
+(kar 5)
+(set-kar! (cons 1 2) 3)
+(kdr n)
+(kons 1)
+(define-record-type bad (make-bad z) bad? (x bad-x))
+(define-record-type bad (make-bad) bad? (x bad-x) (x bad-x2))

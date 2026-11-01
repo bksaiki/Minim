@@ -189,6 +189,18 @@ global the expansion uses (`list`, `error`).
 cmake --build --preset dev && ctest --preset dev -R 'records|expan|boot' && ctest --preset stress -R 'records'
 ```
 
+**Done.**
+- The macro binds `ctor` to `(lambda (cfield ...) (make (list cfield ...)))`,
+  `make` from `%record-constructor`, so the arity is fixed without one
+  helper per count.  Each field spec goes through `%define-record-field`,
+  one rule with a modifier and one without.
+- The helpers read an rtd's field names as `(%record-ref rtd 2)`.
+- A field the constructor names but no spec does raises `define-record-type:
+  no such field`; a repeated field, `%make-record-type: bad fields`.
+- The type error message keeps the type's name as written: `kar: not a
+  <pare>`.
+- Ran `ctest -R 'records|expan|boot|derived|macro'`, and stress `records`.
+
 ### Phase 4 - Error objects as records
 
 - `include/minim.h`, `src/object.c`: error objects as records of
