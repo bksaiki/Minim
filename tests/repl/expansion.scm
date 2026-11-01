@@ -7,6 +7,8 @@
 (%expand '(lambda () (define-syntax m (syntax-rules () ((_) 1))) (m)))
 (%expand '(lambda () (define f (lambda () (define g 1) g)) (f)))
 (%expand '(lambda () (define x 1)))
+(%expand '(define (f a . r) (cons a r)))
+(%expand '(lambda () (define (g) 1) (g)))
 
 ; Binding forms.
 (%expand '(let ((y 1)) y))

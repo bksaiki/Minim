@@ -1,24 +1,24 @@
 # Prelude
 
-The prelude is a library written in Scheme (`src/prelude.scm`), expanded
-into core forms, compiled into the binary, and evaluated by `minim_init`.
-It holds what is easiest in Scheme, above all higher-order procedures,
-which primitives can't express because they can't call closures (see
-`primitives.md`).
+The prelude is the Scheme code compiled into the binary and evaluated by
+`minim_init`: a list library (`src/prelude.scm`), then the expander and the
+derived forms (`src/expander.scm`, `macros.md`).  The library holds what is
+easiest in Scheme, above all higher-order procedures, which primitives can't
+express because they can't call closures (see `primitives.md`).
 
 ## The boot file
 
-Minim loads `src/prelude.boot`, the prelude expanded into core forms, one
+Minim loads `src/prelude.boot`, both files expanded into core forms, one
 top-level form per line.  It is checked in, so the expander that writes it is
 the one it contains.
 
-- `boot_gen` (`src/boot.c`) writes it: it expands each form of
-  `src/prelude.scm`, without evaluating it, with `%boot-form`
+- `boot_gen` (`src/boot.c`) writes it: it expands each form of the two
+  files, in order, without evaluating it, with `%boot-form`
   (`src/boot.scm`).  That splices a `begin`; writes a `define-syntax` as
   `(%define-macro! 'name 'spec)`, since a transformer is a closure; renames
   each fresh name to `name.N`, numbered per name within its form, so an edit
   doesn't renumber other forms; and fails if a macro defines a fresh global.
-- After editing `src/prelude.scm`, build the `boot` target, which rewrites
+- After editing either file, build the `boot` target, which rewrites
   `src/prelude.boot`.  After an expander change, build it twice: the first
   run expands with the old expander.  The `boot` test fails if the file is
   out of date; since `boot_gen` starts from it, a pass also means it
@@ -35,8 +35,9 @@ the one it contains.
   each form with `minim_read_string` and evaluates it with
   `minim_eval_expanded`, without expansion.  No catch is installed, so an
   error in the prelude, which is a bug in Minim, aborts with the message.
-- The prelude starts with the expander (`macros.md`), then defines the
-  derived forms and the library.
+- The forms load in order: the list library, the expander, the derived
+  forms.  Each `%define-macro!` builds a transformer as it loads, so the
+  expander code that runs then may call only what is defined before it.
 
 ## Library
 

@@ -75,19 +75,18 @@ without `%expand`; startup loads the prelude with it (`prelude.md`).
 `let-values`, and `letrec-values`, recognized by the operator symbol itself.
 The expander (`macros.md`) renames local variables, so a local named `if`
 never reaches the evaluator as `if`, and it rejects malformed forms and
-misplaced definitions before they run.  The checks below remain for forms
-evaluated before the expander is defined.
+misplaced definitions before they run.  The checks below remain for code
+evaluated unexpanded.
 
-- `define` takes only `(define name expr)`.  At top level it binds globally;
-  in a procedure body it prepends to the innermost frame.  It is accepted
-  anywhere an expression is.  Expanded code defines only at top level, since
-  the expander turns bodies into `letrec-values`; internal definitions are
-  for the expander's own code, which runs unexpanded.
+- `define` takes only `(define name expr)` and binds a global; outside the
+  global environment it is `bad syntax`.  Where a definition may appear is
+  the expander's to check, so unexpanded, `(if #t (define x 1))` is
+  accepted.  Bodies' definitions arrive as `letrec-values`.
 - `lambda` takes fixed parameters, a rest parameter `(a . rest)`, or a single
   symbol for all arguments, and at least one body expression.  The `formals`
   of the `-values` forms take the same shapes.
-- `(define-values formals expr)` binds the formals to `expr`'s values as
-  `define` binds a name.
+- `(define-values formals expr)` binds the formals to `expr`'s values,
+  globally, as `define` does.
 - `(let-values ((formals init) ...) body ...)` evaluates the inits left to
   right in the outer environment, binding each clause's formals in a new
   frame as its values arrive, then the body in that frame.  `letrec-values`

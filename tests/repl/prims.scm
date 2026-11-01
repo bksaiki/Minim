@@ -43,6 +43,10 @@ p
 (length '(1 2 3))
 (length '(1 . 2))
 (set-car! 5 1)
+(define t '((1 2) (3 4) 5 6))
+(list (caar t) (cadr t) (cdar t) (cddr t))
+(cadr '(1))
+(cddr 5)
 
 ; Identity and types
 (eq? 'a 'a)
@@ -72,6 +76,14 @@ v
 (vector-ref v 3)
 (vector-set! v -1 0)
 (make-vector -1)
+(vector->list #(1 2 3))
+(vector->list #(1 2 3) 1)
+(vector->list #(1 2 3) 1 2)
+(vector->list #(1 2 3) 3)
+(vector->list #())
+(vector->list '(1))
+(vector->list #(1 2) 3)
+(vector->list #(1 2) 2 1)
 
 ; Strings and symbols
 (string-length "caf\xe9;")

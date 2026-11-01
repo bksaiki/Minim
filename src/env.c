@@ -60,13 +60,8 @@ void minim_env_define(minim_obj env, minim_obj sym, minim_obj val) {
         return;
     }
 
-    minim_obj b = frame_binding(minim_car(env), sym);
-    if (!minim_is_null(b)) {
-        minim_set_cdr(b, val);
-        return;
-    }
     MINIM_FRAME(&env);
-    b = minim_cons(sym, val);
+    minim_obj b = minim_cons(sym, val);
     b = minim_cons(b, minim_car(env));
     minim_set_car(env, b);
     MINIM_RETURN_VOID;

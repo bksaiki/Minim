@@ -29,6 +29,13 @@ global
 3
 2
 2
+3
+(2 3)
+(1 2)
+120
+25
+7
+1
 (lambda (if) (if 1))
 (define)
 `(a ,b)

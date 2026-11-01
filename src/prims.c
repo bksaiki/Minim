@@ -240,6 +240,28 @@ static minim_obj prim_cdr(minim_obj *args, size_t n) {
     return minim_cdr(args[0]);
 }
 
+// `x` after the accessors `path` names (`"ad"` for cadr), applied right to left;
+// raises `msg` with `x` if one meets a non-pair.
+static minim_obj cxr(minim_obj x, const char *path, const char *msg) {
+    minim_obj y = x;
+    for (size_t i = strlen(path); i > 0; i--) {
+        check(minim_is_pair(y), msg, x);
+        y = path[i - 1] == 'a' ? minim_car(y) : minim_cdr(y);
+    }
+    return y;
+}
+
+#define CXR(path)                                                      \
+    static minim_obj prim_c##path##r(minim_obj *args, size_t n) {      \
+        (void)n;                                                       \
+        return cxr(args[0], #path, "c" #path "r: not a pair");         \
+    }
+CXR(aa)
+CXR(ad)
+CXR(da)
+CXR(dd)
+#undef CXR
+
 static minim_obj prim_set_car(minim_obj *args, size_t n) {
     (void)n;
     check(minim_is_pair(args[0]), "set-car!: not a pair", args[0]);
@@ -485,6 +507,22 @@ static minim_obj prim_vector_length(minim_obj *args, size_t n) {
     (void)n;
     check(minim_is_vector(args[0]), "vector-length: not a vector", args[0]);
     return minim_fixnum((intptr_t)minim_vector_length(args[0]));
+}
+
+// The elements of the vector args[0] from args[1] (default 0) to args[2]
+// (default its length), as a list.
+static minim_obj prim_vector_to_list(minim_obj *args, size_t n) {
+    check(minim_is_vector(args[0]), "vector->list: not a vector", args[0]);
+    size_t len = minim_vector_length(args[0]);
+    size_t start = n > 1 ? bound_arg(args[1], len, "vector->list: bad index") : 0;
+    size_t end = n > 2 ? bound_arg(args[2], len, "vector->list: bad index") : len;
+    check(start <= end, "vector->list: bad index", args[1]);
+
+    minim_obj lst = MINIM_NIL;
+    MINIM_FRAME(&lst);
+    for (size_t i = end; i > start; i--)
+        lst = minim_cons(minim_vector_ref(args[0], i - 1), lst);
+    MINIM_RETURN(lst);
 }
 
 static minim_obj prim_is_vector(minim_obj *args, size_t n) {
@@ -805,6 +843,10 @@ void minim_prims_init(void) {
     define_primitive("cons", prim_cons, 2, 2);
     define_primitive("car", prim_car, 1, 1);
     define_primitive("cdr", prim_cdr, 1, 1);
+    define_primitive("caar", prim_caar, 1, 1);
+    define_primitive("cadr", prim_cadr, 1, 1);
+    define_primitive("cdar", prim_cdar, 1, 1);
+    define_primitive("cddr", prim_cddr, 1, 1);
     define_primitive("set-car!", prim_set_car, 2, 2);
     define_primitive("set-cdr!", prim_set_cdr, 2, 2);
     define_primitive("pair?", prim_is_pair, 1, 1);
@@ -829,6 +871,7 @@ void minim_prims_init(void) {
     define_primitive("vector-ref", prim_vector_ref, 2, 2);
     define_primitive("vector-set!", prim_vector_set, 3, 3);
     define_primitive("vector-length", prim_vector_length, 1, 1);
+    define_primitive("vector->list", prim_vector_to_list, 1, 3);
     define_primitive("vector?", prim_is_vector, 1, 1);
     define_primitive("string-length", prim_string_length, 1, 1);
     define_primitive("string-ref", prim_string_ref, 2, 2);
