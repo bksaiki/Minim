@@ -46,6 +46,7 @@ extern struct minim_gc {
     minim_value_stack values;    ///< values of calls in progress, updated in place
     minim_obj_stack spill;       ///< `apply`'s arguments to a primitive, too many to stack
     minim_obj winders;           ///< `dynamic-wind`s in progress, innermost first: (before . after)
+    minim_obj handlers;          ///< exception handlers installed, innermost first
     minim_obj_stack remembered;  ///< old objects that may point younger, each once
     size_t size;                 ///< bytes held in chunks
     size_t allocated;            ///< bytes handed out by minim_heap_alloc since init

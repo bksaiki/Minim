@@ -32,3 +32,70 @@ e
 (error-object-irritants 5)
 (%make-error-object 'bad '())
 (%make-error-object "bad" 5)
+
+; raise-continuable returns the handler's values.
+(with-exception-handler
+ (lambda (x) (* x 10))
+ (lambda () (+ 1 (raise-continuable 4))))
+(with-exception-handler
+ (lambda (x) (values x x))
+ (lambda () (call-with-values (lambda () (raise-continuable 'v)) list)))
+
+; A handler escaping with call/cc, from raise and from error.
+(call/cc
+ (lambda (k)
+   (with-exception-handler
+    (lambda (x) (k (list 'caught x)))
+    (lambda () (raise 'boom)))))
+(define (catch-error thunk)
+  (call/cc
+   (lambda (k)
+     (with-exception-handler
+      (lambda (e) (k (list (error-object-message e) (error-object-irritants e))))
+      thunk))))
+(catch-error (lambda () (error "bad thing" 1 '(2))))
+(catch-error (lambda () (error "no irritants")))
+
+; Nested handlers: the inner one runs first, with the outer installed.
+(with-exception-handler
+ (lambda (x) (list 'outer x))
+ (lambda ()
+   (with-exception-handler
+    (lambda (x) (raise-continuable (list 'inner x)))
+    (lambda () (raise-continuable 'x)))))
+
+; The handlers are restored after the thunk returns or escapes.
+(with-exception-handler
+ (lambda (x) 'outer)
+ (lambda ()
+   (call/cc (lambda (k) (with-exception-handler (lambda (x) (k 'escaped)) (lambda () (raise 1)))))
+   (raise-continuable 2)))
+(%handlers)
+
+; A dynamic-wind left by an escaping handler runs its after.
+(define log '())
+(call/cc
+ (lambda (k)
+   (with-exception-handler
+    (lambda (x) (k x))
+    (lambda ()
+      (dynamic-wind
+       (lambda () (set! log (cons 'before log)))
+       (lambda () (raise 'out))
+       (lambda () (set! log (cons 'after log))))))))
+(reverse log)
+
+; A handler returning from raise is an error, raised to the outer handler.
+(catch-error
+ (lambda ()
+   (with-exception-handler (lambda (x) 'ignored) (lambda () (raise 'r)))))
+
+; Uncaught: an error object, another object, and a handler returning.
+(error "bad thing" 1 2)
+(error "one irritant" '(1))
+(error "no irritants")
+(raise 'boom)
+(raise (list 1 2))
+(with-exception-handler (lambda (x) 'ignored) (lambda () (raise 'r)))
+(error 'not-a-string)
+(%handlers)

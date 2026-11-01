@@ -49,6 +49,7 @@ bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result) {
         minim_stack_unwind(height);
         minim_gc.spill.len = 0;
         minim_gc.winders = MINIM_NIL;  // none outside an evaluation; their afters don't run
+        minim_gc.handlers = MINIM_NIL;
         return false;
     }
 

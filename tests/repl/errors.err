@@ -2,3 +2,10 @@ error: error-object-message: not an error object: "bad"
 error: error-object-irritants: not an error object: 5
 error: %make-error-object: not a string: bad
 error: %make-error-object: not a list: 5
+error: bad thing: (1 2)
+error: one irritant: (1)
+error: no irritants
+error: uncaught exception: boom
+error: uncaught exception: (1 2)
+error: handler returned: r
+error: %make-error-object: not a string: not-a-string

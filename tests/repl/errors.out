@@ -15,3 +15,15 @@
 ((1) (2) (3))
 "bad thing"
 (1 (2) "three")
+41
+(v v)
+(caught boom)
+("bad thing" (1 (2)))
+("no irritants" ())
+(outer (inner x))
+outer
+()
+out
+(before after)
+("handler returned" (r))
+()

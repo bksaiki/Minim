@@ -347,6 +347,19 @@ static minim_obj prim_set_winders(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
+// The exception handlers installed, for the prelude's `raise`.
+static minim_obj prim_handlers(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    return minim_gc.handlers;
+}
+
+static minim_obj prim_set_handlers(minim_obj *args, size_t n) {
+    (void)n;
+    minim_gc.handlers = args[0];
+    return MINIM_VOID;
+}
+
 // Applied by the evaluator, which evaluates the file's forms; never called.
 minim_obj minim_prim_load(minim_obj *args, size_t n) {
     (void)args;
@@ -868,19 +881,32 @@ static minim_obj prim_is_file_error(minim_obj *args, size_t n) {
     return boolean(is_error_of_kind(args[0], MINIM_ERROR_FILE));
 }
 
-// Raises the message args[0] with the irritants args[1]: void if none, the
-// one if single, else the list.
+// Raises the string `msg` with the list `irritants`: void if none, the one if
+// single, else the list.
+static _Noreturn void raise_message(minim_obj msg, minim_obj irritants) {
+    static char *message;  // must outlive the catch; replaced by the next one
+    free(message);
+    message = minim_string_to_utf8(msg);
+    if (minim_is_null(irritants))
+        minim_error(message, MINIM_VOID);
+    minim_error(message, minim_is_null(minim_cdr(irritants)) ? minim_car(irritants) : irritants);
+}
+
 static minim_obj prim_syntax_error(minim_obj *args, size_t n) {
     (void)n;
-    static char *message;  // must outlive the catch; replaced by the next one
     minim_obj rest = args[1];
     check(minim_is_string(args[0]), "syntax-error: not a string", args[0]);
     check(minim_is_null(rest) || minim_is_pair(rest), "syntax-error: not a list", rest);
-    free(message);
-    message = minim_string_to_utf8(args[0]);
-    if (minim_is_null(rest))
-        minim_error(message, MINIM_VOID);
-    minim_error(message, minim_is_null(minim_cdr(rest)) ? minim_car(rest) : rest);
+    raise_message(args[0], rest);
+}
+
+// Leaves Scheme with `args[0]`, which no handler took: an error object's
+// message and irritants, or else the object itself.
+static minim_obj prim_raise_uncaught(minim_obj *args, size_t n) {
+    (void)n;
+    if (minim_is_error_object(args[0]))
+        raise_message(minim_error_object_message(args[0]), minim_error_object_irritants(args[0]));
+    minim_error("uncaught exception", args[0]);
 }
 
 static void define_primitive(const char *name, minim_prim_fn fn, intptr_t min, intptr_t max) {
@@ -936,6 +962,9 @@ void minim_prims_init(void) {
     define_primitive("%call/cc", minim_prim_call_cc, 1, 1);
     define_primitive("%winders", prim_winders, 0, 0);
     define_primitive("%set-winders!", prim_set_winders, 1, 1);
+    define_primitive("%handlers", prim_handlers, 0, 0);
+    define_primitive("%set-handlers!", prim_set_handlers, 1, 1);
+    define_primitive("%raise-uncaught", prim_raise_uncaught, 1, 1);
     define_primitive("eq?", prim_eq, 2, 2);
     define_primitive("eqv?", prim_eq, 2, 2);
     define_primitive("equal?", prim_equal, 2, 2);

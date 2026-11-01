@@ -146,6 +146,19 @@ that escapes runs its `after`.
 cmake --build --preset dev && ctest --preset dev -R 'errors|boot|continuations' && ctest --preset stress -R 'errors'
 ```
 
+**Done.**
+- `%raise obj continuable?` holds the shared work; `%with-handlers` installs a
+  list of handlers through `dynamic-wind`, and `with-exception-handler` is
+  `%with-handlers` of one more.
+- A handler returning from `raise` raises `handler returned`, with irritants
+  `(obj)`, from inside the handler's environment, so the outer handler gets
+  it rather than the same one again.
+- `%raise-uncaught` shares `raise_message` with `%syntax-error`: no
+  irritants, one, or the list of several, so `(error "m" '(1 2))` and
+  `(error "m" 1 2)` print alike.
+- `(error 'sym)` fails in `%make-error-object` (`not a string`).
+- Ran the dev suite (the boot file changed) and stress `errors|continuations`.
+
 ### Phase 3 - C errors raise in Scheme
 
 - `src/eval.c`: `eval` catches errors raised while it runs and, with a

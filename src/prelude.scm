@@ -174,3 +174,35 @@
             (apply k results)))))))
 
 (define call-with-current-continuation call/cc)
+
+;; Exceptions.  The handlers (`%handlers`) are those installed, innermost
+;; first; `%with-handlers` installs a list for `thunk`'s extent.
+
+(define (%with-handlers handlers thunk)
+  (let ((outer (%handlers)))
+    (dynamic-wind
+     (lambda () (%set-handlers! handlers))
+     thunk
+     (lambda () (%set-handlers! outer)))))
+
+(define (with-exception-handler handler thunk)
+  (%with-handlers (cons handler (%handlers)) thunk))
+
+;; Calls the innermost handler on `obj`, with the handlers outside it
+;; installed; leaves Scheme if there is none.  If `continuable?` is #f, the
+;; handler returning is an error, raised in the handler's environment.
+(define (%raise obj continuable?)
+  (let ((handlers (%handlers)))
+    (if (null? handlers)
+        (%raise-uncaught obj)
+        (%with-handlers (cdr handlers)
+          (lambda ()
+            (if continuable?
+                ((car handlers) obj)
+                (begin
+                  ((car handlers) obj)
+                  (raise (%make-error-object "handler returned" (list obj))))))))))
+
+(define (raise obj) (%raise obj #f))
+(define (raise-continuable obj) (%raise obj #t))
+(define (error message . irritants) (raise (%make-error-object message irritants)))
