@@ -336,7 +336,8 @@ static void test_tail_calls(void) {
 static char *repeat_zeros(const char *prefix, size_t n, const char *suffix) {
     size_t len = strlen(prefix) + 2 * n + strlen(suffix);
     char *s = malloc(len + 1);
-    char *p = s + sprintf(s, "%s", prefix);
+    memcpy(s, prefix, strlen(prefix));
+    char *p = s + strlen(prefix);
     for (size_t i = 0; i < n; i++, p += 2)
         memcpy(p, " 0", 2);
     strcpy(p, suffix);
