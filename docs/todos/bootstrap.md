@@ -184,6 +184,16 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 
 ### Phase 3 - MINIM_GC_STARTUP
 
+**Done: removed.**  With `MINIM_GC_STARTUP=1` in every stress copy, `ctest
+--preset stress -j 8` took 12.3-12.8 s against 12.0-12.7 s without, run
+alternately twice: 1-3%, well under the 25% bound.  So the environment's
+settings apply from `minim_gc_init`; `program_config` and
+`minim_gc_finish_startup` are gone, and so are `startup_stress` and the
+`gc-settings-bad-startup` script test.  `test_startup` keeps one check, under
+a 1-byte nursery: startup collected every generation and runs with the
+setting (it fails on the default nursery).  Full suites pass: `dev` 46,
+`stress` 36 (12.8 s).
+
 Decide with Phase 2's measurement (see Open items).  If it goes: the
 environment's settings apply from the start of `minim_init`;
 `MINIM_GC_STARTUP`, `program_config`, and `minim_gc_finish_startup` are
