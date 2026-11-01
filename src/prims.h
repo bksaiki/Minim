@@ -17,6 +17,9 @@ minim_obj minim_prim_values(minim_obj *args, size_t n);
 /** The `call-with-values` primitive's function, which the evaluator recognizes. */
 minim_obj minim_prim_call_with_values(minim_obj *args, size_t n);
 
+/** The `%call/cc` primitive's function, which the evaluator recognizes. */
+minim_obj minim_prim_call_cc(minim_obj *args, size_t n);
+
 /** The `load` primitive's function, which the evaluator recognizes. */
 minim_obj minim_prim_load(minim_obj *args, size_t n);
 

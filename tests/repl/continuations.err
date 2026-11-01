@@ -1,0 +1,4 @@
+error: wrong number of values: (1 2)
+error: not a procedure: 5
+error: arity mismatch: #<procedure %call/cc>
+error: arity mismatch: #<procedure>

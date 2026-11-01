@@ -299,8 +299,8 @@ static void test_tail_calls(void) {
     const char *loops[] = {
         "(define loop (lambda (n) (if (= n 0) (stack-height) (loop (- n 1))))) (loop %d)",
         // `apply` in tail position, and the last subform of `and`, `or`, and
-        // `when`, the body of a named `let` or a `let-values`, and the consumer
-        // of `call-with-values`
+        // `when`, the body of a named `let` or a `let-values`, the consumer of
+        // `call-with-values`,
         "(define loop (lambda (n) (if (= n 0) (stack-height) (apply loop (list (- n 1))))))"
         " (loop %d)",
         "(define loop (lambda (n) (and #t (if (= n 0) (stack-height) (loop (- n 1))))))"
@@ -316,6 +316,11 @@ static void test_tail_calls(void) {
         "(define loop (lambda (n) (if (= n 0) (stack-height)"
         " (call-with-values (lambda () (values (- n 1) 0)) (lambda (m z) (loop m))))))"
         " (loop %d)",
+        // and a call through `call/cc`, and a loop that re-enters a continuation
+        "(define loop (lambda (n) (if (= n 0) (stack-height)"
+        " (call/cc (lambda (k) (loop (- n 1))))))) (loop %d)",
+        "(define (loop n) (let ((i 0) (k #f)) (call/cc (lambda (c) (set! k c)))"
+        " (set! i (+ i 1)) (if (< i n) (k #f) (stack-height)))) (loop %d)",
     };
     for (size_t i = 0; i < sizeof(loops) / sizeof(loops[0]); i++) {
         intptr_t base = loop_result(loops[i], 0);

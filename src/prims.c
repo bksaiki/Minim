@@ -326,6 +326,13 @@ minim_obj minim_prim_call_with_values(minim_obj *args, size_t n) {
     abort();
 }
 
+// Applied by the evaluator, which captures the continuation; never called.
+minim_obj minim_prim_call_cc(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    abort();
+}
+
 // Applied by the evaluator, which evaluates the file's forms; never called.
 minim_obj minim_prim_load(minim_obj *args, size_t n) {
     (void)args;
@@ -420,8 +427,8 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
         return minim_hash_mix(minim_string_hash(minim_symbol_name(x)), HASH_SYMBOL);
     if (minim_is_primitive(x))
         return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
-    if (minim_is_closure(x))
-        return HASH_CLOSURE;  // closures are equal? only when eq?
+    if (minim_is_closure(x) || minim_is_continuation(x))
+        return HASH_CLOSURE;  // equal? only when eq?
     if (minim_is_pair(x)) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);
         h = minim_hash_mix(h, equal_hash(minim_car(x), budget));
@@ -873,6 +880,7 @@ void minim_prims_init(void) {
     define_primitive("load", minim_prim_load, 1, 1);
     define_primitive("values", minim_prim_values, 0, MINIM_VARIADIC);
     define_primitive("call-with-values", minim_prim_call_with_values, 2, 2);
+    define_primitive("%call/cc", minim_prim_call_cc, 1, 1);
     define_primitive("eq?", prim_eq, 2, 2);
     define_primitive("eqv?", prim_eq, 2, 2);
     define_primitive("equal?", prim_equal, 2, 2);

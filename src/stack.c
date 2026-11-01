@@ -94,6 +94,28 @@ void minim_stack_include(size_t h) {
     s->len++;
 }
 
+minim_obj minim_stack_capture(size_t h) {
+    assert(h >= minim_gc.values.start && h <= minim_stack_height());
+    size_t k = h - minim_gc.values.start;
+    if (k == 0)
+        return minim_gc.values.below;
+    minim_obj seg = minim_make_vector(k + SEG_VALUES, MINIM_NIL);  // the whole buffer is a root
+    minim_value_stack *s = &minim_gc.values;
+    minim_vector_set(seg, SEG_PREV, s->below);
+    minim_vector_set(seg, SEG_START, minim_fixnum((intptr_t)s->start));
+    for (size_t i = 0; i < k; i++)
+        minim_vector_set(seg, SEG_VALUES + i, s->items[i]);
+    return seg;
+}
+
+void minim_stack_reinstate(minim_obj stack, size_t height, size_t from, size_t n) {
+    minim_value_stack *s = &minim_gc.values;
+    memmove(s->items, minim_stack_at(from), n * sizeof(minim_obj));
+    s->len = n;
+    s->start = height;
+    s->below = stack;
+}
+
 // Appends `x` to `minim_gc.spill`, growing it with the C heap.
 static void spill_push(minim_obj x) {
     minim_obj_stack *s = &minim_gc.spill;

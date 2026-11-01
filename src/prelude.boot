@@ -15,6 +15,8 @@
 (define filter (lambda (keep?.1 lst.1) (if (null? lst.1) (begin '()) (if (keep?.1 (car lst.1)) (begin (cons (car lst.1) (filter keep?.1 (cdr lst.1)))) (begin (filter keep?.1 (cdr lst.1)))))))
 (define fold (lambda (kons.1 knil.1 lst.1) (if (null? lst.1) knil.1 (fold kons.1 (kons.1 (car lst.1) knil.1) (cdr lst.1)))))
 (define fold-right (lambda (kons.1 knil.1 lst.1) (if (null? lst.1) knil.1 (kons.1 (car lst.1) (fold-right kons.1 knil.1 (cdr lst.1))))))
+(define call/cc %call/cc)
+(define call-with-current-continuation %call/cc)
 (define %bad-syntax (lambda (x.1) (%syntax-error "bad syntax" (list x.1))))
 (define %macros '())
 (define %top-renames '())

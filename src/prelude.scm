@@ -128,3 +128,7 @@
     (if (null? lst)
         knil
         (kons (car lst) (fold-right kons knil (cdr lst))))))
+
+;; Continuations.
+(define call/cc %call/cc)
+(define call-with-current-continuation %call/cc)

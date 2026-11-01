@@ -253,6 +253,31 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 
 ### Phase 2 - Continuation objects and %call/cc
 
+**Done.**  Details settled during the phase:
+
+- The continuation object is `[header | k | stack | height]`, type `0x6`:
+  `height` records where its frozen segments end, so a capture at the
+  buffer's bottom shares `below` without a new segment.  The collector
+  traces `k` and `stack`.
+- `minim_stack_capture` and `minim_stack_reinstate` in `src/stack.c`.
+  Applying a continuation moves its arguments to the bottom of the emptied
+  buffer, so nothing is set aside or allocated.  Beyond the cap, through
+  `apply`, it raises `too many arguments`, as `%call/cc` itself does.
+- `minim_catch` (Phase 1's note): it unwinds to its entry height along
+  whatever chain is current, which is exact when it is entered with the stack
+  empty, as every caller does (the REPL, `load` from `main.c`, the tests,
+  `boot_gen`).  Its doc in `minim.h` now says so.
+- `call/cc` and `call-with-current-continuation` are `%call/cc` in
+  `src/prelude.scm`; the boot file regenerated.
+- Tests: `tests/repl/continuations.scm` as planned, plus
+  `call-with-current-continuation` and `(call/cc (lambda () 1))`;
+  `test_tail_calls` gains a loop through `call/cc` and a loop re-entering one
+  continuation.
+- Measured, release: capturing at the bottom of a recursion 10,000 deep,
+  1,000 times, 6.1-6.3 s, the same as without `call/cc`; a loop capturing at
+  every step, 1M steps, 0.73-0.76 s, also the same.  A capture copies at most
+  the buffer's live part.  `ctest --preset stress -j 8`: 19.2 s.
+
 - `include/minim.h`, `src/object.c`: the continuation type, constructor, and
   accessors; `minim_is_procedure` includes it.
 - `src/gc.c`: tracing and size.  `src/print.c`: `#<continuation>`.

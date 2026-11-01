@@ -79,6 +79,15 @@ void minim_stack_unwind(size_t h);
 /** Brings the frozen value at height `h`, just below the buffer, into it. */
 void minim_stack_include(size_t h);
 
+/** The frozen segments holding the values below height `h`, which is in the buffer. */
+minim_obj minim_stack_capture(size_t h);
+
+/**
+ * Replaces the stack with the frozen segments `stack`, ending at `height`,
+ * with the `n` values at height `from` on top.
+ */
+void minim_stack_reinstate(minim_obj stack, size_t height, size_t from, size_t n);
+
 /**
  * Copies the values from height `h` to the top, then the elements of the list
  * `lst`, into `minim_gc.spill`; returns how many.

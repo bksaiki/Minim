@@ -395,6 +395,15 @@ apply:  // Applies the procedure at `base` to the values above it.
                 base++;
                 goto apply;
             }
+            if (minim_primitive_fn(x) == minim_prim_call_cc) {
+                // [%call/cc f] becomes [f c], c the continuation of this call.
+                x = minim_stack_capture(base);
+                val = minim_make_continuation(k, x, base);
+                minim_obj *items = minim_stack_at(base);
+                items[0] = items[1];
+                items[1] = val;
+                goto apply;
+            }
             if (minim_primitive_fn(x) == minim_prim_load) {
                 // Runs the file's forms as top-level forms, then returns void.
                 if (!minim_is_string(*minim_stack_at(base + 1)))
@@ -406,6 +415,19 @@ apply:  // Applies the procedure at `base` to the values above it.
             }
             val = minim_primitive_fn(x)(minim_stack_at(base + 1), n);
             minim_stack_pop_to(base);
+            goto ret;
+        }
+        if (minim_is_continuation(x)) {
+            // Returns the arguments, as values, to the captured continuation.
+            size_t height = minim_continuation_height(x);
+            minim_stack_reinstate(minim_continuation_stack(x), height, base + 1, n);
+            k = minim_continuation_k(x);
+            if (n == 1) {
+                val = *minim_stack_at(height);
+                minim_stack_pop_to(height);
+            } else {
+                nvals = n;
+            }
             goto ret;
         }
         if (!minim_is_closure(x))
@@ -441,11 +463,14 @@ apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, w
             x = minim_cdr(minim_closure_code(x));
             goto sequence;
         }
+        if (minim_is_continuation(x))
+            minim_error("too many arguments", minim_fixnum((intptr_t)total));
         if (!minim_is_primitive(x))
             minim_error("not a procedure", x);
         minim_prim_fn fn = minim_primitive_fn(x);
         if (fn == minim_prim_apply || fn == minim_prim_values
-            || fn == minim_prim_call_with_values || fn == minim_prim_load)
+            || fn == minim_prim_call_with_values || fn == minim_prim_call_cc
+            || fn == minim_prim_load)
             minim_error("too many arguments", minim_fixnum((intptr_t)total));
         if (!primitive_accepts(x, total))
             minim_error("arity mismatch", x);

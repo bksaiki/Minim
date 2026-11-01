@@ -74,6 +74,16 @@ minim_obj minim_make_primitive(minim_obj name, minim_prim_fn fn,
     MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
 }
 
+minim_obj minim_make_continuation(minim_obj k, minim_obj stack, size_t height) {
+    MINIM_FRAME(&k, &stack);
+    minim_obj *p = minim_heap_alloc(MINIM_CONTINUATION_SIZE);
+    p[0] = minim_make_header(0, MINIM_TYPE_CONTINUATION);
+    p[1] = k;
+    p[2] = stack;
+    p[3] = minim_fixnum((intptr_t)height);
+    MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
+}
+
 minim_obj minim_string_from_cstr(const char *s) {
     const unsigned char *u = (const unsigned char *)s;
     uint32_t c;

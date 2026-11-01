@@ -111,6 +111,7 @@ endfunction()
 
 minim_add_repl_test(boot)
 minim_add_repl_test(chars)
+minim_add_repl_test(continuations)
 minim_add_repl_test(derived)
 minim_add_repl_test(echo)
 minim_add_repl_test(equality)
