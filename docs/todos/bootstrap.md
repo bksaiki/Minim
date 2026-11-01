@@ -143,6 +143,28 @@ cmake --build --preset dev && ctest --preset dev -R 'boot|expan'
 
 ### Phase 2 - Start from the boot file
 
+**Done.**  Details settled during the phase:
+
+- The first `src/prelude.boot` came from the build that still started from
+  the source prelude; the build starting from it then regenerated it
+  byte for byte, so the `boot` test passed from the start.
+- `boot_gen` is now built by default, since the `boot` test runs it.  The
+  test is `tests/check_boot.cmake`; a stale prelude fails it with "out of
+  date; build the `boot` target" (checked by appending a definition).
+- `minim_eval_expanded` is in the new `src/eval.h`; `eval` takes an `expand`
+  flag.  The embedded array is now `minim_prelude_boot`.
+- Startup, against `main`, run alternately three times:
+
+  | Build | This branch | `main` |
+  |---|---|---|
+  | release, 20 startups | 0.048-0.056 s | 0.60-0.63 s |
+  | ASan, one startup | 0.02 s | 0.50 s |
+  | ASan, stressed (`MINIM_GC_STARTUP=1`, 1-byte nursery) | 0.09 s | 6.2-6.5 s |
+
+  (`main`'s stressed startup measured 1.8 s earlier in the session; the
+  machine has been slower since, but both columns here ran together.)
+- Full suites pass: `dev` 47, `stress` 37 (13.7 s at `-j 8`).
+
 - `src/prelude.boot`: the first generated file, checked in.
 - `CMakeLists.txt`: embed `src/prelude.boot` instead of `src/prelude.scm`;
   the `boot` target and test.

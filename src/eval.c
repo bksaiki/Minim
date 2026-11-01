@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "env.h"
+#include "eval.h"
 #include "gc.h"
 #include "minim.h"
 #include "prims.h"
@@ -116,8 +117,9 @@ static void bind_values(minim_obj env, minim_obj formals, size_t n) {
     MINIM_RETURN_VOID;
 }
 
-// Evaluates `expr`; returns its one value, or the list of its values if `many`.
-static minim_obj eval(minim_obj expr, bool many) {
+// Evaluates `expr`, expanded first if `expand`; returns its one value, or the
+// list of its values if `many`.
+static minim_obj eval(minim_obj expr, bool many, bool expand) {
     minim_obj env = MINIM_NIL;
     minim_obj val = MINIM_VOID;
     minim_obj k = MINIM_NIL;  // continuation; '() returns from eval
@@ -129,9 +131,9 @@ static minim_obj eval(minim_obj expr, bool many) {
 
     MINIM_FRAME(&expr, &env, &val, &k, &x, &frame);
 
-toplevel:  // Expands `expr` with `%expand`, if bound, then evaluates it globally.
+toplevel:  // Expands `expr` with `%expand`, if `expand` and bound, then evaluates it globally.
     env = MINIM_NIL;
-    if (minim_symbol_value(minim_sym_expand) == MINIM_UNBOUND)
+    if (!expand || minim_symbol_value(minim_sym_expand) == MINIM_UNBOUND)
         goto eval;
     k = make_frame(K_EXPAND, k, MINIM_NIL, MINIM_NIL, MINIM_NIL);
     base = minim_gc.values.len;
@@ -385,9 +387,13 @@ apply:  // Applies the procedure at `base` to the values above it.
 }
 
 minim_obj minim_eval(minim_obj expr) {
-    return eval(expr, false);
+    return eval(expr, false, true);
 }
 
 minim_obj minim_eval_values(minim_obj expr) {
-    return eval(expr, true);
+    return eval(expr, true, true);
+}
+
+minim_obj minim_eval_expanded(minim_obj expr) {
+    return eval(expr, false, false);
 }
