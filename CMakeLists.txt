@@ -53,6 +53,7 @@ add_library(libminim STATIC
     src/prims.c
     src/print.c
     src/read.c
+    src/stack.c
     src/symbol.c
     src/system.c
 )

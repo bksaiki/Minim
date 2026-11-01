@@ -139,6 +139,8 @@ static void print(FILE *out, minim_obj x, bool display) {
         write_string(out, x);
     else if (minim_is_closure(x))
         fputs("#<procedure>", out);
+    else if (minim_is_continuation(x))
+        fputs("#<continuation>", out);
     else if (minim_is_primitive(x)) {
         fputs("#<procedure ", out);
         write_chars(out, minim_symbol_name(minim_primitive_name(x)));

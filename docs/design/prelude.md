@@ -54,6 +54,12 @@ the one it contains.
 | `(for-each f lst ...)` | like `map`, for effect; void |
 | `(filter keep? lst)` | the elements satisfying `keep?`, in order |
 | `(fold kons knil lst)`, `(fold-right kons knil lst)` | SRFI-1 folds, calling `(kons elem acc)` from the left or right |
+| `(call/cc f)`, `(call-with-current-continuation f)` | `f` applied to the current continuation, a procedure taking any number of values to return |
+| `(dynamic-wind before thunk after)` | calls `before`, `thunk`, then `after`, returning `thunk`'s values; a continuation leaving `thunk`'s extent runs `after`, and one entering it runs `before` |
+
+`call/cc` wraps `%call/cc` (`primitives.md`): the procedure it passes runs
+the `after`s of the `dynamic-wind`s it leaves, innermost first, and the
+`before`s of those it enters, outermost first, before jumping.
 
 Prelude procedures print as `#<procedure>`, since closures have no names.
 Errors inside them come from the primitives they call.

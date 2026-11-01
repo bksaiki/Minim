@@ -12,6 +12,7 @@
 
 #include "heap.h"
 #include "minim.h"
+#include "stack.h"
 #include "system.h"
 
 static const minim_gc_config DEFAULT_CONFIG = {
@@ -71,6 +72,11 @@ void minim_gc_init(void) {
         .stack_initial_capacity = DEFAULT_CONFIG.stack_initial_capacity,
     };
     minim_gc = (struct minim_gc){.config = config};
+    minim_gc.values.items = malloc(MINIM_SEGMENT_SIZE * sizeof(minim_obj));
+    if (minim_gc.values.items == NULL)
+        minim_out_of_memory();
+    minim_gc.values.below = MINIM_NIL;
+    minim_gc.winders = MINIM_NIL;
     for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
         for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
             minim_gc.old[g][k].generation = (unsigned char)g;
@@ -88,6 +94,7 @@ void minim_gc_shutdown(void) {
     free(minim_gc.locals.items);
     free(minim_gc.globals.items);
     free(minim_gc.values.items);
+    free(minim_gc.spill.items);
     free(minim_gc.remembered.items);
     minim_gc = (struct minim_gc){0};
 }
@@ -121,10 +128,6 @@ void minim_gc_remember(minim_obj obj) {
     *r = 1;  // may point to generation 0
 }
 
-void minim_values_push(minim_obj x) {
-    push_obj(&minim_gc, &minim_gc.values, x);
-}
-
 size_t minim_gc_mark(void) {
     return minim_gc.locals.len;
 }
@@ -152,6 +155,8 @@ static size_t typed_size(minim_obj header) {
         return minim_string_size(n);
     case MINIM_TYPE_PRIMITIVE:
         return MINIM_PRIMITIVE_SIZE;
+    case MINIM_TYPE_CONTINUATION:
+        return MINIM_CONTINUATION_SIZE;
     default:
         abort();  // unknown type
     }
@@ -214,6 +219,9 @@ static size_t pointer_fields(minim_obj x, minim_obj **fields) {
     case MINIM_TYPE_PRIMITIVE:
         *fields = p + 2;  // the name
         return 1;
+    case MINIM_TYPE_CONTINUATION:
+        *fields = p + 1;  // the frames and segments; the height is a fixnum
+        return 2;
     default:
         return 0;
     }
@@ -316,6 +324,10 @@ static void collect(unsigned g) {
         *minim_gc.locals.items[i] = copy(*minim_gc.locals.items[i]);
     for (size_t i = 0; i < minim_gc.values.len; i++)
         minim_gc.values.items[i] = copy(minim_gc.values.items[i]);
+    minim_gc.values.below = copy(minim_gc.values.below);
+    minim_gc.winders = copy(minim_gc.winders);
+    for (size_t i = 0; i < minim_gc.spill.len; i++)
+        minim_gc.spill.items[i] = copy(minim_gc.spill.items[i]);
 
     for (size_t i = 0; i < minim_gc.remembered.len; i++) {
         minim_obj x = minim_gc.remembered.items[i];

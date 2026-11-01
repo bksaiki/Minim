@@ -61,6 +61,7 @@ enum {
     MINIM_TYPE_VECTOR = 0x0,
     MINIM_TYPE_STRING = 0x2,
     MINIM_TYPE_PRIMITIVE = 0x4,
+    MINIM_TYPE_CONTINUATION = 0x6,
 };
 
 /** Allocation constants. */
@@ -75,6 +76,7 @@ enum {
     MINIM_SYMBOL_SIZE = 2 * sizeof(minim_obj),
     MINIM_CLOSURE_SIZE = 2 * sizeof(minim_obj),
     MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
+    MINIM_CONTINUATION_SIZE = 4 * sizeof(minim_obj),
 };
 
 /** Size in bytes of a vector of length `n`. */
@@ -196,9 +198,15 @@ static inline bool minim_is_primitive(minim_obj x) {
         && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_PRIMITIVE;
 }
 
-/** Whether `x` is a closure or a primitive. */
+/** Whether `x` is a continuation. */
+static inline bool minim_is_continuation(minim_obj x) {
+    return minim_is_typed(x)
+        && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_CONTINUATION;
+}
+
+/** Whether `x` is a closure, a primitive, or a continuation. */
 static inline bool minim_is_procedure(minim_obj x) {
-    return minim_is_closure(x) || minim_is_primitive(x);
+    return minim_is_closure(x) || minim_is_primitive(x) || minim_is_continuation(x);
 }
 
 /** Whether `x` is a char. */
@@ -520,6 +528,30 @@ static inline intptr_t minim_primitive_max_arity(minim_obj p) {
     return minim_fixnum_value(((const minim_obj *)(p - MINIM_TAG_TYPED))[4]);
 }
 
+/**
+ * New continuation: the continuation frames `k`, and the value stack's frozen
+ * segments `stack` holding its values below `height`.
+ */
+minim_obj minim_make_continuation(minim_obj k, minim_obj stack, size_t height);
+
+/** Continuation frames of the continuation `c`. */
+static inline minim_obj minim_continuation_k(minim_obj c) {
+    assert(minim_is_continuation(c));
+    return ((const minim_obj *)(c - MINIM_TAG_TYPED))[1];
+}
+
+/** Frozen value-stack segments of the continuation `c`. */
+static inline minim_obj minim_continuation_stack(minim_obj c) {
+    assert(minim_is_continuation(c));
+    return ((const minim_obj *)(c - MINIM_TAG_TYPED))[2];
+}
+
+/** Value-stack height of the continuation `c`. */
+static inline size_t minim_continuation_height(minim_obj c) {
+    assert(minim_is_continuation(c));
+    return (size_t)minim_fixnum_value(((const minim_obj *)(c - MINIM_TAG_TYPED))[3]);
+}
+
 // Errors
 
 /**
@@ -532,6 +564,8 @@ _Noreturn void minim_error(const char *msg, minim_obj irritant);
 /**
  * Calls `fn(arg)`.  Returns `true` and stores its result in `*result`, or
  * returns `false` if it raised an error, restoring the root and value stacks.
+ * Call it with the value stack empty, as outside any evaluation: a
+ * continuation from outside, invoked inside, replaces what lies below.
  */
 bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result);
 

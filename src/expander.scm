@@ -105,7 +105,7 @@
         ((vector? x)
          (let* ((lst (vector->list x))
                 (stripped (%strip lst)))
-           (if (eq? stripped lst) x (apply vector stripped))))
+           (if (eq? stripped lst) x (list->vector stripped))))
         (else x)))
 
 (define (%expand-list lst env)
@@ -237,7 +237,7 @@
     `(let-values () ,@(%expand-body (cddr x) inner x))))
 
 ;; Code building the quasiquote template `t` at nesting depth `depth` (R7RS
-;; 4.2.8), from cons, append, apply, vector, and quote.
+;; 4.2.8), from cons, append, list->vector, and quote.
 (define (%qq t depth env)
   (let ((k (%keyword t env)))
     (define (keyword-then depth)
@@ -265,8 +265,8 @@
 
 (define (%qq-vector code)
   (if (%quoted? code)
-      (list 'quote (apply vector (cadr code)))
-      (list 'apply 'vector code)))
+      (list 'quote (list->vector (cadr code)))
+      (list 'list->vector code)))
 
 ;; The transformer `spec` denotes in `env`: a procedure from a macro use and its
 ;; environment to the use's expansion.
@@ -367,7 +367,7 @@
                   (instantiate-ellipses (car tmpl) (cdr tmpl) 0 b))
                  (else (cons (instantiate (car tmpl) b escaped)
                              (instantiate (cdr tmpl) b escaped)))))
-          ((vector? tmpl) (apply vector (instantiate (vector->list tmpl) b escaped)))
+          ((vector? tmpl) (list->vector (instantiate (vector->list tmpl) b escaped)))
           (else tmpl)))
 
   ;; Instantiates `e` followed by `k` ellipses so far and then `rest`.

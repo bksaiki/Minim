@@ -11,6 +11,7 @@
 #include "minim.h"
 #include "prims.h"
 #include "read.h"
+#include "stack.h"
 #include "symbol.h"
 
 // Continuation frames are vectors `#(kind next code env base)`.
@@ -96,6 +97,23 @@ static minim_obj pop_values(size_t n) {
     MINIM_RETURN(lst);
 }
 
+// A fresh copy of the proper list `lst`.
+static minim_obj copy_list(minim_obj lst) {
+    minim_obj head = MINIM_NIL;
+    minim_obj tail = MINIM_NIL;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&lst, &head, &tail, &x);
+    for (; minim_is_pair(lst); lst = minim_cdr(lst)) {
+        x = minim_cons(minim_car(lst), MINIM_NIL);
+        if (minim_is_null(head))
+            head = x;
+        else
+            minim_set_cdr(tail, x);
+        tail = x;
+    }
+    MINIM_RETURN(head);
+}
+
 // Raises an error for the `n` values, other than one, atop the value stack.
 static _Noreturn void wrong_number_of_values(size_t n) {
     minim_error("wrong number of values", pop_values(n));
@@ -138,9 +156,10 @@ toplevel:  // Expands `expr` with `%expand`, if `expand` and bound, then evaluat
     if (!expand || minim_symbol_value(minim_sym_expand) == MINIM_UNBOUND)
         goto eval;
     k = make_frame(K_EXPAND, k, MINIM_NIL, MINIM_NIL, MINIM_NIL);
-    base = minim_gc.values.len;
-    minim_values_push(minim_symbol_value(minim_sym_expand));
-    minim_values_push(expr);
+    minim_stack_reserve(2);
+    base = minim_stack_height();
+    minim_stack_push(minim_symbol_value(minim_sym_expand));
+    minim_stack_push(expr);
     goto apply;
 
 eval:  // Evaluates `expr` in `env`, then continues with `k`.
@@ -211,7 +230,8 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
         }
 
         // Application: evaluate the operator, then each operand, onto the value stack.
-        x = minim_fixnum((intptr_t)minim_gc.values.len);
+        minim_stack_reserve((size_t)len);
+        x = minim_fixnum((intptr_t)minim_stack_height());
         k = make_frame(K_ARGS, k, minim_cdr(expr), env, x);
         expr = minim_car(expr);
         goto eval;
@@ -247,7 +267,7 @@ ret:  // Passes the values being returned to `k`.
     intptr_t kind = minim_fixnum_value(minim_vector_ref(x, F_KIND));
     if (kind == K_CALL_VALUES || kind == K_DEFINE_VALUES || kind == K_LET_VALUES) {
         if (nvals == 1)
-            minim_values_push(val);  // they take their values from the stack
+            minim_stack_push(val);  // they take their values from the stack
     } else if (nvals != 1) {
         if (kind != K_SEQ && kind != K_TOPLEVEL)
             wrong_number_of_values(nvals);
@@ -309,9 +329,12 @@ ret:  // Passes the values being returned to `k`.
     case K_CALL_VALUES:  // apply the consumer, below the values
         nvals = 1;
         base = (size_t)minim_fixnum_value(minim_vector_ref(x, F_BASE));
+        if (base < minim_gc.values.start)  // frozen while the producer ran
+            minim_stack_include(base);
         goto apply;
     default:  // K_ARGS
-        minim_values_push(val);
+        minim_stack_reload((size_t)minim_fixnum_value(minim_vector_ref(x, F_BASE)));
+        minim_stack_push(val);
         env = minim_vector_ref(x, F_ENV);
         if (minim_is_pair(minim_vector_ref(x, F_CODE))) {
             minim_obj rest = minim_cdr(minim_vector_ref(x, F_CODE));
@@ -325,32 +348,38 @@ ret:  // Passes the values being returned to `k`.
 
 apply:  // Applies the procedure at `base` to the values above it.
     {
-        size_t n = minim_gc.values.len - base - 1;
-        x = minim_gc.values.items[base];
+        size_t n = minim_stack_height() - base - 1;
+        x = *minim_stack_at(base);
         if (minim_is_primitive(x)) {
             if (!primitive_accepts(x, n))
                 minim_error("arity mismatch", x);
             if (minim_primitive_fn(x) == minim_prim_apply) {
                 // [apply f a ... lst] becomes [f a ... elements of lst].
-                x = minim_gc.values.items[--minim_gc.values.len];
-                if (list_length(x) < 0)
-                    minim_error("apply: not a list", x);
-                memmove(minim_gc.values.items + base, minim_gc.values.items + base + 1,
-                        (minim_gc.values.len - base - 1) * sizeof(minim_obj));
-                minim_gc.values.len--;
-                for (; minim_is_pair(x); x = minim_cdr(x))
-                    minim_values_push(minim_car(x));
+                val = *minim_stack_at(base + n);
+                intptr_t m = list_length(val);
+                if (m < 0)
+                    minim_error("apply: not a list", val);
+                size_t total = n - 2 + (size_t)m;  // the arguments to f
+                if (total + 1 > MINIM_SEGMENT_SIZE)
+                    goto apply_long;
+                if (base + total + 1 > minim_gc.values.start + MINIM_SEGMENT_SIZE)
+                    minim_stack_relocate(base);
+                minim_obj *items = minim_stack_at(base);
+                memmove(items, items + 1, (n - 1) * sizeof(minim_obj));
+                minim_stack_pop_to(base + n - 1);
+                for (; minim_is_pair(val); val = minim_cdr(val))
+                    minim_stack_push(minim_car(val));
                 goto apply;
             }
             if (minim_primitive_fn(x) == minim_prim_values) {
                 // [values a ...] becomes the values a ... at base.
-                minim_obj *items = minim_gc.values.items;
+                minim_obj *items = minim_stack_at(base);
                 if (n == 1) {
-                    val = items[base + 1];
-                    minim_gc.values.len = base;
+                    val = items[1];
+                    minim_stack_pop_to(base);
                 } else {
-                    memmove(items + base, items + base + 1, n * sizeof(minim_obj));
-                    minim_gc.values.len = base + n;
+                    memmove(items, items + 1, n * sizeof(minim_obj));
+                    minim_stack_pop_to(base + n);
                     nvals = n;
                 }
                 goto ret;
@@ -358,24 +387,47 @@ apply:  // Applies the procedure at `base` to the values above it.
             if (minim_primitive_fn(x) == minim_prim_call_with_values) {
                 // [call-with-values producer consumer] becomes [consumer producer], so
                 // the producer's values return right above the consumer.
-                minim_gc.values.items[base] = minim_gc.values.items[base + 2];
-                minim_gc.values.len = base + 2;
+                minim_obj *items = minim_stack_at(base);
+                items[0] = items[2];
+                minim_stack_pop_to(base + 2);
                 k = make_frame(K_CALL_VALUES, k, MINIM_NIL, MINIM_NIL,
                                minim_fixnum((intptr_t)base));
                 base++;
                 goto apply;
             }
+            if (minim_primitive_fn(x) == minim_prim_call_cc) {
+                // [%call/cc f] becomes [f c], c the continuation of this call.
+                x = minim_stack_capture(base);
+                val = minim_make_continuation(k, x, base);
+                minim_obj *items = minim_stack_at(base);
+                items[0] = items[1];
+                items[1] = val;
+                goto apply;
+            }
             if (minim_primitive_fn(x) == minim_prim_load) {
                 // Runs the file's forms as top-level forms, then returns void.
-                if (!minim_is_string(minim_gc.values.items[base + 1]))
-                    minim_error("load: not a string", minim_gc.values.items[base + 1]);
-                x = minim_read_file(minim_gc.values.items[base + 1]);
-                minim_gc.values.len = base;
+                if (!minim_is_string(*minim_stack_at(base + 1)))
+                    minim_error("load: not a string", *minim_stack_at(base + 1));
+                x = minim_read_file(*minim_stack_at(base + 1));
+                minim_stack_pop_to(base);
                 k = make_frame(K_TOPLEVEL, k, x, MINIM_NIL, MINIM_NIL);
                 goto ret;
             }
-            val = minim_primitive_fn(x)(minim_gc.values.items + base + 1, n);
-            minim_gc.values.len = base;
+            val = minim_primitive_fn(x)(minim_stack_at(base + 1), n);
+            minim_stack_pop_to(base);
+            goto ret;
+        }
+        if (minim_is_continuation(x)) {
+            // Returns the arguments, as values, to the captured continuation.
+            size_t height = minim_continuation_height(x);
+            minim_stack_reinstate(minim_continuation_stack(x), height, base + 1, n);
+            k = minim_continuation_k(x);
+            if (n == 1) {
+                val = *minim_stack_at(height);
+                minim_stack_pop_to(height);
+            } else {
+                nvals = n;
+            }
             goto ret;
         }
         if (!minim_is_closure(x))
@@ -384,10 +436,49 @@ apply:  // Applies the procedure at `base` to the values above it.
         minim_obj params = minim_car(minim_closure_code(x));
         if (!accepts(params, n))
             minim_error("arity mismatch", x);
-        env = minim_env_extend(params, minim_gc.values.items + base + 1, n, minim_closure_env(x));
-        minim_gc.values.len = base;
+        env = minim_env_extend(params, minim_stack_at(base + 1), n, minim_closure_env(x));
+        minim_stack_pop_to(base);
         x = minim_cdr(minim_closure_code(x));
         goto sequence;
+    }
+
+apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, with
+             // `val` the list: a closure binds from a list, a primitive takes `spill`.
+    {
+        x = *minim_stack_at(base + 1);
+        size_t total = minim_stack_height() - base - 3 + (size_t)list_length(val);
+        minim_stack_pop_to(minim_stack_height() - 1);  // the list, kept in `val`
+        if (minim_is_closure(x)) {
+            // A fresh list of the arguments, which a rest parameter keeps.
+            val = copy_list(val);
+            for (size_t h = minim_stack_height(); h > base + 2; h--) {
+                minim_obj a = *minim_stack_at(h - 1);
+                val = minim_cons(a, val);
+            }
+            minim_obj params = minim_car(minim_closure_code(x));
+            if (!accepts(params, total))
+                minim_error("arity mismatch", x);
+            env = minim_env_extend_list(params, val, minim_closure_env(x));
+            minim_stack_pop_to(base);
+            x = minim_cdr(minim_closure_code(x));
+            goto sequence;
+        }
+        if (minim_is_continuation(x))
+            minim_error("too many arguments", minim_fixnum((intptr_t)total));
+        if (!minim_is_primitive(x))
+            minim_error("not a procedure", x);
+        minim_prim_fn fn = minim_primitive_fn(x);
+        if (fn == minim_prim_apply || fn == minim_prim_values
+            || fn == minim_prim_call_with_values || fn == minim_prim_call_cc
+            || fn == minim_prim_load)
+            minim_error("too many arguments", minim_fixnum((intptr_t)total));
+        if (!primitive_accepts(x, total))
+            minim_error("arity mismatch", x);
+        minim_stack_spill(base + 2, val);
+        val = fn(minim_gc.spill.items, total);
+        minim_gc.spill.len = 0;
+        minim_stack_pop_to(base);
+        goto ret;
     }
 }
 

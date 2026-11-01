@@ -18,6 +18,14 @@ typedef struct minim_obj_stack {
     size_t cap;
 } minim_obj_stack;
 
+/** The value stack (`stack.h`): a fixed buffer over a chain of frozen segments. */
+typedef struct minim_value_stack {
+    minim_obj *items;  ///< MINIM_SEGMENT_SIZE values, never reallocated
+    size_t len;        ///< values in the buffer
+    size_t start;      ///< height of items[0]
+    minim_obj below;   ///< the newest frozen segment, or '()
+} minim_value_stack;
+
 /** A growable array of variables holding objects. */
 typedef struct minim_root_stack {
     minim_obj **items;
@@ -35,7 +43,9 @@ extern struct minim_gc {
     minim_chunk_queue spares;    ///< freed standard-size chunks, reused oldest first
     minim_root_stack locals;     ///< the shadow stack
     minim_root_stack globals;    ///< from minim_gc_add_global
-    minim_obj_stack values;      ///< values of calls in progress, updated in place
+    minim_value_stack values;    ///< values of calls in progress, updated in place
+    minim_obj_stack spill;       ///< `apply`'s arguments to a primitive, too many to stack
+    minim_obj winders;           ///< `dynamic-wind`s in progress, innermost first: (before . after)
     minim_obj_stack remembered;  ///< old objects that may point younger, each once
     size_t size;                 ///< bytes held in chunks
     size_t allocated;            ///< bytes handed out by minim_heap_alloc since init
@@ -47,9 +57,6 @@ extern struct minim_gc {
     unsigned collecting;         ///< in a collection, the oldest generation it collects
     unsigned target;             ///< in a collection, the generation survivors go to
 } minim_gc;
-
-/** Pushes `x` onto the value stack; may move `minim_gc.values.items`. */
-void minim_values_push(minim_obj x);
 
 /** Resets the collector, with its settings from the environment. */
 void minim_gc_init(void);

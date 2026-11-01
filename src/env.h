@@ -19,6 +19,13 @@
  */
 minim_obj minim_env_extend(minim_obj params, minim_obj *args, size_t n, minim_obj parent);
 
+/**
+ * New environment binding `params` to the elements of the list `args` in
+ * `parent`; a rest symbol gets the list's remaining tail.  `params` accepts
+ * the list's length.
+ */
+minim_obj minim_env_extend_list(minim_obj params, minim_obj args, minim_obj parent);
+
 /** Value of `sym` in `env`; raises if unbound. */
 minim_obj minim_env_lookup(minim_obj env, minim_obj sym);
 

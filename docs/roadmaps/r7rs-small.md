@@ -7,7 +7,7 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 83 primitives, and a Scheme prelude with the list library
+closures, 87 primitives, and a Scheme prelude with the list library
 (`map`, `append`, `member`, `fold`, ...).  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls, multiple values, and the special forms `quote`, `if`, `define`,
@@ -20,7 +20,8 @@ Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Control | `call/cc`, `dynamic-wind`, `error`, `guard` |
+| Control | `error`, `guard` |
+| Libraries | `import`, `define-library` |
 | Numbers | flonums, bignums, rationals |
 | I/O | ports, `read`, `read-char`, string and file ports |
 | Data types | records, hashtables, bytevectors |
@@ -83,13 +84,28 @@ hygienic, as R7RS requires (`docs/design/macros.md`).
 - `error`, `raise`, `with-exception-handler`, and `guard`, with condition
   objects (message and irritants).  `minim_error` raises one, so C and Scheme
   errors are the same kind of thing.
-- `call/cc`.  Heap continuation frames make capture cheap.  The value stack
-  must be copied on capture and restored on reentry.
-- `dynamic-wind`, which `call/cc` and `guard` must respect.
+- Done: `call/cc` and `dynamic-wind`, on a segmented value stack, so a
+  capture copies at most one segment (`docs/design/eval.md`).
 
 Depends on 3 (`guard` is a macro).
 
-### 5. Ports and I/O (M)
+### 5. Libraries (M–L)
+
+Every R7RS program starts with `(import (scheme base) ...)`, so without
+libraries Minim can't run a portable program.
+
+- `import` of the standard libraries, `(scheme base)`, `(scheme write)`,
+  `(scheme cxr)`, and so on, each exporting the identifiers Minim has.
+- `define-library`, with `export`, `import`, `begin`, and `include`.
+- Each library's bindings in its own environment, so the prelude and the
+  expander no longer share the user's top level: redefining `car` or `map`
+  stops breaking expansion (`docs/design/macros.md`, Limitations).
+
+Depends on 3: identifiers and environments are the expander's.  The main
+design question is how global bindings are represented, since today they are
+symbol value slots, one per symbol.
+
+### 6. Ports and I/O (M)
 
 - Port objects (a new typed object): input and output, file and string.
 - `current-input-port`, `current-output-port`, `open-input-file`,
@@ -100,9 +116,14 @@ Depends on 3 (`guard` is a macro).
 - The reader and printer take ports instead of `FILE *`; `FILE *` becomes
   one kind of port.
 
-Depends on 4, so I/O errors are conditions.
+Depends on 4, so I/O errors are conditions.  Only the exports wait on 5: the
+port objects, the reader and printer on ports, and the procedures in
+`(scheme base)` don't need libraries, but file ports belong to
+`(scheme file)`, `read` to `(scheme read)`, and `write` and `display` to
+`(scheme write)`, so those are implemented first and exported once the
+libraries exist.
 
-### 6. Numbers (L)
+### 7. Numbers (L)
 
 - Flonums: boxed doubles on primary tag `010` (reserved for this).  Reading,
   printing (shortest round-trip), arithmetic, and `exact` / `inexact`.
@@ -115,7 +136,7 @@ Depends on 4, so I/O errors are conditions.
 Can start any time after 1; the order is flexible.  The main decision is
 hand-written bignums or GMP (see Open items).
 
-### 7. More data types (M)
+### 8. More data types (M)
 
 - Records: `define-record-type`, as typed objects with a type descriptor.
 - Hashtables: `eq?`-based and `equal?`-based (`equal-hash` exists from
@@ -125,7 +146,7 @@ hand-written bignums or GMP (see Open items).
 
 Depends on 3 (`define-record-type` is a macro).
 
-### 8. Runtime maturity (M, ongoing)
+### 9. Runtime maturity (M, ongoing)
 
 Not features, but needed as programs grow:
 
@@ -140,18 +161,18 @@ Not features, but needed as programs grow:
   boot file; the evaluator binds definitions only globally.
 - Done: expansion into the `-values` binding forms, so `let` allocates no
   closure and each frame's variables are known before it runs.
-- Separate system bindings from the user's top level, so redefining `car` or
-  `list` doesn't break the expander or the prelude (`docs/design/macros.md`,
-  Limitations).  Until then, cheap local lookup (the lexical-address pass
-  below) would let the expander close over the primitives it uses.
-- Evaluator speed: a pre-pass that resolves variables to lexical addresses,
-  with environments as vectors.  `src/env.h` already hides the
-  representation.
+- Environments: a local frame is now created only by a procedure call,
+  `let-values`, or `letrec-values`, and its variables are known when it is
+  created, so every environment is either the global one or a chain of
+  fixed-size frames.  Frames can be vectors, and a pass after expansion can
+  resolve each local variable to a lexical address (frames up, slot), so a
+  lookup is a few loads instead of a search by name.  `src/env.h` already
+  hides the representation.
 - Benchmarks, so performance changes are measured.
 
 Can interleave with any milestone.
 
-### 9. Tooling and conformance (S–M, ongoing)
+### 10. Tooling and conformance (S–M, ongoing)
 
 - A conformance suite: a subset of the R7RS tests (for example Chibi's
   `r7rs-tests.scm`) as golden tests, grown with each milestone.
@@ -160,9 +181,8 @@ Can interleave with any milestone.
 
 ## Out of scope for now
 
-Threads, a foreign function interface, a native or bytecode compiler, full
-R7RS libraries (`define-library`), and Unicode case folding and
-normalization.
+Threads, a foreign function interface, a native or bytecode compiler, and
+Unicode case folding and normalization.
 
 ## Open items
 

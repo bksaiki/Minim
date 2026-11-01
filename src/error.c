@@ -10,6 +10,7 @@
 
 #include "gc.h"
 #include "minim.h"
+#include "stack.h"
 
 typedef struct handler {
     jmp_buf buf;
@@ -40,12 +41,14 @@ void minim_error(const char *msg, minim_obj irritant) {
 bool minim_catch(minim_obj (*fn)(void *), void *arg, minim_obj *result) {
     handler h = {.prev = current};
     size_t mark = minim_gc_mark();
-    size_t values = minim_gc.values.len;
+    size_t height = minim_stack_height();
     current = &h;
     if (setjmp(h.buf) != 0) {
         current = h.prev;
         minim_gc_reset(mark);
-        minim_gc.values.len = values;
+        minim_stack_unwind(height);
+        minim_gc.spill.len = 0;
+        minim_gc.winders = MINIM_NIL;  // none outside an evaluation; their afters don't run
         return false;
     }
 

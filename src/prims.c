@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "char.h"
+#include "gc.h"
 #include "heap.h"
 #include "minim.h"
 
@@ -326,6 +327,26 @@ minim_obj minim_prim_call_with_values(minim_obj *args, size_t n) {
     abort();
 }
 
+// Applied by the evaluator, which captures the continuation; never called.
+minim_obj minim_prim_call_cc(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    abort();
+}
+
+// The `dynamic-wind` calls in progress, for the prelude's `call/cc`.
+static minim_obj prim_winders(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    return minim_gc.winders;
+}
+
+static minim_obj prim_set_winders(minim_obj *args, size_t n) {
+    (void)n;
+    minim_gc.winders = args[0];
+    return MINIM_VOID;
+}
+
 // Applied by the evaluator, which evaluates the file's forms; never called.
 minim_obj minim_prim_load(minim_obj *args, size_t n) {
     (void)args;
@@ -420,8 +441,8 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
         return minim_hash_mix(minim_string_hash(minim_symbol_name(x)), HASH_SYMBOL);
     if (minim_is_primitive(x))
         return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
-    if (minim_is_closure(x))
-        return HASH_CLOSURE;  // closures are equal? only when eq?
+    if (minim_is_closure(x) || minim_is_continuation(x))
+        return HASH_CLOSURE;  // equal? only when eq?
     if (minim_is_pair(x)) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);
         h = minim_hash_mix(h, equal_hash(minim_car(x), budget));
@@ -523,6 +544,22 @@ static minim_obj prim_vector_to_list(minim_obj *args, size_t n) {
     for (size_t i = end; i > start; i--)
         lst = minim_cons(minim_vector_ref(args[0], i - 1), lst);
     MINIM_RETURN(lst);
+}
+
+// A new vector of the elements of the proper list args[0].
+static minim_obj prim_list_to_vector(minim_obj *args, size_t n) {
+    (void)n;
+    size_t len = 0;
+    minim_obj x = args[0];
+    for (; minim_is_pair(x); x = minim_cdr(x))
+        len++;
+    check(minim_is_null(x), "list->vector: not a list", args[0]);
+
+    minim_obj v = minim_make_vector(len, MINIM_NIL);
+    x = args[0];  // the collection may have moved it
+    for (size_t i = 0; i < len; i++, x = minim_cdr(x))
+        minim_vector_set(v, i, minim_car(x));
+    return v;
 }
 
 static minim_obj prim_is_vector(minim_obj *args, size_t n) {
@@ -857,6 +894,9 @@ void minim_prims_init(void) {
     define_primitive("load", minim_prim_load, 1, 1);
     define_primitive("values", minim_prim_values, 0, MINIM_VARIADIC);
     define_primitive("call-with-values", minim_prim_call_with_values, 2, 2);
+    define_primitive("%call/cc", minim_prim_call_cc, 1, 1);
+    define_primitive("%winders", prim_winders, 0, 0);
+    define_primitive("%set-winders!", prim_set_winders, 1, 1);
     define_primitive("eq?", prim_eq, 2, 2);
     define_primitive("eqv?", prim_eq, 2, 2);
     define_primitive("equal?", prim_equal, 2, 2);
@@ -872,6 +912,7 @@ void minim_prims_init(void) {
     define_primitive("vector-set!", prim_vector_set, 3, 3);
     define_primitive("vector-length", prim_vector_length, 1, 1);
     define_primitive("vector->list", prim_vector_to_list, 1, 3);
+    define_primitive("list->vector", prim_list_to_vector, 1, 1);
     define_primitive("vector?", prim_is_vector, 1, 1);
     define_primitive("string-length", prim_string_length, 1, 1);
     define_primitive("string-ref", prim_string_ref, 2, 2);

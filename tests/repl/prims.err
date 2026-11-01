@@ -14,6 +14,7 @@ error: make-vector: bad length: -1
 error: vector->list: not a vector: (1)
 error: vector->list: bad index: 3
 error: vector->list: bad index: 2
+error: list->vector: not a list: (1 . 2)
 error: string-ref: bad index: 3
 error: string-length: not a string: abc
 error: symbol->string: not a symbol: "abc"
