@@ -23,7 +23,7 @@ static minim_obj read_stdin(void *arg) {
 }
 
 static minim_obj eval(void *expr) {
-    return minim_eval(*(minim_obj *)expr);
+    return minim_eval_values(*(minim_obj *)expr);
 }
 
 // Evaluates `(load path)`.
@@ -63,9 +63,11 @@ static int run_repl(void) {
             minim_write_error(stderr);
             continue;
         }
-        if (x != MINIM_VOID) {
-            minim_write(stdout, x);
-            putchar('\n');
+        for (; minim_is_pair(x); x = minim_cdr(x)) {
+            if (minim_car(x) != MINIM_VOID) {
+                minim_write(stdout, minim_car(x));
+                putchar('\n');
+            }
         }
     }
 

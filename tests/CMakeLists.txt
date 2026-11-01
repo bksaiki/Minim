@@ -124,6 +124,7 @@ minim_add_repl_test(strings)
 minim_add_repl_test(symbols)
 minim_add_repl_test(syntax-rules)
 minim_add_repl_test(tail)
+minim_add_repl_test(values)
 
 minim_add_script_test(fail STATUS 1)
 minim_add_script_test(gc-settings NO_STRESS)  # the defaults

@@ -543,8 +543,14 @@ void minim_write_error(FILE *out);
 
 // Evaluation
 
-/** Value of the top-level form `expr`, expanded by `%expand` if bound.  Raises on errors. */
+/**
+ * Value of the top-level form `expr`, expanded by `%expand` if bound.  Raises on
+ * errors, including a count of values other than one.
+ */
 minim_obj minim_eval(minim_obj expr);
+
+/** The list of the values of the top-level form `expr`, as minim_eval. */
+minim_obj minim_eval_values(minim_obj expr);
 
 // Reading
 

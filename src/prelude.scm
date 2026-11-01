@@ -192,7 +192,9 @@
                             (%expand-set x env)
                             (if (eq? k 'begin)
                                 (cons 'begin (%expand-list (cdr x) env))
-                                (if (if (eq? k 'define) #t (eq? k 'define-syntax))
+                                (if (if (eq? k 'define)
+                                        #t
+                                        (if (eq? k 'define-values) #t (eq? k 'define-syntax)))
                                     (%bad-syntax x)  ; not at top level or the start of a body
                                     (if (eq? k 'syntax-error)
                                         (if (<= 2 n)
@@ -203,7 +205,11 @@
                                             (%expand-let-syntax x env #f)
                                             (if (eq? k 'letrec-syntax)
                                                 (%expand-let-syntax x env #t)
-                                                (%expand-list x env))))))))))))))
+                                                (if (eq? k 'let-values)
+                                                    (%expand-let-values x env #f)
+                                                    (if (eq? k 'letrec-values)
+                                                        (%expand-let-values x env #t)
+                                                        (%expand-list x env))))))))))))))))
 
 (define %expand-set
   (lambda (x env)
@@ -212,20 +218,47 @@
         (list 'set! var (%expand-expr (car (cdr (cdr x))) env))
         (%bad-syntax x))))
 
+;; The lambda list `formals` of the form `whole`, with each identifier `id`
+;; replaced by `(f id)`.
+(define %map-formals
+  (lambda (f formals whole)
+    (if (pair? formals)
+        (if (symbol? (car formals))
+            (cons (f (car formals)) (%map-formals f (cdr formals) whole))
+            (%bad-syntax whole))
+        (if (null? formals)
+            '()
+            (if (symbol? formals) (f formals) (%bad-syntax whole))))))
+
+;; `formals` of the form `whole`, each identifier bound to a fresh name in `env`.
+(define %bind-formals!
+  (lambda (env formals whole)
+    (%map-formals (lambda (id) (%bind-variable! env id)) formals whole)))
+
 (define %expand-lambda
   (lambda (x n env)
     (define inner (%extend env))
-    (define rename
-      (lambda (params)
-        (if (pair? params)
-            (if (symbol? (car params))
-                (cons (%bind-variable! inner (car params)) (rename (cdr params)))
-                (%bad-syntax x))
-            (if (null? params)
-                '()
-                (if (symbol? params) (%bind-variable! inner params) (%bad-syntax x))))))
-    (define params (if (< n 3) (%bad-syntax x) (rename (car (cdr x)))))
+    (define params (if (< n 3) (%bad-syntax x) (%bind-formals! inner (car (cdr x)) x)))
     (cons 'lambda (cons params (%expand-body (cdr (cdr x)) inner x)))))
+
+;; Expands `(let-values ((formals init) ...) body ...)`, or `letrec-values` if
+;; `rec`.  The inits are expanded in `env`, or in the new frame if `rec`.
+(define %expand-let-values
+  (lambda (x env rec)
+    (define inner (%extend env))
+    (define check
+      (lambda (clause) (if (eq? (%length clause 0) 2) clause (%bad-syntax x))))
+    (define clauses
+      (if (if (< 2 (%length x 0)) (%length (car (cdr x)) 0) #f)
+          (%map check (car (cdr x)))
+          (%bad-syntax x)))
+    (define formals (%map (lambda (c) (%bind-formals! inner (car c) x)) clauses))
+    (define inits (%map (lambda (c) (%expand-expr (car (cdr c)) (if rec inner env))) clauses))
+    (define zip
+      (lambda (fs is)
+        (if (null? fs) '() (cons (list (car fs) (car is)) (zip (cdr fs) (cdr is))))))
+    (cons (if rec 'letrec-values 'let-values)
+          (cons (zip formals inits) (%expand-body (cdr (cdr x)) inner x)))))
 
 ;; Expands the body `forms` of the form `whole` in a new frame over `env`
 ;; (R7RS 5.4).  The leading definitions, with `begin` spliced, are bound
@@ -233,7 +266,8 @@
 (define %expand-body
   (lambda (forms env whole)
     (define inner (%extend env))
-    ;; `defs` collects (name . expression) in reverse.
+    ;; `defs` collects (define name expression) and (define-values formals
+    ;; expression), names renamed and expressions unexpanded, in reverse.
     (define scan
       (lambda (forms defs)
         (if (null? forms)
@@ -247,21 +281,30 @@
             (if (eq? k 'define)
                 (if (%binding-form? x)
                     (scan rest
-                          (cons (cons (%bind-variable! inner (car (cdr x))) (car (cdr (cdr x))))
+                          (cons (list 'define (%bind-variable! inner (car (cdr x)))
+                                      (car (cdr (cdr x))))
                                 defs))
                     (%bad-syntax x))
-                (if (eq? k 'define-syntax)
-                    (if (%binding-form? x)
-                        (begin
-                          (%bind-macro! inner (car (cdr x))
-                                        (%transformer (car (cdr (cdr x))) inner))
-                          (scan rest defs))
+                (if (eq? k 'define-values)
+                    (if (eq? (%length x 0) 3)
+                        (scan rest
+                              (cons (list 'define-values (%bind-formals! inner (car (cdr x)) x)
+                                          (car (cdr (cdr x))))
+                                    defs))
                         (%bad-syntax x))
-                    (finish defs (cons x rest)))))))
+                    (if (eq? k 'define-syntax)
+                        (if (%binding-form? x)
+                            (begin
+                              (%bind-macro! inner (car (cdr x))
+                                            (%transformer (car (cdr (cdr x))) inner))
+                              (scan rest defs))
+                            (%bad-syntax x))
+                        (finish defs (cons x rest))))))))
     (define finish
       (lambda (defs exprs)
         (define body
-          (%append (%map (lambda (d) (list 'define (car d) (%expand-expr (cdr d) inner)))
+          (%append (%map (lambda (d)
+                           (list (car d) (car (cdr d)) (%expand-expr (car (cdr (cdr d))) inner)))
                          (%reverse defs))
                    (%expand-list exprs inner)))
         (if (null? body) (%bad-syntax whole) body)))
@@ -546,13 +589,24 @@
           (cdr (car %top-renames)))
         name)))
 
+;; The global a top-level definition of `id` defines, which stops naming a macro.
+(define %top-define!
+  (lambda (id)
+    (define name (%top-name id))
+    (if (%macro name) (set! %macros (%unbind-macro name %macros)) #f)
+    name))
+
 (define %expand-define
   (lambda (x)
-    (define name (if (%binding-form? x)
-                     (%top-name (car (cdr x)))
-                     (%bad-syntax x)))
-    (if (%macro name) (set! %macros (%unbind-macro name %macros)) #f)
+    (define name (if (%binding-form? x) (%top-define! (car (cdr x))) (%bad-syntax x)))
     (list 'define name (%expand-expr (car (cdr (cdr x))) '()))))
+
+(define %expand-define-values
+  (lambda (x)
+    (define formals (if (eq? (%length x 0) 3)
+                        (%map-formals %top-define! (car (cdr x)) x)
+                        (%bad-syntax x)))
+    (list 'define-values formals (%expand-expr (car (cdr (cdr x))) '()))))
 
 (define %expand-define-syntax
   (lambda (x)
@@ -572,9 +626,11 @@
         (if (%length y 0) (cons 'begin (%map %expand (cdr y))) (%bad-syntax y))
         (if (eq? k 'define)
             (%expand-define y)
-            (if (eq? k 'define-syntax)
-                (%expand-define-syntax y)
-                (%expand-expr y '()))))))
+            (if (eq? k 'define-values)
+                (%expand-define-values y)
+                (if (eq? k 'define-syntax)
+                    (%expand-define-syntax y)
+                    (%expand-expr y '())))))))
 
 ;;; Derived forms (R7RS 4.2), as macros; the rest of the prelude may use them.
 
@@ -592,6 +648,12 @@
      (let ((name val)) (let* (rest ...) body1 body2 ...)))))
 
 ;; Internal definitions, so each `val` sees every name (letrec* semantics).
+(define-syntax let*-values
+  (syntax-rules ()
+    ((_ () body1 body2 ...) (let () body1 body2 ...))
+    ((_ (binding rest ...) body1 body2 ...)
+     (let-values (binding) (let*-values (rest ...) body1 body2 ...)))))
+
 (define-syntax letrec*
   (syntax-rules ()
     ((_ ((name val) ...) body1 body2 ...)

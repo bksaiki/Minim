@@ -15,16 +15,20 @@
 // Continuation frames are vectors `#(kind next code env base)`.
 enum { F_KIND, F_NEXT, F_CODE, F_ENV, F_BASE, FRAME_SIZE };
 
-// Frame kinds, with what `code` holds.  Only K_ARGS uses `base`: the
-// value-stack height where its call's values start.
+// Frame kinds, with what `code` holds.  For K_ARGS, `base` is the value-stack
+// height where its call's values start; for K_CALL_VALUES, the consumer's slot;
+// for K_LET_VALUES, the new frame its clauses bind into.
 enum {
-    K_IF,        // branches `(then [else])`
-    K_SEQ,       // remaining body
-    K_DEFINE,    // symbol
-    K_SET,       // symbol
-    K_ARGS,      // remaining operands
-    K_EXPAND,    // unused
-    K_TOPLEVEL,  // remaining top-level forms
+    K_IF,             // branches `(then [else])`
+    K_SEQ,            // remaining body
+    K_DEFINE,         // symbol
+    K_SET,            // symbol
+    K_ARGS,           // remaining operands
+    K_EXPAND,         // unused
+    K_TOPLEVEL,       // remaining top-level forms
+    K_CALL_VALUES,    // unused
+    K_DEFINE_VALUES,  // formals
+    K_LET_VALUES,     // `(clauses . body)`, the first clause's init being evaluated
 };
 
 static minim_obj make_frame(intptr_t kind, minim_obj next, minim_obj code, minim_obj env,
@@ -56,6 +60,16 @@ static bool valid_params(minim_obj params) {
     return minim_is_null(params) || minim_is_symbol(params);
 }
 
+// Whether `clauses` is a list of `(formals init)`.
+static bool valid_clauses(minim_obj clauses) {
+    for (; minim_is_pair(clauses); clauses = minim_cdr(clauses)) {
+        minim_obj c = minim_car(clauses);
+        if (list_length(c) != 2 || !valid_params(minim_car(c)))
+            return false;
+    }
+    return minim_is_null(clauses);
+}
+
 // Whether a closure with `params` accepts `n` arguments.
 static bool accepts(minim_obj params, size_t n) {
     size_t required = 0;
@@ -70,14 +84,50 @@ static bool primitive_accepts(minim_obj p, size_t n) {
         && (max == MINIM_VARIADIC || (intptr_t)n <= max);
 }
 
-minim_obj minim_eval(minim_obj expr) {
+// Pops the `n` values atop the value stack into a list.
+static minim_obj pop_values(size_t n) {
+    minim_obj lst = MINIM_NIL;
+    MINIM_FRAME(&lst);
+    for (; n > 0; n--) {
+        lst = minim_cons(minim_gc.values.items[minim_gc.values.len - 1], lst);
+        minim_gc.values.len--;
+    }
+    MINIM_RETURN(lst);
+}
+
+// Raises an error for the `n` values, other than one, atop the value stack.
+static _Noreturn void wrong_number_of_values(size_t n) {
+    minim_error("wrong number of values", pop_values(n));
+}
+
+// Binds `formals` in `env`, with minim_env_define, to the `n` values atop the
+// value stack, and pops them.
+static void bind_values(minim_obj env, minim_obj formals, size_t n) {
+    if (!accepts(formals, n))
+        wrong_number_of_values(n);
+    MINIM_FRAME(&env, &formals);
+    size_t start = minim_gc.values.len - n;
+    size_t i = start;
+    for (; minim_is_pair(formals); formals = minim_cdr(formals), i++)
+        minim_env_define(env, minim_car(formals), minim_gc.values.items[i]);
+    if (minim_is_symbol(formals))
+        minim_env_define(env, formals, pop_values(minim_gc.values.len - i));
+    minim_gc.values.len = start;
+    MINIM_RETURN_VOID;
+}
+
+// Evaluates `expr`; returns its one value, or the list of its values if `many`.
+static minim_obj eval(minim_obj expr, bool many) {
     minim_obj env = MINIM_NIL;
     minim_obj val = MINIM_VOID;
-    minim_obj k = MINIM_NIL;  // continuation; '() returns from minim_eval
+    minim_obj k = MINIM_NIL;  // continuation; '() returns from eval
     minim_obj x = MINIM_NIL;  // scratch
+    minim_obj frame = MINIM_NIL;  // the frame a let-values form binds into
     size_t base = 0;  // value-stack height where the applied call's values start
+    // Values being returned: 1 in `val`, or any other count atop the value stack.
+    size_t nvals = 1;
 
-    MINIM_FRAME(&expr, &env, &val, &k, &x);
+    MINIM_FRAME(&expr, &env, &val, &k, &x, &frame);
 
 toplevel:  // Expands `expr` with `%expand`, if bound, then evaluates it globally.
     env = MINIM_NIL;
@@ -125,6 +175,20 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
             k = make_frame(kind, k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
             expr = minim_car(minim_cdr(minim_cdr(expr)));
             goto eval;
+        } else if (x == minim_sym_define_values) {
+            if (len != 3 || !valid_params(minim_car(minim_cdr(expr))))
+                minim_error("bad syntax", expr);
+            k = make_frame(K_DEFINE_VALUES, k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
+            expr = minim_car(minim_cdr(minim_cdr(expr)));
+            goto eval;
+        } else if (x == minim_sym_let_values || x == minim_sym_letrec_values) {
+            if (len < 3 || !valid_clauses(minim_car(minim_cdr(expr))))
+                minim_error("bad syntax", expr);
+            frame = minim_env_extend(MINIM_NIL, NULL, 0, env);
+            if (x == minim_sym_letrec_values)
+                env = frame;
+            x = minim_cdr(expr);
+            goto let_values;
         } else if (x == minim_sym_lambda) {
             if (len < 3 || !valid_params(minim_car(minim_cdr(expr))))
                 minim_error("bad syntax", expr);
@@ -152,12 +216,38 @@ sequence:  // Evaluates the non-empty body `x` in `env`; the last expression is 
     expr = minim_car(x);
     goto eval;
 
-ret:  // Passes `val` to `k`.
-    if (minim_is_null(k))
+let_values:  // Evaluates the next init of `x`, `(clauses . body)`, in `env`, or else
+             // the body in `frame`.
+    if (minim_is_null(minim_car(x))) {
+        env = frame;
+        x = minim_cdr(x);
+        goto sequence;
+    }
+    k = make_frame(K_LET_VALUES, k, x, env, frame);
+    expr = minim_car(minim_cdr(minim_car(minim_car(x))));
+    goto eval;
+
+ret:  // Passes the values being returned to `k`.
+    if (minim_is_null(k)) {
+        if (many)
+            val = nvals == 1 ? minim_cons(val, MINIM_NIL) : pop_values(nvals);
+        else if (nvals != 1)
+            wrong_number_of_values(nvals);
         MINIM_RETURN(val);
+    }
     x = k;
     k = minim_vector_ref(x, F_NEXT);
-    switch (minim_fixnum_value(minim_vector_ref(x, F_KIND))) {
+    intptr_t kind = minim_fixnum_value(minim_vector_ref(x, F_KIND));
+    if (kind == K_CALL_VALUES || kind == K_DEFINE_VALUES || kind == K_LET_VALUES) {
+        if (nvals == 1)
+            minim_values_push(val);  // they take their values from the stack
+    } else if (nvals != 1) {
+        if (kind != K_SEQ && kind != K_TOPLEVEL)
+            wrong_number_of_values(nvals);
+        minim_gc.values.len -= nvals;  // discarded
+        nvals = 1;
+    }
+    switch (kind) {
     case K_IF:
         env = minim_vector_ref(x, F_ENV);
         x = minim_vector_ref(x, F_CODE);
@@ -196,6 +286,23 @@ ret:  // Passes `val` to `k`.
         k = make_frame(K_TOPLEVEL, k, minim_cdr(x), MINIM_NIL, MINIM_NIL);
         expr = minim_car(x);
         goto toplevel;
+    case K_DEFINE_VALUES:
+        bind_values(minim_vector_ref(x, F_ENV), minim_vector_ref(x, F_CODE), nvals);
+        nvals = 1;
+        val = MINIM_VOID;
+        goto ret;
+    case K_LET_VALUES:
+        env = minim_vector_ref(x, F_ENV);
+        frame = minim_vector_ref(x, F_BASE);
+        x = minim_vector_ref(x, F_CODE);
+        bind_values(frame, minim_car(minim_car(minim_car(x))), nvals);
+        nvals = 1;
+        x = minim_cons(minim_cdr(minim_car(x)), minim_cdr(x));
+        goto let_values;
+    case K_CALL_VALUES:  // apply the consumer, below the values
+        nvals = 1;
+        base = (size_t)minim_fixnum_value(minim_vector_ref(x, F_BASE));
+        goto apply;
     default:  // K_ARGS
         minim_values_push(val);
         env = minim_vector_ref(x, F_ENV);
@@ -228,6 +335,29 @@ apply:  // Applies the procedure at `base` to the values above it.
                     minim_values_push(minim_car(x));
                 goto apply;
             }
+            if (minim_primitive_fn(x) == minim_prim_values) {
+                // [values a ...] becomes the values a ... at base.
+                minim_obj *items = minim_gc.values.items;
+                if (n == 1) {
+                    val = items[base + 1];
+                    minim_gc.values.len = base;
+                } else {
+                    memmove(items + base, items + base + 1, n * sizeof(minim_obj));
+                    minim_gc.values.len = base + n;
+                    nvals = n;
+                }
+                goto ret;
+            }
+            if (minim_primitive_fn(x) == minim_prim_call_with_values) {
+                // [call-with-values producer consumer] becomes [consumer producer], so
+                // the producer's values return right above the consumer.
+                minim_gc.values.items[base] = minim_gc.values.items[base + 2];
+                minim_gc.values.len = base + 2;
+                k = make_frame(K_CALL_VALUES, k, MINIM_NIL, MINIM_NIL,
+                               minim_fixnum((intptr_t)base));
+                base++;
+                goto apply;
+            }
             if (minim_primitive_fn(x) == minim_prim_load) {
                 // Runs the file's forms as top-level forms, then returns void.
                 if (!minim_is_string(minim_gc.values.items[base + 1]))
@@ -252,4 +382,12 @@ apply:  // Applies the procedure at `base` to the values above it.
         x = minim_cdr(minim_closure_code(x));
         goto sequence;
     }
+}
+
+minim_obj minim_eval(minim_obj expr) {
+    return eval(expr, false);
+}
+
+minim_obj minim_eval_values(minim_obj expr) {
+    return eval(expr, true);
 }

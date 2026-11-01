@@ -54,9 +54,12 @@ static void grow(void) {
 
 minim_obj minim_sym_begin;
 minim_obj minim_sym_define;
+minim_obj minim_sym_define_values;
 minim_obj minim_sym_expand;
 minim_obj minim_sym_if;
 minim_obj minim_sym_lambda;
+minim_obj minim_sym_let_values;
+minim_obj minim_sym_letrec_values;
 minim_obj minim_sym_quasiquote;
 minim_obj minim_sym_quote;
 minim_obj minim_sym_set;
@@ -76,9 +79,12 @@ void minim_symbol_init(void) {
 
     intern_global(&minim_sym_begin, "begin");
     intern_global(&minim_sym_define, "define");
+    intern_global(&minim_sym_define_values, "define-values");
     intern_global(&minim_sym_expand, "%expand");
     intern_global(&minim_sym_if, "if");
     intern_global(&minim_sym_lambda, "lambda");
+    intern_global(&minim_sym_let_values, "let-values");
+    intern_global(&minim_sym_letrec_values, "letrec-values");
     intern_global(&minim_sym_quasiquote, "quasiquote");
     intern_global(&minim_sym_quote, "quote");
     intern_global(&minim_sym_set, "set!");

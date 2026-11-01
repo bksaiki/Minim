@@ -267,6 +267,21 @@ minim_obj minim_prim_apply(minim_obj *args, size_t n) {
     abort();
 }
 
+// Applied by the evaluator, which returns the values; never called.
+minim_obj minim_prim_values(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    abort();
+}
+
+// Applied by the evaluator, which passes the producer's values to the consumer;
+// never called.
+minim_obj minim_prim_call_with_values(minim_obj *args, size_t n) {
+    (void)args;
+    (void)n;
+    abort();
+}
+
 // Applied by the evaluator, which evaluates the file's forms; never called.
 minim_obj minim_prim_load(minim_obj *args, size_t n) {
     (void)args;
@@ -775,6 +790,8 @@ void minim_prims_init(void) {
     define_primitive("length", prim_length, 1, 1);
     define_primitive("apply", minim_prim_apply, 2, MINIM_VARIADIC);
     define_primitive("load", minim_prim_load, 1, 1);
+    define_primitive("values", minim_prim_values, 0, MINIM_VARIADIC);
+    define_primitive("call-with-values", minim_prim_call_with_values, 2, 2);
     define_primitive("eq?", prim_eq, 2, 2);
     define_primitive("eqv?", prim_eq, 2, 2);
     define_primitive("equal?", prim_equal, 2, 2);

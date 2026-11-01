@@ -2,7 +2,8 @@
 
 The expander, `%expand`, is Scheme code at the start of `src/prelude.scm`.  It
 rewrites each top-level form into the core forms the evaluator knows:
-`quote`, `if`, `define`, `set!`, `lambda`, and `begin` (`eval.md`).  The
+`quote`, `if`, `define`, `set!`, `lambda`, `begin`, `define-values`,
+`let-values`, and `letrec-values` (`eval.md`).  The
 evaluator calls it on every top-level form once it is defined; it is defined
 last in its section, so its own code runs unexpanded.  The derived forms come
 right after it, as macros.
@@ -48,12 +49,14 @@ special form even where the user has bound `if`.
 | `(quote d)` | `d` with every alias replaced by its original |
 | `(quasiquote t)` | code building `t`; see below |
 | `(lambda params body ...)` | fresh names for `params`, then the body in a new frame |
+| `(let-values ((formals init) ...) body ...)` | fresh names for every formal in a new frame, the inits expanded outside it, then the body |
+| `(letrec-values ...)` | likewise, the inits expanded in the new frame |
 | `(if ...)`, `(set! x e)`, `(begin ...)`, `(f arg ...)` | subforms expanded |
 | `(let-syntax ((k spec) ...) body ...)` | `((lambda () body ...))`, with each `k` bound in a new frame to a transformer closed over the outer environment |
 | `(letrec-syntax ...)` | likewise, the transformers closed over the new frame |
 | `(syntax-error msg arg ...)` | raises `msg` with the arguments, at expansion time |
 | `(k ...)`, `k` a macro | the transformer's result, expanded again |
-| `(define ...)`, `(define-syntax ...)` | only at top level or at the start of a body; elsewhere `bad syntax` |
+| `(define ...)`, `(define-values ...)`, `(define-syntax ...)` | only at top level or at the start of a body; elsewhere `bad syntax` |
 
 **Top level.**  A `begin` is spliced: each of its forms is expanded as a
 top-level form, in order.
@@ -62,17 +65,19 @@ top-level form, in order.
   original if that already holds a value; otherwise a fresh global, recorded
   so that the same macro use's other insertions of `x` resolve to it while
   user code still sees `x` as its original (R7RS 5.3.1).  A definition removes
-  a global macro of the same name.
+  a global macro of the same name.  `(define-values formals e)` defines each
+  of its formals the same way.
 - `(define-syntax k spec)` binds the global macro `k` (an alias's original)
   and expands to `(begin)`.
 
 **Bodies** (R7RS 5.4): the leading forms are scanned first.  Each is expanded
 at its head until its head isn't a macro use; a `begin` is spliced; a
-`define` binds its name to a fresh name in the body's frame, and a
-`define-syntax` binds its macro there at once.  The first other form ends the
-scan.  Then each definition's expression and the remaining forms are
-expanded in the body's frame, so they all see every definition.  Definitions
-stay `define` forms, which the evaluator binds in the procedure's frame.
+`define` or `define-values` binds its names to fresh names in the body's
+frame, and a `define-syntax` binds its macro there at once.  The first other
+form ends the scan.  Then each definition's expression and the remaining
+forms are expanded in the body's frame, so they all see every definition.
+Definitions stay `define` and `define-values` forms, which the evaluator
+binds in the procedure's frame.
 
 ## `syntax-rules`
 
@@ -102,11 +107,11 @@ syntax`.
 
 ## Derived forms
 
-`let` (with named `let`), `let*`, `letrec`, `letrec*`, `and`, `or`, `when`,
-`unless`, `cond` (with `else` and `=>`), `case` (with `else` and `=>`), and
-`do`, as `syntax-rules` macros after R7RS 7.3.  `letrec` and `letrec*` both
-expand to internal definitions, so both have `letrec*` semantics.  `case`
-calls the prelude's `memv`.
+`let` (with named `let`), `let*`, `let*-values`, `letrec`, `letrec*`, `and`,
+`or`, `when`, `unless`, `cond` (with `else` and `=>`), `case` (with `else`
+and `=>`), and `do`, as `syntax-rules` macros after R7RS 7.3.  `letrec` and
+`letrec*` both expand to internal definitions, so both have `letrec*`
+semantics.  `case` calls the prelude's `memv`.
 
 ## Quasiquote
 

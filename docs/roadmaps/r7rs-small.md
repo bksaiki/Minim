@@ -7,11 +7,12 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 76 primitives, and a Scheme prelude with the list library
+closures, 77 primitives, and a Scheme prelude with the list library
 (`map`, `append`, `member`, `fold`, ...).  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
-tail calls and the special forms `quote`, `if`, `define`, `set!`, `lambda`,
-and `begin`.  A hygienic expander in the prelude adds quasiquote,
+tail calls, multiple values, and the special forms `quote`, `if`, `define`,
+`set!`, `lambda`, `begin`, `define-values`, `let-values`, and
+`letrec-values`.  A hygienic expander in the prelude adds quasiquote,
 `syntax-rules` macros, and the derived forms.  `minim file.scm` runs a file,
 and `load` loads one (see `docs/design/`).
 
@@ -19,7 +20,7 @@ Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Control | `call/cc`, `dynamic-wind`, `values`, `error`, `guard` |
+| Control | `call/cc`, `dynamic-wind`, `error`, `guard` |
 | Numbers | flonums, bignums, rationals |
 | I/O | ports, `read`, `read-char`, string and file ports |
 | Data types | records, hashtables, bytevectors |
@@ -77,7 +78,7 @@ hygienic, as R7RS requires (`docs/design/macros.md`).
 
 ### 4. Control and errors (M)
 
-- `values` and `call-with-values`.
+- Done: `values`, `call-with-values`, and the `-values` binding forms.
 - `error`, `raise`, `with-exception-handler`, and `guard`, with condition
   objects (message and irritants).  `minim_error` raises one, so C and Scheme
   errors are the same kind of thing.
