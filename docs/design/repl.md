@@ -58,10 +58,10 @@ With a file argument, `src/main.c` evaluates `(load "file")`.  It prints
 nothing else, and an error is printed to stderr with exit status 1.  More
 than one argument prints a usage message and exits with status 2.
 
-Otherwise it runs the REPL, which loops: read, `minim_eval`, then write the
-value and a newline unless it is void.  A read or evaluation error prints
-`error: msg: irritant` to stderr (`errors.md`), and reading continues with the
-rest of the input.
+Otherwise it runs the REPL, which loops: read, `minim_eval_values`, then
+write each value and a newline, skipping void ones.  A read or evaluation
+error prints `error: msg: irritant` to stderr (`errors.md`), and reading
+continues with the rest of the input.
 
 The `> ` prompt goes to stderr, and only when stdin is a terminal, as in
 bash and Python, so piped runs print only results to stdout, as the REPL

@@ -3,16 +3,21 @@
 Primitive procedures are C functions, bound as global symbol values by
 `minim_prims_init` (`src/prims.c`).  The evaluator calls them; see `eval.md`.
 
-## `apply` and `load`
+## Primitives the evaluator applies
 
-Both need to evaluate code, which an ordinary primitive can't do without
-re-entering `minim_eval`.  So both are registered as primitives, but the
-evaluator recognizes their function pointers (`minim_prim_apply`,
-`minim_prim_load`) and never calls them:
+`apply`, `load`, `values`, and `call-with-values` need to evaluate code or
+return to the machine, which an ordinary primitive can't do without
+re-entering `minim_eval`.  So they are registered as primitives, but the
+evaluator recognizes their function pointers (`minim_prim_apply`, ...) and
+never calls them:
 
 - `apply` rewrites the value stack `[apply f a ... lst]` into
   `[f a ... elements of lst]` and applies `f`, so `apply` in tail position is
   a tail call.
+- `values` returns its arguments as the values (`eval.md`).
+- `call-with-values` rewrites `[call-with-values producer consumer]` into
+  `[consumer producer]` and applies the producer.  Its values return right
+  above the consumer, which is then applied to them in tail position.
 - `load` reads the whole file with `minim_read_file` (`src/read.h`), which
   always closes it, even on a read error.  It then runs the forms as top-level
   forms (see `eval.md`) and returns void.  A read error therefore runs
@@ -71,6 +76,8 @@ evaluator recognizes their function pointers (`minim_prim_apply`,
 | `(list x ...)` | new list of the arguments |
 | `(length lst)` | number of elements in the proper list `lst` |
 | `(apply f x ... lst)` | `f` applied to the `x`s and the elements of `lst` |
+| `(values x ...)` | the `x`s, as any number of values |
+| `(call-with-values producer consumer)` | `consumer` applied to the values of `(producer)` |
 
 ### Identity and types
 
