@@ -62,6 +62,7 @@ enum {
     MINIM_TYPE_STRING = 0x2,
     MINIM_TYPE_PRIMITIVE = 0x4,
     MINIM_TYPE_CONTINUATION = 0x6,
+    MINIM_TYPE_ERROR = 0x1,
 };
 
 /** Allocation constants. */
@@ -77,6 +78,7 @@ enum {
     MINIM_CLOSURE_SIZE = 2 * sizeof(minim_obj),
     MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
     MINIM_CONTINUATION_SIZE = 4 * sizeof(minim_obj),
+    MINIM_ERROR_OBJECT_SIZE = 4 * sizeof(minim_obj),
 };
 
 /** Size in bytes of a vector of length `n`. */
@@ -202,6 +204,11 @@ static inline bool minim_is_primitive(minim_obj x) {
 static inline bool minim_is_continuation(minim_obj x) {
     return minim_is_typed(x)
         && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_CONTINUATION;
+}
+
+/** Whether `x` is an error object. */
+static inline bool minim_is_error_object(minim_obj x) {
+    return minim_is_typed(x) && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_ERROR;
 }
 
 /** Whether `x` is a closure, a primitive, or a continuation. */
@@ -550,6 +557,30 @@ static inline minim_obj minim_continuation_stack(minim_obj c) {
 static inline size_t minim_continuation_height(minim_obj c) {
     assert(minim_is_continuation(c));
     return (size_t)minim_fixnum_value(((const minim_obj *)(c - MINIM_TAG_TYPED))[3]);
+}
+
+/** Kinds of error object. */
+typedef enum { MINIM_ERROR_GENERAL, MINIM_ERROR_READ, MINIM_ERROR_FILE } minim_error_kind;
+
+/** New error object of kind `kind`, with the string `message` and the list `irritants`. */
+minim_obj minim_make_error_object(minim_error_kind kind, minim_obj message, minim_obj irritants);
+
+/** Kind of the error object `e`. */
+static inline minim_error_kind minim_error_object_kind(minim_obj e) {
+    assert(minim_is_error_object(e));
+    return (minim_error_kind)minim_fixnum_value(((const minim_obj *)(e - MINIM_TAG_TYPED))[1]);
+}
+
+/** Message of the error object `e`. */
+static inline minim_obj minim_error_object_message(minim_obj e) {
+    assert(minim_is_error_object(e));
+    return ((const minim_obj *)(e - MINIM_TAG_TYPED))[2];
+}
+
+/** Irritants of the error object `e`. */
+static inline minim_obj minim_error_object_irritants(minim_obj e) {
+    assert(minim_is_error_object(e));
+    return ((const minim_obj *)(e - MINIM_TAG_TYPED))[3];
 }
 
 // Errors

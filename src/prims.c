@@ -441,7 +441,7 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
         return minim_hash_mix(minim_string_hash(minim_symbol_name(x)), HASH_SYMBOL);
     if (minim_is_primitive(x))
         return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
-    if (minim_is_closure(x) || minim_is_continuation(x))
+    if (minim_is_closure(x) || minim_is_continuation(x) || minim_is_error_object(x))
         return HASH_CLOSURE;  // equal? only when eq?
     if (minim_is_pair(x)) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);
@@ -828,6 +828,45 @@ static minim_obj prim_is_bound(minim_obj *args, size_t n) {
                    && alias_info(args[0]) == MINIM_FALSE);
 }
 
+static minim_obj prim_make_error_object(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_string(args[0]), "%make-error-object: not a string", args[0]);
+    check(minim_is_null(args[1]) || minim_is_pair(args[1]),
+          "%make-error-object: not a list", args[1]);
+    return minim_make_error_object(MINIM_ERROR_GENERAL, args[0], args[1]);
+}
+
+static minim_obj prim_is_error_object(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(minim_is_error_object(args[0]));
+}
+
+static minim_obj prim_error_object_message(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_error_object(args[0]), "error-object-message: not an error object", args[0]);
+    return minim_error_object_message(args[0]);
+}
+
+static minim_obj prim_error_object_irritants(minim_obj *args, size_t n) {
+    (void)n;
+    check(minim_is_error_object(args[0]), "error-object-irritants: not an error object",
+          args[0]);
+    return minim_error_object_irritants(args[0]);
+}
+
+static bool is_error_of_kind(minim_obj x, minim_error_kind kind) {
+    return minim_is_error_object(x) && minim_error_object_kind(x) == kind;
+}
+
+static minim_obj prim_is_read_error(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(is_error_of_kind(args[0], MINIM_ERROR_READ));
+}
+
+static minim_obj prim_is_file_error(minim_obj *args, size_t n) {
+    (void)n;
+    return boolean(is_error_of_kind(args[0], MINIM_ERROR_FILE));
+}
 
 // Raises the message args[0] with the irritants args[1]: void if none, the
 // one if single, else the list.
@@ -936,6 +975,12 @@ void minim_prims_init(void) {
     define_primitive("%alias-env", prim_alias_env, 1, 1);
     define_primitive("%bound?", prim_is_bound, 1, 1);
     define_primitive("%syntax-error", prim_syntax_error, 2, 2);
+    define_primitive("%make-error-object", prim_make_error_object, 2, 2);
+    define_primitive("error-object?", prim_is_error_object, 1, 1);
+    define_primitive("error-object-message", prim_error_object_message, 1, 1);
+    define_primitive("error-object-irritants", prim_error_object_irritants, 1, 1);
+    define_primitive("read-error?", prim_is_read_error, 1, 1);
+    define_primitive("file-error?", prim_is_file_error, 1, 1);
     define_primitive("write", prim_write, 1, 1);
     define_primitive("display", prim_display, 1, 1);
     define_primitive("newline", prim_newline, 0, 0);

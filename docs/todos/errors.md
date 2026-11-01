@@ -84,8 +84,8 @@ today, so the REPL's output doesn't change.
   stack is left as it was, below the handler call, since a non-continuable
   raise never returns to it.
 - **Kinds.**  The reader's errors are read errors, and `load`'s failure to
-  open a file a file error: `minim_error_kind(kind, msg, irritant)`, with
-  `minim_error` the `error` kind.
+  open a file a file error: `minim_error_of_kind(kind, msg, irritant)`, with
+  `minim_error` the general kind.
 
 **`guard`** is a `syntax-rules` macro after R7RS 7.3: it calls its body under
 a handler that escapes, with `call/cc`, to the `guard`'s continuation, tests
@@ -114,6 +114,16 @@ collection.
 cmake --build --preset dev && ctest --preset dev -R 'errors|object|gc' && ctest --preset stress -R 'errors'
 ```
 
+**Done.**
+- The kind is a fixnum of the C enum `minim_error_kind` (`MINIM_ERROR_GENERAL`,
+  `_READ`, `_FILE`).
+- `%make-error-object message irritants` takes no kind: Scheme makes only
+  general errors, so read and file kinds are tested from C, in
+  `test_prims.c`, until Phase 3 makes them.
+- `equal-hash` hashes error objects as it does closures, since they are
+  `equal?` only when `eq?`; hashing the pointer would change when they move.
+- Ran `ctest -R 'errors|object|gc|prims|print'`, dev and stress.
+
 ### Phase 2 - raise and handlers
 
 - `src/gc.h`, `src/gc.c`, `src/error.c`, `src/prims.c`: `minim_gc.handlers`,
@@ -140,7 +150,7 @@ cmake --build --preset dev && ctest --preset dev -R 'errors|boot|continuations' 
 
 - `src/eval.c`: `eval` catches errors raised while it runs and, with a
   handler installed, raises an error object; `k` `volatile`.
-- `src/error.c`, `include/minim.h`: `minim_error_kind`; `src/read.c` and
+- `src/error.c`, `include/minim.h`: `minim_error_of_kind`; `src/read.c` and
   `load` use it for read and file errors.
 
 Separate because it changes how every C error travels, with the REPL's

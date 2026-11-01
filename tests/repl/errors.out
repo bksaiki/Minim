@@ -1,0 +1,17 @@
+#t
+"bad thing"
+(1 (2) "three")
+#f
+#f
+#<error bad thing>
+()
+(#f #f #f #f #f #f)
+(#f #f #f)
+(#f #f #f)
+#t
+#f
+#t
+("1" "2" "3")
+((1) (2) (3))
+"bad thing"
+(1 (2) "three")

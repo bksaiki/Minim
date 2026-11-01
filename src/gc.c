@@ -157,6 +157,8 @@ static size_t typed_size(minim_obj header) {
         return MINIM_PRIMITIVE_SIZE;
     case MINIM_TYPE_CONTINUATION:
         return MINIM_CONTINUATION_SIZE;
+    case MINIM_TYPE_ERROR:
+        return MINIM_ERROR_OBJECT_SIZE;
     default:
         abort();  // unknown type
     }
@@ -221,6 +223,9 @@ static size_t pointer_fields(minim_obj x, minim_obj **fields) {
         return 1;
     case MINIM_TYPE_CONTINUATION:
         *fields = p + 1;  // the frames and segments; the height is a fixnum
+        return 2;
+    case MINIM_TYPE_ERROR:
+        *fields = p + 2;  // the message and irritants; the kind is a fixnum
         return 2;
     default:
         return 0;

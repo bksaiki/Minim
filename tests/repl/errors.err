@@ -1,0 +1,4 @@
+error: error-object-message: not an error object: "bad"
+error: error-object-irritants: not an error object: 5
+error: %make-error-object: not a string: bad
+error: %make-error-object: not a list: 5

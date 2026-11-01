@@ -84,6 +84,16 @@ minim_obj minim_make_continuation(minim_obj k, minim_obj stack, size_t height) {
     MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
 }
 
+minim_obj minim_make_error_object(minim_error_kind kind, minim_obj message, minim_obj irritants) {
+    MINIM_FRAME(&message, &irritants);
+    minim_obj *p = minim_heap_alloc(MINIM_ERROR_OBJECT_SIZE);
+    p[0] = minim_make_header(0, MINIM_TYPE_ERROR);
+    p[1] = minim_fixnum(kind);
+    p[2] = message;
+    p[3] = irritants;
+    MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
+}
+
 minim_obj minim_string_from_cstr(const char *s) {
     const unsigned char *u = (const unsigned char *)s;
     uint32_t c;
