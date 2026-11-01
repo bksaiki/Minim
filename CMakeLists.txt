@@ -62,6 +62,11 @@ set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not 
 add_executable(minim src/main.c)
 target_link_libraries(minim PRIVATE libminim)
 
+# Writes the prelude expanded into core forms, for src/prelude.boot.
+add_executable(boot_gen EXCLUDE_FROM_ALL src/boot.c)
+target_link_libraries(boot_gen PRIVATE libminim)
+target_include_directories(boot_gen PRIVATE src)
+
 if(MINIM_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

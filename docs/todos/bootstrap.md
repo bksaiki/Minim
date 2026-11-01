@@ -107,6 +107,19 @@ cmake --build --preset dev && ctest --preset dev -R 'prims' && ctest --preset st
 
 ### Phase 1 - Writing expanded forms
 
+**Done.**  Details settled during the phase:
+
+- `boot.scm`, loaded by the generator, is written in normal Scheme (`let*`,
+  `cond` with `=>`), since the running system expands it.  It uses the
+  expander's `%append-map` and `%vector->list`.
+- The full generation: 80 forms, all 80 top-level forms of the prelude (12
+  as `%define-macro!`), 23 KB against 32 KB of source.  Generated under
+  stress (`MINIM_GC_STARTUP=1`, 1-byte nursery), byte-identical.
+- Checked by hand: the generated file evaluated without expansion over a
+  running system, then `map`, named `let`, `cond` with `=>`, `case`,
+  quasiquote, `do`, `let*-values`, and a new `define-syntax` and its use,
+  each correct.
+
 - `src/prelude.scm`: `%define-macro!`, used by `%expand-define-syntax`.
 - `src/boot.scm`: `%boot-form` and the renaming.
 - `src/boot.c` and its CMake target `boot_gen` (not built by default):

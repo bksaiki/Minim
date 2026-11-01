@@ -106,6 +106,7 @@ function(minim_add_script_test name)
     endif()
 endfunction()
 
+minim_add_repl_test(boot)
 minim_add_repl_test(chars)
 minim_add_repl_test(derived)
 minim_add_repl_test(echo)

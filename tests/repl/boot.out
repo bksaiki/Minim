@@ -1,0 +1,6 @@
+((define f (lambda (x.1) (lambda (x.2) x.2))))
+((define g (lambda (x.1 y.1) (let-values (((x.2) y.1)) x.2))))
+((define h (lambda (x.1) x.1)))
+((define a 1) (define b 2) (if a (begin b)))
+((%define-macro! 'twice '(syntax-rules () ((_ e) (begin e e)))))
+((define n (lambda () 1 1)))

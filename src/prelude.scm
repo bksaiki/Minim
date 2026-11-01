@@ -607,13 +607,18 @@
                         (%bad-syntax x)))
     (list 'define-values formals (%expand-expr (car (cdr (cdr x))) '()))))
 
+;; Binds the global macro `name` to the transformer `spec` denotes.
+(define %define-macro!
+  (lambda (name spec)
+    (define transformer (%transformer spec '()))
+    (set! %macros (cons (cons name transformer) (%unbind-macro name %macros)))))
+
 (define %expand-define-syntax
   (lambda (x)
     (define name (if (%binding-form? x)
                      (%resolve (car (cdr x)) '())
                      (%bad-syntax x)))
-    (define transformer (%transformer (car (cdr (cdr x))) '()))
-    (set! %macros (cons (cons name transformer) (%unbind-macro name %macros)))
+    (%define-macro! name (car (cdr (cdr x))))
     '(begin)))
 
 ;; Expands the top-level form `x`.
