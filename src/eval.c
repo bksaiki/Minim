@@ -111,8 +111,10 @@ static void bind_values(minim_obj env, minim_obj formals, size_t n) {
     size_t i = start;
     for (; minim_is_pair(formals); formals = minim_cdr(formals), i++)
         minim_env_define(env, minim_car(formals), minim_gc.values.items[i]);
-    if (minim_is_symbol(formals))
-        minim_env_define(env, formals, pop_values(minim_gc.values.len - i));
+    if (minim_is_symbol(formals)) {
+        minim_obj rest = pop_values(minim_gc.values.len - i);  // may move `env`
+        minim_env_define(env, formals, rest);
+    }
     minim_gc.values.len = start;
     MINIM_RETURN_VOID;
 }
