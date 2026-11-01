@@ -62,7 +62,7 @@ static size_t getenv_integer(const char *name, size_t min, size_t max, size_t fa
 
 void minim_gc_init(void) {
     const size_t max = MINIM_FIXNUM_MAX;
-    minim_gc_config env = {
+    minim_gc_config config = {
         .nursery_bytes = getenv_integer("MINIM_GC_NURSERY_BYTES", 1, max,
                                         DEFAULT_CONFIG.nursery_bytes),
         .radix = getenv_integer("MINIM_GC_RADIX", 1, max, DEFAULT_CONFIG.radix),
@@ -70,18 +70,12 @@ void minim_gc_init(void) {
                                          DEFAULT_CONFIG.max_generation),
         .stack_initial_capacity = DEFAULT_CONFIG.stack_initial_capacity,
     };
-    bool startup = getenv_integer("MINIM_GC_STARTUP", 0, 1, 0);
-
-    minim_gc = (struct minim_gc){.config = startup ? env : DEFAULT_CONFIG, .program_config = env};
+    minim_gc = (struct minim_gc){.config = config};
     for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
         for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
             minim_gc.old[g][k].generation = (unsigned char)g;
     }
     minim_gc.budget = minim_gc.config.nursery_bytes;
-}
-
-void minim_gc_finish_startup(void) {
-    minim_gc_set_config(minim_gc.program_config);
 }
 
 void minim_gc_shutdown(void) {

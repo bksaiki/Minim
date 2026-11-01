@@ -1,24 +1,42 @@
 # Prelude
 
-The prelude is a library written in Scheme (`src/prelude.scm`), compiled into
-the binary and evaluated by `minim_init`.  It holds what is easiest in Scheme,
-above all higher-order procedures, which primitives can't express because
-they can't call closures (see `primitives.md`).
+The prelude is a library written in Scheme (`src/prelude.scm`), expanded
+into core forms, compiled into the binary, and evaluated by `minim_init`.
+It holds what is easiest in Scheme, above all higher-order procedures,
+which primitives can't express because they can't call closures (see
+`primitives.md`).
 
-## Build and loading
+## The boot file
 
-- At build time, `cmake/embed.cmake` writes the bytes of `src/prelude.scm` to
-  a generated `prelude_scm.c` as `const unsigned char minim_prelude_scm[]`,
-  NUL-terminated.  Editing the `.scm` file regenerates it.  A byte array, not a
-  string literal, avoids MSVC's string-literal length limit.
+Minim loads `src/prelude.boot`, the prelude expanded into core forms, one
+top-level form per line.  It is checked in, so the expander that writes it is
+the one it contains.
+
+- `boot_gen` (`src/boot.c`) writes it: it expands each form of
+  `src/prelude.scm`, without evaluating it, with `%boot-form`
+  (`src/boot.scm`).  That splices a `begin`; writes a `define-syntax` as
+  `(%define-macro! 'name 'spec)`, since a transformer is a closure; renames
+  each fresh name to `name.N`, numbered per name within its form, so an edit
+  doesn't renumber other forms; and fails if a macro defines a fresh global.
+- After editing `src/prelude.scm`, build the `boot` target, which rewrites
+  `src/prelude.boot`.  After an expander change, build it twice: the first
+  run expands with the old expander.  The `boot` test fails if the file is
+  out of date; since `boot_gen` starts from it, a pass also means it
+  reproduces itself.  A boot file that can't regenerate itself is recovered
+  from an older one in git.
+
+## Loading
+
+- At build time, `cmake/embed.cmake` writes the bytes of `src/prelude.boot`
+  to a generated `prelude_boot.c` as `const unsigned char
+  minim_prelude_boot[]`, NUL-terminated.  A byte array, not a string literal,
+  avoids MSVC's string-literal length limit.
 - `minim_prelude_init` (`src/prelude.c`), called by `minim_init`, reads
-  each form with `minim_read_string` and evaluates it.  No catch is installed,
-  so an error in the prelude, which is a bug in Minim, aborts with the
-  message.
-- The prelude starts with the expander (`macros.md`), which uses only the core
-  forms (`quote`, `if`, `define`, `set!`, `lambda`, `begin`), then defines the
-  derived forms.  Every form after the expander is expanded, and the library
-  uses the derived forms.
+  each form with `minim_read_string` and evaluates it with
+  `minim_eval_expanded`, without expansion.  No catch is installed, so an
+  error in the prelude, which is a bug in Minim, aborts with the message.
+- The prelude starts with the expander (`macros.md`), then defines the
+  derived forms and the library.
 
 ## Library
 

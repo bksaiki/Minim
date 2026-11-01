@@ -1,5 +1,8 @@
 error: quotient: division by zero: 0
 error: <=: not a fixnum: a
+error: number->string: not a fixnum: a
+error: number->string: bad radix: 3
+error: number->string: bad radix: x
 error: length: not a list: (1 . 2)
 error: set-car!: not a pair: 5
 error: vector-ref: not a vector: (1)

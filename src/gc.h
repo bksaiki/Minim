@@ -28,7 +28,6 @@ typedef struct minim_root_stack {
 /** All collector state; minim_gc_init and minim_gc_shutdown reset it. */
 extern struct minim_gc {
     minim_gc_config config;
-    minim_gc_config program_config;  ///< from the environment, for after startup
     minim_space nursery;  ///< generation 0, every kind interleaved
     /** Generation g's space for each kind, for g from 1; row 0 is unused. */
     minim_space old[MINIM_MAX_GENERATION + 1][MINIM_KIND_COUNT];
@@ -52,15 +51,8 @@ extern struct minim_gc {
 /** Pushes `x` onto the value stack; may move `minim_gc.values.items`. */
 void minim_values_push(minim_obj x);
 
-/**
- * Resets the collector and reads its settings from the environment.  They
- * apply once startup finishes, or from now if MINIM_GC_STARTUP is 1; until
- * then, the defaults apply.
- */
+/** Resets the collector, with its settings from the environment. */
 void minim_gc_init(void);
-
-/** Applies the environment's settings; call last in minim_init. */
-void minim_gc_finish_startup(void);
 
 /** Frees the heap and the stacks. */
 void minim_gc_shutdown(void);

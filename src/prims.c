@@ -111,6 +111,28 @@ static minim_obj prim_remainder(minim_obj *args, size_t n) {
     return minim_fixnum(a % b);
 }
 
+// The digits of the fixnum args[0] in the radix args[1]: 2, 8, 10 (default), or 16.
+static minim_obj prim_number_to_string(minim_obj *args, size_t n) {
+    intptr_t v = fixnum_arg(args[0], "number->string: not a fixnum");
+    intptr_t radix = 10;
+    if (n == 2) {
+        radix = minim_is_fixnum(args[1]) ? minim_fixnum_value(args[1]) : 0;
+        check(radix == 2 || radix == 8 || radix == 10 || radix == 16,
+              "number->string: bad radix", args[1]);
+    }
+    char buf[66];  // a sign, 64 binary digits, and a NUL
+    char *p = buf + sizeof(buf);
+    *--p = '\0';
+    uintptr_t u = v < 0 ? -(uintptr_t)v : (uintptr_t)v;
+    do {
+        *--p = "0123456789abcdef"[u % (uintptr_t)radix];
+        u /= (uintptr_t)radix;
+    } while (u != 0);
+    if (v < 0)
+        *--p = '-';
+    return minim_string_from_cstr(p);
+}
+
 // Whether the keys of every adjacent pair of arguments satisfy `cmp`.  `key`
 // extracts a key from an argument, raising `msg` on the wrong type; every
 // argument is checked.
@@ -769,6 +791,7 @@ void minim_prims_init(void) {
     define_primitive(">=", prim_ge, 1, MINIM_VARIADIC);
     define_primitive("quotient", prim_quotient, 2, 2);
     define_primitive("remainder", prim_remainder, 2, 2);
+    define_primitive("number->string", prim_number_to_string, 1, 2);
     define_primitive("fixnum?", prim_is_fixnum, 1, 1);
     define_primitive("zero?", prim_is_zero, 1, 1);
     define_primitive("char?", prim_is_char, 1, 1);

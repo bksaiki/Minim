@@ -1,6 +1,6 @@
 # minim_add_stressed(name command...): adds the test `name`, and `name_stress`,
-# the same test labelled `stress` and run, after startup, with a collection at
-# every allocation on the default schedule.
+# the same test labelled `stress` and run with a collection at every
+# allocation, startup included, on the default schedule.
 function(minim_add_stressed name)
     add_test(NAME ${name} COMMAND ${ARGN})
     add_test(NAME ${name}_stress COMMAND ${ARGN})
@@ -25,6 +25,14 @@ function(minim_add_test name)
     minim_add_stressed(${name} test_${name})
 endfunction()
 
+# src/prelude.boot must be what boot_gen makes of src/prelude.scm, which also
+# means it reproduces itself, since boot_gen starts from it.
+add_test(NAME boot COMMAND ${CMAKE_COMMAND}
+    -DBOOT_GEN=$<TARGET_FILE:boot_gen>
+    -DSRC=${PROJECT_SOURCE_DIR}/src
+    -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/prelude.boot
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_boot.cmake)
+
 minim_add_test(object)
 minim_add_test(heap INTERNAL)
 minim_add_test(gc INTERNAL)
@@ -37,15 +45,9 @@ minim_add_test(procedure)
 minim_add_test(eval INTERNAL)
 minim_add_test(prims)
 
-# Startup runs with the default collector settings unless MINIM_GC_STARTUP=1,
-# so startup is stressed only here.
 minim_test_executable(startup INTERNAL)
-add_test(NAME startup COMMAND test_startup program)
+add_test(NAME startup COMMAND test_startup)
 set_tests_properties(startup PROPERTIES ENVIRONMENT "MINIM_GC_NURSERY_BYTES=1")
-add_test(NAME startup_stress COMMAND test_startup startup)
-set_tests_properties(startup_stress PROPERTIES
-    LABELS stress
-    ENVIRONMENT "MINIM_GC_STARTUP=1;MINIM_GC_NURSERY_BYTES=1")
 
 # A stale pointer must stay poisoned; only meaningful under AddressSanitizer.
 if(MINIM_SANITIZE)
@@ -106,6 +108,7 @@ function(minim_add_script_test name)
     endif()
 endfunction()
 
+minim_add_repl_test(boot)
 minim_add_repl_test(chars)
 minim_add_repl_test(derived)
 minim_add_repl_test(echo)
@@ -140,7 +143,6 @@ minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1k)
 minim_add_script_test(gc-settings-big-nursery STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1152921504606846976)
-minim_add_script_test(gc-settings-bad-startup STATUS 1 ARGS gc-settings.scm ENV MINIM_GC_STARTUP=2)
 minim_add_script_test(hello)
 minim_add_script_test(missing STATUS 1)
 minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)

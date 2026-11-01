@@ -56,6 +56,8 @@ and the result is evaluated instead; otherwise the form is evaluated as is.
 The call goes through the machine, so `%expand` may be a closure.  A file's
 forms are read up front but expanded one at a time, each after the previous
 one has run, so a `%expand` defined by one form applies to the next.
+`minim_eval_expanded` (`src/eval.h`) evaluates a form already in core forms
+without `%expand`; startup loads the prelude with it (`prelude.md`).
 
 ## Environments
 

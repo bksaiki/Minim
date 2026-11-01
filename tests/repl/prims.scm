@@ -15,6 +15,18 @@
 (zero? 3)
 (quotient 1 0)
 (<= 1 'a)
+(number->string 0)
+(number->string 42)
+(number->string -42)
+(number->string 42 10)
+(number->string 255 16)
+(number->string 255 2)
+(number->string -8 8)
+(number->string 1152921504606846975)
+(number->string -1152921504606846976 2)
+(number->string 'a)
+(number->string 5 3)
+(number->string 5 'x)
 
 ; Pairs
 (define p (cons 1 2))
