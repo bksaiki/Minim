@@ -28,6 +28,7 @@ global
 #t
 3
 2
+2
 (lambda (if) (if 1))
 (define)
 `(a ,b)

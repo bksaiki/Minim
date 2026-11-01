@@ -262,12 +262,13 @@
 
 ;; Expands the body `forms` of the form `whole` in a new frame over `env`
 ;; (R7RS 5.4).  The leading definitions, with `begin` spliced, are bound
-;; first, so every definition and expression sees all of them.
+;; first, so every definition and expression sees all of them, and become one
+;; `letrec-values`.
 (define %expand-body
   (lambda (forms env whole)
     (define inner (%extend env))
-    ;; `defs` collects (define name expression) and (define-values formals
-    ;; expression), names renamed and expressions unexpanded, in reverse.
+    ;; `defs` collects (formals . expression), names renamed and expressions
+    ;; unexpanded, in reverse.
     (define scan
       (lambda (forms defs)
         (if (null? forms)
@@ -281,14 +282,14 @@
             (if (eq? k 'define)
                 (if (%binding-form? x)
                     (scan rest
-                          (cons (list 'define (%bind-variable! inner (car (cdr x)))
+                          (cons (cons (list (%bind-variable! inner (car (cdr x))))
                                       (car (cdr (cdr x))))
                                 defs))
                     (%bad-syntax x))
                 (if (eq? k 'define-values)
                     (if (eq? (%length x 0) 3)
                         (scan rest
-                              (cons (list 'define-values (%bind-formals! inner (car (cdr x)) x)
+                              (cons (cons (%bind-formals! inner (car (cdr x)) x)
                                           (car (cdr (cdr x))))
                                     defs))
                         (%bad-syntax x))
@@ -302,16 +303,14 @@
                         (finish defs (cons x rest))))))))
     (define finish
       (lambda (defs exprs)
-        (define body
-          (%append (%map (lambda (d)
-                           (list (car d) (car (cdr d)) (%expand-expr (car (cdr (cdr d))) inner)))
-                         (%reverse defs))
-                   (%expand-list exprs inner)))
-        (if (null? body) (%bad-syntax whole) body)))
+        (define clauses
+          (%map (lambda (d) (list (car d) (%expand-expr (cdr d) inner))) (%reverse defs)))
+        (define body (if (null? exprs) (%bad-syntax whole) (%expand-list exprs inner)))
+        (if (null? clauses) body (list (cons 'letrec-values (cons clauses body))))))
     (scan forms '())))
 
 ;; Expands `(let-syntax ((k spec) ...) body ...)`, or `letrec-syntax` if
-;; `rec`, into `((lambda () body ...))`.  The transformers close over `env`,
+;; `rec`, into `(let-values () body ...)`.  The transformers close over `env`,
 ;; or over the new frame if `rec`.
 (define %expand-let-syntax
   (lambda (x env rec)
@@ -329,7 +328,7 @@
     (if (if (< 2 (%length x 0)) (%length (car (cdr x)) 0) #f)
         (bind (car (cdr x)))
         (%bad-syntax x))
-    (list (cons 'lambda (cons '() (%expand-body (cdr (cdr x)) inner x))))))
+    (cons 'let-values (cons '() (%expand-body (cdr (cdr x)) inner x)))))
 
 ;; Code building the quasiquote template `t` at nesting depth `depth` (R7RS
 ;; 4.2.8), from cons, append, apply, vector, and quote.
@@ -637,7 +636,7 @@
 (define-syntax let
   (syntax-rules ()
     ((_ ((name val) ...) body1 body2 ...)
-     ((lambda (name ...) body1 body2 ...) val ...))
+     (let-values (((name) val) ...) body1 body2 ...))
     ((_ tag ((name val) ...) body1 body2 ...)
      ((letrec ((tag (lambda (name ...) body1 body2 ...))) tag) val ...))))
 
@@ -647,17 +646,17 @@
     ((_ ((name val) rest ...) body1 body2 ...)
      (let ((name val)) (let* (rest ...) body1 body2 ...)))))
 
-;; Internal definitions, so each `val` sees every name (letrec* semantics).
 (define-syntax let*-values
   (syntax-rules ()
     ((_ () body1 body2 ...) (let () body1 body2 ...))
     ((_ (binding rest ...) body1 body2 ...)
      (let-values (binding) (let*-values (rest ...) body1 body2 ...)))))
 
+;; letrec-values evaluates each `val` in order, seeing every name.
 (define-syntax letrec*
   (syntax-rules ()
     ((_ ((name val) ...) body1 body2 ...)
-     ((lambda () (define name val) ... (let () body1 body2 ...))))))
+     (letrec-values (((name) val) ...) body1 body2 ...))))
 
 (define-syntax letrec
   (syntax-rules ()

@@ -57,6 +57,7 @@ y
     (+ a b)))
 (h)
 ((lambda (x) (define x 2) x) 1)
+((lambda (a) (define b (+ a 1)) b) 1)
 
 ; Quoted data is left alone.
 '(lambda (if) (if 1))
@@ -70,6 +71,10 @@ y
 (define bad (lambda () (if)))
 (lambda () (display 1) (define z 1) z)
 (lambda () (begin))
+(lambda () (define z 1))
+(let () (define z 1))
+(let-values () (define-values (z) 1))
+(lambda () (define-syntax m (syntax-rules () ((_) 1))))
 (if (define z 1) 2)
 (set! if 1)
 (lambda (x 1) x)

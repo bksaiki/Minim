@@ -52,7 +52,7 @@ special form even where the user has bound `if`.
 | `(let-values ((formals init) ...) body ...)` | fresh names for every formal in a new frame, the inits expanded outside it, then the body |
 | `(letrec-values ...)` | likewise, the inits expanded in the new frame |
 | `(if ...)`, `(set! x e)`, `(begin ...)`, `(f arg ...)` | subforms expanded |
-| `(let-syntax ((k spec) ...) body ...)` | `((lambda () body ...))`, with each `k` bound in a new frame to a transformer closed over the outer environment |
+| `(let-syntax ((k spec) ...) body ...)` | `(let-values () body ...)`, with each `k` bound in a new frame to a transformer closed over the outer environment |
 | `(letrec-syntax ...)` | likewise, the transformers closed over the new frame |
 | `(syntax-error msg arg ...)` | raises `msg` with the arguments, at expansion time |
 | `(k ...)`, `k` a macro | the transformer's result, expanded again |
@@ -76,8 +76,9 @@ at its head until its head isn't a macro use; a `begin` is spliced; a
 frame, and a `define-syntax` binds its macro there at once.  The first other
 form ends the scan.  Then each definition's expression and the remaining
 forms are expanded in the body's frame, so they all see every definition.
-Definitions stay `define` and `define-values` forms, which the evaluator
-binds in the procedure's frame.
+The definitions become one `letrec-values` around the remaining forms, a
+`define` a clause with one name.  A body with no other form is `bad
+syntax`.
 
 ## `syntax-rules`
 
@@ -109,9 +110,9 @@ syntax`.
 
 `let` (with named `let`), `let*`, `let*-values`, `letrec`, `letrec*`, `and`,
 `or`, `when`, `unless`, `cond` (with `else` and `=>`), `case` (with `else`
-and `=>`), and `do`, as `syntax-rules` macros after R7RS 7.3.  `letrec` and
-`letrec*` both expand to internal definitions, so both have `letrec*`
-semantics.  `case` calls the prelude's `memv`.
+and `=>`), and `do`, as `syntax-rules` macros after R7RS 7.3.  `let` expands
+to `let-values`, and `letrec` and `letrec*` both to `letrec-values`, so both
+have `letrec*` semantics.  `case` calls the prelude's `memv`.
 
 ## Quasiquote
 

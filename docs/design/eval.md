@@ -73,12 +73,14 @@ one has run, so a `%expand` defined by one form applies to the next.
 `let-values`, and `letrec-values`, recognized by the operator symbol itself.
 The expander (`macros.md`) renames local variables, so a local named `if`
 never reaches the evaluator as `if`, and it rejects malformed forms and
-misplaced definitions before they run.  The checks below
-remain for forms evaluated before the expander is defined.
+misplaced definitions before they run.  The checks below remain for forms
+evaluated before the expander is defined.
 
 - `define` takes only `(define name expr)`.  At top level it binds globally;
   in a procedure body it prepends to the innermost frame.  It is accepted
-  anywhere an expression is.
+  anywhere an expression is.  Expanded code defines only at top level, since
+  the expander turns bodies into `letrec-values`; internal definitions are
+  for the expander's own code, which runs unexpanded.
 - `lambda` takes fixed parameters, a rest parameter `(a . rest)`, or a single
   symbol for all arguments, and at least one body expression.  The `formals`
   of the `-values` forms take the same shapes.
