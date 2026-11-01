@@ -592,6 +592,9 @@ static inline minim_obj minim_error_object_irritants(minim_obj e) {
  */
 _Noreturn void minim_error(const char *msg, minim_obj irritant);
 
+/** minim_error, with an error of kind `kind`. */
+_Noreturn void minim_error_of_kind(minim_error_kind kind, const char *msg, minim_obj irritant);
+
 /**
  * Calls `fn(arg)`.  Returns `true` and stores its result in `*result`, or
  * returns `false` if it raised an error, restoring the root and value stacks.

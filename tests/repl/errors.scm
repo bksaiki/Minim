@@ -99,3 +99,38 @@ e
 (with-exception-handler (lambda (x) 'ignored) (lambda () (raise 'r)))
 (error 'not-a-string)
 (%handlers)
+
+; C errors raise error objects to handlers.
+(define (catch thunk)
+  (call/cc (lambda (k) (with-exception-handler (lambda (e) (k e)) thunk))))
+(define (describe e)
+  (list (error-object-message e) (error-object-irritants e) (read-error? e) (file-error? e)))
+(describe (catch (lambda () (car 5))))
+(describe (catch (lambda () never-bound)))
+(describe (catch (lambda () ((lambda (x) x)))))
+(describe (catch (lambda () (apply + 1 2))))
+(describe (catch (lambda () (vector-ref (vector) 0))))
+(describe (catch (lambda () (load "load/bad-read.scm"))))
+(describe (catch (lambda () (load "load/missing.scm"))))
+(describe (catch (lambda () (+ 1 (values 1 2)))))
+
+; An error in a handler goes to the next handler out; with none, to the REPL.
+(describe
+ (catch (lambda () (with-exception-handler (lambda (e) (car e)) (lambda () (raise 'r))))))
+(with-exception-handler (lambda (e) (car e)) (lambda () (raise 'r)))
+
+; A handler returning from a C error.
+(with-exception-handler (lambda (e) 'ignored) (lambda () (car 5)))
+
+; An error a handler escapes from runs the afters it leaves; an unhandled one
+; doesn't.
+(set! log '())
+(define (logged thunk)
+  (dynamic-wind (lambda () (set! log (cons 'in log))) thunk (lambda () (set! log (cons 'out log)))))
+(error-object-message (catch (lambda () (logged (lambda () (car 1))))))
+(reverse log)
+(set! log '())
+(logged (lambda () (car 1)))
+(reverse log)
+(%winders)
+(%handlers)

@@ -79,10 +79,10 @@ it does.  With no handler, the error passes to the enclosing `minim_catch` as
 today, so the REPL's output doesn't change.
 
 - **Registers across the jump.**  After a `longjmp`, a local changed since
-  the `setjmp` is indeterminate unless `volatile`.  The handler call needs
-  only `k`, the continuation at the error, so `k` is `volatile`; the value
-  stack is left as it was, below the handler call, since a non-continuable
-  raise never returns to it.
+  the `setjmp` is indeterminate unless `volatile`.  So the `setjmp` is in a
+  wrapper, `eval`, around the machine loop, `run`; after an error it calls
+  `run` afresh to apply `%raise`, with no frames and the value stack as `eval`
+  found it, since a non-continuable raise never returns.
 - **Kinds.**  The reader's errors are read errors, and `load`'s failure to
   open a file a file error: `minim_error_of_kind(kind, msg, irritant)`, with
   `minim_error` the general kind.
@@ -162,7 +162,7 @@ cmake --build --preset dev && ctest --preset dev -R 'errors|boot|continuations' 
 ### Phase 3 - C errors raise in Scheme
 
 - `src/eval.c`: `eval` catches errors raised while it runs and, with a
-  handler installed, raises an error object; `k` `volatile`.
+  handler installed, raises an error object.
 - `src/error.c`, `include/minim.h`: `minim_error_of_kind`; `src/read.c` and
   `load` use it for read and file errors.
 
@@ -179,6 +179,26 @@ existing `.err` file unchanged.
 ```sh
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
+
+**Done.**
+- `minim_catch_frame`, `minim_catch_push`, and `minim_catch_pop` (`error.h`)
+  let `eval` install a catch in its own frame; `minim_reraise` passes an
+  error on, and `minim_last_error_object` makes the object.
+- With a `setjmp` in the machine loop, GCC's `-Wclobbered` flagged `nvals`,
+  hence the `eval`/`run` split.
+- An error with no handler clears the winders as it leaves `eval`, instead of
+  `minim_catch` doing so: `load`'s catch around the reader, inside an
+  evaluation, mustn't drop the handlers.  `minim_catch` no longer touches the
+  winders or handlers.  Saving and restoring them there was tried; the saved
+  values would need roots that survive the jump.
+- Read errors are made a kind where `minim_read_file` re-raises them, not at
+  each of the reader's call sites: the reader is reachable from Scheme only
+  through `load`.
+- `%syntax-error`'s several irritants reach a handler as one, the list.
+- Kept `longjmp` over an error-return protocol: errors start in C several
+  calls below the loop (the reader, primitives' argument checks, the
+  environment, the value stack).
+- Ran both full suites, and the release build's REPL output.
 
 ### Phase 4 - guard
 

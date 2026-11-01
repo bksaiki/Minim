@@ -418,7 +418,7 @@ minim_obj minim_read_file(minim_obj path) {
     FILE *f = fopen(name, "r");
     free(name);
     if (f == NULL)
-        minim_error("load: cannot open file", path);
+        minim_error_of_kind(MINIM_ERROR_FILE, "load: cannot open file", path);
 
     minim_obj forms;
     bool ok = minim_catch(read_forms, f, &forms);
@@ -427,7 +427,7 @@ minim_obj minim_read_file(minim_obj path) {
         const char *msg;
         minim_obj irritant;
         minim_last_error(&msg, &irritant);
-        minim_error(msg, irritant);
+        minim_error_of_kind(MINIM_ERROR_READ, msg, irritant);
     }
     return forms;
 }

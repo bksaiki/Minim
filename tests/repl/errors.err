@@ -9,3 +9,6 @@ error: uncaught exception: boom
 error: uncaught exception: (1 2)
 error: handler returned: r
 error: %make-error-object: not a string: not-a-string
+error: car: not a pair: r
+error: handler returned: #<error car: not a pair>
+error: car: not a pair: 1
