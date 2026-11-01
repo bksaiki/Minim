@@ -312,7 +312,7 @@ void minim_gc_collect_major(void);
  */
 void minim_gc_collect_generation(unsigned g);
 
-/** Remembers the old object `obj` until the next collection. */
+/** Remembers the old object `obj`, which may now point into the nursery. */
 void minim_gc_remember(minim_obj obj);
 
 /** Write barrier, after storing `x` into `obj`: remembers `obj` if old and `x` is a heap object. */

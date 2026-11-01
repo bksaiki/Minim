@@ -11,7 +11,6 @@
 ; generations on a radix-2 schedule.
 (collect-nursery-bytes 1)
 (collect-generation-radix 2)
-(collect-maximum-generation 3)
 (define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))
 (define lst (build 1000 '()))
 (length lst)

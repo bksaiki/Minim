@@ -163,6 +163,11 @@ static size_t typed_size(minim_obj header) {
     }
 }
 
+// Size of the object at `p` with the tag `tag`.
+static size_t object_size(const minim_obj *p, minim_obj tag) {
+    return tag == MINIM_TAG_TYPED ? typed_size(p[0]) : 2 * sizeof(minim_obj);
+}
+
 // Copies the object `x` refers to into the target generation, unless it is
 // older than the collection or already copied, and returns the new reference.
 static minim_obj copy(minim_obj x) {
@@ -190,7 +195,7 @@ static minim_obj copy(minim_obj x) {
     if (old[0] == MINIM_FORWARD)
         return old[1];
 
-    size_t size = tag == MINIM_TAG_TYPED ? typed_size(old[0]) : 2 * sizeof(minim_obj);
+    size_t size = object_size(old, tag);
     void *p = minim_space_alloc(&minim_gc.old[minim_gc.target][kind], size);
     minim_gc.old_bytes[minim_gc.target] += minim_align_up(size);
     memcpy(p, old, size);
@@ -198,66 +203,6 @@ static minim_obj copy(minim_obj x) {
     old[0] = MINIM_FORWARD;
     old[1] = y;
     return y;
-}
-
-// Copies the referents of the object at `p`; returns its size.  Pairs,
-// symbols, and closures are two traced words.
-static size_t scan_two_words(minim_obj *p) {
-    p[0] = copy(p[0]);
-    p[1] = copy(p[1]);
-    return 2 * sizeof(minim_obj);
-}
-
-static size_t scan_typed(minim_obj *p) {
-    minim_obj header = p[0];
-    size_t n = minim_header_length(header);
-    switch (minim_header_type(header)) {
-    case MINIM_TYPE_VECTOR:
-        for (size_t i = 0; i < n; i++)
-            p[1 + i] = copy(p[1 + i]);
-        break;
-    case MINIM_TYPE_STRING:
-        break;  // no pointers
-    case MINIM_TYPE_PRIMITIVE:
-        p[2] = copy(p[2]);  // name; `fn` is a C pointer, the arities fixnums
-        break;
-    default:
-        abort();  // unknown type
-    }
-    return typed_size(header);
-}
-
-// Position of the next unscanned object in a space.
-typedef struct cursor {
-    minim_chunk *chunk;
-    unsigned char *p;
-} cursor;
-
-// Scans `s` from `c` to its end; returns whether anything was scanned.
-static bool scan(minim_space *s, cursor *c, size_t (*scan_obj)(minim_obj *)) {
-    if (c->chunk == NULL) {
-        if (s->first == NULL)
-            return false;
-        *c = (cursor){s->first, s->first->data};
-    }
-
-    bool scanned = false;
-    for (;;) {
-        // Scanning may copy into `s`, so the end is rechecked each time.
-        while (c->p < minim_chunk_end(s, c->chunk)) {
-            c->p += minim_align_up(scan_obj((minim_obj *)c->p));
-            scanned = true;
-        }
-        if (c->chunk == s->last)
-            return scanned;
-        c->chunk = c->chunk->next;
-        c->p = c->chunk->data;
-    }
-}
-
-// A cursor at the end of `s`, where objects copied next will start.
-static cursor end_of(const minim_space *s) {
-    return s->last == NULL ? (cursor){0} : (cursor){s->last, s->alloc};
 }
 
 // The fields of the object `x` that may hold pointers, in `*fields`; returns
@@ -286,6 +231,44 @@ static void scan_object(minim_obj x) {
     size_t n = pointer_fields(x, &fields);
     for (size_t i = 0; i < n; i++)
         fields[i] = copy(fields[i]);
+}
+
+// Position of the next unscanned object in a space.
+typedef struct cursor {
+    minim_chunk *chunk;
+    unsigned char *p;
+} cursor;
+
+// Scans `s`, the space for `kind`, from `c` to its end; returns whether
+// anything was scanned.
+static bool scan(minim_space *s, size_t kind, cursor *c) {
+    // Pairs, symbols, and closures all have two pointer fields.
+    minim_obj tag = kind == MINIM_KIND_TYPED ? MINIM_TAG_TYPED : MINIM_TAG_PAIR;
+    if (c->chunk == NULL) {
+        if (s->first == NULL)
+            return false;
+        *c = (cursor){s->first, s->first->data};
+    }
+
+    bool scanned = false;
+    for (;;) {
+        // Scanning may copy into `s`, so the end is rechecked each time.
+        while (c->p < minim_chunk_end(s, c->chunk)) {
+            minim_obj *p = (minim_obj *)c->p;
+            scan_object((minim_obj)p | tag);
+            c->p += minim_align_up(object_size(p, tag));
+            scanned = true;
+        }
+        if (c->chunk == s->last)
+            return scanned;
+        c->chunk = c->chunk->next;
+        c->p = c->chunk->data;
+    }
+}
+
+// A cursor at the end of `s`, where objects copied next will start.
+static cursor end_of(const minim_space *s) {
+    return s->last == NULL ? (cursor){0} : (cursor){s->last, s->alloc};
 }
 
 // The youngest generation the old object `x` points to, or its own.
@@ -349,8 +332,7 @@ static void collect(unsigned g) {
     do {
         scanned = false;
         for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
-            scanned |= scan(&minim_gc.old[t][k], &cursors[k],
-                            k == MINIM_KIND_TYPED ? scan_typed : scan_two_words);
+            scanned |= scan(&minim_gc.old[t][k], k, &cursors[k]);
     } while (scanned);
 
     // Update the scanned objects' youngest referents, dropping those that no
