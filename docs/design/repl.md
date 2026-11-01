@@ -60,8 +60,9 @@ than one argument prints a usage message and exits with status 2.
 
 Otherwise it runs the REPL, which loops: read, `minim_eval_values`, then
 write each value and a newline, skipping void ones.  A read or evaluation
-error prints `error: msg: irritant` to stderr (`errors.md`), and reading
-continues with the rest of the input.
+error prints `error: msg: irritant` to stderr (`errors.md`), after the
+`after`s of the `dynamic-wind`s it left run, and reading continues with the
+rest of the input.
 
 The `> ` prompt goes to stderr, and only when stdin is a terminal, as in
 bash and Python, so piped runs print only results to stdout, as the REPL

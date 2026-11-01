@@ -3,7 +3,8 @@
 - [Object representation and garbage collection](gc.md): tagged values,
   heap layouts, and the generational collector.
 - [REPL](repl.md): the reader, printer, and the read-eval-print loop.
-- [Errors](errors.md): raising and catching errors.
+- [Errors](errors.md): errors in C, error objects, handlers, and how C
+  errors reach Scheme.
 - [Evaluator](eval.md): closures, the explicit-stack machine, environments,
   and special forms.
 - [Primitives](primitives.md): primitive procedures and the built-in library.

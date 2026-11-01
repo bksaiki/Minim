@@ -7,8 +7,9 @@ the work and records the decisions each one needs.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, 87 primitives, and a Scheme prelude with the list library
-(`map`, `append`, `member`, `fold`, ...).  It has a precise generational
+closures, continuations, error objects, 96 primitives, and a Scheme prelude
+with the list library (`map`, `append`, `member`, `fold`, ...),
+`dynamic-wind`, and exceptions.  It has a precise generational
 collector, a reader, a printer, and an explicit-stack evaluator with proper
 tail calls, multiple values, and the special forms `quote`, `if`, `define`,
 `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
@@ -20,7 +21,6 @@ Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Control | `error`, `guard` |
 | Libraries | `import`, `define-library` |
 | Numbers | flonums, bignums, rationals |
 | I/O | ports, `read`, `read-char`, string and file ports |
@@ -78,14 +78,15 @@ Depends on 1 (`equal?` for `member` and `assoc`).
 Depends on 2, since the derived forms live in the prelude.  Macros are
 hygienic, as R7RS requires (`docs/design/macros.md`).
 
-### 4. Control and errors (M)
+### 4. Control and errors (M) — done
 
-- Done: `values`, `call-with-values`, and the `-values` binding forms.
-- `error`, `raise`, `with-exception-handler`, and `guard`, with condition
-  objects (message and irritants).  `minim_error` raises one, so C and Scheme
-  errors are the same kind of thing.
-- Done: `call/cc` and `dynamic-wind`, on a segmented value stack, so a
-  capture copies at most one segment (`docs/design/eval.md`).
+- `values`, `call-with-values`, and the `-values` binding forms.
+- `error`, `raise`, `raise-continuable`, `with-exception-handler`, and
+  `guard`, with error objects (message and irritants).  An error from C
+  raises one, so C and Scheme errors are the same kind of thing
+  (`docs/design/errors.md`).
+- `call/cc` and `dynamic-wind`, on a segmented value stack, so a capture
+  copies at most one segment (`docs/design/eval.md`).
 
 Depends on 3 (`guard` is a macro).
 

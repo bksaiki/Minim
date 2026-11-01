@@ -120,6 +120,12 @@ and `=>`), and `do`, as `syntax-rules` macros after R7RS 7.3.  `let` expands
 to `let-values`, and `letrec` and `letrec*` both to `letrec-values`, so both
 have `letrec*` semantics.  `case` calls the prelude's `memv`.
 
+`guard` (R7RS 4.2.7) expands into a call of the prelude's `%guard`
+(`prelude.md`) on `(lambda () body ...)` and `(lambda (var reraise) (cond
+clause ... (else (reraise))))`, without the added `else` when the last clause
+is one.  The clauses run in the `guard`'s continuation, so a call from one is
+a tail call.
+
 ## Quasiquote
 
 `` `t `` (R7RS 4.2.8) becomes calls to `cons`, `append`, and `list->vector`,

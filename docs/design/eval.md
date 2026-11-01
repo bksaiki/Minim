@@ -13,8 +13,10 @@ and the environment it was created in.
 
 ## Machine
 
-The registers `expr`, `env`, `val`, and `k` are locals of `minim_eval`,
-protected by `MINIM_FRAME`, so a catch restores them with the root stack.
+The registers `expr`, `env`, `val`, and `k` are locals of the machine loop,
+`run`, protected by `MINIM_FRAME`.  `minim_eval` calls it inside a catch,
+which raises an error in Scheme or passes it on (`errors.md`); the `setjmp`
+is outside the loop, so no register is live across the jump.
 
 `k` is the continuation: a chain of heap frames, vectors
 `#(kind next code env base)`.  `'()` returns from `minim_eval`.

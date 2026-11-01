@@ -19,8 +19,10 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 | `111` | typed object | first word is a header |
 | `010`, `100` | | reserved (flonum, -) |
 
-Typed objects (vectors, strings, primitives, continuations) start with a
-header, `(length << 4) | (immutable << 3) | type`.  Every object is at least
+Typed objects (vectors, strings, primitives, continuations, error objects)
+start with a header, `(length << 4) | (immutable << 3) | type`.  Error objects
+have type 1, the first odd code; an odd code can't equal the forwarding
+marker.  Every object is at least
 2 words, so any object can hold a forwarding record.
 
 ```
@@ -31,6 +33,7 @@ string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
 closure  [ code : (params . body) | env ]     16 B
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 continuation [ header | k | stack | height ]  32 B
+error    [ header | kind | message | irritants ]  32 B
 ```
 
 A continuation's `k` is its continuation frames, `stack` the frozen segments
@@ -171,8 +174,9 @@ tests are in `testing.md`.
 - **Value stack.**  The evaluator's values for calls in progress
   (`minim_gc.values`, `eval.md`): its buffer, updated in place, and its chain
   of frozen segments.  Also `minim_gc.spill`, the arguments `apply` gives a
-  primitive beyond the stack's limit, and `minim_gc.winders`, the
-  `dynamic-wind`s in progress.
+  primitive beyond the stack's limit, `minim_gc.winders`, the
+  `dynamic-wind`s in progress, and `minim_gc.handlers`, the exception
+  handlers installed.
 - **Remembered set.**  As above.
 - **Symbol table.**  A vector in the heap, registered as a global.  It hashes
   by name, so moving symbols doesn't invalidate it.  It is strong: symbols are
