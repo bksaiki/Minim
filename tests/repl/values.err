@@ -6,3 +6,11 @@ error: wrong number of values: ()
 error: arity mismatch: #<procedure>
 error: not a procedure: 1
 error: arity mismatch: #<procedure call-with-values>
+error: bad syntax: (define-values (z) 1)
+error: bad syntax: (define-values (z 1) 2)
+error: bad syntax: (define-values (z))
+error: bad syntax: (let-values (((z) 1)))
+error: bad syntax: (let-values ((z)) z)
+error: bad syntax: (let-values (((z 1) 2)) z)
+error: bad syntax: (letrec-values (((z) 1) . r) z)
+error: wrong number of values: (1)

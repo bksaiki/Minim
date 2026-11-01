@@ -191,6 +191,21 @@ cmake --build --preset dev && ctest --preset dev -R 'eval' && ctest --preset str
 
 ### Phase 3 - Expander
 
+**Done.**  Details settled during the phase:
+
+- `%map-formals` maps a lambda list's identifiers, rejecting anything else.
+  `%bind-formals!` binds them to fresh names (now also used by `lambda`).
+  `%top-define!` gives a top-level definition's global and unbinds a macro
+  of that name (now also used by `define`).
+- The body scan collects `(define name expr)` and `(define-values formals
+  expr)` alike, and `finish` expands each expression.
+- Dropped from the planned tests: "a formal that is a macro keyword" isn't an
+  error; a formal shadows a macro, as in `lambda`, and the tests check that
+  instead.
+- Injected bugs, each caught by `repl_values`: `let-values` keeping the
+  user's names, and `letrec-values` expanding inits in the outer scope.
+- Full suites pass: `dev` 44, `stress` 35.
+
 - `src/prelude.scm`: `%expand-form` handles `let-values` and
   `letrec-values`; `%expand` and `%expand-body` handle `define-values`;
   `let*-values` among the derived forms.
