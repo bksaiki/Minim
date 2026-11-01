@@ -565,3 +565,12 @@
            (begin command ... (loop (do "step" var step ...) ...)))))
     ((_ "step" x) x)
     ((_ "step" x y) y)))
+
+(define-syntax guard
+  (syntax-rules (else)
+    ((_ (var clause ... (else result1 result2 ...)) body1 body2 ...)
+     (%guard (lambda () body1 body2 ...)
+             (lambda (var reraise) (cond clause ... (else result1 result2 ...)))))
+    ((_ (var clause ...) body1 body2 ...)
+     (%guard (lambda () body1 body2 ...)
+             (lambda (var reraise) (cond clause ... (else (reraise))))))))

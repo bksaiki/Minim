@@ -41,3 +41,18 @@ out
 (in)
 ()
 ()
+(symbol boom)
+(else 42)
+42
+(b . 23)
+"car: not a pair"
+(1 2)
+no-raise
+2
+(outer sym)
+12
+(in out clause)
+(1 2 3)
+(a b)
+()
+()

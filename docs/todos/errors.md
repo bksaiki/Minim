@@ -76,7 +76,16 @@ if any handler is installed, it makes an error object of the message and
 irritant (irritants `(irritant)`, or `()` for none) and raises it on the
 machine, calling the handler with a frame that raises `handler returned` if
 it does.  With no handler, the error passes to the enclosing `minim_catch` as
-today, so the REPL's output doesn't change.
+today, so the REPL's output doesn't change, after running the `after`s of the
+`dynamic-wind`s it leaves (Phase 5).
+
+**Unhandled errors run the `after`s.**  A handler runs where the raise is,
+inside every `dynamic-wind` around it, so finding one unwinds nothing; the
+`after`s run when control leaves, as when `guard` escapes.  An unhandled
+error leaves too: the REPL goes on to the next form.  R7RS says `after` is
+called "whenever [execution] exits that dynamic extent", and `exit` runs the
+outstanding `after`s.  So with no handler, `eval` keeps the error as an error
+object, runs `(%rewind! '())` on the machine, then passes the error on.
 
 - **Registers across the jump.**  After a `longjmp`, a local changed since
   the `setjmp` is indeterminate unless `volatile`.  So the `setjmp` is in a
@@ -216,6 +225,40 @@ tail position of a loop runs in constant space (`test_eval`).
 cmake --build --preset dev && ctest --preset dev -R 'errors|expan|boot' && ctest --preset stress -R 'errors'
 ```
 
+**Done.**
+- The reference implementation's mechanism is a prelude procedure,
+  `(%guard body handler)`, so the macro is only the clauses:
+  `(lambda (var reraise) (cond clause ... (else (reraise))))`, or without the
+  added `else` when the last clause is one.  No `guard-aux`: `cond` does its
+  work.
+- A call from a clause is a tail call; the constant-space test loops through
+  one (`test_tail_calls`).
+- Ran `ctest -R 'errors|expan|boot|eval|derived|macro|syntax'` and stress
+  `errors|eval`.
+
+### Phase 5 - Unhandled errors run the `after`s
+
+- `src/prelude.scm`: `(%raise-c-error e)`, which `eval` applies to every C
+  error's object: with a handler, `(%raise e #f)`; with none,
+  `(%rewind! '())`, then `%raise-uncaught`.  `src/prelude.boot` regenerated.
+- `src/eval.c`: `eval` applies it whenever a handler or winder is installed,
+  and passes the error on directly otherwise.  It no longer clears the
+  winders.
+
+Separate because it changes what an unhandled error does, not how a handled
+one travels.
+
+Tests (`tests/repl/errors.scm`, `tests/test_eval.c`): an unhandled error and
+an uncaught `raise` run the `after`s of nested `dynamic-wind`s, innermost
+first, then the REPL prints the original error; an error in an `after`
+replaces it, and the outer `after`s still run; the winders are empty after.
+The cases in `tests/repl/continuations.scm` that leave a `dynamic-wind` by an
+error, updated.
+
+```sh
+cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
+```
+
 ### After the last phase
 
 Sync the docs: `errors.md` (error objects, handlers, C errors raising in
@@ -232,14 +275,14 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### Do unhandled errors run the `after`s?
+### Does the error print before or after the `after`s?
 
-An error no handler catches `longjmp`s to `minim_catch`, past the
-`dynamic-wind`s it leaves, without running their `after`s.  R7RS leaves this
-to the implementation; Chez runs them, printing the error first, then
-resetting the REPL by a continuation captured at its prompt.  Running them means the top level reinstating its own
-continuation, like an escape, before printing the error; skipping them is
-today's behaviour and simpler.
+Chez prints first: its default handler runs at the raise, like any handler,
+then resets to the REPL, leaving the extents.  Here the REPL prints in C,
+after `minim_catch` returns, so the `after`s run first.  Printing first would
+take either the REPL rewinding after it prints (each embedder of `minim_catch`
+must remember to) or `eval` printing errors itself.
 
-Provisionally skip them, as now.  Reopen if programs rely on `after` for
-cleanup that must run on an uncaught error.
+Provisionally the `after`s first, keeping `eval` self-contained and the
+winders empty whenever an error leaves it.  Reopen if output order matters to
+a program, or when the REPL gets a Scheme-level default handler.

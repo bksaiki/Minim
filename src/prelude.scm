@@ -206,3 +206,23 @@
 (define (raise obj) (%raise obj #f))
 (define (raise-continuable obj) (%raise obj #t))
 (define (error message . irritants) (raise (%make-error-object message irritants)))
+
+;; `guard` (R7RS 4.2.7): calls `body` with a handler that escapes to the
+;; guard's continuation and calls `(handler condition reraise)` there.
+;; `(reraise)` re-raises in the dynamic environment of the original `raise`,
+;; as by `raise-continuable`.
+(define (%guard body handler)
+  ((call/cc
+    (lambda (guard-k)
+      (with-exception-handler
+       (lambda (condition)
+         ((call/cc
+           (lambda (handler-k)
+             (guard-k
+              (lambda ()
+                (handler condition
+                         (lambda ()
+                           (handler-k (lambda () (raise-continuable condition)))))))))))
+       (lambda ()
+         (call-with-values body
+           (lambda results (guard-k (lambda () (apply values results)))))))))))
