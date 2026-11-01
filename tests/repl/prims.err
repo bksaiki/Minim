@@ -5,10 +5,15 @@ error: number->string: bad radix: 3
 error: number->string: bad radix: x
 error: length: not a list: (1 . 2)
 error: set-car!: not a pair: 5
+error: cadr: not a pair: (1)
+error: cddr: not a pair: 5
 error: vector-ref: not a vector: (1)
 error: vector-ref: bad index: 3
 error: vector-set!: bad index: -1
 error: make-vector: bad length: -1
+error: vector->list: not a vector: (1)
+error: vector->list: bad index: 3
+error: vector->list: bad index: 2
 error: string-ref: bad index: 3
 error: string-length: not a string: abc
 error: symbol->string: not a symbol: "abc"

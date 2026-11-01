@@ -109,6 +109,20 @@ Tests:
 cmake --build --preset dev && ctest --preset dev -R 'repl|eval|boot' && ctest --preset stress -R 'repl|eval'
 ```
 
+### Phase 0b - Pair accessors and vector->list
+
+Added when Phase 1 started: the rewrite would otherwise keep about 80 nested
+`car`/`cdr` chains and `%vector->list`.
+
+**Done.**
+
+- `src/prims.c`: `caar`, `cadr`, `cdar`, `cddr`, the accessors in
+  `(scheme base)`, as primitives sharing `cxr`; an error names the procedure
+  and its whole argument.  The deeper ones are in `(scheme cxr)`, left for
+  when Minim has libraries.  `(vector->list v [start [end]])` (R7RS 6.8).
+- `tests/repl/prims.scm`: every accessor, a failing one, and `vector->list`
+  with each optional argument, an empty range, and bad arguments.
+
 ### Phase 1 - Rewrite: expansion
 
 - `src/prelude.scm`: the helpers, syntactic environments, resolution,
