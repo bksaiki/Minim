@@ -14,7 +14,8 @@ the one it contains.
 
 - `boot_gen` (`src/boot.c`) writes it: it expands each form of the two
   files, in order, without evaluating it, with `%boot-form`
-  (`src/boot.scm`).  That splices a `begin`; writes a `define-syntax` as
+  (`src/boot.scm`), in the system environment (`macros.md`).  That splices
+  a `begin`; writes a `define-syntax` as
   `(%define-macro! 'name 'spec)`, since a transformer is a closure; renames
   each fresh name to `name.N`, numbered per name within its form, so an edit
   doesn't renumber other forms; and fails if a macro defines a fresh global.
@@ -36,8 +37,11 @@ the one it contains.
   `minim_eval_expanded`, without expansion.  No catch is installed, so an
   error in the prelude, which is a bug in Minim, aborts with the message.
 - The forms load in order: the list library, the expander, the derived
-  forms.  Each `%define-macro!` builds a transformer as it loads, so the
-  expander code that runs then may call only what is defined before it.
+  forms, the standard libraries.  Each `%define-macro!` builds a transformer
+  as it loads, so the expander code that runs then may call only what is
+  defined before it.
+- If `boot.scm` uses something the old boot file's expander lacks, build the
+  `boot` target once with the old `boot.scm`, then with the new.
 
 ## Library
 

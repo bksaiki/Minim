@@ -1,0 +1,8 @@
+#t
+#t
+#f
+#f
+((define square (lambda (n) (* n n))) (define loaded-value 'defs))
+()
+("load: cannot open file" #t)
+("eof in list" #t)

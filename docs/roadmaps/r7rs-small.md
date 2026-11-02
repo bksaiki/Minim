@@ -1,33 +1,57 @@
 # Roadmap: R7RS-small
 
-Where Minim goes after the basic REPL.  Each milestone gets its own
-implementation plan in `docs/todos/` when it starts; this document only orders
-the work and records the decisions each one needs.
+Where Minim goes after the basic REPL, toward R7RS-small.  Each milestone gets
+its own implementation plan in `docs/todos/` when it starts; this document
+only orders the work and records the decisions each one needs.  Work R7RS-small
+doesn't require is in `beyond-r7rs.md`.
 
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, continuations, error objects, records, 102 primitives, and a Scheme
+closures, continuations, error objects, records, 105 primitives, and a Scheme
 prelude with the list library (`map`, `append`, `member`, `fold`, ...),
 `dynamic-wind`, and exceptions.  It has a precise generational collector, a
 reader, a printer, and an explicit-stack evaluator with proper
 tail calls, multiple values, and the special forms `quote`, `if`, `define`,
 `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
 `letrec-values`.  A hygienic expander in the prelude adds quasiquote,
-`syntax-rules` macros, and the derived forms.  `minim file.scm` runs a file,
-and `load` loads one (see `docs/design/`).
+`syntax-rules` macros, the derived forms, and R7RS libraries.  `minim
+file.scm` runs a file, and `load` loads one (see `docs/design/`).
 
 Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Libraries | `import`, `define-library` |
 | Numbers | flonums, bignums, rationals |
 | I/O | ports, `read`, `read-char`, string and file ports |
-| Data types | hashtables, bytevectors |
+| Data types | bytevectors |
 
-**Target:** a practical subset of R7RS-small, simple before complete (see
-Open items).
+**Coverage:** the names of each standard library (R7RS Appendix A) Minim
+provides.  Update it as names are added.
+
+| Library | Provided | R7RS | Notes |
+|---|---|---|---|
+| `(scheme base)` | 128 | 238 | |
+| `(scheme case-lambda)` | 0 | 1 | not defined |
+| `(scheme char)` | 0 | 22 | not defined |
+| `(scheme complex)` | 0 | 6 | not defined |
+| `(scheme cxr)` | 0 | 24 | not defined |
+| `(scheme eval)` | 0 | 2 | not defined |
+| `(scheme file)` | 1 | 10 | |
+| `(scheme inexact)` | 0 | 12 | not defined |
+| `(scheme lazy)` | 0 | 5 | not defined |
+| `(scheme load)` | 1 | 1 | |
+| `(scheme process-context)` | 1 | 5 | |
+| `(scheme r5rs)` | 104 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme read)` | 0 | 1 | not defined |
+| `(scheme repl)` | 0 | 1 | not defined |
+| `(scheme time)` | 0 | 3 | not defined |
+| `(scheme write)` | 2 | 4 | |
+
+**Target:** R7RS-small compliance: every standard library complete, as the
+coverage table measures, and the conformance suite passing.  Where R7RS lets
+an implementation omit something, such as rationals or `(scheme complex)`,
+Minim may.
 
 ## Milestones
 
@@ -90,25 +114,20 @@ hygienic, as R7RS requires (`docs/design/macros.md`).
 
 Depends on 3 (`guard` is a macro).
 
-### 5. Libraries (M–L)
+### 5. Libraries (M–L) — done
 
-Every R7RS program starts with `(import (scheme base) ...)`, so without
-libraries Minim can't run a portable program.
-
-- `import` of the standard libraries, `(scheme base)`, `(scheme write)`,
-  `(scheme cxr)`, and so on, each exporting the identifiers Minim has.
-- `define-library`, with `export`, `import`, `begin`, and `include`.
-- Each library's bindings in its own environment, so the prelude and the
-  expander no longer share the user's top level: redefining `car` or `map`
-  stops breaking expansion (`docs/design/macros.md`, Limitations).
-
-Depends on 3: identifiers and environments are the expander's.  Global
-bindings stay symbol value slots, after Chez Scheme (`s/syntax.ss`): an
-environment maps each name to a *label*, a symbol whose value slot is the
-variable's location, and the expander rewrites references to labels.  A
-library's definitions get fresh labels, and an import maps a name to the
-exporting library's label, so the runtime sees only symbols and a global
-reference stays one load.  Today every name is its own label.
+- `define-library`, with `export`, `import`, `begin`, and `include`; `import`
+  with `only`, `except`, `prefix`, and `rename`; library files, `foo/bar.sld`
+  on `MINIM_LIBRARY_PATH`.
+- The standard libraries Minim has names for: `(scheme base)`, `(scheme
+  file)`, `(scheme load)`, `(scheme process-context)`, `(scheme write)`, and
+  `(scheme r5rs)`.  `(scheme char)` and `(scheme cxr)` wait for their
+  procedures.
+- Top-level environments in the expander, after Chez Scheme: names map to
+  labels, symbols whose value slots are the variables, so a global reference
+  stays one load.  The REPL's definitions shadow system bindings instead of
+  replacing them (`docs/design/macros.md`).
+- Later: `cond-expand`, `include-ci`, and `include-library-declarations`.
 
 ### 6. Ports and I/O (M)
 
@@ -145,66 +164,23 @@ hand-written bignums or GMP (see Open items).
 
 - Done: records, `define-record-type`, as typed objects whose first word is
   their type descriptor (`docs/design/gc.md`).
-- Hashtables: `eq?`-based and `equal?`-based (`equal-hash` exists from
-  milestone 1).  `eq?` hashing must survive the moving collector, by rehashing
-  after a collection or by hashing a stable per-object value.
-- Bytevectors (an unscanned typed object), and boxes.
+- Bytevectors (an unscanned typed object).
 
 Depends on 3 (`define-record-type` is a macro).
 
-### 9. Runtime maturity (M, ongoing)
+### 9. The rest of the standard libraries (M, ongoing)
 
-Not features, but needed as programs grow:
+The names the coverage table above lacks that no other milestone brings:
+`(scheme char)`, `(scheme cxr)`, `case-lambda`, `(scheme lazy)`, `eval` and
+`environment`, `exit`, and the rest of `(scheme base)`'s lists, strings,
+vectors, and control.  Mostly prelude procedures.
 
-- A weak symbol table, so unused symbols are collected, as Chez does.
-- Done: a generational collector on Chez's radix schedule, with a write
-  barrier, reuse of freed chunks, and run-time collector settings
-  (`docs/design/gc.md`).
-- Done: startup loads the prelude already expanded, from a checked-in boot
-  file (`docs/design/prelude.md`), so it expands nothing and runs under the
-  environment's collector settings throughout.
-- Done: the expander is written in normal Scheme and regenerates its own
-  boot file; the evaluator binds definitions only globally.
-- Done: expansion into the `-values` binding forms, so `let` allocates no
-  closure and each frame's variables are known before it runs.
-- Done: local frames are vectors, one allocation each, looked up by name
-  (`docs/design/eval.md`).  Next, a pass after expansion can resolve each
-  local variable to a lexical address (frames up, slot), so a lookup is a
-  few loads instead of a search by name (`docs/todos/compile.md`).
-- Done: benchmarks, in `bench/` (`docs/design/testing.md`).
+### 10. Conformance (S–M, ongoing)
 
-Can interleave with any milestone.
-
-### 10. Tooling and conformance (S–M, ongoing)
-
-- A conformance suite: a subset of the R7RS tests (for example Chibi's
-  `r7rs-tests.scm`) as golden tests, grown with each milestone.
-- Source locations in error messages.
-- Line editing in the REPL, if it can be done without a dependency.
-
-## Out of scope for now
-
-Threads, a foreign function interface, a native or bytecode compiler, and
-Unicode case folding and normalization.
+A conformance suite: the R7RS tests (for example Chibi's `r7rs-tests.scm`) as
+golden tests, enabled as each milestone makes them pass, until all do.
 
 ## Open items
-
-### What is the target: R7RS-small, a subset, or something else?
-
-- **R7RS-small** is a clear checklist, with an existing test suite.
-- **A pragmatic subset** keeps the implementation small, in line with "simple
-  over complete", but needs a written list of what's in and out.
-- **Provisional:** a subset of R7RS-small, extended milestone by milestone.
-  The conformance suite records exactly what passes.
-
-### Library in C or in Scheme?
-
-- **Scheme (the prelude)** is shorter and handles higher-order procedures
-  naturally, but runs slower and grows startup time.
-- **C** is fast but verbose, and can't call closures.
-- **Provisional:** higher-order and list-processing procedures in Scheme;
-  type predicates, accessors, and arithmetic in C.  Move hot procedures to C
-  when benchmarks show it.
 
 ### Hand-written bignums or GMP?
 

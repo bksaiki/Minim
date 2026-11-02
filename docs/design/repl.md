@@ -58,6 +58,10 @@ With a file argument, `src/main.c` evaluates `(load "file")`.  It prints
 nothing else, and an error is printed to stderr with exit status 1.  More
 than one argument prints a usage message and exits with status 2.
 
+Both expand forms in the interaction environment (`macros.md`): every
+system binding is visible, `import` adds others, and a definition of a
+system name shadows it without changing the system's.
+
 Otherwise it runs the REPL, which loops: read, `minim_eval_values`, then
 write each value and a newline, skipping void ones.  A read or evaluation
 error prints `error: msg: irritant` to stderr (`errors.md`), after the

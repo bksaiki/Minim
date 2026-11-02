@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 
+#include "eval.h"
 #include "gc.h"
 #include "minim.h"
 #include "stack.h"
@@ -463,6 +464,36 @@ static void test_handled_errors(void) {
     CHECK(evals_to("out", "#t"));
 }
 
+// Each top-level form, including each one `load` runs, goes through %expand
+// when it is reached, so a %expand one form sets applies to the next.  The
+// REPL can't set it: its `define` would shadow the system's.
+static void test_expand_hook(void) {
+    minim_obj saved = minim_symbol_value(minim_sym_expand);
+    MINIM_FRAME(&saved);
+    FILE *f = input("(define %expand (lambda (form)"
+                    " (if (if (pair? form) (eq? (car form) 'twice) #f)"
+                    " (list 'begin (car (cdr form)) (car (cdr form))) form)))");
+    minim_eval_expanded(minim_read(f));
+    fclose(f);
+    CHECK(evals_to("(define n 0) (twice (set! n (+ n 1))) n", "2"));
+
+    const char *path = gc_stressed() ? "expand_hook_stress.scm" : "expand_hook.scm";
+    f = fopen(path, "w");
+    fputs("(twice (set! n (+ n 1)))\n"
+          "(define %expand (lambda (form)"
+          " (if (if (pair? form) (eq? (car form) 'thrice) #f)"
+          " (list 'begin (car (cdr form)) (car (cdr form)) (car (cdr form))) form)))\n"
+          "(thrice (set! n (+ n 1)))\n", f);
+    fclose(f);
+    char src[64];
+    snprintf(src, sizeof(src), "(load \"%s\") n", path);
+    CHECK(evals_to(src, "7"));
+    CHECK(evals_to("(thrice (set! n (+ n 1))) n", "10"));
+    remove(path);
+    minim_set_symbol_value(minim_sym_expand, saved);
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_self_evaluating();
@@ -483,6 +514,7 @@ int main(void) {
     test_deep_recursion();
     test_many_arguments();  // after test_tail_calls, which checks the value stack's capacity
     test_handled_errors();
+    test_expand_hook();
     minim_shutdown();
     return test_result();
 }

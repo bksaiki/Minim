@@ -1,0 +1,18 @@
+error: unbound variable: hidden
+error: set!: immutable variable: cdr
+error: empty stack
+error: unbound variable: n
+error: import: not exported: (nothing (only (stack) nothing))
+error: import: not exported: (nothing (rename (stack) (nothing x)))
+error: import: unknown library: (nowhere)
+error: bad syntax: (only)
+error: bad syntax: (rename (stack) (push!))
+error: define-library: not defined: missing
+error: unbound variable: undefined-thing
+error: define-library: not defined: g
+error: unbound variable: car
+error: import: unknown library: (scheme char)
+error: import: unknown library: (lib missing)
+error: import: unknown library: (lib wrong)
+error: include: cannot open file: "lib/missing.scm"
+error: unbound variable: when
