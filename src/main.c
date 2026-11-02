@@ -24,9 +24,9 @@ static const char usage[] = "usage: minim [--program] [file]\n";
 static const char help[] =
     "Runs file as a script in the interaction environment, or else a REPL.\n"
     "\n"
-    "  --program file  run file as an R7RS program, which sees only what it imports\n"
-    "  --help          print this message\n"
-    "  --version       print the version\n";
+    "  --program  run file as an R7RS program, which sees only what it imports\n"
+    "  --help     print this message\n"
+    "  --version  print the version\n";
 
 static minim_obj read_stdin(void *arg) {
     MINIM_UNUSED(arg);
@@ -114,8 +114,6 @@ int main(int argc, char **argv) {
             puts("minim " MINIM_VERSION);
             return 0;
         } else if (strcmp(arg, "--program") == 0) {
-            if (i + 1 == argc)
-                return usage_error("missing file after", arg);
             program = true;
         } else if (arg[0] == '-' && arg[1] != '\0') {
             return usage_error("unknown option", arg);
@@ -125,6 +123,8 @@ int main(int argc, char **argv) {
             file = arg;
         }
     }
+    if (program && file == NULL)
+        return usage_error("missing file after", "--program");
 
     minim_init();
     int status = file == NULL ? run_repl() : run_file(program ? run_program : load, file);

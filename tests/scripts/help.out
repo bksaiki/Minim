@@ -1,6 +1,6 @@
 usage: minim [--program] [file]
 Runs file as a script in the interaction environment, or else a REPL.
 
-  --program file  run file as an R7RS program, which sees only what it imports
-  --help          print this message
-  --version       print the version
+  --program  run file as an R7RS program, which sees only what it imports
+  --help     print this message
+  --version  print the version
