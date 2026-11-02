@@ -1,3 +1,6 @@
+; The internals this file tests are in (minim system).
+(import (minim system))
+
 ; Uninterned symbols print like their names but are distinct.
 (define g (gensym "x"))
 g

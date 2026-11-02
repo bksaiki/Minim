@@ -12,14 +12,9 @@
         (cons (cons name exports)
               (filter (lambda (lib) (not (equal? (car lib) name))) %libraries))))
 
-;; The names the libraries defined so far export, each once.
-(define (%exported-names)
-  (fold (lambda (lib names)
-          (fold (lambda (b names) (if (memq (car b) names) names (cons (car b) names)))
-                names
-                (cdr lib)))
-        '()
-        %libraries))
+;; The names the libraries `names` export.
+(define (%exported-names names)
+  (%append-map (lambda (name) (map car (%library-exports name))) names))
 
 ;; Defines the library `name`, exporting the system's bindings of `names`.
 (define (%define-system-library name names)

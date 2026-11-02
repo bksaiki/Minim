@@ -131,6 +131,10 @@ static void test_define(void) {
     CHECK(evals_to("(define (get-answer) answer) (get-answer)", "42"));
     minim_define("answer", minim_fixnum(43));
     CHECK(evals_to("(get-answer)", "43"));
+
+    // A definition binds the REPL's label, not the interned symbol of its name.
+    CHECK(evals_to("(define defined-at-the-repl 1) defined-at-the-repl", "1"));
+    CHECK_EQ(minim_symbol_value(minim_intern_cstr("defined-at-the-repl")), MINIM_UNBOUND);
 }
 
 static minim_obj stack_height(minim_obj *args, size_t n) {

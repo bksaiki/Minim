@@ -166,6 +166,34 @@ against `main`, especially `expand` and startup.
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'libraries|boot|exceptions|records'
 ```
 
+**Done.**
+- The interaction environment is made without a parent and imports `(minim)`
+  at the end of `scheme/standard.scm`.  An unknown name gets a fresh label,
+  kept as the environment's own (`%top-own!`), wherever the environment's
+  parents don't end in the system's.
+- `import` and `define-library` are in `(minim)`: they were recognized as
+  themselves through the system fallback.  `tools/boot.scm` imports
+  `(minim system)`.
+- A macro-inserted definition reuses an own label only if it is bound: an
+  unknown name's label, recorded when the alias's original was resolved, is
+  not the user's variable.
+- A library body using `define` without importing it now fails with
+  `unbound variable: define` when it runs, not `define-library: not
+  defined`: the unknown names get labels, so the export is found.
+- Bootstrapping: the first regeneration hid internals from `boot.scm` before
+  it imported `(minim system)`; recovered from the committed boot file.
+- `(minim)`'s names come from the R7RS libraries other than `(scheme r5rs)`,
+  which don't overlap.
+- With association lists, `bench/expand.scm` was about 25% slower than
+  Phase 1, since every identifier the REPL expands walked about 150 imported
+  names.  So this branch was rebased onto property lists (#89):
+  environments' parent moved to slot 1, and `tests/repl/symbols.scm`, whose
+  property-list tests use internals, imports `(minim system)`.
+- Measured after the rebase, aligned builds against `main`, 11 runs, median:
+  `bench/expand.scm` 0.53 s to 0.42 s, startup 4 ms to 5 ms, runtime
+  benchmarks unchanged.
+- Ran both full suites.
+
 ### Phase 3 - Programs
 
 - `src/main.c`: `minim --program file.scm`; the usage message.
@@ -202,12 +230,9 @@ cmake --preset release && cmake --build --preset release
 
 ### Does the larger interaction environment slow expansion?
 
-Its bindings are on symbols' property lists (`macros.md`), so a lookup
-doesn't depend on its size: about 130 imported names, plus a label for each
-unknown name it sees.
-
-Phase 2 measures `bench/expand.scm` against `main`.  Reopen if it slows by
-more than noise.
+No: its bindings are on symbols' property lists (`macros.md`), so a lookup
+doesn't depend on its size.  `bench/expand.scm` is about 20% faster than on
+`main` (Phase 2).
 
 ### Should C be able to read a user's global?
 
