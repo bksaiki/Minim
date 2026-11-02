@@ -23,21 +23,32 @@ the environment where the macro was defined.
 ## Syntactic environments
 
 A *syntactic environment* says what identifiers mean.  It is a list of frames,
-innermost first; a frame is a one-element list holding an association list of
-`(identifier . meaning)`, so a body can add to its frame as it scans.  A
-variable's meaning is its fresh name (`(gensym "x")`, printing as `x`); a
-local macro's is its transformer.  The global environment is `'()`.
+innermost first, ending in a top-level environment; a frame is a one-element
+list holding an association list of `(identifier . meaning)`, so a body can
+add to its frame as it scans.  A variable's meaning is its fresh name
+(`(gensym "x")`, printing as `x`); a local macro's is its transformer.
+
+A *top-level environment* is `#(kind bindings parent own)`, after Chez
+Scheme: `bindings` maps identifiers to a *label*, the global whose value slot
+is the variable, or to a macro's transformer; `own` lists the labels its
+definitions made.  Expanded code names only labels, so the runtime knows no
+environments and a global reference stays one load.
+
+| Kind | For | An identifier it doesn't bind |
+|---|---|---|
+| `system` | the prelude and the expander | is its own label |
+| `interaction` | the REPL and files (`%expand`) | means what it does in the system environment |
+| `library` | a `define-library` body | gets a fresh label, never bound |
 
 **Resolving an identifier:**
 
-1. If the environment binds it, that meaning.
-2. Otherwise, for an alias defined at top level as a fresh global (below),
-   that global.
+1. If a frame binds it, that meaning.
+2. Otherwise, if the top-level environment, or its parent, binds it, that.
 3. Otherwise, for an alias, its original resolved in the alias's environment.
-4. Otherwise the symbol itself: a global variable, special form, or global
-   macro (`%macros`, an association list).
+4. Otherwise its own label; in a library, a fresh one, so a reference raises
+   `unbound variable` when it runs.
 
-A form is a special form only when its head resolves to that global, so a
+A form is a special form only when its head resolves to that label, so a
 local variable named `if` is just a variable, and a macro's `if` is the
 special form even where the user has bound `if`.
 
@@ -67,14 +78,17 @@ it.
 **Top level.**  A `begin` is spliced: each of its forms is expanded as a
 top-level form, in order.
 
-- `(define x e)` defines `x`.  An alias `x`, inserted by a macro, defines its
-  original if that already holds a value; otherwise a fresh global, recorded
-  so that the same macro use's other insertions of `x` resolve to it while
-  user code still sees `x` as its original (R7RS 5.3.1).  A definition removes
-  a global macro of the same name.  `(define-values formals e)` defines each
-  of its formals the same way.
-- `(define-syntax k spec)` binds the global macro `k` (an alias's original)
-  with `%define-macro!` and expands to `(begin)`.
+- `(define x e)` defines a label for `x`: the environment's own, if `x`
+  already has one; otherwise `x` itself, but a fresh global if `x` would
+  shadow an imported binding (in the interaction environment, a system one),
+  if the environment is a library's, or if `x` is an alias inserted by a
+  macro, so only that use's insertions of `x` resolve to it (R7RS 5.3.1).
+  The system environment's own labels are those holding a value.
+  `(define-values formals e)` defines each of its formals the same way.
+- `(define-syntax k spec)` binds `k` to its transformer and expands to
+  `(begin)`; `%define-macro!` binds a system macro.
+- `(set! x e)` of an imported binding is a syntax error, `set!: immutable
+  variable`: the system's bindings can't be changed from the REPL.
 
 **Bodies** (R7RS 5.4): the leading forms are scanned first.  Each is expanded
 at its head until its head isn't a macro use; a `begin` is spliced; a
@@ -150,9 +164,28 @@ Malformed forms raise `bad syntax` when expanded, before any of the form
 runs, with the smallest enclosing form as the irritant.  Both they and
 `syntax-error` raise through the primitive `%syntax-error`.
 
-## Limitations
+## Libraries
 
-The expander calls ordinary globals (`car`, `list`, `map`, `assq`, `gensym`,
-...), so redefining one at top level breaks expansion of every later form.  The
-generated code for quasiquote and `case` likewise refers to the global
-`cons`, `append`, `list->vector`, and `memv`.
+`(define-library name decl ...)` (R7RS 5.6) makes a library environment.
+Its declarations: `export`, of a name or `(rename name external)`; `import`;
+`begin`; and `include`, of files read relative to the library file's
+directory.  Its body is scanned like a body: every definition is bound, to a
+fresh label, before any form is expanded, so one may refer to one further
+down.  The form registers the exports, `(name . binding)`, in `%libraries`,
+and expands to its body, which runs in order when the form does.
+
+`(import set ...)`, at top level or in a library, binds each name the import
+sets name to the exporting library's binding: the same label, so the same
+variable, or the same transformer.  The sets are a library's name, `only`,
+`except`, `prefix`, and `rename`.
+
+A library not yet defined is loaded from its file, `(foo bar)` from
+`foo/bar.sld`, in the current directory or one `MINIM_LIBRARY_PATH` lists
+(`environment.md`), once.
+
+The standard libraries, `(scheme base)`, `(scheme file)`, `(scheme load)`,
+`(scheme process-context)`, `(scheme write)`, and `(scheme r5rs)`, export the
+system's bindings of R7RS's names that Minim has, each its own label
+(`%define-system-library`).  `(scheme r5rs)` adds the auxiliary syntax
+R7RS's list omits.  The REPL and files see every system binding before any
+`import`.

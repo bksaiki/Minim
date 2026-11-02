@@ -17,5 +17,9 @@ A new variable goes in the table below.
 
 Values must be decimal and at most the largest fixnum, 2^60 - 1.
 
+`MINIM_LIBRARY_PATH`, colon-separated directories, is read by the expander
+each time it looks for a library's file, after the current directory
+(`macros.md`).
+
 The settings are the collector's (`gc.md`); a program can still change them,
 with `minim_gc_set_config` or the `collect-` primitives.

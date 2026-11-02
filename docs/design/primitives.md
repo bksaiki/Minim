@@ -38,8 +38,7 @@ and never calls them:
 - Every hash is stable under the moving collector: strings and symbols hash
   their chars (with a kind marker for symbols), primitives their C function
   pointer, and all closures one constant.  `eq?` hashing of heap objects, which
-  needs a stable per-object identity, is left to hashtables (R7RS-small roadmap
-  milestone 8).
+  needs a stable per-object identity, is left to hashtables (`beyond-r7rs.md`).
 - The FNV-1a step (`minim_hash_mix`, `minim_string_hash` in `minim.h`) is
   shared with the symbol table.
 
@@ -192,6 +191,14 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 | Call | Result |
 |---|---|
 | `(load path)` | runs the forms in the file `path`, relative to the current directory, as top-level forms; void |
+| `(file-exists? path)` | whether the file `path` opens for reading |
+| `(%read-file path)` | the forms of the file `path`, as `load` reads them; for `include` |
+
+### System
+
+| Call | Result |
+|---|---|
+| `(get-environment-variable name)` | the value of the environment variable `name`, a string, or `#f` if it is unset |
 
 ## Conventions
 

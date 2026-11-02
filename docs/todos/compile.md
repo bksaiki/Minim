@@ -140,7 +140,8 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 Sync the docs: `eval.md` (the compiler, the node kinds, the machine on nodes,
 frames and addresses), `gc.md` (a closure's code is a `LAMBDA` node, its
 environment a frame vector), `errors.md` if any message changes, and the
-roadmap (milestone 9: environments done; flattening as a later option).
+roadmap (`beyond-r7rs.md`, Runtime: lexical addresses done; flattening as a
+later option).
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
