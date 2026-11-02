@@ -132,3 +132,22 @@ bump
 (import (lib missing))
 (import (lib wrong))
 (import (lib bad-include))
+
+; (scheme r5rs): R5RS's names from several R7RS libraries, and its syntax;
+; R7RS additions like `when` and `error` are unbound in it.
+(define-library (old-style)
+  (export run fail)
+  (import (scheme r5rs))
+  (begin
+    (define-syntax swap!
+      (syntax-rules ()
+        ((_ a b) (let ((tmp a)) (set! a b) (set! b tmp)))))
+    (define (run)
+      (let ((x 1) (y 2))
+        (swap! x y)
+        (write (cond ((> x y) => (lambda (t) `(swapped ,x ,y))) (else 'no)))
+        (newline)))
+    (define (fail) (when #t (error "unreachable")))))
+(import (old-style))
+(run)
+(fail)

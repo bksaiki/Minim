@@ -26,3 +26,4 @@ hey!(1 2)
 (lib point) loaded
 (1 2)
 25
+(swapped 2 1)

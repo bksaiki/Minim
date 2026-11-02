@@ -283,6 +283,16 @@ lacks, such as `when` and `error`, are unbound in it.
 cmake --build --preset dev && ctest --preset dev -R 'libraries|boot' && ctest --preset stress -R 'libraries'
 ```
 
+**Done.**
+- The names are R7RS's Appendix A list, from its text, filtered to those
+  Minim has.  That list omits R5RS's auxiliary syntax, `syntax-rules`,
+  `else`, `=>`, `...`, `unquote`, and `unquote-splicing`, without which
+  `define-syntax` and `cond`'s `=>` can't be used, so they are added.
+- The test's library uses `define-syntax`, quasiquote, `cond` with `=>`, and
+  `write`; its `when` resolves to a fresh label, so calling it raises
+  `unbound variable: when`.  Ran `ctest -R 'libraries|boot'`, and stress
+  `libraries`.
+
 ### After the last phase
 
 Sync the docs: `macros.md` (top-level environments, labels, the three kinds,

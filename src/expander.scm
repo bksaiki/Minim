@@ -845,3 +845,18 @@
 (%define-system-library '(scheme load) '(load))
 (%define-system-library '(scheme process-context) '(get-environment-variable))
 (%define-system-library '(scheme write) '(display write))
+
+;; R5RS's names (R7RS Appendix A), with the auxiliary syntax R7RS's list omits.
+(%define-system-library
+ '(scheme r5rs)
+ '(* + - ... < <= = => > >= and append apply assoc assq assv begin boolean? caar cadr
+   call-with-current-continuation call-with-values car case cdar cddr cdr char->integer
+   char<=? char<? char=? char>=? char>? char? cond cons define define-syntax display do
+   dynamic-wind else eq? equal? eqv? for-each if integer->char lambda length let let*
+   let-syntax letrec letrec-syntax list list->string list->vector list-ref list-tail list?
+   load make-string make-vector map member memq memv newline not null? number->string or
+   pair? procedure? quasiquote quote quotient remainder reverse set! set-car! set-cdr!
+   string->list string->symbol string-append string-length string-ref string-set!
+   string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
+   syntax-rules unquote unquote-splicing values vector vector->list vector-length
+   vector-ref vector-set! vector? write zero?))
