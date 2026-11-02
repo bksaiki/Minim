@@ -107,3 +107,18 @@ bump
 (import (late))
 (f)
 (define-library (no-base) (export g) (begin (define (g) 1)))
+
+; Standard libraries: a library sees only what it imports.
+(define-library (shout)
+  (export shout first)
+  (import (only (scheme base) define quote) (scheme write))
+  (begin
+    (define (shout x) (display x) (display "!"))
+    (define (first x) (car x))))
+(import (shout))
+(shout 'hey)
+(first '(1 2))
+(import (scheme base) (scheme write) (scheme file) (scheme load) (scheme process-context))
+(map car '((1) (2)))
+(list (file-exists? "libraries.scm") (procedure? load) (get-environment-variable "MINIM_UNSET"))
+(import (scheme char))

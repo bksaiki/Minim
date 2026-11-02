@@ -8,3 +8,5 @@ error: import: unknown library: (nowhere)
 error: define-library: not defined: missing
 error: unbound variable: undefined-thing
 error: define-library: not defined: g
+error: unbound variable: car
+error: import: unknown library: (scheme char)

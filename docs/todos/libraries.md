@@ -222,6 +222,16 @@ can't see `car`; `(import (scheme base))` at the REPL changes nothing;
 cmake --build --preset dev && ctest --preset dev -R 'libraries|script|boot' && ctest --preset stress -R 'libraries'
 ```
 
+**Done.**
+- `(scheme file)`, `(scheme load)`, `(scheme process-context)`, and
+  `(scheme write)`.  `(scheme char)` and `(scheme cxr)` are not defined:
+  Minim has none of their names, and importing one fails at the `import`,
+  not at a use.
+- Tests: a library importing only `define`, `quote`, and `(scheme write)`
+  can't see `car`; importing every standard library at the REPL; the script
+  test `program`, an R7RS program starting with `import`.  Ran the dev
+  suite, and stress `libraries|script_program|boot`.
+
 ### Phase 5 - Library files and include
 
 - `src/expander.scm`: importing an unknown library searches for its `.sld`

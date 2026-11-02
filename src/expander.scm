@@ -782,3 +782,8 @@
    symbol->string symbol? syntax-error syntax-rules unless unquote unquote-splicing values
    vector vector->list vector-length vector-ref vector-set! vector? when
    with-exception-handler zero?))
+
+(%define-system-library '(scheme file) '(file-exists?))
+(%define-system-library '(scheme load) '(load))
+(%define-system-library '(scheme process-context) '(get-environment-variable))
+(%define-system-library '(scheme write) '(display write))
