@@ -33,23 +33,29 @@ A *top-level environment* is `#(kind parent own names)`, after Chez Scheme.
 An identifier's binding in it is the identifier's property keyed by the
 environment (`(%getprop id top #f)`): a *label*, the global whose value slot
 is the variable, or a macro's transformer.  So a lookup reads one short list,
-whatever the environment's size.  `own` lists the labels its definitions
-made; `names`, the identifiers it binds.  Expanded code names only labels, so the runtime knows no
-environments and a global reference stays one load.
+whatever the environment's size.  `own` lists the labels the environment
+made; `names`, the identifiers it binds.  Expanded code names only labels, so
+the runtime knows no environments and a global reference stays one load.
 
-| Kind | For | An identifier it doesn't bind |
+| Kind | For | Parent |
 |---|---|---|
-| `system` | the prelude and the expander | is its own label |
-| `interaction` | the REPL and files (`%expand`) | means what it does in the system environment |
-| `library` | a `define-library` body | gets a fresh label, never bound |
+| `system` | the prelude and the expander | none |
+| `interaction` | the REPL and scripts (`%expand`) | none; it imports `(minim)` |
+| `library` | a `define-library` body, or a program | none |
+
+Importing `(minim system)` makes the system environment the parent.
 
 **Resolving an identifier:**
 
 1. If a frame binds it, that meaning.
 2. Otherwise, if the top-level environment, or its parent, binds it, that.
 3. Otherwise, for an alias, its original resolved in the alias's environment.
-4. Otherwise its own label; in a library, a fresh one, so a reference raises
-   `unbound variable` when it runs.
+4. Otherwise, if the environment's parents end in the system's, its own
+   label.
+5. Otherwise the environment's own label for it: a fresh one, made and
+   recorded the first time, as Chez keeps one label per name and
+   environment.  So a reference and a later definition agree, and a
+   reference raises `unbound variable` if it runs first.
 
 A form is a special form only when its head resolves to that label, so a
 local variable named `if` is just a variable, and a macro's `if` is the
@@ -82,10 +88,10 @@ it.
 top-level form, in order.
 
 - `(define x e)` defines a label for `x`: the environment's own, if `x`
-  already has one; otherwise `x` itself, but a fresh global if `x` would
-  shadow an imported binding (in the interaction environment, a system one),
-  if the environment is a library's, or if `x` is an alias inserted by a
-  macro, so only that use's insertions of `x` resolve to it (R7RS 5.3.1).
+  already has one (for an alias, only one already defined); otherwise `x`
+  itself, but a fresh global if `x` would shadow an imported binding, if the
+  environment is a library's, or if `x` is an alias inserted by a macro, so
+  only that use's insertions of `x` resolve to it (R7RS 5.3.1).
   The system environment's own labels are those holding a value.
   `(define-values formals e)` defines each of its formals the same way.
 - `(define-syntax k spec)` binds `k` to its transformer and expands to
@@ -190,5 +196,32 @@ The standard libraries, `(scheme base)`, `(scheme file)`, `(scheme load)`,
 `(scheme process-context)`, `(scheme write)`, and `(scheme r5rs)`, export the
 system's bindings of R7RS's names that Minim has, each its own label
 (`%define-system-library`).  `(scheme r5rs)` adds the auxiliary syntax
-R7RS's list omits.  The REPL and files see every system binding before any
-`import`.
+R7RS's list omits.
+
+After Chez Scheme, two system libraries cover the rest:
+
+- `(minim)`, after `(chezscheme)`: every public system binding, the
+  standard libraries' names and Minim's own (`collect`, `gensym`, `fold`,
+  `import`, `define-library`, ...).
+- `(minim system)`, after Chez's `$system`: every system binding, internals
+  included.  It isn't a list of exports: importing it makes the system
+  environment the parent, so it is imported only whole; inside `only`,
+  `except`, `prefix`, or `rename` it is a syntax error.  For tests and code
+  that extends Minim.
+
+## The REPL, scripts, and programs
+
+The interaction environment binds exactly `(minim)`, its other imports, and
+its own definitions.  So internals are unreachable from the REPL: `%expand`
+gets the REPL's own label, which is unbound.  System macros still expand into
+internals, since their aliases resolve in the system environment.  A user's
+definition lives in the REPL's label, not necessarily the interned symbol of
+its name; C defines a global user code sees with `minim_define(name,
+value)`, which lets the expander pick the label.  C itself still finds
+`%expand` and `%raise-c-error` by symbol value.
+
+A script, `minim file.scm` or `load`, runs in the interaction environment.
+A program (R7RS 5.1), `minim --program file.scm`, after Chez's `--program`,
+must begin with `import`; `%expand-program` expands the rest as a library
+body, in a new environment of the library kind holding only what it
+imports.

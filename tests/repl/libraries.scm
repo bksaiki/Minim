@@ -109,3 +109,23 @@ bump
 (import (old-style))
 (run)
 (fail)
+
+; (minim): every public name, the standard libraries' and Minim's own.
+(define-library (uses-minim)
+  (export g)
+  (import (minim))
+  (begin
+    (define (g) (list (symbol? (gensym)) (fold + 0 '(1 2 3)) (when #t 'when)))))
+(import (uses-minim))
+(g)
+
+; (minim system): every system binding, internals included, only whole.
+(define-library (uses-system)
+  (export h)
+  (import (minim system))
+  (begin
+    (define (h) (list (%bound? 'car) (car '(1))))))
+(import (uses-system))
+(h)
+(import (only (minim system) car))
+(import (prefix (minim system) s:))

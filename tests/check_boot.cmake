@@ -4,7 +4,7 @@
 #        -P check_boot.cmake
 string(REPLACE "|" ";" sources "${SOURCES}")
 execute_process(
-    COMMAND ${BOOT_GEN} ${BOOT_SCM} ${OUTPUT} ${sources}
+    COMMAND ${BOOT_GEN} --boot-scm ${BOOT_SCM} -o ${OUTPUT} ${sources}
     RESULT_VARIABLE status)
 if(NOT status EQUAL 0)
     message(FATAL_ERROR "boot_gen failed")

@@ -32,3 +32,22 @@ when
 (cdr '(1 2))
 (set! map 5)
 map
+
+; Internals aren't visible: the REPL sees only what it imports, (minim).
+%expand
+(%set-handlers! 5)
+(%record-ref 'x 0)
+(list (let ((a 1)) a)
+      (guard (e (#t 'caught)) (raise 'x))
+      (case 2 ((1) 'one) ((2) 'two))
+      (let () (define-record-type point (make-point x) point? (x point-x)) (point-x (make-point 7))))
+
+; A user's internal-looking name is the user's own.
+(define (%expand x) (list 'mine x))
+(%expand 1)
+(let ((a 1)) a)
+
+; A name used before its definition means the definition.
+(define (later) (defined-after))
+(define (defined-after) 'after)
+(later)

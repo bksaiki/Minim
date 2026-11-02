@@ -1,6 +1,8 @@
 ;;; Expands the Scheme sources' top-level forms for scheme/prelude.boot
 ;;; (tools/boot_gen.c).
 
+(import (minim system))  ; the expander's internals
+
 ;; The core forms the top-level form `x` expands to, in order, each fresh name
 ;; replaced by an interned one unique within `x`.
 (define %boot-form

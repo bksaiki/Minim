@@ -7,10 +7,12 @@ error: bad syntax: (only)
 error: bad syntax: (rename (stack) (push!))
 error: define-library: not defined: missing
 error: unbound variable: undefined-thing
-error: define-library: not defined: g
+error: unbound variable: define
 error: unbound variable: car
 error: import: unknown library: (scheme char)
 error: import: unknown library: (lib missing)
 error: import: unknown library: (lib wrong)
 error: include: cannot open file: "lib/missing.scm"
 error: unbound variable: when
+error: import: (minim system) is imported only whole: (minim system)
+error: import: (minim system) is imported only whole: (minim system)

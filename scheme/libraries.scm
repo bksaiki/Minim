@@ -12,6 +12,10 @@
         (cons (cons name exports)
               (filter (lambda (lib) (not (equal? (car lib) name))) %libraries))))
 
+;; The names the libraries `names` export.
+(define (%exported-names names)
+  (%append-map (lambda (name) (map car (%library-exports name))) names))
+
 ;; Defines the library `name`, exporting the system's bindings of `names`.
 (define (%define-system-library name names)
   (%define-library! name (map (lambda (n) (cons n (%resolve n %system-env))) names)))
@@ -116,12 +120,20 @@
        (map (lambda (b) (cond ((assq (car b) renames) => (lambda (r) (cons (cadr r) (cdr b))))
                               (else b)))
             bs)))
-    (else (if (%length set 0) (%library-exports set) (%bad-syntax set)))))
+    (else (cond ((equal? set '(minim system))
+                 (%syntax-error "import: (minim system) is imported only whole" (list set)))
+                ((%length set 0) (%library-exports set))
+                (else (%bad-syntax set))))))
 
 ;; Binds, in `top`, the names the import sets `sets` name.
+;; `(minim system)`, every system binding, is the system environment itself, as
+;; the importing environment's parent.
 (define (%import! top sets)
   (for-each (lambda (set)
-              (for-each (lambda (b) (%top-bind! top (car b) (cdr b))) (%import-set (%strip set))))
+              (let ((s (%strip set)))
+                (if (equal? s '(minim system))
+                    (vector-set! top 1 %system-env)
+                    (for-each (lambda (b) (%top-bind! top (car b) (cdr b))) (%import-set s)))))
             sets))
 
 ;; Expands the body of a library, the forms `forms`, in its environment `top`:
@@ -183,3 +195,15 @@
               ((begin) (loop (cdr decls) specs (append body (cdr d))))
               ((include) (loop (cdr decls) specs (append body (%include (cdr d)))))
               (else (%bad-syntax d))))))))
+
+;; The core forms of the R7RS program in the file `path` (R7RS 5.1): its
+;; leading imports make a new environment, holding only what they import, in
+;; which the rest expands as a library body.
+(define (%expand-program path)
+  (let ((top (%make-top 'library #f)))
+    (let loop ((forms (%read-file path)) (imported #f))
+      (cond ((and (pair? forms) (pair? (car forms)) (eq? (caar forms) 'import))
+             (%import! top (cdar forms))
+             (loop (cdr forms) #t))
+            (imported (%expand-library-body forms top))
+            (else (%syntax-error "program: no leading import" (list path)))))))

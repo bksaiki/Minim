@@ -10,9 +10,9 @@ them (`MINIM_SCHEME_SOURCES`):
 | `control.scm` | `call/cc`, `dynamic-wind`, exceptions, and `guard`'s procedure |
 | `records.scm` | the procedures `define-record-type` binds |
 | `expander.scm` | the expander (`macros.md`) |
-| `libraries.scm` | `define-library`, `import`, and library files |
+| `libraries.scm` | `define-library`, `import`, library files, and programs |
 | `derived.scm` | the derived forms, as macros |
-| `standard.scm` | the standard libraries |
+| `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
 
 The library holds what is easiest in Scheme, above all higher-order
 procedures, which primitives can't express because they can't call closures
@@ -24,8 +24,9 @@ Minim loads `scheme/prelude.boot`, the files expanded into core forms, one
 top-level form per line.  It is checked in, so the expander that writes it is
 the one it contains.
 
-- `boot_gen` (`tools/boot_gen.c`) writes it: it expands each form of the
-  files, in order, without evaluating it, with `%boot-form`
+- `boot_gen --boot-scm tools/boot.scm [-o out] source...`
+  (`tools/boot_gen.c`) writes it, to stdout by default: it expands each form
+  of the files, in order, without evaluating it, with `%boot-form`
   (`tools/boot.scm`), in the system environment (`macros.md`).  That splices
   a `begin`; writes a `define-syntax` as
   `(%define-macro! 'name 'spec)`, since a transformer is a closure; renames

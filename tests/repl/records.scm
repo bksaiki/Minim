@@ -1,3 +1,6 @@
+; The internals this file tests are in (minim system).
+(import (minim system))
+
 ; define-record-type: R7RS 5.5's example.
 (define-record-type <pare> (kons x y) pare? (x kar set-kar!) (y kdr))
 (pare? (kons 1 2))

@@ -12,16 +12,17 @@
 ;; identifier in it is the identifier's property keyed by the environment: a
 ;; label, the global whose value slot is the variable, or a macro's
 ;; transformer.  `names` lists the identifiers it binds.  An identifier it
-;; doesn't bind means what it does in `parent`, or else, with no parent, is its
-;; own label, or in a library a fresh one, never bound.  `own` lists the labels
-;; its definitions made.  `kind` is `system`, for the prelude and expander;
-;; `interaction`, for the REPL and files, whose parent is the system's; or
-;; `library`, with no parent.
+;; doesn't bind means what it does in `parent`; with no parent, it is its own
+;; label in the system's environment, and elsewhere a fresh label, made once
+;; and kept as the environment's own.  `own` lists the labels the environment
+;; made.  `kind` is `system`, for the prelude and expander; `interaction`, for
+;; the REPL and files; or `library`.  Importing `(minim system)` makes the
+;; system's environment the parent.
 (define (%make-top kind parent)
   (vector kind parent '() '()))
 
 (define %system-env (%make-top 'system #f))
-(define %interaction-env (%make-top 'interaction %system-env))
+(define %interaction-env (%make-top 'interaction #f))
 
 (define (%append-map f lst)
   (apply append (map f lst)))
@@ -101,13 +102,18 @@
 
 ;; What `id` means in `env`: its local binding; else its top-level binding;
 ;; else, for an alias, its original's meaning in the alias's environment; else
-;; its own label.
+;; its own label, in the system's environment, or else a fresh label that the
+;; top-level environment keeps as its own, so a later definition uses it.
 (define (%resolve id env)
   (cond ((%lookup id env))
         ((%top-lookup id (%top env)))
         ((%alias-original id) (%resolve (%alias-original id) (%alias-env id)))
-        ((eq? (vector-ref (%top env) 0) 'library) (gensym (symbol->string id)))
-        (else id)))
+        ((eq? (%root-kind (%top env)) 'system) id)
+        (else (%top-own! (%top env) id (gensym (symbol->string id))))))
+
+;; The kind of the top-level environment the parents of `top` end in.
+(define (%root-kind top)
+  (if (vector-ref top 1) (%root-kind (vector-ref top 1)) (vector-ref top 0)))
 
 ;; The transformer `x` is, if `x` is a resolved identifier bound to a macro, or #f.
 (define (%macro x)
@@ -464,13 +470,13 @@
        (or (procedure? b) (%bound? b))))
 
 ;; The label a top-level definition of `id` in `top` defines.  It redefines
-;; `top`'s own variable, and otherwise binds `id` to itself, or to a fresh label
-;; in a library, if it would shadow an imported binding, or if `id` is an
-;; alias, inserted by a macro, so only that use's insertions refer to it
-;; (R7RS 5.3.1).
+;; `top`'s own variable (for an alias, inserted by a macro, only one already
+;; defined), and otherwise binds `id` to itself, or to a fresh label in a
+;; library, if it would shadow an imported binding, or if `id` is an alias,
+;; so only that use's insertions refer to it (R7RS 5.3.1).
 (define (%top-define! top id)
   (let ((b (%resolve id top)))
-    (cond ((and (symbol? b) (%own-label? top b)) b)
+    (cond ((and (symbol? b) (%own-label? top b) (or (not (%alias-original id)) (%bound? b))) b)
           ((or (eq? (vector-ref top 0) 'library) (%alias-original id) (%imported? b top))
            (%top-own! top id (gensym (symbol->string id))))
           (else (%top-own! top id id)))))
@@ -525,3 +531,8 @@
 ;; Expands the top-level form `x` in the interaction environment.
 (define (%expand x)
   (%expand-top x %interaction-env))
+
+;; The label a top-level definition of `id` in the interaction environment
+;; defines; for minim_define.
+(define (%interaction-label! id)
+  (%top-define! %interaction-env id))

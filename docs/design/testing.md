@@ -26,7 +26,8 @@ Each behavior is tested once, where it fits:
   `lists`, `core` (core forms, printing, the REPL's recovery from errors),
   `exceptions`, `guard`, `top-level`, `libraries`, and so on.  Internals with
   output worth reading keep their own files: `boot`, `expansion`, `aliases`,
-  and the record primitives at the end of `records`.
+  and the record primitives at the end of `records`.  A file that uses
+  internals starts with `(import (minim system))`.
 
 ## GC stress
 

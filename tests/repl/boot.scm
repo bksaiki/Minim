@@ -1,3 +1,6 @@
+; The internals this file tests are in (minim system).
+(import (minim system))
+
 ; How the boot file's generator (tools/boot.scm) writes a top-level form.
 (load "../../tools/boot.scm")
 

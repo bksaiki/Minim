@@ -1,3 +1,6 @@
+; The internals this file tests are in (minim system).
+(import (minim system))
+
 ; What forms expand to.  Fresh names print as the names they replace.
 
 ; Bodies, with and without definitions.

@@ -1,1 +1,4 @@
 error: set!: immutable variable: cdr
+error: unbound variable: %expand
+error: unbound variable: %set-handlers!
+error: unbound variable: %record-ref

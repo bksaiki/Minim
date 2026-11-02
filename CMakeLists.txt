@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(minim LANGUAGES C)
+project(minim VERSION 0.1.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -79,6 +79,8 @@ set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not 
 
 add_executable(minim src/main.c)
 target_link_libraries(minim PRIVATE libminim)
+target_include_directories(minim PRIVATE src)
+target_compile_definitions(minim PRIVATE MINIM_VERSION="${PROJECT_VERSION}")
 
 # Writes the Scheme sources expanded into core forms, for the boot file.
 add_executable(boot_gen tools/boot_gen.c)
@@ -89,8 +91,8 @@ target_include_directories(boot_gen PRIVATE src)
 # generation succeeds.  After an expander change, run it twice: the second run
 # expands with the new expander.
 add_custom_target(boot
-    COMMAND boot_gen ${CMAKE_CURRENT_SOURCE_DIR}/tools/boot.scm
-        ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_SCHEME_SOURCES}
+    COMMAND boot_gen --boot-scm ${CMAKE_CURRENT_SOURCE_DIR}/tools/boot.scm
+        -o ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_SCHEME_SOURCES}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_BOOT}
     COMMENT "Regenerating scheme/prelude.boot"
 )

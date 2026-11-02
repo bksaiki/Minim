@@ -36,3 +36,17 @@
    string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
    syntax-rules unquote unquote-splicing values vector vector->list vector-length
    vector-ref vector-set! vector? write zero?))
+
+;; (minim), after Chez's (chezscheme): every public system binding, the
+;; standard libraries' names and Minim's own.  R7RS puts each name in one
+;; library, (scheme r5rs) aside, whose names are all in the others.
+(%define-system-library
+ '(minim)
+ (append (%exported-names
+          '((scheme base) (scheme file) (scheme load) (scheme process-context) (scheme write)))
+         '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
+           define-library equal-hash filter fixnum? fold fold-right gensym import
+           string-hash letrec-values)))
+
+;; The REPL and files see (minim), and nothing else of the system's.
+(%import! %interaction-env '((minim)))
