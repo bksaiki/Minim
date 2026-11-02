@@ -84,8 +84,9 @@ static inline minim_obj fixnum_result(intptr_t v, const char *msg) {
  * extracts a key from an argument, raising `msg` on the wrong type; every
  * argument is checked.
  */
-static inline minim_obj compare(minim_obj *args, size_t n, intptr_t (*key)(minim_obj, const char *),
-                         bool (*cmp)(intptr_t, intptr_t), const char *msg) {
+static inline minim_obj compare(minim_obj *args, size_t n,
+                                intptr_t (*key)(minim_obj, const char *),
+                                bool (*cmp)(intptr_t, intptr_t), const char *msg) {
     bool result = true;
     intptr_t prev = 0;
     for (size_t i = 0; i < n; i++) {
