@@ -164,6 +164,7 @@ static void test_tail_calls(void) {
     MINIM_FRAME(&sym);
     minim_obj p = minim_make_primitive(sym, stack_height, 0, 0);
     minim_define("stack-height", p);
+    minim_define("%eval-expanded", minim_symbol_value(minim_intern_cstr("%eval-expanded")));
 
     const char *loops[] = {
         "(define loop (lambda (n) (if (= n 0) (stack-height) (loop (- n 1))))) (loop %d)",
@@ -185,14 +186,17 @@ static void test_tail_calls(void) {
         "(define loop (lambda (n) (if (= n 0) (stack-height)"
         " (call-with-values (lambda () (values (- n 1) 0)) (lambda (m z) (loop m))))))"
         " (loop %d)",
-        // and a call through `call/cc`, a loop that re-enters a continuation,
-        // and a call from a `guard` clause
+        // a call through `call/cc`, a loop that re-enters a continuation, a
+        // call from a `guard` clause,
         "(define loop (lambda (n) (if (= n 0) (stack-height)"
         " (call/cc (lambda (k) (loop (- n 1))))))) (loop %d)",
         "(define (loop n) (let ((i 0) (k #f)) (call/cc (lambda (c) (set! k c)))"
         " (set! i (+ i 1)) (if (< i n) (k #f) (stack-height)))) (loop %d)",
         "(define (loop n) (if (= n 0) (stack-height)"
         " (guard (e (#t (loop (- n 1)))) (car e)))) (loop %d)",
+        // and a call through `%eval-expanded`
+        "(define (loop n) (if (= n 0) (stack-height)"
+        " (%%eval-expanded (list loop (- n 1))))) (loop %d)",
     };
     for (size_t i = 0; i < sizeof(loops) / sizeof(loops[0]); i++) {
         intptr_t base = loop_result(loops[i], 0);

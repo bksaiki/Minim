@@ -94,6 +94,18 @@ non-core form is `bad syntax`.
 cmake --build --preset dev && ctest --preset dev -R 'expansion|eval' && ctest --preset stress -R 'expansion|eval'
 ```
 
+**Done.**
+
+- `src/eval.c`: applying `%eval-expanded` pops the call and jumps to `eval`
+  with the argument and an empty local environment, keeping `k`, so it is a
+  tail call.
+- The tail-call test is a `test_eval` loop (`test_tail_calls`), which sees
+  `%eval-expanded` through `minim_define`, as it sees `stack-height`.
+- Hand-built core code must not name a REPL global by its symbol: a REPL
+  definition's label is fresh, not the interned name.  The tests put the
+  procedure itself in the form.  `eval` (Phase 2) is unaffected, since the
+  expander picks the labels.
+
 ### Phase 2 - eval, environment, interaction-environment
 
 - `scheme/eval.scm` (new, after `derived.scm` in `MINIM_SCHEME_SOURCES`):

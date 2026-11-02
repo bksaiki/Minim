@@ -66,6 +66,12 @@ minim_obj minim_prim_load(minim_obj *args, size_t n) {
     abort();
 }
 
+// Applied by the evaluator, which evaluates the core form; never called.
+minim_obj minim_prim_eval_expanded(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    abort();
+}
+
 static minim_obj prim_is_procedure(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     return boolean(minim_is_procedure(args[0]));
@@ -74,6 +80,7 @@ static minim_obj prim_is_procedure(minim_obj *args, size_t n) {
 const minim_prim_def minim_control_prims[] = {
     {"apply", minim_prim_apply, 2, MINIM_VARIADIC},
     {"load", minim_prim_load, 1, 1},
+    {"%eval-expanded", minim_prim_eval_expanded, 1, 1},
     {"values", minim_prim_values, 0, MINIM_VARIADIC},
     {"call-with-values", minim_prim_call_with_values, 2, 2},
     {"%call/cc", minim_prim_call_cc, 1, 1},
