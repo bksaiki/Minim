@@ -23,3 +23,6 @@ still-the-system-unless
 (2)
 hey!(1 2)
 (#t #t #f)
+(lib point) loaded
+(1 2)
+25

@@ -545,9 +545,66 @@
 (define (%define-system-library name names)
   (%define-library! name (map (lambda (n) (cons n (%resolve n %system-env))) names)))
 
+;; The directory of the library file being loaded, for `include`, or "".
+(define %library-dir "")
+
+;; `s` split at each `sep`.
+(define (%split s sep)
+  (let loop ((cs (string->list s)) (part '()) (parts '()))
+    (cond ((null? cs) (reverse (cons (list->string (reverse part)) parts)))
+          ((char=? (car cs) sep) (loop (cdr cs) '() (cons (list->string (reverse part)) parts)))
+          (else (loop (cdr cs) (cons (car cs) part) parts)))))
+
+;; The path `file` in the directory `dir`, "" being the current one.
+(define (%join dir file)
+  (if (equal? dir "") file (string-append dir "/" file)))
+
+;; The directory part of `path`, or "".
+(define (%path-dir path)
+  (let loop ((cs (reverse (string->list path))))
+    (cond ((null? cs) "")
+          ((char=? (car cs) #\/) (list->string (reverse (cdr cs))))
+          (else (loop (cdr cs))))))
+
+;; The file for the library `name`, relative to a directory: `(foo bar)` is in
+;; `foo/bar.sld`.
+(define (%library-file name)
+  (define (part x) (if (symbol? x) (symbol->string x) (number->string x)))
+  (let loop ((parts (cdr name)) (path (part (car name))))
+    (if (null? parts)
+        (string-append path ".sld")
+        (loop (cdr parts) (string-append path "/" (part (car parts)))))))
+
+;; Loads the file for the library `name` from the first directory that has
+;; it: the current one, then those `MINIM_LIBRARY_PATH` lists, colon-separated.
+(define (%load-library name)
+  (let ((file (%library-file name))
+        (var (get-environment-variable "MINIM_LIBRARY_PATH")))
+    (let loop ((dirs (cons "" (if var (%split var #\:) '()))))
+      (unless (null? dirs)
+        (let ((path (%join (car dirs) file))
+              (outer %library-dir))
+          (if (file-exists? path)
+              (dynamic-wind (lambda () (set! %library-dir (%path-dir path)))
+                            (lambda () (load path))
+                            (lambda () (set! %library-dir outer)))
+              (loop (cdr dirs))))))))
+
+;; The exports of the library `name`, loading its file if it isn't defined.
 (define (%library-exports name)
+  (unless (assoc name %libraries)
+    (%load-library name))
   (cond ((assoc name %libraries) => cdr)
         (else (%syntax-error "import: unknown library" (list name)))))
+
+;; The forms of the files `files`, relative to the library file's directory.
+(define (%include files)
+  (%append-map (lambda (file)
+                 (let ((path (if (string? file) (%join %library-dir file) (%bad-syntax file))))
+                   (if (file-exists? path)
+                       (%read-file path)
+                       (%syntax-error "include: cannot open file" (list path)))))
+               files))
 
 ;; The (name . binding) pairs the stripped import set `set` names.
 (define (%import-set set)
@@ -645,6 +702,7 @@
               ((export) (loop (cdr decls) (append specs (cdr d)) body))
               ((import) (%import! top (cdr d)) (loop (cdr decls) specs body))
               ((begin) (loop (cdr decls) specs (append body (cdr d))))
+              ((include) (loop (cdr decls) specs (append body (%include (cdr d)))))
               (else (%bad-syntax d))))))))
 
 ;;; Derived forms (R7RS 4.2), as macros.

@@ -151,6 +151,7 @@ minim_add_script_test(gc-settings-big-nursery STATUS 1 ARGS gc-settings.scm
 minim_add_script_test(environment-variable
     ENV "MINIM_TEST_VARIABLE=set by the test")
 minim_add_script_test(hello)
+minim_add_script_test(library-path ENV MINIM_LIBRARY_PATH=nowhere:libpath)
 minim_add_script_test(missing STATUS 1)
 minim_add_script_test(program)
 minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)

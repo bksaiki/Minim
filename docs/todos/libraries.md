@@ -249,6 +249,40 @@ a library on `MINIM_LIBRARY_PATH`; `include`; a missing library's error.
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
 
+**Done.**
+- `%library-exports` loads an unregistered library's file before looking
+  again; `%load-library` binds `%library-dir`, for `include`, with
+  `dynamic-wind`, so an error while loading restores it.
+- A path's parts are its name's symbols, or numbers, joined by `/`;
+  `MINIM_LIBRARY_PATH` is split at `:`, an empty part being the current
+  directory.
+- `include` checks the file first and raises `include: cannot open file`,
+  rather than `%read-file`'s `load: cannot open file`.  A file that doesn't
+  define the library it was loaded for leaves it unknown: `import: unknown
+  library`.
+- Tests: `tests/repl/lib/` (point.sld, which includes point-impl.scm, and
+  shapes.sld, which imports it; wrong.sld; bad-include.sld); the script test
+  `library-path`, with `MINIM_LIBRARY_PATH=nowhere:libpath`.  Ran both full
+  suites.
+
+### Phase 6 - (scheme r5rs)
+
+- `src/expander.scm`: `(scheme r5rs)`, R7RS's library of R5RS's names
+  (Appendix A), those Minim has: its procedures, its syntax (`define`,
+  `lambda`, `quasiquote`, `syntax-rules`, `else`, `=>`, `...`, and the
+  rest), and the R5RS procedures in other libraries here, `display`,
+  `write`, and `load`.  `src/prelude.boot` regenerated.
+
+Separate because it was asked for after Phase 5; it is data, like Phase 4.
+
+Tests (`tests/repl/libraries.scm`): a library importing only `(scheme r5rs)`
+uses procedures from several R7RS libraries and a derived form; names R5RS
+lacks, such as `when` and `error`, are unbound in it.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'libraries|boot' && ctest --preset stress -R 'libraries'
+```
+
 ### After the last phase
 
 Sync the docs: `macros.md` (top-level environments, labels, the three kinds,

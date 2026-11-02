@@ -122,3 +122,13 @@ bump
 (map car '((1) (2)))
 (list (file-exists? "libraries.scm") (procedure? load) (get-environment-variable "MINIM_UNSET"))
 (import (scheme char))
+
+; Library files: an unknown library loads from its .sld file, once, and
+; includes files relative to it.
+(import (lib shapes) (lib point))
+(import (lib point))
+(point->list (make-point 1 2))
+(distance-squared (make-point 0 0) (make-point 3 4))
+(import (lib missing))
+(import (lib wrong))
+(import (lib bad-include))
