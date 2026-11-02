@@ -40,12 +40,12 @@ label, which is today.
 
 ## Design
 
-**A local frame is a vector**, `#(parent names v0 v1 ...)`: one allocation.
+**A local frame is a vector**, `#(parent name ... value ...)`: one
+allocation, its n names then their n values, n being (length - 1) / 2.
 
-- `names` is the code that declared the frame, shared, never copied: a
-  `lambda`'s parameters, whose elements are symbols, or a `let-values`
-  form's clauses, whose elements are pairs.  A lookup walks it alongside the
-  slots, by name, as today.
+- The names are copied from the parameters or clauses when the frame is
+  made.  A lookup scans them, contiguous, by name, as today; name i's value
+  is at slot 1 + n + i.
 - A rest parameter's slot holds the list of the remaining arguments.
 - A `let-values` frame is made once, sized from its clauses, its slots
   `MINIM_UNBOUND` until bound; reading or setting one unbound raises
@@ -99,6 +99,25 @@ init (`unbound variable`).  Measure against `main` with `bench/run.sh`.
 ```sh
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'eval|tail|values|derived'
 ```
+
+**Done.**
+- First built as `#(parent names v ...)`, `names` the declaring code itself:
+  a `lambda`'s parameters, or a `let-values` form's clauses.  `let` was 5%
+  slower than `main`: a lookup reached each name through the clause, then
+  its formals.  Copying the names into the frame, names before values so the
+  scan is contiguous, costs n words but no allocation, and every frame has
+  one shape.
+- Measure with code aligned: unaligned release builds differed by up to 7%
+  from code placement alone.  Built both with `-falign-functions=64
+  -falign-loops=64 -falign-jumps=64`.  Against `main`, 9 runs, medians:
+  `fib` 0.470 to 0.453 s, `globals` 0.451 to 0.422, `let` 0.490 to 0.465.
+- gprof on `globals`: heap allocations 14.6M to 11.5M, root pushes 25.6M to
+  23.6M.
+- A first version took the rest symbol from the whole parameter list, not
+  its tail, so rest parameters were empty; the expander uses them, so every
+  `let-values` it expanded broke.
+- Ran the dev suite, and stress `eval|tail|values|derived|records|errors|
+  continuations`.
 
 ### After the last phase
 
