@@ -73,6 +73,16 @@ Tests: none; `bench/run.sh build/release build/release` runs.
 cmake --build --preset release && bench/run.sh build/release build/release
 ```
 
+**Done.**
+- Startup is `bench/empty.scm`, so every benchmark is a file the runner
+  treats alike.
+- `run.sh` times with bash's `time` (`TIMEFORMAT=%R`), which works on Linux
+  and macOS, and discards each run's output; the benchmarks print nothing,
+  since a file runs without the REPL.
+- Sizes, release build: `fib` (fib 28) about 0.52 s; `globals` 500,000
+  iterations, about 0.49 s; `let`, about 0.55 s; startup about 3 ms.  The
+  same build against itself differs by 2-3%, the noise to beat.
+
 ### Phase 2 - Vector frames
 
 - `src/env.c`, `src/env.h`: frames as vectors; `minim_env_extend` from the
