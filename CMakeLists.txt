@@ -91,8 +91,8 @@ target_include_directories(boot_gen PRIVATE src)
 # generation succeeds.  After an expander change, run it twice: the second run
 # expands with the new expander.
 add_custom_target(boot
-    COMMAND boot_gen ${CMAKE_CURRENT_SOURCE_DIR}/tools/boot.scm
-        ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_SCHEME_SOURCES}
+    COMMAND boot_gen --boot-scm ${CMAKE_CURRENT_SOURCE_DIR}/tools/boot.scm
+        -o ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_SCHEME_SOURCES}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_BOOT}
     COMMENT "Regenerating scheme/prelude.boot"
 )

@@ -2,13 +2,22 @@
  * @file
  * Writes the top-level forms of the prelude's sources, in order, expanded into
  * core forms, one per line, for scheme/prelude.boot.
- * Usage: boot_gen boot.scm out source...
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "minim.h"
 #include "read.h"
+
+static const char usage[] = "usage: boot_gen --boot-scm file [-o file] source...\n";
+
+static const char help[] =
+    "Writes the sources' top-level forms, in order, expanded into core forms, one per line.\n"
+    "\n"
+    "  --boot-scm file  the Scheme file defining %boot-form (tools/boot.scm)\n"
+    "  -o file          write to file instead of stdout\n"
+    "  --help           print this message\n";
 
 typedef struct job {
     const char *boot_scm;  ///< defines %boot-form
@@ -49,14 +58,42 @@ static minim_obj generate(void *arg) {
     MINIM_RETURN(MINIM_VOID);
 }
 
+// Prints `message` and the usage to stderr; returns the exit status.
+static int usage_error(const char *message, const char *arg) {
+    fprintf(stderr, "boot_gen: %s %s\n%s", message, arg, usage);
+    return 2;
+}
+
 int main(int argc, char **argv) {
-    if (argc < 4) {
-        fputs("usage: boot_gen boot.scm out source...\n", stderr);
-        return 2;
+    const char *out = NULL;
+    job j = {NULL, argv + argc, 0, stdout};
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
+        if (strcmp(arg, "--help") == 0) {
+            printf("%s%s", usage, help);
+            return 0;
+        } else if (strcmp(arg, "--boot-scm") == 0 || strcmp(arg, "-o") == 0) {
+            if (i + 1 == argc)
+                return usage_error("missing file after", arg);
+            if (strcmp(arg, "-o") == 0)
+                out = argv[++i];
+            else
+                j.boot_scm = argv[++i];
+        } else if (arg[0] == '-' && arg[1] != '\0') {
+            return usage_error("unknown option", arg);
+        } else {
+            j.sources = argv + i;  // the rest are sources
+            j.nsources = argc - i;
+            break;
+        }
     }
-    job j = {argv[1], argv + 3, argc - 3, fopen(argv[2], "w")};
-    if (j.out == NULL) {
-        perror(argv[2]);
+    if (j.boot_scm == NULL)
+        return usage_error("missing option", "--boot-scm");
+    if (j.nsources == 0)
+        return usage_error("missing", "sources");
+
+    if (out != NULL && (j.out = fopen(out, "w")) == NULL) {
+        perror(out);
         return 1;
     }
     minim_init();
@@ -64,7 +101,8 @@ int main(int argc, char **argv) {
     bool ok = minim_catch(generate, &j, &result);
     if (!ok)
         minim_write_error(stderr);
-    fclose(j.out);
+    if (out != NULL)
+        fclose(j.out);
     minim_shutdown();
     return ok ? 0 : 1;
 }
