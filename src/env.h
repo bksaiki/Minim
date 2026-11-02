@@ -1,8 +1,8 @@
 /**
  * @file
  * Environments.  `'()` is the global environment, which uses symbol value
- * slots; a local environment is a pair `(bindings . parent)` whose bindings
- * are an association list.
+ * slots; a local environment is a frame, a vector `#(parent name ... value
+ * ...)` of its variables' names, then their values.
  */
 
 #ifndef MINIM_ENV_H
@@ -26,12 +26,18 @@ minim_obj minim_env_extend(minim_obj params, minim_obj *args, size_t n, minim_ob
  */
 minim_obj minim_env_extend_list(minim_obj params, minim_obj args, minim_obj parent);
 
+/**
+ * New frame in `parent` for the variables of the `let-values` clauses
+ * `clauses`, each `MINIM_UNBOUND` until minim_env_define binds it.
+ */
+minim_obj minim_env_frame(minim_obj clauses, minim_obj parent);
+
 /** Value of `sym` in `env`; raises if unbound. */
 minim_obj minim_env_lookup(minim_obj env, minim_obj sym);
 
 /**
  * Binds `sym` to `val`: globally if `env` is `'()`, otherwise in the innermost
- * frame of `env`, shadowing any binding of `sym` there.
+ * frame of `env`, which declares `sym`.
  */
 void minim_env_define(minim_obj env, minim_obj sym, minim_obj val);
 

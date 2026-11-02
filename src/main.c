@@ -18,7 +18,7 @@
 #include "minim.h"
 
 static minim_obj read_stdin(void *arg) {
-    (void)arg;
+    MINIM_UNUSED(arg);
     return minim_read(stdin);
 }
 

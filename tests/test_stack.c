@@ -47,7 +47,7 @@ static void test_push_freezes(void) {
 
 // A call that doesn't fit freezes the buffer; one bigger than a segment raises.
 static minim_obj reserve_too_many(void *arg) {
-    (void)arg;
+    MINIM_UNUSED(arg);
     minim_stack_reserve(MINIM_SEGMENT_SIZE + 1);
     return MINIM_VOID;
 }

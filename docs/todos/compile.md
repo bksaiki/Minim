@@ -71,9 +71,10 @@ compiled as it loads.
   operand's index being the value-stack height above the call's base; a
   `LET_VALUES` frame the node, the new frame, and the next clause's index.
 
-**Then vector frames and lexical addresses.**  A local frame becomes a
-vector, `#(parent v0 v1 ...)`, one allocation, filled from the value stack for
-a call.  The compiler tracks the frames in scope and resolves each variable:
+**Then lexical addresses.**  A local frame is already a vector,
+`#(parent name ... value ...)` (`eval.md`); with addresses it drops its
+names, becoming `#(parent v0 v1 ...)`.  The compiler tracks the frames in
+scope and resolves each variable:
 
 | Kind | Slots |
 |---|---|
@@ -114,17 +115,16 @@ loop, startup; and `ctest --preset stress -j 8`.
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
 
-### Phase 2 - Vector frames and lexical addresses
+### Phase 2 - Lexical addresses
 
 - `src/compile.c`: the compile-time scope; `LOCAL_*` and `GLOBAL_*` nodes;
   frame sizes and slots in `LAMBDA` and `LET_VALUES`.
-- `src/env.c`, `src/env.h`: frames as vectors, accessed by address; lookup by
-  name goes.
-- `src/eval.c`: calls fill a frame from the value stack; `bind_values` writes
-  slots; the `UNBOUND` check on local reads.
+- `src/env.c`, `src/env.h`: frames without names, accessed by address;
+  lookup by name goes.
+- `src/eval.c`: `bind_values` writes slots by address.
 
 Separate because it changes the environment representation, measurable on
-its own against Phase 1.
+its own against Phase 1 (`bench/run.sh`).
 
 Tests: the full suite; `test_eval`: references across several frames, `set!`
 of a local in an outer frame, a `letrec-values` variable read before its

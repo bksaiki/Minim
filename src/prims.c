@@ -97,7 +97,7 @@ static minim_obj prim_mul(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_quotient(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     intptr_t a = fixnum_arg(args[0], "quotient: not a fixnum");
     intptr_t b = fixnum_arg(args[1], "quotient: not a fixnum");
     check(b != 0, "quotient: division by zero", args[1]);
@@ -105,7 +105,7 @@ static minim_obj prim_quotient(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_remainder(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     intptr_t a = fixnum_arg(args[0], "remainder: not a fixnum");
     intptr_t b = fixnum_arg(args[1], "remainder: not a fixnum");
     check(b != 0, "remainder: division by zero", args[1]);
@@ -177,17 +177,17 @@ static minim_obj prim_ge(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_is_char(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_char(args[0]));
 }
 
 static minim_obj prim_char_to_integer(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return minim_fixnum(char_arg(args[0], "char->integer: not a char"));
 }
 
 static minim_obj prim_integer_to_char(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     intptr_t v = fixnum_arg(args[0], "integer->char: not a fixnum");
     check(v >= 0 && v <= 0x10FFFF && minim_is_scalar_value((uint32_t)v),
           "integer->char: not a scalar value", args[0]);
@@ -215,28 +215,28 @@ static minim_obj prim_char_ge(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_is_fixnum(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_fixnum(args[0]));
 }
 
 static minim_obj prim_is_zero(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(fixnum_arg(args[0], "zero?: not a fixnum") == 0);
 }
 
 static minim_obj prim_cons(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return minim_cons(args[0], args[1]);
 }
 
 static minim_obj prim_car(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_pair(args[0]), "car: not a pair", args[0]);
     return minim_car(args[0]);
 }
 
 static minim_obj prim_cdr(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_pair(args[0]), "cdr: not a pair", args[0]);
     return minim_cdr(args[0]);
 }
@@ -254,7 +254,7 @@ static minim_obj cxr(minim_obj x, const char *path, const char *msg) {
 
 #define CXR(path)                                                      \
     static minim_obj prim_c##path##r(minim_obj *args, size_t n) {      \
-        (void)n;                                                       \
+        MINIM_UNUSED(n);                                               \
         return cxr(args[0], #path, "c" #path "r: not a pair");         \
     }
 CXR(aa)
@@ -264,26 +264,26 @@ CXR(dd)
 #undef CXR
 
 static minim_obj prim_set_car(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_pair(args[0]), "set-car!: not a pair", args[0]);
     minim_set_car(args[0], args[1]);
     return MINIM_VOID;
 }
 
 static minim_obj prim_set_cdr(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_pair(args[0]), "set-cdr!: not a pair", args[0]);
     minim_set_cdr(args[0], args[1]);
     return MINIM_VOID;
 }
 
 static minim_obj prim_is_pair(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_pair(args[0]));
 }
 
 static minim_obj prim_is_null(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_null(args[0]));
 }
 
@@ -296,7 +296,7 @@ static minim_obj prim_list(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_length(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     intptr_t len = 0;
     minim_obj x = args[0];
     for (; minim_is_pair(x); x = minim_cdr(x))
@@ -307,68 +307,61 @@ static minim_obj prim_length(minim_obj *args, size_t n) {
 
 // Applied by the evaluator, which owns the value stack; never called.
 minim_obj minim_prim_apply(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     abort();
 }
 
 // Applied by the evaluator, which returns the values; never called.
 minim_obj minim_prim_values(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     abort();
 }
 
 // Applied by the evaluator, which passes the producer's values to the consumer;
 // never called.
 minim_obj minim_prim_call_with_values(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     abort();
 }
 
 // Applied by the evaluator, which captures the continuation; never called.
 minim_obj minim_prim_call_cc(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     abort();
 }
 
 // The `dynamic-wind` calls in progress, for the prelude's `call/cc`.
 static minim_obj prim_winders(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     return minim_gc.winders;
 }
 
 static minim_obj prim_set_winders(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_gc.winders = args[0];
     return MINIM_VOID;
 }
 
 // The exception handlers installed, for the prelude's `raise`.
 static minim_obj prim_handlers(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     return minim_gc.handlers;
 }
 
 static minim_obj prim_set_handlers(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_gc.handlers = args[0];
     return MINIM_VOID;
 }
 
 // Applied by the evaluator, which evaluates the file's forms; never called.
 minim_obj minim_prim_load(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     abort();
 }
 
 static minim_obj prim_eq(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(args[0] == args[1]);
 }
 
@@ -432,7 +425,7 @@ static bool is_equal(minim_obj a, minim_obj b) {
 }
 
 static minim_obj prim_equal(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(is_equal(args[0], args[1]));
 }
 
@@ -478,34 +471,34 @@ static minim_obj hash_result(uint64_t h) {
 }
 
 static minim_obj prim_equal_hash(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     int budget = HASH_BUDGET;
     return hash_result(equal_hash(args[0], &budget));
 }
 
 static minim_obj prim_string_hash(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "string-hash: not a string", args[0]);
     return hash_result(minim_string_hash(args[0]));
 }
 
 static minim_obj prim_not(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(args[0] == MINIM_FALSE);
 }
 
 static minim_obj prim_is_symbol(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_symbol(args[0]));
 }
 
 static minim_obj prim_is_procedure(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_procedure(args[0]));
 }
 
 static minim_obj prim_is_boolean(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_boolean(args[0]));
 }
 
@@ -524,14 +517,14 @@ static minim_obj prim_make_vector(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_vector_ref(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_vector(args[0]), "vector-ref: not a vector", args[0]);
     size_t i = index_arg(args[1], minim_vector_length(args[0]), "vector-ref: bad index");
     return minim_vector_ref(args[0], i);
 }
 
 static minim_obj prim_vector_set(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_vector(args[0]), "vector-set!: not a vector", args[0]);
     size_t i = index_arg(args[1], minim_vector_length(args[0]), "vector-set!: bad index");
     minim_vector_set(args[0], i, args[2]);
@@ -539,7 +532,7 @@ static minim_obj prim_vector_set(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_vector_length(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_vector(args[0]), "vector-length: not a vector", args[0]);
     return minim_fixnum((intptr_t)minim_vector_length(args[0]));
 }
@@ -562,7 +555,7 @@ static minim_obj prim_vector_to_list(minim_obj *args, size_t n) {
 
 // A new vector of the elements of the proper list args[0].
 static minim_obj prim_list_to_vector(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     size_t len = 0;
     minim_obj x = args[0];
     for (; minim_is_pair(x); x = minim_cdr(x))
@@ -577,18 +570,18 @@ static minim_obj prim_list_to_vector(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_is_vector(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_vector(args[0]));
 }
 
 static minim_obj prim_string_length(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "string-length: not a string", args[0]);
     return minim_fixnum((intptr_t)minim_string_length(args[0]));
 }
 
 static minim_obj prim_string_ref(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "string-ref: not a string", args[0]);
     size_t i = index_arg(args[1], minim_string_length(args[0]), "string-ref: bad index");
     return minim_char(minim_string_ref(args[0], i));
@@ -602,7 +595,7 @@ static minim_obj prim_make_string(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_string_set(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "string-set!: not a string", args[0]);
     check(!(minim_typed_header(args[0]) & MINIM_HEADER_IMMUTABLE),
           "string-set!: immutable string", args[0]);
@@ -630,7 +623,7 @@ static minim_obj prim_string_append(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_substring(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "substring: not a string", args[0]);
     size_t len = minim_string_length(args[0]);
     size_t start = bound_arg(args[1], len, "substring: bad index");
@@ -690,7 +683,7 @@ static minim_obj prim_string_ge(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_string_to_list(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "string->list: not a string", args[0]);
     minim_obj lst = MINIM_NIL;
     MINIM_FRAME(&lst);
@@ -700,7 +693,7 @@ static minim_obj prim_string_to_list(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_list_to_string(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     size_t len = 0;
     minim_obj x = args[0];
     for (; minim_is_pair(x); x = minim_cdr(x), len++)
@@ -715,45 +708,43 @@ static minim_obj prim_list_to_string(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_is_string(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_string(args[0]));
 }
 
 // Returns the symbol's immutable name itself.
 static minim_obj prim_symbol_to_string(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_symbol(args[0]), "symbol->string: not a symbol", args[0]);
     return minim_symbol_name(args[0]);
 }
 
 static minim_obj prim_string_to_symbol(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "string->symbol: not a string", args[0]);
     return minim_intern(args[0]);
 }
 
 static minim_obj prim_write(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_write(stdout, args[0]);
     return MINIM_VOID;
 }
 
 static minim_obj prim_display(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_display(stdout, args[0]);
     return MINIM_VOID;
 }
 
 static minim_obj prim_newline(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     putchar('\n');
     return MINIM_VOID;
 }
 
 static minim_obj prim_collect(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     minim_gc_collect();
     return MINIM_VOID;
 }
@@ -812,7 +803,7 @@ static minim_obj prim_gensym(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_make_alias(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_symbol(args[0]), "%make-alias: not a symbol", args[0]);
     minim_obj alias = minim_make_uninterned(minim_symbol_name(args[0]));
     MINIM_FRAME(&alias);
@@ -824,26 +815,26 @@ static minim_obj prim_make_alias(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_alias_original(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_obj info = alias_info(args[0]);
     return info == MINIM_FALSE ? info : minim_vector_ref(info, 1);
 }
 
 static minim_obj prim_alias_env(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_obj info = alias_info(args[0]);
     return info == MINIM_FALSE ? info : minim_vector_ref(info, 2);
 }
 
 static minim_obj prim_is_bound(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_symbol(args[0]), "%bound?: not a symbol", args[0]);
     return boolean(minim_symbol_value(args[0]) != MINIM_UNBOUND
                    && alias_info(args[0]) == MINIM_FALSE);
 }
 
 static minim_obj prim_make_error_object(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "%make-error-object: not a string", args[0]);
     check(minim_is_null(args[1]) || minim_is_pair(args[1]),
           "%make-error-object: not a list", args[1]);
@@ -851,18 +842,18 @@ static minim_obj prim_make_error_object(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_is_error_object(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_error_object(args[0]));
 }
 
 static minim_obj prim_error_object_message(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_error_object(args[0]), "error-object-message: not an error object", args[0]);
     return minim_error_object_message(args[0]);
 }
 
 static minim_obj prim_error_object_irritants(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_error_object(args[0]), "error-object-irritants: not an error object",
           args[0]);
     return minim_error_object_irritants(args[0]);
@@ -873,12 +864,12 @@ static bool is_error_of_kind(minim_obj x, minim_error_kind kind) {
 }
 
 static minim_obj prim_is_read_error(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(is_error_of_kind(args[0], MINIM_ERROR_READ));
 }
 
 static minim_obj prim_is_file_error(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(is_error_of_kind(args[0], MINIM_ERROR_FILE));
 }
 
@@ -894,7 +885,7 @@ static _Noreturn void raise_message(minim_obj msg, minim_obj irritants) {
 }
 
 static minim_obj prim_syntax_error(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_obj rest = args[1];
     check(minim_is_string(args[0]), "syntax-error: not a string", args[0]);
     check(minim_is_null(rest) || minim_is_pair(rest), "syntax-error: not a list", rest);
@@ -904,7 +895,7 @@ static minim_obj prim_syntax_error(minim_obj *args, size_t n) {
 // Leaves Scheme with `args[0]`, which no handler took: an error object's
 // message and irritants, or else the object itself.
 static minim_obj prim_raise_uncaught(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     if (minim_is_error_object(args[0]))
         raise_message(minim_error_object_message(args[0]), minim_error_object_irritants(args[0]));
     minim_error("uncaught exception", args[0]);
@@ -913,7 +904,7 @@ static minim_obj prim_raise_uncaught(minim_obj *args, size_t n) {
 // A new rtd named by the symbol args[0], with the distinct symbols of the list
 // args[1] as its fields.  The rtd's fields are set only here.
 static minim_obj prim_make_record_type(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_symbol(args[0]), "%make-record-type: not a symbol", args[0]);
     intptr_t len = 0;
     minim_obj x = args[1];
@@ -933,33 +924,33 @@ static minim_obj prim_make_record_type(minim_obj *args, size_t n) {
 }
 
 static minim_obj prim_is_record(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     return boolean(minim_is_record(args[0]) && minim_record_rtd(args[0]) == args[1]);
 }
 
 static minim_obj prim_record_rtd(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_record(args[0]), "%record-rtd: not a record", args[0]);
     return minim_record_rtd(args[0]);
 }
 
 // Not the base rtd: an rtd's fields are set only by `%make-record-type`.
 static minim_obj prim_make_record(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_record(args[0]) && minim_record_rtd(args[0]) == minim_base_rtd
           && args[0] != minim_base_rtd, "%make-record: not a record type", args[0]);
     return minim_make_record(args[0]);
 }
 
 static minim_obj prim_record_ref(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_record(args[0]), "%record-ref: not a record", args[0]);
     return minim_record_ref(args[0], index_arg(args[1], minim_record_length(args[0]),
                                                "%record-ref: bad index"));
 }
 
 static minim_obj prim_record_set(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     check(minim_is_record(args[0]), "%record-set!: not a record", args[0]);
     check(minim_record_rtd(args[0]) != minim_base_rtd, "%record-set!: immutable record type",
           args[0]);

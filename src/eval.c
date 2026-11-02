@@ -220,7 +220,7 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
         } else if (x == minim_sym_let_values || x == minim_sym_letrec_values) {
             if (len < 3 || !valid_clauses(minim_car(minim_cdr(expr))))
                 minim_error("bad syntax", expr);
-            frame = minim_env_extend(MINIM_NIL, NULL, 0, env);
+            frame = minim_env_frame(minim_car(minim_cdr(expr)), env);
             if (x == minim_sym_letrec_values)
                 env = frame;
             x = minim_cdr(expr);

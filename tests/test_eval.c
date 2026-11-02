@@ -184,6 +184,26 @@ static void test_closures(void) {
     CHECK(evals_to("(define x 1) (define f (lambda (x) (set! x 5) x)) (f 0) x", "1"));
 }
 
+// Frames: references and `set!` across them, rest parameters, and `let-values`
+// frames, whose variables are unbound until their clause's values arrive.
+static void test_frames(void) {
+    CHECK(evals_to("((((lambda (a b) (lambda (c) (lambda (d) (list a b c d)))) 1 2) 3) 4)",
+                   "(1 2 3 4)"));
+    CHECK(evals_to("((lambda (a) ((lambda (b) (set! a (+ a b))) 10) a) 1)", "11"));
+    CHECK(evals_to("((lambda (a . r) (list a r)) 1 2 3)", "(1 (2 3))"));
+    CHECK(evals_to("((lambda (a . r) (list a r)) 1)", "(1 ())"));
+    CHECK(evals_to("((lambda r r) 1 2)", "(1 2)"));
+    CHECK(evals_to("(apply (lambda (a . r) (list a r)) 1 '(2 3))", "(1 (2 3))"));
+    CHECK(evals_to("(let-values (((a b) (values 1 2)) ((c . d) (values 3 4 5)) (e (values)))"
+                   " (list a b c d e))",
+                   "(1 2 3 (4 5) ())"));
+    CHECK(evals_to("(let-values (((a) 1)) (let-values (((a) 2) ((b) a)) (list a b)))",
+                   "(2 1)"));
+    CHECK(evals_to("(letrec-values (((f) (lambda () g)) ((g) 5)) (f))", "5"));
+    CHECK(fails_with("(letrec-values (((a) b) ((b) 1)) a)", "unbound variable"));
+    CHECK(fails_with("(letrec-values (((a) (set! b 2)) ((b) 1)) a)", "unbound variable"));
+}
+
 static void test_primitives(void) {
     CHECK(evals_to("(+)", "0"));
     CHECK(evals_to("(+ 1 2 3)", "6"));
@@ -235,7 +255,7 @@ static void test_value_stack_restored(void) {
 
 // Collects, then returns its second argument.
 static minim_obj collect_then_second(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_gc_collect_major();
     return args[1];
 }
@@ -268,8 +288,7 @@ static void test_map_long_list(void) {
 }
 
 static minim_obj stack_height(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     return minim_fixnum((intptr_t)minim_stack_height());
 }
 
@@ -450,6 +469,7 @@ int main(void) {
     test_special_forms();
     test_parameters();
     test_closures();
+    test_frames();
     test_primitives();
     test_errors();
     test_value_stack_restored();
