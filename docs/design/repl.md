@@ -54,19 +54,26 @@ ones, print as their characters: `(1 "a" #\b)` displays as `(1 a b)`.
 
 ## REPL
 
-With a file argument, `src/main.c` evaluates `(load "file")`.  It prints
-nothing else, and an error is printed to stderr with exit status 1.  More
-than one argument prints a usage message and exits with status 2.
+`src/main.c`'s command line:
 
-Both expand forms in the interaction environment (`macros.md`): every
-system binding is visible, `import` adds others, and a definition of a
-system name shadows it without changing the system's.
+| Command | Runs |
+|---|---|
+| `minim` | the REPL |
+| `minim file.scm` | the script `file.scm`, by `(load "file.scm")` |
+| `minim --program file.scm` | the R7RS program `file.scm` |
+| `minim --help`, `minim --version` | prints the usage or the version (`project` in `CMakeLists.txt`) |
 
-Otherwise it runs the REPL, which loops: read, `minim_eval_values`, then
-write each value and a newline, skipping void ones.  A read or evaluation
-error prints `error: msg: irritant` to stderr (`errors.md`), after the
-`after`s of the `dynamic-wind`s it left run, and reading continues with the
-rest of the input.
+A script prints nothing else; an error is printed to stderr with exit status
+1.  A bad command line prints the problem and the usage to stderr and exits
+with status 2.
+
+The REPL and scripts expand forms in the interaction environment, which sees
+`(minim)`; a program sees only what it imports (`macros.md`).
+
+The REPL loops: read, `minim_eval_values`, then write each value and a
+newline, skipping void ones.  A read or evaluation error prints `error: msg:
+irritant` to stderr (`errors.md`), after the `after`s of the `dynamic-wind`s
+it left run, and reading continues with the rest of the input.
 
 The `> ` prompt goes to stderr, and only when stdin is a terminal, as in
 bash and Python, so piped runs print only results to stdout, as the REPL

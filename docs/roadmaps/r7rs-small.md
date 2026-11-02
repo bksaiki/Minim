@@ -16,7 +16,8 @@ tail calls, multiple values, and the special forms `quote`, `if`, `define`,
 `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
 `letrec-values`.  A hygienic expander in the prelude adds quasiquote,
 `syntax-rules` macros, the derived forms, and R7RS libraries.  `minim
-file.scm` runs a file, and `load` loads one (see `docs/design/`).
+file.scm` runs a script, `minim --program file.scm` an R7RS program, and
+`load` loads a file (see `docs/design/`).
 
 Missing, roughly in order of how much it limits writing programs:
 
@@ -124,8 +125,10 @@ Depends on 3 (`guard` is a macro).
   procedures.
 - Top-level environments in the expander, after Chez Scheme: names map to
   labels, symbols whose value slots are the variables, so a global reference
-  stays one load.  The REPL's definitions shadow system bindings instead of
-  replacing them (`docs/design/macros.md`).
+  stays one load (`docs/design/macros.md`).
+- The REPL sees `(minim)`, every public name, and no internals; `(minim
+  system)` has them all.  Programs, `minim --program`, see only what they
+  import (R7RS 5.1).
 - Later: `cond-expand`, `include-ci`, and `include-library-declarations`.
 
 ### 6. Ports and I/O (M)
