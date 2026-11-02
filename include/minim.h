@@ -84,7 +84,6 @@ enum {
     MINIM_SYMBOL_SIZE = 2 * sizeof(minim_obj),
     MINIM_CLOSURE_SIZE = 2 * sizeof(minim_obj),
     MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
-    MINIM_CONTINUATION_SIZE = 4 * sizeof(minim_obj),
     MINIM_ERROR_OBJECT_SIZE = 4 * sizeof(minim_obj),
 };
 
@@ -550,30 +549,6 @@ static inline intptr_t minim_primitive_min_arity(minim_obj p) {
 static inline intptr_t minim_primitive_max_arity(minim_obj p) {
     assert(minim_is_primitive(p));
     return minim_fixnum_value(((const minim_obj *)(p - MINIM_TAG_TYPED))[4]);
-}
-
-/**
- * New continuation: the continuation frames `k`, and the value stack's frozen
- * segments `stack` holding its values below `height`.
- */
-minim_obj minim_make_continuation(minim_obj k, minim_obj stack, size_t height);
-
-/** Continuation frames of the continuation `c`. */
-static inline minim_obj minim_continuation_k(minim_obj c) {
-    assert(minim_is_continuation(c));
-    return ((const minim_obj *)(c - MINIM_TAG_TYPED))[1];
-}
-
-/** Frozen value-stack segments of the continuation `c`. */
-static inline minim_obj minim_continuation_stack(minim_obj c) {
-    assert(minim_is_continuation(c));
-    return ((const minim_obj *)(c - MINIM_TAG_TYPED))[2];
-}
-
-/** Value-stack height of the continuation `c`. */
-static inline size_t minim_continuation_height(minim_obj c) {
-    assert(minim_is_continuation(c));
-    return (size_t)minim_fixnum_value(((const minim_obj *)(c - MINIM_TAG_TYPED))[3]);
 }
 
 // Records: `[rtd | field ...]`.  A record-type descriptor (rtd) is a record of

@@ -89,7 +89,7 @@ Internals keep REPL tests where a golden output suits them (`boot`,
 ```
 include/minim.h        the public API
 src/                   the C runtime, one file per module, and its headers
-src/prims/             the primitives, one file per area, each registering its own
+src/prims/             the primitives, one file per area, each with a table of them
 scheme/                the Scheme sources, in load order, and prelude.boot
 tools/                 boot_gen.c and boot.scm, which write prelude.boot
 ```
@@ -249,7 +249,12 @@ cmake --preset dev && cmake --build --preset dev --target boot && git diff --exi
   (`apply`, `values`, `call/cc`, winders, handlers, `load`), `error.c`,
   `record.c`, `syntax.c` (aliases, `gensym`, `%syntax-error`), `system.c`
   (files, environment variables, storage).  Each defines its primitives and
-  an init; `src/prims.c` keeps the shared argument checks and calls them.
+  a table of them, `{name, fn, min, max}`, ended by `{NULL}`.
+- `src/prims/prims.h` (internal to them): the table type, the tables, and the
+  shared argument checks as `static inline`.  `src/prims/prims.c`:
+  `minim_prims_init`, registering every table.  `src/prims.c` goes;
+  `src/prims.h` keeps `minim_prims_init` and the stubs the evaluator
+  recognizes.
 - `minim.h`: continuations' constructor and accessors move to an internal
   header.
 
@@ -258,6 +263,22 @@ Separate because it is the largest C move, with no change in behavior.
 ```sh
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
+
+**Done.**
+- The shared header is `src/prims/common.h`, not `src/prims/prims.h`: that
+  name would shadow `src/prims.h` for `#include "prims.h"`.
+- Split mechanically, by top-level definition, with every primitive placed
+  once (105) and each table in the old registration order.
+- `%syntax-error` went to `error.c`, not `syntax.c`: it shares
+  `raise_message` with `%raise-uncaught`, which stays `static`.  `not` and
+  `boolean?` are in `equal.c`, `procedure?` in `control.c`, and `write`,
+  `display`, and `newline` in `system.c`.
+- `syntax.c` has `minim_alias_init`, for the alias tag, its one piece of
+  state; `minim_prims_init` calls it, then registers the tables.
+- Continuations' size, constructor, and accessors are in `src/continuation.h`;
+  `minim_is_continuation` stays in `minim.h`, which `minim_is_procedure`
+  uses.
+- Ran both full suites and the release build.
 
 ### After the last phase
 

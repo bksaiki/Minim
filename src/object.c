@@ -6,6 +6,7 @@
 #include "minim.h"
 
 #include "char.h"
+#include "continuation.h"
 #include "error.h"
 #include "gc.h"
 #include "heap.h"

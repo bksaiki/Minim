@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "continuation.h"
 #include "heap.h"
 #include "minim.h"
 #include "stack.h"

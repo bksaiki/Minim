@@ -56,7 +56,18 @@ add_library(libminim STATIC
     src/heap.c
     src/object.c
     src/prelude.c
-    src/prims.c
+    src/prims/char.c
+    src/prims/control.c
+    src/prims/equal.c
+    src/prims/error.c
+    src/prims/number.c
+    src/prims/pair.c
+    src/prims/prims.c
+    src/prims/record.c
+    src/prims/string.c
+    src/prims/syntax.c
+    src/prims/system.c
+    src/prims/vector.c
     src/print.c
     src/read.c
     src/stack.c
