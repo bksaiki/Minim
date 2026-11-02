@@ -49,30 +49,27 @@ add_custom_command(
 add_library(libminim STATIC
     ${prelude_c}
     src/char.c
+    src/control.c
     src/env.c
+    src/equal.c
     src/error.c
     src/eval.c
     src/gc.c
     src/heap.c
+    src/number.c
     src/object.c
+    src/pair.c
     src/prelude.c
-    src/prims/char.c
-    src/prims/control.c
-    src/prims/equal.c
-    src/prims/error.c
-    src/prims/number.c
-    src/prims/pair.c
-    src/prims/prims.c
-    src/prims/record.c
-    src/prims/string.c
-    src/prims/syntax.c
-    src/prims/system.c
-    src/prims/vector.c
+    src/prims.c
     src/print.c
     src/read.c
+    src/record.c
     src/stack.c
+    src/string.c
     src/symbol.c
+    src/syntax.c
     src/system.c
+    src/vector.c
 )
 target_include_directories(libminim PUBLIC include PRIVATE src)
 set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not liblibminim.a

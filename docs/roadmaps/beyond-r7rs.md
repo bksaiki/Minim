@@ -35,7 +35,7 @@ Not features, but needed as programs grow.
 ## Libraries
 
 - Done: the Scheme sources in `scheme/`, one file per part; the boot
-  generator in `tools/`; the primitives in `src/prims/`, one file per area
+  generator in `tools/`; the primitives in `src/`, one file per area
   (`docs/design/prelude.md`, `docs/design/primitives.md`).
 - The standard libraries written as `.sld` files, each re-exporting from a
   core library of the system's bindings, and expanded into the boot file, so

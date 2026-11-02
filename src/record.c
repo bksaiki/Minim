@@ -3,7 +3,7 @@
  * Records.
  */
 
-#include "common.h"
+#include "prims.h"
 
 // A new rtd named by the symbol args[0], with the distinct symbols of the list
 // args[1] as its fields.  The rtd's fields are set only here.

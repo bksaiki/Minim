@@ -3,7 +3,7 @@
  * Fixnum arithmetic, comparison, and conversion.
  */
 
-#include "common.h"
+#include "prims.h"
 
 // Fixnum sums never overflow intptr_t, so range checks after each step suffice.
 static minim_obj prim_add(minim_obj *args, size_t n) {

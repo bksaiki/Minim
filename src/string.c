@@ -3,7 +3,7 @@
  * Strings and symbols.
  */
 
-#include "common.h"
+#include "prims.h"
 
 static minim_obj prim_is_symbol(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
