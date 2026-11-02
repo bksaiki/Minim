@@ -137,6 +137,26 @@ interaction branch is rebased onto it.
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
 
+**Done.**
+
+- `%top-bind!` always puts the property: no removal and no system special
+  case.  A system name bound to itself means what having no binding means,
+  and only `%boot-labels` cared.  It now counts identifiers bound to a label
+  other than themselves.  So `names` never repeats an identifier, and
+  `%remprop!` goes unused for now.
+- `bench/expand.scm` was taken from the interaction branch.
+- Measured against `main`, aligned release builds, 9 runs alternated, median:
+
+  | Benchmark | `main` | this |
+  |---|---|---|
+  | `expand` | 2.723 s | 0.535 s |
+  | `empty` (startup) | 0.008 s | 0.005 s |
+  | `fib`, `globals`, `let` | within 3% | |
+
+  Before this change, every definition rebuilt the list (`filter`), and every
+  lookup walked it, so expanding was quadratic in the number of definitions.
+  Re-measure after rebasing the interaction branch.
+
 ### After the last phase
 
 Sync the docs: `gc.md` (the symbol layout), `macros.md` (environments'

@@ -11,11 +11,14 @@
             (%boot-names forms)
             (%syntax-error "boot: a macro defined a fresh global" (list x)))))))
 
-;; Number of labels the system environment binds identifiers to, which only
-;; fresh globals add.
+;; Number of identifiers the system environment binds to labels other than
+;; themselves, which only fresh globals add.
 (define %boot-labels
   (lambda ()
-    (length (filter (lambda (b) (symbol? (cdr b))) (vector-ref %system-env 1)))))
+    (length (filter (lambda (id)
+                      (let ((b (%getprop id %system-env #f)))
+                        (and (symbol? b) (not (eq? b id)))))
+                    (vector-ref %system-env 3)))))
 
 ;; The core forms the top-level form `x` expands to: a `begin` spliced, and a
 ;; `define-syntax` registered and written as a call that rebuilds the macro.
