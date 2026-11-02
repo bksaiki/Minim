@@ -28,3 +28,12 @@ from-eval
 (eval '(if) base)
 (eval 1 'base)
 (environment '(no such library))
+
+; R5RS's environments.
+(eval '(car '(1)) (scheme-report-environment 5))
+(eval '(let ((x 1)) (if x 'yes 'no)) (null-environment 5))
+(eval '(cond (#f 1) (else 'none)) (null-environment 5))
+(eval '(car '(1)) (null-environment 5))
+(eq? (null-environment 5) (null-environment 5))
+(scheme-report-environment 4)
+(null-environment 7)

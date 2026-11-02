@@ -32,21 +32,23 @@
    char<=? char<? char=? char>=? char>? char? cond cons define define-syntax display do
    dynamic-wind else eq? equal? eqv? for-each if integer->char lambda length let let*
    let-syntax letrec letrec-syntax list list->string list->vector list-ref list-tail list?
-   load make-string make-vector map member memq memv newline not null? number->string or
-   pair? procedure? quasiquote quote quotient remainder reverse set! set-car! set-cdr!
-   string->list string->symbol string-append string-length string-ref string-set!
-   string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
-   syntax-rules unquote unquote-splicing values vector vector->list vector-length
-   vector-ref vector-set! vector? write zero?))
+   load make-string make-vector map member memq memv newline not null-environment null?
+   number->string or pair? procedure? quasiquote quote quotient remainder reverse
+   scheme-report-environment set! set-car! set-cdr! string->list string->symbol
+   string-append string-length string-ref string-set! string<=? string<? string=? string>=?
+   string>? string? substring symbol->string symbol? syntax-rules unquote unquote-splicing
+   values vector vector->list vector-length vector-ref vector-set! vector? write zero?))
 
 ;; (minim), after Chez's (chezscheme): every public system binding, the
 ;; standard libraries' names and Minim's own.  R7RS puts each name in one
-;; library, (scheme r5rs) aside, whose names are all in the others.
+;; library, (scheme r5rs) aside, whose names are in the others but its two
+;; environments.
 (%define-system-library
  '(minim)
  (append (%exported-names
           '((scheme base) (scheme eval) (scheme file) (scheme load) (scheme process-context)
             (scheme repl) (scheme write)))
+         '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import
            string-hash letrec-values)))

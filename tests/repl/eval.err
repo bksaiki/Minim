@@ -6,3 +6,6 @@ error: car: not a pair: ()
 error: bad syntax: (if)
 error: eval: not an environment: base
 error: import: unknown library: (no such library)
+error: unbound variable: car
+error: scheme-report-environment: not version 5: 4
+error: null-environment: not version 5: 7

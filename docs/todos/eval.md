@@ -159,6 +159,16 @@ version 4 is an error.
 cmake --build --preset dev && ctest --preset dev -R 'eval' && ctest --preset stress -R 'eval'
 ```
 
+**Done.**
+
+- `null-environment`'s syntax is told apart from variables without a list of
+  core forms: an export is syntax if its binding is a macro, or a label
+  holding no value (`%bound?`), which covers core forms and auxiliary syntax
+  (`else`, `=>`).
+- `(minim)` lists the two names explicitly: they are the only names of
+  `(scheme r5rs)` in no other library, which `(minim)` takes its names from.
+- Ran `ctest -R eval`, dev and stress.
+
 ### After the last phase
 
 Sync the docs: `macros.md` (environment specifiers, `eval`, the cache),

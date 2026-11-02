@@ -34,3 +34,19 @@
     (%eval-expanded (if (eq? top %interaction-env)
                         (%expand-top x top)
                         (%expand-expr x top)))))
+
+;; R5RS's environments, for `version` 5 only.
+(define (scheme-report-environment version)
+  (unless (eqv? version 5)
+    (error "scheme-report-environment: not version 5" version))
+  (environment '(scheme r5rs)))
+
+;; Only (scheme r5rs)'s syntax: its exports bound to macros, or to labels
+;; holding no value, the core forms and auxiliary syntax.
+(define (null-environment version)
+  (unless (eqv? version 5)
+    (error "null-environment: not version 5" version))
+  (environment
+   (append '(only (scheme r5rs))
+           (map car (filter (lambda (b) (or (procedure? (cdr b)) (not (%bound? (cdr b)))))
+                            (%library-exports '(scheme r5rs)))))))
