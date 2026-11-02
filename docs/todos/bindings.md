@@ -90,6 +90,16 @@ an old symbol's new property (the barrier).  The tests that count live bytes
 cmake --build --preset dev && ctest --preset dev -R 'symbol|gc|string|heap' && ctest --preset stress -R 'symbol|gc'
 ```
 
+**Done.**
+
+- `test_gc` and `test_string` count bytes above a baseline taken at the
+  start, so the larger symbols needed no change there.
+- `minim_putprop` roots `key` as well as `sym` and `value`, because a heap
+  key can move while the new entry is allocated.
+- Removing the barrier from the plist setter fails `test_props_gc`, so the
+  test covers it.
+- The whole dev suite passes too.
+
 ### Phase 2 - Primitives
 
 - `src/prims/string.c`, with the other symbol primitives: `%getprop`,
