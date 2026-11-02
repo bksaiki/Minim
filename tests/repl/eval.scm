@@ -14,6 +14,13 @@ base
 (eq? base (environment '(scheme base)))
 (eq? base (environment '(scheme write)))
 
+; Mutating the import sets passed doesn't change the cache.
+(define sets (list (list 'scheme 'file)))
+(define file-env (apply environment sets))
+(set-car! (car sets) 'nope)
+(eq? file-env (environment '(nope file)))
+(eq? file-env (environment '(scheme file)))
+
 ; The interaction environment is the REPL's.
 (eval '(define from-eval 7) (interaction-environment))
 from-eval

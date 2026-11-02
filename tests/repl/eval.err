@@ -2,6 +2,7 @@ error: unbound variable: display
 error: unbound variable: gensym
 error: bad syntax: (define x 1)
 error: set!: immutable variable: car
+error: import: unknown library: (nope file)
 error: car: not a pair: ()
 error: bad syntax: (if)
 error: eval: not an environment: base

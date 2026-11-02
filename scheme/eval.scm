@@ -11,13 +11,17 @@
 ;; immutable, so the same sets share one.
 (define %environments '())
 
+;; A copy of `x`, so mutating the caller's import sets can't change a key.
+(define (%copy-sets x)
+  (if (pair? x) (cons (%copy-sets (car x)) (%copy-sets (cdr x))) x))
+
 (define (environment . sets)
   (cond ((assoc sets %environments) => cdr)
         (else
          (let ((top (%make-top 'library #f)))
            (%import! top sets)
            (let ((env (%make-environment top)))
-             (set! %environments (cons (cons sets env) %environments))
+             (set! %environments (cons (cons (%copy-sets sets) env) %environments))
              env)))))
 
 (define %interaction-environment (%make-environment %interaction-env))
