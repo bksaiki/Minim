@@ -12,51 +12,6 @@
 #include "symbol.h"
 #include "test.h"
 
-// Evaluates every datum in the file `f`; returns the last value.
-static minim_obj eval_file(void *f) {
-    minim_obj val = MINIM_VOID;
-    minim_obj x = MINIM_NIL;
-    MINIM_FRAME(&val, &x);
-    while ((x = minim_read(f)) != MINIM_EOF)
-        val = minim_eval(x);
-    MINIM_RETURN(val);
-}
-
-// Whether evaluating `src` gives a value that prints as `expect`.
-static bool evals_to(const char *src, const char *expect) {
-    FILE *f = input(src);
-    minim_obj val;
-    bool ok = minim_catch(eval_file, f, &val);
-    fclose(f);
-    if (!ok) {
-        fprintf(stderr, "`%s` raised ", src);
-        minim_write_error(stderr);
-        return false;
-    }
-    return prints_as(val, expect);
-}
-
-// Whether evaluating `src` raises the error `msg`.
-static bool fails_with(const char *src, const char *msg) {
-    FILE *f = input(src);
-    minim_obj val;
-    bool ok = minim_catch(eval_file, f, &val);
-    fclose(f);
-    if (ok) {
-        fprintf(stderr, "`%s` evaluated without error\n", src);
-        return false;
-    }
-
-    const char *actual;
-    minim_obj irritant;
-    minim_last_error(&actual, &irritant);
-    if (strcmp(actual, msg) != 0) {
-        fprintf(stderr, "`%s` raised `%s`, expected `%s`\n", src, actual, msg);
-        return false;
-    }
-    return true;
-}
-
 static minim_obj eval_values(void *f) {
     return minim_eval_values(minim_read(f));
 }
@@ -152,17 +107,8 @@ static void test_special_forms(void) {
     CHECK(evals_to("(define f (lambda (a b) (+ a b))) (f 2 3)", "5"));
     CHECK(evals_to("(define x 1)", "#<void>"));
     CHECK(evals_to("((lambda (x y) (+ x y)) 1 2)", "3"));
-    CHECK(evals_to("(lambda (x) x)", "#<procedure>"));
     CHECK(evals_to("(begin 1 2 3)", "3"));
     CHECK(evals_to("(begin)", "#<void>"));
-}
-
-static void test_parameters(void) {
-    CHECK(evals_to("((lambda (x . r) r) 1 2 3)", "(2 3)"));
-    CHECK(evals_to("((lambda (x . r) r) 1)", "()"));
-    CHECK(evals_to("((lambda r r))", "()"));
-    CHECK(evals_to("((lambda r r) 1 2)", "(1 2)"));
-    CHECK(evals_to("(define f (lambda r r)) (f 1 2)", "(1 2)"));
 }
 
 static void test_closures(void) {
@@ -194,6 +140,7 @@ static void test_frames(void) {
     CHECK(evals_to("((lambda (a . r) (list a r)) 1 2 3)", "(1 (2 3))"));
     CHECK(evals_to("((lambda (a . r) (list a r)) 1)", "(1 ())"));
     CHECK(evals_to("((lambda r r) 1 2)", "(1 2)"));
+    CHECK(evals_to("((lambda r r))", "()"));
     CHECK(evals_to("(apply (lambda (a . r) (list a r)) 1 '(2 3))", "(1 (2 3))"));
     CHECK(evals_to("(let-values (((a b) (values 1 2)) ((c . d) (values 3 4 5)) (e (values)))"
                    " (list a b c d e))",
@@ -218,7 +165,6 @@ static void test_primitives(void) {
     CHECK(evals_to("(cons 1 2)", "(1 . 2)"));
     CHECK(evals_to("(car '(1 2))", "1"));
     CHECK(evals_to("(cdr '(1 2))", "(2)"));
-    CHECK(evals_to("car", "#<procedure car>"));
     CHECK(evals_to("(* 1152921504606846975 -1)", "-1152921504606846975"));
     CHECK(evals_to("(- -1152921504606846975 1)", "-1152921504606846976"));
 }
@@ -248,12 +194,6 @@ static void test_errors(void) {
     CHECK(fails_with("(+ 1 . 2)", "bad syntax"));
 }
 
-static void test_value_stack_restored(void) {
-    size_t before = minim_stack_height();
-    CHECK(fails_with("(+ 1 (+ 2 (car 5)))", "car: not a pair"));
-    CHECK_EQ(minim_stack_height(), before);
-}
-
 // Collects, then returns its second argument.
 static minim_obj collect_then_second(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
@@ -268,24 +208,6 @@ static void test_primitive_allocates(void) {
     minim_set_symbol_value(sym, p);
     CHECK(evals_to("(collect-then-second 1 (cons 2 '(3)))", "(2 3)"));
     MINIM_RETURN_VOID;
-}
-
-static void test_apply_restores_value_stack(void) {
-    size_t before = minim_stack_height();
-    CHECK(fails_with("(+ 1 (apply + 1 '(2 . 3)))", "apply: not a list"));
-    CHECK_EQ(minim_stack_height(), before);
-}
-
-// map in the prelude recurses on the heap, not the C stack.
-static void test_map_long_list(void) {
-    const long n = gc_stressed() ? 1000 : 100000;
-    char src[256];
-    snprintf(src, sizeof(src),
-             "(define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))"
-             "(fold + 0 (map (lambda (x) (* 2 x)) (build %ld '())))", n);
-    char expect[32];
-    snprintf(expect, sizeof(expect), "%ld", n * (n + 1));  // 2 * (1 + ... + n)
-    CHECK(evals_to(src, expect));
 }
 
 static minim_obj stack_height(minim_obj *args, size_t n) {
@@ -438,7 +360,8 @@ static void test_many_arguments(void) {
 }
 
 // A handled error, deep in a recursion or in a long `apply`, leaves the value
-// stack, winders, and spill as they were; an unhandled one runs the afters.
+// stack, winders, and spill as they were; an unhandled one, the value stack,
+// and runs the afters.
 static void test_handled_errors(void) {
     size_t before = minim_stack_height();
     char buf[512];
@@ -455,6 +378,9 @@ static void test_handled_errors(void) {
     CHECK_EQ(minim_gc.winders, MINIM_NIL);
     CHECK_EQ(minim_gc.handlers, MINIM_NIL);
     CHECK_EQ(minim_gc.spill.len, 0);
+
+    CHECK(fails_with("(+ 1 (apply + 1 '(2 . 3)))", "apply: not a list"));
+    CHECK_EQ(minim_stack_height(), before);
 
     CHECK(fails_with("(define out #f) (dynamic-wind (lambda () #f) (lambda () (deep 10))"
                      " (lambda () (set! out #t)))",
@@ -498,18 +424,14 @@ int main(void) {
     minim_init();
     test_self_evaluating();
     test_special_forms();
-    test_parameters();
     test_closures();
     test_frames();
     test_primitives();
     test_errors();
-    test_value_stack_restored();
-    test_apply_restores_value_stack();
     test_primitive_allocates();
     test_values();
     test_binding_values();
     test_tail_calls();
-    test_map_long_list();
     test_large_forms();
     test_deep_recursion();
     test_many_arguments();  // after test_tail_calls, which checks the value stack's capacity

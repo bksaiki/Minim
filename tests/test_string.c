@@ -3,6 +3,9 @@
  * Tests for strings.
  */
 
+#include <stdlib.h>
+
+#include "char.h"
 #include "gc.h"
 #include "minim.h"
 #include "test.h"
@@ -35,6 +38,44 @@ static void test_invalid_utf8(void) {
     CHECK_CHARS(minim_string_from_cstr("\xc0\xaf"), 0xFFFD, 0xFFFD);        // overlong
     CHECK_CHARS(minim_string_from_cstr("\xed\xa0\x80"), 0xFFFD, 0xFFFD, 0xFFFD);  // surrogate
     CHECK_CHARS(minim_string_from_cstr("\xf4\x90\x80\x80"), 0xFFFD, 0xFFFD, 0xFFFD, 0xFFFD);  // > U+10FFFF
+}
+
+// Whether reading `s` with minim_utf8_getc gives exactly the `n` code points
+// in `expect`.
+static bool getc_gives(const char *s, const int32_t *expect, size_t n) {
+    FILE *f = input(s);
+    bool ok = true;
+    for (size_t i = 0; ok && i < n; i++)
+        ok = minim_utf8_getc(f) == expect[i];
+    ok = ok && minim_utf8_getc(f) == -1;
+    fclose(f);
+    return ok;
+}
+
+#define CHECK_GETC(s, ...)                                                 \
+    CHECK(getc_gives((s), (const int32_t[]){__VA_ARGS__},                  \
+                     sizeof((const int32_t[]){__VA_ARGS__}) / sizeof(int32_t)))
+
+// Reading from a file, a malformed sequence is one U+FFFD, taking its lead
+// and continuation bytes; the next byte that can't continue it starts anew.
+static void test_utf8_getc(void) {
+    CHECK_GETC("a\xc3\xa9\xe2\x82\xac\xf0\x9f\x98\x80", 'a', 0xE9, 0x20AC, 0x1F600);
+    CHECK_GETC("a\xc3", 'a', 0xFFFD);                       // truncated at the end
+    CHECK_GETC("\xe2\x82x", 0xFFFD, 'x');                  // truncated before a byte
+    CHECK_GETC("\x80x", 0xFFFD, 'x');                       // a lone continuation byte
+    CHECK_GETC("\xc0\xaf", 0xFFFD);                         // overlong
+    CHECK_GETC("\xed\xa0\x80", 0xFFFD);                     // surrogate
+    CHECK_GETC("\xf4\x90\x80\x80", 0xFFFD);                 // > U+10FFFF
+}
+
+// A string encodes as UTF-8, of every length.
+static void test_to_utf8(void) {
+    const char *cases[] = {"", "hello", "a\xc3\xa9\xe2\x82\xac\xf0\x9f\x98\x80"};
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        char *s = minim_string_to_utf8(minim_string_from_cstr(cases[i]));
+        CHECK(strcmp(s, cases[i]) == 0);
+        free(s);
+    }
 }
 
 static void test_ref_set(void) {
@@ -82,6 +123,8 @@ int main(void) {
     minim_init();
     test_from_cstr();
     test_invalid_utf8();
+    test_utf8_getc();
+    test_to_utf8();
     test_ref_set();
     test_footprint();
     test_gc();

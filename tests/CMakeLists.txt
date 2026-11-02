@@ -33,6 +33,7 @@ add_test(NAME boot COMMAND ${CMAKE_COMMAND}
     -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/prelude.boot
     -P ${CMAKE_CURRENT_SOURCE_DIR}/check_boot.cmake)
 
+minim_add_test(tag)
 minim_add_test(object)
 minim_add_test(heap INTERNAL)
 minim_add_test(gc INTERNAL)
@@ -42,7 +43,6 @@ minim_add_test(symbol)
 minim_add_test(print INTERNAL)
 minim_add_test(error)
 minim_add_test(read INTERNAL)
-minim_add_test(procedure)
 minim_add_test(eval INTERNAL)
 minim_add_test(prims)
 

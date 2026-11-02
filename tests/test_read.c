@@ -39,18 +39,14 @@ static bool raises(minim_obj (*read)(void *), void *arg, const char *s, const ch
         return false;
     }
 
-    const char *actual;
-    minim_obj irritant;
-    minim_last_error(&actual, &irritant);
-    if (strcmp(actual, msg) != 0) {
-        fprintf(stderr, "`%s` raised `%s`, expected `%s`\n", s, actual, msg);
-        return false;
-    }
-    return true;
+    if (last_error_is(msg))
+        return true;
+    fprintf(stderr, "  in `%s`\n", s);
+    return false;
 }
 
 // Whether reading `s`, from a file and from a string, raises the error `msg`.
-static bool fails_with(const char *s, const char *msg) {
+static bool read_fails_with(const char *s, const char *msg) {
     FILE *f = input(s);
     bool ok = raises(read_file, f, s, msg);
     fclose(f);
@@ -142,26 +138,26 @@ static void test_stream(void) {
 }
 
 static void test_errors(void) {
-    CHECK(fails_with(")", "unexpected )"));
-    CHECK(fails_with(".", "unexpected ."));
-    CHECK(fails_with("(1 . )", "bad dotted list"));
-    CHECK(fails_with("(. 1)", "bad dotted list"));
-    CHECK(fails_with("(1 . 2 3)", "bad dotted list"));
-    CHECK(fails_with("(1 2", "eof in list"));
-    CHECK(fails_with("#(1", "eof in vector"));
-    CHECK(fails_with("#(1 . 2)", "bad vector"));
-    CHECK(fails_with("\"abc", "eof in string"));
-    CHECK(fails_with("\"\\q\"", "bad string escape"));
-    CHECK(fails_with("\"\\xZZ;\"", "bad string escape"));
-    CHECK(fails_with("#q", "bad # syntax"));
-    CHECK(fails_with("#\\bogus", "bad char"));
-    CHECK(fails_with("'", "eof after quote"));
-    CHECK(fails_with("`", "eof after quasiquote"));
-    CHECK(fails_with(",", "eof after unquote"));
-    CHECK(fails_with(",@", "eof after unquote-splicing"));
-    CHECK(fails_with("(a ,)", "eof after unquote"));
-    CHECK(fails_with("1152921504606846976", "fixnum out of range"));
-    CHECK(fails_with("-1152921504606846977", "fixnum out of range"));
+    CHECK(read_fails_with(")", "unexpected )"));
+    CHECK(read_fails_with(".", "unexpected ."));
+    CHECK(read_fails_with("(1 . )", "bad dotted list"));
+    CHECK(read_fails_with("(. 1)", "bad dotted list"));
+    CHECK(read_fails_with("(1 . 2 3)", "bad dotted list"));
+    CHECK(read_fails_with("(1 2", "eof in list"));
+    CHECK(read_fails_with("#(1", "eof in vector"));
+    CHECK(read_fails_with("#(1 . 2)", "bad vector"));
+    CHECK(read_fails_with("\"abc", "eof in string"));
+    CHECK(read_fails_with("\"\\q\"", "bad string escape"));
+    CHECK(read_fails_with("\"\\xZZ;\"", "bad string escape"));
+    CHECK(read_fails_with("#q", "bad # syntax"));
+    CHECK(read_fails_with("#\\bogus", "bad char"));
+    CHECK(read_fails_with("'", "eof after quote"));
+    CHECK(read_fails_with("`", "eof after quasiquote"));
+    CHECK(read_fails_with(",", "eof after unquote"));
+    CHECK(read_fails_with(",@", "eof after unquote-splicing"));
+    CHECK(read_fails_with("(a ,)", "eof after unquote"));
+    CHECK(read_fails_with("1152921504606846976", "fixnum out of range"));
+    CHECK(read_fails_with("-1152921504606846977", "fixnum out of range"));
 }
 
 int main(void) {

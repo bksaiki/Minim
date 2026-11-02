@@ -124,6 +124,18 @@ Separate because it is the C half, self-contained.
 cmake --build --preset dev && ctest --preset dev -R 'test|tag|object|eval|prims|gc|print|string|error|read|stack' && ctest --preset stress -j 8 -R 'tag|object|eval|prims|gc|print|string'
 ```
 
+**Done.**
+- `test.h` also took `eval_file`, `evals_to`, and `fails_with` from
+  `test_eval.c`, so `test_prims.c` can evaluate the long `map`.
+  `test_read.c`'s own `fails_with`, for reading, is now `read_fails_with`.
+  `test_error.c` keeps calling `minim_last_error` itself: it tests it.
+- `count_predicates` covers every type, so both renamed files use it.
+- The record barrier is a fifth setter in `test_older_to_younger`, on a
+  one-field record; removing the barrier still fails it under ASan.
+- `minim_utf8_getc` takes a malformed sequence whole, as one U+FFFD, unlike
+  `minim_utf8_decode`, which takes one byte; the new test pins that.
+- Ran the C tests, dev and stress.
+
 ### Phase 2 - REPL tests: gaps, and moves from C
 
 - `tests/repl/numbers.scm` (new): arithmetic, comparison, overflow, from
