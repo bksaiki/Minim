@@ -25,6 +25,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 elseif(MSVC)
     add_compile_options(/W4)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)  # standard C functions MSVC calls unsafe
 endif()
 
 # The Scheme sources, in load order, and the boot file they expand into.
