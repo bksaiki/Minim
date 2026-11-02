@@ -1,7 +1,10 @@
 # Primitives
 
 Primitive procedures are C functions, bound as global symbol values by
-`minim_prims_init` (`src/prims.c`).  The evaluator calls them; see `eval.md`.
+`minim_prims_init` (`src/prims/prims.c`).  Each file of `src/prims/` holds
+an area's primitives and a table of them, `{name, fn, min, max}`, which
+`minim_prims_init` registers; `src/prims/common.h` has the table type and the
+shared argument checks.  The evaluator calls them; see `eval.md`.
 
 ## Primitives the evaluator applies
 

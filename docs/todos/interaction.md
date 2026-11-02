@@ -39,8 +39,9 @@ standard libraries, and 11 neither.
 Defining a name that is a system binding already gives it a fresh label, so
 user definitions can't replace internals; only references reach them.
 
-The REPL tests use 16 internals (records, aliases, `%boot-form`, handlers,
-winders, `%read-file`, `%expand`), in six files.
+The REPL tests use 13 internals (records, aliases, `%boot-form`,
+`%read-file`, `%expand`), in five files: `aliases`, `boot`, `expansion`,
+`files`, and `records`.
 
 ## Design
 
@@ -86,10 +87,11 @@ Chez's default and `--script`.
 
 ### Phase 1 - (minim) and (minim system)
 
-- `src/expander.scm`: `(minim)` as a system library; `(minim system)`, which
+- `scheme/standard.scm`: `(minim)` as a system library;
+  `scheme/libraries.scm`: `(minim system)`, which
   `%import!` handles by setting the environment's parent, refusing import
-  sets around it.  `src/prelude.boot` regenerated.
-- `tests/repl/`: the six files that use internals start with
+  sets around it.  `scheme/prelude.boot` regenerated.
+- `tests/repl/`: the five files that use internals start with
   `(import (minim system))`, a no-op for now.
 
 Separate because it adds the libraries and readies the tests, changing
@@ -100,14 +102,14 @@ Tests (`tests/repl/libraries.scm`): a library importing `(minim)` uses
 `(only (minim system) car)` is a syntax error.
 
 ```sh
-cmake --build --preset dev && ctest --preset dev -R 'libraries|boot|records|errors|expan|symbols|files'
+cmake --build --preset dev && ctest --preset dev -R 'libraries|boot|records|expan|aliases|files'
 ```
 
 ### Phase 2 - Hide internal names
 
-- `src/expander.scm`: the interaction environment without a parent, its
+- `scheme/expander.scm`: the interaction environment without a parent, its
   imports made at startup; resolution of a hidden system binding to a fresh
-  label.  `src/prelude.boot` regenerated.
+  label.  `scheme/prelude.boot` regenerated.
 - `bench/expand.scm` (new): a file of many small definitions and calls,
   for the cost of looking up names in the larger interaction environment.
 
@@ -120,13 +122,13 @@ every other REPL test unchanged.  Measure `bench/run.sh` against `main`,
 especially `expand` and startup.
 
 ```sh
-cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'libraries|boot|errors|records'
+cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'libraries|boot|exceptions|records'
 ```
 
 ### Phase 3 - Programs
 
 - `src/main.c`: `minim --program file.scm`; the usage message.
-- `src/expander.scm`: `%run-program`, which reads the file, requires a
+- `scheme/libraries.scm`: `%run-program`, which reads the file, requires a
   leading `import`, and expands the rest in a new environment of the library
   kind holding its imports.
 - `tests/scripts/`: `program.scm` runs with `--program`, and new ones.

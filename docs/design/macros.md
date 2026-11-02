@@ -1,13 +1,14 @@
 # Macros and expansion
 
-The expander, `%expand`, is Scheme code in `src/expander.scm`.  It rewrites
+The expander, `%expand`, is Scheme code in `scheme/expander.scm`.  It rewrites
 each top-level form into the core forms the evaluator knows: `quote`, `if`,
 `define`, `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
 `letrec-values` (`eval.md`).  The evaluator calls it on every top-level form
 once it is defined.  Startup loads it already expanded (`prelude.md`), so
-it is written in ordinary Scheme, using the derived forms that follow it in
-the file as macros, and the list library (`src/prelude.scm`), which loads
-before it.
+it is written in ordinary Scheme, using the derived forms
+(`scheme/derived.scm`) as macros and the procedures of the files that load
+before it.  Libraries are in `scheme/libraries.scm`, the standard ones in
+`scheme/standard.scm`.
 
 It is written in Scheme because expansion is list processing, which in C
 would need `MINIM_FRAME` around every allocation.  Each top-level form is

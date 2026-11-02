@@ -11,8 +11,22 @@ runs each again under GC stress.
 | script | `tests/scripts/<name>.scm` | run as `minim <file>`: the exit status too |
 
 `tests/run_minim.cmake` runs the REPL and script tests.  The `boot` test
-(`tests/check_boot.cmake`) fails if `src/prelude.boot` is out of date
+(`tests/check_boot.cmake`) fails if `scheme/prelude.boot` is out of date
 (`prelude.md`).
+
+Each behavior is tested once, where it fits:
+
+- A unit test covers one module of `src/`: `test_object` its constructors,
+  `test_tag` value tagging, the rest the module they name.  `test_eval`
+  covers the machine: frames, tail calls, deep recursion, long calls, and the
+  stacks after errors.  `tests/test.h` has the shared helpers: evaluating
+  source (`evals_to`, `fails_with`), checking the last error, building a
+  record type, and counting type predicates.
+- A REPL test covers a topic of the language, named for it: `numbers`,
+  `lists`, `core` (core forms, printing, the REPL's recovery from errors),
+  `exceptions`, `guard`, `top-level`, `libraries`, and so on.  Internals with
+  output worth reading keep their own files: `boot`, `expansion`, `aliases`,
+  and the record primitives at the end of `records`.
 
 ## GC stress
 
