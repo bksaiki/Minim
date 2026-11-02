@@ -161,9 +161,8 @@ cmake --preset release && cmake --build --preset release
 
 ### Does the larger interaction environment slow expansion?
 
-Its association list grows from the user's definitions to about 130
-imported names, walked for every identifier at the REPL and in loaded
-files.
-
-Provisionally an association list; Phase 2 measures it.  Reopen if
-`bench/expand.scm` slows by more than about 10%; then a hash table.
+Not any more: top-level bindings are on symbols' property lists (the
+bindings branch), so a lookup no longer depends on the environment's size.
+That change made `bench/expand.scm` about 5 times faster than an association
+list.  Re-measure Phase 2 on it; close this item if expansion stays within
+noise.

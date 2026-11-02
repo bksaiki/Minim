@@ -29,10 +29,12 @@ list holding an association list of `(identifier . meaning)`, so a body can
 add to its frame as it scans.  A variable's meaning is its fresh name
 (`(gensym "x")`, printing as `x`); a local macro's is its transformer.
 
-A *top-level environment* is `#(kind bindings parent own)`, after Chez
-Scheme: `bindings` maps identifiers to a *label*, the global whose value slot
-is the variable, or to a macro's transformer; `own` lists the labels its
-definitions made.  Expanded code names only labels, so the runtime knows no
+A *top-level environment* is `#(kind parent own names)`, after Chez Scheme.
+An identifier's binding in it is the identifier's property keyed by the
+environment (`(%getprop id top #f)`): a *label*, the global whose value slot
+is the variable, or a macro's transformer.  So a lookup reads one short list,
+whatever the environment's size.  `own` lists the labels its definitions
+made; `names`, the identifiers it binds.  Expanded code names only labels, so the runtime knows no
 environments and a global reference stays one load.
 
 | Kind | For | An identifier it doesn't bind |
