@@ -26,8 +26,11 @@ Not features, but needed as programs grow.
   (`docs/todos/compile.md`).
 - Done: top-level environments' bindings on symbols' property lists
   (`docs/design/macros.md`).
-- A weak symbol table, so unused symbols are collected, as Chez does; it
-  would also drop properties of environments no longer in use.
+- A weak symbol table, so unused symbols are collected, as Chez does: those
+  with no references, value, or properties.
+- Ephemerons, entries whose key is held weakly, so a property keyed by an
+  environment no longer in use is dropped.  A weak symbol table wouldn't:
+  the symbol stays alive, and the entry holds the environment.
 
 ## Libraries
 
