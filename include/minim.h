@@ -81,7 +81,7 @@ enum {
 /** Object sizes in bytes, before rounding to the allocation unit. */
 enum {
     MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
-    MINIM_SYMBOL_SIZE = 2 * sizeof(minim_obj),
+    MINIM_SYMBOL_SIZE = 3 * sizeof(minim_obj),
     MINIM_CLOSURE_SIZE = 2 * sizeof(minim_obj),
     MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
     MINIM_ERROR_OBJECT_SIZE = 4 * sizeof(minim_obj),
@@ -496,6 +496,12 @@ static inline void minim_set_symbol_value(minim_obj sym, minim_obj x) {
     ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[1] = x;
     minim_gc_write(sym, x);
 }
+
+/** The property `key` of the symbol `sym`, keys compared by eq?, or `fallback`. */
+minim_obj minim_getprop(minim_obj sym, minim_obj key, minim_obj fallback);
+
+/** Sets the property `key` of the symbol `sym` to `value`. */
+void minim_putprop(minim_obj sym, minim_obj key, minim_obj value);
 
 // Procedures
 

@@ -122,7 +122,47 @@ minim_obj minim_make_uninterned(minim_obj str) {
     minim_obj *p = minim_heap_alloc(MINIM_SYMBOL_SIZE);
     p[0] = name;
     p[1] = MINIM_UNBOUND;
+    p[2] = MINIM_NIL;
     MINIM_RETURN(((minim_obj)p) | MINIM_TAG_SYMBOL);
+}
+
+// The property list of `sym`: an association list of (key . value).
+static minim_obj plist(minim_obj sym) {
+    return ((const minim_obj *)(sym - MINIM_TAG_SYMBOL))[2];
+}
+
+static void set_plist(minim_obj sym, minim_obj lst) {
+    ((minim_obj *)(sym - MINIM_TAG_SYMBOL))[2] = lst;
+    minim_gc_write(sym, lst);
+}
+
+// The (key . value) entry of `key` on the property list of `sym`, or '().
+static minim_obj prop_entry(minim_obj sym, minim_obj key) {
+    for (minim_obj l = plist(sym); !minim_is_null(l); l = minim_cdr(l)) {
+        if (minim_car(minim_car(l)) == key)
+            return minim_car(l);
+    }
+    return MINIM_NIL;
+}
+
+minim_obj minim_getprop(minim_obj sym, minim_obj key, minim_obj fallback) {
+    assert(minim_is_symbol(sym));
+    minim_obj e = prop_entry(sym, key);
+    return minim_is_null(e) ? fallback : minim_cdr(e);
+}
+
+void minim_putprop(minim_obj sym, minim_obj key, minim_obj value) {
+    assert(minim_is_symbol(sym));
+    MINIM_FRAME(&sym, &key, &value);
+    minim_obj e = prop_entry(sym, key);
+    if (minim_is_null(e)) {
+        e = minim_cons(key, value);
+        e = minim_cons(e, plist(sym));
+        set_plist(sym, e);
+    } else {
+        minim_set_cdr(e, value);
+    }
+    MINIM_RETURN_VOID;
 }
 
 minim_obj minim_intern_cstr(const char *s) {

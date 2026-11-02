@@ -115,6 +115,67 @@ static void test_uninterned(void) {
     MINIM_RETURN_VOID;
 }
 
+static void test_props(void) {
+    minim_obj sym = minim_intern_cstr("p");
+    minim_obj k = MINIM_NIL;
+    minim_obj v = MINIM_NIL;
+    MINIM_FRAME(&sym, &k, &v);
+    k = minim_intern_cstr("k");
+    v = minim_make_vector(1, MINIM_NIL);
+    CHECK_EQ(minim_getprop(sym, k, MINIM_FALSE), MINIM_FALSE);
+
+    minim_putprop(sym, k, minim_fixnum(1));
+    minim_putprop(sym, v, minim_fixnum(2));
+    CHECK_EQ(minim_getprop(sym, k, MINIM_FALSE), minim_fixnum(1));
+    CHECK_EQ(minim_getprop(sym, v, MINIM_FALSE), minim_fixnum(2));
+
+    minim_putprop(sym, v, minim_fixnum(3));  // replaces
+    CHECK_EQ(minim_getprop(sym, v, MINIM_FALSE), minim_fixnum(3));
+    CHECK_EQ(minim_getprop(sym, k, MINIM_FALSE), minim_fixnum(1));
+
+    // Keys compare by eq?: an equal vector isn't the key.
+    v = minim_make_vector(1, MINIM_NIL);
+    CHECK_EQ(minim_getprop(sym, v, MINIM_FALSE), MINIM_FALSE);
+    MINIM_RETURN_VOID;
+}
+
+// Properties belong to one symbol, not to its name.
+static void test_props_isolated(void) {
+    minim_obj a = minim_intern_cstr("q");
+    minim_obj u = MINIM_NIL;
+    minim_obj b = MINIM_NIL;
+    MINIM_FRAME(&a, &u, &b);
+    u = minim_make_uninterned(minim_symbol_name(a));
+    b = minim_intern_cstr("r");
+    minim_putprop(a, a, minim_fixnum(1));
+    CHECK_EQ(minim_getprop(u, a, MINIM_FALSE), MINIM_FALSE);
+    CHECK_EQ(minim_getprop(b, a, MINIM_FALSE), MINIM_FALSE);
+    minim_putprop(u, a, minim_fixnum(2));
+    CHECK_EQ(minim_getprop(a, a, MINIM_FALSE), minim_fixnum(1));
+    MINIM_RETURN_VOID;
+}
+
+static void test_props_gc(void) {
+    minim_obj sym = minim_intern_cstr("pg");
+    minim_obj k = MINIM_NIL;
+    minim_obj v = MINIM_NIL;
+    MINIM_FRAME(&sym, &k, &v);
+    k = minim_make_vector(1, MINIM_NIL);
+    v = minim_cons(minim_fixnum(1), MINIM_NIL);
+    minim_putprop(sym, k, v);
+    minim_gc_collect_major();
+    CHECK_EQ(minim_getprop(sym, k, MINIM_FALSE), v);
+
+    // An old symbol's young property (the write barrier).
+    k = minim_intern_cstr("young");
+    v = minim_cons(minim_fixnum(2), MINIM_NIL);
+    minim_putprop(sym, k, v);
+    minim_gc_collect();
+    CHECK_EQ(minim_getprop(sym, k, MINIM_FALSE), v);
+    CHECK_EQ(minim_car(v), minim_fixnum(2));
+    MINIM_RETURN_VOID;
+}
+
 int main(void) {
     minim_init();
     test_same_name();
@@ -124,6 +185,9 @@ int main(void) {
     test_strong();
     test_growth();
     test_uninterned();
+    test_props();
+    test_props_isolated();
+    test_props_gc();
     minim_shutdown();
     return test_result();
 }

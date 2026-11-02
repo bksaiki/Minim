@@ -24,7 +24,10 @@ Not features, but needed as programs grow.
 - Lexical addresses: a pass after expansion resolves each local variable to
   (frames up, slot), so a lookup is a few loads instead of a search by name
   (`docs/todos/compile.md`).
-- A weak symbol table, so unused symbols are collected, as Chez does.
+- Done: top-level environments' bindings on symbols' property lists
+  (`docs/design/macros.md`).
+- A weak symbol table, so unused symbols are collected, as Chez does; it
+  would also drop properties of environments no longer in use.
 
 ## Libraries
 
@@ -41,8 +44,7 @@ Not in R7RS-small; in R7RS-large and SRFIs.
 
 - Hashtables: `eq?`-based and `equal?`-based (`equal-hash` exists).  `eq?`
   hashing must survive the moving collector, by rehashing after a collection
-  or by hashing a stable per-object value.  They would also hold an
-  environment's bindings, should association lists grow too slow.
+  or by hashing a stable per-object value.
 - Boxes.
 
 ## Tooling

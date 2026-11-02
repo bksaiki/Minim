@@ -179,7 +179,9 @@ static size_t typed_size(minim_obj header) {
 
 // Size of the object at `p` with the tag `tag`.
 static size_t object_size(const minim_obj *p, minim_obj tag) {
-    return tag == MINIM_TAG_TYPED ? typed_size(p[0]) : 2 * sizeof(minim_obj);
+    if (tag == MINIM_TAG_TYPED)
+        return typed_size(p[0]);
+    return tag == MINIM_TAG_SYMBOL ? MINIM_SYMBOL_SIZE : 2 * sizeof(minim_obj);
 }
 
 // Copies the object `x` refers to into the target generation, unless it is
@@ -225,7 +227,7 @@ static size_t pointer_fields(minim_obj x, minim_obj **fields) {
     minim_obj *p = (minim_obj *)(x - minim_tag(x));
     if (minim_tag(x) != MINIM_TAG_TYPED) {
         *fields = p;
-        return 2;
+        return object_size(p, minim_tag(x)) / sizeof(minim_obj);
     }
     switch (minim_header_type(p[0])) {
     case MINIM_TYPE_VECTOR:
@@ -265,8 +267,10 @@ typedef struct cursor {
 // Scans `s`, the space for `kind`, from `c` to its end; returns whether
 // anything was scanned.
 static bool scan(minim_space *s, size_t kind, cursor *c) {
-    // Pairs, symbols, and closures all have two pointer fields.
-    minim_obj tag = kind == MINIM_KIND_TYPED ? MINIM_TAG_TYPED : MINIM_TAG_PAIR;
+    // The kind's tag; closures, in the pair space, have a pair's size and fields.
+    minim_obj tag = kind == MINIM_KIND_TYPED    ? MINIM_TAG_TYPED
+                  : kind == MINIM_KIND_SYMBOL ? MINIM_TAG_SYMBOL
+                                              : MINIM_TAG_PAIR;
     if (c->chunk == NULL) {
         if (s->first == NULL)
             return false;

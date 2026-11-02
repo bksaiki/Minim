@@ -13,7 +13,7 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 |---|---|---|
 | `000` | fixnum | 61-bit signed integer, `n << 3` |
 | `001` | pair | `[car, cdr]` |
-| `011` | symbol | `[name, value]` |
+| `011` | symbol | `[name, value, plist]` |
 | `101` | closure | `[code, env]` |
 | `110` | immediate | `#f`, `#t`, `'()`, void, eof, unbound, chars, forward marker |
 | `111` | typed object | first word is a header |
@@ -27,7 +27,7 @@ a forwarding record.
 
 ```
 pair     [ car | cdr ]                        16 B
-symbol   [ name : string | value ]            16 B
+symbol   [ name : string | value | plist ]    24 B, rounded up to 32
 vector   [ header | e0 | e1 | ... ]           8 + 8n B, rounded up to 16
 string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
 closure  [ code : (params . body) | env ]     16 B
@@ -113,16 +113,17 @@ Each collection is Cheney-style:
 2. Scans the remembered objects (below) that may point into the collected
    generations.
 3. Scans what was copied, from where the target's spaces ended before the
-   collection, until no scan cursor moves.  Pairs, symbols, and closures are
-   two traced words; a typed object is traced by its header (vector elements
+   collection, until no scan cursor moves.  Pairs and closures are two traced
+   words, symbols three; a typed object is traced by its header (vector elements
    are, string chars and a primitive's C function pointer aren't).
 4. Releases the from-space chunks.
 
 **Write barrier.**  A collection must find every older object that points
 into the generations it collects.  Every pointer write into an existing
-object goes through `minim_set_car`, `minim_set_cdr`, `minim_vector_set`, or
-`minim_set_symbol_value`, which end with the inline `minim_gc_write(obj, x)`:
-if `x` is a heap object and `obj`'s chunk is old, `obj` is remembered.
+object goes through `minim_set_car`, `minim_set_cdr`, `minim_vector_set`,
+`minim_set_symbol_value`, or `minim_putprop`, which end with the inline
+`minim_gc_write(obj, x)`: if `x` is a heap object and `obj`'s chunk is old,
+`obj` is remembered.
 
 Each chunk header has a byte per 16 bytes: for a remembered object starting
 there, 1 + the youngest generation it may point to, otherwise 0, so an
@@ -191,7 +192,7 @@ tests are in `testing.md`.
 - **Symbol table.**  A vector in the heap, registered as a global.  It hashes
   by name, so moving symbols doesn't invalidate it.  It is strong: symbols are
   never freed, unlike Chez, which drops symbols with no references, value, or
-  property list.
+  property list.  So an environment's properties (`macros.md`) outlive it.
 
 ## Not included
 

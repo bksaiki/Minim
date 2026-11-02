@@ -8,16 +8,17 @@
 (define (%bad-syntax x)
   (%syntax-error "bad syntax" (list x)))
 
-;; A top-level environment is `#(kind bindings parent own)`.  `bindings` is an
-;; association list of (identifier . binding), a binding being a label, the
-;; global whose value slot is the variable, or a macro's transformer.  An
-;; identifier it doesn't bind means what it does in `parent`, or else, with no
-;; parent, is its own label, or in a library a fresh one, never bound.  `own`
-;; lists the labels its definitions made.  `kind` is `system`, for the prelude
-;; and expander; `interaction`, for the REPL and files, whose parent is the
-;; system's; or `library`, with no parent.
+;; A top-level environment is `#(kind parent own names)`.  The binding of an
+;; identifier in it is the identifier's property keyed by the environment: a
+;; label, the global whose value slot is the variable, or a macro's
+;; transformer.  `names` lists the identifiers it binds.  An identifier it
+;; doesn't bind means what it does in `parent`, or else, with no parent, is its
+;; own label, or in a library a fresh one, never bound.  `own` lists the labels
+;; its definitions made.  `kind` is `system`, for the prelude and expander;
+;; `interaction`, for the REPL and files, whose parent is the system's; or
+;; `library`, with no parent.
 (define (%make-top kind parent)
-  (vector kind '() parent '()))
+  (vector kind parent '() '()))
 
 (define %system-env (%make-top 'system #f))
 (define %interaction-env (%make-top 'interaction %system-env))
@@ -88,17 +89,15 @@
 ;; The binding of `id` in the top-level environment `top` or its parents, or #f.
 (define (%top-lookup id top)
   (and top
-       (cond ((assq id (vector-ref top 1)) => cdr)
-             (else (%top-lookup id (vector-ref top 2))))))
+       (or (%getprop id top #f)
+           (%top-lookup id (vector-ref top 1)))))
 
 ;; Binds `id` to `binding` in the top-level environment `top`, replacing any
-;; binding it had there.  In the system environment, a name bound to itself
-;; isn't recorded: that is the default.
+;; binding it had there.
 (define (%top-bind! top id binding)
-  (let ((rest (filter (lambda (b) (not (eq? (car b) id))) (vector-ref top 1))))
-    (vector-set! top 1 (if (and (eq? (vector-ref top 0) 'system) (eq? binding id))
-                           rest
-                           (cons (cons id binding) rest)))))
+  (unless (%getprop id top #f)
+    (vector-set! top 3 (cons id (vector-ref top 3))))
+  (%putprop! id top binding))
 
 ;; What `id` means in `env`: its local binding; else its top-level binding;
 ;; else, for an alias, its original's meaning in the alias's environment; else
@@ -455,7 +454,7 @@
 (define (%own-label? top label)
   (if (eq? (vector-ref top 0) 'system)
       (%bound? label)
-      (memq label (vector-ref top 3))))
+      (memq label (vector-ref top 2))))
 
 ;; Whether the binding `b`, in the top-level environment `top`, is imported:
 ;; a system binding, outside the system's environment.
@@ -479,7 +478,7 @@
 ;; Binds `id` to `label`, a label of its own, in `top`; returns `label`.
 (define (%top-own! top id label)
   (%top-bind! top id label)
-  (vector-set! top 3 (cons label (vector-ref top 3)))
+  (vector-set! top 2 (cons label (vector-ref top 2)))
   label)
 
 (define (%expand-define form top)

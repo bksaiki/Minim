@@ -1,2 +1,4 @@
 error: gensym: not a string: x
 error: symbol->string: not a symbol: "abc"
+error: %getprop: not a symbol: "p"
+error: %putprop!: not a symbol: 1
