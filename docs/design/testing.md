@@ -30,3 +30,11 @@ none.
   a stale pointer into a collected chunk.
 - Slow tests do less work when `gc_stressed()`; tests that rely on when
   collections happen set `use_default_gc_config()` (both in `tests/test.h`).
+
+## Benchmarks
+
+`bench/run.sh A B [runs]` runs each `bench/*.scm` with `A/minim` and
+`B/minim` alternately and prints each one's median and minimum seconds;
+`empty.scm` measures startup.  Build both with
+`-DCMAKE_C_FLAGS="-falign-functions=64 -falign-loops=64 -falign-jumps=64"`:
+otherwise code placement alone moves results by several percent.

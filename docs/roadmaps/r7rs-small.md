@@ -102,9 +102,13 @@ libraries Minim can't run a portable program.
   expander no longer share the user's top level: redefining `car` or `map`
   stops breaking expansion (`docs/design/macros.md`, Limitations).
 
-Depends on 3: identifiers and environments are the expander's.  The main
-design question is how global bindings are represented, since today they are
-symbol value slots, one per symbol.
+Depends on 3: identifiers and environments are the expander's.  Global
+bindings stay symbol value slots, after Chez Scheme (`s/syntax.ss`): an
+environment maps each name to a *label*, a symbol whose value slot is the
+variable's location, and the expander rewrites references to labels.  A
+library's definitions get fresh labels, and an import maps a name to the
+exporting library's label, so the runtime sees only symbols and a global
+reference stays one load.  Today every name is its own label.
 
 ### 6. Ports and I/O (M)
 
@@ -163,14 +167,11 @@ Not features, but needed as programs grow:
   boot file; the evaluator binds definitions only globally.
 - Done: expansion into the `-values` binding forms, so `let` allocates no
   closure and each frame's variables are known before it runs.
-- Environments: a local frame is now created only by a procedure call,
-  `let-values`, or `letrec-values`, and its variables are known when it is
-  created, so every environment is either the global one or a chain of
-  fixed-size frames.  Frames can be vectors, and a pass after expansion can
-  resolve each local variable to a lexical address (frames up, slot), so a
-  lookup is a few loads instead of a search by name.  `src/env.h` already
-  hides the representation.
-- Benchmarks, so performance changes are measured.
+- Done: local frames are vectors, one allocation each, looked up by name
+  (`docs/design/eval.md`).  Next, a pass after expansion can resolve each
+  local variable to a lexical address (frames up, slot), so a lookup is a
+  few loads instead of a search by name (`docs/todos/compile.md`).
+- Done: benchmarks, in `bench/` (`docs/design/testing.md`).
 
 Can interleave with any milestone.
 

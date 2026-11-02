@@ -96,8 +96,14 @@ without `%expand`; startup loads the prelude with it (`prelude.md`).
 
 - `'()` is the global environment, which uses symbol value slots;
   `MINIM_UNBOUND` means unbound.
-- A local environment is a pair `(bindings . parent)` whose bindings are an
-  association list.
+- A local environment is a frame, a vector `#(parent name ... value ...)`:
+  its n variables' names, then their values, n being (length - 1) / 2.  A
+  call fills one from the arguments, a rest parameter's slot holding the
+  list of the remaining ones.  A `let-values` frame is made once, its values
+  `MINIM_UNBOUND` until each clause's values arrive; reading or setting one
+  then raises `unbound variable`.
+- Lookup scans each frame's names, innermost first, then the symbol's value.
+  Definitions bind only globals, so a frame never grows.
 
 ## Special forms
 
