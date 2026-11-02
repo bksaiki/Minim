@@ -227,7 +227,7 @@ static size_t pointer_fields(minim_obj x, minim_obj **fields) {
     minim_obj *p = (minim_obj *)(x - minim_tag(x));
     if (minim_tag(x) != MINIM_TAG_TYPED) {
         *fields = p;
-        return minim_tag(x) == MINIM_TAG_SYMBOL ? 3 : 2;  // a symbol's property list
+        return object_size(p, minim_tag(x)) / sizeof(minim_obj);
     }
     switch (minim_header_type(p[0])) {
     case MINIM_TYPE_VECTOR:

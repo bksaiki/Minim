@@ -174,13 +174,6 @@ static minim_obj prim_putprop(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
-static minim_obj prim_remprop(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    check(minim_is_symbol(args[0]), "%remprop!: not a symbol", args[0]);
-    minim_remprop(args[0], args[1]);
-    return MINIM_VOID;
-}
-
 const minim_prim_def minim_string_prims[] = {
     {"symbol?", prim_is_symbol, 1, 1},
     {"string-length", prim_string_length, 1, 1},
@@ -201,6 +194,5 @@ const minim_prim_def minim_string_prims[] = {
     {"string->symbol", prim_string_to_symbol, 1, 1},
     {"%getprop", prim_getprop, 3, 3},
     {"%putprop!", prim_putprop, 3, 3},
-    {"%remprop!", prim_remprop, 2, 2},
     {NULL, NULL, 0, 0},
 };

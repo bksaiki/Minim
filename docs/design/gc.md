@@ -121,9 +121,9 @@ Each collection is Cheney-style:
 **Write barrier.**  A collection must find every older object that points
 into the generations it collects.  Every pointer write into an existing
 object goes through `minim_set_car`, `minim_set_cdr`, `minim_vector_set`,
-`minim_set_symbol_value`, `minim_putprop`, or `minim_remprop`, which end with
-the inline `minim_gc_write(obj, x)`: if `x` is a heap object and `obj`'s chunk
-is old, `obj` is remembered.
+`minim_set_symbol_value`, or `minim_putprop`, which end with the inline
+`minim_gc_write(obj, x)`: if `x` is a heap object and `obj`'s chunk is old,
+`obj` is remembered.
 
 Each chunk header has a byte per 16 bytes: for a remembered object starting
 there, 1 + the youngest generation it may point to, otherwise 0, so an

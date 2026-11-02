@@ -503,9 +503,6 @@ minim_obj minim_getprop(minim_obj sym, minim_obj key, minim_obj fallback);
 /** Sets the property `key` of the symbol `sym` to `value`. */
 void minim_putprop(minim_obj sym, minim_obj key, minim_obj value);
 
-/** Removes the property `key` of the symbol `sym`, if it has one. */
-void minim_remprop(minim_obj sym, minim_obj key);
-
 // Procedures
 
 /** New closure over `code`, a `(params . body)` pair, in `env`. */

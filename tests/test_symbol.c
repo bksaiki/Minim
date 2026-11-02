@@ -131,15 +131,9 @@ static void test_props(void) {
 
     minim_putprop(sym, v, minim_fixnum(3));  // replaces
     CHECK_EQ(minim_getprop(sym, v, MINIM_FALSE), minim_fixnum(3));
-    minim_remprop(sym, v);
-    CHECK_EQ(minim_getprop(sym, v, MINIM_FALSE), MINIM_FALSE);
     CHECK_EQ(minim_getprop(sym, k, MINIM_FALSE), minim_fixnum(1));
-    minim_remprop(sym, v);  // absent
-    minim_remprop(sym, k);
-    CHECK_EQ(minim_getprop(sym, k, MINIM_FALSE), MINIM_FALSE);
 
     // Keys compare by eq?: an equal vector isn't the key.
-    minim_putprop(sym, v, minim_fixnum(4));
     v = minim_make_vector(1, MINIM_NIL);
     CHECK_EQ(minim_getprop(sym, v, MINIM_FALSE), MINIM_FALSE);
     MINIM_RETURN_VOID;

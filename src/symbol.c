@@ -165,20 +165,6 @@ void minim_putprop(minim_obj sym, minim_obj key, minim_obj value) {
     MINIM_RETURN_VOID;
 }
 
-void minim_remprop(minim_obj sym, minim_obj key) {
-    assert(minim_is_symbol(sym));
-    minim_obj prev = MINIM_NIL;
-    for (minim_obj l = plist(sym); !minim_is_null(l); prev = l, l = minim_cdr(l)) {
-        if (minim_car(minim_car(l)) != key)
-            continue;
-        if (minim_is_null(prev))
-            set_plist(sym, minim_cdr(l));
-        else
-            minim_set_cdr(prev, minim_cdr(l));
-        return;
-    }
-}
-
 minim_obj minim_intern_cstr(const char *s) {
     return minim_intern(minim_string_from_cstr(s));
 }
