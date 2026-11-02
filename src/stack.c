@@ -68,7 +68,7 @@ void minim_stack_reload_below(size_t h) {
     minim_obj seg = s->below;
     size_t start = seg_start(seg);
     assert(start <= h);
-    (void)h;
+    MINIM_UNUSED(h);
     // Only the values below the buffer: any a `minim_stack_include` copied up
     // are in use from the buffer.
     s->len = s->start - start;

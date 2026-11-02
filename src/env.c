@@ -74,12 +74,13 @@ minim_obj minim_env_extend(minim_obj params, minim_obj *args, size_t n, minim_ob
         for (size_t j = n; j > m; j--)
             rest = minim_cons(args[j - 1], rest);
     }
-    size_t count = formals_count(params);
-    // Every slot starts as the rest list; the names and fixed values replace it.
-    minim_obj frame = make_frame(count, rest, parent);
+    size_t count = m + minim_is_symbol(tail);
+    minim_obj frame = make_frame(count, MINIM_NIL, parent);
     set_names(frame, params, 0);
     for (size_t j = 0; j < m; j++)
         minim_vector_set(frame, FRAME_NAMES + count + j, args[j]);
+    if (minim_is_symbol(tail))
+        minim_vector_set(frame, FRAME_NAMES + count + m, rest);
     MINIM_RETURN(frame);
 }
 

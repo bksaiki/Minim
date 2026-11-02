@@ -255,7 +255,7 @@ static void test_value_stack_restored(void) {
 
 // Collects, then returns its second argument.
 static minim_obj collect_then_second(minim_obj *args, size_t n) {
-    (void)n;
+    MINIM_UNUSED(n);
     minim_gc_collect_major();
     return args[1];
 }
@@ -288,8 +288,7 @@ static void test_map_long_list(void) {
 }
 
 static minim_obj stack_height(minim_obj *args, size_t n) {
-    (void)args;
-    (void)n;
+    MINIM_UNUSED(args, n);
     return minim_fixnum((intptr_t)minim_stack_height());
 }
 

@@ -23,6 +23,12 @@ static_assert(sizeof(void *) == 8, "Minim requires 64-bit pointers");
 static_assert(sizeof(minim_obj) == 8, "minim_obj must be 64 bits");
 static_assert((-8 >> 3) == -1, "Minim requires arithmetic right shift");
 
+/** Marks variables as deliberately unused, without evaluating them. */
+#define MINIM_UNUSED(...) ((void)sizeof(minim_unused_(0, __VA_ARGS__)))
+
+/** Never defined: MINIM_UNUSED only names it inside `sizeof`. */
+int minim_unused_(int, ...);
+
 /** Primary tags: the low 3 bits of a minim_obj. */
 enum {
     MINIM_TAG_BITS = 3,
