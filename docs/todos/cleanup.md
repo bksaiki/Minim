@@ -88,13 +88,16 @@ Internals keep REPL tests where a golden output suits them (`boot`,
 
 ```
 include/minim.h        the public API
-src/                   the C runtime, one file per module
+src/                   the C runtime, one file per module, and its headers
 src/prims/             the primitives, one file per area, each registering its own
-src/scheme/            the Scheme sources, in load order, and prelude.boot
+scheme/                the Scheme sources, in load order, and prelude.boot
 tools/                 boot_gen.c and boot.scm, which write prelude.boot
 ```
 
-`src/scheme/`, in load order: `lists.scm`, `control.scm` (continuations,
+`include/` and `src/` are a conventional C project; the Scheme sources are
+their peer, as Chez Scheme has `c/` and `s/`.
+
+`scheme/`, in load order: `lists.scm`, `control.scm` (continuations,
 exceptions, `guard`'s helper), `records.scm`, `expander.scm`,
 `libraries.scm`, `derived.scm`, `standard.scm` (the standard libraries).
 Concatenated in that order they are today's two files, so the boot file is
@@ -210,7 +213,7 @@ cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest 
 
 ### Phase 4 - Scheme sources
 
-- `src/scheme/` with the seven files above, from `src/prelude.scm` and
+- `scheme/` with the seven files above, from `src/prelude.scm` and
   `src/expander.scm`, each with an accurate header; `src/prelude.boot` moved
   there.
 - `tools/boot_gen.c` (was `src/boot.c`) and `tools/boot.scm`.
@@ -221,8 +224,23 @@ Separate because it moves files only: the regenerated boot file must equal
 the old one.
 
 ```sh
-cmake --preset dev && cmake --build --preset dev --target boot && git diff --exit-code -- src/scheme/prelude.boot && ctest --preset dev -R 'boot|expan|libraries'
+cmake --preset dev && cmake --build --preset dev --target boot && git diff --exit-code -- scheme/prelude.boot && ctest --preset dev -R 'boot|expan|libraries'
 ```
+
+**Done.**
+- `CMakeLists.txt` names the Scheme sources once, in load order
+  (`MINIM_SCHEME_SOURCES`), with the boot file (`MINIM_BOOT`); the `boot`
+  target and the `boot` test both take them, and `check_boot.cmake` takes the
+  list joined with `|`.
+- `tools/` was chosen over `src/boot/`, and `scheme/` over `src/scheme/` and
+  a `src/c/`: `include/` and `src/` stay a conventional C project, holding
+  only what is compiled into Minim; `scheme/` holds only what the boot file
+  contains; `tools/` what writes it.
+- Each file starts with what it holds; the section comments that became
+  headers are gone.  The regenerated boot file equals the committed one, byte
+  for byte.
+- Ran `ctest -R 'boot|expan|libraries|bodies|quasiquote|derived|records|
+  exceptions|guard|top-level'`.
 
 ### Phase 5 - Primitives by area
 
@@ -244,7 +262,7 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ### After the last phase
 
 Sync the docs: `testing.md` (the test layout), `prelude.md` and `macros.md`
-(the Scheme files and `tools/`), `primitives.md` (`src/prims/`), `README.md`
+(the Scheme files and `tools/`), `primitives.md` (`src/prims/`), every doc citing a moved path, `README.md`
 of `docs/design` if a document's scope changed; the roadmap
 (`beyond-r7rs.md`: the reorg done); and the parked plans
 (`docs/todos/compile.md`, `docs/todos/interaction.md`) for the new paths and

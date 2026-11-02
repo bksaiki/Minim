@@ -1,15 +1,17 @@
-# Fails unless BOOT_GEN, run on SRC/prelude.scm and SRC/expander.scm, writes
-# SRC/prelude.boot.
-# Usage: cmake -DBOOT_GEN=... -DSRC=... -DOUTPUT=... -P check_boot.cmake
+# Fails unless BOOT_GEN, run with BOOT_SCM on SOURCES (separated by |), writes
+# EXPECTED.
+# Usage: cmake -DBOOT_GEN=... -DBOOT_SCM=... -DSOURCES=... -DEXPECTED=... -DOUTPUT=...
+#        -P check_boot.cmake
+string(REPLACE "|" ";" sources "${SOURCES}")
 execute_process(
-    COMMAND ${BOOT_GEN} ${SRC}/boot.scm ${OUTPUT} ${SRC}/prelude.scm ${SRC}/expander.scm
+    COMMAND ${BOOT_GEN} ${BOOT_SCM} ${OUTPUT} ${sources}
     RESULT_VARIABLE status)
 if(NOT status EQUAL 0)
     message(FATAL_ERROR "boot_gen failed")
 endif()
 execute_process(
-    COMMAND ${CMAKE_COMMAND} -E compare_files ${OUTPUT} ${SRC}/prelude.boot
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${OUTPUT} ${EXPECTED}
     RESULT_VARIABLE status)
 if(NOT status EQUAL 0)
-    message(FATAL_ERROR "src/prelude.boot is out of date; build the `boot` target")
+    message(FATAL_ERROR "${EXPECTED} is out of date; build the `boot` target")
 endif()

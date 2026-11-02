@@ -1,4 +1,5 @@
-;;; Expands the prelude's top-level forms for src/prelude.boot (src/boot.c).
+;;; Expands the Scheme sources' top-level forms for scheme/prelude.boot
+;;; (tools/boot_gen.c).
 
 ;; The core forms the top-level form `x` expands to, in order, each fresh name
 ;; replaced by an interned one unique within `x`.

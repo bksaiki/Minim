@@ -1,7 +1,7 @@
 /**
  * @file
  * Writes the top-level forms of the prelude's sources, in order, expanded into
- * core forms, one per line, for src/prelude.boot.
+ * core forms, one per line, for scheme/prelude.boot.
  * Usage: boot_gen boot.scm out source...
  */
 
