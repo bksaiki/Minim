@@ -3,7 +3,7 @@
  * Equivalence, hashing, and booleans.
  */
 
-#include "common.h"
+#include "prims.h"
 
 #include <stdlib.h>
 

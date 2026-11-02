@@ -26,13 +26,16 @@ Not features, but needed as programs grow.
   (`docs/todos/compile.md`).
 - Done: top-level environments' bindings on symbols' property lists
   (`docs/design/macros.md`).
-- A weak symbol table, so unused symbols are collected, as Chez does; it
-  would also drop properties of environments no longer in use.
+- A weak symbol table, so unused symbols are collected, as Chez does: those
+  with no references, value, or properties.
+- Ephemerons, entries whose key is held weakly, so a property keyed by an
+  environment no longer in use is dropped.  A weak symbol table wouldn't:
+  the symbol stays alive, and the entry holds the environment.
 
 ## Libraries
 
 - Done: the Scheme sources in `scheme/`, one file per part; the boot
-  generator in `tools/`; the primitives in `src/prims/`, one file per area
+  generator in `tools/`; the primitives in `src/`, one file per area
   (`docs/design/prelude.md`, `docs/design/primitives.md`).
 - The standard libraries written as `.sld` files, each re-exporting from a
   core library of the system's bindings, and expanded into the boot file, so

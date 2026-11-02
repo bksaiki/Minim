@@ -4,8 +4,6 @@
  * winders and handlers.
  */
 
-#include "common.h"
-
 #include <stdlib.h>
 
 #include "gc.h"

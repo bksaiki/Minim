@@ -3,7 +3,7 @@
  * Vectors.
  */
 
-#include "common.h"
+#include "prims.h"
 
 static minim_obj prim_vector(minim_obj *args, size_t n) {
     minim_obj v = minim_make_vector(n, MINIM_NIL);

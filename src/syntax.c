@@ -3,7 +3,7 @@
  * The expander's support: gensym, aliases, and `%bound?`.
  */
 
-#include "common.h"
+#include "prims.h"
 
 #include <inttypes.h>
 

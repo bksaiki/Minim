@@ -3,7 +3,7 @@
  * Pairs and lists.
  */
 
-#include "common.h"
+#include "prims.h"
 
 static minim_obj prim_cons(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
