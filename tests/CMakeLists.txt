@@ -118,6 +118,7 @@ minim_add_repl_test(errors)
 minim_add_repl_test(equality)
 minim_add_repl_test(eval)
 minim_add_repl_test(expand)
+minim_add_repl_test(files)
 minim_add_repl_test(expander)
 minim_add_repl_test(expansion)
 minim_add_repl_test(gc)
@@ -147,6 +148,8 @@ minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1k)
 minim_add_script_test(gc-settings-big-nursery STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1152921504606846976)
+minim_add_script_test(environment-variable
+    ENV "MINIM_TEST_VARIABLE=set by the test")
 minim_add_script_test(hello)
 minim_add_script_test(missing STATUS 1)
 minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)

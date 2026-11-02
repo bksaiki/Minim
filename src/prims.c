@@ -14,6 +14,7 @@
 #include "gc.h"
 #include "heap.h"
 #include "minim.h"
+#include "read.h"
 
 static minim_obj boolean(bool b) {
     return b ? MINIM_TRUE : MINIM_FALSE;
@@ -779,6 +780,35 @@ static minim_obj prim_collect_maximum_generation(minim_obj *args, size_t n) {
                           MINIM_MAX_GENERATION, "collect-maximum-generation: bad generation");
 }
 
+// Whether the file `args[0]` names can be opened for reading.
+static minim_obj prim_file_exists(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(minim_is_string(args[0]), "file-exists?: not a string", args[0]);
+    char *name = minim_string_to_utf8(args[0]);
+    FILE *f = fopen(name, "r");
+    free(name);
+    if (f != NULL)
+        fclose(f);
+    return boolean(f != NULL);
+}
+
+// The value of the environment variable `args[0]`, or #f if it is unset.
+static minim_obj prim_get_environment_variable(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(minim_is_string(args[0]), "get-environment-variable: not a string", args[0]);
+    char *name = minim_string_to_utf8(args[0]);
+    const char *value = getenv(name);
+    free(name);
+    return value == NULL ? MINIM_FALSE : minim_string_from_cstr(value);
+}
+
+// The forms of the file `args[0]`, as `load` reads them.
+static minim_obj prim_read_file(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(minim_is_string(args[0]), "%read-file: not a string", args[0]);
+    return minim_read_file(args[0]);
+}
+
 // Aliases are uninterned symbols whose value is `#(alias_tag id env)`.
 static minim_obj alias_tag;
 
@@ -1007,6 +1037,9 @@ void minim_prims_init(void) {
     define_primitive("length", prim_length, 1, 1);
     define_primitive("apply", minim_prim_apply, 2, MINIM_VARIADIC);
     define_primitive("load", minim_prim_load, 1, 1);
+    define_primitive("file-exists?", prim_file_exists, 1, 1);
+    define_primitive("get-environment-variable", prim_get_environment_variable, 1, 1);
+    define_primitive("%read-file", prim_read_file, 1, 1);
     define_primitive("values", minim_prim_values, 0, MINIM_VARIADIC);
     define_primitive("call-with-values", minim_prim_call_with_values, 2, 2);
     define_primitive("%call/cc", minim_prim_call_cc, 1, 1);

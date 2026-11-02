@@ -106,6 +106,16 @@ set by the test's environment.
 cmake --build --preset dev && ctest --preset dev -R 'prims|files|script'
 ```
 
+**Done.**
+- `file-exists?` is whether the file opens for reading, the portable C
+  test: an unreadable file is `#f`, and on Linux a directory is `#t`.
+- `%read-file` is `minim_read_file`, so its errors are `load`'s: a missing
+  file raises `load: cannot open file`, a file error; a read error is a read
+  error.  Phase 5 decides whether `include` needs its own message.
+- Tests: `tests/repl/files.scm` (new), and the script test
+  `environment-variable`, which sets `MINIM_TEST_VARIABLE`.  Ran
+  `ctest -R 'prims|files|script'`, dev, and stress `files|prims`.
+
 ### Phase 2 - Top-level environments
 
 - `src/expander.scm`: the environment object; `%resolve`, `%macro`, and the
