@@ -106,8 +106,12 @@
   (cond ((%lookup id env))
         ((%top-lookup id (%top env)))
         ((%alias-original id) (%resolve (%alias-original id) (%alias-env id)))
-        ((eq? (vector-ref (%top env) 0) 'library) (gensym (symbol->string id)))
+        ((eq? (%root-kind (%top env)) 'library) (gensym (symbol->string id)))
         (else id)))
+
+;; The kind of the top-level environment the parents of `top` end in.
+(define (%root-kind top)
+  (if (vector-ref top 1) (%root-kind (vector-ref top 1)) (vector-ref top 0)))
 
 ;; The transformer `x` is, if `x` is a resolved identifier bound to a macro, or #f.
 (define (%macro x)
@@ -525,3 +529,8 @@
 ;; Expands the top-level form `x` in the interaction environment.
 (define (%expand x)
   (%expand-top x %interaction-env))
+
+;; The label a top-level definition of `id` in the interaction environment
+;; defines; for minim_define.
+(define (%interaction-label! id)
+  (%top-define! %interaction-env id))

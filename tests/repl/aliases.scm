@@ -1,3 +1,6 @@
+; The internals this file tests are in (minim system).
+(import (minim system))
+
 ; An alias remembers its identifier and environment; an uninterned symbol
 ; isn't an alias.
 (define g (gensym "x"))

@@ -65,17 +65,35 @@ environment does today.  So it can only be imported whole; `only`, `except`,
 `prefix`, and `rename` of it are syntax errors.  For tests and for code that
 extends Minim.
 
-**The interaction environment** loses its parent and starts with `(minim)`
-imported.  An identifier it doesn't bind is its own label, as now, unless
-that label is a hidden system binding: then a fresh label, never bound, which
-the environment records the first time, as Chez keeps one label per name and
-environment.  So referring to `%expand` raises `unbound variable`, and a
-reference and a later definition of the same name agree.
+**The interaction environment** binds exactly its imports and its own
+definitions, as most implementations' top levels do (Guile's modules,
+Racket's namespaces, Gauche's modules, Chez's environments): it loses its
+parent, starts with `(minim)` imported, and never falls back to symbol
+values.  An identifier it doesn't bind gets the environment's own label, a
+fresh symbol named like it, made the first time the environment sees it and
+recorded, as Chez keeps one label per name and environment.  A definition of
+it uses that label.  So:
 
+- `%expand` is in no library the REPL imports, so it gets the REPL's own
+  label, which is unbound: internals are unreachable without any rule about
+  their names.
+- A reference and a later definition of the same name agree, at the REPL and
+  across loaded files.
+- A user's definition no longer lives in the interned symbol of its name:
+  `(define foo 1)` binds the REPL's `foo`, leaving the interned `foo` unbound.
+  Nothing in C reads a user's global that way today.
 - System macros still expand into internals: their template identifiers are
   aliases resolved in the system environment, where the macro was defined.
-- C still finds `%expand` and `%raise-c-error` by symbol value.
-- A user's definition of a hidden internal's name gets that recorded label.
+- C still finds `%expand` and `%raise-c-error` by symbol value: they are the
+  system's.
+- A library's environment records its unknown names' labels the same way,
+  instead of making a new one at each reference.
+
+**`minim_define(name, value)`**, in `minim.h`: defines `name` in the
+interaction environment, as `scm_c_define` does in Guile's current module and
+`define-top-level-value` in Chez.  It is how C gives user code a global, now
+that setting a symbol's value no longer reaches the REPL; it evaluates
+`(define name 'value)`, so the expander picks the label.
 
 **Programs**, after Chez's `--program`: `minim --program file.scm` runs an
 R7RS program (R7RS 5.1) in its own environment, of the library kind, holding
@@ -91,35 +109,58 @@ Chez's default and `--script`.
   `scheme/libraries.scm`: `(minim system)`, which
   `%import!` handles by setting the environment's parent, refusing import
   sets around it.  `scheme/prelude.boot` regenerated.
+- `include/minim.h`, `src/eval.c`: `minim_define`.  `test_eval`'s
+  `stack-height` and `collect-then-second` are defined with it.
 - `tests/repl/`: the five files that use internals start with
   `(import (minim system))`, a no-op for now.
 
-Separate because it adds the libraries and readies the tests, changing
-nothing yet, so Phase 2's effect is visible in the tests alone.
+Separate because it adds the libraries, the C call, and readies the tests,
+changing nothing yet, so Phase 2's effect is visible in the tests alone.
 
 Tests (`tests/repl/libraries.scm`): a library importing `(minim)` uses
 `gensym` and `fold`; one importing `(minim system)` uses `%bound?`;
-`(only (minim system) car)` is a syntax error.
+`(only (minim system) car)` is a syntax error.  `test_eval`: a value defined
+with `minim_define` is visible to evaluated code, and redefining it replaces
+it.
 
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'libraries|boot|records|expan|aliases|files'
 ```
 
+**Done.**
+- `(minim)` is defined last in `scheme/standard.scm`, from the names every
+  library defined before it exports (`%exported-names`), plus Minim's own.
+- `%import!` turns `(minim system)` into the system environment as the
+  parent; `%import-set` refuses it inside an import set.  An unknown name now
+  gets a fresh label only when the environment's parents end in a library
+  (`%root-kind`), so a library importing `(minim system)` resolves internals
+  as the REPL does.
+- `minim_define` (`src/eval.c`) evaluates `(%interaction-label! 'name)`
+  unexpanded, so the expander picks the label, and sets its value; before
+  the expander is loaded, the label is the name.  `%interaction-label!` is
+  `%top-define!` on the interaction environment.
+- The five files' imports change nothing yet: their output is as before.
+- Ran `ctest -R 'libraries|boot|records|expan|aliases|files|eval'`, and
+  stress `libraries|boot|records|aliases|eval`.
+
 ### Phase 2 - Hide internal names
 
 - `scheme/expander.scm`: the interaction environment without a parent, its
-  imports made at startup; resolution of a hidden system binding to a fresh
-  label.  `scheme/prelude.boot` regenerated.
+  imports made at startup; an unknown name's label made once and recorded,
+  in the interaction environment and in libraries; a definition takes it.
+  `scheme/prelude.boot` regenerated.
 - `bench/expand.scm` (new): a file of many small definitions and calls,
   for the cost of looking up names in the larger interaction environment.
 
 Separate because it is the change in what user code can see.
 
-Tests (`tests/repl/libraries.scm`): `%expand`, `%set-handlers!`, and
+Tests (`tests/repl/top-level.scm`): `%expand`, `%set-handlers!`, and
 `%record-ref` are unbound at the REPL; `let`, `guard`, `define-record-type`,
-and `case` still work; defining `%expand` and calling it calls the user's;
-every other REPL test unchanged.  Measure `bench/run.sh` against `main`,
-especially `expand` and startup.
+and `case` still work; defining `%expand` and calling it calls the user's; a
+procedure referring to a name defined after it.  `test_eval`: after the REPL
+defines `foo`, the interned `foo` is unbound; `minim_define`'s globals still
+reach evaluated code.  Every other test unchanged.  Measure `bench/run.sh`
+against `main`, especially `expand` and startup.
 
 ```sh
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'libraries|boot|exceptions|records'
@@ -146,7 +187,7 @@ cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 
 ### After the last phase
 
-Sync the docs: `macros.md` (the interaction environment's imports, hidden
+Sync the docs: `macros.md` (the interaction environment's imports, its own
 names, `(minim)`, `(minim system)`, programs), `repl.md` (what the REPL and
 files see; `--program`), `prelude.md` (the libraries), `testing.md` (tests
 import `(minim system)` for internals), and the roadmap (`r7rs-small.md`:
@@ -161,8 +202,18 @@ cmake --preset release && cmake --build --preset release
 
 ### Does the larger interaction environment slow expansion?
 
-Not any more: top-level bindings are on symbols' property lists (the
-bindings branch), so a lookup no longer depends on the environment's size.
-That change made `bench/expand.scm` about 5 times faster than an association
-list.  Re-measure Phase 2 on it; close this item if expansion stays within
-noise.
+Its bindings are on symbols' property lists (`macros.md`), so a lookup
+doesn't depend on its size: about 130 imported names, plus a label for each
+unknown name it sees.
+
+Phase 2 measures `bench/expand.scm` against `main`.  Reopen if it slows by
+more than noise.
+
+### Should C be able to read a user's global?
+
+With the REPL's definitions in labels of their own, `minim_symbol_value` of
+the interned name no longer finds them.  Guile has `scm_c_lookup`, Gauche
+`Scm_GlobalVariableRef`.
+
+Provisionally no such call until something needs it.  Reopen with the first
+embedding that reads user globals.

@@ -36,3 +36,11 @@
    string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
    syntax-rules unquote unquote-splicing values vector vector->list vector-length
    vector-ref vector-set! vector? write zero?))
+
+;; (minim), after Chez's (chezscheme): every public system binding, the
+;; standard libraries' names and Minim's own.
+(%define-system-library
+ '(minim)
+ (append (%exported-names)
+         '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
+           equal-hash filter fixnum? fold fold-right gensym string-hash letrec-values)))

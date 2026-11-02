@@ -119,9 +119,18 @@ static void test_primitive_allocates(void) {
     minim_obj sym = minim_intern_cstr("collect-then-second");
     MINIM_FRAME(&sym);
     minim_obj p = minim_make_primitive(sym, collect_then_second, 2, 2);
-    minim_set_symbol_value(sym, p);
+    minim_define("collect-then-second", p);
     CHECK(evals_to("(collect-then-second 1 (cons 2 '(3)))", "(2 3)"));
     MINIM_RETURN_VOID;
+}
+
+// minim_define gives evaluated code a global, which a second call replaces.
+static void test_define(void) {
+    minim_define("answer", minim_fixnum(42));
+    CHECK(evals_to("answer", "42"));
+    CHECK(evals_to("(define (get-answer) answer) (get-answer)", "42"));
+    minim_define("answer", minim_fixnum(43));
+    CHECK(evals_to("(get-answer)", "43"));
 }
 
 static minim_obj stack_height(minim_obj *args, size_t n) {
@@ -150,7 +159,7 @@ static void test_tail_calls(void) {
     minim_obj sym = minim_intern_cstr("stack-height");
     MINIM_FRAME(&sym);
     minim_obj p = minim_make_primitive(sym, stack_height, 0, 0);
-    minim_set_symbol_value(sym, p);
+    minim_define("stack-height", p);
 
     const char *loops[] = {
         "(define loop (lambda (n) (if (= n 0) (stack-height) (loop (- n 1))))) (loop %d)",
@@ -338,6 +347,7 @@ int main(void) {
     minim_init();
     test_frames();
     test_primitive_allocates();
+    test_define();
     test_values();
     test_binding_values();
     test_tail_calls();

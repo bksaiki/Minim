@@ -14,3 +14,5 @@ error: import: unknown library: (lib missing)
 error: import: unknown library: (lib wrong)
 error: include: cannot open file: "lib/missing.scm"
 error: unbound variable: when
+error: import: (minim system) is imported only whole: (minim system)
+error: import: (minim system) is imported only whole: (minim system)

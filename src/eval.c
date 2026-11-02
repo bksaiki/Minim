@@ -528,3 +528,22 @@ minim_obj minim_eval_values(minim_obj expr) {
 minim_obj minim_eval_expanded(minim_obj expr) {
     return eval(expr, false, false);
 }
+
+void minim_define(const char *name, minim_obj value) {
+    minim_obj label = MINIM_NIL;
+    minim_obj f = MINIM_NIL;
+    minim_obj form = MINIM_NIL;
+    MINIM_FRAME(&value, &label, &f, &form);
+    label = minim_intern_cstr(name);
+    f = minim_intern_cstr("%interaction-label!");
+    if (minim_symbol_value(f) != MINIM_UNBOUND) {
+        // The expander picks the label: (%interaction-label! 'name), unexpanded.
+        form = minim_cons(label, MINIM_NIL);
+        form = minim_cons(minim_sym_quote, form);
+        form = minim_cons(form, MINIM_NIL);
+        form = minim_cons(f, form);
+        label = minim_eval_expanded(form);
+    }
+    minim_set_symbol_value(label, value);
+    MINIM_RETURN_VOID;
+}

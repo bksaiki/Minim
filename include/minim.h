@@ -661,6 +661,12 @@ minim_obj minim_eval(minim_obj expr);
 /** The list of the values of the top-level form `expr`, as minim_eval. */
 minim_obj minim_eval_values(minim_obj expr);
 
+/**
+ * Defines the global `name` as `value` where evaluated code sees it: in the
+ * interaction environment, once the expander is loaded.
+ */
+void minim_define(const char *name, minim_obj value);
+
 // Reading
 
 /** Reads the next datum from `in`, or returns MINIM_EOF.  Raises on bad syntax. */

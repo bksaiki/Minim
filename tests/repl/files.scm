@@ -1,3 +1,6 @@
+; The internals this file tests are in (minim system).
+(import (minim system))
+
 ; file-exists?: a file, a directory's file, and a missing one.
 (file-exists? "files.scm")
 (file-exists? "load/defs.scm")
