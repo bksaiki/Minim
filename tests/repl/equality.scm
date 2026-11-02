@@ -1,3 +1,7 @@
+; eq? is identity.
+(eq? 'a 'a)
+(eq? (cons 1 2) (cons 1 2))
+
 ; eqv? is eq? until there are flonums and bignums.
 (eqv? 'a 'a)
 (eqv? 1 1)

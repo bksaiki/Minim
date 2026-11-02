@@ -65,7 +65,6 @@ m
   (ev? 10))
 (let*-values (((a b) (values 1 2)) ((c) (values (+ a b)))) (list a b c))
 (let*-values () 'empty)
-(let-values (((when) (values 5))) when)  ; a formal shadows a macro
 
 ; Hygiene: a macro's let-values binding doesn't capture the user's t, and a
 ; user's binding doesn't capture the macro's free `list`.
@@ -76,10 +75,8 @@ m
 (let-values (((list) (values vector))) (wrap 1))
 
 ; Errors.
-(if #t (define-values (z) 1))
 (define-values (z 1) 2)
 (define-values (z))
-(let-values (((z) 1)))
 (let-values ((z)) z)
 (let-values (((z 1) 2)) z)
 (letrec-values (((z) 1) . r) z)

@@ -1,0 +1,2 @@
+error: %make-alias: not a symbol: "if"
+error: %bound?: not a symbol: 5

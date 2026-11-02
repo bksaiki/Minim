@@ -187,6 +187,27 @@ the old ones line by line.
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
 
+**Done.**
+- Built from the old files by line range, then every REPL output line,
+  sorted, compared before and after.  Of 602 stdout lines, 42 went, each a
+  deliberate removal: the explicit collections; the `%handlers` and
+  `%winders` checks (`test_eval`'s `test_handled_errors` asserts both after
+  errors); `expansion`'s pinned rewrites; the duplicates (macro-inserted
+  definitions, a definition replacing a macro, the `after`s on an unhandled
+  error and on an escape from a C error, `core`'s self-evaluating data, which
+  `echo`'s cover, and a formal shadowing a macro in `values`); `tail`; and
+  `eval`'s trivial `(+ 1 2)`, `x`, and `square`.
+- On stderr, two `%make-error-object` errors went (error objects now come
+  from `error`), and two checks were added: `echo` and `eval` had no `.err`
+  file, so their read and evaluation errors weren't checked before.
+- Error objects come from `(guard (e (#t e)) (error ...))`, not
+  `%make-error-object`.  `aliases` defines its own uninterned symbol, which
+  the `symbols` half had defined.
+- `continuations` keeps its unhandled-error case: its second half, no stale
+  `after` on a later jump, is tested nowhere else.  `gc` keeps its program
+  (see Open items).
+- Ran both full suites.
+
 ### Phase 4 - Scheme sources
 
 - `src/scheme/` with the seven files above, from `src/prelude.scm` and

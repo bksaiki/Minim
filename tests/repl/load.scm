@@ -11,6 +11,10 @@ nested-value
 (eq? (load "load/defs.scm") (if #f #f))
 (load "load/empty.scm")
 
+; Its errors are read and file errors.
+(guard (e (#t (list (error-object-message e) (read-error? e)))) (load "load/bad-read.scm"))
+(guard (e (#t (list (error-object-message e) (file-error? e)))) (load "load/missing.scm"))
+
 ; Errors; the REPL continues after each.
 (load "load/missing.scm")
 (load 5)

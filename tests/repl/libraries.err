@@ -1,5 +1,3 @@
-error: unbound variable: hidden
-error: set!: immutable variable: cdr
 error: empty stack
 error: unbound variable: n
 error: import: not exported: (nothing (only (stack) nothing))

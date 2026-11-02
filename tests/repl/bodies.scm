@@ -1,40 +1,3 @@
-; Quasiquote: unquote and unquote-splicing at the head, middle, and tail.
-(define x 1)
-(define l '(2 3))
-`(,x b c)
-`(a ,x c)
-`(a b ,x)
-`(,@l b)
-`(a ,@l c)
-`(a ,@l)
-`(,@l)
-`(a ,@'() b)
-`(a . ,x)
-`(a ,x . ,l)
-`#(a ,x ,@l)
-`#(a b)
-`x
-`,x
-`(1 ,(+ 1 1) ,@(list 3 4))
-
-; Nested quasiquote: inner unquotes stay, unless at depth 0.
-`(a `(b ,(c ,x)))
-`(a `(b ,,x))
-``,,x
-`(a `(b ,@,@l))
-
-; Unquoted parts run left to right.
-(define log '())
-(define note (lambda (v) (set! log (cons v log)) v))
-`(,(note 1) ,@(list (note 2)) ,(note 3))
-log
-
-; A local variable can shadow keywords and special forms.
-((lambda (if) (if 1)) list)
-((lambda (quote) quote) 5)
-((lambda (unquote) `(,unquote)) 7)
-((lambda (lambda) (lambda 2)) list)
-
 ; Internal definitions shadow globals throughout their body and can refer to
 ; each other, whatever their order.
 (define y 'global)
@@ -75,15 +38,7 @@ y
 (seven)
 (let ((lambda 0)) (define (f) 1) (f))
 
-; Quoted data is left alone.
-'(lambda (if) (if 1))
-'(define)
-(quote `(a ,b))
-
 ; Errors.
-`(a ,@5)
-`(a . ,@l)
-`,@l
 (define bad (lambda () (if)))
 (lambda () (display 1) (define z 1) z)
 (lambda () (begin))
@@ -98,3 +53,5 @@ y
 (if (define z 1) 2)
 (set! if 1)
 (lambda (x 1) x)
+(if #t (define-values (z) 1))
+(let-values (((z) 1)))

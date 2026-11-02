@@ -1,6 +1,3 @@
-error: car: not a pair: 5
-error: bad syntax: ,@l
-error: bad syntax: ,@l
 error: bad syntax: (if)
 error: bad syntax: (define z 1)
 error: bad syntax: (lambda () (begin))
@@ -15,3 +12,5 @@ error: bad syntax: (define (f) . 1)
 error: bad syntax: (define z 1)
 error: unbound variable: if
 error: bad syntax: (lambda (x 1) x)
+error: bad syntax: (define-values (z) 1)
+error: bad syntax: (let-values (((z) 1)))
