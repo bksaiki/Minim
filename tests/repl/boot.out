@@ -4,3 +4,4 @@
 ((define a 1) (define b 2) (if a (begin b)))
 ((%define-macro! 'twice '(syntax-rules () ((_ e) (begin e e)))))
 ((define n (lambda () 1 1)))
+((%define-macro! 'hide '(syntax-rules () ((_ v) (define hidden v)))))

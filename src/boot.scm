@@ -4,26 +4,32 @@
 ;; replaced by an interned one unique within `x`.
 (define %boot-form
   (lambda (x)
-    (let ((renames %top-renames))
+    (let ((count (%boot-labels)))
       (let ((forms (%boot-expand x)))
-        (if (eq? %top-renames renames)
+        (if (= (%boot-labels) count)
             (%boot-names forms)
             (%syntax-error "boot: a macro defined a fresh global" (list x)))))))
+
+;; Number of labels the system environment binds identifiers to, which only
+;; fresh globals add.
+(define %boot-labels
+  (lambda ()
+    (length (filter (lambda (b) (symbol? (cdr b))) (vector-ref %system-env 1)))))
 
 ;; The core forms the top-level form `x` expands to: a `begin` spliced, and a
 ;; `define-syntax` registered and written as a call that rebuilds the macro.
 (define %boot-expand
   (lambda (x)
-    (let* ((y (%expand-head x '()))
-           (k (%keyword y '())))
+    (let* ((y (%expand-head x %system-env))
+           (k (%keyword y %system-env)))
       (cond ((eq? k 'begin)
              (if (%length y 0) (%append-map %boot-expand (cdr y)) (%bad-syntax y)))
             ((eq? k 'define-syntax)
-             (%expand y)
+             (%expand-top y %system-env)
              (list (list '%define-macro!
-                         (list 'quote (%resolve (car (cdr y)) '()))
+                         (list 'quote (car (cdr y)))
                          (list 'quote (%strip (car (cdr (cdr y))))))))
-            (else (list (%expand y)))))))
+            (else (list (%expand-top y %system-env)))))))
 
 ;; `x` with each uninterned symbol replaced by the interned `name.N`, where N
 ;; counts the distinct symbols named `name` in order of appearance.

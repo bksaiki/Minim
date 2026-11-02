@@ -140,6 +140,31 @@ syntax error; a macro-inserted definition still gets a fresh global.
 cmake --build --preset dev && ctest --preset dev -R 'boot|expan|macro|syntax|derived|libraries|repl' && ctest --preset stress -R 'libraries|expan'
 ```
 
+**Done.**
+- A top-level environment is `#(kind bindings parent)`; a syntactic
+  environment's frames end in one.  Macros resolve to their transformers,
+  so `%macro` only checks for a procedure.  `%expand` expands in the
+  interaction environment; `%expand-top` takes the environment, and
+  `boot.scm` uses the system's.
+- The system environment records only bindings that aren't the name itself:
+  macros and fresh globals.  Its own labels are those holding a value
+  (`%bound?`), today's rule for a macro-inserted definition.  The interaction
+  environment records every definition, so it knows its own labels.
+- A definition's label: its environment's own variable if it already is
+  one; else the name itself, unless it would shadow an imported binding or
+  is an alias, which get a fresh label.
+- Bootstrapping: `boot_gen` runs the new `boot.scm` on the old boot file's
+  expander, which lacked `%system-env`.  Regenerated first with the old
+  `boot.scm`, then twice with the new.  `%boot-expand` now writes a
+  `define-syntax`'s name as written: it resolves to the transformer.
+- Tests: the `expand` REPL test redefined `%expand` at the REPL, which now
+  shadows it; its checks of the evaluator's hook moved to `test_eval`
+  (`test_expand_hook`), which sets the system's `%expand` unexpanded.  The
+  `boot` test defines its `hide` macro through `%boot-form`, in the system
+  environment.  `tests/repl/libraries.scm` (new).
+- Ran the dev suite, and stress `libraries|expan|boot|eval|macro|syntax|
+  derived`.
+
 ### Phase 3 - define-library and import
 
 - `src/expander.scm`: `define-library` with `export`, `import`, and `begin`;

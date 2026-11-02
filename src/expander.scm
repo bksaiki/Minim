@@ -10,11 +10,17 @@
 (define (%bad-syntax x)
   (%syntax-error "bad syntax" (list x)))
 
-;; Global macros: an association list of (symbol . transformer).
-(define %macros '())
+;; A top-level environment is `#(kind bindings parent)`.  `bindings` is an
+;; association list of (identifier . binding), a binding being a label, the
+;; global whose value slot is the variable, or a macro's transformer.  An
+;; identifier it doesn't bind means what it does in `parent`, or else, with no
+;; parent, is its own label.  `kind` is `system`, for the prelude and expander,
+;; or `interaction`, for the REPL and files, whose parent is the system's.
+(define (%make-top kind parent)
+  (vector kind '() parent))
 
-;; Aliases defined at top level as fresh globals: (alias . global name).
-(define %top-renames '())
+(define %system-env (%make-top 'system #f))
+(define %interaction-env (%make-top 'interaction %system-env))
 
 (define (%append-map f lst)
   (apply append (map f lst)))
@@ -43,12 +49,14 @@
   (define n (%length x 0))
   (cond ((not (and (pair? (cdr x)) (pair? (cadr x)))) x)
         ((and n (< 2 n) (symbol? (car (cadr x))))
-         `(,(car x) ,(car (cadr x)) (,(%make-alias 'lambda '()) ,(cdr (cadr x)) ,@(cddr x))))
+         `(,(car x) ,(car (cadr x))
+           (,(%make-alias 'lambda %system-env) ,(cdr (cadr x)) ,@(cddr x))))
         (else (%bad-syntax x))))
 
-;; A syntactic environment is a list of frames, innermost first.  A frame is a
-;; one-element list holding an association list of (identifier . meaning): a
-;; variable's fresh name, or a local macro's transformer.
+;; A syntactic environment is a list of frames, innermost first, ending in a
+;; top-level environment.  A frame is a one-element list holding an association
+;; list of (identifier . meaning): a variable's fresh name, or a local macro's
+;; transformer.
 
 (define (%extend env)
   (cons (list '()) env))
@@ -73,19 +81,36 @@
   (cond ((assq id bindings) => cdr)
         (else (%lookup id env))))
 
-;; What `id` means in `env`: its local binding; else its top-level rename;
+;; The top-level environment `env` ends in.
+(define (%top env)
+  (if (pair? env) (%top (cdr env)) env))
+
+;; The binding of `id` in the top-level environment `top` or its parents, or #f.
+(define (%top-lookup id top)
+  (and top
+       (cond ((assq id (vector-ref top 1)) => cdr)
+             (else (%top-lookup id (vector-ref top 2))))))
+
+;; Binds `id` to `binding` in the top-level environment `top`, replacing any
+;; binding it had there.  The system's names are their own labels unbound.
+(define (%top-bind! top id binding)
+  (let ((rest (filter (lambda (b) (not (eq? (car b) id))) (vector-ref top 1))))
+    (vector-set! top 1 (if (and (eq? (vector-ref top 0) 'system) (eq? binding id))
+                           rest
+                           (cons (cons id binding) rest)))))
+
+;; What `id` means in `env`: its local binding; else its top-level binding;
 ;; else, for an alias, its original's meaning in the alias's environment; else
-;; the global `id`.
+;; its own label.
 (define (%resolve id env)
   (cond ((%lookup id env))
-        ((%lookup-in id %top-renames '()))
+        ((%top-lookup id (%top env)))
         ((%alias-original id) (%resolve (%alias-original id) (%alias-env id)))
         (else id)))
 
-;; The transformer for the resolved identifier `x` (a local transformer, or a
-;; global macro's name), or #f.
+;; The transformer `x` is, if `x` is a resolved identifier bound to a macro, or #f.
 (define (%macro x)
-  (if (procedure? x) x (%lookup-in x %macros '())))
+  (and (procedure? x) x))
 
 ;; What the head of `x` resolves to, if `x` is a pair headed by an identifier;
 ;; otherwise #f.
@@ -148,9 +173,9 @@
 
 (define (%expand-set x env)
   (let ((var (and (%binding-form? x) (%resolve (cadr x) env))))
-    (if (and var (not (%macro var)))
-        (list 'set! var (%expand-expr (car (cddr x)) env))
-        (%bad-syntax x))))
+    (cond ((or (not var) (%macro var)) (%bad-syntax x))
+          ((%imported? var (%top env)) (%syntax-error "set!: immutable variable" (list (cadr x))))
+          (else (list 'set! var (%expand-expr (car (cddr x)) env))))))
 
 ;; The lambda list `formals` of the form `whole`, with each identifier `id`
 ;; replaced by `(f id)`.
@@ -424,62 +449,76 @@
     (set! renames '())
     (apply-rules rules form use-env)))
 
-;; `macros` without a binding for `name`.
-(define (%unbind-macro name macros)
-  (cond ((null? macros) '())
-        ((eq? (caar macros) name) (cdr macros))
-        (else (cons (car macros) (%unbind-macro name (cdr macros))))))
+;; Whether the label `label` is one the top-level environment `top` defined.
+(define (%own-label? top label)
+  (if (eq? (vector-ref top 0) 'system)
+      (%bound? label)
+      (memq label (map cdr (vector-ref top 1)))))
 
-;; The global a top-level definition of `id` defines.  An alias, inserted by a
-;; macro, defines its original if that already holds a value, and otherwise a
-;; fresh global that only this use's insertions of `id` refer to (R7RS 5.3.1).
-(define (%top-name id)
-  (let ((name (%resolve id '())))  ; already renamed, or else the original
-    (if (and (%alias-original id)
-             (not (or (%bound? name) (%lookup-in id %top-renames '()))))
-        (let ((fresh (gensym (symbol->string id))))
-          (set! %top-renames (cons (cons id fresh) %top-renames))
-          fresh)
-        name)))
+;; Whether the binding `b`, in the top-level environment `top`, is imported:
+;; a system binding, outside the system's environment.
+(define (%imported? b top)
+  (and (not (eq? (vector-ref top 0) 'system))
+       (not (%own-label? top b))
+       (or (procedure? b) (%bound? b))))
 
-;; The global a top-level definition of `id` defines, which stops naming a macro.
-(define (%top-define! id)
-  (let ((name (%top-name id)))
-    (when (%macro name) (set! %macros (%unbind-macro name %macros)))
-    name))
+;; The label a top-level definition of `id` in `top` defines.  It redefines
+;; `top`'s own variable, and otherwise binds `id` to itself, or to a fresh label
+;; if it would shadow an imported binding or is an alias, inserted by a macro,
+;; so only that use's insertions refer to it (R7RS 5.3.1).
+(define (%top-define! top id)
+  (let ((b (%resolve id top)))
+    (cond ((and (symbol? b) (%own-label? top b)) b)
+          ((not (or (%alias-original id) (%imported? b top)))
+           (%top-bind! top id id)
+           id)
+          (else
+           (let ((fresh (gensym (symbol->string id))))
+             (%top-bind! top id fresh)
+             fresh)))))
 
-(define (%expand-define form)
+(define (%expand-define form top)
   (let* ((x (%define-procedure form))
-         (name (if (%binding-form? x) (%top-define! (cadr x)) (%bad-syntax x))))
-    (list 'define name (%expand-expr (car (cddr x)) '()))))
+         (name (if (%binding-form? x) (%top-define! top (cadr x)) (%bad-syntax x))))
+    (list 'define name (%expand-expr (car (cddr x)) top))))
 
-(define (%expand-define-values x)
+(define (%expand-define-values x top)
   (let ((formals (if (eq? (%length x 0) 3)
-                     (%map-formals %top-define! (cadr x) x)
+                     (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)
                      (%bad-syntax x))))
-    (list 'define-values formals (%expand-expr (car (cddr x)) '()))))
+    (list 'define-values formals (%expand-expr (car (cddr x)) top))))
 
-;; Binds the global macro `name` to the transformer `spec` denotes.
+;; Binds the identifier `id` to the macro `spec` denotes, in `top`.
+(define (%top-define-macro! top id spec)
+  (%top-bind! top id (%transformer spec top)))
+
+;; Binds the system macro `name` to the transformer `spec` denotes.
 (define (%define-macro! name spec)
-  (let ((transformer (%transformer spec '())))
-    (set! %macros (cons (cons name transformer) (%unbind-macro name %macros)))))
+  (%top-define-macro! %system-env name spec))
 
-(define (%expand-define-syntax x)
+(define (%expand-define-syntax x top)
   (if (%binding-form? x)
-      (%define-macro! (%resolve (cadr x) '()) (car (cddr x)))
+      (%top-define-macro! top (cadr x) (car (cddr x)))
       (%bad-syntax x))
   '(begin))
 
-;; Expands the top-level form `x`.
-(define (%expand x)
-  (let* ((y (%expand-head x '()))
-         (k (%keyword y '())))
+;; Expands the top-level form `x` in the top-level environment `top`.
+(define (%expand-top x top)
+  (let* ((y (%expand-head x top))
+         (k (%keyword y top)))
     (case k
-      ((begin) (if (%length y 0) (cons 'begin (map %expand (cdr y))) (%bad-syntax y)))
-      ((define) (%expand-define y))
-      ((define-values) (%expand-define-values y))
-      ((define-syntax) (%expand-define-syntax y))
-      (else (%expand-expr y '())))))
+      ((begin)
+       (if (%length y 0)
+           (cons 'begin (map (lambda (z) (%expand-top z top)) (cdr y)))
+           (%bad-syntax y)))
+      ((define) (%expand-define y top))
+      ((define-values) (%expand-define-values y top))
+      ((define-syntax) (%expand-define-syntax y top))
+      (else (%expand-expr y top)))))
+
+;; Expands the top-level form `x` in the interaction environment.
+(define (%expand x)
+  (%expand-top x %interaction-env))
 
 ;;; Derived forms (R7RS 4.2), as macros.
 

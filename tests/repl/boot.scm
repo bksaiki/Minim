@@ -16,5 +16,5 @@
 (%boot-form '(define n (lambda () (twice 1))))
 
 ; A macro that defines a fresh global can't be written.
-(define-syntax hide (syntax-rules () ((_ v) (define hidden v))))
+(%boot-form '(define-syntax hide (syntax-rules () ((_ v) (define hidden v)))))
 (%boot-form '(hide 1))

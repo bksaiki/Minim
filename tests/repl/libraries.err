@@ -1,0 +1,2 @@
+error: unbound variable: hidden
+error: set!: immutable variable: cdr
