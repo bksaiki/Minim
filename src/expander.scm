@@ -94,7 +94,8 @@
              (else (%top-lookup id (vector-ref top 2))))))
 
 ;; Binds `id` to `binding` in the top-level environment `top`, replacing any
-;; binding it had there.  The system's names are their own labels unbound.
+;; binding it had there.  In the system environment, a name bound to itself
+;; isn't recorded: that is the default.
 (define (%top-bind! top id binding)
   (let ((rest (filter (lambda (b) (not (eq? (car b) id))) (vector-ref top 1))))
     (vector-set! top 1 (if (and (eq? (vector-ref top 0) 'system) (eq? binding id))
@@ -613,11 +614,19 @@
                 (unless (assq n bindings) (%syntax-error "import: not exported" (list n set))))
               names)
     names)
-  (define (inner)
-    (if (and (eq? (%length set 0) 3) (symbol? (car (cddr set))))
-        (%import-set (cadr set))
-        (%bad-syntax set)))
-  (case (and (pair? set) (car set))
+  (define (renaming? r)
+    (and (eq? (%length r 0) 2) (symbol? (car r)) (symbol? (cadr r))))
+  (define (well-formed? k)
+    (let ((n (%length set 0)))
+      (and n (<= 2 n)
+           (case k
+             ((prefix) (and (= n 3) (symbol? (car (cddr set)))))
+             ((rename) (null? (filter (lambda (r) (not (renaming? r))) (cddr set))))
+             (else #t)))))
+  (define k (and (pair? set) (car set)))
+  (when (and (memq k '(only except prefix rename)) (not (well-formed? k)))
+    (%bad-syntax set))
+  (case k
     ((only)
      (let* ((bs (%import-set (cadr set)))
             (names (names-in bs (cddr set))))
@@ -629,7 +638,7 @@
     ((prefix)
      (let ((p (symbol->string (car (cddr set)))))
        (map (lambda (b) (cons (string->symbol (string-append p (symbol->string (car b)))) (cdr b)))
-            (inner))))
+            (%import-set (cadr set)))))
     ((rename)
      (let* ((bs (%import-set (cadr set)))
             (renames (cddr set)))

@@ -102,6 +102,8 @@ bump
 (import (only (stack) nothing))
 (import (rename (stack) (nothing x)))
 (import (nowhere))
+(import (only))
+(import (rename (stack) (push!)))
 (define-library (bad) (export missing) (import (scheme base)) (begin (define x 1)))
 (define-library (late) (export f) (import (scheme base)) (begin (define (f) (undefined-thing))))
 (import (late))

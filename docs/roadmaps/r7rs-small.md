@@ -48,8 +48,10 @@ provides.  Update it as names are added.
 | `(scheme time)` | 0 | 3 | not defined |
 | `(scheme write)` | 2 | 4 | |
 
-**Target:** a practical subset of R7RS-small, simple before complete (see
-Open items).
+**Target:** R7RS-small compliance: every standard library complete, as the
+coverage table measures, and the conformance suite passing.  Where R7RS lets
+an implementation omit something, such as rationals or `(scheme complex)`,
+Minim may.
 
 ## Milestones
 
@@ -175,18 +177,10 @@ vectors, and control.  Mostly prelude procedures.
 
 ### 10. Conformance (S–M, ongoing)
 
-A conformance suite: a subset of the R7RS tests (for example Chibi's
-`r7rs-tests.scm`) as golden tests, grown with each milestone.
+A conformance suite: the R7RS tests (for example Chibi's `r7rs-tests.scm`) as
+golden tests, enabled as each milestone makes them pass, until all do.
 
 ## Open items
-
-### What is the target: R7RS-small, a subset, or something else?
-
-- **R7RS-small** is a clear checklist, with an existing test suite.
-- **A pragmatic subset** keeps the implementation small, in line with "simple
-  over complete", but needs a written list of what's in and out.
-- **Provisional:** a subset of R7RS-small, extended milestone by milestone.
-  The conformance suite records exactly what passes.
 
 ### Hand-written bignums or GMP?
 
