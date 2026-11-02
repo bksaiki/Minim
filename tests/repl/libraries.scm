@@ -41,3 +41,69 @@ x
 (cdr '(1 2))
 (set! map 5)
 map
+
+; A library: procedures, a renamed export, and a macro, imported and used.  A
+; definition may refer to one further down.
+(define-library (stack)
+  (export make-stack push! (rename stack-top top) stack-empty? with-stack)
+  (import (scheme base))
+  (begin
+    (define (make-stack) (list 'stack))
+    (define (push! s x) (set-cdr! s (cons x (cdr s))))
+    (define (stack-top s) (if (stack-empty? s) (error "empty stack") (cadr s)))
+    (define (stack-empty? s) (null? (cdr s)))
+    (define-syntax with-stack
+      (syntax-rules () ((_ s body ...) (let ((s (make-stack))) body ... s))))))
+(import (stack))
+(define s (make-stack))
+(push! s 1)
+(list (top s) (stack-empty? s))
+(with-stack t (push! t 5) (push! t 6))
+(top (make-stack))
+
+; Hygiene across libraries: a macro's reference to the library's private
+; definition, and its own uses of `if` and `list`, mean what they do in the
+; library, whatever the importer binds.
+(define-library (counter)
+  (export count!)
+  (import (scheme base))
+  (begin
+    (define n 0)
+    (define (bump) (set! n (+ n 1)) n)
+    (define-syntax count! (syntax-rules () ((_) (if #t (list (bump)) #f))))))
+(import (counter))
+(define (bump) 'importer-bump)
+(let ((if 'shadowed) (list 'shadowed)) (count!))
+(count!)
+n
+bump
+
+; A library importing another; its body runs in order when it is defined.
+(define-library (greeter)
+  (export greet)
+  (import (scheme base) (only (stack) make-stack push! top))
+  (begin
+    (define messages (make-stack))
+    (push! messages "hello")
+    (define (greet) (top messages))))
+(import (greeter))
+(greet)
+
+; Import sets.
+(import (prefix (only (stack) make-stack) my-))
+(my-make-stack)
+(import (rename (only (stack) push!) (push! stack-push!)))
+(let ((s (make-stack))) (stack-push! s 3) (top s))
+(import (except (counter)))
+(import (only (scheme base) car) (prefix (only (scheme base) cdr) base-))
+(base-cdr '(1 2))
+
+; Errors.
+(import (only (stack) nothing))
+(import (rename (stack) (nothing x)))
+(import (nowhere))
+(define-library (bad) (export missing) (import (scheme base)) (begin (define x 1)))
+(define-library (late) (export f) (import (scheme base)) (begin (define (f) (undefined-thing))))
+(import (late))
+(f)
+(define-library (no-base) (export g) (begin (define (g) 1)))

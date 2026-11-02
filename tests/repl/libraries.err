@@ -1,2 +1,10 @@
 error: unbound variable: hidden
 error: set!: immutable variable: cdr
+error: empty stack
+error: unbound variable: n
+error: import: not exported: (nothing (only (stack) nothing))
+error: import: not exported: (nothing (rename (stack) (nothing x)))
+error: import: unknown library: (nowhere)
+error: define-library: not defined: missing
+error: unbound variable: undefined-thing
+error: define-library: not defined: g

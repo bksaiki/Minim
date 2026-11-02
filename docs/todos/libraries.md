@@ -186,6 +186,24 @@ unexported name, an unknown name in a library body (syntax errors).
 cmake --build --preset dev && ctest --preset dev -R 'libraries|expan|boot' && ctest --preset stress -R 'libraries'
 ```
 
+**Done.**
+- `(scheme base)` moved here from Phase 4: without it a library can't even
+  `define`.  It lists R7RS's names that Minim has, the core forms and
+  auxiliary syntax included; `%define-system-library` resolves each in the
+  system environment.  Phase 4 adds the other standard libraries.
+- An unknown name in a library resolves to a fresh label, never bound, so a
+  reference raises `unbound variable` when it runs, as at the REPL.  A syntax
+  error at resolution was not possible: the expander also resolves pattern
+  variables and quasiquoted data.
+- A top-level environment gained `own`, the labels its definitions made, so
+  imported bindings, which are entries too, aren't its own.  A library's
+  definitions always get fresh labels.
+- `define-library` registers its exports when it is expanded, and expands to
+  `(begin ...)` of its body.  An export not defined or imported raises
+  `define-library: not defined`; an import of an unexported name, `import:
+  not exported`; of an unregistered library, `import: unknown library`.
+- Ran the dev suite, and stress `libraries|expan|boot`.
+
 ### Phase 4 - Standard libraries
 
 - `src/expander.scm`: `(scheme base)`, `(scheme char)`, `(scheme cxr)`,

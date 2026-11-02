@@ -10,14 +10,16 @@
 (define (%bad-syntax x)
   (%syntax-error "bad syntax" (list x)))
 
-;; A top-level environment is `#(kind bindings parent)`.  `bindings` is an
+;; A top-level environment is `#(kind bindings parent own)`.  `bindings` is an
 ;; association list of (identifier . binding), a binding being a label, the
 ;; global whose value slot is the variable, or a macro's transformer.  An
 ;; identifier it doesn't bind means what it does in `parent`, or else, with no
-;; parent, is its own label.  `kind` is `system`, for the prelude and expander,
-;; or `interaction`, for the REPL and files, whose parent is the system's.
+;; parent, is its own label, or in a library a fresh one, never bound.  `own`
+;; lists the labels its definitions made.  `kind` is `system`, for the prelude
+;; and expander; `interaction`, for the REPL and files, whose parent is the
+;; system's; or `library`, with no parent.
 (define (%make-top kind parent)
-  (vector kind '() parent))
+  (vector kind '() parent '()))
 
 (define %system-env (%make-top 'system #f))
 (define %interaction-env (%make-top 'interaction %system-env))
@@ -106,6 +108,7 @@
   (cond ((%lookup id env))
         ((%top-lookup id (%top env)))
         ((%alias-original id) (%resolve (%alias-original id) (%alias-env id)))
+        ((eq? (vector-ref (%top env) 0) 'library) (gensym (symbol->string id)))
         (else id)))
 
 ;; The transformer `x` is, if `x` is a resolved identifier bound to a macro, or #f.
@@ -453,7 +456,7 @@
 (define (%own-label? top label)
   (if (eq? (vector-ref top 0) 'system)
       (%bound? label)
-      (memq label (map cdr (vector-ref top 1)))))
+      (memq label (vector-ref top 3))))
 
 ;; Whether the binding `b`, in the top-level environment `top`, is imported:
 ;; a system binding, outside the system's environment.
@@ -464,18 +467,21 @@
 
 ;; The label a top-level definition of `id` in `top` defines.  It redefines
 ;; `top`'s own variable, and otherwise binds `id` to itself, or to a fresh label
-;; if it would shadow an imported binding or is an alias, inserted by a macro,
-;; so only that use's insertions refer to it (R7RS 5.3.1).
+;; in a library, if it would shadow an imported binding, or if `id` is an
+;; alias, inserted by a macro, so only that use's insertions refer to it
+;; (R7RS 5.3.1).
 (define (%top-define! top id)
   (let ((b (%resolve id top)))
     (cond ((and (symbol? b) (%own-label? top b)) b)
-          ((not (or (%alias-original id) (%imported? b top)))
-           (%top-bind! top id id)
-           id)
-          (else
-           (let ((fresh (gensym (symbol->string id))))
-             (%top-bind! top id fresh)
-             fresh)))))
+          ((or (eq? (vector-ref top 0) 'library) (%alias-original id) (%imported? b top))
+           (%top-own! top id (gensym (symbol->string id))))
+          (else (%top-own! top id id)))))
+
+;; Binds `id` to `label`, a label of its own, in `top`; returns `label`.
+(define (%top-own! top id label)
+  (%top-bind! top id label)
+  (vector-set! top 3 (cons label (vector-ref top 3)))
+  label)
 
 (define (%expand-define form top)
   (let* ((x (%define-procedure form))
@@ -514,11 +520,132 @@
       ((define) (%expand-define y top))
       ((define-values) (%expand-define-values y top))
       ((define-syntax) (%expand-define-syntax y top))
+      ((import) (%import! top (cdr y)) '(begin))
+      ((define-library) (%expand-define-library y))
       (else (%expand-expr y top)))))
 
 ;; Expands the top-level form `x` in the interaction environment.
 (define (%expand x)
   (%expand-top x %interaction-env))
+
+;;; Libraries (R7RS 5.6).
+
+;; The libraries defined: (name . exports), the exports an association list of
+;; (name . binding).
+(define %libraries '())
+
+;; Registers the library `name` with the exports `exports`, replacing any
+;; library of that name.
+(define (%define-library! name exports)
+  (set! %libraries
+        (cons (cons name exports)
+              (filter (lambda (lib) (not (equal? (car lib) name))) %libraries))))
+
+;; Defines the library `name`, exporting the system's bindings of `names`.
+(define (%define-system-library name names)
+  (%define-library! name (map (lambda (n) (cons n (%resolve n %system-env))) names)))
+
+(define (%library-exports name)
+  (cond ((assoc name %libraries) => cdr)
+        (else (%syntax-error "import: unknown library" (list name)))))
+
+;; The (name . binding) pairs the stripped import set `set` names.
+(define (%import-set set)
+  (define (names-in bindings names)
+    (for-each (lambda (n)
+                (unless (assq n bindings) (%syntax-error "import: not exported" (list n set))))
+              names)
+    names)
+  (define (inner)
+    (if (and (eq? (%length set 0) 3) (symbol? (car (cddr set))))
+        (%import-set (cadr set))
+        (%bad-syntax set)))
+  (case (and (pair? set) (car set))
+    ((only)
+     (let* ((bs (%import-set (cadr set)))
+            (names (names-in bs (cddr set))))
+       (filter (lambda (b) (memq (car b) names)) bs)))
+    ((except)
+     (let* ((bs (%import-set (cadr set)))
+            (names (names-in bs (cddr set))))
+       (filter (lambda (b) (not (memq (car b) names))) bs)))
+    ((prefix)
+     (let ((p (symbol->string (car (cddr set)))))
+       (map (lambda (b) (cons (string->symbol (string-append p (symbol->string (car b)))) (cdr b)))
+            (inner))))
+    ((rename)
+     (let* ((bs (%import-set (cadr set)))
+            (renames (cddr set)))
+       (names-in bs (map car renames))
+       (map (lambda (b) (cond ((assq (car b) renames) => (lambda (r) (cons (cadr r) (cdr b))))
+                              (else b)))
+            bs)))
+    (else (if (%length set 0) (%library-exports set) (%bad-syntax set)))))
+
+;; Binds, in `top`, the names the import sets `sets` name.
+(define (%import! top sets)
+  (for-each (lambda (set)
+              (for-each (lambda (b) (%top-bind! top (car b) (cdr b))) (%import-set (%strip set))))
+            sets))
+
+;; Expands the body of a library, the forms `forms`, in its environment `top`:
+;; every definition is bound before any form is expanded, so one may refer to
+;; one further down.  The definitions and expressions run in order.
+(define (%expand-library-body forms top)
+  ;; `items` collects, in reverse, a procedure expanding each form.
+  (define (scan forms items)
+    (if (null? forms)
+        (reverse items)
+        (let* ((x (%expand-head (car forms) top))
+               (k (%keyword x top))
+               (rest (cdr forms)))
+          (case k
+            ((begin) (if (%length x 0) (scan (append (cdr x) rest) items) (%bad-syntax x)))
+            ((define)
+             (let ((d (%define-procedure x)))
+               (if (%binding-form? d)
+                   (let ((name (%top-define! top (cadr d))))
+                     (scan rest (cons (lambda ()
+                                        (list 'define name (%expand-expr (car (cddr d)) top)))
+                                      items)))
+                   (%bad-syntax x))))
+            ((define-values)
+             (if (eq? (%length x 0) 3)
+                 (let ((formals (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)))
+                   (scan rest (cons (lambda () (list 'define-values formals
+                                                     (%expand-expr (car (cddr x)) top)))
+                                    items)))
+                 (%bad-syntax x)))
+            ((define-syntax) (%expand-define-syntax x top) (scan rest items))
+            (else (scan rest (cons (lambda () (%expand-expr x top)) items)))))))
+  (cons 'begin (map (lambda (item) (item)) (scan forms '()))))
+
+;; The (external name . binding) an export spec of the library environment `top`
+;; denotes: `name`, or `(rename name external)`.
+(define (%export spec top)
+  (let* ((renamed (and (pair? spec) (eq? (car spec) 'rename) (eq? (%length spec 0) 3)))
+         (name (if renamed (cadr spec) spec))
+         (b (and (symbol? name) (%top-lookup name top))))
+    (cons (if renamed (car (cddr spec)) name)
+          (or b (%syntax-error "define-library: not defined" (list name))))))
+
+;; Expands `(define-library name decl ...)`: registers the library, and expands
+;; to its body, which runs once, when the form does.
+(define (%expand-define-library form)
+  (let ((x (%strip form))
+        (top (%make-top 'library #f)))
+    (unless (and (%length x 0) (<= 2 (%length x 0)) (%length (cadr x) 0)) (%bad-syntax x))
+    (let loop ((decls (cddr x)) (specs '()) (body '()))
+      (if (null? decls)
+          (let ((code (%expand-library-body body top)))
+            (%define-library! (cadr x) (map (lambda (s) (%export s top)) specs))
+            code)
+          (let ((d (car decls)))
+            (case (and (pair? d) (%length d 0) (car d))
+              ((export) (loop (cdr decls) (append specs (cdr d)) body))
+              ((import) (%import! top (cdr d)) (loop (cdr decls) specs body))
+              ((begin) (loop (cdr decls) specs (append body (cdr d))))
+              (else (%bad-syntax d))))))))
 
 ;;; Derived forms (R7RS 4.2), as macros.
 
@@ -636,3 +763,22 @@
      (begin
        (define accessor (%record-accessor type 'field 'accessor))
        (define modifier (%record-modifier type 'field 'modifier))))))
+
+;;; Standard libraries (R7RS 5.6.1, Appendix A): the names Minim has.
+
+(%define-system-library
+ '(scheme base)
+ '(* + - ... < <= = => > >= _ and append apply assoc assq assv begin boolean? caar cadr
+   call-with-current-continuation call-with-values call/cc car case cdar cddr cdr
+   char->integer char<=? char<? char=? char>=? char>? char? cond cons define
+   define-record-type define-syntax define-values do dynamic-wind else eq? equal? eqv?
+   error error-object-irritants error-object-message error-object? file-error? for-each
+   guard if integer->char lambda length let let* let*-values let-syntax let-values letrec
+   letrec* letrec-syntax list list->string list->vector list-copy list-ref list-tail list?
+   make-string make-vector map member memq memv newline not null? number->string or pair?
+   procedure? quasiquote quote quotient raise raise-continuable read-error? remainder
+   reverse set! set-car! set-cdr! string->list string->symbol string-append string-length
+   string-ref string-set! string<=? string<? string=? string>=? string>? string? substring
+   symbol->string symbol? syntax-error syntax-rules unless unquote unquote-splicing values
+   vector vector->list vector-length vector-ref vector-set! vector? when
+   with-exception-handler zero?))

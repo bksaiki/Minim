@@ -12,3 +12,12 @@ still-the-system-unless
 3
 (2)
 5
+(1 #f)
+(stack 6 5)
+(1)
+(2)
+#<procedure>
+"hello"
+(stack)
+3
+(2)
