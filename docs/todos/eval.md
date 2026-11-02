@@ -130,6 +130,20 @@ specifier prints as `#<environment>`.  A program importing `(scheme eval)`
 cmake --build --preset dev && ctest --preset dev -R 'eval|libraries|program' && ctest --preset stress -R 'eval'
 ```
 
+**Done.**
+
+- `scheme/eval.scm` loads between `derived.scm` and `standard.scm`, so it
+  can use `define-record-type`; the type is `<environment>`, printing as
+  `#<environment>`.  `(minim)` takes `(scheme eval)` and `(scheme repl)`'s
+  names too.
+- No tail-call test of `eval` itself: it calls `%eval-expanded` in tail
+  position, which Phase 1's loop covers.  A REPL loop of 100,000 `eval`s ran
+  for minutes under GC stress, since each call expands, and a `test_eval`
+  loop, which needs that many iterations for its heap check, tripled the
+  test's time.
+- Tests: `tests/repl/eval.scm` and `tests/scripts/program-eval.scm`.  Ran
+  `ctest -R 'eval|libraries|program'`, and stress `eval`.
+
 ### Phase 3 - scheme-report-environment, null-environment
 
 - `scheme/eval.scm`: both procedures; `scheme/standard.scm`: in
@@ -170,7 +184,15 @@ cmake --preset release && cmake --build --preset release
   calling `environment` grows memory without bound until symbols' properties
   can be dropped (a weak symbol table, `beyond-r7rs.md`).
 
-Provisionally cache.  Reopen with a weak symbol table.
+Measured, release build, each environment importing `(scheme base)`: one
+costs about 2 ms to build, and after 1,000 uncached ones, expanding `(car
+x)` is twice as slow, since each adds a stale entry to the front of every
+imported name's property list.  A cache hit is one `assoc` over the distinct
+set lists.  Chez (`s/syntax.ss`) and Chibi (`lib/meta-7.scm`) make a new
+environment per call, but their environments' bindings don't outlive them
+on interned symbols.
+
+Cache.  Reopen with a weak symbol table.
 
 ### What is `(null-environment 5)`?
 
@@ -179,3 +201,14 @@ R7RS: the bindings of R5RS's syntactic keywords.  Provisionally
 the same as `scheme-report-environment`, is simpler but doesn't hide
 procedures.  Reopen if telling core forms' labels from variables proves
 awkward.
+
+### Should `interaction-environment` be a parameter?
+
+Chez (`s/syntax.ss`) and Chibi (`opcodes.c`) make it a parameter, holding one
+environment made at startup, so `parameterize` can swap it for a while and
+`load`, `eval`, and the REPL follow.  R7RS only asks for the REPL's
+environment.
+
+Provisionally a plain procedure returning one specifier: Minim has no
+parameters yet.  Reopen when `make-parameter` and `parameterize` land
+(milestone 9); then `%expand` and `load` read the parameter.

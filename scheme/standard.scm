@@ -17,9 +17,11 @@
    vector vector->list vector-length vector-ref vector-set! vector? when
    with-exception-handler zero?))
 
+(%define-system-library '(scheme eval) '(environment eval))
 (%define-system-library '(scheme file) '(file-exists?))
 (%define-system-library '(scheme load) '(load))
 (%define-system-library '(scheme process-context) '(get-environment-variable))
+(%define-system-library '(scheme repl) '(interaction-environment))
 (%define-system-library '(scheme write) '(display write))
 
 ;; R5RS's names (R7RS Appendix A), with the auxiliary syntax R7RS's list omits.
@@ -43,7 +45,8 @@
 (%define-system-library
  '(minim)
  (append (%exported-names
-          '((scheme base) (scheme file) (scheme load) (scheme process-context) (scheme write)))
+          '((scheme base) (scheme eval) (scheme file) (scheme load) (scheme process-context)
+            (scheme repl) (scheme write)))
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import
            string-hash letrec-values)))
