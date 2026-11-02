@@ -113,6 +113,11 @@ Tests (`tests/repl/symbols.scm`): each primitive, and a symbol that isn't one.
 cmake --build --preset dev && ctest --preset dev -R 'symbols' && ctest --preset stress -R 'symbols'
 ```
 
+**Done.**
+
+- `%putprop!` and `%remprop!` return void.
+- Only the symbol is checked: any object can be a key or a value.
+
 ### Phase 3 - Environments on property lists
 
 - `scheme/expander.scm`, `scheme/libraries.scm`: top-level environments as
