@@ -195,3 +195,15 @@
               ((begin) (loop (cdr decls) specs (append body (cdr d))))
               ((include) (loop (cdr decls) specs (append body (%include (cdr d)))))
               (else (%bad-syntax d))))))))
+
+;; The core forms of the R7RS program in the file `path` (R7RS 5.1): its
+;; leading imports make a new environment, holding only what they import, in
+;; which the rest expands as a library body.
+(define (%expand-program path)
+  (let ((top (%make-top 'library #f)))
+    (let loop ((forms (%read-file path)) (imported #f))
+      (cond ((and (pair? forms) (pair? (car forms)) (eq? (caar forms) 'import))
+             (%import! top (cdar forms))
+             (loop (cdr forms) #t))
+            (imported (%expand-library-body forms top))
+            (else (%syntax-error "program: no leading import" (list path)))))))

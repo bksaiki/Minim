@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(minim LANGUAGES C)
+project(minim VERSION 0.1.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -79,6 +79,8 @@ set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not 
 
 add_executable(minim src/main.c)
 target_link_libraries(minim PRIVATE libminim)
+target_include_directories(minim PRIVATE src)
+target_compile_definitions(minim PRIVATE MINIM_VERSION="${PROJECT_VERSION}")
 
 # Writes the Scheme sources expanded into core forms, for the boot file.
 add_executable(boot_gen tools/boot_gen.c)

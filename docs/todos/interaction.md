@@ -213,11 +213,29 @@ without `--program` runs as before (`hello.scm`).
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
 ```
 
+**Done.**
+
+- `%expand-program` (`scheme/libraries.scm`) returns the program's core
+  forms, and `main.c` evaluates them with `minim_eval_expanded`.  The call
+  is a core form, so `%expand-program` stays hidden from the REPL.
+- Added at the user's request: a fuller command line, with `--help` and
+  `--version`, and usage errors for an unknown option, a missing file after
+  `--program`, and an extra argument.  The version, 0.1.0, is set once, in
+  `CMakeLists.txt`'s `project`, and passed to `main.c` as `MINIM_VERSION`.
+- Tests: `program` now runs with `--program`; `program-unbound`,
+  `program-no-import`, `program-own` (defines `car`, which it didn't
+  import); `help`, `version`, `usage-option`, `usage-program`.  "Its
+  definitions don't reach the REPL" can't be observed from the command line,
+  since no REPL follows a program; `program-own` covers its environment
+  being its own.
+- Ran both full suites.
+
 ### After the last phase
 
 Sync the docs: `macros.md` (the interaction environment's imports, its own
 names, `(minim)`, `(minim system)`, programs), `repl.md` (what the REPL and
-files see; `--program`), `prelude.md` (the libraries), `testing.md` (tests
+files see; the command line: `--program`, `--help`, `--version`),
+`prelude.md` (the libraries), `testing.md` (tests
 import `(minim system)` for internals), and the roadmap (`r7rs-small.md`:
 programs; the coverage table unchanged).
 
