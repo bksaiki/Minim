@@ -1,0 +1,4 @@
+error: +: fixnum overflow
+error: -: fixnum overflow
+error: *: fixnum overflow
+error: +: not a fixnum: #t

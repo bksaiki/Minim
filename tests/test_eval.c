@@ -87,50 +87,6 @@ static void test_binding_values(void) {
     MINIM_RETURN_VOID;
 }
 
-static void test_self_evaluating(void) {
-    CHECK(evals_to("42", "42"));
-    CHECK(evals_to("\"s\"", "\"s\""));
-    CHECK(evals_to("#\\a", "#\\a"));
-    CHECK(evals_to("#f", "#f"));
-    CHECK(evals_to("#(1 x)", "#(1 x)"));
-}
-
-static void test_special_forms(void) {
-    CHECK(evals_to("'(1 x)", "(1 x)"));
-    CHECK(evals_to("(quote x)", "x"));
-    CHECK(evals_to("(if #t 1 2)", "1"));
-    CHECK(evals_to("(if #f 1 2)", "2"));
-    CHECK(evals_to("(if 0 1 2)", "1"));
-    CHECK(evals_to("(if #f 1)", "#<void>"));
-    CHECK(evals_to("(define x 5) x", "5"));
-    CHECK(evals_to("(define x 1) (set! x 2) x", "2"));
-    CHECK(evals_to("(define f (lambda (a b) (+ a b))) (f 2 3)", "5"));
-    CHECK(evals_to("(define x 1)", "#<void>"));
-    CHECK(evals_to("((lambda (x y) (+ x y)) 1 2)", "3"));
-    CHECK(evals_to("(begin 1 2 3)", "3"));
-    CHECK(evals_to("(begin)", "#<void>"));
-}
-
-static void test_closures(void) {
-    const char *counter =
-        "(define make-counter"
-        "  (lambda ()"
-        "    (define n 0)"
-        "    (lambda () (set! n (+ n 1)) n)))"
-        "(define a (make-counter))"
-        "(define b (make-counter))";
-    char src[512];
-    snprintf(src, sizeof(src), "%s (a) (a) (b) (a)", counter);
-    CHECK(evals_to(src, "3"));
-    snprintf(src, sizeof(src), "%s (a) (b) (b)", counter);
-    CHECK(evals_to(src, "2"));
-
-    CHECK(evals_to("(define f (lambda () (define a 1) (define b 2) (+ a b))) (f)", "3"));
-    CHECK(evals_to("(define adder (lambda (n) (lambda (x) (+ x n)))) ((adder 3) 4)", "7"));
-    CHECK(evals_to("(define x 1) (define f (lambda (x) (set! x 5) x)) (f 0)", "5"));
-    CHECK(evals_to("(define x 1) (define f (lambda (x) (set! x 5) x)) (f 0) x", "1"));
-}
-
 // Frames: references and `set!` across them, rest parameters, and `let-values`
 // frames, whose variables are unbound until their clause's values arrive.
 static void test_frames(void) {
@@ -150,48 +106,6 @@ static void test_frames(void) {
     CHECK(evals_to("(letrec-values (((f) (lambda () g)) ((g) 5)) (f))", "5"));
     CHECK(fails_with("(letrec-values (((a) b) ((b) 1)) a)", "unbound variable"));
     CHECK(fails_with("(letrec-values (((a) (set! b 2)) ((b) 1)) a)", "unbound variable"));
-}
-
-static void test_primitives(void) {
-    CHECK(evals_to("(+)", "0"));
-    CHECK(evals_to("(+ 1 2 3)", "6"));
-    CHECK(evals_to("(- 5)", "-5"));
-    CHECK(evals_to("(- 10 3 2)", "5"));
-    CHECK(evals_to("(* 3 -4)", "-12"));
-    CHECK(evals_to("(= 1 1 1)", "#t"));
-    CHECK(evals_to("(= 1 1 2)", "#f"));
-    CHECK(evals_to("(< 1 2 3)", "#t"));
-    CHECK(evals_to("(< 1 3 2)", "#f"));
-    CHECK(evals_to("(cons 1 2)", "(1 . 2)"));
-    CHECK(evals_to("(car '(1 2))", "1"));
-    CHECK(evals_to("(cdr '(1 2))", "(2)"));
-    CHECK(evals_to("(* 1152921504606846975 -1)", "-1152921504606846975"));
-    CHECK(evals_to("(- -1152921504606846975 1)", "-1152921504606846976"));
-}
-
-static void test_errors(void) {
-    CHECK(fails_with("y", "unbound variable"));
-    CHECK(fails_with("(set! y 1)", "unbound variable"));
-    CHECK(fails_with("(5)", "not a procedure"));
-    CHECK(fails_with("((lambda (x) x))", "arity mismatch"));
-    CHECK(fails_with("((lambda (x . r) x))", "arity mismatch"));
-    CHECK(fails_with("(car)", "arity mismatch"));
-    CHECK(fails_with("(car 5)", "car: not a pair"));
-    CHECK(fails_with("(+ 1 #t)", "+: not a fixnum"));
-    CHECK(fails_with("(+ 1152921504606846975 1)", "+: fixnum overflow"));
-    CHECK(fails_with("(* 1152921504606846975 2)", "*: fixnum overflow"));
-    CHECK(fails_with("(- -1152921504606846976)", "-: fixnum overflow"));
-    CHECK(fails_with("()", "bad syntax"));
-    CHECK(fails_with("(if)", "bad syntax"));
-    CHECK(fails_with("(quote 1 2)", "bad syntax"));
-    CHECK(fails_with("(define)", "bad syntax"));
-    CHECK(fails_with("(define x)", "bad syntax"));
-    CHECK(fails_with("(define x 1 2)", "bad syntax"));
-    CHECK(fails_with("(define (1) 1)", "bad syntax"));
-    CHECK(fails_with("(set! 1 2)", "bad syntax"));
-    CHECK(fails_with("(lambda (1) 1)", "bad syntax"));
-    CHECK(fails_with("(lambda (x))", "bad syntax"));
-    CHECK(fails_with("(+ 1 . 2)", "bad syntax"));
 }
 
 // Collects, then returns its second argument.
@@ -422,12 +336,7 @@ static void test_expand_hook(void) {
 
 int main(void) {
     minim_init();
-    test_self_evaluating();
-    test_special_forms();
-    test_closures();
     test_frames();
-    test_primitives();
-    test_errors();
     test_primitive_allocates();
     test_values();
     test_binding_values();

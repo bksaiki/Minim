@@ -153,6 +153,18 @@ moves only tested behavior.
 cmake --build --preset dev && ctest --preset dev -R 'numbers|core|eval|script' && ctest --preset stress -R 'numbers|core'
 ```
 
+**Done.**
+- `core.scm` also took `test_self_evaluating` and `test_closures`, both core
+  forms at the REPL; `test_eval` keeps the machine: values, frames, tail
+  calls, deep recursion, long calls, errors' effect on the stacks, and the
+  `%expand` hook.  The make-counter case stays in `eval.scm` until Phase 3
+  merges it into `core`.
+- `cons`, `car`, and `cdr` from `test_primitives` weren't moved: the REPL's
+  list tests have them.
+- `read-error.scm` exits 1 having run nothing: `load` reads the whole file
+  first.
+- Ran `ctest -R 'numbers|core|eval|script'`, and stress `numbers|core|eval`.
+
 ### Phase 3 - REPL tests: split, merge, rename
 
 - Split `prims` (into `numbers`, `vectors`, `lists`, `strings`, `symbols`,

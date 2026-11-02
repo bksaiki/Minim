@@ -1,0 +1,17 @@
+error: unbound variable: y
+error: unbound variable: y
+error: not a procedure: 5
+error: arity mismatch: #<procedure>
+error: arity mismatch: #<procedure>
+error: arity mismatch: #<procedure car>
+error: bad syntax: ()
+error: bad syntax: (if)
+error: bad syntax: (quote 1 2)
+error: bad syntax: (define)
+error: bad syntax: (define x)
+error: bad syntax: (define x 1 2)
+error: bad syntax: (define (1) 1)
+error: bad syntax: (set! 1 2)
+error: bad syntax: (lambda (1) 1)
+error: bad syntax: (lambda (x))
+error: bad syntax: (+ 1 . 2)
