@@ -12,6 +12,7 @@ them (`MINIM_SCHEME_SOURCES`):
 | `expander.scm` | the expander (`macros.md`) |
 | `libraries.scm` | `define-library`, `import`, library files, and programs |
 | `derived.scm` | the derived forms, as macros |
+| `eval.scm` | `eval` and its environments |
 | `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
 
 The library holds what is easiest in Scheme, above all higher-order
