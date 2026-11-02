@@ -1,6 +1,7 @@
 /**
  * @file
- * Tests for primitives that golden tests can't reach.
+ * Tests for primitives and prelude procedures on inputs too large for golden
+ * tests.
  */
 
 #include "minim.h"
@@ -9,11 +10,6 @@
 // The primitive named `name`.
 static minim_obj primitive(const char *name) {
     return minim_symbol_value(minim_intern_cstr(name));
-}
-
-// Calls the primitive `p` with `a`; `p` must not allocate.
-static minim_obj call1(minim_obj p, minim_obj a) {
-    return minim_primitive_fn(p)(&a, 1);
 }
 
 // Calls the primitive `p` with `a` and `b`; `p` must not allocate.
@@ -47,28 +43,22 @@ static void test_equal_deep(void) {
     MINIM_RETURN_VOID;
 }
 
-// Only read and file errors, made in C, satisfy `read-error?` and `file-error?`.
-static void test_error_kinds(void) {
-    minim_obj msg = minim_string_from_cstr("bad");
-    minim_obj e = MINIM_NIL;
-    MINIM_FRAME(&msg, &e);
-    for (int kind = MINIM_ERROR_GENERAL; kind <= MINIM_ERROR_FILE; kind++) {
-        e = minim_make_error_object(kind, msg, MINIM_NIL);
-        CHECK_EQ(minim_error_object_kind(e), kind);
-        minim_obj p = primitive("error-object?");
-        CHECK_EQ(call1(p, e), MINIM_TRUE);
-        p = primitive("read-error?");
-        CHECK_EQ(call1(p, e), kind == MINIM_ERROR_READ ? MINIM_TRUE : MINIM_FALSE);
-        p = primitive("file-error?");
-        CHECK_EQ(call1(p, e), kind == MINIM_ERROR_FILE ? MINIM_TRUE : MINIM_FALSE);
-    }
-    MINIM_RETURN_VOID;
+// `map` in the prelude recurses on the heap, not the C stack.
+static void test_map_long_list(void) {
+    const long n = gc_stressed() ? 1000 : 100000;
+    char src[256];
+    snprintf(src, sizeof(src),
+             "(define build (lambda (k acc) (if (= k 0) acc (build (- k 1) (cons k acc)))))"
+             "(fold + 0 (map (lambda (x) (* 2 x)) (build %ld '())))", n);
+    char expect[32];
+    snprintf(expect, sizeof(expect), "%ld", n * (n + 1));  // 2 * (1 + ... + n)
+    CHECK(evals_to(src, expect));
 }
 
 int main(void) {
     minim_init();
     test_equal_deep();
-    test_error_kinds();
+    test_map_long_list();
     minim_shutdown();
     return test_result();
 }

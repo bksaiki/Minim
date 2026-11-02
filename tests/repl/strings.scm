@@ -44,3 +44,11 @@ s
 (list->string (cons #\a #\b))
 (make-string -1)
 (string<? "a" 'b)
+
+; Length and access.
+(string-length "caf\xe9;")
+(string-ref "caf\xe9;" 3)
+(string? "s")
+(string? 's)
+(string-ref "abc" 3)
+(string-length 'abc)

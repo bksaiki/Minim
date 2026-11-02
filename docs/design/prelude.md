@@ -1,26 +1,38 @@
 # Prelude
 
 The prelude is the Scheme code compiled into the binary and evaluated by
-`minim_init`: a list library (`src/prelude.scm`), then the expander and the
-derived forms (`src/expander.scm`, `macros.md`).  The library holds what is
-easiest in Scheme, above all higher-order procedures, which primitives can't
-express because they can't call closures (see `primitives.md`).
+`minim_init`: the files of `scheme/`, in the order `CMakeLists.txt` lists
+them (`MINIM_SCHEME_SOURCES`):
+
+| File | Holds |
+|---|---|
+| `lists.scm` | the list library |
+| `control.scm` | `call/cc`, `dynamic-wind`, exceptions, and `guard`'s procedure |
+| `records.scm` | the procedures `define-record-type` binds |
+| `expander.scm` | the expander (`macros.md`) |
+| `libraries.scm` | `define-library`, `import`, and library files |
+| `derived.scm` | the derived forms, as macros |
+| `standard.scm` | the standard libraries |
+
+The library holds what is easiest in Scheme, above all higher-order
+procedures, which primitives can't express because they can't call closures
+(see `primitives.md`).
 
 ## The boot file
 
-Minim loads `src/prelude.boot`, both files expanded into core forms, one
+Minim loads `scheme/prelude.boot`, the files expanded into core forms, one
 top-level form per line.  It is checked in, so the expander that writes it is
 the one it contains.
 
-- `boot_gen` (`src/boot.c`) writes it: it expands each form of the two
+- `boot_gen` (`tools/boot_gen.c`) writes it: it expands each form of the
   files, in order, without evaluating it, with `%boot-form`
-  (`src/boot.scm`), in the system environment (`macros.md`).  That splices
+  (`tools/boot.scm`), in the system environment (`macros.md`).  That splices
   a `begin`; writes a `define-syntax` as
   `(%define-macro! 'name 'spec)`, since a transformer is a closure; renames
   each fresh name to `name.N`, numbered per name within its form, so an edit
   doesn't renumber other forms; and fails if a macro defines a fresh global.
-- After editing either file, build the `boot` target, which rewrites
-  `src/prelude.boot`.  After an expander change, build it twice: the first
+- After editing any of them, build the `boot` target, which rewrites
+  `scheme/prelude.boot`.  After an expander change, build it twice: the first
   run expands with the old expander.  The `boot` test fails if the file is
   out of date; since `boot_gen` starts from it, a pass also means it
   reproduces itself.  A boot file that can't regenerate itself is recovered
@@ -28,7 +40,7 @@ the one it contains.
 
 ## Loading
 
-- At build time, `cmake/embed.cmake` writes the bytes of `src/prelude.boot`
+- At build time, `cmake/embed.cmake` writes the bytes of `scheme/prelude.boot`
   to a generated `prelude_boot.c` as `const unsigned char
   minim_prelude_boot[]`, NUL-terminated.  A byte array, not a string literal,
   avoids MSVC's string-literal length limit.
@@ -36,9 +48,8 @@ the one it contains.
   each form with `minim_read_string` and evaluates it with
   `minim_eval_expanded`, without expansion.  No catch is installed, so an
   error in the prelude, which is a bug in Minim, aborts with the message.
-- The forms load in order: the list library, the expander, the derived
-  forms, the standard libraries.  Each `%define-macro!` builds a transformer
-  as it loads, so the expander code that runs then may call only what is
+- The forms load in the files' order.  Each `%define-macro!` builds a
+  transformer as it loads, so the code that runs then may call only what is
   defined before it.
 - If `boot.scm` uses something the old boot file's expander lacks, build the
   `boot` target once with the old `boot.scm`, then with the new.

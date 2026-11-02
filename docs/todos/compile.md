@@ -105,8 +105,8 @@ boxes for assigned variables, decided by the measurements below.
 Separate because it changes how code is represented and run, with behaviour
 identical, so the full suite is its regression net.
 
-Tests: the full suite, unchanged, including `test_eval`'s `bad syntax`
-checks with the expander off, which the compiler now raises.  A deeply nested
+Tests: the full suite, unchanged, including `tests/repl/core.scm`'s `bad
+syntax` checks, which the compiler now raises.  A deeply nested
 expression (see Open items).  Measure against `main`, run alternately:
 release, the allocation programs, a call-heavy loop (`fib`), a `let`-heavy
 loop, startup; and `ctest --preset stress -j 8`.

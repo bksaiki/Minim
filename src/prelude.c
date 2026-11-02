@@ -9,7 +9,7 @@
 #include "minim.h"
 #include "read.h"
 
-// The bytes of src/prelude.boot, NUL-terminated; embedded at build time.
+// The bytes of scheme/prelude.boot, NUL-terminated; embedded at build time.
 extern const unsigned char minim_prelude_boot[];
 
 void minim_prelude_init(void) {

@@ -1,0 +1,57 @@
+; Internal definitions shadow globals throughout their body and can refer to
+; each other, whatever their order.
+(define y 'global)
+(define f
+  (lambda ()
+    (define g (lambda () y))
+    (define y 'local)
+    (g)))
+(f)
+y
+(define parity
+  (lambda (n)
+    (define even? (lambda (n) (if (= n 0) #t (odd? (- n 1)))))
+    (define odd? (lambda (n) (if (= n 0) #f (even? (- n 1)))))
+    (even? n)))
+(parity 10)
+(define h
+  (lambda ()
+    (begin (define a 1) (begin (define b 2)))
+    (+ a b)))
+(h)
+((lambda (x) (define x 2) x) 1)
+((lambda (a) (define b (+ a 1)) b) 1)
+
+; Procedure definitions, at top level and in a body, and inserted by a macro;
+; the `lambda` they mean is the special form even where it is rebound.
+(define (add a b) (+ a b))
+(add 1 2)
+(define (rest a . r) r)
+(rest 1 2 3)
+(define (all . r) r)
+(all 1 2)
+(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))
+(fact 5)
+((lambda () (define (sq x) (* x x)) (define (sum-sq a b) (+ (sq a) (sq b))) (sum-sq 3 4)))
+(define-syntax def-const (syntax-rules () ((_ name v) (define (name) v))))
+(def-const seven 7)
+(seven)
+(let ((lambda 0)) (define (f) 1) (f))
+
+; Errors.
+(define bad (lambda () (if)))
+(lambda () (display 1) (define z 1) z)
+(lambda () (begin))
+(lambda () (define z 1))
+(let () (define z 1))
+(let-values () (define-values (z) 1))
+(lambda () (define-syntax m (syntax-rules () ((_) 1))))
+(define (1) 1)
+(define (f))
+(define () 1)
+(define (f) . 1)
+(if (define z 1) 2)
+(set! if 1)
+(lambda (x 1) x)
+(if #t (define-values (z) 1))
+(let-values (((z) 1)))

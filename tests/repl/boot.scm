@@ -1,5 +1,5 @@
-; How the boot file's generator (src/boot.scm) writes a top-level form.
-(load "../../src/boot.scm")
+; How the boot file's generator (tools/boot.scm) writes a top-level form.
+(load "../../tools/boot.scm")
 
 ; Fresh names become name.N, distinct per name and numbered within each form;
 ; globals and keywords stay.

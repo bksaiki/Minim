@@ -64,10 +64,7 @@ static void test_reserve(void) {
 
     minim_obj r;
     CHECK(!minim_catch(reserve_too_many, NULL, &r));
-    const char *msg;
-    minim_obj irritant;
-    minim_last_error(&msg, &irritant);
-    CHECK(strcmp(msg, "too many arguments") == 0);
+    CHECK(last_error_is("too many arguments"));
     CHECK(counts_down_to(h0));
 }
 

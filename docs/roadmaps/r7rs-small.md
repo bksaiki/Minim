@@ -77,9 +77,8 @@ A Scheme-level library, compiled into the binary and loaded at
 `minim_init`.
 
 - `minim file.scm` runs a file; `(load "file.scm")` loads one.
-- `src/prelude.scm` (the library) and `src/expander.scm` are expanded into
-  `src/prelude.boot`, which is embedded at build time and evaluated at
-  startup.
+- The Scheme sources in `scheme/` are expanded into `scheme/prelude.boot`,
+  which is embedded at build time and evaluated at startup.
 - The prelude defines what is easiest in Scheme, above all higher-order
   procedures, which primitives can't express because they can't call
   closures: `map`, `for-each`, `append`, `reverse`, `list-tail`, `assq`,

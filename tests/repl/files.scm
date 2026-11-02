@@ -9,8 +9,6 @@
 ; %read-file: a file's forms, unevaluated.
 (%read-file "load/defs.scm")
 (%read-file "load/empty.scm")
-(guard (e (#t (list (error-object-message e) (file-error? e)))) (%read-file "load/missing.scm"))
-(guard (e (#t (list (error-object-message e) (read-error? e)))) (%read-file "load/bad-read.scm"))
 
 ; Errors.
 (file-exists? 'files.scm)

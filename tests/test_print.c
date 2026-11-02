@@ -118,26 +118,32 @@ static void test_vectors(void) {
     MINIM_RETURN_VOID;
 }
 
-// A new rtd named `name`, with no fields.
-static minim_obj make_type(const char *name) {
-    minim_obj rtd = minim_make_record(minim_base_rtd);
-    MINIM_FRAME(&rtd);
-    minim_record_set(rtd, MINIM_RTD_NFIELDS, minim_fixnum(0));
-    minim_record_set(rtd, MINIM_RTD_FIELDS, MINIM_NIL);
-    minim_obj sym = minim_intern_cstr(name);
-    minim_record_set(rtd, MINIM_RTD_NAME, sym);
-    MINIM_RETURN(rtd);
+// Returns void.
+static minim_obj nothing(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    return MINIM_VOID;
+}
+
+// A closure prints anonymously; a primitive, with its name.
+static void test_procedures(void) {
+    minim_obj p = minim_make_closure(MINIM_NIL, MINIM_NIL);
+    MINIM_FRAME(&p);
+    CHECK(prints_as(p, "#<procedure>"));
+    p = minim_intern_cstr("nothing");
+    p = minim_make_primitive(p, nothing, 0, 0);
+    CHECK(prints_as(p, "#<procedure nothing>"));
+    MINIM_RETURN_VOID;
 }
 
 // A record prints its type's name, without angle brackets; an rtd, as a record type.
 static void test_records(void) {
-    minim_obj rtd = make_type("<point>");
+    minim_obj rtd = make_record_type("<point>", NULL, 0);
     minim_obj r = MINIM_NIL;
     MINIM_FRAME(&rtd, &r);
     CHECK(prints_as(rtd, "#<record-type point>"));
     r = minim_make_record(rtd);
     CHECK(prints_as(r, "#<point>"));
-    rtd = make_type("<");
+    rtd = make_record_type("<", NULL, 0);
     CHECK(prints_as(rtd, "#<record-type <>"));
     CHECK(prints_as(minim_base_rtd, "#<record-type record-type>"));
     MINIM_RETURN_VOID;
@@ -153,6 +159,7 @@ int main(void) {
     test_quote();
     test_quasiquote();
     test_vectors();
+    test_procedures();
     test_records();
     minim_shutdown();
     return test_result();

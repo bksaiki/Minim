@@ -27,16 +27,22 @@ elseif(MSVC)
     add_compile_options(/W4)
 endif()
 
-# The prelude, expanded into core forms (src/prelude.boot), embedded as a C array
+# The Scheme sources, in load order, and the boot file they expand into.
+set(MINIM_SCHEME_SOURCES lists control records expander libraries derived standard)
+list(TRANSFORM MINIM_SCHEME_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/scheme/)
+list(TRANSFORM MINIM_SCHEME_SOURCES APPEND .scm)
+set(MINIM_BOOT ${CMAKE_CURRENT_SOURCE_DIR}/scheme/prelude.boot)
+
+# The boot file, embedded as a C array
 set(prelude_c ${CMAKE_CURRENT_BINARY_DIR}/prelude_boot.c)
 add_custom_command(
     OUTPUT ${prelude_c}
     COMMAND ${CMAKE_COMMAND}
-        -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.boot
+        -DINPUT=${MINIM_BOOT}
         -DOUTPUT=${prelude_c}
         -DNAME=minim_prelude_boot
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed.cmake
-    DEPENDS src/prelude.boot cmake/embed.cmake
+    DEPENDS ${MINIM_BOOT} cmake/embed.cmake
     COMMENT "Embedding prelude.boot"
 )
 
@@ -50,7 +56,18 @@ add_library(libminim STATIC
     src/heap.c
     src/object.c
     src/prelude.c
-    src/prims.c
+    src/prims/char.c
+    src/prims/control.c
+    src/prims/equal.c
+    src/prims/error.c
+    src/prims/number.c
+    src/prims/pair.c
+    src/prims/prims.c
+    src/prims/record.c
+    src/prims/string.c
+    src/prims/syntax.c
+    src/prims/system.c
+    src/prims/vector.c
     src/print.c
     src/read.c
     src/stack.c
@@ -63,21 +80,19 @@ set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not 
 add_executable(minim src/main.c)
 target_link_libraries(minim PRIVATE libminim)
 
-# Writes the prelude expanded into core forms, for src/prelude.boot.
-add_executable(boot_gen src/boot.c)
+# Writes the Scheme sources expanded into core forms, for the boot file.
+add_executable(boot_gen tools/boot_gen.c)
 target_link_libraries(boot_gen PRIVATE libminim)
 target_include_directories(boot_gen PRIVATE src)
 
-# Regenerates src/prelude.boot from src/prelude.scm and src/expander.scm, in
-# that order, replacing it only if generation succeeds.  After an expander
-# change, run it twice: the second run expands with the new expander.
+# Regenerates the boot file from the Scheme sources, replacing it only if
+# generation succeeds.  After an expander change, run it twice: the second run
+# expands with the new expander.
 add_custom_target(boot
-    COMMAND boot_gen ${CMAKE_CURRENT_SOURCE_DIR}/src/boot.scm
-        ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.scm ${CMAKE_CURRENT_SOURCE_DIR}/src/expander.scm
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.boot
-    COMMENT "Regenerating src/prelude.boot"
+    COMMAND boot_gen ${CMAKE_CURRENT_SOURCE_DIR}/tools/boot.scm
+        ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_SCHEME_SOURCES}
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/prelude.boot ${MINIM_BOOT}
+    COMMENT "Regenerating scheme/prelude.boot"
 )
 
 if(MINIM_BUILD_TESTS)

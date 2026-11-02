@@ -5,6 +5,7 @@
 
 #include <string.h>
 
+#include "continuation.h"
 #include "env.h"
 #include "error.h"
 #include "eval.h"

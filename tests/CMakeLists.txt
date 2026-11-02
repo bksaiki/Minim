@@ -25,14 +25,18 @@ function(minim_add_test name)
     minim_add_stressed(${name} test_${name})
 endfunction()
 
-# src/prelude.boot must be what boot_gen makes of the prelude's sources, which
-# also means it reproduces itself, since boot_gen starts from it.
+# The boot file must be what boot_gen makes of the Scheme sources, which also
+# means it reproduces itself, since boot_gen starts from it.
+string(REPLACE ";" "|" scheme_sources "${MINIM_SCHEME_SOURCES}")
 add_test(NAME boot COMMAND ${CMAKE_COMMAND}
     -DBOOT_GEN=$<TARGET_FILE:boot_gen>
-    -DSRC=${PROJECT_SOURCE_DIR}/src
+    -DBOOT_SCM=${PROJECT_SOURCE_DIR}/tools/boot.scm
+    -DSOURCES=${scheme_sources}
+    -DEXPECTED=${MINIM_BOOT}
     -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/prelude.boot
     -P ${CMAKE_CURRENT_SOURCE_DIR}/check_boot.cmake)
 
+minim_add_test(tag)
 minim_add_test(object)
 minim_add_test(heap INTERNAL)
 minim_add_test(gc INTERNAL)
@@ -42,7 +46,6 @@ minim_add_test(symbol)
 minim_add_test(print INTERNAL)
 minim_add_test(error)
 minim_add_test(read INTERNAL)
-minim_add_test(procedure)
 minim_add_test(eval INTERNAL)
 minim_add_test(prims)
 
@@ -109,31 +112,33 @@ function(minim_add_script_test name)
     endif()
 endfunction()
 
+minim_add_repl_test(aliases)
+minim_add_repl_test(bodies)
 minim_add_repl_test(boot)
 minim_add_repl_test(chars)
 minim_add_repl_test(continuations)
+minim_add_repl_test(core)
 minim_add_repl_test(derived)
-minim_add_repl_test(echo)
-minim_add_repl_test(errors)
 minim_add_repl_test(equality)
-minim_add_repl_test(eval)
-minim_add_repl_test(files)
-minim_add_repl_test(expander)
+minim_add_repl_test(exceptions)
 minim_add_repl_test(expansion)
+minim_add_repl_test(files)
 minim_add_repl_test(gc)
+minim_add_repl_test(guard)
 minim_add_repl_test(hashing)
 minim_add_repl_test(libraries)
 minim_add_repl_test(lists)
 minim_add_repl_test(load)
 minim_add_repl_test(local-macros)
-minim_add_repl_test(prelude)
-minim_add_repl_test(prims)
+minim_add_repl_test(numbers)
+minim_add_repl_test(quasiquote)
 minim_add_repl_test(records)
 minim_add_repl_test(strings)
 minim_add_repl_test(symbols)
 minim_add_repl_test(syntax-rules)
-minim_add_repl_test(tail)
+minim_add_repl_test(top-level)
 minim_add_repl_test(values)
+minim_add_repl_test(vectors)
 
 minim_add_script_test(fail STATUS 1)
 minim_add_script_test(gc-settings NO_STRESS)  # the defaults
@@ -154,4 +159,5 @@ minim_add_script_test(hello)
 minim_add_script_test(library-path ENV MINIM_LIBRARY_PATH=nowhere:libpath)
 minim_add_script_test(missing STATUS 1)
 minim_add_script_test(program)
+minim_add_script_test(read-error STATUS 1)
 minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)

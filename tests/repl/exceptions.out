@@ -1,0 +1,32 @@
+#t
+"bad thing"
+(1 (2) "three")
+#f
+#f
+#<error bad thing>
+(#f #f #f #f #f #f)
+(#f #f #f)
+(#f #f #f)
+#t
+#f
+#t
+41
+(v v)
+(caught boom)
+("bad thing" (1 (2)))
+("no irritants" ())
+(outer (inner x))
+outer
+out
+(before after)
+("handler returned" (r))
+("car: not a pair" (5) #f #f)
+("unbound variable" (never-bound) #f #f)
+("arity mismatch" (#<procedure>) #f #f)
+("apply: not a list" (2) #f #f)
+("vector-ref: bad index" (0) #f #f)
+("wrong number of values" ((1 2)) #f #f)
+("car: not a pair" (r) #f #f)
+(in in out out)
+(in in out out)
+(in out)

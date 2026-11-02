@@ -28,8 +28,9 @@ Not features, but needed as programs grow.
 
 ## Libraries
 
-- The Scheme sources moved to `src/scheme/`, and `src/expander.scm` split
-  into the expander, the derived forms, and the libraries.
+- Done: the Scheme sources in `scheme/`, one file per part; the boot
+  generator in `tools/`; the primitives in `src/prims/`, one file per area
+  (`docs/design/prelude.md`, `docs/design/primitives.md`).
 - The standard libraries written as `.sld` files, each re-exporting from a
   core library of the system's bindings, and expanded into the boot file, so
   nothing is read from disk at run time.

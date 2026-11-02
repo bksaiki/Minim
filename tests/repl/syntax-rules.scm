@@ -81,10 +81,6 @@ five
 (get-secret)
 secret
 
-; A definition replaces a macro of the same name.
-(define my-list 'variable)
-my-list
-
 ; Errors.
 (my-or 1)
 (define-syntax bad (lambda (x) x))

@@ -1,3 +1,15 @@
+#t
+#f
+1
+2
+3
+#<pare>
+#<record-type pare>
+(k #f r)
+l
+(#t #f #f)
+(#t #f)
+(1 2 3)
 #<record-type point>
 <point>
 2
@@ -12,18 +24,5 @@
 #<record-type record-type>
 #t
 (#t #f #t)
-(1 2 3)
 "%make-record-type: bad fields"
 2
-#t
-#f
-1
-2
-3
-#<pare>
-#<record-type pare>
-(k #f r)
-l
-(#t #f #f)
-(#t #f)
-(1 2 3)

@@ -227,11 +227,14 @@ static void test_older_to_younger(void) {
     minim_obj pair3 = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_obj vec3 = MINIM_NIL;
     minim_obj sym3 = MINIM_NIL;
+    minim_obj rec3 = MINIM_NIL;
     minim_obj pair2 = MINIM_NIL;
     minim_obj lst = MINIM_NIL;
-    MINIM_FRAME(&pair3, &vec3, &sym3, &pair2, &lst);
+    MINIM_FRAME(&pair3, &vec3, &sym3, &rec3, &pair2, &lst);
     vec3 = minim_make_vector(1, MINIM_NIL);
     sym3 = minim_intern_cstr("older-to-younger");
+    rec3 = make_record_type("box", (const char *const[]){"value"}, 1);
+    rec3 = minim_make_record(rec3);
     for (unsigned g = 0; g < 3; g++)
         minim_gc_collect_generation(g);  // into generation 3
     pair2 = minim_cons(MINIM_NIL, MINIM_NIL);
@@ -248,6 +251,8 @@ static void test_older_to_younger(void) {
     minim_vector_set(vec3, 0, lst);
     lst = make_list(13);
     minim_set_symbol_value(sym3, lst);
+    lst = make_list(14);
+    minim_record_set(rec3, 0, lst);
     lst = MINIM_NIL;
     for (unsigned g = 0; g <= 3; g++) {
         make_list(100);  // garbage
@@ -256,6 +261,7 @@ static void test_older_to_younger(void) {
         CHECK(is_list(minim_cdr(pair2), 11));
         CHECK(is_list(minim_vector_ref(vec3, 0), 12));
         CHECK(is_list(minim_symbol_value(sym3), 13));
+        CHECK(is_list(minim_record_ref(rec3, 0), 14));
     }
     minim_gc_set_config(saved);
     MINIM_RETURN_VOID;
@@ -310,27 +316,10 @@ static void test_remembered(void) {
     MINIM_RETURN_VOID;
 }
 
-// A new rtd named `name` with `n` fields, named by the list `fields`.
-static minim_obj make_type(const char *name, intptr_t n, minim_obj fields) {
-    minim_obj rtd = MINIM_NIL;
-    MINIM_FRAME(&fields, &rtd);
-    rtd = minim_make_record(minim_base_rtd);
-    minim_record_set(rtd, MINIM_RTD_NFIELDS, minim_fixnum(n));
-    minim_record_set(rtd, MINIM_RTD_FIELDS, fields);
-    minim_obj sym = minim_intern_cstr(name);
-    minim_record_set(rtd, MINIM_RTD_NAME, sym);
-    MINIM_RETURN(rtd);
-}
-
 // A new rtd named `name` with the fields `x` and `y`.
 static minim_obj make_point_type(const char *name) {
-    minim_obj fields = MINIM_NIL;
-    MINIM_FRAME(&fields);
-    minim_obj sym = minim_intern_cstr("y");
-    fields = minim_cons(sym, fields);
-    sym = minim_intern_cstr("x");
-    fields = minim_cons(sym, fields);
-    MINIM_RETURN(make_type(name, 2, fields));
+    static const char *const fields[] = {"x", "y"};
+    return make_record_type(name, fields, 2);
 }
 
 // A record of `rtd` holding (0 ... n-1) and n.
@@ -360,7 +349,7 @@ static void test_records(void) {
     MINIM_FRAME(&before, &rtd, &after, &empty);  // the roots are copied in this order
     before = make_point(rtd, 10);
     after = make_point(rtd, 20);
-    empty = make_type("empty", 0, MINIM_NIL);
+    empty = make_record_type("empty", NULL, 0);
     empty = minim_make_record(empty);
 
     for (int major = 0; major < 2; major++) {
@@ -383,23 +372,6 @@ static void test_records(void) {
     MINIM_RETURN_VOID;
 }
 
-// Setting a field of an old record to a young value remembers the record.
-static void test_record_barrier(void) {
-    minim_gc_config saved = use_default_gc_config();
-    minim_obj rtd = make_point_type("point");
-    minim_obj r = MINIM_NIL;
-    MINIM_FRAME(&rtd, &r);
-    r = make_point(rtd, 1);
-    minim_gc_collect_minor();
-    CHECK_EQ(generation(r), 1);
-    minim_obj lst = make_list(5);
-    minim_record_set(r, 0, lst);
-    minim_gc_collect_minor();
-    CHECK(is_list(minim_record_ref(r, 0), 5));
-    minim_gc_set_config(saved);
-    MINIM_RETURN_VOID;
-}
-
 int main(void) {
     minim_init();
     test_survive();
@@ -414,7 +386,6 @@ int main(void) {
     test_older_to_younger();
     test_remembered();
     test_records();
-    test_record_barrier();
     minim_shutdown();
     return test_result();
 }

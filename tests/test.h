@@ -66,6 +66,52 @@ static inline FILE *input(const char *s) {
     return f;
 }
 
+/** Number of type predicates `x` satisfies: one for every value with a type. */
+static inline int count_predicates(minim_obj x) {
+    return minim_is_fixnum(x) + minim_is_char(x) + minim_is_boolean(x) + minim_is_null(x)
+        + minim_is_pair(x) + minim_is_symbol(x) + minim_is_closure(x) + minim_is_vector(x)
+        + minim_is_string(x) + minim_is_primitive(x) + minim_is_continuation(x)
+        + minim_is_error_object(x) + minim_is_record(x);
+}
+
+/** Whether the last error raised has the message `msg`; reports a mismatch. */
+static inline bool last_error_is(const char *msg) {
+    const char *actual;
+    minim_obj irritant;
+    minim_last_error(&actual, &irritant);
+    if (strcmp(actual, msg) == 0)
+        return true;
+    fprintf(stderr, "raised `%s`, expected `%s`\n", actual, msg);
+    return false;
+}
+
+/** A new record type named `name`, with the `n` fields named `fields`. */
+static inline minim_obj make_record_type(const char *name, const char *const *fields, size_t n) {
+    minim_obj names = MINIM_NIL;
+    minim_obj rtd = MINIM_NIL;
+    MINIM_FRAME(&names, &rtd);
+    for (size_t i = n; i > 0; i--) {
+        minim_obj sym = minim_intern_cstr(fields[i - 1]);
+        names = minim_cons(sym, names);
+    }
+    rtd = minim_make_record(minim_base_rtd);
+    minim_record_set(rtd, MINIM_RTD_NFIELDS, minim_fixnum((intptr_t)n));
+    minim_record_set(rtd, MINIM_RTD_FIELDS, names);
+    minim_obj sym = minim_intern_cstr(name);
+    minim_record_set(rtd, MINIM_RTD_NAME, sym);
+    MINIM_RETURN(rtd);
+}
+
+/** Evaluates every datum in the file `f`; returns the last value. */
+static inline minim_obj eval_file(void *f) {
+    minim_obj val = MINIM_VOID;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&val, &x);
+    while ((x = minim_read(f)) != MINIM_EOF)
+        val = minim_eval(x);
+    MINIM_RETURN(val);
+}
+
 /** Whether `x` prints as `expect`; reports a mismatch. */
 static inline bool prints_as(minim_obj x, const char *expect) {
     FILE *f = tmpfile();
@@ -80,6 +126,36 @@ static inline bool prints_as(minim_obj x, const char *expect) {
         return false;
     }
     return true;
+}
+
+/** Whether evaluating `src` gives a value that prints as `expect`. */
+static inline bool evals_to(const char *src, const char *expect) {
+    FILE *f = input(src);
+    minim_obj val;
+    bool ok = minim_catch(eval_file, f, &val);
+    fclose(f);
+    if (!ok) {
+        fprintf(stderr, "`%s` raised ", src);
+        minim_write_error(stderr);
+        return false;
+    }
+    return prints_as(val, expect);
+}
+
+/** Whether evaluating `src` raises the error `msg`. */
+static inline bool fails_with(const char *src, const char *msg) {
+    FILE *f = input(src);
+    minim_obj val;
+    bool ok = minim_catch(eval_file, f, &val);
+    fclose(f);
+    if (ok) {
+        fprintf(stderr, "`%s` evaluated without error\n", src);
+        return false;
+    }
+    if (last_error_is(msg))
+        return true;
+    fprintf(stderr, "  in `%s`\n", src);
+    return false;
 }
 
 #endif
