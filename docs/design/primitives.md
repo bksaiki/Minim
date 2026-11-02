@@ -8,11 +8,11 @@ shared argument checks.  The evaluator calls them; see `eval.md`.
 
 ## Primitives the evaluator applies
 
-`apply`, `load`, `values`, `call-with-values`, and `%call/cc` need to
-evaluate code or return to the machine, which an ordinary primitive can't do
-without re-entering `minim_eval`.  So they are registered as primitives, but
-the evaluator recognizes their function pointers (`minim_prim_apply`, ...)
-and never calls them:
+`apply`, `load`, `values`, `call-with-values`, `%call/cc`, and
+`%eval-expanded` need to evaluate code or return to the machine, which an
+ordinary primitive can't do without re-entering `minim_eval`.  So they are
+registered as primitives, but the evaluator recognizes their function
+pointers (`minim_prim_apply`, ...) and never calls them:
 
 - `apply` rewrites the value stack `[apply f a ... lst]` into
   `[f a ... elements of lst]` and applies `f`, so `apply` in tail position is
@@ -29,6 +29,8 @@ and never calls them:
   always closes it, even on a read error.  It then runs the forms as top-level
   forms (see `eval.md`) and returns void.  A read error therefore runs
   none of the file.
+- `%eval-expanded` evaluates its argument, already in core forms, globally
+  and in tail position, for `eval` (`macros.md`).
 
 ## Equality and hashing
 

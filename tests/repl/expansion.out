@@ -5,3 +5,11 @@
 (lambda () (letrec-values (((f) (lambda () (letrec-values (((g) 1)) g)))) (f)))
 (define f (lambda (a . r) (cons a r)))
 (lambda () (letrec-values (((g) (lambda () 1))) (g)))
+3
+1
+2
+5
+yes
+3
+done
+3

@@ -424,6 +424,13 @@ apply:  // Applies the procedure at `base` to the values above it.
                 k = make_frame(K_TOPLEVEL, k, x, MINIM_NIL, MINIM_NIL);
                 goto ret;
             }
+            if (minim_primitive_fn(x) == minim_prim_eval_expanded) {
+                // Evaluates the core form globally, in tail position.
+                expr = *minim_stack_at(base + 1);
+                minim_stack_pop_to(base);
+                env = MINIM_NIL;
+                goto eval;
+            }
             val = minim_primitive_fn(x)(minim_stack_at(base + 1), n);
             minim_stack_pop_to(base);
             goto ret;
@@ -481,7 +488,7 @@ apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, w
         minim_prim_fn fn = minim_primitive_fn(x);
         if (fn == minim_prim_apply || fn == minim_prim_values
             || fn == minim_prim_call_with_values || fn == minim_prim_call_cc
-            || fn == minim_prim_load)
+            || fn == minim_prim_load || fn == minim_prim_eval_expanded)
             minim_error("too many arguments", minim_fixnum((intptr_t)total));
         if (!primitive_accepts(x, total))
             minim_error("arity mismatch", x);

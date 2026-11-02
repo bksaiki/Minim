@@ -37,15 +37,15 @@ provides.  Update it as names are added.
 | `(scheme char)` | 0 | 22 | not defined |
 | `(scheme complex)` | 0 | 6 | not defined |
 | `(scheme cxr)` | 0 | 24 | not defined |
-| `(scheme eval)` | 0 | 2 | not defined |
+| `(scheme eval)` | 2 | 2 | |
 | `(scheme file)` | 1 | 10 | |
 | `(scheme inexact)` | 0 | 12 | not defined |
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 1 | 5 | |
-| `(scheme r5rs)` | 104 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme r5rs)` | 106 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 0 | 1 | not defined |
-| `(scheme repl)` | 0 | 1 | not defined |
+| `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 0 | 3 | not defined |
 | `(scheme write)` | 2 | 4 | |
 
@@ -173,9 +173,12 @@ Depends on 3 (`define-record-type` is a macro).
 ### 9. The rest of the standard libraries (M, ongoing)
 
 The names the coverage table above lacks that no other milestone brings:
-`(scheme char)`, `(scheme cxr)`, `case-lambda`, `(scheme lazy)`, `eval` and
-`environment`, `exit`, and the rest of `(scheme base)`'s lists, strings,
+`(scheme char)`, `(scheme cxr)`, `case-lambda`, `(scheme lazy)`, `exit`,
+and the rest of `(scheme base)`'s lists, strings,
 vectors, and control.  Mostly prelude procedures.
+
+- Done: `(scheme eval)`, `(scheme repl)`, and R5RS's environments
+  (`docs/design/macros.md`).
 
 ### 10. Conformance (S–M, ongoing)
 

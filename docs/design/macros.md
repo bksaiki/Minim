@@ -225,3 +225,24 @@ A program (R7RS 5.1), `minim --program file.scm`, after Chez's `--program`,
 must begin with `import`; `%expand-program` expands the rest as a library
 body, in a new environment of the library kind holding only what it
 imports.
+
+## Eval
+
+`eval` and its environments (R7RS 6.12) are in `scheme/eval.scm`.  An
+environment specifier is a record, `#<environment>`, holding a top-level
+environment out of user code's reach.
+
+- `(interaction-environment)` is the REPL's, one specifier made once.  Chez
+  and Chibi make it a parameter; Minim has no parameters yet.
+- `(environment set ...)` is a new environment of the library kind holding
+  what the import sets name.  Its bindings are immutable, so specifiers are
+  cached by their sets (`equal?`): a new one costs about 2 ms and leaves its
+  bindings on interned symbols' property lists for good, slowing every later
+  lookup of those names.
+- `(scheme-report-environment 5)` imports `(scheme r5rs)`;
+  `(null-environment 5)`, only its syntax: the exports bound to macros or to
+  labels holding no value.
+- `(eval x env)` expands `x` in `env`, as a top-level form in the
+  interaction environment and as an expression elsewhere, so a definition in
+  an immutable environment is `bad syntax`.  Then it calls `%eval-expanded`
+  on the result, in tail position (`primitives.md`).
