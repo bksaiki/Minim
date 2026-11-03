@@ -1,0 +1,13 @@
+FAIL 1671 (call-with-values (lambda () ((compose exact-integer-sqrt *) 12 75)) list) raised ("unbound variable" exact-integer-sqrt)
+FAIL 1677 (map (lambda (n) (expt n n)) '(1 2 3 4 5)) raised ("unbound variable" expt)
+FAIL 1696 (string-map char-foldcase "AbdEgH") raised ("unbound variable" string-map)
+FAIL 1698 (string-map (lambda (c) (integer->char (+ 1 (char->integer c)))) "HAL") raised ("unbound variable" string-map)
+FAIL 1703 (string-map (lambda (c k) (if (eqv? k #\u) (char-upcase c) (char-downcase c))) "studlycaps xxx" "ululululul") raised ("unbound variable" string-map)
+FAIL 1709 (vector-map cadr '#((a b) (d e) (g h))) raised ("unbound variable" vector-map)
+FAIL 1711 (vector-map (lambda (n) (expt n n)) '#(1 2 3 4 5)) raised ("unbound variable" vector-map)
+FAIL 1715 (vector-map + '#(1 2 3) '#(4 5 6 7)) raised ("unbound variable" vector-map)
+FAIL 1717 (let ((res (let ((count 0)) (vector-map (lambda (ignored) (set! count (+ count 1)) count) '#(a b))))) (or (equal? res #(1 2)) (equal? res #(2 1)))) raised ("unbound variable" vector-map)
+FAIL 1742 (let ((v '())) (string-for-each (lambda (c) (set! v (cons (char->integer c) v))) "abcde") v) raised ("unbound variable" string-for-each)
+FAIL 1749 (let ((v (make-list 5))) (vector-for-each (lambda (i) (list-set! v i (* i i))) '#(0 1 2 3 4)) v) raised ("unbound variable" make-list)
+FAIL 1755 (call-with-current-continuation (lambda (exit) (for-each (lambda (x) (if (negative? x) (exit x))) '(54 0 37 -3 245 19)) #t)) raised ("unbound variable" negative?)
+6.10 Control Features: 22 passed, 12 failed, 0 errors

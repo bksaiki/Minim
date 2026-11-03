@@ -1,0 +1,6 @@
+FAIL 1084 (boolean=? #t #t) raised ("unbound variable" boolean=?)
+FAIL 1085 (boolean=? #f #f) raised ("unbound variable" boolean=?)
+FAIL 1086 (boolean=? #t #f) raised ("unbound variable" boolean=?)
+FAIL 1087 (boolean=? #f #f #f) raised ("unbound variable" boolean=?)
+FAIL 1088 (boolean=? #t #t #f) raised ("unbound variable" boolean=?)
+6.3 Booleans: 13 passed, 5 failed, 0 errors

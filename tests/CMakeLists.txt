@@ -158,6 +158,9 @@ minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1k)
 minim_add_script_test(gc-settings-big-nursery STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1152921504606846976)
+minim_add_script_test(command-line ARGS command-line.scm a "b c")
+minim_add_script_test(command-line-option ARGS command-line.scm --x --help)
+minim_add_script_test(command-line-program ARGS --program command-line-program.scm a --x)
 minim_add_script_test(environment-variable
     ENV "MINIM_TEST_VARIABLE=set by the test")
 minim_add_script_test(hello)
@@ -173,6 +176,35 @@ minim_add_script_test(stdin INPUT stdin.txt)
 minim_add_script_test(file-ports)
 minim_add_script_test(help ARGS --help)
 minim_add_script_test(version ARGS --version)
-minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)
 minim_add_script_test(usage-option STATUS 2 ARGS --foo)
 minim_add_script_test(usage-program STATUS 2 ARGS --program)
+
+# The R7RS test suite's sections, read from its test-begin lines
+# (r7rs/r7rs-tests.scm): each runs with
+# r7rs/run.scm, labelled r7rs, its report checked against r7rs/<slug>.out, the
+# slug its number or else its title in lowercase and hyphenated.  The target
+# r7rs-golden rewrites the reports.  No stress copies: the suite is slow under
+# stress, and the other tests stress the same code.
+set(r7rs_dir ${CMAKE_CURRENT_SOURCE_DIR}/r7rs)
+set(script ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
+set(r7rs_golden)
+file(STRINGS ${r7rs_dir}/r7rs-tests.scm r7rs_begins REGEX "^\\(test-begin \"")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${r7rs_dir}/r7rs-tests.scm)
+foreach(begin IN LISTS r7rs_begins)
+    string(REGEX REPLACE "^\\(test-begin \"(.*)\"\\)$" "\\1" title "${begin}")
+    if(title STREQUAL "R7RS")  # the whole suite, around the sections
+        continue()
+    endif()
+    string(REGEX MATCH "^[0-9.]+" slug "${title}")
+    if(NOT slug)
+        string(TOLOWER "${title}" slug)
+        string(REPLACE " " "-" slug "${slug}")
+    endif()
+    set(args -DMINIM=$<TARGET_FILE:minim> -DDIR=${r7rs_dir} "-DARGS=run.scm|${title}"
+        -DEXPECTED=${r7rs_dir}/${slug}.out)
+    add_test(NAME r7rs_${slug} COMMAND ${CMAKE_COMMAND} ${args} -P ${script})
+    set_tests_properties(r7rs_${slug} PROPERTIES LABELS r7rs)
+    list(APPEND r7rs_golden COMMAND ${CMAKE_COMMAND} ${args} -DUPDATE=ON -P ${script})
+endforeach()
+add_custom_target(r7rs-golden ${r7rs_golden} DEPENDS minim VERBATIM
+    COMMENT "Rewriting the R7RS test suite's reports")

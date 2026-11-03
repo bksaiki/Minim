@@ -101,3 +101,6 @@ y
 '(after error)
 (car 5)
 (cdr '(1 2))
+
+; The REPL's command line.
+(command-line)

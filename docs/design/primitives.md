@@ -210,6 +210,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 | Call | Result |
 |---|---|
 | `(get-environment-variable name)` | the value of the environment variable `name`, a string, or `#f` if it is unset |
+| `(command-line)` | the script's or program's path, then its arguments, as strings; `("minim")` at the REPL |
 
 ## Conventions
 

@@ -88,6 +88,27 @@ static minim_obj prim_delete_file(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
+static const char *const default_command_line[] = {"minim"};
+static int command_argc = 1;
+static const char *const *command_argv = default_command_line;
+
+void minim_set_command_line(int argc, const char *const *argv) {
+    command_argc = argc;
+    command_argv = argv;
+}
+
+static minim_obj prim_command_line(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    minim_obj lst = MINIM_NIL;
+    minim_obj s = MINIM_NIL;
+    MINIM_FRAME(&lst, &s);
+    for (int i = command_argc; i > 0; i--) {
+        s = minim_string_from_cstr(command_argv[i - 1]);
+        lst = minim_cons(s, lst);
+    }
+    MINIM_RETURN(lst);
+}
+
 // The value of the environment variable `args[0]`, or #f if it is unset.
 static minim_obj prim_get_environment_variable(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
@@ -108,6 +129,7 @@ static minim_obj prim_read_file(minim_obj *args, size_t n) {
 const minim_prim_def minim_system_prims[] = {
     {"file-exists?", prim_file_exists, 1, 1},
     {"delete-file", prim_delete_file, 1, 1},
+    {"command-line", prim_command_line, 0, 0},
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
     {"%read-file", prim_read_file, 1, 1},
     {"collect", prim_collect, 0, 0},

@@ -262,6 +262,12 @@ void minim_init(void);
 /** Frees all runtime memory. */
 void minim_shutdown(void);
 
+/**
+ * Sets what `command-line` returns: the `argc` strings of `argv`, the command
+ * name first; `("minim")` until set.  The strings must outlive the runtime.
+ */
+void minim_set_command_line(int argc, const char *const *argv);
+
 // Garbage collection
 
 /** Root stack height; used by MINIM_FRAME. */

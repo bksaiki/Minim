@@ -59,13 +59,15 @@ ones, print as their characters: `(1 "a" #\b)` displays as `(1 a b)`.
 | Command | Runs |
 |---|---|
 | `minim` | the REPL |
-| `minim file.scm` | the script `file.scm`, by `(load "file.scm")` |
-| `minim --program file.scm` | the R7RS program `file.scm` |
+| `minim file.scm arg ...` | the script `file.scm`, by `(load "file.scm")` |
+| `minim --program file.scm arg ...` | the R7RS program `file.scm` |
 | `minim --help`, `minim --version` | prints the usage or the version (`project` in `CMakeLists.txt`) |
 
-A script prints nothing else; an error is printed to stderr with exit status
-1.  A bad command line prints the problem and the usage to stderr and exits
-with status 2.
+Options come before the file; the arguments after it are the script's or
+program's, even those that look like options, for `command-line`, which
+gives the file's path and then them.  A script prints nothing else; an error
+is printed to stderr with exit status 1.  A bad command line prints the
+problem and the usage to stderr and exits with status 2.
 
 The REPL and scripts expand forms in the interaction environment, which sees
 `(minim)`; a program sees only what it imports (`macros.md`).
