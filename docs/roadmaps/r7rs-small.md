@@ -32,7 +32,7 @@ provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 128 | 238 | |
+| `(scheme base)` | 130 | 238 | |
 | `(scheme case-lambda)` | 0 | 1 | not defined |
 | `(scheme char)` | 0 | 22 | not defined |
 | `(scheme complex)` | 0 | 6 | not defined |
@@ -177,6 +177,8 @@ The names the coverage table above lacks that no other milestone brings:
 and the rest of `(scheme base)`'s lists, strings,
 vectors, and control.  Mostly prelude procedures.
 
+- Done: `make-parameter` and `parameterize`, and `interaction-environment`
+  a parameter (`docs/design/prelude.md`, `docs/design/macros.md`).
 - Done: `(scheme eval)`, `(scheme repl)`, and R5RS's environments
   (`docs/design/macros.md`).
 

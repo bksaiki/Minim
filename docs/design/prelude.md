@@ -7,12 +7,12 @@ them (`MINIM_SCHEME_SOURCES`):
 | File | Holds |
 |---|---|
 | `lists.scm` | the list library |
-| `control.scm` | `call/cc`, `dynamic-wind`, exceptions, and `guard`'s procedure |
+| `control.scm` | `call/cc`, `dynamic-wind`, exceptions, `guard`'s procedure, and parameters |
 | `records.scm` | the procedures `define-record-type` binds |
 | `expander.scm` | the expander (`macros.md`) |
 | `libraries.scm` | `define-library`, `import`, library files, and programs |
 | `derived.scm` | the derived forms, as macros |
-| `eval.scm` | `eval` and its environments |
+| `eval.scm` | `eval`, its environments, and `%expand` |
 | `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
 
 The library holds what is easiest in Scheme, above all higher-order
@@ -78,6 +78,8 @@ the one it contains.
 | `(raise obj)` | calls the innermost handler on `obj`, with the handlers outside it installed; if it returns, raises `handler returned` with irritants `(obj)` to them |
 | `(raise-continuable obj)` | likewise, returning the handler's values |
 | `(error message irritant ...)` | raises a new error object |
+| `(make-parameter init [converter])` | a parameter: `(p)` is its value, `init` converted; `(p v)` sets it to `v` converted |
+| `(parameter? x)` | whether `x` is a parameter, without calling it; Minim's own, in `(minim)` |
 
 `call/cc` wraps `%call/cc` (`primitives.md`): the procedure it passes runs
 the `after`s of the `dynamic-wind`s it leaves, innermost first, and the
@@ -89,6 +91,16 @@ The exception procedures follow the R7RS reference implementation
 its body with a handler that escapes to the `guard`'s continuation and runs
 the clauses there; if none matches, it jumps back and re-raises with
 `raise-continuable`.  `%raise-c-error` is what errors from C raise through.
+
+Parameters (R7RS 4.2.6) follow Chez.  A parameter is a closure of the one
+`lambda` in `make-parameter`, so `parameter?` compares a procedure's code
+with theirs (`%closure-code`).  `%parameterize`, which `parameterize` expands
+into, checks its parameters, converts the new values, and calls the body in
+a `dynamic-wind` whose `before` and `after` swap the saved values in and
+out, reading all before setting any.  So a value set inside survives
+leaving and re-entering, a parameter named twice is restored, and restored
+values aren't converted.  It reaches the converter and an unconverted setter
+through a private token.
 
 `define-record-type` (`macros.md`) binds procedures from `%record-constructor`,
 `%record-predicate`, `%record-accessor`, and `%record-modifier`, which find

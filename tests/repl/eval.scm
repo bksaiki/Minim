@@ -44,3 +44,23 @@ from-eval
 (eq? (null-environment 5) (null-environment 5))
 (scheme-report-environment 4)
 (null-environment 7)
+
+; interaction-environment is a parameter: the REPL, eval, and load follow it.
+(define repl (interaction-environment))
+(parameterize ((interaction-environment base))
+  (list (eq? (interaction-environment) base) (eval '(+ 1 2) (interaction-environment))))
+(eq? (interaction-environment) repl)
+(load "load/minim-name.scm")
+(parameterize ((interaction-environment base))
+  (load "load/minim-name.scm"))
+(parameterize ((interaction-environment base))
+  (eval '(define y 1) (interaction-environment)))
+(interaction-environment 5)
+
+; Set at the REPL to an immutable environment, it takes only expressions, and
+; nothing there can set it back: the end of this file.
+(interaction-environment base)
+(define y 1)
+(+ 1 2)
+(gensym)
+(interaction-environment repl)

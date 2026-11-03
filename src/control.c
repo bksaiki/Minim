@@ -75,6 +75,12 @@ static minim_obj prim_is_procedure(minim_obj *args, size_t n) {
     return boolean(minim_is_procedure(args[0]));
 }
 
+// The code of the closure `args[0]`, its `(params . body)`, or #f.
+static minim_obj prim_closure_code(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return minim_is_closure(args[0]) ? minim_closure_code(args[0]) : MINIM_FALSE;
+}
+
 const minim_prim_def minim_control_prims[] = {
     {"apply", minim_prim_apply, 2, MINIM_VARIADIC},
     {"load", minim_prim_load, 1, 1},
@@ -87,5 +93,6 @@ const minim_prim_def minim_control_prims[] = {
     {"%handlers", prim_handlers, 0, 0},
     {"%set-handlers!", prim_set_handlers, 1, 1},
     {"procedure?", prim_is_procedure, 1, 1},
+    {"%closure-code", prim_closure_code, 1, 1},
     {NULL, NULL, 0, 0},
 };

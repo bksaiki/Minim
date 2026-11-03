@@ -10,3 +10,9 @@ error: import: unknown library: (no such library)
 error: unbound variable: car
 error: scheme-report-environment: not version 5: 4
 error: null-environment: not version 5: 7
+error: unbound variable: fold
+error: bad syntax: (define y 1)
+error: interaction-environment: not an environment: 5
+error: bad syntax: (define y 1)
+error: unbound variable: gensym
+error: unbound variable: interaction-environment

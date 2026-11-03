@@ -1,11 +1,14 @@
 ;;; Eval (R7RS 6.12): environment specifiers, `environment`,
-;;; `interaction-environment`, and `eval`.
+;;; `interaction-environment`, and `eval`; and `%expand`, which the evaluator
+;;; applies to every top-level form.
 
-;; An environment specifier: a top-level environment, out of user code's reach.
+;; An environment specifier: a top-level environment, out of user code's reach,
+;; and whether definitions may add to it.
 (define-record-type <environment>
-  (%make-environment top)
+  (%make-environment top mutable?)
   %environment?
-  (top %environment-top))
+  (top %environment-top)
+  (mutable? %environment-mutable?))
 
 ;; The specifiers `environment` made, by their import sets: their bindings are
 ;; immutable, so the same sets share one.
@@ -20,24 +23,41 @@
         (else
          (let ((top (%make-top 'library #f)))
            (%import! top sets)
-           (let ((env (%make-environment top)))
+           (let ((env (%make-environment top #f)))
              (set! %environments (cons (cons (%copy-sets sets) env) %environments))
              env)))))
 
-(define %interaction-environment (%make-environment %interaction-env))
+;; The environment the REPL, `load`, and minim_define expand in: a parameter,
+;; as in Chez and Chibi, initially the REPL's own.
+(define interaction-environment
+  (make-parameter (%make-environment %interaction-env #t)
+                  (lambda (env)
+                    (unless (%environment? env)
+                      (error "interaction-environment: not an environment" env))
+                    env)))
 
-(define (interaction-environment)
-  %interaction-environment)
+;; Expands `x` in `env`: as a top-level form if `env` is mutable, else as an
+;; expression, so a definition is bad syntax.
+(define (%expand-in x env)
+  (let ((top (%environment-top env)))
+    (if (%environment-mutable? env) (%expand-top x top) (%expand-expr x top))))
 
-;; Expands `x` in `env` and evaluates it: in the interaction environment as a
-;; top-level form, elsewhere as an expression, so a definition is bad syntax.
 (define (eval x env)
   (unless (%environment? env)
     (error "eval: not an environment" env))
-  (let ((top (%environment-top env)))
-    (%eval-expanded (if (eq? top %interaction-env)
-                        (%expand-top x top)
-                        (%expand-expr x top)))))
+  (%eval-expanded (%expand-in x env)))
+
+;; Expands the top-level form `x` in the interaction environment.
+(define (%expand x)
+  (%expand-in x (interaction-environment)))
+
+;; The label a top-level definition of `id` in the interaction environment
+;; defines; for minim_define.
+(define (%interaction-label! id)
+  (let ((env (interaction-environment)))
+    (unless (%environment-mutable? env)
+      (error "minim_define: immutable interaction environment" id))
+    (%top-define! (%environment-top env) id)))
 
 ;; R5RS's environments, for `version` 5 only.
 (define (scheme-report-environment version)

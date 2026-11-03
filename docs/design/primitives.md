@@ -126,6 +126,7 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, error objects, and records all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
+| `(%closure-code x)` | the closure `x`'s `(params . body)`, shared by every closure of one `lambda`; `#f` for anything else |
 
 ### Vectors
 
