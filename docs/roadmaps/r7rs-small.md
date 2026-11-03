@@ -41,7 +41,7 @@ provides.  Update it as names are added.
 | `(scheme inexact)` | 0 | 12 | not defined |
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
-| `(scheme process-context)` | 1 | 5 | |
+| `(scheme process-context)` | 2 | 5 | |
 | `(scheme r5rs)` | 124 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
@@ -202,14 +202,44 @@ vectors, and control.  Mostly prelude procedures.
   a parameter (`docs/design/prelude.md`, `docs/design/macros.md`).
 - Done: `(scheme eval)`, `(scheme repl)`, and R5RS's environments
   (`docs/design/macros.md`).
+- Done: `command-line`, with scripts and programs taking arguments
+  (`docs/design/repl.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
 
 ### 10. Conformance (S–M, ongoing)
 
-A conformance suite: the R7RS tests (for example Chibi's `r7rs-tests.scm`) as
-golden tests, enabled as each milestone makes them pass, until all do.
+Done: Chibi Scheme's R7RS test suite runs section by section, each a golden
+test of its report (`docs/design/testing.md`).  Ongoing: a section's report
+changes as milestones land, until every test passes.  Where Minim stands:
+
+| Section | Passed | Failed | Errors |
+|---|---|---|---|
+| 4.1 Primitive expression types | 27 | 0 | 0 |
+| 4.2 Derived expression types | 32 | 31 | 12 |
+| 4.3 Macros | 23 | 4 | 3 |
+| 5 Program structure | 15 | 0 | 0 |
+| 6.1 Equivalence Predicates | 25 | 0 | 0 |
+| 6.2 Numbers | 24 | 120 | 76 |
+| 6.3 Booleans | 13 | 5 | 0 |
+| 6.4 Lists | 60 | 5 | 0 |
+| 6.5 Symbols | 13 | 4 | 0 |
+| 6.6 Characters | 20 | 59 | 0 |
+| 6.7 Strings | 52 | 77 | 1 |
+| 6.8 Vectors | 13 | 30 | 0 |
+| 6.9 Bytevectors | 0 | 11 | 28 |
+| 6.10 Control Features | 22 | 12 | 0 |
+| 6.11 Exceptions | 24 | 6 | 0 |
+| 6.12 Environments and evaluation | 1 | 1 | 2 |
+| 6.13 Input and output | 36 | 2 | 21 |
+| Read syntax | 55 | 27 | 11 |
+| Numeric syntax | 8 | 2 | 105 |
+| 6.14 System interface | 5 | 6 | 1 |
+| **Total** | 468 | 402 | 260 |
+
+The reports name each failing test by line; the gaps are those of the
+coverage table and of milestones 6 to 9.  Update the table with the reports.
 
 ## Open items
 

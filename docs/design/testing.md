@@ -9,6 +9,7 @@ runs each again under GC stress.
 | unit | `tests/test_<name>.c` | the C API, with `CHECK` and `CHECK_EQ` (`tests/test.h`) |
 | REPL | `tests/repl/<name>.scm` | piped into `minim`: stdout against `<name>.out`, and stderr against `<name>.err` if it exists |
 | script | `tests/scripts/<name>.scm` | run as `minim <file>`: the exit status too |
+| conformance | a section of `tests/r7rs/r7rs-tests.scm` | run by `tests/r7rs/run.scm`: its report against `tests/r7rs/<section>.out` |
 
 `tests/run_minim.cmake` runs the REPL and script tests.  The `boot` test
 (`tests/check_boot.cmake`) fails if `scheme/prelude.boot` is out of date
@@ -28,6 +29,28 @@ Each behavior is tested once, where it fits:
   output worth reading keep their own files: `boot`, `expansion`, `aliases`,
   and the record primitives at the end of `records`.  A file that uses
   internals starts with `(import (minim system))`.
+
+## Conformance
+
+R7RS has no official test suite; the de facto one is Chibi Scheme's, by the
+chair of the R7RS-small working group, vendored unchanged as
+`tests/r7rs/r7rs-tests.scm` with its license, `COPYING`.  Each of its 20
+sections is a test, `r7rs_<section>` (`r7rs_6.4`, `r7rs_read-syntax`),
+labelled `r7rs`: `ctest -L r7rs` runs only them, `ctest -LE r7rs` the rest.
+
+`minim run.scm "6.4 Lists"` runs a section with a shim for the suite's
+`(chibi test)` forms.  It splits the section into its top-level forms, those
+starting at column 0, and reads and evaluates each under `guard`, so syntax
+or procedures Minim lacks fail only their form.  It reports each failing
+test (`FAIL`), other error (`ERROR`, `READ-ERROR`), and skipped form
+(`SKIP`, for forms that would hang Minim) with the line it starts at, then
+the counts.
+
+The expected reports hold today's failures, so a test fails only when a
+report changes: a fix as much as a regression.  After a deliberate change,
+`cmake --build --preset dev --target r7rs-golden` rewrites them, to be
+committed with it.  The sections have no stress copies: the suite is slow
+under stress, and the other tests stress the same code.
 
 ## GC stress
 
