@@ -71,3 +71,29 @@
           ((null? (cdr bounds)) (%write-string s port (car bounds) #f))
           ((null? (cddr bounds)) (%write-string s port (car bounds) (cadr bounds)))
           (else (error "write-string: too many arguments" args)))))
+
+;; Calls `proc` with `port`, then closes it and returns `proc`'s values.  If
+;; `proc` escapes, the port stays open (R7RS).
+(define (call-with-port port proc)
+  (call-with-values (lambda () (proc port))
+    (lambda vals
+      (close-port port)
+      (apply values vals))))
+
+(define (call-with-input-file path proc)
+  (call-with-port (open-input-file path) proc))
+
+(define (call-with-output-file path proc)
+  (call-with-port (open-output-file path) proc))
+
+(define (with-input-from-file path thunk)
+  (call-with-input-file path
+    (lambda (port)
+      (parameterize ((current-input-port port))
+        (thunk)))))
+
+(define (with-output-to-file path thunk)
+  (call-with-output-file path
+    (lambda (port)
+      (parameterize ((current-output-port port))
+        (thunk)))))

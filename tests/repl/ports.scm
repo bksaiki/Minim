@@ -124,6 +124,11 @@ stdin
 (parameterize ((current-output-port printed)) (display "!") (write 'x))
 (get-output-string printed)
 
+; call-with-port closes the port after its procedure returns.
+(define closed-after (open-input-string "abc"))
+(call-with-port closed-after read-char)
+(input-port-open? closed-after)
+
 ; Errors.
 (open-input-file "load/no-such-file.scm")
 (guard (e ((file-error? e) 'file-error)) (open-input-file "load/no-such-file.scm"))
@@ -150,4 +155,5 @@ stdin
 (close-port closed)
 (display 1 closed)
 (write 1 (current-output-port) 2)
+(delete-file 'x)
 (get-output-string (current-output-port))

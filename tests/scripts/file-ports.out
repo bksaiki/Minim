@@ -1,0 +1,7 @@
+(data "λ")
+"second line"
+"(data \"λ\")"
+(1 2 #f)
+#\x
+#f
+file error

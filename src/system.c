@@ -76,6 +76,18 @@ static minim_obj prim_file_exists(minim_obj *args, size_t n) {
     return boolean(f != NULL);
 }
 
+// Deletes the file `args[0]`; raises a file error if it can't.
+static minim_obj prim_delete_file(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(minim_is_string(args[0]), "delete-file: not a string", args[0]);
+    char *name = minim_string_to_utf8(args[0]);
+    int failed = remove(name);
+    free(name);
+    if (failed)
+        minim_error_of_kind(MINIM_ERROR_FILE, "delete-file: cannot delete file", args[0]);
+    return MINIM_VOID;
+}
+
 // The value of the environment variable `args[0]`, or #f if it is unset.
 static minim_obj prim_get_environment_variable(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
@@ -95,6 +107,7 @@ static minim_obj prim_read_file(minim_obj *args, size_t n) {
 
 const minim_prim_def minim_system_prims[] = {
     {"file-exists?", prim_file_exists, 1, 1},
+    {"delete-file", prim_delete_file, 1, 1},
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
     {"%read-file", prim_read_file, 1, 1},
     {"collect", prim_collect, 0, 0},

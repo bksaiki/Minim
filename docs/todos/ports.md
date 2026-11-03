@@ -342,6 +342,19 @@ reading it back with `call-with-input-file`, then `delete-file`;
 cmake --build --preset dev && ctest --preset dev -R 'port|script' && ctest --preset stress -R 'port'
 ```
 
+**Done.**
+
+- `call-with-port` returns its procedure's values, all of them, after
+  closing the port; if the procedure escapes, the port stays open (R7RS).
+  The other four are `call-with-port` over a new file port, the `with-`
+  ones parameterizing the current port inside it.
+- `delete-file` is a primitive in `src/system.c`, with `file-exists?`:
+  `remove`, raising a file error when it fails.
+- `tests/scripts/file-ports.scm` writes, reads back, and deletes a file in
+  `tests/scripts/`; its stress copy, which `ctest -j` may run at the same
+  time, uses its own file, chosen by `MINIM_GC_NURSERY_BYTES`.
+- Ran `ctest -R 'port|script'`, and stress `port`.
+
 ### After the last phase
 
 Sync the docs: `ports.md` (new, listed in `docs/design/README.md`: the port

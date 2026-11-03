@@ -61,4 +61,6 @@ read-error
 and-this-one
 "(1 \"two\\n\" #\\3 #(sym (a . b)) λ) (1 two 3 λ) \"simple\" #<output port string>"
 "(1 \"two\\n\" #\\3 #(sym (a . b)) λ) (1 two 3 λ) \"simple\" #<output port string>!x"
+#\a
+#f
 file-error
