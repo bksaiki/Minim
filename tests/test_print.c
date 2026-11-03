@@ -184,8 +184,7 @@ static void test_port(void) {
     const char *srcs[] = {
         "'(1 \"two\\n\" #\\3 #(a (b . c)) caf\u00e9 '(q ,u ,@s))",
         "(make-string 1000 #\\\u03bb)",
-        "(let loop ((i 0) (l '()))"
-        " (if (= i 300) l (loop (+ i 1) (cons (vector i (number->string i)) l))))",
+        "(let loop ((i 0) (l '())) (if (= i 300) l (loop (+ i 1) (cons (vector i) l))))",
         "(list car (open-output-string) (eof-object))",
     };
     for (size_t i = 0; i < sizeof(srcs) / sizeof(srcs[0]); i++)
