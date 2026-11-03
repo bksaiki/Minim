@@ -129,6 +129,21 @@ updated (`r7rs-golden`): 6.14.
 cmake --build --preset dev && ctest --preset dev -R 'script|r7rs|boot'
 ```
 
+**Done.**
+
+- `%exit` (`src/system.c`) runs `minim_shutdown`, then C's `exit`; `exit`
+  and `emergency-exit` (`scheme/control.scm`) compute the status with
+  `%exit-status`.  They take their optional argument as a rest list until
+  Phase 5 rewrites them with `case-lambda`.
+- `tests/scripts/exit.scm` takes the kind of exit as its argument, so one
+  script covers every status, inside a `dynamic-wind`: `exit` prints its
+  `after`, `emergency-exit` doesn't, and what was displayed before reaches
+  stdout.  `tests/repl/exit.scm` checks the REPL stops at `(exit)`.
+- No test of a file port flushed by `exit`: `%exit` runs `minim_shutdown`,
+  whose flushing of file ports `test_port` already checks.
+- No conformance report changed: 6.14 never calls `exit`.
+- Ran `ctest -R 'script|exit|r7rs|boot'`, and stress `exit`.
+
 ### Phase 3 - case-lambda in the evaluator
 
 - `src/eval.c`: closures' code is their form: a `lambda` keeps its
@@ -176,8 +191,8 @@ cmake --build --preset dev && ctest --preset dev -R 'expansion|derived|libraries
 
 - `scheme/ports.scm`: the procedures with optional ports, and
   `write-string`, with `case-lambda`; `%port-arg` gone.
-- `scheme/control.scm`: `make-parameter`.  `scheme/prelude.boot`
-  regenerated.
+- `scheme/control.scm`: `make-parameter`, `exit`, and `emergency-exit`.
+  `scheme/prelude.boot` regenerated.
 
 Separate because it is a rewrite, with no change in behavior but the arity
 errors' wording.

@@ -28,7 +28,9 @@
  '(call-with-input-file call-with-output-file delete-file file-exists? open-input-file
    open-output-file with-input-from-file with-output-to-file))
 (%define-system-library '(scheme load) '(load))
-(%define-system-library '(scheme process-context) '(command-line get-environment-variable))
+(%define-system-library
+ '(scheme process-context)
+ '(command-line emergency-exit exit get-environment-variable))
 (%define-system-library '(scheme read) '(read))
 (%define-system-library '(scheme repl) '(interaction-environment))
 (%define-system-library '(scheme write) '(display write write-simple))

@@ -48,6 +48,20 @@
 
 (define call-with-current-continuation call/cc)
 
+;; The exit status `obj` asks for (R7RS): 1 for #f, a fixnum itself, else 0.
+(define (%exit-status obj)
+  (cond ((not obj) 1)
+        ((fixnum? obj) obj)
+        (else 0)))
+
+;; Leaves every dynamic-wind in progress, running its after, then exits.
+(define (exit . obj)
+  (%rewind! '())
+  (%exit (%exit-status (or (null? obj) (car obj)))))
+
+(define (emergency-exit . obj)
+  (%exit (%exit-status (or (null? obj) (car obj)))))
+
 ;; Exceptions.  The handlers (`%handlers`) are those installed, innermost
 ;; first; `%with-handlers` installs a list for `thunk`'s extent.
 
