@@ -94,7 +94,7 @@
     (let ((n (%length set 0)))
       (and n (<= 2 n)
            (case k
-             ((prefix) (and (= n 3) (symbol? (car (cddr set)))))
+             ((prefix) (and (= n 3) (symbol? (caddr set))))
              ((rename) (null? (filter (lambda (r) (not (renaming? r))) (cddr set))))
              (else #t)))))
   (define k (and (pair? set) (car set)))
@@ -110,7 +110,7 @@
             (names (names-in bs (cddr set))))
        (filter (lambda (b) (not (memq (car b) names))) bs)))
     ((prefix)
-     (let ((p (symbol->string (car (cddr set)))))
+     (let ((p (symbol->string (caddr set))))
        (map (lambda (b) (cons (string->symbol (string-append p (symbol->string (car b)))) (cdr b)))
             (%import-set (cadr set)))))
     ((rename)
@@ -154,14 +154,14 @@
                (if (%binding-form? d)
                    (let ((name (%top-define! top (cadr d))))
                      (scan rest (cons (lambda ()
-                                        (list 'define name (%expand-expr (car (cddr d)) top)))
+                                        (list 'define name (%expand-expr (caddr d) top)))
                                       items)))
                    (%bad-syntax x))))
             ((define-values)
              (if (eq? (%length x 0) 3)
                  (let ((formals (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)))
                    (scan rest (cons (lambda () (list 'define-values formals
-                                                     (%expand-expr (car (cddr x)) top)))
+                                                     (%expand-expr (caddr x) top)))
                                     items)))
                  (%bad-syntax x)))
             ((define-syntax) (%expand-define-syntax x top) (scan rest items))
@@ -174,7 +174,7 @@
   (let* ((renamed (and (pair? spec) (eq? (car spec) 'rename) (eq? (%length spec 0) 3)))
          (name (if renamed (cadr spec) spec))
          (b (and (symbol? name) (%top-lookup name top))))
-    (cons (if renamed (car (cddr spec)) name)
+    (cons (if renamed (caddr spec) name)
           (or b (%syntax-error "define-library: not defined" (list name))))))
 
 ;; Expands `(define-library name decl ...)`: registers the library, and expands

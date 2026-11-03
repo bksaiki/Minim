@@ -33,8 +33,8 @@
             ((eq? k 'define-syntax)
              (%expand-top y %system-env)
              (list (list '%define-macro!
-                         (list 'quote (car (cdr y)))
-                         (list 'quote (%strip (car (cdr (cdr y))))))))
+                         (list 'quote (cadr y))
+                         (list 'quote (%strip (caddr y))))))
             (else (list (%expand-top y %system-env)))))))
 
 ;; `x` with each uninterned symbol replaced by the interned `name.N`, where N

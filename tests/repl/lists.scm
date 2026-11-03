@@ -18,6 +18,13 @@ p
 (cadr '(1))
 (cddr 5)
 
+; (scheme cxr): three and four levels, applied right to left.
+(define deep '((1 2) (3 (4 5)) 6 7))
+(list (caaar '(((a)))) (caadr deep) (cadar deep) (caddr deep) (cdddr deep))
+(list (cadddr deep) (cddddr deep) (caaddr '(1 2 (3))) (cdadr deep))
+(caddr '(1 2))
+(cadddr 5)
+
 ; Accessors and copies
 (list-tail '(1 2 3) 0)
 (list-tail '(1 2 3) 2)

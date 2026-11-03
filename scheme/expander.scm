@@ -188,7 +188,7 @@
   (let ((var (and (%binding-form? x) (%resolve (cadr x) env))))
     (cond ((or (not var) (%macro var)) (%bad-syntax x))
           ((%imported? var (%top env)) (%syntax-error "set!: immutable variable" (list (cadr x))))
-          (else (list 'set! var (%expand-expr (car (cddr x)) env))))))
+          (else (list 'set! var (%expand-expr (caddr x) env))))))
 
 ;; The lambda list `formals` of the form `whole`, with each identifier `id`
 ;; replaced by `(f id)`.
@@ -245,16 +245,16 @@
          (if (%length x 0) (scan (append (cdr x) rest) defs) (%bad-syntax x)))
         ((define)
          (if (%binding-form? x)
-             (scan rest (cons (cons (list (%bind-variable! inner (cadr x))) (car (cddr x))) defs))
+             (scan rest (cons (cons (list (%bind-variable! inner (cadr x))) (caddr x)) defs))
              (%bad-syntax x)))
         ((define-values)
          (if (eq? (%length x 0) 3)
-             (scan rest (cons (cons (%bind-formals! inner (cadr x) x) (car (cddr x))) defs))
+             (scan rest (cons (cons (%bind-formals! inner (cadr x) x) (caddr x)) defs))
              (%bad-syntax x)))
         ((define-syntax)
          (if (%binding-form? x)
              (begin
-               (%bind-macro! inner (cadr x) (%transformer (car (cddr x)) inner))
+               (%bind-macro! inner (cadr x) (%transformer (caddr x) inner))
                (scan rest defs))
              (%bad-syntax x)))
         (else (finish defs (cons x rest))))))
@@ -498,13 +498,13 @@
 (define (%expand-define form top)
   (let* ((x (%define-procedure form))
          (name (if (%binding-form? x) (%top-define! top (cadr x)) (%bad-syntax x))))
-    (list 'define name (%expand-expr (car (cddr x)) top))))
+    (list 'define name (%expand-expr (caddr x) top))))
 
 (define (%expand-define-values x top)
   (let ((formals (if (eq? (%length x 0) 3)
                      (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)
                      (%bad-syntax x))))
-    (list 'define-values formals (%expand-expr (car (cddr x)) top))))
+    (list 'define-values formals (%expand-expr (caddr x) top))))
 
 ;; Binds the identifier `id` to the macro `spec` denotes, in `top`.
 (define (%top-define-macro! top id spec)
@@ -516,7 +516,7 @@
 
 (define (%expand-define-syntax x top)
   (if (%binding-form? x)
-      (%top-define-macro! top (cadr x) (car (cddr x)))
+      (%top-define-macro! top (cadr x) (caddr x))
       (%bad-syntax x))
   '(begin))
 

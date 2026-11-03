@@ -23,6 +23,10 @@
    write-string zero?))
 
 (%define-system-library '(scheme case-lambda) '(case-lambda))
+(%define-system-library
+ '(scheme cxr)
+ '(caaar caadr cadar caddr cdaar cdadr cddar cdddr caaaar caaadr caadar caaddr cadaar cadadr
+   caddar cadddr cdaaar cdaadr cdadar cdaddr cddaar cddadr cdddar cddddr))
 (%define-system-library '(scheme eval) '(environment eval))
 (%define-system-library
  '(scheme file)
@@ -39,9 +43,11 @@
 ;; R5RS's names (R7RS Appendix A), with the auxiliary syntax R7RS's list omits.
 (%define-system-library
  '(scheme r5rs)
- '(* + - ... < <= = => > >= and append apply assoc assq assv begin boolean? caar cadr
+ '(* + - ... < <= = => > >= and append apply assoc assq assv begin boolean? caaaar caaadr
+   caaar caadar caaddr caadr caar cadaar cadadr cadar caddar cadddr caddr cadr
    call-with-current-continuation call-with-input-file call-with-output-file
-   call-with-values car case cdar cddr cdr char->integer char-ready? char<=? char<? char=?
+   call-with-values car case cdaaar cdaadr cdaar cdadar cdaddr cdadr cdar cddaar cddadr
+   cddar cdddar cddddr cdddr cddr cdr char->integer char-ready? char<=? char<? char=?
    char>=? char>? char? close-input-port close-output-port cond cons current-input-port
    current-output-port define define-syntax display do dynamic-wind else eof-object? eq?
    equal? eqv? for-each if input-port? integer->char lambda length let let* let-syntax
@@ -62,8 +68,9 @@
 (%define-system-library
  '(minim)
  (append (%exported-names
-          '((scheme base) (scheme case-lambda) (scheme eval) (scheme file) (scheme load)
-            (scheme process-context) (scheme read) (scheme repl) (scheme write)))
+          '((scheme base) (scheme case-lambda) (scheme cxr) (scheme eval) (scheme file)
+            (scheme load) (scheme process-context) (scheme read) (scheme repl)
+            (scheme write)))
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import parameter?
