@@ -13,6 +13,7 @@ them (`MINIM_SCHEME_SOURCES`):
 | `libraries.scm` | `define-library`, `import`, library files, and programs |
 | `derived.scm` | the derived forms, as macros |
 | `eval.scm` | `eval`, its environments, and `%expand` |
+| `ports.scm` | the current ports, and the port procedures with optional ports (`ports.md`) |
 | `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
 
 The library holds what is easiest in Scheme, above all higher-order

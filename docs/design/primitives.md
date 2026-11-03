@@ -176,13 +176,14 @@ For the macro expander in the prelude; the `%` marks them internal.
 An alias stores `#(tag id env)` in its value slot, where `tag` is a private
 uninterned symbol, so no value a program can build looks like an alias.
 
-### Output
+### Ports
 
-| Call | Result |
-|---|---|
-| `(write x)` | prints `x` in `write` syntax to stdout; void |
-| `(display x)` | prints `x` with strings and chars unescaped; void |
-| `(newline)` | prints a newline; void |
+The port primitives are in `src/port.c`, listed in `ports.md`.  Those whose
+port is optional are Scheme wrappers (`scheme/ports.scm`) over primitives
+taking it: `%read`, `%read-char`, `%peek-char`, `%read-line`,
+`%read-string`, `%char-ready?`, `%write`, `%display`, `%write-char`,
+`%write-string`, and `%flush-output-port`.  `(%standard-port i)` is the
+standard input (0), output (1), or error (2) port.
 
 ### Storage
 
@@ -201,6 +202,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 |---|---|
 | `(load path)` | runs the forms in the file `path`, relative to the current directory, as top-level forms; void |
 | `(file-exists? path)` | whether the file `path` opens for reading |
+| `(delete-file path)` | deletes the file `path`; a file error if it can't; void |
 | `(%read-file path)` | the forms of the file `path`, as `load` reads them; for `include` |
 
 ### System
