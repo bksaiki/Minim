@@ -177,6 +177,23 @@ environment is set back; `(interaction-environment 5)` is an error.
 cmake --build --preset dev && ctest --preset dev -R 'eval|files|load|top-level' && ctest --preset stress -R 'eval'
 ```
 
+**Done.**
+
+- `%expand-in` holds the rule `eval` and `%expand` share: a top-level form
+  in a mutable environment, an expression in an immutable one.
+- `%interaction-label!` raises `minim_define: immutable interaction
+  environment` rather than bind into an immutable environment, which would
+  change a cached `environment`'s bindings.
+- The REPL can't be set back once set to an `environment` at the REPL:
+  `interaction-environment` is in `(scheme repl)`, and nothing in such an
+  environment reaches the REPL's specifier.  So the test of setting it back
+  became a test that it is stuck, at the end of `tests/repl/eval.scm`.
+  `parameterize` has no such problem, since leaving restores the REPL's.
+- `tests/repl/load/minim-name.scm` (new) uses `fold`, so `load` inside the
+  `parameterize` shows the file expanding in `(scheme base)`.
+- Ran `ctest -R 'eval|files|load|top-level|expansion|boot'`, and stress
+  `eval`.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (`%closure-code`), `prelude.md`
@@ -203,3 +220,7 @@ leave the parameter nothing to be set to but the REPL's own.
 Provisionally any specifier, as Chez's converter allows: in an immutable one
 the REPL accepts only expressions.  Reopen with a way to make mutable
 environments.
+
+Phase 3 found the cost: set at the REPL, outside `parameterize`, an
+`environment` strands the REPL there, since nothing in it can reach the
+REPL's specifier to set it back.  Under `parameterize`, leaving restores it.

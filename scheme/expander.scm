@@ -1,5 +1,5 @@
-;;; The expander: (%expand form) rewrites a top-level form into core forms.
-;;; The evaluator applies it to every top-level form once %expand is defined.
+;;; The expander: rewrites top-level forms into core forms.  The evaluator
+;;; applies `%expand` (eval.scm) to every top-level form once it is defined.
 ;;; Startup loads the files of scheme/ expanded (prelude.boot), so this may
 ;;; use the derived forms (derived.scm) and what the files before it define.
 ;;; The forms load in order, and a define-syntax builds its transformer as it
@@ -527,12 +527,3 @@
       ((import) (%import! top (cdr y)) '(begin))
       ((define-library) (%expand-define-library y))
       (else (%expand-expr y top)))))
-
-;; Expands the top-level form `x` in the interaction environment.
-(define (%expand x)
-  (%expand-top x %interaction-env))
-
-;; The label a top-level definition of `id` in the interaction environment
-;; defines; for minim_define.
-(define (%interaction-label! id)
-  (%top-define! %interaction-env id))
