@@ -19,8 +19,8 @@
 (define current-error-port
   (%current-port (%standard-port 2) output-port? "current-error-port: not an output port"))
 
-;; Defines `name`, taking `arg ...` and then a port, the current one,
-;; `(current)`, by default, as `prim` does.
+;; Defines `name` as `prim`, taking `arg ...` and an optional port,
+;; `(current)` by default.
 (define-syntax %define-with-port
   (syntax-rules ()
     ((_ (name arg ...) current prim)

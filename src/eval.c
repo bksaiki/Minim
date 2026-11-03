@@ -82,11 +82,15 @@ static bool closure_accepts(minim_obj params, size_t n) {
     return minim_is_symbol(params) ? n >= required : n == required;
 }
 
-// Whether `clauses` is a list of `(params body ...)`, as `case-lambda` takes.
+// Whether `c` is a clause `(params body ...)`, as `lambda` and `case-lambda` take.
+static bool valid_lambda_clause(minim_obj c) {
+    return list_length(c) >= 2 && valid_params(minim_car(c));
+}
+
+// Whether `clauses` is a list of clauses `(params body ...)`.
 static bool valid_lambda_clauses(minim_obj clauses) {
     for (; minim_is_pair(clauses); clauses = minim_cdr(clauses)) {
-        minim_obj c = minim_car(clauses);
-        if (list_length(c) < 2 || !valid_params(minim_car(c)))
+        if (!valid_lambda_clause(minim_car(clauses)))
             return false;
     }
     return minim_is_null(clauses);
@@ -253,7 +257,7 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
             x = minim_cdr(expr);
             goto let_values;
         } else if (x == minim_sym_lambda) {
-            if (len < 3 || !valid_params(minim_car(minim_cdr(expr))))
+            if (!valid_lambda_clause(minim_cdr(expr)))
                 minim_error("bad syntax", expr);
             val = minim_make_closure(expr, env);
             goto ret;
