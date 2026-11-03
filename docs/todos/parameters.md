@@ -138,6 +138,17 @@ car>`, and the body doesn't run.
 cmake --build --preset dev && ctest --preset dev -R 'parameters|continuations|guard' && ctest --preset stress -R 'parameters'
 ```
 
+**Done.**
+
+- The swap reads every current value before setting any, as Chez's does, so
+  a parameter named twice (`(parameterize ((p 1) (p 2)) ...)`) is restored
+  to its old value; swapping one at a time would leave it at `1`.
+- `%parameterize` converts every value, after checking every parameter,
+  before entering the `dynamic-wind`, so a converter's error leaves nothing
+  set.
+- Ran `ctest -R 'parameters|continuations|guard|boot'`, and stress
+  `parameters`.
+
 ### Phase 3 - interaction-environment as a parameter
 
 - `scheme/eval.scm`: environment specifiers record whether they are

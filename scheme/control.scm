@@ -132,3 +132,19 @@
 
 (define (parameter? x)
   (eq? (%closure-code x) %parameter-code))
+
+;; Calls `thunk` with each parameter of `params` set to the matching value of
+;; `vals`, converted, for its dynamic extent.  Entering and leaving swap the
+;; values with the saved ones, reading them all first, so a value set inside
+;; survives leaving and re-entering, and a parameter named twice is restored.
+(define (%parameterize params vals thunk)
+  (for-each (lambda (p)
+              (unless (parameter? p)
+                (error "parameterize: not a parameter" p)))
+            params)
+  (let ((vals (map (lambda (p v) ((p %parameter-token) v)) params vals)))
+    (define (swap!)
+      (let ((olds (map (lambda (p) (p)) params)))
+        (for-each (lambda (p v) (p %parameter-token v)) params vals)
+        (set! vals olds)))
+    (dynamic-wind swap! thunk swap!)))

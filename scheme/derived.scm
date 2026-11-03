@@ -95,6 +95,11 @@
      (%guard (lambda () body1 body2 ...)
              (lambda (var reraise) (cond clause ... (else (reraise))))))))
 
+(define-syntax parameterize
+  (syntax-rules ()
+    ((_ ((param value) ...) body1 body2 ...)
+     (%parameterize (list param ...) (list value ...) (lambda () body1 body2 ...)))))
+
 (define-syntax define-record-type
   (syntax-rules ()
     ((_ type (ctor cfield ...) pred (field accessor . modifier) ...)

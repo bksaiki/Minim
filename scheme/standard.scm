@@ -10,12 +10,12 @@
    integer->char lambda length let let* let*-values let-syntax let-values letrec letrec*
    letrec-syntax list list->string list->vector list-copy list-ref list-tail list?
    make-parameter make-string make-vector map member memq memv newline not null?
-   number->string or pair? procedure? quasiquote quote quotient raise raise-continuable
-   read-error? remainder reverse set! set-car! set-cdr! string->list string->symbol
-   string-append string-length string-ref string-set! string<=? string<? string=? string>=?
-   string>? string? substring symbol->string symbol? syntax-error syntax-rules unless
-   unquote unquote-splicing values vector vector->list vector-length vector-ref vector-set!
-   vector? when with-exception-handler zero?))
+   number->string or pair? parameterize procedure? quasiquote quote quotient raise
+   raise-continuable read-error? remainder reverse set! set-car! set-cdr! string->list
+   string->symbol string-append string-length string-ref string-set! string<=? string<?
+   string=? string>=? string>? string? substring symbol->string symbol? syntax-error
+   syntax-rules unless unquote unquote-splicing values vector vector->list vector-length
+   vector-ref vector-set! vector? when with-exception-handler zero?))
 
 (%define-system-library '(scheme eval) '(environment eval))
 (%define-system-library '(scheme file) '(file-exists?))
