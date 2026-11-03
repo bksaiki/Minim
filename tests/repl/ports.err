@@ -1,3 +1,5 @@
+error: current-output-port: not an output port: #<input port string>
+error: current-input-port: not an input port: x
 error: open-input-file: cannot open file: "load/no-such-file.scm"
 error: open-input-file: not a string: defs
 error: open-output-file: not a string: defs
@@ -8,3 +10,12 @@ error: close-output-port: not an output port: #<input port string>
 error: close-port: not a port: x
 error: input-port-open?: not a port: x
 error: %standard-port: not 0, 1, or 2: 3
+error: read-char: not an open input port: #<output port string>
+error: write-char: not an open output port: #<input port string>
+error: read-char: not an open input port: #<input port load/defs.scm>
+error: write-char: not a char: 1
+error: read-string: not a non-negative fixnum: -1
+error: write-string: bad start: 2
+error: write-string: bad end: 4
+error: read-char: too many arguments: (#<input port stdin> 1)
+error: get-output-string: not a string output port: #<output port stdout>

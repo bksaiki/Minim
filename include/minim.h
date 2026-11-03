@@ -723,6 +723,15 @@ minim_obj minim_open_output_file(minim_obj path);
 /** Closes the port `p`; closing a closed port does nothing. */
 void minim_port_close(minim_obj p);
 
+/** Reads the next char from the open input port `p`, or returns -1 at its end. */
+int32_t minim_port_read_char(minim_obj p);
+
+/** Like minim_port_read_char, but the char stays to be read next. */
+int32_t minim_port_peek_char(minim_obj p);
+
+/** Writes the char `c` to the open output port `p`. */
+void minim_port_write_char(minim_obj p, uint32_t c);
+
 // Reading
 
 /** Reads the next datum from `in`, or returns MINIM_EOF.  Raises on bad syntax. */

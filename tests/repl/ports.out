@@ -19,4 +19,30 @@
 #<eof>
 #t
 #f
+#\a
+#\a
+#\a
+#\λ
+""
+"b"
+"c"
+#t
+"last"
+#<eof>
+#<eof>
+#<eof>
+"xy"
+"xyz"
+""
+#<eof>
+#<eof>
+""
+"λabcdefghijklmnopqrstuvwxyz1231\n"
+"λabcdefghijklmnopqrstuvwxyz1231\n"
+(#<input port stdin> #<output port stdout> #<output port stderr>)
+"x\ny"
+#<output port stdout>
+"; Loaded by load.scm and nested.scm."
+#\(
+"define"
 file-error

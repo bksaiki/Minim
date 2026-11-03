@@ -228,6 +228,26 @@ and writing a file, `stdin` through `read-line`.
 cmake --build --preset dev && ctest --preset dev -R 'port|script' && ctest --preset stress -R 'port'
 ```
 
+**Done.**
+
+- `minim_port_read_char`, `minim_port_peek_char`, and
+  `minim_port_write_char` are public, in `minim.h`, for the reader and
+  printer and for C.  Peeking the end is kept (`EOF_LOOKAHEAD`), so a
+  terminal's end of input is read once.  A string port's buffer doubles,
+  through `minim_gc_write`, since the port may be old.
+- The primitives take their port as a required argument (`%read-char`, ...)
+  and `scheme/ports.scm` wraps them, since a primitive can't call a
+  parameter.  `newline` moved there from `src/system.c`, as `write-char` of
+  a linefeed.  `get-output-string` is a primitive itself.
+- `read-line` ends a line at a linefeed, a carriage return, or both.
+- The reader has no `\r` escape, so the tests write `\x0D;`.
+- UBSan caught `memcpy` from a NULL buffer for an empty result
+  (`(read-string 0 ...)`); fixed.
+- Script tests take an `INPUT` file for stdin (`tests/CMakeLists.txt`);
+  `tests/scripts/stdin.scm` copies numbered lines.  Writing a file waits
+  for `delete-file` (Phase 6), so the test leaves nothing behind.
+- Ran `ctest -R 'port|script|boot|libraries'`, and stress `port|stdin`.
+
 ### Phase 4 - The reader on ports
 
 - `src/read.c`: the source as a port's state; `minim_read(port)`;

@@ -40,12 +40,6 @@ static minim_obj prim_display(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
-static minim_obj prim_newline(minim_obj *args, size_t n) {
-    MINIM_UNUSED(args, n);
-    putchar('\n');
-    return MINIM_VOID;
-}
-
 static minim_obj prim_collect(minim_obj *args, size_t n) {
     MINIM_UNUSED(args, n);
     minim_gc_collect();
@@ -117,7 +111,6 @@ const minim_prim_def minim_system_prims[] = {
     {"%read-file", prim_read_file, 1, 1},
     {"write", prim_write, 1, 1},
     {"display", prim_display, 1, 1},
-    {"newline", prim_newline, 0, 0},
     {"collect", prim_collect, 0, 0},
     {"collect-nursery-bytes", prim_collect_nursery_bytes, 0, 1},
     {"collect-generation-radix", prim_collect_generation_radix, 0, 1},
