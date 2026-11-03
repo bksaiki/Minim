@@ -31,6 +31,7 @@ conformance failures.
 | `(void)` | `unbound variable: void`; the prelude writes `(if #f #f)` (`for-each`, `unless`, `do`) |
 | `(exit)` | `unbound variable: exit`; the REPL ends only at the end of its input, a script can't choose its status |
 | `(case-lambda (() 0) ((x) x))` | `unbound variable: case-lambda` |
+| `(%closure-code (lambda (x) x))` | `((x) x)`: a closure's code is its `lambda`'s `(params . body)` |
 | `(list 1 #;2 3)`, `#\| ... \|#` | `bad # syntax` |
 
 Fourteen procedures in `scheme/ports.scm`, and `make-parameter`, take
@@ -51,15 +52,25 @@ through `(%exit status)`, which runs `minim_shutdown`, flushing and closing
 file ports by their destructors, then C's `exit`.  At the REPL or in a
 script or program, alike.
 
-**`case-lambda`** (R7RS 4.2.9, `(scheme case-lambda)`): a macro over
-`lambda`, R7RS's definition being in terms of it too.
-`(case-lambda (formals body ...) ...)` expands to `(%case-lambda (list
-(lambda formals body ...) ...))`.  `%case-lambda` reads each clause's arity
-once, from its parameters (`%closure-code`): so many required, and whether
-a rest follows.  It returns a procedure taking any arguments, applying the
-first clause that accepts their number, and raising `case-lambda: arity
-mismatch` if none does.  Then the optional-argument procedures are written
-with it.
+**`case-lambda`** (R7RS 4.2.9, `(scheme case-lambda)`) is a core form,
+after Chez Scheme, where every procedure is a `case-lambda` and `lambda` the
+one-clause case (`s/syntax.ss`, `build-lambda`).  Both `lambda` and
+`case-lambda` reach the evaluator: the expander expands `case-lambda`'s
+clauses as it does `lambda`'s parameters and body, and `(define (f . x)
+...)` still means `lambda`.
+
+- **A closure's code is its form:** `(lambda params body ...)` or
+  `(case-lambda (params body ...) ...)`, the expanded form itself, shared by
+  every closure it makes, so making one allocates nothing more than today,
+  and `parameter?`'s comparison of code (`%closure-code`) still holds.
+  Unlike Chez's, Minim's closure stays `[code | env]`, an environment
+  chain, not flat.
+- **Applying a closure** takes a `lambda`'s parameters and body as now, and
+  a `case-lambda`'s first clause whose parameters accept the arguments'
+  number, or raises `arity mismatch` if none does, as for a `lambda`.  Both
+  the stack's calls and `apply`'s long ones (`eval.md`) choose the clause.
+
+Then the optional-argument procedures are written with it.
 
 **Comments** (R7RS 2.2): `#;` comments out the next datum, and `#| ... |#`
 a region, nesting.  Both are atmosphere, in the reader, wherever whitespace
@@ -86,6 +97,19 @@ replaces an `if`.
 cmake --build --preset dev && ctest --preset dev -R 'core|derived|lists|boot|r7rs'
 ```
 
+**Done.**
+
+- `void` is a primitive in `src/control.c`, with `procedure?`, in `(minim)`.
+  `unless`'s and `do`'s templates call it; their alias resolves in the
+  system's environment, so a program's own `void` doesn't change them.
+- The boot file settles on the second regeneration: the first expands with
+  the old `unless` and `do`, the second with the new ones, in the prelude's
+  own uses.
+- Measured, release builds, a million-iteration `do` with `unless`, 9 runs
+  alternated: median 1.02 s before, 1.03 s after: noise.
+- No conformance report changed.
+- Ran `ctest -R 'core|derived|lists|boot|r7rs'`.
+
 ### Phase 2 - exit and emergency-exit
 
 - `src/system.c`: `%exit`.  `scheme/control.scm`: `exit` and
@@ -105,24 +129,50 @@ updated (`r7rs-golden`): 6.14.
 cmake --build --preset dev && ctest --preset dev -R 'script|r7rs|boot'
 ```
 
-### Phase 3 - case-lambda
+### Phase 3 - case-lambda in the evaluator
 
-- `scheme/control.scm`: `%case-lambda`.  `scheme/derived.scm`: the
-  `case-lambda` macro.  `scheme/standard.scm`: `(scheme case-lambda)`, and
-  in `(minim)`.  `scheme/prelude.boot` regenerated.
+- `src/eval.c`: closures' code is their form: a `lambda` keeps its
+  `(lambda params body ...)`, not `(params body ...)`; the core form
+  `case-lambda`, its clauses checked like `lambda`'s; applying a closure, on
+  the stack and through `apply`'s long path, chooses its clause.
+- `src/control.c`: `%closure-code` returns the form, unchanged otherwise;
+  `parameter?` (`scheme/control.scm`) compares it as before.
 
-Separate because it is a missing form; the next phase uses it.
+Separate because it changes the machine, under the expander, with no new
+syntax yet: hand-written core forms test it.
 
-Tests (`tests/repl/derived.scm`): clauses by exact count and with rests,
-the first matching clause chosen, no clause matching an error, a clause
-body with definitions, `case-lambda` in a library importing
-`(scheme case-lambda)`.  The conformance reports updated: 4.2.
+Tests (`tests/test_eval.c`, through `minim_eval_expanded`): clauses by exact
+count, with a rest, and `()`; the first that accepts chosen; none accepting
+`arity mismatch`; a clause's tail call; a call through `apply` beyond the
+stack's limit choosing its clause; malformed clauses `bad syntax`.
+`tests/repl/parameters.scm`'s `%closure-code` output updated.  Measure
+`bench/run.sh` against `main`: applying a `lambda` now takes its parameters
+one `cdr` further.
 
 ```sh
-cmake --build --preset dev && ctest --preset dev -R 'derived|libraries|r7rs|boot'
+cmake --build --preset dev && ctest --preset dev -R 'eval|parameters|expansion' && ctest --preset stress -R 'eval'
 ```
 
-### Phase 4 - Optional arguments with case-lambda
+### Phase 4 - case-lambda in the expander
+
+- `scheme/expander.scm`: `case-lambda` a core form, each clause expanded as
+  a `lambda`'s parameters and body.  `scheme/standard.scm`:
+  `(scheme case-lambda)`, and in `(minim)`.  `scheme/prelude.boot`
+  regenerated.
+
+Separate because it is the syntax, on Phase 3.
+
+Tests (`tests/repl/expansion.scm`, `derived.scm`): a `case-lambda`'s
+expansion; clauses by count and with rests; a clause body with definitions
+and internal macros; an identifier a macro inserts into a clause stays
+hygienic; `case-lambda` in a library importing `(scheme case-lambda)`.  The
+conformance reports updated: 4.2.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'expansion|derived|libraries|r7rs|boot'
+```
+
+### Phase 5 - Optional arguments with case-lambda
 
 - `scheme/ports.scm`: the procedures with optional ports, and
   `write-string`, with `case-lambda`; `%port-arg` gone.
@@ -133,14 +183,15 @@ Separate because it is a rewrite, with no change in behavior but the arity
 errors' wording.
 
 Tests: `tests/repl/ports.scm` and `parameters.scm` unchanged but for "too
-many arguments" becoming `case-lambda: arity mismatch`.  Measure a loop of
-`read-char` over a long string port against before.
+many arguments" becoming the evaluator's `arity mismatch`.  Measure a loop
+of `read-char` over a long string port against before: the rest list and
+its parsing are gone.
 
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'port|parameters|script|r7rs|boot'
 ```
 
-### Phase 5 - Datum and block comments
+### Phase 6 - Datum and block comments
 
 - `src/read.c`: `#;` and `#| ... |#`, nesting, as atmosphere.
 
@@ -157,10 +208,12 @@ cmake --build --preset dev && ctest --preset dev -R 'read|r7rs'
 
 ### After the last phase
 
-Sync the docs: `primitives.md` (`void`, `%exit`), `prelude.md` (`exit`,
-`emergency-exit`, `%case-lambda`, the ports' `case-lambda`), `macros.md`
-(`case-lambda` among the derived forms), `repl.md` (comments; `exit` ends
-the REPL), and the roadmap (`r7rs-small.md`: coverage of
+Sync the docs: `eval.md` (the core form `case-lambda`; a closure's code is
+its form; choosing a clause), `gc.md` (the closure layout), `primitives.md`
+(`void`, `%exit`, `%closure-code`), `prelude.md` (`exit`, `emergency-exit`,
+the ports' `case-lambda`), `macros.md` (`case-lambda` among the core
+forms), `repl.md` (comments; `exit` ends the REPL), `compile.md` (its
+compiled form covers `case-lambda`), and the roadmap (`r7rs-small.md`: coverage of
 `(scheme case-lambda)` and `(scheme process-context)`, milestone 9, the
 conformance table).
 
@@ -171,16 +224,16 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### case-lambda as a macro, or the evaluator's core form?
+### Flat closures and code objects, as Chez's?
 
-Chez compiles every procedure to `case-lambda` (`s/syntax.ss`,
-`build-lambda` emits a one-clause one): the arity check and dispatch are the
-machine's.  In Minim that would change the closure layout, the expander's
-core forms, and the evaluator, for a form few procedures use.  The macro
-costs a rest list and an `apply` per call.
+Chez's closure is `[code | free variables]`, and its code a shared object
+holding the compiled `case-lambda`, its name (`#<procedure f>`), and an
+arity mask.  Minim's stays `[form | env]`: an environment chain keeps every
+enclosing variable alive, and closures print without names.  Both are a
+compilation pass's work (free-variable analysis, a code object to hold the
+name and arity).
 
-Provisionally the macro.  Reopen with `compile.md`'s compilation pass, or if
-Phase 4's measurement shows the ports' procedures slower.
+Provisionally out of this plan.  Reopen with `compile.md`.
 
 ### Should `void` take any arguments?
 

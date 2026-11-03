@@ -19,3 +19,4 @@ error: bad syntax: (lambda (x))
 error: bad syntax: (+ 1 . 2)
 error: unexpected )
 error: car: not a pair: 5
+error: arity mismatch: #<procedure void>

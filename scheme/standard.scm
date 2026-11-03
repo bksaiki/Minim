@@ -64,7 +64,7 @@
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import parameter?
-           string-hash letrec-values)))
+           string-hash letrec-values void)))
 
 ;; The REPL and files see (minim), and nothing else of the system's.
 (%import! %interaction-env '((minim)))

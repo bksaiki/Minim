@@ -112,7 +112,7 @@
           (when (pair? lst)
             (f (car lst))
             (loop (cdr lst))))
-        (begin (apply map f lst lists) (if #f #f)))))
+        (begin (apply map f lst lists) (void)))))
 
 (define filter
   (lambda (keep? lst)
