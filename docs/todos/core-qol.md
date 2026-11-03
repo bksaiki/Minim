@@ -168,6 +168,28 @@ one `cdr` further.
 cmake --build --preset dev && ctest --preset dev -R 'eval|parameters|expansion' && ctest --preset stress -R 'eval'
 ```
 
+**Done.**
+
+- `src/eval.c`: `case-lambda` beside `lambda`, its clauses checked by
+  `valid_lambda_clauses`; `clause_for` chooses a closure's clause, a
+  `lambda`'s own or a `case-lambda`'s first accepting, else `arity mismatch`.
+  The clause is kept in the rooted `expr` while the frame is made.
+  `accepts` is now `closure_accepts`, beside `primitive_accepts`.
+- `%closure-code` returns the expanded form, `(lambda (x) x)`;
+  `tests/repl/parameters.scm`'s output changed accordingly.  Kept the name:
+  it is the closure's code field, as Chez calls it.
+- `test_eval`'s `test_case_lambda` runs core forms through
+  `minim_eval_expanded`, with `core-stack-height` and `cl-args` bound as
+  globals for the tail call and `apply`'s long path.  Comparing two calls'
+  heights inside one `(= ...)` counted `=`'s own operands; the heights are
+  compared from separate top-level calls, as `test_tail_calls` does.
+- Measured, aligned release builds against `main`: `fib`, 15 runs
+  alternated, median 0.45 s to 0.46 s (min 0.43 to 0.44), about 2%: the
+  head check and one more `cdr` per closure call.  `expand`, `globals`,
+  `let` unchanged.
+- Ran `ctest -R 'eval|parameters|expansion'`, stress `eval`, and the dev
+  suite.
+
 ### Phase 4 - case-lambda in the expander
 
 - `scheme/expander.scm`: `case-lambda` a core form, each clause expanded as

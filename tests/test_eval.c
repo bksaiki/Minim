@@ -322,6 +322,81 @@ static void test_handled_errors(void) {
 // Each top-level form, including each one `load` runs, goes through %expand
 // when it is reached, so a %expand one form sets applies to the next.  The
 // REPL can't set it: its `define` would shadow the system's.
+// Evaluates every datum of the core forms `src`, unexpanded; returns the last
+// value.
+static minim_obj eval_expanded_source(void *src) {
+    minim_obj port = input(src);
+    minim_obj val = MINIM_VOID;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&port, &val, &x);
+    while ((x = minim_read(port)) != MINIM_EOF)
+        val = minim_eval_expanded(x);
+    MINIM_RETURN(val);
+}
+
+// Whether the core forms `src` evaluate to what prints as `expect`, or, if
+// `expect` starts with `error:`, raise the error that follows.
+static bool core_evals_to(const char *src, const char *expect) {
+    minim_obj val;
+    bool ok = minim_catch(eval_expanded_source, (void *)src, &val);
+    if (strncmp(expect, "error: ", 7) == 0)
+        return !ok && last_error_is(expect + 7);
+    if (!ok) {
+        fprintf(stderr, "`%s` raised ", src);
+        minim_write_error(stderr);
+        return false;
+    }
+    return prints_as(val, expect);
+}
+
+// case-lambda, the core form: the first clause accepting the arguments' number
+// runs, in tail position, as a lambda's body.
+static void test_case_lambda(void) {
+    const char *f = "((case-lambda ((x) 'one) ((x y) 'two) ((x . r) r) (() 'none))";
+    char src[256];
+    const char *cases[][2] = {
+        {"", "none"}, {" 1", "one"}, {" 1 2", "two"}, {" 1 2 3", "(2 3)"},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        snprintf(src, sizeof(src), "%s%s)", f, cases[i][0]);
+        CHECK(core_evals_to(src, cases[i][1]));
+    }
+    CHECK(core_evals_to("((case-lambda ((x . r) 'first) ((x y) 'second)) 1 2)", "first"));
+    CHECK(core_evals_to("((case-lambda (r r)))", "()"));
+    CHECK(core_evals_to("(((lambda (y) (case-lambda (() y) ((z) (cons y z)))) 5) 6)",
+                        "(5 . 6)"));
+    CHECK(core_evals_to("((case-lambda ((x) 1)) 1 2)", "error: arity mismatch"));
+    CHECK(core_evals_to("((case-lambda))", "error: arity mismatch"));
+    CHECK(core_evals_to("(case-lambda ((x)))", "error: bad syntax"));
+    CHECK(core_evals_to("(case-lambda (1 2))", "error: bad syntax"));
+    CHECK(core_evals_to("(case-lambda x)", "error: bad syntax"));
+
+    // A clause's call in tail position doesn't grow the stack.
+    minim_obj sym = minim_intern_cstr("core-stack-height");
+    MINIM_FRAME(&sym);
+    minim_obj p = minim_make_primitive(sym, stack_height, 0, 0);
+    minim_set_symbol_value(sym, p);
+    CHECK(core_evals_to("(define cl-loop (case-lambda ((n m) 'two)"
+                        " ((n) (if (= n 0) (core-stack-height) (cl-loop (- n 1))))))",
+                        "#<void>"));
+    minim_obj shallow = eval_expanded_source("(cl-loop 0)");
+    CHECK_EQ(eval_expanded_source("(cl-loop 100000)"), shallow);
+
+    // `apply` beyond the stack's limit chooses the clause too.
+    const intptr_t n = 2 * MINIM_MAX_ARGS;
+    sym = minim_intern_cstr("cl-args");
+    minim_obj lst = MINIM_NIL;
+    MINIM_PROTECT(&lst);
+    for (intptr_t i = 0; i < n; i++)
+        lst = minim_cons(minim_fixnum(i), lst);
+    minim_set_symbol_value(sym, lst);
+    char expect[32];
+    snprintf(expect, sizeof(expect), "%lld", (long long)n - 1);
+    CHECK(core_evals_to("(apply (case-lambda ((x) 'one) ((x . r) (length r))) cl-args)",
+                        expect));
+    MINIM_RETURN_VOID;
+}
+
 static void test_expand_hook(void) {
     minim_obj saved = minim_symbol_value(minim_sym_expand);
     MINIM_FRAME(&saved);
@@ -356,6 +431,7 @@ int main(void) {
     test_values();
     test_binding_values();
     test_tail_calls();
+    test_case_lambda();
     test_large_forms();
     test_deep_recursion();
     test_many_arguments();  // after test_tail_calls, which checks the value stack's capacity
