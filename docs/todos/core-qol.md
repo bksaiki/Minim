@@ -209,6 +209,17 @@ conformance reports updated: 4.2.
 cmake --build --preset dev && ctest --preset dev -R 'expansion|derived|libraries|r7rs|boot'
 ```
 
+**Done.**
+
+- `scheme/expander.scm`: `%expand-clause` expands a `(formals body ...)`
+  clause, `lambda`'s and each of `case-lambda`'s alike, replacing
+  `%expand-lambda`; a clause shorter than two is `bad syntax`.
+- `(scheme case-lambda)` exports the core form's name, as `(scheme base)`
+  does `lambda`'s; `(minim)` takes its names.
+- Conformance: 4.2 from 32 to 45 passed, every `case-lambda` test; no
+  other report changed.
+- Ran `ctest -R 'expansion|derived|libraries|r7rs|boot'`.
+
 ### Phase 5 - Optional arguments with case-lambda
 
 - `scheme/ports.scm`: the procedures with optional ports, and

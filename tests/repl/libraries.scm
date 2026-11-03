@@ -129,3 +129,16 @@ bump
 (h)
 (import (only (minim system) car))
 (import (prefix (minim system) s:))
+
+; (scheme case-lambda).
+(define-library (arity)
+  (export arity)
+  (import (scheme base) (scheme case-lambda))
+  (begin
+    (define arity
+      (case-lambda
+        (() 0)
+        ((x) 1)
+        ((x . r) 'many)))))
+(import (arity))
+(list (arity) (arity 1) (arity 1 2))

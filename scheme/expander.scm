@@ -163,7 +163,13 @@
         (case k
           ((quote) (if (= n 2) (list 'quote (%strip (cadr x))) (%bad-syntax x)))
           ((quasiquote) (if (= n 2) (%qq (cadr x) 0 env) (%bad-syntax x)))
-          ((lambda) (%expand-lambda x n env))
+          ((lambda) (if (< n 3) (%bad-syntax x) (cons 'lambda (%expand-clause (cdr x) x env))))
+          ((case-lambda)
+           (cons 'case-lambda
+                 (map (lambda (c)
+                        (let ((m (%length c 0)))
+                          (if (and m (<= 2 m)) (%expand-clause c x env) (%bad-syntax x))))
+                      (cdr x))))
           ((if)
            (if (or (= n 3) (= n 4)) (cons 'if (%expand-list (cdr x) env)) (%bad-syntax x)))
           ((set!) (%expand-set x env))
@@ -199,10 +205,12 @@
 (define (%bind-formals! env formals whole)
   (%map-formals (lambda (id) (%bind-variable! env id)) formals whole))
 
-(define (%expand-lambda x n env)
+;; Expands the clause `(formals body ...)` of `whole`, a lambda or
+;; case-lambda: its formals bound to fresh names, its body in a new frame.
+(define (%expand-clause clause whole env)
   (let* ((inner (%extend env))
-         (params (if (< n 3) (%bad-syntax x) (%bind-formals! inner (cadr x) x))))
-    `(lambda ,params ,@(%expand-body (cddr x) inner x))))
+         (params (%bind-formals! inner (car clause) whole)))
+    (cons params (%expand-body (cdr clause) inner whole))))
 
 ;; Expands `(let-values ((formals init) ...) body ...)`, or `letrec-values` if
 ;; `rec`.  The inits are expanded in `env`, or in the new frame if `rec`.

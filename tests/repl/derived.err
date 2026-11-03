@@ -1,2 +1,5 @@
 error: bad syntax: (let ((x)) x)
 error: bad syntax: (cond)
+error: arity mismatch: #<procedure>
+error: bad syntax: (case-lambda (x))
+error: bad syntax: (case-lambda 5)

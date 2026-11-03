@@ -22,6 +22,7 @@
    vector-length vector-ref vector-set! vector? when with-exception-handler write-char
    write-string zero?))
 
+(%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library '(scheme eval) '(environment eval))
 (%define-system-library
  '(scheme file)
@@ -61,8 +62,8 @@
 (%define-system-library
  '(minim)
  (append (%exported-names
-          '((scheme base) (scheme eval) (scheme file) (scheme load) (scheme process-context)
-            (scheme read) (scheme repl) (scheme write)))
+          '((scheme base) (scheme case-lambda) (scheme eval) (scheme file) (scheme load)
+            (scheme process-context) (scheme read) (scheme repl) (scheme write)))
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import parameter?

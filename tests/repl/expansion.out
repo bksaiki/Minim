@@ -5,6 +5,7 @@
 (lambda () (letrec-values (((f) (lambda () (letrec-values (((g) 1)) g)))) (f)))
 (define f (lambda (a . r) (cons a r)))
 (lambda () (letrec-values (((g) (lambda () 1))) (g)))
+(case-lambda ((x) x) ((x . y) (letrec-values (((z) y)) z)) (() 0))
 3
 1
 2
