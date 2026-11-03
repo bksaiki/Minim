@@ -19,10 +19,11 @@
 #include "eval.h"
 #include "minim.h"
 
-static const char usage[] = "usage: minim [--program] [file]\n";
+static const char usage[] = "usage: minim [--program] [file [arg ...]]\n";
 
 static const char help[] =
     "Runs file as a script in the interaction environment, or else a REPL.\n"
+    "Arguments after file are its own, for command-line.\n"
     "\n"
     "  --program  run file as an R7RS program, which sees only what it imports\n"
     "  --help     print this message\n"
@@ -104,10 +105,11 @@ static int usage_error(const char *message, const char *arg) {
     return 2;
 }
 
+// Options come before the file; what follows the file is its.
 int main(int argc, char **argv) {
-    const char *file = NULL;
     bool program = false;
-    for (int i = 1; i < argc; i++) {
+    int i = 1;
+    for (; i < argc && argv[i][0] == '-' && argv[i][1] != '\0'; i++) {
         const char *arg = argv[i];
         if (strcmp(arg, "--help") == 0) {
             printf("%s%s", usage, help);
@@ -117,18 +119,17 @@ int main(int argc, char **argv) {
             return 0;
         } else if (strcmp(arg, "--program") == 0) {
             program = true;
-        } else if (arg[0] == '-' && arg[1] != '\0') {
-            return usage_error("unknown option", arg);
-        } else if (file != NULL) {
-            return usage_error("unexpected argument", arg);
         } else {
-            file = arg;
+            return usage_error("unknown option", arg);
         }
     }
+    const char *file = i < argc ? argv[i] : NULL;
     if (program && file == NULL)
         return usage_error("missing file after", "--program");
 
     minim_init();
+    if (file != NULL)
+        minim_set_command_line(argc - i, (const char *const *)argv + i);
     int status = file == NULL ? run_repl() : run_file(program ? run_program : load, file);
     minim_shutdown();
     return status;

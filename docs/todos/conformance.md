@@ -116,6 +116,18 @@ which isn't an option after the file; at the REPL, `("minim")`; `minim
 cmake --build --preset dev && ctest --preset dev -R 'script|libraries'
 ```
 
+**Done.**
+
+- `main` parses options until the first argument that isn't one, the file;
+  `minim_set_command_line` gets the file and the arguments after it.  The
+  REPL's `("minim")` is the default, so `main` sets it only for a file.
+- The `usage` script test, `minim a.scm b.scm` as a usage error, is gone:
+  that now runs `a.scm` with an argument.  `command-line-option` covers
+  arguments that look like options, after the file.
+- `(command-line)` is in `(scheme process-context)`, so in `(minim)`, and
+  checked at the REPL in `tests/repl/core.scm`.
+- Ran `ctest -R 'script|libraries|repl_core|boot'`.
+
 ### Phase 2 - The runner, on one section
 
 - `tests/r7rs/r7rs-tests.scm`, `tests/r7rs/COPYING` (new): the suite and

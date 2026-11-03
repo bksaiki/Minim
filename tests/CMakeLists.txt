@@ -158,6 +158,9 @@ minim_add_script_test(gc-settings-not-number STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1k)
 minim_add_script_test(gc-settings-big-nursery STATUS 1 ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1152921504606846976)
+minim_add_script_test(command-line ARGS command-line.scm a "b c")
+minim_add_script_test(command-line-option ARGS command-line.scm --x --help)
+minim_add_script_test(command-line-program ARGS --program command-line-program.scm a --x)
 minim_add_script_test(environment-variable
     ENV "MINIM_TEST_VARIABLE=set by the test")
 minim_add_script_test(hello)
@@ -173,6 +176,5 @@ minim_add_script_test(stdin INPUT stdin.txt)
 minim_add_script_test(file-ports)
 minim_add_script_test(help ARGS --help)
 minim_add_script_test(version ARGS --version)
-minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)
 minim_add_script_test(usage-option STATUS 2 ARGS --foo)
 minim_add_script_test(usage-program STATUS 2 ARGS --program)
