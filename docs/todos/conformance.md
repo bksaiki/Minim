@@ -148,10 +148,29 @@ on 4.2, whose forms include tab-indented and one-space-indented lines.
 cmake --build --preset dev && ctest --preset dev -R 'r7rs'
 ```
 
+**Done.**
+
+- `tests/r7rs/r7rs-tests.scm` and `COPYING` are Chibi's at `f966f15`,
+  unchanged (`cmp`).
+- The runner reports `FAIL` (a test's value, or what it raised),
+  `ERROR` (another form raised), `READ-ERROR`, and `SKIP`, each with the
+  line its form starts at, then `title: P passed, F failed, E errors`.  A
+  test inside a form that raises first isn't counted.
+- `test-values` reports the suite's expression, not the `call-with-values`
+  around it; `test-error` passes when its expression raises; the named forms
+  drop the name.
+- 4.1: 27 of 27 pass, its 27 `test` forms.  Indented lines read as parts
+  of their forms: tabs at line 241 (4.2), one space at 548 (4.3).  An
+  over-large literal is a read error ending only its form.  `test-error`
+  (6.10), `test-values` (6.2), and `test-assert` (read syntax) checked on
+  their sections.
+- Ran `ctest -R r7rs`.
+
 ### Phase 3 - Every section
 
-- `tests/CMakeLists.txt`: the other 20 sections, and the `r7rs-golden`
-  target.
+- `tests/CMakeLists.txt`: the other 20 sections, the `r7rs-golden`
+  target, and the label `r7rs` on every section, so `ctest -L r7rs` runs
+  only them and `ctest -LE r7rs` everything else.
 - `tests/r7rs/run.scm`: the skip list, with the cyclic `write` at line 2147
   and any other hang found.
 - The expected outputs, one per section.

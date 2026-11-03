@@ -114,6 +114,20 @@ function(minim_add_script_test name)
     endif()
 endfunction()
 
+# minim_add_r7rs_test(slug title): runs the section `title` of the R7RS test
+# suite (r7rs/r7rs-tests.scm) with r7rs/run.scm, and checks its report against
+# r7rs/<slug>.out.  No stress copy: the suite is slow under stress, and the
+# other tests stress the same code.
+function(minim_add_r7rs_test slug title)
+    set(dir ${CMAKE_CURRENT_SOURCE_DIR}/r7rs)
+    add_test(NAME r7rs_${slug} COMMAND ${CMAKE_COMMAND}
+        -DMINIM=$<TARGET_FILE:minim>
+        -DDIR=${dir}
+        "-DARGS=run.scm|${title}"
+        -DEXPECTED=${dir}/${slug}.out
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
+endfunction()
+
 minim_add_repl_test(aliases)
 minim_add_repl_test(bodies)
 minim_add_repl_test(boot)
@@ -178,3 +192,5 @@ minim_add_script_test(help ARGS --help)
 minim_add_script_test(version ARGS --version)
 minim_add_script_test(usage-option STATUS 2 ARGS --foo)
 minim_add_script_test(usage-program STATUS 2 ARGS --program)
+
+minim_add_r7rs_test(4.1 "4.1 Primitive expression types")
