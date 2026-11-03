@@ -187,6 +187,20 @@ explicitly, then collected, isn't closed again; a port alive at
 cmake --build --preset dev && ctest --preset dev -R 'port|gc' && ctest --preset stress -R 'port|gc'
 ```
 
+**Done.**
+
+- `destroy_dead` runs at the end of `collect`, after scanning and before the
+  from-space chunks are freed: an entry in a collected generation whose old
+  copy holds the forward marker gets the new address; any other is dead, and
+  its destructor runs on the old copy.
+- `minim_destructor` is internal (`src/gc.h`); only file ports register one.
+  `minim_port_close` clears the `FILE *`, so the destructor of a port closed
+  explicitly does nothing.
+- Checked by breaking the code: without `destroy_dead`, both dropped-port
+  checks fail; with `minim_port_close` keeping the `FILE *`, ASan reports a
+  double free.
+- Ran `ctest -R 'port|gc'`, dev and stress.
+
 ### Phase 3 - Characters
 
 - `src/port.c`: reading and writing code points through a port, with the

@@ -68,8 +68,15 @@ minim_obj minim_open_output_string(void) {
     return make_port(MINIM_PORT_OUTPUT, s, string_name, NULL);
 }
 
+// Closes the file of a file port found dead, unless closed already.
+static void close_dead(minim_obj p) {
+    FILE *f = minim_port_file(p);
+    if (f != NULL)
+        fclose(f);
+}
+
 // A port of direction `dir` over the file `path`; raises a file error, `msg`,
-// if it can't be opened.
+// if it can't be opened.  Its file is closed when it is collected.
 static minim_obj open_file(minim_obj path, unsigned dir, const char *msg) {
     char *name = minim_string_to_utf8(path);
     FILE *f = minim_fopen(name, dir == MINIM_PORT_INPUT ? "r" : "w");
@@ -77,7 +84,9 @@ static minim_obj open_file(minim_obj path, unsigned dir, const char *msg) {
     if (f == NULL)
         minim_error_of_kind(MINIM_ERROR_FILE, msg, path);
     minim_obj s = copy_string(path);
-    return make_port(dir | MINIM_PORT_FILE, MINIM_FALSE, s, f);
+    minim_obj p = make_port(dir | MINIM_PORT_FILE, MINIM_FALSE, s, f);
+    minim_gc_add_destructor(p, close_dead);
+    return p;
 }
 
 minim_obj minim_open_input_file(minim_obj path) {

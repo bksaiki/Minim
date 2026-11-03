@@ -87,6 +87,9 @@ void minim_gc_init(void) {
 }
 
 void minim_gc_shutdown(void) {
+    for (size_t i = 0; i < minim_gc.destructors.len; i++)
+        minim_gc.destructors.items[i].fn(minim_gc.destructors.items[i].obj);
+    free(minim_gc.destructors.items);
     minim_space_free(&minim_gc.nursery);
     for (unsigned g = 1; g <= MINIM_MAX_GENERATION; g++) {
         for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
@@ -142,6 +145,40 @@ void minim_gc_reset(size_t mark) {
 void minim_gc_protect(minim_obj *const *vars, size_t n) {
     for (size_t i = 0; i < n; i++)
         push_root(&minim_gc, &minim_gc.locals, vars[i]);
+}
+
+void minim_gc_add_destructor(minim_obj x, minim_destructor fn) {
+    minim_destructors *d = &minim_gc.destructors;
+    if (d->len == d->cap) {
+        d->cap = d->cap ? 2 * d->cap : 16;
+        d->items = realloc(d->items, d->cap * sizeof(*d->items));
+        if (d->items == NULL)
+            minim_out_of_memory();
+    }
+    d->items[d->len].obj = x;
+    d->items[d->len].fn = fn;
+    d->len++;
+}
+
+// Updates the destructors' objects in the generations up to `last`, which a
+// collection just copied, and runs the dead ones' destructors on their old
+// copies, before those are freed.
+static void destroy_dead(unsigned last) {
+    minim_destructors *d = &minim_gc.destructors;
+    size_t kept = 0;
+    for (size_t i = 0; i < d->len; i++) {
+        minim_obj x = d->items[i].obj;
+        const minim_obj *p = (const minim_obj *)(x - minim_tag(x));
+        if (minim_chunk_of(x)->generation <= last) {
+            if (p[0] != MINIM_FORWARD) {
+                d->items[i].fn(x);
+                continue;
+            }
+            d->items[i].obj = p[1];
+        }
+        d->items[kept++] = d->items[i];
+    }
+    d->len = kept;
 }
 
 void minim_gc_add_global(minim_obj *p) {
@@ -388,6 +425,7 @@ static void collect(unsigned g) {
     }
     minim_gc.remembered.len = kept;
 
+    destroy_dead(last);
     minim_space_free(&nursery);
     for (unsigned i = 1; i <= last; i++) {
         for (size_t k = 0; k < MINIM_KIND_COUNT; k++)
