@@ -114,20 +114,6 @@ function(minim_add_script_test name)
     endif()
 endfunction()
 
-# minim_add_r7rs_test(slug title): runs the section `title` of the R7RS test
-# suite (r7rs/r7rs-tests.scm) with r7rs/run.scm, and checks its report against
-# r7rs/<slug>.out.  No stress copy: the suite is slow under stress, and the
-# other tests stress the same code.
-function(minim_add_r7rs_test slug title)
-    set(dir ${CMAKE_CURRENT_SOURCE_DIR}/r7rs)
-    add_test(NAME r7rs_${slug} COMMAND ${CMAKE_COMMAND}
-        -DMINIM=$<TARGET_FILE:minim>
-        -DDIR=${dir}
-        "-DARGS=run.scm|${title}"
-        -DEXPECTED=${dir}/${slug}.out
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
-endfunction()
-
 minim_add_repl_test(aliases)
 minim_add_repl_test(bodies)
 minim_add_repl_test(boot)
@@ -193,4 +179,46 @@ minim_add_script_test(version ARGS --version)
 minim_add_script_test(usage-option STATUS 2 ARGS --foo)
 minim_add_script_test(usage-program STATUS 2 ARGS --program)
 
-minim_add_r7rs_test(4.1 "4.1 Primitive expression types")
+# The R7RS test suite's sections (r7rs/r7rs-tests.scm): each runs with
+# r7rs/run.scm, labelled r7rs, its report checked against r7rs/<slug>.out, the
+# slug its number or else its title in lowercase and hyphenated.  The target
+# r7rs-golden rewrites the reports.  No stress copies: the suite is slow under
+# stress, and the other tests stress the same code.
+set(r7rs_sections
+    "4.1 Primitive expression types"
+    "4.2 Derived expression types"
+    "4.3 Macros"
+    "5 Program structure"
+    "6.1 Equivalence Predicates"
+    "6.2 Numbers"
+    "6.3 Booleans"
+    "6.4 Lists"
+    "6.5 Symbols"
+    "6.6 Characters"
+    "6.7 Strings"
+    "6.8 Vectors"
+    "6.9 Bytevectors"
+    "6.10 Control Features"
+    "6.11 Exceptions"
+    "6.12 Environments and evaluation"
+    "6.13 Input and output"
+    "Read syntax"
+    "Numeric syntax"
+    "6.14 System interface")
+set(r7rs_dir ${CMAKE_CURRENT_SOURCE_DIR}/r7rs)
+set(r7rs_golden)
+foreach(title IN LISTS r7rs_sections)
+    string(REGEX MATCH "^[0-9.]+" slug "${title}")
+    if(NOT slug)
+        string(TOLOWER "${title}" slug)
+        string(REPLACE " " "-" slug "${slug}")
+    endif()
+    set(args -DMINIM=$<TARGET_FILE:minim> -DDIR=${r7rs_dir} "-DARGS=run.scm|${title}"
+        -DEXPECTED=${r7rs_dir}/${slug}.out)
+    set(script ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
+    add_test(NAME r7rs_${slug} COMMAND ${CMAKE_COMMAND} ${args} -P ${script})
+    set_tests_properties(r7rs_${slug} PROPERTIES LABELS r7rs)
+    list(APPEND r7rs_golden COMMAND ${CMAKE_COMMAND} ${args} -DUPDATE=ON -P ${script})
+endforeach()
+add_custom_target(r7rs-golden ${r7rs_golden} DEPENDS minim VERBATIM
+    COMMENT "Rewriting the R7RS test suite's reports")

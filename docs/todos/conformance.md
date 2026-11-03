@@ -185,6 +185,49 @@ mistakes; every skip justified by a hang.
 cmake --build --preset dev && ctest --preset dev -R 'r7rs'
 ```
 
+**Done.**
+
+- The sections are a list in `tests/CMakeLists.txt`, each's slug its number
+  or its title in lowercase, hyphenated; the label `r7rs` on each, and
+  `r7rs-golden`, which runs the tests' commands with `UPDATE`, a new mode
+  of `run_minim.cmake` that writes the output instead of checking it.  The
+  Phase 2 function went into the loop.
+- One hang, skipped: 2142, writing a cyclic list (6.13, 30 s timeout before).
+- Runner fix: a form whose continuation line starts with `(` (728, 1207) was
+  split in two.  A chunk that would end inside a list or vector now takes
+  the next.  Not inside a string: syntax Minim lacks (`|a b|` symbols, 2282)
+  can open one, and merging then swallowed the next test.
+- Read through: the remaining non-`unbound variable` reports are real gaps:
+  `#u8`, `#x`/`#e`/`#i`, `|...|` symbols, block comments, `string->list`'s
+  range, ellipsis checks (604, 613), SRFI 34's example 5 and 6 (1912, 1917).
+- Today:
+
+| Section | Passed | Failed | Errors |
+|---|---|---|---|
+| 4.1 Primitive expression types | 27 | 0 | 0 |
+| 4.2 Derived expression types | 32 | 31 | 12 |
+| 4.3 Macros | 23 | 4 | 3 |
+| 5 Program structure | 15 | 0 | 0 |
+| 6.1 Equivalence Predicates | 25 | 0 | 0 |
+| 6.2 Numbers | 24 | 120 | 76 |
+| 6.3 Booleans | 13 | 5 | 0 |
+| 6.4 Lists | 60 | 5 | 0 |
+| 6.5 Symbols | 13 | 4 | 0 |
+| 6.6 Characters | 20 | 59 | 0 |
+| 6.7 Strings | 52 | 77 | 1 |
+| 6.8 Vectors | 13 | 30 | 0 |
+| 6.9 Bytevectors | 0 | 11 | 28 |
+| 6.10 Control Features | 22 | 12 | 0 |
+| 6.11 Exceptions | 24 | 6 | 0 |
+| 6.12 Environments and evaluation | 1 | 1 | 2 |
+| 6.13 Input and output | 36 | 2 | 21 |
+| Read syntax | 55 | 27 | 11 |
+| Numeric syntax | 8 | 2 | 105 |
+| 6.14 System interface | 5 | 6 | 1 |
+| **Total** | 468 | 402 | 260 |
+
+- Ran `ctest -L r7rs` and the dev suite.
+
 ### After the last phase
 
 Sync the docs: `testing.md` (the conformance tests, the runner, updating the

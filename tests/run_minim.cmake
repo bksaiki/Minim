@@ -1,6 +1,7 @@
 # Runs MINIM from DIR with ARGS (separated by `|`) and INPUT on stdin, both
 # optional.  Checks the exit status against STATUS (default 0), stdout against
-# EXPECTED, and stderr against EXPECTED_ERR if that file exists.
+# EXPECTED, and stderr against EXPECTED_ERR if that file exists.  With UPDATE,
+# writes stdout to EXPECTED instead of checking it.
 if(NOT DEFINED STATUS)
     set(STATUS 0)
 endif()
@@ -18,6 +19,10 @@ execute_process(
 )
 if(NOT status EQUAL STATUS)
     message(FATAL_ERROR "minim exited with ${status}, expected ${STATUS}\n${errors}")
+endif()
+if(UPDATE)
+    file(WRITE ${EXPECTED} "${actual}")
+    return()
 endif()
 file(READ ${EXPECTED} expected)
 if(NOT actual STREQUAL expected)

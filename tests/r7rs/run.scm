@@ -110,12 +110,26 @@
                      (else (collect (cdr lines) (+ n 1) depth acc))))))
           (else (find (cdr lines) (+ n 1))))))
 
+;; Whether `text` reads without ending inside a list or vector.  Another read
+;; error, even inside a string after syntax Minim lacks, counts as complete,
+;; to be reported when it runs.
+(define (runner-complete? text)
+  (let ((port (open-input-string text)))
+    (guard (e ((error-object? e)
+               (not (member (error-object-message e) '("eof in list" "eof in vector")))))
+      (let loop ()
+        (unless (eof-object? (read port))
+          (loop)))
+      #t)))
+
 ;; The section's top-level forms as (number . text) pairs: a form starts at a
-;; line starting with `(`, and runs to the next.
+;; line starting with `(`, and runs to the next, unless it would end inside a
+;; datum: then it takes the next one too.
 (define (runner-chunks numbered)
   (let loop ((numbered numbered) (chunks '()))
     (cond ((null? numbered) (reverse chunks))
-          ((runner-prefix? "(" (cdar numbered))
+          ((and (runner-prefix? "(" (cdar numbered))
+                (or (null? chunks) (runner-complete? (cdar chunks))))
            (loop (cdr numbered) (cons (cons (caar numbered) (cdar numbered)) chunks)))
           ((null? chunks) (loop (cdr numbered) chunks))
           (else
@@ -125,7 +139,8 @@
                          (cdr chunks))))))))
 
 ;; Forms that would hang Minim, by the line they start at, with why.
-(define runner-skips '())
+(define runner-skips
+  '((2142 . "writes a cyclic list, which loops: no datum labels")))
 
 ;; Reads and evaluates the data of `text`; a read error ends it.
 (define (runner-run-chunk text)

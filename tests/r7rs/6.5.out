@@ -1,0 +1,5 @@
+FAIL 1202 (symbol=? 'a 'a) raised ("unbound variable" symbol=?)
+FAIL 1203 (symbol=? 'a 'A) raised ("unbound variable" symbol=?)
+FAIL 1204 (symbol=? 'a 'a 'a) raised ("unbound variable" symbol=?)
+FAIL 1205 (symbol=? 'a 'a 'A) raised ("unbound variable" symbol=?)
+6.5 Symbols: 13 passed, 4 failed, 0 errors

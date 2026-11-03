@@ -1,0 +1,4 @@
+FAIL 1962 (eval '(expt 2 10) (environment '(scheme base))) raised ("unbound variable" expt)
+ERROR 1964 ("unbound variable" 0.0)
+ERROR 1966 ("unbound variable" 1024.0)
+6.12 Environments and evaluation: 1 passed, 1 failed, 2 errors
