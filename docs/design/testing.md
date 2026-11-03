@@ -40,7 +40,8 @@ labelled `r7rs`: `ctest -L r7rs` runs only them, `ctest -LE r7rs` the rest.
 
 `minim run.scm "6.4 Lists"` runs a section with a shim for the suite's
 `(chibi test)` forms.  It splits the section into its top-level forms, those
-starting at column 0, and reads and evaluates each under `guard`, so syntax
+starting at column 0, unless the form before would end inside a list,
+vector, or block comment, and reads and evaluates each under `guard`, so syntax
 or procedures Minim lacks fail only their form.  It reports each failing
 test (`FAIL`), other error (`ERROR`, `READ-ERROR`), and skipped form
 (`SKIP`, for forms that would hang Minim) with the line it starts at, then

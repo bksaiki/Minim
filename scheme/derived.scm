@@ -47,7 +47,7 @@
 
 (define-syntax unless
   (syntax-rules ()
-    ((_ test result1 result2 ...) (if test (if #f #f) (begin result1 result2 ...)))))
+    ((_ test result1 result2 ...) (if test (void) (begin result1 result2 ...)))))
 
 (define-syntax cond
   (syntax-rules (else =>)
@@ -81,7 +81,7 @@
     ((_ ((var init step ...) ...) (test expr ...) command ...)
      (let loop ((var init) ...)
        (if test
-           (begin (if #f #f) expr ...)
+           (begin (void) expr ...)
            (begin command ... (loop (do "step" var step ...) ...)))))
     ((_ "step" x) x)
     ((_ "step" x y) y)))

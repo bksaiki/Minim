@@ -104,3 +104,8 @@ y
 
 ; The REPL's command line.
 (command-line)
+
+; void, after Chez.
+(void)
+(list (void))
+(void 1)

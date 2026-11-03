@@ -293,8 +293,26 @@ static minim_obj read_vector(source *in) {
     MINIM_RETURN(v);
 }
 
-static minim_obj read_hash(source *in) {
-    int32_t c = next(in);
+// Skips a block comment, after its `#|`, to the matching `|#`: they nest.
+static void skip_block_comment(source *in) {
+    int32_t prev = 0;
+    for (int depth = 1; depth > 0;) {
+        int32_t c = next(in);
+        if (c < 0)
+            read_error("eof in comment", MINIM_VOID);
+        if (prev == '|' && c == '#') {
+            depth--;
+            c = 0;  // a delimiter's chars don't start another
+        } else if (prev == '#' && c == '|') {
+            depth++;
+            c = 0;
+        }
+        prev = c;
+    }
+}
+
+// Reads the datum after `#c`, `c` read.
+static minim_obj read_hash(source *in, int32_t c) {
     if (c == '(')
         return read_vector(in);
     if (c == '\\')
@@ -340,7 +358,15 @@ static int read_item_from(source *in, int32_t c, minim_obj *x) {
         *x = read_string(in);
         return ITEM;
     case '#':
-        *x = read_hash(in);
+        c = next(in);
+        if (c == '|' || c == ';') {  // a block or datum comment, then the next item
+            if (c == '|')
+                skip_block_comment(in);
+            else
+                read_required(in, "bad datum comment");
+            return read_item(in, x);
+        }
+        *x = read_hash(in, c);
         return ITEM;
     case '\'':
         *x = read_abbreviation(in, skip_atmosphere(in), &minim_sym_quote, "eof after quote");

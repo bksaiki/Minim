@@ -55,6 +55,27 @@
 (let ((atom-key 'user)) (case (car '(1)) ((1) atom-key)))
 (let ((loop 'user)) (do ((i 0 (+ i 1))) ((= i 2) loop)))
 
+; case-lambda (R7RS 4.2.9): the first clause accepting the arguments' number.
+(define area
+  (case-lambda
+    ((r) (* 3 r r))
+    ((w h) (* w h))
+    ((w h . more) (list 'too-many more))))
+(list (area 2) (area 2 3) (area 2 3 4 5))
+((case-lambda (() 'none) (args args)))
+((case-lambda (() 'none) (args args)) 1 2)
+((case-lambda ((x) (define y (* x 2)) (define-syntax twice (syntax-rules () ((_ e) (list e e))))
+                   (twice y)))
+ 4)
+; Its clauses are hygienic: `tmp` below is the user's, not the macro's.
+(define-syntax pair-with
+  (syntax-rules ()
+    ((_ e) (case-lambda ((tmp) (list tmp e))))))
+(let ((tmp 'user)) ((pair-with tmp) 'arg))
+
 ; Errors.
 (let ((x)) x)
 (cond)
+((case-lambda ((x) x)))
+(case-lambda (x))
+(case-lambda 5)

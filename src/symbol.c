@@ -53,6 +53,7 @@ static void grow(void) {
 }
 
 minim_obj minim_sym_begin;
+minim_obj minim_sym_case_lambda;
 minim_obj minim_sym_define;
 minim_obj minim_sym_define_values;
 minim_obj minim_sym_expand;
@@ -79,6 +80,7 @@ void minim_symbol_init(void) {
     minim_gc_add_global(&table);
 
     intern_global(&minim_sym_begin, "begin");
+    intern_global(&minim_sym_case_lambda, "case-lambda");
     intern_global(&minim_sym_define, "define");
     intern_global(&minim_sym_define_values, "define-values");
     intern_global(&minim_sym_expand, "%expand");

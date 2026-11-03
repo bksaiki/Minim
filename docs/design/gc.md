@@ -30,7 +30,7 @@ pair     [ car | cdr ]                        16 B
 symbol   [ name : string | value | plist ]    24 B, rounded up to 32
 vector   [ header | e0 | e1 | ... ]           8 + 8n B, rounded up to 16
 string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
-closure  [ code : (params . body) | env ]     16 B
+closure  [ code : (case-)lambda form | env ]  16 B
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 continuation [ header | k | stack | height ]  32 B
 error    [ header | kind | message | irritants ]  32 B

@@ -50,7 +50,7 @@ the kind:
 | `DEFINE` | symbol, value | top-level `define` |
 | `DEFINE_VALUES` | formals, value | top-level `define-values` |
 | `IF` | test, then, else | `if`; a missing else is `CONST` void |
-| `LAMBDA` | formals, body | `lambda`; a body of several forms is a `SEQ` |
+| `LAMBDA` | clauses: formals, body | `lambda`, one clause, and `case-lambda`; a body of several forms is a `SEQ` |
 | `SEQ` | node ... | `begin`, bodies |
 | `CALL` | operator, operand ... | an application |
 | `LET_VALUES` | rec?, body, then formals and init per clause | `let-values`, `letrec-values` |

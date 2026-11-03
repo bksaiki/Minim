@@ -12,6 +12,9 @@
 /** The symbol `begin`. */
 extern minim_obj minim_sym_begin;
 
+/** The symbol `case-lambda`. */
+extern minim_obj minim_sym_case_lambda;
+
 /** The symbol `define`. */
 extern minim_obj minim_sym_define;
 

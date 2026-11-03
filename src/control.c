@@ -70,6 +70,11 @@ minim_obj minim_prim_eval_expanded(minim_obj *args, size_t n) {
     abort();
 }
 
+static minim_obj prim_void(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    return MINIM_VOID;
+}
+
 static minim_obj prim_is_procedure(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     return boolean(minim_is_procedure(args[0]));
@@ -93,6 +98,7 @@ const minim_prim_def minim_control_prims[] = {
     {"%handlers", prim_handlers, 0, 0},
     {"%set-handlers!", prim_set_handlers, 1, 1},
     {"procedure?", prim_is_procedure, 1, 1},
+    {"void", prim_void, 0, 0},
     {"%closure-code", prim_closure_code, 1, 1},
     {NULL, NULL, 0, 0},
 };

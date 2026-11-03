@@ -80,6 +80,8 @@ the one it contains.
 | `(raise-continuable obj)` | likewise, returning the handler's values |
 | `(error message irritant ...)` | raises a new error object |
 | `(make-parameter init [converter])` | a parameter: `(p)` is its value, `init` converted; `(p v)` sets it to `v` converted |
+| `(exit [obj])` | runs the `after`s of every `dynamic-wind` in progress, then ends the process: status 0 for no argument or a true non-fixnum, 1 for `#f`, else the fixnum |
+| `(emergency-exit [obj])` | likewise, without running the `after`s |
 | `(parameter? x)` | whether `x` is a parameter, without calling it; Minim's own, in `(minim)` |
 
 `call/cc` wraps `%call/cc` (`primitives.md`): the procedure it passes runs
@@ -94,11 +96,11 @@ the clauses there; if none matches, it jumps back and re-raises with
 `raise-continuable`.  `%raise-c-error` is what errors from C raise through.
 
 Parameters (R7RS 4.2.6) follow Chez.  A parameter is a closure of the one
-`lambda` in `make-parameter`, so `parameter?` compares a procedure's code
-with theirs (`%closure-code`).  `%parameterize`, which `parameterize` expands
-into, checks its parameters, converts the new values, and calls the body in
-a `dynamic-wind` whose `before` and `after` swap the saved values in and
-out, reading all before setting any.  So a value set inside survives
+`case-lambda` in `make-parameter`, so `parameter?` compares a procedure's
+code with theirs (`%closure-code`).  `%parameterize`, which `parameterize`
+expands into, checks its parameters, converts the new values, and calls the
+body in a `dynamic-wind` whose `before` and `after` swap the saved values in
+and out, reading all before setting any.  So a value set inside survives
 leaving and re-entering, a parameter named twice is restored, and restored
 values aren't converted.  It reaches the converter and an unconverted setter
 through a private token.

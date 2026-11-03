@@ -12,6 +12,7 @@
 (%expand '(lambda () (define x 1)))
 (%expand '(define (f a . r) (cons a r)))
 (%expand '(lambda () (define (g) 1) (g)))
+(%expand '(case-lambda ((x) x) ((x . y) (define z y) z) (() 0)))
 
 ; %eval-expanded runs a core form globally, unexpanded.
 (%eval-expanded '(+ 1 2))

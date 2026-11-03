@@ -518,10 +518,10 @@ void minim_putprop(minim_obj sym, minim_obj key, minim_obj value);
 
 // Procedures
 
-/** New closure over `code`, a `(params . body)` pair, in `env`. */
+/** New closure over `code`, its `lambda` or `case-lambda` form, in `env`. */
 minim_obj minim_make_closure(minim_obj code, minim_obj env);
 
-/** Code, `(params . body)`, of the closure `c`. */
+/** Code of the closure `c`: its `lambda` or `case-lambda` form. */
 static inline minim_obj minim_closure_code(minim_obj c) {
     assert(minim_is_closure(c));
     return ((const minim_obj *)(c - MINIM_TAG_CLOSURE))[0];

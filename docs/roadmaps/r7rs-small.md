@@ -32,7 +32,7 @@ provides.  Update it as names are added.
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
 | `(scheme base)` | 157 | 238 | |
-| `(scheme case-lambda)` | 0 | 1 | not defined |
+| `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 0 | 22 | not defined |
 | `(scheme complex)` | 0 | 6 | not defined |
 | `(scheme cxr)` | 0 | 24 | not defined |
@@ -41,7 +41,7 @@ provides.  Update it as names are added.
 | `(scheme inexact)` | 0 | 12 | not defined |
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
-| `(scheme process-context)` | 2 | 5 | |
+| `(scheme process-context)` | 4 | 5 | |
 | `(scheme r5rs)` | 124 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
@@ -194,9 +194,8 @@ Depends on 3 (`define-record-type` is a macro).
 ### 9. The rest of the standard libraries (M, ongoing)
 
 The names the coverage table above lacks that no other milestone brings:
-`(scheme char)`, `(scheme cxr)`, `case-lambda`, `(scheme lazy)`, `exit`,
-and the rest of `(scheme base)`'s lists, strings,
-vectors, and control.  Mostly prelude procedures.
+`(scheme char)`, `(scheme cxr)`, `(scheme lazy)`, and the rest of `(scheme
+base)`'s lists, strings, vectors, and control.  Mostly prelude procedures.
 
 - Done: `make-parameter` and `parameterize`, and `interaction-environment`
   a parameter (`docs/design/prelude.md`, `docs/design/macros.md`).
@@ -204,6 +203,8 @@ vectors, and control.  Mostly prelude procedures.
   (`docs/design/macros.md`).
 - Done: `command-line`, with scripts and programs taking arguments
   (`docs/design/repl.md`).
+- Done: `exit` and `emergency-exit`; `case-lambda`, a core form after Chez
+  (`docs/design/eval.md`); datum and block comments (`docs/design/repl.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
@@ -217,8 +218,8 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | Section | Passed | Failed | Errors |
 |---|---|---|---|
 | 4.1 Primitive expression types | 27 | 0 | 0 |
-| 4.2 Derived expression types | 32 | 31 | 12 |
-| 4.3 Macros | 23 | 4 | 3 |
+| 4.2 Derived expression types | 45 | 18 | 9 |
+| 4.3 Macros | 23 | 2 | 1 |
 | 5 Program structure | 15 | 0 | 0 |
 | 6.1 Equivalence Predicates | 25 | 0 | 0 |
 | 6.2 Numbers | 24 | 120 | 76 |
@@ -233,10 +234,10 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.11 Exceptions | 24 | 6 | 0 |
 | 6.12 Environments and evaluation | 1 | 1 | 2 |
 | 6.13 Input and output | 36 | 2 | 21 |
-| Read syntax | 55 | 27 | 11 |
+| Read syntax | 64 | 18 | 11 |
 | Numeric syntax | 8 | 2 | 105 |
 | 6.14 System interface | 5 | 6 | 1 |
-| **Total** | 468 | 402 | 260 |
+| **Total** | 490 | 378 | 255 |
 
 The reports name each failing test by line; the gaps are those of the
 coverage table and of milestones 6 to 9.  Update the table with the reports.

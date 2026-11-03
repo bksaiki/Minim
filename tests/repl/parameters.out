@@ -10,7 +10,7 @@
 #f
 #f
 #t
-((x) x)
+(lambda (x) x)
 #f
 (a1 b1)
 (a0 b0)

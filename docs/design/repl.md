@@ -23,7 +23,9 @@ and advances it.
 | anything else up to a delimiter | symbol (case-sensitive), including `+`, `-`, `...`, and `1.5` |
 
 Delimiters are whitespace, `(`, `)`, `"`, and `;`.  `;` starts a comment that
-runs to the end of the line.
+runs to the end of the line, `#|` one to the matching `|#`, nesting, and
+`#;` comments out the next datum.  Comments may stand wherever whitespace
+may, before a `)` too.
 
 The reader keeps no state between calls: it only ever pushes back one
 character, into a port's lookahead, or, in a C string, an ASCII delimiter.
@@ -76,7 +78,7 @@ The REPL loops: read from the standard input port, `minim_eval_values`, then
 write each value and a newline to `stdout`, skipping void ones.  A read or
 evaluation error prints `error: msg: irritant` to stderr (`errors.md`), after
 the `after`s of the `dynamic-wind`s it left run, and reading continues with
-the rest of the input.
+the rest of the input.  It ends at the end of its input, or at `(exit)`.
 
 The `> ` prompt goes to stderr, and only when stdin is a terminal, as in
 bash and Python, so piped runs print only results to stdout, as the REPL

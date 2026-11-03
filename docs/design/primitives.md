@@ -126,7 +126,8 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, error objects, and records all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
-| `(%closure-code x)` | the closure `x`'s `(params . body)`, shared by every closure of one `lambda`; `#f` for anything else |
+| `(%closure-code x)` | the closure `x`'s form, `(lambda ...)` or `(case-lambda ...)`, shared by every closure it makes; `#f` for anything else |
+| `(void)` | void; Minim's own, after Chez, in `(minim)` |
 
 ### Vectors
 
@@ -211,6 +212,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 |---|---|
 | `(get-environment-variable name)` | the value of the environment variable `name`, a string, or `#f` if it is unset |
 | `(command-line)` | the script's or program's path, then its arguments, as strings; `("minim")` at the REPL |
+| `(%exit status)` | shuts the runtime down, flushing and closing file ports, and ends the process with the fixnum `status` |
 
 ## Conventions
 

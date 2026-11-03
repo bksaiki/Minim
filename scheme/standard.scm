@@ -22,13 +22,16 @@
    vector-length vector-ref vector-set! vector? when with-exception-handler write-char
    write-string zero?))
 
+(%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library '(scheme eval) '(environment eval))
 (%define-system-library
  '(scheme file)
  '(call-with-input-file call-with-output-file delete-file file-exists? open-input-file
    open-output-file with-input-from-file with-output-to-file))
 (%define-system-library '(scheme load) '(load))
-(%define-system-library '(scheme process-context) '(command-line get-environment-variable))
+(%define-system-library
+ '(scheme process-context)
+ '(command-line emergency-exit exit get-environment-variable))
 (%define-system-library '(scheme read) '(read))
 (%define-system-library '(scheme repl) '(interaction-environment))
 (%define-system-library '(scheme write) '(display write write-simple))
@@ -59,12 +62,12 @@
 (%define-system-library
  '(minim)
  (append (%exported-names
-          '((scheme base) (scheme eval) (scheme file) (scheme load) (scheme process-context)
-            (scheme read) (scheme repl) (scheme write)))
+          '((scheme base) (scheme case-lambda) (scheme eval) (scheme file) (scheme load)
+            (scheme process-context) (scheme read) (scheme repl) (scheme write)))
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import parameter?
-           string-hash letrec-values)))
+           string-hash letrec-values void)))
 
 ;; The REPL and files see (minim), and nothing else of the system's.
 (%import! %interaction-env '((minim)))

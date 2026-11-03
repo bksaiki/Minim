@@ -75,11 +75,41 @@ static bool valid_clauses(minim_obj clauses) {
 }
 
 // Whether a closure with `params` accepts `n` arguments.
-static bool accepts(minim_obj params, size_t n) {
+static bool closure_accepts(minim_obj params, size_t n) {
     size_t required = 0;
     for (; minim_is_pair(params); params = minim_cdr(params))
         required++;
     return minim_is_symbol(params) ? n >= required : n == required;
+}
+
+// Whether `c` is a clause `(params body ...)`, as `lambda` and `case-lambda` take.
+static bool valid_lambda_clause(minim_obj c) {
+    return list_length(c) >= 2 && valid_params(minim_car(c));
+}
+
+// Whether `clauses` is a list of clauses `(params body ...)`.
+static bool valid_lambda_clauses(minim_obj clauses) {
+    for (; minim_is_pair(clauses); clauses = minim_cdr(clauses)) {
+        if (!valid_lambda_clause(minim_car(clauses)))
+            return false;
+    }
+    return minim_is_null(clauses);
+}
+
+// The clause `(params body ...)` of the closure `c` that accepts `n`
+// arguments: a `lambda`'s own, or a `case-lambda`'s first that does.
+static minim_obj clause_for(minim_obj c, size_t n) {
+    minim_obj code = minim_closure_code(c);
+    if (minim_car(code) == minim_sym_lambda) {
+        if (closure_accepts(minim_car(minim_cdr(code)), n))
+            return minim_cdr(code);
+    } else {
+        for (code = minim_cdr(code); minim_is_pair(code); code = minim_cdr(code)) {
+            if (closure_accepts(minim_car(minim_car(code)), n))
+                return minim_car(code);
+        }
+    }
+    minim_error("arity mismatch", c);
 }
 
 static bool primitive_accepts(minim_obj p, size_t n) {
@@ -124,7 +154,7 @@ static _Noreturn void wrong_number_of_values(size_t n) {
 // Binds `formals` in `env`, with minim_env_define, to the `n` values atop the
 // value stack, and pops them.
 static void bind_values(minim_obj env, minim_obj formals, size_t n) {
-    if (!accepts(formals, n))
+    if (!closure_accepts(formals, n))
         wrong_number_of_values(n);
     MINIM_FRAME(&env, &formals);
     size_t start = minim_gc.values.len - n;
@@ -227,9 +257,14 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
             x = minim_cdr(expr);
             goto let_values;
         } else if (x == minim_sym_lambda) {
-            if (len < 3 || !valid_params(minim_car(minim_cdr(expr))))
+            if (!valid_lambda_clause(minim_cdr(expr)))
                 minim_error("bad syntax", expr);
-            val = minim_make_closure(minim_cdr(expr), env);
+            val = minim_make_closure(expr, env);
+            goto ret;
+        } else if (x == minim_sym_case_lambda) {
+            if (!valid_lambda_clauses(minim_cdr(expr)))
+                minim_error("bad syntax", expr);
+            val = minim_make_closure(expr, env);
             goto ret;
         } else if (x == minim_sym_begin) {
             if (len == 1) {
@@ -451,12 +486,11 @@ apply:  // Applies the procedure at `base` to the values above it.
         if (!minim_is_closure(x))
             minim_error("not a procedure", x);
 
-        minim_obj params = minim_car(minim_closure_code(x));
-        if (!accepts(params, n))
-            minim_error("arity mismatch", x);
-        env = minim_env_extend(params, minim_stack_at(base + 1), n, minim_closure_env(x));
+        expr = clause_for(x, n);  // rooted while the frame is made
+        env = minim_env_extend(minim_car(expr), minim_stack_at(base + 1), n,
+                               minim_closure_env(x));
         minim_stack_pop_to(base);
-        x = minim_cdr(minim_closure_code(x));
+        x = minim_cdr(expr);
         goto sequence;
     }
 
@@ -473,12 +507,10 @@ apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, w
                 minim_obj a = *minim_stack_at(h - 1);
                 val = minim_cons(a, val);
             }
-            minim_obj params = minim_car(minim_closure_code(x));
-            if (!accepts(params, total))
-                minim_error("arity mismatch", x);
-            env = minim_env_extend_list(params, val, minim_closure_env(x));
+            expr = clause_for(x, total);
+            env = minim_env_extend_list(minim_car(expr), val, minim_closure_env(x));
             minim_stack_pop_to(base);
-            x = minim_cdr(minim_closure_code(x));
+            x = minim_cdr(expr);
             goto sequence;
         }
         if (minim_is_continuation(x))

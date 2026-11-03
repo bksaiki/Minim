@@ -22,3 +22,8 @@ composite
 ((2 . b) user)
 user
 user
+(12 6 (too-many (4 5)))
+none
+(1 2)
+(8 8)
+(arg user)

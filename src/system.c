@@ -97,6 +97,15 @@ void minim_set_command_line(int argc, const char *const *argv) {
     command_argv = argv;
 }
 
+// Ends the process with the status `args[0]`, a fixnum, after shutting the
+// runtime down, which flushes and closes the file ports.
+static minim_obj prim_exit(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    int status = (int)fixnum_arg(args[0], "%exit: not a fixnum");
+    minim_shutdown();
+    exit(status);
+}
+
 static minim_obj prim_command_line(minim_obj *args, size_t n) {
     MINIM_UNUSED(args, n);
     minim_obj lst = MINIM_NIL;
@@ -130,6 +139,7 @@ const minim_prim_def minim_system_prims[] = {
     {"file-exists?", prim_file_exists, 1, 1},
     {"delete-file", prim_delete_file, 1, 1},
     {"command-line", prim_command_line, 0, 0},
+    {"%exit", prim_exit, 1, 1},
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
     {"%read-file", prim_read_file, 1, 1},
     {"collect", prim_collect, 0, 0},
