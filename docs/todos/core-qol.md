@@ -239,6 +239,25 @@ its parsing are gone.
 cmake --build --preset dev && ctest --preset dev -R 'port|parameters|script|r7rs|boot'
 ```
 
+**Done.**
+
+- `scheme/ports.scm`: a local macro, `%define-with-port`, defines each
+  procedure whose last argument is an optional port as a two-clause
+  `case-lambda`; `newline` and `write-string` are written out.  `%port-arg`
+  is gone.
+- `scheme/control.scm`: `make-parameter` is a `case-lambda`, and so is the
+  parameter it returns, so `(p)` no longer conses a rest list; a parameter
+  called with two arguments other than the token still raises "parameter:
+  too many arguments".  `exit` and `emergency-exit` too.
+- A procedure given too many arguments now raises `arity mismatch:
+  #<procedure>`, without its name: closures have none (the open item on
+  code objects).
+- Measured, release build, 400,000 `read-char`s from a string port each
+  written with `write-char`, 9 runs alternated: median 1.04 s to 0.47 s,
+  2.2 times faster.
+- Ran `ctest -R 'port|parameters|script|r7rs|boot|exit'`, and stress
+  `port|parameters`.
+
 ### Phase 6 - Datum and block comments
 
 - `src/read.c`: `#;` and `#| ... |#`, nesting, as atmosphere.

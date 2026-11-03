@@ -55,12 +55,17 @@
         (else 0)))
 
 ;; Leaves every dynamic-wind in progress, running its after, then exits.
-(define (exit . obj)
-  (%rewind! '())
-  (%exit (%exit-status (or (null? obj) (car obj)))))
+(define exit
+  (case-lambda
+    (() (exit #t))
+    ((obj)
+     (%rewind! '())
+     (%exit (%exit-status obj)))))
 
-(define (emergency-exit . obj)
-  (%exit (%exit-status (or (null? obj) (car obj)))))
+(define emergency-exit
+  (case-lambda
+    (() (emergency-exit #t))
+    ((obj) (%exit (%exit-status obj)))))
 
 ;; Exceptions.  The handlers (`%handlers`) are those installed, innermost
 ;; first; `%with-handlers` installs a list for `thunk`'s extent.
@@ -131,17 +136,21 @@
 
 (define %parameter-token (list 'parameter))
 
-(define (make-parameter init . converter)
-  (let* ((convert (if (null? converter) (lambda (x) x) (car converter)))
-         (value (convert init)))
-    (lambda args
-      (cond ((null? args) value)
-            ((eq? (car args) %parameter-token)
-             (if (null? (cdr args)) convert (set! value (cadr args))))
-            ((null? (cdr args)) (set! value (convert (car args))))
-            (else (error "parameter: too many arguments" args))))))
+(define make-parameter
+  (case-lambda
+    ((init) (make-parameter init (lambda (x) x)))
+    ((init convert)
+     (let ((value (convert init)))
+       (case-lambda
+         (() value)
+         ((v) (if (eq? v %parameter-token) convert (set! value (convert v))))
+         ((token v)
+          (unless (eq? token %parameter-token)
+            (error "parameter: too many arguments" (list token v)))
+          (set! value v)))))))
 
-;; Every parameter is a closure of the `lambda` above, so they share its code.
+;; Every parameter is a closure of the inner `case-lambda` above, so they
+;; share its code.
 (define %parameter-code (%closure-code (make-parameter #f)))
 
 (define (parameter? x)
