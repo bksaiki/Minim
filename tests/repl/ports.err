@@ -1,0 +1,10 @@
+error: open-input-file: cannot open file: "load/no-such-file.scm"
+error: open-input-file: not a string: defs
+error: open-output-file: not a string: defs
+error: open-output-file: cannot open file: "load/no-such-dir/x.scm"
+error: open-input-string: not a string: 1
+error: close-input-port: not an input port: #<output port string>
+error: close-output-port: not an output port: #<input port string>
+error: close-port: not a port: x
+error: input-port-open?: not a port: x
+error: %standard-port: not 0, 1, or 2: 3

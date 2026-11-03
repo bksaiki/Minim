@@ -12,6 +12,7 @@
 #include "heap.h"
 #include "minim.h"
 #include "symbol.h"
+#include "system.h"
 
 // Characters of the token being read.  Static, so an error can't leak it.
 static struct {
@@ -415,7 +416,7 @@ static minim_obj read_forms(void *f) {
 
 minim_obj minim_read_file(minim_obj path) {
     char *name = minim_string_to_utf8(path);
-    FILE *f = fopen(name, "r");
+    FILE *f = minim_fopen(name, "r");
     free(name);
     if (f == NULL)
         minim_error_of_kind(MINIM_ERROR_FILE, "load: cannot open file", path);

@@ -14,6 +14,15 @@
 #include "prims.h"
 #include "read.h"
 
+FILE *minim_fopen(const char *path, const char *mode) {
+#ifdef _MSC_VER
+    FILE *f;
+    return fopen_s(&f, path, mode) == 0 ? f : NULL;
+#else
+    return fopen(path, mode);
+#endif
+}
+
 const char *minim_getenv(const char *name) {
     const char *s = getenv(name);
     return s == NULL || *s == '\0' ? NULL : s;
@@ -78,7 +87,7 @@ static minim_obj prim_file_exists(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "file-exists?: not a string", args[0]);
     char *name = minim_string_to_utf8(args[0]);
-    FILE *f = fopen(name, "r");
+    FILE *f = minim_fopen(name, "r");
     free(name);
     if (f != NULL)
         fclose(f);

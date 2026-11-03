@@ -147,6 +147,26 @@ error; each kind's printed form; `(eof-object? (eof-object))`.
 cmake --build --preset dev && ctest --preset dev -R 'port|gc|libraries' && ctest --preset stress -R 'port|gc'
 ```
 
+**Done.**
+
+- Ports are public API, like pairs and error objects: `include/minim.h` has
+  the type (`MINIM_TYPE_PORT`, 3), size, flags, accessors,
+  `minim_standard_port`, `minim_open_input_string`,
+  `minim_open_output_string`, `minim_open_input_file`,
+  `minim_open_output_file`, and `minim_port_close`, since `minim_read` will
+  take a port (Phase 4).  `src/port.h` declares only `minim_port_init`.
+  `test_port` uses only the public API.
+- `open-input-string` reads a copy, so changing the string doesn't change
+  the port.  A port's name is a copy of its path too.
+- Closing a standard port flushes it, if output, but leaves C's stream open:
+  the REPL and error messages still use it.
+- A non-string path is `not a string`, a general error; only a failed open
+  is a file error.
+- `(scheme r5rs)` also exports this phase's names that R5RS has.
+- `count_predicates` (`tests/test.h`) counts `minim_is_port`.
+- Ran `ctest -R 'port|gc|libraries|object|tag|boot|files|load|print'`, and
+  stress `port|gc`.
+
 ### Phase 2 - Closing collected file ports
 
 - `src/gc.c`, `src/gc.h`: the destructor list, `minim_gc_add_destructor(x,

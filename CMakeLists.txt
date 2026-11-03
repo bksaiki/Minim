@@ -60,6 +60,7 @@ add_library(libminim STATIC
     src/number.c
     src/object.c
     src/pair.c
+    src/port.c
     src/prelude.c
     src/prims.c
     src/print.c

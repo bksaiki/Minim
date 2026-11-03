@@ -71,7 +71,7 @@ static inline int count_predicates(minim_obj x) {
     return minim_is_fixnum(x) + minim_is_char(x) + minim_is_boolean(x) + minim_is_null(x)
         + minim_is_pair(x) + minim_is_symbol(x) + minim_is_closure(x) + minim_is_vector(x)
         + minim_is_string(x) + minim_is_primitive(x) + minim_is_continuation(x)
-        + minim_is_error_object(x) + minim_is_record(x);
+        + minim_is_error_object(x) + minim_is_record(x) + minim_is_port(x);
 }
 
 /** Whether the last error raised has the message `msg`; reports a mismatch. */

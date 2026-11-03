@@ -170,6 +170,8 @@ static size_t typed_size(minim_obj header) {
         return MINIM_CONTINUATION_SIZE;
     case MINIM_TYPE_ERROR:
         return MINIM_ERROR_OBJECT_SIZE;
+    case MINIM_TYPE_PORT:
+        return MINIM_PORT_SIZE;
     case MINIM_TYPE_RECORD:
         return minim_record_size(rtd_nfields(header));
     default:
@@ -241,6 +243,9 @@ static size_t pointer_fields(minim_obj x, minim_obj **fields) {
         return 2;
     case MINIM_TYPE_ERROR:
         *fields = p + 2;  // the message and irritants; the kind is a fixnum
+        return 2;
+    case MINIM_TYPE_PORT:
+        *fields = p + 1;  // the buffer and name; the rest aren't pointers
         return 2;
     case MINIM_TYPE_RECORD:
         *fields = p;  // the rtd, then the fields

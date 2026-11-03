@@ -160,6 +160,11 @@ static void print(FILE *out, minim_obj x, bool display) {
         fputs("#<procedure>", out);
     else if (minim_is_continuation(x))
         fputs("#<continuation>", out);
+    else if (minim_is_port(x)) {
+        fputs(minim_port_flags(x) & MINIM_PORT_INPUT ? "#<input port " : "#<output port ", out);
+        write_chars(out, minim_port_name(x));
+        fputc('>', out);
+    }
     else if (minim_is_record(x))
         write_record(out, x);
     else if (minim_is_error_object(x)) {
