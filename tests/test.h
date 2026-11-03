@@ -59,7 +59,7 @@ static inline int test_result(void) {
 }
 
 /** A temporary file holding `s`, positioned at its start. */
-static inline FILE *input(const char *s) {
+static inline FILE *input_file(const char *s) {
     FILE *f = tmpfile();
     fputs(s, f);
     rewind(f);
@@ -71,7 +71,7 @@ static inline int count_predicates(minim_obj x) {
     return minim_is_fixnum(x) + minim_is_char(x) + minim_is_boolean(x) + minim_is_null(x)
         + minim_is_pair(x) + minim_is_symbol(x) + minim_is_closure(x) + minim_is_vector(x)
         + minim_is_string(x) + minim_is_primitive(x) + minim_is_continuation(x)
-        + minim_is_error_object(x) + minim_is_record(x);
+        + minim_is_error_object(x) + minim_is_record(x) + minim_is_port(x);
 }
 
 /** Whether the last error raised has the message `msg`; reports a mismatch. */
@@ -102,12 +102,18 @@ static inline minim_obj make_record_type(const char *name, const char *const *fi
     MINIM_RETURN(rtd);
 }
 
-/** Evaluates every datum in the file `f`; returns the last value. */
-static inline minim_obj eval_file(void *f) {
+/** A new input port reading the string `s`. */
+static inline minim_obj input(const char *s) {
+    return minim_open_input_string(minim_string_from_cstr(s));
+}
+
+/** Evaluates every datum of the source text `src`; returns the last value. */
+static inline minim_obj eval_source(void *src) {
+    minim_obj port = input(src);
     minim_obj val = MINIM_VOID;
     minim_obj x = MINIM_NIL;
-    MINIM_FRAME(&val, &x);
-    while ((x = minim_read(f)) != MINIM_EOF)
+    MINIM_FRAME(&port, &val, &x);
+    while ((x = minim_read(port)) != MINIM_EOF)
         val = minim_eval(x);
     MINIM_RETURN(val);
 }
@@ -130,10 +136,8 @@ static inline bool prints_as(minim_obj x, const char *expect) {
 
 /** Whether evaluating `src` gives a value that prints as `expect`. */
 static inline bool evals_to(const char *src, const char *expect) {
-    FILE *f = input(src);
     minim_obj val;
-    bool ok = minim_catch(eval_file, f, &val);
-    fclose(f);
+    bool ok = minim_catch(eval_source, (void *)src, &val);
     if (!ok) {
         fprintf(stderr, "`%s` raised ", src);
         minim_write_error(stderr);
@@ -144,10 +148,8 @@ static inline bool evals_to(const char *src, const char *expect) {
 
 /** Whether evaluating `src` raises the error `msg`. */
 static inline bool fails_with(const char *src, const char *msg) {
-    FILE *f = input(src);
     minim_obj val;
-    bool ok = minim_catch(eval_file, f, &val);
-    fclose(f);
+    bool ok = minim_catch(eval_source, (void *)src, &val);
     if (ok) {
         fprintf(stderr, "`%s` evaluated without error\n", src);
         return false;

@@ -67,6 +67,7 @@ enum {
     MINIM_TYPE_VECTOR = 0x0,
     MINIM_TYPE_ERROR = 0x1,
     MINIM_TYPE_STRING = 0x2,
+    MINIM_TYPE_PORT = 0x3,  ///< its length bits hold its flags
     MINIM_TYPE_PRIMITIVE = 0x4,
     MINIM_TYPE_CONTINUATION = 0x6,
     MINIM_TYPE_RECORD = 0x7,  ///< a record's first word, its rtd, read as a header
@@ -85,6 +86,7 @@ enum {
     MINIM_CLOSURE_SIZE = 2 * sizeof(minim_obj),
     MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
     MINIM_ERROR_OBJECT_SIZE = 4 * sizeof(minim_obj),
+    MINIM_PORT_SIZE = 6 * sizeof(minim_obj),
 };
 
 /** Size in bytes of a vector of length `n`. */
@@ -220,6 +222,11 @@ static inline bool minim_is_continuation(minim_obj x) {
 /** Whether `x` is an error object. */
 static inline bool minim_is_error_object(minim_obj x) {
     return minim_is_typed(x) && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_ERROR;
+}
+
+/** Whether `x` is a port. */
+static inline bool minim_is_port(minim_obj x) {
+    return minim_is_typed(x) && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_PORT;
 }
 
 /** Whether `x` is a record, including a record-type descriptor. */
@@ -667,17 +674,78 @@ minim_obj minim_eval_values(minim_obj expr);
  */
 void minim_define(const char *name, minim_obj value);
 
+// Ports: `[header | buffer | name | index | lookahead | file]`
+
+/** A port's flags. */
+enum {
+    MINIM_PORT_INPUT = 0x1,
+    MINIM_PORT_OUTPUT = 0x2,
+    MINIM_PORT_FILE = 0x4,  ///< over a FILE *, else over a string
+    MINIM_PORT_CLOSED = 0x8,
+};
+
+/** The flags of the port `p`. */
+static inline unsigned minim_port_flags(minim_obj p) {
+    return (unsigned)minim_header_length(minim_typed_header(p));
+}
+
+/** The name of the port `p`: a path, `stdin`, `stdout`, `stderr`, or `string`. */
+static inline minim_obj minim_port_name(minim_obj p) {
+    return ((const minim_obj *)(p - MINIM_TAG_TYPED))[2];
+}
+
+/** The `FILE *` of the file port `p`, or NULL once closed. */
+static inline FILE *minim_port_file(minim_obj p) {
+    return (FILE *)((const minim_obj *)(p - MINIM_TAG_TYPED))[5];
+}
+
+/** The standard input (0), output (1), or error (2) port. */
+minim_obj minim_standard_port(int i);
+
+/** New input port reading a copy of the string `s`. */
+minim_obj minim_open_input_string(minim_obj s);
+
+/** New output port collecting a string. */
+minim_obj minim_open_output_string(void);
+
+/** New input port over the file `path`, a string.  Raises a file error if it can't open it. */
+minim_obj minim_open_input_file(minim_obj path);
+
+/** New output port over the file `path`, a string.  Raises a file error if it can't open it. */
+minim_obj minim_open_output_file(minim_obj path);
+
+/** Closes the port `p`; closing a closed port does nothing. */
+void minim_port_close(minim_obj p);
+
+/** Reads the next char from the open input port `p`, or returns -1 at its end. */
+int32_t minim_port_read_char(minim_obj p);
+
+/** Like minim_port_read_char, but the char stays to be read next. */
+int32_t minim_port_peek_char(minim_obj p);
+
+/** Writes the char `c` to the open output port `p`. */
+void minim_port_write_char(minim_obj p, uint32_t c);
+
+/** A copy of what was written to the string output port `p` so far. */
+minim_obj minim_get_output_string(minim_obj p);
+
 // Reading
 
-/** Reads the next datum from `in`, or returns MINIM_EOF.  Raises on bad syntax. */
-minim_obj minim_read(FILE *in);
+/**
+ * Reads the next datum from the input port `port`, or returns MINIM_EOF.
+ * Raises a read error on bad syntax.
+ */
+minim_obj minim_read(minim_obj port);
 
 // Printing
 
 /** Writes `x` to `out` in `write` syntax.  Never allocates. */
 void minim_write(FILE *out, minim_obj x);
 
-/** Like minim_write, but strings and chars print as their characters. */
-void minim_display(FILE *out, minim_obj x);
+/** Writes `x` to the open output port `port`, as minim_write. */
+void minim_port_write(minim_obj port, minim_obj x);
+
+/** Writes `x` to the open output port `port`, as minim_display. */
+void minim_port_display(minim_obj port, minim_obj x);
 
 #endif

@@ -8,13 +8,13 @@ doesn't require is in `beyond-r7rs.md`.
 ## Where things stand
 
 Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, continuations, error objects, records, 105 primitives, and a Scheme
+closures, continuations, error objects, records, textual ports, and a Scheme
 prelude with the list library (`map`, `append`, `member`, `fold`, ...),
-`dynamic-wind`, and exceptions.  It has a precise generational collector, a
-reader, a printer, and an explicit-stack evaluator with proper
-tail calls, multiple values, and the special forms `quote`, `if`, `define`,
-`set!`, `lambda`, `begin`, `define-values`, `let-values`, and
-`letrec-values`.  A hygienic expander in the prelude adds quasiquote,
+`dynamic-wind`, exceptions, and parameters.  It has a precise generational
+collector, a reader and printer on ports, and an explicit-stack evaluator
+with proper tail calls, multiple values, and the special forms `quote`,
+`if`, `define`, `set!`, `lambda`, `begin`, `define-values`, `let-values`,
+and `letrec-values`.  A hygienic expander in the prelude adds quasiquote,
 `syntax-rules` macros, the derived forms, and R7RS libraries.  `minim
 file.scm` runs a script, `minim --program file.scm` an R7RS program, and
 `load` loads a file (see `docs/design/`).
@@ -24,7 +24,6 @@ Missing, roughly in order of how much it limits writing programs:
 | Gap | Example |
 |---|---|
 | Numbers | flonums, bignums, rationals |
-| I/O | ports, `read`, `read-char`, string and file ports |
 | Data types | bytevectors |
 
 **Coverage:** the names of each standard library (R7RS Appendix A) Minim
@@ -32,22 +31,22 @@ provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 130 | 238 | |
+| `(scheme base)` | 157 | 238 | |
 | `(scheme case-lambda)` | 0 | 1 | not defined |
 | `(scheme char)` | 0 | 22 | not defined |
 | `(scheme complex)` | 0 | 6 | not defined |
 | `(scheme cxr)` | 0 | 24 | not defined |
 | `(scheme eval)` | 2 | 2 | |
-| `(scheme file)` | 1 | 10 | |
+| `(scheme file)` | 8 | 10 | binary files wait for bytevectors |
 | `(scheme inexact)` | 0 | 12 | not defined |
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 1 | 5 | |
-| `(scheme r5rs)` | 106 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
-| `(scheme read)` | 0 | 1 | not defined |
+| `(scheme r5rs)` | 124 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 0 | 3 | not defined |
-| `(scheme write)` | 2 | 4 | |
+| `(scheme write)` | 3 | 4 | `write-shared` waits for datum labels |
 
 **Target:** R7RS-small compliance: every standard library complete, as the
 coverage table measures, and the conformance suite passing.  Where R7RS lets
@@ -131,7 +130,28 @@ Depends on 3 (`guard` is a macro).
   import (R7RS 5.1).
 - Later: `cond-expand`, `include-ci`, and `include-library-declarations`.
 
-### 6. Ports and I/O (M)
+### 6. Ports and I/O (M) — done
+
+Textual ports over files and strings, the current ports as parameters, and
+the reader and printer on ports (`docs/design/ports.md`).
+
+Gaps:
+
+- Binary ports: `read-u8`, `peek-u8`, `u8-ready?`, `write-u8`,
+  `read-bytevector`, `write-bytevector`, bytevector ports, and
+  `open-binary-input-file` and `open-binary-output-file`.  They wait for
+  bytevectors (8).
+- Cycles: `write` prints cyclic data forever, where R7RS labels cycles
+  (`#0=`, `#0#`); `write-shared` and reading labels are missing too (9).
+- `char-ready?` is always true: stdio can't tell whether input is waiting,
+  so a read from a terminal after it may block.  Fixing it needs Minim's own
+  buffers, as Chez has.
+- UTF-8 only, with no transcoders; a malformed sequence reads as U+FFFD.
+- No custom ports, which would need a handler record per port, as Chez's.
+- The reader lacks R7RS's string escapes `\a`, `\b`, `\r`, and `\|`, and
+  line continuations.
+
+The milestone as planned:
 
 - Port objects (a new typed object): input and output, file and string.
 - `current-input-port`, `current-output-port`, `open-input-file`,
@@ -166,7 +186,8 @@ hand-written bignums or GMP (see Open items).
 
 - Done: records, `define-record-type`, as typed objects whose first word is
   their type descriptor (`docs/design/gc.md`).
-- Bytevectors (an unscanned typed object).
+- Bytevectors (an unscanned typed object), and binary ports over them and
+  over files (`docs/design/ports.md`).
 
 Depends on 3 (`define-record-type` is a macro).
 
@@ -181,6 +202,9 @@ vectors, and control.  Mostly prelude procedures.
   a parameter (`docs/design/prelude.md`, `docs/design/macros.md`).
 - Done: `(scheme eval)`, `(scheme repl)`, and R5RS's environments
   (`docs/design/macros.md`).
+- Cycles: `write` with datum labels for cycles, `write-shared` for all
+  sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
+  data.  The printer and `equal?` loop on cycles today.
 
 ### 10. Conformance (S–M, ongoing)
 

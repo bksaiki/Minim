@@ -9,8 +9,10 @@
 #include <string.h>
 
 #include "char.h"
+#include "error.h"
 #include "heap.h"
 #include "minim.h"
+#include "port.h"
 #include "symbol.h"
 
 // Characters of the token being read.  Static, so an error can't leak it.
@@ -47,6 +49,11 @@ static minim_obj token_string(void) {
     return s;
 }
 
+// Raises the read error `msg` with irritant `x`.
+static _Noreturn void read_error(const char *msg, minim_obj x) {
+    minim_error_of_kind(MINIM_ERROR_READ, msg, x);
+}
+
 static bool is_whitespace(int32_t c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
 }
@@ -55,16 +62,17 @@ static bool is_delimiter(int32_t c) {
     return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';';
 }
 
-// Where the reader reads from: a file, or a NUL-terminated string.
+// Where the reader reads from: a port, through a reference its caller roots,
+// or a NUL-terminated string.
 typedef struct source {
-    FILE *file;                // NULL for a string
+    const minim_obj *port;     // NULL for a string
     const unsigned char *str;  // next byte of the string
 } source;
 
 // Reads one code point, or returns -1 at the end.
 static int32_t next(source *in) {
-    if (in->file != NULL)
-        return minim_utf8_getc(in->file);
+    if (in->port != NULL)
+        return minim_port_read_char(*in->port);
     if (*in->str == '\0')
         return -1;
     uint32_t c;
@@ -72,14 +80,11 @@ static int32_t next(source *in) {
     return (int32_t)c;
 }
 
-// Pushes back `c`, the last code point read; only ASCII can be pushed back,
-// and only once.
+// Pushes back `c`, the last code point read, once; to a string, only ASCII.
 static void unread(source *in, int32_t c) {
-    if (c < 0)
-        return;
-    if (in->file != NULL)
-        ungetc(c, in->file);
-    else
+    if (in->port != NULL)
+        minim_port_unread_char(*in->port, c);
+    else if (c >= 0)
         in->str--;
 }
 
@@ -153,7 +158,7 @@ static bool parse_fixnum(minim_obj *x) {
             return false;
         uint64_t d = c - '0';
         if (magnitude > (limit - d) / 10)
-            minim_error("fixnum out of range", token_string());
+            read_error("fixnum out of range", token_string());
         magnitude = 10 * magnitude + d;
     }
     // |MINIM_FIXNUM_MIN| fits in intptr_t, so negation can't overflow.
@@ -166,7 +171,7 @@ static minim_obj read_string(source *in) {
     for (;;) {
         int32_t c = next(in);
         if (c < 0)
-            minim_error("eof in string", MINIM_VOID);
+            read_error("eof in string", MINIM_VOID);
         if (c == '"')
             return token_string();
         if (c != '\\') {
@@ -186,13 +191,13 @@ static minim_obj read_string(source *in) {
                 token_push((uint32_t)c);
             int32_t v = c == ';' ? parse_hex(start, token.len) : -1;
             if (v < 0)
-                minim_error("bad string escape", MINIM_VOID);
+                read_error("bad string escape", MINIM_VOID);
             token.len = start;
             token_push((uint32_t)v);
             break;
         }
         default:
-            minim_error("bad string escape", MINIM_VOID);
+            read_error("bad string escape", MINIM_VOID);
         }
     }
 }
@@ -205,7 +210,7 @@ static minim_obj read_char(source *in) {
     // The first character is part of the token even if it is a delimiter.
     int32_t c = next(in);
     if (c < 0)
-        minim_error("eof in char", MINIM_VOID);
+        read_error("eof in char", MINIM_VOID);
     token.len = 0;
     token_push((uint32_t)c);
     read_until_delimiter(in);
@@ -218,7 +223,7 @@ static minim_obj read_char(source *in) {
     }
     int32_t v = c == 'x' ? parse_hex(1, token.len) : -1;
     if (v < 0)
-        minim_error("bad char", token_string());
+        read_error("bad char", token_string());
     return minim_char((uint32_t)v);
 }
 
@@ -232,7 +237,7 @@ static int read_item_from(source *in, int32_t c, minim_obj *x);
 static minim_obj read_required(source *in, const char *context) {
     minim_obj x;
     if (read_item(in, &x) != ITEM)
-        minim_error(context, MINIM_VOID);
+        read_error(context, MINIM_VOID);
     return x;
 }
 
@@ -245,16 +250,16 @@ static minim_obj read_list(source *in) {
     for (;;) {
         switch (read_item(in, &x)) {
         case END:
-            minim_error("eof in list", MINIM_VOID);
+            read_error("eof in list", MINIM_VOID);
         case CLOSE:
             MINIM_RETURN(head);
         case DOT:
             if (minim_is_null(head))
-                minim_error("bad dotted list", MINIM_VOID);
+                read_error("bad dotted list", MINIM_VOID);
             x = read_required(in, "bad dotted list");
             minim_set_cdr(tail, x);
             if (read_item(in, &x) != CLOSE)
-                minim_error("bad dotted list", MINIM_VOID);
+                read_error("bad dotted list", MINIM_VOID);
             MINIM_RETURN(head);
         default: {
             minim_obj pair = minim_cons(x, MINIM_NIL);
@@ -280,7 +285,7 @@ static minim_obj read_vector(source *in) {
         n++;
     }
     if (kind != CLOSE)
-        minim_error(kind == END ? "eof in vector" : "bad vector", MINIM_VOID);
+        read_error(kind == END ? "eof in vector" : "bad vector", MINIM_VOID);
 
     minim_obj v = minim_make_vector(n, MINIM_NIL);
     for (; n > 0; n--, lst = minim_cdr(lst))
@@ -295,14 +300,15 @@ static minim_obj read_hash(source *in) {
     if (c == '\\')
         return read_char(in);
 
-    unread(in, c < 0x80 ? c : -1);
+    if (in->port != NULL || c < 0x80)  // a C string pushes back only ASCII
+        unread(in, c);
     token.len = 0;
     read_until_delimiter(in);
     if (token_is("t") || token_is("true"))
         return MINIM_TRUE;
     if (token_is("f") || token_is("false"))
         return MINIM_FALSE;
-    minim_error("bad # syntax", token_string());
+    read_error("bad # syntax", token_string());
 }
 
 // Reads the datum after an abbreviation like `'`, starting with `c`, and
@@ -310,7 +316,7 @@ static minim_obj read_hash(source *in) {
 static minim_obj read_abbreviation(source *in, int32_t c, const minim_obj *sym, const char *msg) {
     minim_obj datum;
     if (read_item_from(in, c, &datum) != ITEM)
-        minim_error(msg, MINIM_VOID);
+        read_error(msg, MINIM_VOID);
     datum = minim_cons(datum, MINIM_NIL);
     return minim_cons(*sym, datum);
 }
@@ -375,17 +381,18 @@ static minim_obj read_datum(source *in) {
     case END:
         return MINIM_EOF;
     case CLOSE:
-        minim_error("unexpected )", MINIM_VOID);
+        read_error("unexpected )", MINIM_VOID);
     case DOT:
-        minim_error("unexpected .", MINIM_VOID);
+        read_error("unexpected .", MINIM_VOID);
     default:
         return x;
     }
 }
 
-minim_obj minim_read(FILE *in) {
-    source src = {.file = in};
-    return read_datum(&src);
+minim_obj minim_read(minim_obj port) {
+    MINIM_FRAME(&port);
+    source src = {.port = &port};
+    MINIM_RETURN(read_datum(&src));
 }
 
 minim_obj minim_read_string(const char **s) {
@@ -395,14 +402,13 @@ minim_obj minim_read_string(const char **s) {
     return x;
 }
 
-// Reads every form from the file `f` into a list.
-static minim_obj read_forms(void *f) {
-    source src = {.file = f};
+// Reads every form from the port at `port` into a list.
+static minim_obj read_forms(void *port) {
     minim_obj head = MINIM_NIL;
     minim_obj tail = MINIM_NIL;
     minim_obj x = MINIM_NIL;
     MINIM_FRAME(&head, &tail, &x);
-    while ((x = read_datum(&src)) != MINIM_EOF) {
+    while ((x = minim_read(*(minim_obj *)port)) != MINIM_EOF) {
         x = minim_cons(x, MINIM_NIL);
         if (minim_is_null(head))
             head = x;
@@ -414,20 +420,12 @@ static minim_obj read_forms(void *f) {
 }
 
 minim_obj minim_read_file(minim_obj path) {
-    char *name = minim_string_to_utf8(path);
-    FILE *f = fopen(name, "r");
-    free(name);
-    if (f == NULL)
-        minim_error_of_kind(MINIM_ERROR_FILE, "load: cannot open file", path);
-
+    minim_obj port = minim_port_open_file(path, MINIM_PORT_INPUT, "load: cannot open file");
+    MINIM_FRAME(&port);
     minim_obj forms;
-    bool ok = minim_catch(read_forms, f, &forms);
-    fclose(f);
-    if (!ok) {
-        const char *msg;
-        minim_obj irritant;
-        minim_last_error(&msg, &irritant);
-        minim_error_of_kind(MINIM_ERROR_READ, msg, irritant);
-    }
-    return forms;
+    bool ok = minim_catch(read_forms, &port, &forms);
+    minim_port_close(port);
+    if (!ok)
+        minim_reraise();
+    MINIM_RETURN(forms);
 }

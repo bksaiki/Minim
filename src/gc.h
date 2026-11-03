@@ -33,6 +33,22 @@ typedef struct minim_root_stack {
     size_t cap;
 } minim_root_stack;
 
+/**
+ * Frees what `x` owns outside the heap, such as a file.  Must not allocate or
+ * follow `x`'s pointers: `x` may be a dead object's old copy.
+ */
+typedef void (*minim_destructor)(minim_obj x);
+
+/** Objects owning outside resources, each with its destructor. */
+typedef struct minim_destructors {
+    struct {
+        minim_obj obj;
+        minim_destructor fn;
+    } *items;
+    size_t len;
+    size_t cap;
+} minim_destructors;
+
 /** All collector state; minim_gc_init and minim_gc_shutdown reset it. */
 extern struct minim_gc {
     minim_gc_config config;
@@ -48,6 +64,7 @@ extern struct minim_gc {
     minim_obj winders;           ///< `dynamic-wind`s in progress, innermost first: (before . after)
     minim_obj handlers;          ///< exception handlers installed, innermost first
     minim_obj_stack remembered;  ///< old objects that may point younger, each once
+    minim_destructors destructors;  ///< from minim_gc_add_destructor
     size_t size;                 ///< bytes held in chunks
     size_t allocated;            ///< bytes handed out by minim_heap_alloc since init
     size_t live;                 ///< bytes in the old generations after the last collection
@@ -62,7 +79,10 @@ extern struct minim_gc {
 /** Resets the collector, with its settings from the environment. */
 void minim_gc_init(void);
 
-/** Frees the heap and the stacks. */
+/** Runs the remaining destructors, then frees the heap and the stacks. */
 void minim_gc_shutdown(void);
+
+/** Runs `fn` on `x` once a collection finds it dead, or at minim_gc_shutdown. */
+void minim_gc_add_destructor(minim_obj x, minim_destructor fn);
 
 #endif

@@ -54,11 +54,19 @@ Not in R7RS-small; in R7RS-large and SRFIs.
 
 - Source locations in error messages.
 - Line editing in the REPL, if it can be done without a dependency.
+- A test calling every primitive with arguments of every wrong type, under
+  ASan, expecting an error and never a crash: each primitive checks its
+  arguments by hand, so a forgotten check is otherwise silent.
 
 ## Out of scope for now
 
 Threads, a foreign function interface, a native or bytecode compiler, and
 Unicode case folding and normalization.
+
+Unchecked primitives, as Chez's `#3%car`: a type check is a small part of an
+interpreted call, and unchecked access gives up memory safety.  Revisit with
+a compiler, through declared signatures that let it drop checks it proves
+unneeded.
 
 ## Open items
 

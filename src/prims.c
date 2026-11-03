@@ -8,7 +8,7 @@
 static const minim_prim_def *const tables[] = {
     minim_number_prims, minim_char_prims,   minim_pair_prims,   minim_control_prims,
     minim_equal_prims,  minim_vector_prims, minim_string_prims, minim_system_prims,
-    minim_syntax_prims, minim_error_prims,  minim_record_prims,
+    minim_syntax_prims, minim_error_prims,  minim_record_prims, minim_port_prims,
 };
 
 static void define_primitive(const minim_prim_def *def) {

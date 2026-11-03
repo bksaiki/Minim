@@ -50,6 +50,7 @@ extern const minim_prim_def minim_system_prims[];
 extern const minim_prim_def minim_syntax_prims[];
 extern const minim_prim_def minim_error_prims[];
 extern const minim_prim_def minim_record_prims[];
+extern const minim_prim_def minim_port_prims[];
 
 /** Makes the tag that marks aliases; call before any alias is made. */
 void minim_alias_init(void);

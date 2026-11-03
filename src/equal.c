@@ -97,7 +97,7 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
     if (minim_is_primitive(x))
         return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
     if (minim_is_closure(x) || minim_is_continuation(x) || minim_is_error_object(x)
-        || minim_is_record(x))
+        || minim_is_record(x) || minim_is_port(x))
         return HASH_CLOSURE;  // equal? only when eq?
     if (minim_is_pair(x)) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);

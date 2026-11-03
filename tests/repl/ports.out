@@ -1,0 +1,69 @@
+#<input port string>
+#<output port string>
+#<input port load/defs.scm>
+#<input port stdin>
+#<output port stdout>
+#<output port stderr>
+(#t #t #t #t #f #f)
+(#t #f #t #t #f)
+(#f #t #f #f #f)
+(#t #t #f)
+(#f #f #f)
+(#t #f #t)
+(#f #t #f)
+#f
+#t
+#f
+#f
+#f
+#<eof>
+#t
+#f
+#\a
+#\a
+#\a
+#\λ
+""
+"b"
+"c"
+#t
+"last"
+#<eof>
+#<eof>
+#<eof>
+"xy"
+"xyz"
+""
+#<eof>
+#<eof>
+""
+"λabcdefghijklmnopqrstuvwxyz1231\n"
+"λabcdefghijklmnopqrstuvwxyz1231\n"
+(#<input port stdin> #<output port stdout> #<output port stderr>)
+"x\ny"
+#<output port stdout>
+"; Loaded by load.scm and nested.scm."
+#\(
+"define"
+(1 "two" #\3)
+sym
+#\space
+4.5x
+""
+"  rest"
+#<eof>
+#<eof>
+"eof in list"
+read-error
+(from current)
+"bad # syntax"
+5
+" the rest of this line"
+(the next datum)
+and-this-one
+read-after-bad-syntax
+"(1 \"two\\n\" #\\3 #(sym (a . b)) λ) (1 two 3 λ) \"simple\" #<output port string>"
+"(1 \"two\\n\" #\\3 #(sym (a . b)) λ) (1 two 3 λ) \"simple\" #<output port string>!x"
+#\a
+#f
+file-error

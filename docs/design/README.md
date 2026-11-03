@@ -3,6 +3,7 @@
 - [Object representation and garbage collection](gc.md): tagged values,
   heap layouts, and the generational collector.
 - [REPL](repl.md): the reader, printer, and the read-eval-print loop.
+- [Ports](ports.md): textual ports over files and strings, and I/O.
 - [Errors](errors.md): errors in C, error objects, handlers, and how C
   errors reach Scheme.
 - [Evaluator](eval.md): closures, the explicit-stack machine, environments,

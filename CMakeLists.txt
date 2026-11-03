@@ -29,7 +29,7 @@ elseif(MSVC)
 endif()
 
 # The Scheme sources, in load order, and the boot file they expand into.
-set(MINIM_SCHEME_SOURCES lists control records expander libraries derived eval standard)
+set(MINIM_SCHEME_SOURCES lists control records expander libraries derived eval ports standard)
 list(TRANSFORM MINIM_SCHEME_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/scheme/)
 list(TRANSFORM MINIM_SCHEME_SOURCES APPEND .scm)
 set(MINIM_BOOT ${CMAKE_CURRENT_SOURCE_DIR}/scheme/prelude.boot)
@@ -60,6 +60,7 @@ add_library(libminim STATIC
     src/number.c
     src/object.c
     src/pair.c
+    src/port.c
     src/prelude.c
     src/prims.c
     src/print.c

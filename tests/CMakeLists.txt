@@ -48,6 +48,7 @@ minim_add_test(error)
 minim_add_test(read INTERNAL)
 minim_add_test(eval INTERNAL)
 minim_add_test(prims)
+minim_add_test(port)
 
 minim_test_executable(startup INTERNAL)
 add_test(NAME startup COMMAND test_startup)
@@ -78,14 +79,14 @@ function(minim_add_repl_test name)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
 endfunction()
 
-# minim_add_script_test(name [NO_STRESS] [STATUS n] [ARGS arg...]
+# minim_add_script_test(name [NO_STRESS] [STATUS n] [INPUT file] [ARGS arg...]
 #                       [ENV var=value...]):
-# runs `minim ARGS` (default `<name>.scm`) from scripts/ with ENV set, and
-# checks the exit status (default 0), stdout against scripts/<name>.out, and
-# stderr against scripts/<name>.err if it exists.  A test with ENV or
-# NO_STRESS has no stress copy.
+# runs `minim ARGS` (default `<name>.scm`) from scripts/ with ENV set and
+# scripts/INPUT, if given, on stdin, and checks the exit status (default 0),
+# stdout against scripts/<name>.out, and stderr against scripts/<name>.err if
+# it exists.  A test with ENV or NO_STRESS has no stress copy.
 function(minim_add_script_test name)
-    cmake_parse_arguments(PARSE_ARGV 1 opt "NO_STRESS" "STATUS" "ARGS;ENV")
+    cmake_parse_arguments(PARSE_ARGV 1 opt "NO_STRESS" "STATUS;INPUT" "ARGS;ENV")
     if(NOT DEFINED opt_STATUS)
         set(opt_STATUS 0)
     endif()
@@ -99,6 +100,7 @@ function(minim_add_script_test name)
         -DDIR=${dir}
         -DARGS=${args}
         -DSTATUS=${opt_STATUS}
+        $<$<BOOL:${opt_INPUT}>:-DINPUT=${dir}/${opt_INPUT}>
         -DEXPECTED=${dir}/${name}.out
         -DEXPECTED_ERR=${dir}/${name}.err
         -P ${CMAKE_CURRENT_SOURCE_DIR}/run_minim.cmake)
@@ -133,6 +135,7 @@ minim_add_repl_test(load)
 minim_add_repl_test(local-macros)
 minim_add_repl_test(numbers)
 minim_add_repl_test(parameters)
+minim_add_repl_test(ports)
 minim_add_repl_test(quasiquote)
 minim_add_repl_test(records)
 minim_add_repl_test(strings)
@@ -166,6 +169,8 @@ minim_add_script_test(program-no-import STATUS 1 ARGS --program program-no-impor
 minim_add_script_test(program-own ARGS --program program-own.scm)
 minim_add_script_test(program-unbound STATUS 1 ARGS --program program-unbound.scm)
 minim_add_script_test(read-error STATUS 1)
+minim_add_script_test(stdin INPUT stdin.txt)
+minim_add_script_test(file-ports)
 minim_add_script_test(help ARGS --help)
 minim_add_script_test(version ARGS --version)
 minim_add_script_test(usage STATUS 2 ARGS a.scm b.scm)

@@ -43,7 +43,7 @@ static void test_invalid_utf8(void) {
 // Whether reading `s` with minim_utf8_getc gives exactly the `n` code points
 // in `expect`.
 static bool getc_gives(const char *s, const int32_t *expect, size_t n) {
-    FILE *f = input(s);
+    FILE *f = input_file(s);
     bool ok = true;
     for (size_t i = 0; ok && i < n; i++)
         ok = minim_utf8_getc(f) == expect[i];

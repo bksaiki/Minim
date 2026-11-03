@@ -20,7 +20,7 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 | `010`, `100` | | reserved (flonum, -) |
 
 Typed objects (vectors, strings, primitives, continuations, error objects,
-records) start with a header, `(length << 4) | (immutable << 3) | type`.
+records, ports) start with a header, `(length << 4) | (immutable << 3) | type`.
 Error objects have type 1, the first odd code; an odd code can't equal the
 forwarding marker.  Every object is at least 2 words, so any object can hold
 a forwarding record.
@@ -34,6 +34,7 @@ closure  [ code : (params . body) | env ]     16 B
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 continuation [ header | k | stack | height ]  32 B
 error    [ header | kind | message | irritants ]  32 B
+port     [ header | buffer | name | index | lookahead | file ]  48 B
 record   [ rtd | f0 | f1 | ... ]              8 + 8n B, rounded up to 16
 ```
 
@@ -45,6 +46,9 @@ field names).  A record's size is 1 + `nfields`, read from word 2 of its
 rtd: copying overwrites only words 0 and 1, so either copy of an rtd gives
 it.  A record's pointer fields start at word 0, so its rtd is traced like a
 field.
+
+A port's header holds its flags in its length bits; its `buffer` and `name`
+are traced, and its `file`, a `FILE *`, isn't (`ports.md`).
 
 A continuation's `k` is its continuation frames, `stack` the frozen segments
 of its value stack, and `height` a fixnum, where they end (`eval.md`).
@@ -189,6 +193,13 @@ tests are in `testing.md`.
   `dynamic-wind`s in progress, and `minim_gc.handlers`, the exception
   handlers installed.
 - **Remembered set.**  As above.
+- **Destructors.**  Not roots: objects owning outside resources, each with a
+  C destructor, registered with `minim_gc_add_destructor`; only file ports
+  are.  After a collection, an entry in a collected generation that was
+  copied gets its new address, and one that wasn't is dead: its destructor
+  runs on the old copy, before its chunk is freed, and must not allocate or
+  follow pointers.  `minim_gc_shutdown` runs the rest.  Unlike Chez's
+  guardians, nothing is revived.
 - **Symbol table.**  A vector in the heap, registered as a global.  It hashes
   by name, so moving symbols doesn't invalidate it.  It is strong: symbols are
   never freed, unlike Chez, which drops symbols with no references, value, or

@@ -3,6 +3,9 @@
  * Tests for the printer.
  */
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "gc.h"
 #include "minim.h"
 #include "test.h"
@@ -149,6 +152,45 @@ static void test_records(void) {
     MINIM_RETURN_VOID;
 }
 
+// Whether writing `src`'s value to a string port gives what writing it to a
+// file does: #t or #f.
+static minim_obj port_writes_like_file(const char *src) {
+    minim_obj x = eval_source((void *)src);
+    minim_obj s = MINIM_NIL;
+    MINIM_FRAME(&x, &s);
+    s = minim_open_output_string();
+    minim_port_write(s, x);
+    s = minim_get_output_string(s);
+    FILE *f = tmpfile();
+    minim_write(f, x);
+    size_t len = (size_t)ftell(f);
+    char *bytes = calloc(len + 1, 1);
+    rewind(f);
+    bool ok = fread(bytes, 1, len, f) == len;
+    fclose(f);
+    minim_obj expect = minim_string_from_cstr(bytes);
+    free(bytes);
+    ok = ok && minim_string_length(expect) == minim_string_length(s)
+         && memcmp(minim_string_chars(expect), minim_string_chars(s),
+                   minim_string_length(s) * sizeof(uint32_t)) == 0;
+    if (!ok)
+        fprintf(stderr, "`%s` wrote differently to a port\n", src);
+    MINIM_RETURN(ok ? MINIM_TRUE : MINIM_FALSE);
+}
+
+// Writing to a string port matches writing to a file, even when growing its
+// buffer collects.
+static void test_port(void) {
+    const char *srcs[] = {
+        "'(1 \"two\\n\" #\\3 #(a (b . c)) caf\u00e9 '(q ,u ,@s))",
+        "(make-string 1000 #\\\u03bb)",
+        "(let loop ((i 0) (l '())) (if (= i 300) l (loop (+ i 1) (cons (vector i) l))))",
+        "(list car (open-output-string) (eof-object))",
+    };
+    for (size_t i = 0; i < sizeof(srcs) / sizeof(srcs[0]); i++)
+        CHECK_EQ(port_writes_like_file(srcs[i]), MINIM_TRUE);
+}
+
 int main(void) {
     minim_init();
     test_immediates();
@@ -161,6 +203,7 @@ int main(void) {
     test_vectors();
     test_procedures();
     test_records();
+    test_port();
     minim_shutdown();
     return test_result();
 }

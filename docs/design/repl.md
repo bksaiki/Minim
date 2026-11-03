@@ -1,16 +1,15 @@
 # REPL: reader and printer
 
 `minim` reads expressions from stdin, evaluates them, and prints the
-results (see `eval.md`).  All I/O is through `FILE *`; there are no port
-objects yet.
+results (see `eval.md`).  It reads through ports (`ports.md`).
 
 ## Reader
 
-`minim_read(FILE *in)` returns the next datum, or `MINIM_EOF` at the end of
-input.  It is recursive descent over UTF-8 input and reports bad syntax with
-`minim_error`.  Internally the reader reads from a *source*, a file or a
-string; `minim_read_string` (`src/read.h`) reads from a string and advances
-it.
+`minim_read(port)` returns the next datum from an input port, or `MINIM_EOF`
+at the end of input.  It is recursive descent over UTF-8 input and reports
+bad syntax as a read error.  Internally the reader reads from a *source*, a
+port or a C string; `minim_read_string` (`src/read.h`) reads from a C string
+and advances it.
 
 | Syntax | Reads as |
 |---|---|
@@ -26,13 +25,14 @@ it.
 Delimiters are whitespace, `(`, `)`, `"`, and `;`.  `;` starts a comment that
 runs to the end of the line.
 
-The reader keeps no state between calls: it only ever pushes back a single
-ASCII delimiter, which `ungetc` supports.
+The reader keeps no state between calls: it only ever pushes back one
+character, into a port's lookahead, or, in a C string, an ASCII delimiter.
 
 ## Printer
 
-`minim_write(FILE *out, minim_obj x)` prints `write` syntax.  It never
-allocates, so it is safe on error paths.
+`minim_write(FILE *out, minim_obj x)` prints `write` syntax, and
+`minim_port_write(port, x)` likewise to a port.  Neither allocates while it
+walks `x`, so `minim_write` is safe on error paths.
 
 | Value | Printed |
 |---|---|
@@ -70,10 +70,11 @@ with status 2.
 The REPL and scripts expand forms in the interaction environment, which sees
 `(minim)`; a program sees only what it imports (`macros.md`).
 
-The REPL loops: read, `minim_eval_values`, then write each value and a
-newline, skipping void ones.  A read or evaluation error prints `error: msg:
-irritant` to stderr (`errors.md`), after the `after`s of the `dynamic-wind`s
-it left run, and reading continues with the rest of the input.
+The REPL loops: read from the standard input port, `minim_eval_values`, then
+write each value and a newline to `stdout`, skipping void ones.  A read or
+evaluation error prints `error: msg: irritant` to stderr (`errors.md`), after
+the `after`s of the `dynamic-wind`s it left run, and reading continues with
+the rest of the input.
 
 The `> ` prompt goes to stderr, and only when stdin is a terminal, as in
 bash and Python, so piped runs print only results to stdout, as the REPL

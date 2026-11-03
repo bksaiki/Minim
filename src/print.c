@@ -4,14 +4,45 @@
  */
 
 #include <inttypes.h>
+#include <stdlib.h>
 
-#include "minim.h"
-#include "symbol.h"
 #include "char.h"
+#include "heap.h"
+#include "minim.h"
+#include "port.h"
+#include "symbol.h"
 
-static void write_utf8(FILE *out, uint32_t c) {
-    unsigned char buf[4];
-    fwrite(buf, 1, minim_utf8_encode(c, buf), out);
+// Where the printer writes: a file, or a buffer of chars, malloc'd, so that
+// printing never allocates on the heap.
+typedef struct sink {
+    FILE *file;  // NULL for the buffer
+    uint32_t *chars;
+    size_t len;
+    size_t cap;
+} sink;
+
+static void put(sink *out, uint32_t c) {
+    if (out->file != NULL) {
+        unsigned char buf[4];
+        fwrite(buf, 1, minim_utf8_encode(c, buf), out->file);
+        return;
+    }
+    if (out->len == out->cap) {
+        out->cap = out->cap ? 2 * out->cap : 64;
+        out->chars = realloc(out->chars, out->cap * sizeof(uint32_t));
+        if (out->chars == NULL)
+            minim_out_of_memory();
+    }
+    out->chars[out->len++] = c;
+}
+
+static void put_ascii(sink *out, const char *s) {
+    if (out->file != NULL) {
+        fputs(s, out->file);
+        return;
+    }
+    for (; *s != '\0'; s++)
+        put(out, (unsigned char)*s);
 }
 
 // Control characters print as hex escapes.
@@ -19,47 +50,53 @@ static bool is_control(uint32_t c) {
     return c < 0x20 || (c >= 0x7F && c < 0xA0);
 }
 
-static void write_char(FILE *out, uint32_t c) {
-    fputs("#\\", out);
+static void write_char(sink *out, uint32_t c) {
+    put_ascii(out, "#\\");
     switch (c) {
-    case 0x00: fputs("nul", out); break;
-    case '\t': fputs("tab", out); break;
-    case '\n': fputs("newline", out); break;
-    case ' ': fputs("space", out); break;
+    case 0x00: put_ascii(out, "nul"); break;
+    case '\t': put_ascii(out, "tab"); break;
+    case '\n': put_ascii(out, "newline"); break;
+    case ' ': put_ascii(out, "space"); break;
     default:
-        if (is_control(c))
-            fprintf(out, "x%" PRIx32, c);
+        if (is_control(c)) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "x%" PRIx32, c);
+            put_ascii(out, buf);
+        }
         else
-            write_utf8(out, c);
+            put(out, c);
     }
 }
 
 // Writes the characters of the string `s` unescaped.
-static void write_chars(FILE *out, minim_obj s) {
+static void write_chars(sink *out, minim_obj s) {
     const uint32_t *chars = minim_string_chars(s);
     for (size_t i = 0; i < minim_string_length(s); i++)
-        write_utf8(out, chars[i]);
+        put(out, chars[i]);
 }
 
-static void write_string(FILE *out, minim_obj s) {
+static void write_string(sink *out, minim_obj s) {
     const uint32_t *chars = minim_string_chars(s);
     size_t n = minim_string_length(s);
-    fputc('"', out);
+    put(out, '"');
     for (size_t i = 0; i < n; i++) {
         uint32_t c = chars[i];
         switch (c) {
-        case '"': fputs("\\\"", out); break;
-        case '\\': fputs("\\\\", out); break;
-        case '\n': fputs("\\n", out); break;
-        case '\t': fputs("\\t", out); break;
+        case '"': put_ascii(out, "\\\""); break;
+        case '\\': put_ascii(out, "\\\\"); break;
+        case '\n': put_ascii(out, "\\n"); break;
+        case '\t': put_ascii(out, "\\t"); break;
         default:
-            if (is_control(c))
-                fprintf(out, "\\x%" PRIx32 ";", c);
+            if (is_control(c)) {
+                char buf[16];
+                snprintf(buf, sizeof(buf), "\\x%" PRIx32 ";", c);
+                put_ascii(out, buf);
+            }
             else
-                write_utf8(out, c);
+                put(out, c);
         }
     }
-    fputc('"', out);
+    put(out, '"');
 }
 
 // The abbreviation for the pair `x` if it is `(quote d)`, `(quasiquote d)`,
@@ -84,66 +121,69 @@ static const char *abbreviation(minim_obj x) {
     return NULL;
 }
 
-static void print(FILE *out, minim_obj x, bool display);
+static void print(sink *out, minim_obj x, bool display);
 
-static void write_pair(FILE *out, minim_obj x, bool display) {
+static void write_pair(sink *out, minim_obj x, bool display) {
     const char *abbrev = abbreviation(x);
     if (abbrev != NULL) {
-        fputs(abbrev, out);
+        put_ascii(out, abbrev);
         print(out, minim_car(minim_cdr(x)), display);
         return;
     }
 
-    fputc('(', out);
+    put(out, '(');
     print(out, minim_car(x), display);
     // A tail like `(unquote x)` prints dotted and abbreviated: `(a . ,x)`.
     for (x = minim_cdr(x); minim_is_pair(x) && abbreviation(x) == NULL; x = minim_cdr(x)) {
-        fputc(' ', out);
+        put(out, ' ');
         print(out, minim_car(x), display);
     }
     if (!minim_is_null(x)) {
-        fputs(" . ", out);
+        put_ascii(out, " . ");
         print(out, x, display);
     }
-    fputc(')', out);
+    put(out, ')');
 }
 
-static void write_vector(FILE *out, minim_obj v, bool display) {
-    fputs("#(", out);
+static void write_vector(sink *out, minim_obj v, bool display) {
+    put_ascii(out, "#(");
     for (size_t i = 0; i < minim_vector_length(v); i++) {
         if (i > 0)
-            fputc(' ', out);
+            put(out, ' ');
         print(out, minim_vector_ref(v, i), display);
     }
-    fputc(')', out);
+    put(out, ')');
 }
 
 // Writes the record `r` as `#<name>`, or an rtd as `#<record-type name>`, with
 // one pair of angle brackets stripped from `name`.
-static void write_record(FILE *out, minim_obj r) {
+static void write_record(sink *out, minim_obj r) {
     minim_obj rtd = minim_record_rtd(r);
     if (rtd == minim_base_rtd) {
-        fputs("#<record-type ", out);
+        put_ascii(out, "#<record-type ");
         rtd = r;
     } else {
-        fputs("#<", out);
+        put_ascii(out, "#<");
     }
     minim_obj name = minim_symbol_name(minim_record_ref(rtd, MINIM_RTD_NAME));
     const uint32_t *chars = minim_string_chars(name);
     size_t n = minim_string_length(name);
     bool strip = n >= 2 && chars[0] == '<' && chars[n - 1] == '>';
     for (size_t i = strip; i < n - strip; i++)
-        write_utf8(out, chars[i]);
-    fputc('>', out);
+        put(out, chars[i]);
+    put(out, '>');
 }
 
 // Prints `x` in `write` syntax, or with strings and chars unescaped if
 // `display`.
-static void print(FILE *out, minim_obj x, bool display) {
-    if (minim_is_fixnum(x))
-        fprintf(out, "%" PRIdPTR, minim_fixnum_value(x));
+static void print(sink *out, minim_obj x, bool display) {
+    if (minim_is_fixnum(x)) {
+        char buf[24];
+        snprintf(buf, sizeof(buf), "%" PRIdPTR, minim_fixnum_value(x));
+        put_ascii(out, buf);
+    }
     else if (minim_is_char(x) && display)
-        write_utf8(out, minim_char_value(x));
+        put(out, minim_char_value(x));
     else if (minim_is_char(x))
         write_char(out, minim_char_value(x));
     else if (minim_is_pair(x))
@@ -157,41 +197,64 @@ static void print(FILE *out, minim_obj x, bool display) {
     else if (minim_is_string(x))
         write_string(out, x);
     else if (minim_is_closure(x))
-        fputs("#<procedure>", out);
+        put_ascii(out, "#<procedure>");
     else if (minim_is_continuation(x))
-        fputs("#<continuation>", out);
+        put_ascii(out, "#<continuation>");
+    else if (minim_is_port(x)) {
+        put_ascii(out, minim_port_flags(x) & MINIM_PORT_INPUT ? "#<input port " : "#<output port ");
+        write_chars(out, minim_port_name(x));
+        put(out, '>');
+    }
     else if (minim_is_record(x))
         write_record(out, x);
     else if (minim_is_error_object(x)) {
-        fputs("#<error ", out);
+        put_ascii(out, "#<error ");
         print(out, minim_error_object_message(x), true);
-        fputc('>', out);
+        put(out, '>');
     }
     else if (minim_is_primitive(x)) {
-        fputs("#<procedure ", out);
+        put_ascii(out, "#<procedure ");
         write_chars(out, minim_symbol_name(minim_primitive_name(x)));
-        fputc('>', out);
+        put(out, '>');
     }
     else if (x == MINIM_TRUE)
-        fputs("#t", out);
+        put_ascii(out, "#t");
     else if (x == MINIM_FALSE)
-        fputs("#f", out);
+        put_ascii(out, "#f");
     else if (x == MINIM_NIL)
-        fputs("()", out);
+        put_ascii(out, "()");
     else if (x == MINIM_VOID)
-        fputs("#<void>", out);
+        put_ascii(out, "#<void>");
     else if (x == MINIM_EOF)
-        fputs("#<eof>", out);
+        put_ascii(out, "#<eof>");
     else if (x == MINIM_UNBOUND)
-        fputs("#<unbound>", out);
+        put_ascii(out, "#<unbound>");
     else
-        fputs("#<garbage>", out);
+        put_ascii(out, "#<garbage>");
 }
 
 void minim_write(FILE *out, minim_obj x) {
-    print(out, x, false);
+    sink s = {.file = out};
+    print(&s, x, false);
 }
 
-void minim_display(FILE *out, minim_obj x) {
-    print(out, x, true);
+// A string port gets the chars after the walk, the only step that allocates.
+static void print_to_port(minim_obj port, minim_obj x, bool display) {
+    if (minim_port_flags(port) & MINIM_PORT_FILE) {
+        sink s = {.file = minim_port_file(port)};
+        print(&s, x, display);
+        return;
+    }
+    sink s = {0};
+    print(&s, x, display);
+    minim_port_write_chars(port, s.chars, s.len);
+    free(s.chars);
+}
+
+void minim_port_write(minim_obj port, minim_obj x) {
+    print_to_port(port, x, false);
+}
+
+void minim_port_display(minim_obj port, minim_obj x) {
+    print_to_port(port, x, true);
 }
