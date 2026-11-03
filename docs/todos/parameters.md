@@ -50,11 +50,12 @@ private object, so user code can't make these calls.
 **`(make-parameter init [converter])`** converts `init` once, at creation
 (R7RS); the converter defaults to the identity.
 
-**`%parameter?`** tells parameters apart without calling them: every
+**`parameter?`**, Minim's own, in `(minim)` (Racket has one; R7RS and Chez
+don't), tells parameters apart without calling them: every
 parameter is a closure of the one `lambda` in `make-parameter`, so they all
 share its code, and no other procedure does.  `(%closure-code x)`, a new
 internal primitive, is a closure's `(params . body)`, or `#f`;
-`%parameter?` compares it, by `eq?`, with a parameter's made at startup.
+`parameter?` compares it, by `eq?`, with a parameter's made at startup.
 So `parameterize` of a non-parameter raises `parameterize: not a parameter`
 before calling anything.  Chez (a `case-lambda`) and Chibi (a parameter
 opcode) don't check, and fail with an arity error; Racket and Chibi have a
@@ -83,7 +84,7 @@ comparison with the REPL's environment.
 
 - `src/control.c`: `%closure-code`, with `procedure?`.
 - `scheme/control.scm`: `%parameter-token`, `make-parameter`, and
-  `%parameter?`.
+  `parameter?`.
 - `scheme/standard.scm`: `make-parameter` in `(scheme base)`.
   `scheme/prelude.boot` regenerated.
 
@@ -93,7 +94,7 @@ Separate because it is a procedure of its own, testable without
 Tests (`tests/repl/parameters.scm`, new): a parameter's value; the converter
 applied to `init`, once; `(p v)` sets the converted value; a parameter is a
 procedure; a converter that raises makes `make-parameter` raise; wrong
-arguments (`(p 1 2)`) are an error.  With `(minim system)`: `%parameter?`
+arguments (`(p 1 2)`) are an error.  `parameter?`
 of a parameter, a `lambda`, `car`, and `1`; `%closure-code` of a closure and
 of `car`.
 
@@ -101,10 +102,21 @@ of `car`.
 cmake --build --preset dev && ctest --preset dev -R 'parameters|libraries' && ctest --preset stress -R 'parameters'
 ```
 
+**Done.**
+
+- `make-parameter` is a `(lambda args ...)` dispatching on the arguments:
+  none, the token (with or without a value), or one value.  More is
+  `parameter: too many arguments`.
+- `%parameter-code` is taken from a parameter made when `control.scm`
+  loads.
+- `parameter?` is public, in `(minim)`, not `%parameter?`: it is exact and
+  never calls its argument, so user code can check arguments the same way.
+- Ran `ctest -R 'parameters|libraries|boot'`, and stress `parameters`.
+
 ### Phase 2 - parameterize
 
 - `scheme/control.scm`: `%parameterize`, which checks its parameters with
-  `%parameter?` first.
+  `parameter?` first.
 - `scheme/derived.scm`: the `parameterize` macro.
 - `scheme/standard.scm`: `parameterize` in `(scheme base)`.
   `scheme/prelude.boot` regenerated.
@@ -157,7 +169,7 @@ cmake --build --preset dev && ctest --preset dev -R 'eval|files|load|top-level' 
 ### After the last phase
 
 Sync the docs: `primitives.md` (`%closure-code`), `prelude.md`
-(`make-parameter`, `%parameter?`, `%parameterize`),
+(`make-parameter`, `parameter?`, `%parameterize`),
 `macros.md` (`parameterize` among the derived forms; `interaction-environment`
 a parameter, specifiers' mutability, `%expand` in `eval.scm`), and the roadmap
 (`r7rs-small.md`: the coverage table, `(scheme base)` 128 to 130, and

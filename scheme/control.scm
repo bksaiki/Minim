@@ -1,5 +1,6 @@
 ;;; Continuations and exceptions: call/cc, dynamic-wind, raise,
-;;; with-exception-handler, error, and the procedure guard expands into.
+;;; with-exception-handler, error, and the procedure guard expands into; and
+;;; parameters.
 
 ;; Continuations.  The winders (`%winders`) are the `dynamic-wind` calls in
 ;; progress, innermost first, as (before . after) pairs.
@@ -108,3 +109,26 @@
         (lambda ()
           (call-with-values body
             (lambda results (guard-k (lambda () (apply values results)))))))))))
+
+;; Parameters (R7RS 4.2.6), after Chez: a closure over a value and a converter.
+;; `(p)` is the value, and `(p v)` sets it to `v` converted.  `parameterize`
+;; reaches the converter, and sets values unconverted, through the private
+;; `%parameter-token`.
+
+(define %parameter-token (list 'parameter))
+
+(define (make-parameter init . converter)
+  (let* ((convert (if (null? converter) (lambda (x) x) (car converter)))
+         (value (convert init)))
+    (lambda args
+      (cond ((null? args) value)
+            ((eq? (car args) %parameter-token)
+             (if (null? (cdr args)) convert (set! value (cadr args))))
+            ((null? (cdr args)) (set! value (convert (car args))))
+            (else (error "parameter: too many arguments" args))))))
+
+;; Every parameter is a closure of the `lambda` above, so they share its code.
+(define %parameter-code (%closure-code (make-parameter #f)))
+
+(define (parameter? x)
+  (eq? (%closure-code x) %parameter-code))
