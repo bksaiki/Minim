@@ -26,6 +26,15 @@
         ((null? (cdr args)) (car args))
         (else (error msg args))))
 
+(define (write x . port)
+  (%write x (%port-arg port current-output-port "write: too many arguments")))
+
+(define (write-simple x . port)
+  (%write x (%port-arg port current-output-port "write-simple: too many arguments")))
+
+(define (display x . port)
+  (%display x (%port-arg port current-output-port "display: too many arguments")))
+
 (define (read . port)
   (%read (%port-arg port current-input-port "read: too many arguments")))
 

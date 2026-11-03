@@ -111,6 +111,19 @@ stdin
 (read-line) the rest of this line
 (read) (the next datum) 'and-this-one
 
+; Printing to a port.
+(define printed (open-output-string))
+(write '(1 "two\n" #\3 #(sym (a . b)) λ) printed)
+(write-char #\space printed)
+(display '(1 "two" #\3 λ) printed)
+(write-char #\space printed)
+(write-simple "simple" printed)
+(write-char #\space printed)
+(write printed printed)
+(get-output-string printed)
+(parameterize ((current-output-port printed)) (display "!") (write 'x))
+(get-output-string printed)
+
 ; Errors.
 (open-input-file "load/no-such-file.scm")
 (guard (e ((file-error? e) 'file-error)) (open-input-file "load/no-such-file.scm"))
@@ -132,4 +145,9 @@ stdin
 (write-string "abc" (current-output-port) 0 4)
 (read-char (current-input-port) 1)
 (read (open-output-string))
+(write 1 (open-input-string ""))
+(define closed (open-output-string))
+(close-port closed)
+(display 1 closed)
+(write 1 (current-output-port) 2)
 (get-output-string (current-output-port))

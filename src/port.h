@@ -20,4 +20,7 @@ minim_obj minim_port_open_file(minim_obj path, unsigned dir, const char *msg);
 /** Pushes back `c`, the last char read from the input port `p`, or -1 for its end. */
 void minim_port_unread_char(minim_obj p, int32_t c);
 
+/** Writes the `n` chars `chars`, outside the heap, to the open output port `p`. */
+void minim_port_write_chars(minim_obj p, const uint32_t *chars, size_t n);
+
 #endif

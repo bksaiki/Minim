@@ -306,6 +306,24 @@ collects garbage only after the walk.
 cmake --build --preset dev && ctest --preset dev -R 'print|port|repl' && ctest --preset stress -R 'print|port'
 ```
 
+**Done.**
+
+- `src/print.c` prints to a `sink`, a `FILE *` or a malloc'd buffer of code
+  points.  `minim_port_write` and `minim_port_display` (public) print a file
+  port straight to its `FILE *`, and a string port to the buffer, appended
+  after the walk with `minim_port_write_chars` (`src/port.h`), which grows
+  the port's string once.  `minim_port_write_char` is that with one char.
+- `minim_get_output_string` is public, for C; `get-output-string` calls it.
+- `write`, `display`, and `write-simple` moved from `src/system.c`'s
+  primitives to `scheme/ports.scm`, over `%write` and `%display`.
+- The REPL still prints its results with `minim_write(stdout, ...)`: the
+  standard output port's stream, so the same order, and still working if
+  that port is closed.
+- `test_print` checks that printing to a string port gives exactly what
+  printing to a file does, `write` and `display`, for data up to 1000
+  chars; under stress, the append collects.
+- Ran `ctest -R 'print|port|repl|script'`, and stress `print|port`.
+
 ### Phase 6 - File helpers
 
 - `scheme/ports.scm`: `call-with-port`, `call-with-input-file`,

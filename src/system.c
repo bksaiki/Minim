@@ -1,6 +1,6 @@
 /**
  * @file
- * Interface to the operating system, and the primitives for output, storage
+ * Interface to the operating system, and the primitives for storage
  * management, files, and the environment.
  */
 
@@ -26,18 +26,6 @@ FILE *minim_fopen(const char *path, const char *mode) {
 const char *minim_getenv(const char *name) {
     const char *s = getenv(name);
     return s == NULL || *s == '\0' ? NULL : s;
-}
-
-static minim_obj prim_write(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    minim_write(stdout, args[0]);
-    return MINIM_VOID;
-}
-
-static minim_obj prim_display(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    minim_display(stdout, args[0]);
-    return MINIM_VOID;
 }
 
 static minim_obj prim_collect(minim_obj *args, size_t n) {
@@ -109,8 +97,6 @@ const minim_prim_def minim_system_prims[] = {
     {"file-exists?", prim_file_exists, 1, 1},
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
     {"%read-file", prim_read_file, 1, 1},
-    {"write", prim_write, 1, 1},
-    {"display", prim_display, 1, 1},
     {"collect", prim_collect, 0, 0},
     {"collect-nursery-bytes", prim_collect_nursery_bytes, 0, 1},
     {"collect-generation-radix", prim_collect_generation_radix, 0, 1},

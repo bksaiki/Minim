@@ -140,30 +140,47 @@ void minim_port_unread_char(minim_obj p, int32_t c) {
     fields(p)[4] = minim_fixnum(c < 0 ? EOF_LOOKAHEAD : c);
 }
 
+// Unlike Chez's get-output-string, it doesn't reset the port.
+minim_obj minim_get_output_string(minim_obj p) {
+    MINIM_FRAME(&p);
+    size_t len = (size_t)minim_fixnum_value(fields(p)[3]);
+    minim_obj s = minim_make_string(len, 0);
+    memcpy(minim_string_chars(s), minim_string_chars(fields(p)[1]), len * sizeof(uint32_t));
+    MINIM_RETURN(s);
+}
+
 int32_t minim_port_peek_char(minim_obj p) {
     int32_t c = minim_port_read_char(p);
     minim_port_unread_char(p, c);
     return c;
 }
 
-// A string port's buffer doubles when full.
 void minim_port_write_char(minim_obj p, uint32_t c) {
+    minim_port_write_chars(p, &c, 1);
+}
+
+// A string port's buffer doubles until it fits.
+void minim_port_write_chars(minim_obj p, const uint32_t *chars, size_t n) {
     if (minim_port_flags(p) & MINIM_PORT_FILE) {
-        unsigned char bytes[4];
-        fwrite(bytes, 1, minim_utf8_encode(c, bytes), minim_port_file(p));
+        for (size_t i = 0; i < n; i++) {
+            unsigned char bytes[4];
+            fwrite(bytes, 1, minim_utf8_encode(chars[i], bytes), minim_port_file(p));
+        }
         return;
     }
     MINIM_FRAME(&p);
-    size_t i = (size_t)minim_fixnum_value(fields(p)[3]);
+    size_t len = (size_t)minim_fixnum_value(fields(p)[3]);
     size_t cap = minim_string_length(fields(p)[1]);
-    if (i == cap) {
-        minim_obj s = minim_make_string(2 * cap, 0);
-        memcpy(minim_string_chars(s), minim_string_chars(fields(p)[1]), cap * sizeof(uint32_t));
+    if (len + n > cap) {
+        while (len + n > cap)
+            cap *= 2;
+        minim_obj s = minim_make_string(cap, 0);
+        memcpy(minim_string_chars(s), minim_string_chars(fields(p)[1]), len * sizeof(uint32_t));
         fields(p)[1] = s;
         minim_gc_write(p, s);
     }
-    minim_string_set(fields(p)[1], i, c);
-    fields(p)[3] = minim_fixnum((intptr_t)i + 1);
+    memcpy(minim_string_chars(fields(p)[1]) + len, chars, n * sizeof(uint32_t));
+    fields(p)[3] = minim_fixnum((intptr_t)(len + n));
     MINIM_RETURN_VOID;
 }
 
@@ -372,19 +389,27 @@ static minim_obj prim_flush_output_port(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
-// A copy of what was written to the string port `args[0]` so far; unlike
-// Chez's, it doesn't reset the port.
 static minim_obj prim_get_output_string(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
-    minim_obj p = args[0];
-    check(minim_is_port(p) && (minim_port_flags(p) & (MINIM_PORT_OUTPUT | MINIM_PORT_FILE))
-              == MINIM_PORT_OUTPUT,
-          "get-output-string: not a string output port", p);
-    MINIM_FRAME(&p);
-    size_t len = (size_t)minim_fixnum_value(fields(p)[3]);
-    minim_obj s = minim_make_string(len, 0);
-    memcpy(minim_string_chars(s), minim_string_chars(fields(p)[1]), len * sizeof(uint32_t));
-    MINIM_RETURN(s);
+    check(minim_is_port(args[0])
+              && (minim_port_flags(args[0]) & (MINIM_PORT_OUTPUT | MINIM_PORT_FILE))
+                     == MINIM_PORT_OUTPUT,
+          "get-output-string: not a string output port", args[0]);
+    return minim_get_output_string(args[0]);
+}
+
+static minim_obj prim_write(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(is_open(args[1], MINIM_PORT_OUTPUT), "write: not an open output port", args[1]);
+    minim_port_write(args[1], args[0]);
+    return MINIM_VOID;
+}
+
+static minim_obj prim_display(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(is_open(args[1], MINIM_PORT_OUTPUT), "display: not an open output port", args[1]);
+    minim_port_display(args[1], args[0]);
+    return MINIM_VOID;
 }
 
 static minim_obj prim_eof_object(minim_obj *args, size_t n) {
@@ -433,5 +458,7 @@ const minim_prim_def minim_port_prims[] = {
     {"%write-string", prim_write_string, 4, 4},
     {"%flush-output-port", prim_flush_output_port, 1, 1},
     {"get-output-string", prim_get_output_string, 1, 1},
+    {"%write", prim_write, 2, 2},
+    {"%display", prim_display, 2, 2},
     {NULL, NULL, 0, 0},
 };

@@ -19,4 +19,7 @@ error: write-string: bad start: 2
 error: write-string: bad end: 4
 error: read-char: too many arguments: (#<input port stdin> 1)
 error: read: not an open input port: #<output port string>
+error: write: not an open output port: #<input port string>
+error: display: not an open output port: #<output port string>
+error: write: too many arguments: (#<output port stdout> 2)
 error: get-output-string: not a string output port: #<output port stdout>

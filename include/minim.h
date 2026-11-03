@@ -732,6 +732,9 @@ int32_t minim_port_peek_char(minim_obj p);
 /** Writes the char `c` to the open output port `p`. */
 void minim_port_write_char(minim_obj p, uint32_t c);
 
+/** A copy of what was written to the string output port `p` so far. */
+minim_obj minim_get_output_string(minim_obj p);
+
 // Reading
 
 /**
@@ -747,5 +750,11 @@ void minim_write(FILE *out, minim_obj x);
 
 /** Like minim_write, but strings and chars print as their characters. */
 void minim_display(FILE *out, minim_obj x);
+
+/** Writes `x` to the open output port `port`, as minim_write. */
+void minim_port_write(minim_obj port, minim_obj x);
+
+/** Writes `x` to the open output port `port`, as minim_display. */
+void minim_port_display(minim_obj port, minim_obj x);
 
 #endif

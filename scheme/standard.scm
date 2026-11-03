@@ -28,7 +28,7 @@
 (%define-system-library '(scheme process-context) '(get-environment-variable))
 (%define-system-library '(scheme read) '(read))
 (%define-system-library '(scheme repl) '(interaction-environment))
-(%define-system-library '(scheme write) '(display write))
+(%define-system-library '(scheme write) '(display write write-simple))
 
 ;; R5RS's names (R7RS Appendix A), with the auxiliary syntax R7RS's list omits.
 (%define-system-library
