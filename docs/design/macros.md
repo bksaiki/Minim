@@ -3,7 +3,8 @@
 The expander is Scheme code in `scheme/expander.scm`, applied through
 `%expand` (`scheme/eval.scm`).  It rewrites
 each top-level form into the core forms the evaluator knows: `quote`, `if`,
-`define`, `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
+`define`, `set!`, `lambda`, `case-lambda`, `begin`, `define-values`,
+`let-values`, and
 `letrec-values` (`eval.md`).  The evaluator calls it on every top-level form
 once it is defined.  Startup loads it already expanded (`prelude.md`), so
 it is written in ordinary Scheme, using the derived forms
@@ -71,6 +72,7 @@ special form even where the user has bound `if`.
 | `(quote d)` | `d` with every alias replaced by its original |
 | `(quasiquote t)` | code building `t`; see below |
 | `(lambda params body ...)` | fresh names for `params`, then the body in a new frame |
+| `(case-lambda (params body ...) ...)` | each clause as `lambda`'s parameters and body |
 | `(let-values ((formals init) ...) body ...)` | fresh names for every formal in a new frame, the inits expanded outside it, then the body |
 | `(letrec-values ...)` | likewise, the inits expanded in the new frame |
 | `(if ...)`, `(set! x e)`, `(begin ...)`, `(f arg ...)` | subforms expanded |

@@ -8,8 +8,13 @@ returns the list of any number of values.  Primitive procedures are in
 
 ## Closures
 
-A closure (layout in `gc.md`) holds its lambda's `(params . body)` as `code`,
-and the environment it was created in.
+A closure (layout in `gc.md`) holds its form, `(lambda params body ...)` or
+`(case-lambda (params body ...) ...)`, as `code`, and the environment it was
+created in.  The form is shared by every closure it makes.  After Chez
+Scheme, where every procedure is a `case-lambda`, applying a closure takes a
+`lambda`'s parameters and body, or a `case-lambda`'s first clause whose
+parameters accept the arguments' number, on the stack and through `apply`'s
+long path alike; `arity mismatch` if none does.
 
 ## Machine
 
@@ -107,8 +112,9 @@ without `%expand`; startup loads the prelude with it (`prelude.md`).
 
 ## Special forms
 
-`quote`, `if`, `define`, `set!`, `lambda`, `begin`, `define-values`,
-`let-values`, and `letrec-values`, recognized by the operator symbol itself.
+`quote`, `if`, `define`, `set!`, `lambda`, `case-lambda`, `begin`,
+`define-values`, `let-values`, and `letrec-values`, recognized by the
+operator symbol itself.
 The expander (`macros.md`) renames local variables, so a local named `if`
 never reaches the evaluator as `if`, and it rejects malformed forms and
 misplaced definitions before they run.  The checks below remain for code
@@ -119,8 +125,9 @@ evaluated unexpanded.
   the expander's to check, so unexpanded, `(if #t (define x 1))` is
   accepted.  Bodies' definitions arrive as `letrec-values`.
 - `lambda` takes fixed parameters, a rest parameter `(a . rest)`, or a single
-  symbol for all arguments, and at least one body expression.  The `formals`
-  of the `-values` forms take the same shapes.
+  symbol for all arguments, and at least one body expression; each of
+  `case-lambda`'s clauses, `(params body ...)`, likewise.  The `formals` of
+  the `-values` forms take the same shapes.
 - `(define-values formals expr)` binds the formals to `expr`'s values,
   globally, as `define` does.
 - `(let-values ((formals init) ...) body ...)` evaluates the inits left to
