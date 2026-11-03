@@ -4,7 +4,7 @@
 ;;; the counts.  The runner's names start with `runner-`, out of the tests'
 ;;; way.
 
-;; The subset of (chibi test) the suite uses.
+;; Counts and reports.
 
 (define runner-passed 0)
 
@@ -19,6 +19,16 @@
   (if (error-object? e)
       (cons (error-object-message e) (error-object-irritants e))
       e))
+
+;; Prints `what`, the line of the current form, and the list `details`.
+(define (runner-report what details)
+  (display what)
+  (display " ")
+  (display runner-line)
+  (for-each (lambda (d) (display " ") (write d)) details)
+  (newline))
+
+;; The subset of (chibi test) the suite uses.
 
 ;; Counts a test of `expr` passing if `(ok? value)`, its value from `thunk`.
 (define (runner-check expr ok? thunk)
@@ -68,14 +78,6 @@
   #f)
 
 ;; Reading the suite.
-
-;; Prints `what`, the line of the current form, and the list `details`.
-(define (runner-report what details)
-  (display what)
-  (display " ")
-  (display runner-line)
-  (for-each (lambda (d) (display " ") (write d)) details)
-  (newline))
 
 ;; The lines of the file `path`, as a list.
 (define (runner-lines path)

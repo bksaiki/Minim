@@ -105,7 +105,7 @@ static int usage_error(const char *message, const char *arg) {
     return 2;
 }
 
-// Options come before the file; what follows the file is its.
+// Options come before the file; the arguments after it are the file's.
 int main(int argc, char **argv) {
     bool program = false;
     int i = 1;
