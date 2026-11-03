@@ -50,9 +50,9 @@
 (define (%define-procedure x)
   (define n (%length x 0))
   (cond ((not (and (pair? (cdr x)) (pair? (cadr x)))) x)
-        ((and n (< 2 n) (symbol? (car (cadr x))))
-         `(,(car x) ,(car (cadr x))
-           (,(%make-alias 'lambda %system-env) ,(cdr (cadr x)) ,@(cddr x))))
+        ((and n (< 2 n) (symbol? (caadr x)))
+         `(,(car x) ,(caadr x)
+           (,(%make-alias 'lambda %system-env) ,(cdadr x) ,@(cddr x))))
         (else (%bad-syntax x))))
 
 ;; A syntactic environment is a list of frames, innermost first, ending in a
@@ -292,7 +292,7 @@
           ((eq? k 'quasiquote) (keyword-then (+ depth 1)))
           ((and (pair? t) (= depth 0) (eq? (%keyword (car t) env) 'unquote-splicing))
            (if (eq? (%length (car t) 0) 2)
-               (list 'append (%expand-expr (cadr (car t)) env) (%qq (cdr t) depth env))
+               (list 'append (%expand-expr (cadar t) env) (%qq (cdr t) depth env))
                (%bad-syntax (car t))))
           ((pair? t) (%qq-cons (%qq (car t) depth env) (%qq (cdr t) depth env)))
           ((vector? t) (%qq-vector (%qq (vector->list t) depth env)))
@@ -449,7 +449,7 @@
         b
         (bind-step (cdr vars)
                    (cdr seqs)
-                   (cons (cons (caar vars) (cons (- (cadr (car vars)) 1) (caar seqs))) b))))
+                   (cons (cons (caar vars) (cons (- (cadar vars) 1) (caar seqs))) b))))
 
   (define (apply-rules rules form use-env)
     (let* ((rule (if (null? rules) (%bad-syntax form) (car rules)))

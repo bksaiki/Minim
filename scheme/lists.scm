@@ -9,8 +9,8 @@
             ((not (pair? fast)) #f)
             ((null? (cdr fast)) #t)
             ((not (pair? (cdr fast))) #f)
-            ((eq? (cdr (cdr fast)) (cdr slow)) #f)
-            (else (loop (cdr slow) (cdr (cdr fast))))))))
+            ((eq? (cddr fast) (cdr slow)) #f)
+            (else (loop (cdr slow) (cddr fast)))))))
 
 (define list-tail
   (lambda (lst k)
@@ -68,7 +68,7 @@
     (let ((same? (if (null? compare) equal? (car compare))))
       (let loop ((alist alist))
         (cond ((null? alist) #f)
-              ((same? x (car (car alist))) (car alist))
+              ((same? x (caar alist)) (car alist))
               (else (loop (cdr alist))))))))
 
 (define assq
@@ -90,10 +90,10 @@
         (and (pair? ls) (or (not (pair? (car ls))) (any-empty? (cdr ls))))))
     (define cars
       (lambda (ls)
-        (if (null? ls) '() (cons (car (car ls)) (cars (cdr ls))))))
+        (if (null? ls) '() (cons (caar ls) (cars (cdr ls))))))
     (define cdrs
       (lambda (ls)
-        (if (null? ls) '() (cons (cdr (car ls)) (cdrs (cdr ls))))))
+        (if (null? ls) '() (cons (cdar ls) (cdrs (cdr ls))))))
     (define mapn
       (lambda (ls)
         (if (any-empty? ls)
