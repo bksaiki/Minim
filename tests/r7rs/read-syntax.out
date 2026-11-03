@@ -5,15 +5,6 @@ READ-ERROR 2206 ("bad # syntax" "u8")
 FAIL 2211 (read (open-input-string "|H\\x65;llo|")) => |H\x65
 FAIL 2213 (read (open-input-string "#!fold-case ABC")) raised ("bad # syntax" "!fold-case")
 FAIL 2214 (read (open-input-string "#!fold-case #!no-fold-case ABC")) raised ("bad # syntax" "!fold-case")
-FAIL 2216 (read (open-input-string "#; abc def")) raised ("bad # syntax" "")
-FAIL 2218 (read (open-input-string "#| abc |# def")) raised ("bad # syntax" "|")
-FAIL 2219 (read (open-input-string "#| abc #| def |# |# ghi")) raised ("bad # syntax" "|")
-FAIL 2220 (read (open-input-string "#; ; abc\n def ghi")) raised ("bad # syntax" "")
-FAIL 2221 (read (open-input-string "(#;sqrt abs -16)")) raised ("bad # syntax" "")
-FAIL 2222 (read (open-input-string "(a #; #;b c d)")) raised ("bad # syntax" "")
-FAIL 2223 (read (open-input-string "(a #;(b #;c d) e)")) raised ("bad # syntax" "")
-FAIL 2224 (read (open-input-string "(a . #;b c)")) raised ("bad # syntax" "")
-FAIL 2225 (read (open-input-string "(a . b #;c)")) raised ("bad # syntax" "")
 FAIL 2242 (char->integer (read (open-input-string "#\\null"))) raised ("bad char" "null")
 FAIL 2243 (char->integer (read (open-input-string "#\\alarm"))) raised ("bad char" "alarm")
 FAIL 2244 (char->integer (read (open-input-string "#\\backspace"))) raised ("bad char" "backspace")
@@ -36,4 +27,4 @@ READ-ERROR 2270 ("bad # syntax" "x03BB")
 ERROR 2280 ("bad syntax" (test-write-syntax "|a b|" '|a b|))
 READ-ERROR 2282 ("eof in string")
 FAIL 2286 (get-output-string out) => "|a|"
-Read syntax: 55 passed, 27 failed, 11 errors
+Read syntax: 64 passed, 18 failed, 11 errors

@@ -273,6 +273,22 @@ conformance reports updated: read syntax.
 cmake --build --preset dev && ctest --preset dev -R 'read|r7rs'
 ```
 
+**Done.**
+
+- `src/read.c`: `read_item_from`'s `#` case reads the next char: on `|`,
+  `skip_block_comment`, counting nesting; on `;`, a datum read and dropped
+  (`bad datum comment` if none); then the next item, so a comment may
+  stand before `)` or a dotted tail.  Otherwise `read_hash` gets the char,
+  no longer reading it itself.
+- Conformance: read syntax from 55 to 64 passed, every comment test.
+- Runner fix: a block comment in the suite (4.3, lines 603 to 621) holds
+  column-0 forms, which the runner split out and ran: the "bad ellipsis"
+  failures at 604 and 613, reported as Minim's in the conformance plan,
+  were tests the suite comments out.  A chunk ending inside a block comment
+  now takes the next, as one inside a list does.  4.3: 2 failed, 1 error,
+  from 4 and 3.
+- Ran `ctest -R 'read|r7rs|repl|script|boot'`, and stress `read`.
+
 ### After the last phase
 
 Sync the docs: `eval.md` (the core form `case-lambda`; a closure's code is

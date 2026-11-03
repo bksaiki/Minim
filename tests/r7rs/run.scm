@@ -112,13 +112,14 @@
                      (else (collect (cdr lines) (+ n 1) depth acc))))))
           (else (find (cdr lines) (+ n 1))))))
 
-;; Whether `text` reads without ending inside a list or vector.  Another read
-;; error, even inside a string after syntax Minim lacks, counts as complete,
-;; to be reported when it runs.
+;; Whether `text` reads without ending inside a list, vector, or block
+;; comment.  Another read error, even inside a string after syntax Minim
+;; lacks, counts as complete, to be reported when it runs.
 (define (runner-complete? text)
   (let ((port (open-input-string text)))
     (guard (e ((error-object? e)
-               (not (member (error-object-message e) '("eof in list" "eof in vector")))))
+               (not (member (error-object-message e)
+                            '("eof in list" "eof in vector" "eof in comment")))))
       (let loop ()
         (unless (eof-object? (read port))
           (loop)))

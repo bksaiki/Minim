@@ -132,6 +132,29 @@ static void test_stream(void) {
     MINIM_RETURN_VOID;
 }
 
+// `#;` comments out the next datum and `#| ... |#` a region, nesting; both
+// are atmosphere, wherever whitespace may be.
+static void test_comments(void) {
+    CHECK(reads_as("#;1 2", "2"));
+    CHECK(reads_as("(1 #;2 3)", "(1 3)"));
+    CHECK(reads_as("(1 #;2)", "(1)"));
+    CHECK(reads_as("(#;1 #;(2 3))", "()"));
+    CHECK(reads_as("#;#;1 2 3", "3"));
+    CHECK(reads_as("(a . #;b c)", "(a . c)"));
+    CHECK(reads_as("'#;x y", "'y"));
+    CHECK(reads_as("#| c |# 5", "5"));
+    CHECK(reads_as("(1 #| c |# 2)", "(1 2)"));
+    CHECK(reads_as("(1 #||#)", "(1)"));
+    CHECK(reads_as("#| a #| nested |# b |# 6", "6"));
+    CHECK(reads_as("#|\nline\n|# 7", "7"));
+    CHECK(reads_as("#| |# |# 8", "|#"));
+    CHECK(reads_as("\"#|\"", "\"#|\""));
+    CHECK(read_fails_with("#| open", "eof in comment"));
+    CHECK(read_fails_with("#| #| |#", "eof in comment"));
+    CHECK(read_fails_with("(1 #;)", "bad datum comment"));
+    CHECK(read_fails_with("#;", "bad datum comment"));
+}
+
 static void test_errors(void) {
     CHECK(read_fails_with(")", "unexpected )"));
     CHECK(read_fails_with(".", "unexpected ."));
@@ -163,6 +186,7 @@ int main(void) {
     test_chars();
     test_lists();
     test_stream();
+    test_comments();
     test_errors();
     minim_shutdown();
     return test_result();
