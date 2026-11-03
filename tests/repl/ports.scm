@@ -91,6 +91,26 @@ stdin
 (read-string 6 f)
 (close-port f)
 
+; Reading data.  What follows a datum stays to be read.
+(define data (open-input-string "(1 \"two\" #\\3) sym 4.5x\n  rest"))
+(read data)
+(read data)
+(read-char data)
+(read data)
+(read-line data)
+(read-line data)
+(read data)
+(read (open-input-string "   "))
+(guard (e ((read-error? e) (error-object-message e))) (read (open-input-string "(1 2")))
+(guard (e ((read-error? e) 'read-error)) (read (open-input-string ")")))
+(parameterize ((current-input-port (open-input-string "(from current)")))
+  (read))
+
+; The REPL reads through the standard input port too, so these read what
+; follows them on their own lines.
+(read-line) the rest of this line
+(read) (the next datum) 'and-this-one
+
 ; Errors.
 (open-input-file "load/no-such-file.scm")
 (guard (e ((file-error? e) 'file-error)) (open-input-file "load/no-such-file.scm"))
@@ -111,4 +131,5 @@ stdin
 (write-string "abc" (current-output-port) 2 1)
 (write-string "abc" (current-output-port) 0 4)
 (read-char (current-input-port) 1)
+(read (open-output-string))
 (get-output-string (current-output-port))

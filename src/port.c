@@ -83,9 +83,7 @@ static void close_dead(minim_obj p) {
         fclose(f);
 }
 
-// A port of direction `dir` over the file `path`; raises a file error, `msg`,
-// if it can't be opened.  Its file is closed when it is collected.
-static minim_obj open_file(minim_obj path, unsigned dir, const char *msg) {
+minim_obj minim_port_open_file(minim_obj path, unsigned dir, const char *msg) {
     char *name = minim_string_to_utf8(path);
     FILE *f = minim_fopen(name, dir == MINIM_PORT_INPUT ? "r" : "w");
     free(name);
@@ -98,11 +96,11 @@ static minim_obj open_file(minim_obj path, unsigned dir, const char *msg) {
 }
 
 minim_obj minim_open_input_file(minim_obj path) {
-    return open_file(path, MINIM_PORT_INPUT, "open-input-file: cannot open file");
+    return minim_port_open_file(path, MINIM_PORT_INPUT, "open-input-file: cannot open file");
 }
 
 minim_obj minim_open_output_file(minim_obj path) {
-    return open_file(path, MINIM_PORT_OUTPUT, "open-output-file: cannot open file");
+    return minim_port_open_file(path, MINIM_PORT_OUTPUT, "open-output-file: cannot open file");
 }
 
 void minim_port_close(minim_obj p) {
@@ -137,10 +135,14 @@ int32_t minim_port_read_char(minim_obj p) {
     return (int32_t)minim_string_ref(f[1], i);
 }
 
-// Peeking the end keeps it too, so a terminal's end of input is read once.
+// The end is kept too, so a terminal's end of input is read once.
+void minim_port_unread_char(minim_obj p, int32_t c) {
+    fields(p)[4] = minim_fixnum(c < 0 ? EOF_LOOKAHEAD : c);
+}
+
 int32_t minim_port_peek_char(minim_obj p) {
     int32_t c = minim_port_read_char(p);
-    fields(p)[4] = minim_fixnum(c < 0 ? EOF_LOOKAHEAD : c);
+    minim_port_unread_char(p, c);
     return c;
 }
 
@@ -328,6 +330,12 @@ static minim_obj prim_read_string(minim_obj *args, size_t n) {
 }
 
 // Always true: stdio can't tell whether input is waiting (ports.md).
+static minim_obj prim_read(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(is_open(args[0], MINIM_PORT_INPUT), "read: not an open input port", args[0]);
+    return minim_read(args[0]);
+}
+
 static minim_obj prim_is_char_ready(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     check(is_open(args[0], MINIM_PORT_INPUT), "char-ready?: not an open input port", args[0]);
@@ -419,6 +427,7 @@ const minim_prim_def minim_port_prims[] = {
     {"%peek-char", prim_peek_char, 1, 1},
     {"%read-line", prim_read_line, 1, 1},
     {"%read-string", prim_read_string, 2, 2},
+    {"%read", prim_read, 1, 1},
     {"%char-ready?", prim_is_char_ready, 1, 1},
     {"%write-char", prim_write_char, 2, 2},
     {"%write-string", prim_write_string, 4, 4},

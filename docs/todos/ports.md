@@ -269,6 +269,23 @@ and `include` unchanged.
 cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'read|port|load|files'
 ```
 
+**Done.**
+
+- The reader's `source` holds a reference to a port its caller roots, or a
+  C string for the boot file (`minim_read_string`); pushback goes to the
+  port's lookahead (`minim_port_unread_char`, in `src/port.h`), so any code
+  point can be pushed back, and the end is kept.
+- `minim_read(port)` raises its errors as read errors, so `read` gets
+  `read-error?` with no code of its own, and `minim_read_file` just closes
+  its port and re-raises.  It opens through `minim_port_open_file`
+  (`src/port.h`), keeping `load: cannot open file`.
+- The tests read through string ports: `tests/test.h`'s `input` makes one,
+  and `eval_source` evaluates a source text through one, rooted; the
+  `tmpfile` helper is `input_file`, for `test_string`'s UTF-8 decoding.
+- `tests/repl/ports.scm` checks the REPL and `read-line` and `read` share
+  the standard input port: each reads what follows it on its own line.
+- Ran both the dev suite and stress `read|port|load|files|eval|stdin`.
+
 ### Phase 5 - The printer on ports
 
 - `src/print.c`: printing to a sink, a `FILE *` or a scratch buffer

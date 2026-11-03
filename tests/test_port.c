@@ -8,14 +8,6 @@
 #include "minim.h"
 #include "test.h"
 
-// The value of evaluating `src`.
-static minim_obj eval_str(const char *src) {
-    FILE *f = input(src);
-    minim_obj x = eval_file(f);
-    fclose(f);
-    return x;
-}
-
 // Whether the string `s` is `expect`, all ASCII.
 static bool string_is(minim_obj s, const char *expect) {
     size_t n = strlen(expect);
@@ -30,7 +22,7 @@ static bool string_is(minim_obj s, const char *expect) {
 
 // A string port's buffer and name survive collections, young and old.
 static void test_string_port_gc(void) {
-    minim_obj p = eval_str("(open-input-string \"hello\")");
+    minim_obj p = eval_source("(open-input-string \"hello\")");
     MINIM_FRAME(&p);
     CHECK(minim_is_port(p));
     CHECK_EQ(count_predicates(p), 1);
@@ -54,10 +46,10 @@ static void test_file_untraced(void) {
 
 // The flags, in the header, are copied with it.
 static void test_flags_copied(void) {
-    minim_obj p = eval_str("(open-output-string)");
+    minim_obj p = eval_source("(open-output-string)");
     minim_obj q = MINIM_NIL;
     MINIM_FRAME(&p, &q);
-    q = eval_str("(let ((p (open-input-string \"\"))) (close-port p) p)");
+    q = eval_source("(let ((p (open-input-string \"\"))) (close-port p) p)");
     minim_gc_collect();
     minim_gc_collect_major();
     CHECK_EQ(minim_port_flags(p), MINIM_PORT_OUTPUT);

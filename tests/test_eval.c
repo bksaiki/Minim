@@ -12,16 +12,16 @@
 #include "symbol.h"
 #include "test.h"
 
-static minim_obj eval_values(void *f) {
-    return minim_eval_values(minim_read(f));
+// The list of the values of the first datum of `src`.
+static minim_obj eval_values(void *src) {
+    minim_obj x = minim_read(input(src));
+    return minim_eval_values(x);
 }
 
 // Whether the expression `src` returns values whose list prints as `expect`.
 static bool values_are(const char *src, const char *expect) {
-    FILE *f = input(src);
     minim_obj val;
-    bool ok = minim_catch(eval_values, f, &val);
-    fclose(f);
+    bool ok = minim_catch(eval_values, (void *)src, &val);
     if (!ok) {
         fprintf(stderr, "`%s` raised ", src);
         minim_write_error(stderr);
@@ -146,10 +146,8 @@ static minim_obj stack_height(minim_obj *args, size_t n) {
 static intptr_t loop_result(const char *tmpl, int n) {
     char src[512];
     snprintf(src, sizeof(src), tmpl, n);
-    FILE *f = input(src);
     minim_obj val;
-    bool ok = minim_catch(eval_file, f, &val);
-    fclose(f);
+    bool ok = minim_catch(eval_source, src, &val);
     if (!ok) {
         minim_write_error(stderr);
         return -1;
@@ -327,15 +325,14 @@ static void test_handled_errors(void) {
 static void test_expand_hook(void) {
     minim_obj saved = minim_symbol_value(minim_sym_expand);
     MINIM_FRAME(&saved);
-    FILE *f = input("(define %expand (lambda (form)"
-                    " (if (if (pair? form) (eq? (car form) 'twice) #f)"
-                    " (list 'begin (car (cdr form)) (car (cdr form))) form)))");
-    minim_eval_expanded(minim_read(f));
-    fclose(f);
+    minim_obj x = minim_read(input("(define %expand (lambda (form)"
+                                   " (if (if (pair? form) (eq? (car form) 'twice) #f)"
+                                   " (list 'begin (car (cdr form)) (car (cdr form))) form)))"));
+    minim_eval_expanded(x);
     CHECK(evals_to("(define n 0) (twice (set! n (+ n 1))) n", "2"));
 
     const char *path = gc_stressed() ? "expand_hook_stress.scm" : "expand_hook.scm";
-    f = fopen(path, "w");
+    FILE *f = fopen(path, "w");
     fputs("(twice (set! n (+ n 1)))\n"
           "(define %expand (lambda (form)"
           " (if (if (pair? form) (eq? (car form) 'thrice) #f)"

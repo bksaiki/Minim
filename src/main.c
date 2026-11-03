@@ -30,7 +30,7 @@ static const char help[] =
 
 static minim_obj read_stdin(void *arg) {
     MINIM_UNUSED(arg);
-    return minim_read(stdin);
+    return minim_read(minim_standard_port(0));
 }
 
 static minim_obj eval(void *expr) {

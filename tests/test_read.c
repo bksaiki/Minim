@@ -9,21 +9,18 @@
 #include "read.h"
 #include "test.h"
 
-// Whether the first datum in `s`, read from a file and from a string, prints
-// as `expect`.
+// Whether the first datum in `s`, read from a port and from a C string,
+// prints as `expect`.
 static bool reads_as(const char *s, const char *expect) {
-    FILE *f = input(s);
-    minim_obj x = minim_read(f);
-    fclose(f);
-    if (!prints_as(x, expect))
+    if (!prints_as(minim_read(input(s)), expect))
         return false;
 
     const char *p = s;
     return prints_as(minim_read_string(&p), expect);
 }
 
-static minim_obj read_file(void *f) {
-    return minim_read(f);
+static minim_obj read_port(void *s) {
+    return minim_read(input(s));
 }
 
 static minim_obj read_string(void *s) {
@@ -45,12 +42,9 @@ static bool raises(minim_obj (*read)(void *), void *arg, const char *s, const ch
     return false;
 }
 
-// Whether reading `s`, from a file and from a string, raises the error `msg`.
+// Whether reading `s`, from a port and from a C string, raises the error `msg`.
 static bool read_fails_with(const char *s, const char *msg) {
-    FILE *f = input(s);
-    bool ok = raises(read_file, f, s, msg);
-    fclose(f);
-    return ok && raises(read_string, (void *)s, s, msg);
+    return raises(read_port, (void *)s, s, msg) && raises(read_string, (void *)s, s, msg);
 }
 
 static void test_atoms(void) {
@@ -118,14 +112,14 @@ static void test_lists(void) {
 }
 
 static void test_stream(void) {
-    FILE *f = input("  ; leading comment\n 1 (2)\"s\"x");
-    CHECK(prints_as(minim_read(f), "1"));
-    CHECK(prints_as(minim_read(f), "(2)"));
-    CHECK(prints_as(minim_read(f), "\"s\""));
-    CHECK(prints_as(minim_read(f), "x"));
-    CHECK_EQ(minim_read(f), MINIM_EOF);
-    CHECK_EQ(minim_read(f), MINIM_EOF);
-    fclose(f);
+    minim_obj port = input("  ; leading comment\n 1 (2)\"s\"x");
+    MINIM_FRAME(&port);
+    CHECK(prints_as(minim_read(port), "1"));
+    CHECK(prints_as(minim_read(port), "(2)"));
+    CHECK(prints_as(minim_read(port), "\"s\""));
+    CHECK(prints_as(minim_read(port), "x"));
+    CHECK_EQ(minim_read(port), MINIM_EOF);
+    CHECK_EQ(minim_read(port), MINIM_EOF);
 
     const char *p = "  ; leading comment\n 1 (2)\"s\"x caf\u00e9";
     CHECK(prints_as(minim_read_string(&p), "1"));
@@ -135,6 +129,7 @@ static void test_stream(void) {
     CHECK(prints_as(minim_read_string(&p), "caf\u00e9"));
     CHECK_EQ(minim_read_string(&p), MINIM_EOF);
     CHECK_EQ(minim_read_string(&p), MINIM_EOF);
+    MINIM_RETURN_VOID;
 }
 
 static void test_errors(void) {

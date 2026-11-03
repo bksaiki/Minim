@@ -45,4 +45,18 @@
 "; Loaded by load.scm and nested.scm."
 #\(
 "define"
+(1 "two" #\3)
+sym
+#\space
+4.5x
+""
+"  rest"
+#<eof>
+#<eof>
+"eof in list"
+read-error
+(from current)
+" the rest of this line"
+(the next datum)
+and-this-one
 file-error

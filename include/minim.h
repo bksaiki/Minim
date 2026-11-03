@@ -734,8 +734,11 @@ void minim_port_write_char(minim_obj p, uint32_t c);
 
 // Reading
 
-/** Reads the next datum from `in`, or returns MINIM_EOF.  Raises on bad syntax. */
-minim_obj minim_read(FILE *in);
+/**
+ * Reads the next datum from the input port `port`, or returns MINIM_EOF.
+ * Raises a read error on bad syntax.
+ */
+minim_obj minim_read(minim_obj port);
 
 // Printing
 

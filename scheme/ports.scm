@@ -26,6 +26,9 @@
         ((null? (cdr args)) (car args))
         (else (error msg args))))
 
+(define (read . port)
+  (%read (%port-arg port current-input-port "read: too many arguments")))
+
 (define (read-char . port)
   (%read-char (%port-arg port current-input-port "read-char: too many arguments")))
 

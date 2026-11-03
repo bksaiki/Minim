@@ -1,12 +1,23 @@
 /**
  * @file
- * Ports' startup; their interface is in minim.h.
+ * Ports' startup, and what the reader needs; their interface is in minim.h.
  */
 
 #ifndef MINIM_PORT_H
 #define MINIM_PORT_H
 
+#include "minim.h"
+
 /** Makes the standard ports; call after minim_symbol_init. */
 void minim_port_init(void);
+
+/**
+ * New port of direction `dir` over the file `path`, closed when collected.
+ * Raises a file error, `msg`, if it can't open it.
+ */
+minim_obj minim_port_open_file(minim_obj path, unsigned dir, const char *msg);
+
+/** Pushes back `c`, the last char read from the input port `p`, or -1 for its end. */
+void minim_port_unread_char(minim_obj p, int32_t c);
 
 #endif

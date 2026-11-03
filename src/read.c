@@ -9,10 +9,11 @@
 #include <string.h>
 
 #include "char.h"
+#include "error.h"
 #include "heap.h"
 #include "minim.h"
+#include "port.h"
 #include "symbol.h"
-#include "system.h"
 
 // Characters of the token being read.  Static, so an error can't leak it.
 static struct {
@@ -56,16 +57,17 @@ static bool is_delimiter(int32_t c) {
     return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';';
 }
 
-// Where the reader reads from: a file, or a NUL-terminated string.
+// Where the reader reads from: a port, through a reference its caller roots,
+// or a NUL-terminated string.
 typedef struct source {
-    FILE *file;                // NULL for a string
+    const minim_obj *port;     // NULL for a string
     const unsigned char *str;  // next byte of the string
 } source;
 
 // Reads one code point, or returns -1 at the end.
 static int32_t next(source *in) {
-    if (in->file != NULL)
-        return minim_utf8_getc(in->file);
+    if (in->port != NULL)
+        return minim_port_read_char(*in->port);
     if (*in->str == '\0')
         return -1;
     uint32_t c;
@@ -73,14 +75,11 @@ static int32_t next(source *in) {
     return (int32_t)c;
 }
 
-// Pushes back `c`, the last code point read; only ASCII can be pushed back,
-// and only once.
+// Pushes back `c`, the last code point read, once; to a string, only ASCII.
 static void unread(source *in, int32_t c) {
-    if (c < 0)
-        return;
-    if (in->file != NULL)
-        ungetc(c, in->file);
-    else
+    if (in->port != NULL)
+        minim_port_unread_char(*in->port, c);
+    else if (c >= 0)
         in->str--;
 }
 
@@ -384,9 +383,23 @@ static minim_obj read_datum(source *in) {
     }
 }
 
-minim_obj minim_read(FILE *in) {
-    source src = {.file = in};
+// Reads a datum from the port at `port`.
+static minim_obj read_port(void *port) {
+    source src = {.port = port};
     return read_datum(&src);
+}
+
+// Its errors are read errors, for `read-error?`.
+minim_obj minim_read(minim_obj port) {
+    MINIM_FRAME(&port);
+    minim_obj x;
+    if (!minim_catch(read_port, &port, &x)) {
+        const char *msg;
+        minim_obj irritant;
+        minim_last_error(&msg, &irritant);
+        minim_error_of_kind(MINIM_ERROR_READ, msg, irritant);
+    }
+    MINIM_RETURN(x);
 }
 
 minim_obj minim_read_string(const char **s) {
@@ -396,14 +409,13 @@ minim_obj minim_read_string(const char **s) {
     return x;
 }
 
-// Reads every form from the file `f` into a list.
-static minim_obj read_forms(void *f) {
-    source src = {.file = f};
+// Reads every form from the port at `port` into a list.
+static minim_obj read_forms(void *port) {
     minim_obj head = MINIM_NIL;
     minim_obj tail = MINIM_NIL;
     minim_obj x = MINIM_NIL;
     MINIM_FRAME(&head, &tail, &x);
-    while ((x = read_datum(&src)) != MINIM_EOF) {
+    while ((x = minim_read(*(minim_obj *)port)) != MINIM_EOF) {
         x = minim_cons(x, MINIM_NIL);
         if (minim_is_null(head))
             head = x;
@@ -415,20 +427,12 @@ static minim_obj read_forms(void *f) {
 }
 
 minim_obj minim_read_file(minim_obj path) {
-    char *name = minim_string_to_utf8(path);
-    FILE *f = minim_fopen(name, "r");
-    free(name);
-    if (f == NULL)
-        minim_error_of_kind(MINIM_ERROR_FILE, "load: cannot open file", path);
-
+    minim_obj port = minim_port_open_file(path, MINIM_PORT_INPUT, "load: cannot open file");
+    MINIM_FRAME(&port);
     minim_obj forms;
-    bool ok = minim_catch(read_forms, f, &forms);
-    fclose(f);
-    if (!ok) {
-        const char *msg;
-        minim_obj irritant;
-        minim_last_error(&msg, &irritant);
-        minim_error_of_kind(MINIM_ERROR_READ, msg, irritant);
-    }
-    return forms;
+    bool ok = minim_catch(read_forms, &port, &forms);
+    minim_port_close(port);
+    if (!ok)
+        minim_reraise();
+    MINIM_RETURN(forms);
 }

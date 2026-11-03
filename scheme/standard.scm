@@ -26,6 +26,7 @@
 (%define-system-library '(scheme file) '(file-exists? open-input-file open-output-file))
 (%define-system-library '(scheme load) '(load))
 (%define-system-library '(scheme process-context) '(get-environment-variable))
+(%define-system-library '(scheme read) '(read))
 (%define-system-library '(scheme repl) '(interaction-environment))
 (%define-system-library '(scheme write) '(display write))
 
@@ -40,7 +41,7 @@
    lambda length let let* let-syntax letrec letrec-syntax list list->string list->vector
    list-ref list-tail list? load make-string make-vector map member memq memv newline not
    null-environment null? number->string open-input-file open-output-file or output-port?
-   pair? peek-char procedure? quasiquote quote quotient read-char remainder reverse
+   pair? peek-char procedure? quasiquote quote quotient read read-char remainder reverse
    scheme-report-environment set! set-car! set-cdr! string->list string->symbol
    string-append string-length string-ref string-set! string<=? string<? string=? string>=?
    string>? string? substring symbol->string symbol? syntax-rules unquote unquote-splicing
@@ -55,7 +56,7 @@
  '(minim)
  (append (%exported-names
           '((scheme base) (scheme eval) (scheme file) (scheme load) (scheme process-context)
-            (scheme repl) (scheme write)))
+            (scheme read) (scheme repl) (scheme write)))
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import parameter?
