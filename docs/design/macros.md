@@ -1,6 +1,7 @@
 # Macros and expansion
 
-The expander, `%expand`, is Scheme code in `scheme/expander.scm`.  It rewrites
+The expander is Scheme code in `scheme/expander.scm`, applied through
+`%expand` (`scheme/eval.scm`).  It rewrites
 each top-level form into the core forms the evaluator knows: `quote`, `if`,
 `define`, `set!`, `lambda`, `begin`, `define-values`, `let-values`, and
 `letrec-values` (`eval.md`).  The evaluator calls it on every top-level form
@@ -139,9 +140,10 @@ syntax`.
 
 `let` (with named `let`), `let*`, `let*-values`, `letrec`, `letrec*`, `and`,
 `or`, `when`, `unless`, `cond` (with `else` and `=>`), `case` (with `else`
-and `=>`), and `do`, as `syntax-rules` macros after R7RS 7.3.  `let` expands
-to `let-values`, and `letrec` and `letrec*` both to `letrec-values`, so both
-have `letrec*` semantics.  `case` calls the prelude's `memv`.
+and `=>`), `do`, and `parameterize`, as `syntax-rules` macros after R7RS
+7.3.  `let` expands to `let-values`, and `letrec` and `letrec*` both to
+`letrec-values`, so both have `letrec*` semantics.  `case` calls the
+prelude's `memv`, and `parameterize` its `%parameterize` (`prelude.md`).
 
 `guard` (R7RS 4.2.7) expands into a call of the prelude's `%guard`
 (`prelude.md`) on `(lambda () body ...)` and `(lambda (var reraise) (cond
@@ -230,10 +232,14 @@ imports.
 
 `eval` and its environments (R7RS 6.12) are in `scheme/eval.scm`.  An
 environment specifier is a record, `#<environment>`, holding a top-level
-environment out of user code's reach.
+environment out of user code's reach, and whether it is mutable.
 
-- `(interaction-environment)` is the REPL's, one specifier made once.  Chez
-  and Chibi make it a parameter; Minim has no parameters yet.
+- `interaction-environment` is a parameter, as in Chez and Chibi, initially
+  the REPL's specifier, the only mutable one.  The REPL, `load`, and
+  `minim_define` expand in its current environment, through `%expand`, so
+  `parameterize` redirects them.  It may be set to any specifier, as in
+  Chez; set to an immutable one at the REPL, outside `parameterize`, it
+  strands the REPL there, since nothing in it reaches the REPL's specifier.
 - `(environment set ...)` is a new environment of the library kind holding
   what the import sets name.  Its bindings are immutable, so specifiers are
   cached by their sets (`equal?`): a new one costs about 2 ms and leaves its
@@ -242,7 +248,7 @@ environment out of user code's reach.
 - `(scheme-report-environment 5)` imports `(scheme r5rs)`;
   `(null-environment 5)`, only its syntax: the exports bound to macros or to
   labels holding no value.
-- `(eval x env)` expands `x` in `env`, as a top-level form in the
-  interaction environment and as an expression elsewhere, so a definition in
-  an immutable environment is `bad syntax`.  Then it calls `%eval-expanded`
-  on the result, in tail position (`primitives.md`).
+- `(eval x env)` expands `x` in `env` (`%expand-in`), as a top-level form if
+  it is mutable and as an expression otherwise, so a definition in an
+  immutable environment is `bad syntax`.  Then it calls `%eval-expanded` on
+  the result, in tail position (`primitives.md`).
