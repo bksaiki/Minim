@@ -674,8 +674,7 @@ minim_obj minim_eval_values(minim_obj expr);
  */
 void minim_define(const char *name, minim_obj value);
 
-// Ports: `[header | buffer | name | index | lookahead | file]`, textual, over a
-// FILE * or a string, their flags in the header's length bits
+// Ports: `[header | buffer | name | index | lookahead | file]`
 
 /** A port's flags. */
 enum {
@@ -688,11 +687,6 @@ enum {
 /** The flags of the port `p`. */
 static inline unsigned minim_port_flags(minim_obj p) {
     return (unsigned)minim_header_length(minim_typed_header(p));
-}
-
-/** The string of the string port `p`. */
-static inline minim_obj minim_port_buffer(minim_obj p) {
-    return ((const minim_obj *)(p - MINIM_TAG_TYPED))[1];
 }
 
 /** The name of the port `p`: a path, `stdin`, `stdout`, `stderr`, or `string`. */
@@ -747,9 +741,6 @@ minim_obj minim_read(minim_obj port);
 
 /** Writes `x` to `out` in `write` syntax.  Never allocates. */
 void minim_write(FILE *out, minim_obj x);
-
-/** Like minim_write, but strings and chars print as their characters. */
-void minim_display(FILE *out, minim_obj x);
 
 /** Writes `x` to the open output port `port`, as minim_write. */
 void minim_port_write(minim_obj port, minim_obj x);

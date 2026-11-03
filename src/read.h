@@ -1,6 +1,6 @@
 /**
  * @file
- * Reading from strings.  Reading from files is in minim.h.
+ * Reading from C strings and files; reading from ports is in minim.h.
  */
 
 #ifndef MINIM_READ_H

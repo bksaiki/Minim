@@ -105,11 +105,15 @@ stdin
 (guard (e ((read-error? e) 'read-error)) (read (open-input-string ")")))
 (parameterize ((current-input-port (open-input-string "(from current)")))
   (read))
+(define hashed (open-input-string "#λ 5"))
+(guard (e ((read-error? e) (error-object-message e))) (read hashed))
+(read hashed)
 
 ; The REPL reads through the standard input port too, so these read what
 ; follows them on their own lines.
 (read-line) the rest of this line
 (read) (the next datum) 'and-this-one
+#λ 'read-after-bad-syntax
 
 ; Printing to a port.
 (define printed (open-output-string))
@@ -120,6 +124,7 @@ stdin
 (write-simple "simple" printed)
 (write-char #\space printed)
 (write printed printed)
+(display "" printed)
 (get-output-string printed)
 (parameterize ((current-output-port printed)) (display "!") (write 'x))
 (get-output-string printed)
@@ -157,3 +162,7 @@ stdin
 (write 1 (current-output-port) 2)
 (delete-file 'x)
 (get-output-string (current-output-port))
+
+; Closing the standard input port ends the REPL.
+(close-port (current-input-port))
+'never-read

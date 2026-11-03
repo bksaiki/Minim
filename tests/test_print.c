@@ -152,43 +152,34 @@ static void test_records(void) {
     MINIM_RETURN_VOID;
 }
 
-// Whether printing `src`'s value to a string port, with `write` and with
-// `display`, gives what printing it to a file does: #t or #f.
-static minim_obj port_prints_like_file(const char *src) {
+// Whether writing `src`'s value to a string port gives what writing it to a
+// file does: #t or #f.
+static minim_obj port_writes_like_file(const char *src) {
     minim_obj x = eval_source((void *)src);
-    minim_obj port = MINIM_NIL;
     minim_obj s = MINIM_NIL;
-    MINIM_FRAME(&x, &port, &s);
-    bool ok = true;
-    for (int display = 0; display < 2; display++) {
-        FILE *f = tmpfile();
-        port = minim_open_output_string();
-        if (display) {
-            minim_display(f, x);
-            minim_port_display(port, x);
-        } else {
-            minim_write(f, x);
-            minim_port_write(port, x);
-        }
-        size_t len = (size_t)ftell(f);
-        char *bytes = calloc(len + 1, 1);
-        rewind(f);
-        ok = fread(bytes, 1, len, f) == len && ok;
-        fclose(f);
-        s = minim_get_output_string(port);
-        minim_obj expect = minim_string_from_cstr(bytes);
-        free(bytes);
-        ok = ok && minim_string_length(expect) == minim_string_length(s)
-             && memcmp(minim_string_chars(expect), minim_string_chars(s),
-                       minim_string_length(s) * sizeof(uint32_t)) == 0;
-    }
+    MINIM_FRAME(&x, &s);
+    s = minim_open_output_string();
+    minim_port_write(s, x);
+    s = minim_get_output_string(s);
+    FILE *f = tmpfile();
+    minim_write(f, x);
+    size_t len = (size_t)ftell(f);
+    char *bytes = calloc(len + 1, 1);
+    rewind(f);
+    bool ok = fread(bytes, 1, len, f) == len;
+    fclose(f);
+    minim_obj expect = minim_string_from_cstr(bytes);
+    free(bytes);
+    ok = ok && minim_string_length(expect) == minim_string_length(s)
+         && memcmp(minim_string_chars(expect), minim_string_chars(s),
+                   minim_string_length(s) * sizeof(uint32_t)) == 0;
     if (!ok)
-        fprintf(stderr, "`%s` printed differently to a port\n", src);
+        fprintf(stderr, "`%s` wrote differently to a port\n", src);
     MINIM_RETURN(ok ? MINIM_TRUE : MINIM_FALSE);
 }
 
-// Printing to a string port walks the datum without allocating, then grows
-// the port's buffer: under stress, a collection at the append.
+// Writing to a string port matches writing to a file, even when growing its
+// buffer collects.
 static void test_port(void) {
     const char *srcs[] = {
         "'(1 \"two\\n\" #\\3 #(a (b . c)) caf\u00e9 '(q ,u ,@s))",
@@ -198,7 +189,7 @@ static void test_port(void) {
         "(list car (open-output-string) (eof-object))",
     };
     for (size_t i = 0; i < sizeof(srcs) / sizeof(srcs[0]); i++)
-        CHECK_EQ(port_prints_like_file(srcs[i]), MINIM_TRUE);
+        CHECK_EQ(port_writes_like_file(srcs[i]), MINIM_TRUE);
 }
 
 int main(void) {

@@ -238,11 +238,6 @@ void minim_write(FILE *out, minim_obj x) {
     print(&s, x, false);
 }
 
-void minim_display(FILE *out, minim_obj x) {
-    sink s = {.file = out};
-    print(&s, x, true);
-}
-
 // A string port gets the chars after the walk, the only step that allocates.
 static void print_to_port(minim_obj port, minim_obj x, bool display) {
     if (minim_port_flags(port) & MINIM_PORT_FILE) {

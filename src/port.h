@@ -1,6 +1,6 @@
 /**
  * @file
- * Ports' startup, and what the reader needs; their interface is in minim.h.
+ * Ports' internal interface; the public one is in minim.h.
  */
 
 #ifndef MINIM_PORT_H
@@ -8,7 +8,7 @@
 
 #include "minim.h"
 
-/** Makes the standard ports; call after minim_symbol_init. */
+/** Makes the standard ports; call after minim_gc_init. */
 void minim_port_init(void);
 
 /**

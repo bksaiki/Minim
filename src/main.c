@@ -28,9 +28,11 @@ static const char help[] =
     "  --help     print this message\n"
     "  --version  print the version\n";
 
+// The next datum from the standard input port, or the eof object once closed.
 static minim_obj read_stdin(void *arg) {
     MINIM_UNUSED(arg);
-    return minim_read(minim_standard_port(0));
+    minim_obj in = minim_standard_port(0);
+    return minim_port_flags(in) & MINIM_PORT_CLOSED ? MINIM_EOF : minim_read(in);
 }
 
 static minim_obj eval(void *expr) {

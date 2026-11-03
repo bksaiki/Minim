@@ -8,18 +8,6 @@
 #include "minim.h"
 #include "test.h"
 
-// Whether the string `s` is `expect`, all ASCII.
-static bool string_is(minim_obj s, const char *expect) {
-    size_t n = strlen(expect);
-    if (!minim_is_string(s) || minim_string_length(s) != n)
-        return false;
-    for (size_t i = 0; i < n; i++) {
-        if (minim_string_ref(s, i) != (unsigned char)expect[i])
-            return false;
-    }
-    return true;
-}
-
 // A string port's buffer and name survive collections, young and old.
 static void test_string_port_gc(void) {
     minim_obj p = eval_source("(open-input-string \"hello\")");
@@ -27,11 +15,11 @@ static void test_string_port_gc(void) {
     CHECK(minim_is_port(p));
     CHECK_EQ(count_predicates(p), 1);
     minim_gc_collect();
-    CHECK(string_is(minim_port_buffer(p), "hello"));
-    CHECK(string_is(minim_port_name(p), "string"));
+    CHECK_EQ(minim_port_read_char(p), 'h');
+    CHECK(prints_as(minim_port_name(p), "\"string\""));
     minim_gc_collect_major();
-    CHECK(string_is(minim_port_buffer(p), "hello"));
-    CHECK(string_is(minim_port_name(p), "string"));
+    CHECK_EQ(minim_port_read_char(p), 'e');
+    CHECK(prints_as(minim_port_name(p), "\"string\""));
     MINIM_RETURN_VOID;
 }
 
@@ -41,7 +29,7 @@ static void test_file_untraced(void) {
     CHECK(minim_port_file(minim_standard_port(0)) == stdin);
     CHECK(minim_port_file(minim_standard_port(1)) == stdout);
     CHECK(minim_port_file(minim_standard_port(2)) == stderr);
-    CHECK(string_is(minim_port_name(minim_standard_port(2)), "stderr"));
+    CHECK(prints_as(minim_port_name(minim_standard_port(2)), "\"stderr\""));
 }
 
 // The flags, in the header, are copied with it.
