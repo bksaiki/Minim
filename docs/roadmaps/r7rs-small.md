@@ -33,7 +33,7 @@ provides.  Update it as names are added.
 |---|---|---|---|
 | `(scheme base)` | 157 | 238 | |
 | `(scheme case-lambda)` | 1 | 1 | |
-| `(scheme char)` | 0 | 22 | not defined |
+| `(scheme char)` | 14 | 22 | its string procedures wait for full case mapping |
 | `(scheme complex)` | 0 | 6 | not defined |
 | `(scheme cxr)` | 24 | 24 | |
 | `(scheme eval)` | 2 | 2 | |
@@ -42,7 +42,7 @@ provides.  Update it as names are added.
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 4 | 5 | |
-| `(scheme r5rs)` | 148 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme r5rs)` | 160 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 0 | 3 | not defined |
@@ -120,7 +120,7 @@ Depends on 3 (`guard` is a macro).
   on `MINIM_LIBRARY_PATH`.
 - The standard libraries Minim has names for: `(scheme base)`, `(scheme
   file)`, `(scheme load)`, `(scheme process-context)`, `(scheme write)`, and
-  `(scheme r5rs)`.  `(scheme char)` waits for its procedures.
+  `(scheme r5rs)`.  `(scheme char)` came with its procedures (9).
 - Top-level environments in the expander, after Chez Scheme: names map to
   labels, symbols whose value slots are the variables, so a global reference
   stays one load (`docs/design/macros.md`).
@@ -206,6 +206,9 @@ strings, vectors, and control.  Mostly prelude procedures.
   (`docs/design/eval.md`); datum and block comments (`docs/design/repl.md`).
 - Done: `(scheme cxr)`, primitives beside `caar` and the like
   (`docs/design/primitives.md`).
+- Done: `(scheme char)`'s char procedures, on generated Unicode tables, and
+  R7RS's char names (`docs/design/primitives.md`).  Next: strings
+  (`docs/todos/strings.md`), then vectors (`docs/todos/vectors.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
@@ -227,7 +230,7 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.3 Booleans | 13 | 5 | 0 |
 | 6.4 Lists | 60 | 5 | 0 |
 | 6.5 Symbols | 13 | 4 | 0 |
-| 6.6 Characters | 20 | 59 | 0 |
+| 6.6 Characters | 79 | 0 | 0 |
 | 6.7 Strings | 52 | 77 | 1 |
 | 6.8 Vectors | 13 | 30 | 0 |
 | 6.9 Bytevectors | 0 | 11 | 28 |
@@ -235,7 +238,7 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.11 Exceptions | 24 | 6 | 0 |
 | 6.12 Environments and evaluation | 1 | 1 | 2 |
 | 6.13 Input and output | 36 | 2 | 21 |
-| Read syntax | 64 | 18 | 11 |
+| Read syntax | 68 | 14 | 11 |
 | Numeric syntax | 8 | 2 | 105 |
 | 6.14 System interface | 5 | 6 | 1 |
 | **Total** | 490 | 378 | 255 |

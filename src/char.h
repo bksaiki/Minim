@@ -30,4 +30,16 @@ size_t minim_utf8_encode(uint32_t c, unsigned char out[4]);
 /** The string `s` as a `malloc`'d, NUL-terminated UTF-8 C string. */
 char *minim_string_to_utf8(minim_obj s);
 
+/** A char's name, as in `#\name`. */
+typedef struct minim_char_name {
+    const char *name;
+    uint32_t c;
+} minim_char_name;
+
+/**
+ * R7RS's char names, then Chez's `nul`, ending with a NULL name; a char is
+ * written with its first.
+ */
+extern const minim_char_name minim_char_names[];
+
 #endif

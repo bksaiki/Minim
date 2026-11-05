@@ -5,10 +5,6 @@ READ-ERROR 2206 ("bad # syntax" "u8")
 FAIL 2211 (read (open-input-string "|H\\x65;llo|")) => |H\x65
 FAIL 2213 (read (open-input-string "#!fold-case ABC")) raised ("bad # syntax" "!fold-case")
 FAIL 2214 (read (open-input-string "#!fold-case #!no-fold-case ABC")) raised ("bad # syntax" "!fold-case")
-FAIL 2242 (char->integer (read (open-input-string "#\\null"))) raised ("bad char" "null")
-FAIL 2243 (char->integer (read (open-input-string "#\\alarm"))) raised ("bad char" "alarm")
-FAIL 2244 (char->integer (read (open-input-string "#\\backspace"))) raised ("bad char" "backspace")
-FAIL 2247 (char->integer (read (open-input-string "#\\return"))) raised ("bad char" "return")
 READ-ERROR 2248 ("bad # syntax" "x7F")
 READ-ERROR 2249 ("bad # syntax" "x1B")
 READ-ERROR 2250 ("bad # syntax" "x03BB")
@@ -27,4 +23,4 @@ READ-ERROR 2270 ("bad # syntax" "x03BB")
 ERROR 2280 ("bad syntax" (test-write-syntax "|a b|" '|a b|))
 READ-ERROR 2282 ("eof in string")
 FAIL 2286 (get-output-string out) => "|a|"
-Read syntax: 64 passed, 18 failed, 11 errors
+Read syntax: 68 passed, 14 failed, 11 errors

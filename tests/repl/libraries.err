@@ -9,7 +9,6 @@ error: define-library: not defined: missing
 error: unbound variable: undefined-thing
 error: unbound variable: define
 error: unbound variable: car
-error: import: unknown library: (scheme char)
 error: import: unknown library: (lib missing)
 error: import: unknown library: (lib wrong)
 error: include: cannot open file: "lib/missing.scm"

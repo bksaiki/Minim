@@ -203,10 +203,6 @@ static minim_obj read_string(source *in) {
 }
 
 static minim_obj read_char(source *in) {
-    static const struct { const char *name; uint32_t c; } names[] = {
-        {"nul", 0x00}, {"tab", '\t'}, {"newline", '\n'}, {"space", ' '},
-    };
-
     // The first character is part of the token even if it is a delimiter.
     int32_t c = next(in);
     if (c < 0)
@@ -217,9 +213,9 @@ static minim_obj read_char(source *in) {
 
     if (token.len == 1)
         return minim_char((uint32_t)c);
-    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
-        if (token_is(names[i].name))
-            return minim_char(names[i].c);
+    for (const minim_char_name *n = minim_char_names; n->name != NULL; n++) {
+        if (token_is(n->name))
+            return minim_char(n->c);
     }
     int32_t v = c == 'x' ? parse_hex(1, token.len) : -1;
     if (v < 0)

@@ -39,8 +39,13 @@ static void test_chars(void) {
     CHECK(prints_as(minim_char(' '), "#\\space"));
     CHECK(prints_as(minim_char('\n'), "#\\newline"));
     CHECK(prints_as(minim_char('\t'), "#\\tab"));
-    CHECK(prints_as(minim_char(0), "#\\nul"));
-    CHECK(prints_as(minim_char(0x7F), "#\\x7f"));
+    CHECK(prints_as(minim_char(0), "#\\null"));
+    CHECK(prints_as(minim_char(0x07), "#\\alarm"));
+    CHECK(prints_as(minim_char(0x08), "#\\backspace"));
+    CHECK(prints_as(minim_char('\r'), "#\\return"));
+    CHECK(prints_as(minim_char(0x1B), "#\\escape"));
+    CHECK(prints_as(minim_char(0x7F), "#\\delete"));
+    CHECK(prints_as(minim_char(0x01), "#\\x1"));
     CHECK(prints_as(minim_char(0xE9), "#\\\u00e9"));
     CHECK(prints_as(minim_char(0x1F600), "#\\\U0001F600"));
 }

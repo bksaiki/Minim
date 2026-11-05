@@ -52,20 +52,19 @@ static bool is_control(uint32_t c) {
 
 static void write_char(sink *out, uint32_t c) {
     put_ascii(out, "#\\");
-    switch (c) {
-    case 0x00: put_ascii(out, "nul"); break;
-    case '\t': put_ascii(out, "tab"); break;
-    case '\n': put_ascii(out, "newline"); break;
-    case ' ': put_ascii(out, "space"); break;
-    default:
-        if (is_control(c)) {
-            char buf[16];
-            snprintf(buf, sizeof(buf), "x%" PRIx32, c);
-            put_ascii(out, buf);
+    for (const minim_char_name *n = minim_char_names; n->name != NULL; n++) {
+        if (n->c == c) {
+            put_ascii(out, n->name);
+            return;
         }
-        else
-            put(out, c);
     }
+    if (is_control(c)) {
+        char buf[16];
+        snprintf(buf, sizeof(buf), "x%" PRIx32, c);
+        put_ascii(out, buf);
+    }
+    else
+        put(out, c);
 }
 
 // Writes the characters of the string `s` unescaped.
