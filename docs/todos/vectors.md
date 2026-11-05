@@ -33,7 +33,8 @@ breakdown, one phase per commit.
 | 6.8 Vectors | 29 of 30 | the procedures above; the other needs `round` and `acos` |
 | 6.10 Control | 4 of 5 | `vector-map`; `vector-for-each`'s test also needs `make-list` and `list-set!` |
 
-Depends on `strings.md`: its `range_args` and `scheme/sequences.scm`.
+Builds on the strings work: `range_args` (`src/prims.h`) and
+`scheme/sequences.scm`.
 
 ## Design
 
@@ -92,4 +93,4 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-None: the procedures are R7RS's, and the design follows `strings.md`.
+None: the procedures are R7RS's, and the design follows the strings'.

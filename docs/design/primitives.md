@@ -83,7 +83,10 @@ Unicode data comes from tables (`src/unicode_data.inc`, read by
 `src/unicode.c`) generated from the Unicode Character Database by
 `tools/unicode.py UCD_DIR > src/unicode_data.inc`; regenerating for a new
 Unicode version is rerunning it.  Lookups are binary searches over runs of
-code points with the same properties and over rows of case mappings.
+code points with the same properties, over rows of simple case mappings, and
+over the few full mappings that differ from the simple ones.  A full mapping
+takes a code point in its string, since lowercasing a sigma depends on its
+neighbors (`Final_Sigma`); locale-specific mappings are left out.
 
 ### Pairs and lists
 
@@ -162,10 +165,15 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(string-length s)` | length of `s` |
 | `(string-ref s i)` | char `i` of `s` |
 | `(string-set! s i c)` | sets char `i` of `s`, which must be mutable (symbol names aren't); void |
+| `(string c ...)` | new string of the chars `c ...` |
 | `(string-append s ...)` | new string of the arguments' chars in order |
-| `(substring s start end)` | new string of chars `start` through `end - 1` |
+| `(substring s start end)`, `(string-copy s [start [end]])` | new string of chars `start` through `end - 1` |
+| `(string-copy! to at from [start [end]])` | copies chars of `from` into the mutable `to` at `at`, correctly when they overlap; void |
+| `(string-fill! s c [start [end]])` | sets chars of the mutable `s` to `c`; void |
 | `(string=? s ...)`, `(string<? ...)`, `(string>? ...)`, `(string<=? ...)`, `(string>=? ...)` | whether each adjacent pair is in order, lexicographically by code point |
-| `(string->list s)` | list of the chars of `s` |
+| `(string-ci=? s ...)`, `(string-ci<? ...)`, ... | the same, of the strings' full case foldings |
+| `(string-upcase s)`, `(string-downcase s)`, `(string-foldcase s)` | new string of Unicode's full mappings, which may change its length (`ß` upcases to `SS`); downcasing makes a capital sigma ending a word final (`ς`) |
+| `(string->list s [start [end]])` | list of the chars of `s` |
 | `(list->string lst)` | new string of the chars in the list `lst` |
 | `(symbol->string sym)` | the name of `sym`, an immutable string (not a copy) |
 | `(string->symbol s)` | the symbol named `s` |
@@ -232,5 +240,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 - Type errors are `<name>: not a <type>`.
 - Index errors are `<name>: bad index`, covering non-fixnum, negative, and
   out-of-range indices.
+- Optional `start` and `end` arguments (`range_args`) default to the whole
+  sequence; `start <= end` is checked.
 - Strings are mutable except symbol names; `string-set!` on one raises
   `string-set!: immutable string`.  String literals are mutable, unlike R7RS.
