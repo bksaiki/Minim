@@ -80,7 +80,7 @@ pointers (`minim_prim_apply`, ...) and never calls them:
 |---|---|
 | `(cons a d)` | new pair |
 | `(car p)`, `(cdr p)` | first or second field of the pair `p` |
-| `(caar p)`, `(cadr p)`, `(cdar p)`, `(cddr p)` | compositions of `car` and `cdr`: `(cadr p)` is `(car (cdr p))` |
+| `(caar p)` to `(cddddr p)` | compositions of two to four `car`s and `cdr`s, `(cadr p)` being `(car (cdr p))`; a non-pair along the way raises `<name>: not a pair` with `p`.  The three- and four-level ones are `(scheme cxr)` |
 | `(set-car! p x)`, `(set-cdr! p x)` | sets a field of `p`; void |
 | `(pair? x)` | whether `x` is a pair |
 | `(null? x)` | whether `x` is `'()` |

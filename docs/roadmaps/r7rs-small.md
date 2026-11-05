@@ -35,14 +35,14 @@ provides.  Update it as names are added.
 | `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 0 | 22 | not defined |
 | `(scheme complex)` | 0 | 6 | not defined |
-| `(scheme cxr)` | 0 | 24 | not defined |
+| `(scheme cxr)` | 24 | 24 | |
 | `(scheme eval)` | 2 | 2 | |
 | `(scheme file)` | 8 | 10 | binary files wait for bytevectors |
 | `(scheme inexact)` | 0 | 12 | not defined |
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 4 | 5 | |
-| `(scheme r5rs)` | 124 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme r5rs)` | 148 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 0 | 3 | not defined |
@@ -120,8 +120,7 @@ Depends on 3 (`guard` is a macro).
   on `MINIM_LIBRARY_PATH`.
 - The standard libraries Minim has names for: `(scheme base)`, `(scheme
   file)`, `(scheme load)`, `(scheme process-context)`, `(scheme write)`, and
-  `(scheme r5rs)`.  `(scheme char)` and `(scheme cxr)` wait for their
-  procedures.
+  `(scheme r5rs)`.  `(scheme char)` waits for its procedures.
 - Top-level environments in the expander, after Chez Scheme: names map to
   labels, symbols whose value slots are the variables, so a global reference
   stays one load (`docs/design/macros.md`).
@@ -194,8 +193,8 @@ Depends on 3 (`define-record-type` is a macro).
 ### 9. The rest of the standard libraries (M, ongoing)
 
 The names the coverage table above lacks that no other milestone brings:
-`(scheme char)`, `(scheme cxr)`, `(scheme lazy)`, and the rest of `(scheme
-base)`'s lists, strings, vectors, and control.  Mostly prelude procedures.
+`(scheme char)`, `(scheme lazy)`, and the rest of `(scheme base)`'s lists,
+strings, vectors, and control.  Mostly prelude procedures.
 
 - Done: `make-parameter` and `parameterize`, and `interaction-environment`
   a parameter (`docs/design/prelude.md`, `docs/design/macros.md`).
@@ -205,6 +204,8 @@ base)`'s lists, strings, vectors, and control.  Mostly prelude procedures.
   (`docs/design/repl.md`).
 - Done: `exit` and `emergency-exit`; `case-lambda`, a core form after Chez
   (`docs/design/eval.md`); datum and block comments (`docs/design/repl.md`).
+- Done: `(scheme cxr)`, primitives beside `caar` and the like
+  (`docs/design/primitives.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.

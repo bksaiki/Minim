@@ -2,6 +2,8 @@ error: length: not a list: (1 . 2)
 error: set-car!: not a pair: 5
 error: cadr: not a pair: (1)
 error: cddr: not a pair: 5
+error: caddr: not a pair: (1 2)
+error: cadddr: not a pair: 5
 error: car: not a pair: ()
 error: not a procedure: 5
 error: cdr: not a pair: 5

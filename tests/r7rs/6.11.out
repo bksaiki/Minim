@@ -3,5 +3,5 @@ FAIL 1912 value => zero
 FAIL 1917 (get-output-string out) => "reraised #<error unbound variable>!"
 FAIL 1917 value => zero
 FAIL 1922 (get-output-string out) => "reraised #<error unbound variable>!"
-FAIL 1941 (guard (condition ((assq 'c condition) 'caught-c) ((assq 'd condition) 'caught-d)) (list (sqrt 8) (guard (condition ((assq 'a condition) => cdr) ((assq 'b condition))) (raise (list (cons 'd 24)))))) raised ("car: not a pair" #<error unbound variable>)
+FAIL 1941 (guard (condition ((assq 'c condition) 'caught-c) ((assq 'd condition) 'caught-d)) (list (sqrt 8) (guard (condition ((assq 'a condition) => cdr) ((assq 'b condition))) (raise (list (cons 'd 24)))))) raised ("caar: not a pair" #<error unbound variable>)
 6.11 Exceptions: 24 passed, 6 failed, 0 errors

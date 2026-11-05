@@ -50,9 +50,9 @@
 (define (%define-procedure x)
   (define n (%length x 0))
   (cond ((not (and (pair? (cdr x)) (pair? (cadr x)))) x)
-        ((and n (< 2 n) (symbol? (car (cadr x))))
-         `(,(car x) ,(car (cadr x))
-           (,(%make-alias 'lambda %system-env) ,(cdr (cadr x)) ,@(cddr x))))
+        ((and n (< 2 n) (symbol? (caadr x)))
+         `(,(car x) ,(caadr x)
+           (,(%make-alias 'lambda %system-env) ,(cdadr x) ,@(cddr x))))
         (else (%bad-syntax x))))
 
 ;; A syntactic environment is a list of frames, innermost first, ending in a
@@ -188,7 +188,7 @@
   (let ((var (and (%binding-form? x) (%resolve (cadr x) env))))
     (cond ((or (not var) (%macro var)) (%bad-syntax x))
           ((%imported? var (%top env)) (%syntax-error "set!: immutable variable" (list (cadr x))))
-          (else (list 'set! var (%expand-expr (car (cddr x)) env))))))
+          (else (list 'set! var (%expand-expr (caddr x) env))))))
 
 ;; The lambda list `formals` of the form `whole`, with each identifier `id`
 ;; replaced by `(f id)`.
@@ -245,16 +245,16 @@
          (if (%length x 0) (scan (append (cdr x) rest) defs) (%bad-syntax x)))
         ((define)
          (if (%binding-form? x)
-             (scan rest (cons (cons (list (%bind-variable! inner (cadr x))) (car (cddr x))) defs))
+             (scan rest (cons (cons (list (%bind-variable! inner (cadr x))) (caddr x)) defs))
              (%bad-syntax x)))
         ((define-values)
          (if (eq? (%length x 0) 3)
-             (scan rest (cons (cons (%bind-formals! inner (cadr x) x) (car (cddr x))) defs))
+             (scan rest (cons (cons (%bind-formals! inner (cadr x) x) (caddr x)) defs))
              (%bad-syntax x)))
         ((define-syntax)
          (if (%binding-form? x)
              (begin
-               (%bind-macro! inner (cadr x) (%transformer (car (cddr x)) inner))
+               (%bind-macro! inner (cadr x) (%transformer (caddr x) inner))
                (scan rest defs))
              (%bad-syntax x)))
         (else (finish defs (cons x rest))))))
@@ -292,7 +292,7 @@
           ((eq? k 'quasiquote) (keyword-then (+ depth 1)))
           ((and (pair? t) (= depth 0) (eq? (%keyword (car t) env) 'unquote-splicing))
            (if (eq? (%length (car t) 0) 2)
-               (list 'append (%expand-expr (cadr (car t)) env) (%qq (cdr t) depth env))
+               (list 'append (%expand-expr (cadar t) env) (%qq (cdr t) depth env))
                (%bad-syntax (car t))))
           ((pair? t) (%qq-cons (%qq (car t) depth env) (%qq (cdr t) depth env)))
           ((vector? t) (%qq-vector (%qq (vector->list t) depth env)))
@@ -449,7 +449,7 @@
         b
         (bind-step (cdr vars)
                    (cdr seqs)
-                   (cons (cons (caar vars) (cons (- (cadr (car vars)) 1) (caar seqs))) b))))
+                   (cons (cons (caar vars) (cons (- (cadar vars) 1) (caar seqs))) b))))
 
   (define (apply-rules rules form use-env)
     (let* ((rule (if (null? rules) (%bad-syntax form) (car rules)))
@@ -498,13 +498,13 @@
 (define (%expand-define form top)
   (let* ((x (%define-procedure form))
          (name (if (%binding-form? x) (%top-define! top (cadr x)) (%bad-syntax x))))
-    (list 'define name (%expand-expr (car (cddr x)) top))))
+    (list 'define name (%expand-expr (caddr x) top))))
 
 (define (%expand-define-values x top)
   (let ((formals (if (eq? (%length x 0) 3)
                      (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)
                      (%bad-syntax x))))
-    (list 'define-values formals (%expand-expr (car (cddr x)) top))))
+    (list 'define-values formals (%expand-expr (caddr x) top))))
 
 ;; Binds the identifier `id` to the macro `spec` denotes, in `top`.
 (define (%top-define-macro! top id spec)
@@ -516,7 +516,7 @@
 
 (define (%expand-define-syntax x top)
   (if (%binding-form? x)
-      (%top-define-macro! top (cadr x) (car (cddr x)))
+      (%top-define-macro! top (cadr x) (caddr x))
       (%bad-syntax x))
   '(begin))
 

@@ -33,15 +33,18 @@ static minim_obj cxr(minim_obj x, const char *path, const char *msg) {
     return y;
 }
 
+// The paths of the compositions of `car` and `cdr`, `caar` to `cddddr`.
+#define CXR_PATHS(X) \
+    X(aa) X(ad) X(da) X(dd) X(aaa) X(aad) X(ada) X(add) X(daa) X(dad) X(dda) X(ddd) X(aaaa) \
+    X(aaad) X(aada) X(aadd) X(adaa) X(adad) X(adda) X(addd) X(daaa) X(daad) X(dada) X(dadd) \
+    X(ddaa) X(ddad) X(ddda) X(dddd)
+
 #define CXR(path)                                                      \
     static minim_obj prim_c##path##r(minim_obj *args, size_t n) {      \
         MINIM_UNUSED(n);                                               \
         return cxr(args[0], #path, "c" #path "r: not a pair");         \
     }
-CXR(aa)
-CXR(ad)
-CXR(da)
-CXR(dd)
+CXR_PATHS(CXR)
 #undef CXR
 
 static minim_obj prim_set_car(minim_obj *args, size_t n) {
@@ -90,10 +93,9 @@ const minim_prim_def minim_pair_prims[] = {
     {"cons", prim_cons, 2, 2},
     {"car", prim_car, 1, 1},
     {"cdr", prim_cdr, 1, 1},
-    {"caar", prim_caar, 1, 1},
-    {"cadr", prim_cadr, 1, 1},
-    {"cdar", prim_cdar, 1, 1},
-    {"cddr", prim_cddr, 1, 1},
+#define CXR(path) {"c" #path "r", prim_c##path##r, 1, 1},
+    CXR_PATHS(CXR)
+#undef CXR
     {"set-car!", prim_set_car, 2, 2},
     {"set-cdr!", prim_set_cdr, 2, 2},
     {"pair?", prim_is_pair, 1, 1},
