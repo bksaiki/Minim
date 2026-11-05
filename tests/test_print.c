@@ -127,6 +127,17 @@ static void test_vectors(void) {
     MINIM_RETURN_VOID;
 }
 
+static void test_bytevectors(void) {
+    minim_obj bv = minim_make_bytevector(0, 0);
+    MINIM_FRAME(&bv);
+    CHECK(prints_as(bv, "#u8()"));
+    bv = minim_make_bytevector(3, 0);
+    minim_bytevector_data(bv)[1] = 1;
+    minim_bytevector_data(bv)[2] = 255;
+    CHECK(prints_as(bv, "#u8(0 1 255)"));
+    MINIM_RETURN_VOID;
+}
+
 // Returns void.
 static minim_obj nothing(minim_obj *args, size_t n) {
     MINIM_UNUSED(args, n);
@@ -211,6 +222,7 @@ int main(void) {
     test_quote();
     test_quasiquote();
     test_vectors();
+    test_bytevectors();
     test_procedures();
     test_records();
     test_port();

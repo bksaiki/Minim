@@ -89,6 +89,14 @@ The read-syntax report updated.
 cmake --build --preset dev && ctest --preset dev -R 'object|gc|read|print|equality|r7rs' && ctest --preset stress -R 'object|gc'
 ```
 
+**Done.**  The reader reads `#u8` as a `#` token and requires `(` right
+after it, so `#u8 (1)` is `bad # syntax`; bytes are checked as read (`bad
+byte`).  `read_hash` lost its guard against pushing back non-ASCII to a C
+string, which `unread` handles since the strings work.  The reports' read
+errors on `#u8` became failures on the missing procedures: Read syntax 76
+to 78 passed; 6.9's errors 28 to 8, the rest of them `#x41`, a hex number;
+6.13's 18 errors became failures.
+
 ### Phase 2 - The procedures
 
 - `src/bytevector.c`, in `CMakeLists.txt` and `prims.c`'s tables: the

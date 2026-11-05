@@ -157,6 +157,16 @@ static void write_vector(sink *out, minim_obj v, bool display) {
     put(out, ')');
 }
 
+static void write_bytevector(sink *out, minim_obj bv) {
+    put_ascii(out, "#u8(");
+    for (size_t i = 0; i < minim_bytevector_length(bv); i++) {
+        char buf[8];
+        snprintf(buf, sizeof(buf), i > 0 ? " %u" : "%u", minim_bytevector_data(bv)[i]);
+        put_ascii(out, buf);
+    }
+    put(out, ')');
+}
+
 // Writes `#<procedure name>`, or `#<procedure>` if `name` is #f.
 static void write_procedure(sink *out, minim_obj name) {
     put_ascii(out, "#<procedure");
@@ -204,6 +214,8 @@ static void print(sink *out, minim_obj x, bool display) {
         write_chars(out, minim_symbol_name(x));
     else if (minim_is_vector(x))
         write_vector(out, x, display);
+    else if (minim_is_bytevector(x))
+        write_bytevector(out, x);
     else if (minim_is_string(x) && display)
         write_chars(out, x);
     else if (minim_is_string(x))

@@ -320,6 +320,29 @@ static minim_obj read_vector(source *in) {
     MINIM_RETURN(v);
 }
 
+// Reads the rest of a bytevector after its `#u8(`: bytes, fixnums 0 to 255.
+static minim_obj read_bytevector(source *in) {
+    minim_obj lst = MINIM_NIL;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&lst, &x);
+    size_t n = 0;
+    int kind;
+    while ((kind = read_item(in, &x)) == ITEM) {
+        if (!minim_is_fixnum(x) || minim_fixnum_value(x) < 0 || minim_fixnum_value(x) > 255)
+            read_error("bad byte", x);
+        lst = minim_cons(x, lst);
+        n++;
+    }
+    if (kind != CLOSE)
+        read_error(kind == END ? "eof in bytevector" : "bad bytevector", MINIM_VOID);
+
+    minim_obj bv = minim_make_bytevector(n, 0);
+    uint8_t *bytes = minim_bytevector_data(bv);
+    for (; n > 0; n--, lst = minim_cdr(lst))
+        bytes[n - 1] = (uint8_t)minim_fixnum_value(minim_car(lst));
+    MINIM_RETURN(bv);
+}
+
 // Skips a block comment, after its `#|`, to the matching `|#`: they nest.
 static void skip_block_comment(source *in) {
     int32_t prev = 0;
@@ -345,14 +368,15 @@ static minim_obj read_hash(source *in, int32_t c) {
     if (c == '\\')
         return read_char(in);
 
-    if (in->port != NULL || c < 0x80)  // a C string pushes back only ASCII
-        unread(in, c);
+    unread(in, c);
     token.len = 0;
     read_until_delimiter(in);
     if (token_is("t") || token_is("true"))
         return MINIM_TRUE;
     if (token_is("f") || token_is("false"))
         return MINIM_FALSE;
+    if (token_is("u8") && next(in) == '(')
+        return read_bytevector(in);
     read_error("bad # syntax", token_string());
 }
 

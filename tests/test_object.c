@@ -1,7 +1,7 @@
 /**
  * @file
- * Tests for the constructors and accessors of closures, primitives, and
- * records.
+ * Tests for the constructors and accessors of closures, primitives, records,
+ * and bytevectors.
  */
 
 #include "minim.h"
@@ -74,6 +74,18 @@ static void test_record(void) {
     MINIM_RETURN_VOID;
 }
 
+static void test_bytevector(void) {
+    minim_obj bv = minim_make_bytevector(3, 7);
+    CHECK(minim_is_bytevector(bv));
+    CHECK(!minim_is_vector(bv) && !minim_is_string(bv) && !minim_is_procedure(bv));
+    CHECK_EQ(minim_bytevector_length(bv), 3);
+    minim_bytevector_data(bv)[1] = 255;
+    CHECK_EQ(minim_bytevector_data(bv)[0], 7);
+    CHECK_EQ(minim_bytevector_data(bv)[1], 255);
+    CHECK_EQ(minim_bytevector_length(minim_make_bytevector(0, 0)), 0);
+    CHECK(!minim_is_bytevector(minim_make_vector(1, MINIM_NIL)));
+}
+
 static void test_not_procedures(void) {
     minim_obj v = minim_make_vector(0, MINIM_NIL);
     CHECK(!minim_is_procedure(v));
@@ -116,6 +128,7 @@ int main(void) {
     test_closure();
     test_primitive();
     test_record();
+    test_bytevector();
     test_not_procedures();
     test_gc();
     minim_shutdown();
