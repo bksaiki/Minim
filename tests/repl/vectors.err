@@ -6,3 +6,9 @@ error: vector->list: not a vector: (1)
 error: vector->list: bad index: 3
 error: vector->list: bad index: 2
 error: list->vector: not a list: (1 . 2)
+error: vector-copy: bad index: 2
+error: vector-copy!: bad index: 4
+error: vector-fill!: not a vector: (1)
+error: vector-append: not a vector: (b)
+error: string->vector: not a string: abc
+error: vector->string: not a char: 1

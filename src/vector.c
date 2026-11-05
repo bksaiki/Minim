@@ -67,6 +67,85 @@ static minim_obj prim_list_to_vector(minim_obj *args, size_t n) {
     return v;
 }
 
+// A new vector of the elements of the vector args[0] in the range args[1] and args[2].
+static minim_obj prim_vector_copy(minim_obj *args, size_t n) {
+    check(minim_is_vector(args[0]), "vector-copy: not a vector", args[0]);
+    range r = range_args(args, n, 1, minim_vector_length(args[0]), "vector-copy: bad index");
+    minim_obj v = minim_make_vector(r.end - r.start, MINIM_NIL);
+    for (size_t i = r.start; i < r.end; i++)
+        minim_vector_set(v, i - r.start, minim_vector_ref(args[0], i));
+    return v;
+}
+
+// Copies the elements of the vector args[2] in the range args[3] and args[4]
+// into the vector args[0] at args[1]; backward when the target starts after
+// the source, so a copy within one vector is correct.
+static minim_obj prim_vector_copy_to(minim_obj *args, size_t n) {
+    check(minim_is_vector(args[0]), "vector-copy!: not a vector", args[0]);
+    size_t len = minim_vector_length(args[0]);
+    size_t at = bound_arg(args[1], len, "vector-copy!: bad index");
+    check(minim_is_vector(args[2]), "vector-copy!: not a vector", args[2]);
+    range r = range_args(args, n, 3, minim_vector_length(args[2]), "vector-copy!: bad index");
+    size_t count = r.end - r.start;
+    check(count <= len - at, "vector-copy!: bad index", args[1]);
+    if (at <= r.start) {
+        for (size_t i = 0; i < count; i++)
+            minim_vector_set(args[0], at + i, minim_vector_ref(args[2], r.start + i));
+    } else {
+        for (size_t i = count; i > 0; i--)
+            minim_vector_set(args[0], at + i - 1, minim_vector_ref(args[2], r.start + i - 1));
+    }
+    return MINIM_VOID;
+}
+
+// Sets the elements of the vector args[0] in the range args[2] and args[3] to args[1].
+static minim_obj prim_vector_fill(minim_obj *args, size_t n) {
+    check(minim_is_vector(args[0]), "vector-fill!: not a vector", args[0]);
+    range r = range_args(args, n, 2, minim_vector_length(args[0]), "vector-fill!: bad index");
+    for (size_t i = r.start; i < r.end; i++)
+        minim_vector_set(args[0], i, args[1]);
+    return MINIM_VOID;
+}
+
+static minim_obj prim_vector_append(minim_obj *args, size_t n) {
+    size_t total = 0;
+    for (size_t i = 0; i < n; i++) {
+        check(minim_is_vector(args[i]), "vector-append: not a vector", args[i]);
+        total += minim_vector_length(args[i]);
+    }
+    minim_obj v = minim_make_vector(total, MINIM_NIL);
+    size_t k = 0;
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < minim_vector_length(args[i]); j++)
+            minim_vector_set(v, k++, minim_vector_ref(args[i], j));
+    }
+    return v;
+}
+
+// A new vector of the chars of the string args[0] in the range args[1] and args[2].
+static minim_obj prim_string_to_vector(minim_obj *args, size_t n) {
+    check(minim_is_string(args[0]), "string->vector: not a string", args[0]);
+    range r = range_args(args, n, 1, minim_string_length(args[0]), "string->vector: bad index");
+    minim_obj v = minim_make_vector(r.end - r.start, MINIM_NIL);
+    for (size_t i = r.start; i < r.end; i++)
+        minim_vector_set(v, i - r.start, minim_char(minim_string_ref(args[0], i)));
+    return v;
+}
+
+// A new string of the chars in the vector args[0] in the range args[1] and args[2].
+static minim_obj prim_vector_to_string(minim_obj *args, size_t n) {
+    check(minim_is_vector(args[0]), "vector->string: not a vector", args[0]);
+    range r = range_args(args, n, 1, minim_vector_length(args[0]), "vector->string: bad index");
+    for (size_t i = r.start; i < r.end; i++) {
+        minim_obj c = minim_vector_ref(args[0], i);
+        check(minim_is_char(c), "vector->string: not a char", c);
+    }
+    minim_obj s = minim_make_string(r.end - r.start, 0);
+    for (size_t i = r.start; i < r.end; i++)
+        minim_string_set(s, i - r.start, minim_char_value(minim_vector_ref(args[0], i)));
+    return s;
+}
+
 static minim_obj prim_is_vector(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     return boolean(minim_is_vector(args[0]));
@@ -81,5 +160,11 @@ const minim_prim_def minim_vector_prims[] = {
     {"vector->list", prim_vector_to_list, 1, 3},
     {"list->vector", prim_list_to_vector, 1, 1},
     {"vector?", prim_is_vector, 1, 1},
+    {"vector-copy", prim_vector_copy, 1, 3},
+    {"vector-copy!", prim_vector_copy_to, 3, 5},
+    {"vector-fill!", prim_vector_fill, 2, 4},
+    {"vector-append", prim_vector_append, 0, MINIM_VARIADIC},
+    {"string->vector", prim_string_to_vector, 1, 3},
+    {"vector->string", prim_vector_to_string, 1, 3},
     {NULL, NULL, 0, 0},
 };

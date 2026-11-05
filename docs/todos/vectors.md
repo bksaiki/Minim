@@ -31,24 +31,25 @@ breakdown, one phase per commit.
 | Report | Failing | Cause |
 |---|---|---|
 | 6.8 Vectors | 29 of 30 | the procedures above; the other needs `round` and `acos` |
-| 6.10 Control | 4 of 5 | `vector-map`; `vector-for-each`'s test also needs `make-list` and `list-set!` |
+| 6.10 Control | 5 of 8 | `vector-map` and `vector-for-each`; one test also needs `expt`, another `make-list` and `list-set!` |
 
-Builds on the strings work: `range_args` (`src/prims.h`) and
-`scheme/sequences.scm`.
+Builds on the strings work: `range_args` (`src/prims.h`), and
+`scheme/sequences.scm`, whose string procedures go through lists.
+
+Not here: `make-list` and `list-set!`, lists'.
 
 ## Design
 
 **The procedures in C**, in `src/vector.c`, each with an optional range by
-`range_args`: `vector-copy`, `vector-copy!` (overlap-safe), `vector-fill!`,
-`vector-append` (any number of vectors), `string->vector`, and
-`vector->string` (raising on a non-char).
-
-Copies store element by element through `minim_vector_set`, so the write
-barrier sees each store.
+`range_args`: `vector-copy`, `vector-copy!`, `vector-fill!`, `vector-append`
+(any number of vectors), `string->vector`, and `vector->string` (raising on
+a non-char).  Copies store element by element through `minim_vector_set`, so
+the write barrier sees each store; `vector-copy!` copies backward when the
+target overlaps the source after it, as `memmove` would.
 
 **`vector-map` and `vector-for-each`** take procedures, so they are Scheme,
-in `scheme/sequences.scm` beside the string ones: over one or more vectors,
-to the shortest's length (R7RS 6.10).
+in `scheme/sequences.scm`, as the string ones are: the vectors as lists,
+through `map` or `for-each`, to the shortest's length (R7RS 6.10).
 
 ## Phases
 
@@ -67,15 +68,21 @@ survives a minor collection.  The 6.8 report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'vectors|gc|r7rs' && ctest --preset stress -R 'vectors|gc'
 ```
 
+**Done.**  6.8: 13 to 42 passed; the last needs `round` and `acos`.
+`vector-copy!` picks its direction from `at <= start`, which is right for
+one vector or two.  `(scheme r5rs)` gained `vector-fill!`.  `test_gc` calls
+the `vector-copy!` primitive from C, storing young lists into a vector in
+generation 3, and checks them after a minor collection.
+
 ### Phase 2 - `vector-map` and `vector-for-each`
 
-- `scheme/sequences.scm`: the two procedures.
+- `scheme/sequences.scm`: the two procedures; its header covers vectors.
 - `scheme/standard.scm`: their names.  `scheme/prelude.boot` regenerated.
 
 Separate because it is Scheme.
 
 Tests: `tests/repl/vectors.scm`: one vector, two of different lengths, an
-empty one.  The 6.10 report updated.
+empty one, a non-vector's error.  The 6.10 report updated.
 
 ```sh
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'vectors|r7rs'
@@ -84,7 +91,8 @@ cmake --build --preset dev --target boot && cmake --build --preset dev && ctest 
 ### After the last phase
 
 Sync the docs: `primitives.md` (Vectors), `prelude.md` (`sequences.scm`),
-`r7rs-small.md` (coverage: `(scheme base)`; the conformance table).
+`r7rs-small.md` (coverage: `(scheme base)`; the conformance table; milestone
+9).
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
