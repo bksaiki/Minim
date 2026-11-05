@@ -37,7 +37,8 @@ minim_obj minim_env_lookup(minim_obj env, minim_obj sym);
 
 /**
  * Binds `sym` to `val`: globally if `env` is `'()`, otherwise in the innermost
- * frame of `env`, which declares `sym`.
+ * frame of `env`, which declares `sym`.  An unnamed closure `val` takes `sym`
+ * as its name.
  */
 void minim_env_define(minim_obj env, minim_obj sym, minim_obj val);
 

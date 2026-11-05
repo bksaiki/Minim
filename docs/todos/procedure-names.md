@@ -110,6 +110,15 @@ cmake --build --preset dev && ctest --preset dev -R 'object|gc|print|heap' && ct
 
 Separate because it is the behavior, on Phase 1.
 
+**Done.**  `let` and named `let` reach `minim_env_define` through
+`let-values` and `letrec-values`, so the one check covers every binding
+form.  Changed outputs: `continuations` (`call/cc`), `libraries` (`bump`),
+`ports` (`read-char`, `write`), `records` (`kons`).  The conformance reports
+and `prelude.boot` didn't change.  An anonymous closure passed through `map`
+stays unnamed.  Benchmarks (aligned release builds, alternating, `main`
+first): `empty`, `expand`, `fib`, `globals` unchanged; `let` about 2% slower
+by median over 15 runs (0.49 s to 0.50 s), the check on each binding.
+
 Tests (`tests/repl/core.scm`): a `define`'s procedure prints its name, as
 do `make-adder`'s two closures under two names; `(define g f)` keeps `f`'s;
 a `let`'s, a `letrec`'s, a named `let`'s, and a `define-values`'

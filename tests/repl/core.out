@@ -49,3 +49,14 @@ hi
 (2)
 ("minim")
 (#<void>)
+#<procedure f>
+(#<procedure add1> #<procedure add2>)
+#<procedure f>
+#<procedure h>
+#<procedure h>
+#<procedure loop>
+(#<procedure p> #<procedure q>)
+#<procedure inner>
+#<procedure>
+#<procedure>
+(#<procedure>)

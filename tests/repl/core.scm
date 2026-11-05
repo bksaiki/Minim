@@ -109,3 +109,26 @@ y
 (void)
 (list (void))
 (void 1)
+
+; Binding names an unnamed closure; a named one keeps its name, and an
+; argument doesn't name one.
+(define (f x) x)
+f
+(define (make-adder n) (lambda (x) (+ x n)))
+(define add1 (make-adder 1))
+(define add2 (make-adder 2))
+(list add1 add2)
+(define g f)
+g
+(let ((h (lambda () 1))) h)
+(letrec ((h (lambda () 1))) h)
+(let loop ((i 0)) loop)
+(define-values (p q) (values (lambda () 1) (lambda () 2)))
+(list p q)
+(define (outer) (define (inner) 1) inner)
+(outer)
+(lambda (x) x)
+((lambda (p) p) (lambda () 1))
+(map (lambda (p) p) (list (lambda () 1)))
+(f 1 2)
+(read-char (current-input-port) 1)
