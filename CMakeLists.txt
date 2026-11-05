@@ -71,6 +71,7 @@ add_library(libminim STATIC
     src/symbol.c
     src/syntax.c
     src/system.c
+    src/unicode.c
     src/vector.c
 )
 target_include_directories(libminim PUBLIC include PRIVATE src)

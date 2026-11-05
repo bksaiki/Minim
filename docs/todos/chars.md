@@ -114,6 +114,20 @@ Tests: `tests/test_unicode.c`: ASCII letters, digits, and space; `Λ` and
 cmake --build --preset dev && ctest --preset dev -R unicode
 ```
 
+**Done.**  Unicode 18.0.0.  Diverged from the design:
+
+- The tables are `src/unicode_data.inc`, included by `src/unicode.c`, not a
+  `.c` of their own: they stay `static`, with their types private and their
+  lengths from `sizeof`.
+- No ASCII fast path: lookups are `bsearch` over 2,115 property ranges and
+  3,033 case rows, about a dozen steps.  Add one if a benchmark shows it.
+- The generator emits a `static_assert` per property bit, so its numbering
+  can't drift from `unicode.h`'s.
+
+The tables are about 77 KB of read-only data.  `tests/test_unicode.c`
+also covers a digit in a run of 50 (mathematical digits), `Ⅳ` (numeric, not
+a digit), `ẞ` folding to `ß`, and a mapping beyond the BMP.
+
 ### Phase 3 - The procedures and `(scheme char)`
 
 - `src/char.c`: the 14 primitives.
