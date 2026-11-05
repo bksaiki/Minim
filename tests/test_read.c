@@ -79,10 +79,17 @@ static void test_strings(void) {
 
 static void test_chars(void) {
     CHECK(reads_as("#\\a", "#\\a"));
-    CHECK(reads_as("#\\space", "#\\space"));
+    CHECK(reads_as("#\\alarm", "#\\alarm"));
+    CHECK(reads_as("#\\backspace", "#\\backspace"));
+    CHECK(reads_as("#\\delete", "#\\delete"));
+    CHECK(reads_as("#\\escape", "#\\escape"));
     CHECK(reads_as("#\\newline", "#\\newline"));
+    CHECK(reads_as("#\\null", "#\\null"));
+    CHECK(reads_as("#\\return", "#\\return"));
+    CHECK(reads_as("#\\space", "#\\space"));
     CHECK(reads_as("#\\tab", "#\\tab"));
-    CHECK(reads_as("#\\nul", "#\\nul"));
+    CHECK(reads_as("#\\nul", "#\\null"));
+    CHECK(reads_as("#\\x7", "#\\alarm"));
     CHECK(reads_as("#\\x41", "#\\A"));
     CHECK(reads_as("#\\x", "#\\x"));
     CHECK(reads_as("#\\(", "#\\("));

@@ -119,6 +119,12 @@ char *minim_string_to_utf8(minim_obj s) {
     return (char *)out;
 }
 
+const minim_char_name minim_char_names[] = {
+    {"alarm", 0x07},   {"backspace", 0x08}, {"delete", 0x7F}, {"escape", 0x1B},
+    {"newline", '\n'}, {"null", 0x00},      {"return", '\r'}, {"space", ' '},
+    {"tab", '\t'},     {"nul", 0x00},       {NULL, 0},
+};
+
 static minim_obj prim_is_char(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     return boolean(minim_is_char(args[0]));

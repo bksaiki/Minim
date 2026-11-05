@@ -92,6 +92,10 @@ every named char.  The read-syntax report updated.
 cmake --build --preset dev && ctest --preset dev -R 'read|print|r7rs'
 ```
 
+**Done.**  The table is `minim_char_names` in `src/char.c`, ending with a
+NULL name.  Read syntax: 64 to 68 passed.  `#\x7f` now prints as
+`#\delete`: `repl.md`'s example of a control char changes in the doc sync.
+
 ### Phase 2 - Unicode tables
 
 - `tools/unicode.py`: the generator.
