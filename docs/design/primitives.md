@@ -152,9 +152,14 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(vector-ref v i)` | element `i` of `v` |
 | `(vector-set! v i x)` | sets element `i` of `v`; void |
 | `(vector-length v)` | length of `v` |
-| `(vector->list v [start [end]])` | the elements of `v` from `start` (default 0) to `end` (default its length), as a list |
+| `(vector->list v [start [end]])` | the elements of `v`, as a list |
 | `(list->vector lst)` | a new vector of the elements of the proper list `lst` |
 | `(vector? x)` | whether `x` is a vector |
+| `(vector-copy v [start [end]])` | a new vector of the elements of `v` |
+| `(vector-copy! to at from [start [end]])` | copies elements of `from` into `to` at `at`, correctly when they overlap; void |
+| `(vector-fill! v x [start [end]])` | sets elements of `v` to `x`; void |
+| `(vector-append v ...)` | a new vector of the arguments' elements in order |
+| `(string->vector s [start [end]])`, `(vector->string v [start [end]])` | a new vector of the chars of `s`; a new string of the chars in `v` |
 
 ### Strings and symbols
 

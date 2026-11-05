@@ -357,6 +357,33 @@ static void test_closures(void) {
     MINIM_RETURN_VOID;
 }
 
+// `vector-copy!` of young elements into an old vector stores through the barrier.
+static void test_vector_copy(void) {
+    minim_gc_config saved = use_generations(3);
+    minim_obj old = minim_make_vector(3, MINIM_NIL);
+    minim_obj young = MINIM_NIL;
+    minim_obj lst = MINIM_NIL;
+    minim_obj copy = MINIM_NIL;
+    MINIM_FRAME(&old, &young, &lst, &copy);
+    for (unsigned g = 0; g < 3; g++)
+        minim_gc_collect_generation(g);  // into generation 3
+    young = minim_make_vector(3, MINIM_NIL);
+    for (size_t i = 0; i < 3; i++) {
+        lst = make_list((intptr_t)i + 1);
+        minim_vector_set(young, i, lst);
+    }
+    copy = minim_symbol_value(minim_intern_cstr("vector-copy!"));
+    minim_obj args[] = {old, minim_fixnum(0), young};
+    minim_primitive_fn(copy)(args, 3);
+    young = MINIM_NIL;
+    lst = MINIM_NIL;
+    minim_gc_collect_minor();
+    for (size_t i = 0; i < 3; i++)
+        CHECK(is_list(minim_vector_ref(old, i), (intptr_t)i + 1));
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 // A new rtd named `name` with the fields `x` and `y`.
 static minim_obj make_point_type(const char *name) {
     static const char *const fields[] = {"x", "y"};
@@ -427,6 +454,7 @@ int main(void) {
     test_older_to_younger();
     test_remembered();
     test_closures();
+    test_vector_copy();
     test_records();
     minim_shutdown();
     return test_result();

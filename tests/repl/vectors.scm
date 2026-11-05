@@ -24,3 +24,55 @@ v
 (list->vector '(1 (2) "s"))
 (list->vector '())
 (list->vector '(1 . 2))
+
+; Copying, filling, appending, and converting, each over an optional range.
+(vector-copy #(a b c))
+(vector-copy #(a b c) 1)
+(vector-copy #(a b c) 1 2)
+(let ((v (vector 1 2))) (eq? v (vector-copy v)))
+(define w (vector 1 2 3 4 5))
+(vector-fill! w 'x 3)
+w
+(vector-fill! w 'y 1 2)
+w
+(vector-fill! w 0)
+w
+(define u (vector 'a 'b 'c 'd 'e))
+(vector-copy! u 1 #(1 2 3 4 5) 0 2)
+u
+(vector-copy! u 0 #(- - - - -) 3)
+u
+(vector-copy! u 1 u 0 3)
+u
+(vector-copy! u 0 u 2)
+u
+(vector-append)
+(vector-append #(a))
+(vector-append #(a b) #() #(c))
+(string->vector "abc")
+(string->vector "abc" 1)
+(string->vector "abc" 1 2)
+(vector->string #(#\a #\b #\c))
+(vector->string #(#\a #\b #\c) 2)
+(vector->string #())
+
+(vector-copy #(a b c) 2 1)
+(vector-copy! u 4 #(1 2))
+(vector-fill! '(1) 0)
+(vector-append #(a) '(b))
+(string->vector 'abc)
+(vector->string #(#\a 1))
+(vector->string #(#\a 1) 0 1)
+
+; Mapping over elements, to the shortest vector's length.
+(vector-map car #((a 1) (b 2)))
+(vector-map + #(1 2 3) #(10 20))
+(vector-map car #())
+(let ((acc '()))
+  (vector-for-each (lambda (x) (set! acc (cons x acc))) #(a b c))
+  acc)
+(let ((acc '()))
+  (vector-for-each (lambda (x y) (set! acc (cons (list x y) acc))) #(a b c) #(1 2))
+  acc)
+(vector-for-each car #())
+(vector-map car '((a)))

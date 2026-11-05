@@ -16,11 +16,13 @@
    open-output-string or output-port-open? output-port? pair? parameterize peek-char port?
    procedure? quasiquote quote quotient raise raise-continuable read-char read-error?
    read-line read-string remainder reverse set! set-car! set-cdr! string string->list
-   string->symbol string-append string-copy string-copy! string-fill! string-for-each
-   string-length string-map string-ref string-set! string<=? string<? string=? string>=?
-   string>? string? substring symbol->string symbol? syntax-error syntax-rules textual-port?
-   unless unquote unquote-splicing values vector vector->list vector-length vector-ref
-   vector-set! vector? when with-exception-handler write-char write-string zero?))
+   string->symbol string->vector string-append string-copy string-copy! string-fill!
+   string-for-each string-length string-map string-ref string-set! string<=? string<?
+   string=? string>=? string>? string? substring symbol->string symbol? syntax-error
+   syntax-rules textual-port? unless unquote unquote-splicing values vector vector->list
+   vector->string vector-append vector-copy vector-copy! vector-fill! vector-for-each
+   vector-length vector-map vector-ref vector-set! vector? when with-exception-handler
+   write-char write-string zero?))
 
 (%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library
@@ -66,8 +68,9 @@
    string->list string->symbol string-append string-ci<=? string-ci<? string-ci=?
    string-ci>=? string-ci>? string-copy string-fill! string-length string-ref string-set!
    string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
-   syntax-rules unquote unquote-splicing values vector vector->list vector-length vector-ref
-   vector-set! vector? with-input-from-file with-output-to-file write write-char zero?))
+   syntax-rules unquote unquote-splicing values vector vector->list vector-fill!
+   vector-length vector-ref vector-set! vector? with-input-from-file with-output-to-file
+   write write-char zero?))
 
 ;; (minim), after Chez's (chezscheme): every public system binding, the
 ;; standard libraries' names and Minim's own.  R7RS puts each name in one
