@@ -20,8 +20,9 @@
    string-for-each string-length string-map string-ref string-set! string<=? string<?
    string=? string>=? string>? string? substring symbol->string symbol? syntax-error
    syntax-rules textual-port? unless unquote unquote-splicing values vector vector->list
-   vector->string vector-append vector-copy vector-copy! vector-fill! vector-length
-   vector-ref vector-set! vector? when with-exception-handler write-char write-string zero?))
+   vector->string vector-append vector-copy vector-copy! vector-fill! vector-for-each
+   vector-length vector-map vector-ref vector-set! vector? when with-exception-handler
+   write-char write-string zero?))
 
 (%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library

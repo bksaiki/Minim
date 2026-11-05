@@ -88,6 +88,9 @@ empty one, a non-vector's error.  The 6.10 report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'vectors|r7rs'
 ```
 
+**Done.**  6.10: 26 to 29 passed; `vector-map`'s fourth test now fails on
+`expt`, and `vector-for-each`'s on `make-list`.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (Vectors), `prelude.md` (`sequences.scm`),

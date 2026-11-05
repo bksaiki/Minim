@@ -63,3 +63,16 @@ u
 (string->vector 'abc)
 (vector->string #(#\a 1))
 (vector->string #(#\a 1) 0 1)
+
+; Mapping over elements, to the shortest vector's length.
+(vector-map car #((a 1) (b 2)))
+(vector-map + #(1 2 3) #(10 20))
+(vector-map car #())
+(let ((acc '()))
+  (vector-for-each (lambda (x) (set! acc (cons x acc))) #(a b c))
+  acc)
+(let ((acc '()))
+  (vector-for-each (lambda (x y) (set! acc (cons (list x y) acc))) #(a b c) #(1 2))
+  acc)
+(vector-for-each car #())
+(vector-map car '((a)))
