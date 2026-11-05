@@ -41,8 +41,9 @@ Not here: `string->vector` and `vector->string` (`vectors.md`),
 `string->utf8` and `utf8->string` (bytevectors), `string->number`
 (numbers).
 
-Depends on `chars.md`: its tables and generator, `(scheme char)`, and char
-case mapping.
+Builds on the chars work (#99): the Unicode tables and their generator
+(`src/unicode.c`, `tools/unicode.py`), `(scheme char)`, and char case
+mapping.
 
 ## Design
 
@@ -100,6 +101,13 @@ reports updated.
 cmake --build --preset dev && ctest --preset dev -R 'read|print|r7rs'
 ```
 
+**Done.**  Read syntax: 68 to 76 passed; 6.13: one read error fewer (37
+passed).  The continuation reads one code point past its white space and
+pushes it back, so a string source's `unread` now returns to where its last
+code point started (`source.prev`) instead of one byte back, which handled
+only ASCII.  `\|` in Read syntax still fails: its test reads `#x7C`, a hex
+number.
+
 ### Phase 2 - The base procedures
 
 - `src/prims.h`: `range_args`; `src/vector.c`'s `vector->list` uses it.
@@ -131,7 +139,7 @@ cmake --build --preset dev --target boot && cmake --build --preset dev && ctest 
 
 ### Phase 4 - Full case mapping
 
-- `tools/unicode.py`, `src/unicode_data.c` (regenerated), `src/unicode.h`,
+- `tools/unicode.py`, `src/unicode_data.inc` (regenerated), `src/unicode.h`,
   `src/unicode.c`: the full mappings, `Cased`, `Case_Ignorable`.
 - `src/string.c`: `string-upcase`, `string-downcase`, `string-foldcase`, the
   `string-ci` comparisons.

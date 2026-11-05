@@ -83,7 +83,10 @@ static void write_string(sink *out, minim_obj s) {
         switch (c) {
         case '"': put_ascii(out, "\\\""); break;
         case '\\': put_ascii(out, "\\\\"); break;
+        case '\a': put_ascii(out, "\\a"); break;
+        case '\b': put_ascii(out, "\\b"); break;
         case '\n': put_ascii(out, "\\n"); break;
+        case '\r': put_ascii(out, "\\r"); break;
         case '\t': put_ascii(out, "\\t"); break;
         default:
             if (is_control(c)) {

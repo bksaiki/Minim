@@ -75,6 +75,19 @@ static void test_strings(void) {
     CHECK(reads_as("\"a\\\"b\\\\c\\nd\\te\"", "\"a\\\"b\\\\c\\nd\\te\""));
     CHECK(reads_as("\"\\x41;\\x1F600;\"", "\"A\U0001F600\""));
     CHECK(reads_as("\"caf\u00e9\"", "\"caf\u00e9\""));
+    CHECK(reads_as("\"\\a\\b\\r\\|\"", "\"\\a\\b\\r|\""));
+}
+
+// A line continuation drops `\`, intraline white space, a line ending, and
+// intraline white space.
+static void test_continuations(void) {
+    CHECK(reads_as("\"a\\\nb\"", "\"ab\""));
+    CHECK(reads_as("\"a\\ \t\n \tb\"", "\"ab\""));
+    CHECK(reads_as("\"a\\\r\nb\"", "\"ab\""));
+    CHECK(reads_as("\"a\\\rb\"", "\"ab\""));
+    CHECK(reads_as("\"a\\ \n \n b\"", "\"a\\n b\""));
+    CHECK(reads_as("\"a\\\n \u03bb\"", "\"a\u03bb\""));
+    CHECK(read_fails_with("\"a\\ b\"", "bad string escape"));
 }
 
 static void test_chars(void) {
@@ -190,6 +203,7 @@ int main(void) {
     test_atoms();
     test_symbols();
     test_strings();
+    test_continuations();
     test_chars();
     test_lists();
     test_stream();

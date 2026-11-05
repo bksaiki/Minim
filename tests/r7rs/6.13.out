@@ -2,7 +2,6 @@ READ-ERROR 1982 ("bad # syntax" "u8")
 FAIL 1983 (binary-port? (open-output-bytevector)) raised ("unbound variable" open-output-bytevector)
 ERROR 2029 ("unbound variable" string)
 ERROR 2039 ("unbound variable" string)
-READ-ERROR 2061 ("bad string escape")
 READ-ERROR 2086 ("bad # syntax" "u8")
 READ-ERROR 2087 ("bad # syntax" "u8")
 READ-ERROR 2089 ("bad # syntax" "u8")
@@ -22,4 +21,4 @@ READ-ERROR 2132 ("bad # syntax" "u8")
 READ-ERROR 2137 ("bad # syntax" "u8")
 SKIP 2142 "writes a cyclic list, which loops: no datum labels"
 FAIL 2165 (and (member (let ((out (open-output-string)) (x (list 1 2 3))) (write-shared (list x x) out) (get-output-string out)) '("(#0=(1 2 3) #0#)" "(#1=(1 2 3) #1#)")) #t) raised ("unbound variable" write-shared)
-6.13 Input and output: 36 passed, 2 failed, 21 errors
+6.13 Input and output: 37 passed, 2 failed, 20 errors

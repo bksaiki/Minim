@@ -65,14 +65,16 @@ static bool is_delimiter(int32_t c) {
 // Where the reader reads from: a port, through a reference its caller roots,
 // or a NUL-terminated string.
 typedef struct source {
-    const minim_obj *port;     // NULL for a string
-    const unsigned char *str;  // next byte of the string
+    const minim_obj *port;      // NULL for a string
+    const unsigned char *str;   // next byte of the string
+    const unsigned char *prev;  // start of the string's last code point read
 } source;
 
 // Reads one code point, or returns -1 at the end.
 static int32_t next(source *in) {
     if (in->port != NULL)
         return minim_port_read_char(*in->port);
+    in->prev = in->str;
     if (*in->str == '\0')
         return -1;
     uint32_t c;
@@ -80,12 +82,12 @@ static int32_t next(source *in) {
     return (int32_t)c;
 }
 
-// Pushes back `c`, the last code point read, once; to a string, only ASCII.
+// Pushes back `c`, the last code point read, once.
 static void unread(source *in, int32_t c) {
     if (in->port != NULL)
         minim_port_unread_char(*in->port, c);
-    else if (c >= 0)
-        in->str--;
+    else
+        in->str = in->prev;
 }
 
 // Appends characters to the token up to the next delimiter, which is left
@@ -166,6 +168,27 @@ static bool parse_fixnum(minim_obj *x) {
     return true;
 }
 
+static bool is_intraline_whitespace(int32_t c) {
+    return c == ' ' || c == '\t';
+}
+
+// Skips a line continuation, `\`, intraline white space, a line ending, and
+// intraline white space, from `c`, its first code point after the `\`.
+static void skip_continuation(source *in, int32_t c) {
+    while (is_intraline_whitespace(c))
+        c = next(in);
+    bool cr = c == '\r';
+    if (cr)
+        c = next(in);
+    if (c == '\n')
+        c = next(in);
+    else if (!cr)
+        read_error("bad string escape", MINIM_VOID);
+    while (is_intraline_whitespace(c))
+        c = next(in);
+    unread(in, c);
+}
+
 static minim_obj read_string(source *in) {
     token.len = 0;
     for (;;) {
@@ -183,8 +206,16 @@ static minim_obj read_string(source *in) {
         switch (c) {
         case '"': token_push('"'); break;
         case '\\': token_push('\\'); break;
+        case '|': token_push('|'); break;
+        case 'a': token_push('\a'); break;
+        case 'b': token_push('\b'); break;
         case 'n': token_push('\n'); break;
+        case 'r': token_push('\r'); break;
         case 't': token_push('\t'); break;
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\n': skip_continuation(in, c); break;
         case 'x': {
             size_t start = token.len;
             while ((c = next(in)) >= 0 && c != ';')
