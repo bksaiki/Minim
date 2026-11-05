@@ -225,7 +225,8 @@ static void print(sink *out, minim_obj x, bool display) {
     else if (minim_is_continuation(x))
         put_ascii(out, "#<continuation>");
     else if (minim_is_port(x)) {
-        put_ascii(out, minim_port_flags(x) & MINIM_PORT_INPUT ? "#<input port " : "#<output port ");
+        put_ascii(out, minim_port_flags(x) & MINIM_PORT_BINARY ? "#<binary " : "#<");
+        put_ascii(out, minim_port_flags(x) & MINIM_PORT_INPUT ? "input port " : "output port ");
         write_chars(out, minim_port_name(x));
         put(out, '>');
     }

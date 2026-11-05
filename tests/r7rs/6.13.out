@@ -1,22 +1,3 @@
-FAIL 1982 (binary-port? (open-input-bytevector #u8(0 1 2))) raised ("unbound variable" open-input-bytevector)
-FAIL 1983 (binary-port? (open-output-bytevector)) raised ("unbound variable" open-output-bytevector)
-FAIL 2086 (eof-object? (read-u8 (open-input-bytevector #u8()))) raised ("unbound variable" read-u8)
-FAIL 2087 (read-u8 (open-input-bytevector #u8(1 2 3))) raised ("unbound variable" read-u8)
-FAIL 2089 (eof-object? (read-bytevector 3 (open-input-bytevector #u8()))) raised ("unbound variable" read-bytevector)
-FAIL 2090 (u8-ready? (open-input-bytevector #u8(1))) raised ("unbound variable" u8-ready?)
-FAIL 2091 (read-bytevector 3 (open-input-bytevector #u8(1))) raised ("unbound variable" read-bytevector)
-FAIL 2092 (read-bytevector 3 (open-input-bytevector #u8(1 2))) raised ("unbound variable" read-bytevector)
-FAIL 2093 (read-bytevector 3 (open-input-bytevector #u8(1 2 3))) raised ("unbound variable" read-bytevector)
-FAIL 2094 (read-bytevector 3 (open-input-bytevector #u8(1 2 3 4))) raised ("unbound variable" read-bytevector)
-FAIL 2096 (let ((bv (bytevector 1 2 3 4 5))) (eof-object? (read-bytevector! bv (open-input-bytevector #u8())))) raised ("unbound variable" read-bytevector!)
-FAIL 2100 (let ((bv (bytevector 1 2 3 4 5))) (read-bytevector! bv (open-input-bytevector #u8(6 7 8 9 10)) 0 5) bv) raised ("unbound variable" read-bytevector!)
-FAIL 2105 (let ((bv (bytevector 1 2 3 4 5))) (read-bytevector! bv (open-input-bytevector #u8(6 7 8 9 10)) 0 3) bv) raised ("unbound variable" read-bytevector!)
-FAIL 2110 (let ((bv (bytevector 1 2 3 4 5))) (read-bytevector! bv (open-input-bytevector #u8(6 7 8 9 10)) 3 4) bv) raised ("unbound variable" read-bytevector!)
-FAIL 2115 (let ((out (open-output-bytevector))) (write-u8 1 out) (write-u8 2 out) (write-u8 3 out) (get-output-bytevector out)) raised ("unbound variable" open-output-bytevector)
-FAIL 2122 (let ((out (open-output-bytevector))) (write-bytevector #u8(1 2 3 4 5) out) (get-output-bytevector out)) raised ("unbound variable" open-output-bytevector)
-FAIL 2127 (let ((out (open-output-bytevector))) (write-bytevector #u8(1 2 3 4 5) out 2) (get-output-bytevector out)) raised ("unbound variable" open-output-bytevector)
-FAIL 2132 (let ((out (open-output-bytevector))) (write-bytevector #u8(1 2 3 4 5) out 2 4) (get-output-bytevector out)) raised ("unbound variable" open-output-bytevector)
-FAIL 2137 (let ((out (open-output-bytevector))) (flush-output-port out) (get-output-bytevector out)) raised ("unbound variable" open-output-bytevector)
 SKIP 2142 "writes a cyclic list, which loops: no datum labels"
 FAIL 2165 (and (member (let ((out (open-output-string)) (x (list 1 2 3))) (write-shared (list x x) out) (get-output-string out)) '("(#0=(1 2 3) #0#)" "(#1=(1 2 3) #1#)")) #t) raised ("unbound variable" write-shared)
-6.13 Input and output: 42 passed, 20 failed, 0 errors
+6.13 Input and output: 61 passed, 1 failed, 0 errors

@@ -10,21 +10,23 @@
    cond cons current-error-port current-input-port current-output-port define
    define-record-type define-syntax define-values do dynamic-wind else eof-object
    eof-object? eq? equal? eqv? error error-object-irritants error-object-message
-   error-object? file-error? flush-output-port for-each get-output-string guard if
-   input-port-open? input-port? integer->char lambda length let let* let*-values let-syntax
-   let-values letrec letrec* letrec-syntax list list->string list->vector list-copy list-ref
-   list-tail list? make-bytevector make-parameter make-string make-vector map member memq
-   memv newline not null? number->string open-input-string open-output-string or
-   output-port-open? output-port? pair? parameterize peek-char port? procedure? quasiquote
-   quote quotient raise raise-continuable read-char read-error? read-line read-string
-   remainder reverse set! set-car! set-cdr! string string->list string->symbol string->utf8
-   string->vector string-append string-copy string-copy! string-fill! string-for-each
-   string-length string-map string-ref string-set! string<=? string<? string=? string>=?
-   string>? string? substring symbol->string symbol? syntax-error syntax-rules textual-port?
-   unless unquote unquote-splicing utf8->string values vector vector->list vector->string
-   vector-append vector-copy vector-copy! vector-fill! vector-for-each vector-length
-   vector-map vector-ref vector-set! vector? when with-exception-handler write-char
-   write-string zero?))
+   error-object? file-error? flush-output-port for-each get-output-bytevector
+   get-output-string guard if input-port-open? input-port? integer->char lambda length let
+   let* let*-values let-syntax let-values letrec letrec* letrec-syntax list list->string
+   list->vector list-copy list-ref list-tail list? make-bytevector make-parameter
+   make-string make-vector map member memq memv newline not null? number->string
+   open-input-bytevector open-input-string open-output-bytevector open-output-string or
+   output-port-open? output-port? pair? parameterize peek-char peek-u8 port? procedure?
+   quasiquote quote quotient raise raise-continuable read-bytevector read-bytevector!
+   read-char read-error? read-line read-string read-u8 remainder reverse set! set-car!
+   set-cdr! string string->list string->symbol string->utf8 string->vector string-append
+   string-copy string-copy! string-fill! string-for-each string-length string-map string-ref
+   string-set! string<=? string<? string=? string>=? string>? string? substring
+   symbol->string symbol? syntax-error syntax-rules textual-port? u8-ready? unless unquote
+   unquote-splicing utf8->string values vector vector->list vector->string vector-append
+   vector-copy vector-copy! vector-fill! vector-for-each vector-length vector-map vector-ref
+   vector-set! vector? when with-exception-handler write-bytevector write-char write-string
+   write-u8 zero?))
 
 (%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library

@@ -728,8 +728,9 @@ void minim_define(const char *name, minim_obj value);
 enum {
     MINIM_PORT_INPUT = 0x1,
     MINIM_PORT_OUTPUT = 0x2,
-    MINIM_PORT_FILE = 0x4,  ///< over a FILE *, else over a string
+    MINIM_PORT_FILE = 0x4,     ///< over a FILE *, else over a string or bytevector
     MINIM_PORT_CLOSED = 0x8,
+    MINIM_PORT_BINARY = 0x10,  ///< of bytes, else of chars
 };
 
 /** The flags of the port `p`. */

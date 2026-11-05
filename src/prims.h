@@ -112,6 +112,13 @@ static inline intptr_t fixnum_arg(minim_obj x, const char *msg) {
     return minim_fixnum_value(x);
 }
 
+/** Value of the byte `x`, a fixnum from 0 to 255; raises `msg` otherwise. */
+static inline uint8_t byte_arg(minim_obj x, const char *msg) {
+    check(minim_is_fixnum(x) && minim_fixnum_value(x) >= 0 && minim_fixnum_value(x) <= 255,
+          msg, x);
+    return (uint8_t)minim_fixnum_value(x);
+}
+
 /** Code of the char `x`; raises `msg` otherwise. */
 static inline intptr_t char_arg(minim_obj x, const char *msg) {
     check(minim_is_char(x), msg, x);

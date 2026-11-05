@@ -51,6 +51,28 @@
 
 (%define-with-port (char-ready?) current-input-port %char-ready?)
 
+(%define-with-port (read-u8) current-input-port %read-u8)
+
+(%define-with-port (peek-u8) current-input-port %peek-u8)
+
+(%define-with-port (u8-ready?) current-input-port %u8-ready?)
+
+(%define-with-port (read-bytevector k) current-input-port %read-bytevector)
+
+(%define-with-port (write-u8 byte) current-output-port %write-u8)
+
+;; Reads into `bv`, or its bytes from `start` to `end`, from `port`.
+(define read-bytevector!
+  (case-lambda
+    ((bv) (%read-bytevector! bv (current-input-port)))
+    ((bv port . range) (apply %read-bytevector! bv port range))))
+
+;; Writes `bv`, or its bytes from `start` to `end`, to `port`.
+(define write-bytevector
+  (case-lambda
+    ((bv) (%write-bytevector bv (current-output-port)))
+    ((bv port . range) (apply %write-bytevector bv port range))))
+
 (define newline
   (case-lambda
     (() (%write-char #\newline (current-output-port)))

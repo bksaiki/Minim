@@ -67,3 +67,24 @@ read-after-bad-syntax
 #\a
 #f
 file-error
+#<binary input port bytevector>
+(#t #t #f #t)
+(#t #f)
+(1 1 #t 2 3 #<eof>)
+#<eof>
+#u8(9 8)
+#u8(9 8 7)
+#u8()
+#<eof>
+3
+#u8(1 2 3 0 0)
+2
+#u8(1 2 3 7 8)
+1
+#u8(1 4 3 7 8)
+#<eof>
+#<binary output port bytevector>
+#u8(255 1 2 3 2 3 1)
+107
+42
+#u8(1 2)

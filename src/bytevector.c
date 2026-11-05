@@ -9,13 +9,6 @@
 #include "heap.h"
 #include "prims.h"
 
-// Value of the byte `x`, a fixnum from 0 to 255; raises `msg` otherwise.
-static uint8_t byte_arg(minim_obj x, const char *msg) {
-    check(minim_is_fixnum(x) && minim_fixnum_value(x) >= 0 && minim_fixnum_value(x) <= 255,
-          msg, x);
-    return (uint8_t)minim_fixnum_value(x);
-}
-
 static minim_obj prim_bytevector(minim_obj *args, size_t n) {
     for (size_t i = 0; i < n; i++)
         byte_arg(args[i], "bytevector: not a byte");

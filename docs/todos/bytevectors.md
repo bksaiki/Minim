@@ -137,6 +137,18 @@ a range, writing then `get-output-bytevector`, `textual-port?` and
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'ports|port|r7rs' && ctest --preset stress -R ports
 ```
 
+**Done.**  6.13: 42 to 61 passed; the last needs `write-shared`.  The
+textual procedures' errors now say `not an open textual input port` (or
+output); the binary ones', `not an open binary input port`.  `check_open`
+checks direction, openness, and kind; `flush-output-port`, `close-port`, and
+the `-open?` predicates take either kind.  `get-output-string` no longer
+accepts a bytevector output port.  Growing a bytevector port's buffer
+allocates, so `reserve_bytes` and `write_byte` take a reference their caller
+roots.  `peek-u8` pushes back through `minim_port_unread_char`, which stores
+any lookahead.  `byte_arg` moved from `bytevector.c` to `prims.h`.
+`read-bytevector!` and `write-bytevector` pass their optional range to the
+primitive, which checks it with `range_args`.
+
 ### Phase 4 - Binary file ports
 
 - `src/port.c`: binary file reading and writing; `open-binary-input-file`

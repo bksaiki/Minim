@@ -163,6 +163,55 @@ stdin
 (delete-file 'x)
 (get-output-string (current-output-port))
 
+; Bytevector ports: binary, with the byte procedures.
+(define bin (open-input-bytevector #u8(1 2 3)))
+bin
+(list (port? bin) (input-port? bin) (textual-port? bin) (binary-port? bin))
+(list (textual-port? (current-input-port)) (binary-port? (current-input-port)))
+(list (peek-u8 bin) (read-u8 bin) (u8-ready? bin) (read-u8 bin) (read-u8 bin) (read-u8 bin))
+(peek-u8 bin)
+(read-bytevector 2 (open-input-bytevector #u8(9 8 7)))
+(read-bytevector 5 (open-input-bytevector #u8(9 8 7)))
+(read-bytevector 0 (open-input-bytevector #u8()))
+(read-bytevector 1 (open-input-bytevector #u8()))
+(define buf (bytevector 0 0 0 0 0))
+(read-bytevector! buf (open-input-bytevector #u8(1 2 3)))
+buf
+(read-bytevector! buf (open-input-bytevector #u8(7 8 9)) 3)
+buf
+(read-bytevector! buf (open-input-bytevector #u8(4 5 6)) 1 2)
+buf
+(read-bytevector! buf (open-input-bytevector #u8()))
+(define bout (open-output-bytevector))
+bout
+(write-u8 255 bout)
+(write-bytevector #u8(1 2 3) bout)
+(write-bytevector #u8(1 2 3) bout 1)
+(write-bytevector #u8(1 2 3) bout 0 1)
+(get-output-bytevector bout)
+(write-bytevector (make-bytevector 100 7) bout)
+(bytevector-length (get-output-bytevector bout))
+(parameterize ((current-input-port (open-input-bytevector #u8(42)))) (read-u8))
+(let ((p (open-output-bytevector)))
+  (parameterize ((current-output-port p)) (write-u8 1) (write-bytevector #u8(2)))
+  (get-output-bytevector p))
+
+(read-char bin)
+(write 1 bout)
+(read-line bin)
+(read-u8 (open-input-string "a"))
+(write-u8 1 (open-output-string))
+(write-u8 256 bout)
+(read-bytevector -1 bin)
+(read-bytevector! buf bin 3 6)
+(write-bytevector #u8(1) bout 2)
+(get-output-bytevector (open-output-string))
+(get-output-string bout)
+(open-input-bytevector "abc")
+(define closed-bin (open-input-bytevector #u8(1)))
+(close-port closed-bin)
+(read-u8 closed-bin)
+
 ; Closing the standard input port ends the REPL.
 (close-port (current-input-port))
 'never-read
