@@ -15,9 +15,10 @@ and advances it.
 |---|---|
 | `(a b)`, `(a . b)`, `()` | lists, dotted pairs, the empty list |
 | `#(a b)` | vector |
+| `#u8(0 255)` | bytevector, of fixnums 0 to 255 |
 | `42`, `-7`, `+5` | fixnum; out-of-range literals are errors |
-| `"..."` | string, with `\"`, `\\`, `\n`, `\t`, and `\xHH;` escapes |
-| `#\a`, `#\space`, `#\newline`, `#\tab`, `#\nul`, `#\xHH` | char |
+| `"..."` | string, with `\"`, `\\`, `\|`, `\a`, `\b`, `\n`, `\r`, `\t`, and `\xHH;` escapes, and line continuations (`\`, then a line ending, between intraline white space) |
+| `#\a`, `#\space`, `#\xHH`; R7RS's names (`#\null`, `#\alarm`, ...) and Chez's `#\nul` | char |
 | `#t`, `#f`, `#true`, `#false` | boolean |
 | `'x`, `` `x ``, `,x`, `,@x` | `(quote x)`, `(quasiquote x)`, `(unquote x)`, `(unquote-splicing x)`; whitespace may follow, but `,@` is one token |
 | anything else up to a delimiter | symbol (case-sensitive), including `+`, `-`, `...`, and `1.5` |
@@ -46,6 +47,7 @@ walks `x`, so `minim_write` is safe on error paths.
 | symbol | its name |
 | pair | `(a b . c)`; `(quote x)` as `'x`, and likewise `` ` ``, `,`, `,@`, also as a tail: `(a . ,x)`.  `(unquote @x)` isn't abbreviated, since `,@x` would read back differently |
 | vector | `#(a b)` |
+| bytevector | `#u8(0 255)` |
 | procedure | `#<procedure car>` with its name; `#<procedure>` for an unnamed closure |
 
 Output is UTF-8.  Everything except the `#<...>` forms reads back as equal

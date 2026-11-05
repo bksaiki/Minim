@@ -7,8 +7,9 @@ doesn't require is in `beyond-r7rs.md`.
 
 ## Where things stand
 
-Minim has fixnums, chars, booleans, pairs, vectors, strings, symbols,
-closures, continuations, error objects, records, textual ports, and a Scheme
+Minim has fixnums, chars, booleans, pairs, vectors, strings, bytevectors,
+symbols, closures, continuations, error objects, records, textual and binary
+ports, and a Scheme
 prelude with the list library (`map`, `append`, `member`, `fold`, ...),
 `dynamic-wind`, exceptions, and parameters.  It has a precise generational
 collector, a reader and printer on ports, and an explicit-stack evaluator
@@ -24,20 +25,19 @@ Missing, roughly in order of how much it limits writing programs:
 | Gap | Example |
 |---|---|
 | Numbers | flonums, bignums, rationals |
-| Data types | bytevectors |
 
 **Coverage:** the names of each standard library (R7RS Appendix A) Minim
 provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 171 | 238 | |
+| `(scheme base)` | 192 | 238 | |
 | `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 22 | 22 | |
 | `(scheme complex)` | 0 | 6 | not defined |
 | `(scheme cxr)` | 24 | 24 | |
 | `(scheme eval)` | 2 | 2 | |
-| `(scheme file)` | 8 | 10 | binary files wait for bytevectors |
+| `(scheme file)` | 10 | 10 | |
 | `(scheme inexact)` | 0 | 12 | not defined |
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
@@ -136,10 +136,7 @@ the reader and printer on ports (`docs/design/ports.md`).
 
 Gaps:
 
-- Binary ports: `read-u8`, `peek-u8`, `u8-ready?`, `write-u8`,
-  `read-bytevector`, `write-bytevector`, bytevector ports, and
-  `open-binary-input-file` and `open-binary-output-file`.  They wait for
-  bytevectors (8).
+- Done: binary ports, over bytevectors and files (8).
 - Cycles: `write` prints cyclic data forever, where R7RS labels cycles
   (`#0=`, `#0#`); `write-shared` and reading labels are missing too (9).
 - `char-ready?` is always true: stdio can't tell whether input is waiting,
@@ -183,8 +180,8 @@ hand-written bignums or GMP (see Open items).
 
 - Done: records, `define-record-type`, as typed objects whose first word is
   their type descriptor (`docs/design/gc.md`).
-- Bytevectors (an unscanned typed object), and binary ports over them and
-  over files (`docs/design/ports.md`).
+- Done: bytevectors, an unscanned typed object, and binary ports over them
+  and over files (`docs/design/ports.md`).
 
 Depends on 3 (`define-record-type` is a macro).
 
@@ -212,8 +209,7 @@ strings, vectors, and control.  Mostly prelude procedures.
 - Done: `(scheme base)`'s vectors: `vector-copy`, `vector-copy!`,
   `vector-fill!`, `vector-append`, `string->vector`, `vector->string`,
   `vector-map`, and `vector-for-each`.
-- Planned: `(scheme lazy)` (`docs/todos/lazy.md`); bytevectors and binary
-  ports (`docs/todos/bytevectors.md`, milestone 8); flonums
+- Planned: `(scheme lazy)` (`docs/todos/lazy.md`); flonums
   (`docs/todos/flonums.md`, milestone 7).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
@@ -239,12 +235,12 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.6 Characters | 79 | 0 | 0 |
 | 6.7 Strings | 130 | 0 | 0 |
 | 6.8 Vectors | 42 | 1 | 0 |
-| 6.9 Bytevectors | 0 | 11 | 28 |
+| 6.9 Bytevectors | 31 | 0 | 8 |
 | 6.10 Control Features | 29 | 5 | 0 |
 | 6.11 Exceptions | 24 | 6 | 0 |
 | 6.12 Environments and evaluation | 1 | 1 | 2 |
-| 6.13 Input and output | 42 | 2 | 18 |
-| Read syntax | 76 | 6 | 11 |
+| 6.13 Input and output | 61 | 1 | 0 |
+| Read syntax | 78 | 6 | 9 |
 | Numeric syntax | 8 | 2 | 105 |
 | 6.14 System interface | 5 | 6 | 1 |
 | **Total** | 490 | 378 | 255 |
