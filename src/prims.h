@@ -45,6 +45,7 @@ extern const minim_prim_def minim_pair_prims[];
 extern const minim_prim_def minim_control_prims[];
 extern const minim_prim_def minim_equal_prims[];
 extern const minim_prim_def minim_vector_prims[];
+extern const minim_prim_def minim_bytevector_prims[];
 extern const minim_prim_def minim_string_prims[];
 extern const minim_prim_def minim_system_prims[];
 extern const minim_prim_def minim_syntax_prims[];

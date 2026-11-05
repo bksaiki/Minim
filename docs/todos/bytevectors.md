@@ -112,6 +112,11 @@ error.  The 6.9 report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'bytevectors|r7rs' && ctest --preset stress -R bytevectors
 ```
 
+**Done.**  6.9: 31 passed, none failed; its 8 errors are `#x41`, a hex
+number, for flonums' syntax.  `utf8->string` decodes from a malloc'd,
+NUL-terminated copy of the range, since `minim_utf8_decode` needs the NUL to
+stop a truncated sequence, and its embedded NULs decode as U+0000.
+
 ### Phase 3 - Bytevector ports
 
 - `include/minim.h`, `src/port.c`: `MINIM_PORT_BINARY`; byte reading and
