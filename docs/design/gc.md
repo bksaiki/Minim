@@ -14,7 +14,7 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 | `000` | fixnum | 61-bit signed integer, `n << 3` |
 | `001` | pair | `[car, cdr]` |
 | `011` | symbol | `[name, value, plist]` |
-| `101` | closure | `[code, env]` |
+| `101` | closure | `[code, env, name]` |
 | `110` | immediate | `#f`, `#t`, `'()`, void, eof, unbound, chars, forward marker |
 | `111` | typed object | first word is a header |
 | `010`, `100` | | reserved (flonum, -) |
@@ -30,7 +30,7 @@ pair     [ car | cdr ]                        16 B
 symbol   [ name : string | value | plist ]    24 B, rounded up to 32
 vector   [ header | e0 | e1 | ... ]           8 + 8n B, rounded up to 16
 string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
-closure  [ code : (case-)lambda form | env ]  16 B
+closure  [ code : (case-)lambda form | env | name ]  24 B, rounded up to 32
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 continuation [ header | k | stack | height ]  32 B
 error    [ header | kind | message | irritants ]  32 B
@@ -74,16 +74,19 @@ aligned chunks would each be mapped from the OS.
 
 A *space* is a chain of chunks in allocation order with a bump pointer into
 the last one.  Generation 0, the nursery, is one space; each old generation,
-1 to `max_generation`, has three:
+1 to `max_generation`, has one per kind:
 
 | Space | Generation | Holds |
 |---|---|---|
 | nursery | 0 | every newly allocated object, all kinds interleaved |
-| pair | 1 and up | pairs and closures |
+| pair | 1 and up | pairs |
+| closure | 1 and up | closures |
 | symbol | 1 and up | symbols |
 | typed | 1 and up | typed objects |
 
-Pairs and symbols have no header, so a space of mixed kinds can't be parsed.
+Pairs, symbols, and closures have no header, so a space of mixed kinds can't
+be parsed; kinds also differ in lifetime and access, so separating them
+keeps each space dense.
 The collector never parses the nursery; it sorts survivors by kind as it
 copies them, as Chez does.
 
@@ -117,9 +120,10 @@ Each collection is Cheney-style:
 2. Scans the remembered objects (below) that may point into the collected
    generations.
 3. Scans what was copied, from where the target's spaces ended before the
-   collection, until no scan cursor moves.  Pairs and closures are two traced
-   words, symbols three; a typed object is traced by its header (vector elements
-   are, string chars and a primitive's C function pointer aren't).
+   collection, until no scan cursor moves.  Pairs are two traced words,
+   symbols and closures three; a typed object is traced by its header
+   (vector elements are, string chars and a primitive's C function pointer
+   aren't).
 4. Releases the from-space chunks.
 
 **Write barrier.**  A collection must find every older object that points
