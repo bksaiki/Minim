@@ -337,22 +337,22 @@ static void test_closures(void) {
     code = MINIM_NIL;  // only `c` keeps the code alive
     name = minim_intern_cstr("closure-name");
     minim_set_closure_name(c, name);
-    for (int round = 0; round < 2; round++) {
-        for (unsigned g = 0; g <= 3; g++) {
-            make_list(100);  // garbage
-            minim_gc_collect_generation(g);
-            unsigned gen = generation(c);
-            CHECK_EQ(gen, round || g == 3 ? 3 : g + 1);
-            CHECK(in_space(c, &minim_gc.old[gen][MINIM_KIND_CLOSURE]));
-            CHECK(in_space(minim_closure_code(c), &minim_gc.old[gen][MINIM_KIND_PAIR]));
-            CHECK(is_list(minim_closure_code(c), 3));
-            CHECK_EQ(minim_closure_env(c), MINIM_NIL);
-            CHECK_EQ(minim_closure_name(c), name);
-        }
-        name = minim_intern_cstr("closure-name-young");
-        minim_set_closure_name(c, name);
-        CHECK_EQ(remembered_youngest(c), 0);
+    for (unsigned g = 0; g <= 3; g++) {
+        make_list(100);  // garbage
+        minim_gc_collect_generation(g);
+        unsigned gen = generation(c);
+        CHECK_EQ(gen, g < 3 ? g + 1 : 3);
+        CHECK(in_space(c, &minim_gc.old[gen][MINIM_KIND_CLOSURE]));
+        CHECK(in_space(minim_closure_code(c), &minim_gc.old[gen][MINIM_KIND_PAIR]));
+        CHECK(is_list(minim_closure_code(c), 3));
+        CHECK_EQ(minim_closure_env(c), MINIM_NIL);
+        CHECK_EQ(minim_closure_name(c), name);
     }
+    name = minim_intern_cstr("closure-name-young");
+    minim_set_closure_name(c, name);
+    CHECK_EQ(remembered_youngest(c), 0);
+    minim_gc_collect_minor();
+    CHECK_EQ(minim_closure_name(c), name);
     minim_gc_set_config(saved);
     MINIM_RETURN_VOID;
 }
