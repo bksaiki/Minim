@@ -87,6 +87,7 @@ minim_obj minim_make_closure(minim_obj code, minim_obj env) {
     minim_obj *p = minim_heap_alloc(MINIM_CLOSURE_SIZE);
     p[0] = code;
     p[1] = env;
+    p[2] = MINIM_FALSE;
     MINIM_RETURN((minim_obj)p | MINIM_TAG_CLOSURE);
 }
 

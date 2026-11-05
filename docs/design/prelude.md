@@ -111,6 +111,6 @@ each field's index once, when the definition runs.  An accessor or modifier
 checks the type with `%record?`, then reads or sets the field, raising
 `name: not a type` with the record as the irritant otherwise.
 
-Prelude procedures print as `#<procedure>`, since closures have no names.
-Errors inside them come from the primitives they call, except those of
+Prelude procedures print with their names, as in `arity mismatch:
+#<procedure read-char>`.  Errors inside them come from the primitives they call, except those of
 `raise`.

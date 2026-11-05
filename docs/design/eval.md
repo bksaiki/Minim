@@ -16,6 +16,13 @@ Scheme, where every procedure is a `case-lambda`, applying a closure takes a
 parameters accept the arguments' number, on the stack and through `apply`'s
 long path alike; `arity mismatch` if none does.
 
+A closure's name, a symbol or `#f`, is its own, not its form's.  Binding a
+variable to an unnamed closure names it after the variable: `define`,
+`define-values`, and `let-values` and `letrec-values` clauses, so `let` and
+named `let` too, all through `minim_env_define`.  A named closure keeps its
+name, and a call's arguments don't name: `(define g f)` leaves `f`'s name,
+and a `lambda` passed to `map` stays anonymous.
+
 ## Machine
 
 The registers `expr`, `env`, `val`, and `k` are locals of the machine loop,

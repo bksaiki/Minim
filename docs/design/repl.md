@@ -46,7 +46,7 @@ walks `x`, so `minim_write` is safe on error paths.
 | symbol | its name |
 | pair | `(a b . c)`; `(quote x)` as `'x`, and likewise `` ` ``, `,`, `,@`, also as a tail: `(a . ,x)`.  `(unquote @x)` isn't abbreviated, since `,@x` would read back differently |
 | vector | `#(a b)` |
-| procedure | `#<procedure>`, or `#<procedure car>` for a primitive |
+| procedure | `#<procedure car>` with its name; `#<procedure>` for an unnamed closure |
 
 Output is UTF-8.  Everything except the `#<...>` forms reads back as equal
 data.  Cyclic data loops forever.

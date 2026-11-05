@@ -16,15 +16,20 @@ static void test_closure(void) {
     minim_obj code = minim_cons(MINIM_NIL, MINIM_NIL);
     minim_obj env = MINIM_NIL;
     minim_obj c = MINIM_NIL;
-    MINIM_FRAME(&code, &env, &c);
+    minim_obj name = MINIM_NIL;
+    MINIM_FRAME(&code, &env, &c, &name);
     env = minim_make_vector(1, minim_fixnum(7));
     c = minim_make_closure(code, env);
+    CHECK_EQ(minim_closure_name(c), MINIM_FALSE);
+    name = minim_intern_cstr("f");
+    minim_set_closure_name(c, name);
 
     CHECK(minim_is_closure(c));
     CHECK(minim_is_procedure(c));
     CHECK_EQ(count_predicates(c), 1);
     CHECK_EQ(minim_closure_code(c), code);
     CHECK_EQ(minim_closure_env(c), env);
+    CHECK_EQ(minim_closure_name(c), name);
     MINIM_RETURN_VOID;
 }
 

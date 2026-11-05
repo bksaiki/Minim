@@ -18,10 +18,10 @@ error: write-char: not a char: 1
 error: read-string: not a non-negative fixnum: -1
 error: write-string: bad start: 2
 error: write-string: bad end: 4
-error: arity mismatch: #<procedure>
+error: arity mismatch: #<procedure read-char>
 error: read: not an open input port: #<output port string>
 error: write: not an open output port: #<input port string>
 error: display: not an open output port: #<output port string>
-error: arity mismatch: #<procedure>
+error: arity mismatch: #<procedure write>
 error: delete-file: not a string: x
 error: get-output-string: not a string output port: #<output port stdout>

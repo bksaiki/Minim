@@ -31,6 +31,11 @@ Not features, but needed as programs grow.
 - Ephemerons, entries whose key is held weakly, so a property keyed by an
   environment no longer in use is dropped.  A weak symbol table wouldn't:
   the symbol stays alive, and the entry holds the environment.
+- Done: closures named by the variables they are bound to
+  (`docs/design/eval.md`).
+- Spaces for typed objects by type, after Chez: strings hold no pointers
+  and need no scanning, vectors are mostly pointers, yet all share the
+  typed space (`docs/design/gc.md`).
 
 ## Libraries
 

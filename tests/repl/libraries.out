@@ -2,7 +2,7 @@
 (stack 6 5)
 (1)
 (2)
-#<procedure>
+#<procedure bump>
 "hello"
 (stack)
 3

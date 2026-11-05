@@ -1,7 +1,7 @@
 error: kar: not a <pare>: 5
 error: set-kar!: not a <pare>: (1 . 2)
 error: kdr: not a <pare>: #<node>
-error: arity mismatch: #<procedure>
+error: arity mismatch: #<procedure kons>
 error: define-record-type: no such field: z
 error: %make-record-type: bad fields: (x x)
 error: %make-record-type: not a symbol: "point"

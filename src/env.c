@@ -119,6 +119,8 @@ minim_obj minim_env_lookup(minim_obj env, minim_obj sym) {
 }
 
 void minim_env_define(minim_obj env, minim_obj sym, minim_obj val) {
+    if (minim_is_closure(val) && minim_closure_name(val) == MINIM_FALSE)
+        minim_set_closure_name(val, sym);
     if (minim_is_null(env)) {
         minim_set_symbol_value(sym, val);
         return;

@@ -20,3 +20,5 @@ error: bad syntax: (+ 1 . 2)
 error: unexpected )
 error: car: not a pair: 5
 error: arity mismatch: #<procedure void>
+error: arity mismatch: #<procedure f>
+error: arity mismatch: #<procedure read-char>
