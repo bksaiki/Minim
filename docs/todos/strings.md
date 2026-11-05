@@ -143,6 +143,11 @@ an empty one.  The 6.10 report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'strings|r7rs'
 ```
 
+**Done.**  Each converts its strings with `string->list` and applies `map`
+or `for-each`, which already stop at the shortest list; a non-string or a
+non-char result raises `string->list`'s or `list->string`'s error, as
+prelude procedures do.  6.10: 22 to 26 passed.
+
 ### Phase 4 - Full case mapping
 
 - `tools/unicode.py`, `src/unicode_data.inc` (regenerated), `src/unicode.h`,

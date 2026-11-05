@@ -88,3 +88,16 @@ u
 (string-fill! t 1)
 (string-copy! u 4 "abc")
 (string-copy! (symbol->string 'abc) 0 "x")
+
+; Mapping over chars, to the shortest string's length.
+(string-map char-upcase "abc")
+(string-map (lambda (a b) (if (char<? a b) a b)) "adcz" "bbb")
+(string-map char-upcase "")
+(let ((acc '()))
+  (string-for-each (lambda (c) (set! acc (cons c acc))) "abc")
+  acc)
+(let ((acc '()))
+  (string-for-each (lambda (a b) (set! acc (cons (string a b) acc))) "abc" "xy")
+  acc)
+(string-for-each char-upcase "")
+(string-map char-upcase 'abc)
