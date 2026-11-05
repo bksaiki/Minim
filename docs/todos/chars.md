@@ -143,6 +143,12 @@ updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'chars|libraries|r7rs' && ctest --preset stress -R chars
 ```
 
+**Done.**  6.6 passes all 79.  `(scheme r5rs)` gained R5RS's 12 of these
+names (all but `char-foldcase` and `digit-value`), so its coverage is 160 of
+217; its list in `scheme/standard.scm` was rewrapped.  `libraries.scm`'s
+`(import (scheme char))`, an unknown library before, now imports and uses
+it.  6.10's `(string-map char-foldcase ...)` waits for `string-map`.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (Chars: the new procedures, the Unicode

@@ -4,3 +4,6 @@ error: integer->char: not a scalar value: 1114112
 error: integer->char: not a fixnum: #\a
 error: char->integer: not a char: 97
 error: char<?: not a char: 1
+error: char-upcase: not a char: "a"
+error: digit-value: not a char: 1
+error: char-ci=?: not a char: 1

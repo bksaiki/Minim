@@ -80,6 +80,7 @@ bump
 (map car '((1) (2)))
 (list (file-exists? "libraries.scm") (procedure? load) (get-environment-variable "MINIM_UNSET"))
 (import (scheme char))
+(char-upcase #\a)
 
 ; Library files: an unknown library loads from its .sld file, once, and
 ; includes files relative to it.

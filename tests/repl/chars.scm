@@ -23,6 +23,25 @@
 (char<? #\z #\xe9)
 (char=? #\a)
 
+; Unicode properties, after (scheme char).
+(map char-alphabetic? (list #\a #\Λ #\๐ #\space))
+(map char-numeric? (list #\0 #\๐ #\a #\x2163))
+(map char-whitespace? (list #\space #\tab #\xA0 #\x3000 #\a))
+(map char-upper-case? (list #\A #\Λ #\a #\3))
+(map char-lower-case? (list #\a #\λ #\A #\3))
+(map digit-value (list #\0 #\9 #\x664 #\x1D7D9 #\a))
+
+; Simple case mappings, and comparisons by folding.
+(map char-upcase (list #\a #\λ #\xDF #\1))
+(map char-downcase (list #\A #\Λ))
+(map char-foldcase (list #\A #\Λ #\x17F))
+(char-ci=? #\a #\A #\a)
+(char-ci=? #\λ #\Λ)
+(char-ci<? #\a #\B #\c)
+(char-ci>? #\c #\B #\a)
+(char-ci<=? #\a #\A #\b)
+(char-ci>=? #\A #\b)
+
 ; Errors
 (integer->char 55296)
 (integer->char -1)
@@ -30,3 +49,6 @@
 (integer->char #\a)
 (char->integer 97)
 (char<? #\a 1)
+(char-upcase "a")
+(digit-value 1)
+(char-ci=? #\a 1)

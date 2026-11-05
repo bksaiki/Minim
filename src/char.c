@@ -10,6 +10,7 @@
 #include "heap.h"
 #include "minim.h"
 #include "prims.h"
+#include "unicode.h"
 
 size_t minim_utf8_decode(const unsigned char *s, uint32_t *c) {
     size_t len;
@@ -163,6 +164,85 @@ static minim_obj prim_char_ge(minim_obj *args, size_t n) {
     return compare(args, n, char_arg, ge, "char>=?: not a char");
 }
 
+// Whether the char `x` has the Unicode property `prop`; raises `msg` otherwise.
+static minim_obj has_prop(minim_obj x, unsigned prop, const char *msg) {
+    return boolean(minim_unicode_props((uint32_t)char_arg(x, msg)) & prop);
+}
+
+static minim_obj prim_char_alphabetic(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return has_prop(args[0], MINIM_UNICODE_ALPHABETIC, "char-alphabetic?: not a char");
+}
+
+static minim_obj prim_char_numeric(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return has_prop(args[0], MINIM_UNICODE_DIGIT, "char-numeric?: not a char");
+}
+
+static minim_obj prim_char_whitespace(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return has_prop(args[0], MINIM_UNICODE_SPACE, "char-whitespace?: not a char");
+}
+
+static minim_obj prim_char_upper_case(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return has_prop(args[0], MINIM_UNICODE_UPPER, "char-upper-case?: not a char");
+}
+
+static minim_obj prim_char_lower_case(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return has_prop(args[0], MINIM_UNICODE_LOWER, "char-lower-case?: not a char");
+}
+
+static minim_obj prim_digit_value(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    int d = minim_unicode_digit((uint32_t)char_arg(args[0], "digit-value: not a char"));
+    return d < 0 ? MINIM_FALSE : minim_fixnum(d);
+}
+
+static minim_obj prim_char_upcase(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    uint32_t c = (uint32_t)char_arg(args[0], "char-upcase: not a char");
+    return minim_char(minim_unicode_upcase(c));
+}
+
+static minim_obj prim_char_downcase(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    uint32_t c = (uint32_t)char_arg(args[0], "char-downcase: not a char");
+    return minim_char(minim_unicode_downcase(c));
+}
+
+static minim_obj prim_char_foldcase(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    uint32_t c = (uint32_t)char_arg(args[0], "char-foldcase: not a char");
+    return minim_char(minim_unicode_foldcase(c));
+}
+
+// The folded code point of the char `x`, for compare; raises `msg` otherwise.
+static intptr_t folded_char_arg(minim_obj x, const char *msg) {
+    return minim_unicode_foldcase((uint32_t)char_arg(x, msg));
+}
+
+static minim_obj prim_char_ci_eq(minim_obj *args, size_t n) {
+    return compare(args, n, folded_char_arg, eq, "char-ci=?: not a char");
+}
+
+static minim_obj prim_char_ci_lt(minim_obj *args, size_t n) {
+    return compare(args, n, folded_char_arg, lt, "char-ci<?: not a char");
+}
+
+static minim_obj prim_char_ci_gt(minim_obj *args, size_t n) {
+    return compare(args, n, folded_char_arg, gt, "char-ci>?: not a char");
+}
+
+static minim_obj prim_char_ci_le(minim_obj *args, size_t n) {
+    return compare(args, n, folded_char_arg, le, "char-ci<=?: not a char");
+}
+
+static minim_obj prim_char_ci_ge(minim_obj *args, size_t n) {
+    return compare(args, n, folded_char_arg, ge, "char-ci>=?: not a char");
+}
+
 const minim_prim_def minim_char_prims[] = {
     {"char?", prim_is_char, 1, 1},
     {"char->integer", prim_char_to_integer, 1, 1},
@@ -172,5 +252,19 @@ const minim_prim_def minim_char_prims[] = {
     {"char>?", prim_char_gt, 1, MINIM_VARIADIC},
     {"char<=?", prim_char_le, 1, MINIM_VARIADIC},
     {"char>=?", prim_char_ge, 1, MINIM_VARIADIC},
+    {"char-alphabetic?", prim_char_alphabetic, 1, 1},
+    {"char-numeric?", prim_char_numeric, 1, 1},
+    {"char-whitespace?", prim_char_whitespace, 1, 1},
+    {"char-upper-case?", prim_char_upper_case, 1, 1},
+    {"char-lower-case?", prim_char_lower_case, 1, 1},
+    {"digit-value", prim_digit_value, 1, 1},
+    {"char-upcase", prim_char_upcase, 1, 1},
+    {"char-downcase", prim_char_downcase, 1, 1},
+    {"char-foldcase", prim_char_foldcase, 1, 1},
+    {"char-ci=?", prim_char_ci_eq, 1, MINIM_VARIADIC},
+    {"char-ci<?", prim_char_ci_lt, 1, MINIM_VARIADIC},
+    {"char-ci>?", prim_char_ci_gt, 1, MINIM_VARIADIC},
+    {"char-ci<=?", prim_char_ci_le, 1, MINIM_VARIADIC},
+    {"char-ci>=?", prim_char_ci_ge, 1, MINIM_VARIADIC},
     {NULL, NULL, 0, 0},
 };
