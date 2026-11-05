@@ -155,6 +155,16 @@ static void write_vector(sink *out, minim_obj v, bool display) {
     put(out, ')');
 }
 
+// Writes `#<procedure name>`, or `#<procedure>` if `name` is #f.
+static void write_procedure(sink *out, minim_obj name) {
+    put_ascii(out, "#<procedure");
+    if (name != MINIM_FALSE) {
+        put(out, ' ');
+        write_chars(out, minim_symbol_name(name));
+    }
+    put(out, '>');
+}
+
 // Writes the record `r` as `#<name>`, or an rtd as `#<record-type name>`, with
 // one pair of angle brackets stripped from `name`.
 static void write_record(sink *out, minim_obj r) {
@@ -197,7 +207,7 @@ static void print(sink *out, minim_obj x, bool display) {
     else if (minim_is_string(x))
         write_string(out, x);
     else if (minim_is_closure(x))
-        put_ascii(out, "#<procedure>");
+        write_procedure(out, minim_closure_name(x));
     else if (minim_is_continuation(x))
         put_ascii(out, "#<continuation>");
     else if (minim_is_port(x)) {
@@ -212,11 +222,8 @@ static void print(sink *out, minim_obj x, bool display) {
         print(out, minim_error_object_message(x), true);
         put(out, '>');
     }
-    else if (minim_is_primitive(x)) {
-        put_ascii(out, "#<procedure ");
-        write_chars(out, minim_symbol_name(minim_primitive_name(x)));
-        put(out, '>');
-    }
+    else if (minim_is_primitive(x))
+        write_procedure(out, minim_primitive_name(x));
     else if (x == MINIM_TRUE)
         put_ascii(out, "#t");
     else if (x == MINIM_FALSE)

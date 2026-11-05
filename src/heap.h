@@ -82,7 +82,8 @@ static inline unsigned char *minim_chunk_end(const minim_space *s, const minim_c
 
 /** Kinds of object, each with its own space in every old generation. */
 enum {
-    MINIM_KIND_PAIR,  ///< pairs and closures
+    MINIM_KIND_PAIR,
+    MINIM_KIND_CLOSURE,
     MINIM_KIND_SYMBOL,
     MINIM_KIND_TYPED,
     MINIM_KIND_COUNT,

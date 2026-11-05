@@ -83,7 +83,7 @@ enum {
 enum {
     MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
     MINIM_SYMBOL_SIZE = 3 * sizeof(minim_obj),
-    MINIM_CLOSURE_SIZE = 2 * sizeof(minim_obj),
+    MINIM_CLOSURE_SIZE = 3 * sizeof(minim_obj),
     MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
     MINIM_ERROR_OBJECT_SIZE = 4 * sizeof(minim_obj),
     MINIM_PORT_SIZE = 6 * sizeof(minim_obj),
@@ -531,6 +531,19 @@ static inline minim_obj minim_closure_code(minim_obj c) {
 static inline minim_obj minim_closure_env(minim_obj c) {
     assert(minim_is_closure(c));
     return ((const minim_obj *)(c - MINIM_TAG_CLOSURE))[1];
+}
+
+/** Name of the closure `c`: a symbol, or #f. */
+static inline minim_obj minim_closure_name(minim_obj c) {
+    assert(minim_is_closure(c));
+    return ((const minim_obj *)(c - MINIM_TAG_CLOSURE))[2];
+}
+
+/** Sets the name of the closure `c` to `name`, a symbol or #f. */
+static inline void minim_set_closure_name(minim_obj c, minim_obj name) {
+    assert(minim_is_closure(c));
+    ((minim_obj *)(c - MINIM_TAG_CLOSURE))[2] = name;
+    minim_gc_write(c, name);
 }
 
 /** C function of a primitive, called with its `n` arguments. */

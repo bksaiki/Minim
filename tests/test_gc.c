@@ -316,6 +316,47 @@ static void test_remembered(void) {
     MINIM_RETURN_VOID;
 }
 
+// Whether `x` is in the space `s`.
+static bool in_space(minim_obj x, const minim_space *s) {
+    for (minim_chunk *c = s->first; c != NULL; c = c == s->last ? NULL : c->next) {
+        if (c == minim_chunk_of(x))
+            return true;
+    }
+    return false;
+}
+
+// A closure and its name survive collections, in a space of their own; once
+// old, it keeps a young name through the barrier.
+static void test_closures(void) {
+    minim_gc_config saved = use_generations(3);
+    minim_obj code = make_list(3);
+    minim_obj c = MINIM_NIL;
+    minim_obj name = MINIM_NIL;
+    MINIM_FRAME(&code, &c, &name);
+    c = minim_make_closure(code, MINIM_NIL);
+    code = MINIM_NIL;  // only `c` keeps the code alive
+    name = minim_intern_cstr("closure-name");
+    minim_set_closure_name(c, name);
+    for (int round = 0; round < 2; round++) {
+        for (unsigned g = 0; g <= 3; g++) {
+            make_list(100);  // garbage
+            minim_gc_collect_generation(g);
+            unsigned gen = generation(c);
+            CHECK_EQ(gen, round || g == 3 ? 3 : g + 1);
+            CHECK(in_space(c, &minim_gc.old[gen][MINIM_KIND_CLOSURE]));
+            CHECK(in_space(minim_closure_code(c), &minim_gc.old[gen][MINIM_KIND_PAIR]));
+            CHECK(is_list(minim_closure_code(c), 3));
+            CHECK_EQ(minim_closure_env(c), MINIM_NIL);
+            CHECK_EQ(minim_closure_name(c), name);
+        }
+        name = minim_intern_cstr("closure-name-young");
+        minim_set_closure_name(c, name);
+        CHECK_EQ(remembered_youngest(c), 0);
+    }
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 // A new rtd named `name` with the fields `x` and `y`.
 static minim_obj make_point_type(const char *name) {
     static const char *const fields[] = {"x", "y"};
@@ -385,6 +426,7 @@ int main(void) {
     test_schedule();
     test_older_to_younger();
     test_remembered();
+    test_closures();
     test_records();
     minim_shutdown();
     return test_result();

@@ -33,90 +33,102 @@ procedures became `case-lambda`s, this got worse:
 | `(define (f x) x)`, then `f` | `#<procedure>` | `#<procedure>` |
 | `(f 1 2)` | `arity mismatch: #<procedure>` | the same |
 
-A closure is `[code | env]` (`gc.md`), its code its `lambda` or
-`case-lambda` form, shared by every closure the form makes (`eval.md`).
+A closure is `[code | env]` (`gc.md`): its code its `lambda` or
+`case-lambda` form, R7RS's syntax, shared by every closure the form makes
+(`eval.md`).  Closures live in the pair space, which holds only two-word
+objects.
 
 ## Design
 
-After Chez Scheme, where a procedure's name is in its code object, shared by
-its closures, and inferred from what binds it: **a name is part of the
-form.**  `case-lambda` takes an optional name, a symbol before its clauses,
-unambiguous since clauses are lists: `(case-lambda f ((x) body ...))`.  A
-named procedure is a `case-lambda`, as every procedure is in Chez; `lambda`
-stays for anonymous ones.  Closures keep their two words, and naming costs
-nothing per closure.
+**A closure has a name**, its own: `[code | env | name]`, 24 B, rounded to
+32, the name a symbol or `#f`.  A name is per closure, not per form, so two
+closures of one `lambda` may be named differently.  The core forms stay
+R7RS's.
 
-**The evaluator** skips a `case-lambda`'s name when it checks and chooses
-clauses.  `minim_closure_name(c)` (`minim.h`) is the name, or `#f`.
+**Closures get a space of their own** in the old generations, beside pairs,
+symbols, and typed objects: types differ in size, lifetime, and access
+pattern, so mixing them costs locality, and the collector sizes and scans a
+space by its kind.  `minim_closure_name(c)`
+and `minim_set_closure_name(c, name)` (`minim.h`), the latter through the
+write barrier.
+
+**Binding names an unnamed closure.**  When `define`, `define-values`, or a
+`let-values` or `letrec-values` clause binds a variable to a closure
+without a name, the closure takes the variable's name: all go through
+`minim_env_define`.  A named closure keeps its name.  Arguments don't name:
+a call's parameters are bound by `minim_env_extend`, so a procedure passed
+to `map` stays as it was.
+
+```scheme
+(define (make-adder n) (lambda (x) (+ x n)))
+(define add1 (make-adder 1))     ; #<procedure add1>
+(define add2 (make-adder 2))     ; #<procedure add2>
+(define g add1)                  ; #<procedure add1>: already named
+(let loop ((i 0)) loop)          ; #<procedure loop>
+```
+
+The name is the variable's label: a local's fresh name prints as its
+identifier does, and so does a definition's fresh global.
 
 **The printer** prints a named closure as `#<procedure f>`, as a primitive;
 so do errors, which print their irritants: `arity mismatch: #<procedure
 read-char>`.
 
-**The expander names** a procedure bound to a single identifier where its
-init expands to a `lambda` or unnamed `case-lambda`, as Chez infers names:
-
-- a top-level, library, or internal `define`, `(define (f x) ...)` and
-  `(define f (lambda ...))` alike;
-- a `let-values` or `letrec-values` clause with one formal, so `let`,
-  `letrec`, and named `let`'s loop.
-
-`(lambda params body ...)` becomes `(case-lambda f (params body ...))`; an
-unnamed `case-lambda` takes the name; a named one keeps its own.  The name
-is the identifier's label: a local's fresh name prints as the identifier
-does.
-
 ## Phases
 
-### Phase 1 - Names in the evaluator and printer
+### Phase 1 - The closure's name
 
-- `src/eval.c`: `case-lambda`'s optional name, skipped by
-  `valid_lambda_clauses` and `clause_for`.
-- `include/minim.h`, `src/object.c`: `minim_closure_name`.
-- `src/print.c`: `#<procedure f>` for a named closure.
+- `include/minim.h`, `src/object.c`: `MINIM_CLOSURE_SIZE` 3 words, a new
+  closure's name `#f`; `minim_closure_name`, `minim_set_closure_name`.
+- `src/heap.h`, `src/gc.c`: a closure space, `MINIM_KIND_CLOSURE`: copying
+  a closure into it, its size, and its three traced fields.
+- `src/print.c`: `#<procedure f>` for a named closure, with primitives
+  through one helper.
 
-Separate because it is the representation, with nothing naming procedures
-yet: hand-written core forms test it.
+Separate because it changes a heap layout and the collector, with nothing
+naming closures yet.
 
-Tests: `tests/test_eval.c` (core forms through `minim_eval_expanded`): a
-named `case-lambda` applies like an unnamed one; a name that isn't a symbol,
-or a name with no clauses after it, is `bad syntax`.  `tests/test_print.c`:
-a named closure prints its name, an unnamed one `#<procedure>`;
-`minim_closure_name` of each.
+**Done.**  `object_size` switches on the tag; `scan` maps a kind to its tag
+by table.  `test_gc`'s `test_closures` covers survival through generations
+0–3, both spaces, and the barrier (an old closure given a young name stays
+remembered and correct through another round).  No byte counts changed: the
+counting tests use only pairs.
+
+Tests: `tests/test_object.c`: a new closure's name is `#f`; setting it.
+`tests/test_gc.c`: a closure and its name survive collections, young and
+promoted; an old closure's young name (the barrier); closures and pairs in
+their own spaces.  `tests/test_print.c`: a named and an unnamed closure.
+The tests counting live bytes updated for the larger closures.
 
 ```sh
-cmake --build --preset dev && ctest --preset dev -R 'eval|print' && ctest --preset stress -R 'eval|print'
+cmake --build --preset dev && ctest --preset dev -R 'object|gc|print|heap' && ctest --preset stress -R 'object|gc|print'
 ```
 
-### Phase 2 - Names from the expander
+### Phase 2 - Binding names closures
 
-- `scheme/expander.scm`: naming a `define`'s, and a single-formal
-  `let-values` or `letrec-values` clause's, `lambda` or unnamed
-  `case-lambda`, at top level, in libraries (`scheme/libraries.scm`), and in
-  bodies.  `scheme/prelude.boot` regenerated: the prelude's procedures are
-  named too.
+- `src/env.c`: `minim_env_define` names an unnamed closure.
 
-Separate because it is where names come from, on Phase 1.
+Separate because it is the behavior, on Phase 1.
 
-Tests (`tests/repl/expansion.scm`, `core.scm`): a `define`'s procedure
-prints its name; so do a `let`'s, a `letrec`'s, and a named `let`'s loop; an
-anonymous `lambda` stays unnamed; `(define g f)` keeps `f`'s name; a
-`case-lambda`'s name kept over the binding's; `(read-char p 1)` is `arity
-mismatch: #<procedure read-char>`.  Every REPL test's output updated where a
-procedure prints.  The conformance reports updated.  Measure `bench/run.sh`
-against `main`: named procedures now apply through `case-lambda`'s clause
-loop.
+Tests (`tests/repl/core.scm`): a `define`'s procedure prints its name, as
+do `make-adder`'s two closures under two names; `(define g f)` keeps `f`'s;
+a `let`'s, a `letrec`'s, a named `let`'s, and a `define-values`'
+procedures; an internal `define`'s; an anonymous `lambda` printed directly
+stays unnamed, as does one passed as an argument; `(read-char p 1)` is
+`arity mismatch: #<procedure read-char>`.  Every REPL test's output updated
+where a procedure prints.  The conformance reports updated.  Measure
+`bench/run.sh` against `main`: closures are larger, and bindings check
+their values.
 
 ```sh
-cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'expansion|core|boot'
+cmake --build --preset dev && ctest --preset dev && ctest --preset stress -R 'core|gc|eval'
 ```
 
 ### After the last phase
 
-Sync the docs: `eval.md` (`case-lambda`'s name; a closure's name),
-`macros.md` (which bindings name their procedures), `repl.md` (how named
-closures print), and `gc.md` if the closure layout's note mentions the
-form.
+Sync the docs: `gc.md` (the closure layout and space), `eval.md` (a
+closure's name, and binding naming it), `repl.md` (how named closures
+print), `primitives.md` if it mentions closures' printing.
 
 ```sh
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
@@ -125,24 +137,15 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### Where does the name live?
+### Should a call's parameters name closures too?
 
-- **In the form, `case-lambda`'s** (planned): no change to closures or the
-  collector, nothing per closure, a name per definition as Chez's.  But
-  every named procedure's expansion becomes a `case-lambda`, longer to read.
-- **A wrapper core form, `(named f (lambda ...))`**: `lambda` stays as
-  written, but one more core form, and one more step to a named closure's
-  clauses.
-- **A third closure word**: a name per closure, so set at run time.  But
-  closures share the pair space, which assumes a pair's size: they'd need a
-  space of their own, and each would grow from 16 to 32 bytes.
+Not provisionally: `(map (lambda (x) x) l)` would name the procedure `f`,
+`map`'s parameter, which says nothing.  Reopen if anonymous procedures stay
+common in error messages.
 
-Provisionally the form.  Reopen with `compile.md`, whose code objects could
-hold the name as Chez's do.
+### Should typed objects get spaces by type?
 
-### Which bindings name a procedure?
-
-Provisionally `define` and single-formal `let-values` and `letrec-values`
-clauses, as Chez infers from `define`, `let`, and `letrec`.  Not `set!`, nor
-`define-values`, whose values aren't known to be procedures.  Reopen if
-anonymous procedures stay common in error messages.
+`MINIM_KIND_TYPED` holds vectors, strings, records, primitives, ports, and
+error objects, whose footprints differ: strings hold no pointers and need no
+scanning, vectors are mostly pointers.  Chez splits spaces along these lines.
+Out of scope here; a follow-up branch on the collector.

@@ -127,11 +127,15 @@ static minim_obj nothing(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
-// A closure prints anonymously; a primitive, with its name.
+// A procedure prints with its name, if it has one.
 static void test_procedures(void) {
     minim_obj p = minim_make_closure(MINIM_NIL, MINIM_NIL);
-    MINIM_FRAME(&p);
+    minim_obj name = MINIM_NIL;
+    MINIM_FRAME(&p, &name);
     CHECK(prints_as(p, "#<procedure>"));
+    name = minim_intern_cstr("f");
+    minim_set_closure_name(p, name);
+    CHECK(prints_as(p, "#<procedure f>"));
     p = minim_intern_cstr("nothing");
     p = minim_make_primitive(p, nothing, 0, 0);
     CHECK(prints_as(p, "#<procedure nothing>"));
