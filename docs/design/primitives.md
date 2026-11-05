@@ -73,6 +73,17 @@ pointers (`minim_prim_apply`, ...) and never calls them:
 | `(char->integer c)` | the code point of `c` |
 | `(integer->char k)` | the char with code point `k`, which must be a Unicode scalar value |
 | `(char=? c ...)`, `(char<? ...)`, `(char>? ...)`, `(char<=? ...)`, `(char>=? ...)` | whether each adjacent pair is in order, by code point |
+| `(char-ci=? c ...)`, `(char-ci<? ...)`, ... | the same, by simple case folding |
+| `(char-alphabetic? c)`, `(char-upper-case? c)`, `(char-lower-case? c)`, `(char-whitespace? c)` | Unicode's `Alphabetic`, `Uppercase`, `Lowercase`, `White_Space` |
+| `(char-numeric? c)` | whether `c` is a decimal digit, general category `Nd` |
+| `(digit-value c)` | the decimal digit `c`'s value, 0 to 9, or `#f` |
+| `(char-upcase c)`, `(char-downcase c)`, `(char-foldcase c)` | Unicode's simple mappings |
+
+Unicode data comes from tables (`src/unicode_data.inc`, read by
+`src/unicode.c`) generated from the Unicode Character Database by
+`tools/unicode.py UCD_DIR > src/unicode_data.inc`; regenerating for a new
+Unicode version is rerunning it.  Lookups are binary searches over runs of
+code points with the same properties and over rows of case mappings.
 
 ### Pairs and lists
 

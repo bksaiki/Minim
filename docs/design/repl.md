@@ -41,7 +41,7 @@ walks `x`, so `minim_write` is safe on error paths.
 | fixnum | decimal |
 | `#t` / `#f`, `'()` | `#t` / `#f`, `()` |
 | void / eof / unbound | `#<void>` / `#<eof>` / `#<unbound>` |
-| char | `#\a`; named chars by name; other control chars as `#\x7f` |
+| char | `#\a`; R7RS's named chars by name (`#\null`, `#\delete`, ...); other control chars as `#\x1` |
 | string | `"..."` with `\"`, `\\`, `\n`, `\t`; other control chars as `\x1;` |
 | symbol | its name |
 | pair | `(a b . c)`; `(quote x)` as `'x`, and likewise `` ` ``, `,`, `,@`, also as a tail: `(a . ,x)`.  `(unquote @x)` isn't abbreviated, since `,@x` would read back differently |

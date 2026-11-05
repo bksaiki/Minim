@@ -66,7 +66,7 @@ Not in R7RS-small; in R7RS-large and SRFIs.
 ## Out of scope for now
 
 Threads, a foreign function interface, a native or bytecode compiler, and
-Unicode case folding and normalization.
+Unicode normalization.
 
 Unchecked primitives, as Chez's `#3%car`: a type check is a small part of an
 interpreted call, and unchecked access gives up memory safety.  Revisit with
