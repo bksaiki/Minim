@@ -168,6 +168,17 @@ length-changing fold.  The 6.7 and 6.4 reports updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'unicode|strings|r7rs' && ctest --preset stress -R strings
 ```
 
+**Done.**  6.7 passes all 130; 6.4: 60 to 61 passed.  The full mappings are
+`fulls`, 105 rows with all three mappings 0-padded, for the code points
+whose full mapping isn't the simple one; property ranges grew to 2,695 with
+`Cased` and `Case_Ignorable`; the tables are about 100 KB.  The full
+mappings take a code point in its string, `(s, n, i)`, since lowercasing a
+sigma depends on its neighbors; `unicode.c` handles `Final_Sigma`.
+`string.c`'s `map_case` sizes the result in a first pass, and
+`string_compare_ci` folds both strings a code point at a time, so the
+comparisons don't allocate.  `(scheme r5rs)` gained the five `string-ci`
+comparisons.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (Strings: the new procedures, ranges, full

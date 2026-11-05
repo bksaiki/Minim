@@ -26,8 +26,9 @@
 (%define-system-library
  '(scheme char)
  '(char-alphabetic? char-ci<=? char-ci<? char-ci=? char-ci>=? char-ci>? char-downcase
-   char-foldcase char-lower-case? char-numeric? char-upcase char-upper-case? char-whitespace?
-   digit-value))
+   char-foldcase char-lower-case? char-numeric? char-upcase char-upper-case?
+   char-whitespace? digit-value string-ci<=? string-ci<? string-ci=? string-ci>=?
+   string-ci>? string-downcase string-foldcase string-upcase))
 (%define-system-library
  '(scheme cxr)
  '(caaar caadr cadar caddr cdaar cdadr cddar cdddr caaaar caaadr caadar caaddr cadaar cadadr
@@ -62,11 +63,11 @@
    member memq memv newline not null-environment null? number->string open-input-file
    open-output-file or output-port? pair? peek-char procedure? quasiquote quote quotient
    read read-char remainder reverse scheme-report-environment set! set-car! set-cdr! string
-   string->list string->symbol string-append string-copy string-fill! string-length
-   string-ref string-set! string<=? string<? string=? string>=? string>? string? substring
-   symbol->string symbol? syntax-rules unquote unquote-splicing values vector vector->list
-   vector-length vector-ref vector-set! vector? with-input-from-file with-output-to-file
-   write write-char zero?))
+   string->list string->symbol string-append string-ci<=? string-ci<? string-ci=?
+   string-ci>=? string-ci>? string-copy string-fill! string-length string-ref string-set!
+   string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
+   syntax-rules unquote unquote-splicing values vector vector->list vector-length vector-ref
+   vector-set! vector? with-input-from-file with-output-to-file write write-char zero?))
 
 ;; (minim), after Chez's (chezscheme): every public system binding, the
 ;; standard libraries' names and Minim's own.  R7RS puts each name in one

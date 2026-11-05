@@ -1,6 +1,5 @@
 FAIL 1129 (make-list 2 3) raised ("unbound variable" make-list)
 FAIL 1151 (list-ref '(a b c d) (exact (round 1.8))) raised ("unbound variable" exact)
 FAIL 1154 (let ((lst (list 0 '(2 2 2 2) "Anna"))) (list-set! lst 1 '("Sue" "Sue")) lst) raised ("unbound variable" list-set!)
-FAIL 1164 (member "B" '("a" "b" "c") string-ci=?) raised ("unbound variable" string-ci=?)
 FAIL 1175 (assoc 2.0 '((1 1) (2 4) (3 9)) =) raised ("unbound variable" 2.0)
-6.4 Lists: 60 passed, 5 failed, 0 errors
+6.4 Lists: 61 passed, 4 failed, 0 errors
