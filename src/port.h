@@ -12,10 +12,11 @@
 void minim_port_init(void);
 
 /**
- * New port of direction `dir` over the file `path`, closed when collected.
- * Raises a file error, `msg`, if it can't open it.
+ * New port with `flags`, a direction and MINIM_PORT_BINARY or not, over the
+ * file `path`, closed when collected.  Raises a file error, `msg`, if it can't
+ * open it.
  */
-minim_obj minim_port_open_file(minim_obj path, unsigned dir, const char *msg);
+minim_obj minim_port_open_file(minim_obj path, unsigned flags, const char *msg);
 
 /** Pushes back `c`, the last char read from the input port `p`, or -1 for its end. */
 void minim_port_unread_char(minim_obj p, int32_t c);

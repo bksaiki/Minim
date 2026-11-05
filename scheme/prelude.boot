@@ -180,7 +180,7 @@
 (%define-system-library '(scheme char) '(char-alphabetic? char-ci<=? char-ci<? char-ci=? char-ci>=? char-ci>? char-downcase char-foldcase char-lower-case? char-numeric? char-upcase char-upper-case? char-whitespace? digit-value string-ci<=? string-ci<? string-ci=? string-ci>=? string-ci>? string-downcase string-foldcase string-upcase))
 (%define-system-library '(scheme cxr) '(caaar caadr cadar caddr cdaar cdadr cddar cdddr caaaar caaadr caadar caaddr cadaar cadadr caddar cadddr cdaaar cdaadr cdadar cdaddr cddaar cddadr cdddar cddddr))
 (%define-system-library '(scheme eval) '(environment eval))
-(%define-system-library '(scheme file) '(call-with-input-file call-with-output-file delete-file file-exists? open-input-file open-output-file with-input-from-file with-output-to-file))
+(%define-system-library '(scheme file) '(call-with-input-file call-with-output-file delete-file file-exists? open-binary-input-file open-binary-output-file open-input-file open-output-file with-input-from-file with-output-to-file))
 (%define-system-library '(scheme load) '(load))
 (%define-system-library '(scheme process-context) '(command-line emergency-exit exit get-environment-variable))
 (%define-system-library '(scheme read) '(read))

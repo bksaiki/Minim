@@ -1,7 +1,7 @@
 /**
  * @file
- * Ports: textual input and output over files and strings, binary over
- * bytevectors, and their primitives.
+ * Ports: textual input and output over files and strings, binary over files
+ * and bytevectors, and their primitives.
  */
 
 #include "port.h"
@@ -93,14 +93,17 @@ static void close_dead(minim_obj p) {
         fclose(f);
 }
 
-minim_obj minim_port_open_file(minim_obj path, unsigned dir, const char *msg) {
+minim_obj minim_port_open_file(minim_obj path, unsigned flags, const char *msg) {
+    static const char *const modes[2][2] = {{"w", "wb"}, {"r", "rb"}};
+    bool input = flags & MINIM_PORT_INPUT;
+    bool binary = flags & MINIM_PORT_BINARY;
     char *name = minim_string_to_utf8(path);
-    FILE *f = minim_fopen(name, dir == MINIM_PORT_INPUT ? "r" : "w");
+    FILE *f = minim_fopen(name, modes[input][binary]);
     free(name);
     if (f == NULL)
         minim_error_of_kind(MINIM_ERROR_FILE, msg, path);
     minim_obj s = copy_prefix(path, minim_string_length(path), minim_string_length(path));
-    minim_obj p = make_port(dir | MINIM_PORT_FILE, MINIM_FALSE, s, f);
+    minim_obj p = make_port(flags | MINIM_PORT_FILE, MINIM_FALSE, s, f);
     minim_gc_add_destructor(p, close_dead);
     return p;
 }
@@ -159,6 +162,10 @@ static int32_t read_byte(minim_obj p) {
     int32_t ahead = take_lookahead(p);
     if (ahead != NO_LOOKAHEAD)
         return ahead;
+    if (minim_port_flags(p) & MINIM_PORT_FILE) {
+        int b = getc(minim_port_file(p));
+        return b == EOF ? -1 : b;
+    }
     minim_obj *f = fields(p);
     size_t i = (size_t)minim_fixnum_value(f[3]);
     if (i == minim_bytevector_length(f[1]))
@@ -183,8 +190,13 @@ static size_t reserve_bytes(const minim_obj *p, size_t n) {
     return len;
 }
 
-// Writes the byte `b` to the bytevector output port `*p`, which the caller roots.
+// Writes the byte `b` to the open binary output port `*p`, which the caller
+// roots.
 static void write_byte(const minim_obj *p, uint8_t b) {
+    if (minim_port_flags(*p) & MINIM_PORT_FILE) {
+        putc(b, minim_port_file(*p));
+        return;
+    }
     size_t i = reserve_bytes(p, 1);
     minim_bytevector_data(fields(*p)[1])[i] = b;
 }
@@ -467,6 +479,20 @@ static minim_obj prim_open_input_bytevector(minim_obj *args, size_t n) {
     return make_port(MINIM_PORT_INPUT | MINIM_PORT_BINARY, bv, bytevector_name, NULL);
 }
 
+static minim_obj prim_open_binary_input_file(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(minim_is_string(args[0]), "open-binary-input-file: not a string", args[0]);
+    return minim_port_open_file(args[0], MINIM_PORT_INPUT | MINIM_PORT_BINARY,
+                                "open-binary-input-file: cannot open file");
+}
+
+static minim_obj prim_open_binary_output_file(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check(minim_is_string(args[0]), "open-binary-output-file: not a string", args[0]);
+    return minim_port_open_file(args[0], MINIM_PORT_OUTPUT | MINIM_PORT_BINARY,
+                                "open-binary-output-file: cannot open file");
+}
+
 static minim_obj prim_open_output_bytevector(minim_obj *args, size_t n) {
     MINIM_UNUSED(args, n);
     return open_output_bytevector();
@@ -557,9 +583,14 @@ static minim_obj prim_write_bytevector(minim_obj *args, size_t n) {
                "write-bytevector: not an open binary output port");
     range r = range_args(args, n, 2, minim_bytevector_length(args[0]),
                          "write-bytevector: bad index");
-    size_t at = reserve_bytes(&args[1], r.end - r.start);
+    size_t count = r.end - r.start;
+    if (minim_port_flags(args[1]) & MINIM_PORT_FILE) {
+        fwrite(minim_bytevector_data(args[0]) + r.start, 1, count, minim_port_file(args[1]));
+        return MINIM_VOID;
+    }
+    size_t at = reserve_bytes(&args[1], count);
     memcpy(minim_bytevector_data(fields(args[1])[1]) + at, minim_bytevector_data(args[0]) + r.start,
-           r.end - r.start);
+           count);
     return MINIM_VOID;
 }
 
@@ -614,6 +645,8 @@ const minim_prim_def minim_port_prims[] = {
     {"open-input-bytevector", prim_open_input_bytevector, 1, 1},
     {"open-output-bytevector", prim_open_output_bytevector, 0, 0},
     {"get-output-bytevector", prim_get_output_bytevector, 1, 1},
+    {"open-binary-input-file", prim_open_binary_input_file, 1, 1},
+    {"open-binary-output-file", prim_open_binary_output_file, 1, 1},
     {"%read-u8", prim_read_u8, 1, 1},
     {"%peek-u8", prim_peek_u8, 1, 1},
     {"%u8-ready?", prim_is_u8_ready, 1, 1},

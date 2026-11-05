@@ -42,8 +42,9 @@
 (%define-system-library '(scheme eval) '(environment eval))
 (%define-system-library
  '(scheme file)
- '(call-with-input-file call-with-output-file delete-file file-exists? open-input-file
-   open-output-file with-input-from-file with-output-to-file))
+ '(call-with-input-file call-with-output-file delete-file file-exists?
+   open-binary-input-file open-binary-output-file open-input-file open-output-file
+   with-input-from-file with-output-to-file))
 (%define-system-library '(scheme load) '(load))
 (%define-system-library
  '(scheme process-context)

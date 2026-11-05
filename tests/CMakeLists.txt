@@ -149,6 +149,8 @@ minim_add_repl_test(values)
 minim_add_repl_test(vectors)
 
 minim_add_script_test(fail STATUS 1)
+minim_add_script_test(binary-files ARGS binary-files.scm
+    ${CMAKE_CURRENT_BINARY_DIR}/binary-files.bin)
 minim_add_script_test(gc-settings NO_STRESS)  # the defaults
 minim_add_script_test(gc-settings-env ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=16 MINIM_GC_MAX_GENERATION=3)

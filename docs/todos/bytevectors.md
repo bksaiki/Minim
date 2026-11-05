@@ -165,6 +165,15 @@ file port.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'ports|r7rs' && ctest --preset stress -R ports
 ```
 
+**Done.**  The test is a script, `tests/scripts/binary-files.scm`, not
+`ports.scm`: it writes to a path in the build directory, given on its
+command line, and deletes it, so the source tree gets no files.
+`minim_port_open_file` takes flags, a direction and maybe
+`MINIM_PORT_BINARY`, and opens binary files in `"rb"` or `"wb"`, so Windows
+doesn't translate line endings.  Binary file ports read with `getc`, and
+write with `putc` and `fwrite`.  No report changed: the suite has no binary
+file tests.
+
 ### After the last phase
 
 Sync the docs: `gc.md` (the layout), `ports.md` (binary ports, no longer
