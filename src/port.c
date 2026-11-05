@@ -132,21 +132,22 @@ void minim_port_close(minim_obj p) {
     f[5] = (minim_obj)NULL;
 }
 
-// Takes the lookahead of the port `p`: a char or byte, -1 for the end, or
-// NO_LOOKAHEAD if there is none.
-static int32_t take_lookahead(minim_obj p) {
+// Takes the lookahead of the port `p` into `*c`: a char or byte, or -1 for the
+// end; returns whether there was one.
+static bool take_lookahead(minim_obj p, int32_t *c) {
     minim_obj *f = fields(p);
     intptr_t ahead = minim_fixnum_value(f[4]);
     if (ahead == NO_LOOKAHEAD)
-        return NO_LOOKAHEAD;
+        return false;
     f[4] = minim_fixnum(NO_LOOKAHEAD);
-    return ahead == EOF_LOOKAHEAD ? -1 : (int32_t)ahead;
+    *c = ahead == EOF_LOOKAHEAD ? -1 : (int32_t)ahead;
+    return true;
 }
 
 int32_t minim_port_read_char(minim_obj p) {
-    int32_t ahead = take_lookahead(p);
-    if (ahead != NO_LOOKAHEAD)
-        return ahead;
+    int32_t c;
+    if (take_lookahead(p, &c))
+        return c;
     minim_obj *f = fields(p);
     if (minim_port_flags(p) & MINIM_PORT_FILE)
         return minim_utf8_getc(minim_port_file(p));
@@ -159,9 +160,9 @@ int32_t minim_port_read_char(minim_obj p) {
 
 // Reads a byte from the open binary input port `p`, or returns -1 at its end.
 static int32_t read_byte(minim_obj p) {
-    int32_t ahead = take_lookahead(p);
-    if (ahead != NO_LOOKAHEAD)
-        return ahead;
+    int32_t b;
+    if (take_lookahead(p, &b))
+        return b;
     if (minim_port_flags(p) & MINIM_PORT_FILE) {
         int b = getc(minim_port_file(p));
         return b == EOF ? -1 : b;

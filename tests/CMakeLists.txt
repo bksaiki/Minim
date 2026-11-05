@@ -48,7 +48,7 @@ minim_add_test(error)
 minim_add_test(read INTERNAL)
 minim_add_test(eval INTERNAL)
 minim_add_test(prims)
-minim_add_test(port)
+minim_add_test(port INTERNAL)
 minim_add_test(unicode INTERNAL)
 
 minim_test_executable(startup INTERNAL)
