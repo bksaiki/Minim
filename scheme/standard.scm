@@ -15,19 +15,20 @@
    make-vector map member memq memv newline not null? number->string open-input-string
    open-output-string or output-port-open? output-port? pair? parameterize peek-char port?
    procedure? quasiquote quote quotient raise raise-continuable read-char read-error?
-   read-line read-string remainder reverse set! set-car! set-cdr! string->list
-   string->symbol string-append string-length string-ref string-set! string<=? string<?
-   string=? string>=? string>? string? substring symbol->string symbol? syntax-error
-   syntax-rules textual-port? unless unquote unquote-splicing values vector vector->list
-   vector-length vector-ref vector-set! vector? when with-exception-handler write-char
-   write-string zero?))
+   read-line read-string remainder reverse set! set-car! set-cdr! string string->list
+   string->symbol string-append string-copy string-copy! string-fill! string-for-each
+   string-length string-map string-ref string-set! string<=? string<? string=? string>=?
+   string>? string? substring symbol->string symbol? syntax-error syntax-rules textual-port?
+   unless unquote unquote-splicing values vector vector->list vector-length vector-ref
+   vector-set! vector? when with-exception-handler write-char write-string zero?))
 
 (%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library
  '(scheme char)
  '(char-alphabetic? char-ci<=? char-ci<? char-ci=? char-ci>=? char-ci>? char-downcase
-   char-foldcase char-lower-case? char-numeric? char-upcase char-upper-case? char-whitespace?
-   digit-value))
+   char-foldcase char-lower-case? char-numeric? char-upcase char-upper-case?
+   char-whitespace? digit-value string-ci<=? string-ci<? string-ci=? string-ci>=?
+   string-ci>? string-downcase string-foldcase string-upcase))
 (%define-system-library
  '(scheme cxr)
  '(caaar caadr cadar caddr cdaar cdadr cddar cdddr caaaar caaadr caadar caaddr cadaar cadadr
@@ -61,9 +62,10 @@
    list->string list->vector list-ref list-tail list? load make-string make-vector map
    member memq memv newline not null-environment null? number->string open-input-file
    open-output-file or output-port? pair? peek-char procedure? quasiquote quote quotient
-   read read-char remainder reverse scheme-report-environment set! set-car! set-cdr!
-   string->list string->symbol string-append string-length string-ref string-set! string<=?
-   string<? string=? string>=? string>? string? substring symbol->string symbol?
+   read read-char remainder reverse scheme-report-environment set! set-car! set-cdr! string
+   string->list string->symbol string-append string-ci<=? string-ci<? string-ci=?
+   string-ci>=? string-ci>? string-copy string-fill! string-length string-ref string-set!
+   string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
    syntax-rules unquote unquote-splicing values vector vector->list vector-length vector-ref
    vector-set! vector? with-input-from-file with-output-to-file write write-char zero?))
 

@@ -54,6 +54,7 @@ static void test_strings(void) {
     CHECK(prints_as(minim_string_from_cstr(""), "\"\""));
     CHECK(prints_as(minim_string_from_cstr("a\"b\\c\nd\te"), "\"a\\\"b\\\\c\\nd\\te\""));
     CHECK(prints_as(minim_string_from_cstr("\x01"), "\"\\x1;\""));
+    CHECK(prints_as(minim_string_from_cstr("\a\b\r"), "\"\\a\\b\\r\""));
     CHECK(prints_as(minim_string_from_cstr("caf\u00e9 \U0001F600"), "\"caf\u00e9 \U0001F600\""));
 }
 

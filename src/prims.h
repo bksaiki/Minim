@@ -83,6 +83,28 @@ static inline size_t bound_arg(minim_obj x, size_t max, const char *msg) {
     return (size_t)minim_fixnum_value(x);
 }
 
+/** Positions `[start, end)` in a sequence. */
+typedef struct range {
+    size_t start;
+    size_t end;
+} range;
+
+/**
+ * The range from args[i] and args[i + 1] of the `n` arguments `args`, each
+ * optional, in a sequence of length `len`: by default all of it.  Raises `msg`
+ * on a bad position.
+ */
+static inline range range_args(minim_obj *args, size_t n, size_t i, size_t len,
+                               const char *msg) {
+    range r = {
+        .start = n > i ? bound_arg(args[i], len, msg) : 0,
+        .end = n > i + 1 ? bound_arg(args[i + 1], len, msg) : len,
+    };
+    if (r.start > r.end)
+        minim_error(msg, args[i]);
+    return r;
+}
+
 /** Value of the fixnum `x`; raises `msg` otherwise. */
 static inline intptr_t fixnum_arg(minim_obj x, const char *msg) {
     check(minim_is_fixnum(x), msg, x);

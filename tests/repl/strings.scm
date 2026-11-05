@@ -52,3 +52,72 @@ s
 (string? 's)
 (string-ref "abc" 3)
 (string-length 'abc)
+
+; Construction, copying, and filling, each over an optional range.
+(string)
+(string #\a #\xe9 #\c)
+(string-copy "hello")
+(string-copy "hello" 2)
+(string-copy "hello" 1 3)
+(let ((s "abc")) (eq? s (string-copy s)))
+(string-copy (symbol->string 'abc))
+(string->list "hello" 2)
+(string->list "hello" 1 3)
+(define t (make-string 5 #\x))
+(string-fill! t #\-)
+t
+(string-fill! t #\a 3)
+t
+(string-fill! t #\b 1 2)
+t
+(define u (string-copy "abcde"))
+(string-copy! u 1 "12345" 0 2)
+u
+(string-copy! u 0 "-----" 3)
+u
+(string-copy! u 1 u 0 3)
+u
+(string-copy! u 0 u 2)
+u
+
+(string #\a "b")
+(string-copy "abc" 2 1)
+(string-copy "abc" 4)
+(string->list "abc" 1 4)
+(string-fill! (symbol->string 'abc) #\x)
+(string-fill! t 1)
+(string-copy! u 4 "abc")
+(string-copy! (symbol->string 'abc) 0 "x")
+
+; Mapping over chars, to the shortest string's length.
+(string-map char-upcase "abc")
+(string-map (lambda (a b) (if (char<? a b) a b)) "adcz" "bbb")
+(string-map char-upcase "")
+(let ((acc '()))
+  (string-for-each (lambda (c) (set! acc (cons c acc))) "abc")
+  acc)
+(let ((acc '()))
+  (string-for-each (lambda (a b) (set! acc (cons (string a b) acc))) "abc" "xy")
+  acc)
+(string-for-each char-upcase "")
+(string-map char-upcase 'abc)
+
+; Full case mapping, which may change a string's length, after (scheme char).
+(string-upcase "abc ΑΒγ")
+(string-downcase "ABC αβΓ")
+(string-foldcase "ABC αβΓ")
+(string-upcase "Maß")
+(string-foldcase "Maß")
+(string-length (string-downcase "İ"))
+(string-downcase "ΌΣΟΣ ΣΑ")
+(string-upcase "")
+(let ((s "abc")) (eq? s (string-downcase s)))
+(string-ci=? "Straße" "STRASSE" "strasse")
+(string-ci=? "abc" "abd")
+(string-ci<? "abc" "ABD")
+(string-ci<? "ABCd" "aBc")
+(string-ci>? "abc" "AB")
+(string-ci<=? "abc" "ABC" "abd")
+(string-ci>=? "ss" "ß")
+(string-upcase 'abc)
+(string-ci=? "a" 'a)
