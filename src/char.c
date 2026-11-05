@@ -164,7 +164,7 @@ static minim_obj prim_char_ge(minim_obj *args, size_t n) {
     return compare(args, n, char_arg, ge, "char>=?: not a char");
 }
 
-// Whether the char `x` has the Unicode property `prop`; raises `msg` otherwise.
+// Whether the char `x` has the Unicode property `prop`; raises `msg` if `x` isn't a char.
 static minim_obj has_prop(minim_obj x, unsigned prop, const char *msg) {
     return boolean(minim_unicode_props((uint32_t)char_arg(x, msg)) & prop);
 }
@@ -218,7 +218,7 @@ static minim_obj prim_char_foldcase(minim_obj *args, size_t n) {
     return minim_char(minim_unicode_foldcase(c));
 }
 
-// The folded code point of the char `x`, for compare; raises `msg` otherwise.
+// The folded code point of the char `x`, for compare; raises `msg` if `x` isn't a char.
 static intptr_t folded_char_arg(minim_obj x, const char *msg) {
     return minim_unicode_foldcase((uint32_t)char_arg(x, msg));
 }
