@@ -31,7 +31,7 @@ provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 163 | 238 | |
+| `(scheme base)` | 171 | 238 | |
 | `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 22 | 22 | |
 | `(scheme complex)` | 0 | 6 | not defined |
@@ -42,7 +42,7 @@ provides.  Update it as names are added.
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 4 | 5 | |
-| `(scheme r5rs)` | 168 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme r5rs)` | 169 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 0 | 3 | not defined |
@@ -208,8 +208,13 @@ strings, vectors, and control.  Mostly prelude procedures.
   mapping, and R7RS's char names and string escapes
   (`docs/design/primitives.md`).
 - Done: `(scheme base)`'s strings: `string`, `string-copy`, `string-copy!`,
-  `string-fill!`, `string-map`, `string-for-each`, and ranges.  Next:
-  vectors (`docs/todos/vectors.md`).
+  `string-fill!`, `string-map`, `string-for-each`, and ranges.
+- Done: `(scheme base)`'s vectors: `vector-copy`, `vector-copy!`,
+  `vector-fill!`, `vector-append`, `string->vector`, `vector->string`,
+  `vector-map`, and `vector-for-each`.
+- Planned: `(scheme lazy)` (`docs/todos/lazy.md`); bytevectors and binary
+  ports (`docs/todos/bytevectors.md`, milestone 8); flonums
+  (`docs/todos/flonums.md`, milestone 7).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
@@ -233,9 +238,9 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.5 Symbols | 13 | 4 | 0 |
 | 6.6 Characters | 79 | 0 | 0 |
 | 6.7 Strings | 130 | 0 | 0 |
-| 6.8 Vectors | 13 | 30 | 0 |
+| 6.8 Vectors | 42 | 1 | 0 |
 | 6.9 Bytevectors | 0 | 11 | 28 |
-| 6.10 Control Features | 26 | 8 | 0 |
+| 6.10 Control Features | 29 | 5 | 0 |
 | 6.11 Exceptions | 24 | 6 | 0 |
 | 6.12 Environments and evaluation | 1 | 1 | 2 |
 | 6.13 Input and output | 42 | 2 | 18 |

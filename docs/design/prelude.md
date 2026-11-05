@@ -14,7 +14,7 @@ them (`MINIM_SCHEME_SOURCES`):
 | `derived.scm` | the derived forms, as macros |
 | `eval.scm` | `eval`, its environments, and `%expand` |
 | `ports.scm` | the current ports, and the port procedures with optional ports (`ports.md`) |
-| `sequences.scm` | the higher-order procedures of strings |
+| `sequences.scm` | the higher-order procedures of strings and vectors |
 | `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
 
 The library holds what is easiest in Scheme, above all higher-order
@@ -72,6 +72,7 @@ the one it contains.
 | `(map f lst ...)` | a list of `f` applied to corresponding elements, left to right, stopping at the shortest list |
 | `(for-each f lst ...)` | like `map`, for effect; void |
 | `(string-map f s ...)`, `(string-for-each f s ...)` | `map` and `for-each` over the strings' chars, as lists: a new string of `f`'s results, or void |
+| `(vector-map f v ...)`, `(vector-for-each f v ...)` | likewise over the vectors' elements: a new vector, or void |
 | `(filter keep? lst)` | the elements satisfying `keep?`, in order |
 | `(fold kons knil lst)`, `(fold-right kons knil lst)` | SRFI-1 folds, calling `(kons elem acc)` from the left or right |
 | `(call/cc f)`, `(call-with-current-continuation f)` | `f` applied to the current continuation, a procedure taking any number of values to return |
