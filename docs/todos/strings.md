@@ -123,6 +123,12 @@ Tests: `tests/repl/strings.scm`: each procedure with and without its range,
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'strings|vectors|r7rs' && ctest --preset stress -R strings
 ```
 
+**Done.**  6.7: 52 to 78 passed, its other 52 failures all case mapping;
+6.13: 37 to 42 passed.  `range_args` returns a `range` struct; it reads the
+start argument only to report a bad range, since it may be absent.
+`substring` and `string-copy` share `copy_range`.  `(scheme r5rs)` gained
+`string`, `string-copy`, and `string-fill!`.
+
 ### Phase 3 - `string-map` and `string-for-each`
 
 - `scheme/sequences.scm`, in `MINIM_SCHEME_SOURCES`: the two procedures.

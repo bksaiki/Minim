@@ -40,18 +40,13 @@ static minim_obj prim_vector_length(minim_obj *args, size_t n) {
     return minim_fixnum((intptr_t)minim_vector_length(args[0]));
 }
 
-// The elements of the vector args[0] from args[1] (default 0) to args[2]
-// (default its length), as a list.
+// The elements of the vector args[0] in the range args[1] and args[2], as a list.
 static minim_obj prim_vector_to_list(minim_obj *args, size_t n) {
     check(minim_is_vector(args[0]), "vector->list: not a vector", args[0]);
-    size_t len = minim_vector_length(args[0]);
-    size_t start = n > 1 ? bound_arg(args[1], len, "vector->list: bad index") : 0;
-    size_t end = n > 2 ? bound_arg(args[2], len, "vector->list: bad index") : len;
-    check(start <= end, "vector->list: bad index", args[1]);
-
+    range r = range_args(args, n, 1, minim_vector_length(args[0]), "vector->list: bad index");
     minim_obj lst = MINIM_NIL;
     MINIM_FRAME(&lst);
-    for (size_t i = end; i > start; i--)
+    for (size_t i = r.end; i > r.start; i--)
         lst = minim_cons(minim_vector_ref(args[0], i - 1), lst);
     MINIM_RETURN(lst);
 }

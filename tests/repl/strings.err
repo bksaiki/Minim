@@ -10,3 +10,11 @@ error: make-string: bad length: -1
 error: string<?: not a string: b
 error: string-ref: bad index: 3
 error: string-length: not a string: abc
+error: string: not a char: "b"
+error: string-copy: bad index: 2
+error: string-copy: bad index: 4
+error: string->list: bad index: 4
+error: string-fill!: immutable string: "abc"
+error: string-fill!: not a char: 1
+error: string-copy!: bad index: 4
+error: string-copy!: immutable string: "abc"
