@@ -14,6 +14,7 @@
 #include "prelude.h"
 #include "prims.h"
 #include "symbol.h"
+#include "system.h"
 
 minim_obj minim_base_rtd;
 
@@ -41,6 +42,7 @@ static void record_init(void) {
 }
 
 void minim_init(void) {
+    minim_clock_init();
     minim_gc_init();
     minim_error_init();
     minim_symbol_init();

@@ -1,13 +1,20 @@
 /**
  * @file
  * Interface to the operating system, and the primitives for storage
- * management, files, and the environment.
+ * management, files, the environment, and time.
  */
+
+#define _POSIX_C_SOURCE 200809L
 
 #include "system.h"
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <time.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "char.h"
 #include "gc.h"
@@ -40,6 +47,50 @@ char **minim_environ(void) {
 const char *minim_getenv(const char *name) {
     const char *s = getenv(name);
     return s == NULL || *s == '\0' ? NULL : s;
+}
+
+enum { NS_PER_SECOND = 1000000000 };
+
+// Nanoseconds on a monotonic clock, from an arbitrary origin.
+static uint64_t monotonic_ns(void) {
+#ifdef _WIN32
+    LARGE_INTEGER count;
+    LARGE_INTEGER freq;
+    QueryPerformanceCounter(&count);
+    QueryPerformanceFrequency(&freq);
+    uint64_t c = (uint64_t)count.QuadPart;
+    uint64_t f = (uint64_t)freq.QuadPart;
+    return c / f * NS_PER_SECOND + c % f * NS_PER_SECOND / f;  // without overflowing c * 1e9
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * NS_PER_SECOND + (uint64_t)ts.tv_nsec;
+#endif
+}
+
+static uint64_t start_ns;
+
+void minim_clock_init(void) {
+    start_ns = monotonic_ns();
+}
+
+// Seconds since the epoch, UTC.
+static minim_obj prim_current_second(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return minim_make_flonum((double)ts.tv_sec + (double)ts.tv_nsec / 1e9);
+}
+
+// Nanoseconds since minim_clock_init.
+static minim_obj prim_current_jiffy(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    return minim_fixnum((intptr_t)(monotonic_ns() - start_ns));
+}
+
+static minim_obj prim_jiffies_per_second(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    return minim_fixnum(NS_PER_SECOND);
 }
 
 static minim_obj prim_collect(minim_obj *args, size_t n) {
@@ -182,6 +233,9 @@ const minim_prim_def minim_system_prims[] = {
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
     {"get-environment-variables", prim_get_environment_variables, 0, 0},
     {"%read-file", prim_read_file, 1, 1},
+    {"current-second", prim_current_second, 0, 0},
+    {"current-jiffy", prim_current_jiffy, 0, 0},
+    {"jiffies-per-second", prim_jiffies_per_second, 0, 0},
     {"collect", prim_collect, 0, 0},
     {"collect-nursery-bytes", prim_collect_nursery_bytes, 0, 1},
     {"collect-generation-radix", prim_collect_generation_radix, 0, 1},

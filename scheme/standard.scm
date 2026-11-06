@@ -55,6 +55,7 @@
  '(command-line emergency-exit exit get-environment-variable get-environment-variables))
 (%define-system-library '(scheme read) '(read))
 (%define-system-library '(scheme repl) '(interaction-environment))
+(%define-system-library '(scheme time) '(current-jiffy current-second jiffies-per-second))
 (%define-system-library '(scheme write) '(display write write-simple))
 
 ;; R5RS's names (R7RS Appendix A), with the auxiliary syntax R7RS's list omits.
@@ -92,7 +93,7 @@
  (append (%exported-names
           '((scheme base) (scheme case-lambda) (scheme char) (scheme cxr) (scheme eval)
             (scheme file) (scheme inexact) (scheme lazy) (scheme load) (scheme process-context)
-            (scheme read) (scheme repl) (scheme write)))
+            (scheme read) (scheme repl) (scheme time) (scheme write)))
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash exact->inexact filter fixnum? flonum? fold fold-right

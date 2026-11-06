@@ -20,4 +20,7 @@ char **minim_environ(void);
 /** The file `path` opened with `mode`, as fopen, or NULL; fopen_s on MSVC. */
 FILE *minim_fopen(const char *path, const char *mode);
 
+/** Records the start time, from which `current-jiffy` counts. */
+void minim_clock_init(void);
+
 #endif

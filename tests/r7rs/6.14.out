@@ -1,7 +1,3 @@
-FAIL 2513 (real? (current-second)) raised ("unbound variable" current-second)
-FAIL 2514 (inexact? (current-second)) raised ("unbound variable" current-second)
-FAIL 2515 (exact? (current-jiffy)) raised ("unbound variable" current-jiffy)
-FAIL 2516 (exact? (jiffies-per-second)) raised ("unbound variable" jiffies-per-second)
 FAIL 2518 (list? (features)) raised ("unbound variable" features)
 FAIL 2519 (and (memq 'r7rs (features)) #t) raised ("unbound variable" features)
-6.14 System interface: 7 passed, 6 failed, 0 errors
+6.14 System interface: 11 passed, 2 failed, 0 errors
