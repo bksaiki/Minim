@@ -15,6 +15,16 @@ static bool is_integral(double d) {
     return isfinite(d) && d == floor(d);
 }
 
+// The fixnum equal to `d`, into `*x`.
+static minim_parse exact_of(double d, minim_obj *x) {
+    if (!is_integral(d))
+        return MINIM_PARSE_NOT_EXACT;
+    if (d < (double)MINIM_FIXNUM_MIN || d >= -(double)MINIM_FIXNUM_MIN)
+        return MINIM_PARSE_OUT_OF_RANGE;
+    *x = minim_fixnum((intptr_t)d);
+    return MINIM_PARSE_OK;
+}
+
 // Value of the digit `c` in `radix`, or -1 if it isn't one.
 static int digit_value(uint32_t c, unsigned radix) {
     int d = c >= '0' && c <= '9'   ? (int)(c - '0')
@@ -102,11 +112,12 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
         d = NAN;
     } else {
         bool integer = true;
-        size_t len = radix == 10 ? decimal_length(s + sign, n - sign, &integer) : 0;
-        if (radix != 10) {
+        size_t len = 0;
+        if (radix == 10)
+            len = decimal_length(s + sign, n - sign, &integer);
+        else
             while (sign + len < n && digit_value(s[sign + len], radix) >= 0)
                 len++;
-        }
         if (len == 0 || sign + len != n)
             return MINIM_PARSE_NOT_NUMBER;
 
@@ -133,14 +144,8 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
         }
     }
 
-    if (exactness == 'e') {
-        if (!is_integral(d))
-            return MINIM_PARSE_NOT_EXACT;
-        if (d < -0x1p60 || d >= 0x1p60)
-            return MINIM_PARSE_OUT_OF_RANGE;
-        *x = minim_fixnum((intptr_t)d);
-        return MINIM_PARSE_OK;
-    }
+    if (exactness == 'e')
+        return exact_of(d, x);
     *x = minim_make_flonum(d);
     return MINIM_PARSE_OK;
 }
@@ -249,8 +254,8 @@ static int cmp_flonums(double a, double b) {
     return a < b ? LT : a > b ? GT : a == b ? EQ : UNORDERED;
 }
 
-// Compares exactly: `(double)a` may round, but only toward `b` if they meet,
-// and then `b` is integral and in range.
+// Exact: rounding `(double)a` is monotonic, so it decides unless it equals
+// `b`; then `b` is integral and in range, and the fixnums decide.
 static int cmp_mixed(intptr_t a, double b) {
     int c = cmp_flonums((double)a, b);
     if (c != EQ)
@@ -503,15 +508,20 @@ static minim_obj prim_is_nan(minim_obj *args, size_t n) {
     return boolean(a.flo && isnan(a.d));
 }
 
-// The fixnum equal to args[0]; raises unless it is integral and in range.
 static minim_obj prim_exact(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     num a = num_arg(args[0], "exact: not a number");
     if (!a.flo)
         return args[0];
-    check(is_integral(a.d), "exact: no exact representation", args[0]);
-    check(a.d >= -0x1p60 && a.d < 0x1p60, "exact: fixnum out of range", args[0]);
-    return minim_fixnum((intptr_t)a.d);
+    minim_obj x;
+    switch (exact_of(a.d, &x)) {
+    case MINIM_PARSE_OK:
+        return x;
+    case MINIM_PARSE_OUT_OF_RANGE:
+        minim_error("exact: fixnum out of range", args[0]);
+    default:
+        minim_error("exact: no exact representation", args[0]);
+    }
 }
 
 static minim_obj prim_inexact(minim_obj *args, size_t n) {

@@ -72,8 +72,7 @@ minim_obj minim_make_vector(size_t n, minim_obj fill) {
     MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
 }
 
-// The double is in word 1: word 0, 0, is never the forwarding marker, which a
-// double's bits could be.
+// Word 0 is 0: a double there could look like the forwarding marker.
 minim_obj minim_make_flonum(double d) {
     minim_obj *p = minim_heap_alloc(MINIM_FLONUM_SIZE);
     p[0] = 0;
