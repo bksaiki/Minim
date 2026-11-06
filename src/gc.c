@@ -227,6 +227,8 @@ static size_t object_size(const minim_obj *p, minim_obj tag) {
         return MINIM_SYMBOL_SIZE;
     case MINIM_TAG_CLOSURE:
         return MINIM_CLOSURE_SIZE;
+    case MINIM_TAG_FLONUM:
+        return MINIM_FLONUM_SIZE;
     default:
         return MINIM_PAIR_SIZE;
     }
@@ -240,6 +242,9 @@ static minim_obj copy(minim_obj x) {
     switch (tag) {
     case MINIM_TAG_PAIR:
         kind = MINIM_KIND_PAIR;
+        break;
+    case MINIM_TAG_FLONUM:
+        kind = MINIM_KIND_FLONUM;
         break;
     case MINIM_TAG_CLOSURE:
         kind = MINIM_KIND_CLOSURE;
@@ -275,6 +280,8 @@ static minim_obj copy(minim_obj x) {
 // how many.
 static size_t pointer_fields(minim_obj x, minim_obj **fields) {
     minim_obj *p = (minim_obj *)(x - minim_tag(x));
+    if (minim_tag(x) == MINIM_TAG_FLONUM)
+        return 0;  // its bits aren't pointers
     if (minim_tag(x) != MINIM_TAG_TYPED) {
         *fields = p;
         return object_size(p, minim_tag(x)) / sizeof(minim_obj);
@@ -322,6 +329,7 @@ typedef struct cursor {
 static bool scan(minim_space *s, size_t kind, cursor *c) {
     static const minim_obj tags[MINIM_KIND_COUNT] = {
         [MINIM_KIND_PAIR] = MINIM_TAG_PAIR,
+        [MINIM_KIND_FLONUM] = MINIM_TAG_FLONUM,
         [MINIM_KIND_CLOSURE] = MINIM_TAG_CLOSURE,
         [MINIM_KIND_SYMBOL] = MINIM_TAG_SYMBOL,
         [MINIM_KIND_TYPED] = MINIM_TAG_TYPED,

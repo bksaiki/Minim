@@ -113,6 +113,17 @@ own space, and an old vector holding a young flonum keeps it (the barrier);
 cmake --build --preset dev && ctest --preset dev -R 'object|gc|print|heap' && ctest --preset stress -R 'object|gc|print'
 ```
 
+**Done.**  Diverged from the design: the layout is `[ 0 | double ]`, not
+`[ double | unused ]`.  The collector takes an object whose word 0 is
+`MINIM_FORWARD` as forwarded, and a double's bits can be that (a
+subnormal); word 0 is now always 0.  `test_gc`'s `test_flonums` covers a
+flonum with those bits, and fails with the double in word 0.
+`pointer_fields` returns none for a flonum.  Printing uses the shortest
+`%.*e` that `strtod` reads back, positionally for exponents -6 to 20 (as
+JavaScript does): `0.000001` but `1e-7`, `100000000000000000000.0` but
+`1e21`.  `count_predicates` (`tests/test.h`) gained `minim_is_bytevector`,
+missed by the bytevectors work, and `minim_is_flonum`.
+
 ### Phase 2 - Syntax
 
 - `src/number.c`: the parser; `string->number`; `number->string` of

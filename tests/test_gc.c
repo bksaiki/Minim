@@ -424,6 +424,38 @@ static void test_bytevectors(void) {
     MINIM_RETURN_VOID;
 }
 
+// Flonums survive collections, young and promoted, in their own space, and in
+// an old vector by the barrier; one whose bits are the forwarding marker's too.
+static void test_flonums(void) {
+    minim_gc_config saved = use_generations(3);
+    double marker;
+    uint64_t bits = MINIM_FORWARD;
+    memcpy(&marker, &bits, sizeof(marker));
+    minim_obj f = minim_make_flonum(-2.5);
+    minim_obj m = minim_make_flonum(marker);
+    minim_obj holder = MINIM_NIL;
+    MINIM_FRAME(&f, &m, &holder);
+    for (unsigned g = 0; g <= 3; g++) {
+        make_list(100);  // garbage
+        minim_gc_collect_generation(g);
+        unsigned gen = generation(f);
+        CHECK_EQ(gen, g < 3 ? g + 1 : 3);
+        CHECK(in_space(f, &minim_gc.old[gen][MINIM_KIND_FLONUM]));
+        CHECK(minim_flonum_value(f) == -2.5);
+        CHECK(minim_flonum_value(m) == marker);
+    }
+
+    holder = minim_make_vector(1, MINIM_NIL);
+    minim_gc_collect_major();  // `holder` into generation 3
+    f = minim_make_flonum(0.5);
+    minim_vector_set(holder, 0, f);
+    f = MINIM_NIL;
+    minim_gc_collect_minor();
+    CHECK(minim_flonum_value(minim_vector_ref(holder, 0)) == 0.5);
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 // A new rtd named `name` with the fields `x` and `y`.
 static minim_obj make_point_type(const char *name) {
     static const char *const fields[] = {"x", "y"};
@@ -496,6 +528,7 @@ int main(void) {
     test_closures();
     test_vector_copy();
     test_bytevectors();
+    test_flonums();
     test_records();
     minim_shutdown();
     return test_result();

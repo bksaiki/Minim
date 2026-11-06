@@ -36,6 +36,7 @@ enum {
 
     MINIM_TAG_FIXNUM = 0x0,
     MINIM_TAG_PAIR = 0x1,
+    MINIM_TAG_FLONUM = 0x2,
     MINIM_TAG_SYMBOL = 0x3,
     MINIM_TAG_CLOSURE = 0x5,
     MINIM_TAG_IMMEDIATE = 0x6,
@@ -83,6 +84,7 @@ enum {
 /** Object sizes in bytes, before rounding to the allocation unit. */
 enum {
     MINIM_PAIR_SIZE = 2 * sizeof(minim_obj),
+    MINIM_FLONUM_SIZE = 2 * sizeof(minim_obj),  ///< `[ 0 | double ]`
     MINIM_SYMBOL_SIZE = 3 * sizeof(minim_obj),
     MINIM_CLOSURE_SIZE = 3 * sizeof(minim_obj),
     MINIM_PRIMITIVE_SIZE = 5 * sizeof(minim_obj),
@@ -179,6 +181,11 @@ static inline minim_obj minim_typed_header(minim_obj x) {
 /** Whether `x` is a fixnum. */
 static inline bool minim_is_fixnum(minim_obj x) {
     return minim_tag(x) == MINIM_TAG_FIXNUM;
+}
+
+/** Whether `x` is a flonum. */
+static inline bool minim_is_flonum(minim_obj x) {
+    return minim_tag(x) == MINIM_TAG_FLONUM;
 }
 
 /** Whether `x` is a pair. */
@@ -433,6 +440,19 @@ static inline void minim_vector_set(minim_obj v, size_t i, minim_obj x) {
     assert(i < minim_vector_length(v));
     ((minim_obj *)(v - MINIM_TAG_TYPED))[1 + i] = x;
     minim_gc_write(v, x);
+}
+
+// Flonums: boxed IEEE doubles
+
+/** New flonum of the double `d`. */
+minim_obj minim_make_flonum(double d);
+
+/** Value of the flonum `x`. */
+static inline double minim_flonum_value(minim_obj x) {
+    assert(minim_is_flonum(x));
+    double d;
+    memcpy(&d, (const void *)(x - MINIM_TAG_FLONUM + sizeof(minim_obj)), sizeof(d));
+    return d;
 }
 
 // Strings: arrays of Unicode scalar values

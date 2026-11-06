@@ -4,6 +4,7 @@
  */
 
 #include <inttypes.h>
+#include <math.h>
 #include <stdlib.h>
 
 #include "char.h"
@@ -196,6 +197,61 @@ static void write_record(sink *out, minim_obj r) {
     put(out, '>');
 }
 
+// Writes `d` with the fewest significant digits that read back as it: as
+// `123.45` if its exponent is from -6 to 20, else as `1.2345e-7`.
+static void write_flonum(sink *out, double d) {
+    if (isnan(d)) {
+        put_ascii(out, "+nan.0");
+        return;
+    }
+    if (isinf(d)) {
+        put_ascii(out, d > 0 ? "+inf.0" : "-inf.0");
+        return;
+    }
+
+    // The shortest `[-]d.ddde±xx` that round-trips; 17 digits always do.
+    char sci[32];
+    for (int digits = 1;; digits++) {
+        snprintf(sci, sizeof(sci), "%.*e", digits - 1, d);
+        if (digits == 17 || strtod(sci, NULL) == d)
+            break;
+    }
+    const char *e = strchr(sci, 'e');
+    int exp = atoi(e + 1);
+    char digits[17];
+    int n = 0;
+    for (const char *p = sci; p < e; p++) {
+        if (*p >= '0' && *p <= '9')
+            digits[n++] = *p;
+    }
+
+    char buf[48];
+    int len = 0;
+    if (sci[0] == '-')
+        buf[len++] = '-';
+    if (exp < -6 || exp > 20) {
+        buf[len++] = digits[0];
+        if (n > 1)
+            len += snprintf(buf + len, sizeof(buf) - (size_t)len, ".%.*s", n - 1, digits + 1);
+        snprintf(buf + len, sizeof(buf) - (size_t)len, "e%d", exp);
+    } else if (exp < 0) {
+        buf[len++] = '0';
+        buf[len++] = '.';
+        for (int i = -1; i > exp; i--)
+            buf[len++] = '0';
+        snprintf(buf + len, sizeof(buf) - (size_t)len, "%.*s", n, digits);
+    } else {
+        for (int i = 0; i <= exp; i++)
+            buf[len++] = i < n ? digits[i] : '0';
+        buf[len++] = '.';
+        if (n > exp + 1)
+            snprintf(buf + len, sizeof(buf) - (size_t)len, "%.*s", n - exp - 1, digits + exp + 1);
+        else
+            snprintf(buf + len, sizeof(buf) - (size_t)len, "0");
+    }
+    put_ascii(out, buf);
+}
+
 // Prints `x` in `write` syntax, or with strings and chars unescaped if
 // `display`.
 static void print(sink *out, minim_obj x, bool display) {
@@ -204,6 +260,8 @@ static void print(sink *out, minim_obj x, bool display) {
         snprintf(buf, sizeof(buf), "%" PRIdPTR, minim_fixnum_value(x));
         put_ascii(out, buf);
     }
+    else if (minim_is_flonum(x))
+        write_flonum(out, minim_flonum_value(x));
     else if (minim_is_char(x) && display)
         put(out, minim_char_value(x));
     else if (minim_is_char(x))
